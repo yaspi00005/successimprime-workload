@@ -1,0 +1,10 @@
+twig:
+    file_name_pattern: '*.twig'
+    globals:
+        domaine: "https://127.0.0.1:8000"
+        nom: "MDG"
+        title: "ERP MDG"
+
+when@test:
+    twig:
+        strict_variables: true

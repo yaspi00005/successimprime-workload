@@ -1,0 +1,128 @@
+diff a/templates/base.html.twig b/templates/base.html.twig	(rejected hunks)
+@@ -803,26 +837,6 @@
+ 													{% endif %}
+ 
+ 
+-													<a href="{{ path('app_reclamation_index') }}" class="
+-																																	slide-item
+-																																	{{
+-																																		routeCourante
+-																																		starts with
+-																																		'app_reclamation_'
+-																																			? 'active'
+-																																			: ''
+-																																	}}
+-																																">
+-
+-														<i class="
+-																																	fa
+-																																	fa-money
+-																																	mr-2
+-																																"></i>
+-
+-														Réclamations
+-
+-													</a>
+ 
+ 
+ 													{% if peutVoirLivraison %}
+@@ -1243,7 +1257,7 @@
+ 																										   TRÉSORERIE
+ 																										   ===================================== #}
+ 
+-													{% if peutVoirTresorerie %}
++													{% if peutVoirComptesTresorerie or peutVoirTresorerie %}
+ 
+ 														<h6 class="
+ 																																text-uppercase
+@@ -1254,48 +1268,56 @@
+ 														</h6>
+ 
+ 
+-														<a href="{{ path( 'app_compte_tresorerie_index' ) }}" class="
+-																																slide-item
+-																																{{
+-																																	routeCourante
+-																																	starts with
+-																																	'app_compte_tresorerie_'
+-																																		? 'active'
+-																																		: ''
+-																																}}
+-																															">
++														{% if peutVoirComptesTresorerie %}
+ 
+-															<i class="
+-																																	fa
+-																																	fa-bank
+-																																	mr-2
+-																																"></i>
++															<a href="{{ path( 'app_compte_tresorerie_index' ) }}" class="
++																																	slide-item
++																																	{{
++																																		routeCourante
++																																		starts with
++																																		'app_compte_tresorerie_'
++																																			? 'active'
++																																			: ''
++																																	}}
++																																">
+ 
+-															Comptes de trésorerie
++																<i class="
++																																		fa
++																																		fa-bank
++																																		mr-2
++																																	"></i>
+ 
+-														</a>
++																Comptes de trésorerie
+ 
++															</a>
+ 
+-														<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}" class="
+-																																slide-item
+-																																{{
+-																																	routeCourante
+-																																	starts with
+-																																	'app_mouvement_tresorerie_'
+-																																		? 'active'
+-																																		: ''
+-																																}}
+-																															">
++														{% endif %}
+ 
+-															<i class="
+-																																	fa
+-																																	fa-exchange
+-																																	mr-2
+-																																"></i>
+ 
+-															Mouvements de trésorerie
++														{% if peutVoirTresorerie %}
+ 
+-														</a>
++															<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}" class="
++																																	slide-item
++																																	{{
++																																		routeCourante
++																																		starts with
++																																		'app_mouvement_tresorerie_'
++																																			? 'active'
++																																			: ''
++																																	}}
++																																">
++
++																<i class="
++																																		fa
++																																		fa-exchange
++																																		mr-2
++																																	"></i>
++
++																Mouvements de trésorerie
++
++															</a>
++
++														{% endif %}
+ 
+ 													{% endif %}
+ 

@@ -1,0 +1,437 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}User index
+{% endblock %}
+
+{% block body %}
+	<!-- PAGE-HEADER -->
+	<div class="side-app">
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="#">Utilisateurs</a>
+			</li>
+			<li class="breadcrumb-item active" aria-current="page">Liste des Utilisateurs</li>
+		</ol>
+		<div>
+			<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#supportCreateModal">
+				<i class="fa fa-plus mr-1"></i>
+				Ajouter un support
+			</button>
+
+
+			<button type="button" id="supportMassPublishButton" class="btn btn-success">
+				Publier
+			</button>
+
+			<button type="button" id="supportMassUnpublishButton" class="btn btn-warning">
+				Dépublier
+			</button>
+
+			<button type="button" id="supportMassDeleteButton" class="btn btn-danger">
+				Supprimer
+			</button>
+
+		</div>
+	</div>
+	</div>
+	<!-- PAGE-HEADER END -->
+
+	<!-- ROW OPEN -->
+	<div
+		class="row row-cards">
+
+		<!-- COL-END -->
+		<div class="col-lg-8 col-xl-12">
+			<div class="input-group mb-5">
+				<input type="text" class="form-control" placeholder="">
+				<div class="input-group-append ">
+					<button type="button" class="btn btn-primary-light">
+						<i class="fa fa-search" aria-hidden="true"></i>
+					</button>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-header border-bottom-0 p-4">
+					<h2 class="card-title">1 - 30 of 546 users</h2>
+					<div class="page-options d-flex float-right">
+						<select class="form-control custom-select w-auto">
+							<option value="asc">Latest</option>
+							<option value="desc">Oldest</option>
+						</select>
+					</div>
+				</div>
+				<div class="e-table">
+					<div class="table-responsive table-lg br-bl-10 br-br-10">
+						<input type="hidden" id="supportCreateUrl" value="{{ path('app_support_create_ajax') }}">
+
+						<input type="hidden" id="supportCreateToken" value="{{ csrf_token('create_support') }}">
+
+						<input type="hidden" id="supportMassActionUrl" value="{{ path('app_support_mass_action') }}">
+
+						<input type="hidden" id="supportMassActionToken" value="{{ csrf_token('support_mass_action') }}">
+
+						<input type="hidden" id="supportReorderUrl" value="{{ path('app_support_reorder') }}">
+
+						<input type="hidden" id="supportReorderToken" value="{{ csrf_token('support_reorder') }}">
+						<table class="table table-bordered mb-0">
+
+							<thead>
+								<tr>
+									<th class="text-center">Ordre</th>
+
+									<th class="text-center">
+										<div class="custom-control custom-checkbox">
+											<input type="checkbox" class="custom-control-input" id="supportCheckAll">
+
+											<label class="custom-control-label" for="supportCheckAll"></label>
+										</div>
+									</th>
+
+									<th>Nom</th>
+									<th>Description</th>
+									<th>Types d’impression</th>
+									<th>Formats</th>
+									<th>Finitions</th>
+									<th class="text-center">Statut</th>
+									<th class="text-center">Actions</th>
+								</tr>
+							</thead>
+
+							<tbody id="supportSortableBody">
+
+								{% for support in supports %}
+
+									<tr id="support-row-{{ support.id }}" class="support-sortable-row" data-id="{{ support.id }}">
+
+										<td class="text-center align-middle">
+											<i class="fa fa-arrows-alt support-drag-handle" style="cursor: move;" title="Déplacer"></i>
+										</td>
+
+										<td class="text-center align-middle">
+											<div class="custom-control custom-checkbox">
+												<input type="checkbox" class="custom-control-input support-row-check" id="support-item-{{ support.id }}" value="{{ support.id }}">
+
+												<label class="custom-control-label" for="support-item-{{ support.id }}"></label>
+											</div>
+										</td>
+
+										<td class="align-middle">
+											<strong>{{ support.nom }}</strong>
+										</td>
+
+										<td class="align-middle">
+											{{ support.description }}
+										</td>
+
+										<td class="align-middle">
+											{% for typeImpression in support.typesImpressions %}
+												<span class="badge badge-primary mb-1">
+													{{ typeImpression.nom }}
+												</span>
+											{% else %}
+												<span class="text-muted">Aucun type</span>
+											{% endfor %}
+										</td>
+
+										<td class="align-middle">
+											{% for format in support.formats %}
+												<span class="badge badge-info mb-1">
+													{{ format.nom }}
+												</span>
+											{% else %}
+												<span class="text-muted">Aucun format</span>
+											{% endfor %}
+										</td>
+
+										<td class="align-middle">
+											{% for finition in support.finitions %}
+												<span class="badge badge-secondary mb-1">
+													{{ finition.nom }}
+												</span>
+											{% else %}
+												<span class="text-muted">Aucune finition</span>
+											{% endfor %}
+										</td>
+
+										<td class="text-center align-middle">
+											{% if support.publie %}
+												<span class="badge badge-success">
+													Publié
+												</span>
+											{% else %}
+												<span class="badge badge-danger">
+													Non publié
+												</span>
+											{% endif %}
+										</td>
+
+										<td class="text-center align-middle">
+
+											<div class="btn-group align-top">
+
+												<button type="button" class="btn btn-sm btn-primary-light btn-edit-support" data-toggle="modal" data-target="#supportEditModal" data-get-url="{{ path( 'app_support_get_ajax', {id: support.id} ) }}" data-update-url="{{ path( 'app_support_update_ajax', {id: support.id} ) }}" data-update-token="{{ csrf_token( 'update_support_' ~ support.id ) }}" title="Modifier">
+													<i class="fa fa-edit"></i>
+												</button>
+
+												<button type="button" class="btn btn-sm {{ support.publie
+																																																																																																																																																								                                ? 'btn-warning-light'
+																																																																																																																																																								                                : 'btn-success-light'
+																																																																																																																																																								                            }} btn-toggle-support" data-url="{{ path( 'app_support_toggle_publication', {id: support.id} ) }}" data-token="{{ csrf_token( 'toggle_support_' ~ support.id ) }}" data-nom="{{ support.nom }}" data-publie="{{ support.publie ? '1' : '0' }}">
+													{% if support.publie %}
+														<i class="fa fa-eye-slash"></i>
+													{% else %}
+														<i class="fa fa-eye"></i>
+													{% endif %}
+												</button>
+
+												<button type="button" class="btn btn-sm btn-danger-light btn-delete-support" data-url="{{ path( 'app_support_delete_ajax', {id: support.id} ) }}" data-token="{{ csrf_token( 'delete_support_' ~ support.id ) }}" data-nom="{{ support.nom }}">
+													<i class="fa fa-trash"></i>
+												</button>
+
+											</div>
+
+										</td>
+									</tr>
+
+								{% else %}
+
+									<tr>
+										<td colspan="9" class="text-center text-muted">
+											Aucun support trouvé
+										</td>
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<!-- COL-END -->
+		<div class="modal fade" id="supportCreateModal" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="modal-dialog modal-xl" role="document">
+				<div class="modal-content">
+
+					<div class="modal-header">
+						<h5 class="modal-title">
+							Ajouter un support
+						</h5>
+
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+
+					<div class="modal-body">
+
+						<div class="form-group">
+							<label for="supportCreateNom">
+								Nom du support
+							</label>
+
+							<input type="text" id="supportCreateNom" class="form-control" placeholder="Exemple : Papier couché mat 300 g">
+						</div>
+
+						<div class="form-group">
+							<label for="supportCreateDescription">
+								Description
+							</label>
+
+							<textarea id="supportCreateDescription" class="form-control" rows="3"></textarea>
+						</div>
+
+						<div class="form-group">
+							<div class="form-label">
+								Types d’impression compatibles
+							</div>
+
+							<div class="selectgroup selectgroup-pills">
+								{% for typeImpression in typesImpressions %}
+									<label class="selectgroup-item">
+										<input type="checkbox" value="{{ typeImpression.id }}" class="selectgroup-input support-create-type">
+
+										<span class="selectgroup-button">
+											{{ typeImpression.nom }}
+										</span>
+									</label>
+								{% endfor %}
+							</div>
+						</div>
+
+						<div class="form-group">
+							<div class="form-label">
+								Formats compatibles
+							</div>
+
+							<div class="selectgroup selectgroup-pills">
+								{% for format in formats %}
+									<label class="selectgroup-item">
+										<input type="checkbox" value="{{ format.id }}" class="selectgroup-input support-create-format">
+
+										<span class="selectgroup-button">
+											{{ format.nom }}
+										</span>
+									</label>
+								{% endfor %}
+							</div>
+						</div>
+
+						<div class="form-group">
+							<div class="form-label">
+								Finitions compatibles
+							</div>
+
+							<div class="selectgroup selectgroup-pills">
+								{% for finition in finitions %}
+									<label class="selectgroup-item">
+										<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input support-create-finition">
+
+										<span class="selectgroup-button">
+											{{ finition.nom }}
+										</span>
+									</label>
+								{% endfor %}
+							</div>
+						</div>
+
+						<label class="custom-switch">
+							<input type="checkbox" id="supportCreatePublie" class="custom-switch-input" checked>
+
+							<span class="custom-switch-indicator"></span>
+
+							<span class="custom-switch-description">
+								Publier ce support
+							</span>
+						</label>
+
+					</div>
+
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+							Annuler
+						</button>
+
+						<button type="button" id="supportCreateSaveButton" class="btn btn-primary">
+							Enregistrer
+						</button>
+					</div>
+
+				</div>
+			</div>
+		</div>
+		<div class="modal fade" id="supportEditModal" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="modal-dialog modal-xl" role="document">
+				<div class="modal-content">
+
+					<div class="modal-header">
+						<h5 class="modal-title">
+							Modifier le support
+						</h5>
+
+						<button type="button" class="close" data-dismiss="modal">
+							<span>&times;</span>
+						</button>
+					</div>
+
+					<div class="modal-body">
+
+						<input type="hidden" id="supportEditUpdateUrl">
+						<input type="hidden" id="supportEditToken">
+
+						<div class="form-group">
+							<label for="supportEditNom">Nom</label>
+
+							<input type="text" id="supportEditNom" class="form-control">
+						</div>
+
+						<div class="form-group">
+							<label for="supportEditDescription">
+								Description
+							</label>
+
+							<textarea id="supportEditDescription" class="form-control" rows="3"></textarea>
+						</div>
+
+						<div class="form-group">
+							<div class="form-label">Types d’impression</div>
+
+							<div class="selectgroup selectgroup-pills">
+								{% for typeImpression in typesImpressions %}
+									<label class="selectgroup-item">
+										<input type="checkbox" value="{{ typeImpression.id }}" class="selectgroup-input support-edit-type">
+
+										<span class="selectgroup-button">
+											{{ typeImpression.nom }}
+										</span>
+									</label>
+								{% endfor %}
+							</div>
+						</div>
+
+						<div class="form-group">
+							<div class="form-label">Formats</div>
+
+							<div class="selectgroup selectgroup-pills">
+								{% for format in formats %}
+									<label class="selectgroup-item">
+										<input type="checkbox" value="{{ format.id }}" class="selectgroup-input support-edit-format">
+
+										<span class="selectgroup-button">
+											{{ format.nom }}
+										</span>
+									</label>
+								{% endfor %}
+							</div>
+						</div>
+
+						<div class="form-group">
+							<div class="form-label">Finitions</div>
+
+							<div class="selectgroup selectgroup-pills">
+								{% for finition in finitions %}
+									<label class="selectgroup-item">
+										<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input support-edit-finition">
+
+										<span class="selectgroup-button">
+											{{ finition.nom }}
+										</span>
+									</label>
+								{% endfor %}
+							</div>
+						</div>
+
+						<label class="custom-switch">
+							<input type="checkbox" id="supportEditPublie" class="custom-switch-input">
+
+							<span class="custom-switch-indicator"></span>
+
+							<span class="custom-switch-description">
+								Publier ce support
+							</span>
+						</label>
+
+					</div>
+
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+							Annuler
+						</button>
+
+						<button type="button" id="supportEditSaveButton" class="btn btn-primary">
+							Enregistrer les modifications
+						</button>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<!-- ROW CLOSED -->{% endblock %}{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="../assets/js/traitement_supports.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>{% endblock %}

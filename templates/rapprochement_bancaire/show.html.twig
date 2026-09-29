@@ -1,0 +1,429 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Rapprochement
+	{{ rapprochement.reference }}
+{% endblock %}
+
+{% block body %}
+	<div class="side-app">
+		<div
+			class="container-fluid py-4">
+
+			{# En-tête #}
+			<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+				<div>
+					<h4 class="mb-1">
+						<i class="fa fa-university me-2"></i>
+						Rapprochement bancaire
+						{{ rapprochement.reference }}
+					</h4>
+
+					<p class="text-muted mb-0">
+						Consultation et pointage des mouvements bancaires
+					</p>
+				</div>
+
+				<a href="{{ path('app_rapprochement_bancaire_index') }}" class="btn btn-secondary">
+					<i class="fa fa-arrow-left me-1"></i>
+					Retour à la liste
+				</a>
+			</div>
+
+			{# Messages flash #}
+			{% for message in app.flashes('success') %}
+				<div class="alert alert-success alert-dismissible fade show">
+					<i class="fa fa-check-circle me-1"></i>
+					{{ message }}
+
+					<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+				</div>
+			{% endfor %}
+
+			{% for message in app.flashes('error') %}
+				<div class="alert alert-danger alert-dismissible fade show">
+					<i class="fa fa-exclamation-circle me-1"></i>
+					{{ message }}
+
+					<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+				</div>
+			{% endfor %}
+
+			{# État du rapprochement #}
+			<div class="card shadow-sm mb-4">
+				<div class="card-header d-flex justify-content-between align-items-center">
+					<h5 class="card-title mb-0">
+						<i class="fa fa-info-circle me-2"></i>
+						Informations générales
+					</h5>
+
+					<div>
+						{% if rapprochement.statut == 'brouillon' %}
+							<span class="badge bg-warning text-dark">
+								<i class="fa fa-pencil me-1"></i>
+								Brouillon
+							</span>
+						{% elseif rapprochement.statut == 'valide' %}
+							<span class="badge bg-success">
+								<i class="fa fa-check me-1"></i>
+								Validé
+							</span>
+						{% elseif rapprochement.statut == 'cloture' %}
+							<span class="badge bg-dark">
+								<i class="fa fa-lock me-1"></i>
+								Clôturé
+							</span>
+						{% else %}
+							<span class="badge bg-secondary">
+								{{ rapprochement.statut|capitalize }}
+							</span>
+						{% endif %}
+					</div>
+				</div>
+
+				<div class="card-body">
+					<div class="row">
+
+						<div class="col-md-4 mb-3">
+							<small class="text-muted d-block">
+								Référence
+							</small>
+
+							<strong>
+								{{ rapprochement.reference }}
+							</strong>
+						</div>
+
+						<div class="col-md-4 mb-3">
+							<small class="text-muted d-block">
+								Compte bancaire
+							</small>
+
+							{% if rapprochement.compteTresorerie %}
+								<strong>
+									{{ rapprochement.compteTresorerie.nom }}
+								</strong>
+
+								{% if rapprochement.compteTresorerie.numeroCompte %}
+									<div class="text-muted">
+										{{ rapprochement.compteTresorerie.numeroCompte }}
+									</div>
+								{% endif %}
+							{% else %}
+								<span class="text-muted">
+									Non renseigné
+								</span>
+							{% endif %}
+						</div>
+
+						<div class="col-md-4 mb-3">
+							<small class="text-muted d-block">
+								Période
+							</small>
+
+							<strong>
+								{{ rapprochement.dateDebut|date('d/m/Y') }}
+								au
+								{{ rapprochement.dateFin|date('d/m/Y') }}
+							</strong>
+						</div>
+
+						<div class="col-md-4 mb-3">
+							<small class="text-muted d-block">
+								Date de création
+							</small>
+
+							<strong>
+								{{ rapprochement.dateCreation
+                            ? rapprochement.dateCreation|date('d/m/Y H:i')
+                            : '—'
+                        }}
+							</strong>
+						</div>
+
+						<div class="col-md-4 mb-3">
+							<small class="text-muted d-block">
+								Nombre de mouvements
+							</small>
+
+							<strong>
+								{{ rapprochement.nombreLignes }}
+							</strong>
+						</div>
+
+						<div class="col-md-4 mb-3">
+							<small class="text-muted d-block">
+								Mouvements pointés
+							</small>
+
+							<strong>
+								{{ rapprochement.nombreLignesPointees }}
+								/
+								{{ rapprochement.nombreLignes }}
+							</strong>
+						</div>
+
+						{% if rapprochement.observation %}
+							<div class="col-12">
+								<small class="text-muted d-block">
+									Observation
+								</small>
+
+								<div class="border rounded bg-light p-3 mt-1">
+									{{ rapprochement.observation|nl2br }}
+								</div>
+							</div>
+						{% endif %}
+					</div>
+				</div>
+			</div>
+
+			{# Soldes #}
+			<div class="row mb-4">
+
+				<div class="col-xl-3 col-md-6 mb-3">
+					<div class="card shadow-sm h-100">
+						<div class="card-body">
+							<small class="text-muted">
+								Solde d’ouverture
+							</small>
+
+							<h5 class="mb-0 mt-2">
+								{{ rapprochement.soldeOuvertureReleve
+                            |number_format(0, ',', ' ')
+                        }}
+								FCFA
+							</h5>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-xl-3 col-md-6 mb-3">
+					<div class="card shadow-sm h-100">
+						<div class="card-body">
+							<small class="text-muted">
+								Solde de clôture du relevé
+							</small>
+
+							<h5 class="mb-0 mt-2">
+								{{ rapprochement.soldeClotureReleve
+                            |number_format(0, ',', ' ')
+                        }}
+								FCFA
+							</h5>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-xl-3 col-md-6 mb-3">
+					<div class="card shadow-sm h-100">
+						<div class="card-body">
+							<small class="text-muted">
+								Solde comptable
+							</small>
+
+							<h5 class="mb-0 mt-2">
+								{{ rapprochement.soldeComptable
+                            |number_format(0, ',', ' ')
+                        }}
+								FCFA
+							</h5>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-xl-3 col-md-6 mb-3">
+					<div class="card shadow-sm h-100">
+						<div class="card-body">
+							<small class="text-muted">
+								Écart
+							</small>
+
+							<h5 class="mb-0 mt-2
+																																									                        {{ rapprochement.ecart == 0
+																																									                            ? 'text-success'
+																																									                            : 'text-danger'
+																																									                        }}">
+								{{ rapprochement.ecart
+                            |number_format(0, ',', ' ')
+                        }}
+								FCFA
+							</h5>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{# Lignes de rapprochement #}
+			<div class="card shadow-sm">
+				<div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+					<h5 class="card-title mb-0">
+						<i class="fa fa-list me-2"></i>
+						Mouvements à rapprocher
+					</h5>
+
+					<span class="badge bg-primary">
+						{{ rapprochement.nombreLignes }}
+						mouvement(s)
+					</span>
+				</div>
+
+				<div class="card-body">
+					{% if rapprochement.lignes is not empty %}
+						<div class="table-responsive">
+							<table class="table table-bordered table-hover align-middle">
+								<thead class="table-light text-primary">
+									<tr>
+										<th class="text-center">Pointage</th>
+										<th>Date comptable</th>
+										<th>Date relevé</th>
+										<th>Référence bancaire</th>
+										<th class="text-end">Montant comptable</th>
+										<th class="text-end">Montant relevé</th>
+										<th class="text-end">Écart</th>
+										<th>Observation</th>
+									</tr>
+								</thead>
+
+								<tbody>
+									{% for ligne in rapprochement.lignes %}
+										{% set mouvement = ligne.mouvementTresorerie %}
+
+										<tr class="{{ ligne.pointee ? 'table-success' : '' }}">
+											<td class="text-center">
+												{% if ligne.pointee %}
+													<span class="badge bg-success" title="Mouvement pointé">
+														<i class="fa fa-check"></i>
+														Pointé
+													</span>
+												{% else %}
+													<span class="badge bg-secondary" title="Mouvement non pointé">
+														<i class="fa fa-clock-o"></i>
+														À pointer
+													</span>
+												{% endif %}
+											</td>
+
+											<td>
+												{% if mouvement and mouvement.dateOperation %}
+													{{ mouvement.dateOperation|date('d/m/Y') }}
+												{% else %}
+													—
+												{% endif %}
+											</td>
+
+											<td>
+												{{ ligne.dateReleve
+                                            ? ligne.dateReleve|date('d/m/Y')
+                                            : '—'
+                                        }}
+											</td>
+
+											<td>
+												{{ ligne.referenceBancaire ?: '—' }}
+											</td>
+
+											<td class="text-end">
+												{% if mouvement %}
+													{{ mouvement.montant
+                                                |number_format(0, ',', ' ')
+                                            }}
+													FCFA
+												{% else %}
+													—
+												{% endif %}
+											</td>
+
+											<td class="text-end">
+												{{ ligne.montantReleve
+                                            |number_format(0, ',', ' ')
+                                        }}
+												FCFA
+											</td>
+
+											<td class="text-end">
+												{% if ligne.ecart == 0 %}
+													<span class="text-success fw-bold">
+														0 FCFA
+													</span>
+												{% else %}
+													<span class="text-danger fw-bold">
+														{{ ligne.ecart
+                                                    |number_format(0, ',', ' ')
+                                                }}
+														FCFA
+													</span>
+												{% endif %}
+											</td>
+
+											<td>
+												{{ ligne.observation ?: '—' }}
+											</td>
+										</tr>
+									{% endfor %}
+								</tbody>
+
+								<tfoot class="table-light text-primary">
+									<tr>
+										<th colspan="4" class="text-end">
+											Totaux
+										</th>
+
+										<th class="text-end">
+											{% set totalComptable = 0 %}
+
+											{% for ligne in rapprochement.lignes %}
+												{% if ligne.mouvementTresorerie %}
+													{% set totalComptable =
+                                                totalComptable
+                                                + ligne.mouvementTresorerie.montant
+                                            %}
+												{% endif %}
+											{% endfor %}
+
+											{{ totalComptable|number_format(0, ',', ' ') }}
+											FCFA
+										</th>
+
+										<th class="text-end">
+											{% set totalReleve = 0 %}
+
+											{% for ligne in rapprochement.lignes %}
+												{% set totalReleve =
+                                            totalReleve + ligne.montantReleve
+                                        %}
+											{% endfor %}
+
+											{{ totalReleve|number_format(0, ',', ' ') }}
+											FCFA
+										</th>
+
+										<th class="text-end">
+											{{ (totalReleve - totalComptable)
+                                        |number_format(0, ',', ' ')
+                                    }}
+											FCFA
+										</th>
+
+										<th></th>
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+					{% else %}
+						<div class="text-center py-5">
+							<i class="fa fa-exchange text-muted mb-3" style="font-size: 48px;"></i>
+
+							<h5>Aucun mouvement disponible</h5>
+
+							<p class="text-muted mb-0">
+								Aucun mouvement bancaire validé et non rapproché
+																																				                        n’a été trouvé pour ce compte et cette période.
+							</p>
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

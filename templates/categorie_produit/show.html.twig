@@ -1,0 +1,54 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}CategorieProduit{% endblock %}
+
+{% block body %}
+    <h1>CategorieProduit</h1>
+
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>Id</th>
+                <td>{{ categorie_produit.id }}</td>
+            </tr>
+            <tr>
+                <th>Nom</th>
+                <td>{{ categorie_produit.nom }}</td>
+            </tr>
+            <tr>
+                <th>Description</th>
+                <td>{{ categorie_produit.description }}</td>
+            </tr>
+            <tr>
+                <th>Publie</th>
+                <td>{{ categorie_produit.publie ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Ordre</th>
+                <td>{{ categorie_produit.ordre }}</td>
+            </tr>
+            <tr>
+                <th>Code</th>
+                <td>{{ categorie_produit.code }}</td>
+            </tr>
+            <tr>
+                <th>PrixBase</th>
+                <td>{{ categorie_produit.prixBase }}</td>
+            </tr>
+            <tr>
+                <th>Personnalisable</th>
+                <td>{{ categorie_produit.personnalisable ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Actif</th>
+                <td>{{ categorie_produit.actif ? 'Yes' : 'No' }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <a href="{{ path('app_categorie_produit_index') }}">back to list</a>
+
+    <a href="{{ path('app_categorie_produit_edit', {'id': categorie_produit.id}) }}">edit</a>
+
+    {{ include('categorie_produit/_delete_form.html.twig') }}
+{% endblock %}

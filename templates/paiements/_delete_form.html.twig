@@ -1,0 +1,7 @@
+<form method="post" action="{{ path('app_paiements_delete', {'id': paiement.id}) }}" class="mt-2" onsubmit="return confirm('Supprimer définitivement ce paiement ?');">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ paiement.id) }}">
+    <button type="submit" class="btn btn-danger-light btn-block">
+        <i class="fa fa-trash mr-1"></i>
+        Supprimer
+    </button>
+</form>

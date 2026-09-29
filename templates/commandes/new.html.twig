@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	{{ form.vars.data.id ? 'Modifier la commande' : 'Nouvelle commande' }}
+{% endblock %}
+
+{% block body %}
+	{{ include('commandes/_form.html.twig') }}
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+
+
+{% endblock %}

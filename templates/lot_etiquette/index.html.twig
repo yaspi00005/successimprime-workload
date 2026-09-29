@@ -1,0 +1,254 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Lots d’étiquettes QR
+{% endblock %}
+
+{% block body %}
+	<div class="side-app">
+		<div class="page-header">
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="#">Expéditions</a>
+				</li>
+				<li class="breadcrumb-item active">
+					Étiquettes QR
+				</li>
+			</ol>
+
+			<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#genererLotModal">
+				<i class="fa fa-qrcode mr-1"></i>
+				Générer un lot
+			</button>
+		</div>
+	</div>
+
+	<div class="row row-cards">
+		<div class="col-lg-12">
+			<div class="card">
+				<div class="card-header border-bottom-0">
+					<h3 class="card-title">
+						Lots d’étiquettes générés
+					</h3>
+				</div>
+
+				<div class="e-table">
+					<div class="table-responsive table-lg br-bl-10 br-br-10">
+						<table class="table table-bordered table-hover mb-0">
+							<thead>
+								<tr>
+									<th>Numéro du lot</th>
+									<th>Préfixe</th>
+									<th class="text-center">Quantité</th>
+									<th>Généré par</th>
+									<th>Date de création</th>
+									<th class="text-center">Statut</th>
+									<th class="text-center">Actions</th>
+								</tr>
+							</thead>
+
+							<tbody>
+								{% for lot in lots %}
+									<tr>
+										<td class="align-middle">
+											<strong>{{ lot.numero }}</strong>
+										</td>
+
+										<td class="align-middle">
+											<span class="badge badge-info">
+												{{ lot.prefixe }}
+											</span>
+										</td>
+
+										<td class="text-center align-middle">
+											{{ lot.quantite }}
+										</td>
+
+										<td class="align-middle">
+											{{ lot.generePar ? lot.generePar.userIdentifier : '-' }}
+										</td>
+
+										<td class="align-middle">
+											{{ lot.creeLe|date('d/m/Y à H:i') }}
+										</td>
+
+										<td class="text-center align-middle">
+											{% if lot.statut == 'pret' %}
+												<span class="badge badge-success">
+													Prêt
+												</span>
+											{% elseif lot.statut == 'en_generation' %}
+												<span class="badge badge-warning">
+													En génération
+												</span>
+											{% elseif lot.statut == 'erreur' %}
+												<span class="badge badge-danger">
+													Erreur
+												</span>
+											{% else %}
+												<span class="badge badge-secondary">
+													{{ lot.statut|replace({'_': ' '})|capitalize }}
+												</span>
+											{% endif %}
+										</td>
+
+										<td class="text-center align-middle">
+											<div class="btn-group">
+												<a href="{{ path('app_lot_etiquette_voir', {id: lot.id}) }}" class="btn btn-sm btn-primary-light" title="Consulter le lot">
+													<i class="fa fa-eye"></i>
+												</a>
+
+												{% if lot.statut == 'pret' and lot.fichierZip %}
+													<a href="{{ path('app_lot_etiquette_telecharger', {id: lot.id}) }}" class="btn btn-sm btn-success-light" title="Télécharger le ZIP">
+														<i class="fa fa-download"></i>
+													</a>
+												{% endif %}
+											</div>
+										</td>
+									</tr>
+								{% else %}
+									<tr>
+										<td colspan="7" class="text-center py-5">
+											<i class="fa fa-qrcode fa-3x text-muted mb-3"></i>
+
+											<p class="text-muted mb-0">
+												Aucun lot d’étiquettes n’a encore été généré.
+											</p>
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{# Fenêtre de génération #}
+	<div class="modal fade" id="genererLotModal" tabindex="-1" role="dialog" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<form method="post" action="{{ path('app_lot_etiquette_generer') }}" id="formGenererLot">
+					<div class="modal-header">
+						<h5 class="modal-title">
+							<i class="fa fa-qrcode mr-1"></i>
+							Générer des étiquettes QR
+						</h5>
+
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+
+					<div class="modal-body">
+						<input type="hidden" name="_token" value="{{ csrf_token('generer_lot_etiquette') }}">
+
+						<div class="form-group">
+							<label for="prefixe" class="form-label">
+								Préfixe
+							</label>
+
+							<input type="text" id="prefixe" name="prefixe" class="form-control" value="ETQ" maxlength="20" pattern="[A-Za-z0-9]+" required autocomplete="off">
+
+							<small class="form-text text-muted">
+								Lettres et chiffres uniquement. Exemple : ETQ.
+							</small>
+						</div>
+
+						<div class="form-group mb-0">
+							<label for="quantite" class="form-label">
+								Quantité d’étiquettes
+							</label>
+
+							<input type="number" id="quantite" name="quantite" class="form-control" value="10" min="1" max="{{ quantite_maximale }}" required>
+
+							<small class="form-text text-muted">
+								Maximum autorisé :
+								{{ quantite_maximale }}
+								étiquettes par lot.
+							</small>
+						</div>
+
+						<div class="alert alert-info mt-4 mb-0">
+							<i class="fa fa-info-circle mr-1"></i>
+							Chaque étiquette recevra un numéro unique, un QR code
+														                            sécurisé et sera ajoutée au fichier ZIP du lot.
+						</div>
+					</div>
+
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+							Annuler
+						</button>
+
+						<button type="submit" class="btn btn-primary">
+							<i class="fa fa-cogs mr-1"></i>
+							Lancer la génération
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+const formulaire = document.getElementById('formGenererLot');{% for message in app.flashes('success') %}Swal.fire({icon: 'success', title: 'Opération réussie', text: {{ message|json_encode|raw }}, confirmButtonText: 'D’accord'});{% endfor %}{% for message in app.flashes('error') %}
+Swal.fire({icon: 'error', title: 'Une erreur est survenue', text: {{ message|json_encode|raw }}, confirmButtonText: 'D’accord'});{% endfor %}if (! formulaire) {
+return;
+}
+
+formulaire.addEventListener('submit', function (event) {
+event.preventDefault();
+
+const quantite = parseInt(document.getElementById('quantite').value, 10);
+
+const prefixe = document.getElementById('prefixe').value.trim().toUpperCase();
+
+if (!Number.isInteger(quantite) || quantite < 1 || quantite > {{ quantite_maximale }}) {
+Swal.fire({icon: 'warning', title: 'Quantité incorrecte', text: 'La quantité doit être comprise entre 1 et   {{ quantite_maximale }}.'});
+
+return;
+}
+
+if (!/^[A-Z0-9]+$/.test(prefixe)) {
+Swal.fire({icon: 'warning', title: 'Préfixe incorrect', text: 'Le préfixe doit contenir uniquement des lettres et des chiffres.'});
+
+return;
+}
+
+document.getElementById('prefixe').value = prefixe;
+
+Swal.fire({
+icon: 'question',
+title: 'Confirmer la génération',
+text: 'Voulez-vous générer ' + quantite + ' étiquette(s) avec le préfixe ' + prefixe + ' ?',
+showCancelButton: true,
+confirmButtonText: 'Oui, générer',
+cancelButtonText: 'Annuler',
+confirmButtonColor: '#6259ca'
+}).then(function (resultat) {
+if (! resultat.isConfirmed) {
+return;
+}
+
+Swal.fire({
+title: 'Génération en cours',
+text: 'Veuillez patienter pendant la création des QR codes.',
+allowOutsideClick: false,
+allowEscapeKey: false,
+didOpen: function () {
+Swal.showLoading();
+}
+});
+
+formulaire.submit();
+});
+});
+});
+	</script>
+{% endblock %}

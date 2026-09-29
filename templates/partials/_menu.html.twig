@@ -1,0 +1,165 @@
+{% macro item(route_active, prefixes, url, icone, texte) %}
+	{% set actif = false %}
+	{% for p in prefixes %}{% if route_active starts with p %}{% set actif = true %}{% endif %}{% endfor %}
+	<li class="{{ actif ? 'mm-active' }}">
+		<a href="{{ url }}" class="{{ actif ? 'mm-active' }}" aria-expanded="false">
+			<i class="{{ icone }}"></i>
+			<span class="nav-text">{{ texte }}</span>
+		</a>
+	</li>
+{% endmacro %}
+{% import _self as m %}
+<div class="dlabnav">
+	<div class="dlabnav-scroll">
+		<ul class="metismenu" id="menu">
+
+			{{ m.item(routeCourante, ['app_home'], path('app_home'), 'fas fa-home', 'Accueil') }}
+
+			{% if peutVoirCommercial %}
+				<li class="{{ routeCourante starts with 'app_clients_' or routeCourante starts with 'app_devis_' or routeCourante starts with 'app_commandes_' or routeCourante starts with 'app_livraisons_' or routeCourante starts with 'app_bon_livraison_' ? 'mm-active' }}">
+					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+						<i class="fas fa-shopping-cart"></i>
+						<span class="nav-text">Commercial</span>
+					</a>
+					<ul aria-expanded="false">
+						{% if peutVoirClients %}
+							<li><a href="{{ path('app_clients_index') }}" class="{{ routeCourante starts with 'app_clients_' ? 'mm-active' }}">Clients</a></li>
+							{% if is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+								<li><a href="{{ path('app_clients_soldes') }}" class="{{ routeCourante starts with 'app_clients_soldes' ? 'mm-active' }}">Soldes clients</a></li>
+							{% endif %}
+						{% endif %}
+						{% if peutVoirDevis %}
+							<li><a href="{{ path('app_devis_index') }}" class="{{ routeCourante starts with 'app_devis_' ? 'mm-active' }}">Devis</a></li>
+						{% endif %}
+						{% if peutVoirCommandes %}
+							<li><a href="{{ path('app_commandes_index') }}" class="{{ routeCourante starts with 'app_commandes_' ? 'mm-active' }}">Commandes</a></li>
+						{% endif %}
+						{% if peutVoirLivraison %}
+							<li><a href="{{ path('app_livraisons_index') }}" class="{{ routeCourante starts with 'app_livraisons_' ? 'mm-active' }}">Livraisons</a></li>
+						{% endif %}
+					</ul>
+				</li>
+			{% endif %}
+
+			{% if peutVoirProduction %}
+				<li class="{{ routeCourante starts with 'app_production_' or routeCourante starts with 'app_controle_pre_presse_' or routeCourante starts with 'app_consommables_' ? 'mm-active' }}">
+					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+						<i class="fas fa-cogs"></i>
+						<span class="nav-text">Production</span>
+					</a>
+					<ul aria-expanded="false">
+						<li><a href="{{ path('app_production_index') }}" class="{{ routeCourante starts with 'app_production_index' ? 'mm-active' }}">Production en cours</a></li>
+						<li><a href="{{ path('app_production_apercu') }}" class="{{ routeCourante starts with 'app_production_apercu' ? 'mm-active' }}">Aperçu</a></li>
+						<li><a href="{{ path('app_production_termines') }}" class="{{ routeCourante starts with 'app_production_termines' ? 'mm-active' }}">Travaux terminés</a></li>
+						{% if peutVoirPrepresse %}
+							<li><a href="{{ path('app_controle_pre_presse_index') }}" class="{{ routeCourante starts with 'app_controle_pre_presse_' ? 'mm-active' }}">Contrôle pré-presse</a></li>
+						{% endif %}
+						{% if peutGererProduction %}
+							<li><a href="{{ path('app_consommables_index') }}" class="{{ routeCourante starts with 'app_consommables_' ? 'mm-active' }}">Consommables</a></li>
+						{% endif %}
+					</ul>
+				</li>
+			{% endif %}
+
+			{% if peutVoirStocks %}
+				<li class="{{ routeCourante starts with 'app_stock_' or routeCourante starts with 'app_article_' or routeCourante starts with 'app_fournisseur_' or routeCourante starts with 'app_achat_' ? 'mm-active' }}">
+					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+						<i class="fas fa-archive"></i>
+						<span class="nav-text">Stocks</span>
+					</a>
+					<ul aria-expanded="false">
+						<li><a href="{{ path('app_stock_etat_index') }}" class="{{ routeCourante starts with 'app_stock_etat_' ? 'mm-active' }}">État du stock</a></li>
+						<li><a href="{{ path('app_article_index') }}" class="{{ routeCourante starts with 'app_article_' ? 'mm-active' }}">Articles</a></li>
+						<li><a href="{{ path('app_fournisseur_index') }}" class="{{ routeCourante starts with 'app_fournisseur_' ? 'mm-active' }}">Fournisseurs</a></li>
+						<li><a href="{{ path('app_achat_index', {statut: 'demande'}) }}" class="{{ routeCourante starts with 'app_achat_' ? 'mm-active' }}">Achats demandés</a></li>
+						<li><a href="{{ path('app_achat_index', {statut: 'recu'}) }}">Achats reçus</a></li>
+					</ul>
+				</li>
+			{% endif %}
+
+			{% if peutVoirGestion %}
+				<li class="{{ routeCourante starts with 'app_factures_' or routeCourante starts with 'app_paiements_' or routeCourante starts with 'app_compte_tresorerie_' or routeCourante starts with 'app_mouvement_tresorerie_' or routeCourante starts with 'app_decaissement_recurrent_' or routeCourante starts with 'app_journal_caisse_' or routeCourante starts with 'app_rapprochement_bancaire_' or routeCourante starts with 'app_statistiques_' ? 'mm-active' }}">
+					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+						<i class="fas fa-wallet"></i>
+						<span class="nav-text">Gestion</span>
+					</a>
+					<ul aria-expanded="false">
+						{% if peutVoirFactures %}
+							<li><a href="{{ path('app_factures_index') }}" class="{{ routeCourante starts with 'app_factures_' ? 'mm-active' }}">Factures</a></li>
+						{% endif %}
+						{% if peutVoirPaiements %}
+							<li><a href="{{ path('app_paiements_index') }}" class="{{ routeCourante starts with 'app_paiements_' ? 'mm-active' }}">Paiements</a></li>
+						{% endif %}
+						{% if peutVoirComptesTresorerie %}
+							<li><a href="{{ path('app_compte_tresorerie_index') }}" class="{{ routeCourante starts with 'app_compte_tresorerie_' ? 'mm-active' }}">Comptes de trésorerie</a></li>
+						{% endif %}
+						{% if peutVoirTresorerie %}
+							<li><a href="{{ path('app_mouvement_tresorerie_index') }}" class="{{ routeCourante starts with 'app_mouvement_tresorerie_' ? 'mm-active' }}">Mouvements de trésorerie</a></li>
+							{% if is_granted('ROLE_ADMIN') %}
+								<li><a href="{{ path('app_decaissement_recurrent_index') }}" class="{{ routeCourante starts with 'app_decaissement_recurrent_' ? 'mm-active' }}">Décaissements récurrents</a></li>
+							{% endif %}
+						{% endif %}
+						{% if peutVoirJournalCaisse %}
+							<li><a href="{{ path('app_journal_caisse_index') }}" class="{{ routeCourante starts with 'app_journal_caisse_' ? 'mm-active' }}">Journal de caisse</a></li>
+						{% endif %}
+						{% if peutVoirRapprochement %}
+							<li><a href="{{ path('app_rapprochement_bancaire_index') }}" class="{{ routeCourante starts with 'app_rapprochement_bancaire_' ? 'mm-active' }}">Rapprochement bancaire</a></li>
+						{% endif %}
+						{% if peutVoirStatsGlobales %}
+							<li><a href="{{ path('app_statistiques_globales_index') }}" class="{{ routeCourante starts with 'app_statistiques_globales_' ? 'mm-active' }}">Statistiques globales</a></li>
+							<li><a href="{{ path('app_statistiques_commandes_index') }}" class="{{ routeCourante starts with 'app_statistiques_commandes_' ? 'mm-active' }}">Statistiques des commandes</a></li>
+							<li><a href="{{ path('app_statistiques_tresorerie_index') }}" class="{{ routeCourante starts with 'app_statistiques_tresorerie_' ? 'mm-active' }}">Statistiques de trésorerie</a></li>
+							<li><a href="{{ path('app_statistiques_clients_index') }}" class="{{ routeCourante starts with 'app_statistiques_clients_' ? 'mm-active' }}">Statistiques des clients</a></li>
+						{% endif %}
+					</ul>
+				</li>
+			{% endif %}
+
+			{% if peutVoirRh %}
+				<li class="{{ routeCourante starts with 'app_employes_' or routeCourante starts with 'app_user_' or routeCourante starts with 'app_journal_activite_' ? 'mm-active' }}">
+					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+						<i class="fas fa-users"></i>
+						<span class="nav-text">RH</span>
+					</a>
+					<ul aria-expanded="false">
+						<li><a href="{{ path('app_employes_index') }}" class="{{ routeCourante starts with 'app_employes_index' ? 'mm-active' }}">Employés</a></li>
+						<li><a href="{{ path('app_employes_new') }}" class="{{ routeCourante starts with 'app_employes_new' ? 'mm-active' }}">Nouvel employé</a></li>
+						<li><a href="{{ path('app_user_index') }}" class="{{ routeCourante starts with 'app_user_index' ? 'mm-active' }}">Utilisateurs</a></li>
+						<li><a href="{{ path('app_journal_activite_index') }}" class="{{ routeCourante starts with 'app_journal_activite_' ? 'mm-active' }}">Journal d'activité</a></li>
+					</ul>
+				</li>
+			{% endif %}
+
+			{% if peutVoirParametres %}
+				<li class="{{ routeCourante starts with 'app_categorie_produit_' or routeCourante starts with 'app_produits_' or routeCourante starts with 'app_produit_configuration_' or routeCourante starts with 'app_type_impression_' or routeCourante starts with 'app_support_' or routeCourante starts with 'app_format_' or routeCourante starts with 'app_finition_' or routeCourante starts with 'app_machines_' or routeCourante starts with 'app_lot_etiquette_' or routeCourante starts with 'app_fichier_dossier_partage' or routeCourante starts with 'app_parametres_paiement_' ? 'mm-active' }}">
+					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+						<i class="fas fa-cog"></i>
+						<span class="nav-text">Paramètres</span>
+					</a>
+					<ul aria-expanded="false">
+						<li><a href="{{ path('app_categorie_produit_index') }}">Catégories de produits</a></li>
+						<li><a href="{{ path('app_produits_index') }}">Produits</a></li>
+						<li><a href="{{ path('app_produit_configuration_index') }}">Configuration produit</a></li>
+						<li><a href="{{ path('app_type_impression_index') }}">Types d'impression</a></li>
+						<li><a href="{{ path('app_support_index') }}">Supports</a></li>
+						<li><a href="{{ path('app_format_index') }}">Formats</a></li>
+						<li><a href="{{ path('app_finition_index') }}">Finitions</a></li>
+						<li><a href="{{ path('app_machines_index') }}">Machines</a></li>
+						<li><a href="{{ path('app_lot_etiquette_index') }}">Lots d'étiquettes</a></li>
+						<li><a href="{{ path('app_fichier_dossier_partage') }}">Dossier partagé</a></li>
+						<li><a href="{{ path('app_parametres_paiement_edit') }}">Paramètres de paiement</a></li>
+					</ul>
+				</li>
+			{% endif %}
+
+			{{ m.item(routeCourante, ['app_reclamation_'], path('app_reclamation_index'), 'fas fa-exclamation-circle', 'Réclamations') }}
+
+			{{ m.item(routeCourante, ['app_chat_'], path('app_chat_index'), 'fas fa-comments', 'Messagerie') }}
+
+		</ul>
+
+		<div class="copyright">
+			<p><strong>Madial Group</strong></p>
+		</div>
+	</div>
+</div>

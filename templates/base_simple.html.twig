@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{% block title %}Madial Group{% endblock %}</title>
+	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
+	<link href="{{ asset('theme/css/style.css') }}" rel="stylesheet">
+</head>
+<body class="vh-100">
+	<div class="authincation h-100">
+		<div class="container h-100">
+			<div class="row justify-content-center h-100 align-items-center">
+				<div class="{% block colonne %}col-md-6 col-lg-5{% endblock %}">
+					<div class="authincation-content">
+						<div class="auth-form">
+							<div class="text-center mb-4">
+								<a href="{{ path('app_home') }}" class="d-inline-flex align-items-center gap-3 text-decoration-none">
+									<span class="d-inline-flex align-items-center justify-content-center" style="width:56px;height:56px;border-radius:14px;background:#467fcf;color:#fff;font-weight:700;font-size:1.25rem;">MG</span>
+									<span class="text-start">
+										<span class="d-block fs-24 font-w700 text-black">Madial Group</span>
+										<span class="d-block fs-13 text-muted">Imprimerie</span>
+									</span>
+								</a>
+							</div>
+							{% block body %}{% endblock %}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script src="{{ asset('theme/vendor/global/global.min.js') }}"></script>
+</body>
+</html>

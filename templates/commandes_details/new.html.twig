@@ -1,0 +1,19 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouveau détail de commande
+{% endblock %}
+
+{% block body %}
+	<div class="page-header">
+		<div>
+			<h1 class="page-title">Nouveau détail de commande</h1>
+			<small class="text-muted">
+				Renseignez les caractéristiques du travail d’impression.
+			</small>
+		</div>
+	</div>
+
+	{{ include('commandes_details/_form.html.twig', {
+        button_label: 'Enregistrer la ligne'
+    }) }}
+{% endblock %}

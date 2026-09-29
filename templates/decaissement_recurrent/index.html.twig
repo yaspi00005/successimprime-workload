@@ -1,0 +1,185 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Décaissements automatiques
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<div>
+
+				<h1 class="page-title">
+					Décaissements automatiques
+				</h1>
+
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item">
+						Trésorerie
+					</li>
+					<li class="breadcrumb-item active">
+						Décaissements automatiques
+					</li>
+				</ol>
+
+			</div>
+
+			<div class="ml-auto">
+
+				<a href="{{ path('app_decaissement_recurrent_new') }}" class="btn btn-primary-light">
+					<i class="fa fa-plus mr-1"></i>
+					Nouvelle charge
+				</a>
+
+			</div>
+
+		</div>
+
+		<div class="row row-cards">
+
+			<div class="col-lg-12">
+
+				<div class="alert alert-info">
+					<i class="fa fa-info-circle mr-1"></i>
+					Ces charges sont décaissées automatiquement dès que leur échéance est atteinte, par une tâche planifiée sur le serveur (voir <code>scripts/windows/installer_tache_decaissements_recurrents.bat</code>). Sans cette tâche installée, rien ne se déclenche tout seul.
+				</div>
+
+				<div class="card">
+
+					<div class="card-header">
+						<div>
+							<h3 class="card-title mb-1">
+								Charges récurrentes
+							</h3>
+							<small class="text-muted">
+								{{ charges|length }} charge(s)
+							</small>
+						</div>
+					</div>
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered table-hover mb-0">
+
+							<thead>
+								<tr>
+									<th>Libellé</th>
+									<th>Compte</th>
+									<th>Catégorie</th>
+									<th class="text-right">Montant</th>
+									<th>Fréquence</th>
+									<th>Prochaine échéance</th>
+									<th class="text-center">Statut</th>
+									<th class="text-center">Actions</th>
+								</tr>
+							</thead>
+
+							<tbody>
+
+								{% for charge in charges %}
+
+									<tr>
+
+										<td class="align-middle">
+											<strong>{{ charge.libelle }}</strong>
+											{% if charge.notes %}
+												<div class="small text-muted">{{ charge.notes }}</div>
+											{% endif %}
+										</td>
+
+										<td class="align-middle">
+											{{ charge.compteSource }}
+										</td>
+
+										<td class="align-middle">
+											{{ categoriesLabels[charge.categorie]|default(charge.categorie) }}
+										</td>
+
+										<td class="align-middle text-right">
+											{{ charge.montant|number_format(0, ',', ' ') }} FCFA
+										</td>
+
+										<td class="align-middle">
+											{{ charge.frequence == 'annuelle' ? 'Tous les ans' : 'Tous les mois' }}
+											<div class="small text-muted">
+												{% if charge.frequence == 'annuelle' %}
+													le {{ charge.jourDuMois }}/{{ charge.moisDeLAnnee }}
+												{% else %}
+													le {{ charge.jourDuMois }} du mois
+												{% endif %}
+											</div>
+										</td>
+
+										<td class="align-middle">
+											{{ charge.prochaineDateExecution ? charge.prochaineDateExecution|date('d/m/Y') : '—' }}
+											{% if charge.derniereDateExecution %}
+												<div class="small text-muted">
+													Dernière : {{ charge.derniereDateExecution|date('d/m/Y') }}
+												</div>
+											{% endif %}
+										</td>
+
+										<td class="align-middle text-center">
+											{% if charge.actif %}
+												<span class="badge badge-success">Active</span>
+											{% else %}
+												<span class="badge badge-light">Suspendue</span>
+											{% endif %}
+										</td>
+
+										<td class="align-middle text-center nowrap">
+											<div class="btn-group">
+
+												<a href="{{ path('app_decaissement_recurrent_edit', {id: charge.id}) }}" class="btn btn-sm btn-warning-light" title="Modifier">
+													<i class="fa fa-pencil"></i>
+												</a>
+
+												<form method="post" action="{{ path('app_decaissement_recurrent_toggle_actif', {id: charge.id}) }}" class="d-inline">
+													<input type="hidden" name="_token" value="{{ csrf_token('toggle_actif' ~ charge.id) }}">
+													<button type="submit" class="btn btn-sm btn-secondary-light" title="{{ charge.actif ? 'Suspendre' : 'Réactiver' }}">
+														<i class="fa {{ charge.actif ? 'fa-pause' : 'fa-play' }}"></i>
+													</button>
+												</form>
+
+												<form method="post" action="{{ path('app_decaissement_recurrent_delete', {id: charge.id}) }}" class="d-inline js-confirm-form" data-message="Supprimer définitivement cette charge récurrente ?">
+													<input type="hidden" name="_token" value="{{ csrf_token('delete' ~ charge.id) }}">
+													<button type="submit" class="btn btn-sm btn-danger-light" title="Supprimer">
+														<i class="fa fa-trash"></i>
+													</button>
+												</form>
+
+											</div>
+										</td>
+
+									</tr>
+
+								{% else %}
+
+									<tr>
+										<td colspan="8" class="text-center text-muted py-5">
+											Aucune charge récurrente enregistrée.
+										</td>
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

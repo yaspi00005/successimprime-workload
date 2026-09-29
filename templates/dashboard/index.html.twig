@@ -1,0 +1,397 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Tableau de bord{% endblock %}
+
+{% macro stat(icone, couleur, valeur, libelle, suffixe) %}
+	<div class="col-xl-3 col-6">
+		<div class="card stat-card">
+			<div class="card-body d-flex flex-column flex-sm-row align-items-sm-center gap-2 gap-sm-3">
+				<span class="stat-icon bgl-{{ couleur }} text-{{ couleur }}"><i class="{{ icone }}"></i></span>
+				<div>
+					<div class="stat-value js-compteur" data-valeur="{{ valeur }}" data-suffixe="{{ suffixe }}">0</div>
+					<span class="text-muted fs-14">{{ libelle }}</span>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endmacro %}
+{% import _self as m %}
+
+{% block body %}
+<div class="row">
+	<div class="col-12">
+		<div class="card bg-primary text-white overflow-hidden">
+			<div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+				<div>
+					<h3 class="text-white mb-1">Bonjour {{ app.user.employe.prenom|default(app.user.username) }} 👋</h3>
+					<p class="mb-0 opacity-75">Voici la vue d'ensemble de l'activité.</p>
+				</div>
+				<div class="d-flex gap-2 flex-wrap">
+					{% for cle, libelle in { jour: 'Aujourd’hui', semaine: 'Cette semaine', mois: 'Ce mois', annee: 'Cette année', tout: 'Tout' } %}
+						<a href="{{ path('app_home', {periode: cle, granularite: granulariteEvolution}) }}" class="btn btn-sm {{ periode == cle ? 'bg-white text-primary' : 'btn-outline-light' }} btn-rounded font-w600">{{ libelle }}</a>
+					{% endfor %}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="row">
+	{{ m.stat('fas fa-shopping-cart', 'primary', totalCommandes, 'Commandes', '') }}
+	{{ m.stat('fas fa-money-bill', 'success', totalCa, 'Chiffre d\'affaires', ' FCFA') }}
+	{{ m.stat('fas fa-trophy', 'warning', meilleurCa, 'Meilleur agent (CA)', ' FCFA') }}
+	{{ m.stat('fas fa-users', 'info', totalClients, 'Clients enregistrés', '') }}
+</div>
+
+{% if peutVoirStatsGlobales %}
+<div class="row">
+	{{ m.stat('fas fa-arrow-down', 'success', totalEncaisse, 'Encaissé (période)', ' FCFA') }}
+	{{ m.stat('fas fa-arrow-up', 'danger', totalDecaisse, 'Décaissé / charges (période)', ' FCFA') }}
+	{{ m.stat('fas fa-hourglass-half', 'warning', totalReste, 'Reste à encaisser', ' FCFA') }}
+</div>
+{% endif %}
+
+<div class="row">
+	<div class="col-xl-8">
+		<div class="card">
+			<div class="card-header border-0 d-flex align-items-center justify-content-between flex-wrap">
+				<h4 class="card-title">Évolution du chiffre d'affaires</h4>
+				<div class="btn-group">
+					{% for cle, libelle in { jour: 'Jour', semaine: 'Semaine', mois: 'Mois', annee: 'Année' } %}
+						<a href="{{ path('app_home', {periode: periode, granularite: cle}) }}" class="btn btn-sm {{ granulariteEvolution == cle ? 'btn-primary' : 'btn-primary light' }}">{{ libelle }}</a>
+					{% endfor %}
+				</div>
+			</div>
+			<div class="card-body">
+				<canvas id="graphiqueEvolutionCa" height="110"></canvas>
+			</div>
+		</div>
+	</div>
+	<div class="col-xl-4">
+		<div class="card">
+			<div class="card-header border-0 pb-0">
+				<h4 class="card-title">Encaissements vs décaissements</h4>
+			</div>
+			<div class="card-body">
+				<canvas id="graphiqueEncaissementsDecaissements" height="220"></canvas>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-xl-{{ peutVoirStatsGlobales ? 6 : 12 }}">
+		<div class="card">
+			<div class="card-header border-0">
+				<h4 class="card-title">Classement des agents</h4>
+			</div>
+			<div class="card-body pt-0">
+				{% for ligne in statsParAgent %}
+					{% set pourcentage = meilleurCa > 0 ? (ligne.caGenere / meilleurCa * 100) : 0 %}
+					<div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+						<span class="d-flex align-items-center gap-3">
+							<span class="stat-icon bgl-primary text-primary" style="width:2.6rem;height:2.6rem;font-size:1rem">{{ (ligne.agentPrenom|default(ligne.agentUsername)|slice(0, 1))|upper }}</span>
+							<span>
+								<span class="d-block text-black font-w600">{{ ligne.agentPrenom is not empty ? (ligne.agentPrenom ~ ' ' ~ ligne.agentNom) : ligne.agentUsername }}</span>
+								<small class="text-muted">{{ ligne.nbCommandes }} commande(s)</small>
+							</span>
+						</span>
+						<span class="text-end">
+							<strong>{{ ligne.caGenere|number_format(0, ',', ' ') }} FCFA</strong>
+							<div class="progress" style="height:6px;width:120px;">
+								<div class="progress-bar bg-primary" style="width: {{ pourcentage }}%"></div>
+							</div>
+						</span>
+					</div>
+				{% else %}
+					<div class="empty-state text-center text-muted py-4"><i class="fas fa-shopping-cart d-block mb-2"></i>Aucune commande sur cette période.</div>
+				{% endfor %}
+			</div>
+		</div>
+	</div>
+
+	{% if peutVoirStatsGlobales %}
+	<div class="col-xl-6">
+		<div class="card">
+			<div class="card-header border-0">
+				<h4 class="card-title">Encaissements par caissière</h4>
+			</div>
+			<div class="card-body pt-0">
+				{% set meilleureCaissiere = parCaissiere is empty ? 0 : parCaissiere|map(l => l.montant)|sort|last %}
+				{% for ligne in parCaissiere %}
+					{% set pourcentage = meilleureCaissiere > 0 ? (ligne.montant / meilleureCaissiere * 100) : 0 %}
+					<div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+						<span class="d-flex align-items-center gap-3">
+							<span class="stat-icon bgl-success text-success" style="width:2.6rem;height:2.6rem;font-size:1rem">{{ ligne.nom|slice(0, 1)|upper }}</span>
+							<span>
+								<span class="d-block text-black font-w600">{{ ligne.nom }}</span>
+								<small class="text-muted">{{ ligne.nombre }} paiement(s)</small>
+							</span>
+						</span>
+						<span class="text-end">
+							<strong>{{ ligne.montant|number_format(0, ',', ' ') }} FCFA</strong>
+							<div class="progress" style="height:6px;width:120px;">
+								<div class="progress-bar bg-success" style="width: {{ pourcentage }}%"></div>
+							</div>
+						</span>
+					</div>
+				{% else %}
+					<div class="empty-state text-center text-muted py-4"><i class="fas fa-money-bill d-block mb-2"></i>Aucun encaissement sur cette période.</div>
+				{% endfor %}
+			</div>
+		</div>
+	</div>
+	{% endif %}
+</div>
+
+{% if peutVoirStatsGlobales %}
+
+	<div class="d-flex align-items-center justify-content-between mt-3 mb-2">
+		<h4 class="mb-0"><i class="fa fa-exclamation-circle me-1"></i> Commandes non soldées</h4>
+		<a href="{{ path('app_statistiques_commandes_index') }}" class="btn btn-sm btn-primary light">Voir tout</a>
+	</div>
+	<div class="row">
+		{% for tranche in parTranche %}
+			<div class="col-xl-3 col-6">
+				<div class="card stat-card">
+					<div class="card-body text-center">
+						<small class="text-muted d-block">{{ tranche.libelle }}</small>
+						<div class="h3 mb-0 {{ loop.index >= 3 ? 'text-danger' : (loop.index == 2 ? 'text-warning' : '') }}">{{ tranche.nombre }}</div>
+						<small class="text-muted">{{ tranche.montant|number_format(0, ',', ' ') }} FCFA</small>
+					</div>
+				</div>
+			</div>
+		{% endfor %}
+	</div>
+	<div class="card">
+		<div class="card-header border-0">
+			<h4 class="card-title">Les plus anciennes non soldées</h4>
+			<div class="card-options"><strong>Total dû : {{ totalReste|number_format(0, ',', ' ') }} FCFA</strong></div>
+		</div>
+		<div class="card-body pt-0">
+			<div class="table-responsive">
+				<table class="table table-hover mb-0">
+					<thead><tr><th>N° commande</th><th>Client</th><th>Date</th><th class="num">Ancienneté</th><th class="num">Reste</th><th></th></tr></thead>
+					<tbody>
+					{% for ligne in commandesNonSoldees %}
+						<tr>
+							<td><a href="{{ path('app_commandes_show', {id: ligne.commande.id}) }}" class="text-primary font-w600">{{ ligne.commande.numero|default('#' ~ ligne.commande.id) }}</a></td>
+							<td>{{ ligne.commande.clients ? ligne.commande.clients.nomComplet : 'Client supprimé' }}</td>
+							<td>{{ ligne.commande.dateCommande|date('d/m/Y') }}</td>
+							<td class="num"><span class="badge light {{ ligne.jours > 90 ? 'badge-danger' : (ligne.jours > 30 ? 'badge-warning' : 'badge-secondary') }}">{{ ligne.jours }} j</span></td>
+							<td class="num">{{ ligne.reste|number_format(0, ',', ' ') }}</td>
+							<td class="text-center"><a href="{{ path('app_commandes_show', {id: ligne.commande.id}) }}" class="btn btn-sm btn-primary light"><i class="fa fa-eye"></i></a></td>
+						</tr>
+					{% else %}
+						<tr><td colspan="6"><div class="empty-state text-center text-muted py-4">Toutes les commandes sont soldées.</div></td></tr>
+					{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+
+	<div class="d-flex align-items-center justify-content-between mt-4 mb-2">
+		<h4 class="mb-0"><i class="fa fa-wallet me-1"></i> Trésorerie</h4>
+		<a href="{{ path('app_statistiques_tresorerie_index') }}" class="btn btn-sm btn-primary light">Voir tout</a>
+	</div>
+	<div class="row">
+		<div class="col-xl-6">
+			<div class="card">
+				<div class="card-header border-0 pb-0"><h4 class="card-title">Charges par catégorie</h4></div>
+				<div class="card-body"><canvas id="graphiqueChargesCategorie" height="240"></canvas></div>
+			</div>
+		</div>
+		<div class="col-xl-6">
+			<div class="card">
+				<div class="card-header border-0"><h4 class="card-title">Détail des charges</h4></div>
+				<div class="card-body pt-0">
+					<div class="table-responsive">
+						<table class="table table-hover mb-0">
+							<thead><tr><th>Catégorie</th><th class="num">Mouvements</th><th class="num">Montant</th></tr></thead>
+							<tbody>
+							{% for ligne in chargesParCategorie %}
+								<tr><td>{{ ligne.categorie }}</td><td class="num">{{ ligne.nombre }}</td><td class="num">{{ ligne.montant|number_format(0, ',', ' ') }}</td></tr>
+							{% else %}
+								<tr><td colspan="3"><div class="empty-state text-center text-muted py-4">Aucune charge.</div></td></tr>
+							{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="d-flex align-items-center justify-content-between mt-4 mb-2">
+		<h4 class="mb-0"><i class="fa fa-cogs me-1"></i> Production &amp; articles</h4>
+		<a href="{{ path('app_statistiques_globales_index') }}" class="btn btn-sm btn-primary light">Voir tout</a>
+	</div>
+	<div class="row">
+		<div class="col-xl-6">
+			<div class="card">
+				<div class="card-header border-0 pb-0"><h4 class="card-title">Rendement par machine</h4></div>
+				<div class="card-body"><canvas id="graphiqueRendementMachine" height="220"></canvas></div>
+			</div>
+		</div>
+		<div class="col-xl-6">
+			<div class="card">
+				<div class="card-header border-0 pb-0"><h4 class="card-title">Top des produits commandés</h4></div>
+				<div class="card-body"><canvas id="graphiqueTopProduits" height="220"></canvas></div>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-xl-6">
+			<div class="card">
+				<div class="card-header border-0 pb-0"><h4 class="card-title">Variation du stock (entrées / sorties)</h4></div>
+				<div class="card-body"><canvas id="graphiqueVariationStock" height="220"></canvas></div>
+			</div>
+		</div>
+		<div class="col-xl-6">
+			<div class="card">
+				<div class="card-header border-0"><h4 class="card-title">Ventes d'articles</h4></div>
+				<div class="card-body pt-0">
+					<div class="table-responsive">
+						<table class="table table-hover mb-0">
+							<thead><tr><th>Article</th><th class="num">Sorties</th><th class="num">Qté</th><th class="num">Montant</th></tr></thead>
+							<tbody>
+							{% for ligne in ventesArticles %}
+								<tr><td>{{ ligne.nom }}</td><td class="num">{{ ligne.nombre }}</td><td class="num">{{ ligne.quantite }}</td><td class="num">{{ ligne.montant|number_format(0, ',', ' ') }}</td></tr>
+							{% else %}
+								<tr><td colspan="4"><div class="empty-state text-center text-muted py-4">Aucun article vendu directement.</div></td></tr>
+							{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="d-flex align-items-center justify-content-between mt-4 mb-2">
+		<h4 class="mb-0"><i class="fa fa-users me-1"></i> Clients</h4>
+		<a href="{{ path('app_statistiques_clients_index') }}" class="btn btn-sm btn-primary light">Voir tout</a>
+	</div>
+	<div class="row">
+		<div class="col-xl-6">
+			<div class="card">
+				<div class="card-header border-0 pb-0"><h4 class="card-title">Nouveaux clients enregistrés</h4></div>
+				<div class="card-body"><canvas id="graphiqueNouveauxClients" height="220"></canvas></div>
+			</div>
+		</div>
+		<div class="col-xl-6">
+			<div class="card">
+				<div class="card-header border-0"><h4 class="card-title">Chiffre d'affaires par client (top 10)</h4></div>
+				<div class="card-body pt-0">
+					<div class="table-responsive">
+						<table class="table table-hover mb-0">
+							<thead><tr><th>Client</th><th class="num">Commandes</th><th class="num">CA</th></tr></thead>
+							<tbody>
+							{% for ligne in caParClient %}
+								<tr><td>{{ ligne.nom }}</td><td class="num">{{ ligne.nombre }}</td><td class="num">{{ ligne.montant|number_format(0, ',', ' ') }}</td></tr>
+							{% else %}
+								<tr><td colspan="3"><div class="empty-state text-center text-muted py-4">Aucune commande sur cette période.</div></td></tr>
+							{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+{% endif %}
+{% endblock %}
+
+{% block vendor_javascripts %}
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+	document.querySelectorAll('.js-compteur').forEach(function (element) {
+		const cible = parseInt(element.dataset.valeur || '0', 10);
+		const suffixe = element.dataset.suffixe || '';
+		const depart = performance.now();
+		const duree = 900;
+		function animer(maintenant) {
+			const progres = Math.min(1, (maintenant - depart) / duree);
+			element.textContent = Math.round(cible * progres).toLocaleString('fr-FR') + suffixe;
+			if (progres < 1) requestAnimationFrame(animer);
+		}
+		requestAnimationFrame(animer);
+	});
+
+	if (typeof Chart === 'undefined') return;
+
+	var evolution = {{ evolution|json_encode|raw }};
+
+	new Chart(document.getElementById('graphiqueEvolutionCa'), {
+		type: 'line',
+		data: {
+			labels: evolution.labels,
+			datasets: [
+				{ label: 'Chiffre d\'affaires (FCFA)', data: evolution.ca, borderColor: '#467fcf', backgroundColor: 'rgba(70,127,207,.15)', fill: true, tension: .35, yAxisID: 'y' },
+				{ label: 'Commandes', data: evolution.commandes, borderColor: '#f1c40f', backgroundColor: 'rgba(241,196,15,.1)', fill: false, tension: .35, yAxisID: 'y1' }
+			]
+		},
+		options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { position: 'left', beginAtZero: true }, y1: { position: 'right', beginAtZero: true, grid: { display: false } } } }
+	});
+
+	new Chart(document.getElementById('graphiqueEncaissementsDecaissements'), {
+		type: 'bar',
+		data: { labels: evolution.labels, datasets: [
+			{ label: 'Encaissements', data: evolution.encaissements, backgroundColor: '#5eba00' },
+			{ label: 'Décaissements', data: evolution.decaissements, backgroundColor: '#cd201f' }
+		] },
+		options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+	});
+
+	{% if peutVoirStatsGlobales %}
+
+		var chargesParCategorie = {{ chargesParCategorie|json_encode|raw }};
+		var parMachine = {{ parMachine|json_encode|raw }};
+		var topProduits = {{ topProduits|json_encode|raw }};
+		var nouveauxClients = {{ nouveauxClients|json_encode|raw }};
+		var evolutionStock = {{ evolutionStock|json_encode|raw }};
+		var palette = ['#467fcf', '#5eba00', '#f1c40f', '#cd201f', '#6f42c1', '#17a2b8', '#fd7e14', '#20c997', '#e83e8c', '#6c757d'];
+
+		var canevasCharges = document.getElementById('graphiqueChargesCategorie');
+		if (canevasCharges) {
+			new Chart(canevasCharges, {
+				type: 'doughnut',
+				data: { labels: chargesParCategorie.map(function (l) { return l.categorie; }), datasets: [{ data: chargesParCategorie.map(function (l) { return l.montant; }), backgroundColor: chargesParCategorie.map(function (_, i) { return palette[i % palette.length]; }) }] },
+				options: { responsive: true, maintainAspectRatio: false }
+			});
+		}
+
+		function barres(id, donnees, cle, libelle, couleur) {
+			var c = document.getElementById(id);
+			if (!c) return;
+			new Chart(c, { type: 'bar', data: { labels: donnees.map(function (l) { return l.nom; }), datasets: [{ label: libelle, data: donnees.map(function (l) { return l[cle]; }), backgroundColor: couleur }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+		}
+
+		barres('graphiqueRendementMachine', parMachine, 'quantite', 'Surface (m²)', '#6f42c1');
+		barres('graphiqueTopProduits', topProduits, 'nombre', 'Commandes', '#cd201f');
+
+		var canevasStock = document.getElementById('graphiqueVariationStock');
+		if (canevasStock) {
+			new Chart(canevasStock, { type: 'bar', data: { labels: evolutionStock.labels, datasets: [
+				{ label: 'Entrées', data: evolutionStock.entrees, backgroundColor: '#5eba00' },
+				{ label: 'Sorties', data: evolutionStock.sorties, backgroundColor: '#cd201f' }
+			] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
+		}
+
+		var canevasNouveauxClients = document.getElementById('graphiqueNouveauxClients');
+		if (canevasNouveauxClients) {
+			new Chart(canevasNouveauxClients, { type: 'bar', data: { labels: nouveauxClients.labels, datasets: [{ label: 'Nouveaux clients', data: nouveauxClients.valeurs, backgroundColor: '#6f42c1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+		}
+
+	{% endif %}
+
+});
+</script>
+{% endblock %}

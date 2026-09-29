@@ -1,0 +1,77 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Paramètres de paiement
+{% endblock %}
+
+{% block body %}
+	<div class="page-header">
+		<div>
+			<h1 class="page-title">
+				Paramètres de paiement
+			</h1>
+
+			<p class="text-muted mb-0">
+				Frais facturés au client en plus du prix de la commande quand il paie par
+				Orange Money ou Wave.
+			</p>
+		</div>
+	</div>
+
+	{% for message in app.flashes('success') %}
+		<div class="alert alert-success">
+			<i class="fa fa-check-circle mr-1"></i>
+			{{ message }}
+		</div>
+	{% endfor %}
+
+	{% if not form.vars.valid %}
+		<div class="alert alert-danger">
+			<strong>Le formulaire contient des erreurs.</strong>
+			{{ form_errors(form) }}
+		</div>
+	{% endif %}
+
+	<div class="row justify-content-center">
+		<div class="col-xl-6 col-lg-8">
+			<div class="card">
+				<div class="card-header">
+					<h3 class="card-title">
+						Frais mobile money
+					</h3>
+				</div>
+
+				<div class="card-body">
+					{{ form_start(form) }}
+
+					<div class="form-group">
+						{{ form_label(form.tauxFraisRetrait) }}
+						{{ form_widget(form.tauxFraisRetrait) }}
+						<small class="form-text text-muted">
+							{{ form.tauxFraisRetrait.vars.help }}
+						</small>
+						{{ form_errors(form.tauxFraisRetrait) }}
+					</div>
+
+					<div class="form-group">
+						{{ form_label(form.tauxFondsSoutien) }}
+						{{ form_widget(form.tauxFondsSoutien) }}
+						<small class="form-text text-muted">
+							{{ form.tauxFondsSoutien.vars.help }}
+						</small>
+						{{ form_errors(form.tauxFondsSoutien) }}
+					</div>
+
+					<div class="text-right">
+						<button type="submit" class="btn btn-primary">
+							<i class="fa fa-check-circle mr-1"></i>
+							Enregistrer
+						</button>
+					</div>
+
+					{{ form_end(form) }}
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

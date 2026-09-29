@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+	<head>
+
+		<meta charset="UTF-8">
+
+		<title>
+			Historique des commandes - {{ client.nomComplet }}
+		</title>
+
+		<style>
+
+			@page {
+				margin: 18mm 15mm;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+
+				font-family: DejaVu Sans, sans-serif;
+
+				font-size: 10px;
+				line-height: 1.4;
+
+				color: #202938;
+			}
+
+			.header-table {
+				width: 100%;
+				border-collapse: collapse;
+
+				margin-bottom: 16px;
+			}
+
+			.header-left {
+				width: 55%;
+				vertical-align: top;
+			}
+
+			.header-right {
+				width: 45%;
+				vertical-align: top;
+				text-align: right;
+			}
+
+			.logo {
+				max-width: 90px;
+				max-height: 60px;
+			}
+
+			.company-name {
+				margin-top: 4px;
+
+				font-size: 16px;
+				font-weight: bold;
+
+				color: #12346b;
+			}
+
+			.document-title {
+				margin-top: 6px;
+
+				font-size: 14px;
+				font-weight: bold;
+
+				text-transform: uppercase;
+			}
+
+			.date-generation {
+				margin-top: 4px;
+
+				color: #6c757d;
+			}
+
+			.client-box {
+				margin-bottom: 16px;
+
+				padding: 10px 14px;
+
+				border: 1px solid #dfe3e8;
+				border-radius: 4px;
+
+				background: #f8f9fb;
+			}
+
+			.client-box .nom {
+				font-size: 13px;
+				font-weight: bold;
+			}
+
+			table.commandes {
+				width: 100%;
+				border-collapse: collapse;
+
+				margin-bottom: 4px;
+			}
+
+			table.commandes th {
+				background: #12346b;
+				color: #fff;
+
+				padding: 6px 8px;
+
+				text-align: left;
+
+				font-size: 9px;
+				text-transform: uppercase;
+			}
+
+			table.commandes td {
+				padding: 6px 8px;
+
+				border-bottom: 1px solid #e5e7eb;
+
+				vertical-align: top;
+			}
+
+			table.commandes tr.ligne-detail td {
+				padding-left: 20px;
+
+				color: #4b5563;
+				font-size: 9px;
+
+				border-bottom: none;
+			}
+
+			table.commandes tr.commande-header td {
+				background: #f1f4f8;
+				font-weight: bold;
+			}
+
+			.text-right {
+				text-align: right;
+			}
+
+			.statut {
+				display: inline-block;
+
+				padding: 1px 6px;
+
+				border-radius: 3px;
+
+				font-size: 8px;
+				font-weight: bold;
+				text-transform: uppercase;
+
+				color: #fff;
+			}
+
+			.statut-payee {
+				background: #12805c;
+			}
+
+			.statut-partielle {
+				background: #b8860b;
+			}
+
+			.statut-impayee {
+				background: #b42318;
+			}
+
+			.totaux {
+				width: 45%;
+				margin-left: auto;
+
+				margin-top: 16px;
+
+				border-collapse: collapse;
+			}
+
+			.totaux td {
+				padding: 6px 8px;
+
+				border-bottom: 1px solid #e5e7eb;
+			}
+
+			.totaux tr.total-reste td {
+				font-weight: bold;
+				font-size: 12px;
+
+				color: #b42318;
+
+				border-top: 2px solid #12346b;
+				border-bottom: none;
+			}
+
+			.aucune-commande {
+				padding: 20px;
+
+				text-align: center;
+
+				color: #6c757d;
+
+				border: 1px dashed #dfe3e8;
+				border-radius: 4px;
+			}
+
+		</style>
+
+	</head>
+
+	<body>
+
+		<table class="header-table">
+			<tr>
+				<td class="header-left">
+					{% if logo %}
+						<img src="{{ logo }}" class="logo" alt="MDG Group">
+					{% endif %}
+
+					<div class="company-name">MDG Group</div>
+				</td>
+
+				<td class="header-right">
+					<div class="document-title">Historique des commandes</div>
+					<div class="date-generation">Édité le {{ genereLe|date('d/m/Y à H:i') }}</div>
+				</td>
+			</tr>
+		</table>
+
+		<div class="client-box">
+			<div class="nom">{{ client.nomComplet }}</div>
+
+			{% if client.telephone %}
+				<div>Tél : {{ client.telephone }}</div>
+			{% endif %}
+
+			{% if client.adresse %}
+				<div>{{ client.adresse }}</div>
+			{% endif %}
+		</div>
+
+		{% if commandes is empty %}
+
+			<div class="aucune-commande">
+				Ce client n'a aucune commande enregistrée à ce jour.
+			</div>
+
+		{% else %}
+
+			<table class="commandes">
+				<thead>
+					<tr>
+						<th>Commande</th>
+						<th>Date</th>
+						<th>Statut</th>
+						<th class="text-right">Total TTC</th>
+						<th class="text-right">Payé</th>
+						<th class="text-right">Reste à payer</th>
+					</tr>
+				</thead>
+
+				<tbody>
+					{% for ligne in commandes %}
+
+						<tr class="commande-header">
+							<td>{{ ligne.commande.numero }}</td>
+							<td>{{ ligne.commande.dateCommande ? ligne.commande.dateCommande|date('d/m/Y') : '—' }}</td>
+							<td>
+								<span class="statut statut-{{ ligne.statutPaiement }}">
+									{{ ligne.statutPaiement == 'payee' ? 'Payée' : (ligne.statutPaiement == 'partielle' ? 'Partielle' : 'Impayée') }}
+								</span>
+							</td>
+							<td class="text-right">{{ ligne.totalTtc|number_format(0, ',', ' ') }} FCFA</td>
+							<td class="text-right">{{ ligne.totalPaye|number_format(0, ',', ' ') }} FCFA</td>
+							<td class="text-right">{{ ligne.resteAPayer|number_format(0, ',', ' ') }} FCFA</td>
+						</tr>
+
+						{% for detail in ligne.commande.commandesDetails %}
+
+							{% set dimensionsDetail = null %}
+
+							{% if detail.largeur is defined and detail.longueur is defined and detail.largeur and detail.longueur %}
+								{% set dimensionsDetail = detail.largeur ~ ' × ' ~ detail.longueur ~ ' cm' %}
+							{% elseif detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.format %}
+								{% set dimensionsDetail = detail.produitConfiguration.format.nom %}
+							{% endif %}
+
+							{% set montantPayeDetail = ligne.totalTtc > 0 ? (ligne.totalPaye * detail.totalTtc / ligne.totalTtc)|round : 0 %}
+
+							<tr class="ligne-detail">
+								<td colspan="3">
+									{{ detail.produit ? detail.produit.nom : detail.designation|default('Article') }}
+									{% if dimensionsDetail %}
+										({{ dimensionsDetail }})
+									{% endif %}
+								</td>
+								<td class="text-right">Qté : {{ detail.quantite }}</td>
+								<td class="text-right">{{ montantPayeDetail|number_format(0, ',', ' ') }} FCFA</td>
+								<td class="text-right">{{ detail.totalTtc|number_format(0, ',', ' ') }} FCFA</td>
+							</tr>
+						{% endfor %}
+
+					{% endfor %}
+				</tbody>
+			</table>
+
+			<table class="totaux">
+				<tr>
+					<td>Total des commandes</td>
+					<td class="text-right">{{ totalCommandes|number_format(0, ',', ' ') }} FCFA</td>
+				</tr>
+
+				<tr>
+					<td>Déjà payé</td>
+					<td class="text-right">{{ totalPaye|number_format(0, ',', ' ') }} FCFA</td>
+				</tr>
+
+				<tr class="total-reste">
+					<td>Reste à payer</td>
+					<td class="text-right">{{ totalReste|number_format(0, ',', ' ') }} FCFA</td>
+				</tr>
+			</table>
+
+		{% endif %}
+
+	</body>
+
+</html>

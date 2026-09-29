@@ -1,0 +1,117 @@
+{{ form_start(form) }}
+
+<div class="card-body">
+
+	<div class="row">
+
+		<div class="col-md-12">
+			<div class="form-group">
+				{{ form_label(form.libelle) }}
+				{{ form_widget(form.libelle) }}
+				{{ form_errors(form.libelle) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				{{ form_label(form.compteSource) }}
+				{{ form_widget(form.compteSource) }}
+				{{ form_errors(form.compteSource) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				{{ form_label(form.categorie) }}
+				{{ form_widget(form.categorie) }}
+				{{ form_errors(form.categorie) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				{{ form_label(form.montant) }}
+				{{ form_widget(form.montant) }}
+				{{ form_errors(form.montant) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				{{ form_label(form.dateDebut) }}
+				{{ form_widget(form.dateDebut) }}
+				{{ form_errors(form.dateDebut) }}
+			</div>
+		</div>
+
+		<div class="col-md-12">
+			<div class="form-group">
+				{{ form_label(form.frequence) }}
+				<div>
+					{{ form_widget(form.frequence) }}
+				</div>
+				{{ form_errors(form.frequence) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				{{ form_label(form.jourDuMois) }}
+				{{ form_widget(form.jourDuMois) }}
+				{% if form.jourDuMois.vars.help %}
+					<small class="form-text text-muted">{{ form.jourDuMois.vars.help }}</small>
+				{% endif %}
+				{{ form_errors(form.jourDuMois) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				{{ form_label(form.moisDeLAnnee) }}
+				{{ form_widget(form.moisDeLAnnee) }}
+				{{ form_errors(form.moisDeLAnnee) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group mt-4">
+				<label class="custom-switch mb-0">
+					{{ form_widget(form.actif, {attr: {class: 'custom-switch-input'}}) }}
+					<span class="custom-switch-indicator"></span>
+					<span class="custom-switch-description">
+						Charge active
+					</span>
+				</label>
+			</div>
+		</div>
+
+		<div class="col-md-12">
+			<div class="form-group">
+				{{ form_label(form.notes) }}
+				{{ form_widget(form.notes) }}
+				{{ form_errors(form.notes) }}
+			</div>
+		</div>
+
+	</div>
+
+	{% if form.vars.errors|length > 0 %}
+		<div class="alert alert-danger mt-3">
+			{{ form_errors(form) }}
+		</div>
+	{% endif %}
+
+</div>
+
+<div class="card-footer text-right">
+	<a href="{{ path('app_decaissement_recurrent_index') }}" class="btn btn-secondary">
+		<i class="fa fa-arrow-left mr-1"></i>
+		Retour
+	</a>
+	<button type="submit" class="btn btn-primary-light">
+		<i class="fa fa-save mr-1"></i>
+		Enregistrer
+	</button>
+</div>
+
+{{ form_end(form) }}

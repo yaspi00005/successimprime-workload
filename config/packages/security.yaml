@@ -1,0 +1,506 @@
+security:
+
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+
+    providers:
+
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: username
+
+
+    firewalls:
+
+        dev:
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+
+
+        main:
+            lazy: true
+            provider: app_user_provider
+
+            custom_authenticator:
+                App\Security\UserAuthenticator
+
+            user_checker:
+                App\Security\UserChecker
+
+            logout:
+                path: app_logout
+
+            # Limite les tentatives de connexion successives (par
+            # nom d'utilisateur et par IP) pour ralentir une attaque
+            # par force brute sur les mots de passe.
+            login_throttling:
+                max_attempts: 5
+
+
+    # ================================================================
+    # HIÉRARCHIE DES RÔLES
+    # ================================================================
+
+    role_hierarchy:
+
+        ROLE_ADMIN:
+            - ROLE_USER
+            - ROLE_CLIENT
+            - ROLE_DEVIS
+            - ROLE_COMMANDE
+            - ROLE_FACTURE
+
+            - ROLE_PAIEMENT_VOIR
+            - ROLE_PAIEMENT_ENCAISSER
+
+            - ROLE_TRESORERIE_VOIR
+            - ROLE_TRESORERIE_SAISIR
+            - ROLE_TRESORERIE_TRANSFERER
+            - ROLE_JOURNAL_CAISSE
+
+            - ROLE_PREPRESSE
+            - ROLE_PRODUCTION_VOIR
+            - ROLE_PRODUCTION_GERER
+
+            - ROLE_LIVRAISON
+            - ROLE_STATS_GLOBAL
+            - ROLE_RH
+            - ROLE_PARAMETRES
+            - ROLE_RESPONSABLE_GESTION
+            
+
+
+        ROLE_CAISSE_COMMANDE:
+            - ROLE_USER
+
+            - ROLE_CLIENT
+            - ROLE_DEVIS
+            - ROLE_COMMANDE
+            - ROLE_FACTURE
+
+            - ROLE_PAIEMENT_VOIR
+            - ROLE_PAIEMENT_ENCAISSER
+
+            - ROLE_TRESORERIE_VOIR
+            - ROLE_TRESORERIE_SAISIR
+            - ROLE_TRESORERIE_TRANSFERER
+
+            - ROLE_JOURNAL_CAISSE
+
+
+        ROLE_GRAPHISTE:
+            - ROLE_USER
+            - ROLE_CLIENT
+            - ROLE_DEVIS
+            - ROLE_COMMANDE
+            - ROLE_FACTURE
+            - ROLE_PAIEMENT_VOIR
+            - ROLE_PREPRESSE
+            - ROLE_PRODUCTION_VOIR
+            - ROLE_PRODUCTION_GERER
+
+
+        ROLE_PRODUCTION:
+            - ROLE_USER
+            - ROLE_PRODUCTION_VOIR
+            - ROLE_PRODUCTION_GERER
+
+
+        ROLE_LIVREUR:
+            - ROLE_USER
+            - ROLE_LIVRAISON
+
+    access_control:
+
+
+        # ============================================================
+        # PUBLIC
+        # ============================================================
+
+        - {
+            path: ^/login$,
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: ^/lockscreen$,
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: ^/changer-utilisateur$,
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: ^/ecran-accueil,
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: ^/factures/\d+/pdf-public/,
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: ^/devis/\d+/pdf-public/,
+            roles: PUBLIC_ACCESS
+        }
+
+
+        # ============================================================
+        # COMPTE PERSONNEL
+        # ============================================================
+
+        - {
+            path: ^/user/mon-compte/changer-mot-de-passe$,
+            roles: ROLE_USER
+        }
+
+
+        # ============================================================
+        # UTILISATEURS / ADMIN
+        # ============================================================
+
+        - {
+            path: ^/user,
+            roles: ROLE_ADMIN
+        }
+
+        - {
+            path: ^/admin,
+            roles: ROLE_ADMIN
+        }
+
+        - {
+            path: ^/journal-activite,
+            roles: ROLE_ADMIN
+        }
+
+
+        # ============================================================
+        # PARAMÈTRES
+        # ============================================================
+
+        - {
+            path: ^/(categorie-produit|produits|produit-configuration|type-impression|support|format|finition|machines|lot-etiquette),
+            roles: ROLE_ADMIN
+        }
+
+
+        # ============================================================
+        # RH
+        # ============================================================
+
+        - {
+            path: ^/(rh|employes),
+            roles: ROLE_ADMIN
+        }
+
+
+        # ============================================================
+        # ARTICLE EN STOCK -- AJAX UTILISE PAR LA COMMANDE ET LE DEVIS
+        #
+        # Doit rester accessible a ROLE_COMMANDE (donc a un compte
+        # caisse) : c'est l'endpoint que le formulaire de commande/devis
+        # appelle pour charger stock/prix/reference d'un article
+        # vendable. Placee AVANT la regle generale ADMIN UNIQUEMENT
+        # ci-dessous, car Symfony applique la premiere regle qui
+        # correspond.
+        # ============================================================
+
+        - {
+            path: ^/articles/\d+/commande/ajax,
+            roles: ROLE_COMMANDE
+        }
+
+
+        # ============================================================
+        # STOCK
+        #
+        # ADMIN UNIQUEMENT
+        # ============================================================
+
+        - {
+            path: ^/(stock|stocks|article|articles|inventaire),
+            roles: ROLE_ADMIN
+        }
+
+
+        # ============================================================
+        # ACHATS / FOURNISSEURS
+        #
+        # ADMIN UNIQUEMENT POUR LE MOMENT
+        # ============================================================
+
+        - {
+            path: ^/(fournisseur|fournisseurs|achat|achats),
+            roles: ROLE_ADMIN
+        }
+
+
+        # ============================================================
+        # STATISTIQUES GLOBALES
+        #
+        # Couvre toutes les sous-pages (globales, commandes,
+        # tresorerie, clients...), toutes reservees a l'administrateur
+        # via ROLE_STATS_GLOBAL.
+        # ============================================================
+
+        - {
+            path: ^/statistiques,
+            roles: ROLE_STATS_GLOBAL
+        }
+
+
+        # ============================================================
+        # STATISTIQUES PERSONNELLES
+        # ============================================================
+
+        - {
+            path: ^/mes-statistiques,
+            roles: ROLE_CAISSE_COMMANDE
+        }
+
+
+        # ============================================================
+        # CLIENTS
+        # ============================================================
+
+        - {
+            path: ^/clients,
+            roles: ROLE_CLIENT
+        }
+
+
+        # ============================================================
+        # DEVIS
+        # ============================================================
+
+        - {
+            path: ^/devis,
+            roles: ROLE_DEVIS
+        }
+
+
+        # ============================================================
+        # COMMANDES
+        # ============================================================
+
+        - {
+            path: ^/commandes,
+            roles: ROLE_COMMANDE
+        }
+
+
+        # ============================================================
+        # FACTURES
+        # ============================================================
+
+        - {
+            path: ^/factures,
+            roles: ROLE_FACTURE
+        }
+
+
+        # ============================================================
+        # PAIEMENTS
+        #
+        # ÉCRITURE / ENCAISSEMENT EN PREMIER
+        # ============================================================
+
+        - {
+            path: ^/paiements/new$,
+            roles: ROLE_PAIEMENT_ENCAISSER
+        }
+
+
+        - {
+            path: ^/paiements/\d+/edit$,
+            roles: ROLE_PAIEMENT_ENCAISSER
+        }
+
+
+        - {
+            path: ^/paiements/\d+/delete$,
+            roles: ROLE_PAIEMENT_ENCAISSER
+        }
+
+
+        - {
+            path: ^/paiements/\d+$,
+            methods: [POST, PUT, PATCH, DELETE],
+            roles: ROLE_PAIEMENT_ENCAISSER
+        }
+
+
+        # ============================================================
+        # CONSULTATION PAIEMENTS
+        # ============================================================
+
+        - {
+            path: ^/paiements,
+            methods: [GET],
+            roles: ROLE_PAIEMENT_VOIR
+        }
+
+
+        # ============================================================
+        # TRÉSORERIE - SAISIE
+        #
+        # CAISSE / ADMIN UNIQUEMENT
+        # ============================================================
+
+        - {
+            path: ^/gestion/tresorerie/(encaissements|decaissements),
+            roles: ROLE_TRESORERIE_SAISIR
+        }
+
+
+        # ============================================================
+        # MOUVEMENTS DE TRÉSORERIE - ÉCRITURE
+        # ============================================================
+
+        - {
+            path: ^/gestion/tresorerie/mouvements/new$,
+            roles: ROLE_TRESORERIE_SAISIR
+        }
+
+
+        - {
+            path: ^/gestion/tresorerie/mouvements/\d+/(edit|validate|cancel)$,
+            roles: ROLE_TRESORERIE_SAISIR
+        }
+
+
+        # ============================================================
+        # COMPTES DE TRÉSORERIE
+        # ============================================================
+
+        - {
+            path: ^/gestion/tresorerie/comptes,
+            roles: ROLE_TRESORERIE_VOIR
+        }
+
+
+        # ============================================================
+        # CONSULTATION MOUVEMENTS TRÉSORERIE
+        # ============================================================
+
+        - {
+            path: ^/gestion/tresorerie/mouvements,
+            methods: [GET],
+            roles: ROLE_TRESORERIE_VOIR
+        }
+
+
+        # ============================================================
+        # JOURNAL DE CAISSE
+        # ============================================================
+
+        - {
+            path: ^/gestion/tresorerie/journal-caisse,
+            roles: ROLE_JOURNAL_CAISSE
+        }
+
+
+        # ============================================================
+        # TRANSFERT DE TRÉSORERIE
+        #
+        # ADMIN UNIQUEMENT POUR LE MOMENT
+        # ============================================================
+
+        - {
+            path: ^/gestion/tresorerie/transferts,
+            roles: ROLE_ADMIN
+        }
+
+
+        # ============================================================
+        # RAPPROCHEMENT BANCAIRE
+        #
+        # ADMIN UNIQUEMENT
+        # ============================================================
+
+        - {
+            path: ^/rapprochements-bancaires,
+            roles: ROLE_ADMIN
+        }
+
+
+        # ============================================================
+        # PRÉPRESSE
+        #
+        # INFOGRAPHISTE + ADMIN UNIQUEMENT
+        # ============================================================
+
+        - {
+            path: ^/controle-pre-presse,
+            roles: ROLE_PREPRESSE
+        }
+
+
+        - {
+            path: ^/production/prepresse,
+            roles: ROLE_PREPRESSE
+        }
+
+
+        # ============================================================
+        # PRODUCTION
+        # ============================================================
+
+        - {
+            path: ^/production,
+            roles: ROLE_PRODUCTION_VOIR
+        }
+
+
+        # ============================================================
+        # CONSOMMABLES
+        #
+        # Retire directement du stock disponible : reserve aux
+        # profils production (avant, tout utilisateur connecte y
+        # avait acces par defaut).
+        # ============================================================
+
+        - {
+            path: ^/consommables,
+            roles: ROLE_PRODUCTION_GERER
+        }
+
+
+        # ============================================================
+        # LIVRAISON
+        # ============================================================
+
+        - {
+            path: ^/(livraisons|bons-livraison),
+            roles: ROLE_LIVRAISON
+        }
+
+
+        # ============================================================
+        # FALLBACK
+        # ============================================================
+
+        - {
+            path: ^/,
+            roles: ROLE_USER
+        }
+
+
+when@test:
+
+    security:
+
+        password_hashers:
+
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+
+                algorithm: auto
+                cost: 4
+                time_cost: 3
+                memory_cost: 10

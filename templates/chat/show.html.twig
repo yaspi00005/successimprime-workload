@@ -1,0 +1,112 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	{{ conversation.getLibellePour(utilisateur) }}
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="page-header">
+
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_chat_index') }}">Messagerie</a>
+			</li>
+			<li class="breadcrumb-item active">
+				{{ conversation.getLibellePour(utilisateur) }}
+			</li>
+		</ol>
+
+	</div>
+
+	<div class="card">
+
+		<div class="card-header">
+			<h3 class="card-title">{{ conversation.getLibellePour(utilisateur) }}</h3>
+		</div>
+
+		<div class="card-body" style="max-height: 60vh; overflow-y: auto;" id="fil-messages">
+
+			{% for message in conversation.messages %}
+
+				{% set estMoi = message.auteur == utilisateur %}
+
+				<div class="d-flex flex-column mb-3 {{ estMoi ? 'align-items-end' : 'align-items-start' }}">
+
+					<div class="small text-muted">
+						{{ message.auteur.username }} — {{ message.dateEnvoi|date('d/m/Y H:i') }}
+					</div>
+
+					<div class="p-2 rounded {{ estMoi ? 'bg-primary text-white' : 'bg-light' }}" style="max-width: 75%; white-space: pre-wrap;">
+
+						{% if message.aUnePieceJointe %}
+
+							{% if message.pieceJointeEstUneImage %}
+								<a href="{{ asset('uploads/chat/' ~ message.pieceJointeFichier) }}" target="_blank">
+									<img src="{{ asset('uploads/chat/' ~ message.pieceJointeFichier) }}" alt="{{ message.pieceJointeNomOriginal }}" class="img-fluid rounded mb-1" style="max-height: 220px;">
+								</a>
+							{% else %}
+								<a href="{{ asset('uploads/chat/' ~ message.pieceJointeFichier) }}" target="_blank" class="d-flex align-items-center {{ estMoi ? 'text-white' : '' }} mb-1">
+									<i class="fa fa-file-o mr-2"></i>
+									{{ message.pieceJointeNomOriginal }}
+								</a>
+							{% endif %}
+
+						{% endif %}
+
+						{% if message.contenu is not empty %}
+							{{ message.contenu }}
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			{% else %}
+
+				<div class="text-center text-muted p-4">
+					Aucun message pour le moment. Envoyez le premier !
+				</div>
+
+			{% endfor %}
+
+		</div>
+
+		<div class="card-footer">
+
+			<form action="{{ path('app_chat_envoyer', {id: conversation.id}) }}" method="post" enctype="multipart/form-data" class="d-flex align-items-center">
+
+				<input type="hidden" name="_token" value="{{ csrf_token('chat_envoyer_' ~ conversation.id) }}">
+
+				<label class="btn btn-light mb-0 mr-2" title="Joindre un fichier ou une image">
+					<i class="fa fa-paperclip"></i>
+					<input type="file" name="fichier" style="display: none;" onchange="document.getElementById('nom-fichier-choisi').textContent = this.files.length ? this.files[0].name : '';">
+				</label>
+
+				<input type="text" name="contenu" class="form-control mr-2" placeholder="Votre message…" autocomplete="off" autofocus>
+
+				<button type="submit" class="btn btn-primary">
+					<i class="fa fa-paper-plane"></i>
+				</button>
+
+			</form>
+
+			<div id="nom-fichier-choisi" class="small text-muted mt-1"></div>
+
+		</div>
+
+	</div>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			var fil = document.getElementById('fil-messages');
+
+			if (fil) {
+				fil.scrollTop = fil.scrollHeight;
+			}
+		});
+	</script>
+
+{% endblock %}

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>Suivi {{ etiquette.numero }}</title>
+
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    >
+
+    <style>
+        body {
+            min-height: 100vh;
+            background: #f1f4fb;
+            font-family: Arial, sans-serif;
+        }
+
+        .suivi-container {
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 30px 15px;
+        }
+
+        .suivi-card {
+            border: 0;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(30, 50, 90, 0.12);
+            overflow: hidden;
+        }
+
+        .suivi-header {
+            padding: 30px 20px;
+            color: #fff;
+            text-align: center;
+            background: linear-gradient(135deg, #6259ca, #4a40b7);
+        }
+
+        .suivi-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 38px;
+        }
+
+        .numero {
+            font-size: 25px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .statut-box {
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .statut-icon {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 42px;
+        }
+
+        .detail-label {
+            color: #7b8190;
+            font-size: 13px;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: #303548;
+        }
+
+        .footer-text {
+            color: #8b91a0;
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="suivi-container">
+        <div class="card suivi-card">
+            <div class="suivi-header">
+                <div class="suivi-icon">
+                    <i class="fa fa-cube"></i>
+                </div>
+
+                <div class="mb-1">Suivi de l’étiquette</div>
+                <div class="numero">{{ etiquette.numero }}</div>
+            </div>
+
+            <div class="card-body p-4">
+                {% if etiquette.statut == 'disponible' %}
+                    <div class="statut-box alert-success">
+                        <i class="fa fa-qrcode statut-icon"></i>
+                        <h4>Étiquette disponible</h4>
+                        <p class="mb-0">
+                            Cette étiquette n’est pas encore associée à un colis.
+                        </p>
+                    </div>
+                {% elseif etiquette.statut == 'associee' %}
+                    <div class="statut-box alert-info">
+                        <i class="fa fa-link statut-icon"></i>
+                        <h4>Colis enregistré</h4>
+                        <p class="mb-0">
+                            L’étiquette a été associée à un colis.
+                        </p>
+                    </div>
+                {% elseif etiquette.statut == 'prete_livraison' %}
+                    <div class="statut-box alert-primary">
+                        <i class="fa fa-check-circle statut-icon"></i>
+                        <h4>Prête pour la livraison</h4>
+                        <p class="mb-0">
+                            Le colis est préparé et attend sa prise en charge.
+                        </p>
+                    </div>
+                {% elseif etiquette.statut == 'en_livraison' %}
+                    <div class="statut-box alert-warning">
+                        <i class="fa fa-truck statut-icon"></i>
+                        <h4>En cours de livraison</h4>
+                        <p class="mb-0">
+                            Le colis est actuellement en route.
+                        </p>
+                    </div>
+                {% elseif etiquette.statut == 'livree' %}
+                    <div class="statut-box alert-success">
+                        <i class="fa fa-check statut-icon"></i>
+                        <h4>Colis livré</h4>
+                        <p class="mb-0">
+                            La livraison du colis a été effectuée.
+                        </p>
+                    </div>
+                {% elseif etiquette.statut == 'annulee' %}
+                    <div class="statut-box alert-danger">
+                        <i class="fa fa-times-circle statut-icon"></i>
+                        <h4>Étiquette annulée</h4>
+                        <p class="mb-0">
+                            Cette étiquette n’est plus utilisable.
+                        </p>
+                    </div>
+                {% elseif etiquette.statut == 'perdue' %}
+                    <div class="statut-box alert-danger">
+                        <i class="fa fa-exclamation-triangle statut-icon"></i>
+                        <h4>Colis déclaré perdu</h4>
+                        <p class="mb-0">
+                            Veuillez contacter le service chargé de la livraison.
+                        </p>
+                    </div>
+                {% else %}
+                    <div class="statut-box alert-secondary">
+                        <i class="fa fa-info-circle statut-icon"></i>
+                        <h4>Statut en cours de traitement</h4>
+                    </div>
+                {% endif %}
+
+                <hr class="my-4">
+
+                <div class="row">
+                    <div class="col-6">
+                        <div class="detail-label">
+                            Numéro
+                        </div>
+
+                        <div class="detail-value">
+                            {{ etiquette.numero }}
+                        </div>
+                    </div>
+
+                    <div class="col-6 text-right">
+                        <div class="detail-label">
+                            Date de création
+                        </div>
+
+                        <div class="detail-value">
+                            {{ etiquette.creeLe|date('d/m/Y') }}
+                        </div>
+                    </div>
+                </div>
+
+                {% if etiquette.associeLe %}
+                    <hr>
+
+                    <div class="detail-label">
+                        Date d’enregistrement
+                    </div>
+
+                    <div class="detail-value">
+                        {{ etiquette.associeLe|date('d/m/Y à H:i') }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <p class="footer-text mt-4">
+            Ce suivi est sécurisé par un identifiant unique.
+            Aucune information personnelle du client n’est affichée.
+        </p>
+    </main>
+</body>
+</html>

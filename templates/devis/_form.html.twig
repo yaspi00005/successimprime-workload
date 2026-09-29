@@ -1,0 +1,3628 @@
+{# ============================================================
+   MACRO : FINITION MANUELLE
+   ============================================================ #}
+
+{% macro finition_manuelle(finition) %}
+
+	<div class="js-finition-manuelle border rounded p-3 mb-3">
+
+		<div class="row align-items-end">
+
+			<div class="col-lg-4 col-md-6">
+
+				{{ form_row(finition.finition, {
+                    label: 'Finition',
+                    attr: {
+                        class: 'form-control js-select-search'
+                    }
+                }) }}
+
+			</div>
+
+			<div class="col-lg-2 col-md-6">
+
+				{{ form_row(finition.prixApplique, {
+                    label: 'Prix appliqué',
+                    attr: {
+                        class: 'form-control js-finition-prix',
+                        min: 0
+                    }
+                }) }}
+
+			</div>
+
+			<div class="col-lg-2 col-md-6">
+
+				{{ form_row(finition.modeCalcul, {
+                    label: 'Mode de calcul',
+                    attr: {
+                        class: 'form-control js-finition-mode'
+                    }
+                }) }}
+
+			</div>
+
+			<div class="col-lg-2 col-md-6">
+
+				{{ form_row(finition.quantite, {
+                    label: 'Quantité',
+                    attr: {
+                        class: 'form-control js-finition-quantite',
+                        min: 1
+                    }
+                }) }}
+
+			</div>
+
+			<div class="col-lg-2 col-md-6">
+
+				<button type="button" class="btn btn-danger-light btn-block js-supprimer-finition">
+					<i class="fa fa-trash mr-1"></i>
+					Supprimer
+				</button>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endmacro %}
+
+
+{# ============================================================
+   MACRO : DÉTAIL DE DEVIS
+   ============================================================ #}
+
+{% macro champs_detail(detail) %}
+
+	<div
+		class="travail-form js-devis-detail">
+
+		{# ========================================================
+																										       TYPE DE LIGNE
+																										       ======================================================== #}
+
+		<div class="travail-section">
+
+			<div class="travail-section-title">
+				<i class="fa fa-th-large"></i>
+				Type de ligne
+			</div>
+
+			<div class="form-group">
+
+				{{ form_label(
+                detail.typeLigne,
+                'Que souhaitez-vous ajouter ?'
+            ) }}
+
+				<div class="js-type-ligne">
+
+					{{ form_widget(
+                    detail.typeLigne
+                ) }}
+
+				</div>
+
+				{{ form_errors(
+                detail.typeLigne
+            ) }}
+
+				<small class="form-text text-muted">
+					Produit / prestation :
+																																																																	                élément provenant du catalogue.
+																																																																	                Article en stock :
+																																																																	                vente directe d'un article physique.
+																																																																	                Saisie libre :
+																																																																	                désignation, quantité et prix libres.
+				</small>
+
+			</div>
+
+		</div>
+
+
+		{# ========================================================
+																										       PRODUIT / ARTICLE / CONFIGURATION
+																										       ======================================================== #}
+
+		<div class="travail-section">
+
+			<div class="travail-section-title">
+				<i class="fa fa-cube"></i>
+				Produit, article et configuration
+			</div>
+
+
+			{# MODE CONFIGURATION PRODUIT #}
+
+			<div class="js-zone-mode-configuration" style="display:none;">
+
+				<div class="form-group">
+
+					{{ form_label(
+                    detail.modeConfiguration,
+                    'Mode de configuration'
+                ) }}
+
+					<div class="js-mode-configuration">
+
+						{{ form_widget(
+                        detail.modeConfiguration
+                    ) }}
+
+					</div>
+
+					{{ form_errors(
+                    detail.modeConfiguration
+                ) }}
+
+					<small class="form-text text-muted js-aide-mode">
+						Automatique :
+																																																																														                    configuration et tarif provenant du catalogue.
+																																																																														                    Manuel :
+																																																																														                    choisissez les caractéristiques du produit.
+					</small>
+
+				</div>
+
+			</div>
+
+
+			{# ====================================================
+																																							           PRODUIT
+																																							           ==================================================== #}
+
+			<div class="row js-zone-produit">
+
+				<div class="col-lg-4 col-md-6">
+
+					{{ form_row(detail.produit, {
+                    label: 'Produit / prestation',
+                    attr: {
+                        class:
+                            'form-control js-select-search',
+
+                        'data-detail-field':
+                            'produit',
+
+                        'data-placeholder':
+                            'Rechercher un produit...'
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="
+																																																																														                    col-lg-8
+																																																																														                    col-md-6
+																																																																														                    js-zone-configuration-automatique
+																																																																														                ">
+
+					{{ form_row(
+                    detail.produitConfiguration,
+                    {
+                        label:
+                            'Configuration du produit',
+
+                        attr: {
+                            class:
+                                'form-control js-select-search',
+
+                            'data-detail-field':
+                                'configuration',
+
+                            'data-placeholder':
+                                'Rechercher une configuration...'
+                        }
+                    }
+                ) }}
+
+					<small class="form-text text-muted">
+						Le type d'impression, le support,
+																																																																														                    le format et le prix seront récupérés
+																																																																														                    automatiquement.
+					</small>
+
+				</div>
+
+			</div>
+
+
+			{# ====================================================
+																																							           ARTICLE EN STOCK
+																																							           ==================================================== #}
+
+			<div class="row js-zone-article-stock" style="display:none;">
+
+				<div class="col-lg-7 col-md-7">
+
+					{{ form_row(detail.article, {
+                    label: 'Article en stock',
+
+                    attr: {
+                        class:
+                            'form-control js-select-search js-article-stock',
+
+                        'data-detail-field':
+                            'article',
+
+                        'data-placeholder':
+                            'Référence ou désignation...'
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="col-lg-5 col-md-5">
+
+					<div class="form-group">
+
+						<label>
+							Informations de l'article
+						</label>
+
+						<div class="
+																																																																																																								                            alert
+																																																																																																								                            alert-light
+																																																																																																								                            border
+																																																																																																								                            mb-0
+																																																																																																								                        ">
+
+							<span class="js-stock-article">
+								Sélectionnez un article.
+							</span>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# ====================================================
+																																							           DÉSIGNATION
+																																							           ==================================================== #}
+
+			<div class="row">
+
+				<div class="col-12">
+
+					{{ form_row(detail.designation, {
+                    label: 'Désignation',
+
+                    attr: {
+                        class:
+                            'form-control',
+
+                        'data-detail-field':
+                            'designation',
+
+                        placeholder:
+                            'Désignation du travail'
+                    }
+                }) }}
+
+				</div>
+
+			</div>
+
+
+			{# ====================================================
+																																							           CONFIGURATION TECHNIQUE PRODUIT
+																																							           ==================================================== #}
+
+			<div class="js-zone-champs-configuration">
+
+				<div class="row">
+
+					<div class="col-lg-4 col-md-6">
+
+						{{ form_row(
+                        detail.typeImpression,
+                        {
+                            label:
+                                "Type d’impression",
+
+                            attr: {
+                                class:
+                                    'form-control js-select-search',
+
+                                'data-detail-field':
+                                    'typeImpression',
+
+                                'data-placeholder':
+                                    "Rechercher un type d’impression..."
+                            }
+                        }
+                    ) }}
+
+					</div>
+
+
+					<div class="col-lg-4 col-md-6">
+
+						{{ form_row(
+                        detail.support,
+                        {
+                            label:
+                                "Support d’impression",
+
+                            attr: {
+                                class:
+                                    'form-control js-select-search',
+
+                                'data-detail-field':
+                                    'support',
+
+                                'data-placeholder':
+                                    'Rechercher un support...'
+                            }
+                        }
+                    ) }}
+
+					</div>
+
+
+					<div class="col-lg-4 col-md-6">
+
+						{{ form_row(
+                        detail.format,
+                        {
+                            label:
+                                'Format',
+
+                            attr: {
+                                class:
+                                    'form-control js-select-search',
+
+                                'data-detail-field':
+                                    'format',
+
+                                'data-placeholder':
+                                    'Rechercher un format...'
+                            }
+                        }
+                    ) }}
+
+					</div>
+
+				</div>
+
+
+				<small class="
+																																																																														                    form-text
+																																																																														                    text-muted
+																																																																														                    js-message-champs-auto
+																																																																														                ">
+					Ces champs proviennent de la configuration sélectionnée.
+				</small>
+
+			</div>
+
+		</div>
+
+
+		{# ========================================================
+																										       DIMENSIONS / QUANTITÉ / PRIX
+																										       ======================================================== #}
+
+		<div class="travail-section">
+
+			<div class="travail-section-title">
+				<i class="fa fa-arrows-alt"></i>
+				Dimensions, quantité et prix
+			</div>
+
+			<div class="row">
+
+				<div class="col-lg-3 col-md-6 js-zone-largeur">
+
+					{{ form_row(detail.largeur, {
+                    attr: {
+                        class:
+                            'form-control js-calcul-detail',
+
+                        'data-detail-field':
+                            'largeur',
+
+                        min: 0,
+                        step: '0.01'
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6 js-zone-longueur">
+
+					{{ form_row(detail.longueur, {
+                    attr: {
+                        class:
+                            'form-control js-calcul-detail',
+
+                        'data-detail-field':
+                            'longueur',
+
+                        min: 0,
+                        step: '0.01'
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6 js-zone-surface">
+
+					{{ form_row(detail.surface, {
+                    attr: {
+                        class:
+                            'form-control js-calcul-detail',
+
+                        'data-detail-field':
+                            'surface',
+
+                        readonly: true
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6">
+
+					{{ form_row(detail.quantite, {
+                    attr: {
+                        class:
+                            'form-control js-calcul-detail',
+
+                        'data-detail-field':
+                            'quantite',
+
+                        min: 1
+                    }
+                }) }}
+
+					<small class="
+																																																																														                        form-text
+																																																																														                        text-muted
+																																																																														                        js-message-quantite
+																																																																														                    "></small>
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6 js-zone-nombre-faces">
+
+					{{ form_row(detail.nombreFaces, {
+                    attr: {
+                        class:
+                            'form-control js-calcul-detail',
+
+                        'data-detail-field':
+                            'nombreFaces',
+
+                        min: 1
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6">
+
+					{{ form_row(detail.modeCalcul, {
+                    label:
+                        'Mode de calcul',
+
+                    attr: {
+                        class:
+                            'form-control js-mode-calcul js-calcul-detail',
+
+                        'data-detail-field':
+                            'modeCalcul'
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6">
+
+					{{ form_row(detail.prixUnitaire, {
+                    label:
+                        'Prix unitaire',
+
+                    attr: {
+                        class:
+                            'form-control js-calcul-detail',
+
+                        'data-detail-field':
+                            'prixUnitaire',
+
+                        min: 0
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6">
+
+					{{ form_row(detail.remise, {
+                    attr: {
+                        class:
+                            'form-control js-calcul-detail',
+
+                        'data-detail-field':
+                            'remise',
+
+                        min: 0
+                    }
+                }) }}
+
+					<small class="form-text text-muted js-remise-totale-detail">
+						Remise totale : —
+					</small>
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6">
+
+					{{ form_row(detail.tva, {
+                    attr: {
+                        class:
+                            'form-control js-calcul-detail',
+
+                        'data-detail-field':
+                            'tva',
+
+                        min: 0
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6">
+
+					{{ form_row(detail.totalHt, {
+                    attr: {
+                        readonly: true,
+                        'data-detail-field':
+                            'totalHt'
+                    }
+                }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 col-md-6">
+
+					{{ form_row(detail.totalTtc, {
+                    attr: {
+                        readonly: true,
+                        'data-detail-field':
+                            'totalTtc'
+                    }
+                }) }}
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ========================================================
+																										       FINITIONS
+																										       ======================================================== #}
+
+		<div class="travail-section js-zone-finitions">
+
+			<div class="travail-section-title">
+				<i class="fa fa-magic"></i>
+				Finitions
+			</div>
+
+
+			<div class="js-zone-finitions-automatiques">
+
+				<div class="finitions-box js-finitions-box" data-input-name="{{ detail.finitionsSelectionnees.vars.full_name }}">
+
+					{{ form_widget(
+                    detail.finitionsSelectionnees
+                ) }}
+
+					{{ form_errors(
+                    detail.finitionsSelectionnees
+                ) }}
+
+				</div>
+
+				<small class="form-text text-muted">
+					Les finitions disponibles proviennent de la configuration.
+																																																																	                Les finitions obligatoires sont automatiquement sélectionnées.
+				</small>
+
+			</div>
+
+
+			<div class="js-zone-finitions-manuelles" data-index="{{ detail.finitions|length }}" data-prototype="{{ _self.finition_manuelle( detail.finitions.vars.prototype )|e('html_attr') }}" style="display:none;">
+
+				<div class="js-liste-finitions-manuelles">
+
+					{% for finition in detail.finitions %}
+
+						{{ _self.finition_manuelle(
+                        finition
+                    ) }}
+
+					{% endfor %}
+
+				</div>
+
+				{{ form_errors(
+                detail.finitions
+            ) }}
+
+				<button type="button" class="
+																																																																														                    btn
+																																																																														                    btn-primary-light
+																																																																														                    btn-sm
+																																																																														                    js-ajouter-finition
+																																																																														                ">
+					<i class="fa fa-plus mr-1"></i>
+					Ajouter une finition
+				</button>
+
+			</div>
+
+		</div>
+
+
+		{# ========================================================
+																										       CARACTÉRISTIQUES TECHNIQUES
+																										       ======================================================== #}
+
+		<div class="travail-section js-zone-technique">
+
+			<div class="travail-section-title">
+				<i class="fa fa-sliders"></i>
+				Caractéristiques techniques
+			</div>
+
+			<div class="row">
+
+				<div class="col-lg-3 col-md-6">
+					{{ form_row(detail.profilCouleurs) }}
+				</div>
+
+				<div class="col-lg-3 col-md-6">
+					{{ form_row(detail.resolution) }}
+				</div>
+
+				<div class="col-lg-3 col-md-6">
+					{{ form_row(detail.grammage) }}
+				</div>
+
+				<div class="col-lg-3 col-md-6">
+					{{ form_row(detail.epaisseur) }}
+				</div>
+
+				<div class="col-lg-3 col-md-6">
+					{{ form_row(detail.laminage) }}
+				</div>
+
+				<div class="col-lg-3 col-md-6">
+					{{ form_row(detail.pliage) }}
+				</div>
+
+				<div class="col-lg-3 col-md-6">
+					{{ form_row(detail.priorite) }}
+				</div>
+
+				<div class="col-lg-3 col-md-6">
+					{{ form_row(detail.tempsEstime) }}
+				</div>
+
+				<div class="col-lg-3 col-md-6">
+					{{ form_row(detail.tempsReel) }}
+				</div>
+
+			</div>
+
+
+			<div class="row">
+
+				<div class="col-md-3">
+					{{ form_row(detail.rectoVerso) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.oeillets) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.decoupe) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.emballage) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.batValide) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.etat) }}
+				</div>
+
+			</div>
+
+			{{ form_row(
+            detail.observation
+        ) }}
+
+		</div>
+
+	</div>
+
+{% endmacro %}
+
+
+{# ============================================================
+   FORMULAIRE
+   ============================================================ #}
+
+{{ form_start(form, {
+    attr: {
+        id: 'devis-form',
+
+        'data-brouillon-nouvelle':
+            form.vars.data.id is null ? '1' : '0',
+
+        'data-brouillon-csrf':
+            csrf_token('brouillon-devis'),
+
+        'data-brouillon-enregistrer-url':
+            path('app_brouillon_enregistrer', {type: 'devis'}),
+
+        'data-brouillon-verifier-url':
+            path('app_brouillon_verifier', {type: 'devis'})
+    }
+}) }}
+
+
+<div
+	class="side-app">
+
+	{# ========================================================
+													       HEADER
+													       ======================================================== #}
+
+	<div class="page-header">
+
+		<ol class="breadcrumb">
+
+			<li class="breadcrumb-item">
+
+				<a href="{{ path( 'app_devis_index' ) }}">
+					Devis
+				</a>
+
+			</li>
+
+			<li class="breadcrumb-item active">
+
+				{{
+                    form.vars.data.id
+                        ? 'Modifier le devis'
+                        : 'Nouveau devis'
+                }}
+
+			</li>
+
+		</ol>
+
+
+		<a href="{{ path( 'app_devis_index' ) }}" class="btn btn-sm btn-primary-light">
+			<i class="fa fa-list mr-1"></i>
+			Liste des devis
+		</a>
+
+	</div>
+
+
+	{% if not form.vars.valid %}
+
+		<div class="alert alert-danger">
+			{{ form_errors(form) }}
+		</div>
+
+	{% endif %}
+
+
+	{# ========================================================
+													       CLIENT
+													       ======================================================== #}
+
+	<div class="card">
+
+		<div class="card-header">
+
+			<div class="card-title">
+				<i class="fa fa-user-circle mr-2"></i>
+				Client
+			</div>
+
+		</div>
+
+		<div class="card-body">
+
+			<div class="row">
+
+				<div class="col-lg-6">
+
+					{{ form_row(form.clients, {
+                        label: 'Client',
+
+                        attr: {
+                            class:
+                                'form-control js-select-search',
+
+                            'data-placeholder':
+                                'Rechercher un client...'
+                        }
+                    }) }}
+
+				</div>
+
+				<div class="col-lg-6">
+
+					{{ form_row(form.emetteur, {
+                        label: 'Émetteur',
+
+                        attr: {
+                            class: 'form-control custom-select'
+                        }
+                    }) }}
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ========================================================
+													       FACTURATION À UN TIERS
+													       ======================================================== #}
+
+	<div class="card">
+
+		<div class="card-header">
+
+			<div class="card-title">
+				<i class="fa fa-exchange mr-2"></i>
+				Facturation à un tiers
+			</div>
+
+		</div>
+
+		<div class="card-body">
+
+			<div class="custom-control custom-checkbox mb-3">
+
+				{{ form_widget(form.facturerAUnTiers, {
+                        attr: {
+                            class: 'custom-control-input js-facturer-a-un-tiers'
+                        }
+                    }) }}
+
+				{{ form_label(form.facturerAUnTiers, null, {
+                        label_attr: {
+                            class: 'custom-control-label'
+                        }
+                    }) }}
+
+			</div>
+
+			<small class="form-text text-muted mb-3 d-block">
+				Le demandeur du devis n'est pas toujours celui qui paie
+																												(ex : un employé demande, son entreprise règle).
+																												Cochez cette case pour indiquer les coordonnées du payeur ;
+																												elles remplaceront celles du client sur le PDF.
+			</small>
+
+			<div class="row js-zone-facturer-a-un-tiers" style="display:none;">
+
+				<div class="col-md-6">
+					{{ form_row(form.nomFacturation, {
+                            label: 'Nom du payeur',
+                            attr: { class: 'form-control' }
+                        }) }}
+				</div>
+
+				<div class="col-md-6">
+					{{ form_row(form.adresseFacturation, {
+                            label: 'Adresse de facturation',
+                            attr: { class: 'form-control' }
+                        }) }}
+				</div>
+
+				<div class="col-md-6">
+					{{ form_row(form.telephoneFacturation, {
+                            label: 'Téléphone du payeur',
+                            attr: { class: 'form-control' }
+                        }) }}
+				</div>
+
+				<div class="col-md-6">
+					{{ form_row(form.emailFacturation, {
+                            label: 'Email du payeur',
+                            attr: { class: 'form-control' }
+                        }) }}
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ========================================================
+													       INFORMATIONS DEVIS
+													       ======================================================== #}
+
+	<div class="card">
+
+		<div class="card-header">
+
+			<div class="card-title">
+				<i class="fa fa-file-text-o mr-2"></i>
+				Informations du devis
+			</div>
+
+		</div>
+
+		<div class="card-body">
+
+			<div class="row">
+
+				<div class="col-md-6 col-xl-3">
+
+					<div class="form-group">
+
+						<label>
+							Numéro
+						</label>
+
+						<input type="text" class="form-control" disabled value="{{ form.vars.data.numero |default( 'Généré automatiquement' ) }}">
+
+					</div>
+
+				</div>
+
+
+				<div class="col-md-6 col-xl-3">
+
+					{{ form_row(form.statut, {
+                        label: 'Statut'
+                    }) }}
+
+				</div>
+
+
+				<div class="col-md-6 col-xl-3">
+
+					{{ form_row(form.etat, {
+                        label: 'État'
+                    }) }}
+
+				</div>
+
+
+				<div class="col-md-6 col-xl-3">
+
+					{{ form_row(form.tva, {
+                        label: 'TVA (%)'
+                    }) }}
+
+				</div>
+
+
+				<div class="col-md-12 col-xl-6">
+
+					{{ form_row(form.observation, {
+                        label: 'Observation',
+
+                        attr: {
+                            rows: 3,
+                            placeholder:
+                                'Informations complémentaires...'
+                        }
+                    }) }}
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ========================================================
+													       DÉTAILS
+													       ======================================================== #}
+
+	<div class="card">
+
+		<div class="
+																																																				                card-header
+																																																				                d-flex
+																																																				                justify-content-between
+																																																				                align-items-center
+																																																				            ">
+
+			<div>
+
+				<div class="card-title mb-0">
+
+					<i class="fa fa-shopping-cart mr-2"></i>
+
+					Produits, articles et prestations
+
+				</div>
+
+				<small class="text-muted">
+					Produit catalogue,
+																																																																	                    article en stock ou saisie libre.
+				</small>
+
+			</div>
+
+
+			<button type="button" id="add-detail" class="btn btn-success-light">
+				<i class="fa fa-plus mr-1"></i>
+				Ajouter un détail
+			</button>
+
+		</div>
+
+
+		<div class="card-body">
+
+			{{ form_errors(
+                form.devisDetails
+            ) }}
+
+
+			<div id="collection-details" data-index="{{ form.devisDetails|length }}" data-prototype="{{ _self.champs_detail( form.devisDetails.vars.prototype )|e('html_attr') }}">
+
+				{% for detail in form.devisDetails %}
+
+					<div class="
+																																																																																											                            detail-devis
+																																																																																											                            card
+																																																																																											                            border
+																																																																																											                            mb-4
+																																																																																											                        ">
+
+						<div class="
+																																																																																																								                                card-header
+																																																																																																								                                bg-light
+																																																																																																								                                d-flex
+																																																																																																								                                justify-content-between
+																																																																																																								                                align-items-center
+																																																																																																								                            ">
+
+							<div class="
+																																																																																																																					                                    card-title
+																																																																																																																					                                    detail-title
+																																																																																																																					                                    mb-0
+																																																																																																																					                                ">
+								Travail
+								{{ loop.index }}
+							</div>
+
+
+							<button type="button" class="
+																																																																																																																					                                    btn
+																																																																																																																					                                    btn-danger-light
+																																																																																																																					                                    btn-sm
+																																																																																																																					                                    supprimer-detail
+																																																																																																																					                                ">
+								<i class="fa fa-trash mr-1"></i>
+								Supprimer
+							</button>
+
+						</div>
+
+
+						<div class="card-body p-0">
+
+							{{ _self.champs_detail(
+                                detail
+                            ) }}
+
+						</div>
+
+					</div>
+
+				{% else %}
+
+					<div id="aucun-detail" class="alert alert-info mb-0">
+						Aucun travail ajouté.
+																																																																														                        Cliquez sur « Ajouter un détail ».
+					</div>
+
+				{% endfor %}
+
+			</div>
+
+			<div class="text-center mt-2">
+				<button type="button" id="add-detail-bottom" class="btn btn-success-light">
+					<i class="fa fa-plus mr-1"></i>
+					Ajouter un détail
+				</button>
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ========================================================
+													       RÉCAPITULATIF
+													       ======================================================== #}
+
+	<div class="row">
+
+		<div class="col-xl-5 ml-auto">
+
+			<div class="card">
+
+				<div class="card-header">
+
+					<div class="card-title">
+						<i class="fa fa-calculator mr-2"></i>
+						Récapitulatif
+					</div>
+
+				</div>
+
+
+				<div class="card-body">
+
+					<div class="row">
+
+						<div class="col-md-6">
+
+							{{ form_row(form.totalHt, {
+                                label: 'Total HT',
+
+                                attr: {
+                                    readonly: true
+                                }
+                            }) }}
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							{{ form_row(form.remise, {
+                                label: 'Remise'
+                            }) }}
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							{{ form_row(form.totalTtc, {
+                                label: 'Total TTC',
+
+                                attr: {
+                                    readonly: true
+                                }
+                            }) }}
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							{{ form_row(form.montantApayer, {
+                                label: 'Montant à payer',
+
+                                attr: {
+                                    readonly: true
+                                }
+                            }) }}
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				<div class="
+																																																																														                        card-footer
+																																																																														                        d-flex
+																																																																														                        justify-content-between
+																																																																														                    ">
+
+					<a href="{{ path( 'app_devis_index' ) }}" class="btn btn-primary-light">
+						Annuler
+					</a>
+
+
+					<button type="submit" class="btn btn-success-light">
+						<i class="fa fa-save mr-1"></i>
+
+						{{
+                            button_label
+                            |default(
+                                'Enregistrer le devis'
+                            )
+                        }}
+
+					</button>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+</div>
+
+
+{% if form._token is defined %}
+	{{ form_widget(form._token) }}
+{% endif %}
+
+
+{{ form_end(
+    form,
+    {
+        render_rest: false
+    }
+) }}
+
+
+<link href="{{ asset( 'assets/plugins/select2/select2.min.css' ) }}" rel="stylesheet">
+
+
+<style>
+
+	/* ============================================================
+   FORMULAIRE DEVIS
+   ============================================================ */
+
+	#devis-form,
+	#devis-form label,
+	#devis-form small,
+	#devis-form .form-text {
+		color: #334155 !important;
+		-webkit-text-fill-color: #334155 !important;
+	}
+
+	#devis-form input.form-control,
+	#devis-form select.form-control,
+	#devis-form textarea.form-control {
+		color: #1f2937 !important;
+		-webkit-text-fill-color: #1f2937 !important;
+
+		background-color: #ffffff !important;
+
+		border: 1px solid #d8deea !important;
+
+		opacity: 1 !important;
+	}
+
+	#devis-form input[readonly],
+	#devis-form textarea[readonly],
+	#devis-form .form-control[readonly] {
+		color: #475569 !important;
+		-webkit-text-fill-color: #475569 !important;
+
+		background-color: #f1f5f9 !important;
+
+		opacity: 1 !important;
+	}
+
+	#devis-form select option {
+		color: #1f2937 !important;
+		background: #ffffff !important;
+	}
+
+
+	/* ============================================================
+   DÉTAIL
+   ============================================================ */
+
+	.detail-devis {
+		border: 1px solid #dce4f0 !important;
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.detail-devis > .card-header {
+		min-height: 58px;
+
+		padding: 14px 20px;
+
+		background: #f4f7fc !important;
+
+		border-bottom: 1px solid #dce4f0;
+	}
+
+	.travail-form {
+		padding: 20px;
+		background: #ffffff;
+	}
+
+	.travail-section {
+		padding: 18px 18px 4px;
+
+		margin-bottom: 18px;
+
+		border: 1px solid #e5eaf2;
+		border-radius: 7px;
+
+		background: #fbfcfe;
+	}
+
+	.travail-section-title {
+		margin: -18px -18px 18px;
+
+		padding: 11px 16px;
+
+		color: #17366f !important;
+
+		-webkit-text-fill-color: #17366f !important;
+
+		font-size: 14px;
+
+		font-weight: 600;
+
+		background: #f1f5fb;
+
+		border-bottom: 1px solid #e1e7f0;
+	}
+
+	.travail-section-title i {
+		width: 22px;
+		color: #6259ca;
+	}
+
+
+	/* ============================================================
+   FINITIONS
+   ============================================================ */
+
+	.finitions-box {
+		padding: 14px;
+
+		border: 1px dashed #cbd4e1;
+
+		border-radius: 6px;
+
+		background: #ffffff;
+	}
+
+	.finitions-box .form-check {
+		display: inline-flex;
+
+		align-items: center;
+
+		margin: 0 20px 10px 0;
+	}
+
+
+	/* ============================================================
+   SELECT2
+   ============================================================ */
+
+	#devis-form select.select2-hidden-accessible {
+		position: absolute !important;
+
+		width: 1px !important;
+		height: 1px !important;
+
+		padding: 0 !important;
+
+		margin: -1px !important;
+
+		overflow: hidden !important;
+
+		clip: rect(0, 0, 0, 0) !important;
+
+		white-space: nowrap !important;
+
+		border: 0 !important;
+
+		opacity: 0 !important;
+	}
+
+	#devis-form .select2-container {
+		display: block;
+
+		width: 100% !important;
+	}
+
+	#devis-form .select2-selection--single {
+		height: 42px;
+
+		background: #ffffff !important;
+
+		border: 1px solid #d8dee9 !important;
+
+		border-radius: 5px;
+	}
+
+	#devis-form .select2-selection__rendered {
+		line-height: 40px !important;
+
+		color: #1f2937 !important;
+
+		-webkit-text-fill-color: #1f2937 !important;
+	}
+
+	.select2-dropdown {
+		background: #ffffff !important;
+	}
+
+	.select2-results__option {
+		color: #1f2937 !important;
+
+		background: #ffffff !important;
+
+		-webkit-text-fill-color: #1f2937 !important;
+	}
+
+	.select2-results__option--highlighted {
+		color: #ffffff !important;
+
+		-webkit-text-fill-color: #ffffff !important;
+
+		background: #6259ca !important;
+	}
+
+	.select2-search__field {
+		color: #1f2937 !important;
+
+		-webkit-text-fill-color: #1f2937 !important;
+
+		background: #ffffff !important;
+	}
+
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+	document.addEventListener('DOMContentLoaded', function () {
+
+console.log('✅ JavaScript Devis chargé');
+
+const form = document.getElementById('devis-form');
+const collection = document.getElementById('collection-details');
+const addButton = document.getElementById('add-detail');
+
+const addButtonBas = document.getElementById('add-detail-bottom');
+
+if (! form || ! collection || ! addButton) {
+console.error('❌ Impossible d’initialiser le devis.', {
+form: !! form,
+collection: !! collection,
+addButton: !! addButton
+});
+
+return;
+}
+
+
+/* =========================================================
+       URL AJAX
+       ========================================================= */
+
+const configurationsProduitUrl = "{{ path(
+        'app_produit_configuration_by_produit_ajax',
+        { id: 0 }
+    ) }}";
+
+const configurationUrl = "{{ path(
+        'app_produit_configuration_get_ajax',
+        { id: 0 }
+    ) }}";
+
+const articleUrl = "{{ path(
+        'app_article_commande_ajax',
+        { id: 0 }
+    ) }}";
+
+const optionsManuellesUrl = "{{ path(
+        'app_commande_catalogue_options_manuelles',
+        { id: 0 }
+    ) }}";
+
+
+console.log('URL configurations :', configurationsProduitUrl);
+console.log('URL configuration :', configurationUrl);
+console.log('URL article :', articleUrl);
+
+
+/* =========================================================
+       CACHE
+       ========================================================= */
+
+const configurationsParDetail = new WeakMap();
+
+
+/* =========================================================
+       OUTILS
+       ========================================================= */
+
+function construireUrl(url, id) {
+return url.replace('/0/', '/' + encodeURIComponent(id) + '/');
+}
+
+
+function champDetail(detail, nomChamp) {
+return detail.querySelector('[data-detail-field="' + nomChamp + '"],' + '[name$="[' + nomChamp + ']"]');
+}
+
+
+function nombreDepuisChamp(champ, valeurDefaut = 0) {
+if (! champ || champ.value === '') {
+return valeurDefaut;
+}
+
+const valeur = Number(String(champ.value).replace(',', '.'));
+
+return Number.isFinite(valeur) ? valeur : valeurDefaut;
+}
+
+
+/*
+ * Les champs largeur/longueur sont saisis en centimetres (voir
+ * DevisDetailsType, aligne sur le module commande), mais les calculs
+ * de surface/metre lineaire ci-dessous raisonnent en metres (comme
+ * le catalogue). On convertit donc systematiquement a la lecture.
+ */
+function metresDepuisChampCm(champ) {
+return Math.max(0, nombreDepuisChamp(champ)) / 100;
+}
+
+
+/*
+ * Sens inverse : une dimension du catalogue (en metres) doit etre
+ * convertie en centimetres avant d'etre ecrite dans le champ.
+ */
+function cmDepuisMetres(valeurMetres) {
+if (valeurMetres === null || valeurMetres === undefined || valeurMetres === '') {
+return '';
+}
+
+const nombre = Number(valeurMetres);
+
+return Number.isFinite(nombre) ? nombre * 100 : '';
+}
+
+
+function definirValeurChamp(detail, nomChamp, valeur, declencherEvenement = true) {
+const champ = champDetail(detail, nomChamp);
+
+if (! champ) {
+console.warn('Champ introuvable :', nomChamp);
+
+return;
+}
+
+
+let valeurFinale = valeur;
+
+if (valeurFinale !== null && typeof valeurFinale === 'object' && valeurFinale.id !== undefined) {
+valeurFinale = valeurFinale.id;
+}
+
+
+const nouvelleValeur = valeurFinale === null || valeurFinale === undefined ? '' : String(valeurFinale);
+
+
+/*
+         * Empêche les boucles infinies.
+         */
+if (String(champ.value) === nouvelleValeur) {
+return;
+}
+
+
+champ.value = nouvelleValeur;
+
+
+/*
+         * Mise à jour Select2 sans déclencher
+         * les événements métier.
+         */
+if (champ.tagName === 'SELECT' && typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.select2 !== 'undefined') {
+window.jQuery(champ).val(nouvelleValeur).trigger('change.select2');
+}
+
+
+if (declencherEvenement) {
+champ.dispatchEvent(new Event('input', {bubbles: true}));
+}
+}
+
+
+function actualiserSelect2(select) {
+if (! select || typeof window.jQuery === 'undefined' || typeof window.jQuery.fn.select2 === 'undefined') {
+return;
+}
+
+window.jQuery(select).trigger('change.select2');
+}
+
+
+function viderSelect(select, placeholder) {
+if (! select) {
+return;
+}
+
+select.innerHTML = '';
+
+const option = document.createElement('option');
+
+option.value = '';
+option.textContent = placeholder;
+
+select.appendChild(option);
+
+select.value = '';
+
+actualiserSelect2(select);
+}
+
+
+/* =========================================================
+       TYPE DE LIGNE
+       ========================================================= */
+
+function valeurTypeLigne(detail) {
+const coche = detail.querySelector('[name$="[typeLigne]"]:checked');
+
+if (coche) {
+return coche.value;
+}
+
+const champ = champDetail(detail, 'typeLigne');
+
+return champ ? champ.value : 'produit';
+}
+
+
+function valeurModeConfiguration(detail) {
+/*
+ * Alignement sur la commande : une ligne produit fonctionne
+ * toujours en mode "manuel" (voir appliquerModeConfiguration()).
+ * Le groupe de radios modeConfiguration est desormais cache en
+ * permanence, donc jamais coche : lire la valeur statique d'un
+ * radio non coche (champDetail(...).value) renvoyait toujours
+ * "automatique" (le premier radio de la liste), quel que soit
+ * l'etat reel. On retombe directement sur "manuel".
+ */
+const coche = detail.querySelector('[name$="[modeConfiguration]"]:checked');
+
+if (coche) {
+return coche.value;
+}
+
+return 'manuel';
+}
+
+
+/* =========================================================
+       CALCULS
+       ========================================================= */
+
+function ecrireMontant(champ, valeur) {
+if (! champ) {
+return;
+}
+
+champ.value = String(Number.isFinite(valeur) ? Math.round(valeur) : 0);
+}
+
+
+function montantFinitionsAutomatiques(detail) {
+const largeur = metresDepuisChampCm(champDetail(detail, 'largeur'));
+
+const longueur = metresDepuisChampCm(champDetail(detail, 'longueur'));
+
+const surface = largeur * longueur;
+
+const quantite = Math.max(1, nombreDepuisChamp(champDetail(detail, 'quantite'), 1));
+
+
+return Array.from(detail.querySelectorAll('.js-finition-selectionnee:checked')).reduce(function (total, checkbox) {
+
+const prix = Math.max(0, Number(checkbox.dataset.prix || 0));
+
+const mode = String(checkbox.dataset.modeCalcul || 'forfait').toLowerCase();
+
+
+switch (mode) {
+case 'metre_carre':
+case 'surface':
+case 'm2':
+
+return total + prix * surface * quantite;
+
+
+case 'metre':
+
+return total + prix * longueur * quantite;
+
+
+case 'unite':
+case 'quantite':
+case 'feuille':
+case 'exemplaire':
+case 'face':
+case 'heure':
+case 'point':
+
+return total + prix * quantite;
+
+
+default:
+
+return total + prix;
+}
+}, 0);
+}
+
+
+function montantFinitionsManuelles(detail) {
+return Array.from(detail.querySelectorAll('.js-finition-manuelle')).reduce(function (total, ligne) {
+
+const prix = Math.max(0, nombreDepuisChamp(ligne.querySelector('.js-finition-prix')));
+
+const quantite = Math.max(1, nombreDepuisChamp(ligne.querySelector('.js-finition-quantite'), 1));
+
+const champMode = ligne.querySelector('.js-finition-mode');
+
+const mode = String(champMode ? champMode.value : 'forfait').toLowerCase();
+
+
+const largeur = metresDepuisChampCm(champDetail(detail, 'largeur'));
+
+const longueur = metresDepuisChampCm(champDetail(detail, 'longueur'));
+
+const surface = largeur * longueur;
+
+
+switch (mode) {
+case 'metre':
+
+return total + prix * longueur * quantite;
+
+
+case 'metre_carre':
+
+return total + prix * surface * quantite;
+
+
+case 'unite':
+case 'feuille':
+case 'exemplaire':
+case 'heure':
+case 'point':
+case 'face':
+
+return total + prix * quantite;
+
+
+default:
+
+return total + prix;
+}
+}, 0);
+}
+
+
+function calculerDetail(detail) {
+const largeur = metresDepuisChampCm(champDetail(detail, 'largeur'));
+
+const longueur = metresDepuisChampCm(champDetail(detail, 'longueur'));
+
+const surface = largeur * longueur;
+
+const quantite = Math.max(1, nombreDepuisChamp(champDetail(detail, 'quantite'), 1));
+
+const prix = Math.max(0, nombreDepuisChamp(champDetail(detail, 'prixUnitaire')));
+
+const remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
+
+const tva = Math.max(0, nombreDepuisChamp(champDetail(detail, 'tva')));
+
+const champMode = champDetail(detail, 'modeCalcul');
+
+const mode = String(champMode ? champMode.value : 'unite').toLowerCase();
+
+
+let montant = 0;
+let facteur = 0;
+
+
+switch (mode) {
+case 'forfait': facteur = 1; montant = prix * facteur;
+
+break;
+
+
+case 'metre': facteur = longueur * quantite; montant = prix * facteur;
+
+break;
+
+
+case 'metre_carre': facteur = surface * quantite; montant = prix * facteur;
+
+break;
+
+
+case 'face': facteur = Math.max(1, nombreDepuisChamp(champDetail(detail, 'nombreFaces'), 1)) * quantite; montant = prix * facteur;
+
+break;
+
+
+default: facteur = quantite; montant = prix * facteur;
+
+break;
+}
+
+
+/*
+         * Les finitions appartiennent uniquement
+         * aux lignes Produit.
+         */
+if (valeurTypeLigne(detail) === 'produit') {
+/*
+ * Alignement sur la commande : une ligne produit est toujours en
+ * mode "manuel" (voir appliquerModeConfiguration()). Cette
+ * fonction ne doit donc compter que les finitions manuelles --
+ * valeurModeConfiguration() retombant systematiquement sur
+ * "automatique" une fois le groupe de radios cache, l'ancienne
+ * condition ignorait le prix des finitions manuelles dans le
+ * total affiche.
+ */
+montant += montantFinitionsManuelles(detail);
+}
+
+
+// La remise est un montant par unité (ex. 500 FCFA par m²), pas un montant fixe sur toute la ligne.
+const remiseTotale = Math.min(montant, remise * Math.max(0, facteur));
+
+const totalHt = Math.max(0, montant - remiseTotale);
+
+const totalTtc = totalHt * (1 + tva / 100);
+
+
+const elementRemiseTotale = detail.querySelector('.js-remise-totale-detail');
+
+if (elementRemiseTotale) {
+elementRemiseTotale.textContent = remiseTotale > 0
+? ('Remise totale : ' + Math.round(remiseTotale).toLocaleString('fr-FR') + ' FCFA')
+: 'Remise totale : —';
+}
+
+
+/*
+         * Pas d'événement ici.
+         */
+definirValeurChamp(detail, 'surface', surface, false);
+
+definirValeurChamp(detail, 'totalHt', Math.round(totalHt), false);
+
+definirValeurChamp(detail, 'totalTtc', Math.round(totalTtc), false);
+
+
+calculerRecapitulatif();
+}
+
+
+function calculerRecapitulatif() {
+let totalHt = 0;
+let totalTtc = 0;
+
+
+collection.querySelectorAll('.detail-devis').forEach(function (wrapper) {
+
+const detail = wrapper.querySelector('.js-devis-detail');
+
+if (! detail) {
+return;
+}
+
+
+totalHt += nombreDepuisChamp(champDetail(detail, 'totalHt'));
+
+totalTtc += nombreDepuisChamp(champDetail(detail, 'totalTtc'));
+});
+
+
+const totalHtForm = document.getElementById('{{ form.totalHt.vars.id }}');
+
+const totalTtcForm = document.getElementById('{{ form.totalTtc.vars.id }}');
+
+const remiseForm = document.getElementById('{{ form.remise.vars.id }}');
+
+const montantForm = document.getElementById('{{ form.montantApayer.vars.id }}');
+
+
+const remise = Math.max(0, nombreDepuisChamp(remiseForm));
+
+
+ecrireMontant(totalHtForm, totalHt);
+
+ecrireMontant(totalTtcForm, totalTtc);
+
+ecrireMontant(montantForm, Math.max(0, totalTtc - remise));
+}
+
+
+/* =========================================================
+       DIMENSIONS
+       ========================================================= */
+
+function actualiserDimensions(detail) {
+const mode = detail.dataset.modeDimension || '';
+
+const afficher = mode === 'mesure';
+
+
+['.js-zone-largeur', '.js-zone-longueur', '.js-zone-surface'].forEach(function (selecteur) {
+
+const zone = detail.querySelector(selecteur);
+
+if (zone) {
+zone.style.display = afficher ? '' : 'none';
+}
+});
+
+
+if (! afficher) {
+definirValeurChamp(detail, 'largeur', '', false);
+
+definirValeurChamp(detail, 'longueur', '', false);
+
+definirValeurChamp(detail, 'surface', '', false);
+}
+}
+
+
+/* =========================================================
+       MODE CONFIGURATION PRODUIT
+       ========================================================= */
+
+function appliquerModeConfiguration(detail) {
+if (valeurTypeLigne(detail) !== 'produit') {
+return;
+}
+
+
+const mode = valeurModeConfiguration(detail);
+
+const automatique = mode === 'automatique';
+
+const manuel = mode === 'manuel';
+
+
+const zoneConfiguration = detail.querySelector('.js-zone-configuration-automatique');
+
+const zoneChamps = detail.querySelector('.js-zone-champs-configuration');
+
+const zoneFinitionsAuto = detail.querySelector('.js-zone-finitions-automatiques');
+
+const zoneFinitionsManuelles = detail.querySelector('.js-zone-finitions-manuelles');
+
+
+if (zoneConfiguration) {
+zoneConfiguration.style.display = automatique ? '' : 'none';
+}
+
+
+if (zoneChamps) {
+zoneChamps.style.display = '';
+
+zoneChamps.classList.toggle('js-champs-auto-verrouilles', automatique);
+}
+
+
+if (zoneFinitionsAuto) {
+zoneFinitionsAuto.style.display = automatique ? '' : 'none';
+}
+
+
+if (zoneFinitionsManuelles) {
+zoneFinitionsManuelles.style.display = manuel ? '' : 'none';
+}
+
+
+const produit = champDetail(detail, 'produit');
+
+const configuration = champDetail(detail, 'configuration');
+
+const prix = champDetail(detail, 'prixUnitaire');
+
+const modeCalcul = champDetail(detail, 'modeCalcul');
+
+
+if (produit) {
+produit.disabled = false;
+produit.required = true;
+}
+
+
+if (configuration) {
+configuration.disabled = false;
+configuration.required = automatique;
+}
+
+
+if (prix) {
+prix.readOnly = automatique;
+}
+
+
+if (modeCalcul) {
+modeCalcul.disabled = false;
+
+modeCalcul.style.pointerEvents = automatique ? 'none' : '';
+
+modeCalcul.setAttribute('aria-readonly', automatique ? 'true' : 'false');
+}['typeImpression', 'support', 'format'].forEach(function (nomChamp) {
+
+const champ = champDetail(detail, nomChamp);
+
+if (! champ) {
+return;
+}
+
+champ.disabled = false;
+champ.required = false;
+});
+
+
+if (manuel) {
+const modeChoisi = modeCalcul ? modeCalcul.value : 'unite';
+
+detail.dataset.modeDimension = ['metre', 'metre_carre'].includes(modeChoisi) ? 'mesure' : '';
+}
+
+
+actualiserDimensions(detail);
+
+calculerDetail(detail);
+}
+
+
+/* =========================================================
+       TYPE DE LIGNE
+       ========================================================= */
+
+function appliquerTypeLigne(detail) {
+const type = valeurTypeLigne(detail);
+
+const estProduit = type === 'produit';
+
+const estArticle = type === 'article';
+
+const estLibre = type === 'libre';
+
+
+console.log('Type de ligne :', type);
+
+
+const zoneProduit = detail.querySelector('.js-zone-produit');
+
+const zoneArticle = detail.querySelector('.js-zone-article-stock');
+
+const zoneMode = detail.querySelector('.js-zone-mode-configuration');
+
+const zoneConfiguration = detail.querySelector('.js-zone-champs-configuration');
+
+const zoneFinitions = detail.querySelector('.js-zone-finitions');
+
+const zoneTechnique = detail.querySelector('.js-zone-technique');
+
+
+if (zoneProduit) {
+zoneProduit.style.display = estProduit ? '' : 'none';
+}
+
+
+if (zoneArticle) {
+zoneArticle.style.display = estArticle ? '' : 'none';
+}
+
+
+if (zoneMode) {
+zoneMode.style.display = 'none';
+}
+
+
+if (zoneConfiguration) {
+zoneConfiguration.style.display = estProduit ? '' : 'none';
+}
+
+
+if (zoneFinitions) {
+zoneFinitions.style.display = estProduit ? '' : 'none';
+}
+
+
+if (zoneTechnique) {
+zoneTechnique.style.display = estProduit ? '' : 'none';
+}
+
+
+const produit = champDetail(detail, 'produit');
+
+const article = champDetail(detail, 'article');
+
+const configuration = champDetail(detail, 'configuration');
+
+const designation = champDetail(detail, 'designation');
+
+const prix = champDetail(detail, 'prixUnitaire');
+
+const modeCalcul = champDetail(detail, 'modeCalcul');
+
+
+/*
+         * modeConfiguration
+         */
+detail.querySelectorAll('[name$="[modeConfiguration]"]').forEach(function (champ) { /*
+                     * Toujours retirer required : .js-zone-mode-configuration
+                     * est en permanence masqué (voir zoneMode ci-dessus), donc
+                     * un required ici fait planter la validation HTML5 du
+                     * navigateur ("not focusable") et bloque l'envoi du devis.
+                     *
+                     * On ne désactive PAS ces radios ici,
+                     * car le serveur possède encore
+                     * modeConfiguration dans l'entité.
+                     */
+champ.required = false;
+});
+
+
+/*
+         * Produit
+         */
+if (produit) {
+produit.required = estProduit;
+
+produit.disabled = ! estProduit;
+}
+
+
+/*
+         * Article
+         */
+if (article) {
+article.required = estArticle;
+
+article.disabled = ! estArticle;
+}
+
+
+/*
+         * Configuration
+         */
+if (configuration) {
+configuration.required = estProduit && valeurModeConfiguration(detail) === 'automatique';
+
+configuration.disabled = ! estProduit;
+}
+
+
+/*
+         * =====================================================
+         * PRODUIT
+         * =====================================================
+         */
+if (estProduit) {
+if (article) {
+article.value = '';
+
+actualiserSelect2(article);
+}
+
+
+if (designation) {
+designation.readOnly = false;
+}
+
+
+appliquerModeConfiguration(detail);
+
+return;
+}
+
+
+/*
+         * =====================================================
+         * ARTICLE
+         * =====================================================
+         */
+if (estArticle) {
+definirValeurChamp(detail, 'produit', '', false);
+
+definirValeurChamp(detail, 'configuration', '', false);
+
+definirValeurChamp(detail, 'typeImpression', '', false);
+
+definirValeurChamp(detail, 'support', '', false);
+
+definirValeurChamp(detail, 'format', '', false);
+
+definirValeurChamp(detail, 'modeCalcul', 'unite', false);
+
+
+['typeImpression', 'support', 'format'].forEach(function (nomChamp) {
+
+const champ = champDetail(detail, nomChamp);
+
+if (champ) {
+champ.required = false;
+champ.disabled = true;
+}
+});
+
+
+if (designation) {
+designation.readOnly = true;
+}
+
+
+if (prix) {
+prix.readOnly = true;
+}
+
+
+if (modeCalcul) { /*
+                 * Attention :
+                 * doit rester activé pour être envoyé au serveur.
+                 */
+modeCalcul.disabled = false;
+}
+
+
+detail.dataset.modeDimension = '';
+
+actualiserDimensions(detail);
+
+
+/*
+             * Si article déjà sélectionné.
+             */
+if (article && article.value) {
+chargerArticle(detail);
+}
+
+
+calculerDetail(detail);
+
+return;
+}
+
+
+/*
+         * =====================================================
+         * LIBRE
+         * =====================================================
+         */
+if (estLibre) {
+definirValeurChamp(detail, 'article', '', false);
+
+definirValeurChamp(detail, 'produit', '', false);
+
+definirValeurChamp(detail, 'configuration', '', false);
+
+definirValeurChamp(detail, 'typeImpression', '', false);
+
+definirValeurChamp(detail, 'support', '', false);
+
+definirValeurChamp(detail, 'format', '', false);
+
+
+['typeImpression', 'support', 'format'].forEach(function (nomChamp) {
+
+const champ = champDetail(detail, nomChamp);
+
+if (champ) {
+champ.required = false;
+champ.disabled = true;
+}
+});
+
+
+if (designation) {
+designation.readOnly = false;
+
+designation.required = true;
+}
+
+
+if (prix) {
+prix.readOnly = false;
+}
+
+
+if (modeCalcul) {
+modeCalcul.disabled = false;
+}
+
+
+detail.dataset.modeDimension = modeCalcul && ['metre', 'metre_carre'].includes(modeCalcul.value) ? 'mesure' : '';
+
+
+actualiserDimensions(detail);
+
+calculerDetail(detail);
+}
+}
+
+
+/* =========================================================
+       ARTICLE AJAX
+       ========================================================= */
+
+/*
+ * Charge le prix de base et le mode de calcul du produit
+ * lui-meme (meme endpoint que la commande :
+ * app_commande_catalogue_options_manuelles), independamment de
+ * toute configuration catalogue.
+ */
+/*
+ * Masque (et desactive) les options d'un <select> qui ne font pas
+ * partie de la liste autorisee -- meme fonction que la commande.
+ */
+function filtrerOptions(select, idsAutorises) {
+if (! select) {
+return;
+}
+
+const autorises = new Set((idsAutorises || []).map(String));
+
+let valeurEncoreValide = false;
+
+Array.from(select.options).forEach(function (option) {
+if (! option.value) {
+return;
+}
+
+const visible = autorises.has(String(option.value));
+
+option.hidden = ! visible;
+
+option.disabled = ! visible;
+
+if (visible && option.value === select.value) {
+valeurEncoreValide = true;
+}
+});
+
+if (! valeurEncoreValide) {
+select.value = '';
+}
+
+if (window.jQuery && window.jQuery.fn.select2 && window.jQuery(select).hasClass('select2-hidden-accessible')) {
+window.jQuery(select).trigger('change.select2');
+}
+}
+
+
+async function chargerInfosProduitBase(detail, produitId) {
+if (! produitId) {
+return;
+}
+
+try {
+
+const response = await fetch(construireUrl(optionsManuellesUrl, produitId));
+
+const json = await response.json();
+
+if (! response.ok || ! json.success) {
+throw new Error(json.message || 'Impossible de charger le produit.');
+}
+
+const infosProduit = json.produit || {};
+
+definirValeurChamp(detail, 'prixUnitaire', infosProduit.prixBase || 0, false);
+
+definirValeurChamp(detail, 'modeCalcul', infosProduit.modeCalcul || 'unite', false);
+
+/*
+ * definirValeurChamp() est appele ci-dessus avec declencherEvenement
+ * = false, donc le listener 'change' du champ modeCalcul (qui
+ * affiche Largeur/Longueur quand le mode est "metre" ou
+ * "metre_carre", voir plus bas dans ce fichier) ne se declenche
+ * pas tout seul ici. On reproduit directement ce qu'il fait.
+ */
+detail.dataset.modeDimension = ['metre', 'metre_carre'].includes(infosProduit.modeCalcul || 'unite') ? 'mesure' : '';
+
+actualiserDimensions(detail);
+
+filtrerOptions(champDetail(detail, 'typeImpression'), (json.typesImpression || []).map(function (t) {
+return t.id;
+}));
+
+filtrerOptions(champDetail(detail, 'support'), (json.supports || []).map(function (s) {
+return s.id;
+}));
+
+filtrerOptions(champDetail(detail, 'format'), (json.formats || []).map(function (f) {
+return f.id;
+}));
+
+calculerDetail(detail);
+
+} catch (erreur) {
+console.error('Erreur infos produit :', erreur);
+}
+}
+
+
+async function chargerArticle(detail) {
+if (valeurTypeLigne(detail) !== 'article') {
+return;
+}
+
+
+const select = champDetail(detail, 'article');
+
+const information = detail.querySelector('.js-stock-article');
+
+
+if (! select || ! select.value) {
+if (information) {
+information.textContent = 'Sélectionnez un article.';
+}
+
+return;
+}
+
+
+console.log('Chargement article :', select.value);
+
+
+if (information) {
+information.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Chargement...';
+}
+
+
+try {
+const url = construireUrl(articleUrl, select.value);
+
+
+console.log('URL article appelée :', url);
+
+
+const reponse = await fetch(url, {
+headers: {
+Accept: 'application/json'
+}
+});
+
+
+const resultat = await reponse.json();
+
+
+console.log('Article reçu :', resultat);
+
+
+if (! reponse.ok || ! resultat.success) {
+throw new Error(resultat.message || 'Impossible de charger l’article.');
+}
+
+
+const article = resultat.article;
+
+
+definirValeurChamp(detail, 'designation', article.designation || '', false);
+
+
+definirValeurChamp(detail, 'prixUnitaire', article.prixVente ?? 0, false);
+
+
+definirValeurChamp(detail, 'modeCalcul', 'unite', false);
+
+
+const designation = champDetail(detail, 'designation');
+
+if (designation) {
+designation.readOnly = true;
+}
+
+
+if (information) {
+information.innerHTML = '<strong>' + (
+article.reference || ''
+) + '</strong>' + '<br>' + (
+article.designation || ''
+) + '<br>' + 'Stock disponible : ' + Number(article.stockDisponible || 0).toLocaleString('fr-FR') + ' ' + (
+article.unite || ''
+) + '<br>' + 'Prix de vente : ' + Number(article.prixVente || 0).toLocaleString('fr-FR') + ' FCFA';
+}
+
+
+calculerDetail(detail);
+
+} catch (erreur) {
+console.error('Erreur article :', erreur);
+
+
+if (information) {
+information.innerHTML = '<span class="text-danger">' + erreur.message + '</span>';
+}
+}
+}
+
+
+/* =========================================================
+       PRODUIT AJAX
+       ========================================================= */
+
+async function chargerConfigurationsProduit(detail, produitId, configurationInitiale = null) {
+if (valeurTypeLigne(detail) !== 'produit') {
+return;
+}
+
+
+const configurationSelect = champDetail(detail, 'configuration');
+
+
+if (! configurationSelect) {
+return;
+}
+
+
+configurationsParDetail.set(detail, []);
+
+
+viderSelect(configurationSelect, produitId ? 'Chargement...' : 'Sélectionnez un produit');
+
+
+if (! produitId) {
+return;
+}
+
+
+try {
+const url = construireUrl(configurationsProduitUrl, produitId);
+
+
+console.log('Chargement configurations :', url);
+
+
+const reponse = await fetch(url, {
+headers: {
+Accept: 'application/json'
+}
+});
+
+
+if (! reponse.ok) {
+throw new Error('Impossible de charger les configurations.');
+}
+
+
+const resultat = await reponse.json();
+
+
+const configurations = Array.isArray(resultat) ? resultat : (resultat.configurations || resultat.data || []);
+
+
+configurationsParDetail.set(detail, configurations);
+
+
+viderSelect(configurationSelect, 'Sélectionnez une configuration');
+
+
+configurations.forEach(function (configuration) {
+
+const option = document.createElement('option');
+
+option.value = configuration.id;
+
+option.textContent = configuration.libelle || configuration.nom || ('Configuration ' + configuration.id);
+
+configurationSelect.appendChild(option);
+});
+
+
+configurationSelect.disabled = false;
+
+
+let configurationId = configurationInitiale;
+
+
+if (! configurationId && configurations.length === 1) {
+configurationId = configurations[0].id;
+}
+
+
+if (configurationId) {
+configurationSelect.value = String(configurationId);
+
+actualiserSelect2(configurationSelect);
+
+
+await chargerConfiguration(detail, configurationId);
+}
+
+} catch (erreur) {
+console.error(erreur);
+
+
+viderSelect(configurationSelect, 'Erreur de chargement');
+}
+}
+
+
+async function chargerConfiguration(detail, configurationId) {
+if (valeurTypeLigne(detail) !== 'produit') {
+return;
+}
+
+
+if (! configurationId) {
+return;
+}
+
+
+try {
+const url = construireUrl(configurationUrl, configurationId);
+
+
+console.log('Chargement configuration :', url);
+
+
+const reponse = await fetch(url, {
+headers: {
+Accept: 'application/json'
+}
+});
+
+
+if (! reponse.ok) {
+throw new Error('Impossible de charger la configuration.');
+}
+
+
+const resultat = await reponse.json();
+
+
+const configuration = resultat.configuration || resultat.data || resultat;
+
+
+detail.dataset.modeDimension = String(configuration.modeDimension || '');
+
+detail.dataset.modeCalcul = String(configuration.modeCalcul || 'unite');
+
+detail.dataset.quantiteMin = String(configuration.quantiteMinimale ?? configuration.quantiteMin ?? 1);
+
+detail.dataset.quantiteMax = String(configuration.quantiteMaximale ?? configuration.quantiteMax ?? '');
+
+
+definirValeurChamp(detail, 'designation', configuration.designation || '', false);
+
+definirValeurChamp(detail, 'typeImpression', configuration.typeImpression, false);
+
+definirValeurChamp(detail, 'support', configuration.support, false);
+
+definirValeurChamp(detail, 'format', configuration.format, false);
+
+
+if (configuration.prixBase !== null && configuration.prixBase !== undefined) {
+definirValeurChamp(detail, 'prixUnitaire', configuration.prixBase, false);
+}
+
+
+definirValeurChamp(detail, 'modeCalcul', configuration.modeCalcul || 'unite', false);
+
+
+/*
+             * Quantités
+             */
+const quantite = champDetail(detail, 'quantite');
+
+const minimum = Math.max(1, Number(detail.dataset.quantiteMin || 1));
+
+const maximum = detail.dataset.quantiteMax !== '' ? Number(detail.dataset.quantiteMax) : null;
+
+
+if (quantite) {
+quantite.min = String(minimum);
+
+if (maximum !== null && Number.isFinite(maximum)) {
+quantite.max = String(maximum);
+
+} else {
+quantite.removeAttribute('max');
+}
+
+
+if (! quantite.value || Number(quantite.value) < minimum) {
+quantite.value = String(minimum);
+}
+}
+
+
+const messageQuantite = detail.querySelector('.js-message-quantite');
+
+
+if (messageQuantite) {
+if (maximum !== null && Number.isFinite(maximum)) {
+messageQuantite.textContent = 'Quantité autorisée : ' + minimum + ' à ' + maximum + '.';
+
+} else {
+messageQuantite.textContent = 'Quantité minimale : ' + minimum + '.';
+}
+}
+
+
+/*
+             * Dimensions
+             */
+if (detail.dataset.modeDimension === 'mesure') {
+definirValeurChamp(detail, 'largeur', cmDepuisMetres(configuration.largeurDefaut ?? configuration.largeur ?? ''), false);
+
+definirValeurChamp(detail, 'longueur', cmDepuisMetres(configuration.longueurDefaut ?? configuration.longueur ?? ''), false);
+}
+
+
+/*
+             * Finitions
+             */
+const finitionsBox = detail.querySelector('.js-finitions-box');
+
+
+if (finitionsBox) {
+const nomChamp = finitionsBox.dataset.inputName;
+
+
+finitionsBox.innerHTML = '';
+
+
+const finitions = configuration.finitions || configuration.configurationFinitions || [];
+
+
+if (! finitions.length) {
+finitionsBox.innerHTML = '<span class="text-muted">' + 'Aucune finition disponible.' + '</span>';
+}
+
+
+finitions.forEach(function (finition) {
+
+const donnees = finition.finition || finition;
+
+const identifiant = finition.id ?? donnees.id;
+
+
+if (! identifiant) {
+return;
+}
+
+
+const wrapper = document.createElement('div');
+
+wrapper.className = 'form-check form-check-inline';
+
+
+const checkbox = document.createElement('input');
+
+checkbox.type = 'checkbox';
+
+checkbox.className = 'form-check-input js-finition-selectionnee';
+
+checkbox.name = nomChamp + '[]';
+
+checkbox.value = String(identifiant);
+
+checkbox.dataset.prix = String(finition.prix ?? donnees.prix ?? 0);
+
+checkbox.dataset.modeCalcul = String(finition.modeCalcul || 'forfait');
+
+checkbox.checked = Boolean(finition.obligatoire || finition.selectionneeParDefaut);
+
+
+if (finition.obligatoire) {
+checkbox.addEventListener('click', function (event) {
+event.preventDefault();
+
+checkbox.checked = true;
+});
+}
+
+
+const label = document.createElement('label');
+
+label.className = 'form-check-label ml-1';
+
+
+label.textContent = donnees.nom || finition.nom || 'Finition';
+
+
+if (Number(finition.prix || 0) > 0) {
+label.textContent += ' — ' + Number(finition.prix).toLocaleString('fr-FR') + ' FCFA';
+}
+
+
+wrapper.appendChild(checkbox);
+
+wrapper.appendChild(label);
+
+finitionsBox.appendChild(wrapper);
+});
+}
+
+
+actualiserDimensions(detail);
+
+calculerDetail(detail);
+
+} catch (erreur) {
+console.error('Erreur configuration :', erreur);
+}
+}
+
+
+/* =========================================================
+       FINITION MANUELLE
+       ========================================================= */
+
+function ajouterFinitionManuelle(detail) {
+const zone = detail.querySelector('.js-zone-finitions-manuelles');
+
+if (! zone) {
+return;
+}
+
+
+const liste = zone.querySelector('.js-liste-finitions-manuelles');
+
+const prototype = zone.getAttribute('data-prototype');
+
+
+if (! liste || ! prototype) {
+return;
+}
+
+
+let index = Number.parseInt(zone.dataset.index || '0', 10);
+
+
+if (!Number.isFinite(index)) {
+index = 0;
+}
+
+
+const html = prototype.replace(/__finition_index__/g, String(index));
+
+
+zone.dataset.index = String(index + 1);
+
+
+const conteneur = document.createElement('div');
+
+conteneur.innerHTML = html.trim();
+
+
+const ligne = conteneur.firstElementChild;
+
+
+if (! ligne) {
+return;
+}
+
+
+liste.appendChild(ligne);
+
+
+initialiserSelect2(ligne);
+
+
+calculerDetail(detail);
+}
+
+
+/* =========================================================
+       SELECT2
+       ========================================================= */
+
+function initialiserSelect2(scope) {
+if (typeof window.jQuery === 'undefined' || typeof window.jQuery.fn.select2 === 'undefined') {
+return;
+}
+
+
+window.jQuery(scope).find('select.js-select-search').each(function () {
+
+const select = window.jQuery(this);
+
+
+if (select.hasClass('select2-hidden-accessible')) {
+return;
+}
+
+
+select.select2({
+width: '100%',
+
+allowClear: true,
+
+placeholder: select.data('placeholder') || 'Rechercher et sélectionner...',
+
+language: {
+noResults: function () {
+return 'Aucun résultat trouvé';
+},
+
+searching: function () {
+return 'Recherche...';
+}
+},
+
+/*
+ * filtrerOptions() marque les options non liees au produit
+ * choisi avec option.disabled = true (Type d'impression /
+ * Support / Format). Select2 construit sa propre liste
+ * deroulante et ignore par defaut les attributs
+ * "hidden"/"disabled" du <select> natif : sans ce matcher,
+ * les options desactivees restaient visibles et
+ * selectionnables dans le menu Select2, alors qu'elles ne
+ * l'etaient plus dans le <select> natif.
+ */
+matcher: function (params, data) {
+if (data.element && data.element.disabled) {
+return null;
+}
+
+const terme = (params.term || '').trim().toUpperCase();
+
+if (terme === '') {
+return data;
+}
+
+const texte = (data.text || '').toUpperCase();
+
+return texte.indexOf(terme) > -1 ? data : null;
+}
+});
+});
+}
+
+
+/* =========================================================
+       INITIALISATION D'UNE LIGNE
+       ========================================================= */
+
+function initialiserDetail(wrapper) {
+const detail = wrapper.classList.contains('js-devis-detail') ? wrapper : wrapper.querySelector('.js-devis-detail');
+
+
+if (! detail) {
+console.error('Détail Devis introuvable.');
+
+return;
+}
+
+
+if (detail.dataset.initialise === '1') {
+return;
+}
+
+
+detail.dataset.initialise = '1';
+
+
+initialiserSelect2(detail);
+
+
+/*
+         * Type ligne
+         */
+detail.querySelectorAll('[name$="[typeLigne]"]').forEach(function (champ) {
+
+champ.addEventListener('change', function () {
+
+console.log('Changement type ligne :', champ.value);
+
+appliquerTypeLigne(detail);
+});
+});
+
+
+/*
+         * Article
+         */
+const article = champDetail(detail, 'article');
+
+if (article) {
+article.addEventListener('change', function () {
+
+console.log('Article changé :', article.value);
+
+chargerArticle(detail);
+});
+
+
+/*
+             * Select2.
+             */
+if (typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.select2 !== 'undefined') {
+window.jQuery(article).off('.devisArticle').on('select2:select.devisArticle select2:clear.devisArticle', function () {
+chargerArticle(detail);
+});
+}
+}
+
+
+/*
+         * Mode configuration
+         */
+detail.querySelectorAll('[name$="[modeConfiguration]"]').forEach(function (champ) {
+
+champ.addEventListener('change', function () {
+
+appliquerModeConfiguration(detail);
+
+
+const produit = champDetail(detail, 'produit');
+
+
+if (produit && produit.value) {
+chargerConfigurationsProduit(detail, produit.value);
+}
+});
+});
+
+
+/*
+         * Produit
+         */
+const produit = champDetail(detail, 'produit');
+
+if (produit) {
+const produitChange = function () {
+
+console.log('Produit changé :', produit.value);
+
+const optionProduit = produit.options[produit.selectedIndex];
+
+const nomProduit = optionProduit && produit.value ? optionProduit.textContent.trim() : '';
+
+definirValeurChamp(detail, 'designation', nomProduit, false);
+
+/*
+ * Alignement sur la commande : le prix et le mode de calcul
+ * viennent directement du produit (Produits::prixBase), pas
+ * d'une configuration catalogue -- chargerConfigurationsProduit()
+ * ne fait que preparer un menu "Configuration" qui reste cache
+ * (mode toujours "manuel", voir valeurModeConfiguration()).
+ */
+chargerInfosProduitBase(detail, produit.value);
+};
+
+
+produit.addEventListener('change', produitChange);
+
+
+if (typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.select2 !== 'undefined') {
+window.jQuery(produit).off('.devisProduit').on('select2:select.devisProduit select2:clear.devisProduit', produitChange);
+}
+}
+
+
+/*
+         * Configuration
+         */
+const configuration = champDetail(detail, 'configuration');
+
+if (configuration) {
+const configurationChange = function () {
+
+if (valeurTypeLigne(detail) !== 'produit') {
+return;
+}
+
+
+if (valeurModeConfiguration(detail) === 'automatique') {
+chargerConfiguration(detail, configuration.value);
+}
+};
+
+
+configuration.addEventListener('change', configurationChange);
+
+
+if (typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.select2 !== 'undefined') {
+window.jQuery(configuration).off('.devisConfiguration').on('select2:select.devisConfiguration select2:clear.devisConfiguration', configurationChange);
+}
+}
+
+
+/*
+         * Recalcul
+         */
+detail.addEventListener('input', function (event) {
+
+if (event.target.closest('.js-calcul-detail') || event.target.closest('.js-finition-manuelle')) {
+calculerDetail(detail);
+}
+});
+
+
+detail.addEventListener('change', function (event) {
+
+if (event.target.closest('.js-calcul-detail') || event.target.classList.contains('js-finition-selectionnee') || event.target.closest('.js-finition-manuelle')) {
+calculerDetail(detail);
+}
+});
+
+
+/*
+         * Ajout finition.
+         */
+const ajouterFinition = detail.querySelector('.js-ajouter-finition');
+
+if (ajouterFinition) {
+ajouterFinition.addEventListener('click', function (event) {
+event.preventDefault();
+
+ajouterFinitionManuelle(detail);
+});
+}
+
+
+/*
+         * Suppression finition.
+         */
+detail.addEventListener('click', function (event) {
+
+const bouton = event.target.closest('.js-supprimer-finition');
+
+if (! bouton) {
+return;
+}
+
+
+event.preventDefault();
+
+
+const ligne = bouton.closest('.js-finition-manuelle');
+
+if (ligne) {
+ligne.remove();
+
+calculerDetail(detail);
+}
+});
+
+
+/*
+         * Mode de calcul.
+         */
+const modeCalcul = champDetail(detail, 'modeCalcul');
+
+if (modeCalcul) {
+modeCalcul.addEventListener('change', function () {
+
+if (valeurTypeLigne(detail) !== 'article') {
+detail.dataset.modeDimension = ['metre', 'metre_carre'].includes(modeCalcul.value) ? 'mesure' : '';
+
+actualiserDimensions(detail);
+}
+
+
+calculerDetail(detail);
+});
+}
+
+
+/*
+         * Valeurs initiales.
+         */
+appliquerTypeLigne(detail);
+
+
+/*
+         * Produit existant.
+         */
+if (produit && produit.value && valeurTypeLigne(detail) === 'produit') {
+const configurationInitiale = configuration ? configuration.value : null;
+
+
+chargerConfigurationsProduit(detail, produit.value, configurationInitiale);
+}
+
+
+/*
+         * Article existant.
+         */
+if (article && article.value && valeurTypeLigne(detail) === 'article') {
+chargerArticle(detail);
+}
+
+
+calculerDetail(detail);
+}
+
+
+/* =========================================================
+       SUPPRESSION DÉTAIL
+       ========================================================= */
+
+function bindSuppressionDetail(wrapper) {
+const bouton = wrapper.querySelector('.supprimer-detail');
+
+if (! bouton || bouton.dataset.bound === '1') {
+return;
+}
+
+
+bouton.dataset.bound = '1';
+
+
+bouton.addEventListener('click', function () {
+
+wrapper.remove();
+
+rafraichirDetails();
+});
+}
+
+
+/* =========================================================
+       AJOUT DÉTAIL
+       ========================================================= */
+
+function ajouterDetail() {
+const prototype = collection.dataset.prototype;
+
+
+if (! prototype) {
+console.error('❌ Prototype détail absent.');
+
+return;
+}
+
+
+const index = Number.parseInt(collection.dataset.index || '0', 10);
+
+
+const html = prototype.replace(/__name__/g, String(index)).replace(/__detail__/g, String(index));
+
+
+collection.dataset.index = String(index + 1);
+
+
+const wrapper = document.createElement('div');
+
+
+wrapper.className = 'detail-devis card border mb-4';
+
+
+wrapper.innerHTML = `
+            <div
+                class="
+                    card-header
+                    bg-light
+                    d-flex
+                    justify-content-between
+                    align-items-center
+                "
+            >
+                <div
+                    class="
+                        card-title
+                        detail-title
+                        mb-0
+                    "
+                >
+                    Nouveau travail
+                </div>
+
+                <button
+                    type="button"
+                    class="
+                        btn
+                        btn-danger-light
+                        btn-sm
+                        supprimer-detail
+                    "
+                >
+                    <i class="fa fa-trash mr-1"></i>
+                    Supprimer
+                </button>
+            </div>
+
+            <div class="card-body p-0">
+                ${html}
+            </div>
+        `;
+
+
+collection.appendChild(wrapper);
+
+
+bindSuppressionDetail(wrapper);
+
+
+initialiserDetail(wrapper);
+
+
+rafraichirDetails();
+}
+
+
+/* =========================================================
+       RAFRAÎCHIR
+       ========================================================= */
+
+function rafraichirDetails() {
+const details = collection.querySelectorAll('.detail-devis');
+
+
+details.forEach(function (detail, index) {
+const titre = detail.querySelector('.detail-title');
+
+if (titre) {
+titre.textContent = 'Travail ' + (
+index + 1
+);
+}
+});
+
+
+const aucun = document.getElementById('aucun-detail');
+
+
+if (aucun) {
+aucun.style.display = details.length ? 'none' : '';
+}
+
+
+calculerRecapitulatif();
+}
+
+
+/* =========================================================
+       FACTURATION À UN TIERS
+       ========================================================= */
+
+const facturerAUnTiersInput = document.getElementById('{{ form.facturerAUnTiers.vars.id }}');
+
+const zoneFacturerAUnTiers = document.querySelector('.js-zone-facturer-a-un-tiers');
+
+function actualiserFacturerAUnTiers() {
+if (! facturerAUnTiersInput || ! zoneFacturerAUnTiers) {
+return;
+}
+
+zoneFacturerAUnTiers.style.display = facturerAUnTiersInput.checked ? '' : 'none';
+}
+
+if (facturerAUnTiersInput) {
+facturerAUnTiersInput.addEventListener('change', actualiserFacturerAUnTiers);
+
+actualiserFacturerAUnTiers();
+}
+
+
+/* =========================================================
+       INITIALISATION
+       ========================================================= */
+
+initialiserSelect2(form);
+
+
+collection.querySelectorAll('.detail-devis').forEach(function (wrapper) {
+
+bindSuppressionDetail(wrapper);
+
+initialiserDetail(wrapper);
+});
+
+
+addButton.addEventListener('click', function (event) {
+
+event.preventDefault();
+
+ajouterDetail();
+});
+
+if (addButtonBas) {
+addButtonBas.addEventListener('click', function (event) {
+
+event.preventDefault();
+
+ajouterDetail();
+});
+}
+
+
+const remise = document.getElementById('{{ form.remise.vars.id }}');
+
+
+if (remise) {
+remise.addEventListener('input', calculerRecapitulatif);
+}
+
+
+/* =========================================================
+       VALIDATION
+       ========================================================= */
+
+form.addEventListener('submit', function (event) {
+
+const details = collection.querySelectorAll('.detail-devis');
+
+
+if (! details.length) {
+event.preventDefault();
+
+Swal.fire({icon: 'warning', title: 'Détail obligatoire', text: 'Ajoutez au moins un détail avant d’enregistrer le devis.', confirmButtonText: 'D’accord'});
+
+return;
+}
+
+
+if (! form.checkValidity()) {
+event.preventDefault();
+
+event.stopPropagation();
+
+form.reportValidity();
+}
+});
+
+
+rafraichirDetails();
+
+
+initialiserBrouillon();
+
+
+console.log('✅ Initialisation Devis terminée');
+
+});
+
+
+/*
+ * ====================================================
+ * BROUILLON (sauvegarde automatique en session)
+ * ====================================================
+ *
+ * Uniquement pour un devis "nouveau" (pas encore enregistré) : la
+ * saisie est sauvegardée automatiquement en session cote serveur
+ * pendant que l'agent la remplit, pour pouvoir la restaurer si la
+ * page se ferme ou plante avant l'enregistrement definitif.
+ */
+function initialiserBrouillon() {
+
+const form = document.getElementById('devis-form');
+
+if (! form || form.dataset.brouillonNouvelle !== '1') {
+return;
+}
+
+const brouillonEnregistrerUrl = form.dataset.brouillonEnregistrerUrl;
+const brouillonVerifierUrl = form.dataset.brouillonVerifierUrl;
+const brouillonCsrf = form.dataset.brouillonCsrf;
+
+if (! brouillonEnregistrerUrl || ! brouillonCsrf) {
+return;
+}
+
+function serialiserFormulaireBrouillon() {
+const donnees = new FormData(form);
+const params = new URLSearchParams();
+
+for (const paire of donnees.entries()) {
+const valeur = paire[1];
+
+if (valeur instanceof File) {
+continue;
+}
+
+params.append(paire[0], valeur);
+}
+
+return params;
+}
+
+function sauvegarderBrouillon() {
+fetch(brouillonEnregistrerUrl, {
+method: 'POST',
+headers: {
+'Content-Type': 'application/x-www-form-urlencoded',
+'X-CSRF-TOKEN': brouillonCsrf
+},
+body: serialiserFormulaireBrouillon().toString()
+}).catch(function (erreur) {
+console.error(erreur);
+});
+}
+
+let minuteurBrouillon = null;
+
+form.addEventListener('input', function () {
+if (minuteurBrouillon) {
+clearTimeout(minuteurBrouillon);
+}
+
+minuteurBrouillon = setTimeout(sauvegarderBrouillon, 4000);
+});
+
+setInterval(sauvegarderBrouillon, 60000);
+
+if (
+window.location.search.indexOf('restaurer=1') === -1
+&& brouillonVerifierUrl
+) {
+fetch(brouillonVerifierUrl)
+.then(function (reponse) {
+return reponse.json();
+})
+.then(function (donnees) {
+if (! donnees.existe || typeof window.Swal === 'undefined') {
+return;
+}
+
+window.Swal.fire({
+icon: 'question',
+title: 'Saisie non terminée trouvée',
+text: 'Une saisie de devis non enregistrée a été trouvée. Voulez-vous la restaurer ?',
+showCancelButton: true,
+confirmButtonText: 'Restaurer',
+cancelButtonText: 'Ignorer'
+}).then(function (resultat) {
+if (resultat.isConfirmed) {
+const url = new URL(window.location.href);
+
+url.searchParams.set('restaurer', '1');
+
+window.location.href = url.toString();
+}
+});
+})
+.catch(function (erreur) {
+console.error(erreur);
+});
+}
+}
+</script>

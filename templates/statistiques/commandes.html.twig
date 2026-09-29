@@ -1,0 +1,208 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Statistiques des commandes
+{% endblock %}
+
+{% block body %}
+
+<div class="side-app">
+
+	<div class="page-header">
+
+		<div>
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_statistiques_globales_index') }}">Statistiques</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					Commandes
+				</li>
+
+			</ol>
+
+		</div>
+
+	</div>
+
+
+	{# ==========================================================
+	   ÉVOLUTION
+	   ========================================================== #}
+
+	<div class="card">
+
+		<div class="card-header d-flex align-items-center justify-content-between flex-wrap">
+
+			<h3 class="card-title mb-0">
+				Évolution du chiffre d'affaires et du nombre de commandes
+			</h3>
+
+			<div class="btn-group">
+				{% for cle, libelle in { jour: 'Jour', semaine: 'Semaine', mois: 'Mois', annee: 'Année' } %}
+					<a href="{{ path('app_statistiques_commandes_index', {granularite: cle}) }}" class="btn btn-sm {{ granulariteEvolution == cle ? 'btn-primary' : 'btn-primary-light' }}">
+						{{ libelle }}
+					</a>
+				{% endfor %}
+			</div>
+
+		</div>
+
+		<div class="card-body">
+			<canvas id="graphiqueEvolutionCommandes" height="240"></canvas>
+		</div>
+
+	</div>
+
+
+	{# ==========================================================
+	   RÉSUMÉ DES IMPAYÉS
+	   ========================================================== #}
+
+	<div class="row">
+
+		{% for tranche in parTranche %}
+
+			<div class="col-lg-3 col-md-6 mb-3">
+
+				<div class="card mb-0 h-100">
+
+					<div class="card-body text-center">
+
+						<small class="text-muted d-block">
+							{{ tranche.libelle }}
+						</small>
+
+						<div class="h2 mb-0 {{ loop.index >= 3 ? 'text-danger' : (loop.index == 2 ? 'text-warning' : '') }}">
+							{{ tranche.nombre }}
+						</div>
+
+						<small class="text-muted">
+							{{ tranche.montant|number_format(0, ',', ' ') }} FCFA
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		{% endfor %}
+
+	</div>
+
+
+	{# ==========================================================
+	   LISTE DES COMMANDES NON SOLDÉES
+	   ========================================================== #}
+
+	<div class="card">
+
+		<div class="card-header">
+			<h3 class="card-title">
+				<i class="fa fa-exclamation-circle mr-1"></i>
+				Commandes non soldées, des plus anciennes aux plus récentes
+			</h3>
+			<div class="card-options">
+				<strong>Total restant dû : {{ totalReste|number_format(0, ',', ' ') }} FCFA</strong>
+			</div>
+		</div>
+
+		<div class="table-responsive">
+			<table class="table table-bordered table-hover mb-0">
+				<thead>
+					<tr>
+						<th>N° commande</th>
+						<th>Client</th>
+						<th>Date commande</th>
+						<th class="text-right">Ancienneté</th>
+						<th class="text-right">Reste à payer</th>
+						<th width="80"></th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for ligne in commandesNonSoldees %}
+						<tr>
+							<td>{{ ligne.commande.numero|default('#' ~ ligne.commande.id) }}</td>
+							<td>{{ ligne.commande.clients ? ligne.commande.clients.nomComplet : 'Client supprimé' }}</td>
+							<td>{{ ligne.commande.dateCommande|date('d/m/Y') }}</td>
+							<td class="text-right">
+								<span class="badge {{ ligne.jours > 90 ? 'badge-danger' : (ligne.jours > 30 ? 'badge-warning' : 'badge-light') }}">
+									{{ ligne.jours }} jour(s)
+								</span>
+							</td>
+							<td class="text-right">{{ ligne.reste|number_format(0, ',', ' ') }}</td>
+							<td class="text-center">
+								<a href="{{ path('app_commandes_show', {id: ligne.commande.id}) }}" class="btn btn-sm btn-primary-light" title="Voir la commande">
+									<i class="fa fa-eye"></i>
+								</a>
+							</td>
+						</tr>
+					{% else %}
+						<tr>
+							<td colspan="6" class="text-center text-muted py-4">
+								Toutes les commandes sont soldées.
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+
+	</div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+<script>
+	(function () {
+		var evolution = {{ evolution|json_encode|raw }};
+
+		var canevas = document.getElementById('graphiqueEvolutionCommandes');
+
+		if (canevas && typeof Chart !== 'undefined') {
+			new Chart(canevas, {
+				type: 'line',
+				data: {
+					labels: evolution.labels,
+					datasets: [
+						{
+							label: 'Chiffre d\'affaires (FCFA)',
+							data: evolution.ca,
+							borderColor: '#467fcf',
+							backgroundColor: 'rgba(70, 127, 207, 0.2)',
+							fill: true,
+							tension: 0.35,
+							yAxisID: 'y'
+						},
+						{
+							label: 'Nombre de commandes',
+							data: evolution.commandes,
+							borderColor: '#f1c40f',
+							backgroundColor: 'rgba(241, 196, 15, 0.15)',
+							fill: false,
+							tension: 0.35,
+							yAxisID: 'y1'
+						}
+					]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					interaction: { mode: 'index', intersect: false },
+					scales: {
+						y: { position: 'left', beginAtZero: true },
+						y1: { position: 'right', beginAtZero: true, grid: { display: false } }
+					}
+				}
+			});
+		}
+	})();
+</script>
+
+{% endblock %}

@@ -1,0 +1,491 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    État du stock
+{% endblock %}
+
+{% block body %}
+
+<div class="side-app">
+
+    {# ==========================================================
+       HEADER
+       ========================================================== #}
+
+    <div class="page-header">
+
+        <div>
+
+            <ol class="breadcrumb">
+
+                <li class="breadcrumb-item">
+                    Stock
+                </li>
+
+                <li class="breadcrumb-item active">
+                    État du stock
+                </li>
+
+            </ol>
+
+        </div>
+
+    </div>
+
+
+    {# ==========================================================
+       STATISTIQUES
+       ========================================================== #}
+
+    <div class="row">
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Articles
+                    </small>
+
+                    <div class="h2 mb-0">
+                        {{ statistiques.articles }}
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Disponibles
+                    </small>
+
+                    <div class="h2 text-success mb-0">
+                        {{ statistiques.disponible }}
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Alertes
+                    </small>
+
+                    <div class="h2 text-warning mb-0">
+                        {{ statistiques.alerte }}
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Ruptures
+                    </small>
+
+                    <div class="h2 text-danger mb-0">
+                        {{ statistiques.rupture }}
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    {# ==========================================================
+       SOLDES GLOBAUX
+       ========================================================== #}
+
+    <div class="row">
+
+        <div class="col-md-4">
+
+            <div class="card">
+
+                <div class="card-body text-center">
+
+                    <small class="text-muted d-block">
+                        Stock physique
+                    </small>
+
+                    <strong class="h3">
+                        {{ statistiques.stockPhysique|number_format(3, ',', ' ') }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="col-md-4">
+
+            <div class="card">
+
+                <div class="card-body text-center">
+
+                    <small class="text-muted d-block">
+                        Stock réservé
+                    </small>
+
+                    <strong class="h3 text-warning">
+                        {{ statistiques.stockReserve|number_format(3, ',', ' ') }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="col-md-4">
+
+            <div class="card">
+
+                <div class="card-body text-center">
+
+                    <small class="text-muted d-block">
+                        Stock disponible
+                    </small>
+
+                    <strong class="h3 text-success">
+                        {{ statistiques.stockDisponible|number_format(3, ',', ' ') }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    {# ==========================================================
+       FILTRES
+       ========================================================== #}
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <form
+                method="get"
+                class="row"
+            >
+
+                <div class="col-lg-6 mb-2">
+
+                    <input
+                        type="text"
+                        name="q"
+                        value="{{ filtres.q }}"
+                        class="form-control"
+                        placeholder="Rechercher un article..."
+                    >
+
+                </div>
+
+
+                <div class="col-lg-3 mb-2">
+
+                    <select
+                        name="etat"
+                        class="form-control"
+                    >
+
+                        <option value="">
+                            Tous les états
+                        </option>
+
+                        <option
+                            value="disponible"
+                            {{ filtres.etat == 'disponible' ? 'selected' : '' }}
+                        >
+                            Disponible
+                        </option>
+
+                        <option
+                            value="alerte"
+                            {{ filtres.etat == 'alerte' ? 'selected' : '' }}
+                        >
+                            Alerte
+                        </option>
+
+                        <option
+                            value="rupture"
+                            {{ filtres.etat == 'rupture' ? 'selected' : '' }}
+                        >
+                            Rupture
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-lg-3 mb-2">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary btn-block"
+                    >
+                        <i class="fa fa-search mr-1"></i>
+
+                        Rechercher
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    {# ==========================================================
+       TABLEAU
+       ========================================================== #}
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <h3 class="card-title">
+                <i class="fa fa-cubes mr-1"></i>
+                État actuel du stock
+            </h3>
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Article
+                            </th>
+
+                            <th class="text-right">
+                                Physique
+                            </th>
+
+                            <th class="text-right">
+                                Réservé
+                            </th>
+
+                            <th class="text-right">
+                                Disponible
+                            </th>
+
+                            <th class="text-right">
+                                Seuil
+                            </th>
+
+                            <th class="text-center">
+                                État
+                            </th>
+
+                            <th width="80"></th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                    {% for ligne in lignes %}
+
+                        <tr>
+
+                            <td>
+
+                                <strong>
+                                    {{ ligne.article.designation }}
+                                </strong>
+
+                            </td>
+
+
+                            <td class="text-right">
+
+                                {{ ligne.stockPhysique|number_format(3, ',', ' ') }}
+
+                            </td>
+
+
+                            <td class="text-right">
+
+                                {% if ligne.stockReserve > 0 %}
+
+                                    <span class="text-warning font-weight-bold">
+
+                                        {{ ligne.stockReserve|number_format(3, ',', ' ') }}
+
+                                    </span>
+
+                                {% else %}
+
+                                    0
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td class="text-right">
+
+                                <strong>
+
+                                    {{ ligne.stockDisponible|number_format(3, ',', ' ') }}
+
+                                </strong>
+
+                            </td>
+
+
+                            <td class="text-right">
+
+                                {% if ligne.seuilAlerte is not null %}
+
+                                    {{ ligne.seuilAlerte|number_format(3, ',', ' ') }}
+
+                                {% else %}
+
+                                    —
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td class="text-center">
+
+                                {% if ligne.etat == 'rupture' %}
+
+                                    <span class="badge badge-danger p-2">
+
+                                        <i class="fa fa-times-circle mr-1"></i>
+
+                                        Rupture
+
+                                    </span>
+
+                                {% elseif ligne.etat == 'alerte' %}
+
+                                    <span class="badge badge-warning p-2">
+
+                                        <i class="fa fa-exclamation-triangle mr-1"></i>
+
+                                        Alerte
+
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge badge-success p-2">
+
+                                        <i class="fa fa-check-circle mr-1"></i>
+
+                                        Disponible
+
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td class="text-center">
+
+                                <a
+                                    href="{{ path(
+                                        'app_stock_etat_show',
+                                        {
+                                            id: ligne.article.id
+                                        }
+                                    ) }}"
+                                    class="btn btn-sm btn-primary-light"
+                                    title="Voir les mouvements"
+                                >
+
+                                    <i class="fa fa-eye"></i>
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center text-muted py-4"
+                            >
+
+                                Aucun article trouvé.
+
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,676 @@
+{{ form_start(form) }}
+
+<div class="row">
+
+	<div class="col-md-6">
+		<div class="form-group">
+			{{ form_label(form.code) }}
+			{{ form_widget(form.code) }}
+			{{ form_errors(form.code) }}
+
+			{% if form.code.vars.help %}
+				<small class="form-text text-muted">
+					{{ form.code.vars.help }}
+				</small>
+			{% endif %}
+		</div>
+	</div>
+
+	<div class="col-md-6">
+		<div class="form-group">
+			{{ form_label(form.nom) }}
+			{{ form_widget(form.nom) }}
+			{{ form_errors(form.nom) }}
+		</div>
+	</div>
+
+</div>
+
+
+<div class="row">
+
+	<div class="col-md-6">
+		<div class="form-group">
+			{{ form_label(form.type) }}
+			{{ form_widget(form.type, {
+                attr: {
+                    class: 'form-select',
+                    id: 'compte_type'
+                }
+            }) }}
+			{{ form_errors(form.type) }}
+		</div>
+	</div>
+
+	<div class="col-md-6" id="bloc-portee">
+		<div class="form-group">
+			{{ form_label(form.portee) }}
+
+			{{ form_widget(form.portee, {
+                attr: {
+                    class: 'form-select',
+                    id: 'compte_portee'
+                }
+            }) }}
+
+			{{ form_errors(form.portee) }}
+
+			{% if form.portee.vars.help %}
+				<small class="form-text text-muted">
+					{{ form.portee.vars.help }}
+				</small>
+			{% endif %}
+		</div>
+	</div>
+
+</div>
+
+
+{# ============================================================
+   PROPRIÉTAIRE
+   Visible uniquement pour une caisse personnelle
+   ============================================================ #}
+
+<div class="row" id="bloc-proprietaire">
+
+	<div class="col-md-12">
+		<div class="form-group">
+
+			{{ form_label(form.proprietaire) }}
+
+			{{ form_widget(form.proprietaire, {
+                attr: {
+                    class: 'form-select',
+                    id: 'compte_proprietaire'
+                }
+            }) }}
+
+			{{ form_errors(form.proprietaire) }}
+
+			{% if form.proprietaire.vars.help %}
+				<small class="form-text text-muted">
+					{{ form.proprietaire.vars.help }}
+				</small>
+			{% endif %}
+
+		</div>
+	</div>
+
+</div>
+
+
+{# ============================================================
+   INFORMATIONS DU COMPTE
+   ============================================================ #}
+
+<div class="row">
+
+	<div class="col-md-6">
+		<div class="form-group">
+
+			{{ form_label(form.numeroCompte) }}
+
+			{{ form_widget(form.numeroCompte) }}
+
+			{{ form_errors(form.numeroCompte) }}
+
+		</div>
+	</div>
+
+
+	<div class="col-md-6">
+		<div class="form-group">
+
+			{{ form_label(form.titulaireCompte) }}
+
+			{{ form_widget(form.titulaireCompte) }}
+
+			{{ form_errors(form.titulaireCompte) }}
+
+		</div>
+	</div>
+
+</div>
+
+
+{# ============================================================
+   BANQUE
+   Visible uniquement si type = banque
+   ============================================================ #}
+
+<div class="row" id="bloc-banque">
+
+	<div class="col-md-12">
+		<div class="form-group">
+
+			{{ form_label(form.nomBanque) }}
+
+			{{ form_widget(form.nomBanque) }}
+
+			{{ form_errors(form.nomBanque) }}
+
+			{% if form.nomBanque.vars.help %}
+				<small class="form-text text-muted">
+					{{ form.nomBanque.vars.help }}
+				</small>
+			{% endif %}
+
+		</div>
+	</div>
+
+</div>
+
+
+{# ============================================================
+   SOLDE / DEVISE
+   ============================================================ #}
+
+<div class="row">
+
+	<div class="col-md-6">
+
+		<div class="form-group">
+
+			{{ form_label(form.soldeInitial) }}
+
+			{{ form_widget(form.soldeInitial) }}
+
+			{{ form_errors(form.soldeInitial) }}
+
+			{% if form.soldeInitial.vars.help %}
+				<small class="form-text text-muted">
+					{{ form.soldeInitial.vars.help }}
+				</small>
+			{% endif %}
+
+		</div>
+
+	</div>
+
+
+	<div class="col-md-6">
+
+		<div class="form-group">
+
+			{{ form_label(form.devise) }}
+
+			{{ form_widget(form.devise) }}
+
+			{{ form_errors(form.devise) }}
+
+		</div>
+
+	</div>
+
+</div>
+
+
+{# ============================================================
+   OPTIONS
+   ============================================================ #}
+
+<div class="row mt-3">
+
+	<div class="col-md-6">
+
+		<div class="card">
+
+			<div class="card-body">
+
+				<div class="custom-control custom-checkbox">
+
+					{{ form_widget(
+                        form.autoriserDecouvert,
+                        {
+                            attr: {
+                                class: 'custom-control-input'
+                            }
+                        }
+                    ) }}
+
+					{{ form_label(
+                        form.autoriserDecouvert,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'custom-control-label'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+				{% if form.autoriserDecouvert.vars.help %}
+					<small class="text-muted d-block mt-2">
+						{{ form.autoriserDecouvert.vars.help }}
+					</small>
+				{% endif %}
+
+				{{ form_errors(form.autoriserDecouvert) }}
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	<div class="col-md-6">
+
+		<div class="card">
+
+			<div class="card-body">
+
+				<div class="custom-control custom-checkbox">
+
+					{{ form_widget(
+                        form.actif,
+                        {
+                            attr: {
+                                class: 'custom-control-input'
+                            }
+                        }
+                    ) }}
+
+					{{ form_label(
+                        form.actif,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'custom-control-label'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+				{{ form_errors(form.actif) }}
+
+			</div>
+
+		</div>
+
+	</div>
+
+</div>
+
+
+{# ============================================================
+   DESCRIPTION
+   ============================================================ #}
+
+<div class="row mt-3">
+
+	<div class="col-md-12">
+
+		<div class="form-group">
+
+			{{ form_label(form.description) }}
+
+			{{ form_widget(form.description) }}
+
+			{{ form_errors(form.description) }}
+
+		</div>
+
+	</div>
+
+</div>
+
+
+{# ============================================================
+   INFORMATION MÉTIER
+   ============================================================ #}
+
+<div class="alert alert-info mt-3" id="info-compte">
+
+	<i class="fa fa-info-circle mr-1"></i>
+
+	<span id="texte-info-compte">
+		Sélectionnez le type du compte.
+	</span>
+
+</div>
+
+
+{# ============================================================
+   BOUTON
+   ============================================================ #}
+
+<div class="mt-4">
+
+	<button type="submit" class="btn btn-primary">
+		<i class="fa fa-save mr-1"></i>
+
+		{{ button_label|default('Enregistrer') }}
+	</button>
+
+</div>
+
+
+{{ form_end(form) }}
+
+
+{# ============================================================
+   JAVASCRIPT
+   ============================================================ #}
+
+<script>
+	document.addEventListener('DOMContentLoaded', function () { /*
+         * ========================================================
+         * CHAMPS
+         * ========================================================
+         */
+
+const type = document.querySelector('[data-compte-type="true"]');
+
+const portee = document.querySelector('[data-compte-portee="true"]');
+
+const proprietaire = document.querySelector('[data-compte-proprietaire="true"]');
+
+
+const blocPortee = document.getElementById('bloc-portee');
+
+const blocProprietaire = document.getElementById('bloc-proprietaire');
+
+const blocBanque = document.getElementById('bloc-banque');
+
+const texteInfo = document.getElementById('texte-info-compte');
+
+
+/*
+         * ========================================================
+         * VALEURS
+         * ========================================================
+         */
+
+const TYPE_CAISSE = 'caisse';
+
+const TYPE_ORANGE = 'orange_money';
+
+const TYPE_WAVE = 'wave';
+
+const TYPE_BANQUE = 'banque';
+
+
+const PORTEE_PERSONNELLE = 'personnelle';
+
+const PORTEE_PARTAGEE = 'partagee';
+
+const PORTEE_ADMIN = 'admin';
+
+
+/*
+         * ========================================================
+         * AFFICHAGE
+         * ========================================================
+         */
+
+function actualiserInterface() {
+if (! type || ! portee) {
+return;
+}
+
+
+const valeurType = type.value;
+
+
+/*
+             * ====================================================
+             * PAR DÉFAUT
+             * ====================================================
+             */
+
+if (blocPortee) {
+blocPortee.style.display = '';
+}
+
+if (blocProprietaire) {
+blocProprietaire.style.display = 'none';
+}
+
+if (blocBanque) {
+blocBanque.style.display = 'none';
+}
+
+
+/*
+             * ====================================================
+             * CAISSE
+             * ====================================================
+             */
+
+if (valeurType === TYPE_CAISSE) { /*
+                 * La portée reste modifiable.
+                 *
+                 * Autorisé :
+                 *
+                 * - personnelle
+                 * - admin
+                 */
+
+portee.disabled = false;
+
+
+/*
+                 * Si une ancienne valeur "partagee"
+                 * existe, on repasse sur admin.
+                 */
+
+if (portee.value === PORTEE_PARTAGEE) {
+portee.value = PORTEE_ADMIN;
+}
+
+
+if (portee.value === PORTEE_PERSONNELLE) {
+if (blocProprietaire) {
+blocProprietaire.style.display = '';
+}
+
+
+if (proprietaire) {
+proprietaire.disabled = false;
+}
+
+
+if (texteInfo) {
+texteInfo.textContent = 'Cette caisse est personnelle. Seul son propriétaire pourra effectuer les mouvements ordinaires sur ce compte.';
+}
+} else {
+if (proprietaire) {
+proprietaire.value = '';
+}
+
+
+if (texteInfo) {
+texteInfo.textContent = 'Cette caisse appartient à l’administration. Les mouvements ordinaires seront réservés à l’administrateur.';
+}
+}
+
+
+return;
+}
+
+
+/*
+             * ====================================================
+             * ORANGE MONEY
+             * ====================================================
+             */
+
+if (valeurType === TYPE_ORANGE) {
+portee.value = PORTEE_PARTAGEE;
+
+
+/*
+                 * On désactive visuellement.
+                 *
+                 * Attention :
+                 * le PHP PRE_SUBMIT force également
+                 * la bonne valeur côté serveur.
+                 */
+
+portee.disabled = true;
+
+
+if (proprietaire) {
+proprietaire.value = '';
+
+proprietaire.disabled = true;
+}
+
+
+if (texteInfo) {
+texteInfo.textContent = 'Orange Money est un compte partagé. Toutes les caissières autorisées peuvent l’utiliser et chaque opération reste rattachée à l’agent qui l’a effectuée.';
+}
+
+
+return;
+}
+
+
+/*
+             * ====================================================
+             * WAVE
+             * ====================================================
+             */
+
+if (valeurType === TYPE_WAVE) {
+portee.value = PORTEE_PARTAGEE;
+
+portee.disabled = true;
+
+
+if (proprietaire) {
+proprietaire.value = '';
+
+proprietaire.disabled = true;
+}
+
+
+if (texteInfo) {
+texteInfo.textContent = 'Wave est un compte partagé. Toutes les caissières autorisées utilisent le même solde mais chaque opération conserve son agent.';
+}
+
+
+return;
+}
+
+
+/*
+             * ====================================================
+             * BANQUE
+             * ====================================================
+             */
+
+if (valeurType === TYPE_BANQUE) {
+portee.value = PORTEE_ADMIN;
+
+portee.disabled = true;
+
+
+if (proprietaire) {
+proprietaire.value = '';
+
+proprietaire.disabled = true;
+}
+
+
+if (blocBanque) {
+blocBanque.style.display = '';
+}
+
+
+if (texteInfo) {
+texteInfo.textContent = 'Ce compte bancaire est un compte administratif. Son solde et ses opérations sont réservés à l’administration.';
+}
+
+
+return;
+}
+
+
+/*
+             * ====================================================
+             * AUCUN TYPE
+             * ====================================================
+             */
+
+portee.disabled = false;
+
+
+if (proprietaire) {
+proprietaire.disabled = false;
+}
+
+
+if (texteInfo) {
+texteInfo.textContent = 'Sélectionnez le type du compte.';
+}
+}
+
+
+/*
+         * ========================================================
+         * CHANGEMENT TYPE
+         * ========================================================
+         */
+
+if (type) {
+type.addEventListener('change', actualiserInterface);
+}
+
+
+/*
+         * ========================================================
+         * CHANGEMENT PORTÉE
+         * ========================================================
+         */
+
+if (portee) {
+portee.addEventListener('change', actualiserInterface);
+}
+
+
+/*
+         * ========================================================
+         * INITIALISATION
+         * ========================================================
+         */
+
+actualiserInterface();
+
+
+/*
+         * ========================================================
+         * AVANT SOUMISSION
+         * ========================================================
+         *
+         * Un champ disabled n'est pas envoyé
+         * par le navigateur.
+         *
+         * On le réactive juste avant l'envoi.
+         *
+         * Le serveur vérifie quand même toutes
+         * les valeurs indépendamment du JavaScript.
+         * ========================================================
+         */
+
+const formulaire = type ? type.closest('form') : null;
+
+
+if (formulaire) {
+formulaire.addEventListener('submit', function () {
+
+if (portee) {
+portee.disabled = false;
+}
+
+
+if (proprietaire) {
+proprietaire.disabled = false;
+}
+});
+}
+});
+</script>

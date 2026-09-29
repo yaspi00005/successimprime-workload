@@ -1,0 +1,91 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}CommandesDetails index{% endblock %}
+
+{% block body %}
+    <h1>CommandesDetails index</h1>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Designation</th>
+                <th>Largeur</th>
+                <th>Longueur</th>
+                <th>Surface</th>
+                <th>Quantite</th>
+                <th>PrixUnitaire</th>
+                <th>CoutRevient</th>
+                <th>Remise</th>
+                <th>Tva</th>
+                <th>TotalHt</th>
+                <th>TotalTtc</th>
+                <th>ProfilCouleurs</th>
+                <th>Resolution</th>
+                <th>Grammage</th>
+                <th>Epaisseur</th>
+                <th>RectoVerso</th>
+                <th>NombreFaces</th>
+                <th>Laminage</th>
+                <th>Oeillets</th>
+                <th>Decoupe</th>
+                <th>Pliage</th>
+                <th>Emballage</th>
+                <th>BatValide</th>
+                <th>Etat</th>
+                <th>Priorite</th>
+                <th>TempsEstime</th>
+                <th>TempsReel</th>
+                <th>Fichier</th>
+                <th>Observation</th>
+                <th>actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for commandes_detail in commandes_details %}
+            <tr>
+                <td>{{ commandes_detail.id }}</td>
+                <td>{{ commandes_detail.designation }}</td>
+                <td>{{ commandes_detail.largeur }}</td>
+                <td>{{ commandes_detail.longueur }}</td>
+                <td>{{ commandes_detail.surface }}</td>
+                <td>{{ commandes_detail.quantite }}</td>
+                <td>{{ commandes_detail.prixUnitaire }}</td>
+                <td>{{ commandes_detail.coutRevient }}</td>
+                <td>{{ commandes_detail.remise }}</td>
+                <td>{{ commandes_detail.tva }}</td>
+                <td>{{ commandes_detail.totalHt }}</td>
+                <td>{{ commandes_detail.totalTtc }}</td>
+                <td>{{ commandes_detail.profilCouleurs }}</td>
+                <td>{{ commandes_detail.resolution }}</td>
+                <td>{{ commandes_detail.grammage }}</td>
+                <td>{{ commandes_detail.epaisseur }}</td>
+                <td>{{ commandes_detail.rectoVerso ? 'Yes' : 'No' }}</td>
+                <td>{{ commandes_detail.nombreFaces }}</td>
+                <td>{{ commandes_detail.laminage }}</td>
+                <td>{{ commandes_detail.oeillets ? 'Yes' : 'No' }}</td>
+                <td>{{ commandes_detail.decoupe ? 'Yes' : 'No' }}</td>
+                <td>{{ commandes_detail.pliage }}</td>
+                <td>{{ commandes_detail.emballage ? 'Yes' : 'No' }}</td>
+                <td>{{ commandes_detail.batValide ? 'Yes' : 'No' }}</td>
+                <td>{{ commandes_detail.etat ? 'Yes' : 'No' }}</td>
+                <td>{{ commandes_detail.priorite }}</td>
+                <td>{{ commandes_detail.tempsEstime }}</td>
+                <td>{{ commandes_detail.tempsReel }}</td>
+                <td>{{ commandes_detail.fichier }}</td>
+                <td>{{ commandes_detail.observation }}</td>
+                <td>
+                    <a href="{{ path('app_commandes_details_show', {'id': commandes_detail.id}) }}">show</a>
+                    <a href="{{ path('app_commandes_details_edit', {'id': commandes_detail.id}) }}">edit</a>
+                </td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="31">no records found</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{{ path('app_commandes_details_new') }}">Create new</a>
+{% endblock %}

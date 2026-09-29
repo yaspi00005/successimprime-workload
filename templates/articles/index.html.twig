@@ -1,0 +1,215 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Articles et matières
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					Stocks
+				</li>
+
+				<li class="breadcrumb-item active">
+					Articles et matières
+				</li>
+			</ol>
+
+			<a href="{{ path('app_article_new') }}" class="btn btn-success">
+				<i class="fa fa-plus mr-1"></i>
+				Nouvel article
+			</a>
+
+		</div>
+
+
+		<div class="card">
+
+			<div class="card-body">
+
+				<form method="get" class="row">
+
+					<div class="col-lg-8">
+
+						<input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Référence ou désignation...">
+
+					</div>
+
+					<div class="col-lg-4">
+
+						<button class="btn btn-primary btn-block">
+							<i class="fa fa-search mr-1"></i>
+							Rechercher
+						</button>
+
+					</div>
+
+				</form>
+
+			</div>
+
+		</div>
+
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<div class="card-title">
+					<i class="fa fa-cubes mr-2"></i>
+					Articles en stock
+				</div>
+
+			</div>
+
+			<div class="card-body">
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered table-hover">
+
+						<thead>
+
+							<tr>
+								<th>Référence</th>
+								<th>Désignation</th>
+								<th>Catégorie</th>
+								<th>Unité</th>
+
+								<th class="text-right">
+									Physique
+								</th>
+
+								<th class="text-right">
+									Réservé
+								</th>
+
+								<th class="text-right">
+									Disponible
+								</th>
+
+								<th class="text-right">
+									Seuil
+								</th>
+
+								<th class="text-center">
+									État
+								</th>
+
+								<th width="120"></th>
+							</tr>
+
+						</thead>
+
+						<tbody>
+
+							{% for ligne in lignes %}
+
+								{% set article =
+                            ligne.article
+                        %}
+
+								<tr>
+
+									<td>
+										<strong>
+											{{ article.reference }}
+										</strong>
+									</td>
+
+									<td>
+										{{ article.designation }}
+									</td>
+
+									<td>
+										{{ article.categorie|default('—') }}
+									</td>
+
+									<td>
+										{{ article.unite }}
+									</td>
+
+									<td class="text-right">
+										{{ ligne.physique|number_format(3, ',', ' ') }}
+									</td>
+
+									<td class="text-right text-warning">
+										{{ ligne.reserve|number_format(3, ',', ' ') }}
+									</td>
+
+									<td class="text-right">
+										<strong>
+											{{ ligne.disponible|number_format(3, ',', ' ') }}
+										</strong>
+									</td>
+
+									<td class="text-right">
+										{{ article.stockMin|number_format(3, ',', ' ') }}
+									</td>
+
+									<td class="text-center">
+
+										{% if ligne.etat == 'rupture' %}
+
+											<span class="badge badge-danger p-2">
+												Rupture
+											</span>
+
+										{% elseif ligne.etat == 'alerte' %}
+
+											<span class="badge badge-warning p-2">
+												Alerte
+											</span>
+
+										{% else %}
+
+											<span class="badge badge-success p-2">
+												Disponible
+											</span>
+
+										{% endif %}
+
+									</td>
+
+									<td class="text-center">
+
+										<a href="{{ path( 'app_article_show', { id: article.id } ) }}" class="btn btn-sm btn-primary-light" title="Voir">
+											<i class="fa fa-eye"></i>
+										</a>
+
+										<a href="{{ path( 'app_article_edit', { id: article.id } ) }}" class="btn btn-sm btn-warning-light" title="Modifier">
+											<i class="fa fa-edit"></i>
+										</a>
+
+									</td>
+
+								</tr>
+
+							{% else %}
+
+								<tr>
+									<td colspan="10" class="text-center text-muted py-5">
+										Aucun article enregistré.
+									</td>
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

@@ -1,0 +1,363 @@
+<!doctype html>
+
+<html lang="fr" dir="ltr">
+
+	<head>
+
+		<meta charset="UTF-8">
+
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
+
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+		<meta name="theme-color" content="#1643a3">
+
+
+		<title>
+			Verrouillage - Success Imprim
+		</title>
+
+
+		<link href="{{ asset('assets/css/dashboard.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/css/color-themes.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/single-page/css/main.css') }}" rel="stylesheet" type="text/css">
+
+		<link href="{{ asset('assets/css/icons.css') }}" rel="stylesheet">
+
+
+		<style>
+
+			html,
+			body {
+				width: 100%;
+				min-height: 100%;
+				margin: 0;
+			}
+
+			body {
+				min-height: 100vh;
+				background: #0b3278;
+				overflow-x: hidden;
+			}
+
+			.lock-page {
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 30px 15px;
+			}
+
+			.lock-wrapper {
+				width: 100%;
+				max-width: 420px;
+			}
+
+			.lock-logo {
+				text-align: center;
+				margin-bottom: 25px;
+			}
+
+			.lock-logo img {
+				max-width: 180px;
+				max-height: 70px;
+				object-fit: contain;
+			}
+
+			.access-container {
+				background: rgba(5, 28, 78, 0.74);
+				border: 1px solid rgba(255, 255, 255, 0.14);
+				border-radius: 3px;
+				padding: 32px;
+				box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+			}
+
+			.lock-user {
+				text-align: center;
+				margin-bottom: 28px;
+			}
+
+			.lock-avatar {
+				width: 90px;
+				height: 90px;
+				border-radius: 50%;
+				object-fit: cover;
+				border: 3px solid rgba(255, 255, 255, 0.25);
+				margin-bottom: 12px;
+			}
+
+			.lock-avatar-letter {
+				width: 90px;
+				height: 90px;
+				margin: 0 auto 12px;
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: rgba(255, 255, 255, 0.15);
+				border: 3px solid rgba(255, 255, 255, 0.25);
+				color: #fff;
+				font-size: 35px;
+				font-weight: 600;
+			}
+
+			.lock-user h4 {
+				color: #fff;
+				margin-bottom: 4px;
+			}
+
+			.lock-username {
+				color: rgba(255, 255, 255, 0.55);
+				font-size: 13px;
+			}
+
+			.access-input {
+				position: relative;
+				margin-bottom: 18px;
+			}
+
+			.login-input {
+				width: 100%;
+				height: 48px;
+				box-sizing: border-box;
+				padding: 0 50px 0 48px;
+				border: 1px solid rgba(255, 255, 255, 0.25);
+				border-radius: 3px;
+				background: rgba(255, 255, 255, 0.25);
+				color: #fff;
+				outline: none;
+			}
+
+			.login-input::placeholder {
+				color: rgba(255, 255, 255, 0.55);
+			}
+
+			.input-symbol {
+				position: absolute;
+				left: 18px;
+				top: 50%;
+				transform: translateY(-50%);
+				color: #fff;
+			}
+
+			.password-toggle {
+				position: absolute;
+				right: 15px;
+				top: 50%;
+				transform: translateY(-50%);
+				border: 0;
+				background: transparent;
+				color: rgba(255, 255, 255, 0.7);
+				cursor: pointer;
+			}
+
+			.btn-unlock {
+				width: 100%;
+				border: 0;
+				border-radius: 3px;
+				padding: 12px 15px;
+				background: linear-gradient(90deg, #9238f2, #a738ef);
+				color: #fff;
+				font-weight: 600;
+				cursor: pointer;
+			}
+
+			.lock-links {
+				margin-top: 17px;
+				text-align: center;
+				color: rgba(255, 255, 255, 0.5);
+				font-size: 12px;
+			}
+
+			.lock-links a {
+				color: rgba(255, 255, 255, 0.8);
+			}
+
+			.lock-error {
+				margin-bottom: 18px;
+				padding: 10px 12px;
+				border-radius: 3px;
+				background: rgba(220, 53, 69, 0.45);
+				color: #fff;
+				font-size: 12px;
+			}
+		</style>
+
+	</head>
+
+
+	<body>
+
+		<div id="stars2"></div>
+
+		<div class="lock-page">
+
+			<div class="lock-wrapper">
+
+
+				<div class="lock-logo">
+
+					<img src="{{ asset('assets/images/brand/logo0.png') }}" alt="Success Imprim">
+
+				</div>
+
+
+				<div class="access-container">
+
+					<form method="post" action="{{ path('app_login') }}" autocomplete="off">
+
+
+						<div class="lock-user">
+
+							{% if user.employe and user.employe.photos %}
+
+								<img src="{{ asset( 'uploads/employes/' ~ user.employe.photos ) }}" class="lock-avatar" alt="{{ user.username }}">
+
+							{% else %}
+
+								<div class="lock-avatar-letter">
+
+									{{ user.username|slice(0, 1)|upper }}
+
+								</div>
+
+							{% endif %}
+
+
+							<h4>
+
+								{% if user.employe %}
+
+									{{ user.employe.prenom }}
+									{{ user.employe.nom }}
+
+								{% else %}
+
+									{{ user.username }}
+
+								{% endif %}
+
+							</h4>
+
+
+							<div class="lock-username">
+
+								{{ user.username }}
+
+							</div>
+
+						</div>
+
+
+						{% if error %}
+
+							<div class="lock-error">
+
+								<i class="fa fa-exclamation-circle mr-1"></i>
+
+								{{ error }}
+
+							</div>
+
+						{% endif %}
+
+
+						<input type="hidden" name="_token" value="{{ csrf_token( 'lockscreen_' ~ user.id ) }}">
+
+
+						<div class="access-input">
+							<input type="hidden" name="username" value="{{ user.username }}">
+
+							<input class="login-input" type="password" name="password" id="lockPassword" placeholder="Mot de passe" required autofocus autocomplete="current-password">
+
+
+							<span class="input-symbol">
+
+								<i class="fa fa-lock" aria-hidden="true"></i>
+
+							</span>
+
+							<input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}"><input type="hidden" name="_target_path" value="/">
+							<button type="button" class="password-toggle" id="toggleLockPassword">
+
+								<i class="fa fa-eye"></i>
+
+							</button>
+
+						</div>
+
+
+						<button type="submit" class="btn-unlock">
+
+							<i class="fa fa-unlock mr-1"></i>
+
+							Déverrouiller
+
+						</button>
+
+
+						<div class="lock-links">
+
+							Ce n'est pas vous ?
+
+							<a href="{{ path('app_switch_user_login') }}">
+
+								Changer d'utilisateur
+
+							</a>
+
+						</div>
+
+					</form>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		<script>
+
+			document.addEventListener('DOMContentLoaded', function () {
+
+const button = document.getElementById('toggleLockPassword');
+
+const input = document.getElementById('lockPassword');
+
+if (! button || ! input) {
+return;
+}
+
+button.addEventListener('click', function () {
+
+const icon = this.querySelector('i');
+
+if (input.type === 'password') {
+
+input.type = 'text';
+
+icon.classList.remove('fa-eye');
+
+icon.classList.add('fa-eye-slash');
+
+} else {
+
+input.type = 'password';
+
+icon.classList.remove('fa-eye-slash');
+
+icon.classList.add('fa-eye');
+
+}
+
+});
+
+});
+		</script>
+
+	</body>
+
+</html>

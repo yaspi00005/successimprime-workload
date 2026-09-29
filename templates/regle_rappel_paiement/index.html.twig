@@ -1,0 +1,234 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Rappels de paiement
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<div>
+
+				<h1 class="page-title">
+					Rappels de paiement
+				</h1>
+
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item">
+						Communications
+					</li>
+					<li class="breadcrumb-item active">
+						Rappels de paiement
+					</li>
+				</ol>
+
+			</div>
+
+			<div class="ml-auto">
+
+				<a href="{{ path('app_regle_rappel_paiement_new') }}" class="btn btn-primary-light">
+					<i class="fa fa-plus mr-1"></i>
+					Nouvelle règle
+				</a>
+
+			</div>
+
+		</div>
+
+		<div class="row row-cards">
+
+			<div class="col-lg-12">
+
+				<div class="alert alert-info">
+					<i class="fa fa-info-circle mr-1"></i>
+					Ces règles envoient un rappel automatique, de façon répétée (J+N, J+2N, J+3N...) tant qu'une commande reste non soldée, via une tâche planifiée sur le serveur (voir <code>scripts/windows/installer_tache_rappels_paiement.bat</code>). Sans cette tâche installée, rien ne se déclenche tout seul. Le rappel s'arrête automatiquement dès que la commande est payée.
+				</div>
+
+				<div class="card">
+
+					<div class="card-header">
+						<div>
+							<h3 class="card-title mb-1">
+								Règles de rappel
+							</h3>
+							<small class="text-muted">
+								{{ regles|length }} règle(s)
+							</small>
+						</div>
+					</div>
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered table-hover mb-0">
+
+							<thead>
+								<tr>
+									<th>Nom</th>
+									<th>Fréquence</th>
+									<th>Modèle</th>
+									<th>Canal</th>
+									<th class="text-center">Statut</th>
+									<th class="text-center">Actions</th>
+								</tr>
+							</thead>
+
+							<tbody>
+
+								{% for regle in regles %}
+
+									<tr>
+
+										<td class="align-middle">
+											<strong>{{ regle.nom }}</strong>
+										</td>
+
+										<td class="align-middle">
+											J+{{ regle.delaiJours }}, puis tous les {{ regle.delaiJours }} jours
+										</td>
+
+										<td class="align-middle">
+											{{ regle.modeleMessage }}
+										</td>
+
+										<td class="align-middle">
+											<span class="badge badge-secondary">{{ regle.modeleMessage.canalLabel }}</span>
+										</td>
+
+										<td class="align-middle text-center">
+											{% if regle.actif %}
+												<span class="badge badge-success">Active</span>
+											{% else %}
+												<span class="badge badge-light">Suspendue</span>
+											{% endif %}
+										</td>
+
+										<td class="align-middle text-center nowrap">
+											<div class="btn-group">
+
+												<a href="{{ path('app_regle_rappel_paiement_edit', {id: regle.id}) }}" class="btn btn-sm btn-warning-light" title="Modifier">
+													<i class="fa fa-pencil"></i>
+												</a>
+
+												<form method="post" action="{{ path('app_regle_rappel_paiement_toggle_actif', {id: regle.id}) }}" class="d-inline">
+													<input type="hidden" name="_token" value="{{ csrf_token('toggle_actif' ~ regle.id) }}">
+													<button type="submit" class="btn btn-sm btn-secondary-light" title="{{ regle.actif ? 'Suspendre' : 'Réactiver' }}">
+														<i class="fa {{ regle.actif ? 'fa-pause' : 'fa-play' }}"></i>
+													</button>
+												</form>
+
+												<form method="post" action="{{ path('app_regle_rappel_paiement_delete', {id: regle.id}) }}" class="d-inline js-confirm-form" data-message="Supprimer définitivement cette règle de rappel ?">
+													<input type="hidden" name="_token" value="{{ csrf_token('delete' ~ regle.id) }}">
+													<button type="submit" class="btn btn-sm btn-danger-light" title="Supprimer">
+														<i class="fa fa-trash"></i>
+													</button>
+												</form>
+
+											</div>
+										</td>
+
+									</tr>
+
+								{% else %}
+
+									<tr>
+										<td colspan="6" class="text-center text-muted py-5">
+											Aucune règle de rappel enregistrée.
+										</td>
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				</div>
+
+				<div class="card">
+
+					<div class="card-header">
+						<h3 class="card-title mb-0">
+							Historique des rappels envoyés
+						</h3>
+					</div>
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered table-hover mb-0">
+
+							<thead>
+								<tr>
+									<th>Date</th>
+									<th>Commande</th>
+									<th>Client</th>
+									<th>Règle</th>
+									<th>Canal</th>
+								</tr>
+							</thead>
+
+							<tbody>
+
+								{% for rappel in rappelsRecents %}
+
+									<tr>
+
+										<td class="align-middle">
+											{{ rappel.dateEnvoi ? rappel.dateEnvoi|date('d/m/Y H:i') : '—' }}
+										</td>
+
+										<td class="align-middle">
+											{% if rappel.commande %}
+												<a href="{{ path('app_commandes_show', {id: rappel.commande.id}) }}">
+													{{ rappel.commande.numero ?? ('#' ~ rappel.commande.id) }}
+												</a>
+											{% else %}
+												—
+											{% endif %}
+										</td>
+
+										<td class="align-middle">
+											{{ rappel.commande and rappel.commande.clients ? rappel.commande.clients.nomComplet : '—' }}
+										</td>
+
+										<td class="align-middle">
+											{{ rappel.regle ? rappel.regle.nom : '—' }}
+										</td>
+
+										<td class="align-middle">
+											<span class="badge badge-secondary">{{ rappel.canal }}</span>
+										</td>
+
+									</tr>
+
+								{% else %}
+
+									<tr>
+										<td colspan="5" class="text-center text-muted py-5">
+											Aucun rappel envoyé pour le moment.
+										</td>
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

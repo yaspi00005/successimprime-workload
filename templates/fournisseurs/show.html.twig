@@ -1,0 +1,149 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	{{ fournisseur.nom }}
+{% endblock %}
+
+{% block body %}
+	<div class="side-app">
+		{% include "alert.html.twig" %}
+
+		<div class="page-header">
+
+			<div>
+				<h1 class="page-title">
+					{{ fournisseur.nom }}
+					{% if fournisseur.actif %}
+						<span class="badge badge-success ml-2">Actif</span>
+					{% else %}
+						<span class="badge badge-light ml-2">Inactif</span>
+					{% endif %}
+				</h1>
+
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item">
+						<a href="{{ path('app_fournisseur_index') }}">Fournisseurs</a>
+					</li>
+					<li class="breadcrumb-item active">
+						{{ fournisseur.nom }}
+					</li>
+				</ol>
+			</div>
+
+			<div class="ml-auto btn-group">
+
+				<a href="{{ path('app_achat_new', {fournisseur: fournisseur.id}) }}" class="btn btn-success-light">
+					<i class="fa fa-plus mr-1"></i>
+					Nouvel achat
+				</a>
+
+				<a href="{{ path('app_fournisseur_edit', {id: fournisseur.id}) }}" class="btn btn-primary-light">
+					<i class="fa fa-pencil mr-1"></i>
+					Modifier
+				</a>
+
+				<form method="post" action="{{ path('app_fournisseur_toggle_actif', {id: fournisseur.id}) }}" class="d-inline">
+					<input type="hidden" name="_token" value="{{ csrf_token('toggle_actif' ~ fournisseur.id) }}">
+					<button type="submit" class="btn {{ fournisseur.actif ? 'btn-warning-light' : 'btn-success-light' }}">
+						<i class="fa fa-power-off mr-1"></i>
+						{{ fournisseur.actif ? 'Désactiver' : 'Réactiver' }}
+					</button>
+				</form>
+
+			</div>
+
+		</div>
+
+
+		<div class="row">
+
+			<div class="col-lg-4">
+
+				<div class="card">
+					<div class="card-header">
+						<h3 class="card-title">Coordonnées</h3>
+					</div>
+					<div class="card-body">
+
+						<table class="table table-borderless mb-0">
+							<tr>
+								<th>Téléphone</th>
+								<td>{{ fournisseur.telephone|default('—') }}</td>
+							</tr>
+							<tr>
+								<th>E-mail</th>
+								<td>{{ fournisseur.email|default('—') }}</td>
+							</tr>
+							<tr>
+								<th>Adresse</th>
+								<td>{{ fournisseur.adresse|default('—')|nl2br }}</td>
+							</tr>
+						</table>
+
+					</div>
+				</div>
+
+			</div>
+
+			<div class="col-lg-8">
+
+				<div class="card">
+					<div class="card-header">
+						<h3 class="card-title">Historique des achats</h3>
+					</div>
+
+					<div class="table-responsive">
+						<table class="table table-bordered mb-0">
+							<thead>
+								<tr>
+									<th>Numéro</th>
+									<th>Date</th>
+									<th class="text-center">Statut</th>
+									<th class="text-right">Total TTC</th>
+									<th class="text-center">Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for achat in fournisseur.achats %}
+									<tr>
+										<td>
+											<a href="{{ path('app_achat_show', {id: achat.id}) }}">
+												{{ achat.numero|default('Brouillon #' ~ achat.id) }}
+											</a>
+										</td>
+										<td class="nowrap">{{ achat.dateDemande|date('d/m/Y') }}</td>
+										<td class="text-center">
+											{% if achat.statut == 'recu' %}
+												<span class="badge badge-success">Reçu</span>
+											{% elseif achat.statut == 'annule' %}
+												<span class="badge badge-light">Annulé</span>
+											{% else %}
+												<span class="badge badge-warning">Demande</span>
+											{% endif %}
+										</td>
+										<td class="text-right nowrap">{{ achat.totalTtc|number_format(0, ',', ' ') }}
+											FCFA</td>
+										<td class="text-center">
+											<a href="{{ path('app_achat_show', {id: achat.id}) }}" class="btn btn-sm btn-primary-light">
+												<i class="fa fa-eye"></i>
+											</a>
+										</td>
+									</tr>
+								{% else %}
+									<tr>
+										<td colspan="5" class="text-center text-muted py-4">
+											Aucun achat pour ce fournisseur.
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+	</div>
+{% endblock %}

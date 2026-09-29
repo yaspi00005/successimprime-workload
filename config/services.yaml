@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+        photos_directory: '%kernel.project_dir%/public/uploads/employes'
+        cin_directory: '%kernel.project_dir%/public/uploads/employes'
+        fichier_directory: '%kernel.project_dir%/public/uploads/fichiers'
+        reclamations_directory: '%kernel.project_dir%/public/uploads/reclamations'
+        chat_directory: '%kernel.project_dir%/public/uploads/chat'
+        app.whatsapp_template_document: '%env(WHATSAPP_TEMPLATE_DOCUMENT)%'
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    App\Service\WhatsAppService:
+        arguments:
+            $accessToken: '%env(WHATSAPP_ACCESS_TOKEN)%'
+            $phoneNumberId: '%env(WHATSAPP_PHONE_NUMBER_ID)%'
+            $apiVersion: '%env(WHATSAPP_API_VERSION)%'
+
+    App\Service\OrangeSmsService:
+        arguments:
+            $clientId: '%env(ORANGE_SMS_CLIENT_ID)%'
+            $clientSecret: '%env(ORANGE_SMS_CLIENT_SECRET)%'
+            $senderAddress: '%env(ORANGE_SMS_SENDER_ADDRESS)%'
+            $senderName: '%env(ORANGE_SMS_SENDER_NAME)%'
+
+    App\Service\RappelPaiementService:
+        arguments:
+            $emailExpediteur: '%env(MAILER_FROM_ADDRESS)%'
+            $whatsappTemplateRappel: '%env(WHATSAPP_TEMPLATE_RAPPEL_PAIEMENT)%'
+
+    App\Service\CampagneService:
+        arguments:
+            $emailExpediteur: '%env(MAILER_FROM_ADDRESS)%'
+            $whatsappTemplateCampagne: '%env(WHATSAPP_TEMPLATE_CAMPAGNE)%'
+
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones

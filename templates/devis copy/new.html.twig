@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouveau devis | MDG - ERP
+{% endblock %}
+
+{% block body %}
+	{{ include('devis/_form.html.twig', {
+        form: form,
+        button_label: 'Enregistrer le devis'
+    }) }}
+{% endblock %}

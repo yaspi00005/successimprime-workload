@@ -1,0 +1,1702 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des clients
+{% endblock %}
+
+{% block body %}
+	<div class="side-app">
+		<div class="page-header">
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="#">Clients</a>
+				</li>
+				<li class="breadcrumb-item active">
+					Liste des clients
+				</li>
+			</ol>
+
+			<div>
+				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modalAjoutClient">
+					<i class="fa fa-plus mr-1"></i>
+					Ajouter un client
+				</button>
+
+				{% if is_granted('ROLE_ADMIN') %}
+
+					<button type="button" class="btn btn-danger" data-client-mass-action="bloquer">
+						<i class="fa fa-lock mr-1"></i>
+						Bloquer
+					</button>
+
+					<button type="button" class="btn btn-success" data-client-mass-action="debloquer">
+						<i class="fa fa-unlock mr-1"></i>
+						Débloquer
+					</button>
+
+					<button type="button" class="btn btn-danger-light" data-client-mass-action="supprimer">
+						<i class="fa fa-trash mr-1"></i>
+						Supprimer
+					</button>
+
+				{% endif %}
+			</div>
+		</div>
+	</div>
+
+	<input type="hidden" id="clientsMassActionUrl" value="{{ path('app_clients_mass_action') }}">
+
+	<input type="hidden" id="clientsMassActionToken" value="{{ csrf_token('clients_mass_action') }}">
+	<input type="hidden" id="clientsDatatableUrl" value="{{ path('app_clients_datatable') }}">
+	<div class="row row-cards">
+		<div class="col-12">
+			<div class="card">
+				<div class="card-header border-bottom">
+					<h3 class="card-title">
+						Liste des clients
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<div class="table-responsive">
+						<table id="clientsTable" class="table table-bordered table-striped table-hover" style="width: 100%;">
+							<thead>
+								<tr>
+									<th class="text-center">
+										<div class="custom-control custom-checkbox">
+											<input type="checkbox" id="clientCheckAll" class="custom-control-input">
+											<label for="clientCheckAll" class="custom-control-label"></label>
+										</div>
+									</th>
+
+									<th>Code</th>
+									<th>Client</th>
+									<th>Type</th>
+									<th>Téléphone</th>
+									<th>Email</th>
+									<th>Ville</th>
+									<th>NIF</th>
+									<th>RCCM</th>
+									<th>Plafond</th>
+									<th>Statut</th>
+									<th>Création</th>
+									<th class="text-center">Actions</th>
+								</tr>
+							</thead>
+
+							<tbody></tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+		{# Modal d’ajout #}
+		<div class="modal fade" id="modalAjoutClient" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="modal-dialog modal-xl" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<div>
+							<h5 class="modal-title">
+								Ajouter un client
+							</h5>
+							<small class="text-muted">
+								Le numéro client sera généré automatiquement.
+							</small>
+						</div>
+
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+
+					{{ form_start(formAjout, {
+    action: path('app_clients_new'),
+    method: 'POST',
+    attr: {
+        id: 'formAjoutClient',
+        class: 'client-ajax-form'
+    }
+}) }}
+
+					<div class="modal-body">
+						<div class="alert alert-danger client-form-global-error d-none"></div>
+
+						<div class="row">
+							<div class="col-md-4">
+								{{ form_row(formAjout.typeClient) }}
+							</div>
+
+							<div class="col-md-4">
+								{{ form_row(formAjout.typeCompte) }}
+							</div>
+
+							<div class="col-md-8 client-zone-entreprise">
+								{{ form_row(formAjout.raisonSociale) }}
+							</div>
+
+							<div class="col-md-6 client-field-prenom">
+								{{ form_row(formAjout.prenom) }}
+							</div>
+
+							<div class="col-md-6 client-field-nom">
+								{{ form_row(formAjout.nom) }}
+							</div>
+
+							<div class="col-md-6">
+								{{ form_row(formAjout.telephone) }}
+							</div>
+
+							<div class="col-md-6">
+								{{ form_row(formAjout.telephone2) }}
+							</div>
+
+							<div class="col-md-6">
+								{{ form_row(formAjout.email) }}
+							</div>
+
+							<div class="col-md-6">
+								{{ form_row(formAjout.ville) }}
+							</div>
+
+							<div class="col-md-12">
+								{{ form_row(formAjout.adresse) }}
+							</div>
+
+							<div class="col-md-6 client-zone-entreprise">
+								{{ form_row(formAjout.nif) }}
+							</div>
+
+							<div class="col-md-6 client-zone-entreprise">
+								{{ form_row(formAjout.rccm) }}
+							</div>
+
+							<div class="col-md-6">
+								{{ form_row(formAjout.plafondCredit) }}
+							</div>
+
+							<div class="col-md-12">
+								{{ form_row(formAjout.observation) }}
+							</div>
+							<div class="col-md-4">
+								<div class="form-group">
+									<label class="d-block">Statut du client</label>
+
+									<label class="custom-switch">
+										{{ form_widget(formAjout.statut, {
+                attr: {
+                    class: 'custom-switch-input'
+                }
+            }) }}
+
+										<span class="custom-switch-indicator"></span>
+
+										<span class="custom-switch-description">
+											Actif
+										</span>
+									</label>
+
+									{{ form_errors(formAjout.statut) }}
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="modal-footer">
+						<button type="button" class="btn btn-light" data-dismiss="modal">
+							Annuler
+						</button>
+
+						<button type="submit" class="btn btn-primary client-submit-button">
+							<i class="fa fa-save mr-1"></i>
+							Enregistrer le client
+						</button>
+					</div>
+
+					{{ form_end(formAjout) }}
+				</div>
+			</div>
+		</div>
+
+		{# Modal de modification #}
+		<div class="modal fade" id="modalModificationClient" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="modal-dialog modal-xl" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">
+							Modifier le client
+						</h5>
+
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+
+					<div id="clientEditModalContent">
+						<div class="modal-body text-center py-5">
+							<i class="fa fa-spinner fa-spin fa-2x"></i>
+							<p class="mt-3 mb-0">
+								Chargement du formulaire…
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+{% block javascripts %}
+	{{ parent() }}
+
+	{# DataTables : à garder seulement s'il n'est pas déjà chargé dans base.html.twig #}
+	<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
+
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script>
+		$(document).ready(function () { /*
+			 * ============================================================
+			 * CONTRÔLES DE BASE
+			 * ============================================================
+			 */
+
+if (!$.fn.DataTable) {
+console.error('DataTables n’est pas chargé.');
+
+Swal.fire({icon: 'error', title: 'Erreur JavaScript', text: 'La bibliothèque DataTables est introuvable.'});
+
+return;
+}
+
+
+if (typeof Swal === 'undefined') {
+console.error('SweetAlert2 n’est pas chargé.');
+
+return;
+}
+
+
+const datatableUrlElement = document.getElementById('clientsDatatableUrl');
+
+const checkAll = document.getElementById('clientCheckAll');
+
+const editModal = $('#modalModificationClient');
+
+const editContent = document.getElementById('clientEditModalContent');
+
+
+if (! datatableUrlElement) {
+console.error('clientsDatatableUrl est introuvable.');
+
+return;
+}
+
+
+const datatableUrl = datatableUrlElement.value;
+
+
+/*
+			 * ============================================================
+			 * OUTILS
+			 * ============================================================
+			 */
+
+function escapeHtml(value) {
+return $('<div>').text(value ?? '').html();
+}
+
+
+function afficherErreursFormulaire(form, errors) {
+if (! errors) {
+return;
+}
+
+
+Object.entries(errors).forEach(function ([champ, messages]) {
+const input = form.querySelector (`[name$="[${champ}]"]`);
+
+
+if (! input) {
+return;
+}
+
+
+input.classList.add('is-invalid');
+
+
+const erreur = document.createElement('div');
+
+
+erreur.className = 'invalid-feedback d-block client-ajax-error';
+
+
+erreur.textContent = Array.isArray(messages) ? messages.join(' ') : messages;
+
+
+const parent = input.closest('.form-group') || input.parentElement;
+
+
+if (parent) {
+parent.appendChild(erreur);
+}
+});
+}
+
+
+function nettoyerErreursFormulaire(form) {
+form.querySelectorAll('.is-invalid').forEach(function (element) {
+element.classList.remove('is-invalid');
+});
+
+
+form.querySelectorAll('.client-ajax-error').forEach(function (element) {
+element.remove();
+});
+
+
+const erreurGlobale = form.querySelector('.client-form-global-error');
+
+
+if (erreurGlobale) {
+erreurGlobale.classList.add('d-none');
+
+erreurGlobale.textContent = '';
+}
+}
+
+
+function gererTypeCompte(form) {
+const select = form.querySelector('[name$="[typeCompte]"]');
+
+
+if (! select) {
+return;
+}
+
+
+const estEntreprise = select.value === 'entreprise';
+
+
+form.querySelectorAll('.client-field-entreprise, .client-zone-entreprise').forEach(function (element) {
+element.classList.toggle('d-none', ! estEntreprise);
+});
+
+
+form.querySelectorAll('.client-field-particulier, .client-zone-particulier').forEach(function (element) {
+element.classList.toggle('d-none', estEntreprise);
+});
+
+
+/*
+ * Nom / prénom restent toujours affichés :
+ * client particulier, ou personne responsable
+ * pour un compte entreprise.
+ */
+const labelNom = form.querySelector('.client-field-nom label');
+const labelPrenom = form.querySelector('.client-field-prenom label');
+const champNom = form.querySelector('.client-field-nom input');
+const champPrenom = form.querySelector('.client-field-prenom input');
+
+if (labelNom) {
+labelNom.textContent = estEntreprise ? 'Nom du responsable' : 'Nom';
+}
+
+if (labelPrenom) {
+labelPrenom.textContent = estEntreprise ? 'Prénom du responsable' : 'Prénom';
+}
+
+if (champNom) {
+champNom.placeholder = estEntreprise ? 'Nom du responsable' : 'Nom du client';
+}
+
+if (champPrenom) {
+champPrenom.placeholder = estEntreprise ? 'Prénom du responsable' : 'Prénom du client';
+}
+}
+
+
+/*
+			 * ============================================================
+			 * DATATABLE
+			 * ============================================================
+			 */
+
+const clientsTable = $('#clientsTable').DataTable({
+
+processing: true,
+
+serverSide: true,
+
+searching: true,
+
+searchDelay: 600,
+
+ordering: false,
+
+pageLength: 10,
+
+lengthMenu: [
+10, 25, 50, 100
+],
+
+autoWidth: false,
+
+scrollX: true,
+
+
+/*
+						 * =================================================
+						 * AJAX
+						 * =================================================
+						 */
+ajax: {
+url: datatableUrl,
+
+type: 'GET',
+
+dataType: 'json',
+
+
+dataSrc: function (json) {
+if (! json || !Array.isArray(json.data)) {
+console.error('Réponse DataTables incorrecte :', json);
+
+return [];
+}
+
+return json.data;
+},
+
+
+error: function (xhr) {
+console.error('Erreur DataTables :', xhr.status, xhr.responseText);
+
+
+Swal.fire({icon: 'error', title: 'Erreur de chargement', text: 'Impossible de charger la liste des clients.'});
+}
+},
+
+
+/*
+						 * =================================================
+						 * COLONNES
+						 * =================================================
+						 */
+columns: [
+
+/*
+							 * CHECKBOX
+							 */
+{
+data: 'id',
+
+searchable: false,
+
+orderable: false,
+
+className: 'text-center align-middle',
+
+render: function (id) {
+return `
+											<div class="custom-control custom-checkbox">
+												<input
+													type="checkbox"
+													id="client-item-${id}"
+													class="custom-control-input client-row-check"
+													value="${id}"
+												>
+
+												<label
+													for="client-item-${id}"
+													class="custom-control-label"
+												></label>
+											</div>
+										`;
+}
+},
+
+
+/*
+							 * CODE
+							 */
+{
+data: 'code',
+
+className: 'align-middle',
+
+render: function (code) {
+return `
+											<strong>
+												${
+escapeHtml(code)
+}
+											</strong>
+										`;
+}
+},
+
+
+/*
+							 * CLIENT
+							 */
+{
+data: 'client',
+
+className: 'align-middle',
+
+defaultContent: '-',
+
+render: function (value) {
+return escapeHtml(value);
+}
+},
+
+
+/*
+							 * TYPE
+							 */
+{
+data: 'typeClient',
+
+className: 'align-middle',
+
+defaultContent: '-',
+
+render: function (type) {
+const classe = type === 'B2B' ? 'badge-primary' : 'badge-info';
+
+
+return `
+											<span class="badge ${classe}">
+												${
+escapeHtml(type)
+}
+											</span>
+										`;
+}
+},
+
+
+/*
+							 * TÉLÉPHONE
+							 */
+{
+data: null,
+
+className: 'align-middle',
+
+render: function (data) {
+let contenu = escapeHtml(data.telephone || '-');
+
+
+if (data.telephone2) {
+contenu += `
+												<br>
+
+												<small class="text-muted">
+													${
+escapeHtml(data.telephone2)
+}
+												</small>
+											`;
+}
+
+
+return contenu;
+}
+},
+
+
+/*
+							 * EMAIL
+							 */
+{
+data: 'email',
+
+defaultContent: '-',
+
+render: function (value) {
+return escapeHtml(value);
+}
+},
+
+
+/*
+							 * VILLE
+							 */
+{
+data: 'ville',
+
+defaultContent: '-',
+
+render: function (value) {
+return escapeHtml(value);
+}
+},
+
+
+/*
+							 * NIF
+							 */
+{
+data: 'nif',
+
+defaultContent: '-',
+
+render: function (value) {
+return escapeHtml(value);
+}
+},
+
+
+/*
+							 * RCCM
+							 */
+{
+data: 'rccm',
+
+defaultContent: '-',
+
+render: function (value) {
+return escapeHtml(value);
+}
+},
+
+
+/*
+							 * PLAFOND CRÉDIT
+							 */
+{
+data: 'plafondCredit',
+
+className: 'text-nowrap',
+
+render: function (montant) {
+if (montant === null || montant === undefined || montant === '') {
+return '-';
+}
+
+
+return new Intl.NumberFormat('fr-FR').format(Number(montant)) + ' FCFA';
+}
+},
+
+
+/*
+							 * STATUT
+							 */
+{
+data: 'statut',
+
+className: 'text-center',
+
+render: function (statut) {
+const actif = statut === true || statut === 1 || statut === '1';
+
+
+if (actif) {
+return `
+												<span class="badge badge-success">
+													Débloqué
+												</span>
+											`;
+}
+
+
+return `
+											<span class="badge badge-danger">
+												Bloqué
+											</span>
+										`;
+}
+},
+
+
+/*
+							 * DATE CRÉATION
+							 */
+{
+data: 'createdAt',
+
+className: 'text-nowrap',
+
+defaultContent: '-',
+
+render: function (value) {
+return escapeHtml(value);
+}
+},
+
+
+/*
+							 * =================================================
+							 * ACTIONS
+							 * =================================================
+							 *
+							 * Voir / Modifier :
+							 * accessibles si URL disponible.
+							 *
+							 * Bloquer / Débloquer :
+							 * uniquement si toggleUrl + toggleToken
+							 * sont retournés par Symfony.
+							 *
+							 * Donc pour un non-admin :
+							 * toggleUrl = null
+							 * toggleToken = null
+							 * => aucun cadenas.
+							 * =================================================
+							 */
+{
+data: null,
+
+searchable: false,
+
+orderable: false,
+
+className: 'text-center align-middle',
+
+render: function (data) {
+const actif = data.statut === true || data.statut === 1 || data.statut === '1';
+
+
+/*
+										 * VOIR
+										 */
+let boutonVoir = '';
+
+
+if (data.showUrl) {
+boutonVoir = `
+												<a
+													href="${
+escapeHtml(data.showUrl)
+}"
+													class="btn btn-sm btn-info-light"
+													title="Consulter"
+												>
+													<i class="fa fa-eye"></i>
+												</a>
+											`;
+}
+
+
+/*
+										 * MODIFIER
+										 */
+let boutonModifier = '';
+
+
+if (data.editFormUrl) {
+boutonModifier = `
+												<button
+													type="button"
+													class="btn btn-sm btn-primary-light btn-edit-client"
+													data-url="${
+escapeHtml(data.editFormUrl)
+}"
+													title="Modifier"
+												>
+													<i class="fa fa-edit"></i>
+												</button>
+											`;
+}
+
+
+/*
+										 * BLOQUER / DÉBLOQUER
+										 * ADMIN UNIQUEMENT
+										 */
+let boutonToggle = '';
+
+
+if (data.toggleUrl && data.toggleToken) {
+boutonToggle = `
+												<button
+													type="button"
+													class="btn btn-sm ${
+actif ? 'btn-warning-light' : 'btn-success-light'
+} btn-toggle-client"
+
+													data-url="${
+escapeHtml(data.toggleUrl)
+}"
+
+													data-token="${
+escapeHtml(data.toggleToken)
+}"
+
+													data-statut="${
+actif ? '1' : '0'
+}"
+
+													data-client="${
+escapeHtml(data.client || '')
+}"
+
+													title="${
+actif ? 'Bloquer' : 'Débloquer'
+}"
+												>
+													<i class="fa ${
+actif ? 'fa-lock' : 'fa-unlock'
+}"></i>
+												</button>
+											`;
+}
+
+
+return `
+											<div class="btn-group">
+												${boutonVoir}
+												${boutonModifier}
+												${boutonToggle}
+											</div>
+										`;
+}
+}
+
+],
+
+
+/*
+						 * =================================================
+						 * LANGUE
+						 * =================================================
+						 */
+language: {
+processing: 'Chargement des clients…',
+
+search: 'Rechercher :',
+
+lengthMenu: 'Afficher _MENU_ clients',
+
+info: 'Affichage de _START_ à _END_ sur _TOTAL_ clients',
+
+infoEmpty: 'Aucun client à afficher',
+
+zeroRecords: 'Aucun client correspondant',
+
+emptyTable: 'Aucun client disponible',
+
+paginate: {
+previous: 'Précédent',
+
+next: 'Suivant'
+}
+},
+
+
+drawCallback: function () {
+if (checkAll) {
+checkAll.checked = false;
+
+checkAll.indeterminate = false;
+}
+}
+
+});
+
+
+/*
+			 * ============================================================
+			 * SÉLECTION MULTIPLE
+			 * ============================================================
+			 */
+
+const clientsSelectionnes = new Set();
+
+
+function actualiserSelectionMultiple() {
+
+const casesVisibles = document.querySelectorAll('#clientsTable .client-row-check');
+
+
+let nombreCoche = 0;
+
+
+casesVisibles.forEach(function (checkbox) {
+const id = String(checkbox.value);
+
+
+checkbox.checked = clientsSelectionnes.has(id);
+
+
+if (checkbox.checked) {
+nombreCoche++;
+}
+});
+
+
+if (checkAll) {
+checkAll.checked = casesVisibles.length > 0 && nombreCoche === casesVisibles.length;
+
+
+checkAll.indeterminate = nombreCoche > 0 && nombreCoche < casesVisibles.length;
+}
+
+
+const compteur = document.getElementById('clientSelectedCount');
+
+
+if (compteur) {
+compteur.textContent = clientsSelectionnes.size;
+}
+
+
+const barreActions = document.getElementById('clientBulkActions');
+
+
+if (barreActions) {
+barreActions.classList.toggle('d-none', clientsSelectionnes.size === 0);
+}
+}
+
+
+function obtenirClientsSelectionnes() {
+return Array.from(clientsSelectionnes);
+}
+
+
+/*
+			 * Tout sélectionner
+			 */
+$(document).on('change', '#clientCheckAll', function () {
+
+const toutCocher = this.checked;
+
+
+document.querySelectorAll('#clientsTable .client-row-check').forEach(function (checkbox) {
+const id = String(checkbox.value);
+
+
+checkbox.checked = toutCocher;
+
+
+if (toutCocher) {
+clientsSelectionnes.add(id);
+} else {
+clientsSelectionnes.delete(id);
+}
+});
+
+
+actualiserSelectionMultiple();
+
+});
+
+
+/*
+			 * Sélection individuelle
+			 */
+$(document).on('change', '#clientsTable .client-row-check', function () {
+
+const id = String(this.value);
+
+
+if (this.checked) {
+clientsSelectionnes.add(id);
+} else {
+clientsSelectionnes.delete(id);
+} actualiserSelectionMultiple();
+
+});
+
+
+clientsTable.on('draw', function () {
+actualiserSelectionMultiple();
+});
+
+
+/*
+			 * ============================================================
+			 * TYPE CLIENT AJOUT
+			 * ============================================================
+			 */
+
+const formAjout = document.getElementById('formAjoutClient');
+
+
+if (formAjout) {
+gererTypeCompte(formAjout);
+}
+
+
+$(document).on('change', '#formAjoutClient [name$="[typeCompte]"]', function () {
+
+const form = document.getElementById('formAjoutClient');
+
+
+if (form) {
+gererTypeCompte(form);
+}
+
+});
+
+
+/*
+			 * ============================================================
+			 * AJOUT CLIENT AJAX
+			 * ============================================================
+			 */
+
+$(document).on('submit', '#formAjoutClient', async function (event) {
+
+event.preventDefault();
+event.stopPropagation();
+
+
+const form = this;
+
+const bouton = form.querySelector('.client-submit-button');
+
+
+if (! bouton) {
+return;
+}
+
+
+const ancienContenu = bouton.innerHTML;
+
+
+nettoyerErreursFormulaire(form);
+
+
+bouton.disabled = true;
+
+bouton.innerHTML = `
+						<i class="fa fa-spinner fa-spin mr-1"></i>
+						Enregistrement…
+					`;
+
+
+try {
+
+const response = await fetch(form.action, {
+method: 'POST',
+
+headers: {
+'X-Requested-With': 'XMLHttpRequest',
+
+'Accept': 'application/json'
+},
+
+body: new FormData(form)
+});
+
+
+const contentType = response.headers.get('content-type') || '';
+
+
+if (! contentType.includes('application/json')) {
+throw new Error('Le serveur n’a pas retourné une réponse JSON valide.');
+}
+
+
+const data = await response.json();
+
+
+if (! response.ok || data.success !== true) {
+
+afficherErreursFormulaire(form, data.errors);
+
+
+await Swal.fire({
+icon: 'error',
+
+title: 'Ajout impossible',
+
+text: data.message || 'Veuillez corriger les champs indiqués.',
+
+confirmButtonText: 'D’accord',
+
+confirmButtonColor: '#6259ca'
+});
+
+
+return;
+}
+
+
+await Swal.fire({
+icon: 'success',
+
+title: 'Client enregistré',
+
+text: data.message || 'Le client a été ajouté avec succès.',
+
+confirmButtonText: 'OK',
+
+confirmButtonColor: '#6259ca'
+});
+
+
+$('#modalAjoutClient').modal('hide');
+
+
+form.reset();
+
+
+gererTypeCompte(form);
+
+
+clientsTable.ajax.reload(null, false);
+
+} catch (error) {
+
+console.error('Erreur ajout client :', error);
+
+
+await Swal.fire({
+icon: 'error',
+
+title: 'Erreur',
+
+text: error.message || 'Une erreur est survenue pendant l’enregistrement du client.',
+
+confirmButtonText: 'D’accord',
+
+confirmButtonColor: '#6259ca'
+});
+
+} finally {
+
+bouton.disabled = false;
+
+bouton.innerHTML = ancienContenu;
+
+}
+
+});
+
+
+/*
+			 * ============================================================
+			 * CHARGEMENT MODIFICATION
+			 * ============================================================
+			 */
+
+$(document).on('click', '.btn-edit-client', async function () {
+
+const url = this.dataset.url;
+
+
+if (! url) {
+await Swal.fire({icon: 'error', title: 'Erreur', text: 'L’adresse du formulaire de modification est absente.'});
+
+return;
+}
+
+
+editContent.innerHTML = `
+						<div class="modal-body text-center py-5">
+							<i class="fa fa-spinner fa-spin fa-2x"></i>
+
+							<p class="mt-3 mb-0">
+								Chargement du formulaire…
+							</p>
+						</div>
+					`;
+
+
+editModal.modal('show');
+
+
+try {
+
+const response = await fetch(url, {
+method: 'GET',
+
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+}
+});
+
+
+if (! response.ok) {
+throw new Error('Impossible de charger le formulaire de modification.');
+}
+
+
+editContent.innerHTML = await response.text();
+
+
+const form = document.getElementById('formModificationClient');
+
+
+if (! form) {
+throw new Error('Le formulaire de modification est introuvable.');
+}
+
+
+gererTypeCompte(form);
+
+} catch (error) {
+
+editModal.modal('hide');
+
+
+await Swal.fire({icon: 'error', title: 'Chargement impossible', text: error.message});
+
+}
+
+});
+
+
+$(document).on('change', '#formModificationClient [name$="[typeCompte]"]', function () {
+
+const form = document.getElementById('formModificationClient');
+
+
+if (form) {
+gererTypeCompte(form);
+}
+
+});
+
+
+/*
+			 * ============================================================
+			 * MODIFICATION CLIENT AJAX
+			 * ============================================================
+			 */
+
+$(document).on('submit', '#formModificationClient', async function (event) {
+
+event.preventDefault();
+event.stopPropagation();
+
+
+const form = this;
+
+const bouton = form.querySelector('.client-submit-button');
+
+
+if (! bouton) {
+return;
+}
+
+
+const ancienContenu = bouton.innerHTML;
+
+
+nettoyerErreursFormulaire(form);
+
+
+bouton.disabled = true;
+
+bouton.innerHTML = `
+						<i class="fa fa-spinner fa-spin mr-1"></i>
+						Enregistrement…
+					`;
+
+
+try {
+
+const response = await fetch(form.action, {
+method: 'POST',
+
+headers: {
+'X-Requested-With': 'XMLHttpRequest',
+
+'Accept': 'application/json'
+},
+
+body: new FormData(form)
+});
+
+
+const contentType = response.headers.get('content-type') || '';
+
+
+if (! contentType.includes('application/json')) {
+throw new Error('Le serveur n’a pas retourné une réponse JSON valide.');
+}
+
+
+const data = await response.json();
+
+
+if (! response.ok || data.success !== true) {
+
+afficherErreursFormulaire(form, data.errors);
+
+
+await Swal.fire({
+icon: 'error',
+
+title: 'Modification impossible',
+
+text: data.message || 'Veuillez corriger les champs indiqués.'
+});
+
+
+return;
+}
+
+
+await Swal.fire({
+icon: 'success',
+
+title: 'Client modifié',
+
+text: data.message || 'Le client a été modifié avec succès.',
+
+confirmButtonText: 'OK'
+});
+
+
+editModal.modal('hide');
+
+
+clientsTable.ajax.reload(null, false);
+
+} catch (error) {
+
+await Swal.fire({
+icon: 'error',
+
+title: 'Erreur',
+
+text: error.message || 'Une erreur est survenue pendant la modification.'
+});
+
+} finally {
+
+bouton.disabled = false;
+
+bouton.innerHTML = ancienContenu;
+
+}
+
+});
+
+
+/*
+			 * ============================================================
+			 * BLOCAGE / DÉBLOCAGE INDIVIDUEL
+			 * ============================================================
+			 */
+
+$(document).on('click', '.btn-toggle-client', async function (event) {
+
+event.preventDefault();
+event.stopPropagation();
+
+
+const bouton = this;
+
+const url = bouton.dataset.url || '';
+
+const token = bouton.dataset.token || '';
+
+const statutActuel = bouton.dataset.statut === '1';
+
+const nomClient = bouton.dataset.client || 'ce client';
+
+
+if (! url || ! token) {
+await Swal.fire({icon: 'error', title: 'Erreur', text: 'Les informations de blocage/déblocage sont absentes.'});
+
+return;
+}
+
+
+const confirmation = await Swal.fire({
+icon: statutActuel ? 'warning' : 'question',
+
+title: statutActuel ? 'Bloquer ce client ?' : 'Débloquer ce client ?',
+
+text: statutActuel ? `Voulez-vous vraiment bloquer ${nomClient} ?` : `Voulez-vous vraiment débloquer ${nomClient} ?`,
+
+showCancelButton: true,
+
+confirmButtonText: statutActuel ? 'Oui, bloquer' : 'Oui, débloquer',
+
+cancelButtonText: 'Annuler',
+
+confirmButtonColor: statutActuel ? '#dc3545' : '#198754'
+});
+
+
+if (! confirmation.isConfirmed) {
+return;
+}
+
+
+const ancienHtml = bouton.innerHTML;
+
+
+bouton.disabled = true;
+
+bouton.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+
+
+try {
+
+const response = await fetch(url, {
+method: 'POST',
+
+headers: {
+'Content-Type': 'application/json',
+
+'X-Requested-With': 'XMLHttpRequest',
+
+'Accept': 'application/json'
+},
+
+body: JSON.stringify(
+{_token: token}
+)
+});
+
+
+const data = await response.json();
+
+
+if (! response.ok || data.success !== true) {
+throw new Error(data.message || 'Impossible de modifier le statut du client.');
+}
+
+
+await Swal.fire({
+icon: 'success',
+
+title: data.statut ? 'Client débloqué' : 'Client bloqué',
+
+text: data.message
+});
+
+
+clientsTable.ajax.reload(null, false);
+
+} catch (error) {
+
+console.error('Erreur blocage client :', error);
+
+
+await Swal.fire({
+icon: 'error',
+
+title: 'Action impossible',
+
+text: error.message || 'Impossible de modifier le statut du client.'
+});
+
+} finally {
+
+bouton.disabled = false;
+
+bouton.innerHTML = ancienHtml;
+
+}
+
+});
+
+
+/*
+			 * ============================================================
+			 * ACTIONS EN MASSE
+			 * ============================================================
+			 */
+
+$(document).on('click', '[data-client-mass-action]', async function (event) {
+
+event.preventDefault();
+event.stopPropagation();
+
+
+const bouton = this;
+
+const action = bouton.dataset.clientMassAction;
+
+
+const ids = obtenirClientsSelectionnes();
+
+
+if (ids.length === 0) {
+await Swal.fire({icon: 'warning', title: 'Aucun client sélectionné', text: 'Sélectionnez au moins un client.'});
+
+return;
+}
+
+
+const urlElement = document.getElementById('clientsMassActionUrl');
+
+const tokenElement = document.getElementById('clientsMassActionToken');
+
+
+if (! urlElement || ! tokenElement) {
+await Swal.fire({icon: 'error', title: 'Erreur', text: 'La configuration des actions en masse est incomplète.'});
+
+return;
+}
+
+
+const url = urlElement.value;
+
+const token = tokenElement.value;
+
+
+let titre = 'Confirmer';
+
+let texte = '';
+
+let confirmationTexte = 'Confirmer';
+
+let couleur = '#6259ca';
+
+let icone = 'question';
+
+
+if (action === 'bloquer') {
+titre = 'Bloquer les clients ?';
+
+texte = `Vous allez bloquer ${
+ids.length
+} client(s).`;
+
+confirmationTexte = 'Oui, bloquer';
+
+couleur = '#dc3545';
+
+icone = 'warning';
+
+} else if (action === 'debloquer') {
+titre = 'Débloquer les clients ?';
+
+texte = `Vous allez débloquer ${
+ids.length
+} client(s).`;
+
+confirmationTexte = 'Oui, débloquer';
+
+couleur = '#198754';
+
+} else if (action === 'supprimer') {
+titre = 'Supprimer les clients ?';
+
+texte = `Vous allez supprimer ${
+ids.length
+} client(s).`;
+
+confirmationTexte = 'Oui, supprimer';
+
+couleur = '#dc3545';
+
+icone = 'warning';
+
+} else {
+return;
+}
+
+
+const confirmation = await Swal.fire({
+icon: icone,
+
+title: titre,
+
+text: texte,
+
+showCancelButton: true,
+
+confirmButtonText: confirmationTexte,
+
+cancelButtonText: 'Annuler',
+
+confirmButtonColor: couleur
+});
+
+
+if (! confirmation.isConfirmed) {
+return;
+}
+
+
+const ancienHtml = bouton.innerHTML;
+
+
+bouton.disabled = true;
+
+bouton.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Traitement...';
+
+
+try {
+
+const response = await fetch(url, {
+method: 'POST',
+
+headers: {
+'Content-Type': 'application/json',
+
+'X-Requested-With': 'XMLHttpRequest',
+
+'Accept': 'application/json'
+},
+
+body: JSON.stringify(
+{action: action, ids: ids, _token: token}
+)
+});
+
+
+const data = await response.json();
+
+
+if (! response.ok || data.success !== true) {
+throw new Error(data.message || 'Impossible d’exécuter cette action.');
+}
+
+
+await Swal.fire({icon: 'success', title: 'Opération réussie', text: data.message});
+
+
+clientsSelectionnes.clear();
+
+
+if (checkAll) {
+checkAll.checked = false;
+
+checkAll.indeterminate = false;
+}
+
+
+clientsTable.ajax.reload(null, false);
+
+
+actualiserSelectionMultiple();
+
+} catch (error) {
+
+console.error('Erreur action masse :', error);
+
+
+await Swal.fire({
+icon: 'error',
+
+title: 'Action impossible',
+
+text: error.message || 'Une erreur est survenue.'
+});
+
+} finally {
+
+bouton.disabled = false;
+
+bouton.innerHTML = ancienHtml;
+
+}
+
+});
+
+
+/*
+			 * ============================================================
+			 * INITIALISATION
+			 * ============================================================
+			 */
+
+actualiserSelectionMultiple();
+
+});
+	</script>
+
+{% endblock %}

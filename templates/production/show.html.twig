@@ -1,0 +1,1143 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Production
+	{{ ordre.numero }}
+{% endblock %}
+
+{% block body %}
+	{% set statutsTermines = ['termine', 'annule'] %}
+	{% set statutLisible = ordre.statut|replace({'_': ' '})|capitalize %}
+	{% set detail = ordre.commandeDetail %}
+	<div class="side-app">
+
+		<div
+			class="container-fluid py-4">
+
+			{# ==========================================================
+																											           EN-TÊTE
+																											        ========================================================== #}
+			<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+				<div>
+					<a href="{{ path('app_production_index') }}" class="btn btn-light mb-2">
+						<i class="fa fa-arrow-left mr-1"></i>
+						Retour à l’atelier
+					</a>
+
+					<h3 class="mb-0">
+						Ordre de production
+						{{ ordre.numero }}
+					</h3>
+				</div>
+
+				<div class="mt-2">
+					{% if ordre.statut == 'termine' %}
+						<span class="badge badge-success p-2">
+							Production terminée
+						</span>
+					{% elseif ordre.statut == 'annule' %}
+						<span class="badge badge-danger p-2">
+							Ordre annulé
+						</span>
+					{% elseif ordre.statut == 'en_cours' %}
+						<span class="badge badge-primary p-2">
+							Production en cours
+						</span>
+					{% elseif ordre.statut == 'en_pause' %}
+						<span class="badge badge-warning p-2">
+							Production en pause
+						</span>
+					{% else %}
+						<span class="badge badge-secondary p-2">
+							{{ statutLisible }}
+						</span>
+					{% endif %}
+
+					{% if ordre.finPrevueLe %}
+						{% if ordre.estEnRetard %}
+							<span class="badge badge-danger p-2 ml-1">
+								Retard :
+								{{ ordre.retardMinutes }}
+								min
+							</span>
+						{% else %}
+							<span class="badge badge-success p-2 ml-1">
+								Délai respecté
+							</span>
+						{% endif %}
+					{% endif %}
+				</div>
+			</div>
+
+			{# ==========================================================
+																											           MESSAGES FLASH
+																											           À retirer si base.html.twig les affiche déjà.
+																											        ========================================================== #}
+			{% for message in app.flashes('success') %}
+				<div class="alert alert-success alert-dismissible fade show">
+					<i class="fa fa-check-circle mr-1"></i>
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert" aria-label="Fermer">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+			{% endfor %}
+
+			{% for message in app.flashes('error') %}
+				<div class="alert alert-danger alert-dismissible fade show">
+					<i class="fa fa-exclamation-circle mr-1"></i>
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert" aria-label="Fermer">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+			{% endfor %}
+
+			<div
+				class="row">
+
+				{# ======================================================
+																																						               INFORMATIONS GÉNÉRALES
+																																						            ====================================================== #}
+				<div class="col-lg-8">
+
+					<div class="card mb-3">
+						<div class="card-header">
+							<h5 class="card-title mb-0">
+								Informations générales
+							</h5>
+						</div>
+
+						<div class="card-body">
+							<div class="row">
+								<div class="col-md-4 mb-3">
+									<small class="text-muted">Commande</small>
+									<div class="font-weight-bold">
+										{% if ordre.commandeDetail and ordre.commandeDetail.commande %}
+											#{{ ordre.commandeDetail.commande.id }}
+										{% else %}
+											Non renseignée
+										{% endif %}
+									</div>
+								</div>
+
+								<div class="col-md-4 mb-3">
+									<small class="text-muted">Statut</small>
+									<div class="font-weight-bold">
+										{{ statutLisible }}
+									</div>
+								</div>
+
+								<div class="col-md-4 mb-3">
+									<small class="text-muted">Priorité</small>
+									<div class="font-weight-bold">
+										{{ ordre.priorite|default('normale')|capitalize }}
+									</div>
+								</div>
+
+								<div class="col-md-4 mb-3">
+									<small class="text-muted">Machine</small>
+									<div class="font-weight-bold">
+										{% if ordre.machine %}
+											{{ ordre.machine.nom }}
+										{% else %}
+											Non affectée
+										{% endif %}
+									</div>
+								</div>
+
+								<div class="col-md-4 mb-3">
+									<small class="text-muted">Opérateur</small>
+									<div class="font-weight-bold">
+										{% if ordre.operateur %}
+											{{ ordre.operateur.employe.nom }}
+										{% else %}
+											Non affecté
+										{% endif %}
+									</div>
+								</div>
+
+								<div class="col-md-4 mb-3">
+									<small class="text-muted">Créé le</small>
+									<div class="font-weight-bold">
+										{{ ordre.creeLe
+                                        ? ordre.creeLe|date('d/m/Y à H:i')
+                                        : 'Non renseigné'
+                                    }}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{# ==================================================
+																																																	                   FICHE TECHNIQUE DE FABRICATION
+																																																	                ================================================== #}
+					<div class="card mb-3">
+						<div class="card-header d-flex justify-content-between align-items-center">
+							<h5 class="card-title mb-0">
+								<i class="fa fa-cogs mr-1"></i>
+								Fiche technique de fabrication
+							</h5>
+							{% if detail and detail.batValide is defined %}
+								<span class="badge {{ detail.batValide ? 'badge-success' : 'badge-warning' }}">
+									{{ detail.batValide ? 'BAT validé' : 'BAT non validé' }}
+								</span>
+							{% endif %}
+						</div>
+
+						<div class="card-body">
+							{% if detail %}
+								<div class="row">
+									<div class="col-md-6 mb-3">
+										<small class="text-muted">Produit / désignation</small>
+										<div class="font-weight-bold">
+											{% if detail.designation is defined and detail.designation %}
+												{{ detail.designation }}
+											{% elseif detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.produit %}
+												{{ detail.produitConfiguration.produit.nom }}
+												{% else %}Non renseigné
+											{% endif %}
+										</div>
+									</div>
+
+									<div class="col-md-3 col-6 mb-3">
+										<small class="text-muted">Quantité</small>
+										<div class="font-weight-bold">{{ detail.quantite is defined and detail.quantite is not null ? detail.quantite : '—' }}</div>
+									</div>
+
+									<div class="col-md-3 col-6 mb-3">
+										<small class="text-muted">Dimensions</small>
+										<div class="font-weight-bold">
+											{% if detail.largeur is defined and detail.longueur is defined and detail.largeur and detail.longueur %}
+												{{ detail.largeur }}
+												×
+												{{ detail.longueur }}
+											{% elseif detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.format %}
+												{{ detail.produitConfiguration.format.nom }}
+												{% else %}—
+											{% endif %}
+										</div>
+									</div>
+
+									<div class="col-md-3 col-6 mb-3">
+										<small class="text-muted">Type d’impression</small>
+										<div class="font-weight-bold">
+											{% if detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.typeImpression %}
+												{{ detail.produitConfiguration.typeImpression.nom }}
+											{% elseif detail.typeImpression is defined and detail.typeImpression %}
+												{{ detail.typeImpression.nom }}
+												{% else %}—
+											{% endif %}
+										</div>
+									</div>
+
+									<div class="col-md-3 col-6 mb-3">
+										<small class="text-muted">Support</small>
+										<div class="font-weight-bold">
+											{% if detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.support %}
+												{{ detail.produitConfiguration.support.nom }}
+											{% elseif detail.support is defined and detail.support %}
+												{{ detail.support.nom }}{% else %}—
+											{% endif %}
+										</div>
+									</div>
+
+									{% set champsTechniques = [
+									['Surface', detail.surface is defined ? detail.surface : null, ' m²'],
+									['Grammage', detail.grammage is defined ? detail.grammage : null, ' g/m²'],
+									['Épaisseur', detail.epaisseur is defined ? detail.epaisseur : null, ''],
+									['Profil couleur', detail.profilCouleurs is defined ? detail.profilCouleurs : null, ''],
+									['Résolution', detail.resolution is defined ? detail.resolution : null, ' dpi'],
+									['Nombre de faces', detail.nombreFaces is defined ? detail.nombreFaces : null, '']
+								] %}
+									{% for champ in champsTechniques %}
+										{% if champ[1] is not null and champ[1] != '' %}
+											<div class="col-md-3 col-6 mb-3">
+												<small class="text-muted">{{ champ[0] }}</small>
+												<div class="font-weight-bold">{{ champ[1] }}{{ champ[2] }}</div>
+											</div>
+										{% endif %}
+									{% endfor %}
+								</div>
+
+								{% set options = [] %}
+								{% if detail.rectoVerso is defined and detail.rectoVerso %}
+									{% set options = options|merge(['Recto-verso']) %}
+								{% endif %}
+								{% if detail.laminage is defined and detail.laminage %}
+									{% set options = options|merge(['Laminage']) %}
+								{% endif %}
+								{% if detail.oeillets is defined and detail.oeillets %}
+									{% set options = options|merge(['Œillets']) %}
+								{% endif %}
+								{% if detail.decoupe is defined and detail.decoupe %}
+									{% set options = options|merge(['Découpe']) %}
+								{% endif %}
+								{% if detail.pliage is defined and detail.pliage %}
+									{% set options = options|merge(['Pliage']) %}
+								{% endif %}
+								{% if detail.emballage is defined and detail.emballage %}
+									{% set options = options|merge(['Emballage']) %}
+								{% endif %}
+
+								{% if options|length > 0 %}
+									<div class="mb-3">
+										<small class="text-muted d-block mb-2">Options techniques</small>
+										{% for option in options %}
+											<span class="badge badge-info p-2 mr-1 mb-1">{{ option }}</span>
+										{% endfor %}
+									</div>
+								{% endif %}
+
+								{% if detail.finitions is defined and detail.finitions|length > 0 %}
+									<div class="mb-3">
+										<small class="text-muted d-block mb-2">Finitions à réaliser</small>
+										<div class="table-responsive">
+											<table class="table table-sm table-bordered mb-0">
+												<thead class="bg-light">
+													<tr>
+														<th>Finition</th>
+														<th>Mode</th>
+														<th>Quantité</th>
+														<th>Instruction</th>
+													</tr>
+												</thead>
+												<tbody>
+													{% for finitionDetail in detail.finitions %}
+														<tr>
+															<td class="font-weight-bold">{{ finitionDetail.configurationFinition and finitionDetail.configurationFinition.finition ? finitionDetail.configurationFinition.finition.nom : 'Finition' }}</td>
+															<td>{{ finitionDetail.modeCalcul|default('—')|replace({'_': ' '})|capitalize }}</td>
+															<td>{{ finitionDetail.quantite|default('—') }}</td>
+															<td>{{ finitionDetail.configurationFinition ? finitionDetail.configurationFinition.description|default('—') : '—' }}</td>
+														</tr>
+													{% endfor %}
+												</tbody>
+											</table>
+										</div>
+									</div>
+								{% endif %}
+
+								{% if detail.description is defined and detail.description %}
+									<div class="mb-3">
+										<small class="text-muted">Description</small>
+										<div class="production-note">{{ detail.description|nl2br }}</div>
+									</div>
+								{% endif %}
+								{% if detail.observation is defined and detail.observation %}
+									<div>
+										<small class="text-muted">Observations / consignes</small>
+										<div class="production-note production-note-warning">{{ detail.observation|nl2br }}</div>
+									</div>
+								{% endif %}
+							{% else %}
+								<div class="alert alert-warning mb-0">Aucun détail de commande n’est associé à cet ordre.</div>
+							{% endif %}
+						</div>
+					</div>
+
+					{# ==================================================
+																																																	                   CHRONOLOGIE ET DÉLAIS
+																																																	                ================================================== #}
+					<div class="card mb-3">
+						<div class="card-header d-flex justify-content-between align-items-center">
+							<h5 class="card-title mb-0">
+								Chronologie de production
+							</h5>
+
+							{% if ordre.finPrevueLe %}
+								{% if ordre.estEnRetard %}
+									<span class="badge badge-danger">
+										En retard
+									</span>
+								{% else %}
+									<span class="badge badge-success">
+										Dans le délai
+									</span>
+								{% endif %}
+							{% endif %}
+						</div>
+
+						<div class="card-body">
+							<div class="row">
+								<div class="col-sm-6 col-lg-4 mb-3">
+									<small class="text-muted">
+										Transmission à l’atelier
+									</small>
+									<div class="font-weight-bold">
+										{{ ordre.transmisLe
+                                        ? ordre.transmisLe|date('d/m/Y à H:i')
+                                        : 'Non transmis'
+                                    }}
+									</div>
+								</div>
+
+								<div class="col-sm-6 col-lg-4 mb-3">
+									<small class="text-muted">
+										Début prévu
+									</small>
+									<div class="font-weight-bold">
+										{{ ordre.debutPrevuLe
+                                        ? ordre.debutPrevuLe|date('d/m/Y à H:i')
+                                        : 'Non planifié'
+                                    }}
+									</div>
+								</div>
+
+								<div class="col-sm-6 col-lg-4 mb-3">
+									<small class="text-muted">
+										Fin prévue
+									</small>
+									<div class="font-weight-bold">
+										{{ ordre.finPrevueLe
+                                        ? ordre.finPrevueLe|date('d/m/Y à H:i')
+                                        : 'Non calculée'
+                                    }}
+									</div>
+								</div>
+
+								<div class="col-sm-6 col-lg-4 mb-3">
+									<small class="text-muted">
+										Démarrage réel
+									</small>
+									<div class="font-weight-bold">
+										{{ ordre.demarreLe
+                                        ? ordre.demarreLe|date('d/m/Y à H:i')
+                                        : 'Non démarré'
+                                    }}
+									</div>
+								</div>
+
+								<div class="col-sm-6 col-lg-4 mb-3">
+									<small class="text-muted">
+										Clôture réelle
+									</small>
+									<div class="font-weight-bold">
+										{{ ordre.termineLe
+                                        ? ordre.termineLe|date('d/m/Y à H:i')
+                                        : 'Non clôturé'
+                                    }}
+									</div>
+								</div>
+
+								<div class="col-sm-6 col-lg-4 mb-3">
+									<small class="text-muted">
+										Pause en cours depuis
+									</small>
+									<div class="font-weight-bold">
+										{{ ordre.pauseDebuteLe
+                                        ? ordre.pauseDebuteLe|date('d/m/Y à H:i')
+                                        : 'Aucune pause en cours'
+                                    }}
+									</div>
+								</div>
+							</div>
+
+							<hr>
+
+							<div class="row text-center">
+								<div class="col-6 col-md-3 mb-3">
+									<div class="border rounded p-3 h-100">
+										<small class="text-muted">
+											Durée estimée
+										</small>
+										<h5 class="mb-0 mt-1">
+											{% if ordre.dureeEstimeeMinutes is not null %}
+												{{ ordre.dureeEstimeeMinutes }}
+												min
+											{% else %}
+												—
+											{% endif %}
+										</h5>
+									</div>
+								</div>
+
+								<div class="col-6 col-md-3 mb-3">
+									<div class="border rounded p-3 h-100">
+										<small class="text-muted">
+											Temps d’attente
+										</small>
+										<h5 class="mb-0 mt-1">
+											{% if ordre.dureeAttenteMinutes is not null %}
+												{{ ordre.dureeAttenteMinutes }}
+												min
+											{% else %}
+												—
+											{% endif %}
+										</h5>
+									</div>
+								</div>
+
+								<div class="col-6 col-md-3 mb-3">
+									<div class="border rounded p-3 h-100">
+										<small class="text-muted">
+											Temps de pause
+										</small>
+										<h5 class="mb-0 mt-1">
+											{{ ordre.dureePauseMinutes }}
+											min
+										</h5>
+									</div>
+								</div>
+
+								<div class="col-6 col-md-3 mb-3">
+									<div class="border rounded p-3 h-100">
+										<small class="text-muted">
+											Durée réelle
+										</small>
+										<h5 class="mb-0 mt-1">
+											{% if ordre.dureeReelleMinutes is not null %}
+												{{ ordre.dureeReelleMinutes }}
+												min
+											{% else %}
+												—
+											{% endif %}
+										</h5>
+									</div>
+								</div>
+							</div>
+
+							{% if ordre.termineLe %}
+								<div class="row text-center">
+									<div class="col-md-4 mb-3">
+										<div class="border rounded p-3 h-100">
+											<small class="text-muted">
+												Durée totale du traitement
+											</small>
+											<h5 class="mb-0 mt-1">
+												{% if ordre.dureeTotaleTraitementMinutes is not null %}
+													{{ ordre.dureeTotaleTraitementMinutes }}
+													min
+												{% else %}
+													—
+												{% endif %}
+											</h5>
+										</div>
+									</div>
+
+									<div class="col-md-4 mb-3">
+										<div class="border rounded p-3 h-100">
+											<small class="text-muted">
+												Écart estimation/réalité
+											</small>
+
+											{% if ordre.ecartDureeMinutes is not null %}
+												<h5 class="mb-0 mt-1
+																																																																																																																																																				                                                {{ ordre.ecartDureeMinutes > 0
+																																																																																																																																																				                                                    ? 'text-danger'
+																																																																																																																																																				                                                    : 'text-success'
+																																																																																																																																																				                                                }}">
+													{{ ordre.ecartDureeMinutes > 0 ? '+' : '' }}
+													{{ ordre.ecartDureeMinutes }}
+													min
+												</h5>
+											{% else %}
+												<h5 class="mb-0 mt-1">—</h5>
+											{% endif %}
+										</div>
+									</div>
+
+									<div class="col-md-4 mb-3">
+										<div class="border rounded p-3 h-100">
+											<small class="text-muted">
+												Retard
+											</small>
+
+											<h5 class="mb-0 mt-1
+																																																																																																																																									                                            {{ ordre.retardMinutes > 0
+																																																																																																																																									                                                ? 'text-danger'
+																																																																																																																																									                                                : 'text-success'
+																																																																																																																																									                                            }}">
+												{{ ordre.retardMinutes }}
+												min
+											</h5>
+										</div>
+									</div>
+								</div>
+							{% endif %}
+						</div>
+					</div>
+
+					{# ==================================================
+																																																	                   RÉSULTATS DE PRODUCTION
+																																																	                ================================================== #}
+					{% if ordre.statut == 'termine' %}
+						<div class="card mb-3">
+							<div class="card-header">
+								<h5 class="card-title mb-0">
+									Résultats de production
+								</h5>
+							</div>
+
+							<div class="card-body">
+								<div class="row text-center">
+									<div class="col-md-4 mb-3">
+										<div class="border rounded p-3">
+											<small class="text-muted">
+												Quantité conforme
+											</small>
+											<h4 class="text-success mb-0">
+												{{ ordre.quantiteConforme }}
+											</h4>
+										</div>
+									</div>
+
+									<div class="col-md-4 mb-3">
+										<div class="border rounded p-3">
+											<small class="text-muted">
+												Quantité rebut
+											</small>
+											<h4 class="text-danger mb-0">
+												{{ ordre.quantiteRebut }}
+											</h4>
+										</div>
+									</div>
+
+									<div class="col-md-4 mb-3">
+										<div class="border rounded p-3">
+											<small class="text-muted">
+												Total produit
+											</small>
+											<h4 class="mb-0">
+												{{ ordre.quantiteConforme + ordre.quantiteRebut }}
+											</h4>
+										</div>
+									</div>
+								</div>
+
+								{% if ordre.observationFin %}
+									<div class="mt-2">
+										<strong>Observation :</strong>
+										<div class="border rounded bg-light p-3 mt-2">
+											{{ ordre.observationFin|nl2br }}
+										</div>
+									</div>
+								{% endif %}
+							</div>
+						</div>
+					{% endif %}
+
+					{# ==================================================
+																																																	                   FICHIERS DE PRODUCTION
+																																																	                ================================================== #}
+					<div class="card mb-3">
+						<div class="card-header">
+							<h5 class="card-title mb-0">
+								Fichiers de production
+							</h5>
+						</div>
+
+						<div class="card-body">
+							<div class="row">
+								{% for fichier in ordre.fichiers %}
+									{% set extension = fichier.nomOriginal|split('.')|last|lower %}
+									{% set estImage = extension in ['jpg', 'jpeg', 'png', 'gif', 'webp'] %}
+									{% set urlVisualisation = path('app_controle_pre_presse_visualiser_fichier', {id: fichier.id}) %}
+									<div class="col-md-6 mb-3">
+										<div class="production-file-card h-100">
+											<div class="production-file-preview">
+												{% if estImage %}
+													<img src="{{ urlVisualisation }}" alt="Aperçu de {{ fichier.nomOriginal }}" loading="lazy">
+												{% elseif extension == 'pdf' %}
+													<i class="fa fa-file-pdf-o text-danger"></i>
+												{% else %}
+													<i class="fa fa-file-o text-primary"></i>
+												{% endif %}
+											</div>
+											<div class="p-3">
+												<div class="font-weight-bold text-truncate mb-2" title="{{ fichier.nomOriginal }}">{{ fichier.nomOriginal }}</div>
+												<a class="btn btn-sm btn-outline-primary mr-1" target="_blank" rel="noopener" href="{{ urlVisualisation }}">
+													<i class="fa fa-eye mr-1"></i>Visionner</a>
+												<a class="btn btn-sm btn-primary" href="{{ path('app_controle_pre_presse_visualiser_fichier', {id: fichier.id, download: 1}) }}" download>
+													<i class="fa fa-download mr-1"></i>Original</a>
+											</div>
+										</div>
+									</div>
+								{% else %}
+									<div class="col-12 text-muted">
+										Aucun fichier validé.
+									</div>
+								{% endfor %}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{# ======================================================
+																																						               PANNEAU DES ACTIONS
+																																						            ====================================================== #}
+				<div
+					class="col-lg-4">
+
+					{# ÉTIQUETAGE #}
+					<div class="card mb-3 border-primary">
+						<div class="card-header d-flex justify-content-between align-items-center">
+							<h5 class="card-title mb-0">
+								<i class="fa fa-tag mr-1"></i>
+								Étiquetage</h5>
+							<span class="badge {{ ordre.aUneEtiquette ? 'badge-success' : 'badge-warning' }}">
+								{{ ordre.aUneEtiquette ? 'Affectée' : 'Non affectée' }}
+							</span>
+						</div>
+						<div class="card-body">
+							{% if ordre.aUneEtiquette %}
+								<div class="production-label-number mb-3">
+									<small>Numéro d’étiquette</small>
+									<strong>{{ ordre.numeroEtiquette }}</strong>
+								</div>
+								{% if ordre.etiquetteAffecteeLe %}
+									<p class="small text-muted">
+										Affectée le
+										{{ ordre.etiquetteAffecteeLe|date('d/m/Y à H:i') }}
+
+										{% if ordre.etiquetteAffecteePar %}
+											{% set utilisateurEtiquette = ordre.etiquetteAffecteePar %}
+
+											{% if utilisateurEtiquette.employe %}
+												par
+												{{ utilisateurEtiquette.employe.prenom|default('') }}
+												{{ utilisateurEtiquette.employe.nom|default('') }}
+											{% elseif utilisateurEtiquette.username is defined %}
+												par
+												{{ utilisateurEtiquette.username }}
+											{% endif %}
+										{% endif %}
+									</p>
+								{% endif %}
+								<a href="{{ path('app_production_imprimer_etiquette', {id: ordre.id}) }}" target="_blank" rel="noopener" class="btn btn-primary btn-block mb-3">
+									<i class="fa fa-print mr-1"></i>
+									Imprimer l’étiquette
+								</a>
+							{% else %}
+								<p class="text-muted">Saisissez un numéro ou laissez le champ vide pour une génération automatique.</p>
+							{% endif %}
+
+							<form method="post" action="{{ path('app_production_affecter_etiquette', {id: ordre.id}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('production_affecter_etiquette_' ~ ordre.id) }}">
+								<div class="form-group">
+									<label for="numero_etiquette">{{ ordre.aUneEtiquette ? 'Modifier le numéro' : 'Numéro d’étiquette' }}</label>
+									<input type="text" id="numero_etiquette" name="numero_etiquette" class="form-control text-uppercase" maxlength="50" value="{{ ordre.numeroEtiquette|default('') }}" placeholder="Automatique si vide" autocomplete="off">
+									<small class="form-text text-muted">Lettres, chiffres, point, tiret, barre oblique et soulignement.</small>
+								</div>
+								<button type="submit" class="btn btn-outline-primary btn-block">
+									<i class="fa {{ ordre.aUneEtiquette ? 'fa-pencil' : 'fa-tag' }} mr-1"></i>
+									{{ ordre.aUneEtiquette ? 'Enregistrer la modification' : 'Affecter l’étiquette' }}
+								</button>
+							</form>
+
+							{% if ordre.aUneEtiquette %}
+								<form method="post" action="{{ path('app_production_retirer_etiquette', {id: ordre.id}) }}" class="js-confirm-form mt-2" data-message="Retirer l’étiquette {{ ordre.numeroEtiquette }} de cet ordre ?">
+									<input type="hidden" name="_token" value="{{ csrf_token('production_retirer_etiquette_' ~ ordre.id) }}">
+									<button type="submit" class="btn btn-link text-danger btn-block">
+										<i class="fa fa-unlink mr-1"></i>
+										Retirer l’étiquette</button>
+								</form>
+							{% endif %}
+						</div>
+					</div>
+
+					{# TRANSMISSION #}
+					{% if ordre.transmisLe is null
+                    and ordre.statut not in statutsTermines %}
+						<div class="card mb-3">
+							<div class="card-header">
+								<h5 class="card-title mb-0">
+									Transmission
+								</h5>
+							</div>
+
+							<div class="card-body">
+								<p class="text-muted">
+									Enregistrez la date et l’heure de transmission
+																																																																																													                                de cet ordre à l’atelier.
+								</p>
+
+								<form method="post" action="{{ path( 'app_production_transmettre', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Confirmer la transmission de cet ordre à la production ?">
+
+									<input type="hidden" name="_token" value="{{ csrf_token( 'production_transmettre_' ~ ordre.id ) }}">
+
+									<button type="submit" class="btn btn-info btn-block">
+										<i class="fa fa-share mr-1"></i>
+										Transmettre à la production
+									</button>
+								</form>
+							</div>
+						</div>
+					{% endif %}
+
+					{# PLANIFICATION #}
+					{% if ordre.statut not in statutsTermines %}
+						<div class="card mb-3">
+							<div class="card-header">
+								<h5 class="card-title mb-0">
+									Planification
+								</h5>
+							</div>
+
+							<div class="card-body">
+								<form method="post" action="{{ path( 'app_production_planifier', {id: ordre.id} ) }}">
+
+									<input type="hidden" name="_token" value="{{ csrf_token( 'production_planifier_' ~ ordre.id ) }}">
+
+									<div class="form-group">
+										<label for="debut_prevu">
+											Date et heure de début prévues
+										</label>
+
+										<input type="datetime-local" id="debut_prevu" name="debut_prevu" class="form-control" value="{{ ordre.debutPrevuLe ? ordre.debutPrevuLe|date('Y-m-d\\TH:i') : '' }}">
+									</div>
+
+									<div class="form-group">
+										<label for="duree_estimee_minutes">
+											Durée estimée en minutes
+										</label>
+
+										<input type="number" id="duree_estimee_minutes" name="duree_estimee_minutes" class="form-control" min="1" step="1" placeholder="Exemple : 120" value="{{ ordre.dureeEstimeeMinutes is not null ? ordre.dureeEstimeeMinutes : '' }}">
+									</div>
+
+									{% if ordre.finPrevueLe %}
+										<div class="alert alert-info py-2">
+											Fin actuellement prévue :
+											<strong>
+												{{ ordre.finPrevueLe|date(
+                                                'd/m/Y à H:i'
+                                            ) }}
+											</strong>
+										</div>
+									{% endif %}
+
+									<button type="submit" class="btn btn-primary btn-block">
+										<i class="fa fa-calendar mr-1"></i>
+										Enregistrer la planification
+									</button>
+								</form>
+							</div>
+						</div>
+					{% endif %}
+
+					{# PREMIER DÉMARRAGE #}
+					{% if ordre.statut == 'a_produire' %}
+						<div class="card mb-3">
+							<div class="card-header">
+								<h5 class="card-title mb-0">
+									Démarrer la production
+								</h5>
+							</div>
+
+							<div class="card-body">
+								<form method="post" action="{{ path( 'app_production_demarrer', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Voulez-vous démarrer cette production ?">
+
+									<input type="hidden" name="_token" value="{{ csrf_token( 'production_demarrer_' ~ ordre.id ) }}">
+
+									<div class="form-group">
+										<label for="machine_id">
+											Machine utilisée
+										</label>
+
+										{% if machineCourante %}
+											<div class="alert alert-success">
+												<i class="fa fa-print mr-2"></i>
+
+												Poste identifié :
+
+												<strong>
+													{{ machineCourante.nom }}
+												</strong>
+
+												{% if machineCourante.numeroMachine %}
+													—
+													{{ machineCourante.numeroMachine }}
+												{% endif %}
+
+												{% if machineCourante.adresseIp %}
+													<span class="ml-2">
+														IP :
+														{{ machineCourante.adresseIp }}
+													</span>
+												{% endif %}
+											</div>
+										{% else %}
+											<div class="alert alert-warning">
+												<i class="fa fa-exclamation-triangle mr-2"></i>
+
+												Aucune machine n'est associée à l'adresse IP
+
+												<strong>
+													{{ adresseIpCourante|default('inconnue') }}
+												</strong>.
+											</div>
+										{% endif %}
+									</div>
+
+									<button type="submit" class="btn btn-success btn-block">
+										<i class="fa fa-play mr-1"></i>
+										Démarrer
+									</button>
+								</form>
+							</div>
+						</div>
+					{% endif %}
+
+					{# ACTIONS EN COURS #}
+					{% if ordre.statut == 'en_cours' %}
+						<div class="card mb-3">
+							<div class="card-header">
+								<h5 class="card-title mb-0">
+									Production en cours
+								</h5>
+							</div>
+
+							<div class="card-body">
+								<form method="post" action="{{ path( 'app_production_pause', {id: ordre.id} ) }}" class="mb-3">
+
+									<input type="hidden" name="_token" value="{{ csrf_token( 'production_pause_' ~ ordre.id ) }}">
+
+									<button type="submit" class="btn btn-warning btn-block">
+										<i class="fa fa-pause mr-1"></i>
+										Mettre en pause
+									</button>
+								</form>
+
+								<hr>
+
+								<h6>Clôturer la production</h6>
+
+								<form method="post" action="{{ path( 'app_production_terminer', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Confirmer la clôture définitive de cette production ?">
+
+									<input type="hidden" name="_token" value="{{ csrf_token( 'production_terminer_' ~ ordre.id ) }}">
+
+									<div class="form-group">
+										<label for="quantite_produite">
+											Quantité conforme
+										</label>
+
+										<input type="number" id="quantite_produite" name="quantite_produite" class="form-control" min="0" step="1" required>
+									</div>
+
+									<div class="form-group">
+										<label for="quantite_rebut">
+											Quantité rebut
+										</label>
+
+										<input type="number" id="quantite_rebut" name="quantite_rebut" class="form-control" min="0" step="1" value="0" required>
+									</div>
+
+									<div class="form-group">
+										<label for="observation">
+											Observation
+										</label>
+
+										<textarea id="observation" name="observation" class="form-control" rows="3" placeholder="Observation de fin de production"></textarea>
+									</div>
+
+									<button type="submit" class="btn btn-primary btn-block">
+										<i class="fa fa-check mr-1"></i>
+										Terminer la production
+									</button>
+								</form>
+							</div>
+						</div>
+					{% endif %}
+
+					{# CONSOMMABLES DE PRODUCTION #}
+					{% if ordre.statut not in statutsTermines %}
+						<div class="card mb-3">
+							<div class="card-body">
+								<a href="{{ path('app_consommables_index') }}" class="btn btn-outline-secondary btn-block">
+									<i class="fa fa-minus-circle mr-1"></i>
+									Enregistrer un consommable utilisé
+								</a>
+							</div>
+						</div>
+					{% endif %}
+
+					{# REPRISE #}
+					{% if ordre.statut == 'en_pause' %}
+						<div class="card mb-3 border-warning">
+							<div class="card-header bg-warning">
+								<h5 class="card-title mb-0">
+									Production en pause
+								</h5>
+							</div>
+
+							<div class="card-body">
+								{% if ordre.pauseDebuteLe %}
+									<p>
+										Pause commencée le
+										<strong>
+											{{ ordre.pauseDebuteLe|date(
+                                            'd/m/Y à H:i'
+                                        ) }}
+										</strong>.
+									</p>
+								{% endif %}
+
+								<form method="post" action="{{ path( 'app_production_reprendre', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Voulez-vous reprendre cette production ?">
+
+									<input type="hidden" name="_token" value="{{ csrf_token( 'production_reprendre_' ~ ordre.id ) }}">
+
+									<button type="submit" class="btn btn-success btn-block">
+										<i class="fa fa-play mr-1"></i>
+										Reprendre la production
+									</button>
+								</form>
+							</div>
+						</div>
+					{% endif %}
+
+					{# ANNULATION #}
+					{% if ordre.statut not in statutsTermines %}
+						<div class="card mb-3 border-danger">
+							<div class="card-header">
+								<h5 class="card-title text-danger mb-0">
+									Annuler l’ordre
+								</h5>
+							</div>
+
+							<div class="card-body">
+								<form method="post" action="{{ path( 'app_production_annuler', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Cette annulation est définitive. Voulez-vous continuer ?">
+
+									<input type="hidden" name="_token" value="{{ csrf_token( 'production_annuler_' ~ ordre.id ) }}">
+
+									<div class="form-group">
+										<label for="motif">
+											Motif de l’annulation
+										</label>
+
+										<textarea id="motif" name="motif" class="form-control" rows="3" required placeholder="Indiquez obligatoirement le motif"></textarea>
+									</div>
+
+									<button type="submit" class="btn btn-outline-danger btn-block">
+										<i class="fa fa-times mr-1"></i>
+										Annuler l’ordre
+									</button>
+								</form>
+							</div>
+						</div>
+					{% endif %}
+
+					{# MOTIF D’ANNULATION #}
+					{% if ordre.statut == 'annule' %}
+						<div class="card mb-3 border-danger">
+							<div class="card-header bg-danger text-white">
+								Ordre annulé
+							</div>
+
+							<div class="card-body">
+								<strong>Motif :</strong>
+
+								<p class="mb-0 mt-2">
+									{{ ordre.motifAnnulation
+                                    |default('Motif non renseigné')
+                                    |nl2br
+                                }}
+								</p>
+							</div>
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+
+{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<style>
+		.production-note {
+			margin-top: 6px;
+			padding: 12px 14px;
+			border: 1px solid #e8e8ef;
+			border-left: 4px solid #6259ca;
+			border-radius: 4px;
+			background: #f8f9fb;
+		}
+		.production-note-warning {
+			border-left-color: #f0ad4e;
+			background: #fffaf0;
+		}
+		.production-file-card {
+			overflow: hidden;
+			border: 1px solid #e5e7eb;
+			border-radius: 7px;
+			background: #fff;
+		}
+		.production-file-preview {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			height: 170px;
+			overflow: hidden;
+			background: #f3f4f7;
+		}
+		.production-file-preview img {
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+		}
+		.production-file-preview i {
+			font-size: 58px;
+		}
+		.production-label-number {
+			padding: 14px;
+			border: 2px dashed #6259ca;
+			border-radius: 6px;
+			text-align: center;
+			background: #f7f6ff;
+		}
+		.production-label-number small {
+			display: block;
+			color: #6c757d;
+		}
+		.production-label-number strong {
+			display: block;
+			margin-top: 4px;
+			color: #312b81;
+			font-size: 22px;
+			letter-spacing: 1px;
+			word-break: break-word;
+		}
+	</style>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+const forms = document.querySelectorAll('.js-confirm-form');
+
+forms.forEach(function (form) {
+form.addEventListener('submit', function (event) {
+event.preventDefault();
+
+const message = form.dataset.message || 'Voulez-vous continuer ?';
+
+if (typeof window.Swal === 'undefined') {
+if (window.confirm(message)) {
+form.submit();
+}
+
+return;
+}
+
+window.Swal.fire({
+icon: 'question',
+title: 'Confirmation',
+text: message,
+showCancelButton: true,
+confirmButtonText: 'Oui, continuer',
+cancelButtonText: 'Annuler'
+}).then(function (resultat) {
+if (resultat.isConfirmed) {
+form.submit();
+}
+});
+});
+});
+});
+	</script>
+{% endblock %}

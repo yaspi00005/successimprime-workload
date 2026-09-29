@@ -1,0 +1,359 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Paiement #{{ paiement.id }}
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<div>
+
+				<ol class="breadcrumb">
+
+					<li class="breadcrumb-item">
+						<a href="{{ path('app_paiements_index') }}">
+							Paiements
+						</a>
+					</li>
+
+					<li class="breadcrumb-item active">
+						Paiement #{{ paiement.id }}
+					</li>
+
+				</ol>
+
+			</div>
+
+			<div>
+
+				<a href="{{ path('app_paiements_index') }}" class="btn btn-primary-light">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour à la liste
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{% include "alert.html.twig" %}
+
+
+		<div class="row">
+
+			<div class="col-lg-8">
+
+				<div class="card">
+
+					<div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+
+						<h3 class="card-title mb-0">
+							Détail du paiement
+						</h3>
+
+						<div>
+
+							{% if paiement.estEnAttente %}
+								<span class="badge badge-warning">En attente</span>
+							{% elseif paiement.estValide %}
+								<span class="badge badge-success">Validé</span>
+							{% elseif paiement.estRejete %}
+								<span class="badge badge-danger">Rejeté</span>
+							{% elseif paiement.estAnnule %}
+								<span class="badge badge-secondary">Annulé</span>
+							{% endif %}
+
+						</div>
+
+					</div>
+
+					<div class="card-body">
+
+						<div class="row">
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Montant</small>
+								<strong>{{ paiement.montant|number_format(0, ',', ' ') }} FCFA</strong>
+							</div>
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Mode de paiement</small>
+								{{ paiement.modeLabel }}
+							</div>
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Compte de trésorerie</small>
+								{{ paiement.compteTresorerie ? paiement.compteTresorerie.nom : '—' }}
+							</div>
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Commande</small>
+								{% if paiement.commande %}
+									<a href="{{ path('app_commandes_show', { id: paiement.commande.id }) }}">
+										{{ paiement.commande.numero|default('#' ~ paiement.commande.id) }}
+									</a>
+								{% else %}
+									—
+								{% endif %}
+							</div>
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Date</small>
+								{{ paiement.date ? paiement.date|date('d/m/Y H:i') : '—' }}
+							</div>
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Référence</small>
+								{{ paiement.reference|default('—') }}
+							</div>
+
+							{% if paiement.estCheque %}
+
+								<div class="col-12">
+									<hr>
+									<h5 class="mb-3">
+										<i class="fa fa-money mr-1"></i>
+										Informations du chèque
+									</h5>
+								</div>
+
+								<div class="col-md-6 mb-3">
+									<small class="text-muted d-block">N° du chèque</small>
+									{{ paiement.numeroCheque|default('—') }}
+								</div>
+
+								<div class="col-md-6 mb-3">
+									<small class="text-muted d-block">Banque émettrice</small>
+									{{ paiement.banqueEmettrice|default('—') }}
+								</div>
+
+								<div class="col-md-6 mb-3">
+									<small class="text-muted d-block">Titulaire</small>
+									{{ paiement.titulaireCheque|default('—') }}
+								</div>
+
+								<div class="col-md-6 mb-3">
+									<small class="text-muted d-block">Date d'encaissement prévue</small>
+									{{ paiement.dateEncaissementPrevue ? paiement.dateEncaissementPrevue|date('d/m/Y') : '—' }}
+								</div>
+
+							{% endif %}
+
+							{% if paiement.observation %}
+								<div class="col-12 mb-3">
+									<small class="text-muted d-block">Observation</small>
+									{{ paiement.observation }}
+								</div>
+							{% endif %}
+
+							{% if paiement.estRejete and paiement.motifRejet %}
+								<div class="col-12">
+									<div class="alert alert-danger mb-0">
+										<strong>Motif du rejet :</strong>
+										{{ paiement.motifRejet }}
+									</div>
+								</div>
+							{% endif %}
+
+							{% if paiement.estAnnule and paiement.motifAnnulation %}
+								<div class="col-12">
+									<div class="alert alert-secondary mb-0">
+										<strong>Motif de l'annulation :</strong>
+										{{ paiement.motifAnnulation }}
+									</div>
+								</div>
+							{% endif %}
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="col-lg-4">
+
+				<div class="card">
+
+					<div class="card-header">
+						<h3 class="card-title mb-0">
+							Actions
+						</h3>
+					</div>
+
+					<div class="card-body">
+
+						{% if paiement.estEnAttente %}
+
+							<form method="post" action="{{ path('app_paiements_valider', { id: paiement.id }) }}" class="mb-2 js-confirmer-validation" data-libelle="ce paiement de {{ paiement.montant|number_format(0, ',', ' ') }} FCFA">
+								<input type="hidden" name="_token" value="{{ csrf_token('paiement_valider' ~ paiement.id) }}">
+								<button type="submit" class="btn btn-success btn-block">
+									<i class="fa fa-check mr-1"></i>
+									Valider le paiement
+								</button>
+							</form>
+
+							<form method="post" action="{{ path('app_paiements_rejeter', { id: paiement.id }) }}" class="mb-2 js-demander-motif" data-titre="Rejeter ce paiement" data-texte="Merci d'indiquer le motif du rejet.">
+								<input type="hidden" name="_token" value="{{ csrf_token('paiement_rejeter' ~ paiement.id) }}">
+								<input type="hidden" name="motif" value="">
+								<button type="submit" class="btn btn-danger-light btn-block">
+									<i class="fa fa-times mr-1"></i>
+									Rejeter le paiement
+								</button>
+							</form>
+
+							<div class="small text-muted mt-2">
+								<i class="fa fa-info-circle mr-1"></i>
+								Valider crédite immédiatement le compte de trésorerie choisi.
+							</div>
+
+						{% elseif paiement.estValide %}
+
+							<form method="post" action="{{ path('app_paiements_annuler', { id: paiement.id }) }}" class="mb-2 js-demander-motif" data-titre="Annuler ce paiement" data-texte="Merci d'indiquer le motif de l'annulation.">
+								<input type="hidden" name="_token" value="{{ csrf_token('paiement_annuler' ~ paiement.id) }}">
+								<input type="hidden" name="motif" value="">
+								<button type="submit" class="btn btn-danger btn-block">
+									<i class="fa fa-undo mr-1"></i>
+									Annuler le paiement
+								</button>
+							</form>
+
+							<div class="small text-muted mt-2">
+								<i class="fa fa-info-circle mr-1"></i>
+								Annuler débite le compte de trésorerie du montant déjà crédité.
+							</div>
+
+						{% else %}
+
+							<div class="text-muted small">
+								Aucune action possible sur un paiement
+								{{ paiement.estRejete ? 'rejeté' : 'annulé' }}.
+							</div>
+
+						{% endif %}
+
+						<hr>
+
+						<a href="{{ path('app_paiements_edit', { id: paiement.id }) }}" class="btn btn-light btn-block">
+							<i class="fa fa-pencil mr-1"></i>
+							Modifier
+						</a>
+
+						{{ include('paiements/_delete_form.html.twig') }}
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+document.querySelectorAll('.js-confirmer-validation').forEach(function (formulaire) {
+
+formulaire.addEventListener('submit', function (event) {
+
+event.preventDefault();
+
+const libelle = formulaire.dataset.libelle || 'ce paiement';
+
+if (typeof Swal === 'undefined') {
+formulaire.submit();
+return;
+}
+
+Swal.fire({
+icon: 'question',
+title: 'Valider ce paiement ?',
+html: 'Confirmer la validation de <strong>' + libelle + '</strong> ?<br><br><small>Le compte de trésorerie sera crédité immédiatement.</small>',
+showCancelButton: true,
+confirmButtonText: 'Oui, valider',
+cancelButtonText: 'Annuler',
+reverseButtons: true
+}).then(function (resultat) {
+if (resultat.isConfirmed) {
+formulaire.submit();
+}
+});
+
+});
+
+});
+
+
+document.querySelectorAll('.js-demander-motif').forEach(function (formulaire) {
+
+formulaire.addEventListener('submit', function (event) {
+
+event.preventDefault();
+
+const champMotif = formulaire.querySelector('input[name="motif"]');
+
+const titre = formulaire.dataset.titre || 'Confirmer';
+
+const texte = formulaire.dataset.texte || 'Merci d’indiquer un motif.';
+
+if (typeof Swal === 'undefined') {
+
+const motif = window.prompt(texte);
+
+if (motif === null || motif.trim() === '') {
+return;
+}
+
+if (champMotif) {
+champMotif.value = motif.trim();
+}
+
+formulaire.submit();
+
+return;
+}
+
+Swal.fire({
+icon: 'warning',
+title: titre,
+text: texte,
+input: 'text',
+inputPlaceholder: 'Motif...',
+showCancelButton: true,
+confirmButtonText: 'Confirmer',
+cancelButtonText: 'Annuler',
+reverseButtons: true,
+inputValidator: function (valeur) {
+if (! valeur || ! valeur.trim()) {
+return 'Le motif est obligatoire.';
+}
+}
+}).then(function (resultat) {
+
+if (resultat.isConfirmed) {
+
+if (champMotif) {
+champMotif.value = resultat.value.trim();
+}
+
+formulaire.submit();
+}
+
+});
+
+});
+
+});
+
+});
+	</script>
+
+{% endblock %}

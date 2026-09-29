@@ -1,0 +1,108 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Rentabilité des machines
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_machines_index') }}">Machines</a>
+				</li>
+
+				<li class="breadcrumb-item active" aria-current="page">
+					Rentabilité
+				</li>
+			</ol>
+
+			<div>
+				<a href="{{ path('app_machines_index') }}" class="btn btn-secondary">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour aux machines
+				</a>
+			</div>
+
+		</div>
+
+		<div class="card">
+
+			<div class="card-header">
+				<h3 class="card-title">
+					Ce que rapporte chaque machine
+				</h3>
+			</div>
+
+			<div class="table-responsive">
+				<table class="table table-hover mb-0">
+					<thead>
+						<tr>
+							<th>Machine</th>
+							<th>Mode de facturation</th>
+							<th class="text-right">Revenu recap</th>
+							<th class="text-right">Revenu commandes</th>
+							<th class="text-right">Revenu total</th>
+							<th class="text-right">Charge amortissement</th>
+							<th class="text-right">Charge maintenance</th>
+							<th class="text-right">Marge nette</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for r in rentabilites %}
+							<tr>
+								<td>
+									<strong>{{ r.machine.nom }}</strong>
+									<div class="text-muted small">{{ r.machine.marque }} {{ r.machine.modeles }}</div>
+								</td>
+								<td>
+									<span class="badge badge-info">{{ r.machine.modeFacturationLabel }}</span>
+								</td>
+								<td class="text-right">{{ r.revenuAvantSuivi|number_format(0, ',', ' ') }} F CFA</td>
+								<td class="text-right">{{ r.revenuCommandes|number_format(0, ',', ' ') }} F CFA</td>
+								<td class="text-right font-weight-bold">{{ r.revenuTotal|number_format(0, ',', ' ') }} F CFA</td>
+								<td class="text-right text-danger">
+									{% if r.machine.chargeAmortissementMensuelle is not null %}
+										- {{ r.chargeAmortissement|number_format(0, ',', ' ') }} F CFA
+										<div class="text-muted small">({{ r.machine.chargeAmortissementMensuelle|number_format(0, ',', ' ') }} F CFA / mois)</div>
+									{% else %}
+										<span class="text-muted">Non renseigné</span>
+									{% endif %}
+								</td>
+								<td class="text-right text-danger">
+									{% if r.chargeMaintenance > 0 %}
+										- {{ r.chargeMaintenance|number_format(0, ',', ' ') }} F CFA
+									{% else %}
+										<span class="text-muted">0 F CFA</span>
+									{% endif %}
+								</td>
+								<td class="text-right font-weight-bold {{ r.margeNette >= 0 ? 'text-success' : 'text-danger' }}">
+									{{ r.margeNette|number_format(0, ',', ' ') }} F CFA
+								</td>
+							</tr>
+						{% else %}
+							<tr>
+								<td colspan="8" class="text-center text-muted py-4">
+									Aucune machine enregistrée.
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+
+		</div>
+
+		<p class="text-muted small mt-2">
+			<i class="fa fa-info-circle mr-1"></i>
+			« Revenu recap » = total facturé par la machine avant le début du suivi applicatif (import du classeur d'amortissement).
+			« Revenu commandes » = somme des commandes liées à cette machine dans l'application depuis sa date de début de suivi.
+			La charge d'amortissement est calculée au prorata des mois écoulés depuis la mise en service, plafonnée à la durée d'amortissement.
+		</p>
+
+	</div>
+
+{% endblock %}

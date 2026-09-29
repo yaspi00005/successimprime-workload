@@ -1,0 +1,1700 @@
+{% extends 'base.html.twig' %}
+
+
+{% block title %}
+	Factures
+{% endblock %}
+
+
+{% block body %}
+
+	{# ================================================================
+																	   PERMISSIONS
+																	   ================================================================ #}
+
+	{% set estAdmin =
+		is_granted('ROLE_ADMIN')
+	%}
+
+	{% set peutVoirStatsGlobales =
+		estAdmin
+		or is_granted('ROLE_STATS_GLOBAL')
+	%}
+
+	{% set peutVoirPaiements =
+		is_granted('ROLE_PAIEMENT_VOIR')
+		or estAdmin
+	%}
+
+	{% set peutEncaisser =
+		is_granted('ROLE_PAIEMENT_ENCAISSER')
+		or estAdmin
+	%}
+
+	{% set peutFacturer =
+		is_granted('ROLE_FACTURE')
+		or estAdmin
+	%}
+
+
+	{# ================================================================
+																	   STATISTIQUES
+																	   
+																	   ATTENTION :
+																	   
+																	   Les montants financiers globaux sont calculés uniquement
+																	   pour ADMIN / ROLE_STATS_GLOBAL.
+																	   
+																	   Les utilisateurs ordinaires peuvent consulter les documents
+																	   auxquels ils ont accès, mais on ne leur expose pas :
+																	   
+																	   - CA global
+																	   - encaissements globaux
+																	   - reste global
+																	   ================================================================ #}
+
+	{% set totalFactures = 0 %}
+	{% set totalEncaisse = 0 %}
+	{% set totalReste = 0 %}
+
+	{% set nombreFacturesOfficielles = 0 %}
+	{% set nombreProformas = 0 %}
+	{% set nombrePayees = 0 %}
+	{% set nombrePartielles = 0 %}
+	{% set nombreImpayees = 0 %}
+	{% set nombreAnnulees = 0 %}
+
+
+	{% for facture in factures %}
+
+		{% if facture.etat == 'annulee' %}
+
+			{% set nombreAnnulees =
+				nombreAnnulees + 1
+			%}
+
+
+		{% elseif not facture.comptabilisee %}
+
+			{% set nombreProformas =
+				nombreProformas + 1
+			%}
+
+
+		{% else %}
+
+			{% set nombreFacturesOfficielles =
+				nombreFacturesOfficielles + 1
+			%}
+
+
+			{% if peutVoirStatsGlobales %}
+
+				{% set totalFactures =
+					totalFactures
+					+
+					facture.totalTtc|default(0)
+				%}
+
+				{% set totalEncaisse =
+					totalEncaisse
+					+
+					facture.montantPaye|default(0)
+				%}
+
+				{% set totalReste =
+					totalReste
+					+
+					facture.resteAPayer|default(0)
+				%}
+
+			{% endif %}
+
+
+			{% if facture.statutPaiement == 'payee' %}
+
+				{% set nombrePayees =
+					nombrePayees + 1
+				%}
+
+			{% elseif facture.statutPaiement == 'partielle' %}
+
+				{% set nombrePartielles =
+					nombrePartielles + 1
+				%}
+
+			{% else %}
+
+				{% set nombreImpayees =
+					nombreImpayees + 1
+				%}
+
+			{% endif %}
+
+		{% endif %}
+
+	{% endfor %}
+
+
+	<div
+		class="side-app">
+
+
+		{# ============================================================
+																																		   HEADER
+																																		   ============================================================ #}
+
+		<div class="page-header">
+
+			<div>
+
+				<h1 class="page-title">
+					Facturation
+				</h1>
+
+				<ol class="breadcrumb">
+
+					<li class="breadcrumb-item">
+
+						<a href="{{ path('app_commandes_index') }}">
+							Commandes
+						</a>
+
+					</li>
+
+					<li class="breadcrumb-item active">
+						Factures
+					</li>
+
+				</ol>
+
+			</div>
+
+
+			<div>
+
+				<a href="{{ path('app_commandes_index') }}" class="btn btn-secondary mr-2 mb-2">
+					<i class="fa fa-shopping-cart mr-1"></i>
+
+					Voir les commandes
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+																																		   FLASH
+																																		   ============================================================ #}
+
+		{% for type, messages in app.flashes %}
+
+			{% for message in messages %}
+
+				<div class="
+																																																																																																						alert
+																																																																																																						alert-{{
+																																																																																																							type == 'error'
+																																																																																																								? 'danger'
+																																																																																																								: type
+																																																																																																						}}
+																																																																																																						alert-dismissible
+																																																																																																						fade
+																																																																																																						show
+																																																																																																					">
+
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert">
+						&times;
+					</button>
+
+				</div>
+
+			{% endfor %}
+
+		{% endfor %}
+
+
+		{# ============================================================
+																																		   STATISTIQUES FINANCIÈRES GLOBALES
+																																		   
+																																		   ADMIN / ROLE_STATS_GLOBAL UNIQUEMENT
+																																		   ============================================================ #}
+
+		{% if peutVoirStatsGlobales %}
+
+			<div
+				class="row">
+
+
+				{# TOTAL FACTURÉ #}
+
+				<div class="col-xl-3 col-lg-6 col-md-6">
+
+					<div class="card facture-index-stat">
+
+						<div class="card-body">
+
+							<div class="d-flex align-items-center">
+
+								<div class="
+																																																																																																																																																																										facture-index-icon
+																																																																																																																																																																										bg-primary-transparent
+																																																																																																																																																																										text-primary
+																																																																																																																																																																									">
+									<i class="fa fa-file-text-o"></i>
+								</div>
+
+
+								<div class="ml-3">
+
+									<small class="text-muted d-block">
+										Total facturé
+									</small>
+
+									<strong class="facture-index-value">
+
+										{{
+											totalFactures
+												|number_format(
+													0,
+													',',
+													' '
+												)
+										}}
+
+										FCFA
+
+									</strong>
+
+									<small class="text-muted">
+										Factures officielles
+									</small>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# TOTAL ENCAISSÉ #}
+
+				<div class="col-xl-3 col-lg-6 col-md-6">
+
+					<div class="card facture-index-stat">
+
+						<div class="card-body">
+
+							<div class="d-flex align-items-center">
+
+								<div class="
+																																																																																																																																																																										facture-index-icon
+																																																																																																																																																																										bg-success-transparent
+																																																																																																																																																																										text-success
+																																																																																																																																																																									">
+									<i class="fa fa-check-circle"></i>
+								</div>
+
+
+								<div class="ml-3">
+
+									<small class="text-muted d-block">
+										Total encaissé
+									</small>
+
+									<strong class="
+																																																																																																																																																																																											facture-index-value
+																																																																																																																																																																																											text-success
+																																																																																																																																																																																										">
+
+										{{
+											totalEncaisse
+												|number_format(
+													0,
+													',',
+													' '
+												)
+										}}
+
+										FCFA
+
+									</strong>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# RESTE #}
+
+				<div class="col-xl-3 col-lg-6 col-md-6">
+
+					<div class="card facture-index-stat">
+
+						<div class="card-body">
+
+							<div class="d-flex align-items-center">
+
+								<div class="
+																																																																																																																																																																										facture-index-icon
+																																																																																																																																																																										bg-warning-transparent
+																																																																																																																																																																										text-warning
+																																																																																																																																																																									">
+									<i class="fa fa-money"></i>
+								</div>
+
+
+								<div class="ml-3">
+
+									<small class="text-muted d-block">
+										Reste à encaisser
+									</small>
+
+									<strong class="
+																																																																																																																																																																																											facture-index-value
+																																																																																																																																																																																											{{
+																																																																																																																																																																																												totalReste > 0
+																																																																																																																																																																																													? 'text-danger'
+																																																																																																																																																																																													: 'text-success'
+																																																																																																																																																																																											}}
+																																																																																																																																																																																										">
+
+										{{
+											totalReste
+												|number_format(
+													0,
+													',',
+													' '
+												)
+										}}
+
+										FCFA
+
+									</strong>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# DOCUMENTS #}
+
+				<div class="col-xl-3 col-lg-6 col-md-6">
+
+					<div class="card facture-index-stat">
+
+						<div class="card-body">
+
+							<div class="d-flex align-items-center">
+
+								<div class="
+																																																																																																																																																																										facture-index-icon
+																																																																																																																																																																										bg-info-transparent
+																																																																																																																																																																										text-info
+																																																																																																																																																																									">
+									<i class="fa fa-files-o"></i>
+								</div>
+
+
+								<div class="ml-3">
+
+									<small class="text-muted d-block">
+										Documents
+									</small>
+
+									<strong class="facture-index-value">
+										{{ factures|length }}
+									</strong>
+
+									<small class="text-muted">
+
+										{{ nombreFacturesOfficielles }}
+										facture(s)
+																																																																																																																																																																
+																																																																																																																																																																										/
+
+										{{ nombreProformas }}
+										pro forma
+
+									</small>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		{% endif %}
+
+
+		{# ============================================================
+																																		   STATUTS
+																																		   
+																																		   Ce bloc ne montre pas les montants globaux.
+																																		   ============================================================ #}
+
+		<div class="row">
+
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card facture-status-card">
+
+					<div class="card-body">
+
+						<div class="
+																																																																																																																																								d-flex
+																																																																																																																																								justify-content-between
+																																																																																																																																								align-items-center
+																																																																																																																																							">
+
+							<div>
+
+								<div class="text-muted">
+									Factures payées
+								</div>
+
+								<strong class="facture-status-number">
+									{{ nombrePayees }}
+								</strong>
+
+							</div>
+
+
+							<span class="
+																																																																																																																																																									badge
+																																																																																																																																																									badge-success
+																																																																																																																																																									facture-status-badge
+																																																																																																																																																								">
+								<i class="fa fa-check"></i>
+							</span>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card facture-status-card">
+
+					<div class="card-body">
+
+						<div class="
+																																																																																																																																								d-flex
+																																																																																																																																								justify-content-between
+																																																																																																																																								align-items-center
+																																																																																																																																							">
+
+							<div>
+
+								<div class="text-muted">
+									Paiements partiels
+								</div>
+
+								<strong class="facture-status-number">
+									{{ nombrePartielles }}
+								</strong>
+
+							</div>
+
+
+							<span class="
+																																																																																																																																																									badge
+																																																																																																																																																									badge-warning
+																																																																																																																																																									facture-status-badge
+																																																																																																																																																								">
+								<i class="fa fa-hourglass-half"></i>
+							</span>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card facture-status-card">
+
+					<div class="card-body">
+
+						<div class="
+																																																																																																																																								d-flex
+																																																																																																																																								justify-content-between
+																																																																																																																																								align-items-center
+																																																																																																																																							">
+
+							<div>
+
+								<div class="text-muted">
+									Factures impayées
+								</div>
+
+								<strong class="facture-status-number">
+									{{ nombreImpayees }}
+								</strong>
+
+							</div>
+
+
+							<span class="
+																																																																																																																																																									badge
+																																																																																																																																																									badge-danger
+																																																																																																																																																									facture-status-badge
+																																																																																																																																																								">
+								<i class="fa fa-exclamation"></i>
+							</span>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card facture-status-card">
+
+					<div class="card-body">
+
+						<div class="
+																																																																																																																																								d-flex
+																																																																																																																																								justify-content-between
+																																																																																																																																								align-items-center
+																																																																																																																																							">
+
+							<div>
+
+								<div class="text-muted">
+									Documents annulés
+								</div>
+
+								<strong class="facture-status-number">
+									{{ nombreAnnulees }}
+								</strong>
+
+							</div>
+
+
+							<span class="
+																																																																																																																																																									badge
+																																																																																																																																																									badge-secondary
+																																																																																																																																																									facture-status-badge
+																																																																																																																																																								">
+								<i class="fa fa-ban"></i>
+							</span>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+																																		   TABLEAU
+																																		   ============================================================ #}
+
+		<div class="card">
+
+			<div class="
+																																																																																					card-header
+																																																																																					d-flex
+																																																																																					justify-content-between
+																																																																																					align-items-center
+																																																																																					flex-wrap
+																																																																																				">
+
+				<div>
+
+					<h3 class="card-title mb-1">
+						Documents de facturation
+					</h3>
+
+					<small class="text-muted">
+
+						{{ factures|length }}
+						document(s)
+
+					</small>
+
+				</div>
+
+
+				<div class="facture-search">
+
+					<div class="input-group">
+
+						<div class="input-group-prepend">
+
+							<span class="input-group-text">
+								<i class="fa fa-search"></i>
+							</span>
+
+						</div>
+
+						<input type="text" id="facture-search-input" class="form-control" placeholder="Facture, client, commande..." autocomplete="off">
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="card-body p-0">
+
+				<div class="table-responsive">
+
+					<table class="
+																																																																																																							table
+																																																																																																							table-bordered
+																																																																																																							table-hover
+																																																																																																							facture-index-table
+																																																																																																							mb-0
+																																																																																																						" id="factures-table">
+
+						<thead>
+
+							<tr>
+
+								<th>
+									Document
+								</th>
+
+								<th>
+									Client / Commande
+								</th>
+
+								<th>
+									Date
+								</th>
+
+								<th class="text-right">
+									Montant
+								</th>
+
+								<th>
+									Règlement
+								</th>
+
+								<th class="text-center">
+									Statut
+								</th>
+
+								<th class="text-center facture-actions-col">
+									Actions
+								</th>
+
+							</tr>
+
+						</thead>
+
+
+						<tbody>
+
+
+							{% for facture in factures %}
+
+								{# =================================================
+																																																																																																																																								   VARIABLES
+																																																																																																																																								   ================================================= #}
+
+								{% set commande =
+									facture.commande|default(null)
+								%}
+
+								{% set client =
+									commande
+										? commande.clients|default(null)
+										: null
+								%}
+
+
+								{% set statutClasses = {
+									'payee': 'success',
+									'partielle': 'warning',
+									'impayee': 'danger'
+								} %}
+
+
+								{% set statutLibelles = {
+									'payee': 'Payée',
+									'partielle': 'Partielle',
+									'impayee': 'Impayée'
+								} %}
+
+
+								{% set etatClasses = {
+									'brouillon': 'secondary',
+									'emise': 'primary',
+									'annulee': 'danger'
+								} %}
+
+
+								{% set etatLibelles = {
+									'brouillon': 'Brouillon',
+									'emise': 'Émise',
+									'annulee': 'Annulée'
+								} %}
+
+
+								<tr
+									class="
+																																																																																																																																																																										facture-row
+																																																																																																																																																																										{{
+																																																																																																																																																																											facture.etat == 'annulee'
+																																																																																																																																																																												? 'facture-row-annulee'
+																																																																																																																																																																												: ''
+																																																																																																																																																																										}}
+																																																																																																																																																																									">
+
+
+									{# =========================================
+																																																																																																																																																									   DOCUMENT
+																																																																																																																																																									   ========================================= #}
+
+									<td class="facture-document-cell">
+
+										<a href="{{ path( 'app_factures_show', { id: facture.id } ) }}" class="facture-numero">
+
+											{{
+												facture.numero
+													|default(
+														'Document #' ~ facture.id
+													)
+											}}
+
+										</a>
+
+
+										<div class="mt-2">
+
+
+											{% if facture.comptabilisee %}
+
+												<span class="
+																																																																																																																																																																																																																																														badge
+																																																																																																																																																																																																																																														badge-success
+																																																																																																																																																																																																																																														facture-type-badge
+																																																																																																																																																																																																																																													">
+
+													<i class="fa fa-file-text-o mr-1"></i>
+
+													Facture officielle
+
+												</span>
+
+											{% else %}
+
+												<span class="
+																																																																																																																																																																																																																																														badge
+																																																																																																																																																																																																																																														badge-info
+																																																																																																																																																																																																																																														facture-type-badge
+																																																																																																																																																																																																																																													">
+
+													<i class="fa fa-files-o mr-1"></i>
+
+													Pro forma
+
+												</span>
+
+											{% endif %}
+
+										</div>
+
+
+										{% if facture.comptabilisee %}
+
+											<div class="facture-compta mt-2">
+
+												<i class="fa fa-check-circle mr-1"></i>
+
+												Comptabilisée
+
+											</div>
+
+										{% endif %}
+
+									</td>
+
+
+									{# =========================================
+																																																																																																																																																									   CLIENT / COMMANDE
+																																																																																																																																																									   ========================================= #}
+
+									<td class="facture-client-cell">
+
+										{% if client %}
+
+											<div class="facture-client-name">
+
+												{{
+													client.raisonSociale
+														|default(
+															client.nomComplet
+																|default(
+																	client.nom
+																		|default(
+																			'Client'
+																		)
+																)
+														)
+												}}
+
+											</div>
+
+
+											{% if client.telephone|default('') %}
+
+												<div class="small text-muted mt-1">
+
+													<i class="fa fa-phone mr-1"></i>
+
+													{{ client.telephone }}
+
+												</div>
+
+											{% endif %}
+
+
+										{% else %}
+
+											<div class="text-muted">
+												Client non renseigné
+											</div>
+
+										{% endif %}
+
+
+										{% if commande %}
+
+											<div class="mt-2">
+
+												<a href="{{ path( 'app_commandes_show', { id: commande.id } ) }}" class="facture-command-link">
+
+													<i class="fa fa-shopping-cart mr-1"></i>
+
+													{{
+														commande.reference
+															|default(
+																commande.numero
+																	|default(
+																		'Commande #' ~ commande.id
+																	)
+															)
+													}}
+
+												</a>
+
+											</div>
+
+										{% endif %}
+
+									</td>
+
+
+									{# =========================================
+																																																																																																																																																									   DATE
+																																																																																																																																																									   ========================================= #}
+
+									<td class="facture-date-cell">
+
+										{% if facture.dateFacture %}
+
+											<div class="font-weight-bold">
+
+												{{
+													facture.dateFacture
+														|date('d/m/Y')
+												}}
+
+											</div>
+
+											<div class="small text-muted mt-1">
+
+												<i class="fa fa-clock-o mr-1"></i>
+
+												{{
+													facture.dateFacture
+														|date('H:i')
+												}}
+
+											</div>
+
+										{% else %}
+
+											<span class="text-muted">
+												—
+											</span>
+
+										{% endif %}
+
+									</td>
+
+
+									{# =========================================
+																																																																																																																																																									   MONTANT
+																																																																																																																																																									   ========================================= #}
+
+									<td class="text-right facture-montant-cell">
+
+										<div class="small text-muted">
+											Total TTC
+										</div>
+
+										<div class="facture-ttc text-white">
+
+											{{
+												facture.totalTtc
+													|default(0)
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+											<span class="facture-devise">
+												FCFA
+											</span>
+
+										</div>
+
+									</td>
+
+
+									{# =========================================
+																																																																																																																																																									   RÈGLEMENT
+																																																																																																																																																									   ========================================= #}
+
+									<td class="facture-reglement-cell">
+
+
+										{% if facture.comptabilisee %}
+
+											<div class="
+																																																																																																																																																																																																																													d-flex
+																																																																																																																																																																																																																													justify-content-between
+																																																																																																																																																																																																																													facture-reglement-line
+																																																																																																																																																																																																																												">
+
+												<span class="text-muted">
+													Payé
+												</span>
+
+												<strong class="text-success">
+
+													{{
+														facture.montantPaye
+															|default(0)
+															|number_format(
+																0,
+																',',
+																' '
+															)
+													}}
+
+												</strong>
+
+											</div>
+
+
+											<div class="
+																																																																																																																																																																																																																													d-flex
+																																																																																																																																																																																																																													justify-content-between
+																																																																																																																																																																																																																													facture-reglement-line
+																																																																																																																																																																																																																												">
+
+												<span class="text-muted">
+													Reste
+												</span>
+
+												<strong class="{{ facture.resteAPayer > 0 ? 'text-danger' : 'text-success' }}">
+
+													{{
+														facture.resteAPayer
+															|default(0)
+															|number_format(
+																0,
+																',',
+																' '
+															)
+													}}
+
+												</strong>
+
+											</div>
+
+
+											<div class="small text-muted mt-1">
+												FCFA
+											</div>
+
+
+										{% else %}
+
+											<span class="badge badge-light">
+												Non applicable
+											</span>
+
+										{% endif %}
+
+									</td>
+
+
+									{# =========================================
+																																																																																																																																																									   STATUT
+																																																																																																																																																									   ========================================= #}
+
+									<td class="text-center facture-statut-cell">
+
+
+										{% if facture.comptabilisee %}
+
+											<span class="
+																																																																																																																																																																																																																													badge
+																																																																																																																																																																																																																													badge-{{
+																																																																																																																																																																																																																														statutClasses[
+																																																																																																																																																																																																																															facture.statutPaiement
+																																																																																																																																																																																																																														]
+																																																																																																																																																																																																																															|default(
+																																																																																																																																																																																																																																'secondary'
+																																																																																																																																																																																																																															)
+																																																																																																																																																																																																																													}}
+																																																																																																																																																																																																																													facture-status-main
+																																																																																																																																																																																																																												">
+
+												{{
+													statutLibelles[
+														facture.statutPaiement
+													]
+														|default(
+															facture.statutPaiement
+														)
+												}}
+
+											</span>
+
+										{% else %}
+
+											<span class="badge badge-info facture-status-main">
+												Pro forma
+											</span>
+
+										{% endif %}
+
+
+										<div class="mt-2">
+
+											<span class="
+																																																																																																																																																																																																																													badge
+																																																																																																																																																																																																																													badge-{{
+																																																																																																																																																																																																																														etatClasses[
+																																																																																																																																																																																																																															facture.etat
+																																																																																																																																																																																																																														]
+																																																																																																																																																																																																																															|default(
+																																																																																																																																																																																																																																'secondary'
+																																																																																																																																																																																																																															)
+																																																																																																																																																																																																																													}}
+																																																																																																																																																																																																																												">
+
+												{{
+													etatLibelles[
+														facture.etat
+													]
+														|default(
+															facture.etat
+														)
+												}}
+
+											</span>
+
+										</div>
+
+									</td>
+
+
+									{# =========================================
+																																																																																																																																																									   ACTIONS
+																																																																																																																																																									   ========================================= #}
+
+									<td
+										class="text-center facture-actions">
+
+
+										{# VOIR #}
+
+										<a href="{{ path( 'app_factures_show', { id: facture.id } ) }}" class="btn btn-sm btn-primary" title="Voir le document">
+
+											<i class="fa fa-eye"></i>
+
+										</a>
+
+
+										{# =====================================
+																																																																																																																																																																										   ENCAISSER
+																																																																																																																																																																										   
+																																																																																																																																																																										   ROLE_PAIEMENT_ENCAISSER seulement.
+																																																																																																																																																																										   ===================================== #}
+
+										{% if
+											peutEncaisser
+											and commande
+											and facture.comptabilisee
+											and facture.resteAPayer > 0
+											and facture.etat != 'annulee'
+										%}
+
+											<a href="{{ path( 'app_commandes_paiement', { id: commande.id } ) }}" class="btn btn-sm btn-success" title="Encaisser un paiement">
+
+												<i class="fa fa-money"></i>
+
+											</a>
+
+										{% endif %}
+
+
+										{# PDF #}
+
+										<a href="{{ path( 'app_factures_pdf', { id: facture.id } ) }}" class="btn btn-sm btn-danger" target="_blank" rel="noopener noreferrer" title="Ouvrir le PDF">
+
+											<i class="fa fa-file-pdf-o"></i>
+
+										</a>
+
+									</td>
+
+								</tr>
+
+
+							{% else %}
+
+								<tr>
+
+									<td colspan="7" class="
+																																																																																																																																																																																											text-center
+																																																																																																																																																																																											text-muted
+																																																																																																																																																																																											py-5
+																																																																																																																																																																																										">
+
+										<div class="mb-3">
+
+											<i class="
+																																																																																																																																																																																																													fa
+																																																																																																																																																																																																													fa-file-text-o
+																																																																																																																																																																																																													facture-empty-icon
+																																																																																																																																																																																																												"></i>
+
+										</div>
+
+										<strong class="d-block mb-1">
+											Aucun document de facturation
+										</strong>
+
+										Les factures et pro forma
+																																																																																																																																																																										apparaîtront ici.
+
+									</td>
+
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}
+
+
+{% block stylesheets %}
+
+	{{ parent() }}
+
+	<style>
+
+
+		/*
+ * ============================================================
+ * TABLEAU FACTURES
+ * ============================================================
+ */
+
+		.facture-index-table {
+			width: 100%;
+			min-width: 1050px;
+
+			color: #1f2937 !important;
+
+			background-color: #ffffff !important;
+
+			border-collapse: collapse;
+		}
+
+
+		/*
+ * ============================================================
+ * EN-TÊTE
+ * ============================================================
+ */
+
+		.facture-index-table thead,
+		.facture-index-table thead tr {
+			background-color: #f4f7fc !important;
+		}
+
+
+		.facture-index-table thead th {
+			background-color: #f4f7fc !important;
+
+			color: #17366f !important;
+
+			-webkit-text-fill-color: #17366f !important;
+
+			font-weight: 700;
+
+			font-size: 12px;
+
+			text-transform: uppercase;
+
+			letter-spacing: 0.02em;
+
+			vertical-align: middle;
+
+			white-space: nowrap;
+
+			padding: 12px 10px;
+
+			border-color: #dce4f0 !important;
+		}
+
+
+		/*
+ * ============================================================
+ * LIGNES NORMALES
+ * ============================================================
+ *
+ * Très important :
+ * on empêche le thème sombre de mettre le fond bleu.
+ * ============================================================
+ */
+
+		.facture-index-table tbody tr.facture-row {
+			background-color: #ffffff !important;
+		}
+
+
+		.facture-index-table tbody tr.facture-row > td {
+			background-color: #ffffff !important;
+
+			color: #1f2937 !important;
+
+			-webkit-text-fill-color: #1f2937 !important;
+
+			vertical-align: middle;
+
+			padding: 13px 10px;
+
+			border-color: #dce4f0 !important;
+
+			transition: background-color 0.15s ease, color 0.15s ease;
+		}
+
+
+		/*
+ * ============================================================
+ * LIGNES ALTERNÉES
+ * ============================================================
+ *
+ * Une ligne blanche,
+ * une ligne légèrement grise.
+ *
+ * Cela améliore beaucoup la lecture.
+ * ============================================================
+ */
+
+		.facture-index-table tbody tr.facture-row:nth-child(even) > td {
+			background-color: #f8fafc !important;
+		}
+
+
+		.facture-index-table tbody tr.facture-row:nth-child(odd) > td {
+			background-color: #ffffff !important;
+		}
+
+
+		/*
+ * ============================================================
+ * SURVOL
+ * ============================================================
+ *
+ * Plus de fond blanc agressif.
+ * On utilise un bleu très léger.
+ * ============================================================
+ */
+
+		.facture-index-table tbody tr.facture-row:hover > td {
+			background-color: #eef3ff !important;
+
+			color: #1f2937 !important;
+
+			-webkit-text-fill-color: #1f2937 !important;
+		}
+
+
+		/*
+ * ============================================================
+ * LIENS
+ * ============================================================
+ */
+
+		.facture-index-table tbody td a {
+			color: #17366f !important;
+
+			-webkit-text-fill-color: #17366f !important;
+
+			text-decoration: none;
+		}
+
+
+		.facture-index-table tbody td a:hover {
+			color: #6259ca !important;
+
+			-webkit-text-fill-color: #6259ca !important;
+		}
+
+
+		/*
+ * Numéro de facture.
+ */
+		.facture-index-table .facture-numero {
+			color: #17366f !important;
+
+			-webkit-text-fill-color: #17366f !important;
+
+			font-weight: 700;
+		}
+
+
+		.facture-index-table tr:hover .facture-numero {
+			color: #6259ca !important;
+
+			-webkit-text-fill-color: #6259ca !important;
+		}
+
+
+		/*
+ * Lien commande.
+ */
+		.facture-index-table .facture-command-link {
+			color: #6259ca !important;
+
+			-webkit-text-fill-color: #6259ca !important;
+		}
+
+
+		/*
+ * ============================================================
+ * TEXTES SECONDAIRES
+ * ============================================================
+ */
+
+		.facture-index-table tbody td .text-muted {
+			color: #64748b !important;
+
+			-webkit-text-fill-color: #64748b !important;
+		}
+
+
+		.facture-index-table tbody td .text-success {
+			color: #0d9f73 !important;
+
+			-webkit-text-fill-color: #0d9f73 !important;
+		}
+
+
+		.facture-index-table tbody td .text-danger {
+			color: #dc3545 !important;
+
+			-webkit-text-fill-color: #dc3545 !important;
+		}
+
+
+		.facture-index-table tbody td .text-warning {
+			color: #d98b00 !important;
+
+			-webkit-text-fill-color: #d98b00 !important;
+		}
+
+
+		/*
+ * ============================================================
+ * BADGES
+ * ============================================================
+ *
+ * IMPORTANT :
+ * Ne pas appliquer text-fill-color aux badges.
+ * Sinon le thème peut perdre ses couleurs.
+ * ============================================================
+ */
+
+		.facture-index-table tbody td .badge {
+			-webkit-text-fill-color: initial !important;
+		}
+
+
+		/*
+ * ============================================================
+ * BOUTONS ACTIONS
+ * ============================================================
+ */
+
+		.facture-index-table tbody td .btn {
+			-webkit-text-fill-color: initial !important;
+		}
+
+
+		.facture-actions {
+			white-space: nowrap;
+		}
+
+
+		.facture-actions .btn {
+			width: 32px;
+
+			height: 32px;
+
+			margin: 2px;
+
+			padding: 5px 6px;
+		}
+
+
+		/*
+ * ============================================================
+ * DOCUMENT ANNULÉ
+ * ============================================================
+ *
+ * On ne met plus opacity sur toute la ligne.
+ * Cela rendait les textes difficiles à lire.
+ * ============================================================
+ */
+
+		.facture-row-annulee {
+			opacity: 1 !important;
+		}
+
+
+		.facture-index-table tbody tr.facture-row-annulee > td {
+			background-color: #fff5f5 !important;
+
+			color: #475569 !important;
+
+			-webkit-text-fill-color: #475569 !important;
+		}
+
+
+		.facture-index-table tbody tr.facture-row-annulee:hover > td {
+			background-color: #feecec !important;
+		}
+
+
+		/*
+ * ============================================================
+ * CELLULES
+ * ============================================================
+ */
+
+		.facture-document-cell {
+			min-width: 175px;
+		}
+
+
+		.facture-client-cell {
+			min-width: 200px;
+		}
+
+
+		.facture-date-cell {
+			min-width: 105px;
+
+			white-space: nowrap;
+		}
+
+
+		.facture-montant-cell {
+			min-width: 145px;
+
+			white-space: nowrap;
+		}
+
+
+		.facture-reglement-cell {
+			min-width: 175px;
+		}
+
+
+		.facture-statut-cell {
+			min-width: 120px;
+		}
+
+
+		.facture-actions-col {
+			width: 130px;
+		}
+
+
+		/*
+ * ============================================================
+ * MONTANTS
+ * ============================================================
+ */
+
+		.facture-ttc {
+			margin-top: 2px;
+
+			font-size: 16px;
+
+			font-weight: 700;
+
+			color: #dde0e6 !important;
+
+			-webkit-text-fill-color: #1f2937 !important;
+		}
+
+
+		.facture-devise {
+			font-size: 10px;
+
+			font-weight: 500;
+
+			color: #64748b !important;
+
+			-webkit-text-fill-color: #64748b !important;
+		}
+
+
+		/*
+ * ============================================================
+ * CLIENT
+ * ============================================================
+ */
+
+		.facture-client-name {
+			font-weight: 700;
+
+			color: #1f2937 !important;
+
+			-webkit-text-fill-color: #1f2937 !important;
+		}
+
+
+		/*
+ * ============================================================
+ * RESPONSIVE
+ * ============================================================
+ */
+
+		@media(max-width: 767px) {
+
+			.facture-index-table {
+				min-width: 1000px;
+			}
+
+		}
+
+	</style>
+
+{% endblock %}
+
+
+{% block javascripts %}
+
+	{{ parent() }}
+
+	<script>
+
+		document.addEventListener('DOMContentLoaded', function () {
+
+const searchInput = document.getElementById('facture-search-input');
+
+const table = document.getElementById('factures-table');
+
+
+if (! searchInput || ! table) {
+return;
+}
+
+
+const rows = table.querySelectorAll('tbody .facture-row');
+
+
+searchInput.addEventListener('input', function () {
+
+const recherche = this.value.toLowerCase().trim();
+
+
+rows.forEach(function (row) {
+
+const contenu = row.textContent.toLowerCase().trim();
+
+
+row.style.display = (recherche === '' || contenu.includes(recherche)) ? '' : 'none';
+
+});
+
+});
+
+});
+	</script>
+
+{% endblock %}

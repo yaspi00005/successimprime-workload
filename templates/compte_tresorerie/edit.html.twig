@@ -1,0 +1,91 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    Modifier {{ compte.nom }}
+{% endblock %}
+
+{% block body %}
+
+<div class="side-app">
+
+    <div class="page-header">
+
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="#">Gestion</a>
+            </li>
+
+            <li class="breadcrumb-item">
+                <a href="{{ path(
+                    'app_compte_tresorerie_index'
+                ) }}">
+                    Comptes de trésorerie
+                </a>
+            </li>
+
+            <li class="breadcrumb-item active">
+                Modifier
+            </li>
+        </ol>
+
+    </div>
+
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert {{
+                type == 'success'
+                    ? 'alert-success'
+                    : 'alert-danger'
+            }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <h3 class="card-title">
+                Modifier {{ compte.nom }}
+            </h3>
+
+            <div class="card-options">
+
+                <a
+                    href="{{ path(
+                        'app_compte_tresorerie_show',
+                        {id: compte.id}
+                    ) }}"
+                    class="btn btn-info btn-sm"
+                >
+                    <i class="fa fa-eye mr-1"></i>
+                    Consulter
+                </a>
+
+            </div>
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="alert alert-warning">
+                <i class="fa fa-lock mr-1"></i>
+
+                Le solde initial et le solde actuel sont protégés.
+                Toute variation devra passer par un mouvement de
+                trésorerie.
+            </div>
+
+            {% include 'compte_tresorerie/_form.html.twig' with {
+                form: form,
+                bouton_label: 'Enregistrer les modifications'
+            } %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

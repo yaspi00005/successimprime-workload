@@ -1,0 +1,537 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Configurations des produits
+{% endblock %}
+{% block body %}
+	<div class="side-app">
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="#">Paramétrage</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					Configurations des produits
+				</li>
+			</ol>
+
+			<div>
+
+				<button type="button" id="configurationCreateOpenButton" class="btn btn-primary">
+					<i class="fa fa-plus mr-1"></i>
+					Ajouter une configuration
+				</button>
+
+				<button type="button" id="configurationMassPublishButton" class="btn btn-success configuration-mass-action" disabled>
+					<i class="fa fa-eye mr-1"></i>
+					Publier
+				</button>
+
+				<button type="button" id="configurationMassUnpublishButton" class="btn btn-warning configuration-mass-action" disabled>
+					<i class="fa fa-eye-slash mr-1"></i>
+					Dépublier
+				</button>
+
+				<button type="button" id="configurationMassDeleteButton" class="btn btn-danger configuration-mass-action" disabled>
+					<i class="fa fa-trash mr-1"></i>
+					Supprimer
+				</button>
+
+			</div>
+
+		</div>
+	</div>
+	{# =====================================================
+	       INFORMATIONS TECHNIQUES
+	       ===================================================== #}
+
+	<input type="hidden" id="configurationCreateUrl" value="{{ path( 'app_produit_configuration_create_ajax' ) }}">
+
+	<input type="hidden" id="configurationCreateToken" value="{{ csrf_token( 'create_produit_configuration' ) }}">
+
+	<input type="hidden" id="configurationMassActionUrl" value="{{ path( 'app_produit_configuration_mass_action' ) }}">
+
+	<input type="hidden" id="configurationMassActionToken" value="{{ csrf_token( 'produit_configurations_mass_action' ) }}">
+
+	<input type="hidden" id="configurationReorderUrl" value="{{ path( 'app_produit_configuration_reorder' ) }}">
+
+	<input type="hidden" id="configurationReorderToken" value="{{ csrf_token( 'produit_configurations_reorder' ) }}">
+
+	<script type="application/json" id="configurationCatalog">
+		{{ catalogueCompatibilites|json_encode|raw }}
+	</script>
+
+	{# =====================================================
+	       TABLEAU
+	       ===================================================== #}
+
+	<div class="card">
+
+		<div class="card-header">
+			<h3 class="card-title">
+				Liste des configurations
+			</h3>
+		</div>
+
+		<div class="card-body">
+
+			<div class="table-responsive">
+
+				<table class="table table-bordered mb-0">
+
+					<thead>
+						<tr>
+							<th class="text-center">
+								Ordre
+							</th>
+
+							<th class="text-center">
+								<input type="checkbox" id="configurationCheckAll" title="Tout sélectionner">
+							</th>
+
+							<th>Produit</th>
+							<th>Type d’impression</th>
+							<th>Support</th>
+							<th>Format</th>
+							<th>Prix de base</th>
+							<th>Mode de calcul</th>
+							<th>Quantités</th>
+							<th>Finitions</th>
+							<th class="text-center">Statut</th>
+							<th class="text-center">Actions</th>
+						</tr>
+					</thead>
+
+					<tbody id="configurationSortableBody">
+
+						{% set libellesMode = {
+                            'forfait': 'Forfait',
+                            'unite': 'À l’unité',
+                            'metre': 'Au mètre',
+                            'metre_carre': 'Au mètre carré',
+                            'heure': 'À l’heure'
+                        } %}
+
+						{% for configuration in configurations %}
+
+							<tr
+								id="configuration-row-{{ configuration.id }}" class="configuration-row produit-sortable-row" data-id="{{ configuration.id }}">
+
+								{# Poignée de déplacement #}
+								<td class="text-center align-middle">
+
+									<i class="fa fa-arrows-alt produit-drag-handle" style="cursor: move;" title="Déplacer cette ligne"></i>
+
+								</td>
+
+								{# Sélection individuelle #}
+								<td class="text-center align-middle">
+
+									<input type="checkbox" class="configuration-row-check" value="{{ configuration.id }}">
+
+								</td>
+
+								<td class="align-middle">
+									<strong>
+										{{ configuration.produit.nom }}
+									</strong>
+								</td>
+
+								<td class="align-middle">
+
+									<span class="badge badge-primary">
+										{{ configuration.typeImpression.nom }}
+									</span>
+
+								</td>
+
+								<td class="align-middle">
+
+									<span class="badge badge-info">
+										{{ configuration.support.nom }}
+									</span>
+
+								</td>
+
+								<td class="align-middle">
+
+									<span class="badge badge-secondary">
+										{{ configuration.format.nom }}
+									</span>
+
+								</td>
+
+								<td class="align-middle text-nowrap">
+
+									{% if configuration.prixBase is not null %}
+
+										{{ configuration.prixBase
+                                            |number_format(0, ',', ' ')
+                                        }}
+										FCFA
+
+									{% else %}
+
+										<span class="text-muted">
+											Non défini
+										</span>
+
+									{% endif %}
+
+								</td>
+
+								<td class="align-middle">
+
+									{{ libellesMode[
+                                        configuration.modeCalcul
+                                    ] ?? configuration.modeCalcul }}
+
+								</td>
+
+								<td class="align-middle text-nowrap">
+
+									Minimum :
+									{{ configuration.quantiteMinimale }}
+
+									<br>
+
+									Maximum :
+									{{ configuration.quantiteMaximale
+                                        ?? 'Illimitée'
+                                    }}
+
+								</td>
+
+								<td class="align-middle">
+
+									{% for ligne
+                                        in configuration.configurationFinitions
+                                    %}
+
+										<span class="badge badge-warning mb-1">
+											{{ ligne.finition.nom }}
+										</span>
+
+									{% else %}
+
+										<span class="text-muted">
+											Aucune
+										</span>
+
+									{% endfor %}
+
+								</td>
+
+								<td class="text-center align-middle configuration-status-cell">
+
+									{% if configuration.active %}
+
+										<span class="badge badge-success configuration-status-badge">
+											Publié
+										</span>
+
+									{% else %}
+
+										<span class="badge badge-danger configuration-status-badge">
+											Non publié
+										</span>
+
+									{% endif %}
+
+								</td>
+
+								<td class="text-center align-middle">
+
+									<div
+										class="btn-group">
+
+										{# Modification #}
+										<button type="button" class="btn btn-sm btn-primary-light btn-edit-configuration" data-get-url="{{ path( 'app_produit_configuration_get_ajax', { id: configuration.id } ) }}" data-update-url="{{ path( 'app_produit_configuration_update_ajax', { id: configuration.id } ) }}" data-update-token="{{ csrf_token( 'update_produit_configuration_' ~ configuration.id ) }}" title="Modifier">
+											<i class="fa fa-edit"></i>
+										</button>
+
+										{# Publication/dépublication individuelle #}
+										<button type="button" class="btn btn-sm {{
+											                                                configuration.active
+											                                                    ? 'btn-warning-light'
+											                                                    : 'btn-success-light'
+											                                            }} btn-toggle-configuration" data-url="{{ path( 'app_produit_configuration_toggle_status', { id: configuration.id } ) }}" data-token="{{ csrf_token( 'toggle_produit_configuration_' ~ configuration.id ) }}" data-active="{{ configuration.active ? '1' : '0' }}" data-nom="{{ ( configuration.produit.nom ~ ' / ' ~ configuration.support.nom ~ ' / ' ~ configuration.format.nom )|e('html_attr') }}" title="{{ configuration.active ? 'Dépublier' : 'Publier' }}">
+											<i class="fa {{
+												                                                configuration.active
+												                                                    ? 'fa-eye-slash'
+												                                                    : 'fa-eye'
+												                                            }}"></i>
+										</button>
+
+										{# Suppression #}
+										<button type="button" class="btn btn-sm btn-danger-light btn-delete-configuration" data-url="{{ path( 'app_produit_configuration_delete_ajax', { id: configuration.id } ) }}" data-token="{{ csrf_token( 'delete_produit_configuration_' ~ configuration.id ) }}" data-nom="{{ ( configuration.produit.nom ~ ' / ' ~ configuration.support.nom ~ ' / ' ~ configuration.format.nom )|e('html_attr') }}" title="Supprimer">
+											<i class="fa fa-trash"></i>
+										</button>
+
+									</div>
+
+								</td>
+
+							</tr>
+
+						{% else %}
+
+							<tr>
+								<td colspan="12" class="text-center">
+									Aucune configuration trouvée
+								</td>
+							</tr>
+
+						{% endfor %}
+
+					</tbody>
+
+				</table>
+
+			</div>
+
+		</div>
+
+	</div>
+
+	{#
+	        Conservez ici le modal configurationModal
+	        et le template configurationFinitionTemplate
+	        déjà présents dans votre fichier.
+	    #}
+
+	{# Valeurs techniques utilisées pour l'ajout et la modification AJAX. #}
+	<input type="hidden" id="configurationCreateUrl" value="{{ path('app_produit_configuration_create_ajax') }}">
+	<input
+	type="hidden" id="configurationCreateToken" value="{{ csrf_token('create_produit_configuration') }}">
+
+	{# Fenêtre d'ajout et de modification. #}
+	<div class="modal fade" id="configurationModal" tabindex="-1" role="dialog" aria-labelledby="configurationModalTitle" aria-hidden="true">
+		<div class="modal-dialog modal-xl" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="configurationModalTitle">
+						Ajouter une configuration
+					</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+
+				<div class="modal-body">
+					<input type="hidden" id="configurationSaveUrl">
+					<input type="hidden" id="configurationSaveToken">
+
+					<div class="row">
+						<div class="form-group col-md-6">
+							<label for="configurationProduit">Produit *</label>
+							<select class="form-control" id="configurationProduit">
+								<option value="">Sélectionner</option>
+								{% for produit in produits %}
+									<option value="{{ produit.id }}" data-types="{{ produit.typesImpressions|map(v => v.id)|join(',') }}" data-supports="{{ produit.supports|map(v => v.id)|join(',') }}" data-formats="{{ produit.formats|map(v => v.id)|join(',') }}" data-finitions="{{ produit.finitions|map(v => v.id)|join(',') }}">
+										{{ produit.nom }}
+									</option>
+								{% endfor %}
+							</select>
+						</div>
+
+						<div class="form-group col-md-6">
+							<label for="configurationType">Type d’impression *</label>
+							<select class="form-control" id="configurationType">
+								<option value="">Sélectionner</option>
+								{% for type in typesImpressions %}
+									<option value="{{ type.id }}">{{ type.nom }}</option>
+								{% endfor %}
+							</select>
+						</div>
+
+						<div class="form-group col-md-6">
+							<label for="configurationSupport">Support *</label>
+							<select class="form-control" id="configurationSupport">
+								<option value="">Sélectionner</option>
+								{% for support in supports %}
+									<option value="{{ support.id }}" data-types="{{ support.typesImpressions|map(v => v.id)|join(',') }}" data-formats="{{ support.formats|map(v => v.id)|join(',') }}" data-finitions="{{ support.finitions|map(v => v.id)|join(',') }}">
+										{{ support.nom }}
+									</option>
+								{% endfor %}
+							</select>
+						</div>
+
+						<div class="form-group col-md-6">
+							<label for="configurationFormat">Format *</label>
+							<select class="form-control" id="configurationFormat">
+								<option value="">Sélectionner</option>
+								{% for format in formats %}
+									<option value="{{ format.id }}">{{ format.nom }}</option>
+								{% endfor %}
+							</select>
+						</div>
+
+						<div class="form-group col-md-4">
+							<label for="configurationPrixBase">Prix de base</label>
+							<input type="number" min="0" step="0.01" class="form-control" id="configurationPrixBase">
+						</div>
+
+						<div class="form-group col-md-4">
+							<label for="configurationModeCalcul">Mode de calcul</label>
+							<select class="form-control" id="configurationModeCalcul">
+								<option value="forfait">Forfait</option>
+								<option value="unite">À l’unité</option>
+								<option value="metre">Au mètre</option>
+								<option value="metre_carre">Au mètre carré</option>
+								<option value="heure">À l’heure</option>
+							</select>
+						</div>
+
+						<div class="form-group col-md-4">
+							<label for="configurationOrdre">Ordre</label>
+							<input type="number" min="0" class="form-control" id="configurationOrdre" value="10">
+						</div>
+
+						<div class="form-group col-md-4">
+							<label for="configurationQuantiteMin">Quantité minimale</label>
+							<input type="number" min="1" class="form-control" id="configurationQuantiteMin" value="1">
+						</div>
+
+						<div class="form-group col-md-4">
+							<label for="configurationQuantiteMax">Quantité maximale</label>
+							<input type="number" min="1" class="form-control" id="configurationQuantiteMax" placeholder="Illimitée">
+						</div>
+
+						<div class="form-group col-md-4 d-flex align-items-end">
+							<div class="custom-control custom-switch mb-2">
+								<input type="checkbox" class="custom-control-input" id="configurationActive" checked>
+								<label class="custom-control-label" for="configurationActive">
+									Configuration active
+								</label>
+							</div>
+						</div>
+
+						<div class="form-group col-12">
+							<label for="configurationDescription">Description</label>
+							<textarea class="form-control" id="configurationDescription" rows="2"></textarea>
+						</div>
+					</div>
+
+					<hr>
+
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<h6 class="mb-0">Finitions de la configuration</h6>
+						<button type="button" class="btn btn-sm btn-outline-primary" id="configurationAddFinition">
+							<i class="fa fa-plus mr-1"></i>
+							Ajouter une finition
+						</button>
+					</div>
+
+					<p class="text-muted" id="configurationFinitionEmpty">
+						Aucune finition ajoutée.
+					</p>
+					<div id="configurationFinitions"></div>
+				</div>
+
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						Annuler
+					</button>
+					<button type="button" class="btn btn-primary" id="configurationSaveButton">
+						<i class="fa fa-save mr-1"></i>
+						Enregistrer
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{# Modèle HTML cloné par JavaScript pour chaque finition. #}
+	<template id="configurationFinitionTemplate">
+		<div class="configuration-finition-row border rounded p-3 mb-3">
+			<div class="d-flex justify-content-between mb-2">
+				<strong>Finition</strong>
+				<button type="button" class="btn btn-sm btn-outline-danger configuration-remove-finition">
+					<i class="fa fa-times"></i>
+				</button>
+			</div>
+
+			<div class="row">
+				<div class="form-group col-md-6">
+					<label>Finition *</label>
+					<select class="form-control finition-id">
+						<option value="">Sélectionner</option>
+						{% for finition in finitions %}
+							<option value="{{ finition.id }}">{{ finition.nom }}</option>
+						{% endfor %}
+					</select>
+				</div>
+
+				<div class="form-group col-md-3">
+					<label>Prix</label>
+					<input type="number" min="0" step="0.01" class="form-control finition-prix" value="0">
+				</div>
+
+				<div class="form-group col-md-3">
+					<label>Mode de calcul</label>
+					<select class="form-control finition-mode">
+						<option value="forfait">Forfait</option>
+						<option value="unite">À l’unité</option>
+						<option value="feuille">À la feuille</option>
+						<option value="exemplaire">Par exemplaire</option>
+						<option value="metre">Au mètre</option>
+						<option value="metre_carre">Au mètre carré</option>
+						<option value="point">Au point</option>
+						<option value="face">Par face</option>
+					</select>
+				</div>
+
+				<div class="form-group col-md-3">
+					<label>Quantité minimale</label>
+					<input type="number" min="1" class="form-control finition-min" value="1">
+				</div>
+
+				<div class="form-group col-md-3">
+					<label>Quantité maximale</label>
+					<input type="number" min="1" class="form-control finition-max" placeholder="Illimitée">
+				</div>
+
+				<div class="form-group col-md-2">
+					<label>Ordre</label>
+					<input type="number" min="0" class="form-control finition-ordre" value="10">
+				</div>
+
+				<div class="form-group col-md-4">
+					<label>Description</label>
+					<input type="text" class="form-control finition-description">
+				</div>
+
+				<div class="col-12">
+					<div class="custom-control custom-checkbox custom-control-inline">
+						<input type="checkbox" class="custom-control-input finition-obligatoire">
+						<label class="custom-control-label">Obligatoire</label>
+					</div>
+					<div class="custom-control custom-checkbox custom-control-inline">
+						<input type="checkbox" class="custom-control-input finition-defaut">
+						<label class="custom-control-label">Par défaut</label>
+					</div>
+					<div class="custom-control custom-checkbox custom-control-inline">
+						<input type="checkbox" class="custom-control-input finition-payante">
+						<label class="custom-control-label">Payante</label>
+					</div>
+					<div class="custom-control custom-checkbox custom-control-inline">
+						<input type="checkbox" class="custom-control-input finition-active" checked>
+						<label class="custom-control-label">Active</label>
+					</div>
+				</div>
+			</div>
+		</div>
+	</template>
+{% endblock %}
+
+
+{% block javascripts %}
+
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+
+	<script src="{{ asset( 'assets/js/traitement_produit_configuration.js' ) }}?v=20260726-6"></script>
+{% endblock %}

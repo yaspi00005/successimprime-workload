@@ -1,0 +1,396 @@
+{% extends 'base.html.twig' %}
+
+
+{% block title %}
+	Nouveau mouvement de trésorerie
+{% endblock %}
+
+
+{% block body %}
+
+	{% set estAdmin =
+		estAdmin|default(
+			is_granted('ROLE_ADMIN')
+		)
+	%}
+
+
+	{% set peutSaisir =
+		is_granted('ROLE_TRESORERIE_SAISIR')
+	%}
+
+
+	{% set peutTransferer =
+		is_granted('ROLE_TRESORERIE_TRANSFERER')
+	%}
+
+
+	<div
+		class="side-app">
+
+
+		{# ============================================================
+				   MESSAGES FLASH
+				   ============================================================
+				   
+				   Ils sont transformés en SweetAlert plus bas.
+				   ============================================================ #}
+
+		{% for type, messages in app.flashes %}
+
+			{% for message in messages %}
+
+				<div class="js-flash-message" data-type="{{ type|e('html_attr') }}" data-message="{{ message|e('html_attr') }}"></div>
+
+			{% endfor %}
+
+		{% endfor %}
+
+
+		{# ============================================================
+				   EN-TÊTE
+				   ============================================================ #}
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+
+				<li class="breadcrumb-item">
+
+					<a href="#">
+						Gestion
+					</a>
+
+				</li>
+
+
+				<li class="breadcrumb-item">
+
+					<a href="{{ path( 'app_compte_tresorerie_index' ) }}">
+						Trésorerie
+					</a>
+
+				</li>
+
+
+				<li class="breadcrumb-item">
+
+					<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}">
+						Mouvements
+					</a>
+
+				</li>
+
+
+				<li class="breadcrumb-item active">
+
+					Nouveau
+
+				</li>
+
+			</ol>
+
+
+			<div>
+
+				<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}" class="btn btn-secondary">
+
+					<i class="fa fa-arrow-left mr-1"></i>
+
+					Retour aux mouvements
+
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+				   CONTRÔLE DE PERMISSION
+				   ============================================================ #}
+
+		{% if not peutSaisir %}
+
+			<div class="alert alert-danger">
+
+				<i class="fa fa-lock mr-2"></i>
+
+				<strong>
+					Accès limité.
+				</strong>
+
+				Vous n’êtes pas autorisé à enregistrer
+								un mouvement de trésorerie.
+
+			</div>
+
+		{% else %}
+
+
+			<div class="card">
+
+
+				<div class="card-header">
+
+					<h3 class="card-title">
+
+						<i class="fa fa-exchange mr-2"></i>
+
+						Enregistrer un mouvement de trésorerie
+
+					</h3>
+
+				</div>
+
+
+				<div
+					class="card-body">
+
+
+					{# ========================================================
+										   EXPLICATION DES TYPES
+										   ======================================================== #}
+
+					<div class="alert alert-info mb-4">
+
+						<i class="fa fa-info-circle mr-1"></i>
+
+
+						<strong>
+							Encaissement :
+						</strong>
+
+						crédite un compte opérationnel.
+
+						{% if not estAdmin %}
+
+							<span class="text-muted">
+								Caisse, Orange Money ou Wave.
+							</span>
+
+						{% endif %}
+
+
+						<br>
+
+
+						<strong>
+							Décaissement :
+						</strong>
+
+						débite un compte opérationnel.
+
+						{% if not estAdmin %}
+
+							<span class="text-muted">
+								Caisse, Orange Money ou Wave.
+							</span>
+
+						{% endif %}
+
+
+						{% if peutTransferer %}
+
+							<br>
+
+
+							<strong>
+								Transfert :
+							</strong>
+
+
+							{% if estAdmin %}
+
+								débite le compte source et crédite
+																le compte destination.
+
+							{% else %}
+
+								permet de transférer de l’argent depuis
+																la Caisse, Orange Money ou Wave vers
+																un compte bancaire.
+
+							{% endif %}
+
+						{% endif %}
+
+					</div>
+
+
+					{# ========================================================
+										   RÈGLES ROLE_CAISSE_COMMANDE
+										   ======================================================== #}
+
+					{% if not estAdmin %}
+
+						<div class="alert alert-warning mb-4">
+
+							<i class="fa fa-shield mr-1"></i>
+
+
+							<strong>
+								Règles de la caisse :
+							</strong>
+
+
+							<ul class="mb-0 mt-2">
+
+								<li>
+									Les encaissements peuvent être enregistrés
+																		sur la Caisse, Orange Money ou Wave.
+								</li>
+
+								<li>
+									Les décaissements peuvent être effectués
+																		depuis la Caisse, Orange Money ou Wave.
+								</li>
+
+								{% if peutTransferer %}
+
+									<li>
+										Les transferts sont autorisés depuis
+																				Caisse, Orange Money ou Wave vers
+																				une banque.
+									</li>
+
+								{% endif %}
+
+								<li>
+									Le nom du compte bancaire peut être
+																		visible comme destination, mais son
+																		solde reste masqué.
+								</li>
+
+								<li>
+									L’opération sera automatiquement
+																		enregistrée avec votre compte utilisateur
+																		comme agent.
+								</li>
+
+							</ul>
+
+						</div>
+
+					{% endif %}
+
+
+					{# ========================================================
+										   FORMULAIRE
+										   ======================================================== #}
+
+					{% include 'mouvement_tresorerie/_form.html.twig' with {
+						form: form,
+						bouton_label: 'Enregistrer le mouvement',
+						estAdmin: estAdmin,
+						peutTransferer: peutTransferer
+					} only %}
+
+
+				</div>
+
+
+			</div>
+
+		{% endif %}
+
+	</div>
+
+{% endblock %}
+
+
+{% block javascripts %}
+
+	{{ parent() }}
+
+
+	{# ================================================================
+		   SWEETALERT
+		   ================================================================
+		   
+		   SweetAlert est déjà chargé dans base.html.twig.
+		   On ne recharge donc PAS :
+		   
+		   assets/plugins/sweet-alert/sweetalert2.all.min.js
+		   ================================================================ #}
+
+
+	<script>
+
+		document.addEventListener('DOMContentLoaded', function () {
+
+const flashMessages = document.querySelectorAll('.js-flash-message');
+
+
+flashMessages.forEach(function (element) {
+
+const type = element.dataset.type || 'info';
+
+
+const message = element.dataset.message || '';
+
+
+let icon = 'info';
+
+
+let title = 'Information';
+
+
+let confirmButtonText = 'D’accord';
+
+
+if (type === 'success') {
+
+icon = 'success';
+
+title = 'Opération réussie';
+
+confirmButtonText = 'OK';
+
+} else if (type === 'error' || type === 'danger') {
+
+icon = 'error';
+
+
+title = message.toLowerCase().includes('solde') ? 'Solde insuffisant' : 'Opération impossible';
+
+
+confirmButtonText = 'Corriger';
+
+} else if (type === 'warning') {
+
+icon = 'warning';
+
+title = 'Attention';
+}
+
+
+if (typeof window.Swal === 'undefined') {
+
+window.alert(message);
+
+return;
+}
+
+
+window.Swal.fire({
+
+icon: icon,
+
+title: title,
+
+text: message,
+
+confirmButtonText: confirmButtonText,
+
+allowOutsideClick: false
+
+});
+
+});
+
+});
+	</script>
+
+{% endblock %}

@@ -1,0 +1,407 @@
+{% extends 'base.html.twig' %}
+
+{% macro avatar(utilisateur, classe) %}
+	{% if utilisateur and utilisateur.employe and utilisateur.employe.photos %}
+		<img src="{{ asset('uploads/employes/' ~ utilisateur.employe.photos) }}" class="{{ classe }}" alt="{{ utilisateur.username }}">
+	{% else %}
+		<span class="{{ classe }} d-flex align-items-center justify-content-center bg-primary text-white" style="font-weight: 600;">
+			{{ utilisateur ? (utilisateur.username|first|upper) : '?' }}
+		</span>
+	{% endif %}
+{% endmacro %}
+
+{% import _self as m %}
+
+{% block title %}
+	Messagerie
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="side-app">
+
+	<div class="page-header">
+
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item active">
+				Messagerie
+			</li>
+		</ol>
+
+		<div>
+			<a href="{{ path('app_chat_nouvelle') }}" class="btn btn-primary">
+				<i class="fa fa-plus mr-1"></i>
+				Nouvelle conversation
+			</a>
+		</div>
+
+	</div>
+
+	<div class="row chatbox">
+
+		<div class="col-md-12 col-lg-5 col-xl-4">
+			<div class="card">
+
+				<div class="p-4">
+					<div class="input-group">
+						<input type="text" id="filtre-conversations" class="form-control search" placeholder="Rechercher…">
+						<div class="input-group-append">
+							<button type="button" class="btn btn-primary-light">
+								<i class="fa fa-search" aria-hidden="true"></i>
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="contacts_body p-0">
+					<ul class="contacts mb-0" id="liste-conversations">
+
+						{% for conversation in conversations %}
+
+							{% set autre = conversation.getAutreUtilisateurPour(utilisateur) %}
+							{% set participant = conversation.getParticipantPour(utilisateur) %}
+							{% set nonLu = participant and participant.aDesMessagesNonLus %}
+							{% set dernierMessage = conversation.dernierMessage %}
+							{% set nomAffiche = autre ? autre.username : conversation.getLibellePour(utilisateur) %}
+
+							<li class="{{ conversationActive and conversationActive.id == conversation.id ? 'active' : '' }}" data-nom="{{ nomAffiche|lower }}">
+								<a href="{{ path('app_chat_show', {jeton: conversation.jeton}) }}" class="d-flex bd-highlight text-reset" style="text-decoration: none;">
+									<div class="img_cont">
+										{{ m.avatar(autre, 'rounded-circle user_img') }}
+									</div>
+									<div class="user_info">
+										<h6 class="mt-1 mb-0 {{ nonLu ? 'font-weight-bold' : '' }}">{{ nomAffiche }}</h6>
+										<span class="mr-3 small text-muted">
+											{% if dernierMessage %}
+												{% if dernierMessage.contenu is empty and dernierMessage.aUnePieceJointe %}
+													<i class="fa fa-paperclip mr-1"></i>
+													{{ dernierMessage.pieceJointeEstUneImage ? 'Image' : 'Fichier' }}
+												{% else %}
+													{{ dernierMessage.contenu|length > 40 ? (dernierMessage.contenu|slice(0, 40) ~ '…') : dernierMessage.contenu }}
+												{% endif %}
+											{% endif %}
+										</span>
+									</div>
+									<div class="float-right text-right ml-auto mt-auto mb-auto">
+										{% if nonLu %}
+											<span class="badge badge-danger">●</span>
+										{% endif %}
+										{% if dernierMessage %}
+											<div>
+												<small>{{ dernierMessage.dateEnvoi|date('d/m/Y') }}</small>
+											</div>
+										{% endif %}
+									</div>
+								</a>
+							</li>
+
+						{% else %}
+
+							<li class="text-center text-muted p-4">
+								Aucune conversation.
+								<a href="{{ path('app_chat_nouvelle') }}">Démarrer une conversation</a>.
+							</li>
+
+						{% endfor %}
+
+					</ul>
+				</div>
+
+			</div>
+		</div>
+		<!-- COL END -->
+
+		<div class="col-md-12 col-lg-7 col-xl-8 chat">
+			<div class="card">
+
+				{% if conversationActive %}
+
+					{% set autreActif = conversationActive.getAutreUtilisateurPour(utilisateur) %}
+					{% set nomActif = autreActif ? autreActif.username : conversationActive.getLibellePour(utilisateur) %}
+					{% set dernierMessageActif = conversationActive.dernierMessage %}
+
+					<div class="action-header clearfix">
+						<div class="float-left hidden-xs d-flex ml-2">
+							<div class="img_cont mr-3">
+								{{ m.avatar(autreActif, 'rounded-circle user_img') }}
+							</div>
+							<div class="align-items-center mt-2">
+								<h4 class="mb-0 font-weight-semibold">{{ nomActif }}</h4>
+							</div>
+						</div>
+					</div>
+
+					<div class="card-body msg_card_body" id="fil-messages" data-jeton="{{ conversationActive.jeton }}" data-dernier-id="{{ dernierMessageActif ? dernierMessageActif.id : 0 }}">
+
+						{% for message in conversationActive.messages %}
+
+							{% set estMoi = message.auteur == utilisateur %}
+
+							<div class="d-flex justify-content-{{ estMoi ? 'end' : 'start' }}">
+
+								{% if not estMoi %}
+									<div class="img_cont_msg">
+										{{ m.avatar(message.auteur, 'rounded-circle user_img_msg') }}
+									</div>
+								{% endif %}
+
+								<div class="{{ estMoi ? 'msg_cotainer_send' : 'msg_cotainer' }}">
+
+									{% if message.aUnePieceJointe %}
+
+										{% if message.pieceJointeEstUneImage %}
+											<a href="{{ asset('uploads/chat/' ~ message.pieceJointeFichier) }}" target="_blank">
+												<img src="{{ asset('uploads/chat/' ~ message.pieceJointeFichier) }}" alt="{{ message.pieceJointeNomOriginal }}" class="img-fluid rounded mb-1 d-block" style="max-height: 220px;">
+											</a>
+										{% else %}
+											<a href="{{ asset('uploads/chat/' ~ message.pieceJointeFichier) }}" target="_blank" class="d-flex align-items-center mb-1" style="color: inherit;">
+												<i class="fa fa-file-o mr-2"></i>
+												{{ message.pieceJointeNomOriginal }}
+											</a>
+										{% endif %}
+
+									{% endif %}
+
+									{% if message.contenu is not empty %}
+										{{ message.contenu }}
+									{% endif %}
+
+									<span class="{{ estMoi ? 'msg_time_send' : 'msg_time' }}">{{ message.dateEnvoi|date('d/m/Y H:i') }}</span>
+
+								</div>
+
+								{% if estMoi %}
+									<div class="img_cont_msg">
+										{{ m.avatar(message.auteur, 'rounded-circle user_img_msg') }}
+									</div>
+								{% endif %}
+
+							</div>
+
+						{% else %}
+
+							<div class="text-center text-muted p-4" id="aucun-message">
+								Aucun message pour le moment. Envoyez le premier !
+							</div>
+
+						{% endfor %}
+
+					</div>
+
+					<div class="card-footer">
+
+						<form action="{{ path('app_chat_envoyer', {jeton: conversationActive.jeton}) }}" method="post" enctype="multipart/form-data" id="form-envoi-message">
+
+							<input type="hidden" name="_token" value="{{ csrf_token('chat_envoyer_' ~ conversationActive.jeton) }}">
+
+							<div class="msb-reply d-flex">
+								<label class="input-group-text attach_btn mb-0" style="cursor: pointer;" title="Joindre un fichier ou une image">
+									<i class="fa fa-paperclip"></i>
+									<input type="file" name="fichier" id="champ-fichier" style="display: none;" onchange="document.getElementById('nom-fichier-choisi').textContent = this.files.length ? this.files[0].name : '';">
+								</label>
+								<textarea name="contenu" id="champ-contenu" placeholder="Votre message…"></textarea>
+								<button type="submit">
+									<i class="fa fa-paper-plane-o"></i>
+								</button>
+							</div>
+
+							<div id="nom-fichier-choisi" class="small text-muted mt-1 px-2"></div>
+
+						</form>
+
+					</div>
+
+				{% else %}
+
+					<div class="card-body d-flex align-items-center justify-content-center text-muted" style="min-height: 400px;">
+						Sélectionnez une conversation à gauche, ou
+						<a href="{{ path('app_chat_nouvelle') }}" class="ml-1">démarrez-en une nouvelle</a>.
+					</div>
+
+				{% endif %}
+
+			</div>
+		</div>
+		<!-- COL END -->
+
+	</div>
+
+	</div>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+var fil = document.getElementById('fil-messages');
+var filtre = document.getElementById('filtre-conversations');
+var liste = document.getElementById('liste-conversations');
+
+if (fil) {
+fil.scrollTop = fil.scrollHeight;
+}
+
+if (filtre && liste) {
+filtre.addEventListener('input', function () {
+var recherche = filtre.value.trim().toLowerCase();
+var items = liste.querySelectorAll('li[data-nom]');
+
+items.forEach(function (item) {
+item.style.display = item.getAttribute('data-nom').indexOf(recherche) !== -1 ? '' : 'none';
+});
+});
+}
+
+if (! fil) {
+return;
+}
+
+var jeton = fil.getAttribute('data-jeton');
+var dernierId = parseInt(fil.getAttribute('data-dernier-id'), 10) || 0;
+var urlEnvoyer = "{{ conversationActive ? path('app_chat_envoyer', {jeton: conversationActive.jeton}) : '' }}";
+var urlMessages = "{{ conversationActive ? path('app_chat_messages', {jeton: conversationActive.jeton}) : '' }}";
+
+function creerBulleAvatar(nomUtilisateur, classe) {
+var span = document.createElement('span');
+span.className = classe + ' d-flex align-items-center justify-content-center bg-primary text-white';
+span.style.fontWeight = '600';
+span.textContent = nomUtilisateur ? nomUtilisateur.charAt(0).toUpperCase() : '?';
+return span;
+}
+
+function ajouterMessage(message) {
+var aucun = document.getElementById('aucun-message');
+if (aucun) {
+aucun.remove();
+}
+
+var ligne = document.createElement('div');
+ligne.className = 'd-flex justify-content-' + (
+message.estMoi ? 'end' : 'start'
+);
+
+if (! message.estMoi) {
+var contAvatarGauche = document.createElement('div');
+contAvatarGauche.className = 'img_cont_msg';
+contAvatarGauche.appendChild(creerBulleAvatar(message.auteurUsername, 'rounded-circle user_img_msg'));
+ligne.appendChild(contAvatarGauche);
+}
+
+var bulle = document.createElement('div');
+bulle.className = message.estMoi ? 'msg_cotainer_send' : 'msg_cotainer';
+
+if (message.pieceJointe) {
+var lien = document.createElement('a');
+lien.href = message.pieceJointe.url;
+lien.target = '_blank';
+
+if (message.pieceJointe.estImage) {
+var img = document.createElement('img');
+img.src = message.pieceJointe.url;
+img.alt = message.pieceJointe.nomOriginal || '';
+img.className = 'img-fluid rounded mb-1 d-block';
+img.style.maxHeight = '220px';
+lien.appendChild(img);
+} else {
+lien.className = 'd-flex align-items-center mb-1';
+lien.style.color = 'inherit';
+var icone = document.createElement('i');
+icone.className = 'fa fa-file-o mr-2';
+lien.appendChild(icone);
+lien.appendChild(document.createTextNode(message.pieceJointe.nomOriginal || ''));
+} bulle.appendChild(lien);
+}
+
+if (message.contenu) {
+bulle.appendChild(document.createTextNode(message.contenu));
+}
+
+var heure = document.createElement('span');
+heure.className = message.estMoi ? 'msg_time_send' : 'msg_time';
+heure.textContent = message.dateEnvoi;
+bulle.appendChild(heure);
+
+ligne.appendChild(bulle);
+
+if (message.estMoi) {
+var contAvatarDroite = document.createElement('div');
+contAvatarDroite.className = 'img_cont_msg';
+contAvatarDroite.appendChild(creerBulleAvatar(message.auteurUsername, 'rounded-circle user_img_msg'));
+ligne.appendChild(contAvatarDroite);
+}
+
+fil.appendChild(ligne);
+fil.scrollTop = fil.scrollHeight;
+
+if (message.id > dernierId) {
+dernierId = message.id;
+}
+}
+
+function verifierNouveauxMessages() {
+if (! urlMessages || document.hidden) {
+return;
+}
+
+fetch(urlMessages + '?depuis=' + dernierId, {
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+},
+credentials: 'same-origin'
+}).then(function (reponse) {
+return reponse.ok ? reponse.json() : null;
+}).then(function (donnees) {
+if (donnees && donnees.messages) {
+donnees.messages.forEach(ajouterMessage);
+}
+}).catch(function () {});
+}
+
+if (urlMessages) {
+setInterval(verifierNouveauxMessages, 4000);
+}
+
+var formulaire = document.getElementById('form-envoi-message');
+
+if (formulaire) {
+formulaire.addEventListener('submit', function (evenement) {
+evenement.preventDefault();
+
+var donneesFormulaire = new FormData(formulaire);
+var champContenu = document.getElementById('champ-contenu');
+var champFichier = document.getElementById('champ-fichier');
+
+fetch(urlEnvoyer, {
+method: 'POST',
+body: donneesFormulaire,
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+},
+credentials: 'same-origin'
+}).then(function (reponse) {
+return reponse.json();
+}).then(function (donnees) {
+if (donnees.erreur) {
+alert(donnees.erreur);
+return;
+}
+
+if (donnees.message) {
+ajouterMessage(donnees.message);
+}
+
+if (champContenu) {
+champContenu.value = '';
+}
+if (champFichier) {
+champFichier.value = '';
+}
+document.getElementById('nom-fichier-choisi').textContent = '';
+}).catch(function () {
+alert('Erreur d’envoi, réessayez.');
+});
+});
+}
+});
+	</script>
+
+{% endblock %}

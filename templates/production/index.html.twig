@@ -1,0 +1,711 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Atelier de production
+{% endblock %}
+
+{% block body %}
+	<div class="side-app">
+
+
+		<div
+			class="container-fluid py-4">
+			{# ==========================================================
+																																				   MENU DES TYPES D’IMPRESSION
+																																				========================================================== #}
+			<div class="card mb-4">
+				<div class="card-body p-0">
+					<div class="production-type-scroll">
+						<nav
+							class="production-type-menu">
+
+							{# Tous les travaux #}
+							<a href="{{ path('app_production_index') }}" class="production-type-link
+																																																																																																												                    {{ typeSelectionne is null ? 'active' : '' }}">
+								<i class="fa fa-th-large"></i>
+
+								<span>Tous</span>
+
+								{% if nombreTotalActif > 0 %}
+									<span class="badge badge-primary">
+										{{ nombreTotalActif }}
+									</span>
+								{% endif %}
+							</a>
+
+							{# Types d’impression dynamiques #}
+							{% for type in typesImpression %}
+								<a href="{{ path( 'app_production_index', {typeImpression: type.id} ) }}" class="production-type-link
+																																																																						    {{
+																																																																						        typeSelectionne
+																																																																						        and typeSelectionne.id == type.id
+																																																																						            ? 'active'
+																																																																						            : ''
+																																																																						    }}">
+									<span class="production-type-counter">
+										{% if type.nombre > 0 %}
+											{{ type.nombre }}
+										{% else %}
+											0
+										{% endif %}
+									</span>
+
+									<span class="production-type-name">
+										<i class="fa fa-print"></i>
+										{{ type.nom }}
+									</span>
+								</a>
+							{% endfor %}
+						</nav>
+					</div>
+				</div>
+			</div>
+
+			{% if typeSelectionne %}
+				<div class="alert alert-info d-flex
+																																																																								                justify-content-between align-items-center">
+					<div>
+						<i class="fa fa-filter mr-1"></i>
+
+						Travaux affichés :
+
+						<strong>{{ typeSelectionne.nom }}</strong>
+					</div>
+
+					<a href="{{ path('app_production_index') }}" class="btn btn-sm btn-light">
+						<i class="fa fa-times mr-1"></i>
+						Afficher tous
+					</a>
+				</div>
+			{% endif %}
+			<style>
+				.production-type-scroll {
+					width: 100%;
+					overflow-x: auto;
+					overflow-y: hidden;
+					scrollbar-width: thin;
+				}
+
+				.production-type-menu {
+					display: flex;
+					align-items: stretch;
+					min-width: max-content;
+					padding: 0;
+				}
+
+				.production-type-link {
+					position: relative;
+					display: flex;
+					align-items: center;
+					gap: 8px;
+					min-height: 68px;
+					padding: 12px 20px;
+					color: #495057;
+					background: #ffffff;
+					border-right: 1px solid #e9ecef;
+					text-decoration: none;
+					white-space: nowrap;
+					transition: all 0.2s ease;
+				}
+
+				.production-type-link:hover {
+					color: #6259ca;
+					background: #f5f4ff;
+					text-decoration: none;
+				}
+
+				.production-type-link.active {
+					color: #ffffff;
+					background: #6259ca;
+				}
+
+				.production-type-link i {
+					font-size: 18px;
+				}
+
+				.production-type-link .badge {
+					min-width: 22px;
+					padding: 5px 7px;
+					border-radius: 12px;
+				}
+
+				.production-type-link.active .badge {
+					color: #6259ca;
+					background: #ffffff;
+				}
+				.production-type-link {
+					position: relative;
+					display: flex;
+					flex-direction: column;
+					align-items: center;
+					justify-content: center;
+					gap: 7px;
+					min-width: 145px;
+					min-height: 82px;
+					padding: 10px 18px;
+					color: #495057;
+					background: #ffffff;
+					border-right: 1px solid #e9ecef;
+					text-align: center;
+					text-decoration: none;
+					white-space: nowrap;
+					transition: all 0.2s ease;
+				}
+
+				.production-type-counter {
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					min-width: 28px;
+					height: 28px;
+					padding: 0 8px;
+					color: #ffffff;
+					background: #dc3545;
+					border-radius: 15px;
+					font-size: 13px;
+					font-weight: 700;
+				}
+
+				.production-type-name {
+					display: flex;
+					align-items: center;
+					gap: 6px;
+					font-weight: 600;
+				}
+
+				.production-type-link.active {
+					color: #ffffff;
+					background: #6259ca;
+				}
+
+				.production-type-link.active .production-type-counter {
+					color: #6259ca;
+					background: #ffffff;
+				}
+
+				/* Les éléments à zéro restent plus discrets */
+				.production-type-link .production-type-counter:empty {
+					visibility: hidden;
+				}
+			</style>
+			{# ==========================================================
+																																																				           EN-TÊTE
+																																																				        ========================================================== #}
+			<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+				<div>
+					<h2 class="mb-1">
+						Atelier de production
+					</h2>
+
+					<p class="text-muted mb-0">
+						Suivi et gestion des ordres de production
+					</p>
+				</div>
+
+				<span class="badge badge-primary p-2 mt-2">
+					{{ statistiques.total }}
+					ordre(s)
+				</span>
+			</div>
+
+
+			{# ==========================================================
+																																																				           MESSAGES FLASH
+																																																				           Supprimer cette partie si base.html.twig les affiche déjà.
+																																																				        ========================================================== #}
+			{% for message in app.flashes('success') %}
+				<div class="alert alert-success alert-dismissible fade show">
+					<i class="fa fa-check-circle mr-1"></i>
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert" aria-label="Fermer">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+			{% endfor %}
+
+			{% for message in app.flashes('error') %}
+				<div class="alert alert-danger alert-dismissible fade show">
+					<i class="fa fa-exclamation-circle mr-1"></i>
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert" aria-label="Fermer">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+			{% endfor %}
+
+			{# ==========================================================
+																																																				           STATISTIQUES
+																																																				        ========================================================== #}
+			<div class="row">
+
+				<div class="col-sm-6 col-xl mb-3">
+					<div class="card h-100">
+						<div class="card-body">
+							<small class="text-muted">
+								Tous les ordres
+							</small>
+
+							<div class="d-flex justify-content-between align-items-center">
+								<h3 class="mb-0">
+									{{ statistiques.total }}
+								</h3>
+
+								<i class="fa fa-list text-primary fa-2x"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-sm-6 col-xl mb-3">
+					<div class="card h-100 border-secondary">
+						<div class="card-body">
+							<small class="text-muted">
+								À produire
+							</small>
+
+							<div class="d-flex justify-content-between align-items-center">
+								<h3 class="mb-0">
+									{{ statistiques.aProduire }}
+								</h3>
+
+								<i class="fa fa-clock-o text-secondary fa-2x"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-sm-6 col-xl mb-3">
+					<div class="card h-100 border-primary">
+						<div class="card-body">
+							<small class="text-muted">
+								En cours
+							</small>
+
+							<div class="d-flex justify-content-between align-items-center">
+								<h3 class="mb-0 text-primary">
+									{{ statistiques.enCours }}
+								</h3>
+
+								<i class="fa fa-play text-primary fa-2x"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-sm-6 col-xl mb-3">
+					<div class="card h-100 border-warning">
+						<div class="card-body">
+							<small class="text-muted">
+								En pause
+							</small>
+
+							<div class="d-flex justify-content-between align-items-center">
+								<h3 class="mb-0 text-warning">
+									{{ statistiques.enPause }}
+								</h3>
+
+								<i class="fa fa-pause text-warning fa-2x"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-sm-6 col-xl mb-3">
+					<div class="card h-100 border-danger">
+						<div class="card-body">
+							<small class="text-muted">
+								En retard
+							</small>
+
+							<div class="d-flex justify-content-between align-items-center">
+								<h3 class="mb-0 text-danger">
+									{{ statistiques.enRetard }}
+								</h3>
+
+								<i class="fa fa-exclamation-triangle text-danger fa-2x"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{# ==========================================================
+																																																				           FILTRES
+																																																				        ========================================================== #}
+			<div class="card mb-3">
+				<div class="card-body">
+					<div class="row align-items-end">
+
+						<div class="col-lg-5 col-md-6 mb-2">
+							<label for="rechercheOrdre">
+								Rechercher
+							</label>
+
+							<input type="search" id="rechercheOrdre" class="form-control" placeholder="Numéro, commande, machine ou opérateur">
+						</div>
+
+						<div class="col-lg-4 col-md-4 mb-2">
+							<label for="filtreStatut">
+								Statut
+							</label>
+
+							<select id="filtreStatut" class="form-control">
+								<option value="">Tous les statuts</option>
+								<option value="a_produire">À produire</option>
+								<option value="en_cours">En cours</option>
+								<option value="en_pause">En pause</option>
+							</select>
+						</div>
+
+						<div class="col-lg-3 col-md-2 mb-2">
+							<button type="button" id="reinitialiserFiltres" class="btn btn-light btn-block">
+								<i class="fa fa-refresh mr-1"></i>
+								Réinitialiser
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{# ==========================================================
+																																																				           TABLEAU DES ORDRES
+																																																				        ========================================================== #}
+			<div class="card">
+				<div class="card-header d-flex justify-content-between align-items-center">
+					<h5 class="card-title mb-0">
+						{% if typeSelectionne %}
+							Travaux —
+							{{ typeSelectionne.nom }}
+						{% else %}
+							Tous les travaux en production
+						{% endif %}
+					</h5>
+
+					<span id="nombreResultats" class="badge badge-primary">
+						{{ statistiques.total }}
+						résultat(s)
+					</span>
+				</div>
+
+				<div class="card-body table-responsive">
+					<table class="table table-hover table-bordered mb-0">
+						<thead>
+							<tr>
+								<th>Ordre</th>
+								<th>Commande</th>
+								<th>Désignation</th>
+								<th>Qté à imprimer</th>
+								<th>Priorité</th>
+								<th>Machine</th>
+								<th>Statut</th>
+								<th>Planification</th>
+								<th>Délai</th>
+								<th>Créé le</th>
+								<th class="text-center">Action</th>
+							</tr>
+						</thead>
+
+						<tbody id="tableOrdres">
+							{% for ordre in ordres %}
+
+								{% set creeParTexte = '' %}
+
+								{% if ordre.creePar %}
+									{% set creeParTexte =
+            ordre.creePar.employe.nom
+            |default(
+                ordre.creePar.username
+                |default(
+                    ordre.creePar.email
+                    |default('')
+                )
+            )
+        %}
+								{% endif %}
+
+								{% set recherche = (
+        ordre.numero ~ ' ' ~
+        (
+            ordre.commandeDetail
+            and ordre.commandeDetail.commande
+                ? ordre.commandeDetail.commande.id
+                : ''
+        ) ~ ' ' ~
+        (
+            ordre.commandeDetail
+                ? ordre.commandeDetail.designation|default('')
+                : ''
+        ) ~ ' ' ~
+        (
+            ordre.machine
+                ? ordre.machine.nom
+                : ''
+        ) ~ ' ' ~
+        creeParTexte
+    )|lower %}
+
+								<tr class="js-ordre-row" data-statut="{{ ordre.statut }}" data-recherche="{{ recherche|e('html_attr') }}">
+
+									<td>
+										<strong>
+											{{ ordre.numero }}
+										</strong>
+
+										{% if ordre.transmisLe %}
+											<div>
+												<small class="text-success">
+													<i class="fa fa-check-circle"></i>
+													Transmis
+												</small>
+											</div>
+										{% else %}
+											<div>
+												<small class="text-muted">
+													Non transmis
+												</small>
+											</div>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if ordre.commandeDetail
+                                        and ordre.commandeDetail.commande %}
+											<strong>
+												#{{ ordre.commandeDetail.commande.id }}
+											</strong>
+										{% else %}
+											<span class="text-muted">—</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{{ ordre.commandeDetail.designation|default('—') }}
+									</td>
+
+									<td>
+										{{ ordre.quantite|default('—') }}
+									</td>
+
+									<td>
+										{% if ordre.priorite == 'urgente' %}
+											<span class="badge badge-danger">
+												Urgente
+											</span>
+										{% elseif ordre.priorite == 'haute' %}
+											<span class="badge badge-warning">
+												Haute
+											</span>
+										{% elseif ordre.priorite == 'basse' %}
+											<span class="badge badge-secondary">
+												Basse
+											</span>
+										{% else %}
+											<span class="badge badge-info">
+												{{ ordre.priorite
+                                                |default('normale')
+                                                |capitalize
+                                            }}
+											</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if ordre.machine %}
+											<strong>
+												{{ ordre.machine.nom }}
+											</strong>
+
+											{% if ordre.operateur %}
+												<div>
+													<small class="text-muted">
+														{{ ordre.creePar.employe.nom }}
+													</small>
+												</div>
+											{% endif %}
+										{% else %}
+											<span class="text-muted">
+												Non affectée
+											</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if ordre.statut == 'a_produire' %}
+											<span class="badge badge-secondary p-2">
+												À produire
+											</span>
+										{% elseif ordre.statut == 'en_cours' %}
+											<span class="badge badge-primary p-2">
+												En cours
+											</span>
+										{% elseif ordre.statut == 'en_pause' %}
+											<span class="badge badge-warning p-2">
+												En pause
+											</span>
+										{% elseif ordre.statut == 'termine' %}
+											<span class="badge badge-success p-2">
+												Terminé
+											</span>
+										{% elseif ordre.statut == 'annule' %}
+											<span class="badge badge-danger p-2">
+												Annulé
+											</span>
+										{% else %}
+											<span class="badge badge-light p-2">
+												{{ ordre.statut
+                                                |replace({'_': ' '})
+                                                |capitalize
+                                            }}
+											</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if ordre.debutPrevuLe %}
+											<div>
+												<small class="text-muted">
+													Début
+												</small>
+
+												<br>
+
+												<strong>
+													{{ ordre.debutPrevuLe
+                                                    |date('d/m/Y H:i')
+                                                }}
+												</strong>
+											</div>
+
+											{% if ordre.finPrevueLe %}
+												<div class="mt-1">
+													<small class="text-muted">
+														Fin :
+														{{ ordre.finPrevueLe
+                                                        |date('d/m/Y H:i')
+                                                    }}
+													</small>
+												</div>
+											{% endif %}
+										{% else %}
+											<span class="text-muted">
+												Non planifié
+											</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if ordre.statut == 'annule' %}
+											<span class="text-muted">—</span>
+										{% elseif ordre.finPrevueLe is null %}
+											<span class="badge badge-light">
+												Non défini
+											</span>
+										{% elseif ordre.estEnRetard %}
+											<span class="badge badge-danger">
+												<i class="fa fa-exclamation-triangle mr-1"></i>
+												{{ ordre.retardMinutes }}
+												min
+											</span>
+										{% elseif ordre.statut == 'termine' %}
+											<span class="badge badge-success">
+												Délai respecté
+											</span>
+										{% else %}
+											<span class="badge badge-info">
+												Dans le délai
+											</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{{ ordre.creeLe
+                                        ? ordre.creeLe|date('d/m/Y H:i')
+                                        : '—'
+                                    }}
+									</td>
+
+									<td class="text-center">
+										<a class="btn btn-sm btn-primary" href="{{ path( 'app_production_show', {id: ordre.id} ) }}">
+											<i class="fa fa-eye mr-1"></i>
+											Ouvrir
+										</a>
+									</td>
+								</tr>
+							{% else %}
+								<tr>
+									<td colspan="11" class="text-center text-muted py-4">
+										Aucun ordre de production disponible.
+									</td>
+								</tr>
+							{% endfor %}
+
+							<tr id="aucunResultat" style="display: none;">
+								<td colspan="11" class="text-center text-muted py-4">
+									Aucun ordre ne correspond aux filtres.
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+const recherche = document.getElementById('rechercheOrdre');
+const filtreStatut = document.getElementById('filtreStatut');
+const boutonReset = document.getElementById('reinitialiserFiltres');
+const lignes = document.querySelectorAll('.js-ordre-row');
+const compteur = document.getElementById('nombreResultats');
+const aucunResultat = document.getElementById('aucunResultat');
+
+function normaliserTexte(texte) {
+return texte.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function appliquerFiltres() {
+const terme = normaliserTexte(recherche.value);
+const statut = filtreStatut.value;
+let nombreVisible = 0;
+
+lignes.forEach(function (ligne) {
+const contenu = normaliserTexte(ligne.dataset.recherche || '');
+
+const statutLigne = ligne.dataset.statut || '';
+
+const rechercheValide = terme === '' || contenu.includes(terme);
+
+const statutValide = statut === '' || statutLigne === statut;
+
+const visible = rechercheValide && statutValide;
+
+ligne.style.display = visible ? '' : 'none';
+
+if (visible) {
+nombreVisible++;
+}
+});
+
+compteur.textContent = nombreVisible + ' résultat(s)';
+aucunResultat.style.display = nombreVisible === 0 ? '' : 'none';
+}
+
+recherche.addEventListener('input', appliquerFiltres);
+filtreStatut.addEventListener('change', appliquerFiltres);
+
+boutonReset.addEventListener('click', function () {
+recherche.value = '';
+filtreStatut.value = '';
+appliquerFiltres();
+recherche.focus();
+});
+});
+	</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{{ form_start(form) }}
+
+<div class="card-body">
+
+	<div class="row">
+
+		<div class="col-md-8">
+			<div class="form-group">
+				{{ form_label(form.nom) }}
+				{{ form_widget(form.nom) }}
+				{{ form_errors(form.nom) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				{{ form_label(form.canal) }}
+				{{ form_widget(form.canal) }}
+				{{ form_errors(form.canal) }}
+			</div>
+		</div>
+
+		<div class="col-md-12 js-champ-sujet">
+			<div class="form-group">
+				{{ form_label(form.sujet) }}
+				{{ form_widget(form.sujet) }}
+				{{ form_errors(form.sujet) }}
+			</div>
+		</div>
+
+		<div class="col-md-12">
+			<div class="form-group">
+				{{ form_label(form.contenu) }}
+				{{ form_widget(form.contenu) }}
+				{% if form.contenu.vars.help %}
+					<small class="form-text text-muted">{{ form.contenu.vars.help }}</small>
+				{% endif %}
+				{{ form_errors(form.contenu) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group mt-4">
+				<label class="custom-switch mb-0">
+					{{ form_widget(form.actif, {attr: {class: 'custom-switch-input'}}) }}
+					<span class="custom-switch-indicator"></span>
+					<span class="custom-switch-description">
+						Modèle actif
+					</span>
+				</label>
+			</div>
+		</div>
+
+	</div>
+
+	{% if form.vars.errors|length > 0 %}
+		<div class="alert alert-danger mt-3">
+			{{ form_errors(form) }}
+		</div>
+	{% endif %}
+
+</div>
+
+<div class="card-footer text-right">
+	<a href="{{ path('app_modele_message_index') }}" class="btn btn-secondary">
+		<i class="fa fa-arrow-left mr-1"></i>
+		Retour
+	</a>
+	<button type="submit" class="btn btn-primary-light">
+		<i class="fa fa-save mr-1"></i>
+		Enregistrer
+	</button>
+</div>
+
+{{ form_end(form) }}
+
+<script>
+	(function () {
+		var champCanal = document.querySelector('.js-canal-modele');
+		var zoneSujet = document.querySelector('.js-champ-sujet');
+
+		if (!champCanal || !zoneSujet) {
+			return;
+		}
+
+		function actualiser() {
+			zoneSujet.style.display = champCanal.value === 'email' ? '' : 'none';
+		}
+
+		champCanal.addEventListener('change', actualiser);
+		actualiser();
+	})();
+</script>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="refresh" content="300">
+
+	<title>SuccessImprim — Écran d'accueil</title>
+
+	<link
+		rel="stylesheet"
+		href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+	>
+
+	<style>
+
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		html, body {
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			background: #0b1120;
+			font-family: 'Segoe UI', Arial, sans-serif;
+			color: #fff;
+		}
+
+		/* ============================================================
+		   FOND — DIAPORAMA
+		   ============================================================ */
+
+		.tv-fond {
+			position: fixed;
+			inset: 0;
+			z-index: 0;
+			background: linear-gradient(135deg, #4338ca, #0ea5e9, #22c55e);
+			background-size: 400% 400%;
+			animation: degradeAnime 18s ease infinite;
+		}
+
+		@keyframes degradeAnime {
+			0%   { background-position: 0% 50%; }
+			50%  { background-position: 100% 50%; }
+			100% { background-position: 0% 50%; }
+		}
+
+		.tv-media {
+			position: absolute;
+			inset: 0;
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			opacity: 0;
+			transform: scale(1);
+			transition: opacity 1.8s ease;
+		}
+
+		.tv-media.actif {
+			opacity: 1;
+			animation: kenBurns 14s ease forwards;
+		}
+
+		@keyframes kenBurns {
+			from { transform: scale(1); }
+			to   { transform: scale(1.12); }
+		}
+
+		.tv-overlay {
+			position: fixed;
+			inset: 0;
+			z-index: 1;
+			background: linear-gradient(180deg, rgba(5, 10, 25, .55) 0%, rgba(5, 10, 25, .35) 45%, rgba(5, 10, 25, .85) 100%);
+		}
+
+		/* ============================================================
+		   CONTENU
+		   ============================================================ */
+
+		.tv-contenu {
+			position: relative;
+			z-index: 2;
+			height: 100vh;
+			display: flex;
+			flex-direction: column;
+			padding: 3rem 4rem;
+		}
+
+		.tv-entete {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			animation: glisserHaut .9s ease both;
+		}
+
+		.tv-marque {
+			display: flex;
+			align-items: center;
+			gap: .9rem;
+			font-size: 1.7rem;
+			font-weight: 700;
+			letter-spacing: .5px;
+			text-shadow: 0 2px 12px rgba(0, 0, 0, .4);
+		}
+
+		.tv-marque i {
+			background: rgba(255, 255, 255, .15);
+			border: 1px solid rgba(255, 255, 255, .3);
+			width: 52px;
+			height: 52px;
+			border-radius: 14px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 1.5rem;
+		}
+
+		.tv-horloge {
+			text-align: right;
+			text-shadow: 0 2px 12px rgba(0, 0, 0, .4);
+		}
+
+		.tv-heure {
+			font-size: 2.4rem;
+			font-weight: 700;
+			font-variant-numeric: tabular-nums;
+		}
+
+		.tv-date {
+			font-size: 1.05rem;
+			opacity: .85;
+			text-transform: capitalize;
+		}
+
+		/* ============================================================
+		   BLOC CENTRAL — CLIENTS
+		   ============================================================ */
+
+		.tv-central {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			text-align: center;
+		}
+
+		.tv-central-titre {
+			font-size: 1.5rem;
+			font-weight: 400;
+			opacity: .9;
+			letter-spacing: 1px;
+			text-transform: uppercase;
+			animation: apparaitre 1s ease .3s both;
+		}
+
+		.tv-central-chiffre {
+			font-size: 9rem;
+			font-weight: 800;
+			line-height: 1;
+			margin: .5rem 0;
+			background: linear-gradient(90deg, #ffffff, #a5f3fc);
+			-webkit-background-clip: text;
+			background-clip: text;
+			-webkit-text-fill-color: transparent;
+			text-shadow: 0 8px 40px rgba(0, 0, 0, .35);
+			animation: apparaitre 1s ease .5s both, pulsationDouce 4s ease-in-out infinite 2s;
+		}
+
+		.tv-central-soustitre {
+			font-size: 1.3rem;
+			opacity: .9;
+			animation: apparaitre 1s ease .7s both;
+		}
+
+		@keyframes pulsationDouce {
+			0%, 100% { transform: scale(1); }
+			50%      { transform: scale(1.03); }
+		}
+
+		/* ============================================================
+		   TUILES STATS
+		   ============================================================ */
+
+		.tv-tuiles {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 1.75rem;
+		}
+
+		.tv-tuile {
+			background: rgba(255, 255, 255, .1);
+			border: 1px solid rgba(255, 255, 255, .22);
+			backdrop-filter: blur(14px);
+			border-radius: 20px;
+			padding: 1.75rem 2rem;
+			display: flex;
+			align-items: center;
+			gap: 1.25rem;
+			animation: glisserBas .9s ease both;
+			box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+		}
+
+		.tv-tuile:nth-child(1) { animation-delay: .2s; }
+		.tv-tuile:nth-child(2) { animation-delay: .4s; }
+		.tv-tuile:nth-child(3) { animation-delay: .6s; }
+
+		.tv-tuile-icone {
+			width: 60px;
+			height: 60px;
+			min-width: 60px;
+			border-radius: 16px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 1.6rem;
+			background: rgba(255, 255, 255, .18);
+		}
+
+		.tv-tuile-valeur {
+			font-size: 2.6rem;
+			font-weight: 800;
+			line-height: 1;
+			font-variant-numeric: tabular-nums;
+		}
+
+		.tv-tuile-libelle {
+			opacity: .85;
+			font-size: 1rem;
+			margin-top: .15rem;
+		}
+
+		@keyframes glisserHaut {
+			from { opacity: 0; transform: translateY(-24px); }
+			to   { opacity: 1; transform: translateY(0); }
+		}
+
+		@keyframes glisserBas {
+			from { opacity: 0; transform: translateY(24px); }
+			to   { opacity: 1; transform: translateY(0); }
+		}
+
+		@keyframes apparaitre {
+			from { opacity: 0; transform: scale(.92); }
+			to   { opacity: 1; transform: scale(1); }
+		}
+
+		@media (max-width: 900px) {
+			.tv-central-chiffre { font-size: 5.5rem; }
+			.tv-tuiles { grid-template-columns: 1fr; }
+			.tv-contenu { padding: 1.5rem; }
+		}
+
+	</style>
+</head>
+<body>
+
+	<div class="tv-fond" id="tvFond">
+		{% for media in medias %}
+			{% if media.type == 'image' %}
+				<img
+					class="tv-media"
+					src="{{ asset('uploads/tv/' ~ media.fichier) }}"
+					alt=""
+				>
+			{% else %}
+				<video
+					class="tv-media"
+					src="{{ asset('uploads/tv/' ~ media.fichier) }}"
+					muted
+					playsinline
+					preload="auto"
+				></video>
+			{% endif %}
+		{% endfor %}
+	</div>
+
+	<div class="tv-overlay"></div>
+
+	<div class="tv-contenu">
+
+		<div class="tv-entete">
+
+			<div class="tv-marque">
+				<i class="fa fa-print"></i>
+				SuccessImprim
+			</div>
+
+			<div class="tv-horloge">
+				<div class="tv-heure" id="tvHeure">--:--</div>
+				<div class="tv-date" id="tvDate">—</div>
+			</div>
+
+		</div>
+
+		<div class="tv-central">
+			<div class="tv-central-titre">Ils nous font confiance</div>
+			<div class="tv-central-chiffre js-compteur" data-valeur="{{ totalClients }}">0</div>
+			<div class="tv-central-soustitre">clients accompagnés depuis nos débuts</div>
+		</div>
+
+		<div class="tv-tuiles">
+
+			<div class="tv-tuile">
+				<div class="tv-tuile-icone"><i class="fa fa-calendar-o"></i></div>
+				<div>
+					<div class="tv-tuile-valeur js-compteur" data-valeur="{{ commandesSemaine }}">0</div>
+					<div class="tv-tuile-libelle">commandes cette semaine</div>
+				</div>
+			</div>
+
+			<div class="tv-tuile">
+				<div class="tv-tuile-icone"><i class="fa fa-calendar"></i></div>
+				<div>
+					<div class="tv-tuile-valeur js-compteur" data-valeur="{{ commandesMois }}">0</div>
+					<div class="tv-tuile-libelle">commandes ce mois-ci</div>
+				</div>
+			</div>
+
+			<div class="tv-tuile">
+				<div class="tv-tuile-icone"><i class="fa fa-line-chart"></i></div>
+				<div>
+					<div class="tv-tuile-valeur js-compteur" data-valeur="{{ commandesAnnee }}">0</div>
+					<div class="tv-tuile-libelle">commandes cette année</div>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+			/* Horloge en direct */
+			function majHorloge() {
+				const maintenant = new Date();
+
+				document.getElementById('tvHeure').textContent =
+					maintenant.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+
+				document.getElementById('tvDate').textContent =
+					maintenant.toLocaleDateString('fr-FR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+			}
+
+			majHorloge();
+			setInterval(majHorloge, 1000 * 30);
+
+			/* Compteurs animés */
+			document.querySelectorAll('.js-compteur').forEach(function (element) {
+				const cible = parseInt(element.dataset.valeur || '0', 10);
+				const duree = 1600;
+				const depart = performance.now();
+
+				function animer(maintenant) {
+					const progres = Math.min(1, (maintenant - depart) / duree);
+					const facilite = 1 - Math.pow(1 - progres, 3);
+					element.textContent = Math.round(cible * facilite).toLocaleString('fr-FR');
+
+					if (progres < 1) {
+						requestAnimationFrame(animer);
+					}
+				}
+
+				requestAnimationFrame(animer);
+			});
+
+			/* Diaporama de fond (images + vidéos) */
+			const medias = Array.from(document.querySelectorAll('.tv-media'));
+
+			if (medias.length > 0) {
+
+				let indexActuel = 0;
+				const dureeAffichage = 9000;
+
+				function afficher(index) {
+					medias.forEach(function (media, i) {
+						media.classList.toggle('actif', i === index);
+
+						if (media.tagName === 'VIDEO') {
+							if (i === index) {
+								media.currentTime = 0;
+								media.play().catch(function () {});
+							} else {
+								media.pause();
+							}
+						}
+					});
+				}
+
+				afficher(0);
+
+				if (medias.length > 1) {
+					setInterval(function () {
+						indexActuel = (indexActuel + 1) % medias.length;
+						afficher(indexActuel);
+					}, dureeAffichage);
+				}
+			}
+
+		});
+	</script>
+
+</body>
+</html>

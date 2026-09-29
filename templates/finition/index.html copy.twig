@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Finition index{% endblock %}
+
+{% block body %}
+    <h1>Finition index</h1>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nom</th>
+                <th>actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for finition in finitions %}
+            <tr>
+                <td>{{ finition.id }}</td>
+                <td>{{ finition.nom }}</td>
+                <td>
+                    <a href="{{ path('app_finition_show', {'id': finition.id}) }}">show</a>
+                    <a href="{{ path('app_finition_edit', {'id': finition.id}) }}">edit</a>
+                </td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="3">no records found</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{{ path('app_finition_new') }}">Create new</a>
+{% endblock %}

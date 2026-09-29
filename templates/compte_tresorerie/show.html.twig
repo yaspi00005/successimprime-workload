@@ -1,0 +1,302 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    {{ compte.nom }}
+{% endblock %}
+
+{% block body %}
+
+<div class="side-app">
+
+    <div class="page-header">
+
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="#">Gestion</a>
+            </li>
+
+            <li class="breadcrumb-item">
+                <a href="{{ path(
+                    'app_compte_tresorerie_index'
+                ) }}">
+                    Comptes de trésorerie
+                </a>
+            </li>
+
+            <li class="breadcrumb-item active">
+                {{ compte.nom }}
+            </li>
+        </ol>
+
+        <div>
+
+            <a
+                href="{{ path(
+                    'app_compte_tresorerie_edit',
+                    {id: compte.id}
+                ) }}"
+                class="btn btn-primary"
+            >
+                <i class="fa fa-edit mr-1"></i>
+                Modifier
+            </a>
+
+        </div>
+
+    </div>
+
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert {{
+                type == 'success'
+                    ? 'alert-success'
+                    : 'alert-danger'
+            }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="row">
+
+        <div class="col-md-4">
+
+            <div class="card">
+
+                <div class="card-body text-center">
+
+                    <div class="mb-3">
+                        <i class="fa fa-wallet fa-4x text-primary"></i>
+                    </div>
+
+                    <h3>{{ compte.nom }}</h3>
+
+                    <p class="text-muted">
+                        {{ compte.code }}
+                    </p>
+
+                    {% if compte.actif %}
+                        <span class="badge badge-success">
+                            Compte actif
+                        </span>
+                    {% else %}
+                        <span class="badge badge-danger">
+                            Compte désactivé
+                        </span>
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+            <div class="card bg-primary text-white">
+
+                <div class="card-body text-center">
+
+                    <h6 class="text-white">
+                        Solde actuel
+                    </h6>
+
+                    <h2 class="text-white">
+                        {{
+                            compte.soldeActuel
+                                |number_format(0, ',', ' ')
+                        }}
+                        {{ compte.devise }}
+                    </h2>
+
+                    <small>
+                        Solde initial :
+                        {{
+                            compte.soldeInitial
+                                |number_format(0, ',', ' ')
+                        }}
+                        {{ compte.devise }}
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-8">
+
+            <div class="card">
+
+                <div class="card-header">
+                    <h3 class="card-title">
+                        Informations du compte
+                    </h3>
+                </div>
+
+                <div class="card-body">
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered">
+
+                            <tbody>
+
+                                <tr>
+                                    <th width="35%">Code</th>
+                                    <td>{{ compte.code }}</td>
+                                </tr>
+
+                                <tr>
+                                    <th>Nom</th>
+                                    <td>{{ compte.nom }}</td>
+                                </tr>
+
+                                <tr>
+                                    <th>Type</th>
+                                    <td>
+                                        <span class="badge badge-primary">
+                                            {{ compte.typeLabel }}
+                                        </span>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th>Validation des paiements</th>
+                                    <td>
+
+                                        {% if compte.estCompteBancaire %}
+                                            <span class="badge badge-warning">
+                                                Validation manuelle
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-success">
+                                                Validation automatique
+                                            </span>
+                                        {% endif %}
+
+                                    </td>
+                                </tr>
+
+                                {% if compte.nomBanque %}
+                                    <tr>
+                                        <th>Banque</th>
+                                        <td>{{ compte.nomBanque }}</td>
+                                    </tr>
+                                {% endif %}
+
+                                <tr>
+                                    <th>Numéro du compte</th>
+                                    <td>
+                                        {{
+                                            compte.numeroCompte
+                                                |default('Non renseigné')
+                                        }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th>Titulaire</th>
+                                    <td>
+                                        {{
+                                            compte.titulaireCompte
+                                                |default('Non renseigné')
+                                        }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th>Devise</th>
+                                    <td>{{ compte.devise }}</td>
+                                </tr>
+
+                                <tr>
+                                    <th>Découvert</th>
+                                    <td>
+
+                                        {% if compte.autoriserDecouvert %}
+                                            <span class="badge badge-warning">
+                                                Autorisé
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">
+                                                Non autorisé
+                                            </span>
+                                        {% endif %}
+
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th>Date de création</th>
+                                    <td>
+                                        {{
+                                            compte.dateCreation
+                                                ? compte.dateCreation
+                                                    |date('d/m/Y à H:i')
+                                                : '—'
+                                        }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th>Dernière modification</th>
+                                    <td>
+                                        {{
+                                            compte.dateModification
+                                                ? compte.dateModification
+                                                    |date('d/m/Y à H:i')
+                                                : '—'
+                                        }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th>Description</th>
+                                    <td>
+                                        {{
+                                            compte.description
+                                                |default('Aucune observation')
+                                                |nl2br
+                                        }}
+                                    </td>
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                    <div class="text-right">
+
+                        <a
+                            href="{{ path(
+                                'app_compte_tresorerie_index'
+                            ) }}"
+                            class="btn btn-secondary"
+                        >
+                            <i class="fa fa-arrow-left mr-1"></i>
+                            Retour
+                        </a>
+
+                        <a
+                            href="{{ path(
+                                'app_compte_tresorerie_edit',
+                                {id: compte.id}
+                            ) }}"
+                            class="btn btn-primary"
+                        >
+                            <i class="fa fa-edit mr-1"></i>
+                            Modifier
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

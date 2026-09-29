@@ -1,0 +1,50 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}ProduitConfiguration{% endblock %}
+
+{% block body %}
+    <h1>ProduitConfiguration</h1>
+
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>Id</th>
+                <td>{{ produit_configuration.id }}</td>
+            </tr>
+            <tr>
+                <th>Active</th>
+                <td>{{ produit_configuration.active ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Ordre</th>
+                <td>{{ produit_configuration.ordre }}</td>
+            </tr>
+            <tr>
+                <th>Description</th>
+                <td>{{ produit_configuration.description }}</td>
+            </tr>
+            <tr>
+                <th>PrixBase</th>
+                <td>{{ produit_configuration.prixBase }}</td>
+            </tr>
+            <tr>
+                <th>ModeCalcul</th>
+                <td>{{ produit_configuration.modeCalcul }}</td>
+            </tr>
+            <tr>
+                <th>QuantiteMinimale</th>
+                <td>{{ produit_configuration.quantiteMinimale }}</td>
+            </tr>
+            <tr>
+                <th>QuantiteMaximale</th>
+                <td>{{ produit_configuration.quantiteMaximale }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <a href="{{ path('app_produit_configuration_index') }}">back to list</a>
+
+    <a href="{{ path('app_produit_configuration_edit', {'id': produit_configuration.id}) }}">edit</a>
+
+    {{ include('produit_configuration/_delete_form.html.twig') }}
+{% endblock %}

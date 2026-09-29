@@ -1,0 +1,1867 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Devis
+	{{ devis.numero|default('#' ~ devis.id) }}
+{% endblock %}
+
+
+{% block body %}
+
+	{% set numero = devis.numero|default(
+        'DEV-' ~ '%05d'|format(devis.id)
+    ) %}
+
+	{% set client = devis.clients|default(null) %}
+
+	{% set details = devis.devisDetails|default([]) %}
+
+	{% set statut = devis.statut|default('brouillon') %}
+
+
+	<div
+		class="side-app">
+
+		{# =====================================================
+																										           EN-TÊTE
+																										           ===================================================== #}
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_devis_index') }}">
+						Devis
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active" aria-current="page">
+					{{ numero }}
+				</li>
+
+			</ol>
+
+
+			<div class="d-flex flex-wrap align-items-center">
+
+				<a href="{{ path('app_devis_index') }}" class="btn btn-sm btn-light mr-2 mb-1">
+					<i class="fe fe-arrow-left mr-1"></i>
+					Retour
+				</a>
+
+
+				{# =============================================
+																																																				                   CONVERSION DU DEVIS EN COMMANDE
+																																																				                   ============================================= #}
+
+				{% if
+                    devis.statut == 'accepte'
+                    and devis.commande is null
+                %}
+
+					<form method="post" action="{{ path( 'app_devis_convertir_commande', { id: devis.id } ) }}" class="d-inline mr-2 mb-1" onsubmit="
+																																																																																											                            return confirm(
+																																																																																											                                'Valider ce devis et créer définitivement la commande ?'
+																																																																																											                            );
+																																																																																											                        ">
+
+						<input type="hidden" name="_token" value="{{ csrf_token( 'convertir-devis-' ~ devis.id ) }}">
+
+						<button type="submit" class="btn btn-sm btn-success">
+							<i class="fe fe-check-circle mr-1"></i>
+							Valider et créer la commande
+						</button>
+
+					</form>
+
+				{% elseif devis.commande %}
+
+					<a href="{{ path( 'app_commandes_show', { id: devis.commande.id } ) }}" class="btn btn-sm btn-success mr-2 mb-1">
+						<i class="fe fe-eye mr-1"></i>
+						Voir la commande créée
+					</a>
+
+				{% endif %}
+
+
+				{# =============================================
+																																																				                   MODIFIER
+																																																				                   ============================================= #}
+
+				<a href="{{ path( 'app_devis_edit', { id: devis.id } ) }}" class="btn btn-sm btn-primary mr-2 mb-1">
+					<i class="fe fe-edit-2 mr-1"></i>
+					Modifier
+				</a>
+
+
+				{# =============================================
+																																																				                   IMPRIMER
+																																																				                   ============================================= #}
+
+				<button type="button" class="btn btn-sm btn-secondary mb-1" onclick="window.print()">
+					<i class="fe fe-printer mr-1"></i>
+					Imprimer
+				</button>
+				<a href="{{ path( 'app_devis_pdf', { id: devis.id } ) }}" target="_blank" class="btn btn-sm btn-danger mr-2">
+					<i class="fa fa-file-pdf-o mr-1"></i>
+					Télécharger PDF
+				</a>
+
+
+				{# =============================================
+																																																   SUPPRIMER (ADMIN)
+																																																   ============================================= #}
+
+				{% if is_granted('ROLE_ADMIN') %}
+
+					<form method="post" action="{{ path( 'app_devis_delete', { id: devis.id } ) }}" class="js-confirm-form d-inline" data-message="Supprimer définitivement le devis {{ devis.numero }} ? Cette action est irréversible.">
+
+						<input type="hidden" name="_token" value="{{ csrf_token( 'delete' ~ devis.id ) }}">
+
+						<button type="submit" class="btn btn-sm btn-danger mr-2 mb-1">
+							<i class="fe fe-trash-2 mr-1"></i>
+							Supprimer
+						</button>
+
+					</form>
+
+				{% endif %}
+
+				<button type="button" class="btn btn-sm btn-success mb-1 js-envoyer-whatsapp" data-url="{{ path( 'app_devis_whatsapp', { id: devis.id } ) }}" data-token="{{ csrf_token( 'whatsapp_devis_' ~ devis.id ) }}" data-numero="{{ devis.numero|default( '#' ~ devis.id ) }}">
+					<i class="fa fa-whatsapp mr-1"></i>
+					Envoyer par WhatsApp
+				</button>
+			</div>
+
+		</div>
+
+
+		{# =====================================================
+																										           MESSAGES FLASH
+																										           ===================================================== #}
+
+		{% for type, messages in app.flashes %}
+
+			{% for message in messages %}
+
+				<div class="
+																																																																														                        alert
+																																																																														                        alert-{{ type == 'error' ? 'danger' : type }}
+																																																																														                        alert-dismissible
+																																																																														                        fade
+																																																																														                        show
+																																																																														                    ">
+
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert">
+						&times;
+					</button>
+
+				</div>
+
+			{% endfor %}
+
+		{% endfor %}
+
+
+		<div
+			class="row">
+
+			{# =================================================
+																																							               COLONNE PRINCIPALE
+																																							               ================================================= #}
+
+			<div class="col-xl-8 col-lg-8">
+
+				<div class="card">
+
+					<div class="
+																																																																																											                            card-header
+																																																																																											                            d-flex
+																																																																																											                            justify-content-between
+																																																																																											                            align-items-center
+																																																																																											                        ">
+
+						<div>
+
+							<h3 class="card-title mb-1">
+								Détails du devis
+							</h3>
+
+							<small class="text-muted">
+								{{ numero }}
+							</small>
+
+						</div>
+
+
+						{% set statutClasses = {
+                            'brouillon': 'secondary',
+                            'envoye': 'primary',
+                            'accepte': 'success',
+                            'refuse': 'danger',
+                            'expire': 'warning',
+                            'converti': 'info',
+                            'annule': 'dark'
+                        } %}
+
+
+						{% set statutLibelles = {
+                            'brouillon': 'Brouillon',
+                            'envoye': 'Envoyé',
+                            'accepte': 'Accepté',
+                            'refuse': 'Refusé',
+                            'expire': 'Expiré',
+                            'converti': 'Converti',
+                            'annule': 'Annulé'
+                        } %}
+
+
+						<span class="
+																																																																																																								                                badge
+																																																																																																								                                badge-{{
+																																																																																																								                                    statutClasses[statut]
+																																																																																																								                                    |default('secondary')
+																																																																																																								                                }}
+																																																																																																								                            ">
+							{{
+                                statutLibelles[statut]
+                                |default(
+                                    statut
+                                    |replace({
+                                        '_': ' '
+                                    })
+                                    |capitalize
+                                )
+                            }}
+						</span>
+
+					</div>
+
+
+					<div class="card-body">
+
+						{% if details is empty %}
+
+							<div class="alert alert-info mb-0">
+								Aucun travail n’est associé à ce devis.
+							</div>
+
+						{% else %}
+
+							{% for detail in details %}
+
+								{% set typeLigne =
+                                    detail.typeLigne
+                                    |default('produit')
+                                %}
+
+								{% set configuration =
+                                    detail.produitConfiguration
+                                    |default(null)
+                                %}
+
+								{% set produit =
+                                    detail.produit
+                                    |default(null)
+                                %}
+
+								{% set article =
+                                    detail.article
+                                    |default(null)
+                                %}
+
+
+								<div
+									class="detail-devis-show border rounded mb-4">
+
+									{# =====================================
+																																																																																																																					                                       EN-TÊTE DU TRAVAIL
+																																																																																																																					                                       ===================================== #}
+
+									<div class="
+																																																																																																																																															                                            bg-light
+																																																																																																																																															                                            border-bottom
+																																																																																																																																															                                            p-3
+																																																																																																																																															                                            d-flex
+																																																																																																																																															                                            justify-content-between
+																																																																																																																																															                                            align-items-center
+																																																																																																																																															                                        ">
+
+										<div>
+
+											<div class="text-primary
+																																																																																																																																																																									                                                    d-flex
+																																																																																																																																																																									                                                    flex-wrap
+																																																																																																																																																																									                                                    align-items-center
+																																																																																																																																																																									                                                    mb-1
+																																																																																																																																																																									                                                ">
+
+												<h5 class="mb-0 mr-2">
+
+													{{
+                                                        detail.designation
+                                                        |default(
+                                                            produit.nom
+                                                            |default(
+                                                                article.designation
+                                                                |default(
+                                                                    'Travail non renseigné'
+                                                                )
+                                                            )
+                                                        )
+                                                    }}
+
+												</h5>
+
+
+											</div>
+
+
+											<small class="text-primary">
+
+												Travail n°
+												{{ loop.index }}
+
+												{% if detail.id|default(null) %}
+													— ID
+													{{ detail.id }}
+												{% endif %}
+
+											</small>
+
+										</div>
+
+
+										<strong class="h5 mb-0 text-primary">
+
+											{{
+                                                detail.totalTtc
+                                                |default(0)
+                                                |number_format(
+                                                    0,
+                                                    ',',
+                                                    ' '
+                                                )
+                                            }}
+											FCFA
+
+										</strong>
+
+									</div>
+
+
+									<div
+										class="p-3 ">
+
+										{# =================================
+																																																																																																																																		                                           ARTICLE EN STOCK
+																																																																																																																																		                                           ================================= #}
+
+										{% if typeLigne == 'article' %}
+
+											<div class="row">
+
+												<div class="col-md-4 mb-3">
+
+													<small class="text-muted d-block">
+														Référence article
+													</small>
+
+													<strong>
+														{{
+                                                            article.reference
+                                                            |default('—')
+                                                        }}
+													</strong>
+
+												</div>
+
+
+												<div class="col-md-4 mb-3">
+
+													<small class="text-muted d-block">
+														Article
+													</small>
+
+													<strong>
+														{{
+                                                            article.designation
+                                                            |default(
+                                                                detail.designation
+                                                                |default('—')
+                                                            )
+                                                        }}
+													</strong>
+
+												</div>
+
+
+												<div class="col-md-4 mb-3">
+
+													<small class="text-muted d-block">
+														Unité
+													</small>
+
+													<strong>
+														{{
+                                                            article.unite
+                                                            |default('—')
+                                                        }}
+													</strong>
+
+												</div>
+
+											</div>
+
+										{% endif %}
+
+
+										{# =================================
+																																																																																																																																		                                           PRODUIT / PRESTATION
+																																																																																																																																		                                           ================================= #}
+
+										{% if typeLigne == 'produit' %}
+
+											<div class="row">
+
+												<div class="col-md-3 mb-3">
+
+													<small class="text-muted d-block">
+														Produit
+													</small>
+
+													<strong>
+														{{
+                                                            produit.nom
+                                                            |default('—')
+                                                        }}
+													</strong>
+
+												</div>
+
+
+												<div class="col-md-3 mb-3">
+
+													<small class="text-muted d-block">
+														Type d’impression
+													</small>
+
+													<strong>
+														{{
+                                                            detail.typeImpression.nom
+                                                            |default(
+                                                                configuration.typeImpression.nom
+                                                                |default('—')
+                                                            )
+                                                        }}
+													</strong>
+
+												</div>
+
+
+												<div class="col-md-3 mb-3">
+
+													<small class="text-muted d-block">
+														Support
+													</small>
+
+													<strong>
+														{{
+                                                            detail.support.nom
+                                                            |default(
+                                                                configuration.support.nom
+                                                                |default('—')
+                                                            )
+                                                        }}
+													</strong>
+
+												</div>
+
+
+												<div class="col-md-3 mb-3">
+
+													<small class="text-muted d-block">
+														Format
+													</small>
+
+													<strong>
+														{{
+                                                            detail.format.nom
+                                                            |default(
+                                                                configuration.format.nom
+                                                                |default('—')
+                                                            )
+                                                        }}
+													</strong>
+
+												</div>
+
+											</div>
+
+										{% endif %}
+
+
+										{# =================================
+																																																																																																																																		                                           SAISIE LIBRE
+																																																																																																																																		                                           ================================= #}
+
+										{% if typeLigne == 'libre' %}
+
+											<div class="alert alert-info-light border">
+
+												<i class="fa fa-edit mr-1"></i>
+
+												Cette ligne a été saisie librement
+																																																																																																																																																												                                                et ne dépend pas d’un produit
+																																																																																																																																																												                                                ou d’un article du catalogue.
+
+											</div>
+
+										{% endif %}
+
+
+										{# =================================
+																																																																																																																																		                                           QUANTITÉ / PRIX / MODE
+																																																																																																																																		                                           ================================= #}
+
+										<div class="row">
+
+											<div class="col-md-3 mb-3">
+
+												<small class="text-muted d-block">
+													Quantité
+												</small>
+
+												<strong>
+													{{
+                                                        detail.quantite
+                                                        |default(1)
+                                                    }}
+												</strong>
+
+											</div>
+
+
+											<div class="col-md-3 mb-3">
+
+												<small class="text-muted d-block">
+													Mode de calcul
+												</small>
+
+												<strong>
+
+													{% set modeCalculLibelles = {
+                                                        'forfait': 'Forfait',
+                                                        'unite': 'Unité',
+                                                        'heure': 'Heure',
+                                                        'feuille': 'Feuille',
+                                                        'exemplaire': 'Exemplaire',
+                                                        'metre': 'Mètre linéaire',
+                                                        'metre_carre': 'Mètre carré',
+                                                        'point': 'Point',
+                                                        'face': 'Face'
+                                                    } %}
+
+													{{
+                                                        modeCalculLibelles[
+                                                            detail.modeCalcul
+                                                            |default('unite')
+                                                        ]
+                                                        |default(
+                                                            detail.modeCalcul
+                                                            |default('unite')
+                                                            |replace({
+                                                                '_': ' '
+                                                            })
+                                                            |capitalize
+                                                        )
+                                                    }}
+
+												</strong>
+
+											</div>
+
+
+											<div class="col-md-3 mb-3">
+
+												<small class="text-muted d-block">
+													Prix unitaire
+												</small>
+
+												<strong>
+													{{
+                                                        detail.prixUnitaire
+                                                        |default(0)
+                                                        |number_format(
+                                                            0,
+                                                            ',',
+                                                            ' '
+                                                        )
+                                                    }}
+													FCFA
+												</strong>
+
+											</div>
+
+
+											<div class="col-md-3 mb-3">
+
+												<small class="text-muted d-block">
+													Remise
+												</small>
+
+												<strong>
+													{{
+                                                        detail.montantRemise
+                                                        |default(0)
+                                                        |number_format(
+                                                            0,
+                                                            ',',
+                                                            ' '
+                                                        )
+                                                    }}
+													FCFA
+												</strong>
+
+											</div>
+
+										</div>
+
+
+										{# =================================
+																																																																																																																																		                                           DIMENSIONS
+																																																																																																																																		                                           ================================= #}
+
+										{% if
+                                            detail.largeur|default(null)
+                                            or detail.longueur|default(null)
+                                            or detail.surface|default(null)
+                                        %}
+
+											<div class="border-top pt-3 mt-1">
+
+												<h6 class="mb-3">
+													<i class="fa fa-arrows-alt mr-1 text-primary"></i>
+													Dimensions
+												</h6>
+
+
+												<div class="row">
+
+													{% if detail.largeur|default(null) %}
+
+														<div class="col-md-3 mb-3">
+
+															<small class="text-muted d-block">
+																Largeur
+															</small>
+
+															<strong>
+																{{ detail.largeur }}
+															</strong>
+
+														</div>
+
+													{% endif %}
+
+
+													{% if detail.longueur|default(null) %}
+
+														<div class="col-md-3 mb-3">
+
+															<small class="text-muted d-block">
+																Longueur
+															</small>
+
+															<strong>
+																{{ detail.longueur }}
+															</strong>
+
+														</div>
+
+													{% endif %}
+
+
+													{% if detail.surface|default(null) %}
+
+														<div class="col-md-3 mb-3">
+
+															<small class="text-muted d-block">
+																Surface
+															</small>
+
+															<strong>
+																{{
+                                                                    detail.surface
+                                                                    |number_format(
+                                                                        2,
+                                                                        ',',
+                                                                        ' '
+                                                                    )
+                                                                }}
+																m²
+															</strong>
+
+														</div>
+
+													{% endif %}
+
+
+													{% if
+                                                        detail.nombreFaces
+                                                        |default(1) > 1
+                                                    %}
+
+														<div class="col-md-3 mb-3">
+
+															<small class="text-muted d-block">
+																Nombre de faces
+															</small>
+
+															<strong>
+																{{
+                                                                    detail.nombreFaces
+                                                                }}
+															</strong>
+
+														</div>
+
+													{% endif %}
+
+												</div>
+
+											</div>
+
+										{% endif %}
+
+
+										{# =================================
+																																																																																																																																		                                           FINITIONS
+																																																																																																																																		                                           ================================= #}
+
+										{% if
+                                            typeLigne == 'produit'
+                                            and detail.finitions|default([]) is not empty
+                                        %}
+
+											<div class="border-top pt-3 mt-1">
+
+												<h6 class="mb-3">
+													<i class="fa fa-magic mr-1 text-primary"></i>
+													Finitions
+												</h6>
+
+
+												<div class="table-responsive">
+
+													<table class="
+																																																																																																																																																																																																			                                                            table
+																																																																																																																																																																																																			                                                            table-sm
+																																																																																																																																																																																																			                                                            table-bordered
+																																																																																																																																																																																																			                                                            mb-0
+																																																																																																																																																																																																			                                                        ">
+
+														<thead class="bg-light">
+
+															<tr>
+
+																<th>
+																	Finition
+																</th>
+
+																<th>
+																	Mode de calcul
+																</th>
+
+																<th class="text-center">
+																	Quantité
+																</th>
+
+																<th class="text-right">
+																	Prix appliqué
+																</th>
+
+																<th class="text-right">
+																	Montant
+																</th>
+
+															</tr>
+
+														</thead>
+
+
+														<tbody>
+
+															{% for finition in detail.finitions %}
+
+																<tr>
+
+																	<td>
+
+																		{{
+                                                                            finition.nomFinition
+                                                                            |default(
+                                                                                finition.finition.nom
+                                                                                |default(
+                                                                                    finition.configurationFinition.finition.nom
+                                                                                    |default('Finition')
+                                                                                )
+                                                                            )
+                                                                        }}
+
+																	</td>
+
+
+																	<td>
+
+																		{{
+                                                                            finition.modeCalcul
+                                                                            |default('forfait')
+                                                                            |replace({
+                                                                                '_': ' '
+                                                                            })
+                                                                            |capitalize
+                                                                        }}
+
+																	</td>
+
+
+																	<td class="text-center">
+
+																		{{
+                                                                            finition.quantite
+                                                                            |default(1)
+                                                                        }}
+
+																	</td>
+
+
+																	<td class="text-right">
+
+																		{{
+                                                                            finition.prixApplique
+                                                                            |default(0)
+                                                                            |number_format(
+                                                                                0,
+                                                                                ',',
+                                                                                ' '
+                                                                            )
+                                                                        }}
+																		FCFA
+
+																	</td>
+
+
+																	<td class="
+																																																																																																																																																																																																																																																							                                                                            text-right
+																																																																																																																																																																																																																																																							                                                                            font-weight-bold
+																																																																																																																																																																																																																																																							                                                                        ">
+
+																		{{
+                                                                            finition.montant
+                                                                            |default(0)
+                                                                            |number_format(
+                                                                                0,
+                                                                                ',',
+                                                                                ' '
+                                                                            )
+                                                                        }}
+																		FCFA
+
+																	</td>
+
+																</tr>
+
+															{% endfor %}
+
+														</tbody>
+
+													</table>
+
+												</div>
+
+											</div>
+
+										{% endif %}
+
+
+										{# =================================
+																																																																																																																																		                                           CARACTÉRISTIQUES TECHNIQUES
+																																																																																																																																		                                           ================================= #}
+
+										{% if typeLigne == 'produit' %}
+
+											{% set aTechnique =
+                                                detail.profilCouleurs|default('')
+                                                or detail.resolution|default('')
+                                                or detail.grammage|default('')
+                                                or detail.epaisseur|default('')
+                                                or detail.laminage|default('')
+                                                or detail.pliage|default('')
+                                                or detail.rectoVerso|default(false)
+                                                or detail.oeillets|default(false)
+                                                or detail.decoupe|default(false)
+                                                or detail.emballage|default(false)
+                                            %}
+
+
+											{% if aTechnique %}
+
+												<div class="border-top pt-3 mt-3">
+
+													<h6 class="mb-3">
+
+														<i class="fa fa-sliders mr-1 text-primary"></i>
+
+														Caractéristiques techniques
+
+													</h6>
+
+
+													<div class="row">
+
+														{% if detail.profilCouleurs|default('') %}
+
+															<div class="col-md-3 mb-3">
+
+																<small class="text-muted d-block">
+																	Profil couleurs
+																</small>
+
+																<strong>
+																	{{ detail.profilCouleurs }}
+																</strong>
+
+															</div>
+
+														{% endif %}
+
+
+														{% if detail.resolution|default('') %}
+
+															<div class="col-md-3 mb-3">
+
+																<small class="text-muted d-block">
+																	Résolution
+																</small>
+
+																<strong>
+																	{{ detail.resolution }}
+																</strong>
+
+															</div>
+
+														{% endif %}
+
+
+														{% if detail.grammage|default('') %}
+
+															<div class="col-md-3 mb-3">
+
+																<small class="text-muted d-block">
+																	Grammage
+																</small>
+
+																<strong>
+																	{{ detail.grammage }}
+																</strong>
+
+															</div>
+
+														{% endif %}
+
+
+														{% if detail.epaisseur|default('') %}
+
+															<div class="col-md-3 mb-3">
+
+																<small class="text-muted d-block">
+																	Épaisseur
+																</small>
+
+																<strong>
+																	{{ detail.epaisseur }}
+																</strong>
+
+															</div>
+
+														{% endif %}
+
+
+														{% if detail.laminage|default('') %}
+
+															<div class="col-md-3 mb-3">
+
+																<small class="text-muted d-block">
+																	Laminage
+																</small>
+
+																<strong>
+																	{{ detail.laminage }}
+																</strong>
+
+															</div>
+
+														{% endif %}
+
+
+														{% if detail.pliage|default('') %}
+
+															<div class="col-md-3 mb-3">
+
+																<small class="text-muted d-block">
+																	Pliage
+																</small>
+
+																<strong>
+																	{{ detail.pliage }}
+																</strong>
+
+															</div>
+
+														{% endif %}
+
+													</div>
+
+
+													<div class="d-flex flex-wrap">
+
+														{% if detail.rectoVerso|default(false) %}
+															<span class="badge badge-primary mr-2 mb-2">
+																Recto verso
+															</span>
+														{% endif %}
+
+														{% if detail.oeillets|default(false) %}
+															<span class="badge badge-primary mr-2 mb-2">
+																Œillets
+															</span>
+														{% endif %}
+
+														{% if detail.decoupe|default(false) %}
+															<span class="badge badge-primary mr-2 mb-2">
+																Découpe
+															</span>
+														{% endif %}
+
+														{% if detail.emballage|default(false) %}
+															<span class="badge badge-primary mr-2 mb-2">
+																Emballage
+															</span>
+														{% endif %}
+
+													</div>
+
+												</div>
+
+											{% endif %}
+
+										{% endif %}
+
+
+										{# =================================
+																																																																																																																																		                                           PRIORITÉ / TEMPS / BAT
+																																																																																																																																		                                           ================================= #}
+
+										{% if typeLigne == 'produit' %}
+
+											<div class="border-top pt-3 mt-3">
+
+												<div class="row">
+
+													<div class="col-md-3 mb-3">
+
+														<small class="text-muted d-block">
+															Priorité
+														</small>
+
+														{% set prioriteClasses = {
+                                                            'basse': 'secondary',
+                                                            'normale': 'primary',
+                                                            'haute': 'warning',
+                                                            'urgente': 'danger'
+                                                        } %}
+
+
+														<span class="
+																																																																																																																																																																																																																                                                                badge
+																																																																																																																																																																																																																                                                                badge-{{
+																																																																																																																																																																																																																                                                                    prioriteClasses[
+																																																																																																																																																																																																																                                                                        detail.priorite
+																																																																																																																																																																																																																                                                                        |default('normale')
+																																																																																																																																																																																																																                                                                    ]
+																																																																																																																																																																																																																                                                                    |default('primary')
+																																																																																																																																																																																																																                                                                }}
+																																																																																																																																																																																																																                                                            ">
+
+															{{
+                                                                detail.priorite
+                                                                |default('normale')
+                                                                |capitalize
+                                                            }}
+
+														</span>
+
+													</div>
+
+
+													<div class="col-md-3 mb-3">
+
+														<small class="text-muted d-block">
+															Temps estimé
+														</small>
+
+														<strong>
+															{% if detail.tempsEstime|default(null) is not null %}
+																{{ detail.tempsEstime }}
+															{% else %}
+																—
+															{% endif %}
+														</strong>
+
+													</div>
+
+
+													<div class="col-md-3 mb-3">
+
+														<small class="text-muted d-block">
+															Temps réel
+														</small>
+
+														<strong>
+															{% if detail.tempsReel|default(null) is not null %}
+																{{ detail.tempsReel }}
+															{% else %}
+																—
+															{% endif %}
+														</strong>
+
+													</div>
+
+
+													<div class="col-md-3 mb-3">
+
+														<small class="text-muted d-block">
+															BAT
+														</small>
+
+														{% if detail.batValide|default(false) %}
+
+															<span class="badge badge-success">
+																Validé
+															</span>
+
+														{% else %}
+
+															<span class="badge badge-secondary">
+																Non validé
+															</span>
+
+														{% endif %}
+
+													</div>
+
+												</div>
+
+											</div>
+
+										{% endif %}
+
+
+										{# =================================
+																																																																																																																																		                                           OBSERVATION
+																																																																																																																																		                                           ================================= #}
+
+										{% if detail.observation|default('') %}
+
+											<div class="border-top pt-3 mt-2">
+
+												<small class="text-muted d-block mb-2">
+													Observation / consignes
+												</small>
+
+												<div class="border rounded bg-light p-3">
+
+													{{
+                                                        detail.observation
+                                                        |nl2br
+                                                    }}
+
+												</div>
+
+											</div>
+
+										{% endif %}
+
+
+										{# =================================
+																																																																																																																																		                                           TOTAUX LIGNE
+																																																																																																																																		                                           ================================= #}
+
+										<div class="border-top pt-3 mt-3">
+
+											<div class="row">
+
+												<div class="col-md-4 mb-2">
+
+													<small class="text-muted d-block">
+														Total HT
+													</small>
+
+													<strong>
+														{{
+                                                            detail.totalHt
+                                                            |default(0)
+                                                            |number_format(
+                                                                0,
+                                                                ',',
+                                                                ' '
+                                                            )
+                                                        }}
+														FCFA
+													</strong>
+
+												</div>
+
+
+												<div class="col-md-4 mb-2">
+
+													<small class="text-muted d-block">
+														TVA
+													</small>
+
+													<strong>
+														{{
+                                                            detail.tva
+                                                            |default(0)
+                                                        }}
+														%
+													</strong>
+
+												</div>
+
+
+												<div class="
+																																																																																																																																																																																						                                                        col-md-4
+																																																																																																																																																																																						                                                        text-md-right
+																																																																																																																																																																																						                                                        mb-2
+																																																																																																																																																																																						                                                    ">
+
+													<small class="text-muted d-block">
+														Total TTC
+													</small>
+
+													<strong class="text-primary h5">
+
+														{{
+                                                            detail.totalTtc
+                                                            |default(0)
+                                                            |number_format(
+                                                                0,
+                                                                ',',
+                                                                ' '
+                                                            )
+                                                        }}
+														FCFA
+
+													</strong>
+
+												</div>
+
+											</div>
+
+										</div>
+
+									</div>
+
+								</div>
+
+							{% endfor %}
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# =================================================
+																																							               COLONNE DROITE
+																																							               ================================================= #}
+
+			<div
+				class="col-xl-4 col-lg-4">
+
+				{# =============================================
+																																																				                   CLIENT
+																																																				                   ============================================= #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Client
+						</h3>
+
+					</div>
+
+
+					<div class="card-body">
+
+						{% if client %}
+
+							<h5 class="mb-3">
+
+								{{
+                                    client.raisonSociale
+                                    |default(
+                                        client.nomComplet
+                                        |default(
+                                            client.nom
+                                            |default(
+                                                'Client non renseigné'
+                                            )
+                                        )
+                                    )
+                                }}
+
+							</h5>
+
+
+							{% if client.telephone|default('') %}
+
+								<p class="mb-2">
+
+									<i class="fe fe-phone mr-2 text-primary"></i>
+
+									{{ client.telephone }}
+
+								</p>
+
+							{% endif %}
+
+
+							{% if client.email|default('') %}
+
+								<p class="mb-2">
+
+									<i class="fe fe-mail mr-2 text-primary"></i>
+
+									{{ client.email }}
+
+								</p>
+
+							{% endif %}
+
+
+							{% if client.adresse|default('') %}
+
+								<p class="mb-0">
+
+									<i class="fe fe-map-pin mr-2 text-primary"></i>
+
+									{{ client.adresse }}
+
+								</p>
+
+							{% endif %}
+
+						{% else %}
+
+							<div class="text-muted">
+								Aucun client renseigné.
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+
+				{# =============================================
+																																																				                   INFORMATIONS DU DEVIS
+																																																				                   ============================================= #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Informations
+						</h3>
+
+					</div>
+
+
+					<div class="card-body">
+
+						<div class="mb-3">
+
+							<small class="text-muted d-block">
+								Numéro
+							</small>
+
+							<strong>
+								{{ numero }}
+							</strong>
+
+						</div>
+
+
+						{% if devis.dateDevis|default(null) %}
+
+							<div class="mb-3">
+
+								<small class="text-muted d-block">
+									Date du devis
+								</small>
+
+								<strong>
+									{{
+                                        devis.dateDevis
+                                        |date('d/m/Y H:i')
+                                    }}
+								</strong>
+
+							</div>
+
+						{% endif %}
+
+
+						<div class="mb-3">
+
+							<small class="text-muted d-block">
+								Nombre de lignes
+							</small>
+
+							<strong>
+								{{ details|length }}
+							</strong>
+
+						</div>
+
+
+						{% if devis.agents|default(null) %}
+
+							<div class="mb-0">
+
+								<small class="text-muted d-block">
+									Agent
+								</small>
+
+								<strong>
+									{{
+                                        devis.agents.nom
+                                        |default(
+                                            devis.agents.email
+                                            |default(
+                                                'Utilisateur'
+                                            )
+                                        )
+                                    }}
+								</strong>
+
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+
+				{# =============================================
+																																																				                   RÉCAPITULATIF
+																																																				                   ============================================= #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Récapitulatif
+						</h3>
+
+					</div>
+
+
+					<div class="card-body">
+
+						<div class="d-flex justify-content-between mb-3">
+
+							<span>
+								Total HT
+							</span>
+
+							<strong>
+								{{
+                                    devis.totalHt
+                                    |default(0)
+                                    |number_format(
+                                        0,
+                                        ',',
+                                        ' '
+                                    )
+                                }}
+								FCFA
+							</strong>
+
+						</div>
+
+
+						<div class="d-flex justify-content-between mb-3">
+
+							<span>
+								Remise
+							</span>
+
+							<strong>
+								{{
+                                    devis.remise
+                                    |default(0)
+                                    |number_format(
+                                        0,
+                                        ',',
+                                        ' '
+                                    )
+                                }}
+								FCFA
+							</strong>
+
+						</div>
+
+
+						<div class="d-flex justify-content-between mb-3">
+
+							<span>
+								TVA
+							</span>
+
+							<strong>
+								{{
+                                    devis.tva
+                                    |default(0)
+                                }}
+								%
+							</strong>
+
+						</div>
+
+
+						<hr>
+
+
+						<div class="d-flex justify-content-between mb-3">
+
+							<span class="h5 mb-0">
+								Total TTC
+							</span>
+
+							<strong class="h5 mb-0 text-primary">
+
+								{{
+                                    devis.totalTtc
+                                    |default(0)
+                                    |number_format(
+                                        0,
+                                        ',',
+                                        ' '
+                                    )
+                                }}
+								FCFA
+
+							</strong>
+
+						</div>
+
+
+						<div class="d-flex justify-content-between">
+
+							<span>
+								Montant à payer
+							</span>
+
+							<strong class="text-success">
+
+								{{
+                                    devis.montantApayer
+                                    |default(0)
+                                    |number_format(
+                                        0,
+                                        ',',
+                                        ' '
+                                    )
+                                }}
+								FCFA
+
+							</strong>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# =============================================
+																																																				                   OBSERVATION GÉNÉRALE
+																																																				                   ============================================= #}
+
+				{% if devis.observation|default('') %}
+
+					<div class="card">
+
+						<div class="card-header">
+
+							<h3 class="card-title">
+								Observation générale
+							</h3>
+
+						</div>
+
+
+						<div class="card-body">
+
+							{{
+                                devis.observation
+                                |nl2br
+                            }}
+
+						</div>
+
+					</div>
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}
+
+
+{% block stylesheets %}
+
+	{{ parent() }}
+
+	<style>
+
+		.detail-devis-show {
+			overflow: hidden;
+			background: #fff;
+			border-color: #dce4f0 !important;
+		}
+
+		.detail-devis-show > .bg-light {
+			background: #f4f7fc !important;
+		}
+
+		.detail-devis-show small.text-muted {
+			color: #6c757d !important;
+		}
+
+		.detail-devis-show strong {
+			color: #2d3748;
+		}
+
+
+		@media print {
+
+			.app-sidebar,
+			.header,
+			.page-header .btn,
+			.breadcrumb,
+			.footer,
+			.sidebar,
+			.app-header {
+				display: none !important;
+			}
+
+			.side-app,
+			.app-content,
+			.main-content {
+				margin: 0 !important;
+				padding: 0 !important;
+			}
+
+			.page-header {
+				margin-bottom: 10px !important;
+			}
+
+			.card,
+			.detail-devis-show {
+				border: 1px solid #ddd !important;
+				box-shadow: none !important;
+				break-inside: avoid;
+			}
+
+			.col-xl-8,
+			.col-lg-8,
+			.col-xl-4,
+			.col-lg-4 {
+				max-width: 100% !important;
+				flex: 0 0 100% !important;
+			}
+
+			body {
+				background: #fff !important;
+			}
+		}
+		.detail-devis-show table,
+		.detail-devis-show table th,
+		.detail-devis-show table td,
+		.detail-devis-show table thead,
+		.detail-devis-show table tbody,
+		.detail-devis-show table tr {
+			color: #1f2937 !important;
+			-webkit-text-fill-color: #1f2937 !important;
+		}
+
+		.detail-devis-show table thead th {
+			background-color: #f4f7fc !important;
+			color: #17366f !important;
+			-webkit-text-fill-color: #17366f !important;
+			font-weight: 600;
+		}
+
+		.detail-devis-show table tbody td {
+			background-color: #ffffff !important;
+			color: #1f2937 !important;
+			-webkit-text-fill-color: #1f2937 !important;
+		}
+
+		.detail-devis-show table tbody tr:hover td {
+			background-color: #f8fafc !important;
+			color: #1f2937 !important;
+		}
+		/* ============================================================
+   EN-TÊTE DES LIGNES DU DEVIS
+   ============================================================ */
+
+		.detail-devis-show > .bg-light,
+		.detail-devis-show > .bg-light h5,
+		.detail-devis-show > .bg-light h4,
+		.detail-devis-show > .bg-light strong,
+		.detail-devis-show > .bg-light small {
+			color: #1f2937 !important;
+			-webkit-text-fill-color: #1f2937 !important;
+		}
+
+		/* Désignation : KAKEMONO */
+		.detail-devis-show > .bg-light h5 {
+			color: #17366f !important;
+			-webkit-text-fill-color: #17366f !important;
+			font-weight: 700 !important;
+		}
+
+		/* Travail n° 1 — ID 1 */
+		.detail-devis-show > .bg-light small,
+		.detail-devis-show > .bg-light .text-muted {
+			color: #64748b !important;
+			-webkit-text-fill-color: #64748b !important;
+			opacity: 1 !important;
+		}
+
+		/* Montant à droite */
+		.detail-devis-show > .bg-light .text-primary {
+			color: #6259ca !important;
+			-webkit-text-fill-color: #6259ca !important;
+		}
+
+		/*
+ * Les badges doivent conserver leur texte blanc,
+ * sinon la règle précédente peut les écraser.
+ */
+		.detail-devis-show .badge-primary,
+		.detail-devis-show .badge-success,
+		.detail-devis-show .badge-info,
+		.detail-devis-show .badge-warning,
+		.detail-devis-show .badge-danger,
+		.detail-devis-show .badge-secondary {
+			-webkit-text-fill-color: currentColor !important;
+		}
+
+		.detail-devis-show .badge-primary,
+		.detail-devis-show .badge-success,
+		.detail-devis-show .badge-info,
+		.detail-devis-show .badge-danger {
+			color: #ffffff !important;
+		}
+
+		.detail-devis-show .badge-warning {
+			color: #212529 !important;
+		}
+	</style>
+
+{% endblock %}
+
+{% block javascripts %}
+
+	{{ parent() }}
+
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script>
+
+		document.addEventListener('DOMContentLoaded', function () {
+
+document.querySelectorAll('.js-envoyer-whatsapp').forEach(function (bouton) {
+
+bouton.addEventListener('click', function () {
+
+const numero = bouton.dataset.numero || 'ce document';
+
+Swal.fire({
+icon: 'question',
+title: 'Envoyer ' + numero + ' par WhatsApp ?',
+text: 'Le PDF sera envoyé au numéro WhatsApp enregistré pour ce client.',
+showCancelButton: true,
+confirmButtonText: 'Envoyer',
+cancelButtonText: 'Annuler'
+}).then(function (resultat) {
+
+if (! resultat.isConfirmed) {
+return;
+}
+
+bouton.disabled = true;
+
+fetch(bouton.dataset.url, {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+Accept: 'application/json',
+'X-Requested-With': 'XMLHttpRequest'
+},
+body: JSON.stringify(
+{_token: bouton.dataset.token}
+)
+}).then(function (reponse) {
+return reponse.json();
+}).then(function (donnees) {
+Swal.fire({
+icon: donnees.success ? 'success' : 'error',
+title: donnees.success ? 'Envoyé' : 'Erreur',
+text: donnees.message
+});
+}).catch(function () {
+Swal.fire({icon: 'error', title: 'Erreur', text: "La requête n'a pas pu aboutir."});
+}). finally(function () {
+bouton.disabled = false;
+});
+});
+});
+});
+});
+	</script>
+
+{% endblock %}

@@ -1,0 +1,2385 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	{{ facture.comptabilisee ? 'Facture' : 'Pro forma' }}
+	{{ facture.numero|default('#' ~ facture.id) }}
+{% endblock %}
+
+
+{% block body %}
+
+	{% set client =
+        commande
+            ? commande.clients|default(null)
+            : null
+    %}
+
+	{% set statutClasses = {
+        'payee': 'success',
+        'partielle': 'warning',
+        'impayee': 'danger'
+    } %}
+
+	{% set statutLibelles = {
+        'payee': 'Payée',
+        'partielle': 'Paiement partiel',
+        'impayee': 'Impayée'
+    } %}
+
+	{% set etatClasses = {
+        'brouillon': 'secondary',
+        'emise': 'primary',
+        'annulee': 'danger'
+    } %}
+
+	{% set etatLibelles = {
+        'brouillon': 'Brouillon',
+        'emise': 'Émise',
+        'annulee': 'Annulée'
+    } %}
+
+
+	<div
+		class="side-app">
+
+		{# ============================================================
+																												           HEADER
+																												           ============================================================ #}
+
+		<div class="page-header">
+
+			<div>
+
+				<h1 class="page-title">
+
+					{% if facture.comptabilisee %}
+						Facture
+					{% else %}
+						Pro forma
+					{% endif %}
+
+					{{ facture.numero|default('#' ~ facture.id) }}
+
+				</h1>
+
+
+				<ol class="breadcrumb">
+
+					<li class="breadcrumb-item">
+
+						<a href="{{ path('app_factures_index') }}">
+							Facturation
+						</a>
+
+					</li>
+
+
+					{% if commande %}
+
+						<li class="breadcrumb-item">
+
+							<a href="{{ path( 'app_commandes_show', { id: commande.id } ) }}">
+
+								{{
+                                    commande.numero
+                                    |default(
+                                        'Commande #' ~ commande.id
+                                    )
+                                }}
+
+							</a>
+
+						</li>
+
+					{% endif %}
+
+
+					<li class="breadcrumb-item active">
+
+						{{ facture.numero|default('Document') }}
+
+					</li>
+
+				</ol>
+
+			</div>
+
+
+			<div
+				class="d-flex flex-wrap">
+
+
+				{# RETOUR COMMANDE #}
+
+				{% if commande %}
+
+					<a href="{{ path( 'app_commandes_show', { id: commande.id } ) }}" class="btn btn-secondary mr-2 mb-2">
+
+						<i class="fa fa-arrow-left mr-1"></i>
+
+						Commande
+
+					</a>
+
+				{% endif %}
+
+
+				{# PDF #}
+
+				{% if facture.pdfFichier %}
+
+					<a href="{{ path( 'app_factures_pdf', { id: facture.id } ) }}" class="btn btn-danger mr-2 mb-2" target="_blank" title="Ouvrir le PDF archivé">
+
+						<i class="fa fa-file-pdf-o mr-1"></i>
+
+						PDF archivé
+
+					</a>
+
+				{% else %}
+
+					<a href="{{ path( 'app_factures_pdf', { id: facture.id } ) }}" class="btn btn-danger mr-2 mb-2" target="_blank" title="Générer et archiver le PDF">
+
+						<i class="fa fa-file-pdf-o mr-1"></i>
+
+						Générer le PDF
+
+					</a>
+
+				{% endif %}
+
+
+				{# PAIEMENT : UNIQUEMENT FACTURE OFFICIELLE #}
+
+				{% if
+                    facture.comptabilisee
+                    and commande
+                    and resteAPayer > 0
+                    and not facture.estAnnulee
+                %}
+
+					<a href="{{ path( 'app_commandes_paiement', { id: commande.id } ) }}" class="btn btn-success mb-2">
+
+						<i class="fa fa-money mr-1"></i>
+
+						Encaisser
+
+					</a>
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+																												           MESSAGES FLASH
+																												           ============================================================ #}
+
+		{% for type, messages in app.flashes %}
+
+			{% for message in messages %}
+
+				<div class="
+																																																																																				                        alert
+																																																																																				                        alert-{{ type == 'error' ? 'danger' : type }}
+																																																																																				                        alert-dismissible
+																																																																																				                        fade
+																																																																																				                        show
+																																																																																				                    ">
+
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert">
+						&times;
+					</button>
+
+				</div>
+
+			{% endfor %}
+
+		{% endfor %}
+
+
+		{# ============================================================
+																												           BANDEAU TYPE DOCUMENT
+																												           ============================================================ #}
+
+		{% if facture.comptabilisee %}
+
+			<div class="alert alert-success">
+
+				<div class="d-flex align-items-center">
+
+					<i class="fa fa-check-circle fa-2x mr-3"></i>
+
+					<div>
+
+						<strong class="d-block">
+							Facture officielle comptabilisée
+						</strong>
+
+						<small>
+							Ce document fait partie de la facturation réelle
+																																																																																																		                            de l'entreprise.
+						</small>
+						{# ============================================================
+																																																																								   ÉTAT DU PDF
+																																																																								   ============================================================ #}
+
+						{% if facture.pdfFichier %}
+
+							<div class="alert alert-success facture-pdf-archive">
+
+								<div class="d-flex align-items-start">
+
+									<div class="facture-pdf-icon mr-3">
+
+										<i class="fa fa-lock"></i>
+
+									</div>
+
+
+									<div class="flex-grow-1">
+
+										<strong class="d-block mb-1">
+
+											PDF archivé
+
+										</strong>
+
+
+										<div>
+
+											Ce document possède une version PDF
+																																																																																																																																				                    enregistrée et protégée contre toute
+																																																																																																																																				                    régénération automatique.
+
+										</div>
+
+
+										{% if facture.pdfGenereLe %}
+
+											<small class="d-block mt-2">
+
+												<i class="fa fa-calendar mr-1"></i>
+
+												Généré le
+
+												<strong>
+
+													{{
+                                facture.pdfGenereLe
+                                |date('d/m/Y à H:i')
+                            }}
+
+												</strong>
+
+											</small>
+
+										{% endif %}
+
+
+										{% if facture.pdfHash %}
+
+											<small class="d-block mt-1">
+
+												<i class="fa fa-shield mr-1"></i>
+
+												Empreinte SHA-256 :
+
+												<code class="facture-pdf-hash">
+
+													{{ facture.pdfHash }}
+
+												</code>
+
+											</small>
+
+										{% endif %}
+
+									</div>
+
+
+									<div class="ml-3">
+
+										{% if facture.pdfFichier %}
+
+											<a href="{{ path( 'app_factures_pdf', { id: facture.id } ) }}" class="btn btn-danger btn-block mb-3" target="_blank">
+
+												<i class="fa fa-file-pdf-o mr-1"></i>
+
+												Ouvrir le PDF archivé
+
+											</a>
+
+										{% else %}
+
+											<a href="{{ path( 'app_factures_pdf', { id: facture.id } ) }}" class="btn btn-danger btn-block mb-3" target="_blank">
+
+												<i class="fa fa-file-pdf-o mr-1"></i>
+
+												Générer et archiver le PDF
+
+											</a>
+
+										{% endif %}
+
+									</div>
+
+								</div>
+
+							</div>
+
+						{% else %}
+
+							{% if facture.comptabilisee %}
+
+								<div class="alert alert-warning facture-pdf-archive">
+
+									<div class="d-flex align-items-center">
+
+										<div class="facture-pdf-icon mr-3">
+
+											<i class="fa fa-exclamation-triangle"></i>
+
+										</div>
+
+
+										<div class="flex-grow-1">
+
+											<strong class="d-block">
+												PDF officiel non encore archivé
+											</strong>
+
+											<small>
+
+												Le premier clic sur « Générer le PDF »
+																																																																																																																																																                        créera et conservera définitivement
+																																																																																																																																																                        la version PDF de cette facture.
+
+											</small>
+
+										</div>
+
+									</div>
+
+								</div>
+
+							{% endif %}
+
+						{% endif %}
+					</div>
+
+				</div>
+
+			</div>
+
+		{% else %}
+
+			<div class="alert alert-info">
+
+				<div class="d-flex align-items-center">
+
+					<i class="fa fa-file-text-o fa-2x mr-3"></i>
+
+					<div>
+
+						<strong class="d-block">
+							Document pro forma
+						</strong>
+
+						<small>
+							Ce document n'est pas comptabilisé et ne reçoit
+																																																																																																		                            aucun paiement.
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		{% endif %}
+
+
+		{# ============================================================
+																												           RÉSUMÉ FINANCIER
+																												           ============================================================ #}
+
+		<div
+			class="row">
+
+
+			{# TOTAL TTC #}
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card facture-stat-card">
+
+					<div class="card-body">
+
+						<small class="text-muted d-block">
+							Total TTC
+						</small>
+
+						<strong class="facture-stat-value">
+
+							{{
+                                facture.totalTtc
+                                |default(0)
+                                |number_format(
+                                    0,
+                                    ',',
+                                    ' '
+                                )
+                            }}
+							FCFA
+
+						</strong>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{% if facture.comptabilisee %}
+
+				{# TOTAL PAYÉ #}
+
+				<div class="col-xl-3 col-md-6">
+
+					<div class="card facture-stat-card">
+
+						<div class="card-body">
+
+							<small class="text-muted d-block">
+								Total payé
+							</small>
+
+							<strong class="
+																																																																																																																														                                    facture-stat-value
+																																																																																																																														                                    text-success
+																																																																																																																														                                ">
+
+								{{
+                                    montantPaye
+                                    |default(
+                                        facture.montantPaye
+                                        |default(0)
+                                    )
+                                    |number_format(
+                                        0,
+                                        ',',
+                                        ' '
+                                    )
+                                }}
+								FCFA
+
+							</strong>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# RESTE #}
+
+				<div class="col-xl-3 col-md-6">
+
+					<div class="card facture-stat-card">
+
+						<div class="card-body">
+
+							<small class="text-muted d-block">
+								Reste à payer
+							</small>
+
+							<strong class="
+																																																																																																																														                                    facture-stat-value
+									
+																																																																																																																														                                    {{
+																																																																																																																														                                        resteAPayer > 0
+																																																																																																																														                                        ? 'text-danger'
+																																																																																																																														                                        : 'text-success'
+																																																																																																																														                                    }}
+																																																																																																																														                                ">
+
+								{{
+                                    resteAPayer
+                                    |default(
+                                        facture.resteAPayer
+                                        |default(0)
+                                    )
+                                    |number_format(
+                                        0,
+                                        ',',
+                                        ' '
+                                    )
+                                }}
+								FCFA
+
+							</strong>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# STATUT #}
+
+				<div class="col-xl-3 col-md-6">
+
+					<div class="card facture-stat-card">
+
+						<div class="card-body">
+
+							<small class="text-muted d-block mb-2">
+								Statut du paiement
+							</small>
+
+							<span class="
+																																																																																																																														                                    badge
+																																																																																																																														                                    badge-{{
+																																																																																																																														                                        statutClasses[
+																																																																																																																														                                            statutPaiement
+																																																																																																																														                                        ]
+																																																																																																																														                                        |default('secondary')
+																																																																																																																														                                    }}
+																																																																																																																														                                    facture-badge-lg
+																																																																																																																														                                ">
+
+								{{
+                                    statutLibelles[
+                                        statutPaiement
+                                    ]
+                                    |default(statutPaiement)
+                                }}
+
+							</span>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			{% else %}
+
+				{# PRO FORMA #}
+
+				<div class="col-xl-3 col-md-6">
+
+					<div class="card facture-stat-card">
+
+						<div class="card-body">
+
+							<small class="text-muted d-block">
+								Type
+							</small>
+
+							<strong class="facture-stat-value text-info">
+								Pro forma
+							</strong>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				<div class="col-xl-3 col-md-6">
+
+					<div class="card facture-stat-card">
+
+						<div class="card-body">
+
+							<small class="text-muted d-block">
+								Comptabilisation
+							</small>
+
+							<strong class="facture-stat-value">
+								Non
+							</strong>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				<div class="col-xl-3 col-md-6">
+
+					<div class="card facture-stat-card">
+
+						<div class="card-body">
+
+							<small class="text-muted d-block">
+								Paiement
+							</small>
+
+							<strong class="facture-stat-value text-muted">
+								Non applicable
+							</strong>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			{% endif %}
+
+		</div>
+
+
+		<div
+			class="row">
+
+
+			{# ========================================================
+																																										               COLONNE GAUCHE
+																																										               ======================================================== #}
+
+			<div
+				class="col-xl-4">
+
+
+				{# INFORMATIONS FACTURE #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Informations du document
+						</h3>
+
+					</div>
+
+
+					<div class="card-body">
+
+
+						<div class="facture-info-row">
+
+							<span class="text-muted">
+								Numéro
+							</span>
+
+							<strong>
+
+								{{
+                                    facture.numero
+                                    |default(
+                                        'Document #' ~ facture.id
+                                    )
+                                }}
+
+							</strong>
+
+						</div>
+
+
+						<div class="facture-info-row">
+
+							<span class="text-muted">
+								Type
+							</span>
+
+							{% if facture.comptabilisee %}
+
+								<span class="badge badge-success">
+									Facture officielle
+								</span>
+
+							{% else %}
+
+								<span class="badge badge-info">
+									Pro forma
+								</span>
+
+							{% endif %}
+
+						</div>
+
+
+						<div class="facture-info-row">
+
+							<span class="text-muted">
+								Date
+							</span>
+
+							<strong>
+
+								{% if facture.dateFacture %}
+
+									{{
+                                        facture.dateFacture
+                                        |date('d/m/Y à H:i')
+                                    }}
+
+								{% else %}
+
+									—
+
+								{% endif %}
+
+							</strong>
+
+						</div>
+
+
+						<div class="facture-info-row">
+
+							<span class="text-muted">
+								Échéance
+							</span>
+
+							<strong>
+
+								{% if facture.dateEcheance %}
+
+									{{
+                                        facture.dateEcheance
+                                        |date('d/m/Y')
+                                    }}
+
+								{% else %}
+
+									—
+
+								{% endif %}
+
+							</strong>
+
+						</div>
+
+
+						<div class="facture-info-row">
+
+							<span class="text-muted">
+								État
+							</span>
+
+							<span class="
+																																																																																																																														                                    badge
+																																																																																																																														                                    badge-{{
+																																																																																																																														                                        etatClasses[
+																																																																																																																														                                            facture.etat
+																																																																																																																														                                        ]
+																																																																																																																														                                        |default('secondary')
+																																																																																																																														                                    }}
+																																																																																																																														                                ">
+
+								{{
+                                    etatLibelles[
+                                        facture.etat
+                                    ]
+                                    |default(
+                                        facture.etat
+                                    )
+                                }}
+
+							</span>
+
+						</div>
+
+
+						<div class="facture-info-row">
+
+							<span class="text-muted">
+								Émetteur
+							</span>
+
+							<strong>
+
+								{{
+                                    facture.emetteurLabel
+                                    |default(
+                                        facture.emetteur
+                                    )
+                                }}
+
+							</strong>
+
+						</div>
+
+						<div class="facture-info-row">
+
+							<span class="text-muted">
+								PDF
+							</span>
+
+
+							{% if facture.pdfFichier %}
+
+								<span class="badge badge-success">
+
+									<i class="fa fa-lock mr-1"></i>
+
+									Archivé
+
+								</span>
+
+							{% else %}
+
+								<span class="badge badge-warning">
+
+									<i class="fa fa-clock-o mr-1"></i>
+
+									Non généré
+
+								</span>
+
+							{% endif %}
+
+						</div>
+
+
+						{% if facture.pdfGenereLe %}
+
+							<div class="facture-info-row">
+
+								<span class="text-muted">
+									Archivé le
+								</span>
+
+								<strong>
+
+									{{
+                facture.pdfGenereLe
+                |date('d/m/Y à H:i')
+            }}
+
+								</strong>
+
+							</div>
+
+						{% endif %}
+						{% if
+                            not facture.comptabilisee
+                            and facture.surfacturation
+                        %}
+
+							<div class="facture-info-row">
+
+								<span class="text-muted">
+									Majoration
+								</span>
+
+								<strong class="text-warning">
+
+									{{
+                                        facture.montantSurfacturation
+                                        |default(0)
+                                        |number_format(
+                                            0,
+                                            ',',
+                                            ' '
+                                        )
+                                    }}
+									FCFA
+
+								</strong>
+
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																								                   CLIENT
+																																																								                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Client
+						</h3>
+
+					</div>
+
+
+					<div class="card-body">
+
+						{% if client %}
+
+							<div class="mb-3">
+
+								<strong class="d-block">
+
+									{{
+                                        client.raisonSociale
+                                        |default(
+                                            client.nomComplet
+                                            |default(
+                                                client.nom
+                                                |default('Client')
+                                            )
+                                        )
+                                    }}
+
+								</strong>
+
+							</div>
+
+
+							{% if client.telephone|default('') %}
+
+								<div class="mb-2">
+
+									<i class="fa fa-phone mr-2 text-primary"></i>
+
+									{{ client.telephone }}
+
+								</div>
+
+							{% endif %}
+
+
+							{% if client.email|default('') %}
+
+								<div class="mb-2">
+
+									<i class="fa fa-envelope mr-2 text-primary"></i>
+
+									{{ client.email }}
+
+								</div>
+
+							{% endif %}
+
+
+							{% if client.adresse|default('') %}
+
+								<div>
+
+									<i class="fa fa-map-marker mr-2 text-primary"></i>
+
+									{{ client.adresse }}
+
+								</div>
+
+							{% endif %}
+
+						{% else %}
+
+							<span class="text-muted">
+								Aucun client renseigné.
+							</span>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																								                   ACTIONS
+																																																								                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Actions
+						</h3>
+
+					</div>
+
+
+					<div
+						class="card-body">
+
+
+						{# PDF #}
+
+						<a href="{{ path( 'app_factures_pdf', { id: facture.id } ) }}" class="btn btn-danger btn-block mb-3" target="_blank">
+
+							<i class="fa fa-file-pdf-o mr-1"></i>
+
+							Ouvrir le PDF
+
+						</a>
+
+
+						{# ENVOI WHATSAPP #}
+
+						<button type="button" class="btn btn-success btn-block mb-3 js-envoyer-whatsapp" data-url="{{ path( 'app_factures_whatsapp', { id: facture.id } ) }}" data-token="{{ csrf_token( 'whatsapp_facture_' ~ facture.id ) }}" data-numero="{{ facture.numero|default( '#' ~ facture.id ) }}">
+							<i class="fa fa-whatsapp mr-1"></i>
+							Envoyer par WhatsApp
+						</button>
+
+
+						{# SYNCHRONISATION :
+																																																																																				                           FACTURE COMPTABILISÉE UNIQUEMENT #}
+
+						{% if
+                            facture.comptabilisee
+                            and not facture.estAnnulee
+                        %}
+
+							<form method="post" action="{{ path( 'app_factures_synchroniser', { id: facture.id } ) }}" class="mb-3">
+
+								<input type="hidden" name="_token" value="{{ csrf_token( 'synchroniser-facture-' ~ facture.id ) }}">
+
+								<button type="submit" class="btn btn-primary btn-block">
+
+									<i class="fa fa-refresh mr-1"></i>
+
+									Synchroniser les paiements
+
+								</button>
+
+							</form>
+
+						{% endif %}
+
+
+						{# ACTUALISATION DES MONTANTS :
+																																																																								                           TANT QUE LA FACTURE N'EST PAS TOTALEMENT PAYÉE #}
+
+						{% if
+                            facture.comptabilisee
+                            and not facture.estAnnulee
+                            and commande
+                            and facture.montantPaye < facture.totalTtc
+                        %}
+
+							<button type="button" class="btn btn-outline-primary btn-block mb-3" id="btn-actualiser-facture">
+
+								<i class="fa fa-refresh mr-1"></i>
+
+								Actualiser depuis la commande
+
+							</button>
+
+
+							<form id="form-actualiser-facture" method="post" action="{{ path( 'app_factures_actualiser', { id: facture.id } ) }}" class="d-none">
+
+								<input type="hidden" name="_token" value="{{ csrf_token( 'actualiser-facture-' ~ facture.id ) }}">
+
+							</form>
+
+						{% endif %}
+
+
+						
+
+
+						{# ENCAISSEMENT :
+																																																																																				                           FACTURE OFFICIELLE UNIQUEMENT #}
+
+						{% if
+                            facture.comptabilisee
+                            and commande
+                            and resteAPayer > 0
+                            and not facture.estAnnulee
+                        %}
+
+							<a href="{{ path( 'app_commandes_paiement', { id: commande.id } ) }}" class="btn btn-success btn-block mb-3">
+
+								<i class="fa fa-money mr-1"></i>
+
+								Enregistrer un paiement
+
+							</a>
+
+						{% endif %}
+
+
+						{# ANNULATION #}
+
+						{% if not facture.estAnnulee %}
+
+							<button type="button" class="btn btn-outline-danger btn-block" id="btn-annuler-facture">
+
+								<i class="fa fa-ban mr-1"></i>
+
+								Annuler le document
+
+							</button>
+
+
+							<form id="form-annuler-facture" method="post" action="{{ path( 'app_factures_annuler', { id: facture.id } ) }}" class="d-none">
+
+								<input type="hidden" name="_token" value="{{ csrf_token( 'annuler-facture-' ~ facture.id ) }}">
+
+							</form>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# ========================================================
+																																										               COLONNE DROITE
+																																										               ======================================================== #}
+
+			<div
+				class="col-xl-8">
+
+
+				{# ====================================================
+																																																								                   COMMANDE
+																																																								                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Commande associée
+						</h3>
+
+					</div>
+
+
+					<div class="card-body">
+
+						{% if commande %}
+
+							<div class="row">
+
+								<div class="col-md-6 mb-3">
+
+									<small class="text-muted d-block">
+										Numéro
+									</small>
+
+									<strong>
+
+										{{
+                                            commande.numero
+                                            |default(
+                                                'Commande #' ~ commande.id
+                                            )
+                                        }}
+
+									</strong>
+
+								</div>
+
+
+								{% if commande.dateCommande|default(null) %}
+
+									<div class="col-md-6 mb-3">
+
+										<small class="text-muted d-block">
+											Date
+										</small>
+
+										<strong>
+
+											{{
+                                                commande.dateCommande
+                                                |date('d/m/Y')
+                                            }}
+
+										</strong>
+
+									</div>
+
+								{% endif %}
+
+							</div>
+
+
+							<a href="{{ path( 'app_commandes_show', { id: commande.id } ) }}" class="btn btn-outline-primary btn-sm">
+
+								<i class="fa fa-eye mr-1"></i>
+
+								Voir la commande
+
+							</a>
+
+						{% else %}
+
+							<div class="alert alert-warning mb-0">
+								Commande introuvable.
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																								                   DÉTAIL
+																																																								                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Détail du document
+						</h3>
+
+					</div>
+
+
+					<div class="card-body">
+
+						<div class="table-responsive">
+
+							<table class="
+																																																																																																																														                                    table
+																																																																																																																														                                    table-bordered
+																																																																																																																														                                    table-hover
+																																																																																																																														                                    facture-table
+																																																																																																																														                                ">
+
+								<thead>
+
+									<tr>
+
+										<th style="width: 45px;">
+											#
+										</th>
+
+										<th>
+											Désignation
+										</th>
+
+										<th class="text-center">
+											Qté
+										</th>
+
+										<th class="text-right">
+											Prix unitaire
+										</th>
+
+										<th class="text-right">
+											Total
+										</th>
+
+									</tr>
+
+								</thead>
+
+
+								<tbody>
+
+									{% if
+                                        commande
+                                        and commande.commandesDetails
+                                            |default([])
+                                            |length > 0
+                                    %}
+
+										{% for detail in commande.commandesDetails %}
+
+											<tr>
+
+												<td class="text-center">
+													{{ loop.index }}
+												</td>
+
+
+												<td>
+
+													<strong>
+
+														{{
+                                                            detail.designation
+                                                            |default(
+                                                                'Article / prestation'
+                                                            )
+                                                        }}
+
+													</strong>
+
+
+													{% if detail.observation|default('') %}
+
+														<div class="
+																																																																																																																																																																																																																																                                                                text-muted
+																																																																																																																																																																																																																																                                                                small
+																																																																																																																																																																																																																																                                                                mt-1
+																																																																																																																																																																																																																																                                                            ">
+
+															{{ detail.observation }}
+
+														</div>
+
+													{% endif %}
+
+												</td>
+
+
+												<td class="text-center">
+
+													{{
+                                                        detail.quantite
+                                                        |default(0)
+                                                    }}
+
+												</td>
+
+
+												<td class="text-right nowrap">
+
+													{{
+                                                        detail.prixUnitaire
+                                                        |default(0)
+                                                        |number_format(
+                                                            0,
+                                                            ',',
+                                                            ' '
+                                                        )
+                                                    }}
+													FCFA
+
+												</td>
+
+
+												<td class="
+																																																																																																																																																																																																				                                                        text-right
+																																																																																																																																																																																																				                                                        font-weight-bold
+																																																																																																																																																																																																				                                                        nowrap
+																																																																																																																																																																																																				                                                    ">
+
+													{{
+                                                        detail.totalTtc
+                                                        |default(
+                                                            detail.totalHt
+                                                            |default(0)
+                                                        )
+                                                        |number_format(
+                                                            0,
+                                                            ',',
+                                                            ' '
+                                                        )
+                                                    }}
+													FCFA
+
+												</td>
+
+											</tr>
+
+										{% endfor %}
+
+									{% else %}
+
+										<tr>
+
+											<td colspan="5" class="
+																																																																																																																																																																																						                                                    text-center
+																																																																																																																																																																																						                                                    text-muted
+																																																																																																																																																																																						                                                    py-4
+																																																																																																																																																																																						                                                ">
+												Aucun détail disponible.
+											</td>
+
+										</tr>
+
+									{% endif %}
+
+								</tbody>
+
+							</table>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																								                   TOTAUX
+																																																								                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Totaux
+						</h3>
+
+					</div>
+
+
+					<div class="card-body">
+
+						<div class="row">
+
+
+							<div class="col-lg-6">
+
+								{% if facture.observation %}
+
+									<div class="mb-4">
+
+										<small class="text-muted d-block mb-1">
+											Observation
+										</small>
+
+										{{ facture.observation }}
+
+									</div>
+
+								{% endif %}
+
+
+								{% if
+                                    not facture.comptabilisee
+                                    and facture.surfacturation
+                                %}
+
+									<div class="alert alert-warning">
+
+										<strong>
+											Majoration commerciale
+										</strong>
+
+										<br>
+
+										Montant :
+
+										{{
+                                            facture.montantSurfacturation
+                                            |default(0)
+                                            |number_format(
+                                                0,
+                                                ',',
+                                                ' '
+                                            )
+                                        }}
+										FCFA
+
+
+										{% if facture.tauxSurfacturation %}
+
+											<br>
+
+											Taux :
+											{{ facture.tauxSurfacturation }}
+											%
+
+										{% endif %}
+
+
+										{% if facture.motifSurfacturation %}
+
+											<br><br>
+
+											{{ facture.motifSurfacturation }}
+
+										{% endif %}
+
+									</div>
+
+								{% endif %}
+
+
+								{% if facture.tokenAuthenticite %}
+
+									<div>
+
+										<small class="text-muted d-block">
+											Identifiant d'authenticité
+										</small>
+
+										<code>
+											{{ facture.tokenAuthenticite }}
+										</code>
+
+									</div>
+
+								{% endif %}
+
+							</div>
+
+
+							<div class="col-lg-6">
+
+								<table class="
+																																																																																																																																												                                        table
+																																																																																																																																												                                        table-sm
+																																																																																																																																												                                        facture-totaux
+																																																																																																																																												                                    ">
+
+									<tbody>
+
+
+										<tr>
+
+											<td>
+												Total HT
+											</td>
+
+											<td class="text-right text-white ">
+
+												{{
+                                                    facture.totalHt
+                                                    |default(0)
+                                                    |number_format(
+                                                        0,
+                                                        ',',
+                                                        ' '
+                                                    )
+                                                }}
+												FCFA
+
+											</td>
+
+										</tr>
+
+
+										{% if facture.remise > 0 %}
+
+											<tr>
+
+												<td>
+													Remise
+												</td>
+
+												<td class="text-right text-danger">
+
+													-
+													{{
+                                                        facture.remise
+                                                        |number_format(
+                                                            0,
+                                                            ',',
+                                                            ' '
+                                                        )
+                                                    }}
+													FCFA
+
+												</td>
+
+											</tr>
+
+										{% endif %}
+
+
+										{% if facture.montantTva > 0 %}
+
+											<tr>
+
+												<td>
+
+													TVA
+
+													{% if facture.tva > 0 %}
+
+														({{ facture.tva }}
+														%)
+
+													{% endif %}
+
+												</td>
+
+												<td class="text-right">
+
+													{{
+                                                        facture.montantTva
+                                                        |number_format(
+                                                            0,
+                                                            ',',
+                                                            ' '
+                                                        )
+                                                    }}
+													FCFA
+
+												</td>
+
+											</tr>
+
+										{% endif %}
+
+
+										{% if
+                                            facture.surfacturation
+                                            and facture.montantSurfacturation > 0
+                                        %}
+
+											<tr>
+
+												<td class="text-warning">
+													Majoration
+												</td>
+
+												<td class="text-right text-warning">
+
+													+
+													{{
+                                                        facture.montantSurfacturation
+                                                        |number_format(
+                                                            0,
+                                                            ',',
+                                                            ' '
+                                                        )
+                                                    }}
+													FCFA
+
+												</td>
+
+											</tr>
+
+										{% endif %}
+
+
+										<tr class="facture-total-ttc">
+
+											<th>
+												TOTAL TTC
+											</th>
+
+											<th class="text-right">
+
+												{{
+                                                    facture.totalTtc
+                                                    |default(0)
+                                                    |number_format(
+                                                        0,
+                                                        ',',
+                                                        ' '
+                                                    )
+                                                }}
+												FCFA
+
+											</th>
+
+										</tr>
+
+
+										{% if facture.comptabilisee %}
+
+											<tr>
+
+												<td class="text-success">
+													Déjà payé
+												</td>
+
+												<td class="
+																																																																																																																																																																																																				                                                        text-right
+																																																																																																																																																																																																				                                                        text-success
+																																																																																																																																																																																																				                                                        font-weight-bold
+																																																																																																																																																																																																				                                                    ">
+
+													{{
+                                                        montantPaye
+                                                        |default(
+                                                            facture.montantPaye
+                                                            |default(0)
+                                                        )
+                                                        |number_format(
+                                                            0,
+                                                            ',',
+                                                            ' '
+                                                        )
+                                                    }}
+													FCFA
+
+												</td>
+
+											</tr>
+
+
+											<tr>
+
+												<th>
+													RESTE À PAYER
+												</th>
+
+												<th class="
+																																																																																																																																																																																																				                                                        text-right
+														
+																																																																																																																																																																																																				                                                        {{
+																																																																																																																																																																																																				                                                            resteAPayer > 0
+																																																																																																																																																																																																				                                                            ? 'text-danger'
+																																																																																																																																																																																																				                                                            : 'text-success'
+																																																																																																																																																																																																				                                                        }}
+																																																																																																																																																																																																				                                                    ">
+
+													{{
+                                                        resteAPayer
+                                                        |default(
+                                                            facture.resteAPayer
+                                                            |default(0)
+                                                        )
+                                                        |number_format(
+                                                            0,
+                                                            ',',
+                                                            ' '
+                                                        )
+                                                    }}
+													FCFA
+
+												</th>
+
+											</tr>
+
+										{% endif %}
+
+									</tbody>
+
+								</table>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+																												           HISTORIQUE PAIEMENTS
+																												           ============================================================ #}
+
+		{% if facture.comptabilisee %}
+
+			<div class="card">
+
+				<div class="card-header">
+
+					<div>
+
+						<h3 class="card-title mb-1">
+							Paiements liés à la facture
+						</h3>
+
+						<small class="text-muted">
+							Seuls les paiements validés sont comptabilisés.
+						</small>
+
+					</div>
+
+				</div>
+
+
+				<div class="card-body">
+
+					<div class="table-responsive">
+
+						<table class="
+																																																																																																																                                table
+																																																																																																																                                table-bordered
+																																																																																																																                                table-hover
+																																																																																																																                                facture-table
+																																																																																																																                            ">
+
+							<thead>
+
+								<tr>
+
+									<th>
+										Date
+									</th>
+
+									<th>
+										Montant
+									</th>
+
+									<th>
+										Mode
+									</th>
+
+									<th>
+										Compte
+									</th>
+
+									<th>
+										Référence
+									</th>
+
+									<th>
+										Statut
+									</th>
+
+									<th>
+										Encaissé par
+									</th>
+
+								</tr>
+
+							</thead>
+
+
+							<tbody>
+
+								{% for paiement in facture.paiements %}
+
+									<tr>
+
+
+										<td class="nowrap">
+
+											{% if paiement.date %}
+
+												{{
+                                                    paiement.date
+                                                    |date('d/m/Y à H:i')
+                                                }}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td class="
+																																																																																																																																																																								                                                text-success
+																																																																																																																																																																								                                                font-weight-bold
+																																																																																																																																																																								                                                nowrap
+																																																																																																																																																																								                                            ">
+
+											{{
+                                                paiement.montant
+                                                |number_format(
+                                                    0,
+                                                    ',',
+                                                    ' '
+                                                )
+                                            }}
+											FCFA
+
+										</td>
+
+
+										<td>
+
+											{{
+                                                paiement.modeLabel
+                                                |default(
+                                                    paiement.mode
+                                                )
+                                            }}
+
+										</td>
+
+
+										<td>
+
+											{% if paiement.compteTresorerie %}
+
+												{{
+                                                    paiement.compteTresorerie.nom
+                                                    |default('Compte')
+                                                }}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td>
+
+											{{
+                                                paiement.reference
+                                                |default('—')
+                                            }}
+
+										</td>
+
+
+										<td>
+
+											{% if paiement.estValide %}
+
+												<span class="badge badge-success">
+													Validé
+												</span>
+
+											{% elseif paiement.estEnAttente %}
+
+												<span class="badge badge-warning">
+													En attente
+												</span>
+
+											{% elseif paiement.estRejete %}
+
+												<span class="badge badge-danger">
+													Rejeté
+												</span>
+
+											{% elseif paiement.estAnnule %}
+
+												<span class="badge badge-secondary">
+													Annulé
+												</span>
+
+											{% else %}
+
+												<span class="badge badge-secondary">
+
+													{{ paiement.statut }}
+
+												</span>
+
+											{% endif %}
+
+										</td>
+
+
+										<td>
+
+											{% if paiement.encaissePar %}
+
+												{% if
+                                                    paiement.encaissePar.prenom
+                                                    |default('')
+                                                    or
+                                                    paiement.encaissePar.nom
+                                                    |default('')
+                                                %}
+
+													{{
+                                                        paiement.encaissePar.prenom
+                                                        |default('')
+                                                    }}
+
+													{{
+                                                        paiement.encaissePar.nom
+                                                        |default('')
+                                                    }}
+
+												{% elseif
+                                                    paiement.encaissePar.email
+                                                    |default('')
+                                                %}
+
+													{{ paiement.encaissePar.email }}
+
+												{% else %}
+
+													{{
+                                                        paiement.encaissePar.userIdentifier
+                                                    }}
+
+												{% endif %}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+									</tr>
+
+
+								{% else %}
+
+									<tr>
+
+										<td colspan="7" class="
+																																																																																																																																																																								                                                text-center
+																																																																																																																																																																								                                                text-muted
+																																																																																																																																																																								                                                py-5
+																																																																																																																																																																								                                            ">
+
+											<i class="
+																																																																																																																																																																								                                                    fa
+																																																																																																																																																																								                                                    fa-money
+																																																																																																																																																																								                                                    facture-empty-payment
+																																																																																																																																																																								                                                "></i>
+
+											<strong class="d-block mt-2">
+												Aucun paiement lié à cette facture
+											</strong>
+
+										</td>
+
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		{% endif %}
+
+	</div>
+
+{% endblock %}
+
+
+{% block stylesheets %}
+
+	{{ parent() }}
+
+	<style>
+
+		/*
+         * ============================================================
+         * STATISTIQUES
+         * ============================================================
+         */
+
+		.facture-stat-card {
+			min-height: 105px;
+			border-color: #dce4f0;
+		}
+
+
+		.facture-stat-value {
+			display: block;
+
+			margin-top: 5px;
+
+			font-size: 18px;
+
+			color: #263238;
+
+			white-space: nowrap;
+		}
+
+
+		.facture-badge-lg {
+			padding: 8px 12px;
+
+			font-size: 11px;
+		}
+
+
+		/*
+         * ============================================================
+         * INFORMATIONS
+         * ============================================================
+         */
+
+		.facture-info-row {
+			display: flex;
+
+			justify-content: space-between;
+
+			align-items: center;
+
+			padding: 10px 0;
+
+			border-bottom: 1px solid #edf2f7;
+		}
+
+
+		.facture-info-row:last-child {
+			border-bottom: none;
+		}
+
+
+		/*
+         * ============================================================
+         * TABLE
+         * ============================================================
+         */
+
+		.facture-table {
+			color: #1f2937 !important;
+		}
+
+
+		.facture-table thead th {
+			background: #f4f7fc !important;
+
+			color: #17366f !important;
+
+			-webkit-text-fill-color: #17366f !important;
+
+			font-weight: 600;
+
+			vertical-align: middle;
+
+			white-space: nowrap;
+		}
+
+
+		.facture-table tbody td {
+			vertical-align: middle;
+
+			color: rgb(255, 255, 255) !important;
+
+			-webkit-text-fill-color: rgb(186, 189, 192) !important;
+		}
+
+
+		/*
+         * ============================================================
+         * TOTAUX
+         * ============================================================
+         */
+
+		.facture-totaux td,
+		.facture-totaux th {
+			padding: 10px 8px;
+		}
+
+
+		.facture-total-ttc {
+			background: #f4f7fc;
+			color: #17366f;
+			font-size: 15px;
+		}
+
+
+		/*
+         * ============================================================
+         * OUTILS
+         * ============================================================
+         */
+
+		.nowrap {
+			white-space: nowrap;
+		}
+
+
+		.facture-empty-payment {
+			font-size: 34px;
+
+			color: #cbd5e1;
+		}
+
+
+		/*
+         * ============================================================
+         * MOBILE
+         * ============================================================
+         */
+
+		@media(max-width: 767px) {
+
+			.facture-stat-value {
+				font-size: 15px;
+			}
+
+			.page-header .d-flex {
+				margin-top: 10px;
+			}
+			/*
+ * ============================================================
+ * ARCHIVAGE PDF
+ * ============================================================
+ */
+
+			.facture-pdf-archive {
+				border-left-width: 4px;
+			}
+
+
+			.facture-pdf-icon {
+				width: 42px;
+				height: 42px;
+
+				display: flex;
+				justify-content: center;
+				align-items: center;
+
+				flex: 0 0 42px;
+
+				border-radius: 50%;
+
+				background: rgba(255, 255, 255, 0.55);
+
+				font-size: 18px;
+			}
+
+
+			.facture-pdf-hash {
+				font-size: 10px;
+
+				word-break: break-all;
+			}
+
+		}
+
+	</style>
+
+{% endblock %}
+
+
+{% block javascripts %}
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	{{ parent() }}
+
+	<script>
+
+		document.addEventListener('DOMContentLoaded', function () {
+
+const boutonActualiser = document.getElementById('btn-actualiser-facture');
+
+const formActualiser = document.getElementById('form-actualiser-facture');
+
+
+if (boutonActualiser && formActualiser) {
+
+boutonActualiser.addEventListener('click', function () {
+
+if (typeof Swal !== 'undefined') {
+
+Swal.fire({
+icon: 'question',
+title: 'Actualiser cette facture ?',
+text: 'Les montants seront repris depuis la commande liée (les paiements déjà enregistrés ne sont pas modifiés).',
+showCancelButton: true,
+confirmButtonText: 'Oui, actualiser',
+cancelButtonText: 'Fermer'
+}).then(function (result) {
+if (result.isConfirmed) {
+formActualiser.submit();
+}
+});
+
+return;
+}
+
+formActualiser.submit();
+});
+}
+
+
+const button = document.getElementById('btn-annuler-facture');
+
+const form = document.getElementById('form-annuler-facture');
+
+
+if (! button || ! form) {
+return;
+}
+
+
+button.addEventListener('click', function () { /*
+                         * SweetAlert2.
+                         */
+if (typeof Swal !== 'undefined') {
+
+Swal.fire({
+icon: 'warning',
+
+title: 'Annuler ce document ?',
+
+text: 'Cette opération changera l’état du document en annulé.',
+
+showCancelButton: true,
+
+confirmButtonText: 'Oui, annuler',
+
+cancelButtonText: 'Fermer',
+
+confirmButtonColor: '#d33'
+}).then(function (result) {
+
+if (result.isConfirmed) {
+form.submit();
+}
+
+});
+
+return;
+}
+
+
+/*
+                         * Fallback.
+                         */
+if (confirm('Voulez-vous vraiment annuler ce document ?')) {
+form.submit();
+}
+
+});
+
+});
+
+
+document.addEventListener('DOMContentLoaded', function () {
+
+document.querySelectorAll('.js-envoyer-whatsapp').forEach(function (bouton) {
+
+bouton.addEventListener('click', function () {
+
+const numero = bouton.dataset.numero || 'ce document';
+
+Swal.fire({
+icon: 'question',
+title: 'Envoyer ' + numero + ' par WhatsApp ?',
+text: 'Le PDF sera envoyé au numéro WhatsApp enregistré pour ce client.',
+showCancelButton: true,
+confirmButtonText: 'Envoyer',
+cancelButtonText: 'Annuler'
+}).then(function (resultat) {
+
+if (! resultat.isConfirmed) {
+return;
+}
+
+bouton.disabled = true;
+
+fetch(bouton.dataset.url, {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+Accept: 'application/json',
+'X-Requested-With': 'XMLHttpRequest'
+},
+body: JSON.stringify(
+{_token: bouton.dataset.token}
+)
+}).then(function (reponse) {
+return reponse.json();
+}).then(function (donnees) {
+Swal.fire({
+icon: donnees.success ? 'success' : 'error',
+title: donnees.success ? 'Envoyé' : 'Erreur',
+text: donnees.message
+});
+}).catch(function () {
+Swal.fire({icon: 'error', title: 'Erreur', text: "La requête n'a pas pu aboutir."});
+}). finally(function () {
+bouton.disabled = false;
+});
+});
+});
+});
+});
+	</script>
+
+{% endblock %}

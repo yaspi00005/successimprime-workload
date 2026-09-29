@@ -1,0 +1,564 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    Comptes de trésorerie
+{% endblock %}
+
+{% block body %}
+
+<div class="side-app">
+
+    <div class="page-header">
+
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="#">Gestion</a>
+            </li>
+
+            <li class="breadcrumb-item">
+                <a href="#">Trésorerie</a>
+            </li>
+
+            <li class="breadcrumb-item active">
+                Comptes
+            </li>
+        </ol>
+
+        <div>
+            <a
+                href="{{ path('app_compte_tresorerie_new') }}"
+                class="btn btn-primary"
+            >
+                <i class="fa fa-plus mr-1"></i>
+                Ajouter un compte
+            </a>
+        </div>
+
+    </div>
+
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div
+                class="alert {{
+                    type == 'success'
+                        ? 'alert-success'
+                        : 'alert-danger'
+                }} alert-dismissible fade show"
+            >
+                {{ message }}
+
+                <button
+                    type="button"
+                    class="close"
+                    data-dismiss="alert"
+                >
+                    <span>&times;</span>
+                </button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="row">
+
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+
+                    <div class="d-flex align-items-center">
+
+                        <div class="mr-3">
+                            <i class="fa fa-wallet fa-3x"></i>
+                        </div>
+
+                        <div>
+                            <h6 class="text-white mb-1">
+                                Solde total des comptes actifs
+                            </h6>
+
+                            <h3 class="text-white mb-0">
+                                {{ solde_total|number_format(0, ',', ' ') }}
+                                FCFA
+                            </h3>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+
+                    <div class="d-flex align-items-center">
+
+                        <div class="mr-3">
+                            <i class="fa fa-check-circle fa-3x"></i>
+                        </div>
+
+                        <div>
+                            <h6 class="text-white mb-1">
+                                Comptes actifs
+                            </h6>
+
+                            <h3 class="text-white mb-0">
+                                {{ comptes|filter(
+                                    compte => compte.actif
+                                )|length }}
+                            </h3>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+
+                    <div class="d-flex align-items-center">
+
+                        <div class="mr-3">
+                            <i class="fa fa-university fa-3x"></i>
+                        </div>
+
+                        <div>
+                            <h6 class="text-white mb-1">
+                                Paiements bancaires
+                            </h6>
+
+                            <p class="text-white mb-0">
+                                Validation manuelle obligatoire
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <h3 class="card-title">
+                Recherche et filtres
+            </h3>
+        </div>
+
+        <div class="card-body">
+
+            <form
+                method="get"
+                action="{{ path('app_compte_tresorerie_index') }}"
+            >
+
+                <div class="row">
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+
+                            <label for="recherche">
+                                Recherche
+                            </label>
+
+                            <input
+                                type="text"
+                                id="recherche"
+                                name="recherche"
+                                class="form-control"
+                                value="{{ recherche }}"
+                                placeholder="Code, nom, numéro ou banque"
+                            >
+
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="form-group">
+
+                            <label for="type">
+                                Type de compte
+                            </label>
+
+                            <select
+                                id="type"
+                                name="type"
+                                class="form-control"
+                            >
+                                <option value="">
+                                    Tous les types
+                                </option>
+
+                                {% for label, valeur in types %}
+                                    <option
+                                        value="{{ valeur }}"
+                                        {{
+                                            type_selectionne == valeur
+                                                ? 'selected'
+                                                : ''
+                                        }}
+                                    >
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+
+                            </select>
+
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="form-group">
+
+                            <label for="actif">
+                                Statut
+                            </label>
+
+                            <select
+                                id="actif"
+                                name="actif"
+                                class="form-control"
+                            >
+                                <option value="">
+                                    Tous les statuts
+                                </option>
+
+                                <option
+                                    value="1"
+                                    {{
+                                        actif_selectionne == '1'
+                                            ? 'selected'
+                                            : ''
+                                    }}
+                                >
+                                    Actifs
+                                </option>
+
+                                <option
+                                    value="0"
+                                    {{
+                                        actif_selectionne == '0'
+                                            ? 'selected'
+                                            : ''
+                                    }}
+                                >
+                                    Désactivés
+                                </option>
+
+                            </select>
+
+                        </div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <div class="form-group">
+
+                            <label>&nbsp;</label>
+
+                            <div>
+                                <button
+                                    type="submit"
+                                    class="btn btn-primary"
+                                >
+                                    <i class="fa fa-search"></i>
+                                </button>
+
+                                <a
+                                    href="{{ path(
+                                        'app_compte_tresorerie_index'
+                                    ) }}"
+                                    class="btn btn-secondary"
+                                    title="Réinitialiser"
+                                >
+                                    <i class="fa fa-refresh"></i>
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <h3 class="card-title">
+                Liste des comptes de trésorerie
+            </h3>
+        </div>
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover mb-0">
+
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Compte</th>
+                            <th>Type</th>
+                            <th>Numéro</th>
+                            <th class="text-right">Solde</th>
+                            <th>Validation</th>
+                            <th class="text-center">Statut</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                    {% for compte in comptes %}
+
+                        <tr>
+
+                            <td class="align-middle">
+                                <strong>{{ compte.code }}</strong>
+                            </td>
+
+                            <td class="align-middle">
+
+                                <strong>{{ compte.nom }}</strong>
+
+                                {% if compte.nomBanque %}
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ compte.nomBanque }}
+                                    </small>
+                                {% endif %}
+
+                            </td>
+
+                            <td class="align-middle">
+
+                                {% if compte.estCompteBancaire %}
+                                    <span class="badge badge-primary">
+                                        {{ compte.typeLabel }}
+                                    </span>
+                                {% elseif compte.estCaisse %}
+                                    <span class="badge badge-success">
+                                        {{ compte.typeLabel }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-warning">
+                                        {{ compte.typeLabel }}
+                                    </span>
+                                {% endif %}
+
+                            </td>
+
+                            <td class="align-middle">
+                                {{ compte.numeroCompte|default('—') }}
+                            </td>
+
+                            <td class="align-middle text-right text-nowrap">
+
+                                <strong>
+                                    {{
+                                        compte.soldeActuel
+                                            |number_format(0, ',', ' ')
+                                    }}
+                                </strong>
+
+                                {{ compte.devise }}
+
+                                {% if compte.autoriserDecouvert %}
+                                    <br>
+                                    <small class="text-warning">
+                                        Découvert autorisé
+                                    </small>
+                                {% endif %}
+
+                            </td>
+
+                            <td class="align-middle">
+
+                                {% if compte.estCompteBancaire %}
+                                    <span class="badge badge-warning">
+                                        Manuelle
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-success">
+                                        Automatique
+                                    </span>
+                                {% endif %}
+
+                            </td>
+
+                            <td class="text-center align-middle">
+
+                                {% if compte.actif %}
+                                    <span class="badge badge-success">
+                                        Actif
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-danger">
+                                        Désactivé
+                                    </span>
+                                {% endif %}
+
+                            </td>
+
+                            <td class="text-center align-middle">
+
+                                <div class="btn-group">
+
+                                    <a
+                                        href="{{ path(
+                                            'app_compte_tresorerie_show',
+                                            {id: compte.id}
+                                        ) }}"
+                                        class="btn btn-sm btn-info-light"
+                                        title="Consulter"
+                                    >
+                                        <i class="fa fa-eye"></i>
+                                    </a>
+
+                                    <a
+                                        href="{{ path(
+                                            'app_compte_tresorerie_edit',
+                                            {id: compte.id}
+                                        ) }}"
+                                        class="btn btn-sm btn-primary-light"
+                                        title="Modifier"
+                                    >
+                                        <i class="fa fa-edit"></i>
+                                    </a>
+
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm {{
+                                            compte.actif
+                                                ? 'btn-danger-light'
+                                                : 'btn-success-light'
+                                        }} btn-toggle-compte"
+                                        data-url="{{ path(
+                                            'app_compte_tresorerie_toggle_status',
+                                            {id: compte.id}
+                                        ) }}"
+                                        data-token="{{ csrf_token(
+                                            'toggle-compte-' ~ compte.id
+                                        ) }}"
+                                        data-nom="{{ compte.nom }}"
+                                        data-actif="{{
+                                            compte.actif ? '1' : '0'
+                                        }}"
+                                        title="{{
+                                            compte.actif
+                                                ? 'Désactiver'
+                                                : 'Activer'
+                                        }}"
+                                    >
+                                        <i class="fa {{
+                                            compte.actif
+                                                ? 'fa-ban'
+                                                : 'fa-check'
+                                        }}"></i>
+                                    </button>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                    {% else %}
+
+                        <tr>
+                            <td
+                                colspan="8"
+                                class="text-center text-muted py-5"
+                            >
+                                <i class="fa fa-inbox fa-3x mb-3"></i>
+                                <br>
+                                Aucun compte de trésorerie trouvé.
+                            </td>
+                        </tr>
+
+                    {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<form
+    id="toggleCompteForm"
+    method="post"
+    style="display: none;"
+>
+    <input
+        type="hidden"
+        name="_token"
+        id="toggleCompteToken"
+    >
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const boutons = document.querySelectorAll(
+        '.btn-toggle-compte'
+    );
+
+    const formulaire = document.getElementById(
+        'toggleCompteForm'
+    );
+
+    const champToken = document.getElementById(
+        'toggleCompteToken'
+    );
+
+    boutons.forEach(function (bouton) {
+        bouton.addEventListener('click', function () {
+            const estActif = bouton.dataset.actif === '1';
+            const action = estActif
+                ? 'désactiver'
+                : 'activer';
+
+            Swal.fire({
+                title: 'Confirmation',
+                text: 'Voulez-vous ' + action
+                    + ' le compte « '
+                    + bouton.dataset.nom
+                    + ' » ?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Oui, confirmer',
+                cancelButtonText: 'Annuler',
+                confirmButtonColor: estActif
+                    ? '#dc3545'
+                    : '#28a745'
+            }).then(function (resultat) {
+                if (!resultat.isConfirmed) {
+                    return;
+                }
+
+                formulaire.action = bouton.dataset.url;
+                champToken.value = bouton.dataset.token;
+                formulaire.submit();
+            });
+        });
+    });
+});
+</script>
+
+{% endblock %}

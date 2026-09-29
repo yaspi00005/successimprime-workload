@@ -1,0 +1,543 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Livraison - Commande #{{ commande.numero|default(commande.id) }}
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		{# ==========================================================
+										       PAGE HEADER
+										       ========================================================== #}
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_livraisons_index') }}">
+						Livraisons
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					Commande #{{ commande.numero|default(commande.id) }}
+				</li>
+
+			</ol>
+
+			<div>
+
+				{% if commande.recupereParClient %}
+					<span class="badge badge-secondary mr-2">
+						<i class="fa fa-user mr-1"></i>
+						Récupérée par le client
+					</span>
+				{% endif %}
+
+				<a href="{{ path('app_livraisons_index') }}" class="btn btn-primary-light">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour aux livraisons
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+										       FLASH MESSAGES
+										       ========================================================== #}
+
+		{% for message in app.flashes('success') %}
+
+			<div class="alert alert-success">
+				<i class="fa fa-check-circle mr-1"></i>
+				{{ message }}
+			</div>
+
+		{% endfor %}
+
+		{% for message in app.flashes('error') %}
+
+			<div class="alert alert-danger">
+				<i class="fa fa-exclamation-circle mr-1"></i>
+				{{ message }}
+			</div>
+
+		{% endfor %}
+
+
+		{# ==========================================================
+										       COMMANDE / CLIENT
+										       ========================================================== #}
+
+		<div class="row">
+
+			<div class="col-lg-6">
+
+				<div class="card">
+
+					<div class="card-header">
+						<h3 class="card-title">
+							<i class="fa fa-shopping-cart mr-1"></i>
+							Commande
+						</h3>
+					</div>
+
+					<div class="card-body">
+
+						<div class="row">
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Référence</small>
+								<strong>
+									<a href="{{ path('app_commandes_show', { id: commande.id }) }}">
+										{{ commande.numero|default('CMD-' ~ commande.id) }}
+									</a>
+								</strong>
+							</div>
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Date</small>
+								{% if commande.dateCommande %}
+									{{ commande.dateCommande|date('d/m/Y H:i') }}
+								{% else %}
+									—
+								{% endif %}
+							</div>
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Total TTC</small>
+								<strong>
+									{{ commande.totalTtc|default(0)|number_format(0, ',', ' ') }}
+									FCFA
+								</strong>
+							</div>
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted d-block">Lignes à livrer</small>
+								<strong>
+									{{ lignes|length }}
+								</strong>
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="col-lg-6">
+
+				<div class="card">
+
+					<div class="card-header">
+						<h3 class="card-title">
+							<i class="fa fa-user mr-1"></i>
+							Client
+						</h3>
+					</div>
+
+					<div class="card-body">
+
+						{% if commande.clients %}
+
+							{% set client = commande.clients %}
+
+							<div class="row">
+
+								<div class="col-md-6 mb-3">
+									<small class="text-muted d-block">Client</small>
+									<strong>
+										{{ client.nomComplet }}
+									</strong>
+								</div>
+
+								<div class="col-md-6 mb-3">
+									<small class="text-muted d-block">Téléphone</small>
+									{{ client.telephone|default('—') }}
+								</div>
+
+								<div class="col-md-6 mb-3">
+									<small class="text-muted d-block">Email</small>
+									{{ client.email|default('—') }}
+								</div>
+
+								<div class="col-md-6 mb-3">
+									<small class="text-muted d-block">Adresse</small>
+									{{ client.adresse|default('—') }}
+								</div>
+
+							</div>
+
+						{% else %}
+
+							<div class="text-muted">
+								Aucun client renseigné.
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+										       LIGNES À LIVRER
+										       ========================================================== #}
+
+		{% set nbALivrer = lignes|filter(l => l.statutProduction != 'livree')|length %}
+
+		<form id="formLivrerMasse" method="post" action="{{ path( 'app_livraisons_livrer_masse', { id: commande.id } ) }}">
+			<input type="hidden" name="_token" value="{{ csrf_token( 'livraison_livrer_masse_' ~ commande.id ) }}">
+		</form>
+
+		<div class="card mb-3">
+
+			<div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+
+				<h3 class="card-title mb-0">
+					<i class="fa fa-list mr-1"></i>
+					Lignes à livrer
+				</h3>
+
+				{% if nbALivrer > 0 %}
+
+					<div class="d-flex align-items-center flex-wrap">
+
+						<div class="custom-control custom-checkbox mr-3 mb-0">
+							<input type="checkbox" name="recupere_par_client" value="1" form="formLivrerMasse" id="js-recupere-client" class="custom-control-input">
+							<label class="custom-control-label" for="js-recupere-client">
+								Récupérée par le client lui-même
+							</label>
+						</div>
+
+						<div class="btn-group">
+
+							<button type="submit" name="tout" value="1" form="formLivrerMasse" class="btn btn-sm btn-success" onclick="return confirm('Tout a été livré ? La commande complète sera marquée comme livrée.');">
+								<i class="fa fa-check-circle mr-1"></i>
+								Tout est livré
+							</button>
+
+							<button type="submit" form="formLivrerMasse" class="btn btn-sm btn-primary" onclick="return confirm('Marquer la sélection comme livrée ?');">
+								<i class="fa fa-check-square-o mr-1"></i>
+								Marquer la sélection comme livrée
+							</button>
+
+						</div>
+
+					</div>
+
+				{% endif %}
+
+			</div>
+
+			{% if lignes|length == 0 %}
+
+				<div class="card-body text-center text-muted py-4">
+					Aucune ligne à livrer pour cette commande.
+				</div>
+
+			{% else %}
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered table-hover mb-0">
+
+						<thead>
+
+							<tr>
+								<th class="text-center">
+									{% if nbALivrer > 0 %}
+										<input type="checkbox" id="js-tout-selectionner" title="Tout sélectionner">
+									{% endif %}
+								</th>
+								<th>Produit / Désignation</th>
+								<th class="text-center">Quantité</th>
+								<th>Origine</th>
+								<th class="text-center">Statut</th>
+								<th class="text-center">Actions</th>
+							</tr>
+
+						</thead>
+
+						<tbody>
+
+							{% for detail in lignes %}
+
+								<tr>
+
+									{# SÉLECTION #}
+									<td class="text-center align-middle">
+
+										{% if detail.statutProduction != 'livree' %}
+											<input type="checkbox" name="lignes[]" value="{{ detail.id }}" form="formLivrerMasse" class="js-ligne-a-livrer">
+										{% endif %}
+
+									</td>
+
+
+									{# PRODUIT #}
+									<td class="align-middle">
+
+										<strong>
+											{{ detail.designation }}
+										</strong>
+
+										{% if detail.produit %}
+											<div class="small text-muted">
+												{{ detail.produit.nom }}
+											</div>
+										{% endif %}
+
+									</td>
+
+
+									{# QUANTITE #}
+									<td class="text-center align-middle">
+										{{ detail.quantite }}
+									</td>
+
+
+									{# ORIGINE #}
+									<td class="align-middle">
+
+										{% if detail.productionNecessaire %}
+											<span class="badge badge-primary">
+												<i class="fa fa-print mr-1"></i>
+												Production
+											</span>
+										{% else %}
+											<span class="badge badge-info">
+												<i class="fa fa-shopping-cart mr-1"></i>
+												Vente directe
+											</span>
+										{% endif %}
+
+									</td>
+
+
+									{# STATUT #}
+									<td class="text-center align-middle">
+
+										{% if detail.statutProduction == 'prete_livraison' %}
+											<span class="badge badge-primary">Prête</span>
+										{% elseif detail.statutProduction == 'en_livraison' %}
+											<span class="badge badge-warning">En livraison</span>
+										{% elseif detail.statutProduction == 'livree' %}
+											<span class="badge badge-success">Livrée</span>
+										{% endif %}
+
+									</td>
+
+
+									{# ACTIONS #}
+									<td class="text-center align-middle">
+
+										<a href="{{ path( 'app_livraisons_show', { id: detail.id } ) }}" class="btn btn-sm btn-primary-light" title="Voir le détail">
+											<i class="fa fa-eye"></i>
+										</a>
+
+									</td>
+
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			{% endif %}
+
+		</div>
+
+
+		{# ==========================================================
+										       BONS DE LIVRAISON
+										       ========================================================== #}
+
+		<div class="card" id="bons-de-livraison">
+
+			<div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+
+				<div>
+					<h3 class="card-title mb-0">
+						<i class="fa fa-file-text-o mr-1"></i>
+						Bons de livraison
+					</h3>
+					<small class="text-muted">
+						Facultatif — utile surtout pour les clients entreprises qui demandent un document.
+					</small>
+				</div>
+
+				{% if lignes|filter(l => l.statutProduction == 'prete_livraison')|length > 0 %}
+
+					<form method="post" action="{{ path( 'app_bons_livraison_creer_commande', { id: commande.id } ) }}" onsubmit="return confirm('Créer un bon de livraison pour cette commande ?');">
+
+						<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_creer_commande_' ~ commande.id ) }}">
+
+						<button type="submit" class="btn btn-sm btn-primary">
+							<i class="fa fa-plus mr-1"></i>
+							Créer un bon de livraison
+						</button>
+
+					</form>
+
+				{% endif %}
+
+			</div>
+
+			{% if bons|length == 0 %}
+
+				<div class="card-body text-center text-muted py-4">
+					Aucun bon de livraison pour cette commande.
+				</div>
+
+			{% else %}
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered table-hover mb-0">
+
+						<thead>
+
+							<tr>
+								<th>Numéro</th>
+								<th class="text-center">Lignes</th>
+								<th class="text-center">Statut</th>
+								<th>Créé le</th>
+								<th>Créé par</th>
+								<th class="text-center">Actions</th>
+							</tr>
+
+						</thead>
+
+						<tbody>
+
+							{% for bon in bons %}
+
+								<tr>
+
+									<td class="align-middle">
+										<strong>{{ bon.numero }}</strong>
+									</td>
+
+									<td class="text-center align-middle">
+										{{ bon.lignes|length }}
+									</td>
+
+									<td class="text-center align-middle">
+
+										{% if bon.statut == 'brouillon' %}
+											<span class="badge badge-secondary">Brouillon</span>
+										{% elseif bon.statut == 'valide' %}
+											<span class="badge badge-primary">Validé</span>
+										{% elseif bon.statut == 'livre' %}
+											<span class="badge badge-success">Livré</span>
+										{% elseif bon.statut == 'annule' %}
+											<span class="badge badge-danger">Annulé</span>
+										{% else %}
+											<span class="badge badge-light">{{ bon.statut|replace({'_': ' '})|capitalize }}</span>
+										{% endif %}
+
+									</td>
+
+									<td class="align-middle">
+										{{ bon.creeLe ? bon.creeLe|date('d/m/Y H:i') : '—' }}
+									</td>
+
+									<td class="align-middle">
+										{{ bon.creePar ? bon.creePar.username : '—' }}
+									</td>
+
+									<td class="text-center align-middle">
+
+										<a href="{{ path( 'app_bons_livraison_show', { id: bon.id } ) }}" class="btn btn-sm btn-primary-light" title="Voir">
+											<i class="fa fa-eye"></i>
+										</a>
+
+									</td>
+
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			{% endif %}
+
+		</div>
+
+	</div>
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+const toutSelectionner = document.getElementById('js-tout-selectionner');
+
+if (toutSelectionner) {
+toutSelectionner.addEventListener('change', function () {
+document.querySelectorAll('.js-ligne-a-livrer').forEach(function (case_) {
+case_.checked = toutSelectionner.checked;
+});
+});
+}
+
+document.querySelectorAll('.js-confirmer-livraison').forEach(function (formulaire) {
+
+formulaire.addEventListener('submit', function (event) {
+
+event.preventDefault();
+
+const designation = formulaire.dataset.designation || 'cet article';
+
+const quantite = formulaire.dataset.quantite || '';
+
+Swal.fire({
+icon: 'question',
+
+title: 'Confirmer la livraison ?',
+
+html: 'Confirmer la livraison de ' + '<strong>' + designation + '</strong> ?' + '<br><br>' + 'Quantité : <strong>' + quantite + '</strong>' + '<br><br>' + '<small>' + 'La sortie de stock sera enregistrée.' + '</small>',
+
+showCancelButton: true,
+
+confirmButtonText: 'Oui, confirmer',
+
+cancelButtonText: 'Annuler',
+
+reverseButtons: true
+
+}).then(function (resultat) {
+
+if (resultat.isConfirmed) {
+formulaire.submit();
+}
+
+});
+
+});
+
+});
+
+});
+	</script>
+{% endblock %}

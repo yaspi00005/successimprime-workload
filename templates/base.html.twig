@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% set routeCourante = app.request.attributes.get('_route')|default('') %}
+
+{% set peutVoirClients = is_granted('ROLE_CLIENT') %}
+{% set peutVoirDevis = is_granted('ROLE_DEVIS') %}
+{% set peutVoirCommandes = is_granted('ROLE_COMMANDE') %}
+{% set peutVoirLivraison = is_granted('ROLE_LIVRAISON') %}
+{% set peutVoirCommercial = peutVoirClients or peutVoirDevis or peutVoirCommandes or peutVoirLivraison %}
+
+{% set peutVoirProduction = is_granted('ROLE_PRODUCTION_VOIR') %}
+{% set peutGererProduction = is_granted('ROLE_PRODUCTION_GERER') %}
+{% set peutVoirPrepresse = is_granted('ROLE_PREPRESSE') %}
+
+{% set peutVoirStocks = is_granted('ROLE_ADMIN') %}
+
+{% set peutVoirFactures = is_granted('ROLE_FACTURE') %}
+{% set peutVoirPaiements = is_granted('ROLE_PAIEMENT_VOIR') %}
+{% set peutVoirTresorerie = is_granted('ROLE_TRESORERIE_VOIR') %}
+{% set peutSaisirTresorerie = is_granted('ROLE_TRESORERIE_SAISIR') %}
+{% set peutVoirJournalCaisse = is_granted('ROLE_ADMIN') %}
+{% set peutVoirComptesTresorerie = is_granted('ROLE_ADMIN') %}
+{% set peutVoirRapprochement = is_granted('ROLE_RAPPROCHEMENT_BANCAIRE') %}
+{% set peutVoirStatsGlobales = is_granted('ROLE_STATS_GLOBAL') %}
+{% set peutVoirMesStats = is_granted('ROLE_CAISSE_COMMANDE') or is_granted('ROLE_ADMIN') %}
+{% set peutVoirGestion = peutVoirFactures or peutVoirPaiements or peutVoirTresorerie or peutVoirComptesTresorerie or peutVoirJournalCaisse or peutVoirRapprochement or peutVoirMesStats or peutVoirStatsGlobales %}
+
+{% set peutVoirRh = is_granted('ROLE_ADMIN') %}
+{% set peutVoirParametres = is_granted('ROLE_ADMIN') %}
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>{% block title %}Tableau de bord{% endblock %} · Madial Group</title>
+	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
+	<link href="{{ asset('theme/vendor/jquery-nice-select/css/nice-select.css') }}" rel="stylesheet">
+	<link href="{{ asset('theme/vendor/select2/css/select2.min.css') }}" rel="stylesheet">
+	<link href="{{ asset('theme/vendor/toastr/css/toastr.min.css') }}" rel="stylesheet">
+	{% block stylesheets %}{% endblock %}
+	<link href="{{ asset('theme/css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+	<div id="preloader">
+		<div class="lds-ripple"><div></div><div></div></div>
+	</div>
+
+	<div id="main-wrapper">
+		{# ---------- En-tête de la barre latérale ---------- #}
+		<div class="nav-header">
+			<a href="{{ path('app_home') }}" class="brand-logo">
+				<span class="d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;border-radius:10px;background:#467fcf;color:#fff;font-weight:700;">MG</span>
+				<div class="brand-title">
+					<h2>Madial Group</h2>
+					<span class="brand-sub-title">Imprimerie</span>
+				</div>
+			</a>
+			<div class="nav-control">
+				<div class="hamburger">
+					<span class="line"></span><span class="line"></span><span class="line"></span>
+				</div>
+			</div>
+		</div>
+
+		{# ---------- En-tête ---------- #}
+		<div class="header border-bottom">
+			<div class="header-content">
+				<nav class="navbar navbar-expand">
+					<div class="collapse navbar-collapse justify-content-between">
+						<div class="header-left">
+							<div class="dashboard_bar">{% block page_title %}{{ block('title') }}{% endblock %}</div>
+						</div>
+						<ul class="navbar-nav header-right">
+							<li class="nav-item dropdown notification_dropdown">
+								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+									<i class="fa fa-bell"></i>
+									{% set nombreNotifs = nombre_notifications_generales() + mes_reclamations_a_notifier()|length %}
+									{% if nombreNotifs > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreNotifs }}</span>{% endif %}
+								</a>
+								<div class="dropdown-menu dropdown-menu-end">
+									<div class="widget-media dz-scroll p-3 height380">
+										<ul class="timeline">
+											{% for reclamationANotifier in mes_reclamations_a_notifier() %}
+												<li>
+													<a href="{{ path('app_reclamation_show', {id: reclamationANotifier.id}) }}" class="dropdown-item d-flex pb-3">
+														<i class="fa fa-money me-2 text-success"></i>
+														<span>Réclamation validée — passez à la caisse</span>
+													</a>
+												</li>
+											{% endfor %}
+											{% for notificationGenerale in mes_notifications() %}
+												<li>
+													<a href="{{ path('app_notification_index') }}" class="dropdown-item d-flex pb-3">
+														<i class="fa fa-bell me-2 text-warning"></i>
+														<span>{{ notificationGenerale.message|default('Notification') }}</span>
+													</a>
+												</li>
+											{% endfor %}
+										</ul>
+									</div>
+									<a href="{{ path('app_notification_index') }}" class="dropdown-item text-center">Voir toutes les notifications</a>
+								</div>
+							</li>
+							<li class="nav-item dropdown notification_dropdown">
+								<a class="nav-link" href="{{ path('app_chat_index') }}" role="button">
+									<i class="fa fa-comments"></i>
+									{% set nombreMessages = mes_conversations_non_lues() %}
+									{% if nombreMessages > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreMessages }}</span>{% endif %}
+								</a>
+							</li>
+							<li class="nav-item dropdown header-profile">
+								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+									<span class="avatar-initiales">{{ (app.user.employe.prenom|default(app.user.username)|slice(0, 1))|upper }}</span>
+									<div class="header-info ms-3">
+										<span class="fs-18 font-w500 mb-2">
+											{{ app.user.employe.prenom is defined and app.user.employe.prenom is not empty ? (app.user.employe.prenom ~ ' ' ~ app.user.employe.nom) : app.user.username }}
+										</span>
+									</div>
+								</a>
+								<div class="dropdown-menu dropdown-menu-end">
+									<a class="dropdown-item" href="{{ path('app_user_change_password') }}"><i class="fas fa-key text-primary"></i><span class="ms-2">Changer mon mot de passe</span></a>
+									<a class="dropdown-item" href="{{ path('app_logout') }}"><i class="fas fa-sign-out-alt text-danger"></i><span class="ms-2">Déconnexion</span></a>
+								</div>
+							</li>
+						</ul>
+					</div>
+				</nav>
+			</div>
+		</div>
+
+		{# ---------- Menu ---------- #}
+		{% include 'partials/_menu.html.twig' %}
+
+		{# ---------- Contenu ---------- #}
+		<div class="content-body">
+			<div class="container-fluid">
+				{% for type in ['success', 'error', 'danger', 'warning', 'info'] %}
+					{% for message in app.flashes(type) %}
+						<div class="alert alert-{{ type == 'error' ? 'danger' : type }} alert-dismissible fade show" role="alert">
+							{{ message }}
+							<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+						</div>
+					{% endfor %}
+				{% endfor %}
+				{% block breadcrumb %}{% endblock %}
+				{% block body %}{% endblock %}
+			</div>
+		</div>
+
+		<div class="footer">
+			<div class="copyright">
+				<p>Madial Group © {{ 'now'|date('Y') }}</p>
+			</div>
+		</div>
+	</div>
+
+	<script src="{{ asset('theme/vendor/global/global.min.js') }}"></script>
+	<script src="{{ asset('theme/vendor/jquery-nice-select/js/jquery.nice-select.min.js') }}"></script>
+	<script src="{{ asset('theme/vendor/select2/js/select2.full.min.js') }}"></script>
+	<script src="{{ asset('theme/vendor/toastr/js/toastr.min.js') }}"></script>
+	{% block vendor_javascripts %}{% endblock %}
+	<script src="{{ asset('theme/js/custom.min.js') }}"></script>
+	<script src="{{ asset('theme/js/dlabnav-init.js') }}"></script>
+	{% block javascripts %}{% endblock %}
+</body>
+</html>

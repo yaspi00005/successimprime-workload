@@ -1,0 +1,162 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Statistiques des clients
+{% endblock %}
+
+{% block body %}
+
+<div class="side-app">
+
+	<div class="page-header">
+
+		<div>
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_statistiques_globales_index') }}">Statistiques</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					Clients
+				</li>
+
+			</ol>
+
+		</div>
+
+	</div>
+
+
+	{# ==========================================================
+	   NOUVEAUX CLIENTS
+	   ========================================================== #}
+
+	<div class="card">
+
+		<div class="card-header d-flex align-items-center justify-content-between flex-wrap">
+
+			<h3 class="card-title mb-0">
+				Nouveaux clients enregistrés
+			</h3>
+
+			<div class="btn-group">
+				{% for cle, libelle in { mois: 'Mois', annee: 'Année' } %}
+					<a href="{{ path('app_statistiques_clients_index', {granularite: cle, date_debut: filtres.date_debut, date_fin: filtres.date_fin}) }}" class="btn btn-sm {{ granulariteEvolution == cle ? 'btn-primary' : 'btn-primary-light' }}">
+						{{ libelle }}
+					</a>
+				{% endfor %}
+			</div>
+
+		</div>
+
+		<div class="card-body">
+			<canvas id="graphiqueNouveauxClients" height="220"></canvas>
+		</div>
+
+	</div>
+
+
+	{# ==========================================================
+	   CHIFFRE D'AFFAIRES PAR CLIENT
+	   ========================================================== #}
+
+	<div class="card">
+
+		<div class="card-header">
+			<h3 class="card-title">
+				Chiffre d'affaires par client (top 30)
+			</h3>
+		</div>
+
+		<div class="card-body">
+
+			<form method="get" class="row align-items-end">
+
+				<input type="hidden" name="granularite" value="{{ granulariteEvolution }}">
+
+				<div class="col-md-4 mb-2">
+					<label class="form-label">Du</label>
+					<input type="date" name="date_debut" value="{{ filtres.date_debut }}" class="form-control">
+				</div>
+
+				<div class="col-md-4 mb-2">
+					<label class="form-label">Au</label>
+					<input type="date" name="date_fin" value="{{ filtres.date_fin }}" class="form-control">
+				</div>
+
+				<div class="col-md-4 mb-2">
+					<button type="submit" class="btn btn-primary btn-block">
+						<i class="fa fa-filter mr-1"></i>
+						Appliquer
+					</button>
+				</div>
+
+			</form>
+
+		</div>
+
+		<div class="table-responsive">
+			<table class="table table-bordered table-hover mb-0">
+				<thead>
+					<tr>
+						<th>Client</th>
+						<th class="text-right">Commandes</th>
+						<th class="text-right">Chiffre d'affaires (FCFA)</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for ligne in caParClient %}
+						<tr>
+							<td>{{ ligne.nom }}</td>
+							<td class="text-right">{{ ligne.nombre }}</td>
+							<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>
+						</tr>
+					{% else %}
+						<tr>
+							<td colspan="3" class="text-center text-muted py-4">
+								Aucune commande sur cette période.
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+
+	</div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+<script>
+	(function () {
+		var nouveauxClients = {{ nouveauxClients|json_encode|raw }};
+
+		var canevas = document.getElementById('graphiqueNouveauxClients');
+
+		if (canevas && typeof Chart !== 'undefined') {
+			new Chart(canevas, {
+				type: 'bar',
+				data: {
+					labels: nouveauxClients.labels,
+					datasets: [{
+						label: 'Nouveaux clients',
+						data: nouveauxClients.valeurs,
+						backgroundColor: '#6f42c1'
+					}]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					plugins: { legend: { display: false } },
+					scales: { y: { beginAtZero: true } }
+				}
+			});
+		}
+	})();
+</script>
+
+{% endblock %}

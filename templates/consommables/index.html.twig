@@ -1,0 +1,155 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Consommables
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<div>
+				<h1 class="page-title">
+					Consommables
+				</h1>
+
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item">
+						Production
+					</li>
+					<li class="breadcrumb-item active">
+						Consommables
+					</li>
+				</ol>
+			</div>
+
+		</div>
+
+		<div class="row row-cards">
+
+			<div class="col-lg-5">
+
+				<div class="card">
+					<div class="card-header">
+						<h5 class="card-title mb-0">
+							Enregistrer un consommable
+						</h5>
+					</div>
+
+					<div class="card-body">
+
+						<form method="post" action="{{ path('app_consommables_ajouter') }}">
+
+							<input type="hidden" name="_token" value="{{ csrf_token('consommables_ajouter') }}">
+
+							<div class="form-group">
+								<label for="consommable_article">
+									Article consommé
+								</label>
+
+								<select id="consommable_article" name="article_id" class="form-control" required>
+									<option value="">
+										Sélectionnez un article...
+									</option>
+
+									{% for article in articlesConsommables %}
+										<option value="{{ article.id }}">
+											{{ article }}
+										</option>
+									{% endfor %}
+								</select>
+							</div>
+
+							<div class="form-group">
+								<label for="consommable_quantite">
+									Quantité
+								</label>
+
+								<input type="number" id="consommable_quantite" name="quantite" class="form-control" min="1" step="1" value="1" required>
+							</div>
+
+							<div class="form-group">
+								<label for="consommable_reference">
+									Référence (facultatif)
+								</label>
+
+								<input type="text" id="consommable_reference" name="reference" class="form-control" placeholder="Ex : commande #123, nettoyage machine...">
+							</div>
+
+							<button type="submit" class="btn btn-secondary btn-block">
+								<i class="fa fa-minus-circle mr-1"></i>
+								Retirer du stock
+							</button>
+						</form>
+
+					</div>
+				</div>
+
+			</div>
+
+			<div class="col-lg-7">
+
+				<div class="card">
+					<div class="card-header">
+						<div>
+							<h5 class="card-title mb-1">
+								Historique des consommables
+							</h5>
+							<small class="text-muted">
+								{{ consommables|length }} enregistrement(s)
+							</small>
+						</div>
+					</div>
+
+					<div class="card-body p-0">
+						{% if consommables|length > 0 %}
+							<ul class="list-group list-group-flush">
+								{% for consommable in consommables %}
+									<li class="list-group-item d-flex justify-content-between align-items-center">
+
+										<div>
+											<strong>{{ consommable.article }}</strong>
+											<span class="text-muted">
+												&times; {{ consommable.quantite }}
+											</span>
+
+											<div class="small text-muted">
+												{{ consommable.date ? consommable.date|date('d/m/Y H:i') : '' }}
+
+												{% if consommable.referenceOrigine %}
+													— {{ consommable.referenceOrigine }}
+												{% endif %}
+											</div>
+										</div>
+
+										<form method="post" action="{{ path('app_consommables_supprimer', {sortie: consommable.id}) }}" class="js-confirm-form" data-message="Retirer ce consommable et recréditer le stock ?">
+
+											<input type="hidden" name="_token" value="{{ csrf_token('consommables_supprimer_' ~ consommable.id) }}">
+
+											<button type="submit" class="btn btn-sm btn-danger-light" title="Retirer">
+												<i class="fa fa-times"></i>
+											</button>
+										</form>
+
+									</li>
+								{% endfor %}
+							</ul>
+						{% else %}
+							<p class="text-muted text-center py-4 mb-0">
+								Aucun consommable enregistré.
+							</p>
+						{% endif %}
+					</div>
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

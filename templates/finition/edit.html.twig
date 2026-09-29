@@ -1,0 +1,13 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Edit Finition{% endblock %}
+
+{% block body %}
+    <h1>Edit Finition</h1>
+
+    {{ include('finition/_form.html.twig', {'button_label': 'Update'}) }}
+
+    <a href="{{ path('app_finition_index') }}">back to list</a>
+
+    {{ include('finition/_delete_form.html.twig') }}
+{% endblock %}

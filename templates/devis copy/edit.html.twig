@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier le devis | MDG - ERP
+{% endblock %}
+
+{% block body %}
+	{{ include('devis/_form.html.twig', {
+        form: form,
+        button_label: 'Mettre à jour le devis'
+    }) }}
+{% endblock %}

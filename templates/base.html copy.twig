@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="fr" dir="ltr" data-turbo="false">
+	{% set routeCourante = app.request.attributes.get('_route')|default('') %}
+	{% set menuActif =
+		routeCourante starts with 'app_clients_'
+		or routeCourante starts with 'app_commandes_'
+		or routeCourante starts with 'app_devis_'
+		or routeCourante starts with 'app_factures_'
+		or routeCourante starts with 'app_paiements_'
+		or routeCourante starts with 'app_livraisons_'
+			? 'commercial'
+			: (
+				routeCourante starts with 'app_employes_'
+				or routeCourante starts with 'app_user_'
+					? 'rh'
+					: (
+						routeCourante starts with 'app_categorie_produit_'
+						or routeCourante starts with 'app_produits_'
+						or routeCourante starts with 'app_produit_configuration_'
+						or routeCourante starts with 'app_type_impression_'
+						or routeCourante starts with 'app_support_'
+						or routeCourante starts with 'app_format_'
+						or routeCourante starts with 'app_finition_'
+							? 'parametres'
+							: (
+								routeCourante starts with 'app_production_'
+								or routeCourante starts with 'app_machine_'
+								or routeCourante starts with 'app_ordre_fabrication_'
+									? 'production'
+									: (
+										routeCourante starts with 'app_stock_'
+										or routeCourante starts with 'app_article_'
+										or routeCourante starts with 'app_fournisseur_'
+										or routeCourante starts with 'app_achat_'
+										or routeCourante starts with 'app_inventaire_'
+											? 'stocks'
+											: 'accueil'
+									)
+							)
+					)
+			)
+	%}
+	{% set indexMenuActif = {
+		'accueil': 0,
+		'commercial': 1,
+		'production': 2,
+		'stocks': 3,
+		'rh': 4,
+		'parametres': 5
+	}[menuActif] %}
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="msapplication-TileColor" content="#0061da">
+		<meta name="theme-color" content="#1643a3">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="HandheldFriendly" content="True">
+		<meta name="MobileOptimized" content="320">
+		<link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon"/>
+		<link
+		rel="shortcut icon" type="image/x-icon" href="{{ asset('favicon.ico') }}"/>
+
+		<!-- TITLE -->
+		<title>MDG - ERP</title>
+
+		<!-- DASHBOARD CSS -->
+		<link
+		href="{{ asset('assets/css/dashboard.css') }}" rel="stylesheet"/>
+
+		<!-- COLOR-THEMES CSS -->
+		<link
+		href="{{ asset('assets/css/color-themes.css') }}" rel="stylesheet"/>
+
+		<!-- Sidemenu css -->
+		<link
+		href="{{ asset('assets/plugins/side-menu/full-sidemenu.css') }}" rel="stylesheet"/>
+
+		<!-- Sidebar Accordions css -->
+		<link
+		href="{{ asset('assets/plugins/sidemenu-responsive-tabs/css/easy-responsive-tabs.css') }}" rel="stylesheet">
+
+		<!-- Perfect scroll bar css-->
+		<link
+		href="{{ asset('assets/plugins/pscrollbar/perfect-scrollbar.css') }}" rel="stylesheet"/>
+
+		<!-- SINGLE-PAGE CSS -->
+		<link
+		href="{{ asset('assets/plugins/single-page/css/main.css') }}" rel="stylesheet" type="text/css">
+
+		<!--C3.JS CHARTS PLUGIN -->
+		<link
+		href="{{ asset('assets/plugins/charts-c3/c3-chart.css') }}" rel="stylesheet"/>
+
+		<!-- CUSTOM SCROLL BAR CSS-->
+		<link
+		href="{{ asset('assets/plugins/mcustomscrollbar/jquery.mCustomScrollbar.css') }}" rel="stylesheet"/>
+
+		<!--- FONT-ICONS CSS -->
+		<link
+		href="{{ asset('assets/css/icons.css') }}" rel="stylesheet"/>
+
+		<!-- RIGHT-MENU CSS -->
+		<link
+		href="{{ asset('assets/plugins/sidebar/sidebar.css') }}" rel="stylesheet">
+
+		<!-- LEFT-SIDEMENU CSS -->
+		<link href="{{ asset('assets/plugins/jquery-jside-menu-master/css/jside-menu.css') }}" rel="stylesheet"/>
+		<link
+		href="{{ asset('assets/plugins/jquery-jside-menu-master/css/jside-skins.css') }}" rel="stylesheet"/>
+
+		<!-- HORIZONTAL-MENU CSS -->
+		<link href="{{ asset('assets/plugins/horizontal-menu/dropdown-effects/fade-down.css') }}" rel="stylesheet">
+		<link href="{{ asset('assets/plugins/horizontal-menu/horizontal-menu.css') }}" rel="stylesheet">
+
+		<style>
+			#parentVerticalTab .resp-tabs-list li.resp-tab-active,
+			#parentVerticalTab .resp-tabs-list li.active {
+				background: #1643a3 !important;
+				color: #fff !important;
+			}
+
+			#parentVerticalTab .resp-tabs-list li.resp-tab-active i,
+			#parentVerticalTab .resp-tabs-list li.active i {
+				color: #fff !important;
+			}
+
+			#parentVerticalTab .slide-item.active {
+				background: rgba(22, 67, 163, 0.12);
+				border-left: 3px solid #1643a3;
+				color: #1643a3 !important;
+				font-weight: 600;
+			}
+		</style>
+
+	</head>
+	<body class="app sidebar-mini" data-turbo="false">
+		<div id="global-loader">
+			<img src="{{ asset('assets/images/loader.svg') }}" class="loader-img" alt="Chargement">
+		</div>
+
+		<div class="page">
+			<div class="page-main">
+				<div class="app-sidebar__overlay" data-toggle="sidebar"></div>
+
+				<aside class="app-sidebar">
+					<a class="header-brand left-meu-header-brand left-meu-header-brand-desktop" href="{{ path('app_home') }}">
+						<img src="{{ asset('assets/images/brand/logo2.png') }}" class="header-brand-img desktop-logo" alt="MDG ERP">
+						<img src="{{ asset('assets/images/brand/favicon.png') }}" class="header-brand-img mobile-view-logo" alt="MDG ERP">
+					</a>
+
+					<div class="input-group p-2 bg-white border-bottom">
+						<input id="menuSearch" type="search" placeholder="Rechercher un menu..." class="form-control search" autocomplete="off">
+						<div class="input-group-prepend mr-0">
+							<span class="input-group-text border-right search_btn btn-primary-default">
+								<i class="fa fa-search text-white"></i>
+							</span>
+						</div>
+					</div>
+
+					<div class="side-tab-body p-0 border-0" id="parentVerticalTab">
+						<div class="first-sidemenu">
+							<ul class="resp-tabs-list hor_1">
+								<li class="{{ menuActif == 'accueil' ? 'resp-tab-active active' : '' }}" data-menu="accueil" title="Accueil">
+									<i class="side-menu__icon typcn typcn-home-outline"></i>
+									<div class="slider-text">Accueil</div>
+								</li>
+								<li class="{{ menuActif == 'commercial' ? 'resp-tab-active active' : '' }}" data-menu="commercial" title="Commercial">
+									<i class="side-menu__icon typcn typcn-shopping-cart"></i>
+									<div class="slider-text">Commercial</div>
+								</li>
+								<li class="{{ menuActif == 'production' ? 'resp-tab-active active' : '' }}" data-menu="production" title="Production">
+									<i class="side-menu__icon typcn typcn-cog-outline"></i>
+									<div class="slider-text">Production</div>
+								</li>
+								<li class="{{ menuActif == 'stocks' ? 'resp-tab-active active' : '' }}" data-menu="stocks" title="Stocks et achats">
+									<i class="side-menu__icon typcn typcn-archive"></i>
+									<div class="slider-text">Stocks</div>
+								</li>
+								<li class="{{ menuActif == 'rh' ? 'resp-tab-active active' : '' }}" data-menu="rh" title="Ressources humaines">
+									<i class="side-menu__icon typcn typcn-group-outline"></i>
+									<div class="slider-text">RH</div>
+								</li>
+								<li class="{{ menuActif == 'parametres' ? 'resp-tab-active active' : '' }}" data-menu="parametres" title="Catalogue et paramètres">
+									<i class="side-menu__icon typcn typcn-spanner-outline"></i>
+									<div class="slider-text">Paramètres</div>
+								</li>
+							</ul>
+
+							<div class="second-sidemenu">
+								<div class="resp-tabs-container hor_1">
+									<div class="{{ menuActif == 'accueil' ? 'resp-tab-content-active' : '' }}">
+										<div class="row">
+											<div class="col-md-12">
+												<h4 class="font-weight-normal">
+													<i class="typcn typcn-home-outline"></i>
+													Accueil
+												</h4>
+												<a href="{{ path('app_home') }}" class="slide-item {{ routeCourante == 'app_home' ? 'active' : '' }}">
+													Tableau de bord
+												</a>
+											</div>
+										</div>
+									</div>
+
+									<div class="{{ menuActif == 'commercial' ? 'resp-tab-content-active' : '' }}">
+										<div class="row">
+											<div class="col-md-12">
+												<h4 class="font-weight-normal">
+													<i class="typcn typcn-shopping-cart"></i>
+													Commercial
+												</h4>
+												{# Remplacez # par vos routes lorsqu'elles seront créées. #}
+												<a href="{{ path('app_clients_index') }}" class="slide-item {{ routeCourante starts with 'app_clients_' ? 'active' : '' }}">Clients</a>
+												<a href="#" class="slide-item">Prospects</a>
+												<a href="{{ path('app_devis_index') }}" class="slide-item {{ routeCourante starts with 'app_devis_' ? 'active' : '' }}">Devis</a>
+												<a href="{{ path('app_commandes_index') }}" class="slide-item {{ routeCourante starts with 'app_commandes_' ? 'active' : '' }}">Commandes</a>
+												<a href="#" class="slide-item">Factures</a>
+												<a href="#" class="slide-item">Paiements</a>
+												<a href="#" class="slide-item">Livraisons</a>
+											</div>
+										</div>
+									</div>
+
+									<div class="{{ menuActif == 'production' ? 'resp-tab-content-active' : '' }}">
+										<div class="row">
+											<div class="col-md-12">
+												<h4 class="font-weight-normal">
+													<i class="typcn typcn-cog-outline"></i>
+													Production
+												</h4>
+												<a href="#" class="slide-item">Ordres de fabrication</a>
+												<a href="#" class="slide-item">Planning</a>
+												<a href="#" class="slide-item">Travaux en attente</a>
+												<a href="#" class="slide-item">Travaux en cours</a>
+												<a href="#" class="slide-item">Travaux terminés</a>
+												<a href="#" class="slide-item">Machines</a>
+												<a href="#" class="slide-item">Contrôle qualité</a>
+											</div>
+										</div>
+									</div>
+
+									<div class="{{ menuActif == 'stocks' ? 'resp-tab-content-active' : '' }}">
+										<div class="row">
+											<div class="col-md-12">
+												<h4 class="font-weight-normal">
+													<i class="typcn typcn-archive"></i>
+													Stocks et achats
+												</h4>
+												<a href="#" class="slide-item">Articles et matières</a>
+												<a href="#" class="slide-item">Mouvements de stock</a>
+												<a href="#" class="slide-item">Inventaires</a>
+												<a href="#" class="slide-item">Fournisseurs</a>
+												<a href="#" class="slide-item">Demandes d'achat</a>
+												<a href="#" class="slide-item">Achats</a>
+											</div>
+										</div>
+									</div>
+
+									<div class="{{ menuActif == 'rh' ? 'resp-tab-content-active' : '' }}">
+										<div class="row">
+											<div class="col-md-12">
+												<h4 class="font-weight-normal">
+													<i class="typcn typcn-group-outline"></i>
+													Ressources humaines
+												</h4>
+												<a href="{{ path('app_employes_index') }}" class="slide-item {{ routeCourante starts with 'app_employes_' and routeCourante != 'app_employes_new' ? 'active' : '' }}">
+													Employés
+												</a>
+												<a href="{{ path('app_employes_new') }}" class="slide-item {{ routeCourante == 'app_employes_new' ? 'active' : '' }}">
+													Ajouter un employé
+												</a>
+												<a href="{{ path('app_user_index') }}" class="slide-item {{ routeCourante starts with 'app_user_' ? 'active' : '' }}">
+													Utilisateurs
+												</a>
+												<a href="#" class="slide-item">Présences</a>
+												<a href="#" class="slide-item">Congés et absences</a>
+											</div>
+										</div>
+									</div>
+
+									<div class="{{ menuActif == 'parametres' ? 'resp-tab-content-active' : '' }}">
+										<div class="row">
+											<div class="col-md-12">
+												<h4 class="font-weight-normal">
+													<i class="typcn typcn-spanner-outline"></i>
+													Catalogue
+												</h4>
+												<a href="{{ path('app_categorie_produit_index') }}" class="slide-item {{ routeCourante starts with 'app_categorie_produit_' ? 'active' : '' }}">
+													Catégories de produits
+												</a>
+												<a href="{{ path('app_produits_index') }}" class="slide-item {{ routeCourante starts with 'app_produits_' ? 'active' : '' }}">
+													Produits
+												</a>
+												<a href="{{ path('app_produit_configuration_index') }}" class="slide-item {{ routeCourante starts with 'app_produit_configuration_' ? 'active' : '' }}">
+													Configurations des produits
+												</a>
+												<a href="{{ path('app_type_impression_index') }}" class="slide-item {{ routeCourante starts with 'app_type_impression_' ? 'active' : '' }}">
+													Types d'impression
+												</a>
+												<a href="{{ path('app_support_index') }}" class="slide-item {{ routeCourante starts with 'app_support_' ? 'active' : '' }}">
+													Supports
+												</a>
+												<a href="{{ path('app_format_index') }}" class="slide-item {{ routeCourante starts with 'app_format_' ? 'active' : '' }}">
+													Formats
+												</a>
+												<a href="{{ path('app_finition_index') }}" class="slide-item {{ routeCourante starts with 'app_finition_' ? 'active' : '' }}">
+													Finitions
+												</a>
+
+												<h6 class="text-uppercase mt-6 mb-3">Administration</h6>
+												<a href="{{ path('app_user_index') }}" class="slide-item">
+													Utilisateurs et accès
+												</a>
+												<a href="#" class="slide-item">Informations de l'entreprise</a>
+												<a href="#" class="slide-item">Paramètres généraux</a>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</aside>
+
+				<div class="app-content my-3 my-md-5">
+					<div class="header header-fixed">
+						<div class="container-fluid">
+							<div class="d-flex">
+								<a aria-label="Afficher ou masquer le menu" class="app-sidebar__toggle" data-toggle="sidebar" href="#"></a>
+
+								<div class="d-flex order-lg-2 ml-auto header-right-icons">
+									<div class="dropdown d-sm-flex d-none">
+										<a class="nav-link icon full-screen-link nav-link-bg">
+											<i class="ti-arrows-corner" id="fullscreen-button"></i>
+										</a>
+									</div>
+
+									<div class="dropdown d-sm-flex d-none notifications">
+										<a class="nav-link icon" data-toggle="dropdown">
+											<i class="ti-bell"></i>
+										</a>
+										<div class="dropdown-menu dropdown-menu-right dropdown-menu-arrow">
+											<div class="dropdown-item text-center">
+												Aucune nouvelle notification
+											</div>
+										</div>
+									</div>
+
+									{% if app.user %}
+										<div class="dropdown text-center selector profile-1 d-sm-flex">
+											<a href="#" data-toggle="dropdown" class="nav-link leading-none d-flex align-items-center">
+												<span class="avatar brround bg-primary text-white">
+													{{ app.user.userIdentifier|first|upper }}
+												</span>
+											</a>
+											<div class="dropdown-menu dropdown-menu-right dropdown-menu-arrow">
+												<div class="px-4 py-3 border-bottom">
+													<strong>{{ app.user.userIdentifier }}</strong>
+												</div>
+												<a class="dropdown-item" href="#">
+													<i class="dropdown-icon mdi mdi-account-outline"></i>
+													Mon profil
+												</a>
+												<a class="dropdown-item" href="{{ path('app_logout') }}">
+													<i class="dropdown-icon mdi mdi-logout-variant"></i>
+													Déconnexion
+												</a>
+											</div>
+										</div>
+									{% endif %}
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="container-fluid"> {% block body %}{% endblock %}
+						</div>
+					</div>
+				</div>
+
+				<footer class="footer">
+					<div class="container">
+						<div class="text-center">
+							&copy;
+							{{ 'now'|date('Y') }}
+							MDG - ERP. Tous droits réservés.
+						</div>
+					</div>
+				</footer>
+			</div>
+
+
+			<!-- BACK-TO-TOP -->
+			<a href="#top" id="back-to-top">
+				<i class="fa fa-angle-up"></i>
+			</a>
+
+			<!-- JQUERY SCRIPTS -->
+			<script src="{{ asset('assets/js/vendors/jquery-3.2.1.min.js') }}"></script>
+
+			<!-- BOOTSTRAP SCRIPTS -->
+			<script src="{{ asset('assets/js/vendors/bootstrap.bundle.min.js') }}"></script>
+
+			<!-- SPARKLINE -->
+			<script src="{{ asset('assets/js/vendors/jquery.sparkline.min.js') }}"></script>
+
+			<!-- CHART-CIRCLE -->
+			<script src="{{ asset('assets/js/vendors/circle-progress.min.js') }}"></script>
+
+			<!-- RATING STAR -->
+			<script src="{{ asset('assets/plugins/rating/jquery.rating-stars.js') }}"></script>
+
+			<!-- INPUT MASK PLUGIN-->
+			<script src="{{ asset('assets/plugins/input-mask/jquery.mask.min.js') }}"></script>
+
+			<!--Side-menu js-->
+			<script src="{{ asset('assets/plugins/side-menu/sidemenu.js') }}"></script>
+
+			<!-- STICKY JS-->
+			<script src="{{ asset('assets/js/sticky.js') }}"></script>
+			<script src="{{ asset('assets/js/horizontal-sticky.js') }}"></script>
+
+			<!-- Sidebar Accordions js -->
+			<script src="{{ asset('assets/plugins/sidemenu-responsive-tabs/js/easyResponsiveTabs.js') }}"></script>
+
+			<!-- Perfect scroll bar js-->
+			<script src="{{ asset('assets/plugins/pscrollbar/perfect-scrollbar.js') }}"></script>
+
+			<!-- CUSTOM SCROLL BAR JS-->
+			<script src="{{ asset('assets/plugins/mcustomscrollbar/jquery.mCustomScrollbar.concat.min.js') }}"></script>
+
+			<!-- LEFT-SIDEMENU PLUGIN -->
+			<script src="{{ asset('assets/plugins/jquery-jside-menu-master/js/jquery.jside.menu.js') }}"></script>
+
+			<!-- HORIZONTAL-MENU JS -->
+			<script src="{{ asset('assets/plugins/horizontal-menu/horizontal-menu.js') }}"></script>
+			<script src="{{ asset('assets/plugins/jquery-jside-menu-master/docs/demo-only.js') }}"></script>
+
+			<!-- RIGHT-MENU JS -->
+			<script src="{{ asset('assets/plugins/sidebar/sidebar.js') }}"></script>
+
+			<!-- Left CUSTOM JS-->
+			<script src="{{ asset('assets/js/left-custom.js') }}"></script>
+
+			<!-- CUSTOM JS-->
+			<script src="{{ asset('assets/js/custom.js') }}"></script>
+
+			<!-- SWEETALERT2 : conserver ce chemin si le fichier existe dans public/assets -->
+			<script src="{{ asset('assets/plugins/sweet-alert/sweetalert2.all.min.js') }}"></script>
+
+			<script>
+				(function () {
+'use strict';
+
+function initialiserMenuMDG() {
+const racine = document.getElementById('parentVerticalTab');
+
+if (! racine || racine.dataset.mdgInitialise === '1') {
+return;
+}
+
+racine.dataset.mdgInitialise = '1';
+
+const indexActif = {{ indexMenuActif|json_encode|raw }};
+const onglets = racine.querySelectorAll(':scope > .first-sidemenu > .resp-tabs-list > li');
+const panneaux = racine.querySelectorAll('.resp-tabs-container.hor_1 > div');
+
+function afficherMenu(index) {
+onglets.forEach(function (onglet, position) {
+const actif = position === index;
+
+onglet.classList.toggle('resp-tab-active', actif);
+onglet.classList.toggle('active', actif);
+onglet.setAttribute('aria-selected', actif ? 'true' : 'false');
+});
+
+panneaux.forEach(function (panneau, position) {
+const actif = position === index;
+
+panneau.classList.toggle('resp-tab-content-active', actif);
+panneau.style.display = actif ? 'block' : 'none';
+});
+}
+
+window.setTimeout(function () {
+afficherMenu(indexActif);
+}, 0);
+
+onglets.forEach(function (onglet, index) {
+onglet.addEventListener('click', function () {
+afficherMenu(index);
+});
+});
+
+const recherche = document.getElementById('menuSearch');
+
+if (recherche) {
+recherche.addEventListener('input', function () {
+const terme = this.value.trim().toLowerCase();
+const liens = racine.querySelectorAll('.second-sidemenu .slide-item');
+
+liens.forEach(function (lien) {
+lien.style.display = ! terme || lien.textContent.toLowerCase().includes(terme) ? '' : 'none';
+});
+});
+}
+}
+
+if (document.readyState === 'loading') {
+document.addEventListener('DOMContentLoaded', initialiserMenuMDG, {once: true});
+} else {
+initialiserMenuMDG();
+}
+})();
+			</script>
+
+			{% set notifications = {
+				success: app.flashes('success'),
+				error: app.flashes('error'),
+				danger: app.flashes('danger'),
+				warning: app.flashes('warning'),
+				info: app.flashes('info')
+			} %}
+
+			<script>
+				(function () {
+'use strict';
+
+const notifications = {{ notifications|json_encode|raw }};
+const configurations = {
+success: {
+icon: 'success',
+title: 'Opération réussie'
+},
+error: {
+icon: 'error',
+title: 'Erreur'
+},
+danger: {
+icon: 'error',
+title: 'Erreur'
+},
+warning: {
+icon: 'warning',
+title: 'Attention'
+},
+info: {
+icon: 'info',
+title: 'Information'
+}
+};
+
+function afficherNotifications() {
+Object.keys(notifications).forEach(function (type) {
+notifications[type].forEach(function (message) {
+const configuration = configurations[type] || configurations.info;
+
+if (typeof window.Swal === 'undefined') {
+window.alert(message);
+return;
+}
+
+window.Swal.fire({
+icon: configuration.icon,
+title: configuration.title,
+text: message,
+confirmButtonText: 'OK',
+timer: type === 'success' ? 3500 : undefined,
+timerProgressBar: type === 'success'
+});
+});
+});
+}
+
+if (document.readyState === 'loading') {
+document.addEventListener('DOMContentLoaded', afficherNotifications, {once: true});
+} else {
+afficherNotifications();
+}
+})();
+			</script>
+
+			{#
+																Les pages enfants ajoutent seulement leurs scripts spécifiques.
+																Ne jamais recharger jQuery, Bootstrap, PerfectScrollbar,
+																left-custom.js ou custom.js dans un template enfant.
+															#}
+			{% block javascripts %}{% endblock %}
+		</body>
+	</html>

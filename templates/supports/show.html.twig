@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Supports{% endblock %}
+
+{% block body %}
+    <h1>Supports</h1>
+
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>Id</th>
+                <td>{{ support.id }}</td>
+            </tr>
+            <tr>
+                <th>Nom</th>
+                <td>{{ support.nom }}</td>
+            </tr>
+            <tr>
+                <th>Description</th>
+                <td>{{ support.description }}</td>
+            </tr>
+            <tr>
+                <th>Publie</th>
+                <td>{{ support.publie ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Ordre</th>
+                <td>{{ support.ordre }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <a href="{{ path('app_supports_index') }}">back to list</a>
+
+    <a href="{{ path('app_supports_edit', {'id': support.id}) }}">edit</a>
+
+    {{ include('supports/_delete_form.html.twig') }}
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    Vérification d’authenticité du devis
+{% endblock %}
+
+{% block body %}
+<div class="side-app">
+    <div class="page-header">
+        <h1 class="page-title">
+            Vérification d’authenticité
+        </h1>
+    </div>
+
+    {% if valide and devis %}
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h3 class="card-title mb-0">
+                    Document authentique
+                </h3>
+            </div>
+
+            <div class="card-body">
+                <div class="alert alert-success">
+                    Ce devis existe bien dans le système.
+                </div>
+
+                <table class="table table-bordered">
+                    <tr>
+                        <th width="260">
+                            Numéro du devis
+                        </th>
+                        <td>
+                            {{ devis.numero|default('—') }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>
+                            Date
+                        </th>
+                        <td>
+                            {% if devis.dateDevis %}
+                                {{ devis.dateDevis|date('d/m/Y H:i') }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>
+                            Client
+                        </th>
+                        <td>
+                            {% if devis.clients %}
+                                {{
+                                    devis.clients.raisonSociale
+                                    |default(
+                                        devis.clients.nomComplet
+                                        |default(
+                                            devis.clients.nom
+                                            |default('—')
+                                        )
+                                    )
+                                }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>
+                            Total TTC
+                        </th>
+                        <td>
+                            {{
+                                devis.totalTtc|default(0)
+                                |number_format(0, ',', ' ')
+                            }}
+                            FCFA
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>
+                            Statut
+                        </th>
+                        <td>
+                            {{
+                                devis.statut
+                                |default('brouillon')
+                                |replace({'_': ' '})
+                                |capitalize
+                            }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>
+                            Code d’authenticité
+                        </th>
+                        <td>
+                            <code>{{ token }}</code>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h3 class="card-title mb-0">
+                    Document introuvable
+                </h3>
+            </div>
+
+            <div class="card-body">
+                <div class="alert alert-danger mb-3">
+                    Le code d’authenticité scanné ne correspond à aucun devis enregistré.
+                </div>
+
+                <p class="mb-0">
+                    Code reçu :
+                    <code>{{ token }}</code>
+                </p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

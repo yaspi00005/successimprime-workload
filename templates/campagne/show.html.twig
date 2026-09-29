@@ -1,0 +1,151 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	{{ campagne.nom }}
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_campagne_index') }}">Campagnes</a>
+			</li>
+			<li class="breadcrumb-item active">
+				{{ campagne.nom }}
+			</li>
+		</ol>
+	</div>
+
+	<div class="row row-cards">
+
+		<div class="col-lg-4">
+			<div class="card">
+				<div class="card-body text-center">
+					<div class="h1 mb-0">{{ campagne.nombreTotal }}</div>
+					<div class="text-muted">Destinataires</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-lg-4">
+			<div class="card">
+				<div class="card-body text-center">
+					<div class="h1 mb-0 text-success">{{ compteurs.envoye }}</div>
+					<div class="text-muted">Envoyés</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-lg-4">
+			<div class="card">
+				<div class="card-body text-center">
+					<div class="h1 mb-0 {{ compteurs.echec > 0 ? 'text-danger' : '' }}">{{ compteurs.echec }}</div>
+					<div class="text-muted">Échecs</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+	<div class="row">
+
+		<div class="col-lg-12">
+
+			<div class="card">
+
+				<div class="card-header">
+					<div>
+						<h3 class="card-title mb-1">
+							Détail des envois
+						</h3>
+						<small class="text-muted">
+							Modèle : {{ campagne.modeleMessage }} ({{ campagne.modeleMessage.canalLabel }})
+							· Statut : {{ campagne.statut == 'terminee' ? 'Terminée' : 'En cours' }}
+							{% if compteurs.en_attente > 0 %}
+								· {{ compteurs.en_attente }} en attente
+							{% endif %}
+							{% if compteurs.ignore > 0 %}
+								· {{ compteurs.ignore }} ignoré(s) (SMS refusé)
+							{% endif %}
+						</small>
+					</div>
+				</div>
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered table-hover mb-0">
+
+						<thead>
+							<tr>
+								<th>Client</th>
+								<th class="text-center">Statut</th>
+								<th>Date d'envoi</th>
+								<th>Détail</th>
+							</tr>
+						</thead>
+
+						<tbody>
+
+							{% for destinataire in destinataires %}
+
+								<tr>
+
+									<td class="align-middle">
+										{{ destinataire.client ? destinataire.client.nomComplet : 'Client supprimé' }}
+									</td>
+
+									<td class="align-middle text-center">
+										{% if destinataire.statut == 'envoye' %}
+											<span class="badge badge-success">Envoyé</span>
+										{% elseif destinataire.statut == 'echec' %}
+											<span class="badge badge-danger">Échec</span>
+										{% elseif destinataire.statut == 'ignore' %}
+											<span class="badge badge-warning">Ignoré</span>
+										{% else %}
+											<span class="badge badge-light">En attente</span>
+										{% endif %}
+									</td>
+
+									<td class="align-middle">
+										{{ destinataire.dateEnvoi ? destinataire.dateEnvoi|date('d/m/Y H:i') : '—' }}
+									</td>
+
+									<td class="align-middle text-muted">
+										{{ destinataire.erreur|default('') }}
+									</td>
+
+								</tr>
+
+							{% else %}
+
+								<tr>
+									<td colspan="4" class="text-center text-muted py-5">
+										Aucun destinataire.
+									</td>
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+				<div class="card-footer text-right">
+					<a href="{{ path('app_campagne_index') }}" class="btn btn-secondary">
+						<i class="fa fa-arrow-left mr-1"></i>
+						Retour
+					</a>
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

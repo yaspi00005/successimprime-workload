@@ -1,0 +1,482 @@
+{% macro finition(ligne) %}
+	<div class="row align-items-end border rounded p-3 mb-3 js-finition-item">
+		<div class="col-lg-4 col-md-6">
+			{{ form_row(ligne.finition, {
+                label: 'Finition',
+                attr: {class: 'form-control js-select-search'}
+            }) }}
+		</div>
+		<div class="col-lg-2 col-md-6">
+			{{ form_row(ligne.prixApplique, {
+                label: 'Prix appliqué',
+                attr: {class: 'form-control js-finition-prix', min: 0}
+            }) }}
+		</div>
+		<div class="col-lg-2 col-md-6">
+			{{ form_row(ligne.modeCalcul, {
+                label: 'Mode de calcul',
+                attr: {class: 'form-control js-finition-mode'}
+            }) }}
+		</div>
+		<div class="col-lg-2 col-md-6">
+			{{ form_row(ligne.quantite, {
+                label: 'Quantité',
+                attr: {class: 'form-control js-finition-quantite', min: 1}
+            }) }}
+		</div>
+		<div class="col-lg-2 col-md-6 mb-3">
+			<button type="button" class="btn btn-danger-light btn-block js-remove-finition">
+				<i class="fa fa-trash mr-1"></i>
+				Supprimer
+			</button>
+		</div>
+	</div>
+{% endmacro %}
+
+{% macro detail(ligne) %}
+	{% import _self as ui %}
+	<div class="travail-form js-detail-body">
+		{{ form_errors(ligne) }}
+
+		<div class="travail-section">
+			<div class="travail-section-title">
+				<i class="fa fa-cube"></i>
+				Produit et configuration</div>
+			<div class="row">
+				<div class="col-lg-4 col-md-6">{{ form_row(ligne.modeConfiguration) }}</div>
+				<div class="col-lg-4 col-md-6">{{ form_row(ligne.produit) }}</div>
+				<div class="col-lg-4 col-md-6 js-auto">{{ form_row(ligne.produitConfiguration) }}</div>
+				<div class="col-lg-4 col-md-6 js-manuel">{{ form_row(ligne.typeImpression) }}</div>
+				<div class="col-lg-4 col-md-6 js-manuel">{{ form_row(ligne.support) }}</div>
+				<div class="col-lg-4 col-md-6 js-manuel">{{ form_row(ligne.format) }}</div>
+				<div class="col-lg-4 col-md-6">{{ form_row(ligne.machine) }}</div>
+				<div class="col-lg-8 col-md-6">{{ form_row(ligne.designation) }}</div>
+			</div>
+		</div>
+
+		<div class="travail-section">
+			<div class="travail-section-title">
+				<i class="fa fa-calculator"></i>
+				Dimensions, quantité et prix</div>
+			<div class="row">
+				<div class="col-lg-3 col-md-6 js-dimension">{{ form_row(ligne.largeur) }}</div>
+				<div class="col-lg-3 col-md-6 js-dimension">{{ form_row(ligne.longueur) }}</div>
+				<div class="col-lg-3 col-md-6 js-dimension">{{ form_row(ligne.surface) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.quantite) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.nombreFaces) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.modeCalcul) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.prixUnitaire) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.coutRevient) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.remise) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.tva) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.totalHt) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.totalTtc) }}</div>
+			</div>
+		</div>
+
+		<div class="travail-section js-finitions-zone">
+			<div class="travail-section-title">
+				<i class="fa fa-magic"></i>
+				Finitions</div>
+			<div class="js-finitions-list" data-index="{{ ligne.finitions|length }}" data-prototype="{{ ui.finition(ligne.finitions.vars.prototype)|e('html_attr') }}">
+				{% for finition in ligne.finitions %}
+					{{ ui.finition(finition) }}
+				{% endfor %}
+			</div>
+			{{ form_errors(ligne.finitions) }}
+			<button type="button" class="btn btn-primary-light btn-sm js-add-finition">
+				<i class="fa fa-plus mr-1"></i>
+				Ajouter une finition
+			</button>
+		</div>
+
+		<div class="travail-section">
+			<div class="travail-section-title">
+				<i class="fa fa-sliders"></i>
+				Caractéristiques techniques</div>
+			<div class="row">
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.profilCouleurs) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.resolution) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.grammage) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.epaisseur) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.laminage) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.pliage) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.priorite) }}</div>
+				<div class="col-lg-3 col-md-6">{{ form_row(ligne.tempsEstime) }}</div>
+				<div class="col-md-3">{{ form_row(ligne.rectoVerso) }}</div>
+				<div class="col-md-3">{{ form_row(ligne.oeillets) }}</div>
+				<div class="col-md-3">{{ form_row(ligne.decoupe) }}</div>
+				<div class="col-md-3">{{ form_row(ligne.emballage) }}</div>
+			</div>
+			{{ form_row(ligne.observation) }}
+			{{ form_widget(ligne.etat, {attr: {class: 'd-none'}}) }}
+		</div>
+	</div>
+{% endmacro %}
+
+{% import _self as ui %}
+
+{{ form_start(form, {attr: {id: 'devis-form'}}) }}
+
+<div class="side-app">
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_devis_index') }}">Devis</a>
+			</li>
+			<li class="breadcrumb-item active">{{ form.vars.data.id ? 'Modifier le devis' : 'Nouveau devis' }}</li>
+		</ol>
+		<a href="{{ path('app_devis_index') }}" class="btn btn-sm btn-primary-light">
+			<i class="fa fa-list mr-1"></i>
+			Liste des devis
+		</a>
+	</div>
+
+	{{ form_errors(form) }}
+
+	<div class="card mb-4">
+		<div class="card-header">
+			<div class="card-title">Informations du devis</div>
+		</div>
+		<div class="card-body">
+			<div class="row">
+				<div class="col-lg-6">{{ form_row(form.client) }}</div>
+				<div class="col-lg-3">{{ form_row(form.dateCreation) }}</div>
+				<div class="col-lg-3">{{ form_row(form.dateValidite) }}</div>
+				{% if form.statut is defined %}
+					<div class="col-lg-3">{{ form_row(form.statut) }}</div>
+				{% endif %}
+				<div class="col-lg-3">{{ form_row(form.tauxTva) }}</div>
+				<div class="col-lg-6">{{ form_row(form.conditionsCommerciales) }}</div>
+				<div class="col-12">{{ form_row(form.notes) }}</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="card mb-4">
+		<div class="card-header d-flex justify-content-between align-items-center">
+			<div>
+				<div class="card-title mb-0">Travaux du devis</div>
+				<small class="text-muted">Ajoutez une ou plusieurs prestations.</small>
+			</div>
+			<button type="button" id="add-detail" class="btn btn-success-light">
+				<i class="fa fa-plus mr-1"></i>
+				Ajouter une prestation
+			</button>
+		</div>
+		<div class="card-body">
+			{{ form_errors(form.details) }}
+			<div id="collection-details" data-index="{{ form.details|length }}" data-prototype="{{ ui.detail(form.details.vars.prototype)|e('html_attr') }}">
+				{% for detail in form.details %}
+					<div class="detail-devis card border mb-4">
+						<div class="card-header bg-light d-flex justify-content-between align-items-center">
+							<div class="card-title detail-title mb-0">Prestation
+								{{ loop.index }}</div>
+							<button type="button" class="btn btn-danger-light btn-sm js-remove-detail">
+								<i class="fa fa-trash mr-1"></i>
+								Supprimer
+							</button>
+						</div>
+						<div class="card-body p-0">{{ ui.detail(detail) }}</div>
+					</div>
+				{% endfor %}
+			</div>
+			<div id="empty-details" class="alert alert-info mb-0" {% if form.details|length %} style="display:none" {% endif %}>
+				Aucun travail ajouté.
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-xl-6 ml-auto">
+			<div class="card">
+				<div class="card-header">
+					<div class="card-title">Récapitulatif</div>
+				</div>
+				<div class="card-body">
+					<div class="row">
+						<div class="col-md-6">
+							{{ form_row(form.remisePourcentage) }}
+						</div>
+						<div class="col-md-6">
+							<label>Total HT</label>
+							<input type="text" id="recap-total-ht" class="form-control montant-calcul" readonly>
+						</div>
+						<div class="col-md-6">
+							<label>Total TVA</label>
+							<input type="text" id="recap-tva" class="form-control montant-calcul" readonly>
+						</div>
+						<div class="col-md-6">
+							<label>Total TTC / montant à payer</label>
+							<input type="text" id="recap-total-ttc" class="form-control montant-calcul" readonly>
+						</div>
+					</div>
+				</div>
+				<div class="card-footer d-flex justify-content-between">
+					<a href="{{ path('app_devis_index') }}" class="btn btn-primary-light">Annuler</a>
+					<button type="submit" class="btn btn-success-light">
+						<i class="fa fa-save mr-1"></i>
+						{{ button_label|default('Enregistrer le devis') }}
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% if form._token is defined %}
+	{{ form_widget(form._token) }}
+{% endif %}
+{{ form_end(form, {render_rest: false}) }}
+
+<style>
+	#devis-form input.form-control,
+	#devis-form select.form-control,
+	#devis-form textarea.form-control {
+		color: #1f2937 !important;
+		background: #fff !important;
+	}
+	#devis-form .travail-section {
+		padding: 20px;
+		border-bottom: 1px solid #e9edf4;
+	}
+	#devis-form .travail-section:last-child {
+		border-bottom: 0;
+	}
+	#devis-form .travail-section-title {
+		font-weight: 600;
+		color: #1f2937;
+		margin-bottom: 18px;
+	}
+	#devis-form .travail-section-title i {
+		color: #6259ca;
+		margin-right: 8px;
+	}
+	#devis-form .montant-calcul {
+		font-weight: 700;
+		background: #f4f6fb !important;
+	}
+	#devis-form .select2-container {
+		width: 100% !important;
+	}
+</style>
+
+<script>
+	document.addEventListener('DOMContentLoaded', function () {
+'use strict';
+
+const form = document.getElementById('devis-form');
+const collection = document.getElementById('collection-details');
+const addButton = document.getElementById('add-detail');
+const emptyMessage = document.getElementById('empty-details');
+const globalDiscount = form.querySelector('[name$="[remisePourcentage]"]');
+
+if (! form || ! collection || ! addButton) 
+return;
+
+
+
+const number = (field, fallback = 0) => {
+if (!field) 
+return fallback;
+
+
+const value = Number(String(field.value || '').replace(',', '.'));
+return Number.isFinite(value) ? value : fallback;
+};
+
+const field = (detail, name) => detail.querySelector('[name$="[' + name + ']"]');
+const money = value => Math.round(Math.max(0, value));
+
+function updateNumbers() {
+collection.querySelectorAll('.detail-devis').forEach(function (detail, index) {
+const title = detail.querySelector('.detail-title');
+if (title) 
+title.textContent = 'Prestation ' + (
+index + 1
+);
+
+
+});
+emptyMessage.style.display = collection.querySelector('.detail-devis') ? 'none' : 'block';
+}
+
+function finishingTotal(detail) {
+let total = 0;
+const width = Math.max(0, number(field(detail, 'largeur')));
+const length = Math.max(0, number(field(detail, 'longueur')));
+const surface = width * length;
+
+detail.querySelectorAll('.js-finition-item').forEach(function (item) {
+const price = Math.max(0, number(item.querySelector('.js-finition-prix')));
+const quantity = Math.max(1, number(item.querySelector('.js-finition-quantite'), 1));
+const modeField = item.querySelector('.js-finition-mode');
+const mode = modeField ? modeField.value : 'forfait';
+if (mode === 'metre_carre') 
+total += price * surface * quantity;
+ else if (mode === 'metre') 
+total += price * length * quantity;
+ else if (mode === 'forfait') 
+total += price;
+ else 
+total += price * quantity;
+
+
+});
+return total;
+}
+
+function calculateDetail(detail) {
+const width = Math.max(0, number(field(detail, 'largeur')));
+const length = Math.max(0, number(field(detail, 'longueur')));
+const surface = width * length;
+const quantity = Math.max(1, number(field(detail, 'quantite'), 1));
+const faces = Math.max(1, number(field(detail, 'nombreFaces'), 1));
+const price = Math.max(0, number(field(detail, 'prixUnitaire')));
+const discount = Math.min(100, Math.max(0, number(field(detail, 'remise'))));
+const tax = Math.max(0, number(field(detail, 'tva')));
+const modeField = field(detail, 'modeCalcul');
+const mode = modeField ? modeField.value : 'unite';
+let base;
+
+if (mode === 'forfait') 
+base = price;
+ else if (mode === 'metre') 
+base = price * length * quantity;
+ else if (mode === 'metre_carre') 
+base = price * surface * quantity;
+ else if (mode === 'face') 
+base = price * faces * quantity;
+ else 
+base = price * quantity;
+
+
+
+const totalHt = (base + finishingTotal(detail)) * (1 - discount / 100);
+const totalTtc = totalHt * (1 + tax / 100);
+const surfaceField = field(detail, 'surface');
+const totalHtField = field(detail, 'totalHt');
+const totalTtcField = field(detail, 'totalTtc');
+
+if (surfaceField) 
+surfaceField.value = surface.toFixed(4);
+
+
+if (totalHtField) 
+totalHtField.value = money(totalHt);
+
+
+if (totalTtcField) 
+totalTtcField.value = money(totalTtc);
+
+
+calculateSummary();
+}
+
+function calculateSummary() {
+let ht = 0;
+let ttc = 0;
+collection.querySelectorAll('.detail-devis').forEach(function (detail) {
+ht += number(field(detail, 'totalHt'));
+ttc += number(field(detail, 'totalTtc'));
+});
+const discount = Math.min(100, Math.max(0, number(globalDiscount)));
+const finalHt = ht * (1 - discount / 100);
+const ratio = ht > 0 ? ttc / ht : 1;
+const finalTtc = finalHt * ratio;
+document.getElementById('recap-total-ht').value = money(finalHt).toLocaleString('fr-FR') + ' FCFA';
+document.getElementById('recap-tva').value = money(finalTtc - finalHt).toLocaleString('fr-FR') + ' FCFA';
+document.getElementById('recap-total-ttc').value = money(finalTtc).toLocaleString('fr-FR') + ' FCFA';
+}
+
+function applyMode(detail) {
+const modeField = field(detail, 'modeConfiguration');
+const mode = modeField ? modeField.value : 'automatique';
+detail.querySelectorAll('.js-auto').forEach(el => el.style.display = mode === 'automatique' ? '' : 'none');
+detail.querySelectorAll('.js-manuel').forEach(el => el.style.display = mode === 'manuel' ? '' : 'none');
+detail.querySelectorAll('.js-dimension').forEach(el => el.style.display = mode === 'libre' ? 'none' : '');
+}
+
+function addFinishing(detail) {
+const list = detail.querySelector('.js-finitions-list');
+if (! list || ! list.dataset.prototype) 
+return;
+
+
+const index = Number.parseInt(list.dataset.index || '0', 10);
+list.insertAdjacentHTML('beforeend', list.dataset.prototype.replace(/__finition__/g, index).replace(/__name__/g, index));
+list.dataset.index = String(index + 1);
+}
+
+function bindDetail(detail) {
+if (detail.dataset.bound === '1') 
+return;
+
+
+detail.dataset.bound = '1';
+const modeField = field(detail, 'modeConfiguration');
+if (modeField) 
+modeField.addEventListener('change', function () {
+applyMode(detail);
+});
+
+
+detail.addEventListener('input', function () {
+calculateDetail(detail);
+});
+detail.addEventListener('change', function () {
+calculateDetail(detail);
+});
+detail.addEventListener('click', function (event) {
+if (event.target.closest('.js-remove-detail')) {
+detail.remove();
+updateNumbers();
+calculateSummary();
+}
+if (event.target.closest('.js-add-finition')) 
+addFinishing(detail);
+
+
+const removeFinishing = event.target.closest('.js-remove-finition');
+if (removeFinishing) {
+removeFinishing.closest('.js-finition-item').remove();
+calculateDetail(detail);
+}
+});
+applyMode(detail);
+calculateDetail(detail);
+}
+
+addButton.addEventListener('click', function () {
+const index = Number.parseInt(collection.dataset.index || '0', 10);
+const body = collection.dataset.prototype.replace(/__detail__/g, index).replace(/__name__/g, index);
+collection.dataset.index = String(index + 1);
+const wrapper = document.createElement('div');
+wrapper.className = 'detail-devis card border mb-4';
+wrapper.innerHTML = '<div class="card-header bg-light d-flex justify-content-between align-items-center">' + '<div class="card-title detail-title mb-0">Nouvelle prestation</div>' + '<button type="button" class="btn btn-danger-light btn-sm js-remove-detail"><i class="fa fa-trash mr-1"></i> Supprimer</button>' + '</div><div class="card-body p-0">' + body + '</div>';
+collection.appendChild(wrapper);
+bindDetail(wrapper);
+updateNumbers();
+});
+
+if (globalDiscount) 
+globalDiscount.addEventListener('input', calculateSummary);
+
+
+collection.querySelectorAll('.detail-devis').forEach(bindDetail);
+updateNumbers();
+calculateSummary();
+
+form.addEventListener('submit', function (event) {
+if (! collection.querySelector('.detail-devis')) {
+event.preventDefault();
+if (window.Swal) 
+Swal.fire('Détail obligatoire', 'Ajoutez au moins une prestation.', 'warning');
+ else 
+alert('Ajoutez au moins une prestation.');
+
+
+}
+});
+});
+</script>

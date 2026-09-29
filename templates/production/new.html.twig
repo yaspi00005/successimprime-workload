@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}New ProduitConfiguration{% endblock %}
+
+{% block body %}
+    <h1>Create new ProduitConfiguration</h1>
+
+    {{ include('produit_configuration/_form.html.twig') }}
+
+    <a href="{{ path('app_produit_configuration_index') }}">back to list</a>
+{% endblock %}

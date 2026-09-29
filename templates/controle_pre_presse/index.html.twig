@@ -1,0 +1,305 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Contrôle prépresse
+{% endblock %}
+
+{% block body %}
+	<div class="side-app" data-prepresse-ids-initiaux="{{ details|filter(d => d.controlesPrePresse is empty)|map(d => d.id)|join(',') }}">
+		<div class="page-header">
+			<div>
+				<h1 class="page-title">Contrôle prépresse</h1>
+				<p class="text-muted mb-0">
+					Travaux contenant des fichiers à vérifier
+				</p>
+			</div>
+
+			<div>
+				<button type="button" id="btnCouperSon" class="btn btn-warning-light mr-2" style="display: none;">
+					<i class="fe fe-volume-x mr-1"></i>
+					Couper le son
+				</button>
+
+				<a href="{{ path('app_commandes_index') }}" class="btn btn-light">
+					<i class="fe fe-arrow-left mr-1"></i>
+					Commandes
+				</a>
+			</div>
+		</div>
+
+		{% for type, messages in app.flashes %}
+			{% for message in messages %}
+				<div class="alert alert-{{ type == 'error' ? 'danger' : type }}
+																								                        alert-dismissible fade show">
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert">
+						&times;
+					</button>
+				</div>
+			{% endfor %}
+		{% endfor %}
+
+		<div class="card">
+			<div class="card-header">
+				<h3 class="card-title">Travaux à contrôler</h3>
+			</div>
+
+			<div class="card-body">
+				{% if details is empty %}
+					<div class="alert alert-info mb-0">
+						Aucun fichier n’est actuellement en attente de contrôle.
+					</div>
+				{% else %}
+					<div class="table-responsive">
+						<table class="table table-bordered table-hover">
+							<thead class="text-primary bg-light">
+								<tr>
+									<th>Commande</th>
+									<th>Client</th>
+									<th>Travail</th>
+									<th class="text-center">Fichiers</th>
+									<th>Dernier contrôle</th>
+									<th class="text-center">Action</th>
+								</tr>
+							</thead>
+
+							<tbody>
+								{% for detail in details %}
+									{% set commande = detail.commande %}
+									{% set controles = detail.controlesPrePresse %}
+									{% set dernierControle =
+                                controles is not empty
+                                    ? controles|first
+                                    : null
+                            %}
+
+									<tr>
+										<td>
+											<strong>
+												{{ commande.numero|default(
+                                            'CMD-' ~ commande.id
+                                        ) }}
+											</strong>
+
+											<small class="d-block text-muted">
+												{{ commande.dateCommande
+                                            ? commande.dateCommande
+                                                |date('d/m/Y H:i')
+                                            : '—'
+                                        }}
+											</small>
+										</td>
+
+										<td>
+											{{ commande.clients.nom
+                                        |default(
+                                            commande.clients.raisonSociale
+                                            |default('—')
+                                        )
+                                    }}
+										</td>
+
+										<td>
+											<strong>
+												{{ detail.designation|default(
+                                            detail.produit.nom
+                                            |default('Travail sans désignation')
+                                        ) }}
+											</strong>
+
+											<small class="d-block text-muted">
+												Quantité :
+												{{ detail.quantite|default(1) }}
+											</small>
+										</td>
+
+										<td class="text-center">
+											{% if detail.fichiers is empty %}
+												<span class="badge badge-danger">
+													Fichier manquant
+												</span>
+											{% else %}
+												<span class="badge badge-primary">
+													{{ detail.fichiers|length }}
+												</span>
+											{% endif %}
+										</td>
+
+										<td>
+											{% if dernierControle %}
+												{% set statutControle =
+                                            dernierControle.statut
+                                        %}
+
+												{% if statutControle ==
+                                            'envoye_production'
+                                        %}
+													<span class="badge badge-success">
+														En production
+													</span>
+												{% elseif statutControle == 'valide' %}
+													<span class="badge badge-info">
+														Validé
+													</span>
+												{% elseif statutControle ==
+                                            'correction_requise'
+                                        %}
+													<span class="badge badge-danger">
+														Correction requise
+													</span>
+												{% elseif statutControle ==
+                                            'en_attente_bat'
+                                        %}
+													<span class="badge badge-warning">
+														En attente du BAT
+													</span>
+												{% else %}
+													<span class="badge badge-secondary">
+														{{ statutControle
+                                                    |replace({'_': ' '})
+                                                    |capitalize
+                                                }}
+													</span>
+												{% endif %}
+											{% else %}
+												<span class="badge badge-warning">
+													À contrôler
+												</span>
+											{% endif %}
+										</td>
+
+										<td class="text-center">
+											{% if detail.fichiers is empty %}
+												<a href="{{ path( 'app_commandes_edit', {id: detail.commande.id} ) }}" class="btn btn-sm btn-warning">
+													<i class="fe fe-upload mr-1"></i>
+													Ajouter le fichier
+												</a>
+											{% else %}
+												<a href="{{ path( 'app_controle_pre_presse_controler', {id: detail.id} ) }}" class="btn btn-sm btn-primary">
+													<i class="fe fe-check-square mr-1"></i>
+													Contrôler
+												</a>
+											{% endif %}
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+		{{ parent() }}
+
+		<script>
+			document.addEventListener('DOMContentLoaded', function () {
+
+const conteneur = document.querySelector('.side-app');
+const idsInitiauxAttr = conteneur ? conteneur.dataset.prepresseIdsInitiaux || '' : '';
+
+let idsConnus = new Set(
+idsInitiauxAttr.split(',').filter(function (v) { return v !== ''; }).map(Number)
+);
+
+let sonActif = false;
+let intervalleSon = null;
+let audioContext = null;
+
+const boutonCouperSon = document.getElementById('btnCouperSon');
+
+function obtenirContexteAudio() {
+if (!audioContext) {
+audioContext = new (window.AudioContext || window.webkitAudioContext)();
+}
+if (audioContext.state === 'suspended') {
+audioContext.resume();
+}
+return audioContext;
+}
+
+/*
+ * Les navigateurs bloquent l'audio tant qu'il n'y a pas eu
+ * d'interaction : on débloque dès le premier clic sur la page.
+ */
+document.addEventListener('click', function () {
+obtenirContexteAudio();
+}, { once: true });
+
+function jouerBip() {
+try {
+const ctx = obtenirContexteAudio();
+const oscillateur = ctx.createOscillator();
+const gain = ctx.createGain();
+oscillateur.type = 'sine';
+oscillateur.frequency.value = 880;
+gain.gain.value = 0.2;
+oscillateur.connect(gain);
+gain.connect(ctx.destination);
+oscillateur.start();
+oscillateur.stop(ctx.currentTime + 0.25);
+} catch (erreur) {
+/* Audio indisponible : on ignore silencieusement. */
+}
+}
+
+function demarrerAlerte() {
+if (sonActif) {
+return;
+}
+
+sonActif = true;
+
+if (boutonCouperSon) {
+boutonCouperSon.style.display = '';
+}
+
+jouerBip();
+intervalleSon = setInterval(jouerBip, 1500);
+}
+
+function arreterAlerte() {
+sonActif = false;
+
+if (intervalleSon) {
+clearInterval(intervalleSon);
+intervalleSon = null;
+}
+
+if (boutonCouperSon) {
+boutonCouperSon.style.display = 'none';
+}
+}
+
+if (boutonCouperSon) {
+boutonCouperSon.addEventListener('click', arreterAlerte);
+}
+
+async function verifierNouveaux() {
+try {
+const reponse = await fetch('{{ path('app_controle_pre_presse_verifier_nouveaux') }}');
+const donnees = await reponse.json();
+const idsActuels = (donnees.ids || []).map(Number);
+
+const nouveaux = idsActuels.filter(function (id) {
+return !idsConnus.has(id);
+});
+
+idsConnus = new Set(idsActuels);
+
+if (nouveaux.length > 0) {
+demarrerAlerte();
+}
+} catch (erreur) {
+/* Réseau indisponible : on réessaiera au prochain cycle. */
+}
+}
+
+setInterval(verifierNouveaux, 20000);
+
+});
+		</script>
+	{% endblock %}

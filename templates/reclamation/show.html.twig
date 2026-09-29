@@ -1,0 +1,298 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Réclamation {{ reclamation.reference }}
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="page-header">
+
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_reclamation_index') }}">Réclamations</a>
+			</li>
+			<li class="breadcrumb-item active">
+				{{ reclamation.reference }}
+			</li>
+		</ol>
+
+		<div>
+
+			{% if peutValider and reclamation.isEnAttente %}
+
+				<button
+					type="button"
+					class="btn btn-success mr-2 js-valider-reclamation"
+					data-url="{{ path('app_reclamation_valider', {id: reclamation.id}) }}"
+					data-token="{{ csrf_token('valider_reclamation_' ~ reclamation.id) }}"
+				>
+					<i class="fa fa-check mr-1"></i>
+					Valider
+				</button>
+
+				<button
+					type="button"
+					class="btn btn-danger mr-2 js-refuser-reclamation"
+					data-url="{{ path('app_reclamation_refuser', {id: reclamation.id}) }}"
+					data-token="{{ csrf_token('refuser_reclamation_' ~ reclamation.id) }}"
+				>
+					<i class="fa fa-times mr-1"></i>
+					Refuser
+				</button>
+
+			{% endif %}
+
+			{% if peutPayer and reclamation.isValidee %}
+
+				<a href="{{ path('app_reclamation_payer', {id: reclamation.id}) }}" class="btn btn-success">
+					<i class="fa fa-money mr-1"></i>
+					Payer
+				</a>
+
+			{% endif %}
+
+		</div>
+
+	</div>
+
+	<div class="row">
+
+		<div class="col-lg-8">
+
+			<div class="card">
+
+				<div class="card-header">
+					<h3 class="card-title">
+						Détails de la demande
+					</h3>
+				</div>
+
+				<div class="card-body">
+
+					<div class="row">
+
+						<div class="col-md-6 mb-3">
+							<div class="text-muted small">Agent</div>
+							<strong>
+								{{ reclamation.agent.employe.prenom|default('') }}
+								{{ reclamation.agent.employe.nom|default(reclamation.agent.username) }}
+							</strong>
+						</div>
+
+						<div class="col-md-6 mb-3">
+							<div class="text-muted small">Montant demandé</div>
+							<strong>{{ reclamation.montant|number_format(0, ',', ' ') }} F CFA</strong>
+						</div>
+
+						<div class="col-md-6 mb-3">
+							<div class="text-muted small">Date de la demande</div>
+							<strong>{{ reclamation.dateCreation|date('d/m/Y H:i') }}</strong>
+						</div>
+
+						<div class="col-md-6 mb-3">
+							<div class="text-muted small">Justificatif</div>
+							{% if reclamation.justificatif %}
+								<a href="{{ asset('uploads/reclamations/' ~ reclamation.justificatif) }}" target="_blank">
+									<i class="fa fa-file-o mr-1"></i>
+									Voir le justificatif
+								</a>
+							{% else %}
+								<span class="text-muted">Aucun justificatif fourni</span>
+							{% endif %}
+						</div>
+
+						<div class="col-12 mb-3">
+							<div class="text-muted small">Motif</div>
+							<div>{{ reclamation.motif|nl2br }}</div>
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+			{% if reclamation.isRefusee %}
+
+				<div class="card border-danger">
+					<div class="card-body">
+						<div class="text-danger font-weight-bold mb-1">
+							<i class="fa fa-times-circle mr-1"></i>
+							Demande refusée
+						</div>
+						<div>{{ reclamation.motifRefus }}</div>
+						<div class="text-muted small mt-2">
+							Refusée le {{ reclamation.dateRefus|date('d/m/Y H:i') }}
+							{% if reclamation.refusePar %}
+								par {{ reclamation.refusePar.employe.prenom|default('') }} {{ reclamation.refusePar.employe.nom|default(reclamation.refusePar.username) }}
+							{% endif %}
+						</div>
+					</div>
+				</div>
+
+			{% endif %}
+
+			{% if reclamation.isPayee %}
+
+				<div class="card border-success">
+					<div class="card-body">
+						<div class="text-success font-weight-bold mb-1">
+							<i class="fa fa-check-circle mr-1"></i>
+							Réclamation payée
+						</div>
+						<div class="text-muted small">
+							Payée le {{ reclamation.datePaiement|date('d/m/Y H:i') }}
+							{% if reclamation.payePar %}
+								par {{ reclamation.payePar.employe.prenom|default('') }} {{ reclamation.payePar.employe.nom|default(reclamation.payePar.username) }}
+							{% endif %}
+						</div>
+						{% if reclamation.mouvementTresorerie %}
+							<div class="mt-2">
+								Mouvement de trésorerie :
+								{% if peutVoirTresorerie %}
+									<a href="{{ path('app_mouvement_tresorerie_show', {id: reclamation.mouvementTresorerie.id}) }}">
+										{{ reclamation.mouvementTresorerie.reference }}
+									</a>
+								{% else %}
+									<strong>{{ reclamation.mouvementTresorerie.reference }}</strong>
+								{% endif %}
+							</div>
+						{% endif %}
+					</div>
+				</div>
+
+			{% endif %}
+
+		</div>
+
+		<div class="col-lg-4">
+
+			<div class="card">
+				<div class="card-header">
+					<h3 class="card-title">Statut</h3>
+				</div>
+				<div class="card-body text-center">
+
+					{% if reclamation.isPayee %}
+						<span class="badge badge-success p-2" style="font-size:14px;">{{ reclamation.statutLabel }}</span>
+					{% elseif reclamation.isValidee %}
+						<span class="badge badge-info p-2" style="font-size:14px;">{{ reclamation.statutLabel }}</span>
+					{% elseif reclamation.isRefusee %}
+						<span class="badge badge-danger p-2" style="font-size:14px;">{{ reclamation.statutLabel }}</span>
+					{% else %}
+						<span class="badge badge-warning p-2" style="font-size:14px;">{{ reclamation.statutLabel }}</span>
+					{% endif %}
+
+					{% if reclamation.isValidee %}
+						<div class="text-muted small mt-3">
+							Validée le {{ reclamation.dateValidation|date('d/m/Y H:i') }}
+							{% if reclamation.validePar %}
+								par {{ reclamation.validePar.employe.prenom|default('') }} {{ reclamation.validePar.employe.nom|default(reclamation.validePar.username) }}
+							{% endif %}
+						</div>
+					{% endif %}
+
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}
+
+{% block javascripts %}
+
+	{{ parent() }}
+
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script>
+
+		document.addEventListener('DOMContentLoaded', function () {
+
+			const boutonValider = document.querySelector('.js-valider-reclamation');
+
+			if (boutonValider) {
+				boutonValider.addEventListener('click', function () {
+					Swal.fire({
+						icon: 'question',
+						title: 'Valider cette réclamation ?',
+						text: 'La caisse pourra ensuite procéder au paiement.',
+						showCancelButton: true,
+						confirmButtonText: 'Valider',
+						cancelButtonText: 'Annuler'
+					}).then(function (resultat) {
+						if (! resultat.isConfirmed) {
+							return;
+						}
+
+						fetch(boutonValider.dataset.url, {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+							body: JSON.stringify({ _token: boutonValider.dataset.token })
+						})
+							.then(function (reponse) { return reponse.json(); })
+							.then(function (donnees) {
+								if (donnees.success) {
+									Swal.fire({ icon: 'success', title: 'Validée', text: donnees.message }).then(function () {
+										window.location.reload();
+									});
+								} else {
+									Swal.fire({ icon: 'error', title: 'Erreur', text: donnees.message });
+								}
+							});
+					});
+				});
+			}
+
+			const boutonRefuser = document.querySelector('.js-refuser-reclamation');
+
+			if (boutonRefuser) {
+				boutonRefuser.addEventListener('click', function () {
+					Swal.fire({
+						icon: 'warning',
+						title: 'Refuser cette réclamation ?',
+						input: 'textarea',
+						inputLabel: 'Motif du refus',
+						inputPlaceholder: 'Expliquez pourquoi cette demande est refusée...',
+						showCancelButton: true,
+						confirmButtonText: 'Refuser',
+						cancelButtonText: 'Annuler',
+						inputValidator: function (valeur) {
+							if (! valeur || ! valeur.trim()) {
+								return 'Le motif de refus est obligatoire.';
+							}
+						}
+					}).then(function (resultat) {
+						if (! resultat.isConfirmed) {
+							return;
+						}
+
+						fetch(boutonRefuser.dataset.url, {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+							body: JSON.stringify({ _token: boutonRefuser.dataset.token, motif: resultat.value })
+						})
+							.then(function (reponse) { return reponse.json(); })
+							.then(function (donnees) {
+								if (donnees.success) {
+									Swal.fire({ icon: 'success', title: 'Refusée', text: donnees.message }).then(function () {
+										window.location.reload();
+									});
+								} else {
+									Swal.fire({ icon: 'error', title: 'Erreur', text: donnees.message });
+								}
+							});
+					});
+				});
+			}
+
+		});
+
+	</script>
+
+{% endblock %}

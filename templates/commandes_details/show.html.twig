@@ -1,0 +1,138 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}CommandesDetails{% endblock %}
+
+{% block body %}
+    <h1>CommandesDetails</h1>
+
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>Id</th>
+                <td>{{ commandes_detail.id }}</td>
+            </tr>
+            <tr>
+                <th>Designation</th>
+                <td>{{ commandes_detail.designation }}</td>
+            </tr>
+            <tr>
+                <th>Largeur</th>
+                <td>{{ commandes_detail.largeur }}</td>
+            </tr>
+            <tr>
+                <th>Longueur</th>
+                <td>{{ commandes_detail.longueur }}</td>
+            </tr>
+            <tr>
+                <th>Surface</th>
+                <td>{{ commandes_detail.surface }}</td>
+            </tr>
+            <tr>
+                <th>Quantite</th>
+                <td>{{ commandes_detail.quantite }}</td>
+            </tr>
+            <tr>
+                <th>PrixUnitaire</th>
+                <td>{{ commandes_detail.prixUnitaire }}</td>
+            </tr>
+            <tr>
+                <th>CoutRevient</th>
+                <td>{{ commandes_detail.coutRevient }}</td>
+            </tr>
+            <tr>
+                <th>Remise</th>
+                <td>{{ commandes_detail.remise }}</td>
+            </tr>
+            <tr>
+                <th>Tva</th>
+                <td>{{ commandes_detail.tva }}</td>
+            </tr>
+            <tr>
+                <th>TotalHt</th>
+                <td>{{ commandes_detail.totalHt }}</td>
+            </tr>
+            <tr>
+                <th>TotalTtc</th>
+                <td>{{ commandes_detail.totalTtc }}</td>
+            </tr>
+            <tr>
+                <th>ProfilCouleurs</th>
+                <td>{{ commandes_detail.profilCouleurs }}</td>
+            </tr>
+            <tr>
+                <th>Resolution</th>
+                <td>{{ commandes_detail.resolution }}</td>
+            </tr>
+            <tr>
+                <th>Grammage</th>
+                <td>{{ commandes_detail.grammage }}</td>
+            </tr>
+            <tr>
+                <th>Epaisseur</th>
+                <td>{{ commandes_detail.epaisseur }}</td>
+            </tr>
+            <tr>
+                <th>RectoVerso</th>
+                <td>{{ commandes_detail.rectoVerso ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>NombreFaces</th>
+                <td>{{ commandes_detail.nombreFaces }}</td>
+            </tr>
+            <tr>
+                <th>Laminage</th>
+                <td>{{ commandes_detail.laminage }}</td>
+            </tr>
+            <tr>
+                <th>Oeillets</th>
+                <td>{{ commandes_detail.oeillets ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Decoupe</th>
+                <td>{{ commandes_detail.decoupe ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Pliage</th>
+                <td>{{ commandes_detail.pliage }}</td>
+            </tr>
+            <tr>
+                <th>Emballage</th>
+                <td>{{ commandes_detail.emballage ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>BatValide</th>
+                <td>{{ commandes_detail.batValide ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Etat</th>
+                <td>{{ commandes_detail.etat ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Priorite</th>
+                <td>{{ commandes_detail.priorite }}</td>
+            </tr>
+            <tr>
+                <th>TempsEstime</th>
+                <td>{{ commandes_detail.tempsEstime }}</td>
+            </tr>
+            <tr>
+                <th>TempsReel</th>
+                <td>{{ commandes_detail.tempsReel }}</td>
+            </tr>
+            <tr>
+                <th>Fichier</th>
+                <td>{{ commandes_detail.fichier }}</td>
+            </tr>
+            <tr>
+                <th>Observation</th>
+                <td>{{ commandes_detail.observation }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <a href="{{ path('app_commandes_details_index') }}">back to list</a>
+
+    <a href="{{ path('app_commandes_details_edit', {'id': commandes_detail.id}) }}">edit</a>
+
+    {{ include('commandes_details/_delete_form.html.twig') }}
+{% endblock %}

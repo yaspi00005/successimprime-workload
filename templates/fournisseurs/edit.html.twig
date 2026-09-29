@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Modifier {{ fournisseur.nom }}
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_fournisseur_index') }}">Fournisseurs</a>
+			</li>
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_fournisseur_show', {id: fournisseur.id}) }}">{{ fournisseur.nom }}</a>
+			</li>
+			<li class="breadcrumb-item active">
+				Modifier
+			</li>
+		</ol>
+	</div>
+
+	<div class="row">
+		<div class="col-md-8">
+			<div class="card">
+				<div class="card-header">
+					<h3 class="mb-0 card-title">
+						Modifier {{ fournisseur.nom }}
+					</h3>
+				</div>
+
+				{% include 'fournisseurs/_form.html.twig' %}
+
+			</div>
+		</div>
+	</div>
+
+{% endblock %}

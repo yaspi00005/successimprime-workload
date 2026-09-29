@@ -1,0 +1,1564 @@
+{# ============================================================
+   PERMISSIONS
+   ============================================================ #}
+
+{% set estAdmin =
+    estAdmin|default(
+        is_granted('ROLE_ADMIN')
+    )
+%}
+
+{% set peutTransferer =
+    estAdmin
+    or
+    is_granted('ROLE_TRESORERIE_TRANSFERER')
+%}
+
+
+{{ form_start(form, {
+    attr: {
+        id: 'form-mouvement-tresorerie',
+        novalidate: 'novalidate',
+        autocomplete: 'off',
+        'data-est-admin': estAdmin ? '1' : '0',
+        'data-peut-transferer': peutTransferer ? '1' : '0'
+    }
+}) }}
+
+
+{# ============================================================
+   ERREUR GLOBALE
+   ============================================================ #}
+
+{% if not form.vars.valid %}
+
+	<div class="alert alert-danger border-0 shadow-sm mb-4">
+
+		<div class="d-flex align-items-start">
+
+			<i class="fa fa-exclamation-circle fa-2x mr-3"></i>
+
+			<div>
+
+				<strong>
+					Le formulaire contient des erreurs.
+				</strong>
+
+				<div>
+					Vérifiez les champs signalés avant de continuer.
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endif %}
+
+
+{# ============================================================
+   INFORMATIONS PRINCIPALES
+   ============================================================ #}
+
+<div class="card border shadow-sm mb-4">
+
+	<div class="card-header bg-light">
+
+		<h3 class="card-title text-primary mb-0">
+
+			<i class="fa fa-exchange mr-2"></i>
+
+			Informations principales
+
+		</h3>
+
+	</div>
+
+
+	<div class="card-body">
+
+		<div
+			class="row">
+
+			{# ==================================================
+						               TYPE
+						               ================================================== #}
+
+			<div class="col-md-4">
+
+				<div class="form-group">
+
+					{{ form_label(
+                        form.type,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'font-weight-bold'
+                            }
+                        }
+                    ) }}
+
+					<span class="text-danger">*</span>
+
+
+					{{ form_widget(
+                        form.type,
+                        {
+                            attr:
+                                form.type.vars.attr|merge({
+                                    class:
+                                        'form-control form-select'
+                                        ~ (
+                                            form.type.vars.errors|length
+                                            ? ' is-invalid'
+                                            : ''
+                                        )
+                                })
+                        }
+                    ) }}
+
+
+					{% for error in form.type.vars.errors %}
+
+						<div class="invalid-feedback d-block">
+
+							<i class="fa fa-exclamation-circle mr-1"></i>
+
+							{{ error.message }}
+
+						</div>
+
+					{% endfor %}
+
+				</div>
+
+			</div>
+
+
+			{# ==================================================
+						               MONTANT
+						               ================================================== #}
+
+			<div class="col-md-5">
+
+				<div class="form-group">
+
+					{{ form_label(
+                        form.montant,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'font-weight-bold'
+                            }
+                        }
+                    ) }}
+
+					<span class="text-danger">*</span>
+
+
+					<div class="input-group">
+
+						{{ form_widget(
+                            form.montant,
+                            {
+                                attr:
+                                    form.montant.vars.attr|merge({
+                                        class:
+                                            'form-control montant-input text-right'
+                                            ~ (
+                                                form.montant.vars.errors|length
+                                                ? ' is-invalid'
+                                                : ''
+                                            )
+                                    })
+                            }
+                        ) }}
+
+
+						<div class="input-group-append">
+
+							<span class="input-group-text font-weight-bold">
+								FCFA
+							</span>
+
+						</div>
+
+					</div>
+
+
+					{% for error in form.montant.vars.errors %}
+
+						<div class="invalid-feedback d-block">
+
+							<i class="fa fa-exclamation-circle mr-1"></i>
+
+							{{ error.message }}
+
+						</div>
+
+					{% endfor %}
+
+
+					<small class="form-text text-muted">
+						Exemple : 25 000
+					</small>
+
+				</div>
+
+			</div>
+
+
+			{# ==================================================
+						               DEVISE
+						               ================================================== #}
+
+			<div class="col-md-3">
+
+				<div class="form-group">
+
+					{{ form_label(
+                        form.devise,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'font-weight-bold'
+                            }
+                        }
+                    ) }}
+
+
+					{{ form_widget(
+                        form.devise,
+                        {
+                            attr:
+                                form.devise.vars.attr|merge({
+                                    class:
+                                        'form-control form-select'
+                                })
+                        }
+                    ) }}
+
+					{{ form_errors(form.devise) }}
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ======================================================
+				           COMPTES
+				           ====================================================== #}
+
+		<div
+			class="row">
+
+			{# SOURCE #}
+
+			<div id="blocCompteSource" class="col-md-6">
+
+				<div class="form-group">
+
+					{{ form_label(
+                        form.compteSource,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'font-weight-bold'
+                            }
+                        }
+                    ) }}
+
+					<span class="text-danger">*</span>
+
+
+					{{ form_widget(
+                        form.compteSource,
+                        {
+                            attr:
+                                form.compteSource.vars.attr|merge({
+                                    class:
+                                        'form-control form-select'
+                                        ~ (
+                                            form.compteSource.vars.errors|length
+                                            ? ' is-invalid'
+                                            : ''
+                                        )
+                                })
+                        }
+                    ) }}
+
+
+					{% for error in form.compteSource.vars.errors %}
+
+						<div class="invalid-feedback d-block">
+
+							<i class="fa fa-exclamation-circle mr-1"></i>
+
+							{{ error.message }}
+
+						</div>
+
+					{% endfor %}
+
+
+					<small class="form-text text-muted">
+
+						Le montant sera retiré de ce compte.
+
+					</small>
+
+				</div>
+
+			</div>
+
+
+			{# DESTINATION #}
+
+			<div id="blocCompteDestination" class="col-md-6">
+
+				<div class="form-group">
+
+					{{ form_label(
+                        form.compteDestination,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'font-weight-bold'
+                            }
+                        }
+                    ) }}
+
+					<span class="text-danger">*</span>
+
+
+					{{ form_widget(
+                        form.compteDestination,
+                        {
+                            attr:
+                                form.compteDestination.vars.attr|merge({
+                                    class:
+                                        'form-control form-select'
+                                        ~ (
+                                            form.compteDestination.vars.errors|length
+                                            ? ' is-invalid'
+                                            : ''
+                                        )
+                                })
+                        }
+                    ) }}
+
+
+					{% for error in form.compteDestination.vars.errors %}
+
+						<div class="invalid-feedback d-block">
+
+							<i class="fa fa-exclamation-circle mr-1"></i>
+
+							{{ error.message }}
+
+						</div>
+
+					{% endfor %}
+
+
+					<small class="form-text text-muted">
+
+						Le montant sera ajouté à ce compte.
+
+					</small>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ======================================================
+				           INFORMATION SUR LE TYPE
+				           ====================================================== #}
+
+		<div id="informationMouvement" class="alert alert-light border mt-2 mb-0">
+
+			<i class="fa fa-info-circle mr-2"></i>
+
+			<span id="texteInformationMouvement">
+				Sélectionnez le type de mouvement.
+			</span>
+
+		</div>
+
+	</div>
+
+</div>
+
+
+{# ============================================================
+   CLASSIFICATION FINANCIÈRE
+   ============================================================ #}
+
+<div id="blocClassificationFinanciere" class="card border shadow-sm mb-4">
+
+	<div class="card-header bg-light">
+
+		<h3 class="card-title text-primary mb-0">
+
+			<i class="fa fa-pie-chart mr-2"></i>
+
+			Classification financière
+
+		</h3>
+
+	</div>
+
+
+	<div class="card-body">
+
+		<div id="blocCategorieFinanciere" class="form-group">
+
+			{{ form_label(
+                form.categorie,
+                null,
+                {
+                    label_attr: {
+                        class: 'font-weight-bold'
+                    }
+                }
+            ) }}
+
+			<span class="text-danger">*</span>
+
+
+			{{ form_widget(
+                form.categorie,
+                {
+                    attr:
+                        form.categorie.vars.attr|merge({
+                            class:
+                                'form-control form-select'
+                                ~ (
+                                    form.categorie.vars.errors|length
+                                    ? ' is-invalid'
+                                    : ''
+                                )
+                        })
+                }
+            ) }}
+
+
+			{% for error in form.categorie.vars.errors %}
+
+				<div class="invalid-feedback d-block">
+
+					<i class="fa fa-exclamation-circle mr-1"></i>
+
+					{{ error.message }}
+
+				</div>
+
+			{% endfor %}
+
+
+			{% if form.categorie.vars.help %}
+
+				<small class="form-text text-muted">
+					{{ form.categorie.vars.help }}
+				</small>
+
+			{% endif %}
+
+		</div>
+
+
+		{# ======================================================
+				           INFORMATION TRANSFERT
+				           ====================================================== #}
+
+		<div id="informationTransfertNeutre" class="alert alert-info mb-0" style="display:none;">
+
+			<i class="fa fa-exchange mr-2"></i>
+
+			<strong>Transfert interne</strong>
+
+			<div class="mt-1">
+
+				Ce déplacement d'argent modifie les soldes des deux
+								                comptes mais n'est ni une recette ni une charge.
+
+			</div>
+
+			<div class="mt-1">
+
+				Il n'a donc aucun impact sur le résultat mensuel.
+
+			</div>
+
+		</div>
+
+	</div>
+
+</div>
+
+
+{# ============================================================
+   DÉTAILS DE L'OPÉRATION
+   ============================================================ #}
+
+<div class="card border shadow-sm mb-4">
+
+	<div class="card-header bg-light">
+
+		<h3 class="card-title text-primary mb-0">
+
+			<i class="fa fa-file-text-o mr-2"></i>
+
+			Détails de l’opération
+
+		</h3>
+
+	</div>
+
+
+	<div class="card-body">
+
+		<div
+			class="row">
+
+			{# LIBELLÉ #}
+
+			<div class="col-md-6">
+
+				<div class="form-group">
+
+					{{ form_label(
+                        form.libelle,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'font-weight-bold'
+                            }
+                        }
+                    ) }}
+
+					<span class="text-danger">*</span>
+
+
+					{{ form_widget(
+                        form.libelle,
+                        {
+                            attr:
+                                form.libelle.vars.attr|merge({
+                                    class:
+                                        'form-control'
+                                        ~ (
+                                            form.libelle.vars.errors|length
+                                            ? ' is-invalid'
+                                            : ''
+                                        )
+                                })
+                        }
+                    ) }}
+
+
+					{% for error in form.libelle.vars.errors %}
+
+						<div class="invalid-feedback d-block">
+
+							<i class="fa fa-exclamation-circle mr-1"></i>
+
+							{{ error.message }}
+
+						</div>
+
+					{% endfor %}
+
+				</div>
+
+			</div>
+
+
+			{# DATE #}
+
+			<div class="col-md-6">
+
+				{% if form.dateOperation is defined %}
+
+					<div class="form-group">
+
+						{{ form_label(
+                        form.dateOperation,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'font-weight-bold'
+                            }
+                        }
+                    ) }}
+
+						<span class="text-danger">*</span>
+
+
+						{{ form_widget(
+                        form.dateOperation,
+                        {
+                            attr:
+                                form.dateOperation.vars.attr|merge({
+                                    class:
+                                        'form-control'
+                                        ~ (
+                                            form.dateOperation.vars.errors|length
+                                            ? ' is-invalid'
+                                            : ''
+                                        )
+                                })
+                        }
+                    ) }}
+
+						{% if form.dateOperation.vars.help %}
+							<small class="form-text text-muted">
+								{{ form.dateOperation.vars.help }}
+							</small>
+						{% endif %}
+
+						{{ form_errors(form.dateOperation) }}
+
+					</div>
+
+				{% else %}
+
+					<div class="form-group">
+
+						<label class="font-weight-bold">
+							Date de l’opération
+						</label>
+
+						<div class="alert alert-light border mb-0">
+							<i class="fa fa-lock mr-1"></i>
+							La date actuelle sera appliquée automatiquement.
+						</div>
+
+					</div>
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+
+		<div
+			class="row">
+
+			{# MODE #}
+
+			<div class="col-md-6">
+
+				<div class="form-group">
+
+					{{ form_label(
+                        form.modePaiement,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'font-weight-bold'
+                            }
+                        }
+                    ) }}
+
+
+					{{ form_widget(
+                        form.modePaiement,
+                        {
+                            attr:
+                                form.modePaiement.vars.attr|merge({
+                                    class:
+                                        'form-control form-select'
+                                })
+                        }
+                    ) }}
+
+					{{ form_errors(form.modePaiement) }}
+
+				</div>
+
+			</div>
+
+
+			{# RÉFÉRENCE #}
+
+			<div class="col-md-6">
+
+				<div class="form-group">
+
+					{{ form_label(
+                        form.referenceExterne,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'font-weight-bold'
+                            }
+                        }
+                    ) }}
+
+
+					{{ form_widget(
+                        form.referenceExterne,
+                        {
+                            attr:
+                                form.referenceExterne.vars.attr|merge({
+                                    class:
+                                        'form-control'
+                                })
+                        }
+                    ) }}
+
+
+					{{ form_help(form.referenceExterne) }}
+
+					{{ form_errors(form.referenceExterne) }}
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# DESCRIPTION #}
+
+		<div class="form-group">
+
+			{{ form_label(
+                form.description,
+                null,
+                {
+                    label_attr: {
+                        class: 'font-weight-bold'
+                    }
+                }
+            ) }}
+
+
+			{{ form_widget(
+                form.description,
+                {
+                    attr:
+                        form.description.vars.attr|merge({
+                            class: 'form-control',
+                            rows: 4
+                        })
+                }
+            ) }}
+
+			{{ form_errors(form.description) }}
+
+		</div>
+
+
+		{# ======================================================
+				           CONFIDENTIEL
+				           ADMIN UNIQUEMENT
+				           ====================================================== #}
+
+		{% if estAdmin and form.confidentiel is defined %}
+
+			<div class="card border-warning mt-4">
+
+				<div class="card-body">
+
+					<div class="custom-control custom-checkbox">
+
+						{{ form_widget(
+                            form.confidentiel,
+                            {
+                                attr:
+                                    form.confidentiel.vars.attr|merge({
+                                        class:
+                                            'custom-control-input'
+                                    })
+                            }
+                        ) }}
+
+
+						{{ form_label(
+                            form.confidentiel,
+                            null,
+                            {
+                                label_attr: {
+                                    class:
+                                        'custom-control-label font-weight-bold'
+                                }
+                            }
+                        ) }}
+
+					</div>
+
+
+					{% if form.confidentiel.vars.help %}
+
+						<small class="form-text text-muted mt-2">
+
+							{{ form.confidentiel.vars.help }}
+
+						</small>
+
+					{% endif %}
+
+
+					{{ form_errors(form.confidentiel) }}
+
+				</div>
+
+			</div>
+
+		{% endif %}
+
+	</div>
+
+</div>
+
+
+{# ============================================================
+   SÉCURITÉ / INFORMATION
+   ============================================================ #}
+
+<div class="alert alert-info border-0 shadow-sm">
+
+	<i class="fa fa-shield mr-2"></i>
+
+
+	{% if estAdmin %}
+
+		Vous gérez les comptes administratifs et partagés.
+				        Les caisses personnelles restent sous la responsabilité
+				        de leurs propriétaires.
+
+	{% else %}
+
+		Vous pouvez gérer votre caisse personnelle ainsi que les
+				        comptes partagés autorisés. Vous ne pouvez pas utiliser
+				        la caisse personnelle d'un autre agent.
+
+	{% endif %}
+
+</div>
+
+
+{# ============================================================
+   ACTIONS
+   ============================================================ #}
+
+<div class="d-flex justify-content-between align-items-center mt-4">
+
+	<small class="text-muted">
+
+		<span class="text-danger">*</span>
+
+		Champs obligatoires
+
+	</small>
+
+
+	<div>
+
+		<a href="{{ path('app_mouvement_tresorerie_index') }}" class="btn btn-light border mr-2">
+
+			<i class="fa fa-arrow-left mr-1"></i>
+
+			Retour
+
+		</a>
+
+
+		<button type="submit" id="boutonEnregistrerMouvement" class="btn btn-primary">
+
+			<i class="fa fa-save mr-1"></i>
+
+			{{ bouton_label|default(
+                'Enregistrer le mouvement'
+            ) }}
+
+		</button>
+
+	</div>
+
+</div>
+
+
+{{ form_end(form) }}
+
+
+<script>
+	document.addEventListener('DOMContentLoaded', function () { /*
+         * ========================================================
+         * FORMULAIRE
+         * ========================================================
+         */
+
+const formulaire = document.getElementById('form-mouvement-tresorerie');
+
+
+if (! formulaire) {
+return;
+}
+
+
+const estAdmin = formulaire.dataset.estAdmin === '1';
+
+
+const peutTransferer = formulaire.dataset.peutTransferer === '1';
+
+
+/*
+         * ========================================================
+         * CHAMPS
+         * ========================================================
+         */
+
+const typeMouvement = document.getElementById({{ form.type.vars.id|json_encode|raw }});
+
+
+const champMontant = document.getElementById({{ form.montant.vars.id|json_encode|raw }});
+
+
+const champSource = document.getElementById({{ form.compteSource.vars.id|json_encode|raw }});
+
+
+const champDestination = document.getElementById({{ form.compteDestination.vars.id|json_encode|raw }});
+
+
+const champCategorie = document.getElementById({{ form.categorie.vars.id|json_encode|raw }});
+
+
+const blocSource = document.getElementById('blocCompteSource');
+
+
+const blocDestination = document.getElementById('blocCompteDestination');
+
+
+const blocCategorie = document.getElementById('blocCategorieFinanciere');
+
+
+const infoTransfert = document.getElementById('informationTransfertNeutre');
+
+
+const texteInformation = document.getElementById('texteInformationMouvement');
+
+
+const boutonEnregistrer = document.getElementById('boutonEnregistrerMouvement');
+
+
+/*
+         * ========================================================
+         * TRANSFERT INTERNE
+         * ========================================================
+         */
+
+const CATEGORIE_TRANSFERT = 'transfert_interne';
+
+
+/*
+         * ========================================================
+         * RETIRER TRANSFERT SI PAS AUTORISÉ
+         * ========================================================
+         */
+
+if (typeMouvement && ! peutTransferer) {
+Array.from(typeMouvement.options).forEach(function (option) {
+
+if (option.value === 'transfert') {
+option.remove();
+}
+
+});
+
+
+if (typeMouvement.value === 'transfert') {
+typeMouvement.value = '';
+}
+}
+
+
+/*
+         * ========================================================
+         * MASQUER TRANSFERT_INTERNE DU CHOIX MANUEL
+         * ========================================================
+         *
+         * La valeur reste dans le SELECT pour être sélectionnée
+         * automatiquement lors d'un transfert.
+         * ========================================================
+         */
+
+if (champCategorie) {
+
+Array.from(champCategorie.options).forEach(function (option) {
+
+if (option.value === CATEGORIE_TRANSFERT) {
+option.hidden = true;
+}
+
+});
+}
+
+
+/*
+         * ========================================================
+         * FORMATAGE MONTANT
+         * ========================================================
+         */
+
+function formaterMontant(valeur) {
+const chiffres = String(valeur || '').replace(/\D/g, '');
+
+
+if (chiffres === '') {
+return '';
+}
+
+
+return chiffres.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+
+if (champMontant) {
+
+champMontant.value = formaterMontant(champMontant.value);
+
+
+champMontant.addEventListener('input', function () {
+
+const position = this.selectionStart;
+
+
+const ancienneLongueur = this.value.length;
+
+
+this.value = formaterMontant(this.value);
+
+
+const nouvelleLongueur = this.value.length;
+
+
+const nouvellePosition = Math.max(0, position + nouvelleLongueur - ancienneLongueur);
+
+
+this.setSelectionRange(nouvellePosition, nouvellePosition);
+});
+}
+
+
+/*
+         * ========================================================
+         * AFFICHER / CACHER UN COMPTE
+         * ========================================================
+         */
+
+function afficherBloc(bloc, champ, visible) {
+if (! bloc) {
+return;
+}
+
+
+bloc.style.display = visible ? '' : 'none';
+
+
+if (champ) {
+
+champ.required = visible;
+
+
+champ.disabled = ! visible;
+
+
+if (! visible) {
+
+champ.value = '';
+
+
+champ.setCustomValidity('');
+}
+}
+}
+
+
+/*
+         * ========================================================
+         * CONTRÔLER LE TRANSFERT
+         * ========================================================
+         */
+
+function verifierTransfert() {
+if (! typeMouvement || typeMouvement.value !== 'transfert') {
+if (champDestination) {
+champDestination.setCustomValidity('');
+}
+
+
+return true;
+}
+
+
+if (! champSource || ! champDestination) {
+return false;
+}
+
+
+const memeCompte = champSource.value !== '' && champDestination.value !== '' && champSource.value === champDestination.value;
+
+
+champDestination.setCustomValidity(memeCompte ? 'Les comptes source et destination doivent être différents.' : '');
+
+
+return ! memeCompte;
+}
+
+
+/*
+         * ========================================================
+         * CATÉGORIE
+         * ========================================================
+         */
+
+function actualiserCategorie() {
+if (! typeMouvement || ! champCategorie) {
+return;
+}
+
+
+const estTransfert = typeMouvement.value === 'transfert';
+
+
+if (estTransfert) { /*
+                 * Catégorie automatiquement imposée.
+                 */
+champCategorie.value = CATEGORIE_TRANSFERT;
+
+
+/*
+                 * Elle doit rester enabled pour être
+                 * envoyée au serveur.
+                 */
+champCategorie.disabled = false;
+
+
+/*
+                 * L'utilisateur n'a pas besoin
+                 * de voir le select.
+                 */
+if (blocCategorie) {
+blocCategorie.style.display = 'none';
+}
+
+
+if (infoTransfert) {
+infoTransfert.style.display = '';
+}
+
+
+return;
+}
+
+
+/*
+             * Mouvement ordinaire.
+             */
+if (blocCategorie) {
+blocCategorie.style.display = '';
+}
+
+
+if (infoTransfert) {
+infoTransfert.style.display = 'none';
+}
+
+
+/*
+             * Si l'utilisateur revient de Transfert
+             * vers Encaissement/Décaissement,
+             * on retire transfert_interne.
+             */
+if (champCategorie.value === CATEGORIE_TRANSFERT) {
+champCategorie.value = '';
+}
+}
+
+
+/*
+         * ========================================================
+         * INFORMATION TYPE
+         * ========================================================
+         */
+
+function actualiserInformation(type) {
+if (! texteInformation) {
+return;
+}
+
+
+switch (type) {
+
+case 'encaissement': texteInformation.textContent = 'L’argent sera ajouté au compte destination sélectionné.';
+
+break;
+
+
+case 'decaissement': texteInformation.textContent = 'L’argent sera retiré du compte source sélectionné.';
+
+break;
+
+
+case 'transfert': texteInformation.textContent = 'L’argent quittera le compte source et sera crédité sur le compte destination. Le transfert est neutre dans le résultat mensuel.';
+
+break;
+
+
+default: texteInformation.textContent = 'Sélectionnez le type de mouvement.';
+}
+}
+
+
+/*
+         * ========================================================
+         * ACTUALISER INTERFACE
+         * ========================================================
+         */
+
+function actualiserInterface() {
+if (! typeMouvement) {
+return;
+}
+
+
+const type = typeMouvement.value;
+
+
+/*
+             * Sécurité visuelle.
+             */
+if (type === 'transfert' && ! peutTransferer) {
+typeMouvement.value = '';
+
+
+afficherBloc(blocSource, champSource, false);
+
+
+afficherBloc(blocDestination, champDestination, false);
+
+
+actualiserCategorie();
+
+
+Swal.fire({
+icon: 'error',
+
+title: 'Action non autorisée',
+
+text: 'Vous n’êtes pas autorisé à effectuer un transfert.',
+
+confirmButtonText: 'D’accord',
+
+confirmButtonColor: '#6259ca'
+});
+
+
+return;
+}
+
+
+/*
+             * Encaissement :
+             *
+             * destination uniquement.
+             */
+afficherBloc(blocSource, champSource, type === 'decaissement' || type === 'transfert');
+
+
+/*
+             * Décaissement :
+             *
+             * source uniquement.
+             *
+             * Transfert :
+             *
+             * source + destination.
+             */
+afficherBloc(blocDestination, champDestination, type === 'encaissement' || type === 'transfert');
+
+
+actualiserCategorie();
+
+
+actualiserInformation(type);
+
+
+verifierTransfert();
+}
+
+
+/*
+         * ========================================================
+         * EVENTS
+         * ========================================================
+         */
+
+if (typeMouvement) {
+
+typeMouvement.addEventListener('change', actualiserInterface);
+}
+
+
+if (champSource) {
+
+champSource.addEventListener('change', verifierTransfert);
+}
+
+
+if (champDestination) {
+
+champDestination.addEventListener('change', verifierTransfert);
+}
+
+
+/*
+         * ========================================================
+         * SUBMIT
+         * ========================================================
+         */
+
+formulaire.addEventListener('submit', function (event) {
+
+const type = typeMouvement ? typeMouvement.value : '';
+
+
+/*
+                 * ================================================
+                 * TRANSFERT NON AUTORISÉ
+                 * ================================================
+                 */
+
+if (type === 'transfert' && ! peutTransferer) {
+event.preventDefault();
+
+
+Swal.fire({
+icon: 'error',
+
+title: 'Action non autorisée',
+
+text: 'Vous n’êtes pas autorisé à effectuer un transfert.',
+
+confirmButtonText: 'Corriger',
+
+confirmButtonColor: '#6259ca'
+});
+
+
+return;
+}
+
+
+/*
+                 * ================================================
+                 * TRANSFERT
+                 * ================================================
+                 */
+
+if (type === 'transfert') { /*
+                     * Réimpose la catégorie au dernier moment.
+                     */
+if (champCategorie) {
+
+champCategorie.value = CATEGORIE_TRANSFERT;
+
+
+champCategorie.disabled = false;
+}
+
+
+if (! verifierTransfert()) {
+
+event.preventDefault();
+
+
+Swal.fire({
+icon: 'error',
+
+title: 'Comptes identiques',
+
+text: 'Sélectionnez deux comptes différents.',
+
+confirmButtonText: 'Corriger',
+
+confirmButtonColor: '#6259ca'
+});
+
+
+if (champDestination) {
+champDestination.focus();
+}
+
+
+return;
+}
+}
+
+
+/*
+                 * ================================================
+                 * VALIDATION HTML
+                 * ================================================
+                 */
+
+if (! formulaire.checkValidity()) {
+event.preventDefault();
+
+
+formulaire.classList.add('was-validated');
+
+
+Swal.fire({
+icon: 'error',
+
+title: 'Formulaire incomplet',
+
+text: 'Veuillez vérifier les champs obligatoires.',
+
+confirmButtonText: 'Vérifier',
+
+confirmButtonColor: '#6259ca'
+});
+
+
+const premierChampInvalide = formulaire.querySelector(':invalid');
+
+
+if (premierChampInvalide) {
+premierChampInvalide.focus();
+}
+
+
+return;
+}
+
+
+/*
+                 * ================================================
+                 * CONFIRMATION
+                 * ================================================
+                 *
+                 * Une erreur de montant ou de compte a un impact
+                 * réel sur les soldes : on demande toujours une
+                 * confirmation récapitulative avant d'enregistrer.
+                 * ================================================
+                 */
+
+if (! formulaire.dataset.confirme) {
+
+event.preventDefault();
+
+
+const typeLabel = typeMouvement && typeMouvement.selectedIndex > -1 ? typeMouvement.options[typeMouvement.selectedIndex].text : '';
+
+
+const montantTexte = champMontant ? champMontant.value : '';
+
+
+const sourceTexte = champSource && ! champSource.disabled && champSource.selectedIndex > -1 ? champSource.options[champSource.selectedIndex].text : '';
+
+
+const destinationTexte = champDestination && ! champDestination.disabled && champDestination.selectedIndex > -1 ? champDestination.options[champDestination.selectedIndex].text : '';
+
+
+let recap = '<div class="text-left">';
+
+recap += '<strong>' + typeLabel + '</strong><br>';
+
+recap += 'Montant : <strong>' + montantTexte + ' FCFA</strong>';
+
+
+if (sourceTexte) {
+recap += '<br>Compte source : ' + sourceTexte;
+}
+
+
+if (destinationTexte) {
+recap += '<br>Compte destination : ' + destinationTexte;
+}
+
+recap += '</div>';
+
+
+Swal.fire({
+icon: 'question',
+
+title: 'Confirmer ce mouvement ?',
+
+html: recap,
+
+showCancelButton: true,
+
+confirmButtonText: 'Oui, enregistrer',
+
+cancelButtonText: 'Vérifier',
+
+confirmButtonColor: '#6259ca'
+}).then(function (resultat) {
+
+if (resultat.isConfirmed) {
+
+formulaire.dataset.confirme = '1';
+
+formulaire.requestSubmit();
+}
+});
+
+
+return;
+}
+
+
+/*
+                 * ================================================
+                 * MONTANT
+                 * ================================================
+                 *
+                 * 25 000
+                 * →
+                 * 25000
+                 * ================================================
+                 */
+
+if (champMontant) {
+
+champMontant.value = champMontant.value.replace(/\s/g, '');
+}
+
+
+/*
+                 * ================================================
+                 * BOUTON
+                 * ================================================
+                 */
+
+if (boutonEnregistrer) {
+
+boutonEnregistrer.disabled = true;
+
+
+boutonEnregistrer.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>' + ' Enregistrement...';
+}
+});
+
+
+/*
+         * ========================================================
+         * INITIALISATION
+         * ========================================================
+         */
+
+actualiserInterface();
+});
+</script>

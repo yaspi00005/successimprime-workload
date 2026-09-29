@@ -1,0 +1,307 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Vue d'ensemble production
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_production_index') }}">
+						Production
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					Vue d'ensemble
+				</li>
+
+			</ol>
+
+			<div>
+
+				<a href="{{ path('app_production_index') }}" class="btn btn-secondary">
+					<i class="fa fa-th-large mr-1"></i>
+					Atelier
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+		   INFORMATION
+		   ============================================================ #}
+
+		<div class="alert alert-info">
+			<i class="fa fa-info-circle mr-2"></i>
+
+			Cette liste regroupe tous les travaux en production
+			(à produire, en cours, en pause), sans dépendre d'une
+			connexion à une machine d'impression.
+		</div>
+
+
+		{# ============================================================
+		   LISTE
+		   ============================================================ #}
+
+		<div class="card">
+
+			<div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+
+				<h3 class="card-title mb-0">
+					<i class="fa fa-list mr-2"></i>
+					Travaux en production
+					<span class="badge badge-primary ml-2">
+						{{ ordres|length }}
+					</span>
+				</h3>
+
+				<div class="mt-2 mt-md-0">
+					<input type="text" id="rechercheApercu" class="form-control" placeholder="Rechercher : ordre, commande, client, machine..." style="min-width: 280px;">
+				</div>
+
+			</div>
+
+			<div class="card-body p-0">
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered table-hover mb-0">
+
+						<thead>
+							<tr>
+								<th>Ordre</th>
+								<th>Commande / Client</th>
+								<th>Désignation</th>
+								<th>Priorité</th>
+								<th>Machine</th>
+								<th>Opérateur</th>
+								<th>Statut</th>
+								<th>Planification</th>
+								<th>Délai</th>
+								<th class="text-center">Action</th>
+							</tr>
+						</thead>
+
+						<tbody id="tableApercu">
+
+							{% for ordre in ordres %}
+
+								{% set detail = ordre.commandeDetail %}
+								{% set commande = detail ? detail.commande : null %}
+								{% set client = commande ? commande.clients : null %}
+
+								{% set operateurTexte = '' %}
+
+								{% if ordre.operateur %}
+									{% set operateurTexte =
+										ordre.operateur.employe.nom
+										|default(
+											ordre.operateur.username
+											|default(
+												ordre.operateur.email
+												|default('')
+											)
+										)
+									%}
+								{% endif %}
+
+								{% set recherche = (
+									ordre.numero ~ ' ' ~
+									(commande ? commande.numero|default('') : '') ~ ' ' ~
+									(client ? client.nomComplet|default(client.nom|default('')) : '') ~ ' ' ~
+									(detail ? detail.designation|default('') : '') ~ ' ' ~
+									(ordre.machine ? ordre.machine.nom : '') ~ ' ' ~
+									operateurTexte
+								)|lower %}
+
+								<tr class="js-apercu-row" data-recherche="{{ recherche|e('html_attr') }}">
+
+									<td>
+										<strong>
+											{{ ordre.numero }}
+										</strong>
+									</td>
+
+									<td>
+										{% if commande %}
+											<strong>
+												{{ commande.numero|default('CMD-' ~ commande.id) }}
+											</strong>
+
+											{% if client %}
+												<div>
+													<small class="text-muted">
+														{{ client.nomComplet|default(client.nom|default('Client')) }}
+													</small>
+												</div>
+											{% endif %}
+										{% else %}
+											<span class="text-muted">—</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{{ detail ? detail.designation|default('—') : '—' }}
+									</td>
+
+									<td>
+										{% if ordre.priorite == 'urgente' %}
+											<span class="badge badge-danger">
+												Urgente
+											</span>
+										{% elseif ordre.priorite == 'haute' %}
+											<span class="badge badge-warning">
+												Haute
+											</span>
+										{% elseif ordre.priorite == 'basse' %}
+											<span class="badge badge-secondary">
+												Basse
+											</span>
+										{% else %}
+											<span class="badge badge-info">
+												{{ ordre.priorite|default('normale')|capitalize }}
+											</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if ordre.machine %}
+											<strong>
+												{{ ordre.machine.nom }}
+											</strong>
+										{% else %}
+											<span class="text-muted">
+												Non affectée
+											</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if operateurTexte %}
+											{{ operateurTexte }}
+										{% else %}
+											<span class="text-muted">—</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if ordre.statut == 'a_produire' %}
+											<span class="badge badge-secondary p-2">
+												À produire
+											</span>
+										{% elseif ordre.statut == 'en_cours' %}
+											<span class="badge badge-primary p-2">
+												En cours
+											</span>
+										{% elseif ordre.statut == 'en_pause' %}
+											<span class="badge badge-warning p-2">
+												En pause
+											</span>
+										{% else %}
+											<span class="badge badge-light p-2">
+												{{ ordre.statut|replace({'_': ' '})|capitalize }}
+											</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if ordre.debutPrevuLe %}
+											<small class="text-muted">
+												Début :
+											</small>
+											{{ ordre.debutPrevuLe|date('d/m/Y H:i') }}
+										{% else %}
+											<span class="text-muted">—</span>
+										{% endif %}
+									</td>
+
+									<td>
+										{% if ordre.dateLimite %}
+											{{ ordre.dateLimite|date('d/m/Y') }}
+										{% else %}
+											<span class="text-muted">—</span>
+										{% endif %}
+									</td>
+
+									<td class="text-center">
+										<a href="{{ path('app_production_show', {id: ordre.id}) }}" class="btn btn-sm btn-primary" title="Consulter">
+											<i class="fa fa-eye"></i>
+										</a>
+									</td>
+
+								</tr>
+
+							{% else %}
+
+								<tr>
+									<td colspan="10" class="text-center text-muted py-5">
+										<i class="fa fa-check-circle fa-3x mb-3"></i>
+										<p>
+											Aucun travail en production actuellement.
+										</p>
+									</td>
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+/*
+ * Actualisation automatique toutes les 90 secondes, pour que
+ * l'écran affiché en continu en atelier reste à jour sans
+ * intervention.
+ */
+setTimeout(function () {
+window.location.reload();
+}, 90000);
+
+const champRecherche = document.getElementById('rechercheApercu');
+const lignes = document.querySelectorAll('#tableApercu .js-apercu-row');
+
+if (! champRecherche) {
+return;
+}
+
+champRecherche.addEventListener('input', function () {
+
+const terme = this.value.trim().toLowerCase();
+
+lignes.forEach(function (ligne) {
+
+const contenu = ligne.dataset.recherche || '';
+
+ligne.style.display = contenu.includes(terme) ? '' : 'none';
+});
+});
+
+});
+	</script>
+{% endblock %}

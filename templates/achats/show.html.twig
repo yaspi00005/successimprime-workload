@@ -1,0 +1,187 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	{{ achat.numero|default('Demande d’achat #' ~ achat.id) }}
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+	<div class="side-app">
+		<div class="page-header">
+
+			<div>
+				<h1 class="page-title">
+					{{ achat.numero|default('Brouillon #' ~ achat.id) }}
+
+					{% if achat.statut == 'recu' %}
+						<span class="badge badge-success ml-2">Reçu</span>
+					{% elseif achat.statut == 'annule' %}
+						<span class="badge badge-light ml-2">Annulé</span>
+					{% else %}
+						<span class="badge badge-warning ml-2">Demande en attente</span>
+					{% endif %}
+				</h1>
+
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item">
+						<a href="{{ path('app_achat_index') }}">Achats</a>
+					</li>
+					<li class="breadcrumb-item active">
+						{{ achat.numero|default('#' ~ achat.id) }}
+					</li>
+				</ol>
+			</div>
+
+			{% if achat.statut == 'demande' %}
+
+				<div class="ml-auto btn-group">
+
+					<a href="{{ path('app_achat_edit', {id: achat.id}) }}" class="btn btn-primary-light">
+						<i class="fa fa-pencil mr-1"></i>
+						Modifier
+					</a>
+
+					<form method="post" action="{{ path('app_achat_recevoir', {id: achat.id}) }}" class="d-inline" onsubmit="return confirm('Confirmer la réception ? Le stock des articles sera mis à jour.');">
+						<input type="hidden" name="_token" value="{{ csrf_token('recevoir_achat' ~ achat.id) }}">
+						<button type="submit" class="btn btn-success-light">
+							<i class="fa fa-check mr-1"></i>
+							Marquer comme reçu
+						</button>
+					</form>
+
+					<form method="post" action="{{ path('app_achat_annuler', {id: achat.id}) }}" class="d-inline" onsubmit="return confirm('Annuler cette demande d’achat ?');">
+						<input type="hidden" name="_token" value="{{ csrf_token('annuler_achat' ~ achat.id) }}">
+						<button type="submit" class="btn btn-danger-light">
+							<i class="fa fa-ban mr-1"></i>
+							Annuler
+						</button>
+					</form>
+
+				</div>
+
+			{% endif %}
+
+		</div>
+
+
+		<div class="row">
+
+			<div class="col-lg-4">
+
+				<div class="card">
+					<div class="card-header">
+						<h3 class="card-title">Informations</h3>
+					</div>
+					<div class="card-body">
+
+						<table class="table table-borderless mb-0">
+							<tr>
+								<th>Fournisseur</th>
+								<td>
+									{% if achat.fournisseur %}
+										<a href="{{ path('app_fournisseur_show', {id: achat.fournisseur.id}) }}">
+											{{ achat.fournisseur.nom }}
+										</a>
+									{% else %}
+										—
+									{% endif %}
+								</td>
+							</tr>
+							<tr>
+								<th>Date de demande</th>
+								<td>{{ achat.dateDemande|date('d/m/Y H:i') }}</td>
+							</tr>
+							<tr>
+								<th>Date de réception</th>
+								<td>{{ achat.dateReception ? achat.dateReception|date('d/m/Y H:i') : '—' }}</td>
+							</tr>
+							<tr>
+								<th>Observation</th>
+								<td>{{ achat.observation|default('—')|nl2br }}</td>
+							</tr>
+						</table>
+
+					</div>
+				</div>
+
+			</div>
+
+			<div class="col-lg-8">
+
+				<div class="card">
+					<div class="card-header">
+						<h3 class="card-title">Articles</h3>
+					</div>
+
+					<div class="table-responsive">
+						<table class="table table-bordered mb-0">
+							<thead>
+								<tr>
+									<th>Article</th>
+									<th class="text-right">Quantité</th>
+									<th class="text-right">Prix unitaire</th>
+									<th class="text-right">Total</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for ligne in achat.lignes %}
+									<tr>
+										<td>
+											{% if ligne.article %}
+												{{ ligne.article.reference }}
+												—
+												{{ ligne.article.designation }}
+											{% else %}
+												—
+											{% endif %}
+										</td>
+										<td class="text-right">{{ ligne.quantite }}</td>
+										<td class="text-right nowrap">{{ ligne.prixUnitaire|number_format(0, ',', ' ') }}
+											FCFA</td>
+										<td class="text-right nowrap">{{ ligne.totalHt|number_format(0, ',', ' ') }}
+											FCFA</td>
+									</tr>
+								{% else %}
+									<tr>
+										<td colspan="4" class="text-center text-muted py-4">
+											Aucune ligne.
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+							<tfoot>
+								<tr>
+									<td colspan="3" class="text-right">
+										<strong>Total HT</strong>
+									</td>
+									<td class="text-right nowrap">{{ achat.totalHt|number_format(0, ',', ' ') }}
+										FCFA</td>
+								</tr>
+								<tr>
+									<td colspan="3" class="text-right">
+										<strong>TVA ({{ achat.tva }}%)</strong>
+									</td>
+									<td class="text-right nowrap">{{ (achat.totalTtc - achat.totalHt)|number_format(0, ',', ' ') }}
+										FCFA</td>
+								</tr>
+								<tr>
+									<td colspan="3" class="text-right">
+										<strong>Total TTC</strong>
+									</td>
+									<td class="text-right nowrap">
+										<strong>{{ achat.totalTtc|number_format(0, ',', ' ') }}
+											FCFA</strong>
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+	</div>
+{% endblock %}

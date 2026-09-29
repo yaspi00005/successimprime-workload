@@ -1,0 +1,499 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Statistiques globales
+{% endblock %}
+
+{% block body %}
+
+<div class="side-app">
+
+	<div class="page-header">
+
+		<div>
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					Statistiques
+				</li>
+
+				<li class="breadcrumb-item active">
+					Vue globale
+				</li>
+
+			</ol>
+
+		</div>
+
+	</div>
+
+
+	{# ==========================================================
+	   PÉRIODE
+	   ========================================================== #}
+
+	<div class="card">
+
+		<div class="card-body">
+
+			<form method="get" class="row align-items-end">
+
+				<div class="col-md-4 mb-2">
+
+					<label class="form-label">
+						Du
+					</label>
+
+					<input
+						type="date"
+						name="date_debut"
+						value="{{ filtres.date_debut }}"
+						class="form-control"
+					>
+
+				</div>
+
+				<div class="col-md-4 mb-2">
+
+					<label class="form-label">
+						Au
+					</label>
+
+					<input
+						type="date"
+						name="date_fin"
+						value="{{ filtres.date_fin }}"
+						class="form-control"
+					>
+
+				</div>
+
+				<div class="col-md-4 mb-2">
+
+					<button type="submit" class="btn btn-primary btn-block">
+						<i class="fa fa-filter mr-1"></i>
+						Filtrer
+					</button>
+
+				</div>
+
+			</form>
+
+		</div>
+
+	</div>
+
+
+	<div class="row">
+
+		{# ==========================================================
+		   VENTES / COMMANDES PAR AGENT
+		   ========================================================== #}
+
+		<div class="col-lg-6">
+
+			<div class="card">
+
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fa fa-shopping-cart mr-1"></i>
+						Ventes par agent
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<canvas id="graphiqueVentesAgent" height="220"></canvas>
+				</div>
+
+				<div class="table-responsive">
+					<table class="table table-bordered table-hover mb-0">
+						<thead>
+							<tr>
+								<th>Agent</th>
+								<th class="text-right">Commandes</th>
+								<th class="text-right">Montant (FCFA)</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for ligne in parAgent %}
+								<tr>
+									<td>{{ ligne.nom }}</td>
+									<td class="text-right">{{ ligne.nombre }}</td>
+									<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>
+								</tr>
+							{% else %}
+								<tr>
+									<td colspan="3" class="text-center text-muted py-4">
+										Aucune commande sur cette période.
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+		   ENCAISSEMENTS PAR CAISSIÈRE
+		   ========================================================== #}
+
+		<div class="col-lg-6">
+
+			<div class="card">
+
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fa fa-money-bill mr-1"></i>
+						Encaissements par caissière
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<canvas id="graphiqueEncaissementsCaissiere" height="220"></canvas>
+				</div>
+
+				<div class="table-responsive">
+					<table class="table table-bordered table-hover mb-0">
+						<thead>
+							<tr>
+								<th>Caissière</th>
+								<th class="text-right">Paiements</th>
+								<th class="text-right">Montant (FCFA)</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for ligne in parCaissiere %}
+								<tr>
+									<td>{{ ligne.nom }}</td>
+									<td class="text-right">{{ ligne.nombre }}</td>
+									<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>
+								</tr>
+							{% else %}
+								<tr>
+									<td colspan="3" class="text-center text-muted py-4">
+										Aucun encaissement sur cette période.
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+		   PRODUCTION PAR AGENT
+		   ========================================================== #}
+
+		<div class="col-lg-6">
+
+			<div class="card">
+
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fa fa-industry mr-1"></i>
+						Production terminée par agent
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<canvas id="graphiqueProductionAgent" height="220"></canvas>
+				</div>
+
+				<div class="table-responsive">
+					<table class="table table-bordered table-hover mb-0">
+						<thead>
+							<tr>
+								<th>Agent</th>
+								<th class="text-right">Travaux terminés</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for ligne in parProduction %}
+								<tr>
+									<td>{{ ligne.nom }}</td>
+									<td class="text-right">{{ ligne.nombre }}</td>
+								</tr>
+							{% else %}
+								<tr>
+									<td colspan="2" class="text-center text-muted py-4">
+										Aucun travail terminé sur cette période.
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+	{# ==========================================================
+	   RENDEMENT MACHINE / TOP PRODUITS
+	   ========================================================== #}
+
+	<div class="row">
+
+		<div class="col-lg-6">
+
+			<div class="card">
+
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fa fa-cogs mr-1"></i>
+						Rendement par machine
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<canvas id="graphiqueRendementMachine" height="220"></canvas>
+				</div>
+
+				<div class="table-responsive">
+					<table class="table table-bordered table-hover mb-0">
+						<thead>
+							<tr>
+								<th>Machine</th>
+								<th class="text-right">Travaux</th>
+								<th class="text-right">Surface (m²)</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for ligne in parMachine %}
+								<tr>
+									<td>{{ ligne.nom }}</td>
+									<td class="text-right">{{ ligne.nombre }}</td>
+									<td class="text-right">{{ ligne.quantite|number_format(2, ',', ' ') }}</td>
+								</tr>
+							{% else %}
+								<tr>
+									<td colspan="3" class="text-center text-muted py-4">
+										Aucun travail sur cette période.
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+
+		<div class="col-lg-6">
+
+			<div class="card">
+
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fa fa-star mr-1"></i>
+						Top des produits commandés
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<canvas id="graphiqueTopProduits" height="220"></canvas>
+				</div>
+
+				<div class="table-responsive">
+					<table class="table table-bordered table-hover mb-0">
+						<thead>
+							<tr>
+								<th>Produit</th>
+								<th class="text-right">Commandes</th>
+								<th class="text-right">Quantité</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for ligne in topProduits %}
+								<tr>
+									<td>{{ ligne.nom }}</td>
+									<td class="text-right">{{ ligne.nombre }}</td>
+									<td class="text-right">{{ ligne.quantite }}</td>
+								</tr>
+							{% else %}
+								<tr>
+									<td colspan="3" class="text-center text-muted py-4">
+										Aucune commande sur cette période.
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ==========================================================
+	   VARIATION DU STOCK / VENTES D'ARTICLES
+	   ========================================================== #}
+
+	<div class="card">
+
+		<div class="card-header d-flex align-items-center justify-content-between flex-wrap">
+
+			<h3 class="card-title mb-0">
+				<i class="fa fa-boxes mr-1"></i>
+				Variation du stock (entrées / sorties d'articles)
+			</h3>
+
+			<div class="btn-group">
+				{% for cle, libelle in { jour: 'Jour', semaine: 'Semaine', mois: 'Mois', annee: 'Année' } %}
+					<a href="{{ path('app_statistiques_globales_index', {date_debut: filtres.date_debut, date_fin: filtres.date_fin, granularite_stock: cle}) }}" class="btn btn-sm {{ granulariteStock == cle ? 'btn-primary' : 'btn-primary-light' }}">
+						{{ libelle }}
+					</a>
+				{% endfor %}
+			</div>
+
+		</div>
+
+		<div class="card-body">
+			<canvas id="graphiqueVariationStock" height="240"></canvas>
+		</div>
+
+	</div>
+
+	<div class="row">
+
+		<div class="col-lg-6">
+
+			<div class="card">
+
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fa fa-tags mr-1"></i>
+						Ventes d'articles (livrés directement au client)
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<canvas id="graphiqueVentesArticles" height="220"></canvas>
+				</div>
+
+				<div class="table-responsive">
+					<table class="table table-bordered table-hover mb-0">
+						<thead>
+							<tr>
+								<th>Article</th>
+								<th class="text-right">Sorties</th>
+								<th class="text-right">Quantité</th>
+								<th class="text-right">Montant (FCFA)</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for ligne in ventesArticles %}
+								<tr>
+									<td>{{ ligne.nom }}</td>
+									<td class="text-right">{{ ligne.nombre }}</td>
+									<td class="text-right">{{ ligne.quantite }}</td>
+									<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>
+								</tr>
+							{% else %}
+								<tr>
+									<td colspan="4" class="text-center text-muted py-4">
+										Aucun article vendu directement sur cette période.
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+<script>
+	(function () {
+		var donneesVentesAgent = {{ parAgent|json_encode|raw }};
+		var donneesCaissiere = {{ parCaissiere|json_encode|raw }};
+		var donneesProduction = {{ parProduction|json_encode|raw }};
+		var donneesMachine = {{ parMachine|json_encode|raw }};
+		var donneesTopProduits = {{ topProduits|json_encode|raw }};
+		var donneesVentesArticles = {{ ventesArticles|json_encode|raw }};
+		var evolutionStock = {{ evolutionStock|json_encode|raw }};
+
+		function creerGraphiqueBarres(idCanevas, donnees, cleValeur, libelle, couleur) {
+			var canevas = document.getElementById(idCanevas);
+
+			if (!canevas || typeof Chart === 'undefined') {
+				return;
+			}
+
+			new Chart(canevas, {
+				type: 'bar',
+				data: {
+					labels: donnees.map(function (ligne) { return ligne.nom; }),
+					datasets: [{
+						label: libelle,
+						data: donnees.map(function (ligne) { return ligne[cleValeur]; }),
+						backgroundColor: couleur
+					}]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					plugins: {
+						legend: { display: false }
+					},
+					scales: {
+						y: { beginAtZero: true }
+					}
+				}
+			});
+		}
+
+		creerGraphiqueBarres('graphiqueVentesAgent', donneesVentesAgent, 'montant', 'Montant (FCFA)', '#467fcf');
+		creerGraphiqueBarres('graphiqueEncaissementsCaissiere', donneesCaissiere, 'montant', 'Montant (FCFA)', '#5eba00');
+		creerGraphiqueBarres('graphiqueProductionAgent', donneesProduction, 'nombre', 'Travaux terminés', '#f1c40f');
+		creerGraphiqueBarres('graphiqueRendementMachine', donneesMachine, 'quantite', 'Surface (m²)', '#6f42c1');
+		creerGraphiqueBarres('graphiqueTopProduits', donneesTopProduits, 'nombre', 'Commandes', '#cd201f');
+		creerGraphiqueBarres('graphiqueVentesArticles', donneesVentesArticles, 'quantite', 'Quantité vendue', '#20c997');
+
+		var canevasStock = document.getElementById('graphiqueVariationStock');
+
+		if (canevasStock && typeof Chart !== 'undefined') {
+			new Chart(canevasStock, {
+				type: 'bar',
+				data: {
+					labels: evolutionStock.labels,
+					datasets: [
+						{ label: 'Entrées', data: evolutionStock.entrees, backgroundColor: '#5eba00' },
+						{ label: 'Sorties', data: evolutionStock.sorties, backgroundColor: '#cd201f' }
+					]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					scales: { y: { beginAtZero: true } }
+				}
+			});
+		}
+	})();
+</script>
+
+{% endblock %}

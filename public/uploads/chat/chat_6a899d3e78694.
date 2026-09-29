@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Corrige l'entite Conversation : il manquait #[ORM\\Table(name: 'conversations')],
+du coup Doctrine cherchait une table "conversation" (singulier, nom par
+defaut) alors que la migration a cree "conversations" (pluriel) -- d'ou
+l'erreur SQLSTATE[42S02] "Table ... 'conversation' n'existe pas".
+
+Usage:
+    python3 reparer_table_conversation.py /chemin/vers/successImprim
+"""
+
+import os
+import sys
+import shutil
+import subprocess
+
+
+def erreur_fatale(message):
+    print("\n[ERREUR FATALE] " + message)
+    sys.exit(1)
+
+
+def verifier_racine(racine):
+    print("=" * 70)
+    print("DIAGNOSTIC DE L'EMPLACEMENT")
+    print("=" * 70)
+    print("Repertoire courant (pwd)      : " + os.getcwd())
+    print("Racine passee en argument     : " + racine)
+    print("Racine resolue (chemin absolu): " + os.path.realpath(racine))
+
+    composer_json = os.path.join(racine, "composer.json")
+    if not os.path.isfile(composer_json):
+        erreur_fatale(
+            "Aucun 'composer.json' trouve dans " + os.path.realpath(racine) + "\n"
+            "  => Relancez le script en pointant vers la racine du projet."
+        )
+    print("[OK] composer.json trouve : c'est bien la racine du projet.")
+    print()
+
+
+PHP_LINT_DISPONIBLE = shutil.which("php") is not None
+
+
+def lint_php_si_possible(chemin_absolu):
+    if not PHP_LINT_DISPONIBLE:
+        return
+    try:
+        resultat = subprocess.run(
+            ["php", "-l", chemin_absolu],
+            capture_output=True, text=True, timeout=10,
+        )
+        sortie = (resultat.stdout + resultat.stderr).strip()
+        if resultat.returncode == 0:
+            print("  php -l : OK")
+        else:
+            print("  [ATTENTION] php -l a signale un probleme :")
+            print("  " + sortie.replace("\n", "\n  "))
+    except Exception as exc:
+        print("  (php -l ignore : " + repr(exc) + ")")
+
+
+ANCIEN = """#[ORM\\Entity(repositoryClass: ConversationRepository::class)]
+#[ORM\\HasLifecycleCallbacks]
+class Conversation"""
+
+NOUVEAU = """#[ORM\\Entity(repositoryClass: ConversationRepository::class)]
+#[ORM\\Table(name: 'conversations')]
+#[ORM\\HasLifecycleCallbacks]
+class Conversation"""
+
+MARQUEUR = "#[ORM\\Table(name: 'conversations')]"
+
+
+def main():
+    racine = sys.argv[1] if len(sys.argv) >= 2 else "."
+    verifier_racine(racine)
+
+    if not PHP_LINT_DISPONIBLE:
+        print("(info : commande 'php' introuvable ici, le controle 'php -l' sera saute)")
+        print()
+
+    chemin_relatif = "src/Entity/Conversation.php"
+    chemin_absolu = os.path.join(racine, chemin_relatif)
+
+    print("-" * 70)
+    print("Correction du nom de table de l'entite Conversation (" + chemin_relatif + ")")
+    print("-" * 70)
+
+    if not os.path.isfile(chemin_absolu):
+        print("[ABSENT] " + chemin_relatif + " n'existe pas du tout sur le disque.")
+        sys.exit(1)
+
+    with open(chemin_absolu, "r", encoding="utf-8") as f:
+        contenu = f.read()
+
+    if MARQUEUR in contenu:
+        print("[SKIP] Le correctif est deja present (deja applique).")
+        sys.exit(0)
+
+    occurrences = contenu.count(ANCIEN)
+    if occurrences != 1:
+        print("[ECHEC] Bloc attendu trouve " + str(occurrences) + " fois au lieu de 1 -> abandon (rien ecrit).")
+        print("  Extrait attendu (debut) : " + repr(ANCIEN[:150]))
+        sys.exit(1)
+
+    nouveau_contenu = contenu.replace(ANCIEN, NOUVEAU, 1)
+
+    with open(chemin_absolu, "w", encoding="utf-8", newline="") as f:
+        f.write(nouveau_contenu)
+        f.flush()
+        os.fsync(f.fileno())
+
+    with open(chemin_absolu, "r", encoding="utf-8", newline="") as f:
+        relu = f.read()
+
+    if relu != nouveau_contenu:
+        print("[ECHEC VERIFICATION] le contenu relu ne correspond pas a ce qui etait attendu.")
+        sys.exit(1)
+
+    print("[OK VERIFIE] " + chemin_relatif)
+    print("  Chemin reel : " + os.path.realpath(chemin_absolu))
+    lint_php_si_possible(chemin_absolu)
+    print()
+    print("Tout est en place. Lancez maintenant :")
+    print("  composer dump-autoload")
+    print("  php bin/console cache:clear")
+    print("puis rechargez une page (l'icone messagerie doit s'afficher sans erreur).")
+
+
+if __name__ == "__main__":
+    main()

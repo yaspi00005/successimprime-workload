@@ -1,0 +1,747 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Paiement de la commande
+	{{ commande.reference|default('#' ~ commande.id) }}
+{% endblock %}
+
+{% set totalCommande = commande.totalTtc|default(0) %}
+{% set montantPaye = commande.totalPaye %}
+{% set montantRestant = commande.resteAPayer %}
+{% block body %}
+
+	<div class="page-header">
+		<div>
+			<h1 class="page-title">
+				Enregistrer un paiement
+			</h1>
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_commandes_index') }}">
+						Commandes
+					</a>
+				</li>
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_commandes_show', { id: commande.id }) }}">
+						{{ commande.reference|default('Commande #' ~ commande.id) }}
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					Paiement
+				</li>
+			</ol>
+		</div>
+
+		<div>
+			<a href="{{ path('app_commandes_show', { id: commande.id }) }}" class="btn btn-secondary">
+				<i class="fa fa-arrow-left mr-1"></i>
+				Retour à la commande
+			</a>
+		</div>
+	</div>
+
+
+	<div
+		class="row">
+		{# Résumé financier #}
+		<div class="col-xl-4 col-lg-5">
+			<div class="card">
+				<div class="card-header">
+					<h3 class="card-title">
+						Résumé de la commande
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<div class="mb-4">
+						<div class="text-muted">
+							Référence
+						</div>
+
+						<div class="font-weight-bold">
+							{{ commande.reference|default(
+                                'Commande #' ~ commande.id
+                            ) }}
+						</div>
+					</div>
+
+					{% if commande.clients is defined and commande.clients %}
+						<div class="mb-4">
+							<div class="text-muted">
+								Client
+							</div>
+
+							<div class="font-weight-bold">
+								{% if commande.clients.nom is defined %}
+									{{ commande.clients.nom }}
+								{% else %}
+									{{ commande.clients }}
+								{% endif %}
+							</div>
+						</div>
+					{% endif %}
+
+					<div class="d-flex justify-content-between mb-3">
+						<span>Total de la commande</span>
+
+						<strong>
+							{{ totalCommande|number_format(0, ',', ' ') }}
+							FCFA
+						</strong>
+					</div>
+
+					<div class="d-flex justify-content-between mb-3">
+						<span>Total déjà payé</span>
+
+						<strong class="text-success">
+							{{ montantPaye|number_format(0, ',', ' ') }}
+							FCFA
+						</strong>
+					</div>
+
+					<hr>
+
+					<div class="d-flex justify-content-between">
+						<span class="font-weight-bold">
+							Reste à payer
+						</span>
+
+						<strong class="text-danger">
+							{{ montantRestant|number_format(0, ',', ' ') }}
+							FCFA
+						</strong>
+					</div>
+
+					<div class="mt-4">
+						{% if montantRestant <= 0 %}
+							<span class="badge badge-success">
+								Paiement terminé
+							</span>
+						{% elseif montantPaye > 0 %}
+							<span class="badge badge-warning">
+								Paiement partiel
+							</span>
+						{% else %}
+							<span class="badge badge-danger">
+								Commande impayée
+							</span>
+						{% endif %}
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{# Formulaire de paiement #}
+		<div class="col-xl-8 col-lg-7">
+			<div class="card">
+				<div class="card-header">
+					<h3 class="card-title">
+						Nouveau versement
+					</h3>
+				</div>
+
+				<div class="card-body">
+
+					{% if commande.clients is defined and commande.clients and commande.clients.soldeCredit > 0 and montantRestant > 0 %}
+
+						<div class="alert alert-info">
+
+							<i class="fa fa-info-circle mr-1"></i>
+
+							Ce client dispose d'un solde de
+							<strong>{{ commande.clients.soldeCredit|number_format(0, ',', ' ') }} FCFA</strong>
+							(monnaie non rendue lors d'un précédent paiement).
+
+							<form method="post" action="{{ path('app_commandes_utiliser_solde_client', { id: commande.id }) }}" class="mt-2 mb-0">
+
+								<input type="hidden" name="_token" value="{{ csrf_token('utiliser_solde_client_' ~ commande.id) }}">
+
+								<button type="submit" class="btn btn-info btn-sm">
+									Utiliser {{ min(commande.clients.soldeCredit, montantRestant)|number_format(0, ',', ' ') }} FCFA de ce solde
+								</button>
+
+							</form>
+
+						</div>
+
+					{% endif %}
+
+					{% if montantRestant > 0 %}
+						{{ form_start(form, {
+                            attr: {
+                                id: 'paiement-form',
+                                autocomplete: 'off'
+                            }
+                        }) }}
+
+						{% if not form.vars.valid %}
+							<div class="alert alert-danger">
+								<strong>
+									Le paiement ne peut pas être enregistré.
+								</strong>
+
+								{{ form_errors(form) }}
+							</div>
+						{% endif %}
+
+						<div class="form-group">
+							{{ form_label(form.montant) }}
+
+							<div class="input-group">
+								{{
+    form_widget(
+        form.montant,
+        {
+            attr: {
+                class: 'form-control paiement-montant-input',
+                min: 1,
+                max: montantRestant,
+                placeholder: 'Ex. 25 000',
+                autocomplete: 'off',
+                inputmode: 'numeric'
+            }
+        }
+    )
+}}
+
+								<div class="input-group-append">
+									<span class="input-group-text">
+										FCFA
+									</span>
+								</div>
+							</div>
+
+							{{ form_errors(form.montant) }}
+
+							<small class="form-text text-muted">
+								Montant maximum :
+								<strong>
+									{{ montantRestant|number_format(
+                                            0,
+                                            ',',
+                                            ' '
+                                        ) }}
+									FCFA
+								</strong>
+							</small>
+						</div>
+
+						<div class="form-group">
+							{{ form_label(form.mode) }}
+
+							{{ form_widget(form.mode, {
+                                    attr: {
+                                        class: 'form-control custom-select'
+                                    }
+                                }) }}
+
+							{{ form_errors(form.mode) }}
+						</div>
+						<div class="form-group">
+
+							{{ form_label(
+        form.compteTresorerie,
+        'Compte de trésorerie'
+    ) }}
+
+							{{ form_widget(
+        form.compteTresorerie,
+        {
+            attr: {
+                class: 'form-control custom-select'
+            }
+        }
+    ) }}
+
+							{{ form_errors(
+        form.compteTresorerie
+    ) }}
+
+							<small class="form-text text-muted">
+								Le compte doit correspondre
+								        au mode de paiement choisi.
+							</small>
+
+						</div>
+
+
+						{# ====================================================
+						       FRAIS MOBILE MONEY (Orange Money / Wave)
+						       ==================================================== #}
+
+						<div class="form-group js-zone-frais-mobile-money" style="display:none;">
+
+							<label>
+								Frais mobile money
+							</label>
+
+							<div class="alert alert-light border mb-2">
+								Le client paie parfois ces frais en plus du prix de la commande.
+								Cochez ce qui s'applique à ce versement.
+							</div>
+
+							<div class="custom-control custom-checkbox mb-2">
+								{{ form_widget(form.fraisRetraitInclus, {
+                                    attr: { class: 'custom-control-input js-frais-retrait' }
+                                }) }}
+
+								{{ form_label(form.fraisRetraitInclus, null, {
+                                    label_attr: { class: 'custom-control-label' }
+                                }) }}
+
+								<span class="text-muted js-apercu-frais-retrait"></span>
+							</div>
+
+							<div class="custom-control custom-checkbox">
+								{{ form_widget(form.fondsSoutienInclus, {
+                                    attr: { class: 'custom-control-input js-fonds-soutien' }
+                                }) }}
+
+								{{ form_label(form.fondsSoutienInclus, null, {
+                                    label_attr: { class: 'custom-control-label' }
+                                }) }}
+
+								<span class="text-muted js-apercu-fonds-soutien"></span>
+							</div>
+
+							<div class="mt-2 font-weight-bold js-total-encaisse" style="display:none;"></div>
+
+						</div>
+
+						<div class="form-group">
+							{{ form_label(form.reference) }}
+
+							{{ form_widget(form.reference, {
+                                    attr: {
+                                        class: 'form-control',
+                                        placeholder: 'Numéro de transaction, chèque...'
+                                    }
+                                }) }}
+
+							{{ form_errors(form.reference) }}
+
+							<small class="form-text text-muted">
+								La référence est facultative pour un paiement
+																																																																																																																																																																								                                    en espèces.
+							</small>
+						</div>
+
+						<div class="alert alert-info">
+							<i class="fa fa-user-circle mr-1"></i>
+
+							Ce paiement sera enregistré comme encaissé par :
+
+							<strong>
+								{% if app.user.prenom is defined
+                                        and app.user.nom is defined %}
+									{{ app.user.prenom }}
+									{{ app.user.nom }}
+								{% elseif app.user.email is defined %}
+									{{ app.user.email }}
+								{% else %}
+									{{ app.user.userIdentifier }}
+								{% endif %}
+							</strong>
+						</div>
+
+						<div class="text-right">
+							<a href="{{ path('app_commandes_show', { id: commande.id }) }}" class="btn btn-light">
+								Annuler
+							</a>
+
+							<button type="submit" id="btn-enregistrer-paiement" class="btn btn-primary">
+								<i class="fa fa-check-circle mr-1"></i>
+								Enregistrer le paiement
+							</button>
+						</div>
+
+						{{ form_end(form) }}
+					{% else %}
+						<div class="alert alert-success mb-0">
+							<i class="fa fa-check-circle mr-1"></i>
+
+							Cette commande est entièrement payée.
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{# Historique des paiements #}
+	<div class="card">
+		<div class="card-header">
+			<h3 class="card-title">
+				Historique des paiements
+			</h3>
+		</div>
+
+		<div class="card-body">
+			<div class="table-responsive">
+				<table class="table table-bordered table-hover">
+					<thead>
+						<tr>
+							<th>Date</th>
+							<th>Montant</th>
+							<th>Frais mobile money</th>
+							<th>Mode</th>
+							<th>Référence</th>
+							<th>Encaissé par</th>
+						</tr>
+					</thead>
+
+					<tbody>
+						{% for paiement in commande.paiements %}
+							<tr>
+								<td>
+									{{ paiement.date
+                                        ? paiement.date|date('d/m/Y à H:i')
+                                        : '-'
+                                    }}
+								</td>
+
+								<td class="font-weight-bold text-success">
+									{{ paiement.montant|number_format(
+                                        0,
+                                        ',',
+                                        ' '
+                                    ) }}
+									FCFA
+								</td>
+
+								<td class="text-muted">
+									{% if paiement.montantFraisRetrait > 0 or paiement.montantFondsSoutien > 0 %}
+										{% if paiement.montantFraisRetrait > 0 %}
+											Retrait :
+											{{ paiement.montantFraisRetrait|number_format(0, ',', ' ') }}
+											FCFA
+											<br>
+										{% endif %}
+
+										{% if paiement.montantFondsSoutien > 0 %}
+											Fonds de soutien :
+											{{ paiement.montantFondsSoutien|number_format(0, ',', ' ') }}
+											FCFA
+										{% endif %}
+									{% else %}
+										-
+									{% endif %}
+								</td>
+
+								<td>
+									{{ paiement.mode }}
+								</td>
+
+								<td>
+									{{ paiement.reference|default('-') }}
+								</td>
+
+								<td>
+									{% if paiement.encaissePar %}
+										{% if paiement.encaissePar.prenom is defined
+                                            and paiement.encaissePar.nom is defined %}
+											{{ paiement.encaissePar.prenom }}
+											{{ paiement.encaissePar.nom }}
+										{% elseif paiement.encaissePar.email is defined %}
+											{{ paiement.encaissePar.email }}
+										{% else %}
+											{{ paiement.encaissePar.userIdentifier }}
+										{% endif %}
+									{% else %}
+										-
+									{% endif %}
+								</td>
+							</tr>
+						{% else %}
+							<tr>
+								<td colspan="6" class="text-center text-muted py-5">
+									Aucun paiement enregistré pour cette commande.
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+
+					{% if commande.paiements|length > 0 %}
+						<tfoot>
+							<tr>
+								<th colspan="1">
+									Total encaissé
+								</th>
+
+								<th class="text-success">
+									{{ montantPaye|number_format(0, ',', ' ') }}
+									FCFA
+								</th>
+
+								<th colspan="4"></th>
+							</tr>
+						</tfoot>
+					{% endif %}
+				</table>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	{{ parent() }}
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+const form = document.getElementById('paiement-form');
+
+const button = document.getElementById('btn-enregistrer-paiement');
+
+const montantInput = document.getElementById('{{ form.montant.vars.id|default('') }}');
+
+const resteAPayer = {{ montantRestant|default(0)|json_encode|raw }};
+
+if (! form || ! button || ! montantInput) {
+return;
+}
+
+
+/*
+ * =========================================================
+ * FRAIS MOBILE MONEY (Orange Money / Wave)
+ * =========================================================
+ */
+
+const modeSelect = document.getElementById('{{ form.mode.vars.id|default('') }}');
+
+const zoneFraisMobileMoney = document.querySelector('.js-zone-frais-mobile-money');
+
+const checkboxFraisRetrait = document.getElementById('{{ form.fraisRetraitInclus.vars.id|default('') }}');
+
+const checkboxFondsSoutien = document.getElementById('{{ form.fondsSoutienInclus.vars.id|default('') }}');
+
+const apercuFraisRetrait = document.querySelector('.js-apercu-frais-retrait');
+
+const apercuFondsSoutien = document.querySelector('.js-apercu-fonds-soutien');
+
+const totalEncaisseEl = document.querySelector('.js-total-encaisse');
+
+const tauxFraisRetrait = {{ parametresPaiement.tauxFraisRetrait|default(0)|json_encode|raw }};
+
+const tauxFondsSoutien = {{ parametresPaiement.tauxFondsSoutien|default(0)|json_encode|raw }};
+
+const modesMobileMoney = ['orange_money', 'wave'];
+
+
+function formaterFcfa(valeur) {
+return new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0}).format(Math.round(valeur)) + ' FCFA';
+}
+
+
+function actualiserZoneFraisMobileMoney() {
+if (! modeSelect || ! zoneFraisMobileMoney) {
+return;
+}
+
+const estMobileMoney = modesMobileMoney.includes(modeSelect.value);
+
+zoneFraisMobileMoney.style.display = estMobileMoney ? '' : 'none';
+
+if (! estMobileMoney) {
+if (checkboxFraisRetrait) {
+checkboxFraisRetrait.checked = false;
+}
+
+if (checkboxFondsSoutien) {
+checkboxFondsSoutien.checked = false;
+}
+}
+
+actualiserApercuFrais();
+}
+
+
+function actualiserApercuFrais() {
+const montant = getMontantNumerique();
+
+const fraisRetrait = montant * tauxFraisRetrait / 100;
+
+const fondsSoutien = montant * tauxFondsSoutien / 100;
+
+
+if (apercuFraisRetrait) {
+apercuFraisRetrait.textContent = montant > 0
+? ' (' + tauxFraisRetrait + '% = ' + formaterFcfa(fraisRetrait) + ')'
+: '';
+}
+
+if (apercuFondsSoutien) {
+apercuFondsSoutien.textContent = montant > 0
+? ' (' + tauxFondsSoutien + '% = ' + formaterFcfa(fondsSoutien) + ')'
+: '';
+}
+
+
+if (totalEncaisseEl) {
+const inclureFraisRetrait = Boolean(checkboxFraisRetrait && checkboxFraisRetrait.checked);
+
+const inclureFondsSoutien = Boolean(checkboxFondsSoutien && checkboxFondsSoutien.checked);
+
+if ((inclureFraisRetrait || inclureFondsSoutien) && montant > 0) {
+const total = montant
++ (inclureFraisRetrait ? fraisRetrait : 0)
++ (inclureFondsSoutien ? fondsSoutien : 0);
+
+totalEncaisseEl.style.display = '';
+
+totalEncaisseEl.textContent = 'Le client remettra au total : ' + formaterFcfa(total);
+
+} else {
+totalEncaisseEl.style.display = 'none';
+}
+}
+}
+
+
+if (modeSelect) {
+modeSelect.addEventListener('change', actualiserZoneFraisMobileMoney);
+}
+
+if (checkboxFraisRetrait) {
+checkboxFraisRetrait.addEventListener('change', actualiserApercuFrais);
+}
+
+if (checkboxFondsSoutien) {
+checkboxFondsSoutien.addEventListener('change', actualiserApercuFrais);
+}
+
+montantInput.addEventListener('input', actualiserApercuFrais);
+
+actualiserZoneFraisMobileMoney();
+
+
+function nettoyerMontant(value) {
+return String(value || '').replace(/\s/g, '').replace(/[^\d]/g, '');
+}
+
+
+function formatMontant(value) {
+const nombre = parseInt(nettoyerMontant(value), 10);
+
+if (! nombre || nombre <= 0) {
+return '';
+}
+
+return new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0}).format(nombre);
+}
+
+
+function getMontantNumerique() {
+return parseInt(nettoyerMontant(montantInput.value) || '0', 10);
+}
+
+
+montantInput.addEventListener('input', function () {
+
+this.value = formatMontant(this.value);
+});
+
+
+form.addEventListener('submit', function (event) {
+
+const montant = getMontantNumerique();
+
+
+if (montant <= 0) {
+event.preventDefault();
+
+Swal.fire({
+icon: 'error',
+title: 'Montant incorrect',
+text: 'Le montant doit être ' + 'supérieur à zéro.',
+confirmButtonText: 'OK'
+});
+
+return;
+}
+
+
+if (montant > resteAPayer) {
+event.preventDefault();
+
+const resteFormate = new Intl.NumberFormat('fr-FR').format(resteAPayer);
+
+Swal.fire({
+icon: 'error',
+title: 'Montant trop élevé',
+html: 'Le montant ne peut pas ' + 'dépasser le reste à payer de ' + '<strong>' + resteFormate + ' FCFA' + '</strong>.',
+confirmButtonText: 'OK'
+});
+
+return;
+}
+
+
+/*
+                         * Confirmation une seule fois.
+                         */
+if (! form.dataset.confirmed) {
+event.preventDefault();
+
+const montantFormate = new Intl.NumberFormat('fr-FR').format(montant);
+
+Swal.fire({
+icon: 'question',
+
+title: 'Confirmer le paiement',
+
+html: 'Voulez-vous enregistrer ' + 'un paiement de ' + '<strong>' + montantFormate + ' FCFA' + '</strong> ?',
+
+showCancelButton: true,
+
+confirmButtonText: 'Oui, enregistrer',
+
+cancelButtonText: 'Annuler',
+
+reverseButtons: true
+}).then(function (result) {
+
+if (result.isConfirmed) { /*
+                                         * Symfony doit recevoir
+                                         * un entier sans espaces.
+                                         */
+montantInput.value = montant;
+
+form.dataset.confirmed = '1';
+
+button.disabled = true;
+
+button.innerHTML = '<i class="fa ' + 'fa-spinner ' + 'fa-spin mr-1"></i>' + ' Enregistrement...';
+
+form.requestSubmit();
+}
+});
+
+return;
+}
+
+
+/*
+                         * Nettoyage final avant envoi.
+                         */
+montantInput.value = montant;
+});
+
+
+/*
+                 * Formatage initial.
+                 */
+if (montantInput.value) {
+montantInput.value = formatMontant(montantInput.value);
+}
+
+});
+	</script>
+
+{% endblock %}

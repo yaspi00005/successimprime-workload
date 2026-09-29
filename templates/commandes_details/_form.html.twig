@@ -1,0 +1,481 @@
+{{ form_start(form, {
+    attr: {
+        id: 'commande-detail-form',
+        novalidate: 'novalidate'
+    }
+}) }}
+
+{# Erreurs générales du formulaire #}
+{% if not form.vars.valid %}
+	<div class="alert alert-danger">
+		<i class="fa fa-exclamation-triangle mr-2"></i>
+		Certaines informations sont incorrectes. Vérifiez les champs signalés.
+		{{ form_errors(form) }}
+	</div>
+{% endif %}
+
+{# ========================================================= #}
+{# 1. COMMANDE ET PRODUIT                                    #}
+{# ========================================================= #}
+	<div class="card"> <div class="card-header">
+		<h3 class="card-title mb-0">
+			<i class="fa fa-shopping-cart mr-2 text-primary"></i>
+			Commande et produit
+		</h3>
+	</div>
+
+	<div class="card-body">
+		<div class="row">
+			<div class="col-md-6">
+				{{ form_row(form.commande, {
+                    label: 'Commande',
+                    attr: {
+                        class: 'form-control',
+                        'data-placeholder': 'Sélectionnez une commande'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-md-6">
+				{{ form_row(form.produit, {
+                    label: 'Produit',
+                    attr: {
+                        class: 'form-control',
+                        'data-placeholder': 'Sélectionnez un produit'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-md-12">
+				{{ form_row(form.designation, {
+                    label: 'Désignation du travail',
+                    attr: {
+                        class: 'form-control',
+                        placeholder: 'Exemple : Impression de 500 affiches A3'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-md-12">
+				{{ form_row(form.produitConfiguration, {
+                    label: 'Configuration tarifaire',
+                    attr: {
+                        class: 'form-control'
+                    }
+                }) }}
+
+				<small class="form-text text-muted">
+					La configuration détermine les options et les finitions disponibles.
+				</small>
+			</div>
+		</div>
+	</div>
+</div>
+
+{# ========================================================= #}
+{# 2. IMPRESSION ET MATÉRIEL                                 #}
+{# ========================================================= #}
+	<div class="card"> <div class="card-header">
+		<h3 class="card-title mb-0">
+			<i class="fa fa-print mr-2 text-primary"></i>
+			Impression et matériel
+		</h3>
+	</div>
+
+	<div class="card-body">
+		<div class="row">
+			<div class="col-md-6 col-lg-4">
+				{{ form_row(form.typeImpression, {
+                    label: 'Type d’impression',
+                    attr: {class: 'form-control'}
+                }) }}
+			</div>
+
+			<div class="col-md-6 col-lg-4">
+				{{ form_row(form.support, {
+                    label: 'Support',
+                    attr: {class: 'form-control'}
+                }) }}
+			</div>
+
+			<div class="col-md-6 col-lg-4">
+				{{ form_row(form.format, {
+                    label: 'Format',
+                    attr: {class: 'form-control'}
+                }) }}
+			</div>
+
+			<div class="col-md-6 col-lg-4">
+				{{ form_row(form.machine, {
+                    label: 'Machine',
+                    attr: {class: 'form-control'}
+                }) }}
+			</div>
+
+			<div class="col-md-6 col-lg-4">
+				{{ form_row(form.profilCouleurs, {
+                    label: 'Profil de couleurs',
+                    attr: {
+                        class: 'form-control',
+                        placeholder: 'Exemple : CMJN'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-md-6 col-lg-4">
+				{{ form_row(form.resolution, {
+                    label: 'Résolution',
+                    attr: {
+                        class: 'form-control',
+                        placeholder: 'Exemple : 300 DPI'
+                    }
+                }) }}
+			</div>
+		</div>
+	</div>
+</div>
+
+{# ========================================================= #}
+{# 3. DIMENSIONS ET QUANTITÉ                                 #}
+{# ========================================================= #}
+	<div class="card"> <div class="card-header">
+		<h3 class="card-title mb-0">
+			<i class="fa fa-arrows-alt mr-2 text-primary"></i>
+			Dimensions et quantité
+		</h3>
+	</div>
+
+	<div class="card-body">
+		<div class="row">
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.largeur, {
+                    label: 'Largeur',
+                    attr: {
+                        class: 'form-control dimension-field',
+                        min: 0,
+                        step: '0.01',
+                        placeholder: '0,00'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.longueur, {
+                    label: 'Longueur',
+                    attr: {
+                        class: 'form-control dimension-field',
+                        min: 0,
+                        step: '0.01',
+                        placeholder: '0,00'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.surface, {
+                    label: 'Surface',
+                    attr: {
+                        class: 'form-control',
+                        min: 0,
+                        step: '0.01',
+                        placeholder: '0,00'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.quantite, {
+                    label: 'Quantité',
+                    attr: {
+                        class: 'form-control',
+                        min: 1,
+                        placeholder: '1'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.grammage, {
+                    label: 'Grammage',
+                    attr: {
+                        class: 'form-control',
+                        min: 0,
+                        placeholder: 'Exemple : 250'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.epaisseur, {
+                    label: 'Épaisseur',
+                    attr: {
+                        class: 'form-control',
+                        min: 0,
+                        step: '0.01'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.nombreFaces, {
+                    label: 'Nombre de faces',
+                    attr: {
+                        class: 'form-control',
+                        min: 1
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3 d-flex align-items-center">
+				<div class="mt-4">
+					{{ form_row(form.rectoVerso, {
+                        label: 'Impression recto verso'
+                    }) }}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+{# ========================================================= #}
+{# 4. FINITIONS                                              #}
+{# ========================================================= #}
+	<div class="card"> <div class="card-header">
+		<h3 class="card-title mb-0">
+			<i class="fa fa-magic mr-2 text-primary"></i>
+			Finitions
+		</h3>
+	</div>
+
+	<div class="card-body">
+		<p class="text-muted">
+			Sélectionnez les finitions souhaitées. Les finitions obligatoires
+			            seront automatiquement enregistrées.
+		</p>
+
+		<div class="border rounded p-3 bg-light mb-4">
+			{{ form_row(form.finitionsSelectionnees, {
+                label: false
+            }) }}
+		</div>
+
+		<h5 class="mb-3">Options techniques complémentaires</h5>
+
+		<div class="row">
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.laminage, {
+                    label: 'Laminage'
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.oeillets, {
+                    label: 'Œillets'
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.decoupe, {
+                    label: 'Découpe'
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.pliage, {
+                    label: 'Pliage'
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.emballage, {
+                    label: 'Emballage'
+                }) }}
+			</div>
+		</div>
+	</div>
+</div>
+
+{# ========================================================= #}
+{# 5. TARIFICATION                                           #}
+{# ========================================================= #}
+	<div class="card"> <div class="card-header">
+		<h3 class="card-title mb-0">
+			<i class="fa fa-calculator mr-2 text-primary"></i>
+			Tarification
+		</h3>
+	</div>
+
+	<div class="card-body">
+		<div class="row">
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.prixUnitaire, {
+                    label: 'Prix unitaire',
+                    attr: {
+                        class: 'form-control',
+                        min: 0,
+                        placeholder: '0'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.coutRevient, {
+                    label: 'Coût de revient',
+                    attr: {
+                        class: 'form-control',
+                        min: 0,
+                        placeholder: '0'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.remise, {
+                    label: 'Remise',
+                    attr: {
+                        class: 'form-control',
+                        min: 0,
+                        placeholder: '0'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.tva, {
+                    label: 'TVA',
+                    attr: {
+                        class: 'form-control',
+                        min: 0,
+                        placeholder: '0'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.totalHt, {
+                    label: 'Total HT',
+                    attr: {
+                        class: 'form-control',
+                        min: 0,
+                        placeholder: '0'
+                    }
+                }) }}
+			</div>
+
+			<div class="col-sm-6 col-lg-3">
+				{{ form_row(form.totalTtc, {
+                    label: 'Total TTC',
+                    attr: {
+                        class: 'form-control',
+                        min: 0,
+                        placeholder: '0'
+                    }
+                }) }}
+			</div>
+		</div>
+	</div>
+</div>
+
+{# ========================================================= #}
+{# 6. PRODUCTION ET SUIVI                                    #}
+{# ========================================================= #}
+	<div class="card"> <div class="card-header">
+		<h3 class="card-title mb-0">
+			<i class="fa fa-tasks mr-2 text-primary"></i>
+			Production et suivi
+		</h3>
+	</div>
+
+	<div class="card-body">
+		<div class="row">
+			<div class="col-md-6 col-lg-3">
+				{{ form_row(form.etat, {
+                    label: 'État',
+                    attr: {class: 'form-control'}
+                }) }}
+			</div>
+
+			<div class="col-md-6 col-lg-3">
+				{{ form_row(form.priorite, {
+                    label: 'Priorité',
+                    attr: {class: 'form-control'}
+                }) }}
+			</div>
+
+			<div class="col-md-6 col-lg-3">
+				{{ form_row(form.tempsEstime, {
+                    label: 'Temps estimé',
+                    attr: {class: 'form-control'}
+                }) }}
+			</div>
+
+			<div class="col-md-6 col-lg-3">
+				{{ form_row(form.tempsReel, {
+                    label: 'Temps réel',
+                    attr: {class: 'form-control'}
+                }) }}
+			</div>
+
+			<div class="col-md-12">
+				<div class="border rounded p-3">
+					{{ form_row(form.batValide, {
+                        label: 'Bon à tirer (BAT) validé'
+                    }) }}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+{# ========================================================= #}
+{# 7. FICHIER ET OBSERVATION                                 #}
+{# ========================================================= #}
+	<div class="card"> <div class="card-header">
+		<h3 class="card-title mb-0">
+			<i class="fa fa-paperclip mr-2 text-primary"></i>
+			Fichier et observation
+		</h3>
+	</div>
+
+	<div class="card-body">
+		<div class="row">
+			<div class="col-md-12">
+				{{ form_row(form.fichier, {
+                    label: 'Fichier du client',
+                    attr: {class: 'form-control'}
+                }) }}
+			</div>
+
+			<div class="col-md-12">
+				{{ form_row(form.observation, {
+                    label: 'Observation',
+                    attr: {
+                        class: 'form-control',
+                        rows: 5,
+                        placeholder: 'Instructions particulières, couleurs, délais, remarques du client...'
+                    }
+                }) }}
+			</div>
+		</div>
+	</div>
+</div>
+
+{# ========================================================= #}
+{# ACTIONS                                                   #}
+{# ========================================================= #}
+	<div class="card"> <div class="card-body">
+		<div class="d-flex flex-column flex-sm-row justify-content-between">
+			<a href="{{ path('app_commandes_details_index') }}" class="btn btn-light mb-2 mb-sm-0">
+				<i class="fa fa-arrow-left mr-2"></i>
+				Annuler
+			</a>
+
+			<button type="submit" class="btn btn-primary">
+				<i class="fa fa-save mr-2"></i>
+				{{ button_label|default('Enregistrer') }}
+			</button>
+		</div>
+	</div>
+</div>
+
+{{ form_end(form) }}

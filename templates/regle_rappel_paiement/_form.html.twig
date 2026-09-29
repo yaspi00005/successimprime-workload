@@ -1,0 +1,67 @@
+{{ form_start(form) }}
+
+<div class="card-body">
+
+	<div class="row">
+
+		<div class="col-md-12">
+			<div class="form-group">
+				{{ form_label(form.nom) }}
+				{{ form_widget(form.nom) }}
+				{{ form_errors(form.nom) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				{{ form_label(form.delaiJours) }}
+				{{ form_widget(form.delaiJours) }}
+				{% if form.delaiJours.vars.help %}
+					<small class="form-text text-muted">{{ form.delaiJours.vars.help }}</small>
+				{% endif %}
+				{{ form_errors(form.delaiJours) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				{{ form_label(form.modeleMessage) }}
+				{{ form_widget(form.modeleMessage) }}
+				{{ form_errors(form.modeleMessage) }}
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group mt-4">
+				<label class="custom-switch mb-0">
+					{{ form_widget(form.actif, {attr: {class: 'custom-switch-input'}}) }}
+					<span class="custom-switch-indicator"></span>
+					<span class="custom-switch-description">
+						Règle active
+					</span>
+				</label>
+			</div>
+		</div>
+
+	</div>
+
+	{% if form.vars.errors|length > 0 %}
+		<div class="alert alert-danger mt-3">
+			{{ form_errors(form) }}
+		</div>
+	{% endif %}
+
+</div>
+
+<div class="card-footer text-right">
+	<a href="{{ path('app_regle_rappel_paiement_index') }}" class="btn btn-secondary">
+		<i class="fa fa-arrow-left mr-1"></i>
+		Retour
+	</a>
+	<button type="submit" class="btn btn-primary-light">
+		<i class="fa fa-save mr-1"></i>
+		Enregistrer
+	</button>
+</div>
+
+{{ form_end(form) }}

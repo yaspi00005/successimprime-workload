@@ -1,0 +1,345 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Productions terminées
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_production_index') }}">
+						Production
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					Terminées
+				</li>
+			</ol>
+
+			<div>
+				<a href="{{ path('app_production_index') }}" class="btn btn-primary-light">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour à la production
+				</a>
+			</div>
+
+		</div>
+
+		<div class="row row-cards">
+
+			<div class="col-lg-12">
+				<div class="card mb-4">
+
+					<div class="card-header">
+						<h3 class="card-title">
+							<i class="fa fa-filter mr-1"></i>
+							Recherche et filtres
+						</h3>
+					</div>
+
+					<div class="card-body">
+
+						<form method="get" action="{{ path('app_production_termines') }}">
+
+							<div
+								class="row">
+
+								{# RECHERCHE #}
+								<div class="col-lg-4 col-md-6">
+
+									<div class="form-group">
+
+										<label class="form-label">
+											Recherche
+										</label>
+
+										<input type="text" name="q" class="form-control" value="{{ filtres.q }}" placeholder="Ordre, produit, désignation, machine..." autocomplete="off">
+
+									</div>
+
+								</div>
+
+
+								{# MACHINE #}
+								<div class="col-lg-2 col-md-6">
+
+									<div class="form-group">
+
+										<label class="form-label">
+											Machine
+										</label>
+
+										<select name="machine" class="form-control">
+
+											<option value="">
+												Toutes
+											</option>
+
+											{% for machine in machines %}
+
+												<option value="{{ machine.id }}" {% if filtres.machine == machine.id %} selected {% endif %}>
+													{{ machine.nom }}
+												</option>
+
+											{% endfor %}
+
+										</select>
+
+									</div>
+
+								</div>
+
+
+								{# OPÉRATEUR #}
+								<div class="col-lg-2 col-md-6">
+
+									<div class="form-group">
+
+										<label class="form-label">
+											Opérateur
+										</label>
+
+										<select name="operateur" class="form-control">
+
+											<option value="">
+												Tous
+											</option>
+
+											{% for operateur in operateurs %}
+
+												<option value="{{ operateur.id }}" {% if filtres.operateur == operateur.id %} selected {% endif %}>
+													{{ operateur.employe.prenom }}
+													{{ operateur.employe.nom }}
+												</option>
+
+											{% endfor %}
+
+										</select>
+
+									</div>
+
+								</div>
+
+
+								{# DATE DÉBUT #}
+								<div class="col-lg-2 col-md-6">
+
+									<div class="form-group">
+
+										<label class="form-label">
+											Du
+										</label>
+
+										<input type="date" name="date_debut" class="form-control" value="{{ filtres.date_debut }}">
+
+									</div>
+
+								</div>
+
+
+								{# DATE FIN #}
+								<div class="col-lg-2 col-md-6">
+
+									<div class="form-group">
+
+										<label class="form-label">
+											Au
+										</label>
+
+										<input type="date" name="date_fin" class="form-control" value="{{ filtres.date_fin }}">
+
+									</div>
+
+								</div>
+
+							</div>
+
+
+							<div class="d-flex justify-content-end">
+
+								<a href="{{ path('app_production_termines') }}" class="btn btn-light mr-2">
+									<i class="fa fa-undo mr-1"></i>
+									Réinitialiser
+								</a>
+
+								<button type="submit" class="btn btn-primary">
+									<i class="fa fa-search mr-1"></i>
+									Rechercher
+								</button>
+
+							</div>
+
+						</form>
+
+					</div>
+
+				</div>
+				<div class="card">
+
+					<div class="card-header d-flex justify-content-between align-items-center">
+
+						<div>
+							<h3 class="card-title mb-0">
+								Productions terminées
+							</h3>
+
+							<small class="text-muted">
+								{{ ordres|length }}
+								ordre{{ ordres|length > 1 ? 's' : '' }}
+							</small>
+						</div>
+
+						<span class="badge badge-success p-2">
+							<i class="fa fa-check-circle mr-1"></i>
+							Historique
+						</span>
+
+					</div>
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered table-hover mb-0">
+
+							<thead>
+								<tr>
+									<th>Ordre</th>
+									<th>Commande</th>
+									<th>Produit / Désignation</th>
+									<th class="text-center">Quantité</th>
+									<th>Machine</th>
+									<th>Terminée le</th>
+									<th>Opérateur</th>
+									<th class="text-center">Actions</th>
+								</tr>
+							</thead>
+
+							<tbody>
+
+								{% for ordre in ordres %}
+
+									{% set detail = ordre.commandeDetail %}
+
+									<tr>
+
+										<td class="align-middle">
+											<strong>
+												{{ ordre.numero }}
+											</strong>
+										</td>
+
+										<td class="align-middle">
+
+											{% if detail and detail.commande %}
+												#{{ detail.commande.id }}
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+										<td class="align-middle">
+
+											{% if detail %}
+
+												<strong>
+													{{ detail.designation }}
+												</strong>
+
+												{% if detail.produit %}
+													<div class="small text-muted">
+														{{ detail.produit.nom }}
+													</div>
+												{% endif %}
+
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+										<td class="text-center align-middle">
+
+											{% if detail %}
+												{{ detail.quantite }}
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+										<td class="align-middle">
+
+											{% if ordre.machine %}
+												{{ ordre.machine.nom }}
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+										<td class="align-middle">
+
+											{% if ordre.termineLe %}
+												{{ ordre.termineLe|date('d/m/Y H:i') }}
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+										<td class="align-middle">
+
+											{% if ordre.terminePar %}
+												{{ ordre.terminePar.employe.prenom }}
+												{{ ordre.terminePar.employe.nom }}
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+										<td class="text-center align-middle">
+
+											<a href="{{ path( 'app_production_show', { id: ordre.id } ) }}" class="btn btn-sm btn-primary-light" title="Voir la production">
+												<i class="fa fa-eye"></i>
+											</a>
+
+										</td>
+
+									</tr>
+
+								{% else %}
+
+									<tr>
+										<td colspan="8" class="text-center text-muted py-5">
+											<i class="fa fa-check-circle fa-3x mb-3"></i>
+
+											<div>
+												Aucune production terminée.
+											</div>
+										</td>
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

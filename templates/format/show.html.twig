@@ -1,0 +1,50 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Format{% endblock %}
+
+{% block body %}
+    <h1>Format</h1>
+
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>Id</th>
+                <td>{{ format.id }}</td>
+            </tr>
+            <tr>
+                <th>Nom</th>
+                <td>{{ format.nom }}</td>
+            </tr>
+            <tr>
+                <th>Largeur</th>
+                <td>{{ format.largeur }}</td>
+            </tr>
+            <tr>
+                <th>Hauteur</th>
+                <td>{{ format.hauteur }}</td>
+            </tr>
+            <tr>
+                <th>Unite</th>
+                <td>{{ format.unite }}</td>
+            </tr>
+            <tr>
+                <th>Description</th>
+                <td>{{ format.description }}</td>
+            </tr>
+            <tr>
+                <th>Publie</th>
+                <td>{{ format.publie ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Ordre</th>
+                <td>{{ format.ordre }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <a href="{{ path('app_format_index') }}">back to list</a>
+
+    <a href="{{ path('app_format_edit', {'id': format.id}) }}">edit</a>
+
+    {{ include('format/_delete_form.html.twig') }}
+{% endblock %}

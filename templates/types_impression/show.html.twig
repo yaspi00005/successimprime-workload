@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}TypesImpression{% endblock %}
+
+{% block body %}
+    <h1>TypesImpression</h1>
+
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>Id</th>
+                <td>{{ types_impression.id }}</td>
+            </tr>
+            <tr>
+                <th>Nom</th>
+                <td>{{ types_impression.nom }}</td>
+            </tr>
+            <tr>
+                <th>Descriptions</th>
+                <td>{{ types_impression.descriptions }}</td>
+            </tr>
+            <tr>
+                <th>Publie</th>
+                <td>{{ types_impression.publie ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+                <th>Ordre</th>
+                <td>{{ types_impression.ordre }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <a href="{{ path('app_types_impression_index') }}">back to list</a>
+
+    <a href="{{ path('app_types_impression_edit', {'id': types_impression.id}) }}">edit</a>
+
+    {{ include('types_impression/_delete_form.html.twig') }}
+{% endblock %}

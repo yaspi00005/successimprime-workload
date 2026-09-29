@@ -1,0 +1,410 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Nouvel employé
+{% endblock %}
+
+{% block body %}
+
+	<!-- PAGE-HEADER -->
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="#">Gestion des employés</a>
+			</li>
+			<li class="breadcrumb-item active" aria-current="page">
+				Nouvel employé
+			</li>
+		</ol>
+	</div>
+	<!-- PAGE-HEADER END -->
+
+
+	<div class="row">
+		<div class="col-md-12">
+
+			<div class="card">
+
+				<div class="card-header">
+					<h3 class="mb-0 card-title">
+						Ajouter un employé
+					</h3>
+				</div>
+
+
+				{{ form_start(form, {
+                    'attr': {
+                        'enctype': 'multipart/form-data'
+                    }
+                }) }}
+
+
+				<div class="card-body">
+
+					{# ===================================================== #}
+					{# INFORMATIONS PERSONNELLES                             #}
+					{# ===================================================== #}
+
+						<div class="card-header px-0 mb-4"> <h3 class="mb-0 card-title">
+							Informations personnelles
+						</h3>
+
+					</div>
+
+
+					<div class="row">
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								{{ form_label(
+                                    form.prenom,
+                                    'Prénom'
+                                ) }}
+
+								{{ form_widget(
+                                    form.prenom
+                                ) }}
+
+								{{ form_errors(
+                                    form.prenom
+                                ) }}
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								{{ form_label(
+                                    form.nom,
+                                    'Nom'
+                                ) }}
+
+								{{ form_widget(
+                                    form.nom
+                                ) }}
+
+								{{ form_errors(
+                                    form.nom
+                                ) }}
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								{{ form_label(
+                                    form.dateNaissances,
+                                    'Date de naissance'
+                                ) }}
+
+								{{ form_widget(
+                                    form.dateNaissances
+                                ) }}
+
+								{{ form_errors(
+                                    form.dateNaissances
+                                ) }}
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								{{ form_label(
+                                    form.telephone,
+                                    'Téléphone'
+                                ) }}
+
+								{{ form_widget(
+                                    form.telephone
+                                ) }}
+
+								{{ form_errors(
+                                    form.telephone
+                                ) }}
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								{{ form_label(
+                                    form.email,
+                                    'Adresse e-mail'
+                                ) }}
+
+								{{ form_widget(
+                                    form.email
+                                ) }}
+
+								{{ form_errors(
+                                    form.email
+                                ) }}
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								{{ form_label(
+                                    form.matricules,
+                                    'Matricule'
+                                ) }}
+
+								{{ form_widget(
+                                    form.matricules
+                                ) }}
+
+								{{ form_errors(
+                                    form.matricules
+                                ) }}
+
+							</div>
+							<div class="col-md-12">
+
+								<div class="form-group">
+
+									{{ form_label(
+            form.adresses,
+            'Adresse'
+        ) }}
+
+									{{ form_widget(
+            form.adresses
+        ) }}
+
+									{{ form_errors(
+            form.adresses
+        ) }}
+
+								</div>
+
+							</div>
+						</div>
+
+					</div>
+
+
+					{# ===================================================== #}
+					{# DOCUMENTS                                             #}
+					{# ===================================================== #}
+
+						<div class="card-header px-0 mt-4 mb-4"> <h3 class="mb-0 card-title">
+							Photo et documents
+						</h3>
+
+					</div>
+
+
+					<div class="row">
+
+						<div class="col-md-6">
+
+							<div class="card shadow">
+
+								<div class="card-header">
+
+									<h3 class="mb-0 card-title">
+										Photo de profil
+									</h3>
+
+								</div>
+
+
+								<div class="card-body">
+
+									{{ form_widget(
+                                        form.photos
+                                    ) }}
+
+									{{ form_errors(
+                                        form.photos
+                                    ) }}
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="card shadow">
+
+								<div class="card-header">
+
+									<h3 class="mb-0 card-title">
+										Pièce d'identité / CIN
+									</h3>
+
+								</div>
+
+
+								<div class="card-body">
+
+									{{ form_widget(
+                                        form.cin
+                                    ) }}
+
+									{{ form_errors(
+                                        form.cin
+                                    ) }}
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					{# ===================================================== #}
+					{# INFORMATIONS PROFESSIONNELLES                         #}
+					{# ===================================================== #}
+
+						<div class="card-header px-0 mt-4 mb-4"> <h3 class="mb-0 card-title">
+							Informations professionnelles
+						</h3>
+
+					</div>
+
+
+					<div class="row">
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								{{ form_label(
+                                    form.fonction,
+                                    'Fonction'
+                                ) }}
+
+								{{ form_widget(
+                                    form.fonction
+                                ) }}
+
+								{{ form_errors(
+                                    form.fonction
+                                ) }}
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								{{ form_label(
+                                    form.dateEmbauches,
+                                    'Date d’embauche'
+                                ) }}
+
+								{{ form_widget(
+                                    form.dateEmbauches
+                                ) }}
+
+								{{ form_errors(
+                                    form.dateEmbauches
+                                ) }}
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								{{ form_label(
+                                    form.salaires,
+                                    'Salaire'
+                                ) }}
+
+								{{ form_widget(
+                                    form.salaires
+                                ) }}
+
+								{{ form_errors(
+                                    form.salaires
+                                ) }}
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					{# Erreurs globales du formulaire #}
+
+					{% if form.vars.errors|length > 0 %}
+
+						<div class="alert alert-danger mt-3">
+
+							{{ form_errors(form) }}
+
+						</div>
+
+					{% endif %}
+
+				</div>
+
+
+				<div class="card-footer text-right">
+
+					<a href="{{ app.request.headers.get('referer') ?: '#' }}" class="btn btn-secondary">
+
+						<i class="fa fa-arrow-left mr-1"></i>
+
+						Retour
+
+					</a>
+
+
+					<button type="submit" class="btn btn-primary-light">
+
+						<i class="fa fa-save mr-1"></i>
+
+						Enregistrer
+
+					</button>
+
+				</div>
+
+
+				{{ form_end(form) }}
+
+			</div>
+
+		</div>
+	</div>
+
+{% endblock %}

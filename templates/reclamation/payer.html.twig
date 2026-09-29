@@ -1,0 +1,71 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Payer la réclamation {{ reclamation.reference }}
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_reclamation_index') }}">Réclamations</a>
+			</li>
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_reclamation_show', {id: reclamation.id}) }}">{{ reclamation.reference }}</a>
+			</li>
+			<li class="breadcrumb-item active">
+				Paiement
+			</li>
+		</ol>
+	</div>
+
+	<div class="row">
+		<div class="col-md-8">
+			<div class="card">
+
+				<div class="card-header">
+					<h3 class="mb-0 card-title">
+						Payer {{ reclamation.montant|number_format(0, ',', ' ') }} F CFA à
+						{{ reclamation.agent.employe.prenom|default('') }}
+						{{ reclamation.agent.employe.nom|default(reclamation.agent.username) }}
+					</h3>
+				</div>
+
+				<div class="card-body pb-0">
+					<p class="text-muted">
+						<strong>Motif :</strong> {{ reclamation.motif }}
+					</p>
+				</div>
+
+				{{ form_start(form) }}
+
+				<div class="card-body">
+
+					{{ form_row(form.compteSource) }}
+
+					{{ form_row(form.categorie) }}
+
+					{{ form_row(form.modePaiement) }}
+
+				</div>
+
+				<div class="card-footer text-right">
+					<a href="{{ path('app_reclamation_show', {id: reclamation.id}) }}" class="btn btn-secondary mr-2">
+						Annuler
+					</a>
+					<button type="submit" class="btn btn-success">
+						<i class="fa fa-money mr-1"></i>
+						Confirmer le paiement
+					</button>
+				</div>
+
+				{{ form_end(form) }}
+
+			</div>
+		</div>
+	</div>
+
+{% endblock %}

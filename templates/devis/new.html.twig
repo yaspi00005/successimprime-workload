@@ -1,0 +1,16 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	{{ form.vars.data.id ? 'Modifier le devis' : 'Nouveau devis' }}
+{% endblock %}
+
+{% block body %}
+	{{ include('devis/_form.html.twig') }}
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+{% endblock %}

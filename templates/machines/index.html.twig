@@ -1,0 +1,2186 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Machines
+{% endblock %}
+
+{% block body %}
+
+	<div
+		class="side-app">
+
+		{# ==========================================================
+								       PAGE HEADER
+								       ========================================================== #}
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="#">Paramètres</a>
+				</li>
+
+				<li class="breadcrumb-item active" aria-current="page">
+					Machines
+				</li>
+			</ol>
+
+			<div>
+				<a href="{{ path('app_machines_rentabilite') }}" class="btn btn-outline-primary mr-2">
+					<i class="fa fa-line-chart mr-1"></i>
+					Rentabilité
+				</a>
+
+				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#machineCreateModal">
+					<i class="fa fa-plus mr-1"></i>
+					Ajouter une machine
+				</button>
+			</div>
+
+		</div>
+		{# PAGE HEADER END #}
+
+
+		{# ==========================================================
+								       LISTE
+								       ========================================================== #}
+		<div class="row row-cards">
+
+			<div
+				class="col-lg-12">
+
+				{# Recherche #}
+				<div class="input-group mb-4">
+
+					<input type="text" id="machineSearch" class="form-control" placeholder="Rechercher une machine, une IP, une marque, un modèle..." autocomplete="off">
+
+					<div class="input-group-append">
+						<button type="button" class="btn btn-primary-light">
+							<i class="fa fa-search" aria-hidden="true"></i>
+						</button>
+					</div>
+
+				</div>
+
+
+				<div class="card">
+
+					<div class="card-header
+																												                           border-bottom-0
+																												                           d-flex
+																												                           justify-content-between
+																												                           align-items-center">
+						<div>
+							<h3 class="card-title mb-0">
+								Machines de production
+							</h3>
+
+							<small class="text-muted">
+								{{ machines|length }}
+								machine{{ machines|length > 1 ? 's' : '' }}
+								enregistrée{{ machines|length > 1 ? 's' : '' }}
+							</small>
+						</div>
+
+						<div>
+							<span class="badge badge-info p-2">
+								<i class="fa fa-network-wired mr-1"></i>
+								Identification par IP
+							</span>
+						</div>
+					</div>
+
+
+					<div class="e-table">
+
+						<div class="table-responsive
+																																                               table-lg
+																																                               br-bl-10
+																																                               br-br-10">
+
+							<table class="table
+																																                                   table-bordered
+																																                                   table-hover
+																																                                   mb-0" id="machineTable">
+
+								<thead>
+									<tr>
+
+										<th>
+											Machine
+										</th>
+
+										<th>
+											Adresse IP
+										</th>
+
+										<th>
+											Marque / Modèle
+										</th>
+
+										<th>
+											Type
+										</th>
+
+										<th class="text-center">
+											Largeur
+										</th>
+
+										<th class="text-center">
+											Têtes
+										</th>
+
+										<th class="text-center">
+											Compteurs
+										</th>
+
+										<th class="text-center">
+											État
+										</th>
+
+										<th class="text-center">
+											Actions
+										</th>
+
+									</tr>
+								</thead>
+
+
+								<tbody id="machineTableBody">
+
+									{% for machine in machines %}
+
+										<tr
+											id="machine-row-{{ machine.id }}" class="machine-row" data-machine-id="{{ machine.id }}">
+
+											{# ==================================================
+																																												                                           MACHINE
+																																												                                           ================================================== #}
+											<td class="align-middle">
+
+												<strong>
+													{{ machine.nom }}
+												</strong>
+
+												{% if machine.numeroSerie %}
+													<div class="small text-muted">
+														Série :
+														{{ machine.numeroSerie }}
+													</div>
+												{% endif %}
+
+											</td>
+
+
+											{# ==================================================
+																																												                                           IP
+																																												                                           ================================================== #}
+											<td class="align-middle">
+
+												{% if machine.adresseIp %}
+
+													<span class="badge
+																																																												                                                           badge-primary
+																																																												                                                           machine-ip-badge">
+														<i class="fa fa-desktop mr-1"></i>
+														{{ machine.adresseIp }}
+													</span>
+
+												{% else %}
+
+													<span class="badge badge-danger">
+														IP non configurée
+													</span>
+
+												{% endif %}
+
+											</td>
+
+
+											{# ==================================================
+																																												                                           MARQUE / MODÈLE
+																																												                                           ================================================== #}
+											<td class="align-middle">
+
+												<strong>
+													{{ machine.marque|default('—') }}
+												</strong>
+
+												{% if machine.modeles %}
+													<div class="small text-muted">
+														{{ machine.modeles }}
+													</div>
+												{% endif %}
+
+											</td>
+
+
+											{# ==================================================
+																																												                                           TYPE
+																																												                                           ================================================== #}
+											<td class="align-middle">
+
+												{{ machine.typeMachine|default('—') }}
+
+											</td>
+
+
+											{# ==================================================
+																																												                                           LARGEUR
+																																												                                           ================================================== #}
+											<td class="text-center
+																																																				                                                   align-middle">
+												{{ machine.largeurImpression|default('—') }}
+											</td>
+
+
+											{# ==================================================
+																																												                                           TÊTES
+																																												                                           ================================================== #}
+											<td class="text-center
+																																																				                                                   align-middle">
+												{{ machine.nbTetes is not null
+                                                ? machine.nbTetes
+                                                : '—'
+                                            }}
+											</td>
+
+
+											{# ==================================================
+																																												                                           COMPTEURS
+																																												                                           ================================================== #}
+											<td class="text-center
+																																																				                                                   align-middle">
+
+												<div>
+													<small class="text-muted">
+														m² :
+													</small>
+
+													<strong>
+														{{ machine.compteurM2
+                                                        is not null
+                                                        ? machine.compteurM2|number_format(2, ',', ' ')
+                                                        : 0
+                                                    }}
+													</strong>
+												</div>
+
+												<div>
+													<small class="text-muted">
+														Heures :
+													</small>
+
+													<strong>
+														{{ machine.compteurHeures
+                                                        is not null
+                                                        ? machine.compteurHeures
+                                                        : 0
+                                                    }}
+													</strong>
+												</div>
+
+												<div>
+													<small class="text-muted">
+														Feuilles :
+													</small>
+
+													<strong>
+														{{ machine.compteurFeuilles|default(0) }}
+													</strong>
+												</div>
+
+											</td>
+
+
+											{# ==================================================
+																																												                                           ÉTAT
+																																												                                           ================================================== #}
+											<td class="text-center
+																																																				                                                   align-middle">
+
+												{% set etat = machine.etat|default('disponible') %}
+
+												{% if etat == 'disponible' %}
+
+													<span class="badge badge-success">
+														Disponible
+													</span>
+
+												{% elseif etat == 'maintenance' %}
+
+													<span class="badge badge-warning">
+														Maintenance
+													</span>
+
+												{% elseif etat == 'hors_service' %}
+
+													<span class="badge badge-danger">
+														Hors service
+													</span>
+
+												{% elseif etat == 'inactive' %}
+
+													<span class="badge badge-secondary">
+														Inactive
+													</span>
+
+												{% else %}
+
+													<span class="badge badge-info">
+														{{ etat
+                                                        |replace({'_': ' '})
+                                                        |capitalize
+                                                    }}
+													</span>
+
+												{% endif %}
+
+											</td>
+
+
+											{# ==================================================
+																																												                                           ACTIONS
+																																												                                           ================================================== #}
+											<td class="text-center
+																																																				                                                   align-middle">
+
+												<div
+													class="btn-group align-top">
+
+													{# MODIFIER #}
+													<button type="button" class="
+																																																								                                                        btn
+																																																								                                                        btn-sm
+																																																								                                                        btn-primary-light
+																																																								                                                        btn-edit-machine
+																																																								                                                    " data-toggle="modal" data-target="#machineEditModal" data-id="{{ machine.id }}" data-get-url="{{ path( 'app_machines_get_ajax', { id: machine.id } ) }}" data-update-url="{{ path( 'app_machines_update_ajax', { id: machine.id } ) }}" data-update-token="{{ csrf_token( 'update_machine_' ~ machine.id ) }}" title="Modifier">
+														<i class="fa fa-edit"></i>
+													</button>
+
+
+													{# SUPPRIMER #}
+													<button type="button" class="
+																																																								                                                        btn
+																																																								                                                        btn-sm
+																																																								                                                        btn-danger-light
+																																																								                                                        btn-delete-machine
+																																																								                                                    " data-id="{{ machine.id }}" data-url="{{ path( 'app_machines_delete_ajax', { id: machine.id } ) }}" data-token="{{ csrf_token( 'delete_machine_' ~ machine.id ) }}" data-nom="{{ machine.nom }}" title="Supprimer">
+														<i class="fa fa-trash"></i>
+													</button>
+
+												</div>
+
+											</td>
+
+										</tr>
+
+									{% else %}
+
+										<tr id="machineEmptyRow">
+											<td colspan="9" class="text-center
+																																																				                                                   text-muted
+																																																				                                                   py-5">
+												<i class="fa
+																																																				                                                       fa-print
+																																																				                                                       fa-3x
+																																																				                                                       mb-3"></i>
+
+												<div>
+													Aucune machine enregistrée.
+												</div>
+											</td>
+										</tr>
+
+									{% endfor %}
+
+								</tbody>
+
+							</table>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ==========================================================
+				   URLS / TOKENS GLOBAUX
+				   ========================================================== #}
+
+	<input type="hidden" id="machineCreateUrl" value="{{ path('app_machines_create_ajax') }}">
+
+	<input
+	type="hidden" id="machineCreateToken" value="{{ csrf_token('create_machine') }}">
+
+
+	{# ==========================================================
+				   MODAL : AJOUTER UNE MACHINE
+				   ========================================================== #}
+
+	<div class="modal fade" id="machineCreateModal" tabindex="-1" role="dialog" aria-labelledby="machineCreateModalLabel" aria-hidden="true">
+
+		<div class="modal-dialog
+												               modal-xl" role="document">
+
+			<div class="modal-content">
+
+				<div class="modal-header">
+
+					<div>
+						<h5 class="modal-title" id="machineCreateModalLabel">
+							Ajouter une machine
+						</h5>
+
+						<small class="text-muted">
+							L'adresse IP permettra d'identifier
+																												                        automatiquement le poste de production.
+						</small>
+					</div>
+
+					<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+						<span aria-hidden="true">
+							&times;
+						</span>
+					</button>
+
+				</div>
+
+
+				<div class="modal-body">
+
+					<div
+						class="row">
+
+						{# NOM #}
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateNom">
+									Nom
+									<span class="text-danger">*</span>
+								</label>
+
+								<input type="text" id="machineCreateNom" class="form-control" placeholder="Exemple : Eco-solvant 3.2 m" autocomplete="off">
+
+							</div>
+
+						</div>
+
+
+						{# IP #}
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateAdresseIp">
+									Adresse IP
+									<span class="text-danger">*</span>
+								</label>
+
+								<input type="text" id="machineCreateAdresseIp" class="form-control" placeholder="Exemple : 192.168.1.20" autocomplete="off">
+
+								<small class="form-text text-muted">
+									Cette adresse doit être fixe et unique.
+								</small>
+
+							</div>
+
+						</div>
+
+
+						{# MARQUE #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateMarque">
+									Marque
+									<span class="text-danger">*</span>
+								</label>
+
+								<input type="text" id="machineCreateMarque" class="form-control" placeholder="Exemple : Yinghe" autocomplete="off">
+
+							</div>
+
+						</div>
+
+
+						{# MODÈLE #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateModeles">
+									Modèle
+									<span class="text-danger">*</span>
+								</label>
+
+								<input type="text" id="machineCreateModeles" class="form-control" placeholder="Exemple : YH-3200" autocomplete="off">
+
+							</div>
+
+						</div>
+
+
+						{# NUMÉRO SÉRIE #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateNumeroSerie">
+									Numéro de série
+									<span class="text-danger">*</span>
+								</label>
+
+								<input type="text" id="machineCreateNumeroSerie" class="form-control" autocomplete="off">
+
+							</div>
+
+						</div>
+
+
+						{# TYPE MACHINE #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateTypeMachine">
+									Type de machine
+									<span class="text-danger">*</span>
+								</label>
+
+								<select id="machineCreateTypeMachine" class="form-control">
+									<option value="">
+										Sélectionner
+									</option>
+
+									<option value="eco_solvant">
+										Eco-solvant
+									</option>
+
+									<option value="dtf">
+										DTF
+									</option>
+
+									<option value="laser">
+										Laser
+									</option>
+
+									<option value="sublimation">
+										Sublimation
+									</option>
+
+									<option value="uv">
+										UV
+									</option>
+
+									<option value="decoupe">
+										Découpe
+									</option>
+
+									<option value="autre">
+										Autre
+									</option>
+								</select>
+
+							</div>
+
+						</div>
+
+
+						{# LARGEUR #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateLargeurImpression">
+									Largeur d'impression
+									<span class="text-danger">*</span>
+								</label>
+
+								<input type="text" id="machineCreateLargeurImpression" class="form-control" placeholder="Exemple : 3.2 m">
+
+							</div>
+
+						</div>
+
+
+						{# NB TÊTES #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateNbTetes">
+									Nombre de têtes
+									<span class="text-danger">*</span>
+								</label>
+
+								<input type="number" id="machineCreateNbTetes" class="form-control" min="0" step="1" value="0">
+
+							</div>
+
+						</div>
+
+
+						{# DATE ACHAT #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateDateAchat">
+									Date d'achat
+								</label>
+
+								<input type="date" id="machineCreateDateAchat" class="form-control">
+
+							</div>
+
+						</div>
+
+
+						{# DATE MISE SERVICE #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateDateMiseService">
+									Date de mise en service
+								</label>
+
+								<input type="date" id="machineCreateDateMiseService" class="form-control">
+
+							</div>
+
+						</div>
+
+
+						{# ÉTAT #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateEtat">
+									État
+								</label>
+
+								<select id="machineCreateEtat" class="form-control">
+									<option value="disponible" selected>
+										Disponible
+									</option>
+
+									<option value="maintenance">
+										Maintenance
+									</option>
+
+									<option value="hors_service">
+										Hors service
+									</option>
+
+									<option value="inactive">
+										Inactive
+									</option>
+								</select>
+
+							</div>
+
+						</div>
+
+
+						{# COMPTEUR M2 #}
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateCompteurM2">
+									Compteur m²
+								</label>
+
+								<input type="number" id="machineCreateCompteurM2" class="form-control" min="0" step="0.01" value="0">
+
+							</div>
+
+						</div>
+
+
+						{# COMPTEUR HEURES #}
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateCompteurHeures">
+									Compteur heures
+								</label>
+
+								<input type="number" id="machineCreateCompteurHeures" class="form-control" min="0" step="1" value="0">
+
+							</div>
+
+						</div>
+
+
+						{# COMPTEUR FEUILLES #}
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateCompteurFeuilles">
+									Compteur feuilles (A4-équivalent)
+								</label>
+
+								<input type="number" id="machineCreateCompteurFeuilles" class="form-control" min="0" step="1" value="0">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-12">
+							<hr>
+							<h6 class="text-muted">Rentabilité / amortissement</h6>
+						</div>
+
+
+						{# MODE FACTURATION #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateModeFacturation">
+									Mode de facturation
+								</label>
+
+								<select id="machineCreateModeFacturation" class="form-control">
+									<option value="metre_carre" selected>
+										Au mètre carré
+									</option>
+
+									<option value="feuille">
+										À la feuille (A4/A3)
+									</option>
+								</select>
+
+							</div>
+
+						</div>
+
+
+						{# PRIX ACHAT #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreatePrixAchat">
+									Prix d'achat (F CFA)
+								</label>
+
+								<input type="number" id="machineCreatePrixAchat" class="form-control" min="0" step="1">
+
+							</div>
+
+						</div>
+
+
+						{# DURÉE AMORTISSEMENT #}
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateDureeAmortissementMois">
+									Durée d'amortissement (mois)
+								</label>
+
+								<input type="number" id="machineCreateDureeAmortissementMois" class="form-control" min="0" step="1">
+
+							</div>
+
+						</div>
+
+
+						{# REVENU AVANT SUIVI #}
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateRevenuAvantSuivi">
+									Revenu recap (avant suivi dans l'appli)
+								</label>
+
+								<input type="number" id="machineCreateRevenuAvantSuivi" class="form-control" min="0" step="1" value="0">
+
+								<small class="form-text text-muted">
+									Total déjà facturé par cette machine avant le début du suivi via les commandes (ex : classeur d'amortissement existant).
+								</small>
+
+							</div>
+
+						</div>
+
+
+						{# DATE DÉBUT SUIVI #}
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineCreateDateDebutSuivi">
+									Date de début du suivi
+								</label>
+
+								<input type="date" id="machineCreateDateDebutSuivi" class="form-control">
+
+								<small class="form-text text-muted">
+									Seules les commandes à partir de cette date seront comptées (pour ne pas doubler le revenu recap).
+								</small>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				<div class="modal-footer">
+
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						Annuler
+					</button>
+
+					<button type="button" id="machineCreateSaveButton" class="btn btn-primary">
+						<i class="fa fa-save mr-1"></i>
+						Enregistrer la machine
+					</button>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ==========================================================
+				   MODAL : MODIFIER UNE MACHINE
+				   ========================================================== #}
+
+	<div class="modal fade" id="machineEditModal" tabindex="-1" role="dialog" aria-labelledby="machineEditModalLabel" aria-hidden="true">
+
+		<div class="modal-dialog
+												               modal-xl" role="document">
+
+			<div class="modal-content">
+
+				<div class="modal-header">
+
+					<div>
+						<h5 class="modal-title" id="machineEditModalLabel">
+							Modifier la machine
+						</h5>
+
+						<small class="text-muted">
+							Une modification de l'adresse IP
+																												                        modifie l'identification automatique
+																												                        du poste de production.
+						</small>
+					</div>
+
+					<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+						<span aria-hidden="true">
+							&times;
+						</span>
+					</button>
+
+				</div>
+
+
+				<div class="modal-body">
+
+					<input type="hidden" id="machineEditId">
+
+					<input type="hidden" id="machineEditUpdateUrl">
+
+					<input type="hidden" id="machineEditUpdateToken">
+
+
+					<div class="row">
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditNom">
+									Nom
+									<span class="text-danger">*</span>
+								</label>
+
+								<input type="text" id="machineEditNom" class="form-control" autocomplete="off">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditAdresseIp">
+									Adresse IP
+									<span class="text-danger">*</span>
+								</label>
+
+								<input type="text" id="machineEditAdresseIp" class="form-control" autocomplete="off">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditMarque">
+									Marque
+								</label>
+
+								<input type="text" id="machineEditMarque" class="form-control">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditModeles">
+									Modèle
+								</label>
+
+								<input type="text" id="machineEditModeles" class="form-control">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditNumeroSerie">
+									Numéro de série
+								</label>
+
+								<input type="text" id="machineEditNumeroSerie" class="form-control">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditTypeMachine">
+									Type de machine
+								</label>
+
+								<select id="machineEditTypeMachine" class="form-control">
+									<option value="">
+										Sélectionner
+									</option>
+
+									<option value="eco_solvant">
+										Eco-solvant
+									</option>
+
+									<option value="dtf">
+										DTF
+									</option>
+
+									<option value="laser">
+										Laser
+									</option>
+
+									<option value="sublimation">
+										Sublimation
+									</option>
+
+									<option value="uv">
+										UV
+									</option>
+
+									<option value="decoupe">
+										Découpe
+									</option>
+
+									<option value="autre">
+										Autre
+									</option>
+								</select>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditLargeurImpression">
+									Largeur d'impression
+								</label>
+
+								<input type="text" id="machineEditLargeurImpression" class="form-control">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditNbTetes">
+									Nombre de têtes
+								</label>
+
+								<input type="number" id="machineEditNbTetes" class="form-control" min="0" step="1">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditDateAchat">
+									Date d'achat
+								</label>
+
+								<input type="date" id="machineEditDateAchat" class="form-control">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditDateMiseService">
+									Date de mise en service
+								</label>
+
+								<input type="date" id="machineEditDateMiseService" class="form-control">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditEtat">
+									État
+								</label>
+
+								<select id="machineEditEtat" class="form-control">
+									<option value="disponible">
+										Disponible
+									</option>
+
+									<option value="maintenance">
+										Maintenance
+									</option>
+
+									<option value="hors_service">
+										Hors service
+									</option>
+
+									<option value="inactive">
+										Inactive
+									</option>
+								</select>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditCompteurM2">
+									Compteur m²
+								</label>
+
+								<input type="number" id="machineEditCompteurM2" class="form-control" min="0" step="0.01">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditCompteurHeures">
+									Compteur heures
+								</label>
+
+								<input type="number" id="machineEditCompteurHeures" class="form-control" min="0" step="1">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditCompteurFeuilles">
+									Compteur feuilles (A4-équivalent)
+								</label>
+
+								<input type="number" id="machineEditCompteurFeuilles" class="form-control" min="0" step="1">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-12">
+							<hr>
+							<h6 class="text-muted">Rentabilité / amortissement</h6>
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditModeFacturation">
+									Mode de facturation
+								</label>
+
+								<select id="machineEditModeFacturation" class="form-control">
+									<option value="metre_carre">
+										Au mètre carré
+									</option>
+
+									<option value="feuille">
+										À la feuille (A4/A3)
+									</option>
+								</select>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditPrixAchat">
+									Prix d'achat (F CFA)
+								</label>
+
+								<input type="number" id="machineEditPrixAchat" class="form-control" min="0" step="1">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditDureeAmortissementMois">
+									Durée d'amortissement (mois)
+								</label>
+
+								<input type="number" id="machineEditDureeAmortissementMois" class="form-control" min="0" step="1">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditRevenuAvantSuivi">
+									Revenu recap (avant suivi dans l'appli)
+								</label>
+
+								<input type="number" id="machineEditRevenuAvantSuivi" class="form-control" min="0" step="1">
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label" for="machineEditDateDebutSuivi">
+									Date de début du suivi
+								</label>
+
+								<input type="date" id="machineEditDateDebutSuivi" class="form-control">
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				<div class="modal-footer">
+
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						Annuler
+					</button>
+
+					<button type="button" id="machineEditSaveButton" class="btn btn-primary">
+						<i class="fa fa-save mr-1"></i>
+						Enregistrer les modifications
+					</button>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}
+
+
+{% block stylesheets %}
+	{{ parent() }}
+
+	<style>
+
+		.machine-ip-badge {
+			font-family: "Courier New", monospace;
+			font-size: 12px;
+			letter-spacing: 0.3px;
+		}
+
+		#machineTable td {
+			vertical-align: middle;
+		}
+
+		#machineTable .badge {
+			white-space: nowrap;
+		}
+	</style>
+{% endblock %}
+
+
+{% block javascripts %}
+
+	{{ parent() }}
+
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script src="{{ asset('assets/js/traitement_machines.js') }}"></script>
+	<script>
+		document.addEventListener('DOMContentLoaded', function () { /*
+		     * ============================================================
+		     * OUTILS
+		     * ============================================================
+		     */
+
+function afficherErreur(message) {
+Swal.fire({
+icon: 'error',
+title: 'Erreur',
+text: message || 'Une erreur est survenue.'
+});
+}
+
+function afficherSucces(message) {
+return Swal.fire({
+icon: 'success',
+title: 'Succès',
+text: message || 'Votre demande a été enregistrée.',
+timer: 1800,
+showConfirmButton: false
+});
+}
+
+async function lireReponseJson(response) {
+let data;
+
+try {
+data = await response.json();
+} catch (e) {
+throw new Error('La réponse du serveur est invalide.');
+}
+
+if (! response.ok || data.success === false) {
+throw new Error(data.message || 'Une erreur est survenue.');
+}
+
+return data;
+}
+
+function valeur(id) {
+const element = document.getElementById(id);
+
+if (! element) {
+return '';
+}
+
+return element.value.trim();
+}
+
+function definirValeur(id, value) {
+const element = document.getElementById(id);
+
+if (! element) {
+return;
+}
+
+element.value = value ?? '';
+}
+
+/*
+		     * ============================================================
+		     * VALIDATION IP
+		     * ============================================================
+		     */
+
+function adresseIpValide(ip) {
+if (! ip) {
+return false;
+}
+
+/*
+		         * IPv4
+		         */
+const ipv4Regex = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+
+if (ipv4Regex.test(ip)) {
+return true;
+}
+
+/*
+		         * Validation IPv6 simple.
+		         * La validation définitive reste côté PHP.
+		         */
+if (ip.includes(':') && /^[0-9a-fA-F:]+$/.test(ip)) {
+return true;
+}
+
+return false;
+}
+
+/*
+		     * ============================================================
+		     * BADGE ÉTAT
+		     * ============================================================
+		     */
+
+function genererBadgeEtat(etat) {
+switch (etat) {
+case 'disponible':
+return `
+	<span class="badge badge-success">
+		Disponible
+	</span>
+	`;
+
+case 'maintenance':
+return `
+	<span class="badge badge-warning">
+		Maintenance
+	</span>
+	`;
+
+case 'hors_service':
+return `
+	<span class="badge badge-danger">
+		Hors service
+	</span>
+	`;
+
+case 'inactive':
+return `
+	<span class="badge badge-secondary">
+		Inactive
+	</span>
+	`;
+
+default:
+return `
+	<span class="badge badge-info">
+		${
+echapperHtml((etat || 'Non renseigné').replaceAll('_', ' '))
+}
+	</span>
+	`;
+}
+}
+
+/*
+		     * ============================================================
+		     * PROTECTION HTML
+		     * ============================================================
+		     */
+
+function echapperHtml(value) {
+if (value === null || value === undefined) {
+return '';
+}
+
+const div = document.createElement('div');
+div.textContent = String(value);
+
+return div.innerHTML;
+}
+
+/*
+		     * ============================================================
+		     * CRÉATION MACHINE
+		     * ============================================================
+		     */
+
+const createButton = document.getElementById('machineCreateSaveButton');
+
+if (createButton) {
+
+createButton.addEventListener('click', async function () {
+
+const nom = valeur('machineCreateNom');
+
+const adresseIp = valeur('machineCreateAdresseIp');
+
+const marque = valeur('machineCreateMarque');
+
+const modeles = valeur('machineCreateModeles');
+
+const numeroSerie = valeur('machineCreateNumeroSerie');
+
+const typeMachine = valeur('machineCreateTypeMachine');
+
+const largeurImpression = valeur('machineCreateLargeurImpression');
+
+const nbTetes = valeur('machineCreateNbTetes');
+
+const dateAchat = valeur('machineCreateDateAchat');
+
+const dateMiseService = valeur('machineCreateDateMiseService');
+
+const compteurM2 = valeur('machineCreateCompteurM2');
+
+const compteurHeures = valeur('machineCreateCompteurHeures');
+
+const compteurFeuilles = valeur('machineCreateCompteurFeuilles');
+
+const etat = valeur('machineCreateEtat');
+
+const modeFacturation = valeur('machineCreateModeFacturation');
+
+const prixAchat = valeur('machineCreatePrixAchat');
+
+const dureeAmortissementMois = valeur('machineCreateDureeAmortissementMois');
+
+const revenuAvantSuivi = valeur('machineCreateRevenuAvantSuivi');
+
+const dateDebutSuivi = valeur('machineCreateDateDebutSuivi');
+
+/*
+		                 * Validation rapide côté navigateur.
+		                 */
+if (! nom) {
+afficherErreur('Le nom de la machine est obligatoire.');
+return;
+}
+
+if (! adresseIp) {
+afficherErreur('L’adresse IP est obligatoire.');
+return;
+}
+
+if (! adresseIpValide(adresseIp)) {
+afficherErreur('L’adresse IP saisie est invalide.');
+return;
+}
+
+if (! marque) {
+afficherErreur('La marque est obligatoire.');
+return;
+}
+
+if (! modeles) {
+afficherErreur('Le modèle est obligatoire.');
+return;
+}
+
+if (! numeroSerie) {
+afficherErreur('Le numéro de série est obligatoire.');
+return;
+}
+
+if (! typeMachine) {
+afficherErreur('Le type de machine est obligatoire.');
+return;
+}
+
+if (! largeurImpression) {
+afficherErreur('La largeur d’impression est obligatoire.');
+return;
+}
+
+const createUrl = document.getElementById('machineCreateUrl') ?. value;
+
+const createToken = document.getElementById('machineCreateToken') ?. value;
+
+if (! createUrl || ! createToken) {
+afficherErreur('Configuration AJAX de création introuvable.');
+return;
+}
+
+const confirmation = await Swal.fire({
+icon: 'question',
+title: 'Enregistrer la machine ?',
+html: `
+	<strong>
+		${
+echapperHtml(nom)
+}
+	</strong>
+	<br>
+	<span class="text-muted">
+		IP : ${
+echapperHtml(adresseIp)
+}
+	</span>
+	`,
+showCancelButton: true,
+confirmButtonText: 'Oui, enregistrer',
+cancelButtonText: 'Annuler'
+});
+
+if (! confirmation.isConfirmed) {
+return;
+}
+
+const texteInitial = createButton.innerHTML;
+
+createButton.disabled = true;
+createButton.innerHTML = `
+	<i class="fa fa-spinner fa-spin mr-1"></i>
+	Enregistrement...
+		                `;
+
+try {
+
+const formData = new FormData();
+
+formData.append('_token', createToken);
+
+formData.append('nom', nom);
+
+formData.append('adresseIp', adresseIp);
+
+formData.append('marque', marque);
+
+formData.append('modeles', modeles);
+
+formData.append('numeroSerie', numeroSerie);
+
+formData.append('typeMachine', typeMachine);
+
+formData.append('largeurImpression', largeurImpression);
+
+formData.append('nbTetes', nbTetes || '0');
+
+formData.append('dateAchat', dateAchat);
+
+formData.append('dateMiseService', dateMiseService);
+
+formData.append('compteurM2', compteurM2 || '0');
+
+formData.append('compteurHeures', compteurHeures || '0');
+
+formData.append('compteurFeuilles', compteurFeuilles || '0');
+
+formData.append('etat', etat || 'disponible');
+
+formData.append('modeFacturation', modeFacturation || 'metre_carre');
+
+formData.append('prixAchat', prixAchat);
+
+formData.append('dureeAmortissementMois', dureeAmortissementMois);
+
+formData.append('revenuAvantSuivi', revenuAvantSuivi || '0');
+
+formData.append('dateDebutSuivi', dateDebutSuivi);
+
+const response = await fetch(createUrl, {
+method: 'POST',
+body: formData,
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+}
+});
+
+const data = await lireReponseJson(response);
+
+$('#machineCreateModal').modal('hide');
+
+await afficherSucces(data.message);
+
+/*
+		                     * Rechargement simple et fiable.
+		                     *
+		                     * Cela garantit que :
+		                     * - les tokens CSRF sont actualisés ;
+		                     * - toutes les URLs Twig sont correctes ;
+		                     * - aucune duplication de logique HTML.
+		                     */
+window.location.reload();
+
+} catch (error) {
+
+afficherErreur(error.message);
+
+} finally {
+
+createButton.disabled = false;
+createButton.innerHTML = texteInitial;
+}
+});
+}
+
+/*
+		     * ============================================================
+		     * RÉINITIALISATION MODAL CRÉATION
+		     * ============================================================
+		     */
+
+$('#machineCreateModal').on('hidden.bs.modal', function () {
+
+definirValeur('machineCreateNom', '');
+
+definirValeur('machineCreateAdresseIp', '');
+
+definirValeur('machineCreateMarque', '');
+
+definirValeur('machineCreateModeles', '');
+
+definirValeur('machineCreateNumeroSerie', '');
+
+definirValeur('machineCreateTypeMachine', '');
+
+definirValeur('machineCreateLargeurImpression', '');
+
+definirValeur('machineCreateNbTetes', '0');
+
+definirValeur('machineCreateDateAchat', '');
+
+definirValeur('machineCreateDateMiseService', '');
+
+definirValeur('machineCreateCompteurM2', '0');
+
+definirValeur('machineCreateCompteurHeures', '0');
+
+definirValeur('machineCreateEtat', 'disponible');
+});
+
+/*
+		     * ============================================================
+		     * CHARGEMENT MACHINE POUR MODIFICATION
+		     * ============================================================
+		     */
+
+document.addEventListener('click', async function (event) {
+
+const button = event.target.closest('.btn-edit-machine');
+
+if (! button) {
+return;
+}
+
+const getUrl = button.dataset.getUrl;
+
+const updateUrl = button.dataset.updateUrl;
+
+const updateToken = button.dataset.updateToken;
+
+if (! getUrl) {
+afficherErreur('URL de chargement introuvable.');
+return;
+}
+
+/*
+		             * On vide les anciens champs.
+		             */
+definirValeur('machineEditId', button.dataset.id || '');
+
+definirValeur('machineEditUpdateUrl', updateUrl || '');
+
+definirValeur('machineEditUpdateToken', updateToken || '');
+
+try {
+
+Swal.fire({
+title: 'Chargement...',
+text: 'Récupération des informations de la machine.',
+allowOutsideClick: false,
+allowEscapeKey: false,
+didOpen: function () {
+Swal.showLoading();
+}
+});
+
+const response = await fetch(getUrl, {
+method: 'GET',
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+}
+});
+
+const data = await lireReponseJson(response);
+
+Swal.close();
+
+const machine = data.machine;
+
+definirValeur('machineEditId', machine.id);
+
+definirValeur('machineEditNom', machine.nom);
+
+definirValeur('machineEditAdresseIp', machine.adresseIp);
+
+definirValeur('machineEditMarque', machine.marque);
+
+definirValeur('machineEditModeles', machine.modeles);
+
+definirValeur('machineEditNumeroSerie', machine.numeroSerie);
+
+definirValeur('machineEditTypeMachine', machine.typeMachine);
+
+definirValeur('machineEditLargeurImpression', machine.largeurImpression);
+
+definirValeur('machineEditNbTetes', machine.nbTetes ?? 0);
+
+definirValeur('machineEditDateAchat', machine.dateAchat);
+
+definirValeur('machineEditDateMiseService', machine.dateMiseService);
+
+definirValeur('machineEditCompteurM2', machine.compteurM2 ?? 0);
+
+definirValeur('machineEditCompteurHeures', machine.compteurHeures ?? 0);
+
+definirValeur('machineEditCompteurFeuilles', machine.compteurFeuilles ?? 0);
+
+definirValeur('machineEditEtat', machine.etat || 'disponible');
+
+definirValeur('machineEditModeFacturation', machine.modeFacturation || 'metre_carre');
+
+definirValeur('machineEditPrixAchat', machine.prixAchat);
+
+definirValeur('machineEditDureeAmortissementMois', machine.dureeAmortissementMois);
+
+definirValeur('machineEditRevenuAvantSuivi', machine.revenuAvantSuivi ?? 0);
+
+definirValeur('machineEditDateDebutSuivi', machine.dateDebutSuivi);
+
+} catch (error) {
+
+Swal.close();
+
+$('#machineEditModal').modal('hide');
+
+afficherErreur(error.message);
+}
+});
+
+/*
+		     * ============================================================
+		     * ENREGISTRER MODIFICATION
+		     * ============================================================
+		     */
+
+const editSaveButton = document.getElementById('machineEditSaveButton');
+
+if (editSaveButton) {
+
+editSaveButton.addEventListener('click', async function () {
+
+const updateUrl = valeur('machineEditUpdateUrl');
+
+const updateToken = valeur('machineEditUpdateToken');
+
+const nom = valeur('machineEditNom');
+
+const adresseIp = valeur('machineEditAdresseIp');
+
+const marque = valeur('machineEditMarque');
+
+const modeles = valeur('machineEditModeles');
+
+const numeroSerie = valeur('machineEditNumeroSerie');
+
+const typeMachine = valeur('machineEditTypeMachine');
+
+const largeurImpression = valeur('machineEditLargeurImpression');
+
+const nbTetes = valeur('machineEditNbTetes');
+
+const dateAchat = valeur('machineEditDateAchat');
+
+const dateMiseService = valeur('machineEditDateMiseService');
+
+const compteurM2 = valeur('machineEditCompteurM2');
+
+const compteurHeures = valeur('machineEditCompteurHeures');
+
+const compteurFeuilles = valeur('machineEditCompteurFeuilles');
+
+const etat = valeur('machineEditEtat');
+
+const modeFacturation = valeur('machineEditModeFacturation');
+
+const prixAchat = valeur('machineEditPrixAchat');
+
+const dureeAmortissementMois = valeur('machineEditDureeAmortissementMois');
+
+const revenuAvantSuivi = valeur('machineEditRevenuAvantSuivi');
+
+const dateDebutSuivi = valeur('machineEditDateDebutSuivi');
+
+if (! updateUrl) {
+afficherErreur('URL de modification introuvable.');
+return;
+}
+
+if (! updateToken) {
+afficherErreur('Jeton de sécurité introuvable.');
+return;
+}
+
+if (! nom) {
+afficherErreur('Le nom de la machine est obligatoire.');
+return;
+}
+
+if (! adresseIp) {
+afficherErreur('L’adresse IP est obligatoire.');
+return;
+}
+
+if (! adresseIpValide(adresseIp)) {
+afficherErreur('L’adresse IP saisie est invalide.');
+return;
+}
+
+if (! marque) {
+afficherErreur('La marque est obligatoire.');
+return;
+}
+
+if (! modeles) {
+afficherErreur('Le modèle est obligatoire.');
+return;
+}
+
+if (! numeroSerie) {
+afficherErreur('Le numéro de série est obligatoire.');
+return;
+}
+
+if (! typeMachine) {
+afficherErreur('Le type de machine est obligatoire.');
+return;
+}
+
+if (! largeurImpression) {
+afficherErreur('La largeur d’impression est obligatoire.');
+return;
+}
+
+const confirmation = await Swal.fire({
+icon: 'question',
+title: 'Enregistrer les modifications ?',
+html: `
+		                            Machine :
+	<strong>
+		${
+echapperHtml(nom)
+}
+	</strong>
+	<br>
+	IP :
+	<strong>
+		${
+echapperHtml(adresseIp)
+}
+	</strong>
+	`,
+showCancelButton: true,
+confirmButtonText: 'Oui, enregistrer',
+cancelButtonText: 'Annuler'
+});
+
+if (! confirmation.isConfirmed) {
+return;
+}
+
+const ancienTexte = editSaveButton.innerHTML;
+
+editSaveButton.disabled = true;
+
+editSaveButton.innerHTML = `
+	<i class="fa fa-spinner fa-spin mr-1"></i>
+	Enregistrement...
+		                `;
+
+try {
+
+const formData = new FormData();
+
+formData.append('_token', updateToken);
+
+formData.append('nom', nom);
+
+formData.append('adresseIp', adresseIp);
+
+formData.append('marque', marque);
+
+formData.append('modeles', modeles);
+
+formData.append('numeroSerie', numeroSerie);
+
+formData.append('typeMachine', typeMachine);
+
+formData.append('largeurImpression', largeurImpression);
+
+formData.append('nbTetes', nbTetes || '0');
+
+formData.append('dateAchat', dateAchat);
+
+formData.append('dateMiseService', dateMiseService);
+
+formData.append('compteurM2', compteurM2 || '0');
+
+formData.append('compteurHeures', compteurHeures || '0');
+
+formData.append('compteurFeuilles', compteurFeuilles || '0');
+
+formData.append('etat', etat || 'disponible');
+
+formData.append('modeFacturation', modeFacturation || 'metre_carre');
+
+formData.append('prixAchat', prixAchat);
+
+formData.append('dureeAmortissementMois', dureeAmortissementMois);
+
+formData.append('revenuAvantSuivi', revenuAvantSuivi || '0');
+
+formData.append('dateDebutSuivi', dateDebutSuivi);
+
+const response = await fetch(updateUrl, {
+method: 'POST',
+body: formData,
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+}
+});
+
+const data = await lireReponseJson(response);
+
+$('#machineEditModal').modal('hide');
+
+await afficherSucces(data.message);
+
+window.location.reload();
+
+} catch (error) {
+
+afficherErreur(error.message);
+
+} finally {
+
+editSaveButton.disabled = false;
+
+editSaveButton.innerHTML = ancienTexte;
+}
+});
+}
+
+/*
+		     * ============================================================
+		     * SUPPRESSION
+		     * ============================================================
+		     */
+
+document.addEventListener('click', async function (event) {
+
+const button = event.target.closest('.btn-delete-machine');
+
+if (! button) {
+return;
+}
+
+const machineId = button.dataset.id;
+
+const url = button.dataset.url;
+
+const token = button.dataset.token;
+
+const nom = button.dataset.nom || 'cette machine';
+
+if (! url || ! token) {
+afficherErreur('Configuration de suppression introuvable.');
+return;
+}
+
+const confirmation = await Swal.fire({
+icon: 'warning',
+title: 'Supprimer la machine ?',
+html: `
+		                        Vous êtes sur le point de supprimer
+	<strong>
+		${
+echapperHtml(nom)
+}
+	</strong>.
+	<br><br>
+	Cette action est irréversible.
+		                    `,
+showCancelButton: true,
+confirmButtonText: 'Oui, supprimer',
+cancelButtonText: 'Annuler',
+confirmButtonColor: '#d33'
+});
+
+if (! confirmation.isConfirmed) {
+return;
+}
+
+try {
+
+Swal.fire({
+title: 'Suppression...',
+allowOutsideClick: false,
+allowEscapeKey: false,
+didOpen: function () {
+Swal.showLoading();
+}
+});
+
+const formData = new FormData();
+
+formData.append('_token', token);
+
+const response = await fetch(url, {
+method: 'POST',
+body: formData,
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+}
+});
+
+const data = await lireReponseJson(response);
+
+Swal.close();
+
+/*
+		                 * Retrait visuel de la ligne.
+		                 */
+const row = document.getElementById('machine-row-' + machineId);
+
+if (row) {
+row.remove();
+}
+
+await afficherSucces(data.message);
+
+/*
+		                 * Si plus aucune machine,
+		                 * on recharge pour afficher
+		                 * proprement l'état vide Twig.
+		                 */
+const remainingRows = document.querySelectorAll('#machineTableBody .machine-row');
+
+if (remainingRows.length === 0) {
+window.location.reload();
+}
+
+} catch (error) {
+
+Swal.close();
+
+afficherErreur(error.message);
+}
+});
+
+/*
+		     * ============================================================
+		     * RECHERCHE DANS LE TABLEAU
+		     * ============================================================
+		     */
+
+const searchInput = document.getElementById('machineSearch');
+
+if (searchInput) {
+
+searchInput.addEventListener('input', function () {
+
+const recherche = this.value.trim().toLowerCase();
+
+const rows = document.querySelectorAll('#machineTableBody .machine-row');
+
+rows.forEach(function (row) {
+
+const texte = row.textContent.toLowerCase();
+
+if (recherche === '' || texte.includes(recherche)) {
+row.style.display = '';
+} else {
+row.style.display = 'none';
+}
+});
+});
+}
+
+});
+	</script>
+{% endblock %}

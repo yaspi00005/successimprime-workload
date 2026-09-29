@@ -1,0 +1,183 @@
+{{ form_start(form, {
+    attr: {
+        id: 'formModificationClient',
+        class: 'client-ajax-form',
+        novalidate: 'novalidate'
+    }
+}) }}
+
+<div class="modal-body">
+	<div class="alert alert-danger client-form-global-error d-none"></div>
+
+	<div class="row">
+		<div class="col-md-4">
+			<div class="form-group">
+				{{ form_label(form.typeClient) }}
+				{{ form_widget(form.typeClient) }}
+				{{ form_errors(form.typeClient) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				{{ form_label(form.typeCompte) }}
+				{{ form_widget(form.typeCompte) }}
+				{{ form_errors(form.typeCompte) }}
+			</div>
+		</div>
+
+		<div class="col-md-8 client-field-entreprise">
+			<div class="form-group">
+				{{ form_label(form.raisonSociale) }}
+				{{ form_widget(form.raisonSociale) }}
+				{{ form_errors(form.raisonSociale) }}
+			</div>
+		</div>
+
+		<div class="col-md-4 client-field-nom">
+			<div class="form-group">
+				{{ form_label(form.nom) }}
+				{{ form_widget(form.nom) }}
+				{{ form_errors(form.nom) }}
+			</div>
+		</div>
+
+		<div class="col-md-4 client-field-prenom">
+			<div class="form-group">
+				{{ form_label(form.prenom) }}
+				{{ form_widget(form.prenom) }}
+				{{ form_errors(form.prenom) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				{{ form_label(form.telephone) }}
+				{{ form_widget(form.telephone) }}
+				{{ form_errors(form.telephone) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				{{ form_label(form.telephone2) }}
+				{{ form_widget(form.telephone2) }}
+				{{ form_errors(form.telephone2) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				{{ form_label(form.email) }}
+				{{ form_widget(form.email) }}
+				{{ form_errors(form.email) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				{{ form_label(form.adresse) }}
+				{{ form_widget(form.adresse) }}
+				{{ form_errors(form.adresse) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				{{ form_label(form.ville) }}
+				{{ form_widget(form.ville) }}
+				{{ form_errors(form.ville) }}
+			</div>
+		</div>
+
+		<div class="col-md-4 client-field-entreprise">
+			<div class="form-group">
+				{{ form_label(form.nif) }}
+				{{ form_widget(form.nif) }}
+				{{ form_errors(form.nif) }}
+			</div>
+		</div>
+
+		<div class="col-md-4 client-field-entreprise">
+			<div class="form-group">
+				{{ form_label(form.rccm) }}
+				{{ form_widget(form.rccm) }}
+				{{ form_errors(form.rccm) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				{{ form_label(form.plafondCredit) }}
+				{{ form_widget(form.plafondCredit) }}
+				{{ form_errors(form.plafondCredit) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				<label class="d-block">Statut du client</label>
+
+				<label class="custom-switch">
+					{{ form_widget(form.statut, {
+                        attr: {
+                            class: 'custom-switch-input'
+                        }
+                    }) }}
+
+					<span class="custom-switch-indicator"></span>
+
+					<span class="custom-switch-description">
+						Client actif
+					</span>
+				</label>
+
+				{{ form_errors(form.statut) }}
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				<label class="d-block">SMS</label>
+
+				<label class="custom-switch">
+					{{ form_widget(form.recevoirSms, {
+                        attr: {
+                            class: 'custom-switch-input'
+                        }
+                    }) }}
+
+					<span class="custom-switch-indicator"></span>
+
+					<span class="custom-switch-description">
+						Peut recevoir des SMS
+					</span>
+				</label>
+
+				{{ form_errors(form.recevoirSms) }}
+			</div>
+		</div>
+
+		<div class="col-md-12">
+			<div class="form-group">
+				{{ form_label(form.observation) }}
+				{{ form_widget(form.observation) }}
+				{{ form_errors(form.observation) }}
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal-footer">
+	<button type="button" class="btn btn-secondary" data-dismiss="modal">
+		<i class="fa fa-times mr-1"></i>
+		Annuler
+	</button>
+
+	<button type="submit" class="btn btn-primary client-submit-button">
+		<i class="fa fa-save mr-1"></i>
+		Enregistrer les modifications
+	</button>
+</div>
+
+{{ form_end(form) }}

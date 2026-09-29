@@ -1,0 +1,534 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des commandes
+{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset( 'assets/plugins/select2/select2.min.css' ) }}" rel="stylesheet">
+	<style>
+		.commande-filter-card {
+			position: sticky;
+			top: 85px;
+		}
+		.commande-stat {
+			border: 0;
+			border-left: 4px solid #1643a3;
+		}
+		.commande-reference {
+			font-weight: 700;
+			color: #1643a3;
+		}
+		.commande-client {
+			max-width: 230px;
+			white-space: normal;
+		}
+		.commande-actions .btn {
+			margin: 2px;
+		}
+		.filter-indicator {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 5px 10px;
+			border-radius: 20px;
+			background: #eef3ff;
+			color: #1643a3;
+			font-size: 12px;
+			font-weight: 600;
+		}
+		.empty-state {
+			padding: 55px 20px;
+			text-align: center;
+		}
+		.empty-state i {
+			font-size: 48px;
+			color: #cbd3df;
+		}
+		@media(max-width: 1199px) {
+			.commande-filter-card {
+				position: static;
+			}
+		}
+	</style>
+{% endblock %}
+
+{% block body %}
+	{% set rechercheActive =
+        filtres.q|default('')
+        or filtres.client|default('')
+        or filtres.statut|default('')
+        or filtres.etat|default('')
+        or filtres.paiement|default('')
+        or filtres.date_debut|default('')
+        or filtres.date_fin|default('')
+        or filtres.montant_min|default('')
+        or filtres.montant_max|default('')
+        or filtres.affichage|default('actives') == 'toutes'
+    %}
+
+	<div class="side-app">
+		<div class="page-header">
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_commandes_index') }}">Commandes</a>
+				</li>
+				<li class="breadcrumb-item active" aria-current="page">Liste</li>
+			</ol>
+
+			<a href="{{ path('app_commandes_new') }}" class="btn btn-primary">
+				<i class="fa fa-plus mr-1"></i>
+				Nouvelle commande
+			</a>
+		</div>
+
+		<div class="row">
+			{% if is_granted('ROLE_ADMIN') %}
+
+				<div class="col-sm-6 col-xl-3">
+					<div class="card commande-stat">
+						<div class="card-body">
+							<div class="text-muted">
+								Résultats affichés
+							</div>
+
+							<div class="h2 mb-0">
+								{{ commandes|length }}
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<div class="col-sm-6 col-xl-3">
+					<div class="card commande-stat border-warning">
+						<div class="card-body">
+							<div class="text-muted">
+								À encaisser
+							</div>
+
+							<div class="h2 mb-0">
+								{{
+                        totalReste
+                            |default(0)
+                            |number_format(0, ',', ' ')
+                    }}
+								F CFA
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<div class="col-sm-6 col-xl-3">
+					<div class="card commande-stat border-success">
+						<div class="card-body">
+							<div class="text-muted">
+								Total encaissé
+							</div>
+
+							<div class="h2 mb-0">
+								{{
+                        totalPaye
+                            |default(0)
+                            |number_format(0, ',', ' ')
+                    }}
+								F CFA
+							</div>
+						</div>
+					</div>
+				</div>
+
+			{% endif %}
+			<div class="col-sm-6 col-xl-3">
+				<div class="card commande-stat border-info">
+					<div class="card-body">
+						<div class="text-muted">Mode d’affichage</div>
+						<div class="mt-2">
+							{% if rechercheActive %}
+								<span class="filter-indicator">
+									<i class="fa fa-filter"></i>
+									Recherche personnalisée
+								</span>
+							{% else %}
+								<span class="filter-indicator">
+									<i class="fa fa-bolt"></i>
+									Commandes actives
+								</span>
+							{% endif %}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row row-cards">
+			<div class="col-xl-3">
+				<div class="card commande-filter-card">
+					<div class="card-header">
+						<div class="card-title">
+							<i class="fa fa-filter mr-2"></i>Recherche avancée
+						</div>
+					</div>
+
+					<form method="get" action="{{ path('app_commandes_index') }}">
+						<div class="card-body">
+							<div class="form-group">
+								<label class="form-label">Recherche générale</label>
+								<input type="search" name="q" class="form-control" value="{{ filtres.q|default('') }}" placeholder="N° commande, client, téléphone…">
+							</div>
+
+							<div class="form-group">
+								<label class="form-label">Client</label>
+								<select name="client" class="form-control custom-select">
+									<option value="">Tous les clients</option>
+									{% for client in clients|default([]) %}
+										<option value="{{ client.id }}" {{ filtres.client|default('') == client.id ? 'selected' : '' }}>
+											{{ client.telephone|default('Sans téléphone') }} — {{ (client.prenom|default('') ~ ' ' ~ client.nom|default(''))|trim }}{% if client.raisonSociale %} — {{ client.raisonSociale }}{% endif %}
+										</option>
+									{% endfor %}
+								</select>
+							</div>
+
+							<div class="form-group">
+								<label class="form-label">État des travaux</label>
+								<select name="etat" class="form-control custom-select">
+									<option value="">Tous les états</option>
+									<option value="preparation" {{ filtres.etat|default('') == 'preparation' ? 'selected' : '' }}>
+										En préparation
+									</option>
+									<option value="livraison" {{ filtres.etat|default('') == 'livraison' ? 'selected' : '' }}>
+										En livraison
+									</option>
+									<option value="livree" {{ filtres.etat|default('') == 'livree' ? 'selected' : '' }}>
+										Livrée
+									</option>
+								</select>
+							</div>
+
+							<div class="form-group">
+								<label class="form-label">Situation financière</label>
+								<select name="paiement" class="form-control custom-select">
+									<option value="">Toutes</option>
+									<option value="impayee" {{ filtres.paiement|default('') == 'impayee' ? 'selected' : '' }}>
+										Non payée
+									</option>
+									<option value="partielle" {{ filtres.paiement|default('') == 'partielle' ? 'selected' : '' }}>
+										Paiement partiel
+									</option>
+									<option value="payee" {{ filtres.paiement|default('') == 'payee' ? 'selected' : '' }}>
+										Entièrement payée
+									</option>
+								</select>
+							</div>
+
+							<div class="row">
+								<div class="col-6">
+									<div class="form-group">
+										<label class="form-label">Du</label>
+										<input type="date" name="date_debut" class="form-control" value="{{ filtres.date_debut|default('') }}">
+									</div>
+								</div>
+								<div class="col-6">
+									<div class="form-group">
+										<label class="form-label">Au</label>
+										<input type="date" name="date_fin" class="form-control" value="{{ filtres.date_fin|default('') }}">
+									</div>
+								</div>
+							</div>
+
+							<div class="row">
+								<div class="col-6">
+									<div class="form-group">
+										<label class="form-label">Montant min.</label>
+										<input type="number" min="0" name="montant_min" class="form-control" value="{{ filtres.montant_min|default('') }}" placeholder="0">
+									</div>
+								</div>
+								<div class="col-6">
+									<div class="form-group">
+										<label class="form-label">Montant max.</label>
+										<input type="number" min="0" name="montant_max" class="form-control" value="{{ filtres.montant_max|default('') }}" placeholder="Illimité">
+									</div>
+								</div>
+							</div>
+
+							<div class="form-group">
+								<label class="form-label">Afficher</label>
+								<select name="affichage" class="form-control custom-select">
+									<option value="actives" {{ filtres.affichage|default('actives') == 'actives' ? 'selected' : '' }}>
+										Commandes actives
+									</option>
+									<option value="toutes" {{ filtres.affichage|default('') == 'toutes' ? 'selected' : '' }}>
+										Toutes les commandes
+									</option>
+								</select>
+							</div>
+
+							<div class="form-group">
+								<label class="form-label">Trier par</label>
+								<select name="tri" class="form-control custom-select">
+									<option value="recent" {{ filtres.tri|default('recent') == 'recent' ? 'selected' : '' }}>Plus récentes</option>
+									<option value="ancien" {{ filtres.tri|default('') == 'ancien' ? 'selected' : '' }}>Plus anciennes</option>
+									<option value="montant_desc" {{ filtres.tri|default('') == 'montant_desc' ? 'selected' : '' }}>Montant décroissant</option>
+									<option value="reste_desc" {{ filtres.tri|default('') == 'reste_desc' ? 'selected' : '' }}>Reste à payer décroissant</option>
+								</select>
+							</div>
+
+							<button type="submit" class="btn btn-primary btn-block">
+								<i class="fa fa-search mr-1"></i>
+								Rechercher
+							</button>
+
+							<a href="{{ path('app_commandes_index', {reset: 1}) }}" class="btn btn-light btn-block">
+								<i class="fa fa-refresh mr-1"></i>
+								Réinitialiser
+							</a>
+						</div>
+					</form>
+				</div>
+			</div>
+
+			<div class="col-xl-9">
+				<div class="card">
+					<div class="card-header d-flex justify-content-between align-items-center">
+						<div>
+							<div class="card-title mb-1">Liste des commandes</div>
+							<small class="text-muted">
+								{% if rechercheActive %}
+									Résultats correspondant à vos critères.
+								{% else %}
+									Affichage automatique : paiements en attente et travaux en cours.
+								{% endif %}
+							</small>
+						</div>
+					</div>
+
+					<div class="table-responsive">
+						<table class="table card-table table-vcenter text-nowrap">
+							<thead>
+								<tr>
+									<th scope="col">Commande</th>
+									<th scope="col">Date</th>
+									<th scope="col">Client</th>
+									<th scope="col">Agent</th>
+									<th scope="col">Travaux</th>
+									<th scope="col">Paiement</th>
+									<th scope="col" class="text-right">Total TTC</th>
+									<th scope="col" class="text-right">Payé</th>
+									<th scope="col" class="text-right">Reste à payer</th>
+									<th scope="col" class="text-center">Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for commande in commandes %}
+									{% set total = commande.totalTtc|default(0) %}
+									{% set paye = commande.totalPaye|default(0) %}
+									{% set reste = commande.resteAPayer|default(0) %}
+									{% set statutPaiement = commande.statutPaiement %}
+
+									<tr>
+										{# 1. Commande #}
+										<td>
+											<a href="{{ path('app_commandes_show', { id: commande.id }) }}" class="commande-reference">
+												CMD-{{ '%05d'|format(commande.id) }}
+											</a>
+
+											<div class="small text-muted">
+												#{{ commande.id }}
+											</div>
+										</td>
+
+										{# Date de la commande #}
+										<td>
+											{% if commande.dateCommande %}
+												{{ commande.dateCommande|date('d/m/Y') }}
+											{% else %}
+												<span class="text-muted">—</span>
+											{% endif %}
+										</td>
+
+										{# 2. Client #}
+										<td class="commande-client">
+											<strong>
+												{{ commande.clients }}
+											</strong>
+										</td>
+
+										{# 2bis. Agent #}
+										<td>
+											{% if commande.agents %}
+												{{ commande.agents.username }}
+											{% else %}
+												<span class="text-muted">—</span>
+											{% endif %}
+										</td>
+
+										{# 3. Travaux #}
+										<td>
+											{% set statutTravaux = commande.statutTravaux %}
+
+											{% if statutTravaux == 'livree' %}
+												<span class="badge badge-success">
+													Livrée
+												</span>
+											{% elseif statutTravaux == 'livraison' %}
+												<span class="badge badge-warning">
+													En livraison
+												</span>
+											{% elseif statutTravaux == 'annulee' %}
+												<span class="badge badge-secondary">
+													Annulée
+												</span>
+											{% elseif statutTravaux == 'vide' %}
+												<span class="badge badge-light">
+													Aucun travail
+												</span>
+											{% else %}
+												<span class="badge badge-info">
+													En préparation
+												</span>
+											{% endif %}
+
+											<div class="small text-muted mt-1">
+												{{ commande.commandesDetails|length }}
+												travail{{ commande.commandesDetails|length > 1 ? 'x' : '' }}
+											</div>
+										</td>
+
+										{# 4. Statut du paiement #}
+										<td>
+											{% if statutPaiement == 'payee' %}
+												<span class="badge badge-success">
+													<i class="fa fa-check-circle mr-1"></i>
+													Payée
+												</span>
+											{% elseif statutPaiement == 'partielle' %}
+												<span class="badge badge-warning">
+													<i class="fa fa-clock-o mr-1"></i>
+													Paiement partiel
+												</span>
+											{% else %}
+												<span class="badge badge-danger">
+													<i class="fa fa-times-circle mr-1"></i>
+													Impayée
+												</span>
+											{% endif %}
+										</td>
+
+										{# 5. Total TTC #}
+										<td class="text-right">
+											<strong>
+												{{ total|number_format(0, ',', ' ') }}
+												FCFA
+											</strong>
+										</td>
+
+										{# 6. Montant payé #}
+										<td class="text-right text-success">
+											<strong>
+												{{ paye|number_format(0, ',', ' ') }}
+												FCFA
+											</strong>
+										</td>
+
+										{# 7. Reste à payer #}
+										<td class="text-right">
+											<strong class="{{ reste > 0 ? 'text-danger' : 'text-success' }}">
+												{{ reste|number_format(0, ',', ' ') }}
+												FCFA
+											</strong>
+										</td>
+
+										{# 8. Actions #}
+										<td class="text-center commande-actions">
+											<a href="{{ path('app_commandes_show', { id: commande.id }) }}" class="btn btn-info-light btn-sm" title="Afficher">
+												<i class="fa fa-eye"></i>
+											</a>
+
+											<a href="{{ path('app_commandes_edit', { id: commande.id }) }}" class="btn btn-primary-light btn-sm" title="Modifier">
+												<i class="fa fa-pencil"></i>
+											</a>
+										</td>
+									</tr>
+								{% else %}
+									<tr>
+										<td colspan="10">
+											<div class="empty-state">
+												<i class="fa fa-inbox"></i>
+
+												<h4 class="mt-3">
+													Aucune commande trouvée
+												</h4>
+
+												<p class="text-muted">
+													Modifiez les filtres ou réinitialisez la recherche.
+												</p>
+
+												<a href="{{ path('app_commandes_index', {reset: 1}) }}" class="btn btn-primary-light">
+													Afficher les commandes actives
+												</a>
+											</div>
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				{% if pagination is defined and pagination.pageCount > 1 %}
+					<nav class="d-flex justify-content-end">
+						<ul class="pagination">
+							{% for page in 1..pagination.pageCount %}
+								<li class="page-item {{ page == pagination.currentPage ? 'active' : '' }}">
+									<a class="page-link" href="{{ path('app_commandes_index', app.request.query.all|merge({page: page})) }}">
+										{{ page }}
+									</a>
+								</li>
+							{% endfor %}
+						</ul>
+					</nav>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+/*
+ * Recherche dans les listes déroulantes du formulaire de
+ * recherche avancée (client, statut, état...).
+ */
+if (window.jQuery && window.jQuery.fn.select2) {
+window.jQuery('.commande-filter-card select.custom-select').select2({
+width: '100%'
+});
+}
+
+document.querySelectorAll('[data-confirm]').forEach(function (button) {
+button.addEventListener('click', function (event) {
+event.preventDefault();
+const url = button.getAttribute('href');
+
+Swal.fire({
+icon: 'warning',
+title: 'Confirmer cette action ?',
+text: button.dataset.confirm,
+showCancelButton: true,
+confirmButtonText: 'Oui, continuer',
+cancelButtonText: 'Annuler'
+}).then(function (result) {
+if (result.isConfirmed) {
+window.location.href = url;
+}
+});
+});
+});
+});
+	</script>
+{% endblock %}

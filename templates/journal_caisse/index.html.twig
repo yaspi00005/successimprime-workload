@@ -1,0 +1,2014 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Journal de trésorerie
+{% endblock %}
+
+
+{% block stylesheets %}
+
+	{{ parent() }}
+
+	<style>
+
+		.journal-summary-card {
+			border: 0;
+			border-radius: 8px;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+			height: 100%;
+		}
+
+		.journal-summary-label {
+			color: #6c757d;
+			font-size: 12px;
+			font-weight: 600;
+			text-transform: uppercase;
+		}
+
+		.journal-summary-value {
+			margin-top: 5px;
+			font-size: 21px;
+			font-weight: 700;
+		}
+
+		.journal-entree {
+			color: #198754;
+			font-weight: 600;
+		}
+
+		.journal-sortie {
+			color: #dc3545;
+			font-weight: 600;
+		}
+
+		.journal-transfert {
+			color: #6259ca;
+			font-weight: 600;
+		}
+
+		.journal-solde {
+			font-weight: 700;
+		}
+
+		.journal-table th {
+			white-space: nowrap;
+		}
+
+		.journal-table td {
+			vertical-align: middle;
+		}
+
+		.journal-account-card {
+			border: 1px solid #e8e8e8;
+			border-radius: 8px;
+			height: 100%;
+		}
+
+		.journal-account-value {
+			font-size: 20px;
+			font-weight: 700;
+		}
+
+		@media print {
+
+			.no-print,
+			.app-sidebar,
+			.header,
+			.page-header {
+				display: none !important;
+			}
+
+			.side-app {
+				margin: 0 !important;
+				padding: 0 !important;
+			}
+
+			.card {
+				box-shadow: none !important;
+			}
+
+			.journal-summary-card {
+				border: 1px solid #ddd !important;
+				box-shadow: none !important;
+			}
+
+			body {
+				background: #fff !important;
+				color: #000 !important;
+			}
+		}
+	</style>
+
+{% endblock %}
+
+
+{% block body %}
+
+	<div
+		class="side-app">
+
+
+		{# ============================================================
+											   FLASH
+											   ============================================================ #}
+
+		{% for type, messages in app.flashes %}
+
+			{% for message in messages %}
+
+				<div class="js-flash-message" data-type="{{ type|e('html_attr') }}" data-message="{{ message|e('html_attr') }}"></div>
+
+			{% endfor %}
+
+		{% endfor %}
+
+
+		{# ============================================================
+											   BREADCRUMB
+											   ============================================================ #}
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="#">
+						Gestion
+					</a>
+				</li>
+
+				<li class="breadcrumb-item">
+
+					<a href="{{ path('app_compte_tresorerie_index') }}">
+						Trésorerie
+					</a>
+
+				</li>
+
+				<li class="breadcrumb-item active">
+					Journal de trésorerie
+				</li>
+
+			</ol>
+
+		</div>
+
+
+		{# ============================================================
+											   FILTRES
+											   ============================================================ #}
+
+		<div class="card no-print mb-4">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-filter mr-2"></i>
+
+					Paramètres du journal
+
+				</h3>
+
+			</div>
+
+
+			<div class="card-body">
+
+				<form method="get" action="{{ path('app_journal_caisse_index') }}">
+
+					<div
+						class="row">
+
+
+						{# COMPTE #}
+
+						<div class="col-md-4">
+
+							<div class="form-group">
+
+								<label for="journalCompte">
+									Compte de trésorerie
+								</label>
+
+
+								<select name="compte" id="journalCompte" class="form-control">
+
+									<option value="">
+										Tous les comptes — rapport global
+									</option>
+
+
+									{% for compte in comptesJournal %}
+
+										<option value="{{ compte.id }}" {{ filtres.compte == compte.id ? 'selected' : '' }}>
+
+											{{ compte.nom }}
+
+											—
+
+											{{ compte.typeLabel }}
+
+											—
+
+											{{ compte.porteeLabel }}
+
+										</option>
+
+									{% endfor %}
+
+								</select>
+
+
+								<small class="form-text text-muted">
+									Laissez vide pour afficher tous les comptes.
+								</small>
+
+							</div>
+
+						</div>
+
+
+						{# DATE DÉBUT #}
+
+						<div class="col-md-3">
+
+							<div class="form-group">
+
+								<label for="journalDateDebut">
+									Date de début
+								</label>
+
+								<input type="date" name="dateDebut" id="journalDateDebut" class="form-control" value="{{ filtres.dateDebut }}" required>
+
+							</div>
+
+						</div>
+
+
+						{# DATE FIN #}
+
+						<div class="col-md-3">
+
+							<div class="form-group">
+
+								<label for="journalDateFin">
+									Date de fin
+								</label>
+
+								<input type="date" name="dateFin" id="journalDateFin" class="form-control" value="{{ filtres.dateFin }}" required>
+
+							</div>
+
+						</div>
+
+
+						{# BOUTON #}
+
+						<div class="col-md-2">
+
+							<div class="form-group">
+
+								<label>&nbsp;</label>
+
+								<button type="submit" class="btn btn-primary btn-block">
+
+									<i class="fa fa-search mr-1"></i>
+
+									Afficher
+
+								</button>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</form>
+
+
+				<div class="mt-3 text-right">
+
+					<a href="{{ path('app_journal_caisse_export_pdf', {compte: filtres.compte, dateDebut: filtres.dateDebut, dateFin: filtres.dateFin}) }}" class="btn btn-outline-danger" target="_blank">
+						<i class="fa fa-file-pdf-o mr-1"></i>
+						Exporter en PDF
+					</a>
+
+					<a href="{{ path('app_journal_caisse_export_excel', {compte: filtres.compte, dateDebut: filtres.dateDebut, dateFin: filtres.dateFin}) }}" class="btn btn-outline-success">
+						<i class="fa fa-file-excel-o mr-1"></i>
+						Exporter en Excel
+					</a>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+											   RAPPORT FINANCIER GLOBAL
+											   TOUJOURS VISIBLE POUR ADMIN
+											   ============================================================ #}
+
+		<div class="card mb-4">
+
+			<div class="card-header">
+
+				<div>
+
+					<h3 class="card-title mb-1">
+
+						<i class="fa fa-bar-chart mr-2"></i>
+
+						Rapport financier global
+
+					</h3>
+
+					<small class="text-muted">
+
+						Du
+						{{ filtres.dateDebut|date('d/m/Y') }}
+
+						au
+						{{ filtres.dateFin|date('d/m/Y') }}
+
+					</small>
+
+				</div>
+
+
+				<div class="card-options no-print">
+
+					<button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+
+						<i class="fa fa-print mr-1"></i>
+
+						Imprimer
+
+					</button>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+											   PRODUITS / CHARGES / RÉSULTAT / TRÉSORERIE
+											   ============================================================ #}
+
+		<div
+			class="row">
+
+
+			{# PRODUITS #}
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card bg-success text-white h-100">
+
+					<div class="card-body">
+
+						<p class="mb-1 text-white">
+							Produits / gains
+						</p>
+
+						<h3 class="text-white mb-0">
+
+							{{
+							rapportGlobal.produits
+								|number_format(
+									0,
+									',',
+									' '
+								)
+						}}
+
+							FCFA
+
+						</h3>
+
+						<small class="text-white-50">
+							Revenus ayant un impact sur le résultat
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# CHARGES #}
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card bg-danger text-white h-100">
+
+					<div class="card-body">
+
+						<p class="mb-1 text-white">
+							Charges / dépenses
+						</p>
+
+						<h3 class="text-white mb-0">
+
+							{{
+							rapportGlobal.charges
+								|number_format(
+									0,
+									',',
+									' '
+								)
+						}}
+
+							FCFA
+
+						</h3>
+
+						<small class="text-white-50">
+							Dépenses ayant un impact sur le résultat
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# RÉSULTAT #}
+
+			<div class="col-xl-3 col-md-6">
+
+				{% set resultatPositif =
+				rapportGlobal.resultatNet >= 0
+			%}
+
+				<div class="card {{
+																																			resultatPositif
+																																				? 'bg-primary'
+																																				: 'bg-danger'
+																																		}} text-white h-100">
+
+					<div class="card-body">
+
+						<p class="mb-1 text-white">
+							Résultat net
+						</p>
+
+						<h3 class="text-white mb-0">
+
+							{{
+							rapportGlobal.resultatNet
+								|number_format(
+									0,
+									',',
+									' '
+								)
+						}}
+
+							FCFA
+
+						</h3>
+
+
+						<small class="text-white-50">
+
+							{% if resultatPositif %}
+
+								Bénéfice sur la période
+
+							{% else %}
+
+								Perte sur la période
+
+							{% endif %}
+
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# TRÉSORERIE DISPONIBLE #}
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card bg-info text-white h-100">
+
+					<div class="card-body">
+
+						<p class="mb-1 text-white">
+							Trésorerie disponible
+						</p>
+
+						<h3 class="text-white mb-0">
+
+							{{
+							soldes.total
+								|number_format(
+									0,
+									',',
+									' '
+								)
+						}}
+
+							FCFA
+
+						</h3>
+
+						<small class="text-white-50">
+							Solde réel de tous les comptes actifs
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+											   FLUX DE TRÉSORERIE
+											   ============================================================ #}
+
+		<div
+			class="row mt-3">
+
+
+			{# ENTRÉES #}
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card journal-summary-card">
+
+					<div class="card-body">
+
+						<div class="journal-summary-label">
+							Entrées de trésorerie
+						</div>
+
+						<div class="journal-summary-value journal-entree">
+
+							{{
+							rapportGlobal.entrees
+								|number_format(
+									0,
+									',',
+									' '
+								)
+						}}
+
+							FCFA
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# SORTIES #}
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card journal-summary-card">
+
+					<div class="card-body">
+
+						<div class="journal-summary-label">
+							Sorties de trésorerie
+						</div>
+
+						<div class="journal-summary-value journal-sortie">
+
+							{{
+							rapportGlobal.sorties
+								|number_format(
+									0,
+									',',
+									' '
+								)
+						}}
+
+							FCFA
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# VARIATION #}
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card journal-summary-card">
+
+					<div class="card-body">
+
+						<div class="journal-summary-label">
+							Variation de trésorerie
+						</div>
+
+						<div class="journal-summary-value">
+
+							{{
+							rapportGlobal.variationTresorerie
+								|number_format(
+									0,
+									',',
+									' '
+								)
+						}}
+
+							FCFA
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# TRANSFERTS #}
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card journal-summary-card">
+
+					<div class="card-body">
+
+						<div class="journal-summary-label">
+							Transferts internes
+						</div>
+
+						<div class="journal-summary-value journal-transfert">
+
+							{{
+							rapportGlobal.transferts
+								|number_format(
+									0,
+									',',
+									' '
+								)
+						}}
+
+							FCFA
+
+						</div>
+
+						<small class="text-muted">
+							Sans impact sur le résultat
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+											   RÉPARTITION ACTUELLE
+											   ============================================================ #}
+
+		<div class="card mt-4 mb-4">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-money mr-2"></i>
+
+					Répartition actuelle de la trésorerie
+
+				</h3>
+
+			</div>
+
+
+			<div class="card-body">
+
+				<div class="row">
+
+
+					<div class="col-md-3">
+
+						<div class="journal-account-card p-3">
+
+							<p class="text-muted mb-1">
+								Caisses
+							</p>
+
+							<div class="journal-account-value">
+
+								{{
+								soldes.caisses
+									|number_format(
+										0,
+										',',
+										' '
+									)
+							}}
+
+								FCFA
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					<div class="col-md-3">
+
+						<div class="journal-account-card p-3">
+
+							<p class="text-muted mb-1">
+								Orange Money
+							</p>
+
+							<div class="journal-account-value">
+
+								{{
+								soldes.orangeMoney
+									|number_format(
+										0,
+										',',
+										' '
+									)
+							}}
+
+								FCFA
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					<div class="col-md-3">
+
+						<div class="journal-account-card p-3">
+
+							<p class="text-muted mb-1">
+								Wave
+							</p>
+
+							<div class="journal-account-value">
+
+								{{
+								soldes.wave
+									|number_format(
+										0,
+										',',
+										' '
+									)
+							}}
+
+								FCFA
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					<div class="col-md-3">
+
+						<div class="journal-account-card p-3">
+
+							<p class="text-muted mb-1">
+								Banques
+							</p>
+
+							<div class="journal-account-value">
+
+								{{
+								soldes.banques
+									|number_format(
+										0,
+										',',
+										' '
+									)
+							}}
+
+								FCFA
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																							   DÉTAIL DE CHAQUE COMPTE
+																							   ==================================================== #}
+
+				{% if soldes.comptes is defined
+				and soldes.comptes|length > 0
+			%}
+
+					<hr>
+
+					<h5 class="mb-3">
+						Détail des comptes
+					</h5>
+
+
+					<div class="row">
+
+						{% for ligneCompte in soldes.comptes %}
+
+							{% set compte =
+							ligneCompte.compte
+						%}
+
+							<div class="col-xl-3 col-md-6 mb-3">
+
+								<div class="journal-account-card p-3">
+
+									<div class="font-weight-bold mb-1">
+										{{ compte.nom }}
+									</div>
+
+									<div class="text-muted small mb-2">
+
+										{{ compte.typeLabel }}
+
+										—
+
+										{{ compte.porteeLabel }}
+
+									</div>
+
+									<div class="journal-account-value">
+
+										{{
+										ligneCompte.solde
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+										FCFA
+
+									</div>
+
+									<div class="text-muted small mt-2">
+
+										{{ ligneCompte.nombreMouvementsPeriode }} mouvement{{ ligneCompte.nombreMouvementsPeriode > 1 ? 's' : '' }} sur la période
+
+										{% if ligneCompte.dernierMouvementPeriode %}
+											<br>Dernier : {{ ligneCompte.dernierMouvementPeriode|date('d/m/Y H:i') }}
+										{% endif %}
+
+									</div>
+
+								</div>
+
+							</div>
+
+						{% endfor %}
+
+					</div>
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+											   JOURNAL DÉTAILLÉ
+											   ============================================================ #}
+
+
+		{% if compteSelectionne %}
+
+			{# ========================================================
+																	   UN COMPTE SÉLECTIONNÉ
+																	   ======================================================== #}
+
+			<div class="card">
+
+				<div class="card-header">
+
+					<div>
+
+						<h3 class="card-title mb-1">
+
+							Journal :
+							{{ compteSelectionne.nom }}
+
+						</h3>
+
+						<small class="text-muted">
+
+							{{ compteSelectionne.typeLabel }}
+
+							—
+
+							{{ compteSelectionne.porteeLabel }}
+
+							—
+																																			
+																																									Période du
+							{{ filtres.dateDebut|date('d/m/Y') }}
+
+							au
+							{{ filtres.dateFin|date('d/m/Y') }}
+
+						</small>
+
+					</div>
+
+
+					<div class="card-options no-print">
+
+						<button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+
+							<i class="fa fa-print mr-1"></i>
+
+							Imprimer
+
+						</button>
+
+					</div>
+
+				</div>
+
+
+				<div
+					class="card-body">
+
+
+					{# =================================================
+																													   RÉSUMÉ DU COMPTE
+																													   ================================================= #}
+
+					<div class="row mb-4">
+
+
+						<div class="col-md-3">
+
+							<div class="card journal-summary-card">
+
+								<div class="card-body">
+
+									<div class="journal-summary-label">
+										Solde d'ouverture
+									</div>
+
+									<div class="journal-summary-value">
+
+										{{
+										journal.soldeOuverture
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+										FCFA
+
+									</div>
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-3">
+
+							<div class="card journal-summary-card">
+
+								<div class="card-body">
+
+									<div class="journal-summary-label">
+										Total des entrées
+									</div>
+
+									<div class="journal-summary-value journal-entree">
+
+										{{
+										journal.totalEntrees
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+										FCFA
+
+									</div>
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-3">
+
+							<div class="card journal-summary-card">
+
+								<div class="card-body">
+
+									<div class="journal-summary-label">
+										Total des sorties
+									</div>
+
+									<div class="journal-summary-value journal-sortie">
+
+										{{
+										journal.totalSorties
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+										FCFA
+
+									</div>
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-3">
+
+							<div class="card journal-summary-card">
+
+								<div class="card-body">
+
+									<div class="journal-summary-label">
+										Solde de clôture
+									</div>
+
+									<div class="journal-summary-value">
+
+										{{
+										journal.soldeCloture
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+										FCFA
+
+									</div>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					{# =================================================
+																													   TABLEAU DU COMPTE
+																													   ================================================= #}
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered table-hover journal-table">
+
+							<thead>
+
+								<tr>
+
+									<th>Date</th>
+
+									<th>Référence</th>
+
+									<th>Libellé</th>
+
+									<th>Mode</th>
+
+									<th>Pièce externe</th>
+
+									<th>Agent</th>
+
+									<th class="text-right">
+										Entrée
+									</th>
+
+									<th class="text-right">
+										Sortie
+									</th>
+
+									<th class="text-right">
+										Solde
+									</th>
+
+								</tr>
+
+							</thead>
+
+
+							<tbody>
+
+								<tr class="text-primary bg-light">
+
+									<td colspan="8">
+
+										<strong>
+											Solde d'ouverture
+										</strong>
+
+									</td>
+
+									<td class="text-right journal-solde">
+
+										{{
+										journal.soldeOuverture
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+									</td>
+
+								</tr>
+
+
+								{% for ligne in journal.lignes %}
+
+									{% set mouvement =
+									ligne.mouvement
+								%}
+
+									<tr>
+
+
+										<td>
+
+											{{
+											mouvement.dateOperation
+												|date(
+													'd/m/Y H:i'
+												)
+										}}
+
+										</td>
+
+
+										<td>
+
+											<strong>
+												{{ mouvement.reference }}
+											</strong>
+
+										</td>
+
+
+										<td>
+											{{ mouvement.libelle }}
+										</td>
+
+
+										<td>
+
+											{% if mouvement.modePaiement %}
+
+												{{
+												mouvement.modePaiement
+													|replace({
+														'_': ' '
+													})
+													|title
+											}}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td>
+
+											{{
+											mouvement.referenceExterne
+												?: '—'
+										}}
+
+										</td>
+
+
+										<td>
+
+											{% if mouvement.agent %}
+
+												{{ mouvement.agent.username }}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td class="text-right journal-entree">
+
+											{% if ligne.entree > 0 %}
+
+												{{
+												ligne.entree
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td class="text-right journal-sortie">
+
+											{% if ligne.sortie > 0 %}
+
+												{{
+												ligne.sortie
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td class="text-right journal-solde">
+
+											{{
+											ligne.solde
+												|number_format(
+													0,
+													',',
+													' '
+												)
+										}}
+
+										</td>
+
+									</tr>
+
+
+								{% else %}
+
+									<tr>
+
+										<td colspan="9" class="text-center py-5 text-muted">
+
+											<i class="fa fa-inbox fa-2x mb-2"></i>
+
+											<div>
+												Aucun mouvement validé durant cette période.
+											</div>
+
+										</td>
+
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+
+							<tfoot>
+
+								<tr class=" bg-light">
+
+									<th colspan="6">
+
+										Totaux de la période
+																																																		
+																																																											—
+
+										{{ journal.nombre }}
+
+										opération(s)
+
+									</th>
+
+
+									<th class="text-right journal-entree">
+
+										{{
+										journal.totalEntrees
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+									</th>
+
+
+									<th class="text-right journal-sortie">
+
+										{{
+										journal.totalSorties
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+									</th>
+
+
+									<th class="text-right journal-solde">
+
+										{{
+										journal.soldeCloture
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+									</th>
+
+								</tr>
+
+							</tfoot>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+		{% else %}
+
+			{# ========================================================
+																	   TOUS LES COMPTES
+																	   JOURNAL GLOBAL
+																	   ======================================================== #}
+
+			<div class="card">
+
+				<div class="card-header">
+
+					<div>
+
+						<h3 class="card-title mb-1">
+
+							<i class="fa fa-list mr-2"></i>
+
+							Journal global de trésorerie
+
+						</h3>
+
+						<small class="text-muted">
+
+							Tous les comptes
+																																			
+																																									—
+																																			
+																																									Du
+							{{ filtres.dateDebut|date('d/m/Y') }}
+
+							au
+							{{ filtres.dateFin|date('d/m/Y') }}
+
+						</small>
+
+					</div>
+
+
+					<div class="card-options no-print">
+
+						<button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+
+							<i class="fa fa-print mr-1"></i>
+
+							Imprimer
+
+						</button>
+
+					</div>
+
+				</div>
+
+
+				<div
+					class="card-body">
+
+
+					{# =================================================
+																													   RÉSUMÉ GLOBAL
+																													   ================================================= #}
+
+					<div class="row mb-4">
+
+
+						<div class="col-md-3">
+
+							<div class="card journal-summary-card">
+
+								<div class="card-body">
+
+									<div class="journal-summary-label">
+										Entrées externes
+									</div>
+
+									<div class="journal-summary-value journal-entree">
+
+										{{
+										journalGlobal.totalEntrees
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+										FCFA
+
+									</div>
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-3">
+
+							<div class="card journal-summary-card">
+
+								<div class="card-body">
+
+									<div class="journal-summary-label">
+										Sorties externes
+									</div>
+
+									<div class="journal-summary-value journal-sortie">
+
+										{{
+										journalGlobal.totalSorties
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+										FCFA
+
+									</div>
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-3">
+
+							<div class="card journal-summary-card">
+
+								<div class="card-body">
+
+									<div class="journal-summary-label">
+										Variation
+									</div>
+
+									<div class="journal-summary-value">
+
+										{{
+										journalGlobal.variation
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+										FCFA
+
+									</div>
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-3">
+
+							<div class="card journal-summary-card">
+
+								<div class="card-body">
+
+									<div class="journal-summary-label">
+										Transferts internes
+									</div>
+
+									<div class="journal-summary-value journal-transfert">
+
+										{{
+										journalGlobal.transferts
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+										FCFA
+
+									</div>
+
+									<small class="text-muted">
+										Sans impact global
+									</small>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					{# =================================================
+																													   TABLEAU GLOBAL
+																													   ================================================= #}
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered table-hover journal-table">
+
+							<thead>
+
+								<tr>
+
+									<th>Date</th>
+
+									<th>Référence</th>
+
+									<th>Type</th>
+
+									<th>Compte source</th>
+
+									<th>Compte destination</th>
+
+									<th>Catégorie</th>
+
+									<th>Libellé</th>
+
+									<th>Agent</th>
+
+									<th class="text-right">
+										Entrée
+									</th>
+
+									<th class="text-right">
+										Sortie
+									</th>
+
+									<th class="text-right">
+										Transfert
+									</th>
+
+								</tr>
+
+							</thead>
+
+
+							<tbody>
+
+
+								{% for ligne in journalGlobal.lignes %}
+
+									{% set mouvement =
+									ligne.mouvement
+								%}
+
+
+									<tr>
+
+
+										<td>
+
+											{{
+											mouvement.dateOperation
+												|date(
+													'd/m/Y H:i'
+												)
+										}}
+
+										</td>
+
+
+										<td>
+
+											<strong>
+												{{ mouvement.reference }}
+											</strong>
+
+										</td>
+
+
+										<td>
+
+											{% if mouvement.type == 'encaissement' %}
+
+												<span class="badge badge-success">
+													Encaissement
+												</span>
+
+											{% elseif mouvement.type == 'decaissement' %}
+
+												<span class="badge badge-danger">
+													Décaissement
+												</span>
+
+											{% elseif mouvement.type == 'transfert' %}
+
+												<span class="badge badge-primary">
+													Transfert
+												</span>
+
+											{% else %}
+
+												{{ mouvement.type }}
+
+											{% endif %}
+
+										</td>
+
+
+										<td>
+
+											{% if mouvement.compteSource %}
+
+												{{ mouvement.compteSource.nom }}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td>
+
+											{% if mouvement.compteDestination %}
+
+												{{ mouvement.compteDestination.nom }}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td>
+
+											{% if mouvement.categorie %}
+
+												{{
+												mouvement.categorie
+													|replace({
+														'_': ' '
+													})
+													|title
+											}}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td>
+
+											{{ mouvement.libelle }}
+
+											{% if mouvement.confidentiel %}
+
+												<span class="badge badge-warning ml-1">
+													Confidentiel
+												</span>
+
+											{% endif %}
+
+										</td>
+
+
+										<td>
+
+											{% if mouvement.agent %}
+
+												{{ mouvement.agent.username }}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td class="text-right journal-entree">
+
+											{% if ligne.entree > 0 %}
+
+												{{
+												ligne.entree
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td class="text-right journal-sortie">
+
+											{% if ligne.sortie > 0 %}
+
+												{{
+												ligne.sortie
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+
+										<td class="text-right journal-transfert">
+
+											{% if ligne.transfert > 0 %}
+
+												{{
+												ligne.transfert
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+											{% else %}
+
+												—
+
+											{% endif %}
+
+										</td>
+
+									</tr>
+
+
+								{% else %}
+
+									<tr>
+
+										<td colspan="11" class="text-center py-5 text-muted">
+
+											<i class="fa fa-inbox fa-2x mb-2"></i>
+
+											<div>
+												Aucun mouvement validé durant cette période.
+											</div>
+
+										</td>
+
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+
+							<tfoot>
+
+								<tr class="bg-light">
+
+									<th colspan="8">
+
+										Totaux
+																																																		
+																																																											—
+
+										{{ journalGlobal.nombre }}
+
+										mouvement(s)
+
+									</th>
+
+
+									<th class="text-right journal-entree">
+
+										{{
+										journalGlobal.totalEntrees
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+									</th>
+
+
+									<th class="text-right journal-sortie">
+
+										{{
+										journalGlobal.totalSorties
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+									</th>
+
+
+									<th class="text-right journal-transfert">
+
+										{{
+										journalGlobal.transferts
+											|number_format(
+												0,
+												',',
+												' '
+											)
+									}}
+
+									</th>
+
+								</tr>
+
+							</tfoot>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		{% endif %}
+
+
+	</div>
+
+{% endblock %}
+
+
+{% block javascripts %}
+
+	{{ parent() }}
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+document.querySelectorAll('.js-flash-message').forEach(function (element) {
+
+const type = element.dataset.type || 'info';
+
+const message = element.dataset.message || '';
+
+let icon = 'info';
+
+let title = 'Information';
+
+
+if (type === 'success') {
+icon = 'success';
+
+title = 'Opération réussie';
+} else if (type === 'error' || type === 'danger') {
+icon = 'error';
+
+title = 'Erreur';
+} else if (type === 'warning') {
+icon = 'warning';
+
+title = 'Attention';
+}
+
+
+if (typeof Swal !== 'undefined') {
+Swal.fire({
+icon: icon,
+title: title,
+text: message,
+confirmButtonText: 'D’accord',
+confirmButtonColor: '#6259ca'
+});
+}
+
+});
+
+});
+	</script>
+
+{% endblock %}

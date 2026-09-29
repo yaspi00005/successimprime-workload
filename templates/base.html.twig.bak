@@ -1,0 +1,2369 @@
+<!doctype html>
+
+<html lang="fr" dir="ltr" data-turbo="false">
+
+	{% set routeCourante = app.request.attributes.get('_route')|default('') %}
+
+
+	{# ================================================================
+						   DROITS / CAPACITÉS
+						   ================================================================
+						   
+						   PROFILS ENREGISTRÉS DANS USER :
+						   
+						   ROLE_ADMIN
+						   ROLE_CAISSE_COMMANDE
+						   ROLE_GRAPHISTE
+						   ROLE_PRODUCTION
+						   ROLE_STATS_GLOBAL
+						   
+						   PERMISSIONS TECHNIQUES HÉRITÉES DE SECURITY.YAML :
+						   
+						   ROLE_CLIENT
+						   ROLE_DEVIS
+						   ROLE_COMMANDE
+						   ROLE_FACTURE
+						   ROLE_PAIEMENT
+						   ROLE_TRESORERIE_VOIR
+						   ROLE_TRESORERIE_SAISIR
+						   ROLE_JOURNAL_CAISSE
+						   ROLE_RAPPROCHEMENT_BANCAIRE
+						   ROLE_PREPRESSE
+						   ROLE_PRODUCTION_VOIR
+						   ROLE_PRODUCTION_GERER
+						   ROLE_LIVRAISON
+						   ================================================================ #}
+
+
+	{# ================================================================
+						   COMMERCIAL
+						   ================================================================ #}
+
+	{% set peutVoirClients =
+		is_granted('ROLE_CLIENT')
+	%}
+
+
+	{% set peutVoirDevis =
+		is_granted('ROLE_DEVIS')
+	%}
+
+
+	{% set peutVoirCommandes =
+		is_granted('ROLE_COMMANDE')
+	%}
+
+
+	{% set peutVoirLivraison =
+		is_granted('ROLE_LIVRAISON')
+	%}
+
+
+	{% set peutVoirCommercial =
+		peutVoirClients
+		or peutVoirDevis
+		or peutVoirCommandes
+		or peutVoirLivraison
+	%}
+
+
+	{# ================================================================
+						   PRODUCTION
+						   ================================================================ #}
+
+	{% set peutVoirProduction =
+		is_granted('ROLE_PRODUCTION_VOIR')
+	%}
+
+
+	{% set peutGererProduction =
+		is_granted('ROLE_PRODUCTION_GERER')
+	%}
+
+
+	{# ================================================================
+						   PRÉPRESSE
+						   
+						   INFOGRAPHISTE UNIQUEMENT
+						   + ADMIN PAR HÉRITAGE
+						   ================================================================ #}
+
+	{% set peutVoirPrepresse =
+		is_granted('ROLE_PREPRESSE')
+	%}
+
+
+	{# ================================================================
+						   STOCK / ACHATS
+						   
+						   ADMIN UNIQUEMENT
+						   ================================================================ #}
+
+	{% set peutVoirStocks =
+		is_granted('ROLE_ADMIN')
+	%}
+
+
+	{# ================================================================
+						   FACTURATION
+						   ================================================================ #}
+
+	{% set peutVoirFactures =
+		is_granted('ROLE_FACTURE')
+	%}
+
+
+	{% set peutVoirPaiements =
+		is_granted('ROLE_PAIEMENT')
+	%}
+
+
+	{# ================================================================
+						   TRÉSORERIE
+						   ================================================================ #}
+
+	{% set peutVoirTresorerie =
+		is_granted('ROLE_TRESORERIE_VOIR')
+	%}
+
+
+	{% set peutSaisirTresorerie =
+		is_granted('ROLE_TRESORERIE_SAISIR')
+	%}
+
+
+	{% set peutVoirJournalCaisse =
+		is_granted('ROLE_JOURNAL_CAISSE')
+	%}
+
+
+	{% set peutVoirRapprochement =
+		is_granted('ROLE_RAPPROCHEMENT_BANCAIRE')
+	%}
+
+
+	{# ================================================================
+						   STATISTIQUES
+						   ================================================================ #}
+
+	{% set peutVoirStatsGlobales =
+		is_granted('ROLE_STATS_GLOBAL')
+	%}
+
+
+	{% set peutVoirMesStats =
+		is_granted('ROLE_CAISSE_COMMANDE')
+		or is_granted('ROLE_ADMIN')
+	%}
+
+
+	{# ================================================================
+						   GESTION
+						   ================================================================ #}
+
+	{% set peutVoirGestion =
+		peutVoirFactures
+		or peutVoirPaiements
+		or peutVoirTresorerie
+		or peutVoirJournalCaisse
+		or peutVoirRapprochement
+		or peutVoirMesStats
+		or peutVoirStatsGlobales
+	%}
+
+
+	{# ================================================================
+						   RH
+						   
+						   ADMIN UNIQUEMENT
+						   ================================================================ #}
+
+	{% set peutVoirRh =
+		is_granted('ROLE_ADMIN')
+	%}
+
+
+	{# ================================================================
+						   PARAMÈTRES
+						   
+						   ADMIN UNIQUEMENT
+						   ================================================================ #}
+
+	{% set peutVoirParametres =
+		is_granted('ROLE_ADMIN')
+	%}
+
+
+	{# ================================================================
+						   MENU ACTIF SELON LA ROUTE
+						   ================================================================ #}
+
+	{% set menuActif = 'accueil' %}
+
+
+		{% if
+		routeCourante starts with 'app_clients_'
+		or routeCourante starts with 'app_commandes_'
+		or routeCourante starts with 'app_devis_'
+		or routeCourante starts with 'app_livraisons_'
+		or routeCourante starts with 'app_bon_livraison_'
+	%}
+
+		{% set menuActif = 'commercial' %}
+
+
+	{% elseif
+		routeCourante starts with 'app_production_'
+		or routeCourante starts with 'app_controle_pre_presse_'
+		or routeCourante starts with 'app_ordre_fabrication_'
+	%}
+
+		{% set menuActif = 'production' %}
+
+
+	{% elseif
+		routeCourante starts with 'app_stock_'
+		or routeCourante starts with 'app_article_'
+		or routeCourante starts with 'app_fournisseur_'
+		or routeCourante starts with 'app_achat_'
+		or routeCourante starts with 'app_inventaire_'
+	%}
+
+		{% set menuActif = 'stocks' %}
+
+
+	{% elseif
+		routeCourante starts with 'app_factures_'
+		or routeCourante starts with 'app_paiements_'
+		or routeCourante starts with 'app_compte_tresorerie_'
+		or routeCourante starts with 'app_mouvement_tresorerie_'
+		or routeCourante starts with 'app_encaissement_'
+		or routeCourante starts with 'app_decaissement_'
+		or routeCourante starts with 'app_transfert_tresorerie_'
+		or routeCourante starts with 'app_rapprochement_bancaire_'
+		or routeCourante starts with 'app_journal_caisse_'
+		or routeCourante starts with 'app_mes_statistiques_'
+		or routeCourante starts with 'app_statistiques_globales_'
+	%}
+
+		{% set menuActif = 'gestion' %}
+
+
+	{% elseif
+		routeCourante starts with 'app_employes_'
+		or routeCourante starts with 'app_user_'
+		or routeCourante starts with 'app_journal_activite_'
+	%}
+
+		{% set menuActif = 'rh' %}
+
+
+	{% elseif
+		routeCourante starts with 'app_categorie_produit_'
+		or routeCourante starts with 'app_produits_'
+		or routeCourante starts with 'app_produit_configuration_'
+		or routeCourante starts with 'app_type_impression_'
+		or routeCourante starts with 'app_support_'
+		or routeCourante starts with 'app_format_'
+		or routeCourante starts with 'app_finition_'
+		or routeCourante starts with 'app_machines_'
+		or routeCourante starts with 'app_lot_etiquette_'
+	%}
+
+		{% set menuActif = 'parametres' %}
+
+	{% endif %}
+
+
+	{# ================================================================
+						   SÉCURITÉ VISUELLE DU MENU
+						   ================================================================ #}
+
+	{% if menuActif == 'commercial' and not peutVoirCommercial %}
+		{% set menuActif = 'accueil' %}
+	{% endif %}
+
+
+	{% if menuActif == 'production' and not peutVoirProduction %}
+		{% set menuActif = 'accueil' %}
+	{% endif %}
+
+
+	{% if menuActif == 'stocks' and not peutVoirStocks %}
+		{% set menuActif = 'accueil' %}
+	{% endif %}
+
+
+	{% if menuActif == 'gestion' and not peutVoirGestion %}
+		{% set menuActif = 'accueil' %}
+	{% endif %}
+
+
+	{% if menuActif == 'rh' and not peutVoirRh %}
+		{% set menuActif = 'accueil' %}
+	{% endif %}
+
+
+	{% if menuActif == 'parametres' and not peutVoirParametres %}
+		{% set menuActif = 'accueil' %}
+	{% endif %}
+
+
+	<head>
+
+		<meta charset="UTF-8">
+
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
+
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+		<meta name="msapplication-TileColor" content="#0061da">
+
+		<meta name="theme-color" content="#1643a3">
+
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+
+		<meta name="mobile-web-app-capable" content="yes">
+
+
+		<link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
+
+
+		<title>
+			{% block title %}
+				MDG - ERP
+			{% endblock %}
+		</title>
+
+
+		<link href="{{ asset('assets/css/dashboard.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/css/color-themes.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/side-menu/full-sidemenu.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/sidemenu-responsive-tabs/css/easy-responsive-tabs.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/pscrollbar/perfect-scrollbar.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/single-page/css/main.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/charts-c3/c3-chart.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/mcustomscrollbar/jquery.mCustomScrollbar.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/css/icons.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/sidebar/sidebar.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/jquery-jside-menu-master/css/jside-menu.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/jquery-jside-menu-master/css/jside-skins.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/horizontal-menu/dropdown-effects/fade-down.css') }}" rel="stylesheet">
+
+		<link href="{{ asset('assets/plugins/horizontal-menu/horizontal-menu.css') }}" rel="stylesheet">
+
+
+		<style>
+
+			#parentVerticalTab .resp-tabs-list li.resp-tab-active,
+			#parentVerticalTab .resp-tabs-list li.active {
+
+				background: #1643a3 !important;
+
+				color: #fff !important;
+			}
+
+
+			#parentVerticalTab .resp-tabs-list li.resp-tab-active i,
+			#parentVerticalTab .resp-tabs-list li.active i {
+
+				color: #fff !important;
+			}
+
+
+			#parentVerticalTab .slide-item.active {
+
+				background: rgba(22, 67, 163, 0.12);
+
+				border-left: 3px solid #1643a3;
+
+				color: #1643a3 !important;
+
+				font-weight: 600;
+			}
+		</style>
+
+
+		{% block stylesheets %}{% endblock %}
+
+	</head>
+
+
+	<body
+		class="app sidebar-mini" data-turbo="false">
+
+
+		{# ============================================================
+												   LOADER
+												   ============================================================ #}
+
+		<div id="global-loader">
+
+			<img src="{{ asset('assets/images/loader.svg') }}" class="loader-img" alt="Chargement">
+
+		</div>
+
+
+		<div class="page">
+
+			<div class="page-main">
+
+
+				<div class="app-sidebar__overlay" data-toggle="sidebar"></div>
+
+
+				{# ============================================================
+																								   SIDEBAR
+																								   ============================================================ #}
+
+				<aside
+					class="app-sidebar">
+
+
+					{# ====================================================
+																														   LOGO
+																														   ==================================================== #}
+
+					<a class="
+																																					header-brand
+																																					left-meu-header-brand
+																																					left-meu-header-brand-desktop
+																																				" href="{{ path('app_home') }}">
+
+						<img src="{{ asset('assets/images/brand/logo2.png') }}" class="header-brand-img desktop-logo" alt="MDG ERP">
+
+						<img src="{{ asset('assets/images/brand/favicon.png') }}" class="header-brand-img mobile-view-logo" alt="MDG ERP">
+
+					</a>
+
+
+					{# ====================================================
+																														   RECHERCHE MENU
+																														   ==================================================== #}
+
+					<div class="input-group p-2 bg-white border-bottom">
+
+						<input id="menuSearch" type="search" placeholder="Rechercher un menu..." class="form-control search" autocomplete="off">
+
+						<div class="input-group-prepend mr-0">
+
+							<span class="
+																																																						input-group-text
+																																																						border-right
+																																																						search_btn
+																																																						btn-primary-default
+																																																					">
+
+								<i class="fa fa-search text-white"></i>
+
+							</span>
+
+						</div>
+
+					</div>
+
+
+					<div class="side-tab-body p-0 border-0" id="parentVerticalTab">
+
+						<div
+							class="first-sidemenu">
+
+
+							{# =================================================
+																																										   PREMIER MENU
+																																										   ================================================= #}
+
+							<ul
+								class="resp-tabs-list hor_1">
+
+
+								{# =============================================
+																																																   ACCUEIL
+																																																   ============================================= #}
+
+								<li class="{{ menuActif == 'accueil' ? 'resp-tab-active active' : '' }}" data-menu="accueil" title="Accueil">
+
+									<i class="
+																																																													side-menu__icon
+																																																													typcn
+																																																													typcn-home-outline
+																																																												"></i>
+
+									<div class="slider-text">
+										Accueil
+									</div>
+
+								</li>
+
+
+								{# =============================================
+																																																   COMMERCIAL
+																																																   ============================================= #}
+
+								{% if peutVoirCommercial %}
+
+									<li class="{{ menuActif == 'commercial' ? 'resp-tab-active active' : '' }}" data-menu="commercial" title="Commercial">
+
+										<i class="
+																																																																			side-menu__icon
+																																																																			typcn
+																																																																			typcn-shopping-cart
+																																																																		"></i>
+
+										<div class="slider-text">
+											Commercial
+										</div>
+
+									</li>
+
+								{% endif %}
+
+
+								{# =============================================
+																																																   PRODUCTION
+																																																   ============================================= #}
+
+								{% if peutVoirProduction %}
+
+									<li class="{{ menuActif == 'production' ? 'resp-tab-active active' : '' }}" data-menu="production" title="Production">
+
+										<i class="
+																																																																			side-menu__icon
+																																																																			typcn
+																																																																			typcn-cog-outline
+																																																																		"></i>
+
+										<div class="slider-text">
+											Production
+										</div>
+
+									</li>
+
+								{% endif %}
+
+
+								{# =============================================
+																																																   STOCK
+																																																   ============================================= #}
+
+								{% if peutVoirStocks %}
+
+									<li class="{{ menuActif == 'stocks' ? 'resp-tab-active active' : '' }}" data-menu="stocks" title="Stocks et achats">
+
+										<i class="
+																																																																			side-menu__icon
+																																																																			typcn
+																																																																			typcn-archive
+																																																																		"></i>
+
+										<div class="slider-text">
+											Stocks
+										</div>
+
+									</li>
+
+								{% endif %}
+
+
+								{# =============================================
+																																																   GESTION
+																																																   ============================================= #}
+
+								{% if peutVoirGestion %}
+
+									<li class="{{ menuActif == 'gestion' ? 'resp-tab-active active' : '' }}" data-menu="gestion" title="Gestion et trésorerie">
+
+										<i class="
+																																																																			side-menu__icon
+																																																																			typcn
+																																																																			typcn-chart-line-outline
+																																																																		"></i>
+
+										<div class="slider-text">
+											Gestion
+										</div>
+
+									</li>
+
+								{% endif %}
+
+
+								{# =============================================
+																																																   RH
+																																																   ============================================= #}
+
+								{% if peutVoirRh %}
+
+									<li class="{{ menuActif == 'rh' ? 'resp-tab-active active' : '' }}" data-menu="rh" title="Ressources humaines">
+
+										<i class="
+																																																																			side-menu__icon
+																																																																			typcn
+																																																																			typcn-group-outline
+																																																																		"></i>
+
+										<div class="slider-text">
+											RH
+										</div>
+
+									</li>
+
+								{% endif %}
+
+
+								{# =============================================
+																																																   PARAMÈTRES
+																																																   ============================================= #}
+
+								{% if peutVoirParametres %}
+
+									<li class="{{ menuActif == 'parametres' ? 'resp-tab-active active' : '' }}" data-menu="parametres" title="Catalogue et paramètres">
+
+										<i class="
+																																																																			side-menu__icon
+																																																																			typcn
+																																																																			typcn-spanner-outline
+																																																																		"></i>
+
+										<div class="slider-text">
+											Paramètres
+										</div>
+
+									</li>
+
+								{% endif %}
+
+							</ul>
+
+
+							{# =================================================
+																																										   SECOND MENU
+																																										   ================================================= #}
+
+							<div class="second-sidemenu">
+
+								<div
+									class="resp-tabs-container hor_1">
+
+
+									{# =================================================
+																																																						   ACCUEIL
+																																																						   ================================================= #}
+
+									<div data-panel="accueil" class="{{ menuActif == 'accueil' ? 'resp-tab-content-active' : '' }}">
+
+										<div class="row">
+
+											<div class="col-md-12">
+
+												<h4 class="font-weight-normal">
+
+													<i class="
+																																																																																					typcn
+																																																																																					typcn-home-outline
+																																																																																				"></i>
+
+													Accueil
+
+												</h4>
+
+
+												<a href="{{ path('app_home') }}" class="
+																																																																																				slide-item
+																																																																																				{{
+																																																																																					routeCourante
+																																																																																					== 'app_home'
+																																																																																						? 'active'
+																																																																																						: ''
+																																																																																				}}
+																																																																																			">
+
+													<i class="fa fa-home mr-2"></i>
+
+													Tableau de bord
+
+												</a>
+
+											</div>
+
+										</div>
+
+									</div>
+
+
+									{# =================================================
+																																																						   COMMERCIAL
+																																																						   ================================================= #}
+
+									{% if peutVoirCommercial %}
+
+										<div data-panel="commercial" class="{{ menuActif == 'commercial' ? 'resp-tab-content-active' : '' }}">
+
+											<div class="row">
+
+												<div class="col-md-12">
+
+													<h4 class="font-weight-normal">
+
+														<i class="
+																																																																																											typcn
+																																																																																											typcn-shopping-cart
+																																																																																										"></i>
+
+														Commercial
+
+													</h4>
+
+
+													{% if peutVoirClients %}
+
+														<a href="{{ path('app_clients_index') }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_clients_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="fa fa-users mr-2"></i>
+
+															Clients
+
+														</a>
+
+													{% endif %}
+
+
+													{% if peutVoirDevis %}
+
+														<a href="{{ path('app_devis_index') }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_devis_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-file-text-o
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Devis
+
+														</a>
+
+													{% endif %}
+
+
+													{% if peutVoirCommandes %}
+
+														<a href="{{ path('app_commandes_index') }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_commandes_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-shopping-cart
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Commandes
+
+														</a>
+
+													{% endif %}
+
+
+													<a href="{{ path('app_reclamation_index') }}" class="
+																																																																																													slide-item
+																																																																																													{{
+																																																																																														routeCourante
+																																																																																														starts with
+																																																																																														'app_reclamation_'
+																																																																																															? 'active'
+																																																																																															: ''
+																																																																																													}}
+																																																																																												">
+
+														<i class="
+																																																																																													fa
+																																																																																													fa-money
+																																																																																													mr-2
+																																																																																												"></i>
+
+														Réclamations
+
+													</a>
+
+
+													{% if peutVoirLivraison %}
+
+														<a href="{{ path('app_livraisons_index') }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_livraisons_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="fa fa-truck mr-2"></i>
+
+															Livraisons
+
+														</a>
+
+													{% endif %}
+
+												</div>
+
+											</div>
+
+										</div>
+
+									{% endif %}
+
+
+									{# =================================================
+																																																						   PRODUCTION
+																																																						   ================================================= #}
+
+									{% if peutVoirProduction %}
+
+										<div data-panel="production" class="{{ menuActif == 'production' ? 'resp-tab-content-active' : '' }}">
+
+											<div class="row">
+
+												<div class="col-md-12">
+
+													<h4 class="font-weight-normal">
+
+														<i class="
+																																																																																											typcn
+																																																																																											typcn-cog-outline
+																																																																																										"></i>
+
+														Production
+
+													</h4>
+
+
+													{# =====================================
+																																																																														   ORDRES DE PRODUCTION
+																																																																														   ===================================== #}
+
+													<a href="{{ path('app_production_index') }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											== 'app_production_index'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="fa fa-list mr-2"></i>
+
+														Ordres de production
+
+													</a>
+
+
+													{# =====================================
+																																																																														   PRÉPRESSE
+																																																																														   
+																																																																														   INFOGRAPHISTE UNIQUEMENT
+																																																																														   ===================================== #}
+
+													{% if peutVoirPrepresse %}
+
+														<a href="{{ path( 'app_controle_pre_presse_index' ) }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_controle_pre_presse_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-check-square-o
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Prépresse
+
+														</a>
+
+													{% endif %}
+
+
+													{# =====================================
+																																																																														   PRODUCTIONS TERMINÉES
+																																																																														   ===================================== #}
+
+													<a href="{{ path( 'app_production_termines' ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											==
+																																																																																											'app_production_termines'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-check-circle
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Productions terminées
+
+													</a>
+
+												</div>
+
+											</div>
+
+										</div>
+
+									{% endif %}
+
+
+									{# =================================================
+																																																						   STOCK / ACHATS
+																																																						   
+																																																						   ADMIN UNIQUEMENT
+																																																						   ================================================= #}
+
+									{% if peutVoirStocks %}
+
+										<div data-panel="stocks" class="{{ menuActif == 'stocks' ? 'resp-tab-content-active' : '' }}">
+
+											<div class="row">
+
+												<div class="col-md-12">
+
+													<h4 class="font-weight-normal">
+
+														<i class="
+																																																																																											typcn
+																																																																																											typcn-archive
+																																																																																										"></i>
+
+														Stocks et achats
+
+													</h4>
+
+
+													<h6 class="
+																																																																																										text-uppercase
+																																																																																										mt-4
+																																																																																										mb-3
+																																																																																									">
+														Stock
+													</h6>
+
+
+													<a href="{{ path( 'app_stock_etat_index' ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											starts with
+																																																																																											'app_stock_etat_'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-dashboard
+																																																																																											mr-2
+																																																																																										"></i>
+
+														État du stock
+
+													</a>
+
+
+													<a href="{{ path( 'app_article_index' ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											starts with
+																																																																																											'app_article_'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-cubes
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Articles et matières
+
+													</a>
+
+
+													<a href="{{ path( 'app_stock_etat_index' ) }}" class="slide-item">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-exchange
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Mouvements de stock
+
+													</a>
+
+
+													<h6 class="
+																																																																																										text-uppercase
+																																																																																										mt-4
+																																																																																										mb-3
+																																																																																									">
+														Achats
+													</h6>
+
+
+													<a href="{{ path( 'app_fournisseur_index' ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											starts with
+																																																																																											'app_fournisseur_'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-truck
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Fournisseurs
+
+													</a>
+
+
+													<a href="{{ path( 'app_achat_index', {statut: 'demande'} ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											starts with
+																																																																																											'app_achat_'
+																																																																																											and app.request.query.get('statut', 'demande') == 'demande'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-file-text-o
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Demandes d'achat
+
+													</a>
+
+
+													<a href="{{ path( 'app_achat_index', {statut: 'recu'} ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											starts with
+																																																																																											'app_achat_'
+																																																																																											and app.request.query.get('statut') == 'recu'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-shopping-basket
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Achats
+
+													</a>
+
+												</div>
+
+											</div>
+
+										</div>
+
+									{% endif %}
+
+
+									{# =================================================
+																																																						   GESTION / TRÉSORERIE
+																																																						   ================================================= #}
+
+									{% if peutVoirGestion %}
+
+										<div data-panel="gestion" class="{{ menuActif == 'gestion' ? 'resp-tab-content-active' : '' }}">
+
+											<div class="row">
+
+												<div class="col-md-12">
+
+													<h4 class="font-weight-normal">
+
+														<i class="
+																																																																																											typcn
+																																																																																											typcn-chart-line-outline
+																																																																																										"></i>
+
+														Gestion et trésorerie
+
+													</h4>
+
+
+													{# =====================================
+																																																																														   FACTURATION
+																																																																														   ===================================== #}
+
+													{% if
+														peutVoirFactures
+														or peutVoirPaiements
+													%}
+
+														<h6 class="
+																																																																																																text-uppercase
+																																																																																																mt-4
+																																																																																																mb-3
+																																																																																															">
+															Facturation
+														</h6>
+
+													{% endif %}
+
+
+													{% if peutVoirFactures %}
+
+														<a href="{{ path( 'app_factures_index' ) }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_factures_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-file-text
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Factures
+
+														</a>
+
+													{% endif %}
+
+
+													{% if peutVoirPaiements %}
+
+														<a href="{{ path( 'app_paiements_index' ) }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_paiements_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-money
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Paiements
+
+														</a>
+
+													{% endif %}
+
+
+													{# =====================================
+																																																																														   TRÉSORERIE
+																																																																														   ===================================== #}
+
+													{% if peutVoirTresorerie %}
+
+														<h6 class="
+																																																																																																text-uppercase
+																																																																																																mt-4
+																																																																																																mb-3
+																																																																																															">
+															Trésorerie
+														</h6>
+
+
+														<a href="{{ path( 'app_compte_tresorerie_index' ) }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_compte_tresorerie_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-bank
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Comptes de trésorerie
+
+														</a>
+
+
+														<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_mouvement_tresorerie_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-exchange
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Mouvements de trésorerie
+
+														</a>
+
+													{% endif %}
+
+
+													{# =====================================
+																																																																														   CONTRÔLE
+																																																																														   ===================================== #}
+
+													{% if
+														peutVoirJournalCaisse
+														or peutVoirRapprochement
+													%}
+
+														<h6 class="
+																																																																																																text-uppercase
+																																																																																																mt-4
+																																																																																																mb-3
+																																																																																															">
+															Contrôle
+														</h6>
+
+													{% endif %}
+
+
+													{% if peutVoirJournalCaisse %}
+
+														<a href="{{ path( 'app_journal_caisse_index' ) }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_journal_caisse_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-book
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Journal de caisse
+
+														</a>
+
+													{% endif %}
+
+
+													{% if peutVoirRapprochement %}
+
+														<a href="{{ path( 'app_rapprochement_bancaire_index' ) }}" class="
+																																																																																																slide-item
+																																																																																																{{
+																																																																																																	routeCourante
+																																																																																																	starts with
+																																																																																																	'app_rapprochement_bancaire_'
+																																																																																																		? 'active'
+																																																																																																		: ''
+																																																																																																}}
+																																																																																															">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-check-square-o
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Rapprochements bancaires
+
+														</a>
+
+													{% endif %}
+
+
+													{# =====================================
+																																																																														   STATISTIQUES
+																																																																														   ===================================== #}
+
+													{% if
+														peutVoirMesStats
+														or peutVoirStatsGlobales
+													%}
+
+														<h6 class="
+																																																																																																text-uppercase
+																																																																																																mt-4
+																																																																																																mb-3
+																																																																																															">
+															Statistiques
+														</h6>
+
+													{% endif %}
+
+
+													{% if peutVoirMesStats %}
+
+														<a href="#" class="slide-item">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-line-chart
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Mes encaissements
+
+														</a>
+
+													{% endif %}
+
+
+													{% if peutVoirStatsGlobales %}
+
+														<a href="#" class="slide-item">
+
+															<i class="
+																																																																																																	fa
+																																																																																																	fa-bar-chart
+																																																																																																	mr-2
+																																																																																																"></i>
+
+															Statistiques globales
+
+														</a>
+
+													{% endif %}
+
+												</div>
+
+											</div>
+
+										</div>
+
+									{% endif %}
+
+
+									{# =================================================
+																																																						   RESSOURCES HUMAINES
+																																																						   
+																																																						   ADMIN UNIQUEMENT
+																																																						   ================================================= #}
+
+									{% if peutVoirRh %}
+
+										<div data-panel="rh" class="{{ menuActif == 'rh' ? 'resp-tab-content-active' : '' }}">
+
+											<div class="row">
+
+												<div class="col-md-12">
+
+													<h4 class="font-weight-normal">
+
+														<i class="
+																																																																																											typcn
+																																																																																											typcn-group-outline
+																																																																																										"></i>
+
+														Ressources humaines
+
+													</h4>
+
+
+													<a href="{{ path( 'app_employes_index' ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											starts with
+																																																																																											'app_employes_'
+																																																																																											and
+																																																																																											routeCourante
+																																																																																											!=
+																																																																																											'app_employes_new'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="fa fa-users mr-2"></i>
+
+														Employés
+
+													</a>
+
+
+													<a href="{{ path( 'app_employes_new' ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											==
+																																																																																											'app_employes_new'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-user-plus
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Ajouter un employé
+
+													</a>
+
+
+													<a href="{{ path( 'app_user_index' ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											starts with
+																																																																																											'app_user_'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-lock
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Utilisateurs et accès
+
+													</a>
+
+
+													<a href="{{ path( 'app_journal_activite_index' ) }}" class="
+																																																																																										slide-item
+																																																																																										{{
+																																																																																											routeCourante
+																																																																																											starts with
+																																																																																											'app_journal_activite_'
+																																																																																												? 'active'
+																																																																																												: ''
+																																																																																										}}
+																																																																																									">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-history
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Journal d'activité
+
+													</a>
+
+
+													<a href="#" class="slide-item">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-clock-o
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Présences
+
+													</a>
+
+
+													<a href="#" class="slide-item">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-calendar
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Congés et absences
+
+													</a>
+
+												</div>
+
+											</div>
+
+										</div>
+
+									{% endif %}
+
+
+									{# =================================================
+																																																						   PARAMÈTRES
+																																																						   
+																																																						   ADMIN UNIQUEMENT
+																																																						   ================================================= #}
+
+									{% if peutVoirParametres %}
+
+										<div data-panel="parametres" class="{{ menuActif == 'parametres' ? 'resp-tab-content-active' : '' }}">
+
+											<div class="row">
+
+												<div class="col-md-12">
+
+													<h4 class="font-weight-normal">
+
+														<i class="
+																																																																																											typcn
+																																																																																											typcn-spanner-outline
+																																																																																										"></i>
+
+														Catalogue
+
+													</h4>
+
+
+													<a href="{{ path( 'app_categorie_produit_index' ) }}" class="slide-item">
+
+														Catégories de produits
+
+													</a>
+
+
+													<a href="{{ path( 'app_produits_index' ) }}" class="slide-item">
+
+														Produits
+
+													</a>
+
+
+													<a href="{{ path( 'app_produit_configuration_index' ) }}" class="slide-item">
+
+														Configurations des produits
+
+													</a>
+
+
+													<a href="{{ path( 'app_type_impression_index' ) }}" class="slide-item">
+
+														Types d'impression
+
+													</a>
+
+
+													<a href="{{ path( 'app_support_index' ) }}" class="slide-item">
+
+														Supports
+
+													</a>
+
+
+													<a href="{{ path( 'app_format_index' ) }}" class="slide-item">
+
+														Formats
+
+													</a>
+
+
+													<a href="{{ path( 'app_finition_index' ) }}" class="slide-item">
+
+														Finitions
+
+													</a>
+
+
+													<a href="{{ path( 'app_machines_index' ) }}" class="slide-item">
+
+														Machines
+
+													</a>
+
+
+													<a href="{{ path( 'app_lot_etiquette_index' ) }}" class="slide-item">
+
+														Lots d'étiquettes
+
+													</a>
+
+
+													<h6 class="
+																																																																																										text-uppercase
+																																																																																										mt-4
+																																																																																										mb-3
+																																																																																									">
+
+														Administration
+
+													</h6>
+
+
+													<a href="{{ path( 'app_user_index' ) }}" class="slide-item">
+
+														<i class="
+																																																																																											fa
+																																																																																											fa-users
+																																																																																											mr-2
+																																																																																										"></i>
+
+														Utilisateurs et accès
+
+													</a>
+
+
+													<a href="#" class="slide-item">
+
+														Informations de l'entreprise
+
+													</a>
+
+
+													<a href="#" class="slide-item">
+
+														Paramètres généraux
+
+													</a>
+
+												</div>
+
+											</div>
+
+										</div>
+
+									{% endif %}
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</aside>
+
+
+				{# ============================================================
+																								   CONTENU
+																								   ============================================================ #}
+
+				<div
+					class="app-content my-3 my-md-5">
+
+
+					{# ========================================================
+																														   HEADER
+																														   ======================================================== #}
+
+					<div class="header header-fixed">
+
+						<div class="container-fluid">
+
+							<div class="d-flex">
+
+
+								<a aria-label="Afficher ou masquer le menu" class="app-sidebar__toggle" data-toggle="sidebar" href="#"></a>
+
+
+								<div
+									class="
+																																																												d-flex
+																																																												order-lg-2
+																																																												ml-auto
+																																																												header-right-icons
+																																																											">
+
+
+									{# =========================================
+																																																						   PLEIN ÉCRAN
+																																																						   ========================================= #}
+
+									<div class="dropdown d-sm-flex d-none">
+
+										<a class="
+																																																																								nav-link
+																																																																								icon
+																																																																								full-screen-link
+																																																																								nav-link-bg
+																																																																							">
+
+											<i class="ti-arrows-corner" id="fullscreen-button"></i>
+
+										</a>
+
+									</div>
+
+
+									{# =========================================
+																																																						   NOTIFICATIONS
+																																																						   ========================================= #}
+
+									<div class="
+																																																																		dropdown
+																																																																		d-sm-flex
+																																																																		d-none
+																																																																		notifications
+																																																																	">
+
+										<a class="nav-link icon" data-toggle="dropdown">
+
+											<i class="ti-bell"></i>
+
+										</a>
+
+
+										<div class="
+																																																																								dropdown-menu
+																																																																								dropdown-menu-right
+																																																																								dropdown-menu-arrow
+																																																																							">
+
+											<div class="
+																																																																														dropdown-item
+																																																																														text-center
+																																																																													">
+
+												Aucune nouvelle notification
+
+											</div>
+
+										</div>
+
+									</div>
+
+
+									{# =========================================
+																																																						   PROFIL UTILISATEUR
+																																																						   ========================================= #}
+
+									{% if app.user %}
+
+										<div class="
+																																																																								dropdown
+																																																																								text-center
+																																																																								selector
+																																																																								profile-1
+																																																																								d-sm-flex
+																																																																							">
+
+											<a href="#" data-toggle="dropdown" class="
+																																																																														nav-link
+																																																																														leading-none
+																																																																														d-flex
+																																																																														align-items-center
+																																																																													">
+
+												{% if
+													app.user.employe
+													and
+													app.user.employe.photos
+												%}
+
+													<img src="{{ asset( 'uploads/employes/' ~ app.user.employe.photos ) }}" class="
+																																																																																					avatar
+																																																																																					brround
+																																																																																				" alt="{{ app.user.userIdentifier }}">
+
+												{% else %}
+
+													<span class="
+																																																																																										avatar
+																																																																																										brround
+																																																																																										bg-primary
+																																																																																										text-white
+																																																																																									">
+
+														{{
+															app.user
+																.userIdentifier
+																|first
+																|upper
+														}}
+
+													</span>
+
+												{% endif %}
+
+											</a>
+
+
+											<div class="
+																																																																														dropdown-menu
+																																																																														dropdown-menu-right
+																																																																														dropdown-menu-arrow
+																																																																													">
+
+												<div class="
+																																																																																				px-4
+																																																																																				py-3
+																																																																																				border-bottom
+																																																																																			">
+
+													<strong>
+
+														{{
+															app.user
+																.userIdentifier
+														}}
+
+													</strong>
+
+
+													{% if app.user.employe %}
+
+														<small class="
+																																																																																																d-block
+																																																																																																text-muted
+																																																																																															">
+
+															{{
+																app.user
+																	.employe
+																	.prenom
+																	|default('')
+															}}
+
+															{{
+																app.user
+																	.employe
+																	.nom
+																	|default('')
+															}}
+
+														</small>
+
+													{% endif %}
+
+												</div>
+
+
+												<a class="dropdown-item" href="{{ path( 'app_user_change_password' ) }}">
+
+													<i class="
+																																																																																					dropdown-icon
+																																																																																					mdi
+																																																																																					mdi-lock-outline
+																																																																																				"></i>
+
+													Modifier mon mot de passe
+
+												</a>
+
+
+												<a class="dropdown-item" href="{{ path( 'app_logout' ) }}">
+
+													<i class="
+																																																																																					dropdown-icon
+																																																																																					mdi
+																																																																																					mdi-logout-variant
+																																																																																				"></i>
+
+													Déconnexion
+
+												</a>
+
+											</div>
+
+										</div>
+
+									{% endif %}
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					{# ========================================================
+																														   PAGE
+																														   ======================================================== #}
+
+					<div class="container-fluid"> {% block body %}{% endblock %}
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# ============================================================
+																							   FOOTER
+																							   ============================================================ #}
+
+				<footer class="footer">
+
+					<div class="container">
+
+						<div class="text-center">
+
+							&copy;
+							{{ 'now'|date('Y') }}
+
+							MDG - ERP.
+																																			
+																																									Tous droits réservés.
+
+						</div>
+
+					</div>
+
+				</footer>
+
+			</div>
+
+
+			<a href="#top" id="back-to-top">
+
+				<i class="fa fa-angle-up"></i>
+
+			</a>
+
+
+			{# ================================================================
+																	   SCRIPTS
+																	   ================================================================ #}
+
+			<script src="{{ asset( 'assets/js/vendors/jquery-3.2.1.min.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/select2/select2/js/select2.min.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/js/vendors/bootstrap.bundle.min.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/js/vendors/jquery.sparkline.min.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/js/vendors/circle-progress.min.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/rating/jquery.rating-stars.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/input-mask/jquery.mask.min.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/side-menu/sidemenu.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/js/sticky.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/js/horizontal-sticky.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/sidemenu-responsive-tabs/js/easyResponsiveTabs.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/pscrollbar/perfect-scrollbar.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/mcustomscrollbar/jquery.mCustomScrollbar.concat.min.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/jquery-jside-menu-master/js/jquery.jside.menu.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/horizontal-menu/horizontal-menu.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/jquery-jside-menu-master/docs/demo-only.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/plugins/sidebar/sidebar.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/js/left-custom.js' ) }}"></script>
+
+
+			<script src="{{ asset( 'assets/js/custom.js' ) }}"></script>
+
+
+			{# ================================================================
+																	   SWEETALERT
+																	   
+																	   UNE SEULE VERSION
+																	   ================================================================ #}
+
+			<script src="{{ asset( 'assets/plugins/sweet-alert/sweetalert2.all.min.js' ) }}"></script>
+
+
+			{# ================================================================
+																	   MENU DYNAMIQUE
+																	   ================================================================ #}
+
+			<script>
+
+				(function () {
+
+'use strict';
+
+
+function initialiserMenuMDG() {
+
+const racine = document.getElementById('parentVerticalTab');
+
+
+if (! racine || racine.dataset.mdgInitialise === '1') {
+
+return;
+}
+
+
+racine.dataset.mdgInitialise = '1';
+
+
+const menuActif = {{ menuActif|json_encode|raw }};
+
+
+const onglets = racine.querySelectorAll('.resp-tabs-list > li[data-menu]');
+
+
+const panneaux = racine.querySelectorAll('.resp-tabs-container > div[data-panel]');
+
+
+/*
+					 * ========================================================
+					 * AFFICHER UN MENU
+					 * ========================================================
+					 */
+
+function afficherMenu(nomMenu) {
+
+let trouve = false;
+
+
+onglets.forEach(function (onglet) {
+
+const actif = onglet.dataset.menu === nomMenu;
+
+
+onglet.classList.toggle('resp-tab-active', actif);
+
+
+onglet.classList.toggle('active', actif);
+
+
+onglet.setAttribute('aria-selected', actif ? 'true' : 'false');
+
+
+if (actif) {
+
+trouve = true;
+}
+
+});
+
+
+/*
+						 * Si l'utilisateur n'a pas
+						 * accès au menu demandé :
+						 *
+						 * retour Accueil.
+						 */
+if (! trouve) {
+
+nomMenu = 'accueil';
+}
+
+
+panneaux.forEach(function (panneau) {
+
+const actif = panneau.dataset.panel === nomMenu;
+
+
+panneau.classList.toggle('resp-tab-content-active', actif);
+
+
+panneau.style.display = actif ? 'block' : 'none';
+
+});
+
+
+onglets.forEach(function (onglet) {
+
+const actif = onglet.dataset.menu === nomMenu;
+
+
+onglet.classList.toggle('resp-tab-active', actif);
+
+
+onglet.classList.toggle('active', actif);
+
+});
+
+}
+
+
+/*
+					 * Première ouverture.
+					 */
+window.setTimeout(function () {
+
+afficherMenu(menuActif);
+
+}, 0);
+
+
+/*
+					 * Clic sur un menu.
+					 */
+onglets.forEach(function (onglet) {
+
+onglet.addEventListener('click', function () {
+
+afficherMenu(this.dataset.menu);
+
+});
+
+});
+
+
+/*
+					 * ========================================================
+					 * RECHERCHE
+					 * ========================================================
+					 */
+
+const recherche = document.getElementById('menuSearch');
+
+
+if (recherche) {
+
+recherche.addEventListener('input', function () {
+
+const terme = this.value.trim().toLowerCase();
+
+
+const liens = racine.querySelectorAll('.second-sidemenu .slide-item');
+
+
+liens.forEach(function (lien) {
+
+const texte = lien.textContent.toLowerCase();
+
+
+lien.style.display = ! terme || texte.includes(terme) ? '' : 'none';
+
+});
+
+});
+
+}
+
+}
+
+
+if (document.readyState === 'loading') {
+
+document.addEventListener('DOMContentLoaded', initialiserMenuMDG, {once: true});
+
+} else {
+
+initialiserMenuMDG();
+}
+
+})();
+			</script>
+
+
+			{# ================================================================
+																	   NOTIFICATIONS FLASH
+																	   ================================================================ #}
+
+			{% set notifications = {
+			success: app.flashes('success'),
+			error: app.flashes('error'),
+			danger: app.flashes('danger'),
+			warning: app.flashes('warning'),
+			info: app.flashes('info')
+		} %}
+
+
+			<script>
+
+				(function () {
+
+'use strict';
+
+
+const notifications = {{ notifications|json_encode|raw }};
+
+
+const configurations = {
+
+success: {
+icon: 'success',
+title: 'Opération réussie'
+},
+
+error: {
+icon: 'error',
+title: 'Erreur'
+},
+
+danger: {
+icon: 'error',
+title: 'Erreur'
+},
+
+warning: {
+icon: 'warning',
+title: 'Attention'
+},
+
+info: {
+icon: 'info',
+title: 'Information'
+}
+
+};
+
+
+function afficherNotifications() {
+
+Object.keys(notifications).forEach(function (type) {
+
+notifications[type].forEach(function (message) {
+
+const configuration = configurations[type] || configurations.info;
+
+
+if (typeof window.Swal === 'undefined') {
+
+window.alert(message);
+
+return;
+}
+
+
+window.Swal.fire({
+
+icon: configuration.icon,
+
+title: configuration.title,
+
+text: message,
+
+confirmButtonText: 'OK',
+
+timer: type === 'success' ? 3500 : undefined,
+
+timerProgressBar: type === 'success'
+
+});
+
+});
+
+});
+
+}
+
+
+if (document.readyState === 'loading') {
+
+document.addEventListener('DOMContentLoaded', afficherNotifications, {once: true});
+
+} else {
+
+afficherNotifications();
+}
+
+})();
+			</script>
+
+
+			{% block javascripts %}{% endblock %}
+
+		</body>
+
+	</html>

@@ -1,0 +1,1721 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Gestion des utilisateurs
+{% endblock %}
+
+
+{% block body %}
+
+	{# ============================================================
+										       PAGE HEADER
+										       ============================================================ #}
+
+	<div class="page-header">
+
+		<ol class="breadcrumb">
+
+			<li class="breadcrumb-item">
+				<a href="#">
+					Administration
+				</a>
+			</li>
+
+			<li class="breadcrumb-item active" aria-current="page">
+				Utilisateurs
+			</li>
+
+		</ol>
+
+
+		<div>
+
+			<span class="badge badge-primary p-2">
+
+				<i class="fa fa-users mr-1"></i>
+
+				{{ users|length }}
+				utilisateur{{ users|length > 1 ? 's' : '' }}
+
+			</span>
+
+		</div>
+
+	</div>
+
+
+	{# ============================================================
+										       RECHERCHE
+										       ============================================================ #}
+
+	<div class="row">
+
+		<div class="col-xl-12">
+
+			<div class="card">
+
+				<div class="card-body">
+
+					<div class="row align-items-center">
+
+						<div class="col-md-8">
+
+							<div class="input-group">
+
+								<input type="text" class="form-control" id="userSearch" placeholder="Rechercher par nom, username, rôle..." autocomplete="off">
+
+								<div class="input-group-append">
+
+									<button type="button" class="btn btn-primary-light" id="userSearchButton">
+										<i class="fa fa-search"></i>
+									</button>
+
+									<button type="button" class="btn btn-light" id="clearUserSearch" title="Effacer la recherche">
+										<i class="fa fa-times"></i>
+									</button>
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<div class="col-md-4 mt-3 mt-md-0">
+
+							<select class="form-control custom-select" id="userStatusFilter">
+
+								<option value="">
+									Tous les comptes
+								</option>
+
+								<option value="actif">
+									Comptes actifs
+								</option>
+
+								<option value="desactive">
+									Comptes désactivés
+								</option>
+
+								<option value="password">
+									Changement mot de passe requis
+								</option>
+
+							</select>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ============================================================
+										       LISTE
+										       ============================================================ #}
+
+	<div class="row row-cards">
+
+		<div class="col-xl-12">
+
+			<div class="card">
+
+				<div class="
+																																																												                        card-header
+																																																												                        border-bottom-0
+																																																												                        p-4
+																																																												                    ">
+
+					<h3 class="card-title">
+
+						<i class="fa fa-users mr-2"></i>
+
+						Gestion des comptes utilisateurs
+
+					</h3>
+
+
+					<div class="ml-auto">
+
+						<span class="text-muted" id="userResultCount">
+							{{ users|length }}
+							résultat{{ users|length > 1 ? 's' : '' }}
+						</span>
+
+					</div>
+
+				</div>
+
+
+				<div class="e-table">
+
+					<div class="
+																																																																						                            table-responsive
+																																																																						                            table-lg
+																																																																						                            br-bl-10
+																																																																						                            br-br-10
+																																																																						                        ">
+
+						<table class="
+																																																																						                                table
+																																																																						                                table-bordered
+																																																																						                                table-hover
+																																																																						                                mb-0
+																																																																						                            " id="usersTable">
+
+							<thead>
+
+								<tr>
+
+									<th class="text-center">
+										Photo
+									</th>
+
+									<th>
+										Utilisateur
+									</th>
+
+									<th>
+										Employé
+									</th>
+
+									<th>
+										Rôles
+									</th>
+
+									<th class="text-center">
+										Statut
+									</th>
+
+									<th>
+										Dernière connexion
+									</th>
+
+									<th>
+										Création
+									</th>
+
+									<th class="text-center">
+										Actions
+									</th>
+
+								</tr>
+
+							</thead>
+
+
+							<tbody id="usersTableBody">
+
+								{% for user in users %}
+
+									{% set searchText =
+                                        (
+                                            user.username
+                                            ~ ' '
+                                            ~ (
+                                                user.employe
+                                                    ? user.employe.prenom ~ ' ' ~ user.employe.nom
+                                                    : ''
+                                            )
+                                            ~ ' '
+                                            ~ user.roles|join(' ')
+                                        )
+                                    %}
+
+									<tr
+										class="user-row" data-search="{{ searchText|lower|e('html_attr') }}" data-status="{{ user.actif ? 'actif' : 'desactive' }}" data-must-change-password="{{ user.mustChangePassword ? '1' : '0' }}">
+
+
+										{# =================================================
+																																																																																																				                                           PHOTO
+																																																																																																				                                           ================================================= #}
+
+										<td class="align-middle text-center">
+
+											{% if
+                                                user.employe
+                                                and user.employe.photos
+                                            %}
+
+												<img src="{{ asset( 'uploads/employes/' ~ user.employe.photos ) }}" class="
+																																																																																																																																		                                                        avatar
+																																																																																																																																		                                                        avatar-md
+																																																																																																																																		                                                        rounded-circle
+																																																																																																																																		                                                    " alt="{{ user.employe.prenom }}">
+
+											{% else %}
+
+												<span class="
+																																																																																																																																												                                                        avatar
+																																																																																																																																												                                                        avatar-md
+																																																																																																																																												                                                        rounded-circle
+																																																																																																																																												                                                        bg-primary
+																																																																																																																																												                                                        text-white
+																																																																																																																																												                                                    ">
+
+													{{
+                                                        user.username
+                                                            |slice(0, 1)
+                                                            |upper
+                                                    }}
+
+												</span>
+
+											{% endif %}
+
+										</td>
+
+
+										{# =================================================
+																																																																																																				                                           USERNAME
+																																																																																																				                                           ================================================= #}
+
+										<td class="align-middle">
+
+											<strong>
+												{{ user.username }}
+											</strong>
+
+
+											{% if user.mustChangePassword %}
+
+												<div class="mt-1">
+
+													<span class="badge badge-warning">
+
+														<i class="fa fa-key mr-1"></i>
+
+														Mot de passe temporaire
+
+													</span>
+
+												</div>
+
+											{% endif %}
+
+										</td>
+
+
+										{# =================================================
+																																																																																																				                                           EMPLOYÉ
+																																																																																																				                                           ================================================= #}
+
+										<td class="align-middle">
+
+											{% if user.employe %}
+
+												<strong>
+
+													{{ user.employe.prenom }}
+													{{ user.employe.nom }}
+
+												</strong>
+
+
+												{% if user.employe.matricules is defined
+                                                    and user.employe.matricules
+                                                %}
+
+													<div class="text-muted small">
+
+														{{
+                                                            user.employe.matricules
+                                                        }}
+
+													</div>
+
+												{% endif %}
+
+											{% else %}
+
+												<span class="text-muted">
+
+													Aucun employé associé
+
+												</span>
+
+											{% endif %}
+
+										</td>
+
+
+										{# =================================================
+																																																																																																				                                           RÔLES
+																																																																																																				                                           ================================================= #}
+
+										{# =================================================
+																																																																						   RÔLES
+																																																																						   ================================================= #}
+
+										<td class="align-middle">
+
+											{% set roleAffiche = false %}
+
+											{% for role in user.roles %}
+
+												{% if role != 'ROLE_USER' %}
+
+													{% set roleAffiche = true %}
+
+													{% set label =
+                rolesDisponibles[role]
+                |default(role)
+            %}
+
+
+													{% if role == 'ROLE_ADMIN' %}
+
+														{% set badgeClass = 'badge-danger' %}
+
+
+													{% elseif role == 'ROLE_CAISSE_COMMANDE' %}
+
+														{% set badgeClass = 'badge-success' %}
+
+
+													{% elseif role == 'ROLE_GRAPHISTE' %}
+
+														{% set badgeClass = 'badge-warning' %}
+
+
+													{% elseif role == 'ROLE_PRODUCTION' %}
+
+														{% set badgeClass = 'badge-info' %}
+
+
+													{% elseif role == 'ROLE_LIVREUR' %}
+
+														{% set badgeClass = 'badge-secondary' %}
+
+
+													{% elseif role == 'ROLE_STATS_GLOBAL' %}
+
+														{% set badgeClass = 'badge-primary' %}
+
+
+													{% else %}
+
+														{#
+																																																																																																		                 # Ancien rôle encore présent en base.
+																																																																																																		                 #
+																																																																																																		                 # Il sera supprimé lorsque nous ferons
+																																																																																																		                 # la migration des anciens utilisateurs.
+																																																																																																		                 #}
+														{% set badgeClass = 'badge-secondary' %}
+
+													{% endif %}
+
+
+													<span class="badge {{ badgeClass }} mb-1 mr-1">
+
+														{% if role == 'ROLE_STATS_GLOBAL' %}
+
+															<i class="fa fa-bar-chart mr-1"></i>
+
+														{% elseif role == 'ROLE_ADMIN' %}
+
+															<i class="fa fa-shield mr-1"></i>
+
+														{% elseif role == 'ROLE_CAISSE_COMMANDE' %}
+
+															<i class="fa fa-money mr-1"></i>
+
+														{% elseif role == 'ROLE_GRAPHISTE' %}
+
+															<i class="fa fa-paint-brush mr-1"></i>
+
+														{% elseif role == 'ROLE_PRODUCTION' %}
+
+															<i class="fa fa-cogs mr-1"></i>
+
+														{% elseif role == 'ROLE_LIVREUR' %}
+
+															<i class="fa fa-truck mr-1"></i>
+
+														{% endif %}
+
+														{{ label }}
+
+													</span>
+
+												{% endif %}
+
+											{% endfor %}
+
+
+											{% if not roleAffiche %}
+
+												<span class="text-muted">
+													Aucun profil
+												</span>
+
+											{% endif %}
+
+										</td>
+
+
+										{# =================================================
+																																																																																																				                                           STATUT
+																																																																																																				                                           ================================================= #}
+
+										<td class="align-middle text-center">
+
+											{% if user.actif %}
+
+												<span class="badge badge-success">
+
+													<i class="
+																																																																																																																																												                                                            fa
+																																																																																																																																												                                                            fa-check-circle
+																																																																																																																																												                                                            mr-1
+																																																																																																																																												                                                        "></i>
+
+													Actif
+
+												</span>
+
+											{% else %}
+
+												<span class="badge badge-danger">
+
+													<i class="
+																																																																																																																																												                                                            fa
+																																																																																																																																												                                                            fa-ban
+																																																																																																																																												                                                            mr-1
+																																																																																																																																												                                                        "></i>
+
+													Désactivé
+
+												</span>
+
+
+												{% if user.disabledAt %}
+
+													<div class="
+																																																																																																																																																						                                                            text-muted
+																																																																																																																																																						                                                            small
+																																																																																																																																																						                                                            mt-1
+																																																																																																																																																						                                                        ">
+
+														{{
+                                                            user.disabledAt
+                                                                |date(
+                                                                    'd/m/Y H:i'
+                                                                )
+                                                        }}
+
+													</div>
+
+												{% endif %}
+
+											{% endif %}
+
+										</td>
+
+
+										{# =================================================
+																																																																																																				                                           DERNIÈRE CONNEXION
+																																																																																																				                                           ================================================= #}
+
+										<td class="align-middle">
+
+											{% if user.lastLoginAt %}
+
+												<i class="
+																																																																																																																																		                                                        fa
+																																																																																																																																		                                                        fa-clock-o
+																																																																																																																																		                                                        text-primary
+																																																																																																																																		                                                        mr-1
+																																																																																																																																		                                                    "></i>
+
+												{{
+                                                    user.lastLoginAt
+                                                        |date(
+                                                            'd/m/Y H:i'
+                                                        )
+                                                }}
+
+											{% else %}
+
+												<span class="text-muted">
+
+													<i class="
+																																																																																																																																												                                                            fa
+																																																																																																																																												                                                            fa-minus-circle
+																																																																																																																																												                                                            mr-1
+																																																																																																																																												                                                        "></i>
+
+													Jamais connecté
+
+												</span>
+
+											{% endif %}
+
+										</td>
+
+
+										{# =================================================
+																																																																																																				                                           CRÉATION
+																																																																																																				                                           ================================================= #}
+
+										<td class="align-middle text-nowrap">
+
+											{{
+                                                user.dateAdd
+                                                    |date(
+                                                        'd/m/Y H:i'
+                                                    )
+                                            }}
+
+										</td>
+
+
+										{# =================================================
+																																																																																																				                                           ACTIONS
+																																																																																																				                                           ================================================= #}
+
+										<td class="align-middle text-center">
+
+											<div
+												class="btn-group">
+
+
+												{# =========================================
+																																																																																																																								                                                   MODIFIER RÔLES
+																																																																																																																								                                                   ========================================= #}
+
+												<button type="button" class="
+																																																																																																																																		                                                        btn
+																																																																																																																																		                                                        btn-sm
+																																																																																																																																		                                                        btn-primary-light
+																																																																																																																																		                                                        btn-edit-roles
+																																																																																																																																		                                                    " data-toggle="modal" data-target="#userModal" data-id="{{ user.id }}" data-get-url="{{ path( 'app_user_roles_get', { id: user.id } ) }}" data-update-url="{{ path( 'app_user_roles_update', { id: user.id } ) }}" data-update-token="{{ csrf_token( 'update_user_roles_' ~ user.id ) }}" title="Modifier les rôles">
+
+													<i class="fa fa-edit"></i>
+
+												</button>
+
+
+												{# =========================================
+																																																																																																																								                                                   RESET PASSWORD
+																																																																																																																								                                                   ========================================= #}
+
+												<button type="button" class="
+																																																																																																																																		                                                        btn
+																																																																																																																																		                                                        btn-sm
+																																																																																																																																		                                                        btn-secondary-light
+																																																																																																																																		                                                        btn-reset-password
+																																																																																																																																		                                                    " data-url="{{ path( 'app_user_reset_password', { id: user.id } ) }}" data-token="{{ csrf_token( 'reset_password_' ~ user.id ) }}" data-username="{{ user.username }}" title="Réinitialiser le mot de passe">
+
+													<i class="fa fa-key"></i>
+
+												</button>
+
+
+												{# =========================================
+																																																																																																																								                                                   ACTIVER / DÉSACTIVER
+																																																																																																																								                                                   ========================================= #}
+
+												<button type="button" class="
+																																																																																																																																		                                                        btn
+																																																																																																																																		                                                        btn-sm
+													
+																																																																																																																																		                                                        {{
+																																																																																																																																		                                                            user.actif
+																																																																																																																																		                                                                ? 'btn-warning-light'
+																																																																																																																																		                                                                : 'btn-success-light'
+																																																																																																																																		                                                        }}
+													
+																																																																																																																																		                                                        btn-toggle-user
+																																																																																																																																		                                                    " data-url="{{ path( 'app_user_toggle_status', { id: user.id } ) }}" data-token="{{ csrf_token( 'toggle_user_' ~ user.id ) }}" data-username="{{ user.username }}" data-actif="{{ user.actif ? '1' : '0' }}" title="{{ user.actif ? 'Désactiver le compte' : 'Réactiver le compte' }}">
+
+													{% if user.actif %}
+
+														<i class="fa fa-ban"></i>
+
+													{% else %}
+
+														<i class="fa fa-check"></i>
+
+													{% endif %}
+
+												</button>
+
+
+											</div>
+
+										</td>
+
+									</tr>
+
+
+								{% else %}
+
+									<tr>
+
+										<td colspan="8" class="text-center p-5">
+
+											<i class="
+																																																																																																																								                                                    fa
+																																																																																																																								                                                    fa-users
+																																																																																																																								                                                    fa-2x
+																																																																																																																								                                                    text-muted
+																																																																																																																								                                                    mb-3
+																																																																																																																								                                                "></i>
+
+											<div>
+
+												Aucun utilisateur trouvé.
+
+											</div>
+
+										</td>
+
+									</tr>
+
+								{% endfor %}
+
+
+								{# =============================================
+																																																																																                                   AUCUN RÉSULTAT RECHERCHE
+																																																																																                                   ============================================= #}
+
+								<tr id="noUserSearchResult" style="display: none;">
+
+									<td colspan="8" class="text-center p-5">
+
+										<i class="
+																																																																																																														                                                fa
+																																																																																																														                                                fa-search
+																																																																																																														                                                fa-2x
+																																																																																																														                                                text-muted
+																																																																																																														                                                mb-3
+																																																																																																														                                            "></i>
+
+										<div>
+
+											Aucun utilisateur ne correspond
+																																																																																																														                                            à votre recherche.
+
+										</div>
+
+									</td>
+
+								</tr>
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ============================================================
+										       MODAL MODIFIER UTILISATEUR
+										       ============================================================ #}
+
+	<div class="modal fade" id="userModal" tabindex="-1" role="dialog" aria-hidden="true">
+
+		<div class="modal-dialog modal-lg" role="document">
+
+			<div class="modal-content">
+
+
+				<div class="modal-header">
+
+					<h5 class="modal-title">
+
+						<i class="fa fa-user-cog mr-2"></i>
+
+						Modifier le profil utilisateur
+
+					</h5>
+
+
+					<button type="button" class="close" data-dismiss="modal">
+
+						<span>
+							&times;
+						</span>
+
+					</button>
+
+				</div>
+
+
+				<div class="modal-body">
+
+
+					<input type="hidden" id="editUserId">
+
+
+					<input type="hidden" id="editUserUpdateUrl">
+
+
+					<input
+					type="hidden" id="editUserUpdateToken">
+
+
+					{# =================================================
+																																																		                       USERNAME
+																																																		                       ================================================= #}
+
+					<div class="form-group">
+
+						<label class="form-label">
+
+							Nom d’utilisateur
+
+						</label>
+
+
+						<input type="text" id="editUsername" class="form-control" readonly>
+
+					</div>
+
+
+					{# =================================================
+																																																		                       RÔLES
+																																																		                       ================================================= #}
+
+					<div class="form-group">
+
+						<label class="form-label">
+
+							Attribution des rôles
+
+						</label>
+
+
+						<div class="alert alert-light border">
+
+							<i class="fa fa-info-circle mr-1"></i>
+
+							<strong>Règle d'accès :</strong>
+
+							chaque utilisateur possède un seul profil principal.
+
+							<br>
+
+							La permission
+							<strong>Statistiques globales</strong>
+							peut être ajoutée en complément.
+
+							<br>
+
+							Le rôle
+							<strong>Administrateur</strong>
+							donne un accès complet à l'application.
+
+						</div>
+
+
+						<div class="selectgroup selectgroup-pills">
+
+							{% for role, libelle in rolesDisponibles %}
+
+								<label class="selectgroup-item">
+
+									<input type="checkbox" value="{{ role }}" class="selectgroup-input edit-role">
+
+									<span class="selectgroup-button">
+
+										{% if role == 'ROLE_ADMIN' %}
+											<i class="fa fa-shield mr-1"></i>
+
+										{% elseif role == 'ROLE_CAISSE_COMMANDE' %}
+											<i class="fa fa-money mr-1"></i>
+
+										{% elseif role == 'ROLE_GRAPHISTE' %}
+											<i class="fa fa-paint-brush mr-1"></i>
+
+										{% elseif role == 'ROLE_PRODUCTION' %}
+											<i class="fa fa-cogs mr-1"></i>
+
+										{% elseif role == 'ROLE_LIVREUR' %}
+											<i class="fa fa-truck mr-1"></i>
+
+										{% elseif role == 'ROLE_STATS_GLOBAL' %}
+											<i class="fa fa-bar-chart mr-1"></i>
+										{% endif %}
+
+										{{ libelle }}
+
+									</span>
+
+								</label>
+
+							{% endfor %}
+
+						</div>
+						<div class="small text-muted mt-3">
+
+							<i class="fa fa-info-circle mr-1"></i>
+
+							<strong>Infographiste / Prépresse :</strong>
+							accès au prépresse et à la production.
+
+							<br>
+
+							<strong>Production :</strong>
+							accès à la production uniquement, sans prépresse.
+
+							<br>
+
+							<strong>Livreur :</strong>
+							accès uniquement à la livraison ; arrive directement sur cette page à la connexion.
+
+							<br>
+
+							<strong>Statistiques globales :</strong>
+							accès aux données financières sensibles de l'entreprise.
+
+						</div>
+					</div>
+
+
+					{# =================================================
+																																																		                       ACTIF
+																																																		                       ================================================= #}
+
+					<div class="form-group mt-4">
+
+						<label class="custom-switch">
+
+							<input type="checkbox" id="editActif" class="custom-switch-input">
+
+							<span class="
+																																																																																                                    custom-switch-indicator
+																																																																																                                "></span>
+
+							<span class="
+																																																																																										                                    custom-switch-description
+																																																																																										                                ">
+
+								Compte actif
+
+							</span>
+
+						</label>
+
+					</div>
+
+				</div>
+
+
+				<div class="modal-footer">
+
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">
+
+						Annuler
+
+					</button>
+
+
+					<button type="button" class="btn btn-primary" id="saveUserRoles">
+
+						<i class="fa fa-save mr-1"></i>
+
+						Enregistrer
+
+					</button>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}
+
+
+{% block javascripts %}
+
+	{{ parent() }}
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+	{#
+										       SweetAlert2 est normalement déjà chargé dans base.html.twig.
+										       Ne pas remettre le CDN ici s'il est déjà présent.
+										    #}
+
+	<script>
+
+		document.addEventListener('DOMContentLoaded', function () { /*
+                 * ====================================================
+                 * OUTILS
+                 * ====================================================
+                 */
+
+const normalizeText = function (value) {
+
+return(value || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+};
+
+
+const escapeHtml = function (value) {
+
+const div = document.createElement('div');
+
+div.textContent = value || '';
+
+return div.innerHTML;
+
+};
+
+
+/*
+                 * ====================================================
+                 * RECHERCHE DYNAMIQUE
+                 * ====================================================
+                 */
+
+const searchInput = document.getElementById('userSearch');
+
+const clearSearch = document.getElementById('clearUserSearch');
+
+const statusFilter = document.getElementById('userStatusFilter');
+
+const rows = Array.from(document.querySelectorAll('.user-row'));
+
+const resultCount = document.getElementById('userResultCount');
+
+const noResult = document.getElementById('noUserSearchResult');
+
+
+const filterUsers = function () {
+
+const query = normalizeText(searchInput ? searchInput.value : '');
+
+
+const status = statusFilter ? statusFilter.value : '';
+
+
+let visible = 0;
+
+
+rows.forEach(function (row) {
+
+const searchText = normalizeText(row.dataset.search);
+
+
+const rowStatus = row.dataset.status;
+
+
+const mustChange = row.dataset.mustChangePassword === '1';
+
+
+const matchSearch = query === '' || searchText.includes(query);
+
+
+let matchStatus = true;
+
+
+if (status === 'actif') {
+
+matchStatus = rowStatus === 'actif';
+
+} else if (status === 'desactive') {
+
+matchStatus = rowStatus === 'desactive';
+
+} else if (status === 'password') {
+
+matchStatus = mustChange;
+
+}
+
+
+const show = matchSearch && matchStatus;
+
+
+row.style.display = show ? '' : 'none';
+
+
+if (show) {
+visible++;
+}
+
+});
+
+
+if (resultCount) {
+
+resultCount.textContent = visible + ' résultat' + (
+visible > 1 ? 's' : ''
+);
+
+}
+
+
+if (noResult) {
+
+noResult.style.display = visible === 0 ? '' : 'none';
+
+}
+
+};
+
+
+if (searchInput) {
+
+searchInput.addEventListener('input', filterUsers);
+
+}
+
+
+if (statusFilter) {
+
+statusFilter.addEventListener('change', filterUsers);
+
+}
+
+
+if (clearSearch) {
+
+clearSearch.addEventListener('click', function () {
+
+if (searchInput) {
+searchInput.value = '';
+}
+
+if (statusFilter) {
+statusFilter.value = '';
+}
+
+filterUsers();
+
+if (searchInput) {
+searchInput.focus();
+}
+
+});
+
+}
+
+
+/*
+ * ====================================================
+ * GESTION DES PROFILS
+ * ====================================================
+ *
+ * Règles :
+ *
+ * - ROLE_ADMIN est exclusif.
+ *
+ * - Un seul profil principal parmi :
+ *
+ *   ROLE_CAISSE_COMMANDE
+ *   ROLE_GRAPHISTE
+ *   ROLE_PRODUCTION
+ *   ROLE_LIVREUR
+ *
+ * - ROLE_STATS_GLOBAL est complémentaire.
+ * ====================================================
+ */
+
+const roleInputs = Array.from(document.querySelectorAll('.edit-role'));
+
+
+const principalRoles = ['ROLE_CAISSE_COMMANDE', 'ROLE_GRAPHISTE', 'ROLE_PRODUCTION', 'ROLE_LIVREUR'];
+
+
+const getRoleInput = function (role) {
+
+return roleInputs.find(function (input) {
+return input.value === role;
+});
+
+};
+
+
+roleInputs.forEach(function (input) {
+
+input.addEventListener('change', function () { /*
+             * ==========================================
+             * ADMINISTRATEUR
+             * ==========================================
+             */
+
+if (this.value === 'ROLE_ADMIN' && this.checked) {
+
+roleInputs.forEach(function (other) {
+
+if (other !== input) {
+other.checked = false;
+}
+
+});
+
+
+if (typeof Swal !== 'undefined') {
+
+Swal.fire({
+icon: 'info',
+title: 'Administrateur',
+text: 'Le profil Administrateur donne un accès complet, ' + 'y compris au stock et aux statistiques globales.',
+confirmButtonText: 'Compris'
+});
+
+}
+
+
+return;
+}
+
+
+/*
+             * ==========================================
+             * AUTRE RÔLE
+             * ==========================================
+             *
+             * Dès qu'on sélectionne autre chose,
+             * ROLE_ADMIN est désactivé.
+             */
+
+if (this.value !== 'ROLE_ADMIN' && this.checked) {
+
+const admin = getRoleInput('ROLE_ADMIN');
+
+
+if (admin) {
+admin.checked = false;
+}
+}
+
+
+/*
+             * ==========================================
+             * PROFIL PRINCIPAL
+             * ==========================================
+             *
+             * Un seul profil principal.
+             */
+
+if (principalRoles.includes(this.value) && this.checked) {
+
+roleInputs.forEach(function (other) {
+
+if (other !== input && principalRoles.includes(other.value)) {
+
+other.checked = false;
+}
+
+});
+
+}
+
+
+/*
+             * ROLE_STATS_GLOBAL
+             *
+             * Peut rester coché avec un profil
+             * principal.
+             */
+
+});
+
+});
+/*
+                 * ====================================================
+                 * CHARGER UTILISATEUR
+                 * ====================================================
+                 */
+
+document.querySelectorAll('.btn-edit-roles').forEach(function (button) {
+
+button.addEventListener('click', async function () {
+
+const getUrl = this.dataset.getUrl;
+
+const updateUrl = this.dataset.updateUrl;
+
+const token = this.dataset.updateToken;
+
+
+/*
+                                     * Reset modal.
+                                     */
+roleInputs.forEach(function (input) {
+
+input.checked = false;
+
+});
+
+
+document.getElementById('editUserUpdateUrl').value = updateUrl;
+
+
+document.getElementById('editUserUpdateToken').value = token;
+
+
+try {
+
+const response = await fetch(getUrl, {
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+}
+});
+
+
+const data = await response.json();
+
+
+if (! response.ok || ! data.success) {
+
+throw new Error(data.message || 'Impossible de charger l’utilisateur.');
+}
+
+
+const user = data.user;
+
+
+document.getElementById('editUserId').value = user.id;
+
+
+document.getElementById('editUsername').value = user.username;
+
+
+document.getElementById('editActif').checked = !! user.actif;
+
+
+roleInputs.forEach(function (input) {
+
+input.checked = user.roles.includes(input.value);
+
+});
+
+} catch (error) {
+
+if (typeof Swal !== 'undefined') {
+
+Swal.fire({icon: 'error', title: 'Erreur', text: error.message});
+
+}
+
+}
+
+});
+
+});
+
+
+/*
+                 * ====================================================
+                 * ENREGISTRER RÔLES
+                 * ====================================================
+                 */
+
+const saveRolesButton = document.getElementById('saveUserRoles');
+
+
+if (saveRolesButton) {
+
+saveRolesButton.addEventListener('click', async function () {
+
+const updateUrl = document.getElementById('editUserUpdateUrl').value;
+
+
+const token = document.getElementById('editUserUpdateToken').value;
+
+
+const roles = roleInputs.filter(function (input) {
+
+return input.checked;
+
+}).map(function (input) {
+
+return input.value;
+
+});
+
+
+const actif = document.getElementById('editActif').checked;
+
+
+const adminSelected = roles.includes('ROLE_ADMIN');
+
+
+const principalSelected = roles.filter(function (role) {
+return principalRoles.includes(role);
+});
+
+
+/*
+ * Aucun profil.
+ */
+if (! adminSelected && principalSelected.length === 0) {
+
+Swal.fire({
+icon: 'warning',
+title: 'Profil obligatoire',
+text: 'Veuillez sélectionner Administrateur, ' + 'Caisse / Commandes, Infographiste / Prépresse, ' + 'Production ou Livreur.'
+});
+
+return;
+}
+
+
+/*
+ * Plusieurs profils principaux.
+ */
+if (principalSelected.length > 1) {
+
+Swal.fire({
+icon: 'warning',
+title: 'Profils incompatibles',
+text: 'Un utilisateur ne peut avoir ' + 'qu’un seul profil principal.'
+});
+
+return;
+}
+
+
+/*
+ * Administrateur + autre rôle.
+ */
+if (adminSelected && roles.length > 1) {
+
+Swal.fire({icon: 'warning', title: 'Administrateur exclusif', text: 'Le profil Administrateur doit être utilisé seul.'});
+
+return;
+}
+
+
+/*
+ * Stats globales seules interdites.
+ */
+if (roles.length === 1 && roles[0] === 'ROLE_STATS_GLOBAL') {
+
+Swal.fire({
+icon: 'warning',
+title: 'Profil principal obligatoire',
+text: 'Statistiques globales est une autorisation complémentaire. ' + 'Sélectionnez également un profil principal.'
+});
+
+return;
+}
+
+
+this.disabled = true;
+
+
+try {
+
+const response = await fetch(updateUrl, {
+method: 'POST',
+
+headers: {
+'Content-Type': 'application/json',
+
+'X-Requested-With': 'XMLHttpRequest'
+},
+
+body: JSON.stringify(
+{roles: roles, actif: actif, _token: token}
+)
+});
+
+
+const data = await response.json();
+
+
+if (! response.ok || ! data.success) {
+
+throw new Error(data.message || 'Impossible de modifier le compte.');
+}
+
+
+$('#userModal').modal('hide');
+
+
+await Swal.fire({icon: 'success', title: 'Compte mis à jour', text: data.message, confirmButtonText: 'OK'});
+
+
+window.location.reload();
+
+
+} catch (error) {
+
+Swal.fire({icon: 'error', title: 'Erreur', text: error.message});
+
+} finally {
+
+this.disabled = false;
+
+}
+
+});
+
+}
+
+
+/*
+                 * ====================================================
+                 * ACTIVER / DÉSACTIVER
+                 * ====================================================
+                 */
+
+document.querySelectorAll('.btn-toggle-user').forEach(function (button) {
+
+button.addEventListener('click', async function () {
+
+const url = this.dataset.url;
+
+const token = this.dataset.token;
+
+const username = this.dataset.username;
+
+const actif = this.dataset.actif === '1';
+
+
+/*
+                                     * ===========================================
+                                     * RÉACTIVATION
+                                     * ===========================================
+                                     */
+
+if (! actif) {
+
+const confirm = await Swal.fire({
+icon: 'question',
+
+title: 'Réactiver le compte ?',
+
+html: 'Utilisateur : <strong>' + escapeHtml(username) + '</strong>',
+
+showCancelButton: true,
+
+confirmButtonText: 'Réactiver',
+
+cancelButtonText: 'Annuler'
+});
+
+
+if (! confirm.isConfirmed) {
+return;
+}
+
+
+await toggleUser(url, token, null);
+
+return;
+}
+
+
+/*
+                                     * ===========================================
+                                     * DÉSACTIVATION + MOTIF
+                                     * ===========================================
+                                     */
+
+const result = await Swal.fire({
+icon: 'warning',
+
+title: 'Désactiver le compte ?',
+
+html: 'Utilisateur : <strong>' + escapeHtml(username) + '</strong>',
+
+input: 'textarea',
+
+inputLabel: 'Motif de désactivation',
+
+inputPlaceholder: 'Exemple : départ de l’entreprise, suspension temporaire...',
+
+inputAttributes: {
+maxlength: 255
+},
+
+showCancelButton: true,
+
+confirmButtonText: 'Désactiver',
+
+cancelButtonText: 'Annuler',
+
+inputValidator: function (value) {
+
+if (! value || ! value.trim()) {
+
+return 'Veuillez indiquer le motif de désactivation.';
+}
+
+}
+});
+
+
+if (! result.isConfirmed) {
+return;
+}
+
+
+await toggleUser(url, token, result.value);
+
+});
+
+});
+
+
+const toggleUser = async function (url, token, motif) {
+
+try {
+
+const response = await fetch(url, {
+method: 'POST',
+
+headers: {
+'Content-Type': 'application/json',
+
+'X-Requested-With': 'XMLHttpRequest'
+},
+
+body: JSON.stringify(
+{_token: token, motif: motif}
+)
+});
+
+
+const data = await response.json();
+
+
+if (! response.ok || ! data.success) {
+
+throw new Error(data.message || 'Impossible de modifier le statut du compte.');
+}
+
+
+await Swal.fire({icon: 'success', title: 'Opération réussie', text: data.message, confirmButtonText: 'OK'});
+
+
+window.location.reload();
+
+
+} catch (error) {
+
+Swal.fire({icon: 'error', title: 'Erreur', text: error.message});
+
+}
+
+};
+
+
+/*
+                 * ====================================================
+                 * RÉINITIALISER MOT DE PASSE
+                 * ====================================================
+                 */
+
+document.querySelectorAll('.btn-reset-password').forEach(function (button) {
+
+button.addEventListener('click', async function () {
+
+const url = this.dataset.url;
+
+const token = this.dataset.token;
+
+const username = this.dataset.username;
+
+
+const confirm = await Swal.fire({
+icon: 'warning',
+
+title: 'Réinitialiser le mot de passe ?',
+
+html: 'Vous allez réinitialiser le mot de passe de <strong>' + escapeHtml(username) + '</strong>.<br><br>' + 'Un nouveau mot de passe temporaire sera généré.',
+
+showCancelButton: true,
+
+confirmButtonText: '<i class="fa fa-key"></i> Réinitialiser',
+
+cancelButtonText: 'Annuler'
+});
+
+
+if (! confirm.isConfirmed) {
+return;
+}
+
+
+try {
+
+const response = await fetch(url, {
+method: 'POST',
+
+headers: {
+'Content-Type': 'application/json',
+
+'X-Requested-With': 'XMLHttpRequest'
+},
+
+body: JSON.stringify(
+{_token: token}
+)
+});
+
+
+const data = await response.json();
+
+
+if (! response.ok || ! data.success) {
+
+throw new Error(data.message || 'Impossible de réinitialiser le mot de passe.');
+}
+
+
+/*
+                                         * ===========================================
+                                         * AFFICHAGE UNIQUE
+                                         * ===========================================
+                                         */
+
+await Swal.fire({
+
+icon: 'success',
+
+title: 'Mot de passe réinitialisé',
+
+html: '<div class="text-left">' + '<p>Utilisateur :</p>' + '<div class="alert alert-light border">' + '<strong>' + escapeHtml(data.username) + '</strong>' + '</div>' + '<p>Mot de passe temporaire :</p>' + '<div class="alert alert-warning text-center">' + '<strong style="font-size:22px;letter-spacing:2px;">' + escapeHtml(data.temporaryPassword) + '</strong>' + '</div>' + '<p class="text-danger mb-0">' + '<i class="fa fa-exclamation-triangle mr-1"></i>' + 'Copiez ce mot de passe maintenant. ' + 'Il ne sera plus affiché après la fermeture de cette fenêtre.' + '</p>' + '</div>',
+
+confirmButtonText: 'J’ai copié le mot de passe',
+
+allowOutsideClick: false,
+
+allowEscapeKey: false
+
+});
+
+
+window.location.reload();
+
+
+} catch (error) {
+
+Swal.fire({icon: 'error', title: 'Erreur', text: error.message});
+
+}
+
+});
+
+});
+
+});
+	</script>
+
+{% endblock %}

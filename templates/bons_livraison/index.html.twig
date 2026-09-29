@@ -1,0 +1,563 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Bons de livraison
+{% endblock %}
+
+{% block body %}
+
+	<div
+		class="side-app">
+
+		{# ==========================================================
+				       PAGE HEADER
+				       ========================================================== #}
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="#">
+						Gestion commerciale
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					Bons de livraison
+				</li>
+			</ol>
+
+		</div>
+
+
+		{# ==========================================================
+				       COMPTEURS
+				       ========================================================== #}
+		<div class="row">
+
+			<div class="col-xl-3 col-md-6">
+				<div class="card">
+					<div class="card-body">
+
+						<div class="d-flex align-items-center">
+
+							<div class="mr-3">
+								<span class="avatar avatar-lg bg-secondary-transparent text-secondary">
+									<i class="fa fa-file-text-o"></i>
+								</span>
+							</div>
+
+							<div>
+								<div class="text-muted">
+									Brouillons
+								</div>
+
+								<h3 class="mb-0">
+									{{ compteurs.brouillon|default(0) }}
+								</h3>
+							</div>
+
+						</div>
+
+					</div>
+				</div>
+			</div>
+
+
+			<div class="col-xl-3 col-md-6">
+				<div class="card">
+					<div class="card-body">
+
+						<div class="d-flex align-items-center">
+
+							<div class="mr-3">
+								<span class="avatar avatar-lg bg-primary-transparent text-primary">
+									<i class="fa fa-check-circle"></i>
+								</span>
+							</div>
+
+							<div>
+								<div class="text-muted">
+									Validés
+								</div>
+
+								<h3 class="mb-0">
+									{{ compteurs.valide|default(0) }}
+								</h3>
+							</div>
+
+						</div>
+
+					</div>
+				</div>
+			</div>
+
+
+			<div class="col-xl-3 col-md-6">
+				<div class="card">
+					<div class="card-body">
+
+						<div class="d-flex align-items-center">
+
+							<div class="mr-3">
+								<span class="avatar avatar-lg bg-success-transparent text-success">
+									<i class="fa fa-truck"></i>
+								</span>
+							</div>
+
+							<div>
+								<div class="text-muted">
+									Livrés
+								</div>
+
+								<h3 class="mb-0">
+									{{ compteurs.livre|default(0) }}
+								</h3>
+							</div>
+
+						</div>
+
+					</div>
+				</div>
+			</div>
+
+
+			<div class="col-xl-3 col-md-6">
+				<div class="card">
+					<div class="card-body">
+
+						<div class="d-flex align-items-center">
+
+							<div class="mr-3">
+								<span class="avatar avatar-lg bg-danger-transparent text-danger">
+									<i class="fa fa-ban"></i>
+								</span>
+							</div>
+
+							<div>
+								<div class="text-muted">
+									Annulés
+								</div>
+
+								<h3 class="mb-0">
+									{{ compteurs.annule|default(0) }}
+								</h3>
+							</div>
+
+						</div>
+
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+				       FILTRES
+				       ========================================================== #}
+		<div class="card mb-4">
+
+			<div class="card-header">
+
+				<h3 class="card-title mb-0">
+					<i class="fa fa-filter mr-1"></i>
+					Recherche et filtres
+				</h3>
+
+			</div>
+
+			<div class="card-body">
+
+				<form method="get" action="{{ path('app_bons_livraison_index') }}">
+
+					<div
+						class="row">
+
+						{# RECHERCHE #}
+						<div class="col-lg-4 col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label">
+									Recherche
+								</label>
+
+								<input type="text" name="q" class="form-control" value="{{ filtres.q|default('') }}" placeholder="Numéro du bon..." autocomplete="off">
+
+							</div>
+
+						</div>
+
+
+						{# STATUT #}
+						<div class="col-lg-3 col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label">
+									Statut
+								</label>
+
+								<select name="statut" class="form-control">
+
+									<option value="">
+										Tous
+									</option>
+
+									<option value="brouillon" {% if filtres.statut|default('') == 'brouillon' %} selected {% endif %}>
+										Brouillon
+									</option>
+
+									<option value="valide" {% if filtres.statut|default('') == 'valide' %} selected {% endif %}>
+										Validé
+									</option>
+
+									<option value="livre" {% if filtres.statut|default('') == 'livre' %} selected {% endif %}>
+										Livré
+									</option>
+
+									<option value="annule" {% if filtres.statut|default('') == 'annule' %} selected {% endif %}>
+										Annulé
+									</option>
+
+								</select>
+
+							</div>
+
+						</div>
+
+
+						{# DATE DEBUT #}
+						<div class="col-lg-2 col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label">
+									Du
+								</label>
+
+								<input type="date" name="date_debut" class="form-control" value="{{ filtres.date_debut|default('') }}">
+
+							</div>
+
+						</div>
+
+
+						{# DATE FIN #}
+						<div class="col-lg-2 col-md-6">
+
+							<div class="form-group">
+
+								<label class="form-label">
+									Au
+								</label>
+
+								<input type="date" name="date_fin" class="form-control" value="{{ filtres.date_fin|default('') }}">
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					<div class="d-flex justify-content-end">
+
+						<a href="{{ path('app_bons_livraison_index') }}" class="btn btn-light mr-2">
+							<i class="fa fa-undo mr-1"></i>
+							Réinitialiser
+						</a>
+
+						<button type="submit" class="btn btn-primary">
+							<i class="fa fa-search mr-1"></i>
+							Rechercher
+						</button>
+
+					</div>
+
+				</form>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+				       LISTE
+				       ========================================================== #}
+		<div class="card">
+
+			<div class="card-header d-flex justify-content-between align-items-center">
+
+				<div>
+
+					<h3 class="card-title mb-0">
+						Bons de livraison
+					</h3>
+
+					<small class="text-muted">
+						{{ bons|length }}
+						résultat{{ bons|length > 1 ? 's' : '' }}
+					</small>
+
+				</div>
+
+			</div>
+
+
+			<div class="table-responsive">
+
+				<table class="table table-bordered table-hover mb-0">
+
+					<thead>
+
+						<tr>
+
+							<th>
+								Numéro
+							</th>
+
+							<th>
+								Commande
+							</th>
+
+							<th>
+								Client
+							</th>
+
+							<th class="text-center">
+								Articles
+							</th>
+
+							<th>
+								Créé le
+							</th>
+
+							<th>
+								Réceptionnaire
+							</th>
+
+							<th class="text-center">
+								Statut
+							</th>
+
+							<th class="text-center">
+								Actions
+							</th>
+
+						</tr>
+
+					</thead>
+
+
+					<tbody>
+
+						{% for bon in bons %}
+
+							{% set commande = bon.commande %}
+
+							<tr>
+
+								{# NUMERO #}
+								<td class="align-middle">
+
+									<strong>
+										{{ bon.numero }}
+									</strong>
+
+								</td>
+
+
+								{# COMMANDE #}
+								<td class="align-middle">
+
+									{% if commande %}
+
+										<strong>
+											#{{ commande.id }}
+										</strong>
+
+										{% if commande.numero is defined and commande.numero %}
+
+											<div class="small text-muted">
+												{{ commande.numero }}
+											</div>
+
+										{% endif %}
+
+									{% else %}
+										—
+									{% endif %}
+
+								</td>
+
+
+								{# CLIENT #}
+								<td class="align-middle">
+
+									{% if
+                                    commande
+                                    and commande.client is defined
+                                    and commande.client
+                                %}
+
+										{{ commande.client }}
+
+									{% else %}
+										—
+									{% endif %}
+
+								</td>
+
+
+								{# NOMBRE DE LIGNES #}
+								<td class="text-center align-middle">
+
+									<span class="badge badge-light">
+										{{ bon.lignes|length }}
+									</span>
+
+								</td>
+
+
+								{# CREATION #}
+								<td class="align-middle">
+
+									{% if bon.creeLe %}
+
+										{{ bon.creeLe|date('d/m/Y H:i') }}
+
+										{% if bon.creePar %}
+
+											<div class="small text-muted">
+												par
+												{{ bon.creePar.username }}
+											</div>
+
+										{% endif %}
+
+									{% else %}
+										—
+									{% endif %}
+
+								</td>
+
+
+								{# RECEPTIONNAIRE #}
+								<td class="align-middle">
+
+									{% if bon.nomReceptionnaire %}
+
+										<strong>
+											{{ bon.nomReceptionnaire }}
+										</strong>
+
+										{% if bon.telephoneReceptionnaire %}
+
+											<div class="small text-muted">
+												{{ bon.telephoneReceptionnaire }}
+											</div>
+
+										{% endif %}
+
+									{% else %}
+										—
+									{% endif %}
+
+								</td>
+
+
+								{# STATUT #}
+								<td class="text-center align-middle">
+
+									{% if bon.statut == 'brouillon' %}
+
+										<span class="badge badge-secondary">
+											Brouillon
+										</span>
+
+									{% elseif bon.statut == 'valide' %}
+
+										<span class="badge badge-primary">
+											Validé
+										</span>
+
+									{% elseif bon.statut == 'livre' %}
+
+										<span class="badge badge-success">
+											Livré
+										</span>
+
+									{% elseif bon.statut == 'annule' %}
+
+										<span class="badge badge-danger">
+											Annulé
+										</span>
+
+									{% else %}
+
+										<span class="badge badge-light">
+											{{ bon.statut|replace({'_': ' '})|capitalize }}
+										</span>
+
+									{% endif %}
+
+								</td>
+
+
+								{# ACTIONS #}
+								<td class="text-center align-middle">
+
+									<div
+										class="btn-group">
+
+										{# VOIR #}
+										<a href="{{ path( 'app_bons_livraison_show', { id: bon.id } ) }}" class="btn btn-sm btn-primary-light" title="Voir">
+											<i class="fa fa-eye"></i>
+										</a>
+
+
+										{# IMPRIMER #}
+										{% if bon.statut != 'annule' %}
+
+											<a href="{{ path( 'app_bons_livraison_imprimer', { id: bon.id } ) }}" target="_blank" class="btn btn-sm btn-info-light" title="Imprimer">
+												<i class="fa fa-print"></i>
+											</a>
+
+										{% endif %}
+
+									</div>
+
+								</td>
+
+							</tr>
+
+						{% else %}
+
+							<tr>
+
+								<td colspan="8" class="text-center text-muted py-5">
+
+									<i class="fa fa-file-text-o fa-3x mb-3"></i>
+
+									<div>
+										Aucun bon de livraison trouvé.
+									</div>
+
+								</td>
+
+							</tr>
+
+						{% endfor %}
+
+					</tbody>
+
+				</table>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

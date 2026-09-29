@@ -1,0 +1,1000 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Bon de livraison
+	{{ bon.numero }}
+{% endblock %}
+
+{% block body %}
+
+	<div
+		class="side-app">
+
+		{# ==========================================================
+														       VARIABLES
+														       ========================================================== #}
+
+		{% set commande = bon.commande %}
+		{% set statut = bon.statut %}
+
+
+		{# ==========================================================
+														       PAGE HEADER
+														       ========================================================== #}
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_bons_livraison_index') }}">
+						Bons de livraison
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					{{ bon.numero }}
+				</li>
+
+			</ol>
+
+
+			<div class="d-flex">
+
+				<a href="{{ path('app_bons_livraison_index') }}" class="btn btn-light mr-2">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour
+				</a>
+
+				<a href="{{ path( 'app_bons_livraison_imprimer', { id: bon.id } ) }}" target="_blank" class="btn btn-primary">
+					<i class="fa fa-print mr-1"></i>
+					Imprimer
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+														       FLASH
+														       ========================================================== #}
+
+		{% for message in app.flashes('success') %}
+
+			<div class="alert alert-success">
+
+				<i class="fa fa-check-circle mr-1"></i>
+
+				{{ message }}
+
+			</div>
+
+		{% endfor %}
+
+
+		{% for message in app.flashes('error') %}
+
+			<div class="alert alert-danger">
+
+				<i class="fa fa-exclamation-circle mr-1"></i>
+
+				{{ message }}
+
+			</div>
+
+		{% endfor %}
+
+
+		{# ==========================================================
+														       ENTETE DU BON
+														       ========================================================== #}
+
+		<div class="row">
+
+			<div class="col-lg-8">
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<div>
+
+							<h3 class="card-title mb-1">
+								Bon de livraison
+								{{ bon.numero }}
+							</h3>
+
+							<small class="text-muted">
+
+								Créé le
+
+								{% if bon.creeLe %}
+									{{ bon.creeLe|date('d/m/Y à H:i') }}
+								{% else %}
+									—
+								{% endif %}
+
+							</small>
+
+						</div>
+
+					</div>
+
+
+					<div class="card-body">
+
+						<div class="row">
+
+
+							<div class="col-md-4 mb-3">
+
+								<small class="text-muted d-block">
+									Numéro
+								</small>
+
+								<strong class="h5">
+									{{ bon.numero }}
+								</strong>
+
+							</div>
+
+
+							<div class="col-md-4 mb-3">
+
+								<small class="text-muted d-block">
+									Commande
+								</small>
+
+								{% if commande %}
+
+									<strong>
+										#{{ commande.id }}
+									</strong>
+
+									{% if commande.numero is defined and commande.numero %}
+										<div class="small text-muted">
+											{{ commande.numero }}
+										</div>
+									{% endif %}
+
+								{% else %}
+									—
+								{% endif %}
+
+							</div>
+
+
+							<div class="col-md-4 mb-3">
+
+								<small class="text-muted d-block">
+									Statut
+								</small>
+
+								{% if statut == 'brouillon' %}
+
+									<span class="badge badge-secondary p-2">
+										Brouillon
+									</span>
+
+								{% elseif statut == 'valide' %}
+
+									<span class="badge badge-primary p-2">
+										Validé
+									</span>
+
+								{% elseif statut == 'livre' %}
+
+									<span class="badge badge-success p-2">
+										Livré
+									</span>
+
+								{% elseif statut == 'annule' %}
+
+									<span class="badge badge-danger p-2">
+										Annulé
+									</span>
+
+								{% else %}
+
+									<span class="badge badge-light p-2">
+										{{ statut|replace({'_': ' '})|capitalize }}
+									</span>
+
+								{% endif %}
+
+							</div>
+
+
+							<div class="col-md-4 mb-3">
+
+								<small class="text-muted d-block">
+									Créé par
+								</small>
+
+								{% if bon.creePar %}
+									{{ bon.creePar.username  }}
+								{% else %}
+									—
+								{% endif %}
+
+							</div>
+
+
+							<div class="col-md-4 mb-3">
+
+								<small class="text-muted d-block">
+									Validé le
+								</small>
+
+								{% if bon.valideLe %}
+									{{ bon.valideLe|date('d/m/Y H:i') }}
+								{% else %}
+									—
+								{% endif %}
+
+							</div>
+
+
+							<div class="col-md-4 mb-3">
+
+								<small class="text-muted d-block">
+									Livré le
+								</small>
+
+								{% if bon.livreLe %}
+									{{ bon.livreLe|date('d/m/Y H:i') }}
+								{% else %}
+									—
+								{% endif %}
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# ======================================================
+																					           ACTIONS
+																					           ====================================================== #}
+
+			<div class="col-lg-4">
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Actions
+						</h3>
+
+					</div>
+
+					<div class="card-body">
+
+
+						{% if bon.estBrouillon %}
+
+							<form method="post" action="{{ path( 'app_bons_livraison_valider', { id: bon.id } ) }}" class="mb-2" onsubmit="return confirm(
+																																																															                                'Valider ce bon de livraison ?'
+																																																															                            );">
+
+								<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_valider_' ~ bon.id ) }}">
+
+								<button type="submit" class="btn btn-primary btn-block">
+									<i class="fa fa-check-circle mr-1"></i>
+									Valider le bon
+								</button>
+
+							</form>
+
+						{% endif %}
+
+
+						{% if bon.estValide %}
+
+							<form method="post" action="{{ path( 'app_bons_livraison_livrer', { id: bon.id } ) }}" class="mb-2" onsubmit="return confirm(
+																																																															                                'Confirmer que la marchandise a été livrée ?'
+																																																															                            );">
+
+								<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_livrer_' ~ bon.id ) }}">
+
+								<button type="submit" class="btn btn-success btn-block">
+									<i class="fa fa-truck mr-1"></i>
+									Confirmer la livraison
+								</button>
+
+							</form>
+
+						{% endif %}
+
+
+						{% if bon.estBrouillon or bon.estValide %}
+
+							<form method="post" action="{{ path( 'app_bons_livraison_annuler', { id: bon.id } ) }}" onsubmit="return confirm(
+																																																															                                'Voulez-vous réellement annuler ce bon de livraison ?'
+																																																															                            );">
+
+								<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_annuler_' ~ bon.id ) }}">
+
+								<button type="submit" class="btn btn-danger-light btn-block">
+									<i class="fa fa-times mr-1"></i>
+									Annuler le bon
+								</button>
+
+							</form>
+
+						{% endif %}
+
+
+						{% if bon.estLivre %}
+
+							<div class="alert alert-success mb-0">
+
+								<i class="fa fa-check-circle mr-1"></i>
+
+								Livraison confirmée.
+
+							</div>
+
+						{% endif %}
+
+
+						{% if statut == 'annule' %}
+
+							<div class="alert alert-danger mb-0">
+
+								<i class="fa fa-ban mr-1"></i>
+
+								Ce bon a été annulé.
+
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+														       CLIENT
+														       ========================================================== #}
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-user mr-1"></i>
+
+					Client
+
+				</h3>
+
+			</div>
+
+			<div class="card-body">
+
+				{% if commande and commande.client is defined and commande.client %}
+
+					{% set client = commande.client %}
+
+					<div class="row">
+
+
+						<div class="col-md-3 mb-3">
+
+							<small class="text-muted d-block">
+								Client
+							</small>
+
+							<strong>
+								{{ client }}
+							</strong>
+
+						</div>
+
+
+						{% if client.telephone is defined %}
+
+							<div class="col-md-3 mb-3">
+
+								<small class="text-muted d-block">
+									Téléphone
+								</small>
+
+								{{ client.telephone|default('—') }}
+
+							</div>
+
+						{% endif %}
+
+
+						{% if client.email is defined %}
+
+							<div class="col-md-3 mb-3">
+
+								<small class="text-muted d-block">
+									Email
+								</small>
+
+								{{ client.email|default('—') }}
+
+							</div>
+
+						{% endif %}
+
+
+						{% if client.adresse is defined %}
+
+							<div class="col-md-3 mb-3">
+
+								<small class="text-muted d-block">
+									Adresse
+								</small>
+
+								{{ client.adresse|default('—') }}
+
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				{% else %}
+
+					<div class="text-muted">
+						Aucun client associé à cette commande.
+					</div>
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+														       INFORMATIONS DE LIVRAISON
+														       ========================================================== #}
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-map-marker mr-1"></i>
+
+					Informations de livraison
+
+				</h3>
+
+			</div>
+
+
+			{% if bon.estBrouillon %}
+
+				<form method="post" action="{{ path( 'app_bons_livraison_modifier_informations', { id: bon.id } ) }}">
+
+					<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_modifier_' ~ bon.id ) }}">
+
+
+					<div class="card-body">
+
+						<div class="row">
+
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+
+									<label class="form-label">
+										Nom du réceptionnaire
+									</label>
+
+									<input type="text" name="nom_receptionnaire" class="form-control" value="{{ bon.nomReceptionnaire|default('') }}" placeholder="Nom de la personne qui réceptionne">
+
+								</div>
+
+							</div>
+
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+
+									<label class="form-label">
+										Téléphone du réceptionnaire
+									</label>
+
+									<input type="text" name="telephone_receptionnaire" class="form-control" value="{{ bon.telephoneReceptionnaire|default('') }}" placeholder="Exemple : 76 00 00 00">
+
+								</div>
+
+							</div>
+
+
+							<div class="col-md-12">
+
+								<div class="form-group">
+
+									<label class="form-label">
+										Adresse de livraison
+									</label>
+
+									<input type="text" name="adresse_livraison" class="form-control" value="{{ bon.adresseLivraison|default('') }}" placeholder="Lieu ou adresse de livraison">
+
+								</div>
+
+							</div>
+
+
+							<div class="col-md-12">
+
+								<div class="form-group">
+
+									<label class="form-label">
+										Observation
+									</label>
+
+									<textarea name="observation" class="form-control" rows="3" placeholder="Observation relative à la livraison...">{{ bon.observation|default('') }}</textarea>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					<div class="card-footer text-right">
+
+						<button type="submit" class="btn btn-primary">
+
+							<i class="fa fa-save mr-1"></i>
+
+							Enregistrer les informations
+
+						</button>
+
+					</div>
+
+
+					{# Le formulaire reste ouvert pour englober
+																																			                   également les quantités des lignes ci-dessous. #}
+
+
+					<div class="card-header border-top">
+
+						<h3 class="card-title">
+							Articles à livrer
+						</h3>
+
+					</div>
+
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered mb-0">
+
+							<thead>
+
+								<tr>
+
+									<th>
+										Désignation
+									</th>
+
+									<th class="text-center">
+										Qté commandée
+									</th>
+
+									<th style="width: 180px;">
+										Qté à livrer
+									</th>
+
+									<th>
+										Unité
+									</th>
+
+									<th>
+										Origine
+									</th>
+
+								</tr>
+
+							</thead>
+
+							<tbody>
+
+								{% for ligne in bon.lignes %}
+
+									{% set detail = ligne.commandeDetail %}
+
+									<tr>
+
+										<td>
+											{{ ligne.designation }}
+										</td>
+
+										<td class="text-center">
+											{{ ligne.quantiteCommandee }}
+										</td>
+
+										<td class="text-center">
+
+											{% if detail %}
+												{{ detail.quantiteLivree }}
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+										<td class="text-center">
+											{{ ligne.quantiteLivree }}
+										</td>
+
+										<td class="text-center">
+
+											{% if detail %}
+
+												{% set resteApres =
+                detail.quantiteRestanteLivraison
+                - ligne.quantiteLivree
+            %}
+
+												<strong>
+													{{ resteApres > 0 ? resteApres : 0 }}
+												</strong>
+
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+									</tr>
+
+								{% else %}
+
+									<tr>
+
+										<td colspan="5" class="text-center text-muted py-4">
+											Aucun article dans ce bon.
+										</td>
+
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+
+					<div class="card-footer text-right">
+
+						<button type="submit" class="btn btn-primary">
+
+							<i class="fa fa-save mr-1"></i>
+
+							Enregistrer le bon
+
+						</button>
+
+					</div>
+
+				</form>
+
+
+			{% else %}
+
+
+				<div class="card-body">
+
+					<div class="row">
+
+
+						<div class="col-md-4 mb-3">
+
+							<small class="text-muted d-block">
+								Réceptionnaire
+							</small>
+
+							<strong>
+								{{ bon.nomReceptionnaire|default('—') }}
+							</strong>
+
+						</div>
+
+
+						<div class="col-md-4 mb-3">
+
+							<small class="text-muted d-block">
+								Téléphone
+							</small>
+
+							{{ bon.telephoneReceptionnaire|default('—') }}
+
+						</div>
+
+
+						<div class="col-md-4 mb-3">
+
+							<small class="text-muted d-block">
+								Adresse
+							</small>
+
+							{{ bon.adresseLivraison|default('—') }}
+
+						</div>
+
+
+						{% if bon.observation %}
+
+							<div class="col-md-12">
+
+								<small class="text-muted d-block">
+									Observation
+								</small>
+
+								{{ bon.observation|nl2br }}
+
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+
+				<div class="card-header border-top">
+
+					<h3 class="card-title">
+						Articles livrés
+					</h3>
+
+				</div>
+
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered mb-0">
+
+						<thead>
+
+							<tr>
+
+								<th>
+									Désignation
+								</th>
+
+								<th class="text-center">
+									Qté commandée
+								</th>
+
+								<th class="text-center">
+									Qté livrée
+								</th>
+
+								<th>
+									Unité
+								</th>
+
+								<th>
+									Origine
+								</th>
+
+							</tr>
+
+						</thead>
+
+						<tbody>
+
+							{% for ligne in bon.lignes %}
+
+								{% set detail = ligne.commandeDetail %}
+
+								<tr>
+
+									<td>
+
+										<strong>
+											{{ ligne.designation }}
+										</strong>
+
+									</td>
+
+
+									<td class="text-center">
+
+										{{ ligne.quantiteCommandee }}
+
+									</td>
+
+
+									<td class="text-center">
+
+										<strong>
+											{{ ligne.quantiteLivree }}
+										</strong>
+
+									</td>
+
+
+									<td>
+
+										{{ ligne.unite|default('unite')|replace({'_': ' '})|capitalize }}
+
+									</td>
+
+
+									<td>
+
+										{% if detail %}
+
+											{% if detail.productionNecessaire %}
+
+												<span class="badge badge-primary">
+													Production
+												</span>
+
+											{% else %}
+
+												<span class="badge badge-info">
+													Vente directe
+												</span>
+
+											{% endif %}
+
+										{% else %}
+											—
+										{% endif %}
+
+									</td>
+
+								</tr>
+
+							{% else %}
+
+								<tr>
+
+									<td colspan="5" class="text-center text-muted py-4">
+										Aucun article.
+									</td>
+
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			{% endif %}
+
+		</div>
+
+
+		{# ==========================================================
+														       HISTORIQUE
+														       ========================================================== #}
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-history mr-1"></i>
+
+					Historique
+
+				</h3>
+
+			</div>
+
+			<div class="card-body">
+
+				<div class="row">
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Création
+						</small>
+
+						{% if bon.creeLe %}
+
+							{{ bon.creeLe|date('d/m/Y H:i') }}
+
+							{% if bon.creePar %}
+								<div class="small text-muted">
+									par
+									{{ bon.creePar.username }}
+								</div>
+							{% endif %}
+
+						{% else %}
+							—
+						{% endif %}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Validation
+						</small>
+
+						{% if bon.valideLe %}
+
+							{{ bon.valideLe|date('d/m/Y H:i') }}
+
+							{% if bon.validePar %}
+								<div class="small text-muted">
+									par
+									{{ bon.validePar.username }}
+								</div>
+							{% endif %}
+
+						{% else %}
+							—
+						{% endif %}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Livraison
+						</small>
+
+						{% if bon.livreLe %}
+
+							{{ bon.livreLe|date('d/m/Y H:i') }}
+
+							{% if bon.livrePar %}
+								<div class="small text-muted">
+									par
+									{{ bon.livrePar.username }}
+								</div>
+							{% endif %}
+
+						{% else %}
+							—
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

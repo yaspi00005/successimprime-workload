@@ -1,0 +1,50 @@
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+
+###> symfony/asset-mapper ###
+/public/assets/
+/assets/vendor/
+###< symfony/asset-mapper ###
+
+# Thème Workload (ThemeForest) : sous licence, jamais versionné.
+# Réinstaller avec : php bin/console app:installer-theme /chemin/vers/WorkLoad-v1.2-28-Octuber-2022/xhtml
+/public/theme/
+
+# Fichiers temporaires Google Drive
+.tmp.driveupload/
+
+# Fichiers privés uploadés par les utilisateurs
+/public/uploads/employes/
+
+# Médias du diaporama de l'écran d'accueil (images/vidéos déposées manuellement)
+/public/uploads/tv/*
+!/public/uploads/tv/.gitkeep
+
+# Copies locales des migrations
+/migrations copy/
+*.dmg
+
+# Sauvegardes de la base de données (données réelles de clients :
+# ne doivent jamais partir sur GitHub, voir scripts/windows/backup_db.bat)
+/backups/
+*.sql
+
+# Ajoute automatiquement par preparer_env_avant_git.py
+/node_modules/
+.env.local
+.env.local.php
+.env.*.local
+/.phpunit.result.cache

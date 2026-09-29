@@ -1,0 +1,37 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Nouveau modèle de message
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_modele_message_index') }}">Modèles de message</a>
+			</li>
+			<li class="breadcrumb-item active">
+				Nouveau modèle
+			</li>
+		</ol>
+	</div>
+
+	<div class="row">
+		<div class="col-md-8">
+			<div class="card">
+				<div class="card-header">
+					<h3 class="mb-0 card-title">
+						Ajouter un modèle de message
+					</h3>
+				</div>
+
+				{% include 'modele_message/_form.html.twig' %}
+
+			</div>
+		</div>
+	</div>
+
+{% endblock %}

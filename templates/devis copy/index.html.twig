@@ -1,0 +1,629 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des devis
+{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+
+	<style>
+		.devis-stat {
+			border: 0;
+			border-left: 4px solid #1643a3;
+		}
+
+		.devis-reference {
+			font-weight: 700;
+			color: #1643a3;
+		}
+
+		.devis-client {
+			max-width: 230px;
+			white-space: normal;
+		}
+
+		.devis-actions .btn,
+		.devis-actions form {
+			display: inline-block;
+			margin: 2px;
+		}
+
+		.filter-indicator {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 5px 10px;
+			border-radius: 20px;
+			background: #eef3ff;
+			color: #1643a3;
+			font-size: 12px;
+			font-weight: 600;
+		}
+
+		.empty-state {
+			padding: 55px 20px;
+			text-align: center;
+		}
+
+		.empty-state i {
+			font-size: 48px;
+			color: #cbd3df;
+		}
+
+		.devis-expire {
+			background-color: #fff8f8;
+		}
+
+		@media(max-width: 1199px) {
+			.devis-filter-card {
+				position: static;
+			}
+		}
+	</style>
+{% endblock %}
+
+{% block body %}
+	{% set maintenant = date() %}
+	{% set totalTtcGlobal = 0 %}
+	{% set nombreBrouillons = 0 %}
+	{% set nombreAcceptes = 0 %}
+
+	{% for item in devis %}
+		{% set totalTtcGlobal =
+        totalTtcGlobal + (item.totalTtc|default(0))
+    %}
+
+		{% if item.statut == 'brouillon' %}
+			{% set nombreBrouillons = nombreBrouillons + 1 %}
+		{% endif %}
+
+		{% if item.statut == 'accepte' %}
+			{% set nombreAcceptes = nombreAcceptes + 1 %}
+		{% endif %}
+	{% endfor %}
+
+	
+
+	<div class="side-app">
+		<div class="page-header">
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_devis_index') }}">
+						Devis
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active" aria-current="page">
+					Liste
+				</li>
+			</ol>
+
+			<a href="{{ path('app_devis_new') }}" class="btn btn-primary">
+				<i class="fa fa-plus mr-1"></i>
+				Nouveau devis
+			</a>
+		</div>
+
+		{# Notifications Symfony avec SweetAlert #}
+		{% for type, messages in app.flashes %}
+			{% for message in messages %}
+				<div class="d-none js-flash-message" data-type="{{ type }}" data-message="{{ message }}"></div>
+			{% endfor %}
+		{% endfor %}
+
+		{# Statistiques #}
+		<div class="row">
+			<div class="col-sm-6 col-xl-3">
+				<div class="card devis-stat">
+					<div class="card-body">
+						<div class="text-muted">
+							Nombre de devis
+						</div>
+
+						<div class="h2 mb-0">
+							{{ devis|length }}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-sm-6 col-xl-3">
+				<div class="card devis-stat border-warning">
+					<div class="card-body">
+						<div class="text-muted">
+							Brouillons
+						</div>
+
+						<div class="h2 mb-0">
+							{{ nombreBrouillons }}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-sm-6 col-xl-3">
+				<div class="card devis-stat border-success">
+					<div class="card-body">
+						<div class="text-muted">
+							Devis acceptés
+						</div>
+
+						<div class="h2 mb-0">
+							{{ nombreAcceptes }}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-sm-6 col-xl-3">
+				<div class="card devis-stat border-info">
+					<div class="card-body">
+						<div class="text-muted">
+							Montant total TTC
+						</div>
+
+						<div class="h2 mb-0">
+							{{ totalTtcGlobal|number_format(0, ',', ' ') }}
+							F CFA
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{# Recherche locale #}
+		<div class="card">
+			<div class="card-header">
+				<div class="card-title">
+					<i class="fa fa-filter mr-2"></i>
+					Recherche et filtres
+				</div>
+			</div>
+
+			<div class="card-body">
+				<div class="row">
+					<div class="col-md-5">
+						<div class="form-group mb-md-0">
+							<label class="form-label">
+								Recherche générale
+							</label>
+
+							<input type="search" id="recherche-devis" class="form-control" placeholder="Numéro, client, téléphone…">
+						</div>
+					</div>
+
+					<div class="col-md-4">
+						<div class="form-group mb-md-0">
+							<label class="form-label">
+								Statut
+							</label>
+
+							<select id="filtre-statut" class="form-control custom-select">
+								<option value="">
+									Tous les statuts
+								</option>
+								<option value="brouillon">
+									Brouillon
+								</option>
+								<option value="envoye">
+									Envoyé
+								</option>
+								<option value="accepte">
+									Accepté
+								</option>
+								<option value="refuse">
+									Refusé
+								</option>
+								<option value="expire">
+									Expiré
+								</option>
+								<option value="converti">
+									Converti en commande
+								</option>
+							</select>
+						</div>
+					</div>
+
+					<div class="col-md-3 d-flex align-items-end">
+						<button type="button" id="reinitialiser-filtres" class="btn btn-light btn-block">
+							<i class="fa fa-refresh mr-1"></i>
+							Réinitialiser
+						</button>
+					</div>
+				</div>
+
+				<div class="mt-3">
+					<span class="filter-indicator">
+						<i class="fa fa-list"></i>
+
+						<span id="nombre-resultats">
+							{{ devis|length }}
+						</span>
+
+						résultat(s)
+					</span>
+				</div>
+			</div>
+		</div>
+
+		{# Tableau des devis #}
+		<div class="card">
+			<div class="card-header d-flex
+																				                        justify-content-between
+																				                        align-items-center">
+				<div>
+					<div class="card-title mb-1">
+						Liste des devis
+					</div>
+
+					<small class="text-muted">
+						Consultez, modifiez ou supprimez vos devis.
+					</small>
+				</div>
+			</div>
+
+			<div class="table-responsive">
+				<table class="table card-table
+																				                              table-vcenter text-nowrap" id="table-devis">
+					<thead>
+						<tr>
+							<th>Devis</th>
+							<th>Client</th>
+							<th>Date</th>
+							<th>Validité</th>
+							<th>Prestations</th>
+							<th>Statut</th>
+							<th class="text-right">
+								Total TTC
+							</th>
+							<th class="text-center">
+								Actions
+							</th>
+						</tr>
+					</thead>
+
+					<tbody>
+						{% for item in devis %}
+							{% set estExpire =
+                                item.dateValidite
+                                and item.dateValidite < maintenant
+                                and item.statut not in [
+                                    'accepte',
+                                    'refuse',
+                                    'converti'
+                                ]
+                            %}
+
+							{% set statutAffiche =
+                                estExpire
+                                    ? 'expire'
+                                    : item.statut
+                            %}
+
+							{% set texteRecherche =
+                                (
+                                    item.numero|default('')
+                                    ~ ' '
+                                    ~ item.client|default('')
+                                )|lower
+                            %}
+
+							<tr
+								class="js-devis-row
+																																				                                       {{ estExpire
+																																				                                           ? 'devis-expire'
+																																				                                           : ''
+																																				                                       }}" data-search="{{ texteRecherche|e('html_attr') }}" data-statut="{{ statutAffiche }}">
+
+								{# Numéro #}
+								<td>
+									<a href="{{ path( 'app_devis_show', {id: item.id} ) }}" class="devis-reference">
+										{{ item.numero
+                                            |default(
+                                                'DEV-'
+                                                ~ '%05d'|format(item.id)
+                                            )
+                                        }}
+									</a>
+
+									<div class="small text-muted">
+										#{{ item.id }}
+									</div>
+								</td>
+
+								{# Client #}
+								<td class="devis-client">
+									{% if item.client %}
+										<strong>
+											{{ item.client }}
+										</strong>
+									{% else %}
+										<span class="text-muted">
+											Non renseigné
+										</span>
+									{% endif %}
+								</td>
+
+								{# Date de création #}
+								<td>
+									{% if item.dateCreation %}
+										{{ item.dateCreation
+                                            |date('d/m/Y') }}
+									{% else %}
+										—
+									{% endif %}
+								</td>
+
+								{# Date de validité #}
+								<td>
+									{% if item.dateValidite %}
+										<span class="{{ estExpire ? 'text-danger font-weight-bold' : '' }}">
+											{{ item.dateValidite
+                                                |date('d/m/Y') }}
+										</span>
+
+										{% if estExpire %}
+											<div class="small text-danger">
+												Expiré
+											</div>
+										{% endif %}
+									{% else %}
+										—
+									{% endif %}
+								</td>
+
+								{# Nombre de prestations #}
+								<td>
+									<span class="badge badge-info">
+										{{ item.details|length }}
+									</span>
+
+									<div class="small text-muted mt-1">
+										prestation{{ item.details|length > 1
+                                            ? 's'
+                                            : ''
+                                        }}
+									</div>
+								</td>
+
+								{# Statut #}
+								<td>
+									{% if statutAffiche == 'brouillon' %}
+										<span class="badge badge-secondary">
+											<i class="fa fa-pencil mr-1"></i>
+											Brouillon
+										</span>
+
+									{% elseif statutAffiche == 'envoye' %}
+										<span class="badge badge-info">
+											<i class="fa fa-send mr-1"></i>
+											Envoyé
+										</span>
+
+									{% elseif statutAffiche == 'accepte' %}
+										<span class="badge badge-success">
+											<i class="fa fa-check-circle mr-1"></i>
+											Accepté
+										</span>
+
+									{% elseif statutAffiche == 'refuse' %}
+										<span class="badge badge-danger">
+											<i class="fa fa-times-circle mr-1"></i>
+											Refusé
+										</span>
+
+									{% elseif statutAffiche == 'converti' %}
+										<span class="badge badge-primary">
+											<i class="fa fa-exchange mr-1"></i>
+											Converti
+										</span>
+
+									{% elseif statutAffiche == 'expire' %}
+										<span class="badge badge-warning">
+											<i class="fa fa-clock-o mr-1"></i>
+											Expiré
+										</span>
+
+									{% else %}
+										<span class="badge badge-light">
+											{{ statutAffiche
+                                                |default('Non défini')
+                                                |capitalize }}
+										</span>
+									{% endif %}
+								</td>
+
+								{# Total TTC #}
+								<td class="text-right">
+									<strong>
+										{{ item.totalTtc
+                                            |default(0)
+                                            |number_format(0, ',', ' ') }}
+										F CFA
+									</strong>
+								</td>
+
+								{# Actions #}
+								<td class="text-center devis-actions">
+									<a href="{{ path( 'app_devis_show', {id: item.id} ) }}" class="btn btn-info-light btn-sm" title="Afficher">
+										<i class="fa fa-eye"></i>
+									</a>
+
+									{% if item.estModifiable %}
+										<a href="{{ path( 'app_devis_edit', {id: item.id} ) }}" class="btn btn-primary-light btn-sm" title="Modifier">
+											<i class="fa fa-pencil"></i>
+										</a>
+									{% endif %}
+
+									{% if item.commande is null %}
+										<form method="post" action="{{ path( 'app_devis_delete', {id: item.id} ) }}" class="js-delete-form">
+
+											<input type="hidden" name="_token" value="{{ csrf_token( 'delete_devis_' ~ item.id ) }}">
+
+											<button type="submit" class="btn
+																																																                                                           btn-danger-light
+																																																                                                           btn-sm" title="Supprimer" data-numero="{{ item.numero |default( 'DEV-' ~ item.id ) }}">
+												<i class="fa fa-trash"></i>
+											</button>
+										</form>
+									{% endif %}
+								</td>
+							</tr>
+						{% else %}
+							<tr>
+								<td colspan="8">
+									<div class="empty-state">
+										<i class="fa fa-file-text-o"></i>
+
+										<h4 class="mt-3">
+											Aucun devis enregistré
+										</h4>
+
+										<p class="text-muted">
+											Commencez par créer votre
+																																												                                            premier devis.
+										</p>
+
+										<a href="{{ path( 'app_devis_new' ) }}" class="btn btn-primary">
+											<i class="fa fa-plus mr-1"></i>
+											Nouveau devis
+										</a>
+									</div>
+								</td>
+							</tr>
+						{% endfor %}
+
+						<tr id="aucun-resultat" style="display: none;">
+							<td colspan="8">
+								<div class="empty-state">
+									<i class="fa fa-search"></i>
+
+									<h4 class="mt-3">
+										Aucun résultat
+									</h4>
+
+									<p class="text-muted">
+										Aucun devis ne correspond
+																																								                                        aux critères sélectionnés.
+									</p>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+const recherche = document.getElementById('recherche-devis');
+
+const filtreStatut = document.getElementById('filtre-statut');
+
+const boutonReinitialiser = document.getElementById('reinitialiser-filtres');
+
+const lignes = Array.from(document.querySelectorAll('.js-devis-row'));
+
+const compteur = document.getElementById('nombre-resultats');
+
+const aucunResultat = document.getElementById('aucun-resultat');
+
+function normaliser(texte) {
+return(texte || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function appliquerFiltres() {
+const terme = normaliser(recherche.value);
+const statut = filtreStatut.value;
+let nombreVisible = 0;
+
+lignes.forEach(function (ligne) {
+const contenu = normaliser(ligne.dataset.search);
+
+const statutLigne = ligne.dataset.statut || '';
+
+const rechercheValide = terme === '' || contenu.includes(terme);
+
+const statutValide = statut === '' || statutLigne === statut;
+
+const afficher = rechercheValide && statutValide;
+
+ligne.style.display = afficher ? '' : 'none';
+
+if (afficher) {
+nombreVisible++;
+}
+});
+
+compteur.textContent = nombreVisible;
+
+if (aucunResultat) {
+aucunResultat.style.display = lignes.length > 0 && nombreVisible === 0 ? '' : 'none';
+}
+}
+
+recherche.addEventListener('input', appliquerFiltres);
+
+filtreStatut.addEventListener('change', appliquerFiltres);
+
+boutonReinitialiser.addEventListener('click', function () {
+recherche.value = '';
+filtreStatut.value = '';
+appliquerFiltres appliquerFilt();
+recherche.focus();
+});
+
+document.querySelectorAll('.js-delete-form').forEach(function (formulaire) {
+formulaire.addEventListener('submit', function (event) {
+event.preventDefault();
+
+const bouton = formulaire.querySelector('button[type="submit"]');
+
+const numero = bouton.dataset.numero || 'ce devis';
+
+Swal.fire({
+icon: 'warning',
+title: 'Supprimer le devis ?',
+text: 'Le devis ' + numero + ' sera définitivement supprimé.',
+showCancelButton: true,
+confirmButtonText: 'Oui, supprimer',
+cancelButtonText: 'Annuler',
+confirmButtonColor: '#dc3545',
+reverseButtons: true
+}).then(function (resultat) {
+if (resultat.isConfirmed) {
+formulaire.submit();
+}
+});
+});
+});
+
+document.querySelectorAll('.js-flash-message').forEach(function (element) {
+const type = element.dataset.type;
+let icon = 'info';
+
+if (type === 'success') {
+icon = 'success';
+} else if (type === 'error') {
+icon = 'error';
+} else if (type === 'warning') {
+icon = 'warning';
+}
+
+Swal.fire({
+icon: icon,
+title: type === 'success' ? 'Opération réussie' : 'Information',
+text: element.dataset.message,
+confirmButtonText: 'Fermer'
+});
+});
+});
+	</script>
+{% endblock %}

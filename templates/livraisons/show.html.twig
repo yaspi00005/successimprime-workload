@@ -1,0 +1,1166 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Livraison -
+	{{ detail.designation }}
+{% endblock %}
+
+{% block body %}
+
+	<div
+		class="side-app">
+
+		{# ==========================================================
+										       PAGE HEADER
+										       ========================================================== #}
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_livraisons_index') }}">
+						Livraisons
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					{{ detail.designation }}
+				</li>
+
+			</ol>
+
+			<div>
+
+				<a href="{{ path('app_livraisons_index') }}" class="btn btn-primary-light">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour aux livraisons
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+										       FLASH MESSAGES
+										       ========================================================== #}
+
+		{% for message in app.flashes('success') %}
+
+			<div class="alert alert-success">
+				<i class="fa fa-check-circle mr-1"></i>
+				{{ message }}
+			</div>
+
+		{% endfor %}
+
+		{% for message in app.flashes('error') %}
+
+			<div class="alert alert-danger">
+				<i class="fa fa-exclamation-circle mr-1"></i>
+				{{ message }}
+			</div>
+
+		{% endfor %}
+
+
+		{# ==========================================================
+										       VARIABLES
+										       ========================================================== #}
+
+		{% set commande = detail.commande %}
+
+		{% set produit = detail.produit %}
+
+		{% set statut = detail.statutProduction %}
+
+
+		{# ==========================================================
+										       ENTETE / STATUT
+										       ========================================================== #}
+
+		<div class="row">
+
+			<div class="col-lg-8">
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<div>
+
+							<h3 class="card-title mb-1">
+								{{ detail.designation }}
+							</h3>
+
+							<small class="text-muted">
+
+								Ligne de commande #{{ detail.id }}
+
+								{% if commande %}
+									—
+																																													                                Commande #{{ commande.id }}
+								{% endif %}
+
+							</small>
+
+						</div>
+
+					</div>
+
+
+					<div class="card-body">
+
+						<div
+							class="row">
+
+
+							{# ORIGINE #}
+							<div class="col-md-4 mb-3">
+
+								<small class="text-muted d-block">
+									Origine
+								</small>
+
+								{% if detail.productionNecessaire %}
+
+									<span class="badge badge-primary p-2">
+										<i class="fa fa-print mr-1"></i>
+										Production
+									</span>
+
+								{% else %}
+
+									<span class="badge badge-info p-2">
+										<i class="fa fa-shopping-cart mr-1"></i>
+										Vente directe
+									</span>
+
+								{% endif %}
+
+							</div>
+
+
+							{# STATUT #}
+							<div class="col-md-4 mb-3">
+
+								<small class="text-muted d-block">
+									Statut
+								</small>
+
+								{% if statut == 'prete_livraison' %}
+
+									<span class="badge badge-primary p-2">
+										Prête à livrer
+									</span>
+
+								{% elseif statut == 'en_livraison' %}
+
+									<span class="badge badge-warning p-2">
+										En livraison
+									</span>
+
+								{% elseif statut == 'livree' %}
+
+									<span class="badge badge-success p-2">
+										Livrée
+									</span>
+
+								{% else %}
+
+									<span class="badge badge-secondary p-2">
+										{{ statut|replace({'_': ' '})|capitalize }}
+									</span>
+
+								{% endif %}
+
+							</div>
+
+
+							{# QUANTITE #}
+							<div class="col-md-4 mb-3">
+
+								<small class="text-muted d-block">
+									Quantité
+								</small>
+
+								<strong class="h4">
+									{{ detail.quantite }}
+								</strong>
+
+							</div>
+
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# ======================================================
+															           ACTIONS
+															           ====================================================== #}
+
+			{# ======================================================
+												   ACTIONS
+												   ====================================================== #}
+
+			<div class="col-lg-4">
+
+				<div class="card">
+
+					<div class="card-header">
+						<h3 class="card-title">
+							Actions
+						</h3>
+					</div>
+
+					<div
+						class="card-body">
+
+						{# ==================================================
+																								               LIGNE PRÊTE À LIVRER
+																								               ================================================== #}
+
+						{% if statut == 'prete_livraison' %}
+
+							{% if commande %}
+
+								<form method="post" action="{{ path( 'app_bons_livraison_creer_commande', { id: commande.id } ) }}" onsubmit="return confirm(
+																																								                            'Créer un bon de livraison pour cette commande ?'
+																																								                        );">
+
+									<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_creer_commande_' ~ commande.id ) }}">
+
+									<button type="submit" class="btn btn-primary btn-block mb-2">
+										<i class="fa fa-file-text-o mr-1"></i>
+
+										Créer un bon de livraison
+									</button>
+
+								</form>
+
+								<div class="alert alert-info mt-3 mb-0">
+
+									<i class="fa fa-info-circle mr-1"></i>
+
+									La livraison doit être effectuée
+																																				                        à partir d’un bon de livraison.
+
+								</div>
+
+							{% else %}
+
+								<div class="alert alert-danger mb-0">
+
+									<i class="fa fa-exclamation-circle mr-1"></i>
+
+									Impossible de créer un bon de livraison :
+																																				                        aucune commande n’est associée à cette ligne.
+
+								</div>
+
+							{% endif %}
+
+						{% endif %}
+
+
+						{# ==================================================
+																								               LIGNE DÉJÀ EN LIVRAISON
+																								               ================================================== #}
+
+						{% if statut == 'en_livraison' %}
+
+							{% if detail.typeLigne == 'article' %}
+
+								<form method="post" action="{{ path( 'app_livraisons_livrer', { id: detail.id } ) }}" class="js-form-confirmer-livraison">
+
+									<input type="hidden" name="_token" value="{{ csrf_token( 'livraison_livrer_' ~ detail.id ) }}">
+
+									<button type="submit" class="btn btn-success btn-block">
+										<i class="fa fa-check-circle mr-1"></i>
+
+										Confirmer la livraison
+									</button>
+
+								</form>
+
+
+								<div class="alert alert-info mt-3 mb-0">
+
+									<i class="fa fa-info-circle mr-1"></i>
+
+									La confirmation enregistrera également
+																											            la sortie de stock de cet article.
+
+								</div>
+
+							{% else %}
+
+								<div class="alert alert-warning mb-0">
+
+									<i class="fa fa-truck mr-1"></i>
+
+									Cette ligne doit être livrée
+																											            depuis son bon de livraison.
+
+									{% if commande %}
+										<a href="{{ path('app_livraisons_commande', { id: commande.id }) }}#bons-de-livraison" class="alert-link d-block mt-2">
+											<i class="fa fa-file-text-o mr-1"></i>
+											Voir les bons de livraison de cette commande
+										</a>
+									{% endif %}
+
+								</div>
+
+							{% endif %}
+
+						{% endif %}
+
+
+						{# ==================================================
+																								               LIGNE LIVRÉE
+																								               ================================================== #}
+
+						{% if statut == 'livree' %}
+
+							<div class="alert alert-success mb-0">
+
+								<i class="fa fa-check-circle mr-1"></i>
+
+								Cette ligne a été entièrement livrée.
+
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+										       COMMANDE / CLIENT
+										       ========================================================== #}
+
+		<div class="row">
+
+			<div class="col-lg-6">
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							<i class="fa fa-shopping-cart mr-1"></i>
+							Commande
+						</h3>
+
+					</div>
+
+					<div class="card-body">
+
+						{% if commande %}
+
+							<div class="row">
+
+								<div class="col-md-6 mb-3">
+
+									<small class="text-muted d-block">
+										Numéro
+									</small>
+
+									<strong>
+										#{{ commande.id }}
+									</strong>
+
+								</div>
+
+
+								{% if commande.numero is defined %}
+
+									<div class="col-md-6 mb-3">
+
+										<small class="text-muted d-block">
+											Référence
+										</small>
+
+										<strong>
+											{{ commande.numero|default('—') }}
+										</strong>
+
+									</div>
+
+								{% endif %}
+
+
+								{% if commande.dateCommande is defined %}
+
+									<div class="col-md-6 mb-3">
+
+										<small class="text-muted d-block">
+											Date
+										</small>
+
+										{% if commande.dateCommande %}
+
+											{{ commande.dateCommande|date('d/m/Y H:i') }}
+
+										{% else %}
+											—
+										{% endif %}
+
+									</div>
+
+								{% endif %}
+
+
+								{% if commande.statut is defined %}
+
+									<div class="col-md-6 mb-3">
+
+										<small class="text-muted d-block">
+											Statut commande
+										</small>
+
+										{{ commande.statut|default('—')|replace({'_': ' '})|capitalize }}
+
+									</div>
+
+								{% endif %}
+
+							</div>
+
+						{% else %}
+
+							<div class="text-muted">
+								Aucune commande associée.
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# ======================================================
+															           CLIENT
+															           ====================================================== #}
+
+			<div class="col-lg-6">
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							<i class="fa fa-user mr-1"></i>
+							Client
+						</h3>
+
+					</div>
+
+					<div class="card-body">
+
+						{% if commande and commande.client is defined and commande.client %}
+
+							{% set client = commande.client %}
+
+							<div class="row">
+
+								<div class="col-md-6 mb-3">
+
+									<small class="text-muted d-block">
+										Client
+									</small>
+
+									<strong>
+										{{ client }}
+									</strong>
+
+								</div>
+
+
+								{% if client.telephone is defined %}
+
+									<div class="col-md-6 mb-3">
+
+										<small class="text-muted d-block">
+											Téléphone
+										</small>
+
+										{{ client.telephone|default('—') }}
+
+									</div>
+
+								{% endif %}
+
+
+								{% if client.email is defined %}
+
+									<div class="col-md-6 mb-3">
+
+										<small class="text-muted d-block">
+											Email
+										</small>
+
+										{{ client.email|default('—') }}
+
+									</div>
+
+								{% endif %}
+
+
+								{% if client.adresse is defined %}
+
+									<div class="col-md-6 mb-3">
+
+										<small class="text-muted d-block">
+											Adresse
+										</small>
+
+										{{ client.adresse|default('—') }}
+
+									</div>
+
+								{% endif %}
+
+							</div>
+
+						{% else %}
+
+							<div class="text-muted">
+								Aucun client renseigné.
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+										       ARTICLE / INFORMATIONS TECHNIQUES
+										       ========================================================== #}
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+					<i class="fa fa-info-circle mr-1"></i>
+					Détails de l'article
+				</h3>
+
+			</div>
+
+			<div class="card-body">
+
+				<div class="row">
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Désignation
+						</small>
+
+						<strong>
+							{{ detail.designation }}
+						</strong>
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Produit
+						</small>
+
+						{% if produit %}
+							{{ produit.nom }}
+						{% else %}
+							—
+						{% endif %}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Quantité
+						</small>
+
+						{{ detail.quantite }}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Type d'impression
+						</small>
+
+						{% if detail.typeImpression %}
+							{{ detail.typeImpression.nom }}
+						{% else %}
+							—
+						{% endif %}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Support
+						</small>
+
+						{% if detail.support %}
+							{{ detail.support.nom }}
+						{% else %}
+							—
+						{% endif %}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Format
+						</small>
+
+						{% if detail.format %}
+							{{ detail.format.nom }}
+						{% else %}
+							—
+						{% endif %}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Dimensions
+						</small>
+
+						{% if detail.largeur and detail.longueur %}
+
+							{{ detail.largeur }}
+							×
+							{{ detail.longueur }}
+
+						{% else %}
+							—
+						{% endif %}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Surface
+						</small>
+
+						{% if detail.surface %}
+							{{ detail.surface }}
+							m²
+						{% else %}
+							—
+						{% endif %}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Grammage
+						</small>
+
+						{{ detail.grammage|default('—') }}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Épaisseur
+						</small>
+
+						{{ detail.epaisseur|default('—') }}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Résolution
+						</small>
+
+						{{ detail.resolution|default('—') }}
+
+					</div>
+
+
+					<div class="col-md-4 mb-3">
+
+						<small class="text-muted d-block">
+							Profil couleurs
+						</small>
+
+						{{ detail.profilCouleurs|default('—') }}
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+										       FINITIONS
+										       ========================================================== #}
+
+		{% if detail.finitions|length > 0 %}
+
+			<div class="card">
+
+				<div class="card-header">
+
+					<h3 class="card-title">
+						<i class="fa fa-cogs mr-1"></i>
+						Finitions
+					</h3>
+
+				</div>
+
+				<div class="card-body">
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered mb-0">
+
+							<thead>
+
+								<tr>
+									<th>Finition</th>
+									<th class="text-center">Quantité</th>
+									<th class="text-right">Montant</th>
+								</tr>
+
+							</thead>
+
+							<tbody>
+
+								{% for finition in detail.finitions %}
+
+									<tr>
+
+										<td>
+
+											{% if finition.configurationFinition %}
+
+												{% if finition.configurationFinition.finition %}
+													{{ finition.configurationFinition.finition.nom }}
+												{% else %}
+													Finition
+												{% endif %}
+
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+										<td class="text-center">
+											{{ finition.quantite }}
+										</td>
+
+										<td class="text-right">
+											{{ finition.montant|number_format(0, ',', ' ') }}
+											FCFA
+										</td>
+
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		{% endif %}
+
+
+		{# ==========================================================
+										       MACHINE / PRODUCTION
+										       ========================================================== #}
+
+		{% if detail.productionNecessaire %}
+
+			<div class="card">
+
+				<div class="card-header">
+
+					<h3 class="card-title">
+						<i class="fa fa-print mr-1"></i>
+						Production
+					</h3>
+
+				</div>
+
+				<div class="card-body">
+
+					<div class="row">
+
+
+						<div class="col-md-4 mb-3">
+
+							<small class="text-muted d-block">
+								Machine
+							</small>
+
+							{% if detail.machine %}
+								<strong>
+									{{ detail.machine.nom }}
+								</strong>
+							{% else %}
+								—
+							{% endif %}
+
+						</div>
+
+
+						<div class="col-md-4 mb-3">
+
+							<small class="text-muted d-block">
+								Production débutée
+							</small>
+
+							{% if detail.productionDebuteLe %}
+								{{ detail.productionDebuteLe|date('d/m/Y H:i') }}
+							{% else %}
+								—
+							{% endif %}
+
+						</div>
+
+
+						<div class="col-md-4 mb-3">
+
+							<small class="text-muted d-block">
+								Production terminée
+							</small>
+
+							{% if detail.productionTermineeLe %}
+								{{ detail.productionTermineeLe|date('d/m/Y H:i') }}
+							{% else %}
+								—
+							{% endif %}
+
+						</div>
+
+
+						<div class="col-md-4 mb-3">
+
+							<small class="text-muted d-block">
+								Quantité produite
+							</small>
+
+							{{ detail.quantiteProduite }}
+
+						</div>
+
+
+						<div class="col-md-4 mb-3">
+
+							<small class="text-muted d-block">
+								Quantité conforme
+							</small>
+
+							<strong class="text-success">
+								{{ detail.quantiteConforme }}
+							</strong>
+
+						</div>
+
+
+						<div class="col-md-4 mb-3">
+
+							<small class="text-muted d-block">
+								Rebut
+							</small>
+
+							<strong class="text-danger">
+								{{ detail.quantiteRebut }}
+							</strong>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		{% else %}
+
+			<div class="card">
+
+				<div class="card-body">
+
+					<div class="alert alert-info mb-0">
+
+						<i class="fa fa-info-circle mr-1"></i>
+
+						Cette ligne est une
+						<strong>vente directe</strong>.
+																																			
+																																			                    Elle ne nécessite aucune production avant livraison.
+
+					</div>
+
+				</div>
+
+			</div>
+
+		{% endif %}
+
+
+		{# ==========================================================
+										       ETIQUETTES
+										       ========================================================== #}
+
+		<div class="card">
+
+			<div class="card-header d-flex justify-content-between">
+
+				<h3 class="card-title">
+					<i class="fa fa-tag mr-1"></i>
+					Étiquettes
+				</h3>
+
+				<span class="badge badge-light">
+					{{ detail.etiquettes|length }}
+				</span>
+
+			</div>
+
+			<div class="card-body">
+
+				{% if detail.etiquettes|length > 0 %}
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered mb-0">
+
+							<thead>
+
+								<tr>
+									<th>Numéro</th>
+									<th>Statut</th>
+									<th>Date</th>
+								</tr>
+
+							</thead>
+
+							<tbody>
+
+								{% for etiquette in detail.etiquettes %}
+
+									<tr>
+
+										<td>
+											<strong>
+												{{ etiquette.numero|default(etiquette.id) }}
+											</strong>
+										</td>
+
+										<td>
+											{{ etiquette.statut|default('—')|replace({'_': ' '})|capitalize }}
+										</td>
+
+										<td>
+
+											{% if etiquette.creeLe is defined and etiquette.creeLe %}
+
+												{{ etiquette.creeLe|date('d/m/Y H:i') }}
+
+											{% else %}
+												—
+											{% endif %}
+
+										</td>
+
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				{% else %}
+
+					{% if detail.productionNecessaire %}
+
+						<div class="alert alert-warning mb-0">
+
+							<i class="fa fa-exclamation-triangle mr-1"></i>
+
+							Aucune étiquette n'est associée à ce détail.
+
+						</div>
+
+					{% else %}
+
+						<div class="text-muted">
+
+							Aucune étiquette nécessaire pour cette vente directe.
+
+						</div>
+
+					{% endif %}
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+										       OBSERVATIONS
+										       ========================================================== #}
+
+		{% if detail.observation or detail.observationProduction %}
+
+			<div class="card">
+
+				<div class="card-header">
+
+					<h3 class="card-title">
+						<i class="fa fa-comment mr-1"></i>
+						Observations
+					</h3>
+
+				</div>
+
+				<div class="card-body">
+
+
+					{% if detail.observation %}
+
+						<div class="mb-4">
+
+							<small class="text-muted d-block mb-1">
+								Observation commande
+							</small>
+
+							<div>
+								{{ detail.observation|nl2br }}
+							</div>
+
+						</div>
+
+					{% endif %}
+
+
+					{% if detail.observationProduction %}
+
+						<div>
+
+							<small class="text-muted d-block mb-1">
+								Observation production
+							</small>
+
+							<div>
+								{{ detail.observationProduction|nl2br }}
+							</div>
+
+						</div>
+
+					{% endif %}
+
+				</div>
+
+			</div>
+
+		{% endif %}
+
+	</div>
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+document.querySelectorAll('.js-form-confirmer-livraison').forEach(function (formulaire) {
+
+formulaire.addEventListener('submit', function (event) {
+
+event.preventDefault();
+
+Swal.fire({
+icon: 'question',
+
+title: 'Confirmer la livraison ?',
+
+html: 'Confirmer la livraison de ' + '<strong>  {{ detail.designation|e('js') }}</strong> ?' + '<br><br>' + 'Quantité : ' + '<strong>  {{ detail.quantite }}</strong>' + '<br>' + '<small>' + 'La sortie de stock sera enregistrée.' + '</small>',
+
+showCancelButton: true,
+
+confirmButtonText: 'Oui, confirmer',
+
+cancelButtonText: 'Annuler',
+
+reverseButtons: true
+
+}).then(function (resultat) {
+
+if (resultat.isConfirmed) {
+formulaire.submit();
+}
+
+});
+
+});
+
+});
+
+});
+	</script>
+{% endblock %}

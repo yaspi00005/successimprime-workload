@@ -1,0 +1,267 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Paiements
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<div>
+
+				<h1 class="page-title">
+					Paiements
+				</h1>
+
+				<ol class="breadcrumb">
+
+					<li class="breadcrumb-item">
+						Trésorerie
+					</li>
+
+					<li class="breadcrumb-item active">
+						Paiements
+					</li>
+
+				</ol>
+
+			</div>
+
+			<div>
+
+				<a href="{{ path('app_paiements_new') }}" class="btn btn-primary">
+					<i class="fa fa-plus mr-1"></i>
+					Nouveau paiement
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{% include "alert.html.twig" %}
+
+
+		<div class="card">
+
+			<div class="card-body">
+
+				<form method="get" class="row g-2 align-items-end">
+
+					<div class="col-lg-6 col-md-8">
+						<label class="form-label">Rechercher</label>
+						<input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Client, code client, n° commande, référence, n° chèque…">
+					</div>
+
+					<div class="col-lg-3 col-md-4 d-flex" style="gap:.5rem;">
+						<button type="submit" class="btn btn-primary-light flex-fill">
+							<i class="fa fa-search mr-1"></i>
+							Rechercher
+						</button>
+						{% if q %}
+							<a href="{{ path('app_paiements_index') }}" class="btn btn-secondary">
+								<i class="fa fa-times"></i>
+							</a>
+						{% endif %}
+					</div>
+
+				</form>
+
+			</div>
+
+		</div>
+
+
+		<div class="card">
+
+			<div class="card-header d-flex justify-content-between align-items-center">
+
+				<h3 class="card-title mb-0">
+					Liste des paiements
+				</h3>
+
+				<div class="text-muted small">
+					{% if q %}
+						{{ paiements|length }} résultat{{ paiements|length > 1 ? 's' : '' }} pour « {{ q }} »
+					{% else %}
+						{{ paiements|length }} derniers paiements
+					{% endif %}
+				</div>
+
+			</div>
+
+			<div class="table-responsive">
+
+				<table class="table table-bordered table-hover mb-0">
+
+					<thead>
+
+						<tr>
+							<th>#</th>
+							<th>Client</th>
+							<th class="text-right">Montant</th>
+							<th>Mode</th>
+							<th>Compte</th>
+							<th>Commande</th>
+							<th>Date</th>
+							<th class="text-center">Statut</th>
+							<th class="text-center">Actions</th>
+						</tr>
+
+					</thead>
+
+					<tbody>
+
+						{% for paiement in paiements %}
+
+							<tr>
+
+								<td class="align-middle">
+									{{ paiement.id }}
+								</td>
+
+								<td class="align-middle">
+									{% if paiement.commande and paiement.commande.clients %}
+										<a href="{{ path('app_clients_show', { publicId: paiement.commande.clients.publicId }) }}">
+											{{ paiement.commande.clients.nomComplet }}
+										</a>
+									{% else %}
+										—
+									{% endif %}
+								</td>
+
+								<td class="align-middle text-right">
+									{{ paiement.montant|number_format(0, ',', ' ') }} FCFA
+								</td>
+
+								<td class="align-middle">
+									{{ paiement.modeLabel }}
+									{% if paiement.estCheque and paiement.numeroCheque %}
+										<div class="small text-muted">
+											N° {{ paiement.numeroCheque }}
+										</div>
+									{% endif %}
+								</td>
+
+								<td class="align-middle">
+									{{ paiement.compteTresorerie ? paiement.compteTresorerie.nom : '—' }}
+								</td>
+
+								<td class="align-middle">
+									{% if paiement.commande %}
+										<a href="{{ path('app_commandes_show', { id: paiement.commande.id }) }}">
+											{{ paiement.commande.numero|default('#' ~ paiement.commande.id) }}
+										</a>
+									{% else %}
+										—
+									{% endif %}
+								</td>
+
+								<td class="align-middle nowrap">
+									{{ paiement.date ? paiement.date|date('d/m/Y H:i') : '—' }}
+								</td>
+
+								<td class="align-middle text-center">
+
+									{% if paiement.estEnAttente %}
+										<span class="badge badge-warning">En attente</span>
+									{% elseif paiement.estValide %}
+										<span class="badge badge-success">Validé</span>
+									{% elseif paiement.estRejete %}
+										<span class="badge badge-danger">Rejeté</span>
+									{% elseif paiement.estAnnule %}
+										<span class="badge badge-secondary">Annulé</span>
+									{% endif %}
+
+								</td>
+
+								<td class="align-middle text-center nowrap">
+
+									<div class="btn-group">
+
+										<a href="{{ path('app_paiements_show', { id: paiement.id }) }}" class="btn btn-sm btn-primary-light" title="Voir le détail">
+											<i class="fa fa-eye"></i>
+										</a>
+
+										{% if paiement.estEnAttente %}
+
+											<form method="post" action="{{ path('app_paiements_valider', { id: paiement.id }) }}" class="d-inline js-confirmer-validation" data-libelle="ce paiement de {{ paiement.montant|number_format(0, ',', ' ') }} FCFA">
+												<input type="hidden" name="_token" value="{{ csrf_token('paiement_valider' ~ paiement.id) }}">
+												<button type="submit" class="btn btn-sm btn-success" title="Valider">
+													<i class="fa fa-check"></i>
+												</button>
+											</form>
+
+										{% endif %}
+
+									</div>
+
+								</td>
+
+							</tr>
+
+						{% else %}
+
+							<tr>
+								<td colspan="9" class="text-center text-muted py-5">
+									{% if q %}
+										Aucun paiement ne correspond à « {{ q }} ».
+									{% else %}
+										Aucun paiement enregistré.
+									{% endif %}
+								</td>
+							</tr>
+
+						{% endfor %}
+
+					</tbody>
+
+				</table>
+
+			</div>
+
+		</div>
+
+	</div>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+document.querySelectorAll('.js-confirmer-validation').forEach(function (formulaire) {
+
+formulaire.addEventListener('submit', function (event) {
+
+event.preventDefault();
+
+const libelle = formulaire.dataset.libelle || 'ce paiement';
+
+if (typeof Swal === 'undefined') {
+formulaire.submit();
+return;
+}
+
+Swal.fire({
+icon: 'question',
+title: 'Valider ce paiement ?',
+html: 'Confirmer la validation de <strong>' + libelle + '</strong> ?<br><br><small>Le compte de trésorerie sera crédité immédiatement.</small>',
+showCancelButton: true,
+confirmButtonText: 'Oui, valider',
+cancelButtonText: 'Annuler',
+reverseButtons: true
+}).then(function (resultat) {
+if (resultat.isConfirmed) {
+formulaire.submit();
+}
+});
+
+});
+
+});
+
+});
+	</script>
+
+{% endblock %}

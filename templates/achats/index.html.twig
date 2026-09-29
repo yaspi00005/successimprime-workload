@@ -1,0 +1,142 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Achats
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<div>
+				<h1 class="page-title">
+					{{ statut == 'recu' ? 'Achats reçus' : (statut == 'annule' ? 'Achats annulés' : 'Demandes d’achat') }}
+				</h1>
+
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item">
+						Achats
+					</li>
+					<li class="breadcrumb-item active">
+						{{ statut == 'recu' ? 'Reçus' : (statut == 'annule' ? 'Annulés' : 'Demandes') }}
+					</li>
+				</ol>
+			</div>
+
+			<div class="ml-auto">
+				<a href="{{ path('app_achat_new') }}" class="btn btn-primary-light">
+					<i class="fa fa-plus mr-1"></i>
+					Nouvelle demande d’achat
+				</a>
+			</div>
+
+		</div>
+
+
+		<ul class="nav nav-tabs mb-3">
+			<li class="nav-item">
+				<a class="nav-link {{ statut == 'demande' ? 'active' : '' }}" href="{{ path('app_achat_index', {statut: 'demande'}) }}">
+					<i class="fa fa-clock-o mr-1"></i>
+					Demandes d’achat
+				</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link {{ statut == 'recu' ? 'active' : '' }}" href="{{ path('app_achat_index', {statut: 'recu'}) }}">
+					<i class="fa fa-check mr-1"></i>
+					Achats reçus
+				</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link {{ statut == 'annule' ? 'active' : '' }}" href="{{ path('app_achat_index', {statut: 'annule'}) }}">
+					<i class="fa fa-ban mr-1"></i>
+					Annulés
+				</a>
+			</li>
+		</ul>
+
+
+		<div class="row row-cards">
+
+			<div class="col-lg-12">
+
+				<div class="card">
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered table-hover mb-0">
+
+							<thead>
+								<tr>
+									<th>Numéro</th>
+									<th>Fournisseur</th>
+									<th>Date</th>
+									<th class="text-right">Total TTC</th>
+									<th class="text-center">Actions</th>
+								</tr>
+							</thead>
+
+							<tbody>
+
+								{% for achat in achats %}
+
+									<tr>
+										<td>
+											<a href="{{ path('app_achat_show', {id: achat.id}) }}">
+												<strong>{{ achat.numero|default('Brouillon #' ~ achat.id) }}</strong>
+											</a>
+										</td>
+
+										<td>
+											{% if achat.fournisseur %}
+												<a href="{{ path('app_fournisseur_show', {id: achat.fournisseur.id}) }}">
+													{{ achat.fournisseur.nom }}
+												</a>
+											{% else %}
+												—
+											{% endif %}
+										</td>
+
+										<td class="nowrap">
+											{{ achat.dateDemande|date('d/m/Y') }}
+										</td>
+
+										<td class="text-right nowrap">
+											{{ achat.totalTtc|number_format(0, ',', ' ') }} FCFA
+										</td>
+
+										<td class="text-center nowrap">
+											<a href="{{ path('app_achat_show', {id: achat.id}) }}" class="btn btn-sm btn-primary-light">
+												<i class="fa fa-eye"></i>
+											</a>
+										</td>
+									</tr>
+
+								{% else %}
+
+									<tr>
+										<td colspan="5" class="text-center text-muted py-5">
+											Aucun achat dans cette catégorie.
+										</td>
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

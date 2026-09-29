@@ -1,0 +1,1401 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Fiche client -
+	{{ client.code }}
+{% endblock %}
+
+
+{% block stylesheets %}
+
+	{{ parent() }}
+
+	<style>
+
+		.client-card {
+			border: 0;
+			border-radius: 8px;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+		}
+
+		.client-stat-label {
+			font-size: 12px;
+			font-weight: 600;
+			text-transform: uppercase;
+			color: #6c757d;
+		}
+
+		.client-stat-value {
+			font-size: 22px;
+			font-weight: 700;
+			color: #f3f5f7;
+		}
+
+		.client-information-label {
+			font-size: 12px;
+			color: #6c757d;
+			margin-bottom: 3px;
+		}
+
+		.client-information-value {
+			font-size: 14px;
+			font-weight: 600;
+			color: #fbfbfc;
+		}
+
+		.client-table {
+			background: #fff !important;
+			color: #212529 !important;
+		}
+
+		.client-table th {
+			background: #f5f7fb !important;
+			color: #212529 !important;
+			white-space: nowrap;
+		}
+
+		.client-table td {
+			background: #fff !important;
+			color: #212529 !important;
+			vertical-align: middle;
+		}
+
+		.client-table tbody tr:nth-child(even) td {
+			background: #fafafa !important;
+		}
+
+		.client-table tbody tr:hover td {
+			background: #eef3ff !important;
+		}
+
+		.credit-progress {
+			height: 8px;
+			border-radius: 10px;
+			overflow: hidden;
+			background: #e9ecef;
+		}
+
+		.credit-progress-bar {
+			height: 100%;
+			background: #6259ca;
+		}
+
+		.text-money-positive {
+			color: #198754 !important;
+			font-weight: 700;
+		}
+
+		.text-money-negative {
+			color: #dc3545 !important;
+			font-weight: 700;
+		}
+	</style>
+
+{% endblock %}
+
+
+{% block body %}
+
+	<div
+		class="side-app">
+
+
+		{# ============================================================
+									   EN-TÊTE
+									   ============================================================ #}
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_clients_index') }}">
+						Clients
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					{{ client.code }}
+				</li>
+
+			</ol>
+
+
+			<div>
+
+				<a href="{{ path('app_clients_pdf_impayes', { publicId: client.publicId }) }}" class="btn btn-danger" target="_blank">
+					<i class="fa fa-file-pdf-o mr-1"></i>
+					PDF des impayés
+				</a>
+
+				<a href="{{ path('app_clients_pdf_commandes', { publicId: client.publicId }) }}" class="btn btn-primary" target="_blank">
+					<i class="fa fa-file-pdf-o mr-1"></i>
+					PDF de toutes les commandes
+				</a>
+
+				<a href="{{ path('app_clients_index') }}" class="btn btn-light">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+									   IDENTITÉ CLIENT
+									   ============================================================ #}
+
+		<div class="card client-card mb-4">
+
+			<div class="card-header">
+
+				<div>
+
+					<h3 class="card-title mb-1">
+
+						<i class="fa fa-user mr-2"></i>
+
+						{% if client.typeCompte == 'entreprise'
+						and client.raisonSociale
+					%}
+
+							{{ client.raisonSociale }}
+
+						{% else %}
+
+							{{ client.prenom }}
+							{{ client.nom }}
+
+						{% endif %}
+
+					</h3>
+
+
+					<div>
+
+						<span class="badge badge-primary">
+							{{ client.code }}
+						</span>
+
+						{% if client.typeClient == 'B2B' %}
+
+							<span class="badge badge-info">
+								B2B
+							</span>
+
+						{% else %}
+
+							<span class="badge badge-secondary">
+								B2C
+							</span>
+
+						{% endif %}
+
+						{% if client.typeCompte == 'entreprise' %}
+
+							<span class="badge badge-dark">
+								Entreprise
+							</span>
+
+						{% else %}
+
+							<span class="badge badge-light">
+								Particulier
+							</span>
+
+						{% endif %}
+
+
+						{% if client.statut %}
+
+							<span class="badge badge-success">
+								Actif
+							</span>
+
+						{% else %}
+
+							<span class="badge badge-danger">
+								Bloqué
+							</span>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="card-body">
+
+				<div class="row">
+
+
+					<div class="col-md-3 mb-3">
+
+						<div class="client-information-label">
+							Téléphone
+						</div>
+
+						<div class="client-information-value">
+							{{ client.telephone ?: '—' }}
+						</div>
+
+					</div>
+
+
+					<div class="col-md-3 mb-3">
+
+						<div class="client-information-label">
+							Téléphone secondaire
+						</div>
+
+						<div class="client-information-value">
+							{{ client.telephone2 ?: '—' }}
+						</div>
+
+					</div>
+
+
+					<div class="col-md-3 mb-3">
+
+						<div class="client-information-label">
+							Email
+						</div>
+
+						<div class="client-information-value">
+							{{ client.email ?: '—' }}
+						</div>
+
+					</div>
+
+
+					<div class="col-md-3 mb-3">
+
+						<div class="client-information-label">
+							Ville
+						</div>
+
+						<div class="client-information-value">
+							{{ client.ville ?: '—' }}
+						</div>
+
+					</div>
+
+
+					<div class="col-md-6 mb-3">
+
+						<div class="client-information-label">
+							Adresse
+						</div>
+
+						<div class="client-information-value">
+							{{ client.adresse ?: '—' }}
+						</div>
+
+					</div>
+
+
+					{% if client.typeCompte == 'entreprise' %}
+
+						<div class="col-md-3 mb-3">
+
+							<div class="client-information-label">
+								NIF
+							</div>
+
+							<div class="client-information-value">
+								{{ client.nif ?: '—' }}
+							</div>
+
+						</div>
+
+
+						<div class="col-md-3 mb-3">
+
+							<div class="client-information-label">
+								RCCM
+							</div>
+
+							<div class="client-information-value">
+								{{ client.rccm ?: '—' }}
+							</div>
+
+						</div>
+
+					{% endif %}
+
+
+					{% if client.observation %}
+
+						<div class="col-md-12">
+
+							<hr>
+
+							<div class="client-information-label">
+								Observation
+							</div>
+
+							<div class="client-information-value">
+								{{ client.observation|nl2br }}
+							</div>
+
+						</div>
+
+					{% endif %}
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+									   RÉSUMÉ FINANCIER
+									   ============================================================ #}
+
+		<div class="row">
+
+
+			{% if is_granted('ROLE_ADMIN') %}
+
+				<div class="col-xl-3 col-md-6">
+
+					<div class="card client-card h-100">
+
+						<div class="card-body">
+
+							<div class="client-stat-label">
+								Total commandes
+							</div>
+
+							<div class="client-stat-value">
+
+								{{
+                        statistiques.totalCommandes
+                            |number_format(0, ',', ' ')
+                    }}
+
+								FCFA
+
+							</div>
+
+							<small class="text-muted">
+								{{ statistiques.nombreCommandes }}
+								commande(s)
+							</small>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				<div class="col-xl-3 col-md-6">
+
+					<div class="card client-card h-100">
+
+						<div class="card-body">
+
+							<div class="client-stat-label">
+								Total encaissé
+							</div>
+
+							<div class="client-stat-value text-money-positive">
+
+								{{
+                        statistiques.totalPaye
+                            |number_format(0, ',', ' ')
+                    }}
+
+								FCFA
+
+							</div>
+
+							<small class="text-muted">
+								Paiements validés
+							</small>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			{% endif %}
+
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card client-card h-100">
+
+					<div class="card-body">
+
+						<div class="client-stat-label">
+							Reste à payer
+						</div>
+
+						<div class="client-stat-value text-money-negative">
+
+							{{
+							statistiques.resteAPayer
+								|number_format(0, ',', ' ')
+						}}
+
+							FCFA
+
+						</div>
+
+						<small class="text-muted">
+							Encours actuel
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="col-xl-3 col-md-6">
+
+				<div class="card client-card h-100">
+
+					<div class="card-body">
+
+						<div class="client-stat-label">
+							Devis
+						</div>
+
+						<div class="client-stat-value">
+
+							{{ statistiques.nombreDevis }}
+
+						</div>
+
+						<small class="text-muted">
+
+							{{
+							statistiques.totalDevis
+								|number_format(0, ',', ' ')
+						}}
+
+							FCFA
+
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+									   CRÉDIT CLIENT
+									   ============================================================ #}
+
+		<div class="card client-card mt-4">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-credit-card mr-2"></i>
+
+					Crédit client
+
+				</h3>
+
+			</div>
+
+
+			<div class="card-body">
+
+				<div class="row">
+
+
+					<div class="col-md-3">
+
+						<div class="client-stat-label">
+							Plafond de crédit
+						</div>
+
+						<div class="client-stat-value">
+
+							{{
+							credit.plafond
+								|number_format(0, ',', ' ')
+						}}
+
+							FCFA
+
+						</div>
+
+					</div>
+
+
+					<div class="col-md-3">
+
+						<div class="client-stat-label">
+							Encours client
+						</div>
+
+						<div class="client-stat-value text-money-negative">
+
+							{{
+							credit.encours
+								|number_format(0, ',', ' ')
+						}}
+
+							FCFA
+
+						</div>
+
+					</div>
+
+
+					<div class="col-md-3">
+
+						<div class="client-stat-label">
+							Crédit disponible
+						</div>
+
+						<div class="client-stat-value text-money-positive">
+
+							{{
+							credit.disponible
+								|number_format(0, ',', ' ')
+						}}
+
+							FCFA
+
+						</div>
+
+					</div>
+
+
+					<div class="col-md-3">
+
+						<div class="client-stat-label">
+							Taux d'utilisation
+						</div>
+
+						<div class="client-stat-value">
+							{{ credit.pourcentage }}
+							%
+						</div>
+
+					</div>
+
+				</div>
+
+
+				<div class="mt-3">
+
+					<div class="credit-progress">
+
+						<div class="credit-progress-bar" style="width: {{ credit.pourcentage }}%;"></div>
+
+					</div>
+
+				</div>
+
+
+				{% if credit.depassement > 0 %}
+
+					<div class="alert alert-danger mt-3 mb-0">
+
+						<i class="fa fa-warning mr-1"></i>
+
+						<strong>
+							Plafond de crédit dépassé.
+						</strong>
+
+						Dépassement :
+
+						{{
+						credit.depassement
+							|number_format(0, ',', ' ')
+					}}
+
+						FCFA.
+
+					</div>
+
+				{% elseif credit.plafond > 0
+				and credit.pourcentage >= 80
+			%}
+
+					<div class="alert alert-warning mt-3 mb-0">
+
+						<i class="fa fa-warning mr-1"></i>
+
+						Le client utilise actuellement
+						{{ credit.pourcentage }}
+						%
+																													de son plafond de crédit.
+
+					</div>
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+
+		<div class="card client-card mt-4">
+
+			<div class="card-header d-flex justify-content-between align-items-center">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-coins mr-2"></i>
+
+					Solde du client (monnaie non rendue)
+
+				</h3>
+
+				{% if is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+
+					<a href="{{ path('app_clients_soldes') }}" class="btn btn-sm btn-secondary-light">
+						<i class="fa fa-list mr-1"></i>
+						Voir tous les soldes clients
+					</a>
+
+				{% endif %}
+
+			</div>
+
+
+			<div class="card-body">
+
+				<div class="row align-items-center">
+
+					<div class="col-md-4">
+
+						<div class="client-stat-label">
+							Solde disponible
+						</div>
+
+						<div class="client-stat-value{% if client.soldeCredit > 0 %} text-money-positive{% endif %}">
+
+							{{ client.soldeCredit|number_format(0, ',', ' ') }}
+
+							FCFA
+
+						</div>
+
+					</div>
+
+
+					{% if is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+
+						<div class="col-md-8">
+
+							<form method="post" action="{{ path('app_clients_solde_ajouter', { id: client.id }) }}" class="form-inline justify-content-md-end">
+
+								<input type="hidden" name="_token" value="{{ csrf_token('ajouter_solde_client_' ~ client.id) }}">
+
+								<label class="mr-2 mb-0" for="solde-client-montant">
+									Ajouter au solde
+								</label>
+
+								<input type="text" inputmode="numeric" autocomplete="off" id="solde-client-montant" name="montant" class="form-control mr-2" style="max-width: 130px;" placeholder="Ex. 500" required>
+
+								<label class="mr-2 mb-0" for="solde-client-compte">
+									sur
+								</label>
+
+								<select id="solde-client-compte" name="compteTresorerie" class="form-control custom-select mr-2" style="max-width: 220px;" required>
+
+									<option value="">Compte...</option>
+
+									{% for compte in comptesTresorerie %}
+										<option value="{{ compte.id }}">{{ compte.nom }}</option>
+									{% endfor %}
+
+								</select>
+
+								<button type="submit" class="btn btn-primary">
+									Ajouter
+								</button>
+
+							</form>
+
+							<small class="form-text text-muted text-md-right d-block">
+								Sélectionnez le compte où se trouve physiquement cet argent (ex. votre caisse). Ce solde sera aussi proposé automatiquement au prochain paiement de ce client.
+							</small>
+
+						</div>
+
+					{% endif %}
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+									   ONGLETS
+									   ============================================================ #}
+
+		<div class="card client-card mt-4">
+
+			<div class="card-header p-0">
+
+				<ul class="nav nav-tabs" role="tablist">
+
+					<li class="nav-item">
+
+						<a class="nav-link active" data-toggle="tab" href="#client-commandes" role="tab">
+
+							<i class="fa fa-shopping-cart mr-1"></i>
+
+							Commandes
+
+							<span class="badge badge-primary ml-1">
+								{{ statistiques.nombreCommandes }}
+							</span>
+
+						</a>
+
+					</li>
+
+
+					<li class="nav-item">
+
+						<a class="nav-link" data-toggle="tab" href="#client-devis" role="tab">
+
+							<i class="fa fa-file-text-o mr-1"></i>
+
+							Devis
+
+							<span class="badge badge-info ml-1">
+								{{ statistiques.nombreDevis }}
+							</span>
+
+						</a>
+
+					</li>
+
+
+					<li class="nav-item">
+
+						<a class="nav-link" data-toggle="tab" href="#client-paiements" role="tab">
+
+							<i class="fa fa-money mr-1"></i>
+
+							Paiements
+
+							<span class="badge badge-success ml-1">
+								{{ paiements|length }}
+							</span>
+
+						</a>
+
+					</li>
+
+				</ul>
+
+			</div>
+
+
+			<div class="card-body">
+
+				<div
+					class="tab-content">
+
+
+					{# =================================================
+																								   COMMANDES
+																								   ================================================= #}
+
+					<div class="tab-pane fade show active" id="client-commandes" role="tabpanel">
+
+						<div class="table-responsive">
+
+							<table class="table table-bordered client-table">
+
+								<thead>
+
+									<tr>
+
+										<th>Commande</th>
+										<th>Date</th>
+
+										<th class="text-right">
+											Montant TTC
+										</th>
+
+										<th class="text-right">
+											Payé
+										</th>
+
+										<th class="text-right">
+											Reste
+										</th>
+
+										<th>
+											Paiement
+										</th>
+
+									</tr>
+
+								</thead>
+
+
+								<tbody>
+
+									{% for ligne in commandes %}
+
+										{% set commande =
+										ligne.commande
+									%}
+
+										<tr>
+
+											<td>
+
+												<strong>
+													{{ commande.numero }}
+												</strong>
+
+											</td>
+
+
+											<td>
+
+												{{
+												commande.dateCommande
+													|date('d/m/Y H:i')
+											}}
+
+											</td>
+
+
+											<td class="text-right">
+
+												{{
+												ligne.totalTtc
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+												FCFA
+
+											</td>
+
+
+											<td class="text-right text-money-positive">
+
+												{{
+												ligne.totalPaye
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+												FCFA
+
+											</td>
+
+
+											<td class="text-right text-money-negative">
+
+												{{
+												ligne.resteAPayer
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+												FCFA
+
+											</td>
+
+
+											<td>
+
+												{% if ligne.statutPaiement == 'payee' %}
+
+													<span class="badge badge-success">
+														Payée
+													</span>
+
+												{% elseif ligne.statutPaiement == 'partielle' %}
+
+													<span class="badge badge-warning">
+														Partiellement payée
+													</span>
+
+												{% else %}
+
+													<span class="badge badge-danger">
+														Impayée
+													</span>
+
+												{% endif %}
+
+											</td>
+
+										</tr>
+
+
+									{% else %}
+
+										<tr>
+
+											<td colspan="6" class="text-center py-5 text-muted">
+
+												Aucune commande pour ce client.
+
+											</td>
+
+										</tr>
+
+									{% endfor %}
+
+								</tbody>
+
+							</table>
+
+						</div>
+
+					</div>
+
+
+					{# =================================================
+																								   DEVIS
+																								   ================================================= #}
+
+					<div class="tab-pane fade" id="client-devis" role="tabpanel">
+
+						<div class="table-responsive">
+
+							<table class="table table-bordered client-table">
+
+								<thead>
+
+									<tr>
+
+										<th>Devis</th>
+										<th>Date</th>
+
+										<th class="text-right">
+											Total TTC
+										</th>
+
+										<th>Statut</th>
+
+										<th>
+											Commande liée
+										</th>
+
+									</tr>
+
+								</thead>
+
+
+								<tbody>
+
+									{% for devisItem in devis %}
+
+										<tr>
+
+											<td>
+
+												<strong>
+													{{ devisItem.numero }}
+												</strong>
+
+											</td>
+
+
+											<td>
+
+												{{
+												devisItem.dateDevis
+													|date('d/m/Y H:i')
+											}}
+
+											</td>
+
+
+											<td class="text-right">
+
+												{{
+												devisItem.totalTtc
+													|number_format(
+														0,
+														',',
+														' '
+													)
+											}}
+
+												FCFA
+
+											</td>
+
+
+											<td>
+
+												{% if devisItem.statut == 'accepte' %}
+
+													<span class="badge badge-success">
+														Accepté
+													</span>
+
+												{% elseif devisItem.statut == 'converti' %}
+
+													<span class="badge badge-primary">
+														Converti
+													</span>
+
+												{% elseif devisItem.statut == 'refuse' %}
+
+													<span class="badge badge-danger">
+														Refusé
+													</span>
+
+												{% elseif devisItem.statut == 'envoye' %}
+
+													<span class="badge badge-info">
+														Envoyé
+													</span>
+
+												{% elseif devisItem.statut == 'expire' %}
+
+													<span class="badge badge-secondary">
+														Expiré
+													</span>
+
+												{% elseif devisItem.statut == 'annule' %}
+
+													<span class="badge badge-danger">
+														Annulé
+													</span>
+
+												{% else %}
+
+													<span class="badge badge-warning">
+														Brouillon
+													</span>
+
+												{% endif %}
+
+											</td>
+
+
+											<td>
+
+												{% if devisItem.commande %}
+
+													<strong>
+														{{ devisItem.commande.numero }}
+													</strong>
+
+												{% else %}
+
+													—
+
+												{% endif %}
+
+											</td>
+
+										</tr>
+
+
+									{% else %}
+
+										<tr>
+
+											<td colspan="5" class="text-center py-5 text-muted">
+
+												Aucun devis pour ce client.
+
+											</td>
+
+										</tr>
+
+									{% endfor %}
+
+								</tbody>
+
+							</table>
+
+						</div>
+
+					</div>
+
+
+					{# =================================================
+																								   PAIEMENTS
+																								   ================================================= #}
+
+					<div class="tab-pane fade" id="client-paiements" role="tabpanel">
+
+						<div class="table-responsive">
+
+							<table class="table table-bordered client-table">
+
+								<thead>
+
+									<tr>
+
+										<th>Date</th>
+										<th>Commande</th>
+										<th>Mode</th>
+										<th>Compte</th>
+										<th>Référence</th>
+
+										<th class="text-right">
+											Montant
+										</th>
+
+										<th>Agent</th>
+										<th>Statut</th>
+
+									</tr>
+
+								</thead>
+
+
+								<tbody>
+
+									{% for paiement in paiements %}
+
+										<tr>
+
+											<td>
+
+												{{
+												paiement.date
+													|date('d/m/Y H:i')
+											}}
+
+											</td>
+
+
+											<td>
+
+												{% if paiement.commande %}
+
+													<strong>
+														{{ paiement.commande.numero }}
+													</strong>
+
+												{% else %}
+
+													—
+
+												{% endif %}
+
+											</td>
+
+
+											<td>
+												{{ paiement.modeLabel }}
+											</td>
+
+
+											<td>
+
+												{% if paiement.compteTresorerie %}
+
+													{{ paiement.compteTresorerie.nom }}
+
+												{% else %}
+
+													—
+
+												{% endif %}
+
+											</td>
+
+
+											<td>
+												{{ paiement.reference ?: '—' }}
+											</td>
+
+
+											<td class="text-right">
+
+												<strong>
+
+													{{
+													paiement.montant
+														|number_format(
+															0,
+															',',
+															' '
+														)
+												}}
+
+													FCFA
+
+												</strong>
+
+											</td>
+
+
+											<td>
+
+												{% if paiement.encaissePar %}
+
+													{{ paiement.encaissePar.username }}
+
+												{% else %}
+
+													—
+
+												{% endif %}
+
+											</td>
+
+
+											<td>
+
+												{% if paiement.statut == 'valide' %}
+
+													<span class="badge badge-success">
+														Validé
+													</span>
+
+												{% elseif paiement.statut == 'en_attente' %}
+
+													<span class="badge badge-warning">
+														En attente
+													</span>
+
+												{% elseif paiement.statut == 'rejete' %}
+
+													<span class="badge badge-danger">
+														Rejeté
+													</span>
+
+												{% elseif paiement.statut == 'annule' %}
+
+													<span class="badge badge-secondary">
+														Annulé
+													</span>
+
+												{% endif %}
+
+											</td>
+
+										</tr>
+
+
+									{% else %}
+
+										<tr>
+
+											<td colspan="8" class="text-center py-5 text-muted">
+
+												Aucun paiement pour ce client.
+
+											</td>
+
+										</tr>
+
+									{% endfor %}
+
+								</tbody>
+
+							</table>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+									   INFORMATIONS SYSTÈME
+									   ============================================================ #}
+
+		<div class="card client-card mt-4">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+					Informations complémentaires
+				</h3>
+
+			</div>
+
+
+			<div class="card-body">
+
+				<div class="row">
+
+					<div class="col-md-4">
+
+						<div class="client-information-label">
+							Client créé le
+						</div>
+
+						<div class="client-information-value">
+
+							{{
+							client.createdAt
+								? client.createdAt|date('d/m/Y H:i')
+								: '—'
+						}}
+
+						</div>
+
+					</div>
+
+
+					<div class="col-md-4">
+
+						<div class="client-information-label">
+							Dernière modification
+						</div>
+
+						<div class="client-information-value">
+
+							{{
+							client.updatedAt
+								? client.updatedAt|date('d/m/Y H:i')
+								: '—'
+						}}
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+	</div>
+
+{% endblock %}

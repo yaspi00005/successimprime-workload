@@ -1,0 +1,64 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Nouvelle réclamation
+{% endblock %}
+
+{% block body %}
+	<div class="side-app">
+		{% include "alert.html.twig" %}
+
+		<div class="page-header">
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_reclamation_index') }}">Réclamations</a>
+				</li>
+				<li class="breadcrumb-item active">
+					Demande de remboursement
+				</li>
+			</ol>
+		</div>
+
+		<div class="row">
+			<div class="col-md-8">
+				<div class="card">
+
+					<div class="card-header">
+						<h3 class="mb-0 card-title">
+							Demander un remboursement
+						</h3>
+					</div>
+
+					{{ form_start(form) }}
+
+					<div class="card-body">
+
+						{{ form_row(form.motif) }}
+
+						{{ form_row(form.montant) }}
+
+						{{ form_row(form.justificatifFichier) }}
+
+						<small class="form-text text-muted">
+							PDF, PNG ou JPG, 5 Mo maximum.
+						</small>
+
+					</div>
+
+					<div class="card-footer text-right">
+						<a href="{{ path('app_reclamation_index') }}" class="btn btn-secondary mr-2">
+							Annuler
+						</a>
+						<button type="submit" class="btn btn-primary">
+							<i class="fa fa-paper-plane mr-1"></i>
+							Envoyer la demande
+						</button>
+					</div>
+
+					{{ form_end(form) }}
+
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

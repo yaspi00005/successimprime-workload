@@ -1,0 +1,144 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Journal —
+	{{ journal.entite }}
+	#{{ journal.entiteId }}
+{% endblock %}
+
+{% block stylesheets %}
+	<style>
+		.journal-diff-table th,
+		.journal-diff-table td {
+			font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+			font-size: 0.85rem;
+			word-break: break-word;
+		}
+
+		.journal-diff-modifie {
+			background: #fff8e1;
+			color: #060605;
+		}
+	</style>
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<div>
+				<h1 class="page-title">
+					{{ journal.entite }}
+					#{{ journal.entiteId }}
+
+					{% if journal.action == 'creation' %}
+						<span class="badge badge-success ml-2">Création</span>
+					{% elseif journal.action == 'suppression' %}
+						<span class="badge badge-danger ml-2">Suppression</span>
+					{% else %}
+						<span class="badge badge-warning ml-2">Modification</span>
+					{% endif %}
+				</h1>
+
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item">
+						<a href="{{ path('app_journal_activite_index') }}">Journal d'activité</a>
+					</li>
+					<li class="breadcrumb-item active">
+						{{ journal.entite }}
+						#{{ journal.entiteId }}
+					</li>
+				</ol>
+			</div>
+
+			<a href="{{ path('app_journal_activite_index') }}" class="ml-auto btn btn-secondary">
+				<i class="fa fa-arrow-left mr-1"></i>
+				Retour
+			</a>
+
+		</div>
+
+
+		<div class="card">
+			<div class="card-body">
+				<table class="table table-borderless mb-0">
+					<tr>
+						<th width="200">Date / heure</th>
+						<td>{{ journal.createdAt|date('d/m/Y H:i:s') }}</td>
+					</tr>
+					<tr>
+						<th>Utilisateur</th>
+						<td>
+							{% if journal.utilisateur %}
+								{{ journal.utilisateur.username }}
+							{% else %}
+								<span class="text-muted">Système / inconnu</span>
+							{% endif %}
+						</td>
+					</tr>
+				</table>
+			</div>
+		</div>
+
+
+		<div class="card">
+
+			<div class="card-header">
+				<h3 class="card-title">Détail des données</h3>
+			</div>
+
+			<div class="table-responsive">
+
+				<table class="table table-bordered journal-diff-table mb-0">
+
+					<thead>
+						<tr>
+							<th style="width:220px;">Champ</th>
+							<th>Avant</th>
+							<th>Après</th>
+						</tr>
+					</thead>
+
+					<tbody class="tbody">
+
+						{% for champ in champs %}
+
+							{% set valeurAvant = journal.donneesAvant is not null and champ in journal.donneesAvant|keys ? attribute(journal.donneesAvant, champ) : null %}
+							{% set valeurApres = journal.donneesApres is not null and champ in journal.donneesApres|keys ? attribute(journal.donneesApres, champ) : null %}
+							{% set aChange = journal.donneesAvant is not null and journal.donneesApres is not null and valeurAvant != valeurApres %}
+
+							<tr class=" {{ aChange ? 'journal-diff-modifie' : '' }} ">
+								<td>
+									<strong>{{ champ }}</strong>
+								</td>
+								<td>
+									{% if journal.donneesAvant is null %}
+										<span class="text-muted">—</span>
+									{% else %}
+										{{ valeurAvant is null ? '∅' : valeurAvant }}
+									{% endif %}
+								</td>
+								<td>
+									{% if journal.donneesApres is null %}
+										<span class="text-muted">—</span>
+									{% else %}
+										{{ valeurApres is null ? '∅' : valeurApres }}
+									{% endif %}
+								</td>
+							</tr>
+						</tbody>
+					</tbody>
+				</tr>
+
+			{% else %}
+				<tr>
+					<td colspan="3" class="text-center text-muted py-4">Aucune donnée enregistrée.</td>
+				</tr>
+			{% endfor %}
+
+		</tbody>
+
+	</table>
+
+</div></div></div>{% endblock %}

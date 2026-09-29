@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+	<head>
+
+		<meta charset="UTF-8">
+
+		<title>
+			{{ devis.numero|default('Devis') }}
+		</title>
+
+		<style>
+
+			@page {
+				margin: 18mm 15mm;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+
+				font-family: DejaVu Sans, sans-serif;
+
+				font-size: 9px;
+				line-height: 1.35;
+
+				color: #202938;
+			}
+
+
+			/*
+         * =========================================================
+         * HEADER
+         * =========================================================
+         */
+
+			.header-table {
+				width: 100%;
+				border-collapse: collapse;
+
+				margin-bottom: 16px;
+			}
+
+			.header-left {
+				width: 53%;
+
+				vertical-align: top;
+			}
+
+			.header-right {
+				width: 47%;
+
+				vertical-align: top;
+
+				text-align: right;
+			}
+
+
+			.logo-drepa {
+				max-width: 130px;
+				max-height: 65px;
+
+				margin-bottom: 6px;
+			}
+
+			.logo-mdg {
+				max-width: 100px;
+				max-height: 60px;
+			}
+
+			.logo-success {
+				max-width: 100px;
+				max-height: 60px;
+			}
+
+
+			.company-name {
+				margin-top: 3px;
+
+				font-size: 15px;
+				font-weight: bold;
+
+				color: #12346b;
+			}
+
+			.company-subtitle {
+				margin-top: 2px;
+
+				font-size: 8px;
+
+				color: #5f6b7a;
+			}
+
+			.company-info {
+				margin-top: 5px;
+
+				font-size: 8px;
+				line-height: 1.5;
+			}
+
+
+			/*
+         * =========================================================
+         * TITRE
+         * =========================================================
+         */
+
+			.document-title {
+				display: inline-block;
+
+				min-width: 220px;
+
+				padding: 10px 12px;
+
+				border: 1px solid #12346b;
+
+				text-align: left;
+			}
+
+			.document-type {
+				font-size: 14px;
+				font-weight: bold;
+
+				color: #12346b;
+			}
+
+			.document-number {
+				margin-top: 4px;
+
+				font-size: 11px;
+				font-weight: bold;
+			}
+
+
+			/*
+         * =========================================================
+         * INFORMATIONS
+         * =========================================================
+         */
+
+			.info-table {
+				width: 100%;
+				border-collapse: collapse;
+
+				margin-bottom: 14px;
+			}
+
+			.info-table td {
+				width: 50%;
+
+				vertical-align: top;
+
+				border: 1px solid #d5dce6;
+
+				padding: 9px;
+			}
+
+			.section-label {
+				margin-bottom: 5px;
+
+				font-size: 8px;
+				font-weight: bold;
+
+				text-transform: uppercase;
+
+				color: #12346b;
+			}
+
+			.client-name {
+				margin-bottom: 3px;
+
+				font-size: 11px;
+				font-weight: bold;
+			}
+
+
+			/*
+         * =========================================================
+         * TABLEAU
+         * =========================================================
+         */
+
+			.details-table {
+				width: 100%;
+				border-collapse: collapse;
+
+				margin-top: 5px;
+			}
+
+			.details-table th {
+				padding: 7px 5px;
+
+				border: 1px solid #12346b;
+
+				background: #12346b;
+
+				color: #ffffff;
+
+				font-size: 8px;
+
+				text-align: center;
+			}
+
+			.details-table td {
+				padding: 7px 5px;
+
+				border: 1px solid #cfd8e6;
+
+				vertical-align: top;
+			}
+
+			.text-center {
+				text-align: center;
+			}
+
+			.text-right {
+				text-align: right;
+			}
+
+			.font-bold {
+				font-weight: bold;
+			}
+
+			.designation {
+				font-weight: bold;
+			}
+
+			.description {
+				margin-top: 3px;
+
+				font-size: 7px;
+
+				color: #637083;
+			}
+
+
+			/*
+         * =========================================================
+         * BAS / TOTAUX
+         * =========================================================
+         */
+
+			.bottom-table {
+				width: 100%;
+				border-collapse: collapse;
+
+				margin-top: 14px;
+			}
+
+			.bottom-left {
+				width: 55%;
+
+				padding-right: 15px;
+
+				vertical-align: top;
+			}
+
+			.bottom-right {
+				width: 45%;
+
+				vertical-align: top;
+			}
+
+
+			.bank-box {
+				padding: 8px;
+
+				border: 1px solid #d5dce6;
+			}
+
+			.bank-title {
+				margin-bottom: 5px;
+
+				font-weight: bold;
+
+				color: #12346b;
+			}
+
+
+			.totals-table {
+				width: 100%;
+				border-collapse: collapse;
+			}
+
+			.totals-table td {
+				padding: 5px 6px;
+
+				border-bottom: 1px solid #e1e6ee;
+			}
+
+			.totals-table td:last-child {
+				text-align: right;
+
+				font-weight: bold;
+
+				white-space: nowrap;
+			}
+
+			.grand-total td {
+				padding-top: 8px;
+				padding-bottom: 8px;
+
+				border-top: 2px solid #12346b;
+
+				border-bottom: 2px solid #12346b;
+
+				font-size: 11px;
+				font-weight: bold;
+
+				color: #12346b;
+			}
+
+
+			/*
+         * =========================================================
+         * QR / SIGNATURE
+         * =========================================================
+         */
+
+			.auth-table {
+				width: 100%;
+				border-collapse: collapse;
+
+				margin-top: 18px;
+			}
+
+			.auth-table td {
+				width: 33.33%;
+
+				padding: 5px;
+
+				vertical-align: bottom;
+
+				text-align: center;
+			}
+
+			.qr-image {
+				width: 72px;
+				height: 72px;
+			}
+
+			.signature-image {
+				max-width: 180px;
+				max-height: 80px;
+			}
+
+			.signature-title {
+				margin-bottom: 50px;
+
+				font-size: 8px;
+				font-weight: bold;
+			}
+
+			.auth-token {
+				margin-top: 4px;
+
+				font-size: 6px;
+
+				color: #667085;
+			}
+
+
+			/*
+         * =========================================================
+         * FOOTER
+         * =========================================================
+         */
+
+			.footer {
+				position: fixed;
+
+				bottom: -9mm;
+				left: 0;
+				right: 0;
+
+				border-top: 1px solid #d5dce6;
+
+				padding-top: 4px;
+
+				text-align: center;
+
+				font-size: 6px;
+
+				color: #667085;
+			}
+		</style>
+
+	</head>
+
+
+	<body>
+
+
+		{# ================================================================
+																										   VARIABLES
+																										   ================================================================ #}
+
+		{% set emetteur =
+    devis.emetteur
+    |default('mdg_success')
+%}
+
+		{% set details =
+    devis.devisDetails
+    |default([])
+%}
+
+		{% set montantTvaDevis =
+    (devis.totalTtc|default(0)) - (devis.totalHt|default(0))
+%}
+
+
+		{# ================================================================
+																										   HEADER
+																										   ================================================================ #}
+
+		<table class="header-table">
+
+			<tr>
+
+				<td class="header-left">
+
+					{% if emetteur == 'drepa' %}
+
+						{% if documents.drepa.logo %}
+
+							<img src="{{ documents.drepa.logo }}" class="logo-drepa" alt="Drepa Technologie">
+
+						{% endif %}
+
+						<div class="company-name">
+							DREPA TECHNOLOGIE
+						</div>
+
+						<div class="company-info">
+
+							Bamako, Sotuba ACI
+							<br>
+
+							Tél. :
+																																																																																											                    +223 70 38 69 12
+							<br>
+
+							E-mail :
+																																																																																											                    drepatechno@gmail.com
+							<br>
+
+							RCCM :
+																																																																																											                    MA.BKO.2021.A.911
+							<br>
+
+							NIF :
+																																																																																											                    081137682V
+
+						</div>
+
+
+					{% elseif emetteur == 'mdg' %}
+
+						{% if documents.mdg.logo %}
+
+							<img src="{{ documents.mdg.logo }}" class="logo-mdg" alt="Madial Group">
+
+						{% endif %}
+
+						<div class="company-name">
+							MADIAL GROUP SARL
+						</div>
+
+						<div class="company-info">
+
+							Bamako, Sotuba ACI
+							<br>
+
+							Tél. :
+																																																																																											                    +223 70 38 69 12
+							<br>
+
+							RCCM :
+																																																																																											                    MA.BKO.2026.B.1404
+							<br>
+
+							NIF :
+																																																																																											                    081148957D
+
+						</div>
+
+					{% else %}
+
+						<table style="
+																																																																																																								                    width: 100%;
+																																																																																																								                    border-collapse: collapse;
+																																																																																																								                ">
+
+							<tr>
+
+								<td style="
+																																																																																																																																		                            width: 90px;
+																																																																																																																																		                            vertical-align: middle;
+																																																																																																																																		                        ">
+
+									{% if documents.mdg.logo %}
+
+										<img src="{{ documents.mdg.logo }}" class="logo-mdg" alt="Madial Group">
+
+									{% endif %}
+
+								</td>
+
+								<td style="
+																																																																																																																																		                            width: 90px;
+																																																																																																																																		                            vertical-align: middle;
+																																																																																																																																		                        ">
+
+									{% if documents.mdg.success_logo %}
+
+										<img src="{{ documents.mdg.success_logo }}" class="logo-success" alt="Success Imprim">
+
+									{% endif %}
+
+								</td>
+
+								<td></td>
+
+							</tr>
+
+						</table>
+
+
+						<div class="company-name">
+							MADIAL GROUP SARL
+						</div>
+
+						<div style="
+																																																																																																								                        font-size: 12px;
+																																																																																																								                        font-weight: bold;
+																																																																																																								                    ">
+							SUCCESS IMPRIM
+						</div>
+
+						<div class="company-subtitle">
+
+							Impression -
+																																																																																											                    Communication visuelle -
+																																																																																											                    Services graphiques
+
+						</div>
+
+						<div class="company-info">
+
+							Bamako, Sotuba ACI
+							<br>
+
+							Tél. :
+																																																																																											                    +223 70 38 69 12
+							<br>
+
+							RCCM :
+																																																																																											                    MA.BKO.2026.B.1404
+							<br>
+
+							NIF :
+																																																																																											                    081148957D
+
+						</div>
+
+					{% endif %}
+
+				</td>
+
+
+				<td class="header-right">
+
+					<div class="document-title">
+
+						<div class="document-type">
+							FACTURE PRO-FORMA
+						</div>
+
+
+						<div class="document-number">
+
+							{{
+                        devis.numero
+                        |default(
+                            'DEV-' ~ devis.id
+                        )
+                    }}
+
+						</div>
+
+
+						<div style="margin-top: 7px;">
+
+							Date :
+							<strong>
+
+								{{
+                            devis.dateDevis
+                            |date('d/m/Y')
+                        }}
+
+							</strong>
+
+						</div>
+
+					</div>
+
+				</td>
+
+			</tr>
+
+		</table>
+
+
+		{# ================================================================
+																										   CLIENT / DEVIS
+																										   ================================================================ #}
+
+		<table class="info-table">
+
+			<tr>
+
+				<td>
+
+					{% set facturationATiers = devis.facturerAUnTiers|default(false) %}
+
+					<div class="section-label">
+						{{ facturationATiers ? 'Adresse de facturation' : 'Adresse du client' }}
+					</div>
+
+
+					{% if facturationATiers %}
+
+						<div class="client-name">
+
+							{{ devis.nomFacturation|default('Payeur') }}
+
+						</div>
+
+
+						{% if devis.adresseFacturation|default('') %}
+
+							{{ devis.adresseFacturation }}
+							<br>
+
+						{% endif %}
+
+
+						{% if devis.telephoneFacturation|default('') %}
+
+							Tél. :
+							{{ devis.telephoneFacturation }}
+							<br>
+
+						{% endif %}
+
+
+						{% if devis.emailFacturation|default('') %}
+
+							E-mail :
+							{{ devis.emailFacturation }}
+
+						{% endif %}
+
+
+						{% if client %}
+
+							<div style="margin-top: 6px; font-size: 6px; color: #667085;">
+								Demandeur :
+								{{ client.raisonSociale |default( (client.prenom and client.nom) ? client.prenom ~ ' ' ~ client.nom : client.nomComplet |default( client.nom |default('Client') ) ) }}
+							</div>
+
+						{% endif %}
+
+					{% elseif client %}
+
+						<div class="client-name">
+
+							{{ client.raisonSociale |default( (client.prenom and client.nom) ? client.prenom ~ ' ' ~ client.nom : client.nomComplet |default( client.nom |default('Client') ) ) }}
+
+
+						</div>
+
+
+						{% if client.adresse|default('') %}
+
+							{{ client.adresse }}
+							<br>
+
+						{% endif %}
+
+
+						{% if client.telephone|default('') %}
+
+							Tél. :
+							{{ client.telephone }}
+							<br>
+
+						{% endif %}
+
+
+						{% if client.email|default('') %}
+
+							E-mail :
+							{{ client.email }}
+
+						{% endif %}
+
+					{% endif %}
+
+				</td>
+
+
+				<td>
+
+					<div class="section-label">
+						Devis
+					</div>
+
+					Référence :
+
+					<strong>
+
+						{{
+                    devis.numero
+                    |default(
+                        'DEV-' ~ devis.id
+                    )
+                }}
+
+					</strong>
+
+					<br>
+
+
+					{% if devis.dateDevis|default(null) %}
+
+						Date :
+
+						<strong>
+
+							{{
+                        devis.dateDevis
+                        |date('d/m/Y')
+                    }}
+
+						</strong>
+
+						<br>
+
+					{% endif %}
+
+
+					{% if commande %}
+
+						Commande liée :
+
+						<strong>
+
+							{{
+                        commande.numero
+                        |default(
+                            'CMD-' ~ commande.id
+                        )
+                    }}
+
+						</strong>
+
+						<br>
+
+					{% endif %}
+
+
+					Émetteur :
+
+					<strong>
+
+						{{
+                    devis.emetteurLabel
+                }}
+
+					</strong>
+
+				</td>
+
+			</tr>
+
+		</table>
+
+
+		{# ================================================================
+																										   DÉTAILS
+																										   ================================================================ #}
+
+		<table class="details-table">
+
+			<thead>
+
+				<tr>
+
+					<th style="width: 5%;">
+						N°
+					</th>
+
+					<th style="width: 35%;">
+						Désignation
+					</th>
+
+					<th style="width: 8%;">
+						Qté
+					</th>
+
+					<th style="width: 18%;">
+						Prix unitaire
+					</th>
+
+					<th style="width: 10%;">
+						Remise
+					</th>
+
+					<th style="width: 24%;">
+						Total
+					</th>
+
+				</tr>
+
+			</thead>
+
+
+			<tbody>
+
+				{% for detail in details %}
+
+					{% set totalLigne =
+                detail.totalTtc
+                |default(
+                    detail.totalHt
+                    |default(0)
+                )
+            %}
+
+					<tr>
+
+						<td class="text-center">
+							{{ loop.index }}
+						</td>
+
+
+						<td>
+
+							<div class="designation">
+
+								{{
+                            detail.designation
+                            |default('Prestation')
+                        }}
+
+							</div>
+
+
+							{% if detail.observation|default('') %}
+
+								<div class="description">
+
+									{{
+                                detail.observation
+                            }}
+
+								</div>
+
+							{% endif %}
+
+						</td>
+
+
+						<td class="text-center">
+
+							{{
+                        detail.quantite
+                        |default(1)
+                    }}
+
+							{% if detail.modeCalcul|default('') == 'metre_carre' %}
+
+								<br>
+
+								<span style="font-size: 9px; color: #666;">
+									(
+									{{
+                                detail.surfaceTotale|default(0)
+                                |number_format(2, ',', ' ')
+                            }}
+									m²)
+								</span>
+
+							{% endif %}
+
+						</td>
+
+
+						<td class="text-right">
+
+							{{
+                        detail.prixUnitaire
+                        |default(0)
+                        |number_format(
+                            0,
+                            ',',
+                            ' '
+                        )
+                    }}
+							F CFA
+
+						</td>
+
+						<td class="text-right">
+
+							{% if detail.montantRemise|default(0) > 0 %}
+								{{
+                        detail.montantRemise
+                        |number_format(0, ',', ' ')
+                    }}
+								F CFA
+							{% else %}
+								—
+							{% endif %}
+
+						</td>
+
+
+						<td class="
+																																																																																																								                    text-right
+																																																																																																								                    font-bold
+																																																																																																								                ">
+
+							{{
+                        totalLigne
+                        |number_format(
+                            0,
+                            ',',
+                            ' '
+                        )
+                    }}
+							F CFA
+
+						</td>
+
+					</tr>
+
+
+				{% else %}
+
+					<tr>
+
+						<td colspan="6" class="text-center">
+							Aucun détail disponible.
+						</td>
+
+					</tr>
+
+				{% endfor %}
+
+			</tbody>
+
+		</table>
+
+
+		{# ================================================================
+																										   BANQUE + TOTAUX
+																										   ================================================================ #}
+
+		<table class="bottom-table">
+
+			<tr>
+
+				<td class="bottom-left">
+
+					<div class="bank-box">
+
+						<div class="bank-title">
+							Nos coordonnées bancaires
+						</div>
+
+
+						{% if emetteur == 'drepa' %}
+
+							UBA MALI
+							<br>
+
+							Compte :
+																																																																																											                    ML206/01004/704040002757/27
+
+						{% else %}
+
+							ECOBANK MALI
+							<br>
+
+							Compte bancaire :
+																																																																																											                    152248617001
+
+						{% endif %}
+
+					</div>
+
+
+					<div style="
+														margin-top: 10px;
+														padding: 7px;
+														border: 1px solid #d5dce6;
+														font-size: 9px;
+														color: #666;
+													">
+
+						<strong>
+							Paiement Orange Money / Wave (mobile money) :
+						</strong>
+
+						<br>
+
+						Frais de transaction et fonds de soutien à la charge du client en cas de paiement par mobile money.
+
+					</div>
+
+
+					{% if devis.observation|default('') %}
+
+						<div style="
+																																																																																																								                    margin-top: 10px;
+																																																																																																								                    padding: 7px;
+																																																																																																								                    border: 1px solid #d5dce6;
+																																																																																																								                ">
+
+							<strong>
+								Observation :
+							</strong>
+
+							<br>
+
+							{{ devis.observation }}
+
+						</div>
+
+					{% endif %}
+
+				</td>
+
+
+				<td class="bottom-right">
+
+					<table class="totals-table">
+
+						<tr>
+
+							<td>
+								Total HT
+							</td>
+
+							<td>
+
+								{{
+                            devis.totalHt
+                            |number_format(
+                                0,
+                                ',',
+                                ' '
+                            )
+                        }}
+								F CFA
+
+							</td>
+
+						</tr>
+
+
+						{% if devis.remise > 0 %}
+
+							<tr>
+
+								<td>
+									Remise
+								</td>
+
+								<td>
+
+									-
+									{{
+                                devis.remise
+                                |number_format(
+                                    0,
+                                    ',',
+                                    ' '
+                                )
+                            }}
+									F CFA
+
+								</td>
+
+							</tr>
+
+						{% endif %}
+
+
+						{% if montantTvaDevis > 0 %}
+
+							<tr>
+
+								<td>
+									TVA
+									{% if devis.tva > 0 %}
+										({{ devis.tva }}
+										%)
+									{% endif %}
+								</td>
+
+								<td>
+
+									{{
+                                montantTvaDevis
+                                |number_format(
+                                    0,
+                                    ',',
+                                    ' '
+                                )
+                            }}
+									F CFA
+
+								</td>
+
+							</tr>
+
+						{% endif %}
+
+
+						<tr class="grand-total">
+
+							<td>
+								TOTAL TTC
+							</td>
+
+							<td>
+
+								{{
+                            devis.totalTtc
+                            |number_format(
+                                0,
+                                ',',
+                                ' '
+                            )
+                        }}
+								F CFA
+
+							</td>
+
+						</tr>
+
+					</table>
+
+				</td>
+
+			</tr>
+
+		</table>
+
+
+		{# ================================================================
+																										   AUTHENTICITÉ / SIGNATURE
+																										   ================================================================ #}
+
+		<table class="auth-table">
+
+			<tr>
+
+				<td>
+
+					<div class="signature-title">
+						AUTHENTICITÉ
+					</div>
+
+
+					{% if qrCodeDataUri %}
+
+						<img src="{{ qrCodeDataUri }}" class="qr-image" alt="QR Code">
+
+					{% endif %}
+
+
+					<div class="auth-token">
+
+						{{
+                    devis.tokenAuthenticite
+                    |default('')
+                }}
+
+					</div>
+
+				</td>
+
+
+				<td>
+
+					<div class="signature-title">
+
+						Cachet et signature du client
+
+					</div>
+
+					<div style="
+																																																																														                height: 62px;
+																																																																														            "></div>
+
+				</td>
+
+
+				<td>
+
+					<div class="signature-title">
+
+						Signature et cachet électronique
+
+					</div>
+
+
+					{% if emetteur == 'drepa' %}
+
+						{% if documents.drepa.signature %}
+
+							<img src="{{ documents.drepa.signature }}" class="signature-image" alt="Signature Drepa">
+
+						{% endif %}
+
+					{% else %}
+
+						{% if documents.mdg.signature %}
+
+							<img src="{{ documents.mdg.signature }}" class="signature-image" alt="Signature Madial Group">
+
+						{% endif %}
+
+					{% endif %}
+
+				</td>
+
+			</tr>
+
+		</table>
+
+
+		{# ================================================================
+																										   FOOTER
+																										   ================================================================ #}
+
+		<div class="footer">
+
+			{% if emetteur == 'drepa' %}
+
+				DREPA TECHNOLOGIE -
+																																																				        SOTUBA ACI -
+																																																				        RCCM MA.BKO.2021.A.911 -
+																																																				        NIF 081137682V -
+																																																				        UBA MALI ML206/01004/704040002757/27
+
+			{% else %}
+
+				MADIAL GROUP SARL -
+																																																				        SUCCESS IMPRIM -
+																																																				        SOTUBA ACI -
+																																																				        RCCM MA.BKO.2026.B.1404 -
+																																																				        NIF 081148957D -
+																																																				        ECOBANK 152248617001
+
+			{% endif %}
+
+		</div>
+
+
+	</body>
+
+</html>

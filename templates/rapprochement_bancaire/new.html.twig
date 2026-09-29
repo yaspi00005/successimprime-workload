@@ -1,0 +1,248 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouveau rapprochement bancaire
+{% endblock %}
+
+{% block body %}
+	<div class="container-fluid py-4">
+
+		<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+			<div>
+				<h4 class="mb-1">
+					<i class="fa fa-university me-2"></i>
+					Nouveau rapprochement bancaire
+				</h4>
+
+				<p class="text-muted mb-0">
+					Sélectionnez le compte et la période du relevé bancaire
+				</p>
+			</div>
+
+			<a href="{{ path('app_rapprochement_bancaire_index') }}" class="btn btn-secondary">
+				<i class="fa fa-arrow-left me-1"></i>
+				Retour à la liste
+			</a>
+		</div>
+
+		{% for message in app.flashes('success') %}
+			<div class="alert alert-success alert-dismissible fade show">
+				<i class="fa fa-check-circle me-1"></i>
+				{{ message }}
+
+				<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+			</div>
+		{% endfor %}
+
+		{% for message in app.flashes('error') %}
+			<div class="alert alert-danger alert-dismissible fade show">
+				<i class="fa fa-exclamation-circle me-1"></i>
+				{{ message }}
+
+				<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+			</div>
+		{% endfor %}
+
+		{% if not form.vars.valid %}
+			<div class="alert alert-danger">
+				<strong>
+					<i class="fa fa-exclamation-triangle me-1"></i>
+					Le formulaire contient des erreurs.
+				</strong>
+
+				{{ form_errors(form) }}
+			</div>
+		{% endif %}
+
+		<div class="row justify-content-center">
+			<div class="col-xl-10 col-lg-11">
+
+				{{ form_start(form, {
+                attr: {
+                    id: 'form-rapprochement-bancaire',
+                    novalidate: 'novalidate'
+                }
+            }) }}
+
+				<div class="card shadow-sm mb-4">
+					<div class="card-header">
+						<h5 class="card-title mb-0">
+							<i class="fa fa-bank me-2"></i>
+							Compte et période
+						</h5>
+					</div>
+
+					<div class="card-body">
+						<div class="row">
+							<div class="col-md-6 mb-3">
+								{{ form_label(form.compteTresorerie) }}
+								{{ form_widget(form.compteTresorerie) }}
+								{{ form_errors(form.compteTresorerie) }}
+
+								<small class="text-muted">
+									Seuls les comptes bancaires sont affichés.
+								</small>
+							</div>
+
+							<div class="col-md-3 mb-3">
+								{{ form_label(form.dateDebut) }}
+								{{ form_widget(form.dateDebut) }}
+								{{ form_errors(form.dateDebut) }}
+							</div>
+
+							<div class="col-md-3 mb-3">
+								{{ form_label(form.dateFin) }}
+								{{ form_widget(form.dateFin) }}
+								{{ form_errors(form.dateFin) }}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="card shadow-sm mb-4">
+					<div class="card-header">
+						<h5 class="card-title mb-0">
+							<i class="fa fa-calculator me-2"></i>
+							Soldes du relevé bancaire
+						</h5>
+					</div>
+
+					<div class="card-body">
+						<div class="alert alert-info">
+							<i class="fa fa-info-circle me-1"></i>
+
+							Saisissez les soldes indiqués sur le relevé bancaire.
+							                        Le solde comptable et l’écart seront calculés
+							                        automatiquement à partir des mouvements enregistrés.
+						</div>
+
+						<div class="row">
+							<div class="col-md-6 mb-3">
+								{{ form_label(form.soldeOuvertureReleve) }}
+
+								<div class="input-group">
+									{{ form_widget(
+                                    form.soldeOuvertureReleve,
+                                    {
+                                        attr: {
+                                            class: 'form-control',
+                                            min: 0,
+                                            step: 1,
+                                            placeholder: 'Exemple : 500000'
+                                        }
+                                    }
+                                ) }}
+
+									<span class="input-group-text">FCFA</span>
+								</div>
+
+								{{ form_errors(form.soldeOuvertureReleve) }}
+
+								{% if form.soldeOuvertureReleve.vars.help %}
+									<small class="text-muted">
+										{{ form.soldeOuvertureReleve.vars.help }}
+									</small>
+								{% endif %}
+							</div>
+
+							<div class="col-md-6 mb-3">
+								{{ form_label(form.soldeClotureReleve) }}
+
+								<div class="input-group">
+									{{ form_widget(
+                                    form.soldeClotureReleve,
+                                    {
+                                        attr: {
+                                            class: 'form-control',
+                                            min: 0,
+                                            step: 1,
+                                            placeholder: 'Exemple : 750000'
+                                        }
+                                    }
+                                ) }}
+
+									<span class="input-group-text">FCFA</span>
+								</div>
+
+								{{ form_errors(form.soldeClotureReleve) }}
+
+								{% if form.soldeClotureReleve.vars.help %}
+									<small class="text-muted">
+										{{ form.soldeClotureReleve.vars.help }}
+									</small>
+								{% endif %}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="card shadow-sm mb-4">
+					<div class="card-header">
+						<h5 class="card-title mb-0">
+							<i class="fa fa-comment me-2"></i>
+							Observation
+						</h5>
+					</div>
+
+					<div class="card-body">
+						{{ form_label(form.observation) }}
+						{{ form_widget(form.observation) }}
+						{{ form_errors(form.observation) }}
+					</div>
+				</div>
+
+				{{ form_rest(form) }}
+
+				<div class="d-flex justify-content-end gap-2">
+					<a href="{{ path('app_rapprochement_bancaire_index') }}" class="btn btn-light">
+						<i class="fa fa-times me-1"></i>
+						Annuler
+					</a>
+
+					<button type="submit" class="btn btn-primary" id="btn-enregistrer-rapprochement">
+						<i class="fa fa-save me-1"></i>
+						Enregistrer et charger les mouvements
+					</button>
+				</div>
+
+				{{ form_end(form, {render_rest: false}) }}
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+const formulaire = document.getElementById('form-rapprochement-bancaire');
+
+const dateDebut = document.getElementById('{{ form.dateDebut.vars.id }}');
+
+const dateFin = document.getElementById('{{ form.dateFin.vars.id }}');
+
+const bouton = document.getElementById('btn-enregistrer-rapprochement');
+
+if (dateDebut && dateFin) {
+dateDebut.addEventListener('change', function () {
+dateFin.min = dateDebut.value;
+
+if (dateFin.value && dateFin.value < dateDebut.value) {
+dateFin.value = dateDebut.value;
+}
+});
+}
+
+if (formulaire && bouton) {
+formulaire.addEventListener('submit', function () {
+if (! formulaire.checkValidity()) {
+return;
+}
+
+bouton.disabled = true;
+bouton.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>' + ' Chargement des mouvements...';
+});
+}
+});
+	</script>
+{% endblock %}

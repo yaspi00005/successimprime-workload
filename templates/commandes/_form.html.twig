@@ -1,0 +1,4158 @@
+{#
+    Une commande dont le circuit a déjà commencé (production ou
+    livraison) est normalement verrouillée. Le contrôleur autorise
+    déjà un administrateur à accéder à l'édition dans ce cas (voir
+    CommandesController::edit()) : le formulaire doit donc rester
+    modifiable pour lui, sinon l'accès autorisé ne sert à rien
+    (tous les champs restent bloqués visuellement).
+#}
+{% set commandeVerrouillee =
+    circuitDejaCommence|default(false)
+    and not is_granted('ROLE_ADMIN')
+%}
+
+
+{# ============================================================
+   MACRO : FINITION MANUELLE
+   ============================================================ #}
+
+{% macro finition_manuelle(
+    finition,
+    commandeVerrouillee = false
+) %}
+
+	<div class="js-finition-manuelle border rounded p-3 mb-3">
+
+		<div class="row align-items-end">
+
+			<div class="col-lg-4 col-md-6">
+
+				{{ form_row(finition.finition, {
+                    label: 'Finition',
+                    attr: {
+                        class: 'form-control'
+                    }
+                }) }}
+
+			</div>
+
+
+			<div class="col-lg-2 col-md-6">
+
+				{{ form_row(finition.prixApplique, {
+                    label: 'Prix appliqué',
+                    attr: {
+                        class: 'form-control js-finition-prix',
+                        min: 0
+                    }
+                }) }}
+
+			</div>
+
+
+			<div class="col-lg-2 col-md-6">
+
+				{{ form_row(finition.modeCalcul, {
+                    label: 'Mode de calcul',
+                    attr: {
+                        class: 'form-control js-finition-mode'
+                    }
+                }) }}
+
+			</div>
+
+
+			<div class="col-lg-2 col-md-6">
+
+				{{ form_row(finition.quantite, {
+                    label: 'Quantité',
+                    attr: {
+                        class: 'form-control js-finition-quantite',
+                        min: 1
+                    }
+                }) }}
+
+			</div>
+
+
+			<div class="col-lg-2 col-md-6">
+
+				{% if not commandeVerrouillee %}
+
+					<button type="button" class="btn btn-danger-light btn-block js-supprimer-finition">
+						<i class="fa fa-trash mr-1"></i>
+						Supprimer
+					</button>
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endmacro %}
+
+
+{# ============================================================
+   MACRO : DÉTAIL DE COMMANDE
+   ============================================================ #}
+
+{% macro champs_detail(
+    detail,
+    commandeVerrouillee = false
+) %}
+
+	<div
+		class="travail-form js-commande-detail" data-detail-verrouille="{{ commandeVerrouillee ? '1' : '0' }}">
+
+		{# ====================================================
+																																																																           TYPE DE LIGNE
+																																																																           ==================================================== #}
+
+		<div class="travail-section">
+
+			<div class="travail-section-title">
+				<i class="fa fa-th-large"></i>
+				Type de ligne
+			</div>
+
+			{{ form_label(
+                detail.typeLigne,
+                'Que souhaitez-vous ajouter ?'
+            ) }}
+
+			<div class="js-type-ligne text-primary">
+
+				{{ form_widget(
+                    detail.typeLigne
+                ) }}
+
+			</div>
+
+			{{ form_errors(
+                detail.typeLigne
+            ) }}
+
+			<small class="form-text text-muted">
+				Produit / prestation :
+																																																																																																																																                travail provenant du catalogue.
+																																																																																																																																                Article en stock :
+																																																																																																																																                vente directe d’un article physique.
+																																																																																																																																                Saisie libre :
+																																																																																																																																                désignation, quantité et prix libres.
+			</small>
+
+		</div>
+
+
+		{# ====================================================
+																																																																           PRODUIT / ARTICLE
+																																																																           ==================================================== #}
+
+		<div class="travail-section">
+
+			<div class="travail-section-title">
+				<i class="fa fa-cube"></i>
+				Produit, article et configuration
+			</div>
+
+
+			{# MODE CONFIGURATION #}
+			{#
+			 # Procédure simplifiée : il n'y a plus qu'une seule façon de
+			 # configurer une ligne Produit (choix libre parmi les
+			 # type/support/format liés au produit). Ce champ reste dans
+			 # le formulaire (valeur toujours forcée à "manuel" à
+			 # l'enregistrement, voir CommandesController) mais n'est
+			 # plus montré à l'utilisateur.
+			 #}
+
+			<div class="row js-zone-mode-configuration" style="display:none;">
+
+				<div class="col-12">
+
+					<div class="form-group text-primary">
+
+						{{ form_label(
+                            detail.modeConfiguration,
+                            'Mode de configuration'
+                        ) }}
+
+						<div class="js-mode-configuration">
+
+							{{ form_widget(
+                                detail.modeConfiguration
+                            ) }}
+
+						</div>
+
+						{{ form_errors(
+                            detail.modeConfiguration
+                        ) }}
+
+						<small class="form-text text-muted">
+							Automatique :
+																																																																																																																																																																																																																																                            informations provenant du catalogue.
+																																																																																																																																																																																																																																                            Manuel :
+																																																																																																																																																																																																																																                            caractéristiques choisies manuellement.
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# PRODUIT #}
+
+			<div class="row js-zone-produit">
+
+				<div class="col-lg-6 col-md-6">
+
+					{{ form_row(detail.produit, {
+                        label: 'Produit / prestation',
+                        attr: {
+                            class:
+                                'form-control js-select-search',
+                            'data-detail-field':
+                                'produit',
+                            'data-placeholder':
+                                'Rechercher un produit...'
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-6 col-md-6
+																																																																																																																																																																																																                    js-zone-configuration-automatique">
+
+					{{ form_row(
+                        detail.produitConfiguration,
+                        {
+                            label:
+                                'Configuration du produit',
+
+                            attr: {
+                                class:
+                                    'form-control js-select-search',
+
+                                'data-detail-field':
+                                    'configuration',
+
+                                'data-placeholder':
+                                    'Rechercher une configuration...'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+			</div>
+
+
+			{# ARTICLE STOCK #}
+
+			<div class="row js-zone-article-stock" style="display:none;">
+
+				<div class="col-lg-7 col-md-7">
+
+					{{ form_row(detail.article, {
+                        label: 'Article en stock',
+                        attr: {
+                            class:
+                                'form-control js-select-search js-article-stock',
+
+                            'data-detail-field':
+                                'article',
+
+                            'data-placeholder':
+                                'Référence ou désignation...'
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-5 col-md-5">
+
+					<div class="form-group">
+
+						<label>
+							Disponibilité
+						</label>
+
+						<div class="alert alert-light border mb-0">
+
+							<span class="js-stock-article">
+								Sélectionnez un article.
+							</span>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# CONFIGURATION TECHNIQUE PRODUIT #}
+
+			<div class="js-zone-champs-configuration">
+
+				<div class="row">
+
+					<div class="col-lg-4 col-md-6">
+
+						{{ form_row(detail.typeImpression, {
+                            label:
+                                "Type d’impression",
+
+                            attr: {
+                                class:
+                                    'form-control',
+
+                                'data-detail-field':
+                                    'typeImpression'
+                            }
+                        }) }}
+
+					</div>
+
+
+					<div class="col-lg-4 col-md-6">
+
+						{{ form_row(detail.support, {
+                            label:
+                                "Support d’impression",
+
+                            attr: {
+                                class:
+                                    'form-control',
+
+                                'data-detail-field':
+                                    'support'
+                            }
+                        }) }}
+
+					</div>
+
+
+					<div class="col-lg-4 col-md-6">
+
+						{{ form_row(detail.format, {
+                            label: 'Format',
+
+                            attr: {
+                                class:
+                                    'form-control',
+
+                                'data-detail-field':
+                                    'format'
+                            }
+                        }) }}
+
+					</div>
+
+				</div>
+
+				<small class="form-text text-muted
+																																																																																																																																																																																																                    js-message-champs-auto">
+					Ces champs proviennent de la configuration sélectionnée.
+				</small>
+
+			</div>
+
+		</div>
+
+
+		{# ====================================================
+																																																																           DÉSIGNATION
+																																																																           ==================================================== #}
+
+		<div class="travail-section text-black">
+
+			<div class="travail-section-title">
+				<i class="fa fa-pencil"></i>
+				Désignation
+			</div>
+
+			{{ form_row(detail.designation, {
+                label: 'Désignation',
+
+                attr: {
+                    class: 'form-control text-primary',
+
+                    'data-detail-field':
+                        'designation',
+
+                    placeholder:
+                        'Ex. Bâche publicitaire 3 × 2 m'
+                }
+            }) }}
+
+		</div>
+
+
+		{# ====================================================
+																																																																           CIRCUIT
+																																																																           ==================================================== #}
+
+		<div class="travail-section js-zone-circuit">
+
+			<div class="travail-section-title">
+				<i class="fa fa-random"></i>
+				Circuit de traitement
+			</div>
+
+
+			<div class="row">
+
+				<div class="col-lg-6">
+
+					{{ form_row(
+                        detail.prePresseNecessaire,
+                        {
+                            label:
+                                'Passage en prépresse',
+
+                            attr: {
+                                class:
+                                    'js-prepresse-necessaire'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+
+				<div class="col-lg-6">
+
+					{{ form_row(
+                        detail.productionNecessaire,
+                        {
+                            label:
+                                'Passage en production',
+
+                            attr: {
+                                class:
+                                    'js-production-necessaire'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+			</div>
+
+
+			<div class="alert alert-info mb-0">
+
+				<i class="fa fa-info-circle mr-1"></i>
+
+				<span class="js-message-circuit-texte">
+					Circuit de traitement de cette ligne.
+				</span>
+
+			</div>
+
+		</div>
+
+
+		{# ====================================================
+																																																																           QUANTITÉ / DIMENSIONS / PRIX
+																																																																           ==================================================== #}
+
+		<div class="travail-section">
+
+			<div class="travail-section-title">
+				<i class="fa fa-calculator"></i>
+				Dimensions, quantité et prix
+			</div>
+
+			<div class="row">
+
+				<div class="col-lg-3 js-zone-largeur">
+
+					{{ form_row(detail.largeur, {
+                        attr: {
+                            class:
+                                'form-control js-calcul-detail',
+
+                            'data-detail-field':
+                                'largeur',
+
+                            min: 0,
+                            step: '0.01'
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 js-zone-longueur">
+
+					{{ form_row(detail.longueur, {
+                        attr: {
+                            class:
+                                'form-control js-calcul-detail',
+
+                            'data-detail-field':
+                                'longueur',
+
+                            min: 0,
+                            step: '0.01'
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3 js-zone-surface">
+
+					{{ form_row(detail.surface, {
+                        attr: {
+                            class:
+                                'form-control js-calcul-detail',
+
+                            'data-detail-field':
+                                'surface',
+
+                            readonly: true
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(detail.quantite, {
+                        attr: {
+                            class:
+                                'form-control js-calcul-detail',
+
+                            'data-detail-field':
+                                'quantite',
+
+                            min: 1
+                        }
+                    }) }}
+
+					<small class="form-text text-muted
+																																																																																																																																																																																																                        js-message-quantite"></small>
+
+				</div>
+
+
+				<div class="col-lg-3 js-zone-nombre-faces">
+
+					{{ form_row(detail.nombreFaces, {
+                        attr: {
+                            class:
+                                'form-control js-calcul-detail',
+
+                            'data-detail-field':
+                                'nombreFaces',
+
+                            min: 1
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(detail.modeCalcul, {
+                        label:
+                            'Mode de calcul',
+
+                        attr: {
+                            class:
+                                'form-control js-mode-calcul js-calcul-detail',
+
+                            'data-detail-field':
+                                'modeCalcul'
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(detail.prixUnitaire, {
+                        label:
+                            'Prix unitaire',
+
+                        attr: {
+                            class:
+                                'form-control js-calcul-detail',
+
+                            'data-detail-field':
+                                'prixUnitaire',
+
+                            min: 0
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(detail.remise, {
+                        attr: {
+                            class:
+                                'form-control js-calcul-detail',
+
+                            'data-detail-field':
+                                'remise',
+
+                            min: 0
+                        }
+                    }) }}
+
+					<small class="form-text text-muted js-remise-totale-detail">
+						Remise totale : —
+					</small>
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(detail.tva, {
+                        attr: {
+                            class:
+                                'form-control js-calcul-detail',
+
+                            'data-detail-field':
+                                'tva',
+
+                            min: 0
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(detail.totalHt, {
+                        attr: {
+                            'data-detail-field':
+                                'totalHt',
+
+                            readonly: true
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(detail.totalTtc, {
+                        attr: {
+                            'data-detail-field':
+                                'totalTtc',
+
+                            readonly: true
+                        }
+                    }) }}
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ====================================================
+																																																																           FINITIONS
+																																																																           ==================================================== #}
+
+		<div class="travail-section js-zone-finitions">
+
+			<div class="travail-section-title">
+				<i class="fa fa-magic"></i>
+				Finitions
+			</div>
+
+
+			<div class="js-zone-finitions-automatiques">
+
+				<div class="finitions-box js-finitions-box" data-input-name="{{ detail.finitionsSelectionnees.vars.full_name }}">
+
+					{{ form_widget(
+                        detail.finitionsSelectionnees
+                    ) }}
+
+					{{ form_errors(
+                        detail.finitionsSelectionnees
+                    ) }}
+
+				</div>
+
+			</div>
+
+
+			<div class="js-zone-finitions-manuelles" data-index="{{ detail.finitions|length }}" data-prototype="{{ _self.finition_manuelle( detail.finitions.vars.prototype, commandeVerrouillee )|e('html_attr') }}" style="display:none;">
+
+				<div class="js-liste-finitions-manuelles">
+
+					{% for finition in detail.finitions %}
+
+						{{ _self.finition_manuelle(
+                            finition,
+                            commandeVerrouillee
+                        ) }}
+
+					{% endfor %}
+
+				</div>
+
+
+				{{ form_errors(
+                    detail.finitions
+                ) }}
+
+
+				{% if not commandeVerrouillee %}
+
+					<button type="button" class="btn btn-primary-light btn-sm js-ajouter-finition">
+						<i class="fa fa-plus mr-1"></i>
+						Ajouter une finition
+					</button>
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+
+		{# ====================================================
+																																																																           TECHNIQUE
+																																																																           ==================================================== #}
+
+		<div class="travail-section js-zone-technique">
+
+			<div class="travail-section-title">
+				<i class="fa fa-sliders"></i>
+				Caractéristiques techniques
+			</div>
+
+			<div class="row">
+
+				<div class="col-lg-3">
+					{{ form_row(detail.profilCouleurs) }}
+				</div>
+
+				<div class="col-lg-3">
+					{{ form_row(detail.resolution) }}
+				</div>
+
+				<div class="col-lg-3">
+					{{ form_row(detail.grammage) }}
+				</div>
+
+				<div class="col-lg-3">
+					{{ form_row(detail.epaisseur) }}
+				</div>
+
+				<div class="col-lg-3">
+					{{ form_row(detail.laminage) }}
+				</div>
+
+				<div class="col-lg-3">
+					{{ form_row(detail.pliage) }}
+				</div>
+
+				<div class="col-lg-3">
+					{{ form_row(detail.priorite) }}
+				</div>
+
+				<div class="col-lg-3">
+					{{ form_row(detail.tempsEstime) }}
+				</div>
+
+				<div class="col-lg-3">
+					{{ form_row(detail.tempsReel) }}
+				</div>
+
+			</div>
+
+
+			<div class="row">
+
+				<div class="col-md-3">
+					{{ form_row(detail.rectoVerso) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.oeillets) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.decoupe) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.emballage) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.batValide) }}
+				</div>
+
+				<div class="col-md-3">
+					{{ form_row(detail.etat) }}
+				</div>
+
+			</div>
+
+
+			{{ form_row(
+                detail.observation
+            ) }}
+
+		</div>
+
+
+		{# ====================================================
+																																																																           FICHIERS
+																																																																           ==================================================== #}
+
+		<div class="travail-section js-zone-fichiers">
+
+			<div class="travail-section-title">
+				<i class="fa fa-cloud-upload"></i>
+				Fichiers du client
+			</div>
+
+			{{ form_widget(
+                detail.jetonsFichiers,
+                {
+                    attr: {
+                        class:
+                            'js-jetons-fichiers'
+                    }
+                }
+            ) }}
+
+			<input type="file" class="form-control js-fichiers-client" multiple accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.svg,.ai,.eps,.psd,.cdr">
+
+			<small class="form-text text-muted">
+				Les fichiers volumineux sont envoyés automatiquement.
+			</small>
+
+			<div class="js-liste-uploads mt-3">
+
+				{% for fichierExistant in detail.vars.value.fichiers|default([]) %}
+
+					<div class="d-flex align-items-center border rounded p-2 mb-2">
+
+						{% if fichierExistant.typeMime starts with 'image/' %}
+
+						{#
+						 * Pas d'aperçu <img> ici : le navigateur
+						 * téléchargerait le fichier ORIGINAL en entier
+						 * (souvent très volumineux -- TIFF/PSD haute
+						 * résolution) juste pour l'afficher en 40x40,
+						 * ce qui rendait la page de commande très
+						 * lente, voire impossible à charger. Utiliser
+						 * le bouton "Voir le fichier" pour l'ouvrir à
+						 * la demande.
+						 #}
+						<i class="fa fa-picture-o mr-2" style="font-size:24px;"></i>
+
+						{% else %}
+
+						<i class="fa fa-file-o mr-2" style="font-size:24px;"></i>
+
+						{% endif %}
+
+						<div class="flex-grow-1">
+
+							<div class="small font-weight-bold">
+								{{ fichierExistant.nomOriginal }}
+							</div>
+
+							<div class="small text-muted">
+								Déjà envoyé
+							</div>
+
+						</div>
+
+						<a href="{{ path('app_fichier_visualiser', {id: fichierExistant.id}) }}" target="_blank" class="btn btn-sm btn-light ml-2" title="Voir le fichier">
+							<i class="fa fa-eye"></i>
+						</a>
+
+					</div>
+
+				{% endfor %}
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endmacro %}
+
+
+{# ============================================================
+   URLS UPLOAD
+   ============================================================ #}
+
+{% set jetonTemporaire =
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+%}
+
+{% set indexTemporaire =
+    999999999
+%}
+
+
+{% set modeleUrlMorceau = path(
+    'app_fichier_upload_morceau',
+    {
+        jeton: jetonTemporaire,
+        index: indexTemporaire
+    }
+) %}
+
+
+{% set modeleUrlMorceau =
+    modeleUrlMorceau|replace({
+        (jetonTemporaire):
+            '__JETON__',
+
+        (indexTemporaire ~ ''):
+            '__INDEX__'
+    })
+%}
+
+
+{% set modeleUrlStatut = path(
+    'app_fichier_upload_statut',
+    {
+        jeton: jetonTemporaire
+    }
+) %}
+
+
+{% set modeleUrlStatut =
+    modeleUrlStatut|replace({
+        (jetonTemporaire):
+            '__JETON__'
+    })
+%}
+
+
+{% set modeleUrlSuppression = path(
+    'app_fichier_upload_supprimer',
+    {
+        jeton: jetonTemporaire
+    }
+) %}
+
+
+{% set modeleUrlSuppression =
+    modeleUrlSuppression|replace({
+        (jetonTemporaire):
+            '__JETON__'
+    })
+%}
+
+
+{# ============================================================
+   FORMULAIRE
+   ============================================================ #}
+
+{{ form_start(form, {
+    attr: {
+        id:
+            'commande-form',
+
+        enctype:
+            'multipart/form-data',
+
+        'data-circuit-verrouille':
+            commandeVerrouillee ? '1' : '0',
+
+        'data-upload-csrf':
+            csrf_token(
+                'upload-commande'
+            ),
+
+        'data-upload-initialiser-url':
+            path(
+                'app_fichier_upload_initialiser'
+            ),
+
+        'data-upload-morceau-url':
+            modeleUrlMorceau,
+
+        'data-upload-statut-url':
+            modeleUrlStatut,
+
+        'data-upload-supprimer-url':
+            modeleUrlSuppression,
+
+        'data-brouillon-nouvelle':
+            commande.id is null ? '1' : '0',
+
+        'data-brouillon-csrf':
+            csrf_token('brouillon-commande'),
+
+        'data-brouillon-enregistrer-url':
+            path('app_brouillon_enregistrer', {type: 'commande'}),
+
+        'data-brouillon-verifier-url':
+            path('app_brouillon_verifier', {type: 'commande'})
+    }
+}) }}
+
+
+<div
+	class="side-app">
+
+	{# ========================================================
+																																       HEADER
+																																       ======================================================== #}
+
+	<div class="page-header">
+
+		<ol class="breadcrumb">
+
+			<li class="breadcrumb-item">
+
+				<a href="{{ path( 'app_commandes_index' ) }}">
+					Commandes
+				</a>
+
+			</li>
+
+			<li class="breadcrumb-item active">
+
+				{{
+                    form.vars.data.id
+                        ? 'Modifier la commande'
+                        : 'Nouvelle commande'
+                }}
+
+			</li>
+
+		</ol>
+
+
+		<a href="{{ path( 'app_commandes_index' ) }}" class="btn btn-sm btn-primary-light">
+			<i class="fa fa-list mr-1"></i>
+			Liste des commandes
+		</a>
+
+	</div>
+
+
+	{% if not form.vars.valid %}
+
+		<div class="alert alert-danger">
+			{{ form_errors(form) }}
+		</div>
+
+	{% endif %}
+
+
+	{% if commandeVerrouillee %}
+
+		<div class="alert alert-warning">
+
+			<i class="fa fa-lock mr-2"></i>
+
+			<strong>
+				Commande engagée dans son circuit.
+			</strong>
+
+			La structure des lignes ne peut plus être modifiée.
+
+		</div>
+
+	{% endif %}
+
+
+	{# ========================================================
+																																       CLIENT
+																																       ======================================================== #}
+
+	<div class="card">
+
+		<div class="card-header">
+
+			<div class="card-title">
+				<i class="fa fa-user-circle mr-2"></i>
+				Client
+			</div>
+
+		</div>
+
+
+		<div class="card-body">
+
+			<div class="row">
+
+				<div class="col-lg-6">
+
+					{{ form_row(form.clients, {
+                        label:
+                            'Client',
+
+                        attr: {
+                            class:
+                                'form-control js-select-search js-client-commande',
+
+                            'data-placeholder':
+                                'Rechercher un client...'
+                        }
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-6">
+
+					<div class="form-group">
+
+						<label>
+							Profil tarifaire
+						</label>
+
+						<div class="alert alert-light border mb-0">
+
+							<strong class="js-profil-client">
+								Sélectionnez un client
+							</strong>
+
+							<div class="small text-muted js-profil-client-aide">
+								Le tarif B2B ou B2C sera appliqué automatiquement.
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ========================================================
+																																       INFORMATIONS COMMANDE
+																																       ======================================================== #}
+
+	<div class="card">
+
+		<div class="card-header">
+
+			<div class="card-title">
+				<i class="fa fa-file-text-o mr-2"></i>
+				Informations de la commande
+			</div>
+
+		</div>
+
+
+		<div class="card-body">
+
+			<div class="row">
+
+				<div class="col-lg-3">
+
+					<div class="form-group">
+
+						<label>
+							Numéro
+						</label>
+
+						<input type="text" class="form-control" disabled value="{{ form.vars.data.numero |default( 'Généré automatiquement' ) }}">
+
+					</div>
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(form.statut, {
+                        label: 'Statut'
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(form.etat, {
+                        label: 'État'
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-3">
+
+					{{ form_row(form.tva, {
+                        label: 'TVA (%)'
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-6">
+
+					{{ form_row(form.dateLivraison, {
+                        label:
+                            'Date de livraison'
+                    }) }}
+
+				</div>
+
+
+				<div class="col-lg-6">
+
+					{{ form_row(form.observation, {
+                        label:
+                            'Observation'
+                    }) }}
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ========================================================
+																																       DÉTAILS
+																																       ======================================================== #}
+
+	<div class="card">
+
+		<div class="card-header
+																																																																																																																																            d-flex
+																																																																																																																																            justify-content-between
+																																																																																																																																            align-items-center">
+
+			<div>
+
+				<div class="card-title mb-0">
+
+					<i class="fa fa-shopping-cart mr-2"></i>
+
+					Produits, articles et prestations
+
+				</div>
+
+				<small class="text-muted">
+					Produit catalogue,
+																																																																																																																																																																                    article en stock ou saisie libre.
+				</small>
+
+			</div>
+
+
+			{% if not commandeVerrouillee %}
+
+				<button type="button" id="add-detail" class="btn btn-success-light">
+					<i class="fa fa-plus mr-1"></i>
+					Ajouter un détail
+				</button>
+
+			{% else %}
+
+				<span class="badge badge-warning p-2">
+
+					<i class="fa fa-lock mr-1"></i>
+
+					Lignes verrouillées
+
+				</span>
+
+			{% endif %}
+
+		</div>
+
+
+		<div class="card-body">
+
+			{{ form_errors(
+                form.commandesDetails
+            ) }}
+
+
+			<div id="collection-details" data-index="{{ form.commandesDetails|length }}" data-prototype="{{ _self.champs_detail( form.commandesDetails.vars.prototype, false )|e('html_attr') }}">
+
+				{% for detail in form.commandesDetails %}
+
+					<div class="
+																																																																																																																																																																																																																																                            detail-commande
+																																																																																																																																																																																																																																                            card
+																																																																																																																																																																																																																																                            border
+																																																																																																																																																																																																																																                            mb-4
+																																																																																																																																																																																																																																                            {{
+																																																																																																																																																																																																																																                                commandeVerrouillee
+																																																																																																																																																																																																																																                                    ? 'detail-commande-verrouille'
+																																																																																																																																																																																																																																                                    : ''
+																																																																																																																																																																																																																																                            }}
+																																																																																																																																																																																																																																                        ">
+
+						<div class="
+																																																																																																																																																																																																																																																																                                card-header
+																																																																																																																																																																																																																																																																                                bg-light
+																																																																																																																																																																																																																																																																                                d-flex
+																																																																																																																																																																																																																																																																                                justify-content-between
+																																																																																																																																																																																																																																																																                                align-items-center
+																																																																																																																																																																																																																																																																                            ">
+
+							<div class="card-title detail-title mb-0">
+								Travail
+								{{ loop.index }}
+							</div>
+
+
+							{% if not commandeVerrouillee %}
+
+								<button type="button" class="btn btn-danger-light btn-sm supprimer-detail">
+									<i class="fa fa-trash mr-1"></i>
+									Supprimer
+								</button>
+
+							{% else %}
+
+								<span class="text-muted">
+									<i class="fa fa-lock mr-1"></i>
+									Verrouillé
+								</span>
+
+							{% endif %}
+
+						</div>
+
+
+						<div class="card-body p-0">
+
+							{{ _self.champs_detail(
+                                detail,
+                                commandeVerrouillee
+                            ) }}
+
+						</div>
+
+					</div>
+
+				{% else %}
+
+					<div id="aucun-detail" class="alert alert-info">
+						Aucun travail ajouté.
+					</div>
+
+				{% endfor %}
+
+			</div>
+
+			{% if not commandeVerrouillee %}
+
+				<div class="text-center mt-2">
+					<button type="button" id="add-detail-bottom" class="btn btn-success-light">
+						<i class="fa fa-plus mr-1"></i>
+						Ajouter un détail
+					</button>
+				</div>
+
+			{% endif %}
+
+		</div>
+
+	</div>
+
+
+	{# ========================================================
+																																       RÉCAP
+																																       ======================================================== #}
+
+	<div class="row">
+
+		<div class="col-xl-5 ml-auto">
+
+			<div class="card">
+
+				<div class="card-header">
+
+					<div class="card-title">
+						<i class="fa fa-calculator mr-2"></i>
+						Récapitulatif
+					</div>
+
+				</div>
+
+
+				<div class="card-body">
+
+					<div class="row">
+
+						<div class="col-md-6">
+
+							{{ form_row(form.totalHt, {
+                                label:
+                                    'Total HT',
+
+                                attr: {
+                                    class:
+                                        'form-control js-total-ht-commande',
+
+                                    readonly:
+                                        true
+                                }
+                            }) }}
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							{{ form_row(form.remise, {
+                                label:
+                                    'Remise globale'
+                            }) }}
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							{{ form_row(form.totalTtc, {
+                                label:
+                                    'Total TTC',
+
+                                attr: {
+                                    class:
+                                        'form-control js-total-ttc-commande',
+
+                                    readonly:
+                                        true
+                                }
+                            }) }}
+
+						</div>
+
+
+						<div class="col-md-6">
+
+							{{ form_row(form.montantApayer, {
+                                label:
+                                    'Montant à payer',
+
+                                attr: {
+                                    class:
+                                        'form-control js-montant-a-payer-commande',
+
+                                    readonly:
+                                        true
+                                }
+                            }) }}
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				<div class="
+																																																																																																																																																																																																                        card-footer
+																																																																																																																																																																																																                        d-flex
+																																																																																																																																																																																																                        justify-content-between
+																																																																																																																																																																																																                    ">
+
+					<a href="{{ path( 'app_commandes_index' ) }}" class="btn btn-primary-light">
+						Annuler
+					</a>
+
+
+					<button type="submit" class="btn btn-success-light">
+						<i class="fa fa-save mr-1"></i>
+
+						{{
+                            button_label
+                            |default(
+                                'Enregistrer la commande'
+                            )
+                        }}
+
+					</button>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+</div>
+
+
+{% if form._token is defined %}
+	{{ form_widget(form._token) }}
+{% endif %}
+
+
+{{ form_end(
+    form,
+    {
+        render_rest: false
+    }
+) }}
+
+
+<link href="{{ asset( 'assets/plugins/select2/select2.min.css' ) }}" rel="stylesheet">
+
+
+<style>
+
+	#commande-form input.form-control,
+	#commande-form select.form-control,
+	#commande-form textarea.form-control {
+		color: #1f2937 !important;
+		background-color: #fff !important;
+	}
+
+	#commande-form .select2-container {
+		width: 100% !important;
+	}
+
+	#commande-form .select2-selection--single {
+		min-height: 40px;
+	}
+
+	.detail-commande {
+		border: 1px solid #dce4f0 !important;
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.travail-form {
+		padding: 20px;
+		background: #fff;
+	}
+
+	.travail-section {
+		padding: 18px 18px 4px;
+		margin-bottom: 18px;
+		border: 1px solid #e5eaf2;
+		border-radius: 7px;
+		background: #fbfcfe;
+	}
+
+	.travail-section-title {
+		margin: -18px -18px 18px;
+		padding: 11px 16px;
+		color: #ffffff;
+		font-size: 14px;
+		font-weight: 600;
+		background: #f1f5fb;
+		border-bottom: 1px solid #e1e7f0;
+	}
+
+	.travail-section-title i {
+		width: 22px;
+		color: #6259ca;
+	}
+
+	.finitions-box {
+		padding: 14px;
+		border: 1px dashed #cbd4e1;
+		border-radius: 6px;
+	}
+
+	.detail-commande-verrouille {
+		opacity: .95;
+	}
+
+	.detail-commande-verrouille > .card-header {
+		background: #fff8e5 !important;
+	}
+
+	.detail-commande-verrouille .select2-container {
+		pointer-events: none;
+	}
+
+	@media(max-width: 767px) {
+
+		.travail-form {
+			padding: 10px;
+		}
+
+	}
+	/* ============================================================
+   TABLEAUX DU FORMULAIRE COMMANDE
+   ============================================================ */
+
+	#commande-form table {
+		width: 100%;
+		background-color: #ffffff !important;
+	}
+
+	#commande-form table tr {
+		background-color: #ffffff !important;
+	}
+
+	#commande-form table td {
+		background-color: #ffffff !important;
+		color: #1f2937 !important;
+		border-color: #dce4f0 !important;
+	}
+
+	#commande-form table th {
+		background-color: #eef3fb !important;
+		color: #17366f !important;
+		border-color: #dce4f0 !important;
+		font-weight: 600;
+	}
+
+	/* Une ligne sur deux légèrement différente */
+	#commande-form table tbody tr:nth-child(even) td {
+		background-color: #f8fafc !important;
+	}
+
+	/* Survol */
+	#commande-form table tbody tr:hover td {
+		background-color: #eef4ff !important;
+	}
+
+	/* Champs contenus dans les cellules */
+	#commande-form table td input,
+	#commande-form table td select,
+	#commande-form table td textarea {
+		background-color: #ffffff !important;
+		color: #1f2937 !important;
+	}
+
+	/* Libellés */
+	#commande-form table td label {
+		color: #334155 !important;
+	}
+	#commande-form table tbody tr td {
+		background-color: #f7f9fd !important;
+	}
+
+	#commande-form table tbody tr:nth-child(even) td {
+		background-color: #eef3fb !important;
+	}
+	#commande-form .form-check-label,
+	#commande-form .form-group label,
+	#commande-form td,
+	#commande-form th {
+		color: #1f2937 !important;
+	}
+	/* ============================================================
+   CORRECTION FORCÉE DES COULEURS - FORMULAIRE COMMANDE
+   À PLACER TOUT À LA FIN DU <style>
+   ============================================================ */
+
+	/* ------------------------------------------------------------
+   TEXTE GÉNÉRAL DES BLOCS
+   ------------------------------------------------------------ */
+
+	body #commande-form,
+	body #commande-form .travail-form,
+	body #commande-form .travail-section,
+	body #commande-form .card-body {
+		color: #ffffff !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   LABELS
+   ------------------------------------------------------------ */
+
+	body #commande-form label,
+	body #commande-form .form-label,
+	body #commande-form .col-form-label,
+	body #commande-form .form-check-label,
+	body #commande-form legend,
+	body #commande-form .control-label {
+		color: #334155 !important;
+		-webkit-text-fill-color: #334155 !important;
+		opacity: 1 !important;
+	}
+
+	.text-white {
+		color: #ffffff !important;
+		-webkit-text-fill-color: #feffff !important;
+		opacity: 1 !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   INPUT / SELECT / TEXTAREA
+   ------------------------------------------------------------ */
+
+	body #commande-form input:not([type="checkbox"]):not([type="radio"]),
+	body #commande-form select,
+	body #commande-form textarea,
+	body #commande-form .form-control {
+		color: #1f2937 !important;
+		-webkit-text-fill-color: #1f2937 !important;
+
+		background: #ffffff !important;
+		background-color: #ffffff !important;
+
+		border: 1px solid #cbd5e1 !important;
+
+		opacity: 1 !important;
+
+		caret-color: #1f2937 !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   CHAMPS READONLY
+   ------------------------------------------------------------ */
+
+	body #commande-form input[readonly],
+	body #commande-form textarea[readonly],
+	body #commande-form .form-control[readonly] {
+		color: #334155 !important;
+		-webkit-text-fill-color: #334155 !important;
+
+		background-color: #f1f5f9 !important;
+
+		opacity: 1 !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   CHAMPS DISABLED
+   ------------------------------------------------------------ */
+
+	body #commande-form input:disabled,
+	body #commande-form select:disabled,
+	body #commande-form textarea:disabled {
+		color: #475569 !important;
+		-webkit-text-fill-color: #475569 !important;
+
+		background-color: #e9eef5 !important;
+
+		opacity: 1 !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   PLACEHOLDER
+   ------------------------------------------------------------ */
+
+	body #commande-form input::placeholder,
+	body #commande-form textarea::placeholder {
+		color: #94a3b8 !important;
+		-webkit-text-fill-color: #94a3b8 !important;
+
+		opacity: 1 !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   OPTIONS DES SELECTS NATIFS
+   ------------------------------------------------------------ */
+
+	body #commande-form select option {
+		color: #1f2937 !important;
+		background-color: #ffffff !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   SELECT2
+   ------------------------------------------------------------ */
+
+	body #commande-form .select2-container .select2-selection,
+	body #commande-form .select2-container .select2-selection--single,
+	body #commande-form .select2-container .select2-selection--multiple {
+		background-color: #ffffff !important;
+		border: 1px solid #cbd5e1 !important;
+	}
+
+
+	body #commande-form .select2-container .select2-selection--single .select2-selection__rendered {
+		color: #1f2937 !important;
+		-webkit-text-fill-color: #1f2937 !important;
+	}
+
+
+	body #commande-form .select2-container .select2-selection--single .select2-selection__placeholder {
+		color: #94a3b8 !important;
+		-webkit-text-fill-color: #94a3b8 !important;
+	}
+
+
+	body .select2-dropdown {
+		background-color: #ffffff !important;
+		color: #1f2937 !important;
+	}
+
+
+	body .select2-results__option {
+		background-color: #ffffff !important;
+		color: #1f2937 !important;
+		-webkit-text-fill-color: #1f2937 !important;
+	}
+
+
+	body .select2-results__option--highlighted {
+		background-color: #6259ca !important;
+		color: #ffffff !important;
+		-webkit-text-fill-color: #ffffff !important;
+	}
+
+
+	body .select2-search__field {
+		background-color: #ffffff !important;
+		color: #1f2937 !important;
+		-webkit-text-fill-color: #1f2937 !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   RADIOS ET CHECKBOX
+   ------------------------------------------------------------ */
+
+	body #commande-form input[type="radio"],
+	body #commande-form input[type="checkbox"] {
+		opacity: 1 !important;
+	}
+
+
+	/* texte à côté des radios / checkbox */
+	body #commande-form input[type="radio"] + label,
+	body #commande-form input[type="checkbox"] + label {
+		color: #26364a !important;
+		-webkit-text-fill-color: #26364a !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   PETITS TEXTES / AIDES
+   ------------------------------------------------------------ */
+
+	body #commande-form small,
+	body #commande-form .form-text,
+	body #commande-form .text-muted {
+		color: #64748b !important;
+		-webkit-text-fill-color: #64748b !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   TITRES DES BLOCS
+   ------------------------------------------------------------ */
+
+	body #commande-form .travail-section-title {
+		color: #17366f !important;
+		-webkit-text-fill-color: #17366f !important;
+
+		background-color: #eef3fb !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   TABLEAUX
+   ------------------------------------------------------------ */
+
+	body #commande-form table,
+	body #commande-form tbody,
+	body #commande-form tr {
+		background-color: #ffffff !important;
+	}
+
+
+	body #commande-form td {
+		background-color: #ffffff !important;
+
+		color: #1f2937 !important;
+		-webkit-text-fill-color: #1f2937 !important;
+
+		border-color: #dce4f0 !important;
+	}
+
+
+	body #commande-form th {
+		background-color: #eef3fb !important;
+
+		color: #17366f !important;
+		-webkit-text-fill-color: #17366f !important;
+
+		border-color: #dce4f0 !important;
+	}
+
+
+	/* ------------------------------------------------------------
+   AUTOFILL CHROME / SAFARI
+   ------------------------------------------------------------ */
+
+	body #commande-form input:-webkit-autofill,
+	body #commande-form input:-webkit-autofill:hover,
+	body #commande-form input:-webkit-autofill:focus,
+	body #commande-form textarea:-webkit-autofill,
+	body #commande-form select:-webkit-autofill {
+		-webkit-text-fill-color: #1f2937 !important;
+
+		-webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+
+		box-shadow: 0 0 0 1000px #ffffff inset !important;
+
+		opacity: 1 !important;
+	}
+</style>
+
+
+<script>
+
+	function initialiserFormulaireCommande() {
+
+console.log('[DEBUG] initialiserFormulaireCommande() : execution du script');
+
+const form = document.getElementById('commande-form');
+
+const collection = document.getElementById('collection-details');
+
+const addButton = document.getElementById('add-detail');
+
+const addButtonBas = document.getElementById('add-detail-bottom');
+
+if (! form || ! collection) {
+return;
+}
+
+
+const commandeVerrouillee = form.dataset.circuitVerrouille === '1';
+
+
+/*
+         * ====================================================
+         * CLIENT B2B / B2C
+         * ====================================================
+         */
+
+const clientSelect = form.querySelector('.js-client-commande');
+
+const profilClient = form.querySelector('.js-profil-client');
+
+const profilClientAide = form.querySelector('.js-profil-client-aide');
+
+console.log('[DEBUG] clientSelect trouve ?', !! clientSelect, clientSelect);
+console.log('[DEBUG] profilClient trouve ?', !! profilClient);
+console.log('[DEBUG] profilClientAide trouve ?', !! profilClientAide);
+console.log('[DEBUG] commandeVerrouillee =', commandeVerrouillee);
+
+
+function typeClientActuel() {
+
+if (! clientSelect || ! clientSelect.value) {
+return 'B2C';
+}
+
+const option = clientSelect.options[clientSelect.selectedIndex];
+
+if (! option) {
+return 'B2C';
+}
+
+const type = String(option.dataset.typeClient || 'B2C').trim().toUpperCase();
+
+return type === 'B2B' ? 'B2B' : 'B2C';
+}
+
+
+function clientEstB2B() {
+return typeClientActuel() === 'B2B';
+}
+
+
+function afficherProfilClient() {
+
+console.log('[DEBUG] afficherProfilClient() appelee, clientSelect.value =', clientSelect ? clientSelect.value : '(pas de clientSelect)');
+
+if (! profilClient || ! profilClientAide) {
+console.log('[DEBUG] afficherProfilClient() : profilClient/profilClientAide introuvable, arret');
+return;
+}
+
+if (! clientSelect || ! clientSelect.value) {
+console.log('[DEBUG] afficherProfilClient() : clientSelect vide, affichage placeholder');
+profilClient.textContent = 'Sélectionnez un client';
+profilClientAide.textContent = 'Le tarif B2B ou B2C sera appliqué automatiquement.';
+return;
+}
+
+if (clientEstB2B()) {
+profilClient.textContent = 'Client B2B';
+profilClientAide.textContent = 'Le tarif professionnel B2B est appliqué automatiquement lorsqu’il existe pour le produit.';
+} else {
+profilClient.textContent = 'Client B2C';
+profilClientAide.textContent = 'Le prix public est appliqué, sans remise B2B.';
+}
+}
+
+
+async function appliquerNouveauProfilClient() {
+
+console.log('[DEBUG] appliquerNouveauProfilClient() DECLENCHE (changement client detecte)');
+
+afficherProfilClient();
+
+const details = collection.querySelectorAll('.detail-commande');
+
+for (const detail of details) {
+
+if (valeurTypeLigne(detail) !== 'produit') {
+continue;
+}
+
+const mode = valeurModeConfiguration(detail);
+
+if (mode === 'automatique') {
+const configuration = champDetail(detail, 'configuration');
+
+if (configuration && configuration.value) {
+await chargerConfiguration(detail);
+}
+} else {
+const produit = champDetail(detail, 'produit');
+
+if (produit && produit.value) {
+await chargerOptionsManuelles(detail);
+}
+}
+}
+
+calculerCommande();
+}
+
+
+/*
+         * ====================================================
+         * URLS
+         * ====================================================
+         */
+
+const configurationsProduitUrl = "{{ path(
+                'app_commande_catalogue_produit',
+                {'id': 0}
+            ) }}";
+
+const configurationUrl = "{{ path(
+                'app_commande_catalogue_configuration',
+                {'id': 0}
+            ) }}";
+
+const optionsManuellesUrl = "{{ path(
+                'app_commande_catalogue_options_manuelles',
+                {'id': 0}
+            ) }}";
+
+const articleCommandeUrl = "{{ path(
+                'app_article_commande_ajax',
+                {'id': 0}
+            ) }}";
+
+const uploadCsrf = form.dataset.uploadCsrf;
+
+const uploadInitialiserUrl = form.dataset.uploadInitialiserUrl;
+
+const uploadMorceauUrlModele = form.dataset.uploadMorceauUrl;
+
+const uploadStatutUrlModele = form.dataset.uploadStatutUrl;
+
+const uploadSupprimerUrlModele = form.dataset.uploadSupprimerUrl;
+
+
+/*
+         * ====================================================
+         * HELPERS
+         * ====================================================
+         */
+
+function construireUrl(modele, id) { /*
+ * "/0/" ne fonctionne que si l'id 0 est suivi d'un autre segment
+ * (ex. /produit/0/options-manuelles). Quand 0 est le DERNIER
+ * segment de l'URL (ex. /produit/0, /configuration/0), il n'y a
+ * pas de "/" apres : le remplacement echouait silencieusement et
+ * l'URL gardait l'id 0, jamais trouve cote serveur
+ * (EntityValueResolver : "Produits introuvable").
+ */
+return modele.replace(/\/0(\/|$)/, '/' + encodeURIComponent(id) + '$1');
+}
+
+
+/*
+         * ====================================================
+         * ENVOI DES FICHIERS (morceaux)
+         *
+         * Le formulaire porte deja les URLs et le jeton CSRF
+         * necessaires (data-upload-*) et le backend (chunked upload,
+         * FichierUploadController) fonctionne integralement, mais
+         * rien ne les utilisait cote client : choisir un fichier ne
+         * declenchait jamais son envoi, et le champ cache
+         * jetonsFichiers restait vide. Sans jeton, rattacherFichiers()
+         * cote serveur n'a rien a rattacher : le formulaire partait
+         * sans les fichiers.
+         * ====================================================
+         */
+
+const TAILLE_MORCEAU_UPLOAD = 5 * 1024 * 1024;
+
+function construireUrlMorceauUpload(jeton, index) {
+return uploadMorceauUrlModele.replace('__JETON__', jeton).replace('__INDEX__', String(index));
+}
+
+function construireUrlSuppressionFichier(jeton) {
+return uploadSupprimerUrlModele.replace('__JETON__', jeton);
+}
+
+function echapperHtml(texte) {
+const zone = document.createElement('div');
+zone.textContent = texte;
+return zone.innerHTML;
+}
+
+/*
+ * Au-dela de cette taille, on n'essaie plus de generer d'apercu
+ * miniature pour une image : meme via createObjectURL(), le
+ * navigateur doit decoder toute l'image (largeur/hauteur reelles)
+ * pour en afficher ne serait-ce qu'une vignette 40x40, ce qui peut
+ * geler la page un instant sur une tres grosse photo/scan.
+ */
+const LIMITE_APERCU_IMAGE = 8 * 1024 * 1024;
+
+function creerLigneUpload(fichier) {
+const ligne = document.createElement('div');
+
+ligne.className = 'd-flex align-items-center border rounded p-2 mb-2 js-upload-ligne';
+
+const estImage = fichier.type
+&& fichier.type.indexOf('image/') === 0
+&& fichier.size <= LIMITE_APERCU_IMAGE;
+
+const apercu = document.createElement(estImage ? 'img' : 'i');
+
+if (estImage) {
+apercu.className = 'mr-2 rounded js-upload-apercu';
+apercu.style.width = '40px';
+apercu.style.height = '40px';
+apercu.style.objectFit = 'cover';
+
+/*
+ * URL.createObjectURL() plutot que FileReader.readAsDataURL() :
+ * ce dernier lit et encode tout le fichier en base64 en memoire
+ * avant meme le debut de l'envoi, ce qui bloque/fait planter le
+ * navigateur sur les fichiers lourds (grosses photos, scans...).
+ * createObjectURL() ne fait qu'une reference legere geree par le
+ * navigateur, sans lire le contenu.
+ */
+apercu.src = URL.createObjectURL(fichier);
+} else {
+apercu.className = 'fa fa-file-o mr-2 js-upload-icone';
+apercu.style.fontSize = '24px';
+}
+
+const infos = document.createElement('div');
+infos.className = 'flex-grow-1';
+
+infos.innerHTML = '<div class="small font-weight-bold">' + echapperHtml(fichier.name) + '</div>' + '<div class="progress" style="height:4px;"><div class="progress-bar js-upload-barre" style="width:0%"></div></div>' + '<div class="small text-muted js-upload-statut">En attente...</div>';
+
+const boutonSupprimer = document.createElement('button');
+boutonSupprimer.type = 'button';
+boutonSupprimer.className = 'btn btn-sm btn-link text-danger js-upload-supprimer';
+boutonSupprimer.title = 'Supprimer ce fichier';
+boutonSupprimer.innerHTML = '<i class="fa fa-trash"></i>';
+
+ligne.appendChild(apercu);
+ligne.appendChild(infos);
+ligne.appendChild(boutonSupprimer);
+
+return ligne;
+}
+
+function ajouterJetonFichier(detail, jeton) {
+const champ = detail.querySelector('.js-jetons-fichiers');
+
+if (! champ) {
+return;
+}
+
+const valeurs = champ.value ? champ.value.split(',').map(function (v) {
+return v.trim();
+}).filter(Boolean) : [];
+
+if (valeurs.indexOf(jeton) === -1) {
+valeurs.push(jeton);
+}
+
+champ.value = valeurs.join(',');
+}
+
+function retirerJetonFichier(detail, jeton) {
+const champ = detail.querySelector('.js-jetons-fichiers');
+
+if (! champ) {
+return;
+}
+
+const valeurs = champ.value
+? champ.value.split(',').map(function (v) { return v.trim(); }).filter(Boolean)
+: [];
+
+champ.value = valeurs.filter(function (v) { return v !== jeton; }).join(',');
+}
+
+async function supprimerFichierTeleverse(detail, ligne) {
+const jeton = ligne.dataset.jeton || '';
+
+const statutTexte = ligne.querySelector('.js-upload-statut');
+
+/*
+ * Pas encore de jeton (upload pas encore initialise cote serveur) :
+ * rien a supprimer la-bas, on retire juste la ligne localement.
+ */
+if (! jeton) {
+ligne.remove();
+
+return;
+}
+
+if (! window.confirm('Supprimer ce fichier ?')) {
+return;
+}
+
+if (statutTexte) {
+statutTexte.textContent = 'Suppression...';
+}
+
+try {
+
+const reponse = await fetch(construireUrlSuppressionFichier(jeton), {
+method: 'POST',
+headers: {
+'X-CSRF-TOKEN': uploadCsrf
+}
+});
+
+if (! reponse.ok) {
+const donnees = await reponse.json().catch(function () { return {}; });
+
+throw new Error(donnees.message || 'Impossible de supprimer ce fichier.');
+}
+
+retirerJetonFichier(detail, jeton);
+
+ligne.remove();
+
+} catch (erreur) {
+
+console.error(erreur);
+
+if (statutTexte) {
+statutTexte.textContent = 'Échec : ' + erreur.message;
+}
+}
+}
+
+async function televerserFichier(detail, fichier, ligneUpload) {
+const barre = ligneUpload.querySelector('.js-upload-barre');
+
+const statutTexte = ligneUpload.querySelector('.js-upload-statut');
+
+try {
+
+const nombreMorceaux = Math.max(1, Math.ceil(fichier.size / TAILLE_MORCEAU_UPLOAD));
+
+const reponseInit = await fetch(uploadInitialiserUrl, {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+'X-CSRF-TOKEN': uploadCsrf,
+Accept: 'application/json'
+},
+body: JSON.stringify(
+{
+nom: fichier.name,
+typeMime: fichier.type || 'application/octet-stream',
+taille: fichier.size,
+nombreMorceaux: nombreMorceaux
+}
+)
+});
+
+const donneesInit = await reponseInit.json();
+
+if (! reponseInit.ok || ! donneesInit.jeton) {
+throw new Error(donneesInit.message || "Impossible d'initialiser l'envoi.");
+}
+
+const jeton = donneesInit.jeton;
+
+/*
+ * Rendu disponible sur la ligne pour le bouton de suppression :
+ * on peut annuler un envoi meme avant qu'il soit termine.
+ */
+ligneUpload.dataset.jeton = jeton;
+
+for (let index = 0; index < nombreMorceaux; index++) {
+
+const debut = index * TAILLE_MORCEAU_UPLOAD;
+
+const fin = Math.min(fichier.size, debut + TAILLE_MORCEAU_UPLOAD);
+
+const donneesFormulaire = new FormData();
+
+donneesFormulaire.append('morceau', fichier.slice(debut, fin), fichier.name);
+
+const reponseMorceau = await fetch(construireUrlMorceauUpload(jeton, index), {
+method: 'POST',
+headers: {
+'X-CSRF-TOKEN': uploadCsrf
+},
+body: donneesFormulaire
+});
+
+const donneesMorceau = await reponseMorceau.json();
+
+if (! reponseMorceau.ok) {
+throw new Error(donneesMorceau.message || "L'envoi du fichier a été interrompu.");
+}
+
+const progression = typeof donneesMorceau.progression === 'number' ? donneesMorceau.progression : Math.round(((index + 1) / nombreMorceaux) * 100);
+
+if (barre) {
+barre.style.width = progression + '%';
+}
+
+if (statutTexte) {
+statutTexte.textContent = progression + ' %';
+}
+}
+
+ajouterJetonFichier(detail, jeton);
+
+if (statutTexte) {
+statutTexte.textContent = 'Envoyé';
+}
+
+ligneUpload.classList.add('text-success');
+
+} catch (erreur) {
+
+console.error(erreur);
+
+if (statutTexte) {
+statutTexte.textContent = 'Échec : ' + erreur.message;
+}
+
+ligneUpload.classList.add('text-danger');
+}
+}
+
+function initialiserUploadFichiers(detail) {
+const champFichier = detail.querySelector('.js-fichiers-client');
+
+const zoneListe = detail.querySelector('.js-liste-uploads');
+
+if (! champFichier || ! zoneListe || ! uploadInitialiserUrl) {
+return;
+}
+
+champFichier.addEventListener('change', async function () {
+
+const fichiers = Array.from(champFichier.files || []);
+
+/*
+ * Reinitialise le champ natif : sans cela, choisir a nouveau
+ * exactement le meme fichier ne redeclenche pas "change".
+ */
+champFichier.value = '';
+
+/*
+ * Envoi des fichiers un par un (et non tous en parallele) :
+ * avec plusieurs fichiers lourds selectionnes d'un coup, lancer
+ * tous les envois en meme temps multiplie la charge memoire/
+ * reseau au meme instant et peut faire planter/geler la page.
+ */
+for (const fichier of fichiers) {
+
+const ligne = creerLigneUpload(fichier);
+
+zoneListe.appendChild(ligne);
+
+const boutonSupprimer = ligne.querySelector('.js-upload-supprimer');
+
+if (boutonSupprimer) {
+boutonSupprimer.addEventListener('click', function () {
+supprimerFichierTeleverse(detail, ligne);
+});
+}
+
+await televerserFichier(detail, fichier, ligne);
+}
+});
+}
+
+
+function champDetail(detail, nom) {
+return detail.querySelector('[data-detail-field="' + nom + '"],' + '[name$="[' + nom + ']"]');
+}
+
+
+function nombreDepuisChamp(champ, valeurDefaut = 0) {
+if (! champ || champ.value === '') {
+return valeurDefaut;
+}
+
+const valeur = Number(String(champ.value).replace(',', '.'));
+
+return Number.isFinite(valeur) ? valeur : valeurDefaut;
+}
+
+
+/*
+ * Les champs largeur/longueur sont saisis en centimetres (voir
+ * CommandesDetailsType), mais les calculs de surface/metre lineaire
+ * ci-dessous raisonnent en metres (comme le catalogue). On convertit
+ * donc systematiquement a la lecture du champ.
+ */
+function metresDepuisChampCm(champ) {
+return Math.max(0, nombreDepuisChamp(champ)) / 100;
+}
+
+
+function formaterNombre(valeur, decimals = 3) {
+return Number(valeur || 0).toLocaleString('fr-FR', {maximumFractionDigits: decimals});
+}
+
+
+function formaterMontant(valeur) {
+return Math.round(Number(valeur || 0)).toLocaleString('fr-FR');
+}
+
+
+function definirValeur(detail, champNom, valeur) {
+const champ = champDetail(detail, champNom);
+
+if (! champ) {
+return;
+}
+
+if (valeur && typeof valeur === 'object' && valeur.id !== undefined) {
+valeur = valeur.id;
+}
+
+const nouvelleValeur = valeur === null || valeur === undefined ? '' : String(valeur);
+
+/*
+ * Garde anti-recursion : certains champs (ex. "surface") portent
+ * la classe js-calcul-detail et redeclenchent calculerDetail() sur
+ * l'evenement "input". Sans ce garde-fou, calculerDetail() ->
+ * definirValeur() -> input -> calculerDetail() -> ... boucle
+ * indefiniment (RangeError: Maximum call stack size exceeded).
+ * Si la valeur ne change pas reellement, on ne redispatche rien.
+ */
+if (champ.value === nouvelleValeur) {
+return;
+}
+
+champ.value = nouvelleValeur;
+
+if (champ.tagName === 'SELECT' && window.jQuery && window.jQuery.fn.select2) {
+window.jQuery(champ).val(champ.value).trigger('change.select2');
+}
+
+champ.dispatchEvent(new Event('input', {bubbles: true}));
+}
+
+
+function valeurTypeLigne(detail) {
+const radio = detail.querySelector('[name$="[typeLigne]"]:checked');
+
+if (radio) {
+return radio.value;
+}
+
+const champ = champDetail(detail, 'typeLigne');
+
+return champ ? champ.value : 'produit';
+}
+
+
+function valeurModeConfiguration(detail) {
+const radio = detail.querySelector('[name$="[modeConfiguration]"]:checked');
+
+if (radio) {
+return radio.value;
+}
+
+const champ = champDetail(detail, 'modeConfiguration');
+
+return champ ? champ.value : 'automatique';
+}
+
+
+function afficher(detail, selecteur, visible) {
+const zone = detail.querySelector(selecteur);
+
+if (zone) {
+zone.style.display = visible ? '' : 'none';
+}
+}
+
+
+/*
+ * Verrouille un champ dont la valeur provient du catalogue (prix,
+ * mode de calcul) : l'utilisateur ne doit pas pouvoir le modifier
+ * manuellement tant qu'il vient du produit/de la configuration.
+ * "readOnly" ne fonctionne pas sur un <select> : on utilise
+ * pointer-events pour bloquer l'interaction tout en laissant la
+ * valeur soumise avec le formulaire.
+ */
+function verrouillerChampCatalogue(champ, verrouille) {
+if (! champ) {
+return;
+}
+
+if (champ.tagName === 'SELECT') {
+champ.style.pointerEvents = verrouille ? 'none' : '';
+champ.tabIndex = verrouille ? -1 : 0;
+} else {
+champ.readOnly = verrouille;
+}
+}
+
+
+/*
+         * ====================================================
+         * SELECT2
+         * ====================================================
+         */
+
+function initialiserSelect2(scope) {
+if (!window.jQuery || !window.jQuery.fn.select2) {
+return;
+}
+
+window.jQuery(scope).find('select.js-select-search').each(function () {
+
+const select = window.jQuery(this);
+
+if (select.hasClass('select2-hidden-accessible')) {
+return;
+}
+
+select.select2({
+width: '100%',
+
+allowClear: true,
+
+placeholder: select.data('placeholder') || 'Rechercher...',
+
+/*
+ * filtrerOptions() marque les options incompatibles avec
+ * option.disabled = true (type d'impression / support / format
+ * non lies au produit choisi en mode manuel). Select2 construit
+ * sa propre liste deroulante et ignore par defaut les attributs
+ * "hidden"/"disabled" du <select> natif : sans ce matcher, les
+ * options desactivees restaient visibles et selectionnables dans
+ * le menu Select2, alors qu'elles ne l'etaient plus dans le
+ * <select> natif.
+ */
+matcher: function (params, data) {
+if (data.element && data.element.disabled) {
+return null;
+}
+
+const terme = (params.term || '').trim().toUpperCase();
+
+if (terme === '') {
+return data;
+}
+
+const texte = (data.text || '').toUpperCase();
+
+return texte.indexOf(terme) > -1 ? data : null;
+}
+});
+
+});
+}
+
+
+/*
+ * Un select transforme par Select2 notifie une selection en appelant
+ * $(element).trigger('change'), qui ne passe QUE par le systeme
+ * d'evenements interne de jQuery : un ecouteur natif
+ * addEventListener('change', ...) ne le recoit jamais. Cette fonction
+ * attache le gestionnaire via jQuery quand il est disponible (cas de
+ * tous les champs .js-select-search de ce formulaire : produit,
+ * article, configuration, client), et retombe sur addEventListener
+ * sinon.
+ */
+function attacherChangement(champ, gestionnaire) {
+if (! champ) {
+return;
+}
+
+if (window.jQuery) {
+window.jQuery(champ).on('change', gestionnaire);
+} else {
+champ.addEventListener('change', gestionnaire);
+}
+}
+
+
+/*
+         * ====================================================
+         * CALCUL
+         * ====================================================
+         */
+
+function montantFinitions(detail) {
+if (valeurTypeLigne(detail) !== 'produit') {
+return 0;
+}
+
+const automatiques = Array.from(detail.querySelectorAll('.js-finition-selectionnee:checked')).reduce(function (total, checkbox) {
+return total + Number(checkbox.dataset.prix || 0);
+}, 0);
+
+/*
+ * Finitions manuelles : simple apercu cote client (forfait =
+ * prix fixe, sinon prix x quantite). Le montant definitif de
+ * chaque ligne est recalcule cote serveur a l'enregistrement.
+ */
+const manuelles = Array.from(detail.querySelectorAll('.js-finition-manuelle')).reduce(function (total, ligne) {
+const prix = Number(ligne.querySelector('.js-finition-prix') ?. value || 0);
+const quantite = Math.max(1, Number(ligne.querySelector('.js-finition-quantite') ?. value || 1));
+const mode = ligne.querySelector('.js-finition-mode') ?. value || 'forfait';
+
+return total + (mode === 'forfait' ? prix : prix * quantite);
+}, 0);
+
+return automatiques + manuelles;
+}
+
+
+function calculerDetail(detail) {
+const quantite = Math.max(1, nombreDepuisChamp(champDetail(detail, 'quantite'), 1));
+
+const largeur = metresDepuisChampCm(champDetail(detail, 'largeur'));
+
+const longueur = metresDepuisChampCm(champDetail(detail, 'longueur'));
+
+const surface = largeur * longueur;
+
+const prix = Math.max(0, nombreDepuisChamp(champDetail(detail, 'prixUnitaire')));
+
+const remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
+
+const tva = Math.max(0, nombreDepuisChamp(champDetail(detail, 'tva')));
+
+const mode = String(champDetail(detail, 'modeCalcul') ?. value || 'unite');
+
+let montant = 0;
+let facteur = 0;
+
+switch (mode) {
+
+case 'forfait': facteur = 1; montant = prix * facteur;
+
+break;
+
+
+case 'metre': facteur = longueur * quantite; montant = prix * facteur;
+
+break;
+
+
+case 'metre_carre': facteur = surface * quantite; montant = prix * facteur;
+
+break;
+
+
+default: facteur = quantite; montant = prix * facteur;
+
+break;
+}
+
+
+montant += montantFinitions(detail);
+
+
+// La remise est un montant par unité (ex. 500 FCFA par m²), pas un montant fixe sur toute la ligne.
+const remiseTotale = Math.min(montant, remise * Math.max(0, facteur));
+
+const ht = Math.max(0, montant - remiseTotale);
+
+const ttc = ht * (1 + tva / 100);
+
+
+const elementRemiseTotale = detail.querySelector('.js-remise-totale-detail');
+
+if (elementRemiseTotale) {
+elementRemiseTotale.textContent = remiseTotale > 0
+? ('Remise totale : ' + formaterMontant(remiseTotale) + ' FCFA')
+: 'Remise totale : —';
+}
+
+
+definirValeur(detail, 'surface', surface);
+
+definirValeur(detail, 'totalHt', Math.round(ht));
+
+definirValeur(detail, 'totalTtc', Math.round(ttc));
+
+
+calculerCommande();
+}
+
+
+function calculerCommande() {
+
+let ht = 0;
+let ttc = 0;
+
+collection.querySelectorAll('.detail-commande').forEach(function (detail) {
+ht += nombreDepuisChamp(champDetail(detail, 'totalHt'));
+
+ttc += nombreDepuisChamp(champDetail(detail, 'totalTtc'));
+});
+
+
+const totalHt = document.getElementById('{{ form.totalHt.vars.id }}');
+
+const totalTtc = document.getElementById('{{ form.totalTtc.vars.id }}');
+
+const remise = document.getElementById('{{ form.remise.vars.id }}');
+
+const payer = document.getElementById('{{ form.montantApayer.vars.id }}');
+
+
+if (totalHt) {
+totalHt.value = Math.round(ht);
+}
+
+if (totalTtc) {
+totalTtc.value = Math.round(ttc);
+}
+
+if (payer) {
+
+payer.value = Math.max(0, Math.round(ttc - nombreDepuisChamp(remise)));
+}
+}
+
+
+/*
+         * ====================================================
+         * CIRCUIT
+         * ====================================================
+         */
+
+function appliquerCircuit(detail) {
+const prepresse = detail.querySelector('.js-prepresse-necessaire');
+
+const production = detail.querySelector('.js-production-necessaire');
+
+const message = detail.querySelector('.js-message-circuit-texte');
+
+if (! prepresse || ! production || ! message) {
+return;
+}
+
+
+if (! prepresse.checked && ! production.checked) {
+message.textContent = 'Livraison directe.';
+
+return;
+}
+
+
+if (! prepresse.checked && production.checked) {
+message.textContent = 'Production directe puis livraison.';
+
+return;
+}
+
+
+if (prepresse.checked && production.checked) {
+message.textContent = 'Prépresse, production puis livraison.';
+
+return;
+}
+
+
+message.textContent = 'Prépresse puis livraison.';
+}
+
+
+/*
+         * ====================================================
+         * TYPE DE LIGNE
+         * ====================================================
+         */
+
+function appliquerTypeLigne(detail, viaChangementUtilisateur) {
+const type = valeurTypeLigne(detail);
+
+const produit = type === 'produit';
+
+const article = type === 'article';
+
+const libre = type === 'libre';
+const designation = champDetail(detail, 'designation');
+if (produit) {
+
+if (designation) {
+designation.readOnly = false;
+}
+
+// reste de ton code...
+}
+if (article) {
+
+if (designation) {
+designation.readOnly = true;
+}
+}
+if (libre) {
+
+if (designation) {
+designation.readOnly = false;
+
+/*
+ * On ne vide la designation que lors d'un vrai changement de
+ * type par l'utilisateur (pas au chargement initial d'une ligne
+ * existante en saisie libre, sinon la designation deja
+ * enregistree disparait a chaque ouverture du formulaire de
+ * modification).
+ */
+if (viaChangementUtilisateur) {
+designation.value = '';
+}
+}
+
+definirValeur(detail, 'article', '');
+}
+
+afficher(detail, '.js-zone-produit', produit);
+
+afficher(detail, '.js-zone-champs-configuration', produit);
+
+afficher(detail, '.js-zone-article-stock', article);
+
+afficher(detail, '.js-zone-finitions', produit);
+
+afficher(detail, '.js-zone-technique', produit);
+
+afficher(detail, '.js-zone-fichiers', produit);
+
+
+const articleChamp = champDetail(detail, 'article');
+
+const produitChamp = champDetail(detail, 'produit');
+
+const configuration = champDetail(detail, 'configuration');
+
+
+if (articleChamp) {
+articleChamp.required = article;
+}
+
+if (produitChamp) {
+produitChamp.required = produit;
+}
+
+if (configuration) {
+configuration.required = produit && valeurModeConfiguration(detail) === 'automatique';
+}
+
+detail.querySelectorAll('[name$="[modeConfiguration]"]').forEach(function (radio) {
+radio.required = produit;
+});
+
+
+if (produit) {
+
+if (articleChamp) {
+articleChamp.required = false;
+}
+
+definirValeur(detail, 'article', '');
+
+const prepresse = detail.querySelector('.js-prepresse-necessaire');
+
+const production = detail.querySelector('.js-production-necessaire');
+
+if (prepresse) {
+prepresse.style.pointerEvents = '';
+
+/*
+ * Prepresse/production sont cochees par defaut sur une ligne
+ * produit, sauf en saisie libre ou choix d'article. On ne force
+ * cette valeur que lors d'un vrai changement de type par
+ * l'utilisateur (pas au chargement initial d'une ligne existante,
+ * pour ne pas ecraser une case decochee manuellement et deja
+ * enregistree).
+ */
+if (viaChangementUtilisateur) {
+prepresse.checked = true;
+}
+}
+
+if (production) {
+production.style.pointerEvents = '';
+
+if (viaChangementUtilisateur) {
+production.checked = true;
+}
+}
+
+appliquerModeConfiguration(detail);
+
+appliquerCircuit(detail);
+
+calculerDetail(detail);
+
+return;
+}
+
+
+/*
+             * ARTICLE / LIBRE
+             */
+
+/*
+ * Hors mode "produit", le prix et le mode de calcul ne viennent plus
+ * du catalogue : on les redeverrouille (une ligne peut passer de
+ * "produit" a "libre" sans recharger la page).
+ */
+verrouillerChampCatalogue(champDetail(detail, 'prixUnitaire'), false);
+
+verrouillerChampCatalogue(champDetail(detail, 'modeCalcul'), false);
+
+definirValeur(detail, 'produit', '');
+
+definirValeur(detail, 'configuration', '');
+
+definirValeur(detail, 'typeImpression', '');
+
+definirValeur(detail, 'support', '');
+
+definirValeur(detail, 'format', '');
+
+
+afficher(detail, '.js-zone-largeur', false);
+
+afficher(detail, '.js-zone-longueur', false);
+
+afficher(detail, '.js-zone-surface', false);
+
+afficher(detail, '.js-zone-nombre-faces', false);
+
+
+const prepresse = detail.querySelector('.js-prepresse-necessaire');
+
+const production = detail.querySelector('.js-production-necessaire');
+
+if (prepresse) {
+if (viaChangementUtilisateur) {
+prepresse.checked = false;
+}
+
+prepresse.style.pointerEvents = 'none';
+}
+
+if (production) {
+if (viaChangementUtilisateur) {
+production.checked = false;
+}
+
+production.style.pointerEvents = 'none';
+}
+
+
+definirValeur(detail, 'modeCalcul', 'unite');
+
+
+if (article && articleChamp && articleChamp.value) {
+chargerArticle(detail);
+}
+
+
+if (libre) {
+
+definirValeur(detail, 'article', '');
+
+if (articleChamp) {
+articleChamp.required = false;
+}
+}
+
+
+appliquerCircuit(detail);
+
+calculerDetail(detail);
+}
+
+
+/*
+         * ====================================================
+         * MODE PRODUIT
+         * ====================================================
+         */
+
+function appliquerModeConfiguration(detail) {
+if (valeurTypeLigne(detail) !== 'produit') {
+return;
+}
+
+const mode = valeurModeConfiguration(detail);
+
+const auto = mode === 'automatique';
+
+afficher(detail, '.js-zone-configuration-automatique', auto);
+
+afficher(detail, '.js-zone-finitions-automatiques', auto);
+
+afficher(detail, '.js-zone-finitions-manuelles', ! auto);
+
+const configuration = champDetail(detail, 'configuration');
+
+if (configuration) {
+configuration.required = auto;
+}
+
+/*
+ * Prix et mode de calcul viennent toujours du catalogue en mode
+ * "produit" (automatique ou manuel) : ils ne sont modifiables que
+ * pour une ligne en saisie libre.
+ */
+verrouillerChampCatalogue(champDetail(detail, 'prixUnitaire'), true);
+
+verrouillerChampCatalogue(champDetail(detail, 'modeCalcul'), true);
+
+const produitChamp = champDetail(detail, 'produit');
+
+if (produitChamp && produitChamp.value) {
+if (auto) {
+chargerConfigurationsProduit(detail);
+} else {
+chargerOptionsManuelles(detail);
+}
+}
+}
+
+
+/*
+         * ====================================================
+         * ARTICLE AJAX
+         * ====================================================
+         */
+
+async function chargerArticle(detail) {
+if (valeurTypeLigne(detail) !== 'article') {
+return;
+}
+
+const select = champDetail(detail, 'article');
+
+const message = detail.querySelector('.js-stock-article');
+
+if (! select || ! select.value) {
+
+if (message) {
+message.textContent = 'Sélectionnez un article.';
+}
+
+return;
+}
+
+
+if (message) {
+message.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Chargement...';
+}
+
+
+try {
+
+const response = await fetch(construireUrl(articleCommandeUrl, select.value), {
+headers: {
+Accept: 'application/json'
+}
+});
+
+const json = await response.json();
+
+if (! response.ok || ! json.success) {
+throw new Error(json.message || 'Impossible de charger l’article.');
+}
+
+
+const article = json.article;
+/*
+ * ====================================================
+ * DÉSIGNATION AUTOMATIQUE POUR ARTICLE EN STOCK
+ * ====================================================
+ */
+const designationChamp = champDetail(detail, 'designation');
+
+if (designationChamp) {
+designationChamp.value = article.designation || '';
+
+/*
+     * Pour une vente d'article stock,
+     * la désignation vient directement de l'article.
+     */
+designationChamp.readOnly = true;
+
+designationChamp.dispatchEvent(new Event('input', {bubbles: true}));
+}
+
+definirValeur(detail, 'designation', article.designation);
+
+definirValeur(detail, 'prixUnitaire', article.prixVente || 0);
+
+definirValeur(detail, 'modeCalcul', 'unite');
+
+
+detail.dataset.articleStockDisponible = String(article.stockDisponible || 0);
+
+detail.dataset.articleUnite = article.unite || '';
+
+
+if (message) {
+
+const disponible = Number(article.stockDisponible || 0);
+
+message.innerHTML = '<strong>' + (
+article.reference || ''
+) + '</strong><br>' + 'Physique : ' + formaterNombre(article.stockPhysique) + ' ' + (
+article.unite || ''
+) + '<br>' + 'Réservé : ' + formaterNombre(article.stockReserve) + ' ' + (
+article.unite || ''
+) + '<br>' + '<strong class="' + (
+disponible > 0 ? 'text-success' : 'text-danger'
+) + '">' + 'Disponible : ' + formaterNombre(disponible) + ' ' + (
+article.unite || ''
+) + '</strong><br>' + 'Prix : ' + formaterMontant(article.prixVente) + ' FCFA';
+}
+
+
+calculerDetail(detail);
+
+} catch (e) {
+
+console.error(e);
+
+if (message) {
+message.innerHTML = '<span class="text-danger">' + e.message + '</span>';
+}
+}
+}
+
+
+/*
+         * ====================================================
+         * PRODUIT / CONFIG AJAX
+         * ====================================================
+         */
+
+async function chargerConfigurationsProduit(detail) {
+const produit = champDetail(detail, 'produit');
+
+const configuration = champDetail(detail, 'configuration');
+
+console.log('[DEBUG] chargerConfigurationsProduit() appelee, produit.value =', produit ? produit.value : '(champ produit introuvable)', 'configuration champ trouve ?', !! configuration);
+
+if (! produit || ! configuration) {
+console.log('[DEBUG] chargerConfigurationsProduit() : champ produit ou configuration introuvable, arret');
+return;
+}
+
+
+configuration.innerHTML = '<option value="">Sélectionnez une configuration</option>';
+
+
+if (! produit.value) {
+console.log('[DEBUG] chargerConfigurationsProduit() : aucun produit selectionne, arret');
+return;
+}
+
+
+try {
+
+const url = construireUrl(configurationsProduitUrl, produit.value);
+console.log('[DEBUG] chargerConfigurationsProduit() : fetch vers', url);
+
+const response = await fetch(url);
+
+console.log('[DEBUG] chargerConfigurationsProduit() : reponse HTTP', response.status);
+
+const json = await response.json();
+
+console.log('[DEBUG] chargerConfigurationsProduit() : JSON recu', json);
+
+const configs = Array.isArray(json) ? json : (json.configurations || json.data || []);
+
+console.log('[DEBUG] chargerConfigurationsProduit() : nombre de configurations =', configs.length);
+
+
+configs.forEach(function (config) {
+const option = document.createElement('option');
+
+option.value = config.id;
+
+option.textContent = config.libelle || config.nom || ('Configuration ' + config.id);
+
+configuration.appendChild(option);
+});
+
+
+if (configs.length === 1) {
+configuration.value = configs[0].id;
+
+await chargerConfiguration(detail);
+}
+
+
+} catch (e) {
+
+console.error(e);
+}
+}
+
+
+/*
+         * ====================================================
+         * PRODUIT MANUEL AJAX
+         * ====================================================
+         */
+
+function filtrerOptions(select, idsAutorises) {
+if (! select) {
+return;
+}
+
+const autorises = new Set((idsAutorises || []).map(String));
+
+let valeurEncoreValide = false;
+
+Array.from(select.options).forEach(function (option) {
+if (! option.value) {
+return;
+}
+
+const visible = autorises.has(String(option.value));
+
+option.hidden = ! visible;
+
+option.disabled = ! visible;
+
+if (visible && option.value === select.value) {
+valeurEncoreValide = true;
+}
+});
+
+if (! valeurEncoreValide) {
+select.value = '';
+}
+
+if (window.jQuery && window.jQuery.fn.select2 && window.jQuery(select).hasClass('select2-hidden-accessible')) {
+window.jQuery(select).trigger('change.select2');
+}
+}
+
+
+/*
+ * Applique la liste de finitions autorisees (memorisee par
+ * chargerOptionsManuelles() dans detail.dataset.finitionsAutorisees)
+ * a toutes les lignes de finition manuelle deja presentes.
+ */
+function appliquerFiltreFinitions(detail) {
+if (detail.dataset.finitionsAutorisees === undefined) {
+return;
+}
+
+const ids = detail.dataset.finitionsAutorisees === '' ? [] : detail.dataset.finitionsAutorisees.split(',');
+
+detail.querySelectorAll('.js-finition-manuelle select.js-select-search').forEach(function (select) {
+filtrerOptions(select, ids);
+});
+}
+
+
+/*
+ * ====================================================
+ * FORMAT / DIMENSIONS SELON LE PRODUIT
+ * ====================================================
+ *
+ * - Produit sans surface/longueur (forfait, unité...) : ni
+ *   format, ni largeur/longueur, juste quantité et prix.
+ * - Produit avec surface/longueur et des formats liés : liste
+ *   de formats, dont le choix remplit largeur/longueur.
+ * - Produit avec surface/longueur mais aucun format lié :
+ *   largeur/longueur à saisir directement.
+ */
+function appliquerZoneFormatDimensions(detail, infosProduit, formats) {
+const besoinDimensions = Boolean(infosProduit.utiliseSurface) || Boolean(infosProduit.utiliseLongueur);
+
+const aDesFormats = besoinDimensions && formats.length > 0;
+
+afficher(detail, '.js-zone-format', aDesFormats);
+
+afficher(detail, '.js-zone-largeur', besoinDimensions);
+
+afficher(detail, '.js-zone-longueur', besoinDimensions);
+
+detail.dataset.formatsDimensions = JSON.stringify(
+formats.map(function (f) {
+return {
+id: f.id,
+largeur: f.largeur,
+hauteur: f.hauteur,
+unite: f.unite
+};
+})
+);
+
+if (! besoinDimensions) {
+definirValeur(detail, 'format', '');
+definirValeur(detail, 'largeur', '');
+definirValeur(detail, 'longueur', '');
+}
+}
+
+
+/*
+ * Convertit une dimension de Format (mm, cm ou m selon le
+ * champ "unité" du format) vers des centimètres, pour remplir
+ * Largeur (cm) / Longueur (cm).
+ */
+function convertirVersCm(valeur, unite) {
+const nombre = Number(valeur);
+
+if (! isFinite(nombre) || nombre <= 0) {
+return null;
+}
+
+const u = String(unite || 'mm').trim().toLowerCase();
+
+if (u === 'mm') {
+return nombre / 10;
+}
+
+if (u === 'cm') {
+return nombre;
+}
+
+if (u === 'm') {
+return nombre * 100;
+}
+
+/*
+ * Unité non reconnue : mieux vaut laisser le champ vide qu'une
+ * valeur fausse.
+ */
+return null;
+}
+
+
+function appliquerDimensionsFormatSelectionne(detail) {
+const champFormat = champDetail(detail, 'format');
+
+if (! champFormat || ! champFormat.value) {
+return;
+}
+
+let formats = [];
+
+try {
+formats = JSON.parse(detail.dataset.formatsDimensions || '[]');
+} catch (e) {
+formats = [];
+}
+
+const formatChoisi = formats.find(function (f) {
+return String(f.id) === String(champFormat.value);
+});
+
+if (! formatChoisi) {
+return;
+}
+
+const largeurCm = convertirVersCm(formatChoisi.largeur, formatChoisi.unite);
+
+const longueurCm = convertirVersCm(formatChoisi.hauteur, formatChoisi.unite);
+
+if (largeurCm !== null) {
+definirValeur(detail, 'largeur', largeurCm);
+}
+
+if (longueurCm !== null) {
+definirValeur(detail, 'longueur', longueurCm);
+}
+
+calculerDetail(detail);
+}
+
+
+async function chargerOptionsManuelles(detail) {
+if (valeurTypeLigne(detail) !== 'produit') {
+return;
+}
+
+const produit = champDetail(detail, 'produit');
+
+if (! produit || ! produit.value) {
+return;
+}
+
+
+try {
+
+const response = await fetch(construireUrl(optionsManuellesUrl, produit.value));
+
+const json = await response.json();
+
+if (! response.ok || ! json.success) {
+throw new Error(json.message || 'Impossible de charger le produit.');
+}
+
+const infosProduit = json.produit || {};
+
+
+definirValeur(detail, 'designation', infosProduit.nom || '');
+
+definirValeur(detail, 'prixUnitaire', infosProduit.prixBase || 0);
+
+definirValeur(detail, 'remise', clientEstB2B() ? Math.round((infosProduit.prixBase || 0) * (infosProduit.remiseB2B || 0) / 100) : 0);
+
+definirValeur(detail, 'modeCalcul', infosProduit.modeCalcul || 'unite');
+
+
+filtrerOptions(champDetail(detail, 'typeImpression'), (json.typesImpression || []).map(function (t) {
+return t.id;
+}));
+
+filtrerOptions(champDetail(detail, 'support'), (json.supports || []).map(function (s) {
+return s.id;
+}));
+
+filtrerOptions(champDetail(detail, 'format'), (json.formats || []).map(function (f) {
+return f.id;
+}));
+
+appliquerZoneFormatDimensions(detail, infosProduit, json.formats || []);
+
+/*
+ * Finitions compatibles avec le produit : memorisees sur le
+ * detail pour filtrer aussi bien les lignes de finition deja
+ * presentes que celles ajoutees plus tard via "Ajouter une
+ * finition" (voir appliquerFiltreFinitions() et l'ecouteur de
+ * .js-ajouter-finition dans initialiserDetail()).
+ */
+detail.dataset.finitionsAutorisees = (json.finitions || []).map(function (f) {
+return f.id;
+}).join(',');
+
+appliquerFiltreFinitions(detail);
+
+
+calculerDetail(detail);
+
+
+} catch (e) {
+
+console.error(e);
+}
+}
+
+
+async function chargerConfiguration(detail) {
+const configuration = champDetail(detail, 'configuration');
+
+console.log('[DEBUG] chargerConfiguration() appelee, configuration.value =', configuration ? configuration.value : '(champ configuration introuvable)');
+
+if (! configuration || ! configuration.value) {
+console.log('[DEBUG] chargerConfiguration() : pas de configuration selectionnee, arret');
+return;
+}
+
+
+try {
+
+const url = construireUrl(configurationUrl, configuration.value);
+console.log('[DEBUG] chargerConfiguration() : fetch vers', url);
+
+const response = await fetch(url);
+
+console.log('[DEBUG] chargerConfiguration() : reponse HTTP', response.status);
+
+const json = await response.json();
+
+console.log('[DEBUG] chargerConfiguration() : JSON recu', json);
+
+const config = json.configuration || json.data || json;
+
+
+definirValeur(detail, 'designation', config.designation || '');
+
+definirValeur(detail, 'typeImpression', config.typeImpression);
+
+definirValeur(detail, 'support', config.support);
+
+definirValeur(detail, 'format', config.format);
+
+definirValeur(detail, 'prixUnitaire', config.prixBase || 0);
+
+definirValeur(detail, 'remise', clientEstB2B() ? Math.round((config.prixBase || 0) * (config.remiseB2B || 0) / 100) : 0);
+
+definirValeur(detail, 'modeCalcul', config.modeCalcul || 'unite');
+
+
+const finitionsBox = detail.querySelector('.js-finitions-box');
+
+if (finitionsBox) {
+
+const nomChamp = finitionsBox.dataset.inputName;
+
+finitionsBox.innerHTML = '';
+
+(config.finitions || []).forEach(function (finition, index) {
+const ligne = document.createElement('div');
+
+ligne.className = 'form-check form-check-inline';
+
+const checkbox = document.createElement('input');
+
+checkbox.type = 'checkbox';
+
+checkbox.className = 'form-check-input js-finition-selectionnee';
+
+checkbox.name = nomChamp + '[]';
+
+checkbox.value = finition.id;
+
+checkbox.dataset.prix = finition.prix || 0;
+
+checkbox.checked = Boolean(finition.obligatoire || finition.selectionneeParDefaut);
+
+
+const label = document.createElement('label');
+
+label.className = 'form-check-label';
+
+label.textContent = finition.nom || 'Finition';
+
+
+ligne.appendChild(checkbox);
+
+ligne.appendChild(label);
+
+finitionsBox.appendChild(ligne);
+});
+}
+
+
+calculerDetail(detail);
+
+
+} catch (e) {
+
+console.error(e);
+}
+}
+
+
+/*
+         * ====================================================
+         * VERROUILLAGE
+         * ====================================================
+         */
+
+function verrouiller(detail) {
+if (! commandeVerrouillee) {
+return;
+}
+
+detail.querySelectorAll('input:not([type="hidden"]), textarea').forEach(function (input) {
+if (input.type !== 'file' && input.type !== 'checkbox' && input.type !== 'radio') {
+input.readOnly = true;
+}
+});
+
+
+detail.querySelectorAll('select').forEach(function (select) {
+select.style.pointerEvents = 'none';
+});
+}
+
+
+/*
+         * ====================================================
+         * INITIALISATION DÉTAIL
+         * ====================================================
+         */
+
+function initialiserDetail(detail) {
+const travail = detail.querySelector('.js-commande-detail') || detail;
+
+
+initialiserSelect2(travail);
+
+
+if (commandeVerrouillee) {
+
+verrouiller(travail);
+
+return;
+}
+
+
+initialiserUploadFichiers(travail);
+
+
+/*
+             * TYPE
+             */
+travail.querySelectorAll('[name$="[typeLigne]"]').forEach(function (input) {
+input.addEventListener('change', function () {
+appliquerTypeLigne(travail, true);
+});
+});
+
+
+/*
+             * MODE CONFIG
+             */
+travail.querySelectorAll('[name$="[modeConfiguration]"]').forEach(function (input) {
+input.addEventListener('change', function () {
+appliquerModeConfiguration(travail);
+});
+});
+
+
+/*
+             * ARTICLE
+             */
+const article = champDetail(travail, 'article');
+
+if (article) {
+
+attacherChangement(article, function () {
+chargerArticle(travail);
+});
+
+if (article.value && valeurTypeLigne(travail) === 'article') {
+chargerArticle(travail);
+}
+}
+
+
+/*
+             * PRODUIT
+             */
+const produit = champDetail(travail, 'produit');
+
+console.log('[DEBUG] initialiserDetail() : champ produit trouve ?', !! produit);
+
+if (produit) {
+
+attacherChangement(produit, function () {
+chargerOptionsManuelles(travail);
+});
+}
+
+
+/*
+             * CONFIG
+             */
+const configuration = champDetail(travail, 'configuration');
+
+if (configuration) {
+
+attacherChangement(configuration, function () {
+chargerConfiguration(travail);
+});
+}
+
+
+/*
+             * FORMAT (remplit largeur/longueur automatiquement)
+             */
+const formatChamp = champDetail(travail, 'format');
+
+if (formatChamp) {
+
+attacherChangement(formatChamp, function () {
+appliquerDimensionsFormatSelectionne(travail);
+});
+}
+
+
+/*
+             * FINITIONS MANUELLES
+             *
+             * "Ajouter une finition"/"Supprimer" n'avaient aucun
+             * gestionnaire : les boutons ne faisaient rien.
+             */
+const zoneFinitionsManuelles = travail.querySelector('.js-zone-finitions-manuelles');
+
+if (zoneFinitionsManuelles) {
+
+const boutonAjouterFinition = zoneFinitionsManuelles.querySelector('.js-ajouter-finition');
+const listeFinitions = zoneFinitionsManuelles.querySelector('.js-liste-finitions-manuelles');
+
+function initialiserLigneFinition(ligne) {
+initialiserSelect2(ligne);
+
+const select = ligne.querySelector('select.js-select-search');
+
+if (select && travail.dataset.finitionsAutorisees !== undefined) {
+const ids = travail.dataset.finitionsAutorisees === '' ? [] : travail.dataset.finitionsAutorisees.split(',');
+
+filtrerOptions(select, ids);
+}
+
+const supprimer = ligne.querySelector('.js-supprimer-finition');
+
+if (supprimer) {
+supprimer.addEventListener('click', function () {
+ligne.remove();
+calculerDetail(travail);
+});
+}
+}
+
+if (boutonAjouterFinition && listeFinitions) {
+boutonAjouterFinition.addEventListener('click', function () {
+const index = Number(zoneFinitionsManuelles.dataset.index || 0);
+const html = zoneFinitionsManuelles.dataset.prototype.replace(/__finition_index__/g, String(index));
+
+zoneFinitionsManuelles.dataset.index = String(index + 1);
+
+const temporaire = document.createElement('div');
+temporaire.innerHTML = html.trim();
+const nouvelleLigne = temporaire.firstElementChild;
+
+if (nouvelleLigne) {
+listeFinitions.appendChild(nouvelleLigne);
+initialiserLigneFinition(nouvelleLigne);
+calculerDetail(travail);
+}
+});
+}
+
+listeFinitions ?. querySelectorAll('.js-finition-manuelle').forEach(initialiserLigneFinition);
+}
+
+
+/*
+             * CALCULS
+             */
+function declencheCalcul(cible) {
+return Boolean(cible.closest('.js-calcul-detail') || cible.classList.contains('js-finition-selectionnee') || cible.closest('.js-finition-manuelle'));
+}
+
+travail.addEventListener('input', function (event) {
+if (declencheCalcul(event.target)) {
+calculerDetail(travail);
+}
+});
+
+
+travail.addEventListener('change', function (event) {
+if (declencheCalcul(event.target)) {
+calculerDetail(travail);
+}
+});
+
+
+/*
+             * CIRCUIT
+             */
+travail.querySelectorAll('.js-prepresse-necessaire, .js-production-necessaire').forEach(function (input) {
+input.addEventListener('change', function () {
+appliquerCircuit(travail);
+});
+});
+
+
+/*
+             * SUPPRESSION
+             */
+const supprimer = detail.querySelector('.supprimer-detail');
+
+if (supprimer) {
+
+supprimer.addEventListener('click', function () {
+detail.remove();
+
+rafraichirDetails();
+});
+}
+
+
+appliquerTypeLigne(travail);
+
+appliquerCircuit(travail);
+
+calculerDetail(travail);
+}
+
+
+/*
+         * ====================================================
+         * AJOUT DÉTAIL
+         * ====================================================
+         */
+
+function ajouterDetail() {
+
+if (commandeVerrouillee) {
+return;
+}
+
+
+const prototype = collection.dataset.prototype;
+
+if (! prototype) {
+
+console.error('Prototype détail absent.');
+
+return;
+}
+
+
+const index = Number(collection.dataset.index || 0);
+
+
+const html = prototype.replace(/__detail__/g, String(index)).replace(/__name__/g, String(index));
+
+
+collection.dataset.index = String(index + 1);
+
+
+const wrapper = document.createElement('div');
+
+wrapper.className = 'detail-commande card border mb-4';
+
+
+wrapper.innerHTML = `
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+
+                    <div class="card-title detail-title mb-0">
+                        Nouveau travail
+                    </div>
+
+                    <button
+                        type="button"
+                        class="btn btn-danger-light btn-sm supprimer-detail"
+                    >
+                        <i class="fa fa-trash mr-1"></i>
+                        Supprimer
+                    </button>
+
+                </div>
+
+                <div class="card-body p-0">
+                    ${html}
+                </div>
+                `;
+
+
+collection.appendChild(wrapper);
+
+
+initialiserDetail(wrapper);
+
+
+rafraichirDetails();
+}
+
+
+function rafraichirDetails() {
+
+const details = collection.querySelectorAll('.detail-commande');
+
+details.forEach(function (detail, index) {
+const titre = detail.querySelector('.detail-title');
+
+if (titre) {
+titre.textContent = 'Travail ' + (
+index + 1
+);
+}
+});
+
+
+const vide = document.getElementById('aucun-detail');
+
+if (vide) {
+vide.style.display = details.length ? 'none' : '';
+}
+
+
+calculerCommande();
+}
+
+
+/*
+         * ====================================================
+         * BIND GLOBAL
+         * ====================================================
+         */
+
+if (addButton && ! commandeVerrouillee) {
+addButton.addEventListener('click', ajouterDetail);
+}
+
+if (addButtonBas && ! commandeVerrouillee) {
+addButtonBas.addEventListener('click', ajouterDetail);
+}
+
+
+console.log('[DEBUG] tentative attache ecouteur client, clientSelect=', !! clientSelect, 'commandeVerrouillee=', commandeVerrouillee);
+
+if (clientSelect && ! commandeVerrouillee) {
+attacherChangement(clientSelect, appliquerNouveauProfilClient);
+console.log('[DEBUG] ecouteur client ATTACHE');
+} else {
+console.log('[DEBUG] ecouteur client NON attache');
+} collection.querySelectorAll('.detail-commande').forEach(initialiserDetail);
+
+
+const remiseCommande = document.getElementById('{{ form.remise.vars.id }}');
+
+if (remiseCommande) {
+
+remiseCommande.addEventListener('input', calculerCommande);
+}
+
+
+initialiserSelect2(form);
+
+
+afficherProfilClient();
+
+
+rafraichirDetails();
+
+
+initialiserBrouillon();
+
+}
+
+
+/*
+ * ====================================================
+ * BROUILLON (sauvegarde automatique en session)
+ * ====================================================
+ *
+ * Uniquement pour une commande "nouvelle" (pas encore enregistrée) :
+ * la saisie est sauvegardée automatiquement en session cote serveur
+ * pendant que l'agent la remplit, pour pouvoir la restaurer si la
+ * page se ferme ou plante avant l'enregistrement definitif.
+ */
+function initialiserBrouillon() {
+
+if (form.dataset.brouillonNouvelle !== '1') {
+return;
+}
+
+const brouillonEnregistrerUrl = form.dataset.brouillonEnregistrerUrl;
+const brouillonVerifierUrl = form.dataset.brouillonVerifierUrl;
+const brouillonCsrf = form.dataset.brouillonCsrf;
+
+if (! brouillonEnregistrerUrl || ! brouillonCsrf) {
+return;
+}
+
+function serialiserFormulaireBrouillon() {
+const donnees = new FormData(form);
+const params = new URLSearchParams();
+
+for (const paire of donnees.entries()) {
+const valeur = paire[1];
+
+/*
+ * Les fichiers ont deja leur propre mecanisme de
+ * persistance (upload par morceaux + jeton) : impossible
+ * et inutile de les remettre dans un brouillon.
+ */
+if (valeur instanceof File) {
+continue;
+}
+
+params.append(paire[0], valeur);
+}
+
+return params;
+}
+
+function sauvegarderBrouillon() {
+fetch(brouillonEnregistrerUrl, {
+method: 'POST',
+headers: {
+'Content-Type': 'application/x-www-form-urlencoded',
+'X-CSRF-TOKEN': brouillonCsrf
+},
+body: serialiserFormulaireBrouillon().toString()
+}).catch(function (erreur) {
+console.error(erreur);
+});
+}
+
+let minuteurBrouillon = null;
+
+form.addEventListener('input', function () {
+if (minuteurBrouillon) {
+clearTimeout(minuteurBrouillon);
+}
+
+minuteurBrouillon = setTimeout(sauvegarderBrouillon, 4000);
+});
+
+setInterval(sauvegarderBrouillon, 60000);
+
+/*
+ * Propose la restauration au chargement, sauf si on vient
+ * justement de restaurer (evite de reproposer en boucle).
+ */
+if (
+window.location.search.indexOf('restaurer=1') === -1
+&& brouillonVerifierUrl
+) {
+fetch(brouillonVerifierUrl)
+.then(function (reponse) {
+return reponse.json();
+})
+.then(function (donnees) {
+if (! donnees.existe || typeof window.Swal === 'undefined') {
+return;
+}
+
+window.Swal.fire({
+icon: 'question',
+title: 'Saisie non terminée trouvée',
+text: 'Une saisie de commande non enregistrée a été trouvée. Voulez-vous la restaurer ?',
+showCancelButton: true,
+confirmButtonText: 'Restaurer',
+cancelButtonText: 'Ignorer'
+}).then(function (resultat) {
+if (resultat.isConfirmed) {
+const url = new URL(window.location.href);
+
+url.searchParams.set('restaurer', '1');
+
+window.location.href = url.toString();
+}
+});
+})
+.catch(function (erreur) {
+console.error(erreur);
+});
+}
+}
+
+/*
+ * document.addEventListener('DOMContentLoaded', ...) ne se
+ * declenche qu'une seule fois par document. Si ce script s'execute
+ * apres coup (page restauree depuis le cache de Turbo par exemple),
+ * DOMContentLoaded est deja passe et le script attendait
+ * indefiniment sans jamais s'executer, sans la moindre erreur.
+ * On verifie donc l'etat du document avant de choisir comment
+ * declencher l'initialisation.
+ */
+console.log('[DEBUG] document.readyState =', document.readyState);
+
+if (document.readyState === 'loading') {
+document.addEventListener('DOMContentLoaded', initialiserFormulaireCommande);
+} else {
+initialiserFormulaireCommande();
+}
+</script>
+
+
+{# ============================================================
+   PROTECTION CONTRE LES DOUBLONS (protectionDoublonCommandeAjoutee)
+
+   Empêche un double clic / une double soumission d'enregistrer
+   deux fois la même commande.
+   ============================================================ #}
+
+<script>
+	document.addEventListener('DOMContentLoaded', function () {
+
+const formulaire = document.getElementById('commande-form');
+
+if (! formulaire) {
+return;
+}
+
+const bouton = formulaire.querySelector('button[type="submit"]');
+
+formulaire.addEventListener('submit', function (event) {
+
+if (formulaire.dataset.envoiEnCours === '1') {
+
+event.preventDefault();
+
+return;
+}
+
+formulaire.dataset.envoiEnCours = '1';
+
+if (bouton) {
+
+bouton.disabled = true;
+
+bouton.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Enregistrement en cours...';
+}
+
+if (typeof window.Swal !== 'undefined') {
+
+window.Swal.fire({
+icon: 'info',
+title: 'Enregistrement en cours...',
+text: 'Veuillez patienter, ne cliquez pas une seconde fois.',
+showConfirmButton: false,
+allowOutsideClick: false,
+allowEscapeKey: false,
+timer: 4000,
+timerProgressBar: true
+});
+}
+});
+
+});
+</script>

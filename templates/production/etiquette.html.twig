@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Étiquette
+			{{ ordre.numeroEtiquette }}</title>
+		<style>
+			@page {
+				size: A6 landscape;
+				margin: 5mm;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			html,
+			body {
+				margin: 0;
+				padding: 0;
+				background: #eef0f4;
+				color: #111;
+				font-family: Arial, Helvetica, sans-serif;
+			}
+			.print-toolbar {
+				display: flex;
+				justify-content: center;
+				gap: 10px;
+				padding: 15px;
+			}
+			.print-toolbar button,
+			.print-toolbar a {
+				padding: 10px 18px;
+				border: 0;
+				border-radius: 5px;
+				color: #fff;
+				background: #6259ca;
+				font-size: 14px;
+				text-decoration: none;
+				cursor: pointer;
+			}
+			.print-toolbar a {
+				background: #5b6470;
+			}
+			.label-sheet {
+				width: 138mm;
+				min-height: 95mm;
+				margin: 0 auto 20px;
+				padding: 4mm;
+				background: #fff;
+			}
+			.label-identification {
+				display: grid;
+				grid-template-columns: 1fr 30mm;
+				gap: 4mm;
+				align-items: center;
+				margin: 3mm 0;
+			}
+
+			.label-number {
+				margin: 0;
+				padding: 3mm;
+				border: 0.7mm dashed #111;
+				text-align: center;
+			}
+
+			.label-number span {
+				display: block;
+				font-size: 9px;
+				font-weight: 700;
+				letter-spacing: 1px;
+				text-transform: uppercase;
+			}
+
+			.label-number strong {
+				display: block;
+				margin-top: 1mm;
+				font-family: "Courier New", monospace;
+				font-size: 22px;
+				line-height: 1.05;
+				letter-spacing: 1px;
+				word-break: break-word;
+			}
+
+			.qr-code {
+				text-align: center;
+			}
+
+			.qr-code img {
+				display: block;
+				width: 28mm;
+				height: 28mm;
+				margin: 0 auto;
+			}
+
+			.qr-code small {
+				display: block;
+				margin-top: 1mm;
+				font-size: 6.5px;
+				font-weight: 700;
+				line-height: 1.15;
+				text-transform: uppercase;
+			}
+			.label {
+				min-height: 87mm;
+				padding: 4mm;
+				border: 1.2mm solid #111;
+			}
+			.label-header {
+				display: flex;
+				align-items: flex-start;
+				justify-content: space-between;
+				gap: 5mm;
+				padding-bottom: 2.5mm;
+				border-bottom: 0.5mm solid #111;
+			}
+			.company {
+				font-size: 17px;
+				font-weight: 800;
+				text-transform: uppercase;
+			}
+			.document-title {
+				margin-top: 1mm;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 1px;
+				text-transform: uppercase;
+			}
+			.order-number {
+				text-align: right;
+				font-size: 10px;
+			}
+			.order-number strong {
+				display: block;
+				margin-top: 1mm;
+				font-size: 14px;
+			}
+			.label-number {
+				margin: 3mm 0;
+				padding: 2.5mm;
+				border: 0.7mm dashed #111;
+				text-align: center;
+			}
+			.label-number span {
+				display: block;
+				font-size: 9px;
+				font-weight: 700;
+				letter-spacing: 1px;
+				text-transform: uppercase;
+			}
+			.label-number strong {
+				display: block;
+				margin-top: 1mm;
+				font-family: "Courier New", monospace;
+				font-size: 25px;
+				line-height: 1.05;
+				letter-spacing: 1.5px;
+				word-break: break-word;
+			}
+			.grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 2mm 5mm;
+			}
+			.field {
+				min-width: 0;
+			}
+			.field.full {
+				grid-column: 1 / -1;
+			}
+			.field-label {
+				display: block;
+				margin-bottom: 0.5mm;
+				font-size: 8px;
+				font-weight: 700;
+				color: #555;
+				text-transform: uppercase;
+			}
+			.field-value {
+				display: block;
+				font-size: 11px;
+				font-weight: 700;
+				line-height: 1.25;
+				overflow-wrap: anywhere;
+			}
+			.quantity {
+				font-size: 16px;
+			}
+			.finitions {
+				margin-top: 2.5mm;
+				padding-top: 2mm;
+				border-top: 0.35mm solid #777;
+			}
+			.finitions-list {
+				margin: 1mm 0 0;
+				padding-left: 5mm;
+				columns: 2;
+				font-size: 9px;
+			}
+			.footer {
+				display: flex;
+				justify-content: space-between;
+				gap: 4mm;
+				margin-top: 3mm;
+				padding-top: 2mm;
+				border-top: 0.5mm solid #111;
+				font-size: 8px;
+			}
+			@media print {
+				html,
+				body {
+					background: #fff;
+				}
+				.print-toolbar {
+					display: none !important;
+				}
+				.label-sheet {
+					width: auto;
+					min-height: 0;
+					margin: 0;
+					padding: 0;
+				}
+				.label {
+					min-height: 95mm;
+				}
+
+			}
+		</style>
+	</head>
+	<body>
+		{% set detail = ordre.commandeDetail %}
+		{% set commande = detail and detail.commande is defined ? detail.commande : null %}
+		{% set configuration = detail and detail.produitConfiguration is defined ? detail.produitConfiguration : null %}
+
+		<div class="print-toolbar">
+			<a href="{{ path('app_production_show', {id: ordre.id}) }}">Retour à l’ordre</a>
+			<button type="button" onclick="window.print()">Imprimer l’étiquette</button>
+		</div>
+
+		<main class="label-sheet">
+			<section class="label">
+				<header class="label-header">
+					<div>
+						<div class="company">SUCCESS IMPRIM</div>
+						<div class="document-title">Étiquette de production</div>
+					</div>
+					<div class="order-number">Ordre de production<strong>{{ ordre.numero }}</strong>
+					</div>
+				</header>
+
+				<div class="label-number">
+					<span>Numéro de livraison</span>
+					<strong>{{ ordre.numeroEtiquette }}</strong>
+				</div>
+
+				<div class="grid">
+					<div class="field">
+						<span class="field-label">Commande</span>
+						<span class="field-value">
+							{% if commande %}
+								{{ commande.numero|default('#' ~ commande.id) }}{% else %}Non renseignée
+							{% endif %}
+						</span>
+					</div>
+					<div class="field">
+						<span class="field-label">Client</span>
+						<span class="field-value">
+							{% if commande and commande.clients is defined and commande.clients %}
+								{{ commande.clients.prenom|default(commande.clients) }}
+								{{ commande.clients.nom|default(commande.clients) }}
+								<br>TEL :
+								{{ commande.clients.telephone|default('—') }}
+							{% elseif detail and detail.client is defined and detail.client %}
+								{% else %}Non renseigné
+							{% endif %}
+						</span>
+					</div>
+					<div class="field full">
+						<span class="field-label">Produit / désignation</span>
+						<span class="field-value">
+							{% if detail and detail.designation is defined and detail.designation %}
+								{{ detail.designation }}
+							{% elseif configuration and configuration.produit %}
+								{{ configuration.produit.nom }}{% else %}Non renseigné
+							{% endif %}
+						</span>
+					</div>
+					<div class="field">
+						<span class="field-label">Quantité</span>
+						<span class="field-value quantity">{{ ordre.quantite|default(detail and detail.quantite is defined ? detail.quantite : '—') }}</span>
+					</div>
+					<div class="field">
+						<span class="field-label">Dimensions / format</span>
+						<span class="field-value">
+							{% if detail and detail.largeur is defined and detail.longueur is defined and detail.largeur and detail.longueur %}
+								{{ detail.largeur }}
+								×
+								{{ detail.longueur }}
+							{% elseif configuration and configuration.format %}
+								{{ configuration.format.nom }}{% else %}—
+							{% endif %}
+						</span>
+					</div>
+					<div class="field">
+						<span class="field-label">Type d’impression</span>
+						<span class="field-value">
+							{% if configuration and configuration.typeImpression %}
+								{{ configuration.typeImpression.nom }}
+							{% elseif detail and detail.typeImpression is defined and detail.typeImpression %}
+								{{ detail.typeImpression.nom }}{% else %}—
+							{% endif %}
+						</span>
+					</div>
+					<div class="field">
+						<span class="field-label">Support</span>
+						<span class="field-value">
+							{% if configuration and configuration.support %}
+								{{ configuration.support.nom }}
+							{% elseif detail and detail.support is defined and detail.support %}
+								{{ detail.support.nom }}{% else %}—
+							{% endif %}
+						</span>
+					</div>
+					{% if ordre.instructions %}
+						<div class="field full">
+							<span class="field-label">Instructions de production</span>
+							<span class="field-value">{{ ordre.instructions|striptags|slice(0, 180) }}{{ ordre.instructions|length > 180 ? '…' : '' }}</span>
+						</div>
+					{% elseif detail and detail.observation is defined and detail.observation %}
+						<div class="field full">
+							<span class="field-label">Observations</span>
+							<span class="field-value">{{ detail.observation|striptags|slice(0, 180) }}{{ detail.observation|length > 180 ? '…' : '' }}</span>
+						</div>
+					{% endif %}
+				</div>
+				<div class="label-identification">
+
+					<div class="label-number">
+						<span>Numéro de commande</span>
+
+						<strong>
+							{{ ordre.commandeDetail.commande.numero }}
+						</strong>
+					</div>
+
+					<div class="qr-code">
+
+						<img src="{{ qrCode }}" alt="QR Code {{ ordre.numeroEtiquette }}">
+
+						<small>
+							Scanner pour ouvrir
+							<br>
+							la fiche production
+						</small>
+
+					</div>x
+
+				</div>
+				{% if detail and detail.finitions is defined and detail.finitions|length > 0 %}
+					<div class="finitions">
+						<span class="field-label">Finitions</span>
+						<ul class="finitions-list">
+							{% for finitionDetail in detail.finitions %}
+								<li>{{ finitionDetail.configurationFinition and finitionDetail.configurationFinition.finition ? finitionDetail.configurationFinition.finition.nom : 'Finition' }}
+									{% if finitionDetail.quantite is defined and finitionDetail.quantite %}
+										—
+										{{ finitionDetail.quantite }}
+									{% endif %}
+								</li>
+							{% endfor %}
+						</ul>
+					</div>
+				{% endif %}
+
+				<footer class="footer">
+					<span>Affectée le
+						{{ ordre.etiquetteAffecteeLe ? ordre.etiquetteAffecteeLe|date('d/m/Y H:i') : '—' }}</span>
+					<span>Priorité :
+						{{ ordre.priorite|default('normale')|upper }}</span>
+					<span>Statut :
+						{{ ordre.statut|replace({'_': ' '})|upper }}</span>
+				</footer>
+			</section>
+		</main>
+
+		<script>
+			if (new URLSearchParams(window.location.search).get('autoPrint') === '1') {
+window.addEventListener('load', function () {
+window.print();
+});
+}
+		</script>
+	</body>
+</html>

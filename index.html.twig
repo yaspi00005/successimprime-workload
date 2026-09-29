@@ -1,0 +1,350 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Configurations des produits{% endblock %}
+
+{% block body %}
+    <div class="page-header">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#">Produits</a></li>
+            <li class="breadcrumb-item active">Configurations</li>
+        </ol>
+        <button type="button" class="btn btn-primary" id="configurationCreateOpenButton">
+            <i class="fa fa-plus mr-1"></i> Ajouter une configuration
+        </button>
+    </div>
+
+    <div class="row row-cards">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Configurations autorisées</h3>
+                    <div class="card-options">
+                        <input type="search" id="configurationSearch" class="form-control"
+                               placeholder="Rechercher un produit, support, format…">
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead>
+                        <tr>
+                            <th class="text-center">Ordre</th>
+                            <th>Produit</th>
+                            <th>Impression</th>
+                            <th>Support</th>
+                            <th>Format</th>
+                            <th class="text-right">Prix de base</th>
+                            <th>Calcul</th>
+                            <th>Quantités</th>
+                            <th>Finitions</th>
+                            <th class="text-center">Statut</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="configurationTableBody">
+                        {% for configuration in configurations %}
+                            <tr id="configuration-row-{{ configuration.id }}" class="configuration-row">
+                                <td class="text-center align-middle">{{ configuration.ordre }}</td>
+                                <td class="align-middle">
+                                    <strong>{{ configuration.produit.nom }}</strong>
+                                    <small class="d-block text-muted">{{ configuration.produit.code }}</small>
+                                </td>
+                                <td class="align-middle">{{ configuration.typeImpression.nom }}</td>
+                                <td class="align-middle">{{ configuration.support.nom }}</td>
+                                <td class="align-middle">{{ configuration.format.nom }}</td>
+                                <td class="text-right align-middle">
+                                    {{ configuration.prixBase is null
+                                        ? '-'
+                                        : configuration.prixBase|number_format(0, ',', ' ') ~ ' FCFA' }}
+                                </td>
+                                <td class="align-middle">
+                                    <span class="badge badge-info">{{ configuration.modeCalcul|replace({'_': ' '}) }}</span>
+                                </td>
+                                <td class="align-middle">
+                                    {{ configuration.quantiteMinimale }}
+                                    –
+                                    {{ configuration.quantiteMaximale ?? '∞' }}
+                                </td>
+                                <td class="align-middle">
+                                    {% for ligne in configuration.configurationFinitions %}
+                                        <span class="badge {{ ligne.obligatoire ? 'badge-danger' : 'badge-secondary' }} mb-1"
+                                              title="{{ ligne.obligatoire ? 'Obligatoire' : 'Optionnelle' }}">
+                                            {{ ligne.finition.nom }}
+                                            {% if ligne.payante %}
+                                                · {{ ligne.prix|number_format(0, ',', ' ') }} F
+                                            {% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">Aucune</span>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-center align-middle">
+                                    <span class="badge {{ configuration.active ? 'badge-success' : 'badge-danger' }}">
+                                        {{ configuration.active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="btn-group">
+                                        <button type="button"
+                                                class="btn btn-sm btn-primary-light btn-edit-configuration"
+                                                data-get-url="{{ path('app_produit_configuration_get_ajax', {id: configuration.id}) }}"
+                                                data-update-url="{{ path('app_produit_configuration_update_ajax', {id: configuration.id}) }}"
+                                                data-update-token="{{ csrf_token('update_produit_configuration_' ~ configuration.id) }}"
+                                                title="Modifier">
+                                            <i class="fa fa-edit"></i>
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm {{ configuration.active ? 'btn-warning-light' : 'btn-success-light' }} btn-toggle-configuration"
+                                                data-url="{{ path('app_produit_configuration_toggle_status', {id: configuration.id}) }}"
+                                                data-token="{{ csrf_token('toggle_produit_configuration_' ~ configuration.id) }}"
+                                                data-active="{{ configuration.active ? '1' : '0' }}"
+                                                title="{{ configuration.active ? 'Désactiver' : 'Activer' }}">
+                                            <i class="fa {{ configuration.active ? 'fa-eye-slash' : 'fa-eye' }}"></i>
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm btn-danger-light btn-delete-configuration"
+                                                data-url="{{ path('app_produit_configuration_delete_ajax', {id: configuration.id}) }}"
+                                                data-token="{{ csrf_token('delete_produit_configuration_' ~ configuration.id) }}"
+                                                data-nom="{{ configuration.produit.nom }}"
+                                                title="Supprimer">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="11" class="text-center py-5">Aucune configuration trouvée.</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="hidden" id="configurationCreateUrl"
+           value="{{ path('app_produit_configuration_create_ajax') }}">
+    <input type="hidden" id="configurationCreateToken"
+           value="{{ csrf_token('create_produit_configuration') }}">
+
+    {# Catalogue de compatibilité lu par le JavaScript. #}
+    <script id="configurationCatalog" type="application/json">
+        {
+            "produits": {
+                {% for produit in produits %}
+                "{{ produit.id }}": {
+                    "types": [{% for item in produit.typesImpressions %}{{ item.id }}{{ not loop.last ? ',' : '' }}{% endfor %}],
+                    "supports": [{% for item in produit.supports %}{{ item.id }}{{ not loop.last ? ',' : '' }}{% endfor %}],
+                    "formats": [{% for item in produit.formats %}{{ item.id }}{{ not loop.last ? ',' : '' }}{% endfor %}],
+                    "finitions": [{% for item in produit.finitions %}{{ item.id }}{{ not loop.last ? ',' : '' }}{% endfor %}]
+                }{{ not loop.last ? ',' : '' }}
+                {% endfor %}
+            },
+            "supports": {
+                {% for support in supports %}
+                "{{ support.id }}": {
+                    "types": [{% for item in support.typesImpressions %}{{ item.id }}{{ not loop.last ? ',' : '' }}{% endfor %}],
+                    "formats": [{% for item in support.formats %}{{ item.id }}{{ not loop.last ? ',' : '' }}{% endfor %}],
+                    "finitions": [{% for item in support.finitions %}{{ item.id }}{{ not loop.last ? ',' : '' }}{% endfor %}]
+                }{{ not loop.last ? ',' : '' }}
+                {% endfor %}
+            }
+        }
+    </script>
+
+    <div class="modal fade" id="configurationModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="configurationModalTitle">Ajouter une configuration</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="configurationSaveUrl">
+                    <input type="hidden" id="configurationSaveToken">
+
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label for="configurationProduit">Produit *</label>
+                            <select id="configurationProduit" class="form-control">
+                                <option value="">Choisir un produit</option>
+                                {% for produit in produits %}
+                                    <option value="{{ produit.id }}">{{ produit.code }} — {{ produit.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label for="configurationType">Type d’impression *</label>
+                            <select id="configurationType" class="form-control">
+                                <option value="">Choisir</option>
+                                {% for item in typesImpressions %}
+                                    <option value="{{ item.id }}">{{ item.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label for="configurationSupport">Support *</label>
+                            <select id="configurationSupport" class="form-control">
+                                <option value="">Choisir</option>
+                                {% for item in supports %}
+                                    <option value="{{ item.id }}">{{ item.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label for="configurationFormat">Format *</label>
+                            <select id="configurationFormat" class="form-control">
+                                <option value="">Choisir</option>
+                                {% for item in formats %}
+                                    <option value="{{ item.id }}">{{ item.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label for="configurationPrixBase">Prix de base (FCFA)</label>
+                            <input type="number" min="0" step="1" id="configurationPrixBase" class="form-control">
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label for="configurationModeCalcul">Mode de calcul *</label>
+                            <select id="configurationModeCalcul" class="form-control">
+                                <option value="forfait">Forfait</option>
+                                <option value="unite">Par unité</option>
+                                <option value="metre">Par mètre</option>
+                                <option value="metre_carre">Par m²</option>
+                                <option value="heure">Par heure</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <label for="configurationQuantiteMin">Quantité min.</label>
+                            <input type="number" min="1" step="1" value="1"
+                                   id="configurationQuantiteMin" class="form-control">
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <label for="configurationQuantiteMax">Quantité max.</label>
+                            <input type="number" min="1" step="1"
+                                   id="configurationQuantiteMax" class="form-control" placeholder="Illimitée">
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <label for="configurationOrdre">Ordre</label>
+                            <input type="number" min="0" step="1" value="10"
+                                   id="configurationOrdre" class="form-control">
+                        </div>
+                        <div class="col-md-10 form-group">
+                            <label for="configurationDescription">Description</label>
+                            <textarea id="configurationDescription" rows="2" class="form-control"></textarea>
+                        </div>
+                        <div class="col-md-2 form-group d-flex align-items-end">
+                            <div class="custom-control custom-switch mb-2">
+                                <input type="checkbox" class="custom-control-input"
+                                       id="configurationActive" checked>
+                                <label class="custom-control-label" for="configurationActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="mb-0">Finitions de cette configuration</h5>
+                            <small class="text-muted">Ajoutez uniquement les finitions proposées au client.</small>
+                        </div>
+                        <button type="button" class="btn btn-info btn-sm" id="configurationAddFinition">
+                            <i class="fa fa-plus mr-1"></i> Ajouter une finition
+                        </button>
+                    </div>
+                    <div id="configurationFinitions"></div>
+                    <div id="configurationNoFinition" class="alert alert-light text-center">
+                        Aucune finition ajoutée.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="configurationSaveButton">
+                        <i class="fa fa-save mr-1"></i> Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <template id="configurationFinitionTemplate">
+        <div class="card border configuration-finition-row mb-3">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Finition</strong>
+                    <button type="button" class="btn btn-sm btn-danger-light configuration-remove-finition">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 form-group">
+                        <label>Finition *</label>
+                        <select class="form-control finition-id">
+                            <option value="">Choisir</option>
+                            {% for finition in finitions %}
+                                <option value="{{ finition.id }}">{{ finition.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 form-group">
+                        <label>Prix (FCFA)</label>
+                        <input type="number" min="0" step="1" value="0" class="form-control finition-prix">
+                    </div>
+                    <div class="col-md-3 form-group">
+                        <label>Mode de calcul</label>
+                        <select class="form-control finition-mode">
+                            <option value="forfait">Forfait</option>
+                            <option value="unite">Par unité</option>
+                            <option value="feuille">Par feuille</option>
+                            <option value="exemplaire">Par exemplaire</option>
+                            <option value="metre">Par mètre</option>
+                            <option value="metre_carre">Par m²</option>
+                            <option value="point">Par point</option>
+                            <option value="face">Par face</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1 form-group">
+                        <label>Min.</label>
+                        <input type="number" min="1" value="1" class="form-control finition-min">
+                    </div>
+                    <div class="col-md-1 form-group">
+                        <label>Max.</label>
+                        <input type="number" min="1" class="form-control finition-max">
+                    </div>
+                    <div class="col-md-1 form-group">
+                        <label>Ordre</label>
+                        <input type="number" min="0" value="10" class="form-control finition-ordre">
+                    </div>
+                    <div class="col-md-12 form-group">
+                        <label>Description</label>
+                        <input type="text" maxlength="500" class="form-control finition-description">
+                    </div>
+                    <div class="col-md-12">
+                        <div class="custom-control custom-checkbox custom-control-inline">
+                            <input type="checkbox" class="custom-control-input finition-obligatoire">
+                            <label class="custom-control-label">Obligatoire</label>
+                        </div>
+                        <div class="custom-control custom-checkbox custom-control-inline">
+                            <input type="checkbox" class="custom-control-input finition-defaut">
+                            <label class="custom-control-label">Sélectionnée par défaut</label>
+                        </div>
+                        <div class="custom-control custom-checkbox custom-control-inline">
+                            <input type="checkbox" class="custom-control-input finition-payante">
+                            <label class="custom-control-label">Payante</label>
+                        </div>
+                        <div class="custom-control custom-checkbox custom-control-inline">
+                            <input type="checkbox" class="custom-control-input finition-active" checked>
+                            <label class="custom-control-label">Active</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="{{ asset('assets/js/traitement_produit_configuration.js') }}"></script>
+{% endblock %}

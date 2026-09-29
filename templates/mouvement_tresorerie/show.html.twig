@@ -1,0 +1,507 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Mouvement
+	{{ mouvement.reference }}
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+		{% for type, messages in app.flashes %}
+			{% for message in messages %}
+				<div class="js-flash-message" data-type="{{ type }}" data-message="{{ message|e('html_attr') }}"></div>
+			{% endfor %}
+		{% endfor %}
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="#">Gestion</a>
+				</li>
+
+				<li class="breadcrumb-item">
+					<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}">
+						Mouvements de trésorerie
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					{{ mouvement.reference }}
+				</li>
+			</ol>
+
+			<div>
+
+				<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}" class="btn btn-secondary">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour
+				</a>
+
+				<a href="{{ path( 'app_mouvement_tresorerie_new' ) }}" class="btn btn-primary">
+					<i class="fa fa-plus mr-1"></i>
+					Nouveau mouvement
+				</a>
+
+			</div>
+
+		</div>
+
+		{% for type, messages in app.flashes %}
+			{% for message in messages %}
+
+				{% set classe = type == 'success'
+                ? 'alert-success'
+                : (
+                    type == 'warning'
+                        ? 'alert-warning'
+                        : 'alert-danger'
+                )
+            %}
+
+
+			{% endfor %}
+		{% endfor %}
+
+		<div class="row">
+
+			<div class="col-md-4">
+
+				<div class="card">
+
+					<div class="card-body text-center">
+
+						{% if mouvement.type == 'encaissement' %}
+							<i class="fa fa-arrow-down fa-4x text-success mb-3"></i>
+
+							<h4>Encaissement</h4>
+						{% elseif mouvement.type == 'decaissement' %}
+							<i class="fa fa-arrow-up fa-4x text-danger mb-3"></i>
+
+							<h4>Décaissement</h4>
+						{% else %}
+							<i class="fa fa-exchange fa-4x text-primary mb-3"></i>
+
+							<h4>Transfert</h4>
+						{% endif %}
+
+						<p class="text-muted">
+							{{ mouvement.reference }}
+						</p>
+
+						{% if mouvement.statut == 'valide' %}
+							<span class="badge badge-success">
+								Mouvement validé
+							</span>
+						{% elseif mouvement.statut == 'en_attente' %}
+							<span class="badge badge-warning">
+								En attente de validation
+							</span>
+						{% elseif mouvement.statut == 'annule' %}
+							<span class="badge badge-danger">
+								Mouvement annulé
+							</span>
+						{% endif %}
+
+						{% if mouvement.type == 'decaissement' %}
+
+							<div class="mt-2">
+
+								{% if mouvement.verifie %}
+
+									<span class="badge badge-info">
+										<i class="fa fa-check-circle mr-1"></i>
+										Vérifié
+										{% if mouvement.verifiePar %}
+											par
+											{% if mouvement.verifiePar.employe %}
+												{{ mouvement.verifiePar.employe.prenom }}
+											{% else %}
+												{{ mouvement.verifiePar.username }}
+											{% endif %}
+										{% endif %}
+									</span>
+
+								{% else %}
+
+									<span class="badge badge-secondary">
+										<i class="fa fa-question-circle mr-1"></i>
+										Non vérifié
+									</span>
+
+								{% endif %}
+
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+				{% if mouvement.type == 'decaissement' and estAdmin %}
+
+					<div class="card">
+
+						<div class="card-body">
+
+							<form method="post" action="{{ path( 'app_mouvement_tresorerie_toggle_verification', {id: mouvement.id} ) }}">
+
+								<input type="hidden" name="_token" value="{{ csrf_token( 'verifier-mouvement-' ~ mouvement.id ) }}">
+
+								{% if mouvement.verifie %}
+
+									<button type="submit" class="btn btn-outline-secondary btn-block">
+										<i class="fa fa-times mr-1"></i>
+										Retirer la vérification
+									</button>
+
+								{% else %}
+
+									<button type="submit" class="btn btn-info btn-block">
+										<i class="fa fa-check mr-1"></i>
+										Marquer comme vérifié
+									</button>
+
+								{% endif %}
+
+							</form>
+
+							<small class="text-muted d-block mt-2">
+								Contrôle purement déclaratif : n’a aucun impact sur les soldes.
+							</small>
+
+						</div>
+
+					</div>
+
+				{% endif %}
+
+				<div class="card bg-primary text-white">
+
+					<div class="card-body text-center">
+
+						<h6 class="text-white">
+							Montant
+						</h6>
+
+						<h2 class="text-white">
+							{{
+                            mouvement.montant
+                                |number_format(0, ',', ' ')
+                        }}
+							{{ mouvement.devise }}
+						</h2>
+
+					</div>
+
+				</div>
+
+			</div>
+
+			<div class="col-md-8">
+
+				<div class="card">
+
+					<div class="card-header">
+						<h3 class="card-title">
+							Informations du mouvement
+						</h3>
+					</div>
+
+					<div class="card-body">
+
+						<div class="table-responsive">
+
+							<table class="table table-bordered">
+
+								<tbody>
+
+									<tr>
+										<th width="35%">Référence interne</th>
+										<td>{{ mouvement.reference }}</td>
+									</tr>
+
+									<tr>
+										<th>Référence externe</th>
+										<td>
+											{{
+                                            mouvement.referenceExterne
+                                                |default('Non renseignée')
+                                        }}
+										</td>
+									</tr>
+
+									<tr>
+										<th>Libellé</th>
+										<td>{{ mouvement.libelle }}</td>
+									</tr>
+
+									<tr>
+										<th>Type</th>
+										<td>
+											{% if mouvement.type == 'encaissement' %}
+												Encaissement
+											{% elseif mouvement.type == 'decaissement' %}
+												Décaissement
+											{% else %}
+												Transfert
+											{% endif %}
+										</td>
+									</tr>
+
+									{% if mouvement.compteSource %}
+										<tr>
+											<th>Compte source</th>
+											<td>
+												<strong>
+													{{ mouvement.compteSource.nom }}
+												</strong>
+
+												<br>
+
+												<small class="text-muted">
+													{{ mouvement.compteSource.code }}
+												</small>
+											</td>
+										</tr>
+									{% endif %}
+
+									{% if mouvement.compteDestination %}
+										<tr>
+											<th>Compte destination</th>
+											<td>
+												<strong>
+													{{ mouvement.compteDestination.nom }}
+												</strong>
+
+												<br>
+
+												<small class="text-muted">
+													{{ mouvement.compteDestination.code }}
+												</small>
+											</td>
+										</tr>
+									{% endif %}
+
+									<tr>
+										<th>Montant</th>
+										<td>
+											<strong>
+												{{
+                                                mouvement.montant
+                                                    |number_format(0, ',', ' ')
+                                            }}
+												{{ mouvement.devise }}
+											</strong>
+										</td>
+									</tr>
+
+									<tr>
+										<th>Mode de paiement</th>
+										<td>
+											{{
+                                            mouvement.modePaiement
+                                                |default('Non renseigné')
+                                                |replace({
+                                                    '_': ' '
+                                                })
+                                                |title
+                                        }}
+										</td>
+									</tr>
+
+									<tr>
+										<th>Date de l’opération</th>
+										<td>
+											{{
+                                            mouvement.dateOperation
+                                                ? mouvement.dateOperation
+                                                    |date('d/m/Y à H:i')
+                                                : '—'
+                                        }}
+										</td>
+									</tr>
+
+									<tr>
+										<th>Description</th>
+										<td>
+											{{
+                                            mouvement.description
+                                                |default('Aucune observation')
+                                                |nl2br
+                                        }}
+										</td>
+									</tr>
+
+								</tbody>
+
+							</table>
+
+						</div>
+
+					</div>
+
+				</div>
+
+				{% if mouvement.statut == 'en_attente' %}
+
+					<div class="card border-warning">
+
+						<div class="card-header">
+							<h3 class="card-title">
+								Traitement du mouvement
+							</h3>
+						</div>
+
+						<div class="card-body">
+
+							<div class="alert alert-warning">
+								Ce mouvement n’a pas encore modifié les soldes.
+																																                            Vous pouvez le valider ou l’annuler.
+							</div>
+
+							<form method="post" action="{{ path( 'app_mouvement_tresorerie_validate', {id: mouvement.id} ) }}" class="d-inline-block mr-2" onsubmit="return confirm(
+																																				                                'Confirmer la validation de ce mouvement ?'
+																																				                            );">
+								<input type="hidden" name="_token" value="{{ csrf_token( 'validate-mouvement-' ~ mouvement.id ) }}">
+
+								<button type="submit" class="btn btn-success">
+									<i class="fa fa-check mr-1"></i>
+									Valider le mouvement
+								</button>
+							</form>
+
+							<hr>
+
+							<form method="post" action="{{ path( 'app_mouvement_tresorerie_cancel', {id: mouvement.id} ) }}" onsubmit="return confirm(
+																																				                                'Confirmer l’annulation de ce mouvement ?'
+																																				                            );">
+								<input type="hidden" name="_token" value="{{ csrf_token( 'cancel-mouvement-' ~ mouvement.id ) }}">
+
+								<div class="form-group">
+
+									<label for="motif">
+										Motif de l’annulation
+									</label>
+
+									<textarea id="motif" name="motif" class="form-control" rows="3" required placeholder="Expliquez pourquoi ce mouvement doit être annulé"></textarea>
+
+								</div>
+
+								<button type="submit" class="btn btn-danger">
+									<i class="fa fa-times mr-1"></i>
+									Annuler le mouvement
+								</button>
+
+							</form>
+
+						</div>
+
+					</div>
+
+				{% endif %}
+
+				{% if mouvement.statut == 'valide' and estAdmin %}
+
+					<div class="card border-danger">
+
+						<div class="card-header">
+							<h3 class="card-title">
+								Annuler ce mouvement
+							</h3>
+						</div>
+
+						<div class="card-body">
+
+							<div class="alert alert-danger">
+								Ce mouvement a déjà modifié les soldes.
+																																	                            L’annulation va inverser exactement son effet
+																																	                            (le montant sera recrédité ou redébité selon
+																																	                            le type de mouvement). C’est le moyen prévu
+																																	                            pour corriger une erreur de saisie : annulez
+																																	                            puis ressaisissez le mouvement correct.
+							</div>
+
+							<form method="post" action="{{ path( 'app_mouvement_tresorerie_cancel', {id: mouvement.id} ) }}" onsubmit="return confirm(
+																																				                                'Confirmer l’annulation de ce mouvement déjà validé ? Les soldes seront corrigés.'
+																																				                            );">
+								<input type="hidden" name="_token" value="{{ csrf_token( 'cancel-mouvement-' ~ mouvement.id ) }}">
+
+								<div class="form-group">
+
+									<label for="motifValide">
+										Motif de l’annulation
+									</label>
+
+									<textarea id="motifValide" name="motif" class="form-control" rows="3" required placeholder="Expliquez pourquoi ce mouvement doit être annulé"></textarea>
+
+								</div>
+
+								<button type="submit" class="btn btn-danger">
+									<i class="fa fa-times mr-1"></i>
+									Annuler et corriger les soldes
+								</button>
+
+							</form>
+
+						</div>
+
+					</div>
+
+				{% endif %}
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+{% endblock %}
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('assets/plugins/sweet-alert/sweetalert2.all.min.js') }}"></script>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function (){
+{% for message in app.flashes('success') %}
+Swal.fire({icon: 'success', title: 'Opération réussie', text: {{ message|json_encode|raw }}, confirmButtonText: 'OK'});{% endfor %}
+
+{% for message in app.flashes('error') %}
+Swal.fire({icon: 'error', title: 'Erreur', text: {{ message|json_encode|raw }}, confirmButtonText: 'Corriger'});{% endfor %}
+});
+	</script>
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+document.querySelectorAll('.js-flash-message').forEach(function (element) {
+const type = element.dataset.type;
+const message = element.dataset.message;
+
+let icon = 'info';
+let title = 'Information';
+
+if (type === 'success') {
+icon = 'success';
+title = 'Opération réussie';
+} else if (type === 'error' || type === 'danger') {
+icon = 'error';
+title = message.toLowerCase().includes('solde') ? 'Solde insuffisant' : 'Opération impossible';
+} else if (type === 'warning') {
+icon = 'warning';
+title = 'Attention';
+}
+
+Swal.fire({
+icon: icon,
+title: title,
+text: message,
+confirmButtonText: 'D’accord',
+confirmButtonColor: '#6259ca',
+allowOutsideClick: false
+});
+});
+});
+	</script>
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Dossier partagé
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		{# ==========================================================
+								       PAGE HEADER
+								       ========================================================== #}
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_controle_pre_presse_index') }}">Prépresse</a>
+				</li>
+
+				<li class="breadcrumb-item active" aria-current="page">
+					Dossier partagé
+				</li>
+			</ol>
+
+		</div>
+		{# PAGE HEADER END #}
+
+
+		<div class="row row-cards">
+
+			<div class="col-lg-12">
+
+				<div class="card mb-4">
+
+					<div class="card-header">
+						<h4 class="card-title">
+							Comment ça marche
+						</h4>
+					</div>
+
+					<div class="card-body">
+
+						<p>
+							Ce dossier sert de solution de secours quand l'envoi d'un fichier
+							échoue depuis la fiche d'une commande (gros fichiers, connexion
+							instable...).
+						</p>
+
+						<ol>
+							<li>
+								Partagez ce dossier sur le réseau (clic droit → Propriétés →
+								Partage) si ce n'est pas déjà fait :
+								<code>{{ cheminDossier }}</code>
+							</li>
+
+							<li>
+								Sur la fiche de la commande, notez le numéro
+								<strong>Réf: #...</strong> affiché à côté du travail concerné.
+							</li>
+
+							<li>
+								Déposez le fichier dans ce dossier en renommant son nom pour
+								qu'il commence par ce numéro, suivi d'un tiret ou d'un
+								underscore. Exemple : <code>123_logo-client.pdf</code> pour le
+								travail Réf: #123.
+							</li>
+
+							<li>
+								Revenez sur cette page et cliquez sur « Lancer l'import ». Le
+								fichier sera rattaché automatiquement au bon travail, comme
+								s'il avait été envoyé normalement.
+							</li>
+						</ol>
+
+						<div class="alert alert-warning mb-0">
+							<i class="fa fa-exclamation-triangle mr-2"></i>
+							Un fichier sans numéro en préfixe, ou dont le numéro ne
+							correspond à aucun travail, restera dans le dossier et
+							apparaîtra ci-dessous en rouge après un import.
+						</div>
+
+					</div>
+
+				</div>
+
+
+				<div class="card">
+
+					<div class="card-header d-flex justify-content-between align-items-center">
+						<h4 class="card-title">
+							Fichiers en attente dans le dossier
+						</h4>
+
+						<form method="post" action="{{ path('app_fichier_dossier_partage_importer') }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('dossier-partage-importer') }}">
+
+							<button type="submit" class="btn btn-success" {{ fichiers is empty ? 'disabled' : '' }}>
+								<i class="fa fa-download mr-1"></i>
+								Lancer l'import
+							</button>
+						</form>
+					</div>
+
+					<div class="card-body">
+
+						{% if fichiers is empty %}
+
+							<p class="text-muted mb-0">
+								Le dossier partagé est vide pour le moment.
+							</p>
+
+						{% else %}
+
+							<div class="list-group">
+
+								{% for fichier in fichiers %}
+
+									<div class="list-group-item d-flex justify-content-between align-items-center">
+
+										<div>
+											{% if not fichier.referenceValide %}
+												<i class="fa fa-exclamation-triangle text-danger mr-2"></i>
+											{% endif %}
+
+											{{ fichier.nom }}
+										</div>
+
+										<span class="text-muted">
+											{{ (fichier.taille / 1024 / 1024)|number_format(1, ',', ' ') }} Mo
+										</span>
+
+									</div>
+
+								{% endfor %}
+
+							</div>
+
+						{% endif %}
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

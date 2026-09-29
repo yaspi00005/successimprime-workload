@@ -1,0 +1,147 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	{{ titre }}
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_article_index') }}">
+						Articles
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					{{ titre }}
+				</li>
+
+			</ol>
+
+		</div>
+
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<div class="card-title">
+					<i class="fa fa-cube mr-2"></i>
+					{{ titre }}
+				</div>
+
+			</div>
+
+			<div class="card-body">
+
+				{{ form_start(form) }}
+
+				<div class="row">
+
+					<div class="col-lg-4">
+						{{ form_row(form.reference) }}
+					</div>
+
+					<div class="col-lg-8">
+						{{ form_row(form.designation) }}
+					</div>
+
+
+					<div class="col-lg-4">
+						{{ form_row(form.categorie) }}
+					</div>
+
+					<div class="col-lg-4">
+						{{ form_row(form.unite) }}
+					</div>
+
+					<div class="col-lg-4">
+						{{ form_row(form.stockMin) }}
+					</div>
+
+
+					<div class="col-lg-4">
+						{{ form_row(form.prixAchat) }}
+					</div>
+
+					<div class="col-lg-4">
+						{{ form_row(form.prixVente) }}
+					</div>
+
+					<div class="col-lg-4">
+						{{ form_row(form.fournisseur) }}
+					</div>
+
+
+					<div class="col-12">
+						{{ form_row(form.description) }}
+					</div>
+
+
+					<div class="col-12">
+						{{ form_row(form.actif) }}
+					</div>
+
+					<div class="col-12">
+						{{ form_row(form.vendable) }}
+					</div>
+
+					<div class="col-12">
+						{{ form_row(form.consommableProduction) }}
+					</div>
+
+				</div>
+
+
+				<div class="alert alert-info">
+
+					<i class="fa fa-info-circle mr-1"></i>
+
+					Le stock physique n’est pas saisi ici.
+					
+					                Il sera alimenté par les entrées de stock
+					                et diminué automatiquement par les sorties.
+
+				</div>
+
+
+				<div class="d-flex justify-content-between">
+
+					<a href="{{ path('app_article_index') }}" class="btn btn-primary-light">
+						<i class="fa fa-arrow-left mr-1"></i>
+						Retour
+					</a>
+
+					<button type="submit" class="btn btn-success">
+						<i class="fa fa-save mr-1"></i>
+						{{ bouton_label }}
+					</button>
+
+				</div>
+
+				{{ form_end(form) }}
+
+			</div>
+
+		</div>
+
+	</div>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			if (window.jQuery && window.jQuery.fn.select2) {
+				window.jQuery('.js-select-search').select2({
+					width: '100%',
+					allowClear: true
+				});
+			}
+		});
+	</script>
+
+{% endblock %}

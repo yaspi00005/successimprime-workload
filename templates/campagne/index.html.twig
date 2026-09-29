@@ -1,0 +1,148 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Campagnes
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<div>
+
+				<h1 class="page-title">
+					Campagnes
+				</h1>
+
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item">
+						Communications
+					</li>
+					<li class="breadcrumb-item active">
+						Campagnes
+					</li>
+				</ol>
+
+			</div>
+
+			<div class="ml-auto">
+
+				<a href="{{ path('app_campagne_new') }}" class="btn btn-primary-light">
+					<i class="fa fa-plus mr-1"></i>
+					Nouvelle campagne
+				</a>
+
+			</div>
+
+		</div>
+
+		<div class="row row-cards">
+
+			<div class="col-lg-12">
+
+				<div class="alert alert-info">
+					<i class="fa fa-info-circle mr-1"></i>
+					L'envoi d'une campagne se fait progressivement en arrière-plan, par petits lots, via une tâche planifiée sur le serveur (voir <code>scripts/windows/installer_tache_campagnes.bat</code>). Sans cette tâche installée, les messages restent "en attente" indéfiniment.
+				</div>
+
+				<div class="card">
+
+					<div class="card-header">
+						<div>
+							<h3 class="card-title mb-1">
+								Historique des campagnes
+							</h3>
+							<small class="text-muted">
+								{{ campagnes|length }} campagne(s)
+							</small>
+						</div>
+					</div>
+
+					<div class="table-responsive">
+
+						<table class="table table-bordered table-hover mb-0">
+
+							<thead>
+								<tr>
+									<th>Nom</th>
+									<th>Modèle</th>
+									<th>Canal</th>
+									<th class="text-center">Statut</th>
+									<th class="text-center">Progression</th>
+									<th>Créée le</th>
+								</tr>
+							</thead>
+
+							<tbody>
+
+								{% for campagne in campagnes %}
+
+									{% set c = compteurs[campagne.id] %}
+
+									<tr>
+
+										<td class="align-middle">
+											<a href="{{ path('app_campagne_show', {id: campagne.id}) }}">
+												<strong>{{ campagne.nom }}</strong>
+											</a>
+										</td>
+
+										<td class="align-middle">
+											{{ campagne.modeleMessage }}
+										</td>
+
+										<td class="align-middle">
+											<span class="badge badge-secondary">{{ campagne.modeleMessage.canalLabel }}</span>
+										</td>
+
+										<td class="align-middle text-center">
+											{% if campagne.statut == 'terminee' %}
+												<span class="badge badge-success">Terminée</span>
+											{% else %}
+												<span class="badge badge-warning">En cours</span>
+											{% endif %}
+										</td>
+
+										<td class="align-middle text-center">
+											{{ c.envoye }} envoyé(s) · {{ c.echec }} échec(s)
+											{% if c.en_attente > 0 %}
+												· {{ c.en_attente }} en attente
+											{% endif %}
+											<span class="text-muted">/ {{ campagne.nombreTotal }}</span>
+										</td>
+
+										<td class="align-middle">
+											{{ campagne.dateCreation ? campagne.dateCreation|date('d/m/Y H:i') : '—' }}
+										</td>
+
+									</tr>
+
+								{% else %}
+
+									<tr>
+										<td colspan="6" class="text-center text-muted py-5">
+											Aucune campagne enregistrée.
+										</td>
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

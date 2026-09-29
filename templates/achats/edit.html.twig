@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Modifier {{ achat.numero|default('la demande d’achat') }}
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_achat_index') }}">Achats</a>
+			</li>
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_achat_show', {id: achat.id}) }}">{{ achat.numero|default('#' ~ achat.id) }}</a>
+			</li>
+			<li class="breadcrumb-item active">
+				Modifier
+			</li>
+		</ol>
+	</div>
+
+	<div class="row">
+		<div class="col-md-10">
+			<div class="card">
+				<div class="card-header">
+					<h3 class="mb-0 card-title">
+						Modifier {{ achat.numero|default('la demande d’achat') }}
+					</h3>
+				</div>
+
+				{% include 'achats/_form.html.twig' %}
+
+			</div>
+		</div>
+	</div>
+
+{% endblock %}

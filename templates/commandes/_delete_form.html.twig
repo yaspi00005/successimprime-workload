@@ -1,0 +1,9 @@
+{% if is_granted('ROLE_ADMIN') %}
+    <form method="post" action="{{ path('app_commandes_delete', {'id': commande.id}) }}" class="js-confirm-form d-inline" data-message="Supprimer définitivement la commande {{ commande.numero }} ? Cette action est irréversible.">
+        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ commande.id) }}">
+        <button class="btn btn-danger">
+            <i class="fe fe-trash-2 mr-1"></i>
+            Supprimer
+        </button>
+    </form>
+{% endif %}

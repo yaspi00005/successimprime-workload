@@ -1,0 +1,235 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rapprochements bancaires
+{% endblock %}
+
+{% block body %}
+	<div class="side-app">
+		<div
+			class="container-fluid py-4">
+
+			{# En-tête #}
+			<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+				<div>
+					<h4 class="mb-1">
+						<i class="fa fa-university me-2"></i>
+						Rapprochements bancaires
+					</h4>
+
+					<p class="text-muted mb-0">
+						Suivi et contrôle des opérations bancaires
+					</p>
+				</div>
+
+				<a href="{{ path('app_rapprochement_bancaire_new') }}" class="btn btn-primary">
+					<i class="fa fa-plus me-1"></i>
+					Nouveau rapprochement
+				</a>
+			</div>
+
+			{# Messages flash #}
+			{% for message in app.flashes('success') %}
+				<div class="alert alert-success alert-dismissible fade show">
+					<i class="fa fa-check-circle me-1"></i>
+					{{ message }}
+
+					<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+				</div>
+			{% endfor %}
+
+			{% for message in app.flashes('error') %}
+				<div class="alert alert-danger alert-dismissible fade show">
+					<i class="fa fa-exclamation-circle me-1"></i>
+					{{ message }}
+
+					<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+				</div>
+			{% endfor %}
+
+			<div class="card shadow-sm">
+				<div class="card-header d-flex justify-content-between align-items-center">
+					<h5 class="card-title mb-0">
+						Liste des rapprochements
+					</h5>
+
+					<span class="badge bg-primary">
+						{{ rapprochements|length }}
+						rapprochement(s)
+					</span>
+				</div>
+
+				<div class="card-body">
+					{% if rapprochements is not empty %}
+						<div class="table-responsive">
+							<table class="table table-bordered table-striped table-hover align-middle" id="table-rapprochements">
+								<thead class="table-light">
+									<tr>
+										<th>Référence</th>
+										<th>Compte bancaire</th>
+										<th>Période</th>
+										<th class="text-end">Solde relevé</th>
+										<th class="text-end">Solde comptable</th>
+										<th class="text-end">Écart</th>
+										<th class="text-center">Lignes pointées</th>
+										<th class="text-center">Statut</th>
+										<th>Date de création</th>
+										<th class="text-center">Action</th>
+									</tr>
+								</thead>
+
+								<tbody>
+									{% for rapprochement in rapprochements %}
+										<tr>
+											<td>
+												<strong>
+													{{ rapprochement.reference }}
+												</strong>
+											</td>
+
+											<td>
+												{% if rapprochement.compteTresorerie %}
+													<div>
+														<strong>
+															{{ rapprochement.compteTresorerie.nom }}
+														</strong>
+													</div>
+
+													{% if rapprochement.compteTresorerie.numeroCompte %}
+														<small class="text-muted">
+															{{ rapprochement.compteTresorerie.numeroCompte }}
+														</small>
+													{% endif %}
+												{% else %}
+													<span class="text-muted">
+														Non renseigné
+													</span>
+												{% endif %}
+											</td>
+
+											<td>
+												{% if rapprochement.dateDebut and rapprochement.dateFin %}
+													<small>
+														Du
+														<strong>
+															{{ rapprochement.dateDebut|date('d/m/Y') }}
+														</strong>
+														<br>
+														au
+														<strong>
+															{{ rapprochement.dateFin|date('d/m/Y') }}
+														</strong>
+													</small>
+												{% else %}
+													<span class="text-muted">
+														Non renseignée
+													</span>
+												{% endif %}
+											</td>
+
+											<td class="text-end">
+												{{ rapprochement.soldeClotureReleve|number_format(0, ',', ' ') }}
+												FCFA
+											</td>
+
+											<td class="text-end">
+												{{ rapprochement.soldeComptable|number_format(0, ',', ' ') }}
+												FCFA
+											</td>
+
+											<td class="text-end">
+												{% if rapprochement.ecart == 0 %}
+													<span class="text-success fw-bold">
+														0 FCFA
+													</span>
+												{% else %}
+													<span class="text-danger fw-bold">
+														{{ rapprochement.ecart|number_format(0, ',', ' ') }}
+														FCFA
+													</span>
+												{% endif %}
+											</td>
+
+											<td class="text-center">
+												<span class="badge
+																																																						                                            {% if rapprochement.nombreLignes > 0
+																																																						                                                and rapprochement.nombreLignesPointees == rapprochement.nombreLignes %}
+																																																						                                                bg-success
+																																																						                                            {% elseif rapprochement.nombreLignesPointees > 0 %}
+																																																						                                                bg-warning text-dark
+																																																						                                            {% else %}
+																																																						                                                bg-secondary
+																																																						                                            {% endif %}">
+													{{ rapprochement.nombreLignesPointees }}
+													/
+													{{ rapprochement.nombreLignes }}
+												</span>
+											</td>
+
+											<td class="text-center">
+												{% if rapprochement.statut == 'brouillon' %}
+													<span class="badge bg-warning text-dark">
+														<i class="fa fa-pencil me-1"></i>
+														Brouillon
+													</span>
+
+												{% elseif rapprochement.statut == 'valide' %}
+													<span class="badge bg-success">
+														<i class="fa fa-check me-1"></i>
+														Validé
+													</span>
+
+												{% elseif rapprochement.statut == 'cloture' %}
+													<span class="badge bg-dark">
+														<i class="fa fa-lock me-1"></i>
+														Clôturé
+													</span>
+
+												{% else %}
+													<span class="badge bg-secondary">
+														{{ rapprochement.statut|capitalize }}
+													</span>
+												{% endif %}
+											</td>
+
+											<td>
+												{% if rapprochement.dateCreation %}
+													{{ rapprochement.dateCreation|date('d/m/Y H:i') }}
+												{% else %}
+													—
+												{% endif %}
+											</td>
+
+											<td class="text-center">
+												<a href="{{ path( 'app_rapprochement_bancaire_show', { id: rapprochement.id } ) }}" class="btn btn-sm btn-info text-white" title="Consulter">
+													<i class="fa fa-eye"></i>
+												</a>
+											</td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% else %}
+						<div class="text-center py-5">
+							<div class="mb-3">
+								<i class="fa fa-university text-muted" style="font-size: 50px;"></i>
+							</div>
+
+							<h5>Aucun rapprochement bancaire</h5>
+
+							<p class="text-muted">
+								Créez votre premier rapprochement pour commencer
+																														                        le pointage des opérations bancaires.
+							</p>
+
+							<a href="{{ path('app_rapprochement_bancaire_new') }}" class="btn btn-primary">
+								<i class="fa fa-plus me-1"></i>
+								Créer un rapprochement
+							</a>
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

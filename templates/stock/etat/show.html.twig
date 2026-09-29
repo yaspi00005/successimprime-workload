@@ -1,0 +1,567 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Stock -
+	{{ article.designation }}
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+
+				<li class="breadcrumb-item">
+
+					<a href="{{ path('app_stock_etat_index') }}">
+						État du stock
+					</a>
+
+				</li>
+
+				<li class="breadcrumb-item active">
+					{{ article.designation }}
+				</li>
+
+			</ol>
+
+
+			<a href="{{ path('app_stock_etat_index') }}" class="btn btn-primary-light">
+
+				<i class="fa fa-arrow-left mr-1"></i>
+
+				Retour
+
+			</a>
+
+		</div>
+
+
+		{# ==========================================================
+		       ARTICLE
+		       ========================================================== #}
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-cube mr-1"></i>
+
+					{{ article.designation }}
+
+				</h3>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+		       SOLDES
+		       ========================================================== #}
+
+		<div class="row">
+
+			<div class="col-lg-4">
+
+				<div class="card">
+
+					<div class="card-body text-center">
+
+						<small class="text-muted d-block">
+							Stock physique
+						</small>
+
+						<strong class="h2">
+							{{ stockPhysique|number_format(3, ',', ' ') }}
+						</strong>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="col-lg-4">
+
+				<div class="card">
+
+					<div class="card-body text-center">
+
+						<small class="text-muted d-block">
+							Réservé
+						</small>
+
+						<strong class="h2 text-warning">
+							{{ stockReserve|number_format(3, ',', ' ') }}
+						</strong>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="col-lg-4">
+
+				<div class="card">
+
+					<div class="card-body text-center">
+
+						<small class="text-muted d-block">
+							Disponible
+						</small>
+
+						<strong class="h2 {{ stockDisponible <= 0 ? 'text-danger' : 'text-success' }}">
+
+							{{ stockDisponible|number_format(3, ',', ' ') }}
+
+						</strong>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+		       RÉSERVATIONS
+		       ========================================================== #}
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-lock mr-1"></i>
+
+					Réservations
+
+				</h3>
+
+			</div>
+
+			<div class="card-body">
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered">
+
+						<thead>
+
+							<tr>
+
+								<th>Date</th>
+								<th>Commande</th>
+								<th>Détail</th>
+								<th class="text-right">Quantité</th>
+								<th>Statut</th>
+
+							</tr>
+
+						</thead>
+
+						<tbody>
+
+							{% for reservation in reservations %}
+
+								{% set detail = reservation.commandeDetail %}
+
+								{% set commande =
+                            detail
+                            ? detail.commande
+                            : null
+                        %}
+
+								<tr>
+
+									<td>
+
+										{% if reservation.dateReservation %}
+
+											{{ reservation.dateReservation|date('d/m/Y H:i') }}
+
+										{% else %}
+
+											—
+
+										{% endif %}
+
+									</td>
+
+
+									<td>
+
+										{% if commande %}
+
+											{{ commande.numero|default(
+                                        'CMD #' ~ commande.id
+                                    ) }}
+
+										{% else %}
+
+											—
+
+										{% endif %}
+
+									</td>
+
+
+									<td>
+
+										{% if detail %}
+
+											{{ detail.designation }}
+
+										{% else %}
+
+											—
+
+										{% endif %}
+
+									</td>
+
+
+									<td class="text-right">
+
+										{{ reservation.quantite|number_format(3, ',', ' ') }}
+
+									</td>
+
+
+									<td>
+
+										{% if reservation.statut == 'active' %}
+
+											<span class="badge badge-warning">
+												Active
+											</span>
+
+										{% elseif reservation.statut == 'consommee' %}
+
+											<span class="badge badge-success">
+												Consommée
+											</span>
+
+										{% elseif reservation.statut == 'liberee' %}
+
+											<span class="badge badge-info">
+												Libérée
+											</span>
+
+										{% elseif reservation.statut == 'annulee' %}
+
+											<span class="badge badge-danger">
+												Annulée
+											</span>
+
+										{% else %}
+
+											<span class="badge badge-secondary">
+												{{ reservation.statut }}
+											</span>
+
+										{% endif %}
+
+									</td>
+
+								</tr>
+
+							{% else %}
+
+								<tr>
+
+									<td colspan="5" class="text-center text-muted">
+										Aucune réservation.
+									</td>
+
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+		       SORTIES
+		       ========================================================== #}
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-arrow-up mr-1 text-danger"></i>
+
+					Sorties de stock
+
+				</h3>
+
+			</div>
+
+			<div class="card-body">
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered">
+
+						<thead>
+
+							<tr>
+
+								<th>Date</th>
+								<th>Origine</th>
+								<th>Référence</th>
+								<th>Détail</th>
+								<th class="text-right">
+									Quantité
+								</th>
+
+							</tr>
+
+						</thead>
+
+						<tbody>
+
+							{% for sortie in sorties %}
+
+								<tr>
+
+									<td>
+
+										{% if sortie.date %}
+
+											{{ sortie.date|date('d/m/Y H:i') }}
+
+										{% else %}
+
+											—
+
+										{% endif %}
+
+									</td>
+
+
+									<td>
+
+										{% if sortie.origine == 'production' %}
+
+											<span class="badge badge-primary">
+												Production
+											</span>
+
+										{% elseif sortie.origine == 'livraison' %}
+
+											<span class="badge badge-info">
+												Livraison
+											</span>
+
+										{% elseif sortie.origine == 'manuelle' %}
+
+											<span class="badge badge-secondary">
+												Manuelle
+											</span>
+
+										{% else %}
+
+											{{ sortie.origine|default('—') }}
+
+										{% endif %}
+
+									</td>
+
+
+									<td>
+
+										{{ sortie.referenceOrigine|default('—') }}
+
+									</td>
+
+
+									<td>
+
+										{% if sortie.commandeDetail %}
+
+											{{ sortie.commandeDetail.designation }}
+
+										{% else %}
+
+											—
+
+										{% endif %}
+
+									</td>
+
+
+									<td class="text-right text-danger">
+
+										<strong>
+											-
+											{{ sortie.quantite|number_format(3, ',', ' ') }}
+										</strong>
+
+									</td>
+
+								</tr>
+
+							{% else %}
+
+								<tr>
+
+									<td colspan="5" class="text-center text-muted">
+										Aucune sortie.
+									</td>
+
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ==========================================================
+		       ENTRÉES
+		       ========================================================== #}
+
+		<div class="card">
+
+			<div class="card-header">
+
+				<h3 class="card-title">
+
+					<i class="fa fa-arrow-down mr-1 text-success"></i>
+
+					Entrées de stock
+
+				</h3>
+
+			</div>
+
+			<div class="card-body">
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered">
+
+						<thead>
+
+							<tr>
+
+								<th>Date</th>
+
+								<th class="text-right">
+									Quantité
+								</th>
+
+								<th class="text-right">
+									Prix
+								</th>
+
+							</tr>
+
+						</thead>
+
+						<tbody>
+
+							{% for entree in entrees %}
+
+								<tr>
+
+									<td>
+
+										{% if entree.date %}
+
+											{{ entree.date|date('d/m/Y H:i') }}
+
+										{% else %}
+
+											—
+
+										{% endif %}
+
+									</td>
+
+
+									<td class="text-right text-success">
+
+										<strong>
+
+											+
+											{{ entree.quantites|number_format(3, ',', ' ') }}
+
+										</strong>
+
+									</td>
+
+
+									<td class="text-right">
+
+										{% if entree.prix is not null %}
+
+											{{ entree.prix|number_format(0, ',', ' ') }}
+											FCFA
+
+										{% else %}
+
+											—
+
+										{% endif %}
+
+									</td>
+
+								</tr>
+
+							{% else %}
+
+								<tr>
+
+									<td colspan="3" class="text-center text-muted">
+
+										Aucune entrée de stock.
+
+									</td>
+
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}

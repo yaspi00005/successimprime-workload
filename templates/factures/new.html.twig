@@ -1,0 +1,1536 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Nouveau document de facturation
+{% endblock %}
+
+{% block body %}
+
+	{% set client = commande.clients|default(null) %}
+
+	{% set commandeTotalHt = commande.totalHt|default(0) %}
+	{% set commandeRemise = commande.remise|default(0) %}
+	{% set commandeTotalTtc = commande.totalTtc|default(0) %}
+
+	<div
+		class="side-app">
+
+		{# ============================================================
+																														           HEADER
+																														           ============================================================ #}
+
+		<div class="page-header">
+
+			<div>
+
+				<h1 class="page-title">
+					Nouveau document de facturation
+				</h1>
+
+				<ol class="breadcrumb">
+
+					<li class="breadcrumb-item">
+						<a href="{{ path('app_factures_index') }}">
+							Factures
+						</a>
+					</li>
+
+					<li class="breadcrumb-item">
+
+						<a href="{{ path( 'app_commandes_show', { id: commande.id } ) }}">
+							{{
+                                commande.numero
+                                |default(
+                                    'Commande #' ~ commande.id
+                                )
+                            }}
+						</a>
+
+					</li>
+
+					<li class="breadcrumb-item active">
+						Nouveau document
+					</li>
+
+				</ol>
+
+			</div>
+
+
+			<div>
+
+				<a href="{{ path( 'app_commandes_show', { id: commande.id } ) }}" class="btn btn-secondary">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour à la commande
+				</a>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+																														           FLASH
+																														           ============================================================ #}
+
+		{% for type, messages in app.flashes %}
+
+			{% for message in messages %}
+
+				<div class="
+																																																																																										                        alert
+																																																																																										                        alert-{{ type == 'error' ? 'danger' : type }}
+																																																																																										                        alert-dismissible
+																																																																																										                        fade
+																																																																																										                        show
+																																																																																										                    ">
+
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert">
+						&times;
+					</button>
+
+				</div>
+
+			{% endfor %}
+
+		{% endfor %}
+
+
+		{# ============================================================
+																														           FACTURE OFFICIELLE EXISTANTE
+																														           ============================================================ #}
+
+		{% if factureComptableExistante %}
+
+			<div class="alert alert-warning">
+
+				<div class="d-flex align-items-start">
+
+					<div class="mr-3">
+						<i class="fa fa-exclamation-triangle fa-2x"></i>
+					</div>
+
+					<div>
+
+						<strong>
+							Une facture officielle existe déjà.
+						</strong>
+
+						<div class="mt-1">
+
+							Cette commande possède déjà la facture :
+
+							<a href="{{ path( 'app_factures_show', { id: factureComptableExistante.id } ) }}" class="font-weight-bold">
+								{{
+                                    factureComptableExistante.numero
+                                    |default(
+                                        'Facture #' ~
+                                        factureComptableExistante.id
+                                    )
+                                }}
+							</a>
+
+						</div>
+
+						<small class="d-block mt-2">
+
+							Vous pouvez toujours créer plusieurs
+																																																																																																									                            pro forma / simulations, mais aucune
+																																																																																																									                            deuxième facture officielle comptabilisée
+																																																																																																									                            ne sera autorisée.
+
+						</small>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		{% endif %}
+
+
+		<div
+			class="row">
+
+			{# ========================================================
+																																													               COLONNE GAUCHE
+																																													               ======================================================== #}
+
+			<div
+				class="col-xl-4 col-lg-5">
+
+				{# ====================================================
+																																																												                   COMMANDE
+																																																												                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Commande source
+						</h3>
+
+					</div>
+
+					<div class="card-body">
+
+						<div class="mb-4">
+
+							<small class="text-muted d-block">
+								Numéro
+							</small>
+
+							<strong>
+
+								{{
+                                    commande.numero
+                                    |default(
+                                        'Commande #' ~ commande.id
+                                    )
+                                }}
+
+							</strong>
+
+						</div>
+
+
+						{% if commande.dateCommande|default(null) %}
+
+							<div class="mb-4">
+
+								<small class="text-muted d-block">
+									Date
+								</small>
+
+								<strong>
+
+									{{
+                                        commande.dateCommande
+                                        |date('d/m/Y')
+                                    }}
+
+								</strong>
+
+							</div>
+
+						{% endif %}
+
+
+						{% if client %}
+
+							<div class="mb-4">
+
+								<small class="text-muted d-block">
+									Client
+								</small>
+
+								<strong>
+
+									{{
+                                        client.raisonSociale
+                                        |default(
+                                            client.nomComplet
+                                            |default(
+                                                client.nom
+                                                |default('Client')
+                                            )
+                                        )
+                                    }}
+
+								</strong>
+
+							</div>
+
+
+							{% if client.telephone|default('') %}
+
+								<div class="mb-2">
+
+									<i class="fa fa-phone mr-2 text-primary"></i>
+
+									{{ client.telephone }}
+
+								</div>
+
+							{% endif %}
+
+
+							{% if client.email|default('') %}
+
+								<div class="mb-2">
+
+									<i class="fa fa-envelope mr-2 text-primary"></i>
+
+									{{ client.email }}
+
+								</div>
+
+							{% endif %}
+
+						{% endif %}
+
+
+						<hr>
+
+
+						<div class="
+																																																																																																																								                            d-flex
+																																																																																																																								                            justify-content-between
+																																																																																																																								                            mb-3
+																																																																																																																								                        ">
+
+							<span>
+								Total HT
+							</span>
+
+							<strong>
+
+								{{
+                                    commandeTotalHt
+                                    |number_format(
+                                        0,
+                                        ',',
+                                        ' '
+                                    )
+                                }}
+								FCFA
+
+							</strong>
+
+						</div>
+
+
+						{% if commandeRemise > 0 %}
+
+							<div class="
+																																																																																																																																							                                d-flex
+																																																																																																																																							                                justify-content-between
+																																																																																																																																							                                mb-3
+																																																																																																																																							                            ">
+
+								<span>
+									Remise
+								</span>
+
+								<strong class="text-danger">
+
+									-
+									{{
+                                        commandeRemise
+                                        |number_format(
+                                            0,
+                                            ',',
+                                            ' '
+                                        )
+                                    }}
+									FCFA
+
+								</strong>
+
+							</div>
+
+						{% endif %}
+
+
+						<div class="
+																										d-flex
+																										justify-content-between
+																									text-white">
+
+							<strong class="text-white">
+								Total TTC commande
+							</strong>
+
+							<strong class="text-white ">
+
+								{{
+                                    commandeTotalTtc
+                                    |number_format(
+                                        0,
+                                        ',',
+                                        ' '
+                                    )
+                                }}
+								FCFA
+
+							</strong>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																												                   AIDE
+																																																												                   ==================================================== #}
+
+				<div class="card border-info">
+
+					<div class="card-body">
+
+						<div class="d-flex">
+
+							<div class="mr-3 text-info">
+								<i class="fa fa-info-circle fa-2x"></i>
+							</div>
+
+							<div>
+
+								<strong class="d-block mb-2">
+									Fonctionnement
+								</strong>
+
+								<small class="text-muted">
+
+									La facture officielle reprend
+																																																																																																																																							                                    les montants réels de la commande
+																																																																																																																																							                                    et participe à la comptabilité.
+
+									<br><br>
+
+									Une pro forma / simulation peut
+																																																																																																																																							                                    contenir une majoration commerciale,
+																																																																																																																																							                                    mais elle ne modifie ni la
+																																																																																																																																							                                    comptabilité, ni les paiements,
+																																																																																																																																							                                    ni la trésorerie.
+
+								</small>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+
+			{# ========================================================
+																																													               COLONNE DROITE
+																																													               ======================================================== #}
+
+			<div class="col-xl-8 col-lg-7">
+
+				{{ form_start(
+                    form,
+                    {
+                        attr: {
+                            id: 'facture-form',
+                            autocomplete: 'off'
+                        }
+                    }
+                ) }}
+
+
+				{% if not form.vars.valid %}
+
+					<div class="alert alert-danger">
+
+						<strong>
+							Le document ne peut pas être enregistré.
+						</strong>
+
+						{{ form_errors(form) }}
+
+					</div>
+
+				{% endif %}
+
+
+				{# ====================================================
+																																																												                   TYPE DE DOCUMENT
+																																																												                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Type de document
+						</h3>
+
+					</div>
+
+					<div class="card-body">
+
+						<div class="row">
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+
+									{{
+                                        form_label(
+                                            form.typeDocument
+                                        )
+                                    }}
+
+									{{
+                                        form_widget(
+                                            form.typeDocument,
+                                            {
+                                                attr: {
+                                                    class:
+                                                        'form-control custom-select'
+                                                }
+                                            }
+                                        )
+                                    }}
+
+									{{ form_errors(form.typeDocument) }}
+
+								</div>
+
+							</div>
+
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+
+									{{
+                                        form_label(
+                                            form.emetteur
+                                        )
+                                    }}
+
+									{{
+                                        form_widget(
+                                            form.emetteur,
+                                            {
+                                                attr: {
+                                                    class:
+                                                        'form-control custom-select'
+                                                }
+                                            }
+                                        )
+                                    }}
+
+									{{ form_errors(form.emetteur) }}
+
+								</div>
+
+							</div>
+
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+
+									{{
+                                        form_label(
+                                            form.dateEcheance
+                                        )
+                                    }}
+
+									{{
+                                        form_widget(
+                                            form.dateEcheance,
+                                            {
+                                                attr: {
+                                                    class: 'form-control'
+                                                }
+                                            }
+                                        )
+                                    }}
+
+									{{ form_errors(form.dateEcheance) }}
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<div class="alert alert-primary mb-0" id="document-type-info">
+							<i class="fa fa-file-text-o mr-1"></i>
+
+							<span id="document-type-message">
+
+								La facture officielle sera comptabilisée
+																																																																																																																								                                et conservera les montants réels
+																																																																																																																								                                de la commande.
+
+							</span>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																												                   FACTURATION À UN TIERS
+																																																												                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Facturation à un tiers
+						</h3>
+
+					</div>
+
+					<div class="card-body">
+
+						<div class="custom-control custom-checkbox mb-3">
+
+							{{
+                                form_widget(
+                                    form.facturerAUnTiers,
+                                    {
+                                        attr: {
+                                            class:
+                                                'custom-control-input js-facturer-a-un-tiers'
+                                        }
+                                    }
+                                )
+                            }}
+
+							{{
+                                form_label(
+                                    form.facturerAUnTiers,
+                                    null,
+                                    {
+                                        label_attr: {
+                                            class:
+                                                'custom-control-label'
+                                        }
+                                    }
+                                )
+                            }}
+
+						</div>
+
+						<small class="form-text text-muted mb-3 d-block">
+							Le demandeur n'est pas toujours celui qui paie.
+																																																																																																		Cochez pour indiquer les coordonnées du payeur ;
+																																																																																																		elles remplaceront celles du client sur le PDF.
+						</small>
+
+						<div class="row js-zone-facturer-a-un-tiers" style="display:none;">
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+									{{ form_label(form.nomFacturation, 'Nom du payeur') }}
+									{{ form_widget(form.nomFacturation, { attr: { class: 'form-control' } }) }}
+									{{ form_errors(form.nomFacturation) }}
+								</div>
+
+							</div>
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+									{{ form_label(form.adresseFacturation, 'Adresse de facturation') }}
+									{{ form_widget(form.adresseFacturation, { attr: { class: 'form-control' } }) }}
+									{{ form_errors(form.adresseFacturation) }}
+								</div>
+
+							</div>
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+									{{ form_label(form.telephoneFacturation, 'Téléphone du payeur') }}
+									{{ form_widget(form.telephoneFacturation, { attr: { class: 'form-control' } }) }}
+									{{ form_errors(form.telephoneFacturation) }}
+								</div>
+
+							</div>
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+									{{ form_label(form.emailFacturation, 'Email du payeur') }}
+									{{ form_widget(form.emailFacturation, { attr: { class: 'form-control' } }) }}
+									{{ form_errors(form.emailFacturation) }}
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																												                   MAJORATION
+																																																												                   ==================================================== #}
+
+				<div class="card" id="majoration-card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Majoration commerciale
+						</h3>
+
+					</div>
+
+
+					<div class="card-body">
+
+						<div class="custom-control custom-checkbox mb-4">
+
+							{{
+                                form_widget(
+                                    form.surfacturation,
+                                    {
+                                        attr: {
+                                            class:
+                                                'custom-control-input'
+                                        }
+                                    }
+                                )
+                            }}
+
+							{{
+                                form_label(
+                                    form.surfacturation,
+                                    null,
+                                    {
+                                        label_attr: {
+                                            class:
+                                                'custom-control-label'
+                                        }
+                                    }
+                                )
+                            }}
+
+							{{ form_errors(form.surfacturation) }}
+
+						</div>
+
+
+						<div id="majoration-fields" style="display: none;">
+
+							<div class="alert alert-warning">
+
+								<i class="fa fa-exclamation-triangle mr-1"></i>
+
+								Utilisez soit un pourcentage,
+																																																																																																																								                                soit un montant fixe.
+
+							</div>
+
+
+							<div class="row">
+
+								<div class="col-md-6">
+
+									<div class="form-group">
+
+										{{
+                                            form_label(
+                                                form.tauxSurfacturation
+                                            )
+                                        }}
+
+										<div class="input-group">
+
+											{{
+                                                form_widget(
+                                                    form.tauxSurfacturation,
+                                                    {
+                                                        attr: {
+                                                            class:
+                                                                'form-control',
+                                                            min: 0,
+                                                            step: '0.01',
+                                                            placeholder:
+                                                                'Ex. 15'
+                                                        }
+                                                    }
+                                                )
+                                            }}
+
+											<div class="input-group-append">
+
+												<span class="input-group-text">
+													%
+												</span>
+
+											</div>
+
+										</div>
+
+										{{
+                                            form_errors(
+                                                form.tauxSurfacturation
+                                            )
+                                        }}
+
+									</div>
+
+								</div>
+
+
+								<div class="col-md-6">
+
+									<div class="form-group">
+
+										{{
+                                            form_label(
+                                                form.montantSurfacturation
+                                            )
+                                        }}
+
+										<div class="input-group">
+
+											{{
+                                                form_widget(
+                                                    form.montantSurfacturation,
+                                                    {
+                                                        attr: {
+                                                            class:
+                                                                'form-control',
+                                                            min: 0,
+                                                            placeholder:
+                                                                'Ex. 50 000'
+                                                        }
+                                                    }
+                                                )
+                                            }}
+
+											<div class="input-group-append">
+
+												<span class="input-group-text">
+													FCFA
+												</span>
+
+											</div>
+
+										</div>
+
+										{{
+                                            form_errors(
+                                                form.montantSurfacturation
+                                            )
+                                        }}
+
+									</div>
+
+								</div>
+
+
+								<div class="col-md-12">
+
+									<div class="form-group">
+
+										{{
+                                            form_label(
+                                                form.motifSurfacturation
+                                            )
+                                        }}
+
+										{{
+                                            form_widget(
+                                                form.motifSurfacturation,
+                                                {
+                                                    attr: {
+                                                        class:
+                                                            'form-control',
+                                                        rows: 3
+                                                    }
+                                                }
+                                            )
+                                        }}
+
+										{{
+                                            form_errors(
+                                                form.motifSurfacturation
+                                            )
+                                        }}
+
+									</div>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																												                   APERÇU FINANCIER
+																																																												                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Aperçu du document
+						</h3>
+
+					</div>
+
+					<div class="card-body">
+
+						<div class="row">
+
+							<div class="col-lg-7">
+
+								<div class="facture-preview-box">
+
+									<div class="
+																																																																																																																																																																					                                        d-flex
+																																																																																																																																																																					                                        justify-content-between
+																																																																																																																																																																					                                        mb-3
+																																																																																																																																																																					                                    ">
+
+										<span>
+											Montant de base
+										</span>
+
+										<strong id="preview-base">
+											{{
+                                                commandeTotalTtc
+                                                |number_format(
+                                                    0,
+                                                    ',',
+                                                    ' '
+                                                )
+                                            }}
+											FCFA
+										</strong>
+
+									</div>
+
+
+									<div class="
+																																																																																																																																																																					                                        d-flex
+																																																																																																																																																																					                                        justify-content-between
+																																																																																																																																																																					                                        mb-3
+																																																																																																																																																																					                                    ">
+
+										<span>
+											Majoration
+										</span>
+
+										<strong class="text-warning" id="preview-majoration">
+											0 FCFA
+										</strong>
+
+									</div>
+
+
+									<hr>
+
+
+									<div class="
+																																																																																																																																																																					                                        d-flex
+																																																																																																																																																																					                                        justify-content-between
+																																																																																																																																																																					                                        align-items-center
+																																																																																																																																																																					                                    ">
+
+										<strong class="preview-total-label">
+											TOTAL DOCUMENT
+										</strong>
+
+										<strong class="
+																																																																																																																																																																					                                                text-primary
+																																																																																																																																																																					                                                preview-total-value
+																																																																																																																																																																					                                            " id="preview-total">
+											{{
+                                                commandeTotalTtc
+                                                |number_format(
+                                                    0,
+                                                    ',',
+                                                    ' '
+                                                )
+                                            }}
+											FCFA
+										</strong>
+
+									</div>
+
+								</div>
+
+							</div>
+
+
+							<div class="col-lg-5">
+
+								<div class="alert alert-light border h-100">
+
+									<small class=" d-block">
+										Impact comptable
+									</small>
+
+									<strong id="preview-comptabilisation" class="text-success">
+										Oui
+									</strong>
+
+
+									<hr>
+
+
+									<small class=" d-block">
+										Type
+									</small>
+
+									<strong id="preview-type">
+										Facture officielle
+									</strong>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																												                   OBSERVATION
+																																																												                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<h3 class="card-title">
+							Informations complémentaires
+						</h3>
+
+					</div>
+
+					<div class="card-body">
+
+						<div class="form-group mb-0">
+
+							{{
+                                form_label(
+                                    form.observation
+                                )
+                            }}
+
+							{{
+                                form_widget(
+                                    form.observation,
+                                    {
+                                        attr: {
+                                            class: 'form-control',
+                                            rows: 4
+                                        }
+                                    }
+                                )
+                            }}
+
+							{{ form_errors(form.observation) }}
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{# ====================================================
+																																																												                   ACTIONS
+																																																												                   ==================================================== #}
+
+				<div class="card">
+
+					<div class="card-body">
+
+						<div class="
+																																																																																																																								                            d-flex
+																																																																																																																								                            justify-content-between
+																																																																																																																								                            align-items-center
+																																																																																																																								                            flex-wrap
+																																																																																																																								                        ">
+
+							<div class="text-muted mb-2">
+
+								<i class="fa fa-lock mr-1"></i>
+
+								Les montants seront stockés
+																																																																																																																								                                lors de l’enregistrement.
+
+							</div>
+
+
+							<div>
+
+								<a href="{{ path( 'app_commandes_show', { id: commande.id } ) }}" class="btn btn-light">
+									Annuler
+								</a>
+
+
+								<button type="submit" class="btn btn-success ml-2" id="btn-enregistrer-facture">
+
+									<i class="fa fa-save mr-1"></i>
+
+									Enregistrer le document
+
+								</button>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+
+				{{ form_end(form) }}
+
+			</div>
+
+		</div>
+
+	</div>
+
+{% endblock %}
+
+
+{% block stylesheets %}
+
+	{{ parent() }}
+
+	<style>
+
+		.facture-preview-box {
+			border: 1px solid #dce4f0;
+			border-radius: 6px;
+
+			padding: 22px;
+			color: #1f2937;
+			background: #f8fafc;
+		}
+
+		.preview-total-label {
+			font-size: 15px;
+		}
+
+		.preview-total-value {
+			font-size: 22px;
+		}
+
+		#majoration-card {
+			transition: opacity 0.2s ease;
+		}
+
+		#majoration-card.majoration-disabled {
+			opacity: .6;
+		}
+
+		.form-control {
+			color: #1f2937 !important;
+			-webkit-text-fill-color: #1f2937 !important;
+		}
+
+		.form-control::placeholder {
+			color: #94a3b8 !important;
+			-webkit-text-fill-color: #94a3b8 !important;
+		}
+		.justify-content-between {
+			color: #1f2937 !important;
+		}
+	</style>
+
+{% endblock %}
+
+
+{% block javascripts %}
+
+	{{ parent() }}
+
+	<script>
+
+		document.addEventListener('DOMContentLoaded', function () { /*
+                 * ===================================================
+                 * ÉLÉMENTS
+                 * ===================================================
+                 */
+
+const form = document.getElementById('facture-form');
+
+const typeInput = document.getElementById('{{ form.typeDocument.vars.id }}');
+
+const surfacturationInput = document.getElementById('{{ form.surfacturation.vars.id }}');
+
+const tauxInput = document.getElementById('{{ form.tauxSurfacturation.vars.id }}');
+
+const montantInput = document.getElementById('{{ form.montantSurfacturation.vars.id }}');
+
+const majorationFields = document.getElementById('majoration-fields');
+
+const majorationCard = document.getElementById('majoration-card');
+
+const typeMessage = document.getElementById('document-type-message');
+
+const previewBase = document.getElementById('preview-base');
+
+const previewMajoration = document.getElementById('preview-majoration');
+
+const previewTotal = document.getElementById('preview-total');
+
+const previewType = document.getElementById('preview-type');
+
+const previewComptabilisation = document.getElementById('preview-comptabilisation');
+
+const submitButton = document.getElementById('btn-enregistrer-facture');
+
+
+/*
+                 * Montant réel de la commande.
+                 */
+const totalCommande = {{ commandeTotalTtc|default(0)|json_encode|raw }};
+
+
+/*
+                 * ===================================================
+                 * FORMATEUR FCFA
+                 * ===================================================
+                 */
+
+function formatMoney(montant) {
+const valeur = Number(montant) || 0;
+
+return new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0}).format(valeur) + ' FCFA';
+}
+
+
+/*
+                 * ===================================================
+                 * TYPE DOCUMENT
+                 * ===================================================
+                 */
+
+function updateDocumentType() {
+if (! typeInput) {
+return;
+}
+
+const type = typeInput.value;
+
+const factureOfficielle = type === 'facture';
+
+
+if (factureOfficielle) {
+
+previewType.textContent = 'Facture officielle';
+
+previewComptabilisation.textContent = 'Oui';
+
+previewComptabilisation.className = 'text-success';
+
+
+typeMessage.textContent = 'La facture officielle sera ' + 'comptabilisée et conservera ' + 'les montants réels de la commande.';
+
+
+/*
+                         * Une facture officielle
+                         * ne peut pas être majorée.
+                         */
+surfacturationInput.checked = false;
+
+surfacturationInput.disabled = true;
+
+majorationFields.style.display = 'none';
+
+tauxInput.value = '';
+
+montantInput.value = '';
+
+tauxInput.disabled = true;
+
+montantInput.disabled = true;
+
+majorationCard.classList.add('majoration-disabled');
+
+} else {
+
+previewType.textContent = 'Pro forma / Simulation';
+
+previewComptabilisation.textContent = 'Non';
+
+previewComptabilisation.className = 'text-warning';
+
+
+typeMessage.textContent = 'La pro forma est un document ' + 'commercial non comptabilisé. ' + 'Une majoration peut être appliquée.';
+
+
+surfacturationInput.disabled = false;
+
+majorationCard.classList.remove('majoration-disabled');
+
+
+updateMajorationVisibility();
+} calculatePreview();
+}
+
+
+/*
+                 * ===================================================
+                 * AFFICHAGE MAJORATION
+                 * ===================================================
+                 */
+
+function updateMajorationVisibility() {
+if (! surfacturationInput || ! majorationFields) {
+return;
+}
+
+
+const active = surfacturationInput.checked && ! surfacturationInput.disabled;
+
+
+majorationFields.style.display = active ? 'block' : 'none';
+
+
+tauxInput.disabled = ! active;
+
+montantInput.disabled = ! active;
+
+
+if (! active) {
+
+tauxInput.value = '';
+
+montantInput.value = '';
+}
+
+
+calculatePreview();
+}
+
+
+/*
+                 * ===================================================
+                 * CALCUL APERÇU
+                 * ===================================================
+                 */
+
+function calculatePreview() {
+let majoration = 0;
+
+
+const majorationActive = surfacturationInput && surfacturationInput.checked && ! surfacturationInput.disabled;
+
+
+if (majorationActive) {
+
+const taux = parseFloat(tauxInput.value || '0');
+
+const montant = parseInt(montantInput.value || '0', 10);
+
+
+if (taux > 0) {
+
+majoration = Math.round(totalCommande * taux / 100);
+
+} else if (montant > 0) {
+
+majoration = montant;
+}
+}
+
+
+const totalFinal = totalCommande + majoration;
+
+
+previewBase.textContent = formatMoney(totalCommande);
+
+previewMajoration.textContent = formatMoney(majoration);
+
+previewTotal.textContent = formatMoney(totalFinal);
+}
+
+
+/*
+                 * ===================================================
+                 * EMPÊCHER TAUX + MONTANT EN MÊME TEMPS
+                 * ===================================================
+                 */
+
+tauxInput.addEventListener('input', function () {
+
+const taux = parseFloat(this.value || '0');
+
+if (taux > 0) {
+montantInput.value = '';
+}
+
+calculatePreview();
+
+});
+
+
+montantInput.addEventListener('input', function () {
+
+const montant = parseInt(this.value || '0', 10);
+
+if (montant > 0) {
+tauxInput.value = '';
+}
+
+calculatePreview();
+
+});
+
+
+/*
+                 * ===================================================
+                 * EVENTS
+                 * ===================================================
+                 */
+
+typeInput.addEventListener('change', updateDocumentType);
+
+
+surfacturationInput.addEventListener('change', updateMajorationVisibility);
+
+
+/*
+                 * ===================================================
+                 * CONFIRMATION
+                 * ===================================================
+                 */
+
+if (form) {
+
+form.addEventListener('submit', function (event) {
+
+const type = typeInput.value;
+
+const estFacture = type === 'facture';
+
+
+const taux = parseFloat(tauxInput.value || '0');
+
+const montant = parseInt(montantInput.value || '0', 10);
+
+
+/*
+                             * Double sécurité.
+                             */
+if (surfacturationInput.checked && taux > 0 && montant > 0) {
+
+event.preventDefault();
+
+if (typeof Swal !== 'undefined') {
+
+Swal.fire({
+icon: 'error',
+title: 'Majoration incorrecte',
+text: 'Choisissez soit ' + 'un pourcentage, ' + 'soit un montant fixe.'
+});
+
+}
+
+return;
+}
+
+
+/*
+                             * Confirmation SweetAlert.
+                             */
+if (typeof Swal !== 'undefined' && ! form.dataset.confirmed) {
+
+event.preventDefault();
+
+
+const titre = estFacture ? 'Créer la facture officielle ?' : 'Créer la pro forma ?';
+
+
+const texte = estFacture ? 'La facture sera comptabilisée ' + 'avec les montants réels ' + 'de la commande.' : 'La pro forma sera enregistrée ' + 'sans impact comptable.';
+
+
+Swal.fire({
+icon: 'question',
+title: titre,
+text: texte,
+showCancelButton: true,
+confirmButtonText: 'Oui, enregistrer',
+cancelButtonText: 'Annuler'
+}).then(function (result) {
+
+if (result.isConfirmed) {
+
+form.dataset.confirmed = '1';
+
+submitButton.disabled = true;
+
+submitButton.innerHTML = '<i class="fa ' + 'fa-spinner ' + 'fa-spin mr-1"></i>' + ' Enregistrement...';
+
+/*
+                                             * requestSubmit()
+                                             * conserve le comportement
+                                             * normal du formulaire.
+                                             */
+form.requestSubmit();
+}
+
+});
+
+}
+
+});
+}
+
+
+/*
+                 * ===================================================
+                 * FACTURATION À UN TIERS
+                 * ===================================================
+                 */
+
+const facturerAUnTiersInput = document.getElementById('{{ form.facturerAUnTiers.vars.id }}');
+
+const zoneFacturerAUnTiers = document.querySelector('.js-zone-facturer-a-un-tiers');
+
+function actualiserFacturerAUnTiers() {
+if (! facturerAUnTiersInput || ! zoneFacturerAUnTiers) {
+return;
+}
+
+zoneFacturerAUnTiers.style.display = facturerAUnTiersInput.checked ? '' : 'none';
+}
+
+if (facturerAUnTiersInput) {
+facturerAUnTiersInput.addEventListener('change', actualiserFacturerAUnTiers);
+
+actualiserFacturerAUnTiers();
+}
+
+
+/*
+                 * ===================================================
+                 * INITIALISATION
+                 * ===================================================
+                 */
+
+updateDocumentType();
+
+});
+	</script>
+
+{% endblock %}

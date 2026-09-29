@@ -1,0 +1,177 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Journal d'activité{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+
+		<div class="page-header">
+
+			<div>
+				<h1 class="page-title">Journal d'activité</h1>
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item active">Journal d'activité</li>
+				</ol>
+			</div>
+
+		</div>
+
+
+		<div class="card">
+
+			<div class="card-body">
+
+				<form method="get" class="row g-2 align-items-end">
+
+					<div class="col-lg-2 col-md-4">
+						<label class="form-label">Entité</label>
+						<select name="entite" class="form-control">
+							<option value="">Toutes</option>
+							{% for entite in entitesDisponibles %}
+								<option value="{{ entite }}" {{ filtres.entite == entite ? 'selected' : '' }}>{{ entite }}</option>
+							{% endfor %}
+						</select>
+					</div>
+
+					<div class="col-lg-2 col-md-4">
+						<label class="form-label">Action</label>
+						<select name="action" class="form-control">
+							<option value="">Toutes</option>
+							<option value="creation" {{ filtres.action == 'creation' ? 'selected' : '' }}>Création</option>
+							<option value="modification" {{ filtres.action == 'modification' ? 'selected' : '' }}>Modification</option>
+							<option value="suppression" {{ filtres.action == 'suppression' ? 'selected' : '' }}>Suppression</option>
+							<option value="doublon_bloque" {{ filtres.action == 'doublon_bloque' ? 'selected' : '' }}>Doublon bloqué</option>
+						</select>
+					</div>
+
+					<div class="col-lg-2 col-md-4">
+						<label class="form-label">ID de l'entité</label>
+						<input type="number" name="entite_id" class="form-control" value="{{ filtres.entite_id }}" placeholder="ex : 42">
+					</div>
+
+					<div class="col-lg-2 col-md-4">
+						<label class="form-label">Du</label>
+						<input type="date" name="date_debut" class="form-control" value="{{ filtres.date_debut }}">
+					</div>
+
+					<div class="col-lg-2 col-md-4">
+						<label class="form-label">Au</label>
+						<input type="date" name="date_fin" class="form-control" value="{{ filtres.date_fin }}">
+					</div>
+
+					<div class="col-lg-2 col-md-4 d-flex" style="gap:.5rem;">
+						<button type="submit" class="btn btn-primary-light flex-fill">
+							<i class="fa fa-filter mr-1"></i>
+							Filtrer
+						</button>
+						<a href="{{ path('app_journal_activite_index') }}" class="btn btn-secondary">
+							<i class="fa fa-times"></i>
+						</a>
+					</div>
+
+				</form>
+
+			</div>
+
+		</div>
+
+
+		<div class="card">
+
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h3 class="card-title mb-0">
+					{{ total }} entrée{{ total > 1 ? 's' : '' }}
+				</h3>
+			</div>
+
+			<div class="table-responsive">
+
+				<table class="table table-bordered table-hover mb-0">
+
+					<thead>
+						<tr>
+							<th>Date / heure</th>
+							<th>Entité</th>
+							<th>ID</th>
+							<th class="text-center">Action</th>
+							<th>Utilisateur</th>
+							<th>Champs modifiés</th>
+							<th></th>
+						</tr>
+					</thead>
+
+					<tbody>
+
+						{% for journal in journaux %}
+							<tr>
+								<td class="nowrap">{{ journal.createdAt|date('d/m/Y H:i:s') }}</td>
+								<td>{{ journal.entite }}</td>
+								<td>#{{ journal.entiteId }}</td>
+								<td class="text-center">
+									{% if journal.action == 'creation' %}
+										<span class="badge badge-success">Création</span>
+									{% elseif journal.action == 'suppression' %}
+										<span class="badge badge-danger">Suppression</span>
+									{% elseif journal.action == 'doublon_bloque' %}
+										<span class="badge badge-info">Doublon bloqué</span>
+									{% else %}
+										<span class="badge badge-warning">Modification</span>
+									{% endif %}
+								</td>
+								<td>
+									{% if journal.utilisateur %}
+										{{ journal.utilisateur.username }}
+									{% else %}
+										<span class="text-muted">—</span>
+									{% endif %}
+								</td>
+								<td>
+									{% for champ in journal.champsModifies|slice(0, 4) %}
+										<span class="badge badge-secondary mr-1">{{ champ }}</span>
+									{% endfor %}
+									{% if journal.champsModifies|length > 4 %}
+										<span class="text-muted">+{{ journal.champsModifies|length - 4 }}</span>
+									{% endif %}
+								</td>
+								<td class="text-center">
+									<a href="{{ path('app_journal_activite_show', {id: journal.id}) }}" class="btn btn-sm btn-primary-light">
+										<i class="fa fa-eye"></i>
+									</a>
+								</td>
+							</tr>
+						{% else %}
+							<tr>
+								<td colspan="7" class="text-center text-muted py-4">
+									Aucune activité enregistrée pour ces critères.
+								</td>
+							</tr>
+						{% endfor %}
+
+					</tbody>
+
+				</table>
+
+			</div>
+
+			{% if pageCount > 1 %}
+				<div class="card-footer">
+					<nav class="d-flex justify-content-end">
+						<ul class="pagination mb-0">
+							{% for numero in 1..pageCount %}
+								<li class="page-item {{ numero == page ? 'active' : '' }}">
+									<a class="page-link" href="{{ path('app_journal_activite_index', app.request.query.all|merge({page: numero})) }}">
+										{{ numero }}
+									</a>
+								</li>
+							{% endfor %}
+						</ul>
+					</nav>
+				</div>
+			{% endif %}
+
+		</div>
+
+	</div>
+
+{% endblock %}

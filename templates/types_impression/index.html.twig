@@ -1,0 +1,444 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}User index
+{% endblock %}
+
+{% block body %}
+	<!-- PAGE-HEADER -->
+	<div class="side-app">
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="#">Utilisateurs</a>
+			</li>
+			<li class="breadcrumb-item active" aria-current="page">Liste des Utilisateurs</li>
+		</ol>
+		<div>
+			<button type="button" class="btn btn-primary btn-create-type-impression" data-toggle="modal" data-target="#typeImpressionCreateModal">
+				<i class="fa fa-plus mr-1"></i>
+				Ajouter un type d’impression
+			</button>
+
+
+			<button type="button" id="typeImpressionMassPublishButton" class="btn btn-success">
+				<i class="fa fa-eye mr-1"></i>
+				Publier
+			</button>
+
+			<button type="button" id="typeImpressionMassUnpublishButton" class="btn btn-warning">
+				<i class="fa fa-eye-slash mr-1"></i>
+				Dépublier
+			</button>
+
+			<button type="button" id="typeImpressionMassDeleteButton" class="btn btn-danger">
+				<i class="fa fa-trash mr-1"></i>
+				Supprimer
+			</button>
+
+
+		</div>
+	</div>
+	</div>
+	<!-- PAGE-HEADER END -->
+
+	<!-- ROW OPEN -->
+	<div
+		class="row row-cards">
+
+		<!-- COL-END -->
+		<div class="col-lg-8 col-xl-12">
+			<div class="input-group mb-5">
+				<input type="text" class="form-control" placeholder="">
+				<div class="input-group-append ">
+					<button type="button" class="btn btn-primary-light">
+						<i class="fa fa-search" aria-hidden="true"></i>
+					</button>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-header border-bottom-0 p-4">
+					<h2 class="card-title">1 - 30 of 546 users</h2>
+					<div class="page-options d-flex float-right">
+						<select class="form-control custom-select w-auto">
+							<option value="asc">Latest</option>
+							<option value="desc">Oldest</option>
+						</select>
+					</div>
+				</div>
+				<div class="e-table">
+					<div class="table-responsive table-lg br-bl-10 br-br-10">
+						<input type="hidden" id="typeImpressionMassActionUrl" value="{{ path('app_type_impression_mass_action') }}">
+
+						<input type="hidden" id="typeImpressionMassActionToken" value="{{ csrf_token('type_impression_mass_action') }}">
+
+						<input type="hidden" id="typeImpressionReorderUrl" value="{{ path('app_type_impression_reorder') }}">
+
+						<input type="hidden" id="typeImpressionReorderToken" value="{{ csrf_token('type_impression_reorder') }}">
+						<table class="table table-bordered mb-0">
+
+							<thead>
+								<tr>
+
+									<th class="text-center">
+										Ordre
+									</th>
+
+									<th class="text-center">
+										<div class="custom-control custom-checkbox">
+
+											<input type="checkbox" class="custom-control-input" id="typeImpressionCheckAll">
+
+											<label class="custom-control-label" for="typeImpressionCheckAll"></label>
+
+										</div>
+									</th>
+
+									<th>Nom</th>
+
+									<th>Description</th>
+
+									<th>Finitions compatibles</th>
+
+									<th class="text-center">Statut</th>
+
+									<th class="text-center">Actions</th>
+
+								</tr>
+							</thead>
+
+							<tbody id="typeImpressionSortableBody">
+
+								{% for typeImpression in typesImpressions %}
+
+									<tr
+										id="type-impression-row-{{ typeImpression.id }}" class="type-impression-sortable-row" data-id="{{ typeImpression.id }}">
+
+										{# Poignée de déplacement #}
+										<td class="text-center align-middle">
+
+											<i class="fa fa-arrows-alt type-impression-drag-handle" style="cursor: move;" title="Déplacer"></i>
+
+										</td>
+
+										{# Checkbox de sélection #}
+										<td class="text-center align-middle">
+
+											<div class="custom-control custom-checkbox">
+
+												<input type="checkbox" class="custom-control-input type-impression-row-check" id="type-impression-item-{{ typeImpression.id }}" value="{{ typeImpression.id }}">
+
+												<label class="custom-control-label" for="type-impression-item-{{ typeImpression.id }}"></label>
+
+											</div>
+
+										</td>
+
+										{# Nom #}
+										<td class="align-middle">
+
+											<strong>
+												{{ typeImpression.nom }}
+											</strong>
+
+										</td>
+
+										{# Description #}
+										<td class="align-middle">
+
+											{% if typeImpression.description %}
+
+												{{ typeImpression.description }}
+
+											{% else %}
+
+												<span class="text-muted">
+													Aucune description
+												</span>
+
+											{% endif %}
+
+										</td>
+
+										{# Finitions associées #}
+										<td class="align-middle">
+
+											{% if typeImpression.finitions is not empty %}
+
+												{% for finition in typeImpression.finitions %}
+
+													<span class="badge badge-info mb-1" title="{{ finition.description ?: finition.nom }}">
+														{{ finition.nom }}
+													</span>
+
+												{% endfor %}
+
+											{% else %}
+
+												<span class="text-muted">
+													Aucune finition associée
+												</span>
+
+											{% endif %}
+
+										</td>
+
+										{# Statut #}
+										<td class="text-center align-middle">
+
+											{% if typeImpression.publie %}
+
+												<span class="badge badge-success">
+													Publié
+												</span>
+
+											{% else %}
+
+												<span class="badge badge-danger">
+													Non publié
+												</span>
+
+											{% endif %}
+
+										</td>
+
+										{# Actions #}
+										<td class="text-center align-middle">
+
+											<div
+												class="btn-group align-top">
+
+												{# Modifier #}
+												<button type="button" class="btn btn-sm btn-primary-light btn-edit-type-impression" data-toggle="modal" data-target="#typeImpressionEditModal" data-id="{{ typeImpression.id }}" data-get-url="{{ path( 'app_type_impression_get_ajax', { id: typeImpression.id } ) }}" data-update-url="{{ path( 'app_type_impression_update_ajax', { id: typeImpression.id } ) }}" title="Modifier">
+													<i class="fa fa-edit"></i>
+												</button>
+
+												{# Publier ou dépublier #}
+												<button type="button" class="btn btn-sm {{ typeImpression.publie    ? 'btn-warning-light'    : 'btn-success-light'   }} btn-toggle-type-impression" data-url="{{ path( 'app_type_impression_toggle_publication', { id: typeImpression.id } ) }}" data-token="{{ csrf_token( 'toggle_type_impression_' ~ typeImpression.id ) }}" data-nom="{{ typeImpression.nom }}" data-publie="{{ typeImpression.publie ? '1' : '0' }}" title="{{ typeImpression.publie ? 'Dépublier' : 'Publier' }}">
+
+													{% if typeImpression.publie %}
+
+														<i class="fa fa-eye-slash"></i>
+
+													{% else %}
+
+														<i class="fa fa-eye"></i>
+
+													{% endif %}
+
+												</button>
+
+												{# Supprimer #}
+												<button type="button" class="btn btn-sm btn-danger-light btn-delete-type-impression" data-id="{{ typeImpression.id }}" data-url="{{ path( 'app_type_impression_delete_ajax', { id: typeImpression.id } ) }}" data-token="{{ csrf_token( 'delete_type_impression_' ~ typeImpression.id ) }}" data-nom="{{ typeImpression.nom }}" title="Supprimer">
+													<i class="fa fa-trash"></i>
+												</button>
+
+											</div>
+
+										</td>
+
+									</tr>
+
+								{% else %}
+
+									<tr>
+										<td colspan="7" class="text-center text-muted">
+											Aucun type d’impression trouvé
+										</td>
+									</tr>
+
+								{% endfor %}
+
+							</tbody>
+
+						</table>
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<!-- COL-END -->
+		<input type="hidden" id="typeImpressionCreateUrl" value="{{ path('app_type_impression_create_ajax') }}">
+
+		<input type="hidden" id="typeImpressionCreateToken" value="{{ csrf_token('create_type_impression') }}">
+
+		<input type="hidden" id="typeImpressionMassActionUrl" value="{{ path('app_type_impression_mass_action') }}">
+
+		<input type="hidden" id="typeImpressionMassActionToken" value="{{ csrf_token('type_impression_mass_action') }}">
+
+		<input type="hidden" id="typeImpressionReorderUrl" value="{{ path('app_type_impression_reorder') }}">
+
+		<input type="hidden" id="typeImpressionReorderToken" value="{{ csrf_token('type_impression_reorder') }}">
+		<div class="modal fade" id="typeImpressionEditModal" tabindex="-1" role="dialog" aria-labelledby="typeImpressionEditModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-lg" role="document">
+				<div class="modal-content">
+
+					<div class="modal-header">
+						<h5 class="modal-title" id="typeImpressionEditModalLabel">
+							Modifier le type d’impression
+						</h5>
+
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+
+					<div class="modal-body">
+
+						<input type="hidden" id="typeImpressionEditUpdateUrl">
+
+						<div class="form-group">
+							<label class="form-label" for="typeImpressionEditNom">
+								Nom
+							</label>
+
+							<input type="text" id="typeImpressionEditNom" class="form-control" autocomplete="off">
+						</div>
+
+						<div class="form-group">
+							<label class="form-label" for="typeImpressionEditDescription">
+								Description
+							</label>
+
+							<textarea id="typeImpressionEditDescription" class="form-control" rows="3"></textarea>
+						</div>
+
+						<div class="form-group">
+							<div class="form-label">
+								Finitions compatibles
+							</div>
+
+							<div class="selectgroup selectgroup-pills">
+								{% for finition in finitions %}
+									<label class="selectgroup-item">
+										<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input type-impression-edit-finition">
+
+										<span class="selectgroup-button">
+											{{ finition.nom }}
+										</span>
+									</label>
+								{% else %}
+									<span class="text-muted">
+										Aucune finition disponible
+									</span>
+								{% endfor %}
+							</div>
+						</div>
+
+						<div class="form-group mb-0">
+							<label class="custom-switch">
+								<input type="checkbox" id="typeImpressionEditActif" class="custom-switch-input">
+
+								<span class="custom-switch-indicator"></span>
+
+								<span class="custom-switch-description">
+									Type publié
+								</span>
+							</label>
+						</div>
+
+					</div>
+
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+							Annuler
+						</button>
+
+						<button type="button" id="typeImpressionEditSaveButton" class="btn btn-primary">
+							Enregistrer les modifications
+						</button>
+					</div>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="modal fade" id="typeImpressionCreateModal" tabindex="-1" role="dialog" aria-labelledby="typeImpressionCreateModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-lg" role="document">
+				<div class="modal-content">
+
+					<div class="modal-header">
+						<h5 class="modal-title" id="typeImpressionCreateModalLabel">
+							Ajouter un type d’impression
+						</h5>
+
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+
+					<div class="modal-body">
+
+						<div class="form-group">
+							<label class="form-label" for="typeImpressionCreateNom">
+								Nom
+							</label>
+
+							<input type="text" id="typeImpressionCreateNom" class="form-control" placeholder="Exemple : Impression DTF" autocomplete="off">
+						</div>
+
+						<div class="form-group">
+							<label class="form-label" for="typeImpressionCreateDescription">
+								Description
+							</label>
+
+							<textarea id="typeImpressionCreateDescription" class="form-control" rows="3" placeholder="Description du type d’impression"></textarea>
+						</div>
+
+						<div class="form-group">
+							<div class="form-label">
+								Finitions compatibles
+							</div>
+
+							<div class="selectgroup selectgroup-pills">
+								{% for finition in finitions %}
+									<label class="selectgroup-item">
+										<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input type-impression-create-finition">
+
+										<span class="selectgroup-button">
+											{{ finition.nom }}
+										</span>
+									</label>
+								{% else %}
+									<span class="text-muted">
+										Aucune finition disponible
+									</span>
+								{% endfor %}
+							</div>
+						</div>
+
+						<div class="form-group mb-0">
+							<label class="custom-switch">
+								<input type="checkbox" id="typeImpressionCreateActif" class="custom-switch-input" checked>
+
+								<span class="custom-switch-indicator"></span>
+
+								<span class="custom-switch-description">
+									Publier ce type d’impression
+								</span>
+							</label>
+						</div>
+
+					</div>
+
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+							Annuler
+						</button>
+
+						<button type="button" id="typeImpressionCreateSaveButton" class="btn btn-primary">
+							Enregistrer
+						</button>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- ROW CLOSED -->
+{% endblock %}
+{% block javascripts %}
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="../assets/js/traitement_types_impression.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+
+{% endblock %}

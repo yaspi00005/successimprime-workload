@@ -1,0 +1,223 @@
+{% macro ligne_achat(ligne) %}
+
+	<tr class="js-ligne-achat">
+
+		<td style="min-width:260px;">
+			{{ form_widget(ligne.article) }}
+			{{ form_errors(ligne.article) }}
+		</td>
+
+		<td style="width:120px;">
+			{{ form_widget(ligne.quantite, {attr: {class: 'form-control js-achat-quantite'}}) }}
+			{{ form_errors(ligne.quantite) }}
+		</td>
+
+		<td style="width:160px;">
+			{{ form_widget(ligne.prixUnitaire, {attr: {class: 'form-control js-achat-prix'}}) }}
+			{{ form_errors(ligne.prixUnitaire) }}
+		</td>
+
+		<td style="width:150px;" class="align-middle text-right js-ligne-total">
+			0 FCFA
+		</td>
+
+		<td style="width:50px;" class="align-middle text-center">
+			<button type="button" class="btn btn-sm btn-danger-light js-supprimer-ligne-achat">
+				<i class="fa fa-trash"></i>
+			</button>
+		</td>
+
+	</tr>
+
+{% endmacro %}
+
+{% import _self as achat_macros %}
+
+{{ form_start(form) }}
+
+<div class="card-body">
+
+	<div class="row">
+
+		<div class="col-md-6">
+			<div class="form-group">
+				{{ form_label(form.fournisseur) }}
+				{{ form_widget(form.fournisseur) }}
+				{{ form_errors(form.fournisseur) }}
+			</div>
+		</div>
+
+		<div class="col-md-3">
+			<div class="form-group">
+				{{ form_label(form.tva) }}
+				{{ form_widget(form.tva) }}
+				{{ form_errors(form.tva) }}
+			</div>
+		</div>
+
+	</div>
+
+	<div class="form-group">
+		{{ form_label(form.observation) }}
+		{{ form_widget(form.observation) }}
+		{{ form_errors(form.observation) }}
+	</div>
+
+
+	<hr>
+
+	<div class="d-flex justify-content-between align-items-center mb-2">
+		<h4 class="mb-0">Articles à acheter</h4>
+		<button type="button" id="js-ajouter-ligne-achat" class="btn btn-sm btn-primary-light">
+			<i class="fa fa-plus mr-1"></i>
+			Ajouter une ligne
+		</button>
+	</div>
+
+	{{ form_errors(form.lignes) }}
+
+	<div class="table-responsive">
+		<table class="table table-bordered" id="js-table-lignes-achat">
+			<thead>
+				<tr>
+					<th>Article</th>
+					<th>Quantité</th>
+					<th>Prix unitaire</th>
+					<th class="text-right">Total ligne</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody id="js-lignes-achat-corps" data-index="{{ form.lignes|length }}" data-prototype="{{ achat_macros.ligne_achat(form.lignes.vars.prototype)|e('html_attr') }}">
+
+				{% for ligne in form.lignes %}
+					{{ achat_macros.ligne_achat(ligne) }}
+				{% endfor %}
+
+			</tbody>
+			<tfoot>
+				<tr>
+					<td colspan="3" class="text-right"><strong>Total HT estimé</strong></td>
+					<td class="text-right" id="js-total-ht-achat">0 FCFA</td>
+					<td></td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
+
+	{% if form.vars.errors|length > 0 %}
+		<div class="alert alert-danger mt-3">
+			{{ form_errors(form) }}
+		</div>
+	{% endif %}
+
+</div>
+
+<div class="card-footer text-right">
+	<a href="{{ path('app_achat_index') }}" class="btn btn-secondary">
+		<i class="fa fa-arrow-left mr-1"></i>
+		Retour
+	</a>
+	<button type="submit" class="btn btn-primary-light">
+		<i class="fa fa-save mr-1"></i>
+		Enregistrer
+	</button>
+</div>
+
+{{ form_end(form) }}
+
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+
+			const corps = document.getElementById('js-lignes-achat-corps');
+			const boutonAjouter = document.getElementById('js-ajouter-ligne-achat');
+			const totalHtElement = document.getElementById('js-total-ht-achat');
+
+			if (window.jQuery && window.jQuery.fn.select2) {
+				window.jQuery('.js-select-search').not('.js-ligne-achat .js-select-search').select2({
+					width: '100%',
+					allowClear: true
+				});
+			}
+
+			if (!corps) {
+				return;
+			}
+
+			function formaterMontant(valeur) {
+				return Math.round(Number(valeur || 0)).toLocaleString('fr-FR') + ' FCFA';
+			}
+
+			function calculerLigne(ligne) {
+				const quantite = Number(ligne.querySelector('.js-achat-quantite')?.value || 0);
+				const prix = Number(ligne.querySelector('.js-achat-prix')?.value || 0);
+				const total = Math.max(0, quantite) * Math.max(0, prix);
+
+				const totalElement = ligne.querySelector('.js-ligne-total');
+				if (totalElement) {
+					totalElement.textContent = formaterMontant(total);
+				}
+
+				return total;
+			}
+
+			function calculerTout() {
+				let total = 0;
+
+				corps.querySelectorAll('.js-ligne-achat').forEach(function (ligne) {
+					total += calculerLigne(ligne);
+				});
+
+				if (totalHtElement) {
+					totalHtElement.textContent = formaterMontant(total);
+				}
+			}
+
+			function initialiserLigne(ligne) {
+				if (window.jQuery && window.jQuery.fn.select2) {
+					window.jQuery(ligne).find('select.js-select-search').each(function () {
+						const select = window.jQuery(this);
+						if (!select.hasClass('select2-hidden-accessible')) {
+							select.select2({width: '100%', allowClear: true});
+						}
+					});
+				}
+
+				ligne.addEventListener('input', calculerTout);
+				ligne.addEventListener('change', calculerTout);
+
+				const supprimer = ligne.querySelector('.js-supprimer-ligne-achat');
+				if (supprimer) {
+					supprimer.addEventListener('click', function () {
+						if (corps.querySelectorAll('.js-ligne-achat').length <= 1) {
+							return;
+						}
+						ligne.remove();
+						calculerTout();
+					});
+				}
+			}
+
+			corps.querySelectorAll('.js-ligne-achat').forEach(initialiserLigne);
+			calculerTout();
+
+			if (boutonAjouter) {
+				boutonAjouter.addEventListener('click', function () {
+					const index = Number(corps.dataset.index || 0);
+					const html = corps.dataset.prototype.replace(/__ligne__/g, String(index));
+
+					corps.dataset.index = String(index + 1);
+
+					const temporaire = document.createElement('tbody');
+					temporaire.innerHTML = html.trim();
+					const nouvelleLigne = temporaire.firstElementChild;
+
+					if (nouvelleLigne) {
+						corps.appendChild(nouvelleLigne);
+						initialiserLigne(nouvelleLigne);
+					}
+				});
+			}
+
+		});
+	</script>

@@ -1,0 +1,891 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Produits
+{% endblock %}
+
+{% block body %}
+
+	<div class="side-app">
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="#">Paramétrage</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					Produits
+				</li>
+			</ol>
+
+			<div>
+
+				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#produitCreateModal">
+					<i class="fa fa-plus mr-1"></i>
+					Ajouter un produit
+				</button>
+
+				<button type="button" id="produitMassPublishButton" class="btn btn-success">
+					Publier
+				</button>
+
+				<button type="button" id="produitMassUnpublishButton" class="btn btn-warning">
+					Dépublier
+				</button>
+
+				<button type="button" id="produitMassDeleteButton" class="btn btn-danger">
+					Supprimer
+				</button>
+
+			</div>
+
+		</div>
+
+		<input type="hidden" id="produitCreateUrl" value="{{ path('app_produits_create_ajax') }}">
+
+		<input type="hidden" id="produitCreateToken" value="{{ csrf_token('create_produit') }}">
+
+		<input type="hidden" id="produitMassActionUrl" value="{{ path('app_produits_mass_action') }}">
+
+		<input type="hidden" id="produitMassActionToken" value="{{ csrf_token('produits_mass_action') }}">
+
+		<input type="hidden" id="produitReorderUrl" value="{{ path('app_produits_reorder') }}">
+
+		<input type="hidden" id="produitReorderToken" value="{{ csrf_token('produits_reorder') }}">
+		<div class="card mb-3">
+
+			<div class="card-body py-3">
+
+				<div class="row align-items-end">
+
+					<div class="col-lg-5 col-md-6">
+
+						<label for="produitRecherche">
+							Rechercher un produit
+						</label>
+
+						<div class="input-group">
+
+							<div class="input-group-prepend">
+								<span class="input-group-text">
+									<i class="fa fa-search"></i>
+								</span>
+							</div>
+
+							<input type="text" id="produitRecherche" class="form-control" placeholder="Code, nom, catégorie, support, format, finition..." autocomplete="off">
+
+							<div class="input-group-append">
+
+								<button type="button" id="produitRechercheReset" class="btn btn-secondary" title="Effacer la recherche">
+									<i class="fa fa-times"></i>
+								</button>
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					<div class="col-lg-3 col-md-3">
+
+						<label for="produitFiltreStatut">
+							Publication
+						</label>
+
+						<select id="produitFiltreStatut" class="form-control">
+							<option value="">
+								Tous
+							</option>
+
+							<option value="publie">
+								Publiés
+							</option>
+
+							<option value="non_publie">
+								Non publiés
+							</option>
+
+						</select>
+
+					</div>
+
+
+					<div class="col-lg-2 col-md-3">
+
+						<label for="produitFiltreActif">
+							État
+						</label>
+
+						<select id="produitFiltreActif" class="form-control">
+							<option value="">
+								Tous
+							</option>
+
+							<option value="actif">
+								Actifs
+							</option>
+
+							<option value="inactif">
+								Désactivés
+							</option>
+
+						</select>
+
+					</div>
+
+
+					<div class="col-lg-2 col-md-12 mt-3 mt-lg-0">
+
+						<div class="border rounded p-2 text-center">
+
+							<small class="text-muted d-block">
+								Résultats
+							</small>
+
+							<strong id="produitRechercheCompteur">
+								{{ produits|length }}
+							</strong>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+		<div class="card">
+
+			<div class="card-header">
+				<h3 class="card-title">
+					Liste des produits
+				</h3>
+			</div>
+
+			<div class="card-body">
+
+				<div class="table-responsive">
+
+					<table class="table table-bordered mb-0">
+
+						<thead>
+							<tr>
+								<th class="text-center">Ordre</th>
+
+								<th class="text-center">
+									<input type="checkbox" id="produitCheckAll">
+								</th>
+
+								<th>Code</th>
+								<th>Nom</th>
+								<th>Catégorie</th>
+								<th>Prix de base</th>
+								<th>Types d’impression</th>
+								<th>Supports</th>
+								<th>Formats</th>
+								<th>Finitions</th>
+								<th class="text-center">Statut</th>
+								<th class="text-center">Actions</th>
+							</tr>
+						</thead>
+
+						<tbody id="produitSortableBody">
+
+							{% for produit in produits %}
+
+								<tr id="produit-row-{{ produit.id }}" class="produit-sortable-row" data-id="{{ produit.id }}" data-code="{{ produit.code|lower|e('html_attr') }}" data-nom="{{ produit.nom|lower|e('html_attr') }}" data-categorie="{{ produit.categorieProduit ? produit.categorieProduit.nom|lower|e('html_attr') : '' }}" data-publie="{{ produit.publie ? '1' : '0' }}" data-actif="{{ produit.actif ? '1' : '0' }}">
+
+									<td class="text-center align-middle">
+										<i class="fa fa-arrows-alt produit-drag-handle" style="cursor: move;"></i>
+									</td>
+
+									<td class="text-center align-middle">
+										<input type="checkbox" class="produit-row-check" value="{{ produit.id }}">
+									</td>
+
+									<td class="align-middle">
+										<strong>{{ produit.code }}</strong>
+									</td>
+
+									<td class="align-middle">
+										{{ produit.nom }}
+									</td>
+
+									<td class="align-middle">
+										{{ produit.categorieProduit.nom }}
+									</td>
+
+									<td class="align-middle text-nowrap">
+										{{ produit.prixBase|number_format(0, ',', ' ') }}
+										FCFA
+									</td>
+
+									<td class="align-middle">
+										{% for type in produit.typesImpressions %}
+											<span class="badge badge-primary mb-1">
+												{{ type.nom }}
+											</span>
+										{% else %}
+											<span class="text-muted">Aucun</span>
+										{% endfor %}
+									</td>
+
+									<td class="align-middle">
+										{% for support in produit.supports %}
+											<span class="badge badge-info mb-1">
+												{{ support.nom }}
+											</span>
+										{% else %}
+											<span class="text-muted">Aucun</span>
+										{% endfor %}
+									</td>
+
+									<td class="align-middle">
+										{% for format in produit.formats %}
+											<span class="badge badge-secondary mb-1">
+												{{ format.nom }}
+											</span>
+										{% else %}
+											<span class="text-muted">Aucun</span>
+										{% endfor %}
+									</td>
+
+									<td class="align-middle">
+										{% for finition in produit.finitions %}
+											<span class="badge badge-warning mb-1">
+												{{ finition.nom }}
+											</span>
+										{% else %}
+											<span class="text-muted">Aucune</span>
+										{% endfor %}
+									</td>
+
+									<td class="text-center align-middle">
+
+										{% if produit.publie %}
+											<span class="badge badge-success">
+												Publié
+											</span>
+										{% else %}
+											<span class="badge badge-danger">
+												Non publié
+											</span>
+										{% endif %}
+
+										{% if not produit.actif %}
+											<span class="badge badge-dark">
+												Désactivé
+											</span>
+										{% endif %}
+
+									</td>
+
+									<td class="text-center align-middle">
+
+										<div class="btn-group">
+
+											<button type="button" class="btn btn-sm btn-primary-light btn-edit-produit" data-toggle="modal" data-target="#produitEditModal" data-get-url="{{ path( 'app_produits_get_ajax', {id: produit.id} ) }}" data-update-url="{{ path( 'app_produits_update_ajax', {id: produit.id} ) }}" data-update-token="{{ csrf_token( 'update_produit_' ~ produit.id ) }}">
+												<i class="fa fa-edit"></i>
+											</button>
+
+											<button type="button" class="btn btn-sm {{
+																																																																																																												produit.publie
+																																																																																																													? 'btn-warning-light'
+																																																																																																													: 'btn-success-light'
+																																																																																																											}} btn-toggle-produit" data-url="{{ path( 'app_produits_toggle_publication', {id: produit.id} ) }}" data-token="{{ csrf_token( 'toggle_produit_' ~ produit.id ) }}" data-nom="{{ produit.nom }}" data-publie="{{ produit.publie ? '1' : '0' }}">
+												<i class="fa {{
+																																																																																																																				produit.publie
+																																																																																																																					? 'fa-eye-slash'
+																																																																																																																					: 'fa-eye'
+																																																																																																																			}}"></i>
+											</button>
+
+											<button type="button" class="btn btn-sm {{
+																																																																																																												produit.actif
+																																																																																																													? 'btn-secondary-light'
+																																																																																																													: 'btn-success-light'
+																																																																																																											}} btn-toggle-status-produit" data-url="{{ path( 'app_produits_toggle_status', {id: produit.id} ) }}" data-token="{{ csrf_token( 'toggle_status_produit_' ~ produit.id ) }}" data-nom="{{ produit.nom }}" data-actif="{{ produit.actif ? '1' : '0' }}">
+												<i class="fa {{
+																																																																																																																				produit.actif
+																																																																																																																					? 'fa-ban'
+																																																																																																																					: 'fa-check'
+																																																																																																																			}}"></i>
+											</button>
+
+											<button type="button" class="btn btn-sm btn-danger-light btn-delete-produit" data-url="{{ path( 'app_produits_delete_ajax', {id: produit.id} ) }}" data-token="{{ csrf_token( 'delete_produit_' ~ produit.id ) }}" data-nom="{{ produit.nom }}">
+												<i class="fa fa-trash"></i>
+											</button>
+
+										</div>
+
+									</td>
+
+								</tr>
+
+							{% else %}
+
+								<tr>
+									<td colspan="12" class="text-center">
+										Aucun produit trouvé
+									</td>
+								</tr>
+
+							{% endfor %}
+
+						</tbody>
+
+					</table>
+
+				</div>
+
+			</div>
+
+		</div>
+
+		{# MODAL AJOUT #}
+
+		<div class="modal fade" id="produitCreateModal" tabindex="-1" role="dialog" aria-hidden="true">
+
+			<div class="modal-dialog modal-xl" role="document">
+
+				<div class="modal-content">
+
+					<div class="modal-header">
+
+						<h5 class="modal-title">
+							Ajouter un produit
+						</h5>
+
+						<button type="button" class="close" data-dismiss="modal">
+							<span>&times;</span>
+						</button>
+
+					</div>
+
+					<div class="modal-body">
+
+						<div class="row">
+
+							<div class="col-md-4 form-group">
+								<label>Code</label>
+
+								<input type="text" id="produitCreateCode" class="form-control" placeholder="Exemple : CV001">
+							</div>
+
+							<div class="col-md-4 form-group">
+								<label>Nom</label>
+
+								<input type="text" id="produitCreateNom" class="form-control">
+							</div>
+
+							<div class="col-md-4 form-group">
+								<label>Catégorie</label>
+
+								<select id="produitCreateCategorie" class="form-control">
+									<option value="">
+										Sélectionner
+									</option>
+
+									{% for categorie in categoriesProduits %}
+										<option value="{{ categorie.id }}">
+											{{ categorie.nom }}
+										</option>
+									{% endfor %}
+								</select>
+							</div>
+
+						</div>
+
+						<div class="row">
+
+							<div class="col-md-6 form-group">
+								<label>Prix de base</label>
+
+								<input type="number" id="produitCreatePrixBase" class="form-control" min="0" value="0">
+							</div>
+
+							<div class="col-md-6 form-group">
+								<label>Description</label>
+
+								<textarea id="produitCreateDescription" class="form-control" rows="3"></textarea>
+							</div>
+
+						</div>
+
+						{{ _self.choixRelations(
+						typesImpressions,
+						supports,
+						formats,
+						finitions,
+						'create'
+					) }}
+
+						<div class="row">
+
+							<div class="col-md-4">
+								<label class="custom-switch">
+									<input type="checkbox" id="produitCreatePublie" class="custom-switch-input" checked>
+									<span class="custom-switch-indicator"></span>
+									<span class="custom-switch-description">
+										Publié
+									</span>
+								</label>
+							</div>
+							<div class="card border mt-3">
+
+								<div class="card-header">
+									<h5 class="card-title mb-0">
+										<i class="fa fa-cubes mr-2 text-primary"></i>
+										Gestion du stock
+									</h5>
+								</div>
+
+								<div class="card-body">
+
+									<label class="custom-switch mb-3">
+
+										<input type="checkbox" id="produitCreateGestionStock" class="custom-switch-input">
+
+										<span class="custom-switch-indicator"></span>
+
+										<span class="custom-switch-description">
+											Ce produit utilise des articles de stock
+										</span>
+
+									</label>
+
+									<div id="produitCreateStockZone" style="display:none;">
+
+										<div class="d-flex justify-content-between align-items-center mb-3">
+
+											<div>
+												<strong>Nomenclature de consommation</strong>
+
+												<div class="small text-muted">
+													Articles consommés automatiquement par ce produit.
+												</div>
+											</div>
+
+											<button type="button" id="produitCreateAddStock" class="btn btn-sm btn-success-light">
+												<i class="fa fa-plus mr-1"></i>
+												Ajouter un article
+											</button>
+
+										</div>
+
+										<div id="produitCreateStockLines"></div>
+
+									</div>
+
+								</div>
+
+							</div>
+							<div class="col-md-4">
+								<label class="custom-switch">
+									<input type="checkbox" id="produitCreateActif" class="custom-switch-input" checked>
+									<span class="custom-switch-indicator"></span>
+									<span class="custom-switch-description">
+										Actif
+									</span>
+								</label>
+							</div>
+
+							<div class="col-md-4">
+								<label class="custom-switch">
+									<input type="checkbox" id="produitCreatePersonnalisable" class="custom-switch-input" checked>
+									<span class="custom-switch-indicator"></span>
+									<span class="custom-switch-description">
+										Personnalisable
+									</span>
+								</label>
+							</div>
+
+						</div>
+
+					</div>
+
+					<div class="modal-footer">
+
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+							Annuler
+						</button>
+
+						<button type="button" id="produitCreateSaveButton" class="btn btn-primary">
+							Enregistrer
+						</button>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+		{# MODAL MODIFICATION #}
+
+		<div class="modal fade" id="produitEditModal" tabindex="-1" role="dialog" aria-hidden="true">
+
+			<div class="modal-dialog modal-xl" role="document">
+
+				<div class="modal-content">
+
+					<div class="modal-header">
+
+						<h5 class="modal-title">
+							Modifier le produit
+						</h5>
+
+						<button type="button" class="close" data-dismiss="modal">
+							<span>&times;</span>
+						</button>
+
+					</div>
+
+					<div class="modal-body">
+
+						<input type="hidden" id="produitEditUpdateUrl">
+						<input type="hidden" id="produitEditToken">
+
+						<div class="row">
+
+							<div class="col-md-4 form-group">
+								<label>Code</label>
+								<input type="text" id="produitEditCode" class="form-control">
+							</div>
+
+							<div class="col-md-4 form-group">
+								<label>Nom</label>
+								<input type="text" id="produitEditNom" class="form-control">
+							</div>
+
+							<div class="col-md-4 form-group">
+								<label>Catégorie</label>
+
+								<select id="produitEditCategorie" class="form-control">
+									{% for categorie in categoriesProduits %}
+										<option value="{{ categorie.id }}">
+											{{ categorie.nom }}
+										</option>
+									{% endfor %}
+								</select>
+							</div>
+
+						</div>
+
+						<div class="row">
+
+							<div class="col-md-6 form-group">
+								<label>Prix de base</label>
+
+								<input type="number" id="produitEditPrixBase" class="form-control" min="0">
+							</div>
+
+							<div class="col-md-6 form-group">
+								<label>Description</label>
+
+								<textarea id="produitEditDescription" class="form-control" rows="3"></textarea>
+							</div>
+
+						</div>
+
+						{{ _self.choixRelations(
+						typesImpressions,
+						supports,
+						formats,
+						finitions,
+						'edit'
+					) }}
+
+						<div class="row">
+
+							<div class="col-md-4">
+								<label class="custom-switch">
+									<input type="checkbox" id="produitEditPublie" class="custom-switch-input">
+									<span class="custom-switch-indicator"></span>
+									<span class="custom-switch-description">
+										Publié
+									</span>
+								</label>
+							</div>
+							<div class="card border mt-3">
+
+								<div class="card-header">
+									<h5 class="card-title mb-0">
+										<i class="fa fa-cubes mr-2 text-primary"></i>
+										Gestion du stock
+									</h5>
+								</div>
+
+								<div class="card-body">
+
+									<label class="custom-switch mb-3">
+
+										<input type="checkbox" id="produitEditGestionStock" class="custom-switch-input">
+
+										<span class="custom-switch-indicator"></span>
+
+										<span class="custom-switch-description">
+											Ce produit utilise des articles de stock
+										</span>
+
+									</label>
+
+									<div id="produitEditStockZone" style="display:none;">
+
+										<div class="d-flex justify-content-between align-items-center mb-3">
+
+											<div>
+												<strong>Nomenclature de consommation</strong>
+
+												<div class="small text-muted">
+													Articles consommés automatiquement par ce produit.
+												</div>
+											</div>
+
+											<button type="button" id="produitEditAddStock" class="btn btn-sm btn-success-light">
+												<i class="fa fa-plus mr-1"></i>
+												Ajouter un article
+											</button>
+
+										</div>
+
+										<div id="produitEditStockLines"></div>
+
+									</div>
+
+								</div>
+
+							</div>
+							<div class="col-md-4">
+								<label class="custom-switch">
+									<input type="checkbox" id="produitEditActif" class="custom-switch-input">
+									<span class="custom-switch-indicator"></span>
+									<span class="custom-switch-description">
+										Actif
+									</span>
+								</label>
+							</div>
+
+							<div class="col-md-4">
+								<label class="custom-switch">
+									<input type="checkbox" id="produitEditPersonnalisable" class="custom-switch-input">
+									<span class="custom-switch-indicator"></span>
+									<span class="custom-switch-description">
+										Personnalisable
+									</span>
+								</label>
+							</div>
+
+						</div>
+
+					</div>
+
+					<div class="modal-footer">
+
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+							Annuler
+						</button>
+
+						<button type="button" id="produitEditSaveButton" class="btn btn-primary">
+							Enregistrer les modifications
+						</button>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+		<template id="produitStockLineTemplate">
+
+			<div class="produit-stock-line border rounded p-3 mb-3">
+
+				<div class="row align-items-end">
+
+					<div class="col-md-4 form-group">
+
+						<label>
+							Article de stock
+						</label>
+
+						<select class="form-control js-stock-article">
+
+							<option value="">
+								Sélectionner un article
+							</option>
+
+							{% for article in articles %}
+								<option value="{{ article.id }}">
+									{{ article.designation }}
+								</option>
+							{% endfor %}
+
+						</select>
+
+					</div>
+
+					<div class="col-md-2 form-group">
+
+						<label>
+							Coefficient
+						</label>
+
+						<input type="number" class="form-control js-stock-coefficient" min="0.001" step="0.001" value="1">
+
+					</div>
+
+					<div class="col-md-3 form-group">
+
+						<label>
+							Mode
+						</label>
+
+						<select class="form-control js-stock-mode">
+
+							<option value="quantite">
+								Par quantité
+							</option>
+
+							<option value="unite">
+								Par unité
+							</option>
+
+							<option value="surface">
+								Par surface
+							</option>
+
+							<option value="metre">
+								Par mètre
+							</option>
+
+							<option value="forfait">
+								Forfait
+							</option>
+
+						</select>
+
+					</div>
+
+					<div class="col-md-1 form-group">
+
+						<label>
+							Oblig.
+						</label>
+
+						<input type="checkbox" class="js-stock-obligatoire" checked>
+
+					</div>
+
+					<div class="col-md-1 form-group">
+
+						<label>
+							Actif
+						</label>
+
+						<input type="checkbox" class="js-stock-actif" checked>
+
+					</div>
+
+					<div class="col-md-1 form-group">
+
+						<button type="button" class="btn btn-danger-light btn-block js-stock-delete">
+							<i class="fa fa-trash"></i>
+						</button>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</template>
+	{% endblock %}
+
+	{% macro choixRelations(
+	typesImpressions,
+	supports,
+	formats,
+	finitions,
+	mode
+) %}
+
+		{% set prefix = mode == 'create'
+		? 'produit-create'
+		: 'produit-edit'
+	%}
+
+		<div class="form-group">
+			<label>Types d’impression</label>
+
+			<div class="selectgroup selectgroup-pills">
+				{% for type in typesImpressions %}
+					<label class="selectgroup-item">
+						<input type="checkbox" value="{{ type.id }}" class="selectgroup-input {{ prefix }}-type">
+						<span class="selectgroup-button">
+							{{ type.nom }}
+						</span>
+					</label>
+				{% endfor %}
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label>Supports compatibles</label>
+
+			<div class="selectgroup selectgroup-pills">
+				{% for support in supports %}
+					<label class="selectgroup-item">
+						<input type="checkbox" value="{{ support.id }}" class="selectgroup-input {{ prefix }}-support">
+						<span class="selectgroup-button">
+							{{ support.nom }}
+						</span>
+					</label>
+				{% endfor %}
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label>Formats compatibles</label>
+
+			<div class="selectgroup selectgroup-pills">
+				{% for format in formats %}
+					<label class="selectgroup-item">
+						<input type="checkbox" value="{{ format.id }}" class="selectgroup-input {{ prefix }}-format">
+						<span class="selectgroup-button">
+							{{ format.nom }}
+						</span>
+					</label>
+				{% endfor %}
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label>Finitions compatibles</label>
+
+			<div class="selectgroup selectgroup-pills">
+				{% for finition in finitions %}
+					<label class="selectgroup-item">
+						<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input {{ prefix }}-finition">
+						<span class="selectgroup-button">
+							{{ finition.nom }}
+						</span>
+					</label>
+				{% endfor %}
+			</div>
+		</div>
+
+	{% endmacro %}
+
+	{% block javascripts %}
+		{{ parent() }}
+
+		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+		<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+
+		<script src="{{ asset('assets/js/traitement_produit.js') }}?v=2026072604"></script>
+	{% endblock %}

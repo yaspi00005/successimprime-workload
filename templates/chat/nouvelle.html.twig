@@ -1,0 +1,98 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Nouvelle conversation
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+	<div class="side-app">
+		<div class="page-header">
+
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_chat_index') }}">Messagerie</a>
+				</li>
+				<li class="breadcrumb-item active">
+					Nouvelle conversation
+				</li>
+			</ol>
+
+		</div>
+
+		<div class="card">
+
+			<div class="card-header">
+				<h3 class="card-title">Démarrer une conversation</h3>
+			</div>
+
+			<div class="card-body">
+
+				<div class="form-group">
+					<label for="filtre-role">Filtrer par rôle</label>
+					<select id="filtre-role" class="form-control">
+						<option value="">Tous les rôles</option>
+						{% for role in rolesDisponibles %}
+							<option value="{{ role }}">{{ role|replace({'ROLE_': ''})|replace({'_': ' '})|title }}</option>
+						{% endfor %}
+					</select>
+				</div>
+
+				<div class="list-group" id="liste-utilisateurs">
+
+					{% for candidat in utilisateurs %}
+
+						<form action="{{ path('app_chat_nouvelle') }}" method="post" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-roles="{{ candidat.roles|join(',') }}">
+
+							<input type="hidden" name="_token" value="{{ csrf_token('chat_nouvelle_conversation') }}">
+							<input type="hidden" name="destinataire" value="{{ candidat.id }}">
+
+							<span>{{ candidat.username }}</span>
+
+							<button type="submit" class="btn btn-sm btn-primary-light">
+								<i class="fa fa-comment mr-1"></i>
+								Discuter
+							</button>
+
+						</form>
+
+					{% else %}
+
+						<div class="text-center text-muted p-3">
+							Aucun autre utilisateur actif trouvé.
+						</div>
+
+					{% endfor %}
+
+				</div>
+
+			</div>
+
+		</div>
+
+		<script>
+			document.addEventListener('DOMContentLoaded', function () {
+var filtre = document.getElementById('filtre-role');
+var liste = document.getElementById('liste-utilisateurs');
+
+if (! filtre || ! liste) {
+return;
+}
+
+filtre.addEventListener('change', function () {
+var role = filtre.value;
+var items = liste.querySelectorAll('[data-roles]');
+
+items.forEach(function (item) {
+if (role === '' || item.getAttribute('data-roles').split(',').indexOf(role) !== -1) {
+item.style.display = '';
+} else {
+item.style.display = 'none';
+}
+});
+});
+});
+		</script>
+	</div>
+{% endblock %}

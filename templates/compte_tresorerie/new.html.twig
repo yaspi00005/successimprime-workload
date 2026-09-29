@@ -1,0 +1,74 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    Nouveau compte de trésorerie
+{% endblock %}
+
+{% block body %}
+
+<div class="side-app">
+
+    <div class="page-header">
+
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="#">Gestion</a>
+            </li>
+
+            <li class="breadcrumb-item">
+                <a href="{{ path(
+                    'app_compte_tresorerie_index'
+                ) }}">
+                    Comptes de trésorerie
+                </a>
+            </li>
+
+            <li class="breadcrumb-item active">
+                Nouveau
+            </li>
+        </ol>
+
+    </div>
+
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert {{
+                type == 'success'
+                    ? 'alert-success'
+                    : 'alert-danger'
+            }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="card">
+
+        <div class="card-header">
+            <h3 class="card-title">
+                Ajouter un compte de trésorerie
+            </h3>
+        </div>
+
+        <div class="card-body">
+
+            <div class="alert alert-info">
+                <i class="fa fa-info-circle mr-1"></i>
+
+                Le solde initial sera enregistré comme solde
+                actuel du compte. Il ne pourra ensuite être modifié
+                que par un mouvement de trésorerie.
+            </div>
+
+            {% include 'compte_tresorerie/_form.html.twig' with {
+                form: form,
+                bouton_label: 'Créer le compte'
+            } %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

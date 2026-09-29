@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}New Finition{% endblock %}
+
+{% block body %}
+    <h1>Create new Finition</h1>
+
+    {{ include('finition/_form.html.twig') }}
+
+    <a href="{{ path('app_finition_index') }}">back to list</a>
+{% endblock %}

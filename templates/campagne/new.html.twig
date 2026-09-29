@@ -1,0 +1,292 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Nouvelle campagne
+{% endblock %}
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+	<div class="page-header">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="{{ path('app_campagne_index') }}">Campagnes</a>
+			</li>
+			<li class="breadcrumb-item active">
+				Nouvelle campagne
+			</li>
+		</ol>
+	</div>
+
+	{% if modeles|length == 0 %}
+
+		<div class="alert alert-warning">
+			<i class="fa fa-exclamation-triangle mr-1"></i>
+			Aucun modèle de message n'est disponible. Créez d'abord un
+			<a href="{{ path('app_modele_message_new') }}">modèle de message</a>
+			avant de lancer une campagne.
+		</div>
+
+	{% else %}
+
+		<form method="post" action="{{ path('app_campagne_new') }}" class="js-form-campagne">
+
+			<input type="hidden" name="_token" value="{{ csrf_token('campagne_new') }}">
+
+			<div class="row">
+
+				<div class="col-md-5">
+
+					<div class="card">
+
+						<div class="card-header">
+							<h3 class="mb-0 card-title">
+								1. Message
+							</h3>
+						</div>
+
+						<div class="card-body">
+
+							<div class="form-group">
+								<label>Nom de la campagne</label>
+								<input type="text" name="nom" class="form-control" placeholder="Ex : Promo fêtes de fin d'année" required>
+							</div>
+
+							<div class="form-group">
+								<label>Modèle de message</label>
+								<select name="modele" class="form-control" required>
+									<option value="">Sélectionnez un modèle...</option>
+									{% for modele in modeles %}
+										{% if modele.actif %}
+											<option value="{{ modele.id }}">
+												{{ modele.nom }} ({{ modele.canalLabel }})
+											</option>
+										{% endif %}
+									{% endfor %}
+								</select>
+								<small class="form-text text-muted">
+									Gérez vos modèles depuis <a href="{{ path('app_modele_message_index') }}">Communications &gt; Modèles de message</a>.
+								</small>
+							</div>
+
+							<div class="form-group">
+								<label>Nom de l'expéditeur (SMS uniquement)</label>
+								<input type="text" name="senderName" class="form-control" maxlength="20" placeholder="Laisser vide pour utiliser le nom par défaut">
+								<small class="form-text text-muted">
+									Nom affiché au destinataire à la place du numéro. Sans effet pour les campagnes email/WhatsApp.
+								</small>
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+				<div class="col-md-7">
+
+					<div class="card">
+
+						<div class="card-header">
+							<div>
+								<h3 class="card-title mb-1">
+									2. Destinataires
+								</h3>
+								<small class="text-muted">
+									<span class="js-compteur-selection">0</span> client(s) sélectionné(s) sur {{ clients|length }}
+								</small>
+							</div>
+						</div>
+
+						<div class="card-body pb-2">
+
+							<div class="row mb-2">
+
+								<div class="col-md-7">
+									<input type="text" class="form-control js-recherche-clients" placeholder="Rechercher par nom ou téléphone...">
+								</div>
+
+								<div class="col-md-5 text-right">
+									<button type="button" class="btn btn-sm btn-secondary-light js-tout-cocher">
+										Tout cocher
+									</button>
+									<button type="button" class="btn btn-sm btn-secondary-light js-tout-decocher">
+										Tout décocher
+									</button>
+								</div>
+
+							</div>
+
+						</div>
+
+						<div class="table-responsive js-liste-clients" style="max-height: 420px; overflow-y: auto;">
+
+							<table class="table table-sm table-hover mb-0">
+
+								<tbody>
+
+									{% for client in clients %}
+
+										<tr class="js-ligne-client" data-recherche="{{ (client.nomComplet ~ ' ' ~ (client.telephone|default('')))|lower }}">
+
+											<td style="width: 40px;">
+												<input type="checkbox" name="clients[]" value="{{ client.id }}" class="js-checkbox-client">
+											</td>
+
+											<td>
+												{{ client.nomComplet }}
+												{% if not client.recevoirSms %}
+													<span class="badge badge-warning" title="Ce client a choisi de ne pas recevoir de SMS : les campagnes SMS l'ignoreront automatiquement.">
+														SMS refusé
+													</span>
+												{% endif %}
+												<div class="small text-muted">
+													{{ client.telephone|default('Sans téléphone') }}
+													{% if client.email %} · {{ client.email }}{% endif %}
+												</div>
+											</td>
+
+										</tr>
+
+									{% else %}
+
+										<tr>
+											<td class="text-center text-muted py-4">
+												Aucun client actif.
+											</td>
+										</tr>
+
+									{% endfor %}
+
+								</tbody>
+
+							</table>
+
+						</div>
+
+						<div class="card-footer text-right">
+							<a href="{{ path('app_campagne_index') }}" class="btn btn-secondary">
+								<i class="fa fa-arrow-left mr-1"></i>
+								Annuler
+							</a>
+							<button type="submit" class="btn btn-primary-light">
+								<i class="fa fa-paper-plane mr-1"></i>
+								Lancer la campagne
+							</button>
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</form>
+
+	{% endif %}
+
+	<script>
+		(function () {
+			var formulaire = document.querySelector('.js-form-campagne');
+
+			if (!formulaire) {
+				return;
+			}
+
+			var recherche = formulaire.querySelector('.js-recherche-clients');
+			var lignes = formulaire.querySelectorAll('.js-ligne-client');
+			var checkboxes = formulaire.querySelectorAll('.js-checkbox-client');
+			var compteur = formulaire.querySelector('.js-compteur-selection');
+			var boutonCocher = formulaire.querySelector('.js-tout-cocher');
+			var boutonDecocher = formulaire.querySelector('.js-tout-decocher');
+
+			function actualiserCompteur() {
+				var total = 0;
+
+				checkboxes.forEach(function (checkbox) {
+					if (checkbox.checked) {
+						total++;
+					}
+				});
+
+				if (compteur) {
+					compteur.textContent = String(total);
+				}
+			}
+
+			checkboxes.forEach(function (checkbox) {
+				checkbox.addEventListener('change', actualiserCompteur);
+			});
+
+			if (recherche) {
+				recherche.addEventListener('input', function () {
+					var terme = recherche.value.trim().toLowerCase();
+
+					lignes.forEach(function (ligne) {
+						var correspond = terme === '' || (ligne.dataset.recherche || '').indexOf(terme) !== -1;
+						ligne.style.display = correspond ? '' : 'none';
+					});
+				});
+			}
+
+			/*
+			 * "Tout cocher" ne coche que les lignes actuellement
+			 * visibles (donc filtrées par la recherche), pour permettre
+			 * de cibler un sous-ensemble de clients sans les cocher un
+			 * par un.
+			 */
+			if (boutonCocher) {
+				boutonCocher.addEventListener('click', function () {
+					lignes.forEach(function (ligne) {
+						if (ligne.style.display === 'none') {
+							return;
+						}
+
+						var checkbox = ligne.querySelector('.js-checkbox-client');
+
+						if (checkbox) {
+							checkbox.checked = true;
+						}
+					});
+
+					actualiserCompteur();
+				});
+			}
+
+			if (boutonDecocher) {
+				boutonDecocher.addEventListener('click', function () {
+					lignes.forEach(function (ligne) {
+						if (ligne.style.display === 'none') {
+							return;
+						}
+
+						var checkbox = ligne.querySelector('.js-checkbox-client');
+
+						if (checkbox) {
+							checkbox.checked = false;
+						}
+					});
+
+					actualiserCompteur();
+				});
+			}
+
+			formulaire.addEventListener('submit', function (evenement) {
+				var auMoinsUn = false;
+
+				checkboxes.forEach(function (checkbox) {
+					if (checkbox.checked) {
+						auMoinsUn = true;
+					}
+				});
+
+				if (!auMoinsUn) {
+					evenement.preventDefault();
+					window.alert('Sélectionnez au moins un client avant de lancer la campagne.');
+				}
+			});
+		})();
+	</script>
+
+{% endblock %}

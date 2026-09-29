@@ -1,0 +1,1673 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	Gestion des utilisateurs
+{% endblock %}
+
+
+{% block body %}
+
+	{% include "alert.html.twig" %}
+
+
+	<div
+		class="side-app">
+
+		{# ============================================================
+																		           PAGE HEADER
+																		           ============================================================ #}
+
+		<div class="page-header">
+
+			<div>
+
+				<h1 class="page-title">
+					Utilisateurs
+				</h1>
+
+				<ol class="breadcrumb">
+
+					<li class="breadcrumb-item">
+						Administration
+					</li>
+
+					<li class="breadcrumb-item active">
+						Utilisateurs
+					</li>
+
+				</ol>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+																		           BARRE DE RECHERCHE
+																		           ============================================================ #}
+
+		<div class="row">
+
+			<div class="col-12">
+
+				<div class="card">
+
+					<div class="card-body">
+
+						<div class="row align-items-center">
+
+							<div class="col-lg-8 col-md-8 mb-2 mb-md-0">
+
+								<div class="input-group">
+
+									<div class="input-group-prepend">
+
+										<span class="input-group-text">
+
+											<i class="fa fa-search"></i>
+
+										</span>
+
+									</div>
+
+									<input type="text" id="user-search" class="form-control" placeholder="Rechercher par nom, matricule, fonction, téléphone..." autocomplete="off">
+
+									<div class="input-group-append">
+
+										<button type="button" class="btn btn-light" id="user-search-clear" title="Effacer la recherche">
+
+											<i class="fa fa-times"></i>
+
+										</button>
+
+									</div>
+
+								</div>
+
+							</div>
+
+
+							<div class="col-lg-4 col-md-4 text-md-right">
+
+								<span class="badge badge-primary user-count-badge">
+
+									<span id="users-visible-count">
+										{{ employes|length }}
+									</span>
+
+									utilisateur(s)
+
+								</span>
+
+							</div>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+
+		{# ============================================================
+																		           TABLEAU
+																		           ============================================================ #}
+
+		<div class="row row-cards">
+
+			<div class="col-lg-12">
+
+				<div class="card">
+
+					<div class="card-header">
+
+						<div>
+
+							<h3 class="card-title mb-1">
+								Liste des utilisateurs
+							</h3>
+
+							<small class="text-muted">
+								Gestion des comptes et des droits d'accès
+							</small>
+
+						</div>
+
+					</div>
+
+
+					<div class="e-table">
+
+						<div class="table-responsive table-lg br-bl-10 br-br-10">
+
+							<table class="table table-bordered table-hover mb-0" id="users-table">
+
+								<thead>
+
+									<tr>
+
+										<th class="text-center" style="width: 40px;">
+											#
+										</th>
+
+										<th class="text-center">
+											Photo
+										</th>
+
+										<th>
+											Prénom - Nom
+										</th>
+
+										<th>
+											Matricule
+										</th>
+
+										<th>
+											Fonction
+										</th>
+
+										<th>
+											Date d'embauche
+										</th>
+
+										<th>
+											Date de naissance
+										</th>
+
+										<th>
+											Ancienneté
+										</th>
+
+										<th>
+											Adresse
+										</th>
+
+										<th>
+											Téléphone
+										</th>
+
+										<th class="text-right">
+											Salaire
+										</th>
+
+										<th class="text-center">
+											Actions
+										</th>
+
+									</tr>
+
+								</thead>
+
+
+								<tbody>
+
+									{% for employe in employes %}
+
+										<tr class="user-row" data-search="
+																																																																																																												                                                {{ employe.prenom|default('') }}
+																																																																																																												                                                {{ employe.nom|default('') }}
+																																																																																																												                                                {{ employe.matricules|default('') }}
+																																																																																																												                                                {{ employe.fonction|default('') }}
+																																																																																																												                                                {{ employe.adresses|default('') }}
+																																																																																																												                                                {{ employe.telephone|default('') }}
+																																																																																																												                                            ">
+
+											<td class="align-middle text-center">
+
+												<div class="
+																																																																																																																														                                                        custom-control
+																																																																																																																														                                                        custom-control-inline
+																																																																																																																														                                                        custom-checkbox
+																																																																																																																														                                                        custom-control-nameless
+																																																																																																																														                                                        m-0
+																																																																																																																														                                                    ">
+
+													<input class="custom-control-input" id="item-{{ employe.id }}" type="checkbox">
+
+													<label class="custom-control-label" for="item-{{ employe.id }}"></label>
+
+												</div>
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               PHOTO
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle text-center">
+
+												{% if employe.photos %}
+
+													<img src="{{ asset( 'uploads/employes/' ~ employe.photos ) }}" class="avatar avatar-md rounded-circle" alt="{{ employe.prenom|default('Employé') }}">
+
+												{% else %}
+
+													<div class="
+																																																																																																																																							                                                            avatar
+																																																																																																																																							                                                            avatar-md
+																																																																																																																																							                                                            rounded-circle
+																																																																																																																																							                                                            bg-primary
+																																																																																																																																							                                                            text-white
+																																																																																																																																							                                                            user-avatar-placeholder
+																																																																																																																																							                                                        ">
+
+														{{
+                                                            employe.prenom
+                                                            |default('?')
+                                                            |slice(0, 1)
+                                                            |upper
+                                                        }}
+
+														{{
+                                                            employe.nom
+                                                            |default('')
+                                                            |slice(0, 1)
+                                                            |upper
+                                                        }}
+
+													</div>
+
+												{% endif %}
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               NOM
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle">
+
+												<strong>
+
+													{{ employe.prenom|default('') }}
+													{{ employe.nom|default('') }}
+
+												</strong>
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               MATRICULE
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle">
+
+												<span class="badge badge-light">
+
+													{{
+                                                        employe.matricules
+                                                        |default('—')
+                                                    }}
+
+												</span>
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               FONCTION
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle">
+
+												{{
+                                                    employe.fonction
+                                                    |default('—')
+                                                }}
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               DATE EMBAUCHE
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle nowrap">
+
+												{{
+                                                    employe.dateEmbauches
+                                                        ? employe.dateEmbauches|date('d/m/Y')
+                                                        : '—'
+                                                }}
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               DATE NAISSANCE
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle nowrap">
+
+												{{
+                                                    employe.dateNaissances
+                                                        ? employe.dateNaissances|date('d/m/Y')
+                                                        : '—'
+                                                }}
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               ANCIENNETÉ
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle">
+
+												{% if employe.dateEmbauches %}
+
+													{% set anciennete =
+                                                        "now"|date("Y")
+                                                        -
+                                                        employe.dateEmbauches|date("Y")
+                                                    %}
+
+													{{ anciennete }}
+													an{{ anciennete > 1 ? 's' : '' }}
+
+												{% else %}
+
+													—
+
+												{% endif %}
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               ADRESSE
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle">
+
+												{{
+                                                    employe.adresses
+                                                    |default('—')
+                                                }}
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               TÉLÉPHONE
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle nowrap">
+
+												{% if employe.telephone|default('') %}
+
+													<i class="fa fa-phone text-primary mr-1"></i>
+
+													{{ employe.telephone }}
+
+												{% else %}
+
+													—
+
+												{% endif %}
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               SALAIRE
+																																																																																																			                                               ================================================= #}
+
+											<td class="align-middle text-right nowrap">
+
+												{% if
+        is_granted('ROLE_ADMIN')
+        or is_granted('ROLE_RESPONSABLE_GESTION')
+    %}
+
+													<div class="salary-wrapper" data-salary="{{ employe.salaires |default(0) |number_format( 0, ',', ' ' ) }} FCFA">
+
+														<span class="salary-value">
+															•••••••••
+														</span>
+
+														<button type="button" class="
+																																																																																																																								                    btn
+																																																																																																																								                    btn-sm
+																																																																																																																								                    btn-light
+																																																																																																																								                    ml-2
+																																																																																																																								                    toggle-salary
+																																																																																																																								                " title="Afficher le salaire">
+
+															<i class="fa fa-eye-slash"></i>
+
+														</button>
+
+													</div>
+
+												{% else %}
+
+													<span class="badge badge-light" title="Information confidentielle">
+
+														<i class="fa fa-lock mr-1"></i>
+
+														Confidentiel
+
+													</span>
+
+												{% endif %}
+
+											</td>
+
+
+											{# =================================================
+																																																																																																			                                               ACTIONS
+																																																																																																			                                               ================================================= #}
+
+											<td class="text-center align-middle nowrap">
+
+												<div class="btn-group">
+
+													<a href="{{ path('app_employes_edit', { id: employe.id }) }}" class="btn btn-sm btn-primary-light" title="Modifier l'employé">
+
+														<i class="fa fa-pencil"></i>
+
+													</a>
+
+
+													<button type="button" class="
+																																																																																																																														                                                            btn
+																																																																																																																														                                                            btn-sm
+																																																																																																																														                                                            btn-primary-light
+																																																																																																																														                                                            ouvrirUser
+																																																																																																																														                                                            btn-create-user
+																																																																																																																														                                                        " data-toggle="modal" data-target="#userModal" data-id="{{ employe.id }}" data-prenom="{{ employe.prenom|default('') }}" data-nom="{{ employe.nom|default('') }}" data-matricule="{{ employe.matricules|default('') }}" title="Configurer le compte">
+
+														<i class="fa fa-user-cog"></i>
+
+													</button>
+
+
+													<button type="button" class="btn btn-sm btn-danger-light" title="Supprimer">
+
+														<i class="fa fa-trash"></i>
+
+													</button>
+
+												</div>
+
+											</td>
+
+										</tr>
+
+
+									{% else %}
+
+										<tr id="empty-users-row">
+
+											<td colspan="12" class="text-center text-muted py-5">
+
+												<i class="
+																																																																																																																					                                                        fa
+																																																																																																																					                                                        fa-users
+																																																																																																																					                                                        user-empty-icon
+																																																																																																																					                                                    "></i>
+
+												<strong class="d-block mt-2">
+													Aucun employé enregistré
+												</strong>
+
+											</td>
+
+										</tr>
+
+									{% endfor %}
+
+
+									{# Recherche sans résultat #}
+
+									<tr id="search-no-result" style="display: none;">
+
+										<td colspan="12" class="text-center text-muted py-5">
+
+											<i class="fa fa-search user-empty-icon"></i>
+
+											<strong class="d-block mt-2">
+												Aucun résultat
+											</strong>
+
+											<small>
+												Aucun utilisateur ne correspond à votre recherche.
+											</small>
+
+										</td>
+
+									</tr>
+
+								</tbody>
+
+							</table>
+
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+
+	{# ================================================================
+		   MODAL UTILISATEUR
+		   ================================================================ #}
+
+	<div class="modal fade" id="userModal" tabindex="-1" role="dialog" aria-hidden="true">
+
+		<div class="modal-dialog modal-lg" role="document">
+
+			<form id="createUserForm" method="post" action="{{ path('user_create_ajax') }}" autocomplete="off">
+
+				<input type="hidden" name="_token" value="{{ csrf_token('create_user') }}">
+
+				<input type="hidden" name="employeId" id="createEmployeId">
+
+
+				<div
+					class="modal-content">
+
+					{# =================================================
+										                   HEADER
+										                   ================================================= #}
+
+					<div class="modal-header">
+
+						<div>
+
+							<h5 class="modal-title mb-1">
+
+								<i class="fa fa-user-shield mr-2"></i>
+
+								Configuration du compte utilisateur
+
+							</h5>
+
+							<small class="text-muted">
+								Définissez l'identifiant et les droits d'accès.
+							</small>
+
+						</div>
+
+
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+							<span>&times;</span>
+						</button>
+
+					</div>
+
+
+					{# =================================================
+										                   BODY
+										                   ================================================= #}
+
+					<div class="modal-body">
+
+						<div class="row">
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+
+									<label class="form-label">
+										Employé
+									</label>
+
+									<input type="text" class="form-control" id="nomEmploye" readonly>
+
+								</div>
+
+							</div>
+
+
+							<div class="col-md-6">
+
+								<div class="form-group">
+
+									<label class="form-label" for="createUsername">
+										Nom d'utilisateur
+									</label>
+
+									<input id="createUsername" type="text" class="form-control" name="username" placeholder="Ex : yaya.diallo" required autocomplete="off">
+
+								</div>
+
+							</div>
+
+						</div>
+
+
+						<hr>
+
+
+						{# =================================================
+											                   RÔLES
+											                   ================================================= #}
+
+						<div class="roles-section">
+
+							<h6 class="roles-title">
+
+								<i class="fa fa-shield mr-2"></i>
+
+								Profil d'accès
+
+							</h6>
+
+							<div class="alert alert-light border">
+
+								<i class="fa fa-info-circle mr-1"></i>
+
+								<strong>Règle d'accès :</strong>
+								chaque utilisateur possède un seul profil principal.
+								<br>
+								La permission <strong>Statistiques globales</strong> peut être ajoutée en complément.
+								<br>
+								Le rôle <strong>Administrateur</strong> donne un accès complet à l'application.
+
+							</div>
+
+							<div class="selectgroup selectgroup-pills">
+
+								{% for role, libelle in rolesDisponibles %}
+
+									<label class="selectgroup-item">
+
+										<input type="checkbox" name="roles[]" value="{{ role }}" class="selectgroup-input create-role">
+
+										<span class="selectgroup-button {{ role == 'ROLE_ADMIN' ? 'role-admin' : '' }}">
+
+											{% if role == 'ROLE_ADMIN' %}
+												<i class="fa fa-shield mr-1"></i>
+											{% elseif role == 'ROLE_CAISSE_COMMANDE' %}
+												<i class="fa fa-money mr-1"></i>
+											{% elseif role == 'ROLE_GRAPHISTE' %}
+												<i class="fa fa-paint-brush mr-1"></i>
+											{% elseif role == 'ROLE_PRODUCTION' %}
+												<i class="fa fa-cogs mr-1"></i>
+											{% elseif role == 'ROLE_LIVREUR' %}
+												<i class="fa fa-truck mr-1"></i>
+											{% elseif role == 'ROLE_STATS_GLOBAL' %}
+												<i class="fa fa-bar-chart mr-1"></i>
+											{% endif %}
+
+											{{ libelle }}
+
+										</span>
+
+									</label>
+
+								{% endfor %}
+
+							</div>
+
+							<div class="small text-muted mt-3">
+
+								<i class="fa fa-info-circle mr-1"></i>
+
+								<strong>Infographiste / Prépresse :</strong>
+								accès au prépresse et à la production.
+								<br>
+								<strong>Production :</strong>
+								accès à la production uniquement, sans prépresse.
+								<br>
+								<strong>Livreur :</strong>
+								accès uniquement à la livraison ; arrive directement sur cette page à la connexion.
+								<br>
+								<strong>Statistiques globales :</strong>
+								accès aux données financières sensibles de l'entreprise.
+
+							</div>
+
+						</div>
+
+
+
+						{# =================================================
+												                       ACTIVATION
+												                       ================================================= #}
+
+						<div class="row mt-4">
+
+							<div class="col-md-12">
+
+								<div class="border rounded p-3 bg-light">
+
+									<label class="custom-switch mb-0">
+
+										<input type="checkbox" name="actif" id="createActif" value="1" class="custom-switch-input" checked>
+
+										<span class="custom-switch-indicator"></span>
+
+										<span class="custom-switch-description">
+
+											<strong>
+												Compte actif
+											</strong>
+
+											<small class="d-block text-muted">
+												L'utilisateur pourra se connecter à l'application.
+											</small>
+
+										</span>
+
+									</label>
+
+								</div>
+
+							</div>
+
+						</div>
+
+					</div>
+
+
+					{# =================================================
+										                   FOOTER
+										                   ================================================= #}
+
+					<div class="modal-footer">
+
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+							Annuler
+						</button>
+
+
+						<button type="submit" class="btn btn-primary" id="createUserSaveButton">
+
+							<i class="fe fe-save mr-2"></i>
+
+							Enregistrer
+
+						</button>
+
+					</div>
+
+				</div>
+
+			</form>
+
+		</div>
+
+	</div>
+
+{% endblock %}
+
+
+{% block stylesheets %}
+
+	{{ parent() }}
+
+	<style>
+
+		/*
+         * ============================================================
+         * TABLEAU
+         * ============================================================
+         */
+
+		#users-table {
+			color: #1f2937;
+			background-color: #ffffff;
+		}
+
+		#users-table tbody tr {
+			background-color: #ffffff;
+		}
+
+		#users-table thead th {
+			background: #f4f7fc;
+			color: #17366f;
+			font-weight: 600;
+			white-space: nowrap;
+			vertical-align: middle;
+		}
+
+		#users-table tbody td {
+			vertical-align: middle;
+		}
+
+		#users-table tbody tr:hover {
+			background: #f8fafc;
+		}
+
+
+		/*
+         * ============================================================
+         * PHOTO
+         * ============================================================
+         */
+
+		.user-avatar-placeholder {
+			display: inline-flex;
+			justify-content: center;
+			align-items: center;
+
+			font-size: 12px;
+			font-weight: 700;
+		}
+
+
+		/*
+         * ============================================================
+         * COMPTEUR
+         * ============================================================
+         */
+
+		.user-count-badge {
+			padding: 9px 14px;
+			font-size: 12px;
+		}
+
+
+		/*
+         * ============================================================
+         * ROLES
+         * ============================================================
+         */
+
+		.roles-section {
+			margin-bottom: 22px;
+
+			padding-bottom: 18px;
+
+			border-bottom: 1px solid #edf2f7;
+		}
+
+		.roles-section:last-of-type {
+			border-bottom: 0;
+		}
+
+		.roles-title {
+			margin-bottom: 12px;
+
+			color: #17366f;
+
+			font-weight: 600;
+		}
+
+		.selectgroup {
+			display: flex;
+			flex-wrap: wrap;
+		}
+
+		.selectgroup-item {
+			margin-right: 6px;
+			margin-bottom: 7px;
+		}
+
+		.role-admin {
+			font-weight: 700;
+		}
+
+
+		/*
+         * ============================================================
+         * RECHERCHE VIDE
+         * ============================================================
+         */
+
+		.user-empty-icon {
+			font-size: 34px;
+			color: #cbd5e1;
+		}
+
+
+		.nowrap {
+			white-space: nowrap;
+		}
+
+
+		/*
+         * ============================================================
+         * MODAL
+         * ============================================================
+         */
+
+		#userModal .modal-body {
+			max-height: 70vh;
+			overflow-y: auto;
+		}
+
+
+		/*
+         * ============================================================
+         * MOBILE
+         * ============================================================
+         */
+
+		@media(max-width: 767px) {
+
+			.selectgroup-item {
+				width: 100%;
+			}
+
+			.selectgroup-button {
+				width: 100%;
+			}
+			/*
+ * ============================================================
+ * SALAIRE CONFIDENTIEL
+ * ============================================================
+ */
+
+			.salary-wrapper {
+				display: flex;
+				justify-content: flex-end;
+				align-items: center;
+			}
+
+
+			.salary-value {
+				min-width: 95px;
+
+				font-weight: 700;
+
+				letter-spacing: 2px;
+
+				color: #64748b;
+			}
+
+
+			.salary-visible .salary-value {
+				letter-spacing: normal;
+
+				color: #1f2937;
+			}
+
+
+			.toggle-salary {
+				width: 32px;
+				height: 32px;
+
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+
+				padding: 0;
+			}
+
+		}
+
+	</style>
+
+{% endblock %}
+
+
+{% block javascripts %}
+
+	{{ parent() }}
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () { /*
+                 * ====================================================
+                 * ELEMENTS
+                 * ====================================================
+                 */
+
+const form = document.getElementById('createUserForm');
+
+const employeIdInput = document.getElementById('createEmployeId');
+
+const nomEmployeInput = document.getElementById('nomEmploye');
+
+const usernameInput = document.getElementById('createUsername');
+
+const saveButton = document.getElementById('createUserSaveButton');
+
+
+/*
+                 * ====================================================
+                 * USERNAME AUTOMATIQUE
+                 * ====================================================
+                 */
+
+function slugUsername(value) {
+
+return(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+
+}
+
+
+/*
+                 * ====================================================
+                 * OUVERTURE MODAL
+                 * ====================================================
+                 */
+
+document.querySelectorAll('.btn-create-user').forEach(function (button) {
+
+button.addEventListener('click', function () {
+
+if (form) {
+form.reset();
+}
+
+
+const id = this.dataset.id || '';
+
+const prenom = this.dataset.prenom || '';
+
+const nom = this.dataset.nom || '';
+
+const matricule = this.dataset.matricule || '';
+
+
+if (employeIdInput) {
+
+employeIdInput.value = id;
+
+}
+
+
+if (nomEmployeInput) {
+
+let identite = (prenom + ' ' + nom).trim();
+
+
+if (matricule) {
+
+identite += ' — ' + matricule;
+
+}
+
+
+nomEmployeInput.value = identite;
+}
+
+
+if (usernameInput) {
+
+usernameInput.value = slugUsername(prenom + '.' + nom);
+}
+
+
+const actif = document.getElementById('createActif');
+
+if (actif) {
+actif.checked = true;
+}
+
+});
+
+});
+
+
+/*
+                 * ====================================================
+                 * GESTION DES PROFILS
+                 * ====================================================
+                 *
+                 * Règles :
+                 *
+                 * - ROLE_ADMIN est exclusif.
+                 *
+                 * - Un seul profil principal parmi :
+                 *
+                 *   ROLE_CAISSE_COMMANDE
+                 *   ROLE_GRAPHISTE
+                 *   ROLE_PRODUCTION
+                 *   ROLE_LIVREUR
+                 *
+                 * - ROLE_STATS_GLOBAL est complémentaire.
+                 * ====================================================
+                 */
+
+const createRoleInputs = Array.from(document.querySelectorAll('.create-role'));
+
+
+const principalRoles = ['ROLE_CAISSE_COMMANDE', 'ROLE_GRAPHISTE', 'ROLE_PRODUCTION', 'ROLE_LIVREUR'];
+
+
+const getCreateRoleInput = function (role) {
+
+return createRoleInputs.find(function (input) {
+return input.value === role;
+});
+
+};
+
+
+createRoleInputs.forEach(function (input) {
+
+input.addEventListener('change', function () {
+
+/*
+             * ==========================================
+             * ADMINISTRATEUR
+             * ==========================================
+             */
+
+if (this.value === 'ROLE_ADMIN' && this.checked) {
+
+createRoleInputs.forEach(function (other) {
+
+if (other !== input) {
+other.checked = false;
+}
+
+});
+
+
+if (typeof Swal !== 'undefined') {
+
+Swal.fire({icon: 'warning', title: 'Accès administrateur', text: 'Le rôle Administrateur donne un accès complet à l’application.', confirmButtonText: 'Compris'});
+
+}
+
+
+return;
+}
+
+
+/*
+             * ==========================================
+             * AUTRE RÔLE
+             * ==========================================
+             *
+             * Dès qu'on sélectionne autre chose,
+             * ROLE_ADMIN est désactivé.
+             */
+
+if (this.value !== 'ROLE_ADMIN' && this.checked) {
+
+const admin = getCreateRoleInput('ROLE_ADMIN');
+
+
+if (admin) {
+admin.checked = false;
+}
+}
+
+
+/*
+             * ==========================================
+             * PROFIL PRINCIPAL
+             * ==========================================
+             *
+             * Un seul profil principal.
+             */
+
+if (principalRoles.includes(this.value) && this.checked) {
+
+createRoleInputs.forEach(function (other) {
+
+if (other !== input && principalRoles.includes(other.value)) {
+
+other.checked = false;
+}
+
+});
+
+}
+
+});
+
+});
+
+
+/*
+                 * ====================================================
+                 * ENREGISTREMENT UTILISATEUR
+                 * ====================================================
+                 */
+
+if (form) {
+
+form.addEventListener('submit', async function (event) {
+
+event.preventDefault();
+
+
+const username = usernameInput ? usernameInput.value.trim() : '';
+
+
+const employeId = employeIdInput ? employeIdInput.value : '';
+
+
+const roles = Array.from(form.querySelectorAll('.create-role:checked'));
+
+
+/*
+                             * VALIDATION
+                             */
+
+if (! employeId) {
+
+Swal.fire({icon: 'warning', title: 'Employé requis', text: 'Veuillez sélectionner un employé.'});
+
+return;
+}
+
+
+if (! username) {
+
+Swal.fire({icon: 'warning', title: 'Nom d’utilisateur requis', text: 'Veuillez saisir un nom d’utilisateur.'});
+
+if (usernameInput) {
+usernameInput.focus();
+}
+
+return;
+}
+
+
+const roleValues = roles.map(function (input) {
+return input.value;
+});
+
+
+const adminSelected = roleValues.includes('ROLE_ADMIN');
+
+
+const principalSelected = roleValues.filter(function (role) {
+return principalRoles.includes(role);
+});
+
+
+if (! adminSelected && principalSelected.length === 0) {
+
+Swal.fire({
+icon: 'warning',
+title: 'Profil obligatoire',
+text: 'Veuillez sélectionner Administrateur, ' + 'Caisse / Commandes, Infographiste / Prépresse, ' + 'Production ou Livreur.'
+});
+
+return;
+}
+
+
+if (principalSelected.length > 1) {
+
+Swal.fire({icon: 'warning', title: 'Profils incompatibles', text: 'Un utilisateur ne peut avoir qu’un seul profil principal.'});
+
+return;
+}
+
+
+if (roleValues.length === 1 && roleValues[0] === 'ROLE_STATS_GLOBAL') {
+
+Swal.fire({
+icon: 'warning',
+title: 'Profil principal obligatoire',
+text: 'Statistiques globales est une autorisation complémentaire. ' + 'Sélectionnez également un profil principal.'
+});
+
+return;
+}
+
+
+/*
+                             * BOUTON CHARGEMENT
+                             */
+
+const buttonOriginal = saveButton ? saveButton.innerHTML : '';
+
+
+if (saveButton) {
+
+saveButton.disabled = true;
+
+saveButton.innerHTML = '<span ' + 'class="spinner-border ' + 'spinner-border-sm mr-2"' + '></span>' + 'Enregistrement...';
+}
+
+
+try {
+
+const formData = new FormData(form);
+
+
+const response = await fetch(form.action, {
+method: 'POST',
+
+body: formData,
+
+headers: {
+'X-Requested-With': 'XMLHttpRequest',
+
+'Accept': 'application/json'
+}
+});
+
+
+let data;
+
+
+try {
+
+data = await response.json();
+
+} catch (e) {
+
+throw new Error('Le serveur a retourné une réponse invalide.');
+
+}
+
+
+if (! response.ok || data.success !== true) {
+
+throw new Error(data.message || 'Impossible de créer le compte utilisateur.');
+
+}
+
+
+/*
+                                 * =================================================
+                                 * SUCCÈS + MOT DE PASSE TEMPORAIRE
+                                 * =================================================
+                                 */
+
+const usernameCreated = data.username || username;
+
+
+const temporaryPassword = data.temporaryPassword || data.temporary_password || data.passwordTemporaire || '';
+
+
+let contenu = `
+
+                                    <div
+                                        class="text-left"
+                                        style="font-size:14px;"
+                                    >
+
+                                        <div class="mb-3">
+
+                                            Le compte utilisateur
+                                            a été créé avec succès.
+
+                                        </div>
+
+                                        <div
+                                            class="border rounded p-3 bg-light"
+                                        >
+
+                                            <div class="mb-2">
+
+                                                <strong>
+                                                    Nom d'utilisateur :
+                                                </strong>
+
+                                                <br>
+
+                                                <code
+                                                    style="font-size:15px;"
+                                                >
+                                                    ${
+escapeHtml(usernameCreated)
+}
+                                                </code>
+
+                                            </div>
+                                `;
+
+
+if (temporaryPassword) {
+
+contenu += `
+
+                                        <div>
+
+                                            <strong>
+                                                Mot de passe temporaire :
+                                            </strong>
+
+                                            <br>
+
+                                            <code
+                                                style="
+                                                    font-size:18px;
+                                                    font-weight:700;
+                                                "
+                                            >
+                                                ${
+escapeHtml(temporaryPassword)
+}
+                                            </code>
+
+                                        </div>
+                                    `;
+
+}
+
+
+contenu += `
+
+                                        </div>
+
+                                        <small
+                                            class="text-muted d-block mt-3"
+                                        >
+                                            L'utilisateur devra modifier
+                                            son mot de passe lors de sa
+                                            première connexion.
+                                        </small>
+
+                                    </div>
+                                `;
+
+
+await Swal.fire({
+
+icon: 'success',
+
+title: 'Compte créé',
+
+html: contenu,
+
+confirmButtonText: 'Terminer',
+
+allowOutsideClick: false,
+
+allowEscapeKey: false
+
+});
+
+
+window.location.reload();
+
+} catch (error) {
+
+Swal.fire({
+
+icon: 'error',
+
+title: 'Impossible d’enregistrer',
+
+text: error.message || 'Une erreur est survenue.'
+
+});
+
+} finally {
+
+if (saveButton) {
+
+saveButton.disabled = false;
+
+saveButton.innerHTML = buttonOriginal;
+}
+
+}
+
+});
+}
+
+
+/*
+                 * ====================================================
+                 * RECHERCHE
+                 * ====================================================
+                 */
+
+const searchInput = document.getElementById('user-search');
+
+const clearButton = document.getElementById('user-search-clear');
+
+const table = document.getElementById('users-table');
+
+const visibleCount = document.getElementById('users-visible-count');
+
+const noResult = document.getElementById('search-no-result');
+
+
+function normalizeText(value) {
+
+return(value || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+}
+
+
+function filtrerUtilisateurs() {
+
+if (! searchInput || ! table) {
+return;
+}
+
+
+const recherche = normalizeText(searchInput.value);
+
+
+const rows = table.querySelectorAll('tbody .user-row');
+
+
+let nombreVisible = 0;
+
+
+rows.forEach(function (row) {
+
+const contenu = normalizeText(row.dataset.search || row.textContent);
+
+
+const visible = recherche === '' || contenu.includes(recherche);
+
+
+row.style.display = visible ? '' : 'none';
+
+
+if (visible) {
+nombreVisible++;
+}
+
+});
+
+
+if (visibleCount) {
+
+visibleCount.textContent = nombreVisible;
+
+}
+
+
+if (noResult) {
+
+noResult.style.display = (nombreVisible === 0 && rows.length > 0) ? '' : 'none';
+}
+
+}
+
+
+if (searchInput) {
+
+searchInput.addEventListener('input', filtrerUtilisateurs);
+
+}
+
+
+if (clearButton && searchInput) {
+
+clearButton.addEventListener('click', function () {
+
+searchInput.value = '';
+
+filtrerUtilisateurs();
+
+searchInput.focus();
+
+});
+
+}
+
+
+/*
+                 * ====================================================
+                 * SALAIRES
+                 * ====================================================
+                 */
+
+document.querySelectorAll('.toggle-salary').forEach(function (button) {
+
+button.addEventListener('click', function () {
+
+const wrapper = this.closest('.salary-wrapper');
+
+
+if (! wrapper) {
+return;
+}
+
+
+const value = wrapper.querySelector('.salary-value');
+
+const icon = this.querySelector('i');
+
+
+if (! value || ! icon) {
+return;
+}
+
+
+const visible = wrapper.classList.contains('salary-visible');
+
+
+if (visible) {
+
+value.textContent = '•••••••••';
+
+icon.className = 'fa fa-eye-slash';
+
+this.title = 'Afficher le salaire';
+
+wrapper.classList.remove('salary-visible');
+
+} else {
+
+value.textContent = wrapper.dataset.salary || '0 FCFA';
+
+icon.className = 'fa fa-eye';
+
+this.title = 'Masquer le salaire';
+
+wrapper.classList.add('salary-visible');
+
+}
+
+});
+
+});
+
+
+/*
+                 * Protection pour les valeurs
+                 * affichées dans le SweetAlert.
+                 */
+function escapeHtml(value) {
+
+return String(value || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+}
+
+});
+	</script>
+
+{% endblock %}

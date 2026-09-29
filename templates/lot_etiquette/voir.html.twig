@@ -1,0 +1,242 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Lot
+	{{ lot.numero }}
+{% endblock %}
+
+{% block body %}
+	<div class="side-app">
+		<div class="page-header">
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">
+					<a href="{{ path('app_lot_etiquette_index') }}">
+						Étiquettes QR
+					</a>
+				</li>
+
+				<li class="breadcrumb-item active">
+					{{ lot.numero }}
+				</li>
+			</ol>
+
+			<div>
+				<a href="{{ path('app_lot_etiquette_index') }}" class="btn btn-secondary">
+					<i class="fa fa-arrow-left mr-1"></i>
+					Retour
+				</a>
+
+				{% if lot.statut == 'pret' and lot.fichierZip %}
+					<a href="{{ path('app_lot_etiquette_telecharger', {id: lot.id}) }}" class="btn btn-success">
+						<i class="fa fa-download mr-1"></i>
+						Télécharger le ZIP
+					</a>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+
+	<div class="row row-cards">
+		<div class="col-md-3">
+			<div class="card">
+				<div class="card-body text-center">
+					<i class="fa fa-folder-open fa-3x text-primary mb-3"></i>
+					<h5>Numéro du lot</h5>
+					<strong>{{ lot.numero }}</strong>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-md-3">
+			<div class="card">
+				<div class="card-body text-center">
+					<i class="fa fa-qrcode fa-3x text-info mb-3"></i>
+					<h5>Quantité</h5>
+					<strong>{{ lot.quantite }}
+						étiquette(s)</strong>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-md-3">
+			<div class="card">
+				<div class="card-body text-center">
+					<i class="fa fa-calendar fa-3x text-warning mb-3"></i>
+					<h5>Créé le</h5>
+					<strong>{{ lot.creeLe|date('d/m/Y à H:i') }}</strong>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-md-3">
+			<div class="card">
+				<div class="card-body text-center">
+					<i class="fa fa-check-circle fa-3x text-success mb-3"></i>
+					<h5>Statut</h5>
+
+					{% if lot.statut == 'pret' %}
+						<span class="badge badge-success">Prêt</span>
+					{% elseif lot.statut == 'en_generation' %}
+						<span class="badge badge-warning">En génération</span>
+					{% else %}
+						<span class="badge badge-secondary">
+							{{ lot.statut|replace({'_': ' '})|capitalize }}
+						</span>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row row-cards">
+		<div class="col-lg-12">
+			<div class="card">
+				<div class="card-header border-bottom-0">
+					<h3 class="card-title">
+						Étiquettes du lot
+					</h3>
+
+					<div class="card-options">
+						<input type="search" id="rechercheEtiquette" class="form-control" placeholder="Rechercher un numéro...">
+					</div>
+				</div>
+
+				<div class="e-table">
+					<div class="table-responsive table-lg br-bl-10 br-br-10">
+						<table class="table table-bordered table-hover mb-0">
+							<thead>
+								<tr>
+									<th>Numéro</th>
+									<th class="text-center">QR code</th>
+									<th class="text-center">Statut</th>
+									<th>Date d’impression</th>
+									<th>Date d’association</th>
+									<th>Associée par</th>
+								</tr>
+							</thead>
+
+							<tbody id="listeEtiquettes">
+								{% for etiquette in etiquettes %}
+									<tr class="ligne-etiquette" data-numero="{{ etiquette.numero|lower }}">
+										<td class="align-middle">
+											<strong>{{ etiquette.numero }}</strong>
+										</td>
+
+										<td class="text-center align-middle">
+											<a href="{{ asset(etiquette.fichierQr) }}" target="_blank" title="Afficher le QR code">
+												<img src="{{ asset(etiquette.fichierQr) }}" alt="QR {{ etiquette.numero }}" width="70" height="70" style="object-fit: contain;">
+											</a>
+										</td>
+
+										<td class="text-center align-middle">
+											{% if etiquette.statut == 'disponible' %}
+												<span class="badge badge-success">
+													Disponible
+												</span>
+											{% elseif etiquette.statut == 'associee' %}
+												<span class="badge badge-info">
+													Associée
+												</span>
+											{% elseif etiquette.statut == 'prete_livraison' %}
+												<span class="badge badge-primary">
+													Prête pour livraison
+												</span>
+											{% elseif etiquette.statut == 'en_livraison' %}
+												<span class="badge badge-warning">
+													En livraison
+												</span>
+											{% elseif etiquette.statut == 'livree' %}
+												<span class="badge badge-success">
+													Livrée
+												</span>
+											{% elseif etiquette.statut == 'annulee' %}
+												<span class="badge badge-danger">
+													Annulée
+												</span>
+											{% elseif etiquette.statut == 'perdue' %}
+												<span class="badge badge-dark">
+													Perdue
+												</span>
+											{% else %}
+												<span class="badge badge-secondary">
+													{{ etiquette.statut|replace({'_': ' '})|capitalize }}
+												</span>
+											{% endif %}
+										</td>
+
+										<td class="align-middle">
+											{{ etiquette.imprimeLe
+                                                ? etiquette.imprimeLe|date('d/m/Y à H:i')
+                                                : 'Non imprimée'
+                                            }}
+										</td>
+
+										<td class="align-middle">
+											{{ etiquette.associeLe
+                                                ? etiquette.associeLe|date('d/m/Y à H:i')
+                                                : '-'
+                                            }}
+										</td>
+
+										<td class="align-middle">
+											{{ etiquette.associePar ?: '-' }}
+										</td>
+									</tr>
+								{% else %}
+									<tr>
+										<td colspan="6" class="text-center py-5">
+											Aucune étiquette dans ce lot.
+										</td>
+									</tr>
+								{% endfor %}
+
+								<tr id="aucunResultat" style="display: none;">
+									<td colspan="6" class="text-center">
+										Aucun numéro ne correspond à la recherche.
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+const recherche = document.getElementById('rechercheEtiquette');
+const lignes = document.querySelectorAll('.ligne-etiquette');
+const aucunResultat = document.getElementById('aucunResultat');{% for message in app.flashes('success') %}
+Swal.fire({icon: 'success', title: 'Opération réussie', text: {{ message|json_encode|raw }}, confirmButtonText: 'D’accord'});{% endfor %}
+
+{% for message in app.flashes('error') %}
+Swal.fire({icon: 'error', title: 'Une erreur est survenue', text: {{ message|json_encode|raw }}, confirmButtonText: 'D’accord'});{% endfor %}
+
+if (! recherche) {
+return;
+}
+
+recherche.addEventListener('input', function () {
+const valeur = recherche.value.trim().toLowerCase();
+let nombreVisible = 0;
+
+lignes.forEach(function (ligne) {
+const numero = ligne.dataset.numero || '';
+const visible = numero.includes(valeur);
+
+ligne.style.display = visible ? '' : 'none';
+
+if (visible) {
+nombreVisible++;
+}
+});
+
+aucunResultat.style.display = nombreVisible === 0 ? '' : 'none';
+});
+});
+	</script>
+{% endblock %}

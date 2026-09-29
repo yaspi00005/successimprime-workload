@@ -1,0 +1,1494 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Contrôle prépresse
+{% endblock %}
+
+{% block body %}
+	<div
+		class="side-app">
+
+		{# ============================================================
+																																																						       EN-TÊTE
+																																																						       ============================================================ #}
+		<div class="page-header">
+			<div>
+				<h1 class="page-title">Contrôle prépresse</h1>
+
+				<p class="text-muted mb-0">
+					Vérification des fichiers avant production
+				</p>
+			</div>
+
+			<div>
+				<a href="{{ path('app_controle_pre_presse_index') }}" class="btn btn-light">
+					<i class="fe fe-arrow-left mr-1"></i>
+					Retour
+				</a>
+			</div>
+		</div>
+
+		{# ============================================================
+																																																						       MESSAGES FLASH
+																																																						       ============================================================ #}
+		{% for type, messages in app.flashes %}
+			{% for message in messages %}
+				<div class="alert alert-{{ type == 'error' ? 'danger' : type }}
+																																																																																																																																																																		                        alert-dismissible fade show">
+					{{ message }}
+
+					<button type="button" class="close" data-dismiss="alert">
+						&times;
+					</button>
+				</div>
+			{% endfor %}
+		{% endfor %}
+
+		{# ============================================================
+																																																						       INFORMATIONS DE LA COMMANDE
+																																																						       ============================================================ #}
+		<div class="row">
+
+			<div class="col-xl-4 col-lg-4">
+				<div class="card">
+					<div class="card-header">
+						<h3 class="card-title">
+							<i class="fe fe-file-text mr-2"></i>
+							Commande
+						</h3>
+					</div>
+
+					<div class="card-body">
+						<div class="mb-3">
+							<small class="text-muted">
+								Numéro de commande
+							</small>
+
+							<h4 class="mb-0">
+								{{ commande.numero|default(
+                                'CMD-' ~ commande.id
+                            ) }}
+							</h4>
+						</div>
+
+						<div class="mb-3">
+							<small class="text-muted">Date</small>
+
+							<div>
+								{{ commande.dateCommande
+                                ? commande.dateCommande|date('d/m/Y H:i')
+                                : 'Non renseignée'
+                            }}
+							</div>
+						</div>
+
+						<div>
+							<small class="text-muted">Client</small>
+
+							<div>
+								<strong>
+									{{ commande.clients.nom|default(
+                                    commande.clients.raisonSociale
+                                    |default('Client non renseigné')
+                                ) }}
+								</strong>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{# ========================================================
+																																																																																	           INFORMATIONS DU TRAVAIL
+																																																																																	           ======================================================== #}
+			<div class="col-xl-8 col-lg-8">
+				<div class="card">
+					<div class="card-header">
+						<h3 class="card-title">
+							<i class="fe fe-briefcase mr-2"></i>
+							Travail à contrôler
+						</h3>
+					</div>
+
+					<div class="card-body">
+						{% set configuration = detail.produitConfiguration %}
+						<div class="row">
+
+							<div class="col-md-6 mb-3">
+								<small class="text-muted text-primary">Désignation</small>
+
+								<h4 class="mb-0">
+									{{ detail.designation|default(
+                                    detail.produit.nom
+                                    |default('Travail sans désignation')
+                                ) }}
+								</h4>
+							</div>
+
+							<div class="col-md-2 mb-3">
+								<small class="text-muted">Quantité</small>
+
+								<h4 class="mb-0">
+									{{ detail.quantite|default(1) }}
+								</h4>
+							</div>
+
+							<div class="col-md-4 mb-3">
+								<small class="text-muted">
+									Nombre de fichiers
+								</small>
+
+								<h4 class="mb-0">
+									{{ detail.fichiers|length }}
+								</h4>
+							</div>
+
+							<div class="col-md-12 mt-2">
+								<div class="border rounded bg-light text-primary p-3">
+									<h5 class="mb-3">
+										<i class="fe fe-settings mr-1"></i>
+										Fiche technique de production
+									</h5>
+
+									<div class="row">
+										<div class="col-md-4 mb-3">
+											<small class="text-muted d-block">Produit</small>
+											<strong>{{ detail.produit.nom|default(configuration.produit.nom|default(detail.designation|default('—'))) }}</strong>
+										</div>
+
+										<div class="col-md-4 mb-3">
+											<small class="text-muted d-block">Type d’impression</small>
+											<strong>{{ configuration.typeImpression.nom|default('Non renseigné') }}</strong>
+										</div>
+
+										<div class="col-md-4 mb-3">
+											<small class="text-muted d-block">Support / matière</small>
+											<strong>{{ configuration.support.nom|default('Non renseigné') }}</strong>
+										</div>
+
+										<div class="col-md-3 mb-3">
+											<small class="text-muted d-block">Format</small>
+											<strong>{{ configuration.format.nom|default('Sur mesure') }}</strong>
+										</div>
+
+										<div class="col-md-3 mb-3">
+											<small class="text-muted d-block">Taille / dimensions</small>
+											<strong>
+												{% set configuration = detail.produitConfiguration %}
+
+												{% if detail.longueur is not empty and detail.largeur is not empty %}
+													{{ detail.longueur }}
+													×
+													{{ detail.largeur }}
+
+												{% elseif configuration
+    and configuration.format
+    and configuration.format.nom is not empty
+%}
+													{{ configuration.format.nom }}
+
+												{% else %}
+													Non renseignée
+												{% endif %}
+											</strong>
+										</div>
+
+										<div class="col-md-3 mb-3">
+											<small class="text-muted d-block">Quantité commandée</small>
+											<strong>{{ detail.quantite|default(1) }}</strong>
+										</div>
+
+										<div class="col-md-3 mb-3">
+											<small class="text-muted d-block">Mode de calcul</small>
+											<strong>{{ configuration.modeCalcul|default('Non renseigné')|replace({'_': ' '})|capitalize }}</strong>
+										</div>
+
+										<div class="col-md-12">
+											<small class="text-muted d-block mb-1">Finitions</small>
+											{% if detail.finitions is defined and detail.finitions is not empty %}
+												{% for finitionDetail in detail.finitions %}
+													<span class="badge badge-info mr-1 mb-1">
+														{{ finitionDetail.configurationFinition.finition.nom|default(finitionDetail.finition.nom|default('Finition')) }}
+														{% if finitionDetail.quantite is defined and finitionDetail.quantite %}
+															×
+															{{ finitionDetail.quantite }}
+														{% endif %}
+													</span>
+												{% endfor %}
+											{% elseif configuration.configurationFinitions is defined and configuration.configurationFinitions is not empty %}
+												{% for configurationFinition in configuration.configurationFinitions %}
+													{% if configurationFinition.active|default(true) %}
+														<span class="badge badge-secondary mr-1 mb-1">{{ configurationFinition.finition.nom|default('Finition') }}</span>
+													{% endif %}
+												{% endfor %}
+											{% else %}
+												<strong>Aucune finition</strong>
+											{% endif %}
+										</div>
+									</div>
+								</div>
+							</div>
+
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{# Formulaire autonome d'ajout d'un fichier traité.
+																																								   Il est déclaré ici pour éviter d'imbriquer deux formulaires HTML. #}
+		{% set jetonTemporaireFichierTraite = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' %}
+		{% set indexTemporaireFichierTraite = 999999999 %}
+
+		{% set modeleUrlMorceauFichierTraite = path('app_controle_pre_presse_fichier_traite_morceau', {
+			jeton: jetonTemporaireFichierTraite,
+			index: indexTemporaireFichierTraite
+		}) %}
+
+		{% set modeleUrlMorceauFichierTraite = modeleUrlMorceauFichierTraite|replace({
+			(jetonTemporaireFichierTraite): '__JETON__',
+			(indexTemporaireFichierTraite ~ ''): '__INDEX__'
+		}) %}
+
+		<form id="form-fichier-traite" method="post" enctype="multipart/form-data" action="{{ path('app_controle_pre_presse_ajouter_fichier_traite', {id: detail.id}) }}" data-upload-initialiser-url="{{ path('app_controle_pre_presse_fichier_traite_initialiser', {id: detail.id}) }}" data-upload-morceau-url="{{ modeleUrlMorceauFichierTraite }}"></form>
+
+		{# ============================================================
+																																																								       FORMULAIRE DU CONTRÔLE
+																																																								       ============================================================ #}
+		<form method="post" id="form-controle-pre-presse">
+
+			<input
+			type="hidden" name="_token" value="{{ csrf_token( 'controle_pre_presse_' ~ detail.id ) }}">
+
+			{# ========================================================
+																																																																																	           SÉLECTION DES FICHIERS
+																																																																																	           ======================================================== #}
+			<div class="card">
+				<div class="card-header d-flex justify-content-between
+																																																																																																																																																																		                        align-items-center">
+
+					<h3 class="card-title">
+						<i class="fe fe-paperclip mr-2"></i>
+						Fichiers à contrôler
+					</h3>
+
+					<div class="custom-control custom-checkbox">
+						<input type="checkbox" class="custom-control-input" id="selectionner-tous-fichiers">
+
+						<label class="custom-control-label" for="selectionner-tous-fichiers">
+							Tout sélectionner
+						</label>
+					</div>
+				</div>
+
+				<div class="card-body">
+					{% if detail.fichiers is empty %}
+
+						<div class="alert alert-warning mb-0">
+							Aucun fichier n’est associé à ce travail.
+						</div>
+
+					{% else %}
+
+						<div class="row">
+							{% for fichier in detail.fichiers %}
+								{% if fichier.actif %}
+									<div class="col-xl-4 col-lg-6 col-md-6">
+										<div class="card border fichier-card">
+											<div class="card-body">
+
+												<div class="custom-control
+																																																																																																																																																																																																																																																																																																																																																																																										                                                        custom-checkbox mb-3">
+
+													<input type="checkbox" class="custom-control-input
+																																																																																																																																																																																																																																																																																																																																																																																										                                                           fichier-checkbox" id="fichier-{{ fichier.id }}" name="fichiers[]" value="{{ fichier.id }}">
+
+													<label class="custom-control-label" for="fichier-{{ fichier.id }}">
+														Sélectionner ce fichier
+													</label>
+												</div>
+
+												<div class="d-flex
+																																																																																																																																																																																																																																																																																																																																																																																										                                                        align-items-center">
+
+													<div class="avatar
+																																																																																																																																																																																																																																																																																																																																																																																																																					                                                            avatar-lg
+																																																																																																																																																																																																																																																																																																																																																																																																																					                                                            bg-primary
+																																																																																																																																																																																																																																																																																																																																																																																																																					                                                            text-white mr-3">
+														<i class="fe fe-file"></i>
+													</div>
+
+													<div class="flex-fill" style="min-width: 0;">
+
+														<strong class="d-block
+																																																																																																																																																																																																																																																																																																																																																																																																																																																                                                                   text-truncate">
+															{{ fichier.nomOriginal }}
+														</strong>
+
+														<small class="text-muted">
+															{{ fichier.typeMime
+                                                            |default(
+                                                                'Type non renseigné'
+                                                            )
+                                                        }}
+														</small>
+													</div>
+												</div>
+
+												<div class="small text-muted mt-3">
+													{% if fichier.designation %}
+														<div>
+															<strong>Désignation :</strong>
+															{{ fichier.designation }}</div>
+													{% endif %}
+													<div>
+														<strong>État :</strong>
+														{{ fichier.etat|default('non renseigné')|replace({'_': ' '})|capitalize }}</div>
+													<div>
+														<strong>Face :</strong>
+														{{ fichier.face|default('Non renseignée')|capitalize }}</div>
+													<div>
+														<strong>Version :</strong>
+														{{ fichier.version|default(1) }}</div>
+													{% if fichier.quantiteAProduire %}
+														<div>
+															<strong>Quantité à produire :</strong>
+															{{ fichier.quantiteAProduire }}</div>
+													{% endif %}
+													{% if fichier.taille %}
+														<div>
+															<strong>Taille du fichier :</strong>
+															{{ (fichier.taille / 1024 / 1024)|number_format(2, ',', ' ') }}
+															Mo</div>
+													{% endif %}
+												</div>
+
+												<hr>
+
+												<div class="mb-2">
+													<small class="text-muted">
+														Statut :
+													</small>
+
+													{% if fichier.estPretPourImpression %}
+														<span class="badge
+																																																																																																																																																																																																																																																																																																																																																																																																																																																                                                                 badge-success">
+															Prêt pour impression
+														</span>
+													{% elseif fichier.estUploadTermine %}
+														<span class="badge
+																																																																																																																																																																																																																																																																																																																																																																																																																																																                                                                 badge-info">
+															Upload terminé
+														</span>
+													{% else %}
+														<span class="badge
+																																																																																																																																																																																																																																																																																																																																																																																																																																																                                                                 badge-warning">
+															Upload en cours
+														</span>
+													{% endif %}
+												</div>
+
+												{% if fichier.id and fichier.actif %}
+													<a href="{{ path( 'app_controle_pre_presse_visualiser_fichier', {id: fichier.id} ) }}" class="btn btn-primary" target="_blank">
+														<i class="fa fa-eye mr-1"></i>
+														Aperçu
+													</a>
+
+													<a href="{{ path( 'app_controle_pre_presse_telecharger_fichier', {id: fichier.id} ) }}" class="btn btn-outline-primary">
+														<i class="fa fa-download mr-1"></i>
+														Télécharger l’original
+													</a>
+												{% else %}
+													<button type="button" class="btn btn-sm btn-outline-secondary btn-block" disabled>
+														<i class="fe fe-alert-circle mr-1"></i>
+														Fichier indisponible
+													</button>
+												{% endif %}
+
+											</div>
+										</div>
+									</div>
+								{% endif %}
+							{% endfor %}
+						</div>
+
+					{% endif %}
+				</div>
+			</div>
+
+			{# ========================================================
+																																																																																	           ÉTAT INITIAL DU FICHIER
+																																																																																	           ======================================================== #}
+			<div class="card">
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fe fe-git-branch mr-2"></i>
+						État du fichier
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<div class="row">
+
+						<div class="col-md-6">
+							<label class="custom-control
+																																																																																																																																																																																																																																																			                                      custom-checkbox mb-3">
+
+								<input type="checkbox" class="custom-control-input" id="fichierDejaTraite" name="fichierDejaTraite" value="1">
+
+								<span class="custom-control-label">
+									Fichier déjà traité
+								</span>
+							</label>
+
+							<small class="text-muted d-block">
+								Le fichier est prêt et nécessite seulement
+																																																																																																																																																																																																																								                            un contrôle rapide.
+							</small>
+						</div>
+
+						<div class="col-md-6">
+							<label class="custom-control
+																																																																																																																																																																																																																																																			                                      custom-checkbox mb-3">
+
+								<input type="checkbox" class="custom-control-input" id="correctionNecessaire" name="correctionNecessaire" value="1">
+
+								<span class="custom-control-label">
+									Correction nécessaire
+								</span>
+							</label>
+
+							<small class="text-muted d-block">
+								Des anomalies doivent être corrigées avant
+																																																																																																																																																																																																																								                            la validation.
+							</small>
+						</div>
+
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fe fe-upload-cloud mr-2"></i>
+						Ajouter un fichier traité
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<input form="form-fichier-traite" type="hidden" name="_token" value="{{ csrf_token( 'ajouter_fichier_traite_' ~ detail.id ) }}">
+
+					<div class="row">
+						<div class="col-md-6 mb-3">
+
+							<label for="fichierSource">
+								Fichier original correspondant
+								<span class="text-danger">*</span>
+							</label>
+
+							<select form="form-fichier-traite" class="form-control" id="fichierSource" name="fichierSource" required>
+								<option value="">Sélectionnez le fichier original</option>
+
+								{% set fichierDisponible = false %}
+
+								{% for fichier in detail.fichiers %}
+									{% if fichier.actif and fichier.etat == 'original' %}
+										{% set fichierDisponible = true %}
+
+										<option value="{{ fichier.id }}">
+											{{ fichier.nomOriginal|default('Fichier sans nom') }}
+
+											{% if fichier.face %}
+												—
+												{{ fichier.face|capitalize }}
+											{% endif %}
+
+											— Version
+											{{ fichier.version|default(1) }}
+										</option>
+									{% endif %}
+								{% endfor %}
+
+								{% if not fichierDisponible %}
+									<option value="" disabled>
+										Aucun fichier original disponible
+									</option>
+								{% endif %}
+							</select>
+						</div>
+
+						<div class="col-md-6 mb-3">
+							<label for="fichierTraite">
+								Fichier traité
+								<span class="text-danger">*</span>
+							</label>
+
+							<input form="form-fichier-traite" type="file" class="form-control" id="fichierTraite" name="fichierTraite" required>
+						</div>
+
+						<div class="col-md-4 mb-3">
+							<label for="faceTraitee">Face</label>
+
+							<select form="form-fichier-traite" class="form-control" id="faceTraitee" name="face">
+								<option value="">Même face que l’original</option>
+								<option value="recto">Recto</option>
+								<option value="verso">Verso</option>
+								<option value="recto-verso">Recto-verso</option>
+								<option value="devant">Devant</option>
+								<option value="dos">Dos</option>
+								<option value="autre">Autre</option>
+							</select>
+						</div>
+
+						<div class="col-md-8 mb-3">
+							<label for="designationFichier">
+								Désignation
+							</label>
+
+							<input form="form-fichier-traite" type="text" class="form-control" id="designationFichier" name="designation" placeholder="Exemple : Carte recto corrigée">
+						</div>
+
+						<div class="col-md-12 mb-3">
+							<label for="observationFichier">
+								Observation
+							</label>
+
+							<textarea form="form-fichier-traite" class="form-control" id="observationFichier" name="observation" rows="2" placeholder="Corrections effectuées..."></textarea>
+						</div>
+
+						<div class="col-md-12 text-right">
+							<button form="form-fichier-traite" type="submit" class="btn btn-primary">
+								<i class="fe fe-upload mr-1"></i>
+								Ajouter le fichier traité
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fe fe-check-circle mr-2"></i>
+						Fichiers traités pour impression
+					</h3>
+				</div>
+
+				<div class="card-body">
+					{% set nombreFichiersTraites = 0 %}
+
+					<div class="row">
+						{% for fichier in detail.fichiers %}
+							{% if fichier.actif
+                    and fichier.etat in [
+                        'traite',
+                        'pret_impression'
+                    ]
+                %}
+								{% set nombreFichiersTraites =
+                        nombreFichiersTraites + 1
+                    %}
+
+								<div class="col-xl-4 col-md-6">
+									<div class="card border">
+										<div class="card-body">
+											<div class="d-flex align-items-center mb-3">
+												<div class="avatar avatar-lg
+																																																																																																																																																																																																																																																																																																																				                                                bg-success text-white mr-3">
+													<i class="fe fe-file"></i>
+												</div>
+
+												<div style="min-width: 0;">
+													<strong class="d-block text-truncate">
+														{{ fichier.nomOriginal }}
+													</strong>
+
+													<small class="text-muted">
+														Version
+														{{ fichier.version }}
+														{% if fichier.face %}
+															—
+															{{ fichier.face }}
+														{% endif %}
+													</small>
+												</div>
+											</div>
+
+											{% if fichier.fichierSource %}
+												<p class="small mb-2">
+													<strong>Original :</strong>
+													{{ fichier.fichierSource.nomOriginal }}
+												</p>
+											{% endif %}
+
+											<p class="mb-3">
+												{% if fichier.fichierProduction %}
+													<span class="badge badge-success">
+														Fichier de production
+													</span>
+												{% elseif fichier.etat ==
+                                        'pret_impression'
+                                    %}
+													<span class="badge badge-info">
+														Prêt pour impression
+													</span>
+												{% else %}
+													<span class="badge badge-warning">
+														Traité — à valider
+													</span>
+												{% endif %}
+											</p>
+
+											<a href="{{ path('app_controle_pre_presse_visualiser_fichier', { id: fichier.id }) }}" target="_blank" rel="noopener" class="btn btn-sm
+																																																																																																																																																																																																																																																																																														                                           btn-outline-primary btn-block">
+												<i class="fe fe-eye mr-1"></i>
+												Visualiser
+											</a>
+										</div>
+									</div>
+								</div>
+							{% endif %}
+						{% endfor %}
+					</div>
+
+					{% if nombreFichiersTraites == 0 %}
+						<div class="alert alert-info mb-0">
+							Aucun fichier traité n’a encore été ajouté.
+						</div>
+					{% endif %}
+				</div>
+			</div>
+			{# ========================================================
+																																																																																	           VÉRIFICATIONS TECHNIQUES
+																																																																																	           ======================================================== #}
+			<div class="card">
+				<div class="card-header d-flex justify-content-between
+																																																																																																																																																																		                        align-items-center">
+
+					<h3 class="card-title">
+						<i class="fe fe-check-square mr-2"></i>
+						Vérifications techniques
+					</h3>
+
+					<button type="button" class="btn btn-sm btn-outline-success" id="cocher-tous-controles">
+						<i class="fe fe-check mr-1"></i>
+						Tout cocher
+					</button>
+				</div>
+
+				<div class="card-body">
+					<div class="row">
+
+						{% set controlesTechniques = {
+                        'formatConforme':
+                            'Format du fichier conforme',
+                        'dimensionsConformes':
+                            'Dimensions conformes',
+                        'resolutionConforme':
+                            'Résolution conforme',
+                        'profilCouleursConforme':
+                            'Profil de couleurs conforme',
+                        'fondsPerdusConformes':
+                            'Fonds perdus conformes',
+                        'margesSecuriteConformes':
+                            'Marges de sécurité conformes',
+                        'policesConformes':
+                            'Polices conformes ou vectorisées',
+                        'orthographeVerifiee':
+                            'Orthographe vérifiée',
+                        'orientationConforme':
+                            'Orientation conforme',
+                        'nombrePagesConforme':
+                            'Nombre de pages conforme',
+                        'rectoVersoConforme':
+                            'Recto-verso conforme',
+                        'supportConforme':
+                            'Support conforme',
+                        'quantiteConforme':
+                            'Quantité conforme'
+                    } %}
+
+						{% for champ, libelle in controlesTechniques %}
+							<div class="col-xl-4 col-md-6 mb-3">
+								<div class="border rounded p-3 h-100">
+
+									<label class="custom-control
+																																																																																																																																																																																																																																																																																																									                                              custom-checkbox mb-0">
+
+										<input type="checkbox" class="custom-control-input
+																																																																																																																																																																																																																																																																																																									                                               controle-technique" id="{{ champ }}" name="{{ champ }}" value="1">
+
+										<span class="custom-control-label">
+											{{ libelle }}
+										</span>
+									</label>
+
+								</div>
+							</div>
+						{% endfor %}
+
+					</div>
+				</div>
+			</div>
+
+			{# ========================================================
+																																																																																	           ANOMALIES ET CORRECTIONS
+																																																																																	           ======================================================== #}
+			<div class="card">
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fe fe-edit-3 mr-2"></i>
+						Anomalies et corrections
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<div class="row">
+
+						<div class="col-md-6 mb-3">
+							<label for="anomalies">
+								Anomalies constatées
+							</label>
+
+							<textarea class="form-control" id="anomalies" name="anomalies" rows="5" placeholder="Indiquez les problèmes constatés..."></textarea>
+						</div>
+
+						<div class="col-md-6 mb-3">
+							<label for="correctionsEffectuees">
+								Corrections effectuées
+							</label>
+
+							<textarea class="form-control" id="correctionsEffectuees" name="correctionsEffectuees" rows="5" placeholder="Décrivez les corrections réalisées..."></textarea>
+						</div>
+
+						<div class="col-md-12">
+							<label for="observation">
+								Observation générale
+							</label>
+
+							<textarea class="form-control" id="observation" name="observation" rows="3" placeholder="Observation complémentaire..."></textarea>
+						</div>
+
+					</div>
+				</div>
+			</div>
+
+			{# ========================================================
+																																																																																	           BAT
+																																																																																	           ======================================================== #}
+			<div class="card">
+				<div class="card-header">
+					<h3 class="card-title">
+						<i class="fe fe-user-check mr-2"></i>
+						Bon à tirer — BAT
+					</h3>
+				</div>
+
+				<div class="card-body">
+					<div class="row">
+
+						<div class="col-md-6">
+							<label class="custom-control custom-checkbox">
+								<input type="checkbox" class="custom-control-input" id="batNecessaire" name="batNecessaire" value="1">
+
+								<span class="custom-control-label">
+									Le BAT est nécessaire
+								</span>
+							</label>
+						</div>
+
+						<div class="col-md-6">
+							<label class="custom-control custom-checkbox">
+								<input type="checkbox" class="custom-control-input" id="batValide" name="batValide" value="1" disabled>
+
+								<span class="custom-control-label">
+									BAT validé par le client
+								</span>
+							</label>
+						</div>
+
+					</div>
+				</div>
+			</div>
+			{# ========================================================
+									   CONTRÔLE FINANCIER CLIENT
+									   ======================================================== #}
+
+			{% if controleCredit is defined and controleCredit %}
+
+				<div class="card">
+
+					<div class="card-header">
+						<h3 class="card-title">
+							<i class="fe fe-credit-card mr-2"></i>
+							Contrôle financier du client
+						</h3>
+					</div>
+
+					<div class="card-body">
+
+						<div class="row">
+
+							<div class="col-md-3 mb-3">
+								<small class="text-muted d-block">
+									Ancienneté client
+								</small>
+
+								<strong>
+									{{ controleCredit.ancienneteMois|default(0) }}
+									mois
+								</strong>
+							</div>
+
+
+							<div class="col-md-3 mb-3">
+								<small class="text-muted d-block">
+									Plafond de crédit
+								</small>
+
+								<strong>
+									{{
+							controleCredit.plafondCredit
+								|default(0)
+								|number_format(0, ',', ' ')
+						}}
+									F CFA
+								</strong>
+							</div>
+
+
+							<div class="col-md-3 mb-3">
+								<small class="text-muted d-block">
+									Encours antérieur
+								</small>
+
+								<strong class="{{ controleCredit.encoursAnterieur|default(0) > controleCredit.plafondCredit|default(0) ? 'text-danger' : 'text-success' }}">
+									{{
+							controleCredit.encoursAnterieur
+								|default(0)
+								|number_format(0, ',', ' ')
+						}}
+									F CFA
+								</strong>
+							</div>
+
+
+							<div class="col-md-3 mb-3">
+								<small class="text-muted d-block">
+									Crédit disponible
+								</small>
+
+								<strong>
+									{{
+							controleCredit.creditDisponible
+								|default(0)
+								|number_format(0, ',', ' ')
+						}}
+									F CFA
+								</strong>
+							</div>
+
+
+							<div class="col-md-3 mb-3">
+								<small class="text-muted d-block">
+									Montant commande actuelle
+								</small>
+
+								<strong>
+									{{
+							controleCredit.totalCommande
+								|default(0)
+								|number_format(0, ',', ' ')
+						}}
+									F CFA
+								</strong>
+
+								<small class="text-muted d-block">
+									Ne participe pas au calcul du plafond.
+								</small>
+							</div>
+
+
+							<div class="col-md-3 mb-3">
+								<small class="text-muted d-block">
+									Avance validée
+								</small>
+
+								<strong class="text-success">
+									{{
+							controleCredit.avanceCommande
+								|default(0)
+								|number_format(0, ',', ' ')
+						}}
+									F CFA
+								</strong>
+							</div>
+
+
+							<div class="col-md-3 mb-3">
+								<small class="text-muted d-block">
+									Reste commande actuelle
+								</small>
+
+								<strong>
+									{{
+							controleCredit.resteCommande
+								|default(0)
+								|number_format(0, ',', ' ')
+						}}
+									F CFA
+								</strong>
+
+								<small class="text-muted d-block">
+									Ne participe pas à l’encours antérieur.
+								</small>
+							</div>
+
+
+							<div class="col-md-3 mb-3">
+								<small class="text-muted d-block">
+									Commandes antérieures impayées
+								</small>
+
+								<strong>
+									{{
+							controleCredit
+								.nombreCommandesAnterieuresImpayees
+								|default(0)
+						}}
+								</strong>
+							</div>
+
+						</div>
+
+
+						{% if controleCredit.autorise|default(false) %}
+
+							<div class="alert alert-success mb-0">
+								<i class="fe fe-check-circle mr-1"></i>
+
+								<strong>
+									Production autorisée.
+								</strong>
+
+								{{ controleCredit.motif|default('') }}
+							</div>
+
+						{% else %}
+
+							<div class="alert alert-danger mb-0">
+								<i class="fe fe-lock mr-1"></i>
+
+								<strong>
+									Production bloquée.
+								</strong>
+
+								{{ controleCredit.motif|default(
+						'La situation financière du client ne permet pas l’envoi en production.'
+					) }}
+							</div>
+
+						{% endif %}
+
+					</div>
+				</div>
+
+			{% endif %}
+			{# ========================================================
+																																																																																	           BOUTONS D’ACTION
+																																																																																	           ======================================================== #}
+			{# ========================================================
+						   BOUTONS D’ACTION
+						   ======================================================== #}
+
+			<div class="card">
+				<div class="card-body">
+
+					<div
+						class="d-flex flex-wrap justify-content-end">
+
+						{# ====================================================
+															   ENREGISTRER
+															   ==================================================== #}
+
+						<button type="submit" name="action" value="enregistrer" class="btn btn-secondary mr-2 mb-2 bouton-controle" data-message="Enregistrer ce contrôle prépresse ?">
+							<i class="fe fe-save mr-1"></i>
+							Enregistrer
+						</button>
+
+
+						{# ====================================================
+															   VALIDER LE PRÉPRESSE
+															   ====================================================
+															   Cette action ne crée pas l'ordre de production.
+															   ==================================================== #}
+
+						<button type="submit" name="action" value="valider" class="btn btn-info mr-2 mb-2 bouton-controle" data-message="Valider définitivement ce contrôle prépresse ?">
+							<i class="fe fe-check-circle mr-1"></i>
+							Valider
+						</button>
+
+
+						{# ====================================================
+															   VALIDER + PRODUCTION
+															   ==================================================== #}
+
+						{% set productionAutorisee =
+				controleCredit is not defined
+				or controleCredit is null
+				or controleCredit.autorise|default(false)
+			%}
+
+
+						{% if productionAutorisee %}
+
+							<button type="submit" name="action" value="valider_production" class="btn btn-success mb-2 bouton-controle" data-message="Valider et envoyer les fichiers en production ?">
+								<i class="fe fe-printer mr-1"></i>
+								Valider et envoyer en production
+							</button>
+
+						{% else %}
+
+							<button type="button" class="btn btn-danger mb-2" disabled title="{{ controleCredit.motif|default( 'Production bloquée pour ce client.' ) }}">
+								<i class="fe fe-lock mr-1"></i>
+								Production bloquée
+							</button>
+
+						{% endif %}
+
+					</div>
+
+
+					{% if
+			controleCredit is defined
+			and controleCredit
+			and not controleCredit.autorise|default(false)
+		%}
+
+						<div class="alert alert-danger mt-3 mb-0">
+
+							<i class="fe fe-alert-triangle mr-1"></i>
+
+							<strong>
+								Impossible d’envoyer ce travail en production :
+							</strong>
+
+							{{ controleCredit.motif|default(
+					'le contrôle financier du client bloque cette opération.'
+				) }}
+
+						</div>
+
+					{% endif %}
+
+				</div>
+			</div>
+
+		</form>
+
+		{# ============================================================
+																																																						       HISTORIQUE DES CONTRÔLES
+																																																						       ============================================================ #}
+		<div class="card">
+			<div class="card-header">
+				<h3 class="card-title">
+					<i class="fe fe-clock mr-2"></i>
+					Historique des contrôles
+				</h3>
+			</div>
+
+			<div class="card-body">
+				{% if detail.controlesPrePresse is empty %}
+
+					<div class="alert alert-info mb-0">
+						Aucun contrôle prépresse n’a encore été enregistré.
+					</div>
+
+				{% else %}
+
+					<div class="table-responsive">
+						<table class="table table-bordered table-hover">
+							<thead class="bg-light text-primary">
+								<tr>
+									<th>Date</th>
+									<th>Fichiers</th>
+									<th>Statut</th>
+									<th>Contrôlé par</th>
+									<th>Anomalies</th>
+									<th>Observation</th>
+								</tr>
+							</thead>
+
+							<tbody>
+								{% for controle in detail.controlesPrePresse %}
+									<tr>
+										<td>
+											{{ controle.creeLe
+                                        |date('d/m/Y H:i')
+                                    }}
+										</td>
+
+										<td>
+											<span class="badge badge-primary">
+												{{ controle.fichiers|length }}
+											</span>
+										</td>
+
+										<td>
+											{% if controle.statut ==
+                                        'envoye_production'
+                                    %}
+												<span class="badge badge-success">
+													Envoyé en production
+												</span>
+
+											{% elseif controle.statut == 'valide' %}
+												<span class="badge badge-info">
+													Validé
+												</span>
+
+											{% elseif controle.statut ==
+                                        'correction_requise'
+                                    %}
+												<span class="badge badge-danger">
+													Correction requise
+												</span>
+
+											{% elseif controle.statut ==
+                                        'en_attente_bat'
+                                    %}
+												<span class="badge badge-warning">
+													En attente du BAT
+												</span>
+
+											{% elseif controle.statut == 'rejete' %}
+												<span class="badge badge-danger">
+													Rejeté
+												</span>
+
+											{% else %}
+												<span class="badge badge-secondary">
+													{{ controle.statut
+                                                |replace({'_': ' '})
+                                                |capitalize
+                                            }}
+												</span>
+											{% endif %}
+										</td>
+
+										<td>
+											{% if controle.controlePar %}
+												{{ controle.controlePar.employe.nom
+                                            |default(
+                                                controle.controlePar.username
+                                            )
+                                        }}
+											{% else %}
+												—
+											{% endif %}
+										</td>
+
+										<td>
+											{{ controle.anomalies|default('—') }}
+										</td>
+
+										<td>
+											{{ controle.observation|default('—') }}
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+
+				{% endif %}
+			</div>
+		</div>
+
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+const selectionTous = document.getElementById('selectionner-tous-fichiers');
+
+const fichiers = document.querySelectorAll('.fichier-checkbox');
+
+const boutonToutCocher = document.getElementById('cocher-tous-controles');
+
+const controles = document.querySelectorAll('.controle-technique');
+
+const fichierDejaTraite = document.getElementById('fichierDejaTraite');
+
+const correctionNecessaire = document.getElementById('correctionNecessaire');
+
+const batNecessaire = document.getElementById('batNecessaire');
+
+const batValide = document.getElementById('batValide');
+
+const formulaire = document.getElementById('form-controle-pre-presse');
+
+let boutonClique = null;
+
+/* Sélectionner tous les fichiers */
+if (selectionTous) {
+selectionTous.addEventListener('change', function () {
+fichiers.forEach(function (fichier) {
+fichier.checked = selectionTous.checked;
+});
+});
+}
+
+/* Cocher ou décocher tous les contrôles */
+if (boutonToutCocher) {
+boutonToutCocher.addEventListener('click', function () {
+const tousCoches = Array.from(controles).every(function (controle) {
+return controle.checked;
+});
+
+controles.forEach(function (controle) {
+controle.checked = ! tousCoches;
+});
+
+boutonToutCocher.innerHTML = tousCoches ? '<i class="fe fe-check mr-1"></i> Tout cocher' : '<i class="fe fe-x mr-1"></i> Tout décocher';
+});
+}
+
+/* Les deux circuits sont incompatibles */
+if (fichierDejaTraite && correctionNecessaire) {
+fichierDejaTraite.addEventListener('change', function () {
+if (fichierDejaTraite.checked) {
+correctionNecessaire.checked = false;
+}
+});
+
+correctionNecessaire.addEventListener('change', function () {
+if (correctionNecessaire.checked) {
+fichierDejaTraite.checked = false;
+}
+});
+}
+
+/* Activer la validation BAT seulement si nécessaire */
+if (batNecessaire && batValide) {
+batNecessaire.addEventListener('change', function () {
+batValide.disabled = ! batNecessaire.checked;
+
+if (! batNecessaire.checked) {
+batValide.checked = false;
+}
+});
+}
+
+document.querySelectorAll('.bouton-controle').forEach(function (bouton) {
+bouton.addEventListener('click', function () {
+boutonClique = bouton;
+});
+});
+
+if (formulaire) {
+formulaire.addEventListener('submit', function (event) {
+event.preventDefault();
+
+const nombreFichiersSelectionnes = document.querySelectorAll('.fichier-checkbox:checked').length;
+
+if (nombreFichiersSelectionnes === 0) {
+Swal.fire({icon: 'warning', title: 'Aucun fichier sélectionné', text: 'Sélectionnez au moins un fichier à contrôler.'});
+
+return;
+}
+
+const message = boutonClique ? boutonClique.dataset.message : 'Enregistrer ce contrôle prépresse ?';
+
+Swal.fire({
+icon: 'question',
+title: 'Confirmation',
+text: message,
+showCancelButton: true,
+confirmButtonText: 'Oui, continuer',
+cancelButtonText: 'Annuler',
+confirmButtonColor: '#28a745',
+cancelButtonColor: '#6c757d'
+}).then(function (resultat) {
+if (! resultat.isConfirmed) {
+return;
+}
+
+/*
+                         * requestSubmit(boutonClique) conserve la valeur
+                         * du bouton action : enregistrer, valider ou
+                         * valider_production.
+                         */
+formulaire.removeEventListener('submit', arguments.callee);
+
+if (boutonClique) {
+const action = document.createElement('input');
+
+action.type = 'hidden';
+action.name = 'action';
+action.value = boutonClique.value;
+
+formulaire.appendChild(action);
+}
+
+formulaire.submit();
+});
+});
+}
+});
+document.addEventListener('DOMContentLoaded', function () {
+/*
+ * ============================================================
+ * ENVOI PAR MORCEAUX (fichier traité)
+ * ============================================================
+ *
+ * Les champs de ce formulaire ("fichierTraite", "fichierSource"...)
+ * ne sont pas imbriqués dans <form id="form-fichier-traite"> : ils y
+ * sont rattachés via l'attribut form="form-fichier-traite" (pour
+ * éviter d'imbriquer deux <form> HTML sur cette page). Il faut donc
+ * les retrouver par leur id ou par [form="form-fichier-traite"],
+ * jamais par formulaire.querySelector(...).
+ */
+const formulaireFichierTraite = document.getElementById('form-fichier-traite');
+
+if (!formulaireFichierTraite) {
+return;
+}
+
+const initialiserUrl = formulaireFichierTraite.dataset.uploadInitialiserUrl;
+const morceauUrlModele = formulaireFichierTraite.dataset.uploadMorceauUrl;
+
+if (!initialiserUrl || !morceauUrlModele) {
+return;
+}
+
+const TAILLE_MORCEAU_FICHIER_TRAITE = 5 * 1024 * 1024;
+
+function construireUrlMorceauFichierTraite(jeton, index) {
+return morceauUrlModele
+.replace('__JETON__', jeton)
+.replace('__INDEX__', String(index));
+}
+
+formulaireFichierTraite.addEventListener('submit', function (event) {
+const champFichier = document.getElementById('fichierTraite');
+
+if (!champFichier || !champFichier.files || !champFichier.files.length) {
+return;
+}
+
+event.preventDefault();
+
+const fichier = champFichier.files[0];
+
+const champToken = document.querySelector('[form="form-fichier-traite"][name="_token"]');
+const bouton = document.querySelector('[form="form-fichier-traite"][type="submit"]');
+const champFichierSource = document.getElementById('fichierSource');
+const champFace = document.getElementById('faceTraitee');
+const champDesignation = document.getElementById('designationFichier');
+const champObservation = document.getElementById('observationFichier');
+
+const texteBoutonInitial = bouton ? bouton.innerHTML : '';
+
+if (bouton) {
+bouton.disabled = true;
+bouton.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Envoi en cours... 0 %';
+}
+
+(async function () {
+try {
+
+const jetonCsrf = champToken ? champToken.value : '';
+
+const nombreMorceaux = Math.max(
+1,
+Math.ceil(fichier.size / TAILLE_MORCEAU_FICHIER_TRAITE)
+);
+
+const reponseInit = await fetch(initialiserUrl, {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+'X-CSRF-TOKEN': jetonCsrf,
+Accept: 'application/json'
+},
+body: JSON.stringify({
+nom: fichier.name,
+typeMime: fichier.type || 'application/octet-stream',
+taille: fichier.size,
+nombreMorceaux: nombreMorceaux,
+fichierSource: champFichierSource ? champFichierSource.value : '',
+face: champFace ? champFace.value : '',
+designation: champDesignation ? champDesignation.value : '',
+observation: champObservation ? champObservation.value : ''
+})
+});
+
+const donneesInit = await reponseInit.json();
+
+if (!reponseInit.ok || !donneesInit.jeton) {
+throw new Error(donneesInit.message || "Impossible d'initialiser l'envoi.");
+}
+
+const jeton = donneesInit.jeton;
+
+for (let index = 0; index < nombreMorceaux; index++) {
+
+const debut = index * TAILLE_MORCEAU_FICHIER_TRAITE;
+const fin = Math.min(fichier.size, debut + TAILLE_MORCEAU_FICHIER_TRAITE);
+
+const donneesMorceauFormulaire = new FormData();
+donneesMorceauFormulaire.append('morceau', fichier.slice(debut, fin), fichier.name);
+
+const reponseMorceau = await fetch(construireUrlMorceauFichierTraite(jeton, index), {
+method: 'POST',
+headers: {
+'X-CSRF-TOKEN': jetonCsrf
+},
+body: donneesMorceauFormulaire
+});
+
+const donneesMorceau = await reponseMorceau.json();
+
+if (!reponseMorceau.ok) {
+throw new Error(donneesMorceau.message || "L'envoi du fichier a été interrompu.");
+}
+
+const progression = typeof donneesMorceau.progression === 'number'
+? donneesMorceau.progression
+: Math.round(((index + 1) / nombreMorceaux) * 100);
+
+if (bouton) {
+bouton.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Envoi en cours... ' + progression + ' %';
+}
+}
+
+window.location.reload();
+
+} catch (erreur) {
+
+console.error(erreur);
+
+const messageErreur = erreur.message || 'Une erreur est survenue pendant l’envoi du fichier.';
+
+if (typeof window.Swal !== 'undefined') {
+window.Swal.fire({
+icon: 'error',
+title: 'Échec de l’envoi',
+text: messageErreur
+});
+} else {
+window.alert(messageErreur);
+}
+
+if (bouton) {
+bouton.disabled = false;
+bouton.innerHTML = texteBoutonInitial;
+}
+}
+})();
+});
+});
+	</script>
+{% endblock %}

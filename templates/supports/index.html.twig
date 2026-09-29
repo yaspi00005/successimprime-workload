@@ -14,7 +14,7 @@
 			<li class="breadcrumb-item active" aria-current="page">Liste des Utilisateurs</li>
 		</ol>
 		<div>
-			<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#supportCreateModal">
+			<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#supportCreateModal">
 				<i class="fa fa-plus mr-1"></i>
 				Ajouter un support
 			</button>
@@ -170,7 +170,7 @@
 
 											<div class="btn-group align-top">
 
-												<button type="button" class="btn btn-sm btn-primary-light btn-edit-support" data-toggle="modal" data-target="#supportEditModal" data-get-url="{{ path( 'app_support_get_ajax', {id: support.id} ) }}" data-update-url="{{ path( 'app_support_update_ajax', {id: support.id} ) }}" data-update-token="{{ csrf_token( 'update_support_' ~ support.id ) }}" title="Modifier">
+												<button type="button" class="btn btn-sm btn-primary-light btn-edit-support" data-bs-toggle="modal" data-bs-target="#supportEditModal" data-get-url="{{ path( 'app_support_get_ajax', {id: support.id} ) }}" data-update-url="{{ path( 'app_support_update_ajax', {id: support.id} ) }}" data-update-token="{{ csrf_token( 'update_support_' ~ support.id ) }}" title="Modifier">
 													<i class="fa fa-edit"></i>
 												</button>
 
@@ -221,9 +221,7 @@
 							Ajouter un support
 						</h5>
 
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-							<span aria-hidden="true">&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 					</div>
 
 					<div class="modal-body">
@@ -311,7 +309,7 @@
 					</div>
 
 					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 							Annuler
 						</button>
 
@@ -332,9 +330,7 @@
 							Modifier le support
 						</h5>
 
-						<button type="button" class="close" data-dismiss="modal">
-							<span>&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 					</div>
 
 					<div class="modal-body">
@@ -417,7 +413,7 @@
 					</div>
 
 					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 							Annuler
 						</button>
 

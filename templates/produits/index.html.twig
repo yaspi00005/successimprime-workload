@@ -21,7 +21,7 @@
 
 			<div>
 
-				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#produitCreateModal">
+				<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#produitCreateModal">
 					<i class="fa fa-plus mr-1"></i>
 					Ajouter un produit
 				</button>
@@ -287,7 +287,7 @@
 
 										<div class="btn-group">
 
-											<button type="button" class="btn btn-sm btn-primary-light btn-edit-produit" data-toggle="modal" data-target="#produitEditModal" data-get-url="{{ path( 'app_produits_get_ajax', {id: produit.id} ) }}" data-update-url="{{ path( 'app_produits_update_ajax', {id: produit.id} ) }}" data-update-token="{{ csrf_token( 'update_produit_' ~ produit.id ) }}">
+											<button type="button" class="btn btn-sm btn-primary-light btn-edit-produit" data-bs-toggle="modal" data-bs-target="#produitEditModal" data-get-url="{{ path( 'app_produits_get_ajax', {id: produit.id} ) }}" data-update-url="{{ path( 'app_produits_update_ajax', {id: produit.id} ) }}" data-update-token="{{ csrf_token( 'update_produit_' ~ produit.id ) }}">
 												<i class="fa fa-edit"></i>
 											</button>
 
@@ -359,9 +359,7 @@
 							Ajouter un produit
 						</h5>
 
-						<button type="button" class="close" data-dismiss="modal">
-							<span>&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 
 					</div>
 
@@ -509,7 +507,7 @@
 
 					<div class="modal-footer">
 
-						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 							Annuler
 						</button>
 
@@ -539,9 +537,7 @@
 							Modifier le produit
 						</h5>
 
-						<button type="button" class="close" data-dismiss="modal">
-							<span>&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 
 					</div>
 
@@ -686,7 +682,7 @@
 
 					<div class="modal-footer">
 
-						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 							Annuler
 						</button>
 

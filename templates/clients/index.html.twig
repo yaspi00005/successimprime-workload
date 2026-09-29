@@ -20,7 +20,7 @@
 			</ol>
 
 			<div>
-				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modalAjoutClient">
+				<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAjoutClient">
 					<i class="fa fa-plus mr-1"></i>
 					Ajouter un client
 				</button>
@@ -107,9 +107,7 @@
 							</small>
 						</div>
 
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-							<span aria-hidden="true">&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 					</div>
 
 					{{ form_start(formAjout, {
@@ -205,7 +203,7 @@
 					</div>
 
 					<div class="modal-footer">
-						<button type="button" class="btn btn-light" data-dismiss="modal">
+						<button type="button" class="btn btn-light" data-bs-dismiss="modal">
 							Annuler
 						</button>
 
@@ -229,9 +227,7 @@
 							Modifier le client
 						</h5>
 
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-							<span aria-hidden="true">&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 					</div>
 
 					<div id="clientEditModalContent">

@@ -14,7 +14,7 @@
 			<li class="breadcrumb-item active" aria-current="page">Liste des Utilisateurs</li>
 		</ol>
 		<div>
-			<button type="button" class="btn btn-primary btn-create-type-impression" data-toggle="modal" data-target="#typeImpressionCreateModal">
+			<button type="button" class="btn btn-primary btn-create-type-impression" data-bs-toggle="modal" data-bs-target="#typeImpressionCreateModal">
 				<i class="fa fa-plus mr-1"></i>
 				Ajouter un type d’impression
 			</button>
@@ -208,7 +208,7 @@
 												class="btn-group align-top">
 
 												{# Modifier #}
-												<button type="button" class="btn btn-sm btn-primary-light btn-edit-type-impression" data-toggle="modal" data-target="#typeImpressionEditModal" data-id="{{ typeImpression.id }}" data-get-url="{{ path( 'app_type_impression_get_ajax', { id: typeImpression.id } ) }}" data-update-url="{{ path( 'app_type_impression_update_ajax', { id: typeImpression.id } ) }}" title="Modifier">
+												<button type="button" class="btn btn-sm btn-primary-light btn-edit-type-impression" data-bs-toggle="modal" data-bs-target="#typeImpressionEditModal" data-id="{{ typeImpression.id }}" data-get-url="{{ path( 'app_type_impression_get_ajax', { id: typeImpression.id } ) }}" data-update-url="{{ path( 'app_type_impression_update_ajax', { id: typeImpression.id } ) }}" title="Modifier">
 													<i class="fa fa-edit"></i>
 												</button>
 
@@ -277,9 +277,7 @@
 							Modifier le type d’impression
 						</h5>
 
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-							<span aria-hidden="true">&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 					</div>
 
 					<div class="modal-body">
@@ -339,7 +337,7 @@
 					</div>
 
 					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 							Annuler
 						</button>
 
@@ -361,9 +359,7 @@
 							Ajouter un type d’impression
 						</h5>
 
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-							<span aria-hidden="true">&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 					</div>
 
 					<div class="modal-body">
@@ -421,7 +417,7 @@
 					</div>
 
 					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 							Annuler
 						</button>
 

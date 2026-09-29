@@ -14,7 +14,7 @@
 			<li class="breadcrumb-item active" aria-current="page">Liste des Utilisateurs</li>
 		</ol>
 		<div>
-			<button type="button" class="btn btn-primary btn-create-finition" data-toggle="modal" data-target="#finitionCreateModal">
+			<button type="button" class="btn btn-primary btn-create-finition" data-bs-toggle="modal" data-bs-target="#finitionCreateModal">
 				<i class="fa fa-plus mr-1"></i>
 				Ajouter une finition
 			</button>
@@ -159,7 +159,7 @@
 
 											<div class="btn-group align-top">
 
-												<button type="button" class="btn btn-sm btn-primary-light btn-edit-finition" data-toggle="modal" data-target="#finitionEditModal" data-id="{{ finition.id }}" data-get-url="{{ path( 'app_finition_get_ajax', {id: finition.id} ) }}" data-update-url="{{ path( 'app_finition_update_ajax', {id: finition.id} ) }}" title="Modifier">
+												<button type="button" class="btn btn-sm btn-primary-light btn-edit-finition" data-bs-toggle="modal" data-bs-target="#finitionEditModal" data-id="{{ finition.id }}" data-get-url="{{ path( 'app_finition_get_ajax', {id: finition.id} ) }}" data-update-url="{{ path( 'app_finition_update_ajax', {id: finition.id} ) }}" title="Modifier">
 													<i class="fa fa-edit"></i>
 												</button>
 
@@ -212,9 +212,7 @@
 							Ajouter une finition
 						</h5>
 
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-							<span aria-hidden="true">&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 					</div>
 
 					<div class="modal-body">
@@ -281,7 +279,7 @@
 
 					<div class="modal-footer">
 
-						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 							Annuler
 						</button>
 
@@ -306,9 +304,7 @@
 							Modifier la finition
 						</h5>
 
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-							<span aria-hidden="true">&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 					</div>
 
 					<div class="modal-body">
@@ -374,7 +370,7 @@
 
 					<div class="modal-footer">
 
-						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 							Annuler
 						</button>
 

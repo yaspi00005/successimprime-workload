@@ -595,7 +595,7 @@
 																																																																																																																																		                                                        btn-sm
 																																																																																																																																		                                                        btn-primary-light
 																																																																																																																																		                                                        btn-edit-roles
-																																																																																																																																		                                                    " data-toggle="modal" data-target="#userModal" data-id="{{ user.id }}" data-get-url="{{ path( 'app_user_roles_get', { id: user.id } ) }}" data-update-url="{{ path( 'app_user_roles_update', { id: user.id } ) }}" data-update-token="{{ csrf_token( 'update_user_roles_' ~ user.id ) }}" title="Modifier les rôles">
+																																																																																																																																		                                                    " data-bs-toggle="modal" data-bs-target="#userModal" data-id="{{ user.id }}" data-get-url="{{ path( 'app_user_roles_get', { id: user.id } ) }}" data-update-url="{{ path( 'app_user_roles_update', { id: user.id } ) }}" data-update-token="{{ csrf_token( 'update_user_roles_' ~ user.id ) }}" title="Modifier les rôles">
 
 													<i class="fa fa-edit"></i>
 
@@ -746,13 +746,7 @@
 					</h5>
 
 
-					<button type="button" class="close" data-dismiss="modal">
-
-						<span>
-							&times;
-						</span>
-
-					</button>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 
 				</div>
 
@@ -919,7 +913,7 @@
 
 				<div class="modal-footer">
 
-					<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 
 						Annuler
 

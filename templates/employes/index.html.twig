@@ -482,7 +482,7 @@
 																																																																																																																														                                                            btn-primary-light
 																																																																																																																														                                                            ouvrirUser
 																																																																																																																														                                                            btn-create-user
-																																																																																																																														                                                        " data-toggle="modal" data-target="#userModal" data-id="{{ employe.id }}" data-prenom="{{ employe.prenom|default('') }}" data-nom="{{ employe.nom|default('') }}" data-matricule="{{ employe.matricules|default('') }}" title="Configurer le compte">
+																																																																																																																														                                                        " data-bs-toggle="modal" data-bs-target="#userModal" data-id="{{ employe.id }}" data-prenom="{{ employe.prenom|default('') }}" data-nom="{{ employe.nom|default('') }}" data-matricule="{{ employe.matricules|default('') }}" title="Configurer le compte">
 
 														<i class="fa fa-user-cog"></i>
 
@@ -603,9 +603,7 @@
 						</div>
 
 
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-							<span>&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 
 					</div>
 
@@ -781,7 +779,7 @@
 
 					<div class="modal-footer">
 
-						<button type="button" class="btn btn-secondary" data-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 							Annuler
 						</button>
 

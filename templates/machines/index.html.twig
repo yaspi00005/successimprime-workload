@@ -30,7 +30,7 @@
 					Rentabilité
 				</a>
 
-				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#machineCreateModal">
+				<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#machineCreateModal">
 					<i class="fa fa-plus mr-1"></i>
 					Ajouter une machine
 				</button>
@@ -353,7 +353,7 @@
 																																																								                                                        btn-sm
 																																																								                                                        btn-primary-light
 																																																								                                                        btn-edit-machine
-																																																								                                                    " data-toggle="modal" data-target="#machineEditModal" data-id="{{ machine.id }}" data-get-url="{{ path( 'app_machines_get_ajax', { id: machine.id } ) }}" data-update-url="{{ path( 'app_machines_update_ajax', { id: machine.id } ) }}" data-update-token="{{ csrf_token( 'update_machine_' ~ machine.id ) }}" title="Modifier">
+																																																								                                                    " data-bs-toggle="modal" data-bs-target="#machineEditModal" data-id="{{ machine.id }}" data-get-url="{{ path( 'app_machines_get_ajax', { id: machine.id } ) }}" data-update-url="{{ path( 'app_machines_update_ajax', { id: machine.id } ) }}" data-update-token="{{ csrf_token( 'update_machine_' ~ machine.id ) }}" title="Modifier">
 														<i class="fa fa-edit"></i>
 													</button>
 
@@ -444,11 +444,7 @@
 						</small>
 					</div>
 
-					<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-						<span aria-hidden="true">
-							&times;
-						</span>
-					</button>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 
 				</div>
 
@@ -850,7 +846,7 @@
 
 				<div class="modal-footer">
 
-					<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 						Annuler
 					</button>
 
@@ -893,11 +889,7 @@
 						</small>
 					</div>
 
-					<button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-						<span aria-hidden="true">
-							&times;
-						</span>
-					</button>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
 
 				</div>
 
@@ -1268,7 +1260,7 @@
 
 				<div class="modal-footer">
 
-					<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
 						Annuler
 					</button>
 

@@ -32,7 +32,7 @@ final class InstallerThemeCommand extends Command
     ];
     private const DOSSIERS = [
         'vendor/global', 'vendor/chart.js', 'vendor/select2', 'vendor/toastr', 'vendor/jquery-nice-select',
-        'vendor/fullcalendar/css', 'vendor/fullcalendar/js', 'icons',
+        'vendor/fullcalendar/css', 'vendor/fullcalendar/js', 'vendor/datatables', 'icons',
     ];
 
     public function __construct(#[Autowire('%kernel.project_dir%/public/theme')] private readonly string $cible)

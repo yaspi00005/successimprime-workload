@@ -3,6 +3,10 @@
 {% block title %}Gestion des clients
 {% endblock %}
 
+{% block stylesheets %}
+	<link href="{{ asset('theme/vendor/datatables/css/jquery.dataTables.min.css') }}" rel="stylesheet">
+{% endblock %}
+
 {% block body %}
 	<div class="side-app">
 		<div class="page-header">
@@ -246,9 +250,14 @@
 {% block javascripts %}
 	{{ parent() }}
 
-	{# DataTables : à garder seulement s'il n'est pas déjà chargé dans base.html.twig #}
-	<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-	<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
+	{#
+		DataTables : le thème Workload cible directement le rendu par défaut
+		du plugin (classes .dataTables_wrapper / .paginate_button déjà stylées
+		dans theme/css/style.css) et n'a pas d'adaptateur Bootstrap4 --
+		utiliser dataTables.bootstrap4.min.js casserait cet affichage
+		(markup de pagination différent, non prévu par le thème).
+	#}
+	<script src="{{ asset('theme/vendor/datatables/js/jquery.dataTables.min.js') }}"></script>
 
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

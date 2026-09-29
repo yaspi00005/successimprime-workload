@@ -233,13 +233,29 @@
 					)
 				%}
 
-					<form method="post" action="{{ path( 'app_commandes_annuler', { id: commande.id } ) }}" class="js-confirm-form d-inline" data-message="Annuler la commande {{ commande.numero }} ? Cette action est irréversible.">
+					<form method="post" action="{{ path( 'app_commandes_annuler', { id: commande.id } ) }}" class="js-confirm-form d-inline" data-message="Annuler la commande {{ commande.numero }} ? Un administrateur pourra la restaurer ensuite si besoin.">
 
 						<input type="hidden" name="_token" value="{{ csrf_token( 'annuler-commande-' ~ commande.id ) }}">
 
 						<button type="submit" class="btn btn-sm btn-outline-danger mr-2 mb-2">
 							<i class="fe fe-x-circle mr-1"></i>
 							Annuler la commande
+						</button>
+
+					</form>
+
+				{% endif %}
+
+
+				{% if statutTravaux == 'annulee' and estAdmin %}
+
+					<form method="post" action="{{ path( 'app_commandes_restaurer', { id: commande.id } ) }}" class="js-confirm-form d-inline" data-message="Restaurer la commande {{ commande.numero }} ? Chaque ligne retrouvera le statut de production qu'elle avait avant l'annulation.">
+
+						<input type="hidden" name="_token" value="{{ csrf_token( 'restaurer-commande-' ~ commande.id ) }}">
+
+						<button type="submit" class="btn btn-sm btn-outline-success mr-2 mb-2">
+							<i class="fe fe-rotate-ccw mr-1"></i>
+							Restaurer la commande
 						</button>
 
 					</form>

@@ -1033,6 +1033,7 @@ final class CommandesController extends AbstractController
                 $stockDejaConsomme = true;
             }
 
+            $detail->setStatutProductionAvantAnnulation($detail->getStatutProduction());
             $detail->setStatutProduction(CommandesDetails::PRODUCTION_ANNULEE);
         }
 
@@ -1055,6 +1056,96 @@ final class CommandesController extends AbstractController
 
         if ($stockDejaConsomme) {
             $message .= ' Attention : du stock avait déjà été consommé pour cette commande et n’a pas été recrédité automatiquement.';
+        }
+
+        $this->addFlash('success', $message);
+
+        return $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId()], Response::HTTP_SEE_OTHER);
+    }
+
+    /**
+     * Restaure une commande annulée : remet chaque ligne dans le
+     * statut de production qu'elle avait juste avant l'annulation
+     * (mémorisé par annuler() dans $statutProductionAvantAnnulation).
+     *
+     * Réservé à ROLE_ADMIN, quel que soit l'avancement qu'avait la
+     * commande avant son annulation : contrairement à l'annulation
+     * (ouverte à tout ROLE_COMMANDE tant que le circuit n'a pas
+     * commencé), la restauration peut faire réapparaître une commande
+     * dont le stock, les factures ou les paiements ont déjà pu évoluer
+     * entre-temps — une vérification humaine par un administrateur est
+     * donc toujours exigée.
+     */
+    #[Route('/{id}/restaurer', name: 'app_commandes_restaurer', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function restaurer(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException('Vous devez être connecté pour restaurer une commande.');
+        }
+
+        if ($commande->getStatutTravaux() !== 'annulee') {
+            $this->addFlash('warning', 'Cette commande n’est pas annulée.');
+
+            return $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId()], Response::HTTP_SEE_OTHER);
+        }
+
+        if (!$this->isCsrfTokenValid('restaurer-commande-' . $commande->getId(), $request->getPayload()->getString('_token'))) {
+            $this->addFlash('error', 'Jeton de sécurité invalide.');
+
+            return $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId()], Response::HTTP_SEE_OTHER);
+        }
+
+        $circuitAvaitCommence = false;
+
+        foreach ($commande->getCommandesDetails() as $detail) {
+            if (!$detail instanceof CommandesDetails) {
+                continue;
+            }
+
+            $statutAvant = $detail->getStatutProductionAvantAnnulation();
+
+            if (
+                in_array(
+                    $statutAvant,
+                    [
+                        CommandesDetails::PRODUCTION_EN_COURS,
+                        CommandesDetails::PRODUCTION_TERMINEE,
+                        CommandesDetails::PRODUCTION_PRETE_LIVRAISON,
+                        CommandesDetails::PRODUCTION_EN_LIVRAISON,
+                        CommandesDetails::PRODUCTION_LIVREE,
+                    ],
+                    true
+                )
+            ) {
+                $circuitAvaitCommence = true;
+            }
+
+            $detail->setStatutProduction($statutAvant ?? CommandesDetails::PRODUCTION_A_PRODUIRE);
+            $detail->setStatutProductionAvantAnnulation(null);
+        }
+
+        $note = sprintf(
+            '[Commande restaurée le %s par %s]',
+            (new \DateTimeImmutable())->format('d/m/Y H:i'),
+            $user->getUserIdentifier()
+        );
+
+        $observationExistante = $commande->getObservation();
+        $commande->setObservation(
+            $observationExistante !== null && trim($observationExistante) !== ''
+                ? $observationExistante . "\n\n" . $note
+                : $note
+        );
+
+        $entityManager->flush();
+
+        $message = sprintf('La commande %s a été restaurée.', $commande->getNumero() ?? ('#' . $commande->getId()));
+
+        if ($circuitAvaitCommence) {
+            $message .= ' Attention : la production ou la livraison avait déjà commencé avant l’annulation — vérifiez le stock et les documents liés avant de reprendre le circuit.';
         }
 
         $this->addFlash('success', $message);

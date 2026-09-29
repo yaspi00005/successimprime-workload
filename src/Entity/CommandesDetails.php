@@ -231,6 +231,15 @@ class CommandesDetails
     )]
     private string $statutProduction = self::PRODUCTION_A_PRODUIRE;
 
+    /**
+     * Statut de production juste avant l'annulation de la commande,
+     * mémorisé pour permettre une restauration fidèle (voir
+     * CommandesController::annuler() / ::restaurer()). Remis à null
+     * dès que la ligne est restaurée.
+     */
+    #[ORM\Column(length: 30, nullable: true)]
+    private ?string $statutProductionAvantAnnulation = null;
+
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $productionDebuteLe = null;
 
@@ -1703,6 +1712,18 @@ public function validerModeCommande(
         }
 
         $this->statutProduction = $statutProduction;
+
+        return $this;
+    }
+
+    public function getStatutProductionAvantAnnulation(): ?string
+    {
+        return $this->statutProductionAvantAnnulation;
+    }
+
+    public function setStatutProductionAvantAnnulation(?string $statutProductionAvantAnnulation): static
+    {
+        $this->statutProductionAvantAnnulation = $statutProductionAvantAnnulation;
 
         return $this;
     }

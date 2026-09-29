@@ -749,7 +749,7 @@
 				Caractéristiques techniques
 			</div>
 
-			<div class="row">
+			<div class="row js-technique-champs">
 
 				<div class="col-lg-3">
 					{{ form_row(detail.profilCouleurs) }}
@@ -787,10 +787,6 @@
 					{{ form_row(detail.tempsReel) }}
 				</div>
 
-			</div>
-
-
-			<div class="row">
 
 				<div class="col-md-3">
 					{{ form_row(detail.rectoVerso) }}
@@ -2528,6 +2524,56 @@ zone.style.display = visible ? '' : 'none';
 
 
 /*
+ * Reduit un conteneur (finitions, caracteristiques techniques...) a
+ * ses "seuil" premiers enfants directs et ajoute un bouton pour
+ * afficher/masquer le reste. Rappelable plusieurs fois sur le meme
+ * conteneur (ex: apres reconstruction dynamique de la liste des
+ * finitions) : l'ancien bouton est retire avant d'en recreer un,
+ * ce qui remet la liste repliee a chaque nouvel appel.
+ */
+function limiterListeCourte(conteneur, seuil) {
+if (! conteneur) {
+return;
+}
+
+const ancienBouton = conteneur.nextElementSibling;
+
+if (ancienBouton && ancienBouton.classList.contains('js-voir-plus-toggle')) {
+ancienBouton.remove();
+}
+
+const enfants = Array.from(conteneur.children);
+
+if (enfants.length <= seuil) {
+return;
+}
+
+enfants.slice(seuil).forEach(function (el) {
+el.classList.add('d-none');
+});
+
+const nbCaches = enfants.length - seuil;
+
+const bouton = document.createElement('button');
+bouton.type = 'button';
+bouton.className = 'btn btn-link btn-sm p-0 mt-2 js-voir-plus-toggle';
+bouton.textContent = 'Afficher ' + nbCaches + ' de plus';
+
+bouton.addEventListener('click', function () {
+const estReduit = enfants[seuil].classList.contains('d-none');
+
+enfants.slice(seuil).forEach(function (el) {
+el.classList.toggle('d-none', ! estReduit);
+});
+
+bouton.textContent = estReduit ? 'Réduire' : ('Afficher ' + nbCaches + ' de plus');
+});
+
+conteneur.insertAdjacentElement('afterend', bouton);
+}
+
+
+/*
  * Verrouille un champ dont la valeur provient du catalogue (prix,
  * mode de calcul) : l'utilisateur ne doit pas pouvoir le modifier
  * manuellement tant qu'il vient du produit/de la configuration.
@@ -3580,6 +3626,8 @@ ligne.appendChild(label);
 
 finitionsBox.appendChild(ligne);
 });
+
+limiterListeCourte(finitionsBox, 5);
 }
 
 
@@ -3628,6 +3676,10 @@ const travail = detail.querySelector('.js-commande-detail') || detail;
 
 
 initialiserSelect2(travail);
+
+
+limiterListeCourte(travail.querySelector('.js-finitions-box'), 5);
+limiterListeCourte(travail.querySelector('.js-technique-champs'), 4);
 
 
 if (commandeVerrouillee) {

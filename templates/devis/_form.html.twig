@@ -698,7 +698,7 @@
 				Caractéristiques techniques
 			</div>
 
-			<div class="row">
+			<div class="row js-technique-champs">
 
 				<div class="col-lg-3 col-md-6">
 					{{ form_row(detail.profilCouleurs) }}
@@ -736,10 +736,6 @@
 					{{ form_row(detail.tempsReel) }}
 				</div>
 
-			</div>
-
-
-			<div class="row">
 
 				<div class="col-md-3">
 					{{ form_row(detail.rectoVerso) }}
@@ -1583,6 +1579,56 @@ const configurationsParDetail = new WeakMap();
 
 function construireUrl(url, id) {
 return url.replace('/0/', '/' + encodeURIComponent(id) + '/');
+}
+
+
+/*
+ * Reduit un conteneur (finitions, caracteristiques techniques...) a
+ * ses "seuil" premiers enfants directs et ajoute un bouton pour
+ * afficher/masquer le reste. Rappelable plusieurs fois sur le meme
+ * conteneur (ex: apres reconstruction dynamique de la liste des
+ * finitions) : l'ancien bouton est retire avant d'en recreer un,
+ * ce qui remet la liste repliee a chaque nouvel appel.
+ */
+function limiterListeCourte(conteneur, seuil) {
+if (! conteneur) {
+return;
+}
+
+const ancienBouton = conteneur.nextElementSibling;
+
+if (ancienBouton && ancienBouton.classList.contains('js-voir-plus-toggle')) {
+ancienBouton.remove();
+}
+
+const enfants = Array.from(conteneur.children);
+
+if (enfants.length <= seuil) {
+return;
+}
+
+enfants.slice(seuil).forEach(function (el) {
+el.classList.add('d-none');
+});
+
+const nbCaches = enfants.length - seuil;
+
+const bouton = document.createElement('button');
+bouton.type = 'button';
+bouton.className = 'btn btn-link btn-sm p-0 mt-2 js-voir-plus-toggle';
+bouton.textContent = 'Afficher ' + nbCaches + ' de plus';
+
+bouton.addEventListener('click', function () {
+const estReduit = enfants[seuil].classList.contains('d-none');
+
+enfants.slice(seuil).forEach(function (el) {
+el.classList.toggle('d-none', ! estReduit);
+});
+
+bouton.textContent = estReduit ? 'Réduire' : ('Afficher ' + nbCaches + ' de plus');
+});
+
+conteneur.insertAdjacentElement('afterend', bouton);
 }
 
 
@@ -2887,6 +2933,8 @@ wrapper.appendChild(label);
 
 finitionsBox.appendChild(wrapper);
 });
+
+limiterListeCourte(finitionsBox, 5);
 }
 
 
@@ -3050,6 +3098,10 @@ detail.dataset.initialise = '1';
 
 
 initialiserSelect2(detail);
+
+
+limiterListeCourte(detail.querySelector('.js-finitions-box'), 5);
+limiterListeCourte(detail.querySelector('.js-technique-champs'), 4);
 
 
 /*

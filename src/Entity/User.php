@@ -333,6 +333,10 @@ class User implements
     #[ORM\Column(type: 'json', options: ['default' => '[]'])]
     private array $droitsRetires = [];
 
+    /** Objectif de ventes du mois en F TTC (Mes statistiques, U05). */
+    #[ORM\Column(nullable: true)]
+    private ?int $objectifVentesMois = null;
+
 
     /*
      * ============================================================
@@ -1072,6 +1076,18 @@ class User implements
             in_array($droit, $this->getDroitsAjoutes(), true) => 'ajoute',
             default => 'non',
         };
+    }
+
+    public function getObjectifVentesMois(): ?int
+    {
+        return $this->objectifVentesMois;
+    }
+
+    public function setObjectifVentesMois(?int $objectif): static
+    {
+        $this->objectifVentesMois = null !== $objectif && $objectif > 0 ? $objectif : null;
+
+        return $this;
     }
 
     public function nombreDroitsPersonnalises(): int

@@ -117,6 +117,7 @@ final class UtilisateursController extends AbstractController
             $avant = self::photoDroits($utilisateur);
             $utilisateur->setProfil($profil);
             $utilisateur->definirDroits($profil->estAdmin() ? [] : $request->getPayload()->all('droits'));
+            $utilisateur->setObjectifVentesMois((int) preg_replace('/\D+/', '', $request->getPayload()->getString('objectif')) ?: null);
             $apres = self::photoDroits($utilisateur);
 
             if ($avant !== $apres) {

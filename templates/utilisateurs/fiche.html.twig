@@ -45,6 +45,10 @@
 					{% if utilisateur == app.user %}<input type="hidden" name="profil" value="{{ utilisateur.profil.id ?? '' }}">{% endif %}
 					<p class="mb-3"><span class="si-pastille si-pastille-orange js-nombre-perso {{ utilisateur.nombreDroitsPersonnalises == 0 ? 'd-none' }}">{{ utilisateur.nombreDroitsPersonnalises }} personnalisé{{ utilisateur.nombreDroitsPersonnalises > 1 ? 's' }}</span></p>
 
+					<label class="si-libelle-champ" for="objectif">Objectif de ventes du mois (F)</label>
+					<input type="text" inputmode="numeric" id="objectif" name="objectif" class="form-control form-control-sm mb-1" value="{{ utilisateur.objectifVentesMois }}" placeholder="Aucun">
+					<p class="mb-3"><a href="{{ path('app_mes_statistiques', {utilisateur: utilisateur.id}) }}" class="small">Voir ses statistiques</a></p>
+
 					<dl class="si-infos mb-0">
 						<dt>Identifiant</dt><dd>{{ utilisateur.username }}</dd>
 						{% if utilisateur.employe and utilisateur.employe.telephone %}<dt>Téléphone</dt><dd>{{ utilisateur.employe.telephone }}</dd>{% endif %}

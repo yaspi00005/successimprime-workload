@@ -35,6 +35,7 @@ final class NavigationExtension extends AbstractExtension
     public const ONGLETS = [
         'accueil' => [
             ['libelle' => 'Tableau de bord', 'route' => 'app_home', 'role' => null, 'prefixes' => ['app_home']],
+            ['libelle' => 'Mes statistiques', 'route' => 'app_mes_statistiques', 'role' => 'ROLE_STATS_PERSO', 'prefixes' => ['app_mes_statistiques']],
             ['libelle' => 'Statistiques et rapports', 'route' => 'app_statistiques_globales_index', 'role' => 'ROLE_STATS_GLOBAL', 'prefixes' => ['app_statistiques_']],
         ],
         'ventes' => [
@@ -110,6 +111,7 @@ final class NavigationExtension extends AbstractExtension
         'app_format_' => 'reglages',
         'app_finition_' => 'reglages',
         'app_utilisateurs_' => 'reglages',
+        'app_mes_statistiques' => 'accueil',
         'app_employes_' => 'reglages',
         'app_user_' => 'reglages',
         'app_journal_activite_' => 'reglages',

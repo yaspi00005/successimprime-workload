@@ -50,7 +50,9 @@ Barème de Yaya (10/10/2026) : chaque journée rapporte ou retire des points.
 | Oubli de pointage (arrivée ou départ à régulariser) | − 20 |
 | Congé, absence validée, jour férié | 0, et la journée ne compte pas |
 
-Les valeurs se règlent dans Q06. Une journée ne cumule qu'une seule ligne de bonus (+ 30 ou + 100, la plus haute), en plus de + 10 ou − 10 pour l'arrivée.
+Les valeurs se règlent dans Q06.
+
+**Ajustement par l'admin** : l'admin (ou l'administrateur RH) peut ajuster les points d'une journée, par exemple annuler le − 20 d'un oubli justifié (panne de téléphone, réseau coupé) ou retirer un bonus. Chaque ajustement exige un motif, garde l'avant et l'après dans l'historique, et l'employé voit le motif sur sa fiche. Une fois l'évaluation du mois validée, un ajustement crée une nouvelle version de l'évaluation. Une journée ne cumule qu'une seule ligne de bonus (+ 30 ou + 100, la plus haute), en plus de + 10 ou − 10 pour l'arrivée.
 
 **Note de ponctualité sur 100** pour l'évaluation (N02) : points du mois ÷ (10 × jours travaillés) × 100, plafonnée à 100 et jamais sous 0. Les bonus peuvent donc rattraper des retards.
 - 22 jours, tous à l'heure : 220 ÷ 220 = **100**.

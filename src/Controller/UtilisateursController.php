@@ -2,6 +2,9 @@
 
 namespace App\Controller;
 
+use App\Entity\Commandes;
+use App\Entity\Devis;
+use App\Entity\Employes;
 use App\Entity\JournalActivite;
 use App\Entity\RoleUtilisateur;
 use App\Entity\User;
@@ -12,6 +15,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -27,6 +31,11 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class UtilisateursController extends AbstractController
 {
     private const FILTRES = ['tous' => 'Tous', 'actifs' => 'Actifs', 'desactives' => 'Désactivés'];
+
+    public const MOTIFS = ['Fin de contrat', 'Démission', 'Congé long', 'Suspension', 'Autre'];
+
+    /** Devis encore a suivre par leur agent. */
+    private const DEVIS_OUVERTS = [Devis::STATUT_BROUILLON, Devis::STATUT_ENVOYE, Devis::STATUT_ACCEPTE];
 
     public function __construct(
         private readonly UserRepository $users,
@@ -182,6 +191,207 @@ final class UtilisateursController extends AbstractController
             'personnes' => $this->roles->nombresDePersonnes(),
             'droitsParGroupe' => Droits::parGroupe(),
         ]);
+    }
+
+    /**
+     * Nouvel utilisateur (maquette U04, partie gauche) : la fiche
+     * employe minimale et le compte sont crees ensemble. Le mot de
+     * passe temporaire s'affiche une fois, avec un lien WhatsApp.
+     */
+    #[Route('/nouveau', name: 'nouveau', methods: ['GET', 'POST'])]
+    public function nouveau(Request $request, UserPasswordHasherInterface $hasher): Response
+    {
+        $roles = array_values(array_filter($this->roles->dansLOrdre(), static fn (RoleUtilisateur $r): bool => !$r->estAdmin()));
+        $saisie = ['prenom' => '', 'nom' => '', 'telephone' => '', 'email' => '', 'identifiant' => '', 'profil' => 0, 'changerMotDePasse' => true];
+        $erreurs = [];
+
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('nouvel-utilisateur', $request->getPayload()->getString('_token'))) {
+                throw $this->createAccessDeniedException('Jeton invalide.');
+            }
+
+            $donnees = $request->getPayload();
+            $saisie = [
+                'prenom' => trim($donnees->getString('prenom')),
+                'nom' => trim($donnees->getString('nom')),
+                'telephone' => trim($donnees->getString('telephone')),
+                'email' => trim($donnees->getString('email')),
+                'identifiant' => mb_strtolower(trim($donnees->getString('identifiant'))),
+                'profil' => $donnees->getInt('profil'),
+                'changerMotDePasse' => $donnees->has('changer_mot_de_passe'),
+            ];
+
+            if ('' === $saisie['identifiant']) {
+                $saisie['identifiant'] = (string) preg_replace('/\D+/', '', $saisie['telephone']);
+            }
+
+            $profil = $this->roles->find($saisie['profil']);
+
+            if ('' === $saisie['prenom'] && '' === $saisie['nom']) {
+                $erreurs['nom'] = 'Le nom est obligatoire.';
+            }
+
+            if ('' === $saisie['telephone']) {
+                $erreurs['telephone'] = 'Le téléphone est obligatoire.';
+            }
+
+            if (!preg_match('/^[a-z0-9._-]{3,50}$/', $saisie['identifiant'])) {
+                $erreurs['identifiant'] = 'De 3 à 50 lettres, chiffres, points ou tirets.';
+            } elseif (null !== $this->users->findOneBy(['username' => $saisie['identifiant']])) {
+                $erreurs['identifiant'] = 'Cet identifiant est déjà pris.';
+            }
+
+            if ('' !== $saisie['email'] && !filter_var($saisie['email'], \FILTER_VALIDATE_EMAIL)) {
+                $erreurs['email'] = 'Adresse e-mail invalide.';
+            }
+
+            if (!$profil instanceof RoleUtilisateur || $profil->estAdmin()) {
+                $erreurs['profil'] = 'Choisissez un rôle.';
+            }
+
+            if ([] === $erreurs) {
+                $employe = (new Employes())
+                    ->setPrenom($saisie['prenom'])
+                    ->setNom($saisie['nom'])
+                    ->setTelephone($saisie['telephone'])
+                    ->setFonction($profil->getNom());
+
+                if ('' !== $saisie['email']) {
+                    $employe->setEmail($saisie['email']);
+                }
+
+                $motDePasse = self::motDePasseTemporaire();
+                $utilisateur = (new User())->setUsername($saisie['identifiant'])->setEmploye($employe);
+                $utilisateur->setProfil($profil);
+                $utilisateur->definirMotDePasseTemporaire($hasher->hashPassword($utilisateur, $motDePasse));
+
+                if (!$saisie['changerMotDePasse']) {
+                    $utilisateur->setMustChangePassword(false);
+                }
+
+                $this->em->persist($employe);
+                $this->em->persist($utilisateur);
+                $this->em->flush();
+                $this->tracer('User', (int) $utilisateur->getId(), 'creation', null, self::photoDroits($utilisateur));
+                $this->em->flush();
+
+                return $this->render('utilisateurs/acces_cree.html.twig', [
+                    'utilisateur' => $utilisateur,
+                    'nom' => self::nomComplet($utilisateur),
+                    'motDePasse' => $motDePasse,
+                    'whatsapp' => self::numeroWhatsApp($saisie['telephone']),
+                    'adresse' => $request->getSchemeAndHttpHost() . $this->generateUrl('app_login'),
+                ]);
+            }
+        }
+
+        return $this->render('utilisateurs/nouveau.html.twig', [
+            'roles' => $roles,
+            'saisie' => $saisie,
+            'erreurs' => $erreurs,
+        ], new Response(status: [] === $erreurs ? 200 : 422));
+    }
+
+    /**
+     * Desactiver (maquette U04, partie droite) : motif, transfert des
+     * devis et commandes ouverts a un collegue. Le compte n'est jamais
+     * supprime ; la personne est deconnectee a sa prochaine page.
+     */
+    #[Route('/{id}/desactiver', name: 'desactiver', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    public function desactiver(User $utilisateur, Request $request): Response
+    {
+        if ($utilisateur === $this->getUser()) {
+            $this->addFlash('danger', 'Vous ne pouvez pas désactiver votre propre compte.');
+
+            return $this->redirectToRoute('app_utilisateurs_fiche', ['id' => $utilisateur->getId()]);
+        }
+
+        $devis = array_values(array_filter(
+            $this->em->getRepository(Devis::class)->findBy(['agents' => $utilisateur]),
+            static fn (Devis $d): bool => \in_array($d->getStatut(), self::DEVIS_OUVERTS, true)
+        ));
+        $commandes = array_values(array_filter(
+            $this->em->getRepository(Commandes::class)->findBy(['agents' => $utilisateur]),
+            static fn (Commandes $c): bool => \in_array($c->getStatutTravaux(), ['vide', 'preparation', 'livraison'], true)
+        ));
+        $collegues = array_values(array_filter(
+            $this->users->findBy(['actif' => true], ['username' => 'ASC']),
+            static fn (User $u): bool => $u !== $utilisateur && ($u->isAdmin() || \in_array('ROLE_COMMANDE', $u->getRoles(), true))
+        ));
+
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('desactiver-utilisateur-' . $utilisateur->getId(), $request->getPayload()->getString('_token'))) {
+                throw $this->createAccessDeniedException('Jeton invalide.');
+            }
+
+            $motif = $request->getPayload()->getString('motif');
+            $precision = trim($request->getPayload()->getString('precision'));
+            $motif = trim((\in_array($motif, self::MOTIFS, true) ? $motif : 'Autre') . ('' !== $precision ? ' : ' . $precision : ''));
+            $repreneur = $this->users->find($request->getPayload()->getInt('repreneur'));
+            $aTransferer = \count($devis) + \count($commandes);
+
+            if ($aTransferer > 0 && !\in_array($repreneur, $collegues, true)) {
+                $this->addFlash('danger', 'Choisissez à qui transférer ses devis et commandes ouverts.');
+
+                return $this->redirectToRoute('app_utilisateurs_desactiver', ['id' => $utilisateur->getId()]);
+            }
+
+            foreach ([...$devis, ...$commandes] as $dossier) {
+                $dossier->setAgents($repreneur);
+            }
+
+            $utilisateur->desactiver(mb_substr($motif, 0, 255));
+            $this->tracer('User', (int) $utilisateur->getId(), 'desactivation', null, [
+                'motif' => $motif,
+                'transfert' => $aTransferer > 0 ? sprintf('%d devis et %d commandes à %s', \count($devis), \count($commandes), self::nomComplet($repreneur)) : null,
+            ]);
+            $this->em->flush();
+            $this->addFlash('success', sprintf('Compte de %s désactivé%s.', self::nomComplet($utilisateur), $aTransferer > 0 ? sprintf(', %d dossier%s transféré%s à %s', $aTransferer, $aTransferer > 1 ? 's' : '', $aTransferer > 1 ? 's' : '', self::nomComplet($repreneur)) : ''));
+
+            return $this->redirectToRoute('app_utilisateurs_index');
+        }
+
+        return $this->render('utilisateurs/desactiver.html.twig', [
+            'utilisateur' => $utilisateur,
+            'nom' => self::nomComplet($utilisateur),
+            'devis' => $devis,
+            'commandes' => $commandes,
+            'collegues' => array_combine(
+                array_map(static fn (User $u): int => (int) $u->getId(), $collegues),
+                array_map(static fn (User $u): string => self::nomComplet($u), $collegues)
+            ),
+            'motifs' => self::MOTIFS,
+        ]);
+    }
+
+    private static function motDePasseTemporaire(): string
+    {
+        $lettres = 'abcdefghjkmnpqrstuvwxyz';
+        $chiffres = '23456789';
+        $mot = '';
+
+        for ($i = 0; $i < 4; ++$i) {
+            $mot .= $lettres[random_int(0, \strlen($lettres) - 1)];
+        }
+
+        $mot = ucfirst($mot) . '-';
+
+        for ($i = 0; $i < 4; ++$i) {
+            $mot .= $chiffres[random_int(0, \strlen($chiffres) - 1)];
+        }
+
+        return $mot . '!';
+    }
+
+    /**
+     * Numero au format wa.me : chiffres seulement, indicatif du Mali
+     * (223) ajoute a un numero local a 8 chiffres.
+     */
+    public static function numeroWhatsApp(string $telephone): string
+    {
+        $chiffres = (string) preg_replace('/\D+/', '', $telephone);
+
+        return 8 === \strlen($chiffres) ? '223' . $chiffres : ltrim($chiffres, '0');
     }
 
     /**

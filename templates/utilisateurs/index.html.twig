@@ -10,7 +10,7 @@
 		<a href="{{ path('app_journal_activite_index') }}" class="btn btn-light btn-sm si-btn-entete">Journal des accès</a>
 	</li>
 	<li class="nav-item">
-		<a href="{{ path('app_employes_index') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Nouvel utilisateur</a>
+		<a href="{{ path('app_utilisateurs_nouveau') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Nouvel utilisateur</a>
 	</li>
 {% endblock %}
 
@@ -118,6 +118,7 @@
 											data-url="{{ path('app_user_toggle_status', {id: utilisateur.id}) }}"
 											data-token="{{ csrf_token('toggle_user_' ~ utilisateur.id) }}"
 											data-nom="{{ nom }}"
+											data-desactiver="{{ path('app_utilisateurs_desactiver', {id: utilisateur.id}) }}"
 											aria-label="Compte de {{ nom }} actif">
 										<span></span>
 									</label>
@@ -161,17 +162,16 @@
 
 		document.querySelectorAll('.js-actif').forEach(function (bouton) {
 			bouton.addEventListener('change', async function () {
-				const activer = bouton.checked;
-				let motif = null;
-				if (!activer) {
-					motif = window.prompt('Désactiver le compte de ' + bouton.dataset.nom + ' ?\nIl est déconnecté et ne peut plus entrer ; son historique est gardé.\n\nMotif :', 'Fin de contrat');
-					if (motif === null) { bouton.checked = true; return; }
+				if (!bouton.checked) {
+					bouton.checked = true;
+					window.location = bouton.dataset.desactiver;
+					return;
 				}
 				try {
-					await envoyer(bouton.dataset.url, {_token: bouton.dataset.token, motif: motif});
+					await envoyer(bouton.dataset.url, {_token: bouton.dataset.token});
 					window.location.reload();
 				} catch (erreur) {
-					bouton.checked = !activer;
+					bouton.checked = false;
 					window.alert(erreur.message);
 				}
 			});

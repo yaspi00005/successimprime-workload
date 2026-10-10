@@ -1,0 +1,46 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Désactiver un utilisateur{% endblock %}
+
+{% block body %}
+	<div class="row">
+		<div class="col-xl-6">
+			<form method="post" class="card si-bloc si-bloc-alerte">
+				<input type="hidden" name="_token" value="{{ csrf_token('desactiver-utilisateur-' ~ utilisateur.id) }}">
+				<h4 class="text-danger mb-3">Désactiver {{ nom }}</h4>
+				<p class="text-muted mb-3">{{ utilisateur.profil.nom ?? 'Sans rôle' }}</p>
+
+				<label class="si-libelle-champ" for="motif">Motif</label>
+				<select id="motif" name="motif" class="form-select mb-2">
+					{% for motif in motifs %}<option>{{ motif }}</option>{% endfor %}
+				</select>
+				<input type="text" name="precision" class="form-control form-control-sm mb-3" maxlength="150" placeholder="Précision (facultatif)" aria-label="Précision du motif">
+
+				{% set ouverts = devis|length + commandes|length %}
+				{% if ouverts > 0 %}
+					<label class="si-libelle-champ" for="repreneur">Transférer ses devis et commandes ouverts ({{ ouverts }})</label>
+					<select id="repreneur" name="repreneur" class="form-select mb-2" required>
+						<option value="">Choisir un collègue…</option>
+						{% for id, collegue in collegues %}<option value="{{ id }}">{{ collegue }}</option>{% endfor %}
+					</select>
+					<p class="small text-muted mb-3">
+						{{ devis|length }} devis ({{ devis|slice(0, 5)|map(d => d.numero)|join(', ') }}{{ devis|length > 5 ? '…' }}){{ devis is empty ? '' : ',' }}
+						{{ commandes|length }} commande{{ commandes|length > 1 ? 's' }} ({{ commandes|slice(0, 5)|map(c => c.numero)|join(', ') }}{{ commandes|length > 5 ? '…' }})
+					</p>
+				{% else %}
+					<p class="small text-muted mb-3">Aucun devis ni commande ouvert à transférer.</p>
+				{% endif %}
+
+				<ul class="si-liste-coches mb-3">
+					<li>Déconnexion immédiate de tous ses appareils</li>
+					<li>Historique et statistiques conservés</li>
+					<li>Réactivation possible à tout moment</li>
+				</ul>
+
+				<button type="submit" class="btn btn-danger w-100">Désactiver le compte</button>
+				<p class="small text-muted text-center mt-2 mb-0">On ne supprime jamais un utilisateur : ses actions restent tracées.</p>
+			</form>
+			<a href="{{ path('app_utilisateurs_fiche', {id: utilisateur.id}) }}" class="btn si-btn-discret">Annuler</a>
+		</div>
+	</div>
+{% endblock %}

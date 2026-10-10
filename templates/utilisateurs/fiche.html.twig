@@ -2,6 +2,21 @@
 
 {% block title %}{{ nom }}{% endblock %}
 
+{% block header_actions %}
+	<li class="nav-item">
+		<button type="button" class="btn btn-light btn-sm si-btn-entete js-mdp" data-url="{{ path('app_user_reset_password', {id: utilisateur.id}) }}" data-token="{{ csrf_token('reset_password_' ~ utilisateur.id) }}" data-nom="{{ nom }}">Réinitialiser le mot de passe</button>
+	</li>
+	{% if utilisateur != app.user %}
+		<li class="nav-item">
+			{% if utilisateur.actif %}
+				<a href="{{ path('app_utilisateurs_desactiver', {id: utilisateur.id}) }}" class="btn btn-light btn-sm si-btn-entete">Désactiver</a>
+			{% else %}
+				<button type="button" class="btn btn-light btn-sm si-btn-entete js-reactiver" data-url="{{ path('app_user_toggle_status', {id: utilisateur.id}) }}" data-token="{{ csrf_token('toggle_user_' ~ utilisateur.id) }}">Réactiver</button>
+			{% endif %}
+		</li>
+	{% endif %}
+{% endblock %}
+
 {% set libellesEtat = {herite: 'hérité du rôle', ajoute: 'ajouté pour cette personne', retire: 'retiré pour cette personne', non: 'non accordé'} %}
 
 {% block body %}
@@ -138,6 +153,29 @@
 				nombre.classList.toggle('d-none', perso === 0);
 				nombre.textContent = perso + ' personnalisé' + (perso > 1 ? 's' : '');
 			}
+
+			async function envoyer(url, donnees) {
+				const reponse = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}, body: JSON.stringify(donnees)});
+				const json = await reponse.json().catch(function () { return {success: false, message: 'Réponse invalide.'}; });
+				if (!reponse.ok || !json.success) { throw new Error(json.message || 'Action impossible.'); }
+				return json;
+			}
+
+			document.querySelectorAll('.js-mdp').forEach(function (bouton) {
+				bouton.addEventListener('click', async function () {
+					if (!window.confirm('Réinitialiser le mot de passe de ' + bouton.dataset.nom + ' ?')) { return; }
+					try {
+						const json = await envoyer(bouton.dataset.url, {_token: bouton.dataset.token});
+						window.prompt('Mot de passe temporaire de ' + json.username + ' (à changer à la connexion) :', json.temporaryPassword);
+					} catch (erreur) { window.alert(erreur.message); }
+				});
+			});
+
+			document.querySelectorAll('.js-reactiver').forEach(function (bouton) {
+				bouton.addEventListener('click', async function () {
+					try { await envoyer(bouton.dataset.url, {_token: bouton.dataset.token}); window.location.reload(); } catch (erreur) { window.alert(erreur.message); }
+				});
+			});
 
 			choix.addEventListener('change', function () { actualiser(true); });
 			document.querySelectorAll('.si-case-droit').forEach(function (c) { c.addEventListener('change', function () { actualiser(false); }); });

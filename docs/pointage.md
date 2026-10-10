@@ -20,7 +20,7 @@ L'employé est reconnu par **son compte** dans l'application. La photo est une p
 
 ## Les règles
 
-- **Arrivée et départ automatiques** : le premier pointage du jour est l'arrivée, le dernier est le départ. L'employé n'a rien à choisir.
+- **Arrivée et départ automatiques** : un pointage ouvre la présence (arrivée), le suivant la ferme (départ), même après minuit. L'employé n'a rien à choisir.
 - **Anti-doublon** : deux pointages à moins de 2 minutes d'écart n'en font qu'un.
 - **Heure fiable** : l'heure enregistrée est celle du serveur, jamais celle du téléphone.
 - **Wi-Fi de l'atelier** (option) : le serveur vérifie que le pointage vient du réseau de l'atelier ou de la boutique (adresse IP de la connexion). Si l'application tourne sur un serveur local, le pointage marche même sans Internet.
@@ -39,26 +39,33 @@ L'employé est reconnu par **son compte** dans l'application. La photo est une p
 
 ## Les points de ponctualité
 
-Proposition de Yaya, à confirmer : chaque jour travaillé rapporte ou retire des points.
+Barème de Yaya (10/10/2026) : chaque journée rapporte ou retire des points.
 
 | Situation | Points |
 |---|---|
 | À l'heure (dans la tolérance de 10 min) | + 10 |
 | En retard | − 10 |
-| En retard de plus d'une heure | − 30 |
-| Absence non justifiée (journée entière) | − 100 |
+| Reste au-delà de l'heure de fin (au moins 1 h de plus) | + 30 |
+| Nuit passée au bureau (présence de 24 h) | + 100 |
 | Congé, absence validée, jour férié | 0, et la journée ne compte pas |
 
-Les valeurs se règlent dans Q06.
+Les valeurs se règlent dans Q06. Une journée ne cumule qu'une seule ligne de bonus (+ 30 ou + 100, la plus haute), en plus de + 10 ou − 10 pour l'arrivée.
 
-**Note de ponctualité sur 100** pour l'évaluation (N02) : points du mois ÷ (10 × jours travaillés) × 100, ramenée entre 0 et 100.
+**Note de ponctualité sur 100** pour l'évaluation (N02) : points du mois ÷ (10 × jours travaillés) × 100, plafonnée à 100 et jamais sous 0. Les bonus peuvent donc rattraper des retards.
 - 22 jours, tous à l'heure : 220 ÷ 220 = **100**.
 - 21 à l'heure, 1 retard : 200 ÷ 220 = **91**.
-- 21 à l'heure, 1 absence non justifiée : 110 ÷ 220 = **50**.
+- 20 à l'heure, 2 retards, 1 soirée au-delà de l'heure : 210 ÷ 220 = **95**.
 
 Cette note est le critère « Ponctualité et présence » du barème des primes (`docs/immobilisations-primes.md`, poids 10 % pour la caisse et le commercial). Avant la mise en service du pointage, ce critère n'a pas de données : son poids est réparti sur les autres critères.
 
-Les heures supplémentaires ne donnent pas de points : elles vont à la paie (sommes dues de l'espace employé), après validation par le responsable.
+Les heures en plus (soirée, nuit) comptent aussi en heures supplémentaires pour la paie, après validation par le responsable. Les points de bonus ne sont acquis qu'une fois ces heures validées, pour éviter un départ « oublié » qui rapporterait des points.
+
+### Nuit au bureau
+
+On passe parfois la nuit au bureau. Le pointage ne se coupe donc pas à minuit :
+- un pointage ouvre une **présence** ; le pointage suivant la ferme, même le lendemain ;
+- au-delà de 26 h sans second pointage, la présence est « départ non pointé » et passe à régulariser ;
+- la présence est rattachée au jour de l'arrivée ; le pointage du lendemain matin après une nuit ferme la présence de la veille et compte comme départ, puis le pointage suivant ouvre une nouvelle journée.
 
 ## Lien avec la paie
 

@@ -43,3 +43,11 @@ document.addEventListener('click', function (evenement) {
         window.location.href = ligne.dataset.lien;
     }
 });
+
+// Formulaires sensibles (annuler, restaurer, livrer...) : confirmation avant envoi.
+document.addEventListener('submit', function (evenement) {
+    var formulaire = evenement.target.closest('form[data-confirmer]');
+    if (formulaire && !window.confirm(formulaire.dataset.confirmer)) {
+        evenement.preventDefault();
+    }
+});

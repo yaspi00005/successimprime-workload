@@ -823,3 +823,262 @@ body .si-sidebar .metismenu ul a.mm-active {
   color: #8A97AB;
   margin-top: 0.1rem;
 }
+
+/* ---------- Fiche commande (maquette C02) ---------- */
+
+.si-etapes {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.si-etape {
+  flex: 1 0 5.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  font-size: 0.8rem;
+  color: #6B7A90;
+}
+
+.si-etape::before {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: #E3E8F0;
+  z-index: 0;
+}
+
+.si-etape:first-child::before {
+  display: none;
+}
+
+.si-etape-faite::before {
+  background: var(--primary);
+}
+
+.si-etape-rond {
+  position: relative;
+  z-index: 1;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  background: #fff;
+  border: 2px solid #D5DCE6;
+  color: #8A97AB;
+  margin-bottom: 0.35rem;
+}
+
+.si-etape-faite .si-etape-rond {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.si-etape-en_cours .si-etape-rond {
+  border-color: var(--secondary);
+  color: var(--secondary);
+  box-shadow: 0 0 0 4px rgba(222, 16, 40, 0.12);
+}
+
+.si-etape-en_cours .si-etape-libelle {
+  color: #12213A;
+  font-weight: 700;
+}
+
+.si-etape small {
+  font-size: 0.72rem;
+}
+
+.si-titre-fiche {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.si-titre-fiche h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: #12213A;
+}
+
+.si-actions-fiche {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.si-actions-mobile {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.si-actions-mobile .btn {
+  padding: 0.8rem;
+  font-weight: 700;
+  border-radius: 0.9rem;
+}
+
+.si-etape-court {
+  display: none;
+}
+
+.si-ligne-commande {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid #EEF1F6;
+}
+
+.si-vignette {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.6rem;
+  flex: none;
+  opacity: 0.9;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.si-lien-discret {
+  font-size: 0.75rem;
+  color: #6B7A90;
+  text-decoration: underline;
+}
+
+.si-paiement {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #EEF1F6;
+  font-size: 0.88rem;
+}
+
+.si-paiement .si-pastille {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+}
+
+.si-historique {
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 767.98px) {
+  .si-etape {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 0.68rem;
+  }
+
+  .si-etape-secondaire,
+  .si-etape small,
+  .si-etape-libelle {
+    display: none;
+  }
+
+  .si-etape-court {
+    display: block;
+  }
+
+  .si-etape-en_cours .si-etape-court {
+    color: #12213A;
+    font-weight: 700;
+  }
+
+  .si-etape-rond {
+    width: 1.6rem;
+    height: 1.6rem;
+    font-size: 0.7rem;
+  }
+
+  .si-etape::before {
+    top: 0.8rem;
+  }
+
+  .si-titre-fiche h2 {
+    font-size: 1.3rem;
+  }
+}
+
+@media print {
+  .dlabnav,
+  .nav-header,
+  .si-header,
+  .si-onglets,
+  .si-barre-mobile,
+  .footer,
+  .sf-toolbar,
+  form {
+    display: none !important;
+  }
+
+  .content-body {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+}
+
+.card.si-bloc,
+.card.si-kpi {
+  height: auto;
+}
+
+.si-header .navbar-collapse {
+  gap: 1rem;
+}
+
+.si-header .header-left.si-titre-page {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.si-header .header-right {
+  flex: none;
+}
+
+.si-header .dashboard_bar,
+.si-fil-ariane {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1599.98px) {
+  .si-recherche {
+    width: 13rem;
+  }
+}

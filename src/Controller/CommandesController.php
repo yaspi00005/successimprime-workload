@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Commandes;
+use App\Entity\Factures;
 use App\Entity\Paiements;
 use App\Entity\User;
 use App\Entity\MouvementTresorerie;
@@ -23,6 +24,7 @@ use Symfony\Component\Form\FormInterface;
 use App\Entity\CommandesDetails;
 use App\Service\NotificationService;
 use App\Service\StockService;
+use App\Service\SuiviCommandeService;
 use App\Repository\FacturesRepository;
 use App\Repository\ParametresPaiementRepository;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -519,10 +521,26 @@ final class CommandesController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_commandes_show', methods: ['GET'])]
-    public function show(Commandes $commande): Response
+    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService): Response
     {
+        $lignes = [];
+
+        foreach ($commande->getCommandesDetails() as $ligne) {
+            $lignes[] = ['detail' => $ligne] + $suiviCommandeService->ligne($ligne);
+        }
+
+        $factures = array_values(array_filter(
+            $commande->getFactures()->toArray(),
+            static fn (Factures $facture): bool => Factures::ETAT_ANNULEE !== $facture->getEtat()
+        ));
+
         return $this->render('commandes/show.html.twig', [
             'commande' => $commande,
+            'etapes' => $suiviCommandeService->etapes($commande),
+            'lignes' => $lignes,
+            'paiementsValides' => $suiviCommandeService->paiementsValides($commande),
+            'historique' => \array_slice($suiviCommandeService->historique($commande), 0, 8),
+            'facture' => end($factures) ?: null,
         ]);
     }
 

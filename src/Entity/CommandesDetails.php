@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\CommandesDetailsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -14,6 +15,8 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 #[ORM\Table(name: 'commandes_details')]
 class CommandesDetails
 {
+    use PublicIdTrait;
+
     public const PRODUCTION_A_PRODUIRE = 'a_produire';
     public const PRODUCTION_EN_COURS = 'en_production';
     public const PRODUCTION_TERMINEE = 'terminee';
@@ -369,6 +372,7 @@ class CommandesDetails
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->finitions = new ArrayCollection();
         $this->fichiers = new ArrayCollection();
         $this->productions = new ArrayCollection();

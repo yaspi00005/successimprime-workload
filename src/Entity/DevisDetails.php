@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\DevisDetailsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -15,6 +16,8 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 #[ORM\Table(name: 'devis_details')]
 class DevisDetails
 {
+    use PublicIdTrait;
+
 
 public const TYPE_PRODUIT = 'produit';
 public const TYPE_ARTICLE = 'article';
@@ -254,6 +257,7 @@ private string $modeSaisie = 'automatique';
     private string $modeCalcul = 'unite';
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->finitions = new ArrayCollection();
     }
 

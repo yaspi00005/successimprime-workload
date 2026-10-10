@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\ProduitConfigurationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -22,6 +23,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 )]
 class ProduitConfiguration
 {
+    use PublicIdTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -167,6 +170,7 @@ private ?Format $format = null;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->configurationFinitions = new ArrayCollection();
     }
 

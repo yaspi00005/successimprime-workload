@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\TypesImpressionRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -10,6 +11,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: TypesImpressionRepository::class)]
 class TypesImpression
 {
+    use PublicIdTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -52,6 +55,7 @@ private Collection $supports;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->commandesDetails = new ArrayCollection();
         $this->finitions = new ArrayCollection();
         $this->formats = new ArrayCollection();

@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\ProduitsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -11,6 +12,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Entity(repositoryClass: ProduitsRepository::class)]
 class Produits
 {
+    use PublicIdTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -154,6 +157,7 @@ private Collection $articlesStock;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->typesImpressions = new ArrayCollection();
         $this->supports = new ArrayCollection();
         $this->formats = new ArrayCollection();

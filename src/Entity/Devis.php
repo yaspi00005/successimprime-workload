@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\DevisRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -14,6 +15,8 @@ use Doctrine\DBAL\Types\Types;
 
 class Devis
 {
+    use PublicIdTrait;
+
     /*
      * ============================================================
      * ÉMETTEURS
@@ -174,6 +177,7 @@ class Devis
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->dateDevis = new \DateTimeImmutable();
         $this->devisDetails = new ArrayCollection();
     }

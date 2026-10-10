@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\CommandeDetailFichierRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -9,6 +10,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'commande_detail_fichier')]
 class CommandeDetailFichier
 {
+    use PublicIdTrait;
+
     public const STATUT_EN_ATTENTE = 'EN_ATTENTE';
     public const STATUT_EN_COURS = 'EN_COURS';
     public const STATUT_TERMINE = 'TERMINE';
@@ -153,6 +156,7 @@ class CommandeDetailFichier
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->creeLe = new \DateTimeImmutable();
     }
 

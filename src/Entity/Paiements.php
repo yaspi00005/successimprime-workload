@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\PaiementsRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -20,6 +21,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\HasLifecycleCallbacks]
 class Paiements
 {
+    use PublicIdTrait;
+
     public const MODE_ESPECES = 'especes';
     public const MODE_ORANGE_MONEY = 'orange_money';
     public const MODE_WAVE = 'wave';
@@ -241,6 +244,7 @@ class Paiements
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->date = new \DateTimeImmutable();
     }
 

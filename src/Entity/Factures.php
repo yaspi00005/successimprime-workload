@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\FacturesRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -30,6 +31,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\HasLifecycleCallbacks]
 class Factures
 {
+    use PublicIdTrait;
+
     /*
      * ============================================================
      * TYPES DE DOCUMENT
@@ -517,6 +520,7 @@ private ?string $pdfHash = null;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->dateFacture =
             new \DateTimeImmutable();
 

@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\ReclamationRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -19,6 +20,13 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\HasLifecycleCallbacks]
 class Reclamation
 {
+    use PublicIdTrait;
+
+    public function __construct()
+    {
+        $this->initialiserPublicId();
+    }
+
     public const STATUT_EN_ATTENTE = 'en_attente';
     public const STATUT_VALIDEE = 'validee';
     public const STATUT_REFUSEE = 'refusee';

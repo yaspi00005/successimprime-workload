@@ -107,7 +107,7 @@ class CommandesDetails
     )]
     private int $quantite = 1;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 4, options: ['default' => 0])]
+    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 4, options: ['default' => '0.0000'])]
     #[Assert\PositiveOrZero(
         message: 'Le prix unitaire ne peut pas être négatif.'
     )]

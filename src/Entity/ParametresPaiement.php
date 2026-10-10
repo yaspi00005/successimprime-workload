@@ -22,12 +22,12 @@ class ParametresPaiement
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(options: ['default' => 1.0])]
+    #[ORM\Column(options: ['default' => '1'])]
     #[Assert\PositiveOrZero]
     #[Assert\LessThanOrEqual(100)]
     private float $tauxFraisRetrait = 1.0;
 
-    #[ORM\Column(options: ['default' => 1.0])]
+    #[ORM\Column(options: ['default' => '1'])]
     #[Assert\PositiveOrZero]
     #[Assert\LessThanOrEqual(100)]
     private float $tauxFondsSoutien = 1.0;

@@ -1,0 +1,161 @@
+{% extends 'base.html.twig' %}
+{% import 'stock_articles/_macros.html.twig' as m %}
+
+{% block title %}{{ article.designation|length > 30 ? article.designation|slice(0, 28)|trim ~ '…' : article.designation }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<button type="button" class="btn btn-light btn-sm si-btn-entete" data-bs-toggle="collapse" data-bs-target="#ajuster" aria-expanded="false">Ajuster le stock</button>
+	</li>
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_stock_articles_modifier', {id: article.id}) }}" class="btn btn-light btn-sm si-btn-entete">Modifier</a>
+	</li>
+	<li class="nav-item">
+		<a href="{{ path('app_achat_new') }}" class="btn btn-danger btn-sm si-btn-entete">Commander</a>
+	</li>
+{% endblock %}
+
+{% set u = article.uniteCourte %}
+
+{% block body %}
+	<form method="post" action="{{ path('app_stock_articles_ajuster', {id: article.id}) }}" id="ajuster" class="collapse card si-bloc">
+		<input type="hidden" name="_token" value="{{ csrf_token('ajuster-stock-' ~ article.id) }}">
+		<div class="row g-2 align-items-end">
+			<div class="col-md-3 col-6">
+				<label class="si-libelle-champ" for="compte">Quantité comptée ({{ u }})</label>
+				<input type="text" inputmode="decimal" name="compte" id="compte" class="form-control form-control-sm" placeholder="{{ m.q(ligne.physique) }}" required>
+			</div>
+			<div class="col-md-5 col-6">
+				<label class="si-libelle-champ" for="motif">Motif</label>
+				<select name="motif" id="motif" class="form-select form-select-sm" required>
+					{% for motif in motifs %}<option>{{ motif }}</option>{% endfor %}
+				</select>
+			</div>
+			<div class="col-md-4">
+				<button type="submit" class="btn btn-danger btn-sm w-100">Enregistrer l'écart</button>
+			</div>
+		</div>
+		<p class="text-muted small mb-0 mt-2">Stock enregistré : {{ m.q(ligne.physique) }} {{ u }}. L'écart devient une entrée ou une sortie, avec votre nom et le motif.</p>
+	</form>
+
+	<div class="row">
+		<div class="col-xl-4 col-md-6">
+			<div class="card si-bloc si-article-identite">
+				<div class="si-article-visuel" style="--famille: {{ article.famille.couleur ?? '#94a3b8' }}">
+					<span>{{ article.reference }}</span>
+				</div>
+				<dl class="si-fiche-champs">
+					<dt>Code · famille</dt>
+					<dd><strong>{{ article.reference }}</strong> · {{ article.famille.nom ?? 'Sans famille' }}</dd>
+					<dt>Emplacement</dt>
+					<dd>{{ article.emplacement ?? '—' }}</dd>
+					<dt>Machine compatible</dt>
+					<dd>{{ article.machine ? article.machine.nom : '—' }}{{ article.laize ? ' · laize ' ~ article.laize|number_format(2, ',', ' ') ~ ' m' }}</dd>
+					{% if not article.actif %}<dd><span class="si-pastille si-pastille-gris">Article inactif</span></dd>{% endif %}
+				</dl>
+			</div>
+		</div>
+
+		<div class="col-xl-4 col-md-6">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Unités et conversion</h4></div>
+				<dl class="si-lignes-chiffres">
+					<div><dt>Unité d'achat</dt><dd>{{ article.uniteAchat ? article.uniteAchat ~ (article.longueurUniteAchat ? ' de ' ~ m.q(article.longueurUniteAchat) ~ ' m') : u }}</dd></div>
+					<div><dt>Unité de stock</dt><dd>{{ u }}</dd></div>
+					<div><dt>Conversion</dt><dd>
+						{% if article.uniteAchat and article.facteurConversion != 1 %}
+							1 {{ article.uniteAchat }}
+							{% if article.longueurUniteAchat and article.laize and article.estEnMetresCarres %} = {{ m.q(article.longueurUniteAchat) }} m × {{ article.laize|number_format(2, ',', ' ') }} m{% endif %}
+							= {{ m.q(article.facteurConversion) }} {{ u }}
+						{% else %}
+							Aucune
+						{% endif %}
+					</dd></div>
+					<div><dt>Unité de vente</dt><dd>{{ article.uniteVente ?? u }}</dd></div>
+					<div><dt>Sortie automatique</dt><dd>{{ article.produitsStock|length > 0 ? 'selon la nomenclature de ' ~ article.produitsStock|length ~ ' produit' ~ (article.produitsStock|length > 1 ? 's') : 'manuelle seulement' }}</dd></div>
+				</dl>
+			</div>
+		</div>
+
+		<div class="col-xl-4">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Stock et seuils</h4></div>
+				<div class="si-stock-gros si-stock-{{ ligne.etat }}">{{ m.q(ligne.physique) }} {{ u }}</div>
+				{% if article.uniteAchat and article.facteurConversion != 1 %}
+					<p class="text-muted small mb-2">soit {{ m.q(ligne.physique / article.facteurConversion) }} {{ article.uniteAchat }}</p>
+				{% endif %}
+				<span class="si-niveau si-niveau-{{ ligne.etat }} si-niveau-large"><span style="width: {{ max(3, ligne.niveau) }}%"></span></span>
+				<div class="si-seuils">
+					<div><span>Minimum</span><strong>{{ article.stockMin > 0 ? m.q(article.stockMin) ~ ' ' ~ u : '—' }}</strong></div>
+					<div><span>Maximum</span><strong>{{ article.stockMax ? m.q(article.stockMax) ~ ' ' ~ u : '—' }}</strong></div>
+					<div><span>Réservé</span><strong>{{ m.q(ligne.reserve) }} {{ u }}</strong></div>
+				</div>
+				<p class="small mb-0">Disponible = {{ m.q(ligne.physique) }} − {{ m.q(ligne.reserve) }} réservés = <strong class="{{ ligne.etat == 'commander' ? 'text-danger' }}">{{ m.q(ligne.disponible) }} {{ u }}</strong> {{ m.etat(ligne.etat) }}</p>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-xl-6">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Consommation mensuelle</h4><span class="text-muted">{{ u }}</span></div>
+				<div class="si-histo" role="img" aria-label="Sorties des 6 derniers mois">
+					{% for mois in consommation %}
+						<div class="si-histo-col">
+							<span class="si-histo-valeur">{{ m.q(mois.quantite) }}</span>
+							<span class="si-histo-remplie {{ mois.enCours ? 'si-histo-courante' }}" style="height: {{ max(2, mois.quantite / maxConsommation * 100)|round }}%"></span>
+							<span class="si-histo-mois">{{ mois.libelle }}</span>
+						</div>
+					{% endfor %}
+				</div>
+				<p class="text-muted small mb-0 mt-2">
+					Moyenne {{ m.q(couverture.moyenne) }} {{ u }} / mois
+					{% if couverture.couvertureJours is not null %} · couverture actuelle : <strong class="{{ couverture.couvertureJours < 7 ? 'text-danger' }}">{{ couverture.couvertureJours }} jour{{ couverture.couvertureJours > 1 ? 's' }}</strong>{% endif %}
+				</p>
+			</div>
+		</div>
+
+		<div class="col-xl-6">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Fournisseurs</h4></div>
+				{% if article.fournisseurs is empty %}
+					<p class="text-muted mb-0">Aucun fournisseur. <a href="{{ path('app_stock_articles_modifier', {id: article.id}) }}">En ajouter un</a></p>
+				{% else %}
+					<div class="table-responsive">
+						<table class="table si-table align-middle mb-2">
+							<thead><tr><th>Fournisseur</th><th class="text-end">Prix HT</th><th class="text-end">Délai</th><th class="text-end">Dernier achat</th></tr></thead>
+							<tbody>
+								{% for lien in article.fournisseurs %}
+									<tr>
+										<td>{{ lien.fournisseur.nom }}{% if lien.principal %} <span title="Fournisseur habituel">★</span>{% endif %}</td>
+										<td class="text-end text-nowrap">{{ lien.prixAchat is not null ? m.f(lien.prixAchat) ~ ' / ' ~ (article.uniteAchat ?? u) : '—' }}</td>
+										<td class="text-end">{{ lien.delaiJours is not null ? lien.delaiJours ~ ' j' : '—' }}</td>
+										<td class="text-end">{{ derniersAchats[lien.fournisseur.id] is defined ? derniersAchats[lien.fournisseur.id]|date('d/m/Y') : '—' }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% endif %}
+				<p class="mb-0"><strong>Coût moyen pondéré</strong><br><span class="text-muted small">{{ m.f(article.coutUnitaireStock) }} / {{ u }} · mis à jour à chaque réception</span></p>
+			</div>
+		</div>
+	</div>
+
+	<div class="card si-bloc">
+		<div class="si-bloc-tete"><h4>Derniers mouvements</h4></div>
+		{% if mouvements is empty %}
+			<p class="text-muted mb-0">Aucun mouvement pour l'instant.</p>
+		{% else %}
+			<ul class="si-mouvements">
+				{% for mouvement in mouvements %}
+					<li>
+						<span class="text-muted">{{ mouvement.date|date('d/m/Y H:i') }}</span>
+						<span>{{ mouvement.libelle }}</span>
+						<strong class="{{ mouvement.sens == 'entree' ? 'si-hausse' : 'si-baisse' }}">{{ mouvement.sens == 'entree' ? '+' : '−' }}{{ m.q(mouvement.quantite) }} {{ u }}</strong>
+					</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+	</div>
+{% endblock %}

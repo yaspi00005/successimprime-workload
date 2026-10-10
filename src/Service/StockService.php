@@ -58,6 +58,34 @@ final class StockService
         );
     }
 
+    /**
+     * Coût moyen pondéré : à appeler avant d'enregistrer une entrée, avec
+     * la quantité et le prix exprimés en unité de stock.
+     * (stock avant × coût avant + quantité × prix) ÷ (stock avant + quantité)
+     */
+    public function appliquerCoutMoyen(Articles $article, float $quantite, int $prixUnitaire): void
+    {
+        if ($quantite <= 0 || $prixUnitaire <= 0) {
+            return;
+        }
+
+        $article->setCoutMoyen(self::coutMoyenPondere(
+            $article->getId() !== null ? $this->getStockPhysique($article) : 0.0,
+            $article->getCoutMoyen() ?? $article->getCoutUnitaireStock(),
+            $quantite,
+            $prixUnitaire
+        ));
+    }
+
+    public static function coutMoyenPondere(float $stockAvant, ?int $coutAvant, float $quantite, int $prixUnitaire): int
+    {
+        if ($coutAvant === null || $stockAvant <= 0) {
+            return $prixUnitaire;
+        }
+
+        return (int) round(($stockAvant * $coutAvant + $quantite * $prixUnitaire) / ($stockAvant + $quantite));
+    }
+
     /*
      * ============================================================
      * STOCK PHYSIQUE
@@ -1517,7 +1545,7 @@ final class StockService
     public function enregistrerConsommableManuel(
         ?CommandesDetails $detail,
         Articles $article,
-        int $quantite,
+        float $quantite,
         ?string $referenceOrigine = null
     ): StockSorties {
         if ($quantite <= 0) {

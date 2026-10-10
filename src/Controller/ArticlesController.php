@@ -334,7 +334,8 @@ final class ArticlesController extends AbstractController
     public function entreeStock(
         Articles $article,
         Request $request,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        StockService $stockService
     ): RedirectResponse {
         if (
             !$this->isCsrfTokenValid(
@@ -432,6 +433,8 @@ final class ArticlesController extends AbstractController
 
             $date = $dateParse;
         }
+
+        $stockService->appliquerCoutMoyen($article, $quantite, $prix);
 
         $entree = new StockEntrees();
 

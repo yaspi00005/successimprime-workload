@@ -3,11 +3,14 @@
 namespace App\Controller;
 
 use App\Entity\Achats;
+use App\Entity\ArticleFournisseur;
+use App\Entity\Articles;
 use App\Entity\Fournisseurs;
 use App\Entity\StockEntrees;
 use App\Form\AchatType;
 use App\Repository\AchatsRepository;
 use App\Repository\FournisseursRepository;
+use App\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -163,7 +166,8 @@ final class AchatsController extends AbstractController
     public function recevoir(
         Request $request,
         Achats $achat,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        StockService $stockService
     ): Response {
         if (!$this->isCsrfTokenValid(
             'recevoir_achat' . $achat->getId(),
@@ -214,16 +218,26 @@ final class AchatsController extends AbstractController
                 continue;
             }
 
+            /*
+             * L'achat est en unité d'achat (rouleau), le stock en unité
+             * de stock (m²) : on convertit la quantité et le prix.
+             */
+            $quantiteStock = $article->convertirAchatEnStock((float) $ligne->getQuantite());
+            $prixStock = (int) round($ligne->getPrixUnitaire() / $article->getFacteurConversion());
+
+            $stockService->appliquerCoutMoyen($article, $quantiteStock, $prixStock);
+
             $entree = new StockEntrees();
             $entree->setArticle($article);
-            $entree->setQuantites($ligne->getQuantite());
-            $entree->setPrix($ligne->getPrixUnitaire());
+            $entree->setQuantites($quantiteStock);
+            $entree->setPrix($prixStock);
             $entree->setDate($maintenant);
 
             $entityManager->persist($entree);
 
             if ($ligne->getPrixUnitaire() > 0) {
                 $article->setPrixAchat($ligne->getPrixUnitaire());
+                $this->retenirPrixFournisseur($article, $achat->getFournisseur(), $ligne->getPrixUnitaire());
             }
         }
 
@@ -336,6 +350,31 @@ final class AchatsController extends AbstractController
             'app_achat_index',
             [],
             Response::HTTP_SEE_OTHER
+        );
+    }
+
+    /**
+     * Le dernier prix payé devient le prix de ce fournisseur sur la fiche article.
+     */
+    private function retenirPrixFournisseur(Articles $article, ?Fournisseurs $fournisseur, int $prix): void
+    {
+        if ($fournisseur === null) {
+            return;
+        }
+
+        foreach ($article->getFournisseurs() as $lien) {
+            if ($lien->getFournisseur() === $fournisseur) {
+                $lien->setPrixAchat($prix);
+
+                return;
+            }
+        }
+
+        $article->addFournisseur(
+            (new ArticleFournisseur())
+                ->setFournisseur($fournisseur)
+                ->setPrixAchat($prix)
+                ->setPrincipal($article->getFournisseurs()->isEmpty())
         );
     }
 }

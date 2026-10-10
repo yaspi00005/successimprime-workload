@@ -1,0 +1,7 @@
+{% macro q(v) %}{{ v == v|round(0, 'floor') ? v|number_format(0, ',', ' ') : v|number_format(1, ',', ' ') }}{% endmacro %}
+{% macro f(v) %}{{ v is null ? '—' : v|number_format(0, ',', ' ') ~ ' F' }}{% endmacro %}
+{% macro etat(etat) %}
+	{% if etat == 'commander' %}<span class="si-pastille si-pastille-rouge">Commander</span>
+	{% elseif etat == 'bientot' %}<span class="si-pastille si-pastille-orange">Bientôt</span>
+	{% else %}<span class="si-pastille si-pastille-vert">OK</span>{% endif %}
+{% endmacro %}

@@ -56,7 +56,7 @@ final class ConsommablesController extends AbstractController
                 );
             }
 
-            $quantite = $request->request->getInt('quantite');
+            $quantite = (float) str_replace(',', '.', (string) $request->request->get('quantite', '0'));
 
             $reference = trim((string) $request->request->get('reference'));
 

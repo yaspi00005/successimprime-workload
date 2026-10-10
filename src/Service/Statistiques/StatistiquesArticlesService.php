@@ -51,7 +51,7 @@ final class StatistiquesArticlesService
             $cle = $this->evolutionTemporelleService->clePourDate($entree->getDate(), $granularite);
 
             if (isset($entrees[$cle])) {
-                $entrees[$cle] += (int) $entree->getQuantites();
+                $entrees[$cle] += (float) $entree->getQuantites();
             }
         }
 
@@ -71,7 +71,7 @@ final class StatistiquesArticlesService
             $cle = $this->evolutionTemporelleService->clePourDate($sortie->getDate(), $granularite);
 
             if (isset($sorties[$cle])) {
-                $sorties[$cle] += (int) $sortie->getQuantite();
+                $sorties[$cle] += (float) $sortie->getQuantite();
             }
         }
 
@@ -126,7 +126,7 @@ final class StatistiquesArticlesService
                 'montant' => 0,
             ];
 
-            $quantite = (int) $sortie->getQuantite();
+            $quantite = (float) $sortie->getQuantite();
 
             ++$parArticle[$cle]['nombre'];
             $parArticle[$cle]['quantite'] += $quantite;

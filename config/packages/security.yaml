@@ -108,6 +108,11 @@ security:
         }
 
         - {
+            path: '^/f/[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{2}$',
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
             path: ^/factures/\d+/pdf-public/,
             roles: PUBLIC_ACCESS
         }

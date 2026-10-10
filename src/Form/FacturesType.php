@@ -2,6 +2,7 @@
 
 namespace App\Form;
 
+use App\Repository\EntrepriseRepository;
 use App\Entity\Factures;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -18,6 +19,10 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class FacturesType extends AbstractType
 {
+    public function __construct(private readonly EntrepriseRepository $entreprises)
+    {
+    }
+
     public function buildForm(
         FormBuilderInterface $builder,
         array $options
@@ -44,8 +49,12 @@ class FacturesType extends AbstractType
                 ChoiceType::class,
                 [
                     'label' => 'Émetteur',
+                    // Entreprises de Réglages › Entreprises (maquette I03).
                     'choices' =>
-                        Factures::getEmetteursPourFormulaire(),
+                        $this->entreprises->choixEmetteurs(
+                            ($options['data'] ?? null)?->getEmetteur()
+                        )
+                        ?: Factures::getEmetteursPourFormulaire(),
 
                     'required' => true,
                 ]

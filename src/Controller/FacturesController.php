@@ -5,7 +5,10 @@ namespace App\Controller;
 use App\Entity\Commandes;
 use App\Entity\Factures;
 use App\Form\FacturesType;
+use App\Repository\EntrepriseRepository;
 use App\Repository\FacturesRepository;
+use App\Service\DocumentsEntreprise;
+use App\Service\NumerotationFactures;
 use App\Service\WhatsAppService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,11 +20,6 @@ use Symfony\Component\Routing\Attribute\Route;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-use Endroid\QrCode\Encoding\Encoding;
-use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\RoundBlockSizeMode;
-use Endroid\QrCode\Writer\PngWriter;
 
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -73,7 +71,9 @@ class FacturesController extends AbstractController
         Commandes $commande,
         Request $request,
         EntityManagerInterface $entityManager,
-        FacturesRepository $facturesRepository
+        FacturesRepository $facturesRepository,
+        EntrepriseRepository $entrepriseRepository,
+        NumerotationFactures $numerotation
     ): Response {
         /*
          * --------------------------------------------------------
@@ -414,8 +414,23 @@ class FacturesController extends AbstractController
                  * FAC-000001-08-2026
                  * PF-000002-08-2026
                  */
+                // Format propre à l'entreprise (Réglages › Entreprises), sinon l'ancien.
+                $entreprise =
+                    $entrepriseRepository->parCode(
+                        $facture->getEmetteur()
+                    );
+                $numeroEntreprise =
+                    $entreprise !== null
+                    && $facture->estFacture()
+                        ? $numerotation->prochain(
+                            $entreprise,
+                            $facture->getDateFacture()
+                        )
+                        : null;
+
                 $facture->setNumero(
-                    sprintf(
+                    $numeroEntreprise
+                    ?? sprintf(
                         '%s-%06d-%s',
                         $prefixe,
                         $facture->getId(),
@@ -1035,7 +1050,8 @@ class FacturesController extends AbstractController
 )]
 public function pdf(
     Factures $facture,
-    EntityManagerInterface $entityManager
+    EntityManagerInterface $entityManager,
+    DocumentsEntreprise $documentsEntreprise
 ): Response {
 
     /*
@@ -1238,122 +1254,11 @@ public function pdf(
 
     /*
      * ============================================================
-     * URL D'AUTHENTICITÉ
+     * EN-TÊTE, QR ET MONTANT EN LETTRES
      * ============================================================
-     */
-    $urlFacture =
-        $this->generateUrl(
-            'app_factures_show',
-            [
-                'id' =>
-                    $facture->getId(),
-            ],
-            UrlGeneratorInterface::ABSOLUTE_URL
-        );
-
-
-    /*
-     * ============================================================
-     * QR CODE
-     * ============================================================
-     */
-    $contenuQr =
-        sprintf(
-            "%s\nFacture: %s\nAuthenticite: %s",
-            $urlFacture,
-            $facture->getNumero()
-                ?? '#' . $facture->getId(),
-            $facture->getTokenAuthenticite()
-                ?? ''
-        );
-
-
-    $qrCode =
-        new QrCode(
-            data: $contenuQr,
-            encoding:
-                new Encoding(
-                    'UTF-8'
-                ),
-            errorCorrectionLevel:
-                ErrorCorrectionLevel::Medium,
-            size: 250,
-            margin: 8,
-            roundBlockSizeMode:
-                RoundBlockSizeMode::Margin
-        );
-
-
-    $writer =
-        new PngWriter();
-
-
-    $qrResult =
-        $writer->write(
-            $qrCode
-        );
-
-
-    $qrCodeDataUri =
-        $qrResult->getDataUri();
-
-
-    /*
-     * ============================================================
-     * LOGOS / SIGNATURES
-     * ============================================================
-     */
-    $documents = [
-
-        /*
-         * DREPA TECHNOLOGIE
-         */
-        'drepa' => [
-
-            'logo' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/drepa-logo.png'
-                ),
-
-            'signature' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/drepa-signature-cachet.png'
-                ),
-        ],
-
-
-        /*
-         * MADIAL GROUP / SUCCESS IMPRIM
-         */
-        'mdg' => [
-
-            'logo' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/mdg-logo.png'
-                ),
-
-            'success_logo' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/success-imprim-logo.png'
-                ),
-
-            'signature' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/mdg-signature-cachet.png'
-                ),
-        ],
-    ];
-
-
-    /*
-     * ============================================================
-     * HTML
-     * ============================================================
+     *
+     * Tout vient de l'entreprise émettrice (Réglages › Entreprises) :
+     * le QR de suivi ouvre /f/{code}, sans connexion.
      */
     $html =
         $this->renderView(
@@ -1361,22 +1266,11 @@ public function pdf(
             [
                 'facture' =>
                     $facture,
-
                 'commande' =>
                     $commande,
-
                 'client' =>
                     $commande->getClients(),
-
-                'qrCode' =>
-                    $qrCodeDataUri,
-
-                'urlFacture' =>
-                    $urlFacture,
-
-                'documents' =>
-                    $documents,
-            ]
+            ] + $documentsEntreprise->vueFacture($facture)
         );
 
 
@@ -1850,40 +1744,4 @@ public function pdf(
             : '';
     }
 
-    private function imageVersDataUri(
-        string $chemin
-    ): ?string {
-        if (
-            !is_file($chemin)
-            || !is_readable($chemin)
-        ) {
-            return null;
-        }
-
-        $contenu =
-            file_get_contents(
-                $chemin
-            );
-
-        if ($contenu === false) {
-            return null;
-        }
-
-        $mime =
-            mime_content_type(
-                $chemin
-            );
-
-        if (!$mime) {
-            $mime = 'image/png';
-        }
-
-        return sprintf(
-            'data:%s;base64,%s',
-            $mime,
-            base64_encode(
-                $contenu
-            )
-        );
-    }
 }

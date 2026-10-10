@@ -236,8 +236,9 @@ class Factures
                 self::EMETTEUR_MDG_SUCCESS,
         ]
     )]
-    #[Assert\Choice(
-        choices: self::EMETTEURS
+    // Code d'une entreprise émettrice (table entreprise, maquette I03).
+    #[Assert\Regex(
+        pattern: '/^[a-z0-9_]{2,30}$/'
     )]
     private string $emetteur =
         self::EMETTEUR_MDG_SUCCESS;
@@ -448,6 +449,17 @@ private ?string $pdfHash = null;
         nullable: true
     )]
     private ?string $tokenAuthenticite = null;
+
+    /*
+     * Code court du QR « Suivre cette facture en ligne » (/f/{code}),
+     * aussi imprimé en pied de page : 7K4P-2Q.
+     */
+    #[ORM\Column(
+        length: 9,
+        unique: true,
+        nullable: true
+    )]
+    private ?string $codeSuivi = null;
 
 
     /*
@@ -696,10 +708,9 @@ private ?string $pdfHash = null;
         string $emetteur
     ): static {
         if (
-            !in_array(
-                $emetteur,
-                self::EMETTEURS,
-                true
+            !preg_match(
+                '/^[a-z0-9_]{2,30}$/',
+                $emetteur
             )
         ) {
             throw new \InvalidArgumentException(
@@ -1217,6 +1228,31 @@ private ?string $pdfHash = null;
         ?string
     {
         return $this->tokenAuthenticite;
+    }
+
+    public function getCodeSuivi(): ?string
+    {
+        return $this->codeSuivi;
+    }
+
+    /**
+     * Code de 6 caractères sans 0/O ni 1/I/L, présenté XXXX-XX. Le
+     * contrôleur vérifie qu'il n'est pas déjà pris.
+     */
+    public function genererCodeSuivi(bool $nouveau = false): static
+    {
+        if ($this->codeSuivi === null || $nouveau) {
+            $alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+            $code = '';
+
+            for ($i = 0; $i < 6; ++$i) {
+                $code .= $alphabet[random_int(0, \strlen($alphabet) - 1)];
+            }
+
+            $this->codeSuivi = substr($code, 0, 4).'-'.substr($code, 4);
+        }
+
+        return $this;
     }
 
     public function genererTokenAuthenticite():

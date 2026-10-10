@@ -59,7 +59,8 @@ class Devis
             'default' => self::EMETTEUR_MDG_SUCCESS,
         ]
     )]
-    #[Assert\Choice(choices: self::EMETTEURS)]
+    // Code d'une entreprise émettrice (table entreprise, maquette I03).
+    #[Assert\Regex(pattern: '/^[a-z0-9_]{2,30}$/')]
     private string $emetteur = self::EMETTEUR_MDG_SUCCESS;
 
     #[ORM\ManyToOne(inversedBy: 'devis')]
@@ -206,7 +207,7 @@ class Devis
 
     public function setEmetteur(string $emetteur): static
     {
-        if (!in_array($emetteur, self::EMETTEURS, true)) {
+        if (!preg_match('/^[a-z0-9_]{2,30}$/', $emetteur)) {
             throw new \InvalidArgumentException(
                 'Émetteur invalide.'
             );

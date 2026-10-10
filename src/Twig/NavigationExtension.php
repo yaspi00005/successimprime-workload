@@ -61,6 +61,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Grille tarifaire', 'route' => 'app_produits_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_produits_', 'app_categorie_produit_', 'app_produit_configuration_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
             ['libelle' => 'Coûts de revient', 'route' => 'app_couts_revient_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_couts_revient_']],
             ['libelle' => 'Utilisateurs et droits', 'route' => 'app_utilisateurs_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_utilisateurs_', 'app_user_', 'app_employes_', 'app_journal_activite_']],
+            ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
             ['libelle' => 'Écran TV', 'route' => 'app_ecran_tv_reglages', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_ecran_tv_']],
         ],
     ];
@@ -120,6 +121,7 @@ final class NavigationExtension extends AbstractExtension
         'app_parametres_paiement_' => 'reglages',
         'app_fichier_dossier_partage' => 'reglages',
         'app_ecran_tv_' => 'reglages',
+        'app_entreprises_' => 'reglages',
     ];
 
     public function __construct(

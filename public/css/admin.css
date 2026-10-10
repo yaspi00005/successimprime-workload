@@ -1825,3 +1825,34 @@ body .si-sidebar .metismenu ul a.mm-active {
   .si-avis { grid-template-columns: 5.5rem 1fr auto; }
   .si-avis input:first-child { grid-column: 1 / -1; }
 }
+
+/* ---------- Entreprises et en-têtes des documents ---------- */
+.si-entreprises { display: flex; flex-direction: column; gap: .5rem; }
+.si-entreprise-carte {
+	display: flex; align-items: center; gap: .75rem; padding: .7rem .8rem;
+	border: 1px solid #e5e7eb; border-radius: .75rem; color: inherit; text-decoration: none;
+}
+.si-entreprise-carte:hover { border-color: #c7d2fe; color: inherit; }
+.si-entreprise-carte.active { border-color: var(--primary, #0F4590); background: #f5f8ff; box-shadow: inset 3px 0 0 var(--primary, #0F4590); }
+.si-entreprise-carte.inactive { opacity: .6; }
+.si-entreprise-carte b { display: block; font-size: .9rem; }
+.si-entreprise-carte small { display: block; color: #6b7280; font-size: .75rem; }
+.si-pastille-entreprise { flex: 0 0 auto; width: 1.6rem; height: 1.6rem; border-radius: .5rem; }
+.si-entreprise-image-corps { display: flex; gap: .6rem; align-items: flex-start; }
+.si-entreprise-image-corps > div { min-width: 0; flex: 1; }
+.si-entreprise-vignette {
+	flex: 0 0 auto; width: 4.5rem; height: 3rem; border: 1px dashed #d1d5db; border-radius: .5rem;
+	display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff;
+}
+.si-entreprise-vignette img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.si-couleurs { display: flex; gap: .5rem; flex-wrap: wrap; }
+.si-couleurs input[type=color] { width: 2.6rem; height: 2.2rem; padding: 2px; border: 1px solid #d1d5db; border-radius: .5rem; background: #fff; cursor: pointer; }
+.si-apercu-document {
+	--echelle: .45;
+	position: relative; width: 100%; aspect-ratio: 794 / 1123; overflow: hidden;
+	border: 1px solid #e5e7eb; border-radius: .5rem; background: #fff;
+}
+.si-apercu-document iframe {
+	position: absolute; top: 0; left: 0; width: 794px; height: 1123px; border: 0;
+	transform: scale(var(--echelle)); transform-origin: 0 0; pointer-events: none;
+}

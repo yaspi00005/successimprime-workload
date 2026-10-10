@@ -2,6 +2,7 @@
 
 namespace App\Form;
 
+use App\Repository\EntrepriseRepository;
 use App\Entity\Clients;
 use App\Entity\Devis;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
@@ -25,6 +26,10 @@ use Symfony\Component\Validator\Constraints\NotNull;
 
 class DevisType extends AbstractType
 {
+    public function __construct(private readonly EntrepriseRepository $entreprises)
+    {
+    }
+
      public function buildForm(
         FormBuilderInterface $builder,
         array $options
@@ -32,7 +37,9 @@ class DevisType extends AbstractType
         $builder
             ->add('emetteur', ChoiceType::class, [
                 'label' => 'Émetteur',
-                'choices' => Devis::getEmetteursPourFormulaire(),
+                // Entreprises de Réglages › Entreprises (maquette I03).
+                'choices' => $this->entreprises->choixEmetteurs(($options['data'] ?? null)?->getEmetteur())
+                    ?: Devis::getEmetteursPourFormulaire(),
                 'required' => true,
             ])
 

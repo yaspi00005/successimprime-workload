@@ -202,7 +202,7 @@ final class UtilisateursController extends AbstractController
     public function nouveau(Request $request, UserPasswordHasherInterface $hasher): Response
     {
         $roles = array_values(array_filter($this->roles->dansLOrdre(), static fn (RoleUtilisateur $r): bool => !$r->estAdmin()));
-        $saisie = ['prenom' => '', 'nom' => '', 'telephone' => '', 'email' => '', 'identifiant' => '', 'profil' => 0, 'changerMotDePasse' => true];
+        $saisie = ['prenom' => '', 'nom' => '', 'telephone' => '', 'email' => '', 'profil' => 0, 'changerMotDePasse' => true];
         $erreurs = [];
 
         if ($request->isMethod('POST')) {
@@ -216,14 +216,9 @@ final class UtilisateursController extends AbstractController
                 'nom' => trim($donnees->getString('nom')),
                 'telephone' => trim($donnees->getString('telephone')),
                 'email' => trim($donnees->getString('email')),
-                'identifiant' => mb_strtolower(trim($donnees->getString('identifiant'))),
                 'profil' => $donnees->getInt('profil'),
                 'changerMotDePasse' => $donnees->has('changer_mot_de_passe'),
             ];
-
-            if ('' === $saisie['identifiant']) {
-                $saisie['identifiant'] = (string) preg_replace('/\D+/', '', $saisie['telephone']);
-            }
 
             $profil = $this->roles->find($saisie['profil']);
 
@@ -233,12 +228,6 @@ final class UtilisateursController extends AbstractController
 
             if ('' === $saisie['telephone']) {
                 $erreurs['telephone'] = 'Le téléphone est obligatoire.';
-            }
-
-            if (!preg_match('/^[a-z0-9._-]{3,50}$/', $saisie['identifiant'])) {
-                $erreurs['identifiant'] = 'De 3 à 50 lettres, chiffres, points ou tirets.';
-            } elseif (null !== $this->users->findOneBy(['username' => $saisie['identifiant']])) {
-                $erreurs['identifiant'] = 'Cet identifiant est déjà pris.';
             }
 
             if ('' !== $saisie['email'] && !filter_var($saisie['email'], \FILTER_VALIDATE_EMAIL)) {
@@ -261,7 +250,7 @@ final class UtilisateursController extends AbstractController
                 }
 
                 $motDePasse = self::motDePasseTemporaire();
-                $utilisateur = (new User())->setUsername($saisie['identifiant'])->setEmploye($employe);
+                $utilisateur = (new User())->setUsername($this->identifiantLibre($saisie['prenom'], $saisie['nom'], $saisie['telephone']))->setEmploye($employe);
                 $utilisateur->setProfil($profil);
                 $utilisateur->definirMotDePasseTemporaire($hasher->hashPassword($utilisateur, $motDePasse));
 
@@ -362,6 +351,37 @@ final class UtilisateursController extends AbstractController
             ),
             'motifs' => self::MOTIFS,
         ]);
+    }
+
+    /**
+     * Identifiant cree tout seul, court : initiale du prenom et nom sans
+     * accents, 10 caracteres au plus (mtoure), suivi d'un chiffre s'il
+     * est deja pris (mtoure2).
+     */
+    private function identifiantLibre(string $prenom, string $nom, string $telephone): string
+    {
+        $base = self::identifiant($prenom, $nom);
+
+        if (\strlen($base) < 3) {
+            $base = substr((string) preg_replace('/\D+/', '', $telephone), -8);
+        }
+
+        $identifiant = $base;
+
+        for ($i = 2; null !== $this->users->findOneBy(['username' => $identifiant]); ++$i) {
+            $identifiant = $base . $i;
+        }
+
+        return $identifiant;
+    }
+
+    public static function identifiant(string $prenom, string $nom): string
+    {
+        $simplifier = static fn (string $mot): string => (string) preg_replace('/[^a-z0-9]+/', '', strtolower((string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $mot)));
+        $prenom = $simplifier($prenom);
+        $nom = $simplifier($nom);
+
+        return substr('' !== $nom ? substr($prenom, 0, 1) . $nom : $prenom, 0, 10);
     }
 
     private static function motDePasseTemporaire(): string

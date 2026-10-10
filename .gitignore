@@ -48,3 +48,6 @@
 .env.local.php
 .env.*.local
 /.phpunit.result.cache
+
+# Fichiers systeme macOS
+.DS_Store

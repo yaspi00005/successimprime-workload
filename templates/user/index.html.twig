@@ -394,7 +394,7 @@
 														{% set badgeClass = 'badge-secondary' %}
 
 
-													{% elseif role == 'ROLE_STATS_GLOBAL' %}
+													{% elseif role in permissionsSensibles|keys %}
 
 														{% set badgeClass = 'badge-primary' %}
 
@@ -414,7 +414,7 @@
 
 													<span class="badge {{ badgeClass }} mb-1 mr-1">
 
-														{% if role == 'ROLE_STATS_GLOBAL' %}
+														{% if role in permissionsSensibles|keys %}
 
 															<i class="fa fa-bar-chart mr-1"></i>
 
@@ -805,9 +805,7 @@
 
 							<br>
 
-							La permission
-							<strong>Statistiques globales</strong>
-							peut être ajoutée en complément.
+							Les <strong>informations sensibles</strong> se cochent en complément, une par une.
 
 							<br>
 
@@ -820,7 +818,7 @@
 
 						<div class="selectgroup selectgroup-pills">
 
-							{% for role, libelle in rolesDisponibles %}
+							{% for role, libelle in rolesDisponibles|filter((libelle, role) => role not in permissionsSensibles|keys) %}
 
 								<label class="selectgroup-item">
 
@@ -873,12 +871,10 @@
 							<strong>Livreur :</strong>
 							accès uniquement à la livraison ; arrive directement sur cette page à la connexion.
 
-							<br>
+</div>
 
-							<strong>Statistiques globales :</strong>
-							accès aux données financières sensibles de l'entreprise.
+{% include 'user/_informations_sensibles.html.twig' with {classe: 'edit-role'} %}
 
-						</div>
 					</div>
 
 

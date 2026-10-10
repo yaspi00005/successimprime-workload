@@ -1,0 +1,19 @@
+{# Une case par information sensible, en plus du profil principal.
+   classe : classe des cases (edit-role ou create-role), lue par le JS du formulaire. #}
+<h6 class="roles-title mt-4">
+	<i class="fa fa-eye-slash mr-2"></i>
+	Informations sensibles visibles
+</h6>
+<p class="small text-muted mb-2">Cochez ce que cette personne peut voir. L'administrateur voit tout.</p>
+{% for role, permission in permissionsSensibles %}
+	<div class="form-group mb-2">
+		<label class="custom-switch align-items-start">
+			<input type="checkbox" {% if avecNom|default(false) %}name="roles[]"{% endif %} value="{{ role }}" class="custom-switch-input {{ classe }}">
+			<span class="custom-switch-indicator"></span>
+			<span class="custom-switch-description">
+				<strong>{{ permission.libelle }}</strong>
+				<span class="d-block small text-muted">{{ permission.detail }}</span>
+			</span>
+		</label>
+	</div>
+{% endfor %}

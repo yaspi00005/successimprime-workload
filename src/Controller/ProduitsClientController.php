@@ -78,7 +78,7 @@ final class ProduitsClientController extends AbstractController
             'produits' => $produits,
             'choisi' => $choisi,
             'nombresCommandes' => $this->nombresCommandes($produits),
-            'cout' => $choisi ? $this->coutUnitaire($choisi, $commandeProduitClient, $calculateur) : null,
+            'cout' => $choisi && $this->isGranted('ROLE_COUT_MARGE') ? $this->coutUnitaire($choisi, $commandeProduitClient, $calculateur) : null,
             'catalogue' => $this->em->getRepository(Produits::class)->findBy([], ['nom' => 'ASC']),
             'supports' => $this->em->getRepository(Supports::class)->findBy([], ['nom' => 'ASC']),
             'machines' => $this->em->getRepository(Machines::class)->findBy([], ['nom' => 'ASC']),

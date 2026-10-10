@@ -53,6 +53,9 @@ final class UserController extends AbstractController
 
                 'rolesDisponibles' =>
                     User::getLibellesRoles(),
+
+                'permissionsSensibles' =>
+                    User::getPermissionsSensibles(),
             ]
         );
     }

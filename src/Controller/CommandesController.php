@@ -525,7 +525,7 @@ final class CommandesController extends AbstractController
     public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient): Response
     {
         $lignes = [];
-        $voirCouts = $this->isGranted('ROLE_ADMIN');
+        $voirCouts = $this->isGranted('ROLE_COUT_MARGE');
         $marge = ['ht' => 0, 'cout' => 0, 'incomplet' => false];
 
         foreach ($commande->getCommandesDetails() as $ligne) {

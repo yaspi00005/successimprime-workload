@@ -248,6 +248,27 @@ class User implements
 
     /*
      * ============================================================
+     * INFORMATIONS SENSIBLES
+     * ============================================================
+     *
+     * Comme ROLE_STATS_GLOBAL, ces autorisations s'activent ou se
+     * desactivent une par une pour chaque utilisateur, en plus de
+     * son profil principal (demande de Yaya du 10/10/2026).
+     * ============================================================
+     */
+
+    public const ROLE_STATS_VENTES =
+        'ROLE_STATS_VENTES';
+
+    public const ROLE_COUT_MARGE =
+        'ROLE_COUT_MARGE';
+
+    public const ROLE_PAIEMENT_VOIR =
+        'ROLE_PAIEMENT_VOIR';
+
+
+    /*
+     * ============================================================
      * RÔLE TECHNIQUE SYMFONY
      * ============================================================
      *
@@ -598,7 +619,36 @@ class User implements
             self::ROLE_GRAPHISTE,
             self::ROLE_PRODUCTION,
             self::ROLE_LIVREUR,
-            self::ROLE_STATS_GLOBAL,
+            ...array_keys(self::getPermissionsSensibles()),
+        ];
+    }
+
+
+    /**
+     * Informations sensibles qu'on montre ou cache a chaque
+     * utilisateur, avec ce qu'elles donnent a voir.
+     *
+     * @return array<string, array{libelle: string, detail: string}>
+     */
+    public static function getPermissionsSensibles(): array
+    {
+        return [
+            self::ROLE_STATS_GLOBAL => [
+                'libelle' => 'Statistiques globales',
+                'detail' => 'chiffre d\'affaires, encaissements et créances de l\'accueil, écrans Statistiques',
+            ],
+            self::ROLE_STATS_VENTES => [
+                'libelle' => 'Indicateurs commerciaux',
+                'detail' => 'devis envoyés, taux de transformation et panier moyen (écran Ventes)',
+            ],
+            self::ROLE_COUT_MARGE => [
+                'libelle' => 'Coût de revient et marge',
+                'detail' => 'coût et marge des lignes de commande et des produits du client',
+            ],
+            self::ROLE_PAIEMENT_VOIR => [
+                'libelle' => 'Paiements',
+                'detail' => 'paiements des commandes et écran Caisse (toujours inclus pour Caisse / Commandes)',
+            ],
         ];
     }
 
@@ -627,8 +677,10 @@ class User implements
             self::ROLE_LIVREUR =>
                 'Livreur',
 
-            self::ROLE_STATS_GLOBAL =>
-                'Statistiques globales',
+            ...array_map(
+                static fn (array $permission): string => $permission['libelle'],
+                self::getPermissionsSensibles()
+            ),
         ];
     }
 
@@ -881,19 +933,12 @@ class User implements
 
 
         /*
-         * Permission complémentaire :
-         * statistiques globales.
+         * Informations sensibles cochees en complement.
          */
-        if (
-            in_array(
-                self::ROLE_STATS_GLOBAL,
-                $roles,
-                true
-            )
-        ) {
-
-            $rolesFinals[] =
-                self::ROLE_STATS_GLOBAL;
+        foreach (array_keys(self::getPermissionsSensibles()) as $permission) {
+            if (in_array($permission, $roles, true)) {
+                $rolesFinals[] = $permission;
+            }
         }
 
 

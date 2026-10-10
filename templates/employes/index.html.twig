@@ -672,7 +672,7 @@
 								<strong>Règle d'accès :</strong>
 								chaque utilisateur possède un seul profil principal.
 								<br>
-								La permission <strong>Statistiques globales</strong> peut être ajoutée en complément.
+								Les <strong>informations sensibles</strong> se cochent en complément, une par une.
 								<br>
 								Le rôle <strong>Administrateur</strong> donne un accès complet à l'application.
 
@@ -680,7 +680,7 @@
 
 							<div class="selectgroup selectgroup-pills">
 
-								{% for role, libelle in rolesDisponibles %}
+								{% for role, libelle in rolesDisponibles|filter((libelle, role) => role not in permissionsSensibles|keys) %}
 
 									<label class="selectgroup-item">
 
@@ -724,11 +724,11 @@
 								<br>
 								<strong>Livreur :</strong>
 								accès uniquement à la livraison ; arrive directement sur cette page à la connexion.
-								<br>
-								<strong>Statistiques globales :</strong>
-								accès aux données financières sensibles de l'entreprise.
 
-							</div>
+</div>
+
+{% include 'user/_informations_sensibles.html.twig' with {classe: 'create-role', avecNom: true} %}
+
 
 						</div>
 

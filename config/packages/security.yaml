@@ -67,6 +67,7 @@ security:
             - ROLE_LIVRAISON
             - ROLE_STATS_GLOBAL
             - ROLE_STATS_VENTES
+            - ROLE_COUT_MARGE
             - ROLE_RH
             - ROLE_PARAMETRES
             - ROLE_RESPONSABLE_GESTION
@@ -90,8 +91,10 @@ security:
 
             - ROLE_JOURNAL_CAISSE
 
-            # Chiffres commerciaux de l'ecran Ventes (pas les graphistes).
-            - ROLE_STATS_VENTES
+        # Informations sensibles (ROLE_STATS_GLOBAL, ROLE_STATS_VENTES,
+        # ROLE_COUT_MARGE, ROLE_PAIEMENT_VOIR) : cochees une par une dans
+        # la gestion des utilisateurs, pas heritees du profil. Seule la
+        # caisse garde toujours les paiements, son metier.
 
 
         ROLE_GRAPHISTE:
@@ -100,7 +103,6 @@ security:
             - ROLE_DEVIS
             - ROLE_COMMANDE
             - ROLE_FACTURE
-            - ROLE_PAIEMENT_VOIR
             - ROLE_PREPRESSE
             - ROLE_PRODUCTION_VOIR
             - ROLE_PRODUCTION_GERER

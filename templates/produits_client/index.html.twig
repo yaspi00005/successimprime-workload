@@ -160,7 +160,7 @@
 								{% if choisi.batValide %} · réutilisé sans PAO{% else %} · un BAT sera demandé à la première commande{% endif %}
 							</small>
 						</div>
-						{% if cout and is_granted('ROLE_ADMIN') %}
+						{% if cout and is_granted('ROLE_COUT_MARGE') %}
 							<div class="si-encart si-fond-bleu-clair">
 								<strong>Coût de revient</strong>
 								<small class="d-block text-muted" {% if cout.manquants %}title="Coût incomplet : {{ cout.manquants|join(', ') }}"{% endif %}>

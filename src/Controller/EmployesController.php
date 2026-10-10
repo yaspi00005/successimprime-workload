@@ -22,6 +22,7 @@ final class EmployesController extends AbstractController
         return $this->render('employes/index.html.twig', [
             'employes' => $employesRepository->findAll(),
             'rolesDisponibles' => User::getLibellesRoles(),
+            'permissionsSensibles' => User::getPermissionsSensibles(),
         ]);
     }
 

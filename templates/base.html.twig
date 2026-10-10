@@ -31,7 +31,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
-	<title>{% block title %}Tableau de bord{% endblock %} · Madial Group</title>
+	<title>{% block title %}Tableau de bord{% endblock %} · Succès Imprim</title>
 	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
 	<link href="{{ asset('theme/vendor/jquery-nice-select/css/nice-select.css') }}" rel="stylesheet">
 	<link href="{{ asset('theme/vendor/select2/css/select2.min.css') }}" rel="stylesheet">
@@ -39,6 +39,7 @@
 	{% block stylesheets %}{% endblock %}
 	<link href="{{ asset('theme/css/style.css') }}" rel="stylesheet">
 	<link href="{{ asset('css/charte.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/admin.css') }}" rel="stylesheet">
 </head>
 <body>
 	<div id="preloader">
@@ -46,14 +47,11 @@
 	</div>
 
 	<div id="main-wrapper">
-		{# ---------- En-tête de la barre latérale ---------- #}
-		<div class="nav-header">
-			<a href="{{ path('app_home') }}" class="brand-logo">
-				<span class="d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;border-radius:10px;background:#467fcf;color:#fff;font-weight:700;">MG</span>
-				<div class="brand-title">
-					<h2>Madial Group</h2>
-					<span class="brand-sub-title">Imprimerie</span>
-				</div>
+		{# ---------- En-tête de la barre latérale : logo ---------- #}
+		<div class="nav-header si-nav-header">
+			<a href="{{ path('app_home') }}" class="brand-logo si-logo-carte">
+				<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim" class="si-logo-complet">
+				<span class="si-logo-mini">SI</span>
 			</a>
 			<div class="nav-control">
 				<div class="hamburger">
@@ -62,17 +60,29 @@
 			</div>
 		</div>
 
-		{# ---------- En-tête ---------- #}
-		<div class="header border-bottom">
+		{# ---------- En-tête : fil d'Ariane, titre, recherche, compte ---------- #}
+		{% set sectionCourante = section_admin(routeCourante) %}
+		<div class="header si-header">
 			<div class="header-content">
 				<nav class="navbar navbar-expand">
 					<div class="collapse navbar-collapse justify-content-between">
-						<div class="header-left">
+						<div class="header-left si-titre-page">
+							{% if sectionCourante and routeCourante != 'app_home' %}
+								<div class="si-fil-ariane">{{ libelle_section_admin(sectionCourante) }} <span>›</span> {{ block('title')|striptags|trim }}</div>
+							{% endif %}
 							<div class="dashboard_bar">{% block page_title %}{{ block('title') }}{% endblock %}</div>
 						</div>
 						<ul class="navbar-nav header-right">
+							{% block header_actions %}{% endblock %}
+							<li class="nav-item si-recherche-item">
+								<form action="{{ path('app_recherche') }}" method="get" class="si-recherche" role="search">
+									<i class="fas fa-search"></i>
+									<input type="search" name="q" value="{{ app.request.query.get('q') }}" placeholder="Rechercher client, commande, facture…" aria-label="Recherche globale" data-raccourci-recherche autocomplete="off">
+									<kbd>Ctrl K</kbd>
+								</form>
+							</li>
 							<li class="nav-item dropdown notification_dropdown">
-								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
 									<i class="fa fa-bell"></i>
 									{% set nombreNotifs = nombre_notifications_generales() + mes_reclamations_a_notifier()|length %}
 									{% if nombreNotifs > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreNotifs }}</span>{% endif %}
@@ -102,22 +112,20 @@
 								</div>
 							</li>
 							<li class="nav-item dropdown notification_dropdown">
-								<a class="nav-link" href="{{ path('app_chat_index') }}" role="button">
+								<a class="nav-link" href="{{ path('app_chat_index') }}" role="button" title="Messagerie">
 									<i class="fa fa-comments"></i>
 									{% set nombreMessages = mes_conversations_non_lues() %}
 									{% if nombreMessages > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreMessages }}</span>{% endif %}
 								</a>
 							</li>
 							<li class="nav-item dropdown header-profile">
-								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-									<span class="avatar-initiales">{{ (app.user.employe.prenom|default(app.user.username)|slice(0, 1))|upper }}</span>
-									<div class="header-info ms-3">
-										<span class="fs-18 font-w500 mb-2">
-											{{ app.user.employe.prenom is defined and app.user.employe.prenom is not empty ? (app.user.employe.prenom ~ ' ' ~ app.user.employe.nom) : app.user.username }}
-										</span>
-									</div>
+								{% set nomAffiche = app.user.employe.prenom is defined and app.user.employe.prenom is not empty ? (app.user.employe.prenom ~ ' ' ~ app.user.employe.nom) : app.user.username %}
+								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ nomAffiche }}">
+									<span class="si-avatar">{{ (app.user.employe.prenom|default(app.user.username)|slice(0, 1) ~ app.user.employe.nom|default('')|slice(0, 1))|upper }}</span>
 								</a>
 								<div class="dropdown-menu dropdown-menu-end">
+									<span class="dropdown-item-text fw-semibold">{{ nomAffiche }}</span>
+									<div class="dropdown-divider"></div>
 									<a class="dropdown-item" href="{{ path('app_user_change_password') }}"><i class="fas fa-key text-primary"></i><span class="ms-2">Changer mon mot de passe</span></a>
 									<a class="dropdown-item" href="{{ path('app_logout') }}"><i class="fas fa-sign-out-alt text-danger"></i><span class="ms-2">Déconnexion</span></a>
 								</div>
@@ -149,7 +157,7 @@
 
 		<div class="footer">
 			<div class="copyright">
-				<p>Madial Group © {{ 'now'|date('Y') }}</p>
+				<p>Succès Imprim, un service de MDG © {{ 'now'|date('Y') }}</p>
 			</div>
 		</div>
 	</div>
@@ -161,6 +169,7 @@
 	{% block vendor_javascripts %}{% endblock %}
 	<script src="{{ asset('theme/js/custom.min.js') }}"></script>
 	<script src="{{ asset('theme/js/dlabnav-init.js') }}"></script>
+	<script src="{{ asset('js/admin.js') }}"></script>
 	{% block javascripts %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,300 @@
+/*
+ * Coque de l'admin Succes Imprim, d'apres les maquettes 20 a 41 :
+ * barre laterale bleu fonce, carte logo blanche, bouton rouge « + Nouveau »,
+ * menu en 6 entrees, en-tete avec fil d'Ariane, recherche Ctrl+K et avatar.
+ * Charge apres theme/css/style.css et css/charte.css.
+ */
+
+:root {
+  --nav-headbg: #0F4590;
+  --sidebar-bg: #0F4590;
+  --headerbg: #F3F5FA;
+  --si-fond: #F3F5FA;
+  --si-sidebar-haut: #0F4590;
+  --si-sidebar-bas: #0A2F66;
+  --si-carte-ombre: 0 6px 24px rgba(15, 69, 144, 0.07);
+}
+
+body {
+  background-color: var(--si-fond);
+}
+
+#main-wrapper {
+  background: var(--si-fond);
+}
+
+/* ---------- Barre laterale ---------- */
+
+.nav-header.si-nav-header {
+  background: var(--si-sidebar-haut);
+  padding: 1rem 1rem 0.5rem;
+}
+
+.si-nav-header .si-logo-carte {
+  background: #fff;
+  border-radius: 0.875rem;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.si-nav-header .si-logo-complet {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.si-nav-header .si-logo-mini {
+  display: none;
+  font-weight: 800;
+  color: var(--secondary);
+  font-size: 1.1rem;
+}
+
+.si-nav-header .nav-control .hamburger .line {
+  background: #fff;
+}
+
+.dlabnav.si-sidebar {
+  background: linear-gradient(180deg, var(--si-sidebar-haut) 0%, var(--si-sidebar-bas) 100%);
+  box-shadow: none;
+}
+
+.si-sidebar .si-nouveau {
+  padding: 1rem 1.25rem 0.75rem;
+}
+
+.si-sidebar .si-btn-nouveau {
+  background: var(--secondary);
+  border: 0;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 0.75rem;
+  padding: 0.8rem 1rem;
+  box-shadow: 0 8px 18px rgba(222, 16, 40, 0.35);
+}
+
+.si-sidebar .si-btn-nouveau:hover,
+.si-sidebar .si-btn-nouveau:focus {
+  background: #C00D21;
+  color: #fff;
+}
+
+.si-sidebar .si-btn-nouveau::after {
+  display: none;
+}
+
+.si-sidebar .si-nouveau {
+  position: relative;
+}
+
+.si-sidebar .si-nouveau .dropdown-menu {
+  left: 1.25rem;
+  right: 1.25rem;
+  width: auto !important;
+  min-width: 0;
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+.si-sidebar .si-nouveau .dropdown-item {
+  padding: 0.6rem 1rem;
+}
+
+body .si-sidebar .metismenu > li > a {
+  color: rgba(255, 255, 255, 0.82) !important;
+  background: transparent;
+  border-left: 3px solid transparent;
+  border-radius: 0.625rem;
+  margin: 0.125rem 1rem;
+  padding: 0.75rem 1rem !important;
+  font-size: 1rem !important;
+  width: calc(100% - 2rem);
+}
+
+body .si-sidebar .metismenu > li > a i {
+  color: rgba(255, 255, 255, 0.7) !important;
+  width: 1.5rem;
+}
+
+body .si-sidebar .metismenu > li > a:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff !important;
+}
+
+body .si-sidebar .metismenu > li.mm-active > a {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-left-color: var(--si-jaune);
+  color: #fff !important;
+  font-weight: 700;
+}
+
+body .si-sidebar .metismenu > li.mm-active > a i {
+  color: #fff !important;
+}
+
+body .si-sidebar .metismenu .has-arrow::after {
+  width: 0.45rem !important;
+  height: 0.45rem !important;
+  background: transparent !important;
+  border-style: solid !important;
+  border-width: 2px 2px 0 0 !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  border-radius: 0 !important;
+  right: 1.25rem !important;
+  transform: rotate(45deg) translateY(-50%) !important;
+}
+
+body .si-sidebar .metismenu .mm-active > .has-arrow::after,
+body .si-sidebar .metismenu .has-arrow[aria-expanded="true"]::after {
+  transform: rotate(135deg) translateY(-50%) !important;
+}
+
+body .si-sidebar .metismenu ul {
+  background: transparent !important;
+  padding: 0.25rem 0 0.5rem;
+}
+
+body .si-sidebar .metismenu ul a {
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-size: 0.9rem;
+  padding: 0.45rem 1rem 0.45rem 3.75rem !important;
+}
+
+body .si-sidebar .metismenu ul a::before {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+body .si-sidebar .metismenu ul a:hover,
+body .si-sidebar .metismenu ul a.mm-active {
+  color: #fff !important;
+  font-weight: 600;
+}
+
+/* Barre reduite (bouton hamburger) */
+.menu-toggle .si-nav-header .si-logo-complet {
+  display: none;
+}
+
+.menu-toggle .si-nav-header .si-logo-mini {
+  display: inline;
+}
+
+.menu-toggle .si-sidebar .si-nouveau {
+  padding: 0.75rem 0.5rem;
+}
+
+.menu-toggle .si-sidebar .si-btn-nouveau .nav-text {
+  display: none;
+}
+
+/* ---------- En-tete ---------- */
+
+.header.si-header {
+  background: var(--si-fond);
+  border-bottom: 0 !important;
+}
+
+.si-titre-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.si-fil-ariane {
+  font-size: 0.8rem;
+  color: #6B7A90;
+  margin-bottom: 0.15rem;
+}
+
+.si-fil-ariane span {
+  margin: 0 0.25rem;
+}
+
+.si-header .dashboard_bar {
+  color: #12213A;
+  font-weight: 700;
+}
+
+.si-recherche {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #E3E8F0;
+  border-radius: 0.75rem;
+  padding: 0 0.75rem;
+  height: 2.75rem;
+  width: 22rem;
+  box-shadow: 0 2px 8px rgba(15, 69, 144, 0.04);
+}
+
+.si-recherche i {
+  color: #8A97AB;
+}
+
+.si-recherche input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  flex: 1;
+  padding: 0 0.5rem;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.si-recherche kbd {
+  background: #F1F4F9;
+  color: #6B7A90;
+  border: 1px solid #E3E8F0;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.35rem;
+}
+
+.si-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--secondary), var(--si-magenta));
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 1199.98px) {
+  .si-recherche {
+    width: 14rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .si-recherche-item {
+    display: none;
+  }
+}
+
+/* ---------- Contenu : cartes blanches arrondies ---------- */
+
+.content-body {
+  background: var(--si-fond);
+}
+
+.content-body .card {
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: var(--si-carte-ombre);
+}
+
+.btn-danger,
+.btn-secondary {
+  background-color: var(--secondary);
+  border-color: var(--secondary);
+}

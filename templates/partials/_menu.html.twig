@@ -1,212 +1,162 @@
-{% macro item(route_active, prefixes, url, icone, texte) %}
-	{% set actif = false %}
-	{% for p in prefixes %}{% if route_active starts with p %}{% set actif = true %}{% endif %}{% endfor %}
-	<li class="{{ actif ? 'mm-active' }}">
-		<a href="{{ url }}" class="{{ actif ? 'mm-active' }}" aria-expanded="false">
-			<i class="{{ icone }}"></i>
-			<span class="nav-text">{{ texte }}</span>
-		</a>
-	</li>
+{#
+	Menu de l'admin en 6 entrees orientees taches (cahier des charges §6.1,
+	maquettes 20 a 41) : Accueil, Ventes, Atelier, Finances, Clients, Reglages.
+	L'entree active vient de section_admin() (src/Twig/NavigationExtension.php).
+#}
+{% macro lien(routeCourante, prefixe, url, texte) %}
+	{% set actif = routeCourante starts with prefixe %}
+	<li><a href="{{ url }}" class="{{ actif ? 'mm-active' }}">{{ texte }}</a></li>
 {% endmacro %}
 {% import _self as m %}
-<div class="dlabnav">
+{% set sectionActive = section_admin(routeCourante) %}
+<div class="dlabnav si-sidebar">
 	<div class="dlabnav-scroll">
+
+		{# ---------- « + Nouveau » toujours visible ---------- #}
+		<div class="si-nouveau dropdown">
+			<button type="button" class="btn si-btn-nouveau w-100 dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+				<i class="fas fa-plus"></i><span class="nav-text ms-2">Nouveau</span>
+			</button>
+			<ul class="dropdown-menu w-100">
+				{% if peutVoirDevis %}<li><a class="dropdown-item" href="{{ path('app_devis_new') }}"><i class="fas fa-file-signature me-2"></i>Devis</a></li>{% endif %}
+				{% if peutVoirCommandes %}<li><a class="dropdown-item" href="{{ path('app_commandes_new') }}"><i class="fas fa-shopping-cart me-2"></i>Commande</a></li>{% endif %}
+				{% if peutSaisirTresorerie %}<li><a class="dropdown-item" href="{{ path('app_mouvement_tresorerie_new') }}"><i class="fas fa-receipt me-2"></i>Dépense</a></li>{% endif %}
+				{% if peutVoirClients %}<li><a class="dropdown-item" href="{{ path('app_clients_index', {nouveau: 1}) }}"><i class="fas fa-user-plus me-2"></i>Client</a></li>{% endif %}
+			</ul>
+		</div>
+
 		<ul class="metismenu" id="menu">
 
-			{{ m.item(routeCourante, ['app_home'], path('app_home'), 'fas fa-home', 'Accueil') }}
-
-			{# ==========================================================
-			   VENTES : le parcours client du premier contact à la livraison
-			   ========================================================== #}
-			{% if peutVoirCommercial %}
-				<li class="{{ routeCourante starts with 'app_clients_' or routeCourante starts with 'app_devis_' or routeCourante starts with 'app_commandes_' or routeCourante starts with 'app_livraisons_' or routeCourante starts with 'app_bon_livraison_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-handshake"></i>
-						<span class="nav-text">Ventes</span>
-					</a>
-					<ul aria-expanded="false">
-						{% if peutVoirCommandes %}
-							<li><a href="{{ path('app_commandes_index') }}" class="{{ routeCourante starts with 'app_commandes_' ? 'mm-active' }}">Commandes</a></li>
-						{% endif %}
-						{% if peutVoirDevis %}
-							<li><a href="{{ path('app_devis_index') }}" class="{{ routeCourante starts with 'app_devis_' ? 'mm-active' }}">Devis</a></li>
-						{% endif %}
-						{% if peutVoirLivraison %}
-							<li><a href="{{ path('app_livraisons_index') }}" class="{{ routeCourante starts with 'app_livraisons_' ? 'mm-active' }}">Livraisons</a></li>
-						{% endif %}
-						{% if peutVoirClients %}
-							<li><a href="{{ path('app_clients_index') }}" class="{{ routeCourante starts with 'app_clients_' and routeCourante != 'app_clients_soldes' ? 'mm-active' }}">Clients</a></li>
-							{% if is_granted('ROLE_PAIEMENT_ENCAISSER') %}
-								<li><a href="{{ path('app_clients_soldes') }}" class="{{ routeCourante starts with 'app_clients_soldes' ? 'mm-active' }}">Soldes clients</a></li>
-							{% endif %}
-						{% endif %}
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ==========================================================
-			   PRODUCTION : l'atelier, du lancement à la sortie machine
-			   ========================================================== #}
-			{% if peutVoirProduction %}
-				<li class="{{ routeCourante starts with 'app_production_' or routeCourante starts with 'app_controle_pre_presse_' or routeCourante starts with 'app_consommables_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-industry"></i>
-						<span class="nav-text">Production</span>
-					</a>
-					<ul aria-expanded="false">
-						<li><a href="{{ path('app_production_index') }}" class="{{ routeCourante starts with 'app_production_index' ? 'mm-active' }}">File de production</a></li>
-						{% if peutVoirPrepresse %}
-							<li><a href="{{ path('app_controle_pre_presse_index') }}" class="{{ routeCourante starts with 'app_controle_pre_presse_' ? 'mm-active' }}">Contrôle pré-presse</a></li>
-						{% endif %}
-						<li><a href="{{ path('app_production_termines') }}" class="{{ routeCourante starts with 'app_production_termines' ? 'mm-active' }}">Travaux terminés</a></li>
-						<li><a href="{{ path('app_production_apercu') }}" class="{{ routeCourante starts with 'app_production_apercu' ? 'mm-active' }}">Aperçu global</a></li>
-						{% if peutGererProduction %}
-							<li><a href="{{ path('app_consommables_index') }}" class="{{ routeCourante starts with 'app_consommables_' ? 'mm-active' }}">Consommables</a></li>
-						{% endif %}
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ==========================================================
-			   STOCK & ACHATS : ce qui entre et sort du magasin
-			   ========================================================== #}
-			{% if peutVoirStocks %}
-				<li class="{{ routeCourante starts with 'app_stock_' or routeCourante starts with 'app_article_' or routeCourante starts with 'app_fournisseur_' or routeCourante starts with 'app_achat_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-boxes"></i>
-						<span class="nav-text">Stock &amp; achats</span>
-					</a>
-					<ul aria-expanded="false">
-						<li><a href="{{ path('app_stock_etat_index') }}" class="{{ routeCourante starts with 'app_stock_etat_' ? 'mm-active' }}">État du stock</a></li>
-						<li><a href="{{ path('app_article_index') }}" class="{{ routeCourante starts with 'app_article_' ? 'mm-active' }}">Articles</a></li>
-						<li><a href="{{ path('app_achat_index', {statut: 'demande'}) }}" class="{{ routeCourante starts with 'app_achat_' ? 'mm-active' }}">Achats demandés</a></li>
-						<li><a href="{{ path('app_achat_index', {statut: 'recu'}) }}">Achats reçus</a></li>
-						<li><a href="{{ path('app_fournisseur_index') }}" class="{{ routeCourante starts with 'app_fournisseur_' ? 'mm-active' }}">Fournisseurs</a></li>
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ==========================================================
-			   TRÉSORERIE : l'argent qui entre et sort de l'entreprise
-			   (séparé des statistiques : avant, "Gestion" entassait les
-			   deux et personne ne trouvait rien)
-			   ========================================================== #}
-			{% if peutVoirFactures or peutVoirPaiements or peutVoirTresorerie or peutVoirComptesTresorerie or peutVoirJournalCaisse or peutVoirRapprochement %}
-				<li class="{{ routeCourante starts with 'app_factures_' or routeCourante starts with 'app_paiements_' or routeCourante starts with 'app_compte_tresorerie_' or routeCourante starts with 'app_mouvement_tresorerie_' or routeCourante starts with 'app_decaissement_recurrent_' or routeCourante starts with 'app_journal_caisse_' or routeCourante starts with 'app_rapprochement_bancaire_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-wallet"></i>
-						<span class="nav-text">Trésorerie</span>
-					</a>
-					<ul aria-expanded="false">
-						{% if peutVoirPaiements %}
-							<li><a href="{{ path('app_paiements_index') }}" class="{{ routeCourante starts with 'app_paiements_' ? 'mm-active' }}">Paiements reçus</a></li>
-						{% endif %}
-						{% if peutVoirFactures %}
-							<li><a href="{{ path('app_factures_index') }}" class="{{ routeCourante starts with 'app_factures_' ? 'mm-active' }}">Factures</a></li>
-						{% endif %}
-						{% if peutVoirJournalCaisse %}
-							<li><a href="{{ path('app_journal_caisse_index') }}" class="{{ routeCourante starts with 'app_journal_caisse_' ? 'mm-active' }}">Journal de caisse</a></li>
-						{% endif %}
-						{% if peutVoirTresorerie %}
-							<li><a href="{{ path('app_mouvement_tresorerie_index') }}" class="{{ routeCourante starts with 'app_mouvement_tresorerie_' ? 'mm-active' }}">Mouvements &amp; décaissements</a></li>
-							{% if is_granted('ROLE_ADMIN') %}
-								<li><a href="{{ path('app_decaissement_recurrent_index') }}" class="{{ routeCourante starts with 'app_decaissement_recurrent_' ? 'mm-active' }}">Charges récurrentes</a></li>
-							{% endif %}
-						{% endif %}
-						{% if peutVoirComptesTresorerie %}
-							<li><a href="{{ path('app_compte_tresorerie_index') }}" class="{{ routeCourante starts with 'app_compte_tresorerie_' ? 'mm-active' }}">Comptes &amp; caisses</a></li>
-						{% endif %}
-						{% if peutVoirRapprochement %}
-							<li><a href="{{ path('app_rapprochement_bancaire_index') }}" class="{{ routeCourante starts with 'app_rapprochement_bancaire_' ? 'mm-active' }}">Rapprochement bancaire</a></li>
-						{% endif %}
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ==========================================================
-			   STATISTIQUES : sorti de "Gestion" pour être enfin visible
-			   ========================================================== #}
+			{# ---------- ACCUEIL ---------- #}
 			{% if peutVoirStatsGlobales %}
-				<li class="{{ routeCourante starts with 'app_statistiques_' ? 'mm-active' }}">
+				<li class="{{ sectionActive == 'accueil' ? 'mm-active' }}">
 					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-chart-line"></i>
-						<span class="nav-text">Statistiques</span>
+						<i class="fas fa-home"></i><span class="nav-text">Accueil</span>
 					</a>
 					<ul aria-expanded="false">
-						<li><a href="{{ path('app_statistiques_globales_index') }}" class="{{ routeCourante starts with 'app_statistiques_globales_' ? 'mm-active' }}">Vue globale</a></li>
-						<li><a href="{{ path('app_statistiques_commandes_index') }}" class="{{ routeCourante starts with 'app_statistiques_commandes_' ? 'mm-active' }}">Commandes</a></li>
-						<li><a href="{{ path('app_statistiques_tresorerie_index') }}" class="{{ routeCourante starts with 'app_statistiques_tresorerie_' ? 'mm-active' }}">Trésorerie</a></li>
-						<li><a href="{{ path('app_statistiques_clients_index') }}" class="{{ routeCourante starts with 'app_statistiques_clients_' ? 'mm-active' }}">Clients</a></li>
+						<li><a href="{{ path('app_home') }}" class="{{ routeCourante == 'app_home' ? 'mm-active' }}">Tableau de bord</a></li>
+						{{ m.lien(routeCourante, 'app_statistiques_globales_', path('app_statistiques_globales_index'), 'Statistiques globales') }}
+						{{ m.lien(routeCourante, 'app_statistiques_commandes_', path('app_statistiques_commandes_index'), 'Statistiques commandes') }}
+						{{ m.lien(routeCourante, 'app_statistiques_tresorerie_', path('app_statistiques_tresorerie_index'), 'Statistiques trésorerie') }}
+						{{ m.lien(routeCourante, 'app_statistiques_clients_', path('app_statistiques_clients_index'), 'Statistiques clients') }}
+					</ul>
+				</li>
+			{% else %}
+				<li class="{{ sectionActive == 'accueil' ? 'mm-active' }}">
+					<a href="{{ path('app_home') }}" class="{{ sectionActive == 'accueil' ? 'mm-active' }}" aria-expanded="false">
+						<i class="fas fa-home"></i><span class="nav-text">Accueil</span>
+					</a>
+				</li>
+			{% endif %}
+
+			{# ---------- VENTES : du devis a la livraison ---------- #}
+			{% if peutVoirDevis or peutVoirCommandes or peutVoirLivraison %}
+				<li class="{{ sectionActive == 'ventes' ? 'mm-active' }}">
+					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+						<i class="fas fa-handshake"></i><span class="nav-text">Ventes</span>
+					</a>
+					<ul aria-expanded="false">
+						{% if peutVoirDevis %}{{ m.lien(routeCourante, 'app_devis_', path('app_devis_index'), 'Devis') }}{% endif %}
+						{% if peutVoirCommandes %}{{ m.lien(routeCourante, 'app_commandes_', path('app_commandes_index'), 'Commandes') }}{% endif %}
+						{% if peutVoirLivraison %}{{ m.lien(routeCourante, 'app_livraisons_', path('app_livraisons_index'), 'Livraisons') }}{% endif %}
 					</ul>
 				</li>
 			{% endif %}
 
-			{# ==========================================================
-			   CATALOGUE : tout ce qui décrit ce qu'on vend et fabrique
-			   (séparé des vrais paramètres généraux)
-			   ========================================================== #}
-			{% if peutVoirParametres %}
-				<li class="{{ routeCourante starts with 'app_categorie_produit_' or routeCourante starts with 'app_produits_' or routeCourante starts with 'app_produit_configuration_' or routeCourante starts with 'app_type_impression_' or routeCourante starts with 'app_support_' or routeCourante starts with 'app_format_' or routeCourante starts with 'app_finition_' or routeCourante starts with 'app_machines_' or routeCourante starts with 'app_lot_etiquette_' ? 'mm-active' }}">
+			{# ---------- ATELIER : prepresse, production, stock, machines ---------- #}
+			{% if peutVoirProduction or peutVoirStocks %}
+				<li class="{{ sectionActive == 'atelier' ? 'mm-active' }}">
 					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-swatchbook"></i>
-						<span class="nav-text">Catalogue</span>
+						<i class="fas fa-industry"></i><span class="nav-text">Atelier</span>
 					</a>
 					<ul aria-expanded="false">
-						<li><a href="{{ path('app_produits_index') }}" class="{{ routeCourante starts with 'app_produits_' ? 'mm-active' }}">Produits</a></li>
-						<li><a href="{{ path('app_categorie_produit_index') }}" class="{{ routeCourante starts with 'app_categorie_produit_' ? 'mm-active' }}">Catégories</a></li>
-						<li><a href="{{ path('app_produit_configuration_index') }}" class="{{ routeCourante starts with 'app_produit_configuration_' ? 'mm-active' }}">Configuration produit</a></li>
-						<li><a href="{{ path('app_type_impression_index') }}" class="{{ routeCourante starts with 'app_type_impression_' ? 'mm-active' }}">Types d'impression</a></li>
-						<li><a href="{{ path('app_support_index') }}" class="{{ routeCourante starts with 'app_support_' ? 'mm-active' }}">Supports</a></li>
-						<li><a href="{{ path('app_format_index') }}" class="{{ routeCourante starts with 'app_format_' ? 'mm-active' }}">Formats</a></li>
-						<li><a href="{{ path('app_finition_index') }}" class="{{ routeCourante starts with 'app_finition_' ? 'mm-active' }}">Finitions</a></li>
-						<li><a href="{{ path('app_machines_index') }}" class="{{ routeCourante starts with 'app_machines_' ? 'mm-active' }}">Machines</a></li>
-						<li><a href="{{ path('app_lot_etiquette_index') }}" class="{{ routeCourante starts with 'app_lot_etiquette_' ? 'mm-active' }}">Lots d'étiquettes</a></li>
+						{% if peutVoirProduction %}
+							{{ m.lien(routeCourante, 'app_production_index', path('app_production_index'), 'File de production') }}
+							{% if peutVoirPrepresse %}{{ m.lien(routeCourante, 'app_controle_pre_presse_', path('app_controle_pre_presse_index'), 'Prépresse et BAT') }}{% endif %}
+							{{ m.lien(routeCourante, 'app_production_termines', path('app_production_termines'), 'Travaux terminés') }}
+							{{ m.lien(routeCourante, 'app_production_apercu', path('app_production_apercu'), 'Aperçu global') }}
+							{% if peutGererProduction %}{{ m.lien(routeCourante, 'app_consommables_', path('app_consommables_index'), 'Consommables') }}{% endif %}
+						{% endif %}
+						{% if peutVoirStocks %}
+							{{ m.lien(routeCourante, 'app_stock_etat_', path('app_stock_etat_index'), 'Stock') }}
+							{{ m.lien(routeCourante, 'app_article_', path('app_article_index'), 'Articles') }}
+							{{ m.lien(routeCourante, 'app_achat_', path('app_achat_index', {statut: 'demande'}), 'Achats') }}
+							{{ m.lien(routeCourante, 'app_fournisseur_', path('app_fournisseur_index'), 'Fournisseurs') }}
+							{{ m.lien(routeCourante, 'app_machines_', path('app_machines_index'), 'Machines') }}
+							{{ m.lien(routeCourante, 'app_lot_etiquette_', path('app_lot_etiquette_index'), "Lots d'étiquettes") }}
+						{% endif %}
 					</ul>
 				</li>
 			{% endif %}
 
-			{# ==========================================================
-			   ÉQUIPE : les personnes, pas les paramètres techniques
-			   ========================================================== #}
-			{% if peutVoirRh %}
-				<li class="{{ routeCourante starts with 'app_employes_' or routeCourante starts with 'app_user_' or routeCourante starts with 'app_journal_activite_' ? 'mm-active' }}">
+			{# ---------- FINANCES : l'argent qui entre et qui sort ---------- #}
+			{% if peutVoirFactures or peutVoirPaiements or peutVoirTresorerie or peutVoirComptesTresorerie or peutVoirJournalCaisse or peutVoirRapprochement %}
+				<li class="{{ sectionActive == 'finances' ? 'mm-active' }}">
 					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-users"></i>
-						<span class="nav-text">Équipe</span>
+						<i class="fas fa-wallet"></i><span class="nav-text">Finances</span>
 					</a>
 					<ul aria-expanded="false">
-						<li><a href="{{ path('app_employes_index') }}" class="{{ routeCourante starts with 'app_employes_index' ? 'mm-active' }}">Employés</a></li>
-						<li><a href="{{ path('app_employes_new') }}" class="{{ routeCourante starts with 'app_employes_new' ? 'mm-active' }}">Nouvel employé</a></li>
-						<li><a href="{{ path('app_user_index') }}" class="{{ routeCourante starts with 'app_user_index' ? 'mm-active' }}">Comptes &amp; accès</a></li>
-						<li><a href="{{ path('app_journal_activite_index') }}" class="{{ routeCourante starts with 'app_journal_activite_' ? 'mm-active' }}">Journal d'activité</a></li>
+						{% if peutVoirPaiements %}{{ m.lien(routeCourante, 'app_paiements_', path('app_paiements_index'), 'Encaissements') }}{% endif %}
+						{% if peutVoirFactures %}{{ m.lien(routeCourante, 'app_factures_', path('app_factures_index'), 'Factures') }}{% endif %}
+						{% if peutVoirClients and is_granted('ROLE_PAIEMENT_ENCAISSER') %}{{ m.lien(routeCourante, 'app_clients_soldes', path('app_clients_soldes'), 'Soldes clients') }}{% endif %}
+						{% if peutVoirJournalCaisse %}{{ m.lien(routeCourante, 'app_journal_caisse_', path('app_journal_caisse_index'), 'Journal de caisse') }}{% endif %}
+						{% if peutVoirTresorerie %}
+							{{ m.lien(routeCourante, 'app_mouvement_tresorerie_', path('app_mouvement_tresorerie_index'), 'Mouvements et dépenses') }}
+							{% if is_granted('ROLE_ADMIN') %}{{ m.lien(routeCourante, 'app_decaissement_recurrent_', path('app_decaissement_recurrent_index'), 'Charges récurrentes') }}{% endif %}
+						{% endif %}
+						{% if peutVoirComptesTresorerie %}{{ m.lien(routeCourante, 'app_compte_tresorerie_', path('app_compte_tresorerie_index'), 'Comptes et caisses') }}{% endif %}
+						{% if peutVoirRapprochement %}{{ m.lien(routeCourante, 'app_rapprochement_bancaire_', path('app_rapprochement_bancaire_index'), 'Rapprochement bancaire') }}{% endif %}
 					</ul>
 				</li>
 			{% endif %}
 
-			{{ m.item(routeCourante, ['app_reclamation_'], path('app_reclamation_index'), 'fas fa-exclamation-circle', 'Réclamations') }}
+			{# ---------- CLIENTS : fiches, reclamations, communications ---------- #}
+			<li class="{{ sectionActive == 'clients' ? 'mm-active' }}">
+				<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+					<i class="fas fa-users"></i><span class="nav-text">Clients</span>
+				</a>
+				<ul aria-expanded="false">
+					{% if peutVoirClients %}
+						<li><a href="{{ path('app_clients_index') }}" class="{{ routeCourante starts with 'app_clients_' and not (routeCourante starts with 'app_clients_solde') ? 'mm-active' }}">Fiches clients</a></li>
+					{% endif %}
+					{{ m.lien(routeCourante, 'app_reclamation_', path('app_reclamation_index'), 'Réclamations') }}
+					{% if is_granted('ROLE_ADMIN') %}
+						{{ m.lien(routeCourante, 'app_campagne_', path('app_campagne_index'), 'Campagnes SMS et WhatsApp') }}
+						{{ m.lien(routeCourante, 'app_modele_message_', path('app_modele_message_index'), 'Modèles de messages') }}
+						{{ m.lien(routeCourante, 'app_regle_rappel_paiement_', path('app_regle_rappel_paiement_index'), 'Rappels de paiement') }}
+					{% endif %}
+				</ul>
+			</li>
 
-			{{ m.item(routeCourante, ['app_chat_'], path('app_chat_index'), 'fas fa-comments', 'Messagerie') }}
-
-			{# ==========================================================
-			   PARAMÈTRES : réglages généraux, en bas, à leur place
-			   ========================================================== #}
-			{% if is_granted('ROLE_ADMIN') %}
-				<li class="{{ routeCourante starts with 'app_fichier_dossier_partage' or routeCourante starts with 'app_parametres_paiement_' ? 'mm-active' }}">
+			{# ---------- REGLAGES : catalogue, equipe, parametres ---------- #}
+			{% if peutVoirParametres or peutVoirRh %}
+				<li class="{{ sectionActive == 'reglages' ? 'mm-active' }}">
 					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-cog"></i>
-						<span class="nav-text">Paramètres</span>
+						<i class="fas fa-cog"></i><span class="nav-text">Réglages</span>
 					</a>
 					<ul aria-expanded="false">
-						<li><a href="{{ path('app_parametres_paiement_edit') }}" class="{{ routeCourante starts with 'app_parametres_paiement_' ? 'mm-active' }}">Paiement</a></li>
-						<li><a href="{{ path('app_fichier_dossier_partage') }}" class="{{ routeCourante starts with 'app_fichier_dossier_partage' ? 'mm-active' }}">Dossier partagé</a></li>
+						{% if peutVoirParametres %}
+							{{ m.lien(routeCourante, 'app_produits_', path('app_produits_index'), 'Produits') }}
+							{{ m.lien(routeCourante, 'app_categorie_produit_', path('app_categorie_produit_index'), 'Catégories') }}
+							{{ m.lien(routeCourante, 'app_produit_configuration_', path('app_produit_configuration_index'), 'Configurations produit') }}
+							{{ m.lien(routeCourante, 'app_type_impression_', path('app_type_impression_index'), "Types d'impression") }}
+							{{ m.lien(routeCourante, 'app_support_', path('app_support_index'), 'Supports') }}
+							{{ m.lien(routeCourante, 'app_format_', path('app_format_index'), 'Formats') }}
+							{{ m.lien(routeCourante, 'app_finition_', path('app_finition_index'), 'Finitions') }}
+						{% endif %}
+						{% if peutVoirRh %}
+							{{ m.lien(routeCourante, 'app_employes_', path('app_employes_index'), 'Employés') }}
+							{{ m.lien(routeCourante, 'app_user_', path('app_user_index'), 'Équipe et droits') }}
+							{{ m.lien(routeCourante, 'app_journal_activite_', path('app_journal_activite_index'), "Journal d'activité") }}
+						{% endif %}
+						{% if peutVoirParametres %}
+							{{ m.lien(routeCourante, 'app_parametres_paiement_', path('app_parametres_paiement_edit'), 'Paramètres de paiement') }}
+							{{ m.lien(routeCourante, 'app_fichier_dossier_partage', path('app_fichier_dossier_partage'), 'Dossier partagé') }}
+						{% endif %}
 					</ul>
 				</li>
 			{% endif %}
 
 		</ul>
-
-		<div class="copyright">
-			<p><strong>Madial Group</strong></p>
-		</div>
 	</div>
 </div>

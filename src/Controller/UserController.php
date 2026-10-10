@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Repository\EmployesRepository;
+use App\Repository\RoleUtilisateurRepository;
 use App\Repository\UserRepository;
 
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,6 +25,31 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/user')]
 final class UserController extends AbstractController
 {
+    public function __construct(
+        private readonly RoleUtilisateurRepository $roleUtilisateurRepository,
+    ) {
+    }
+
+    /**
+     * Ancien ecran (profil + cases) : le profil choisi devient le role
+     * de base, les informations sensibles cochees en plus deviennent
+     * des droits ajoutes pour la personne.
+     *
+     * @param list<string> $roles
+     */
+    private function appliquerRoles(User $user, array $roles): void
+    {
+        $user->setRoles($roles);
+        $profil = $this->roleUtilisateurRepository->findOneBy(['code' => $user->isAdmin() ? User::ROLE_ADMIN : ($user->getRoles()[0] ?? '')]);
+
+        if (null === $profil) {
+            return;
+        }
+
+        $user->setProfil($profil);
+        $user->definirDroits(array_merge($profil->getDroits(), $roles));
+    }
+
     /*
      * ============================================================
      * LISTE DES UTILISATEURS
@@ -369,9 +395,7 @@ final class UserController extends AbstractController
          * Si ROLE_ADMIN est présent,
          * elle conserve seulement ROLE_ADMIN.
          */
-        $user->setRoles(
-            $rolesValides
-        );
+        $this->appliquerRoles($user, $rolesValides);
 
 
         if ($actif) {
@@ -735,9 +759,7 @@ final class UserController extends AbstractController
          * ========================================================
          */
 
-        $user->setRoles(
-            $rolesValides
-        );
+        $this->appliquerRoles($user, $rolesValides);
 
 
         if (

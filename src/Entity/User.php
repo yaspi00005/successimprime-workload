@@ -318,6 +318,23 @@ class User implements
 
 
     /*
+     * Role de base (Reglages, Roles et droits) et les droits ajoutes ou
+     * retires pour cette personne seulement (fiche utilisateur, U02).
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?RoleUtilisateur $profil = null;
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $droitsAjoutes = [];
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $droitsRetires = [];
+
+
+    /*
      * ============================================================
      * MOT DE PASSE HASHÉ
      * ============================================================
@@ -698,6 +715,15 @@ class User implements
 
 
         /*
+         * Hors administrateur, les droits viennent du role de base,
+         * plus ceux ajoutes, moins ceux retires pour la personne.
+         */
+        if (!in_array(self::ROLE_ADMIN, $roles, true)) {
+            $roles = array_merge($roles, $this->getDroitsEffectifs());
+        }
+
+
+        /*
          * Tout utilisateur authentifié possède
          * automatiquement ROLE_USER.
          */
@@ -955,6 +981,102 @@ class User implements
 
 
         return $this;
+    }
+
+
+    public function getProfil(): ?RoleUtilisateur
+    {
+        return $this->profil;
+    }
+
+    /**
+     * Change le role de base. Le role Symfony du profil remplace
+     * l'ancien dans la colonne roles, les informations sensibles
+     * cochees a part sont gardees.
+     */
+    public function setProfil(?RoleUtilisateur $profil): static
+    {
+        $this->profil = $profil;
+
+        if (null !== $profil) {
+            $this->roles = $profil->estAdmin()
+                ? [self::ROLE_ADMIN]
+                : [$profil->getCode()];
+            $this->dateUpdate = new \DateTimeImmutable();
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getDroitsAjoutes(): array
+    {
+        return \App\Security\Droits::filtrer($this->droitsAjoutes);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getDroitsRetires(): array
+    {
+        return \App\Security\Droits::filtrer($this->droitsRetires);
+    }
+
+    /**
+     * Enregistre les droits coches sur la fiche : ce qui differe du
+     * role de base devient un droit ajoute ou retire.
+     *
+     * @param array<mixed> $droitsCoches
+     */
+    public function definirDroits(array $droitsCoches): static
+    {
+        $coches = \App\Security\Droits::filtrer($droitsCoches);
+        $duRole = $this->profil?->getDroits() ?? [];
+
+        // Les cases ne vivent plus dans la colonne roles (ancien ecran).
+        $this->roles = array_values(array_diff($this->roles, array_keys(\App\Security\Droits::catalogue())));
+        $this->droitsAjoutes = array_values(array_diff($coches, $duRole));
+        $this->droitsRetires = array_values(array_diff($duRole, $coches));
+        $this->dateUpdate = new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getDroitsEffectifs(): array
+    {
+        if ($this->profil?->estAdmin() || in_array(self::ROLE_ADMIN, $this->roles, true)) {
+            return array_keys(\App\Security\Droits::catalogue());
+        }
+
+        $droits = array_merge($this->profil?->getDroits() ?? [], $this->getDroitsAjoutes());
+
+        return \App\Security\Droits::filtrer(array_diff($droits, $this->getDroitsRetires()));
+    }
+
+    /**
+     * Etat d'un droit pour la legende de la fiche : herite du role,
+     * ajoute ou retire pour la personne, ou non accorde.
+     */
+    public function etatDroit(string $droit): string
+    {
+        $duRole = $this->profil?->aLeDroit($droit) ?? false;
+
+        return match (true) {
+            $duRole && in_array($droit, $this->getDroitsRetires(), true) => 'retire',
+            $duRole => 'herite',
+            in_array($droit, $this->getDroitsAjoutes(), true) => 'ajoute',
+            default => 'non',
+        };
+    }
+
+    public function nombreDroitsPersonnalises(): int
+    {
+        return count($this->getDroitsAjoutes()) + count($this->getDroitsRetires());
     }
 
 

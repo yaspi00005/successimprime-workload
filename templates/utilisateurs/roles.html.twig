@@ -1,0 +1,86 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rôles et droits{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<button type="button" class="btn btn-danger btn-sm si-btn-entete" data-bs-toggle="collapse" data-bs-target="#nouveau-role" aria-expanded="false"><i class="fas fa-plus me-1"></i>Nouveau rôle</button>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<form method="post" id="nouveau-role" class="collapse card si-bloc">
+		<input type="hidden" name="_token" value="{{ csrf_token('roles-et-droits') }}">
+		<div class="row g-2 align-items-end">
+			<div class="col-md-5">
+				<label class="si-libelle-champ" for="nouveau_nom">Nom du rôle</label>
+				<input type="text" name="nouveau_nom" id="nouveau_nom" class="form-control form-control-sm" maxlength="80" placeholder="Comptable, Lecture seule…" required>
+			</div>
+			<div class="col-md-4">
+				<label class="si-libelle-champ" for="copier">Partir des droits de</label>
+				<select name="copier" id="copier" class="form-select form-select-sm">
+					<option value="">Aucun droit</option>
+					{% for role in roles|filter(r => not r.estAdmin) %}
+						<option value="{{ role.id }}">{{ role.nom }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div class="col-md-3">
+				<button type="submit" class="btn btn-danger btn-sm w-100">Créer le rôle</button>
+			</div>
+		</div>
+	</form>
+
+	<form method="post" class="card si-bloc si-roles">
+		<input type="hidden" name="_token" value="{{ csrf_token('roles-et-droits') }}">
+		<div class="table-responsive">
+			<table class="table si-table si-matrice-roles align-middle mb-0">
+				<thead>
+					<tr>
+						<th>Droit</th>
+						{% for role in roles %}
+							<th class="text-center">
+								{{ role.nom }}
+								<small class="d-block text-muted fw-normal">{{ personnes[role.id] ?? 0 }} pers.</small>
+							</th>
+						{% endfor %}
+					</tr>
+				</thead>
+				<tbody>
+					{% for groupe, droits in droitsParGroupe %}
+						<tr class="si-ligne-groupe"><th colspan="{{ roles|length + 1 }}">{{ groupe }}</th></tr>
+						{% for code, droit in droits %}
+							<tr>
+								<td>
+									<strong>{{ droit.libelle }}</strong>
+									<small class="d-block text-muted">{{ droit.detail }}</small>
+								</td>
+								{% for role in roles %}
+									<td class="text-center">
+										<input type="checkbox" class="form-check-input" name="droits[{{ role.id }}][]" value="{{ code }}" {{ role.aLeDroit(code) ? 'checked' }} {{ role.estAdmin ? 'disabled' }} aria-label="{{ droit.libelle }} pour {{ role.nom }}">
+									</td>
+								{% endfor %}
+							</tr>
+						{% endfor %}
+					{% endfor %}
+					<tr class="si-ligne-groupe"><th colspan="{{ roles|length + 1 }}">Administration</th></tr>
+					<tr>
+						<td>
+							<strong>Stock, achats, réglages, utilisateurs</strong>
+							<small class="d-block text-muted">toujours réservé à l'administrateur</small>
+						</td>
+						{% for role in roles %}
+							<td class="text-center"><input type="checkbox" class="form-check-input" {{ role.estAdmin ? 'checked' }} disabled aria-label="Administration pour {{ role.nom }}"></td>
+						{% endfor %}
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<small class="text-muted mt-3">Cocher ou décocher une case modifie le rôle pour toutes les personnes qui l'ont. Pour une seule personne, passez par sa fiche. Chaque changement est gardé dans le journal (qui, quand, avant et après).</small>
+
+		<div class="si-barre-enregistrer">
+			<a href="{{ path('app_utilisateurs_index') }}" class="btn si-btn-discret">Retour</a>
+			<button type="submit" class="btn btn-danger"><i class="fas fa-save me-1"></i>Enregistrer les rôles</button>
+		</div>
+	</form>
+{% endblock %}

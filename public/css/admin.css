@@ -1223,3 +1223,295 @@ body .si-sidebar .metismenu ul a.mm-active {
     content: none;
   }
 }
+
+/* ================================================================
+   Utilisateurs et droits (maquettes U01, U02, U03, U06)
+   ================================================================ */
+
+.si-utilisateurs-tete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.si-utilisateurs-tete .si-onglets {
+  margin-bottom: 0;
+}
+
+.si-recherche-liste input {
+  min-width: 15rem;
+}
+
+.si-personne {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: inherit;
+}
+
+.si-personne small {
+  font-size: 0.75rem;
+}
+
+.si-initiales {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.si-initiales-grand {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.si-initiales-0 { background: #0F4590; }
+.si-initiales-1 { background: #E30613; }
+.si-initiales-2 { background: #F06A35; }
+.si-initiales-3 { background: #E04A9B; }
+.si-initiales-4 { background: #1F2937; }
+.si-initiales-5 { background: #2E9BDA; }
+
+.si-ligne-eteinte td {
+  opacity: 0.55;
+}
+
+/* Interrupteur vert de la colonne Actif */
+.si-interrupteur {
+  position: relative;
+  display: inline-block;
+  width: 2.6rem;
+  height: 1.4rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.si-interrupteur input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.si-interrupteur span {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  background: #D5DBE5;
+  transition: background 0.15s;
+  pointer-events: none;
+}
+
+.si-interrupteur span::after {
+  content: '';
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s;
+}
+
+.si-interrupteur input:checked + span {
+  background: #16A34A;
+}
+
+.si-interrupteur input:checked + span::after {
+  transform: translateX(1.2rem);
+}
+
+.si-interrupteur input:focus-visible + span {
+  outline: 2px solid #0F4590;
+  outline-offset: 2px;
+}
+
+.si-interrupteur input:disabled + span {
+  opacity: 0.6;
+}
+
+/* Fiche utilisateur */
+.si-carte-personne {
+  text-align: left;
+}
+
+.si-libelle-champ {
+  display: block;
+  font-size: 0.75rem;
+  color: #6B7A90;
+  margin-bottom: 0.2rem;
+}
+
+.si-infos dt {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #6B7A90;
+}
+
+.si-infos dd {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.si-legende-droits {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.si-legende-droits li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.si-case {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border: 2px solid #C5CEDB;
+}
+
+.si-case-herite { background: #5B8DEF; border-color: #5B8DEF; }
+.si-case-ajoute { background: #F06A35; border-color: #F06A35; }
+.si-case-retire { border-color: #E30613; }
+
+.si-liste-droits {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.si-liste-droits li + li {
+  border-top: 1px solid #EEF1F6;
+}
+
+.si-droit {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.si-droit > span:first-child {
+  flex: 1;
+}
+
+.si-droit-etat {
+  font-size: 0.7rem;
+  color: #6B7A90;
+  white-space: nowrap;
+}
+
+.si-case-droit {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  accent-color: #5B8DEF;
+}
+
+.si-droit-ajoute .si-case-droit { accent-color: #F06A35; }
+.si-droit-ajoute .si-droit-etat { color: #F06A35; font-weight: 600; }
+.si-droit-retire .si-droit-etat { color: #E30613; font-weight: 600; }
+.si-droit-retire .si-case-droit { outline: 2px solid #E30613; outline-offset: 1px; border-radius: 0.2rem; }
+.si-droits-admin .si-droit { cursor: default; }
+
+.si-historique-droits {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.si-historique-droits li {
+  padding: 0.4rem 0;
+  border-top: 1px solid #EEF1F6;
+}
+
+.si-historique-droits li span {
+  display: block;
+  font-size: 0.75rem;
+}
+
+/* Tableau des roles */
+.si-matrice-roles th,
+.si-matrice-roles td {
+  white-space: nowrap;
+}
+
+.si-matrice-roles td:first-child {
+  white-space: normal;
+  min-width: 13rem;
+}
+
+.si-matrice-roles .si-ligne-groupe th {
+  background: #F3F5FA;
+  color: #0F4590;
+  font-size: 0.75rem;
+  text-transform: none;
+}
+
+.si-matrice-roles .form-check-input {
+  width: 1.15rem;
+  height: 1.15rem;
+  float: none;
+  margin: 0;
+}
+
+@media (max-width: 767.98px) {
+  .si-recherche-liste,
+  .si-recherche-liste input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .si-utilisateurs tr[data-lien] {
+    cursor: pointer;
+  }
+
+  .si-droit-etat {
+    display: none;
+  }
+}
+
+.si-btn-discret {
+  background: #EEF3FB;
+  color: #0F4590;
+  border: 0;
+  font-weight: 600;
+}
+
+.si-btn-discret:hover,
+.si-btn-discret:focus {
+  background: #DCE7F7;
+  color: #0F4590;
+}
+
+@media (max-width: 767.98px) {
+  /* U06 : les chiffres d'abord sur telephone */
+  .si-fiche-utilisateur .js-droits > div:last-child {
+    order: -1;
+  }
+}

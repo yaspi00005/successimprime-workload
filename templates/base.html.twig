@@ -22,7 +22,7 @@
 {% set peutVoirComptesTresorerie = is_granted('ROLE_ADMIN') %}
 {% set peutVoirRapprochement = is_granted('ROLE_RAPPROCHEMENT_BANCAIRE') %}
 {% set peutVoirStatsGlobales = is_granted('ROLE_STATS_GLOBAL') %}
-{% set peutVoirMesStats = is_granted('ROLE_CAISSE_COMMANDE') or is_granted('ROLE_ADMIN') %}
+{% set peutVoirMesStats = is_granted('ROLE_STATS_PERSO') %}
 {% set peutVoirGestion = peutVoirFactures or peutVoirPaiements or peutVoirTresorerie or peutVoirComptesTresorerie or peutVoirJournalCaisse or peutVoirRapprochement or peutVoirMesStats or peutVoirStatsGlobales %}
 
 {% set peutVoirRh = is_granted('ROLE_ADMIN') %}

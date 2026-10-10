@@ -66,6 +66,7 @@ security:
 
             - ROLE_LIVRAISON
             - ROLE_STATS_GLOBAL
+            - ROLE_STATS_PERSO
             - ROLE_STATS_VENTES
             - ROLE_COUT_MARGE
             - ROLE_RH
@@ -74,49 +75,10 @@ security:
             
 
 
-        ROLE_CAISSE_COMMANDE:
-            - ROLE_USER
-
-            - ROLE_CLIENT
-            - ROLE_DEVIS
-            - ROLE_COMMANDE
-            - ROLE_FACTURE
-
-            - ROLE_PAIEMENT_VOIR
-            - ROLE_PAIEMENT_ENCAISSER
-
-            - ROLE_TRESORERIE_VOIR
-            - ROLE_TRESORERIE_SAISIR
-            - ROLE_TRESORERIE_TRANSFERER
-
-            - ROLE_JOURNAL_CAISSE
-
-        # Informations sensibles (ROLE_STATS_GLOBAL, ROLE_STATS_VENTES,
-        # ROLE_COUT_MARGE, ROLE_PAIEMENT_VOIR) : cochees une par une dans
-        # la gestion des utilisateurs, pas heritees du profil. Seule la
-        # caisse garde toujours les paiements, son metier.
-
-
-        ROLE_GRAPHISTE:
-            - ROLE_USER
-            - ROLE_CLIENT
-            - ROLE_DEVIS
-            - ROLE_COMMANDE
-            - ROLE_FACTURE
-            - ROLE_PREPRESSE
-            - ROLE_PRODUCTION_VOIR
-            - ROLE_PRODUCTION_GERER
-
-
-        ROLE_PRODUCTION:
-            - ROLE_USER
-            - ROLE_PRODUCTION_VOIR
-            - ROLE_PRODUCTION_GERER
-
-
-        ROLE_LIVREUR:
-            - ROLE_USER
-            - ROLE_LIVRAISON
+        # Les autres roles (caisse, graphiste, production, livreur et
+        # ceux crees dans Reglages, Roles et droits) n'heritent de rien
+        # ici : leurs droits sont en base (role_utilisateur), plus ou
+        # moins ceux coches pour chaque personne. Voir User::getRoles().
 
     access_control:
 
@@ -267,7 +229,7 @@ security:
 
         - {
             path: ^/mes-statistiques,
-            roles: ROLE_CAISSE_COMMANDE
+            roles: ROLE_STATS_PERSO
         }
 
 

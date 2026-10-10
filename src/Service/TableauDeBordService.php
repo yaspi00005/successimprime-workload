@@ -44,9 +44,10 @@ final class TableauDeBordService
     }
 
     /**
-     * CA, encaisse et solde du mois en cours, compares au meme nombre
-     * de jours du mois precedent, avec 8 semaines d'historique pour la
-     * courbe de tendance.
+     * Indicateurs du mois en cours (docs/indicateurs.md, section 1) : CA
+     * facture, encaisse, taux d'encaissement et solde, compares au meme
+     * nombre de jours du mois precedent et du meme mois l'an dernier, avec
+     * 8 semaines d'historique pour la courbe de tendance.
      *
      * @return array<string, mixed>
      */
@@ -54,27 +55,28 @@ final class TableauDeBordService
     {
         $debutMois = $maintenant->modify('first day of this month')->setTime(0, 0);
         $debutMoisPrecedent = $debutMois->modify('-1 month');
-        $finComparaison = $maintenant->modify('-1 month');
+        $debutAnPasse = $debutMois->modify('-1 year');
         $debutSerie = $maintenant->setTime(0, 0)->modify('monday this week')->modify('-7 weeks');
 
-        $ventes = $this->ventesDepuis(min($debutSerie, $debutMoisPrecedent));
+        $factures = $this->facturesDepuis(min($debutSerie, $debutAnPasse));
         $encaissements = $this->mouvementsDepuis(min($debutSerie, $debutMoisPrecedent), MouvementTresorerie::TYPE_ENCAISSEMENT);
         $decaissements = $this->mouvementsDepuis($debutMois, MouvementTresorerie::TYPE_DECAISSEMENT);
 
-        $caMois = self::somme($ventes, $debutMois, $maintenant);
-        $caComparaison = self::somme($ventes, $debutMoisPrecedent, $finComparaison);
+        $caMois = self::somme($factures, $debutMois, $maintenant);
         $encaisseMois = self::somme($encaissements, $debutMois, $maintenant);
         $decaisseMois = self::somme($decaissements, $debutMois, $maintenant);
 
         return [
             'ca' => [
                 'valeur' => $caMois,
-                'variation' => self::variation($caMois, $caComparaison),
-                'courbe' => self::pointsCourbe(self::serieHebdomadaire($ventes, $debutSerie, 8)),
+                'variation' => self::variation($caMois, self::somme($factures, $debutMoisPrecedent, $maintenant->modify('-1 month'))),
+                'variationAnPasse' => self::variation($caMois, self::somme($factures, $debutAnPasse, $maintenant->modify('-1 year'))),
+                'courbe' => self::pointsCourbe(self::serieHebdomadaire($factures, $debutSerie, 8)),
             ],
             'encaisse' => [
                 'valeur' => $encaisseMois,
-                'partDuCa' => $caMois > 0 ? (int) round($encaisseMois * 100 / $caMois) : null,
+                'variation' => self::variation($encaisseMois, self::somme($encaissements, $debutMoisPrecedent, $maintenant->modify('-1 month'))),
+                'taux' => $caMois > 0 ? (int) round($encaisseMois * 100 / $caMois) : null,
                 'courbe' => self::pointsCourbe(self::serieHebdomadaire($encaissements, $debutSerie, 8)),
             ],
             'solde' => [
@@ -85,22 +87,24 @@ final class TableauDeBordService
     }
 
     /**
+     * Factures emises non soldees.
+     *
      * @return array{total: int, facturesEchues: int}
      */
-    public function creances(int $totalReste, \DateTimeImmutable $maintenant): array
+    public function creances(\DateTimeImmutable $maintenant): array
     {
-        $facturesEchues = (int) $this->entityManager->createQueryBuilder()
-            ->select('COUNT(f.id)')
+        $resultat = $this->entityManager->createQueryBuilder()
+            ->select('COALESCE(SUM(f.resteAPayer), 0) AS total')
+            ->addSelect('SUM(CASE WHEN f.dateEcheance < :aujourdhui THEN 1 ELSE 0 END) AS echues')
             ->from(Factures::class, 'f')
             ->andWhere('f.etat = :emise')
             ->andWhere('f.resteAPayer > 0')
-            ->andWhere('f.dateEcheance < :aujourdhui')
             ->setParameter('emise', Factures::ETAT_EMISE)
             ->setParameter('aujourdhui', $maintenant->setTime(0, 0))
             ->getQuery()
-            ->getSingleScalarResult();
+            ->getSingleResult();
 
-        return ['total' => $totalReste, 'facturesEchues' => $facturesEchues];
+        return ['total' => (int) $resultat['total'], 'facturesEchues' => (int) $resultat['echues']];
     }
 
     /**
@@ -194,7 +198,7 @@ final class TableauDeBordService
     {
         $debut = $maintenant->modify('first day of this month')->setTime(0, 0)->modify('-11 months');
 
-        return self::serieMensuelle($this->ventesDepuis($debut), $debut, 12);
+        return self::serieMensuelle($this->facturesDepuis($debut), $debut, 12);
     }
 
     /**
@@ -252,11 +256,73 @@ final class TableauDeBordService
     }
 
     /**
+     * Alertes de la vue direction, seuils de docs/indicateurs.md.
+     *
+     * @param array{indicateurs: array<string, mixed>, creances: array{total: int, facturesEchues: int}}|null $finances
+     *
      * @return list<array{niveau: string, texte: string, route: string}>
      */
-    public function alertes(int $facturesEchues, bool $voirStock, bool $voirFinances): array
+    public function alertes(?array $finances, bool $voirStock, \DateTimeImmutable $maintenant): array
     {
         $alertes = [];
+
+        $enRetard = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(DISTINCT c.id)')
+            ->from(Commandes::class, 'c')
+            ->join('c.commandesDetails', 'cd')
+            ->andWhere('c.deleted = false')
+            ->andWhere('c.dateLivraison < :maintenant')
+            ->andWhere('cd.statutProduction IN (:statuts)')
+            ->setParameter('maintenant', $maintenant)
+            ->setParameter('statuts', [
+                CommandesDetails::PRODUCTION_A_PRODUIRE,
+                CommandesDetails::PRODUCTION_EN_COURS,
+                CommandesDetails::PRODUCTION_TERMINEE,
+                CommandesDetails::PRODUCTION_PRETE_LIVRAISON,
+                CommandesDetails::PRODUCTION_EN_LIVRAISON,
+            ])
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        if ($enRetard > 0) {
+            $alertes[] = ['niveau' => 'danger', 'texte' => sprintf('%d commande%s en retard', $enRetard, $enRetard > 1 ? 's' : ''), 'route' => 'app_ventes_index'];
+        }
+
+        $batEnAttente = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(cp.id)')
+            ->from(ControlePrePresse::class, 'cp')
+            ->andWhere('cp.statut = :statut')
+            ->andWhere('COALESCE(cp.traiteLe, cp.creeLe) < :limite')
+            ->setParameter('statut', ControlePrePresse::STATUT_EN_ATTENTE_BAT)
+            ->setParameter('limite', $maintenant->modify('-48 hours'))
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        if ($batEnAttente > 0) {
+            $alertes[] = ['niveau' => 'warning', 'texte' => sprintf('%d BAT sans réponse du client depuis plus de 48 h', $batEnAttente), 'route' => 'app_controle_pre_presse_index'];
+        }
+
+        if (null !== $finances) {
+            $ca = (int) $finances['indicateurs']['ca']['valeur'];
+            $taux = $finances['indicateurs']['encaisse']['taux'];
+            $creances = $finances['creances'];
+
+            if (null !== $taux && $taux < 80) {
+                $alertes[] = ['niveau' => 'warning', 'texte' => sprintf('Taux d\'encaissement du mois à %d %% (objectif 80 %%)', $taux), 'route' => 'app_factures_index'];
+            }
+
+            if ($ca > 0 && $creances['total'] > $ca * 0.2) {
+                $alertes[] = ['niveau' => 'warning', 'texte' => 'Créances au-dessus de 20 % du CA du mois', 'route' => 'app_factures_index'];
+            }
+
+            if ($creances['facturesEchues'] > 0) {
+                $alertes[] = [
+                    'niveau' => 'danger',
+                    'texte' => sprintf('%d facture%s échue%s à relancer', $creances['facturesEchues'], $creances['facturesEchues'] > 1 ? 's' : '', $creances['facturesEchues'] > 1 ? 's' : ''),
+                    'route' => 'app_factures_index',
+                ];
+            }
+        }
 
         if ($voirStock) {
             foreach ($this->articlesSousSeuil() as $article) {
@@ -266,30 +332,6 @@ final class TableauDeBordService
                     'route' => 'app_stock_etat_index',
                 ];
             }
-        }
-
-        $batEnAttente = (int) $this->entityManager->createQueryBuilder()
-            ->select('COUNT(cp.id)')
-            ->from(ControlePrePresse::class, 'cp')
-            ->andWhere('cp.statut = :statut')
-            ->setParameter('statut', ControlePrePresse::STATUT_EN_ATTENTE_BAT)
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        if ($batEnAttente > 0) {
-            $alertes[] = [
-                'niveau' => 'warning',
-                'texte' => sprintf('%d BAT en attente de réponse du client', $batEnAttente),
-                'route' => 'app_controle_pre_presse_index',
-            ];
-        }
-
-        if ($voirFinances && $facturesEchues > 0) {
-            $alertes[] = [
-                'niveau' => 'danger',
-                'texte' => sprintf('%d facture%s échue%s à relancer', $facturesEchues, $facturesEchues > 1 ? 's' : '', $facturesEchues > 1 ? 's' : ''),
-                'route' => 'app_factures_index',
-            ];
         }
 
         return $alertes;
@@ -420,15 +462,18 @@ final class TableauDeBordService
     }
 
     /**
+     * Factures emises (le CA facture), hors brouillons et annulees.
+     *
      * @return list<array{date: \DateTimeInterface, montant: int}>
      */
-    private function ventesDepuis(\DateTimeImmutable $debut): array
+    private function facturesDepuis(\DateTimeImmutable $debut): array
     {
         $resultats = $this->entityManager->createQueryBuilder()
-            ->select('c.dateCommande AS date', 'c.totalTtc AS montant')
-            ->from(Commandes::class, 'c')
-            ->andWhere('c.deleted = false')
-            ->andWhere('c.dateCommande >= :debut')
+            ->select('f.dateFacture AS date', 'f.totalTtc AS montant')
+            ->from(Factures::class, 'f')
+            ->andWhere('f.etat = :emise')
+            ->andWhere('f.dateFacture >= :debut')
+            ->setParameter('emise', Factures::ETAT_EMISE)
             ->setParameter('debut', $debut)
             ->getQuery()
             ->getArrayResult();

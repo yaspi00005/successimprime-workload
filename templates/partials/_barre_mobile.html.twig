@@ -10,10 +10,7 @@
 		finances: { libelle: 'Caisse', icone: 'fas fa-wallet' },
 		clients: { libelle: 'Clients', icone: 'fas fa-users' }
 	} %}
-		{% set entree = null %}
-		{% for onglet in onglets_section_admin(section) %}
-			{% if entree is null and (onglet.role is null or is_granted(onglet.role)) %}{% set entree = onglet %}{% endif %}
-		{% endfor %}
+		{% set entree = onglets_autorises_admin(section)|first %}
 		{% if entree %}
 			<a href="{{ path(entree.route, entree.parametres|default({})) }}" class="{{ sectionActive == section ? 'actif' }}">
 				<i class="{{ element.icone }}"></i><span>{{ element.libelle }}</span>

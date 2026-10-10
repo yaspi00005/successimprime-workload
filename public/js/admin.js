@@ -35,3 +35,11 @@ document.addEventListener('click', function (evenement) {
         }
     }
 });
+
+// Une ligne de liste cliquable ouvre la fiche (data-lien sur le <tr>).
+document.addEventListener('click', function (evenement) {
+    var ligne = evenement.target.closest('tr[data-lien]');
+    if (ligne && !evenement.target.closest('a, button, input')) {
+        window.location.href = ligne.dataset.lien;
+    }
+});

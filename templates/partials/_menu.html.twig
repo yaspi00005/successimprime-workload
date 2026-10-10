@@ -24,10 +24,7 @@
 
 		<ul class="metismenu" id="menu">
 			{% for section, libelle in { accueil: 'Accueil', ventes: 'Ventes', atelier: 'Atelier', finances: 'Finances', clients: 'Clients', reglages: 'Réglages' } %}
-				{% set entree = null %}
-				{% for onglet in onglets_section_admin(section) %}
-					{% if entree is null and (onglet.role is null or is_granted(onglet.role)) %}{% set entree = onglet %}{% endif %}
-				{% endfor %}
+				{% set entree = onglets_autorises_admin(section)|first %}
 				{% if entree %}
 					<li class="{{ sectionActive == section ? 'mm-active' }}">
 						<a href="{{ path(entree.route, entree.parametres|default({})) }}" class="{{ sectionActive == section ? 'mm-active' }}" aria-expanded="false">

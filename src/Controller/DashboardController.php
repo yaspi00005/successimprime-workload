@@ -2,7 +2,6 @@
 
 namespace App\Controller;
 
-use App\Service\Statistiques\StatistiquesCommandesService;
 use App\Service\TableauDeBordService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,8 +17,7 @@ final class DashboardController extends AbstractController
 {
     #[Route('/', name: 'app_home')]
     public function index(
-        TableauDeBordService $tableauDeBordService,
-        StatistiquesCommandesService $statistiquesCommandesService
+        TableauDeBordService $tableauDeBordService
     ): Response {
         /*
          * Un livreur n'a accès qu'aux livraisons : il n'a rien
@@ -32,20 +30,19 @@ final class DashboardController extends AbstractController
         $maintenant = new \DateTimeImmutable();
         $peutVoirStatsGlobales = $this->isGranted('ROLE_STATS_GLOBAL');
         $peutVoirProduction = $this->isGranted('ROLE_PRODUCTION_VOIR') || $peutVoirStatsGlobales;
-        $facturesEchues = 0;
+        $finances = null;
         $donnees = [
             'peutVoirStatsGlobales' => $peutVoirStatsGlobales,
             'peutVoirProduction' => $peutVoirProduction,
         ];
 
         if ($peutVoirStatsGlobales) {
-            [, $parTranche] = $statistiquesCommandesService->commandesNonSoldees(0);
-            $creances = $tableauDeBordService->creances((int) array_sum(array_column($parTranche, 'montant')), $maintenant);
-            $facturesEchues = $creances['facturesEchues'];
-
-            $donnees += [
+            $finances = [
                 'indicateurs' => $tableauDeBordService->indicateurs($maintenant),
-                'creances' => $creances,
+                'creances' => $tableauDeBordService->creances($maintenant),
+            ];
+
+            $donnees += $finances + [
                 'croissanceCa' => $tableauDeBordService->croissanceCa($maintenant),
                 'encaissementsDuJour' => $tableauDeBordService->encaissementsDuJour($maintenant),
                 'chargeMachines' => $tableauDeBordService->chargeMachines(),
@@ -54,7 +51,7 @@ final class DashboardController extends AbstractController
 
         $donnees += [
             'production' => $peutVoirProduction ? $tableauDeBordService->production() : [],
-            'alertes' => $tableauDeBordService->alertes($facturesEchues, $this->isGranted('ROLE_ADMIN'), $peutVoirStatsGlobales),
+            'alertes' => $tableauDeBordService->alertes($finances, $this->isGranted('ROLE_ADMIN'), $maintenant),
         ];
 
         return $this->render('dashboard/index.html.twig', $donnees);

@@ -2,6 +2,7 @@
 
 namespace App\Twig;
 
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -29,7 +30,7 @@ final class NavigationExtension extends AbstractExtension
      * qu'une fois construits. Le premier onglet autorise est la porte
      * d'entree de la section dans le menu.
      *
-     * @var array<string, list<array{libelle: string, route: string, parametres?: array<string, mixed>, role: ?string, prefixes: list<string>}>>
+     * @var array<string, list<array{libelle: string, route: string, parametres?: array<string, mixed>, role: string|list<string>|null, prefixes: list<string>}>>
      */
     public const ONGLETS = [
         'accueil' => [
@@ -37,8 +38,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Statistiques et rapports', 'route' => 'app_statistiques_globales_index', 'role' => 'ROLE_STATS_GLOBAL', 'prefixes' => ['app_statistiques_']],
         ],
         'ventes' => [
-            ['libelle' => 'Commandes', 'route' => 'app_commandes_index', 'role' => 'ROLE_COMMANDE', 'prefixes' => ['app_commandes_', 'app_commande_catalogue_', 'app_brouillon_']],
-            ['libelle' => 'Devis', 'route' => 'app_devis_index', 'role' => 'ROLE_DEVIS', 'prefixes' => ['app_devis_']],
+            ['libelle' => 'Devis et commandes', 'route' => 'app_ventes_index', 'role' => ['ROLE_COMMANDE', 'ROLE_DEVIS'], 'prefixes' => ['app_ventes_', 'app_commandes_', 'app_commande_catalogue_', 'app_brouillon_', 'app_devis_']],
             ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
         ],
         'atelier' => [
@@ -69,6 +69,7 @@ final class NavigationExtension extends AbstractExtension
         'app_clients_solde' => 'finances',
         'app_home' => 'accueil',
         'app_statistiques_' => 'accueil',
+        'app_ventes_' => 'ventes',
         'app_devis_' => 'ventes',
         'app_commandes_' => 'ventes',
         'app_commande_catalogue_' => 'ventes',
@@ -113,6 +114,11 @@ final class NavigationExtension extends AbstractExtension
         'app_fichier_dossier_partage' => 'reglages',
     ];
 
+    public function __construct(
+        private readonly ?AuthorizationCheckerInterface $autorisations = null,
+    ) {
+    }
+
     public function getFunctions(): array
     {
         return [
@@ -120,6 +126,7 @@ final class NavigationExtension extends AbstractExtension
             new TwigFunction('libelle_section_admin', $this->libelleSection(...)),
             new TwigFunction('onglets_section_admin', $this->ongletsSection(...)),
             new TwigFunction('onglet_actif_admin', $this->ongletActif(...)),
+            new TwigFunction('onglets_autorises_admin', $this->ongletsAutorises(...)),
         ];
     }
 
@@ -149,6 +156,32 @@ final class NavigationExtension extends AbstractExtension
     public function ongletsSection(?string $section): array
     {
         return self::ONGLETS[$section] ?? [];
+    }
+
+    /**
+     * Onglets de la section que l'utilisateur peut ouvrir (un seul des
+     * roles listes suffit), avec leur rang d'origine dans 'rang'.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function ongletsAutorises(?string $section): array
+    {
+        $autorises = [];
+
+        foreach ($this->ongletsSection($section) as $rang => $onglet) {
+            $roles = (array) $onglet['role'];
+            $autorise = [] === $roles;
+
+            foreach ($roles as $role) {
+                $autorise = $autorise || (null !== $this->autorisations && $this->autorisations->isGranted($role));
+            }
+
+            if ($autorise) {
+                $autorises[] = $onglet + ['rang' => $rang];
+            }
+        }
+
+        return $autorises;
     }
 
     /**

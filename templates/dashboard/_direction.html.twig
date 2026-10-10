@@ -27,12 +27,13 @@
 			<div class="card si-kpi">
 				<div class="card-body">
 					<div class="d-flex justify-content-between align-items-start">
-						<span class="si-kpi-libelle">CA du mois</span>
+						<span class="si-kpi-libelle">CA facturé du mois</span>
 						{{ d.courbe(indicateurs.ca.courbe, '#1FA855') }}
 					</div>
 					<div class="si-kpi-valeur">{{ d.montant(indicateurs.ca.valeur) }}</div>
 					{{ d.tendance(indicateurs.ca.variation, 'vs mois dernier') }}
 					{% if indicateurs.ca.variation is null %}<span class="si-tendance text-muted">Pas de comparaison possible</span>{% endif %}
+					{% if indicateurs.ca.variationAnPasse is not null %}<div class="si-tendance-an">{{ indicateurs.ca.variationAnPasse > 0 ? '+' }}{{ indicateurs.ca.variationAnPasse }} % vs {{ 'now'|date_modify('-1 year')|date('m/Y') }}</div>{% endif %}
 				</div>
 			</div>
 		</div>
@@ -44,8 +45,8 @@
 						{{ d.courbe(indicateurs.encaisse.courbe, '#0F4590') }}
 					</div>
 					<div class="si-kpi-valeur">{{ d.montant(indicateurs.encaisse.valeur) }}</div>
-					{% if indicateurs.encaisse.partDuCa is not null %}
-						<span class="si-tendance {{ indicateurs.encaisse.partDuCa >= 80 ? 'si-hausse' : 'si-baisse' }}">{{ indicateurs.encaisse.partDuCa }} % du CA du mois</span>
+					{% if indicateurs.encaisse.taux is not null %}
+						<span class="si-tendance {{ indicateurs.encaisse.taux >= 80 ? 'si-hausse' : 'si-baisse' }}"><i class="fas fa-caret-{{ indicateurs.encaisse.taux >= 80 ? 'up' : 'down' }}"></i> {{ indicateurs.encaisse.taux }} % du facturé</span>
 					{% else %}
 						<span class="si-tendance text-muted">Ce mois-ci</span>
 					{% endif %}
@@ -53,7 +54,7 @@
 			</div>
 		</div>
 		<div class="col-xl-3 col-6">
-			<a href="{{ path('app_statistiques_commandes_index') }}" class="card si-kpi">
+			<a href="{{ path('app_factures_index') }}" class="card si-kpi">
 				<div class="card-body">
 					<span class="si-kpi-libelle">Créances clients</span>
 					<div class="si-kpi-valeur">{{ d.montant(creances.total) }}</div>

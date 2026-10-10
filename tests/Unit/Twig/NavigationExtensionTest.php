@@ -60,7 +60,8 @@ final class NavigationExtensionTest extends TestCase
         $extension = new NavigationExtension();
 
         self::assertSame(0, $extension->ongletActif('app_home'));
-        self::assertSame(1, $extension->ongletActif('app_devis_show'));
+        self::assertSame(0, $extension->ongletActif('app_devis_show'));
+        self::assertSame(1, $extension->ongletActif('app_livraisons_index'));
         self::assertSame(0, $extension->ongletActif('app_clients_soldes'));
         self::assertSame(1, $extension->ongletActif('app_employes_index'));
         self::assertNull($extension->ongletActif('app_chat_index'));

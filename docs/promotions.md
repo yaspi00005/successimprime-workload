@@ -35,7 +35,8 @@ Calculés à partir des données existantes, sans saisie manuelle :
 ## Règles d'application
 
 - À la saisie d'un devis ou d'une commande (maquette C01), la promotion valable pour ce client et cet article s'applique toute seule et s'affiche sur la ligne. L'agent peut la retirer.
-- Une seule promotion par ligne, et pas de cumul avec le prix B2B : le client a le meilleur des deux prix (choix par défaut, à confirmer par Yaya).
+- Une seule promotion par ligne. Les clients au prix B2B sont exclus des promotions (décision de Yaya, 10/10/2026).
+- Exception sur demande : l'agent peut demander d'appliquer la promotion à un client B2B sur une ligne. La ligne reste au prix B2B tant qu'un responsable n'a pas accepté, et la demande est gardée au journal d'activité.
 - La ligne garde la promotion appliquée, pour l'historique et les rapports, même après la fin de la promotion.
 - Une promotion peut être annoncée par une campagne WhatsApp ou SMS au même segment, et affichée dans l'espace client (J5).
 

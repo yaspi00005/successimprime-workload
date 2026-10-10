@@ -159,17 +159,38 @@ Référence fournie par Yaya le 10/10/2026. Pour chaque indicateur : ce qu'il me
 
 ## 12. Écran TV public
 
-Uniquement des volumes et des pourcentages, jamais de montants ni de noms de clients :
+Uniquement des volumes, des produits et des numéros, jamais de montants, de marge ni de noms de clients.
 
-- commandes livrées (cumul et croissance sur 12 mois) ;
-- m² imprimés (cumul et croissance) ;
-- clients servis (cumul et croissance) ;
-- note de satisfaction et nombre d'avis Google ;
-- courbe des commandes par mois sur 12 mois ;
-- commandes prêtes à retirer, par numéro seulement ;
-- commandes en ligne du jour (et du mois), avec une annonce à chaque nouvelle commande en ligne.
+L'écran a quatre zones :
+- **En-tête :** logo, « Notre activité en direct », LIVE et horloge.
+- **Zone principale :** les scènes tournent, avec des points et une barre de progression.
+- **Colonne « en direct » :**
+  - les dernières commandes en ligne : nom du produit au catalogue et quantité, jamais la désignation saisie ;
+  - les commandes prêtes à retirer, par numéro ;
+  - les commandes et les m² imprimés du jour.
+- **Bandeau rouge** de messages.
 
-Les chiffres se mettent à jour chaque minute. Les images et vidéos du cadre « Dernières réalisations », les messages du bandeau et la note Google se règlent dans Réglages › Écran TV.
+Les scènes :
+
+| Scène | Contenu |
+|---|---|
+| Chiffres | Commandes livrées, m² imprimés, clients servis (cumul et croissance sur 12 mois), satisfaction Google, commandes par mois sur 12 mois |
+| Photos | Diaporama des photos choisies dans la bibliothèque |
+| Vidéo | Une vidéo de la bibliothèque, muette sauf si le son est activé |
+| Avis | Un avis validé par passage |
+| Promo, Texte | Une affiche plein cadre |
+
+Tout se règle dans Réglages › Écran TV :
+- chaque scène a sa durée, son interrupteur, et une programmation par heures, par dates et par jours ;
+- l'ordre se change par glisser-déposer ;
+- les zones fixes s'allument ou s'éteignent ;
+- les horaires d'ouverture : hors horaires, l'écran affiche « Fermé » ou reste noir.
+
+Les modifications restent en brouillon. « Aperçu plein écran » montre le brouillon, et « Publier sur l'écran » l'envoie.
+
+**Rafraîchissement :** la Smart TV relit les chiffres chaque minute. Elle se recharge seule après une publication, quand une scène entre ou sort de sa plage horaire, et toutes les 30 minutes. Elle ne recharge jamais quand internet est coupé : elle garde son affichage et réessaie.
+
+**Accès :** l'écran s'ouvre par un lien secret, sans compte (`/ecran-accueil/{jeton}`), que l'admin peut remplacer. Pour reprendre après une coupure de courant, la Smart TV doit ouvrir ce lien au démarrage, avec son application de démarrage automatique ou en page d'accueil du navigateur.
 
 ## Tableaux de bord par rôle
 

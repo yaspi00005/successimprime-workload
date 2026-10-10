@@ -3,17 +3,23 @@
 namespace App\Controller;
 
 use App\Service\EcranTv;
+use App\Service\ProgrammeEcranTv;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
 /**
- * Réglages de l'écran TV : images et vidéos qui défilent, légendes,
- * messages du bandeau et note Google.
+ * Programmation de l'écran TV : scènes, zones fixes, avis validés,
+ * horaires, bandeau, médias et lien sécurisé de la Smart TV.
+ *
+ * Le programme s'enregistre en brouillon ; « Publier sur l'écran »
+ * l'envoie à la boutique.
  */
 #[Route('/reglages/ecran-tv', name: 'app_ecran_tv_')]
 #[IsGranted('ROLE_ADMIN')]
@@ -33,44 +39,135 @@ final class EcranTvReglagesController extends AbstractController
     #[Route('', name: 'reglages', methods: ['GET', 'POST'])]
     public function reglages(Request $request): Response
     {
-        $reglages = $this->ecranTv->reglages();
-
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('ecran-tv', (string) $request->request->get('_token'))) {
                 throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
             }
 
-            $messages = preg_split('/\R/u', (string) $request->request->get('messages', '')) ?: [];
-            $note = str_replace(',', '.', trim((string) $request->request->get('note_google', '')));
-            $avis = trim((string) $request->request->get('avis_google', ''));
-            $legendes = [];
+            $this->ecranTv->enregistrerBrouillon(self::programmeDepuis($request));
+            $this->enregistrerLegendes($request);
 
-            foreach ($this->ecranTv->medias() as $media) {
-                $legende = trim((string) ($request->request->all('legendes')[$media['fichier']] ?? ''));
-
-                if ($legende !== '' && $legende !== EcranTv::legendeDepuisNom($media['fichier'])) {
-                    $legendes[$media['fichier']] = mb_substr($legende, 0, 120);
-                }
-            }
-
-            $this->ecranTv->enregistrerReglages([
-                'messages' => array_values(array_filter(array_map(static fn (string $m) => mb_substr(trim($m), 0, 120), $messages))),
-                'noteGoogle' => is_numeric($note) ? max(0, min(5, round((float) $note, 1))) : null,
-                'avisGoogle' => ctype_digit($avis) ? (int) $avis : null,
-                'dureeImage' => (int) $request->request->get('duree_image', 8),
-                'legendes' => $legendes,
-            ]);
-
-            $this->addFlash('success', 'Réglages de l\'écran TV enregistrés.');
-
-            return $this->redirectToRoute('app_ecran_tv_reglages');
+            return match ($request->request->get('action')) {
+                'publier' => $this->publier(),
+                'apercu' => $this->redirectToRoute('app_ecran_tv_apercu'),
+                default => $this->enregistre(),
+            };
         }
 
+        $programme = $this->ecranTv->programme(false);
+        $programme['scenes'] = array_map(static fn (array $s) => $s + ['resume' => ProgrammeEcranTv::resumeHoraire($s)], $programme['scenes']);
+        $passage = $this->ecranTv->dernierPassage();
+
         return $this->render('ecran_tv/reglages.html.twig', [
-            'reglages' => $reglages,
+            'programme' => $programme,
             'medias' => $this->ecranTv->medias(),
+            'boucle' => ProgrammeEcranTv::dureeBoucle($programme['scenes']),
+            'nonPublie' => $this->ecranTv->aDesModificationsNonPubliees(),
+            'publieLe' => $this->ecranTv->publieLe(),
+            'dernierPassage' => $passage,
+            'ecranEnLigne' => $passage !== null && $passage > new \DateTimeImmutable('-3 minutes'),
+            'lienEcran' => $this->generateUrl('app_tv_ecran', ['jeton' => $this->ecranTv->jeton()], UrlGeneratorInterface::ABSOLUTE_URL),
+            'modeles' => array_map(
+                static fn (string $type) => ProgrammeEcranTv::normaliser(['scenes' => [['id' => 'nouvelle', 'type' => $type, 'titre' => '']]])['scenes'][0],
+                array_combine(array_keys(ProgrammeEcranTv::TYPES), array_keys(ProgrammeEcranTv::TYPES))
+            ),
             'tailleMaxMo' => (int) (min(self::TAILLE_MAX, UploadedFile::getMaxFilesize()) / 1024 / 1024),
         ]);
+    }
+
+    /**
+     * Le brouillon tel qu'il est, horaires ignorés : rien n'est publié.
+     */
+    #[Route('/apercu', name: 'apercu', methods: ['GET'])]
+    public function apercu(): Response
+    {
+        return $this->render('tv_dashboard/index.html.twig', $this->ecranTv->vue(new \DateTimeImmutable(), true) + [
+            'urlDonnees' => $this->generateUrl('app_ecran_tv_apercu_donnees'),
+        ]);
+    }
+
+    #[Route('/apercu/donnees', name: 'apercu_donnees', methods: ['GET'])]
+    public function apercuDonnees(): JsonResponse
+    {
+        $reponse = $this->json($this->ecranTv->rafraichissement(new \DateTimeImmutable(), true));
+        $reponse->headers->set('Cache-Control', 'no-store');
+
+        return $reponse;
+    }
+
+    #[Route('/nouveau-lien', name: 'nouveau_lien', methods: ['POST'])]
+    public function nouveauLien(Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('ecran-tv-lien', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+
+        $this->ecranTv->nouveauJeton();
+        $this->addFlash('success', 'Nouveau lien créé. L\'ancien ne marche plus : ouvrez le nouveau sur la Smart TV.');
+
+        return $this->redirectToRoute('app_ecran_tv_reglages');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function programmeDepuis(Request $request): array
+    {
+        $champs = $request->request;
+        $avis = [];
+
+        foreach ($champs->all('avis') as $un) {
+            if (\is_array($un)) {
+                $avis[] = $un;
+            }
+        }
+
+        return [
+            'scenes' => array_values(array_filter($champs->all('scenes'), 'is_array')),
+            'zones' => [
+                'colonneLive' => $champs->getBoolean('zone_colonne'),
+                'bandeau' => $champs->getBoolean('zone_bandeau'),
+                'horlogeLogo' => $champs->getBoolean('zone_horloge'),
+                'son' => $champs->getBoolean('zone_son'),
+            ],
+            'avis' => $avis,
+            'messages' => preg_split('/\R/u', (string) $champs->get('messages', '')) ?: [],
+            'noteGoogle' => str_replace(',', '.', trim((string) $champs->get('note_google', ''))),
+            'avisGoogle' => trim((string) $champs->get('avis_google', '')),
+            'horaires' => $champs->all('horaires'),
+            'horsHoraires' => (string) $champs->get('hors_horaires'),
+        ];
+    }
+
+    private function enregistrerLegendes(Request $request): void
+    {
+        $saisies = $request->request->all('legendes');
+        $legendes = [];
+
+        foreach ($this->ecranTv->medias() as $media) {
+            $legende = trim((string) ($saisies[$media['fichier']] ?? $media['legende']));
+
+            if ($legende !== '' && $legende !== EcranTv::legendeDepuisNom($media['fichier'])) {
+                $legendes[$media['fichier']] = mb_substr($legende, 0, 120);
+            }
+        }
+
+        $this->ecranTv->enregistrerLegendes($legendes);
+    }
+
+    private function publier(): Response
+    {
+        $this->ecranTv->publier(new \DateTimeImmutable());
+        $this->addFlash('success', 'Programme publié : l\'écran de la boutique le prend dans la minute.');
+
+        return $this->redirectToRoute('app_ecran_tv_reglages');
+    }
+
+    private function enregistre(): Response
+    {
+        $this->addFlash('success', 'Brouillon enregistré. Publiez-le pour l\'envoyer sur l\'écran.');
+
+        return $this->redirectToRoute('app_ecran_tv_reglages');
     }
 
     #[Route('/medias', name: 'ajouter_medias', methods: ['POST'])]
@@ -170,16 +267,16 @@ final class EcranTvReglagesController extends AbstractController
     }
 
     /**
-     * Renomme les médias 01_, 02_… dans l'ordre donné, en gardant les légendes.
+     * Renomme les médias 01_, 02_… dans l'ordre donné, en gardant les
+     * légendes et les scènes qui les utilisent.
      *
      * @param list<string> $fichiers
      */
     private function renumeroter(array $fichiers): void
     {
         $dossier = $this->ecranTv->dossierMedias();
-        $reglages = $this->ecranTv->reglages();
-        $legendes = [];
         $temporaires = [];
+        $nouveaux = [];
 
         // En deux temps pour ne jamais écraser un fichier qui porte déjà le nouveau nom.
         foreach ($fichiers as $i => $fichier) {
@@ -191,10 +288,9 @@ final class EcranTvReglagesController extends AbstractController
         foreach ($fichiers as $i => $fichier) {
             $nouveau = sprintf('%02d_%s', $i + 1, preg_replace('/^\d+_/', '', $fichier));
             rename($dossier.'/'.$temporaires[$fichier], $dossier.'/'.$nouveau);
-            $legendes[$nouveau] = $reglages['legendes'][$fichier] ?? null;
+            $nouveaux[$fichier] = $nouveau;
         }
 
-        $reglages['legendes'] = array_filter($legendes);
-        $this->ecranTv->enregistrerReglages($reglages);
+        $this->ecranTv->renommerMedias($nouveaux);
     }
 }

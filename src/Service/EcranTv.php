@@ -36,11 +36,7 @@ final class EcranTv
         CommandesDetails::PRODUCTION_NON_REQUISE,
     ];
 
-    private const MESSAGES_PAR_DEFAUT = [
-        '[NOUVEAU] Textile DTF dès 1 pièce',
-        'Payez par [Orange Money]',
-        'Commandez sur [succesimprim.com]',
-    ];
+    private const TAILLE_FLUX = 6;
 
     private const MOIS_COURTS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 
@@ -85,6 +81,11 @@ final class EcranTv
             ],
             'parMois' => $this->commandesParMois($maintenant),
             'pretes' => $this->commandesPretes(),
+            'aujourdhui' => [
+                'commandes' => $this->commandesDuJour($debutJour, $maintenant),
+                'metresCarres' => $m2($debutJour, $maintenant->modify('+1 second')),
+            ],
+            'flux' => $this->fluxEnLigne($maintenant),
             'misAJour' => $maintenant->format('H:i'),
         ];
     }
@@ -98,7 +99,7 @@ final class EcranTv
             return [];
         }
 
-        $legendes = $this->reglages()['legendes'];
+        $legendes = $this->legendes();
         $medias = [];
 
         foreach (scandir($this->dossierMedias) ?: [] as $fichier) {
@@ -126,28 +127,265 @@ final class EcranTv
     }
 
     /**
-     * @return array{messages: list<string>, noteGoogle: ?float, avisGoogle: ?int, dureeImage: int, legendes: array<string, string>}
+     * Légendes des médias, modifiées directement (hors programme publié).
+     *
+     * @return array<string, string>
      */
-    public function reglages(): array
+    public function legendes(): array
     {
-        $lus = is_file($this->fichierReglages)
-            ? json_decode((string) file_get_contents($this->fichierReglages), true)
-            : null;
-        $lus = \is_array($lus) ? $lus : [];
+        $lus = $this->lire()['legendes'] ?? [];
+
+        return array_map('strval', \is_array($lus) ? $lus : []);
+    }
+
+    /**
+     * @param array<string, string> $legendes
+     */
+    public function enregistrerLegendes(array $legendes): void
+    {
+        $this->ecrire(['legendes' => $legendes]);
+    }
+
+    /**
+     * Après un renommage des fichiers : légendes et scènes suivent.
+     *
+     * @param array<string, string> $nouveaux ancien nom => nouveau nom
+     */
+    public function renommerMedias(array $nouveaux): void
+    {
+        $lus = $this->lire();
+        $valeurs = ['legendes' => []];
+
+        foreach ($this->legendes() as $fichier => $legende) {
+            if (isset($nouveaux[$fichier])) {
+                $valeurs['legendes'][$nouveaux[$fichier]] = $legende;
+            }
+        }
+
+        foreach (['brouillon', 'publie'] as $cle) {
+            if (!\is_array($lus[$cle]['scenes'] ?? null)) {
+                continue;
+            }
+
+            foreach ($lus[$cle]['scenes'] as $i => $scene) {
+                $lus[$cle]['scenes'][$i]['medias'] = array_values(array_filter(array_map(
+                    static fn ($f) => $nouveaux[$f] ?? null,
+                    \is_array($scene['medias'] ?? null) ? $scene['medias'] : []
+                )));
+            }
+
+            $valeurs[$cle] = $lus[$cle];
+        }
+
+        $this->ecrire($valeurs);
+    }
+
+    /**
+     * Programme publié (celui de l'écran) ou brouillon (celui de l'aperçu).
+     *
+     * @return array<string, mixed>
+     */
+    public function programme(bool $publie = true): array
+    {
+        $lus = $this->lire();
+        $programme = $lus[$publie ? 'publie' : 'brouillon'] ?? ($publie ? null : ($lus['publie'] ?? null));
+
+        if (\is_array($programme)) {
+            return ProgrammeEcranTv::normaliser($programme);
+        }
+
+        // Premier passage : le programme de départ, avec les messages et la note de la v1.
+        $defaut = ProgrammeEcranTv::defaut();
+
+        foreach (['messages', 'noteGoogle', 'avisGoogle'] as $cle) {
+            if (\array_key_exists($cle, $lus)) {
+                $defaut[$cle] = $lus[$cle];
+            }
+        }
+
+        return ProgrammeEcranTv::normaliser($defaut);
+    }
+
+    /**
+     * @param array<mixed> $programme
+     */
+    public function enregistrerBrouillon(array $programme): void
+    {
+        $this->ecrire(['brouillon' => ProgrammeEcranTv::normaliser($programme)]);
+    }
+
+    public function publier(\DateTimeImmutable $maintenant): void
+    {
+        $this->ecrire(['publie' => $this->programme(false), 'publieLe' => $maintenant->format(\DATE_ATOM)]);
+    }
+
+    public function aDesModificationsNonPubliees(): bool
+    {
+        return $this->programme(false) != $this->programme(true);
+    }
+
+    public function publieLe(): ?\DateTimeImmutable
+    {
+        $date = $this->lire()['publieLe'] ?? null;
+
+        return \is_string($date) ? new \DateTimeImmutable($date) : null;
+    }
+
+    /**
+     * Jeton du lien de l'écran : la Smart TV l'ouvre sans compte utilisateur.
+     */
+    public function jeton(): string
+    {
+        $jeton = $this->lire()['jeton'] ?? null;
+
+        return \is_string($jeton) && \strlen($jeton) >= 24 ? $jeton : $this->nouveauJeton();
+    }
+
+    /**
+     * L'ancien lien cesse de marcher : à faire si le lien a circulé.
+     */
+    public function nouveauJeton(): string
+    {
+        $jeton = rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
+        $this->ecrire(['jeton' => $jeton]);
+
+        return $jeton;
+    }
+
+    public function jetonValide(string $jeton): bool
+    {
+        $attendu = $this->lire()['jeton'] ?? null;
+
+        return \is_string($attendu) && $attendu !== '' && hash_equals($attendu, $jeton);
+    }
+
+    /**
+     * L'écran est passé : sert à la carte « Écran boutique » de l'admin.
+     */
+    public function noterPassage(): void
+    {
+        $fichier = \dirname($this->fichierReglages).'/passage';
+
+        if (is_dir(\dirname($fichier)) || @mkdir(\dirname($fichier), 0775, true)) {
+            @touch($fichier);
+        }
+    }
+
+    public function dernierPassage(): ?\DateTimeImmutable
+    {
+        $fichier = \dirname($this->fichierReglages).'/passage';
+        clearstatcache(true, $fichier);
+
+        return is_file($fichier) ? (new \DateTimeImmutable())->setTimestamp((int) filemtime($fichier)) : null;
+    }
+
+    /**
+     * Ce que l'écran affiche à cet instant : ouvert ou fermé, scènes du
+     * moment avec leurs médias, et une signature qui change dès que
+     * l'écran doit se recharger (publication, scène qui entre ou sort).
+     *
+     * @param array<string, mixed> $programme
+     *
+     * @return array{ouvert: bool, prochaineOuverture: ?string, scenes: list<array<string, mixed>>, signature: string}
+     */
+    public function etat(array $programme, \DateTimeImmutable $maintenant, bool $ignorerHoraires = false): array
+    {
+        $ouvert = $ignorerHoraires || ProgrammeEcranTv::estOuvert($programme['horaires'], $maintenant);
+        $medias = [];
+
+        foreach ($this->medias() as $media) {
+            $medias[$media['fichier']] = $media;
+        }
+
+        $scenes = [];
+
+        foreach (ProgrammeEcranTv::scenesDuMoment($programme['scenes'], $maintenant) as $scene) {
+            $choisis = array_values(array_filter(array_map(static fn (string $f) => $medias[$f] ?? null, $scene['medias'])));
+
+            if ($scene['type'] === ProgrammeEcranTv::TYPE_PHOTOS) {
+                // Aucune photo cochée : toutes les images de la bibliothèque.
+                $choisis = $choisis !== [] ? $choisis : array_values(array_filter($medias, static fn (array $m) => $m['type'] === 'image'));
+                $choisis = array_values(array_filter($choisis, static fn (array $m) => $m['type'] === 'image'));
+
+                if ($choisis === []) {
+                    continue;
+                }
+            }
+
+            if ($scene['type'] === ProgrammeEcranTv::TYPE_VIDEO && ($choisis === [] || $choisis[0]['type'] !== 'video')) {
+                continue;
+            }
+
+            if ($scene['type'] === ProgrammeEcranTv::TYPE_AVIS && $programme['avis'] === []) {
+                continue;
+            }
+
+            $scene['medias'] = $choisis;
+            $scenes[] = $scene;
+        }
+
+        $signature = hash('xxh64', json_encode([$programme, $ouvert, array_column($scenes, 'id'), $this->publieLe()?->getTimestamp()]) ?: '');
 
         return [
-            'messages' => array_values(array_filter(array_map('strval', $lus['messages'] ?? self::MESSAGES_PAR_DEFAUT))),
-            'noteGoogle' => isset($lus['noteGoogle']) ? (float) $lus['noteGoogle'] : null,
-            'avisGoogle' => isset($lus['avisGoogle']) ? (int) $lus['avisGoogle'] : null,
-            'dureeImage' => max(4, min(60, (int) ($lus['dureeImage'] ?? 8))),
-            'legendes' => array_map('strval', \is_array($lus['legendes'] ?? null) ? $lus['legendes'] : []),
+            'ouvert' => $ouvert,
+            'prochaineOuverture' => $ouvert ? null : ProgrammeEcranTv::prochaineOuverture($programme['horaires'], $maintenant),
+            'scenes' => $scenes,
+            'signature' => $signature,
         ];
     }
 
     /**
-     * @param array<string, mixed> $reglages
+     * Tout ce que la page de l'écran affiche.
+     *
+     * @return array<string, mixed>
      */
-    public function enregistrerReglages(array $reglages): void
+    public function vue(\DateTimeImmutable $maintenant, bool $apercu): array
+    {
+        $programme = $this->programme(!$apercu);
+        $etat = $this->etat($programme, $maintenant, $apercu);
+
+        foreach ($etat['scenes'] as $i => $scene) {
+            $etat['scenes'][$i]['titreMorceaux'] = self::morceauxMessage($scene['titre']);
+        }
+
+        return [
+            'programme' => $programme,
+            'etat' => $etat,
+            'donnees' => $this->donnees($maintenant),
+            'messages' => array_map(self::morceauxMessage(...), $programme['messages']),
+            'apercu' => $apercu,
+        ];
+    }
+
+    /**
+     * Chiffres relus par l'écran toutes les minutes.
+     *
+     * @return array<string, mixed>
+     */
+    public function rafraichissement(\DateTimeImmutable $maintenant, bool $apercu): array
+    {
+        $programme = $this->programme(!$apercu);
+        $etat = $this->etat($programme, $maintenant, $apercu);
+
+        return $this->donnees($maintenant) + ['signature' => $etat['signature'], 'ouvert' => $etat['ouvert']];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function lire(): array
+    {
+        $lus = is_file($this->fichierReglages)
+            ? json_decode((string) file_get_contents($this->fichierReglages), true)
+            : null;
+
+        return \is_array($lus) ? $lus : [];
+    }
+
+    /**
+     * @param array<string, mixed> $valeurs
+     */
+    private function ecrire(array $valeurs): void
     {
         $dossier = \dirname($this->fichierReglages);
 
@@ -155,6 +393,7 @@ final class EcranTv
             throw new \RuntimeException('Impossible de créer le dossier des réglages de l\'écran TV.');
         }
 
+        $reglages = array_merge($this->lire(), $valeurs);
         file_put_contents($this->fichierReglages, json_encode($reglages, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES), \LOCK_EX);
     }
 
@@ -286,6 +525,101 @@ final class EcranTv
             ->setParameter('fin', $fin)
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    private function commandesDuJour(\DateTimeImmutable $debut, \DateTimeImmutable $fin): int
+    {
+        return (int) $this->em->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(Commandes::class, 'c')
+            ->where('c.deleted = false')
+            ->andWhere('c.dateCommande >= :debut AND c.dateCommande <= :fin')
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Dernières commandes en ligne : le produit et la quantité seulement,
+     * jamais le client ni le montant.
+     *
+     * @return list<array{id: int, libelle: string, minutes: int, couleur: int}>
+     */
+    private function fluxEnLigne(\DateTimeImmutable $maintenant): array
+    {
+        $commandes = $this->em->createQueryBuilder()
+            ->select('c.id, c.dateCommande')
+            ->from(Commandes::class, 'c')
+            ->where('c.deleted = false')
+            ->andWhere('c.canal = :enLigne')
+            ->andWhere('c.dateCommande >= :depuis')
+            ->setParameter('enLigne', Commandes::CANAL_EN_LIGNE)
+            ->setParameter('depuis', $maintenant->modify('-7 days'))
+            ->orderBy('c.dateCommande', 'DESC')
+            ->setMaxResults(self::TAILLE_FLUX)
+            ->getQuery()
+            ->getArrayResult();
+
+        if ($commandes === []) {
+            return [];
+        }
+
+        $lignes = $this->em->createQueryBuilder()
+            ->select('IDENTITY(d.commande) AS commande, p.nom AS produit, d.quantite')
+            ->from(CommandesDetails::class, 'd')
+            ->leftJoin('d.produit', 'p')
+            ->where('d.commande IN (:commandes)')
+            ->setParameter('commandes', array_column($commandes, 'id'))
+            ->orderBy('d.id', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        $parCommande = [];
+
+        foreach ($lignes as $ligne) {
+            $parCommande[(int) $ligne['commande']][] = $ligne;
+        }
+
+        $flux = [];
+
+        foreach ($commandes as $commande) {
+            $id = (int) $commande['id'];
+            $libelle = self::libelleFlux($parCommande[$id] ?? []);
+            $flux[] = [
+                'id' => $id,
+                'libelle' => $libelle,
+                'minutes' => max(0, (int) floor(($maintenant->getTimestamp() - $commande['dateCommande']->getTimestamp()) / 60)),
+                'couleur' => (int) (crc32($libelle) % 6),
+            ];
+        }
+
+        return $flux;
+    }
+
+    /**
+     * « Roll-up × 5 », « T-shirts DTF × 40 + 2 autres » : le nom du produit
+     * au catalogue, jamais la désignation saisie (elle peut citer le client).
+     *
+     * @param list<array{produit: ?string, quantite: int|string}> $lignes
+     */
+    public static function libelleFlux(array $lignes): string
+    {
+        if ($lignes === []) {
+            return 'Nouvelle commande';
+        }
+
+        $premiere = $lignes[0];
+        $libelle = trim((string) ($premiere['produit'] ?? '')) ?: 'Impression';
+        $quantite = (int) $premiere['quantite'];
+
+        if ($quantite > 1) {
+            $libelle .= ' × '.$quantite;
+        }
+
+        $autres = \count($lignes) - 1;
+
+        return $autres > 0 ? sprintf('%s + %d autre%s', $libelle, $autres, $autres > 1 ? 's' : '') : $libelle;
     }
 
     /**

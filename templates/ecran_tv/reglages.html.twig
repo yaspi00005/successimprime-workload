@@ -1,101 +1,473 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Écran TV{% endblock %}
+{% block title %}Programmation de l'écran TV{% endblock %}
 
 {% block header_actions %}
 	<li class="nav-item">
-		<a href="{{ path('app_tv_dashboard') }}" target="_blank" rel="noopener" class="btn btn-danger btn-sm si-btn-entete">Ouvrir l'écran TV</a>
+		<button type="submit" form="form-programme" name="action" value="apercu" formtarget="_blank" class="btn btn-light btn-sm si-btn-entete">Aperçu plein écran</button>
+	</li>
+	<li class="nav-item">
+		<button type="submit" form="form-programme" name="action" value="publier" class="btn btn-danger btn-sm si-btn-entete">Publier sur l'écran</button>
 	</li>
 {% endblock %}
 
-{% block body %}
-	<div class="row">
-		<div class="col-xl-7">
-			<div class="card si-bloc">
-				<div class="si-bloc-tete">
-					<h4>Images et vidéos qui défilent</h4>
+{% macro scene(s, cle, medias) %}
+	{% set couleurs = {chiffres: '#0F4590', photos: '#E8398A', video: '#1d1d1b', avis: '#FDC82A', promo: '#DE1028', texte: '#5b6478'} %}
+	{% set types = constant('App\\Service\\ProgrammeEcranTv::TYPES') %}
+	{% set images = medias|filter(m => m.type == 'image') %}
+	{% set videos = medias|filter(m => m.type == 'video') %}
+	{% set nom = 'scenes[' ~ cle ~ ']' %}
+	<div class="si-scene" data-scene>
+		<input type="hidden" name="{{ nom }}[id]" value="{{ s.id }}" data-id>
+		<input type="hidden" name="{{ nom }}[type]" value="{{ s.type }}">
+		<div class="si-scene-ligne">
+			<span class="si-poignee" title="Glisser pour changer l'ordre" aria-hidden="true">⋮⋮</span>
+			<span class="si-scene-pastille" style="background: {{ couleurs[s.type] }}"></span>
+			<button type="button" class="si-scene-nom" data-ouvrir aria-expanded="false">
+				<b data-apercu-titre>{{ s.titre|replace({'[': '', ']': ''}) }}</b>
+				<small>
+					{{- types[s.type] -}}
+					{%- if s.type == 'video' -%}
+						{%- if s.medias is empty %} · <span class="text-danger">aucune vidéo choisie, la scène ne passe pas</span>{% else %} · {{ s.medias[0] }}{% endif -%}
+					{%- elseif s.type == 'photos' -%}
+						{%- if images is empty %} · <span class="text-danger">aucune photo dans la bibliothèque</span>{% else %} · {{ s.medias is empty ? 'toutes les photos' : s.medias|length ~ ' photo(s)' }}{% endif -%}
+					{%- endif -%}
+				</small>
+			</button>
+			<span class="si-scene-type">{{ types[s.type] }}</span>
+			<span class="si-scene-duree"><span data-apercu-duree>{{ s.duree }}</span> s</span>
+			<span class="si-scene-horaire">{{ s.resume|default('') }}</span>
+			<input type="hidden" name="{{ nom }}[actif]" value="0">
+			<label class="si-interrupteur" title="Afficher ou non cette scène">
+				<input type="checkbox" name="{{ nom }}[actif]" value="1" {{ s.actif ? 'checked' }} data-actif aria-label="Scène {{ s.titre }} active">
+				<span></span>
+			</label>
+		</div>
+
+		<div class="si-scene-details" hidden>
+			<div class="row g-2">
+				<div class="col-md-6">
+					<label class="si-libelle-champ">Titre</label>
+					<input type="text" name="{{ nom }}[titre]" value="{{ s.titre }}" maxlength="80" class="form-control form-control-sm" data-titre>
+					{% if s.type in ['promo', 'texte', 'video', 'chiffres'] %}<div class="form-text">Le texte entre crochets passe en jaune : <code>T-shirts [DTF] dès 1 pièce</code>.</div>{% endif %}
 				</div>
-				<p class="text-muted small mb-3">
-					Elles passent dans le cadre « Dernières réalisations », dans cet ordre. Une image reste {{ reglages.dureeImage }} secondes, une vidéo passe jusqu'à sa fin, sans le son.
-					Formats : JPG, PNG, WebP, MP4 ou WebM, {{ tailleMaxMo }} Mo au plus par fichier. Format conseillé : paysage, 1600 × 900.
-				</p>
+				<div class="col-md-4">
+					<label class="si-libelle-champ">Petit titre au-dessus</label>
+					<input type="text" name="{{ nom }}[surtitre]" value="{{ s.surtitre }}" maxlength="40" class="form-control form-control-sm" placeholder="{{ s.type == 'promo' ? 'Nouveau' : 'Notre croissance' }}">
+				</div>
+				<div class="col-md-2">
+					<label class="si-libelle-champ">Durée (s)</label>
+					<input type="number" name="{{ nom }}[duree]" value="{{ s.duree }}" min="{{ constant('App\\Service\\ProgrammeEcranTv::DUREE_MIN') }}" max="{{ constant('App\\Service\\ProgrammeEcranTv::DUREE_MAX') }}" class="form-control form-control-sm" data-duree>
+				</div>
 
-				<form method="post" action="{{ path('app_ecran_tv_ajouter_medias') }}" enctype="multipart/form-data" class="d-flex gap-2 mb-3 flex-wrap">
-					<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
-					<input type="file" name="medias[]" class="form-control form-control-sm" style="max-width: 420px" accept=".jpg,.jpeg,.png,.webp,.mp4,.webm" multiple required>
-					<button type="submit" class="btn btn-danger btn-sm">Ajouter</button>
-				</form>
+				{% if s.type in ['promo', 'texte'] %}
+					<div class="col-md-6">
+						<label class="si-libelle-champ">Texte</label>
+						<input type="text" name="{{ nom }}[texte]" value="{{ s.texte }}" maxlength="160" class="form-control form-control-sm">
+					</div>
+					<div class="col-md-3">
+						<label class="si-libelle-champ">Pastille</label>
+						<input type="text" name="{{ nom }}[pastille]" value="{{ s.pastille }}" maxlength="40" class="form-control form-control-sm" placeholder="−10 % dès 25 pièces">
+					</div>
+					<div class="col-md-3">
+						<label class="si-libelle-champ">Fond</label>
+						<select name="{{ nom }}[fond]" class="form-select form-select-sm">
+							{% for valeur, libelle in constant('App\\Service\\ProgrammeEcranTv::FONDS') %}
+								<option value="{{ valeur }}" {{ s.fond == valeur ? 'selected' }}>{{ libelle }}</option>
+							{% endfor %}
+						</select>
+					</div>
+					<div class="col-12">
+						<label class="si-libelle-champ">Image à côté du texte (facultatif)</label>
+						<select name="{{ nom }}[medias][]" class="form-select form-select-sm">
+							<option value="">Sans image</option>
+							{% for m in images %}<option value="{{ m.fichier }}" {{ m.fichier in s.medias ? 'selected' }}>{{ m.legende ?: m.fichier }}</option>{% endfor %}
+						</select>
+					</div>
+				{% elseif s.type == 'photos' %}
+					<div class="col-12">
+						<span class="si-libelle-champ">Photos de la scène (aucune cochée : toutes les photos, dans l'ordre de la bibliothèque)</span>
+						{% if images is empty %}
+							<p class="text-muted small mb-0">Ajoutez des photos dans la bibliothèque en bas de page.</p>
+						{% else %}
+							<div class="si-scene-photos">
+								{% for m in images %}
+									<label title="{{ m.legende }}">
+										<input type="checkbox" name="{{ nom }}[medias][]" value="{{ m.fichier }}" {{ m.fichier in s.medias ? 'checked' }}>
+										<img src="{{ asset('uploads/tv/' ~ m.fichier) }}" alt="{{ m.legende }}" loading="lazy">
+									</label>
+								{% endfor %}
+							</div>
+						{% endif %}
+					</div>
+				{% elseif s.type == 'video' %}
+					<div class="col-12">
+						<label class="si-libelle-champ">Vidéo</label>
+						<select name="{{ nom }}[medias][]" class="form-select form-select-sm">
+							<option value="">Choisir une vidéo de la bibliothèque</option>
+							{% for m in videos %}<option value="{{ m.fichier }}" {{ m.fichier in s.medias ? 'selected' }}>{{ m.fichier }}</option>{% endfor %}
+						</select>
+						<div class="form-text">Sans vidéo choisie, la scène ne passe pas. Le son suit le réglage « Son » des zones fixes.</div>
+					</div>
+				{% elseif s.type == 'avis' %}
+					<div class="col-12"><p class="text-muted small mb-0">Un avis validé par passage, à la suite. Les avis se gèrent dans le bloc « Avis validés ».</p></div>
+				{% elseif s.type == 'chiffres' %}
+					<div class="col-12"><p class="text-muted small mb-0">Commandes livrées, m² imprimés, clients servis et satisfaction, puis les commandes des 12 derniers mois. Chiffres de l'application, sans montant.</p></div>
+				{% endif %}
 
-				{% if medias is empty %}
-					<p class="text-muted mb-0">Aucun média pour l'instant : l'écran affiche les couleurs Succès Imprim à la place.</p>
-				{% else %}
-					<div class="si-medias-tv">
-						{% for media in medias %}
-							<div class="si-media-tv">
-								<div class="si-media-tv-apercu">
-									{% if media.type == 'image' %}
-										<img src="{{ asset('uploads/tv/' ~ media.fichier) }}" alt="" loading="lazy">
-									{% else %}
-										<video src="{{ asset('uploads/tv/' ~ media.fichier) }}" muted preload="metadata"></video>
-										<span class="si-media-tv-type">Vidéo</span>
-									{% endif %}
-								</div>
-								<div class="si-media-tv-corps">
-									<label class="si-libelle-champ" for="legende-{{ loop.index }}">Légende</label>
-									<input type="text" id="legende-{{ loop.index }}" form="form-reglages-tv" name="legendes[{{ media.fichier }}]" value="{{ media.legende }}" maxlength="120" class="form-control form-control-sm" placeholder="Habillage boutique · vinyle micro-perforé">
-								</div>
-								<div class="si-media-tv-actions">
-									<form method="post" action="{{ path('app_ecran_tv_deplacer_media') }}">
-										<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
-										<input type="hidden" name="fichier" value="{{ media.fichier }}">
-										<button type="submit" name="sens" value="haut" class="btn btn-sm si-btn-discret" {{ loop.first ? 'disabled' }} aria-label="Monter">↑</button>
-										<button type="submit" name="sens" value="bas" class="btn btn-sm si-btn-discret" {{ loop.last ? 'disabled' }} aria-label="Descendre">↓</button>
-									</form>
-									<form method="post" action="{{ path('app_ecran_tv_supprimer_media') }}" onsubmit="return confirm('Retirer ce média de l\'écran TV ?');">
-										<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
-										<input type="hidden" name="fichier" value="{{ media.fichier }}">
-										<button type="submit" class="btn btn-sm si-btn-discret text-danger">Retirer</button>
-									</form>
-								</div>
+				<div class="col-12"><span class="si-libelle-champ mt-2">Programmation (vide : toujours)</span></div>
+				<div class="col-6 col-md-3">
+					<label class="small text-muted">De</label>
+					<input type="time" name="{{ nom }}[heureDebut]" value="{{ s.heureDebut }}" class="form-control form-control-sm">
+				</div>
+				<div class="col-6 col-md-3">
+					<label class="small text-muted">À</label>
+					<input type="time" name="{{ nom }}[heureFin]" value="{{ s.heureFin }}" class="form-control form-control-sm">
+				</div>
+				<div class="col-6 col-md-3">
+					<label class="small text-muted">Du</label>
+					<input type="date" name="{{ nom }}[dateDebut]" value="{{ s.dateDebut }}" class="form-control form-control-sm">
+				</div>
+				<div class="col-6 col-md-3">
+					<label class="small text-muted">Au</label>
+					<input type="date" name="{{ nom }}[dateFin]" value="{{ s.dateFin }}" class="form-control form-control-sm">
+				</div>
+				<div class="col-12 si-scene-jours">
+					{% for numero, jour in constant('App\\Service\\ProgrammeEcranTv::JOURS') %}
+						<label><input type="checkbox" name="{{ nom }}[jours][]" value="{{ numero }}" {{ numero in s.jours ? 'checked' }}> {{ jour|slice(0, 3) }}.</label>
+					{% endfor %}
+					<span class="text-muted small">Aucun jour coché : tous les jours.</span>
+				</div>
+				<div class="col-12 d-flex justify-content-between">
+					<span class="d-flex gap-1">
+						<button type="button" class="btn btn-sm si-btn-discret" data-monter aria-label="Monter">↑</button>
+						<button type="button" class="btn btn-sm si-btn-discret" data-descendre aria-label="Descendre">↓</button>
+					</span>
+					<button type="button" class="btn btn-sm si-btn-discret text-danger" data-supprimer>Supprimer la scène</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endmacro %}
+
+{% block body %}
+	{% set zones = programme.zones %}
+
+	{% if nonPublie %}
+		<div class="alert alert-warning py-2 small">Des modifications ne sont pas encore sur l'écran. Vérifiez-les avec « Aperçu plein écran », puis « Publier sur l'écran ».</div>
+	{% endif %}
+
+	<form method="post" id="form-programme">
+		<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv') }}">
+
+		<div class="row">
+			<div class="col-xl-8">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete">
+						<h4>Scènes de la zone principale</h4>
+						<span class="si-bloc-note">boucle de <b id="boucle">{{ boucle }}</b> s</span>
+					</div>
+
+					<div class="si-scenes" id="scenes">
+						{% for s in programme.scenes %}
+							{{ _self.scene(s, s.id, medias) }}
+						{% endfor %}
+					</div>
+
+					<div class="dropdown mt-2">
+						<button type="button" class="btn si-scene-ajout w-100" data-bs-toggle="dropdown" aria-expanded="false">+ Ajouter une scène (photos, vidéo, texte, chiffres, avis, promo)</button>
+						<ul class="dropdown-menu">
+							{% for type, libelle in constant('App\\Service\\ProgrammeEcranTv::TYPES') %}
+								<li><button type="button" class="dropdown-item" data-ajouter="{{ type }}">{{ libelle }}</button></li>
+							{% endfor %}
+						</ul>
+					</div>
+
+					{% for type, modele in modeles %}
+						<template id="modele-{{ type }}">{{ _self.scene(modele|merge({resume: 'Toujours'}), '__CLE__', medias) }}</template>
+					{% endfor %}
+
+					<div class="d-flex justify-content-end gap-2 mt-3">
+						<button type="submit" name="action" value="enregistrer" class="btn btn-light btn-sm">Enregistrer le brouillon</button>
+						<button type="submit" name="action" value="publier" class="btn btn-danger btn-sm">Publier sur l'écran</button>
+					</div>
+				</div>
+
+				<div class="card si-bloc">
+					<div class="si-bloc-tete">
+						<h4>Avis validés</h4>
+						<span class="si-bloc-note">seuls ces avis passent à l'écran</span>
+					</div>
+					<p class="text-muted small">Recopiez un avis Google ou un avis reçu, avec l'accord du client. Pas de nom complet : « Avis Google · client vérifié » ou un prénom suffit.</p>
+					<div id="avis" class="si-avis-liste">
+						{% for a in programme.avis %}
+							<div class="si-avis" data-avis>
+								<input type="text" name="avis[{{ loop.index0 }}][texte]" value="{{ a.texte }}" maxlength="200" class="form-control form-control-sm" placeholder="Bâches livrées et posées à temps pour notre ouverture.">
+								<select name="avis[{{ loop.index0 }}][note]" class="form-select form-select-sm" aria-label="Note">
+									{% for n in 5..1 %}<option value="{{ n }}" {{ a.note == n ? 'selected' }}>{{ n }} ★</option>{% endfor %}
+								</select>
+								<input type="text" name="avis[{{ loop.index0 }}][signature]" value="{{ a.signature }}" maxlength="60" class="form-control form-control-sm" aria-label="Signature">
+								<button type="button" class="btn btn-sm si-btn-discret text-danger" data-retirer-avis aria-label="Retirer cet avis">✕</button>
 							</div>
 						{% endfor %}
 					</div>
-				{% endif %}
+					<template id="modele-avis-client">
+						<div class="si-avis" data-avis>
+							<input type="text" name="avis[__N__][texte]" maxlength="200" class="form-control form-control-sm" placeholder="Bâches livrées et posées à temps pour notre ouverture.">
+							<select name="avis[__N__][note]" class="form-select form-select-sm" aria-label="Note">
+								{% for n in 5..1 %}<option value="{{ n }}">{{ n }} ★</option>{% endfor %}
+							</select>
+							<input type="text" name="avis[__N__][signature]" value="Avis Google · client vérifié" maxlength="60" class="form-control form-control-sm" aria-label="Signature">
+							<button type="button" class="btn btn-sm si-btn-discret text-danger" data-retirer-avis aria-label="Retirer cet avis">✕</button>
+						</div>
+					</template>
+					<button type="button" class="btn btn-sm btn-light align-self-start" id="ajouterAvis">+ Ajouter un avis</button>
+				</div>
+			</div>
+
+			<div class="col-xl-4">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Zones fixes</h4></div>
+					{% for champ, zone in {
+						zone_colonne: {actif: zones.colonneLive, titre: 'Colonne « en direct »', texte: 'Commandes en ligne (produit seul, jamais le nom ni le montant), prêtes à retirer (numéro), chiffres du jour'},
+						zone_bandeau: {actif: zones.bandeau, titre: 'Bandeau défilant', texte: programme.messages|length ~ ' message(s)'},
+						zone_horloge: {actif: zones.horlogeLogo, titre: 'Horloge et logo', texte: 'Logo Succès Imprim + « un service de MDG »'},
+						zone_son: {actif: zones.son, titre: 'Son', texte: zones.son ? 'Vidéos avec le son (si la Smart TV l\'autorise)' : 'Coupé (vidéos muettes)'}
+					} %}
+						<div class="si-zone-fixe">
+							<div>
+								<b>{{ zone.titre }}</b>
+								<small>{{ zone.texte }}</small>
+							</div>
+							<label class="si-interrupteur">
+								<input type="checkbox" name="{{ champ }}" value="1" {{ zone.actif ? 'checked' }} aria-label="{{ zone.titre }}">
+								<span></span>
+							</label>
+						</div>
+					{% endfor %}
+				</div>
+
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Horaires d'ouverture</h4></div>
+					<div class="si-horaires">
+						{% for numero, jour in constant('App\\Service\\ProgrammeEcranTv::JOURS') %}
+							{% set plage = programme.horaires[numero] %}
+							<span>{{ jour }}</span>
+							<input type="time" name="horaires[{{ numero }}][ouverture]" value="{{ plage ? plage.ouverture }}" class="form-control form-control-sm" aria-label="{{ jour }}, ouverture">
+							<input type="time" name="horaires[{{ numero }}][fermeture]" value="{{ plage ? plage.fermeture }}" class="form-control form-control-sm" aria-label="{{ jour }}, fermeture">
+						{% endfor %}
+					</div>
+					<p class="text-muted small mt-2 mb-2">Heures vides : fermé ce jour-là.</p>
+					<label class="si-libelle-champ" for="hors_horaires">Hors horaires, l'écran</label>
+					<select name="hors_horaires" id="hors_horaires" class="form-select form-select-sm">
+						<option value="ferme" {{ programme.horsHoraires == 'ferme' ? 'selected' }}>affiche « Fermé » et l'heure de réouverture</option>
+						<option value="eteint" {{ programme.horsHoraires == 'eteint' ? 'selected' }}>reste noir</option>
+					</select>
+				</div>
+
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Bandeau et note Google</h4></div>
+					<label class="si-libelle-champ" for="messages">Messages du bandeau rouge, un par ligne</label>
+					<textarea name="messages" id="messages" rows="5" class="form-control form-control-sm mb-1">{{ programme.messages|join("\n") }}</textarea>
+					<p class="text-muted small mb-3">Le texte entre crochets passe en jaune : <code>Payez par [Orange Money]</code>.</p>
+					<div class="row g-2">
+						<div class="col-6">
+							<label class="si-libelle-champ" for="note_google">Note Google (sur 5)</label>
+							<input type="text" inputmode="decimal" name="note_google" id="note_google" value="{{ programme.noteGoogle is not null ? programme.noteGoogle|number_format(1, ',') }}" class="form-control form-control-sm" placeholder="4,8">
+						</div>
+						<div class="col-6">
+							<label class="si-libelle-champ" for="avis_google">Nombre d'avis</label>
+							<input type="text" inputmode="numeric" name="avis_google" id="avis_google" value="{{ programme.avisGoogle }}" class="form-control form-control-sm" placeholder="120">
+						</div>
+					</div>
+					<p class="text-muted small mb-0 mt-1">Vide : la carte Satisfaction laisse la place aux commandes en ligne du mois.</p>
+				</div>
+
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Règles de l'écran</h4></div>
+					<ul class="si-regles-ecran">
+						<li>Jamais de montant, de marge ni de nom de client</li>
+						<li>Seulement les photos et avis validés ici</li>
+						<li>Écran noir ou « Fermé » hors horaires</li>
+						<li>Reprise automatique après une coupure de courant ou d'internet</li>
+						<li>Lien d'écran sécurisé, sans connexion utilisateur</li>
+					</ul>
+				</div>
+
+				<div class="card si-bloc">
+					<div class="si-ecran-statut {{ ecranEnLigne ? 'en-ligne' }}">
+						<span class="si-ecran-point"></span>
+						<div>
+							<b>Écran boutique</b>
+							<small>
+								{% if dernierPassage is null %}
+									Pas encore ouvert sur la Smart TV
+								{% else %}
+									Smart TV · {{ ecranEnLigne ? 'en ligne' : 'hors ligne' }} · dernier contact {{ dernierPassage|date('d/m H:i') }}
+								{% endif %}
+								{% if publieLe %}<br>Programme publié le {{ publieLe|date('d/m à H:i') }}{% endif %}
+							</small>
+						</div>
+					</div>
+					<label class="si-libelle-champ mt-3" for="lienEcran">Lien à ouvrir sur la Smart TV</label>
+					<div class="input-group input-group-sm">
+						<input type="text" id="lienEcran" value="{{ lienEcran }}" class="form-control" readonly>
+						<button type="button" class="btn btn-light" id="copierLien">Copier</button>
+					</div>
+					<p class="text-muted small mt-2 mb-2">Ce lien ouvre l'écran sans compte. Ne le partagez pas. S'il a circulé, créez-en un nouveau : l'ancien cesse de marcher.</p>
+					<button type="submit" form="form-nouveau-lien" class="btn btn-sm si-btn-discret text-danger align-self-start">Créer un nouveau lien</button>
+				</div>
 			</div>
 		</div>
+	</form>
 
-		<div class="col-xl-5">
-			<form method="post" id="form-reglages-tv" class="card si-bloc">
-				<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv') }}">
-				<div class="si-bloc-tete">
-					<h4>Bandeau et chiffres</h4>
-				</div>
+	<form method="post" id="form-nouveau-lien" action="{{ path('app_ecran_tv_nouveau_lien') }}" onsubmit="return confirm('L\'écran actuel perdra l\'accès jusqu\'à ce que vous ouvriez le nouveau lien. Continuer ?');">
+		<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-lien') }}">
+	</form>
 
-				<label class="si-libelle-champ" for="messages">Messages du bandeau rouge, un par ligne</label>
-				<textarea name="messages" id="messages" rows="5" class="form-control form-control-sm mb-1">{{ reglages.messages|join("\n") }}</textarea>
-				<p class="text-muted small mb-3">Le texte entre crochets passe en jaune : <code>Payez par [Orange Money]</code>.</p>
-
-				<div class="row g-2 mb-1">
-					<div class="col-6">
-						<label class="si-libelle-champ" for="note_google">Note Google (sur 5)</label>
-						<input type="text" inputmode="decimal" name="note_google" id="note_google" value="{{ reglages.noteGoogle is not null ? reglages.noteGoogle|number_format(1, ',') }}" class="form-control form-control-sm" placeholder="4,8">
-					</div>
-					<div class="col-6">
-						<label class="si-libelle-champ" for="avis_google">Nombre d'avis</label>
-						<input type="text" inputmode="numeric" name="avis_google" id="avis_google" value="{{ reglages.avisGoogle }}" class="form-control form-control-sm" placeholder="120">
-					</div>
-				</div>
-				<p class="text-muted small mb-3">Laissez vide pour cacher la tuile Satisfaction.</p>
-
-				<label class="si-libelle-champ" for="duree_image">Durée d'une image (secondes)</label>
-				<input type="number" name="duree_image" id="duree_image" min="4" max="60" value="{{ reglages.dureeImage }}" class="form-control form-control-sm mb-3" style="max-width: 120px">
-
-				<p class="text-muted small">
-					Les chiffres de l'écran (commandes livrées, m² imprimés, clients servis, commandes en ligne, commandes prêtes) se mettent à jour seuls chaque minute. Aucun montant ni nom de client n'y apparaît.
-				</p>
-
-				<button type="submit" class="btn btn-danger btn-sm align-self-start">Enregistrer</button>
-			</form>
+	<div class="card si-bloc">
+		<div class="si-bloc-tete">
+			<h4>Bibliothèque de photos et vidéos</h4>
 		</div>
+		<p class="text-muted small mb-3">
+			Seuls les fichiers ajoutés ici peuvent passer à l'écran. Les scènes Photos, Vidéo et Promo les choisissent.
+			Formats : JPG, PNG, WebP, MP4 ou WebM, {{ tailleMaxMo }} Mo au plus par fichier. Format conseillé : paysage, 1600 × 900.
+			Pour la légende, « Titre · détail » s'affiche sur deux lignes.
+		</p>
+
+		<form method="post" action="{{ path('app_ecran_tv_ajouter_medias') }}" enctype="multipart/form-data" class="d-flex gap-2 mb-3 flex-wrap">
+			<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
+			<input type="file" name="medias[]" class="form-control form-control-sm" style="max-width: 420px" accept=".jpg,.jpeg,.png,.webp,.mp4,.webm" multiple required>
+			<button type="submit" class="btn btn-danger btn-sm">Ajouter</button>
+		</form>
+
+		{% if medias is empty %}
+			<p class="text-muted mb-0">Aucun média pour l'instant.</p>
+		{% else %}
+			<div class="si-medias-tv">
+				{% for media in medias %}
+					<div class="si-media-tv">
+						<div class="si-media-tv-apercu">
+							{% if media.type == 'image' %}
+								<img src="{{ asset('uploads/tv/' ~ media.fichier) }}" alt="" loading="lazy">
+							{% else %}
+								<video src="{{ asset('uploads/tv/' ~ media.fichier) }}" muted preload="metadata"></video>
+								<span class="si-media-tv-type">Vidéo</span>
+							{% endif %}
+						</div>
+						<div class="si-media-tv-corps">
+							<label class="si-libelle-champ" for="legende-{{ loop.index }}">Légende</label>
+							<input type="text" id="legende-{{ loop.index }}" form="form-programme" name="legendes[{{ media.fichier }}]" value="{{ media.legende }}" maxlength="120" class="form-control form-control-sm" placeholder="Habillage de vitrine · vinyle micro-perforé">
+						</div>
+						<div class="si-media-tv-actions">
+							<form method="post" action="{{ path('app_ecran_tv_deplacer_media') }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
+								<input type="hidden" name="fichier" value="{{ media.fichier }}">
+								<button type="submit" name="sens" value="haut" class="btn btn-sm si-btn-discret" {{ loop.first ? 'disabled' }} aria-label="Monter">↑</button>
+								<button type="submit" name="sens" value="bas" class="btn btn-sm si-btn-discret" {{ loop.last ? 'disabled' }} aria-label="Descendre">↓</button>
+							</form>
+							<form method="post" action="{{ path('app_ecran_tv_supprimer_media') }}" onsubmit="return confirm('Retirer ce média de l\'écran TV ?');">
+								<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
+								<input type="hidden" name="fichier" value="{{ media.fichier }}">
+								<button type="submit" class="btn btn-sm si-btn-discret text-danger">Retirer</button>
+							</form>
+						</div>
+					</div>
+				{% endfor %}
+			</div>
+			<p class="text-muted small mt-2 mb-0">Les légendes s'enregistrent avec le brouillon.</p>
+		{% endif %}
 	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+	<script>
+	(function () {
+		'use strict';
+
+		var liste = document.getElementById('scenes');
+		var boucle = document.getElementById('boucle');
+
+		function majBoucle() {
+			var total = 0;
+			liste.querySelectorAll('[data-scene]').forEach(function (s) {
+				if (s.querySelector('[data-actif]').checked) { total += parseInt(s.querySelector('[data-duree]').value, 10) || 0; }
+			});
+			boucle.textContent = total;
+		}
+
+		function idAleatoire() {
+			return Math.random().toString(36).slice(2, 10);
+		}
+
+		liste.addEventListener('click', function (e) {
+			var scene = e.target.closest('[data-scene]');
+			if (!scene) { return; }
+
+			if (e.target.closest('[data-ouvrir]')) {
+				var details = scene.querySelector('.si-scene-details');
+				details.hidden = !details.hidden;
+				scene.querySelector('[data-ouvrir]').setAttribute('aria-expanded', String(!details.hidden));
+			} else if (e.target.closest('[data-supprimer]')) {
+				if (confirm('Supprimer cette scène ?')) { scene.remove(); majBoucle(); }
+			} else if (e.target.closest('[data-monter]') && scene.previousElementSibling) {
+				liste.insertBefore(scene, scene.previousElementSibling);
+			} else if (e.target.closest('[data-descendre]') && scene.nextElementSibling) {
+				liste.insertBefore(scene.nextElementSibling, scene);
+			}
+		});
+
+		liste.addEventListener('input', function (e) {
+			var scene = e.target.closest('[data-scene]');
+			if (e.target.matches('[data-titre]')) {
+				scene.querySelector('[data-apercu-titre]').textContent = e.target.value.replace(/[\[\]]/g, '');
+			}
+			if (e.target.matches('[data-duree]')) {
+				scene.querySelector('[data-apercu-duree]').textContent = e.target.value;
+			}
+			majBoucle();
+		});
+		liste.addEventListener('change', majBoucle);
+
+		document.querySelectorAll('[data-ajouter]').forEach(function (bouton) {
+			bouton.addEventListener('click', function () {
+				var id = idAleatoire();
+				var modele = document.getElementById('modele-' + bouton.dataset.ajouter).innerHTML.split('__CLE__').join(id);
+				var tampon = document.createElement('div');
+				tampon.innerHTML = modele.trim();
+				var scene = tampon.firstElementChild;
+				scene.querySelector('[data-id]').value = id;
+				scene.querySelector('.si-scene-details').hidden = false;
+				liste.appendChild(scene);
+				scene.querySelector('[data-titre]').focus();
+				majBoucle();
+			});
+		});
+
+		if (window.Sortable) {
+			Sortable.create(liste, { handle: '.si-poignee', animation: 150 });
+		}
+
+		var avis = document.getElementById('avis');
+		var compteurAvis = avis.querySelectorAll('[data-avis]').length;
+		document.getElementById('ajouterAvis').addEventListener('click', function () {
+			var tampon = document.createElement('div');
+			tampon.innerHTML = document.getElementById('modele-avis-client').innerHTML.split('__N__').join(String(compteurAvis++)).trim();
+			avis.appendChild(tampon.firstElementChild);
+			avis.lastElementChild.querySelector('input').focus();
+		});
+		avis.addEventListener('click', function (e) {
+			if (e.target.closest('[data-retirer-avis]')) { e.target.closest('[data-avis]').remove(); }
+		});
+
+		document.getElementById('copierLien').addEventListener('click', function () {
+			var champ = document.getElementById('lienEcran');
+			champ.select();
+			(navigator.clipboard ? navigator.clipboard.writeText(champ.value) : Promise.reject()).catch(function () { document.execCommand('copy'); });
+			this.textContent = 'Copié';
+		});
+	})();
+	</script>
 {% endblock %}

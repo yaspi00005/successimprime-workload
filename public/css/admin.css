@@ -1072,6 +1072,8 @@ body .si-sidebar .metismenu ul a.mm-active {
 
 .si-header .dashboard_bar,
 .si-fil-ariane {
+  /* Un titre long se coupe à droite au lieu de déborder des deux côtés. */
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1773,4 +1775,53 @@ body .si-sidebar .metismenu ul a.mm-active {
 	.si-mouvements li > span:first-child { grid-column: 1 / -1; font-size: .8rem; }
 	.si-ligne-fournisseur { grid-template-columns: 1fr 1fr; }
 	.si-ligne-fournisseur select { grid-column: 1 / -1; }
+}
+
+/* ---------- Programmation de l'écran TV ---------- */
+.si-scenes { display: flex; flex-direction: column; }
+.si-scene { border-bottom: 1px solid #eef1f6; }
+.si-scene.sortable-ghost { opacity: .4; }
+.si-scene-ligne { display: flex; align-items: center; gap: .75rem; padding: .7rem .25rem; }
+.si-poignee { cursor: grab; color: #9aa4b5; letter-spacing: -2px; user-select: none; touch-action: none; padding: .25rem; }
+.si-scene-pastille { width: 52px; height: 36px; border-radius: 8px; flex: 0 0 52px; }
+.si-scene-nom { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; }
+.si-scene-nom b, .si-scene-nom small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-scene-nom small { color: #6b7280; }
+.si-scene-type, .si-scene-duree { font-size: .75rem; font-weight: 700; border-radius: 999px; padding: .2rem .6rem; white-space: nowrap; }
+.si-scene-type { background: #eef1f6; color: #374151; }
+.si-scene-duree { background: #e7efff; color: #0F4590; }
+.si-scene-horaire { font-size: .8rem; color: #6b7280; min-width: 7rem; text-align: right; }
+.si-scene-details { padding: .25rem .25rem 1rem 2.4rem; }
+.si-scene-photos { display: flex; flex-wrap: wrap; gap: .5rem; }
+.si-scene-photos label { position: relative; cursor: pointer; }
+.si-scene-photos img { width: 96px; height: 60px; object-fit: cover; border-radius: 6px; border: 2px solid transparent; }
+.si-scene-photos input { position: absolute; top: 4px; left: 4px; }
+.si-scene-photos input:checked + img { border-color: #DE1028; }
+.si-scene-jours { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; font-size: .85rem; }
+.si-scene-ajout { border: 1px dashed #c9d2e3; font-weight: 600; color: #0F4590; }
+.si-zone-fixe { display: flex; align-items: center; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid #eef1f6; }
+.si-zone-fixe:last-child { border-bottom: 0; }
+.si-zone-fixe > div { flex: 1; }
+.si-zone-fixe b, .si-zone-fixe small { display: block; }
+.si-zone-fixe small { color: #6b7280; }
+.si-regles-ecran { list-style: none; padding: 0; margin: 0; }
+.si-regles-ecran li { padding: .2rem 0 .2rem 1.4rem; position: relative; }
+.si-regles-ecran li::before { content: "✓"; position: absolute; left: 0; color: #16a34a; font-weight: 700; }
+.si-ecran-statut { display: flex; gap: .75rem; align-items: flex-start; }
+.si-ecran-statut b, .si-ecran-statut small { display: block; }
+.si-ecran-statut small { color: #6b7280; }
+.si-ecran-point { width: 12px; height: 12px; border-radius: 50%; background: #9aa4b5; margin-top: .35rem; flex: 0 0 12px; }
+.si-ecran-statut.en-ligne .si-ecran-point { background: #16a34a; box-shadow: 0 0 0 4px rgba(22, 163, 74, .15); }
+.si-horaires { display: grid; grid-template-columns: auto 1fr 1fr; gap: .4rem .5rem; align-items: center; font-size: .85rem; }
+.si-avis-liste { display: flex; flex-direction: column; gap: .5rem; margin-bottom: .75rem; }
+.si-avis { display: grid; grid-template-columns: 1fr 5.5rem 14rem auto; gap: .5rem; }
+
+@media (max-width: 767.98px) {
+  .si-scene-ligne { flex-wrap: wrap; }
+  .si-scene-nom { flex-basis: calc(100% - 9rem); }
+  .si-scene-type { display: none; }
+  .si-scene-horaire { min-width: 0; text-align: left; flex: 1; }
+  .si-scene-details { padding-left: .25rem; }
+  .si-avis { grid-template-columns: 5.5rem 1fr auto; }
+  .si-avis input:first-child { grid-column: 1 / -1; }
 }

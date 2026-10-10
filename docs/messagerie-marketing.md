@@ -29,7 +29,10 @@ Ce document complète `docs/assistant-client.md` (l'assistant IA) et `docs/promo
 
 ### Ce qui dépend d'ailleurs
 
-- **WhatsApp entrant et sortant :** il faut l'API Meta, prévue en J5 (voir la mémoire du projet, WhatsApp). D'ici là, la messagerie ouvre WhatsApp à la main, comme la liste « À retirer ».
+- **WhatsApp :** décidé avec Yaya le 10/10/2026, l'envoi passe par un seul service.
+  - Clé WhatsApp vide dans `.env.local` : chaque bouton ouvre WhatsApp avec le message déjà écrit (lien wa.me), comme la liste « À retirer ».
+  - Clé présente : l'application envoie elle-même par l'API Meta, sans changement de code.
+  - Les réponses des clients n'entrent dans la messagerie unique qu'avec l'API. Avec les liens, elles arrivent sur le téléphone.
 - **SMS entrant :** il faut vérifier si l'offre SMS Orange actuelle reçoit les réponses. Sinon, la messagerie gère seulement le SMS sortant.
 - **Assistant IA :** la clé va dans `.env.local` et le coût est suivi (`docs/assistant-client.md`).
 

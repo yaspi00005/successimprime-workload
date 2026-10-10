@@ -57,6 +57,7 @@ final class NavigationExtension extends AbstractExtension
         ],
         'reglages' => [
             ['libelle' => 'Grille tarifaire', 'route' => 'app_produits_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_produits_', 'app_categorie_produit_', 'app_produit_configuration_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
+            ['libelle' => 'Coûts de revient', 'route' => 'app_couts_revient_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_couts_revient_']],
             ['libelle' => 'Équipe et droits', 'route' => 'app_user_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_user_', 'app_employes_', 'app_journal_activite_']],
         ],
     ];
@@ -102,6 +103,7 @@ final class NavigationExtension extends AbstractExtension
         'app_regle_rappel_paiement_' => 'clients',
         'app_categorie_produit_' => 'reglages',
         'app_produits_' => 'reglages',
+        'app_couts_revient_' => 'reglages',
         'app_produit_configuration_' => 'reglages',
         'app_type_impression_' => 'reglages',
         'app_support_' => 'reglages',

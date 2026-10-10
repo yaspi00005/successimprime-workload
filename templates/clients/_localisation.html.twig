@@ -1,0 +1,106 @@
+{# Position du client : carte, itineraire et saisie (fiche client). #}
+{% set coordonnees = client.estLocalise ? client.latitude ~ ',' ~ client.longitude : null %}
+<div class="card client-card mt-4 si-localisation" id="localisation-client-{{ client.id }}">
+	<div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+		<h3 class="card-title mb-0"><i class="fas fa-map-marker-alt me-2"></i>Localisation</h3>
+		{% if coordonnees %}
+			<div class="d-flex flex-wrap gap-2">
+				<a href="https://www.google.com/maps/dir/?api=1&destination={{ coordonnees }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fas fa-directions me-1"></i>Itinéraire</a>
+				<a href="https://wa.me/?text={{ ('Position de ' ~ client.nomComplet ~ (client.repere ? ' (' ~ client.repere ~ ')' : '') ~ ' : https://www.google.com/maps?q=' ~ coordonnees)|url_encode }}" class="btn btn-success btn-sm" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Envoyer au livreur</a>
+			</div>
+		{% endif %}
+	</div>
+	<div class="card-body">
+		<div class="row g-3">
+			<div class="col-lg-7">
+				<div class="si-carte" data-latitude="{{ client.latitude }}" data-longitude="{{ client.longitude }}"></div>
+			</div>
+			<div class="col-lg-5">
+				{% if coordonnees %}
+					<p class="mb-1"><strong>{{ client.repere ?: 'Pas de repère' }}</strong></p>
+					<p class="text-muted small">{{ client.adresse ?: '' }}{{ client.adresse and client.ville ? ', ' }}{{ client.ville ?: '' }}<br>Position enregistrée le {{ client.localiseLe ? client.localiseLe|date('d/m/Y') : '—' }}</p>
+				{% else %}
+					<p class="text-muted small">Pas encore de position. Placez le client sur la carte, utilisez votre position si vous êtes chez lui, ou collez la position qu'il a envoyée par WhatsApp.</p>
+				{% endif %}
+				<form method="post" action="{{ path('app_clients_localiser', {publicId: client.publicId}) }}" class="si-form-localisation">
+					<input type="hidden" name="_token" value="{{ csrf_token('localiser-client-' ~ client.id) }}">
+					<input type="hidden" name="latitude" value="{{ client.latitude }}">
+					<input type="hidden" name="longitude" value="{{ client.longitude }}">
+					<label class="form-label small mb-1" for="collerPosition{{ client.id }}">Lien Google Maps ou coordonnées</label>
+					<input type="text" id="collerPosition{{ client.id }}" class="form-control form-control-sm mb-1" data-coller-position placeholder="ex. https://maps.google.com/?q=12.6392,-8.0029">
+					<small class="text-muted d-block mb-2" data-etat-position>{{ coordonnees ? 'Position : ' ~ coordonnees : 'Aucune position choisie.' }}</small>
+					<label class="form-label small mb-1" for="repere{{ client.id }}">Repère</label>
+					<input type="text" id="repere{{ client.id }}" name="repere" class="form-control form-control-sm mb-2" maxlength="255" value="{{ client.repere }}" placeholder="ex. Derrière la mosquée de Badalabougou, portail vert">
+					<div class="d-flex flex-wrap gap-2">
+						<button type="button" class="btn btn-light btn-sm si-btn-entete" data-ma-position><i class="fas fa-crosshairs me-1"></i>Ma position actuelle</button>
+						<button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Enregistrer</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">
+<script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
+<script>
+(function () {
+	var bloc = document.getElementById('localisation-client-{{ client.id }}');
+	var carteEl = bloc.querySelector('.si-carte');
+	var form = bloc.querySelector('.si-form-localisation');
+	var etat = bloc.querySelector('[data-etat-position]');
+	var lat = parseFloat(carteEl.dataset.latitude);
+	var lng = parseFloat(carteEl.dataset.longitude);
+	var connu = !isNaN(lat) && !isNaN(lng);
+	var BAMAKO = [12.6392, -8.0029];
+
+	if (!window.L) {
+		carteEl.innerHTML = '<p class="text-muted small p-3">La carte n\'a pas pu se charger. Les coordonnées restent utilisables.</p>';
+	}
+
+	var carte = window.L ? L.map(carteEl).setView(connu ? [lat, lng] : BAMAKO, connu ? 16 : 12) : null;
+	var repere = null;
+
+	if (carte) {
+		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(carte);
+		carte.on('click', function (e) { placer(e.latlng.lat, e.latlng.lng, false); });
+	}
+
+	function placer(la, lo, centrer) {
+		form.latitude.value = la.toFixed(7);
+		form.longitude.value = lo.toFixed(7);
+		etat.textContent = 'Position : ' + la.toFixed(6) + ', ' + lo.toFixed(6) + ' (à enregistrer)';
+		if (!carte) { return; }
+		if (repere) { repere.setLatLng([la, lo]); } else { repere = L.marker([la, lo]).addTo(carte); }
+		if (centrer) { carte.setView([la, lo], 17); }
+	}
+
+	if (connu && carte) { repere = L.marker([lat, lng]).addTo(carte); }
+
+	// La carte peut naitre avant que la page ait sa largeur finale (Turbo, mobile).
+	if (carte) {
+		setTimeout(function () {
+			carte.invalidateSize();
+			carte.setView(repere ? repere.getLatLng() : BAMAKO, repere ? 16 : 12);
+		}, 400);
+	}
+
+	bloc.querySelector('[data-coller-position]').addEventListener('input', function () {
+		var trouve = this.value.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
+		if (trouve) {
+			placer(parseFloat(trouve[1]), parseFloat(trouve[2]), true);
+		} else if (this.value.trim() !== '') {
+			etat.textContent = 'Coordonnées introuvables. Ouvrez le lien dans Google Maps, puis copiez l\'adresse complète de la page.';
+		}
+	});
+
+	bloc.querySelector('[data-ma-position]').addEventListener('click', function () {
+		if (!navigator.geolocation) { etat.textContent = 'Ce navigateur ne donne pas la position.'; return; }
+		etat.textContent = 'Recherche de la position…';
+		navigator.geolocation.getCurrentPosition(
+			function (p) { placer(p.coords.latitude, p.coords.longitude, true); },
+			function () { etat.textContent = 'Position refusée ou indisponible.'; },
+			{enableHighAccuracy: true, timeout: 15000}
+		);
+	});
+})();
+</script>

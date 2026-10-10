@@ -72,6 +72,24 @@ class Clients
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $ville = null;
 
+    /*
+     * Position du client (livraison, pose, visite). A Bamako l'adresse
+     * seule ne suffit pas : on garde aussi un repere en clair.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 7, nullable: true)]
+    #[Assert\Range(min: -90, max: 90)]
+    private ?string $latitude = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 7, nullable: true)]
+    #[Assert\Range(min: -180, max: 180)]
+    private ?string $longitude = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $repere = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $localiseLe = null;
+
     #[ORM\Column(length: 30, nullable: true)]
     private ?string $nif = null;
 
@@ -315,6 +333,57 @@ class Clients
         $this->ville = $this->normaliserValeur($ville);
 
         return $this;
+    }
+
+    public function getLatitude(): ?float
+    {
+        return null === $this->latitude ? null : (float) $this->latitude;
+    }
+
+    public function getLongitude(): ?float
+    {
+        return null === $this->longitude ? null : (float) $this->longitude;
+    }
+
+    public function estLocalise(): bool
+    {
+        return null !== $this->latitude && null !== $this->longitude;
+    }
+
+    /**
+     * Enregistre la position, ou l'efface si l'une des deux valeurs manque.
+     */
+    public function localiser(?float $latitude, ?float $longitude, ?\DateTimeImmutable $le = null): static
+    {
+        if (null === $latitude || null === $longitude) {
+            $this->latitude = $this->longitude = null;
+            $this->localiseLe = null;
+
+            return $this;
+        }
+
+        $this->latitude = number_format($latitude, 7, '.', '');
+        $this->longitude = number_format($longitude, 7, '.', '');
+        $this->localiseLe = $le ?? new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function getRepere(): ?string
+    {
+        return $this->repere;
+    }
+
+    public function setRepere(?string $repere): static
+    {
+        $this->repere = $this->normaliserValeur($repere);
+
+        return $this;
+    }
+
+    public function getLocaliseLe(): ?\DateTimeImmutable
+    {
+        return $this->localiseLe;
     }
 
     public function getNif(): ?string

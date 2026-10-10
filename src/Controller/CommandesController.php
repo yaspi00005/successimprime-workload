@@ -24,6 +24,7 @@ use Symfony\Component\Form\FormInterface;
 use App\Entity\CommandesDetails;
 use App\Service\NotificationService;
 use App\Service\StockService;
+use App\Service\CalculateurCoutRevient;
 use App\Service\SuiviCommandeService;
 use App\Repository\FacturesRepository;
 use App\Repository\ParametresPaiementRepository;
@@ -521,12 +522,31 @@ final class CommandesController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_commandes_show', methods: ['GET'])]
-    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService): Response
+    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient): Response
     {
         $lignes = [];
+        $voirCouts = $this->isGranted('ROLE_ADMIN');
+        $marge = ['ht' => 0, 'cout' => 0, 'incomplet' => false];
 
         foreach ($commande->getCommandesDetails() as $ligne) {
-            $lignes[] = ['detail' => $ligne] + $suiviCommandeService->ligne($ligne);
+            $cout = null;
+
+            if ($voirCouts && CommandesDetails::PRODUCTION_ANNULEE !== $ligne->getStatutProduction()) {
+                // Le cout enregistre a la saisie fait foi ; les anciennes
+                // lignes, saisies avant le calcul automatique, sont calculees.
+                $calcul = $calculateurCoutRevient->pourLigne($ligne);
+                $montant = $ligne->getCoutRevient() > 0 ? $ligne->getCoutRevient() : $calcul['total'];
+                $cout = [
+                    'montant' => $montant,
+                    'marge' => CalculateurCoutRevient::tauxMarge($ligne->getTotalHt(), $montant),
+                    'manquants' => $calcul['manquants'],
+                ];
+                $marge['ht'] += $ligne->getTotalHt();
+                $marge['cout'] += $montant;
+                $marge['incomplet'] = $marge['incomplet'] || [] !== $calcul['manquants'];
+            }
+
+            $lignes[] = ['detail' => $ligne, 'cout' => $cout] + $suiviCommandeService->ligne($ligne);
         }
 
         $factures = array_values(array_filter(
@@ -541,6 +561,7 @@ final class CommandesController extends AbstractController
             'paiementsValides' => $suiviCommandeService->paiementsValides($commande),
             'historique' => \array_slice($suiviCommandeService->historique($commande), 0, 8),
             'facture' => end($factures) ?: null,
+            'marge' => $voirCouts ? $marge + ['taux' => CalculateurCoutRevient::tauxMarge($marge['ht'], $marge['cout'])] : null,
         ]);
     }
 

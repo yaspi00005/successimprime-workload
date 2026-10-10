@@ -322,20 +322,6 @@ class CommandesDetailsType extends AbstractType
                     'data-detail-field' => 'modeCalcul',
                 ],
             ])
-            ->add('coutRevient', IntegerType::class, [
-                'label' => 'Coût de revient',
-                'required' => false,
-                'empty_data' => '0',
-                'attr' => [
-                    'class' => 'form-control js-cout-revient',
-                    'min' => 0,
-                    'step' => 1,
-                    'data-detail-field' => 'coutRevient',
-                ],
-                'constraints' => [
-                    new GreaterThanOrEqual(0),
-                ],
-            ])
 
             /*
              * Remise en FCFA par unité facturable (par m², par mètre

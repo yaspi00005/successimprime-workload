@@ -1082,3 +1082,43 @@ body .si-sidebar .metismenu ul a.mm-active {
     width: 13rem;
   }
 }
+
+/* ---------- Coûts de revient ---------- */
+
+.si-couts .form-control-sm {
+  max-width: 9rem;
+}
+
+.si-barre-enregistrer {
+  position: sticky;
+  bottom: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 767.98px) {
+  .si-barre-enregistrer {
+    bottom: 5rem;
+  }
+
+  .si-barre-enregistrer .btn {
+    width: 100%;
+  }
+}
+
+/* ---------- Localisation client ---------- */
+
+.si-carte {
+  height: 18rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: #EEF1F6;
+  z-index: 0;
+}
+
+@media (max-width: 767.98px) {
+  .si-carte {
+    height: 14rem;
+  }
+}

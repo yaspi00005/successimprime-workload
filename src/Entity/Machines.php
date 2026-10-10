@@ -112,6 +112,20 @@ class Machines
     #[ORM\Column(nullable: true)]
     private ?int $dureeAmortissementMois = null;
 
+    /*
+     * Donnees du cout de revient (CalculateurCoutRevient) : vitesse
+     * reelle de production, cout d'une heure de machine (amortissement,
+     * electricite, operateur) et cout de l'encre par m2 imprime.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 8, scale: 2, nullable: true)]
+    private ?string $vitesseM2Heure = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $coutHoraire = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $coutEncreM2 = null;
+
     #[ORM\Column(options: ['default' => 0])]
     private int $revenuAvantSuivi = 0;
 
@@ -527,6 +541,61 @@ public function setAdresseIp(string $adresseIp): static
         $this->dureeAmortissementMois = $dureeAmortissementMois;
 
         return $this;
+    }
+
+    public function getVitesseM2Heure(): ?float
+    {
+        return null === $this->vitesseM2Heure ? null : (float) $this->vitesseM2Heure;
+    }
+
+    public function setVitesseM2Heure(?float $vitesseM2Heure): static
+    {
+        $this->vitesseM2Heure = null === $vitesseM2Heure ? null : number_format($vitesseM2Heure, 2, '.', '');
+
+        return $this;
+    }
+
+    public function getCoutHoraire(): ?int
+    {
+        return $this->coutHoraire;
+    }
+
+    public function setCoutHoraire(?int $coutHoraire): static
+    {
+        $this->coutHoraire = $coutHoraire;
+
+        return $this;
+    }
+
+    public function getCoutEncreM2(): ?int
+    {
+        return $this->coutEncreM2;
+    }
+
+    public function setCoutEncreM2(?int $coutEncreM2): static
+    {
+        $this->coutEncreM2 = $coutEncreM2;
+
+        return $this;
+    }
+
+    /**
+     * Largeur utile en metres, quelle que soit la saisie (« 3,20 m »,
+     * « 320 cm », « 320 »), ou null si elle n'est pas lisible.
+     */
+    public function getLaizeMetres(): ?float
+    {
+        if (!preg_match('/^\s*(\d+(?:[.,]\d+)?)/', (string) $this->largeurImpression, $nombre)) {
+            return null;
+        }
+
+        $valeur = (float) str_replace(',', '.', $nombre[1]);
+
+        if ($valeur <= 0) {
+            return null;
+        }
+
+        return $valeur > 10 ? $valeur / 100 : $valeur;
     }
 
     public function getRevenuAvantSuivi(): int

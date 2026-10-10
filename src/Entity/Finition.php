@@ -31,6 +31,13 @@ class Finition
     #[ORM\Column(type: Types::TEXT)]
     private ?string $description = null;
 
+    /*
+     * Cout de revient d'une unite de finition (oeillet, metre d'ourlet,
+     * m2 de lamination...), utilise par CalculateurCoutRevient.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $coutUnitaire = null;
+
     /**
      * @var Collection<int, TypesImpression>
      */
@@ -157,4 +164,16 @@ public function removeSupport(Supports $supports): static
 
     return $this;
 }
+
+    public function getCoutUnitaire(): ?int
+    {
+        return $this->coutUnitaire;
+    }
+
+    public function setCoutUnitaire(?int $coutUnitaire): static
+    {
+        $this->coutUnitaire = $coutUnitaire;
+
+        return $this;
+    }
 }

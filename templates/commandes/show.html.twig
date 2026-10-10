@@ -137,6 +137,12 @@
 						</div>
 						<div class="text-end text-nowrap">
 							<strong>{{ detail.totalTtc|number_format(0, ',', ' ') }} F</strong>
+							{% if ligne.cout %}
+								<small class="d-block text-muted" {% if ligne.cout.manquants %}title="Coût incomplet : {{ ligne.cout.manquants|join(', ') }}"{% endif %}>
+									Coût {{ ligne.cout.montant|number_format(0, ',', ' ') }} F{% if ligne.cout.manquants %} <i class="fas fa-exclamation-triangle text-warning"></i>{% endif %}
+									{% if ligne.cout.marge is not null %}· <span class="{{ ligne.cout.marge < 35 ? 'text-danger' : 'text-success' }} fw-semibold">marge {{ ligne.cout.marge|number_format(0, ',', ' ') }} %</span>{% endif %}
+								</small>
+							{% endif %}
 							{% if detail.productionDebuteePar %}<small class="d-block text-muted">Opérateur : {{ detail.productionDebuteePar.employe ? detail.productionDebuteePar.employe.prenom : detail.productionDebuteePar.username }}</small>{% endif %}
 							{% if (is_granted('ROLE_LIVRAISON') or estAdmin) and detail.statutProduction not in ['livree', 'annulee'] %}
 								<form method="post" action="{{ path('app_livraisons_livrer_directement', {id: detail.id}) }}" data-confirmer="Marquer « {{ detail.designation|default('ce travail') }} » comme livré, sans passer par le prépresse ni la production ? Le stock réservé sera sorti.">
@@ -153,6 +159,12 @@
 					<span class="text-muted">Total TTC</span>
 					<strong class="fs-4">{{ totalTtc|number_format(0, ',', ' ') }} F</strong>
 				</div>
+				{% if marge and marge.taux is not null %}
+					<div class="d-flex justify-content-between align-items-center small">
+						<span class="text-muted">Marge brute{% if marge.incomplet %} <span class="text-warning" title="Des coûts manquent : voir Réglages, Coûts de revient">(coût incomplet)</span>{% endif %}</span>
+						<span class="{{ marge.taux < 35 ? 'text-danger' : 'text-success' }} fw-semibold">{{ (marge.ht - marge.cout)|number_format(0, ',', ' ') }} F · {{ marge.taux|number_format(0, ',', ' ') }} %</span>
+					</div>
+				{% endif %}
 				{% if commande.observation %}
 					<p class="text-muted small mb-0 mt-2"><i class="fas fa-comment-alt me-1"></i>{{ commande.observation }}</p>
 				{% endif %}

@@ -911,6 +911,52 @@ final class ClientsController extends AbstractController
         ]);
     }
 
+    /**
+     * Position du client (fiche client) : coordonnees GPS et repere.
+     * Un formulaire vide efface la position.
+     */
+    #[Route(
+        '/fiche/{publicId}/localisation',
+        name: 'app_clients_localiser',
+        methods: ['POST']
+    )]
+    public function localiser(
+        #[MapEntity(mapping: [
+            'publicId' => 'publicId',
+        ])]
+        Clients $client,
+        Request $request,
+        EntityManagerInterface $entityManager
+    ): Response {
+        if (!$this->isCsrfTokenValid('localiser-client-'.$client->getId(), $request->getPayload()->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton invalide.');
+        }
+
+        $latitude = self::coordonnee($request->getPayload()->getString('latitude'), 90);
+        $longitude = self::coordonnee($request->getPayload()->getString('longitude'), 180);
+
+        $client
+            ->localiser($latitude, $longitude)
+            ->setRepere($request->getPayload()->getString('repere'));
+
+        $entityManager->flush();
+
+        $this->addFlash('success', $client->estLocalise() ? 'Position du client enregistrée.' : 'Position du client effacée.');
+
+        return $this->redirectToRoute('app_clients_show', ['publicId' => $client->getPublicId()]);
+    }
+
+    private static function coordonnee(string $valeur, int $limite): ?float
+    {
+        $valeur = str_replace(',', '.', trim($valeur));
+
+        if (!is_numeric($valeur) || abs((float) $valeur) > $limite) {
+            return null;
+        }
+
+        return (float) $valeur;
+    }
+
     #[Route(
         '/fiche/{publicId}',
         name: 'app_clients_show',

@@ -50,8 +50,9 @@ final class CalculateurCoutRevient
         $machine = $ligne->getMachine();
         $manquants = [];
 
-        $largeur = (float) ($ligne->getLargeur() ?? 0) / 100;
-        $hauteur = (float) ($ligne->getLongueur() ?? 0) / 100;
+        // Dimensions stockees en metres (le formulaire affiche des cm).
+        $largeur = (float) ($ligne->getLargeur() ?? 0);
+        $hauteur = (float) ($ligne->getLongueur() ?? 0);
 
         $imposition = self::imposition($largeur, $hauteur, $quantite, $machine?->getLaizeMetres());
 

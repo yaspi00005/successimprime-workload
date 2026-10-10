@@ -41,7 +41,20 @@ class CommandesDetails
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Produits $produit = null;
 
+    /*
+     * « Mes produits » (docs/mes-produits.md) : la ligne vient d'un produit
+     * deja valide du client. On garde ce que le client a demande (ex. 20 m2)
+     * a cote de ce que l'atelier produit (quantite, ex. 4 baches).
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ProduitClient $produitClient = null;
 
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, nullable: true)]
+    private ?string $quantiteDemandee = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $uniteDemandee = null;
 
     #[ORM\Column(length: 20, options: ['default' => 'automatique'])]
     #[Assert\Choice(
@@ -678,6 +691,39 @@ class CommandesDetails
     public function getSurfaceTotale(): float
     {
         return (float) ($this->surface ?? 0) * $this->quantite;
+    }
+
+    public function getProduitClient(): ?ProduitClient
+    {
+        return $this->produitClient;
+    }
+
+    public function setProduitClient(?ProduitClient $produitClient): static
+    {
+        $this->produitClient = $produitClient;
+
+        return $this;
+    }
+
+    public function getQuantiteDemandee(): ?float
+    {
+        return null === $this->quantiteDemandee ? null : (float) $this->quantiteDemandee;
+    }
+
+    public function getUniteDemandee(): ?string
+    {
+        return $this->uniteDemandee;
+    }
+
+    /**
+     * Quantite saisie par le client et son unite (piece, m2, lot).
+     */
+    public function setDemande(?float $quantite, ?string $unite): static
+    {
+        $this->quantiteDemandee = null === $quantite ? null : number_format($quantite, 2, '.', '');
+        $this->uniteDemandee = null === $quantite ? null : $unite;
+
+        return $this;
     }
 
     public function getProduitConfiguration(): ?ProduitConfiguration

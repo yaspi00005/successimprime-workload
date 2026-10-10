@@ -123,7 +123,7 @@
 						<div class="flex-grow-1 min-w-0">
 							<strong>{{ detail.designation|default(detail.produit ? detail.produit.nom : 'Travail') }} × {{ detail.quantite }}</strong>
 							{% set caracteristiques = [] %}
-							{% if detail.largeur and detail.longueur %}{% set caracteristiques = caracteristiques|merge([(detail.largeur + 0) ~ ' × ' ~ (detail.longueur + 0) ~ ' cm']) %}{% endif %}
+							{% if detail.largeur and detail.longueur %}{% set caracteristiques = caracteristiques|merge([(detail.largeur * 100)|round(1) ~ ' × ' ~ (detail.longueur * 100)|round(1) ~ ' cm']) %}{% endif %}
 							{% for finition in detail.finitions %}{% set caracteristiques = caracteristiques|merge([finition.nomFinition]) %}{% endfor %}
 							{% if caracteristiques %}<small class="d-block text-muted">{{ caracteristiques|join(' · ') }}</small>{% endif %}
 							<div class="d-flex flex-wrap gap-1 mt-1">

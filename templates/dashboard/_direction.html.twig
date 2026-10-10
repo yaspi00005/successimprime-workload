@@ -95,7 +95,7 @@
 								{% set couleur = type ? couleursTags[type.id % 4] : 'gris' %}
 								<a href="{{ path('app_commandes_show', {id: ligne.commande.id}) }}" class="si-kanban-carte si-bord-{{ couleur }}">
 									<strong>{{ d.court(ligne.designation|default(ligne.produit ? ligne.produit.nom : 'Travail'), 28) }} × {{ ligne.quantite }}</strong>
-									{% if ligne.largeur and ligne.longueur %}<small>{{ ligne.largeur + 0 }} × {{ ligne.longueur + 0 }} cm</small>{% endif %}
+									{% if ligne.largeur and ligne.longueur %}<small>{{ (ligne.largeur * 100)|round(1) }} × {{ (ligne.longueur * 100)|round(1) }} cm</small>{% endif %}
 									<small>{{ ligne.commande.clients ? d.court(ligne.commande.clients.nomComplet, 24) : ligne.commande.numero }}</small>
 									<span class="d-flex flex-wrap gap-1 mt-1">
 										{% if type %}<span class="si-etiquette si-fond-{{ couleur }}">{{ d.court(type.nom|default('Impression'), 16) }}</span>{% endif %}

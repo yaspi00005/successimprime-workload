@@ -1,0 +1,101 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Écran TV{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_tv_dashboard') }}" target="_blank" rel="noopener" class="btn btn-danger btn-sm si-btn-entete">Ouvrir l'écran TV</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="row">
+		<div class="col-xl-7">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete">
+					<h4>Images et vidéos qui défilent</h4>
+				</div>
+				<p class="text-muted small mb-3">
+					Elles passent dans le cadre « Dernières réalisations », dans cet ordre. Une image reste {{ reglages.dureeImage }} secondes, une vidéo passe jusqu'à sa fin, sans le son.
+					Formats : JPG, PNG, WebP, MP4 ou WebM, {{ tailleMaxMo }} Mo au plus par fichier. Format conseillé : paysage, 1600 × 900.
+				</p>
+
+				<form method="post" action="{{ path('app_ecran_tv_ajouter_medias') }}" enctype="multipart/form-data" class="d-flex gap-2 mb-3 flex-wrap">
+					<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
+					<input type="file" name="medias[]" class="form-control form-control-sm" style="max-width: 420px" accept=".jpg,.jpeg,.png,.webp,.mp4,.webm" multiple required>
+					<button type="submit" class="btn btn-danger btn-sm">Ajouter</button>
+				</form>
+
+				{% if medias is empty %}
+					<p class="text-muted mb-0">Aucun média pour l'instant : l'écran affiche les couleurs Succès Imprim à la place.</p>
+				{% else %}
+					<div class="si-medias-tv">
+						{% for media in medias %}
+							<div class="si-media-tv">
+								<div class="si-media-tv-apercu">
+									{% if media.type == 'image' %}
+										<img src="{{ asset('uploads/tv/' ~ media.fichier) }}" alt="" loading="lazy">
+									{% else %}
+										<video src="{{ asset('uploads/tv/' ~ media.fichier) }}" muted preload="metadata"></video>
+										<span class="si-media-tv-type">Vidéo</span>
+									{% endif %}
+								</div>
+								<div class="si-media-tv-corps">
+									<label class="si-libelle-champ" for="legende-{{ loop.index }}">Légende</label>
+									<input type="text" id="legende-{{ loop.index }}" form="form-reglages-tv" name="legendes[{{ media.fichier }}]" value="{{ media.legende }}" maxlength="120" class="form-control form-control-sm" placeholder="Habillage boutique · vinyle micro-perforé">
+								</div>
+								<div class="si-media-tv-actions">
+									<form method="post" action="{{ path('app_ecran_tv_deplacer_media') }}">
+										<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
+										<input type="hidden" name="fichier" value="{{ media.fichier }}">
+										<button type="submit" name="sens" value="haut" class="btn btn-sm si-btn-discret" {{ loop.first ? 'disabled' }} aria-label="Monter">↑</button>
+										<button type="submit" name="sens" value="bas" class="btn btn-sm si-btn-discret" {{ loop.last ? 'disabled' }} aria-label="Descendre">↓</button>
+									</form>
+									<form method="post" action="{{ path('app_ecran_tv_supprimer_media') }}" onsubmit="return confirm('Retirer ce média de l\'écran TV ?');">
+										<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
+										<input type="hidden" name="fichier" value="{{ media.fichier }}">
+										<button type="submit" class="btn btn-sm si-btn-discret text-danger">Retirer</button>
+									</form>
+								</div>
+							</div>
+						{% endfor %}
+					</div>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="col-xl-5">
+			<form method="post" id="form-reglages-tv" class="card si-bloc">
+				<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv') }}">
+				<div class="si-bloc-tete">
+					<h4>Bandeau et chiffres</h4>
+				</div>
+
+				<label class="si-libelle-champ" for="messages">Messages du bandeau rouge, un par ligne</label>
+				<textarea name="messages" id="messages" rows="5" class="form-control form-control-sm mb-1">{{ reglages.messages|join("\n") }}</textarea>
+				<p class="text-muted small mb-3">Le texte entre crochets passe en jaune : <code>Payez par [Orange Money]</code>.</p>
+
+				<div class="row g-2 mb-1">
+					<div class="col-6">
+						<label class="si-libelle-champ" for="note_google">Note Google (sur 5)</label>
+						<input type="text" inputmode="decimal" name="note_google" id="note_google" value="{{ reglages.noteGoogle is not null ? reglages.noteGoogle|number_format(1, ',') }}" class="form-control form-control-sm" placeholder="4,8">
+					</div>
+					<div class="col-6">
+						<label class="si-libelle-champ" for="avis_google">Nombre d'avis</label>
+						<input type="text" inputmode="numeric" name="avis_google" id="avis_google" value="{{ reglages.avisGoogle }}" class="form-control form-control-sm" placeholder="120">
+					</div>
+				</div>
+				<p class="text-muted small mb-3">Laissez vide pour cacher la tuile Satisfaction.</p>
+
+				<label class="si-libelle-champ" for="duree_image">Durée d'une image (secondes)</label>
+				<input type="number" name="duree_image" id="duree_image" min="4" max="60" value="{{ reglages.dureeImage }}" class="form-control form-control-sm mb-3" style="max-width: 120px">
+
+				<p class="text-muted small">
+					Les chiffres de l'écran (commandes livrées, m² imprimés, clients servis, commandes en ligne, commandes prêtes) se mettent à jour seuls chaque minute. Aucun montant ni nom de client n'y apparaît.
+				</p>
+
+				<button type="submit" class="btn btn-danger btn-sm align-self-start">Enregistrer</button>
+			</form>
+		</div>
+	</div>
+{% endblock %}

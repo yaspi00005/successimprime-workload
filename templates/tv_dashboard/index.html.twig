@@ -3,49 +3,302 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta http-equiv="refresh" content="300">
-
-	<title>SuccessImprim — Écran d'accueil</title>
-
-	<link
-		rel="stylesheet"
-		href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-	>
+	{# Rechargement complet de temps en temps pour prendre les nouveaux médias ; les chiffres, eux, sont relus chaque minute. #}
+	<meta http-equiv="refresh" content="1800">
+	<meta name="robots" content="noindex">
+	<title>Succès Imprim · Notre activité en direct</title>
 
 	<style>
-
-		* {
-			margin: 0;
-			padding: 0;
-			box-sizing: border-box;
+		:root {
+			--tv-fond: #081633;
+			--tv-panneau: rgba(255, 255, 255, .06);
+			--tv-bord: rgba(255, 255, 255, .12);
+			--tv-texte: #ffffff;
+			--tv-doux: rgba(255, 255, 255, .72);
+			--tv-vert: #4ade80;
+			--tv-rouge: #e30613;
+			--tv-jaune: #fcc419;
+			--tv-bleu: #3b82f6;
 		}
+
+		* { margin: 0; padding: 0; box-sizing: border-box; }
 
 		html, body {
 			width: 100%;
 			height: 100%;
 			overflow: hidden;
-			background: #0b1120;
-			font-family: 'Segoe UI', Arial, sans-serif;
-			color: #fff;
+			background: var(--tv-fond);
+			color: var(--tv-texte);
+			font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 		}
 
-		/* ============================================================
-		   FOND — DIAPORAMA
-		   ============================================================ */
+		body {
+			background:
+				radial-gradient(1200px 600px at 85% -10%, rgba(59, 130, 246, .35), transparent 60%),
+				radial-gradient(900px 500px at -10% 110%, rgba(227, 6, 19, .18), transparent 60%),
+				linear-gradient(160deg, #0b1f4d 0%, #081633 55%, #060f26 100%);
+		}
 
-		.tv-fond {
+		/* Bandes de couleur du logo qui passent en fond */
+		.tv-bandes {
 			position: fixed;
-			inset: 0;
+			top: -14vh;
+			right: -16vw;
+			width: 46vw;
+			height: 46vh;
+			transform: rotate(-18deg);
+			opacity: .12;
+			pointer-events: none;
 			z-index: 0;
-			background: linear-gradient(135deg, #4338ca, #0ea5e9, #22c55e);
-			background-size: 400% 400%;
-			animation: degradeAnime 18s ease infinite;
 		}
 
-		@keyframes degradeAnime {
-			0%   { background-position: 0% 50%; }
-			50%  { background-position: 100% 50%; }
-			100% { background-position: 0% 50%; }
+		.tv-bandes span {
+			display: block;
+			height: 22%;
+			margin-bottom: 4%;
+			border-radius: 999px;
+			animation: bande 14s ease-in-out infinite alternate;
+		}
+
+		.tv-bandes span:nth-child(1) { background: var(--tv-bleu); }
+		.tv-bandes span:nth-child(2) { background: var(--tv-rouge); animation-delay: -4s; }
+		.tv-bandes span:nth-child(3) { background: var(--tv-jaune); animation-delay: -8s; }
+
+		@keyframes bande {
+			from { transform: translateX(0); }
+			to   { transform: translateX(-8vw); }
+		}
+
+		.tv {
+			position: relative;
+			z-index: 1;
+			height: 100vh;
+			display: grid;
+			grid-template-rows: auto auto 1fr auto;
+			gap: 2.2vh;
+			padding: 3.5vh 3vw 0;
+		}
+
+		/* ---------- En-tête ---------- */
+
+		.tv-entete {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			animation: glisserHaut .8s ease both;
+		}
+
+		.tv-logo {
+			background: #fff;
+			border-radius: 1.2vh;
+			padding: 1vh 1.4vw;
+			box-shadow: 0 .8vh 3vh rgba(0, 0, 0, .35);
+		}
+
+		.tv-logo img { height: 8vh; display: block; }
+
+		.tv-titre { text-align: right; }
+
+		.tv-titre h1 {
+			font-size: 4.2vh;
+			font-weight: 800;
+			letter-spacing: -.02em;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			gap: 1vw;
+		}
+
+		.tv-live {
+			display: inline-flex;
+			align-items: center;
+			gap: .5vw;
+			background: var(--tv-rouge);
+			font-size: 1.7vh;
+			font-weight: 800;
+			letter-spacing: .08em;
+			padding: .5vh .9vw;
+			border-radius: 999px;
+		}
+
+		.tv-live::before {
+			content: '';
+			width: 1vh;
+			height: 1vh;
+			border-radius: 50%;
+			background: #fff;
+			animation: clignote 1.4s ease-in-out infinite;
+		}
+
+		.tv-sous-titre {
+			color: var(--tv-doux);
+			font-size: 2vh;
+			margin-top: .4vh;
+		}
+
+		.tv-sous-titre .tv-heure { color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+		/* ---------- Tuiles ---------- */
+
+		.tv-tuiles {
+			display: grid;
+			grid-auto-columns: minmax(0, 1fr);
+			grid-auto-flow: column;
+			gap: 1.4vw;
+		}
+
+		.tv-tuile {
+			position: relative;
+			overflow: hidden;
+			background: var(--tv-panneau);
+			border: 1px solid var(--tv-bord);
+			border-radius: 2vh;
+			padding: 2.2vh 1.6vw;
+			backdrop-filter: blur(10px);
+			animation: glisserBas .8s ease both;
+		}
+
+		.tv-tuile:nth-child(2) { animation-delay: .1s; }
+		.tv-tuile:nth-child(3) { animation-delay: .2s; }
+		.tv-tuile:nth-child(4) { animation-delay: .3s; }
+		.tv-tuile:nth-child(5) { animation-delay: .4s; }
+
+		.tv-tuile-libelle { color: var(--tv-doux); font-size: 2.1vh; }
+
+		.tv-tuile-valeur {
+			font-size: 6.4vh;
+			font-weight: 800;
+			line-height: 1.1;
+			letter-spacing: -.02em;
+			font-variant-numeric: tabular-nums;
+			margin: .6vh 0 .4vh;
+		}
+
+		.tv-tuile-valeur.jaune { color: var(--tv-jaune); }
+
+		.tv-tuile-pied {
+			font-size: 1.9vh;
+			font-weight: 700;
+			color: var(--tv-doux);
+			display: flex;
+			align-items: center;
+			gap: .5vw;
+		}
+
+		.tv-hausse { color: var(--tv-vert); }
+		.tv-baisse { color: #fca5a5; }
+
+		/* Commandes en ligne */
+		.tv-tuile.en-ligne-actif {
+			border-color: rgba(74, 222, 128, .55);
+			box-shadow: inset 0 0 0 1px rgba(74, 222, 128, .25), 0 0 4vh rgba(74, 222, 128, .15);
+		}
+
+		.tv-point {
+			width: 1.3vh;
+			height: 1.3vh;
+			border-radius: 50%;
+			background: rgba(255, 255, 255, .35);
+			flex: none;
+		}
+
+		.en-ligne-actif .tv-point {
+			background: var(--tv-vert);
+			box-shadow: 0 0 0 0 rgba(74, 222, 128, .7);
+			animation: onde 1.8s ease-out infinite;
+		}
+
+		.en-ligne-actif .tv-tuile-pied { color: var(--tv-vert); }
+
+		.tv-nouvelle {
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			text-align: center;
+			background: linear-gradient(135deg, #16a34a, #22c55e);
+			font-size: 2.6vh;
+			font-weight: 800;
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		.tv-nouvelle.visible { animation: nouvelle 5s ease both; }
+
+		/* ---------- Bas : courbe et médias ---------- */
+
+		.tv-bas {
+			display: grid;
+			grid-template-columns: 1.45fr 1fr;
+			gap: 1.4vw;
+			min-height: 0;
+		}
+
+		.tv-panneau {
+			background: var(--tv-panneau);
+			border: 1px solid var(--tv-bord);
+			border-radius: 2vh;
+			padding: 2.4vh 1.6vw;
+			display: flex;
+			flex-direction: column;
+			min-height: 0;
+			animation: glisserBas .8s ease .3s both;
+		}
+
+		.tv-panneau h2 { font-size: 2.6vh; font-weight: 800; }
+		.tv-panneau .tv-panneau-sous { color: var(--tv-doux); font-size: 1.8vh; margin-top: .3vh; }
+
+		.tv-courbe {
+			flex: 1;
+			display: grid;
+			grid-template-columns: repeat(12, 1fr);
+			align-items: end;
+			gap: 1vw;
+			margin-top: 2vh;
+			min-height: 0;
+		}
+
+		.tv-mois {
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			justify-content: flex-end;
+			align-items: center;
+			gap: .8vh;
+			min-height: 0;
+		}
+
+		.tv-mois-nombre { font-size: 1.8vh; font-weight: 700; color: var(--tv-doux); font-variant-numeric: tabular-nums; }
+
+		.tv-barre {
+			width: 100%;
+			min-height: .6vh;
+			border-radius: 1vh 1vh .4vh .4vh;
+			background: linear-gradient(180deg, #60a5fa, #2563eb);
+			transform-origin: bottom;
+			animation: pousser 1.1s cubic-bezier(.2, .8, .2, 1) both;
+			transition: height .8s ease;
+		}
+
+		.tv-mois.en-cours .tv-barre {
+			background: linear-gradient(180deg, var(--tv-jaune), #f97316);
+			box-shadow: 0 0 3vh rgba(252, 196, 25, .45);
+		}
+
+		.tv-mois.en-cours .tv-mois-nombre { color: var(--tv-jaune); }
+
+		.tv-mois-libelle { font-size: 1.7vh; color: var(--tv-doux); }
+
+		/* Médias */
+		.tv-medias {
+			position: relative;
+			flex: 1;
+			margin-top: 1.8vh;
+			border-radius: 1.6vh;
+			overflow: hidden;
+			background: #0b1f4d;
+			min-height: 0;
 		}
 
 		.tv-media {
@@ -55,354 +308,389 @@
 			height: 100%;
 			object-fit: cover;
 			opacity: 0;
-			transform: scale(1);
-			transition: opacity 1.8s ease;
+			transition: opacity 1.2s ease;
 		}
 
-		.tv-media.actif {
-			opacity: 1;
-			animation: kenBurns 14s ease forwards;
+		.tv-media.actif { opacity: 1; }
+		img.tv-media.actif { animation: kenBurns 12s ease forwards; }
+
+		.tv-legende {
+			position: absolute;
+			left: 1.2vw;
+			bottom: 1.6vh;
+			background: rgba(0, 0, 0, .6);
+			border-radius: .8vh;
+			padding: .6vh .9vw;
+			font-size: 1.8vh;
+			max-width: calc(100% - 2.4vw);
+			transition: opacity .6s ease;
 		}
 
-		@keyframes kenBurns {
-			from { transform: scale(1); }
-			to   { transform: scale(1.12); }
-		}
+		.tv-legende:empty { opacity: 0; }
 
-		.tv-overlay {
-			position: fixed;
+		.tv-medias-vide {
+			position: absolute;
 			inset: 0;
-			z-index: 1;
-			background: linear-gradient(180deg, rgba(5, 10, 25, .55) 0%, rgba(5, 10, 25, .35) 45%, rgba(5, 10, 25, .85) 100%);
+			background: linear-gradient(115deg, #fff 0 28%, var(--tv-rouge) 28% 52%, var(--tv-jaune) 52% 74%, #1d4ed8 74%);
 		}
 
-		/* ============================================================
-		   CONTENU
-		   ============================================================ */
+		.tv-pretes { margin-top: 2vh; }
+		.tv-pretes h3 { font-size: 2vh; font-weight: 700; margin-bottom: 1vh; }
 
-		.tv-contenu {
-			position: relative;
-			z-index: 2;
-			height: 100vh;
-			display: flex;
-			flex-direction: column;
-			padding: 3rem 4rem;
-		}
+		.tv-numeros { display: flex; flex-wrap: wrap; gap: .7vw; }
 
-		.tv-entete {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			animation: glisserHaut .9s ease both;
-		}
-
-		.tv-marque {
-			display: flex;
-			align-items: center;
-			gap: .9rem;
-			font-size: 1.7rem;
-			font-weight: 700;
-			letter-spacing: .5px;
-			text-shadow: 0 2px 12px rgba(0, 0, 0, .4);
-		}
-
-		.tv-marque i {
-			background: rgba(255, 255, 255, .15);
-			border: 1px solid rgba(255, 255, 255, .3);
-			width: 52px;
-			height: 52px;
-			border-radius: 14px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 1.5rem;
-		}
-
-		.tv-horloge {
-			text-align: right;
-			text-shadow: 0 2px 12px rgba(0, 0, 0, .4);
-		}
-
-		.tv-heure {
-			font-size: 2.4rem;
-			font-weight: 700;
-			font-variant-numeric: tabular-nums;
-		}
-
-		.tv-date {
-			font-size: 1.05rem;
-			opacity: .85;
-			text-transform: capitalize;
-		}
-
-		/* ============================================================
-		   BLOC CENTRAL — CLIENTS
-		   ============================================================ */
-
-		.tv-central {
-			flex: 1;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			text-align: center;
-		}
-
-		.tv-central-titre {
-			font-size: 1.5rem;
-			font-weight: 400;
-			opacity: .9;
-			letter-spacing: 1px;
-			text-transform: uppercase;
-			animation: apparaitre 1s ease .3s both;
-		}
-
-		.tv-central-chiffre {
-			font-size: 9rem;
+		.tv-numero {
+			background: #fff;
+			color: #0b1f4d;
 			font-weight: 800;
-			line-height: 1;
-			margin: .5rem 0;
-			background: linear-gradient(90deg, #ffffff, #a5f3fc);
-			-webkit-background-clip: text;
-			background-clip: text;
-			-webkit-text-fill-color: transparent;
-			text-shadow: 0 8px 40px rgba(0, 0, 0, .35);
-			animation: apparaitre 1s ease .5s both, pulsationDouce 4s ease-in-out infinite 2s;
-		}
-
-		.tv-central-soustitre {
-			font-size: 1.3rem;
-			opacity: .9;
-			animation: apparaitre 1s ease .7s both;
-		}
-
-		@keyframes pulsationDouce {
-			0%, 100% { transform: scale(1); }
-			50%      { transform: scale(1.03); }
-		}
-
-		/* ============================================================
-		   TUILES STATS
-		   ============================================================ */
-
-		.tv-tuiles {
-			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: 1.75rem;
-		}
-
-		.tv-tuile {
-			background: rgba(255, 255, 255, .1);
-			border: 1px solid rgba(255, 255, 255, .22);
-			backdrop-filter: blur(14px);
-			border-radius: 20px;
-			padding: 1.75rem 2rem;
-			display: flex;
-			align-items: center;
-			gap: 1.25rem;
-			animation: glisserBas .9s ease both;
-			box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
-		}
-
-		.tv-tuile:nth-child(1) { animation-delay: .2s; }
-		.tv-tuile:nth-child(2) { animation-delay: .4s; }
-		.tv-tuile:nth-child(3) { animation-delay: .6s; }
-
-		.tv-tuile-icone {
-			width: 60px;
-			height: 60px;
-			min-width: 60px;
-			border-radius: 16px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 1.6rem;
-			background: rgba(255, 255, 255, .18);
-		}
-
-		.tv-tuile-valeur {
-			font-size: 2.6rem;
-			font-weight: 800;
-			line-height: 1;
+			font-size: 2.3vh;
+			padding: .6vh 1vw;
+			border-radius: 1vh;
 			font-variant-numeric: tabular-nums;
+			animation: apparaitre .6s ease both;
 		}
 
-		.tv-tuile-libelle {
-			opacity: .85;
-			font-size: 1rem;
-			margin-top: .15rem;
+		.tv-numeros-vide { color: var(--tv-doux); font-size: 1.8vh; }
+
+		/* ---------- Bandeau défilant ---------- */
+
+		.tv-bandeau {
+			margin: 0 -3vw;
+			background: var(--tv-rouge);
+			overflow: hidden;
+			white-space: nowrap;
+			padding: 1.5vh 0;
+			font-size: 2.3vh;
+			font-weight: 700;
 		}
 
-		@keyframes glisserHaut {
-			from { opacity: 0; transform: translateY(-24px); }
-			to   { opacity: 1; transform: translateY(0); }
+		.tv-bandeau-piste {
+			display: inline-block;
+			padding-left: 100%;
+			animation: defiler var(--duree-bandeau, 40s) linear infinite;
 		}
 
-		@keyframes glisserBas {
-			from { opacity: 0; transform: translateY(24px); }
-			to   { opacity: 1; transform: translateY(0); }
+		.tv-bandeau-piste span.message { margin-right: 5vw; }
+		.tv-bandeau-piste strong { color: var(--tv-jaune); font-weight: 800; }
+
+		/* ---------- Animations ---------- */
+
+		@keyframes glisserHaut { from { opacity: 0; transform: translateY(-2vh); } to { opacity: 1; transform: none; } }
+		@keyframes glisserBas { from { opacity: 0; transform: translateY(2vh); } to { opacity: 1; transform: none; } }
+		@keyframes apparaitre { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+		@keyframes pousser { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+		@keyframes kenBurns { from { transform: scale(1); } to { transform: scale(1.08); } }
+		@keyframes clignote { 50% { opacity: .25; } }
+		@keyframes onde { to { box-shadow: 0 0 0 1.4vh rgba(74, 222, 128, 0); } }
+		@keyframes defiler { to { transform: translateX(-100%); } }
+		@keyframes nouvelle { 0% { opacity: 0; } 10%, 85% { opacity: 1; } 100% { opacity: 0; } }
+
+		@media (prefers-reduced-motion: reduce) {
+			*, *::before { animation-duration: .01s !important; animation-iteration-count: 1 !important; }
+			.tv-bandeau-piste { padding-left: 0; }
 		}
 
-		@keyframes apparaitre {
-			from { opacity: 0; transform: scale(.92); }
-			to   { opacity: 1; transform: scale(1); }
+		/* Écran étroit (aperçu sur téléphone) : tout en colonne, défilement permis. */
+		@media (max-width: 900px), (max-aspect-ratio: 1/1) {
+			html, body { overflow: auto; height: auto; }
+			.tv { height: auto; min-height: 100vh; gap: 16px; padding: 16px 16px 0; }
+			.tv-entete { flex-direction: column; align-items: flex-start; gap: 12px; }
+			.tv-titre { text-align: left; }
+			.tv-titre h1 { justify-content: flex-start; font-size: 22px; }
+			.tv-sous-titre { font-size: 13px; }
+			.tv-logo img { height: 48px; }
+			.tv-tuiles { grid-auto-flow: row; grid-template-columns: 1fr 1fr; gap: 10px; }
+			.tv-tuile { padding: 14px; border-radius: 14px; }
+			.tv-tuile-libelle { font-size: 13px; }
+			.tv-tuile-valeur { font-size: 30px; }
+			.tv-tuile-pied { font-size: 12px; gap: 6px; }
+			.tv-point { width: 8px; height: 8px; }
+			.tv-nouvelle { font-size: 15px; }
+			.tv-bas { grid-template-columns: 1fr; gap: 16px; }
+			.tv-panneau { padding: 16px; border-radius: 14px; }
+			.tv-panneau h2 { font-size: 17px; }
+			.tv-panneau .tv-panneau-sous, .tv-mois-libelle, .tv-mois-nombre { font-size: 11px; }
+			.tv-courbe { height: 200px; flex: none; gap: 4px; margin-top: 12px; }
+			.tv-medias { height: 220px; flex: none; margin-top: 12px; }
+			.tv-legende { font-size: 12px; }
+			.tv-pretes h3 { font-size: 14px; }
+			.tv-numero { font-size: 15px; padding: 4px 10px; border-radius: 8px; }
+			.tv-numeros { gap: 8px; }
+			.tv-bandeau { margin: 0 -16px; font-size: 14px; padding: 10px 0; }
 		}
-
-		@media (max-width: 900px) {
-			.tv-central-chiffre { font-size: 5.5rem; }
-			.tv-tuiles { grid-template-columns: 1fr; }
-			.tv-contenu { padding: 1.5rem; }
-		}
-
 	</style>
 </head>
 <body>
+	<div class="tv-bandes" aria-hidden="true"><span></span><span></span><span></span></div>
 
-	<div class="tv-fond" id="tvFond">
-		{% for media in medias %}
-			{% if media.type == 'image' %}
-				<img
-					class="tv-media"
-					src="{{ asset('uploads/tv/' ~ media.fichier) }}"
-					alt=""
-				>
-			{% else %}
-				<video
-					class="tv-media"
-					src="{{ asset('uploads/tv/' ~ media.fichier) }}"
-					muted
-					playsinline
-					preload="auto"
-				></video>
+	<main class="tv">
+		<header class="tv-entete">
+			<div class="tv-logo">
+				<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim">
+			</div>
+			<div class="tv-titre">
+				<h1>Notre activité en direct <span class="tv-live">LIVE</span></h1>
+				<div class="tv-sous-titre">un service de MDG · succesimprim.com · <span class="tv-heure" id="tvHeure">--:--</span></div>
+			</div>
+		</header>
+
+		<section class="tv-tuiles">
+			{% macro variation(v) %}
+				{% if v is not null %}
+					<span class="{{ v >= 0 ? 'tv-hausse' : 'tv-baisse' }}">{{ v >= 0 ? '▲ +' : '▼ ' }}{{ v }} % sur 12 mois</span>
+				{% else %}
+					<span>Depuis nos débuts</span>
+				{% endif %}
+			{% endmacro %}
+
+			<div class="tv-tuile">
+				<div class="tv-tuile-libelle">Commandes livrées</div>
+				<div class="tv-tuile-valeur js-compteur" data-cle="livrees.total" data-valeur="{{ donnees.livrees.total }}">0</div>
+				<div class="tv-tuile-pied" data-variation="livrees">{{ _self.variation(donnees.livrees.variation) }}</div>
+			</div>
+
+			<div class="tv-tuile">
+				<div class="tv-tuile-libelle">m² imprimés</div>
+				<div class="tv-tuile-valeur js-compteur" data-cle="metresCarres.total" data-valeur="{{ donnees.metresCarres.total }}">0</div>
+				<div class="tv-tuile-pied" data-variation="metresCarres">{{ _self.variation(donnees.metresCarres.variation) }}</div>
+			</div>
+
+			<div class="tv-tuile">
+				<div class="tv-tuile-libelle">Clients servis</div>
+				<div class="tv-tuile-valeur js-compteur" data-cle="clients.total" data-valeur="{{ donnees.clients.total }}">0</div>
+				<div class="tv-tuile-pied" data-variation="clients">{{ _self.variation(donnees.clients.variation) }}</div>
+			</div>
+
+			<div class="tv-tuile {{ donnees.enLigne.aujourdhui > 0 ? 'en-ligne-actif' }}" id="tuileEnLigne">
+				<div class="tv-tuile-libelle">Commandes en ligne aujourd'hui</div>
+				<div class="tv-tuile-valeur js-compteur" data-cle="enLigne.aujourdhui" data-valeur="{{ donnees.enLigne.aujourdhui }}">0</div>
+				<div class="tv-tuile-pied"><span class="tv-point"></span><span id="enLignePied"></span></div>
+				<div class="tv-nouvelle" id="enLigneNouvelle">Nouvelle commande en ligne !</div>
+			</div>
+
+			{% if reglages.noteGoogle is not null %}
+				<div class="tv-tuile">
+					<div class="tv-tuile-libelle">Satisfaction</div>
+					<div class="tv-tuile-valeur jaune">{{ reglages.noteGoogle|number_format(1, ',') }}/5</div>
+					<div class="tv-tuile-pied">★★★★★ {{ reglages.avisGoogle ? reglages.avisGoogle ~ ' ' }}avis Google</div>
+				</div>
 			{% endif %}
-		{% endfor %}
-	</div>
+		</section>
 
-	<div class="tv-overlay"></div>
-
-	<div class="tv-contenu">
-
-		<div class="tv-entete">
-
-			<div class="tv-marque">
-				<i class="fa fa-print"></i>
-				SuccessImprim
-			</div>
-
-			<div class="tv-horloge">
-				<div class="tv-heure" id="tvHeure">--:--</div>
-				<div class="tv-date" id="tvDate">—</div>
-			</div>
-
-		</div>
-
-		<div class="tv-central">
-			<div class="tv-central-titre">Ils nous font confiance</div>
-			<div class="tv-central-chiffre js-compteur" data-valeur="{{ totalClients }}">0</div>
-			<div class="tv-central-soustitre">clients accompagnés depuis nos débuts</div>
-		</div>
-
-		<div class="tv-tuiles">
-
-			<div class="tv-tuile">
-				<div class="tv-tuile-icone"><i class="fa fa-calendar-o"></i></div>
-				<div>
-					<div class="tv-tuile-valeur js-compteur" data-valeur="{{ commandesSemaine }}">0</div>
-					<div class="tv-tuile-libelle">commandes cette semaine</div>
+		<section class="tv-bas">
+			<div class="tv-panneau">
+				<h2>Notre croissance</h2>
+				<div class="tv-panneau-sous">Commandes par mois · 12 derniers mois</div>
+				<div class="tv-courbe" id="tvCourbe">
+					{% set plusHaut = max(1, max(donnees.parMois|map(m => m.nombre))) %}
+					{% for mois in donnees.parMois %}
+						<div class="tv-mois {{ mois.enCours ? 'en-cours' }}">
+							<span class="tv-mois-nombre">{{ mois.nombre }}</span>
+							<div class="tv-barre" style="height: {{ (mois.nombre / plusHaut * 82)|round(1) }}%; animation-delay: {{ loop.index0 * 60 }}ms"></div>
+							<span class="tv-mois-libelle">{{ mois.libelle }}</span>
+						</div>
+					{% endfor %}
 				</div>
 			</div>
 
-			<div class="tv-tuile">
-				<div class="tv-tuile-icone"><i class="fa fa-calendar"></i></div>
-				<div>
-					<div class="tv-tuile-valeur js-compteur" data-valeur="{{ commandesMois }}">0</div>
-					<div class="tv-tuile-libelle">commandes ce mois-ci</div>
+			<div class="tv-panneau">
+				<h2>Dernières réalisations</h2>
+				<div class="tv-medias" id="tvMedias" data-duree-image="{{ reglages.dureeImage }}">
+					{% for media in medias %}
+						{% if media.type == 'image' %}
+							<img class="tv-media" src="{{ asset('uploads/tv/' ~ media.fichier) }}" alt="" data-legende="{{ media.legende }}" {{ loop.index > 2 ? 'loading="lazy"' }}>
+						{% else %}
+							<video class="tv-media" src="{{ asset('uploads/tv/' ~ media.fichier) }}" muted playsinline preload="metadata" data-legende="{{ media.legende }}"></video>
+						{% endif %}
+					{% else %}
+						<div class="tv-medias-vide"></div>
+					{% endfor %}
+					<div class="tv-legende" id="tvLegende"></div>
+				</div>
+
+				<div class="tv-pretes">
+					<h3>Commandes prêtes à retirer</h3>
+					<div class="tv-numeros" id="tvPretes">
+						{% for numero in donnees.pretes %}
+							<span class="tv-numero">{{ numero }}</span>
+						{% else %}
+							<span class="tv-numeros-vide">Aucune pour le moment</span>
+						{% endfor %}
+					</div>
 				</div>
 			</div>
+		</section>
 
-			<div class="tv-tuile">
-				<div class="tv-tuile-icone"><i class="fa fa-line-chart"></i></div>
-				<div>
-					<div class="tv-tuile-valeur js-compteur" data-valeur="{{ commandesAnnee }}">0</div>
-					<div class="tv-tuile-libelle">commandes cette année</div>
-				</div>
+		<footer class="tv-bandeau">
+			<div class="tv-bandeau-piste" id="tvBandeau">
+				{% for morceaux in messages %}
+					<span class="message">{% for m in morceaux %}{% if m.fort %}<strong>{{ m.texte }}</strong>{% else %}{{ m.texte }}{% endif %}{% endfor %}</span>
+				{% endfor %}
 			</div>
-
-		</div>
-
-	</div>
+		</footer>
+	</main>
 
 	<script>
-		document.addEventListener('DOMContentLoaded', function () {
+	(function () {
+		var URL_DONNEES = {{ path('app_tv_dashboard_donnees')|json_encode|raw }};
+		var nombre = new Intl.NumberFormat('fr-FR');
+		var donnees = {{ donnees|json_encode|raw }};
 
-			/* Horloge en direct */
-			function majHorloge() {
-				const maintenant = new Date();
+		function lire(objet, cle) {
+			return cle.split('.').reduce(function (o, k) { return o ? o[k] : undefined; }, objet);
+		}
 
-				document.getElementById('tvHeure').textContent =
-					maintenant.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+		function animerCompteur(element, depuis, vers) {
+			var debut = performance.now();
+			var duree = 1400;
 
-				document.getElementById('tvDate').textContent =
-					maintenant.toLocaleDateString('fr-FR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+			function pas(t) {
+				var p = Math.min(1, (t - debut) / duree);
+				var e = 1 - Math.pow(1 - p, 3);
+				element.textContent = nombre.format(Math.round(depuis + (vers - depuis) * e));
+				if (p < 1) requestAnimationFrame(pas);
 			}
 
-			majHorloge();
-			setInterval(majHorloge, 1000 * 30);
+			requestAnimationFrame(pas);
+		}
 
-			/* Compteurs animés */
-			document.querySelectorAll('.js-compteur').forEach(function (element) {
-				const cible = parseInt(element.dataset.valeur || '0', 10);
-				const duree = 1600;
-				const depart = performance.now();
+		/* Horloge */
+		function horloge() {
+			document.getElementById('tvHeure').textContent =
+				new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+		}
+		horloge();
+		setInterval(horloge, 15000);
 
-				function animer(maintenant) {
-					const progres = Math.min(1, (maintenant - depart) / duree);
-					const facilite = 1 - Math.pow(1 - progres, 3);
-					element.textContent = Math.round(cible * facilite).toLocaleString('fr-FR');
-
-					if (progres < 1) {
-						requestAnimationFrame(animer);
-					}
-				}
-
-				requestAnimationFrame(animer);
-			});
-
-			/* Diaporama de fond (images + vidéos) */
-			const medias = Array.from(document.querySelectorAll('.tv-media'));
-
-			if (medias.length > 0) {
-
-				let indexActuel = 0;
-				const dureeAffichage = 9000;
-
-				function afficher(index) {
-					medias.forEach(function (media, i) {
-						media.classList.toggle('actif', i === index);
-
-						if (media.tagName === 'VIDEO') {
-							if (i === index) {
-								media.currentTime = 0;
-								media.play().catch(function () {});
-							} else {
-								media.pause();
-							}
-						}
-					});
-				}
-
-				afficher(0);
-
-				if (medias.length > 1) {
-					setInterval(function () {
-						indexActuel = (indexActuel + 1) % medias.length;
-						afficher(indexActuel);
-					}, dureeAffichage);
-				}
-			}
-
+		/* Compteurs au démarrage */
+		document.querySelectorAll('.js-compteur').forEach(function (el) {
+			animerCompteur(el, 0, parseInt(el.dataset.valeur || '0', 10));
 		});
-	</script>
 
+		/* Commandes en ligne */
+		function majEnLigne(d) {
+			var tuile = document.getElementById('tuileEnLigne');
+			var pied = document.getElementById('enLignePied');
+			var actif = d.enLigne.aujourdhui > 0;
+			tuile.classList.toggle('en-ligne-actif', actif);
+			pied.textContent = actif
+				? 'En ce moment · ' + nombre.format(d.enLigne.mois) + ' ce mois'
+				: (d.enLigne.mois > 0 ? 'Aucune aujourd\'hui · ' + nombre.format(d.enLigne.mois) + ' ce mois' : 'Commandez sur succesimprim.com');
+		}
+		majEnLigne(donnees);
+
+		/* Bandeau : vitesse constante quelle que soit la longueur */
+		var piste = document.getElementById('tvBandeau');
+		piste.style.setProperty('--duree-bandeau', Math.max(20, Math.round((piste.scrollWidth + window.innerWidth) / 110)) + 's');
+
+		/* Médias : chaque image reste le temps réglé, chaque vidéo jusqu'à sa fin. */
+		var zone = document.getElementById('tvMedias');
+		var medias = Array.prototype.slice.call(zone.querySelectorAll('.tv-media'));
+		var legende = document.getElementById('tvLegende');
+		var dureeImage = parseInt(zone.dataset.dureeImage || '8', 10) * 1000;
+		var courant = -1;
+		var minuteur = null;
+
+		function suivant() {
+			if (medias.length === 0) return;
+			clearTimeout(minuteur);
+			var precedent = medias[courant];
+			courant = (courant + 1) % medias.length;
+			var media = medias[courant];
+
+			if (precedent && precedent !== media) {
+				precedent.classList.remove('actif');
+				if (precedent.tagName === 'VIDEO') precedent.pause();
+			}
+
+			media.classList.add('actif');
+			legende.textContent = media.dataset.legende || '';
+
+			if (media.tagName === 'VIDEO') {
+				media.currentTime = 0;
+				media.loop = medias.length === 1;
+				media.onended = suivant;
+				media.play().catch(function () { minuteur = setTimeout(suivant, dureeImage); });
+				// Filet de sécurité si la vidéo bloque.
+				minuteur = setTimeout(suivant, Math.max(dureeImage, ((media.duration || 60) + 2) * 1000));
+			} else if (medias.length > 1) {
+				minuteur = setTimeout(suivant, dureeImage);
+			}
+		}
+		suivant();
+
+		/* Chiffres relus chaque minute */
+		function majCourbe(parMois) {
+			var plusHaut = Math.max(1, Math.max.apply(null, parMois.map(function (m) { return m.nombre; })));
+			var colonnes = document.querySelectorAll('#tvCourbe .tv-mois');
+			parMois.forEach(function (m, i) {
+				if (!colonnes[i]) return;
+				colonnes[i].querySelector('.tv-mois-nombre').textContent = m.nombre;
+				colonnes[i].querySelector('.tv-mois-libelle').textContent = m.libelle;
+				colonnes[i].querySelector('.tv-barre').style.height = (m.nombre / plusHaut * 82).toFixed(1) + '%';
+			});
+		}
+
+		function majPretes(pretes) {
+			var boite = document.getElementById('tvPretes');
+			boite.textContent = '';
+			if (pretes.length === 0) {
+				var vide = document.createElement('span');
+				vide.className = 'tv-numeros-vide';
+				vide.textContent = 'Aucune pour le moment';
+				boite.appendChild(vide);
+				return;
+			}
+			pretes.forEach(function (n) {
+				var s = document.createElement('span');
+				s.className = 'tv-numero';
+				s.textContent = n;
+				boite.appendChild(s);
+			});
+		}
+
+		function majVariation(cle, v) {
+			var pied = document.querySelector('[data-variation="' + cle + '"]');
+			if (!pied) return;
+			pied.textContent = '';
+			var s = document.createElement('span');
+			if (v === null) {
+				s.textContent = 'Depuis nos débuts';
+			} else {
+				s.className = v >= 0 ? 'tv-hausse' : 'tv-baisse';
+				s.textContent = (v >= 0 ? '▲ +' : '▼ ') + v + ' % sur 12 mois';
+			}
+			pied.appendChild(s);
+		}
+
+		function rafraichir() {
+			fetch(URL_DONNEES, {cache: 'no-store'})
+				.then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+				.then(function (nouvelles) {
+					document.querySelectorAll('.js-compteur').forEach(function (el) {
+						var avant = lire(donnees, el.dataset.cle) || 0;
+						var apres = lire(nouvelles, el.dataset.cle) || 0;
+						if (avant !== apres) animerCompteur(el, avant, apres);
+					});
+
+					if (nouvelles.enLigne.aujourdhui > donnees.enLigne.aujourdhui) {
+						var bandeau = document.getElementById('enLigneNouvelle');
+						bandeau.classList.remove('visible');
+						void bandeau.offsetWidth;
+						bandeau.classList.add('visible');
+					}
+
+					['livrees', 'metresCarres', 'clients'].forEach(function (cle) { majVariation(cle, nouvelles[cle].variation); });
+					majEnLigne(nouvelles);
+					majCourbe(nouvelles.parMois);
+					majPretes(nouvelles.pretes);
+					donnees = nouvelles;
+				})
+				.catch(function () { /* Réseau coupé : on garde les derniers chiffres. */ });
+		}
+
+		setInterval(rafraichir, 60000);
+	})();
+	</script>
 </body>
 </html>

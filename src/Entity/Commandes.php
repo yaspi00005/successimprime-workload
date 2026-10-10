@@ -13,8 +13,16 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: CommandesRepository::class)]
 #[ORM\Table(name: 'commandes')]
+#[ORM\Index(name: 'idx_commandes_canal_date', columns: ['canal', 'date_commande'])]
 class Commandes
 {
+    /*
+     * Canal de la commande : saisie au comptoir par un agent,
+     * ou passée par le client en ligne (espace client, J5).
+     */
+    public const CANAL_COMPTOIR = 'comptoir';
+    public const CANAL_EN_LIGNE = 'en_ligne';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -139,6 +147,9 @@ class Commandes
 
     #[ORM\Column(options: ['default' => 0])]
     private int $montantBonusPlafond = 0;
+
+    #[ORM\Column(length: 20, options: ['default' => self::CANAL_COMPTOIR])]
+    private string $canal = self::CANAL_COMPTOIR;
 
     public function __construct()
     {
@@ -643,6 +654,23 @@ class Commandes
         }
 
         return false;
+    }
+
+    public function getCanal(): string
+    {
+        return $this->canal;
+    }
+
+    public function setCanal(string $canal): static
+    {
+        $this->canal = $canal;
+
+        return $this;
+    }
+
+    public function isEnLigne(): bool
+    {
+        return $this->canal === self::CANAL_EN_LIGNE;
     }
 
     public function isBonusPlafondApplique(): bool

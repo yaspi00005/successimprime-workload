@@ -166,7 +166,10 @@ Uniquement des volumes et des pourcentages, jamais de montants ni de noms de cli
 - clients servis (cumul et croissance) ;
 - note de satisfaction et nombre d'avis Google ;
 - courbe des commandes par mois sur 12 mois ;
-- commandes prêtes à retirer, par numéro seulement.
+- commandes prêtes à retirer, par numéro seulement ;
+- commandes en ligne du jour (et du mois), avec une annonce à chaque nouvelle commande en ligne.
+
+Les chiffres se mettent à jour chaque minute. Les images et vidéos du cadre « Dernières réalisations », les messages du bandeau et la note Google se règlent dans Réglages › Écran TV.
 
 ## Tableaux de bord par rôle
 

@@ -1648,3 +1648,49 @@ body .si-sidebar .metismenu ul a.mm-active {
     max-width: 9.5rem;
   }
 }
+
+/* ============================================================
+   Réglages de l'écran TV
+   ============================================================ */
+
+.si-medias-tv { display: flex; flex-direction: column; gap: .75rem; }
+
+.si-media-tv {
+	display: grid;
+	grid-template-columns: 160px 1fr auto;
+	gap: 1rem;
+	align-items: center;
+	padding: .6rem;
+	border: 1px solid var(--si-bord, #e5e7eb);
+	border-radius: 10px;
+}
+
+.si-media-tv-apercu {
+	position: relative;
+	aspect-ratio: 16 / 9;
+	border-radius: 8px;
+	overflow: hidden;
+	background: #0b1f4d;
+}
+
+.si-media-tv-apercu img,
+.si-media-tv-apercu video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.si-media-tv-type {
+	position: absolute;
+	left: 6px;
+	bottom: 6px;
+	background: rgba(0, 0, 0, .65);
+	color: #fff;
+	font-size: .7rem;
+	padding: 1px 6px;
+	border-radius: 4px;
+}
+
+.si-media-tv-actions { display: flex; gap: .25rem; align-items: center; }
+.si-media-tv-actions form { display: flex; gap: .25rem; }
+
+@media (max-width: 576px) {
+	.si-media-tv { grid-template-columns: 110px 1fr; }
+	.si-media-tv-actions { grid-column: 1 / -1; justify-content: flex-end; }
+}

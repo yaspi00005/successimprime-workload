@@ -1,0 +1,187 @@
+{#
+	Haut du tableau de bord, d'apres la maquette 20 : indicateurs du mois,
+	production en cours, croissance du CA, encaissements du jour, charge
+	des machines et alertes. Donnees : App\Service\TableauDeBordService.
+#}
+{% macro montant(valeur) %}{{ valeur|number_format(0, ',', ' ') }} F{% endmacro %}
+{% macro tendance(valeur, texte, inverse = false) %}
+	{% if valeur is not null %}
+		{% set bon = inverse ? valeur <= 0 : valeur >= 0 %}
+		<span class="si-tendance {{ bon ? 'si-hausse' : 'si-baisse' }}"><i class="fas fa-caret-{{ valeur >= 0 ? 'up' : 'down' }}"></i> {{ valeur > 0 ? '+' }}{{ valeur }} % {{ texte }}</span>
+	{% endif %}
+{% endmacro %}
+{% macro courbe(points, couleur) %}
+	{% if points %}
+		<svg class="si-courbe" viewBox="0 0 80 24" preserveAspectRatio="none" aria-hidden="true"><polyline points="{{ points }}" fill="none" stroke="{{ couleur }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
+	{% endif %}
+{% endmacro %}
+{% macro court(texte, longueur) %}{{ texte|length > longueur ? texte|slice(0, longueur - 1)|trim ~ '…' : texte }}{% endmacro %}
+{% import _self as d %}
+
+{% set couleursModes = { orange_money: 'orange', especes: 'vert', virement_bancaire: 'bleu', wave: 'canard', carte_bancaire: 'magenta' } %}
+{% set couleursTags = ['bleu', 'magenta', 'orange', 'canard'] %}
+
+{% if peutVoirStatsGlobales %}
+	<div class="row si-kpis">
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi">
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-start">
+						<span class="si-kpi-libelle">CA du mois</span>
+						{{ d.courbe(indicateurs.ca.courbe, '#1FA855') }}
+					</div>
+					<div class="si-kpi-valeur">{{ d.montant(indicateurs.ca.valeur) }}</div>
+					{{ d.tendance(indicateurs.ca.variation, 'vs mois dernier') }}
+					{% if indicateurs.ca.variation is null %}<span class="si-tendance text-muted">Pas de comparaison possible</span>{% endif %}
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi">
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-start">
+						<span class="si-kpi-libelle">Encaissé</span>
+						{{ d.courbe(indicateurs.encaisse.courbe, '#0F4590') }}
+					</div>
+					<div class="si-kpi-valeur">{{ d.montant(indicateurs.encaisse.valeur) }}</div>
+					{% if indicateurs.encaisse.partDuCa is not null %}
+						<span class="si-tendance {{ indicateurs.encaisse.partDuCa >= 80 ? 'si-hausse' : 'si-baisse' }}">{{ indicateurs.encaisse.partDuCa }} % du CA du mois</span>
+					{% else %}
+						<span class="si-tendance text-muted">Ce mois-ci</span>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<a href="{{ path('app_statistiques_commandes_index') }}" class="card si-kpi">
+				<div class="card-body">
+					<span class="si-kpi-libelle">Créances clients</span>
+					<div class="si-kpi-valeur">{{ d.montant(creances.total) }}</div>
+					{% if creances.facturesEchues > 0 %}
+						<span class="si-tendance si-baisse"><i class="fas fa-caret-down"></i> {{ creances.facturesEchues }} facture{{ creances.facturesEchues > 1 ? 's' }} échue{{ creances.facturesEchues > 1 ? 's' }}</span>
+					{% else %}
+						<span class="si-tendance si-hausse">Aucune facture échue</span>
+					{% endif %}
+				</div>
+			</a>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi">
+				<div class="card-body">
+					<span class="si-kpi-libelle">Solde du mois</span>
+					<div class="si-kpi-valeur {{ indicateurs.solde.valeur < 0 ? 'text-danger' }}">{{ d.montant(indicateurs.solde.valeur) }}</div>
+					<span class="si-tendance text-muted">Encaissé moins {{ d.montant(indicateurs.solde.decaisse) }} de dépenses</span>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endif %}
+
+<div class="row">
+	{% if peutVoirProduction %}
+		<div class="{{ peutVoirStatsGlobales ? 'col-xl-8' : 'col-12' }} d-none d-md-block">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete">
+					<h4>Production en cours</h4>
+					<span class="si-bloc-note">par étape</span>
+				</div>
+				<div class="si-kanban">
+					{% for cle, colonne in production %}
+						<div class="si-kanban-colonne">
+							<div class="si-kanban-titre"><span>{{ colonne.libelle }}</span><span class="si-kanban-nombre">{{ colonne.total }}</span></div>
+							{% for ligne in colonne.cartes %}
+								{% set type = ligne.typeImpression %}
+								{% set couleur = type ? couleursTags[type.id % 4] : 'gris' %}
+								<a href="{{ path('app_commandes_show', {id: ligne.commande.id}) }}" class="si-kanban-carte si-bord-{{ couleur }}">
+									<strong>{{ d.court(ligne.designation|default(ligne.produit ? ligne.produit.nom : 'Travail'), 28) }} × {{ ligne.quantite }}</strong>
+									{% if ligne.largeur and ligne.longueur %}<small>{{ ligne.largeur + 0 }} × {{ ligne.longueur + 0 }} cm</small>{% endif %}
+									<small>{{ ligne.commande.clients ? d.court(ligne.commande.clients.nomComplet, 24) : ligne.commande.numero }}</small>
+									<span class="d-flex flex-wrap gap-1 mt-1">
+										{% if type %}<span class="si-etiquette si-fond-{{ couleur }}">{{ d.court(type.nom|default('Impression'), 16) }}</span>{% endif %}
+										{% if ligne.priorite == 'urgente' or ligne.priorite == 'haute' %}<span class="si-etiquette si-fond-rouge">{{ ligne.priorite == 'urgente' ? 'Urgent' : 'Prioritaire' }}</span>{% endif %}
+									</span>
+								</a>
+							{% else %}
+								<div class="si-kanban-vide">Rien ici</div>
+							{% endfor %}
+							{% if colonne.total > colonne.cartes|length %}
+								<div class="si-kanban-plus">+ {{ colonne.total - colonne.cartes|length }} autre{{ colonne.total - colonne.cartes|length > 1 ? 's' }}</div>
+							{% endif %}
+						</div>
+					{% endfor %}
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+	{% if peutVoirStatsGlobales %}
+		<div class="{{ peutVoirProduction ? 'col-xl-4' : 'col-12' }} d-none d-md-block">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete">
+					<h4>Croissance du CA</h4>
+					<span class="si-bloc-note">12 mois</span>
+				</div>
+				<div class="si-barres">
+					{% for mois in croissanceCa %}
+						<div class="si-barre-colonne" title="{{ d.montant(mois.montant) }}">
+							<div class="si-barre {{ mois.courant ? 'si-barre-courante' }}" style="height: {{ max(mois.hauteur, 2) }}%"></div>
+							<span>{{ mois.libelle }}</span>
+						</div>
+					{% endfor %}
+				</div>
+			</div>
+		</div>
+	{% endif %}
+</div>
+
+<div class="row">
+	{% if peutVoirStatsGlobales %}
+		<div class="col-xl-4 col-md-6">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete">
+					<h4>Encaissements du jour</h4>
+					<span class="si-bloc-note">par moyen</span>
+				</div>
+				{% for ligne in encaissementsDuJour %}
+					<div class="si-jauge">
+						<span class="si-jauge-libelle">{{ ligne.libelle }}</span>
+						<span class="si-jauge-piste"><span class="si-fond-{{ couleursModes[ligne.mode]|default('gris') }}" style="width: {{ ligne.part }}%"></span></span>
+						<strong>{{ ligne.montant|number_format(0, ',', ' ') }}</strong>
+					</div>
+				{% else %}
+					<p class="text-muted mb-0">Aucun encaissement validé aujourd'hui.</p>
+				{% endfor %}
+			</div>
+		</div>
+		<div class="col-xl-4 col-md-6 d-none d-md-block">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete">
+					<h4>Charge des machines</h4>
+					<span class="si-bloc-note">travaux en file</span>
+				</div>
+				{% for ligne in chargeMachines %}
+					<div class="si-jauge">
+						<span class="si-jauge-libelle">{{ ligne.libelle }}</span>
+						<span class="si-jauge-piste"><span class="si-fond-{{ loop.index == 1 ? 'rouge' : (loop.index == 2 ? 'bleu' : 'orange') }}" style="width: {{ ligne.part }}%"></span></span>
+						<strong>{{ ligne.montant }}</strong>
+					</div>
+				{% else %}
+					<p class="text-muted mb-0">Aucune machine enregistrée.</p>
+				{% endfor %}
+			</div>
+		</div>
+	{% endif %}
+	<div class="{{ peutVoirStatsGlobales ? 'col-xl-4' : 'col-12' }}">
+		<div class="card si-bloc">
+			<div class="si-bloc-tete">
+				<h4>Alertes</h4>
+				<span class="si-bloc-note">{{ alertes|length }}</span>
+			</div>
+			{% for alerte in alertes %}
+				<a href="{{ path(alerte.route) }}" class="si-alerte"><span class="si-point si-fond-{{ alerte.niveau == 'danger' ? 'rouge' : 'jaune' }}"></span>{{ alerte.texte }}</a>
+			{% else %}
+				<p class="text-muted mb-0">Rien à signaler.</p>
+			{% endfor %}
+		</div>
+	</div>
+</div>

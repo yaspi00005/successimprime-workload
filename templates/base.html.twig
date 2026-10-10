@@ -111,7 +111,7 @@
 									<a href="{{ path('app_notification_index') }}" class="dropdown-item text-center">Voir toutes les notifications</a>
 								</div>
 							</li>
-							<li class="nav-item dropdown notification_dropdown">
+							<li class="nav-item dropdown notification_dropdown si-masque-mobile">
 								<a class="nav-link" href="{{ path('app_chat_index') }}" role="button" title="Messagerie">
 									<i class="fa fa-comments"></i>
 									{% set nombreMessages = mes_conversations_non_lues() %}
@@ -150,10 +150,13 @@
 						</div>
 					{% endfor %}
 				{% endfor %}
+				{% block onglets_section %}{% include 'partials/_onglets_section.html.twig' %}{% endblock %}
 				{% block breadcrumb %}{% endblock %}
 				{% block body %}{% endblock %}
 			</div>
 		</div>
+
+		{% include 'partials/_barre_mobile.html.twig' %}
 
 		<div class="footer">
 			<div class="copyright">

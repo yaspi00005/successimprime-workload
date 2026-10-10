@@ -25,3 +25,13 @@ function ouvrirAjoutDemande() {
 }
 window.addEventListener('load', ouvrirAjoutDemande);
 document.addEventListener('turbo:load', ouvrirAjoutDemande);
+
+// « Plus » de la barre mobile : ouvre le menu lateral comme le bouton hamburger.
+document.addEventListener('click', function (evenement) {
+    if (evenement.target.closest('[data-ouvrir-menu]')) {
+        var hamburger = document.querySelector('.nav-control');
+        if (hamburger) {
+            hamburger.click();
+        }
+    }
+});

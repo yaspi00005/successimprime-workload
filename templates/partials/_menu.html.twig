@@ -1,14 +1,11 @@
 {#
-	Menu de l'admin en 6 entrees orientees taches (cahier des charges §6.1,
-	maquettes 20 a 41) : Accueil, Ventes, Atelier, Finances, Clients, Reglages.
-	L'entree active vient de section_admin() (src/Twig/NavigationExtension.php).
+	Menu de l'admin en 6 entrees simples, comme sur les maquettes 20 a 41 :
+	Accueil, Ventes, Atelier, Finances, Clients, Reglages. Chaque entree
+	ouvre le premier ecran autorise de sa section ; les autres ecrans de la
+	section sont des onglets en haut de page (partials/_onglets_section).
 #}
-{% macro lien(routeCourante, prefixe, url, texte) %}
-	{% set actif = routeCourante starts with prefixe %}
-	<li><a href="{{ url }}" class="{{ actif ? 'mm-active' }}">{{ texte }}</a></li>
-{% endmacro %}
-{% import _self as m %}
 {% set sectionActive = section_admin(routeCourante) %}
+{% set icones = { accueil: 'fas fa-home', ventes: 'fas fa-handshake', atelier: 'fas fa-industry', finances: 'fas fa-wallet', clients: 'fas fa-users', reglages: 'fas fa-cog' } %}
 <div class="dlabnav si-sidebar">
 	<div class="dlabnav-scroll">
 
@@ -26,137 +23,19 @@
 		</div>
 
 		<ul class="metismenu" id="menu">
-
-			{# ---------- ACCUEIL ---------- #}
-			{% if peutVoirStatsGlobales %}
-				<li class="{{ sectionActive == 'accueil' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-home"></i><span class="nav-text">Accueil</span>
-					</a>
-					<ul aria-expanded="false">
-						<li><a href="{{ path('app_home') }}" class="{{ routeCourante == 'app_home' ? 'mm-active' }}">Tableau de bord</a></li>
-						{{ m.lien(routeCourante, 'app_statistiques_globales_', path('app_statistiques_globales_index'), 'Statistiques globales') }}
-						{{ m.lien(routeCourante, 'app_statistiques_commandes_', path('app_statistiques_commandes_index'), 'Statistiques commandes') }}
-						{{ m.lien(routeCourante, 'app_statistiques_tresorerie_', path('app_statistiques_tresorerie_index'), 'Statistiques trésorerie') }}
-						{{ m.lien(routeCourante, 'app_statistiques_clients_', path('app_statistiques_clients_index'), 'Statistiques clients') }}
-					</ul>
-				</li>
-			{% else %}
-				<li class="{{ sectionActive == 'accueil' ? 'mm-active' }}">
-					<a href="{{ path('app_home') }}" class="{{ sectionActive == 'accueil' ? 'mm-active' }}" aria-expanded="false">
-						<i class="fas fa-home"></i><span class="nav-text">Accueil</span>
-					</a>
-				</li>
-			{% endif %}
-
-			{# ---------- VENTES : du devis a la livraison ---------- #}
-			{% if peutVoirDevis or peutVoirCommandes or peutVoirLivraison %}
-				<li class="{{ sectionActive == 'ventes' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-handshake"></i><span class="nav-text">Ventes</span>
-					</a>
-					<ul aria-expanded="false">
-						{% if peutVoirDevis %}{{ m.lien(routeCourante, 'app_devis_', path('app_devis_index'), 'Devis') }}{% endif %}
-						{% if peutVoirCommandes %}{{ m.lien(routeCourante, 'app_commandes_', path('app_commandes_index'), 'Commandes') }}{% endif %}
-						{% if peutVoirLivraison %}{{ m.lien(routeCourante, 'app_livraisons_', path('app_livraisons_index'), 'Livraisons') }}{% endif %}
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ---------- ATELIER : prepresse, production, stock, machines ---------- #}
-			{% if peutVoirProduction or peutVoirStocks %}
-				<li class="{{ sectionActive == 'atelier' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-industry"></i><span class="nav-text">Atelier</span>
-					</a>
-					<ul aria-expanded="false">
-						{% if peutVoirProduction %}
-							{{ m.lien(routeCourante, 'app_production_index', path('app_production_index'), 'File de production') }}
-							{% if peutVoirPrepresse %}{{ m.lien(routeCourante, 'app_controle_pre_presse_', path('app_controle_pre_presse_index'), 'Prépresse et BAT') }}{% endif %}
-							{{ m.lien(routeCourante, 'app_production_termines', path('app_production_termines'), 'Travaux terminés') }}
-							{{ m.lien(routeCourante, 'app_production_apercu', path('app_production_apercu'), 'Aperçu global') }}
-							{% if peutGererProduction %}{{ m.lien(routeCourante, 'app_consommables_', path('app_consommables_index'), 'Consommables') }}{% endif %}
-						{% endif %}
-						{% if peutVoirStocks %}
-							{{ m.lien(routeCourante, 'app_stock_etat_', path('app_stock_etat_index'), 'Stock') }}
-							{{ m.lien(routeCourante, 'app_article_', path('app_article_index'), 'Articles') }}
-							{{ m.lien(routeCourante, 'app_achat_', path('app_achat_index', {statut: 'demande'}), 'Achats') }}
-							{{ m.lien(routeCourante, 'app_fournisseur_', path('app_fournisseur_index'), 'Fournisseurs') }}
-							{{ m.lien(routeCourante, 'app_machines_', path('app_machines_index'), 'Machines') }}
-							{{ m.lien(routeCourante, 'app_lot_etiquette_', path('app_lot_etiquette_index'), "Lots d'étiquettes") }}
-						{% endif %}
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ---------- FINANCES : l'argent qui entre et qui sort ---------- #}
-			{% if peutVoirFactures or peutVoirPaiements or peutVoirTresorerie or peutVoirComptesTresorerie or peutVoirJournalCaisse or peutVoirRapprochement %}
-				<li class="{{ sectionActive == 'finances' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-wallet"></i><span class="nav-text">Finances</span>
-					</a>
-					<ul aria-expanded="false">
-						{% if peutVoirPaiements %}{{ m.lien(routeCourante, 'app_paiements_', path('app_paiements_index'), 'Encaissements') }}{% endif %}
-						{% if peutVoirFactures %}{{ m.lien(routeCourante, 'app_factures_', path('app_factures_index'), 'Factures') }}{% endif %}
-						{% if peutVoirClients and is_granted('ROLE_PAIEMENT_ENCAISSER') %}{{ m.lien(routeCourante, 'app_clients_soldes', path('app_clients_soldes'), 'Soldes clients') }}{% endif %}
-						{% if peutVoirJournalCaisse %}{{ m.lien(routeCourante, 'app_journal_caisse_', path('app_journal_caisse_index'), 'Journal de caisse') }}{% endif %}
-						{% if peutVoirTresorerie %}
-							{{ m.lien(routeCourante, 'app_mouvement_tresorerie_', path('app_mouvement_tresorerie_index'), 'Mouvements et dépenses') }}
-							{% if is_granted('ROLE_ADMIN') %}{{ m.lien(routeCourante, 'app_decaissement_recurrent_', path('app_decaissement_recurrent_index'), 'Charges récurrentes') }}{% endif %}
-						{% endif %}
-						{% if peutVoirComptesTresorerie %}{{ m.lien(routeCourante, 'app_compte_tresorerie_', path('app_compte_tresorerie_index'), 'Comptes et caisses') }}{% endif %}
-						{% if peutVoirRapprochement %}{{ m.lien(routeCourante, 'app_rapprochement_bancaire_', path('app_rapprochement_bancaire_index'), 'Rapprochement bancaire') }}{% endif %}
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ---------- CLIENTS : fiches, reclamations, communications ---------- #}
-			<li class="{{ sectionActive == 'clients' ? 'mm-active' }}">
-				<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-					<i class="fas fa-users"></i><span class="nav-text">Clients</span>
-				</a>
-				<ul aria-expanded="false">
-					{% if peutVoirClients %}
-						<li><a href="{{ path('app_clients_index') }}" class="{{ routeCourante starts with 'app_clients_' and not (routeCourante starts with 'app_clients_solde') ? 'mm-active' }}">Fiches clients</a></li>
-					{% endif %}
-					{{ m.lien(routeCourante, 'app_reclamation_', path('app_reclamation_index'), 'Réclamations') }}
-					{% if is_granted('ROLE_ADMIN') %}
-						{{ m.lien(routeCourante, 'app_campagne_', path('app_campagne_index'), 'Campagnes SMS et WhatsApp') }}
-						{{ m.lien(routeCourante, 'app_modele_message_', path('app_modele_message_index'), 'Modèles de messages') }}
-						{{ m.lien(routeCourante, 'app_regle_rappel_paiement_', path('app_regle_rappel_paiement_index'), 'Rappels de paiement') }}
-					{% endif %}
-				</ul>
-			</li>
-
-			{# ---------- REGLAGES : catalogue, equipe, parametres ---------- #}
-			{% if peutVoirParametres or peutVoirRh %}
-				<li class="{{ sectionActive == 'reglages' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-cog"></i><span class="nav-text">Réglages</span>
-					</a>
-					<ul aria-expanded="false">
-						{% if peutVoirParametres %}
-							{{ m.lien(routeCourante, 'app_produits_', path('app_produits_index'), 'Produits') }}
-							{{ m.lien(routeCourante, 'app_categorie_produit_', path('app_categorie_produit_index'), 'Catégories') }}
-							{{ m.lien(routeCourante, 'app_produit_configuration_', path('app_produit_configuration_index'), 'Configurations produit') }}
-							{{ m.lien(routeCourante, 'app_type_impression_', path('app_type_impression_index'), "Types d'impression") }}
-							{{ m.lien(routeCourante, 'app_support_', path('app_support_index'), 'Supports') }}
-							{{ m.lien(routeCourante, 'app_format_', path('app_format_index'), 'Formats') }}
-							{{ m.lien(routeCourante, 'app_finition_', path('app_finition_index'), 'Finitions') }}
-						{% endif %}
-						{% if peutVoirRh %}
-							{{ m.lien(routeCourante, 'app_employes_', path('app_employes_index'), 'Employés') }}
-							{{ m.lien(routeCourante, 'app_user_', path('app_user_index'), 'Équipe et droits') }}
-							{{ m.lien(routeCourante, 'app_journal_activite_', path('app_journal_activite_index'), "Journal d'activité") }}
-						{% endif %}
-						{% if peutVoirParametres %}
-							{{ m.lien(routeCourante, 'app_parametres_paiement_', path('app_parametres_paiement_edit'), 'Paramètres de paiement') }}
-							{{ m.lien(routeCourante, 'app_fichier_dossier_partage', path('app_fichier_dossier_partage'), 'Dossier partagé') }}
-						{% endif %}
-					</ul>
-				</li>
-			{% endif %}
-
+			{% for section, libelle in { accueil: 'Accueil', ventes: 'Ventes', atelier: 'Atelier', finances: 'Finances', clients: 'Clients', reglages: 'Réglages' } %}
+				{% set entree = null %}
+				{% for onglet in onglets_section_admin(section) %}
+					{% if entree is null and (onglet.role is null or is_granted(onglet.role)) %}{% set entree = onglet %}{% endif %}
+				{% endfor %}
+				{% if entree %}
+					<li class="{{ sectionActive == section ? 'mm-active' }}">
+						<a href="{{ path(entree.route, entree.parametres|default({})) }}" class="{{ sectionActive == section ? 'mm-active' }}" aria-expanded="false">
+							<i class="{{ icones[section] }}"></i><span class="nav-text">{{ libelle }}</span>
+						</a>
+					</li>
+				{% endif %}
+			{% endfor %}
 		</ul>
 	</div>
 </div>

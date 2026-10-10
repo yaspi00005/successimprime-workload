@@ -23,6 +23,45 @@ final class NavigationExtension extends AbstractExtension
     ];
 
     /**
+     * Ecrans de chaque section, dans l'ordre des maquettes 20 a 41.
+     * Tant qu'un ecran neuf n'est pas construit, son onglet ouvre la page
+     * actuelle la plus proche ; les ecrans sans equivalent n'apparaissent
+     * qu'une fois construits. Le premier onglet autorise est la porte
+     * d'entree de la section dans le menu.
+     *
+     * @var array<string, list<array{libelle: string, route: string, parametres?: array<string, mixed>, role: ?string, prefixes: list<string>}>>
+     */
+    public const ONGLETS = [
+        'accueil' => [
+            ['libelle' => 'Tableau de bord', 'route' => 'app_home', 'role' => null, 'prefixes' => ['app_home']],
+            ['libelle' => 'Statistiques et rapports', 'route' => 'app_statistiques_globales_index', 'role' => 'ROLE_STATS_GLOBAL', 'prefixes' => ['app_statistiques_']],
+        ],
+        'ventes' => [
+            ['libelle' => 'Commandes', 'route' => 'app_commandes_index', 'role' => 'ROLE_COMMANDE', 'prefixes' => ['app_commandes_', 'app_commande_catalogue_', 'app_brouillon_']],
+            ['libelle' => 'Devis', 'route' => 'app_devis_index', 'role' => 'ROLE_DEVIS', 'prefixes' => ['app_devis_']],
+            ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
+        ],
+        'atelier' => [
+            ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_']],
+            ['libelle' => 'Stock consommables', 'route' => 'app_stock_etat_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_achat_', 'app_fournisseur_', 'app_consommables_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
+            ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
+        ],
+        'finances' => [
+            ['libelle' => 'Caisse', 'route' => 'app_paiements_index', 'role' => 'ROLE_PAIEMENT_VOIR', 'prefixes' => ['app_paiements_', 'app_journal_caisse_', 'app_clients_solde']],
+            ['libelle' => 'Factures et créances', 'route' => 'app_factures_index', 'role' => 'ROLE_FACTURE', 'prefixes' => ['app_factures_']],
+            ['libelle' => 'Trésorerie et dépenses', 'route' => 'app_mouvement_tresorerie_index', 'role' => 'ROLE_TRESORERIE_VOIR', 'prefixes' => ['app_mouvement_tresorerie_', 'app_decaissement_recurrent_', 'app_compte_tresorerie_', 'app_rapprochement_bancaire_']],
+        ],
+        'clients' => [
+            ['libelle' => 'Fiches clients', 'route' => 'app_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_clients_', 'app_reclamation_']],
+            ['libelle' => 'Campagnes WhatsApp et SMS', 'route' => 'app_campagne_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_campagne_', 'app_modele_message_', 'app_regle_rappel_paiement_']],
+        ],
+        'reglages' => [
+            ['libelle' => 'Grille tarifaire', 'route' => 'app_produits_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_produits_', 'app_categorie_produit_', 'app_produit_configuration_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
+            ['libelle' => 'Équipe et droits', 'route' => 'app_user_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_user_', 'app_employes_', 'app_journal_activite_']],
+        ],
+    ];
+
+    /**
      * Le premier prefixe qui correspond gagne : les plus precis d'abord.
      */
     private const PREFIXES = [
@@ -79,6 +118,8 @@ final class NavigationExtension extends AbstractExtension
         return [
             new TwigFunction('section_admin', $this->sectionPourRoute(...)),
             new TwigFunction('libelle_section_admin', $this->libelleSection(...)),
+            new TwigFunction('onglets_section_admin', $this->ongletsSection(...)),
+            new TwigFunction('onglet_actif_admin', $this->ongletActif(...)),
         ];
     }
 
@@ -100,5 +141,35 @@ final class NavigationExtension extends AbstractExtension
     public function libelleSection(?string $section): ?string
     {
         return self::SECTIONS[$section] ?? null;
+    }
+
+    /**
+     * @return list<array{libelle: string, route: string, parametres?: array<string, mixed>, role: ?string, prefixes: list<string>}>
+     */
+    public function ongletsSection(?string $section): array
+    {
+        return self::ONGLETS[$section] ?? [];
+    }
+
+    /**
+     * Rang de l'onglet de la section qui couvre cette route, ou null.
+     */
+    public function ongletActif(?string $route): ?int
+    {
+        $section = $this->sectionPourRoute($route);
+
+        if (null === $section) {
+            return null;
+        }
+
+        foreach ($this->ongletsSection($section) as $rang => $onglet) {
+            foreach ($onglet['prefixes'] as $prefixe) {
+                if (str_starts_with((string) $route, $prefixe)) {
+                    return $rang;
+                }
+            }
+        }
+
+        return null;
     }
 }

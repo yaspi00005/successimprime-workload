@@ -43,4 +43,26 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame('Réglages', $extension->libelleSection('reglages'));
         self::assertNull($extension->libelleSection(null));
     }
+
+    public function testChaqueSectionAUnEcranDEntree(): void
+    {
+        $extension = new NavigationExtension();
+
+        foreach (array_keys(NavigationExtension::SECTIONS) as $section) {
+            self::assertNotEmpty($extension->ongletsSection($section), $section);
+        }
+
+        self::assertSame([], $extension->ongletsSection(null));
+    }
+
+    public function testOngletActif(): void
+    {
+        $extension = new NavigationExtension();
+
+        self::assertSame(0, $extension->ongletActif('app_home'));
+        self::assertSame(1, $extension->ongletActif('app_devis_show'));
+        self::assertSame(0, $extension->ongletActif('app_clients_soldes'));
+        self::assertSame(1, $extension->ongletActif('app_employes_index'));
+        self::assertNull($extension->ongletActif('app_chat_index'));
+    }
 }

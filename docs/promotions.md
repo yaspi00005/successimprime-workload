@@ -49,3 +49,20 @@ Calculés à partir des données existantes, sans saisie manuelle :
 | Clients touchés | Clients distincts ayant profité de la promotion | — |
 | Effet | CA du segment pendant la promotion comparé à la même période avant | — |
 | Marge restante | Marge brute des lignes en promotion, avec le coût de revient calculé | Marge < 35 % |
+
+## Anniversaire du client
+
+Demande de Yaya le 10/10/2026 : fêter chaque année de fidélité (1 an, 2 ans, 3 ans…) avec une promotion préparée à l'avance et un SMS le jour J.
+
+- **Date de départ** : la date de création du client (`Clients::createdAt`), ou la date de sa première commande si elle est plus ancienne (clients repris de l'ancien système).
+- **Modèles par palier** : une promotion modèle par nombre d'années (ex. 1 an : −10 % sur les cartes de visite ; 2 ans : −15 % sur les bâches ; 5 ans : une finition offerte), avec les articles choisis, la durée de validité (ex. 30 jours à partir du jour J) et le texte du SMS.
+- **Page « Anniversaires à venir »** (Clients) : la liste des clients qui fêtent un anniversaire dans les 2 ou 3 semaines (délai réglable), avec leur nombre d'années, le CA sur 12 mois et la promotion prévue. L'admin peut changer la promotion d'un client, l'exclure, ou tout valider d'un clic.
+- **Jour J** : une tâche planifiée applique la promotion au client et envoie le SMS par Orange (service `OrangeSmsService` déjà présent), ou WhatsApp si le client le préfère. L'envoi est tracé dans la campagne.
+- **À la saisie** : la promotion d'anniversaire s'applique toute seule sur les articles choisis, comme les autres promotions, jusqu'à sa date de fin. Les clients B2B restent exclus sauf exception validée.
+- **Suivi** : SMS envoyés, promotions utilisées, CA généré pendant la période d'anniversaire.
+
+Propositions en plus :
+
+- un rappel automatique 7 jours avant la fin de validité si la promotion n'a pas été utilisée ;
+- un message plus personnel pour les gros clients (appel de la direction ou petit cadeau à la livraison) au lieu du seul SMS ;
+- pour les entreprises, fêter aussi l'anniversaire de leur première commande, qui parle souvent plus que la date de création de la fiche.

@@ -47,6 +47,7 @@ Barème de Yaya (10/10/2026) : chaque journée rapporte ou retire des points.
 | En retard | − 10 |
 | Reste au-delà de l'heure de fin (au moins 1 h de plus) | + 30 |
 | Nuit passée au bureau (présence de 24 h) | + 100 |
+| Oubli de pointage (arrivée ou départ à régulariser) | − 20 |
 | Congé, absence validée, jour férié | 0, et la journée ne compte pas |
 
 Les valeurs se règlent dans Q06. Une journée ne cumule qu'une seule ligne de bonus (+ 30 ou + 100, la plus haute), en plus de + 10 ou − 10 pour l'arrivée.

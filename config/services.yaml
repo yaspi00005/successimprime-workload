@@ -43,6 +43,10 @@ services:
             $emailExpediteur: '%env(MAILER_FROM_ADDRESS)%'
             $whatsappTemplateRappel: '%env(WHATSAPP_TEMPLATE_RAPPEL_PAIEMENT)%'
 
+    App\Service\RelanceRetraitService:
+        arguments:
+            $emailExpediteur: '%env(MAILER_FROM_ADDRESS)%'
+
     App\Service\CampagneService:
         arguments:
             $emailExpediteur: '%env(MAILER_FROM_ADDRESS)%'

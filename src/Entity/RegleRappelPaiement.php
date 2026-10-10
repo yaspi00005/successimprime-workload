@@ -22,6 +22,19 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\HasLifecycleCallbacks]
 class RegleRappelPaiement
 {
+    /*
+     * paiement : commande non soldée, compté depuis la date de commande.
+     * retrait : commande prête mais pas encore récupérée, compté depuis
+     * le jour où elle est prête (RelanceRetraitService).
+     */
+    public const TYPE_PAIEMENT = 'paiement';
+    public const TYPE_RETRAIT = 'retrait';
+
+    public const TYPES = [
+        'Rappel de paiement' => self::TYPE_PAIEMENT,
+        'Commande prête à retirer' => self::TYPE_RETRAIT,
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -42,6 +55,9 @@ class RegleRappelPaiement
 
     #[ORM\Column]
     private bool $actif = true;
+
+    #[ORM\Column(length: 20, options: ['default' => self::TYPE_PAIEMENT])]
+    private string $type = self::TYPE_PAIEMENT;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $dateCreation = null;
@@ -105,6 +121,23 @@ class RegleRappelPaiement
         $this->actif = $actif;
 
         return $this;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function setType(string $type): static
+    {
+        $this->type = \in_array($type, self::TYPES, true) ? $type : self::TYPE_PAIEMENT;
+
+        return $this;
+    }
+
+    public function isRetrait(): bool
+    {
+        return $this->type === self::TYPE_RETRAIT;
     }
 
     public function getDateCreation(): ?\DateTimeImmutable

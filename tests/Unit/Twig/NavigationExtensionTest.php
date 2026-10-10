@@ -61,7 +61,8 @@ final class NavigationExtensionTest extends TestCase
 
         self::assertSame(0, $extension->ongletActif('app_home'));
         self::assertSame(0, $extension->ongletActif('app_devis_show'));
-        self::assertSame(1, $extension->ongletActif('app_livraisons_index'));
+        self::assertSame(1, $extension->ongletActif('app_livraisons_a_retirer'));
+        self::assertSame(2, $extension->ongletActif('app_livraisons_index'));
         self::assertSame(0, $extension->ongletActif('app_clients_soldes'));
         self::assertSame(1, $extension->ongletActif('app_couts_revient_index'));
         self::assertSame(2, $extension->ongletActif('app_employes_index'));

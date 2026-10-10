@@ -1,0 +1,117 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Commandes à retirer{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_regle_rappel_paiement_index') }}" class="btn btn-light btn-sm si-btn-entete">Relances automatiques</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="row si-kpis">
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Prêtes, pas encore retirées</span>
+				<div class="si-kpi-valeur">{{ pretes|length }}</div>
+				<span class="si-tendance">commande{{ pretes|length > 1 ? 's' }}</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">À relancer</span>
+				<div class="si-kpi-valeur">{{ aRelancer }}</div>
+				<span class="si-tendance {{ aRelancer > 0 ? 'si-baisse' }}">prêtes depuis 2 jours ou plus, sans relance récente</span>
+			</div></div>
+		</div>
+	</div>
+
+	<div class="card si-bloc">
+		{% if pretes is empty %}
+			<p class="text-muted py-4 text-center mb-0">Aucune commande prête en attente : tout a été retiré.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0">
+					<thead>
+						<tr>
+							<th>Commande</th>
+							<th>Client</th>
+							<th>Prête depuis</th>
+							{% if voirMontants %}<th class="text-end si-masque-mobile">Reste à payer</th>{% endif %}
+							<th class="si-masque-mobile">Dernière relance</th>
+							<th class="text-end">Relancer</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for p in pretes %}
+							{% set c = p.commande %}
+							<tr>
+								<td class="text-nowrap"><a href="{{ path('app_commandes_show', {id: c.id}) }}" class="fw-semibold">{{ c.numero ?? ('#' ~ c.id) }}</a></td>
+								<td>
+									<strong class="d-block">{{ c.clients.nomComplet ?? '—' }}</strong>
+									<small class="text-muted">{{ c.clients.telephone ?? 'Pas de téléphone' }}</small>
+								</td>
+								<td class="text-nowrap">
+									<span class="si-pastille {{ p.jours >= 7 ? 'si-pastille-rouge' : (p.jours >= 2 ? 'si-pastille-orange' : 'si-pastille-vert') }}">{{ p.jours == 0 ? 'Aujourd\'hui' : p.jours ~ ' jour' ~ (p.jours > 1 ? 's') }}</span>
+									<small class="d-block text-muted">{{ p.preteDepuis|date('d/m/Y') }}</small>
+								</td>
+								{% if voirMontants %}
+									<td class="text-end text-nowrap si-masque-mobile">{{ c.resteAPayer > 0 ? c.resteAPayer|number_format(0, ',', ' ') ~ ' F' : 'Soldée' }}</td>
+								{% endif %}
+								<td class="si-masque-mobile">
+									{% if p.derniereRelance %}
+										{{ p.derniereRelance.envoyeeLe|date('d/m H:i') }} · {{ p.derniereRelance.canalLibelle }}
+										<small class="d-block text-muted">{{ p.nombreRelances }} relance{{ p.nombreRelances > 1 ? 's' }}{{ p.derniereRelance.automatique ? ' · automatique' }}</small>
+									{% else %}
+										<span class="text-muted">Jamais</span>
+									{% endif %}
+								</td>
+								<td class="text-end text-nowrap">
+									{% if p.whatsapp %}
+										<a href="https://wa.me/{{ p.whatsapp }}?text={{ p.message|url_encode }}" target="_blank" rel="noopener" class="btn btn-success btn-sm js-relance" data-url="{{ path('app_livraisons_a_retirer_relancer', {id: c.id}) }}" data-canal="whatsapp"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>
+									{% endif %}
+									<div class="dropdown d-inline-block">
+										<button class="btn btn-sm si-btn-discret" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Autres relances">⋯</button>
+										<ul class="dropdown-menu dropdown-menu-end">
+											<li>
+												<form method="post" action="{{ path('app_livraisons_a_retirer_relancer', {id: c.id}) }}">
+													<input type="hidden" name="_token" value="{{ csrf_token('relance-retrait') }}">
+													<input type="hidden" name="canal" value="sms">
+													<input type="hidden" name="message" value="{{ p.message }}">
+													<button type="submit" class="dropdown-item" {{ not c.clients.telephone ? 'disabled' }}>Envoyer le SMS</button>
+												</form>
+											</li>
+											<li>
+												<form method="post" action="{{ path('app_livraisons_a_retirer_relancer', {id: c.id}) }}">
+													<input type="hidden" name="_token" value="{{ csrf_token('relance-retrait') }}">
+													<input type="hidden" name="canal" value="appel">
+													<button type="submit" class="dropdown-item">J'ai appelé le client</button>
+												</form>
+											</li>
+										</ul>
+									</div>
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	</div>
+
+	<p class="text-muted small">Le bouton WhatsApp ouvre la conversation avec le message prêt à envoyer, et note la relance. Des relances automatiques par SMS se règlent dans <a href="{{ path('app_regle_rappel_paiement_index') }}">Relances automatiques</a>, type « Commande prête à retirer ».</p>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+	document.querySelectorAll('.js-relance').forEach(function (lien) {
+		lien.addEventListener('click', function () {
+			var donnees = new FormData();
+			donnees.append('_token', {{ csrf_token('relance-retrait')|json_encode|raw }});
+			donnees.append('canal', lien.dataset.canal);
+			fetch(lien.dataset.url, {method: 'POST', body: donnees, headers: {'X-Requested-With': 'XMLHttpRequest'}});
+		});
+	});
+	</script>
+{% endblock %}

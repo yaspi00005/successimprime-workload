@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Service\RappelPaiementService;
+use App\Service\RelanceRetraitService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -10,12 +11,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
     name: 'app:executer-rappels-paiement',
-    description: 'Envoie les rappels de paiement (SMS/email/WhatsApp) dus pour les commandes non soldées.'
+    description: 'Envoie les rappels de paiement dus et les relances des commandes prêtes à retirer.'
 )]
 final class ExecuterRappelsPaiementCommand extends Command
 {
     public function __construct(
-        private readonly RappelPaiementService $rappelPaiementService
+        private readonly RappelPaiementService $rappelPaiementService,
+        private readonly RelanceRetraitService $relanceRetraitService
     ) {
         parent::__construct();
     }
@@ -25,6 +27,11 @@ final class ExecuterRappelsPaiementCommand extends Command
         OutputInterface $output
     ): int {
         $resultat = $this->rappelPaiementService->executerRappelsDus();
+        $retraits = $this->relanceRetraitService->executerRelancesDues(new \DateTimeImmutable());
+
+        $resultat['envoyes'] += $retraits['envoyes'];
+        $resultat['echecs'] += $retraits['echecs'];
+        $resultat['details'] = array_merge($resultat['details'], $retraits['details']);
 
         foreach ($resultat['details'] as $ligne) {
             $output->writeln($ligne);

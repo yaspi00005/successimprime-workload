@@ -9,6 +9,7 @@ use Doctrine\ORM\QueryBuilder;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -33,9 +34,15 @@ final class RegleRappelPaiementType extends AbstractType
                 ],
             ])
 
+            ->add('type', ChoiceType::class, [
+                'label' => 'Type de relance',
+                'choices' => RegleRappelPaiement::TYPES,
+                'help' => 'Paiement : tant que la commande n\'est pas soldée. Commande prête : tant que le client n\'est pas venu la récupérer.',
+                'attr' => ['class' => 'form-control'],
+            ])
             ->add('delaiJours', IntegerType::class, [
                 'label' => 'Fréquence (tous les combien de jours)',
-                'help' => 'Le rappel part à J+N après la commande, puis se répète tous les N jours tant qu\'elle n\'est pas soldée.',
+                'help' => 'Le rappel part à J+N (après la commande, ou après le jour où elle est prête), puis se répète tous les N jours.',
                 'attr' => [
                     'class' => 'form-control',
                     'min' => 1,

@@ -45,7 +45,11 @@ class RappelPaiementService
     {
         $reference = $reference ?? new \DateTimeImmutable('today');
 
-        $regles = $this->regleRepository->findActives();
+        // Les règles « commande prête à retirer » sont traitées par RelanceRetraitService.
+        $regles = array_values(array_filter(
+            $this->regleRepository->findActives(),
+            static fn (RegleRappelPaiement $regle) => !$regle->isRetrait()
+        ));
 
         if ($regles === []) {
             return ['envoyes' => 0, 'echecs' => 0, 'details' => []];

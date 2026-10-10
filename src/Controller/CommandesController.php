@@ -559,7 +559,7 @@ final class CommandesController extends AbstractController
             'etapes' => $suiviCommandeService->etapes($commande),
             'lignes' => $lignes,
             'paiementsValides' => $suiviCommandeService->paiementsValides($commande),
-            'historique' => \array_slice($suiviCommandeService->historique($commande), 0, 8),
+            'historique' => \array_slice($suiviCommandeService->historique($commande, $this->isGranted('ROLE_PAIEMENT_VOIR')), 0, 8),
             'facture' => end($factures) ?: null,
             'marge' => $voirCouts ? $marge + ['taux' => CalculateurCoutRevient::tauxMarge($marge['ht'], $marge['cout'])] : null,
         ]);

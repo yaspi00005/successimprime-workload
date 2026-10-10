@@ -142,7 +142,7 @@ class Commandes
 
     public function __construct()
     {
-        $this->dateCommande = new \DateTime();
+        $this->dateCommande = new \DateTimeImmutable();
         $this->commandesDetails = new ArrayCollection();
         $this->paiements = new ArrayCollection();
         $this->factures = new ArrayCollection();
@@ -542,6 +542,33 @@ class Commandes
 
         return $this;
     }
+    /**
+     * Totaux de la commande depuis ses lignes non annulees, comme le
+     * formulaire les calcule (remise de commande deduite du montant a
+     * payer). Pour les commandes creees hors formulaire (« Mes produits »).
+     */
+    public function recalculerTotaux(): static
+    {
+        $ht = 0;
+        $ttc = 0;
+
+        foreach ($this->commandesDetails as $ligne) {
+            if (CommandesDetails::PRODUCTION_ANNULEE === $ligne->getStatutProduction()) {
+                continue;
+            }
+
+            $ht += $ligne->getTotalHt();
+            $ttc += $ligne->getTotalTtc();
+        }
+
+        $this->setTotalHt($ht);
+        $this->setTotalTtc($ttc);
+        $this->setMontantApayer(max(0, $ttc - (int) $this->getRemise()));
+        $this->setResteAPayer(max(0, (int) $this->getMontantApayer() - $this->getTotalPaye()));
+
+        return $this->actualiserStatutPaiement();
+    }
+
     public function actualiserStatutPaiement(): static
     {
         $totalTtc = (int) $this->getTotalTtc();

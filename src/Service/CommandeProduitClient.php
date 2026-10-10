@@ -120,7 +120,7 @@ final class CommandeProduitClient
             ->setProduitClient($produit)
             ->setSupport($produit->getSupport())
             ->setMachine($produit->getMachine())
-            ->setDesignation(sprintf('%s (%s)', $produit->getNom(), $produit->getReference()))
+            ->setDesignation($produit->getNom())
             ->setDemande($quantite, $saisie)
             ->setTva($tva)
             ->setBatValide(null !== $produit->getBatValide())
@@ -148,6 +148,7 @@ final class CommandeProduitClient
 
         $ligne->calculerTotaux();
         $commande->addCommandesDetail($ligne);
+        $commande->recalculerTotaux();
 
         return $ligne;
     }

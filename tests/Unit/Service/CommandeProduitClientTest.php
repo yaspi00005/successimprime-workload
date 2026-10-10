@@ -87,5 +87,7 @@ final class CommandeProduitClientTest extends TestCase
         self::assertFalse($ligne->isPrePresseNecessaire());
         self::assertEqualsWithDelta(116_000, $ligne->getTotalTtc(), 1);
         self::assertContains($ligne, $commande->getCommandesDetails());
+        self::assertSame(116_000, $commande->getTotalTtc());
+        self::assertSame(116_000, $commande->getResteAPayer());
     }
 }

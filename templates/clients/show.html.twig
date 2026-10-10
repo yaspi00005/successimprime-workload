@@ -498,6 +498,18 @@
 		</div>
 
 
+		{% if is_granted('ROLE_COMMANDE') %}
+			<div class="card client-card mt-4">
+				<div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+					<div>
+						<h3 class="card-title mb-1"><i class="fas fa-box-open me-2"></i>Produits du client</h3>
+						<small class="text-muted">Ses produits déjà validés, qu'il recommande en m² ou en pièces sans repasser par la PAO.</small>
+					</div>
+					<a href="{{ path('app_clients_produits', {publicId: client.publicId}) }}" class="btn btn-light btn-sm si-btn-entete">Voir ses produits</a>
+				</div>
+			</div>
+		{% endif %}
+
 		{{ include('clients/_localisation.html.twig') }}
 
 		{# ============================================================

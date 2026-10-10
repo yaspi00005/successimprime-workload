@@ -1122,3 +1122,104 @@ body .si-sidebar .metismenu ul a.mm-active {
     height: 14rem;
   }
 }
+
+/* ---------- Produits du client (maquette P04) ---------- */
+
+.si-produit-client {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  padding: 0.9rem 0.75rem;
+  margin: 0 -0.75rem;
+  border-bottom: 1px solid #EEF1F6;
+  border-radius: 0.75rem;
+  color: inherit;
+}
+
+.si-produit-client:hover,
+.si-produit-client-actif {
+  background: #F3F6FB;
+  color: inherit;
+}
+
+.si-produit-client-actif {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.si-choix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.si-choix .btn {
+  border-radius: 2rem;
+}
+
+.si-encart {
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.si-fond-vert-clair {
+  background: #EAF7EF;
+}
+
+.si-fond-bleu-clair {
+  background: #EEF3FC;
+}
+
+@media (min-width: 1200px) {
+  .si-fiche-produit-client {
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+/* ---------- Coordination « Mes produits » (maquette P05) ---------- */
+
+@media (max-width: 767.98px) {
+  .si-table-coordination thead {
+    display: none;
+  }
+
+  .si-table-coordination,
+  .si-table-coordination tbody,
+  .si-table-coordination tr,
+  .si-table-coordination td {
+    display: block;
+    width: 100%;
+  }
+
+  .si-table-coordination tr {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #EEF1F6;
+  }
+
+  .si-table-coordination td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.2rem 0;
+    border: 0;
+    text-align: right !important;
+  }
+
+  .si-table-coordination td::before {
+    content: attr(data-libelle);
+    color: #6B7A90;
+    font-size: 0.8rem;
+    text-align: left;
+  }
+
+  .si-table-coordination td:first-child {
+    display: block;
+    text-align: left !important;
+  }
+
+  .si-table-coordination td:first-child::before {
+    content: none;
+  }
+}

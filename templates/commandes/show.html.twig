@@ -10,6 +10,7 @@
 {% set peutModifier = is_granted('ROLE_COMMANDE') or estAdmin %}
 {% set peutEncaisser = is_granted('ROLE_PAIEMENT_ENCAISSER') or estAdmin %}
 {% set peutFacturer = is_granted('ROLE_FACTURE') or estAdmin %}
+{% set peutVoirPaiements = is_granted('ROLE_PAIEMENT_VOIR') or estAdmin %}
 {% set statutTravaux = commande.statutTravaux %}
 {% set annulee = statutTravaux == 'annulee' %}
 {% set verrouillee = lignes|filter(l => l.detail.statutProduction in ['en_production', 'terminee', 'prete_livraison', 'en_livraison', 'livree'])|length > 0 %}
@@ -34,7 +35,7 @@
 	<li class="nav-item si-masque-mobile">
 		<button type="button" class="btn btn-light btn-sm si-btn-entete" onclick="window.print()"><i class="fas fa-print me-1"></i>Fiche de travail</button>
 	</li>
-	{% if facture %}
+	{% if facture and peutFacturer %}
 		<li class="nav-item si-masque-mobile">
 			<a href="{{ path('app_factures_pdf', {id: facture.id}) }}" class="btn btn-light btn-sm si-btn-entete" target="_blank"><i class="fas fa-file-pdf me-1"></i>Facture PDF</a>
 		</li>
@@ -109,6 +110,46 @@
 		</ol>
 	</div>
 
+	{% set lignesProduitsClient = lignes|filter(l => l.detail.produitClient) %}
+	{% if lignesProduitsClient is not empty %}
+		{# ---------- « Mes produits » : demande, production, livraison (maquette P05) ---------- #}
+		<div class="card si-bloc">
+			<div class="si-bloc-tete"><h4>Quantité demandée, production et livraison</h4><span class="si-pastille si-pastille-rouge">Depuis « Mes produits »</span></div>
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0 si-table-coordination">
+					<thead>
+						<tr><th>Produit client</th><th class="text-end">Demandé</th><th>Pour la production</th><th>BAT</th><th class="text-end">Produit</th><th class="text-end">Livré</th><th class="text-end">Reste</th><th>Statut</th></tr>
+					</thead>
+					<tbody>
+						{% for ligne in lignesProduitsClient %}
+							{% set detail = ligne.detail %}
+							{% set pc = detail.produitClient %}
+							<tr>
+								<td data-libelle="Produit client"><strong>{{ pc.nom }}</strong><small class="d-block text-muted">{{ pc.reference }}</small></td>
+								<td data-libelle="Demandé" class="text-end text-nowrap">{{ detail.quantiteDemandee is not null ? detail.quantiteDemandee|number_format(detail.quantiteDemandee == detail.quantiteDemandee|round ? 0 : 2, ',', ' ') ~ ' ' ~ {'m2': 'm²', 'piece': 'pièce' ~ (detail.quantiteDemandee > 1 ? 's'), 'lot': 'ex.'}[detail.uniteDemandee]|default('') : '—' }}</td>
+								<td data-libelle="Pour la production"><span>
+									{% if detail.modeCalcul == 'forfait' and detail.longueur %}
+										<strong>{{ detail.longueur|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} m</strong> sur laize {{ detail.largeur|number_format(2, ',', ' ') }} m
+									{% elseif detail.largeur and detail.longueur %}
+										<strong>{{ detail.quantite }} × {{ (detail.largeur * 100)|round(1) }} × {{ (detail.longueur * 100)|round(1) }} cm</strong> = {{ detail.surfaceTotale|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} m²
+									{% else %}
+										<strong>{{ detail.quantite }}</strong> pièce{{ detail.quantite > 1 ? 's' }}
+									{% endif %}
+									{% if detail.machine %}<small class="d-block text-muted">{{ detail.machine.nom }}</small>{% endif %}</span>
+								</td>
+								<td data-libelle="BAT"><span class="si-pastille si-pastille-{{ pc.batValide ? 'vert' : 'orange' }}">{{ pc.batValide ? 'BAT réutilisé' : 'BAT à faire' }}</span></td>
+								<td data-libelle="Produit" class="text-end">{{ detail.quantiteProduite }}</td>
+								<td data-libelle="Livré" class="text-end">{{ detail.quantiteLivree }}</td>
+								<td data-libelle="Reste" class="text-end">{{ detail.quantiteRestanteLivraison }}</td>
+								<td data-libelle="Statut"><span class="si-pastille si-pastille-{{ ligne.etape == 'livree' ? 'vert' : (detail.quantiteLivree > 0 ? 'orange' : 'bleu') }}">{{ detail.quantiteLivree > 0 and ligne.etape != 'livree' ? 'Livraison partielle' : ligne.libelle }}</span></td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{% endif %}
+
 	<div class="row">
 		{# ---------- Lignes et production ---------- #}
 		<div class="col-xl-8">
@@ -144,6 +185,12 @@
 								</small>
 							{% endif %}
 							{% if detail.productionDebuteePar %}<small class="d-block text-muted">Opérateur : {{ detail.productionDebuteePar.employe ? detail.productionDebuteePar.employe.prenom : detail.productionDebuteePar.username }}</small>{% endif %}
+							{% if client and not detail.produitClient and detail.statutProduction in ['livree', 'en_livraison', 'terminee', 'prete_livraison'] and is_granted('ROLE_COMMANDE') %}
+								<form method="post" action="{{ path('app_clients_produits_depuis_ligne', {publicId: client.publicId, id: detail.id}) }}" data-confirmer="Enregistrer « {{ detail.designation|default('ce travail') }} » comme produit du client ? Il pourra le recommander sans nouveau BAT.">
+									<input type="hidden" name="_token" value="{{ csrf_token('produit-client-ligne-' ~ detail.id) }}">
+									<button type="submit" class="btn btn-link btn-sm p-0 si-lien-discret d-block">Enregistrer comme produit du client</button>
+								</form>
+							{% endif %}
 							{% if (is_granted('ROLE_LIVRAISON') or estAdmin) and detail.statutProduction not in ['livree', 'annulee'] %}
 								<form method="post" action="{{ path('app_livraisons_livrer_directement', {id: detail.id}) }}" data-confirmer="Marquer « {{ detail.designation|default('ce travail') }} » comme livré, sans passer par le prépresse ni la production ? Le stock réservé sera sorti.">
 									<input type="hidden" name="_token" value="{{ csrf_token('livraison_direct_' ~ detail.id) }}">
@@ -178,6 +225,7 @@
 		</div>
 
 		<div class="col-xl-4">
+			{% if peutVoirPaiements %}
 			{# ---------- Paiements ---------- #}
 			<div class="card si-bloc">
 				<div class="si-bloc-tete"><h4>Paiements</h4></div>
@@ -209,6 +257,7 @@
 				<div class="si-jauge-piste mt-3"><span class="si-fond-vert" style="width: {{ min(part, 100) }}%"></span></div>
 				<small class="text-muted">{{ part }} % payé{% if reste > 0 %} · reste {{ reste|number_format(0, ',', ' ') }} F{% endif %}</small>
 			</div>
+			{% endif %}
 
 			{# ---------- Client ---------- #}
 			{% if client %}

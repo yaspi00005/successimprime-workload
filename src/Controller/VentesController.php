@@ -30,6 +30,7 @@ final class VentesController extends AbstractController
             'onglet' => $onglet,
             'onglets' => $onglets,
             'voirDevis' => $this->isGranted('ROLE_DEVIS'),
+            'voirStatsVentes' => $this->isGranted('ROLE_STATS_VENTES'),
             'nombres' => $nombres,
             'lignes' => $ventesService->lignes($onglet, $page, $maintenant),
             'page' => $page,

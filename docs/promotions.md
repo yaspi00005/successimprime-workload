@@ -66,3 +66,12 @@ Propositions en plus :
 - un rappel automatique 7 jours avant la fin de validité si la promotion n'a pas été utilisée ;
 - un message plus personnel pour les gros clients (appel de la direction ou petit cadeau à la livraison) au lieu du seul SMS ;
 - pour les entreprises, fêter aussi l'anniversaire de leur première commande, qui parle souvent plus que la date de création de la fiche.
+
+## Clients dormeurs
+
+Demande de Yaya le 10/10/2026 : une promotion programmée pour les clients qui n'ont rien imprimé depuis plusieurs mois.
+
+- **Délai réglable** : 3, 6 ou 12 mois sans commande (90 jours par défaut, comme l'indicateur « clients inactifs »).
+- **Liste** : les clients qui viennent de passer le délai, avec leur dernière commande, ce qu'ils commandaient et leur CA passé. L'admin peut en exclure.
+- **Promotion de relance** préparée sur les articles choisis, avec une durée de validité, envoyée par SMS ou WhatsApp et appliquée toute seule à la prochaine commande.
+- **Suivi** : clients revenus, délai de retour, CA rapporté.

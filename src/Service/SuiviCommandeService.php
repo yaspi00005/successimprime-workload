@@ -133,11 +133,12 @@ final class SuiviCommandeService
     }
 
     /**
-     * Evenements de la commande, du plus recent au plus ancien.
+     * Evenements de la commande, du plus recent au plus ancien. Les
+     * paiements n'y figurent que pour qui a le droit de les voir.
      *
      * @return list<array{date: \DateTimeInterface, texte: string}>
      */
-    public function historique(Commandes $commande): array
+    public function historique(Commandes $commande, bool $avecPaiements = true): array
     {
         $evenements = [];
 
@@ -145,7 +146,7 @@ final class SuiviCommandeService
             $evenements[] = ['date' => $commande->getDateCommande(), 'texte' => 'Commande créée'.self::par($commande->getAgents())];
         }
 
-        foreach ($commande->getPaiements() as $paiement) {
+        foreach ($avecPaiements ? $commande->getPaiements() : [] as $paiement) {
             if (!$paiement->getDate() || $paiement->estAnnule()) {
                 continue;
             }

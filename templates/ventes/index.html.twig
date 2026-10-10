@@ -19,6 +19,7 @@
 {% import _self as v %}
 
 {% block body %}
+		{% if voirStatsVentes %}
 	<div class="row si-kpis">
 		<div class="col-xl-3 col-6">
 			<div class="card si-kpi"><div class="card-body">
@@ -33,6 +34,7 @@
 				<div class="si-kpi-valeur {{ indicateurs.tauxTransformation is not null and indicateurs.tauxTransformation < 50 ? 'text-danger' }}">{{ indicateurs.tauxTransformation is null ? '—' : indicateurs.tauxTransformation ~ ' %' }}</div>
 				{{ v.tendance(indicateurs.ecartTaux, ' pts') }}
 			</div></div>
+		{% endif %}
 		</div>
 		<div class="col-xl-3 col-6">
 			<div class="card si-kpi"><div class="card-body">
@@ -44,6 +46,7 @@
 					<span class="si-tendance si-hausse">Aucune en retard</span>
 				{% endif %}
 			</div></div>
+		{% if voirStatsVentes %}
 		</div>
 		<div class="col-xl-3 col-6">
 			<div class="card si-kpi"><div class="card-body">
@@ -51,6 +54,7 @@
 				<div class="si-kpi-valeur">{{ indicateurs.panierMoyen|number_format(0, ',', ' ') }} F</div>
 				{{ v.tendance(indicateurs.variationPanier, ' %') }}
 			</div></div>
+		{% endif %}
 		</div>
 	</div>
 

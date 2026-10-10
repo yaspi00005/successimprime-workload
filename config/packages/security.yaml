@@ -66,6 +66,7 @@ security:
 
             - ROLE_LIVRAISON
             - ROLE_STATS_GLOBAL
+            - ROLE_STATS_VENTES
             - ROLE_RH
             - ROLE_PARAMETRES
             - ROLE_RESPONSABLE_GESTION
@@ -88,6 +89,9 @@ security:
             - ROLE_TRESORERIE_TRANSFERER
 
             - ROLE_JOURNAL_CAISSE
+
+            # Chiffres commerciaux de l'ecran Ventes (pas les graphistes).
+            - ROLE_STATS_VENTES
 
 
         ROLE_GRAPHISTE:

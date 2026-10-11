@@ -109,14 +109,7 @@
                 detail.typeLigne
             ) }}
 
-				<small class="form-text text-muted">
-					Produit / prestation :
-																																																																	                élément provenant du catalogue.
-																																																																	                Article en stock :
-																																																																	                vente directe d'un article physique.
-																																																																	                Saisie libre :
-																																																																	                désignation, quantité et prix libres.
-				</small>
+
 
 			</div>
 
@@ -457,7 +450,7 @@
 				</div>
 
 
-				<div class="col-lg-3 col-md-6 js-zone-surface">
+				<div class="d-none js-zone-surface">
 
 					{{ form_row(detail.surface, {
                     attr: {
@@ -590,7 +583,7 @@
 				</div>
 
 
-				<div class="col-lg-3 col-md-6">
+				<div class="d-none">
 
 					{{ form_row(detail.totalHt, {
                     attr: {
@@ -603,7 +596,7 @@
 				</div>
 
 
-				<div class="col-lg-3 col-md-6">
+				<div class="d-none">
 
 					{{ form_row(detail.totalTtc, {
                     attr: {
@@ -623,6 +616,8 @@
 		{# ========================================================
 																										       FINITIONS
 																										       ======================================================== #}
+
+		<div class="si-resume-ligne js-resume-ligne"></div>
 
 		<div class="travail-section js-zone-finitions">
 
@@ -686,6 +681,10 @@
 
 		</div>
 
+
+		{# Réglages moins courants, repliés (maquette 22 : la ligne reste courte). #}
+		<details class="si-plus-options">
+			<summary>Plus d'options : caractéristiques techniques, observation</summary>
 
 		{# ========================================================
 																										       CARACTÉRISTIQUES TECHNIQUES
@@ -768,6 +767,7 @@
         ) }}
 
 		</div>
+		</details>
 
 	</div>
 
@@ -781,512 +781,213 @@
 {{ form_start(form, {
     attr: {
         id: 'devis-form',
-
         'data-brouillon-nouvelle':
             form.vars.data.id is null ? '1' : '0',
-
         'data-brouillon-csrf':
             csrf_token('brouillon-devis'),
-
         'data-brouillon-enregistrer-url':
             path('app_brouillon_enregistrer', {type: 'devis'}),
-
         'data-brouillon-verifier-url':
             path('app_brouillon_verifier', {type: 'devis'})
     }
 }) }}
 
+{#
+	Saisie d'un devis (maquette 22), sur le modèle de la saisie de
+	commande : client et lignes à gauche, une ligne ouverte à la fois ;
+	à droite le coût de revient et la marge (droit « Marges et coûts »),
+	le récapitulatif et l'acompte. Sur téléphone, 3 étapes.
+#}
+{% set devis = form.vars.data %}
+{% set estNouveau = devis.id is null %}
+{% set voirCouts = is_granted('ROLE_COUT_MARGE') %}
 
-<div
-	class="side-app">
+<div class="si-saisie si-saisie-devis" data-etape="lignes" data-ligne=".detail-devis" data-travail=".js-devis-detail">
 
-	{# ========================================================
-													       HEADER
-													       ======================================================== #}
-
-	<div class="page-header">
-
-		<ol class="breadcrumb">
-
-			<li class="breadcrumb-item">
-
-				<a href="{{ path( 'app_devis_index' ) }}">
-					Devis
-				</a>
-
-			</li>
-
-			<li class="breadcrumb-item active">
-
-				{{
-                    form.vars.data.id
-                        ? 'Modifier le devis'
-                        : 'Nouveau devis'
-                }}
-
-			</li>
-
-		</ol>
-
-
-		<a href="{{ path( 'app_devis_index' ) }}" class="btn btn-sm btn-primary-light">
-			<i class="fa fa-list mr-1"></i>
-			Liste des devis
-		</a>
-
+	<div class="si-saisie-tete">
+		<div class="si-saisie-retour d-md-none">
+			<button type="button" class="si-rond js-etape-retour" aria-label="Retour"><i class="fas fa-chevron-left"></i></button>
+			<div>
+				<strong class="js-titre-etape">{{ estNouveau ? 'Nouveau devis' : devis.numero }}</strong>
+				<small class="text-muted js-sous-titre-etape">Étape 1/3 · client et lignes</small>
+			</div>
+		</div>
+		<div class="si-saisie-boutons">
+			<a href="{{ estNouveau ? path('app_devis_index') : path('app_devis_show', {id: devis.id}) }}" class="btn btn-light btn-sm si-btn-entete">Annuler</a>
+			{% if not estNouveau %}
+				<a href="{{ path('app_devis_pdf', {id: devis.id}) }}" target="_blank" class="btn btn-light btn-sm si-btn-entete">Aperçu PDF</a>
+			{% endif %}
+			<button type="submit" class="btn btn-danger btn-sm si-btn-entete">{{ estNouveau ? 'Enregistrer le devis' : 'Enregistrer les modifications' }}</button>
+		</div>
 	</div>
-
 
 	{% if not form.vars.valid %}
-
-		<div class="alert alert-danger">
-			{{ form_errors(form) }}
-		</div>
-
+		<div class="alert alert-danger">{{ form_errors(form) }}</div>
 	{% endif %}
 
+	<div class="si-saisie-grille">
+		<div class="si-saisie-gauche">
 
-	{# ========================================================
-													       CLIENT
-													       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-user-circle mr-2"></i>
-				Client
-			</div>
-
-		</div>
-
-		<div class="card-body">
-
-			<div class="row">
-
-				<div class="col-lg-6">
-
+			{# ---------- Client ---------- #}
+			<div class="card si-bloc si-saisie-client js-zone-client">
+				<div class="si-client-carte js-client-carte" hidden>
+					<span class="si-client-initiales js-client-initiales"></span>
+					<div class="min-w-0 flex-grow-1">
+						<small class="text-muted">Client</small>
+						<div class="si-client-nom"><strong class="js-client-nom"></strong> <span class="si-pastille si-pastille-bleu js-client-compte"></span> <span class="si-pastille si-pastille-gris js-client-tarif"></span></div>
+						<small class="text-muted js-client-contact"></small>
+					</div>
+					<button type="button" class="btn btn-sm si-btn-secondaire js-client-changer">Changer</button>
+				</div>
+				<div class="js-client-choix">
 					{{ form_row(form.clients, {
-                        label: 'Client',
-
-                        attr: {
-                            class:
-                                'form-control js-select-search',
-
-                            'data-placeholder':
-                                'Rechercher un client...'
-                        }
-                    }) }}
-
+						label: 'Client',
+						attr: {
+							class: 'form-control js-select-search js-client-saisie',
+							'data-placeholder': 'Téléphone, prénom ou nom…'
+						}
+					}) }}
 				</div>
-
-				<div class="col-lg-6">
-
-					{{ form_row(form.emetteur, {
-                        label: 'Émetteur',
-
-                        attr: {
-                            class: 'form-control custom-select'
-                        }
-                    }) }}
-
-				</div>
-
 			</div>
 
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-													       FACTURATION À UN TIERS
-													       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-exchange mr-2"></i>
-				Facturation à un tiers
+			{# ---------- Lignes ---------- #}
+			<div class="card si-bloc si-saisie-lignes">
+				<div class="si-bloc-tete">
+					<h4>Lignes du devis <span class="text-muted d-md-none js-nombre-lignes"></span></h4>
+					<button type="button" id="add-detail" class="btn btn-link btn-sm si-lien-ajout d-none d-md-inline-block">+ Ajouter une ligne</button>
+				</div>
+				{{ form_errors(form.devisDetails) }}
+				<div class="table-responsive">
+					<table class="table si-table si-table-lignes align-middle mb-0">
+						<thead>
+							<tr>
+								<th class="si-col-vignette"></th>
+								<th>Produit et caractéristiques</th>
+								<th>Mode d'impression</th>
+								<th class="text-end">Qté</th>
+								<th class="text-end">PU TTC</th>
+								<th class="text-end">Total</th>
+								<th class="si-col-fichier"></th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody class="js-lignes-resume"></tbody>
+					</table>
+				</div>
+				<div id="aucun-detail" class="si-vide">Aucune ligne. Ajoutez le premier produit du devis.</div>
+				<button type="button" id="add-detail-bottom" class="btn si-btn-ajout-ligne d-md-none">+ Ajouter une ligne</button>
 			</div>
 
-		</div>
-
-		<div class="card-body">
-
-			<div class="custom-control custom-checkbox mb-3">
-
-				{{ form_widget(form.facturerAUnTiers, {
-                        attr: {
-                            class: 'custom-control-input js-facturer-a-un-tiers'
-                        }
-                    }) }}
-
-				{{ form_label(form.facturerAUnTiers, null, {
-                        label_attr: {
-                            class: 'custom-control-label'
-                        }
-                    }) }}
-
-			</div>
-
-			<small class="form-text text-muted mb-3 d-block">
-				Le demandeur du devis n'est pas toujours celui qui paie
-																												(ex : un employé demande, son entreprise règle).
-																												Cochez cette case pour indiquer les coordonnées du payeur ;
-																												elles remplaceront celles du client sur le PDF.
-			</small>
-
-			<div class="row js-zone-facturer-a-un-tiers" style="display:none;">
-
-				<div class="col-md-6">
-					{{ form_row(form.nomFacturation, {
-                            label: 'Nom du payeur',
-                            attr: { class: 'form-control' }
-                        }) }}
-				</div>
-
-				<div class="col-md-6">
-					{{ form_row(form.adresseFacturation, {
-                            label: 'Adresse de facturation',
-                            attr: { class: 'form-control' }
-                        }) }}
-				</div>
-
-				<div class="col-md-6">
-					{{ form_row(form.telephoneFacturation, {
-                            label: 'Téléphone du payeur',
-                            attr: { class: 'form-control' }
-                        }) }}
-				</div>
-
-				<div class="col-md-6">
-					{{ form_row(form.emailFacturation, {
-                            label: 'Email du payeur',
-                            attr: { class: 'form-control' }
-                        }) }}
-				</div>
-
-			</div>
-
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-													       INFORMATIONS DEVIS
-													       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-file-text-o mr-2"></i>
-				Informations du devis
-			</div>
-
-		</div>
-
-		<div class="card-body">
-
-			<div class="row">
-
-				<div class="col-md-6 col-xl-3">
-
-					<div class="form-group">
-
-						<label>
-							Numéro
-						</label>
-
-						<input type="text" class="form-control" disabled value="{{ form.vars.data.numero |default( 'Généré automatiquement' ) }}">
-
-					</div>
-
-				</div>
-
-
-				<div class="col-md-6 col-xl-3">
-
-					{{ form_row(form.statut, {
-                        label: 'Statut'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-md-6 col-xl-3">
-
-					{{ form_row(form.etat, {
-                        label: 'État'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-md-6 col-xl-3">
-
-					{{ form_row(form.tva, {
-                        label: 'TVA (%)'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-md-12 col-xl-6">
-
-					{{ form_row(form.observation, {
-                        label: 'Observation',
-
-                        attr: {
-                            rows: 3,
-                            placeholder:
-                                'Informations complémentaires...'
-                        }
-                    }) }}
-
-				</div>
-
-			</div>
-
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-													       DÉTAILS
-													       ======================================================== #}
-
-	<div class="card">
-
-		<div class="
-																																																				                card-header
-																																																				                d-flex
-																																																				                justify-content-between
-																																																				                align-items-center
-																																																				            ">
-
-			<div>
-
-				<div class="card-title mb-0">
-
-					<i class="fa fa-shopping-cart mr-2"></i>
-
-					Produits, articles et prestations
-
-				</div>
-
-				<small class="text-muted">
-					Produit catalogue,
-																																																																	                    article en stock ou saisie libre.
-				</small>
-
-			</div>
-
-
-			<button type="button" id="add-detail" class="btn btn-success-light">
-				<i class="fa fa-plus mr-1"></i>
-				Ajouter un détail
-			</button>
-
-		</div>
-
-
-		<div class="card-body">
-
-			{{ form_errors(
-                form.devisDetails
-            ) }}
-
-
-			<div id="collection-details" data-index="{{ form.devisDetails|length }}" data-prototype="{{ _self.champs_detail( form.devisDetails.vars.prototype )|e('html_attr') }}">
-
-				{% for detail in form.devisDetails %}
-
-					<div class="
-																																																																																											                            detail-devis
-																																																																																											                            card
-																																																																																											                            border
-																																																																																											                            mb-4
-																																																																																											                        ">
-
-						<div class="
-																																																																																																								                                card-header
-																																																																																																								                                bg-light
-																																																																																																								                                d-flex
-																																																																																																								                                justify-content-between
-																																																																																																								                                align-items-center
-																																																																																																								                            ">
-
-							<div class="
-																																																																																																																					                                    card-title
-																																																																																																																					                                    detail-title
-																																																																																																																					                                    mb-0
-																																																																																																																					                                ">
-								Travail
-								{{ loop.index }}
+			{# ---------- Configuration de la ligne choisie ---------- #}
+			<div class="card si-bloc si-saisie-config js-zone-config">
+				<div id="collection-details" data-index="{{ form.devisDetails|length }}" data-prototype="{{ _self.champs_detail(form.devisDetails.vars.prototype)|e('html_attr') }}">
+					{% for detail in form.devisDetails %}
+						<div class="detail-devis">
+							<div class="si-bloc-tete">
+								<h4 class="detail-title">Ligne {{ loop.index }}</h4>
+								<button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail"><i class="fas fa-trash-alt me-1"></i>Retirer</button>
 							</div>
-
-
-							<button type="button" class="
-																																																																																																																					                                    btn
-																																																																																																																					                                    btn-danger-light
-																																																																																																																					                                    btn-sm
-																																																																																																																					                                    supprimer-detail
-																																																																																																																					                                ">
-								<i class="fa fa-trash mr-1"></i>
-								Supprimer
-							</button>
-
+							{{ _self.champs_detail(detail) }}
 						</div>
-
-
-						<div class="card-body p-0">
-
-							{{ _self.champs_detail(
-                                detail
-                            ) }}
-
-						</div>
-
-					</div>
-
-				{% else %}
-
-					<div id="aucun-detail" class="alert alert-info mb-0">
-						Aucun travail ajouté.
-																																																																														                        Cliquez sur « Ajouter un détail ».
-					</div>
-
-				{% endfor %}
-
+					{% endfor %}
+				</div>
+				<div class="si-barre-ligne d-md-none">
+					<div><small class="text-muted">Prix de la ligne</small><strong class="js-prix-ligne-active">0 F</strong></div>
+					<button type="button" class="btn btn-primary js-valider-ligne">Valider la ligne</button>
+				</div>
 			</div>
 
-			<div class="text-center mt-2">
-				<button type="button" id="add-detail-bottom" class="btn btn-success-light">
-					<i class="fa fa-plus mr-1"></i>
-					Ajouter un détail
-				</button>
+			<div class="si-barre-total d-md-none">
+				<div><small class="text-muted">Total TTC</small><strong class="js-total-affiche">0 F</strong></div>
+				<button type="button" class="btn btn-danger js-etape-suivante">Continuer <i class="fas fa-arrow-right ms-1"></i></button>
 			</div>
-
 		</div>
 
-	</div>
+		<div class="si-saisie-droite">
 
-
-	{# ========================================================
-													       RÉCAPITULATIF
-													       ======================================================== #}
-
-	<div class="row">
-
-		<div class="col-xl-5 ml-auto">
-
-			<div class="card">
-
-				<div class="card-header">
-
-					<div class="card-title">
-						<i class="fa fa-calculator mr-2"></i>
-						Récapitulatif
+			{# ---------- Coût de revient et marge (maquette 22) ---------- #}
+			{% if voirCouts %}
+				<div class="card si-bloc si-cout-ligne js-cout-ligne" data-url="{{ path('app_saisie_cout_ligne') }}" data-token="{{ csrf_token('cout-ligne') }}">
+					<h4>Coût de revient et marge <small class="text-muted js-cout-titre"></small></h4>
+					<label class="form-label mb-1" for="cout-machine">Machine</label>
+					<select id="cout-machine" class="form-select form-select-sm js-cout-machine">
+						{% for machine in machines_pour_cout() %}
+							<option value="{{ machine.id }}" data-laize="{{ machine.laizeMetres }}">{{ machine.nom }}</option>
+						{% endfor %}
+					</select>
+					<table class="table si-table si-table-cout mb-2">
+						<tbody>
+							<tr><td>Support <small class="text-muted js-cout-surface"></small></td><td class="text-end js-cout-matieres">—</td></tr>
+							<tr><td>Encre</td><td class="text-end js-cout-encre">—</td></tr>
+							<tr><td>Temps machine</td><td class="text-end js-cout-machine-temps">—</td></tr>
+							<tr><td>Finitions</td><td class="text-end js-cout-finitions">—</td></tr>
+							<tr class="si-cout-total"><td>Coût total</td><td class="text-end js-cout-total">—</td></tr>
+						</tbody>
+					</table>
+					<div class="si-cout-prix">
+						<div><small class="text-muted">Prix de vente TTC</small><strong class="js-cout-prix">0 F</strong></div>
+						<div class="text-end"><small class="text-muted">Marge brute</small><strong class="js-cout-marge">—</strong></div>
 					</div>
+					<p class="si-cout-manquants js-cout-manquants" hidden></p>
 
-				</div>
-
-
-				<div class="card-body">
-
-					<div class="row">
-
-						<div class="col-md-6">
-
-							{{ form_row(form.totalHt, {
-                                label: 'Total HT',
-
-                                attr: {
-                                    readonly: true
-                                }
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.remise, {
-                                label: 'Remise'
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.totalTtc, {
-                                label: 'Total TTC',
-
-                                attr: {
-                                    readonly: true
-                                }
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.montantApayer, {
-                                label: 'Montant à payer',
-
-                                attr: {
-                                    readonly: true
-                                }
-                            }) }}
-
-						</div>
-
+					<h5 class="mt-3">Optimiseur de laize</h5>
+					<div class="si-laize js-laize"><small class="text-muted">Indiquez largeur, hauteur et quantité.</small></div>
+					<div class="si-laize-infos">
+						<span>Laize <strong class="js-laize-largeur">—</strong></span>
+						<span>Support <strong class="js-laize-metres">—</strong></span>
+						<span>Chute <strong class="js-laize-chute">—</strong></span>
 					</div>
+				</div>
+			{% endif %}
 
+			{# ---------- Récapitulatif ---------- #}
+			<div class="card si-bloc si-saisie-recap">
+				<h4>Récapitulatif</h4>
+				<dl class="si-recap">
+					<dt class="js-recap-lignes">Sous-total HT</dt><dd class="js-recap-ht">0</dd>
+					<dt class="js-recap-tva-libelle">TVA</dt><dd class="js-recap-tva">0</dd>
+					<dt>Remise</dt>
+					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-saisie'}}) }}</dd>
+				</dl>
+				<div class="si-recap-total"><span>Total TTC</span><strong class="js-total-affiche">0 F</strong></div>
+				<div class="si-acompte">
+					<div class="d-flex justify-content-between"><strong>Acompte demandé</strong><strong>50 % · <span class="js-acompte">0 F</span></strong></div>
+					<small class="text-muted d-block mt-1">Encaissé à la commande, quand le client accepte le devis.</small>
 				</div>
 
-
-				<div class="
-																																																																														                        card-footer
-																																																																														                        d-flex
-																																																																														                        justify-content-between
-																																																																														                    ">
-
-					<a href="{{ path( 'app_devis_index' ) }}" class="btn btn-primary-light">
-						Annuler
-					</a>
-
-
-					<button type="submit" class="btn btn-success-light">
-						<i class="fa fa-save mr-1"></i>
-
-						{{
-                            button_label
-                            |default(
-                                'Enregistrer le devis'
-                            )
-                        }}
-
-					</button>
-
+				<div class="row g-2 mt-2">
+					<div class="col-5">{{ form_row(form.statut, {label: 'Statut', attr: {class: 'form-select form-select-sm'}}) }}</div>
+					<div class="col-4">{{ form_row(form.emetteur, {label: 'Émetteur', attr: {class: 'form-select form-select-sm'}}) }}</div>
+					<div class="col-3">{{ form_row(form.tva, {label: 'TVA %', attr: {class: 'form-control form-control-sm'}}) }}</div>
 				</div>
 
+				<details class="si-plus-options">
+					<summary>Facturer à un tiers, observation</summary>
+					<div class="form-check mb-2">
+						{{ form_widget(form.facturerAUnTiers, {attr: {class: 'form-check-input'}}) }}
+						<label class="form-check-label" for="{{ form.facturerAUnTiers.vars.id }}">Facturer à un tiers</label>
+					</div>
+					<div class="js-zone-facturer-a-un-tiers" style="display:none;">
+						{{ form_row(form.nomFacturation, {label: 'Nom'}) }}
+						{{ form_row(form.adresseFacturation, {label: 'Adresse'}) }}
+						{{ form_row(form.telephoneFacturation, {label: 'Téléphone'}) }}
+						{{ form_row(form.emailFacturation, {label: 'E-mail'}) }}
+					</div>
+					{{ form_row(form.observation, {label: 'Observation', attr: {rows: 3}}) }}
+				</details>
+
+				<button type="submit" class="btn btn-danger w-100 d-md-none">{{ estNouveau ? 'Enregistrer le devis' : 'Enregistrer les modifications' }}</button>
 			</div>
 
+			{# Champs calculés par le script, envoyés tels quels. #}
+			<div hidden>
+				{{ form_widget(form.totalHt) }}
+				{{ form_widget(form.totalTtc) }}
+				{{ form_widget(form.montantApayer) }}
+				{{ form_widget(form.etat) }}
+			</div>
 		</div>
-
 	</div>
-
 </div>
 
 
@@ -1307,209 +1008,17 @@
 
 
 <style>
-
-	/* ============================================================
-   FORMULAIRE DEVIS
-   ============================================================ */
-
-	#devis-form,
-	#devis-form label,
-	#devis-form small,
-	#devis-form .form-text {
-		color: #334155 !important;
-		-webkit-text-fill-color: #334155 !important;
-	}
-
-	#devis-form input.form-control,
-	#devis-form select.form-control,
-	#devis-form textarea.form-control {
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-
-		background-color: #ffffff !important;
-
-		border: 1px solid #d8deea !important;
-
-		opacity: 1 !important;
-	}
-
-	#devis-form input[readonly],
-	#devis-form textarea[readonly],
-	#devis-form .form-control[readonly] {
-		color: #475569 !important;
-		-webkit-text-fill-color: #475569 !important;
-
-		background-color: #f1f5f9 !important;
-
-		opacity: 1 !important;
-	}
-
-	#devis-form select option {
-		color: #1f2937 !important;
-		background: #ffffff !important;
-	}
-
-
-	/* ============================================================
-   DÉTAIL
-   ============================================================ */
-
-	.detail-devis {
-		border: 1px solid #dce4f0 !important;
-		border-radius: 8px;
-		overflow: hidden;
-	}
-
-	.detail-devis > .card-header {
-		min-height: 58px;
-
-		padding: 14px 20px;
-
-		background: #f4f7fc !important;
-
-		border-bottom: 1px solid #dce4f0;
-	}
-
-	.travail-form {
-		padding: 20px;
-		background: #ffffff;
-	}
-
-	.travail-section {
-		padding: 18px 18px 4px;
-
-		margin-bottom: 18px;
-
-		border: 1px solid #e5eaf2;
-		border-radius: 7px;
-
-		background: #fbfcfe;
-	}
-
-	.travail-section-title {
-		margin: -18px -18px 18px;
-
-		padding: 11px 16px;
-
-		color: #17366f !important;
-
-		-webkit-text-fill-color: #17366f !important;
-
-		font-size: 14px;
-
-		font-weight: 600;
-
-		background: #f1f5fb;
-
-		border-bottom: 1px solid #e1e7f0;
-	}
-
-	.travail-section-title i {
-		width: 22px;
-		color: #6259ca;
-	}
-
-
-	/* ============================================================
-   FINITIONS
-   ============================================================ */
-
-	.finitions-box {
-		padding: 14px;
-
-		border: 1px dashed #cbd4e1;
-
-		border-radius: 6px;
-
-		background: #ffffff;
-	}
-
-	.finitions-box .form-check {
-		display: inline-flex;
-
-		align-items: center;
-
-		margin: 0 20px 10px 0;
-	}
-
-
-	/* ============================================================
-   SELECT2
-   ============================================================ */
-
-	#devis-form select.select2-hidden-accessible {
-		position: absolute !important;
-
-		width: 1px !important;
-		height: 1px !important;
-
-		padding: 0 !important;
-
-		margin: -1px !important;
-
-		overflow: hidden !important;
-
-		clip: rect(0, 0, 0, 0) !important;
-
-		white-space: nowrap !important;
-
-		border: 0 !important;
-
-		opacity: 0 !important;
-	}
-
 	#devis-form .select2-container {
-		display: block;
-
 		width: 100% !important;
 	}
 
-	#devis-form .select2-selection--single {
-		height: 42px;
-
-		background: #ffffff !important;
-
-		border: 1px solid #d8dee9 !important;
-
-		border-radius: 5px;
+	#devis-form .select2-container .select2-selection--single {
+		min-height: 2.6rem;
+		border-radius: 0.6rem;
+		border-color: #D5DCE8;
+		display: flex;
+		align-items: center;
 	}
-
-	#devis-form .select2-selection__rendered {
-		line-height: 40px !important;
-
-		color: #1f2937 !important;
-
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-	.select2-dropdown {
-		background: #ffffff !important;
-	}
-
-	.select2-results__option {
-		color: #1f2937 !important;
-
-		background: #ffffff !important;
-
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-	.select2-results__option--highlighted {
-		color: #ffffff !important;
-
-		-webkit-text-fill-color: #ffffff !important;
-
-		background: #6259ca !important;
-	}
-
-	.select2-search__field {
-		color: #1f2937 !important;
-
-		-webkit-text-fill-color: #1f2937 !important;
-
-		background: #ffffff !important;
-	}
-
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -2641,7 +2150,7 @@ information.innerHTML = '<span class="text-danger">' + erreur.message + '</span>
        PRODUIT AJAX
        ========================================================= */
 
-async function chargerConfigurationsProduit(detail, produitId, configurationInitiale = null) {
+async function chargerConfigurationsProduit(detail, produitId, configurationInitiale = null, appliquer = true) {
 if (valeurTypeLigne(detail) !== 'produit') {
 return;
 }
@@ -2725,8 +2234,10 @@ configurationSelect.value = String(configurationId);
 
 actualiserSelect2(configurationSelect);
 
-
+// Ligne déjà enregistrée : on garde ses valeurs (désignation, dimensions, prix).
+if (appliquer) {
 await chargerConfiguration(detail, configurationId);
+}
 }
 
 } catch (erreur) {
@@ -3308,6 +2819,10 @@ calculerDetail(detail);
 /*
          * Valeurs initiales.
          */
+// Ligne enregistrée au mètre ou au m² : dimensions visibles (sinon elles seraient vidées).
+if (modeCalcul && ['metre', 'metre_carre'].includes(modeCalcul.value)) {
+detail.dataset.modeDimension = 'mesure';
+}
 appliquerTypeLigne(detail);
 
 
@@ -3318,7 +2833,7 @@ if (produit && produit.value && valeurTypeLigne(detail) === 'produit') {
 const configurationInitiale = configuration ? configuration.value : null;
 
 
-chargerConfigurationsProduit(detail, produit.value, configurationInitiale);
+chargerConfigurationsProduit(detail, produit.value, configurationInitiale, false);
 }
 
 
@@ -3385,46 +2900,15 @@ collection.dataset.index = String(index + 1);
 const wrapper = document.createElement('div');
 
 
-wrapper.className = 'detail-devis card border mb-4';
+wrapper.className = 'detail-devis';
 
 
 wrapper.innerHTML = `
-            <div
-                class="
-                    card-header
-                    bg-light
-                    d-flex
-                    justify-content-between
-                    align-items-center
-                "
-            >
-                <div
-                    class="
-                        card-title
-                        detail-title
-                        mb-0
-                    "
-                >
-                    Nouveau travail
-                </div>
-
-                <button
-                    type="button"
-                    class="
-                        btn
-                        btn-danger-light
-                        btn-sm
-                        supprimer-detail
-                    "
-                >
-                    <i class="fa fa-trash mr-1"></i>
-                    Supprimer
-                </button>
+            <div class="si-bloc-tete">
+                <h4 class="detail-title">Nouvelle ligne</h4>
+                <button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail"><i class="fas fa-trash-alt me-1"></i>Retirer</button>
             </div>
-
-            <div class="card-body p-0">
-                ${html}
-            </div>
+            ${html}
         `;
 
 
@@ -3453,7 +2937,7 @@ details.forEach(function (detail, index) {
 const titre = detail.querySelector('.detail-title');
 
 if (titre) {
-titre.textContent = 'Travail ' + (
+titre.textContent = 'Ligne ' + (
 index + 1
 );
 }

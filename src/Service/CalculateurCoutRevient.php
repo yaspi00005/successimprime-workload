@@ -163,6 +163,32 @@ final class CalculateurCoutRevient
     }
 
     /**
+     * Sens de pose retenu par imposition(), pour dessiner l'optimiseur de
+     * laize (maquette 22) : pieces par rangee et nombre de rangees.
+     *
+     * @return array{travers: float, long: float, parRangee: int, rangees: int}|null
+     */
+    public static function pose(float $largeur, float $hauteur, int $quantite, ?float $laize): ?array
+    {
+        $meilleure = null;
+
+        foreach ([[$largeur, $hauteur], [$hauteur, $largeur]] as [$travers, $long]) {
+            if (null === $laize || $travers <= 0 || $long <= 0 || $travers > $laize) {
+                continue;
+            }
+
+            $parRangee = max(1, (int) floor($laize / $travers + 1e-9));
+            $rangees = (int) ceil(max(1, $quantite) / $parRangee);
+
+            if (null === $meilleure || $rangees * $long < $meilleure['rangees'] * $meilleure['long']) {
+                $meilleure = ['travers' => $travers, 'long' => $long, 'parRangee' => $parRangee, 'rangees' => $rangees];
+            }
+        }
+
+        return $meilleure;
+    }
+
+    /**
      * Pose des pieces sur la laize : on essaie les deux sens et on garde
      * celui qui consomme le moins de support.
      *

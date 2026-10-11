@@ -76,6 +76,13 @@ class DevisType extends AbstractType
 
                     return $libelle;
                 },
+                // Carte du client de la saisie (maquette 22).
+                'choice_attr' => static fn (Clients $client): array => [
+                    'data-type-client' => $client->getTypeClient(),
+                    'data-nom' => $client->getNomComplet(),
+                    'data-compte' => $client->getTypeCompteLabel(),
+                    'data-telephone' => (string) $client->getTelephone(),
+                ],
                 'placeholder' => 'Sélectionnez un client',
                 'required' => true,
                 'attr' => [

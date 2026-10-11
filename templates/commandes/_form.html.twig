@@ -1084,7 +1084,7 @@
 					{{ form_row(form.clients, {
 						label: 'Client',
 						attr: {
-							class: 'form-control js-select-search js-client-commande',
+							class: 'form-control js-select-search js-client-commande js-client-saisie',
 							'data-placeholder': 'Téléphone, prénom ou nom…'
 						}
 					}) }}
@@ -1183,7 +1183,7 @@
 					<dt class="js-recap-lignes">Sous-total HT</dt><dd class="js-recap-ht">0</dd>
 					<dt class="js-recap-tva-libelle">TVA</dt><dd class="js-recap-tva">0</dd>
 					<dt>Remise</dt>
-					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-commande'}}) }}</dd>
+					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-commande js-remise-saisie'}}) }}</dd>
 				</dl>
 				<div class="si-recap-total"><span>Total TTC</span><strong class="js-total-affiche">0 F</strong></div>
 

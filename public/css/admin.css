@@ -2537,3 +2537,101 @@ body .si-sidebar .metismenu ul a.mm-active {
   color: #12213A;
   margin-bottom: 0.75rem;
 }
+
+/* ---------- Devis : coût de revient et laize (maquette 22) ---------- */
+
+.si-cout-ligne h4 small {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.si-table-cout td {
+  padding: 0.4rem 0.25rem;
+  font-size: 0.88rem;
+}
+
+.si-table-cout .si-cout-total td {
+  font-weight: 800;
+  border-top: 2px solid #E3E8F0;
+}
+
+.si-cout-prix {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.si-cout-prix small {
+  display: block;
+}
+
+.si-cout-prix strong {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #0F4590;
+}
+
+.si-cout-prix .text-success,
+.si-cout-prix .text-warning,
+.si-cout-prix .text-danger {
+  color: inherit;
+}
+
+.si-cout-prix strong.text-success { color: #178444 !important; }
+.si-cout-prix strong.text-warning { color: #C46A00 !important; }
+.si-cout-prix strong.text-danger { color: #C40D22 !important; }
+
+.si-cout-manquants {
+  font-size: 0.78rem;
+  color: #C46A00;
+  background: #FFF6E8;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  margin: 0.5rem 0 0;
+}
+
+.si-cout-ligne h5 {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.si-laize {
+  border: 2px solid #C9D3E3;
+  border-radius: 0.5rem;
+  background: #F2F5FA;
+  padding: 0.35rem;
+}
+
+.si-laize svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 14rem;
+}
+
+.si-laize .si-laize-rouleau {
+  fill: #EEF2F8;
+}
+
+.si-laize rect:not(.si-laize-rouleau) {
+  fill: #2D5FA8;
+}
+
+.si-laize text {
+  fill: #fff;
+  dominant-baseline: hanging;
+}
+
+.si-laize-infos {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #5B6575;
+  margin-top: 0.4rem;
+}
+
+.si-laize-infos strong {
+  display: block;
+  color: #12213A;
+}

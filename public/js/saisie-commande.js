@@ -1,8 +1,11 @@
 /*
- * Saisie d'une commande (maquettes C01, C03, C04).
+ * Saisie d'une commande (maquettes C01, C03, C04) ou d'un devis (22).
  *
  * Le calcul des prix, le catalogue, les fichiers et le brouillon
- * restent dans le script de templates/commandes/_form.html.twig.
+ * restent dans le script du formulaire (commandes/_form.html.twig ou
+ * devis/_form.html.twig). La page indique ses blocs par data-ligne
+ * (bloc d'une ligne) et data-travail (bloc où le script du formulaire
+ * pose la liste des finitions permises).
  * Ce script ne fait que la présentation : une ligne ouverte à la
  * fois, le tableau des lignes, la carte du client, le délai, le
  * récapitulatif et, sur téléphone, les 3 étapes.
@@ -12,12 +15,16 @@
 
     function demarrer() {
         const page = document.querySelector('.si-saisie');
-        const form = document.getElementById('commande-form');
+        const form = page ? page.closest('form') : null;
         const collection = document.getElementById('collection-details');
 
         if (!page || !form || !collection) {
             return;
         }
+
+        const selecteurLigne = page.dataset.ligne || '.detail-commande';
+        const classeLigne = selecteurLigne.replace(/^\./, '');
+        const selecteurTravail = page.dataset.travail || '.js-commande-detail';
 
         const zoneConfig = page.querySelector('.js-zone-config');
         const corpsLignes = page.querySelector('.js-lignes-resume');
@@ -54,7 +61,7 @@
         }
 
         function details() {
-            return Array.from(collection.querySelectorAll(':scope > .detail-commande'));
+            return Array.from(collection.querySelectorAll(':scope > ' + selecteurLigne));
         }
 
         function typeLigne(detail) {
@@ -177,7 +184,7 @@
 
             if (event.target.closest('.js-retirer-ligne')) {
                 const bouton = detail && detail.querySelector('.supprimer-detail');
-                if (bouton && window.confirm('Retirer cette ligne de la commande ?')) {
+                if (bouton && window.confirm('Retirer cette ligne ?')) {
                     bouton.click();
                 }
 
@@ -247,8 +254,8 @@
             if (!zone || zone.style.display === 'none') {
                 return;
             }
-            // Liste posée par le script du formulaire sur le bloc .js-commande-detail.
-            const travail = detail.querySelector('.js-commande-detail') || detail;
+            // Liste posée par le script du formulaire sur le bloc de travail.
+            const travail = detail.querySelector(selecteurTravail) || detail;
             const autorisees = travail.dataset.finitionsAutorisees;
             const ids = autorisees === undefined ? null : autorisees.split(',').filter(Boolean);
             const choisies = Array.from(zone.querySelectorAll('.js-finition-manuelle select')).map(function (s) {
@@ -333,7 +340,7 @@
                 taux.add(nombreChamp(champ(detail, 'tva')));
             });
 
-            const remise = nombreChamp(form.querySelector('.js-remise-commande'));
+            const remise = nombreChamp(form.querySelector('.js-remise-saisie'));
             const aPayer = Math.max(0, Math.round(ttc - remise));
 
             page.querySelector('.js-recap-ht').textContent = montant(ht);
@@ -376,7 +383,7 @@
             let ajoutee = null;
             mutations.forEach(function (m) {
                 m.addedNodes.forEach(function (n) {
-                    if (n.nodeType === 1 && n.classList.contains('detail-commande')) {
+                    if (n.nodeType === 1 && n.classList.contains(classeLigne)) {
                         ajoutee = n;
                     }
                 });
@@ -394,7 +401,7 @@
 
         /* ---------- Client ---------- */
 
-        const select = form.querySelector('.js-client-commande');
+        const select = form.querySelector('.js-client-saisie');
         const carte = page.querySelector('.js-client-carte');
         const choix = page.querySelector('.js-client-choix');
         const adresse = form.querySelector('[name$="[adresseLivraison]"]');
@@ -456,6 +463,9 @@
 
         const zoneAdresse = page.querySelector('.js-zone-adresse');
         function afficherAdresse() {
+            if (!zoneAdresse) {
+                return;
+            }
             const mode = page.querySelector('.js-mode-livraison input:checked');
             zoneAdresse.hidden = !mode || mode.value !== 'livraison';
         }
@@ -535,6 +545,15 @@
             }
             allerA('recap');
         });
+
+        /* Champ obligatoire vide dans une ligne fermée : on ouvre cette ligne. */
+        form.addEventListener('invalid', function (event) {
+            const detail = event.target.closest(selecteurLigne);
+            if (detail && detail !== active) {
+                activer(detail);
+                allerA('ligne');
+            }
+        }, true);
 
         /* ---------- Démarrage ---------- */
 

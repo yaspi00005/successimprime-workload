@@ -74,4 +74,14 @@ final class CalculateurCoutRevientTest extends TestCase
         self::assertSame(60.0, CalculateurCoutRevient::tauxMarge(58_500, 23_400));
         self::assertNull(CalculateurCoutRevient::tauxMarge(0, 100));
     }
+
+    public function testPoseDeuxBachesDansLaLongueur(): void
+    {
+        // Maquette 22 : 2 bâches 300 x 100 cm sur 3,20 m, l'une derrière l'autre.
+        self::assertSame(
+            ['travers' => 3.0, 'long' => 1.0, 'parRangee' => 1, 'rangees' => 2],
+            CalculateurCoutRevient::pose(3.0, 1.0, 2, 3.2),
+        );
+        self::assertNull(CalculateurCoutRevient::pose(3.0, 1.0, 2, null));
+    }
 }

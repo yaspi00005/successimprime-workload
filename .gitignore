@@ -52,3 +52,6 @@
 
 # Fichiers systeme macOS
 .DS_Store
+
+# Données de démo (fichiers SQL générés, sans donnée réelle)
+!donnees-demo/*.sql

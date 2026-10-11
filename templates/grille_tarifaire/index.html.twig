@@ -1,0 +1,170 @@
+{% extends 'base.html.twig' %}
+
+{% set unites = constant('App\\Service\\GrilleTarifaire::UNITES') %}
+{% set edition = modifiable and onglet != 'negocies' and (configurations is not empty or finitions is not empty) %}
+
+{% block title %}Grille tarifaire et catalogue{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_grille_tarifaire_historique') }}" class="btn btn-light btn-sm si-btn-entete">Historique</a>
+	</li>
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_produits_index') }}" class="btn btn-light btn-sm si-btn-entete">Produits</a>
+	</li>
+	{% if edition %}
+		<li class="nav-item">
+			<button type="submit" form="si-grille-form" class="btn btn-danger btn-sm si-btn-entete" data-si-enregistrer disabled>Enregistrer</button>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-grille">
+		<nav class="si-grille-onglets" aria-label="Catégories de prix">
+			{% for o in onglets %}
+				<a href="{{ path('app_grille_tarifaire_index', {onglet: o.cle}) }}" class="{{ o.cle == onglet ? 'active' }}" {{ o.cle == onglet ? 'aria-current="page"' }}>{{ o.libelle }}</a>
+			{% endfor %}
+		</nav>
+
+		<section class="card si-grille-carte">
+			{% if not modifiable %}
+				<p class="si-grille-lecture"><i class="fas fa-lock me-1"></i>En ligne, la grille est en lecture : les prix se modifient sur le serveur de l’atelier.</p>
+			{% endif %}
+
+			<form id="si-grille-form" method="post" action="{{ path('app_grille_tarifaire_enregistrer') }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('grille-tarifaire') }}">
+				<input type="hidden" name="onglet" value="{{ onglet }}">
+
+				{% if onglet == 'finitions' %}
+					<div class="table-responsive">
+						<table class="table si-grille-table si-grille-finitions">
+							<thead>
+								<tr>
+									<th>Finition</th>
+									<th>Produit</th>
+									<th>Calcul</th>
+									<th class="text-end">Prix</th>
+									{% if voir_couts %}<th class="text-end">Coût</th>{% endif %}
+									<th class="text-center">Proposée</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for f in finitions %}
+									<tr>
+										<td data-libelle="Finition"><strong>{{ f.finition.nom }}</strong>{% if f.obligatoire %} <small>obligatoire</small>{% endif %}</td>
+										<td data-libelle="Produit">{{ f.produitConfiguration.produit.nom }}{% if f.produitConfiguration.support %} · {{ f.produitConfiguration.support.nom }}{% endif %}</td>
+										<td data-libelle="Calcul">{{ unites[f.modeCalcul]|default(f.modeCalcul) }}</td>
+										<td class="text-end" data-libelle="Prix">
+											<input type="text" inputmode="numeric" name="finitions[{{ f.id }}][prix]" value="{{ f.prix }}" class="form-control form-control-sm si-grille-prix" aria-label="Prix {{ f.finition.nom }}" {{ not modifiable ? 'readonly' }}>
+										</td>
+										{% if voir_couts %}<td class="text-end" data-libelle="Coût">{{ f.finition.coutUnitaire is null ? '—' : f.finition.coutUnitaire|number_format(0, ',', ' ') }}</td>{% endif %}
+										<td class="text-center" data-libelle="Proposée">
+											<input type="checkbox" name="finitions[{{ f.id }}][active]" value="1" class="form-check-input" {{ f.active ? 'checked' }} {{ not modifiable ? 'disabled' }} aria-label="{{ f.finition.nom }} proposée">
+										</td>
+									</tr>
+								{% else %}
+									<tr><td colspan="6" class="si-grille-vide">Aucune finition rattachée à un produit. Ajoutez-les depuis la fiche produit.</td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% elseif onglet == 'negocies' %}
+					<div class="table-responsive">
+						<table class="table si-grille-table">
+							<thead>
+								<tr><th>Client</th><th>Produit</th><th>Unité</th><th class="text-end">Prix négocié</th><th class="text-end">Minimum</th></tr>
+							</thead>
+							<tbody>
+								{% for n in negocies %}
+									<tr>
+										<td data-libelle="Client">{% if n.client %}<a href="{{ path('app_clients_produits', {publicId: n.client.publicId}) }}">{{ n.client.nomComplet }}</a>{% endif %}</td>
+										<td data-libelle="Produit">{{ n.nom }}</td>
+										<td data-libelle="Unité">{{ constant('App\\Entity\\ProduitClient::UNITES_LABELS')[n.uniteVente]|default(n.uniteVente) }}</td>
+										<td class="text-end fw-bold" data-libelle="Prix">{{ n.prixUnitaire|number_format(0, ',', ' ') }}</td>
+										<td class="text-end" data-libelle="Minimum">{{ n.quantiteMinimum }}</td>
+									</tr>
+								{% else %}
+									<tr><td colspan="5" class="si-grille-vide">Aucun prix négocié. Ils se créent depuis « Mes produits » sur la fiche client.</td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% else %}
+					<div class="table-responsive">
+						<table class="table si-grille-table">
+							<thead>
+								<tr>
+									<th>Article</th>
+									<th>Unité</th>
+									<th class="text-end">Prix public</th>
+									<th class="text-end">Prix revendeur</th>
+									{% if voir_couts %}<th class="text-end">Coût matière</th>{% endif %}
+									<th class="text-end">Minimum</th>
+									<th class="text-center">En vente</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for c in configurations %}
+									{% set unite = unites[c.modeCalcul]|default(c.modeCalcul) %}
+									<tr class="{{ not c.active ? 'si-grille-inactif' }}">
+										<td data-libelle="Article">
+											<strong>{{ c.produit.nom }}</strong>
+											<small>{{ [c.support ? c.support.nom, c.format ? c.format.nom, c.typeImpression ? c.typeImpression.nom]|filter(v => v)|join(' · ') }}</small>
+										</td>
+										<td data-libelle="Unité">/ {{ unite }}</td>
+										<td class="text-end" data-libelle="Prix public">
+											<input type="text" inputmode="numeric" name="configurations[{{ c.id }}][prixBase]" value="{{ c.prixBase }}" class="form-control form-control-sm si-grille-prix" aria-label="Prix public {{ c.produit.nom }}" {{ not modifiable ? 'readonly' }}>
+										</td>
+										<td class="text-end" data-libelle="Prix revendeur">
+											<input type="text" inputmode="numeric" name="configurations[{{ c.id }}][prixB2B]" value="{{ c.prixB2B }}" placeholder="—" class="form-control form-control-sm si-grille-prix" aria-label="Prix revendeur {{ c.produit.nom }}" {{ not modifiable ? 'readonly' }}>
+										</td>
+										{% if voir_couts %}
+											{% set matiere = couts[c.id]|default(null) %}
+											<td class="text-end {{ matiere is null ? 'text-muted' }}" data-libelle="Coût matière" {{ matiere is null ? 'title="Prix d’achat ou matières à renseigner sur le produit"' }}>{{ matiere is null ? '—' : matiere|number_format(0, ',', ' ') }}</td>
+										{% endif %}
+										<td class="text-end" data-libelle="Minimum">
+											<span class="si-grille-min"><input type="text" inputmode="numeric" name="configurations[{{ c.id }}][quantiteMinimale]" value="{{ c.quantiteMinimale }}" class="form-control form-control-sm" aria-label="Minimum {{ c.produit.nom }}" {{ not modifiable ? 'readonly' }}> {{ unite }}</span>
+										</td>
+										<td class="text-center" data-libelle="En vente">
+											<input type="checkbox" name="configurations[{{ c.id }}][active]" value="1" class="form-check-input" {{ c.active ? 'checked' }} {{ not modifiable ? 'disabled' }} aria-label="{{ c.produit.nom }} en vente">
+										</td>
+									</tr>
+								{% else %}
+									<tr><td colspan="7" class="si-grille-vide">Aucune configuration dans cette catégorie. <a href="{{ path('app_produits_index') }}">Ajouter un produit</a></td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% endif %}
+			</form>
+
+			<div class="si-grille-infos">
+				<article><span>Une seule source de prix</span><strong>Cette grille alimente les devis, les commandes et l’espace client.</strong></article>
+				<article><span>Modification</span><strong>Réservée au serveur de l’atelier, puis synchronisée en ligne.</strong></article>
+				<article><span>Traçabilité</span><strong>Chaque changement de prix est historisé.</strong></article>
+			</div>
+		</section>
+	</div>
+
+	{% if edition %}
+		<script>
+			(() => {
+				const form = document.getElementById('si-grille-form');
+				const bouton = document.querySelector('[data-si-enregistrer]');
+				const initial = new FormData(form);
+				const signature = (d) => JSON.stringify([...d.entries()].filter(([k]) => k !== '_token'));
+				const depart = signature(initial);
+				const maj = () => {
+					const modifie = signature(new FormData(form)) !== depart;
+					bouton.disabled = !modifie;
+					bouton.textContent = modifie ? 'Enregistrer les changements' : 'Enregistrer';
+				};
+				form.addEventListener('input', maj);
+				form.addEventListener('change', maj);
+				form.addEventListener('submit', () => { window.onbeforeunload = null; });
+				window.onbeforeunload = () => (bouton.disabled ? undefined : 'Des prix ne sont pas enregistrés.');
+			})();
+		</script>
+	{% endif %}
+{% endblock %}

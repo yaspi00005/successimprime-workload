@@ -3345,3 +3345,38 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
   .si-stats .card { box-shadow: none; border: 1px solid #E2E8F0; break-inside: avoid; }
   .si-stats-barre { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ================================================================
+   Réglages › Grille tarifaire (maquette 37)
+   ================================================================ */
+.si-grille-carte { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; margin: 0; }
+.si-grille-onglets { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 16px; border-bottom: 1px solid #E2E8F0; }
+.si-grille-onglets a { padding: 10px 16px; font-weight: 600; color: #475569; border-bottom: 3px solid transparent; white-space: nowrap; }
+.si-grille-onglets a.active { color: #0F4590; border-bottom-color: #0F4590; }
+.si-grille-lecture { background: #F1F5F9; color: #334155; border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+.si-grille .si-grille-table thead th, .si-grille-carte .si-grille-table thead th { text-transform: none; font-size: 13px; font-weight: 600; color: #475569; border-top: 0; white-space: nowrap; }
+.si-grille-table td { vertical-align: middle; color: #0F172A; }
+.si-grille-table td small { display: block; color: #64748B; font-size: 12px; }
+.si-grille-table .form-control { height: 36px; min-height: 36px; padding: 4px 10px; border-radius: 8px; font-size: 14px; }
+.si-grille-prix { width: 110px; margin-left: auto; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.si-grille-min { display: inline-flex; align-items: center; gap: 6px; color: #64748B; font-size: 13px; }
+.si-grille-min input { width: 64px; text-align: right; }
+.si-grille-table input[readonly] { background: transparent; border-color: transparent; }
+.si-grille-inactif td { opacity: .55; }
+.si-grille-vide { color: #64748B; text-align: center; padding: 24px !important; }
+.si-grille-infos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+.si-grille-infos article { background: #F8FAFC; border-radius: 14px; padding: 14px 16px; }
+.si-grille-infos span { display: block; font-size: 12px; color: #64748B; }
+.si-grille-infos strong { color: #0F172A; font-size: 14px; }
+@media (max-width: 767.98px) {
+  .si-grille-infos { grid-template-columns: 1fr; }
+  .si-grille-table thead { display: none; }
+  .si-grille-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 12px 0; border-bottom: 1px solid #E2E8F0; }
+  .si-grille-table td { border: 0; padding: 0; text-align: left !important; }
+  .si-grille-table td:first-child { grid-column: 1 / -1; }
+  .si-grille-table td::before { content: attr(data-libelle); display: block; font-size: 11px; color: #64748B; }
+  .si-grille-table td:first-child::before, .si-grille-vide::before { display: none; }
+  .si-grille-vide { grid-column: 1 / -1; }
+  .si-grille-prix { margin-left: 0; width: 100%; }
+  .si-grille-carte { padding: 14px; }
+}

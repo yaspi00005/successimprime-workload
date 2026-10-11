@@ -87,3 +87,9 @@ Chaque valeur est modifiable ; tout changement est gardé dans « Historique des
 3. file du machiniste ;
 4. points du livreur et validation de l'agent d'entretien ;
 5. suivi des équipes en direct.
+
+## État (11/10/2026)
+
+Étape 1 construite : le barème (`src/Service/SuiviMetiers/Bareme.php`, testé seul) et l'écran W07 (`/equipe/bareme`, tuile « Barème des points », droit Administrateur RH). Les valeurs sont des réglages de la tuile : chaque changement va dans le journal des Paramètres et, depuis l'admin en ligne, attend la validation sur l'ERP local. Les coefficients de difficulté, le poids du critère et le nombre de contrôles d'entretien par jour s'y règlent aussi ; les paliers de prime sont ceux de cette spécification.
+
+Reste : étapes 2 à 5 (tableau du graphiste, file du machiniste, points du livreur et de l'agent d'entretien, suivi en direct), qui compteront les points avec ce barème.

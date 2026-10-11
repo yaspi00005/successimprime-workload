@@ -66,7 +66,7 @@ final class ParametresController extends AbstractController
         $this->autoriser($tuile);
         $this->verifierJeton($request);
 
-        $champs = CatalogueParametres::tuiles()[$tuile]['champs'];
+        $champs = CatalogueParametres::champsPanneau($tuile);
         $lecture = CatalogueParametres::lireSaisie($champs, $request->request->all());
 
         if ($lecture['erreurs'] !== []) {

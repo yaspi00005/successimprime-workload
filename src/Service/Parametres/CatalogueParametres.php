@@ -3,6 +3,7 @@
 namespace App\Service\Parametres;
 
 use App\Service\ActionsCaisse\HeuresTravail;
+use App\Service\SuiviMetiers\Bareme;
 
 /**
  * Les réglages de l'écran Paramètres (maquettes S01 à S04) : 6 familles
@@ -188,14 +189,15 @@ final class CatalogueParametres
             ],
             'bareme' => [
                 'famille' => 'personnel', 'libelle' => 'Barème des points', 'icone' => 'fa-star',
-                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => null,
+                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => 'app_bareme_index',
                 'champs' => [
                     ['cle' => 'valeur_point', 'type' => 'nombre', 'libelle' => 'Valeur d\'un point', 'suffixe' => 'F', 'min' => 0, 'max' => 100000, 'defaut' => 100],
                     ['cle' => 'seuil_prime', 'type' => 'nombre', 'libelle' => 'Points minimum pour la prime', 'suffixe' => 'pts', 'min' => 0, 'max' => 10000, 'defaut' => 100],
                     ['cle' => 'ponctualite', 'type' => 'interrupteur', 'libelle' => 'Compter la ponctualité', 'aide' => 'Graphiste, machiniste, livreur, entretien', 'defaut' => true],
+                    ...Bareme::champs(),
                 ],
-                'motsCles' => ['Points par métier · primes', 'Graphiste · machiniste · livreur · entretien'],
-                'note' => \sprintf(self::NOTE_A_BRANCHER, 'de suivi des métiers'),
+                'motsCles' => ['Points par métier · primes', 'Graphiste · machiniste · livreur · entretien', 'Coefficient de difficulté · paliers de prime'],
+                'note' => 'Les points de chaque métier se modifient dans l\'écran du barème (bouton ci-dessous). Ils seront comptés quand les écrans de suivi des métiers seront branchés.',
             ],
             'avantages' => [
                 'famille' => 'personnel', 'libelle' => 'Avantages', 'icone' => 'fa-gift',
@@ -411,6 +413,17 @@ final class CatalogueParametres
             'heure' => str_replace(':', ' h ', (string) $valeur),
             default => (string) $valeur,
         };
+    }
+
+    /**
+     * Champs du panneau d'édition rapide : sans ceux modifiés dans l'écran
+     * dédié de la tuile (marqués « ecran »).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function champsPanneau(string $tuile): array
+    {
+        return array_values(array_filter(self::tuiles()[$tuile]['champs'] ?? [], static fn (array $c): bool => empty($c['ecran'])));
     }
 
     /**

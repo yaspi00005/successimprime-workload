@@ -23,6 +23,7 @@ use App\Repository\ParametresPaiementRepository;
 use App\Repository\ReglageRepository;
 use App\Security\AccesEnLigne;
 use App\Service\ActionsCaisse\HeuresTravail;
+use App\Service\SuiviMetiers\Bareme;
 use App\Service\CatalogueStock;
 use App\Service\EcranTv;
 use App\Service\NumerotationFactures;
@@ -193,6 +194,7 @@ final class Parametres
     public function panneau(string $cle): array
     {
         $tuile = CatalogueParametres::tuiles()[$cle];
+        $tuile['champs'] = CatalogueParametres::champsPanneau($cle);
         $valeurs = $this->valeursCompletes($cle);
         $reglage = $this->reglage($cle);
         $proposition = $reglage?->getProposition();
@@ -349,6 +351,12 @@ final class Parametres
      * Heures de travail de l'atelier (tuiles Horaires et Pointage) : délais
      * des actions de caisse, jours ouvrés des absences et congés.
      */
+    /** Barème des points par métier, avec les valeurs de la tuile. */
+    public function bareme(): Bareme
+    {
+        return new Bareme($this->valeursStockees('bareme'));
+    }
+
     public function heuresTravail(): HeuresTravail
     {
         return new HeuresTravail(

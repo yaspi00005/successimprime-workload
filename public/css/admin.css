@@ -3879,3 +3879,39 @@ body.si-param-bloque { overflow: hidden; }
   .si-me-conge { grid-template-columns: 1fr 1fr; }
   .si-me-conge b { grid-column: 1 / -1; }
 }
+
+/* ---------- Barème des points par métier (W07) ---------- */
+.si-bm-grille { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.si-bm-metier { height: auto; padding: 16px 18px; border-top: 4px solid #0F2C6B; border-radius: 14px; }
+.si-bm-graphiste { border-top-color: #E0407B; }
+.si-bm-operateur { border-top-color: #1E293B; }
+.si-bm-livreur { border-top-color: #2F80ED; }
+.si-bm-entretien { border-top-color: #0F8C7E; }
+.si-bm-metier h2, .si-bm-prime h2 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.si-bm-metier ul { list-style: none; margin: 0; padding: 0; }
+.si-bm-metier li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #EEF2F7; }
+.si-bm-metier li label { margin: 0; font-size: 13px; color: #334155; }
+.si-bm-case { width: 68px; flex: none; text-align: center; font-weight: 700; padding: 6px 4px; height: auto; color: #475569; }
+.si-bm-case.plus { color: #16A34A; }
+.si-bm-case.moins { color: #DC2626; }
+.si-bm-coefs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; font-size: 12px; color: #64748B; }
+.si-bm-coefs > span { flex-basis: 100%; }
+.si-bm-coefs label { display: inline-flex; align-items: center; gap: 4px; margin: 0; }
+.si-bm-coefs .si-bm-case { width: 52px; }
+.si-bm-note { font-size: 12px; color: #64748B; margin: 10px 0 0; }
+.si-bm-prime { height: auto; padding: 18px 20px; border-radius: 14px; }
+.si-bm-chemin { list-style: none; display: flex; align-items: stretch; gap: 26px; margin: 4px 0 6px; padding: 0; counter-reset: none; }
+.si-bm-chemin li { position: relative; flex: 1; background: #F4F6FB; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.si-bm-chemin li + li::before { content: '→'; position: absolute; left: -20px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 16px; }
+.si-bm-chemin b { font-size: 13px; color: #0F172A; }
+.si-bm-chemin small { font-size: 12px; color: #64748B; }
+.si-bm-poids { display: inline-flex; align-items: center; gap: 2px; margin: 0; }
+.si-bm-poids .si-bm-case { width: 58px; padding: 2px; }
+@media (max-width: 1199.98px) {
+  .si-bm-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 767.98px) {
+  .si-bm-grille { grid-template-columns: 1fr; }
+  .si-bm-chemin { flex-direction: column; gap: 22px; }
+  .si-bm-chemin li + li::before { content: '↓'; left: 50%; top: -19px; transform: none; }
+}

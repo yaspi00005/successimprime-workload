@@ -64,6 +64,31 @@ class Tache
     #[ORM\Column(length: 5, nullable: true)]
     private ?string $heure = null;
 
+    #[ORM\Column(length: 5, nullable: true)]
+    private ?string $heureFin = null;
+
+    #[ORM\Column]
+    private bool $fermeture = false;
+
+    /** Ouverture de la tâche par l'agent (« Démarré à »). */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $commenceLe = null;
+
+    /** Photo de validation (entretien), rangée hors du dossier public. */
+    #[ORM\Column(length: 60, nullable: true)]
+    private ?string $photo = null;
+
+    /** Contrôle du responsable : conforme ou non_conforme. */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $controle = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $controlePar = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $controleLe = null;
+
     #[ORM\Column(length: 20)]
     private string $statut = self::A_FAIRE;
 
@@ -107,6 +132,8 @@ class Tache
         $this->copie = $e->getCopie();
         $this->entreprise = $e->getEntreprise();
         $this->heure = $e->getHeure();
+        $this->heureFin = $e->getHeureFin();
+        $this->fermeture = $e->isFermeture();
         $this->montantEstime = $e->getMontantEstime();
         $this->etapes = array_map(static fn (string $l): array => ['libelle' => $l, 'fait' => false], $e->getEtapes());
 
@@ -162,7 +189,38 @@ class Tache
     /** Le responsable ou la copie. */
     public function concerne(User $u): bool { return $this->responsable === $u || $this->copie === $u; }
 
+    /** Fin du créneau ce jour-là, ou null. */
+    public function finCreneau(): ?\DateTimeImmutable
+    {
+        $h = $this->heureFin ?? $this->heure;
+
+        return $h !== null ? \DateTimeImmutable::createFromFormat('Y-m-d H:i', $this->prevueLe->format('Y-m-d').' '.$h) ?: null : null;
+    }
+
+    public function commencer(\DateTimeImmutable $le): void { $this->commenceLe ??= $le; }
+    public function definirEtapes(array $faites): void
+    {
+        foreach ($this->etapes as $i => $e) {
+            $this->etapes[$i]['fait'] = \in_array($i, $faites, true);
+        }
+    }
+    public function toutesEtapesFaites(): bool { return $this->etapesFaites() === \count($this->etapes); }
+    public function setPhoto(?string $p): static { $this->photo = $p; return $this; }
+    public function controler(bool $conforme, User $par, \DateTimeImmutable $le): void
+    {
+        $this->controle = $conforme ? 'conforme' : 'non_conforme';
+        $this->controlePar = $par;
+        $this->controleLe = $le;
+    }
+
     public function getId(): ?int { return $this->id; }
+    public function getHeureFin(): ?string { return $this->heureFin; }
+    public function isFermeture(): bool { return $this->fermeture; }
+    public function getCommenceLe(): ?\DateTimeImmutable { return $this->commenceLe; }
+    public function getPhoto(): ?string { return $this->photo; }
+    public function getControle(): ?string { return $this->controle; }
+    public function getControlePar(): ?User { return $this->controlePar; }
+    public function getControleLe(): ?\DateTimeImmutable { return $this->controleLe; }
     public function getEcheance(): ?Echeance { return $this->echeance; }
     public function getTitre(): string { return $this->titre; }
     public function setTitre(string $t): static { $this->titre = mb_substr(trim($t), 0, 150); return $this; }

@@ -43,6 +43,8 @@
 						</select>
 					</label>
 					<label>Heure<input type="time" name="heure" class="form-control" value="{{ e.heure }}"></label>
+					<label data-si-cat="entretien">Fin du créneau<input type="time" name="heureFin" class="form-control" value="{{ e.heureFin }}"></label>
+					<label data-si-cat="entretien" class="si-pl-case-label"><span><input type="checkbox" name="fermeture" value="1"{{ e.fermeture ? ' checked' }}> Checklist de fermeture</span><small class="text-muted fw-normal">Toutes les étapes cochées rapportent les points de fermeture.</small></label>
 				</div>
 
 				<h2 class="mt-3">Répétition</h2>
@@ -151,6 +153,8 @@
 			var fin = f.querySelector('select[name=fin]').value;
 			f.querySelectorAll('[data-si-fin]').forEach(function (el) { el.hidden = freq === 'une_fois' || el.dataset.siFin !== fin; });
 			f.querySelector('[data-si-libelle-debut]').textContent = freq === 'une_fois' ? 'Date' : 'Début';
+			var cat = f.querySelector('select[name=categorie]').value;
+			f.querySelectorAll('[data-si-cat]').forEach(function (el) { el.hidden = el.dataset.siCat !== cat; });
 		}
 		var minuterie;
 		function apercu() {

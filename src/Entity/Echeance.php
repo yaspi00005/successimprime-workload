@@ -23,6 +23,7 @@ class Echeance
         'stock' => ['Stock', '#0EA5E9'],
         'livraisons' => ['Livraisons', '#0D9488'],
         'commercial' => ['Commercial', '#16A34A'],
+        'entretien' => ['Entretien', '#7C3AED'],
         'administratif' => ['Administratif', '#64748B'],
     ];
 
@@ -72,6 +73,14 @@ class Echeance
 
     #[ORM\Column(length: 5, nullable: true)]
     private ?string $heure = null;
+
+    /** Fin du créneau (tâches d'entretien : « 13:00 – 13:30 »). */
+    #[ORM\Column(length: 5, nullable: true)]
+    private ?string $heureFin = null;
+
+    /** Checklist de fermeture (points du barème Entretien). */
+    #[ORM\Column]
+    private bool $fermeture = false;
 
     #[ORM\Column(length: 10)]
     private string $decalage = Calendrier::AVANT;
@@ -150,6 +159,10 @@ class Echeance
     public function setJoursSemaine(array $jours): static { $this->joursSemaine = array_values(array_unique(array_filter(array_map('intval', $jours), static fn (int $j): bool => $j >= 1 && $j <= 7))); sort($this->joursSemaine); return $this; }
     public function getHeure(): ?string { return $this->heure; }
     public function setHeure(?string $h): static { $this->heure = $h !== null && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $h) ? $h : null; return $this; }
+    public function getHeureFin(): ?string { return $this->heureFin; }
+    public function setHeureFin(?string $h): static { $this->heureFin = $h !== null && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $h) ? $h : null; return $this; }
+    public function isFermeture(): bool { return $this->fermeture; }
+    public function setFermeture(bool $f): static { $this->fermeture = $f; return $this; }
     public function getDecalage(): string { return $this->decalage; }
     public function setDecalage(string $d): static { $this->decalage = isset(Calendrier::DECALAGES[$d]) ? $d : Calendrier::AVANT; return $this; }
     public function getDebut(): \DateTimeImmutable { return $this->debut; }

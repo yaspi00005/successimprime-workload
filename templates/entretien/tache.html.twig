@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ t.titre }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path(agent ? 'app_entretien_index' : 'app_entretien_controle', agent ? {} : {jour: t.prevueLe|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>{{ agent ? 'Mon planning' : 'Contrôle' }}</a></li>
+{% endblock %}
+
+{% block body %}
+	<form method="post" class="si-tr si-tr-remise si-en" id="si-en-form">
+		<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+		<input type="hidden" name="photo">
+		<section class="card si-ac-bloc si-en-creneau">
+			<div><small>Créneau</small><b>{{ t.heure ?? '–' }}{{ t.heureFin ? ' – ' ~ t.heureFin }}</b></div>
+			<div class="text-end"><small>{{ t.estFaite ? 'Fait à' : 'Démarré à' }}</small><b>{{ t.estFaite ? t.faitLe|date('H:i') : (t.commenceLe ? t.commenceLe|date('H:i') : '–') }}</b></div>
+		</section>
+
+		{% if t.etapes is not empty %}
+			<section class="card si-ac-bloc">
+				<h2>À faire</h2>
+				{% for et in t.etapes %}
+					<label class="si-tr-ligne"><input type="checkbox" class="form-check-input" name="etapes[]" value="{{ loop.index0 }}"{{ et.fait ? ' checked' }}{{ t.estFaite or not agent ? ' disabled' }}> <span>{{ et.libelle }}</span></label>
+				{% endfor %}
+				{% if t.isFermeture and not t.estFaite %}<p class="si-pg-note mt-2 mb-0">Checklist de fermeture : tout cocher rapporte +{{ valeurs.fermeture }} pts.</p>{% endif %}
+			</section>
+		{% endif %}
+
+		<section class="card si-ac-bloc">
+			<h2>Photo après nettoyage</h2>
+			{% if t.photo %}
+				<img src="{{ path('app_entretien_photo', {id: t.id}) }}" alt="Photo de validation de {{ t.titre }}" class="si-en-photo">
+				<p class="si-pg-note mt-1 mb-0">{{ t.faitLe|date('d/m H:i') }} · heure du serveur</p>
+			{% elseif agent and not t.estFaite %}
+				<div class="si-en-camera"><video data-si-video autoplay playsinline muted></video><p class="si-en-erreur" data-si-erreur hidden></p></div>
+				<p class="si-pg-note mt-1 mb-0">Caméra uniquement · heure du serveur</p>
+			{% else %}
+				<p class="si-ac-vide mb-0">Pas encore de photo.</p>
+			{% endif %}
+		</section>
+
+		{% if t.controle %}
+			<p class="si-tr-provisoire {{ t.controle == 'conforme' ? 'si-en-conforme' }}">Contrôle {{ t.controle == 'conforme' ? 'conforme' : 'non conforme, à refaire' }} · {{ t.controlePar ? t.controlePar|nom_pointage }} {{ t.controleLe|date('d/m H:i') }}</p>
+		{% endif %}
+
+		{% if agent and not t.estFaite %}
+			<button type="submit" class="btn btn-success w-100 si-tr-valider" data-si-declencher disabled>Prendre la photo et valider</button>
+			<p class="si-pg-note text-center">Fait dans le créneau : +{{ valeurs.creneau }} pts · contrôle conforme du responsable : +{{ valeurs.controle }} pts{% if retard > 0 %} · créneau dépassé de {{ retard|minutes }}{% endif %}</p>
+		{% elseif points is not null %}
+			<p class="text-center"><span class="si-tr-pts{{ points < 0 ? ' si-tr-pts-moins' }}">{{ points >= 0 ? '+' }}{{ points }} pts</span></p>
+		{% endif %}
+	</form>
+	{% if agent and not t.estFaite %}
+		<script>
+		(function () {
+			var f = document.getElementById('si-en-form'), video = f.querySelector('[data-si-video]'), bouton = f.querySelector('[data-si-declencher]'), erreur = f.querySelector('[data-si-erreur]');
+			var montrer = function (texte) { erreur.textContent = texte; erreur.hidden = false; };
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { montrer('Ce navigateur ne peut pas ouvrir la caméra (HTTPS nécessaire).'); return; }
+			navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment', width: {ideal: 1280}}, audio: false}).then(function (flux) {
+				video.srcObject = flux; bouton.disabled = false;
+			}).catch(function () { montrer('Autorisez la caméra : la photo est obligatoire pour valider.'); });
+			f.addEventListener('submit', function (e) {
+				if (!video.videoWidth) { e.preventDefault(); montrer('La caméra n\'est pas prête.'); return; }
+				var toile = document.createElement('canvas'), largeur = Math.min(960, video.videoWidth);
+				toile.width = largeur; toile.height = Math.round(video.videoHeight * largeur / video.videoWidth);
+				toile.getContext('2d').drawImage(video, 0, 0, toile.width, toile.height);
+				f.photo.value = toile.toDataURL('image/jpeg', 0.8);
+				bouton.disabled = true;
+			});
+		})();
+		</script>
+	{% endif %}
+{% endblock %}

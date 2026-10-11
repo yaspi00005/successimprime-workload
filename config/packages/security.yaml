@@ -92,6 +92,7 @@ security:
             - ROLE_PRODUCTION_GERER
 
             - ROLE_LIVRAISON
+            - ROLE_ENTRETIEN
             - ROLE_STATS_GLOBAL
             - ROLE_STATS_PERSO
             - ROLE_STATS_VENTES

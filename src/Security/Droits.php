@@ -35,6 +35,7 @@ final class Droits
             'ROLE_ACTIONS_GERER' => ['libelle' => 'Actions commerciales de l\'équipe', 'detail' => 'journal, contrôle au hasard, lignes manuelles', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_RH' => ['libelle' => 'Administrateur RH', 'detail' => 'pointages, photos de pointage, corrections', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_LIVRAISON' => ['libelle' => 'Livraisons', 'detail' => 'tournée, remise au client', 'groupe' => self::GROUPE_FONCTIONS],
+            'ROLE_ENTRETIEN' => ['libelle' => 'Entretien des locaux', 'detail' => 'planning d\'entretien, validation par photo', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_STATS_PERSO' => ['libelle' => 'Ses propres statistiques', 'detail' => 'ventes et encaissements de la personne', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_STATS_VENTES' => ['libelle' => 'Indicateurs commerciaux', 'detail' => 'devis envoyés, taux de transformation, panier moyen', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_STATS_GLOBAL' => ['libelle' => 'Chiffre d\'affaires global', 'detail' => 'chiffres de l\'accueil, écrans Statistiques', 'groupe' => self::GROUPE_CHIFFRES],

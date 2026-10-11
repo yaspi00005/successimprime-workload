@@ -138,6 +138,10 @@ final class PlanningController extends AbstractController
         if (!$this->peutCocher($tache)) {
             throw $this->createAccessDeniedException('Seuls le responsable, la copie et la direction cochent cette tâche.');
         }
+        // Une tâche d'entretien se valide avec la photo, sur son écran.
+        if ($action === 'cocher' && $tache->getCategorie() === 'entretien' && !$tache->estFaite()) {
+            return $this->redirectToRoute('app_entretien_tache', ['id' => $tache->getId()]);
+        }
         match ($action) {
             'cocher' => $this->planning->cocher($tache, $this->moi(), new \DateTimeImmutable()),
             'etape' => $tache->basculerEtape((int) $request->request->get('index', -1)),
@@ -161,7 +165,7 @@ final class PlanningController extends AbstractController
         }
         if (isset(Planning::MODELES[$request->query->get('modele')])) {
             $m = Planning::MODELES[$request->query->get('modele')];
-            $e->setDecalage(Calendrier::AVANT)->setTitre($m['titre'])->setCategorie($m['categorie'])->setFrequence($m['frequence'])->setJourMois($m['jourMois'] ?? null)->setHeure($m['heure'] ?? null)->setEtapes($m['etapes']);
+            $e->setDecalage($m['decalage'] ?? Calendrier::AVANT)->setTitre($m['titre'])->setCategorie($m['categorie'])->setFrequence($m['frequence'])->setJourMois($m['jourMois'] ?? null)->setHeure($m['heure'] ?? null)->setHeureFin($m['heureFin'] ?? null)->setFermeture($m['fermeture'] ?? false)->setEtapes($m['etapes']);
             if (isset($m['jourMois'])) {
                 $e->setDebut($e->getDebut()->modify('first day of this month'));
             }
@@ -306,6 +310,8 @@ final class PlanningController extends AbstractController
             ->setJourMois($r->get('jourMois') !== null && $r->get('jourMois') !== '' ? $entier('jourMois') : null)
             ->setJoursSemaine((array) $r->all('joursSemaine'))
             ->setHeure((string) $r->get('heure') ?: null)
+            ->setHeureFin((string) $r->get('heureFin') ?: null)
+            ->setFermeture((bool) $r->get('fermeture'))
             ->setDecalage((string) $r->get('decalage'))
             ->setDebut(\DateTimeImmutable::createFromFormat('!Y-m-d', (string) $r->get('debut')) ?: new \DateTimeImmutable('today'))
             ->setFinLe($r->get('fin') === 'date' ? (\DateTimeImmutable::createFromFormat('!Y-m-d', (string) $r->get('finLe')) ?: null) : null)

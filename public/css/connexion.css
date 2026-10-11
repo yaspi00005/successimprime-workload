@@ -1,0 +1,318 @@
+/*
+ * Connexion au poste de travail (maquette CX02). Feuille autonome :
+ * la page doit s'afficher sans le thème ni Internet (serveur local).
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+.si-connexion {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 5.5rem 1rem 3.5rem;
+  background: radial-gradient(ellipse at 20% 0%, #1D5BB5 0%, #0F4590 45%, #0A2F66 100%);
+  color: #12213A;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Les bandes de couleur de la charte, en bas à droite */
+.si-connexion-fond {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.si-connexion-fond span {
+  position: absolute;
+  right: -10%;
+  width: 75%;
+  height: 6rem;
+  border-radius: 100% 0 0 100%;
+  transform: rotate(-14deg);
+  transform-origin: right center;
+}
+
+.si-connexion-fond span:nth-child(1) { bottom: 22%; background: rgba(46, 108, 196, 0.55); }
+.si-connexion-fond span:nth-child(2) { bottom: 12%; background: rgba(233, 91, 53, 0.45); height: 4.5rem; }
+.si-connexion-fond span:nth-child(3) { bottom: 4%; background: rgba(10, 33, 72, 0.6); height: 5rem; }
+
+.si-connexion-haut {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+}
+
+.si-connexion-etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.si-point-vert {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #22C55E;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+}
+
+.si-connexion-heure {
+  text-align: right;
+  color: #fff;
+}
+
+.si-connexion-heure strong {
+  display: block;
+  font-size: 2rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.si-connexion-heure small {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.si-connexion-carte {
+  position: relative;
+  width: 100%;
+  max-width: 27rem;
+  background: #fff;
+  border-radius: 1.25rem;
+  box-shadow: 0 24px 60px rgba(4, 20, 50, 0.35);
+  padding: 2rem 2rem 1.25rem;
+}
+
+.si-connexion-tete {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.si-connexion-logo {
+  height: 3.2rem;
+  width: auto;
+}
+
+.si-connexion-badge {
+  background: #EEF1F6;
+  color: #5B6575;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.si-connexion h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.si-connexion-sous-titre {
+  color: #5B6575;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 1.25rem;
+}
+
+.si-connexion label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #34425A;
+  margin: 0.9rem 0 0.35rem;
+}
+
+.si-connexion input[type="text"],
+.si-connexion input[type="password"] {
+  width: 100%;
+  border: 1.5px solid #D5DCE8;
+  border-radius: 0.7rem;
+  padding: 0.75rem 0.9rem;
+  font-size: 1rem;
+  color: #12213A;
+  background: #fff;
+}
+
+.si-connexion input:focus {
+  outline: none;
+  border-color: #0F4590;
+  box-shadow: 0 0 0 3px rgba(15, 69, 144, 0.15);
+}
+
+.si-connexion-mdp {
+  position: relative;
+}
+
+.si-connexion-mdp input {
+  padding-right: 5.5rem !important;
+}
+
+.si-connexion-mdp button {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: none;
+  color: #5B6575;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem;
+  cursor: pointer;
+}
+
+.si-connexion-oubli {
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.si-connexion-oubli summary {
+  color: #0F4590;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.si-connexion-oubli summary::-webkit-details-marker {
+  display: none;
+}
+
+.si-connexion-oubli p {
+  text-align: left;
+  color: #5B6575;
+  background: #F6F8FB;
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  margin: 0.5rem 0 0;
+}
+
+.si-connexion-bouton {
+  width: 100%;
+  margin-top: 1.1rem;
+  border: 0;
+  border-radius: 0.8rem;
+  background: #0F4590;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 0.9rem;
+  cursor: pointer;
+}
+
+.si-connexion-bouton:hover {
+  background: #0B3878;
+}
+
+.si-connexion-bouton:disabled {
+  opacity: 0.7;
+}
+
+.si-connexion-erreur {
+  background: #FDE4E7;
+  color: #A50B1D;
+  border-radius: 0.7rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.si-connexion-note {
+  text-align: center;
+  color: #8A95A8;
+  font-size: 0.72rem;
+  margin: 1.1rem 0 0;
+}
+
+.si-connexion-personne {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.si-connexion-personne img,
+.si-connexion-personne > span {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.si-connexion-personne > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0F4590;
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.si-connexion-personne .si-connexion-sous-titre {
+  margin: 0;
+}
+
+.si-connexion-lien {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #5B6575;
+  margin: 1rem 0 0;
+}
+
+.si-connexion-lien a {
+  color: #0F4590;
+  font-weight: 700;
+}
+
+.si-connexion-pied {
+  position: relative;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+@media (max-width: 575.98px) {
+  .si-connexion {
+    padding-top: 6rem;
+    justify-content: flex-start;
+  }
+
+  .si-connexion-carte {
+    padding: 1.5rem 1.25rem 1rem;
+  }
+
+  .si-connexion-heure strong {
+    font-size: 1.5rem;
+  }
+
+  .si-connexion-haut {
+    padding: 1rem;
+  }
+}

@@ -1,0 +1,75 @@
+{#
+	Page de connexion au poste de travail (maquette CX02) : fond bleu
+	de la charte, carte blanche au centre, heure et date en haut.
+	Utilisée par la connexion et par l'écran de verrouillage.
+#}
+{% set reseauLocal = app.request.clientIp matches '/^(127\\.|10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|::1$|fc|fd)/' %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#0F4590">
+	<title>{% block title %}Connexion · Succès Imprim{% endblock %}</title>
+	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
+	<link href="{{ asset('css/connexion.css') }}" rel="stylesheet">
+</head>
+<body class="si-connexion">
+	<div class="si-connexion-fond" aria-hidden="true"><span></span><span></span><span></span></div>
+
+	<header class="si-connexion-haut">
+		<span class="si-connexion-etat"><span class="si-point-vert"></span>{{ reseauLocal ? 'Serveur local en ligne' : 'Connexion sécurisée' }}</span>
+		<span class="si-connexion-heure">
+			<strong class="js-heure">{{ 'now'|date('H:i') }}</strong>
+			<small class="js-date">{{ 'now'|date('d/m/Y') }}</small>
+		</span>
+	</header>
+
+	<main class="si-connexion-carte">
+		<div class="si-connexion-tete">
+			<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim" class="si-connexion-logo">
+			<span class="si-connexion-badge">ERP · SUCCESSIMPRIME</span>
+		</div>
+
+		{% block carte %}{% endblock %}
+
+		<p class="si-connexion-note">5 essais ratés bloquent le compte 15 min · chaque connexion est enregistrée</p>
+	</main>
+
+	<footer class="si-connexion-pied">Madial Groupe (MDG SARL) · {{ reseauLocal ? 'application locale, fonctionne sans Internet' : 'succesimprim.com' }}</footer>
+
+	<script>
+		(function () {
+			var heure = document.querySelector('.js-heure');
+			var date = document.querySelector('.js-date');
+			function maj() {
+				var d = new Date();
+				heure.textContent = d.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+				var texte = d.toLocaleDateString('fr-FR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+				date.textContent = texte;
+			}
+			maj();
+			setInterval(maj, 15000);
+
+			document.querySelectorAll('.js-afficher').forEach(function (bouton) {
+				bouton.addEventListener('click', function () {
+					var champ = document.getElementById(bouton.dataset.cible);
+					var visible = champ.type === 'text';
+					champ.type = visible ? 'password' : 'text';
+					bouton.textContent = visible ? 'Afficher' : 'Masquer';
+					bouton.setAttribute('aria-pressed', String(!visible));
+				});
+			});
+
+			document.querySelectorAll('form').forEach(function (form) {
+				form.addEventListener('submit', function () {
+					var bouton = form.querySelector('button[type="submit"]');
+					if (bouton) {
+						setTimeout(function () { bouton.disabled = true; bouton.textContent = 'Connexion…'; }, 0);
+					}
+				});
+			});
+		})();
+	</script>
+</body>
+</html>

@@ -1,29 +1,29 @@
-{% extends 'base_simple.html.twig' %}
+{% extends 'security/_page_connexion.html.twig' %}
 
-{% block title %}Connexion · Madial Group{% endblock %}
+{% block carte %}
+	<h1>Bonjour 👋</h1>
+	<p class="si-connexion-sous-titre">Connectez-vous pour ouvrir votre session de travail.</p>
 
-{% block body %}
-	<h4 class="text-center mb-4">Connectez-vous à votre espace</h4>
 	{% if error %}
-		<div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+		<div class="si-connexion-erreur" role="alert">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
 	{% endif %}
-	{% if app.user %}
-		<div class="alert alert-info">
-			Connecté en tant que {{ app.user.userIdentifier }}. <a href="{{ path('app_logout') }}">Se déconnecter</a>
-		</div>
-	{% endif %}
+
 	<form method="post" action="{{ path('app_login') }}">
-		<div class="mb-3">
-			<label class="mb-1 form-label" for="inputUsername"><strong>Identifiant</strong></label>
-			<input type="text" id="inputUsername" name="username" class="form-control" value="{{ last_username }}" autocomplete="username" required autofocus>
+		<label for="inputUsername">Identifiant</label>
+		<input type="text" id="inputUsername" name="username" value="{{ last_username }}" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+
+		<label for="inputPassword">Mot de passe</label>
+		<div class="si-connexion-mdp">
+			<input type="password" id="inputPassword" name="password" autocomplete="current-password" required>
+			<button type="button" class="js-afficher" data-cible="inputPassword" aria-pressed="false">Afficher</button>
 		</div>
-		<div class="mb-3">
-			<label class="mb-1 form-label" for="inputPassword"><strong>Mot de passe</strong></label>
-			<input type="password" id="inputPassword" name="password" class="form-control" autocomplete="current-password" required>
-		</div>
+
+		<details class="si-connexion-oubli">
+			<summary>Mot de passe oublié ?</summary>
+			<p>Demandez à un administrateur : Réglages › Utilisateurs, fiche de la personne, « Réinitialiser le mot de passe ».</p>
+		</details>
+
 		<input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-		<div class="text-center">
-			<button type="submit" class="btn btn-primary btn-block w-100">Se connecter</button>
-		</div>
+		<button type="submit" class="si-connexion-bouton">Se connecter</button>
 	</form>
 {% endblock %}

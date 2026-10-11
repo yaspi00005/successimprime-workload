@@ -1,0 +1,8 @@
+{# Vignette d'une photo de pointage ; clic = agrandir. #}
+{% if photo %}
+	<a href="{{ path('app_pointer_voir_photo', {id: pointage.id, sens: sens}) }}" target="_blank" rel="noopener" class="si-pg-vignette" title="{{ sens == 'arrivee' ? 'Arrivée' : 'Départ' }} · ouvrir la photo">
+		<img src="{{ path('app_pointer_voir_photo', {id: pointage.id, sens: sens}) }}" alt="Photo {{ sens == 'arrivee' ? 'arrivée' : 'départ' }}" loading="lazy">
+	</a>
+{% else %}
+	<span class="si-pg-vide">—</span>
+{% endif %}

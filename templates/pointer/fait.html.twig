@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+
+{% set depart = sens == 'depart' %}
+{% set heure = depart ? pointage.departLe : pointage.arriveeLe %}
+
+{% block title %}{{ depart ? 'Départ' : 'Arrivée' }} enregistré{{ depart ? '' : 'e' }}{% endblock %}
+
+{% block body %}
+	<div class="si-pointer">
+		<section class="card si-pointer-fait {{ depart ? 'si-pointer-depart' }}">
+			<div class="si-pointer-bandeau">
+				{% set photo = depart ? pointage.photoDepart : pointage.photoArrivee %}
+				{% if photo %}
+					<img src="{{ path('app_pointer_voir_photo', {id: pointage.id, sens: sens}) }}" alt="Photo du pointage">
+				{% else %}
+					<span class="si-pointer-sans-photo"><i class="fas fa-user"></i></span>
+				{% endif %}
+				<i class="fas fa-check-circle" aria-hidden="true"></i>
+			</div>
+			<p class="si-pointer-quoi">{{ depart ? 'Départ enregistré' : 'Arrivée enregistrée' }}</p>
+			<strong class="si-pointer-heure">{{ heure|date('H:i') }}</strong>
+			<p class="si-pointer-ou">{{ heure|date_fr('EEEE d MMMM y') }}{% set point = depart ? pointage.pointDepart : pointage.pointArrivee %}{% if point %} · {{ point.nom }}{% endif %}</p>
+
+			<dl class="si-pointer-infos">
+				{% if depart %}
+					<div><dt>Arrivée</dt><dd>{{ pointage.arriveeLe|date('H:i') }}</dd></div>
+					<div><dt>Temps de présence</dt><dd>{{ calcul.presence|duree_pointage }}{% if calcul.pause > 0 %} (pause {{ calcul.pause|duree_pointage }} déduite){% endif %}</dd></div>
+					<div><dt>Cette semaine</dt><dd>{{ semaine|duree_pointage }}</dd></div>
+				{% else %}
+					<div><dt>Horaire prévu</dt><dd>{{ regles.ouverture|replace({':': ' h '}) }}</dd></div>
+					<div><dt>Ponctualité</dt><dd>{{ calcul.retard > 0 ? 'Retard de ' ~ calcul.retard|duree_pointage : 'À l\'heure' }}</dd></div>
+					<div><dt>Prochain pointage</dt><dd>sera votre départ</dd></div>
+				{% endif %}
+			</dl>
+
+			<a href="{{ path('app_pointer_index') }}" class="btn btn-primary btn-lg si-pointer-bouton">Terminé</a>
+		</section>
+	</div>
+{% endblock %}

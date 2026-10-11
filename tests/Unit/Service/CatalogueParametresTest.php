@@ -46,7 +46,7 @@ final class CatalogueParametresTest extends TestCase
         $valeurs = CatalogueParametres::avecDefauts($champs, ['tolerance_minutes' => 15]);
 
         self::assertSame(15, $valeurs['tolerance_minutes']);
-        self::assertTrue($valeurs['qr_photo']);
+        self::assertTrue($valeurs['photo']);
         self::assertSame('20:00', $valeurs['alerte_depart']);
     }
 

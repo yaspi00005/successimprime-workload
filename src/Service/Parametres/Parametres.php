@@ -159,7 +159,7 @@ final class Parametres
             'stock' => $this->etatStock($badge),
             'montage' => $v['formats'].' · marge '.$v['marge_mm'].' mm',
             'utilisateurs' => self::nb($compter(User::class, ['actif' => true]), 'compte').' · '.self::nb($compter(RoleUtilisateur::class), 'rôle'),
-            'pointage' => $v['qr_photo'] ? 'QR + photo · tolérance '.$v['tolerance_minutes'].' min' : 'pointage QR désactivé',
+            'pointage' => ($v['photo'] ? 'QR + photo' : 'QR').' · tolérance '.$v['tolerance_minutes'].' min',
             'horaires' => str_replace('-', ' – ', $v['jours']).' · '.self::heure($v['ouverture']).' – '.self::heure($v['fermeture']),
             'bareme' => '1 point = '.number_format((int) $v['valeur_point'], 0, ',', ' ').' F · prime dès '.$v['seuil_prime'].' pts',
             'avantages' => 'frais médicaux '.$v['frais_medicaux'].' %',

@@ -77,7 +77,7 @@ La feuille de présence du mois donne, par employé : jours présents, absences 
 ## Confidentialité et conditions
 
 - **HTTPS obligatoire** : sans HTTPS, le téléphone refuse d'ouvrir la caméra. Chaque téléphone demande une fois l'autorisation d'utiliser la caméra.
-- **Photos** : visibles seulement avec le droit « administrateur RH » (nouveau droit à ajouter dans `src/Security/Droits.php`). Elles sont supprimées automatiquement après 90 jours ; les heures restent dans la feuille de présence. L'employé ne voit que ses propres pointages.
+- **Photos** : visibles seulement avec le droit « administrateur RH » (droit ROLE_RH, dans `src/Security/Droits.php`). Elles sont supprimées automatiquement après 90 jours ; les heures restent dans la feuille de présence. L'employé ne voit que ses propres pointages.
 - **Information** : les employés sont informés à l'embauche (pointage, photo, durée de conservation). La durée de 90 jours est à confirmer avec le conseil juridique.
 - **Tablette partagée** (option, désactivée par défaut) : pour les employés sans smartphone, une tablette à l'entrée ; on choisit son nom, puis la photo est prise.
 
@@ -89,3 +89,17 @@ La feuille de présence du mois donne, par employé : jours présents, absences 
 4. Points de ponctualité et note sur 100, branchés sur l'évaluation des primes et sur la paie.
 
 Le calcul (arrivée/départ, pause, retard, points, note) est une classe sans base de données, testée seule.
+
+## État (11/10/2026)
+
+Construit : étapes 1 et 2, téléphone enregistré, zone GPS, suppression des photos. Écrans : `/pointer` (employé, lien « Pointer » dans le menu du profil), `/equipe/pointage` (droit « Administrateur RH », onglet Réglages › Pointage). Les règles se changent dans Paramètres › Pointage et Horaires. Un jour de repos travaillé ne compte ni retard ni ponctualité : tout le temps passé est en heures sup. à valider.
+
+Reste : tablette partagée, contrôle Wi-Fi, branchement des points sur les primes et la paie.
+
+Sur le serveur, ajouter au cron (toutes les heures) :
+
+```
+0 * * * * cd /chemin/du/site && php bin/console app:pointage:entretien
+```
+
+Il prévient la RH une fois par jour des départs non pointés après l'heure d'alerte et supprime les photos arrivées à échéance.

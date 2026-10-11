@@ -1,0 +1,84 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Pointer · photo{% endblock %}
+
+{% block body %}
+	<div class="si-pointer">
+		{% if blocage %}
+			<section class="card si-pointer-carte">
+				<h2><i class="fas fa-exclamation-circle text-danger me-2"></i>Pointage impossible</h2>
+				<p>{{ blocage }}</p>
+				<a href="{{ path('app_pointer_index') }}" class="btn btn-light">Retour</a>
+			</section>
+		{% else %}
+			<section class="si-pointer-camera">
+				<p class="si-pointer-reconnu"><i class="fas fa-check me-1"></i>Code reconnu · {{ point.nom }}</p>
+				<h2>Regardez la caméra</h2>
+				<p class="si-pointer-sous">Votre visage dans l'ovale</p>
+				<div class="si-pointer-ovale">
+					<video playsinline muted autoplay data-si-video></video>
+				</div>
+				{% if erreur %}<p class="si-pointer-erreur" role="alert">{{ erreur }}</p>{% endif %}
+				<p class="si-pointer-erreur" data-si-erreur hidden role="alert"></p>
+				<div class="si-pointer-resume">
+					<span>{{ nom }}<small>{{ point.nom }}</small></span>
+					<span class="text-end"><b>{{ prochain == 'depart' ? 'Départ' : 'Arrivée' }}</b><small>{{ maintenant|date_fr('EEE dd/MM · HH:mm') }}</small></span>
+				</div>
+				<form method="post" action="{{ path('app_pointer_enregistrer', {code: point.code, secret: point.secret}) }}" data-si-form>
+					<input type="hidden" name="_token" value="{{ csrf_token('pointer') }}">
+					<input type="hidden" name="photo">
+					<input type="hidden" name="latitude">
+					<input type="hidden" name="longitude">
+					<button type="submit" class="si-pointer-declencheur" data-si-declencher {{ regles.photo ? 'disabled' }} aria-label="Prendre la photo et enregistrer"><span></span></button>
+					<p class="si-pointer-legende">Prendre la photo et enregistrer</p>
+				</form>
+				<p class="si-pointer-note">L'heure enregistrée est celle du serveur. La photo prouve que c'est vous ; il n'y a pas de reconnaissance faciale.</p>
+			</section>
+			<script>
+				(function () {
+					var video = document.querySelector('[data-si-video]');
+					var form = document.querySelector('[data-si-form]');
+					var bouton = form.querySelector('[data-si-declencher]');
+					var erreur = document.querySelector('[data-si-erreur]');
+					var photoObligatoire = {{ regles.photo ? 'true' : 'false' }};
+					var montrer = function (texte) { erreur.textContent = texte; erreur.hidden = false; };
+
+					if (navigator.geolocation) {
+						navigator.geolocation.getCurrentPosition(function (pos) {
+							form.latitude.value = pos.coords.latitude;
+							form.longitude.value = pos.coords.longitude;
+						}, function () {}, {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
+					}
+
+					if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+						if (photoObligatoire) { montrer('Ce navigateur ne peut pas ouvrir la caméra (HTTPS nécessaire).'); }
+						return;
+					}
+					navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 640}}, audio: false}).then(function (flux) {
+						video.srcObject = flux;
+						bouton.disabled = false;
+					}).catch(function () {
+						if (photoObligatoire) { montrer('Autorisez la caméra pour pointer : la photo est obligatoire.'); }
+						else { bouton.disabled = false; }
+					});
+
+					form.addEventListener('submit', function (e) {
+						if (video.videoWidth) {
+							var toile = document.createElement('canvas');
+							var largeur = Math.min(480, video.videoWidth);
+							toile.width = largeur;
+							toile.height = Math.round(video.videoHeight * largeur / video.videoWidth);
+							toile.getContext('2d').drawImage(video, 0, 0, toile.width, toile.height);
+							form.photo.value = toile.toDataURL('image/jpeg', 0.8);
+						} else if (photoObligatoire) {
+							e.preventDefault();
+							montrer('La caméra n\'est pas prête.');
+							return;
+						}
+						bouton.disabled = true;
+					});
+				})();
+			</script>
+		{% endif %}
+	</div>
+{% endblock %}

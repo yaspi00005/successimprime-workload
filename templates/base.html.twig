@@ -126,6 +126,9 @@
 								<div class="dropdown-menu dropdown-menu-end">
 									<span class="dropdown-item-text fw-semibold">{{ nomAffiche }}</span>
 									<div class="dropdown-divider"></div>
+									{% if app.user.employe is defined and app.user.employe %}
+										<a class="dropdown-item" href="{{ path('app_pointer_index') }}"><i class="fas fa-qrcode text-success"></i><span class="ms-2">Pointer</span></a>
+									{% endif %}
 									<a class="dropdown-item" href="{{ path('app_user_change_password') }}"><i class="fas fa-key text-primary"></i><span class="ms-2">Changer mon mot de passe</span></a>
 									<a class="dropdown-item" href="{{ path('app_logout') }}"><i class="fas fa-sign-out-alt text-danger"></i><span class="ms-2">Déconnexion</span></a>
 								</div>

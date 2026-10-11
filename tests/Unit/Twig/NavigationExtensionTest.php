@@ -72,6 +72,7 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(0, $extension->ongletActif('app_reglages_parametres_index'));
         self::assertSame(2, $extension->ongletActif('app_couts_revient_index'));
         self::assertSame(3, $extension->ongletActif('app_employes_index'));
+        self::assertSame(4, $extension->ongletActif('app_pointage_jour'));
         self::assertNull($extension->ongletActif('app_chat_index'));
     }
 }

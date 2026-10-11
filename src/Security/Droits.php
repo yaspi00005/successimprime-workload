@@ -32,6 +32,7 @@ final class Droits
             'ROLE_PREPRESSE' => ['libelle' => 'Prépresse', 'detail' => 'contrôle des fichiers, BAT', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PRODUCTION_VOIR' => ['libelle' => 'Production', 'detail' => 'voir le planning', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PRODUCTION_GERER' => ['libelle' => 'Statuts de production', 'detail' => 'démarrer, terminer une tâche', 'groupe' => self::GROUPE_FONCTIONS],
+            'ROLE_RH' => ['libelle' => 'Administrateur RH', 'detail' => 'pointages, photos de pointage, corrections', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_LIVRAISON' => ['libelle' => 'Livraisons', 'detail' => 'tournée, remise au client', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_STATS_PERSO' => ['libelle' => 'Ses propres statistiques', 'detail' => 'ventes et encaissements de la personne', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_STATS_VENTES' => ['libelle' => 'Indicateurs commerciaux', 'detail' => 'devis envoyés, taux de transformation, panier moyen', 'groupe' => self::GROUPE_CHIFFRES],

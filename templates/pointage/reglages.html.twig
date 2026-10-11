@@ -1,0 +1,136 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+
+{% block title %}Réglages du pointage{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile"><a href="{{ path('app_pointage_jour') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-list me-1"></i>Pointages du jour</a></li>
+	<li class="nav-item"><a href="{{ path('app_reglages_parametres_index', {tuile: 'pointage'}) }}" class="btn btn-success btn-sm"><i class="fas fa-sliders-h"></i><span class="si-masque-mobile ms-1">Modifier les règles</span></a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-pg si-pg-reglages">
+		<section class="card si-pg-bloc">
+			<h2>Points de pointage (QR imprimés)</h2>
+			{% for l in points %}
+				{% set p = l.point %}
+				<article class="si-pg-point{{ p.actif ? '' : ' si-pg-inactif' }}">
+					<img src="{{ l.qr }}" alt="QR {{ p.code }}" class="si-pg-qr">
+					<div class="si-pg-point-texte">
+						<b>{{ p.code }} · {{ p.nom }}</b>
+						<span>{{ p.latitude is not null ? 'zone GPS ' ~ p.rayonMetres ~ ' m' : 'sans zone GPS' }}{{ p.actif ? '' : ' · désactivé' }} · code du {{ p.renouveleLe|date('d/m/Y') }}</span>
+					</div>
+					<div class="si-pg-point-actions">
+						<a href="{{ path('app_pointage_affiche', {id: p.id}) }}" target="_blank" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-print me-1"></i>Imprimer</a>
+						<form method="post" action="{{ path('app_pointage_point_renouveler', {id: p.id}) }}" onsubmit="return confirm('L\'ancienne affiche de {{ p.code }} ne marchera plus. Continuer ?')">
+							<input type="hidden" name="_token" value="{{ token }}">
+							<button class="btn btn-light btn-sm si-btn-entete">Renouveler</button>
+						</form>
+					</div>
+					<details class="si-pg-modifier">
+						<summary>Modifier</summary>
+						<form method="post" action="{{ path('app_pointage_point_modifier', {id: p.id}) }}" class="si-pg-form">
+							<input type="hidden" name="_token" value="{{ token }}">
+							<label>Nom<input name="nom" value="{{ p.nom }}" maxlength="80" class="form-control"></label>
+							<label>Latitude<input name="latitude" value="{{ p.latitude }}" inputmode="decimal" class="form-control" placeholder="12.6392"></label>
+							<label>Longitude<input name="longitude" value="{{ p.longitude }}" inputmode="decimal" class="form-control" placeholder="-8.0029"></label>
+							<label>Rayon (m)<input name="rayon" type="number" min="20" max="2000" value="{{ p.rayonMetres }}" class="form-control"></label>
+							<label class="si-pg-case"><input type="checkbox" name="actif" value="1"{{ p.actif ? ' checked' }}> Actif</label>
+							<div class="si-pg-form-actions">
+								<button type="button" class="btn btn-light btn-sm si-btn-entete" data-ici>Prendre ma position</button>
+								<button class="btn btn-primary btn-sm">Enregistrer</button>
+							</div>
+						</form>
+					</details>
+				</article>
+			{% else %}
+				<p class="si-pg-vide">Aucun point de pointage. Créez-en un, imprimez son affiche et posez-la à l'entrée.</p>
+			{% endfor %}
+			<p class="si-pg-note">« Renouveler » invalide l'ancien code (en cas de photo du QR qui circule).</p>
+
+			<details class="si-pg-modifier"{{ points is empty ? ' open' }}>
+				<summary><i class="fas fa-plus me-1"></i>Nouveau point de pointage</summary>
+				<form method="post" action="{{ path('app_pointage_point_nouveau') }}" class="si-pg-form">
+					<input type="hidden" name="_token" value="{{ token }}">
+					<label>Nom<input name="nom" required maxlength="80" class="form-control" placeholder="Atelier Bamako · Entrée"></label>
+					<label>Latitude<input name="latitude" inputmode="decimal" class="form-control"></label>
+					<label>Longitude<input name="longitude" inputmode="decimal" class="form-control"></label>
+					<label>Rayon (m)<input name="rayon" type="number" min="20" max="2000" value="100" class="form-control"></label>
+					<div class="si-pg-form-actions">
+						<button type="button" class="btn btn-light btn-sm si-btn-entete" data-ici>Prendre ma position</button>
+						<button class="btn btn-primary btn-sm">Créer</button>
+					</div>
+				</form>
+			</details>
+
+			<h2>Règles</h2>
+			<dl class="si-pg-regles">
+				<div><dt>Premier pointage du jour</dt><dd>= Arrivée</dd></div>
+				<div><dt>Dernier pointage du jour</dt><dd>= Départ</dd></div>
+				<div><dt>Anti-doublon</dt><dd>{{ regles.anti_doublon_minutes }} min entre deux pointages</dd></div>
+				<div><dt>Tolérance de retard</dt><dd>{{ regles.tolerance_minutes }} min après {{ regles.ouverture }}</dd></div>
+				<div><dt>Pause déduite</dt><dd>{{ regles.pause_debut }} – {{ regles.pause_fin }}</dd></div>
+				<div><dt>Départ non pointé</dt><dd>alerte RH à {{ regles.alerte_depart }}</dd></div>
+			</dl>
+			<p class="si-pg-note">Ces règles se changent dans <a href="{{ path('app_reglages_parametres_index', {tuile: 'pointage'}) }}">Paramètres › Pointage</a>, chaque changement va au journal.</p>
+		</section>
+
+		<aside class="card si-pg-bloc">
+			<h2>Contrôles</h2>
+			<ul class="si-pg-controles">
+				<li><b>Photo obligatoire</b><span>Caméra frontale uniquement, pas de photo depuis la galerie.</span><i class="si-pg-etat{{ regles.photo ? ' on' }}">{{ regles.photo ? 'oui' : 'non' }}</i></li>
+				<li><b>Téléphone enregistré</b><span>Chaque employé pointe depuis son appareil validé par la RH.</span><i class="si-pg-etat{{ regles.telephone_enregistre ? ' on' }}">{{ regles.telephone_enregistre ? 'oui' : 'non' }}</i></li>
+				<li><b>Position GPS dans la zone</b><span>Refuse un pointage hors de la zone du point.</span><i class="si-pg-etat{{ regles.gps_zone ? ' on' }}">{{ regles.gps_zone ? 'oui' : 'non' }}</i></li>
+			</ul>
+
+			<h2>Téléphones à valider <span class="si-pg-compte">{{ en_attente|length }}</span></h2>
+			{% for a in en_attente %}
+				<div class="si-pg-appareil">
+					<div><b>{{ a.utilisateur|nom_pointage }}</b><span>{{ a.nom }} · {{ a.creeLe|date('d/m H:i') }}</span></div>
+					<form method="post" action="{{ path('app_pointage_appareil_decider', {id: a.id}) }}">
+						<input type="hidden" name="_token" value="{{ token }}">
+						<button name="decision" value="autoriser" class="btn btn-success btn-sm">Autoriser</button>
+						<button name="decision" value="refuser" class="btn btn-outline-danger btn-sm">Refuser</button>
+					</form>
+				</div>
+			{% else %}
+				<p class="si-pg-vide">Aucun téléphone en attente.</p>
+			{% endfor %}
+
+			{% if autorises is not empty %}
+				<details class="si-pg-modifier">
+					<summary>Téléphones autorisés ({{ autorises|length }})</summary>
+					{% for a in autorises %}
+						<div class="si-pg-appareil">
+							<div><b>{{ a.utilisateur|nom_pointage }}</b><span>{{ a.nom }}</span></div>
+							<form method="post" action="{{ path('app_pointage_appareil_decider', {id: a.id}) }}" onsubmit="return confirm('Retirer ce téléphone ?')">
+								<input type="hidden" name="_token" value="{{ token }}">
+								<button name="decision" value="refuser" class="btn btn-outline-danger btn-sm">Retirer</button>
+							</form>
+						</div>
+					{% endfor %}
+				</details>
+			{% endif %}
+
+			<h2>Photos et confidentialité</h2>
+			<dl class="si-pg-regles si-pg-regles-2">
+				<div><dt>Conservation des photos</dt><dd>{{ regles.photos_jours }} jours puis suppression</dd></div>
+				<div><dt>Accès</dt><dd>Administrateur RH</dd></div>
+			</dl>
+			<p class="si-pg-note">Les heures restent dans la feuille de présence ; seules les photos sont supprimées à l'échéance. Pas de reconnaissance faciale. Employés informés à l'embauche.</p>
+		</aside>
+	</div>
+	<script>
+		document.querySelectorAll('[data-ici]').forEach(b => b.addEventListener('click', () => {
+			const f = b.closest('form');
+			if (!navigator.geolocation) { alert('Position indisponible sur cet appareil.'); return; }
+			b.disabled = true;
+			navigator.geolocation.getCurrentPosition(p => {
+				f.latitude.value = p.coords.latitude.toFixed(6);
+				f.longitude.value = p.coords.longitude.toFixed(6);
+				b.disabled = false;
+			}, () => { alert('Position refusée ou indisponible.'); b.disabled = false; }, {enableHighAccuracy: true, timeout: 15000});
+		}));
+	</script>
+{% endblock %}

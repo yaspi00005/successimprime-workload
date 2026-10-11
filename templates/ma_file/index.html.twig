@@ -1,0 +1,56 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ma file{{ machine ? ' · ' ~ machine.nom }}{% endblock %}
+
+{% block body %}
+	<div class="si-mf">
+		<form method="get" class="si-mf-choix">
+			<label>Machine
+				<select name="machine" class="form-select" onchange="this.form.submit()">
+					{% for m in machines %}<option value="{{ m.id }}"{{ machine and m.id == machine.id ? ' selected' }}>{{ m.nom }}</option>{% endfor %}
+				</select>
+			</label>
+		</form>
+
+		{% if journee %}
+			{% set j = journee %}
+			<section class="card si-mf-jour">
+				<div class="si-mf-jour-haut">
+					<small>{{ maintenant|date_fr('EEEE d/MM') }} · {{ app.user|nom_pointage }}</small>
+					<span class="si-cp-pts{{ j.points < 0 ? ' si-mf-moins' }}">{{ j.points > 0 ? '+' }}{{ j.points }} pts</span>
+				</div>
+				<strong>{{ j.produit|number_format(1, ',', ' ') }} / {{ j.total|number_format(1, ',', ' ') }} m²</strong>
+				<div class="si-mf-barre"><i style="width: {{ j.total > 0 ? (j.produit * 100 / j.total)|round : 0 }}%"></i></div>
+				<div class="si-mf-jour-bas">
+					{% if j.tetes %}
+						<span class="si-p-ok"><i class="fas fa-check me-1"></i>Entretien têtes {{ j.tetes.le|date('H:i') }}</span>
+					{% elseif peutAgir %}
+						<form method="post" action="{{ path('app_ma_file_signaler') }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="machine" value="{{ machine.id }}"><input type="hidden" name="type" value="tetes"><button class="btn btn-light btn-sm si-btn-entete">Entretien des têtes fait</button></form>
+					{% else %}
+						<span>Entretien des têtes à faire</span>
+					{% endif %}
+					<span>Gâche <b class="{{ j.tauxGache is not null and j.tauxGache >= 3 ? 'si-p-alerte' }}">{{ j.tauxGache is null ? '—' : j.tauxGache|number_format(1, ',') ~ ' %' }}</b></span>
+				</div>
+			</section>
+
+			<ul class="si-mf-liste">
+				{% for x in j.cartes %}
+					{% set o = x.ordre %}
+					{% set etat = o.estTermine ? 'termine' : (o.statut == 'en_cours' ? 'encours' : (o.statut == 'en_pause' ? 'pause' : 'attente')) %}
+					<li class="card si-mf-carte si-mf-{{ etat }}">
+						<a href="{{ path('app_ma_file_travail', {id: o.id}) }}">
+							<div><b>{{ x.titre }}</b><small>{{ x.numero }}{{ x.m2 ? ' · ' ~ x.m2|number_format(1, ',', ' ') ~ ' m²' }}{{ x.client ? ' · ' ~ x.client }}</small>
+								<small>{% if o.estTermine %}{{ o.demarreLe ? o.demarreLe|date('H:i') ~ ' → ' }}{{ o.termineLe|date('H:i') }}{% elseif o.finPrevueLe or o.dateLimite %}sortie prévue {{ (o.finPrevueLe ?? o.dateLimite)|date((o.finPrevueLe ?? o.dateLimite)|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}{% else %}sans heure prévue{% endif %}</small>
+							</div>
+							<span class="si-mf-etat">{% if x.points is not null %}<span class="si-cp-pts">{{ x.points > 0 ? '+' }}{{ x.points }} pts</span>{% endif %}{{ {termine: 'Terminé', encours: 'En cours', pause: 'En pause', attente: 'En attente'}[etat] }}</span>
+						</a>
+					</li>
+				{% else %}
+					<li class="si-ac-vide">Aucun travail dans la file de cette machine.</li>
+				{% endfor %}
+			</ul>
+		{% else %}
+			<p class="si-ac-vide">Aucune machine enregistrée.</p>
+		{% endif %}
+	</div>
+{% endblock %}

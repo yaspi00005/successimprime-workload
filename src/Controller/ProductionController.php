@@ -1325,6 +1325,17 @@ public function terminer(
     private function redirigerVersOrdre(
         OrdreProduction $ordre
     ): Response {
+        /*
+         * Depuis la file du machiniste (maquette W03), on y revient.
+         */
+        $requete = $this->container->get('request_stack')->getCurrentRequest();
+        if ($requete?->request->get('retour') === 'ma_file') {
+            return $this->redirectToRoute(
+                $ordre->estTermine() ? 'app_ma_file_index' : 'app_ma_file_travail',
+                $ordre->estTermine() ? [] : ['id' => $ordre->getId()]
+            );
+        }
+
         return $this->redirectToRoute(
             'app_production_show',
             ['id' => $ordre->getId()]

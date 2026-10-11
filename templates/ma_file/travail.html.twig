@@ -1,0 +1,85 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ ligne.commande.numero ?? o.numero }} · {{ o.statut == 'en_cours' ? 'en impression' : (o.estTermine ? 'terminé' : (o.statut == 'en_pause' ? 'en pause' : 'en attente')) }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_ma_file_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-list"></i><span class="si-masque-mobile ms-1">Ma file</span></a></li>
+{% endblock %}
+
+{% block body %}
+	{% set p = progression %}
+	{% set prevue = o.finPrevueLe ?? o.dateLimite %}
+	<div class="si-mf si-mf-travail">
+		<section class="card si-mf-bloc" {% if o.statut == 'en_cours' %}data-si-chrono="{{ p.secondes }}"{% endif %}>
+			<small>{{ ligne ? ligne.designation ~ ' × ' ~ (o.quantite ?? ligne.quantite) : o.numero }}{{ ligne and ligne.commande.clients ? ' · ' ~ ligne.commande.clients.nomComplet }}</small>
+			<div class="si-mf-chrono"><strong data-si-chrono-texte>{{ '%02d:%02d:%02d'|format(p.secondes // 3600, (p.secondes // 60) % 60, p.secondes % 60) }}</strong>{% if o.demarreLe %}<small>depuis<br>{{ o.demarreLe|date('H:i') }}</small>{% endif %}</div>
+			{% if p.m2 %}
+				{% set fait = o.estTermine ? p.m2 : (p.fait ?? 0) %}
+				<div class="si-mf-ligne"><span>Imprimé{{ o.estTermine or p.fait is null ? '' : ' (estimé)' }}</span><b>{{ fait|number_format(1, ',', ' ') }} / {{ p.m2|number_format(1, ',', ' ') }} m²</b></div>
+				<div class="si-mf-barre si-mf-barre-bleue"><i style="width: {{ (fait * 100 / p.m2)|round }}%"></i></div>
+			{% endif %}
+		</section>
+
+		<section class="card si-mf-bloc si-mf-grille">
+			<div><small>Sortie prévue</small><b>{{ prevue ? prevue|date(prevue|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') : '—' }}</b></div>
+			<div><small>{{ o.estTermine ? 'Terminé' : 'Fin estimée' }}</small>
+				{% set fin = o.termineLe ?? p.finEstimee %}
+				<b class="{{ fin and prevue ? (fin <= prevue ? 'si-p-ok' : 'si-p-alerte') }}">{{ fin ? fin|date('H:i') ~ (fin and prevue and fin <= prevue ? ' ✓' : '') : '—' }}</b></div>
+			<div><small>Impression</small><b>{{ ligne.typeImpression.nom ?? '—' }}</b></div>
+			<div><small>Support</small><b>{{ ligne.support.nom ?? '—' }}</b></div>
+		</section>
+
+		{% if peutAgir and o.machine and not o.estTermine and not o.estAnnule %}
+			<section class="card si-mf-bloc">
+				<h2>Gâche et incidents</h2>
+				<div class="si-mf-signaler">
+					<details><summary class="btn btn-light btn-sm si-btn-entete">+ Gâche</summary>
+						<form method="post" action="{{ path('app_ma_file_signaler') }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="ordre" value="{{ o.id }}"><input type="hidden" name="type" value="gache">
+							<input name="quantite" inputmode="decimal" class="form-control form-control-sm" placeholder="m² gâchés" required><input name="note" class="form-control form-control-sm" placeholder="Cause (facultatif)"><button class="btn btn-primary btn-sm">Noter</button></form></details>
+					<details><summary class="btn btn-light btn-sm si-btn-entete">Incident</summary>
+						<form method="post" action="{{ path('app_ma_file_signaler') }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="ordre" value="{{ o.id }}"><input type="hidden" name="type" value="incident">
+							<input name="note" class="form-control form-control-sm" placeholder="Ex. buses bouchées, panne de séchage" required><button class="btn btn-primary btn-sm">Signaler</button></form></details>
+					<form method="post" action="{{ path('app_ma_file_signaler') }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="ordre" value="{{ o.id }}"><input type="hidden" name="type" value="tetes"><button class="btn btn-light btn-sm si-btn-entete">Buses nettoyées</button></form>
+					<details><summary class="btn btn-light btn-sm si-btn-entete">Réimpression</summary>
+						<form method="post" action="{{ path('app_ma_file_signaler') }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="ordre" value="{{ o.id }}"><input type="hidden" name="type" value="reimpression">
+							<input name="quantite" inputmode="decimal" class="form-control form-control-sm" placeholder="m² à refaire" required><input name="note" class="form-control form-control-sm" placeholder="Pourquoi"><button class="btn btn-primary btn-sm">Noter</button></form></details>
+				</div>
+				{% if evenements is not empty %}
+					<ul class="si-mf-journal">{% for e in evenements %}<li><time>{{ e.le|date('H:i') }}</time> {{ e.libelle }}{{ e.quantite ? ' · ' ~ e.quantite|number_format(1, ',') ~ ' m²' }}{{ e.note ? ' · ' ~ e.note }}</li>{% endfor %}</ul>
+				{% endif %}
+				<p class="si-pg-note">Une réimpression due à l'opérateur retire {{ bareme.valeur('p_reimpression')|abs }} points ; une panne signalée n'en retire pas.</p>
+			</section>
+
+			{% if not surPosteMachine %}
+				<p class="si-pg-note si-mf-poste"><i class="fas fa-desktop me-1"></i>Démarrer, mettre en pause et terminer se font depuis le poste de la machine : ce téléphone n'en fait pas partie.</p>
+			{% else %}
+			<div class="si-mf-actions">
+				{% if o.statut == 'en_cours' %}
+					<form method="post" action="{{ path('app_production_pause', {id: o.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('production_pause_' ~ o.id) }}"><input type="hidden" name="retour" value="ma_file"><button class="btn btn-light si-btn-entete si-mf-pause"><i class="fas fa-pause me-1"></i>Pause</button></form>
+					<details class="si-mf-terminer"><summary class="btn btn-success">Terminer</summary>
+						<form method="post" action="{{ path('app_production_terminer', {id: o.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('production_terminer_' ~ o.id) }}"><input type="hidden" name="retour" value="ma_file">
+							<label>Quantité bonne<input type="number" name="quantite_produite" min="1" class="form-control" value="{{ o.quantite ?? ligne.quantite }}"></label>
+							<label>Rebut<input type="number" name="quantite_rebut" min="0" class="form-control" value="0"></label>
+							<button class="btn btn-success">Confirmer la fin</button></form></details>
+				{% elseif o.statut == 'en_pause' %}
+					<form method="post" action="{{ path('app_production_reprendre', {id: o.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('production_reprendre_' ~ o.id) }}"><input type="hidden" name="retour" value="ma_file"><button class="btn btn-success"><i class="fas fa-play me-1"></i>Reprendre</button></form>
+				{% else %}
+					<form method="post" action="{{ path('app_production_demarrer', {id: o.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('production_demarrer_' ~ o.id) }}"><input type="hidden" name="retour" value="ma_file"><input type="hidden" name="machine_id" value="{{ o.machine.id }}"><button class="btn btn-success"><i class="fas fa-play me-1"></i>Démarrer</button></form>
+				{% endif %}
+			</div>
+			{% endif %}
+		{% endif %}
+		{% set possibles = bareme.points({p_avant_heure: 1}) %}
+		<p class="si-mf-rappel">{% if o.estTermine %}Points de ce travail : <b>{{ bareme.points(faits) > 0 ? '+' }}{{ bareme.points(faits) }} pts</b>{% else %}Terminé avant {{ prevue ? prevue|date('H:i') : 'l\'heure prévue' }} : <b>+{{ possibles }} pts</b>{% endif %} · +{{ bareme.valeur('p_10m2') }} pt par 10 m²</p>
+	</div>
+	<script>
+		(() => {
+			const bloc = document.querySelector('[data-si-chrono]');
+			if (!bloc) return;
+			const texte = bloc.querySelector('[data-si-chrono-texte]');
+			const depart = Date.now() - Number(bloc.dataset.siChrono) * 1000;
+			const deux = n => String(n).padStart(2, '0');
+			setInterval(() => { const s = Math.floor((Date.now() - depart) / 1000); texte.textContent = deux(Math.floor(s / 3600)) + ':' + deux(Math.floor(s / 60) % 60) + ':' + deux(s % 60); }, 1000);
+		})();
+	</script>
+{% endblock %}

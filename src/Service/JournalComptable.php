@@ -1,0 +1,325 @@
+<?php
+
+namespace App\Service;
+
+use App\Entity\Achats;
+use App\Entity\Commandes;
+use App\Entity\CompteTresorerie;
+use App\Entity\Factures;
+use App\Entity\MouvementTresorerie;
+use Doctrine\ORM\EntityManagerInterface;
+
+/**
+ * Comptabilité SYSCOHADA (maquette 32) : les écritures sont déduites des
+ * opérations validées (factures émises, mouvements de trésorerie
+ * validés, achats reçus). Rien n'est saisi ici : corriger une écriture,
+ * c'est corriger l'opération d'origine.
+ *
+ * Les numéros de comptes suivent le plan SYSCOHADA révisé ; leur choix
+ * fin (sous-comptes) reste à valider avec le cabinet comptable.
+ */
+final class JournalComptable
+{
+    public const JOURNAUX = [
+        'ventes' => 'Journal des ventes',
+        'banque' => 'Banque',
+        'mobile' => 'Orange Money et Wave',
+        'caisse' => 'Caisse',
+        'achats' => 'Achats',
+        'od' => 'Opérations diverses',
+    ];
+
+    public const CODES_JOURNAUX = [
+        'ventes' => 'VT',
+        'banque' => 'BQ',
+        'mobile' => 'MM',
+        'caisse' => 'CA',
+        'achats' => 'AC',
+        'od' => 'OD',
+    ];
+
+    public const COMPTES = [
+        '162' => 'Emprunts auprès des établissements de crédit',
+        '401' => 'Fournisseurs',
+        '411' => 'Clients',
+        '4431' => 'TVA facturée sur ventes',
+        '4452' => 'TVA récupérable sur achats',
+        '471' => 'Compte d’attente',
+        '521' => 'Banques',
+        '5213' => 'Orange Money marchand',
+        '5214' => 'Wave marchand',
+        '571' => 'Caisse',
+        '585' => 'Virements de fonds',
+        '602' => 'Achats de matières premières et fournitures',
+        '6042' => 'Matières combustibles',
+        '6052' => 'Électricité',
+        '612' => 'Transports sur achats et ventes',
+        '6222' => 'Locations de bâtiments',
+        '624' => 'Entretien, réparations et maintenance',
+        '631' => 'Frais bancaires',
+        '658' => 'Charges diverses',
+        '661' => 'Rémunérations du personnel',
+        '702' => 'Ventes de produits finis',
+        '758' => 'Produits divers',
+    ];
+
+    /** Compte de charge ou de produit de chaque catégorie de mouvement. */
+    public const COMPTE_CATEGORIE = [
+        MouvementTresorerie::CATEGORIE_VENTE => '702',
+        MouvementTresorerie::CATEGORIE_AUTRE_PRODUIT => '758',
+        MouvementTresorerie::CATEGORIE_SALAIRE => '661',
+        // Un achat payé règle le fournisseur : la charge vient de l'achat reçu.
+        MouvementTresorerie::CATEGORIE_ACHAT => '401',
+        MouvementTresorerie::CATEGORIE_CARBURANT => '6042',
+        MouvementTresorerie::CATEGORIE_TRANSPORT => '612',
+        MouvementTresorerie::CATEGORIE_ENTRETIEN => '624',
+        MouvementTresorerie::CATEGORIE_ELECTRICITE => '6052',
+        MouvementTresorerie::CATEGORIE_LOYER => '6222',
+        MouvementTresorerie::CATEGORIE_AUTRE_CHARGE => '658',
+        MouvementTresorerie::CATEGORIE_TRANSFERT_INTERNE => '585',
+        MouvementTresorerie::CATEGORIE_AJUSTEMENT => '471',
+        MouvementTresorerie::CATEGORIE_FRAIS_BANCAIRE => '631',
+        MouvementTresorerie::CATEGORIE_REMBOURSEMENT_CREDIT => '162',
+    ];
+
+    public function __construct(private readonly EntityManagerInterface $em)
+    {
+    }
+
+    /**
+     * Toutes les écritures du mois, journal par journal, dans l'ordre des dates.
+     *
+     * @return array<string, list<array{date: \DateTimeImmutable, piece: string, compte: string, tiers: ?string, libelle: string, debit: int, credit: int, lettrage: ?string}>>
+     */
+    public function ecritures(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        $journaux = array_fill_keys(array_keys(self::JOURNAUX), []);
+        foreach ($this->factures($debut, $fin) as $facture) {
+            array_push($journaux['ventes'], ...self::ecrituresFacture($facture));
+        }
+        foreach ($this->mouvements($debut, $fin) as $mouvement) {
+            [$journal, $lignes] = self::ecrituresMouvement($mouvement);
+            array_push($journaux[$journal], ...$lignes);
+        }
+        foreach ($this->achats($debut, $fin) as $achat) {
+            array_push($journaux['achats'], ...self::ecrituresAchat($achat));
+        }
+        foreach ($journaux as &$lignes) {
+            // Tri stable : les lignes d'une même pièce restent ensemble.
+            usort($lignes, static fn (array $a, array $b): int => [$a['date']->format('Y-m-d'), $a['piece']] <=> [$b['date']->format('Y-m-d'), $b['piece']]);
+        }
+
+        return $journaux;
+    }
+
+    /**
+     * Balance : total débit, crédit et solde de chaque compte.
+     *
+     * @param array<string, list<array<string, mixed>>> $journaux
+     *
+     * @return list<array{compte: string, libelle: string, debit: int, credit: int, solde: int}>
+     */
+    public static function balance(array $journaux): array
+    {
+        $comptes = [];
+        foreach ($journaux as $lignes) {
+            foreach ($lignes as $l) {
+                $comptes[$l['compte']] ??= ['compte' => $l['compte'], 'libelle' => self::COMPTES[$l['compte']] ?? $l['compte'], 'debit' => 0, 'credit' => 0, 'solde' => 0];
+                $comptes[$l['compte']]['debit'] += $l['debit'];
+                $comptes[$l['compte']]['credit'] += $l['credit'];
+            }
+        }
+        ksort($comptes, \SORT_STRING);
+        foreach ($comptes as &$c) {
+            $c['solde'] = $c['debit'] - $c['credit'];
+        }
+
+        return array_values($comptes);
+    }
+
+    /**
+     * Facture émise : client au débit, ventes, majoration et TVA au crédit.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function ecrituresFacture(Factures $facture): array
+    {
+        $date = \DateTimeImmutable::createFromInterface($facture->getDateFacture() ?? new \DateTimeImmutable());
+        $piece = $facture->getNumero() ?? 'FAC-'.$facture->getId();
+        $commande = $facture->getCommande();
+        $tiers = $facture->getNomFacturation() ?: $commande?->getClients()?->getNomComplet();
+        $ventes = max(0, $facture->getTotalHt() - $facture->getRemise());
+        $majoration = $facture->isSurfacturation() ? $facture->getMontantSurfacturation() : 0;
+        $lettrage = self::lettrage($commande);
+
+        $lignes = [self::ligne($date, $piece, '411', $tiers, 'Facture '.$piece, $facture->getTotalTtc(), 0, $lettrage)];
+        $lignes[] = self::ligne($date, $piece, '702', null, 'Ventes '.($commande?->getNumero() ?? $piece), 0, $ventes);
+        if ($majoration > 0) {
+            $lignes[] = self::ligne($date, $piece, '702', null, 'Majoration '.$piece, 0, $majoration);
+        }
+        if ($facture->getMontantTva() > 0) {
+            $lignes[] = self::ligne($date, $piece, '4431', null, sprintf('TVA %s %% %s', $facture->getTva(), $piece), 0, $facture->getMontantTva());
+        }
+
+        return array_values(array_filter($lignes, static fn (array $l): bool => $l['debit'] > 0 || $l['credit'] > 0));
+    }
+
+    /**
+     * Mouvement validé : le compte de trésorerie contre le client (si
+     * c'est un paiement), le compte de charge ou de produit, ou l'autre
+     * compte de trésorerie pour un transfert.
+     *
+     * @return array{0: string, 1: list<array<string, mixed>>}
+     */
+    public static function ecrituresMouvement(MouvementTresorerie $mouvement): array
+    {
+        $date = \DateTimeImmutable::createFromInterface($mouvement->getDateOperation() ?? new \DateTimeImmutable());
+        $piece = $mouvement->getReference();
+        $montant = (int) $mouvement->getMontant();
+        $libelle = $mouvement->getLibelle();
+        $source = $mouvement->getCompteSource();
+        $destination = $mouvement->getCompteDestination();
+
+        if (MouvementTresorerie::TYPE_TRANSFERT === $mouvement->getType()) {
+            return [self::journalDe($source), [
+                self::ligne($date, $piece, self::compteTresorerie($destination), $destination?->getNom(), $libelle, $montant, 0),
+                self::ligne($date, $piece, self::compteTresorerie($source), $source?->getNom(), $libelle, 0, $montant),
+            ]];
+        }
+
+        $encaissement = MouvementTresorerie::TYPE_ENCAISSEMENT === $mouvement->getType();
+        $tresorerie = $encaissement ? $destination : $source;
+        $paiement = $mouvement->getPaiement();
+        $commande = $paiement?->getCommande();
+        if (null !== $paiement) {
+            $contrepartie = '411';
+            $tiers = $commande?->getClients()?->getNomComplet();
+            $lettrage = self::lettrage($commande);
+        } else {
+            $contrepartie = self::COMPTE_CATEGORIE[$mouvement->getCategorie()] ?? ($encaissement ? '758' : '658');
+            $tiers = null;
+            $lettrage = null;
+        }
+        $journal = MouvementTresorerie::CATEGORIE_AJUSTEMENT === $mouvement->getCategorie() ? 'od' : self::journalDe($tresorerie);
+        $ligneTresorerie = self::ligne($date, $piece, self::compteTresorerie($tresorerie), $tresorerie?->getNom(), $libelle, $encaissement ? $montant : 0, $encaissement ? 0 : $montant);
+        $ligneContrepartie = self::ligne($date, $piece, $contrepartie, $tiers, $libelle, $encaissement ? 0 : $montant, $encaissement ? $montant : 0, $lettrage);
+
+        return [$journal, $encaissement ? [$ligneTresorerie, $ligneContrepartie] : [$ligneContrepartie, $ligneTresorerie]];
+    }
+
+    /**
+     * Achat reçu : matières et TVA récupérable au débit, fournisseur au crédit.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function ecrituresAchat(Achats $achat): array
+    {
+        $date = $achat->getDateReception() ?? $achat->getDateDemande() ?? new \DateTimeImmutable();
+        $piece = $achat->getNumero() ?? 'ACH-'.$achat->getId();
+        $fournisseur = $achat->getFournisseur()?->getNom();
+        $tva = max(0, $achat->getTotalTtc() - $achat->getTotalHt());
+
+        return array_values(array_filter([
+            self::ligne($date, $piece, '602', null, 'Achat '.$piece, $achat->getTotalHt(), 0),
+            self::ligne($date, $piece, '4452', null, 'TVA '.$piece, $tva, 0),
+            self::ligne($date, $piece, '401', $fournisseur, 'Facture fournisseur '.$piece, 0, $achat->getTotalTtc()),
+        ], static fn (array $l): bool => $l['debit'] > 0 || $l['credit'] > 0));
+    }
+
+    public static function compteTresorerie(?CompteTresorerie $compte): string
+    {
+        return match ($compte?->getType()) {
+            CompteTresorerie::TYPE_BANQUE => '521',
+            CompteTresorerie::TYPE_ORANGE_MONEY => '5213',
+            CompteTresorerie::TYPE_WAVE => '5214',
+            CompteTresorerie::TYPE_CAISSE => '571',
+            default => '471',
+        };
+    }
+
+    public static function journalDe(?CompteTresorerie $compte): string
+    {
+        return match ($compte?->getType()) {
+            CompteTresorerie::TYPE_BANQUE => 'banque',
+            CompteTresorerie::TYPE_ORANGE_MONEY, CompteTresorerie::TYPE_WAVE => 'mobile',
+            CompteTresorerie::TYPE_CAISSE => 'caisse',
+            default => 'od',
+        };
+    }
+
+    /**
+     * Lettre commune à la facture et aux règlements d'une commande soldée.
+     */
+    public static function lettrage(?Commandes $commande): ?string
+    {
+        if (null === $commande || null === $commande->getId() || (int) $commande->getTotalTtc() <= 0 || $commande->getTotalPaye() < (int) $commande->getTotalTtc()) {
+            return null;
+        }
+
+        return strtoupper(base_convert((string) $commande->getId(), 10, 36));
+    }
+
+    /**
+     * @return array{date: \DateTimeImmutable, piece: string, compte: string, tiers: ?string, libelle: string, debit: int, credit: int, lettrage: ?string}
+     */
+    private static function ligne(\DateTimeImmutable $date, string $piece, string $compte, ?string $tiers, string $libelle, int $debit, int $credit, ?string $lettrage = null): array
+    {
+        return ['date' => $date, 'piece' => $piece, 'compte' => $compte, 'tiers' => $tiers, 'libelle' => $libelle, 'debit' => $debit, 'credit' => $credit, 'lettrage' => $lettrage];
+    }
+
+    /** @return list<Factures> */
+    private function factures(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('facture', 'commande', 'client')
+            ->from(Factures::class, 'facture')
+            ->leftJoin('facture.commande', 'commande')
+            ->leftJoin('commande.clients', 'client')
+            ->andWhere('facture.typeDocument = :facture')
+            ->andWhere('facture.comptabilisee = true')
+            ->andWhere('facture.etat = :emise')
+            ->andWhere('facture.dateFacture BETWEEN :debut AND :fin')
+            ->setParameter('facture', Factures::TYPE_FACTURE)
+            ->setParameter('emise', Factures::ETAT_EMISE)
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<MouvementTresorerie> */
+    private function mouvements(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('m', 'source', 'destination', 'paiement', 'commande', 'client')
+            ->from(MouvementTresorerie::class, 'm')
+            ->leftJoin('m.compteSource', 'source')
+            ->leftJoin('m.compteDestination', 'destination')
+            ->leftJoin('m.paiement', 'paiement')
+            ->leftJoin('paiement.commande', 'commande')
+            ->leftJoin('commande.clients', 'client')
+            ->andWhere('m.statut = :valide')
+            ->andWhere('m.dateOperation BETWEEN :debut AND :fin')
+            ->setParameter('valide', MouvementTresorerie::STATUT_VALIDE)
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Achats> */
+    private function achats(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('achat', 'fournisseur')
+            ->from(Achats::class, 'achat')
+            ->leftJoin('achat.fournisseur', 'fournisseur')
+            ->andWhere('achat.statut = :recu')
+            ->andWhere('achat.dateReception BETWEEN :debut AND :fin')
+            ->setParameter('recu', Achats::STATUT_RECU)
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->getQuery()
+            ->getResult();
+    }
+}

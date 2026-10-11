@@ -3093,3 +3093,30 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
   .si-tresorerie .card { padding: 14px; }
   .si-tresorerie-carte strong { font-size: 20px; }
 }
+
+/* ===== Comptabilité SYSCOHADA (maquette 32) ===== */
+.si-compta { display: grid; gap: 16px; }
+.si-compta .card { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; margin: 0; }
+.si-compta h2 { font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 12px; }
+.si-compta-periode { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.si-compta-periode a { color: #0F4590; }
+.si-compta-periode strong { font-size: 16px; color: #0F172A; min-width: 130px; text-align: center; }
+.si-compta-retour { margin-left: auto; font-weight: 600; font-size: 13px; }
+.si-compta-journaux { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid #E2E8F0; }
+.si-compta-journaux a { padding: 10px 14px; white-space: nowrap; color: #475569; font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; }
+.si-compta-journaux a.active { color: #0F4590; border-bottom-color: #0F4590; }
+.si-compta-journaux span { font-size: 11px; background: #EEF2F7; color: #64748B; border-radius: 999px; padding: 1px 7px; margin-left: 4px; }
+.si-compta .si-compta-table { margin: 0; }
+.si-compta .si-compta-table thead th { font-size: 13px; color: #64748B; font-weight: 600; text-transform: none; letter-spacing: 0; background: #F8FAFC; border-bottom: 0; padding: 10px 8px; }
+.si-compta-table td { vertical-align: middle; padding: 10px 8px; }
+.si-compta-totaux { display: flex; justify-content: flex-end; align-items: center; gap: 24px; flex-wrap: wrap; padding-top: 14px; color: #475569; }
+.si-compta-totaux strong { color: #0F172A; margin-left: 4px; }
+.si-compta-equilibre { padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 13px; }
+.si-compta-equilibre.si-ok { background: #DCFCE7; color: #15803D; }
+.si-compta-equilibre.si-ko { background: #FEE2E2; color: #B91C1C; }
+.si-compta-vide { color: #64748B; margin: 0; }
+.si-compta-note { font-size: 13px; color: #64748B; margin: 0; }
+@media (max-width: 575px) {
+  .si-compta .card { padding: 14px; }
+  .si-compta-totaux { justify-content: flex-start; gap: 12px; }
+}

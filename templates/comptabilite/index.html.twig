@@ -1,0 +1,133 @@
+{% extends 'base.html.twig' %}
+
+{% set mois_fr = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'] %}
+{% set libelle_mois = mois_fr[debut|date('n') - 1] ~ ' ' ~ debut|date('Y') %}
+{% set comptes = constant('App\\Service\\JournalComptable::COMPTES') %}
+
+{% block title %}Comptabilité · SYSCOHADA{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_comptabilite_index', {mois: mois, vue: 'grand_livre'}) }}" class="btn btn-light btn-sm si-btn-entete {{ vue == 'grand_livre' ? 'active' }}">Grand livre</a>
+	</li>
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_comptabilite_index', {mois: mois, vue: 'balance'}) }}" class="btn btn-light btn-sm si-btn-entete {{ vue == 'balance' ? 'active' }}">Balance</a>
+	</li>
+	<li class="nav-item">
+		<a href="{{ path('app_comptabilite_export', {mois: mois}) }}" class="btn btn-primary btn-sm si-btn-entete"><i class="fas fa-download me-1"></i>Export<span class="si-masque-mobile"> cabinet</span></a>
+	</li>
+{% endblock %}
+
+{% macro table_lignes(lignes, comptes, avec_journal = false) %}
+	{% set total_debit = lignes|reduce((s, l) => s + l.debit, 0) %}
+	{% set total_credit = lignes|reduce((s, l) => s + l.credit, 0) %}
+	<div class="table-responsive">
+		<table class="table si-compta-table">
+			<thead>
+				<tr>
+					<th>Date</th>
+					{% if avec_journal %}<th>Jnl</th>{% endif %}
+					<th>Pièce</th>
+					<th>Compte</th>
+					<th>Libellé</th>
+					<th class="text-end">Débit</th>
+					<th class="text-end">Crédit</th>
+					<th>Lettrage</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for l in lignes %}
+					<tr>
+						<td class="text-nowrap">{{ l.date|date('d/m') }}</td>
+						{% if avec_journal %}<td>{{ l.journal }}</td>{% endif %}
+						<td class="text-nowrap">{{ l.piece }}</td>
+						<td><strong>{{ l.compte }}</strong> {{ l.tiers ?: comptes[l.compte]|default('') }}</td>
+						<td>{{ l.libelle }}</td>
+						<td class="text-end text-nowrap fw-bold">{{ l.debit ? l.debit|number_format(0, ',', ' ') }}</td>
+						<td class="text-end text-nowrap fw-bold">{{ l.credit ? l.credit|number_format(0, ',', ' ') }}</td>
+						<td>{{ l.lettrage }}</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	<div class="si-compta-totaux">
+		<span>Total débit <strong>{{ total_debit|number_format(0, ',', ' ') }}</strong></span>
+		<span>Total crédit <strong>{{ total_credit|number_format(0, ',', ' ') }}</strong></span>
+		{% if not avec_journal %}
+			<span class="si-compta-equilibre {{ total_debit == total_credit ? 'si-ok' : 'si-ko' }}">{{ total_debit == total_credit ? 'Équilibré ✓' : 'Écart ' ~ (total_debit - total_credit)|number_format(0, ',', ' ') }}</span>
+		{% endif %}
+	</div>
+{% endmacro %}
+
+{% block body %}
+	<div class="si-compta">
+		<div class="si-compta-periode">
+			<a href="{{ path('app_comptabilite_index', {mois: mois_precedent, vue: vue, journal: journal}) }}" aria-label="Mois précédent"><i class="fas fa-chevron-left"></i></a>
+			<strong>{{ libelle_mois|capitalize }}</strong>
+			<a href="{{ path('app_comptabilite_index', {mois: mois_suivant, vue: vue, journal: journal}) }}" aria-label="Mois suivant"><i class="fas fa-chevron-right"></i></a>
+			{% if vue != 'journal' %}<a href="{{ path('app_comptabilite_index', {mois: mois}) }}" class="si-compta-retour">Retour aux journaux</a>{% endif %}
+		</div>
+
+		{% if vue == 'journal' %}
+			<nav class="si-compta-journaux" aria-label="Journaux">
+				{% for code, libelle in constant('App\\Service\\JournalComptable::JOURNAUX') %}
+					<a href="{{ path('app_comptabilite_index', {mois: mois, journal: code}) }}" class="{{ journal == code ? 'active' }}" {{ journal == code ? 'aria-current="page"' }}>{{ libelle }} <span>{{ journaux[code]|length }}</span></a>
+				{% endfor %}
+			</nav>
+			<section class="card si-compta-bloc">
+				{% if lignes is empty %}
+					<p class="si-compta-vide">Aucune écriture dans ce journal pour {{ libelle_mois }}.</p>
+				{% else %}
+					{{ _self.table_lignes(lignes, comptes) }}
+				{% endif %}
+			</section>
+		{% elseif vue == 'balance' %}
+			<section class="card si-compta-bloc">
+				<h2>Balance · {{ libelle_mois }}</h2>
+				{% if balance is empty %}
+					<p class="si-compta-vide">Aucune écriture ce mois-ci.</p>
+				{% else %}
+					{% set td = balance|reduce((s, c) => s + c.debit, 0) %}
+					{% set tc = balance|reduce((s, c) => s + c.credit, 0) %}
+					<div class="table-responsive">
+						<table class="table si-compta-table">
+							<thead><tr><th>Compte</th><th>Intitulé</th><th class="text-end">Débit</th><th class="text-end">Crédit</th><th class="text-end">Solde</th></tr></thead>
+							<tbody>
+								{% for c in balance %}
+									<tr>
+										<td><strong>{{ c.compte }}</strong></td>
+										<td>{{ c.libelle }}</td>
+										<td class="text-end text-nowrap">{{ c.debit|number_format(0, ',', ' ') }}</td>
+										<td class="text-end text-nowrap">{{ c.credit|number_format(0, ',', ' ') }}</td>
+										<td class="text-end text-nowrap fw-bold">{{ c.solde >= 0 ? c.solde|number_format(0, ',', ' ') ~ ' D' : (c.solde|abs)|number_format(0, ',', ' ') ~ ' C' }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					<div class="si-compta-totaux">
+						<span>Total débit <strong>{{ td|number_format(0, ',', ' ') }}</strong></span>
+						<span>Total crédit <strong>{{ tc|number_format(0, ',', ' ') }}</strong></span>
+						<span class="si-compta-equilibre {{ td == tc ? 'si-ok' : 'si-ko' }}">{{ td == tc ? 'Équilibrée ✓' : 'Écart ' ~ (td - tc)|number_format(0, ',', ' ') }}</span>
+					</div>
+				{% endif %}
+			</section>
+		{% else %}
+			{% for compte, lignes in grand_livre %}
+				<section class="card si-compta-bloc">
+					<h2>{{ compte }} · {{ comptes[compte]|default(compte) }}</h2>
+					{{ _self.table_lignes(lignes, comptes, true) }}
+				</section>
+			{% else %}
+				<section class="card si-compta-bloc"><p class="si-compta-vide">Aucune écriture ce mois-ci.</p></section>
+			{% endfor %}
+		{% endif %}
+
+		<p class="si-compta-note">
+			Les écritures sont tirées des opérations validées : factures émises, mouvements de trésorerie validés et achats reçus.
+			Les proformas, brouillons et opérations en attente n’y entrent pas. Pour corriger une écriture, corrigez l’opération d’origine.
+			Plan de comptes SYSCOHADA à faire confirmer par le cabinet.
+		</p>
+	</div>
+{% endblock %}

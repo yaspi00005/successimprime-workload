@@ -98,8 +98,11 @@ final class TableauDeBordService
             ->addSelect('SUM(CASE WHEN f.dateEcheance < :aujourdhui THEN 1 ELSE 0 END) AS echues')
             ->from(Factures::class, 'f')
             ->andWhere('f.etat = :emise')
+            // Une proforma n'est ni une vente ni une créance.
+            ->andWhere('f.typeDocument = :facture')
             ->andWhere('f.resteAPayer > 0')
             ->setParameter('emise', Factures::ETAT_EMISE)
+            ->setParameter('facture', Factures::TYPE_FACTURE)
             ->setParameter('aujourdhui', $maintenant->setTime(0, 0))
             ->getQuery()
             ->getSingleResult();
@@ -472,8 +475,10 @@ final class TableauDeBordService
             ->select('f.dateFacture AS date', 'f.totalTtc AS montant')
             ->from(Factures::class, 'f')
             ->andWhere('f.etat = :emise')
+            ->andWhere('f.typeDocument = :facture')
             ->andWhere('f.dateFacture >= :debut')
             ->setParameter('emise', Factures::ETAT_EMISE)
+            ->setParameter('facture', Factures::TYPE_FACTURE)
             ->setParameter('debut', $debut)
             ->getQuery()
             ->getArrayResult();

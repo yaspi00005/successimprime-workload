@@ -4,14 +4,14 @@ namespace App\Service\Statistiques;
 
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
+use App\Entity\Factures;
 use App\Service\CalculateurCoutRevient;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Statistiques et rapports (maquette 36), calculés sur les commandes
- * confirmées (non supprimées, non annulées) : CA, marge brute, m²
- * imprimés et nouveaux clients, chacun comparé à la période d'avant de
- * même durée.
+ * Statistiques et rapports (maquette 36) : CA facturé (factures émises,
+ * hors proformas), marge brute, m² imprimés et nouveaux clients sur les
+ * commandes confirmées, chacun comparé à la période d'avant de même durée.
  *
  * La marge ne compte que les lignes dont le coût de revient est complet
  * (matières, encre, machine renseignées) : la part du CA chiffrée est
@@ -56,8 +56,12 @@ final class StatistiquesRapports
         $lignesPeriode = array_values(array_filter($lignes, static fn (CommandesDetails $l): bool => $l->getCommande()?->getDateCommande() >= $debut));
         $lignesAvant = array_values(array_filter($lignes, static fn (CommandesDetails $l): bool => $l->getCommande()?->getDateCommande() < $debut && $l->getCommande()?->getDateCommande() <= $finAvant));
 
-        $ca = self::ca($periode);
-        $caAvant = self::ca($avant);
+        // CA = factures émises, hors proformas (docs/indicateurs.md).
+        $ventes = $this->ventes($debutAvant);
+        $ventesPeriode = array_values(array_filter($ventes, static fn (array $v): bool => $v['date'] >= $debut));
+        $ventesAvant = array_values(array_filter($ventes, static fn (array $v): bool => $v['date'] < $debut && $v['date'] <= $finAvant));
+        $ca = self::ca($ventesPeriode);
+        $caAvant = self::ca($ventesAvant);
         $surface = self::surface($lignesPeriode);
         $surfaceAvant = self::surface($lignesAvant);
         $nouveaux = $this->nouveauxClients($debut, $maintenant);
@@ -83,22 +87,23 @@ final class StatistiquesRapports
                 'nouveaux' => $nouveaux,
                 'nouveaux_evolution' => self::evolution($nouveaux, $nouveauxAvant),
                 'commandes' => \count($periode),
-                'panier' => [] === $periode ? 0 : intdiv($ca, \count($periode)),
+                'factures' => \count($ventesPeriode),
+                'panier' => [] === $ventesPeriode ? 0 : intdiv($ca, \count($ventesPeriode)),
             ],
-            'mois' => self::parMois($periode, $avant, $debut, $mois),
+            'mois' => self::parMois($ventesPeriode, $ventesAvant, $debut, $mois),
             'categories' => $parCategorie,
-            'top_client' => self::top($periode, static fn (Commandes $c): ?string => $c->getClients()?->getNomComplet()),
-            'top_agent' => self::top($periode, static fn (Commandes $c): ?string => $c->getAgents()?->getUsername()),
+            'top_client' => self::top($ventesPeriode, 'client'),
+            'top_agent' => self::top($ventesPeriode, 'agent'),
             'debut' => $debut,
         ];
     }
 
     /**
-     * @param list<Commandes> $commandes
+     * @param list<array{date: \DateTimeImmutable, montant: int, client: ?string, agent: ?string}> $ventes
      */
-    public static function ca(array $commandes): int
+    public static function ca(array $ventes): int
     {
-        return array_sum(array_map(static fn (Commandes $c): int => (int) $c->getTotalTtc(), $commandes));
+        return array_sum(array_column($ventes, 'montant'));
     }
 
     /**
@@ -164,10 +169,10 @@ final class StatistiquesRapports
     }
 
     /**
-     * @param list<Commandes> $periode
-     * @param list<Commandes> $avant
+     * @param list<array{date: \DateTimeImmutable, montant: int}> $periode
+     * @param list<array{date: \DateTimeImmutable, montant: int}> $avant
      *
-     * @return list<array{libelle: string, montant: int, avant: int, courant: bool}>
+     * @return list<array{libelle: string, mois: \DateTimeImmutable, montant: int, avant: int, courant: bool}>
      */
     public static function parMois(array $periode, array $avant, \DateTimeImmutable $debut, int $mois): array
     {
@@ -177,17 +182,16 @@ final class StatistiquesRapports
             $m = $debut->modify(sprintf('+%d months', $i));
             $serie[$m->format('Y-m')] = ['libelle' => $initiales[(int) $m->format('n') - 1], 'mois' => $m, 'montant' => 0, 'avant' => 0, 'courant' => $i === $mois - 1];
         }
-        foreach ($periode as $c) {
-            $cle = $c->getDateCommande()?->format('Y-m');
+        foreach ($periode as $v) {
+            $cle = $v['date']->format('Y-m');
             if (isset($serie[$cle])) {
-                $serie[$cle]['montant'] += (int) $c->getTotalTtc();
+                $serie[$cle]['montant'] += $v['montant'];
             }
         }
-        foreach ($avant as $c) {
-            $date = $c->getDateCommande();
-            $cle = null === $date ? null : \DateTimeImmutable::createFromInterface($date)->modify(sprintf('+%d months', $mois))->format('Y-m');
+        foreach ($avant as $v) {
+            $cle = $v['date']->modify(sprintf('+%d months', $mois))->format('Y-m');
             if (isset($serie[$cle])) {
-                $serie[$cle]['avant'] += (int) $c->getTotalTtc();
+                $serie[$cle]['avant'] += $v['montant'];
             }
         }
 
@@ -195,22 +199,21 @@ final class StatistiquesRapports
     }
 
     /**
-     * Le plus gros contributeur au CA, avec sa part.
+     * Le plus gros contributeur au CA ('client' ou 'agent'), avec sa part.
      *
-     * @param list<Commandes>                  $commandes
-     * @param callable(Commandes): ?string     $cle
+     * @param list<array{montant: int, client: ?string, agent: ?string}> $ventes
      *
      * @return array{nom: string, montant: int, part: int}|null
      */
-    public static function top(array $commandes, callable $cle): ?array
+    public static function top(array $ventes, string $cle): ?array
     {
         $totaux = [];
         $total = 0;
-        foreach ($commandes as $c) {
-            $total += (int) $c->getTotalTtc();
-            $nom = $cle($c);
-            if (null !== $nom && '' !== trim($nom)) {
-                $totaux[$nom] = ($totaux[$nom] ?? 0) + (int) $c->getTotalTtc();
+        foreach ($ventes as $v) {
+            $total += $v['montant'];
+            $nom = trim((string) ($v[$cle] ?? ''));
+            if ('' !== $nom) {
+                $totaux[$nom] = ($totaux[$nom] ?? 0) + $v['montant'];
             }
         }
         if ([] === $totaux || $total <= 0) {
@@ -220,6 +223,35 @@ final class StatistiquesRapports
         $nom = (string) array_key_first($totaux);
 
         return ['nom' => $nom, 'montant' => $totaux[$nom], 'part' => (int) round($totaux[$nom] * 100 / $total)];
+    }
+
+    /**
+     * @return list<array{date: \DateTimeImmutable, montant: int, client: ?string, agent: ?string}>
+     */
+    private function ventes(\DateTimeImmutable $depuis): array
+    {
+        /** @var list<Factures> $factures */
+        $factures = $this->em->createQueryBuilder()
+            ->select('f', 'c', 'client', 'agent')
+            ->from(Factures::class, 'f')
+            ->leftJoin('f.commande', 'c')
+            ->leftJoin('c.clients', 'client')
+            ->leftJoin('c.agents', 'agent')
+            ->andWhere('f.etat = :emise')
+            ->andWhere('f.typeDocument = :facture')
+            ->andWhere('f.dateFacture >= :depuis')
+            ->setParameter('emise', Factures::ETAT_EMISE)
+            ->setParameter('facture', Factures::TYPE_FACTURE)
+            ->setParameter('depuis', $depuis)
+            ->getQuery()
+            ->getResult();
+
+        return array_map(static fn (Factures $f): array => [
+            'date' => \DateTimeImmutable::createFromInterface($f->getDateFacture()),
+            'montant' => $f->getTotalTtc(),
+            'client' => $f->getCommande()?->getClients()?->getNomComplet(),
+            'agent' => $f->getCommande()?->getAgents()?->getUsername(),
+        ], $factures);
     }
 
     /**

@@ -41,7 +41,7 @@
 		<div class="si-stats-kpis">
 			{% if voir_ventes %}
 				<article class="card si-stats-kpi">
-					<h2>CA {{ libelle_periode }}</h2>
+					<h2>CA facturé {{ libelle_periode }}</h2>
 					<strong>{{ _self.millions(kpi.ca) }}</strong>
 					{{ _self.fleche(kpi.ca_evolution, ' % vs N−1') }}
 				</article>
@@ -82,7 +82,7 @@
 				{% set max = max(mois|map(m => max(m.montant, comparer ? m.avant : 0))|merge([1])) %}
 				<section class="card si-stats-graphe">
 					<header>
-						<h2>CA mensuel</h2>
+						<h2>CA facturé par mois</h2>
 						{% if comparer %}<span><i class="si-s-pastille si-s-pastille-avant"></i> N−1 <i class="si-s-pastille"></i> période</span>{% endif %}
 					</header>
 					<div class="si-stats-barres" role="img" aria-label="CA par mois : {% for m in mois %}{{ m.mois|date('m/Y') }} {{ m.montant|number_format(0, ',', ' ') }} F{{ not loop.last ? ', ' }}{% endfor %}">
@@ -131,7 +131,7 @@
 				</article>
 				<article class="card si-stats-carte">
 					<span>Panier moyen</span>
-					<strong>{{ kpi.panier|number_format(0, ',', ' ') }} F · {{ kpi.commandes }} commande{{ kpi.commandes > 1 ? 's' }}</strong>
+					<strong>{{ kpi.panier|number_format(0, ',', ' ') }} F · {{ kpi.factures }} facture{{ kpi.factures > 1 ? 's' }}</strong>
 				</article>
 			{% endif %}
 		</div>
@@ -143,6 +143,6 @@
 			<a href="{{ path('app_statistiques_clients_index') }}">Clients</a>
 			<a href="{{ path('app_statistiques_tresorerie_index') }}">Trésorerie</a>
 		</nav>
-		<p class="si-stats-note">Calculé sur les commandes confirmées (hors annulées), comparé à la même durée un an plus tôt. La marge ne compte que les lignes dont le coût de revient est complet.</p>
+		<p class="si-stats-note">CA : factures émises, hors proformas. Marge, m² et nouveaux clients : commandes confirmées. Tout est comparé à la même durée un an plus tôt. La marge ne compte que les lignes dont le coût de revient est complet.</p>
 	</div>
 {% endblock %}

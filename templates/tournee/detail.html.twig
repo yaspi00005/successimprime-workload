@@ -1,0 +1,92 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+{% set cli = b.commande.clients %}
+
+{% block title %}Livraison {{ b.numero }}{{ cli ? ' · ' ~ cli.nomComplet }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_bons_livraison_imprimer', {id: b.id}) }}" class="btn btn-light btn-sm si-btn-entete" target="_blank"><i class="fas fa-file-pdf me-1"></i>Bon de livraison</a></li>
+	{% if whatsapp %}<li class="nav-item"><a href="https://wa.me/{{ whatsapp }}?text={{ ('Bonjour, votre livraison ' ~ b.numero ~ (b.prevuLe ? ' est prévue le ' ~ b.prevuLe|date('d/m') : '') ~ (b.creneau ? ' entre ' ~ b.creneau|replace({'-': ' et '}) : '') ~ '. Succès Imprim')|url_encode }}" class="btn btn-success btn-sm" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>WhatsApp client</a></li>{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-tr si-tr-detail">
+		<section class="card si-tr-etapes">
+			{% for cle, libelle in constant('App\\Entity\\BonLivraison::ETAPES') %}
+				{% set le = b.etapes[cle] %}
+				<div class="si-tr-etape{{ le ? ' si-tr-fait' }}">
+					<span>{{ le ? '✓' : loop.index }}</span>
+					<b>{{ libelle }}</b>
+					<small>{{ le ? le|date('H:i') : '—' }}</small>
+				</div>
+			{% endfor %}
+		</section>
+
+		<div class="si-tr-colonnes">
+			<div>
+				<section class="card si-ac-bloc">
+					<h2>Contenu</h2>
+					<div class="table-responsive">
+						<table class="table align-middle">
+							<thead><tr><th>Article</th><th class="text-end">Commandé</th><th class="text-end">Livré</th><th class="text-end">Reste</th></tr></thead>
+							<tbody>
+								{% for l in b.lignes %}
+									{% set livre = b.statut == 'livre' ? l.quantiteLivree : 0 %}
+									<tr><td>{{ l.designation }}</td><td class="text-end">{{ l.quantiteCommandee }}</td><td class="text-end">{{ b.statut == 'livre' ? livre : '—' }}</td><td class="text-end">{% if b.statut == 'livre' and l.quantiteCommandee > livre %}<span class="si-tr-badge si-tr-reste">{{ l.quantiteCommandee - livre }}</span>{% else %}{{ b.statut == 'livre' ? 0 : '—' }}{% endif %}</td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</section>
+				<section class="card si-ac-bloc">
+					<h2>Preuves de livraison</h2>
+					<div class="si-tr-preuves">
+						{% for f in b.photos %}<a href="{{ path('app_livraisons_bl_preuve', {id: b.id, f: f}) }}" target="_blank"><img src="{{ path('app_livraisons_bl_preuve', {id: b.id, f: f}) }}" alt="Photo {{ loop.index }} de la remise"></a>{% endfor %}
+						{% if b.signature %}
+							<figure class="si-tr-sign"><img src="{{ path('app_livraisons_bl_preuve', {id: b.id, f: b.signature}) }}" alt="Signature du client"><figcaption>{{ b.signataire ?? 'Signature' }}</figcaption></figure>
+						{% else %}
+							<div class="si-tr-attente">Signature attendue</div>
+						{% endif %}
+					</div>
+				</section>
+			</div>
+
+			<aside>
+				<section class="card si-ac-bloc">
+					<h2>Encaissement à la livraison</h2>
+					<p class="d-flex justify-content-between mb-2"><span>Reste à payer</span><b>{{ reste|number_format(0, ',', ' ') }} F</b></p>
+					{% if b.paiementLivraison %}
+						<p class="si-p-ok mb-0">{{ b.paiementLivraison.montant|number_format(0, ',', ' ') }} F {{ attribute(constant('App\\Entity\\BonLivraison::MODES_ENCAISSEMENT'), b.encaisseMode) ?? '' }} · validé à la caisse.</p>
+					{% elseif b.encaissementProvisoire %}
+						<p class="mb-2"><b>{{ b.encaisseMontant|number_format(0, ',', ' ') }} F</b> · {{ attribute(constant('App\\Entity\\BonLivraison::MODES_ENCAISSEMENT'), b.encaisseMode) }} · {{ b.encaisseLe|date('d/m H:i') }}</p>
+						<p class="si-tr-provisoire">Saisi par le livreur : provisoire jusqu'à la validation à la caisse.</p>
+						{% if comptes is not empty %}
+							<form method="post" action="{{ path('app_livraisons_bl_encaissement', {id: b.id}) }}" class="si-py-form">
+								<input type="hidden" name="_token" value="{{ token }}">
+								<label>Compte qui reçoit<select name="compte" class="form-select form-select-sm" required><option value="">—</option>{% for c in comptes %}<option value="{{ c.id }}"{{ b.encaisseMode == 'orange_money' and 'orange' in c.nom|lower ? ' selected' }}>{{ c.nom }}</option>{% endfor %}</select></label>
+								<button class="btn btn-primary btn-sm">Valider l'encaissement</button>
+							</form>
+						{% endif %}
+					{% elseif b.encaisseMode == 'credit' %}
+						<p class="mb-0">Crédit client : rien encaissé à la livraison.</p>
+					{% else %}
+						<p class="text-muted mb-0">Rien encaissé pour l'instant.</p>
+					{% endif %}
+				</section>
+				<section class="card si-ac-bloc">
+					<h2>Planification</h2>
+					{% if b.statut == 'brouillon' %}<p class="si-pg-note">Le bon doit être validé (préparé) pour apparaître dans la tournée.</p>{% endif %}
+					<form method="post" action="{{ path('app_livraisons_bl_planifier', {id: b.id}) }}" class="si-py-form">
+						<input type="hidden" name="_token" value="{{ token }}">
+						<label>Livreur<select name="livreur" class="form-select form-select-sm"><option value="">—</option>{% for l in livreurs %}<option value="{{ l.id }}"{{ l == b.livreur ? ' selected' }}>{{ l|nom_pointage }}</option>{% endfor %}</select></label>
+						<label>Jour<input type="date" name="jour" class="form-control form-control-sm" value="{{ b.prevuLe ? b.prevuLe|date('Y-m-d') }}"></label>
+						<label>Créneau<input name="creneau" maxlength="20" class="form-control form-control-sm" value="{{ b.creneau }}" placeholder="14:00-16:00"></label>
+						<label>Ordre dans la tournée<input type="number" name="ordre" min="1" class="form-control form-control-sm" value="{{ b.ordreTournee }}"></label>
+						<button class="btn btn-primary btn-sm">Enregistrer</button>
+					</form>
+				</section>
+			</aside>
+		</div>
+	</div>
+{% endblock %}

@@ -46,6 +46,17 @@ Le montant en lettres est calculé par un petit service testé, en français, sa
 - Le livreur voit seulement ses tournées du jour : adresse, téléphone du réceptionnaire, articles et montant à encaisser. Il ne voit ni les prix d'achat, ni les marges, ni les autres clients.
 - Le lien de suivi du client montre sa livraison seulement : la position du livreur pendant la tournée, jamais son historique.
 
+### État (11/10/2026)
+
+Fait (L02, L03) :
+- Le bon de livraison porte la tournée : livreur, jour, créneau, ordre. Le bureau (droit Commandes ou admin) les règle sur « Tournée et remise » (`/livraisons/bl/{id}`), ouvert depuis le bon.
+- **Ma tournée** (`/livraisons/tournee`, mobile) : les livraisons du jour du livreur, la carte avec les arrêts numérotés (positions des fiches clients), les boutons Chargée, Je pars, Je suis arrivé, Itinéraire, Appeler, Remise. Un livreur arrive sur cette page à la connexion. Le bureau peut voir la tournée de chaque livreur.
+- **Remise** : quantités remises (remise partielle possible, le reste revient « prête à livrer »), photos, signature au doigt (obligatoire), encaissement Orange Money, espèces ou crédit client. Photos et signature sont rangées dans `var/uploads/livraisons`, hors du dossier public, visibles par le livreur de la livraison et le bureau.
+- **Encaissement** : provisoire sur le bon. À la boutique, une personne qui a le droit Encaissements choisit le compte et valide : le paiement est créé et validé, il entre en trésorerie. Avant, rien n'y entre.
+- Le détail (L02) montre les étapes avec leurs heures, le contenu commandé, livré et le reste, les preuves, l'encaissement et la planification.
+
+Reste : L01 (planning du jour de toutes les tournées avec la carte et « Prévenir les clients »), la position du livreur en direct, et L04 (suivi par le client, avec l'espace client J5). L'étape « Pose » de la maquette n'est pas encore là.
+
 ## Ordre proposé
 
 1. **D01 à D04 :** les documents servent tous les jours. Le montant en lettres et les mentions par société sont la base.

@@ -1,0 +1,18 @@
+{# Un arrêt de tournée. Variables : b, rang. #}
+{% set cli = b.commande.clients %}
+{% set etat = b.statut == 'livre' ? 'livree' : (b.enRouteLe ? 'encours' : 'avenir') %}
+<li class="card si-tr-arret si-tr-{{ etat }}">
+	<span class="si-tr-rang">{{ rang }}</span>
+	<div class="si-tr-info">
+		<b>{{ cli ? cli.nomComplet : (b.nomReceptionnaire ?? b.numero) }}</b>
+		<small>{{ b.lignes|map(l => l.designation ~ ' × ' ~ l.quantiteCommandee)|join(' · ') }}</small>
+		<small>{{ b.creneau ? 'Créneau ' ~ b.creneau ~ ' · ' }}{{ b.adresseLivraison ?? b.commande.adresseLivraison ?? (cli ? cli.repere : '') }}</small>
+	</div>
+	<div class="si-tr-etat">
+		{% if b.statut == 'livre' %}
+			<span class="si-tr-badge si-tr-ok">Livrée {{ b.livreLe|date('H:i') }}</span>
+		{% else %}
+			<span class="si-tr-badge">{{ b.etape ? attribute(constant('App\\Entity\\BonLivraison::ETAPES'), b.etape) : 'À venir' }}</span>
+		{% endif %}
+	</div>
+</li>

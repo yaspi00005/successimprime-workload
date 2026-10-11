@@ -4063,3 +4063,50 @@ body.si-param-bloque { overflow: hidden; }
 .si-py-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
 @media (max-width: 900px) { .si-py-voir { grid-template-columns: 1fr; } }
 .si-py h2 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+
+/* Livraisons : tournée et remise (L02, L03) */
+.si-tr-choix { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.si-tr-choix > * { width: auto; }
+.si-tr-jour { padding: 14px 16px; margin-bottom: 12px; }
+.si-tr-jour > div:first-child { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.si-tr-compte { font-size: 12px; font-weight: 700; color: #B45309; background: #FEF3C7; border-radius: 8px; padding: 2px 8px; }
+.si-tr-carte { height: 240px; margin-bottom: 12px; border-radius: 14px; }
+.si-tr-pin span { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; color: #fff; font-weight: 800; font-size: 13px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.si-tr-liste { list-style: none; padding: 0; margin: 0; }
+.si-tr-arret { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; margin: 0 0 8px; height: auto; }
+.si-tr-encours { border: 2px solid #DC2626; }
+.si-tr-rang { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; color: #fff; font-weight: 800; background: #94A3B8; }
+.si-tr-livree .si-tr-rang { background: #16A34A; }
+.si-tr-encours .si-tr-rang { background: #DC2626; }
+.si-tr-info { flex: 1; min-width: 0; }
+.si-tr-info b, .si-tr-info small { display: block; }
+.si-tr-info small { font-size: 12px; color: #64748B; }
+.si-tr-badge { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 2px 8px; background: #F1F5F9; color: #334155; white-space: nowrap; }
+.si-tr-ok { background: #DCFCE7; color: #166534; }
+.si-tr-reste { background: #FEF3C7; color: #B45309; }
+.si-tr-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 12px 40px; }
+.si-tr-ligne { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #EEF2F7; }
+.si-tr-ligne > span:nth-child(2) { flex: 1; }
+.si-tr-qte { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.si-tr-qte input { width: 70px; }
+.si-tr-signature { width: 100%; height: 160px; border: 2px dashed #CBD5E1; border-radius: 12px; touch-action: none; background: #fff; }
+.si-tr-modes { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-tr-mode { border: 1px solid #CBD5E1; border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+.si-tr-mode:has(input:checked) { background: #0F3D8C; color: #fff; border-color: #0F3D8C; }
+.si-tr-mode input { position: absolute; opacity: 0; }
+.si-tr-valider { padding: 14px; font-size: 16px; font-weight: 700; margin-bottom: 24px; }
+.si-tr-etapes { display: flex; justify-content: space-between; gap: 8px; padding: 18px 20px; margin-bottom: 16px; overflow-x: auto; }
+.si-tr-etape { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 80px; }
+.si-tr-etape span { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; border: 2px solid #CBD5E1; color: #64748B; font-weight: 800; margin-bottom: 4px; }
+.si-tr-fait span { background: #0F3D8C; border-color: #0F3D8C; color: #fff; }
+.si-tr-etape small { color: #64748B; }
+.si-tr-colonnes { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.si-tr-preuves { display: flex; flex-wrap: wrap; gap: 10px; }
+.si-tr-preuves img { width: 140px; height: 100px; object-fit: cover; border-radius: 10px; }
+.si-tr-sign img { object-fit: contain; background: #fff; border: 1px solid #E2E8F0; }
+.si-tr-sign figcaption { font-size: 12px; color: #64748B; }
+.si-tr-attente { width: 140px; height: 100px; border: 2px dashed #CBD5E1; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #64748B; font-size: 13px; text-align: center; }
+.si-tr-provisoire { background: #FFF7ED; color: #C2410C; border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+@media (max-width: 900px) { .si-tr-colonnes { grid-template-columns: 1fr; } }
+.si-tr h2 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+.si-tr-etapes.card { flex-direction: row; }

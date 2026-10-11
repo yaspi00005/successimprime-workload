@@ -162,7 +162,7 @@ final class UserAuthenticator extends AbstractLoginFormAuthenticator
          * ========================================================
          *
          * Un livreur n'a accès qu'à la livraison : il arrive
-         * toujours directement sur cette page, sans tenir compte
+         * toujours directement sur sa tournée du jour, sans tenir compte
          * d'une éventuelle page demandée avant la connexion.
          * ========================================================
          */
@@ -175,7 +175,7 @@ final class UserAuthenticator extends AbstractLoginFormAuthenticator
             && !$utilisateur->isAdmin()
         ) {
             return new RedirectResponse(
-                $this->urlGenerator->generate('app_livraisons_index')
+                $this->urlGenerator->generate('app_livraisons_tournee')
             );
         }
 

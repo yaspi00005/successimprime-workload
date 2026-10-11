@@ -1,0 +1,82 @@
+{% extends 'base.html.twig' %}
+
+{% set cli = b.commande.clients %}
+
+{% block title %}Remise · {{ cli ? cli.nomComplet : b.numero }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_livraisons_tournee') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Ma tournée</a></li>
+{% endblock %}
+
+{% block body %}
+	<form method="post" enctype="multipart/form-data" class="si-tr si-tr-remise" id="si-remise">
+		<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+		<section class="card si-ac-bloc">
+			<h2>À remettre</h2>
+			{% for l in b.lignes %}
+				<label class="si-tr-ligne">
+					<input type="checkbox" class="form-check-input" data-ligne="{{ l.id }}" checked>
+					<span>{{ l.designation }}</span>
+					<span class="si-tr-qte"><input type="number" name="quantites[{{ l.id }}]" min="0" max="{{ l.quantiteCommandee }}" value="{{ l.quantiteCommandee }}" class="form-control form-control-sm" aria-label="Quantité remise de {{ l.designation }}"> / {{ l.quantiteCommandee }}</span>
+				</label>
+			{% endfor %}
+			<p class="si-pg-note mb-0">Remise partielle : baissez la quantité, le reste sera livré plus tard.</p>
+		</section>
+
+		<section class="card si-ac-bloc">
+			<h2>Photos</h2>
+			<input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" capture="environment" multiple class="form-control form-control-sm">
+			<p class="si-pg-note mb-0">Le colis remis, la pose terminée… Jusqu'à 8 Mo par photo.</p>
+		</section>
+
+		<section class="card si-ac-bloc">
+			<h2>Signature du client</h2>
+			<canvas id="si-signature" class="si-tr-signature" width="600" height="220" aria-label="Zone de signature"></canvas>
+			<div class="d-flex gap-2 mt-2 align-items-center">
+				<input name="signataire" maxlength="120" class="form-control form-control-sm" placeholder="Nom de la personne qui signe" value="{{ b.nomReceptionnaire }}">
+				<button type="button" class="btn btn-light btn-sm si-btn-entete" id="si-effacer">Effacer</button>
+			</div>
+			<input type="hidden" name="signature" id="si-signature-png">
+		</section>
+
+		<section class="card si-ac-bloc">
+			<h2>Encaissement</h2>
+			{% if reste > 0 %}
+				<p class="mb-2">Reste à payer : <b>{{ reste|number_format(0, ',', ' ') }} F</b></p>
+				<div class="si-tr-modes" role="radiogroup" aria-label="Mode d'encaissement">
+					{% for k, v in constant('App\\Entity\\BonLivraison::MODES_ENCAISSEMENT') %}
+						<label class="si-tr-mode"><input type="radio" name="mode" value="{{ k }}"{{ loop.first ? ' checked' }}> {{ v }}</label>
+					{% endfor %}
+				</div>
+				<label class="mt-2 d-block" id="si-montant">Montant reçu (F)<input name="montant" inputmode="numeric" class="form-control" value="{{ reste }}"></label>
+				<p class="si-pg-note mb-0">Provisoire : l'argent ou la preuve Orange Money est validé à la caisse, à la boutique.</p>
+			{% else %}
+				<p class="si-p-ok mb-0">Commande déjà payée : rien à encaisser.</p>
+			{% endif %}
+		</section>
+
+		<button class="btn btn-success w-100 si-tr-valider">Valider la remise</button>
+	</form>
+	<script>
+	(function () {
+		var c = document.getElementById('si-signature'), ctx = c.getContext('2d'), trace = false, signe = false;
+		ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#0F172A';
+		function pos(e) { var r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; }
+		c.addEventListener('pointerdown', function (e) { trace = true; signe = true; c.setPointerCapture(e.pointerId); var p = pos(e); ctx.beginPath(); ctx.moveTo(p[0], p[1]); });
+		c.addEventListener('pointermove', function (e) { if (!trace) return; var p = pos(e); ctx.lineTo(p[0], p[1]); ctx.stroke(); });
+		c.addEventListener('pointerup', function () { trace = false; });
+		document.getElementById('si-effacer').addEventListener('click', function () { ctx.clearRect(0, 0, c.width, c.height); signe = false; });
+		document.querySelectorAll('[data-ligne]').forEach(function (cb) {
+			var q = cb.closest('label').querySelector('input[type=number]');
+			cb.addEventListener('change', function () { q.value = cb.checked ? q.max : 0; });
+			q.addEventListener('input', function () { cb.checked = parseInt(q.value, 10) > 0; });
+		});
+		var montant = document.getElementById('si-montant');
+		document.querySelectorAll('input[name=mode]').forEach(function (r) { r.addEventListener('change', function () { if (montant) montant.hidden = r.value === 'credit' && r.checked; }); });
+		document.getElementById('si-remise').addEventListener('submit', function (e) {
+			if (!signe) { e.preventDefault(); alert('La signature du client est obligatoire.'); return; }
+			document.getElementById('si-signature-png').value = c.toDataURL('image/png');
+		});
+	})();
+	</script>
+{% endblock %}

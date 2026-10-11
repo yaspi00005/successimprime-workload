@@ -51,6 +51,13 @@
 					Imprimer
 				</a>
 
+				{% if is_granted('ROLE_ADMIN') or is_granted('ROLE_COMMANDE') %}
+					<a href="{{ path('app_livraisons_bl', {id: bon.id}) }}" class="btn btn-success ml-2">
+						<i class="fa fa-route mr-1"></i>
+						Tournée et remise
+					</a>
+				{% endif %}
+
 			</div>
 
 		</div>

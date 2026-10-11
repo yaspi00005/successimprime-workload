@@ -44,6 +44,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
         ],
         'atelier' => [
+            ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
             ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_']],
             ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_achat_', 'app_fournisseur_', 'app_consommables_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
             ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
@@ -84,6 +85,7 @@ final class NavigationExtension extends AbstractExtension
         'app_bons_livraison_' => 'ventes',
         'app_bon_livraison_' => 'ventes',
         'app_production_' => 'atelier',
+        'app_atelier_' => 'atelier',
         'app_controle_pre_presse_' => 'atelier',
         'app_consommables_' => 'atelier',
         'app_stock_' => 'atelier',

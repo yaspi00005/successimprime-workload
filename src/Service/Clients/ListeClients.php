@@ -195,14 +195,15 @@ final class ListeClients
         $il60 = $maintenant->modify('-'.self::INACTIF_JOURS.' days');
         $mois = $maintenant->modify('first day of this month')->setTime(0, 0);
         $actifs = $nouveauxMois = $inactifs = 0;
-        foreach ($commandes as $a) {
+        foreach ($commandes as $id => $a) {
             if (null !== $a['derniere'] && $a['derniere'] >= $il12) {
                 ++$actifs;
             }
             if (null !== $a['premiere'] && $a['premiere'] >= $mois) {
                 ++$nouveauxMois;
             }
-            if (null !== $a['derniere'] && $a['derniere'] < $il60) {
+            // Même règle que le statut « Inactif » : un client en retard de paiement est « Relance ».
+            if (null !== $a['derniere'] && $a['derniere'] < $il60 && ($soldes[$id]['echu'] ?? 0) <= 0) {
                 ++$inactifs;
             }
         }

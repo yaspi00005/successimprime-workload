@@ -92,6 +92,21 @@ final class MachinesController extends AbstractController
         return $this->redirectToRoute('app_machines_index', ['_fragment' => 'plan']);
     }
 
+    /** Amortissement à l'usage : capacité prévue et valeur résiduelle (docs/immobilisations-primes.md). */
+    #[Route('/{id}/amortissement', name: 'amortissement', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function amortissement(Machines $machine, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('amortissement-machine-'.$machine->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+        $nombre = static fn (string $cle): ?int => ($v = preg_replace('/\D/', '', (string) $request->request->get($cle))) !== '' ? (int) $v : null;
+        $machine->setCapaciteUsage(($c = $nombre('capacite')) !== null ? (float) $c : null)->setValeurResiduelle($nombre('residuelle'));
+        $em->flush();
+        $this->addFlash('success', 'Amortissement de '.$machine->getNom().' enregistré.');
+
+        return $this->redirectToRoute('app_machines_index', ['_fragment' => 'plan']);
+    }
+
     /** Montage d'impression : marge et feuilles acceptées par la machine (vide = réglage de la tuile). */
     #[Route('/{id}/montage', name: 'montage', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function montage(Machines $machine, Request $request, EntityManagerInterface $em): Response

@@ -95,6 +95,22 @@
 					</form>
 				</details>
 			{% endfor %}
+			<h2 class="mt-3">Amortissement {{ reglage('machines', 'amortissement') == 'usage' ? 'à l\'usage' : 'linéaire' }}</h2>
+			{% for carte in cartes %}
+				{% set m = carte.machine %}
+				<details class="si-plan">
+					<summary><strong>{{ m.nom }}</strong> <span class="text-muted">{{ m.coutUsageUnitaire is not null ? m.coutUsageUnitaire|number_format(0, ',', ' ') ~ ' F / ' ~ m.uniteUsage : 'capacité à définir' }}</span></summary>
+					<form method="post" action="{{ path('app_machines_amortissement', {id: m.id}) }}">
+						<input type="hidden" name="_token" value="{{ csrf_token('amortissement-machine-' ~ m.id) }}">
+						<label class="form-label small mb-1" for="cap-{{ m.id }}">Capacité prévue ({{ m.uniteUsage }})</label>
+						<input class="form-control form-control-sm" id="cap-{{ m.id }}" name="capacite" inputmode="numeric" value="{{ m.capaciteUsage }}" placeholder="60000">
+						<label class="form-label small mb-1 mt-2" for="res-{{ m.id }}">Valeur résiduelle (F)</label>
+						<input class="form-control form-control-sm" id="res-{{ m.id }}" name="residuelle" inputmode="numeric" value="{{ m.valeurResiduelle }}" placeholder="0">
+						<p class="si-pg-note mt-2 mb-0">Prix d'achat {{ m.prixAchat ? m.prixAchat|number_format(0, ',', ' ') ~ ' F' : 'à saisir dans la fiche' }} · usage compté {{ m.usage|number_format(0, ',', ' ') }} {{ m.uniteUsage }}{% if m.coutUsageUnitaire is not null %} · valeur nette {{ max(m.valeurResiduelle ?? 0, m.prixAchat - min(m.usage * m.coutUsageUnitaire, m.baseAmortissable))|number_format(0, ',', ' ') }} F{% endif %}</p>
+						<button class="btn btn-sm btn-outline-primary mt-2">Enregistrer</button>
+					</form>
+				</details>
+			{% endfor %}
 			{% set feuille = cartes|filter(c => c.machine.modeFacturation == 'feuille') %}
 			{% if feuille is not empty %}
 				<h2 class="mt-3">Montage d'impression</h2>

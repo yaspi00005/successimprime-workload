@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\CommandesDetails;
 use App\Entity\Machines;
 use App\Repository\MachinesRepository;
+use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -16,7 +17,8 @@ class MachineRentabiliteService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly MachinesRepository $machinesRepository
+        private readonly MachinesRepository $machinesRepository,
+        private readonly ?Parametres $parametres = null,
     ) {
     }
 
@@ -42,7 +44,8 @@ class MachineRentabiliteService
         $revenuTotal = $machine->getRevenuAvantSuivi() + $revenuCommandes;
 
         $chargeMaintenance = $this->chargeMaintenance($machine);
-        $chargeAmortissement = $this->chargeAmortissementCumulee($machine);
+        $amortissement = AmortissementMachine::cumul($machine, (string) ($this->parametres?->valeur('machines', 'amortissement') ?? AmortissementMachine::LINEAIRE), new \DateTimeImmutable());
+        $chargeAmortissement = $amortissement['charge'];
 
         return [
             'machine' => $machine,
@@ -50,6 +53,7 @@ class MachineRentabiliteService
             'revenuCommandes' => $revenuCommandes,
             'revenuTotal' => $revenuTotal,
             'chargeAmortissement' => $chargeAmortissement,
+            'methodeAmortissement' => $amortissement['methode'],
             'chargeMaintenance' => $chargeMaintenance,
             'margeNette' => $revenuTotal - $chargeAmortissement - $chargeMaintenance,
         ];
@@ -88,42 +92,6 @@ class MachineRentabiliteService
         }
 
         return $total;
-    }
-
-    /**
-     * Charge d'amortissement déjà "consommée" depuis la mise en
-     * service (ou l'achat), plafonnée au prix d'achat total.
-     */
-    private function chargeAmortissementCumulee(Machines $machine): float
-    {
-        $chargeMensuelle = $machine->getChargeAmortissementMensuelle();
-
-        if ($chargeMensuelle === null) {
-            return 0.0;
-        }
-
-        $depart = $machine->getDateMiseService() ?? $machine->getDateAchat();
-
-        if ($depart === null) {
-            return 0.0;
-        }
-
-        $maintenant = new \DateTime();
-        $moisEcoules = $this->moisEcoules($depart, $maintenant);
-        $moisEcoules = max(0, min($moisEcoules, $machine->getDureeAmortissementMois()));
-
-        return $chargeMensuelle * $moisEcoules;
-    }
-
-    private function moisEcoules(\DateTime $depart, \DateTime $maintenant): int
-    {
-        if ($depart > $maintenant) {
-            return 0;
-        }
-
-        $intervalle = $depart->diff($maintenant);
-
-        return ($intervalle->y * 12) + $intervalle->m;
     }
 
     private function nettoyerMontant(?string $valeur): float

@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Service\Parametres\Parametres;
 use App\Entity\Articles;
 use App\Entity\CommandesDetails;
 use App\Entity\Machines;
@@ -28,6 +29,17 @@ final class CalculateurCoutRevient
      * l'amortissement quand la machine n'en a pas.
      */
     private const HEURES_PAR_MOIS = 200;
+
+    /*
+     * Methode de la tuile Machines. A l'usage, l'amortissement d'un
+     * travail = unites imprimees x cout par unite ; le cout horaire ne
+     * se deduit plus alors du prix d'achat (il ne compterait deux fois).
+     */
+    public function __construct(
+        private readonly ?Parametres $parametres = null,
+        private readonly ?string $methodeAmortissement = null,
+    ) {
+    }
 
     /**
      * @return array{
@@ -109,12 +121,22 @@ final class CalculateurCoutRevient
                 $encre = (int) round($surfaceImprimee * $machine->getCoutEncreM2());
             }
 
-            $coutHoraire = self::coutHoraire($machine);
+            $usage = AmortissementMachine::pourTravail($machine, $this->methodeAmortissement ?? (string) ($this->parametres?->valeur('machines', 'amortissement') ?? AmortissementMachine::LINEAIRE), $surfaceImprimee);
 
-            if (null === $machine->getVitesseM2Heure() || null === $coutHoraire) {
-                $manquants[] = sprintf('vitesse ou coût horaire de %s', $machine->getNom());
+            if (null !== $usage) {
+                $tempsMachine = $usage;
+
+                if (null !== $machine->getCoutHoraire() && null !== $machine->getVitesseM2Heure()) {
+                    $tempsMachine += (int) round($surfaceImprimee / $machine->getVitesseM2Heure() * $machine->getCoutHoraire());
+                }
             } else {
-                $tempsMachine = (int) round($surfaceImprimee / $machine->getVitesseM2Heure() * $coutHoraire);
+                $coutHoraire = self::coutHoraire($machine);
+
+                if (null === $machine->getVitesseM2Heure() || null === $coutHoraire) {
+                    $manquants[] = sprintf('vitesse ou coût horaire de %s', $machine->getNom());
+                } else {
+                    $tempsMachine = (int) round($surfaceImprimee / $machine->getVitesseM2Heure() * $coutHoraire);
+                }
             }
         }
 

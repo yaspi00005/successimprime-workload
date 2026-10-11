@@ -41,6 +41,16 @@ Chaque machine s'amortit selon son usage réel, avec une unité propre :
   - coût complet par page : amortissement, plus toner, plus entretien (`Maintenance`) ;
   - valeur nette.
 
+### État (11/10/2026)
+
+Fait (M01) :
+- Méthode choisie dans la tuile Machines : à l'usage (par défaut) ou linéaire.
+- Sur l'écran Machines, section « Amortissement » : capacité prévue (m² pour le grand format, pages A4 pour les machines à la feuille) et valeur résiduelle. Le coût par unité et la valeur nette sont affichés.
+- À l'usage, l'usage vient des compteurs de la machine (m² ou feuilles A4-équivalent, alimentés par la production terminée). La rentabilité prend usage × coût par unité, plafonné au montant à amortir ; le coût de revient d'une ligne prend unités imprimées × coût par unité. Le coût horaire saisi s'ajoute alors (électricité, opérateur) ; il n'est plus déduit du prix d'achat.
+- Une machine sans capacité prévue reste en linéaire.
+
+Reste : unités propres au DTF (mètre de film), au PVC et à la sublimation ; relevés de compteurs de la Canon (M02) ; code IMM et registre (M03, M04).
+
 ## Patrimoine et registre (M03, M04)
 
 Le patrimoine couvre tous les biens, pas seulement les machines : ordinateurs, chaises, tables, motos, climatiseurs, groupe électrogène…

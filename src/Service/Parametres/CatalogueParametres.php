@@ -28,7 +28,6 @@ final class CatalogueParametres
     ];
 
     /** Note des tuiles dont les valeurs ne sont pas encore lues par un module. */
-    private const NOTE_A_BRANCHER = 'Valeurs enregistrées ; elles seront appliquées quand le module %s sera en place.';
 
     /**
      * @return array<string, array{famille: string, libelle: string, icone: string, roles: list<string>, route: ?string, champs: list<array<string, mixed>>, motsCles: list<string>, note?: string}>
@@ -128,7 +127,7 @@ final class CatalogueParametres
                     ['cle' => 'amortissement', 'type' => 'choix', 'libelle' => 'Amortissement', 'options' => ['usage' => 'À l\'usage (m² imprimés)', 'lineaire' => 'Linéaire (par mois)'], 'defaut' => 'usage'],
                 ],
                 'motsCles' => ['Amortissement des machines', 'Maintenance · pannes', 'Coût machine par m²'],
-                'note' => \sprintf(self::NOTE_A_BRANCHER, 'd\'amortissement'),
+                'note' => 'À l\'usage, chaque m² ou page A4 imprimé coûte (prix d\'achat − valeur résiduelle) ÷ capacité prévue, dans le coût de revient et la rentabilité. Capacité et valeur résiduelle se règlent sur l\'écran Machines ; une machine sans capacité reste en linéaire.',
             ],
             'stock' => [
                 'famille' => 'atelier', 'libelle' => 'Stock et alertes', 'icone' => 'fa-cube',

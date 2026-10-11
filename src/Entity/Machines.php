@@ -101,6 +101,14 @@ class Machines
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $planPreventif = null;
 
+    /** Amortissement à l'usage : capacité prévue sur la vie de la machine (m² ou pages A4). */
+    #[ORM\Column(nullable: true)]
+    private ?float $capaciteUsage = null;
+
+    /** Amortissement à l'usage : valeur résiduelle en fin de vie (F). */
+    #[ORM\Column(nullable: true)]
+    private ?int $valeurResiduelle = null;
+
     /** Montage d'impression : marge non imprimable de la machine (mm). */
     #[ORM\Column(nullable: true)]
     private ?float $margeMontageMm = null;
@@ -684,5 +692,64 @@ public function setAdresseIp(string $adresseIp): static
         $this->formatsMontage = $formats !== [] ? implode(',', $formats) : null;
 
         return $this;
+    }
+
+    public function getCapaciteUsage(): ?float
+    {
+        return $this->capaciteUsage;
+    }
+
+    public function setCapaciteUsage(?float $capacite): static
+    {
+        $this->capaciteUsage = $capacite !== null && $capacite > 0 ? $capacite : null;
+
+        return $this;
+    }
+
+    public function getValeurResiduelle(): ?int
+    {
+        return $this->valeurResiduelle;
+    }
+
+    public function setValeurResiduelle(?int $valeur): static
+    {
+        $this->valeurResiduelle = $valeur !== null && $valeur >= 0 ? $valeur : null;
+
+        return $this;
+    }
+
+    /** Unité d'usage : m² pour le grand format, page A4 pour les machines à la feuille. */
+    public function uniteUsage(): string
+    {
+        return $this->utiliseFeuille() ? 'page A4' : 'm²';
+    }
+
+    /** Surface imprimée convertie dans l'unité d'usage de la machine. */
+    public function usagePour(float $surfaceM2): float
+    {
+        return $this->utiliseFeuille() ? $surfaceM2 / self::SURFACE_A4_M2 : $surfaceM2;
+    }
+
+    /** Usage compté depuis la mise en service, dans l'unité de la machine. */
+    public function usage(): float
+    {
+        return $this->utiliseFeuille() ? (float) $this->compteurFeuilles : (float) ($this->compteurM2 ?? 0);
+    }
+
+    /** Montant à amortir : prix d'achat moins valeur résiduelle. */
+    public function baseAmortissable(): ?int
+    {
+        return $this->prixAchat !== null ? max(0, $this->prixAchat - ($this->valeurResiduelle ?? 0)) : null;
+    }
+
+    /**
+     * Amortissement par unité d'usage : (prix d'achat − valeur résiduelle)
+     * ÷ capacité prévue. Exemple : 18 000 000 F, 0 F, 60 000 m² → 300 F/m².
+     */
+    public function coutUsageUnitaire(): ?float
+    {
+        $base = $this->baseAmortissable();
+
+        return $base !== null && $this->capaciteUsage !== null && $this->capaciteUsage > 0 ? $base / $this->capaciteUsage : null;
     }
 }

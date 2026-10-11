@@ -47,6 +47,7 @@ final class CatalogueStock
 
         $entrees = $this->sommes(StockEntrees::class, 'quantites', $articles);
         $sorties = $this->sommes(StockSorties::class, 'quantite', $articles);
+        $sorties30 = $this->sommes(StockSorties::class, 'quantite', $articles, null, $maintenant->modify('-30 days'));
         $reserves = $this->sommes(StockReservation::class, 'quantite', $articles, StockReservation::STATUT_ACTIVE);
         $dernieresSorties = $this->dernieresDates(StockSorties::class, $articles);
         $dernieresEntrees = $this->dernieresDates(StockEntrees::class, $articles);
@@ -64,6 +65,7 @@ final class CatalogueStock
                 'article' => $article,
                 'physique' => $physique,
                 'reserve' => $reserve,
+                'conso30' => $sorties30[$id] ?? 0.0,
                 'disponible' => $disponible,
                 'valeur' => (int) round($physique * ($article->getCoutUnitaireStock() ?? 0)),
                 'niveau' => self::niveau($physique, $article->getStockMin(), $article->getStockMax()),
@@ -97,6 +99,26 @@ final class CatalogueStock
             'sousSeuil' => \count(array_filter($lignes, static fn (array $l) => $l['etat'] === self::ETAT_COMMANDER)),
             'dormants' => \count(array_filter($lignes, static fn (array $l) => $l['dormant'])),
         ];
+    }
+
+    /**
+     * Quantité à commander pour revenir au maximum (à défaut trois fois
+     * le seuil), arrondie à l'unité d'achat entière.
+     *
+     * @return array{quantite: float, unitesAchat: ?int}
+     */
+    public static function aCommander(Articles $article, float $disponible): array
+    {
+        $cible = $article->getStockMax() ?? $article->getStockMin() * 3;
+        $manque = max(0.0, $cible - $disponible);
+        $facteur = $article->getFacteurConversion();
+        if ($article->getUniteAchat() && $facteur > 0 && $facteur != 1.0) {
+            $unites = (int) max(1, ceil($manque / $facteur));
+
+            return ['quantite' => $unites * $facteur, 'unitesAchat' => $unites];
+        }
+
+        return ['quantite' => ceil(max($manque, $article->getStockMin())), 'unitesAchat' => null];
     }
 
     public static function etat(float $disponible, float $minimum): string
@@ -243,7 +265,7 @@ final class CatalogueStock
      *
      * @return array<int, float>
      */
-    private function sommes(string $classe, string $champ, array $articles, ?string $statut = null): array
+    private function sommes(string $classe, string $champ, array $articles, ?string $statut = null, ?\DateTimeImmutable $depuis = null): array
     {
         $qb = $this->em->createQueryBuilder()
             ->select(sprintf('IDENTITY(x.article) AS article, COALESCE(SUM(x.%s), 0) AS total', $champ))
@@ -254,6 +276,10 @@ final class CatalogueStock
 
         if ($statut !== null) {
             $qb->andWhere('x.statut = :statut')->setParameter('statut', $statut);
+        }
+
+        if ($depuis !== null) {
+            $qb->andWhere('x.date >= :depuis')->setParameter('depuis', $depuis);
         }
 
         $totaux = [];

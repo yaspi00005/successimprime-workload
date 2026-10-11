@@ -1,0 +1,79 @@
+{% extends 'base.html.twig' %}
+{% import 'stock_articles/_macros.html.twig' as m %}
+
+{% block title %}Inventaire du stock{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_stock_articles_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Stock</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<form method="post" class="card si-bloc si-inventaire" id="form-inventaire">
+		<input type="hidden" name="_token" value="{{ csrf_token('inventaire-stock') }}">
+		<p class="text-muted">Saisissez ce que vous comptez, rayon par rayon. Laissez vide ce qui n'a pas été compté : seules les quantités saisies ajustent le stock (motif « Comptage »).</p>
+		<div class="table-responsive">
+			<table class="table si-table align-middle mb-0">
+				<thead>
+					<tr>
+						<th>Emplacement</th>
+						<th>Article</th>
+						<th class="text-end">Enregistré</th>
+						<th class="si-inventaire-compte">Compté</th>
+						<th class="text-end si-masque-mobile">Écart</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for ligne in lignes %}
+						{% set a = ligne.article %}
+						<tr>
+							<td class="text-muted">{{ a.emplacement ?? '—' }}</td>
+							<td><span class="fw-semibold">{{ a.designation }}</span> <small class="text-muted">{{ a.reference }}</small></td>
+							<td class="text-end text-nowrap">{{ m.q(ligne.physique) }} {{ a.uniteCourte }}</td>
+							<td class="si-inventaire-compte">
+								<label class="visually-hidden" for="compte-{{ a.id }}">Quantité comptée de {{ a.designation }}</label>
+								<div class="input-group input-group-sm">
+									<input type="text" inputmode="decimal" class="form-control text-end js-compte" id="compte-{{ a.id }}" name="compte[{{ a.id }}]" data-enregistre="{{ ligne.physique }}" autocomplete="off">
+									<span class="input-group-text">{{ a.uniteCourte }}</span>
+								</div>
+							</td>
+							<td class="text-end text-nowrap si-masque-mobile js-ecart">—</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+		<div class="si-pp-actions mt-3 mb-0">
+			<span class="me-auto text-muted js-resume">Aucune quantité saisie.</span>
+			<button type="submit" class="btn btn-danger"><i class="fas fa-check me-1"></i>Enregistrer l'inventaire</button>
+		</div>
+	</form>
+{% endblock %}
+
+{% block javascripts %}
+	<script>
+		(() => {
+			const formulaire = document.getElementById('form-inventaire');
+			const lire = (v) => { const n = parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return Number.isFinite(n) ? n : null; };
+			const majResume = () => {
+				let saisis = 0, ecarts = 0;
+				formulaire.querySelectorAll('.js-compte').forEach((champ) => {
+					const cellule = champ.closest('tr').querySelector('.js-ecart');
+					const compte = lire(champ.value);
+					if (champ.value.trim() === '' || compte === null) { cellule.textContent = '—'; cellule.className = 'text-end text-nowrap si-masque-mobile js-ecart'; return; }
+					saisis++;
+					const ecart = Math.round((compte - Number(champ.dataset.enregistre)) * 1000) / 1000;
+					if (ecart !== 0) ecarts++;
+					cellule.textContent = (ecart > 0 ? '+' : '') + ecart.toLocaleString('fr-FR');
+					cellule.className = 'text-end text-nowrap si-masque-mobile js-ecart fw-semibold ' + (ecart < 0 ? 'text-danger' : ecart > 0 ? 'text-success' : '');
+				});
+				formulaire.querySelector('.js-resume').textContent = saisis === 0 ? 'Aucune quantité saisie.' : `${saisis} article${saisis > 1 ? 's' : ''} compté${saisis > 1 ? 's' : ''}, ${ecarts} écart${ecarts > 1 ? 's' : ''}.`;
+			};
+			formulaire.addEventListener('input', majResume);
+			formulaire.addEventListener('submit', (e) => {
+				if (!window.confirm(formulaire.querySelector('.js-resume').textContent + ' Ajuster le stock ?')) e.preventDefault();
+			});
+		})();
+	</script>
+{% endblock %}

@@ -71,6 +71,7 @@ final class StockArticlesController extends AbstractController
 
         return $this->render('stock_articles/index.html.twig', [
             'lignes' => $lignes,
+            'lignes_toutes' => $toutes,
             'indicateurs' => $indicateurs,
             'familles' => $this->familles->dansLOrdre(),
             'filtre' => $filtre,
@@ -170,6 +171,91 @@ final class StockArticlesController extends AbstractController
             return $this->redirectToRoute('app_stock_articles_fiche', ['id' => $article->getId()]);
         }
 
+        $ecart = $this->ajusterAuCompte($article, $compte, $motif);
+
+        $this->addFlash('success', $ecart == 0
+            ? 'Le stock compté correspond déjà au stock enregistré.'
+            : sprintf('Stock ajusté de %s%s %s (%s).', $ecart > 0 ? '+' : '−', self::format(abs($ecart)), $article->getUniteCourte(), $motif));
+
+        return $this->redirectToRoute('app_stock_articles_fiche', ['id' => $article->getId()]);
+    }
+
+    /**
+     * Inventaire (maquette 26) : une feuille de comptage pour tous les
+     * articles actifs ; chaque quantité saisie ajuste le stock.
+     */
+    #[Route('/inventaire', name: 'inventaire', methods: ['GET', 'POST'])]
+    public function inventaire(Request $request): Response
+    {
+        $maintenant = new \DateTimeImmutable();
+        $lignes = $this->catalogue->lignes($this->articles->findBy(['actif' => true], ['emplacement' => 'ASC', 'reference' => 'ASC']), $maintenant);
+
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('inventaire-stock', (string) $request->request->get('_token'))) {
+                throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+            }
+            $comptes = $request->request->all('compte');
+            $ajustes = 0;
+            $erreurs = 0;
+            foreach ($lignes as $ligne) {
+                $article = $ligne['article'];
+                $saisi = $comptes[$article->getId()] ?? '';
+                if (trim((string) $saisi) === '') {
+                    continue;
+                }
+                $compte = self::nombre($saisi);
+                if ($compte === null || $compte < 0) {
+                    ++$erreurs;
+                    continue;
+                }
+                $ajustes += $this->ajusterAuCompte($article, $compte, 'Comptage') != 0 ? 1 : 0;
+            }
+            $this->addFlash($erreurs > 0 ? 'warning' : 'success', sprintf(
+                'Inventaire enregistré : %d article%s ajusté%s.%s',
+                $ajustes,
+                $ajustes > 1 ? 's' : '',
+                $ajustes > 1 ? 's' : '',
+                $erreurs > 0 ? sprintf(' %d quantité%s illisible%s ignorée%s.', $erreurs, $erreurs > 1 ? 's' : '', $erreurs > 1 ? 's' : '', $erreurs > 1 ? 's' : '') : ''
+            ));
+
+            return $this->redirectToRoute('app_stock_articles_index');
+        }
+
+        return $this->render('stock_articles/inventaire.html.twig', ['lignes' => $lignes]);
+    }
+
+    /**
+     * Bon de commande (maquette 26) : les articles sous le seuil,
+     * regroupés par fournisseur, avec la quantité pour revenir au maximum.
+     */
+    #[Route('/a-commander', name: 'a_commander', methods: ['GET'])]
+    public function aCommander(): Response
+    {
+        $lignes = $this->catalogue->lignes($this->articles->findBy(['actif' => true], ['reference' => 'ASC']), new \DateTimeImmutable());
+        $parFournisseur = [];
+        foreach ($lignes as $ligne) {
+            if ($ligne['etat'] !== CatalogueStock::ETAT_COMMANDER) {
+                continue;
+            }
+            $lien = $ligne['article']->getFournisseurPrincipal();
+            $cle = $lien?->getFournisseur()?->getId() ?? 0;
+            $parFournisseur[$cle] ??= ['fournisseur' => $lien?->getFournisseur(), 'lignes' => [], 'total' => 0];
+            $quantite = CatalogueStock::aCommander($ligne['article'], $ligne['disponible']);
+            $prix = $lien?->getPrixAchat();
+            $parFournisseur[$cle]['lignes'][] = $ligne + $quantite + ['lien' => $lien];
+            if ($prix !== null) {
+                $parFournisseur[$cle]['total'] += (int) round($prix * ($quantite['unitesAchat'] ?? $quantite['quantite']));
+            }
+        }
+        // Les articles sans fournisseur à la fin.
+        uksort($parFournisseur, static fn (int $a, int $b): int => ($a === 0) <=> ($b === 0) ?: $a <=> $b);
+
+        return $this->render('stock_articles/a_commander.html.twig', ['fournisseurs' => array_values($parFournisseur)]);
+    }
+
+    /** Écart compté − enregistré, passé en entrée ou en sortie. */
+    private function ajusterAuCompte(Articles $article, float $compte, string $motif): float
+    {
         $ecart = round($compte - $this->stock->getStockPhysique($article), 3);
         $reference = mb_substr(sprintf('Ajustement · %s · %s', $motif, $this->getUser()?->getUserIdentifier()), 0, 100);
 
@@ -185,11 +271,7 @@ final class StockArticlesController extends AbstractController
             $this->stock->enregistrerConsommableManuel(null, $article, -$ecart, $reference);
         }
 
-        $this->addFlash('success', $ecart == 0
-            ? 'Le stock compté correspond déjà au stock enregistré.'
-            : sprintf('Stock ajusté de %s%s %s (%s).', $ecart > 0 ? '+' : '−', self::format(abs($ecart)), $article->getUniteCourte(), $motif));
-
-        return $this->redirectToRoute('app_stock_articles_fiche', ['id' => $article->getId()]);
+        return $ecart;
     }
 
     private function formulaire(Articles $article, Request $request, FournisseursRepository $fournisseurs, MachinesRepository $machines): Response

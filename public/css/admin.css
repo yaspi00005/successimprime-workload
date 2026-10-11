@@ -2849,3 +2849,26 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
 }
 .si-pp-formulaire .form-check { display: flex; gap: 8px; align-items: flex-start; padding-left: 0; min-height: 0; margin-bottom: 0; }
 .si-pp-formulaire .form-check-input { float: none; flex: none; margin: 2px 0 0; }
+
+/* ---------- Stock consommables (maquette 26) ---------- */
+.si-encres { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.si-encre { border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 16px 18px; color: inherit; text-decoration: none; display: flex; flex-direction: column; gap: 10px; }
+.si-encre:hover { color: inherit; transform: translateY(-2px); transition: transform .12s; }
+.si-encre-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.si-encre-tete strong { font-size: 15px; color: #0F172A; }
+.si-encre-tete small { color: #64748B; font-size: 12px; white-space: nowrap; }
+.si-encre-bidon {
+  position: relative; height: 96px; border-radius: 10px; overflow: hidden;
+  background: linear-gradient(to top, var(--si-encre) var(--si-niveau), #F1F5F9 var(--si-niveau));
+}
+.si-encre-pourcent { position: absolute; top: 10px; left: 12px; font-size: 22px; font-weight: 800; color: #0F172A; }
+.si-encre-alerte { font-size: 12.5px; font-weight: 700; color: #DC2626; }
+.si-encre-bientot { color: #C2410C; }
+.si-stock-outils { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.si-inventaire-compte { width: 170px; }
+.si-bon-commande { margin-bottom: 20px; }
+.si-bon-commande h2 { font-size: 16px; font-weight: 700; margin: 0; }
+@media print {
+  .dlabnav, .nav-header, .header, .si-onglets, .footer, .d-print-none { display: none !important; }
+  .content-body { margin-left: 0 !important; padding-top: 0 !important; }
+}

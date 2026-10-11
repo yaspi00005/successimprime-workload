@@ -4110,3 +4110,12 @@ body.si-param-bloque { overflow: hidden; }
 @media (max-width: 900px) { .si-tr-colonnes { grid-template-columns: 1fr; } }
 .si-tr h2 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
 .si-tr-etapes.card { flex-direction: row; }
+.si-tr-colonnes-carte { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.si-tr-carte-grande { height: 460px; }
+.si-tr-leg { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 2px 0 8px; }
+.si-tr-lien { color: inherit; text-decoration: none; display: block; }
+.si-tr-arret:has(.si-tr-lien):hover { border-color: #0F3D8C; }
+.si-tr-paiement { list-style: none; margin: -6px 0 8px 40px; font-size: 12px; color: #475569; }
+.si-tr-planning .si-ac-kpis .card span { display: block; font-size: 12px; }
+@media (max-width: 900px) { .si-tr-colonnes-carte { grid-template-columns: 1fr; } .si-tr-carte-grande { height: 280px; } }
+.si-tr-arret.card { flex-direction: row; }

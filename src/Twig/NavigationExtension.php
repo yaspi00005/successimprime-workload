@@ -41,6 +41,7 @@ final class NavigationExtension extends AbstractExtension
         'ventes' => [
             ['libelle' => 'Devis et commandes', 'route' => 'app_ventes_index', 'role' => ['ROLE_COMMANDE', 'ROLE_DEVIS'], 'prefixes' => ['app_ventes_', 'app_commandes_', 'app_commande_catalogue_', 'app_brouillon_', 'app_devis_']],
             ['libelle' => 'À retirer', 'route' => 'app_livraisons_a_retirer', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_a_retirer']],
+            ['libelle' => 'Planning des livraisons', 'route' => 'app_livraisons_planning', 'role' => ['ROLE_ADMIN', 'ROLE_COMMANDE'], 'prefixes' => ['app_livraisons_planning', 'app_livraisons_bl']],
             ['libelle' => 'Ma tournée', 'route' => 'app_livraisons_tournee', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_tournee', 'app_livraisons_remise']],
             ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
             ['libelle' => 'Mes actions', 'route' => 'app_actions_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_actions_']],

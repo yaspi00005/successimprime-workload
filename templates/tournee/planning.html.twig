@@ -1,0 +1,98 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+
+{% block title %}Livraisons · {{ jour|date_fr('EEE d/MM') }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_livraisons_planning', {jour: jour|date_modify('-1 day')|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete">‹ Hier</a></li>
+	<li class="nav-item"><a href="{{ path('app_livraisons_planning', {jour: jour|date_modify('+1 day')|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete">Demain ›</a></li>
+	<li class="nav-item"><a href="{{ path('app_bons_livraison_index') }}" class="btn btn-danger btn-sm"><i class="fas fa-plus me-1"></i>Planifier une livraison</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-tr si-tr-planning">
+		<div class="si-ac-kpis">
+			<div class="card"><small>Livraisons du jour</small><strong>{{ p.total }}</strong><span class="si-p-ok">{{ p.tournees|length }} tournée{{ p.tournees|length > 1 ? 's' }}</span></div>
+			<div class="card"><small>Livrées</small><strong>{{ p.livrees }}</strong><span class="si-p-ok">à l'heure : {{ p.aLHeure }} / {{ p.livrees }}</span></div>
+			{% if voirMontants %}<div class="card"><small>À encaisser à la livraison</small><strong>{{ p.aEncaisser|number_format(0, ',', ' ') }} F</strong><span class="si-p-ok">dont {{ p.encaisse|number_format(0, ',', ' ') }} encaissés</span></div>{% endif %}
+			<div class="card"><small>Partielles / reportées</small><strong>{{ p.partielles }} / {{ p.reportees }}</strong>{% if p.reportees > 0 %}<span class="si-p-alerte">jours précédents non livrés</span>{% endif %}</div>
+		</div>
+
+		<div class="si-tr-colonnes si-tr-colonnes-carte">
+			{% set points = [] %}
+			{% for t in p.tournees %}{% for b in t.bons %}{% set pos = b.commande.clients and b.commande.clients.estLocalise %}{% if pos %}{% set points = points|merge([{lat: b.commande.clients.latitude, lng: b.commande.clients.longitude, n: b.ordreTournee ?? loop.index, t: loop.parent.loop.index0, etat: b.statut == 'livre' ? 'livree' : (b.enRouteLe ? 'encours' : 'avenir'), nom: b.commande.clients.nomComplet}]) %}{% endif %}{% endfor %}{% endfor %}
+			<section class="card si-ac-bloc">
+				{% if points is empty %}
+					<p class="si-ac-vide">Aucune livraison placée sur la carte. Les positions viennent des fiches clients.</p>
+				{% else %}
+					<div class="si-carte si-tr-carte si-tr-carte-grande" id="si-tr-carte" data-points="{{ points|json_encode|e('html_attr') }}" data-depot="{{ depot|json_encode|e('html_attr') }}"></div>
+				{% endif %}
+				<p class="si-pg-note mb-0 mt-2"><span class="si-tr-leg" style="background:#16A34A"></span> livrée <span class="si-tr-leg" style="background:#DC2626"></span> en cours <span class="si-tr-leg" style="background:#94A3B8"></span> à venir{{ depot ? ' · D = boutique' }}</p>
+			</section>
+
+			<div>
+				{% if p.tournees is empty %}<section class="card si-ac-bloc"><p class="si-ac-vide mb-0">Aucune livraison prévue ce jour. Planifiez-les depuis un bon de livraison validé.</p></section>{% endif %}
+				{% for t in p.tournees %}
+					<section class="card si-ac-bloc">
+						<div class="d-flex justify-content-between align-items-center mb-2">
+							<div><b>Tournée {{ loop.index }} · {{ t.livreur ? t.livreur|nom_pointage : 'sans livreur' }}</b></div>
+							<span class="si-tr-compte">{{ t.livrees }} / {{ t.bons|length }} livrées</span>
+						</div>
+						<ul class="si-tr-liste">
+							{% for b in t.bons %}
+								{% include 'tournee/_arret.html.twig' with {rang: b.ordreTournee ?? loop.index, lien: path('app_livraisons_bl', {id: b.id})} %}
+								{% if voirMontants %}
+									<li class="si-tr-paiement">
+										{% if b.paiementLivraison %}{{ b.encaisseMontant|number_format(0, ',', ' ') }} F encaissés{% elseif b.encaissementProvisoire %}<span class="si-p-alerte">{{ b.encaisseMontant|number_format(0, ',', ' ') }} F à valider à la caisse</span>{% elseif b.encaisseMode == 'credit' %}Crédit client{% elseif b.commande.resteAPayer > 0 %}Solde {{ b.commande.resteAPayer|number_format(0, ',', ' ') }} F{% else %}Payée{% endif %}
+									</li>
+								{% endif %}
+							{% endfor %}
+						</ul>
+						{% if t.livreur %}
+							<form method="post" action="{{ path('app_livraisons_planning_reordonner') }}" class="d-inline">
+								<input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="jour" value="{{ jour|date('Y-m-d') }}"><input type="hidden" name="livreur" value="{{ t.livreur.id }}">
+								<button class="btn btn-light btn-sm si-btn-entete">Réordonner la tournée</button>
+							</form>
+						{% endif %}
+					</section>
+				{% endfor %}
+				{% if prevenir is not empty %}
+					<details class="card si-ac-bloc">
+						<summary class="btn btn-light btn-sm si-btn-entete">Prévenir les clients (WhatsApp)</summary>
+						<p class="si-pg-note mt-2">Un message par client, à envoyer depuis WhatsApp. L'envoi groupé viendra avec l'API WhatsApp.</p>
+						<ul class="si-me-liste">
+							{% for x in prevenir %}
+								<li class="si-me-demande"><div><b>{{ x.bon.commande.clients ? x.bon.commande.clients.nomComplet : x.bon.numero }}</b><small>{{ x.bon.creneau ?? 'sans créneau' }}</small></div><a class="btn btn-success btn-sm" target="_blank" rel="noopener" href="https://wa.me/{{ x.numero }}?text={{ x.texte|url_encode }}"><i class="fab fa-whatsapp me-1"></i>Envoyer</a></li>
+							{% endfor %}
+						</ul>
+					</details>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+	{% if points is not empty %}
+		<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">
+		<script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
+		<script>
+		(function () {
+			var el = document.getElementById('si-tr-carte');
+			if (!window.L || !el) { return; }
+			var points = JSON.parse(el.dataset.points), depot = JSON.parse(el.dataset.depot || 'null');
+			var carte = L.map(el, {scrollWheelZoom: false});
+			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(carte);
+			var couleurs = {livree: '#16A34A', encours: '#DC2626', avenir: '#94A3B8'}, traits = ['#0F3D8C', '#7C3AED', '#C2410C', '#0E7490'];
+			var tout = [], tournees = {};
+			if (depot) { tout.push(depot); L.marker(depot, {icon: L.divIcon({className: 'si-tr-pin', html: '<span style="background:#0F172A">D</span>', iconSize: [26, 26]})}).addTo(carte); }
+			points.forEach(function (p) {
+				var ll = [parseFloat(p.lat), parseFloat(p.lng)];
+				tout.push(ll);
+				(tournees[p.t] = tournees[p.t] || (depot ? [depot] : [])).push(ll);
+				L.marker(ll, {icon: L.divIcon({className: 'si-tr-pin', html: '<span style="background:' + couleurs[p.etat] + '">' + p.n + '</span>', iconSize: [26, 26]})}).addTo(carte).bindTooltip(p.nom.replace(/[<>&]/g, ''));
+			});
+			Object.keys(tournees).forEach(function (t) { L.polyline(tournees[t], {color: traits[t % traits.length], weight: 3, dashArray: '6 6'}).addTo(carte); });
+			carte.fitBounds(L.latLngBounds(tout).pad(0.2));
+		})();
+		</script>
+	{% endif %}
+{% endblock %}

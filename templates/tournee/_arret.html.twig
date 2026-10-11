@@ -1,10 +1,10 @@
-{# Un arrêt de tournée. Variables : b, rang. #}
+{# Un arrêt de tournée. Variables : b, rang, lien (facultatif : toute la carte ouvre ce lien). #}
 {% set cli = b.commande.clients %}
 {% set etat = b.statut == 'livre' ? 'livree' : (b.enRouteLe ? 'encours' : 'avenir') %}
-<li class="card si-tr-arret si-tr-{{ etat }}">
+<li class="card si-tr-arret si-tr-{{ etat }} position-relative">
 	<span class="si-tr-rang">{{ rang }}</span>
 	<div class="si-tr-info">
-		<b>{{ cli ? cli.nomComplet : (b.nomReceptionnaire ?? b.numero) }}</b>
+		<b>{% if lien ?? false %}<a href="{{ lien }}" class="stretched-link si-tr-lien">{% endif %}{{ cli ? cli.nomComplet : (b.nomReceptionnaire ?? b.numero) }}{% if lien ?? false %}</a>{% endif %}</b>
 		<small>{{ b.lignes|map(l => l.designation ~ ' × ' ~ l.quantiteCommandee)|join(' · ') }}</small>
 		<small>{{ b.creneau ? 'Créneau ' ~ b.creneau ~ ' · ' }}{{ b.adresseLivraison ?? b.commande.adresseLivraison ?? (cli ? cli.repere : '') }}</small>
 	</div>

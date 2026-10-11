@@ -5,6 +5,7 @@ namespace App\Service\Livraisons;
 use App\Entity\BonLivraison;
 use App\Entity\CompteTresorerie;
 use App\Entity\Paiements;
+use App\Entity\PointPointage;
 use App\Entity\User;
 use App\Service\PaiementService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -48,6 +49,130 @@ final class Tournee
         }
 
         return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Planning du jour (L01) : tournées par livreur et chiffres.
+     *
+     * @return array{tournees: list<array{livreur: ?User, bons: list<BonLivraison>, livrees: int}>, total: int, livrees: int, aLHeure: int, aEncaisser: int, encaisse: int, partielles: int, reportees: int}
+     */
+    public function planning(\DateTimeImmutable $jour): array
+    {
+        $bons = $this->duJour($jour);
+        $tournees = [];
+        $c = ['livrees' => 0, 'aLHeure' => 0, 'aEncaisser' => 0, 'encaisse' => 0, 'partielles' => 0];
+        foreach ($bons as $b) {
+            $cle = $b->getLivreur()?->getId() ?? 0;
+            $tournees[$cle] ??= ['livreur' => $b->getLivreur(), 'bons' => [], 'livrees' => 0];
+            $tournees[$cle]['bons'][] = $b;
+            if ($b->getStatut() === BonLivraison::STATUT_LIVRE) {
+                ++$tournees[$cle]['livrees'];
+                ++$c['livrees'];
+                $c['aLHeure'] += self::aLHeure($b) ? 1 : 0;
+                $c['partielles'] += $b->estPartielle() ? 1 : 0;
+                $c['encaisse'] += (int) $b->getEncaisseMontant();
+                $c['aEncaisser'] += (int) $b->getEncaisseMontant();
+            } else {
+                $c['aEncaisser'] += (int) $b->getCommande()?->getResteAPayer();
+            }
+        }
+        $reportees = (int) $this->em->getRepository(BonLivraison::class)->createQueryBuilder('b')->select('COUNT(b.id)')
+            ->where('b.statut = :v')->andWhere('b.prevuLe < :jour')
+            ->setParameter('v', BonLivraison::STATUT_VALIDE)->setParameter('jour', $jour->setTime(0, 0), 'date_immutable')
+            ->getQuery()->getSingleScalarResult();
+
+        return ['tournees' => array_values($tournees), 'total' => \count($bons), 'reportees' => $reportees] + $c;
+    }
+
+    /** Livrée avant la fin du créneau (sans créneau : livrée le jour prévu). */
+    public static function aLHeure(BonLivraison $b): bool
+    {
+        $livre = $b->getLivreLe();
+        if ($livre === null) {
+            return false;
+        }
+        if (preg_match('/(\d{1,2})[:h](\d{2})\s*$/', (string) $b->getCreneau(), $m)) {
+            return $livre->format('H:i') <= \sprintf('%02d:%s', $m[1], $m[2]);
+        }
+
+        return $b->getPrevuLe() === null || $livre->format('Y-m-d') <= $b->getPrevuLe()->format('Y-m-d');
+    }
+
+    /** Point de départ des tournées : le premier lieu de pointage placé sur la carte. @return array{0: float, 1: float}|null */
+    public function depot(): ?array
+    {
+        foreach ($this->em->getRepository(PointPointage::class)->findBy(['actif' => true], ['id' => 'ASC']) as $p) {
+            if ($p->getLatitude() !== null && $p->getLongitude() !== null) {
+                return [$p->getLatitude(), $p->getLongitude()];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Réordonne la tournée restante d'un livreur : au plus proche, en
+     * partant du dépôt (ou du dernier arrêt livré). Les arrêts sans
+     * position passent à la fin.
+     */
+    public function reordonner(\DateTimeImmutable $jour, User $livreur): int
+    {
+        $bons = $this->duJour($jour, $livreur);
+        $faits = array_values(array_filter($bons, static fn (BonLivraison $b): bool => $b->getStatut() === BonLivraison::STATUT_LIVRE));
+        $reste = array_values(array_filter($bons, static fn (BonLivraison $b): bool => $b->getStatut() !== BonLivraison::STATUT_LIVRE));
+        $depart = $this->depot();
+        foreach ($faits as $b) {
+            $depart = self::position($b) ?? $depart;
+        }
+        $points = [];
+        foreach ($reste as $i => $b) {
+            $points[$i] = self::position($b);
+        }
+        $ordre = [...$faits, ...array_map(static fn (int $i): BonLivraison => $reste[$i], self::auPlusProche($points, $depart))];
+        foreach ($ordre as $rang => $b) {
+            $b->setOrdreTournee($rang + 1);
+        }
+        $this->em->flush();
+
+        return \count($reste);
+    }
+
+    /**
+     * Ordre « au plus proche voisin ». Clés sans position à la fin.
+     *
+     * @param array<int, array{0: float, 1: float}|null> $points
+     * @param array{0: float, 1: float}|null              $depart
+     *
+     * @return list<int>
+     */
+    public static function auPlusProche(array $points, ?array $depart): array
+    {
+        $places = array_filter($points);
+        $sans = array_keys(array_diff_key($points, $places));
+        $ordre = [];
+        $ici = $depart ?? ($places !== [] ? reset($places) : null);
+        while ($places !== []) {
+            $meilleur = null;
+            foreach ($places as $k => $p) {
+                $d = ($p[0] - $ici[0]) ** 2 + (($p[1] - $ici[1]) * cos(deg2rad($ici[0]))) ** 2;
+                if ($meilleur === null || $d < $meilleur[1]) {
+                    $meilleur = [$k, $d];
+                }
+            }
+            $ordre[] = $meilleur[0];
+            $ici = $places[$meilleur[0]];
+            unset($places[$meilleur[0]]);
+        }
+
+        return [...$ordre, ...$sans];
+    }
+
+    /** @return array{0: float, 1: float}|null */
+    public static function position(BonLivraison $b): ?array
+    {
+        $c = $b->getCommande()?->getClients();
+
+        return $c !== null && $c->estLocalise() ? [(float) $c->getLatitude(), (float) $c->getLongitude()] : null;
     }
 
     /** Personnes qui livrent : comptes actifs avec le rôle livreur. @return list<User> */

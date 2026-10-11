@@ -99,6 +99,52 @@ final class TourneeController extends AbstractController
         ]);
     }
 
+    /** Planning du jour de toutes les tournées (L01), pour le bureau. */
+    #[Route('/planning', name: 'planning', methods: ['GET'])]
+    public function planning(Request $request): Response
+    {
+        if (!$this->bureau()) {
+            throw $this->createAccessDeniedException('Le planning des livraisons est réservé au bureau.');
+        }
+        $jour = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->query->get('jour')) ?: new \DateTimeImmutable('today');
+        $planning = $this->tournee->planning($jour);
+        $prevenir = [];
+        foreach ($planning['tournees'] as $t) {
+            foreach ($t['bons'] as $b) {
+                $tel = $b->getTelephoneReceptionnaire() ?? $b->getCommande()?->getClients()?->getTelephone();
+                if ($b->getStatut() === BonLivraison::STATUT_VALIDE && $tel) {
+                    $prevenir[] = ['bon' => $b, 'numero' => UtilisateursController::numeroWhatsApp($tel), 'texte' => \sprintf('Bonjour, votre livraison %s arrive aujourd\'hui%s. Merci d\'être joignable. Succès Imprim', $b->getNumero(), $b->getCreneau() ? ' entre '.str_replace('-', ' et ', $b->getCreneau()) : '')];
+                }
+            }
+        }
+
+        return $this->render('tournee/planning.html.twig', [
+            'jour' => $jour,
+            'p' => $planning,
+            'depot' => $this->tournee->depot(),
+            'prevenir' => $prevenir,
+            'voirMontants' => $this->isGranted('ROLE_PAIEMENT_VOIR'),
+            'jeton' => self::CSRF,
+        ]);
+    }
+
+    #[Route('/planning/reordonner', name: 'planning_reordonner', methods: ['POST'])]
+    public function reordonner(Request $request): Response
+    {
+        $this->verifierJeton($request);
+        if (!$this->bureau()) {
+            throw $this->createAccessDeniedException();
+        }
+        $jour = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->request->get('jour')) ?: new \DateTimeImmutable('today');
+        $livreur = $this->em->getRepository(User::class)->find($request->request->getInt('livreur'));
+        if ($livreur !== null) {
+            $n = $this->tournee->reordonner($jour, $livreur);
+            $this->addFlash('success', \sprintf('Tournée de %s réordonnée au plus court (%d arrêt%s restant%3$s).', \App\Service\Pointage\Pointages::nom($livreur), $n, $n > 1 ? 's' : ''));
+        }
+
+        return $this->redirectToRoute('app_livraisons_planning', ['jour' => $jour->format('Y-m-d')]);
+    }
+
     /** Détail d'une livraison pour le bureau (L02). */
     #[Route('/bl/{id}', name: 'bl', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function detail(BonLivraison $bon, CompteTresorerieRepository $comptes): Response

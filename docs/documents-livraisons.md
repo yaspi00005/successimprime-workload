@@ -55,7 +55,9 @@ Fait (L02, L03) :
 - **Encaissement** : provisoire sur le bon. À la boutique, une personne qui a le droit Encaissements choisit le compte et valide : le paiement est créé et validé, il entre en trésorerie. Avant, rien n'y entre.
 - Le détail (L02) montre les étapes avec leurs heures, le contenu commandé, livré et le reste, les preuves, l'encaissement et la planification.
 
-Reste : L01 (planning du jour de toutes les tournées avec la carte et « Prévenir les clients »), la position du livreur en direct, et L04 (suivi par le client, avec l'espace client J5). L'étape « Pose » de la maquette n'est pas encore là.
+Fait (L01) : **Planning des livraisons** (`/livraisons/planning`, bureau) : livraisons du jour, livrées et à l'heure (avant la fin du créneau), montant à encaisser et déjà encaissé (droit Paiements), partielles et reportées (bons validés d'un jour passé non livrés). Carte de toutes les tournées depuis la boutique (premier lieu de pointage placé sur la carte), liste par livreur avec l'état et l'encaissement de chaque arrêt. « Réordonner la tournée » range les arrêts restants au plus proche, à vol d'oiseau. « Prévenir les clients » ouvre un message WhatsApp prêt par client (envoi groupé avec l'API WhatsApp).
+
+Reste : la position du livreur en direct, L04 (suivi par le client, avec l'espace client J5) et l'étape « Pose » de la maquette.
 
 ## Ordre proposé
 

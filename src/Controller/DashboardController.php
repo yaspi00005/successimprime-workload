@@ -2,7 +2,10 @@
 
 namespace App\Controller;
 
+use App\Entity\Tache;
+use App\Entity\User;
 use App\Service\OperationsAValider;
+use App\Service\Planning\Planning;
 use App\Service\TableauDeBordService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,7 +22,8 @@ final class DashboardController extends AbstractController
     #[Route('/', name: 'app_home')]
     public function index(
         TableauDeBordService $tableauDeBordService,
-        OperationsAValider $operationsAValider
+        OperationsAValider $operationsAValider,
+        Planning $planning,
     ): Response {
         /*
          * Un livreur n'a accès qu'aux livraisons : il n'a rien
@@ -61,6 +65,16 @@ final class DashboardController extends AbstractController
             'production' => $peutVoirProduction ? $tableauDeBordService->production() : [],
             'alertes' => $tableauDeBordService->alertes($finances, $this->isGranted('ROLE_ADMIN'), $maintenant),
         ];
+
+        // Tâches du planning en retard (rappel « En retard » actif), visibles de l'utilisateur.
+        $moi = $this->getUser();
+        if ($moi instanceof User) {
+            $retard = array_filter($planning->enRetard($moi, $maintenant), static fn (Tache $t): bool => $t->getEcheance()?->rappel('retard') ?? true);
+            if ($retard !== []) {
+                $premiere = reset($retard);
+                array_unshift($donnees['alertes'], ['niveau' => 'danger', 'texte' => \sprintf('%d tâche%s du planning en retard, dont « %s » prévue le %s', \count($retard), \count($retard) > 1 ? 's' : '', $premiere->getTitre(), $premiere->getPrevueLe()->format('d/m')), 'route' => 'app_planning_index']);
+            }
+        }
 
         return $this->render('dashboard/index.html.twig', $donnees);
     }

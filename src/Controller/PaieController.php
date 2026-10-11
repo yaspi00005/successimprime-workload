@@ -119,7 +119,7 @@ final class PaieController extends AbstractController
     public function payer(BulletinPaie $bulletin, Request $request, CompteTresorerieRepository $comptes): Response
     {
         $this->verifierJeton($request);
-        $compte = $comptes->find($request->request->getInt('compte'));
+        $compte = $comptes->find((int) $request->request->get('compte'));
         $erreur = $compte === null ? 'Choisissez le compte qui paie.' : $this->paie->payer($bulletin, $compte, $this->moi());
         $erreur !== null ? $this->addFlash('danger', $erreur) : $this->addFlash('success', 'Salaire payé : décaissement enregistré en trésorerie (confidentiel).');
 

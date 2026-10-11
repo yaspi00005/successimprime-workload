@@ -4138,3 +4138,90 @@ body.si-param-bloque { overflow: hidden; }
 .si-tr-coche .fa-xmark { color: #DC2626; }
 @media (max-width: 900px) { .si-tr-colonnes-carte { grid-template-columns: 1fr; } .si-tr-carte-grande { height: 280px; } }
 .si-tr-arret.card { flex-direction: row; }
+
+/* Planning et tâches (T01, T02, T04) */
+.si-pl { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.si-pl h2 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+.si-pl-vues { display: flex; gap: 4px; }
+.si-pl-cal { padding: 14px 16px; height: auto; }
+.si-pl-barre { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.si-pl-filtres { display: flex; flex-wrap: wrap; gap: 6px; }
+.si-pl-filtre { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 10px; color: var(--si-pl-c, #334155); background: #F8FAFC; border: 1px solid #E2E8F0; text-decoration: none; }
+.si-pl-filtre i { width: 8px; height: 8px; border-radius: 50%; background: var(--si-pl-c, #94A3B8); }
+.si-pl-filtre-on { background: color-mix(in srgb, var(--si-pl-c, #0F3D8C) 12%, #fff); border-color: var(--si-pl-c, #0F3D8C); }
+.si-pl-nav { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.si-pl-nav a { color: #475569; text-decoration: none; }
+.si-pl-nav b { min-width: 140px; text-align: center; }
+.si-pl-auj { border: 1px solid #CBD5E1; border-radius: 8px; padding: 2px 8px; font-size: 12px; }
+.si-pl-grille { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid #E2E8F0; border-left: 1px solid #E2E8F0; }
+.si-pl-entete { font-size: 12px; font-weight: 700; color: #64748B; padding: 6px 8px; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; background: #F8FAFC; }
+.si-pl-case-jour { min-height: 104px; padding: 4px 5px 6px; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.si-pl-semaine .si-pl-case-jour { min-height: 320px; }
+.si-pl-dehors { background: #F8FAFC; }
+.si-pl-dehors .si-pl-num { color: #CBD5E1; }
+.si-pl-num { font-size: 12px; font-weight: 700; color: #334155; text-decoration: none; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
+.si-pl-auj-case .si-pl-num { background: #DC2626; color: #fff; }
+.si-pl-ferie { background: #FEF2F2; }
+.si-pl-ferie-nom { font-size: 10px; color: #B91C1C; }
+.si-pl-ferie-ligne { color: #B91C1C; font-weight: 600; }
+.si-pl-ev { display: block; font-size: 11px; line-height: 1.25; padding: 3px 5px; border-radius: 5px; border-left: 3px solid var(--si-pl-c); background: color-mix(in srgb, var(--si-pl-c) 9%, #fff); color: var(--si-pl-c); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.si-pl-semaine .si-pl-ev { white-space: normal; }
+.si-pl-ev.si-pl-fait { text-decoration: line-through; opacity: .6; }
+.si-pl-decale { font-size: 10px; color: #64748B; line-height: 1.2; }
+.si-pl-coches { list-style: none; padding: 0; margin: 0; }
+.si-pl-coche { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid #EEF2F7; }
+.si-pl-coche:last-child { border-bottom: 0; }
+.si-pl-coche form { margin: 0; }
+.si-pl-case { width: 22px; height: 22px; flex-shrink: 0; border: 2px solid #CBD5E1; border-radius: 6px; background: #fff; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: #fff; font-size: 12px; margin-top: 1px; }
+.si-pl-fait .si-pl-case { background: #0F3D8C; border-color: #0F3D8C; }
+.si-pl-coche-texte { flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.si-pl-coche-texte b, .si-pl-coche-texte small { display: block; }
+.si-pl-coche-texte b { font-size: 14px; }
+.si-pl-coche-texte small { font-size: 12px; color: #64748B; }
+.si-pl-fait .si-pl-coche-texte b { text-decoration: line-through; color: #94A3B8; }
+.si-pl-point { width: 8px; height: 8px; border-radius: 50%; background: var(--si-pl-c, transparent); margin-top: 7px; flex-shrink: 0; }
+.si-pl-prochaines { list-style: none; padding: 0; margin: 0; }
+.si-pl-prochaines li { border-left: 3px solid var(--si-pl-c); padding: 4px 0 4px 10px; margin-bottom: 10px; }
+.si-pl-prochaines a { color: #0F172A; text-decoration: none; }
+.si-pl-prochaines b, .si-pl-prochaines small { display: block; }
+.si-pl-prochaines small { color: #64748B; font-size: 12px; }
+.si-pl-retard { background: #FFF7ED; border: 1px solid #FED7AA; padding: 14px 16px; margin-bottom: 16px; height: auto; }
+.si-pl-retard b { color: #C2410C; display: block; }
+.si-pl-retard a { color: #9A3412; font-size: 13px; }
+.si-pl-liens { display: flex; gap: 14px; font-size: 13px; padding: 0 4px; }
+.si-pl-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.si-pl-2 label, .si-pl-2 fieldset { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
+.si-pl-2 [hidden] { display: none !important; }
+.si-pl-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-pl-jours { flex-direction: row !important; flex-wrap: wrap; gap: 8px 12px !important; border: 0; padding: 0; }
+.si-pl-jours legend { font-size: 13px; font-weight: 600; width: 100%; margin: 0; }
+.si-pl-jours label { flex-direction: row; font-weight: 500; }
+.si-pl-etapes { list-style: none; padding: 0; margin: 0 0 8px; }
+.si-pl-etapes li { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: #94A3B8; }
+.si-pl-rappels { list-style: none; padding: 0; margin: 0; }
+.si-pl-rappels li { padding: 8px 0; border-bottom: 1px solid #EEF2F7; }
+.si-pl-rappels li:last-child { border-bottom: 0; }
+.si-pl-rappels b, .si-pl-rappels small { display: block; }
+.si-pl-rappels small { color: #64748B; font-size: 12px; }
+.si-pl-rappels .form-check-input { margin: 0 0 0 10px; float: none; width: 2.4em; height: 1.3em; }
+.si-pl-resume { font-weight: 600; margin-bottom: 6px; }
+.si-pl-dates { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.si-pl-dates li { padding: 4px 0; }
+.si-pl-dates small { color: #64748B; }
+.si-pl-arreter { margin-top: 4px; }
+.si-pl-onglets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.si-pl-onglet { border: 1px solid #CBD5E1; border-radius: 999px; padding: 6px 14px; font-weight: 600; color: #0F172A; text-decoration: none; background: #fff; }
+.si-pl-onglet-on { background: #0F3D8C; border-color: #0F3D8C; color: #fff; }
+.si-pl-onglet-alerte:not(.si-pl-onglet-on) { border-color: #FDBA74; color: #C2410C; }
+.si-pl-cartes .si-pl-coche { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 8px; border: 0; box-shadow: 0 1px 3px rgba(15, 23, 42, .06); }
+.si-pl-jour-titre { font-size: 13px; font-weight: 700; color: #64748B; margin: 10px 0 6px; }
+.si-pl-rappel { display: block; border-left: 4px solid var(--si-pl-c); padding: 12px 14px; color: #0F172A; text-decoration: none; height: auto; margin-top: 8px; }
+.si-pl-rappel b, .si-pl-rappel small { display: block; }
+.si-pl-rappel small { color: #64748B; font-size: 12px; }
+@media (max-width: 1100px) { .si-pl { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+	.si-pl-2 { grid-template-columns: 1fr; }
+	.si-pl-case-jour { min-height: 64px; padding: 2px; }
+	.si-pl-ev { font-size: 0; height: 6px; padding: 0; border-left-width: 0; background: var(--si-pl-c); }
+	.si-pl-decale, .si-pl-ferie-nom { display: none; }
+}

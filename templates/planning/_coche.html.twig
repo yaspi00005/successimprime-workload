@@ -1,0 +1,24 @@
+{# Une tâche à cocher. Variables : t, retour, voitMontants, jeton (csrf déjà calculé : token). #}
+{% set coul = attribute(constant('App\\Entity\\Echeance::CATEGORIES'), t.categorie)[1] %}
+<li class="si-pl-coche{{ t.estFaite ? ' si-pl-fait' }}" style="--si-pl-c: {{ coul }}">
+	{% if t.responsable == app.user or t.copie == app.user or is_granted('ROLE_ADMIN') %}
+		<form method="post" action="{{ path('app_planning_tache_agir', {id: t.id, action: 'cocher'}) }}">
+			<input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="{{ retour }}">
+			<button class="si-pl-case" aria-label="{{ t.estFaite ? 'Décocher' : 'Cocher' }} {{ t.titre }}" aria-pressed="{{ t.estFaite ? 'true' : 'false' }}">{% if t.estFaite %}<i class="fas fa-check"></i>{% endif %}</button>
+		</form>
+	{% else %}
+		<span class="si-pl-case" aria-hidden="true">{% if t.estFaite %}<i class="fas fa-check"></i>{% endif %}</span>
+	{% endif %}
+	<a href="{{ path('app_planning_tache', {id: t.id}) }}" class="si-pl-coche-texte">
+		<b>{{ t.titre }}</b>
+		<small>
+			{%- set infos = [] -%}
+			{%- if t.responsable %}{% set infos = infos|merge([t.responsable|nom_pointage]) %}{% endif -%}
+			{%- if t.estFaite %}{% set infos = infos|merge(['fait ' ~ t.faitLe|date('H:i')]) %}{% elseif t.heure %}{% set infos = infos|merge([t.heure|replace({':00': ' h'})]) %}{% endif -%}
+			{%- if voitMontants and t.montantEstime %}{% set infos = infos|merge([t.montantEstime|number_format(0, ',', ' ') ~ ' F']) %}{% endif -%}
+			{%- if t.etapes is not empty %}{% set infos = infos|merge([t.etapesFaites ~ '/' ~ t.etapes|length ~ ' étapes']) %}{% endif -%}
+			{{ infos|join(' · ') }}
+		</small>
+	</a>
+	<i class="si-pl-point" aria-hidden="true"></i>
+</li>

@@ -1,0 +1,93 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+{% set cat = attribute(constant('App\\Entity\\Echeance::CATEGORIES'), t.categorie) %}
+
+{% block title %}{{ t.titre }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_planning_index', {date: t.prevueLe|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Planning</a></li>
+	{% if peutModifier %}<li class="nav-item"><a href="{{ path('app_planning_echeance', {id: t.echeance.id}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-pen me-1"></i>Modifier la règle</a></li>{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-pl si-pl-detail">
+		<div class="si-pl-principal">
+			<section class="card si-ac-bloc">
+				<div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+					<div>
+						<span class="si-pl-filtre si-pl-filtre-on" style="--si-pl-c: {{ cat[1] }}"><i></i>{{ cat[0] }}</span>
+						<h2 class="mt-2 mb-1">{{ t.titre }}</h2>
+						<p class="mb-0 text-muted">
+							{{ t.prevueLe|date_fr('EEEE d MMMM yyyy')|capitalize }}{{ t.heure ? ' à ' ~ t.heure }}
+							{% if t.estDecalee %} · prévue le {{ t.dateOrigine|date('d/m') }}, {{ t.raisonDecalage }}{% endif %}
+						</p>
+						<p class="mb-0 text-muted">
+							{{ t.responsable ? 'Responsable : ' ~ t.responsable|nom_pointage : 'Sans responsable' }}{{ t.copie ? ' · copie ' ~ t.copie|nom_pointage }}{{ t.entreprise ? ' · ' ~ t.entreprise.nomAffiche }}
+						</p>
+						{% if resume %}<p class="mb-0 text-muted"><i class="fas fa-redo me-1"></i>{{ resume }}</p>{% endif %}
+					</div>
+					<div class="text-end">
+						{% if t.estFaite %}
+							<span class="si-tr-badge si-tr-ok">Fait {{ t.faitLe|date('d/m H:i') }}{{ t.faitPar ? ' · ' ~ t.faitPar|nom_pointage }}</span>
+						{% elseif t.enRetard(date()) %}
+							<span class="si-tr-badge si-tr-retard">En retard</span>
+						{% else %}
+							<span class="si-tr-badge">{{ attribute(constant('App\\Entity\\Tache::STATUTS'), t.statut) }}</span>
+						{% endif %}
+						{% if voitMontants and t.montantEstime %}<p class="mt-2 mb-0"><b>{{ t.montantEstime|number_format(0, ',', ' ') }} F</b> estimés</p>{% endif %}
+					</div>
+				</div>
+			</section>
+
+			{% if t.etapes is not empty %}
+				<section class="card si-ac-bloc">
+					<h2>Étapes · {{ t.etapesFaites }} sur {{ t.etapes|length }} faites</h2>
+					<ul class="si-pl-coches">
+						{% for et in t.etapes %}
+							<li class="si-pl-coche{{ et.fait ? ' si-pl-fait' }}">
+								{% if peutCocher %}
+									<form method="post" action="{{ path('app_planning_tache_agir', {id: t.id, action: 'etape'}) }}">
+										<input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="index" value="{{ loop.index0 }}">
+										<button class="si-pl-case" aria-label="{{ et.fait ? 'Décocher' : 'Cocher' }} {{ et.libelle }}" aria-pressed="{{ et.fait ? 'true' : 'false' }}">{% if et.fait %}<i class="fas fa-check"></i>{% endif %}</button>
+									</form>
+								{% else %}
+									<span class="si-pl-case" aria-hidden="true">{% if et.fait %}<i class="fas fa-check"></i>{% endif %}</span>
+								{% endif %}
+								<span class="si-pl-coche-texte"><b>{{ et.libelle }}</b></span>
+							</li>
+						{% endfor %}
+					</ul>
+				</section>
+			{% endif %}
+
+			{% if peutCocher %}
+				<section class="card si-ac-bloc">
+					<h2>Note</h2>
+					<form method="post" action="{{ path('app_planning_tache_agir', {id: t.id, action: 'note'}) }}">
+						<input type="hidden" name="_token" value="{{ token }}">
+						<textarea name="note" rows="3" class="form-control" placeholder="Référence du reçu, remarque…">{{ t.note }}</textarea>
+						<button class="btn btn-light btn-sm si-btn-entete mt-2">Enregistrer la note</button>
+					</form>
+				</section>
+			{% elseif t.note %}
+				<section class="card si-ac-bloc"><h2>Note</h2><p class="mb-0">{{ t.note|nl2br }}</p></section>
+			{% endif %}
+		</div>
+
+		<aside class="si-pl-cote">
+			{% if peutCocher %}
+				<form method="post" action="{{ path('app_planning_tache_agir', {id: t.id, action: 'cocher'}) }}">
+					<input type="hidden" name="_token" value="{{ token }}">
+					<button class="btn {{ t.estFaite ? 'btn-light si-btn-entete' : 'btn-success' }} w-100 si-tr-valider">{{ t.estFaite ? 'Remettre à faire' : 'Marquer comme fait' }}</button>
+				</form>
+				{% if is_granted('ROLE_ADMIN') and not t.estFaite %}
+					<form method="post" action="{{ path('app_planning_tache_agir', {id: t.id, action: 'annuler'}) }}" onsubmit="return confirm('Annuler cette occurrence ? Les autres dates restent.');">
+						<input type="hidden" name="_token" value="{{ token }}">
+						<button class="btn btn-link btn-sm text-danger w-100">Annuler cette date seulement</button>
+					</form>
+				{% endif %}
+			{% endif %}
+		</aside>
+	</div>
+{% endblock %}

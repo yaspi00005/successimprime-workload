@@ -108,3 +108,18 @@ Comme décidé pour la messagerie : tant que la clé WhatsApp (API Meta) est vid
 4. **Planning annuel** : prévisions, budget, PDF, puis les quantités proposées quand le stock aura un an de mouvements.
 
 Le calcul des dates (répétition, week-end, fériés) est une classe sans base de données, testée seule, comme le programme de l'écran TV.
+
+## État (11/10/2026)
+
+Étape 1 construite : Accueil › Planning (`/planning`).
+- **Calcul des dates** (`src/Service/Planning/Calendrier.php`, testé seul) : répétitions, décalage au jour ouvré précédent ou suivant (lundi à vendredi, hors fériés), ou date gardée. Les fêtes fixes du Mali sont dans la classe ; les fêtes mobiles se saisissent dans Planning › Jours fériés (direction), et les tâches à venir non commencées sont recalculées. « Chaque jour » suit les jours d'ouverture de la tuile Horaires (le samedi compte pour la clôture de caisse), sans décalage.
+- **Échéances et tâches** (tables `echeance`, `tache`, `jour_ferie`) : une échéance crée ses tâches sur 13 mois glissants. Modifier la règle réécrit les tâches futures pas encore commencées ; « Arrêter l'échéance » retire les futures non commencées. Une tâche datée à la main garde sa date ; les modèles avancent au jour ouvré précédent.
+- **T01** : vues Jour, Semaine, Mois, filtres par catégorie, tâche décalée barrée à sa date d'origine, colonnes Aujourd'hui (à cocher), À ne pas manquer (compte à rebours) et En retard. **T02** : formulaire avec modèles prêts, étapes, rappels, montant estimé et les 3 prochaines dates calculées pendant la saisie, historique des occurrences faites. **T04** : Planning › Mes tâches (Aujourd'hui, Semaine, En retard, prochain rappel).
+- **Droits** : chacun voit les tâches dont il est responsable ou en copie ; la direction (administrateur) voit et gère tout ; Fiscal et Personnel et paie s'ouvrent aussi au droit trésorerie (comptable). Les montants demandent le droit trésorerie. Hors direction, on ne crée des tâches que pour soi. Le « chef d'équipe » n'existe pas encore dans les rôles : il voit ses propres tâches seulement.
+- **Rappels dans l'application** : la commande `app:planning:rappels`, à lancer chaque heure, prolonge les échéances et envoie les notifications (5 jours avant et la veille au responsable, le jour même dès 8 h à la direction). Les tâches en retard s'affichent en alerte rouge sur le tableau de bord.
+
+```
+0 * * * * cd /chemin/du/site && php bin/console app:planning:rappels
+```
+
+Reste : étape 2 (WhatsApp par lien puis API, notifications sur le téléphone), étape 3 (TVA, décaissement préparé, trésorerie prévisionnelle), étape 4 (planning annuel T03).

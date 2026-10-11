@@ -1,0 +1,45 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+
+{% block title %}Jours fériés{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_planning_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Planning</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-pl">
+		<div class="si-pl-principal">
+			<section class="card si-ac-bloc">
+				<h2>Fêtes mobiles</h2>
+				<p class="si-pg-note">Ramadan, Tabaski, Maouloud… changent chaque année : ajoutez-les quand les dates sont annoncées. Les tâches à venir non commencées sont recalculées.</p>
+				<form method="post" class="d-flex flex-wrap gap-2 mb-3">
+					<input type="hidden" name="_token" value="{{ token }}">
+					<input type="date" name="jour" required class="form-control form-control-sm w-auto" aria-label="Date">
+					<input name="libelle" required maxlength="80" class="form-control form-control-sm w-auto" placeholder="Ex. Tabaski" aria-label="Nom de la fête">
+					<button class="btn btn-primary btn-sm">Ajouter</button>
+				</form>
+				{% if mobiles is empty %}
+					<p class="si-ac-vide mb-0">Aucune fête mobile saisie.</p>
+				{% else %}
+					<ul class="si-tr-heures">
+						{% for f in mobiles %}
+							<li><span>{{ f.jour|date_fr('EEEE d MMMM yyyy')|capitalize }}</span><span><b>{{ f.libelle }}</b>
+								<form method="post" class="d-inline"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="supprimer" value="{{ f.id }}"><button class="btn btn-link btn-sm text-danger p-0 ms-2" aria-label="Retirer {{ f.libelle }}">Retirer</button></form>
+							</span></li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</section>
+		</div>
+		<aside class="si-pl-cote">
+			<section class="card si-ac-bloc">
+				<h2>Fêtes fixes</h2>
+				<ul class="si-tr-heures">
+					{% for f in fixes %}<li><span>{{ f.jour|date('d/m/Y') }}</span><b>{{ f.libelle }}</b></li>{% endfor %}
+				</ul>
+			</section>
+		</aside>
+	</div>
+{% endblock %}

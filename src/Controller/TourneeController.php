@@ -39,7 +39,7 @@ final class TourneeController extends AbstractController
         $jour = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->query->get('jour')) ?: new \DateTimeImmutable('today');
         $livreur = $moi;
         if ($this->bureau() && $request->query->get('livreur')) {
-            $livreur = $this->em->getRepository(User::class)->find($request->query->getInt('livreur')) ?? $moi;
+            $livreur = $this->em->getRepository(User::class)->find((int) $request->query->get('livreur')) ?? $moi;
         }
         $journee = $this->points->journee($livreur, $jour);
         $bons = $journee['bons'];
@@ -169,7 +169,7 @@ final class TourneeController extends AbstractController
             throw $this->createAccessDeniedException();
         }
         $jour = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->request->get('jour')) ?: new \DateTimeImmutable('today');
-        $livreur = $this->em->getRepository(User::class)->find($request->request->getInt('livreur'));
+        $livreur = $this->em->getRepository(User::class)->find((int) $request->request->get('livreur'));
         if ($livreur !== null) {
             $n = $this->tournee->reordonner($jour, $livreur);
             $this->addFlash('success', \sprintf('Tournée de %s réordonnée au plus court (%d arrêt%s restant%3$s).', \App\Service\Pointage\Pointages::nom($livreur), $n, $n > 1 ? 's' : ''));
@@ -205,11 +205,11 @@ final class TourneeController extends AbstractController
         if (!$this->bureau()) {
             throw $this->createAccessDeniedException();
         }
-        $livreur = $request->request->getInt('livreur') > 0 ? $this->em->getRepository(User::class)->find($request->request->getInt('livreur')) : null;
+        $livreur = (int) $request->request->get('livreur') > 0 ? $this->em->getRepository(User::class)->find((int) $request->request->get('livreur')) : null;
         $bon->setLivreur($livreur)
             ->setPrevuLe(\DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->request->get('jour')) ?: null)
             ->setCreneau((string) $request->request->get('creneau'))
-            ->setOrdreTournee($request->request->getInt('ordre') > 0 ? $request->request->getInt('ordre') : null);
+            ->setOrdreTournee((int) $request->request->get('ordre') > 0 ? (int) $request->request->get('ordre') : null);
         $this->em->flush();
         $this->addFlash('success', 'Livraison planifiée.');
 
@@ -248,7 +248,7 @@ final class TourneeController extends AbstractController
     {
         $this->verifierJeton($request);
         $this->denyAccessUnlessGranted('ROLE_PAIEMENT_ENCAISSER');
-        $compte = $comptes->find($request->request->getInt('compte'));
+        $compte = $comptes->find((int) $request->request->get('compte'));
         $erreur = $compte === null ? 'Choisissez le compte qui reçoit l\'argent.' : $this->tournee->validerEncaissement($bon, $compte, $this->moi());
         $erreur !== null ? $this->addFlash('danger', $erreur) : $this->addFlash('success', 'Encaissement validé : le paiement est entré en trésorerie.');
 

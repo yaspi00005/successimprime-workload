@@ -111,7 +111,7 @@ final class MontageController extends AbstractController
         foreach ($ligne->getFichiers() as $f) {
             $version = max($version, $f->getVersion() + 1);
         }
-        $machine = $request->request->getInt('machine') > 0 ? $this->em->getRepository(Machines::class)->find($request->request->getInt('machine')) : null;
+        $machine = (int) $request->request->get('machine') > 0 ? $this->em->getRepository(Machines::class)->find((int) $request->request->get('machine')) : null;
         $montage = Montage::donnees($request->request->all(), $machine?->getId(), $machine?->getNom());
         $resume = $montage !== null ? Montage::resume($montage) : '';
         $nomOriginal = mb_substr(preg_replace('/[^\w.\- ]+/u', '-', (string) $request->request->get('nom')) ?: 'montage.pdf', 0, 200);

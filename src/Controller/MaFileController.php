@@ -40,15 +40,17 @@ final class MaFileController extends AbstractController
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(Request $request): Response
     {
-        $machine = $this->machine($request);
+        $poste = $this->poste($request);
+        $machine = $poste ?? $this->machine($request);
         $maintenant = new \DateTimeImmutable();
 
         return $this->render('ma_file/index.html.twig', [
             'machine' => $machine,
+            'poste' => $poste,
             'machines' => $this->machines->findBy([], ['nom' => 'ASC']),
             'journee' => $machine !== null ? $this->file->journee($machine, $maintenant) : null,
             'maintenant' => $maintenant,
-            'peutAgir' => $this->isGranted('ROLE_PRODUCTION_GERER'),
+            'peutAgir' => $poste !== null && $this->isGranted('ROLE_PRODUCTION_GERER'),
             'jeton' => self::CSRF,
         ]);
     }
@@ -57,6 +59,7 @@ final class MaFileController extends AbstractController
     public function travail(OrdreProduction $ordre, Request $request): Response
     {
         $maintenant = new \DateTimeImmutable();
+        $poste = $this->poste($request);
 
         return $this->render('ma_file/travail.html.twig', [
             'o' => $ordre,
@@ -66,9 +69,8 @@ final class MaFileController extends AbstractController
             'bareme' => $this->parametres->bareme(),
             'evenements' => array_values(array_filter($ordre->getMachine() !== null ? $this->file->journee($ordre->getMachine(), $maintenant)['evenements'] : [], static fn (JournalMachine $j): bool => $j->getOrdre() === $ordre)),
             'maintenant' => $maintenant,
-            'peutAgir' => $this->isGranted('ROLE_PRODUCTION_GERER'),
-            // Démarrer, pause et terminer restent réservés aux postes des machines (adresse IP reconnue).
-            'surPosteMachine' => $request->getClientIp() !== null && $this->machines->findOneByAdresseIp($request->getClientIp()) !== null,
+            // Agir sur un travail : seulement depuis le poste de sa machine (adresse IP reconnue).
+            'peutAgir' => $poste !== null && $poste === $ordre->getMachine() && $this->isGranted('ROLE_PRODUCTION_GERER'),
             'jeton' => self::CSRF,
         ]);
     }
@@ -82,7 +84,10 @@ final class MaFileController extends AbstractController
         }
         $type = (string) $request->request->get('type');
         $ordre = $request->request->get('ordre') ? $this->em->getRepository(OrdreProduction::class)->find((int) $request->request->get('ordre')) : null;
-        $machine = $ordre?->getMachine() ?? $this->machine($request);
+        $machine = $this->poste($request);
+        if ($machine === null || ($ordre !== null && $ordre->getMachine() !== $machine)) {
+            throw $this->createAccessDeniedException('La production se signale depuis le poste de la machine.');
+        }
         $quantite = is_numeric(str_replace(',', '.', (string) $request->request->get('quantite'))) ? (float) str_replace(',', '.', (string) $request->request->get('quantite')) : null;
         $note = (string) $request->request->get('note');
 
@@ -109,7 +114,15 @@ final class MaFileController extends AbstractController
             : $this->redirectToRoute('app_ma_file_index');
     }
 
-    /** Machine choisie, gardée en session ; sinon celle du dernier ordre de la personne. */
+    /** Machine du poste, reconnue par l'adresse IP (comme la production). */
+    private function poste(Request $request): ?Machines
+    {
+        $ip = $request->getClientIp();
+
+        return $ip !== null ? $this->machines->findOneByAdresseIp($ip) : null;
+    }
+
+    /** Machine choisie pour consulter, gardée en session ; sinon celle du dernier ordre de la personne. */
     private function machine(Request $request): ?Machines
     {
         $session = $request->getSession();

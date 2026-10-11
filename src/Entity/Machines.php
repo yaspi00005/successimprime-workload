@@ -101,6 +101,14 @@ class Machines
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $planPreventif = null;
 
+    /** Montage d'impression : marge non imprimable de la machine (mm). */
+    #[ORM\Column(nullable: true)]
+    private ?float $margeMontageMm = null;
+
+    /** Montage d'impression : feuilles acceptées, ex. « A4,A3,SRA3 ». */
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $formatsMontage = null;
+
     /*
      * ============================================================
      * RENTABILITÉ / AMORTISSEMENT
@@ -648,6 +656,32 @@ public function setAdresseIp(string $adresseIp): static
     {
         $plan = null !== $plan ? trim($plan) : null;
         $this->planPreventif = '' === $plan ? null : $plan;
+
+        return $this;
+    }
+
+    public function getMargeMontageMm(): ?float
+    {
+        return $this->margeMontageMm;
+    }
+
+    public function setMargeMontageMm(?float $marge): static
+    {
+        $this->margeMontageMm = $marge;
+
+        return $this;
+    }
+
+    /** @return list<string> */
+    public function getFormatsMontage(): array
+    {
+        return $this->formatsMontage !== null ? explode(',', $this->formatsMontage) : [];
+    }
+
+    /** @param list<string> $formats */
+    public function setFormatsMontage(array $formats): static
+    {
+        $this->formatsMontage = $formats !== [] ? implode(',', $formats) : null;
 
         return $this;
     }

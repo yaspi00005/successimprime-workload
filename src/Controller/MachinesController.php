@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Machines;
+use App\Service\Montage;
 use App\Entity\Maintenance;
 use App\Service\ParcMachines;
 use App\Repository\MachinesRepository;
@@ -40,6 +41,7 @@ final class MachinesController extends AbstractController
     {
         return $this->render('machines/parc.html.twig', $parc->donnees(new \DateTimeImmutable()) + [
             'types_intervention' => self::TYPES_INTERVENTION,
+            'formats_montage' => Montage::FORMATS,
         ]);
     }
 
@@ -86,6 +88,23 @@ final class MachinesController extends AbstractController
         $machine->setPlanPreventif(mb_substr((string) $request->request->get('plan'), 0, 2000));
         $em->flush();
         $this->addFlash('success', 'Plan préventif de '.$machine->getNom().' enregistré.');
+
+        return $this->redirectToRoute('app_machines_index', ['_fragment' => 'plan']);
+    }
+
+    /** Montage d'impression : marge et feuilles acceptées par la machine (vide = réglage de la tuile). */
+    #[Route('/{id}/montage', name: 'montage', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function montage(Machines $machine, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('montage-machine-'.$machine->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+        $marge = str_replace(',', '.', trim((string) $request->request->get('marge')));
+        $machine->setMargeMontageMm(is_numeric($marge) ? max(0.0, min(20.0, (float) $marge)) : null);
+        $choisis = array_map('strval', (array) $request->request->all('formats'));
+        $machine->setFormatsMontage(array_values(array_intersect(Montage::FORMATS, $choisis)));
+        $em->flush();
+        $this->addFlash('success', 'Montage de '.$machine->getNom().' enregistré.');
 
         return $this->redirectToRoute('app_machines_index', ['_fragment' => 'plan']);
     }

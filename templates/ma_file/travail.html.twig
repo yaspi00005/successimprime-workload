@@ -50,9 +50,6 @@
 				<p class="si-pg-note">Une réimpression due à l'opérateur retire {{ bareme.valeur('p_reimpression')|abs }} points ; une panne signalée n'en retire pas.</p>
 			</section>
 
-			{% if not surPosteMachine %}
-				<p class="si-pg-note si-mf-poste"><i class="fas fa-desktop me-1"></i>Démarrer, mettre en pause et terminer se font depuis le poste de la machine : ce téléphone n'en fait pas partie.</p>
-			{% else %}
 			<div class="si-mf-actions">
 				{% if o.statut == 'en_cours' %}
 					<form method="post" action="{{ path('app_production_pause', {id: o.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('production_pause_' ~ o.id) }}"><input type="hidden" name="retour" value="ma_file"><button class="btn btn-light si-btn-entete si-mf-pause"><i class="fas fa-pause me-1"></i>Pause</button></form>
@@ -67,6 +64,15 @@
 					<form method="post" action="{{ path('app_production_demarrer', {id: o.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('production_demarrer_' ~ o.id) }}"><input type="hidden" name="retour" value="ma_file"><input type="hidden" name="machine_id" value="{{ o.machine.id }}"><button class="btn btn-success"><i class="fas fa-play me-1"></i>Démarrer</button></form>
 				{% endif %}
 			</div>
+		{% else %}
+			{% if evenements is not empty %}
+				<section class="card si-mf-bloc">
+					<h2>Historique</h2>
+					<ul class="si-mf-journal">{% for e in evenements %}<li><time>{{ e.le|date('H:i') }}</time> {{ e.libelle }}{{ e.quantite ? ' · ' ~ e.quantite|number_format(1, ',') ~ ' m²' }}{{ e.note ? ' · ' ~ e.note }}</li>{% endfor %}</ul>
+				</section>
+			{% endif %}
+			{% if not o.estTermine and not o.estAnnule %}
+				<p class="si-pg-note si-mf-poste"><i class="fas fa-desktop me-1"></i>Consultation seulement : démarrer, terminer et signaler se font depuis le poste de {{ o.machine.nom ?? 'la machine' }}, reconnu par son adresse IP.</p>
 			{% endif %}
 		{% endif %}
 		{% set possibles = bareme.points({p_avant_heure: 1}) %}

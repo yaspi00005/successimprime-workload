@@ -37,7 +37,9 @@ Fait :
 - La marge, le fond perdu et les traits de coupe par défaut viennent de la tuile Montage des paramètres.
 - « Ranger dans la commande » enregistre le PDF dans les fichiers de la ligne (`var/uploads/commandes`, non public), en nouvelle version, origine interne, état traité, avec le nombre de poses et la feuille. La frise de la conception note « Montage d'impression enregistré ».
 
+- Chaque machine à la feuille a sa marge non imprimable et ses feuilles acceptées (Machines › Montage d'impression). Dans l'outil, choisir la machine règle la marge et cache les feuilles qu'elle n'accepte pas ; sans réglage machine, on garde ceux de la tuile.
+- Le fichier rangé garde les données du montage (`commande_detail_fichier.montage` : poses, feuille, quantité, feuilles à sortir, gâche, recto-verso, machine), lisibles aussi en clair dans son observation.
+
 Reste :
 
-- Garder les feuilles et la gâche sur la ligne pour le coût de revient et les compteurs.
-- Lire la marge et les formats acceptés depuis la fiche de chaque machine.
+- Faire lire ces feuilles par le coût de revient (papier) et les compteurs de la machine, quand le coût à la feuille sera branché.

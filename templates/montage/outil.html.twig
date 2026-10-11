@@ -106,6 +106,7 @@ details summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)}
 <div class="left">
   <section class="card">
     <h2>1 · Feuille d'impression</h2>
+    <div class="f" id="siMachineF" hidden style="margin-bottom:10px"><label for="siMachine">Machine</label><select id="siMachine"></select></div>
     <div class="seg" id="sheetSeg"></div>
     <div class="row f" id="customSheet" hidden style="margin-top:8px">
       <div><label for="sw">Largeur (mm)</label><input id="sw" type="number" min="50" max="1000" step="1" value="210"></div>
@@ -497,7 +498,8 @@ async function buildPdf(L,title){
 async function offer(bytes,name){const msg=$('expMsg');
   const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
   msg.textContent=`${name} téléchargé (${fmtN(bytes.length/1024,0)} Ko).`;
-  document.dispatchEvent(new CustomEvent('si-montage-pdf',{detail:{bytes,name,poses:LAST&&LAST.L?LAST.L.n:null,feuille:S.sheet}}))}
+  const n=LAST&&LAST.L?LAST.L.n:0,need=n?Math.ceil(S.qty/n):0;
+  document.dispatchEvent(new CustomEvent('si-montage-pdf',{detail:{bytes,name,poses:n||null,feuille:S.sheet,quantite:S.qty,gache:S.waste,verso:!!files.verso,feuilles:need+Math.ceil(need*S.waste/100)}}))}
 $('expMontage').onclick=async()=>{const msg=$('expMsg');const L=LAST.L;if(!L.n){msg.textContent='Aucune pose possible : ajustez les réglages avant d\'exporter.';return}if(!files.recto){msg.textContent='Chargez d\'abord un fichier.';return}
   msg.textContent='Création du PDF…';try{const name=`montage-${L.n}-poses-${S.sheet}-${fmtN(S.tw)}x${fmtN(S.th)}.pdf`.replace(/,/g,'.');const bytes=await buildPdf(L,name);window.__lastPdf=bytes;await offer(bytes,name)}catch(e){msg.textContent='Erreur pendant la création du PDF : '+(e.message||e)}};
 $('expSingle').onclick=async()=>{const msg=$('expMsg');if(!files.recto){msg.textContent='Chargez d\'abord un fichier.';return}
@@ -529,6 +531,19 @@ window.SIMontage={loadFile,S,update};update();if(!(window.SI_MONTAGE&&window.SI_
       .catch(e => { msg.textContent = 'Le fichier de la commande n\'a pas pu être chargé (' + e.message + '). Choisissez-le à la main.'; formatLigne(); });
   } else if (C.ligne) { formatLigne(); msg.textContent = 'Aucun fichier sur cette ligne : choisissez-le à la main.'; }
 
+  // Feuilles acceptées (tuile Montage, puis fiche de la machine) et marge de la machine.
+  const formats = list => { const ok = (list && list.length ? list : C.formats) || []; let actif = null;
+    [...$('sheetSeg').children].forEach(b => { const k = b.textContent.trim(); const garde = k === 'Perso' || ok.includes(k); b.hidden = !garde; if (garde && !actif && k !== 'Perso') actif = b; });
+    if (M.S.sheet !== 'custom' && !ok.includes(M.S.sheet) && actif) actif.click(); };
+  const machines = C.machines || [], choix = $('siMachine');
+  if (machines.length) {
+    $('siMachineF').hidden = false;
+    choix.innerHTML = '<option value="">Toutes machines</option>' + machines.map(m => '<option value="' + m.id + '">' + m.nom.replace(/[<>&"]/g, '') + '</option>').join('');
+    choix.addEventListener('change', () => { const m = machines.find(x => String(x.id) === choix.value); regler('margin', m && m.marge !== null ? m.marge : C.marge); formats(m ? m.formats : null); });
+  }
+  formats(null);
+  if (machines.length === 1) { choix.value = String(machines[0].id); choix.dispatchEvent(new Event('change')); }
+
   let dernier = null;
   document.addEventListener('si-montage-pdf', e => { dernier = e.detail; const b = $('siRanger'); if (b) { b.disabled = false; b.title = ''; } });
   const ranger = $('siRanger');
@@ -537,7 +552,8 @@ window.SIMontage={loadFile,S,update};update();if(!(window.SI_MONTAGE&&window.SI_
     ranger.disabled = true; msg.textContent = 'Envoi du montage…';
     const d = new FormData();
     d.append('_token', C.jeton); d.append('nom', dernier.name);
-    d.append('resume', (dernier.poses ? dernier.poses + (dernier.poses > 1 ? ' poses' : ' pose') + ' par feuille ' + dernier.feuille : '') );
+    ['poses', 'feuille', 'quantite', 'gache', 'feuilles'].forEach(k => d.append(k, dernier[k] ?? ''));
+    d.append('verso', dernier.verso ? '1' : '0'); if (choix && choix.value) d.append('machine', choix.value);
     d.append('pdf', new Blob([dernier.bytes], {type: 'application/pdf'}), dernier.name);
     try { const r = await fetch(C.enregistrerUrl, {method: 'POST', body: d, credentials: 'same-origin'}); const j = await r.json(); msg.textContent = j.message; }
     catch (e) { msg.textContent = 'Envoi impossible : ' + e.message; }

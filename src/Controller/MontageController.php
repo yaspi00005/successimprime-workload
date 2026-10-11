@@ -4,6 +4,8 @@ namespace App\Controller;
 
 use App\Entity\CommandeDetailFichier;
 use App\Entity\CommandesDetails;
+use App\Entity\Machines;
+use App\Service\Montage;
 use App\Entity\User;
 use App\Service\Parametres\Parametres;
 use App\Service\SuiviMetiers\TableauConception;
@@ -48,6 +50,13 @@ final class MontageController extends AbstractController
             'marge' => (float) $this->parametres->valeur('montage', 'marge_mm'),
             'fondPerdu' => (float) $this->parametres->valeur('montage', 'fond_perdu_mm'),
             'traitsCoupe' => (bool) $this->parametres->valeur('montage', 'traits_coupe'),
+            'formats' => Montage::formats((string) $this->parametres->valeur('montage', 'formats')) ?: Montage::FORMATS,
+            'machines' => array_map(static fn (Machines $m): array => [
+                'id' => $m->getId(),
+                'nom' => $m->getNom(),
+                'marge' => $m->getMargeMontageMm(),
+                'formats' => $m->getFormatsMontage(),
+            ], $this->machinesFeuille()),
         ];
         if ($ligne !== null) {
             $config += [
@@ -102,7 +111,9 @@ final class MontageController extends AbstractController
         foreach ($ligne->getFichiers() as $f) {
             $version = max($version, $f->getVersion() + 1);
         }
-        $resume = mb_substr(trim((string) $request->request->get('resume')), 0, 200);
+        $machine = $request->request->getInt('machine') > 0 ? $this->em->getRepository(Machines::class)->find($request->request->getInt('machine')) : null;
+        $montage = Montage::donnees($request->request->all(), $machine?->getId(), $machine?->getNom());
+        $resume = $montage !== null ? Montage::resume($montage) : '';
         $nomOriginal = mb_substr(preg_replace('/[^\w.\- ]+/u', '-', (string) $request->request->get('nom')) ?: 'montage.pdf', 0, 200);
         $nomStockage = 'montage-'.$ligne->getId().'-'.bin2hex(random_bytes(12)).'.pdf';
         $taille = (int) $pdf->getSize();
@@ -121,6 +132,7 @@ final class MontageController extends AbstractController
             ->setVersion($version)
             ->setDesignation(self::DESIGNATION)
             ->setObservation($resume !== '' ? $resume : null)
+            ->setMontage($montage)
             ->setAjoutePar($moi)
             ->marquerUploadTermine();
         $ligne->addFichier($fichier);
@@ -129,6 +141,12 @@ final class MontageController extends AbstractController
         $conceptions->noterMontage($ligne, $resume, new \DateTimeImmutable());
 
         return new JsonResponse(['message' => \sprintf('Montage rangé dans la commande (version %d).', $version)]);
+    }
+
+    /** @return list<Machines> machines à la feuille, celles qui reçoivent un montage */
+    private function machinesFeuille(): array
+    {
+        return $this->em->getRepository(Machines::class)->findBy(['modeFacturation' => Machines::MODE_FACTURATION_FEUILLE], ['nom' => 'ASC']);
     }
 
     /** Dernière maquette de la ligne, sans les montages déjà rangés. */

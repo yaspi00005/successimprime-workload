@@ -147,6 +147,15 @@ class CommandeDetailFichier
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $observation = null;
 
+    /**
+     * Données d'un montage d'impression : poses, feuille, feuilles à
+     * sortir, gâche, machine. Sert au coût de revient et aux compteurs.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $montage = null;
+
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $ajoutePar = null;
@@ -607,6 +616,20 @@ class CommandeDetailFichier
         }
 
         $this->etat = self::ETAT_PRET_IMPRESSION;
+
+        return $this;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getMontage(): ?array
+    {
+        return $this->montage;
+    }
+
+    /** @param array<string, mixed>|null $montage */
+    public function setMontage(?array $montage): static
+    {
+        $this->montage = $montage;
 
         return $this;
     }

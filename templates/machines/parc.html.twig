@@ -95,6 +95,27 @@
 					</form>
 				</details>
 			{% endfor %}
+			{% set feuille = cartes|filter(c => c.machine.modeFacturation == 'feuille') %}
+			{% if feuille is not empty %}
+				<h2 class="mt-3">Montage d'impression</h2>
+				{% for carte in feuille %}
+					{% set m = carte.machine %}
+					<details class="si-plan">
+						<summary><strong>{{ m.nom }}</strong> <span class="text-muted">{{ m.formatsMontage ? m.formatsMontage|join(' · ') : 'feuilles du réglage' }}{{ m.margeMontageMm is not null ? ' · marge ' ~ m.margeMontageMm|number_format(1, ',', ' ') ~ ' mm' : '' }}</span></summary>
+						<form method="post" action="{{ path('app_machines_montage', {id: m.id}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('montage-machine-' ~ m.id) }}">
+							<label class="form-label small mb-1" for="mm-{{ m.id }}">Marge non imprimable (mm)</label>
+							<input class="form-control form-control-sm" id="mm-{{ m.id }}" name="marge" type="number" min="0" max="20" step="0.5" value="{{ m.margeMontageMm }}" placeholder="réglage Montage">
+							<div class="mt-2">
+								{% for f in formats_montage %}
+									<label class="form-check form-check-inline small"><input class="form-check-input" type="checkbox" name="formats[]" value="{{ f }}" {{ f in m.formatsMontage ? 'checked' }}> {{ f }}</label>
+								{% endfor %}
+							</div>
+							<button class="btn btn-sm btn-outline-primary mt-2">Enregistrer</button>
+						</form>
+					</details>
+				{% endfor %}
+			{% endif %}
 		</aside>
 	</div>
 

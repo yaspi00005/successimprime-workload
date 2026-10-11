@@ -3288,3 +3288,60 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
   .si-campagne-dest td { border: 0; padding: 0; }
   .si-campagne-dest td:nth-child(3) { color: #64748B; font-size: 12px; }
 }
+
+/* ================================================================
+   Accueil › Statistiques et rapports (maquette 36)
+   ================================================================ */
+.si-stats .card { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; margin: 0; }
+.si-stats h2 { font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 12px; }
+.si-stats-periode select { min-width: 160px; font-weight: 600; }
+.si-stats-imprime { display: none; }
+.si-stats-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+.si-stats .si-stats-kpi h2 { font-size: 14px; font-weight: 500; color: #475569; margin: 0 0 6px; }
+.si-stats-kpi strong { display: block; font-size: clamp(22px, 2.2vw, 30px); font-weight: 800; color: #0F172A; white-space: nowrap; }
+.si-stats-kpi > span { display: block; margin-top: 4px; font-size: 13px; font-weight: 700; }
+.si-stats-kpi small { display: block; color: #64748B; font-size: 12px; }
+.si-s-hausse { color: #16A34A; }
+.si-s-baisse { color: #DC2626; }
+.si-s-neutre { color: #64748B; font-weight: 500 !important; }
+.si-stats-milieu { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; align-items: stretch; }
+.si-stats-milieu.si-stats-plein { grid-template-columns: 1fr; }
+.si-stats-graphe header { display: flex; justify-content: space-between; align-items: baseline; }
+.si-stats-graphe header span { font-size: 12px; color: #475569; display: flex; align-items: center; gap: 6px; }
+.si-s-pastille { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: #2563EB; }
+.si-s-pastille-avant { background: #CBD5E1; }
+.si-stats-barres { display: flex; gap: 10px; height: 280px; align-items: stretch; padding-top: 8px; }
+.si-stats-mois { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.si-stats-colonnes { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
+.si-stats-barre { flex: 1; max-width: 46px; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, #4F8DF0, #1E40AF); }
+.si-stats-barre.si-stats-courant { background: linear-gradient(180deg, #FB7185, #E11D48); }
+.si-stats-barre.si-stats-avant { background: #CBD5E1; }
+.si-stats-lettre { text-align: center; font-size: 12px; color: #64748B; margin-top: 8px; }
+.si-stats-categories ul { list-style: none; margin: 0; padding: 0; }
+.si-stats-categories li { display: grid; grid-template-columns: minmax(0, 1fr) 60px 48px; gap: 12px; align-items: center; padding: 7px 0; color: #334155; }
+.si-stats-categories li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-stats-categories li strong { text-align: right; color: #0F172A; }
+.si-stats-lien { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 600; }
+.si-stats-bas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px; }
+.si-stats-carte span { display: block; font-size: 13px; color: #475569; }
+.si-stats-carte strong { font-size: 17px; color: #0F172A; }
+.si-stats-rapports { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 20px; font-size: 13px; }
+.si-stats-rapports span { color: #64748B; }
+.si-stats-rapports a { font-weight: 600; }
+.si-stats-note { color: #64748B; font-size: 12px; margin: 8px 0 0; }
+@media (max-width: 991.98px) {
+  .si-stats-milieu, .si-stats-bas { grid-template-columns: 1fr; }
+}
+@media (max-width: 575.98px) {
+  .si-stats-kpis { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .si-stats .card { padding: 14px; }
+  .si-stats-kpi strong { font-size: 20px; }
+  .si-stats-barres { height: 200px; gap: 4px; }
+  .si-stats-periode select { min-width: 0; }
+}
+@media print {
+  .si-stats-imprime { display: block; font-weight: 700; margin-bottom: 12px; }
+  .si-stats-rapports { display: none; }
+  .si-stats .card { box-shadow: none; border: 1px solid #E2E8F0; break-inside: avoid; }
+  .si-stats-barre { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

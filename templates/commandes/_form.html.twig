@@ -135,14 +135,7 @@
                 detail.typeLigne
             ) }}
 
-			<small class="form-text text-muted">
-				Produit / prestation :
-																																																																																																																																                travail provenant du catalogue.
-																																																																																																																																                Article en stock :
-																																																																																																																																                vente directe d’un article physique.
-																																																																																																																																                Saisie libre :
-																																																																																																																																                désignation, quantité et prix libres.
-			</small>
+
 
 		</div>
 
@@ -399,71 +392,6 @@
 
 
 		{# ====================================================
-																																																																           CIRCUIT
-																																																																           ==================================================== #}
-
-		<div class="travail-section js-zone-circuit">
-
-			<div class="travail-section-title">
-				<i class="fa fa-random"></i>
-				Circuit de traitement
-			</div>
-
-
-			<div class="row">
-
-				<div class="col-lg-6">
-
-					{{ form_row(
-                        detail.prePresseNecessaire,
-                        {
-                            label:
-                                'Passage en prépresse',
-
-                            attr: {
-                                class:
-                                    'js-prepresse-necessaire'
-                            }
-                        }
-                    ) }}
-
-				</div>
-
-
-				<div class="col-lg-6">
-
-					{{ form_row(
-                        detail.productionNecessaire,
-                        {
-                            label:
-                                'Passage en production',
-
-                            attr: {
-                                class:
-                                    'js-production-necessaire'
-                            }
-                        }
-                    ) }}
-
-				</div>
-
-			</div>
-
-
-			<div class="alert alert-info mb-0">
-
-				<i class="fa fa-info-circle mr-1"></i>
-
-				<span class="js-message-circuit-texte">
-					Circuit de traitement de cette ligne.
-				</span>
-
-			</div>
-
-		</div>
-
-
-		{# ====================================================
 																																																																           QUANTITÉ / DIMENSIONS / PRIX
 																																																																           ==================================================== #}
 
@@ -512,7 +440,7 @@
 				</div>
 
 
-				<div class="col-lg-3 js-zone-surface">
+				<div class="d-none js-zone-surface">
 
 					{{ form_row(detail.surface, {
                         attr: {
@@ -642,7 +570,7 @@
 				</div>
 
 
-				<div class="col-lg-3">
+				<div class="d-none">
 
 					{{ form_row(detail.totalHt, {
                         attr: {
@@ -656,7 +584,7 @@
 				</div>
 
 
-				<div class="col-lg-3">
+				<div class="d-none">
 
 					{{ form_row(detail.totalTtc, {
                         attr: {
@@ -670,6 +598,8 @@
 				</div>
 
 			</div>
+
+			<div class="si-resume-ligne js-resume-ligne"></div>
 
 		</div>
 
@@ -732,6 +662,75 @@
 					</button>
 
 				{% endif %}
+
+			</div>
+
+		</div>
+
+
+				{# Réglages moins courants, repliés (maquette C01 : la ligne reste courte). #}
+		<details class="si-plus-options">
+			<summary>Plus d'options : circuit, caractéristiques techniques, observation</summary>
+
+{# ====================================================
+																																																																           CIRCUIT
+																																																																           ==================================================== #}
+
+		<div class="travail-section js-zone-circuit">
+
+			<div class="travail-section-title">
+				<i class="fa fa-random"></i>
+				Circuit de traitement
+			</div>
+
+
+			<div class="row">
+
+				<div class="col-lg-6">
+
+					{{ form_row(
+                        detail.prePresseNecessaire,
+                        {
+                            label:
+                                'Passage en prépresse',
+
+                            attr: {
+                                class:
+                                    'js-prepresse-necessaire'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+
+				<div class="col-lg-6">
+
+					{{ form_row(
+                        detail.productionNecessaire,
+                        {
+                            label:
+                                'Passage en production',
+
+                            attr: {
+                                class:
+                                    'js-production-necessaire'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+			</div>
+
+
+			<div class="alert alert-info mb-0">
+
+				<i class="fa fa-info-circle mr-1"></i>
+
+				<span class="js-message-circuit-texte">
+					Circuit de traitement de cette ligne.
+				</span>
 
 			</div>
 
@@ -822,7 +821,10 @@
 		</div>
 
 
-		{# ====================================================
+				</details>
+
+
+{# ====================================================
 																																																																           FICHIERS
 																																																																           ==================================================== #}
 
@@ -1018,496 +1020,211 @@
 }) }}
 
 
-<div
-	class="side-app">
+{#
+	Saisie d'une commande (maquettes C01 web, C03 et C04 mobile).
+	À gauche : client, lignes, configuration de la ligne choisie.
+	À droite : livraison et délai, récapitulatif, acompte.
+	Sur téléphone, les mêmes blocs passent en 3 étapes (data-etape).
+#}
+{% set estNouvelle = commande.id is null %}
+{% set dejaConfirmee = not estNouvelle and commande.statut %}
+{% set peutEncaisser = is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+{% set jours = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'] %}
 
-	{# ========================================================
-																																       HEADER
-																																       ======================================================== #}
+<div class="si-saisie" data-etape="lignes" data-delai-possible="{{ delaiPossible is defined ? delaiPossible|date('Y-m-d') : '' }}" data-delai-libelle="{{ delaiPossible is defined ? jours[delaiPossible|date('w')] ~ ' ' ~ delaiPossible|date('d/m') : '' }}">
 
-	<div class="page-header">
-
-		<ol class="breadcrumb">
-
-			<li class="breadcrumb-item">
-
-				<a href="{{ path( 'app_commandes_index' ) }}">
-					Commandes
-				</a>
-
-			</li>
-
-			<li class="breadcrumb-item active">
-
-				{{
-                    form.vars.data.id
-                        ? 'Modifier la commande'
-                        : 'Nouvelle commande'
-                }}
-
-			</li>
-
-		</ol>
-
-
-		<a href="{{ path( 'app_commandes_index' ) }}" class="btn btn-sm btn-primary-light">
-			<i class="fa fa-list mr-1"></i>
-			Liste des commandes
-		</a>
-
+	<div class="si-saisie-tete">
+		<div class="si-saisie-retour d-md-none">
+			<button type="button" class="si-rond js-etape-retour" aria-label="Retour"><i class="fas fa-chevron-left"></i></button>
+			<div>
+				<strong class="js-titre-etape">{{ estNouvelle ? 'Nouvelle commande' : commande.numero }}</strong>
+				<small class="text-muted js-sous-titre-etape">Étape 1/3 · client et lignes</small>
+			</div>
+		</div>
+		<div class="si-saisie-boutons">
+			{% if estNouvelle %}
+				<a href="{{ path('app_commandes_index') }}" class="btn btn-light btn-sm si-btn-entete">Annuler</a>
+			{% else %}
+				<a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="btn btn-light btn-sm si-btn-entete">Annuler</a>
+			{% endif %}
+			{% if not dejaConfirmee %}
+				<button type="submit" name="action_saisie" value="brouillon" class="btn btn-light btn-sm si-btn-entete js-action-saisie">Enregistrer en brouillon</button>
+				<button type="submit" name="action_saisie" value="confirmer" class="btn btn-danger btn-sm si-btn-entete js-action-saisie">Confirmer la commande</button>
+			{% else %}
+				<button type="submit" name="action_saisie" value="confirmer" class="btn btn-danger btn-sm si-btn-entete js-action-saisie">Enregistrer les modifications</button>
+			{% endif %}
+		</div>
 	</div>
-
 
 	{% if not form.vars.valid %}
-
-		<div class="alert alert-danger">
-			{{ form_errors(form) }}
-		</div>
-
+		<div class="alert alert-danger">{{ form_errors(form) }}</div>
 	{% endif %}
-
 
 	{% if commandeVerrouillee %}
-
-		<div class="alert alert-warning">
-
-			<i class="fa fa-lock mr-2"></i>
-
-			<strong>
-				Commande engagée dans son circuit.
-			</strong>
-
-			La structure des lignes ne peut plus être modifiée.
-
-		</div>
-
+		<div class="alert alert-warning"><i class="fas fa-lock me-2"></i><strong>Commande engagée dans son circuit.</strong> Les lignes ne peuvent plus être modifiées.</div>
 	{% endif %}
 
+	<div class="si-saisie-grille">
+		<div class="si-saisie-gauche">
 
-	{# ========================================================
-																																       CLIENT
-																																       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-user-circle mr-2"></i>
-				Client
-			</div>
-
-		</div>
-
-
-		<div class="card-body">
-
-			<div class="row">
-
-				<div class="col-lg-6">
-
+			{# ---------- Client ---------- #}
+			<div class="card si-bloc si-saisie-client js-zone-client">
+				<div class="si-client-carte js-client-carte" hidden>
+					<span class="si-client-initiales js-client-initiales"></span>
+					<div class="min-w-0 flex-grow-1">
+						<small class="text-muted">Client</small>
+						<div class="si-client-nom"><strong class="js-client-nom"></strong> <span class="si-pastille si-pastille-bleu js-client-compte"></span> <span class="si-pastille si-pastille-gris js-client-tarif"></span></div>
+						<small class="text-muted js-client-contact"></small>
+					</div>
+					{% if not commandeVerrouillee %}
+						<button type="button" class="btn btn-sm si-btn-secondaire js-client-changer">Changer</button>
+					{% endif %}
+				</div>
+				<div class="js-client-choix">
 					{{ form_row(form.clients, {
-                        label:
-                            'Client',
-
-                        attr: {
-                            class:
-                                'form-control js-select-search js-client-commande',
-
-                            'data-placeholder':
-                                'Rechercher un client...'
-                        }
-                    }) }}
-
+						label: 'Client',
+						attr: {
+							class: 'form-control js-select-search js-client-commande',
+							'data-placeholder': 'Téléphone, prénom ou nom…'
+						}
+					}) }}
+					{# Repris par le script existant (tarif B2B ou B2C). #}
+					<small class="text-muted"><span class="js-profil-client">Sélectionnez un client</span> · <span class="js-profil-client-aide">Le tarif B2B ou B2C sera appliqué automatiquement.</span></small>
 				</div>
+			</div>
 
+			{# ---------- Lignes ---------- #}
+			<div class="card si-bloc si-saisie-lignes">
+				<div class="si-bloc-tete">
+					<h4>Lignes de commande <span class="text-muted d-md-none js-nombre-lignes"></span></h4>
+					{% if not commandeVerrouillee %}
+						<button type="button" id="add-detail" class="btn btn-link btn-sm si-lien-ajout d-none d-md-inline-block">+ Ajouter une ligne</button>
+					{% endif %}
+				</div>
+				{{ form_errors(form.commandesDetails) }}
+				<div class="table-responsive">
+					<table class="table si-table si-table-lignes align-middle mb-0">
+						<thead>
+							<tr>
+								<th class="si-col-vignette"></th>
+								<th>Produit et caractéristiques</th>
+								<th>Machine</th>
+								<th class="text-end">Qté</th>
+								<th class="text-end">PU TTC</th>
+								<th class="text-end">Total</th>
+								<th>Fichier</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody class="js-lignes-resume"></tbody>
+					</table>
+				</div>
+				<div id="aucun-detail" class="si-vide">Aucune ligne. Ajoutez le premier produit de la commande.</div>
+				{% if not commandeVerrouillee %}
+					<button type="button" id="add-detail-bottom" class="btn si-btn-ajout-ligne d-md-none">+ Ajouter une ligne</button>
+				{% endif %}
+			</div>
 
-				<div class="col-lg-6">
-
-					<div class="form-group">
-
-						<label>
-							Profil tarifaire
-						</label>
-
-						<div class="alert alert-light border mb-0">
-
-							<strong class="js-profil-client">
-								Sélectionnez un client
-							</strong>
-
-							<div class="small text-muted js-profil-client-aide">
-								Le tarif B2B ou B2C sera appliqué automatiquement.
+			{# ---------- Configuration de la ligne choisie ---------- #}
+			<div class="card si-bloc si-saisie-config js-zone-config">
+				<div id="collection-details" data-index="{{ form.commandesDetails|length }}" data-prototype="{{ _self.champs_detail(form.commandesDetails.vars.prototype, false)|e('html_attr') }}">
+					{% for detail in form.commandesDetails %}
+						<div class="detail-commande{{ commandeVerrouillee ? ' detail-commande-verrouille' : '' }}">
+							<div class="si-bloc-tete">
+								<h4 class="detail-title">Ligne {{ loop.index }}</h4>
+								{% if not commandeVerrouillee %}
+									<button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail"><i class="fas fa-trash-alt me-1"></i>Retirer</button>
+								{% endif %}
 							</div>
-
+							{{ _self.champs_detail(detail, commandeVerrouillee) }}
 						</div>
-
-					</div>
-
+					{% endfor %}
 				</div>
-
+				<div class="si-barre-ligne d-md-none">
+					<div><small class="text-muted">Prix de la ligne</small><strong class="js-prix-ligne-active">0 F</strong></div>
+					<button type="button" class="btn btn-primary js-valider-ligne">Valider la ligne</button>
+				</div>
 			</div>
 
+			<div class="si-barre-total d-md-none">
+				<div><small class="text-muted">Total TTC</small><strong class="js-total-affiche">0 F</strong></div>
+				<button type="button" class="btn btn-danger js-etape-suivante">Continuer <i class="fas fa-arrow-right ms-1"></i></button>
+			</div>
 		</div>
 
+		<div class="si-saisie-droite">
+
+			{# ---------- Livraison et délai ---------- #}
+			<div class="card si-bloc si-saisie-livraison">
+				<h4>Livraison et délai</h4>
+				<div class="si-choix-pilules js-mode-livraison">
+					{% for choix in form.modeLivraison %}
+						<label class="si-pilule">{{ form_widget(choix) }}<span>{{ choix.vars.label }}</span></label>
+					{% endfor %}
+				</div>
+				<div class="js-zone-adresse">
+					{{ form_row(form.adresseLivraison, {label: 'Adresse'}) }}
+				</div>
+				<div class="row g-2">
+					<div class="col-7">
+						{{ form_row(form.dateLivraison, {label: 'Date souhaitée', attr: {class: 'form-control js-date-souhaitee'}}) }}
+					</div>
+					<div class="col-5">
+						<label class="form-label">Délai calculé</label>
+						<div class="si-delai js-delai"></div>
+					</div>
+				</div>
+			</div>
+
+			{# ---------- Récapitulatif ---------- #}
+			<div class="card si-bloc si-saisie-recap">
+				<h4>Récapitulatif</h4>
+				<dl class="si-recap">
+					<dt class="js-recap-lignes">Sous-total HT</dt><dd class="js-recap-ht">0</dd>
+					<dt class="js-recap-tva-libelle">TVA</dt><dd class="js-recap-tva">0</dd>
+					<dt>Remise</dt>
+					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-commande'}}) }}</dd>
+				</dl>
+				<div class="si-recap-total"><span>Total TTC</span><strong class="js-total-affiche">0 F</strong></div>
+
+				{% if peutEncaisser and not dejaConfirmee %}
+					<div class="si-acompte">
+						<div class="d-flex justify-content-between"><strong>Acompte 50 %</strong><strong class="js-acompte">0 F</strong></div>
+						<div class="si-choix-pilules mt-2">
+							<label class="si-pilule"><input type="radio" name="acompte_mode" value="orange_money"><span>Orange Money</span></label>
+							<label class="si-pilule"><input type="radio" name="acompte_mode" value="especes"><span>Espèces</span></label>
+							<label class="si-pilule"><input type="radio" name="acompte_mode" value="plus_tard" checked><span>Plus tard</span></label>
+						</div>
+						<small class="text-muted d-block mt-2">L'acompte s'encaisse à la confirmation, sur l'écran de caisse.</small>
+					</div>
+				{% endif %}
+
+				{% if not dejaConfirmee %}
+					<p class="si-note-confirmation">À la confirmation : numéro de commande, fiches de travail et lignes envoyées à la file de production.</p>
+				{% endif %}
+
+				<details class="si-plus-options">
+					<summary>Observation</summary>
+					{{ form_widget(form.observation, {attr: {rows: 3}}) }}
+				</details>
+
+				<button type="submit" name="action_saisie" value="confirmer" class="btn btn-danger w-100 d-md-none js-action-saisie">{{ dejaConfirmee ? 'Enregistrer les modifications' : 'Confirmer la commande' }}</button>
+				{% if not dejaConfirmee %}
+					<button type="submit" name="action_saisie" value="brouillon" class="btn btn-light w-100 mt-2 d-md-none js-action-saisie">Enregistrer en brouillon</button>
+				{% endif %}
+			</div>
+
+			{# Champs calculés par le script, envoyés tels quels. #}
+			<div hidden>
+				{{ form_widget(form.totalHt) }}
+				{{ form_widget(form.totalTtc) }}
+				{{ form_widget(form.montantApayer) }}
+				{{ form_widget(form.tva) }}
+				{{ form_widget(form.statut) }}
+				{{ form_widget(form.etat) }}
+			</div>
+		</div>
 	</div>
-
-
-	{# ========================================================
-																																       INFORMATIONS COMMANDE
-																																       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-file-text-o mr-2"></i>
-				Informations de la commande
-			</div>
-
-		</div>
-
-
-		<div class="card-body">
-
-			<div class="row">
-
-				<div class="col-lg-3">
-
-					<div class="form-group">
-
-						<label>
-							Numéro
-						</label>
-
-						<input type="text" class="form-control" disabled value="{{ form.vars.data.numero |default( 'Généré automatiquement' ) }}">
-
-					</div>
-
-				</div>
-
-
-				<div class="col-lg-3">
-
-					{{ form_row(form.statut, {
-                        label: 'Statut'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-lg-3">
-
-					{{ form_row(form.etat, {
-                        label: 'État'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-lg-3">
-
-					{{ form_row(form.tva, {
-                        label: 'TVA (%)'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-lg-6">
-
-					{{ form_row(form.dateLivraison, {
-                        label:
-                            'Date de livraison'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-lg-6">
-
-					{{ form_row(form.observation, {
-                        label:
-                            'Observation'
-                    }) }}
-
-				</div>
-
-			</div>
-
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-																																       DÉTAILS
-																																       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header
-																																																																																																																																            d-flex
-																																																																																																																																            justify-content-between
-																																																																																																																																            align-items-center">
-
-			<div>
-
-				<div class="card-title mb-0">
-
-					<i class="fa fa-shopping-cart mr-2"></i>
-
-					Produits, articles et prestations
-
-				</div>
-
-				<small class="text-muted">
-					Produit catalogue,
-																																																																																																																																																																                    article en stock ou saisie libre.
-				</small>
-
-			</div>
-
-
-			{% if not commandeVerrouillee %}
-
-				<button type="button" id="add-detail" class="btn btn-success-light">
-					<i class="fa fa-plus mr-1"></i>
-					Ajouter un détail
-				</button>
-
-			{% else %}
-
-				<span class="badge badge-warning p-2">
-
-					<i class="fa fa-lock mr-1"></i>
-
-					Lignes verrouillées
-
-				</span>
-
-			{% endif %}
-
-		</div>
-
-
-		<div class="card-body">
-
-			{{ form_errors(
-                form.commandesDetails
-            ) }}
-
-
-			<div id="collection-details" data-index="{{ form.commandesDetails|length }}" data-prototype="{{ _self.champs_detail( form.commandesDetails.vars.prototype, false )|e('html_attr') }}">
-
-				{% for detail in form.commandesDetails %}
-
-					<div class="
-																																																																																																																																																																																																																																                            detail-commande
-																																																																																																																																																																																																																																                            card
-																																																																																																																																																																																																																																                            border
-																																																																																																																																																																																																																																                            mb-4
-																																																																																																																																																																																																																																                            {{
-																																																																																																																																																																																																																																                                commandeVerrouillee
-																																																																																																																																																																																																																																                                    ? 'detail-commande-verrouille'
-																																																																																																																																																																																																																																                                    : ''
-																																																																																																																																																																																																																																                            }}
-																																																																																																																																																																																																																																                        ">
-
-						<div class="
-																																																																																																																																																																																																																																																																                                card-header
-																																																																																																																																																																																																																																																																                                bg-light
-																																																																																																																																																																																																																																																																                                d-flex
-																																																																																																																																																																																																																																																																                                justify-content-between
-																																																																																																																																																																																																																																																																                                align-items-center
-																																																																																																																																																																																																																																																																                            ">
-
-							<div class="card-title detail-title mb-0">
-								Travail
-								{{ loop.index }}
-							</div>
-
-
-							{% if not commandeVerrouillee %}
-
-								<button type="button" class="btn btn-danger-light btn-sm supprimer-detail">
-									<i class="fa fa-trash mr-1"></i>
-									Supprimer
-								</button>
-
-							{% else %}
-
-								<span class="text-muted">
-									<i class="fa fa-lock mr-1"></i>
-									Verrouillé
-								</span>
-
-							{% endif %}
-
-						</div>
-
-
-						<div class="card-body p-0">
-
-							{{ _self.champs_detail(
-                                detail,
-                                commandeVerrouillee
-                            ) }}
-
-						</div>
-
-					</div>
-
-				{% else %}
-
-					<div id="aucun-detail" class="alert alert-info">
-						Aucun travail ajouté.
-					</div>
-
-				{% endfor %}
-
-			</div>
-
-			{% if not commandeVerrouillee %}
-
-				<div class="text-center mt-2">
-					<button type="button" id="add-detail-bottom" class="btn btn-success-light">
-						<i class="fa fa-plus mr-1"></i>
-						Ajouter un détail
-					</button>
-				</div>
-
-			{% endif %}
-
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-																																       RÉCAP
-																																       ======================================================== #}
-
-	<div class="row">
-
-		<div class="col-xl-5 ml-auto">
-
-			<div class="card">
-
-				<div class="card-header">
-
-					<div class="card-title">
-						<i class="fa fa-calculator mr-2"></i>
-						Récapitulatif
-					</div>
-
-				</div>
-
-
-				<div class="card-body">
-
-					<div class="row">
-
-						<div class="col-md-6">
-
-							{{ form_row(form.totalHt, {
-                                label:
-                                    'Total HT',
-
-                                attr: {
-                                    class:
-                                        'form-control js-total-ht-commande',
-
-                                    readonly:
-                                        true
-                                }
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.remise, {
-                                label:
-                                    'Remise globale'
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.totalTtc, {
-                                label:
-                                    'Total TTC',
-
-                                attr: {
-                                    class:
-                                        'form-control js-total-ttc-commande',
-
-                                    readonly:
-                                        true
-                                }
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.montantApayer, {
-                                label:
-                                    'Montant à payer',
-
-                                attr: {
-                                    class:
-                                        'form-control js-montant-a-payer-commande',
-
-                                    readonly:
-                                        true
-                                }
-                            }) }}
-
-						</div>
-
-					</div>
-
-				</div>
-
-
-				<div class="
-																																																																																																																																																																																																                        card-footer
-																																																																																																																																																																																																                        d-flex
-																																																																																																																																																																																																                        justify-content-between
-																																																																																																																																																																																																                    ">
-
-					<a href="{{ path( 'app_commandes_index' ) }}" class="btn btn-primary-light">
-						Annuler
-					</a>
-
-
-					<button type="submit" class="btn btn-success-light">
-						<i class="fa fa-save mr-1"></i>
-
-						{{
-                            button_label
-                            |default(
-                                'Enregistrer la commande'
-                            )
-                        }}
-
-					</button>
-
-				</div>
-
-			</div>
-
-		</div>
-
-	</div>
-
 </div>
 
 
@@ -1527,399 +1244,18 @@
 <link href="{{ asset( 'assets/plugins/select2/select2.min.css' ) }}" rel="stylesheet">
 
 
+{# Mise en page de la saisie : section « Saisie d'une commande » de public/css/admin.css. #}
 <style>
-
-	#commande-form input.form-control,
-	#commande-form select.form-control,
-	#commande-form textarea.form-control {
-		color: #1f2937 !important;
-		background-color: #fff !important;
-	}
-
 	#commande-form .select2-container {
 		width: 100% !important;
 	}
 
-	#commande-form .select2-selection--single {
-		min-height: 40px;
-	}
-
-	.detail-commande {
-		border: 1px solid #dce4f0 !important;
-		border-radius: 8px;
-		overflow: hidden;
-	}
-
-	.travail-form {
-		padding: 20px;
-		background: #fff;
-	}
-
-	.travail-section {
-		padding: 18px 18px 4px;
-		margin-bottom: 18px;
-		border: 1px solid #e5eaf2;
-		border-radius: 7px;
-		background: #fbfcfe;
-	}
-
-	.travail-section-title {
-		margin: -18px -18px 18px;
-		padding: 11px 16px;
-		color: #ffffff;
-		font-size: 14px;
-		font-weight: 600;
-		background: #f1f5fb;
-		border-bottom: 1px solid #e1e7f0;
-	}
-
-	.travail-section-title i {
-		width: 22px;
-		color: #6259ca;
-	}
-
-	.finitions-box {
-		padding: 14px;
-		border: 1px dashed #cbd4e1;
-		border-radius: 6px;
-	}
-
-	.detail-commande-verrouille {
-		opacity: .95;
-	}
-
-	.detail-commande-verrouille > .card-header {
-		background: #fff8e5 !important;
-	}
-
-	.detail-commande-verrouille .select2-container {
-		pointer-events: none;
-	}
-
-	@media(max-width: 767px) {
-
-		.travail-form {
-			padding: 10px;
-		}
-
-	}
-	/* ============================================================
-   TABLEAUX DU FORMULAIRE COMMANDE
-   ============================================================ */
-
-	#commande-form table {
-		width: 100%;
-		background-color: #ffffff !important;
-	}
-
-	#commande-form table tr {
-		background-color: #ffffff !important;
-	}
-
-	#commande-form table td {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-		border-color: #dce4f0 !important;
-	}
-
-	#commande-form table th {
-		background-color: #eef3fb !important;
-		color: #17366f !important;
-		border-color: #dce4f0 !important;
-		font-weight: 600;
-	}
-
-	/* Une ligne sur deux légèrement différente */
-	#commande-form table tbody tr:nth-child(even) td {
-		background-color: #f8fafc !important;
-	}
-
-	/* Survol */
-	#commande-form table tbody tr:hover td {
-		background-color: #eef4ff !important;
-	}
-
-	/* Champs contenus dans les cellules */
-	#commande-form table td input,
-	#commande-form table td select,
-	#commande-form table td textarea {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-	}
-
-	/* Libellés */
-	#commande-form table td label {
-		color: #334155 !important;
-	}
-	#commande-form table tbody tr td {
-		background-color: #f7f9fd !important;
-	}
-
-	#commande-form table tbody tr:nth-child(even) td {
-		background-color: #eef3fb !important;
-	}
-	#commande-form .form-check-label,
-	#commande-form .form-group label,
-	#commande-form td,
-	#commande-form th {
-		color: #1f2937 !important;
-	}
-	/* ============================================================
-   CORRECTION FORCÉE DES COULEURS - FORMULAIRE COMMANDE
-   À PLACER TOUT À LA FIN DU <style>
-   ============================================================ */
-
-	/* ------------------------------------------------------------
-   TEXTE GÉNÉRAL DES BLOCS
-   ------------------------------------------------------------ */
-
-	body #commande-form,
-	body #commande-form .travail-form,
-	body #commande-form .travail-section,
-	body #commande-form .card-body {
-		color: #ffffff !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   LABELS
-   ------------------------------------------------------------ */
-
-	body #commande-form label,
-	body #commande-form .form-label,
-	body #commande-form .col-form-label,
-	body #commande-form .form-check-label,
-	body #commande-form legend,
-	body #commande-form .control-label {
-		color: #334155 !important;
-		-webkit-text-fill-color: #334155 !important;
-		opacity: 1 !important;
-	}
-
-	.text-white {
-		color: #ffffff !important;
-		-webkit-text-fill-color: #feffff !important;
-		opacity: 1 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   INPUT / SELECT / TEXTAREA
-   ------------------------------------------------------------ */
-
-	body #commande-form input:not([type="checkbox"]):not([type="radio"]),
-	body #commande-form select,
-	body #commande-form textarea,
-	body #commande-form .form-control {
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-
-		background: #ffffff !important;
-		background-color: #ffffff !important;
-
-		border: 1px solid #cbd5e1 !important;
-
-		opacity: 1 !important;
-
-		caret-color: #1f2937 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   CHAMPS READONLY
-   ------------------------------------------------------------ */
-
-	body #commande-form input[readonly],
-	body #commande-form textarea[readonly],
-	body #commande-form .form-control[readonly] {
-		color: #334155 !important;
-		-webkit-text-fill-color: #334155 !important;
-
-		background-color: #f1f5f9 !important;
-
-		opacity: 1 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   CHAMPS DISABLED
-   ------------------------------------------------------------ */
-
-	body #commande-form input:disabled,
-	body #commande-form select:disabled,
-	body #commande-form textarea:disabled {
-		color: #475569 !important;
-		-webkit-text-fill-color: #475569 !important;
-
-		background-color: #e9eef5 !important;
-
-		opacity: 1 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   PLACEHOLDER
-   ------------------------------------------------------------ */
-
-	body #commande-form input::placeholder,
-	body #commande-form textarea::placeholder {
-		color: #94a3b8 !important;
-		-webkit-text-fill-color: #94a3b8 !important;
-
-		opacity: 1 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   OPTIONS DES SELECTS NATIFS
-   ------------------------------------------------------------ */
-
-	body #commande-form select option {
-		color: #1f2937 !important;
-		background-color: #ffffff !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   SELECT2
-   ------------------------------------------------------------ */
-
-	body #commande-form .select2-container .select2-selection,
-	body #commande-form .select2-container .select2-selection--single,
-	body #commande-form .select2-container .select2-selection--multiple {
-		background-color: #ffffff !important;
-		border: 1px solid #cbd5e1 !important;
-	}
-
-
-	body #commande-form .select2-container .select2-selection--single .select2-selection__rendered {
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-
-	body #commande-form .select2-container .select2-selection--single .select2-selection__placeholder {
-		color: #94a3b8 !important;
-		-webkit-text-fill-color: #94a3b8 !important;
-	}
-
-
-	body .select2-dropdown {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-	}
-
-
-	body .select2-results__option {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-
-	body .select2-results__option--highlighted {
-		background-color: #6259ca !important;
-		color: #ffffff !important;
-		-webkit-text-fill-color: #ffffff !important;
-	}
-
-
-	body .select2-search__field {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   RADIOS ET CHECKBOX
-   ------------------------------------------------------------ */
-
-	body #commande-form input[type="radio"],
-	body #commande-form input[type="checkbox"] {
-		opacity: 1 !important;
-	}
-
-
-	/* texte à côté des radios / checkbox */
-	body #commande-form input[type="radio"] + label,
-	body #commande-form input[type="checkbox"] + label {
-		color: #26364a !important;
-		-webkit-text-fill-color: #26364a !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   PETITS TEXTES / AIDES
-   ------------------------------------------------------------ */
-
-	body #commande-form small,
-	body #commande-form .form-text,
-	body #commande-form .text-muted {
-		color: #64748b !important;
-		-webkit-text-fill-color: #64748b !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   TITRES DES BLOCS
-   ------------------------------------------------------------ */
-
-	body #commande-form .travail-section-title {
-		color: #17366f !important;
-		-webkit-text-fill-color: #17366f !important;
-
-		background-color: #eef3fb !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   TABLEAUX
-   ------------------------------------------------------------ */
-
-	body #commande-form table,
-	body #commande-form tbody,
-	body #commande-form tr {
-		background-color: #ffffff !important;
-	}
-
-
-	body #commande-form td {
-		background-color: #ffffff !important;
-
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-
-		border-color: #dce4f0 !important;
-	}
-
-
-	body #commande-form th {
-		background-color: #eef3fb !important;
-
-		color: #17366f !important;
-		-webkit-text-fill-color: #17366f !important;
-
-		border-color: #dce4f0 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   AUTOFILL CHROME / SAFARI
-   ------------------------------------------------------------ */
-
-	body #commande-form input:-webkit-autofill,
-	body #commande-form input:-webkit-autofill:hover,
-	body #commande-form input:-webkit-autofill:focus,
-	body #commande-form textarea:-webkit-autofill,
-	body #commande-form select:-webkit-autofill {
-		-webkit-text-fill-color: #1f2937 !important;
-
-		-webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-
-		box-shadow: 0 0 0 1000px #ffffff inset !important;
-
-		opacity: 1 !important;
+	#commande-form .select2-container .select2-selection--single {
+		min-height: 2.6rem;
+		border-radius: 0.6rem;
+		border-color: #D5DCE8;
+		display: flex;
+		align-items: center;
 	}
 </style>
 
@@ -3329,7 +2665,12 @@ valeurEncoreValide = true;
 });
 
 if (! valeurEncoreValide) {
-select.value = '';
+/* Un seul choix possible (ex. une seule machine pour ce produit) : il est pris. */
+const possibles = Array.from(select.options).filter(function (option) {
+return option.value && ! option.disabled;
+});
+
+select.value = possibles.length === 1 ? possibles[0].value : '';
 }
 
 if (window.jQuery && window.jQuery.fn.select2 && window.jQuery(select).hasClass('select2-hidden-accessible')) {
@@ -3916,29 +3257,15 @@ collection.dataset.index = String(index + 1);
 
 const wrapper = document.createElement('div');
 
-wrapper.className = 'detail-commande card border mb-4';
+wrapper.className = 'detail-commande';
 
 
 wrapper.innerHTML = `
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-
-                    <div class="card-title detail-title mb-0">
-                        Nouveau travail
-                    </div>
-
-                    <button
-                        type="button"
-                        class="btn btn-danger-light btn-sm supprimer-detail"
-                    >
-                        <i class="fa fa-trash mr-1"></i>
-                        Supprimer
-                    </button>
-
+                <div class="si-bloc-tete">
+                    <h4 class="detail-title">Nouvelle ligne</h4>
+                    <button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail"><i class="fas fa-trash-alt me-1"></i>Retirer</button>
                 </div>
-
-                <div class="card-body p-0">
-                    ${html}
-                </div>
+                ${html}
                 `;
 
 
@@ -3960,7 +3287,7 @@ details.forEach(function (detail, index) {
 const titre = detail.querySelector('.detail-title');
 
 if (titre) {
-titre.textContent = 'Travail ' + (
+titre.textContent = 'Ligne ' + (
 index + 1
 );
 }
@@ -4036,6 +3363,8 @@ initialiserBrouillon();
  * page se ferme ou plante avant l'enregistrement definitif.
  */
 function initialiserBrouillon() {
+
+const form = document.getElementById('commande-form');
 
 if (form.dataset.brouillonNouvelle !== '1') {
 return;
@@ -4171,7 +3500,7 @@ if (! formulaire) {
 return;
 }
 
-const bouton = formulaire.querySelector('button[type="submit"]');
+const boutons = formulaire.querySelectorAll('button[type="submit"]');
 
 formulaire.addEventListener('submit', function (event) {
 
@@ -4184,12 +3513,15 @@ return;
 
 formulaire.dataset.envoiEnCours = '1';
 
-if (bouton) {
-
+/*
+ * Désactivés juste après l'envoi : le bouton cliqué (brouillon
+ * ou confirmer) fait encore partie des données envoyées.
+ */
+setTimeout(function () {
+boutons.forEach(function (bouton) {
 bouton.disabled = true;
-
-bouton.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Enregistrement en cours...';
-}
+});
+}, 0);
 
 if (typeof window.Swal !== 'undefined') {
 

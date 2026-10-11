@@ -22,9 +22,15 @@ use Symfony\Component\Validator\Constraints\Valid;
 use App\Entity\CommandesDetails;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Doctrine\ORM\EntityRepository;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 
 class CommandesType extends AbstractType
 {
+    public function __construct(private readonly Security $security)
+    {
+    }
+
     /**
      * N'affiche que les clients actifs (statut = true, ou jamais
      * renseigné pour les anciens clients créés avant ce champ).
@@ -87,12 +93,27 @@ class CommandesType extends AbstractType
             },
             'placeholder' => 'Sélectionnez un client',
             'required' => true,
-            'choice_attr' => static function (
+            /*
+             * Carte du client de la saisie (maquette C01). Le crédit
+             * autorisé n'est écrit dans la page que pour qui voit les
+             * paiements.
+             */
+            'choice_attr' => function (
                 Clients $client
             ): array {
-                return [
+                $attr = [
                     'data-type-client' => $client->getTypeClient(),
+                    'data-nom' => $client->getNomComplet(),
+                    'data-compte' => $client->getTypeCompteLabel(),
+                    'data-telephone' => (string) $client->getTelephone(),
+                    'data-adresse' => trim(implode(', ', array_filter([$client->getAdresse(), $client->getVille()]))),
                 ];
+
+                if ($this->security->isGranted('ROLE_PAIEMENT_VOIR')) {
+                    $attr['data-credit'] = (string) (int) $client->getPlafondCredit();
+                }
+
+                return $attr;
             },
             'attr' => [
                 'class' => 'form-select js-select-search',
@@ -162,6 +183,25 @@ class CommandesType extends AbstractType
                 'input' => 'datetime_immutable',
                 'attr' => [
                     'class' => 'form-control',
+                ],
+            ])
+
+            ->add('modeLivraison', ChoiceType::class, [
+                'label' => 'Livraison',
+                'choices' => [
+                    'Retrait boutique' => Commandes::LIVRAISON_RETRAIT,
+                    'Livraison' => Commandes::LIVRAISON_DOMICILE,
+                ],
+                'expanded' => true,
+            ])
+
+            ->add('adresseLivraison', TextType::class, [
+                'label' => 'Adresse',
+                'required' => false,
+                'attr' => [
+                    'class' => 'form-control',
+                    'maxlength' => 255,
+                    'placeholder' => 'Adresse ou repère',
                 ],
             ])
 

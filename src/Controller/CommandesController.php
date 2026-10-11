@@ -216,11 +216,24 @@ final class CommandesController extends AbstractController
                 [
                     'commande' => $commande,
                     'form' => $form,
+                    'delaiPossible' => $this->ajouterHeuresOuvrees(new \DateTimeImmutable(), 48),
                 ]
             );
         }
 
         $form->handleRequest($request);
+
+        /*
+         * Boutons de la saisie (maquette C01) : « Enregistrer en
+         * brouillon » ou « Confirmer la commande ».
+         */
+        if ($form->isSubmitted()) {
+            $action = $request->request->getString('action_saisie');
+
+            if ('confirmer' === $action || 'brouillon' === $action) {
+                $commande->setStatut('confirmer' === $action);
+            }
+        }
 
         /*
      * ============================================================
@@ -278,12 +291,15 @@ final class CommandesController extends AbstractController
                     $maintenant
                 );
 
-                $commande->setDateLivraison(
-                    $this->ajouterHeuresOuvrees(
-                        $maintenant,
-                        48
-                    )
-                );
+                // Date souhaitée par le client, sinon le délai standard.
+                if ($commande->getDateLivraison() === null) {
+                    $commande->setDateLivraison(
+                        $this->ajouterHeuresOuvrees(
+                            $maintenant,
+                            48
+                        )
+                    );
+                }
 
                 $utilisateur =
                     $this->getUser();
@@ -481,19 +497,33 @@ final class CommandesController extends AbstractController
 
                 $request->getSession()->remove('brouillon_commande');
 
-                $this->addFlash(
-                    'success',
-                    sprintf(
-                        'La commande %s a été enregistrée avec succès.',
-                        $commande->getNumero()
-                    )
-                );
+                /*
+                 * Acompte choisi à la saisie : la caisse s'ouvre
+                 * avec le montant et le moyen déjà remplis.
+                 */
+                $modeAcompte = $request->request->getString('acompte_mode');
+
+                if (
+                    $this->commandeEstValidee($commande)
+                    && \in_array($modeAcompte, [Paiements::MODE_ORANGE_MONEY, Paiements::MODE_ESPECES], true)
+                    && $this->isGranted('ROLE_PAIEMENT_ENCAISSER')
+                    && $commande->getMontantApayer() > 0
+                ) {
+                    $this->addFlash('success', sprintf('Commande %s créée. Encaissez l\'acompte.', $commande->getNumero()));
+
+                    return $this->redirectToRoute('app_commandes_paiement', [
+                        'id' => $commande->getId(),
+                        'montant' => (int) ceil($commande->getMontantApayer() / 2),
+                        'mode' => $modeAcompte,
+                    ]);
+                }
 
                 return $this->redirectToRoute(
                     'app_commandes_show',
                     [
                         'id' =>
                         $commande->getId(),
+                        'creee' => 1,
                     ]
                 );
             } catch (
@@ -517,6 +547,7 @@ final class CommandesController extends AbstractController
             [
                 'commande' => $commande,
                 'form' => $form,
+                'delaiPossible' => $this->ajouterHeuresOuvrees(new \DateTimeImmutable(), 48),
             ]
         );
     }
@@ -695,6 +726,15 @@ final class CommandesController extends AbstractController
         $form->handleRequest(
             $request
         );
+
+        if ($form->isSubmitted()) {
+            $action = $request->request->getString('action_saisie');
+
+            // Une commande confirmée ne repasse pas en brouillon depuis la saisie.
+            if ('confirmer' === $action || ('brouillon' === $action && !$commandeEtaitValidee)) {
+                $commande->setStatut('confirmer' === $action);
+            }
+        }
 
 
         /*
@@ -973,6 +1013,9 @@ final class CommandesController extends AbstractController
 
                 'circuitDejaCommence' =>
                 $circuitDejaCommence,
+
+                'delaiPossible' =>
+                $this->ajouterHeuresOuvrees(new \DateTimeImmutable(), 48),
             ]
         );
     }
@@ -2014,6 +2057,19 @@ final class CommandesController extends AbstractController
         $paiement->setDate(
             new \DateTimeImmutable()
         );
+
+        /*
+         * Acompte choisi à la saisie de la commande : montant et
+         * moyen pré-remplis, jamais au-delà du reste à payer.
+         */
+        if ($request->isMethod('GET') && $request->query->has('montant')) {
+            $paiement->setMontant(min(max(0, $request->query->getInt('montant')), $resteAPayer));
+
+            $mode = $request->query->getString('mode');
+            if (\in_array($mode, [Paiements::MODE_ORANGE_MONEY, Paiements::MODE_ESPECES], true)) {
+                $paiement->setMode($mode);
+            }
+        }
 
 
         /*

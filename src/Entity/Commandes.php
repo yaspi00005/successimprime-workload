@@ -20,6 +20,9 @@ class Commandes
      * Canal de la commande : saisie au comptoir par un agent,
      * ou passée par le client en ligne (espace client, J5).
      */
+    public const LIVRAISON_RETRAIT = 'retrait';
+    public const LIVRAISON_DOMICILE = 'livraison';
+
     public const CANAL_COMPTOIR = 'comptoir';
     public const CANAL_EN_LIGNE = 'en_ligne';
 
@@ -150,6 +153,17 @@ class Commandes
 
     #[ORM\Column(length: 20, options: ['default' => self::CANAL_COMPTOIR])]
     private string $canal = self::CANAL_COMPTOIR;
+
+    /*
+     * Choisi à la saisie (maquette C01) : retrait à la boutique ou
+     * livraison chez le client. À ne pas confondre avec
+     * $recupereParClient, qui note le retrait effectif.
+     */
+    #[ORM\Column(length: 20, options: ['default' => self::LIVRAISON_RETRAIT])]
+    private string $modeLivraison = self::LIVRAISON_RETRAIT;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $adresseLivraison = null;
 
     public function __construct()
     {
@@ -701,6 +715,36 @@ class Commandes
                 0,
                 $montantBonusPlafond
             );
+
+        return $this;
+    }
+
+    public function getModeLivraison(): string
+    {
+        return $this->modeLivraison;
+    }
+
+    public function setModeLivraison(?string $mode): static
+    {
+        $this->modeLivraison = self::LIVRAISON_DOMICILE === $mode ? self::LIVRAISON_DOMICILE : self::LIVRAISON_RETRAIT;
+
+        return $this;
+    }
+
+    public function estALivrer(): bool
+    {
+        return self::LIVRAISON_DOMICILE === $this->modeLivraison;
+    }
+
+    public function getAdresseLivraison(): ?string
+    {
+        return $this->adresseLivraison;
+    }
+
+    public function setAdresseLivraison(?string $adresse): static
+    {
+        $adresse = null === $adresse ? null : trim($adresse);
+        $this->adresseLivraison = '' === $adresse ? null : $adresse;
 
         return $this;
     }

@@ -1856,3 +1856,630 @@ body .si-sidebar .metismenu ul a.mm-active {
 	position: absolute; top: 0; left: 0; width: 794px; height: 1123px; border: 0;
 	transform: scale(var(--echelle)); transform-origin: 0 0; pointer-events: none;
 }
+
+/* ---------- Saisie d'une commande (maquettes C01, C03, C04) ---------- */
+
+.si-saisie-tete {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.si-saisie-boutons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.si-saisie-grille {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 21.5rem;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.si-saisie-droite {
+  position: sticky;
+  top: 6.5rem;
+}
+
+.si-saisie .card.si-bloc {
+  color: #12213A;
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: var(--si-carte-ombre);
+  margin-bottom: 1.25rem;
+}
+
+.si-saisie h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #12213A;
+  margin: 0 0 0.75rem;
+}
+
+.si-saisie .form-label,
+.si-saisie label {
+  font-size: 0.8rem;
+  color: #6B7A90;
+  font-weight: 600;
+}
+
+.si-saisie .form-control,
+.si-saisie .form-select {
+  border-radius: 0.6rem;
+  min-height: 2.6rem;
+}
+
+/* Client */
+.si-client-carte {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.si-client-initiales,
+.si-rond {
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 0.8rem;
+  background: #0F4590;
+  color: #fff;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.si-client-nom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.05rem;
+  color: #12213A;
+}
+
+/* Lignes */
+.si-lien-ajout {
+  font-weight: 700;
+  color: #0F4590;
+  text-decoration: none;
+}
+
+.si-table-lignes tbody tr {
+  cursor: pointer;
+}
+
+.si-table-lignes tbody tr.est-active td {
+  background: #F1F5FC;
+}
+
+.si-col-vignette {
+  width: 3.25rem;
+}
+
+.si-carre {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.6rem;
+  display: block;
+}
+
+.si-carre-0 { background: linear-gradient(135deg, #2F5FAE, #0F4590); }
+.si-carre-1 { background: linear-gradient(135deg, #F0485E, #DE1028); }
+.si-carre-2 { background: linear-gradient(135deg, #F27BB6, #E8398A); }
+.si-carre-3 { background: linear-gradient(135deg, #FDD75A, #F2A900); }
+.si-carre-4 { background: linear-gradient(135deg, #F28A5E, #E95B35); }
+
+.si-ligne-nom {
+  font-weight: 700;
+  color: #12213A;
+}
+
+.si-ligne-carac {
+  display: block;
+  font-size: 0.78rem;
+  color: #6B7A90;
+}
+
+.si-machine {
+  display: inline-block;
+  background: #EEF0F3;
+  color: #34425A;
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.si-vide {
+  color: #6B7A90;
+  font-size: 0.9rem;
+  padding: 1rem 0.25rem 0.25rem;
+}
+
+.si-btn-ajout-ligne {
+  width: 100%;
+  margin-top: 0.75rem;
+  border: 1.5px solid #D5DCE8;
+  border-radius: 0.9rem;
+  font-weight: 700;
+  color: #12213A;
+  padding: 0.75rem;
+}
+
+/* Configuration d'une ligne : une seule ligne ouverte à la fois */
+.si-saisie-config {
+  border: 1.5px solid #CFDCF2 !important;
+}
+
+.si-saisie-config.est-vide {
+  display: none;
+}
+
+#collection-details > .detail-commande {
+  display: none;
+}
+
+#collection-details > .detail-commande.est-active {
+  display: block;
+}
+
+.si-saisie .travail-section {
+  padding: 0 0 0.75rem;
+  border: 0;
+}
+
+.si-saisie .travail-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #12213A;
+  text-transform: none;
+  margin-bottom: 0.4rem;
+}
+
+.si-saisie .travail-section-title i {
+  display: none;
+}
+
+/* Choix en pastilles : type de ligne, finitions, livraison, acompte */
+.si-saisie div.js-type-ligne > div,
+.si-saisie .finitions-box > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.si-saisie .js-type-ligne input[type="radio"],
+.si-saisie .finitions-box input[type="checkbox"],
+.si-pilule input {
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.si-saisie .js-type-ligne input + label,
+.si-saisie .finitions-box input + label,
+.si-pilule span {
+  display: inline-block;
+  border: 1.5px solid #D5DCE8;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #12213A !important;
+  background: #fff;
+  cursor: pointer;
+}
+
+.si-saisie .js-type-ligne input:checked + label,
+.si-saisie .finitions-box input:checked + label,
+.si-pilule:has(input:checked) span {
+  background: #0F4590;
+  border-color: #0F4590;
+  color: #fff !important;
+}
+
+.si-saisie .finitions-box input:checked + label::before {
+  content: "\2713\00a0";
+}
+
+.si-pilule input:focus-visible + span,
+.si-saisie input:focus-visible + label {
+  outline: 2px solid #0F4590;
+  outline-offset: 2px;
+}
+
+.si-saisie .detail-commande .si-bloc-tete {
+  margin-bottom: 1rem;
+}
+
+.si-saisie .travail-form {
+  padding: 0;
+}
+
+.si-choix-pilules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.si-pilule {
+  margin: 0;
+}
+
+.si-pilule-bouton {
+  border: 1.5px solid #D5DCE8;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #12213A;
+  background: #fff;
+}
+
+.si-pilule-bouton.est-choisie {
+  background: #0F4590;
+  border-color: #0F4590;
+  color: #fff;
+}
+
+/* La pastille remplace « Ajouter une finition » ; la ligne garde prix et quantité. */
+.si-saisie .js-ajouter-finition {
+  display: none;
+}
+
+.si-saisie .js-finition-manuelle {
+  border: 0 !important;
+  background: #F6F8FB;
+  border-radius: 0.8rem !important;
+  padding: 0.75rem !important;
+}
+
+.si-resume-ligne {
+  font-size: 0.8rem;
+  color: #6B7A90;
+  text-align: right;
+}
+
+.si-resume-ligne strong {
+  color: #178444;
+}
+
+.si-plus-options {
+  margin-top: 0.5rem;
+}
+
+.si-plus-options > summary {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0F4590;
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+}
+
+/* Droite : délai, récapitulatif, acompte */
+.si-delai {
+  border-radius: 0.6rem;
+  background: #F6F8FB;
+  min-height: 2.6rem;
+  padding: 0.4rem 0.6rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+}
+
+.si-delai.ok { color: #178444; background: #E2F6EA; }
+.si-delai.tard { color: #C46A00; background: #FFF1DC; }
+
+.si-recap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.45rem 1rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+}
+
+.si-recap dt {
+  color: #6B7A90;
+  font-weight: 500;
+}
+
+.si-recap dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 700;
+  color: #12213A;
+}
+
+.si-remise {
+  width: 7rem;
+  min-height: 2rem !important;
+  text-align: right;
+}
+
+.si-recap-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-top: 1px solid #EEF1F6;
+  padding-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.si-recap-total span {
+  color: #6B7A90;
+  font-size: 0.9rem;
+}
+
+.si-recap-total strong {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0F4590;
+}
+
+.si-acompte {
+  background: #F1F5FC;
+  border-radius: 0.8rem;
+  padding: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.si-note-confirmation {
+  font-size: 0.78rem;
+  color: #6B7A90;
+  margin-bottom: 0.5rem;
+}
+
+.si-barre-ligne,
+.si-barre-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.si-barre-ligne strong,
+.si-barre-total strong {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #0F4590;
+}
+
+@media (max-width: 1199.98px) {
+  .si-saisie-grille {
+    grid-template-columns: minmax(0, 1fr) 18.5rem;
+  }
+}
+
+/* Téléphone : 3 étapes (C03, C04) */
+@media (max-width: 767.98px) {
+  .si-saisie-tete {
+    justify-content: flex-start;
+  }
+
+  .si-saisie-boutons {
+    display: none;
+  }
+
+  .si-saisie-retour {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .si-saisie-retour .si-rond {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: #fff;
+    color: #12213A;
+    border: 0;
+    box-shadow: var(--si-carte-ombre);
+  }
+
+  .si-saisie-retour strong {
+    display: block;
+    font-size: 1.25rem;
+    color: #12213A;
+  }
+
+  .si-saisie-grille {
+    display: block;
+  }
+
+  .si-saisie-droite {
+    position: static;
+  }
+
+  .si-saisie[data-etape="lignes"] .si-saisie-config,
+  .si-saisie[data-etape="lignes"] .si-saisie-droite,
+  .si-saisie[data-etape="ligne"] .si-saisie-client,
+  .si-saisie[data-etape="ligne"] .si-saisie-lignes,
+  .si-saisie[data-etape="ligne"] .si-barre-total,
+  .si-saisie[data-etape="ligne"] .si-saisie-droite,
+  .si-saisie[data-etape="recap"] .si-saisie-gauche {
+    display: none !important;
+  }
+
+  .si-barre-total,
+  .si-barre-ligne {
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: var(--si-carte-ombre);
+    padding: 0.9rem 1rem;
+  }
+
+  .si-barre-total {
+    flex-wrap: wrap;
+  }
+
+  .si-barre-total .btn {
+    flex-basis: 100%;
+    padding: 0.85rem;
+    font-weight: 800;
+    border-radius: 0.9rem;
+  }
+
+  .si-barre-ligne {
+    margin-top: 0.75rem;
+  }
+
+  .si-saisie-config {
+    border: 0 !important;
+  }
+
+  .si-saisie-config .si-bloc-tete {
+    display: none;
+  }
+
+  .si-table-lignes thead,
+  .si-table-lignes .si-col-machine,
+  .si-table-lignes .si-col-pu,
+  .si-table-lignes .si-col-fichier,
+  .si-table-lignes .si-col-qte {
+    display: none;
+  }
+
+  .si-table-lignes tbody td {
+    padding: 0.7rem 0.35rem;
+  }
+
+  /* Deux champs par rang, comme C03 (largeur et hauteur côte à côte). */
+  .si-saisie .travail-section .row > [class*="col-"] {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+
+  .si-saisie .travail-section .js-zone-produit > [class*="col-"],
+  .si-saisie .js-finition-manuelle .row > [class*="col-"]:first-child {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .si-saisie-droite .btn-danger {
+    padding: 0.85rem;
+    font-weight: 800;
+    border-radius: 0.9rem;
+  }
+}
+
+.si-btn-secondaire {
+  background: #fff;
+  border: 1.5px solid #D5DCE8;
+  color: #12213A;
+  font-weight: 700;
+  border-radius: 0.6rem;
+}
+
+.si-btn-secondaire:hover {
+  border-color: #0F4590;
+  color: #0F4590;
+}
+
+/* Les titres de section de l'ancien formulaire font doublon avec les libellés. */
+.si-saisie .travail-section-title {
+  display: none;
+}
+
+.si-saisie .js-zone-finitions .travail-section-title,
+.si-saisie .js-zone-fichiers .travail-section-title,
+.si-saisie .js-zone-circuit .travail-section-title,
+.si-saisie .js-zone-technique .travail-section-title {
+  display: block;
+}
+
+.si-saisie [id$="_remise_help"] {
+  display: none;
+}
+
+.si-saisie .js-supprimer-finition {
+  white-space: nowrap;
+}
+
+.si-saisie .form-control.si-remise {
+  height: auto !important;
+  padding: 0.3rem 0.6rem;
+}
+
+/* Après la saisie (C04) */
+.si-commande-creee {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: var(--si-carte-ombre);
+  margin-bottom: 1.25rem;
+}
+
+.si-commande-creee h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #12213A;
+  margin: 0 0 0.2rem;
+}
+
+.si-commande-creee h3 strong {
+  color: #0F4590;
+}
+
+.si-commande-creee-coche {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: #E2F6EA;
+  color: #178444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex: none;
+}
+
+.si-commande-creee-liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.88rem;
+  color: #12213A;
+}
+
+.si-commande-creee-liste i {
+  color: #178444;
+  width: 1.25rem;
+}
+
+.si-commande-creee-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (max-width: 767.98px) {
+  .si-commande-creee {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .si-commande-creee-actions {
+    width: 100%;
+  }
+
+  .si-commande-creee-actions .btn {
+    padding: 0.75rem;
+  }
+}

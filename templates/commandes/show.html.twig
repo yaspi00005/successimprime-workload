@@ -26,6 +26,31 @@
 {% block page_title %}Commande{% endblock %}
 
 {% block body %}
+	{% if app.request.query.get('creee') %}
+		{# Juste après la saisie (maquette C04, écran « Commande créée »). #}
+		<div class="card si-bloc si-commande-creee">
+			<span class="si-commande-creee-coche"><i class="fas fa-check"></i></span>
+			<div class="flex-grow-1 min-w-0">
+				<h3>{{ commande.statut ? 'Commande créée' : 'Brouillon enregistré' }} <strong>{{ commande.numero }}</strong></h3>
+				<p class="text-muted mb-2">{{ client ? client.nomComplet : 'Client comptoir' }} · {{ totalTtc|number_format(0, ',', ' ') }} F TTC</p>
+				<ul class="si-commande-creee-liste">
+					{% if commande.statut %}
+						<li><i class="fas fa-check"></i>Fiches de travail prêtes ({{ lignes|length }})</li>
+						<li><i class="fas fa-check"></i>Lignes ajoutées à la file de production</li>
+					{% else %}
+						<li><i class="fas fa-pause"></i>Brouillon : rien n'est envoyé à l'atelier avant la confirmation</li>
+					{% endif %}
+				</ul>
+			</div>
+			<div class="si-commande-creee-actions">
+				{% if telephone %}
+					<a href="https://wa.me/{{ telephone }}?text={{ ('Bonjour, votre commande ' ~ commande.numero ~ ' chez Succès Imprim est enregistrée. Montant : ' ~ totalTtc|number_format(0, ',', ' ') ~ ' F.')|url_encode }}" class="btn btn-success btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Prévenir le client</a>
+				{% endif %}
+				<a href="{{ path('app_commandes_new') }}" class="btn btn-sm si-btn-secondaire">Nouvelle commande</a>
+			</div>
+		</div>
+	{% endif %}
+
 	<div class="si-titre-fiche">
 		<div class="min-w-0">
 			<h2>{{ commande.numero }}</h2>

@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Entity\Paiements;
+use App\Service\Parametres\Parametres;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -20,10 +21,23 @@ use Doctrine\ORM\QueryBuilder;
 
 class PaiementsType extends AbstractType
 {
+    public function __construct(private readonly ?Parametres $parametres = null)
+    {
+    }
+
     public function buildForm(
         FormBuilderInterface $builder,
         array $options
     ): void {
+        // Modes autorisés dans Paramètres › Paiements ; le mode déjà
+        // enregistré d'un paiement reste proposé pour ne pas le perdre.
+        $modes = Paiements::getModesPourFormulaire();
+        if ($this->parametres !== null) {
+            $actifs = $this->parametres->modesPaiementActifs();
+            $actuel = $builder->getData() instanceof Paiements ? $builder->getData()->getMode() : null;
+            $modes = array_filter($modes, static fn (string $mode): bool => \in_array($mode, $actifs, true) || $mode === $actuel);
+        }
+
         $builder
             ->add(
                 'montant',
@@ -55,7 +69,7 @@ class PaiementsType extends AbstractType
                     'label' => 'Mode de paiement',
 
                     'choices' =>
-                        Paiements::getModesPourFormulaire(),
+                        $modes,
 
                     'placeholder' =>
                         'Sélectionner un mode de paiement',

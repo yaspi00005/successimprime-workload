@@ -6,6 +6,7 @@ use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Repository\CommandesRepository;
 use App\Repository\CompteClientRepository;
+use App\Service\Parametres\Parametres;
 use App\Security\CodeParSms;
 use App\Security\EspaceClientComptes;
 use Doctrine\ORM\EntityManagerInterface;
@@ -30,6 +31,7 @@ final class EspaceClientController extends AbstractController
         private readonly CodeParSms $codes,
         private readonly EspaceClientComptes $comptes,
         private readonly CompteClientRepository $repository,
+        private readonly Parametres $parametres,
     ) {
     }
 
@@ -41,8 +43,12 @@ final class EspaceClientController extends AbstractController
         }
         $erreur = $authentification->getLastAuthenticationError();
 
+        // Paramètres › Espace client : la connexion par code peut être coupée.
+        $codeActif = $this->codeActif();
+
         return $this->render('espace/connexion.html.twig', [
-            'mode' => 'mdp' === $request->query->get('mode') ? 'mdp' : 'code',
+            'mode' => 'mdp' === $request->query->get('mode') || !$codeActif ? 'mdp' : 'code',
+            'code_actif' => $codeActif,
             'erreur' => $erreur?->getMessageKey(),
             'erreur_donnees' => $erreur?->getMessageData() ?? [],
             'dernier_numero' => $authentification->getLastUsername(),
@@ -62,6 +68,12 @@ final class EspaceClientController extends AbstractController
             $this->addFlash('error', 'La page a expiré. Réessayez.');
 
             return $this->redirectToRoute($retour);
+        }
+
+        if (!$creation && !$this->codeActif()) {
+            $this->addFlash('error', 'La connexion par code est désactivée. Utilisez votre mot de passe.');
+
+            return $this->redirectToRoute('app_espace_connexion', ['mode' => 'mdp']);
         }
 
         $telephone = CompteClient::normaliserTelephone((string) $request->request->get('telephone'));
@@ -201,5 +213,10 @@ final class EspaceClientController extends AbstractController
             'envoi' => $attente ? (array) $session->get('espace_code_envoi', []) : [],
             'renvoi' => $this->codes->secondesAvantRenvoi($session, EspaceClientComptes::SESSION_CODE),
         ];
+    }
+
+    private function codeActif(): bool
+    {
+        return (bool) $this->parametres->valeur('espace_client', 'code_sms');
     }
 }

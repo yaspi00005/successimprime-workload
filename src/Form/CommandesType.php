@@ -2,6 +2,7 @@
 
 namespace App\Form;
 
+use App\Service\Parametres\Parametres;
 use App\Entity\Clients;
 use App\Entity\Commandes;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
@@ -27,7 +28,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 
 class CommandesType extends AbstractType
 {
-    public function __construct(private readonly Security $security)
+    public function __construct(private readonly Security $security, private readonly ?Parametres $parametres = null)
     {
     }
 
@@ -309,6 +310,8 @@ class CommandesType extends AbstractType
                 'by_reference' => false,
                 'prototype' => true,
                 'prototype_name' => '__detail__',
+                // Nouvelle ligne : TVA par défaut de Paramètres › Taxes.
+                'prototype_data' => (new CommandesDetails())->setTva($this->parametres?->tvaParDefaut() ?? 0),
                 'label' => false,
                 'required' => true,
                 'constraints' => [

@@ -352,7 +352,7 @@
             });
             const acompte = page.querySelector('.js-acompte');
             if (acompte) {
-                acompte.textContent = montant(Math.ceil(aPayer / 2)) + ' F';
+                acompte.textContent = montant(Math.ceil(aPayer * (Number(acompte.dataset.pourcentage) || 50) / 100)) + ' F';
             }
         }
 

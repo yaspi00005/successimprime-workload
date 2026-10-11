@@ -14,6 +14,7 @@ use App\Security\AccesEnLigne;
 use App\Service\Caisse;
 use App\Service\DocumentsEntreprise;
 use App\Service\NotificationService;
+use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -33,12 +34,20 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_PAIEMENT_ENCAISSER')]
 final class CaisseController extends AbstractController
 {
+    /** Boutons de la caisse, dans l'ordre d'usage au comptoir. */
+    private const LIBELLES_MODES = [
+        Paiements::MODE_ESPECES => 'Espèces',
+        Paiements::MODE_ORANGE_MONEY => 'Orange Money',
+        Paiements::MODE_VIREMENT => 'Virement',
+        Paiements::MODE_CHEQUE => 'Chèque',
+    ];
+
     public function __construct(private readonly Caisse $caisse)
     {
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request, ClientsRepository $clients, EntityManagerInterface $em, AccesEnLigne $acces): Response
+    public function index(Request $request, ClientsRepository $clients, EntityManagerInterface $em, AccesEnLigne $acces, Parametres $parametres): Response
     {
         $utilisateur = $this->utilisateur();
         $maintenant = new \DateTimeImmutable();
@@ -81,12 +90,9 @@ final class CaisseController extends AbstractController
             'caisses' => $this->caisse->caisseDuJour($comptes, $maintenant),
             'encaissements' => $this->caisse->encaissementsDuJour($maintenant, $this->isGranted('ROLE_PAIEMENT_VOIR') ? null : $utilisateur),
             'recu' => $recu,
-            'modes' => [
-                Paiements::MODE_ESPECES => 'Espèces',
-                Paiements::MODE_ORANGE_MONEY => 'Orange Money',
-                Paiements::MODE_VIREMENT => 'Virement',
-                Paiements::MODE_CHEQUE => 'Chèque',
-            ],
+            'modes' => array_intersect_key(self::LIBELLES_MODES, array_flip($parametres->modesPaiementActifs())),
+            'virement_seuil' => (int) $parametres->valeur('paiements', 'virement_seuil'),
+            'recu_envoi' => $recu ? self::envoiRecu($recu, (string) $parametres->valeur('paiements', 'recu')) : null,
         ]);
     }
 
@@ -170,6 +176,45 @@ final class CaisseController extends AbstractController
     }
 
     /** Un reçu ne s'ouvre que pour qui voit les paiements ou l'a encaissé. */
+    /**
+     * Lien pour envoyer le reçu au client (Paramètres › Paiements › Reçu envoyé).
+     *
+     * @return array{canal: string, lien: string}|null
+     */
+    public static function envoiRecu(Paiements $paiement, string $canal): ?array
+    {
+        $commande = $paiement->getCommande();
+        $client = $commande?->getClient();
+        $telephone = $client?->getTelephone() ? UtilisateursController::numeroWhatsApp($client->getTelephone()) : null;
+        if (!\in_array($canal, ['whatsapp', 'sms'], true) || $telephone === null || $telephone === '') {
+            return null;
+        }
+
+        $paye = 0;
+        foreach ($commande->getPaiements() as $p) {
+            $paye += $p->estValide() ? (int) $p->getMontant() : 0;
+        }
+        $reste = max(0, (int) $commande->getTotalTtc() - $paye);
+        $f = static fn (int $n): string => number_format($n, 0, ',', ' ');
+
+        $message = \sprintf(
+            "Bonjour %s, nous avons bien reçu %s F (%s) pour la commande %s. %s Reçu R-%06d. Merci, Succès Imprim.",
+            $client->getPrenom() ?: $client->getNomComplet(),
+            $f((int) $paiement->getMontant()),
+            Paiements::MODES_LABELS[$paiement->getMode()] ?? $paiement->getMode(),
+            $commande->getNumero(),
+            $reste > 0 ? 'Reste à payer : '.$f($reste).' F.' : 'Votre commande est entièrement payée.',
+            $paiement->getId(),
+        );
+
+        return [
+            'canal' => $canal,
+            'lien' => $canal === 'whatsapp'
+                ? 'https://wa.me/'.$telephone.'?text='.rawurlencode($message)
+                : 'sms:+'.$telephone.'?body='.rawurlencode($message),
+        ];
+    }
+
     private function recuAutorise(?Paiements $paiement): ?Paiements
     {
         if (null === $paiement) {

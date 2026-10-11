@@ -6,10 +6,12 @@
 	<h1>Connexion à mon espace</h1>
 	<p class="si-espace-sous-titre">{{ mode == 'code' ? 'Recevez un code par SMS, sans mot de passe.' : 'Avec le mot de passe choisi dans votre espace.' }}</p>
 
+	{% if code_actif %}
 	<nav class="si-espace-onglets" aria-label="Façon de se connecter">
 		<a href="{{ path('app_espace_connexion', {mode: 'code'}) }}" class="{{ mode == 'code' ? 'actif' }}" {{ mode == 'code' ? 'aria-current="page"' }}>Code par SMS</a>
 		<a href="{{ path('app_espace_connexion', {mode: 'mdp'}) }}" class="{{ mode == 'mdp' ? 'actif' }}" {{ mode == 'mdp' ? 'aria-current="page"' }}>Mot de passe</a>
 	</nav>
+	{% endif %}
 
 	{% if erreur %}
 		<div class="si-espace-erreur" role="alert">{{ erreur|trans(erreur_donnees, 'security') }}</div>

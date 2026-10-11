@@ -2,6 +2,8 @@
 
 namespace App\Form;
 
+use App\Service\Parametres\Parametres;
+use App\Entity\DevisDetails;
 use App\Repository\EntrepriseRepository;
 use App\Entity\Clients;
 use App\Entity\Devis;
@@ -26,7 +28,7 @@ use Symfony\Component\Validator\Constraints\NotNull;
 
 class DevisType extends AbstractType
 {
-    public function __construct(private readonly EntrepriseRepository $entreprises)
+    public function __construct(private readonly EntrepriseRepository $entreprises, private readonly ?Parametres $parametres = null)
     {
     }
 
@@ -262,6 +264,8 @@ class DevisType extends AbstractType
     'by_reference' => false,
     'prototype' => true,
     'prototype_name' => '__detail__',
+                // Nouvelle ligne : TVA par défaut de Paramètres › Taxes.
+                'prototype_data' => (new DevisDetails())->setTva($this->parametres?->tvaParDefaut() ?? 0),
     'label' => false,
     'required' => true,
     'constraints' => [

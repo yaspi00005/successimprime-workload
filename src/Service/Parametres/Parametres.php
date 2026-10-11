@@ -10,10 +10,12 @@ use App\Entity\Finition;
 use App\Entity\JournalActivite;
 use App\Entity\Machines;
 use App\Entity\ModeleMessage;
+use App\Entity\Paiements;
 use App\Entity\ParametresPaiement;
 use App\Entity\ProduitConfiguration;
 use App\Entity\Produits;
 use App\Entity\Reglage;
+use App\Entity\RegleRappelPaiement;
 use App\Entity\RoleUtilisateur;
 use App\Entity\User;
 use App\Repository\EntrepriseRepository;
@@ -151,9 +153,7 @@ final class Parametres
             'taxes' => 'TVA '.$v['taux_tva'].' % · '.($v['tva_par_defaut'] ? 'par défaut' : 'au choix par facture'),
             'grille' => self::nb($compter(ProduitConfiguration::class), 'configuration').' · '.self::nb($compter(Produits::class), 'produit'),
             'produits' => self::nb($compter(Produits::class), 'produit').' · '.self::nb($compter(Finition::class), 'finition'),
-            'paiements' => implode(', ', array_keys(array_filter([
-                'Orange Money' => $v['orange_money'], 'espèces' => $v['especes'], 'virement' => $v['virement'], 'à la livraison' => $v['livraison'],
-            ]))) ?: 'aucun mode actif',
+            'paiements' => implode(', ', array_map(static fn (string $m): string => Paiements::MODES_LABELS[$m], $this->modesPaiementActifs())) ?: 'aucun mode actif',
             'relances' => $v['delai_heures'].' h de travail · +'.$v['points_a_temps'].' / −'.$v['points_retard'],
             'machines' => self::nb($compter(Machines::class), 'machine').' · amortissement '.($v['amortissement'] === 'usage' ? 'à l\'usage' : 'linéaire'),
             'stock' => $this->etatStock($badge),
@@ -164,7 +164,7 @@ final class Parametres
             'bareme' => '1 point = '.number_format((int) $v['valeur_point'], 0, ',', ' ').' F · prime dès '.$v['seuil_prime'].' pts',
             'avantages' => 'frais médicaux '.$v['frais_medicaux'].' %',
             'paie' => 'paie le '.$v['jour_paie'].($v['inps'] || $v['its'] ? ' · '.implode(' et ', array_keys(array_filter(['INPS' => $v['inps'], 'ITS' => $v['its']]))) : ''),
-            'espace_client' => $v['code_whatsapp'] ? 'connexion par code WhatsApp' : 'connexion par mot de passe',
+            'espace_client' => $v['code_sms'] ? 'connexion par code SMS' : 'connexion par mot de passe',
             'messages' => self::nb($compter(ModeleMessage::class), 'modèle'),
             'ecran_tv' => 'playlist de '.ProgrammeEcranTv::dureeBoucle($this->ecranTv->programme()['scenes']).' s',
             'appareils' => $this->etatAppareils($badge),
@@ -342,6 +342,40 @@ final class Parametres
     public function valeur(string $tuile, string $cle): mixed
     {
         return $this->valeursCompletes($tuile)[$cle] ?? null;
+    }
+
+    /** Champ de la tuile Paiements => mode de paiement. */
+    public const MODES_PAIEMENT = [
+        'especes' => Paiements::MODE_ESPECES,
+        'orange_money' => Paiements::MODE_ORANGE_MONEY,
+        'wave' => Paiements::MODE_WAVE,
+        'virement' => Paiements::MODE_VIREMENT,
+        'cheque' => Paiements::MODE_CHEQUE,
+        'carte' => Paiements::MODE_CARTE,
+    ];
+
+    /**
+     * Modes de paiement proposés à l'encaissement (tuile Paiements).
+     *
+     * @return list<string>
+     */
+    public function modesPaiementActifs(): array
+    {
+        $valeurs = $this->valeursStockees('paiements');
+
+        return array_values(array_filter(self::MODES_PAIEMENT, static fn (string $mode, string $champ): bool => (bool) $valeurs[$champ], \ARRAY_FILTER_USE_BOTH));
+    }
+
+    /**
+     * TVA d'une nouvelle ligne de devis ou de commande (tuile Taxes) :
+     * le taux si « TVA proposée par défaut », sinon 0. Chaque ligne
+     * reste modifiable.
+     */
+    public function tvaParDefaut(): int
+    {
+        $valeurs = $this->valeursStockees('taxes');
+
+        return $valeurs['tva_par_defaut'] ? (int) $valeurs['taux_tva'] : 0;
     }
 
     /* ---------- Interne ---------- */
@@ -544,6 +578,10 @@ final class Parametres
                 'libelle' => $a->getNom() ?: 'Appareil',
                 'valeur' => 'demandé par '.$a->getNomUtilisateur().' · à approuver',
             ], $this->em->getRepository(AppareilAutorise::class)->findBy(['etat' => AppareilAutorise::ETAT_EN_ATTENTE], ['id' => 'DESC'], 5)),
+            'relances' => array_map(static fn (RegleRappelPaiement $r): array => [
+                'libelle' => $r->getNom(),
+                'valeur' => ($r->isRetrait() ? 'commande prête non retirée' : 'paiement') . ' · tous les '.$r->getDelaiJours().' j',
+            ], $this->em->getRepository(RegleRappelPaiement::class)->findBy(['actif' => true])),
             default => [],
         };
     }

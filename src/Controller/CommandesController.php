@@ -29,6 +29,7 @@ use App\Service\CalculateurCoutRevient;
 use App\Service\SuiviCommandeService;
 use App\Repository\FacturesRepository;
 use App\Repository\ParametresPaiementRepository;
+use App\Service\Parametres\Parametres;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
@@ -183,7 +184,8 @@ final class CommandesController extends AbstractController
         CommandeDetailFichierRepository $fichierRepository,
         StockService $stockService,
         CommandesRepository $commandesRepository,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        Parametres $parametres
     ): Response {
         $commande = new Commandes();
 
@@ -514,7 +516,7 @@ final class CommandesController extends AbstractController
 
                     return $this->redirectToRoute('app_commandes_paiement', [
                         'id' => $commande->getId(),
-                        'montant' => (int) ceil($commande->getMontantApayer() / 2),
+                        'montant' => (int) ceil($commande->getMontantApayer() * (int) $parametres->valeur('paiements', 'acompte') / 100),
                         'mode' => $modeAcompte,
                     ]);
                 }

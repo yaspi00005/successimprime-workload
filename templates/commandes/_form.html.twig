@@ -1189,7 +1189,7 @@
 
 				{% if peutEncaisser and not dejaConfirmee %}
 					<div class="si-acompte">
-						<div class="d-flex justify-content-between"><strong>Acompte 50 %</strong><strong class="js-acompte">0 F</strong></div>
+						<div class="d-flex justify-content-between"><strong>Acompte {{ reglage('paiements', 'acompte') }} %</strong><strong class="js-acompte" data-pourcentage="{{ reglage('paiements', 'acompte') }}">0 F</strong></div>
 						<div class="si-choix-pilules mt-2">
 							<label class="si-pilule"><input type="radio" name="acompte_mode" value="orange_money"><span>Orange Money</span></label>
 							<label class="si-pilule"><input type="radio" name="acompte_mode" value="especes"><span>Espèces</span></label>

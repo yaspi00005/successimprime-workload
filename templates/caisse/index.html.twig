@@ -24,6 +24,9 @@
 	{% if recu %}
 		<p class="si-caisse-alerte">
 			<a href="{{ path('app_caisse_recu', {id: recu.id}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ 'R-' ~ '%06d'|format(recu.id) }}</a>
+			{% if recu_envoi %}
+				<a href="{{ recu_envoi.lien }}" target="_blank" rel="noopener" class="btn btn-light btn-sm"><i class="{{ recu_envoi.canal == 'whatsapp' ? 'fab fa-whatsapp' : 'fas fa-sms' }} me-1"></i>Envoyer le reçu par {{ recu_envoi.canal == 'whatsapp' ? 'WhatsApp' : 'SMS' }}</a>
+			{% endif %}
 		</p>
 	{% endif %}
 	<div class="si-caisse">
@@ -94,6 +97,9 @@
 							<button type="button" class="si-caisse-mode" role="radio" data-mode="{{ valeur }}" aria-checked="{{ formulaire.mode.vars.value == valeur ? 'true' : 'false' }}">{{ libelle }}</button>
 						{% endfor %}
 					</div>
+					{% if virement_seuil > 0 %}
+						<p class="si-caisse-conseil" data-si-seuil-virement="{{ virement_seuil }}" hidden>Au-delà de {{ virement_seuil|number_format(0, ',', ' ') }} F, le virement bancaire est conseillé plutôt que les espèces.</p>
+					{% endif %}
 					{{ form_widget(formulaire.mode, {attr: {class: 'd-none', 'aria-hidden': 'true', tabindex: '-1'}}) }}
 					{{ form_errors(formulaire.mode) }}
 
@@ -231,7 +237,21 @@
 				form.querySelectorAll('.si-caisse-mode').forEach(function (b) {
 					b.addEventListener('click', function () { choisir(b.dataset.mode, false); });
 				});
-				choisir(select.value || 'especes', true);
+				var premierMode = form.querySelector('.si-caisse-mode');
+				choisir(select.value || (premierMode ? premierMode.dataset.mode : ''), true);
+
+				// Rappel du seuil de virement (Paramètres › Paiements).
+				var conseil = form.querySelector('[data-si-seuil-virement]');
+				var montant = form.querySelector('input[name$="[montant]"]');
+				if (conseil && montant) {
+					var verifier = function () {
+						var valeur = parseInt(String(montant.value).replace(/\D/g, ''), 10) || 0;
+						conseil.hidden = !(select.value === 'especes' && valeur > +conseil.dataset.siSeuilVirement);
+					};
+					montant.addEventListener('input', verifier);
+					form.querySelectorAll('.si-caisse-mode').forEach(function (b) { b.addEventListener('click', verifier); });
+					verifier();
+				}
 				form.addEventListener('submit', function () {
 					form.querySelector('.si-caisse-valider').disabled = true;
 				});

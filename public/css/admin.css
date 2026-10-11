@@ -3120,3 +3120,46 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
   .si-compta .card { padding: 14px; }
   .si-compta-totaux { justify-content: flex-start; gap: 12px; }
 }
+
+/* ===== Fiche client 360° (maquette 33) ===== */
+.si-fiche { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; align-items: start; }
+.si-fiche .card { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; margin: 0; }
+.si-fiche-avatar { width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, #1D5BB8, #0F4590); color: #fff; font-size: 24px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.si-fiche-identite h2 { font-size: 20px; font-weight: 800; color: #0F172A; margin: 12px 0 6px; }
+.si-fiche-badges { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+.si-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #F1F5F9; color: #334155; }
+.si-badge-bleu { background: #E7EEFA; color: #0F4590; }
+.si-badge-rouge { background: #FEE2E2; color: #B91C1C; }
+.si-fiche-identite dl { margin: 0; }
+.si-fiche-identite dt { font-size: 12px; font-weight: 500; color: #64748B; margin-top: 10px; }
+.si-fiche-identite dd { margin: 2px 0 0; color: #0F172A; overflow-wrap: anywhere; }
+.si-fiche-identite dd small { color: #64748B; }
+.si-fiche-note { background: #F8FAFC; border-radius: 10px; padding: 10px 12px; margin: 14px 0 0; font-size: 13px; color: #334155; }
+.si-fiche-principal { display: grid; gap: 20px; min-width: 0; }
+.si-fiche-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+.si-fiche-kpis h3 { font-size: 13px; font-weight: 500; color: #64748B; margin: 0 0 4px; }
+.si-fiche-kpis strong { display: block; font-size: clamp(17px, 1.5vw, 22px); font-weight: 800; color: #0F172A; white-space: nowrap; }
+.si-fiche-kpis span, .si-fiche-kpis a { display: block; font-size: 12px; font-weight: 600; margin-top: 2px; }
+.si-fiche-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid #E2E8F0; margin-bottom: 8px; }
+.si-fiche-tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; font-weight: 600; color: #475569; white-space: nowrap; }
+.si-fiche-tabs button[aria-selected="true"] { color: #0F4590; border-bottom-color: #0F4590; }
+.si-fiche-histo { list-style: none; margin: 0; padding: 0; }
+.si-fiche-histo li { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #EEF2F7; }
+.si-fiche-histo li:last-child { border-bottom: 0; }
+.si-fiche-histo a, .si-fiche-histo strong { font-weight: 600; color: #0F172A; display: block; }
+.si-fiche-histo small { color: #64748B; }
+.si-fiche-icone { width: 36px; height: 36px; border-radius: 10px; background: #F1F5F9; color: #0F4590; display: flex; align-items: center; justify-content: center; }
+.si-fiche-montant { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.si-fiche .si-fiche-table { margin: 0; }
+.si-fiche .si-fiche-table thead th { font-size: 13px; color: #64748B; font-weight: 600; text-transform: none; letter-spacing: 0; background: #F8FAFC; border-bottom: 0; padding: 10px 8px; }
+.si-fiche-vide { color: #64748B; margin: 8px 0 0; display: block !important; }
+@media (max-width: 991px) {
+  .si-fiche { grid-template-columns: 1fr; }
+}
+@media (max-width: 575px) {
+  .si-fiche .card { padding: 14px; }
+  .si-fiche-kpis { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .si-fiche-kpis strong { font-size: 18px; }
+  .si-fiche-histo li { grid-template-columns: 32px 1fr; }
+  .si-fiche-histo .si-fiche-montant { grid-column: 2; }
+}

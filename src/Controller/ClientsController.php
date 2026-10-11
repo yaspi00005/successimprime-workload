@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Clients;
 use App\Form\ClientsType;
+use App\Service\FicheClient360;
 use App\Repository\ClientsRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -957,9 +958,37 @@ final class ClientsController extends AbstractController
         return (float) $valeur;
     }
 
+    /**
+     * Fiche client 360° (maquette 33).
+     */
     #[Route(
         '/fiche/{publicId}',
         name: 'app_clients_show',
+        methods: ['GET']
+    )]
+    public function fiche360(
+        #[MapEntity(mapping: [
+            'publicId' => 'publicId',
+        ])]
+        Clients $client,
+        FicheClient360 $fiche
+    ): Response {
+        $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
+
+        return $this->render('clients/fiche_360.html.twig', $fiche->donnees($client, new \DateTimeImmutable(), $voirPaiements) + [
+            'client' => $client,
+            'voir_paiements' => $voirPaiements,
+            'voir_ca' => $this->isGranted('ROLE_STATS_VENTES'),
+            'whatsapp' => $client->getTelephone() ? UtilisateursController::numeroWhatsApp($client->getTelephone()) : null,
+        ]);
+    }
+
+    /**
+     * Fiche détaillée : toutes les commandes et paiements, solde client.
+     */
+    #[Route(
+        '/fiche/{publicId}/detail',
+        name: 'app_clients_detail',
         methods: ['GET']
     )]
     public function show(

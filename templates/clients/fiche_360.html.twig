@@ -1,0 +1,215 @@
+{% extends 'base.html.twig' %}
+
+{% set nom = client.nomComplet %}
+{% set initiales = nom|split(' ')|filter(m => m)|slice(0, 2)|map(m => m|first|upper)|join('') %}
+
+{% block title %}{{ nom }}{% endblock %}
+
+{% block header_actions %}
+	{% if whatsapp %}
+		<li class="nav-item">
+			<a href="https://wa.me/{{ whatsapp }}" target="_blank" rel="noopener" class="btn btn-success btn-sm si-btn-entete"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>
+		</li>
+	{% endif %}
+	{% if is_granted('ROLE_DEVIS') %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_devis_new') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Devis</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-fiche">
+		<aside class="card si-fiche-identite">
+			<div class="si-fiche-avatar" aria-hidden="true">{{ initiales ?: '?' }}</div>
+			<h2>{{ nom }}</h2>
+			<p class="si-fiche-badges">
+				<span class="si-badge si-badge-bleu">{{ client.typeCompteLabel }}</span>
+				<span class="si-badge">{{ client.typeClient }}</span>
+				{% if not client.statut %}<span class="si-badge si-badge-rouge">Désactivé</span>{% endif %}
+			</p>
+			<dl>
+				{% if client.telephone %}
+					<dt>Téléphone</dt>
+					<dd><a href="tel:{{ client.telephone }}">{{ client.telephone }}</a>{% if client.telephone2 %} · <a href="tel:{{ client.telephone2 }}">{{ client.telephone2 }}</a>{% endif %}</dd>
+				{% endif %}
+				{% if client.email %}<dt>Email</dt><dd><a href="mailto:{{ client.email }}">{{ client.email }}</a></dd>{% endif %}
+				{% if client.adresse or client.ville %}
+					<dt>Adresse</dt>
+					<dd>
+						{{ [client.adresse, client.ville]|filter(v => v)|join(', ') }}
+						{% if client.repere %}<small class="d-block">{{ client.repere }}</small>{% endif %}
+						{% if client.latitude and client.longitude %}<a href="https://www.google.com/maps?q={{ client.latitude }},{{ client.longitude }}" target="_blank" rel="noopener" class="d-block">Voir sur la carte</a>{% endif %}
+					</dd>
+				{% endif %}
+				{% if client.nif or client.rccm %}
+					<dt>Identifiants</dt>
+					<dd>{{ [client.nif ? 'NIF ' ~ client.nif, client.rccm ? 'RCCM ' ~ client.rccm]|filter(v => v)|join(' · ') }}</dd>
+				{% endif %}
+				{% if voir_paiements %}
+					<dt>Plafond de crédit</dt>
+					<dd>
+						{{ client.plafondCredit ? client.plafondCredit|number_format(0, ',', ' ') ~ ' F' : 'Aucun' }} · utilisé {{ kpi.solde_du|number_format(0, ',', ' ') }} F
+						{% if client.plafondCredit and kpi.solde_du > client.plafondCredit %}<small class="d-block text-danger fw-semibold">Plafond dépassé</small>{% endif %}
+					</dd>
+				{% endif %}
+			</dl>
+			{% if client.observation %}
+				<p class="si-fiche-note"><strong>Note interne :</strong> {{ client.observation }}</p>
+			{% endif %}
+			<a href="{{ path('app_clients_detail', {publicId: client.publicId}) }}" class="btn btn-outline-primary btn-sm w-100 mt-3">Fiche détaillée et modification</a>
+		</aside>
+
+		<div class="si-fiche-principal">
+			<div class="si-fiche-kpis">
+				{% if voir_ca %}
+					<article class="card">
+						<h3>CA 12 mois</h3>
+						<strong>{{ kpi.ca|number_format(0, ',', ' ') }} F</strong>
+						{% if kpi.evolution is not null %}<span class="{{ kpi.evolution >= 0 ? 'si-t-ok' : 'si-t-alerte' }}">{{ kpi.evolution >= 0 ? '▲ +' : '▼ ' }}{{ kpi.evolution }} %</span>{% endif %}
+					</article>
+				{% endif %}
+				<article class="card">
+					<h3>Commandes</h3>
+					<strong>{{ kpi.commandes }}</strong>
+					{% if kpi.derniere_jours is not null %}<span class="si-t-ok">dernière {{ kpi.derniere_jours == 0 ? 'aujourd’hui' : 'il y a ' ~ kpi.derniere_jours ~ ' j' }}</span>{% endif %}
+				</article>
+				{% if voir_paiements %}
+					<article class="card">
+						<h3>Solde dû</h3>
+						<strong>{{ kpi.solde_du|number_format(0, ',', ' ') }} F</strong>
+						{% if kpi.echues > 0 %}<a href="{{ path('app_creances_index', {q: nom}) }}" class="si-t-alerte">{{ kpi.echues }} échéance{{ kpi.echues > 1 ? 's' }} dépassée{{ kpi.echues > 1 ? 's' }}</a>{% elseif kpi.solde_du == 0 %}<span class="si-t-ok">à jour</span>{% endif %}
+					</article>
+				{% endif %}
+				<article class="card">
+					<h3>Panier moyen</h3>
+					<strong>{{ kpi.panier_moyen|number_format(0, ',', ' ') }} F</strong>
+					<span class="si-t-neutre">{{ kpi.devis_ouverts }} devis en cours</span>
+				</article>
+			</div>
+
+			<section class="card si-fiche-onglets">
+				<div class="si-fiche-tabs" role="tablist" aria-label="Fiche client">
+					{% for cle, libelle in {historique: 'Historique', commandes: 'Commandes', devis: 'Devis', factures: 'Factures', fichiers: 'Fichiers et logos'} %}
+						<button type="button" role="tab" id="tab-{{ cle }}" aria-controls="panneau-{{ cle }}" aria-selected="{{ loop.first ? 'true' : 'false' }}" {{ loop.first ? '' : 'tabindex="-1"' }}>{{ libelle }}</button>
+					{% endfor %}
+				</div>
+
+				<div role="tabpanel" id="panneau-historique" aria-labelledby="tab-historique">
+					<ul class="si-fiche-histo">
+						{% for e in historique %}
+							<li>
+								<span class="si-fiche-icone"><i class="fas {{ e.icone }}"></i></span>
+								<div>
+									{% if e.lien %}<a href="{{ path(e.lien.route, e.lien.parametres) }}">{{ e.titre }}</a>{% else %}<strong>{{ e.titre }}</strong>{% endif %}
+									<small>{{ e.date|date('H:i') == '00:00' ? e.date|date('d/m/Y') : e.date|date('d/m/Y H:i') }}{% if e.detail %} · {{ e.detail }}{% endif %}</small>
+								</div>
+								<span class="si-fiche-montant">{{ e.montant is not null ? e.montant|number_format(0, ',', ' ') : '—' }}</span>
+							</li>
+						{% else %}
+							<li class="si-fiche-vide">Rien encore avec ce client.</li>
+						{% endfor %}
+					</ul>
+				</div>
+
+				<div role="tabpanel" id="panneau-commandes" aria-labelledby="tab-commandes" hidden>
+					{% if commandes is empty %}<p class="si-fiche-vide">Aucune commande.</p>{% else %}
+						<div class="table-responsive"><table class="table si-fiche-table">
+							<thead><tr><th>Commande</th><th>Date</th><th>Travaux</th><th class="text-end">Montant</th>{% if voir_paiements %}<th class="text-end">Payé</th>{% endif %}</tr></thead>
+							<tbody>
+								{% for c in commandes %}
+									<tr>
+										<td><a href="{{ path('app_commandes_show', {id: c.id}) }}">{{ c.numero }}</a></td>
+										<td class="text-nowrap">{{ c.dateCommande ? c.dateCommande|date('d/m/Y') }}</td>
+										<td>{{ constant('App\\Service\\FicheClient360::STATUTS_TRAVAUX')[c.statutTravaux]|default(c.statutTravaux) }}</td>
+										<td class="text-end text-nowrap">{{ c.totalTtc|number_format(0, ',', ' ') }}</td>
+										{% if voir_paiements %}<td class="text-end text-nowrap">{{ c.totalPaye|number_format(0, ',', ' ') }}</td>{% endif %}
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table></div>
+					{% endif %}
+				</div>
+
+				<div role="tabpanel" id="panneau-devis" aria-labelledby="tab-devis" hidden>
+					{% if devis is empty %}<p class="si-fiche-vide">Aucun devis.</p>{% else %}
+						<div class="table-responsive"><table class="table si-fiche-table">
+							<thead><tr><th>Devis</th><th>Date</th><th>Statut</th><th class="text-end">Montant</th></tr></thead>
+							<tbody>
+								{% for d in devis %}
+									<tr>
+										<td><a href="{{ path('app_devis_show', {id: d.id}) }}">{{ d.numero ?: '#' ~ d.id }}</a></td>
+										<td class="text-nowrap">{{ d.dateDevis ? d.dateDevis|date('d/m/Y') }}</td>
+										<td>{{ constant('App\\Service\\FicheClient360::STATUTS_DEVIS')[d.statut]|default(d.statut) }}</td>
+										<td class="text-end text-nowrap">{{ d.totalTtc|number_format(0, ',', ' ') }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table></div>
+					{% endif %}
+				</div>
+
+				<div role="tabpanel" id="panneau-factures" aria-labelledby="tab-factures" hidden>
+					{% if factures is empty %}<p class="si-fiche-vide">Aucune facture ni proforma.</p>{% else %}
+						<div class="table-responsive"><table class="table si-fiche-table">
+							<thead><tr><th>Document</th><th>Date</th><th>Type</th><th class="text-end">Montant</th>{% if voir_paiements %}<th class="text-end">Reste</th>{% endif %}</tr></thead>
+							<tbody>
+								{% for f in factures %}
+									<tr>
+										<td>{% if is_granted('ROLE_FACTURE') %}<a href="{{ path('app_factures_show', {id: f.id}) }}">{{ f.numero ?: '#' ~ f.id }}</a>{% else %}{{ f.numero ?: '#' ~ f.id }}{% endif %}{% if f.estAnnulee %} <span class="si-badge si-badge-rouge">Annulée</span>{% endif %}</td>
+										<td class="text-nowrap">{{ f.dateFacture ? f.dateFacture|date('d/m/Y') }}</td>
+										<td>{{ f.typeDocumentLabel }}</td>
+										<td class="text-end text-nowrap">{{ f.totalTtc|number_format(0, ',', ' ') }}</td>
+										{% if voir_paiements %}<td class="text-end text-nowrap">{{ f.estProforma ? '—' : f.resteAPayer|number_format(0, ',', ' ') }}</td>{% endif %}
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table></div>
+					{% endif %}
+				</div>
+
+				<div role="tabpanel" id="panneau-fichiers" aria-labelledby="tab-fichiers" hidden>
+					{% if fichiers is empty %}<p class="si-fiche-vide">Aucun fichier reçu pour ce client.</p>{% else %}
+						<ul class="si-fiche-histo">
+							{% for f in fichiers %}
+								<li>
+									<span class="si-fiche-icone"><i class="fas {{ f.fichierSource ? 'fa-pen-ruler' : 'fa-file-image' }}"></i></span>
+									<div>
+										<a href="{{ path('app_fichier_visualiser', {id: f.id}) }}" target="_blank" rel="noopener">{{ f.nomOriginal ?: 'Fichier ' ~ f.id }}</a>
+										<small>{{ f.termineLe|date('d/m/Y') }} · {{ f.commandeDetail.commande.numero }}{% if f.fichierSource %} · version corrigée{% endif %}</small>
+									</div>
+									<span class="si-fiche-montant">{{ f.taille ? (f.taille / 1048576)|number_format(1, ',', ' ') ~ ' Mo' : '' }}</span>
+								</li>
+							{% endfor %}
+						</ul>
+					{% endif %}
+				</div>
+			</section>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(function () {
+			var onglets = Array.prototype.slice.call(document.querySelectorAll('.si-fiche-tabs [role="tab"]'));
+			var choisir = function (onglet) {
+				onglets.forEach(function (o) {
+					var actif = o === onglet;
+					o.setAttribute('aria-selected', actif ? 'true' : 'false');
+					o.tabIndex = actif ? 0 : -1;
+					document.getElementById(o.getAttribute('aria-controls')).hidden = !actif;
+				});
+			};
+			onglets.forEach(function (o, i) {
+				o.addEventListener('click', function () { choisir(o); });
+				o.addEventListener('keydown', function (e) {
+					if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') { return; }
+					var suivant = onglets[(i + (e.key === 'ArrowRight' ? 1 : onglets.length - 1)) % onglets.length];
+					choisir(suivant); suivant.focus();
+				});
+			});
+		})();
+	</script>
+{% endblock %}

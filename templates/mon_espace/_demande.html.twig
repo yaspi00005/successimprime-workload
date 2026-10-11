@@ -1,0 +1,11 @@
+{# Une demande : type, période ou montant, état et réponse. #}
+<li class="si-me-demande">
+	<span class="si-me-type si-me-t-{{ d.type }}">{{ d.libelleType }}</span>
+	<div>
+		<b>{% if d.estUneSomme %}{{ d.montant|number_format(0, ',', ' ') }} F{% if d.montantAccorde is not null and d.montantAccorde != d.montant %} · accordé {{ d.montantAccorde|number_format(0, ',', ' ') }} F{% endif %}{% else %}{{ d.jours|number_format(d.jours == d.jours|round ? 0 : 1, ',') }} j{% if d.demiJournee %} (demi-journée){% endif %} · {{ d.du|date('d/m') }}{% if d.au and d.au != d.du %} → {{ d.au|date('d/m') }}{% endif %}{% endif %}</b>
+		<small>{{ d.libelleCategorie ? d.libelleCategorie ~ ' · ' }}{{ d.motif }}{% if avecNom|default(false) %} · {{ d.utilisateur|nom_pointage }}{% endif %} · déposée le {{ d.creeLe|date('d/m') }}</small>
+		{% if d.commentaire %}<small class="si-me-commentaire">« {{ d.commentaire }} »</small>{% endif %}
+		{% if d.justificatif %}<a href="{{ path('app_mon_espace_justificatif', {id: d.id}) }}" target="_blank" rel="noopener" class="si-me-piece"><i class="fas fa-paperclip me-1"></i>justificatif</a>{% endif %}
+	</div>
+	<span class="si-me-etat si-me-e-{{ d.etat }}">{{ d.libelleEtat }}</span>
+</li>

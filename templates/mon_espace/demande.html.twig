@@ -1,0 +1,60 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ type == 'absence' ? 'Déclarer une absence' : (type == 'conge' ? 'Demander un congé' : (type == 'reclamation' ? 'Réclamer une somme due' : 'Frais médicaux')) }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_mon_espace_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-caret-left me-1"></i>Mon espace</a></li>
+{% endblock %}
+
+{% block body %}
+	{% set aujourdhui = 'now'|date('Y-m-d') %}
+	<div class="si-me si-ac-voir">
+		<section class="card si-ac-bloc">
+			{% if erreur %}<p class="si-pointer-erreur" role="alert">{{ erreur }}</p>{% endif %}
+			{% if type == 'conge' %}
+				<p class="si-pg-note">Solde : <b>{{ conge.solde|number_format(conge.solde == conge.solde|round ? 0 : 1, ',') }} j</b>{% if conge.plageDebut %} · choisissez vos dates du <b>{{ conge.plageDebut|date('d/m/Y') }}</b> au <b>{{ conge.plageFin|date('d/m/Y') }}</b>{% if conge.plageJours %}, {{ conge.plageJours }} jours au plus{% endif %}{% endif %}. Les jours non travaillés et fériés ne comptent pas.</p>
+			{% elseif type == 'frais_medicaux' %}
+				<p class="si-pg-note">Remboursement : <b>{{ avantages.taux }} %</b> de la facture{% if avantages.plafond > 0 %}, dans la limite de {{ avantages.plafond|number_format(0, ',', ' ') }} F par an (déjà {{ avantages.deja|number_format(0, ',', ' ') }} F){% endif %}{{ reglage('avantages', 'payer_om') ? ', payé par Orange Money' }}. Joignez la facture ou l'ordonnance.</p>
+			{% elseif type == 'reclamation' %}
+				<p class="si-pg-note">Heures supplémentaires, prime, frais avancés pour le travail ou reste de salaire. Joignez un reçu ou une photo si vous en avez.</p>
+			{% endif %}
+
+			<form method="post" enctype="multipart/form-data" class="si-me-form">
+				<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+				{% if type in ['absence', 'conge'] %}
+					<label>Du<input type="date" name="du" class="form-control" required value="{{ saisie.du ?? aujourdhui }}"{% if conge.plageDebut and type == 'conge' %} min="{{ conge.plageDebut|date('Y-m-d') }}" max="{{ conge.plageFin|date('Y-m-d') }}"{% endif %}></label>
+					<label data-si-au>Au<input type="date" name="au" class="form-control" value="{{ saisie.au ?? '' }}"{% if conge.plageDebut and type == 'conge' %} min="{{ conge.plageDebut|date('Y-m-d') }}" max="{{ conge.plageFin|date('Y-m-d') }}"{% endif %}></label>
+					{% if type == 'absence' %}
+						<label class="si-pg-case si-me-plein"><input type="checkbox" name="demi" value="1" data-si-demi{{ saisie.demi is defined ? ' checked' }}> Demi-journée</label>
+					{% endif %}
+				{% else %}
+					<label>Date{{ type == 'frais_medicaux' ? ' de la facture' : '' }}<input type="date" name="du" class="form-control" required value="{{ saisie.du ?? aujourdhui }}" max="{{ aujourdhui }}"></label>
+					<label>Montant{{ type == 'frais_medicaux' ? ' de la facture' : '' }} (F)<input type="text" inputmode="numeric" name="montant" class="form-control" required value="{{ saisie.montant ?? '' }}" placeholder="25 000"></label>
+					{% if type == 'reclamation' %}
+						<label class="si-me-plein">Ce que vous réclamez
+							<select name="categorie" class="form-select" required>
+								<option value="">—</option>
+								{% for cle, libelle in constant('App\\Entity\\DemandeEmploye::CATEGORIES') %}<option value="{{ cle }}"{{ (saisie.categorie ?? '') == cle ? ' selected' }}>{{ libelle }}</option>{% endfor %}
+							</select>
+						</label>
+					{% endif %}
+				{% endif %}
+				<label class="si-me-plein">Motif{{ type == 'conge' ? ' (facultatif)' : '' }}<input type="text" name="motif" maxlength="255" class="form-control" value="{{ saisie.motif ?? '' }}"{{ type != 'conge' ? ' required' }} placeholder="{{ type == 'absence' ? 'Ex. rendez-vous médical' : (type == 'reclamation' ? 'Ex. carburant avancé pour la livraison du 12/10' : 'Ex. consultation et médicaments') }}"></label>
+				{% if type != 'conge' %}
+					<label class="si-me-plein">Justificatif (photo ou PDF, 5 Mo max){{ type == 'frais_medicaux' ? ' — obligatoire' : '' }}<input type="file" name="justificatif" class="form-control" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment"{{ type == 'frais_medicaux' ? ' required' }}></label>
+				{% endif %}
+				<button type="submit" class="btn btn-primary btn-lg si-ac-enregistrer si-me-plein">Envoyer à la RH</button>
+			</form>
+		</section>
+	</div>
+	<script>
+		(function () {
+			var demi = document.querySelector('[data-si-demi]');
+			if (!demi) { return; }
+			var au = document.querySelector('[data-si-au]');
+			var maj = function () { au.hidden = demi.checked; };
+			demi.addEventListener('change', maj);
+			maj();
+		})();
+	</script>
+{% endblock %}

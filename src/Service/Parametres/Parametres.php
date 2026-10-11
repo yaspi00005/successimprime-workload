@@ -22,6 +22,7 @@ use App\Repository\EntrepriseRepository;
 use App\Repository\ParametresPaiementRepository;
 use App\Repository\ReglageRepository;
 use App\Security\AccesEnLigne;
+use App\Service\ActionsCaisse\HeuresTravail;
 use App\Service\CatalogueStock;
 use App\Service\EcranTv;
 use App\Service\NumerotationFactures;
@@ -342,6 +343,22 @@ final class Parametres
     public function valeur(string $tuile, string $cle): mixed
     {
         return $this->valeursCompletes($tuile)[$cle] ?? null;
+    }
+
+    /**
+     * Heures de travail de l'atelier (tuiles Horaires et Pointage) : délais
+     * des actions de caisse, jours ouvrés des absences et congés.
+     */
+    public function heuresTravail(): HeuresTravail
+    {
+        return new HeuresTravail(
+            (string) $this->valeur('horaires', 'jours'),
+            (string) $this->valeur('horaires', 'ouverture'),
+            (string) $this->valeur('horaires', 'fermeture'),
+            (string) $this->valeur('pointage', 'pause_debut'),
+            (string) $this->valeur('pointage', 'pause_fin'),
+            (string) $this->valeur('horaires', 'feries'),
+        );
     }
 
     /** Champ de la tuile Paiements => mode de paiement. */

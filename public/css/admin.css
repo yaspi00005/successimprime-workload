@@ -3826,3 +3826,56 @@ body.si-param-bloque { overflow: hidden; }
   .si-ac-trois, .si-ac-date { grid-template-columns: minmax(0, 1fr); }
   .si-ac-controle-form { flex-wrap: wrap; }
 }
+
+/* ---------- Espace employé et demandes du personnel ---------- */
+.si-me-boutons { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-me-liste { list-style: none; padding: 0; margin: 0; }
+.si-me-demande { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid #EEF2F7; }
+.si-me-demande > div { flex: 1; min-width: 0; }
+.si-me-demande b, .si-me-demande small { display: block; }
+.si-me-demande small { font-size: 12px; color: #64748B; }
+.si-me-commentaire { color: #7C3AED !important; }
+.si-me-piece { font-size: 12px; font-weight: 600; }
+.si-me-type { flex-shrink: 0; width: 104px; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 4px 8px; text-align: center; background: #F1F5F9; color: #334155; }
+.si-me-t-conge { background: #DBEAFE; color: #1E40AF; }
+.si-me-t-absence { background: #FFEDD5; color: #9A3412; }
+.si-me-t-frais_medicaux { background: #FCE7F3; color: #9D174D; }
+.si-me-t-reclamation { background: #CCFBF1; color: #115E59; }
+.si-me-etat { flex-shrink: 0; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 10px; background: #F1F5F9; color: #475569; }
+.si-me-e-acceptee, .si-me-e-payee { background: #DCFCE7; color: #166534; }
+.si-me-e-refusee { background: #FEE2E2; color: #991B1B; }
+.si-me-e-en_attente { background: #FEF3C7; color: #92400E; }
+.si-me-decision { padding: 8px 0 14px 116px; border-bottom: 1px solid #E2E8F0; }
+.si-me-decision .si-pg-note { margin: 0 0 8px; }
+.si-me-decider { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.si-me-decider label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #64748B; }
+.si-me-com { flex: 1; min-width: 220px; }
+.si-me-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.si-me-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #64748B; margin: 0; }
+.si-me-form label[hidden] { display: none; }
+.si-me-form .si-pg-case { flex-direction: row; align-items: center; gap: 6px; }
+.si-me-plein { grid-column: 1 / -1; }
+.si-me-entete { display: flex; justify-content: space-between; align-items: baseline; }
+.si-me-entete a { padding: 0 6px; font-size: 18px; }
+.si-me-calendrier { overflow-x: auto; }
+.si-me-calendrier table { border-collapse: separate; border-spacing: 2px; font-size: 11px; }
+.si-me-calendrier th { font-weight: 600; color: #64748B; text-align: center; min-width: 22px; }
+.si-me-calendrier tbody th { text-align: left; white-space: nowrap; padding-right: 8px; color: #0F172A; font-size: 12px; }
+.si-me-calendrier td { height: 22px; border-radius: 4px; background: #F8FAFC; }
+.si-me-dim { color: #CBD5E1 !important; }
+.si-me-c-conge { background: #3B82F6 !important; }
+.si-me-c-absence { background: #F97316 !important; }
+.si-me-legende { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin: 0 4px 0 10px; }
+.si-me-conge { display: grid; grid-template-columns: minmax(160px, 1.4fr) auto repeat(4, minmax(0, 1fr)) auto; gap: 10px; align-items: end; padding: 12px 0; border-bottom: 1px solid #EEF2F7; }
+.si-me-conge b small { display: block; font-weight: 400; font-size: 12px; color: #64748B; }
+.si-me-conge label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #64748B; margin: 0; }
+.si-me-conge .si-pg-case { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 8px; }
+
+@media (max-width: 767.98px) {
+  .si-me-form { grid-template-columns: minmax(0, 1fr); }
+  .si-me-demande { flex-wrap: wrap; }
+  .si-me-demande > div { flex-basis: calc(100% - 120px); }
+  .si-me-decision { padding-left: 0; }
+  .si-me-conge { grid-template-columns: 1fr 1fr; }
+  .si-me-conge b { grid-column: 1 / -1; }
+}

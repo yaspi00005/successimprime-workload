@@ -199,14 +199,14 @@ final class CatalogueParametres
             ],
             'avantages' => [
                 'famille' => 'personnel', 'libelle' => 'Avantages', 'icone' => 'fa-gift',
-                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => null,
+                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => 'app_demandes_index',
                 'champs' => [
                     ['cle' => 'frais_medicaux', 'type' => 'nombre', 'libelle' => 'Frais médicaux remboursés', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'defaut' => 80],
                     ['cle' => 'plafond_annuel', 'type' => 'nombre', 'libelle' => 'Plafond par an', 'suffixe' => 'F', 'min' => 0, 'max' => 100000000, 'defaut' => 0],
                     ['cle' => 'payer_om', 'type' => 'interrupteur', 'libelle' => 'Rembourser par Orange Money', 'defaut' => true],
                 ],
                 'motsCles' => ['Frais médicaux · payer par Orange Money', 'Avantages du personnel'],
-                'note' => \sprintf(self::NOTE_A_BRANCHER, 'espace employé'),
+                'note' => 'L\'employé demande le remboursement depuis Mon espace avec la facture ; la RH voit le montant proposé (taux et plafond) et l\'accepte ou l\'ajuste.',
             ],
             'paie' => [
                 'famille' => 'personnel', 'libelle' => 'Paie', 'icone' => 'fa-money-bill-wave',

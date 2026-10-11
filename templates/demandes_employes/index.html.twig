@@ -1,0 +1,95 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+
+{% block title %}Demandes du personnel{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_demandes_conges') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-umbrella-beach me-1"></i>Droits aux congés</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-me">
+		<section class="card si-ac-bloc">
+			<h2>À traiter <span class="si-pg-compte">{{ enAttente|length }}</span></h2>
+			{% if enAttente is empty %}
+				<p class="si-ac-vide">Aucune demande en attente.</p>
+			{% endif %}
+			<ul class="si-me-liste">
+				{% for l in enAttente %}
+					{% set d = l.demande %}
+					{% include 'mon_espace/_demande.html.twig' with {avecNom: true} %}
+					<li class="si-me-decision">
+						{% if l.conge %}<p class="si-pg-note">Solde de congés : {{ l.conge.solde }} j{{ l.conge.solde < d.jours ? ' · insuffisant' }}.</p>{% endif %}
+						{% if l.remboursement %}<p class="si-pg-note">Proposé : {{ l.remboursement.taux }} % = <b>{{ l.remboursement.propose|number_format(0, ',', ' ') }} F</b>{% if l.remboursement.plafond > 0 %} (plafond {{ l.remboursement.plafond|number_format(0, ',', ' ') }} F/an, déjà {{ l.remboursement.deja|number_format(0, ',', ' ') }} F){% endif %}.</p>{% endif %}
+						<form method="post" action="{{ path('app_demandes_decider', {id: d.id}) }}" class="si-me-decider">
+							<input type="hidden" name="_token" value="{{ token }}">
+							{% if d.estUneSomme %}<label>Accordé (F)<input name="montant" inputmode="numeric" class="form-control" value="{{ l.remboursement ? l.remboursement.propose : d.montant }}"></label>{% endif %}
+							<label class="si-me-com">Commentaire{{ ' (obligatoire pour refuser)' }}<input name="commentaire" maxlength="255" class="form-control"></label>
+							<button name="decision" value="accepter" class="btn btn-success btn-sm">Accepter</button>
+							<button name="decision" value="refuser" class="btn btn-outline-danger btn-sm">Refuser</button>
+						</form>
+					</li>
+				{% endfor %}
+			</ul>
+		</section>
+
+		{% if aPayer is not empty %}
+			<section class="card si-ac-bloc">
+				<h2>Sommes accordées à payer</h2>
+				<ul class="si-me-liste">
+					{% for d in aPayer %}
+						{% include 'mon_espace/_demande.html.twig' with {avecNom: true} %}
+						{% if comptes is not empty %}
+							<li class="si-me-decision">
+								<form method="post" action="{{ path('app_demandes_payer', {id: d.id}) }}" class="si-me-decider">
+									<input type="hidden" name="_token" value="{{ token }}">
+									<label>Payer {{ d.montantAccorde|number_format(0, ',', ' ') }} F depuis
+										<select name="compte" class="form-select" required>
+											<option value="">—</option>
+											{% for c in comptes %}<option value="{{ c.id }}"{{ reglage('avantages', 'payer_om') and 'orange' in c.nom|lower ? ' selected' }}>{{ c.nom }}</option>{% endfor %}
+										</select>
+									</label>
+									<button class="btn btn-primary btn-sm">Payer</button>
+								</form>
+							</li>
+						{% endif %}
+					{% endfor %}
+				</ul>
+				{% if comptes is empty %}<p class="si-pg-note">Le paiement se fait par une personne qui a le droit « Dépenses et recettes ».</p>{% endif %}
+			</section>
+		{% endif %}
+
+		<section class="card si-ac-bloc">
+			<header class="si-me-entete">
+				<h2>Absents · {{ mois|date_fr('MMMM y') }}</h2>
+				<span>
+					<a href="{{ path('app_demandes_index', {mois: mois|date_modify('-1 month')|date('Y-m')}) }}"><i class="fas fa-caret-left"></i></a>
+					<a href="{{ path('app_demandes_index', {mois: mois|date_modify('+1 month')|date('Y-m')}) }}"><i class="fas fa-caret-right"></i></a>
+				</span>
+			</header>
+			{% if calendrier.lignes is empty %}
+				<p class="si-ac-vide">Aucun absent ce mois-ci.</p>
+			{% else %}
+				<div class="si-me-calendrier">
+					<table>
+						<thead><tr><th></th>{% for j in calendrier.jours %}<th class="{{ j|date('N') == 7 ? 'si-me-dim' }}">{{ j|date('j') }}</th>{% endfor %}</tr></thead>
+						<tbody>
+							{% for l in calendrier.lignes %}
+								<tr><th>{{ l.nom }}</th>{% for j in calendrier.jours %}{% set t = l.jours[j|date('Y-m-d')] ?? null %}<td class="{{ t ? 'si-me-c-' ~ t }}" title="{{ t ? (t == 'conge' ? 'Congé' : 'Absence') }}"></td>{% endfor %}</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+					<p class="si-pg-note"><i class="si-me-c-conge si-me-legende"></i> congé <i class="si-me-c-absence si-me-legende"></i> absence</p>
+				</div>
+			{% endif %}
+		</section>
+
+		{% if traitees is not empty %}
+			<section class="card si-ac-bloc">
+				<h2>Réponses données · {{ mois|date_fr('MMMM') }}</h2>
+				<ul class="si-me-liste">{% for d in traitees %}{% include 'mon_espace/_demande.html.twig' with {avecNom: true} %}{% endfor %}</ul>
+			</section>
+		{% endif %}
+	</div>
+{% endblock %}

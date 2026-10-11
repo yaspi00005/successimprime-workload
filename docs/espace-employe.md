@@ -38,3 +38,15 @@ L'employé réclame une somme qu'il estime lui être due : heures supplémentair
 - L'administrateur accepte (en totalité ou en partie) ou refuse, avec un commentaire.
 - Une réclamation acceptée devient une dépense à payer dans Trésorerie et dépenses, rattachée à l'employé.
 - Les réclamations en attente apparaissent dans les indicateurs (« notes de frais en attente »).
+
+## État (11/10/2026)
+
+Construit :
+
+- **Mon espace** (`/mon-espace`, lien dans le menu du profil) : présence et ponctualité du mois (pointage), points d'actions de caisse pour les caissiers, solde de congés, et l'historique des demandes avec la réponse de la RH. Chacun ne voit que ses demandes.
+- **Demandes** : absence (jour, demi-journée ou période), congé (contrôlé contre le solde et la plage fixée par la RH ; les jours fériés et les jours non travaillés de la tuile Horaires ne comptent pas), réclamation (heures sup, prime, frais avancés, reste de salaire) et frais médicaux (justificatif obligatoire, photo ou PDF de 5 Mo au plus, rangé hors du dossier public).
+- **Côté RH** (Réglages › Demandes du personnel, droit « Administrateur RH ») : demandes à traiter, acceptation totale ou en partie, refus avec commentaire obligatoire, calendrier des absents du mois, droits aux congés par employé (activation, solde, plage et nombre de jours max). Les frais médicaux proposent le taux et le plafond annuel de la tuile Avantages.
+- **Paiement** des sommes accordées (droit de saisie en trésorerie) : décaissement de catégorie salaire, marqué confidentiel, à valider comme tout mouvement.
+- L'employé est prévenu à chaque réponse et à chaque paiement ; la RH à chaque nouvelle demande.
+
+Reste : les statistiques « Mes chiffres » par métier arrivent avec le suivi des métiers (docs/suivi-metiers.md).

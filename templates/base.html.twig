@@ -127,6 +127,7 @@
 									<span class="dropdown-item-text fw-semibold">{{ nomAffiche }}</span>
 									<div class="dropdown-divider"></div>
 									{% if app.user.employe is defined and app.user.employe %}
+										<a class="dropdown-item" href="{{ path('app_mon_espace_index') }}"><i class="fas fa-id-badge text-primary"></i><span class="ms-2">Mon espace</span></a>
 										<a class="dropdown-item" href="{{ path('app_pointer_index') }}"><i class="fas fa-qrcode text-success"></i><span class="ms-2">Pointer</span></a>
 									{% endif %}
 									<a class="dropdown-item" href="{{ path('app_user_change_password') }}"><i class="fas fa-key text-primary"></i><span class="ms-2">Changer mon mot de passe</span></a>

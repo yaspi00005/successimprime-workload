@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+
+{% block title %}Droits aux congés{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_demandes_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-caret-left me-1"></i>Demandes</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-me">
+		<p class="si-pg-note">Activez le droit aux congés employé par employé, avec son solde. Pour faire choisir les dates, fixez une plage et un nombre de jours à ne pas dépasser : l'employé choisit dans la plage, puis vous confirmez.</p>
+		<section class="card si-ac-bloc">
+			{% for l in lignes %}
+				{% set c = l.conge %}
+				<form method="post" action="{{ path('app_demandes_conge_regler', {id: l.utilisateur.id}) }}" class="si-me-conge">
+					<input type="hidden" name="_token" value="{{ token }}">
+					<b>{{ l.utilisateur|nom_pointage }}<small>{{ l.utilisateur.employe.fonction }}</small></b>
+					<label class="si-pg-case"><input type="checkbox" name="actif" value="1"{{ c.actif ? ' checked' }}> Droit activé</label>
+					<label>Solde (j)<input name="solde" inputmode="decimal" class="form-control" value="{{ c.solde }}"></label>
+					<label>Plage du<input type="date" name="plage_debut" class="form-control" value="{{ c.plageDebut ? c.plageDebut|date('Y-m-d') }}"></label>
+					<label>au<input type="date" name="plage_fin" class="form-control" value="{{ c.plageFin ? c.plageFin|date('Y-m-d') }}"></label>
+					<label>Jours max<input name="plage_jours" inputmode="decimal" class="form-control" value="{{ c.plageJours }}"></label>
+					<button class="btn btn-primary btn-sm">Enregistrer</button>
+				</form>
+			{% else %}
+				<p class="si-ac-vide">Aucun compte relié à une fiche employé.</p>
+			{% endfor %}
+		</section>
+	</div>
+{% endblock %}

@@ -64,10 +64,7 @@ final class ActionsCaisse
 
     public function heures(): HeuresTravail
     {
-        if ($this->heures === null) {
-            $r = $this->regles();
-            $this->heures = new HeuresTravail((string) $r['jours'], (string) $r['ouverture'], (string) $r['fermeture'], (string) $r['pause_debut'], (string) $r['pause_fin'], (string) $r['feries']);
-        }
+        $this->heures ??= $this->parametres->heuresTravail();
 
         return $this->heures;
     }

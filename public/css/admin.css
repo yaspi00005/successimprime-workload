@@ -4117,5 +4117,24 @@ body.si-param-bloque { overflow: hidden; }
 .si-tr-arret:has(.si-tr-lien):hover { border-color: #0F3D8C; }
 .si-tr-paiement { list-style: none; margin: -6px 0 8px 40px; font-size: 12px; color: #475569; }
 .si-tr-planning .si-ac-kpis .card span { display: block; font-size: 12px; }
+/* Points du livreur (W04) */
+.si-tr-jour-tete small { color: #64748B; font-size: 13px; }
+.si-tr-total { display: block; font-size: 22px; font-weight: 800; color: #0F172A; margin-bottom: 8px; }
+.si-tr-jour-pied { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 13px; color: #475569; }
+.si-tr-pts { display: inline-block; font-size: 12px; font-weight: 800; border-radius: 8px; padding: 2px 8px; background: #DCFCE7; color: #166534; white-space: nowrap; }
+.si-tr-pts-moins { background: #FEE2E2; color: #B91C1C; }
+.si-tr-retard { background: #FFEDD5; color: #C2410C; }
+.si-tr-etat { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.si-tr-livree { border-left: 4px solid #16A34A; }
+.si-tr-fini { text-align: center; padding: 20px 16px; margin-bottom: 12px; }
+.si-tr-fini i.fa-check { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: #16A34A; color: #fff; font-size: 30px; margin-bottom: 10px; }
+.si-tr-fini h2 { font-size: 18px !important; margin: 0; }
+.si-tr-heures { list-style: none; padding: 0; margin: 0; }
+.si-tr-heures li { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #EEF2F7; font-size: 14px; }
+.si-tr-heures li:last-child { border-bottom: 0; }
+.si-tr-heures li span { color: #64748B; }
+.si-tr-coche { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+.si-tr-coche .fa-check { color: #16A34A; }
+.si-tr-coche .fa-xmark { color: #DC2626; }
 @media (max-width: 900px) { .si-tr-colonnes-carte { grid-template-columns: 1fr; } .si-tr-carte-grande { height: 280px; } }
 .si-tr-arret.card { flex-direction: row; }

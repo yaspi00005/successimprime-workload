@@ -3,6 +3,7 @@
 namespace App\Service\Livraisons;
 
 use App\Entity\BonLivraison;
+use App\Entity\BonLivraisonLigne;
 use App\Entity\CompteTresorerie;
 use App\Entity\Paiements;
 use App\Entity\PointPointage;
@@ -183,13 +184,22 @@ final class Tournee
         return array_values(array_filter($tous, static fn (User $u): bool => \in_array(User::ROLE_LIVREUR, $u->getRoles(), true)));
     }
 
+    /** Quantité qu'un article peut encore remettre : le reste à livrer de la commande. */
+    public static function maxRemise(BonLivraisonLigne $ligne): int
+    {
+        $detail = $ligne->getCommandeDetail();
+
+        return $detail !== null ? min((int) $ligne->getQuantiteCommandee(), $detail->getQuantiteRestanteLivraison()) : (int) $ligne->getQuantiteCommandee();
+    }
+
     /**
      * Remise au client : quantités livrées, photos, signature, encaissement.
      *
      * @param array<int, int|string>   $quantites id de ligne => quantité remise
      * @param list<UploadedFile>       $photos
+     * @param ?float                   $latitude position du téléphone à la remise (preuve GPS)
      */
-    public function remettre(BonLivraison $bon, User $livreur, array $quantites, array $photos, ?string $signaturePng, ?string $signataire, ?string $mode, ?int $montant, \DateTimeImmutable $maintenant): ?string
+    public function remettre(BonLivraison $bon, User $livreur, array $quantites, array $photos, ?string $signaturePng, ?string $signataire, ?string $mode, ?int $montant, \DateTimeImmutable $maintenant, ?float $latitude = null, ?float $longitude = null): ?string
     {
         if ($bon->getStatut() !== BonLivraison::STATUT_VALIDE) {
             return 'Cette livraison n\'est pas en cours.';
@@ -197,14 +207,11 @@ final class Tournee
         if ($signaturePng === null || $signaturePng === '') {
             return 'La signature du client est obligatoire.';
         }
-        $total = 0;
+        $remises = [];
         foreach ($bon->getLignes() as $ligne) {
-            $q = (int) ($quantites[$ligne->getId()] ?? 0);
-            $q = max(0, min($q, (int) $ligne->getQuantiteCommandee()));
-            $ligne->setQuantiteLivree($q);
-            $total += $q;
+            $remises[] = [$ligne, max(0, min((int) ($quantites[$ligne->getId()] ?? 0), self::maxRemise($ligne)))];
         }
-        if ($total === 0) {
+        if (array_sum(array_column($remises, 1)) === 0) {
             return 'Cochez au moins un article remis.';
         }
         if ($mode !== null && $mode !== '') {
@@ -225,6 +232,11 @@ final class Tournee
                 $bon->ajouterPhoto($nom);
             }
         }
+        foreach ($remises as [$ligne, $q]) {
+            // Article non remis : il sort du bon et reste à livrer sur la commande.
+            $q > 0 ? $ligne->setQuantiteLivree($q) : $bon->removeLigne($ligne);
+        }
+        $bon->noterPosition($latitude, $longitude);
         $bon->avancer('arrive', $maintenant);
         $bon->marquerLivre($livreur);
         $this->em->flush();

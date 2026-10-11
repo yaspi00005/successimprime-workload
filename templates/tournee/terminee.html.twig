@@ -1,0 +1,69 @@
+{% extends 'base.html.twig' %}
+
+{% set cli = b.commande.clients %}
+{% set nom = cli ? cli.nomComplet : (b.nomReceptionnaire ?? b.numero) %}
+
+{% block title %}Livraison terminée · {{ nom }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_livraisons_tournee', b.livreur and b.livreur != app.user ? {livreur: b.livreur.id, jour: b.prevuLe ? b.prevuLe|date('Y-m-d') : null} : {}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Ma tournée</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-tr si-tr-remise">
+		<section class="card si-tr-fini">
+			<i class="fas fa-check" aria-hidden="true"></i>
+			<h2>{{ nom }} · remis à {{ b.livreLe|date('H:i') }}</h2>
+			<small class="text-muted">
+				{{ b.creneau ? 'Créneau ' ~ b.creneau ~ ' · ' }}
+				{% if livraison_a_l_heure(b) %}dans les délais{% elseif retard is not null %}retard de {{ retard|minutes }}{% else %}hors délai{% endif %}
+				{% if b.retardJustifie %} · retard justifié{% endif %}
+			</small>
+		</section>
+
+		<section class="card si-ac-bloc">
+			<ul class="si-tr-heures">
+				{% if b.enRouteLe %}<li><span>Départ de l'atelier</span><b>{{ b.enRouteLe|date('H:i') }}</b></li>{% endif %}
+				{% if b.arriveLe %}<li><span>Arrivée chez le client</span><b>{{ b.arriveLe|date('H:i') }}</b></li>{% endif %}
+				<li><span>Remise et signature</span><b>{{ b.livreLe|date('H:i') }}</b></li>
+				{% if b.enRouteLe and b.arriveLe %}
+					{% set trajet = ((b.arriveLe|date('U') - b.enRouteLe|date('U')) / 60)|round %}
+					<li><span>Trajet</span><b>{{ trajet|minutes }}</b></li>
+				{% endif %}
+			</ul>
+		</section>
+
+		<section class="card si-ac-bloc">
+			<h2>Preuve de livraison</h2>
+			<div class="d-flex gap-3 align-items-start flex-wrap">
+				<div class="si-tr-preuves">
+					{% for f in b.photos|slice(0, 2) %}<img src="{{ path('app_livraisons_bl_preuve', {id: b.id, f: f}) }}" alt="Photo de la remise {{ loop.index }}" style="width: 70px; height: 70px;">{% endfor %}
+				</div>
+				<ul class="si-tr-coche">
+					<li><i class="fas {{ b.photos is not empty ? 'fa-check' : 'fa-xmark' }} me-1"></i>{{ b.photos|length }} photo{{ b.photos|length > 1 ? 's' }}</li>
+					<li><i class="fas {{ b.signature ? 'fa-check' : 'fa-xmark' }} me-1"></i>Signature{{ b.signataire ? ' · ' ~ b.signataire }}</li>
+					<li><i class="fas {{ b.remisePosition ? 'fa-check' : 'fa-xmark' }} me-1"></i>Position GPS</li>
+				</ul>
+			</div>
+		</section>
+
+		<section class="card si-ac-bloc">
+			<h2>Points</h2>
+			<ul class="si-tr-heures">
+				{% for l in p.lignes %}
+					<li><span>{{ l.libelle }}</span><span class="si-tr-pts{{ l.points < 0 ? ' si-tr-pts-moins' }}">{{ l.points >= 0 ? '+' }}{{ l.points }} pts</span></li>
+				{% else %}
+					<li><span>Aucun point sur cette livraison.</span></li>
+				{% endfor %}
+				{% if p.attente %}<li><span>Encaissement : compté quand la caisse le valide aujourd'hui</span><span class="si-tr-badge">En attente</span></li>{% endif %}
+			</ul>
+		</section>
+
+		{% if suivante %}
+			{% set c2 = suivante.commande.clients %}
+			<a class="btn btn-primary w-100 si-tr-valider" href="{{ path('app_livraisons_tournee') }}">Livraison suivante : {{ c2 ? c2.nomComplet : suivante.numero }}</a>
+		{% else %}
+			<a class="btn btn-light w-100 si-tr-valider" href="{{ path('app_livraisons_tournee') }}">Retour à ma tournée</a>
+		{% endif %}
+	</div>
+{% endblock %}

@@ -6,6 +6,7 @@ use App\Entity\BonLivraison;
 use App\Entity\User;
 use App\Repository\CompteTresorerieRepository;
 use App\Service\Livraisons\Tournee;
+use App\Service\SuiviMetiers\PointsLivreur;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -26,6 +27,7 @@ final class TourneeController extends AbstractController
 
     public function __construct(
         private readonly Tournee $tournee,
+        private readonly PointsLivreur $points,
         private readonly EntityManagerInterface $em,
     ) {
     }
@@ -39,10 +41,12 @@ final class TourneeController extends AbstractController
         if ($this->bureau() && $request->query->get('livreur')) {
             $livreur = $this->em->getRepository(User::class)->find($request->query->getInt('livreur')) ?? $moi;
         }
-        $bons = $this->tournee->duJour($jour, $livreur);
+        $journee = $this->points->journee($livreur, $jour);
+        $bons = $journee['bons'];
 
         return $this->render('tournee/index.html.twig', [
             'bons' => $bons,
+            'j' => $journee,
             'jour' => $jour,
             'livreur' => $livreur,
             'livreurs' => $this->bureau() ? $this->tournee->livreurs() : [],
@@ -83,11 +87,11 @@ final class TourneeController extends AbstractController
                 (string) $request->request->get('mode'),
                 $montant !== '' ? (int) $montant : null,
                 new \DateTimeImmutable(),
+                is_numeric($request->request->get('latitude')) ? (float) $request->request->get('latitude') : null,
+                is_numeric($request->request->get('longitude')) ? (float) $request->request->get('longitude') : null,
             );
             if ($erreur === null) {
-                $this->addFlash('success', \sprintf('Remise de %s enregistrée.', $bon->getNumero()));
-
-                return $this->redirectToRoute('app_livraisons_tournee');
+                return $this->redirectToRoute('app_livraisons_tournee_terminee', ['id' => $bon->getId()]);
             }
             $this->addFlash('danger', $erreur);
         }
@@ -95,7 +99,36 @@ final class TourneeController extends AbstractController
         return $this->render('tournee/remise.html.twig', [
             'b' => $bon,
             'reste' => (int) $bon->getCommande()?->getResteAPayer(),
+            'maxRemise' => array_combine(array_map(static fn ($l) => $l->getId(), $bon->getLignes()->toArray()), array_map(Tournee::maxRemise(...), $bon->getLignes()->toArray())),
             'jeton' => self::CSRF,
+        ]);
+    }
+
+    /** Livraison terminée (W04) : heures, preuve et points gagnés. */
+    #[Route('/tournee/{id}/terminee', name: 'tournee_terminee', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function terminee(BonLivraison $bon): Response
+    {
+        if (!$this->bureau()) {
+            $this->livreurDe($bon);
+        }
+        if ($bon->getStatut() !== BonLivraison::STATUT_LIVRE) {
+            return $this->redirectToRoute('app_livraisons_tournee');
+        }
+        $suivante = null;
+        if ($bon->getLivreur() !== null && $bon->getPrevuLe() !== null) {
+            foreach ($this->tournee->duJour($bon->getPrevuLe(), $bon->getLivreur()) as $b) {
+                if ($b->getStatut() === BonLivraison::STATUT_VALIDE) {
+                    $suivante = $b;
+                    break;
+                }
+            }
+        }
+
+        return $this->render('tournee/terminee.html.twig', [
+            'b' => $bon,
+            'p' => $this->points->detail($bon),
+            'retard' => PointsLivreur::retard($bon),
+            'suivante' => $suivante,
         ]);
     }
 
@@ -159,6 +192,8 @@ final class TourneeController extends AbstractController
             'whatsapp' => ($tel = $bon->getTelephoneReceptionnaire() ?? $bon->getCommande()?->getClients()?->getTelephone()) ? UtilisateursController::numeroWhatsApp($tel) : null,
             'livreurs' => $this->tournee->livreurs(),
             'comptes' => $this->isGranted('ROLE_PAIEMENT_ENCAISSER') ? $comptes->findActifs() : [],
+            'points' => $this->points->detail($bon),
+            'retard' => PointsLivreur::retard($bon),
             'jeton' => self::CSRF,
         ]);
     }
@@ -177,6 +212,33 @@ final class TourneeController extends AbstractController
             ->setOrdreTournee($request->request->getInt('ordre') > 0 ? $request->request->getInt('ordre') : null);
         $this->em->flush();
         $this->addFlash('success', 'Livraison planifiée.');
+
+        return $this->redirectToRoute('app_livraisons_bl', ['id' => $bon->getId()]);
+    }
+
+    /** Retard justifié ou erreur de livraison (bureau) : change les points du livreur. */
+    #[Route('/bl/{id}/points/{action}', name: 'bl_points', requirements: ['id' => '\d+', 'action' => 'justifier|erreur|annuler_retard|annuler_erreur'], methods: ['POST'])]
+    public function corrigerPoints(BonLivraison $bon, string $action, Request $request): Response
+    {
+        $this->verifierJeton($request);
+        if (!$this->bureau()) {
+            throw $this->createAccessDeniedException();
+        }
+        $motif = trim((string) $request->request->get('motif'));
+        if (\in_array($action, ['justifier', 'erreur'], true) && $motif === '') {
+            $this->addFlash('danger', 'Indiquez le motif.');
+
+            return $this->redirectToRoute('app_livraisons_bl', ['id' => $bon->getId()]);
+        }
+        $signe = $motif !== '' ? \sprintf('%s (%s, %s)', $motif, \App\Service\Pointage\Pointages::nom($this->moi()), (new \DateTimeImmutable())->format('d/m H:i')) : null;
+        match ($action) {
+            'justifier' => $bon->setRetardJustifie($signe),
+            'erreur' => $bon->setErreurLivraison($signe),
+            'annuler_retard' => $bon->setRetardJustifie(null),
+            'annuler_erreur' => $bon->setErreurLivraison(null),
+        };
+        $this->em->flush();
+        $this->addFlash('success', 'Points du livreur mis à jour.');
 
         return $this->redirectToRoute('app_livraisons_bl', ['id' => $bon->getId()]);
     }

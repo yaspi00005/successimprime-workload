@@ -14,13 +14,15 @@
 		<section class="card si-ac-bloc">
 			<h2>À remettre</h2>
 			{% for l in b.lignes %}
+				{% set max = maxRemise[l.id] ?? l.quantiteCommandee %}
+				{% set prevu = l.quantiteLivree > 0 ? min(l.quantiteLivree, max) : max %}
 				<label class="si-tr-ligne">
-					<input type="checkbox" class="form-check-input" data-ligne="{{ l.id }}" checked>
+					<input type="checkbox" class="form-check-input" data-ligne="{{ l.id }}"{{ prevu > 0 ? ' checked' }}>
 					<span>{{ l.designation }}</span>
-					<span class="si-tr-qte"><input type="number" name="quantites[{{ l.id }}]" min="0" max="{{ l.quantiteCommandee }}" value="{{ l.quantiteCommandee }}" class="form-control form-control-sm" aria-label="Quantité remise de {{ l.designation }}"> / {{ l.quantiteCommandee }}</span>
+					<span class="si-tr-qte"><input type="number" name="quantites[{{ l.id }}]" min="0" max="{{ max }}" value="{{ prevu }}" class="form-control form-control-sm" aria-label="Quantité remise de {{ l.designation }}"> / {{ max }}</span>
 				</label>
 			{% endfor %}
-			<p class="si-pg-note mb-0">Remise partielle : baissez la quantité, le reste sera livré plus tard.</p>
+			<p class="si-pg-note mb-0">Remise partielle : baissez la quantité ou décochez l'article, le reste sera livré plus tard.</p>
 		</section>
 
 		<section class="card si-ac-bloc">
@@ -38,6 +40,10 @@
 			</div>
 			<input type="hidden" name="signature" id="si-signature-png">
 		</section>
+
+		<p class="si-pg-note si-tr-gps" id="si-gps"><i class="fas fa-location-dot me-1"></i>Position GPS : recherche…</p>
+		<input type="hidden" name="latitude" id="si-lat">
+		<input type="hidden" name="longitude" id="si-lng">
 
 		<section class="card si-ac-bloc">
 			<h2>Encaissement</h2>
@@ -73,6 +79,17 @@
 		});
 		var montant = document.getElementById('si-montant');
 		document.querySelectorAll('input[name=mode]').forEach(function (r) { r.addEventListener('change', function () { if (montant) montant.hidden = r.value === 'credit' && r.checked; }); });
+		var gps = document.getElementById('si-gps');
+		if (navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition(function (p) {
+				document.getElementById('si-lat').value = p.coords.latitude;
+				document.getElementById('si-lng').value = p.coords.longitude;
+				gps.textContent = 'Position GPS notée (à ' + Math.round(p.coords.accuracy) + ' m près).';
+				gps.classList.add('si-p-ok');
+			}, function () { gps.textContent = 'Position GPS refusée ou indisponible : la preuve sera incomplète.'; }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 60000});
+		} else {
+			gps.textContent = 'Ce téléphone ne donne pas sa position : la preuve sera incomplète.';
+		}
 		document.getElementById('si-remise').addEventListener('submit', function (e) {
 			if (!signe) { e.preventDefault(); alert('La signature du client est obligatoire.'); return; }
 			document.getElementById('si-signature-png').value = c.toDataURL('image/png');

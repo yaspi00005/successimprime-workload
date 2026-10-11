@@ -17,8 +17,17 @@
 		{% endif %}
 
 		<section class="card si-tr-jour">
-			<div><b>{{ jour|date_fr('EEEE d/MM')|capitalize }}</b><span class="si-tr-compte">{{ faites }} / {{ bons|length }}</span></div>
+			<div class="si-tr-jour-tete">
+				<small>{{ jour|date_fr('EEEE d/MM')|capitalize }} · {{ livreur|nom_pointage }}</small>
+				{% if j.points is not empty %}<span class="si-tr-pts{{ j.jour < 0 ? ' si-tr-pts-moins' }}">{{ j.jour >= 0 ? '+' }}{{ j.jour }} pts</span>{% endif %}
+			</div>
+			<b class="si-tr-total">{{ faites }} / {{ bons|length }} livraison{{ bons|length > 1 ? 's' }}</b>
 			<div class="si-mf-barre"><i style="width: {{ bons|length > 0 ? (faites * 100 / bons|length)|round : 0 }}%"></i></div>
+			<div class="si-tr-jour-pied">
+				<span>Départ atelier <b>{{ j.depart ? j.depart|date('H:i') : '–' }}</b></span>
+				<span>Ponctualité du mois <b>{{ j.mois.ponctualite is not null ? j.mois.ponctualite ~ ' %' : '–' }}</b></span>
+				<span>Points du mois <b>{{ j.mois.gagnes }} / {{ j.mois.possibles }}</b> · note <b>{{ j.mois.note }}/100</b></span>
+			</div>
 		</section>
 
 		{% set points = [] %}
@@ -32,7 +41,7 @@
 		{% endif %}
 		<ul class="si-tr-liste">
 			{% for b in bons %}
-				{% include 'tournee/_arret.html.twig' with {rang: b.ordreTournee ?? loop.index} %}
+				{% include 'tournee/_arret.html.twig' with {rang: b.ordreTournee ?? loop.index, pts: j.points[b.id] ?? null, lien: b.statut == 'livre' ? path('app_livraisons_tournee_terminee', {id: b.id}) : false} %}
 				{% if b.statut == 'valide' and b.livreur == app.user %}
 					<li class="si-tr-actions">
 						{% set suivante = not b.chargeLe ? ['charge', 'Chargée'] : (not b.enRouteLe ? ['en_route', 'Je pars'] : (not b.arriveLe ? ['arrive', 'Je suis arrivé'] : null)) %}

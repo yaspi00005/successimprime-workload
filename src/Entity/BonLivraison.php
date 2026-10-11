@@ -155,6 +155,21 @@ class BonLivraison
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?Paiements $paiementLivraison = null;
 
+    /** Position GPS du téléphone au moment de la remise. */
+    #[ORM\Column(nullable: true)]
+    private ?float $remiseLatitude = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $remiseLongitude = null;
+
+    /** Retard justifié par le bureau (panne, client absent) : il ne coûte pas de points. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $retardJustifie = null;
+
+    /** Colis abîmé ou erreur de livraison, noté par le bureau. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $erreurLivraison = null;
+
     #[ORM\OneToMany(
         targetEntity: BonLivraisonLigne::class,
         mappedBy: 'bonLivraison',
@@ -571,5 +586,20 @@ class BonLivraison
     public function getEncaisseMode(): ?string { return $this->encaisseMode; }
     public function getEncaisseLe(): ?\DateTimeImmutable { return $this->encaisseLe; }
     public function getPaiementLivraison(): ?Paiements { return $this->paiementLivraison; }
+
+    /** @return array{0: float, 1: float}|null */
+    public function getRemisePosition(): ?array { return $this->remiseLatitude !== null && $this->remiseLongitude !== null ? [$this->remiseLatitude, $this->remiseLongitude] : null; }
+    public function noterPosition(?float $latitude, ?float $longitude): static
+    {
+        $valide = $latitude !== null && $longitude !== null && abs($latitude) <= 90 && abs($longitude) <= 180 && ($latitude != 0.0 || $longitude != 0.0);
+        $this->remiseLatitude = $valide ? round($latitude, 6) : null;
+        $this->remiseLongitude = $valide ? round($longitude, 6) : null;
+
+        return $this;
+    }
+    public function getRetardJustifie(): ?string { return $this->retardJustifie; }
+    public function setRetardJustifie(?string $motif): static { $this->retardJustifie = $motif !== null && trim($motif) !== '' ? mb_substr(trim($motif), 0, 255) : null; return $this; }
+    public function getErreurLivraison(): ?string { return $this->erreurLivraison; }
+    public function setErreurLivraison(?string $motif): static { $this->erreurLivraison = $motif !== null && trim($motif) !== '' ? mb_substr(trim($motif), 0, 255) : null; return $this; }
     public function setPaiementLivraison(?Paiements $p): static { $this->paiementLivraison = $p; return $this; }
 }

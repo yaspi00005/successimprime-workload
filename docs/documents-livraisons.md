@@ -51,7 +51,7 @@ Le montant en lettres est calculé par un petit service testé, en français, sa
 Fait (L02, L03) :
 - Le bon de livraison porte la tournée : livreur, jour, créneau, ordre. Le bureau (droit Commandes ou admin) les règle sur « Tournée et remise » (`/livraisons/bl/{id}`), ouvert depuis le bon.
 - **Ma tournée** (`/livraisons/tournee`, mobile) : les livraisons du jour du livreur, la carte avec les arrêts numérotés (positions des fiches clients), les boutons Chargée, Je pars, Je suis arrivé, Itinéraire, Appeler, Remise. Un livreur arrive sur cette page à la connexion. Le bureau peut voir la tournée de chaque livreur.
-- **Remise** : quantités remises (remise partielle possible, le reste revient « prête à livrer »), photos, signature au doigt (obligatoire), encaissement Orange Money, espèces ou crédit client. Photos et signature sont rangées dans `var/uploads/livraisons`, hors du dossier public, visibles par le livreur de la livraison et le bureau.
+- **Remise** : quantités remises, au plus le reste à livrer de la commande (remise partielle possible ; un article décoché sort du bon et revient « prêt à livrer »), position GPS du téléphone, photos, signature au doigt (obligatoire), encaissement Orange Money, espèces ou crédit client. Photos et signature sont rangées dans `var/uploads/livraisons`, hors du dossier public, visibles par le livreur de la livraison et le bureau.
 - **Encaissement** : provisoire sur le bon. À la boutique, une personne qui a le droit Encaissements choisit le compte et valide : le paiement est créé et validé, il entre en trésorerie. Avant, rien n'y entre.
 - Le détail (L02) montre les étapes avec leurs heures, le contenu commandé, livré et le reste, les preuves, l'encaissement et la planification.
 

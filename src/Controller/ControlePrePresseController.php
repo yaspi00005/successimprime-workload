@@ -16,6 +16,7 @@ use App\Service\ControleCreditClientService;
 use App\Service\BonusPlafondClientService;
 use App\Service\AnalyseFichierImpression;
 use App\Service\TableauProduction;
+use App\Service\SuiviMetiers\TableauConception;
 use App\Controller\UtilisateursController;
 
 use Doctrine\ORM\EntityManagerInterface;
@@ -120,7 +121,8 @@ public function controler(
     OrdreProductionRepository $ordreProductionRepository,
     ControleCreditClientService $controleCreditClientService,
     BonusPlafondClientService $bonusPlafondClientService,
-    AnalyseFichierImpression $analyseFichier
+    AnalyseFichierImpression $analyseFichier,
+    TableauConception $tableauConception
 ): Response {
     /*
      * ============================================================
@@ -577,6 +579,7 @@ public function controler(
             $detail->addControlePrePresse($controle);
             $entityManager->persist($controle);
             $entityManager->flush();
+            $tableauConception->batEnvoyeDepuisPrepresse($controle, $utilisateur, new \DateTimeImmutable());
 
             $version = 0;
             foreach ($controle->getFichiers() as $fichier) {

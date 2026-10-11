@@ -76,7 +76,7 @@ final class BaremeTest extends TestCase
     public function testChampsDeLEcranHorsDuPanneau(): void
     {
         $panneau = array_column(CatalogueParametres::champsPanneau('bareme'), 'cle');
-        self::assertSame(['valeur_point', 'seuil_prime', 'ponctualite'], $panneau);
+        self::assertSame(['valeur_point', 'seuil_prime', 'ponctualite', 'delai_bat_heures'], $panneau);
         self::assertNotNull(CatalogueParametres::champ('bareme', 'l_creneau'));
         self::assertCount(25, Bareme::champs());
     }

@@ -194,6 +194,7 @@ final class CatalogueParametres
                     ['cle' => 'valeur_point', 'type' => 'nombre', 'libelle' => 'Valeur d\'un point', 'suffixe' => 'F', 'min' => 0, 'max' => 100000, 'defaut' => 100],
                     ['cle' => 'seuil_prime', 'type' => 'nombre', 'libelle' => 'Points minimum pour la prime', 'suffixe' => 'pts', 'min' => 0, 'max' => 10000, 'defaut' => 100],
                     ['cle' => 'ponctualite', 'type' => 'interrupteur', 'libelle' => 'Compter la ponctualité', 'aide' => 'Graphiste, machiniste, livreur, entretien', 'defaut' => true],
+                    ['cle' => 'delai_bat_heures', 'type' => 'nombre', 'libelle' => 'Délai du BAT par défaut', 'suffixe' => 'h de travail', 'aide' => 'Échéance proposée à l\'arrivée d\'un travail PAO, modifiable par travail', 'min' => 1, 'max' => 72, 'defaut' => 4],
                     ...Bareme::champs(),
                 ],
                 'motsCles' => ['Points par métier · primes', 'Graphiste · machiniste · livreur · entretien', 'Coefficient de difficulté · paliers de prime'],

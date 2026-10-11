@@ -1,0 +1,6 @@
+{% for bat in app.flashes('bat_whatsapp') %}
+	<div class="alert alert-success d-flex flex-wrap align-items-center gap-2">
+		<span class="me-auto">Prévenez le client que son BAT l'attend.</span>
+		<a class="btn btn-success btn-sm" href="https://wa.me/{{ bat.numero }}?text={{ bat.message|url_encode }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Envoyer par WhatsApp</a>
+	</div>
+{% endfor %}

@@ -1,0 +1,49 @@
+{% extends 'base.html.twig' %}
+
+{% set actions = {
+	modification: 'Modifié',
+	proposition: 'Proposé en ligne',
+	validation: 'Validé sur l\'ERP local',
+	refus: 'Refusé',
+} %}
+
+{% block title %}Journal des changements{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_reglages_parametres_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-th-large me-1"></i>Paramètres</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-param">
+		<section class="card si-param-journal">
+			<h2>Journal des changements</h2>
+			<p class="si-param-journal-aide">Chaque réglage modifié depuis l'écran Paramètres, avec son auteur et la valeur avant / après. Vous ne voyez que les réglages autorisés pour votre rôle.</p>
+			{% if lignes is empty %}
+				<p class="si-param-journal-vide">Aucun changement pour l'instant.</p>
+			{% else %}
+				<table class="table si-param-journal-table">
+					<thead>
+						<tr><th>Date</th><th>Réglage</th><th>Action</th><th>Changement</th><th>Par</th></tr>
+					</thead>
+					<tbody>
+						{% for l in lignes %}
+							<tr>
+								<td data-libelle="Date">{{ l.le|date('d/m/Y H:i') }}</td>
+								<td data-libelle="Réglage"><a href="{{ path('app_reglages_parametres_index', {tuile: l.tuile}) }}">{{ l.libelle }}</a></td>
+								<td data-libelle="Action"><span class="si-pj-action si-pj-{{ l.action }}">{{ actions[l.action] ?? l.action }}</span></td>
+								<td data-libelle="Changement">
+									{% for c in l.changements %}
+										<div>{{ c.libelle }} : {% if c.avant != '' %}<s>{{ c.avant }}</s> → {% endif %}<b>{{ c.apres }}</b></div>
+									{% endfor %}
+								</td>
+								<td data-libelle="Par">{{ l.par ? l.par.username : '—' }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}

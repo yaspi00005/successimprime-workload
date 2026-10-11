@@ -1,0 +1,415 @@
+<?php
+
+namespace App\Service\Parametres;
+
+/**
+ * Les réglages de l'écran Paramètres (maquettes S01 à S04) : 6 familles
+ * de couleur, une tuile par réglage, et pour chaque tuile les champs que
+ * le panneau d'édition rapide propose.
+ *
+ * Un champ sans « source » est rangé dans la table reglage ; un champ
+ * avec source vit déjà ailleurs (entreprise principale, paramètres de
+ * paiement) et c'est cette valeur-là qui est lue et modifiée.
+ *
+ * Tout est statique et pur pour être testé sans base.
+ */
+final class CatalogueParametres
+{
+    public const FAMILLES = [
+        'entreprise' => ['libelle' => 'Entreprise', 'couleur' => 'bleu'],
+        'ventes' => ['libelle' => 'Ventes', 'couleur' => 'rouge'],
+        'atelier' => ['libelle' => 'Atelier', 'couleur' => 'gris'],
+        'personnel' => ['libelle' => 'Personnel', 'couleur' => 'vert'],
+        'clients' => ['libelle' => 'Clients et communication', 'couleur' => 'rose'],
+        'systeme' => ['libelle' => 'Sécurité et système', 'couleur' => 'orange'],
+    ];
+
+    /** Note des tuiles dont les valeurs ne sont pas encore lues par un module. */
+    private const NOTE_A_BRANCHER = 'Valeurs enregistrées ; elles seront appliquées quand le module %s sera en place.';
+
+    /**
+     * @return array<string, array{famille: string, libelle: string, icone: string, roles: list<string>, route: ?string, champs: list<array<string, mixed>>, motsCles: list<string>, note?: string}>
+     */
+    public static function tuiles(): array
+    {
+        return [
+            // ---------- Entreprise ----------
+            'entites' => [
+                'famille' => 'entreprise', 'libelle' => 'Entités et en-têtes', 'icone' => 'fa-building',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_entreprises_index', 'champs' => [],
+                'motsCles' => ['Raison sociale · logo · adresse', 'En-tête des documents', 'Numéro marchand Orange Money par entité', 'RCCM · NIF · banque'],
+            ],
+            'modeles' => [
+                'famille' => 'entreprise', 'libelle' => 'Modèles de documents', 'icone' => 'fa-file-alt',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_entreprises_index',
+                'champs' => [
+                    ['cle' => 'qrPaiement', 'type' => 'interrupteur', 'libelle' => 'QR de paiement Orange Money', 'aide' => 'Sur les factures de l\'entité principale', 'source' => 'entreprise'],
+                    ['cle' => 'qrSuivi', 'type' => 'interrupteur', 'libelle' => 'QR de suivi de commande', 'aide' => 'Le client suit sa commande en le scannant', 'source' => 'entreprise'],
+                    ['cle' => 'montantEnLettres', 'type' => 'interrupteur', 'libelle' => 'Montant en lettres', 'aide' => 'Sous le total des factures', 'source' => 'entreprise'],
+                    ['cle' => 'afficherLogoPied', 'type' => 'interrupteur', 'libelle' => 'Logo en pied de page', 'source' => 'entreprise'],
+                ],
+                'motsCles' => ['Facture · afficher le QR Orange Money', 'Devis, facture, bon de livraison, bon de commande', 'Pied de page · montant en lettres'],
+            ],
+            'numerotation' => [
+                'famille' => 'entreprise', 'libelle' => 'Numérotation', 'icone' => 'fa-hashtag',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_entreprises_index', 'champs' => [],
+                'motsCles' => ['Numéro de facture · compteur annuel', 'Format des numéros par entité'],
+            ],
+            'taxes' => [
+                'famille' => 'entreprise', 'libelle' => 'Taxes', 'icone' => 'fa-percent',
+                'roles' => ['ROLE_ADMIN'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'tva_par_defaut', 'type' => 'interrupteur', 'libelle' => 'TVA proposée par défaut', 'aide' => 'Chaque facture garde son choix TVA oui / non', 'defaut' => false],
+                    ['cle' => 'taux_tva', 'type' => 'nombre', 'libelle' => 'Taux de TVA', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'defaut' => 18],
+                    ['cle' => 'retenue', 'type' => 'nombre', 'libelle' => 'Retenue à la source', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'defaut' => 0],
+                ],
+                'motsCles' => ['TVA 18 % · Mali', 'Retenue à la source', 'Impôts et taxes'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'de facturation avec TVA'),
+            ],
+
+            // ---------- Ventes ----------
+            'grille' => [
+                'famille' => 'ventes', 'libelle' => 'Grille tarifaire', 'icone' => 'fa-tag',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_grille_tarifaire_index', 'champs' => [],
+                'motsCles' => ['Prix au m² · prix par pièce', 'Prix négociés par client', 'Historique des prix'],
+            ],
+            'produits' => [
+                'famille' => 'ventes', 'libelle' => 'Produits et options', 'icone' => 'fa-sliders-h',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_produits_index', 'champs' => [],
+                'motsCles' => ['Options dynamiques par produit', 'Finitions · formats · supports', 'Types d\'impression'],
+            ],
+            'paiements' => [
+                'famille' => 'ventes', 'libelle' => 'Paiements', 'icone' => 'fa-credit-card',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => 'app_parametres_paiement_edit',
+                'champs' => [
+                    ['cle' => 'orange_money', 'type' => 'interrupteur', 'libelle' => 'Orange Money', 'aide' => 'Numéro marchand · frais inclus au client', 'defaut' => true],
+                    ['cle' => 'especes', 'type' => 'interrupteur', 'libelle' => 'Espèces en caisse', 'defaut' => true],
+                    ['cle' => 'virement', 'type' => 'interrupteur', 'libelle' => 'Virement bancaire', 'defaut' => true],
+                    ['cle' => 'livraison', 'type' => 'interrupteur', 'libelle' => 'Paiement à la livraison', 'aide' => 'Le livreur remet un reçu', 'defaut' => false],
+                    ['cle' => 'virement_seuil', 'type' => 'nombre', 'libelle' => 'Virement au-delà de', 'suffixe' => 'F', 'min' => 0, 'max' => 100000000, 'defaut' => 500000],
+                    ['cle' => 'acompte', 'type' => 'nombre', 'libelle' => 'Acompte par défaut', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'defaut' => 50],
+                    ['cle' => 'recu', 'type' => 'choix', 'libelle' => 'Reçu envoyé', 'options' => ['whatsapp' => 'WhatsApp', 'sms' => 'SMS', 'aucun' => 'Aucun'], 'defaut' => 'whatsapp'],
+                    ['cle' => 'tauxFraisRetrait', 'type' => 'nombre', 'libelle' => 'Frais de retrait Orange Money', 'suffixe' => '%', 'min' => 0, 'max' => 20, 'decimales' => 2, 'source' => 'paiement'],
+                ],
+                'motsCles' => ['Orange Money · numéro marchand et frais', 'Espèces · virement · acompte', 'Reçu de paiement WhatsApp'],
+            ],
+            'relances' => [
+                'famille' => 'ventes', 'libelle' => 'Relances et délais', 'icone' => 'fa-bell',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => 'app_regle_rappel_paiement_index',
+                'champs' => [
+                    ['cle' => 'delai_heures', 'type' => 'nombre', 'libelle' => 'Délai pour traiter une action', 'suffixe' => 'h de travail', 'min' => 1, 'max' => 72, 'defaut' => 4],
+                    ['cle' => 'points_a_temps', 'type' => 'nombre', 'libelle' => 'Points si traité à temps', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 10],
+                    ['cle' => 'points_retard', 'type' => 'nombre', 'libelle' => 'Points retirés si en retard', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 15],
+                    ['cle' => 'relance_retrait_jours', 'type' => 'nombre', 'libelle' => 'Relance commande non retirée après', 'suffixe' => 'jours', 'min' => 1, 'max' => 60, 'defaut' => 3],
+                ],
+                'motsCles' => ['Actions de caisse · 4 heures de travail', 'Rappels de paiement · créances', 'Commande prête non retirée'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'des actions de caisse'),
+            ],
+
+            // ---------- Atelier ----------
+            'machines' => [
+                'famille' => 'atelier', 'libelle' => 'Machines', 'icone' => 'fa-print',
+                'roles' => ['ROLE_ADMIN', 'ROLE_COUT_MARGE'], 'route' => 'app_machines_index',
+                'champs' => [
+                    ['cle' => 'amortissement', 'type' => 'choix', 'libelle' => 'Amortissement', 'options' => ['usage' => 'À l\'usage (m² imprimés)', 'lineaire' => 'Linéaire (par mois)'], 'defaut' => 'usage'],
+                ],
+                'motsCles' => ['Amortissement des machines', 'Maintenance · pannes', 'Coût machine par m²'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'd\'amortissement'),
+            ],
+            'stock' => [
+                'famille' => 'atelier', 'libelle' => 'Stock et alertes', 'icone' => 'fa-cube',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_stock_articles_index', 'champs' => [],
+                'motsCles' => ['Seuil minimum · articles à commander', 'Alertes de stock', 'Inventaire'],
+            ],
+            'montage' => [
+                'famille' => 'atelier', 'libelle' => 'Montage PAO', 'icone' => 'fa-th-large',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'formats', 'type' => 'texte', 'libelle' => 'Formats de feuille', 'defaut' => 'A4 · A3 · SRA3'],
+                    ['cle' => 'marge_mm', 'type' => 'nombre', 'libelle' => 'Marge de sécurité', 'suffixe' => 'mm', 'min' => 0, 'max' => 50, 'defaut' => 5],
+                    ['cle' => 'fond_perdu_mm', 'type' => 'nombre', 'libelle' => 'Fond perdu', 'suffixe' => 'mm', 'min' => 0, 'max' => 20, 'defaut' => 3],
+                    ['cle' => 'traits_coupe', 'type' => 'interrupteur', 'libelle' => 'Traits de coupe', 'defaut' => true],
+                ],
+                'motsCles' => ['Imposition · montage des fichiers', 'Format SRA3 · fond perdu', 'Infographiste'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'de montage'),
+            ],
+
+            // ---------- Personnel ----------
+            'utilisateurs' => [
+                'famille' => 'personnel', 'libelle' => 'Utilisateurs et rôles', 'icone' => 'fa-user-friends',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_utilisateurs_index', 'champs' => [],
+                'motsCles' => ['Comptes · mots de passe', 'Rôles et droits', 'Ajouter un utilisateur'],
+            ],
+            'pointage' => [
+                'famille' => 'personnel', 'libelle' => 'Pointage', 'icone' => 'fa-qrcode',
+                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'qr_photo', 'type' => 'interrupteur', 'libelle' => 'Pointage par QR + photo', 'aide' => 'Caméra frontale, une seule photo', 'defaut' => true],
+                    ['cle' => 'telephone_enregistre', 'type' => 'interrupteur', 'libelle' => 'Téléphone enregistré obligatoire', 'aide' => 'Chaque employé pointe depuis son appareil', 'defaut' => true],
+                    ['cle' => 'gps_zone', 'type' => 'interrupteur', 'libelle' => 'Position GPS dans la zone', 'aide' => 'Refuse un pointage hors atelier ou boutique', 'defaut' => true],
+                    ['cle' => 'tablette_partagee', 'type' => 'interrupteur', 'libelle' => 'Tablette partagée à l\'entrée', 'aide' => 'Pour les employés sans smartphone', 'defaut' => false],
+                    ['cle' => 'tolerance_minutes', 'type' => 'nombre', 'libelle' => 'Tolérance de retard', 'suffixe' => 'min', 'min' => 0, 'max' => 60, 'defaut' => 10],
+                    ['cle' => 'pause', 'type' => 'texte', 'libelle' => 'Pause déduite', 'defaut' => '13 h – 14 h'],
+                    ['cle' => 'photos_jours', 'type' => 'nombre', 'libelle' => 'Photos conservées', 'suffixe' => 'jours', 'min' => 1, 'max' => 365, 'defaut' => 90],
+                    ['cle' => 'alerte_depart', 'type' => 'heure', 'libelle' => 'Alerte départ non pointé', 'defaut' => '20:00'],
+                ],
+                'motsCles' => ['Pointage QR + photo', 'Retards · tolérance', 'Points de ponctualité'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'de pointage'),
+            ],
+            'horaires' => [
+                'famille' => 'personnel', 'libelle' => 'Horaires', 'icone' => 'fa-clock',
+                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'jours', 'type' => 'choix', 'libelle' => 'Jours travaillés', 'options' => ['lun-ven' => 'lun – ven', 'lun-sam' => 'lun – sam', 'lun-dim' => 'lun – dim'], 'defaut' => 'lun-sam'],
+                    ['cle' => 'ouverture', 'type' => 'heure', 'libelle' => 'Ouverture', 'defaut' => '08:00'],
+                    ['cle' => 'fermeture', 'type' => 'heure', 'libelle' => 'Fermeture', 'defaut' => '18:00'],
+                ],
+                'motsCles' => ['Heures d\'ouverture de l\'atelier', 'Jours travaillés', 'Heures de travail'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'de pointage'),
+            ],
+            'bareme' => [
+                'famille' => 'personnel', 'libelle' => 'Barème des points', 'icone' => 'fa-star',
+                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'valeur_point', 'type' => 'nombre', 'libelle' => 'Valeur d\'un point', 'suffixe' => 'F', 'min' => 0, 'max' => 100000, 'defaut' => 100],
+                    ['cle' => 'seuil_prime', 'type' => 'nombre', 'libelle' => 'Points minimum pour la prime', 'suffixe' => 'pts', 'min' => 0, 'max' => 10000, 'defaut' => 100],
+                    ['cle' => 'ponctualite', 'type' => 'interrupteur', 'libelle' => 'Compter la ponctualité', 'aide' => 'Graphiste, machiniste, livreur, entretien', 'defaut' => true],
+                ],
+                'motsCles' => ['Points par métier · primes', 'Graphiste · machiniste · livreur · entretien'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'de suivi des métiers'),
+            ],
+            'avantages' => [
+                'famille' => 'personnel', 'libelle' => 'Avantages', 'icone' => 'fa-gift',
+                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'frais_medicaux', 'type' => 'nombre', 'libelle' => 'Frais médicaux remboursés', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'defaut' => 80],
+                    ['cle' => 'plafond_annuel', 'type' => 'nombre', 'libelle' => 'Plafond par an', 'suffixe' => 'F', 'min' => 0, 'max' => 100000000, 'defaut' => 0],
+                    ['cle' => 'payer_om', 'type' => 'interrupteur', 'libelle' => 'Rembourser par Orange Money', 'defaut' => true],
+                ],
+                'motsCles' => ['Frais médicaux · payer par Orange Money', 'Avantages du personnel'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'espace employé'),
+            ],
+            'paie' => [
+                'famille' => 'personnel', 'libelle' => 'Paie', 'icone' => 'fa-money-bill-wave',
+                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'jour_paie', 'type' => 'nombre', 'libelle' => 'Jour de paie', 'suffixe' => 'du mois', 'min' => 1, 'max' => 31, 'defaut' => 5],
+                    ['cle' => 'mode', 'type' => 'choix', 'libelle' => 'Mode de paiement des salaires', 'options' => ['orange_money' => 'Orange Money', 'virement' => 'Virement', 'especes' => 'Espèces'], 'defaut' => 'orange_money'],
+                    ['cle' => 'inps', 'type' => 'interrupteur', 'libelle' => 'Cotisations INPS', 'defaut' => true],
+                    ['cle' => 'its', 'type' => 'interrupteur', 'libelle' => 'Impôt sur les traitements (ITS)', 'defaut' => true],
+                ],
+                'motsCles' => ['Mode de paiement des salaires : Orange Money', 'INPS · ITS', 'Jour de paie'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'de paie'),
+            ],
+
+            // ---------- Clients et communication ----------
+            'espace_client' => [
+                'famille' => 'clients', 'libelle' => 'Espace client', 'icone' => 'fa-globe-africa',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'code_whatsapp', 'type' => 'interrupteur', 'libelle' => 'Connexion par code WhatsApp', 'defaut' => true],
+                    ['cle' => 'commande_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Commande en ligne', 'defaut' => true],
+                    ['cle' => 'paiement_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Paiement Orange Money en ligne', 'defaut' => false],
+                ],
+                'motsCles' => ['Connexion par code WhatsApp', 'Commande en ligne du client', 'Paiement Orange Money en ligne'],
+                'note' => \sprintf(self::NOTE_A_BRANCHER, 'espace client'),
+            ],
+            'messages' => [
+                'famille' => 'clients', 'libelle' => 'Messages WhatsApp et SMS', 'icone' => 'fa-comment-alt',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_modele_message_index', 'champs' => [],
+                'motsCles' => ['Modèles de messages', 'Campagnes WhatsApp et SMS'],
+            ],
+            'ecran_tv' => [
+                'famille' => 'clients', 'libelle' => 'Écran TV de l\'accueil', 'icone' => 'fa-tv',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_ecran_tv_reglages', 'champs' => [],
+                'motsCles' => ['Playlist de l\'écran TV', 'Bandeau · avis clients', 'Horaires de l\'écran'],
+            ],
+
+            // ---------- Sécurité et système ----------
+            'appareils' => [
+                'famille' => 'systeme', 'libelle' => 'Appareils autorisés', 'icone' => 'fa-shield-alt',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_appareils_index', 'champs' => [],
+                'motsCles' => ['Accès à l\'admin en ligne', 'Appareils à approuver', 'Code par SMS'],
+            ],
+            'synchronisation' => [
+                'famille' => 'systeme', 'libelle' => 'Synchronisation', 'icone' => 'fa-sync-alt',
+                'roles' => ['ROLE_ADMIN'], 'route' => null, 'champs' => [],
+                'motsCles' => ['ERP local et site en ligne', 'Opérations provisoires'],
+                'note' => 'La synchronisation entre l\'ERP local et le serveur en ligne sera branchée avec le serveur (jalon J4).',
+            ],
+            'sauvegardes' => [
+                'famille' => 'systeme', 'libelle' => 'Sauvegardes', 'icone' => 'fa-save',
+                'roles' => ['ROLE_ADMIN'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'heure', 'type' => 'heure', 'libelle' => 'Heure de la sauvegarde', 'defaut' => '02:00'],
+                    ['cle' => 'conserver_jours', 'type' => 'nombre', 'libelle' => 'Sauvegardes conservées', 'suffixe' => 'jours', 'min' => 1, 'max' => 365, 'defaut' => 30],
+                ],
+                'motsCles' => ['Sauvegarde de nuit', 'Base de données'],
+                'note' => 'La sauvegarde automatique sera installée sur le serveur (jalon J4) ; elle suivra ces valeurs.',
+            ],
+            'taches' => [
+                'famille' => 'systeme', 'libelle' => 'Tâches récurrentes', 'icone' => 'fa-calendar-alt',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_decaissement_recurrent_index', 'champs' => [],
+                'motsCles' => ['Dépenses récurrentes · loyer, taxes', 'Fournisseurs à payer chaque mois'],
+            ],
+        ];
+    }
+
+    /**
+     * Valeurs des champs rangés dans la table reglage, complétées par
+     * les valeurs par défaut.
+     *
+     * @param list<array<string, mixed>> $champs
+     * @param array<string, mixed>       $stockees
+     *
+     * @return array<string, mixed>
+     */
+    public static function avecDefauts(array $champs, array $stockees): array
+    {
+        $valeurs = [];
+
+        foreach ($champs as $champ) {
+            if (isset($champ['source'])) {
+                continue;
+            }
+            $valeurs[$champ['cle']] = \array_key_exists($champ['cle'], $stockees) ? $stockees[$champ['cle']] : ($champ['defaut'] ?? null);
+        }
+
+        return $valeurs;
+    }
+
+    /**
+     * Lit et contrôle la saisie du panneau.
+     *
+     * @param list<array<string, mixed>> $champs
+     * @param array<string, mixed>       $saisie
+     *
+     * @return array{valeurs: array<string, mixed>, erreurs: array<string, string>}
+     */
+    public static function lireSaisie(array $champs, array $saisie): array
+    {
+        $valeurs = [];
+        $erreurs = [];
+
+        foreach ($champs as $champ) {
+            $cle = $champ['cle'];
+            $brut = $saisie[$cle] ?? null;
+
+            switch ($champ['type']) {
+                case 'interrupteur':
+                    $valeurs[$cle] = \in_array($brut, ['1', 'on', 1, true], true);
+                    break;
+
+                case 'nombre':
+                    $texte = str_replace([' ', "\u{a0}", "\u{202f}", ','], ['', '', '', '.'], trim((string) $brut));
+                    if ($texte === '' || !is_numeric($texte)) {
+                        $erreurs[$cle] = 'Nombre attendu.';
+                        break;
+                    }
+                    $nombre = ($champ['decimales'] ?? 0) > 0 ? round((float) $texte, (int) $champ['decimales']) : (int) round((float) $texte);
+                    if ($nombre < ($champ['min'] ?? \PHP_INT_MIN) || $nombre > ($champ['max'] ?? \PHP_INT_MAX)) {
+                        $erreurs[$cle] = \sprintf('Entre %s et %s.', $champ['min'], $champ['max']);
+                        break;
+                    }
+                    $valeurs[$cle] = $nombre;
+                    break;
+
+                case 'heure':
+                    $texte = trim((string) $brut);
+                    if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $texte)) {
+                        $erreurs[$cle] = 'Heure attendue (ex. 08:00).';
+                        break;
+                    }
+                    $valeurs[$cle] = $texte;
+                    break;
+
+                case 'choix':
+                    if (!\is_string($brut) || !\array_key_exists($brut, $champ['options'])) {
+                        $erreurs[$cle] = 'Choix inconnu.';
+                        break;
+                    }
+                    $valeurs[$cle] = $brut;
+                    break;
+
+                default:
+                    $texte = trim((string) $brut);
+                    if (mb_strlen($texte) > 120) {
+                        $erreurs[$cle] = '120 caractères au plus.';
+                        break;
+                    }
+                    $valeurs[$cle] = $texte;
+            }
+        }
+
+        return ['valeurs' => $valeurs, 'erreurs' => $erreurs];
+    }
+
+    /**
+     * Champs qui changent, avec leur valeur avant et après.
+     *
+     * @param array<string, mixed> $avant
+     * @param array<string, mixed> $apres
+     *
+     * @return array{avant: array<string, mixed>, apres: array<string, mixed>}
+     */
+    public static function differences(array $avant, array $apres): array
+    {
+        $diff = ['avant' => [], 'apres' => []];
+
+        foreach ($apres as $cle => $valeur) {
+            $ancienne = $avant[$cle] ?? null;
+            $egal = is_numeric($ancienne) && is_numeric($valeur) ? (float) $ancienne === (float) $valeur : $ancienne === $valeur;
+            if (!$egal) {
+                $diff['avant'][$cle] = $ancienne;
+                $diff['apres'][$cle] = $valeur;
+            }
+        }
+
+        return $diff;
+    }
+
+    /**
+     * Valeur lisible d'un champ, pour le journal et l'état des tuiles.
+     *
+     * @param array<string, mixed> $champ
+     */
+    public static function afficher(array $champ, mixed $valeur): string
+    {
+        return match ($champ['type']) {
+            'interrupteur' => $valeur ? 'oui' : 'non',
+            'choix' => (string) ($champ['options'][$valeur] ?? $valeur),
+            'nombre' => trim(number_format((float) $valeur, ($champ['decimales'] ?? 0) > 0 && floor((float) $valeur) != $valeur ? (int) $champ['decimales'] : 0, ',', ' ').' '.($champ['suffixe'] ?? '')),
+            'heure' => str_replace(':', ' h ', (string) $valeur),
+            default => (string) $valeur,
+        };
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public static function champ(string $tuile, string $cle): ?array
+    {
+        foreach (self::tuiles()[$tuile]['champs'] ?? [] as $champ) {
+            if ($champ['cle'] === $cle) {
+                return $champ;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Garde au plus $nombre tuiles récentes, la dernière ouverte en tête.
+     *
+     * @param list<string> $recents
+     *
+     * @return list<string>
+     */
+    public static function ajouterRecent(array $recents, string $tuile, int $nombre = 3): array
+    {
+        $recents = array_values(array_filter($recents, static fn (string $t): bool => $t !== $tuile));
+        array_unshift($recents, $tuile);
+
+        return \array_slice($recents, 0, $nombre);
+    }
+}

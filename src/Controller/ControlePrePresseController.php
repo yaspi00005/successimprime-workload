@@ -14,6 +14,9 @@ use App\Repository\OrdreProductionRepository;
 
 use App\Service\ControleCreditClientService;
 use App\Service\BonusPlafondClientService;
+use App\Service\AnalyseFichierImpression;
+use App\Service\TableauProduction;
+use App\Controller\UtilisateursController;
 
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -116,7 +119,8 @@ public function controler(
     EntityManagerInterface $entityManager,
     OrdreProductionRepository $ordreProductionRepository,
     ControleCreditClientService $controleCreditClientService,
-    BonusPlafondClientService $bonusPlafondClientService
+    BonusPlafondClientService $bonusPlafondClientService,
+    AnalyseFichierImpression $analyseFichier
 ): Response {
     /*
      * ============================================================
@@ -532,6 +536,7 @@ public function controler(
                 $action,
                 [
                     'enregistrer',
+                    'envoyer_bat',
                     'valider',
                     'valider_production',
                 ],
@@ -558,6 +563,42 @@ public function controler(
          * DÉTERMINATION DU CIRCUIT
          * ========================================================
          */
+
+        /*
+         * Maquette 25 : le BAT part chez le client, qui le valide
+         * (ou demande une correction) avant l'impression.
+         */
+        if ($action === 'envoyer_bat') {
+            $controle
+                ->setBatNecessaire(true)
+                ->setBatValide(false)
+                ->setCorrectionNecessaire(false)
+                ->setStatut(ControlePrePresse::STATUT_EN_ATTENTE_BAT);
+            $detail->addControlePrePresse($controle);
+            $entityManager->persist($controle);
+            $entityManager->flush();
+
+            $version = 0;
+            foreach ($controle->getFichiers() as $fichier) {
+                $version = max($version, $fichier->getVersion());
+            }
+            $this->addFlash('success', sprintf('BAT version %d enregistré comme envoyé au client.', $version));
+            $telephone = trim((string) $commande->getClients()?->getTelephone());
+            if ($telephone !== '') {
+                $this->addFlash('bat_whatsapp', [
+                    'numero' => UtilisateursController::numeroWhatsApp($telephone),
+                    'message' => sprintf(
+                        "Bonjour, le BAT (version %d) de votre %s, commande %s, est prêt chez Succès Imprim. Merci de nous dire s'il est bon à imprimer ou ce qu'il faut corriger. Suivi : %s",
+                        $version,
+                        TableauProduction::titre($detail),
+                        $commande->getNumero(),
+                        $this->generateUrl('app_espace_suivre', ['numero' => $commande->getNumero()], \Symfony\Component\Routing\Generator\UrlGeneratorInterface::ABSOLUTE_URL),
+                    ),
+                ]);
+            }
+
+            return $this->redirectToRoute('app_controle_pre_presse_controler', ['id' => $detail->getId()]);
+        }
 
         $validerControle =
             in_array(
@@ -1063,8 +1104,48 @@ public function controler(
 
             'controleCredit' =>
                 $controleCredit,
-        ]
+        ] + $this->apercuFichier($detail, $request, $analyseFichier)
     );
+}
+
+/**
+ * Versions du travail (originaux puis fichiers traités) et contrôle
+ * automatique de celle affichée, la plus récente par défaut.
+ *
+ * @return array{versions: list<CommandeDetailFichier>, fichierAffiche: ?CommandeDetailFichier, analyse: list<array<string, string>>, typeApercu: ?string}
+ */
+private function apercuFichier(CommandesDetails $detail, Request $request, AnalyseFichierImpression $analyseFichier): array
+{
+    $versions = array_values(array_filter(
+        $detail->getFichiers()->toArray(),
+        static fn (CommandeDetailFichier $fichier): bool => $fichier->isActif()
+    ));
+    usort($versions, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => [$a->getCreeLe(), $a->getId()] <=> [$b->getCreeLe(), $b->getId()]);
+
+    $choisi = $request->query->getInt('fichier');
+    $affiche = null;
+    foreach ($versions as $fichier) {
+        if ($choisi === 0 || $fichier->getId() === $choisi) {
+            $affiche = $fichier;
+        }
+    }
+
+    $analyse = [];
+    $image = null;
+    $chemin = $affiche !== null ? $this->resoudreCheminFichierStocke($affiche, false) : null;
+    if ($chemin !== null) {
+        $largeur = (float) $detail->getLargeur();
+        $hauteur = (float) $detail->getLongueur();
+        $analyse = $analyseFichier->analyser($chemin, $largeur > 0 ? $largeur * 100 : null, $hauteur > 0 ? $hauteur * 100 : null);
+        $type = (string) mime_content_type($chemin);
+        $image = match (true) {
+            \in_array($type, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true) => 'image',
+            'application/pdf' === $type => 'pdf',
+            default => null,
+        };
+    }
+
+    return ['versions' => $versions, 'fichierAffiche' => $affiche, 'analyse' => $analyse, 'typeApercu' => $image];
 }
     #[Route(
         '/travail/{id}/fichier-traite',
@@ -1694,8 +1775,13 @@ public function controler(
      * Sans ceci, seul le deuxieme circuit fonctionnait : visualiser
      * ou telecharger un fichier traite renvoyait une 404.
      */
+    /**
+     * @param bool $apercu image réduite quand elle existe (affichage) ;
+     *                     false pour l'original (téléchargement, analyse)
+     */
     private function resoudreCheminFichierStocke(
-        CommandeDetailFichier $fichier
+        CommandeDetailFichier $fichier,
+        bool $apercu = true
     ): ?string {
         $projet = (string) $this->getParameter('kernel.project_dir');
         $chemin = trim((string) $fichier->getChemin());
@@ -1779,7 +1865,7 @@ public function controler(
             'webp',
         ];
 
-        if (in_array($extension, $extensionsImages, true)) {
+        if ($apercu && in_array($extension, $extensionsImages, true)) {
             $racineApercus = $racineReelle
                 . DIRECTORY_SEPARATOR
                 . 'apercus';
@@ -1860,7 +1946,7 @@ public function controler(
             );
         }
 
-        $cheminComplet = $this->resoudreCheminFichierStocke($fichier);
+        $cheminComplet = $this->resoudreCheminFichierStocke($fichier, false);
 
         if ($cheminComplet === null) {
             throw $this->createNotFoundException(

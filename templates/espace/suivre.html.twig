@@ -1,0 +1,43 @@
+{% extends 'espace/_page.html.twig' %}
+
+{% block title %}Suivre une commande · Succès Imprim{% endblock %}
+{% block lien_haut %}<a href="{{ path('app_espace_connexion') }}">Se connecter à mon espace</a>{% endblock %}
+
+{% block contenu %}
+	<h1>Suivre une commande</h1>
+	<p class="si-espace-sous-titre">Le numéro est sur votre reçu ou dans le message de confirmation.</p>
+
+	{% if erreur %}
+		<div class="si-espace-erreur" role="alert">{{ erreur }}</div>
+	{% endif %}
+
+	{% if commande %}
+		{% set etapes = [['preparation', 'En préparation'], ['livraison', 'Prête ou en livraison'], ['livree', 'Livrée']] %}
+		{% set statut = commande.statutTravaux %}
+		{% set rang = {vide: 0, preparation: 1, livraison: 2, livree: 3}[statut]|default(0) %}
+		<div class="si-suivi">
+			<p class="si-suivi-numero">Commande <strong>{{ commande.numero }}</strong> du {{ commande.dateCommande ? commande.dateCommande|date('d/m/Y') }}</p>
+			{% if statut == 'annulee' %}
+				<p class="si-espace-erreur">Cette commande a été annulée.</p>
+			{% else %}
+				<ol class="si-suivi-etapes">
+					{% for etape in etapes %}
+						<li class="{{ loop.index <= rang ? 'fait' }} {{ loop.index == rang ? 'actuelle' }}">{{ etape[1] }}</li>
+					{% endfor %}
+				</ol>
+				{% if commande.dateLivraison and statut != 'livree' %}
+					<p class="si-espace-info">{{ commande.estALivrer ? 'Livraison prévue' : 'À retirer à partir du' }} {{ commande.dateLivraison|date('d/m/Y à H:i') }}.</p>
+				{% endif %}
+			{% endif %}
+			<p class="si-espace-aide">Les montants, factures et BAT sont dans votre espace. <a href="{{ path('app_espace_connexion') }}">Se connecter</a></p>
+		</div>
+	{% endif %}
+
+	<form method="post" action="{{ path('app_espace_suivre') }}">
+		<input type="hidden" name="_token" value="{{ csrf_token('espace-suivre') }}">
+		<label for="numero">Numéro de commande</label>
+		<input type="text" id="numero" name="numero" value="{{ numero }}" required autocomplete="off">
+		{% include 'espace/_telephone.html.twig' with {id: 'telephone-suivi'} %}
+		<button type="submit" class="si-espace-bouton">Voir où en est ma commande</button>
+	</form>
+{% endblock %}

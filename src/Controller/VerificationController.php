@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Security\AccesEnLigne;
+use App\Security\CodeParSms;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -45,11 +46,7 @@ final class VerificationController extends AbstractController
 
                 return $this->redirect('/');
             }
-            $erreur = match ($resultat) {
-                'faux' => 'Code incorrect. Vérifiez le SMS et réessayez.',
-                'expire' => 'Ce code a expiré. Demandez-en un nouveau.',
-                default => 'Trop d\'essais. Demandez un nouveau code.',
-            };
+            $erreur = CodeParSms::messageErreur($resultat);
         }
 
         return $this->render('security/verification.html.twig', [

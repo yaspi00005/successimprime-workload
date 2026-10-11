@@ -1,0 +1,17 @@
+framework:
+    rate_limiter:
+        # Espace client (CX01) : les SMS coûtent, et un numéro ne doit pas
+        # être bombardé de codes.
+        espace_code_telephone:
+            policy: sliding_window
+            limit: 3
+            interval: '15 minutes'
+        espace_code_ip:
+            policy: sliding_window
+            limit: 10
+            interval: '1 hour'
+        # Suivi d'une commande sans compte : freine les essais de numéros.
+        espace_suivi_ip:
+            policy: sliding_window
+            limit: 20
+            interval: '1 hour'

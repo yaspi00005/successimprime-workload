@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\EventSubscriber\AccesEnLigneSubscriber;
 use App\Repository\AppareilAutoriseRepository;
 use App\Security\AccesEnLigne;
+use App\Security\CodeParSms;
 use App\Service\NotificationService;
 use App\Service\OrangeSmsService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,11 +30,9 @@ final class AccesEnLigneTest extends TestCase
 
         return new AccesEnLigne(
             true,
-            'secret-de-test',
-            $environnement,
             $this->createStub(AppareilAutoriseRepository::class),
             $this->createStub(EntityManagerInterface::class),
-            $sms,
+            new CodeParSms('secret-de-test', $environnement, $sms),
             $this->createStub(NotificationService::class),
         );
     }

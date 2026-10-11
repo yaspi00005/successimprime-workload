@@ -1,0 +1,111 @@
+<?php
+
+namespace App\Security;
+
+use App\Entity\CompteClient;
+use App\Repository\CompteClientRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
+use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\CsrfTokenBadge;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\RememberMeBadge;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
+use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
+use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
+use Symfony\Component\Security\Http\SecurityRequestAttributes;
+use Symfony\Component\Security\Http\Util\TargetPathTrait;
+
+/**
+ * Connexion à l'espace client (maquette CX01) : numéro de téléphone et
+ * code reçu par SMS, ou numéro et mot de passe.
+ */
+final class EspaceClientAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
+{
+    use TargetPathTrait;
+
+    public function __construct(
+        private readonly UrlGeneratorInterface $urls,
+        private readonly CodeParSms $codes,
+        private readonly EspaceClientComptes $comptes,
+        private readonly CompteClientRepository $repository,
+        private readonly EntityManagerInterface $em,
+    ) {
+    }
+
+    public function supports(Request $request): bool
+    {
+        return $request->isMethod('POST') && 'app_espace_connexion' === $request->attributes->get('_route');
+    }
+
+    public function authenticate(Request $request): Passport
+    {
+        $session = $request->getSession();
+        $badges = [new CsrfTokenBadge('espace-connexion', (string) $request->request->get('_csrf_token'))];
+        if ($request->request->getBoolean('_remember_me')) {
+            $badges[] = new RememberMeBadge();
+        }
+
+        if ('mdp' === $request->request->get('mode')) {
+            $telephone = CompteClient::normaliserTelephone((string) $request->request->get('telephone'));
+            $session->set(SecurityRequestAttributes::LAST_USERNAME, (string) $request->request->get('telephone'));
+            if (null === $telephone) {
+                throw new CustomUserMessageAuthenticationException('Numéro de téléphone invalide.');
+            }
+
+            return new Passport(
+                new UserBadge($telephone),
+                new PasswordCredentials((string) $request->request->get('password')),
+                $badges,
+            );
+        }
+
+        $donnees = $this->codes->donnees($session, EspaceClientComptes::SESSION_CODE);
+        if (!isset($donnees['telephone'])) {
+            throw new CustomUserMessageAuthenticationException('Demandez d\'abord un code.');
+        }
+        $saisi = $request->request->all()['code'] ?? '';
+        $resultat = $this->codes->verifier($session, EspaceClientComptes::SESSION_CODE, \is_array($saisi) ? implode('', $saisi) : (string) $saisi);
+        if ('ok' !== $resultat) {
+            throw new CustomUserMessageAuthenticationException(CodeParSms::messageErreur($resultat));
+        }
+
+        $compte = $this->comptes->ouvrir($donnees);
+        if (null === $compte) {
+            throw new CustomUserMessageAuthenticationException('Aucun compte client pour ce numéro. Créez votre compte.');
+        }
+
+        return new SelfValidatingPassport(new UserBadge($compte->getTelephone(), fn () => $compte), $badges);
+    }
+
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
+    {
+        $compte = $token->getUser();
+        if ($compte instanceof CompteClient) {
+            $this->repository->find($compte->getId())?->setDerniereConnexion(new \DateTimeImmutable());
+            $this->em->flush();
+        }
+
+        return new RedirectResponse($this->getTargetPath($request->getSession(), $firewallName) ?? $this->urls->generate('app_espace_accueil'));
+    }
+
+    public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
+    {
+        $request->getSession()->set(SecurityRequestAttributes::AUTHENTICATION_ERROR, $exception);
+        $mode = 'mdp' === $request->request->get('mode') ? 'mdp' : 'code';
+
+        return new RedirectResponse($this->urls->generate('app_espace_connexion', ['mode' => $mode]));
+    }
+
+    public function start(Request $request, ?AuthenticationException $authException = null): Response
+    {
+        return new RedirectResponse($this->urls->generate('app_espace_connexion'));
+    }
+}

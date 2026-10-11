@@ -11,6 +11,11 @@ security:
                 class: App\Entity\User
                 property: username
 
+        comptes_clients:
+            entity:
+                class: App\Entity\CompteClient
+                property: telephone
+
 
     firewalls:
 
@@ -18,6 +23,27 @@ security:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
 
+
+        # Espace client (maquettes CX01 et CX04) : comptes séparés du
+        # personnel, connexion par numéro de téléphone.
+        espace:
+            pattern: ^/espace
+            lazy: true
+            provider: comptes_clients
+            custom_authenticator: App\Security\EspaceClientAuthenticator
+            entry_point: App\Security\EspaceClientAuthenticator
+            user_checker: App\Security\EspaceClientChecker
+            logout:
+                path: app_espace_deconnexion
+                target: app_espace_connexion
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 2592000
+                path: /espace
+                name: SI_ESPACE_SOUVENIR
+            login_throttling:
+                max_attempts: 5
+                interval: '15 minutes'
 
         main:
             lazy: true
@@ -101,6 +127,17 @@ security:
         - {
             path: ^/changer-utilisateur$,
             roles: PUBLIC_ACCESS
+        }
+
+        # Espace client : connexion, création de compte et suivi sans compte
+        - {
+            path: ^/espace/(connexion|code|creer-compte|suivre)$,
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: ^/espace,
+            roles: ROLE_ESPACE_CLIENT
         }
 
         # Enrôlement d'un appareil pour l'administration en ligne (QR de 5 min)

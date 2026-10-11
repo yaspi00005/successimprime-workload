@@ -6,7 +6,6 @@ use App\Entity\AppareilAutorise;
 use App\Entity\User;
 use App\Repository\AppareilAutoriseRepository;
 use App\Service\NotificationService;
-use App\Service\OrangeSmsService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -26,18 +25,14 @@ final class AccesEnLigne
     public const SESSION_ACTIVITE = 'si_derniere_activite';
     public const SESSION_APPAREIL = 'si_appareil_id';
     public const INACTIVITE_SECONDES = 900;
-    public const VALIDITE_CODE_SECONDES = 300;
     public const VALIDITE_INVITATION_SECONDES = 300;
-    public const DELAI_RENVOI_SECONDES = 60;
-    public const ESSAIS_MAX = 5;
+    public const ESSAIS_MAX = CodeParSms::ESSAIS_MAX;
 
     public function __construct(
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
-        #[Autowire('%kernel.secret%')] private readonly string $secret,
-        #[Autowire('%kernel.environment%')] private readonly string $environnement,
         private readonly AppareilAutoriseRepository $appareils,
         private readonly EntityManagerInterface $em,
-        private readonly OrangeSmsService $sms,
+        private readonly CodeParSms $codes,
         private readonly NotificationService $notifications,
     ) {
     }
@@ -160,79 +155,37 @@ final class AccesEnLigne
      */
     public function envoyerCode(User $utilisateur, SessionInterface $session): array
     {
-        $code = str_pad((string) random_int(0, 999999), 6, '0', \STR_PAD_LEFT);
-        $session->set(self::SESSION_CODE, [
-            'empreinte' => $this->empreinteCode($code),
-            'expire' => time() + self::VALIDITE_CODE_SECONDES,
-            'essais' => 0,
-            'envoye' => time(),
-        ]);
-
-        $telephone = (string) $utilisateur->getEmploye()?->getTelephone();
-        $resultat = '' === $telephone
-            ? ['succes' => false, 'erreur' => 'Aucun téléphone sur la fiche employé.']
-            : $this->sms->envoyerSms($telephone, \sprintf('Succès Imprim : votre code de sécurité est %s. Valable 5 minutes. Ne le donnez à personne.', $code));
-
-        $envoye = (bool) ($resultat['succes'] ?? false);
-
-        return [
-            'envoye' => $envoye,
-            'telephone' => self::masquer($telephone),
-            'erreur' => $envoye ? null : ($resultat['erreur'] ?? 'Envoi impossible.'),
-            // Hors production seulement, pour tester sans contrat SMS.
-            'codeDev' => !$envoye && 'prod' !== $this->environnement ? $code : null,
-        ];
+        return $this->codes->envoyer(
+            $session,
+            self::SESSION_CODE,
+            (string) $utilisateur->getEmploye()?->getTelephone(),
+            'Succès Imprim : votre code de sécurité est %s. Valable 5 minutes. Ne le donnez à personne.',
+        );
     }
 
     public function codeEnAttente(SessionInterface $session): bool
     {
-        return \is_array($session->get(self::SESSION_CODE));
+        return $this->codes->enAttente($session, self::SESSION_CODE);
     }
 
     public function secondesAvantRenvoi(SessionInterface $session): int
     {
-        $etat = $session->get(self::SESSION_CODE);
-
-        return \is_array($etat) ? max(0, $etat['envoye'] + self::DELAI_RENVOI_SECONDES - time()) : 0;
+        return $this->codes->secondesAvantRenvoi($session, self::SESSION_CODE);
     }
 
     /** @return 'ok'|'faux'|'expire'|'trop_essais' */
     public function verifierCode(SessionInterface $session, string $saisi): string
     {
-        $etat = $session->get(self::SESSION_CODE);
-        if (!\is_array($etat) || $etat['expire'] < time()) {
-            return 'expire';
-        }
-        if ($etat['essais'] >= self::ESSAIS_MAX) {
-            return 'trop_essais';
-        }
-        if (hash_equals($etat['empreinte'], $this->empreinteCode(preg_replace('/\D/', '', $saisi) ?? ''))) {
-            $session->remove(self::SESSION_CODE);
+        $resultat = $this->codes->verifier($session, self::SESSION_CODE, $saisi);
+        if ('ok' === $resultat) {
             $session->set(self::SESSION_ACTIVITE, time());
-
-            return 'ok';
         }
-        ++$etat['essais'];
-        $session->set(self::SESSION_CODE, $etat);
 
-        return $etat['essais'] >= self::ESSAIS_MAX ? 'trop_essais' : 'faux';
-    }
-
-    private function empreinteCode(string $code): string
-    {
-        return hash_hmac('sha256', $code, $this->secret);
+        return $resultat;
     }
 
     public static function masquer(string $telephone): string
     {
-        $chiffres = preg_replace('/\D/', '', $telephone) ?? '';
-        if (\strlen($chiffres) < 4) {
-            return '—';
-        }
-        if (8 === \strlen($chiffres)) {
-            $chiffres = '223'.$chiffres;
-        }
-
-        return '+'.substr($chiffres, 0, 3).' •• •• '.substr($chiffres, -4, 2).' '.substr($chiffres, -2);
+        return CodeParSms::masquer($telephone);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Machines;
 use App\Repository\MachinesRepository;
+use App\Service\PlanningMachines;
 use App\Service\TableauProduction;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,7 +13,8 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Atelier › Production en vue Kanban (maquette 23). Lecture seule :
+ * Atelier › Production en vue Kanban (maquette 23) et planning des
+ * machines (maquette 24). Lecture seule :
  * chaque carte ouvre l'écran où l'étape se fait (prépresse, ordre de
  * production ou commande).
  *
@@ -34,6 +36,17 @@ final class ProductionKanbanController extends AbstractController
             'recherche' => $recherche,
             // Les pages d'ordres de production ne s'ouvrent que depuis un poste machine.
             'poste_production' => null !== $request->getClientIp() && $machines->findOneByAdresseIp($request->getClientIp()) instanceof Machines,
+        ]);
+    }
+
+    #[Route('/atelier/planning', name: 'app_atelier_planning', methods: ['GET'])]
+    public function planning(Request $request, PlanningMachines $planning): Response
+    {
+        $maintenant = new \DateTimeImmutable();
+        $jour = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->query->get('jour')) ?: $maintenant;
+
+        return $this->render('production/planning.html.twig', $planning->donnees($jour, $maintenant) + [
+            'aujourdhui' => $jour->format('Y-m-d') === $maintenant->format('Y-m-d'),
         ]);
     }
 }

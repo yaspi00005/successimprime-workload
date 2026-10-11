@@ -200,7 +200,7 @@ final class TableauProduction
         return null;
     }
 
-    private static function titre(CommandesDetails $ligne): string
+    public static function titre(CommandesDetails $ligne): string
     {
         $nom = trim((string) ($ligne->getDesignation() ?: $ligne->getProduit()?->getNom())) ?: 'Travail';
 
@@ -212,12 +212,12 @@ final class TableauProduction
         return $machine?->getNom() ?? $ligne->getTypeImpression()?->getNom();
     }
 
-    /** Même couleur pour les machines d'un même type (solvant, DTF…). */
-    private static function couleur(?Machines $machine, CommandesDetails $ligne): string
+    /** Une couleur par machine (ou par type d'impression sans machine), la même sur tous les écrans. */
+    public static function couleur(?Machines $machine, ?CommandesDetails $ligne = null): string
     {
-        $cle = $machine?->getTypeMachine() ?: $machine?->getNom() ?: $ligne->getTypeImpression()?->getNom() ?: '';
+        $cle = $machine?->getId() ?? $ligne?->getTypeImpression()?->getId() ?? 0;
 
-        return self::COULEURS[crc32(mb_strtolower($cle)) % \count(self::COULEURS)];
+        return self::COULEURS[$cle % \count(self::COULEURS)];
     }
 
     private static function dernierControle(CommandesDetails $ligne): ?ControlePrePresse

@@ -1,0 +1,118 @@
+{% extends 'base.html.twig' %}
+
+{% set jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'] %}
+{% set mois = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'] %}
+{% set libelle_jour = aujourdhui ? "aujourd’hui" : jours[jour|date('w')] ~ ' ' ~ jour|date('j') ~ ' ' ~ mois[jour|date('n')] %}
+
+{% block title %}Planning machines · {{ libelle_jour }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_atelier_planning', {jour: jour|date_modify('-1 day')|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-chevron-left me-1"></i>Hier</a>
+	</li>
+	{% if not aujourdhui %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_atelier_planning') }}" class="btn btn-light btn-sm si-btn-entete">Aujourd'hui</a>
+	</li>
+	{% endif %}
+	<li class="nav-item">
+		<a href="{{ path('app_atelier_planning', {jour: jour|date_modify('+1 day')|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete">Demain<i class="fas fa-chevron-right ms-1"></i></a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="card si-planning">
+		<div class="si-planning-defile">
+			<div class="si-planning-grille" style="--si-heures: {{ heures|length - 1 }}">
+				<div class="si-planning-tete">
+					<span></span>
+					<div class="si-planning-heures">
+						{% for heure in heures %}
+							<span style="left: {{ (loop.index0 * 100 / (heures|length - 1))|round(2) }}%">{{ heure }} h</span>
+						{% endfor %}
+					</div>
+				</div>
+				{% for ligne in lignes %}
+					<div class="si-planning-ligne">
+						<div class="si-planning-machine">
+							<strong>{{ ligne.machine.nom }}</strong>
+							<span class="{{ ligne.occupation >= 90 ? 'text-danger fw-bold' }}">Occupation {{ ligne.occupation }} %</span>
+						</div>
+						<div class="si-planning-piste">
+							{% for bloc in ligne.blocs %}
+								{% set lien = bloc.ordre ? path('app_atelier_production', {q: bloc.ordre.commandeDetail.commande.numero|default('')}) : null %}
+								<a {% if lien %}href="{{ lien }}"{% endif %} class="si-planning-bloc si-c-{{ bloc.couleur }}" style="left: {{ bloc.gauche }}%; width: {{ bloc.largeur }}%"
+									title="{{ bloc.titre }} · {{ bloc.debut|date('H:i') }}–{{ bloc.fin|date('H:i') }}{{ bloc.detail ? ' · ' ~ bloc.detail }}">
+									{% if bloc.statut == 'en_cours' %}<i class="fas fa-play" aria-label="En cours"></i>{% endif %}
+									{{ bloc.titre }}
+								</a>
+							{% endfor %}
+						</div>
+					</div>
+				{% else %}
+					<p class="text-muted p-3 mb-0">Aucune machine enregistrée. Ajoutez-les dans Machines et maintenance.</p>
+				{% endfor %}
+				{% if maintenant %}
+					<div class="si-planning-maintenant" style="--si-gauche: {{ maintenant.gauche }}%" aria-hidden="true"></div>
+				{% endif %}
+			</div>
+		</div>
+		<div class="si-planning-pied">
+			{% if maintenant %}
+				<span class="si-planning-repere">Maintenant · {{ maintenant.heure|date('G \\h i') }}</span>
+			{% else %}
+				<span class="si-planning-repere si-planning-repere-off">Ouvert de 8 h à 19 h</span>
+			{% endif %}
+			{% for saturee in saturees %}
+				<span class="si-planning-alerte"><i class="fas fa-exclamation-triangle"></i> {{ saturee.machine.nom }} saturée {{ aujourdhui ? 'demain' : 'le lendemain' }} ({{ saturee.occupation }} %, {{ saturee.travaux }} travail{{ saturee.travaux > 1 ? 'x' }}) : en déplacer ?</span>
+			{% endfor %}
+		</div>
+	</div>
+
+	<div class="row si-kpis">
+		<div class="col-md-4 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">m² prévus {{ libelle_jour }}</span>
+				<div class="si-kpi-valeur">{{ metres|number_format(metres < 10 ? 1 : 0, ',', ' ') }} m²</div>
+			</div></div>
+		</div>
+		<div class="col-md-4 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Retards</span>
+				<div class="si-kpi-valeur {{ retards > 0 ? 'text-danger' }}">{{ retards }} travail{{ retards > 1 ? 'x' }}</div>
+			</div></div>
+		</div>
+		<div class="col-md-4 col-12">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Prochaine maintenance</span>
+				<div class="si-kpi-valeur si-kpi-texte">
+					{% if prochaine_maintenance %}
+						{% set dm = prochaine_maintenance.date %}
+						{{ prochaine_maintenance.machine.nom }} ·
+						{% if dm|date('Y-m-d') == 'now'|date('Y-m-d') %}aujourd'hui{% elseif dm|date('Y-m-d') == 'tomorrow'|date('Y-m-d') %}demain{% else %}{{ dm|date('d/m') }}{% endif %}
+						{% if dm|date('H:i') != '00:00' %}{{ dm|date('G \\h') }}{% endif %}
+					{% else %}
+						Aucune prévue
+					{% endif %}
+				</div>
+			</div></div>
+		</div>
+	</div>
+
+	{% if sans_creneau is not empty %}
+		<div class="card si-planning-attente">
+			<div class="card-body">
+				<h2>Sans créneau <span class="si-kanban-compte">{{ sans_creneau|length }}</span></h2>
+				<p class="text-muted">Transmis à l'atelier mais pas encore placés sur une machine. Le placement se fait depuis le poste de la machine.</p>
+				<ul>
+					{% for ordre in sans_creneau %}
+						<li>
+							<strong>{{ ordre.commandeDetail ? ordre.commandeDetail.designation|default(ordre.numero) : ordre.numero }}</strong>
+							<span>{{ ordre.machine ? ordre.machine.nom : 'Machine à choisir' }}</span>
+						</li>
+					{% endfor %}
+				</ul>
+			</div>
+		</div>
+	{% endif %}
+{% endblock %}

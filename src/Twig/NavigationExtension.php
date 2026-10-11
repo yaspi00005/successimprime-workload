@@ -45,6 +45,7 @@ final class NavigationExtension extends AbstractExtension
         ],
         'atelier' => [
             ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
+            ['libelle' => 'Planning machines', 'route' => 'app_atelier_planning', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_planning']],
             ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_']],
             ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_achat_', 'app_fournisseur_', 'app_consommables_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
             ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],

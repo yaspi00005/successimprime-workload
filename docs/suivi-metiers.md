@@ -1,6 +1,15 @@
 # Suivi du travail par métier et points
 
-Yaya a décrit le 10/10/2026 sept maquettes de suivi par métier (graphiste, machiniste, livreur, agent d'entretien, admin). Les images ne sont pas encore arrivées dans le projet ; ce cadrage suit le descriptif. Les données des maquettes sont fictives.
+Yaya a envoyé le 10/10/2026 sept maquettes de suivi par métier. Elles sont dans `/mnt/project-files/maquettes/suivi-metiers/` :
+- W01 : tableau de conception du graphiste ;
+- W02 : évolution d'une conception, heures et points ;
+- W03 : file machine et travail en cours (machiniste, mobile) ;
+- W04 : journée, créneaux et points (livreur, mobile) ;
+- W05 : planning d'entretien et validation photo (mobile) ;
+- W06 : suivi des équipes en direct (admin) ;
+- W07 : barème des points par métier (admin).
+
+Les noms, heures et points sont fictifs.
 
 Ce suivi complète le pointage (`docs/pointage.md`) et les primes (`docs/immobilisations-primes.md`).
 
@@ -12,10 +21,32 @@ Ce suivi complète le pointage (`docs/pointage.md`) et les primes (`docs/immobil
 - Les points d'un livreur et ceux d'un graphiste ne se comparent pas : chacun est noté en pourcentage de ses propres points possibles. Le classement du mois se fait sur ces pourcentages.
 - Comme pour le pointage, l'admin peut ajuster des points avec un motif, gardé dans l'historique.
 
+## Le barème (W07)
+
+Chaque valeur est modifiable ; tout changement est gardé dans « Historique des changements ».
+
+| Graphiste PAO | | Opérateur production | | Livreur | | Agent d'entretien | |
+|---|---|---|---|---|---|---|---|
+| BAT envoyé avant l'échéance | + 10 | Travail sorti avant l'heure prévue | + 5 | Livré dans le créneau | + 5 | Tâche faite dans le créneau, avec photo | + 3 |
+| Validé sans erreur du graphiste | + 5 | Production, par 10 m² | + 1 | Preuve complète (photo, signature, GPS) | + 2 | Contrôle du responsable conforme | + 2 |
+| Retard, par tranche de 30 min | − 2 | Entretien des têtes avant 08:30 | + 3 | Encaissement remis le jour même | + 3 | Checklist de fermeture complète | + 5 |
+| Erreur du graphiste (faute, format) | − 10 | Gâche du jour sous 3 % | + 5 | Retard de plus de 30 min | − 5 | Tâche en retard de plus de 30 min | − 1 |
+| Changement d'avis du client | 0 | Réimpression due à l'opérateur | − 10 | Colis abîmé ou erreur de livraison | − 10 | Contrôle non conforme (à refaire) | − 3 |
+
+- **Graphiste** : les points d'un travail sont multipliés par sa difficulté, simple × 1, moyen × 1,5, complexe × 2, arrondis à l'entier inférieur. Exemple W02 : (10 + 5) × 1,5 = 22 points.
+- **Opérateur** : une panne signalée ne retire pas de points.
+- **Livreur** : un retard justifié (panne, client absent) est neutralisé par le responsable.
+- **Agent d'entretien** : le responsable contrôle 2 tâches tirées au hasard chaque jour.
+
+**Points possibles** du mois : la somme des points positifs que l'employé aurait gagnés si tout son travail du mois avait été parfait (avec les coefficients). La note « Productivité et qualité » = points gagnés ÷ points possibles × 100, entre 0 et 100. Dans W07, ce critère pèse **40 %** du score sur 100 ; le reste vient de la ponctualité (`docs/pointage.md`), de l'appréciation du responsable et des autres critères du rôle.
+
+**Contestation** : chaque point gagné ou perdu est relié à son travail (commande, livraison, tâche) et à son heure. L'employé voit ce détail dans son application et peut contester un retrait ; le responsable accepte (le retrait est annulé) ou refuse avec un motif.
+
 ## Graphiste (poste PAO)
 
 - **Mon tableau** : 5 colonnes, À faire → En conception → BAT envoyé → Corrections → Validé. Le travail en cours a un chronomètre. Chaque carte affiche son échéance avec un point vert (dans les temps), orange (bientôt) ou rouge (dépassée).
 - **Évolution d'une conception** : une frise horodatée du brief à l'envoi en production, avec les versions (V1, V2…), le temps prévu et le temps réel, et le détail des points gagnés.
+- **Chronomètre** : « Démarrer le suivant », « Pause », « Envoyer le BAT ». Il s'arrête pendant les pauses et pendant l'attente du client.
 - **Règle** : un changement d'avis du client ne coûte aucun point. Seule une erreur du graphiste en retire. Quand il renvoie un BAT, le graphiste (ou le client dans son espace) indique la raison : « demande du client » ou « erreur à corriger ».
 - Le tableau s'appuie sur les BAT et les versions de fichiers qui existent déjà dans les commandes.
 

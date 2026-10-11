@@ -2,7 +2,10 @@
 
 namespace App\Controller;
 
+use App\Entity\BulletinPaie;
 use App\Entity\DemandeEmploye;
+use App\Repository\BulletinPaieRepository;
+use App\Service\EspaceEmploye\Paie;
 use App\Entity\User;
 use App\Repository\DemandeEmployeRepository;
 use App\Service\ActionsCaisse\ActionsCaisse;
@@ -32,7 +35,7 @@ final class MonEspaceController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Pointages $pointages, ActionsCaisse $actions): Response
+    public function index(Pointages $pointages, ActionsCaisse $actions, BulletinPaieRepository $bulletins): Response
     {
         $moi = $this->employe();
         $maintenant = new \DateTimeImmutable();
@@ -44,6 +47,7 @@ final class MonEspaceController extends AbstractController
             'actions' => $this->isGranted('ROLE_PAIEMENT_ENCAISSER') ? $actions->bilan($moi, $debutMois, $maintenant) : null,
             'conge' => $this->espace->conge($moi),
             'demandes' => $this->demandes->findBy(['utilisateur' => $moi], ['creeLe' => 'DESC'], 30),
+            'bulletins' => $bulletins->visiblesPour($moi),
             'maintenant' => $maintenant,
         ]);
     }
@@ -96,6 +100,17 @@ final class MonEspaceController extends AbstractController
         $reponse->setPrivate();
 
         return $reponse;
+    }
+
+    /** Bulletin de paie de l'employé, une fois validé. */
+    #[Route('/bulletin/{id}', name: 'bulletin', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function bulletin(BulletinPaie $bulletin): Response
+    {
+        if ($bulletin->getUtilisateur() !== $this->employe() || $bulletin->getEtat() === BulletinPaie::BROUILLON) {
+            throw $this->createNotFoundException();
+        }
+
+        return $this->render('mon_espace/bulletin.html.twig', ['b' => $bulletin, 'libelleMois' => Paie::mois($bulletin->getMois())]);
     }
 
     private function employe(): User

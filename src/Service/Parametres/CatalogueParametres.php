@@ -213,15 +213,15 @@ final class CatalogueParametres
             ],
             'paie' => [
                 'famille' => 'personnel', 'libelle' => 'Paie', 'icone' => 'fa-money-bill-wave',
-                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => null,
+                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => 'app_paie_index',
                 'champs' => [
                     ['cle' => 'jour_paie', 'type' => 'nombre', 'libelle' => 'Jour de paie', 'suffixe' => 'du mois', 'min' => 1, 'max' => 31, 'defaut' => 5],
                     ['cle' => 'mode', 'type' => 'choix', 'libelle' => 'Mode de paiement des salaires', 'options' => ['orange_money' => 'Orange Money', 'virement' => 'Virement', 'especes' => 'Espèces'], 'defaut' => 'orange_money'],
-                    ['cle' => 'inps', 'type' => 'interrupteur', 'libelle' => 'Cotisations INPS', 'defaut' => true],
-                    ['cle' => 'its', 'type' => 'interrupteur', 'libelle' => 'Impôt sur les traitements (ITS)', 'defaut' => true],
+                    ['cle' => 'inps', 'type' => 'interrupteur', 'libelle' => 'Cotisations INPS', 'aide' => 'Active la ligne INPS sur les bulletins (montant saisi).', 'defaut' => false],
+                    ['cle' => 'its', 'type' => 'interrupteur', 'libelle' => 'Impôt sur les traitements (ITS)', 'aide' => 'Active la ligne ITS sur les bulletins (montant saisi).', 'defaut' => false],
                 ],
-                'motsCles' => ['Mode de paiement des salaires : Orange Money', 'INPS · ITS', 'Jour de paie'],
-                'note' => \sprintf(self::NOTE_A_BRANCHER, 'de paie'),
+                'motsCles' => ['Mode de paiement des salaires : Orange Money', 'INPS · ITS', 'Jour de paie', 'Bulletins de paie'],
+                'note' => 'Équipe › Paie prépare un bulletin par personne avec le salaire de sa fiche employé. Le paiement est un décaissement « Salaire » confidentiel en trésorerie.',
             ],
 
             // ---------- Clients et communication ----------

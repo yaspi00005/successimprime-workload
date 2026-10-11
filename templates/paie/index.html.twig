@@ -1,0 +1,74 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+
+{% block title %}Paie · {{ libelleMois }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_reglages_parametres_panneau', {tuile: 'paie'}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-sliders-h me-1"></i>Réglages de paie</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-py">
+		<form method="get" class="si-py-mois">
+			<a class="btn btn-light btn-sm" href="{{ path('app_paie_index', {mois: mois|date_modify('-1 month')|date('Y-m')}) }}" aria-label="Mois précédent"><i class="fas fa-chevron-left"></i></a>
+			<input type="month" name="mois" value="{{ mois|date('Y-m') }}" class="form-control form-control-sm" onchange="this.form.submit()" aria-label="Mois">
+			<a class="btn btn-light btn-sm" href="{{ path('app_paie_index', {mois: mois|date_modify('+1 month')|date('Y-m')}) }}" aria-label="Mois suivant"><i class="fas fa-chevron-right"></i></a>
+			<span class="text-muted">À verser le {{ versement|date('d/m/Y') }}</span>
+		</form>
+
+		<div class="si-ac-kpis">
+			<div class="card"><small>Bulletins</small><strong>{{ bulletins|length }}</strong></div>
+			<div class="card"><small>Masse brute</small><strong>{{ total.brut|number_format(0, ',', ' ') }} F</strong></div>
+			<div class="card"><small>Net à payer</small><strong>{{ total.net|number_format(0, ',', ' ') }} F</strong></div>
+			<div class="card"><small>Déjà payé</small><strong class="{{ total.paye >= total.net and total.net > 0 ? 'si-p-ok' }}">{{ total.paye|number_format(0, ',', ' ') }} F</strong></div>
+		</div>
+
+		<section class="card si-ac-bloc">
+			<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+				<h2 class="mb-0">Bulletins de {{ libelleMois }}</h2>
+				<form method="post" action="{{ path('app_paie_preparer') }}">
+					<input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="mois" value="{{ mois|date('Y-m') }}">
+					<button class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>{{ bulletins is empty ? 'Préparer la paie du mois' : 'Ajouter les bulletins manquants' }}</button>
+				</form>
+			</div>
+			{% if bulletins is empty %}
+				<p class="si-ac-vide">Aucun bulletin. « Préparer la paie du mois » crée un bulletin par personne avec le salaire de sa fiche employé.</p>
+			{% else %}
+				<div class="table-responsive">
+					<table class="table align-middle si-py-table">
+						<thead><tr><th>Employé</th><th class="text-end">Base</th><th class="text-end si-masque-mobile">Ajouts</th><th class="text-end si-masque-mobile">Retenues</th><th class="text-end">Net</th><th>État</th><th></th></tr></thead>
+						<tbody>
+							{% for b in bulletins %}
+								<tr>
+									<td><a href="{{ path('app_paie_voir', {id: b.id}) }}">{{ b.utilisateur|nom_pointage }}</a></td>
+									<td class="text-end text-nowrap">{{ b.salaireBase|number_format(0, ',', ' ') }}</td>
+									<td class="text-end text-nowrap si-masque-mobile">{{ (b.brut - b.salaireBase)|number_format(0, ',', ' ') }}</td>
+									<td class="text-end text-nowrap si-masque-mobile">{{ b.retenues|number_format(0, ',', ' ') }}</td>
+									<td class="text-end text-nowrap"><b>{{ b.net|number_format(0, ',', ' ') }} F</b></td>
+									<td><span class="si-py-etat si-py-{{ b.etat }}">{{ b.libelleEtat }}</span></td>
+									<td class="text-end">
+										{% if b.etat == 'valide' and comptes is not empty %}
+											<form method="post" action="{{ path('app_paie_payer', {id: b.id}) }}" class="si-py-payer">
+												<input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="liste">
+												<select name="compte" class="form-select form-select-sm" required aria-label="Compte qui paie">
+													<option value="">Compte…</option>
+													{% for c in comptes %}<option value="{{ c.id }}"{{ reglage('paie', 'mode') == 'orange_money' and 'orange' in c.nom|lower ? ' selected' }}>{{ c.nom }}</option>{% endfor %}
+												</select>
+												<button class="btn btn-primary btn-sm">Payer</button>
+											</form>
+										{% else %}
+											<a href="{{ path('app_paie_voir', {id: b.id}) }}" class="btn btn-light btn-sm si-btn-entete">{{ b.etat == 'brouillon' ? 'Compléter' : 'Voir' }}</a>
+										{% endif %}
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+				{% if comptes is empty %}<p class="si-pg-note">Le paiement se fait par une personne qui a le droit « Dépenses et recettes ».</p>{% endif %}
+			{% endif %}
+		</section>
+		<p class="si-pg-note">Les salaires ne sont visibles que par la RH. Chaque paiement est un décaissement « Salaire » confidentiel en trésorerie. {{ reglage('paie', 'its') ? 'L\'option ITS est active : une ligne ITS peut être ajoutée au bulletin.' : 'L\'option ITS est désactivée dans les réglages de paie.' }}</p>
+	</div>
+{% endblock %}

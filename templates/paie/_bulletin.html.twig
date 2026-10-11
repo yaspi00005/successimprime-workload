@@ -1,0 +1,27 @@
+{# Bulletin lisible, partagé par la RH et l'espace employé. Variables : b, libelleMois. #}
+<div class="si-py-bulletin">
+	<div class="si-py-tete">
+		<div><small>Bulletin de paie</small><strong>{{ libelleMois|capitalize }}</strong></div>
+		<div class="text-end"><small>{{ b.utilisateur.employe.fonction ?? '' }}</small><strong>{{ b.utilisateur|nom_pointage }}</strong>{% if b.utilisateur.employe.matricules %}<small>Matricule {{ b.utilisateur.employe.matricules }}</small>{% endif %}</div>
+	</div>
+	<table class="table si-py-lignes">
+		<tbody>
+			<tr><td>Salaire de base</td><td class="text-end">{{ b.salaireBase|number_format(0, ',', ' ') }} F</td>{% if retirer ?? false %}<td></td>{% endif %}</tr>
+			{% for l in b.lignes %}
+				<tr class="{{ l.montant < 0 ? 'si-py-moins' }}">
+					<td>{{ l.libelle }}</td>
+					<td class="text-end text-nowrap">{{ l.montant > 0 ? '+ ' : '− ' }}{{ l.montant|abs|number_format(0, ',', ' ') }} F</td>
+					{% if retirer ?? false %}
+						<td class="text-end"><form method="post" action="{{ path('app_paie_agir', {id: b.id, action: 'retirer'}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="index" value="{{ loop.index0 }}"><button class="btn btn-link btn-sm p-0 text-danger" title="Retirer la ligne" aria-label="Retirer {{ l.libelle }}"><i class="fas fa-times"></i></button></form></td>
+					{% endif %}
+				</tr>
+			{% endfor %}
+		</tbody>
+		<tfoot>
+			<tr><td>Brut</td><td class="text-end">{{ b.brut|number_format(0, ',', ' ') }} F</td>{% if retirer ?? false %}<td></td>{% endif %}</tr>
+			<tr><td>Retenues</td><td class="text-end">{{ b.retenues > 0 ? '− ' }}{{ b.retenues|number_format(0, ',', ' ') }} F</td>{% if retirer ?? false %}<td></td>{% endif %}</tr>
+			<tr class="si-py-net"><td>Net à payer</td><td class="text-end">{{ b.net|number_format(0, ',', ' ') }} F</td>{% if retirer ?? false %}<td></td>{% endif %}</tr>
+		</tfoot>
+	</table>
+	<p class="si-pg-note mb-0">{% if b.mouvement %}Payé · référence {{ b.mouvement.reference }}{% elseif b.valideLe %}Validé le {{ b.valideLe|date('d/m/Y') }}{% else %}Brouillon : pas encore visible par l'employé{% endif %}</p>
+</div>

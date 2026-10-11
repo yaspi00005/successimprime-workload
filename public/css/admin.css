@@ -4041,3 +4041,25 @@ body.si-param-bloque { overflow: hidden; }
 .si-mf-terminer form .btn { grid-column: 1 / -1; }
 .si-mf-rappel { font-size: 12px; color: #64748B; text-align: center; margin: 10px 0; }
 .si-mf-poste { text-align: center; }
+
+/* Paie (tuile Paie) */
+.si-py-mois { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; flex-wrap: wrap; }
+.si-py-mois input { width: auto; }
+.si-py-etat { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 3px 8px; background: #F1F5F9; color: #334155; }
+.si-py-valide { background: #DBEAFE; color: #1E40AF; }
+.si-py-paye { background: #DCFCE7; color: #166534; }
+.si-py-payer { display: inline-flex; gap: 6px; align-items: center; }
+.si-py-payer select { width: auto; max-width: 160px; }
+.si-py-voir { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.si-py-tete { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.si-py-tete small, .si-py-tete strong { display: block; }
+.si-py-tete small { font-size: 12px; color: #64748B; }
+.si-py-tete strong { font-size: 18px; }
+.si-py-lignes td { padding: 8px 4px; }
+.si-py-lignes tfoot td { font-weight: 600; border-bottom: 0; }
+.si-py-moins td:nth-child(2) { color: #B91C1C; }
+.si-py-net td { font-size: 18px; font-weight: 800 !important; color: #0F3D8C; border-top: 2px solid #0F3D8C; }
+.si-py-form { display: flex; flex-direction: column; gap: 8px; }
+.si-py-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
+@media (max-width: 900px) { .si-py-voir { grid-template-columns: 1fr; } }
+.si-py h2 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }

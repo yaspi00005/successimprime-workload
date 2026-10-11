@@ -50,3 +50,13 @@ Construit :
 - L'employé est prévenu à chaque réponse et à chaque paiement ; la RH à chaque nouvelle demande.
 
 Reste : les statistiques « Mes chiffres » par métier arrivent avec le suivi des métiers (docs/suivi-metiers.md).
+
+## Paie (11/10/2026)
+
+Équipe › Paie (`/equipe/paie`, droit Administrateur RH), ouvert aussi depuis la tuile Paie.
+
+- « Préparer la paie du mois » crée un bulletin par personne active avec le salaire de sa fiche employé ; les fiches sans salaire sont signalées.
+- La RH complète le bulletin : prime, heures supplémentaires, indemnité, retenue pour absence (les jours d'absence acceptés du mois sont rappelés), avance, autre. Les lignes ITS et INPS n'apparaissent que si l'option est active dans la tuile ; leur montant est saisi, aucun taux n'est appliqué (décision de Yaya : pas de taux pour le moment, l'ITS s'active ou se désactive).
+- Valider rend le bulletin visible par l'employé dans son espace (« Mes bulletins de paie », imprimable) et le prévient. Un bulletin validé peut être remis en brouillon tant qu'il n'est pas payé.
+- Payer (droit Dépenses et recettes) crée un décaissement « Salaire » confidentiel sur le compte choisi ; la date de versement suit le jour de paie de la tuile, le mode de paiement est noté sur le mouvement.
+- Les salaires ne sont visibles que par la RH et par l'employé concerné.

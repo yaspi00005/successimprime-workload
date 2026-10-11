@@ -73,6 +73,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Utilisateurs et droits', 'route' => 'app_utilisateurs_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_utilisateurs_', 'app_user_', 'app_employes_', 'app_journal_activite_']],
             ['libelle' => 'Actions commerciales', 'route' => 'app_actions_equipe_journal', 'role' => 'ROLE_ACTIONS_GERER', 'prefixes' => ['app_actions_equipe_']],
             ['libelle' => 'Demandes du personnel', 'route' => 'app_demandes_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_demandes_']],
+            ['libelle' => 'Paie', 'route' => 'app_paie_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_paie_']],
             ['libelle' => 'Pointage', 'route' => 'app_pointage_jour', 'role' => 'ROLE_RH', 'prefixes' => ['app_pointage_']],
             ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
             ['libelle' => 'Sécurité', 'route' => 'app_appareils_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_appareils_']],
@@ -151,6 +152,7 @@ final class NavigationExtension extends AbstractExtension
         'app_conception_' => 'atelier',
         'app_ma_file_' => 'atelier',
         'app_demandes_' => 'reglages',
+        'app_paie_' => 'reglages',
         'app_actions_equipe_' => 'reglages',
         'app_actions_' => 'ventes',
     ];

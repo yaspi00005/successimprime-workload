@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Service\OperationsAValider;
 use App\Service\TableauDeBordService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +18,8 @@ final class DashboardController extends AbstractController
 {
     #[Route('/', name: 'app_home')]
     public function index(
-        TableauDeBordService $tableauDeBordService
+        TableauDeBordService $tableauDeBordService,
+        OperationsAValider $operationsAValider
     ): Response {
         /*
          * Un livreur n'a accès qu'aux livraisons : il n'a rien
@@ -47,6 +49,12 @@ final class DashboardController extends AbstractController
                 'encaissementsDuJour' => $tableauDeBordService->encaissementsDuJour($maintenant),
                 'chargeMachines' => $tableauDeBordService->chargeMachines(),
             ];
+        }
+
+        // Opérations provisoires (saisies en ligne ou à contrôler), maquette 41.
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $attente = $operationsAValider->enAttente($maintenant);
+            $donnees['aValider'] = ['nombre' => \count($attente), 'montant' => array_sum(array_column($attente, 'montant'))];
         }
 
         $donnees += [

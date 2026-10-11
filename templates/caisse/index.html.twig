@@ -18,6 +18,9 @@
 {% endblock %}
 
 {% block body %}
+	{% if en_ligne %}
+		<p class="si-caisse-provisoire"><strong>Opération provisoire.</strong> Un encaissement saisi en ligne ne compte qu’après validation sur le serveur de l’atelier par le comptable ou l’admin.</p>
+	{% endif %}
 	{% if recu %}
 		<p class="si-caisse-alerte">
 			<a href="{{ path('app_caisse_recu', {id: recu.id}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ 'R-' ~ '%06d'|format(recu.id) }}</a>

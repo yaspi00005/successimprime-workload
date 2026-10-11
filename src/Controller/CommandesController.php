@@ -8,6 +8,7 @@ use App\Entity\Paiements;
 use App\Entity\User;
 use App\Entity\MouvementTresorerie;
 use App\Form\CommandesType;
+use App\Security\AccesEnLigne;
 use App\Form\PaiementsType;
 use App\Repository\CommandesRepository;
 use App\Repository\ClientsRepository;
@@ -1915,7 +1916,8 @@ final class CommandesController extends AbstractController
         EntityManagerInterface $entityManager,
         FacturesRepository $facturesRepository,
         ParametresPaiementRepository $parametresPaiementRepository,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        AccesEnLigne $accesEnLigne
     ): Response {
         /*
      * ============================================================
@@ -2293,7 +2295,11 @@ final class CommandesController extends AbstractController
              */
 
                 try {
-                    if (
+                    // Saisi en ligne : opération provisoire, validée
+                    // ensuite sur le serveur de l'atelier (maquette 41).
+                    if ($accesEnLigne->estEnLigne()) {
+                        $this->addFlash('info', 'Opération provisoire : elle comptera après validation sur le serveur de l’atelier.');
+                    } elseif (
                         !$paiement->necessiteValidationManuelle()
                     ) {
                         $paiement->validerPar(

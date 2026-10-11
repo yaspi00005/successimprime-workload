@@ -10,6 +10,7 @@ use App\Entity\Paiements;
 use App\Entity\User;
 use App\Form\PaiementsType;
 use App\Repository\ClientsRepository;
+use App\Security\AccesEnLigne;
 use App\Service\Caisse;
 use App\Service\DocumentsEntreprise;
 use App\Service\NotificationService;
@@ -37,7 +38,7 @@ final class CaisseController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request, ClientsRepository $clients, EntityManagerInterface $em): Response
+    public function index(Request $request, ClientsRepository $clients, EntityManagerInterface $em, AccesEnLigne $acces): Response
     {
         $utilisateur = $this->utilisateur();
         $maintenant = new \DateTimeImmutable();
@@ -69,6 +70,7 @@ final class CaisseController extends AbstractController
         }
 
         return $this->render('caisse/index.html.twig', [
+            'en_ligne' => $acces->estEnLigne(),
             'clients_avec_solde' => $this->caisse->clientsAvecSolde(),
             'client' => $client,
             'impayees' => $impayees,

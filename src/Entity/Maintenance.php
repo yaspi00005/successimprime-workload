@@ -31,6 +31,10 @@ class Maintenance
     #[ORM\Column(length: 255)]
     private ?string $technicien = null;
 
+    /** Temps pendant lequel la machine n'a pas pu imprimer. */
+    #[ORM\Column(nullable: true)]
+    private ?int $dureeArretMinutes = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -104,6 +108,18 @@ class Maintenance
     public function setTechnicien(string $technicien): static
     {
         $this->technicien = $technicien;
+
+        return $this;
+    }
+
+    public function getDureeArretMinutes(): ?int
+    {
+        return $this->dureeArretMinutes;
+    }
+
+    public function setDureeArretMinutes(?int $minutes): static
+    {
+        $this->dureeArretMinutes = $minutes;
 
         return $this;
     }

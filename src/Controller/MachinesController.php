@@ -3,6 +3,8 @@
 namespace App\Controller;
 
 use App\Entity\Machines;
+use App\Entity\Maintenance;
+use App\Service\ParcMachines;
 use App\Repository\MachinesRepository;
 use App\Service\MachineRentabiliteService;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -16,13 +18,81 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/machines', name: 'app_machines_')]
 final class MachinesController extends AbstractController
 {
+    public const TYPES_INTERVENTION = [
+        'Nettoyage têtes',
+        'Purge',
+        'Calibrage couleurs',
+        'Graissage',
+        'Révision',
+        'Panne',
+        'Bourrage support',
+        'Remplacement pièce',
+        'Autre',
+    ];
+
     /*
      * ============================================================
      * LISTE DES MACHINES
      * ============================================================
      */
     #[Route('/', name: 'index', methods: ['GET'])]
-    public function index(
+    public function index(ParcMachines $parc): Response
+    {
+        return $this->render('machines/parc.html.twig', $parc->donnees(new \DateTimeImmutable()) + [
+            'types_intervention' => self::TYPES_INTERVENTION,
+        ]);
+    }
+
+    /** Intervention (maquette 27) : maintenance faite ou prévue, avec le temps d'arrêt. */
+    #[Route('/intervention', name: 'intervention', methods: ['POST'])]
+    public function intervention(Request $request, MachinesRepository $machinesRepository, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('machine-intervention', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+        $machine = $machinesRepository->find($request->request->getInt('machine'));
+        $date = \DateTime::createFromFormat('Y-m-d\TH:i', (string) $request->request->get('date'));
+        $type = (string) $request->request->get('type');
+        $description = mb_substr(trim((string) $request->request->get('description')), 0, 255);
+        $duree = trim((string) $request->request->get('duree'));
+        $cout = (int) preg_replace('/\D+/', '', (string) $request->request->get('cout'));
+
+        if (!$machine instanceof Machines || false === $date || !\in_array($type, self::TYPES_INTERVENTION, true) || ('' !== $duree && !ctype_digit($duree))) {
+            $this->addFlash('error', 'Choisissez la machine, la date et le type ; la durée d\'arrêt est en minutes.');
+
+            return $this->redirectToRoute('app_machines_index', ['_fragment' => 'intervention']);
+        }
+
+        $em->persist((new Maintenance())
+            ->setMachine($machine)
+            ->setDate($date)
+            ->setType($type)
+            ->setDescription('' !== $description ? $description : $type)
+            ->setCout((string) $cout)
+            ->setTechnicien(mb_substr(trim((string) $request->request->get('technicien')) ?: (string) $this->getUser()?->getUserIdentifier(), 0, 255))
+            ->setDureeArretMinutes('' !== $duree ? (int) $duree : null));
+        $em->flush();
+        $this->addFlash('success', sprintf('Intervention « %s » enregistrée sur %s.', $type, $machine->getNom()));
+
+        return $this->redirectToRoute('app_machines_index');
+    }
+
+    #[Route('/{id}/plan-preventif', name: 'plan_preventif', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function planPreventif(Machines $machine, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('plan-preventif-'.$machine->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+        $machine->setPlanPreventif(mb_substr((string) $request->request->get('plan'), 0, 2000));
+        $em->flush();
+        $this->addFlash('success', 'Plan préventif de '.$machine->getNom().' enregistré.');
+
+        return $this->redirectToRoute('app_machines_index', ['_fragment' => 'plan']);
+    }
+
+    /** Fiches techniques des machines (ajout, modification, IP du poste). */
+    #[Route('/liste', name: 'liste', methods: ['GET'])]
+    public function liste(
         MachinesRepository $machinesRepository
     ): Response {
         return $this->render(

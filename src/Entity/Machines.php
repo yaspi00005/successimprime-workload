@@ -97,6 +97,10 @@ class Machines
     #[ORM\Column(length: 45, unique: true)]
     private ?string $adresseIp = null;
 
+    /** Entretien régulier à faire, en texte libre (maquette 27). */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $planPreventif = null;
+
     /*
      * ============================================================
      * RENTABILITÉ / AMORTISSEMENT
@@ -633,5 +637,18 @@ public function setAdresseIp(string $adresseIp): static
         }
 
         return $this->prixAchat / $this->dureeAmortissementMois;
+    }
+
+    public function getPlanPreventif(): ?string
+    {
+        return $this->planPreventif;
+    }
+
+    public function setPlanPreventif(?string $plan): static
+    {
+        $plan = null !== $plan ? trim($plan) : null;
+        $this->planPreventif = '' === $plan ? null : $plan;
+
+        return $this;
     }
 }

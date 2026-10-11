@@ -1,0 +1,151 @@
+{% extends 'base.html.twig' %}
+
+{% set etats = constant('App\\Service\\ParcMachines::ETATS') %}
+
+{% block title %}Machines et maintenance{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_machines_liste') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-cog me-1"></i>Fiches machines</a>
+	</li>
+	<li class="nav-item">
+		<button type="button" class="btn btn-danger btn-sm si-btn-entete" data-bs-toggle="modal" data-bs-target="#modale-intervention"><i class="fas fa-plus me-1"></i>Intervention</button>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-parc">
+		{% for carte in cartes %}
+			{% set machine = carte.machine %}
+			<article class="card si-parc-carte si-c-{{ carte.couleur }}">
+				<header>
+					<span class="si-parc-pastille" aria-hidden="true"></span>
+					<div>
+						<h2>{{ machine.nom }}</h2>
+						<small>
+							{{ machine.nbTetes ? machine.nbTetes ~ ' tête' ~ (machine.nbTetes > 1 ? 's') : (machine.modeles ?: machine.marque) }}
+							· {% if carte.ordre %}{{ carte.etat == 'pause' ? 'en pause sur ' : 'imprime ' }}{{ carte.ordre.commandeDetail ? carte.ordre.commandeDetail.designation|default(carte.ordre.numero) : carte.ordre.numero }}{% else %}en attente{% endif %}
+						</small>
+					</div>
+					<span class="si-pastille si-pastille-{{ etats[carte.etat][1] }}">{{ etats[carte.etat][0] }}</span>
+				</header>
+				<dl>
+					<div><dt>m² ce mois</dt><dd>{{ carte.m2|number_format(carte.m2 < 10 ? 1 : 0, ',', ' ') }} m²</dd></div>
+					<div><dt>Encre ml/m²</dt><dd>{{ carte.encreMlM2 is null ? '—' : carte.encreMlM2|number_format(1, ',', ' ') }}</dd></div>
+					<div><dt>Prochaine maint.</dt><dd>{{ carte.prochaine ? quand_maintenance(carte.prochaine) : 'Non prévue' }}</dd></div>
+				</dl>
+			</article>
+		{% else %}
+			<div class="card si-bloc">Aucune machine. <a href="{{ path('app_machines_liste') }}">Ajouter une machine</a></div>
+		{% endfor %}
+	</div>
+
+	<div class="si-parc-bas">
+		<section class="card si-pp-carte">
+			<h2>Historique des interventions</h2>
+			{% if interventions is empty %}
+				<p class="text-muted mb-0">Aucune intervention enregistrée.</p>
+			{% else %}
+				<div class="table-responsive">
+					<table class="table si-table align-middle mb-0">
+						<thead>
+							<tr>
+								<th>Date</th>
+								<th>Machine</th>
+								<th>Type</th>
+								<th class="text-end">Durée arrêt</th>
+								<th class="text-end si-masque-mobile">Coût</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for i in interventions %}
+								<tr class="{{ i.date > maintenant ? 'si-intervention-prevue' }}">
+									<td class="text-nowrap">{{ i.date|date('d/m') }}{% if i.date > maintenant %} <small class="text-primary">prévue</small>{% endif %}</td>
+									<td>{{ i.machine ? i.machine.nom : '—' }}</td>
+									<td>{{ i.type }}{% if i.description and i.description != i.type %}<small class="d-block text-muted">{{ i.description }}</small>{% endif %}</td>
+									<td class="text-end text-nowrap">{{ i.dureeArretMinutes is null ? '—' : duree_arret(i.dureeArretMinutes) }}</td>
+									<td class="text-end text-nowrap si-masque-mobile">{{ i.cout and i.cout > 0 ? i.cout|number_format(0, ',', ' ') : '—' }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% endif %}
+		</section>
+
+		<aside class="card si-pp-carte" id="plan">
+			<h2>Temps d'arrêt (30 j)</h2>
+			<ul class="si-arrets">
+				{% for a in arrets %}
+					<li class="si-c-{{ a.couleur }}">
+						<span>{{ a.machine.nom }}</span>
+						<span class="si-arret-barre"><span style="width: {{ max(3, (a.minutes * 100 / max_arret)|round) }}%"></span></span>
+						<strong>{{ a.minutes > 0 ? duree_arret(a.minutes) : '0' }}</strong>
+					</li>
+				{% endfor %}
+			</ul>
+			<h2 class="mt-3">Plan préventif</h2>
+			{% for carte in cartes %}
+				<details class="si-plan">
+					<summary><strong>{{ carte.machine.nom }}</strong> <span class="text-muted">{{ carte.machine.planPreventif ? carte.machine.planPreventif|split('\n')|first : 'à définir' }}</span></summary>
+					<form method="post" action="{{ path('app_machines_plan_preventif', {id: carte.machine.id}) }}">
+						<input type="hidden" name="_token" value="{{ csrf_token('plan-preventif-' ~ carte.machine.id) }}">
+						<textarea name="plan" class="form-control form-control-sm" rows="3" placeholder="Nettoyage têtes : quotidien · Purge : hebdomadaire">{{ carte.machine.planPreventif }}</textarea>
+						<button class="btn btn-sm btn-outline-primary mt-2">Enregistrer</button>
+					</form>
+				</details>
+			{% endfor %}
+		</aside>
+	</div>
+
+	<div class="modal fade" id="modale-intervention" tabindex="-1" aria-labelledby="titre-intervention" aria-hidden="true">
+		<div class="modal-dialog">
+			<form method="post" action="{{ path('app_machines_intervention') }}" class="modal-content">
+				<input type="hidden" name="_token" value="{{ csrf_token('machine-intervention') }}">
+				<div class="modal-header">
+					<h2 class="modal-title fs-5" id="titre-intervention">Nouvelle intervention</h2>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+				</div>
+				<div class="modal-body row g-3">
+					<div class="col-12">
+						<label class="form-label" for="i-machine">Machine</label>
+						<select class="form-select" id="i-machine" name="machine" required>
+							{% for carte in cartes %}<option value="{{ carte.machine.id }}">{{ carte.machine.nom }}</option>{% endfor %}
+						</select>
+					</div>
+					<div class="col-sm-6">
+						<label class="form-label" for="i-date">Date et heure</label>
+						<input class="form-control" type="datetime-local" id="i-date" name="date" value="{{ maintenant|date('Y-m-d\\TH:i') }}" required>
+						<small class="text-muted">Une date future prévoit la maintenance (planning).</small>
+					</div>
+					<div class="col-sm-6">
+						<label class="form-label" for="i-type">Type</label>
+						<select class="form-select" id="i-type" name="type" required>
+							{% for t in types_intervention %}<option>{{ t }}</option>{% endfor %}
+						</select>
+					</div>
+					<div class="col-12">
+						<label class="form-label" for="i-description">Détail</label>
+						<input class="form-control" id="i-description" name="description" maxlength="255" placeholder="Exemple : remplacement amortisseurs">
+					</div>
+					<div class="col-sm-4">
+						<label class="form-label" for="i-duree">Arrêt (min)</label>
+						<input class="form-control" id="i-duree" name="duree" inputmode="numeric" pattern="\d*" placeholder="40">
+					</div>
+					<div class="col-sm-4">
+						<label class="form-label" for="i-cout">Coût (F)</label>
+						<input class="form-control" id="i-cout" name="cout" inputmode="numeric" placeholder="0">
+					</div>
+					<div class="col-sm-4">
+						<label class="form-label" for="i-technicien">Technicien</label>
+						<input class="form-control" id="i-technicien" name="technicien" maxlength="255" placeholder="{{ app.user.userIdentifier }}">
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+					<button class="btn btn-danger">Enregistrer</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{% endblock %}

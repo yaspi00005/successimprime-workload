@@ -1,0 +1,33 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Relances à envoyer{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_creances_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Créances</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-creances-relances">
+		<p class="si-valider-bandeau si-ok">Relances enregistrées pour {{ relances|length }} client{{ relances|length > 1 ? 's' }}. Ouvrez chaque conversation pour envoyer le message.</p>
+		{% for r in relances %}
+			<article class="card si-creances-relance">
+				<header>
+					<div>
+						<h2>{{ r.client ?: 'Client' }}</h2>
+						<small>{{ r.dus|length }} document{{ r.dus|length > 1 ? 's' }} · reste {{ r.reste|number_format(0, ',', ' ') }} F</small>
+					</div>
+					{% if r.lien %}
+						<a href="{{ r.lien }}" target="_blank" rel="noopener" class="btn btn-success"><i class="fab fa-whatsapp me-1"></i>Ouvrir WhatsApp</a>
+					{% else %}
+						<span class="si-statut-creance si-statut-retard">Pas de téléphone</span>
+					{% endif %}
+				</header>
+				<pre class="si-creances-message">{{ r.message }}</pre>
+			</article>
+		{% else %}
+			<p>Aucune relance : les créances choisies sont déjà soldées.</p>
+		{% endfor %}
+	</div>
+{% endblock %}

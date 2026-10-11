@@ -2999,3 +2999,60 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
   .si-v-date { grid-area: date; font-size: 12px; color: #64748B; }
   .si-v-date small { display: inline !important; margin-left: 4px; }
 }
+
+/* ===== Factures et créances (maquette 30) ===== */
+.si-creances { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+.si-creances .card, .si-creances-relance { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; margin: 0; }
+.si-creances h2, .si-creances-relance h2 { font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 12px; }
+.si-creances-barres { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; height: 240px; align-items: end; margin-top: 8px; }
+.si-creances-barre { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+.si-creances-valeur { font-size: 12px; font-weight: 700; color: #0F172A; text-align: center; line-height: 1.15; }
+.si-creances-colonne { width: 100%; max-width: 40px; border-radius: 8px 8px 3px 3px; background: var(--si-t); min-height: 0; }
+.si-creances-tranche { font-size: 12px; color: #64748B; text-align: center; white-space: nowrap; }
+.si-tranche-0_30 { --si-t: #0F4590; }
+.si-tranche-31_60 { --si-t: #FACC15; }
+.si-tranche-61_90 { --si-t: #EA580C; }
+.si-tranche-plus_90 { --si-t: #DC2626; }
+.si-creances-total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; border-top: 1px solid #EEF2F7; margin-top: 16px; padding-top: 14px; }
+.si-creances-total span { color: #64748B; }
+.si-creances-total strong { font-size: 24px; font-weight: 800; color: #0F172A; white-space: nowrap; }
+.si-creances-note { font-size: 12px; color: #64748B; margin: 10px 0 0; }
+.si-creances-outils { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.si-creances-filtres { display: flex; gap: 6px; flex-wrap: wrap; }
+.si-creances-filtres a { padding: 6px 14px; border-radius: 999px; background: #F1F5F9; color: #334155; font-weight: 600; font-size: 13px; text-decoration: none; }
+.si-creances-filtres a.active { background: #0F4590; color: #fff; }
+.si-creances-recherche { min-width: 220px; }
+.si-creances .si-creances-table { margin: 0; }
+.si-creances .si-creances-table thead th { font-size: 13px; color: #64748B; font-weight: 600; text-transform: none; letter-spacing: 0; background: #F8FAFC; border-bottom: 0; padding: 10px 8px; }
+.si-creances-table td { vertical-align: middle; padding: 12px 8px; }
+.si-creances-table a { font-weight: 600; }
+.si-creances-case { width: 34px; }
+.si-statut-creance { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.si-statut-a_echoir { background: #E7EEFA; color: #0F4590; }
+.si-statut-echue { background: #FEF3C7; color: #B45309; }
+.si-statut-retard { background: #FEE2E2; color: #B91C1C; }
+.si-statut-payee { background: #DCFCE7; color: #15803D; }
+.si-creances-plafond { color: #DC2626; margin-left: 4px; }
+.si-creances-vide { color: #64748B; margin: 8px 0 0; }
+.si-creances-relances { display: grid; gap: 16px; max-width: 760px; }
+.si-creances-relance header { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
+.si-creances-relance h2 { margin: 0; }
+.si-creances-relance small { color: #64748B; }
+.si-creances-message { white-space: pre-wrap; font-family: inherit; font-size: 14px; background: #F8FAFC; border-radius: 10px; padding: 12px; margin: 12px 0 0; }
+@media (max-width: 991px) {
+  .si-creances { grid-template-columns: 1fr; }
+  .si-creances-barres { height: 180px; }
+}
+@media (max-width: 575px) {
+  .si-creances .card { padding: 14px; }
+  .si-creances-recherche { min-width: 0; width: 100%; }
+}
+@media (max-width: 767px) {
+  .si-creances-cartes thead { display: none; }
+  .si-creances-cartes tbody tr { display: grid; grid-template-columns: 28px 1fr auto; gap: 2px 10px; padding: 12px 0; border-bottom: 1px solid #EEF2F7; }
+  .si-creances-cartes tbody td { display: block; padding: 0; border: 0; text-align: left !important; }
+  .si-creances-cartes tbody td.si-creances-case { grid-row: span 3; }
+  .si-creances-cartes tbody td:nth-child(6) { grid-column: 3; grid-row: 1; text-align: right !important; }
+  .si-creances-cartes tbody td:nth-child(3), .si-creances-cartes tbody td:nth-child(4) { grid-column: 2 / 4; color: #475569; font-size: 13px; }
+  .si-creances-cartes tbody td:nth-child(7) { grid-column: 2 / 4; }
+}

@@ -1,0 +1,32 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Mes devis{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Mes devis</a>{% endblock %}
+
+{% block contenu %}
+	<nav class="ec-filtres">
+		{% for k, l in {tous: 'Tous', a_accepter: 'À accepter', acceptes: 'Acceptés'} %}
+			<a href="{{ path('app_espace_devis', {filtre: k}) }}" class="{{ filtre == k ? 'actif' }}">{{ l }}</a>
+		{% endfor %}
+	</nav>
+	{% set etats = {envoye: ['Envoyé', 'ambre'], accepte: ['Accepté', 'vert'], converti: ['Accepté', 'vert'], refuse: ['Refusé', 'gris'], expire: ['Expiré', 'gris']} %}
+	{% for d in liste %}
+		{% set lignes = d.devisDetails|filter(l => true) %}
+		<div class="ec-carte">
+			<div class="ec-ligne"><span class="ec-petit">{{ d.numero }}{{ d.dateDevis ? ' · ' ~ d.dateDevis|date('d/m/Y') }}</span><span class="ec-pastille {{ etats[d.statut][1] }}">{{ etats[d.statut][0] }}</span></div>
+			<div style="font-weight:800;margin:.3rem 0">{% for l in lignes|slice(0, 2) %}{{ l.designation ?: 'Travail' }}{% if l.largeur > 0 and l.longueur > 0 %} {{ l.largeur + 0 }} × {{ l.longueur + 0 }}{% endif %} × {{ l.quantite + 0 }}{{ not loop.last ? ', ' }}{% endfor %}{% if lignes|length > 2 %} + {{ lignes|length - 2 }}{% endif %}</div>
+			<div class="ec-ligne">
+				<span class="ec-montant" style="font-size:1.15rem">{{ d.totalTtc|number_format(0, ',', ' ') }} F</span>
+				{% if d.statut == 'envoye' %}
+					<form method="post" action="{{ path('app_espace_devis_accepter', {id: d.id}) }}" onsubmit="return confirm('Accepter le devis {{ d.numero }} ({{ d.totalTtc|number_format(0, ',', ' ') }} F) ?')">
+						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+						<button class="ec-bouton-petit">Accepter</button>
+					</form>
+				{% endif %}
+			</div>
+			<div style="text-align:right;margin-top:.4rem"><a class="ec-lien" href="{{ path('app_espace_devis_pdf', {id: d.id}) }}" target="_blank">PDF ↓</a></div>
+		</div>
+	{% else %}
+		<div class="ec-carte ec-vide">Aucun devis ici.</div>
+	{% endfor %}
+{% endblock %}

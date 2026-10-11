@@ -1,0 +1,16 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Mes commandes{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Mes commandes</a>{% endblock %}
+
+{% block contenu %}
+	<nav class="ec-filtres">
+		<a href="{{ path('app_espace_commandes') }}" class="actif">Commandes</a>
+		<a href="{{ path('app_espace_devis') }}">Mes devis{% if devisAAccepter %} · {{ devisAAccepter }} à accepter{% endif %}</a>
+	</nav>
+	{% for carte in cartes %}
+		{% include 'espace/app/_carte.html.twig' %}
+	{% else %}
+		<div class="ec-carte ec-vide">Vous n'avez pas encore de commande.</div>
+	{% endfor %}
+{% endblock %}

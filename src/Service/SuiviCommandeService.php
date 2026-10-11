@@ -64,6 +64,66 @@ final class SuiviCommandeService
     }
 
     /**
+     * Suivi vu par le client (maquettes 13 et 15) : reçue, BAT, impression,
+     * finition, prête, livrée ou retirée, avec la date de chaque étape faite.
+     * Pas de montants ni de noms d'employés.
+     *
+     * @return list<array{cle: string, libelle: string, court: string, date: ?\DateTimeInterface, detail: ?string, etat: string}>
+     */
+    public function etapesClient(Commandes $commande): array
+    {
+        $lignes = $this->lignesActives($commande);
+        $rangs = array_map(fn (CommandesDetails $ligne): int => self::RANG_LIGNE[$this->etapeLigne($ligne)], $lignes);
+        $rangMin = [] === $rangs ? 0 : min($rangs);
+        $avecBat = array_values(array_filter($lignes, static fn (CommandesDetails $ligne): bool => $ligne->isPrePresseNecessaire()));
+        $valides = array_filter($avecBat, fn (CommandesDetails $ligne): bool => $this->batValide($ligne));
+        $dates = static fn (iterable $valeurs): array => array_values(array_filter(\is_array($valeurs) ? $valeurs : iterator_to_array($valeurs)));
+        $batLe = $dates(array_map(fn (CommandesDetails $l): ?\DateTimeInterface => $this->dernierControle($l)?->getValideLe(), $valides));
+        $debuts = $dates(array_map(static fn (CommandesDetails $l): ?\DateTimeInterface => $l->getProductionDebuteLe(), $lignes));
+        $fins = $dates(array_map(static fn (CommandesDetails $l): ?\DateTimeInterface => $l->getProductionTermineeLe(), $lignes));
+        $retrait = !$commande->estALivrer();
+        $prevue = $commande->getDateLivraison();
+
+        $etapes = [
+            ['cle' => 'recue', 'libelle' => 'Commande reçue', 'court' => 'Reçue', 'date' => $commande->getDateCommande(), 'detail' => null, 'faite' => true],
+            ['cle' => 'bat', 'libelle' => [] === $avecBat ? 'Sans BAT' : (\count($valides) === \count($avecBat) ? 'BAT validé par vous' : 'BAT'), 'court' => 'BAT', 'date' => [] !== $batLe ? max($batLe) : null,
+                'detail' => [] !== $avecBat && \count($valides) < \count($avecBat) ? \sprintf('%d sur %d validé%s', \count($valides), \count($avecBat), \count($valides) > 1 ? 's' : '') : null,
+                'faite' => [] !== $lignes && \count($valides) === \count($avecBat) && $rangMin >= 2],
+            ['cle' => 'impression', 'libelle' => 'Impression', 'court' => 'Impression', 'date' => [] !== $debuts ? min($debuts) : null, 'detail' => null, 'faite' => [] !== $lignes && $rangMin >= 3],
+            ['cle' => 'finition', 'libelle' => 'Finition', 'court' => 'Finition', 'date' => [] !== $fins ? max($fins) : null, 'detail' => null, 'faite' => [] !== $lignes && $rangMin >= 4],
+            ['cle' => 'prete', 'libelle' => $retrait ? 'Prête à retirer' : 'Prête à livrer', 'court' => 'Prête', 'date' => [] !== $fins && $rangMin >= 4 ? max($fins) : null, 'detail' => null, 'faite' => [] !== $lignes && $rangMin >= 4],
+            ['cle' => 'livree', 'libelle' => $retrait ? 'Retirée' : 'Livrée', 'court' => $retrait ? 'Retirée' : 'Livrée', 'date' => null, 'detail' => null, 'faite' => [] !== $lignes && $rangMin >= 6],
+        ];
+        if ($rangMin === 5) {
+            $etapes[5]['detail'] = 'en route';
+        }
+
+        $courante = null;
+        foreach ($etapes as $i => &$etape) {
+            if (!$etape['faite'] && null === $courante) {
+                $courante = $i;
+                $etape['etat'] = 'en_cours';
+                if (\in_array($etape['cle'], ['prete', 'livree'], true) && null !== $prevue && null === $etape['detail']) {
+                    $etape['detail'] = 'prévue le '.$prevue->format('d/m');
+                }
+            } else {
+                // Après l'étape en cours, rien n'est montré comme fait.
+                $etape['etat'] = $etape['faite'] && null === $courante ? 'faite' : 'a_venir';
+                if (null !== $courante) {
+                    $etape['date'] = null;
+                }
+            }
+            if ('a_venir' === $etape['etat'] && \in_array($etape['cle'], ['prete', 'livree'], true) && null !== $prevue && null === $etape['detail'] && 'prete' === $etape['cle']) {
+                $etape['detail'] = 'prévue le '.$prevue->format('d/m');
+            }
+            unset($etape['faite']);
+        }
+        unset($etape);
+
+        return $etapes;
+    }
+
+    /**
      * L'etape « en cours » est la premiere non faite ; celles d'avant sont
      * faites meme si une etape facultative (l'acompte) manque.
      *

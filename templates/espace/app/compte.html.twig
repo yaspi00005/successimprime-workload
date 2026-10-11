@@ -1,0 +1,47 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Mon compte{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Mon compte</a>{% endblock %}
+
+{% block contenu %}
+	<div class="ec-carte ec-profil">
+		<span class="ec-avatar">{{ prenom|slice(0, 1)|upper }}</span>
+		<div><b>{{ (client.prenom ~ ' ' ~ client.nom)|trim ?: client.raisonSociale }}</b><div class="ec-petit">{{ client.entreprise and client.raisonSociale ? client.raisonSociale ~ ' · client entreprise' : 'client particulier' }} · {{ client.code }}</div></div>
+	</div>
+
+	<div class="ec-carte">
+		<h2>Coordonnées</h2>
+		<ul class="ec-liste">
+			<li class="ec-ligne"><span class="ec-petit">Téléphone</span><span>+223 {{ compte.telephone|slice(3)|split('', 2)|join(' ') }}</span></li>
+			{% if client.email %}<li class="ec-ligne"><span class="ec-petit">E-mail</span><span>{{ client.email }}</span></li>{% endif %}
+			{% if client.adresse or client.ville %}<li class="ec-ligne"><span class="ec-petit">Adresse</span><span style="text-align:right">{{ [client.adresse, client.ville]|filter(v => v)|join(', ') }}</span></li>{% endif %}
+			{% if client.entreprise %}
+				<li class="ec-ligne"><span class="ec-petit">NIF</span><span>{{ client.nif ?: '–' }}</span></li>
+				<li class="ec-ligne"><span class="ec-petit">RCCM</span><span>{{ client.rccm ?: '–' }}</span></li>
+			{% endif %}
+		</ul>
+		<p class="ec-petit" style="margin:.6rem 0 0">Pour changer ces informations, écrivez-nous : nous les mettons à jour sur votre fiche.</p>
+	</div>
+
+	<form class="ec-carte" method="post" action="{{ path('app_espace_preferences') }}">
+		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+		<h2>Notifications</h2>
+		<label class="ec-interrupteur"><span>Recevoir les SMS (BAT prêt, commande prête, paiement reçu)</span><input type="checkbox" name="sms" value="1"{{ client.recevoirSms ? ' checked' }} onchange="this.form.submit()"></label>
+		<noscript><button class="ec-bouton-petit">Enregistrer</button></noscript>
+	</form>
+
+	<details class="ec-carte">
+		<summary style="font-weight:800;cursor:pointer">{{ compte.aUnMotDePasse ? 'Changer mon mot de passe' : 'Choisir un mot de passe (facultatif)' }}</summary>
+		<form method="post" action="{{ path('app_espace_mot_de_passe') }}" style="margin-top:.75rem;display:grid;gap:.5rem">
+			<input type="hidden" name="_token" value="{{ csrf_token('espace-mdp') }}">
+			<input type="hidden" name="telephone" value="{{ compte.telephone }}" autocomplete="username">
+			<label for="nouveau" class="ec-petit">Nouveau mot de passe (8 caractères ou plus)</label>
+			<input type="password" id="nouveau" name="mot_de_passe" minlength="8" autocomplete="new-password" required class="ec-champ" style="min-height:0">
+			<label for="confirmation" class="ec-petit">Confirmer</label>
+			<input type="password" id="confirmation" name="confirmation" minlength="8" autocomplete="new-password" required class="ec-champ" style="min-height:0">
+			<button type="submit" class="ec-bouton bleu">Enregistrer</button>
+		</form>
+	</details>
+
+	<div class="ec-boutons"><a class="ec-bouton clair" href="{{ path('app_espace_deconnexion') }}">Se déconnecter</a></div>
+{% endblock %}

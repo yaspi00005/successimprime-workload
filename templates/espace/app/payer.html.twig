@@ -1,0 +1,27 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Paiement{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_factures') }}"><span class="fl">‹</span>Paiement</a>{% endblock %}
+
+{% block contenu %}
+	<div class="ec-carte" style="text-align:center">
+		<span class="ec-petit">Commande {{ commande.numero }} · {{ titre }}</span>
+		<div class="ec-gros">{{ commande.resteAPayer|number_format(0, ',', ' ') }} FCFA</div>
+		<span class="ec-petit">Succès Imprim · MDG SARL</span>
+	</div>
+
+	{% if commande.resteAPayer <= 0 %}
+		<div class="ec-flash ec-flash-ok">Cette commande est réglée, merci.</div>
+	{% else %}
+		<div class="ec-moyen choisi">
+			<span class="om">OM</span>
+			<div><b>Orange Money Mali</b><div class="ec-petit">+223 {{ compte.telephone|slice(3)|split('', 2)|join(' ') }}</div></div>
+		</div>
+		<div class="ec-note">
+			Le paiement Orange Money depuis l'espace arrive très bientôt.
+			{% if marchand %}En attendant, payez au numéro marchand <b>{{ marchand }}</b> en indiquant la commande <b>{{ commande.numero }}</b> : le paiement est validé par la caisse et votre reçu arrive sur WhatsApp.{% else %}En attendant, payez en boutique ou demandez le numéro marchand sur WhatsApp.{% endif %}
+		</div>
+		<button class="ec-bouton orange" disabled>Payer {{ commande.resteAPayer|number_format(0, ',', ' ') }} FCFA</button>
+		{% if whatsapp %}<div class="ec-boutons"><a class="ec-bouton clair" href="{{ whatsapp }}" target="_blank" rel="noopener">Écrire à la caisse sur WhatsApp</a></div>{% endif %}
+	{% endif %}
+{% endblock %}

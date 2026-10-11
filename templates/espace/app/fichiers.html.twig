@@ -1,0 +1,36 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Mes fichiers{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Mes fichiers</a>{% endblock %}
+
+{% block contenu %}
+	<div class="ec-carte">
+		<h2>BAT à valider</h2>
+		<ul class="ec-liste">
+			{% for ctl in aValider %}
+				<li class="ec-ligne">
+					<div><b>{{ ctl.commandeDetail|espace_titre_ligne }}</b><div class="ec-petit">Commande {{ ctl.commandeDetail.commande.numero }}{{ ctl.traiteLe ? ' · envoyé le ' ~ ctl.traiteLe|date('d/m à H:i') }}</div></div>
+					<a class="ec-bouton-petit" href="{{ path('app_espace_bat', {id: ctl.id}) }}">Voir</a>
+				</li>
+			{% else %}
+				<li class="ec-petit">Aucun BAT n'attend votre réponse.</li>
+			{% endfor %}
+		</ul>
+	</div>
+
+	{% if autres is not empty %}
+		<div class="ec-carte">
+			<h2>BAT précédents</h2>
+			<ul class="ec-liste">
+				{% for ctl in autres %}
+					<li class="ec-ligne">
+						<a href="{{ path('app_espace_bat', {id: ctl.id}) }}" style="color:inherit"><b>{{ ctl.commandeDetail|espace_titre_ligne }}</b><div class="ec-petit">Commande {{ ctl.commandeDetail.commande.numero }}</div></a>
+						{% if ctl.batValide %}<span class="ec-pastille vert">Validé</span>{% elseif ctl.statut == 'correction_requise' %}<span class="ec-pastille ambre">Modification demandée</span>{% else %}<span class="ec-pastille gris">En préparation</span>{% endif %}
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
+
+	<p class="ec-petit" style="text-align:center">L'envoi de vos fichiers depuis l'espace arrive bientôt. En attendant, envoyez-les par WhatsApp ou en boutique.</p>
+{% endblock %}

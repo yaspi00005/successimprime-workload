@@ -1,0 +1,49 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}BAT · {{ titre }}{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_fichiers') }}"><span class="fl">‹</span>BAT · {{ titre }}</a>{% endblock %}
+
+{% block contenu %}
+	<p class="ec-sous">{{ conception and conception.versions > 0 ? 'Version ' ~ conception.versions ~ ' · ' }}commande {{ ligne.commande.numero }}{{ controle.traiteLe ? ' · envoyée le ' ~ controle.traiteLe|date('d/m à H:i') }}</p>
+
+	{% for f in fichiers %}
+		<div class="ec-apercu">
+			{% if f.typeMime starts with 'image/' %}
+				<img src="{{ path('app_espace_bat_fichier', {id: f.id}) }}" alt="BAT {{ titre }}">
+			{% elseif f.typeMime == 'application/pdf' %}
+				<iframe src="{{ path('app_espace_bat_fichier', {id: f.id}) }}" title="BAT {{ titre }}"></iframe>
+			{% endif %}
+			<div class="ec-ligne" style="margin-top:.6rem"><span class="ec-petit">{{ f.nomOriginal }}</span><a class="ec-lien" href="{{ path('app_espace_bat_fichier', {id: f.id, telecharger: 1}) }}">Télécharger</a></div>
+		</div>
+	{% else %}
+		<div class="ec-carte ec-vide">Le fichier du BAT n'est pas encore en ligne. L'atelier vous l'envoie aussi par WhatsApp.</div>
+	{% endfor %}
+
+	{% if frise is not empty %}
+		<div class="ec-carte">
+			<ul class="ec-liste">
+				{% for e in frise %}<li><b>{{ e.titre }}</b> <span class="ec-petit">· {{ e.le|date('d/m H:i') }}</span>{% if e.detail %}<div class="ec-petit">« {{ e.detail }} »</div>{% endif %}</li>{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
+
+	{% if attente %}
+		<form method="post">
+			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+			<div class="ec-boutons">
+				<button class="ec-bouton vert" name="action" value="valider" onclick="return confirm('Valider ce BAT ? L\'impression se fera tel quel.')">✓ Valider le BAT</button>
+				<details class="ec-modif">
+					<summary class="ec-bouton clair">Demander une modification</summary>
+					<label for="texte" class="ec-petit">Que faut-il modifier ?</label>
+					<textarea id="texte" name="texte" class="ec-champ" maxlength="500" placeholder="Ex. : agrandir le logo de 20 %, corriger le numéro de téléphone"></textarea>
+					<button class="ec-bouton bleu" name="action" value="modifier" style="margin-top:.6rem">Envoyer la demande</button>
+				</details>
+			</div>
+			<p class="ec-petit" style="text-align:center">Votre accord est horodaté et archivé.</p>
+		</form>
+	{% elseif controle.batValide %}
+		<div class="ec-flash ec-flash-ok">BAT validé{{ conception and conception.valideLe ? ' le ' ~ conception.valideLe|date('d/m à H:i') }}.</div>
+	{% else %}
+		<div class="ec-note">L'atelier prépare une nouvelle version. Vous serez prévenu dès qu'elle est prête.</div>
+	{% endif %}
+{% endblock %}

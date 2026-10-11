@@ -1,0 +1,52 @@
+{% extends 'base.html.twig' %}
+
+{# Journal des modifications d'une fiche client (maquette K04). Rien ne s'efface. #}
+
+{% block title %}Journal des modifications · {{ client.nomComplet }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Fiche</a>
+	</li>
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_clients_journal', {publicId: client.publicId, filtre: filtre ?: null, format: 'csv'}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-download me-1"></i>Export</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% set depuisCss = {erp_local: 'si-badge-bleu', admin_en_ligne: 'si-badge-orange', espace_client: 'si-jr-client', synchronisation: ''} %}
+	<section class="card si-cl">
+		<nav class="si-cl-types si-jr-filtres" aria-label="Filtrer">
+			{% for k, l in {'': 'Toutes les modifications', conditions: 'Conditions commerciales', contacts: 'Contacts', en_ligne: 'Faites en ligne'} %}
+				<a href="{{ path('app_clients_journal', {publicId: client.publicId, filtre: k ?: null}) }}" class="{{ filtre == k ? 'active' }}">{{ l }}</a>
+			{% endfor %}
+		</nav>
+		{% if lignes is empty %}
+			<p class="si-cl-vide">Aucune modification enregistrée{{ filtre ? ' dans cette catégorie' }}. Les changements faits à partir d'aujourd'hui apparaîtront ici.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-cl-table si-jr-table">
+					<thead><tr><th>Date</th><th>Par</th><th>Champ</th><th>Avant</th><th>Après</th><th>Depuis</th></tr></thead>
+					<tbody>
+						{% for m in lignes %}
+							<tr>
+								<td class="text-nowrap"><b>{{ m.le|date(m.le|date('Y') == 'now'|date('Y') ? 'd/m H:i' : 'd/m/Y H:i') }}</b></td>
+								<td>{{ m.auteur ?? 'Système' }}</td>
+								<td>{{ m.champ }}</td>
+								<td class="si-jr-avant">{% if m.avant is not null %}<s>{{ m.avant }}</s>{% else %}<span>—</span>{% endif %}</td>
+								<td class="si-jr-apres">{{ m.apres ?? '—' }}</td>
+								<td><span class="si-badge {{ depuisCss[m.depuis] ?? '' }}">{{ m.depuisLabel }}</span></td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	</section>
+
+	<div class="row si-jr-notes">
+		<div class="col-md-4"><div class="card si-cf-bloc"><h2>Rien ne s'efface</h2><p class="si-cf-aide">Chaque modification garde l'ancienne valeur, l'auteur, l'heure et l'écran d'où elle vient.</p></div></div>
+		<div class="col-md-4"><div class="card si-cf-bloc"><h2>Demandes à la direction</h2><p class="si-cf-aide">Une remise au-delà de 10 %, un plafond au-delà de 500 000 F ou la grille Entreprise demandés hors direction apparaissent en « Demande à valider ».</p></div></div>
+		<div class="col-md-4"><div class="card si-cf-bloc"><h2>Changements par le client</h2><p class="si-cf-aide">Ce qu'il change dans son espace client est noté « Espace client ».</p></div></div>
+	</div>
+{% endblock %}

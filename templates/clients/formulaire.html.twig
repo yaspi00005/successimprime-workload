@@ -1,0 +1,210 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Nouveau client et modification (maquette K02). Les remises au-delà de
+	10 % et les plafonds au-delà de 500 000 F saisis hors direction partent
+	en demande de validation (voir EditionClient).
+#}
+
+{% set creation = client.id is null %}
+{% block title %}{{ creation ? 'Nouveau client' : 'Modifier · ' ~ client.nomComplet }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ creation ? path('app_clients_index') : path('app_clients_show', {publicId: client.publicId}) }}" class="btn btn-light btn-sm si-btn-entete">Annuler</a>
+	</li>
+	<li class="nav-item">
+		<button type="submit" form="si-cf" class="btn btn-success btn-sm si-btn-entete">{{ creation ? 'Enregistrer le client' : 'Enregistrer' }}</button>
+	</li>
+{% endblock %}
+
+{% macro champ(nom, libelle, valeur, attrs) %}
+	<label class="si-cf-champ{{ attrs.classe is defined ? ' ' ~ attrs.classe }}">
+		<span>{{ libelle }}</span>
+		<input name="c[{{ nom }}]" value="{{ valeur }}" class="form-control" {% for k, a in attrs|filter((a, k) => k != 'classe') %}{{ k }}="{{ a }}" {% endfor %}>
+	</label>
+{% endmacro %}
+
+{% block body %}
+	{% import _self as m %}
+	{% set orga = v.type|default('entreprise') != 'particulier' %}
+	{% set contacts = v.contacts|default([]) %}
+
+	<div id="si-cf-doublon" class="si-cf-doublon" hidden></div>
+
+	{% if erreurs is not empty %}
+		<div class="alert alert-danger" role="alert">
+			<b>À corriger :</b> {{ erreurs|join(' ') }}
+		</div>
+	{% endif %}
+	{% if prospect %}
+		<div class="alert alert-info">Ce client sera créé à partir du prospect <b>{{ prospect.nom }}</b>, qui passera en « Gagné ».</div>
+	{% endif %}
+
+	<form id="si-cf" method="post" class="si-cf" data-doublons="{{ path('app_clients_doublons') }}" data-sauf="{{ creation ? '' : client.publicId }}" novalidate>
+		<input type="hidden" name="_token" value="{{ csrf_token('client') }}">
+
+		<div class="si-cf-col">
+			<section class="card si-cf-bloc">
+				<h2>Identité</h2>
+				<div class="si-cf-types" role="radiogroup" aria-label="Type de client">
+					{% for k, l in constant('App\\Entity\\Clients::TYPES_COMPTE_LABELS') %}
+						<label><input type="radio" name="c[type]" value="{{ k }}"{{ v.type|default('entreprise') == k ? ' checked' }}><span>{{ l }}</span></label>
+					{% endfor %}
+				</div>
+				<div data-orga{{ orga ? '' : ' hidden' }}>
+					{{ m.champ('raisonSociale', 'Raison sociale', v.raisonSociale|default(''), {maxlength: 100, classe: erreurs.raisonSociale is defined ? 'si-cf-erreur'}) }}
+					<div class="si-cf-ligne">
+						{{ m.champ('nif', 'NIF', v.nif|default(''), {maxlength: 30, placeholder: 'Ex. 0X0XXXXXXX'}) }}
+						{{ m.champ('rccm', 'RCCM', v.rccm|default(''), {maxlength: 50, placeholder: 'Ex. MA.BKO.2026.B.XXXX'}) }}
+					</div>
+				</div>
+				<div data-particulier{{ orga ? ' hidden' }}>
+					<div class="si-cf-ligne">
+						{{ m.champ('prenom', 'Prénom', v.prenom|default(''), {maxlength: 50, classe: erreurs.nom is defined ? 'si-cf-erreur'}) }}
+						{{ m.champ('nom', 'Nom', v.nom|default(''), {maxlength: 50, classe: erreurs.nom is defined ? 'si-cf-erreur'}) }}
+					</div>
+					{{ m.champ('telephone', 'Téléphone', v.telephone|default(''), {inputmode: 'tel', placeholder: '76 00 00 00', 'data-tel': 1, classe: erreurs.telephone is defined ? 'si-cf-erreur'}) }}
+				</div>
+				<div class="si-cf-ligne">
+					{{ m.champ('secteur', 'Secteur', v.secteur|default(''), {maxlength: 80, list: 'si-cf-secteurs'}) }}
+					<label class="si-cf-champ">
+						<span>Entité de facturation</span>
+						<select name="c[entite]" class="form-select">
+							<option value="">—</option>
+							{% for e in entreprises %}<option value="{{ e.code }}"{{ v.entite|default('') == e.code ? ' selected' }}>{{ e.nomCommercial ?: e.raisonSociale }} · {{ e.code|upper }}</option>{% endfor %}
+						</select>
+					</label>
+				</div>
+				{{ m.champ('email', 'E-mail', v.email|default(''), {type: 'email', classe: erreurs.email is defined ? 'si-cf-erreur'}) }}
+				<datalist id="si-cf-secteurs">
+					{% for s in ['Santé', 'Hôtellerie', 'Restauration', 'Éducation', 'Commerce', 'BTP', 'Banque et assurance', 'Transport', 'Télécoms', 'Agriculture', 'Événementiel', 'Humanitaire', 'Administration publique'] %}<option value="{{ s }}">{% endfor %}
+				</datalist>
+			</section>
+
+			<section class="card si-cf-bloc">
+				<div class="si-cf-titre">
+					<h2>Contacts</h2>
+					<button type="button" class="btn btn-link btn-sm" data-ajouter-contact><i class="fas fa-plus me-1"></i>Ajouter un contact</button>
+				</div>
+				{% if erreurs.contacts is defined %}<p class="si-cf-msg">{{ erreurs.contacts }}</p>{% endif %}
+				{% if orga and erreurs.telephone is defined %}<p class="si-cf-msg">{{ erreurs.telephone }}</p>{% endif %}
+				<div class="si-cf-contacts" data-contacts>
+					{% for i, k in contacts %}
+						{{ include('clients/_contact_ligne.html.twig', {i: i, k: k}) }}
+					{% endfor %}
+				</div>
+				<p class="si-cf-aide" data-contacts-vide{{ contacts is not empty ? ' hidden' }}>Ajoutez au moins le contact principal (son téléphone devient celui de la fiche).</p>
+				<template data-modele-contact>{{ include('clients/_contact_ligne.html.twig', {i: '__i__', k: {id: 0, nom: '', fonction: '', telephone: '', whatsapp: true, role: 'autre'}}) }}</template>
+			</section>
+
+			<section class="card si-cf-bloc">
+				<h2>Adresse de livraison</h2>
+				<div class="si-cf-ligne si-cf-trois">
+					{{ m.champ('commune', 'Commune', v.commune|default(''), {maxlength: 80, list: 'si-cf-communes'}) }}
+					{{ m.champ('quartier', 'Quartier', v.quartier|default(''), {maxlength: 80}) }}
+					{{ m.champ('repere', 'Repère', v.repere|default(''), {maxlength: 255, placeholder: 'Près de…'}) }}
+				</div>
+				<datalist id="si-cf-communes">{% for i in 1..6 %}<option value="Commune {{ ['I', 'II', 'III', 'IV', 'V', 'VI'][i - 1] }}">{% endfor %}<option value="Kati"><option value="Kalaban Coro"></datalist>
+				<input type="hidden" name="c[latitude]" value="{{ v.latitude|default('') }}" data-lat>
+				<input type="hidden" name="c[longitude]" value="{{ v.longitude|default('') }}" data-lng>
+				<p class="si-cf-gps">
+					<i class="fas fa-map-marker-alt"></i>
+					<span data-gps-texte>{{ v.latitude|default('') ? 'Position GPS enregistrée · visible dans la tournée du livreur' : 'Pas de position GPS. Le livreur pourra l’enregistrer sur place.' }}</span>
+					<button type="button" class="btn btn-link btn-sm" data-gps>Utiliser ma position</button>
+				</p>
+			</section>
+		</div>
+
+		<div class="si-cf-col">
+			<section class="card si-cf-bloc">
+				<h2>Conditions commerciales</h2>
+				<div class="si-cf-ligne">
+					<label class="si-cf-champ">
+						<span>Grille tarifaire</span>
+						<select name="c[grille]" class="form-select">
+							{% for k, l in constant('App\\Service\\Clients\\EditionClient::GRILLES') %}<option value="{{ k }}"{{ v.grille|default('B2C') == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+						</select>
+					</label>
+					{{ m.champ('remise', 'Remise habituelle (%)', v.remise|default(''), {type: 'number', min: 0, max: 100, step: '0.5', inputmode: 'decimal', 'data-seuil': constant('App\\Service\\Clients\\EditionClient::REMISE_MAX')}) }}
+				</div>
+				<div class="si-cf-ligne">
+					<label class="si-cf-champ">
+						<span>Paiement</span>
+						<select name="c[delai]" class="form-select">
+							<option value="">—</option>
+							{% for k, l in constant('App\\Entity\\Clients::DELAIS_PAIEMENT') %}<option value="{{ k }}"{{ v.delai|default('') == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+						</select>
+					</label>
+					{{ m.champ('plafond', 'Plafond de crédit (F)', v.plafond|default(''), {type: 'number', min: 0, step: 5000, inputmode: 'numeric', 'data-seuil': constant('App\\Service\\Clients\\EditionClient::PLAFOND_MAX')}) }}
+				</div>
+				<div class="si-cf-ligne">
+					{{ m.champ('acompte', 'Acompte à la commande (%)', v.acompte|default(''), {type: 'number', min: 0, max: 100, step: 5, inputmode: 'numeric'}) }}
+					<label class="si-cf-champ">
+						<span>Moyen préféré</span>
+						<select name="c[moyen]" class="form-select">
+							<option value="">—</option>
+							{% for k, l in constant('App\\Entity\\Clients::MOYENS_PAIEMENT') %}<option value="{{ k }}"{{ v.moyen|default('') == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+						</select>
+					</label>
+				</div>
+				<p class="si-cf-aide" data-avis-direction>
+					{% if direction %}Vous pouvez fixer toute remise et tout plafond.{% else %}Une remise au-delà de 10 % ou un plafond au-delà de 500 000 F demande la validation de la direction : la demande lui est envoyée et la fiche garde sa valeur actuelle en attendant.{% endif %}
+				</p>
+			</section>
+
+			<section class="card si-cf-bloc">
+				<h2>Origine et suivi</h2>
+				<div class="si-cf-ligne">
+					<label class="si-cf-champ">
+						<span>Comment nous a-t-il connus ?</span>
+						<select name="c[origine]" class="form-select">
+							<option value="">—</option>
+							{% for k, l in constant('App\\Entity\\Prospect::SOURCES_LIBELLES') %}<option value="{{ k }}"{{ v.origine|default('') == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+						</select>
+					</label>
+					<label class="si-cf-champ">
+						<span>Suivi par</span>
+						<select name="c[suivi]" class="form-select">
+							<option value="">—</option>
+							{% for u in utilisateurs %}<option value="{{ u.id }}"{{ v.suivi|default(0) == u.id ? ' selected' }}>{{ u|nom_pointage }}</option>{% endfor %}
+						</select>
+					</label>
+				</div>
+				{% if creation %}
+					<label class="form-check form-switch si-cf-switch">
+						<input type="checkbox" name="inviter" value="1" class="form-check-input" checked>
+						<span>Inviter à l'espace client par WhatsApp</span>
+					</label>
+				{% endif %}
+				<label class="form-check form-switch si-cf-switch">
+					<input type="hidden" name="c[marketing]" value="0">
+					<input type="checkbox" name="c[marketing]" value="1" class="form-check-input"{{ v.marketing|default(false) ? ' checked' }}>
+					<span>Accepte les messages promotionnels</span>
+				</label>
+				{{ m.champ('etiquettes', 'Étiquettes (séparées par des virgules)', v.etiquettes|default(''), {placeholder: 'Hôtellerie, Signalétique, Fidèle'}) }}
+				<label class="si-cf-champ">
+					<span>Note interne</span>
+					<textarea name="c[observation]" rows="3" class="form-control" placeholder="Visible par l'équipe seulement">{{ v.observation|default('') }}</textarea>
+				</label>
+				{% if v.besoin|default('') %}
+					<label class="si-cf-champ">
+						<span>Besoin noté</span>
+						<textarea name="c[besoin]" rows="2" class="form-control">{{ v.besoin }}</textarea>
+					</label>
+				{% endif %}
+			</section>
+
+			<div class="si-cf-boutons">
+				{% if creation and is_granted('ROLE_DEVIS') %}
+					<button type="submit" name="apres" value="devis" class="btn btn-outline-primary">Enregistrer et créer un devis</button>
+				{% endif %}
+				<button type="submit" class="btn btn-success">{{ creation ? 'Enregistrer le client' : 'Enregistrer' }}</button>
+			</div>
+		</div>
+	</form>
+{% endblock %}
+
+{% block javascripts %}
+	<script src="{{ asset('js/clients-formulaire.js') }}" defer></script>
+{% endblock %}

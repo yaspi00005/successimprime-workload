@@ -122,14 +122,40 @@ class Clients
 
     public const TYPE_COMPTE_ENTREPRISE = 'entreprise';
 
+    public const TYPE_COMPTE_ONG = 'ong';
+
+    public const TYPE_COMPTE_ADMINISTRATION = 'administration';
+
     public const TYPES_COMPTE = [
         self::TYPE_COMPTE_PARTICULIER,
         self::TYPE_COMPTE_ENTREPRISE,
+        self::TYPE_COMPTE_ONG,
+        self::TYPE_COMPTE_ADMINISTRATION,
     ];
 
     public const TYPES_COMPTE_LABELS = [
-        self::TYPE_COMPTE_PARTICULIER => 'Particulier',
         self::TYPE_COMPTE_ENTREPRISE => 'Entreprise',
+        self::TYPE_COMPTE_ONG => 'ONG',
+        self::TYPE_COMPTE_ADMINISTRATION => 'Administration',
+        self::TYPE_COMPTE_PARTICULIER => 'Particulier',
+    ];
+
+    /** Délais de paiement proposés (maquette K02). */
+    public const DELAIS_PAIEMENT = [
+        'comptant' => 'Comptant',
+        '15_jours' => '15 jours',
+        '30_jours' => '30 jours',
+        '30_jours_fdm' => '30 jours fin de mois',
+        '45_jours' => '45 jours',
+        '60_jours' => '60 jours',
+    ];
+
+    public const MOYENS_PAIEMENT = [
+        'orange_money' => 'Orange Money',
+        'especes' => 'Espèces',
+        'virement' => 'Virement',
+        'cheque' => 'Chèque',
+        'wave' => 'Wave',
     ];
 
     #[ORM\Column(
@@ -138,7 +164,7 @@ class Clients
     )]
     #[Assert\Choice(
         choices: self::TYPES_COMPTE,
-        message: 'Le type de compte doit être Particulier ou Entreprise.'
+        message: 'Le type de compte doit être Entreprise, ONG, Administration ou Particulier.'
     )]
     private string $typeCompte = self::TYPE_COMPTE_PARTICULIER;
 
@@ -197,6 +223,107 @@ class Clients
         unique: true
     )]
     private Uuid $publicId;
+
+    /* ---------- Fiche commerciale (maquettes K01 à K06) ---------- */
+
+    /** Commercial qui suit le client. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $suiviPar = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $secteur = null;
+
+    /** Comment le client nous a connus (mêmes valeurs que les prospects). */
+    #[ORM\Column(length: 30, nullable: true)]
+    private ?string $origine = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $delaiPaiement = null;
+
+    /** Remise habituelle en %. */
+    #[ORM\Column(nullable: true)]
+    private ?float $remiseHabituelle = null;
+
+    /** Acompte demandé à la commande en %. */
+    #[ORM\Column(nullable: true)]
+    private ?int $acompte = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $moyenPrefere = null;
+
+    /** Code de l'entité qui facture (Entreprise::code). */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $entiteFacturation = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $commune = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $quartier = null;
+
+    /** @var list<string> */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $etiquettes = [];
+
+    /** Besoin noté à la création (ajout terrain, maquette K05). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $besoin = null;
+
+    public function getSuiviPar(): ?User { return $this->suiviPar; }
+    public function setSuiviPar(?User $u): static { $this->suiviPar = $u; return $this; }
+    public function getSecteur(): ?string { return $this->secteur; }
+    public function setSecteur(?string $v): static { $this->secteur = self::texteCourt($v, 80); return $this; }
+    public function getOrigine(): ?string { return $this->origine; }
+    public function setOrigine(?string $v): static { $this->origine = $v !== null && isset(Prospect::SOURCES_LIBELLES[$v]) ? $v : null; return $this; }
+    public function getOrigineLabel(): ?string { return $this->origine !== null ? Prospect::SOURCES_LIBELLES[$this->origine] ?? $this->origine : null; }
+    public function getDelaiPaiement(): ?string { return $this->delaiPaiement; }
+    public function setDelaiPaiement(?string $v): static { $this->delaiPaiement = $v !== null && isset(self::DELAIS_PAIEMENT[$v]) ? $v : null; return $this; }
+    public function getDelaiPaiementLabel(): ?string { return $this->delaiPaiement !== null ? self::DELAIS_PAIEMENT[$this->delaiPaiement] : null; }
+    public function getRemiseHabituelle(): ?float { return $this->remiseHabituelle; }
+    public function setRemiseHabituelle(?float $v): static { $this->remiseHabituelle = $v !== null && $v > 0 ? min(100.0, round($v, 2)) : null; return $this; }
+    public function getAcompte(): ?int { return $this->acompte; }
+    public function setAcompte(?int $v): static { $this->acompte = $v !== null && $v >= 0 ? min(100, $v) : null; return $this; }
+    public function getMoyenPrefere(): ?string { return $this->moyenPrefere; }
+    public function setMoyenPrefere(?string $v): static { $this->moyenPrefere = $v !== null && isset(self::MOYENS_PAIEMENT[$v]) ? $v : null; return $this; }
+    public function getMoyenPrefereLabel(): ?string { return $this->moyenPrefere !== null ? self::MOYENS_PAIEMENT[$this->moyenPrefere] : null; }
+    public function getEntiteFacturation(): ?string { return $this->entiteFacturation; }
+    public function setEntiteFacturation(?string $v): static { $this->entiteFacturation = self::texteCourt($v, 20); return $this; }
+    public function getCommune(): ?string { return $this->commune; }
+    public function setCommune(?string $v): static { $this->commune = self::texteCourt($v, 80); return $this; }
+    public function getQuartier(): ?string { return $this->quartier; }
+    public function setQuartier(?string $v): static { $this->quartier = self::texteCourt($v, 80); return $this; }
+    /** @return list<string> */
+    public function getEtiquettes(): array { return $this->etiquettes; }
+    /** @param iterable<string> $e */
+    public function setEtiquettes(iterable $e): static
+    {
+        $liste = [];
+        foreach ($e as $t) {
+            $t = self::texteCourt((string) $t, 30);
+            if ($t !== null && !\in_array(mb_strtolower($t), array_map('mb_strtolower', $liste), true)) {
+                $liste[] = $t;
+            }
+        }
+        $this->etiquettes = \array_slice($liste, 0, 12);
+
+        return $this;
+    }
+    public function getBesoin(): ?string { return $this->besoin; }
+    public function setBesoin(?string $v): static { $this->besoin = $v !== null && trim($v) !== '' ? trim($v) : null; return $this; }
+
+    /** Entreprise, ONG ou administration : raison sociale, NIF, RCCM. */
+    public function isOrganisation(): bool
+    {
+        return $this->typeCompte !== self::TYPE_COMPTE_PARTICULIER;
+    }
+
+    private static function texteCourt(?string $v, int $max): ?string
+    {
+        $v = $v !== null ? trim($v) : '';
+
+        return $v !== '' ? mb_substr($v, 0, $max) : null;
+    }
 
 
     public function __construct()
@@ -570,7 +697,7 @@ class Clients
     public function getNomComplet(): string
     {
         if (
-            $this->isEntreprise()
+            $this->isOrganisation()
             && $this->raisonSociale !== null
         ) {
             return $this->raisonSociale;

@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Service\Clients\ListeClients;
 use App\Entity\Clients;
 use App\Form\ClientsType;
 use App\Service\FicheClient360;
@@ -36,22 +37,25 @@ final class ClientsController extends AbstractController
         name: 'app_clients_index',
         methods: ['GET']
     )]
-    public function index(): Response
+    public function index(Request $request, ListeClients $liste): Response
     {
-        $nouveauClient = new Clients();
+        $vue = $request->query->get('vue') === 'cartes' || ($request->query->get('vue') === null && $request->cookies->get('si_clients_vue') === 'cartes') ? 'cartes' : 'liste';
+        $filtres = [
+            'q' => trim((string) $request->query->get('q', '')),
+            'type' => (string) $request->query->get('type', ''),
+            'statut' => (string) $request->query->get('statut', ''),
+            'suivi' => (int) $request->query->get('suivi', 0),
+            'tri' => (string) $request->query->get('tri', 'derniere'),
+            'page' => (int) $request->query->get('page', 1),
+        ];
+        $donnees = $liste->donnees($filtres, new \DateTimeImmutable(), $this->isGranted('ROLE_STATS_VENTES'), $this->isGranted('ROLE_PAIEMENT_VOIR'));
 
-        $formAjout = $this->createForm(
-            ClientsType::class,
-            $nouveauClient,
-            [
-                'action' => $this->generateUrl('app_clients_new'),
-                'method' => 'POST',
-            ]
-        );
+        $reponse = $this->render('clients/index.html.twig', $donnees + ['filtres' => $filtres, 'vue' => $vue]);
+        if ($request->query->get('vue') !== null) {
+            $reponse->headers->setCookie(\Symfony\Component\HttpFoundation\Cookie::create('si_clients_vue', $vue, new \DateTimeImmutable('+1 year')));
+        }
 
-        return $this->render('clients/index.html.twig', [
-            'formAjout' => $formAjout->createView(),
-        ]);
+        return $reponse;
     }
 
     /*
@@ -971,15 +975,38 @@ final class ClientsController extends AbstractController
             'publicId' => 'publicId',
         ])]
         Clients $client,
-        FicheClient360 $fiche
+        FicheClient360 $fiche,
+        \App\Service\Clients\EditionClient $edition,
+        Request $request
     ): Response {
         $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
+        $donnees = $fiche->donnees($client, new \DateTimeImmutable(), $voirPaiements);
+        $kpi = $donnees['kpi'];
+        $statut = match (true) {
+            !$client->isStatut() => 'bloque',
+            $kpi['echues'] > 0 => 'relance',
+            0 === $kpi['commandes'] => 'nouveau',
+            null !== $kpi['derniere_jours'] && $kpi['derniere_jours'] <= ListeClients::INACTIF_JOURS => 'actif',
+            default => 'inactif',
+        };
+        $whatsapp = $client->getTelephone() ? UtilisateursController::numeroWhatsApp($client->getTelephone()) : null;
+        $invitation = null;
+        if ($whatsapp && $request->query->getBoolean('inviter')) {
+            $invitation = 'https://wa.me/'.$whatsapp.'?text='.rawurlencode(sprintf(
+                "Bonjour, votre espace client Succès Imprim est prêt : suivez vos commandes, validez vos BAT et retrouvez vos factures.\n%s\nConnectez-vous avec votre numéro %s, un code vous sera envoyé.",
+                $this->generateUrl('app_espace_connexion', [], \Symfony\Component\Routing\Generator\UrlGeneratorInterface::ABSOLUTE_URL),
+                $client->getTelephone(),
+            ));
+        }
 
-        return $this->render('clients/fiche_360.html.twig', $fiche->donnees($client, new \DateTimeImmutable(), $voirPaiements) + [
+        return $this->render('clients/fiche_360.html.twig', $donnees + [
             'client' => $client,
+            'contacts' => $edition->contacts($client),
+            'statut' => $statut,
+            'invitation' => $invitation,
             'voir_paiements' => $voirPaiements,
             'voir_ca' => $this->isGranted('ROLE_STATS_VENTES'),
-            'whatsapp' => $client->getTelephone() ? UtilisateursController::numeroWhatsApp($client->getTelephone()) : null,
+            'whatsapp' => $whatsapp,
         ]);
     }
 

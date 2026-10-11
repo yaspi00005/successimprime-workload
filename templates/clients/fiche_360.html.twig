@@ -6,39 +6,60 @@
 {% block title %}{{ nom }}{% endblock %}
 
 {% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_clients_modifier', {publicId: client.publicId}) }}" class="btn btn-light btn-sm si-btn-entete">Modifier</a>
+	</li>
 	{% if whatsapp %}
 		<li class="nav-item">
 			<a href="https://wa.me/{{ whatsapp }}" target="_blank" rel="noopener" class="btn btn-success btn-sm si-btn-entete"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>
 		</li>
 	{% endif %}
 	{% if is_granted('ROLE_DEVIS') %}
-		<li class="nav-item si-masque-mobile">
-			<a href="{{ path('app_devis_new') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Devis</a>
+		<li class="nav-item">
+			<a href="{{ path('app_devis_new', {client: client.id}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Devis</a>
 		</li>
 	{% endif %}
 {% endblock %}
 
 {% block body %}
+	{% if invitation %}
+		<div class="si-cf-doublon si-fh-invitation">
+			<b><i class="fab fa-whatsapp me-1"></i>Espace client</b>
+			<span>Envoyez au client le lien de son espace : il se connecte avec son numéro et un code.</span>
+			<a href="{{ invitation }}" target="_blank" rel="noopener" class="btn btn-success btn-sm">Envoyer l'invitation</a>
+		</div>
+	{% endif %}
 	<div class="si-fiche">
 		<aside class="card si-fiche-identite">
-			<div class="si-fiche-avatar" aria-hidden="true">{{ initiales ?: '?' }}</div>
+			<div class="si-fiche-avatar" aria-hidden="true" style="background: {{ ['#0F4590', '#E8590C', '#0E7C66', '#15A34A', '#6B7280', '#DB2777', '#2563EB', '#7C2D12', '#DC2626'][client.id % 9] }}">{{ initiales ?: '?' }}</div>
 			<h2>{{ nom }}</h2>
 			<p class="si-fiche-badges">
 				<span class="si-badge si-badge-bleu">{{ client.typeCompteLabel }}</span>
-				<span class="si-badge">{{ client.typeClient }}</span>
-				{% if not client.statut %}<span class="si-badge si-badge-rouge">Désactivé</span>{% endif %}
+				<span class="si-badge {{ {actif: 'si-badge-vert', relance: 'si-badge-orange', inactif: '', nouveau: 'si-badge-bleu', bloque: 'si-badge-rouge'}[statut] }}">{{ constant('App\\Service\\Clients\\ListeClients::STATUTS')[statut] }}</span>
+				{% if client.createdAt %}<span class="si-badge">Client depuis {{ client.createdAt|date('Y') }}</span>{% endif %}
 			</p>
+			<div class="si-fh-rapide si-seul-mobile">
+				{% if client.telephone %}<a href="tel:+223{{ client.telephone|slice(-8) }}" class="btn btn-light btn-sm"><i class="fas fa-phone me-1"></i>Appeler</a>{% endif %}
+				{% if whatsapp %}<a href="https://wa.me/{{ whatsapp }}" target="_blank" rel="noopener" class="btn btn-light btn-sm"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>{% endif %}
+				{% if is_granted('ROLE_DEVIS') %}<a href="{{ path('app_devis_new', {client: client.id}) }}" class="btn btn-light btn-sm"><i class="far fa-file-alt me-1"></i>Devis</a>{% endif %}
+			</div>
+			<details class="si-fh-plus" open>
+			<summary>Coordonnées, conditions et notes</summary>
 			<dl>
-				{% if client.telephone %}
-					<dt>Téléphone</dt>
-					<dd><a href="tel:{{ client.telephone }}">{{ client.telephone }}</a>{% if client.telephone2 %} · <a href="tel:{{ client.telephone2 }}">{{ client.telephone2 }}</a>{% endif %}</dd>
-				{% endif %}
-				{% if client.email %}<dt>Email</dt><dd><a href="mailto:{{ client.email }}">{{ client.email }}</a></dd>{% endif %}
-				{% if client.adresse or client.ville %}
+				<dt>Contacts</dt>
+				{% for k in contacts %}
+					<dd><b>{{ k.nom }}</b>{{ k.fonction ? ' · ' ~ k.fonction }}{% if k.role != 'principal' %} · {{ k.roleLabel|lower }}{% endif %}
+						{% if k.telephone %}<small class="d-block"><a href="tel:+223{{ k.telephone }}">+223 {{ k.telephoneAffiche }}</a>{{ k.whatsapp ? ' · WhatsApp' }}</small>{% endif %}
+					</dd>
+				{% else %}
+					<dd>{% if client.telephone %}<a href="tel:{{ client.telephone }}">{{ client.telephone }}</a>{% if client.telephone2 %} · <a href="tel:{{ client.telephone2 }}">{{ client.telephone2 }}</a>{% endif %}{% else %}—{% endif %}</dd>
+				{% endfor %}
+				{% if client.email %}<dt>E-mail</dt><dd><a href="mailto:{{ client.email }}">{{ client.email }}</a></dd>{% endif %}
+				{% set adresse = [client.quartier, client.commune, client.adresse, client.ville]|filter(v => v)|join(', ') %}
+				{% if adresse or client.repere %}
 					<dt>Adresse</dt>
 					<dd>
-						{{ [client.adresse, client.ville]|filter(v => v)|join(', ') }}
-						{% if client.repere %}<small class="d-block">{{ client.repere }}</small>{% endif %}
+						{{ adresse }}{% if client.repere %}{{ adresse ? ' · ' }}repère : {{ client.repere }}{% endif %}
 						{% if client.latitude and client.longitude %}<a href="https://www.google.com/maps?q={{ client.latitude }},{{ client.longitude }}" target="_blank" rel="noopener" class="d-block">Voir sur la carte</a>{% endif %}
 					</dd>
 				{% endif %}
@@ -46,18 +67,35 @@
 					<dt>Identifiants</dt>
 					<dd>{{ [client.nif ? 'NIF ' ~ client.nif, client.rccm ? 'RCCM ' ~ client.rccm]|filter(v => v)|join(' · ') }}</dd>
 				{% endif %}
-				{% if voir_paiements %}
-					<dt>Plafond de crédit</dt>
-					<dd>
-						{{ client.plafondCredit ? client.plafondCredit|number_format(0, ',', ' ') ~ ' F' : 'Aucun' }} · utilisé {{ kpi.solde_du|number_format(0, ',', ' ') }} F
-						{% if client.plafondCredit and kpi.solde_du > client.plafondCredit %}<small class="d-block text-danger fw-semibold">Plafond dépassé</small>{% endif %}
-					</dd>
+				{% set conditions = [client.delaiPaiementLabel, client.remiseHabituelle ? 'remise ' ~ client.remiseHabituelle|number_format(client.remiseHabituelle == client.remiseHabituelle|round ? 0 : 1, ',') ~ ' %', client.acompte ? 'acompte ' ~ client.acompte ~ ' %', client.moyenPrefereLabel, client.typeClient == 'B2B' ? 'grille Entreprise']|filter(v => v) %}
+				{% if conditions is not empty or voir_paiements %}
+					<dt>Conditions</dt>
+					{% if conditions is not empty %}<dd>{{ conditions|join(' · ') }}</dd>{% endif %}
+					{% if voir_paiements %}
+						<dd>
+							Plafond {{ client.plafondCredit ? client.plafondCredit|number_format(0, ',', ' ') ~ ' F' : 'aucun' }} · utilisé {{ kpi.solde_du|number_format(0, ',', ' ') }} F
+							{% if client.plafondCredit %}
+								{% set part = min(100, (kpi.solde_du * 100 / client.plafondCredit)|round) %}
+								<span class="si-fh-jauge" role="img" aria-label="{{ part }} % du plafond utilisé"><span style="width: {{ part }}%" class="{{ part >= 90 ? 'si-fh-plein' : (part >= 60 ? 'si-fh-moitie') }}"></span></span>
+								{% if kpi.solde_du > client.plafondCredit %}<small class="d-block text-danger fw-semibold">Plafond dépassé</small>{% endif %}
+							{% endif %}
+						</dd>
+					{% endif %}
 				{% endif %}
+				{% if client.suiviPar %}<dt>Suivi par</dt><dd>{{ client.suiviPar|nom_pointage }}</dd>{% endif %}
 			</dl>
 			{% if client.observation %}
-				<p class="si-fiche-note"><strong>Note interne :</strong> {{ client.observation }}</p>
+				<p class="si-fiche-note"><strong>Note :</strong> {{ client.observation }}</p>
 			{% endif %}
-			<a href="{{ path('app_clients_detail', {publicId: client.publicId}) }}" class="btn btn-outline-primary btn-sm w-100 mt-3">Fiche détaillée et modification</a>
+			{% if client.etiquettes is not empty %}
+				<p class="si-fh-etiquettes">{% for e in client.etiquettes %}<span>{{ e }}</span>{% endfor %}</p>
+			{% endif %}
+			<div class="si-fh-liens">
+				<a href="{{ path('app_clients_journal', {publicId: client.publicId}) }}" class="btn btn-light btn-sm"><i class="fas fa-history me-1"></i>Journal des modifications</a>
+				<a href="{{ path('app_clients_detail', {publicId: client.publicId}) }}" class="btn btn-light btn-sm">Fiche détaillée</a>
+				<a href="{{ path('app_clients_modifier', {publicId: client.publicId}) }}" class="btn btn-outline-primary btn-sm">Modifier</a>
+			</div>
+			</details>
 		</aside>
 
 		<div class="si-fiche-principal">
@@ -72,7 +110,7 @@
 				<article class="card">
 					<h3>Commandes</h3>
 					<strong>{{ kpi.commandes }}</strong>
-					{% if kpi.derniere_jours is not null %}<span class="si-t-ok">dernière {{ kpi.derniere_jours == 0 ? 'aujourd’hui' : 'il y a ' ~ kpi.derniere_jours ~ ' j' }}</span>{% endif %}
+					{% if kpi.commandes > 0 %}<span class="si-t-ok">moyenne {{ kpi.panier_moyen|number_format(0, ',', ' ') }} F</span>{% endif %}
 				</article>
 				{% if voir_paiements %}
 					<article class="card">
@@ -82,37 +120,59 @@
 					</article>
 				{% endif %}
 				<article class="card">
-					<h3>Panier moyen</h3>
-					<strong>{{ kpi.panier_moyen|number_format(0, ',', ' ') }} F</strong>
+					<h3>Dernière commande</h3>
+					<strong>{{ kpi.derniere_jours is null ? '—' : (kpi.derniere_jours == 0 ? 'Aujourd’hui' : 'Il y a ' ~ kpi.derniere_jours ~ ' j') }}</strong>
 					<span class="si-t-neutre">{{ kpi.devis_ouverts }} devis en cours</span>
 				</article>
 			</div>
 
+			<section class="card si-fh-histo" id="historique">
+				<h2 class="si-fh-titre">Historique d'activité</h2>
+				<nav class="si-cl-types si-fh-filtres" aria-label="Filtrer l'historique">
+					<button type="button" class="active" data-filtre="">Tout</button>
+					{% for k, l in constant('App\\Service\\FicheClient360::CATEGORIES') %}
+						{% if k != 'paiements' or voir_paiements %}<button type="button" data-filtre="{{ k }}">{{ l }}</button>{% endif %}
+					{% endfor %}
+				</nav>
+				<form method="post" action="{{ path('app_clients_note', {publicId: client.publicId}) }}" class="si-fh-note">
+					<input type="hidden" name="_token" value="{{ csrf_token('note-client') }}">
+					<i class="fas fa-pen" aria-hidden="true"></i>
+					<input name="texte" class="form-control form-control-sm" maxlength="2000" placeholder="Ajouter une note ou un compte rendu d'appel…" aria-label="Note" required>
+					<select name="type" class="form-select form-select-sm" aria-label="Type de note">
+						{% for k, l in constant('App\\Entity\\NoteClient::TYPES') %}<option value="{{ k }}">{{ k == 'appel' ? 'Appel' : l }}</option>{% endfor %}
+					</select>
+					<label class="si-fh-rappel" title="Rappel"><i class="far fa-clock"></i><input type="date" name="rappel" min="{{ 'now'|date('Y-m-d') }}" aria-label="Date de rappel"></label>
+					<button type="submit" class="btn btn-primary btn-sm">Ajouter</button>
+				</form>
+				<ul class="si-fh-liste">
+					{% for e in historique %}
+						<li data-categorie="{{ e.categorie }}"{{ loop.index > 15 ? ' data-plus hidden' }}>
+							<time datetime="{{ e.date|date('c') }}"><b>{{ e.date|date('d/m') }}</b>{% if e.date|date('H:i') != '00:00' %}<small>{{ e.date|date('H:i') }}</small>{% endif %}{% if e.date|date('Y') != 'now'|date('Y') %}<small>{{ e.date|date('Y') }}</small>{% endif %}</time>
+							<span class="si-fh-icone si-fh-{{ e.categorie }}"><i class="fas {{ e.icone }}"></i></span>
+							<div>
+								{% if e.lien %}<a href="{{ path(e.lien.route, e.lien.parametres) }}">{{ e.titre }}</a>{% else %}<strong>{{ e.titre }}</strong>{% endif %}
+								{% if e.detail %}<small>{{ e.detail }}</small>{% endif %}
+							</div>
+							<span class="si-fiche-montant">{{ e.montant is not null ? e.montant|number_format(0, ',', ' ') ~ ' F' }}</span>
+						</li>
+					{% else %}
+						<li class="si-fiche-vide">Rien encore avec ce client.</li>
+					{% endfor %}
+				</ul>
+				<p class="si-fh-vide" hidden>Rien dans cette catégorie.</p>
+				{% if historique|length > 15 %}
+					<button type="button" class="btn btn-link btn-sm si-fh-tout" data-voir-tout>Voir les {{ historique|length }} événements depuis {{ (historique|last).date|date('m/Y') }}</button>
+				{% endif %}
+			</section>
+
 			<section class="card si-fiche-onglets">
 				<div class="si-fiche-tabs" role="tablist" aria-label="Fiche client">
-					{% for cle, libelle in {historique: 'Historique', commandes: 'Commandes', devis: 'Devis', factures: 'Factures', fichiers: 'Fichiers et logos'} %}
+					{% for cle, libelle in {commandes: 'Commandes', devis: 'Devis', factures: 'Factures', fichiers: 'Fichiers et logos'} %}
 						<button type="button" role="tab" id="tab-{{ cle }}" aria-controls="panneau-{{ cle }}" aria-selected="{{ loop.first ? 'true' : 'false' }}" {{ loop.first ? '' : 'tabindex="-1"' }}>{{ libelle }}</button>
 					{% endfor %}
 				</div>
 
-				<div role="tabpanel" id="panneau-historique" aria-labelledby="tab-historique">
-					<ul class="si-fiche-histo">
-						{% for e in historique %}
-							<li>
-								<span class="si-fiche-icone"><i class="fas {{ e.icone }}"></i></span>
-								<div>
-									{% if e.lien %}<a href="{{ path(e.lien.route, e.lien.parametres) }}">{{ e.titre }}</a>{% else %}<strong>{{ e.titre }}</strong>{% endif %}
-									<small>{{ e.date|date('H:i') == '00:00' ? e.date|date('d/m/Y') : e.date|date('d/m/Y H:i') }}{% if e.detail %} · {{ e.detail }}{% endif %}</small>
-								</div>
-								<span class="si-fiche-montant">{{ e.montant is not null ? e.montant|number_format(0, ',', ' ') : '—' }}</span>
-							</li>
-						{% else %}
-							<li class="si-fiche-vide">Rien encore avec ce client.</li>
-						{% endfor %}
-					</ul>
-				</div>
-
-				<div role="tabpanel" id="panneau-commandes" aria-labelledby="tab-commandes" hidden>
+				<div role="tabpanel" id="panneau-commandes" aria-labelledby="tab-commandes">
 					{% if commandes is empty %}<p class="si-fiche-vide">Aucune commande.</p>{% else %}
 						<div class="table-responsive"><table class="table si-fiche-table">
 							<thead><tr><th>Commande</th><th>Date</th><th>Travaux</th><th class="text-end">Montant</th>{% if voir_paiements %}<th class="text-end">Payé</th>{% endif %}</tr></thead>
@@ -192,6 +252,31 @@
 {% block javascripts %}
 	{{ parent() }}
 	<script>
+		if (window.matchMedia('(max-width: 767.98px)').matches) { document.querySelectorAll('.si-fh-plus').forEach(function (d) { d.open = false; }); }
+		(function () {
+			var liste = document.querySelector('.si-fh-liste');
+			if (!liste) { return; }
+			var tout = document.querySelector('[data-voir-tout]');
+			var filtre = '';
+			var appliquer = function () {
+				var n = 0;
+				Array.prototype.forEach.call(liste.querySelectorAll('li[data-categorie]'), function (li) {
+					var ok = !filtre || li.dataset.categorie === filtre;
+					if (ok) { n++; }
+					li.hidden = !ok || (n > 15 && !liste.classList.contains('si-fh-ouverte'));
+				});
+				document.querySelector('.si-fh-vide').hidden = n > 0 || !filtre;
+				if (tout) { tout.hidden = n <= 15 || liste.classList.contains('si-fh-ouverte'); }
+			};
+			document.querySelectorAll('.si-fh-filtres [data-filtre]').forEach(function (b) {
+				b.addEventListener('click', function () {
+					document.querySelectorAll('.si-fh-filtres [data-filtre]').forEach(function (x) { x.classList.toggle('active', x === b); });
+					filtre = b.dataset.filtre;
+					appliquer();
+				});
+			});
+			if (tout) { tout.addEventListener('click', function () { liste.classList.add('si-fh-ouverte'); appliquer(); }); }
+		})();
 		(function () {
 			var onglets = Array.prototype.slice.call(document.querySelectorAll('.si-fiche-tabs [role="tab"]'));
 			var choisir = function (onglet) {

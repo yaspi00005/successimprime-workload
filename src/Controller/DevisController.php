@@ -101,6 +101,11 @@ class DevisController extends AbstractController
     ): Response {
         $devi = new Devis();
 
+        // Depuis la liste ou la fiche client : client déjà choisi.
+        if ($request->isMethod('GET') && (int) $request->query->get('client') > 0) {
+            $devi->setClients($entityManager->find(\App\Entity\Clients::class, (int) $request->query->get('client')));
+        }
+
         $form = $this->createForm(DevisType::class, $devi);
 
         /*

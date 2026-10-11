@@ -1,0 +1,16 @@
+{# Une ligne de contact du formulaire client (K02). #}
+<div class="si-cf-contact" data-contact>
+	<input type="hidden" name="c[contacts][{{ i }}][id]" value="{{ k.id|default(0) }}">
+	<label class="si-cf-champ"><span>Nom</span><input name="c[contacts][{{ i }}][nom]" value="{{ k.nom|default('') }}" class="form-control" maxlength="120" placeholder="Prénom et nom"></label>
+	<label class="si-cf-champ"><span>Fonction</span><input name="c[contacts][{{ i }}][fonction]" value="{{ k.fonction|default('') }}" class="form-control" maxlength="80" placeholder="Directrice, comptable…"></label>
+	<div class="si-cf-champ">
+		<label><span>Téléphone</span><input name="c[contacts][{{ i }}][telephone]" value="{{ k.telephone|default('') }}" class="form-control" inputmode="tel" placeholder="76 00 00 00" data-tel></label>
+		<label class="si-cf-wa"><input type="hidden" name="c[contacts][{{ i }}][whatsapp]" value="0"><input type="checkbox" name="c[contacts][{{ i }}][whatsapp]" value="1"{{ k.whatsapp|default(false) ? ' checked' }}> WhatsApp</label>
+	</div>
+	<label class="si-cf-champ si-cf-role"><span>Rôle</span>
+		<select name="c[contacts][{{ i }}][role]" class="form-select">
+			{% for r, l in constant('App\\Entity\\ContactClient::ROLES') %}<option value="{{ r }}"{{ k.role|default('autre') == r ? ' selected' }}>{{ l }}</option>{% endfor %}
+		</select>
+	</label>
+	<button type="button" class="btn btn-light btn-sm si-cf-retirer" data-retirer-contact aria-label="Retirer ce contact"><i class="fas fa-times"></i></button>
+</div>

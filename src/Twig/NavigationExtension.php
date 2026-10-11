@@ -60,6 +60,7 @@ final class NavigationExtension extends AbstractExtension
         ],
         'clients' => [
             ['libelle' => 'Fiches clients', 'route' => 'app_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_clients_', 'app_reclamation_']],
+            ['libelle' => 'Prospects', 'route' => 'app_prospects_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_prospects_']],
             ['libelle' => 'Campagnes WhatsApp et SMS', 'route' => 'app_campagne_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_campagne_', 'app_modele_message_', 'app_regle_rappel_paiement_']],
         ],
         'reglages' => [
@@ -113,6 +114,7 @@ final class NavigationExtension extends AbstractExtension
         'app_compte_tresorerie_' => 'finances',
         'app_rapprochement_bancaire_' => 'finances',
         'app_clients_' => 'clients',
+        'app_prospects_' => 'clients',
         'app_reclamation_' => 'clients',
         'app_campagne_' => 'clients',
         'app_modele_message_' => 'clients',

@@ -1,0 +1,203 @@
+{% extends 'base.html.twig' %}
+
+{% set etapes = constant('App\\Entity\\Prospect::ETAPES') %}
+{% set sources_libelles = constant('App\\Entity\\Prospect::SOURCES_LIBELLES') %}
+{% set jeton = csrf_token('prospect') %}
+{% set aujourdhui = 'today'|date('Y-m-d') %}
+
+{% block title %}Pipeline prospects{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<button type="button" class="btn btn-light btn-sm si-btn-entete" data-si-ouvrir="si-dialogue-sources">Sources</button>
+	</li>
+	<li class="nav-item">
+		<button type="button" class="btn btn-danger btn-sm si-btn-entete" data-si-ouvrir="si-dialogue-prospect" data-si-nouveau><i class="fas fa-plus me-1"></i>Prospect</button>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-prospects">
+		<div class="si-prospects-kpis">
+			<article class="card si-prospects-kpi">
+				<h2>Pipeline en cours</h2>
+				{% if voir_montants %}
+					<strong>{{ kpi.pipeline|number_format(0, ',', ' ') }} F</strong>
+					<span class="si-p-ok">{{ kpi.ouverts }} opportunité{{ kpi.ouverts > 1 ? 's' }}</span>
+				{% else %}
+					<strong>{{ kpi.ouverts }}</strong>
+					<span class="si-p-neutre">opportunité{{ kpi.ouverts > 1 ? 's' }} ouverte{{ kpi.ouverts > 1 ? 's' }}</span>
+				{% endif %}
+			</article>
+			<article class="card si-prospects-kpi">
+				<h2>Taux de gain ({{ constant('App\\Service\\PipelineProspects::JOURS_CLOTURES') }} j)</h2>
+				<strong>{{ kpi.taux is null ? '—' : kpi.taux ~ ' %' }}</strong>
+				{% if kpi.evolution is not null %}
+					<span class="{{ kpi.evolution >= 0 ? 'si-p-ok' : 'si-p-alerte' }}"><i class="fas fa-caret-{{ kpi.evolution >= 0 ? 'up' : 'down' }}"></i> {{ kpi.evolution >= 0 ? '+' : '−' }}{{ kpi.evolution|abs }} pts</span>
+				{% else %}
+					<span class="si-p-neutre">gagnés ÷ affaires closes</span>
+				{% endif %}
+			</article>
+			<article class="card si-prospects-kpi">
+				<h2>Première source</h2>
+				{% if kpi.source %}
+					<strong>{{ kpi.source.libelle }}</strong>
+					<span class="si-p-ok">{{ kpi.source.pourcentage }} % des prospects</span>
+				{% else %}
+					<strong>—</strong>
+					<span class="si-p-neutre">aucun prospect récent</span>
+				{% endif %}
+			</article>
+			<article class="card si-prospects-kpi">
+				<h2>Relances dues</h2>
+				<strong>{{ kpi.relances_dues }}</strong>
+				<span class="{{ kpi.relances_dues > 0 ? 'si-p-alerte' : 'si-p-neutre' }}">aujourd’hui</span>
+			</article>
+		</div>
+
+		<form method="get" action="{{ path('app_prospects_index') }}" class="si-prospects-recherche" role="search">
+			<input type="search" name="q" value="{{ recherche }}" class="form-control form-control-sm" placeholder="Nom, besoin ou téléphone" aria-label="Rechercher un prospect">
+		</form>
+
+		<div class="si-prospects-tableau">
+			{% for etape, libelle in etapes %}
+				<section class="si-prospects-colonne si-etape-{{ etape }}" aria-labelledby="col-{{ etape }}">
+					<header>
+						<h2 id="col-{{ etape }}">{{ libelle }}</h2>
+						<span>{{ colonnes[etape]|length }}</span>
+					</header>
+					{% for p in colonnes[etape] %}
+						{% set relance_due = p.prochaineRelance and p.prochaineRelance|date('Y-m-d') <= aujourdhui %}
+						<button type="button" class="si-prospect" data-si-ouvrir="si-dialogue-prospect"
+							data-id="{{ p.id }}" data-nom="{{ p.nom }}" data-telephone="{{ p.telephone }}" data-besoin="{{ p.besoin }}"
+							data-montant="{{ p.montantEstime }}" data-source="{{ p.source }}" data-etape="{{ p.etape }}"
+							data-relance="{{ p.prochaineRelance ? p.prochaineRelance|date('Y-m-d') }}" data-motif="{{ p.motifPerte }}"
+							data-client="{{ p.client ? path('app_clients_show', {publicId: p.client.publicId}) }}"
+							data-agent="{{ p.agent ? p.agent.username }}" data-cree="{{ p.creeLe|date('d/m/Y') }}">
+							<strong>{{ p.nom }}</strong>
+							<span class="si-prospect-besoin">{{ p.besoin }}{% if p.besoin and p.montantEstime %} · {% endif %}{{ p.montantEstime ? p.montantEstime|number_format(0, ',', ' ') }}</span>
+							{% if etape == 'perdu' and p.motifPerte %}<span class="si-prospect-motif">{{ p.motifPerte }}</span>{% endif %}
+							<span class="si-prospect-pied">
+								<span class="si-prospect-source">{{ constant('App\\Entity\\Prospect::SOURCES')[p.source] }}</span>
+								{% if relance_due %}<span class="si-prospect-relance"><i class="fas fa-bell"></i> relance {{ p.prochaineRelance|date('Y-m-d') == aujourdhui ? 'aujourd’hui' : 'en retard' }}</span>
+								{% elseif p.prochaineRelance %}<span class="si-prospect-date">relance {{ p.prochaineRelance|date('d/m') }}</span>{% endif %}
+								{% if p.client %}<span class="si-prospect-client"><i class="fas fa-user-check"></i> client</span>{% endif %}
+							</span>
+						</button>
+					{% else %}
+						<p class="si-prospects-vide">{{ recherche ? 'Aucun résultat' : 'Aucun prospect' }}</p>
+					{% endfor %}
+				</section>
+			{% endfor %}
+		</div>
+		<p class="si-prospects-note">Les affaires gagnées et perdues restent affichées {{ constant('App\\Service\\PipelineProspects::JOURS_CLOTURES') }} jours. Cliquez sur un prospect pour le modifier ou le faire avancer.</p>
+	</div>
+
+	<dialog id="si-dialogue-prospect" class="si-dialogue" aria-labelledby="si-dialogue-prospect-titre">
+		<form method="post" action="{{ path('app_prospects_nouveau') }}" data-action-nouveau="{{ path('app_prospects_nouveau') }}" data-action-modifier="{{ path('app_prospects_modifier', {id: 0}) }}">
+			<header>
+				<h2 id="si-dialogue-prospect-titre">Nouveau prospect</h2>
+				<button type="button" class="btn-close" data-si-fermer aria-label="Fermer"></button>
+			</header>
+			<input type="hidden" name="_token" value="{{ jeton }}">
+			<p class="si-dialogue-meta" data-champ="meta" hidden></p>
+			<div class="si-dialogue-grille">
+				<label class="si-plein">Nom ou entreprise<input type="text" name="nom" class="form-control" required maxlength="120"></label>
+				<label>Téléphone<input type="tel" name="telephone" class="form-control" maxlength="30" inputmode="tel"></label>
+				<label>Source
+					<select name="source" class="form-select">
+						{% for cle, l in sources_libelles %}<option value="{{ cle }}">{{ l }}</option>{% endfor %}
+					</select>
+				</label>
+				<label class="si-plein">Besoin<input type="text" name="besoin" class="form-control" maxlength="255" placeholder="Ex. Roll-up × 5"></label>
+				<label>Montant estimé (F)<input type="text" name="montant" class="form-control" inputmode="numeric" pattern="[0-9  ]*"></label>
+				<label>Prochaine relance<input type="date" name="relance" class="form-control"></label>
+				<label class="si-plein" data-champ="etape" hidden>Étape
+					<select name="etape" class="form-select">
+						{% for cle, l in etapes %}<option value="{{ cle }}">{{ l }}</option>{% endfor %}
+					</select>
+				</label>
+				<label class="si-plein" data-champ="motif" hidden>Pourquoi l’affaire est perdue ?<input type="text" name="motif_perte" class="form-control" maxlength="255" placeholder="Ex. prix, délai, concurrent"></label>
+			</div>
+			<footer>
+				<button type="button" class="btn btn-outline-secondary" data-si-fermer>Annuler</button>
+				<button type="submit" class="btn btn-primary">Enregistrer</button>
+			</footer>
+		</form>
+		<form method="post" class="si-dialogue-client" data-champ="client" data-action="{{ path('app_prospects_fiche_client', {id: 0}) }}" hidden>
+			<input type="hidden" name="_token" value="{{ jeton }}">
+			<h3>Affaire gagnée</h3>
+			<a href="#" class="btn btn-outline-primary btn-sm" data-champ="lien-client" hidden><i class="fas fa-user me-1"></i>Ouvrir la fiche client</a>
+			<div data-champ="creer-client">
+				<p>Créez la fiche client pour enregistrer sa commande. Si le numéro existe déjà, le prospect est rattaché à cette fiche.</p>
+				<div class="si-dialogue-grille">
+					<label>Nom du contact<input type="text" name="nom" class="form-control" maxlength="50"></label>
+					<label>Prénom<input type="text" name="prenom" class="form-control" maxlength="50"></label>
+					<label class="si-plein">Entreprise (facultatif)<input type="text" name="entreprise" class="form-control" maxlength="100"></label>
+				</div>
+				<button type="submit" class="btn btn-success btn-sm"><i class="fas fa-user-plus me-1"></i>Créer la fiche client</button>
+			</div>
+		</form>
+	</dialog>
+
+	<dialog id="si-dialogue-sources" class="si-dialogue" aria-labelledby="si-dialogue-sources-titre">
+		<header>
+			<h2 id="si-dialogue-sources-titre">Sources des prospects ({{ constant('App\\Service\\PipelineProspects::JOURS_CLOTURES') }} j)</h2>
+			<button type="button" class="btn-close" data-si-fermer aria-label="Fermer"></button>
+		</header>
+		<ul class="si-prospects-sources">
+			{% for s in sources %}
+				<li><span>{{ s.libelle }}</span><span class="si-t-jauge" aria-hidden="true"><span style="width: {{ s.pourcentage }}%"></span></span><strong>{{ s.nombre }} · {{ s.pourcentage }} %</strong></li>
+			{% else %}
+				<li class="si-prospects-vide">Aucun prospect ces {{ constant('App\\Service\\PipelineProspects::JOURS_CLOTURES') }} derniers jours.</li>
+			{% endfor %}
+		</ul>
+	</dialog>
+
+	<script>
+		(() => {
+			const dialogue = document.getElementById('si-dialogue-prospect');
+			const form = dialogue.querySelector('form');
+			const champ = (nom) => dialogue.querySelector(`[data-champ="${nom}"]`);
+			const etape = form.elements.etape;
+			const majMotif = () => {
+				champ('motif').hidden = etape.value !== 'perdu' || champ('etape').hidden;
+				form.elements.motif_perte.required = !champ('motif').hidden;
+			};
+			etape.addEventListener('change', majMotif);
+
+			const remplir = (d) => {
+				const nouveau = !d.id;
+				form.reset();
+				form.action = nouveau ? form.dataset.actionNouveau : form.dataset.actionModifier.replace(/\/0\//, `/${d.id}/`);
+				document.getElementById('si-dialogue-prospect-titre').textContent = nouveau ? 'Nouveau prospect' : d.nom;
+				for (const nom of ['nom', 'telephone', 'besoin', 'montant', 'source', 'relance', 'etape']) {
+					if (!nouveau && d[nom] !== undefined) form.elements[nom].value = d[nom];
+				}
+				form.elements.motif_perte.value = nouveau ? '' : (d.motif || '');
+				champ('etape').hidden = nouveau;
+				champ('meta').hidden = nouveau;
+				champ('meta').textContent = nouveau ? '' : `Ajouté le ${d.cree}${d.agent ? ' par ' + d.agent : ''}`;
+				majMotif();
+
+				const client = champ('client');
+				client.hidden = nouveau || d.etape !== 'gagne';
+				if (!client.hidden) {
+					client.action = client.dataset.action.replace(/\/0\//, `/${d.id}/`);
+					champ('lien-client').hidden = !d.client;
+					champ('lien-client').href = d.client || '#';
+					champ('creer-client').hidden = !!d.client;
+					client.elements.entreprise.value = d.nom;
+				}
+			};
+
+			document.querySelectorAll('[data-si-ouvrir]').forEach((bouton) => bouton.addEventListener('click', () => {
+				const cible = document.getElementById(bouton.dataset.siOuvrir);
+				if (cible === dialogue) remplir(bouton.dataset);
+				cible.showModal();
+			}));
+			document.querySelectorAll('[data-si-fermer]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));
+			document.querySelectorAll('dialog.si-dialogue').forEach((d) => d.addEventListener('click', (e) => { if (e.target === d) d.close(); }));
+		})();
+	</script>
+{% endblock %}

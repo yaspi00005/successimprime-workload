@@ -3163,3 +3163,67 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
   .si-fiche-histo li { grid-template-columns: 32px 1fr; }
   .si-fiche-histo .si-fiche-montant { grid-column: 2; }
 }
+
+/* ================================================================
+   Clients › Pipeline prospects (maquette 34)
+   ================================================================ */
+.si-prospects .card { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; margin: 0; }
+.si-prospects-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.si-prospects .si-prospects-kpi h2 { font-size: 14px; font-weight: 500; color: #475569; margin: 0 0 6px; }
+.si-prospects-kpi strong { display: block; font-size: clamp(20px, 2vw, 26px); font-weight: 800; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-prospects-kpi span { display: block; margin-top: 4px; font-size: 13px; font-weight: 600; }
+.si-p-ok { color: #16A34A; }
+.si-p-alerte { color: #DC2626; }
+.si-p-neutre { color: #64748B; }
+.si-prospects-recherche { display: flex; justify-content: flex-end; margin: 20px 0 4px; }
+.si-prospects-recherche input { max-width: 280px; }
+.si-prospects-tableau { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.si-prospects-colonne header { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px 10px; }
+.si-prospects .si-prospects-colonne h2 { font-size: 15px; font-weight: 700; color: #0F172A; margin: 0; }
+.si-prospects-colonne header span { min-width: 24px; padding: 1px 8px; border-radius: 999px; background: #E2E8F0; color: #334155; font-size: 12px; font-weight: 700; text-align: center; }
+.si-prospect { display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left; background: #fff; border: 0; border-left: 4px solid #F97316; border-radius: 12px; box-shadow: var(--si-carte-ombre); padding: 12px 14px; margin-bottom: 12px; color: #0F172A; cursor: pointer; transition: transform .12s, box-shadow .12s; }
+.si-prospect:hover, .si-prospect:focus-visible { transform: translateY(-1px); box-shadow: 0 8px 26px rgba(15, 69, 144, .14); outline: none; }
+.si-prospect:focus-visible { box-shadow: 0 0 0 3px rgba(15, 69, 144, .35); }
+.si-etape-gagne .si-prospect { border-left-color: #16A34A; }
+.si-etape-perdu .si-prospect { border-left-color: #94A3B8; }
+.si-prospect strong { font-size: 15px; font-weight: 700; }
+.si-prospect-besoin { color: #64748B; font-size: 13px; }
+.si-prospect-motif { color: #64748B; font-size: 12px; font-style: italic; }
+.si-prospect-pied { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.si-prospect-source { background: #F1F5F9; color: #334155; border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 700; }
+.si-prospect-relance { color: #DC2626; font-size: 12px; font-weight: 700; }
+.si-prospect-date { color: #64748B; font-size: 12px; }
+.si-prospect-client { color: #16A34A; font-size: 12px; font-weight: 700; }
+.si-prospects-vide { color: #94A3B8; font-size: 13px; padding: 10px 4px; margin: 0; }
+.si-prospects-note { color: #64748B; font-size: 12px; margin: 12px 0 0; }
+.si-prospects-sources { list-style: none; margin: 0; padding: 0; }
+.si-prospects-sources li { display: grid; grid-template-columns: 130px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; color: #334155; }
+
+.si-dialogue { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); border: 0; border-radius: 16px; padding: 22px; box-shadow: 0 24px 60px rgba(15, 23, 42, .25); color: #0F172A; }
+.si-dialogue::backdrop { background: rgba(15, 23, 42, .45); }
+.si-dialogue header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.si-dialogue h2 { font-size: 18px; font-weight: 700; margin: 0; }
+.si-dialogue h3 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+.si-dialogue-meta { color: #64748B; font-size: 13px; margin: -8px 0 12px; }
+.si-dialogue-grille { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.si-dialogue-grille label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: #334155; }
+.si-dialogue-grille label[hidden] { display: none; }
+.si-dialogue-grille .si-plein { grid-column: 1 / -1; }
+.si-dialogue footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.si-dialogue-client { border-top: 1px solid #E2E8F0; margin-top: 18px; padding-top: 16px; }
+.si-dialogue-client p { color: #64748B; font-size: 13px; }
+.si-dialogue-client .si-dialogue-grille { margin-bottom: 12px; }
+
+@media (max-width: 1199.98px) {
+  .si-prospects-kpis { grid-template-columns: repeat(2, 1fr); }
+  .si-prospects-tableau { grid-template-columns: repeat(5, minmax(220px, 1fr)); overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+  .si-prospects-colonne { scroll-snap-align: start; }
+}
+@media (max-width: 575.98px) {
+  .si-prospects-kpis { gap: 12px; }
+  .si-prospects .card { padding: 14px; }
+  .si-prospects-recherche input { max-width: none; }
+  .si-prospects-tableau { grid-template-columns: repeat(5, 82%); }
+  .si-dialogue { padding: 16px; }
+  .si-dialogue-grille { grid-template-columns: 1fr; }
+}

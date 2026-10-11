@@ -176,6 +176,13 @@ class Clients
     #[ORM\Column(options: ['default' => true])]
     private bool $recevoirSms = true;
 
+    /*
+     * Date à laquelle le client a accepté de recevoir des offres
+     * (campagnes marketing). Null : pas d'accord enregistré.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $consentementMarketingLe = null;
+
     /**
      * @var Collection<int, Devis>
      */
@@ -605,6 +612,30 @@ class Clients
     public function setStatut(bool $statut): static
     {
         $this->statut = $statut;
+
+        return $this;
+    }
+
+    public function getConsentementMarketingLe(): ?\DateTimeImmutable
+    {
+        return $this->consentementMarketingLe;
+    }
+
+    public function isAccepteMarketing(): bool
+    {
+        return null !== $this->consentementMarketingLe;
+    }
+
+    /**
+     * Cocher garde la date du premier accord ; décocher l'efface.
+     */
+    public function setAccepteMarketing(bool $accepte): static
+    {
+        if (!$accepte) {
+            $this->consentementMarketingLe = null;
+        } elseif (null === $this->consentementMarketingLe) {
+            $this->consentementMarketingLe = new \DateTimeImmutable();
+        }
 
         return $this;
     }

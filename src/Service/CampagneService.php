@@ -72,11 +72,43 @@ class CampagneService
     }
 
     /**
+     * Campagne de la maquette 35 : texte libre envoyé à un segment, tout
+     * de suite ou à la date choisie.
+     *
+     * @param list<Clients> $clients
+     */
+    public function programmer(
+        string $nom,
+        string $canal,
+        string $message,
+        ?string $segment,
+        ?\DateTimeImmutable $envoiPrevuLe,
+        array $clients,
+        ?User $creePar
+    ): Campagne {
+        $campagne = (new Campagne())
+            ->setNom($nom)
+            ->setCanal($canal)
+            ->setMessage($message)
+            ->setSegment($segment)
+            ->setEnvoiPrevuLe($envoiPrevuLe)
+            ->setCreePar($creePar)
+            ->setNombreTotal(count($clients));
+        $this->entityManager->persist($campagne);
+        foreach ($clients as $client) {
+            $this->entityManager->persist((new CampagneDestinataire())->setCampagne($campagne)->setClient($client));
+        }
+        $this->entityManager->flush();
+
+        return $campagne;
+    }
+
+    /**
      * @return array{envoyes: int, echecs: int, total: int}
      */
     public function envoyerLotEnAttente(int $limite = 30): array
     {
-        $destinataires = $this->destinataireRepository->findEnAttente($limite);
+        $destinataires = $this->destinataireRepository->findEnAttente($limite, $this->whatsAppService->estConfigure());
 
         $envoyes = 0;
         $echecs = 0;
@@ -148,16 +180,17 @@ class CampagneService
             return ['succes' => false];
         }
 
-        if ($modele === null) {
+        $canal = $campagne->getCanal();
+        if ($canal === null || ($modele === null && $campagne->getMessage() === null)) {
             $destinataire
                 ->setStatut(CampagneDestinataire::STATUT_ECHEC)
-                ->setErreur('Modèle de message introuvable.')
+                ->setErreur('Campagne sans message ni canal.')
                 ->setDateEnvoi(new \DateTimeImmutable());
 
             return ['succes' => false];
         }
 
-        if ($modele->getCanal() === ModeleMessage::CANAL_SMS && !$client->isRecevoirSms()) {
+        if ($canal === ModeleMessage::CANAL_SMS && !$client->isRecevoirSms()) {
             $destinataire
                 ->setStatut(CampagneDestinataire::STATUT_IGNORE)
                 ->setErreur('Ce client a choisi de ne pas recevoir de SMS.')
@@ -168,14 +201,15 @@ class CampagneService
 
         $variables = ['nom' => $client->getNomComplet()];
 
-        $message = $modele->rendreContenu($variables);
+        $message = $campagne->rendreMessage($client);
+        $sujet = $modele?->rendreSujet($variables) ?? $campagne->getNom();
 
         try {
-            $resultatEnvoi = match ($modele->getCanal()) {
+            $resultatEnvoi = match ($canal) {
                 ModeleMessage::CANAL_SMS => $this->envoyerParSms($client->getTelephone(), $message, $campagne->getSenderName()),
                 ModeleMessage::CANAL_WHATSAPP => $this->envoyerParWhatsApp($client->getTelephone(), $variables),
-                ModeleMessage::CANAL_EMAIL => $this->envoyerParEmail($client->getEmail(), $modele->rendreSujet($variables), $message),
-                default => ['succes' => false, 'erreur' => 'Canal de modèle inconnu : ' . $modele->getCanal()],
+                ModeleMessage::CANAL_EMAIL => $this->envoyerParEmail($client->getEmail(), $sujet, $message),
+                default => ['succes' => false, 'erreur' => 'Canal inconnu : ' . $canal],
             };
         } catch (\Throwable $exception) {
             $resultatEnvoi = ['succes' => false, 'erreur' => $exception->getMessage()];

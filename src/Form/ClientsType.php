@@ -108,6 +108,10 @@ class ClientsType extends AbstractType
         'class' => 'custom-control-label',
     ],
 ])
+->add('accepteMarketing', CheckboxType::class, [
+    'label' => 'Accepte de recevoir des offres',
+    'required' => false,
+])
             ->add('telephone2', TelType::class, [
                 'label' => 'Deuxième téléphone',
                 'required' => false,

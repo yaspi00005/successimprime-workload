@@ -158,6 +158,20 @@
 			</div>
 		</div>
 
+		<div class="col-md-4">
+			<div class="form-group">
+				<label class="d-block">Offres et campagnes</label>
+				<label class="custom-switch">
+					{{ form_widget(form.accepteMarketing, {attr: {class: 'custom-switch-input'}}) }}
+					<span class="custom-switch-indicator"></span>
+					<span class="custom-switch-description">Accepte de recevoir des offres</span>
+				</label>
+				{% if form.vars.value.consentementMarketingLe is defined and form.vars.value.consentementMarketingLe %}
+					<small class="text-muted d-block">Accord donné le {{ form.vars.value.consentementMarketingLe|date('d/m/Y') }}</small>
+				{% endif %}
+			</div>
+		</div>
+
 		<div class="col-md-12">
 			<div class="form-group">
 				{{ form_label(form.observation) }}

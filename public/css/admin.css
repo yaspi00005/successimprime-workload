@@ -3227,3 +3227,64 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
   .si-dialogue { padding: 16px; }
   .si-dialogue-grille { grid-template-columns: 1fr; }
 }
+
+/* ================================================================
+   Clients › Campagnes WhatsApp et SMS (maquette 35)
+   ================================================================ */
+.si-campagnes { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.si-campagnes .card, .si-campagne-detail .card { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 22px; margin: 0; }
+.si-campagnes h2, .si-campagne-detail h2 { font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 14px; }
+.si-campagnes h2 label { margin: 0; }
+.si-campagne-nom { border: 0; border-bottom: 2px dashed #CBD5E1; font: inherit; color: #0F172A; padding: 0 2px; width: min(320px, 100%); background: transparent; }
+.si-campagne-nom:focus { outline: none; border-bottom-color: #0F4590; }
+.si-campagne-grille { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
+.si-campagne-champ { display: flex; flex-direction: column; gap: 6px; margin: 0; border: 0; padding: 0; min-width: 0; }
+.si-campagne-champ > span, .si-campagne-champ legend { font-size: 13px; font-weight: 600; color: #475569; margin: 0; float: none; width: auto; }
+.si-campagne-champ small { color: #64748B; font-size: 12px; }
+.si-campagne-champ textarea { font-size: 15px; line-height: 1.5; }
+.si-campagne-canaux { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-pilule { position: relative; margin: 0; }
+.si-pilule input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.si-pilule span { display: inline-block; padding: 8px 18px; border-radius: 999px; border: 1px solid #E2E8F0; font-weight: 700; color: #0F172A; background: #fff; }
+.si-pilule input:checked + span { background: #0F4590; border-color: #0F4590; color: #fff; }
+.si-pilule input:focus-visible + span { box-shadow: 0 0 0 3px rgba(15, 69, 144, .3); }
+.si-campagne-aide { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #64748B; margin: 6px 0 12px; }
+.si-campagne-alerte { background: #FEF9C3; color: #713F12; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin: 0 0 14px; }
+.si-campagne-alerte[hidden] { display: none; }
+.si-campagne-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.si-campagne-actions strong { color: #0F4590; }
+.si-campagnes .si-campagne-table thead th, .si-campagne-detail .si-campagne-table thead th { text-transform: none; font-size: 13px; font-weight: 600; color: #475569; border-top: 0; }
+.si-campagne-table td { vertical-align: middle; color: #0F172A; }
+.si-campagne-table td small { display: block; color: #64748B; font-size: 12px; }
+.si-campagne-table td a { font-weight: 600; }
+.si-campagne-table td.text-end { font-weight: 700; font-variant-numeric: tabular-nums; }
+.si-campagne-meilleure { background: linear-gradient(135deg, #DCFCE7, #F0FDF4); border-radius: 14px; padding: 14px 16px; margin-top: 10px; }
+.si-campagne-meilleure span { display: block; font-size: 12px; color: #475569; }
+.si-campagne-meilleure strong { font-size: 18px; color: #0F172A; }
+.si-campagne-note, .si-campagne-vide { font-size: 12px; color: #64748B; margin: 12px 0 0; }
+.si-campagne-lien { display: inline-block; margin-top: 12px; font-size: 13px; font-weight: 600; }
+.si-campagne-chiffres { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
+.si-campagne-chiffres h2 { font-size: 14px !important; font-weight: 500 !important; color: #475569 !important; margin-bottom: 6px !important; }
+.si-campagne-chiffres strong { font-size: 26px; font-weight: 800; color: #0F172A; }
+.si-campagne-bloc { margin-bottom: 20px !important; }
+.si-campagne-bloc header { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.si-campagne-bloc header span { color: #64748B; font-size: 13px; }
+.si-campagne-texte { white-space: pre-line; background: #F8FAFC; border-radius: 12px; padding: 14px; color: #0F172A; margin: 0 0 12px; }
+.si-statut-envoi { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #F1F5F9; color: #334155; }
+.si-envoi-envoye { background: #DCFCE7; color: #166534; }
+.si-envoi-echec { background: #FEE2E2; color: #991B1B; }
+.si-envoi-ignore { background: #FEF9C3; color: #713F12; }
+@media (max-width: 991.98px) {
+  .si-campagnes { grid-template-columns: 1fr; }
+  .si-campagne-chiffres { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 575.98px) {
+  .si-campagnes .card, .si-campagne-detail .card { padding: 14px; }
+  .si-campagne-grille { grid-template-columns: 1fr; }
+  .si-campagne-chiffres { gap: 12px; }
+  .si-campagne-chiffres strong { font-size: 20px; }
+  .si-campagne-dest thead { display: none; }
+  .si-campagne-dest tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid #E2E8F0; }
+  .si-campagne-dest td { border: 0; padding: 0; }
+  .si-campagne-dest td:nth-child(3) { color: #64748B; font-size: 12px; }
+}

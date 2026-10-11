@@ -25,19 +25,27 @@ class CampagneDestinataireRepository extends ServiceEntityRepository
      *
      * @return array<int, CampagneDestinataire>
      */
-    public function findEnAttente(int $limite): array
+    public function findEnAttente(int $limite, bool $avecWhatsApp = true): array
     {
-        return $this->createQueryBuilder('destinataire')
+        $qb = $this->createQueryBuilder('destinataire')
             ->leftJoin('destinataire.campagne', 'campagne')
             ->addSelect('campagne')
             ->leftJoin('destinataire.client', 'client')
             ->addSelect('client')
             ->andWhere('destinataire.statut = :statut')
             ->setParameter('statut', CampagneDestinataire::STATUT_EN_ATTENTE)
+            // Une campagne programmée attend sa date.
+            ->andWhere('campagne.envoiPrevuLe IS NULL OR campagne.envoiPrevuLe <= :maintenant')
+            ->setParameter('maintenant', new \DateTimeImmutable())
             ->orderBy('destinataire.id', 'ASC')
-            ->setMaxResults($limite)
-            ->getQuery()
-            ->getResult();
+            ->setMaxResults($limite);
+        if (!$avecWhatsApp) {
+            // Sans l'API, les messages WhatsApp partent à la main (liens wa.me).
+            $qb->leftJoin('campagne.modeleMessage', 'modele')
+                ->andWhere("COALESCE(campagne.canal, modele.canal) != 'whatsapp'");
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     public function compteEnAttente(Campagne $campagne): int

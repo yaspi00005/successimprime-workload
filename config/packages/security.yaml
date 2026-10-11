@@ -103,6 +103,12 @@ security:
             roles: PUBLIC_ACCESS
         }
 
+        # Enrôlement d'un appareil pour l'administration en ligne (QR de 5 min)
+        - {
+            path: '^/appareil/autoriser/[0-9a-f]{48}$',
+            roles: PUBLIC_ACCESS
+        }
+
         - {
             path: ^/ecran-accueil,
             roles: PUBLIC_ACCESS

@@ -1,8 +1,14 @@
 {% extends 'security/_page_connexion.html.twig' %}
 
 {% block carte %}
-	<h1>Bonjour 👋</h1>
-	<p class="si-connexion-sous-titre">Connectez-vous pour ouvrir votre session de travail.</p>
+	{% if en_ligne|default(false) %}
+		<h1>Administration en ligne</h1>
+		<p class="si-connexion-sous-titre">{{ app.request.host }}</p>
+		{% include 'security/_appareil.html.twig' %}
+	{% else %}
+		<h1>Bonjour 👋</h1>
+		<p class="si-connexion-sous-titre">Connectez-vous pour ouvrir votre session de travail.</p>
+	{% endif %}
 
 	{% if error %}
 		<div class="si-connexion-erreur" role="alert">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
@@ -24,6 +30,6 @@
 		</details>
 
 		<input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-		<button type="submit" class="si-connexion-bouton">Se connecter</button>
+		<button type="submit" class="si-connexion-bouton">{{ en_ligne|default(false) ? 'Continuer' : 'Se connecter' }}</button>
 	</form>
 {% endblock %}

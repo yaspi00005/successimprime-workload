@@ -16,6 +16,7 @@
 			<p class="si-connexion-sous-titre">{{ user.username }}</p>
 		</div>
 	</div>
+	{% if en_ligne|default(false) %}{% include 'security/_appareil.html.twig' %}{% endif %}
 
 	{% if error %}
 		<div class="si-connexion-erreur" role="alert">{{ error }}</div>

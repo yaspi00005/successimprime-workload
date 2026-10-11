@@ -298,6 +298,280 @@ body {
   text-align: center;
 }
 
+.si-connexion-succes {
+  background: #DCFCE7;
+  color: #166534;
+  border-radius: 0.7rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.si-connexion-flash {
+  margin-bottom: 0.75rem;
+}
+
+/* ---------- Administration en ligne (maquette CX03) ---------- */
+
+.si-en-ligne {
+  background: radial-gradient(ellipse at 50% 0%, #1D4E9E 0%, #0C2C66 50%, #071B44 100%);
+}
+
+.si-en-ligne .si-connexion-fond {
+  display: none;
+}
+
+.si-en-ligne .si-connexion-carte {
+  background: transparent;
+  box-shadow: none;
+  color: #fff;
+  text-align: left;
+}
+
+.si-en-ligne .si-connexion-tete {
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.si-en-ligne .si-connexion-logo {
+  background: #fff;
+  border-radius: 0.8rem;
+  padding: 0.45rem 0.7rem;
+  height: 4rem;
+}
+
+.si-en-ligne h1 {
+  text-align: center;
+  font-size: 1.45rem;
+}
+
+.si-en-ligne .si-connexion-sous-titre {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.si-en-ligne label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.si-en-ligne .si-connexion-bouton {
+  background: #FDC82A;
+  color: #12213A;
+}
+
+.si-en-ligne .si-connexion-bouton:hover {
+  background: #F2B90F;
+}
+
+.si-en-ligne .si-connexion-note,
+.si-en-ligne .si-connexion-lien {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.si-en-ligne .si-connexion-oubli summary {
+  color: #FDC82A;
+}
+
+.si-en-ligne .si-connexion-oubli p {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.si-en-ligne .si-connexion-personne .si-connexion-sous-titre {
+  text-align: left;
+}
+
+.si-en-ligne .si-connexion-personne h1 {
+  text-align: left;
+}
+
+.si-appareil {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.si-appareil strong,
+.si-appareil small {
+  display: block;
+}
+
+.si-appareil small {
+  opacity: 0.85;
+}
+
+.si-appareil-icone {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #fff;
+}
+
+.si-appareil--ok {
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+}
+
+.si-appareil--ok .si-appareil-icone {
+  background: #22C55E;
+}
+
+.si-appareil--non {
+  background: rgba(222, 16, 40, 0.14);
+  border: 1px solid rgba(222, 16, 40, 0.5);
+}
+
+.si-appareil--non .si-appareil-icone {
+  background: #DE1028;
+}
+
+.si-connexion:not(.si-en-ligne) .si-appareil {
+  color: #12213A;
+}
+
+/* ---------- Code de sécurité (maquette CX03, à droite) ---------- */
+
+.si-verification .si-connexion-carte {
+  background: #fff;
+  color: #12213A;
+  box-shadow: 0 24px 60px rgba(4, 20, 50, 0.35);
+}
+
+.si-verification h1,
+.si-verification .si-connexion-sous-titre {
+  text-align: left;
+}
+
+.si-verification .si-connexion-sous-titre {
+  color: #5B6575;
+}
+
+.si-verification .si-connexion-bouton {
+  background: #0F4590;
+  color: #fff;
+}
+
+.si-verification .si-connexion-note {
+  color: #8A95A8;
+}
+
+.si-verification-haut {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  font-size: 1.1rem;
+}
+
+.si-verification-retour {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #EEF1F6;
+  color: #12213A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.si-verification-cadenas {
+  display: inline-flex;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.9rem;
+  background: #EEF3FB;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  margin-bottom: 0.9rem;
+}
+
+.si-verification-dev {
+  background: #FFF7E0;
+  color: #7A5A00;
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.si-code {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.si-connexion .si-code input {
+  width: 100%;
+  aspect-ratio: 1 / 1.1;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 800;
+  padding: 0;
+}
+
+.si-code-bas {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 2rem;
+  font-size: 0.8rem;
+  color: #5B6575;
+  margin-top: 0.35rem;
+}
+
+.si-code-renvoyer {
+  border: 0;
+  background: none;
+  color: #0F4590;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+
+.si-verification-rappel {
+  background: #FDF1E6;
+  color: #8A4A12;
+  border-radius: 0.8rem;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.82rem;
+  margin: 1.1rem 0 0;
+}
+
+.si-appareil-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 1rem;
+  background: #F6F8FB;
+  border-radius: 0.8rem;
+  padding: 0.9rem 1rem;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+.si-appareil-details dt {
+  color: #5B6575;
+}
+
+.si-appareil-details dd {
+  margin: 0;
+  font-weight: 700;
+}
+
 @media (max-width: 575.98px) {
   .si-connexion {
     padding-top: 6rem;
@@ -315,4 +589,12 @@ body {
   .si-connexion-haut {
     padding: 1rem;
   }
+}
+
+.si-en-ligne .si-appareil-details {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.si-en-ligne .si-appareil-details dt {
+  color: rgba(255, 255, 255, 0.65);
 }

@@ -1,0 +1,12 @@
+{# Bandeau de l'appareil sur la connexion en ligne (maquette CX03). #}
+{% if appareil|default(null) %}
+	<div class="si-appareil si-appareil--ok">
+		<span class="si-appareil-icone" aria-hidden="true">✓</span>
+		<div><strong>Appareil autorisé</strong><small>{{ appareil.nom }} · enrôlé le {{ (appareil.autoriseLe ?? appareil.creeLe)|date('d/m') }}</small></div>
+	</div>
+{% else %}
+	<div class="si-appareil si-appareil--non">
+		<span class="si-appareil-icone" aria-hidden="true">!</span>
+		<div><strong>Appareil non autorisé</strong><small>Demandez à un administrateur de l'enrôler : Réglages › Sécurité › Autoriser un appareil.</small></div>
+	</div>
+{% endif %}

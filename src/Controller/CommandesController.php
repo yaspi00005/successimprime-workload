@@ -2311,7 +2311,7 @@ final class CommandesController extends AbstractController
                         $exception->getMessage()
                     );
 
-                    return $this->redirectToRoute(
+                    return $this->retourCaisse($request, $commande) ?? $this->redirectToRoute(
                         'app_commandes_paiement',
                         [
                             'id' => $commande->getId(),
@@ -2349,7 +2349,7 @@ final class CommandesController extends AbstractController
                             'Veuillez sélectionner un compte de trésorerie.'
                         );
 
-                        return $this->redirectToRoute(
+                        return $this->retourCaisse($request, $commande) ?? $this->redirectToRoute(
                             'app_commandes_paiement',
                             [
                                 'id' => $commande->getId(),
@@ -3038,7 +3038,7 @@ final class CommandesController extends AbstractController
              * ====================================================
              */
 
-                return $this->redirectToRoute(
+                return $this->retourCaisse($request, $commande, $paiement) ?? $this->redirectToRoute(
                     'app_commandes_show',
                     [
                         'id' => $commande->getId(),
@@ -3446,5 +3446,22 @@ final class CommandesController extends AbstractController
             'sha256',
             serialize($donnees)
         );
+    }
+
+    /**
+     * Un encaissement lancé depuis la caisse (maquette 28) y revient, avec
+     * le reçu à imprimer quand le paiement est enregistré.
+     */
+    private function retourCaisse(Request $request, Commandes $commande, ?Paiements $paiement = null): ?Response
+    {
+        if ('caisse' !== $request->query->get('retour')) {
+            return null;
+        }
+
+        return $this->redirectToRoute('app_caisse_index', array_filter([
+            'client' => $commande->getClients()?->getId(),
+            'commande' => $commande->getId(),
+            'recu' => $paiement?->getId(),
+        ]));
     }
 }

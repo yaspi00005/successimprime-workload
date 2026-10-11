@@ -51,7 +51,8 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
         ],
         'finances' => [
-            ['libelle' => 'Caisse', 'route' => 'app_paiements_index', 'role' => 'ROLE_PAIEMENT_VOIR', 'prefixes' => ['app_paiements_', 'app_journal_caisse_', 'app_clients_solde']],
+            ['libelle' => 'Caisse', 'route' => 'app_caisse_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_caisse_', 'app_journal_caisse_', 'app_clients_solde']],
+            ['libelle' => 'Paiements', 'route' => 'app_paiements_index', 'role' => 'ROLE_PAIEMENT_VOIR', 'prefixes' => ['app_paiements_']],
             ['libelle' => 'Factures et créances', 'route' => 'app_factures_index', 'role' => 'ROLE_FACTURE', 'prefixes' => ['app_factures_']],
             ['libelle' => 'Trésorerie et dépenses', 'route' => 'app_mouvement_tresorerie_index', 'role' => 'ROLE_TRESORERIE_VOIR', 'prefixes' => ['app_mouvement_tresorerie_', 'app_decaissement_recurrent_', 'app_compte_tresorerie_', 'app_rapprochement_bancaire_']],
         ],
@@ -97,6 +98,7 @@ final class NavigationExtension extends AbstractExtension
         'app_lot_etiquette_' => 'atelier',
         'app_suivi_etiquette' => 'atelier',
         'app_fichier_upload_' => 'atelier',
+        'app_caisse_' => 'finances',
         'app_paiements_' => 'finances',
         'app_factures_' => 'finances',
         'app_journal_caisse_' => 'finances',

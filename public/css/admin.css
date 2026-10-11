@@ -2899,3 +2899,64 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
 /* Le thème donne aux cartes une hauteur en % : nos cartes suivent leur contenu. */
 .si-pp-carte, .si-parc-carte, .si-encre, .si-planning, .si-planning-attente, .si-bon-commande { height: auto; }
 .si-parc-carte dd { font-size: 14.5px; }
+
+/* ===== Caisse (maquette 28) ===== */
+.si-caisse { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.si-caisse .card { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 22px; margin: 0; }
+.si-caisse h2 { font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 12px; }
+.si-caisse h2 small { font-size: 13px; font-weight: 500; color: #64748B; }
+.si-caisse-client .form-select { font-size: 16px; padding: 12px 14px; border-radius: 12px; }
+.si-caisse-table { margin: 16px 0 0; }
+.si-caisse-table th { font-size: 13px; color: #64748B; font-weight: 600; background: #F8FAFC; border-bottom: 0; }
+.si-caisse-table td { vertical-align: middle; }
+.si-caisse-table a { font-weight: 600; }
+.si-caisse-choisie td { background: #EAF6EE; }
+.si-caisse-vide { color: #64748B; margin: 14px 0 0; }
+.si-caisse-form { margin-top: 18px; }
+.si-caisse-montant { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 16px; padding: 10px 0 16px; border-top: 1px solid #E2E8F0; }
+.si-caisse-montant label { color: #64748B; margin: 0; }
+.si-caisse-montant > div { display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; }
+.si-caisse-montant .form-control { border: 0; box-shadow: none; text-align: right; font-size: 44px; font-weight: 800; color: #0F4590; padding: 0; min-width: 0; background: transparent; }
+.si-caisse-montant span { font-size: 40px; font-weight: 800; color: #0F4590; }
+.si-caisse-montant small { grid-column: 1 / -1; text-align: right; color: #64748B; }
+.si-caisse-montant .invalid-feedback, .si-caisse-montant ul { grid-column: 1 / -1; }
+.si-caisse-modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.si-caisse-mode { min-height: 64px; border: 1.5px solid #E2E8F0; border-radius: 12px; background: #fff; font-weight: 700; color: #0F172A; padding: 8px; }
+.si-caisse-mode:hover { border-color: #94A3B8; }
+.si-caisse-mode[aria-checked="true"] { border-color: #16A34A; background: #EAF6EE; color: #15803D; }
+.si-caisse-details { margin-top: 6px; }
+.si-caisse-details > div { margin-top: 14px; }
+.si-caisse-valider { width: 100%; margin-top: 18px; padding: 14px; font-size: 18px; font-weight: 700; border-radius: 12px; }
+.si-caisse-note { font-size: 12px; color: #64748B; margin: 10px 0 0; }
+.si-caisse-cote { display: grid; gap: 20px; }
+.si-caisse-chiffres { margin: 0; }
+.si-caisse-chiffres div { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #EEF2F7; }
+.si-caisse-chiffres dt { font-weight: 400; color: #334155; }
+.si-caisse-chiffres dd { margin: 0; font-variant-numeric: tabular-nums; }
+.si-caisse-total { border-bottom: 0 !important; }
+.si-caisse-total dt, .si-caisse-total dd { font-weight: 700; color: #0F172A; }
+.si-caisse-cloture { margin: 10px 0 0; font-size: 13px; padding: 8px 10px; border-radius: 10px; }
+.si-caisse-cloture.si-ok { background: #EAF6EE; color: #15803D; }
+.si-caisse-cloture.si-ecart { background: #FEF3C7; color: #92400E; }
+.si-caisse-derniers { list-style: none; margin: 0; padding: 0; }
+.si-caisse-derniers li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #EEF2F7; }
+.si-caisse-derniers li:last-child { border-bottom: 0; }
+.si-caisse-derniers strong { display: block; color: #0F172A; }
+.si-caisse-derniers small { color: #64748B; }
+.si-caisse-derniers span { font-weight: 700; font-variant-numeric: tabular-nums; }
+.si-caisse-recu { color: #64748B; }
+.si-caisse-alerte { border-radius: 12px; }
+@media (max-width: 991px) {
+  .si-caisse { grid-template-columns: 1fr; }
+}
+@media (max-width: 575px) {
+  .si-caisse .card { padding: 16px; }
+  .si-caisse-modes { grid-template-columns: repeat(2, 1fr); }
+  .si-caisse-montant .form-control { font-size: 34px; }
+  .si-caisse-montant span { font-size: 30px; }
+  .si-caisse-table th:nth-child(2), .si-caisse-table td:nth-child(2) { max-width: 140px; }
+}
+.si-caisse-defile { max-height: 340px; overflow-y: auto; margin-top: 16px; border-radius: 10px; }
+.si-caisse-defile .si-caisse-table { margin: 0; }
+.si-caisse .si-caisse-table thead th { position: sticky; top: 0; z-index: 1; font-size: 13px; text-transform: none; letter-spacing: 0; padding: 10px 8px; }
+.si-caisse-alerte { margin: 0 0 16px; }

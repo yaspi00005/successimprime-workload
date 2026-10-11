@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Reçu {{ 'R-' ~ '%06d'|format(paiement.id) }} · {{ entreprise.nomAffiche }}</title>
+	<style>
+		@page { size: 80mm auto; margin: 4mm; }
+		* { box-sizing: border-box; }
+		body { margin: 0; background: #F3F5FA; font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #0F172A; }
+		.ticket { width: 80mm; max-width: 100%; margin: 16px auto; background: #fff; padding: 14px 12px; }
+		.centre { text-align: center; }
+		.logo { max-width: 46mm; max-height: 22mm; }
+		.nom { font-weight: 700; font-size: 15px; margin-top: 4px; }
+		.coord { font-size: 11px; color: #475569; }
+		h1 { font-size: 15px; letter-spacing: .08em; margin: 12px 0 2px; }
+		hr { border: 0; border-top: 1px dashed #94A3B8; margin: 10px 0; }
+		dl { margin: 0; }
+		dl div { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+		dt { color: #475569; }
+		dd { margin: 0; text-align: right; font-weight: 600; }
+		.montant { font-size: 24px; font-weight: 800; text-align: center; margin: 6px 0; }
+		.attente { border: 1px solid #F59E0B; color: #92400E; padding: 6px; font-size: 12px; text-align: center; margin-top: 8px; }
+		.merci { font-size: 12px; text-align: center; color: #475569; margin-top: 10px; }
+		.actions { text-align: center; margin: 0 auto 16px; }
+		.actions button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 0; background: #16A34A; color: #fff; cursor: pointer; }
+		@media print {
+			body { background: #fff; }
+			.ticket { margin: 0; padding: 0; width: auto; }
+			.actions { display: none; }
+		}
+	</style>
+</head>
+<body>
+	<main class="ticket">
+		<div class="centre">
+			{% if images.logo %}
+				<img src="{{ images.logo }}" class="logo" alt="">
+			{% else %}
+				<img src="{{ asset('images/logo-succes-imprim.png') }}" class="logo" alt="">
+			{% endif %}
+			<div class="nom">{{ entreprise.nomAffiche }}</div>
+			<div class="coord">
+				{{ [entreprise.adresse, entreprise.telephone]|filter(v => v)|join(' · ') }}
+			</div>
+			<h1>REÇU DE PAIEMENT</h1>
+			<div class="coord">N° {{ 'R-' ~ '%06d'|format(paiement.id) }} · {{ paiement.date|date('d/m/Y H:i') }}</div>
+		</div>
+		<hr>
+		<dl>
+			{% if commande.clients %}<div><dt>Client</dt><dd>{{ commande.clients.nomComplet }}</dd></div>{% endif %}
+			<div><dt>Commande</dt><dd>{{ commande.numero }}</dd></div>
+			{% if paiement.facture %}<div><dt>Facture</dt><dd>{{ paiement.facture.numero }}</dd></div>{% endif %}
+			<div><dt>Mode</dt><dd>{{ paiement.modeLabel }}</dd></div>
+			{% if paiement.reference %}<div><dt>Référence</dt><dd>{{ paiement.reference }}</dd></div>{% endif %}
+		</dl>
+		<hr>
+		<div class="montant">{{ paiement.montant|number_format(0, ',', ' ') }} F</div>
+		{% if paiement.montantFraisRetrait + paiement.montantFondsSoutien > 0 %}
+			<dl><div><dt>Frais mobile money</dt><dd>{{ (paiement.montantFraisRetrait + paiement.montantFondsSoutien)|number_format(0, ',', ' ') }} F</dd></div></dl>
+		{% endif %}
+		<dl>
+			<div><dt>Total commande</dt><dd>{{ commande.totalTtc|number_format(0, ',', ' ') }} F</dd></div>
+			<div><dt>Reste à payer</dt><dd>{{ reste|number_format(0, ',', ' ') }} F</dd></div>
+		</dl>
+		{% if not paiement.estValide %}
+			<div class="attente">Paiement enregistré, en attente de confirmation ({{ paiement.statutLabel|lower }}).</div>
+		{% endif %}
+		<hr>
+		<div class="coord">Encaissé par {{ paiement.encaissePar ? paiement.encaissePar.username : '—' }}</div>
+		<div class="merci">Merci pour votre confiance.</div>
+	</main>
+	<div class="actions"><button type="button" onclick="window.print()">Imprimer</button></div>
+	<script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 300); });</script>
+</body>
+</html>

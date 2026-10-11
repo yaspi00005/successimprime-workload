@@ -550,12 +550,15 @@ class Commandes
         return $this;
     }
 
+    /** Seuls les paiements validés comptent : un chèque en attente ou un paiement rejeté n'est pas encaissé. */
     public function getTotalPaye(): int
     {
         $total = 0;
 
         foreach ($this->paiements as $paiement) {
-            $total += (int) $paiement->getMontant();
+            if ($paiement->estValide()) {
+                $total += (int) $paiement->getMontant();
+            }
         }
 
         return $total;

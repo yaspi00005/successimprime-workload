@@ -1,0 +1,80 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Actions de caisse et commerciales · règles{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile"><a href="{{ path('app_actions_equipe_journal') }}" class="btn btn-light btn-sm si-btn-entete">Journal</a></li>
+	<li class="nav-item"><a href="{{ path('app_reglages_parametres_index', {tuile: 'relances'}) }}" class="btn btn-success btn-sm"><i class="fas fa-sliders-h"></i><span class="si-masque-mobile ms-1">Modifier les règles</span></a></li>
+{% endblock %}
+
+{% block body %}
+	{% set sources = [
+		['source_facture', 'Facture échue', 'Ligne « Relance facture » le lendemain de l\'échéance, puis tous les ' ~ regles.facture_intervalle_jours ~ ' jours'],
+		['source_devis', 'Devis sans réponse', 'Après ' ~ regles.devis_heures ~ ' h sans acceptation ni refus'],
+		['source_commande', 'Commande prête', 'Dès que l\'atelier passe la commande en « Prête »'],
+		['source_prospect', 'Nouveau prospect', 'Formulaire du site, discussion, appel entrant non converti'],
+		['source_inactif', 'Client inactif', 'Aucune commande depuis ' ~ regles.inactif_jours ~ ' jours'],
+		['source_avis', 'Avis après livraison', 'Le lendemain de la livraison'],
+		['source_manuelle', 'Lignes manuelles du responsable', 'Ex. « prospecter 5 écoles cette semaine »'],
+	] %}
+	<div class="si-ac si-ac-regles">
+		<section class="card si-ac-bloc">
+			<h2>Création automatique des lignes</h2>
+			<ul class="si-pg-controles">
+				{% for s in sources %}
+					<li><b>{{ s[1] }}</b><span>{{ s[2] }}</span><i class="si-pg-etat{{ regles[s[0]] ? ' on' }}">{{ regles[s[0]] ? 'oui' : 'non' }}</i></li>
+				{% endfor %}
+			</ul>
+			<p class="si-pg-note">Chaque ligne est attribuée à la personne de caisse en poste (pointage du jour). Absence ou congé : la ligne passe à l'autre personne et son délai repart.</p>
+
+			{% if regles.source_manuelle %}
+				<details class="si-pg-modifier">
+					<summary><i class="fas fa-plus me-1"></i>Nouvelle ligne manuelle</summary>
+					<form method="post" action="{{ path('app_actions_equipe_nouvelle') }}" class="si-pg-form">
+						<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+						<label>Action<input name="libelle" required maxlength="160" class="form-control" placeholder="Prospecter 5 écoles cette semaine"></label>
+						<label>Pour
+							<select name="pour" class="form-select">
+								<option value="">Personne en poste</option>
+								{% for p in personnes %}<option value="{{ p.id }}">{{ p|nom_pointage }}</option>{% endfor %}
+							</select>
+						</label>
+						<label class="si-pg-large">Détail<input name="detail" maxlength="255" class="form-control"></label>
+						<div class="si-pg-form-actions"><button class="btn btn-primary btn-sm">Créer la ligne</button></div>
+					</form>
+				</details>
+			{% endif %}
+		</section>
+
+		<div class="si-ac-colonne">
+			<section class="card si-ac-bloc">
+				<h2>Points</h2>
+				<div class="si-ac-regle-points">
+					<div class="si-ac-plus-bloc"><strong>+{{ regles.points_a_temps }}</strong><span>Faite en {{ regles.delai_heures }} h de travail ou moins</span></div>
+					<div class="si-ac-moins-bloc"><strong>−{{ regles.points_retard }}</strong><span>Faite après {{ regles.delai_heures }} h de travail</span></div>
+				</div>
+				<dl class="si-pg-regles si-ac-trois">
+					<div><dt>Délai</dt><dd>{{ regles.delai_heures }} h de travail</dd></div>
+					<div><dt>Départ du compteur</dt><dd>création de la ligne</dd></div>
+					<div><dt>Heures de travail</dt><dd>{{ regles.jours|replace({'-': ' – '}) }} · {{ regles.ouverture|replace({':00': ' h', ':': ' h '})|trim('0', 'left') }} – {{ regles.fermeture|replace({':00': ' h', ':': ' h '})|trim('0', 'left') }}</dd></div>
+				</dl>
+				<p class="si-pg-note">Le compteur s'arrête la nuit, les jours non travaillés, pendant la pause de {{ regles.pause_debut }} à {{ regles.pause_fin }} et les jours fériés ({{ regles.feries }}). Une ligne en retard rapporte −{{ regles.points_retard }} une seule fois et reste à faire.</p>
+			</section>
+
+			<section class="card si-ac-bloc">
+				<h2>Exemple : ligne créée {{ exemple.debut|date_fr('EEEE') }} à {{ exemple.debut|date('H:i') }}</h2>
+				<div class="si-ac-frise">
+					{% for j in exemple.jours %}
+						<div class="si-ac-frise-ligne">
+							<span>{{ j.jour|date_fr('EEE dd/MM')|capitalize }}</span>
+							<div class="si-ac-frise-barre">
+								{% if j.minutes > 0 %}<i style="width: {{ (j.minutes / (regles.delai_heures * 60) * 100)|round }}%">{{ j.minutes|duree_pointage }}</i>{% else %}<em>compteur arrêté</em>{% endif %}
+							</div>
+						</div>
+					{% endfor %}
+				</div>
+				<p class="si-ac-frise-fin"><span>{{ exemple.jours|filter(j => j.minutes > 0)|map(j => j.minutes|duree_pointage ~ ' ' ~ j.jour|date_fr('EEEE'))|join(' + ') }}</span><b>à faire avant {{ exemple.echeance|date_fr('EEEE HH:mm') }}</b></p>
+			</section>
+		</div>
+	</div>
+{% endblock %}

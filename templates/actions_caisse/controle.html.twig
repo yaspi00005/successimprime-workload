@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Contrôle au hasard{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_actions_equipe_journal') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-caret-left me-1"></i>Journal</a></li>
+	<li class="nav-item"><a href="{{ path('app_actions_equipe_controle') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-random me-1"></i>Autres lignes</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-ac">
+		<p class="si-pg-note">Lignes faites ce mois, prises au hasard parmi celles pas encore contrôlées. Appelez le client si besoin ; annulez les points d'une ligne non justifiée avec un motif, que la personne verra.</p>
+		{% for a in lignes %}
+			<section class="card si-ac-bloc si-ac-controle-ligne">
+				<header>
+					{% include 'actions_caisse/_pastille.html.twig' with {action: a} %}
+					<div><b>{{ a.libelle }}</b><small>{{ a.libelleType }} · {{ a.detail }} · {{ a.faitePar|nom_pointage }} · fait le {{ a.faiteLe|date('d/m H:i') }}</small></div>
+					<span class="si-ac-points {{ a.total > 0 ? 'si-ac-plus' : 'si-ac-zero' }}">{{ a.total > 0 ? '+' }}{{ a.total }} pts</span>
+				</header>
+				<p><b>{{ a.libelleResultat }}</b> · {{ a.preuve }}{% if a.contactLe %} ({{ a.contactLe|date('H:i') }}){% endif %}{% if a.telephone %} · {{ a.telephone }}{% endif %}{% if a.note %}<br>« {{ a.note }} »{% endif %}</p>
+				<form method="post" action="{{ path('app_actions_equipe_controler', {id: a.id}) }}" class="si-ac-controle-form">
+					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+					<input name="motif" maxlength="255" class="form-control" placeholder="Motif (obligatoire pour annuler les points)">
+					<button name="decision" value="verifiee" class="btn btn-success btn-sm">Vérifiée</button>
+					<button name="decision" value="annuler" class="btn btn-outline-danger btn-sm">Annuler les points</button>
+				</form>
+			</section>
+		{% else %}
+			<p class="card si-ac-vide si-ac-bloc">Aucune ligne faite à contrôler ce mois-ci.</p>
+		{% endfor %}
+	</div>
+{% endblock %}

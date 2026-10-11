@@ -42,6 +42,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Devis et commandes', 'route' => 'app_ventes_index', 'role' => ['ROLE_COMMANDE', 'ROLE_DEVIS'], 'prefixes' => ['app_ventes_', 'app_commandes_', 'app_commande_catalogue_', 'app_brouillon_', 'app_devis_']],
             ['libelle' => 'À retirer', 'route' => 'app_livraisons_a_retirer', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_a_retirer']],
             ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
+            ['libelle' => 'Mes actions', 'route' => 'app_actions_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_actions_']],
         ],
         'atelier' => [
             ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
@@ -68,6 +69,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Grille tarifaire', 'route' => 'app_grille_tarifaire_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_grille_tarifaire_', 'app_produits_', 'app_categorie_produit_', 'app_produit_configuration_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
             ['libelle' => 'Coûts de revient', 'route' => 'app_couts_revient_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_couts_revient_']],
             ['libelle' => 'Utilisateurs et droits', 'route' => 'app_utilisateurs_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_utilisateurs_', 'app_user_', 'app_employes_', 'app_journal_activite_']],
+            ['libelle' => 'Actions commerciales', 'route' => 'app_actions_equipe_journal', 'role' => 'ROLE_ACTIONS_GERER', 'prefixes' => ['app_actions_equipe_']],
             ['libelle' => 'Pointage', 'route' => 'app_pointage_jour', 'role' => 'ROLE_RH', 'prefixes' => ['app_pointage_']],
             ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
             ['libelle' => 'Sécurité', 'route' => 'app_appareils_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_appareils_']],
@@ -142,6 +144,8 @@ final class NavigationExtension extends AbstractExtension
         'app_entreprises_' => 'reglages',
         'app_reglages_parametres_' => 'reglages',
         'app_pointage_' => 'reglages',
+        'app_actions_equipe_' => 'reglages',
+        'app_actions_' => 'ventes',
     ];
 
     public function __construct(

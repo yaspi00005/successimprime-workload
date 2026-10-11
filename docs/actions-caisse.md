@@ -86,3 +86,21 @@ Ces points sont ceux du métier « Caisse et commercial » dans le barème par m
 2. Lignes d'action : sources automatiques, lignes manuelles, AC01.
 3. Résultat d'un appel, promesse de paiement, mobile AC02.
 4. Règles AC03, journal et contrôle au hasard AC04, points vers les primes.
+
+## État (11/10/2026)
+
+Construit : calcul des heures de travail (`HeuresTravail`, jours fériés dans Paramètres › Horaires), sources automatiques, attribution à la personne de caisse en poste (pointage du jour), réattribution en cas d'absence, AC01 (Ventes › Mes actions), AC02 (résultat, promesse, rappel), AC03 et AC04 (Réglages › Actions commerciales, droit « Actions commerciales de l'équipe »), contrôle au hasard, export CSV. Les règles se changent dans Paramètres › Relances et délais.
+
+Choix faits :
+- une source ancienne ne crée pas de ligne en masse au démarrage : factures échues depuis 90 jours au plus, autres sources sur 7 jours ;
+- sans appel ni WhatsApp touché depuis l'application, une note est obligatoire ;
+- « pas de réponse » ou « à rappeler » sans date crée le rappel 2 h de travail plus tard, pour qu'on ne puisse pas enchaîner les rappels et les points ;
+- une ligne sans personne de caisse s'affiche chez toutes les personnes de caisse jusqu'à ce que l'une la fasse.
+
+Reste : envoi WhatsApp par l'API (liens wa.me en attendant), lien des points vers les primes.
+
+Sur le serveur, ajouter au cron :
+
+```
+*/15 * * * * cd /chemin/du/site && php bin/console app:actions-caisse
+```

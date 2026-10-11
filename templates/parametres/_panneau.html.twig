@@ -73,6 +73,8 @@
 										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="number" inputmode="decimal" step="{{ (champ.decimales ?? 0) > 0 ? '0.01' : '1' }}" min="{{ champ.min }}" max="{{ champ.max }}" value="{{ valeur }}">
 									{% elseif champ.type == 'heure' %}
 										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="time" value="{{ valeur }}">
+									{% elseif champ.type == 'dates' %}
+										<textarea id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" rows="3">{{ valeur }}</textarea>
 									{% else %}
 										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="text" maxlength="120" value="{{ valeur }}">
 									{% endif %}

@@ -1,0 +1,70 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Journal des actions · {{ debut|date_fr('MMMM') }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_actions_equipe_journal', {mois: debut|date_modify('-1 month')|date('Y-m'), personne: choisie ? choisie.id}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-caret-left"></i><span class="si-masque-mobile ms-1">Mois précédent</span></a></li>
+	<li class="nav-item"><a href="{{ path('app_actions_equipe_controle') }}" class="btn btn-light btn-sm si-btn-entete">Contrôle au hasard</a></li>
+	<li class="nav-item si-masque-mobile"><a href="{{ path('app_actions_equipe_export', {mois: debut|date('Y-m')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-download me-1"></i>Export</a></li>
+	<li class="nav-item si-masque-mobile"><a href="{{ path('app_actions_equipe_regles') }}" class="btn btn-light btn-sm si-btn-entete">Règles</a></li>
+{% endblock %}
+
+{% block body %}
+	{% set aTemps = regles.points_a_temps %}
+	{% set retard = regles.points_retard %}
+	<div class="si-ac">
+		<div class="si-ac-personnes">
+			{% for c in cartes %}
+				{% set b = c.bilan %}
+				<a href="{{ path('app_actions_equipe_journal', {mois: debut|date('Y-m'), personne: c.personne.id}) }}" class="card si-ac-personne {{ choisie and choisie.id == c.personne.id ? 'si-ac-choisie' }}">
+					<header>
+						<span class="si-avatar">{{ c.personne|nom_pointage|split(' ')|map(m => m|first)|join|slice(0, 2)|upper }}</span>
+						<span><b>{{ c.personne|nom_pointage }}</b><small>Caisse et commercial</small></span>
+						<strong class="{{ b.pourcentage is null ? '' : (b.pourcentage >= 90 ? 'si-p-ok' : (b.pourcentage >= 75 ? 'si-ac-orange' : 'si-p-alerte')) }}">{{ b.pourcentage is null ? '—' : b.pourcentage ~ ' %' }}<small>dans les délais</small></strong>
+					</header>
+					<dl>
+						<div><dt>Lignes</dt><dd>{{ b.lignes }}</dd></div>
+						<div><dt>À l'heure</dt><dd>{{ b.aLHeure }}</dd></div>
+						<div><dt>En retard</dt><dd>{{ b.enRetard }}</dd></div>
+						<div><dt>Points</dt><dd>{{ b.points }} pts</dd></div>
+					</dl>
+					<p>+{{ b.gagnes }} (à l'heure × {{ aTemps }}) −{{ b.retires }} (retards × {{ retard }}) = {{ b.points }} pts</p>
+				</a>
+			{% else %}
+				<p class="card si-ac-vide">Aucune personne de caisse : donnez le droit « Encaissements » dans Utilisateurs et droits.</p>
+			{% endfor %}
+		</div>
+
+		{% if sansPersonne is not empty %}
+			<p class="si-ac-alerte">{{ sansPersonne|length }} ligne{{ sansPersonne|length > 1 ? 's' }} sans personne de caisse : elles s'afficheront chez la première personne qui ouvre « Mes actions ».</p>
+		{% endif %}
+
+		{% if choisie %}
+			<section class="card si-ac-liste si-ac-journal">
+				<header><h2>Dernières lignes · {{ choisie|nom_pointage }}</h2></header>
+				{% if lignes is empty %}
+					<p class="si-ac-vide">Aucune ligne ce mois-ci.</p>
+				{% else %}
+					<table class="table">
+						<thead><tr><th>Faite le</th><th></th><th>Client · action</th><th>Créée</th><th>Temps de travail écoulé</th><th>Preuve</th><th>Points</th></tr></thead>
+						<tbody>
+							{% for l in lignes %}
+								{% set a = l.action %}
+								<tr>
+									<td data-libelle="Faite le"><b>{{ a.faiteLe and a.etat == 'faite' ? a.faiteLe|date('d/m H:i') : (a.etat == 'a_faire' ? 'à faire' : '—') }}</b></td>
+									<td class="si-ac-col-pastille">{% include 'actions_caisse/_pastille.html.twig' with {action: a} %}</td>
+									<td class="si-ac-col-client"><a href="{{ path('app_actions_voir', {id: a.id}) }}"><b>{{ a.libelle }}</b></a> <small>{{ a.libelleType }}{% if a.note %} · {{ a.note|length > 60 ? a.note|slice(0, 60) ~ '…' : a.note }}{% endif %}</small></td>
+									<td data-libelle="Créée">{{ a.creeLe|date_fr('EEE HH:mm') }}</td>
+									<td data-libelle="Temps écoulé">{{ a.penalite > 0 and a.etat != 'faite' ? regles.delai_heures ~ ' h dépassées ' ~ a.echeance|date_fr('EEE HH:mm') : l.ecoule|duree_pointage }}</td>
+									<td data-libelle="Preuve">{{ a.preuve }}{% if a.controleLe %} · {{ a.pointsAnnules ? 'annulée' : 'vérifiée' }}{% endif %}</td>
+									<td data-libelle="Points"><span class="si-ac-points {{ a.total > 0 ? 'si-ac-plus' : (a.total < 0 ? 'si-ac-moins' : 'si-ac-zero') }}">{{ a.total > 0 ? '+' }}{{ a.total }} pts</span></td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endif %}
+				<p class="si-ac-note-bas">Une ligne n'est comptée « faite » qu'avec un résultat : appel passé ou message envoyé depuis l'application, sinon note obligatoire. Le responsable vérifie quelques lignes au hasard chaque semaine.</p>
+			</section>
+		{% endif %}
+	</div>
+{% endblock %}

@@ -2,6 +2,7 @@
 
 namespace App\Twig;
 
+use App\Service\ActionsCaisse\ActionsCaisse;
 use App\Service\Parametres\Parametres;
 use App\Service\Pointage\CalculPointage;
 use App\Service\Pointage\Pointages;
@@ -23,6 +24,8 @@ final class ReglagesExtension extends AbstractExtension
     {
         return [
             new TwigFunction('reglage', $this->parametres->valeur(...)),
+            // Liens tel: et wa.me d'une ligne d'action de caisse.
+            new TwigFunction('liens_action', ActionsCaisse::liens(...)),
         ];
     }
 

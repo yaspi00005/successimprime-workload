@@ -98,6 +98,7 @@ security:
             - ROLE_COUT_MARGE
             - ROLE_RH
             - ROLE_PARAMETRES
+            - ROLE_ACTIONS_GERER
             - ROLE_RESPONSABLE_GESTION
             
 

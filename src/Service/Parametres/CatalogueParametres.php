@@ -2,6 +2,8 @@
 
 namespace App\Service\Parametres;
 
+use App\Service\ActionsCaisse\HeuresTravail;
+
 /**
  * Les réglages de l'écran Paramètres (maquettes S01 à S04) : 6 familles
  * de couleur, une tuile par réglage, et pour chaque tuile les champs que
@@ -97,14 +99,24 @@ final class CatalogueParametres
             ],
             'relances' => [
                 'famille' => 'ventes', 'libelle' => 'Relances et délais', 'icone' => 'fa-bell',
-                'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => 'app_regle_rappel_paiement_index',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES', 'ROLE_ACTIONS_GERER'], 'route' => 'app_actions_equipe_regles',
                 'champs' => [
                     ['cle' => 'delai_heures', 'type' => 'nombre', 'libelle' => 'Délai pour traiter une action', 'suffixe' => 'h de travail', 'min' => 1, 'max' => 72, 'defaut' => 4],
                     ['cle' => 'points_a_temps', 'type' => 'nombre', 'libelle' => 'Points si traité à temps', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 10],
                     ['cle' => 'points_retard', 'type' => 'nombre', 'libelle' => 'Points retirés si en retard', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 15],
+                    ['cle' => 'source_facture', 'type' => 'interrupteur', 'libelle' => 'Facture échue', 'aide' => 'Relance le lendemain de l\'échéance', 'defaut' => true],
+                    ['cle' => 'facture_intervalle_jours', 'type' => 'nombre', 'libelle' => 'Relancer une facture échue tous les', 'suffixe' => 'jours', 'min' => 1, 'max' => 30, 'defaut' => 3],
+                    ['cle' => 'source_devis', 'type' => 'interrupteur', 'libelle' => 'Devis sans réponse', 'aide' => 'Ni accepté ni refusé', 'defaut' => true],
+                    ['cle' => 'devis_heures', 'type' => 'nombre', 'libelle' => 'Devis sans réponse après', 'suffixe' => 'h', 'min' => 4, 'max' => 720, 'defaut' => 48],
+                    ['cle' => 'source_commande', 'type' => 'interrupteur', 'libelle' => 'Commande prête', 'aide' => 'Prévenir le client', 'defaut' => true],
+                    ['cle' => 'source_prospect', 'type' => 'interrupteur', 'libelle' => 'Nouveau prospect', 'aide' => 'Site, discussion, appel entrant', 'defaut' => true],
+                    ['cle' => 'source_inactif', 'type' => 'interrupteur', 'libelle' => 'Client inactif', 'aide' => 'Plus de commande depuis un moment', 'defaut' => true],
+                    ['cle' => 'inactif_jours', 'type' => 'nombre', 'libelle' => 'Client inactif après', 'suffixe' => 'jours', 'min' => 15, 'max' => 365, 'defaut' => 60],
+                    ['cle' => 'source_avis', 'type' => 'interrupteur', 'libelle' => 'Avis après livraison', 'aide' => 'Le lendemain de la livraison', 'defaut' => true],
+                    ['cle' => 'source_manuelle', 'type' => 'interrupteur', 'libelle' => 'Lignes manuelles du responsable', 'aide' => 'Ex. « prospecter 5 écoles »', 'defaut' => true],
                 ],
                 'motsCles' => ['Actions de caisse · 4 heures de travail', 'Rappels de paiement · créances', 'Commande prête non retirée'],
-                'note' => \sprintf(self::NOTE_A_BRANCHER, 'des actions de caisse'),
+                'note' => 'Les lignes d\'action sont créées pour la caisse selon ces sources ; le délai se compte en heures de travail (tuile Horaires).',
             ],
 
             // ---------- Atelier ----------
@@ -169,9 +181,10 @@ final class CatalogueParametres
                     ['cle' => 'jours', 'type' => 'choix', 'libelle' => 'Jours travaillés', 'options' => ['lun-ven' => 'lun – ven', 'lun-sam' => 'lun – sam', 'lun-dim' => 'lun – dim'], 'defaut' => 'lun-sam'],
                     ['cle' => 'ouverture', 'type' => 'heure', 'libelle' => 'Ouverture', 'defaut' => '08:00'],
                     ['cle' => 'fermeture', 'type' => 'heure', 'libelle' => 'Fermeture', 'defaut' => '18:00'],
+                    ['cle' => 'feries', 'type' => 'dates', 'libelle' => 'Jours fériés (JJ/MM chaque année, JJ/MM/AAAA pour une seule année)', 'defaut' => HeuresTravail::FERIES_MALI],
                 ],
                 'motsCles' => ['Heures d\'ouverture de l\'atelier', 'Jours travaillés', 'Heures de travail'],
-                'note' => 'Sert au pointage : retard calculé sur l\'ouverture, heures supplémentaires après la fermeture.',
+                'note' => 'Sert au pointage (retard sur l\'ouverture, heures sup. après la fermeture) et au délai des actions de caisse, qui s\'arrête hors de ces heures, pendant la pause et les jours fériés. Ajoutez chaque année Ramadan, Tabaski, Maouloud et lundi de Pâques.',
             ],
             'bareme' => [
                 'famille' => 'personnel', 'libelle' => 'Barème des points', 'icone' => 'fa-star',
@@ -327,6 +340,16 @@ final class CatalogueParametres
                         break;
                     }
                     $valeurs[$cle] = $texte;
+                    break;
+
+                case 'dates':
+                    $dates = HeuresTravail::lireDates((string) $brut);
+                    if ($dates === null || \count($dates) > 60) {
+                        $erreurs[$cle] = 'Dates JJ/MM ou JJ/MM/AAAA séparées par des virgules.';
+                        break;
+                    }
+                    sort($dates);
+                    $valeurs[$cle] = implode(', ', array_map(static fn (string $d): string => implode('/', array_reverse(explode('-', $d))), $dates));
                     break;
 
                 case 'choix':

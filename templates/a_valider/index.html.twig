@@ -1,0 +1,146 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Opérations à valider{% endblock %}
+
+{% block header_actions %}
+	{% if operations is not empty %}
+		<li class="nav-item">
+			<button type="button" class="btn btn-light btn-sm si-btn-entete" data-bs-toggle="modal" data-bs-target="#modale-rejet" data-si-selection disabled>Rejeter</button>
+		</li>
+		<li class="nav-item">
+			<button type="submit" form="form-a-valider" name="decision" value="valider" class="btn btn-success btn-sm si-btn-entete" data-si-selection disabled><i class="fas fa-check me-1"></i>Valider<span class="si-masque-mobile"> la sélection</span> (<span data-si-compte>0</span>)</button>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-valider">
+		{% if operations is empty %}
+			<p class="si-valider-bandeau si-ok">Aucune opération en attente : tout est validé.</p>
+		{% else %}
+			<p class="si-valider-bandeau">
+				<strong>{{ operations|length }} opération{{ operations|length > 1 ? 's' }} provisoire{{ operations|length > 1 ? 's' }}</strong>
+				en attente. Elles ne comptent ni dans les soldes, ni dans la caisse du jour, ni dans les statistiques tant qu’elles ne sont pas validées ici.
+			</p>
+		{% endif %}
+
+		<section class="card si-valider-bloc">
+			{% if operations is not empty %}
+				<form method="post" action="{{ path('app_a_valider_traiter') }}" id="form-a-valider">
+					<input type="hidden" name="_token" value="{{ csrf_token('a-valider') }}">
+					<div class="table-responsive">
+						<table class="table si-valider-table si-valider-cartes">
+							<thead>
+								<tr>
+									<th class="si-valider-case"><input type="checkbox" class="form-check-input" id="tout-cocher" aria-label="Tout cocher"></th>
+									<th>Saisie</th>
+									<th>Type</th>
+									<th>Client / objet</th>
+									<th class="text-end">Montant</th>
+									<th>Contrôles auto</th>
+									<th class="si-masque-mobile">Justificatif</th>
+									<th class="si-masque-mobile">Auteur</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for op in operations %}
+									<tr>
+										<td class="si-valider-case si-v-case"><input type="checkbox" class="form-check-input" name="operations[]" value="{{ op.cle }}" id="op-{{ op.cle }}" aria-label="Choisir {{ op.type }} {{ op.montant|number_format(0, ',', ' ') }} F"></td>
+										<td class="text-nowrap si-v-date"><label for="op-{{ op.cle }}">{{ op.date ? op.date|date('d/m') : '—' }}<small class="d-block">{{ op.date ? op.date|date('H:i') }}</small></label></td>
+										<td class="si-v-type"><a href="{{ path(op.lien.route, {id: op.lien.id}) }}">{{ op.type }}</a></td>
+										<td class="si-v-objet">{{ op.objet }}{% if op.detail %}<small class="d-block text-muted">{{ op.detail }}</small>{% endif %}</td>
+										<td class="text-end text-nowrap fw-bold si-v-montant">{{ op.montant|number_format(0, ',', ' ') }}</td>
+										<td class="si-v-controles">
+											{% for c in op.controles %}
+												<span class="si-controle si-controle-{{ c.etat }}">{{ c.etat == 'ok' ? '✓' : '⚠' }} {{ c.libelle }}</span>
+											{% else %}
+												<span class="text-muted">—</span>
+											{% endfor %}
+										</td>
+										<td class="si-masque-mobile">{{ op.justificatif ? 'Joint' : '—' }}</td>
+										<td class="si-masque-mobile">{{ op.auteur ?: '—' }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+
+					<div class="modal fade" id="modale-rejet" tabindex="-1" aria-labelledby="titre-rejet" aria-hidden="true">
+						<div class="modal-dialog">
+							<div class="modal-content">
+								<div class="modal-header">
+									<h2 class="modal-title fs-5" id="titre-rejet">Rejeter la sélection</h2>
+									<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+								</div>
+								<div class="modal-body">
+									<label class="form-label" for="motif-rejet">Motif (envoyé à l’auteur)</label>
+									<textarea class="form-control" id="motif-rejet" name="motif" rows="3" placeholder="Référence introuvable sur le relevé Orange Money"></textarea>
+								</div>
+								<div class="modal-footer">
+									<button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+									<button type="submit" name="decision" value="rejeter" class="btn btn-danger" id="confirmer-rejet">Rejeter</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</form>
+			{% endif %}
+
+			<div class="si-valider-regles">
+				<div><small>Si validée</small><strong>Soldes, commande et facture à jour, opération verrouillée</strong></div>
+				<div><small>Si rejetée</small><strong>Motif obligatoire, l’auteur est prévenu</strong></div>
+				<div><small>Délai</small><strong>Signalée si elle attend plus de {{ constant('App\\Service\\OperationsAValider::DELAI_HEURES') }} h</strong></div>
+			</div>
+		</section>
+
+		<section class="card si-valider-bloc">
+			<h2>Validées récemment</h2>
+			{% if validees is empty %}
+				<p class="text-muted mb-0">Rien n’a encore été validé ici.</p>
+			{% else %}
+				<div class="table-responsive">
+					<table class="table si-valider-table">
+						<thead><tr><th>Validée le</th><th>Opération</th><th class="text-end">Montant</th><th class="si-masque-mobile">Par</th><th class="si-masque-mobile">Écriture</th></tr></thead>
+						<tbody>
+							{% for v in validees %}
+								<tr>
+									<td class="text-nowrap">{{ v.date|date('d/m H:i') }}</td>
+									<td>{{ v.operation }}</td>
+									<td class="text-end text-nowrap fw-bold">{{ v.montant|number_format(0, ',', ' ') }}</td>
+									<td class="si-masque-mobile">{{ v.par ?: '—' }}</td>
+									<td class="si-masque-mobile">{{ v.ecriture }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(function () {
+			var form = document.getElementById('form-a-valider');
+			if (!form) { return; }
+			var cases = form.querySelectorAll('input[name="operations[]"]');
+			var tout = document.getElementById('tout-cocher');
+			var maj = function () {
+				var n = form.querySelectorAll('input[name="operations[]"]:checked').length;
+				document.querySelectorAll('[data-si-compte]').forEach(function (e) { e.textContent = n; });
+				document.querySelectorAll('[data-si-selection]').forEach(function (b) { b.disabled = n === 0; });
+				tout.checked = n === cases.length;
+				tout.indeterminate = n > 0 && n < cases.length;
+			};
+			cases.forEach(function (c) { c.addEventListener('change', maj); });
+			tout.addEventListener('change', function () { cases.forEach(function (c) { c.checked = tout.checked; }); maj(); });
+			document.getElementById('confirmer-rejet').addEventListener('click', function (e) {
+				var motif = document.getElementById('motif-rejet');
+				if (motif.value.trim() === '') { e.preventDefault(); motif.classList.add('is-invalid'); motif.focus(); }
+			});
+			maj();
+		})();
+	</script>
+{% endblock %}

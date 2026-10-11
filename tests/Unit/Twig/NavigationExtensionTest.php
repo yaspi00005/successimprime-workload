@@ -21,6 +21,7 @@ final class NavigationExtensionTest extends TestCase
         yield 'stock' => ['app_stock_etat_index', 'atelier'];
         yield 'facture' => ['app_factures_show', 'finances'];
         yield 'caisse' => ['app_caisse_index', 'finances'];
+        yield 'à valider' => ['app_a_valider_index', 'finances'];
         yield 'soldes clients avant clients' => ['app_clients_soldes', 'finances'];
         yield 'fiche client' => ['app_clients_show', 'clients'];
         yield 'campagne' => ['app_campagne_index', 'clients'];

@@ -2960,3 +2960,42 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
 .si-caisse-defile .si-caisse-table { margin: 0; }
 .si-caisse .si-caisse-table thead th { position: sticky; top: 0; z-index: 1; font-size: 13px; text-transform: none; letter-spacing: 0; padding: 10px 8px; }
 .si-caisse-alerte { margin: 0 0 16px; }
+
+/* ===== À valider (maquette 29) ===== */
+.si-valider { display: grid; gap: 20px; }
+.si-valider-bandeau { margin: 0; padding: 14px 18px; border-radius: 14px; background: #FFF7ED; border: 1px solid #FED7AA; color: #7C2D12; }
+.si-valider-bandeau strong { color: #C2410C; }
+.si-valider-bandeau.si-ok { background: #EAF6EE; border-color: #BBE5C8; color: #15803D; }
+.si-valider .card { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; margin: 0; }
+.si-valider h2 { font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 12px; }
+.si-valider .si-valider-table { margin: 0; }
+.si-valider .si-valider-table thead th { font-size: 13px; color: #64748B; font-weight: 600; text-transform: none; letter-spacing: 0; background: #F8FAFC; border-bottom: 0; padding: 10px 8px; }
+.si-valider-table td { vertical-align: middle; padding: 12px 8px; }
+.si-valider-table td small { color: #64748B; }
+.si-valider-table label { margin: 0; cursor: pointer; }
+.si-valider-case { width: 36px; }
+.si-controle { display: inline-block; margin: 2px 4px 2px 0; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.si-controle-ok { background: #DCFCE7; color: #15803D; }
+.si-controle-attention { background: #FFEDD5; color: #C2410C; }
+.si-controle-erreur { background: #FEE2E2; color: #B91C1C; }
+.si-valider-regles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+.si-valider-regles div { background: #F8FAFC; border-radius: 12px; padding: 12px 14px; }
+.si-valider-regles small { display: block; color: #64748B; }
+.si-valider-regles strong { color: #0F172A; font-size: 14px; }
+@media (max-width: 767px) {
+  .si-valider-regles { grid-template-columns: 1fr; }
+  .si-valider .card { padding: 14px; }
+  .si-controle { white-space: normal; }
+}
+@media (max-width: 767px) {
+  .si-valider-cartes thead { display: none; }
+  .si-valider-cartes tbody tr { display: grid; grid-template-columns: 28px 1fr auto; grid-template-areas: "case type montant" "case objet objet" "case controles controles" "case date date"; gap: 2px 10px; padding: 12px 0; border-bottom: 1px solid #EEF2F7; }
+  .si-valider-cartes tbody td { display: block; padding: 0; border: 0; }
+  .si-v-case { grid-area: case; padding-top: 2px !important; }
+  .si-v-type { grid-area: type; font-weight: 600; }
+  .si-v-montant { grid-area: montant; }
+  .si-v-objet { grid-area: objet; }
+  .si-v-controles { grid-area: controles; margin-top: 4px; }
+  .si-v-date { grid-area: date; font-size: 12px; color: #64748B; }
+  .si-v-date small { display: inline !important; margin-left: 4px; }
+}

@@ -91,7 +91,13 @@ w("""-- Clients fictifs pour essayer les écrans Clients (K01 à K06).
 SET NAMES utf8mb4;
 START TRANSACTION;
 """)
-w(Path(__file__).with_name('clients-demo-purge.sql').read_text().split('-- DEBUT')[1].split('-- FIN')[0].strip())
+w("""-- Enlever une ancienne démo chargée par ce fichier. Si des devis ou des
+-- factures ont été faits sur ces clients pendant les essais, lancer
+-- d'abord clients-demo-purge.sql.
+DELETE k FROM commandes k JOIN clients c ON c.id = k.clients_id WHERE c.code LIKE 'DEMO-%';
+DELETE FROM commandes WHERE numero LIKE 'CMD-DK-%';
+DELETE FROM clients WHERE code LIKE 'DEMO-%';
+DELETE FROM prospect WHERE telephone LIKE '+223 60 %';""")
 w("""
 -- Commerciaux : les utilisateurs actifs existants, quels qu'ils soient.
 SET @u1 = (SELECT id FROM `user` WHERE actif = 1 ORDER BY id LIMIT 1);

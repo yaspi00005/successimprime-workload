@@ -27,3 +27,17 @@ Bibliothèques : pdf-lib 1.17.1 et pdf.js 4.10.38, chargées depuis des CDN.
 ## Ordre
 
 Après le tableau du graphiste (W01, W02) : d'abord l'outil tel quel dans l'admin avec les bibliothèques locales, puis le lien avec la commande et l'enregistrement du PDF, puis les réglages par machine.
+
+## État (11/10/2026)
+
+Fait :
+
+- L'outil est à `/atelier/montage` pour l'admin, la prépresse et le responsable de production. pdf-lib et pdf.js sont servis depuis `public/vendor/montage/` (avec leurs licences) : il marche sans Internet.
+- Le bouton « Monter » est sur l'écran de contrôle prépresse et sur l'évolution d'un travail (W02). L'outil charge la dernière maquette de la ligne (pas un montage déjà rangé), le format fini et la quantité.
+- La marge, le fond perdu et les traits de coupe par défaut viennent de la tuile Montage des paramètres.
+- « Ranger dans la commande » enregistre le PDF dans les fichiers de la ligne (`var/uploads/commandes`, non public), en nouvelle version, origine interne, état traité, avec le nombre de poses et la feuille. La frise de la conception note « Montage d'impression enregistré ».
+
+Reste :
+
+- Garder les feuilles et la gâche sur la ligne pour le coût de revient et les compteurs.
+- Lire la marge et les formats acceptés depuis la fiche de chaque machine.

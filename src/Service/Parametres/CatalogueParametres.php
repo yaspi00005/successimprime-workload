@@ -137,7 +137,7 @@ final class CatalogueParametres
             ],
             'montage' => [
                 'famille' => 'atelier', 'libelle' => 'Montage PAO', 'icone' => 'fa-th-large',
-                'roles' => ['ROLE_ADMIN', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'route' => null,
+                'roles' => ['ROLE_ADMIN', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'route' => 'app_montage_outil',
                 'champs' => [
                     ['cle' => 'formats', 'type' => 'texte', 'libelle' => 'Formats de feuille', 'defaut' => 'A4 · A3 · SRA3'],
                     ['cle' => 'marge_mm', 'type' => 'nombre', 'libelle' => 'Marge de sécurité', 'suffixe' => 'mm', 'min' => 0, 'max' => 50, 'defaut' => 5],
@@ -145,7 +145,7 @@ final class CatalogueParametres
                     ['cle' => 'traits_coupe', 'type' => 'interrupteur', 'libelle' => 'Traits de coupe', 'defaut' => true],
                 ],
                 'motsCles' => ['Imposition · montage des fichiers', 'Format SRA3 · fond perdu', 'Infographiste'],
-                'note' => \sprintf(self::NOTE_A_BRANCHER, 'de montage'),
+                'note' => 'L\'outil de montage part de ces valeurs. Depuis un travail PAO, le bouton « Monter » charge le fichier, le format et la quantité, et range le PDF dans la commande.',
             ],
 
             // ---------- Personnel ----------

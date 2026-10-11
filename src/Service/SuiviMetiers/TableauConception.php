@@ -2,6 +2,7 @@
 
 namespace App\Service\SuiviMetiers;
 
+use App\Entity\CommandesDetails;
 use App\Entity\Conception;
 use App\Entity\ControlePrePresse;
 use App\Entity\User;
@@ -229,6 +230,18 @@ final class TableauConception
         if ($c !== null) {
             $c->setGraphiste($c->getGraphiste() ?? $par);
             $c->envoyerBat($maintenant, 'depuis l\'écran prépresse');
+            $this->em->flush();
+        }
+    }
+
+    /** Le PDF du montage est rangé dans la commande : noté dans la frise. */
+    public function noterMontage(CommandesDetails $ligne, ?string $detail, \DateTimeImmutable $maintenant): void
+    {
+        $c = $this->em->createQueryBuilder()->select('c')->from(Conception::class, 'c')
+            ->join('c.controle', 'ctl')->where('ctl.commandeDetail = :l')->setParameter('l', $ligne)
+            ->orderBy('c.id', 'DESC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
+        if ($c instanceof Conception) {
+            $c->noterMontage($maintenant, $detail !== '' ? $detail : null);
             $this->em->flush();
         }
     }

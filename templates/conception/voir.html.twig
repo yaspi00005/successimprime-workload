@@ -6,6 +6,7 @@
 {% block header_actions %}
 	{% if c.controle.commandeDetail %}
 		<li class="nav-item si-masque-mobile"><a href="{{ path('app_controle_pre_presse_controler', {id: c.controle.commandeDetail.id}) }}" class="btn btn-light btn-sm si-btn-entete">Fichiers</a></li>
+		<li class="nav-item si-masque-mobile"><a href="{{ path('app_montage_outil', {ligne: c.controle.commandeDetail.id}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-th-large me-1"></i>Monter</a></li>
 	{% endif %}
 	<li class="nav-item"><a href="{{ path('app_conception_tableau') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-columns"></i><span class="si-masque-mobile ms-1">Mon tableau</span></a></li>
 {% endblock %}

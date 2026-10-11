@@ -224,6 +224,11 @@ class Conception
         $this->noter($le, 'valide', 'BAT validé', $detail);
     }
 
+    public function noterMontage(\DateTimeImmutable $le, ?string $detail): void
+    {
+        $this->noter($le, 'montage', 'Montage d\'impression enregistré', $detail);
+    }
+
     public function envoyeEnProduction(\DateTimeImmutable $le, ?string $detail): void
     {
         $this->noter($le, 'production', 'Envoyé en production', $detail);

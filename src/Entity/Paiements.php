@@ -110,6 +110,13 @@ class Paiements
     )]
     private ?CompteTresorerie $compteTresorerie = null;
 
+    /*
+     * Copie reçue par la synchronisation (non enregistré en base) : le
+     * compte de trésorerie ne quitte jamais le local, il est choisi à la
+     * validation (docs/synchronisation.md).
+     */
+    private bool $copieSynchronisee = false;
+
     #[ORM\Column(options: ['default' => 0])]
     #[Assert\Positive]
     private int $montant = 0;
@@ -179,10 +186,11 @@ class Paiements
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $motifAnnulation = null;
 
+    // Vide pour un paiement saisi en ligne par le client (synchronisation).
     #[ORM\ManyToOne(inversedBy: 'paiements')]
     #[ORM\JoinColumn(
         name: 'encaisse_par_id',
-        nullable: false,
+        nullable: true,
         onDelete: 'RESTRICT'
     )]
     #[Assert\NotNull]
@@ -593,23 +601,7 @@ class Paiements
 
         $typeCompte = $this->compteTresorerie->getType();
 
-        $typesAutorises = match ($this->mode) {
-            self::MODE_ESPECES => [
-                CompteTresorerie::TYPE_CAISSE,
-            ],
-            self::MODE_ORANGE_MONEY => [
-                CompteTresorerie::TYPE_ORANGE_MONEY,
-            ],
-            self::MODE_WAVE => [
-                CompteTresorerie::TYPE_WAVE,
-            ],
-            self::MODE_VIREMENT,
-            self::MODE_CHEQUE,
-            self::MODE_CARTE => [
-                CompteTresorerie::TYPE_BANQUE,
-            ],
-            default => [],
-        };
+        $typesAutorises = self::typesComptesPour($this->mode);
 
         if (!in_array($typeCompte, $typesAutorises, true)) {
             throw new \LogicException(
@@ -724,11 +716,42 @@ class Paiements
         return array_flip(self::STATUTS_LABELS);
     }
 
+    /** Types de compte de trésorerie qui peuvent recevoir ce mode de paiement. */
+    public static function typesComptesPour(?string $mode): array
+    {
+        return match ($mode) {
+            self::MODE_ESPECES => [
+                CompteTresorerie::TYPE_CAISSE,
+            ],
+            self::MODE_ORANGE_MONEY => [
+                CompteTresorerie::TYPE_ORANGE_MONEY,
+            ],
+            self::MODE_WAVE => [
+                CompteTresorerie::TYPE_WAVE,
+            ],
+            self::MODE_VIREMENT,
+            self::MODE_CHEQUE,
+            self::MODE_CARTE => [
+                CompteTresorerie::TYPE_BANQUE,
+            ],
+            default => [],
+        };
+    }
+
+    public function marquerCopieSynchronisee(): void
+    {
+        $this->copieSynchronisee = true;
+    }
+
     #[ORM\PrePersist]
     public function verifierAvantEnregistrement(): void
     {
         $this->date ??= new \DateTimeImmutable();
-        $this->verifierCompatibiliteCompte();
+        // Un paiement en attente (saisi en ligne par le client) reçoit son
+        // compte à la validation, qui le contrôle alors (Finances › À valider).
+        if (!$this->copieSynchronisee && !($this->compteTresorerie === null && $this->estEnAttente())) {
+            $this->verifierCompatibiliteCompte();
+        }
 
         if (
             $this->mode === self::MODE_CHEQUE

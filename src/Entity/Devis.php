@@ -68,8 +68,9 @@ class Devis
     #[Assert\NotNull(message: 'Veuillez sélectionner un client.')]
     private ?Clients $clients = null;
 
+    /** Vide sur le site en ligne : les comptes du personnel ne sont pas synchronisés. */
     #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
     private ?User $agents = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]

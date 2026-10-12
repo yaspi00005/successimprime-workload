@@ -124,6 +124,7 @@ final class AgentSynchro
                 $faits[] = (int) $r['id'];
                 $this->noterResultat(SynchroEchange::VERS_EN_LIGNE, $r, $resume);
             }
+            $this->synchro->enregistrerEchanges();
             $this->synchro->marquerEnvoyes($faits);
             $resume['envoyes'] += \count($faits);
 
@@ -158,6 +159,7 @@ final class AgentSynchro
                 $this->noterResultat(SynchroEchange::VERS_LOCAL, $r, $resume);
                 ++$resume['recus'];
             }
+            $this->synchro->enregistrerEchanges();
             if ($dernier > $curseur) {
                 $this->appeler('/api/synchro/accuser', ['jusqua' => $dernier]);
                 $this->synchro->noterEtat(self::ETAT_CURSEUR, (string) $dernier);
@@ -191,7 +193,7 @@ final class AgentSynchro
         $cle = $sens.($r['type'] ?? '').($r['publicId'] ?? '').$statut;
         if ($statut !== null && !isset($this->notees[$cle])) {
             $this->notees[$cle] = true;
-            $this->synchro->noterEchange($sens, $r['type'] ?? null, (string) ($r['titre'] ?? ''), $statut, $r['message'] ?? null);
+            $this->synchro->noterEchange($sens, $r['type'] ?? null, (string) ($r['titre'] ?? ''), $statut, $r['message'] ?? null, false);
         }
     }
 

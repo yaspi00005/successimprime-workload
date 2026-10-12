@@ -30,7 +30,7 @@ final class SynchroCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('initialiser', null, InputOption::VALUE_NONE, 'Met en file tout le catalogue et tous les clients (premier chargement du site)')
+            ->addOption('initialiser', null, InputOption::VALUE_NONE, 'Met en file tout ce qui part vers le site : catalogue, clients, devis, commandes, factures, paiements (premier chargement)')
             ->addOption('boucle', null, InputOption::VALUE_NONE, 'Tourne sans s\'arrêter, un cycle toutes les 30 s')
             ->addOption('nouvelle-cle', null, InputOption::VALUE_NONE, 'Affiche une clé SYNC_CLE à copier dans .env.local des deux machines');
     }

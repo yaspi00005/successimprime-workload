@@ -9,6 +9,7 @@ use App\Entity\SynchroRecu;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Cœur de la synchronisation, commun aux deux côtés : file d'envoi,
@@ -98,6 +99,7 @@ final class Synchro
                 'donnees' => $contenus[$cle],
             ];
         }
+        $this->em->clear();
 
         return $lot;
     }
@@ -138,7 +140,7 @@ final class Synchro
         return $ligne;
     }
 
-    /** Remet en file tout ce qui existe (premier chargement du site). */
+    /** Remet en file tout ce qui existe (premier chargement du site). Ligne de commande seulement. */
     public function initialiser(): int
     {
         $n = 0;
@@ -146,14 +148,18 @@ final class Synchro
             if (!CatalogueSynchro::envoye($type, $this->enLigne)) {
                 continue;
             }
-            foreach ($this->em->getRepository($def['classe'])->findBy([], ['id' => 'ASC']) as $entite) {
-                $this->em->persist(new SynchroJournal($type, $entite->getPublicId()->toRfc4122(), SynchroJournal::MAJ));
-                if (++$n % 200 === 0) {
+            $ids = $this->em->createQuery('SELECT e.publicId FROM '.$def['classe'].' e ORDER BY e.id ASC')->getSingleColumnResult();
+            foreach ($ids as $publicId) {
+                // Lecture brute : la colonne revient en binaire.
+                $this->em->persist(new SynchroJournal($type, ($publicId instanceof Uuid ? $publicId : Uuid::fromString((string) $publicId))->toRfc4122(), SynchroJournal::MAJ));
+                if (++$n % 500 === 0) {
                     $this->em->flush();
+                    $this->em->clear();
                 }
             }
         }
         $this->em->flush();
+        $this->em->clear();
 
         return $n;
     }
@@ -181,6 +187,8 @@ final class Synchro
             try {
                 [$statut, $message, $titre] = $this->appliquerUn($evenement, $type, $publicId, (string) ($e['operation'] ?? ''), \is_array($e['donnees'] ?? null) ? $e['donnees'] : null, $titre);
                 $resultats[] = ['id' => $id, 'evenement' => $evenement, 'type' => $type, 'publicId' => $publicId, 'titre' => $titre, 'statut' => $statut, 'message' => $message];
+                // Sans ce vidage, chaque flush relit toutes les données déjà reçues du lot.
+                $this->em->clear();
             } catch (\Throwable $ex) {
                 if (!$this->em->isOpen()) {
                     $this->doctrine->resetManager();
@@ -226,6 +234,14 @@ final class Synchro
                     }
                 } elseif ($operation === SynchroJournal::MAJ && $donnees !== null) {
                     [$entite] = $this->serialiseur->depuisTableau($type, $publicId, $donnees);
+                    if (!$this->enLigne) {
+                        // Création faite en ligne : certaines valeurs ne se décident qu'au local
+                        // (un paiement saisi en ligne reste à valider).
+                        $meta = $this->em->getClassMetadata($entite::class);
+                        foreach (CatalogueSynchro::types()[$type]['imposeAuLocal'] ?? [] as $champ => $valeur) {
+                            $meta->setFieldValue($entite, $champ, $valeur);
+                        }
+                    }
                     $this->em->persist($entite);
                 } else {
                     $resultat = [self::RESULTAT_IGNORE, 'Donnée supprimée avant l\'envoi', $titre];
@@ -276,13 +292,23 @@ final class Synchro
         return $v === null ? null : (new \DateTimeImmutable($v));
     }
 
-    public function noterEchange(string $sens, ?string $type, string $libelle, string $statut, ?string $message = null): SynchroEchange
+    /** $enregistrer = false : gardé en attente jusqu'à enregistrerEchanges() (un lot entier). */
+    public function noterEchange(string $sens, ?string $type, string $libelle, string $statut, ?string $message = null, bool $enregistrer = true): SynchroEchange
     {
         $echange = new SynchroEchange($sens, $type, $libelle, $statut, $message);
         $this->em->persist($echange);
-        $this->em->flush();
+        if ($enregistrer) {
+            $this->em->flush();
+        }
 
         return $echange;
+    }
+
+    /** Écrit les échanges notés d'un lot en une fois et libère la mémoire. */
+    public function enregistrerEchanges(): void
+    {
+        $this->em->flush();
+        $this->em->clear();
     }
 
     /** Les erreurs passées sont résolues quand un cycle complet réussit. */

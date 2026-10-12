@@ -47,7 +47,16 @@
 									<tr>
 										<td class="si-valider-case si-v-case"><input type="checkbox" class="form-check-input" name="operations[]" value="{{ op.cle }}" id="op-{{ op.cle }}" aria-label="Choisir {{ op.type }} {{ op.montant|number_format(0, ',', ' ') }} F"></td>
 										<td class="text-nowrap si-v-date"><label for="op-{{ op.cle }}">{{ op.date ? op.date|date('d/m') : '—' }}<small class="d-block">{{ op.date ? op.date|date('H:i') }}</small></label></td>
-										<td class="si-v-type"><a href="{{ path(op.lien.route, {id: op.lien.id}) }}">{{ op.type }}</a></td>
+										<td class="si-v-type">
+											<a href="{{ path(op.lien.route, {id: op.lien.id}) }}">{{ op.type }}</a>
+											{% if op.comptes is not null %}
+												<label class="visually-hidden" for="compte-{{ op.cle }}">Compte qui a reçu l’argent</label>
+												<select class="form-select form-select-sm si-v-compte" id="compte-{{ op.cle }}" name="compte[{{ op.cle }}]">
+													{% if op.comptes|length != 1 %}<option value="">Compte reçu…</option>{% endif %}
+													{% for id, nom in op.comptes %}<option value="{{ id }}">{{ nom }}</option>{% endfor %}
+												</select>
+											{% endif %}
+										</td>
 										<td class="si-v-objet">{{ op.objet }}{% if op.detail %}<small class="d-block text-muted">{{ op.detail }}</small>{% endif %}</td>
 										<td class="text-end text-nowrap fw-bold si-v-montant">{{ op.montant|number_format(0, ',', ' ') }}</td>
 										<td class="si-v-controles">

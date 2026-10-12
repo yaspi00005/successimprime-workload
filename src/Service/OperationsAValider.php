@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\CompteTresorerie;
 use App\Entity\Factures;
 use App\Entity\MouvementTresorerie;
 use App\Entity\Paiements;
@@ -34,7 +35,7 @@ final class OperationsAValider
     }
 
     /**
-     * @return list<array{cle: string, date: ?\DateTimeImmutable, type: string, objet: string, detail: ?string, montant: int, controles: list<array{libelle: string, etat: string}>, justificatif: bool, auteur: ?string, lien: array{route: string, id: int}}>
+     * @return list<array{cle: string, date: ?\DateTimeImmutable, type: string, objet: string, detail: ?string, montant: int, controles: list<array{libelle: string, etat: string}>, justificatif: bool, auteur: ?string, lien: array{route: string, id: int}, comptes: ?array<int, string>}>
      */
     public function enAttente(\DateTimeImmutable $maintenant): array
     {
@@ -52,11 +53,23 @@ final class OperationsAValider
             ->getQuery()
             ->getResult();
         $references = $this->referencesDejaUtilisees($paiements);
+        $comptes = null;
 
         foreach ($paiements as $paiement) {
             $commande = $paiement->getCommande();
             $reste = null === $commande ? null : max(0, (int) $commande->getTotalTtc() - $commande->getTotalPaye());
             $reference = self::normaliserReference($paiement->getReference());
+            // Saisi en ligne par le client : le compte qui a reçu l'argent se choisit ici.
+            $choixCompte = null;
+            if (null === $paiement->getCompteTresorerie() && [] !== Paiements::typesComptesPour($paiement->getMode())) {
+                $comptes ??= $this->em->getRepository(CompteTresorerie::class)->findBy(['actif' => true], ['nom' => 'ASC']);
+                $choixCompte = [];
+                foreach ($comptes as $compte) {
+                    if (\in_array($compte->getType(), Paiements::typesComptesPour($paiement->getMode()), true)) {
+                        $choixCompte[(int) $compte->getId()] = $compte->getNom();
+                    }
+                }
+            }
             $lignes[] = [
                 'cle' => 'paiement-'.$paiement->getId(),
                 'date' => $paiement->getDate(),
@@ -69,8 +82,9 @@ final class OperationsAValider
                     ...self::controleDelai($paiement->getDate(), $maintenant),
                 ],
                 'justificatif' => null !== $paiement->getJustificatif() && '' !== $paiement->getJustificatif(),
-                'auteur' => $paiement->getEncaissePar()?->getUserIdentifier(),
+                'auteur' => $paiement->getEncaissePar()?->getUserIdentifier() ?? 'Client, en ligne',
                 'lien' => ['route' => 'app_paiements_show', 'id' => (int) $paiement->getId()],
+                'comptes' => $choixCompte,
             ];
         }
 
@@ -102,6 +116,7 @@ final class OperationsAValider
                 'justificatif' => false,
                 'auteur' => $mouvement->getAgent()?->getUserIdentifier(),
                 'lien' => ['route' => 'app_mouvement_tresorerie_show', 'id' => (int) $mouvement->getId()],
+                'comptes' => null,
             ];
         }
 
@@ -178,9 +193,10 @@ final class OperationsAValider
 
     /**
      * Valide ou rejette une opération désignée par sa clé
-     * (« paiement-12 », « mouvement-5 »).
+     * (« paiement-12 », « mouvement-5 »). $compteId : le compte choisi pour
+     * un paiement saisi en ligne, qui n'en a pas.
      */
-    public function traiter(string $cle, bool $valider, string $motif, User $responsable): void
+    public function traiter(string $cle, bool $valider, string $motif, User $responsable, ?int $compteId = null): void
     {
         if (!preg_match('/^(paiement|mouvement)-(\d+)$/', $cle, $m)) {
             throw new \InvalidArgumentException('Opération inconnue.');
@@ -192,6 +208,14 @@ final class OperationsAValider
         if ('paiement' === $m[1]) {
             $paiement = $this->em->find(Paiements::class, (int) $m[2]) ?? throw new \InvalidArgumentException('Paiement introuvable.');
             if ($valider) {
+                if (null === $paiement->getCompteTresorerie() && [] !== Paiements::typesComptesPour($paiement->getMode())) {
+                    $compte = null === $compteId ? null : $this->em->find(CompteTresorerie::class, $compteId);
+                    if (null === $compte || !$compte->isActif()) {
+                        throw new \InvalidArgumentException(\sprintf('Paiement de %s F saisi en ligne : choisissez le compte qui a reçu l\'argent.', number_format($paiement->getMontant(), 0, ',', ' ')));
+                    }
+                    $paiement->setCompteTresorerie($compte); // le type est contrôlé à la validation
+                    $this->em->flush(); // valider() relit le paiement en base
+                }
                 $mouvement = $this->paiements->valider($paiement, $responsable);
                 // Sur un compte bancaire, le mouvement attend lui aussi : il est vérifié ici en même temps.
                 if ($mouvement->isEnAttente()) {

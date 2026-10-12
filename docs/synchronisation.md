@@ -7,14 +7,21 @@
 - Chaque donnée garde le même identifiant public (UUID) des deux côtés ; les id numériques diffèrent.
 - **Rien de sensible ne quitte le local.** Les champs envoyés sont listés un par un dans `src/Service/Synchro/CatalogueSynchro.php` ; une colonne ajoutée plus tard reste au local tant qu'on ne l'ajoute pas à la liste. Restent au local : coûts de revient, marges, comptabilité, trésorerie, salaires et données du personnel, notes internes sur les clients, remise habituelle, commercial qui suit le client.
 
-## Ce qui passe (étape 1)
+## Ce qui passe (étapes 1 et 2)
 
 | Donnée | Sens | Règle |
 |---|---|---|
 | Catégories, types d'impression, finitions (sans le coût), formats, supports, produits, configurations de produit | local → site | Le local est maître : le site reçoit et remplace. |
 | Clients | local → site, et site → local pour les **nouveaux** clients | Une modification faite en ligne d'un client du local n'est pas appliquée : elle est notée **Conflit** dans le journal, la fiche du local est gardée. |
+| Commandes et leurs lignes | local → site, et site → local pour les **nouvelles** commandes | Restent au local : note interne, agents, coût de revient, temps, machine, rebuts, notes d'atelier, fichiers. Une commande créée en ligne n'a pas d'agent. |
+| Devis et leurs lignes, factures | local → site seulement | Restent au local : coûts, notes, comptabilisation, majoration, PDF du serveur. |
+| Paiements | local → site, et site → local pour les **nouveaux** paiements | Restent au local : compte de trésorerie, mouvement, justificatif, note, encaisseur. |
 
-Étapes suivantes : devis, commandes, factures et paiements vers l'espace client ; paiements saisis en ligne qui arrivent en provisoire dans « À valider » ; modifications de fiche client faites en ligne qui attendent une validation au local ; fichiers.
+**Paiement saisi en ligne** : il arrive au local **toujours en attente**, quel que soit son statut en ligne, sans compte et sans encaisseur (« Client, en ligne »). Il apparaît dans Finances › À valider, où le responsable choisit le compte qui a reçu l'argent avant de valider ; sans compte choisi, la validation est refusée. Une fois validé, le statut repart vers le site.
+
+**Numéros** : une commande, un devis ou un client créé en ligne reçoit le préfixe **W-** (W-CMD-…) ; il ne prend donc jamais un numéro du local.
+
+Étapes suivantes : modifications de fiche client faites en ligne et acceptation d'un devis en ligne, qui attendront une validation au local ; finitions choisies sur les lignes ; fichiers.
 
 ## Fonctionnement
 
@@ -70,3 +77,9 @@ Deux installations sur la même machine (local et copie « en ligne ») :
   - après 15 minutes, l'alerte est envoyée aux administrateurs une seule fois ;
   - au retour, tout passe dans l'ordre et « Liaison rétablie » est noté.
 - Rejeu des 5 derniers envois : aucun doublon.
+
+Étape 2, même jour :
+
+- Chargement initial complet : 6 560 données (812 commandes, 1 444 lignes, 654 devis, 1 123 lignes de devis, 618 factures, 1 029 paiements), environ 110 par seconde. Nombres identiques des deux côtés ; en ligne, coûts de revient à zéro, aucun compte de trésorerie, encaisseur, note ni majoration.
+- Une commande créée en ligne reçoit le numéro W-CMD-… et arrive au local sans agent.
+- Un paiement créé en ligne puis passé « validé » en ligne arrive au local **en attente**, sans compte. La validation sans compte est refusée ; avec le compte Orange Money choisi, elle passe, et le site reçoit le statut validé.

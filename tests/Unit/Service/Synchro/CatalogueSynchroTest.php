@@ -4,7 +4,9 @@ namespace App\Tests\Unit\Service\Synchro;
 
 use App\Entity\Clients;
 use App\Entity\Finition;
+use App\Entity\Paiements;
 use App\Service\Synchro\CatalogueSynchro;
+use App\Service\Synchro\JournalSynchro;
 use App\Service\Synchro\Synchro;
 use PHPUnit\Framework\TestCase;
 
@@ -21,6 +23,49 @@ final class CatalogueSynchroTest extends TestCase
         foreach ($types as $cle => $t) {
             foreach ($t['champs'] as $champ) {
                 self::assertDoesNotMatchRegularExpression('/cout|marge|salaire|password|motDePasse/i', $champ, $cle.'.'.$champ);
+            }
+        }
+    }
+
+    public function testLesDocumentsGardentLeursSecretsAuLocal(): void
+    {
+        $types = CatalogueSynchro::types();
+        $interdits = [
+            'commande' => ['observation', 'agents', 'bonusPlafond'],
+            'commande_ligne' => ['coutRevient', 'temps', 'machine', 'rebut', 'observations', 'fichier'],
+            'devis_ligne' => ['coutRevient', 'temps', 'observation', 'fichier'],
+            'facture' => ['comptabilisee', 'surfacturation', 'tauxSurfacturation', 'montantSurfacturation', 'motifSurfacturation', 'pdfFichier', 'pdfHash', 'observation'],
+            'paiement' => ['compteTresorerie', 'mouvementTresorerie', 'justificatif', 'observation', 'encaissePar', 'validePar'],
+        ];
+        foreach ($interdits as $type => $champs) {
+            foreach ($champs as $champ) {
+                self::assertNotContains($champ, $types[$type]['champs'], $type.'.'.$champ);
+                self::assertArrayNotHasKey($champ, $types[$type]['relations'], $type.'.'.$champ);
+            }
+        }
+        // Les devis et factures ne se créent qu'au local.
+        self::assertFalse(CatalogueSynchro::accepte('facture', false));
+        self::assertFalse(CatalogueSynchro::accepte('devis', false));
+    }
+
+    public function testUnPaiementSaisiEnLigneResteAValider(): void
+    {
+        $impose = CatalogueSynchro::types()['paiement']['imposeAuLocal'];
+        self::assertSame(Paiements::STATUT_EN_ATTENTE, $impose['statut']);
+        self::assertArrayHasKey('dateValidation', $impose);
+        self::assertTrue(CatalogueSynchro::accepte('paiement', false));
+    }
+
+    public function testNumeroDuSite(): void
+    {
+        self::assertTrue(JournalSynchro::aPrefixer('CMD-00012'));
+        self::assertFalse(JournalSynchro::aPrefixer('W-CMD-00012'), 'déjà préfixé');
+        self::assertFalse(JournalSynchro::aPrefixer('TMP-1'), 'numéro provisoire');
+        self::assertFalse(JournalSynchro::aPrefixer(''));
+        self::assertFalse(JournalSynchro::aPrefixer(null));
+        foreach (CatalogueSynchro::types() as $cle => $t) {
+            if (isset($t['numero'])) {
+                self::assertContains($t['numero'], $t['champs'], $cle);
             }
         }
     }

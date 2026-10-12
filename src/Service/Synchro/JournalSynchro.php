@@ -48,6 +48,12 @@ final class JournalSynchro
         $uow = $em->getUnitOfWork();
         $aNoter = [];
 
+        if ($this->enLigne) {
+            foreach ([...$uow->getScheduledEntityInsertions(), ...$uow->getScheduledEntityUpdates()] as $entite) {
+                $this->prefixerNumero($em, $entite);
+            }
+        }
+
         foreach ($uow->getScheduledEntityInsertions() as $entite) {
             $this->ajouter($aNoter, $entite, SynchroJournal::MAJ);
         }
@@ -77,6 +83,39 @@ final class JournalSynchro
             $em->persist($journal);
             $uow->computeChangeSet($meta, $journal);
         }
+    }
+
+    /**
+     * Sur le site, un numéro attribué à une fiche créée en ligne reçoit le
+     * préfixe W- : il ne peut jamais prendre celui d'une fiche du local
+     * (les numéros viennent des id, différents dans les deux bases).
+     */
+    private function prefixerNumero(\Doctrine\ORM\EntityManagerInterface $em, object $entite): void
+    {
+        $type = CatalogueSynchro::typeDe($entite);
+        $champ = $type === null ? null : (CatalogueSynchro::types()[$type]['numero'] ?? null);
+        if ($champ === null) {
+            return;
+        }
+        $uow = $em->getUnitOfWork();
+        // Une fiche venue du local garde son numéro : seul un numéro qui vient d'être attribué ici est préfixé.
+        if (!$uow->isScheduledForInsert($entite) && !\array_key_exists($champ, $uow->getEntityChangeSet($entite))) {
+            return;
+        }
+        $meta = $em->getClassMetadata($entite::class);
+        $valeur = $meta->getFieldValue($entite, $champ);
+        if (!self::aPrefixer($valeur)) {
+            return;
+        }
+        $meta->setFieldValue($entite, $champ, self::PREFIXE.$valeur);
+        $uow->recomputeSingleEntityChangeSet($meta, $entite);
+    }
+
+    public const PREFIXE = 'W-';
+
+    public static function aPrefixer(mixed $valeur): bool
+    {
+        return \is_string($valeur) && $valeur !== '' && !str_starts_with($valeur, self::PREFIXE) && !str_starts_with($valeur, 'TMP-');
     }
 
     /** @param array<string, SynchroJournal> $aNoter */

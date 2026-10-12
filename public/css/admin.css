@@ -4679,3 +4679,6 @@ body.si-param-bloque { overflow: hidden; }
 .si-menu-synchro:hover { color: #fff; }
 .si-menu-synchro b { color: #5BE38F; font-weight: 600; }
 .si-menu-synchro.panne b { color: #FF8A98; }
+
+/* À valider : compte choisi pour un paiement saisi en ligne */
+.si-v-compte { display: block; max-width: 13rem; margin-top: .3rem; font-weight: 400; }

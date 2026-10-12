@@ -4,6 +4,12 @@ namespace App\Service\Synchro;
 
 use App\Entity\CategorieProduit;
 use App\Entity\Clients;
+use App\Entity\Commandes;
+use App\Entity\CommandesDetails;
+use App\Entity\Devis;
+use App\Entity\DevisDetails;
+use App\Entity\Factures;
+use App\Entity\Paiements;
 use App\Entity\Finition;
 use App\Entity\Format;
 use App\Entity\ProduitConfiguration;
@@ -25,6 +31,11 @@ use App\Entity\TypesImpression;
  *                 Une modification faite en ligne d'une fiche du local
  *                 n'est pas appliquée : elle est notée comme conflit.
  *
+ * « numero » : le champ de numéro d'une fiche créée en ligne reçoit le
+ * préfixe W- (web) sur le site, pour ne jamais prendre un numéro du local.
+ * « imposeAuLocal » : valeurs forcées quand le local reçoit une création
+ * faite en ligne (un paiement saisi en ligne reste provisoire).
+ *
  * L'ordre du tableau est l'ordre de chargement initial : une donnée
  * vient après celles qu'elle référence.
  */
@@ -34,7 +45,7 @@ final class CatalogueSynchro
     public const DEUX = 'deux';
 
     /**
-     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>}>
+     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, imposeAuLocal?: array<string, mixed>}>
      */
     public static function types(): array
     {
@@ -86,7 +97,66 @@ final class CatalogueSynchro
                     'createdAt', 'updatedAt', 'statut', 'recevoirSms', 'consentementMarketingLe', 'delaiPaiement', 'acompte',
                     'moyenPrefere', 'entiteFacturation',
                 ],
-                'relations' => [], 'listes' => [],
+                'relations' => [], 'listes' => [], 'numero' => 'code',
+            ],
+            'commande' => [
+                'classe' => Commandes::class, 'sens' => self::DEUX, 'libelle' => 'Commande', 'titre' => ['numero'],
+                // observation (note interne), agents et bonus de plafond restent au local.
+                'champs' => [
+                    'numero', 'dateCommande', 'dateLivraison', 'recupereParClient', 'modifieLe', 'remise', 'tva', 'totalHt', 'totalTtc',
+                    'montantApayer', 'deleted', 'statut', 'etat', 'statutPaiement', 'resteAPayer', 'totalPaye', 'canal', 'modeLivraison', 'adresseLivraison',
+                ],
+                'relations' => ['clients' => 'client'], 'listes' => [], 'numero' => 'numero',
+            ],
+            'commande_ligne' => [
+                'classe' => CommandesDetails::class, 'sens' => self::DEUX, 'libelle' => 'Ligne de commande', 'titre' => ['designation'],
+                // coutRevient, temps, machine, rebuts et notes d'atelier restent au local.
+                'champs' => [
+                    'quantiteDemandee', 'uniteDemandee', 'modeConfiguration', 'designation', 'largeur', 'longueur', 'surface', 'quantite', 'prixUnitaire',
+                    'remise', 'tva', 'totalHt', 'totalTtc', 'profilCouleurs', 'resolution', 'grammage', 'epaisseur', 'rectoVerso', 'nombreFaces', 'laminage',
+                    'oeillets', 'decoupe', 'pliage', 'emballage', 'batValide', 'etat', 'statutProduction', 'productionDebuteLe', 'productionTermineeLe',
+                    'quantiteLivree', 'modeSaisie', 'modeCalcul', 'typeLigne',
+                ],
+                'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
+                'listes' => [],
+            ],
+            'devis' => [
+                'classe' => Devis::class, 'sens' => self::DESCENDANT, 'libelle' => 'Devis', 'titre' => ['numero'],
+                'champs' => [
+                    'numero', 'emetteur', 'dateDevis', 'remise', 'tva', 'totalHt', 'totalTtc', 'montantApayer', 'deleted', 'statut', 'etat',
+                    'tokenAuthenticite', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation', 'telephoneFacturation', 'emailFacturation',
+                ],
+                'relations' => ['clients' => 'client', 'commande' => 'commande'], 'listes' => [], 'numero' => 'numero',
+            ],
+            'devis_ligne' => [
+                'classe' => DevisDetails::class, 'sens' => self::DESCENDANT, 'libelle' => 'Ligne de devis', 'titre' => ['designation'],
+                'champs' => [
+                    'modeConfiguration', 'designation', 'largeur', 'longueur', 'surface', 'quantite', 'prixUnitaire', 'remise', 'tva', 'totalHt', 'totalTtc',
+                    'profilCouleurs', 'resolution', 'grammage', 'epaisseur', 'rectoVerso', 'nombreFaces', 'laminage', 'oeillets', 'decoupe', 'pliage',
+                    'emballage', 'typeLigne', 'modeSaisie', 'batValide', 'etat', 'modeCalcul',
+                ],
+                'relations' => ['devis' => 'devis', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
+                'listes' => [],
+            ],
+            'facture' => [
+                'classe' => Factures::class, 'sens' => self::DESCENDANT, 'libelle' => 'Facture', 'titre' => ['numero'],
+                // Comptabilisation, majoration et fichier PDF du serveur restent au local.
+                'champs' => [
+                    'numero', 'typeDocument', 'emetteur', 'dateFacture', 'dateEcheance', 'totalHt', 'remise', 'tva', 'montantTva', 'totalTtc', 'montantPaye',
+                    'resteAPayer', 'statutPaiement', 'etat', 'tokenAuthenticite', 'codeSuivi', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation',
+                    'telephoneFacturation', 'emailFacturation', 'createdAt', 'updatedAt',
+                ],
+                'relations' => ['commande' => 'commande'], 'listes' => [],
+            ],
+            'paiement' => [
+                'classe' => Paiements::class, 'sens' => self::DEUX, 'libelle' => 'Paiement', 'titre' => ['montant'],
+                // Compte de trésorerie, mouvement, justificatif (fichier) et notes restent au local.
+                'champs' => [
+                    'montant', 'mode', 'statut', 'date', 'dateValidation', 'dateAnnulation', 'reference', 'numeroCheque', 'banqueEmettrice', 'titulaireCheque',
+                    'dateEmissionCheque', 'dateEncaissementPrevue', 'motifRejet', 'fraisRetraitInclus', 'fondsSoutienInclus', 'montantFraisRetrait', 'montantFondsSoutien',
+                ],
+                'relations' => ['commande' => 'commande', 'facture' => 'facture'], 'listes' => [],
+                'imposeAuLocal' => ['statut' => Paiements::STATUT_EN_ATTENTE, 'dateValidation' => null, 'dateAnnulation' => null],
             ],
         ];
     }

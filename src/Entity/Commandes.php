@@ -39,8 +39,9 @@ class Commandes
     #[Assert\NotNull(message: 'Veuillez sélectionner un client.')]
     private ?Clients $clients = null;
 
+    /** Vide pour une commande passée en ligne par le client (espace client, synchronisation). */
     #[ORM\ManyToOne(inversedBy: 'commandes')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?User $agents = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]

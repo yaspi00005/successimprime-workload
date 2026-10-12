@@ -56,10 +56,12 @@ final class AValiderController extends AbstractController
             return $this->redirectToRoute('app_a_valider_index');
         }
 
+        $comptes = (array) $request->request->all('compte');
         $faites = 0;
         foreach ($cles as $cle) {
             try {
-                $this->operations->traiter($cle, $valider, $motif, $responsable);
+                $compte = $comptes[$cle] ?? '';
+                $this->operations->traiter($cle, $valider, $motif, $responsable, is_numeric($compte) ? (int) $compte : null);
                 ++$faites;
             } catch (\InvalidArgumentException|\LogicException|\DomainException $e) {
                 $this->addFlash('error', $e->getMessage());

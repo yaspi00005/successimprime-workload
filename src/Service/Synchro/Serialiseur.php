@@ -69,6 +69,9 @@ final class Serialiseur
             $entite = new ($def['classe'])();
             $meta->setFieldValue($entite, 'publicId', Uuid::fromString($publicId));
         }
+        if (method_exists($entite, 'marquerCopieSynchronisee')) {
+            $entite->marquerCopieSynchronisee(); // contrôles propres à la saisie sautés
+        }
 
         foreach ($def['champs'] as $champ) {
             if (!\array_key_exists($champ, $donnees['champs'] ?? [])) {
@@ -117,7 +120,9 @@ final class Serialiseur
                 $getter = 'get'.ucfirst($champ);
                 $v = method_exists($entite, $getter) ? $entite->$getter() : null;
             }
-            if (\is_string($v) && trim($v) !== '') {
+            if (\is_int($v) || (\is_string($v) && $champ === 'montant' && is_numeric($v))) {
+                $morceaux[] = number_format((float) $v, 0, ',', ' ').' F';
+            } elseif (\is_string($v) && trim($v) !== '') {
                 $morceaux[] = trim($v);
             }
             if ($morceaux !== [] && $champ === $def['titre'][0]) {

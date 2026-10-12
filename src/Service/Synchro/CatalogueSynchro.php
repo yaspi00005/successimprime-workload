@@ -40,7 +40,8 @@ use App\Entity\TypesImpression;
  * « remontees » : les seuls changements faits en ligne sur une fiche du
  * local que le local applique, car ce sont des décisions du client (accepter
  * un devis envoyé, ses préférences SMS). Champ => null (toute valeur) ou
- * [valeur actuelle au local => valeurs permises]. Le reste est un conflit.
+ * [valeur actuelle au local => valeurs permises, « * » pour toute valeur
+ * non vide]. Le reste est un conflit.
  *
  * « enfants » : petites données sans identifiant public (finitions d'une
  * ligne) envoyées dans la ligne elle-même et remplacées en bloc.
@@ -138,7 +139,8 @@ final class CatalogueSynchro
                     'tokenAuthenticite', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation', 'telephoneFacturation', 'emailFacturation',
                 ],
                 'relations' => ['clients' => 'client', 'commande' => 'commande'], 'listes' => [], 'numero' => 'numero',
-                'remontees' => ['statut' => [Devis::STATUT_ENVOYE => [Devis::STATUT_ACCEPTE]]],
+                // Le jeton du lien PDF peut naître en ligne (le client ouvre son devis) : il est gardé.
+                'remontees' => ['statut' => [Devis::STATUT_ENVOYE => [Devis::STATUT_ACCEPTE]], 'tokenAuthenticite' => ['' => ['*']]],
             ],
             'devis_ligne' => [
                 'classe' => DevisDetails::class, 'sens' => self::DESCENDANT, 'libelle' => 'Ligne de devis', 'titre' => ['designation'],
@@ -160,6 +162,7 @@ final class CatalogueSynchro
                     'telephoneFacturation', 'emailFacturation', 'createdAt', 'updatedAt',
                 ],
                 'relations' => ['commande' => 'commande'], 'listes' => [],
+                'remontees' => ['tokenAuthenticite' => ['' => ['*']]],
             ],
             'paiement' => [
                 'classe' => Paiements::class, 'sens' => self::DEUX, 'libelle' => 'Paiement', 'titre' => ['montant'],
@@ -259,7 +262,9 @@ final class CatalogueSynchro
             return true;
         }
 
-        return \in_array($enLigne, $regles[$champ][(string) $auLocal] ?? [], true);
+        $permises = $regles[$champ][(string) $auLocal] ?? [];
+
+        return \in_array($enLigne, $permises, true) || ($enLigne !== null && $enLigne !== '' && \in_array('*', $permises, true));
     }
 
     private static function remonte(string $type): bool

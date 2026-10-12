@@ -43,8 +43,8 @@ final class CatalogueSynchroTest extends TestCase
                 self::assertArrayNotHasKey($champ, $types[$type]['relations'], $type.'.'.$champ);
             }
         }
-        // Les factures ne remontent jamais.
-        self::assertFalse(CatalogueSynchro::accepte('facture', false));
+        // Une facture ne se crée jamais en ligne.
+        self::assertFalse(CatalogueSynchro::creationAcceptee('facture', false));
     }
 
     public function testUnPaiementSaisiEnLigneResteAValider(): void
@@ -65,10 +65,14 @@ final class CatalogueSynchroTest extends TestCase
         self::assertTrue(CatalogueSynchro::remonteePermise('client', 'recevoirSms', '1', '0'));
         self::assertFalse(CatalogueSynchro::remonteePermise('client', 'ville', 'Bamako', 'Kati'));
         self::assertFalse(CatalogueSynchro::remonteePermise('commande', 'totalTtc', '1', '0'));
+        // Jeton du lien PDF créé en ligne : gardé s'il n'y en avait pas au local.
+        self::assertTrue(CatalogueSynchro::remonteePermise('facture', 'tokenAuthenticite', null, 'abc'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('facture', 'tokenAuthenticite', 'xyz', 'abc'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('facture', 'tokenAuthenticite', null, null));
 
         // Le site envoie les devis (pour l'acceptation), mais un devis créé en ligne n'est pas repris.
         self::assertTrue(CatalogueSynchro::envoye('devis', true));
-        self::assertFalse(CatalogueSynchro::envoye('facture', true));
+        self::assertFalse(CatalogueSynchro::envoye('format', true));
         self::assertFalse(CatalogueSynchro::creationAcceptee('devis', false));
         self::assertTrue(CatalogueSynchro::creationAcceptee('paiement', false));
         self::assertTrue(CatalogueSynchro::creationAcceptee('devis', true));

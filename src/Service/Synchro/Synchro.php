@@ -238,7 +238,7 @@ final class Synchro
                     // Décision du client prise en ligne (devis accepté, SMS) : appliquée au local.
                     $this->serialiseur->ecrireChamps($type, $existante, array_map(static fn (array $e): ?string => $e[1], $remontees));
                     $this->apresRemontee($existante, $remontees);
-                    $resultat = [self::RESULTAT_OK, 'Décision du client en ligne : '.implode(', ', array_keys($remontees)), Serialiseur::titre($type, $existante)];
+                    $resultat = [self::RESULTAT_OK, 'Repris du site : '.implode(', ', array_keys($remontees)), Serialiseur::titre($type, $existante)];
                 } elseif (!$this->enLigne && $existante !== null && $operation === SynchroJournal::MAJ && $ecarts === []) {
                     $resultat = [self::RESULTAT_IGNORE, 'Déjà à jour', $titre];
                 } elseif (!$this->enLigne && $existante !== null) {

@@ -49,6 +49,36 @@ final class Pointages
     }
 
     /**
+     * Règles d'une personne : ses propres horaires (fiche employé, E02)
+     * remplacent ceux de l'atelier. L'alerte « pas pointé le départ »
+     * vient 2 h après sa fin.
+     *
+     * @param array<string, mixed> $regles
+     *
+     * @return array<string, mixed>
+     */
+    public static function reglesDe(User $utilisateur, array $regles): array
+    {
+        $e = $utilisateur->getEmploye();
+        if ($e === null) {
+            return $regles;
+        }
+        if ($e->getHeureDebut() !== null) {
+            $regles['ouverture'] = $e->getHeureDebut();
+            if ($e->getHeureFin() !== null) {
+                $regles['fermeture'] = $e->getHeureFin();
+                [$h, $m] = array_map('intval', explode(':', $e->getHeureFin()));
+                $regles['alerte_depart'] = \sprintf('%02d:%02d', ($h + 2) % 24, $m);
+            }
+        }
+        if ($e->getJoursTravail() !== null) {
+            $regles['jours'] = $e->getJoursTravail();
+        }
+
+        return $regles;
+    }
+
+    /**
      * Ce que le prochain pointage de la personne sera (arrivée ou départ).
      */
     public function prochain(User $utilisateur, \DateTimeImmutable $maintenant): string
@@ -108,11 +138,13 @@ final class Pointages
      *
      * @return array{ok: bool, message?: string, pointage?: Pointage, action?: string}
      */
-    public function pointer(User $utilisateur, PointPointage $point, ?string $photoJpeg, ?AppareilPointage $appareil, ?array $position, \DateTimeImmutable $maintenant): array
+    public function pointer(User $utilisateur, PointPointage $point, ?string $photoJpeg, ?AppareilPointage $appareil, ?array $position, \DateTimeImmutable $maintenant, bool $tablette = false): array
     {
         $regles = $this->regles();
 
-        if (($message = $this->controleAppareil($appareil)) !== null) {
+        // La tablette de l'entrée (maquette E05) est branchée par la RH sur
+        // ce point : ni téléphone ni position à contrôler, la photo reste.
+        if (!$tablette && ($message = $this->controleAppareil($appareil)) !== null) {
             return ['ok' => false, 'message' => $message];
         }
         if ($regles['photo'] && ($photoJpeg === null || !self::estJpeg($photoJpeg))) {
@@ -124,7 +156,7 @@ final class Pointages
             $distance = $point->distance($position['latitude'], $position['longitude']);
             $positionNotee = $position + ['distance' => $distance];
         }
-        if ($regles['gps_zone'] && $point->getLatitude() !== null) {
+        if (!$tablette && $regles['gps_zone'] && $point->getLatitude() !== null) {
             if ($positionNotee === null) {
                 return ['ok' => false, 'message' => 'Votre position est nécessaire pour pointer. Autorisez la localisation puis réessayez.'];
             }
@@ -235,7 +267,7 @@ final class Pointages
             $parJour[$p->getArriveeLe()->format('Y-m-d')][] = $p;
         }
 
-        $ouvresSemaine = CalculPointage::joursOuvres((string) $regles['jours']);
+        $ouvresSemaine = CalculPointage::joursOuvres((string) self::reglesDe($utilisateur, $regles)['jours']);
         $jours = [];
         $totaux = ['presents' => 0, 'ouvres' => 0, 'retards' => 0, 'minutes' => 0, 'sup' => 0, 'points' => 0];
         for ($j = $debut; $j < $fin && $j <= $maintenant; $j = $j->modify('+1 day')) {
@@ -270,7 +302,7 @@ final class Pointages
      */
     public function calcul(Pointage $p, array $regles, \DateTimeImmutable $maintenant): array
     {
-        return CalculPointage::presence($p->getArriveeLe(), $p->getDepartLe(), $regles, $maintenant, $p->isHeuresSupValidees(), $p->getAjustementPoints());
+        return CalculPointage::presence($p->getArriveeLe(), $p->getDepartLe(), self::reglesDe($p->getUtilisateur(), $regles), $maintenant, $p->isHeuresSupValidees(), $p->getAjustementPoints());
     }
 
     /**

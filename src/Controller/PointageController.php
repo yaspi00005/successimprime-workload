@@ -14,6 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -208,6 +209,33 @@ final class PointageController extends AbstractController
         $this->addFlash('warning', $point->getCode().' renouvelé : l\'ancienne affiche ne marche plus, imprimez la nouvelle.');
 
         return $this->redirectToRoute('app_pointage_reglages');
+    }
+
+    /**
+     * Branche la tablette de l'entrée (maquette E05) : ouvrir cette page
+     * sur la tablette, toucher « Brancher cette tablette ». Un seul
+     * appareil par point ; le rebrancher ailleurs débranche l'ancien.
+     */
+    #[Route('/points/{id}/tablette', name: 'tablette', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function brancherTablette(PointPointage $point, Request $request): Response
+    {
+        $this->verifierJeton($request);
+        if ('debrancher' === $request->request->get('action')) {
+            $point->brancherTablette(null, null);
+            $this->em->flush();
+            $this->addFlash('warning', 'Tablette de '.$point->getCode().' débranchée.');
+
+            return $this->redirectToRoute('app_pointage_reglages');
+        }
+
+        $jeton = bin2hex(random_bytes(24));
+        $point->brancherTablette(hash('sha256', $jeton), new \DateTimeImmutable());
+        $this->em->flush();
+
+        $reponse = $this->redirectToRoute('app_tablette_index');
+        $reponse->headers->setCookie(Cookie::create(TabletteController::COOKIE, $jeton, new \DateTimeImmutable('+5 years'), '/', null, $request->isSecure(), true, false, Cookie::SAMESITE_LAX));
+
+        return $reponse;
     }
 
     #[Route('/points/{id}/affiche', name: 'affiche', requirements: ['id' => '\d+'], methods: ['GET'])]

@@ -1,0 +1,221 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Nouvel employé et accès à l'application (maquette E02). Le dossier,
+	la présence et la paie existent même sans accès. Le panneau Accès ne
+	se modifie qu'avec le rôle Administrateur.
+#}
+
+{% set nouveau = employe.id is null %}
+{% block title %}{{ nouveau ? 'Nouvel employé' : employe.nomComplet }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ nouveau ? path('app_equipe_employes_index') : path('app_equipe_employes_dossier', {id: employe.id}) }}" class="btn btn-light btn-sm si-btn-entete">Annuler</a>
+	</li>
+	<li class="nav-item">
+		<button type="submit" form="si-em-form" class="btn btn-success btn-sm si-btn-entete">Enregistrer</button>
+	</li>
+{% endblock %}
+
+{% macro champ(nom, libelle, saisie, erreurs, attrs) %}
+	<label class="si-em-champ{{ erreurs[nom] is defined ? ' si-em-erreur' }}">
+		<span>{{ libelle }}</span>
+		<input name="{{ nom }}" value="{{ saisie[nom] }}" class="form-control"{% for k, v in attrs|default({}) %} {{ k }}="{{ v }}"{% endfor %}>
+		{% if erreurs[nom] is defined %}<small>{{ erreurs[nom] }}</small>{% endif %}
+	</label>
+{% endmacro %}
+
+{% block body %}
+	{% import _self as f %}
+	{% set statuts = {actif: 'Accès actif', invite: 'Invitation envoyée', expire: 'Invitation expirée', suspendu: 'Accès suspendu', sans: 'Sans accès', retire: 'Accès retiré'} %}
+
+	<form method="post" id="si-em-form" class="si-em-form" novalidate>
+		<input type="hidden" name="_token" value="{{ csrf_token('fiche-employe') }}">
+
+		<div class="si-em-colonne">
+			<section class="card si-em-bloc">
+				<h2>Identité</h2>
+				<div class="si-em-grille">
+					{{ f.champ('prenom', 'Prénom', saisie, erreurs, {autocomplete: 'off', required: 'required'}) }}
+					{{ f.champ('nom', 'Nom', saisie, erreurs, {autocomplete: 'off'}) }}
+					{{ f.champ('telephone', 'Téléphone', saisie, erreurs, {inputmode: 'tel', placeholder: '+223 7X XX XX XX', required: 'required'}) }}
+					{{ f.champ('naissance', 'Date de naissance', saisie, erreurs, {type: 'date'}) }}
+				</div>
+				{{ f.champ('adresse', 'Adresse', saisie, erreurs, {placeholder: 'Quartier, ville'}) }}
+				{{ f.champ('urgence', 'Contact d\'urgence', saisie, erreurs, {placeholder: 'Mère · +223 6X XX XX XX', maxlength: 150}) }}
+			</section>
+
+			<section class="card si-em-bloc">
+				<h2>Contrat et paie</h2>
+				<div class="si-em-grille">
+					{{ f.champ('poste', 'Poste', saisie, erreurs, {placeholder: 'Stagiaire PAO'}) }}
+					<label class="si-em-champ{{ erreurs.contrat is defined ? ' si-em-erreur' }}">
+						<span>Contrat</span>
+						<select name="contrat" class="form-select" required>
+							<option value="">Choisir…</option>
+							{% for k, l in constant('App\\Entity\\Employes::CONTRATS') %}<option value="{{ k }}"{{ saisie.contrat == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+						</select>
+						{% if erreurs.contrat is defined %}<small>{{ erreurs.contrat }}</small>{% endif %}
+					</label>
+					{{ f.champ('debut', 'Début', saisie, erreurs, {type: 'date'}) }}
+					{{ f.champ('fin', 'Fin prévue', saisie, erreurs, {type: 'date', 'data-si-fin': ''}) }}
+					{% if is_granted('ROLE_RH') %}
+						<label class="si-em-champ">
+							<span>Rémunération</span>
+							<span class="si-em-double">
+								<select name="remuneration" class="form-select" aria-label="Type de rémunération">
+									{% for k, l in constant('App\\Entity\\Employes::REMUNERATIONS') %}<option value="{{ k }}"{{ saisie.remuneration == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+								</select>
+								<input name="montant" value="{{ saisie.montant }}" class="form-control" inputmode="numeric" placeholder="50 000" aria-label="Montant en F">
+							</span>
+						</label>
+					{% endif %}
+					<label class="si-em-champ">
+						<span>Paiement</span>
+						<select name="paiement" class="form-select">
+							<option value="">—</option>
+							{% for k, l in constant('App\\Entity\\Employes::PAIEMENTS') %}<option value="{{ k }}"{{ saisie.paiement == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+						</select>
+					</label>
+					<div class="si-em-champ si-em-horaires{{ erreurs.horaires is defined ? ' si-em-erreur' }}">
+						<span>Horaires <small class="si-em-aide">vides : ceux de l'atelier</small></span>
+						<span class="si-em-double">
+							<input type="time" name="debut_heure" value="{{ saisie.debut_heure }}" class="form-control" aria-label="Heure d'arrivée">
+							<input type="time" name="fin_heure" value="{{ saisie.fin_heure }}" class="form-control" aria-label="Heure de départ">
+						</span>
+						<span class="si-em-jours" role="group" aria-label="Jours travaillés">
+							{% for n, j in {1: 'L', 2: 'M', 3: 'M', 4: 'J', 5: 'V', 6: 'S', 7: 'D'} %}
+								<label title="{{ ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'][n - 1] }}"><input type="checkbox" name="jours[]" value="{{ n }}"{{ n in saisie.jours ? ' checked' }}><span>{{ j }}</span></label>
+							{% endfor %}
+						</span>
+						{% if erreurs.horaires is defined %}<small>{{ erreurs.horaires }}</small>{% endif %}
+					</div>
+					<label class="si-em-champ">
+						<span>Responsable</span>
+						<select name="responsable" class="form-select">
+							<option value="0">—</option>
+							{% for u in responsables %}{% if u.employe != employe %}<option value="{{ u.id }}"{{ saisie.responsable == u.id ? ' selected' }}>{{ u|nom_pointage }}</option>{% endif %}{% endfor %}
+						</select>
+					</label>
+				</div>
+				<p class="si-em-note">Le dossier, la présence et la paie existent même sans accès à l'application.</p>
+			</section>
+		</div>
+
+		<div class="si-em-colonne">
+			<section class="card si-em-bloc si-em-acces" id="acces">
+				<div class="si-em-acces-tete">
+					<div>
+						<h2>Accès à l'application</h2>
+						<p>Pour pointer, voir ses tâches, ses bulletins et faire ses demandes</p>
+					</div>
+					{% if admin %}
+						<label class="si-em-interrupteur"><input type="checkbox" name="acces" value="1"{{ saisie.acces ? ' checked' }} data-si-acces><span></span><b class="visually-hidden">Accès à l'application</b></label>
+					{% else %}
+						<span class="si-em-badge">{{ statuts[statut] }}</span>
+					{% endif %}
+				</div>
+
+				{% if admin %}
+					<div class="si-em-acces-corps" data-si-acces-corps>
+						{% if not nouveau and utilisateur and statut != 'sans' %}
+							<p class="si-em-etat">État : <b>{{ statuts[statut] }}</b>{% if statut in ['invite', 'expire', 'suspendu', 'actif'] %} · <a href="{{ path('app_acces_index', {_fragment: 'u' ~ utilisateur.id}) }}">gérer l'accès</a>{% endif %}</p>
+						{% endif %}
+						<div class="si-em-grille">
+							<label class="si-em-champ{{ erreurs.profil is defined ? ' si-em-erreur' }}">
+								<span>Rôle</span>
+								<select name="profil" class="form-select" data-si-role>
+									<option value="0">Choisir…</option>
+									{% for r in roles %}<option value="{{ r.id }}"{{ saisie.profil == r.id ? ' selected' }}>{{ r.nom }}</option>{% endfor %}
+								</select>
+								{% if erreurs.profil is defined %}<small>{{ erreurs.profil }}</small>{% endif %}
+							</label>
+							{{ f.champ('identifiant', 'Identifiant', saisie, erreurs, {placeholder: 'prenom.nom', autocapitalize: 'none', spellcheck: 'false', 'data-si-identifiant': ''}) }}
+							<div class="si-em-champ"><span>Connexion</span><p class="si-em-fixe">code PIN à 4 chiffres</p></div>
+							<div class="si-em-champ"><span>Invitation</span><p class="si-em-fixe" data-si-invitation>WhatsApp au {{ saisie.telephone ?: 'téléphone du dossier' }}</p></div>
+						</div>
+						<h3>Ce qu'il verra</h3>
+						<ul class="si-em-vues" data-si-vues aria-live="polite"></ul>
+						<p class="si-em-note" data-si-fin-note hidden></p>
+					</div>
+				{% else %}
+					<p class="si-em-note">Seul un administrateur donne ou retire un accès à l'application. {{ nouveau ? 'Le nouvel employé est enregistré sans accès : il pointe sur la tablette de l\'entrée.' }}</p>
+				{% endif %}
+			</section>
+
+			<section class="card si-em-bloc si-em-desactive">
+				<h2>Si l'accès est désactivé</h2>
+				<dl>
+					<dt>Pointage</dt><dd>sur la tablette de l'entrée : choisir son nom puis la photo</dd>
+					<dt>Tâches</dt><dd>attribuées et validées par son responsable</dd>
+					<dt>Congés et avances</dt><dd>demandés au RH, saisis par le RH</dd>
+					<dt>Bulletins</dt><dd>envoyés par WhatsApp ou imprimés</dd>
+				</dl>
+			</section>
+		</div>
+	</form>
+
+	{% if admin %}
+		<script>
+			(function () {
+				var droits = {{ droitsDesRoles|json_encode|raw }};
+				var vues = {{ vues|json_encode|raw }};
+				var role = document.querySelector('[data-si-role]');
+				var liste = document.querySelector('[data-si-vues]');
+				var interrupteur = document.querySelector('[data-si-acces]');
+				var corps = document.querySelector('[data-si-acces-corps]');
+				var fin = document.querySelector('[data-si-fin]');
+				var finNote = document.querySelector('[data-si-fin-note]');
+				var contrat = document.querySelector('select[name=contrat]');
+				var tel = document.querySelector('input[name=telephone]');
+				var invitation = document.querySelector('[data-si-invitation]');
+				var identifiant = document.querySelector('[data-si-identifiant]');
+				var prenom = document.querySelector('input[name=prenom]');
+				var nom = document.querySelector('input[name=nom]');
+				var touche = identifiant.value !== '';
+
+				function puce(texte, oui) {
+					var li = document.createElement('li');
+					li.className = oui ? 'si-em-oui' : 'si-em-non';
+					li.textContent = (oui ? '✓ ' : '× ') + texte;
+					return li;
+				}
+				function majVues() {
+					var d = droits[role.value] || [];
+					liste.innerHTML = '';
+					['Pointage', 'Mes points', 'Mes congés', 'Mes bulletins'].forEach(function (t) { liste.appendChild(puce(t, true)); });
+					Object.keys(vues).forEach(function (droit) {
+						if (d.indexOf(droit) !== -1) { liste.appendChild(puce(vues[droit], true)); }
+					});
+					Object.keys(vues).forEach(function (droit) {
+						if (d.indexOf(droit) === -1 && ['ROLE_PAIEMENT_ENCAISSER', 'ROLE_CLIENT', 'ROLE_TRESORERIE_VOIR'].indexOf(droit) !== -1) { liste.appendChild(puce(vues[droit], false)); }
+					});
+				}
+				function majFin() {
+					if (!fin.value) { finNote.hidden = true; return; }
+					var p = fin.value.split('-');
+					var type = contrat.value === 'stage' ? 'du stage' : (contrat.value === 'essai' ? 'de la période d\'essai' : 'du contrat');
+					finNote.textContent = 'Accès coupé automatiquement à la fin ' + type + ', le ' + p[2] + '/' + p[1] + '/' + p[0] + '.';
+					finNote.hidden = false;
+				}
+				function simplifier(t) { return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+				function majIdentifiant() {
+					if (touche) { return; }
+					identifiant.value = [simplifier(prenom.value), simplifier(nom.value)].filter(Boolean).join('.').slice(0, 30);
+				}
+				function majAcces() { corps.classList.toggle('si-em-eteint', !interrupteur.checked); }
+
+				role.addEventListener('change', majVues);
+				fin.addEventListener('change', majFin);
+				contrat.addEventListener('change', majFin);
+				tel.addEventListener('input', function () { invitation.textContent = 'WhatsApp au ' + (tel.value || 'téléphone du dossier'); });
+				identifiant.addEventListener('input', function () { touche = identifiant.value !== ''; });
+				prenom.addEventListener('input', majIdentifiant);
+				nom.addEventListener('input', majIdentifiant);
+				interrupteur.addEventListener('change', majAcces);
+				majVues(); majFin(); majAcces();
+			})();
+		</script>
+	{% endif %}
+{% endblock %}

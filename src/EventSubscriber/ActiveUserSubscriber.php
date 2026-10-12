@@ -162,7 +162,20 @@ final class ActiveUserSubscriber implements EventSubscriberInterface
          * COMPTE TOUJOURS ACTIF
          * ============================================================
          */
+        if ($user->peutSeConnecter(new \DateTimeImmutable())) {
+            return;
+        }
+
+        /*
+         * Accès à l'application suspendu, retiré ou arrivé à la fin
+         * du contrat (maquette E04) : même déconnexion.
+         */
         if ($user->isActif()) {
+            $this->deconnecter(
+                $event,
+                'Votre accès à l’application est suspendu. Veuillez contacter le responsable.'
+            );
+
             return;
         }
 

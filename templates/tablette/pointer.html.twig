@@ -1,0 +1,54 @@
+{% extends 'tablette/_page.html.twig' %}
+
+{% block title %}{{ nom }} · pointage{% endblock %}
+
+{% block contenu %}
+	<section class="si-tab-camera">
+		<h1>{{ nom }}</h1>
+		<p class="si-tab-sens">{{ prochain == 'depart' ? 'Départ' : 'Arrivée' }} · {{ maintenant|date('H:i') }}</p>
+		<div class="si-tab-ovale"><video playsinline muted autoplay data-si-video></video></div>
+		{% if erreur %}<p class="si-tab-erreur" role="alert">{{ erreur }}</p>{% endif %}
+		<p class="si-tab-erreur" data-si-erreur hidden role="alert"></p>
+		<form method="post" data-si-form>
+			<input type="hidden" name="_token" value="{{ csrf_token('tablette') }}">
+			<input type="hidden" name="photo">
+			<button type="submit" class="si-tab-declencheur" data-si-declencher disabled aria-label="Prendre la photo et enregistrer"><span></span></button>
+			<p class="si-tab-legende">Regardez la caméra, puis touchez le bouton</p>
+		</form>
+		<a href="{{ path('app_tablette_index') }}" class="si-tab-retour">Ce n'est pas moi</a>
+	</section>
+{% endblock %}
+
+{% block scripts %}
+	<script>
+		(function () {
+			var video = document.querySelector('[data-si-video]');
+			var form = document.querySelector('[data-si-form]');
+			var bouton = form.querySelector('[data-si-declencher]');
+			var erreur = document.querySelector('[data-si-erreur]');
+			var montrer = function (texte) { erreur.textContent = texte; erreur.hidden = false; };
+			// Sans action, on revient à la liste des noms.
+			setTimeout(function () { location.replace('{{ path('app_tablette_index') }}'); }, 60000);
+
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+				montrer('Cette tablette ne peut pas ouvrir la caméra (HTTPS nécessaire).');
+				return;
+			}
+			navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 640}}, audio: false}).then(function (flux) {
+				video.srcObject = flux;
+				bouton.disabled = false;
+			}).catch(function () { montrer('Autorisez la caméra sur cette tablette : la photo est obligatoire.'); });
+
+			form.addEventListener('submit', function (e) {
+				if (!video.videoWidth) { e.preventDefault(); montrer('La caméra n\'est pas prête.'); return; }
+				var toile = document.createElement('canvas');
+				var largeur = Math.min(480, video.videoWidth);
+				toile.width = largeur;
+				toile.height = Math.round(video.videoHeight * largeur / video.videoWidth);
+				toile.getContext('2d').drawImage(video, 0, 0, toile.width, toile.height);
+				form.photo.value = toile.toDataURL('image/jpeg', 0.8);
+				bouton.disabled = true;
+			});
+		})();
+	</script>
+{% endblock %}

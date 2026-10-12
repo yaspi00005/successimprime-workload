@@ -598,3 +598,18 @@ body {
 .si-en-ligne .si-appareil-details dt {
   color: rgba(255, 255, 255, 0.65);
 }
+
+/* ---------- Code PIN (maquette E05) ---------- */
+.si-pin-saisie { display: block; width: 100%; margin-bottom: 10px; letter-spacing: .5em; text-align: center; }
+.si-pin-js .si-pin-saisie { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; margin: 0; }
+.si-pin-points, .si-pin-pave { display: none; }
+.si-pin-js .si-pin-points { display: flex; justify-content: center; gap: 14px; margin: 6px 0 16px; }
+.si-pin-points span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #0F4590; }
+.si-pin-points span.si-plein { background: #0F4590; }
+.si-pin-js .si-pin-pave { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.si-pin-pave button { height: 56px; border: 0; border-radius: 14px; background: #EEF3FB; color: #12213A; font-size: 1.4rem; font-weight: 600; cursor: pointer; }
+.si-pin-pave button:active { background: #DCE7F7; }
+.si-pin-js .si-pin-envoyer { display: none; }
+.si-pin-aide { color: #64748B; font-size: .85rem; text-align: center; margin: 12px 0 0; }
+.si-pin-lien { display: block; text-align: center; text-decoration: none; margin-top: 12px; }
+.si-connexion-pin { display: block; margin: 10px 0 2px; font-size: .9rem; font-weight: 600; color: #0F4590; text-decoration: none; }

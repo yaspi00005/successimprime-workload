@@ -225,4 +225,122 @@ public function setUser(?User $user): static
 }
 
 
+
+    /*
+     * Dossier de l'employé (maquettes E01 à E03) : contrat, paie et
+     * horaires. Le dossier existe même sans accès à l'application.
+     */
+
+    public const CONTRATS = ['cdi' => 'CDI', 'cdd' => 'CDD', 'essai' => 'Période d\'essai', 'stage' => 'Stage', 'journalier' => 'Journalier'];
+    public const REMUNERATIONS = ['salaire' => 'Salaire', 'indemnite' => 'Indemnité', 'journalier' => 'Paie journalière'];
+    public const PAIEMENTS = ['especes' => 'Espèces', 'orange_money' => 'Orange Money', 'virement' => 'Virement'];
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $contrat = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $finPrevue = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $typeRemuneration = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $modePaiement = null;
+
+    /*
+     * Horaires propres à l'employé (gardien de nuit, mi-temps…). Vides :
+     * ceux de l'atelier (Paramètres › Horaires). Servent au retard et aux
+     * heures sup du pointage. Fin avant le début : poste de nuit.
+     */
+    #[ORM\Column(length: 5, nullable: true)]
+    private ?string $heureDebut = null;
+
+    #[ORM\Column(length: 5, nullable: true)]
+    private ?string $heureFin = null;
+
+    /** Jours travaillés, de 1 (lundi) à 7 (dimanche) : « 1,2,3,4,5,6 ». */
+    #[ORM\Column(length: 13, nullable: true)]
+    private ?string $joursTravail = null;
+
+    #[ORM\Column(length: 150, nullable: true)]
+    private ?string $contactUrgence = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $responsable = null;
+
+    public function getContrat(): ?string { return $this->contrat; }
+    public function setContrat(?string $c): static { $this->contrat = isset(self::CONTRATS[(string) $c]) ? $c : null; return $this; }
+    public function libelleContrat(): ?string { return $this->contrat !== null ? self::CONTRATS[$this->contrat] : null; }
+    public function getFinPrevue(): ?\DateTimeImmutable { return $this->finPrevue; }
+    public function setFinPrevue(?\DateTimeImmutable $d): static { $this->finPrevue = $d; return $this; }
+    public function getTypeRemuneration(): ?string { return $this->typeRemuneration; }
+    public function setTypeRemuneration(?string $t): static { $this->typeRemuneration = isset(self::REMUNERATIONS[(string) $t]) ? $t : null; return $this; }
+    public function getModePaiement(): ?string { return $this->modePaiement; }
+    public function setModePaiement(?string $m): static { $this->modePaiement = isset(self::PAIEMENTS[(string) $m]) ? $m : null; return $this; }
+    public function libelleModePaiement(): ?string { return $this->modePaiement !== null ? self::PAIEMENTS[$this->modePaiement] : null; }
+    public function getHeureDebut(): ?string { return $this->heureDebut; }
+    public function getHeureFin(): ?string { return $this->heureFin; }
+    public function getJoursTravail(): ?string { return $this->joursTravail; }
+
+    /** @param list<int>|null $jours */
+    public function setHoraires(?string $debut, ?string $fin, ?array $jours): static
+    {
+        $heure = static fn (?string $h): ?string => $h !== null && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $h) ? $h : null;
+        $this->heureDebut = $heure($debut);
+        $this->heureFin = $this->heureDebut !== null ? $heure($fin) : null;
+        $jours = array_values(array_unique(array_filter(array_map('intval', $jours ?? []), static fn (int $j): bool => $j >= 1 && $j <= 7)));
+        sort($jours);
+        $this->joursTravail = $jours !== [] ? implode(',', $jours) : null;
+
+        return $this;
+    }
+
+    /** @return list<int>|null */
+    public function listeJoursTravail(): ?array
+    {
+        return $this->joursTravail !== null ? array_map('intval', explode(',', $this->joursTravail)) : null;
+    }
+
+    /** « tous les jours · 19 h – 7 h · repos le mardi », « lun – sam · 8 h – 18 h ». */
+    public function libelleHoraires(): ?string
+    {
+        if ($this->heureDebut === null && $this->joursTravail === null) {
+            return null;
+        }
+        $noms = [1 => 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
+        $longs = [1 => 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+        $parties = [];
+        $jours = $this->listeJoursTravail();
+        if ($jours !== null) {
+            $suivis = $jours === range($jours[0], $jours[\count($jours) - 1]);
+            $parties[] = match (true) {
+                \count($jours) === 7 => 'tous les jours',
+                \count($jours) === 6 && !$suivis => 'tous les jours',
+                $suivis && \count($jours) > 2 => $noms[$jours[0]].' – '.$noms[$jours[\count($jours) - 1]],
+                default => implode(', ', array_map(static fn (int $j): string => $noms[$j], $jours)),
+            };
+        }
+        if ($this->heureDebut !== null) {
+            $h = static fn (string $x): string => (int) substr($x, 0, 2).' h'.(substr($x, 3) !== '00' ? ' '.substr($x, 3) : '');
+            $parties[] = $h($this->heureDebut).($this->heureFin !== null ? ' – '.$h($this->heureFin) : '');
+        }
+        if ($jours !== null && \count($jours) === 6) {
+            $repos = array_values(array_diff(range(1, 7), $jours))[0];
+            if ($repos !== 7) {
+                $parties[] = 'repos le '.$longs[$repos];
+            }
+        }
+
+        return implode(' · ', $parties);
+    }
+    public function getContactUrgence(): ?string { return $this->contactUrgence; }
+    public function setContactUrgence(?string $c): static { $this->contactUrgence = $c !== null && trim($c) !== '' ? mb_substr(trim($c), 0, 150) : null; return $this; }
+    public function getResponsable(): ?User { return $this->responsable; }
+    public function setResponsable(?User $u): static { $this->responsable = $u; return $this; }
+
+    public function getNomComplet(): string
+    {
+        return trim(($this->prenom ?? '').' '.($this->nom ?? ''));
+    }
 }

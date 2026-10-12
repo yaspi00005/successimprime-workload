@@ -1,0 +1,27 @@
+{% extends 'security/_page_connexion.html.twig' %}
+
+{% block title %}Code PIN · Succès Imprim{% endblock %}
+
+{% block carte %}
+	{% if utilisateur is null %}
+		<h1>Code PIN</h1>
+		<p class="si-connexion-sous-titre">Ce téléphone n'est pas enregistré. Ouvrez le lien d'activation reçu sur WhatsApp, ou connectez-vous avec votre identifiant.</p>
+		<a href="{{ path('app_login') }}" class="si-connexion-bouton si-pin-lien">Identifiant et mot de passe</a>
+	{% else %}
+		<h1>Bonjour {{ prenom }} 👋</h1>
+		<p class="si-connexion-sous-titre">Tapez votre code PIN</p>
+		{% if erreur %}<div class="si-connexion-erreur" role="alert">{{ erreur }}</div>{% endif %}
+		<form method="post" data-si-pin-form>
+			<input type="hidden" name="_token" value="{{ csrf_token('connexion-pin') }}">
+			<input type="password" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" class="si-pin-saisie" aria-label="Code PIN (4 chiffres)" required autofocus>
+			{% include 'acces/_pave.html.twig' %}
+			<button type="submit" class="si-connexion-bouton si-pin-envoyer">Se connecter</button>
+		</form>
+		<p class="si-pin-aide">Code oublié ? Demandez au responsable de réinitialiser votre PIN. · <a href="{{ path('app_login') }}">Identifiant et mot de passe</a></p>
+		{% include 'acces/_pave_script.html.twig' %}
+	{% endif %}
+{% endblock %}
+
+{% block note %}
+	<p class="si-connexion-note">5 codes faux bloquent le PIN 15 minutes · chaque connexion est enregistrée</p>
+{% endblock %}

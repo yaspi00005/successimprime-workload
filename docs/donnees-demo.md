@@ -22,6 +22,10 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - la prépresse, la conception, les ordres de production et le journal des machines ;
   - les livraisons et les étiquettes.
 - Le personnel : pointages (60 jours), demandes, congés, bulletins de paie, réclamations.
+- Employés sans accès (écrans E01 à E05) :
+  - `demo.adama` (gardien de nuit, 19 h – 7 h) et `demo.nana` (aide atelier) pointent sur la tablette ;
+  - `demo.rokia` (stagiaire) a une invitation en attente, dont le lien ne s'ouvre pas ;
+  - `demo.lassana` est parti (accès retiré).
 - Le reste : planning et entretien, charges récurrentes, clôtures de caisse, rapprochements bancaires, campagnes, actions de caisse, messagerie et notifications.
 
 ## Repères

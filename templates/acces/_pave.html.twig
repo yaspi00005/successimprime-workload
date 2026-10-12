@@ -1,0 +1,7 @@
+{# Pavé numérique du code PIN (maquette E05) ; les chiffres vont dans les champs cachés. #}
+<div class="si-pin-points" data-si-points aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+<div class="si-pin-pave" role="group" aria-label="Clavier du code">
+	{% for c in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'] %}
+		{% if c == '' %}<span></span>{% else %}<button type="button" data-si-touche="{{ c }}" aria-label="{{ c == '⌫' ? 'Effacer' : c }}">{{ c }}</button>{% endif %}
+	{% endfor %}
+</div>

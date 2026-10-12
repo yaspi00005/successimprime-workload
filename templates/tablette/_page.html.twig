@@ -1,0 +1,23 @@
+{# Tablette de l'entrée (maquette E05) : plein écran, bleu de la charte, sans menu. #}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#0F3A7A">
+	<meta name="robots" content="noindex">
+	<title>{% block title %}Tablette de l'entrée · Succès Imprim{% endblock %}</title>
+	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
+	<link href="{{ asset('css/tablette.css') }}" rel="stylesheet">
+</head>
+<body class="si-tab">
+	<main class="si-tab-page">
+		<header class="si-tab-tete">
+			<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim" class="si-tab-logo">
+			<p class="si-tab-lieu">Tablette de l'entrée · pointage{% if point %} · {{ point.nom }}{% endif %}</p>
+		</header>
+		{% block contenu %}{% endblock %}
+	</main>
+	{% block scripts %}{% endblock %}
+</body>
+</html>

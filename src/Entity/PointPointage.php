@@ -151,4 +151,22 @@ class PointPointage
     {
         return $this->renouveleLe;
     }
+
+    /** Tablette de l'entrée (maquette E05) : empreinte du jeton gardé dans son cookie. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $tablette = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $tabletteLe = null;
+
+    public function getTablette(): ?string { return $this->tablette; }
+    public function getTabletteLe(): ?\DateTimeImmutable { return $this->tabletteLe; }
+
+    public function brancherTablette(?string $empreinte, ?\DateTimeImmutable $le): static
+    {
+        $this->tablette = $empreinte;
+        $this->tabletteLe = $empreinte !== null ? $le : null;
+
+        return $this;
+    }
 }

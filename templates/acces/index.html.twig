@@ -1,0 +1,91 @@
+{% extends 'base.html.twig' %}
+
+{# Gestion des accès à l'application (maquette E04), administrateur seulement. #}
+
+{% block title %}Accès à l'application{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_utilisateurs_roles') }}" class="btn btn-light btn-sm si-btn-entete">Rôles et droits</a>
+	</li>
+	<li class="nav-item">
+		<a href="{{ path('app_equipe_employes_index', {filtre: 'sans'}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Inviter</a>
+	</li>
+{% endblock %}
+
+{% macro bouton(u, action, libelle, confirmation) %}
+	<form method="post" action="{{ path('app_acces_agir', {id: u.id, action: action}) }}"{% if confirmation %} onsubmit="return confirm('{{ confirmation|e('js') }}')"{% endif %}>
+		<input type="hidden" name="_token" value="{{ csrf_token('acces-' ~ u.id) }}">
+		<button class="si-em-lien">{{ libelle }}</button>
+	</form>
+{% endmacro %}
+
+{% block body %}
+	{% import 'equipe_employes/_macros.html.twig' as m %}
+	{% import _self as b %}
+
+	<section class="card si-em-bloc">
+		<div class="table-responsive">
+			<table class="table si-em-table si-em-acces-table">
+				<thead><tr><th>Employé</th><th>Rôle</th><th class="si-masque-mobile">Appareil</th><th class="si-masque-mobile">Dernière connexion</th><th>Statut</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+				<tbody>
+					{% for l in lignes %}
+						{% set u = l.utilisateur %}
+						<tr id="u{{ u.id }}" class="{{ l.statut == 'retire' ? 'si-em-retire' }}">
+							<td><a href="{{ path('app_equipe_employes_dossier', {id: u.employe.id}) }}" class="si-em-qui">{{ m.avatar(u.employe, 'si-em-avatar-petit', l.statut == 'retire') }}<b>{{ l.nom }}</b></a></td>
+							<td>{{ u.profil ? u.profil.nom : (u.admin ? 'Administrateur' : '—') }}</td>
+							<td class="si-masque-mobile">{% if l.statut == 'retire' %}téléphone retiré{% elseif l.statut in ['invite', 'expire'] %}invitation envoyée{% elseif l.appareil %}{{ l.appareil.nom|split(' · ')|last }} · enregistré{% else %}mot de passe{% endif %}</td>
+							<td class="si-masque-mobile">{{ l.statut == 'retire' ? (u.disabledAt ?? u.finAccesLe ? (u.disabledAt ?? u.finAccesLe)|date('d/m/Y') : '—') : m.quand(u.lastLoginAt, maintenant) }}</td>
+							<td>{{ m.statut(l.statut) }}</td>
+							<td class="si-em-actions-ligne">
+								{% if l.statut == 'actif' %}
+									{% if u.pin %}
+										{{ b.bouton(u, 'reinitialiser', 'Réinitialiser le PIN', 'Un nouveau lien sera à envoyer à ' ~ l.nom ~ ' pour choisir un autre code. Il ne pourra plus se connecter en attendant. Continuer ?') }}
+									{% else %}
+										{{ b.bouton(u, 'reinitialiser', 'Passer au PIN', l.nom ~ ' recevra un lien pour choisir un code PIN et enregistrer son téléphone. Son mot de passe ne marchera plus en attendant. Continuer ?') }}
+									{% endif %}
+									{% if u != app.user %}· {{ b.bouton(u, 'suspendre', 'Suspendre', 'Bloquer tout de suite l\'accès de ' ~ l.nom ~ ' ?') }}{% endif %}
+								{% elseif l.statut in ['invite', 'expire'] %}
+									{{ b.bouton(u, 'renvoyer', 'Renvoyer', null) }} · {{ b.bouton(u, 'annuler', 'Annuler', 'Le lien envoyé ne marchera plus. Continuer ?') }}
+								{% elseif l.statut == 'suspendu' %}
+									{{ b.bouton(u, 'reactiver', 'Réactiver', null) }} · {{ b.bouton(u, 'retirer', 'Retirer l\'accès', 'Retirer l\'accès de ' ~ l.nom ~ ' ? Son dossier et son historique restent.') }}
+								{% else %}
+									<span class="si-em-gris">{{ u.disabledAt ? 'départ le ' ~ u.disabledAt|date('d/m') : (u.finAccesLe ? 'fin de contrat le ' ~ u.finAccesLe|date('d/m') : '') }} · historique conservé</span>
+								{% endif %}
+							</td>
+						</tr>
+					{% else %}
+						<tr><td colspan="6" class="si-em-vide">Personne n'a encore accès à l'application.</td></tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</section>
+
+	<div class="si-em-bas">
+		<section class="card si-em-bloc">
+			<div class="si-em-bloc-tete"><h2>Sans accès</h2><span>{{ sans|length }} employé{{ sans|length > 1 ? 's' }}</span></div>
+			{% for l in sans %}
+				{% set u = l.utilisateur %}
+				<div class="si-em-sans-ligne">
+					{{ m.avatar(u.employe, 'si-em-avatar-petit') }}
+					<span class="si-em-nom"><b>{{ l.nom }}</b><small>{{ u.employe.fonction ?: '—' }} · pointage sur la tablette</small></span>
+					<a href="{{ path('app_equipe_employes_modifier', {id: u.employe.id, _fragment: 'acces'}) }}" class="btn si-btn-discret btn-sm">+ Donner un accès</a>
+				</div>
+			{% else %}
+				<p class="si-em-vide">Tous les employés ont un accès.</p>
+			{% endfor %}
+		</section>
+		<section class="card si-em-bloc">
+			<h2>Règles</h2>
+			<ul class="si-em-regles">
+				<li>Un accès = un employé = un téléphone enregistré</li>
+				<li>Fin de contrat : accès coupé le jour même, automatiquement</li>
+				<li>Téléphone perdu : « Suspendre » bloque tout de suite</li>
+				<li>Les rôles limitent ce que chacun voit (caisse, clients, finances…)</li>
+				<li>Retirer un accès ne supprime ni le dossier ni l'historique</li>
+				<li>Le lien d'invitation marche 7 jours ; 5 codes faux bloquent le PIN 15 minutes</li>
+			</ul>
+		</section>
+	</div>
+{% endblock %}

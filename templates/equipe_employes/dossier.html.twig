@@ -1,0 +1,160 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Dossier d'un employé (maquette E03), avec ou sans accès. Sans accès,
+	la RH saisit ses absences et avances à sa place. Photos de pointage
+	et salaire : RH seulement.
+#}
+
+{% block title %}{{ employe.nomComplet }}{{ employe.fonction ? ' · ' ~ employe.fonction|lower }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_equipe_employes_modifier', {id: employe.id}) }}" class="btn btn-light btn-sm si-btn-entete">Modifier</a>
+	</li>
+	{% if is_granted('ROLE_ADMIN') and statut == 'sans' %}
+		<li class="nav-item">
+			<a href="{{ path('app_equipe_employes_modifier', {id: employe.id, _fragment: 'acces'}) }}" class="btn btn-primary btn-sm si-btn-entete">+ Donner un accès à l'app</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% import 'equipe_employes/_macros.html.twig' as m %}
+	{% set rh = is_granted('ROLE_RH') %}
+	{% set prenom = employe.prenom ?: employe.nomComplet %}
+	{% set jours = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'] %}
+
+	{% if statut != 'actif' %}
+		<p class="si-em-bandeau">{{ m.statut(statut) }}
+			{% if statut == 'sans' %}{{ prenom }} n'utilise pas l'application. Il pointe sur la tablette de l'entrée ; le RH gère ses demandes à sa place.
+			{% elseif statut in ['invite', 'expire'] %}{{ prenom }} n'a pas encore activé son accès{{ statut == 'expire' ? ' et le lien a expiré' }}. En attendant, il pointe sur la tablette de l'entrée.
+			{% else %}L'accès de {{ prenom }} est {{ statut == 'suspendu' ? 'suspendu' : 'retiré' }} : il pointe sur la tablette de l'entrée.{% endif %}
+		</p>
+	{% endif %}
+
+	<div class="si-em-dossier">
+		<aside class="card si-em-bloc si-em-identite">
+			{{ m.avatar(employe, 'si-em-avatar-grand') }}
+			<h2>{{ employe.nomComplet }}</h2>
+			<p class="si-em-sous">{{ employe.fonction ?: '—' }}{{ employe.contrat ? ' · ' ~ employe.libelleContrat }}{{ employe.dateEmbauches ? ' depuis ' ~ employe.dateEmbauches|date('d/m/Y') }}{{ employe.finPrevue ? ' · fin ' ~ employe.finPrevue|date('d/m/Y') }}</p>
+			<dl>
+				<dt>Téléphone</dt><dd>{% if employe.telephone %}<a href="tel:{{ employe.telephone|replace({' ': ''}) }}">{{ employe.telephone }}</a>{% else %}—{% endif %}</dd>
+				<dt>Horaires</dt><dd>{{ employe.libelleHoraires ?: 'ceux de l\'atelier' }}</dd>
+				{% if rh and employe.salaires %}<dt>{{ constant('App\\Entity\\Employes::REMUNERATIONS')[employe.typeRemuneration] ?? 'Salaire' }}</dt><dd>{{ employe.salaires|number_format(0, ',', ' ') }} F{{ employe.modePaiement ? ' · payé ' ~ (employe.modePaiement == 'especes' ? 'en espèces' : 'par ' ~ employe.libelleModePaiement) }}</dd>{% endif %}
+				{% if conge %}<dt>Congés</dt><dd>{{ conge.actif ? 'solde ' ~ conge.solde|number_format(conge.solde == conge.solde|round ? 0 : 1, ',', ' ') ~ ' jour' ~ (conge.solde > 1 ? 's') : 'pas encore ouverts' }}</dd>{% endif %}
+				{% if employe.responsable %}<dt>Responsable</dt><dd>{{ employe.responsable|nom_pointage }}</dd>{% endif %}
+				{% if employe.contactUrgence %}<dt>Contact d'urgence</dt><dd>{{ employe.contactUrgence }}</dd>{% endif %}
+				{% if utilisateur and statut == 'actif' %}<dt>Application</dt><dd>{{ utilisateur.profil ? utilisateur.profil.nom : 'Administrateur' }} · {{ appareil ? appareil.nom : 'mot de passe' }}</dd>{% endif %}
+			</dl>
+			{% if utilisateur %}
+				<div class="si-em-boutons">
+					<button type="button" class="btn si-btn-discret" data-bs-toggle="collapse" data-bs-target="#si-em-absence" aria-expanded="false">Saisir une absence</button>
+					<form method="post" action="{{ path('app_equipe_employes_saisir', {id: employe.id}) }}" class="collapse si-em-mini" id="si-em-absence">
+						<input type="hidden" name="_token" value="{{ csrf_token('dossier-employe-' ~ employe.id) }}">
+						<select name="quoi" class="form-select form-select-sm" aria-label="Type"><option value="absence">Absence (acceptée)</option><option value="conge">Congé (à valider)</option></select>
+						<label>Du<input type="date" name="du" class="form-control form-control-sm" value="{{ maintenant|date('Y-m-d') }}" required></label>
+						<label>Au<input type="date" name="au" class="form-control form-control-sm"></label>
+						<label class="si-em-case"><input type="checkbox" name="demi" value="1"> Demi-journée</label>
+						<input name="motif" class="form-control form-control-sm" placeholder="Motif (maladie, deuil…)" maxlength="200">
+						<button class="btn btn-primary btn-sm">Enregistrer</button>
+					</form>
+					{% if rh %}
+						<button type="button" class="btn si-btn-discret" data-bs-toggle="collapse" data-bs-target="#si-em-avance" aria-expanded="false">Enregistrer une avance</button>
+						<form method="post" action="{{ path('app_equipe_employes_saisir', {id: employe.id}) }}" class="collapse si-em-mini" id="si-em-avance">
+							<input type="hidden" name="_token" value="{{ csrf_token('dossier-employe-' ~ employe.id) }}">
+							<input type="hidden" name="quoi" value="avance">
+							<input name="montant" class="form-control form-control-sm" inputmode="numeric" placeholder="Montant en F" required>
+							<input name="motif" class="form-control form-control-sm" placeholder="Motif (facultatif)" maxlength="80">
+							<p class="si-em-note">Retenue sur le bulletin de {{ maintenant|date_fr('MMMM') }}.</p>
+							<button class="btn btn-primary btn-sm">Enregistrer</button>
+						</form>
+						<a href="{{ path('app_paie_index', {mois: maintenant|date('Y-m')}) }}" class="btn si-btn-discret">Imprimer le bulletin</a>
+					{% endif %}
+				</div>
+			{% endif %}
+		</aside>
+
+		<div class="si-em-principal">
+			<div class="row si-kpis">
+				<div class="col-xl-3 col-6">
+					<div class="card si-kpi"><div class="card-body">
+						<span class="si-kpi-libelle">Jours travaillés ({{ maintenant|date_fr('MMMM') }})</span>
+						<div class="si-kpi-valeur">{{ mois ? mois.presents ~ ' / ' ~ mois.ouvres : '—' }}</div>
+						<span class="si-tendance {{ mois and mois.presents < mois.ouvres ? 'si-baisse' : 'si-hausse' }}">{% if mois %}{{ mois.presents >= mois.ouvres ? 'aucune absence' : (mois.ouvres - mois.presents) ~ ' jour' ~ (mois.ouvres - mois.presents > 1 ? 's') ~ ' sans pointage' }}{% endif %}</span>
+					</div></div>
+				</div>
+				<div class="col-xl-3 col-6">
+					<div class="card si-kpi"><div class="card-body">
+						<span class="si-kpi-libelle">Retards</span>
+						<div class="si-kpi-valeur">{{ mois ? mois.retards : '—' }}</div>
+						<span class="si-tendance {{ mois and mois.retards > 0 ? 'si-baisse' : 'si-hausse' }}">{{ arriveeMoyenne ? 'arrivée moyenne ' ~ arriveeMoyenne : 'pas de pointage ce mois' }}</span>
+					</div></div>
+				</div>
+				{% if rh %}
+					<div class="col-xl-3 col-6">
+						<div class="card si-kpi"><div class="card-body">
+							<span class="si-kpi-libelle">Prochaine paie</span>
+							<div class="si-kpi-valeur">{{ employe.salaires ? employe.salaires|number_format(0, ',', ' ') ~ ' F' : '—' }}</div>
+							<span class="si-tendance si-hausse">le {{ versement|date_fr('d MMMM') }}</span>
+						</div></div>
+					</div>
+				{% endif %}
+				<div class="col-xl-3 col-6">
+					<div class="card si-kpi"><div class="card-body">
+						<span class="si-kpi-libelle">Note de ponctualité</span>
+						<div class="si-kpi-valeur">{{ mois and mois.note is not null ? (mois.note / 20)|number_format(1, ',', ' ') ~ ' / 5' : '—' }}</div>
+						<span class="si-tendance si-hausse">{{ mois ? mois.points ~ ' points ce mois' }}</span>
+					</div></div>
+				</div>
+			</div>
+
+			<section class="card si-em-bloc">
+				<div class="si-em-bloc-tete">
+					<h2>{{ statut == 'actif' ? 'Derniers pointages' : 'Pointages sur la tablette' }}</h2>
+					{% if utilisateur %}<a href="{{ path('app_pointage_employe', {id: utilisateur.id}) }}">photo prise à chaque pointage · tout le mois</a>{% endif %}
+				</div>
+				{% if presences is empty %}
+					<p class="si-em-vide">Aucun pointage pour l'instant.</p>
+				{% else %}
+					<div class="table-responsive">
+						<table class="table si-em-table">
+							<thead><tr><th>Jour</th>{% if rh %}<th>Photo</th>{% endif %}<th>Arrivée</th>{% if rh %}<th>Photo</th>{% endif %}<th>Départ</th><th>Durée</th></tr></thead>
+							<tbody>
+								{% for l in presences %}
+									{% set p = l.pointage %}
+									{% set nuit = p.departLe and p.departLe|date('Y-m-d') != p.arriveeLe|date('Y-m-d') %}
+									<tr>
+										<td><b>{{ jours[p.arriveeLe|date('w')]|capitalize }} {{ p.arriveeLe|date('j') }}{% if nuit %} → {{ jours[p.departLe|date('w')] }} {{ p.departLe|date('j') }}{% endif %}</b></td>
+										{% if rh %}<td>{% if p.photoArrivee %}<a href="{{ path('app_pointer_voir_photo', {id: p.id, sens: 'arrivee'}) }}" target="_blank"><img src="{{ path('app_pointer_voir_photo', {id: p.id, sens: 'arrivee'}) }}" alt="Photo d'arrivée" class="si-em-photo" loading="lazy"></a>{% else %}<span class="si-em-sans-photo">—</span>{% endif %}</td>{% endif %}
+										<td>{{ p.arriveeLe|date('H:i') }}{% if l.calcul.retard > 0 %} <small class="text-danger">+{{ l.calcul.retard }} min</small>{% endif %}</td>
+										{% if rh %}<td>{% if p.photoDepart %}<a href="{{ path('app_pointer_voir_photo', {id: p.id, sens: 'depart'}) }}" target="_blank"><img src="{{ path('app_pointer_voir_photo', {id: p.id, sens: 'depart'}) }}" alt="Photo de départ" class="si-em-photo" loading="lazy"></a>{% else %}<span class="si-em-sans-photo">—</span>{% endif %}</td>{% endif %}
+										<td>{{ p.departLe ? p.departLe|date('H:i') : 'en cours' }}</td>
+										<td>{{ (l.calcul.presence // 60) ~ ' h ' ~ '%02d'|format(l.calcul.presence % 60) }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					<p class="si-em-note">Nuit à cheval sur deux jours : l'arrivée du soir et le départ du matin sont rattachés à la même nuit.</p>
+				{% endif %}
+			</section>
+
+			<section class="card si-em-bloc">
+				<div class="si-em-bloc-tete"><h2>Demandes{{ statut != 'actif' ? ' saisies par le RH' }}</h2><a href="{{ path('app_demandes_index') }}">toutes les demandes</a></div>
+				{% if demandes is empty and avances is empty %}
+					<p class="si-em-vide">Aucune demande.</p>
+				{% else %}
+					<ul class="si-em-demandes">
+						{% for a in avances %}
+							<li><span><b>Avance de {{ (-a.ligne.montant)|number_format(0, ',', ' ') }} F</b> · {{ a.bulletin.libelleEtat|lower }} · retenue sur la paie de {{ a.bulletin.mois|date_fr('MMMM') }}</span><small>{{ a.ligne.libelle|replace({'Avance du ': ''})|split(' ')|first }}</small></li>
+						{% endfor %}
+						{% for d in demandes %}
+							<li><span><b>{{ d.libelleType }}{% if d.estUneSomme %} de {{ (d.montantAccorde ?? d.montant)|number_format(0, ',', ' ') }} F{% elseif d.au and d.au != d.du %} du {{ d.du|date('d') }} au {{ d.au|date('d/m') }}{% else %} du {{ d.du|date('d/m') }}{% endif %}</b> · {{ d.libelleEtat|lower }}{{ d.motif and d.motif != 'Congé' ? ' · ' ~ d.motif }}</span><small>{{ d.creeLe|date('d/m') }}</small></li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</section>
+		</div>
+	</div>
+{% endblock %}

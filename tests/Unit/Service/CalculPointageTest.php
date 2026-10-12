@@ -106,4 +106,27 @@ final class CalculPointageTest extends TestCase
         self::assertSame(0, $r['total'], 'pas de point de ponctualité, bonus à valider');
         self::assertNotNull($r['bonusEnAttente']);
     }
+
+    public function testPosteDeNuit(): void
+    {
+        // Gardien (E03) : 19 h – 7 h, la pause de midi ne le concerne pas.
+        $regles = ['ouverture' => '19:00', 'fermeture' => '07:00', 'alerte_depart' => '09:00'] + self::REGLES;
+        $r = C::presence(self::t('2026-10-12 18:50'), self::t('2026-10-13 07:04'), $regles, self::t('2026-10-13 08:00'));
+
+        self::assertSame(0, $r['retard']);
+        self::assertSame(0, $r['pause']);
+        self::assertSame(734, $r['presence'], '12 h 14');
+        self::assertSame(4, $r['sup']);
+        self::assertSame(C::STATUT_COMPLET, $r['statut']);
+
+        // Encore en poste à 3 h du matin : pas d'alerte « départ non pointé ».
+        $r = C::presence(self::t('2026-10-12 18:50'), null, $regles, self::t('2026-10-13 03:00'));
+        self::assertSame(C::STATUT_EN_COURS, $r['statut']);
+    }
+
+    public function testJoursPropresAUnEmploye(): void
+    {
+        self::assertSame([1, 3, 4, 5, 6, 7], C::joursOuvres('1,3,4,5,6,7'));
+        self::assertSame([1, 2, 3, 4, 5, 6], C::joursOuvres('lun-sam'));
+    }
 }

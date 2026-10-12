@@ -1,0 +1,36 @@
+/* Tablette de l'entrée (maquette E05) : grands boutons, lisibles de loin. */
+:root { --tab-fond: #0f3a7a; --tab-carte: #1f4f93; --tab-jaune: #f6c445; --tab-texte: #fff; --tab-doux: #b9cbe8; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body.si-tab { background: var(--tab-fond); color: var(--tab-texte); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+.si-tab-page { max-width: 960px; margin: 0 auto; padding: 24px 16px 40px; }
+.si-tab-tete { text-align: center; }
+.si-tab-logo { background: #fff; border-radius: 14px; padding: 8px 14px; height: 64px; }
+.si-tab-lieu { color: var(--tab-doux); margin: 10px 0 0; font-size: .95rem; }
+.si-tab-heure { text-align: center; margin: 6px 0 22px; }
+.si-tab-heure strong { display: block; font-size: clamp(3rem, 12vw, 5.5rem); line-height: 1.05; font-weight: 800; letter-spacing: -.02em; }
+.si-tab-heure span { color: var(--tab-doux); text-transform: capitalize; }
+.si-tab-titre { font-size: 1.1rem; margin: 0 0 12px; }
+.si-tab-noms { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.si-tab-nom { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 10px; min-height: 150px; border-radius: 16px; background: var(--tab-carte); color: var(--tab-texte); text-decoration: none; text-align: center; transition: transform .1s; }
+.si-tab-nom:active { transform: scale(.97); }
+.si-tab-nom.si-tab-sans { background: var(--tab-jaune); color: #1d2433; }
+.si-tab-nom small { opacity: .8; font-size: .8rem; }
+.si-tab-pastille { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; border: 3px solid rgba(255,255,255,.7); }
+.si-tab-c0 { background: #e0302f; } .si-tab-c1 { background: #ef6c33; } .si-tab-c2 { background: #2e86de; } .si-tab-c3 { background: #13897f; }
+.si-tab-c4 { background: #7b4b2a; } .si-tab-c5 { background: #8e44ad; } .si-tab-c6 { background: #222; } .si-tab-c7 { background: #e84393; }
+.si-tab-vide { color: var(--tab-doux); }
+.si-tab-note, .si-tab-info p { background: rgba(255,255,255,.08); border-radius: 12px; padding: 12px 14px; color: var(--tab-doux); margin-top: 18px; }
+.si-tab-info { text-align: center; }
+.si-tab-ok { background: #1e9e5a; border-radius: 12px; padding: 14px; font-weight: 600; text-align: center; margin: 0 0 16px; }
+.si-tab-camera { text-align: center; }
+.si-tab-camera h1 { margin: 6px 0 2px; font-size: 1.6rem; }
+.si-tab-sens { color: var(--tab-jaune); font-weight: 700; margin: 0 0 14px; }
+.si-tab-ovale { width: min(280px, 70vw); aspect-ratio: 3 / 4; margin: 0 auto; border-radius: 50%; overflow: hidden; border: 4px solid var(--tab-jaune); background: #0a2752; }
+.si-tab-ovale video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.si-tab-erreur { background: #fde2e1; color: #a51d1d; border-radius: 10px; padding: 10px 12px; margin: 14px auto 0; max-width: 420px; }
+.si-tab-declencheur { margin: 20px auto 6px; width: 84px; height: 84px; border-radius: 50%; border: 5px solid #fff; background: transparent; display: grid; place-items: center; cursor: pointer; }
+.si-tab-declencheur span { width: 62px; height: 62px; border-radius: 50%; background: #e0302f; }
+.si-tab-declencheur:disabled { opacity: .4; }
+.si-tab-legende { color: var(--tab-doux); margin: 0; }
+.si-tab-retour { display: inline-block; margin-top: 18px; color: #fff; padding: 10px 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,.4); text-decoration: none; }

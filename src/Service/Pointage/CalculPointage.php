@@ -87,17 +87,17 @@ final class CalculPointage
         $bonusEnAttente = null;
 
         if ($depart === null) {
-            $alerte = self::a($arrivee, (string) $regles['alerte_depart']);
+            $alerte = self::apres($arrivee, (string) $regles['alerte_depart'], $prevue);
             $ouverteTropLongtemps = $maintenant->getTimestamp() - $arrivee->getTimestamp() > self::HEURES_MAX_PRESENCE * 3600;
             $statut = $maintenant >= $alerte || $ouverteTropLongtemps ? self::STATUT_NON_POINTE : self::STATUT_EN_COURS;
             if ($statut === self::STATUT_NON_POINTE) {
                 $points[] = ['libelle' => 'Oubli de pointage', 'points' => -(int) $regles['points_oubli']];
             }
         } else {
-            $pause = self::chevauchement($arrivee, $depart, self::a($arrivee, (string) $regles['pause_debut']), self::a($arrivee, (string) $regles['pause_fin']));
+            $pause = self::chevauchement($arrivee, $depart, self::apres($arrivee, (string) $regles['pause_debut'], $prevue), self::apres($arrivee, (string) $regles['pause_fin'], $prevue));
             $brut = intdiv($depart->getTimestamp() - $arrivee->getTimestamp(), 60);
             $presence = max(0, $brut - $pause);
-            $sup = $ouvre ? max(0, intdiv($depart->getTimestamp() - self::a($arrivee, (string) $regles['fermeture'])->getTimestamp(), 60)) : $presence;
+            $sup = $ouvre ? max(0, intdiv($depart->getTimestamp() - self::apres($arrivee, (string) $regles['fermeture'], $prevue)->getTimestamp(), 60)) : $presence;
 
             // Une seule ligne de bonus par journée, la plus haute.
             $bonus = match (true) {
@@ -153,6 +153,11 @@ final class CalculPointage
      */
     public static function joursOuvres(string $plage): array
     {
+        // Jours propres à un employé (fiche E02) : « 1,2,4,5,6,7 ».
+        if (preg_match('/^[1-7](,[1-7])*$/', $plage)) {
+            return array_map('intval', explode(',', $plage));
+        }
+
         return match ($plage) {
             'lun-ven' => [1, 2, 3, 4, 5],
             'lun-dim' => [1, 2, 3, 4, 5, 6, 7],
@@ -178,6 +183,17 @@ final class CalculPointage
         [$h, $m] = array_map('intval', explode(':', $heure) + [1 => '0']);
 
         return $jour->setTime($h, $m);
+    }
+
+    /**
+     * Heure de la journée de travail commencée à l'arrivée : avant
+     * l'heure d'ouverture, c'est le lendemain (poste de nuit, 19 h – 7 h).
+     */
+    private static function apres(\DateTimeImmutable $arrivee, string $heure, \DateTimeImmutable $ouverture): \DateTimeImmutable
+    {
+        $moment = self::a($arrivee, $heure);
+
+        return $moment < $ouverture ? $moment->modify('+1 day') : $moment;
     }
 
     private static function chevauchement(\DateTimeImmutable $debut, \DateTimeImmutable $fin, \DateTimeImmutable $pauseDebut, \DateTimeImmutable $pauseFin): int

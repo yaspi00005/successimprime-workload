@@ -173,16 +173,28 @@ EQUIPE = [
     ('sekou', 'Sékou', 'Kanté', 'Livreur', 'ROLE_LIVREUR', [], [], 90000, None),
     ('awa', 'Awa', 'Dembélé', 'Agent d\'entretien', 'ROLE_PRODUCTION', ['ROLE_ENTRETIEN'], ['ROLE_PRODUCTION_GERER', 'ROLE_PRODUCTION_VOIR'], 75000, None),
 ]
+# Dossier (maquettes E01 à E03) : contrat, paie, horaires. Sans tirage au
+# sort, pour ne pas changer le reste de la démo.
+DOSSIER = {
+    'aissata': ('essai', 'salaire', 'orange_money', None),
+    'ibrahim': ('journalier', 'journalier', 'especes', None),
+    'awa': ('cdd', 'salaire', 'especes', -75),
+    'sekou': ('cdd', 'salaire', 'orange_money', -160),
+}
 U = {}
 EMBAUCHE = {}
 for cle, prenom, nom, fonction, profil, plus, moins, salaire, objectif in EQUIPE:
+    contrat, remuneration, paiement, fin = DOSSIER.get(cle, ('cdi', 'salaire', 'virement' if salaire >= 250000 else 'orange_money', None))
     e = add('employes', {'nom': nom, 'prenom': prenom, 'fonction': fonction, 'telephone': telephone(), 'email': f'{cle}@demo.successimprim.ml',
                          'salaires': salaire, 'date_naissances': J(R.randint(22, 50) * 365 + R.randint(0, 300)), 'matricules': f'MAT-D{len(U) + 1:03d}',
-                         'date_embauches': J(R.randint(400, 2500)), 'adresses': f'{R.choice(list(COMMUNES))}, Bamako', 'cin': f'CIN-D{R.randint(100000, 999999)}'})
+                         'date_embauches': J(R.randint(400, 2500)), 'adresses': f'{R.choice(list(COMMUNES))}, Bamako', 'cin': f'CIN-D{R.randint(100000, 999999)}',
+                         'contrat': contrat, 'fin_prevue': J(fin) if fin else None, 'type_remuneration': remuneration, 'mode_paiement': paiement,
+                         'heure_debut': None, 'heure_fin': None, 'jours_travail': None, 'contact_urgence': None, 'responsable_id': None})
     U[cle] = add('user', {'username': f'demo.{cle}', 'roles': [profil], 'password': MDP, 'actif': 1, 'date_add': T(R.randint(380, 700)), 'date_update': T(R.randint(1, 30)),
                           'must_change_password': 0, 'password_changed_at': T(R.randint(30, 300)), 'last_login_at': T(R.randint(0, 3), *heure()), 'employe_id': e,
                           'droits_ajoutes': plus, 'droits_retires': moins, 'profil_id': S(f"(SELECT r.id FROM role_utilisateur r WHERE r.code = '{profil}')"),
-                          'objectif_ventes_mois': objectif})
+                          'objectif_ventes_mois': objectif, 'acces': 'actif', 'pin': None, 'pin_essais': 0, 'pin_bloque_jusqua': None,
+                          'invitation_empreinte': None, 'invitation_envoyee_le': None, 'invitation_expire_le': None, 'fin_acces_le': J(fin) if fin else None})
 COMMERCIAUX = [U['aminata'], U['mariam'], U['moussa'], U['aminata'], U['kadiatou']]
 GRAPHISTES = [U['seydou'], U['aissata']]
 LIVREURS = [U['bakary'], U['sekou']]
@@ -992,7 +1004,7 @@ for row in ROWS['articles']:
 point = add('point_pointage', {'code': 'PT-99', 'nom': 'Boutique (démo)', 'secret': hexa(32), 'latitude': 12.6392, 'longitude': -8.0029, 'rayon_metres': 80, 'actif': 1, 'renouvele_le': T(30, 7)})
 APPAREILS = {}
 for cle, uid_ in U.items():
-    APPAREILS[uid_] = add('appareil_pointage', {'empreinte': hexa(64), 'nom': f'Téléphone de {cle.capitalize()}', 'etat': 'autorise', 'cree_le': T(200, 8), 'decide_le': T(199, 9),
+    APPAREILS[uid_] = add('appareil_pointage', {'empreinte': hexa(64), 'nom': 'Safari · iPhone' if len(APPAREILS) % 4 == 1 else 'Chrome · Android', 'etat': 'autorise', 'cree_le': T(200, 8), 'decide_le': T(199, 9),
                                                  'utilisateur_id': uid_, 'decide_par_id': U['fanta']})
 add('appareil_pointage', {'empreinte': hexa(64), 'nom': 'Nouveau téléphone (Sékou)', 'etat': 'en_attente', 'cree_le': T(1, 8), 'decide_le': None, 'utilisateur_id': U['sekou'], 'decide_par_id': None})
 for nom, role, etat in [('Poste caisse boutique', 'encaissement', 'autorise'), ('PC direction', 'admin', 'autorise'), ('Tablette accueil', 'lecture', 'autorise'), ('PC inconnu', 'lecture', 'en_attente')]:
@@ -1079,6 +1091,55 @@ for _ in range(18):
                          'date_paiement': T(max(0, d - 2), 16) if statut == 'payee' else None, 'notification_lue': 1, 'agent_id': agent,
                          'valide_par_id': U['fanta'] if statut in ('validee', 'payee') else None, 'refuse_par_id': U['fanta'] if statut == 'refusee' else None,
                          'paye_par_id': U['fanta'] if statut == 'payee' else None, 'mouvement_tresorerie_id': mvt, 'public_id': uid()})
+
+# ----------------------------------- employés sans accès (maquettes E01 à E05)
+# Ajoutés à part, après le reste : ils pointent sur la tablette de l'entrée.
+# Rokia est invitée (lien pas encore ouvert), Lassana est parti.
+R2 = random.Random(77)
+AUTRES = {}
+for cle, prenom, nom, fonction, contrat, rem, salaire, paiement, horaires, acces, profil in [
+    ('adama', 'Adama', 'Keïta', 'Gardien de nuit', 'cdi', 'salaire', 95000, 'especes', ('19:00', '07:00', '1,2,3,4,5,6,7'), 'sans', None),
+    ('nana', 'Nana', 'Togo', 'Aide atelier', 'journalier', 'journalier', 3500, 'especes', ('08:00', '17:00', None), 'sans', None),
+    ('rokia', 'Rokia', 'Sissoko', 'Stagiaire PAO', 'stage', 'indemnite', 50000, 'orange_money', (None, None, None), 'invite', 'ROLE_GRAPHISTE'),
+    ('lassana', 'Lassana', 'Diakité', 'Livreur', 'cdd', 'salaire', 85000, 'especes', (None, None, None), 'actif', 'ROLE_LIVREUR'),
+]:
+    e = add('employes', {'nom': nom, 'prenom': prenom, 'fonction': fonction, 'telephone': telephone(), 'email': None,
+                         'salaires': salaire, 'date_naissances': J(R2.randint(20, 45) * 365), 'matricules': f'MAT-D{len(U) + len(AUTRES) + 1:03d}',
+                         'date_embauches': J(R2.randint(200, 700) if cle != 'rokia' else 0), 'adresses': f'{R2.choice(list(COMMUNES))}, Bamako', 'cin': None,
+                         'contrat': contrat, 'fin_prevue': J(-90) if cle == 'rokia' else (J(104) if cle == 'lassana' else None), 'type_remuneration': rem, 'mode_paiement': paiement,
+                         'heure_debut': horaires[0], 'heure_fin': horaires[1], 'jours_travail': horaires[2], 'contact_urgence': 'Mère · +223 60 00 00 00' if cle == 'adama' else None,
+                         'responsable_id': U['seydou'] if cle in ('rokia', 'nana') else U['fanta']})
+    AUTRES[cle] = add('user', {'username': f'demo.{cle}', 'roles': [profil] if profil else [], 'password': MDP, 'actif': 0 if cle == 'lassana' else 1,
+                               'date_add': T(R2.randint(100, 600)), 'date_update': T(R2.randint(1, 30)), 'must_change_password': 0, 'password_changed_at': None,
+                               'last_login_at': T(105, 8, 12) if cle == 'lassana' else None, 'employe_id': e, 'droits_ajoutes': [], 'droits_retires': [],
+                               'profil_id': S(f"(SELECT r.id FROM role_utilisateur r WHERE r.code = '{profil}')") if profil else None, 'objectif_ventes_mois': None,
+                               'acces': acces, 'pin': None, 'pin_essais': 0, 'pin_bloque_jusqua': None,
+                               # Empreinte d'un lien qui n'existe pas : l'invitation de démo ne peut pas s'ouvrir.
+                               'invitation_empreinte': hexa(64) if acces == 'invite' else None, 'invitation_envoyee_le': T(1, 16, 10) if acces == 'invite' else None,
+                               'invitation_expire_le': T(-6, 16, 10) if acces == 'invite' else None, 'fin_acces_le': J(-90) if cle == 'rokia' else (J(104) if cle == 'lassana' else None)})
+for row in ROWS['user']:
+    row.setdefault('disabled_at', None)
+    row.setdefault('motif_desactivation', None)
+for row in ROWS['user']:
+    if row['id'] == AUTRES['lassana']:
+        row['disabled_at'] = T(104, 18)
+        row['motif_desactivation'] = 'Fin de contrat'
+for cle in ('adama', 'nana'):
+    add('conge_employe', {'actif': 1, 'solde': 11.0 if cle == 'adama' else 0.0, 'plage_debut': None, 'plage_fin': None, 'plage_jours': None, 'utilisateur_id': AUTRES[cle]})
+# Pointages sur la tablette (sans téléphone ni position). Adama : de nuit.
+for d in range(40, 0, -1):
+    for cle in ('adama', 'nana'):
+        if cle == 'adama':
+            arr, dep, dd = R2.randint(18 * 60 + 45, 18 * 60 + 58), R2.randint(7 * 60, 7 * 60 + 12), d - 1
+        else:
+            if d % 7 == 2:
+                continue
+            arr, dep, dd = R2.randint(7 * 60 + 45, 8 * 60 + 10), R2.randint(17 * 60, 17 * 60 + 20), d
+        fini = dd >= 0 and d > 0
+        add('pointage', {'arrivee_le': T(d, 0, arr), 'depart_le': T(dd, 0, dep) if fini else None, 'photo_arrivee': None, 'photo_depart': None,
+                         'position_arrivee': None, 'position_depart': None, 'heures_sup_validees': 0, 'ajustement_points': 0,
+                         'motif_ajustement': None, 'motif_correction': None, 'corrige': 0, 'utilisateur_id': AUTRES[cle], 'point_arrivee_id': point, 'point_depart_id': point if fini else None,
+                         'appareil_arrivee_id': None, 'appareil_depart_id': None})
 
 # --------------------------------------------- charges, transferts, banque
 for libelle, cat, montant, jour, freq, mois_an, compte in [('Loyer boutique et atelier', 'loyer', 450000, 5, 'mensuelle', None, 'banque'), ('Électricité EDM', 'electricite', 185000, 12, 'mensuelle', None, 'banque'),

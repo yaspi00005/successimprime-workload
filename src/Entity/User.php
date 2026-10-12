@@ -1897,4 +1897,104 @@ class User implements
 
         return $this;
     }
+
+    /*
+     * ============================================================
+     * ACCÈS À L'APPLICATION (maquettes E02, E04, E05)
+     * ============================================================
+     *
+     * Chaque employé a un compte, même sans accès : ses pointages, sa
+     * paie et ses demandes y sont rattachés. Sans accès, la connexion est
+     * refusée ; il pointe sur la tablette de l'entrée. L'accès s'ouvre par
+     * une invitation WhatsApp : la personne choisit un code PIN à
+     * 4 chiffres et son téléphone est enregistré.
+     */
+
+    public const ACCES_ACTIF = 'actif';
+    public const ACCES_SANS = 'sans';
+    public const ACCES_INVITE = 'invite';
+    public const ACCES_SUSPENDU = 'suspendu';
+
+    #[ORM\Column(length: 12, options: ['default' => 'actif'])]
+    private string $acces = self::ACCES_ACTIF;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $pin = null;
+
+    #[ORM\Column(options: ['default' => 0])]
+    private int $pinEssais = 0;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $pinBloqueJusqua = null;
+
+    /** Empreinte (sha256) du lien d'invitation : le lien lui-même n'est jamais stocké. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $invitationEmpreinte = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $invitationEnvoyeeLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $invitationExpireLe = null;
+
+    /** Fin du contrat : l'accès est coupé ce jour-là, automatiquement. */
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $finAccesLe = null;
+
+    public function getAcces(): string { return $this->acces; }
+    public function setAcces(string $acces): static
+    {
+        $this->acces = \in_array($acces, [self::ACCES_ACTIF, self::ACCES_SANS, self::ACCES_INVITE, self::ACCES_SUSPENDU], true) ? $acces : self::ACCES_SANS;
+
+        return $this;
+    }
+
+    public function getPin(): ?string { return $this->pin; }
+    public function setPin(?string $pinHashe): static { $this->pin = $pinHashe; $this->pinEssais = 0; $this->pinBloqueJusqua = null; return $this; }
+    public function getPinEssais(): int { return $this->pinEssais; }
+    public function getPinBloqueJusqua(): ?\DateTimeImmutable { return $this->pinBloqueJusqua; }
+
+    /** Un essai de PIN raté ; au 5e, le PIN est bloqué 15 minutes. */
+    public function pinRate(\DateTimeImmutable $maintenant): void
+    {
+        if (++$this->pinEssais >= 5) {
+            $this->pinEssais = 0;
+            $this->pinBloqueJusqua = $maintenant->modify('+15 minutes');
+        }
+    }
+
+    public function pinReussi(): void { $this->pinEssais = 0; $this->pinBloqueJusqua = null; }
+
+    public function getInvitationEmpreinte(): ?string { return $this->invitationEmpreinte; }
+    public function getInvitationEnvoyeeLe(): ?\DateTimeImmutable { return $this->invitationEnvoyeeLe; }
+    public function getInvitationExpireLe(): ?\DateTimeImmutable { return $this->invitationExpireLe; }
+
+    public function inviter(string $empreinte, \DateTimeImmutable $le, \DateTimeImmutable $expire): static
+    {
+        $this->invitationEmpreinte = $empreinte;
+        $this->invitationEnvoyeeLe = $le;
+        $this->invitationExpireLe = $expire;
+        $this->acces = self::ACCES_INVITE;
+
+        return $this;
+    }
+
+    public function oublierInvitation(): static
+    {
+        $this->invitationEmpreinte = null;
+        $this->invitationExpireLe = null;
+
+        return $this;
+    }
+
+    public function getFinAccesLe(): ?\DateTimeImmutable { return $this->finAccesLe; }
+    public function setFinAccesLe(?\DateTimeImmutable $d): static { $this->finAccesLe = $d; return $this; }
+
+    /** Le compte peut-il se connecter à l'application ? */
+    public function peutSeConnecter(\DateTimeImmutable $maintenant): bool
+    {
+        return $this->actif
+            && $this->acces === self::ACCES_ACTIF
+            && ($this->finAccesLe === null || $this->finAccesLe > $maintenant->setTime(0, 0));
+    }
 }

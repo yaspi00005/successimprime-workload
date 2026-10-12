@@ -19,7 +19,7 @@
 					<img src="{{ l.qr }}" alt="QR {{ p.code }}" class="si-pg-qr">
 					<div class="si-pg-point-texte">
 						<b>{{ p.code }} · {{ p.nom }}</b>
-						<span>{{ p.latitude is not null ? 'zone GPS ' ~ p.rayonMetres ~ ' m' : 'sans zone GPS' }}{{ p.actif ? '' : ' · désactivé' }} · code du {{ p.renouveleLe|date('d/m/Y') }}</span>
+						<span>{{ p.latitude is not null ? 'zone GPS ' ~ p.rayonMetres ~ ' m' : 'sans zone GPS' }}{{ p.actif ? '' : ' · désactivé' }} · code du {{ p.renouveleLe|date('d/m/Y') }}{{ p.tablette ? ' · tablette branchée le ' ~ p.tabletteLe|date('d/m/Y') }}</span>
 					</div>
 					<div class="si-pg-point-actions">
 						<a href="{{ path('app_pointage_affiche', {id: p.id}) }}" target="_blank" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-print me-1"></i>Imprimer</a>
@@ -27,6 +27,17 @@
 							<input type="hidden" name="_token" value="{{ token }}">
 							<button class="btn btn-light btn-sm si-btn-entete">Renouveler</button>
 						</form>
+						<form method="post" action="{{ path('app_pointage_tablette', {id: p.id}) }}" onsubmit="return confirm('{{ p.tablette ? 'La tablette actuelle de ' ~ p.code ~ ' sera débranchée. ' }}Brancher l\'appareil que vous tenez comme tablette de l\'entrée ?')">
+							<input type="hidden" name="_token" value="{{ token }}">
+							<button class="btn btn-light btn-sm si-btn-entete" title="À faire sur la tablette elle-même"><i class="fas fa-tablet-alt me-1"></i>Brancher cette tablette</button>
+						</form>
+						{% if p.tablette %}
+							<form method="post" action="{{ path('app_pointage_tablette', {id: p.id}) }}">
+								<input type="hidden" name="_token" value="{{ token }}">
+								<input type="hidden" name="action" value="debrancher">
+								<button class="btn btn-light btn-sm si-btn-entete">Débrancher</button>
+							</form>
+						{% endif %}
 					</div>
 					<details class="si-pg-modifier">
 						<summary>Modifier</summary>

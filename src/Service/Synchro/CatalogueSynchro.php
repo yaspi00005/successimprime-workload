@@ -4,9 +4,11 @@ namespace App\Service\Synchro;
 
 use App\Entity\CategorieProduit;
 use App\Entity\Clients;
+use App\Entity\CommandeDetailFinition;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\Devis;
+use App\Entity\DevisDetailFinition;
 use App\Entity\DevisDetails;
 use App\Entity\Factures;
 use App\Entity\Paiements;
@@ -40,6 +42,9 @@ use App\Entity\TypesImpression;
  * un devis envoyé, ses préférences SMS). Champ => null (toute valeur) ou
  * [valeur actuelle au local => valeurs permises]. Le reste est un conflit.
  *
+ * « enfants » : petites données sans identifiant public (finitions d'une
+ * ligne) envoyées dans la ligne elle-même et remplacées en bloc.
+ *
  * L'ordre du tableau est l'ordre de chargement initial : une donnée
  * vient après celles qu'elle référence.
  */
@@ -49,7 +54,7 @@ final class CatalogueSynchro
     public const DEUX = 'deux';
 
     /**
-     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, imposeAuLocal?: array<string, mixed>, remontees?: array<string, ?array<string, list<string>>>}>
+     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, imposeAuLocal?: array<string, mixed>, remontees?: array<string, ?array<string, list<string>>>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>}>}>
      */
     public static function types(): array
     {
@@ -124,6 +129,7 @@ final class CatalogueSynchro
                 ],
                 'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
+                'enfants' => ['finitions' => self::finitionsDeLigne(CommandeDetailFinition::class, 'commandeDetail')],
             ],
             'devis' => [
                 'classe' => Devis::class, 'sens' => self::DESCENDANT, 'libelle' => 'Devis', 'titre' => ['numero'],
@@ -143,6 +149,7 @@ final class CatalogueSynchro
                 ],
                 'relations' => ['devis' => 'devis', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
+                'enfants' => ['finitions' => self::finitionsDeLigne(DevisDetailFinition::class, 'devisDetail')],
             ],
             'facture' => [
                 'classe' => Factures::class, 'sens' => self::DESCENDANT, 'libelle' => 'Facture', 'titre' => ['numero'],
@@ -164,6 +171,44 @@ final class CatalogueSynchro
                 'relations' => ['commande' => 'commande', 'facture' => 'facture'], 'listes' => [],
                 'imposeAuLocal' => ['statut' => Paiements::STATUT_EN_ATTENTE, 'dateValidation' => null, 'dateAnnulation' => null],
             ],
+        ];
+    }
+
+    /**
+     * Pour une donnée « enfant » (finition d'une ligne) : la ligne à renvoyer.
+     */
+    public static function parentDe(object $entite): ?object
+    {
+        $enfant = self::enfantDe($entite);
+        if ($enfant === null) {
+            return null;
+        }
+        $getter = 'get'.ucfirst($enfant['parent']);
+
+        return $entite->$getter();
+    }
+
+    /** Définition « enfants » dont relève cette donnée, ou null. */
+    public static function enfantDe(object $entite): ?array
+    {
+        foreach (self::types() as $type) {
+            foreach ($type['enfants'] ?? [] as $enfant) {
+                if ($entite instanceof $enfant['classe']) {
+                    return $enfant;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** Finition choisie sur une ligne : nom, prix appliqué et montant (pas de coût). */
+    private static function finitionsDeLigne(string $classe, string $parent): array
+    {
+        return [
+            'classe' => $classe, 'parent' => $parent,
+            'champs' => ['nomFinition', 'obligatoire', 'prixApplique', 'modeCalcul', 'quantite', 'montant'],
+            'relations' => ['finition' => 'finition'],
         ];
     }
 

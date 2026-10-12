@@ -58,6 +58,10 @@ final class JournalSynchro
             $this->ajouter($aNoter, $entite, SynchroJournal::MAJ);
         }
         foreach ($uow->getScheduledEntityUpdates() as $entite) {
+            if (CatalogueSynchro::parentDe($entite) !== null) {
+                $this->ajouter($aNoter, $entite, SynchroJournal::MAJ);
+                continue;
+            }
             $type = CatalogueSynchro::typeDe($entite);
             if ($type !== null && array_intersect(array_keys($uow->getEntityChangeSet($entite)), CatalogueSynchro::champsSuivis($type)) !== []) {
                 $this->ajouter($aNoter, $entite, SynchroJournal::MAJ);
@@ -72,7 +76,14 @@ final class JournalSynchro
             }
         }
         foreach ($uow->getScheduledEntityDeletions() as $entite) {
-            $this->ajouter($aNoter, $entite, SynchroJournal::SUPPRESSION);
+            // Finition retirée d'une ligne : le lien vers la ligne est souvent déjà vidé.
+            $enfant = CatalogueSynchro::enfantDe($entite);
+            $parent = $enfant === null ? null : (CatalogueSynchro::parentDe($entite) ?? ($uow->getEntityChangeSet($entite)[$enfant['parent']][0] ?? null));
+            if ($parent !== null) {
+                $this->ajouter($aNoter, $parent, SynchroJournal::MAJ);
+            } elseif ($enfant === null) {
+                $this->ajouter($aNoter, $entite, SynchroJournal::SUPPRESSION);
+            }
         }
 
         if ($aNoter === []) {
@@ -121,6 +132,10 @@ final class JournalSynchro
     /** @param array<string, SynchroJournal> $aNoter */
     private function ajouter(array &$aNoter, object $entite, string $operation): void
     {
+        // Finition d'une ligne : c'est la ligne qui repart, avec ses finitions.
+        if (($parent = CatalogueSynchro::parentDe($entite)) !== null) {
+            [$entite, $operation] = [$parent, SynchroJournal::MAJ];
+        }
         $type = CatalogueSynchro::typeDe($entite);
         if ($type === null || !CatalogueSynchro::envoye($type, $this->enLigne)) {
             return;

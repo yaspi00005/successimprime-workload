@@ -74,6 +74,17 @@ final class CatalogueSynchroTest extends TestCase
         self::assertTrue(CatalogueSynchro::creationAcceptee('devis', true));
     }
 
+    public function testFinitionsDesLignes(): void
+    {
+        $ligne = new \App\Entity\CommandesDetails();
+        $finition = (new \App\Entity\CommandeDetailFinition())->setCommandeDetail($ligne);
+        self::assertSame($ligne, CatalogueSynchro::parentDe($finition), 'la ligne repart avec ses finitions');
+        self::assertNull(CatalogueSynchro::parentDe($ligne));
+        foreach (['commande_ligne', 'devis_ligne'] as $type) {
+            self::assertNotContains('coutUnitaire', CatalogueSynchro::types()[$type]['enfants']['finitions']['champs']);
+        }
+    }
+
     public function testNumeroDuSite(): void
     {
         self::assertTrue(JournalSynchro::aPrefixer('CMD-00012'));
@@ -92,7 +103,8 @@ final class CatalogueSynchroTest extends TestCase
     {
         $vus = [];
         foreach (CatalogueSynchro::types() as $cle => $t) {
-            foreach ([...array_values($t['relations']), ...array_values($t['listes'])] as $cible) {
+            $enfants = array_merge([], ...array_map(static fn (array $e): array => array_values($e['relations']), array_values($t['enfants'] ?? [])));
+            foreach ([...array_values($t['relations']), ...array_values($t['listes']), ...$enfants] as $cible) {
                 self::assertArrayHasKey($cible, $vus, $cle.' référence '.$cible.' qui doit venir avant');
             }
             $vus[$cle] = true;

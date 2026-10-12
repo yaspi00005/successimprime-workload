@@ -14,6 +14,7 @@
 | Catégories, types d'impression, finitions (sans le coût), formats, supports, produits, configurations de produit | local → site | Le local est maître : le site reçoit et remplace. |
 | Clients | local → site, et site → local pour les **nouveaux** clients | Une modification faite en ligne d'un client du local n'est pas appliquée : elle est notée **Conflit** dans le journal, la fiche du local est gardée. |
 | Commandes et leurs lignes | local → site, et site → local pour les **nouvelles** commandes | Restent au local : note interne, agents, coût de revient, temps, machine, rebuts, notes d'atelier, fichiers. Une commande créée en ligne n'a pas d'agent. |
+| Finitions choisies sur une ligne (nom, prix appliqué, quantité, montant) | avec leur ligne | Elles partent dans la ligne et sont remplacées en bloc ; retirer une finition renvoie la ligne. |
 | Devis et leurs lignes, factures | local → site seulement | Restent au local : coûts, notes, comptabilisation, majoration, PDF du serveur. |
 | Paiements | local → site, et site → local pour les **nouveaux** paiements | Restent au local : compte de trésorerie, mouvement, justificatif, note, encaisseur. |
 
@@ -28,7 +29,7 @@ Toute autre modification faite en ligne d'une fiche du local est notée **Confli
 
 **Numéros** : une commande, un devis ou un client créé en ligne reçoit le préfixe **W-** (W-CMD-…) ; il ne prend donc jamais un numéro du local.
 
-Étapes suivantes : fichiers (BAT, fichiers des clients) et réponses aux BAT faites en ligne ; finitions choisies sur les lignes ; modification des coordonnées par le client en ligne, à faire valider au local quand l'espace client le proposera. Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code SMS.
+Étapes suivantes : fichiers (BAT, fichiers des clients) et réponses aux BAT faites en ligne ; modification des coordonnées par le client en ligne, à faire valider au local quand l'espace client le proposera. Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code SMS.
 
 ## Fonctionnement
 
@@ -91,4 +92,5 @@ Deux installations sur la même machine (local et copie « en ligne ») :
 - Une commande créée en ligne reçoit le numéro W-CMD-… et arrive au local sans agent.
 - Un paiement créé en ligne puis passé « validé » en ligne arrive au local **en attente**, sans compte. La validation sans compte est refusée ; avec le compte Orange Money choisi, elle passe, et le site reçoit le statut validé.
 - Devis envoyé accepté en ligne : accepté au local, 12 personnes du rôle Devis prévenues. Devis brouillon passé « accepté » en ligne : conflit, gardé brouillon au local.
+- Finitions des lignes : 440 + 334 chargées ; un nom changé et une finition retirée au local arrivent en ligne ; un rechargement complet ne recrée aucune finition.
 - SMS coupés en ligne et ville changée en ligne : SMS repris au local (noté sur la fiche), ville refusée, puis remise en ligne au cycle suivant.

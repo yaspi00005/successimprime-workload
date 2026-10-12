@@ -47,13 +47,116 @@ final class Serialiseur
             $listes[$champ] = $ids;
         }
 
-        return ['champs' => $champs, 'relations' => $relations, 'listes' => $listes];
+        $resultat = ['champs' => $champs, 'relations' => $relations, 'listes' => $listes];
+        foreach ($def['enfants'] ?? [] as $champ => $enfant) {
+            $resultat['enfants'][$champ] = $this->enfantsVersTableau($enfant, $meta->getFieldValue($entite, $champ) ?? []);
+        }
+
+        return $resultat;
+    }
+
+    /** @return list<array{champs: array<string, mixed>, relations: array<string, ?string>}> */
+    private function enfantsVersTableau(array $enfant, iterable $collection): array
+    {
+        $meta = $this->em->getClassMetadata($enfant['classe']);
+        $plateforme = $this->em->getConnection()->getDatabasePlatform();
+        $liste = [];
+        foreach ($collection as $e) {
+            $ligne = ['champs' => [], 'relations' => []];
+            foreach ($enfant['champs'] as $champ) {
+                $v = $meta->getFieldValue($e, $champ);
+                $ligne['champs'][$champ] = $v === null ? null : Type::getType($meta->getTypeOfField($champ))->convertToDatabaseValue($v, $plateforme);
+            }
+            foreach ($enfant['relations'] as $champ => $cible) {
+                $lie = $meta->getFieldValue($e, $champ);
+                $ligne['relations'][$champ] = $lie === null ? null : self::idPublic($lie);
+            }
+            $liste[] = $ligne;
+        }
+        // Ordre stable : la même liste donne le même contenu des deux côtés.
+        usort($liste, static fn (array $a, array $b): int => json_encode($a) <=> json_encode($b));
+
+        return $liste;
+    }
+
+    /** Remplace les enfants s'ils ont changé. */
+    private function remplacerEnfants(object $entite, string $champ, array $enfant, array $voulus): void
+    {
+        $collection = $this->em->getClassMetadata($entite::class)->getFieldValue($entite, $champ);
+        if (json_encode($this->enfantsVersTableau($enfant, $collection)) === json_encode($this->normaliserEnfants($enfant, $voulus))) {
+            return;
+        }
+        $meta = $this->em->getClassMetadata($enfant['classe']);
+        $plateforme = $this->em->getConnection()->getDatabasePlatform();
+        // Un enfant se reconnaît à ses liens (la finition) : il est mis à jour sur place,
+        // sinon supprimer puis recréer le même heurterait la clé unique (ligne, finition).
+        $cle = function (array $relations) use ($enfant): string {
+            $k = [];
+            foreach ($enfant['relations'] as $c => $cible) {
+                $k[] = $relations[$c] ?? '';
+            }
+
+            return implode('|', $k);
+        };
+        $existants = [];
+        foreach ($collection as $e) {
+            $relations = [];
+            foreach ($enfant['relations'] as $c => $cible) {
+                $lie = $meta->getFieldValue($e, $c);
+                $relations[$c] = $lie === null ? null : self::idPublic($lie);
+            }
+            $existants[$cle($relations)][] = $e;
+        }
+        foreach ($voulus as $donnees) {
+            $k = $cle($donnees['relations'] ?? []);
+            $e = isset($existants[$k]) ? array_shift($existants[$k]) : null;
+            if ($e === null) {
+                $e = new ($enfant['classe'])();
+                $meta->setFieldValue($e, $enfant['parent'], $entite);
+                foreach ($enfant['relations'] as $c => $cible) {
+                    $id = $donnees['relations'][$c] ?? null;
+                    $meta->setFieldValue($e, $c, $id === null ? null : $this->exiger($cible, $id));
+                }
+                $collection->add($e);
+                $this->em->persist($e);
+            }
+            foreach ($enfant['champs'] as $c) {
+                $brut = $donnees['champs'][$c] ?? null;
+                if ($brut !== null || $meta->isNullable($c)) {
+                    $meta->setFieldValue($e, $c, $brut === null ? null : Type::getType($meta->getTypeOfField($c))->convertToPHPValue($brut, $plateforme));
+                }
+            }
+        }
+        foreach ($existants as $restants) {
+            foreach ($restants as $ancien) {
+                $collection->removeElement($ancien); // orphanRemoval : supprimé au flush
+            }
+        }
+    }
+
+    /** Même forme que enfantsVersTableau, pour comparer à ce qui est reçu. */
+    private function normaliserEnfants(array $enfant, array $voulus): array
+    {
+        $liste = [];
+        foreach ($voulus as $d) {
+            $ligne = ['champs' => [], 'relations' => []];
+            foreach ($enfant['champs'] as $c) {
+                $ligne['champs'][$c] = $d['champs'][$c] ?? null;
+            }
+            foreach ($enfant['relations'] as $c => $cible) {
+                $ligne['relations'][$c] = $d['relations'][$c] ?? null;
+            }
+            $liste[] = $ligne;
+        }
+        usort($liste, static fn (array $a, array $b): int => json_encode($a) <=> json_encode($b));
+
+        return $liste;
     }
 
     /**
      * Écrit le tableau dans la donnée (créée si besoin). Ne flushe pas.
      *
-     * @param array{champs?: array<string, mixed>, relations?: array<string, ?string>, listes?: array<string, list<string>>} $donnees
+     * @param array{champs?: array<string, mixed>, relations?: array<string, ?string>, listes?: array<string, list<string>>, enfants?: array<string, list<array>>} $donnees
      *
      * @return array{0: object, 1: bool} la donnée et « créée »
      */
@@ -92,6 +195,11 @@ final class Serialiseur
                 continue;
             }
             $this->remplacerListe($meta, $entite, $champ, array_map(fn (string $id) => $this->exiger($cible, $id), $donnees['listes'][$champ]));
+        }
+        foreach ($def['enfants'] ?? [] as $champ => $enfant) {
+            if (\is_array($donnees['enfants'][$champ] ?? null)) {
+                $this->remplacerEnfants($entite, $champ, $enfant, $donnees['enfants'][$champ]);
+            }
         }
 
         return [$entite, $creee];

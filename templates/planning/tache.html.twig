@@ -36,6 +36,10 @@
 							<span class="si-tr-badge">{{ attribute(constant('App\\Entity\\Tache::STATUTS'), t.statut) }}</span>
 						{% endif %}
 						{% if voitMontants and t.montantEstime %}<p class="mt-2 mb-0"><b>{{ t.montantEstime|number_format(0, ',', ' ') }} F</b> estimés</p>{% endif %}
+						{% if voitMontants and t.mouvement %}
+							{% set m = t.mouvement %}
+							<p class="mt-1 mb-0">Dépense <a href="{{ path('app_mouvement_tresorerie_show', {id: m.id}) }}">{{ m.reference }}</a> · {{ m.statut == 'en_attente' ? 'à valider en trésorerie' : (m.statut == 'valide' ? 'validée' : 'annulée') }}</p>
+						{% endif %}
 					</div>
 				</div>
 			</section>

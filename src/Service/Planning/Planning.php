@@ -3,11 +3,14 @@
 namespace App\Service\Planning;
 
 use App\Entity\Echeance;
+use App\Entity\CompteTresorerie;
 use App\Entity\JourFerie;
+use App\Entity\MouvementTresorerie;
 use App\Entity\RappelWhatsApp;
 use App\Entity\Tache;
 use App\Entity\User;
 use App\Repository\TacheRepository;
+use App\Service\MouvementTresorerieService;
 use App\Service\NotificationService;
 use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
@@ -23,6 +26,19 @@ use Symfony\Bundle\SecurityBundle\Security;
 final class Planning
 {
     public const HORIZON = '+13 months';
+
+    /** Catégorie de dépense proposée selon la catégorie de la tâche (étape 3). */
+    public const DEPENSES = [
+        'fiscal' => MouvementTresorerie::CATEGORIE_AUTRE_CHARGE,
+        'fournisseurs' => MouvementTresorerie::CATEGORIE_ACHAT,
+        'paie' => MouvementTresorerie::CATEGORIE_SALAIRE,
+        'atelier' => MouvementTresorerie::CATEGORIE_ENTRETIEN,
+        'stock' => MouvementTresorerie::CATEGORIE_ACHAT,
+        'livraisons' => MouvementTresorerie::CATEGORIE_TRANSPORT,
+        'commercial' => MouvementTresorerie::CATEGORIE_AUTRE_CHARGE,
+        'entretien' => MouvementTresorerie::CATEGORIE_ENTRETIEN,
+        'administratif' => MouvementTresorerie::CATEGORIE_AUTRE_CHARGE,
+    ];
 
     /** Modèles prêts (T02). */
     public const MODELES = [
@@ -43,6 +59,7 @@ final class Planning
         private readonly Parametres $parametres,
         private readonly NotificationService $notifications,
         private readonly Security $security,
+        private readonly MouvementTresorerieService $mouvements,
     ) {
     }
 
@@ -173,10 +190,74 @@ final class Planning
         return \array_slice(array_values($liste), 0, $nombre);
     }
 
-    public function cocher(Tache $t, User $par, \DateTimeImmutable $maintenant): void
+    /**
+     * Coche ou décoche la tâche. Une tâche avec un montant prépare une
+     * dépense à valider en trésorerie (jamais passée toute seule) ; la
+     * décocher annule cette dépense tant qu'elle n'est pas validée.
+     *
+     * @return string|null message pour la personne
+     */
+    public function cocher(Tache $t, User $par, \DateTimeImmutable $maintenant): ?string
     {
-        $t->estFaite() ? $t->decocher() : $t->cocher($par, $maintenant);
+        $message = null;
+        if ($t->estFaite()) {
+            $t->decocher();
+            $m = $t->getMouvement();
+            if ($m !== null && $m->isEnAttente()) {
+                $this->mouvements->annulerEnAttente($m, 'Tâche du planning décochée');
+                $t->setMouvement(null);
+                $message = 'La dépense préparée est annulée.';
+            } elseif ($m !== null && $m->getStatut() === MouvementTresorerie::STATUT_VALIDE) {
+                $message = 'La dépense est déjà validée en trésorerie : elle y reste.';
+            }
+        } else {
+            $t->cocher($par, $maintenant);
+            if ((int) $t->getMontantEstime() > 0 && $t->getMouvement() === null && ($compte = $this->compteDepense($t)) !== null) {
+                $t->setMouvement($this->mouvements->preparerEnAttente(self::depense($t, $compte, $par, $maintenant)));
+                $message = $this->voitMontants()
+                    ? \sprintf('Dépense de %s F préparée : elle attend la validation en trésorerie.', number_format((int) $t->getMontantEstime(), 0, ',', ' '))
+                    : 'La dépense est préparée : elle attend la validation en trésorerie.';
+            }
+        }
         $this->em->flush();
+
+        return $message;
+    }
+
+    /** Dépense préparée pour une tâche faite : en attente, avec le montant estimé. */
+    public static function depense(Tache $t, CompteTresorerie $compte, User $par, \DateTimeImmutable $maintenant): MouvementTresorerie
+    {
+        return (new MouvementTresorerie())
+            ->setType(MouvementTresorerie::TYPE_DECAISSEMENT)
+            ->setCategorie($t->getEcheance()?->getCategorieDepense() ?? self::DEPENSES[$t->getCategorie()] ?? MouvementTresorerie::CATEGORIE_AUTRE_CHARGE)
+            ->setCompteSource($compte)
+            ->setMontant((int) $t->getMontantEstime())
+            ->setLibelle(mb_substr(\sprintf('Planning · %s (%s)', $t->getTitre(), $t->getPrevueLe()->format('d/m/Y')), 0, 255))
+            ->setDescription('Préparé automatiquement quand la tâche a été cochée faite. À vérifier avant validation : montant réel et reçu.')
+            ->setDateOperation($maintenant)
+            ->setAgent($par);
+    }
+
+    /** Compte choisi sur l'échéance, sinon la première caisse active. */
+    private function compteDepense(Tache $t): ?CompteTresorerie
+    {
+        return $t->getEcheance()?->getCompte()
+            ?? $this->em->getRepository(CompteTresorerie::class)->findOneBy(['type' => CompteTresorerie::TYPE_CAISSE, 'actif' => true], ['id' => 'ASC'])
+            ?? $this->em->getRepository(CompteTresorerie::class)->findOneBy(['actif' => true], ['id' => 'ASC']);
+    }
+
+    /**
+     * Tâches avec un montant, pas encore faites, entre deux dates : elles
+     * comptent dans la trésorerie prévisionnelle à leur date.
+     *
+     * @return list<Tache>
+     */
+    public function depensesPrevues(\DateTimeImmutable $du, \DateTimeImmutable $au): array
+    {
+        return array_values(array_filter(
+            $this->taches->entre($du, $au),
+            static fn (Tache $t): bool => (int) $t->getMontantEstime() > 0 && !$t->estFaite() && $t->getMouvement() === null,
+        ));
     }
 
     /**

@@ -2,7 +2,9 @@
 
 namespace App\Controller;
 
+use App\Entity\CompteTresorerie;
 use App\Entity\Echeance;
+use App\Entity\MouvementTresorerie;
 use App\Entity\Entreprise;
 use App\Entity\JourFerie;
 use App\Entity\RappelWhatsApp;
@@ -144,13 +146,17 @@ final class PlanningController extends AbstractController
         if ($action === 'cocher' && $tache->getCategorie() === 'entretien' && !$tache->estFaite()) {
             return $this->redirectToRoute('app_entretien_tache', ['id' => $tache->getId()]);
         }
+        $message = null;
         match ($action) {
-            'cocher' => $this->planning->cocher($tache, $this->moi(), new \DateTimeImmutable()),
+            'cocher' => $message = $this->planning->cocher($tache, $this->moi(), new \DateTimeImmutable()),
             'etape' => $tache->basculerEtape((int) $request->request->get('index', -1)),
             'note' => $tache->setNote((string) $request->request->get('note')),
             'annuler' => $this->planning->direction() ? $tache->annuler() : throw $this->createAccessDeniedException(),
         };
         $this->em->flush();
+        if ($message !== null) {
+            $this->addFlash('info', $message);
+        }
         $retour = (string) $request->request->get('retour');
 
         return str_starts_with($retour, '/planning') ? $this->redirect($retour) : $this->redirectToRoute('app_planning_tache', ['id' => $tache->getId()]);
@@ -332,6 +338,8 @@ final class PlanningController extends AbstractController
             'historique' => $historique,
             'direction' => $direction,
             'voitMontants' => $this->planning->voitMontants(),
+            'comptes' => $this->planning->voitMontants() ? $this->em->getRepository(CompteTresorerie::class)->findBy(['actif' => true], ['id' => 'ASC']) : [],
+            'categoriesDepense' => array_filter(MouvementTresorerie::CATEGORIES_LABELS, static fn (string $k): bool => !\in_array($k, [MouvementTresorerie::CATEGORIE_VENTE, MouvementTresorerie::CATEGORIE_AUTRE_PRODUIT, MouvementTresorerie::CATEGORIE_TRANSFERT_INTERNE, MouvementTresorerie::CATEGORIE_AJUSTEMENT], true), \ARRAY_FILTER_USE_KEY),
             'jeton' => self::CSRF,
         ]);
     }
@@ -363,6 +371,8 @@ final class PlanningController extends AbstractController
                 ->setCopie($this->planning->direction() ? $utilisateur($entier('copie')) : null);
             if ($this->planning->voitMontants()) {
                 $e->setMontantEstime(preg_replace('/\D/', '', (string) $r->get('montant')) !== '' ? (int) preg_replace('/\D/', '', (string) $r->get('montant')) : null);
+                $e->setCompte($entier('compte') > 0 ? $this->em->find(CompteTresorerie::class, $entier('compte')) : null)
+                    ->setCategorieDepense((string) $r->get('categorieDepense') ?: null);
             }
         }
 

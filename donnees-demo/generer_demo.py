@@ -1251,7 +1251,9 @@ ECHEANCES = [
 for titre, cat, freq, jour_mois, jours_sem, h, hf, etapes, montant, resp, fermeture in ECHEANCES:
     ech = add('echeance', {'titre': titre, 'categorie': cat, 'frequence': freq, 'jour_mois': jour_mois, 'jours_semaine': jours_sem, 'heure': h, 'decalage': 'avant', 'debut': J(200), 'fin_le': None,
                            'fin_nombre': None, 'etapes': etapes, 'rappels': {'j5': True, 'veille': True, 'jour': True, 'retard': True}, 'montant_estime': montant, 'actif': 1, 'cree_le': T(200), 'responsable_id': U[resp],
-                           'copie_id': U['kadiatou'] if cat in ('fiscal', 'paie') else None, 'entreprise_id': None, 'cree_par_id': U['kadiatou'], 'heure_fin': hf, 'fermeture': int(fermeture)})
+                           'copie_id': U['kadiatou'] if cat in ('fiscal', 'paie') else None, 'entreprise_id': None, 'cree_par_id': U['kadiatou'], 'heure_fin': hf, 'fermeture': int(fermeture),
+                           'compte_id': (COMPTES['banque'] if montant >= 100000 else COMPTES['caisse']) if montant else None,
+                           'categorie_depense': {'Paiement du loyer': 'loyer'}.get(titre)})
     if freq == 'jour':
         jours = [d for d in range(30, -8, -1) if d % 7 != 3]
     elif freq == 'semaine':

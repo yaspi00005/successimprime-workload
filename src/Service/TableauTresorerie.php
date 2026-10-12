@@ -6,6 +6,7 @@ use App\Entity\ClotureCaisse;
 use App\Entity\CompteTresorerie;
 use App\Entity\DecaissementRecurrent;
 use App\Entity\MouvementTresorerie;
+use App\Service\Planning\Planning;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -24,6 +25,7 @@ final class TableauTresorerie
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly Creances $creances,
+        private readonly Planning $planning,
     ) {
     }
 
@@ -253,6 +255,10 @@ final class TableauTresorerie
             foreach (self::echeancesRecurrentes($recurrent->getProchaineDateExecution(), $recurrent->getFrequence(), $aujourdhui->modify('+1 day'), $horizon) as $date) {
                 $charges[] = ['date' => $date, 'montant' => $recurrent->getMontant(), 'libelle' => $recurrent->getLibelle()];
             }
+        }
+        // Tâches du planning avec un montant, pas encore faites (étape 3).
+        foreach ($this->planning->depensesPrevues($aujourdhui->modify('+1 day'), $horizon) as $tache) {
+            $charges[] = ['date' => $tache->getPrevueLe(), 'montant' => (int) $tache->getMontantEstime(), 'libelle' => 'Planning · '.$tache->getTitre()];
         }
         usort($charges, static fn (array $a, array $b): int => $a['date'] <=> $b['date']);
 

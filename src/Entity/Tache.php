@@ -102,6 +102,11 @@ class Tache
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $note = null;
 
+    /** Dépense préparée quand la tâche a été faite (à valider en trésorerie). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?MouvementTresorerie $mouvement = null;
+
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $faitLe = null;
 
@@ -243,6 +248,8 @@ class Tache
     /** @return list<array{libelle: string, fait: bool}> */
     public function getEtapes(): array { return $this->etapes; }
     public function getMontantEstime(): ?int { return $this->montantEstime; }
+    public function getMouvement(): ?MouvementTresorerie { return $this->mouvement; }
+    public function setMouvement(?MouvementTresorerie $m): static { $this->mouvement = $m; return $this; }
     public function getNote(): ?string { return $this->note; }
     public function setNote(?string $n): static { $this->note = $n !== null && trim($n) !== '' ? trim($n) : null; return $this; }
     public function getFaitLe(): ?\DateTimeImmutable { return $this->faitLe; }

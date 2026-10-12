@@ -114,7 +114,21 @@
 				<section class="card si-ac-bloc">
 					<h2>Montant et trésorerie</h2>
 					<label class="w-100">Montant estimé (F)<input name="montant" inputmode="numeric" class="form-control" value="{{ e.montantEstime }}" placeholder="Facultatif"></label>
-					<p class="si-pg-note mt-2 mb-0">Visible seulement avec le droit trésorerie. Le lien avec la trésorerie prévisionnelle et la dépense préparée à la clôture viendront à l'étape « Lien ERP ».</p>
+					<div class="row g-2 mt-1">
+						<label class="col-sm-6">Payé depuis
+							<select name="compte" class="form-select">
+								<option value="">Première caisse active</option>
+								{% for c in comptes %}<option value="{{ c.id }}"{{ e.compte and e.compte.id == c.id ? ' selected' }}>{{ c.nom }}</option>{% endfor %}
+							</select>
+						</label>
+						<label class="col-sm-6">Catégorie de dépense
+							<select name="categorieDepense" class="form-select">
+								<option value="">Selon la catégorie de la tâche</option>
+								{% for k, l in categoriesDepense %}<option value="{{ k }}"{{ e.categorieDepense == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+							</select>
+						</label>
+					</div>
+					<p class="si-pg-note mt-2 mb-0">Visible seulement avec le droit trésorerie. Chaque tâche non faite compte dans la trésorerie prévisionnelle à sa date. Quand elle est cochée faite, une dépense de ce montant est préparée : elle attend la validation dans Finances › À valider, elle n'est jamais passée toute seule.</p>
 				</section>
 			{% endif %}
 

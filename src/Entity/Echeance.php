@@ -105,6 +105,15 @@ class Echeance
     #[ORM\Column(nullable: true)]
     private ?int $montantEstime = null;
 
+    /** Compte d'où part la dépense préparée quand la tâche est faite (étape 3). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?CompteTresorerie $compte = null;
+
+    /** Catégorie de la dépense en trésorerie (MouvementTresorerie::CATEGORIE_*). */
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $categorieDepense = null;
+
     #[ORM\Column]
     private bool $actif = true;
 
@@ -179,6 +188,10 @@ class Echeance
     public function getRappels(): array { return $this->rappels; }
     /** @param array<string, mixed> $rappels */
     public function setRappels(array $rappels): static { $this->rappels = array_map(static fn (string $k): bool => !empty($rappels[$k]), array_combine(array_keys(self::RAPPELS), array_keys(self::RAPPELS))); return $this; }
+    public function getCompte(): ?CompteTresorerie { return $this->compte; }
+    public function setCompte(?CompteTresorerie $compte): static { $this->compte = $compte; return $this; }
+    public function getCategorieDepense(): ?string { return $this->categorieDepense; }
+    public function setCategorieDepense(?string $c): static { $this->categorieDepense = $c !== null && \in_array($c, MouvementTresorerie::CATEGORIES, true) ? $c : null; return $this; }
     public function getMontantEstime(): ?int { return $this->montantEstime; }
     public function setMontantEstime(?int $m): static { $this->montantEstime = $m !== null && $m > 0 ? $m : null; return $this; }
     public function isActif(): bool { return $this->actif; }

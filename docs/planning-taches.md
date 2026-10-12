@@ -135,4 +135,9 @@ php bin/console app:push:cles
 puis copier les deux lignes affichées dans `.env.local` (jamais dans le dépôt) et `php bin/console cache:clear`. Sans clés, le bloc indique que ce n'est pas encore disponible.
 - Le texte de la notification est celui de la cloche : il s'affiche sur l'écran verrouillé.
 
-Reste : étape 3 (TVA, décaissement préparé, trésorerie prévisionnelle), étape 4 (planning annuel T03).
+Étape 3 construite (12/10/2026), sauf le rapport TVA :
+- **Dépense préparée** : une tâche avec un montant estimé, cochée faite, prépare un décaissement **en attente** (montant estimé, compte et catégorie choisis sur l'échéance ; par défaut la première caisse active et une catégorie tirée de la catégorie de la tâche). Il apparaît dans Finances › À valider et n'est jamais passé tout seul : celui qui valide vérifie le montant réel et le reçu, ou rejette avec un motif. Décocher la tâche annule la dépense tant qu'elle n'est pas validée ; une dépense validée reste. La fiche de la tâche montre la dépense et son état (droit trésorerie).
+- **Trésorerie prévisionnelle** : chaque tâche avec un montant, pas encore faite, compte dans les charges prévues (30 jours) à sa date, avec le libellé « Planning · … ».
+- Attention aux doublons : une charge déjà saisie en décaissement récurrent (ancien écran) et aussi en échéance du planning compte deux fois dans la prévision. Garder l'une des deux.
+
+Reste : le montant « TVA du mois » calculé et le rapport TVA joint (à voir avec le comptable), puis l'étape 4 (planning annuel T03).

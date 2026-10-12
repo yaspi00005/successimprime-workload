@@ -12,12 +12,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Charge (ou enlève) les clients fictifs de donnees-demo/ dans la base de
- * l'application : même connexion que le site, sans client mysql à part.
- * Refusé en production.
+ * Charge (ou enlève) la démonstration de donnees-demo/ : une année
+ * d'activité fictive dans toutes les tables, par la même connexion que le
+ * site, sans client mysql à part. Refusé en production.
  */
-#[AsCommand(name: 'app:demo:clients', description: 'Charge les 200 clients fictifs de démonstration (ou les enlève avec --purger).')]
-final class DemoClientsCommand extends Command
+#[AsCommand(name: 'app:demo', description: 'Charge une année d\'activité fictive dans toutes les tables (ou l\'enlève avec --purger).', aliases: ['app:demo:clients'])]
+final class DemoCommand extends Command
 {
     public function __construct(
         private readonly Connection $connexion,
@@ -29,7 +29,7 @@ final class DemoClientsCommand extends Command
 
     protected function configure(): void
     {
-        $this->addOption('purger', null, InputOption::VALUE_NONE, 'Enlève les clients fictifs au lieu de les charger.');
+        $this->addOption('purger', null, InputOption::VALUE_NONE, 'Enlève la démonstration au lieu de la charger.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -40,7 +40,7 @@ final class DemoClientsCommand extends Command
 
             return Command::FAILURE;
         }
-        $fichier = $this->dossier.'/donnees-demo/'.($input->getOption('purger') ? 'clients-demo-purge.sql' : 'clients-demo.sql');
+        $fichier = $this->dossier.'/donnees-demo/'.($input->getOption('purger') ? 'demo-purge.sql' : 'demo.sql');
         if (!is_file($fichier)) {
             $io->error('Fichier introuvable : '.$fichier);
 
@@ -64,8 +64,14 @@ final class DemoClientsCommand extends Command
             return Command::FAILURE;
         }
 
-        $clients = (int) $this->connexion->fetchOne("SELECT COUNT(*) FROM clients WHERE code LIKE 'DEMO-%'");
-        $io->success(sprintf('%d instructions passées sur la base « %s ». Clients de démo présents : %d.', $n, $this->connexion->getDatabase(), $clients));
+        $compte = fn (string $table): int => (int) $this->connexion->fetchOne('SELECT COUNT(*) FROM `'.$table.'` WHERE id >= 900000');
+        $io->success(sprintf(
+            '%d instructions passées sur la base « %s ». Démo présente : %d clients, %d commandes, %d paiements, %d mouvements de trésorerie.',
+            $n, $this->connexion->getDatabase(), $compte('clients'), $compte('commandes'), $compte('paiements'), $compte('mouvement_tresorerie'),
+        ));
+        if (!$input->getOption('purger')) {
+            $io->text('Connexion possible avec demo.kadiatou (direction), demo.aminata (caisse), demo.seydou (graphiste), demo.oumar (machine), demo.bakary (livreur) ou demo.awa (entretien), mot de passe demo1234.');
+        }
 
         return Command::SUCCESS;
     }

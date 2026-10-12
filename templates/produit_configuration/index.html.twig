@@ -157,7 +157,7 @@
 								<td class="align-middle">
 
 									<span class="badge badge-secondary">
-										{{ configuration.format.nom }}
+										{{ configuration.format.nom ?? 'Sur mesure' }}
 									</span>
 
 								</td>
@@ -256,7 +256,7 @@
 											                                                configuration.active
 											                                                    ? 'btn-warning-light'
 											                                                    : 'btn-success-light'
-											                                            }} btn-toggle-configuration" data-url="{{ path( 'app_produit_configuration_toggle_status', { id: configuration.id } ) }}" data-token="{{ csrf_token( 'toggle_produit_configuration_' ~ configuration.id ) }}" data-active="{{ configuration.active ? '1' : '0' }}" data-nom="{{ ( configuration.produit.nom ~ ' / ' ~ configuration.support.nom ~ ' / ' ~ configuration.format.nom )|e('html_attr') }}" title="{{ configuration.active ? 'Dépublier' : 'Publier' }}">
+											                                            }} btn-toggle-configuration" data-url="{{ path( 'app_produit_configuration_toggle_status', { id: configuration.id } ) }}" data-token="{{ csrf_token( 'toggle_produit_configuration_' ~ configuration.id ) }}" data-active="{{ configuration.active ? '1' : '0' }}" data-nom="{{ ( configuration.produit.nom ~ ' / ' ~ configuration.support.nom ~ ' / ' ~ (configuration.format.nom ?? 'Sur mesure') )|e('html_attr') }}" title="{{ configuration.active ? 'Dépublier' : 'Publier' }}">
 											<i class="fa {{
 												                                                configuration.active
 												                                                    ? 'fa-eye-slash'
@@ -265,7 +265,7 @@
 										</button>
 
 										{# Suppression #}
-										<button type="button" class="btn btn-sm btn-danger-light btn-delete-configuration" data-url="{{ path( 'app_produit_configuration_delete_ajax', { id: configuration.id } ) }}" data-token="{{ csrf_token( 'delete_produit_configuration_' ~ configuration.id ) }}" data-nom="{{ ( configuration.produit.nom ~ ' / ' ~ configuration.support.nom ~ ' / ' ~ configuration.format.nom )|e('html_attr') }}" title="Supprimer">
+										<button type="button" class="btn btn-sm btn-danger-light btn-delete-configuration" data-url="{{ path( 'app_produit_configuration_delete_ajax', { id: configuration.id } ) }}" data-token="{{ csrf_token( 'delete_produit_configuration_' ~ configuration.id ) }}" data-nom="{{ ( configuration.produit.nom ~ ' / ' ~ configuration.support.nom ~ ' / ' ~ (configuration.format.nom ?? 'Sur mesure') )|e('html_attr') }}" title="Supprimer">
 											<i class="fa fa-trash"></i>
 										</button>
 

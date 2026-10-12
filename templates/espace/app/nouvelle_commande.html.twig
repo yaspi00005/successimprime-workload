@@ -1,0 +1,204 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Nouvelle commande{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Nouvelle commande</a>{% endblock %}
+
+{% block contenu %}
+	{% if produits is empty %}
+		<div class="ec-carte ec-vide">La commande en ligne arrive bientôt. En attendant, demandez un devis par WhatsApp ou en boutique.</div>
+	{% else %}
+		{% set choisi = choix.produit|default(produits|first.id) %}
+		<form method="post" id="commande">
+			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+
+			<div class="ec-carte">
+				<span class="ec-etiquette">Produit</span>
+				<div class="ec-puces">
+					{% for p in produits %}
+						<label class="ec-puce" title="{{ p.nom }}"><input type="radio" name="produit" value="{{ p.id }}"{{ p.id == choisi ? ' checked' }}><span>{{ p.court }}</span></label>
+					{% endfor %}
+				</div>
+				<div class="ec-petit" id="detail-produit" style="margin-top:.6rem"></div>
+			</div>
+
+			<div class="ec-carte">
+				<div class="ec-deux" id="taille">
+					<div><label class="ec-etiquette" for="largeur">Largeur (cm)</label><input class="ec-saisie" id="largeur" name="largeur" inputmode="decimal" value="{{ choix.largeur|default('') }}" autocomplete="off"></div>
+					<div><label class="ec-etiquette" for="hauteur">Hauteur (cm)</label><input class="ec-saisie" id="hauteur" name="hauteur" inputmode="decimal" value="{{ choix.hauteur|default('') }}" autocomplete="off"></div>
+				</div>
+				<div id="bloc-finitions" style="margin-bottom:.9rem">
+					<span class="ec-etiquette">Finitions</span>
+					<div class="ec-puces" id="finitions"></div>
+				</div>
+				<label class="ec-etiquette" for="quantite">Quantité</label>
+				<div class="ec-quantite">
+					<button type="button" data-pas="-1" aria-label="Moins">−</button>
+					<input id="quantite" name="quantite" inputmode="numeric" value="{{ choix.quantite|default(1) }}">
+					<button type="button" data-pas="1" aria-label="Plus">+</button>
+				</div>
+			</div>
+
+			<div class="ec-carte">
+				<span class="ec-etiquette">Votre fichier</span>
+				<div id="choix-fichiers">
+					{% for f in mesFichiers|slice(0, 6) %}
+						<label class="ec-choix-fichier"><input type="checkbox" name="fichiers[]" value="{{ f.id }}"{{ f.id in choix.fichiers|default([]) ? ' checked' }}><span><b>{{ f.nomOriginal }}</b><span class="ec-petit"> · envoyé le {{ f.creeLe|date('d/m') }}</span></span></label>
+					{% endfor %}
+				</div>
+				<label class="ec-depot" style="margin:.6rem 0 0;padding:.9rem">
+					<input type="file" id="envoi" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}">
+					<b style="font-size:.95rem">+ Ajouter un fichier</b>
+					<span class="ec-petit">PDF, AI, PSD, JPG, PNG · jusqu'à 500 Mo · contrôlé à la taille commandée</span>
+					<div class="ec-progres" hidden><span></span></div>
+				</label>
+				<div class="ec-petit" id="envoi-etat" role="status" aria-live="polite" style="margin-top:.4rem"></div>
+				<p class="ec-petit" style="margin:.5rem 0 0">Pas encore de fichier ? Commandez quand même : l'atelier vous le demandera, ou le créera pour vous.</p>
+			</div>
+
+			<div class="ec-carte">
+				<label class="ec-etiquette" for="note">Précisions pour l'atelier (facultatif)</label>
+				<textarea class="ec-champ" id="note" name="note" maxlength="1000" placeholder="Ex. : couleurs du logo, date souhaitée, livraison">{{ choix.note|default('') }}</textarea>
+			</div>
+
+			<div class="ec-total">
+				<div><span class="ec-petit">Total TTC indicatif</span><div class="ec-gros" id="total">—</div></div>
+				<button class="ec-bouton" id="commander">Commander</button>
+			</div>
+			<p class="ec-petit" id="erreur" role="alert" style="color:var(--rouge);text-align:center"></p>
+			<p class="ec-petit" style="text-align:center">Prix indicatif : l'atelier le confirme avec votre fichier avant de lancer l'impression.</p>
+		</form>
+		<script type="application/json" id="produits">{{ produits|json_encode|raw }}</script>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('js/espace-envoi.js') }}"></script>
+	<script>
+	(function () {
+		const form = document.getElementById('commande');
+		if (!form) return;
+		const produits = JSON.parse(document.getElementById('produits').textContent);
+		const jeton = {{ csrf_token('espace')|json_encode|raw }};
+		const finitionsChoisies = {{ choix.finitions|default([])|json_encode|raw }}.map(String);
+		const total = document.getElementById('total');
+		const erreur = document.getElementById('erreur');
+		const quantite = document.getElementById('quantite');
+		const largeur = document.getElementById('largeur');
+		const hauteur = document.getElementById('hauteur');
+		const fr = new Intl.NumberFormat('fr-FR');
+		let produitAvant = null;
+		let minuteur = null;
+
+		function produit() {
+			const coche = form.querySelector('input[name=produit]:checked');
+			return produits.find(function (p) { return coche && String(p.id) === coche.value; });
+		}
+
+		function afficherProduit() {
+			const p = produit();
+			if (!p || p === produitAvant) return;
+			const premier = produitAvant === null;
+			produitAvant = p;
+			document.getElementById('taille').hidden = !p.taille;
+			document.getElementById('detail-produit').textContent = p.nom + (p.min > 1 ? ' · minimum ' + p.min : '');
+			if (!premier) {
+				largeur.value = p.largeur ? Math.round(p.largeur) : '';
+				hauteur.value = p.hauteur ? Math.round(p.hauteur) : '';
+				if (+quantite.value < p.min) quantite.value = p.min;
+			}
+			const zone = document.getElementById('finitions');
+			zone.textContent = '';
+			p.finitions.forEach(function (f) {
+				const label = document.createElement('label');
+				label.className = 'ec-puce';
+				const input = document.createElement('input');
+				input.type = 'checkbox';
+				input.name = 'finitions[]';
+				input.value = f.id;
+				input.checked = f.obligatoire || (premier && finitionsChoisies.length ? finitionsChoisies.indexOf(String(f.id)) >= 0 : f.parDefaut);
+				input.disabled = f.obligatoire;
+				const texte = document.createElement('span');
+				texte.textContent = f.nom + (f.obligatoire ? ' (inclus)' : '');
+				label.append(input, texte);
+				zone.append(label);
+			});
+			document.getElementById('bloc-finitions').hidden = p.finitions.length === 0;
+		}
+
+		function finitions() {
+			return Array.from(form.querySelectorAll('input[name="finitions[]"]:checked')).map(function (i) { return +i.value; });
+		}
+
+		async function estimer() {
+			const p = produit();
+			if (!p) return;
+			try {
+				const r = await fetch({{ path('app_espace_estimer')|json_encode|raw }}, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': jeton, 'Accept': 'application/json' },
+					body: JSON.stringify({ produit: p.id, quantite: +quantite.value || 1, largeur: largeur.value, hauteur: hauteur.value, finitions: finitions() }),
+					credentials: 'same-origin',
+				});
+				const d = await r.json();
+				total.textContent = d.erreur ? '—' : fr.format(d.total) + ' F';
+				erreur.textContent = d.erreur || '';
+				document.getElementById('commander').disabled = !!d.erreur;
+			} catch (e) {
+				total.textContent = '—';
+			}
+		}
+
+		function changer() {
+			afficherProduit();
+			clearTimeout(minuteur);
+			minuteur = setTimeout(estimer, 250);
+		}
+
+		form.addEventListener('input', changer);
+		form.addEventListener('change', changer);
+		form.querySelectorAll('.ec-quantite button').forEach(function (b) {
+			b.addEventListener('click', function () {
+				const p = produit();
+				quantite.value = Math.max(p ? p.min : 1, (+quantite.value || 1) + (+b.dataset.pas));
+				changer();
+			});
+		});
+		form.addEventListener('submit', function () { document.getElementById('commander').disabled = true; });
+
+		document.getElementById('envoi').addEventListener('change', async function () {
+			const f = this.files[0];
+			if (!f) return;
+			const etat = document.getElementById('envoi-etat');
+			const barre = form.querySelector('.ec-progres');
+			barre.hidden = false;
+			etat.textContent = 'Envoi de ' + f.name + '…';
+			try {
+				const recu = await EspaceEnvoi.envoyer(f, {
+					debut: {{ path('app_espace_fichier_envoi')|json_encode|raw }}, jeton: jeton,
+					largeur: produit() && produit().taille ? largeur.value : '', hauteur: produit() && produit().taille ? hauteur.value : '',
+					progres: function (p) { barre.firstElementChild.style.width = p + '%'; },
+				});
+				const ligne = document.createElement('label');
+				ligne.className = 'ec-choix-fichier';
+				const coche = document.createElement('input');
+				coche.type = 'checkbox'; coche.name = 'fichiers[]'; coche.value = recu.id; coche.checked = true;
+				const texte = document.createElement('span');
+				const nom = document.createElement('b'); nom.textContent = recu.nom;
+				const pastille = document.createElement('span'); pastille.className = 'ec-pastille ' + recu.controle.etat; pastille.textContent = recu.controle.libelle; pastille.style.marginLeft = '.4rem';
+				const detail = document.createElement('div'); detail.className = 'ec-petit'; detail.textContent = 'Contrôle auto : ' + recu.controle.texte;
+				texte.append(nom, pastille, detail);
+				ligne.append(coche, texte);
+				document.getElementById('choix-fichiers').prepend(ligne);
+				etat.textContent = '';
+				barre.hidden = true;
+			} catch (e) {
+				etat.textContent = f.name + ' : ' + e.message;
+			}
+			this.value = '';
+		});
+
+		afficherProduit();
+		estimer();
+	})();
+	</script>
+{% endblock %}

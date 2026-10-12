@@ -18,6 +18,7 @@ use App\Entity\Paiements;
 use App\Entity\Finition;
 use App\Entity\Format;
 use App\Entity\ProduitConfiguration;
+use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
 use App\Entity\Supports;
 use App\Entity\TypesImpression;
@@ -61,7 +62,7 @@ final class CatalogueSynchro
     public const DEUX = 'deux';
 
     /**
-     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, aLaCreation?: array<string, callable>, imposeAuLocal?: array<string, mixed>, remontees?: array<string, ?array<string, list<string>>>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>, filtres?: array<string, callable>}>}>
+     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, aLaCreation?: array<string, callable>, imposeAuLocal?: array<string, mixed>, pret?: callable, remontees?: array<string, ?array<string, list<string>>>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>, filtres?: array<string, callable>}>}>
      */
     public static function types(): array
     {
@@ -103,6 +104,12 @@ final class CatalogueSynchro
                 'champs' => ['active', 'ordre', 'description', 'prixBase', 'modeCalcul', 'modeDimension', 'largeurDefaut', 'longueurDefaut', 'quantiteMinimale', 'quantiteMaximale', 'prixB2B'],
                 'relations' => ['produit' => 'produit', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
+                // Finitions proposées avec leur prix de vente : le client commande en ligne avec les mêmes.
+                'enfants' => ['configurationFinitions' => [
+                    'classe' => ProduitConfigurationFinition::class, 'parent' => 'produitConfiguration',
+                    'champs' => ['obligatoire', 'selectionneeParDefaut', 'payante', 'active', 'prix', 'modeCalcul', 'quantiteMinimale', 'quantiteMaximale', 'ordre', 'description'],
+                    'relations' => ['finition' => 'finition'],
+                ]],
             ],
             'client' => [
                 'classe' => Clients::class, 'sens' => self::DEUX, 'libelle' => 'Client', 'titre' => ['raisonSociale', 'prenom', 'nom'],
@@ -132,22 +139,27 @@ final class CatalogueSynchro
                     'quantiteDemandee', 'uniteDemandee', 'modeConfiguration', 'designation', 'largeur', 'longueur', 'surface', 'quantite', 'prixUnitaire',
                     'remise', 'tva', 'totalHt', 'totalTtc', 'profilCouleurs', 'resolution', 'grammage', 'epaisseur', 'rectoVerso', 'nombreFaces', 'laminage',
                     'oeillets', 'decoupe', 'pliage', 'emballage', 'batValide', 'etat', 'statutProduction', 'productionDebuteLe', 'productionTermineeLe',
-                    'quantiteLivree', 'modeSaisie', 'modeCalcul', 'typeLigne',
+                    'quantiteLivree', 'modeSaisie', 'modeCalcul', 'typeLigne', 'demandeClient',
                 ],
                 'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
                 'enfants' => ['finitions' => self::finitionsDeLigne(CommandeDetailFinition::class, 'commandeDetail')],
             ],
             'fichier' => [
-                'classe' => CommandeDetailFichier::class, 'sens' => self::DESCENDANT, 'libelle' => 'Fichier', 'titre' => ['nomOriginal'],
+                'classe' => CommandeDetailFichier::class, 'sens' => self::DEUX, 'libelle' => 'Fichier', 'titre' => ['nomOriginal'],
                 // Les octets ne partent que pour les BAT (FichiersSynchro) ; chemin, notes et montage restent au local.
+                // Les fichiers envoyés par le client en ligne remontent (fiche ici, octets par FichiersSynchro::recuperer).
                 'champs' => [
                     'nomOriginal', 'nomStockage', 'typeMime', 'taille', 'statut', 'origine', 'etat', 'actif', 'version', 'face', 'designation',
-                    'creeLe', 'termineLe', 'morceauxRecus', 'nombreMorceaux',
+                    'creeLe', 'termineLe', 'morceauxRecus', 'nombreMorceaux', 'logo', 'analyse', 'empreinte',
                 ],
-                'relations' => ['commandeDetail' => 'commande_ligne'], 'listes' => [],
-                // Le jeton d'envoi du local ne part pas : la copie en reçoit un neuf.
+                'relations' => ['commandeDetail' => 'commande_ligne', 'client' => 'client'], 'listes' => [],
+                // Le jeton d'envoi ne part pas : la copie en reçoit un neuf.
                 'aLaCreation' => ['jetonUpload' => static fn (): string => bin2hex(random_bytes(32))],
+                // Un envoi pas fini ne part pas encore.
+                'pret' => static fn (CommandeDetailFichier $f): bool => $f->estUploadTermine(),
+                // En ligne, le client retire son fichier, le met dans une commande, et le contrôle est refait à la taille commandée.
+                'remontees' => ['actif' => ['1' => ['0']], 'analyse' => null, 'commandeDetail' => ['' => ['*']]],
             ],
             'controle' => [
                 'classe' => ControlePrePresse::class, 'sens' => self::DESCENDANT, 'libelle' => 'BAT', 'titre' => ['statut'],

@@ -3,6 +3,7 @@
 namespace App\Service\Synchro;
 
 use App\Entity\Clients;
+use App\Entity\Commandes;
 use App\Entity\ControlePrePresse;
 use App\Entity\Devis;
 use App\Entity\ModificationClient;
@@ -153,11 +154,14 @@ final class Synchro
     }
 
     /** Remet en file tout ce qui existe (premier chargement du site). Ligne de commande seulement. */
-    public function initialiser(): int
+    public function initialiser(?string $seulement = null): int
     {
+        if ($seulement !== null && !isset(CatalogueSynchro::types()[$seulement])) {
+            throw new \InvalidArgumentException(\sprintf('Type inconnu : %s (%s)', $seulement, implode(', ', array_keys(CatalogueSynchro::types()))));
+        }
         $n = 0;
         foreach (CatalogueSynchro::types() as $type => $def) {
-            if (!CatalogueSynchro::envoye($type, $this->enLigne)) {
+            if (!CatalogueSynchro::envoye($type, $this->enLigne) || ($seulement !== null && $type !== $seulement)) {
                 continue;
             }
             $ids = $this->em->createQuery('SELECT e.publicId FROM '.$def['classe'].' e ORDER BY e.id ASC')->getSingleColumnResult();
@@ -180,8 +184,11 @@ final class Synchro
 
     /**
      * Applique les éléments reçus, dans l'ordre, chacun dans sa propre
-     * transaction. S'arrête au premier échec : la suite repartira au
-     * prochain cycle, dans le même ordre.
+     * transaction. Un élément qui attend une donnée arrivant plus loin dans
+     * le lot (fichier mis dans une commande créée après lui) est repris dès
+     * qu'elle est là. S'arrête au premier échec : la suite repartira au
+     * prochain cycle, dans le même ordre (ce qui est déjà appliqué est
+     * reconnu et sauté).
      *
      * @param list<array<string, mixed>> $evenements
      *
@@ -190,31 +197,88 @@ final class Synchro
     public function appliquer(array $evenements): array
     {
         $resultats = [];
+        $enAttente = []; // éléments qui attendent une donnée plus loin, avec leur erreur
         foreach ($evenements as $e) {
-            $id = (int) ($e['id'] ?? 0);
-            $evenement = (string) ($e['evenement'] ?? '');
-            $type = (string) ($e['type'] ?? '');
-            $publicId = (string) ($e['publicId'] ?? '');
-            $titre = isset(CatalogueSynchro::types()[$type]) ? Serialiseur::titre($type, null, \is_array($e['donnees'] ?? null) ? $e['donnees'] : null) : $type;
-            try {
-                [$statut, $message, $titre] = $this->appliquerUn($evenement, $type, $publicId, (string) ($e['operation'] ?? ''), \is_array($e['donnees'] ?? null) ? $e['donnees'] : null, $titre);
-                $resultats[] = ['id' => $id, 'evenement' => $evenement, 'type' => $type, 'publicId' => $publicId, 'titre' => $titre, 'statut' => $statut, 'message' => $message];
-                // Sans ce vidage, chaque flush relit toutes les données déjà reçues du lot.
-                $this->em->clear();
-            } catch (\Throwable $ex) {
-                if (!$this->em->isOpen()) {
-                    $this->doctrine->resetManager();
-                }
-                $this->em->clear();
-
-                return ['resultats' => $resultats, 'erreur' => [
-                    'id' => $id, 'evenement' => $evenement, 'type' => $type, 'titre' => $titre,
-                    'message' => self::messageErreur($ex), 'reprise' => $ex instanceof DependanceManquante,
-                ]];
+            $r = $this->appliquerEvenement($e);
+            if ($r['erreur'] !== null && !$r['erreur']['reprise']) {
+                return ['resultats' => self::avant($resultats, $enAttente, $r['erreur']['id']), 'erreur' => $r['erreur']];
             }
+            if ($r['erreur'] !== null) {
+                $enAttente[] = [$e, $r['erreur']];
+                continue;
+            }
+            $resultats[] = $r['resultat'];
+            // La donnée attendue vient peut-être d'arriver.
+            do {
+                $avance = false;
+                foreach ($enAttente as $i => [$attente]) {
+                    $nouvel = $this->appliquerEvenement($attente);
+                    if ($nouvel['erreur'] === null) {
+                        $resultats[] = $nouvel['resultat'];
+                        unset($enAttente[$i]);
+                        $avance = true;
+                    } else {
+                        $enAttente[$i][1] = $nouvel['erreur'];
+                    }
+                }
+            } while ($avance && $enAttente !== []);
         }
+        if ($enAttente !== []) {
+            $premiere = reset($enAttente)[1];
+
+            return ['resultats' => self::avant($resultats, $enAttente, $premiere['id']), 'erreur' => $premiere];
+        }
+        usort($resultats, static fn (array $a, array $b): int => $a['id'] <=> $b['id']);
 
         return ['resultats' => $resultats, 'erreur' => null];
+    }
+
+    /**
+     * Résultats à accuser : seulement ceux d'avant l'élément bloqué (le
+     * curseur ne doit pas le dépasser). Ceux d'après repasseront, déjà notés reçus.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function avant(array $resultats, array $enAttente, int $bloque): array
+    {
+        foreach ($enAttente as [, $erreur]) {
+            $bloque = min($bloque, $erreur['id']);
+        }
+        $resultats = array_values(array_filter($resultats, static fn (array $r): bool => $r['id'] < $bloque));
+        usort($resultats, static fn (array $a, array $b): int => $a['id'] <=> $b['id']);
+
+        return $resultats;
+    }
+
+    /**
+     * @param array<string, mixed> $e
+     *
+     * @return array{resultat: ?array<string, mixed>, erreur: ?array{id: int, evenement: string, type: string, titre: string, message: string, reprise: bool}}
+     */
+    private function appliquerEvenement(array $e): array
+    {
+        $id = (int) ($e['id'] ?? 0);
+        $evenement = (string) ($e['evenement'] ?? '');
+        $type = (string) ($e['type'] ?? '');
+        $publicId = (string) ($e['publicId'] ?? '');
+        $titre = isset(CatalogueSynchro::types()[$type]) ? Serialiseur::titre($type, null, \is_array($e['donnees'] ?? null) ? $e['donnees'] : null) : $type;
+        try {
+            [$statut, $message, $titre] = $this->appliquerUn($evenement, $type, $publicId, (string) ($e['operation'] ?? ''), \is_array($e['donnees'] ?? null) ? $e['donnees'] : null, $titre);
+            // Sans ce vidage, chaque flush relit toutes les données déjà reçues du lot.
+            $this->em->clear();
+
+            return ['resultat' => ['id' => $id, 'evenement' => $evenement, 'type' => $type, 'publicId' => $publicId, 'titre' => $titre, 'statut' => $statut, 'message' => $message], 'erreur' => null];
+        } catch (\Throwable $ex) {
+            if (!$this->em->isOpen()) {
+                $this->doctrine->resetManager();
+            }
+            $this->em->clear();
+
+            return ['resultat' => null, 'erreur' => [
+                'id' => $id, 'evenement' => $evenement, 'type' => $type, 'titre' => $titre,
+                'message' => self::messageErreur($ex), 'reprise' => $ex instanceof DependanceManquante,
+            ]];
+        }
     }
 
     /** @return array{0: string, 1: ?string, 2: string} statut, message, titre */
@@ -280,6 +344,11 @@ final class Synchro
                         }
                     }
                     $this->em->persist($entite);
+                    if (!$this->enLigne && $existante === null && $entite instanceof Commandes && Commandes::CANAL_EN_LIGNE === $entite->getCanal() && !$entite->isStatut()) {
+                        $this->em->flush();
+                        $this->notifications->notifierRoles(['ROLE_COMMANDE'], \sprintf('Nouvelle commande en ligne %s : prix et fichier à vérifier, puis à confirmer.', $entite->getNumero()), 'app_commandes_show', ['id' => $entite->getId()]);
+                        $resultat = [self::RESULTAT_OK, 'Commande passée en ligne : à confirmer', $titre];
+                    }
                 } else {
                     $resultat = [self::RESULTAT_IGNORE, 'Donnée supprimée avant l\'envoi', $titre];
                 }

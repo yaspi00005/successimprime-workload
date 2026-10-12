@@ -11,9 +11,10 @@
 
 | Donnée | Sens | Règle |
 |---|---|---|
-| Catégories, types d'impression, finitions (sans le coût), formats, supports, produits, configurations de produit | local → site | Le local est maître : le site reçoit et remplace. |
+| Catégories, types d'impression, finitions (sans le coût), formats, supports, produits, configurations de produit et leurs finitions proposées (prix de vente) | local → site | Le local est maître : le site reçoit et remplace. |
 | Clients | local → site, et site → local pour les **nouveaux** clients | Une modification faite en ligne d'un client du local n'est pas appliquée : elle est notée **Conflit** dans le journal, la fiche du local est gardée. |
-| Commandes et leurs lignes | local → site, et site → local pour les **nouvelles** commandes | Restent au local : note interne, agents, coût de revient, temps, machine, rebuts, notes d'atelier, fichiers. Une commande créée en ligne n'a pas d'agent. |
+| Commandes et leurs lignes | local → site, et site → local pour les **nouvelles** commandes | Restent au local : note interne, agents, coût de revient, temps, machine, rebuts, notes d'atelier. Une commande créée en ligne n'a pas d'agent ; elle arrive en brouillon « à confirmer », avec la demande écrite par le client sur la ligne, et le rôle Commandes est prévenu. |
+| Fichiers envoyés par le client dans son espace (Mes fichiers, Nouvelle commande) | site → local | La fiche (nom, contrôle automatique, empreinte, logo) remonte dès que l'envoi est fini, puis les octets (voir **Fichiers**). |
 | Finitions choisies sur une ligne (nom, prix appliqué, quantité, montant) | avec leur ligne | Elles partent dans la ligne et sont remplacées en bloc ; retirer une finition renvoie la ligne. |
 | BAT : état (en attente, validé, à corriger), fichiers de la commande (nom, type, taille) et suivi visible par le client (versions envoyées, ses demandes, validation) | local → site | Restent au local : contrôles et anomalies, noms de l'atelier, graphiste, temps, erreurs, points, chemin et notes des fichiers. |
 | Devis et leurs lignes, factures | local → site seulement | Restent au local : coûts, notes, comptabilisation, majoration, PDF du serveur. |
@@ -25,17 +26,20 @@
 
 - accepter un devis **envoyé** : le devis passe « accepté » au local et les personnes qui ont le rôle Devis sont prévenues (« à transformer en commande ») ;
 - ses préférences : recevoir les SMS, accord pour les offres. Le changement est noté dans le journal de la fiche client (« Espace client »).
-- le jeton du lien PDF d'un devis ou d'une facture créé en ligne quand le local n'en avait pas.
+- le jeton du lien PDF d'un devis ou d'une facture créé en ligne quand le local n'en avait pas ;
+- ses fichiers : en retirer un (pas déjà dans une commande), en mettre un dans une commande, et le contrôle refait à la taille commandée.
 
 Toute autre modification faite en ligne d'une fiche du local est notée **Conflit** et n'est pas appliquée ; le local renvoie sa version au cycle suivant, pour que le site redevienne identique.
 
 **Réponse du client à un BAT** : quand il valide ou demande une modification en ligne, ce geste part vers le local, qui le **rejoue avec ses propres règles** : points du graphiste, alerte à la prépresse avec le texte du client, état du BAT. Le site reprend ensuite l'état du local. Si le BAT n'attendait plus le client au local (l'atelier a déjà avancé), le geste est noté en conflit et une demande de modification est quand même transmise à la prépresse.
 
-**Fichiers** : seuls les fichiers préparés par l'atelier pour un BAT partent vers le site (pas les fichiers du client ni ceux de production). Envoi par morceaux de 4 Mo, 64 Mo au plus par cycle, repris là où il s'est arrêté après une coupure ; le site vérifie l'empreinte SHA-256 avant de ranger le fichier dans `var/uploads/commandes`. Un fichier n'est renvoyé que s'il change.
+**Fichiers** : vers le site, seuls les fichiers préparés par l'atelier pour un BAT partent (pas ceux de production). Du site, le local rapatrie les fichiers envoyés par les clients (60 derniers jours, ceux d'une commande d'abord). Par morceaux de 4 Mo, 64 Mo au plus par cycle dans les deux sens réunis, repris là où ça s'est arrêté après une coupure ; l'empreinte SHA-256 est vérifiée avant de ranger le fichier dans `var/uploads/commandes`. Un fichier n'est renvoyé que s'il change.
+
+**Ordre** : un élément qui cite une donnée arrivant plus loin dans le même lot (fichier mis dans une commande créée après lui) attend qu'elle soit appliquée, puis passe.
 
 **Numéros** : une commande, un devis ou un client créé en ligne reçoit le préfixe **W-** (W-CMD-…) ; il ne prend donc jamais un numéro du local.
 
-Étapes suivantes : fichiers envoyés par le client en ligne (vers le local, avec le plan des fichiers lourds, docs/fichiers-lourds.md) ; modification des coordonnées par le client en ligne, à faire valider au local quand l'espace client le proposera. Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code SMS.
+Étapes suivantes : modification des coordonnées par le client en ligne, à faire valider au local quand l'espace client le proposera. Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code SMS.
 
 ## Fonctionnement
 
@@ -60,7 +64,7 @@ Un cycle de l'agent : vérifier que le site répond, envoyer la file du local, r
 1. Générer une clé, une seule fois : `php bin/console app:synchro --nouvelle-cle`.
 2. Sur le **site** (`.env.local`) : `APP_EN_LIGNE=1` et `SYNC_CLE=...`.
 3. Sur l'**ERP local** (`.env.local`) : `SYNC_URL=https://succesimprim.com` et la même `SYNC_CLE=...`.
-4. Premier chargement du site : `php bin/console app:synchro --initialiser` sur le local.
+4. Premier chargement du site : `php bin/console app:synchro --initialiser` sur le local. Pour un seul type, par exemple après la mise à jour qui envoie les finitions des configurations : `php bin/console app:synchro --initialiser=configuration`.
 5. Tâche planifiée chaque minute :
    - Windows : vérifier les chemins de `scripts\windows\synchro.bat`, puis lancer une fois `scripts\windows\installer_tache_synchro.bat` en administrateur. Journal : `var\log\synchro.log`.
    - Linux ou Mac : `* * * * * cd /chemin/du/projet && php bin/console app:synchro -q >> var/log/synchro.log 2>&1`.
@@ -100,4 +104,5 @@ Deux installations sur la même machine (local et copie « en ligne ») :
 - Devis envoyé accepté en ligne : accepté au local, 12 personnes du rôle Devis prévenues. Devis brouillon passé « accepté » en ligne : conflit, gardé brouillon au local.
 - Finitions des lignes : 440 + 334 chargées ; un nom changé et une finition retirée au local arrivent en ligne ; un rechargement complet ne recrée aucune finition.
 - BAT : 517 BAT, 510 fichiers et leur suivi chargés. Un fichier de BAT de 9 Mo arrive en ligne en 3 morceaux, identique (même empreinte), et n'est pas renvoyé au cycle suivant. Le client demande une modification depuis son espace en ligne : au local le BAT passe « à corriger » et 4 personnes de la prépresse reçoivent son texte. Il valide un autre BAT : au local il passe « en cours », validé.
+- Nouvelle commande passée en ligne (bâche 300 × 100, œillets, fichier joint, précision écrite) : arrive au local en brouillon W-CMD-…, avec sa ligne, sa finition, la demande du client et son fichier ; notification « à vérifier, puis à confirmer ». Un fichier client de 10 Mo est rapatrié en 3 morceaux, même empreinte.
 - SMS coupés en ligne et ville changée en ligne : SMS repris au local (noté sur la fiche), ville refusée, puis remise en ligne au cycle suivant.

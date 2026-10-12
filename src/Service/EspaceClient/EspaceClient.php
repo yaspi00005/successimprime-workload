@@ -49,7 +49,9 @@ final class EspaceClient
     public function commandes(Clients $client, int $nombre = 100): array
     {
         return $this->em->getRepository(Commandes::class)->createQueryBuilder('c')
-            ->where('c.clients = :cl')->andWhere('c.statut = true')->andWhere('c.deleted = false')
+            ->where('c.clients = :cl')->andWhere('c.deleted = false')
+            // Ses commandes passées en ligne se voient aussi pendant que l'atelier les confirme.
+            ->andWhere('c.statut = true OR c.canal = :enLigne')->setParameter('enLigne', Commandes::CANAL_EN_LIGNE)
             ->setParameter('cl', $client)->orderBy('c.id', 'DESC')->setMaxResults($nombre)
             ->getQuery()->getResult();
     }
@@ -57,8 +59,8 @@ final class EspaceClient
     /** La commande du client, ou null si elle est à un autre. */
     public function commande(Clients $client, string $publicId): ?Commandes
     {
-        foreach ($this->em->getRepository(Commandes::class)->findBy(['clients' => $client, 'statut' => true, 'deleted' => false]) as $c) {
-            if ((string) $c->getPublicId() === $publicId) {
+        foreach ($this->em->getRepository(Commandes::class)->findBy(['clients' => $client, 'deleted' => false]) as $c) {
+            if ((string) $c->getPublicId() === $publicId && ($c->isStatut() || Commandes::CANAL_EN_LIGNE === $c->getCanal())) {
                 return $c;
             }
         }
@@ -69,7 +71,7 @@ final class EspaceClient
     /**
      * Carte d'une commande : titre court, étapes, avancement.
      *
-     * @return array{commande: Commandes, titre: string, etapes: list<array<string, mixed>>, courante: ?array<string, mixed>, avancement: int, terminee: bool, annulee: bool, batEnAttente: bool}
+     * @return array{commande: Commandes, titre: string, etapes: list<array<string, mixed>>, courante: ?array<string, mixed>, avancement: int, terminee: bool, annulee: bool, batEnAttente: bool, aConfirmer: bool}
      */
     public function carte(Commandes $c): array
     {
@@ -92,6 +94,7 @@ final class EspaceClient
             'terminee' => null === $courante,
             'annulee' => 'annulee' === $c->getStatutTravaux(),
             'batEnAttente' => $this->batEnAttente($c),
+            'aConfirmer' => !$c->isStatut(),
         ];
     }
 
@@ -288,7 +291,7 @@ final class EspaceClient
     /** Reste à payer sur les commandes en cours, et les commandes concernées. */
     public function solde(Clients $client): array
     {
-        $aPayer = array_values(array_filter($this->commandes($client, 300), static fn (Commandes $c): bool => 'annulee' !== $c->getStatutTravaux() && $c->getResteAPayer() > 0));
+        $aPayer = array_values(array_filter($this->commandes($client, 300), static fn (Commandes $c): bool => $c->isStatut() && 'annulee' !== $c->getStatutTravaux() && $c->getResteAPayer() > 0));
 
         return ['total' => array_sum(array_map(static fn (Commandes $c): float => (float) $c->getResteAPayer(), $aPayer)), 'commandes' => $aPayer];
     }

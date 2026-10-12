@@ -51,6 +51,13 @@
 		</div>
 	{% endif %}
 
+	{% if commande.canal == 'en_ligne' and not commande.statut and not annulee %}
+		<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
+			<div class="flex-grow-1"><strong>Commande passée par le client dans son espace.</strong> Le prix affiché est indicatif : vérifiez le prix et le fichier, puis confirmez-la. Elle ne part pas à l'atelier avant.</div>
+			{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_edit', {id: commande.id}) }}" class="btn btn-sm btn-danger">Vérifier et confirmer</a>{% endif %}
+		</div>
+	{% endif %}
+
 	<div class="si-titre-fiche">
 		<div class="min-w-0">
 			<h2>{{ commande.numero }}</h2>
@@ -192,6 +199,7 @@
 							{% if detail.largeur and detail.longueur %}{% set caracteristiques = caracteristiques|merge([(detail.largeur * 100)|round(1) ~ ' × ' ~ (detail.longueur * 100)|round(1) ~ ' cm']) %}{% endif %}
 							{% for finition in detail.finitions %}{% set caracteristiques = caracteristiques|merge([finition.nomFinition]) %}{% endfor %}
 							{% if caracteristiques %}<small class="d-block text-muted">{{ caracteristiques|join(' · ') }}</small>{% endif %}
+							{% if detail.demandeClient %}<small class="d-block"><i class="fas fa-comment me-1 text-muted"></i>Le client : « {{ detail.demandeClient }} »</small>{% endif %}
 							<div class="d-flex flex-wrap gap-1 mt-1">
 								<span class="si-pastille si-pastille-{{ ligne.etape in ['prete', 'sans_production', 'en_livraison', 'livree'] ? 'vert' : (ligne.etape == 'annulee' ? 'gris' : 'bleu') }}">{{ ligne.libelle }}</span>
 								{% if detail.machine %}<span class="si-pastille si-pastille-gris">{{ detail.machine.nom }}</span>{% elseif type %}<span class="si-pastille si-pastille-gris">{{ type.nom }}</span>{% endif %}

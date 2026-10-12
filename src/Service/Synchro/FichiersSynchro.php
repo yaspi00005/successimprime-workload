@@ -12,10 +12,11 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 /**
  * Octets des fichiers entre l'ERP local et le site (docs/synchronisation.md).
  *
- * Seuls les fichiers montrés au client partent : ceux que l'atelier a
- * préparés pour un BAT. Les fichiers de production et ceux du client
- * restent au local. Envoi par morceaux, repris là où il s'est arrêté, et
- * vérifié par empreinte SHA-256 avant d'être rangé sur le site.
+ * Vers le site, seuls les fichiers montrés au client partent : ceux que
+ * l'atelier a préparés pour un BAT ; les fichiers de production restent
+ * au local. Du site, le local rapatrie les fichiers que le client y a
+ * envoyés (espace client). Par morceaux, repris là où ça s'est arrêté, et
+ * vérifié par empreinte SHA-256 avant d'être rangé.
  */
 final class FichiersSynchro
 {
@@ -120,6 +121,61 @@ final class FichiersSynchro
         return $bilan;
     }
 
+    /** @return list<CommandeDetailFichier> fichiers envoyés par des clients en ligne, pas encore ici */
+    public function aRecuperer(int $nombre = 200): array
+    {
+        $candidats = $this->em->createQueryBuilder()
+            ->select('f')->from(CommandeDetailFichier::class, 'f')
+            ->where('f.origine = :client')->setParameter('client', CommandeDetailFichier::ORIGINE_CLIENT)
+            ->andWhere('f.empreinte IS NOT NULL')->andWhere('f.actif = true')
+            ->andWhere('f.statut = :termine')->setParameter('termine', CommandeDetailFichier::STATUT_TERMINE)
+            ->andWhere('f.creeLe > :depuis')->setParameter('depuis', new \DateTimeImmutable('-60 days'))
+            // Ceux d'une commande d'abord : l'atelier en a besoin.
+            ->addSelect('CASE WHEN f.commandeDetail IS NULL THEN 1 ELSE 0 END AS HIDDEN sansCommande')
+            ->orderBy('sansCommande', 'ASC')->addOrderBy('f.id', 'ASC')
+            ->setMaxResults($nombre)
+            ->getQuery()->getResult();
+
+        return array_values(array_filter($candidats, fn (CommandeDetailFichier $f): bool => $this->espaceClient->cheminSurDisque($f) === null));
+    }
+
+    /**
+     * Rapatrie du site les fichiers envoyés par les clients, dans la
+     * limite du budget du cycle.
+     *
+     * @param callable(string, array<string, mixed>): array<string, mixed> $appeler appel signé au site
+     *
+     * @return array{recus: int, octets: int}
+     */
+    public function recuperer(callable $appeler, int $budget = self::BUDGET_CYCLE): array
+    {
+        $bilan = ['recus' => 0, 'octets' => 0];
+        $dossier = $this->projet.'/var/uploads/commandes';
+        foreach ($this->aRecuperer() as $fichier) {
+            if ($bilan['octets'] >= $budget) {
+                break;
+            }
+            $nom = basename(trim((string) $fichier->getNomStockage()));
+            $empreinte = (string) $fichier->getEmpreinte();
+            $taille = (int) $fichier->getTaille();
+            $etat = self::ecrire($dossier, $nom, $empreinte, $taille, -1, null);
+            while (!$etat['termine'] && $bilan['octets'] < $budget) {
+                $reponse = $appeler('/api/synchro/fichier-client', ['id' => $fichier->getPublicId()->toRfc4122(), 'position' => $etat['recu']]);
+                $morceau = base64_decode((string) ($reponse['morceau'] ?? ''), true);
+                if ($morceau === false || $morceau === '') {
+                    throw new \RuntimeException('Le site ne donne pas le fichier '.$fichier->getNomOriginal());
+                }
+                $etat = self::ecrire($dossier, $nom, $empreinte, $taille, $etat['recu'], $morceau);
+                $bilan['octets'] += \strlen($morceau);
+            }
+            if ($etat['termine']) {
+                ++$bilan['recus'];
+            }
+        }
+
+        return $bilan;
+    }
+
     /* ---------- Côté site ---------- */
 
     /**
@@ -200,5 +256,37 @@ final class FichiersSynchro
         rename($partiel, $final);
 
         return ['recu' => $recu, 'termine' => true];
+    }
+
+    /**
+     * Côté site : un morceau d'un fichier envoyé par un client.
+     *
+     * @param array<string, mixed> $donnees id, position
+     *
+     * @return array{morceau: string, taille: int}
+     */
+    public function lire(array $donnees): array
+    {
+        $fichier = $this->serialiseur->trouver('fichier', (string) ($donnees['id'] ?? ''));
+        if (!$fichier instanceof CommandeDetailFichier || $fichier->getOrigine() !== CommandeDetailFichier::ORIGINE_CLIENT || !$fichier->estUploadTermine()) {
+            throw new \InvalidArgumentException('Fichier inconnu');
+        }
+        $chemin = $this->espaceClient->cheminSurDisque($fichier);
+        $position = (int) ($donnees['position'] ?? -1);
+        if ($chemin === null || $position < 0 || $position >= (int) filesize($chemin)) {
+            throw new \InvalidArgumentException('Fichier absent ou position invalide');
+        }
+        $flux = fopen($chemin, 'rb');
+        if ($flux === false) {
+            throw new \InvalidArgumentException('Fichier illisible');
+        }
+        try {
+            fseek($flux, $position);
+            $morceau = (string) fread($flux, self::MORCEAU);
+        } finally {
+            fclose($flux);
+        }
+
+        return ['morceau' => base64_encode($morceau), 'taille' => (int) filesize($chemin)];
     }
 }

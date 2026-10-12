@@ -157,6 +157,10 @@ final class JournalSynchro
         if ($type === null || !CatalogueSynchro::envoye($type, $this->enLigne)) {
             return;
         }
+        $pret = CatalogueSynchro::types()[$type]['pret'] ?? null;
+        if ($operation !== SynchroJournal::SUPPRESSION && $pret !== null && !$pret($entite)) {
+            return;
+        }
         $publicId = $entite->getPublicId()->toRfc4122();
         // Une suppression l'emporte sur une modification dans le même enregistrement.
         if (isset($aNoter[$type.$publicId]) && $operation !== SynchroJournal::SUPPRESSION) {

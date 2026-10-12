@@ -8,6 +8,7 @@
 		<a href="{{ path('app_espace_commandes') }}" class="actif">Commandes</a>
 		<a href="{{ path('app_espace_devis') }}">Mes devis{% if devisAAccepter %} · {{ devisAAccepter }} à accepter{% endif %}</a>
 	</nav>
+	<a class="ec-bouton" href="{{ path('app_espace_nouvelle_commande') }}" style="margin-bottom:.85rem">+ Nouvelle commande</a>
 	{% for carte in cartes %}
 		{% include 'espace/app/_carte.html.twig' %}
 	{% else %}

@@ -5,12 +5,18 @@
 {% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Commande n° {{ c.numero }}</a>{% endblock %}
 
 {% block contenu %}
+	{% if carte.aConfirmer %}
+		<div class="ec-note">Commande reçue. L'atelier vérifie le prix et votre fichier, puis la confirme : vous êtes prévenu à ce moment-là.</div>
+	{% endif %}
 	<div class="ec-carte">
 		{% for l in lignes %}
 			<div{% if not loop.first %} style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--trait)"{% endif %}>
 				<b style="font-size:1.1rem">{{ l|espace_titre_ligne }}</b>
 				{% set options = [l.support ? l.support.nom : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
 				{% if options is not empty %}<div class="ec-petit">{{ options|join(' · ') }}</div>{% endif %}
+				{% if l.demandeClient %}<div class="ec-petit">Votre demande : « {{ l.demandeClient }} »</div>{% endif %}
+				{% set mesFichiers = l.fichiers|filter(f => f.actif and f.origine == 'client') %}
+				{% if mesFichiers is not empty %}<div class="ec-petit">Fichier{{ mesFichiers|length > 1 ? 's' }} : {{ mesFichiers|map(f => f.nomOriginal)|join(', ') }}</div>{% endif %}
 			</div>
 		{% endfor %}
 		<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem">
@@ -36,9 +42,9 @@
 	</div>
 
 	<div class="ec-carte">
-		<div class="ec-ligne"><span>Total</span><b>{{ c.totalTtc|number_format(0, ',', ' ') }} F</b></div>
+		<div class="ec-ligne"><span>Total{{ carte.aConfirmer ? ' indicatif' }}</span><b>{{ c.totalTtc|number_format(0, ',', ' ') }} F</b></div>
 		<div class="ec-ligne" style="margin-top:.3rem"><span>Reste à payer</span><b class="{{ c.resteAPayer > 0 ? 'ec-montant' }}">{{ c.resteAPayer|number_format(0, ',', ' ') }} F</b></div>
-		{% if c.resteAPayer > 0 %}<div class="ec-boutons"><a class="ec-bouton orange" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer avec Orange Money</a></div>{% endif %}
+		{% if c.resteAPayer > 0 and not carte.aConfirmer %}<div class="ec-boutons"><a class="ec-bouton orange" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer avec Orange Money</a></div>{% endif %}
 	</div>
 
 	{% if whatsapp %}

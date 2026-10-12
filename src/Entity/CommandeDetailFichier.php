@@ -160,6 +160,30 @@ class CommandeDetailFichier
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $ajoutePar = null;
 
+    /**
+     * Client qui a envoyé le fichier depuis son espace (« Mes fichiers »),
+     * avant ou sans commande.
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?Clients $client = null;
+
+    /** Logo gardé par le client pour ses prochaines commandes. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $logo = false;
+
+    /**
+     * Contrôle automatique fait à l'arrivée (AnalyseFichierImpression).
+     *
+     * @var list<array{libelle: string, valeur: string, etat: string}>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $analyse = null;
+
+    /** SHA-256 du fichier complet : sert à le recopier entre le site et le local. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $empreinte = null;
+
     #[ORM\Column]
     private \DateTimeImmutable $creeLe;
 
@@ -630,6 +654,56 @@ class CommandeDetailFichier
     public function setMontage(?array $montage): static
     {
         $this->montage = $montage;
+
+        return $this;
+    }
+
+    public function getClient(): ?Clients
+    {
+        return $this->client;
+    }
+
+    public function setClient(?Clients $client): static
+    {
+        $this->client = $client;
+
+        return $this;
+    }
+
+    public function isLogo(): bool
+    {
+        return $this->logo;
+    }
+
+    public function setLogo(bool $logo): static
+    {
+        $this->logo = $logo;
+
+        return $this;
+    }
+
+    /** @return list<array{libelle: string, valeur: string, etat: string}>|null */
+    public function getAnalyse(): ?array
+    {
+        return $this->analyse;
+    }
+
+    /** @param list<array{libelle: string, valeur: string, etat: string}>|null $analyse */
+    public function setAnalyse(?array $analyse): static
+    {
+        $this->analyse = $analyse;
+
+        return $this;
+    }
+
+    public function getEmpreinte(): ?string
+    {
+        return $this->empreinte;
+    }
+
+    public function setEmpreinte(?string $empreinte): static
+    {
+        $this->empreinte = $empreinte;
 
         return $this;
     }

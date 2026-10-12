@@ -15,6 +15,12 @@ final class AnalyseFichierImpression
     public const ERREUR = 'erreur';
     public const A_VERIFIER = 'a_verifier';
 
+    /** Les fonds perdus se contrôlent sur les petits formats (flyers, cartes) ; une bâche n'en a pas. */
+    private const FONDS_PERDUS_JUSQUA_CM = 50;
+
+    /** Fonds perdus conseillés, en mm. */
+    public const FONDS_PERDUS_MM = 3;
+
     /** Octets lus dans un PDF pour y chercher format, couleurs et polices. */
     private const LECTURE_PDF = 4 * 1024 * 1024;
 
@@ -130,7 +136,9 @@ final class AnalyseFichierImpression
     {
         $controles = [];
         $format = null;
-        if (preg_match('#/(?:TrimBox|MediaBox)\s*\[\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*\]#', $contenu, $boite)) {
+        // Le format fini (TrimBox) d'abord : la MediaBox comprend les fonds perdus.
+        if (preg_match('#/TrimBox\s*\[\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*\]#', $contenu, $boite)
+            || preg_match('#/MediaBox\s*\[\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*\]#', $contenu, $boite)) {
             $format = [
                 abs((float) $boite[3] - (float) $boite[1]) * 2.54 / 72,
                 abs((float) $boite[4] - (float) $boite[2]) * 2.54 / 72,
@@ -148,6 +156,10 @@ final class AnalyseFichierImpression
             $controles[] = self::controleProportions($format[0], $format[1], $largeurCm, $hauteurCm);
         } elseif (null !== $format) {
             $controles[] = ['libelle' => 'Format de page', 'valeur' => sprintf('%s × %s cm', self::cm($format[0]), self::cm($format[1])), 'etat' => self::A_VERIFIER];
+        }
+
+        if (null !== $format && max($format) <= self::FONDS_PERDUS_JUSQUA_CM && max((float) $largeurCm, (float) $hauteurCm) <= self::FONDS_PERDUS_JUSQUA_CM) {
+            $controles[] = self::controleFondsPerdus($contenu);
         }
 
         $cmjn = str_contains($contenu, '/DeviceCMYK');
@@ -177,6 +189,37 @@ final class AnalyseFichierImpression
         $controles[] = ['libelle' => 'Résolution des images', 'valeur' => 'Images du PDF : à vérifier dans le logiciel', 'etat' => self::A_VERIFIER];
 
         return $controles;
+    }
+
+    /**
+     * Fonds perdus d'un PDF : écart entre la page finie (TrimBox) et la
+     * zone imprimée (BleedBox, sinon MediaBox). Sans TrimBox, la page est
+     * le format fini : pas de fonds perdus.
+     *
+     * @return array{libelle: string, valeur: string, etat: string}
+     */
+    public static function controleFondsPerdus(string $contenu): array
+    {
+        $boite = static function (string $nom) use ($contenu): ?array {
+            return preg_match('#/'.$nom.'\s*\[\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*\]#', $contenu, $m)
+                ? array_map('floatval', \array_slice($m, 1, 4)) : null;
+        };
+        $fini = $boite('TrimBox');
+        $imprime = $boite('BleedBox') ?? $boite('MediaBox');
+        $mm = 0.0;
+        if (null !== $fini && null !== $imprime) {
+            // Le plus petit débord des quatre côtés, en mm (1 pt = 25,4 / 72 mm).
+            $mm = min($fini[0] - $imprime[0], $fini[1] - $imprime[1], $imprime[2] - $fini[2], $imprime[3] - $fini[3]) * 25.4 / 72;
+        }
+        if ($mm >= self::FONDS_PERDUS_MM - 0.5) {
+            return ['libelle' => 'Fonds perdus', 'valeur' => self::cm($mm).' mm', 'etat' => self::OK];
+        }
+
+        return [
+            'libelle' => 'Fonds perdus',
+            'valeur' => $mm > 0.1 ? \sprintf('%s mm seulement (%d mm conseillés)', self::cm($mm), self::FONDS_PERDUS_MM) : \sprintf('absents (%d mm conseillés)', self::FONDS_PERDUS_MM),
+            'etat' => self::ATTENTION,
+        ];
     }
 
     private static function cm(float $valeur): string

@@ -237,6 +237,10 @@ class CommandesDetails
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $observation = null;
 
+    /** Ce que le client a écrit en commandant depuis son espace (ses mots, visibles de lui). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $demandeClient = null;
+
     #[ORM\Column(
         length: 30,
         options: ['default' => 'a_produire']
@@ -2583,6 +2587,19 @@ public function validerModeCommande(
         }
 
         $this->typeLigne = $typeLigne;
+
+        return $this;
+    }
+
+    public function getDemandeClient(): ?string
+    {
+        return $this->demandeClient;
+    }
+
+    public function setDemandeClient(?string $demandeClient): static
+    {
+        $demandeClient = trim((string) $demandeClient);
+        $this->demandeClient = '' === $demandeClient ? null : mb_substr($demandeClient, 0, 1000);
 
         return $this;
     }

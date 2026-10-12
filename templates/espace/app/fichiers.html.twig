@@ -3,20 +3,84 @@
 {% block title %}Mes fichiers{% endblock %}
 {% block entete %}<a class="ec-retour" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Mes fichiers</a>{% endblock %}
 
+{% macro icone(f) %}
+	{% if f.typeMime in ['image/jpeg', 'image/png'] %}<span class="ec-fichier-icone"><img src="{{ path('app_espace_fichier', {id: f.id}) }}" alt="" loading="lazy"></span>
+	{% else %}<span class="ec-fichier-icone">{{ f.nomOriginal|split('.')|last|upper|slice(0, 4) }}</span>{% endif %}
+{% endmacro %}
+
 {% block contenu %}
+	{% for ctl in aValider %}
+		<a class="ec-alerte" href="{{ path('app_espace_bat', {id: ctl.id}) }}"><div><b>BAT à valider</b><small>{{ ctl.commandeDetail|espace_titre_ligne }} · commande {{ ctl.commandeDetail.commande.numero }}</small></div><span class="ec-bouton-blanc">Voir</span></a>
+	{% endfor %}
+
+	<label class="ec-depot" id="depot">
+		<input type="file" id="envoi" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}" multiple>
+		<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 11h4.5v6h5v-6H19z"/></svg>
+		<b>Envoyer un fichier</b>
+		<span class="ec-petit">PDF, AI, PSD, JPG, PNG · jusqu'à 500 Mo</span>
+		<div class="ec-progres" hidden><span></span></div>
+		<div class="ec-petit" id="envoi-etat" role="status" aria-live="polite"></div>
+	</label>
+	<details class="ec-petit" style="margin:-.4rem 0 .85rem">
+		<summary>Taille d'impression prévue (pour contrôler la résolution)</summary>
+		<div class="ec-deux" style="margin:.5rem 0 0">
+			<div><label class="ec-etiquette" for="largeur">Largeur (cm)</label><input class="ec-saisie" id="largeur" inputmode="decimal" placeholder="85"></div>
+			<div><label class="ec-etiquette" for="hauteur">Hauteur (cm)</label><input class="ec-saisie" id="hauteur" inputmode="decimal" placeholder="200"></div>
+		</div>
+	</details>
+
 	<div class="ec-carte">
-		<h2>BAT à valider</h2>
-		<ul class="ec-liste">
-			{% for ctl in aValider %}
-				<li class="ec-ligne">
-					<div><b>{{ ctl.commandeDetail|espace_titre_ligne }}</b><div class="ec-petit">Commande {{ ctl.commandeDetail.commande.numero }}{{ ctl.traiteLe ? ' · envoyé le ' ~ ctl.traiteLe|date('d/m à H:i') }}</div></div>
-					<a class="ec-bouton-petit" href="{{ path('app_espace_bat', {id: ctl.id}) }}">Voir</a>
+		<h2>Contrôle automatique</h2>
+		<ul class="ec-liste" id="liste-fichiers">
+			{% for item in mesFichiers %}
+				{% set f = item.fichier %}
+				<li class="ec-fichier">
+					{{ _self.icone(f) }}
+					<div>
+						<b>{{ f.nomOriginal }}</b>
+						<div class="ec-petit">{{ item.controle.texte }}</div>
+						<div class="ec-petit">{{ f.creeLe|date('d/m/Y') }}{% if f.commandeDetail %} · commande {{ f.commandeDetail.commande.numero }}{% endif %}</div>
+					</div>
+					<span class="ec-pastille {{ item.controle.etat }}">{{ item.controle.libelle }}</span>
 				</li>
 			{% else %}
-				<li class="ec-petit">Aucun BAT n'attend votre réponse.</li>
+				<li class="ec-petit" id="aucun-fichier">Vos fichiers envoyés apparaîtront ici, avec le résultat du contrôle.</li>
 			{% endfor %}
 		</ul>
+		{% if mesFichiers is not empty %}
+			<p class="ec-petit" style="margin:.6rem 0 0">Un fichier « À refaire » s'imprimerait mal : corrigez-le ou demandez l'aide de l'atelier. L'atelier revérifie chaque fichier avant impression.</p>
+		{% endif %}
 	</div>
+
+	<div class="ec-carte">
+		<h2>Mes logos</h2>
+		<div class="ec-logos" id="logos">
+			{% for f in logos %}
+				<a class="ec-logo" href="{{ path('app_espace_fichier', {id: f.id, telecharger: 1}) }}" title="{{ f.nomOriginal }}">
+					{% if f.typeMime in ['image/jpeg', 'image/png'] %}<img src="{{ path('app_espace_fichier', {id: f.id}) }}" alt="{{ f.nomOriginal }}" loading="lazy">{% else %}{{ f.nomOriginal|split('.')|last|upper }}{% endif %}
+				</a>
+			{% endfor %}
+			<label class="ec-logo ajouter" title="Ajouter un logo">+<input type="file" id="envoi-logo" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}"></label>
+		</div>
+		<p class="ec-petit" style="margin:.6rem 0 0">Gardés ici pour vos prochaines commandes (20 Mo au plus).</p>
+	</div>
+
+	{% if mesFichiers is not empty %}
+		<details class="ec-carte">
+			<summary class="ec-petit">Retirer un fichier</summary>
+			<ul class="ec-liste" style="margin-top:.5rem">
+				{% for item in mesFichiers|filter(i => not i.fichier.commandeDetail) %}
+					<li class="ec-ligne"><span>{{ item.fichier.nomOriginal }}</span>
+						<form method="post" action="{{ path('app_espace_fichier_retirer', {id: item.fichier.id}) }}" onsubmit="return confirm('Retirer ce fichier ?')">
+							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}"><button class="ec-bouton-petit" style="background:var(--fond);color:var(--encre)">Retirer</button>
+						</form>
+					</li>
+				{% else %}
+					<li class="ec-petit">Les fichiers déjà dans une commande sont gardés par l'atelier.</li>
+				{% endfor %}
+			</ul>
+		</details>
+	{% endif %}
 
 	{% if autres is not empty %}
 		<div class="ec-carte">
@@ -31,6 +95,44 @@
 			</ul>
 		</div>
 	{% endif %}
+{% endblock %}
 
-	<p class="ec-petit" style="text-align:center">L'envoi de vos fichiers depuis l'espace arrive bientôt. En attendant, envoyez-les par WhatsApp ou en boutique.</p>
+{% block scripts %}
+	<script src="{{ asset('js/espace-envoi.js') }}"></script>
+	<script>
+	(function () {
+		const options = { debut: {{ path('app_espace_fichier_envoi')|json_encode|raw }}, jeton: {{ csrf_token('espace')|json_encode|raw }} };
+		const etat = document.getElementById('envoi-etat');
+		const progres = document.querySelector('#depot .ec-progres');
+		const depot = document.getElementById('depot');
+
+		async function envoyerTout(fichiers, logo) {
+			progres.hidden = false;
+			let erreurs = 0;
+			for (const f of fichiers) {
+				etat.textContent = 'Envoi de ' + f.name + '…';
+				try {
+					await EspaceEnvoi.envoyer(f, Object.assign({}, options, {
+						logo: logo,
+						largeur: document.getElementById('largeur').value,
+						hauteur: document.getElementById('hauteur').value,
+						progres: function (p) { progres.firstElementChild.style.width = p + '%'; },
+					}));
+				} catch (e) {
+					erreurs++;
+					etat.textContent = f.name + ' : ' + e.message;
+				}
+			}
+			if (!erreurs) {
+				etat.textContent = 'Envoyé. Contrôle terminé.';
+				location.reload();
+			}
+		}
+
+		document.getElementById('envoi').addEventListener('change', function () { envoyerTout(Array.from(this.files), false); });
+		document.getElementById('envoi-logo').addEventListener('change', function () { envoyerTout(Array.from(this.files), true); });
+		['dragenter', 'dragover'].forEach(function (t) { depot.addEventListener(t, function () { depot.classList.add('survol'); }); });
+		['dragleave', 'drop'].forEach(function (t) { depot.addEventListener(t, function () { depot.classList.remove('survol'); }); });
+	})();
+	</script>
 {% endblock %}

@@ -78,6 +78,13 @@ final class SynchroApiController
     }
 
     /** Morceau d'une copie chiffrée des sauvegardes du local (HorsSite), illisible ici. */
+    /** Le local rapatrie un fichier envoyé par un client dans son espace. */
+    #[Route('/fichier-client', name: 'fichier_client')]
+    public function fichierClient(Request $request, FichiersSynchro $fichiers): Response
+    {
+        return $this->traiter($request, fn (array $donnees): array => $fichiers->lire($donnees));
+    }
+
     #[Route('/sauvegarde', name: 'sauvegarde')]
     public function sauvegarde(Request $request, HorsSite $horsSite): Response
     {

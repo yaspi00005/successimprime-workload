@@ -88,8 +88,13 @@ final class AgentSynchro
                 if ($bilan['envoyes'] > 0) {
                     $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, 'fichier', \sprintf('%d fichier%s de BAT (%s Mo)', $bilan['envoyes'], $bilan['envoyes'] > 1 ? 's' : '', number_format($bilan['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);
                 }
+                // Les fichiers envoyés par les clients en ligne arrivent à l'atelier.
+                $recus = $this->fichiers->recuperer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets']));
+                if ($recus['recus'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_LOCAL, 'fichier', \sprintf('%d fichier%s de client (%s Mo)', $recus['recus'], $recus['recus'] > 1 ? 's' : '', number_format($recus['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);
+                }
                 // Puis la copie chiffrée des sauvegardes, avec ce qui reste du budget du cycle.
-                foreach ($this->horsSite->envoyer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets']), $maintenant) as $copie) {
+                foreach ($this->horsSite->envoyer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets']), $maintenant) as $copie) {
                     $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, null, \sprintf('Sauvegarde %s chiffrée, %s (%s Mo)', $copie['nom'], $copie['partie'] === 'base' ? 'base' : 'fichiers', number_format($copie['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);
                 }
             }

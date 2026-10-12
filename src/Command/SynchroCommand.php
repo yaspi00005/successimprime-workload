@@ -30,7 +30,7 @@ final class SynchroCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('initialiser', null, InputOption::VALUE_NONE, 'Met en file tout ce qui part vers le site : catalogue, clients, devis, commandes, factures, paiements (premier chargement)')
+            ->addOption('initialiser', null, InputOption::VALUE_OPTIONAL, 'Met en file tout ce qui part vers le site : catalogue, clients, devis, commandes, factures, paiements (premier chargement). Avec un type (ex. --initialiser=configuration) : ce type seulement', false)
             ->addOption('boucle', null, InputOption::VALUE_NONE, 'Tourne sans s\'arrêter, un cycle toutes les 30 s')
             ->addOption('nouvelle-cle', null, InputOption::VALUE_NONE, 'Affiche une clé SYNC_CLE à copier dans .env.local des deux machines');
     }
@@ -50,8 +50,8 @@ final class SynchroCommand extends Command
 
             return Command::FAILURE;
         }
-        if ($input->getOption('initialiser')) {
-            $io->success($this->synchro->initialiser().' données mises en file pour le site.');
+        if (false !== ($type = $input->getOption('initialiser'))) {
+            $io->success($this->synchro->initialiser($type ?: null).' données mises en file pour le site.');
         }
 
         do {

@@ -26,8 +26,9 @@
 			</ol>
 		</a>
 	{% else %}
-		<div class="ec-carte ec-vide">Aucune commande en cours.{% if recentes is empty %} Passez nous voir ou écrivez-nous sur WhatsApp pour votre première commande.{% endif %}</div>
+		<div class="ec-carte ec-vide">Aucune commande en cours.</div>
 	{% endfor %}
+	<a class="ec-bouton clair" href="{{ path('app_espace_nouvelle_commande') }}" style="margin-bottom:.85rem">+ Nouvelle commande</a>
 
 	{% if solde.total > 0 %}
 		{% set premiere = solde.commandes|first %}

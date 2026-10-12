@@ -253,6 +253,20 @@ final class Serialiseur
                 $ecarts[$champ] = [$a, $b];
             }
         }
+        // Un lien que le site peut changer (fichier mis dans une commande) se compare aussi.
+        $def = CatalogueSynchro::types()[$type];
+        $meta = $this->em->getClassMetadata($def['classe']);
+        foreach (array_intersect_key($def['relations'], $def['remontees'] ?? []) as $champ => $cible) {
+            if (!\array_key_exists($champ, $donnees['relations'] ?? [])) {
+                continue;
+            }
+            $lie = $meta->getFieldValue($entite, $champ);
+            $a = $lie === null ? null : self::idPublic($lie);
+            $b = $donnees['relations'][$champ];
+            if ($a !== $b) {
+                $ecarts[$champ] = [$a, $b === null ? null : (string) $b];
+            }
+        }
 
         return $ecarts;
     }
@@ -262,7 +276,12 @@ final class Serialiseur
     {
         $meta = $this->em->getClassMetadata(CatalogueSynchro::types()[$type]['classe']);
         $plateforme = $this->em->getConnection()->getDatabasePlatform();
+        $relations = CatalogueSynchro::types()[$type]['relations'];
         foreach ($valeurs as $champ => $brut) {
+            if (isset($relations[$champ])) {
+                $meta->setFieldValue($entite, $champ, $brut === null ? null : $this->exiger($relations[$champ], $brut));
+                continue;
+            }
             $meta->setFieldValue($entite, $champ, $brut === null ? null : Type::getType($meta->getTypeOfField($champ))->convertToPHPValue($brut, $plateforme));
         }
     }

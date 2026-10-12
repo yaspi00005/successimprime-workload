@@ -187,3 +187,49 @@ details.ec-modif[open] summary { display: none; }
 @media (max-width: 899px) {
   .ec-entete:has(.ec-retour) .ec-entete-droite { display: none; }
 }
+
+/* ---------- Nouvelle commande (maquette 14) ---------- */
+.ec-etiquette { display: block; color: var(--gris); font-size: .82rem; margin: 0 0 .45rem; }
+.ec-puces { display: flex; flex-wrap: wrap; gap: .5rem; }
+.ec-puce input { position: absolute; opacity: 0; pointer-events: none; }
+.ec-puce span { display: inline-block; padding: .5rem 1rem; border-radius: 999px; border: 1.5px solid var(--trait); background: #fff; font-weight: 600; font-size: .92rem; cursor: pointer; }
+.ec-puce input:checked + span { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.ec-puce input:focus-visible + span { outline: 2px solid var(--bleu); outline-offset: 2px; }
+.ec-puce input:disabled + span { cursor: default; opacity: .85; }
+.ec-deux { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: .9rem; }
+.ec-saisie { width: 100%; border: 1.5px solid var(--trait); border-radius: 12px; padding: .7rem .9rem; font: inherit; color: var(--bleu); font-weight: 600; background: #fff; }
+.ec-saisie:focus { outline: 2px solid var(--bleu-clair); border-color: var(--bleu); }
+.ec-quantite { display: flex; align-items: center; border: 1.5px solid var(--trait); border-radius: 12px; background: #fff; }
+.ec-quantite button { width: 48px; height: 44px; border: 0; background: none; font-size: 1.3rem; font-weight: 700; color: var(--bleu); cursor: pointer; }
+.ec-quantite input { flex: 1; min-width: 0; border: 0; text-align: center; font: inherit; font-weight: 700; color: var(--bleu); background: none; }
+.ec-total { position: sticky; bottom: calc(4.6rem + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: #fff; border: 1.5px solid var(--bleu-clair); border-radius: var(--rayon); padding: .85rem 1rem; box-shadow: 0 10px 24px rgba(18,33,58,.12); z-index: 5; }
+.ec-total .ec-gros { font-size: 1.8rem; color: var(--bleu); margin: 0; white-space: nowrap; }
+.ec-total .ec-bouton { width: auto; padding: .85rem 1.4rem; border-radius: 999px; }
+@media (min-width: 900px) { .ec-total { bottom: 1rem; } }
+
+/* ---------- Mes fichiers (maquette 16) ---------- */
+.ec-depot { display: block; position: relative; border: 2px dashed #C9D3E4; border-radius: var(--rayon); background: #fff; padding: 1.4rem 1rem; text-align: center; cursor: pointer; margin-bottom: .85rem; }
+.ec-depot.survol { border-color: var(--bleu); background: var(--bleu-clair); }
+.ec-depot input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.ec-depot svg { width: 30px; height: 30px; color: var(--bleu); fill: var(--bleu); stroke: none; }
+.ec-depot b { display: block; color: var(--bleu); font-size: 1.05rem; margin-top: .2rem; }
+.ec-progres { height: 6px; border-radius: 99px; background: var(--trait); overflow: hidden; margin-top: .6rem; }
+.ec-progres span { display: block; height: 100%; width: 0; background: var(--bleu); transition: width .2s; }
+.ec-fichier { display: flex; align-items: center; gap: .8rem; }
+.ec-fichier-icone { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--fond); color: var(--gris); font-size: .65rem; font-weight: 800; overflow: hidden; }
+.ec-fichier-icone.ok { background: var(--vert-clair); color: var(--vert); font-size: 1.1rem; }
+.ec-fichier-icone img { width: 100%; height: 100%; object-fit: cover; }
+.ec-fichier > div { flex: 1; min-width: 0; }
+.ec-fichier b { display: block; color: var(--bleu); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ec-pastille.ok { background: var(--vert-clair); color: var(--vert); }
+.ec-pastille.a_refaire { background: #FDE4E7; color: var(--rouge); }
+.ec-pastille.attention { background: var(--ambre-clair); color: var(--ambre); }
+.ec-pastille.a_verifier { background: var(--fond); color: var(--gris); }
+.ec-logos { display: flex; flex-wrap: wrap; gap: .7rem; }
+.ec-logo { width: 72px; height: 72px; border-radius: 16px; background: var(--fond) center / contain no-repeat; border: 1px solid var(--trait); display: grid; place-items: center; font-size: .7rem; font-weight: 800; color: var(--gris); overflow: hidden; }
+.ec-logo img { width: 100%; height: 100%; object-fit: contain; }
+.ec-logo.ajouter { position: relative; border: 2px dashed #C9D3E4; background: #fff; font-size: 1.6rem; color: var(--gris); cursor: pointer; }
+.ec-logo.ajouter input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.ec-choix-fichier { display: flex; align-items: center; gap: .7rem; padding: .55rem 0; border-top: 1px solid var(--trait); }
+.ec-choix-fichier:first-child { border-top: 0; }
+.ec-choix-fichier input { width: 20px; height: 20px; accent-color: var(--bleu); flex: none; }

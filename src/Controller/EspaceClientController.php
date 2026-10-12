@@ -11,6 +11,8 @@ use App\Repository\CommandesRepository;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\EspaceClient\FichiersClient;
+use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\Parametres\Parametres;
 use App\Security\CodeParSms;
 use App\Security\EspaceClientComptes;
@@ -18,6 +20,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\Response;
@@ -208,6 +211,76 @@ final class EspaceClientController extends AbstractController
         ]);
     }
 
+    /** Nouvelle commande (maquette 14) : produit, taille, finitions, quantité, fichier. */
+    #[Route('/commandes/nouvelle', name: 'nouvelle_commande', methods: ['GET', 'POST'])]
+    public function nouvelleCommande(Request $request, NouvelleCommande $service, FichiersClient $fichiers): Response
+    {
+        $client = $this->compte()->getClient();
+        $produits = NouvelleCommande::fiches($service->produits(), $client->isB2B());
+
+        if ($request->isMethod('POST')) {
+            $this->jeton($request);
+            $config = $service->produit($request->request->getInt('produit'));
+            $choisis = [];
+            foreach ($request->request->all('fichiers') as $id) {
+                $f = $fichiers->trouver($client, (int) $id);
+                if (null !== $f && null === $f->getCommandeDetail() && !$f->isLogo()) {
+                    $choisis[] = $f;
+                }
+            }
+            try {
+                if (null === $config) {
+                    throw new \DomainException('Choisissez un produit.');
+                }
+                [$largeur, $hauteur] = [self::nombre($request->request->get('largeur')), self::nombre($request->request->get('hauteur'))];
+                $commande = $service->commander($client, $config, $request->request->getInt('quantite', 1), $largeur, $hauteur, array_map('intval', $request->request->all('finitions')), $choisis, $request->request->getString('note'), new \DateTimeImmutable());
+                // Le fichier se contrôle à la taille commandée.
+                foreach ($choisis as $f) {
+                    $fichiers->recontroler($f, $largeur, $hauteur);
+                }
+                $service->enregistrer();
+                $this->addFlash('succes', \sprintf('Commande %s envoyée. L\'atelier confirme le prix et votre fichier, puis vous prévient.', $commande->getNumero()));
+
+                return $this->redirectToRoute('app_espace_commande', ['id' => (string) $commande->getPublicId()]);
+            } catch (\DomainException $e) {
+                $this->addFlash('error', $e->getMessage());
+            }
+        }
+
+        return $this->vue('espace/app/nouvelle_commande.html.twig', [
+            'onglet' => 'commandes',
+            'produits' => $produits,
+            'choix' => $request->request->all() + $request->query->all(),
+            'mesFichiers' => array_values(array_filter($fichiers->liste($client), static fn ($f): bool => null === $f->getCommandeDetail())),
+            'extensions' => FichiersClient::extensions(),
+            'morceau' => FichiersClient::MORCEAU,
+        ]);
+    }
+
+    /** Prix indicatif, recalculé à chaque changement (même calcul qu'à l'enregistrement). */
+    #[Route('/commandes/estimer', name: 'estimer', methods: ['POST'])]
+    public function estimer(Request $request, NouvelleCommande $service): JsonResponse
+    {
+        $this->jetonEntete($request);
+        $donnees = $request->toArray();
+        $config = $service->produit((int) ($donnees['produit'] ?? 0));
+        if (null === $config) {
+            return $this->json(['erreur' => 'Choisissez un produit.'], 422);
+        }
+        try {
+            return $this->json(NouvelleCommande::estimer(
+                $config,
+                max(1, (int) ($donnees['quantite'] ?? 1)),
+                self::nombre($donnees['largeur'] ?? null),
+                self::nombre($donnees['hauteur'] ?? null),
+                array_map('intval', (array) ($donnees['finitions'] ?? [])),
+                $this->compte()->getClient()->isB2B(),
+            ));
+        } catch (\DomainException $e) {
+            return $this->json(['erreur' => $e->getMessage()], 422);
+        }
+    }
+
     #[Route('/devis', name: 'devis', methods: ['GET'])]
     public function devis(Request $request, EspaceClient $espace): Response
     {
@@ -254,7 +327,7 @@ final class EspaceClientController extends AbstractController
     }
 
     #[Route('/fichiers', name: 'fichiers', methods: ['GET'])]
-    public function fichiers(EspaceClient $espace): Response
+    public function fichiers(EspaceClient $espace, FichiersClient $fichiers): Response
     {
         $client = $this->compte()->getClient();
         $bats = $espace->bats($client);
@@ -263,7 +336,75 @@ final class EspaceClientController extends AbstractController
             'onglet' => 'fichiers',
             'aValider' => array_values(array_filter($bats, static fn ($c): bool => \App\Entity\ControlePrePresse::STATUT_EN_ATTENTE_BAT === $c->getStatut())),
             'autres' => array_values(array_filter($bats, static fn ($c): bool => \App\Entity\ControlePrePresse::STATUT_EN_ATTENTE_BAT !== $c->getStatut())),
+            'mesFichiers' => array_map(static fn ($f): array => ['fichier' => $f, 'controle' => FichiersClient::resume($f->getAnalyse())], $fichiers->liste($client)),
+            'logos' => $fichiers->liste($client, true),
+            'extensions' => FichiersClient::extensions(),
+            'morceau' => FichiersClient::MORCEAU,
         ]);
+    }
+
+    /** Commence l'envoi d'un fichier (les morceaux suivent). */
+    #[Route('/fichiers/envoi', name: 'fichier_envoi', methods: ['POST'])]
+    public function commencerEnvoi(Request $request, FichiersClient $fichiers): JsonResponse
+    {
+        $this->jetonEntete($request);
+        $donnees = $request->toArray();
+        try {
+            $f = $fichiers->commencer($this->compte()->getClient(), (string) ($donnees['nom'] ?? ''), (int) ($donnees['taille'] ?? 0), (bool) ($donnees['logo'] ?? false), new \DateTimeImmutable());
+        } catch (\DomainException $e) {
+            return $this->json(['erreur' => $e->getMessage()], 422);
+        }
+
+        return $this->json(['jeton' => $f->getJetonUpload(), 'recu' => 0, 'morceau' => FichiersClient::MORCEAU]);
+    }
+
+    /** Un morceau du fichier (corps brut), à la position annoncée. */
+    #[Route('/fichiers/envoi/{jeton}', name: 'fichier_morceau', requirements: ['jeton' => '[a-f0-9]{64}'], methods: ['POST'])]
+    public function morceau(string $jeton, Request $request, FichiersClient $fichiers): JsonResponse
+    {
+        $this->jetonEntete($request);
+        $f = $fichiers->trouverEnvoi($this->compte()->getClient(), $jeton) ?? throw $this->createNotFoundException();
+        try {
+            $etat = $fichiers->ajouter($f, $request->query->getInt('position', -1), $request->getContent(), self::nombre($request->query->get('largeur')), self::nombre($request->query->get('hauteur')));
+        } catch (\DomainException $e) {
+            return $this->json(['erreur' => $e->getMessage()], 422);
+        }
+        if ($etat['termine']) {
+            $etat['fichier'] = ['id' => $f->getId(), 'nom' => $f->getNomOriginal(), 'controle' => FichiersClient::resume($f->getAnalyse())];
+        }
+
+        return $this->json($etat);
+    }
+
+    /** Aperçu ou téléchargement d'un de ses fichiers. */
+    #[Route('/fichiers/{id}', name: 'fichier', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function fichier(int $id, Request $request, FichiersClient $fichiers): Response
+    {
+        $f = $fichiers->trouver($this->compte()->getClient(), $id);
+        $chemin = null === $f ? null : $fichiers->chemin($f);
+        if (null === $chemin) {
+            throw $this->createNotFoundException();
+        }
+        $image = \in_array($f->getTypeMime(), ['image/jpeg', 'image/png'], true);
+        $reponse = new BinaryFileResponse($chemin, 200, ['Content-Type' => $image ? (string) $f->getTypeMime() : 'application/octet-stream', 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, max-age=3600']);
+        $reponse->setContentDisposition($image && !$request->query->getBoolean('telecharger') ? ResponseHeaderBag::DISPOSITION_INLINE : ResponseHeaderBag::DISPOSITION_ATTACHMENT, (string) $f->getNomOriginal(), 'fichier');
+
+        return $reponse;
+    }
+
+    #[Route('/fichiers/{id}/retirer', name: 'fichier_retirer', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function retirerFichier(int $id, Request $request, FichiersClient $fichiers): Response
+    {
+        $this->jeton($request);
+        $f = $fichiers->trouver($this->compte()->getClient(), $id) ?? throw $this->createNotFoundException();
+        try {
+            $fichiers->retirer($f);
+            $this->addFlash('succes', \sprintf('%s retiré.', $f->getNomOriginal()));
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_espace_fichiers');
     }
 
     #[Route('/bat/{id}', name: 'bat', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
@@ -350,6 +491,10 @@ final class EspaceClientController extends AbstractController
     {
         $compte = $this->compte();
         $commande = $espace->commande($compte->getClient(), $id) ?? throw $this->createNotFoundException();
+        if (!$commande->isStatut()) {
+            // Prix encore indicatif : on paie une fois la commande confirmée par l'atelier.
+            return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
+        }
 
         return $this->vue('espace/app/payer.html.twig', [
             'onglet' => 'factures',
@@ -448,6 +593,22 @@ final class EspaceClientController extends AbstractController
         if (!$this->isCsrfTokenValid('espace', (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('La page a expiré. Réessayez.');
         }
+    }
+
+    /** Jeton des appels du navigateur (en-tête X-CSRF-TOKEN). */
+    private function jetonEntete(Request $request): void
+    {
+        if (!$this->isCsrfTokenValid('espace', (string) $request->headers->get('X-CSRF-TOKEN'))) {
+            throw $this->createAccessDeniedException('La page a expiré. Réessayez.');
+        }
+    }
+
+    /** Nombre saisi (« 85 », « 85,5 ») ou null. */
+    private static function nombre(mixed $valeur): ?float
+    {
+        $texte = str_replace([' ', ','], ['', '.'], trim((string) $valeur));
+
+        return is_numeric($texte) && (float) $texte > 0 ? (float) $texte : null;
     }
 
     private function nom(CompteClient $compte): string

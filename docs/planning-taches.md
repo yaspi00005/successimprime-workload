@@ -140,4 +140,12 @@ puis copier les deux lignes affichées dans `.env.local` (jamais dans le dépôt
 - **Trésorerie prévisionnelle** : chaque tâche avec un montant, pas encore faite, compte dans les charges prévues (30 jours) à sa date, avec le libellé « Planning · … ».
 - Attention aux doublons : une charge déjà saisie en décaissement récurrent (ancien écran) et aussi en échéance du planning compte deux fois dans la prévision. Garder l'une des deux.
 
-Reste : le montant « TVA du mois » calculé et le rapport TVA joint (à voir avec le comptable), puis l'étape 4 (planning annuel T03).
+Reste : le montant « TVA du mois » calculé et le rapport TVA joint (à voir avec le comptable).
+
+Étape 4 construite (12/10/2026) : Planning › Année (`/planning/annee/{année}`, direction et droit trésorerie).
+- Une ligne par échéance active, calculée depuis sa règle pour toute l'année (pas seulement les 13 mois de tâches) : un bloc par mois (avec le nombre s'il y en a plusieurs), une barre continue quand l'échéance revient presque tous les mois. Les tâches de chaque jour restent dans le calendrier.
+- Colonne Budget : « 4 × 1,4 M F » quand il y a un montant (droit trésorerie), sinon « mensuel », « chaque semaine », le mois, ou « N fois ».
+- Ligne Repères : les fêtes mobiles saisies dans Jours fériés (Ramadan, Tabaski, Maouloud…), la rentrée en septembre et la fin d'année. Les fériés fixes n'y sont pas.
+- Budget annuel : total des montants de l'année, dont achats (catégories Stock et Fournisseurs).
+- Boutons année précédente et suivante, PDF (A4 paysage), « + Échéance ».
+- Approvisionnements proposés : pas encore calculés. Il faut un an de mouvements de stock ; en attendant, chaque approvisionnement se saisit comme échéance de catégorie Stock, avec son montant.

@@ -2,7 +2,7 @@
 -- dans toutes les tables. Généré par donnees-demo/generer_demo.py, ne pas
 -- modifier à la main.
 --
--- 18488 lignes. Identifiants de démo à partir de 900001 ; dates
+-- 18498 lignes. Identifiants de démo à partir de 900001 ; dates
 -- relatives au jour du chargement ; clients DEMO-xxxx avec des numéros en
 -- 60 xx xx xx et recevoir_sms = 0 ; utilisateurs demo.xxx (mot de passe
 -- demo1234).
@@ -17201,7 +17201,7 @@ INSERT INTO `ligne_rapprochement_bancaire` (`id`, `date_releve`, `reference_banc
 (900261, (CURDATE() - INTERVAL 6 DAY), 'RLV663582', 1760000, 1, NULL, TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '09:00:00'), 900006, 901369),
 (900262, (CURDATE() - INTERVAL 6 DAY), 'RLV173093', 910000, 1, NULL, TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '09:00:00'), 900006, 901370),
 (900263, (CURDATE() - INTERVAL 5 DAY), 'RLV232618', 390000, 1, NULL, TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '09:00:00'), 900006, 901371);
--- echeance : 11
+-- echeance : 18
 INSERT INTO `echeance` (`id`, `titre`, `categorie`, `frequence`, `jour_mois`, `jours_semaine`, `heure`, `decalage`, `debut`, `fin_le`, `fin_nombre`, `etapes`, `rappels`, `montant_estime`, `actif`, `cree_le`, `responsable_id`, `copie_id`, `entreprise_id`, `cree_par_id`, `heure_fin`, `fermeture`, `compte_id`, `categorie_depense`) VALUES
 (900001, 'Déclaration TVA et IBIC', 'fiscal', 'mois', 15, '[]', '09:00', 'avant', (CURDATE() - INTERVAL 200 DAY), NULL, NULL, '["Préparer le relevé des ventes", "Remplir la déclaration", "Payer à la DGI"]', '{"j5": true, "veille": true, "jour": true, "retard": true}', 350000, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900002, 900001, NULL, 900001, NULL, 0, 900004, NULL),
 (900002, 'Paiement du loyer', 'fournisseurs', 'mois', 5, '[]', '10:00', 'avant', (CURDATE() - INTERVAL 200 DAY), NULL, NULL, '["Virement au bailleur", "Classer le reçu"]', '{"j5": true, "veille": true, "jour": true, "retard": true}', 450000, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900002, NULL, NULL, 900001, NULL, 0, 900004, 'loyer'),
@@ -17213,7 +17213,14 @@ INSERT INTO `echeance` (`id`, `titre`, `categorie`, `frequence`, `jour_mois`, `j
 (900008, 'Nettoyage de l''atelier', 'entretien', 'jour', NULL, '[1, 2, 3, 4, 5, 6]', '13:00', 'avant', (CURDATE() - INTERVAL 200 DAY), NULL, NULL, '["Ramasser les chutes", "Dépoussiérer les machines"]', '{"j5": true, "veille": true, "jour": true, "retard": true}', NULL, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900012, NULL, NULL, 900001, '13:45', 0, NULL, NULL),
 (900009, 'Sanitaires', 'entretien', 'jour', NULL, '[1, 2, 3, 4, 5, 6]', '15:00', 'avant', (CURDATE() - INTERVAL 200 DAY), NULL, NULL, '["Laver", "Réapprovisionner savon et papier"]', '{"j5": true, "veille": true, "jour": true, "retard": true}', NULL, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900012, NULL, NULL, 900001, '15:30', 0, NULL, NULL),
 (900010, 'Fermeture', 'entretien', 'jour', NULL, '[1, 2, 3, 4, 5, 6]', '18:30', 'avant', (CURDATE() - INTERVAL 200 DAY), NULL, NULL, '["Éteindre les machines", "Couper la climatisation", "Fermer les fenêtres", "Fermer le portail"]', '{"j5": true, "veille": true, "jour": true, "retard": true}', NULL, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900012, NULL, NULL, 900001, '19:00', 1, NULL, NULL),
-(900011, 'Vidange du groupe électrogène', 'atelier', 'trimestre', 10, '[]', '08:00', 'avant', (CURDATE() - INTERVAL 200 DAY), NULL, NULL, '["Vidange", "Changer le filtre"]', '{"j5": true, "veille": true, "jour": true, "retard": true}', 60000, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900008, NULL, NULL, 900001, NULL, 0, 900001, NULL);
+(900011, 'Vidange du groupe électrogène', 'atelier', 'trimestre', 10, '[]', '08:00', 'avant', (CURDATE() - INTERVAL 200 DAY), NULL, NULL, '["Vidange", "Changer le filtre"]', '{"j5": true, "veille": true, "jour": true, "retard": true}', 60000, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900008, NULL, NULL, 900001, NULL, 0, 900001, NULL),
+(900012, 'Approvisionnement bâches et vinyle', 'stock', 'trimestre', 10, '[]', '09:00', 'avant', MAKEDATE(YEAR(CURDATE()), 1) + INTERVAL 0 MONTH + INTERVAL 9 DAY, NULL, NULL, '[]', '{"j5": true, "veille": true, "jour": true, "retard": true}', 1400000, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900009, NULL, NULL, 900001, NULL, 0, 900004, 'achat'),
+(900013, 'Approvisionnement encres', 'stock', 'trimestre', 10, '[]', '09:00', 'avant', MAKEDATE(YEAR(CURDATE()), 1) + INTERVAL 1 MONTH + INTERVAL 9 DAY, NULL, NULL, '[]', '{"j5": true, "veille": true, "jour": true, "retard": true}', 300000, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900008, NULL, NULL, 900001, NULL, 0, 900004, 'achat'),
+(900014, 'Maintenance annuelle des machines', 'atelier', 'annee', 10, '[]', '09:00', 'avant', MAKEDATE(YEAR(CURDATE()), 1) + INTERVAL 1 MONTH + INTERVAL 9 DAY, NULL, NULL, '[]', '{"j5": true, "veille": true, "jour": true, "retard": true}', 180000, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900008, NULL, NULL, 900001, NULL, 0, 900004, NULL),
+(900015, 'Renouvellement assurances et contrats', 'administratif', 'annee', 10, '[]', '09:00', 'avant', MAKEDATE(YEAR(CURDATE()), 1) + INTERVAL 2 MONTH + INTERVAL 9 DAY, NULL, NULL, '[]', '{"j5": true, "veille": true, "jour": true, "retard": true}', 250000, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900001, NULL, NULL, 900001, NULL, 0, 900004, NULL),
+(900016, 'Stock textile rentrée', 'stock', 'annee', 10, '[]', '09:00', 'avant', MAKEDATE(YEAR(CURDATE()), 1) + INTERVAL 6 MONTH + INTERVAL 9 DAY, NULL, NULL, '[]', '{"j5": true, "veille": true, "jour": true, "retard": true}', 2600000, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900009, NULL, NULL, 900001, NULL, 0, 900004, 'achat'),
+(900017, 'Campagne de fin d''année', 'commercial', 'annee', 10, '[]', '09:00', 'avant', MAKEDATE(YEAR(CURDATE()), 1) + INTERVAL 10 MONTH + INTERVAL 9 DAY, NULL, NULL, '[]', '{"j5": true, "veille": true, "jour": true, "retard": true}', NULL, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900005, NULL, NULL, 900001, NULL, 0, NULL, NULL),
+(900018, 'Inventaire annuel et clôture des comptes', 'stock', 'annee', 10, '[]', '09:00', 'avant', MAKEDATE(YEAR(CURDATE()), 1) + INTERVAL 11 MONTH + INTERVAL 9 DAY, NULL, NULL, '[]', '{"j5": true, "veille": true, "jour": true, "retard": true}', NULL, 1, TIMESTAMP(CURDATE() - INTERVAL 200 DAY, '09:00:00'), 900002, NULL, NULL, 900001, NULL, 0, NULL, NULL);
 -- tache : 193
 INSERT INTO `tache` (`id`, `titre`, `categorie`, `prevue_le`, `date_origine`, `raison_decalage`, `heure`, `statut`, `etapes`, `montant_estime`, `note`, `fait_le`, `rappels_envoyes`, `cree_le`, `echeance_id`, `responsable_id`, `copie_id`, `entreprise_id`, `fait_par_id`, `heure_fin`, `fermeture`, `commence_le`, `photo`, `controle`, `controle_le`, `controle_par_id`) VALUES
 (900001, 'Déclaration TVA et IBIC', 'fiscal', (CURDATE() - INTERVAL 45 DAY), (CURDATE() - INTERVAL 45 DAY), NULL, '09:00', 'fait', '[{"libelle": "Préparer le relevé des ventes", "fait": true}, {"libelle": "Remplir la déclaration", "fait": true}, {"libelle": "Payer à la DGI", "fait": true}]', 350000, NULL, TIMESTAMP(CURDATE() - INTERVAL 45 DAY, '09:05:00'), '["j5", "veille", "jour"]', TIMESTAMP(CURDATE() - INTERVAL 52 DAY, '06:00:00'), 900001, 900002, 900001, NULL, 900002, NULL, 0, TIMESTAMP(CURDATE() - INTERVAL 45 DAY, '09:00:00'), NULL, NULL, NULL, NULL),
@@ -17430,7 +17437,7 @@ INSERT INTO `rappel_whatsapp` (`id`, `cle`, `telephone`, `message`, `cree_le`, `
 (900017, 'veille', '60697880', CONCAT('Bonjour Moussa,\nRappel du planning Succès Imprim : « Tournée commerciale » est prévu demain, ', DATE_FORMAT(CURDATE() - INTERVAL 1 DAY, '%d/%m/%Y'), '.\nMerci de le cocher dans l''application une fois fait.'), TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '08:00:00'), TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '08:20:00'), 900054, 900005, 900001),
 (900018, 'jour', '60697880', CONCAT('Bonjour Moussa,\nRappel du planning Succès Imprim : « Tournée commerciale » est prévu aujourd''hui.\nMerci de le cocher dans l''application une fois fait.'), TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '08:00:00'), TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '08:20:00'), 900054, 900005, 900001),
 (900019, 'j5', '60697880', CONCAT('Bonjour Moussa,\nRappel du planning Succès Imprim : « Tournée commerciale » est prévu le ', DATE_FORMAT(CURDATE() - INTERVAL -3 DAY, '%d/%m/%Y'), ', dans 5 jours.\nMerci de le cocher dans l''application une fois fait.'), TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '08:00:00'), TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '08:20:00'), 900055, 900005, 900001);
--- jour_ferie : 7
+-- jour_ferie : 10
 INSERT IGNORE INTO `jour_ferie` (`id`, `jour`, `libelle`) VALUES
 (900001, CONCAT(YEAR(CURDATE()), '-01-01'), 'Jour de l''an'),
 (900002, CONCAT(YEAR(CURDATE()), '-01-20'), 'Fête de l''armée'),
@@ -17438,7 +17445,10 @@ INSERT IGNORE INTO `jour_ferie` (`id`, `jour`, `libelle`) VALUES
 (900004, CONCAT(YEAR(CURDATE()), '-05-01'), 'Fête du travail'),
 (900005, CONCAT(YEAR(CURDATE()), '-05-25'), 'Journée de l''Afrique'),
 (900006, CONCAT(YEAR(CURDATE()), '-09-22'), 'Fête de l''indépendance'),
-(900007, CONCAT(YEAR(CURDATE()), '-12-25'), 'Noël');
+(900007, CONCAT(YEAR(CURDATE()), '-12-25'), 'Noël'),
+(900008, CONCAT(YEAR(CURDATE()), '-03-20'), 'Korité (fin du Ramadan)'),
+(900009, CONCAT(YEAR(CURDATE()), '-05-27'), 'Tabaski'),
+(900010, CONCAT(YEAR(CURDATE()), '-08-26'), 'Maouloud');
 -- conversations : 6
 INSERT INTO `conversations` (`id`, `date_creation`, `date_dernier_message`, `jeton`) VALUES
 (900001, TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '09:00:00'), TIMESTAMP(CURDATE() - INTERVAL 31 DAY, '16:00:00'), '5b72ba31e16f7a8969716850d62052b4'),

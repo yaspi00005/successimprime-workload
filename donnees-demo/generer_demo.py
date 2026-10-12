@@ -1290,13 +1290,26 @@ for titre, cat, freq, jour_mois, jours_sem, h, hf, etapes, montant, resp, fermet
                 add('rappel_whatsapp', {'cle': cle, 'telephone': TEL[resp], 'message': message,
                                         'cree_le': T(max(quand, 0), 8), 'envoye_le': T(quand, 8, 20) if envoye else None, 'tache_id': tache, 'destinataire_id': U[resp],
                                         'envoye_par_id': U['kadiatou'] if envoye else None})
+# Échéances de l'année (planning annuel T03) : leurs tâches viennent de la commande app:planning:rappels.
+for titre, cat, freq, mois, montant, resp in [('Approvisionnement bâches et vinyle', 'stock', 'trimestre', 1, 1400000, 'ibrahim'),
+                                              ('Approvisionnement encres', 'stock', 'trimestre', 2, 300000, 'oumar'),
+                                              ('Maintenance annuelle des machines', 'atelier', 'annee', 2, 180000, 'oumar'),
+                                              ('Renouvellement assurances et contrats', 'administratif', 'annee', 3, 250000, 'kadiatou'),
+                                              ('Stock textile rentrée', 'stock', 'annee', 7, 2600000, 'ibrahim'),
+                                              ('Campagne de fin d\'année', 'commercial', 'annee', 11, None, 'moussa'),
+                                              ('Inventaire annuel et clôture des comptes', 'stock', 'annee', 12, None, 'fanta')]:
+    add('echeance', {'titre': titre, 'categorie': cat, 'frequence': freq, 'jour_mois': 10, 'jours_semaine': [], 'heure': '09:00', 'decalage': 'avant',
+                     'debut': S(f"MAKEDATE(YEAR(CURDATE()), 1) + INTERVAL {mois - 1} MONTH + INTERVAL 9 DAY"), 'fin_le': None, 'fin_nombre': None, 'etapes': [],
+                     'rappels': {'j5': True, 'veille': True, 'jour': True, 'retard': True}, 'montant_estime': montant, 'actif': 1, 'cree_le': T(200),
+                     'responsable_id': U[resp], 'copie_id': None, 'entreprise_id': None, 'cree_par_id': U['kadiatou'], 'heure_fin': None, 'fermeture': 0,
+                     'compte_id': (COMPTES['banque'] if montant >= 100000 else COMPTES['caisse']) if montant else None, 'categorie_depense': 'achat' if cat == 'stock' and montant else None})
 for titre, cat, d, resp in [('Renouveler la patente', 'fiscal', -20, 'fanta'), ('Commander l\'encre solvant', 'stock', -3, 'oumar'), ('Rendez-vous banque', 'administratif', -6, 'kadiatou'),
                             ('Relancer la mairie pour le paiement', 'commercial', 2, 'aminata')]:
     add('tache', {'titre': titre, 'categorie': cat, 'prevue_le': J(d), 'date_origine': None, 'raison_decalage': None, 'heure': '10:00', 'statut': 'a_faire' if d <= 0 else 'en_cours',
                   'etapes': [], 'montant_estime': None, 'note': None, 'fait_le': None, 'rappels_envoyes': [], 'cree_le': T(max(d, 0) + 10, 9), 'echeance_id': None, 'responsable_id': U[resp],
                   'copie_id': None, 'entreprise_id': None, 'fait_par_id': None, 'heure_fin': None, 'fermeture': 0, 'commence_le': None, 'photo': None, 'controle': None, 'controle_le': None, 'controle_par_id': None})
 for jour, libelle in [('01-01', 'Jour de l\'an'), ('01-20', 'Fête de l\'armée'), ('03-26', 'Journée des martyrs'), ('05-01', 'Fête du travail'), ('05-25', 'Journée de l\'Afrique'),
-                      ('09-22', 'Fête de l\'indépendance'), ('12-25', 'Noël')]:
+                      ('09-22', 'Fête de l\'indépendance'), ('12-25', 'Noël'), ('03-20', 'Korité (fin du Ramadan)'), ('05-27', 'Tabaski'), ('08-26', 'Maouloud')]:
     add('jour_ferie', {'jour': S(f"CONCAT(YEAR(CURDATE()), '-{jour}')"), 'libelle': libelle})
 
 # ------------------------------------- messagerie, notifications et journal

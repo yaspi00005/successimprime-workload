@@ -4,16 +4,19 @@ namespace App\Controller;
 
 use App\Entity\CompteTresorerie;
 use App\Entity\Echeance;
-use App\Entity\MouvementTresorerie;
 use App\Entity\Entreprise;
 use App\Entity\JourFerie;
+use App\Entity\MouvementTresorerie;
 use App\Entity\RappelWhatsApp;
 use App\Entity\Tache;
 use App\Entity\User;
 use App\Repository\EntrepriseRepository;
 use App\Service\Planning\Calendrier;
 use App\Service\Planning\Planning;
+use App\Service\Planning\PlanningAnnuel;
 use Doctrine\ORM\EntityManagerInterface;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -221,6 +224,40 @@ final class PlanningController extends AbstractController
                 'origine' => $o['origine']->format('Y-m-d'),
                 'raison' => $o['raison'],
             ], \array_slice($this->planning->calendrier()->occurrences($e->regle(), $du, $maintenant->modify(Planning::HORIZON)), 0, 3)),
+        ]);
+    }
+
+    /**
+     * Planning annuel (T03) : une ligne par échéance sur 12 mois, avec le
+     * budget. Réservé à la direction et à la finance.
+     */
+    #[Route('/annee/{annee}', name: 'annee', requirements: ['annee' => '20\d\d'], defaults: ['annee' => null], methods: ['GET'])]
+    public function annee(?int $annee, Request $request): Response
+    {
+        if (!$this->planning->direction() && !$this->planning->voitMontants()) {
+            throw $this->createAccessDeniedException('Le planning annuel est réservé à la direction et à la finance.');
+        }
+        $annee ??= (int) date('Y');
+        $donnees = PlanningAnnuel::annee($this->em->getRepository(Echeance::class)->findBy(['actif' => true]), $this->planning->calendrier(), $annee);
+        $vars = $donnees + [
+            'annee' => $annee,
+            'mois' => PlanningAnnuel::MOIS,
+            'voitMontants' => $this->planning->voitMontants(),
+            'categories' => Echeance::CATEGORIES,
+        ];
+        if ($request->query->get('format') !== 'pdf') {
+            return $this->render('planning/annee.html.twig', $vars);
+        }
+        $options = new Options();
+        $options->set('defaultFont', 'DejaVu Sans');
+        $pdf = new Dompdf($options);
+        $pdf->loadHtml($this->renderView('planning/annee_pdf.html.twig', $vars + ['genereLe' => new \DateTimeImmutable()]));
+        $pdf->setPaper('A4', 'landscape');
+        $pdf->render();
+
+        return new Response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="planning-annuel-'.$annee.'.pdf"',
         ]);
     }
 

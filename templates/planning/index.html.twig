@@ -12,6 +12,7 @@
 		{% for v, l in {jour: 'Jour', semaine: 'Semaine', mois: 'Mois'} %}
 			<a href="{{ path('app_planning_index', {vue: v, date: date|date('Y-m-d'), cat: categories}) }}" class="btn btn-sm {{ vue == v ? 'btn-primary' : 'btn-light si-btn-entete' }}"{{ vue == v ? ' aria-current="page"' }}>{{ l }}</a>
 		{% endfor %}
+		{% if is_granted('ROLE_ADMIN') or voitMontants %}<a href="{{ path('app_planning_annee', {annee: date|date('Y')}) }}" class="btn btn-sm btn-light si-btn-entete">Année</a>{% endif %}
 	</li>
 	<li class="nav-item dropdown">
 		<button class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-plus me-1"></i>Tâche</button>

@@ -4620,3 +4620,28 @@ body.si-param-bloque { overflow: hidden; }
 .si-pl-wa-fait .btn-success { background: #64748B; border-color: #64748B; }
 .si-push.card { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
 .si-push small { font-weight: 400; }
+
+/* Planning annuel (T03) */
+.si-pa { display: grid; gap: 16px; }
+.si-pa-carte { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 18px 20px; margin: 0; }
+.si-pa-defile { overflow-x: auto; }
+.si-pa-table { width: 100%; min-width: 980px; border-collapse: collapse; table-layout: fixed; }
+.si-pa-table th, .si-pa-table td { padding: 10px 4px; border-bottom: 1px solid #EEF2F7; text-align: center; font-size: 13px; }
+.si-pa-table thead th { color: #64748B; font-weight: 600; }
+.si-pa-nom { width: 260px; text-align: left !important; }
+.si-pa-nom a { color: #0F172A; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+.si-pa-nom a i { flex: 0 0 9px; height: 9px; border-radius: 50%; background: var(--si-pa-c); }
+.si-pa-nom a.si-pa-retour { color: #1E3A8A; font-weight: 600; }
+.si-pa-budget { width: 130px; text-align: right !important; color: #475569; white-space: nowrap; }
+.si-pa-table tbody td + td:not(.si-pa-budget) { border-left: 1px solid #F1F5F9; }
+.si-pa-bloc { display: inline-flex; align-items: center; justify-content: center; width: 80%; max-width: 46px; height: 26px; border-radius: 8px; background: var(--si-pa-c); color: #fff; font-size: 12px; font-weight: 700; }
+.si-pa-bande { display: block; height: 22px; border-radius: 8px; background: var(--si-pa-c); opacity: .35; }
+.si-pa-reperes td { vertical-align: top; }
+.si-pa-reperes td span { display: block; font-size: 10px; line-height: 1.25; word-break: normal; overflow-wrap: normal; hyphens: none; color: #92400E; background: #FEF3C7; border-radius: 6px; padding: 2px 4px; margin: 1px 0; }
+.si-pa-reperes th { font-size: 12px; }
+.si-pa-cartes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.si-pa-cartes .card { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); margin: 0; }
+.si-pa-cartes h2 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.si-pa-cartes p { font-size: 14px; color: #475569; }
+.si-pa-cartes .si-pa-total { font-size: 26px; color: #0F172A !important; font-weight: 800; margin: 0 0 4px; }
+@media (max-width: 991px) { .si-pa-cartes { grid-template-columns: 1fr; } }

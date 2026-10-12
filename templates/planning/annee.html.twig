@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Année {{ annee }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_planning_annee', {annee: annee - 1}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-chevron-left me-1"></i>{{ annee - 1 }}</a></li>
+	<li class="nav-item"><a href="{{ path('app_planning_annee', {annee: annee + 1}) }}" class="btn btn-light btn-sm si-btn-entete">{{ annee + 1 }}<i class="fas fa-chevron-right ms-1"></i></a></li>
+	<li class="nav-item"><a href="{{ path('app_planning_annee', {annee: annee, format: 'pdf'}) }}" target="_blank" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-download me-1"></i>PDF</a></li>
+	<li class="nav-item"><a href="{{ path('app_planning_echeance_nouvelle', {date: annee ~ '-01-01'}) }}" class="btn btn-danger btn-sm"><i class="fas fa-plus me-1"></i>Échéance</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-pa">
+		<section class="card si-pa-carte">
+			<div class="si-pa-defile">
+				<table class="si-pa-table">
+					<thead>
+						<tr>
+							<th scope="col" class="si-pa-nom"><a href="{{ path('app_planning_index') }}" class="si-pa-retour"><i class="fas fa-arrow-left me-1"></i>Calendrier</a></th>
+							{% for n, m in mois %}<th scope="col">{{ m }}</th>{% endfor %}
+							<th scope="col" class="si-pa-budget">Budget</th>
+						</tr>
+						<tr class="si-pa-reperes">
+							<th scope="row" class="si-pa-nom">Repères</th>
+							{% for n, m in mois %}<td>{% for r in reperes[n] %}<span>{{ r }}</span>{% endfor %}</td>{% endfor %}
+							<td></td>
+						</tr>
+					</thead>
+					<tbody>
+						{% for l in lignes %}
+							{% set c = categories[l.categorie][1] ?? '#64748B' %}
+							<tr style="--si-pa-c: {{ c }}">
+								<th scope="row" class="si-pa-nom"><a href="{{ path('app_planning_echeance', {id: l.echeance.id}) }}"><i></i>{{ l.titre }}</a></th>
+								{% if l.barre %}
+									<td colspan="12" class="si-pa-cases"><span class="si-pa-bande" title="{{ l.nombre }} fois dans l'année"></span></td>
+								{% else %}
+									{% for n, m in mois %}
+										<td>{% if l.mois[n] %}<span class="si-pa-bloc" title="{{ m }} : {{ l.mois[n] }} fois">{{ l.mois[n] > 1 ? l.mois[n] }}</span>{% endif %}</td>
+									{% endfor %}
+								{% endif %}
+								<td class="si-pa-budget">{{ voitMontants or l.montant == 0 ? l.budget : (l.nombre > 1 ? l.nombre ~ ' fois' : '—') }}</td>
+							</tr>
+						{% else %}
+							<tr><td colspan="14" class="si-ac-vide">Aucune échéance pour {{ annee }}. Ajoutez-en une avec « + Échéance ».</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			<p class="si-pg-note mb-0 mt-2">Les tâches de chaque jour (entretien, nettoyage des têtes…) sont dans le calendrier, pas ici. Les repères viennent de Planning › Jours fériés.</p>
+		</section>
+
+		<div class="si-pa-cartes">
+			<section class="card si-ac-bloc">
+				<h2>Approvisionnements proposés</h2>
+				<p class="mb-0">Les quantités seront calculées à partir de la consommation de l'année passée et des délais des fournisseurs, quand le stock aura un an de mouvements. En attendant, ajoutez chaque approvisionnement comme échéance (catégorie Stock), avec son montant.</p>
+			</section>
+			<section class="card si-ac-bloc">
+				<h2>Budget annuel</h2>
+				{% if voitMontants %}
+					<p class="si-pa-total">{{ budget|number_format(0, ',', ' ') }} F</p>
+					<p class="mb-0">dont achats (stock et fournisseurs) : <b>{{ achats|number_format(0, ',', ' ') }} F</b>. Chaque montant compte dans la {% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_tresorerie_index') }}">trésorerie prévisionnelle</a>{% else %}trésorerie prévisionnelle{% endif %} à sa date.</p>
+				{% else %}
+					<p class="mb-0">Les montants demandent le droit trésorerie.</p>
+				{% endif %}
+			</section>
+			<section class="card si-ac-bloc">
+				<h2>Rappels</h2>
+				<p class="mb-0">Chaque échéance crée ses tâches et ses rappels WhatsApp au bon moment{% if is_granted('ROLE_ADMIN') %} (<a href="{{ path('app_planning_rappels') }}">Rappels à envoyer</a>){% endif %}.</p>
+			</section>
+		</div>
+	</div>
+{% endblock %}

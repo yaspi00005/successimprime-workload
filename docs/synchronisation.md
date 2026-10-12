@@ -15,6 +15,7 @@
 | Clients | local → site, et site → local pour les **nouveaux** clients | Une modification faite en ligne d'un client du local n'est pas appliquée : elle est notée **Conflit** dans le journal, la fiche du local est gardée. |
 | Commandes et leurs lignes | local → site, et site → local pour les **nouvelles** commandes | Restent au local : note interne, agents, coût de revient, temps, machine, rebuts, notes d'atelier, fichiers. Une commande créée en ligne n'a pas d'agent. |
 | Finitions choisies sur une ligne (nom, prix appliqué, quantité, montant) | avec leur ligne | Elles partent dans la ligne et sont remplacées en bloc ; retirer une finition renvoie la ligne. |
+| BAT : état (en attente, validé, à corriger), fichiers de la commande (nom, type, taille) et suivi visible par le client (versions envoyées, ses demandes, validation) | local → site | Restent au local : contrôles et anomalies, noms de l'atelier, graphiste, temps, erreurs, points, chemin et notes des fichiers. |
 | Devis et leurs lignes, factures | local → site seulement | Restent au local : coûts, notes, comptabilisation, majoration, PDF du serveur. |
 | Paiements | local → site, et site → local pour les **nouveaux** paiements | Restent au local : compte de trésorerie, mouvement, justificatif, note, encaisseur. |
 
@@ -28,9 +29,13 @@
 
 Toute autre modification faite en ligne d'une fiche du local est notée **Conflit** et n'est pas appliquée ; le local renvoie sa version au cycle suivant, pour que le site redevienne identique.
 
+**Réponse du client à un BAT** : quand il valide ou demande une modification en ligne, ce geste part vers le local, qui le **rejoue avec ses propres règles** : points du graphiste, alerte à la prépresse avec le texte du client, état du BAT. Le site reprend ensuite l'état du local. Si le BAT n'attendait plus le client au local (l'atelier a déjà avancé), le geste est noté en conflit et une demande de modification est quand même transmise à la prépresse.
+
+**Fichiers** : seuls les fichiers préparés par l'atelier pour un BAT partent vers le site (pas les fichiers du client ni ceux de production). Envoi par morceaux de 4 Mo, 64 Mo au plus par cycle, repris là où il s'est arrêté après une coupure ; le site vérifie l'empreinte SHA-256 avant de ranger le fichier dans `var/uploads/commandes`. Un fichier n'est renvoyé que s'il change.
+
 **Numéros** : une commande, un devis ou un client créé en ligne reçoit le préfixe **W-** (W-CMD-…) ; il ne prend donc jamais un numéro du local.
 
-Étapes suivantes : fichiers (BAT, fichiers des clients) et réponses aux BAT faites en ligne ; modification des coordonnées par le client en ligne, à faire valider au local quand l'espace client le proposera. Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code SMS.
+Étapes suivantes : fichiers envoyés par le client en ligne (vers le local, avec le plan des fichiers lourds, docs/fichiers-lourds.md) ; modification des coordonnées par le client en ligne, à faire valider au local quand l'espace client le proposera. Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code SMS.
 
 ## Fonctionnement
 
@@ -94,4 +99,5 @@ Deux installations sur la même machine (local et copie « en ligne ») :
 - Un paiement créé en ligne puis passé « validé » en ligne arrive au local **en attente**, sans compte. La validation sans compte est refusée ; avec le compte Orange Money choisi, elle passe, et le site reçoit le statut validé.
 - Devis envoyé accepté en ligne : accepté au local, 12 personnes du rôle Devis prévenues. Devis brouillon passé « accepté » en ligne : conflit, gardé brouillon au local.
 - Finitions des lignes : 440 + 334 chargées ; un nom changé et une finition retirée au local arrivent en ligne ; un rechargement complet ne recrée aucune finition.
+- BAT : 517 BAT, 510 fichiers et leur suivi chargés. Un fichier de BAT de 9 Mo arrive en ligne en 3 morceaux, identique (même empreinte), et n'est pas renvoyé au cycle suivant. Le client demande une modification depuis son espace en ligne : au local le BAT passe « à corriger » et 4 personnes de la prépresse reçoivent son texte. Il valide un autre BAT : au local il passe « en cours », validé.
 - SMS coupés en ligne et ville changée en ligne : SMS repris au local (noté sur la fiche), ville refusée, puis remise en ligne au cycle suivant.

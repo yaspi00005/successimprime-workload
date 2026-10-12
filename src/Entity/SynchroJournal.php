@@ -21,6 +21,8 @@ class SynchroJournal
 {
     public const MAJ = 'maj';
     public const SUPPRESSION = 'suppr';
+    /** Geste du client fait en ligne, rejoué par le local avec ses propres règles (BAT). */
+    public const ACTION = 'action';
 
     /** Au-delà, l'élément est marqué bloqué et attend une décision sur l'écran Synchronisation. */
     public const TENTATIVES_MAX = 10;
@@ -59,8 +61,13 @@ class SynchroJournal
     #[ORM\Column(name: 'ignore_manuel', options: ['default' => false])]
     private bool $ignore = false;
 
-    public function __construct(string $type, string $publicId, string $operation, ?\DateTimeImmutable $le = null)
+    /** Contenu d'une action (les autres éléments sont relus au moment de l'envoi). */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $donnees = null;
+
+    public function __construct(string $type, string $publicId, string $operation, ?\DateTimeImmutable $le = null, ?array $donnees = null)
     {
+        $this->donnees = $donnees;
         $this->evenement = Uuid::v7()->toRfc4122();
         $this->type = $type;
         $this->publicId = $publicId;
@@ -73,6 +80,7 @@ class SynchroJournal
     public function getType(): string { return $this->type; }
     public function getPublicId(): string { return $this->publicId; }
     public function getOperation(): string { return $this->operation; }
+    public function getDonnees(): ?array { return $this->donnees; }
     public function getCreeLe(): \DateTimeImmutable { return $this->creeLe; }
     public function getEnvoyeLe(): ?\DateTimeImmutable { return $this->envoyeLe; }
     public function getTentatives(): int { return $this->tentatives; }

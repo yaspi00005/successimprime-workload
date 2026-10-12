@@ -5,6 +5,7 @@ namespace App\Service\Synchro;
 use App\Entity\SynchroJournal;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\Event\OnFlushEventArgs;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
 use Doctrine\ORM\PersistentCollection;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -58,8 +59,11 @@ final class JournalSynchro
             $this->ajouter($aNoter, $entite, SynchroJournal::MAJ);
         }
         foreach ($uow->getScheduledEntityUpdates() as $entite) {
-            if (CatalogueSynchro::parentDe($entite) !== null) {
-                $this->ajouter($aNoter, $entite, SynchroJournal::MAJ);
+            if (($enfant = CatalogueSynchro::enfantDe($entite)) !== null) {
+                // Le chronomètre du graphiste ne renvoie pas le BAT : seuls les champs envoyés comptent.
+                if (array_intersect(array_keys($uow->getEntityChangeSet($entite)), [...$enfant['champs'], ...array_keys($enfant['relations']), $enfant['parent']]) !== []) {
+                    $this->ajouter($aNoter, $entite, SynchroJournal::MAJ);
+                }
                 continue;
             }
             $type = CatalogueSynchro::typeDe($entite);
@@ -120,6 +124,19 @@ final class JournalSynchro
         }
         $meta->setFieldValue($entite, $champ, self::PREFIXE.$valeur);
         $uow->recomputeSingleEntityChangeSet($meta, $entite);
+    }
+
+    /**
+     * Sur le site : un geste du client (BAT validé, modification demandée)
+     * part vers le local, qui le rejoue avec ses propres règles. À appeler
+     * avant le flush qui enregistre ce geste.
+     */
+    public function noterAction(EntityManagerInterface $em, string $action, object $entite, array $donnees): void
+    {
+        if (!$this->enLigne || !$this->actif) {
+            return;
+        }
+        $em->persist(new SynchroJournal($action, $entite->getPublicId()->toRfc4122(), SynchroJournal::ACTION, null, $donnees));
     }
 
     public const PREFIXE = 'W-';

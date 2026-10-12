@@ -49,7 +49,7 @@ final class Serialiseur
 
         $resultat = ['champs' => $champs, 'relations' => $relations, 'listes' => $listes];
         foreach ($def['enfants'] ?? [] as $champ => $enfant) {
-            $resultat['enfants'][$champ] = $this->enfantsVersTableau($enfant, $meta->getFieldValue($entite, $champ) ?? []);
+            $resultat['enfants'][$champ] = $this->enfantsVersTableau($enfant, $this->enfantsDe($entite, $champ, $enfant));
         }
 
         return $resultat;
@@ -65,6 +65,9 @@ final class Serialiseur
             $ligne = ['champs' => [], 'relations' => []];
             foreach ($enfant['champs'] as $champ) {
                 $v = $meta->getFieldValue($e, $champ);
+                if (isset($enfant['filtres'][$champ]) && $v !== null) {
+                    $v = ($enfant['filtres'][$champ])($v);
+                }
                 $ligne['champs'][$champ] = $v === null ? null : Type::getType($meta->getTypeOfField($champ))->convertToDatabaseValue($v, $plateforme);
             }
             foreach ($enfant['relations'] as $champ => $cible) {
@@ -82,8 +85,11 @@ final class Serialiseur
     /** Remplace les enfants s'ils ont changé. */
     private function remplacerEnfants(object $entite, string $champ, array $enfant, array $voulus): void
     {
-        $collection = $this->em->getClassMetadata($entite::class)->getFieldValue($entite, $champ);
-        if (json_encode($this->enfantsVersTableau($enfant, $collection)) === json_encode($this->normaliserEnfants($enfant, $voulus))) {
+        $parentMeta = $this->em->getClassMetadata($entite::class);
+        // Sans collection côté parent (suivi d'un BAT, un pour un), les enfants se cherchent en base.
+        $collection = $parentMeta->hasAssociation($champ) ? $parentMeta->getFieldValue($entite, $champ) : null;
+        $actuels = $this->enfantsDe($entite, $champ, $enfant);
+        if (json_encode($this->enfantsVersTableau($enfant, $actuels)) === json_encode($this->normaliserEnfants($enfant, $voulus))) {
             return;
         }
         $meta = $this->em->getClassMetadata($enfant['classe']);
@@ -99,7 +105,7 @@ final class Serialiseur
             return implode('|', $k);
         };
         $existants = [];
-        foreach ($collection as $e) {
+        foreach ($actuels as $e) {
             $relations = [];
             foreach ($enfant['relations'] as $c => $cible) {
                 $lie = $meta->getFieldValue($e, $c);
@@ -111,13 +117,14 @@ final class Serialiseur
             $k = $cle($donnees['relations'] ?? []);
             $e = isset($existants[$k]) ? array_shift($existants[$k]) : null;
             if ($e === null) {
-                $e = new ($enfant['classe'])();
+                // Sans constructeur : certains enfants en exigent un (le suivi du BAT), les champs suivent.
+                $e = $meta->newInstance();
                 $meta->setFieldValue($e, $enfant['parent'], $entite);
                 foreach ($enfant['relations'] as $c => $cible) {
                     $id = $donnees['relations'][$c] ?? null;
                     $meta->setFieldValue($e, $c, $id === null ? null : $this->exiger($cible, $id));
                 }
-                $collection->add($e);
+                $collection?->add($e);
                 $this->em->persist($e);
             }
             foreach ($enfant['champs'] as $c) {
@@ -129,9 +136,27 @@ final class Serialiseur
         }
         foreach ($existants as $restants) {
             foreach ($restants as $ancien) {
-                $collection->removeElement($ancien); // orphanRemoval : supprimé au flush
+                if ($collection !== null) {
+                    $collection->removeElement($ancien); // orphanRemoval : supprimé au flush
+                } else {
+                    $this->em->remove($ancien);
+                }
             }
         }
+    }
+
+    /** @return list<object> */
+    private function enfantsDe(object $entite, string $champ, array $enfant): array
+    {
+        $meta = $this->em->getClassMetadata($entite::class);
+        if ($meta->hasAssociation($champ)) {
+            return array_values(($meta->getFieldValue($entite, $champ) ?? new \Doctrine\Common\Collections\ArrayCollection())->toArray());
+        }
+        if ($meta->getIdentifierValues($entite) === []) {
+            return []; // pas encore enregistrée : rien en base
+        }
+
+        return $this->em->getRepository($enfant['classe'])->findBy([$enfant['parent'] => $entite]);
     }
 
     /** Même forme que enfantsVersTableau, pour comparer à ce qui est reçu. */
@@ -171,6 +196,9 @@ final class Serialiseur
         if ($creee) {
             $entite = new ($def['classe'])();
             $meta->setFieldValue($entite, 'publicId', Uuid::fromString($publicId));
+            foreach ($def['aLaCreation'] ?? [] as $champ => $fabrique) {
+                $meta->setFieldValue($entite, $champ, $fabrique());
+            }
         }
         if (method_exists($entite, 'marquerCopieSynchronisee')) {
             $entite->marquerCopieSynchronisee(); // contrôles propres à la saisie sautés

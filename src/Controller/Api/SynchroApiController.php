@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Service\Synchro\AgentSynchro;
+use App\Service\Synchro\FichiersSynchro;
 use App\Service\Synchro\Signature;
 use App\Service\Synchro\Synchro;
 use Doctrine\DBAL\Connection;
@@ -66,6 +67,13 @@ final class SynchroApiController
         return $this->traiter($request, fn (array $donnees): array => [
             'evenements' => $this->synchro->lot(max(0, (int) ($donnees['apres'] ?? 0)), min(500, max(1, (int) ($donnees['max'] ?? Synchro::LOT)))),
         ]);
+    }
+
+    /** Morceau d'un fichier de BAT (FichiersSynchro). */
+    #[Route('/fichier', name: 'fichier')]
+    public function fichier(Request $request, FichiersSynchro $fichiers): Response
+    {
+        return $this->traiter($request, fn (array $donnees): array => $fichiers->recevoir($donnees));
     }
 
     #[Route('/accuser', name: 'accuser')]

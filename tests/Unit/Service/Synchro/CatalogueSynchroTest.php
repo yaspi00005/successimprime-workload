@@ -35,6 +35,8 @@ final class CatalogueSynchroTest extends TestCase
             'commande_ligne' => ['coutRevient', 'temps', 'machine', 'rebut', 'observations', 'fichier'],
             'devis_ligne' => ['coutRevient', 'temps', 'observation', 'fichier'],
             'facture' => ['comptabilisee', 'surfacturation', 'tauxSurfacturation', 'montantSurfacturation', 'motifSurfacturation', 'pdfFichier', 'pdfHash', 'observation'],
+            'fichier' => ['chemin', 'observation', 'montage', 'ajoutePar', 'jetonUpload', 'fichierSource'],
+            'controle' => ['anomalies', 'observation', 'correctionsEffectuees', 'controlePar', 'traitePar', 'validePar', 'envoyeProductionPar'],
             'paiement' => ['compteTresorerie', 'mouvementTresorerie', 'justificatif', 'observation', 'encaissePar', 'validePar'],
         ];
         foreach ($interdits as $type => $champs) {
@@ -87,6 +89,12 @@ final class CatalogueSynchroTest extends TestCase
         foreach (['commande_ligne', 'devis_ligne'] as $type) {
             self::assertNotContains('coutUnitaire', CatalogueSynchro::types()[$type]['enfants']['finitions']['champs']);
         }
+        // Suivi du BAT : ni graphiste, ni temps, ni points.
+        $conception = CatalogueSynchro::types()['controle']['enfants']['conception'];
+        foreach (['graphiste', 'secondes', 'tempsPrevu', 'erreurs', 'points', 'pointsPossibles', 'faits'] as $champ) {
+            self::assertNotContains($champ, $conception['champs'], $champ);
+        }
+        self::assertArrayHasKey('evenements', $conception['filtres']);
     }
 
     public function testNumeroDuSite(): void

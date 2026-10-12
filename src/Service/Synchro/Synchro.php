@@ -3,6 +3,7 @@
 namespace App\Service\Synchro;
 
 use App\Entity\Clients;
+use App\Entity\ControlePrePresse;
 use App\Entity\Devis;
 use App\Entity\ModificationClient;
 use App\Entity\SynchroEchange;
@@ -10,9 +11,11 @@ use App\Entity\SynchroEtat;
 use App\Entity\SynchroJournal;
 use App\Entity\SynchroRecu;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Service\EspaceClient\EspaceClient;
 use App\Service\NotificationService;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -38,6 +41,8 @@ final class Synchro
         private readonly Serialiseur $serialiseur,
         private readonly JournalSynchro $journal,
         private readonly NotificationService $notifications,
+        /** @var \Closure(): EspaceClient (différé : Parametres dépend de Synchro) */
+        #[AutowireServiceClosure(EspaceClient::class)] private readonly \Closure $espaceClient,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $url,
         #[Autowire('%env(SYNC_CLE)%')] private readonly string $cle,
@@ -90,7 +95,9 @@ final class Synchro
         $lot = [];
         foreach ($lignes as $l) {
             $cle = $l->getType().$l->getPublicId();
-            if (!\array_key_exists($cle, $contenus)) {
+            if ($l->getOperation() === SynchroJournal::ACTION) {
+                $contenus[$cle] = $l->getDonnees(); // un geste : son contenu est fixé au moment où il a été fait
+            } elseif (!\array_key_exists($cle, $contenus)) {
                 $entite = $l->getOperation() === SynchroJournal::MAJ ? $this->serialiseur->trouver($l->getType(), $l->getPublicId()) : null;
                 $contenus[$cle] = $entite === null ? null : $this->serialiseur->versTableau($l->getType(), $entite);
             }
@@ -216,6 +223,15 @@ final class Synchro
         if ($evenement === '' || $this->em->find(SynchroRecu::class, $evenement) !== null) {
             return [self::RESULTAT_DEJA, null, $titre];
         }
+        if ($operation === SynchroJournal::ACTION) {
+            return $this->journal->sansEcho(fn (): array => $this->em->wrapInTransaction(function () use ($evenement, $type, $publicId, $donnees, $titre): array {
+                $resultat = $this->appliquerAction($type, $publicId, $donnees ?? [], $titre);
+                $this->noterRecu($evenement);
+                $this->em->flush();
+
+                return $resultat;
+            }));
+        }
         if (!CatalogueSynchro::accepte($type, $this->enLigne)) {
             $this->noterRecu($evenement);
 
@@ -291,6 +307,43 @@ final class Synchro
             static fn (array $e, string $champ): bool => CatalogueSynchro::remonteePermise($type, $champ, $e[0], $e[1]),
             \ARRAY_FILTER_USE_BOTH,
         );
+    }
+
+    /**
+     * Geste du client fait en ligne, rejoué ici avec les règles du local
+     * (points du graphiste, alerte à la prépresse).
+     *
+     * @return array{0: string, 1: ?string, 2: string}
+     */
+    private function appliquerAction(string $action, string $publicId, array $donnees, string $titre): array
+    {
+        if ($this->enLigne || !\in_array($action, [EspaceClient::ACTION_BAT_VALIDE, EspaceClient::ACTION_BAT_MODIFIE], true)) {
+            return [self::RESULTAT_IGNORE, 'Geste inconnu de ce côté', $titre];
+        }
+        $controle = $this->serialiseur->trouver('controle', $publicId);
+        if (!$controle instanceof ControlePrePresse) {
+            throw new DependanceManquante('BAT '.substr($publicId, 0, 8).' inconnu au local');
+        }
+        $titre = 'BAT commande '.($controle->getCommandeDetail()?->getCommande()?->getNumero() ?? '?');
+        $le = new \DateTimeImmutable((string) ($donnees['le'] ?? 'now'));
+        if (ControlePrePresse::STATUT_EN_ATTENTE_BAT !== $controle->getStatut()) {
+            if ($action === EspaceClient::ACTION_BAT_MODIFIE) {
+                $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('Demande du client reçue après coup (%s) : « %s »', $titre, mb_substr((string) ($donnees['texte'] ?? ''), 0, 120)), 'app_controle_pre_presse_controler', ['id' => $controle->getId()]);
+            }
+            $this->em->persist(new SynchroJournal('controle', $publicId, SynchroJournal::MAJ)); // le site reprend l'état du local
+
+            return [self::RESULTAT_CONFLIT, 'Le BAT n\'attendait plus le client au local : état du local gardé', $titre];
+        }
+        if ($action === EspaceClient::ACTION_BAT_VALIDE) {
+            ($this->espaceClient)()->validerBat($controle, mb_substr((string) ($donnees['nom'] ?? 'client'), 0, 80), $le);
+            $message = 'BAT validé par le client en ligne';
+        } else {
+            ($this->espaceClient)()->modifierBat($controle, mb_substr((string) ($donnees['texte'] ?? ''), 0, 2000), $le);
+            $message = 'Modification demandée par le client en ligne';
+        }
+        $this->em->persist(new SynchroJournal('controle', $publicId, SynchroJournal::MAJ)); // suivi du BAT à jour en ligne
+
+        return [self::RESULTAT_OK, $message, $titre];
     }
 
     /** @param array<string, array{0: ?string, 1: ?string}> $remontees */

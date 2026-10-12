@@ -15,6 +15,7 @@ use App\Repository\EntrepriseRepository;
 use App\Service\NotificationService;
 use App\Service\Parametres\Parametres;
 use App\Service\SuiviCommandeService;
+use App\Service\Synchro\JournalSynchro;
 use App\Service\TableauProduction;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -28,12 +29,17 @@ final class EspaceClient
 {
     public const DEVIS_VISIBLES = [Devis::STATUT_ENVOYE, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_EXPIRE, Devis::STATUT_CONVERTI];
 
+    /** Gestes du client sur le site, rejoués au local (synchronisation). */
+    public const ACTION_BAT_VALIDE = 'bat_valide';
+    public const ACTION_BAT_MODIFIE = 'bat_modifie';
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly SuiviCommandeService $suivi,
         private readonly NotificationService $notifications,
         private readonly Parametres $parametres,
         private readonly EntrepriseRepository $entreprises,
+        private readonly JournalSynchro $journal,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projet,
     ) {
@@ -201,6 +207,14 @@ final class EspaceClient
         if (!$f instanceof CommandeDetailFichier || $f->getCommandeDetail()?->getCommande()?->getClients()?->getId() !== $client->getId() || !$f->isActif()) {
             return null;
         }
+        $chemin = $this->cheminSurDisque($f);
+
+        return null === $chemin ? null : ['chemin' => $chemin, 'nom' => (string) $f->getNomOriginal(), 'type' => (string) ($f->getTypeMime() ?: 'application/octet-stream')];
+    }
+
+    /** Où le fichier est rangé sur ce serveur (public/ ou var/uploads/commandes), ou null. */
+    public function cheminSurDisque(CommandeDetailFichier $f): ?string
+    {
         $candidats = [];
         if ('' !== trim((string) $f->getChemin())) {
             $candidats[] = [$this->projet.'/public', $this->projet.'/public/'.ltrim((string) $f->getChemin(), '/')];
@@ -213,7 +227,7 @@ final class EspaceClient
             $racine = realpath($racine);
             $reel = realpath($chemin);
             if (false !== $racine && false !== $reel && str_starts_with($reel, $racine.\DIRECTORY_SEPARATOR) && is_file($reel)) {
-                return ['chemin' => $reel, 'nom' => (string) $f->getNomOriginal(), 'type' => (string) ($f->getTypeMime() ?: 'application/octet-stream')];
+                return $reel;
             }
         }
 
@@ -228,6 +242,7 @@ final class EspaceClient
     {
         $ctl->setBatNecessaire(true)->setBatValide(true)->setCorrectionNecessaire(false)->setStatut(ControlePrePresse::STATUT_EN_COURS);
         $this->conception($ctl)?->valider($this->parametres->bareme(), $maintenant, 'par le client dans son espace · '.$nom);
+        $this->journal->noterAction($this->em, self::ACTION_BAT_VALIDE, $ctl, ['nom' => $nom, 'le' => $maintenant->format(\DATE_ATOM)]);
         $this->em->flush();
         $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('BAT validé par le client : %s, commande %s.', TableauProduction::titre($ctl->getCommandeDetail()), $ctl->getCommandeDetail()->getCommande()->getNumero()), 'app_controle_pre_presse_controler', ['id' => $ctl->getId()]);
         $this->em->flush();
@@ -237,6 +252,7 @@ final class EspaceClient
     {
         $ctl->setCorrectionNecessaire(true)->setStatut(ControlePrePresse::STATUT_CORRECTION_REQUISE);
         $this->conception($ctl)?->retour(Conception::RETOUR_CLIENT, $texte, $maintenant);
+        $this->journal->noterAction($this->em, self::ACTION_BAT_MODIFIE, $ctl, ['texte' => $texte, 'le' => $maintenant->format(\DATE_ATOM)]);
         $this->em->flush();
         $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('Modification demandée par le client sur %s (commande %s) : « %s »', TableauProduction::titre($ctl->getCommandeDetail()), $ctl->getCommandeDetail()->getCommande()->getNumero(), mb_substr($texte, 0, 120)), 'app_controle_pre_presse_controler', ['id' => $ctl->getId()]);
         $this->em->flush();

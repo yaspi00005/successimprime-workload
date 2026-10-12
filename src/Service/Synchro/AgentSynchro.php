@@ -38,6 +38,7 @@ final class AgentSynchro
         private readonly HttpClientInterface $http,
         private readonly NotificationService $notifications,
         private readonly EntityManagerInterface $em,
+        private readonly FichiersSynchro $fichiers,
         #[Autowire('%kernel.project_dir%')] private readonly string $projectDir,
     ) {
     }
@@ -61,7 +62,7 @@ final class AgentSynchro
             return ['statut' => 'occupe', 'envoyes' => 0, 'recus' => 0, 'conflits' => 0, 'message' => 'Un cycle est déjà en cours.'];
         }
 
-        $resume = ['statut' => 'ok', 'envoyes' => 0, 'recus' => 0, 'conflits' => 0, 'message' => null];
+        $resume = ['statut' => 'ok', 'envoyes' => 0, 'recus' => 0, 'conflits' => 0, 'fichiers' => 0, 'message' => null];
         $this->notees = [];
         try {
             if ($this->synchro->etat(self::ETAT_MISE_EN_ROUTE) === null) {
@@ -77,6 +78,14 @@ final class AgentSynchro
             $this->envoyer($resume);
             if ($resume['statut'] === 'ok') {
                 $this->recevoir($resume);
+            }
+            if ($resume['statut'] === 'ok') {
+                // Après les fiches : le site doit déjà connaître le fichier.
+                $bilan = $this->fichiers->envoyer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees));
+                $resume['fichiers'] = $bilan['envoyes'];
+                if ($bilan['envoyes'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, 'fichier', \sprintf('%d fichier%s de BAT (%s Mo)', $bilan['envoyes'], $bilan['envoyes'] > 1 ? 's' : '', number_format($bilan['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);
+                }
             }
         } catch (\Throwable $e) {
             $resume['statut'] = 'erreur';

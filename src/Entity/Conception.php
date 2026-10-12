@@ -280,6 +280,27 @@ class Conception
         return $minutes >= 60 ? \sprintf('%d h %02d', intdiv($minutes, 60), $minutes % 60) : $minutes.' min';
     }
 
+    /**
+     * Ce que le client peut voir de l'historique (site en ligne) : BAT
+     * envoyés, ses propres demandes et la validation, sans les détails
+     * internes (retard, nom du graphiste, erreurs).
+     *
+     * @param list<array{le: string, type: string, titre: string, detail: ?string}> $evenements
+     *
+     * @return list<array{le: string, type: string, titre: string, detail: ?string}>
+     */
+    public static function evenementsPublics(array $evenements): array
+    {
+        $publics = [];
+        foreach ($evenements as $e) {
+            if (\in_array($e['type'] ?? null, ['bat', 'retour', 'valide'], true)) {
+                $publics[] = ['le' => $e['le'], 'type' => $e['type'], 'titre' => $e['titre'], 'detail' => 'retour' === $e['type'] ? $e['detail'] : null];
+            }
+        }
+
+        return $publics;
+    }
+
     private function noter(\DateTimeImmutable $le, string $type, string $titre, ?string $detail): void
     {
         $this->evenements[] = ['le' => $le->format(\DATE_ATOM), 'type' => $type, 'titre' => $titre, 'detail' => $detail];

@@ -6,6 +6,9 @@ use App\Entity\CategorieProduit;
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFinition;
 use App\Entity\Commandes;
+use App\Entity\CommandeDetailFichier;
+use App\Entity\Conception;
+use App\Entity\ControlePrePresse;
 use App\Entity\CommandesDetails;
 use App\Entity\Devis;
 use App\Entity\DevisDetailFinition;
@@ -35,6 +38,8 @@ use App\Entity\TypesImpression;
  *
  * « numero » : le champ de numéro d'une fiche créée en ligne reçoit le
  * préfixe W- (web) sur le site, pour ne jamais prendre un numéro du local.
+ * « aLaCreation » : valeur fabriquée quand une copie est créée (champ
+ * obligatoire qui ne part pas).
  * « imposeAuLocal » : valeurs forcées quand le local reçoit une création
  * faite en ligne (un paiement saisi en ligne reste provisoire).
  * « remontees » : les seuls changements faits en ligne sur une fiche du
@@ -44,7 +49,8 @@ use App\Entity\TypesImpression;
  * non vide]. Le reste est un conflit.
  *
  * « enfants » : petites données sans identifiant public (finitions d'une
- * ligne) envoyées dans la ligne elle-même et remplacées en bloc.
+ * ligne, suivi du BAT) envoyées dans la donnée parente et mises à jour en
+ * bloc. « filtres » : fonction qui réduit un champ avant l'envoi.
  *
  * L'ordre du tableau est l'ordre de chargement initial : une donnée
  * vient après celles qu'elle référence.
@@ -55,7 +61,7 @@ final class CatalogueSynchro
     public const DEUX = 'deux';
 
     /**
-     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, imposeAuLocal?: array<string, mixed>, remontees?: array<string, ?array<string, list<string>>>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>}>}>
+     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, aLaCreation?: array<string, callable>, imposeAuLocal?: array<string, mixed>, remontees?: array<string, ?array<string, list<string>>>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>, filtres?: array<string, callable>}>}>
      */
     public static function types(): array
     {
@@ -131,6 +137,30 @@ final class CatalogueSynchro
                 'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
                 'enfants' => ['finitions' => self::finitionsDeLigne(CommandeDetailFinition::class, 'commandeDetail')],
+            ],
+            'fichier' => [
+                'classe' => CommandeDetailFichier::class, 'sens' => self::DESCENDANT, 'libelle' => 'Fichier', 'titre' => ['nomOriginal'],
+                // Les octets ne partent que pour les BAT (FichiersSynchro) ; chemin, notes et montage restent au local.
+                'champs' => [
+                    'nomOriginal', 'nomStockage', 'typeMime', 'taille', 'statut', 'origine', 'etat', 'actif', 'version', 'face', 'designation',
+                    'creeLe', 'termineLe', 'morceauxRecus', 'nombreMorceaux',
+                ],
+                'relations' => ['commandeDetail' => 'commande_ligne'], 'listes' => [],
+                // Le jeton d'envoi du local ne part pas : la copie en reçoit un neuf.
+                'aLaCreation' => ['jetonUpload' => static fn (): string => bin2hex(random_bytes(32))],
+            ],
+            'controle' => [
+                'classe' => ControlePrePresse::class, 'sens' => self::DESCENDANT, 'libelle' => 'BAT', 'titre' => ['statut'],
+                // Seul l'état du BAT part : les contrôles, anomalies et noms de l'atelier restent au local.
+                'champs' => ['statut', 'batNecessaire', 'batValide', 'correctionNecessaire', 'creeLe', 'valideLe'],
+                'relations' => ['commandeDetail' => 'commande_ligne'], 'listes' => ['fichiers' => 'fichier'],
+                'enfants' => ['conception' => [
+                    'classe' => Conception::class, 'parent' => 'controle',
+                    // Ni graphiste, ni temps, ni erreurs, ni points.
+                    'champs' => ['creeLe', 'versions', 'premierBatLe', 'dernierBatLe', 'valideLe', 'evenements'],
+                    'relations' => [],
+                    'filtres' => ['evenements' => [Conception::class, 'evenementsPublics']],
+                ]],
             ],
             'devis' => [
                 'classe' => Devis::class, 'sens' => self::DESCENDANT, 'libelle' => 'Devis', 'titre' => ['numero'],

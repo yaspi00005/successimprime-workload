@@ -24,6 +24,13 @@ security:
             security: false
 
 
+        # Synchronisation : seul l'agent de l'ERP local appelle ces adresses,
+        # chaque requête est signée (docs/synchronisation.md). Pas de session.
+        synchro:
+            pattern: ^/api/synchro/
+            stateless: true
+            security: false
+
         # Espace client (maquettes CX01 et CX04) : comptes séparés du
         # personnel, connexion par numéro de téléphone.
         espace:

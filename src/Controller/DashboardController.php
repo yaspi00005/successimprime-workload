@@ -7,6 +7,8 @@ use App\Entity\User;
 use App\Service\OperationsAValider;
 use App\Service\Planning\Planning;
 use App\Service\Sauvegarde\Sauvegardes;
+use App\Service\Synchro\AgentSynchro;
+use App\Service\Synchro\Synchro;
 use App\Service\TableauDeBordService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,6 +28,7 @@ final class DashboardController extends AbstractController
         OperationsAValider $operationsAValider,
         Planning $planning,
         Sauvegardes $sauvegardes,
+        Synchro $synchro,
     ): Response {
         /*
          * Un livreur n'a accès qu'aux livraisons : il n'a rien
@@ -78,11 +81,15 @@ final class DashboardController extends AbstractController
             }
         }
 
-        // Sauvegardes en retard ou en échec (docs/sauvegardes.md) : l'administrateur seul.
+        // Sauvegardes et synchronisation en panne : l'administrateur seul.
         if ($this->isGranted('ROLE_ADMIN')) {
             $alerte = $sauvegardes->etat($maintenant)['alerte'];
             if ($alerte !== null) {
                 array_unshift($donnees['alertes'], ['niveau' => 'danger', 'texte' => 'Sauvegardes : '.$alerte, 'route' => 'app_sauvegardes_index']);
+            }
+            $alerte = Synchro::alerte($synchro->estConfiguree() && !$synchro->estEnLigne(), $synchro->dateEtat(AgentSynchro::ETAT_REUSSITE), $synchro->dateEtat(AgentSynchro::ETAT_MISE_EN_ROUTE), $maintenant, $synchro->etat(AgentSynchro::ETAT_ERREUR));
+            if ($alerte !== null) {
+                array_unshift($donnees['alertes'], ['niveau' => 'danger', 'texte' => 'Synchronisation : '.$alerte, 'route' => 'app_synchronisation_index']);
             }
         }
 

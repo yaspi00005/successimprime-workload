@@ -28,6 +28,7 @@ use App\Service\CatalogueStock;
 use App\Service\EcranTv;
 use App\Service\NumerotationFactures;
 use App\Service\ProgrammeEcranTv;
+use App\Service\Synchro\Synchro;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 
@@ -52,6 +53,7 @@ final class Parametres
         private readonly AccesEnLigne $accesEnLigne,
         private readonly EcranTv $ecranTv,
         private readonly CatalogueStock $catalogueStock,
+        private readonly Synchro $synchro,
     ) {
     }
 
@@ -170,7 +172,7 @@ final class Parametres
             'messages' => self::nb($compter(ModeleMessage::class), 'modèle'),
             'ecran_tv' => 'playlist de '.ProgrammeEcranTv::dureeBoucle($this->ecranTv->programme()['scenes']).' s',
             'appareils' => $this->etatAppareils($badge),
-            'synchronisation' => 'pas encore active',
+            'synchronisation' => $this->synchro->estConfiguree() ? ($this->synchro->estEnLigne() ? 'site en ligne' : 'avec '.(parse_url($this->synchro->url(), \PHP_URL_HOST) ?: 'le site')) : 'pas encore réglée',
             'sauvegardes' => 'complète à '.self::heure($v['heure']).' · base toutes les '.$v['base_heures'].' h',
             'taches' => self::nb($compter(DecaissementRecurrent::class, ['actif' => true]), 'dépense récurrente', 'dépenses récurrentes'),
             default => '',

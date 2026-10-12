@@ -1,0 +1,14 @@
+{% set sens_libelles = {en_ligne: ['fa-arrow-up', 'local → en ligne'], local: ['fa-arrow-down', 'en ligne → local'], systeme: ['fa-plug', 'liaison']} %}
+{% set statuts = {ok: ['OK', 'si-pastille-vert'], reprise: ['Reprise auto', 'si-pastille-orange'], conflit: ['Conflit', 'si-pastille-orange'], erreur: ['Erreur', 'si-pastille-rouge']} %}
+<tr>
+	<td class="si-sy-heure">{{ e.le|date(avec_date|default(false) ? 'd/m H:i' : 'H:i') }}</td>
+	<td class="si-sy-sens"><i class="fas {{ sens_libelles[e.sens][0] }} me-1"></i>{{ sens_libelles[e.sens][1] }}</td>
+	<td>
+		{{ e.libelle }}
+		{% if e.message %}<div class="si-sy-message">{{ e.message }}</div>{% endif %}
+	</td>
+	<td>
+		<span class="si-pastille {{ statuts[e.statut][1] }}">{{ statuts[e.statut][0] }}</span>
+		{% if e.resolu %}<div class="si-sy-resolu">résolue</div>{% endif %}
+	</td>
+</tr>

@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Journal de synchronisation{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_synchronisation_index') }}" class="btn btn-outline-primary btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Synchronisation</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="card si-bloc">
+		<form method="get" class="si-sy-filtres">
+			<select name="sens" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Sens">
+				<option value="">Tous les sens</option>
+				{% for cle, libelle in {en_ligne: 'local → en ligne', local: 'en ligne → local', systeme: 'liaison'} %}
+					<option value="{{ cle }}" {{ sens == cle ? 'selected' }}>{{ libelle }}</option>
+				{% endfor %}
+			</select>
+			<select name="statut" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Statut">
+				<option value="">Tous les statuts</option>
+				{% for cle, libelle in {ok: 'OK', reprise: 'Reprise auto', conflit: 'Conflit', erreur: 'Erreur'} %}
+					<option value="{{ cle }}" {{ statut == cle ? 'selected' }}>{{ libelle }}</option>
+				{% endfor %}
+			</select>
+		</form>
+		{% if echanges is empty %}
+			<p class="text-muted py-4 text-center mb-0">Aucun échange.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0">
+					<thead><tr><th>Date</th><th>Sens</th><th>Donnée</th><th>Statut</th></tr></thead>
+					<tbody>
+						{% for e in echanges %}{% include 'synchronisation/_ligne.html.twig' with {avec_date: true} %}{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			<p class="text-muted small mt-2 mb-0">Les 300 derniers. L'historique est gardé 90 jours.</p>
+		{% endif %}
+	</div>
+{% endblock %}

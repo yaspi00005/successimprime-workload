@@ -254,9 +254,8 @@ final class CatalogueParametres
             ],
             'synchronisation' => [
                 'famille' => 'systeme', 'libelle' => 'Synchronisation', 'icone' => 'fa-sync-alt',
-                'roles' => ['ROLE_ADMIN'], 'route' => null, 'champs' => [],
-                'motsCles' => ['ERP local et site en ligne', 'Opérations provisoires'],
-                'note' => 'La synchronisation entre l\'ERP local et le serveur en ligne sera branchée avec le serveur (jalon J4).',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_synchronisation_index', 'champs' => [],
+                'motsCles' => ['ERP local et site en ligne', 'Opérations provisoires', 'Derniers échanges', 'Conflits'],
             ],
             'sauvegardes' => [
                 'famille' => 'systeme', 'libelle' => 'Sauvegardes', 'icone' => 'fa-save',

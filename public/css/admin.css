@@ -4654,3 +4654,28 @@ body.si-param-bloque { overflow: hidden; }
 .si-sg-echec:last-child { border-bottom: 0; }
 .si-sg-echec span:first-child { flex: 0 0 auto; color: #5B6575; white-space: nowrap; }
 .si-sg-echec span:last-child { color: #C40D22; word-break: break-word; }
+
+/* ---------- Réglages › Sécurité › Synchronisation (maquette 39) ---------- */
+.si-sy-heure { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.si-sy-sens { white-space: nowrap; color: #5B6575; }
+.si-sy-sens i { color: #0F4590; }
+.si-sy-message { font-size: .8rem; color: #5B6575; margin-top: .15rem; }
+.si-sy-resolu { font-size: .72rem; color: #178444; margin-top: .2rem; }
+.si-sy-liaison { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid #EEF0F3; }
+.si-sy-liaison strong { display: block; color: #12213A; }
+.si-sy-liaison span { font-size: .82rem; color: #5B6575; }
+.si-sy-point { flex: 0 0 auto; width: 1.6rem; height: 1.6rem; border-radius: 50%; position: relative; }
+.si-sy-point::after { content: ''; position: absolute; inset: .5rem; border-radius: 50%; }
+.si-sy-point.vert { background: #E2F6EA; } .si-sy-point.vert::after { background: #1FA855; }
+.si-sy-point.rouge { background: #FDE4E7; } .si-sy-point.rouge::after { background: #DE1028; }
+.si-sy-point.orange { background: #FFF1DC; } .si-sy-point.orange::after { background: #F08C00; }
+.si-sy-point.gris { background: #EEF0F3; } .si-sy-point.gris::after { background: #A0A8B5; }
+.si-sy-bloques { border: 2px solid #FDBA74 !important; }
+.si-sy-bloque { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid #EEF0F3; }
+.si-sy-bloque:last-child { border-bottom: 0; }
+.si-sy-filtres { display: flex; gap: .5rem; margin-bottom: .9rem; flex-wrap: wrap; }
+.si-sy-filtres select { width: auto; }
+.si-menu-synchro { margin: 1.5rem 1rem 1rem; padding: .6rem .75rem; border-radius: .7rem; background: rgba(255, 255, 255, .08); color: #DCE6F5; font-size: .75rem; line-height: 1.35; display: block; }
+.si-menu-synchro:hover { color: #fff; }
+.si-menu-synchro b { color: #5BE38F; font-weight: 600; }
+.si-menu-synchro.panne b { color: #FF8A98; }

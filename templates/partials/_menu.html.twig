@@ -34,5 +34,14 @@
 				{% endif %}
 			{% endfor %}
 		</ul>
+
+		{% if is_granted('ROLE_ADMIN') %}
+			{% set synchro = pastille_synchro() %}
+			{% if synchro %}
+				<a href="{{ path('app_synchronisation_index') }}" class="si-menu-synchro nav-text {{ synchro.panne ? 'panne' }}">
+					<b>● {{ synchro.panne ? 'Synchro en panne' : 'Synchronisé' }}</b> avec {{ synchro.site }}<br>{{ synchro.reussite ? synchro.reussite|temps_ecoule : 'jamais' }}
+				</a>
+			{% endif %}
+		{% endif %}
 	</div>
 </div>

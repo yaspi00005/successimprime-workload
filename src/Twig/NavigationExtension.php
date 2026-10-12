@@ -82,7 +82,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Paie', 'route' => 'app_paie_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_paie_']],
             ['libelle' => 'Pointage', 'route' => 'app_pointage_jour', 'role' => 'ROLE_RH', 'prefixes' => ['app_pointage_']],
             ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
-            ['libelle' => 'Sécurité', 'route' => 'app_appareils_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_appareils_', 'app_sauvegardes_']],
+            ['libelle' => 'Sécurité', 'route' => 'app_appareils_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_appareils_', 'app_sauvegardes_', 'app_synchronisation_']],
             ['libelle' => 'Écran TV', 'route' => 'app_ecran_tv_reglages', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_ecran_tv_']],
         ],
     ];
@@ -156,6 +156,7 @@ final class NavigationExtension extends AbstractExtension
         'app_ecran_tv_' => 'reglages',
         'app_appareils_' => 'reglages',
         'app_sauvegardes_' => 'reglages',
+        'app_synchronisation_' => 'reglages',
         'app_entreprises_' => 'reglages',
         'app_reglages_parametres_' => 'reglages',
         'app_pointage_' => 'reglages',

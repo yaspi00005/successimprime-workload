@@ -97,6 +97,40 @@ final class Serialiseur
         return [$entite, $creee];
     }
 
+    /**
+     * Champs dont la valeur reçue diffère de la donnée, sous leur forme
+     * envoyée (chaîne ou null) : [champ => [ici, reçu]].
+     *
+     * @return array<string, array{0: ?string, 1: ?string}>
+     */
+    public function differences(string $type, object $entite, array $donnees): array
+    {
+        $ici = $this->versTableau($type, $entite)['champs'];
+        $ecarts = [];
+        foreach ($donnees['champs'] ?? [] as $champ => $recu) {
+            if (!\array_key_exists($champ, $ici)) {
+                continue;
+            }
+            $a = $ici[$champ] === null ? null : (string) $ici[$champ];
+            $b = $recu === null ? null : (string) $recu;
+            if ($a !== $b) {
+                $ecarts[$champ] = [$a, $b];
+            }
+        }
+
+        return $ecarts;
+    }
+
+    /** Écrit seulement ces champs (forme envoyée) dans la donnée. Ne flushe pas. */
+    public function ecrireChamps(string $type, object $entite, array $valeurs): void
+    {
+        $meta = $this->em->getClassMetadata(CatalogueSynchro::types()[$type]['classe']);
+        $plateforme = $this->em->getConnection()->getDatabasePlatform();
+        foreach ($valeurs as $champ => $brut) {
+            $meta->setFieldValue($entite, $champ, $brut === null ? null : Type::getType($meta->getTypeOfField($champ))->convertToPHPValue($brut, $plateforme));
+        }
+    }
+
     public function trouver(string $type, string $publicId): ?object
     {
         if (!Uuid::isValid($publicId)) {

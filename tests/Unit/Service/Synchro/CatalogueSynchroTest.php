@@ -43,9 +43,8 @@ final class CatalogueSynchroTest extends TestCase
                 self::assertArrayNotHasKey($champ, $types[$type]['relations'], $type.'.'.$champ);
             }
         }
-        // Les devis et factures ne se créent qu'au local.
+        // Les factures ne remontent jamais.
         self::assertFalse(CatalogueSynchro::accepte('facture', false));
-        self::assertFalse(CatalogueSynchro::accepte('devis', false));
     }
 
     public function testUnPaiementSaisiEnLigneResteAValider(): void
@@ -54,6 +53,25 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame(Paiements::STATUT_EN_ATTENTE, $impose['statut']);
         self::assertArrayHasKey('dateValidation', $impose);
         self::assertTrue(CatalogueSynchro::accepte('paiement', false));
+    }
+
+    public function testDecisionsDuClientEnLigne(): void
+    {
+        // Accepter un devis envoyé : repris au local. Le reste : conflit.
+        self::assertTrue(CatalogueSynchro::remonteePermise('devis', 'statut', 'envoye', 'accepte'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('devis', 'statut', 'brouillon', 'accepte'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('devis', 'statut', 'envoye', 'converti'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('devis', 'totalTtc', '1000', '1'));
+        self::assertTrue(CatalogueSynchro::remonteePermise('client', 'recevoirSms', '1', '0'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('client', 'ville', 'Bamako', 'Kati'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('commande', 'totalTtc', '1', '0'));
+
+        // Le site envoie les devis (pour l'acceptation), mais un devis créé en ligne n'est pas repris.
+        self::assertTrue(CatalogueSynchro::envoye('devis', true));
+        self::assertFalse(CatalogueSynchro::envoye('facture', true));
+        self::assertFalse(CatalogueSynchro::creationAcceptee('devis', false));
+        self::assertTrue(CatalogueSynchro::creationAcceptee('paiement', false));
+        self::assertTrue(CatalogueSynchro::creationAcceptee('devis', true));
     }
 
     public function testNumeroDuSite(): void

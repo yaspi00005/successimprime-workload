@@ -35,6 +35,10 @@ use App\Entity\TypesImpression;
  * préfixe W- (web) sur le site, pour ne jamais prendre un numéro du local.
  * « imposeAuLocal » : valeurs forcées quand le local reçoit une création
  * faite en ligne (un paiement saisi en ligne reste provisoire).
+ * « remontees » : les seuls changements faits en ligne sur une fiche du
+ * local que le local applique, car ce sont des décisions du client (accepter
+ * un devis envoyé, ses préférences SMS). Champ => null (toute valeur) ou
+ * [valeur actuelle au local => valeurs permises]. Le reste est un conflit.
  *
  * L'ordre du tableau est l'ordre de chargement initial : une donnée
  * vient après celles qu'elle référence.
@@ -45,7 +49,7 @@ final class CatalogueSynchro
     public const DEUX = 'deux';
 
     /**
-     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, imposeAuLocal?: array<string, mixed>}>
+     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, imposeAuLocal?: array<string, mixed>, remontees?: array<string, ?array<string, list<string>>>}>
      */
     public static function types(): array
     {
@@ -98,6 +102,7 @@ final class CatalogueSynchro
                     'moyenPrefere', 'entiteFacturation',
                 ],
                 'relations' => [], 'listes' => [], 'numero' => 'code',
+                'remontees' => ['recevoirSms' => null, 'consentementMarketingLe' => null],
             ],
             'commande' => [
                 'classe' => Commandes::class, 'sens' => self::DEUX, 'libelle' => 'Commande', 'titre' => ['numero'],
@@ -127,6 +132,7 @@ final class CatalogueSynchro
                     'tokenAuthenticite', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation', 'telephoneFacturation', 'emailFacturation',
                 ],
                 'relations' => ['clients' => 'client', 'commande' => 'commande'], 'listes' => [], 'numero' => 'numero',
+                'remontees' => ['statut' => [Devis::STATUT_ENVOYE => [Devis::STATUT_ACCEPTE]]],
             ],
             'devis_ligne' => [
                 'classe' => DevisDetails::class, 'sens' => self::DESCENDANT, 'libelle' => 'Ligne de devis', 'titre' => ['designation'],
@@ -175,21 +181,47 @@ final class CatalogueSynchro
 
     /**
      * Ce côté-ci doit-il envoyer ce type ? Le local envoie tout ; le site
-     * n'envoie que les types à double sens.
+     * n'envoie que les types à double sens ou qui ont des remontées.
      */
     public static function envoye(string $type, bool $enLigne): bool
     {
-        $sens = self::types()[$type]['sens'] ?? null;
-
-        return $sens !== null && (!$enLigne || $sens === self::DEUX);
+        return isset(self::types()[$type]) && (!$enLigne || self::remonte($type));
     }
 
     /** Ce côté-ci accepte-t-il ce type venant de l'autre ? */
     public static function accepte(string $type, bool $enLigne): bool
     {
-        $sens = self::types()[$type]['sens'] ?? null;
+        return isset(self::types()[$type]) && ($enLigne || self::remonte($type));
+    }
 
-        return $sens !== null && ($enLigne || $sens === self::DEUX);
+    /** Une fiche créée en ligne est-elle reprise au local ? */
+    public static function creationAcceptee(string $type, bool $enLigne): bool
+    {
+        return $enLigne || (self::types()[$type]['sens'] ?? null) === self::DEUX;
+    }
+
+    /**
+     * Le changement d'un champ fait en ligne est-il une remontée permise ?
+     * Valeurs comparées sous leur forme envoyée (chaîne).
+     */
+    public static function remonteePermise(string $type, string $champ, ?string $auLocal, ?string $enLigne): bool
+    {
+        $regles = self::types()[$type]['remontees'] ?? [];
+        if (!\array_key_exists($champ, $regles)) {
+            return false;
+        }
+        if ($regles[$champ] === null) {
+            return true;
+        }
+
+        return \in_array($enLigne, $regles[$champ][(string) $auLocal] ?? [], true);
+    }
+
+    private static function remonte(string $type): bool
+    {
+        $t = self::types()[$type];
+
+        return $t['sens'] === self::DEUX || ($t['remontees'] ?? []) !== [];
     }
 
     /** Les champs dont un changement doit partir. */

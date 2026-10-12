@@ -2,11 +2,15 @@
 
 namespace App\Service\Synchro;
 
+use App\Entity\Clients;
+use App\Entity\Devis;
+use App\Entity\ModificationClient;
 use App\Entity\SynchroEchange;
 use App\Entity\SynchroEtat;
 use App\Entity\SynchroJournal;
 use App\Entity\SynchroRecu;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Service\NotificationService;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
@@ -33,6 +37,7 @@ final class Synchro
         private readonly ManagerRegistry $doctrine,
         private readonly Serialiseur $serialiseur,
         private readonly JournalSynchro $journal,
+        private readonly NotificationService $notifications,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $url,
         #[Autowire('%env(SYNC_CLE)%')] private readonly string $cle,
@@ -222,12 +227,28 @@ final class Synchro
                 $existante = $this->serialiseur->trouver($type, $publicId);
                 $resultat = [self::RESULTAT_OK, null, $titre];
 
-                if (!$this->enLigne && $existante !== null) {
+                $ecarts = !$this->enLigne && $existante !== null && $operation === SynchroJournal::MAJ && $donnees !== null
+                    ? $this->serialiseur->differences($type, $existante, $donnees) : [];
+                $remontees = $this->remontees($type, $ecarts);
+                if (!$this->enLigne && $existante !== null && ($operation === SynchroJournal::SUPPRESSION || \count($ecarts) > \count($remontees))) {
+                    // Ce qui n'est pas repris au local est remis en ligne : la fiche du local repart.
+                    $this->em->persist(new SynchroJournal($type, $publicId, SynchroJournal::MAJ));
+                }
+                if ($remontees !== []) {
+                    // Décision du client prise en ligne (devis accepté, SMS) : appliquée au local.
+                    $this->serialiseur->ecrireChamps($type, $existante, array_map(static fn (array $e): ?string => $e[1], $remontees));
+                    $this->apresRemontee($existante, $remontees);
+                    $resultat = [self::RESULTAT_OK, 'Décision du client en ligne : '.implode(', ', array_keys($remontees)), Serialiseur::titre($type, $existante)];
+                } elseif (!$this->enLigne && $existante !== null && $operation === SynchroJournal::MAJ && $ecarts === []) {
+                    $resultat = [self::RESULTAT_IGNORE, 'Déjà à jour', $titre];
+                } elseif (!$this->enLigne && $existante !== null) {
                     // Le local est maître : une modification ou une suppression faite en ligne
                     // d'une fiche qu'il possède n'est pas appliquée, elle est signalée.
                     $resultat = [self::RESULTAT_CONFLIT, $operation === SynchroJournal::SUPPRESSION
                         ? 'Supprimée en ligne : gardée au local'
                         : 'Modifiée en ligne : la fiche du local est gardée', Serialiseur::titre($type, $existante)];
+                } elseif ($existante === null && !CatalogueSynchro::creationAcceptee($type, $this->enLigne)) {
+                    $resultat = [self::RESULTAT_IGNORE, 'Créée en ligne : ce type ne se crée qu\'au local', $titre];
                 } elseif ($operation === SynchroJournal::SUPPRESSION) {
                     if ($existante !== null) {
                         $this->em->remove($existante);
@@ -253,6 +274,39 @@ final class Synchro
                 return $resultat;
             });
         });
+    }
+
+    /**
+     * Changements faits en ligne que le local accepte (CatalogueSynchro
+     * « remontees ») : [champ => [au local, en ligne]].
+     *
+     * @param array<string, array{0: ?string, 1: ?string}> $ecarts
+     *
+     * @return array<string, array{0: ?string, 1: ?string}>
+     */
+    private function remontees(string $type, array $ecarts): array
+    {
+        return array_filter(
+            $ecarts,
+            static fn (array $e, string $champ): bool => CatalogueSynchro::remonteePermise($type, $champ, $e[0], $e[1]),
+            \ARRAY_FILTER_USE_BOTH,
+        );
+    }
+
+    /** @param array<string, array{0: ?string, 1: ?string}> $remontees */
+    private function apresRemontee(object $entite, array $remontees): void
+    {
+        if ($entite instanceof Devis && Devis::STATUT_ACCEPTE === ($remontees['statut'][1] ?? null)) {
+            $this->notifications->notifierRoles(['ROLE_DEVIS'], \sprintf('Devis %s accepté par le client dans son espace : à transformer en commande.', $entite->getNumero()), 'app_devis_show', ['id' => $entite->getId()]);
+        }
+        if ($entite instanceof Clients) {
+            $libelles = ['recevoirSms' => 'Recevoir les SMS', 'consentementMarketingLe' => 'Accord pour les offres'];
+            $lisible = static fn (string $champ, ?string $v): ?string => 'recevoirSms' === $champ && null !== $v ? ('1' === $v ? 'Oui' : 'Non') : $v;
+            foreach ($remontees as $champ => [$avant, $apres]) {
+                [$avant, $apres] = [$lisible($champ, $avant), $lisible($champ, $apres)];
+                $this->em->persist(new ModificationClient($entite, $libelles[$champ] ?? $champ, 'contacts', $avant, $apres, new \DateTimeImmutable(), null, 'espace_client', 'Le client, en ligne'));
+            }
+        }
     }
 
     private function noterRecu(string $evenement): void

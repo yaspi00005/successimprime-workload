@@ -19,9 +19,16 @@
 
 **Paiement saisi en ligne** : il arrive au local **toujours en attente**, quel que soit son statut en ligne, sans compte et sans encaisseur (« Client, en ligne »). Il apparaît dans Finances › À valider, où le responsable choisit le compte qui a reçu l'argent avant de valider ; sans compte choisi, la validation est refusée. Une fois validé, le statut repart vers le site.
 
+**Décisions du client prises en ligne** : le local les applique, car elles appartiennent au client. Ce sont les seules modifications faites en ligne qu'il reprend (`remontees` dans `CatalogueSynchro`) :
+
+- accepter un devis **envoyé** : le devis passe « accepté » au local et les personnes qui ont le rôle Devis sont prévenues (« à transformer en commande ») ;
+- ses préférences : recevoir les SMS, accord pour les offres. Le changement est noté dans le journal de la fiche client (« Espace client »).
+
+Toute autre modification faite en ligne d'une fiche du local est notée **Conflit** et n'est pas appliquée ; le local renvoie sa version au cycle suivant, pour que le site redevienne identique.
+
 **Numéros** : une commande, un devis ou un client créé en ligne reçoit le préfixe **W-** (W-CMD-…) ; il ne prend donc jamais un numéro du local.
 
-Étapes suivantes : modifications de fiche client faites en ligne et acceptation d'un devis en ligne, qui attendront une validation au local ; finitions choisies sur les lignes ; fichiers.
+Étapes suivantes : fichiers (BAT, fichiers des clients) et réponses aux BAT faites en ligne ; finitions choisies sur les lignes ; modification des coordonnées par le client en ligne, à faire valider au local quand l'espace client le proposera. Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code SMS.
 
 ## Fonctionnement
 
@@ -83,3 +90,5 @@ Deux installations sur la même machine (local et copie « en ligne ») :
 - Chargement initial complet : 6 560 données (812 commandes, 1 444 lignes, 654 devis, 1 123 lignes de devis, 618 factures, 1 029 paiements), environ 110 par seconde. Nombres identiques des deux côtés ; en ligne, coûts de revient à zéro, aucun compte de trésorerie, encaisseur, note ni majoration.
 - Une commande créée en ligne reçoit le numéro W-CMD-… et arrive au local sans agent.
 - Un paiement créé en ligne puis passé « validé » en ligne arrive au local **en attente**, sans compte. La validation sans compte est refusée ; avec le compte Orange Money choisi, elle passe, et le site reçoit le statut validé.
+- Devis envoyé accepté en ligne : accepté au local, 12 personnes du rôle Devis prévenues. Devis brouillon passé « accepté » en ligne : conflit, gardé brouillon au local.
+- SMS coupés en ligne et ville changée en ligne : SMS repris au local (noté sur la fiche), ville refusée, puis remise en ligne au cycle suivant.

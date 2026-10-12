@@ -37,6 +37,7 @@ final class ReglagesExtension extends AbstractExtension
             new TwigFilter('nom_pointage', Pointages::nom(...)),
             // « samedi 10 octobre 2026 » (motif ICU simplifié, voir dateFr).
             new TwigFilter('date_fr', self::dateFr(...)),
+            new TwigFilter('taille_octets', \App\Service\Sauvegarde\Sauvegardes::taille(...)),
         ];
     }
 

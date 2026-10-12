@@ -13,6 +13,7 @@ parameters:
         reclamations_directory: '%kernel.project_dir%/public/uploads/reclamations'
         chat_directory: '%kernel.project_dir%/public/uploads/chat'
         app.whatsapp_template_document: '%env(WHATSAPP_TEMPLATE_DOCUMENT)%'
+        app.sauvegarde_dir: '%kernel.project_dir%/var/sauvegardes'
 
 services:
     # default configuration for services in *this* file
@@ -36,6 +37,16 @@ services:
             $clePublique: '%env(VAPID_PUBLIC_KEY)%'
             $clePrivee: '%env(VAPID_PRIVATE_KEY)%'
             $sujet: '%env(VAPID_SUBJECT)%'
+
+    App\Service\Sauvegarde\DumpBase:
+        arguments:
+            $mysqldump: '%env(SAUVEGARDE_MYSQLDUMP)%'
+
+    App\Service\Sauvegarde\Sauvegardes:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+            $dossier: '%env(default:app.sauvegarde_dir:SAUVEGARDE_DIR)%'
+            $copie: '%env(SAUVEGARDE_COPIE_DIR)%'
 
     App\Service\OrangeSmsService:
         arguments:

@@ -171,7 +171,7 @@ final class Parametres
             'ecran_tv' => 'playlist de '.ProgrammeEcranTv::dureeBoucle($this->ecranTv->programme()['scenes']).' s',
             'appareils' => $this->etatAppareils($badge),
             'synchronisation' => 'pas encore active',
-            'sauvegardes' => 'chaque nuit à '.self::heure($v['heure']),
+            'sauvegardes' => 'complète à '.self::heure($v['heure']).' · base toutes les '.$v['base_heures'].' h',
             'taches' => self::nb($compter(DecaissementRecurrent::class, ['actif' => true]), 'dépense récurrente', 'dépenses récurrentes'),
             default => '',
         };

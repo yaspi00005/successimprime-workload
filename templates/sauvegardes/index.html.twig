@@ -1,0 +1,138 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Sauvegardes{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<form method="post" action="{{ path('app_sauvegardes_maintenant') }}" class="d-inline js-sauvegarder">
+			<input type="hidden" name="_token" value="{{ csrf_token('sauvegarde') }}">
+			<button class="btn btn-primary btn-sm si-btn-entete"><i class="fas fa-save me-1"></i>Sauvegarder la base maintenant</button>
+		</form>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% set derniere = etat.derniere %}
+	{% set complete = etat.derniereComplete %}
+	{% set declencheurs = {auto: 'automatique', manuel: 'à la demande', commande: 'commande', 'avant-restauration': 'avant restauration'} %}
+
+	{% if etat.alerte %}
+		<div class="alert alert-danger si-sg-alerte"><i class="fas fa-exclamation-triangle me-2"></i>{{ etat.alerte }}</div>
+	{% endif %}
+
+	<div class="row si-kpis">
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Dernière sauvegarde réussie</span>
+				<div class="si-kpi-valeur">{{ derniere ? date(derniere.debut)|temps_ecoule : 'aucune' }}</div>
+				{% if derniere %}<span class="si-tendance {{ etat.alerte ? 'si-baisse' : 'si-hausse' }}">{{ date(derniere.debut)|date('d/m à H:i') }} · {{ derniere.fichiers ? 'base et fichiers' : 'base' }}</span>{% endif %}
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Dernière sauvegarde complète</span>
+				<div class="si-kpi-valeur">{{ complete ? date(complete.debut)|temps_ecoule : 'aucune' }}</div>
+				{% if complete %}<span class="si-tendance">{{ complete.fichiers.nombre }} fichier{{ complete.fichiers.nombre > 1 ? 's' }} · {{ complete.fichiers.volume|taille_octets }}</span>{% endif %}
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Place occupée</span>
+				<div class="si-kpi-valeur">{{ etat.total|taille_octets }}</div>
+				<span class="si-tendance">{{ liste|length }} sauvegarde{{ liste|length > 1 ? 's' }}{% if etat.espaceLibre %} · {{ etat.espaceLibre|taille_octets }} libres{% endif %}</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Second disque</span>
+				<div class="si-kpi-valeur">{{ etat.copie == '' ? 'non réglé' : (etat.copieAccessible ? 'branché' : 'absent') }}</div>
+				<span class="si-tendance {{ etat.copie != '' and not etat.copieAccessible ? 'si-baisse' }}">{{ etat.copie == '' ? 'une seule copie, sur cette machine' : etat.copie }}</span>
+			</div></div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-xl-8">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Sauvegardes disponibles</h4></div>
+				{% if liste is empty %}
+					<p class="text-muted py-4 text-center mb-0">Aucune sauvegarde pour le moment.</p>
+				{% else %}
+					<div class="table-responsive">
+						<table class="table si-table align-middle mb-0">
+							<thead>
+								<tr>
+									<th>Date</th>
+									<th>Base</th>
+									<th>Fichiers</th>
+									<th class="si-masque-mobile">Lancée</th>
+									<th>Second disque</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for s in liste %}
+									<tr>
+										<td><strong>{{ date(s.debut)|date('d/m/Y') }}</strong> {{ date(s.debut)|date('H:i') }}</td>
+										<td>{{ s.base ? s.base.octets|taille_octets : '—' }}</td>
+										<td>{{ s.fichiers ? s.fichiers.octets|taille_octets ~ ' · ' ~ s.fichiers.nombre : '—' }}</td>
+										<td class="si-masque-mobile">{{ declencheurs[s.declencheur] ?? s.declencheur }}{% if s.par %} · {{ s.par }}{% endif %}</td>
+										<td>
+											{% if s.copie is not defined or s.copie is null %}
+												<span class="si-pastille si-pastille-gris">sans</span>
+											{% elseif s.copie == 'ok' %}
+												<span class="si-pastille si-pastille-vert">copiée</span>
+											{% else %}
+												<span class="si-pastille si-pastille-rouge" title="{{ s.copie }}">échec</span>
+											{% endif %}
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="col-xl-4">
+			<div class="card si-bloc si-sg-regles">
+				<div class="si-bloc-tete"><h4>Fonctionnement</h4></div>
+				<div>
+					<ul class="si-sg-liste">
+						<li><strong>Chaque jour à {{ reglage('sauvegardes', 'heure') }}</strong> : base et fichiers (photos, BAT, pièces des employés, fichiers des commandes).</li>
+						<li><strong>Toutes les {{ reglage('sauvegardes', 'base_heures') }} heures</strong> : la base seule.</li>
+						<li>On garde tout sur 48 h, puis une par jour sur {{ reglage('sauvegardes', 'jours') }} jours, une par semaine sur {{ reglage('sauvegardes', 'semaines') }} semaines, une par mois sur {{ reglage('sauvegardes', 'mois') }} mois.</li>
+						<li>Chaque sauvegarde est relue et vérifiée avant d'être gardée.</li>
+					</ul>
+					<p class="si-sg-note">Les sauvegardes contiennent toutes les données, salaires compris : elles ne se téléchargent pas depuis le site. La restauration se fait sur la machine, avec la commande décrite dans le guide.</p>
+					{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_reglages_parametres_index', {tuile: 'sauvegardes'}) }}" class="btn btn-outline-primary btn-sm">Changer les horaires</a>{% endif %}
+				</div>
+			</div>
+
+			{% if echecs is not empty %}
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Derniers échecs</h4></div>
+					<div>
+						{% for e in echecs %}
+							<div class="si-sg-echec">
+								<span>{{ date(e.date)|date('d/m H:i') }}</span>
+								<span>{{ e.message }}</span>
+							</div>
+						{% endfor %}
+					</div>
+				</div>
+			{% endif %}
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		document.querySelector('.js-sauvegarder')?.addEventListener('submit', (e) => {
+			const bouton = e.target.querySelector('button');
+			bouton.disabled = true;
+			bouton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sauvegarde en cours…';
+		});
+	</script>
+{% endblock %}

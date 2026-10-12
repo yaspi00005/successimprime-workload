@@ -260,13 +260,15 @@ final class CatalogueParametres
             ],
             'sauvegardes' => [
                 'famille' => 'systeme', 'libelle' => 'Sauvegardes', 'icone' => 'fa-save',
-                'roles' => ['ROLE_ADMIN'], 'route' => null,
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_sauvegardes_index',
                 'champs' => [
-                    ['cle' => 'heure', 'type' => 'heure', 'libelle' => 'Heure de la sauvegarde', 'defaut' => '02:00'],
-                    ['cle' => 'conserver_jours', 'type' => 'nombre', 'libelle' => 'Sauvegardes conservées', 'suffixe' => 'jours', 'min' => 1, 'max' => 365, 'defaut' => 30],
+                    ['cle' => 'heure', 'type' => 'heure', 'libelle' => 'Sauvegarde complète chaque jour à', 'aide' => 'Base et fichiers des clients et du personnel', 'defaut' => '02:00'],
+                    ['cle' => 'base_heures', 'type' => 'nombre', 'libelle' => 'Base seule toutes les', 'suffixe' => 'heures', 'min' => 1, 'max' => 24, 'defaut' => 6],
+                    ['cle' => 'jours', 'type' => 'nombre', 'libelle' => 'Garder une sauvegarde par jour pendant', 'suffixe' => 'jours', 'min' => 1, 'max' => 90, 'defaut' => 14],
+                    ['cle' => 'semaines', 'type' => 'nombre', 'libelle' => 'Puis une par semaine pendant', 'suffixe' => 'semaines', 'min' => 0, 'max' => 52, 'defaut' => 8],
+                    ['cle' => 'mois', 'type' => 'nombre', 'libelle' => 'Puis une par mois pendant', 'suffixe' => 'mois', 'min' => 0, 'max' => 60, 'defaut' => 12],
                 ],
-                'motsCles' => ['Sauvegarde de nuit', 'Base de données'],
-                'note' => 'La sauvegarde automatique sera installée sur le serveur (jalon J4) ; elle suivra ces valeurs.',
+                'motsCles' => ['Sauvegarde de nuit', 'Base de données', 'Second disque', 'Restauration'],
             ],
             'taches' => [
                 'famille' => 'systeme', 'libelle' => 'Tâches récurrentes', 'icone' => 'fa-calendar-alt',

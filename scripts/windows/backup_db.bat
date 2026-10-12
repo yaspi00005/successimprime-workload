@@ -1,39 +1,40 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
 :: ============================================================
-:: CONFIGURATION
-:: ============================================================
-set DB_USER=root
-set DB_PASS=
-set DB_NAME=success_imprim
-set BACKUP_DIR=C:\xamppok\htdocs\successImprim\backups
-set MYSQLDUMP=C:\xamppok\mysql\bin\mysqldump.exe
-set MYSQLADMIN=C:\xamppok\mysql\bin\mysqladmin.exe
-set LOG_FILE=%BACKUP_DIR%\backup.log
-set JOURS_A_CONSERVER=30
-
-:: ============================================================
-:: DOSSIER DE SAUVEGARDE
-:: ============================================================
-if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
-
-:: ============================================================
-:: ATTENTE DE MYSQL
+:: SAUVEGARDE AUTOMATIQUE (docs/sauvegardes.md)
 ::
-:: Utile surtout au demarrage de la machine : MySQL (XAMPP) peut
-:: mettre quelques secondes a etre pret. On tente 10 fois, toutes
-:: les 5 secondes, avant d'abandonner.
+:: Lancee chaque heure et au demarrage par la tache planifiee
+:: (installer_taches_planifiees.bat). C'est l'application qui
+:: decide quoi faire, selon la tuile Reglages > Sauvegardes :
+::   - base + fichiers une fois par jour, apres l'heure reglee ;
+::   - base seule toutes les N heures ;
+::   - rien si la derniere sauvegarde est recente.
+:: Rotation, verification et copie sur le second disque
+:: (SAUVEGARDE_COPIE_DIR dans .env.local) sont faites par
+:: la commande app:sauvegarde.
 :: ============================================================
+
+set PROJET=C:\xamppok\htdocs\successImprim
+set PHP=C:\xamppok\php\php.exe
+set MYSQLADMIN=C:\xamppok\mysql\bin\mysqladmin.exe
+set LOG_FILE=%PROJET%\var\log\sauvegarde.log
+
+if not exist "%PROJET%\var\log" mkdir "%PROJET%\var\log"
+
+:: ------------------------------------------------------------
+:: Attente de MySQL : au demarrage de la machine, XAMPP peut
+:: mettre quelques secondes a etre pret (10 essais, 5 s).
+:: ------------------------------------------------------------
 set TENTATIVES=0
 
 :ATTENTE_MYSQL
-"%MYSQLADMIN%" -u %DB_USER% ping >nul 2>&1
+"%MYSQLADMIN%" -u root ping >nul 2>&1
 if %ERRORLEVEL% equ 0 goto MYSQL_PRET
 
 set /a TENTATIVES+=1
 if %TENTATIVES% geq 10 (
-    echo [%date% %time%] MySQL indisponible apres 10 tentatives, sauvegarde annulee. >> "%LOG_FILE%"
+    echo [%date% %time%] MySQL indisponible apres 10 tentatives, sauvegarde reportee. >> "%LOG_FILE%"
     exit /b 1
 )
 
@@ -42,41 +43,9 @@ goto ATTENTE_MYSQL
 
 :MYSQL_PRET
 
-:: ============================================================
-:: HORODATAGE
-::
-:: Via PowerShell plutot que %date%/%time% : independant de la
-:: langue/region configuree sur la machine Windows.
-:: ============================================================
-for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set TIMESTAMP=%%i
+"%PHP%" "%PROJET%\bin\console" app:sauvegarde --auto --no-interaction >> "%LOG_FILE%" 2>&1
+set CODE=%ERRORLEVEL%
 
-set FICHIER=%BACKUP_DIR%\%DB_NAME%_%TIMESTAMP%.sql
+if %CODE% neq 0 echo [%date% %time%] ECHEC de la sauvegarde (code %CODE%), voir Reglages ^> Securite ^> Sauvegardes >> "%LOG_FILE%"
 
-:: ============================================================
-:: SAUVEGARDE
-:: ============================================================
-echo [%date% %time%] Debut de la sauvegarde... >> "%LOG_FILE%"
-
-if "%DB_PASS%"=="" (
-    "%MYSQLDUMP%" -u %DB_USER% %DB_NAME% > "%FICHIER%" 2>> "%LOG_FILE%"
-) else (
-    "%MYSQLDUMP%" -u %DB_USER% -p%DB_PASS% %DB_NAME% > "%FICHIER%" 2>> "%LOG_FILE%"
-)
-
-if %ERRORLEVEL% neq 0 (
-    echo [%date% %time%] ECHEC de la sauvegarde ^(code %ERRORLEVEL%^) >> "%LOG_FILE%"
-    del "%FICHIER%" 2>nul
-    exit /b 1
-)
-
-echo [%date% %time%] Sauvegarde reussie : %FICHIER% >> "%LOG_FILE%"
-
-:: ============================================================
-:: PURGE DES SAUVEGARDES DE PLUS DE %JOURS_A_CONSERVER% JOURS
-::
-:: Evite de remplir le disque : a une sauvegarde toutes les 6h,
-:: on accumule vite plusieurs centaines de fichiers.
-:: ============================================================
-forfiles /p "%BACKUP_DIR%" /m "%DB_NAME%_*.sql" /d -%JOURS_A_CONSERVER% /c "cmd /c del @path" 2>nul
-
-exit /b 0
+exit /b %CODE%

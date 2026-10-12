@@ -6,6 +6,7 @@ use App\Entity\Tache;
 use App\Entity\User;
 use App\Service\OperationsAValider;
 use App\Service\Planning\Planning;
+use App\Service\Sauvegarde\Sauvegardes;
 use App\Service\TableauDeBordService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,6 +25,7 @@ final class DashboardController extends AbstractController
         TableauDeBordService $tableauDeBordService,
         OperationsAValider $operationsAValider,
         Planning $planning,
+        Sauvegardes $sauvegardes,
     ): Response {
         /*
          * Un livreur n'a accès qu'aux livraisons : il n'a rien
@@ -73,6 +75,14 @@ final class DashboardController extends AbstractController
             if ($retard !== []) {
                 $premiere = reset($retard);
                 array_unshift($donnees['alertes'], ['niveau' => 'danger', 'texte' => \sprintf('%d tâche%s du planning en retard, dont « %s » prévue le %s', \count($retard), \count($retard) > 1 ? 's' : '', $premiere->getTitre(), $premiere->getPrevueLe()->format('d/m')), 'route' => 'app_planning_index']);
+            }
+        }
+
+        // Sauvegardes en retard ou en échec (docs/sauvegardes.md) : l'administrateur seul.
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $alerte = $sauvegardes->etat($maintenant)['alerte'];
+            if ($alerte !== null) {
+                array_unshift($donnees['alertes'], ['niveau' => 'danger', 'texte' => 'Sauvegardes : '.$alerte, 'route' => 'app_sauvegardes_index']);
             }
         }
 

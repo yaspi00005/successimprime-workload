@@ -4645,3 +4645,12 @@ body.si-param-bloque { overflow: hidden; }
 .si-pa-cartes p { font-size: 14px; color: #475569; }
 .si-pa-cartes .si-pa-total { font-size: 26px; color: #0F172A !important; font-weight: 800; margin: 0 0 4px; }
 @media (max-width: 991px) { .si-pa-cartes { grid-template-columns: 1fr; } }
+
+/* ---------- Réglages › Sécurité › Sauvegardes ---------- */
+.si-sg-liste { padding-left: 1.1rem; margin-bottom: 1rem; }
+.si-sg-liste li { margin-bottom: .45rem; line-height: 1.45; }
+.si-sg-note { font-size: .85rem; color: #5B6575; background: #F5F7FA; border-radius: .6rem; padding: .7rem .85rem; }
+.si-sg-echec { display: flex; gap: .75rem; font-size: .85rem; padding: .45rem 0; border-bottom: 1px solid #EEF0F3; }
+.si-sg-echec:last-child { border-bottom: 0; }
+.si-sg-echec span:first-child { flex: 0 0 auto; color: #5B6575; white-space: nowrap; }
+.si-sg-echec span:last-child { color: #C40D22; word-break: break-word; }

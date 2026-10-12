@@ -4605,3 +4605,18 @@ body.si-param-bloque { overflow: hidden; }
   .si-sv-cartes { grid-template-columns: 1fr; }
   .si-sv-classement li { grid-template-columns: 84px 1fr 84px; gap: 8px; }
 }
+
+/* Planning · rappels WhatsApp à envoyer */
+.si-pl-was { display: grid; gap: 14px; max-width: 900px; }
+.si-pl-wa { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 18px 20px; margin: 0; }
+.si-pl-wa header { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
+.si-pl-wa h2 { font-size: 17px; font-weight: 700; margin: 4px 0 2px; }
+.si-pl-wa h2 a { color: #0F172A; }
+.si-pl-wa small { color: #64748B; }
+.si-pl-wa-cle { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 10px; background: #E0E7FF; color: #1E3A8A; }
+.si-pl-wa-veille, .si-pl-wa-jour { background: #FEF3C7; color: #92400E; }
+.si-pl-wa-retard { background: #FEE2E2; color: #B91C1C; }
+.si-pl-wa-fait { opacity: .55; }
+.si-pl-wa-fait .btn-success { background: #64748B; border-color: #64748B; }
+.si-push.card { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
+.si-push small { font-weight: 400; }

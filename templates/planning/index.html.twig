@@ -111,7 +111,8 @@
 
 			<div class="si-pl-liens">
 				<a href="{{ path('app_planning_mes_taches') }}"><i class="fas fa-mobile-alt me-1"></i>Mes tâches</a>
-				{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_planning_feries') }}"><i class="fas fa-calendar-day me-1"></i>Jours fériés</a>{% endif %}
+				{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_planning_rappels') }}"><i class="fab fa-whatsapp me-1"></i>Rappels à envoyer{% if rappelsAEnvoyer %} <span class="badge bg-success">{{ rappelsAEnvoyer }}</span>{% endif %}</a>
+				<a href="{{ path('app_planning_feries') }}"><i class="fas fa-calendar-day me-1"></i>Jours fériés</a>{% endif %}
 			</div>
 		</aside>
 	</div>

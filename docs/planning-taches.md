@@ -123,4 +123,16 @@ Le calcul des dates (répétition, week-end, fériés) est une classe sans base 
 0 * * * * cd /chemin/du/site && php bin/console app:planning:rappels
 ```
 
-Reste : étape 2 (WhatsApp par lien puis API, notifications sur le téléphone), étape 3 (TVA, décaissement préparé, trésorerie prévisionnelle), étape 4 (planning annuel T03).
+Étape 2 construite (12/10/2026) : rappels WhatsApp et notifications sur le téléphone.
+- **Rappels WhatsApp (par lien)** : à chaque rappel au responsable (5 jours avant, veille, jour même, et en retard depuis 7 jours au plus), la commande `app:planning:rappels` prépare un message WhatsApp quand le dossier de la personne a un téléphone, sauf pour les tâches de chaque jour. La direction les voit dans Planning › Rappels à envoyer (`/planning/rappels`, administrateur) ; le bouton WhatsApp ouvre la conversation avec le message prêt et note l'heure et qui l'a ouvert. Un rappel non envoyé disparaît de la liste après 7 jours ou quand la tâche est faite. Le message ne contient jamais de montant. Décision du 12/10/2026 : on laisse la clé Meta de côté, l'envoi automatique par l'API n'est pas fait.
+- **Alerte de retard** : la case « En retard » de l'échéance envoie maintenant aussi une notification au responsable.
+- **Notifications sur le téléphone** : Planning › Mes tâches, bloc « Notifications sur ce téléphone » → Activer. Chaque notification de la cloche part alors aussi sur les téléphones de la personne, même verrouillés (envoi à la fin de la page ou de la commande). Chiffrement et signature faits sans bibliothèque (`src/Service/Push/WebPush.php`, vérifié sur l'exemple de la RFC 8291). Il faut une adresse https (ou localhost) ; sur iPhone, iOS 16.4 ou plus et l'application ajoutée à l'écran d'accueil (Partager › Sur l'écran d'accueil). Une fois par serveur :
+
+```
+php bin/console app:push:cles
+```
+
+puis copier les deux lignes affichées dans `.env.local` (jamais dans le dépôt) et `php bin/console cache:clear`. Sans clés, le bloc indique que ce n'est pas encore disponible.
+- Le texte de la notification est celui de la cloche : il s'affiche sur l'écran verrouillé.
+
+Reste : étape 3 (TVA, décaissement préparé, trésorerie prévisionnelle), étape 4 (planning annuel T03).

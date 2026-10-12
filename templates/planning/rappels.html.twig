@@ -1,0 +1,58 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+
+{% block title %}Rappels à envoyer{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_planning_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Planning</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-pl-was">
+		<p class="si-pg-note">Les rappels du planning à envoyer par WhatsApp. Touchez « WhatsApp » : la conversation s'ouvre avec le message prêt, il reste à l'envoyer. Le rappel passe alors dans « Envoyés aujourd'hui ».</p>
+		{% if aEnvoyer is empty %}
+			<section class="card si-ac-bloc"><p class="si-ac-vide mb-0">Aucun rappel à envoyer.</p></section>
+		{% endif %}
+		{% for x in aEnvoyer %}
+			{% set r = x.r %}
+			{% set t = r.tache %}
+			<article class="card si-pl-wa" data-rappel="{{ r.id }}">
+				<header>
+					<div>
+						<span class="si-pl-wa-cle si-pl-wa-{{ r.cle }}">{{ libelles[r.cle] ?? r.cle }}</span>
+						<h2><a href="{{ path('app_planning_tache', {id: t.id}) }}">{{ t.titre }}</a></h2>
+						<small>Prévu le {{ t.prevueLe|date_fr('EEEE d MMMM') }} · pour {{ r.destinataire ? (r.destinataire.employe ? r.destinataire.employe.prenom ~ ' ' ~ r.destinataire.employe.nom : r.destinataire.userIdentifier) : 'ancien compte' }} · {{ r.telephone }}</small>
+					</div>
+					<a href="{{ x.lien }}" target="_blank" rel="noopener" class="btn btn-success" data-si-rappel data-url="{{ path('app_planning_rappel_envoye', {id: r.id}) }}"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>
+				</header>
+				<pre class="si-creances-message">{{ r.message }}</pre>
+			</article>
+		{% endfor %}
+
+		{% if envoyes is not empty %}
+			<section class="card si-ac-bloc">
+				<h2>Envoyés aujourd'hui</h2>
+				<ul class="si-tr-heures">
+					{% for r in envoyes %}
+						<li><span>{{ r.tache.titre }} · {{ libelles[r.cle] ?? r.cle }}</span><span>{{ r.envoyeLe|date('H:i') }}{% if r.envoyePar %} · {{ r.envoyePar.userIdentifier }}{% endif %}</span></li>
+					{% endfor %}
+				</ul>
+			</section>
+		{% endif %}
+	</div>
+	<script>
+		document.addEventListener('click', function (e) {
+			var lien = e.target.closest('[data-si-rappel]');
+			if (!lien) { return; }
+			var donnees = new FormData();
+			donnees.append('_token', {{ token|json_encode|raw }});
+			if (!(navigator.sendBeacon && navigator.sendBeacon(lien.dataset.url, donnees))) {
+				fetch(lien.dataset.url, {method: 'POST', body: donnees, keepalive: true});
+			}
+			var carte = lien.closest('[data-rappel]');
+			carte.classList.add('si-pl-wa-fait');
+			lien.innerHTML = '<i class="fas fa-check me-1"></i>Ouvert';
+		});
+	</script>
+{% endblock %}

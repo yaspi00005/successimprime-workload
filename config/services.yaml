@@ -31,6 +31,12 @@ services:
             $phoneNumberId: '%env(WHATSAPP_PHONE_NUMBER_ID)%'
             $apiVersion: '%env(WHATSAPP_API_VERSION)%'
 
+    App\Service\Push\WebPush:
+        arguments:
+            $clePublique: '%env(VAPID_PUBLIC_KEY)%'
+            $clePrivee: '%env(VAPID_PRIVATE_KEY)%'
+            $sujet: '%env(VAPID_SUBJECT)%'
+
     App\Service\OrangeSmsService:
         arguments:
             $clientId: '%env(ORANGE_SMS_CLIENT_ID)%'

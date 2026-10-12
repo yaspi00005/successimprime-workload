@@ -5,6 +5,7 @@ namespace App\Twig;
 use App\Entity\Notification;
 use App\Entity\User;
 use App\Repository\NotificationRepository;
+use App\Service\Push\WebPush;
 use Symfony\Bundle\SecurityBundle\Security;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -19,6 +20,7 @@ class NotificationsExtension extends AbstractExtension
     public function __construct(
         private readonly NotificationRepository $notificationRepository,
         private readonly Security $security,
+        private readonly WebPush $push,
     ) {
     }
 
@@ -27,6 +29,8 @@ class NotificationsExtension extends AbstractExtension
         return [
             new TwigFunction('mes_notifications', [$this, 'mesNotifications']),
             new TwigFunction('nombre_notifications_generales', [$this, 'nombreNotificationsGenerales']),
+            // Clé publique VAPID (vide tant que les clés ne sont pas dans .env.local).
+            new TwigFunction('push_cle_publique', fn (): string => $this->push->estConfigure() ? $this->push->getClePublique() : ''),
         ];
     }
 

@@ -31,10 +31,10 @@ class Echeance
     public const CONFIDENTIELLES = ['fiscal', 'paie'];
 
     public const RAPPELS = [
-        'j5' => ['5 jours avant', 'Notification au responsable (WhatsApp plus tard)'],
-        'veille' => ['1 jour avant', 'Notification au responsable'],
-        'jour' => ['Le jour même 8 h', 'Notification à la direction'],
-        'retard' => ['En retard', 'Alerte rouge sur le tableau de bord'],
+        'j5' => ['5 jours avant', 'Notification et WhatsApp au responsable'],
+        'veille' => ['1 jour avant', 'Notification et WhatsApp au responsable'],
+        'jour' => ['Le jour même 8 h', 'Notification à la direction, WhatsApp au responsable'],
+        'retard' => ['En retard', 'Alerte au tableau de bord, notification et WhatsApp au responsable'],
     ];
 
     #[ORM\Id]

@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Echeance;
 use App\Entity\Entreprise;
 use App\Entity\JourFerie;
+use App\Entity\RappelWhatsApp;
 use App\Entity\Tache;
 use App\Entity\User;
 use App\Repository\EntrepriseRepository;
@@ -73,6 +74,7 @@ final class PlanningController extends AbstractController
         }
 
         return $this->render('planning/index.html.twig', [
+            'rappelsAEnvoyer' => $this->isGranted('ROLE_ADMIN') ? \count($this->planning->rappelsAEnvoyer($maintenant)) : 0,
             'vue' => $vue,
             'date' => $date,
             'jours' => $jours,
@@ -214,6 +216,42 @@ final class PlanningController extends AbstractController
                 'raison' => $o['raison'],
             ], \array_slice($this->planning->calendrier()->occurrences($e->regle(), $du, $maintenant->modify(Planning::HORIZON)), 0, 3)),
         ]);
+    }
+
+    /**
+     * Rappels WhatsApp à envoyer (étape 2) : sans clé Meta, la direction
+     * touche le bouton de chaque rappel ; l'heure du toucher est notée.
+     */
+    #[Route('/rappels', name: 'rappels', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function rappels(): Response
+    {
+        $maintenant = new \DateTimeImmutable();
+
+        return $this->render('planning/rappels.html.twig', [
+            'aEnvoyer' => array_map(static fn (RappelWhatsApp $r): array => ['r' => $r, 'lien' => self::lienWhatsApp($r)], $this->planning->rappelsAEnvoyer($maintenant)),
+            'envoyes' => $this->em->getRepository(RappelWhatsApp::class)->createQueryBuilder('r')->where('r.envoyeLe >= :jour')
+                ->setParameter('jour', $maintenant->setTime(0, 0))->orderBy('r.envoyeLe', 'DESC')->getQuery()->getResult(),
+            'libelles' => array_map(static fn (array $r): string => $r[0], Echeance::RAPPELS),
+            'jeton' => self::CSRF,
+        ]);
+    }
+
+    #[Route('/rappels/{id}/envoye', name: 'rappel_envoye', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function rappelEnvoye(RappelWhatsApp $rappel, Request $request): Response
+    {
+        $this->verifierJeton($request);
+        $rappel->marquerEnvoye($this->moi(), new \DateTimeImmutable());
+        $this->em->flush();
+
+        return new JsonResponse(['ok' => true]);
+    }
+
+    /** Lien WhatsApp avec le message prêt. */
+    public static function lienWhatsApp(RappelWhatsApp $r): string
+    {
+        return 'https://wa.me/'.UtilisateursController::numeroWhatsApp($r->getTelephone()).'?text='.rawurlencode($r->getMessage());
     }
 
     /** Fêtes mobiles (Ramadan, Tabaski, Maouloud…), saisies par l'admin. */

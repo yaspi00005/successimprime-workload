@@ -4,6 +4,7 @@ namespace App\Service\Planning;
 
 use App\Entity\Echeance;
 use App\Entity\JourFerie;
+use App\Entity\RappelWhatsApp;
 use App\Entity\Tache;
 use App\Entity\User;
 use App\Repository\TacheRepository;
@@ -179,14 +180,19 @@ final class Planning
     }
 
     /**
-     * Rappels dans l'application (commande planifiée) : 5 jours avant et la
-     * veille au responsable, le jour même dès 8 h à la direction.
+     * Rappels (commande planifiée) : 5 jours avant et la veille au
+     * responsable, le jour même dès 8 h à la direction, et une alerte au
+     * responsable quand la tâche passe en retard. Chaque rappel au
+     * responsable est aussi préparé pour WhatsApp (« Rappels à envoyer »)
+     * quand son dossier a un téléphone, sauf pour les tâches de chaque jour.
+     * Une tâche en retard depuis plus de 7 jours ne déclenche plus d'alerte.
      */
     public function rappels(\DateTimeImmutable $maintenant): int
     {
         $aujourdhui = $maintenant->setTime(0, 0);
         $n = 0;
-        foreach ($this->taches->entre($aujourdhui, $aujourdhui->modify('+5 days')) as $t) {
+        $taches = array_merge($this->taches->enRetard($maintenant), $this->taches->entre($aujourdhui, $aujourdhui->modify('+5 days')));
+        foreach ($taches as $t) {
             $e = $t->getEcheance();
             if ($t->estFaite() || $e === null) {
                 continue;
@@ -197,15 +203,22 @@ final class Planning
                 'j5' => $jours <= 5 && $jours > 1 ? \sprintf('Rappel : %s le %s (dans %d jours).', $t->getTitre(), $date, $jours) : null,
                 'veille' => $jours === 1 ? \sprintf('Demain : %s.', $t->getTitre()) : null,
                 'jour' => $jours === 0 && (int) $maintenant->format('G') >= 8 ? \sprintf('Aujourd\'hui : %s%s.', $t->getTitre(), $t->getEtapes() !== [] ? \sprintf(', %d étapes sur %d faites', $t->etapesFaites(), \count($t->getEtapes())) : '') : null,
+                'retard' => $jours < 0 && $jours >= -7 ? \sprintf('En retard : %s, prévu le %s.', $t->getTitre(), $date) : null,
             ];
             foreach ($envois as $cle => $message) {
                 if ($message === null || !$e->rappel($cle) || $t->rappelEnvoye($cle)) {
                     continue;
                 }
+                $responsable = $t->getResponsable();
                 if ($cle === 'jour') {
                     $this->notifications->notifierRoles(['ROLE_ADMIN'], $message, 'app_planning_tache', ['id' => $t->getId()]);
-                } elseif ($t->getResponsable() !== null) {
-                    $this->notifications->notifierUtilisateur($t->getResponsable(), $message, 'app_planning_tache', ['id' => $t->getId()]);
+                } elseif ($responsable !== null) {
+                    $this->notifications->notifierUtilisateur($responsable, $message, 'app_planning_tache', ['id' => $t->getId()]);
+                }
+                $telephone = trim((string) $responsable?->getEmploye()?->getTelephone());
+                if ($responsable !== null && $responsable->isActif() && $telephone !== '' && $e->getFrequence() !== Calendrier::JOUR) {
+                    $prenom = $responsable->getEmploye()?->getPrenom() ?: $responsable->getUserIdentifier();
+                    $this->em->persist(new RappelWhatsApp($t, $cle, $responsable, $telephone, self::messageWhatsApp($prenom, $cle, $t->getTitre(), $t->getPrevueLe(), $jours), $maintenant));
                 }
                 $t->noterRappel($cle);
                 ++$n;
@@ -214,5 +227,33 @@ final class Planning
         $this->em->flush();
 
         return $n;
+    }
+
+    /**
+     * Rappels WhatsApp de la semaine pas encore envoyés, sur des tâches
+     * encore ouvertes.
+     *
+     * @return list<RappelWhatsApp>
+     */
+    public function rappelsAEnvoyer(\DateTimeImmutable $maintenant): array
+    {
+        return $this->em->getRepository(RappelWhatsApp::class)->createQueryBuilder('r')->addSelect('t')->innerJoin('r.tache', 't')
+            ->where('r.envoyeLe IS NULL')->andWhere('r.creeLe >= :depuis')->andWhere('t.statut IN (:ouverts)')
+            ->setParameter('depuis', $maintenant->modify('-7 days'))->setParameter('ouverts', [Tache::A_FAIRE, Tache::EN_COURS])
+            ->orderBy('t.prevueLe', 'ASC')->getQuery()->getResult();
+    }
+
+    /** Message WhatsApp prêt à envoyer au responsable (jamais de montant). */
+    public static function messageWhatsApp(string $prenom, string $cle, string $titre, \DateTimeImmutable $prevueLe, int $jours): string
+    {
+        $date = $prevueLe->format('d/m/Y');
+        $quoi = match ($cle) {
+            'j5' => \sprintf('« %s » est prévu le %s, dans %d jours.', $titre, $date, $jours),
+            'veille' => \sprintf('« %s » est prévu demain, %s.', $titre, $date),
+            'jour' => \sprintf('« %s » est prévu aujourd\'hui.', $titre),
+            default => \sprintf('« %s », prévu le %s, n\'est pas encore fait.', $titre, $date),
+        };
+
+        return \sprintf("Bonjour %s,\nRappel du planning Succès Imprim : %s\nMerci de le cocher dans l'application une fois fait.", $prenom, $quoi);
     }
 }

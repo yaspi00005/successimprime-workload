@@ -12,6 +12,7 @@ DELETE FROM `messages_chat` WHERE id >= 900000;
 DELETE FROM `conversation_participants` WHERE id >= 900000;
 DELETE FROM `conversations` WHERE id >= 900000;
 DELETE FROM `jour_ferie` WHERE id >= 900000;
+DELETE FROM `rappel_whatsapp` WHERE id >= 900000;
 DELETE FROM `tache` WHERE id >= 900000;
 DELETE FROM `echeance` WHERE id >= 900000;
 DELETE FROM `ligne_rapprochement_bancaire` WHERE id >= 900000;

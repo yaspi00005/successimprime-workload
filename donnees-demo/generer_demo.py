@@ -182,10 +182,12 @@ DOSSIER = {
     'sekou': ('cdd', 'salaire', 'orange_money', -160),
 }
 U = {}
+TEL = {}
 EMBAUCHE = {}
 for cle, prenom, nom, fonction, profil, plus, moins, salaire, objectif in EQUIPE:
     contrat, remuneration, paiement, fin = DOSSIER.get(cle, ('cdi', 'salaire', 'virement' if salaire >= 250000 else 'orange_money', None))
-    e = add('employes', {'nom': nom, 'prenom': prenom, 'fonction': fonction, 'telephone': telephone(), 'email': f'{cle}@demo.successimprim.ml',
+    TEL[cle] = telephone()
+    e = add('employes', {'nom': nom, 'prenom': prenom, 'fonction': fonction, 'telephone': TEL[cle], 'email': f'{cle}@demo.successimprim.ml',
                          'salaires': salaire, 'date_naissances': J(R.randint(22, 50) * 365 + R.randint(0, 300)), 'matricules': f'MAT-D{len(U) + 1:03d}',
                          'date_embauches': J(R.randint(400, 2500)), 'adresses': f'{R.choice(list(COMMUNES))}, Bamako', 'cin': f'CIN-D{R.randint(100000, 999999)}',
                          'contrat': contrat, 'fin_prevue': J(fin) if fin else None, 'type_remuneration': remuneration, 'mode_paiement': paiement,
@@ -1248,7 +1250,7 @@ ECHEANCES = [
 ]
 for titre, cat, freq, jour_mois, jours_sem, h, hf, etapes, montant, resp, fermeture in ECHEANCES:
     ech = add('echeance', {'titre': titre, 'categorie': cat, 'frequence': freq, 'jour_mois': jour_mois, 'jours_semaine': jours_sem, 'heure': h, 'decalage': 'avant', 'debut': J(200), 'fin_le': None,
-                           'fin_nombre': None, 'etapes': etapes, 'rappels': ['veille', 'jour'], 'montant_estime': montant, 'actif': 1, 'cree_le': T(200), 'responsable_id': U[resp],
+                           'fin_nombre': None, 'etapes': etapes, 'rappels': {'j5': True, 'veille': True, 'jour': True, 'retard': True}, 'montant_estime': montant, 'actif': 1, 'cree_le': T(200), 'responsable_id': U[resp],
                            'copie_id': U['kadiatou'] if cat in ('fiscal', 'paie') else None, 'entreprise_id': None, 'cree_par_id': U['kadiatou'], 'heure_fin': hf, 'fermeture': int(fermeture)})
     if freq == 'jour':
         jours = [d for d in range(30, -8, -1) if d % 7 != 3]
@@ -1264,12 +1266,28 @@ for titre, cat, freq, jour_mois, jours_sem, h, hf, etapes, montant, resp, fermet
         retard = fait and R.random() < 0.1
         photo = cat == 'entretien' and fait
         ctrl = R.choice(['conforme', 'conforme', 'conforme', 'non_conforme']) if photo and R.random() < 0.3 else None
-        add('tache', {'titre': titre, 'categorie': cat, 'prevue_le': J(d), 'date_origine': J(d), 'raison_decalage': None, 'heure': h, 'statut': 'fait' if fait else 'a_faire',
+        envoyes = ['j5', 'veille', 'jour'] if d >= 0 else (['j5', 'veille'] if d == -1 else (['j5'] if d >= -5 else []))
+        tache = add('tache', {'titre': titre, 'categorie': cat, 'prevue_le': J(d), 'date_origine': J(d), 'raison_decalage': None, 'heure': h, 'statut': 'fait' if fait else 'a_faire',
                       'etapes': [{'libelle': e, 'fait': fait} for e in etapes], 'montant_estime': montant, 'note': None, 'fait_le': T(d, hh + (1 if retard else 0), mm + R.randint(5, 25)) if fait else None,
-                      'rappels_envoyes': ['veille'] if d >= 0 else [], 'cree_le': T(max(d, 0) + 7, 6), 'echeance_id': ech, 'responsable_id': U[resp],
+                      'rappels_envoyes': envoyes if freq != 'jour' else (['veille', 'jour'] if d >= 0 else []), 'cree_le': T(max(d, 0) + 7, 6), 'echeance_id': ech, 'responsable_id': U[resp],
                       'copie_id': U['kadiatou'] if cat in ('fiscal', 'paie') else None, 'entreprise_id': None, 'fait_par_id': U[resp] if fait else None, 'heure_fin': hf, 'fermeture': int(fermeture),
                       'commence_le': T(d, hh, mm) if fait else None, 'photo': f'demo-{hexa(16)}.jpg' if photo else None, 'controle': ctrl, 'controle_le': T(d, 17) if ctrl else None,
                       'controle_par_id': U['fanta'] if ctrl else None})
+        # Rappels WhatsApp du planning (étape 2) : envoyés par la direction pour les jours passés,
+        # à envoyer pour ceux de la semaine qui vient.
+        if freq != 'jour' and -5 <= d <= 10:
+            prenom = next(e[1] for e in EQUIPE if e[0] == resp)
+            for cle in envoyes:
+                jours_avant = {'j5': 5, 'veille': 1, 'jour': 0}[cle]
+                quand = d + jours_avant
+                date = f"', DATE_FORMAT(CURDATE() - INTERVAL {d} DAY, '%d/%m/%Y'), '"
+                quoi = {'j5': f'« {titre} » est prévu le {{D}}, dans 5 jours.', 'veille': f'« {titre} » est prévu demain, {{D}}.', 'jour': f'« {titre} » est prévu aujourd\'hui.'}[cle]
+                texte = f"Bonjour {prenom},\nRappel du planning Succès Imprim : {quoi}\nMerci de le cocher dans l'application une fois fait."
+                message = S('CONCAT(' + q(texte).replace('{D}', date) + ')')
+                envoye = quand >= 1
+                add('rappel_whatsapp', {'cle': cle, 'telephone': TEL[resp], 'message': message,
+                                        'cree_le': T(max(quand, 0), 8), 'envoye_le': T(quand, 8, 20) if envoye else None, 'tache_id': tache, 'destinataire_id': U[resp],
+                                        'envoye_par_id': U['kadiatou'] if envoye else None})
 for titre, cat, d, resp in [('Renouveler la patente', 'fiscal', -20, 'fanta'), ('Commander l\'encre solvant', 'stock', -3, 'oumar'), ('Rendez-vous banque', 'administratif', -6, 'kadiatou'),
                             ('Relancer la mairie pour le paiement', 'commercial', 2, 'aminata')]:
     add('tache', {'titre': titre, 'categorie': cat, 'prevue_le': J(d), 'date_origine': None, 'raison_decalage': None, 'heure': '10:00', 'statut': 'a_faire' if d <= 0 else 'en_cours',

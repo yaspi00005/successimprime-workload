@@ -330,6 +330,45 @@ final class Sauvegardes
         return ArchiveTar::extraire($chemin, $this->projectDir, self::DOSSIERS);
     }
 
+    /**
+     * Range une copie rapatriée de hors site (déjà déchiffrée) comme une
+     * sauvegarde ordinaire, pour qu'elle se restaure avec la même commande.
+     * $source est déplacé ; il doit être dans le dossier des sauvegardes.
+     */
+    public function ajouterDepuisCopie(string $nom, string $partie, string $source): void
+    {
+        if (Rotation::date($nom) === null || !\in_array($partie, ['base', 'fichiers'], true)) {
+            throw new \InvalidArgumentException('Nom de copie inattendu : '.$nom.' '.$partie);
+        }
+        $dossier = $this->dossier.'/'.$nom;
+        $this->preparerDossier($this->dossier);
+        if (!is_dir($dossier) && !@mkdir($dossier, 0700) && !is_dir($dossier)) {
+            throw new \RuntimeException('Impossible de créer '.$dossier);
+        }
+        $fichier = $partie === 'base' ? 'base.sql.gz' : 'fichiers.tar.gz';
+        if (is_file($dossier.'/'.$fichier)) {
+            throw new \RuntimeException('Cette sauvegarde a déjà sa '.($partie === 'base' ? 'base' : 'archive de fichiers').' : '.$dossier);
+        }
+        if ($partie === 'base') {
+            $this->dump->verifierExport($source);
+            $entree = ['fichier' => $fichier, 'octets' => (int) filesize($source), 'sha256' => hash_file('sha256', $source), 'methode' => 'copie hors site', 'tables' => null];
+        } else {
+            $contenu = ArchiveTar::parcourir($source);
+            $entree = ['fichier' => $fichier, 'octets' => (int) filesize($source), 'sha256' => hash_file('sha256', $source), 'nombre' => $contenu['fichiers'], 'volume' => $contenu['octets']];
+        }
+        rename($source, $dossier.'/'.$fichier);
+        @chmod($dossier.'/'.$fichier, 0600);
+
+        $m = is_file($dossier.'/manifeste.json') ? json_decode((string) file_get_contents($dossier.'/manifeste.json'), true) : null;
+        $m = \is_array($m) ? $m : [
+            'nom' => $nom, 'debut' => Rotation::date($nom)->format(\DATE_ATOM), 'declencheur' => 'copie hors site', 'par' => null,
+            'schema' => null, 'base' => null, 'fichiers' => null, 'message' => 'Rapatriée de la copie hors site',
+        ];
+        $m[$partie] = $entree;
+        $this->ecrireManifeste($dossier, $m);
+        @chmod($dossier.'/manifeste.json', 0600);
+    }
+
     /** « 12,4 Mo » */
     public static function taille(int|float $octets): string
     {

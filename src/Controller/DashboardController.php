@@ -6,6 +6,7 @@ use App\Entity\Tache;
 use App\Entity\User;
 use App\Service\OperationsAValider;
 use App\Service\Planning\Planning;
+use App\Service\Sauvegarde\HorsSite;
 use App\Service\Sauvegarde\Sauvegardes;
 use App\Service\Synchro\AgentSynchro;
 use App\Service\Synchro\Synchro;
@@ -28,6 +29,7 @@ final class DashboardController extends AbstractController
         OperationsAValider $operationsAValider,
         Planning $planning,
         Sauvegardes $sauvegardes,
+        HorsSite $horsSite,
         Synchro $synchro,
     ): Response {
         /*
@@ -83,7 +85,7 @@ final class DashboardController extends AbstractController
 
         // Sauvegardes et synchronisation en panne : l'administrateur seul.
         if ($this->isGranted('ROLE_ADMIN')) {
-            $alerte = $sauvegardes->etat($maintenant)['alerte'];
+            $alerte = $sauvegardes->etat($maintenant)['alerte'] ?? $horsSite->etat($maintenant)['alerte'];
             if ($alerte !== null) {
                 array_unshift($donnees['alertes'], ['niveau' => 'danger', 'texte' => 'Sauvegardes : '.$alerte, 'route' => 'app_sauvegardes_index']);
             }

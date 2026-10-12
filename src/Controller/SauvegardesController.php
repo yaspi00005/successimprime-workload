@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Service\Sauvegarde\HorsSite;
 use App\Service\Sauvegarde\Sauvegardes;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,7 +22,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_ADMIN')]
 final class SauvegardesController extends AbstractController
 {
-    public function __construct(private readonly Sauvegardes $sauvegardes)
+    public function __construct(private readonly Sauvegardes $sauvegardes, private readonly HorsSite $horsSite)
     {
     }
 
@@ -30,6 +31,7 @@ final class SauvegardesController extends AbstractController
     {
         return $this->render('sauvegardes/index.html.twig', [
             'etat' => $this->sauvegardes->etat(new \DateTimeImmutable()),
+            'hors_site' => $this->horsSite->etat(new \DateTimeImmutable()),
             'liste' => \array_slice($this->sauvegardes->liste(), 0, 30),
             'echecs' => \array_slice(array_values(array_filter($this->sauvegardes->journal(), static fn (array $j): bool => $j['statut'] === 'echec')), 0, 5),
         ]);

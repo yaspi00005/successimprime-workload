@@ -54,6 +54,33 @@ SAUVEGARDE_MYSQLDUMP=C:\xamppok\mysql\bin\mysqldump.exe
 
 Une copie sur le même disque ne protège pas d'une panne de ce disque. Il faut régler `SAUVEGARDE_COPIE_DIR` sur un autre disque. Si ce disque est débranché, la sauvegarde principale est faite quand même et l'alerte s'affiche.
 
+## Copie chiffrée hors de la boutique
+
+Un incendie ou un vol emporterait la machine et le second disque. Une copie part donc chaque jour vers le serveur en ligne, **chiffrée à la boutique** :
+
+- la base de la dernière sauvegarde, chaque jour ;
+- l'archive des fichiers de la dernière sauvegarde complète, une fois par semaine.
+
+L'agent de synchronisation l'envoie après le reste, par morceaux de 4 Mo, 64 Mo au plus par minute, et reprend après une coupure. Le serveur vérifie l'empreinte, range la copie dans `var/sauvegardes-hors-site` (hors de `public/`, lisible du seul compte du serveur) et garde les 14 dernières bases et les 4 dernières archives de fichiers. **Le serveur ne peut pas la lire** : la clé reste à la boutique. Rien ne se télécharge par le site ; on récupère une copie par l'accès au serveur (SFTP).
+
+Chiffrement : libsodium, XChaCha20-Poly1305 en flux. Une copie modifiée, tronquée ou ouverte avec une autre clé est refusée.
+
+**Mise en route** (ERP local seulement) :
+
+1. `php bin/console app:sauvegarde --nouvelle-cle-hors-site`
+2. Mettre la ligne `SAUVEGARDE_CLE_HORS_SITE=...` dans `.env.local` de l'ERP local. **Jamais sur le serveur en ligne**, ni dans le dépôt, ni par message.
+3. **Garder une copie de la clé hors de la boutique** (gestionnaire de mots de passe, ou papier au coffre). Sans elle, les copies hors site sont illisibles.
+
+La synchronisation doit être en route (docs/synchronisation.md). L'écran Sauvegardes montre la dernière copie partie ; le tableau de bord alerte si la base n'est pas partie depuis 48 h.
+
+**Restaurer depuis une copie hors site** : récupérer le fichier `.sihs` sur le serveur, puis sur une machine qui a la clé dans `.env.local` :
+
+```
+php bin/console app:sauvegarde-dechiffrer 20261012-020000-base.sihs
+```
+
+La copie est déchiffrée, vérifiée et rangée parmi les sauvegardes. Elle se restaure ensuite comme les autres (ci-dessous), par exemple `php bin/console app:sauvegarde:restaurer 20261012-020000 --base`.
+
 ## Installer la tâche
 
 **Windows (XAMPP)** : vérifier les chemins en tête de `scripts\windows\backup_db.bat`. Lancer ensuite **une fois** `scripts\windows\installer_taches_planifiees.bat` en administrateur. Il crée deux tâches, une au démarrage et une chaque heure, et supprime l'ancienne tâche « toutes les 6 h ». Journal : `var\log\sauvegarde.log`.

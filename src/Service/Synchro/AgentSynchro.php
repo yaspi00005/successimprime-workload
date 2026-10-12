@@ -3,6 +3,7 @@
 namespace App\Service\Synchro;
 
 use App\Entity\SynchroEchange;
+use App\Service\Sauvegarde\HorsSite;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -39,6 +40,7 @@ final class AgentSynchro
         private readonly NotificationService $notifications,
         private readonly EntityManagerInterface $em,
         private readonly FichiersSynchro $fichiers,
+        private readonly HorsSite $horsSite,
         #[Autowire('%kernel.project_dir%')] private readonly string $projectDir,
     ) {
     }
@@ -85,6 +87,10 @@ final class AgentSynchro
                 $resume['fichiers'] = $bilan['envoyes'];
                 if ($bilan['envoyes'] > 0) {
                     $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, 'fichier', \sprintf('%d fichier%s de BAT (%s Mo)', $bilan['envoyes'], $bilan['envoyes'] > 1 ? 's' : '', number_format($bilan['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);
+                }
+                // Puis la copie chiffrée des sauvegardes, avec ce qui reste du budget du cycle.
+                foreach ($this->horsSite->envoyer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets']), $maintenant) as $copie) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, null, \sprintf('Sauvegarde %s chiffrée, %s (%s Mo)', $copie['nom'], $copie['partie'] === 'base' ? 'base' : 'fichiers', number_format($copie['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);
                 }
             }
         } catch (\Throwable $e) {

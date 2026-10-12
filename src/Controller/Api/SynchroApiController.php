@@ -2,6 +2,7 @@
 
 namespace App\Controller\Api;
 
+use App\Service\Sauvegarde\HorsSite;
 use App\Service\Synchro\AgentSynchro;
 use App\Service\Synchro\FichiersSynchro;
 use App\Service\Synchro\Signature;
@@ -74,6 +75,13 @@ final class SynchroApiController
     public function fichier(Request $request, FichiersSynchro $fichiers): Response
     {
         return $this->traiter($request, fn (array $donnees): array => $fichiers->recevoir($donnees));
+    }
+
+    /** Morceau d'une copie chiffrée des sauvegardes du local (HorsSite), illisible ici. */
+    #[Route('/sauvegarde', name: 'sauvegarde')]
+    public function sauvegarde(Request $request, HorsSite $horsSite): Response
+    {
+        return $this->traiter($request, fn (array $donnees): array => $horsSite->recevoir($donnees));
     }
 
     #[Route('/accuser', name: 'accuser')]

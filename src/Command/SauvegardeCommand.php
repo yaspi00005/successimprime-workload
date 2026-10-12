@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Service\Sauvegarde\Chiffrement;
 use App\Service\Sauvegarde\Sauvegardes;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -30,13 +31,24 @@ final class SauvegardeCommand extends Command
         $this
             ->addOption('auto', null, InputOption::VALUE_NONE, 'Mode tâche planifiée : ne fait que ce qui est dû')
             ->addOption('base-seulement', null, InputOption::VALUE_NONE, 'Sans les fichiers')
-            ->addOption('liste', null, InputOption::VALUE_NONE, 'Affiche les sauvegardes présentes');
+            ->addOption('liste', null, InputOption::VALUE_NONE, 'Affiche les sauvegardes présentes')
+            ->addOption('nouvelle-cle-hors-site', null, InputOption::VALUE_NONE, 'Crée la clé de chiffrement de la copie hors site');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $maintenant = new \DateTimeImmutable();
+
+        if ($input->getOption('nouvelle-cle-hors-site')) {
+            $io->writeln('SAUVEGARDE_CLE_HORS_SITE='.Chiffrement::nouvelleCle());
+            $io->warning([
+                'À mettre dans .env.local de l\'ERP local seulement, jamais sur le site ni dans le dépôt.',
+                'Gardez-en une copie hors de la boutique (gestionnaire de mots de passe, papier au coffre) : sans elle, la copie hors site est illisible.',
+            ]);
+
+            return Command::SUCCESS;
+        }
 
         if ($input->getOption('liste')) {
             $lignes = array_map(static fn (array $s): array => [

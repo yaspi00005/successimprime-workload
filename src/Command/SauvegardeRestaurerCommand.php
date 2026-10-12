@@ -78,7 +78,8 @@ final class SauvegardeRestaurerCommand extends Command
             $cible = DriverManager::getConnection(['dbname' => $cibleNom] + array_diff_key($params, ['url' => 1]));
             $n = $this->sauvegardes->restaurerBase($nom, $cible);
             $tables = \count($cible->fetchFirstColumn("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"));
-            $io->success(\sprintf('Sauvegarde %s remise dans la base %s : %d instructions, %d tables (attendu %d). La base en service n\'a pas été touchée.', $nom, $cibleNom, $n, $tables, $s['base']['tables'] ?? 0));
+            $attendu = isset($s['base']['tables']) ? \sprintf(' (attendu %d)', $s['base']['tables']) : '';
+            $io->success(\sprintf('Sauvegarde %s remise dans la base %s : %d instructions, %d tables%s. La base en service n\'a pas été touchée.', $nom, $cibleNom, $n, $tables, $attendu));
 
             return $tables === ($s['base']['tables'] ?? -1) ? Command::SUCCESS : Command::FAILURE;
         }

@@ -109,6 +109,22 @@
 				</div>
 			</div>
 
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Copie hors de la boutique</h4></div>
+				<div>
+					{% if hors_site.active %}
+						<p class="mb-1"><span class="si-pastille {{ hors_site.alerte ? 'si-pastille-rouge' : 'si-pastille-vert' }}">{{ hors_site.alerte ? 'en retard' : 'à jour' }}</span></p>
+						<ul class="si-sg-liste">
+							<li>Base : {{ hors_site.base ? hors_site.base|date('d/m à H:i') : 'pas encore partie' }}</li>
+							<li>Fichiers, chaque semaine : {{ hors_site.fichiers ? hors_site.fichiers|date('d/m à H:i') : 'pas encore partis' }}</li>
+						</ul>
+						<p class="si-sg-note">Chiffrée à la boutique, puis envoyée au serveur en ligne par la synchronisation. Le serveur la garde sans pouvoir la lire.</p>
+					{% else %}
+						<p class="si-sg-note mb-0">Pas réglée : tout est dans la boutique. Un incendie ou un vol emporterait aussi les sauvegardes. Le guide explique comment créer la clé et l'activer.</p>
+					{% endif %}
+				</div>
+			</div>
+
 			{% if echecs is not empty %}
 				<div class="card si-bloc">
 					<div class="si-bloc-tete"><h4>Derniers échecs</h4></div>

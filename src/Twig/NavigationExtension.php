@@ -54,6 +54,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_']],
             ['libelle' => 'Conception PAO', 'route' => 'app_conception_tableau', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_conception_']],
             ['libelle' => 'Ma file machine', 'route' => 'app_ma_file_index', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_ma_file_']],
+            ['libelle' => 'Équipes en direct', 'route' => 'app_atelier_equipes', 'role' => 'ROLE_RH', 'prefixes' => ['app_atelier_equipes']],
             ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_achat_', 'app_fournisseur_', 'app_consommables_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
             ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
         ],

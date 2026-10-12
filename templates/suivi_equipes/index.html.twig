@@ -1,0 +1,106 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Suivi des équipes en direct (maquette W06) : ce que fait chacun en ce
+	moment, les délais du jour, les alertes et le classement du mois.
+	La page se recharge toute seule chaque minute.
+#}
+
+{% block title %}Équipes en direct · {{ maintenant|date('H:i') }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_pointage_jour') }}" class="btn btn-light btn-sm si-btn-entete">Présences du jour</a>
+	</li>
+	<li class="nav-item">
+		<a href="{{ path('app_bareme_index') }}" class="btn btn-light btn-sm si-btn-entete">Barème des points</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% import 'equipe_employes/_macros.html.twig' as m %}
+	{% set couleurs = {graphiste: '#DB2777', operateur: '#0F4590', livreur: '#16A34A', entretien: '#0E7C66'} %}
+	{% set e = chiffres.enCours %}
+	{% set libellesEnCours = [] %}
+	{% if e.graphiste %}{% set libellesEnCours = libellesEnCours|merge([e.graphiste ~ ' PAO']) %}{% endif %}
+	{% if e.operateur %}{% set libellesEnCours = libellesEnCours|merge([e.operateur ~ ' machine' ~ (e.operateur > 1 ? 's')]) %}{% endif %}
+	{% if e.livreur %}{% set libellesEnCours = libellesEnCours|merge([e.livreur ~ ' livraison' ~ (e.livreur > 1 ? 's')]) %}{% endif %}
+	{% if e.entretien %}{% set libellesEnCours = libellesEnCours|merge([e.entretien ~ ' entretien']) %}{% endif %}
+	{% set retards = {} %}
+	{% for r in chiffres.delais.retards %}{% set retards = retards|merge({(r): (retards[r] ?? 0) + 1}) %}{% endfor %}
+
+	<div class="row si-kpis">
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Travaux en cours</span>
+				<div class="si-kpi-valeur">{{ e|reduce((a, n) => a + n, 0) }}</div>
+				<span class="si-tendance si-hausse">{{ libellesEnCours ? libellesEnCours|join(' · ') : 'personne en ce moment' }}</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Délais tenus aujourd'hui</span>
+				<div class="si-kpi-valeur {{ chiffres.delais.ok < chiffres.delais.sur ? 'si-sv-orange' : 'si-sv-vert' }}">{{ chiffres.delais.ok }} / {{ chiffres.delais.sur }}</div>
+				<span class="si-tendance {{ retards ? 'si-baisse' : 'si-hausse' }}">{% for r, n in retards %}{{ n }} {{ r }}{{ not loop.last ? ' · ' }}{% else %}{{ chiffres.delais.sur ? 'aucun retard' : 'rien de terminé encore' }}{% endfor %}</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Alertes</span>
+				<div class="si-kpi-valeur {{ chiffres.alertes ? 'si-sv-rouge' }}">{{ chiffres.alertes }}</div>
+				<span class="si-tendance {{ chiffres.alertes ? 'si-baisse' : 'si-hausse' }}">{{ chiffres.alertes ? 'à surveiller' : 'tout va bien' }}</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Points de l'équipe (jour)</span>
+				<div class="si-kpi-valeur {{ chiffres.pointsJour >= 0 ? 'si-sv-vert' : 'si-sv-rouge' }}">{{ chiffres.pointsJour > 0 ? '+' }}{{ chiffres.pointsJour }}</div>
+				<span class="si-tendance si-hausse">mois : {{ chiffres.pointsMois|number_format(0, ',', ' ') }} pts</span>
+			</div></div>
+		</div>
+	</div>
+
+	{% if cartes is empty %}
+		<p class="si-em-vide">Personne à suivre : les graphistes, opérateurs, livreurs et agents d'entretien apparaissent ici d'après leur rôle.</p>
+	{% endif %}
+
+	<div class="si-sv-cartes">
+		{% for c in cartes %}
+			<article class="si-sv-carte{{ c.alerte ? ' si-sv-alerte' }}">
+				<header class="si-em-entete">
+					{% if c.utilisateur.employe %}{{ m.avatar(c.utilisateur.employe, '') }}{% else %}<span class="si-em-avatar" style="background: {{ couleurs[c.metier] }}">{{ m.initiales(c.nom) }}</span>{% endif %}
+					<span class="si-em-nom"><b>{{ c.nom }}</b><small>{{ c.poste }}</small></span>
+					<span class="si-em-badge {{ c.jour > 0 ? 'si-em-vert' : (c.jour < 0 ? 'si-em-rouge') }}">{{ c.jour > 0 ? '+' }}{{ c.jour }} pts</span>
+				</header>
+				<p class="si-sv-maintenant"><span>Maintenant :</span> <b>{{ c.maintenant }}</b></p>
+				<div class="si-sv-barre" role="progressbar" aria-valuenow="{{ c.progression }}" aria-valuemin="0" aria-valuemax="100" aria-label="Avancement"><span style="width: {{ c.progression }}%; background: {{ couleurs[c.metier] }}"></span></div>
+				<p class="si-sv-stats">{% for s in c.stats %}<span>{{ s }}</span>{% endfor %}</p>
+				{% if c.alerte %}<p class="si-sv-message"><i class="fas fa-exclamation-triangle me-1" aria-hidden="true"></i>{{ c.alerte }}</p>{% endif %}
+			</article>
+		{% endfor %}
+	</div>
+
+	{% if classement %}
+		<section class="card si-em-bloc si-sv-classement">
+			<div class="si-em-bloc-tete">
+				<h2>Classement du mois</h2>
+				<a href="{{ path('app_bareme_index') }}">les points comptent pour le critère « Productivité et qualité » du score</a>
+			</div>
+			<ol>
+				{% for l in classement %}
+					<li>
+						<span class="si-sv-qui" title="{{ l.nom }}">{{ l.court }}</span>
+						<span class="si-sv-barre"><span style="width: {{ l.note ?? 0 }}%; background: {{ couleurs[l.metier] }}"></span></span>
+						<span class="si-sv-score"><b>{{ l.note is not null ? l.note ~ ' %' : '—' }}</b><small>{{ l.gagnes|number_format(0, ',', ' ') }} / {{ l.possibles|number_format(0, ',', ' ') }} pts</small></span>
+					</li>
+				{% endfor %}
+			</ol>
+			<p class="si-em-note">Chaque métier est noté en % de ses points possibles : les points ne se comparent pas directement d'un métier à l'autre.</p>
+		</section>
+	{% endif %}
+
+	<script>
+		// Le suivi se met à jour tout seul, chaque minute.
+		setTimeout(function () { location.reload(); }, 60000);
+	</script>
+{% endblock %}

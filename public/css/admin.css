@@ -4579,3 +4579,29 @@ body.si-param-bloque { overflow: hidden; }
   .si-em-acces-table td:nth-child(5) { grid-column: 2; grid-row: 1; }
   .si-em-acces-table td.si-em-actions-ligne { grid-column: 1 / -1; text-align: left; padding-left: 40px; }
 }
+
+/* ================================================================
+   Atelier › Équipes en direct (maquette W06)
+   ================================================================ */
+.si-sv-vert { color: #16A34A; }
+.si-sv-orange { color: #EA580C; }
+.si-sv-rouge { color: #DC2626; }
+.si-sv-cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+.si-sv-carte { background: #fff; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.si-sv-carte.si-sv-alerte { box-shadow: var(--si-carte-ombre), inset 3px 0 0 #DC2626; }
+.si-sv-maintenant { margin: 0; font-size: 14px; color: #0F172A; }
+.si-sv-maintenant span { color: #64748B; }
+.si-sv-barre { display: block; height: 8px; border-radius: 999px; background: #EEF2F7; overflow: hidden; }
+.si-sv-barre span { display: block; height: 100%; border-radius: 999px; min-width: 2px; }
+.si-sv-stats { display: flex; justify-content: space-between; gap: 8px; margin: 0; font-size: 13px; color: #334155; flex-wrap: wrap; }
+.si-sv-message { margin: 0; font-size: 13px; font-weight: 700; color: #DC2626; }
+.si-sv-classement { margin-top: 20px; }
+.si-sv-classement ol { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 8px; }
+.si-sv-classement li { display: grid; grid-template-columns: 120px 1fr 120px; gap: 12px; align-items: center; font-size: 14px; }
+.si-sv-qui { color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-sv-score { text-align: right; line-height: 1.2; }
+.si-sv-score small { display: block; color: #64748B; font-size: 11.5px; }
+@media (max-width: 575.98px) {
+  .si-sv-cartes { grid-template-columns: 1fr; }
+  .si-sv-classement li { grid-template-columns: 84px 1fr 84px; gap: 8px; }
+}

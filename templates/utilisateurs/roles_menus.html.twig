@@ -1,0 +1,147 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rôles et menus{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<button type="button" class="btn btn-danger btn-sm si-btn-entete" data-bs-toggle="collapse" data-bs-target="#nouveau-role" aria-expanded="false"><i class="fas fa-plus me-1"></i>Nouveau rôle</button>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% set jeton = csrf_token('roles-et-menus') %}
+	<form method="post" action="{{ path('app_utilisateurs_roles') }}" id="nouveau-role" class="collapse card si-bloc">
+		<input type="hidden" name="_token" value="{{ csrf_token('roles-et-droits') }}">
+		<input type="hidden" name="retour" value="menus">
+		<div class="row g-2 align-items-end">
+			<div class="col-md-5">
+				<label class="si-libelle-champ" for="nouveau_nom">Nom du rôle</label>
+				<input type="text" name="nouveau_nom" id="nouveau_nom" class="form-control form-control-sm" maxlength="80" placeholder="Comptable, Entretien…" required>
+			</div>
+			<div class="col-md-4">
+				<label class="si-libelle-champ" for="copier">Partir de</label>
+				<select name="copier" id="copier" class="form-select form-select-sm">
+					<option value="">Aucun droit</option>
+					{% for role in roles|filter(r => not r.estAdmin) %}
+						<option value="{{ role.id }}">{{ role.nom }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div class="col-md-3">
+				<button type="submit" class="btn btn-danger btn-sm w-100">Créer le rôle</button>
+			</div>
+		</div>
+	</form>
+
+	<div class="si-roles-menus">
+		<div class="card si-bloc si-roles-menus-matrice" id="matrice">
+			<div class="table-responsive">
+				<table class="table si-table si-matrice-modules align-middle mb-0">
+					<thead>
+						<tr>
+							<th>Module</th>
+							{% for role in roles %}
+								{% set estChoisi = apercu and apercu.role.id == role.id %}
+								<th class="text-center {{ estChoisi ? 'choisi' }}">
+									<a href="{{ path('app_utilisateurs_roles_menus', {role: role.id}) }}" {% if estChoisi %}aria-current="true"{% endif %} title="Voir son menu">{{ role.estAdmin ? 'Direction' : role.nom }}</a>
+									<small class="d-block text-muted fw-normal">{{ personnes[role.id] ?? 0 }} pers.</small>
+								</th>
+							{% endfor %}
+						</tr>
+					</thead>
+					<tbody>
+						{% for cle, module in modules %}
+							<tr>
+								<td>
+									<strong>{{ module.libelle }}</strong>
+									<small class="d-block text-muted">{{ module.detail }}</small>
+								</td>
+								{% for role in roles %}
+									{% set c = module.cases[role.id] %}
+									{% set estChoisi = apercu and apercu.role.id == role.id %}
+									<td class="text-center {{ estChoisi ? 'choisi' }}">
+										{% if c.suivant %}
+											<form method="post" action="{{ path('app_utilisateurs_roles_menus_module', {id: role.id}) }}">
+												<input type="hidden" name="_token" value="{{ jeton }}">
+												<input type="hidden" name="module" value="{{ cle }}">
+												<input type="hidden" name="niveau" value="{{ c.suivant }}">
+												<button type="submit" class="si-acces si-acces-{{ c.niveau }}" title="{{ module.libelle }} pour {{ role.nom }} : passer à « {{ niveaux[c.suivant] }} »">
+													{{ niveaux[c.niveau] }}{% if c.partiel %}<sup title="Une partie des droits seulement (voir les droits détaillés)">*</sup>{% endif %}
+												</button>
+											</form>
+										{% else %}
+											<span class="si-acces si-acces-{{ c.niveau }} fixe" title="{{ cle == 'mon_espace' ? 'Toujours visible' : 'Réservé à la Direction' }}">{{ niveaux[c.niveau] }}</span>
+										{% endif %}
+									</td>
+								{% endfor %}
+							</tr>
+						{% endfor %}
+
+						<tr class="si-ligne-groupe"><th colspan="{{ roles|length + 1 }}">Montants visibles, même quand le module l'est</th></tr>
+						{% for droit, montant in montants %}
+							<tr>
+								<td>
+									<strong>{{ montant.libelle }}</strong>
+									<small class="d-block text-muted">{{ montant.detail }}</small>
+								</td>
+								{% for role in roles %}
+									{% set voit = role.aLeDroit(droit) %}
+									{% set estChoisi = apercu and apercu.role.id == role.id %}
+									<td class="text-center {{ estChoisi ? 'choisi' }}">
+										{% if role.estAdmin %}
+											<span class="si-acces si-acces-voir fixe">Voir</span>
+										{% else %}
+											<form method="post" action="{{ path('app_utilisateurs_roles_menus_montant', {id: role.id}) }}">
+												<input type="hidden" name="_token" value="{{ jeton }}">
+												<input type="hidden" name="droit" value="{{ droit }}">
+												<input type="hidden" name="voir" value="{{ voit ? 0 : 1 }}">
+												<button type="submit" class="si-acces si-acces-{{ voit ? 'voir' : 'aucun' }}" title="{{ montant.libelle }} pour {{ role.nom }} : {{ voit ? 'masquer' : 'montrer' }}">{{ voit ? 'Voir' : 'Masqué' }}</button>
+											</form>
+										{% endif %}
+									</td>
+								{% endfor %}
+							</tr>
+						{% endfor %}
+
+						<tr class="si-ligne-groupe"><th colspan="{{ roles|length + 1 }}">Menu</th></tr>
+						<tr>
+							<td>
+								<strong>Forme du menu</strong>
+								<small class="d-block text-muted">volets, court, ou replié en icônes</small>
+							</td>
+							{% for role in roles %}
+								{% set estChoisi = apercu and apercu.role.id == role.id %}
+								<td class="text-center {{ estChoisi ? 'choisi' }}">
+									{% if role.estAdmin %}
+										<span class="si-acces fixe">Volets</span>
+									{% else %}
+										<form method="post" action="{{ path('app_utilisateurs_roles_menus_forme', {id: role.id}) }}">
+											<input type="hidden" name="_token" value="{{ jeton }}">
+											<select name="menu" class="form-select form-select-sm si-forme-menu" onchange="this.form.submit()" aria-label="Forme du menu pour {{ role.nom }}">
+												{% for code, libelle in formes %}
+													<option value="{{ code }}" {{ role.menu == code ? 'selected' }}>{{ {volets: 'Volets', court: 'Court', replie: 'Replié'}[code] }}</option>
+												{% endfor %}
+											</select>
+											<noscript><button type="submit" class="btn btn-sm btn-light mt-1">OK</button></noscript>
+										</form>
+									{% endif %}
+								</td>
+							{% endfor %}
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<p class="si-note-roles">
+				Cliquer sur une case la fait passer à l'état suivant. Un module à « — » disparaît du menu de ce rôle ; à « Voir », la personne consulte sans rien modifier. Les montants (marges, paiements, chiffre d'affaires) peuvent être masqués même quand le module est visible ; les salaires restent à l'équipe RH et à la personne concernée. Chaque changement est enregistré dans le journal.
+				<a href="{{ path('app_utilisateurs_roles') }}">Droits détaillés</a> · <a href="{{ path('app_journal_activite_index') }}">Journal</a>
+			</p>
+		</div>
+
+		{% if apercu %}
+			<aside class="si-roles-menus-apercu" aria-label="Aperçu du menu">
+				<div class="si-apercu-titre">Aperçu du menu · {{ apercu.role.estAdmin ? 'Direction' : apercu.role.nom }}</div>
+				{% include 'utilisateurs/_apercu_menu.html.twig' with {menu: apercu.menu, personne: apercu.personne, nomRole: apercu.role.estAdmin ? 'Direction' : apercu.role.nom} only %}
+			</aside>
+		{% endif %}
+	</div>
+{% endblock %}

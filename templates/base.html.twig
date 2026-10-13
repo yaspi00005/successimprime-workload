@@ -158,6 +158,10 @@
 					{% endfor %}
 				{% endfor %}
 				{% block onglets_section %}{% include 'partials/_onglets_section.html.twig' %}{% endblock %}
+				{% set moduleEnLecture = module_en_lecture(routeCourante) %}
+				{% if moduleEnLecture %}
+					<div class="si-lecture-seule" role="note"><i class="far fa-eye" aria-hidden="true"></i> {{ moduleEnLecture }} : vous pouvez consulter, pas modifier.</div>
+				{% endif %}
 				{% block breadcrumb %}{% endblock %}
 				{% block body %}{% endblock %}
 			</div>

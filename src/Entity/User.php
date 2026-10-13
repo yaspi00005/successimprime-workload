@@ -1054,7 +1054,7 @@ class User implements
     public function getDroitsEffectifs(): array
     {
         if ($this->profil?->estAdmin() || in_array(self::ROLE_ADMIN, $this->roles, true)) {
-            return array_keys(\App\Security\Droits::catalogue());
+            return \App\Security\Droits::sansRestriction();
         }
 
         $droits = array_merge($this->profil?->getDroits() ?? [], $this->getDroitsAjoutes());

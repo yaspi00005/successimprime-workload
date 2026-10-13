@@ -1,0 +1,29 @@
+{#
+	Apercu du menu d'un role (maquette R04), sans liens : le meme dessin
+	que partials/_menu.html.twig, pour les droits du role choisi.
+#}
+<div class="si-sidebar si-apercu-menu si-menu-{{ menu.style }}" aria-hidden="true">
+	<div class="si-apercu-logo"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt=""></div>
+	<div class="si-menu-personne">
+		<span class="si-menu-pastille-personne">{{ personne|slice(0, 1)|upper }}</span>
+		<span class="nav-text"><b>{{ personne }}</b><small>{{ nomRole }}</small></span>
+	</div>
+	<div class="si-menu-aller"><i class="fas fa-search"></i><span class="nav-text">Aller à…</span><kbd class="nav-text">Ctrl K</kbd></div>
+	<ul class="si-menu">
+		{% for entree in menu.entrees %}
+			<li class="si-menu-module {{ loop.first ? 'actif' }}">
+				<span class="si-menu-lien">
+					<i class="{{ entree.icone }}"></i>
+					<span class="nav-text">{{ entree.libelle }}</span>
+					{% if entree.items is defined and entree.items is not empty %}<span class="si-menu-fleche nav-text"></span>{% endif %}
+				</span>
+			</li>
+		{% endfor %}
+		{% if menu.style != 'volets' %}
+			<li class="si-menu-module">
+				<span class="si-menu-lien"><i class="far fa-star"></i><span class="nav-text">Mon espace</span><span class="si-menu-fleche nav-text"></span></span>
+			</li>
+		{% endif %}
+	</ul>
+	<div class="si-menu-replier"><span class="si-replier-icone">{{ menu.style == 'replie' ? '»' : '«' }}</span><span class="nav-text">Replier le menu</span></div>
+</div>

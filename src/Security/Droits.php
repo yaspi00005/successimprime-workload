@@ -14,6 +14,16 @@ final class Droits
 {
     public const GROUPE_FONCTIONS = 'Fonctions';
     public const GROUPE_CHIFFRES = 'Statistiques et chiffres';
+    public const GROUPE_LECTURE = 'Lecture seule';
+
+    /**
+     * Module en lecture seule (Reglages, Roles et menus, maquette R04) : la
+     * personne ouvre les ecrans du module mais ne peut rien y changer.
+     * Voir LectureSeuleSubscriber et ModulesRoles.
+     */
+    public const LECTURE_VENTES = 'ROLE_LECTURE_VENTES';
+    public const LECTURE_CLIENTS = 'ROLE_LECTURE_CLIENTS';
+    public const LECTURE_PAO = 'ROLE_LECTURE_PAO';
 
     /**
      * @return array<string, array{libelle: string, detail: string, groupe: string}>
@@ -42,6 +52,9 @@ final class Droits
             'ROLE_COUT_MARGE' => ['libelle' => 'Marges et coûts de revient', 'detail' => 'des commandes et des produits du client', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_PAIEMENT_VOIR' => ['libelle' => 'Paiements', 'detail' => 'paiements des commandes, écran Caisse', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_TRESORERIE_VOIR' => ['libelle' => 'Trésorerie et soldes', 'detail' => 'comptes, mouvements', 'groupe' => self::GROUPE_CHIFFRES],
+            self::LECTURE_VENTES => ['libelle' => 'Ventes et caisse en lecture seule', 'detail' => 'voir les devis, commandes et factures sans les modifier', 'groupe' => self::GROUPE_LECTURE],
+            self::LECTURE_CLIENTS => ['libelle' => 'Clients en lecture seule', 'detail' => 'voir les fiches sans les modifier', 'groupe' => self::GROUPE_LECTURE],
+            self::LECTURE_PAO => ['libelle' => 'Montage PAO en lecture seule', 'detail' => 'voir les fichiers et BAT sans les modifier', 'groupe' => self::GROUPE_LECTURE],
         ];
     }
 
@@ -57,6 +70,17 @@ final class Droits
         }
 
         return $groupes;
+    }
+
+    /**
+     * Tous les droits sauf les restrictions (lecture seule) : ceux de
+     * l'administrateur.
+     *
+     * @return list<string>
+     */
+    public static function sansRestriction(): array
+    {
+        return array_keys(array_filter(self::catalogue(), static fn (array $d): bool => self::GROUPE_LECTURE !== $d['groupe']));
     }
 
     /**

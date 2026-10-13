@@ -17,6 +17,21 @@ class RoleUtilisateur
 {
     public const CODE_ADMIN = 'ROLE_ADMIN';
 
+    /**
+     * Forme du menu des personnes qui ont ce role (maquettes R01 a R03) :
+     * tous les modules en volets, un menu court a plat, ou le menu court
+     * replie en icones pour laisser la place au travail.
+     */
+    public const MENU_VOLETS = 'volets';
+    public const MENU_COURT = 'court';
+    public const MENU_REPLIE = 'replie';
+
+    public const MENUS = [
+        self::MENU_VOLETS => 'Tous les modules en volets',
+        self::MENU_COURT => 'Menu court',
+        self::MENU_REPLIE => 'Menu replié en icônes',
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -42,6 +57,9 @@ class RoleUtilisateur
 
     #[ORM\Column(options: ['default' => 0])]
     private int $ordre = 0;
+
+    #[ORM\Column(length: 10, options: ['default' => self::MENU_COURT])]
+    private string $menu = self::MENU_COURT;
 
     public function getId(): ?int
     {
@@ -82,7 +100,7 @@ class RoleUtilisateur
      */
     public function getDroits(): array
     {
-        return $this->estAdmin() ? array_keys(Droits::catalogue()) : Droits::filtrer($this->droits);
+        return $this->estAdmin() ? Droits::sansRestriction() : Droits::filtrer($this->droits);
     }
 
     /**
@@ -120,6 +138,18 @@ class RoleUtilisateur
     public function setOrdre(int $ordre): static
     {
         $this->ordre = $ordre;
+
+        return $this;
+    }
+
+    public function getMenu(): string
+    {
+        return $this->estAdmin() ? self::MENU_VOLETS : $this->menu;
+    }
+
+    public function setMenu(string $menu): static
+    {
+        $this->menu = isset(self::MENUS[$menu]) ? $menu : self::MENU_COURT;
 
         return $this;
     }

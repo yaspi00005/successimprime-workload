@@ -2,25 +2,42 @@
 
 namespace App\Twig;
 
+use App\Entity\RoleUtilisateur;
+use App\Entity\User;
+use App\Security\ModulesRoles;
+use App\Service\PastillesMenu;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
 /**
- * Range chaque ecran de l'admin dans l'une des 6 entrees du menu
- * (Accueil, Ventes, Atelier, Finances, Clients, Reglages), d'apres le
- * prefixe de sa route. Sert a allumer l'entree active du menu et a
- * afficher le fil d'Ariane de l'en-tete.
+ * Range chaque ecran de l'admin dans l'un des 7 modules du menu
+ * (Accueil, Ventes, Clients, Atelier, Finances, Equipe, Reglages),
+ * d'apres le prefixe de sa route. Sert a construire le menu selon le
+ * role (maquettes R01 a R05), a allumer l'entree active et a afficher
+ * le fil d'Ariane de l'en-tete.
  */
 final class NavigationExtension extends AbstractExtension
 {
     public const SECTIONS = [
         'accueil' => 'Accueil',
         'ventes' => 'Ventes',
+        'clients' => 'Clients',
         'atelier' => 'Atelier',
         'finances' => 'Finances',
-        'clients' => 'Clients',
+        'equipe' => 'Équipe',
         'reglages' => 'Réglages',
+    ];
+
+    public const ICONES_SECTIONS = [
+        'accueil' => 'fas fa-th-large',
+        'ventes' => 'fas fa-tag',
+        'clients' => 'fas fa-users',
+        'atelier' => 'fas fa-print',
+        'finances' => 'fas fa-wallet',
+        'equipe' => 'fas fa-user-friends',
+        'reglages' => 'fas fa-sliders-h',
     ];
 
     /**
@@ -48,13 +65,17 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
             ['libelle' => 'Mes actions', 'route' => 'app_actions_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_actions_']],
         ],
+        'clients' => [
+            ['libelle' => 'Fiches clients', 'route' => 'app_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_clients_', 'app_reclamation_']],
+            ['libelle' => 'Prospects', 'route' => 'app_prospects_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_prospects_']],
+            ['libelle' => 'Campagnes WhatsApp et SMS', 'route' => 'app_campagne_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_campagne_', 'app_modele_message_', 'app_regle_rappel_paiement_']],
+        ],
         'atelier' => [
             ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
             ['libelle' => 'Planning machines', 'route' => 'app_atelier_planning', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_planning']],
             ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_']],
             ['libelle' => 'Conception PAO', 'route' => 'app_conception_tableau', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_conception_']],
             ['libelle' => 'Ma file machine', 'route' => 'app_ma_file_index', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_ma_file_']],
-            ['libelle' => 'Équipes en direct', 'route' => 'app_atelier_equipes', 'role' => 'ROLE_RH', 'prefixes' => ['app_atelier_equipes']],
             ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_achat_', 'app_fournisseur_', 'app_consommables_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
             ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
         ],
@@ -66,26 +87,80 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Trésorerie et dépenses', 'route' => 'app_tresorerie_index', 'role' => 'ROLE_TRESORERIE_VOIR', 'prefixes' => ['app_tresorerie_', 'app_mouvement_tresorerie_', 'app_decaissement_recurrent_', 'app_compte_tresorerie_', 'app_rapprochement_bancaire_']],
             ['libelle' => 'Comptabilité', 'route' => 'app_comptabilite_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_comptabilite_']],
         ],
-        'clients' => [
-            ['libelle' => 'Fiches clients', 'route' => 'app_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_clients_', 'app_reclamation_']],
-            ['libelle' => 'Prospects', 'route' => 'app_prospects_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_prospects_']],
-            ['libelle' => 'Campagnes WhatsApp et SMS', 'route' => 'app_campagne_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_campagne_', 'app_modele_message_', 'app_regle_rappel_paiement_']],
+        'equipe' => [
+            ['libelle' => 'Employés', 'route' => 'app_equipe_employes_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_equipe_employes_', 'app_acces_', 'app_employes_']],
+            ['libelle' => 'Pointage', 'route' => 'app_pointage_jour', 'role' => 'ROLE_RH', 'prefixes' => ['app_pointage_']],
+            ['libelle' => 'Équipes en direct', 'route' => 'app_atelier_equipes', 'role' => 'ROLE_RH', 'prefixes' => ['app_atelier_equipes']],
+            ['libelle' => 'Demandes du personnel', 'route' => 'app_demandes_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_demandes_']],
+            ['libelle' => 'Paie', 'route' => 'app_paie_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_paie_']],
+            ['libelle' => 'Actions commerciales', 'route' => 'app_actions_equipe_journal', 'role' => 'ROLE_ACTIONS_GERER', 'prefixes' => ['app_actions_equipe_']],
         ],
         'reglages' => [
             ['libelle' => 'Paramètres', 'route' => 'app_reglages_parametres_index', 'role' => ['ROLE_ADMIN', 'ROLE_PARAMETRES', 'ROLE_RH', 'ROLE_COUT_MARGE', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'prefixes' => ['app_reglages_parametres_', 'app_bareme_']],
             ['libelle' => 'Grille tarifaire', 'route' => 'app_grille_tarifaire_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_grille_tarifaire_', 'app_produits_', 'app_categorie_produit_', 'app_produit_configuration_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
             ['libelle' => 'Coûts de revient', 'route' => 'app_couts_revient_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_couts_revient_']],
-            ['libelle' => 'Employés', 'route' => 'app_equipe_employes_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_equipe_employes_', 'app_acces_', 'app_employes_']],
             ['libelle' => 'Utilisateurs et droits', 'route' => 'app_utilisateurs_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_utilisateurs_', 'app_user_', 'app_journal_activite_']],
-            ['libelle' => 'Actions commerciales', 'route' => 'app_actions_equipe_journal', 'role' => 'ROLE_ACTIONS_GERER', 'prefixes' => ['app_actions_equipe_']],
-            ['libelle' => 'Demandes du personnel', 'route' => 'app_demandes_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_demandes_']],
-            ['libelle' => 'Paie', 'route' => 'app_paie_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_paie_']],
-            ['libelle' => 'Pointage', 'route' => 'app_pointage_jour', 'role' => 'ROLE_RH', 'prefixes' => ['app_pointage_']],
             ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
             ['libelle' => 'Sécurité', 'route' => 'app_appareils_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_appareils_', 'app_jetons_api_', 'app_sauvegardes_', 'app_synchronisation_']],
             ['libelle' => 'Écran TV', 'route' => 'app_ecran_tv_reglages', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_ecran_tv_']],
         ],
     ];
+
+    /**
+     * Menu court (maquettes R02, R03, R05) : les ecrans du quotidien, a
+     * plat, dans cet ordre. Chacun n'apparait que si la personne a le
+     * droit de l'ouvrir (celui de son onglet dans ONGLETS).
+     *
+     * @var array<string, array{0: string, 1: string}>
+     */
+    public const MENU_COURT = [
+        'app_home' => ['Ma journée', 'fas fa-th-large'],
+        'app_livraisons_tournee' => ['Ma tournée', 'fas fa-route'],
+        'app_livraisons_a_retirer' => ['À livrer ou retirer', 'fas fa-box'],
+        'app_caisse_index' => ['Caisse', 'fas fa-cash-register'],
+        'app_actions_index' => ['Mes actions', 'far fa-bell'],
+        'app_clients_index' => ['Clients', 'fas fa-user-friends'],
+        'app_ventes_index' => ['Devis et commandes', 'far fa-file-alt'],
+        'app_paiements_index' => ['Encaissements', 'far fa-credit-card'],
+        'app_controle_pre_presse_index' => ['Fichiers et BAT', 'far fa-file'],
+        'app_conception_tableau' => ['Mes travaux PAO', 'fas fa-pencil-ruler'],
+        'app_atelier_production' => ['Production', 'fas fa-sliders-h'],
+        'app_ma_file_index' => ['Ma file machine', 'fas fa-print'],
+        'app_stock_articles_index' => ['Stock', 'fas fa-cube'],
+        'app_entretien_index' => ['Entretien', 'fas fa-broom'],
+    ];
+
+    /**
+     * Barre du bas sur telephone (maquette R05). Direction : les sections
+     * principales. Les autres roles : leurs premiers ecrans du menu court,
+     * sous un nom court.
+     */
+    public const BARRE_DIRECTION = [
+        'accueil' => ['Résumé', 'fas fa-home'],
+        'ventes' => ['Ventes', 'fas fa-handshake'],
+        'finances' => ['Caisse', 'fas fa-wallet'],
+        'clients' => ['Clients', 'fas fa-users'],
+    ];
+
+    public const LIBELLES_BARRE = [
+        'app_home' => 'Accueil',
+        'app_livraisons_tournee' => 'Tournée',
+        'app_livraisons_a_retirer' => 'Livrer',
+        'app_caisse_index' => 'Caisse',
+        'app_actions_index' => 'Actions',
+        'app_clients_index' => 'Clients',
+        'app_ventes_index' => 'Ventes',
+        'app_paiements_index' => 'Encaisser',
+        'app_controle_pre_presse_index' => 'Fichiers',
+        'app_conception_tableau' => 'Travaux',
+        'app_atelier_production' => 'Production',
+        'app_ma_file_index' => 'Ma file',
+        'app_stock_articles_index' => 'Stock',
+        'app_entretien_index' => 'Entretien',
+    ];
+
+    /** Modules ouverts d'un clic, sans volet : leur page d'accueil mene a tout. */
+    private const SANS_VOLET = ['reglages'];
 
     /**
      * Le premier prefixe qui correspond gagne : les plus precis d'abord.
@@ -105,6 +180,7 @@ final class NavigationExtension extends AbstractExtension
         'app_livraisons_' => 'ventes',
         'app_bons_livraison_' => 'ventes',
         'app_bon_livraison_' => 'ventes',
+        'app_atelier_equipes' => 'equipe',
         'app_production_' => 'atelier',
         'app_atelier_' => 'atelier',
         'app_controle_pre_presse_' => 'atelier',
@@ -146,9 +222,9 @@ final class NavigationExtension extends AbstractExtension
         'app_finition_' => 'reglages',
         'app_utilisateurs_' => 'reglages',
         'app_mes_statistiques' => 'accueil',
-        'app_employes_' => 'reglages',
-        'app_equipe_employes_' => 'reglages',
-        'app_acces_' => 'reglages',
+        'app_employes_' => 'equipe',
+        'app_equipe_employes_' => 'equipe',
+        'app_acces_' => 'equipe',
         'app_user_' => 'reglages',
         'app_journal_activite_' => 'reglages',
         'app_parametres_paiement_' => 'reglages',
@@ -159,18 +235,20 @@ final class NavigationExtension extends AbstractExtension
         'app_synchronisation_' => 'reglages',
         'app_entreprises_' => 'reglages',
         'app_reglages_parametres_' => 'reglages',
-        'app_pointage_' => 'reglages',
+        'app_pointage_' => 'equipe',
         'app_bareme_' => 'reglages',
         'app_conception_' => 'atelier',
         'app_ma_file_' => 'atelier',
-        'app_demandes_' => 'reglages',
-        'app_paie_' => 'reglages',
-        'app_actions_equipe_' => 'reglages',
+        'app_demandes_' => 'equipe',
+        'app_paie_' => 'equipe',
+        'app_actions_equipe_' => 'equipe',
         'app_actions_' => 'ventes',
     ];
 
     public function __construct(
         private readonly ?AuthorizationCheckerInterface $autorisations = null,
+        private readonly ?Security $security = null,
+        private readonly ?PastillesMenu $pastilles = null,
     ) {
     }
 
@@ -182,6 +260,10 @@ final class NavigationExtension extends AbstractExtension
             new TwigFunction('onglets_section_admin', $this->ongletsSection(...)),
             new TwigFunction('onglet_actif_admin', $this->ongletActif(...)),
             new TwigFunction('onglets_autorises_admin', $this->ongletsAutorises(...)),
+            new TwigFunction('menu_admin', $this->menu(...)),
+            new TwigFunction('style_menu_admin', $this->styleMenu(...)),
+            new TwigFunction('barre_mobile_admin', $this->barreMobile(...)),
+            new TwigFunction('module_en_lecture', $this->moduleEnLecture(...)),
         ];
     }
 
@@ -215,11 +297,15 @@ final class NavigationExtension extends AbstractExtension
 
     /**
      * Onglets de la section que l'utilisateur peut ouvrir (un seul des
-     * roles listes suffit), avec leur rang d'origine dans 'rang'.
+     * roles listes suffit), avec leur rang d'origine dans 'rang'. Avec
+     * $droits, pour ces droits-la plutot que ceux de la personne connectee
+     * (apercu du menu d'un role, maquette R04).
+     *
+     * @param list<string>|null $droits
      *
      * @return list<array<string, mixed>>
      */
-    public function ongletsAutorises(?string $section): array
+    public function ongletsAutorises(?string $section, ?array $droits = null): array
     {
         $autorises = [];
 
@@ -228,7 +314,9 @@ final class NavigationExtension extends AbstractExtension
             $autorise = [] === $roles;
 
             foreach ($roles as $role) {
-                $autorise = $autorise || (null !== $this->autorisations && $this->autorisations->isGranted($role));
+                $autorise = $autorise || (null !== $droits
+                    ? \in_array($role, $droits, true)
+                    : null !== $this->autorisations && $this->autorisations->isGranted($role));
             }
 
             if ($autorise) {
@@ -259,5 +347,166 @@ final class NavigationExtension extends AbstractExtension
         }
 
         return null;
+    }
+
+    /**
+     * Forme du menu de la personne connectee : celle de son role (Reglages
+     * > Roles et menus), tous les modules en volets pour l'administrateur.
+     */
+    public function styleMenu(): string
+    {
+        $utilisateur = $this->security?->getUser();
+        if (!$utilisateur instanceof User || \in_array(User::ROLE_ADMIN, $utilisateur->getRoles(), true)) {
+            return RoleUtilisateur::MENU_VOLETS;
+        }
+
+        return $utilisateur->getProfil()?->getMenu() ?? RoleUtilisateur::MENU_COURT;
+    }
+
+    /**
+     * Menu selon le role (maquettes R01 a R03) : les modules en volets,
+     * avec leurs ecrans autorises, ou le menu court a plat. Avec $droits,
+     * le menu qu'aurait un role qui a ces droits (apercu, sans pastilles).
+     *
+     * @param list<string>|null $droits
+     *
+     * @return array{style: string, entrees: list<array<string, mixed>>}
+     */
+    public function menu(?string $route, ?string $style = null, ?array $droits = null): array
+    {
+        $style ??= $this->styleMenu();
+        $pastilles = null === $droits ? ($this->pastilles?->parRoute() ?? []) : [];
+        $sectionActive = $this->sectionPourRoute($route);
+        $rangActif = $this->ongletActif($route);
+
+        $ecrans = [];
+        foreach (array_keys(self::SECTIONS) as $section) {
+            foreach ($this->ongletsAutorises($section, $droits) as $onglet) {
+                $ecrans[$onglet['route']] ??= [
+                    'libelle' => $onglet['libelle'],
+                    'route' => $onglet['route'],
+                    'parametres' => $onglet['parametres'] ?? [],
+                    'section' => $section,
+                    'actif' => $sectionActive === $section && $rangActif === $onglet['rang'],
+                    'pastille' => $pastilles[$onglet['route']] ?? 0,
+                ];
+            }
+        }
+
+        if (RoleUtilisateur::MENU_VOLETS !== $style) {
+            $entrees = [];
+            foreach (self::MENU_COURT as $routeEcran => [$libelle, $icone]) {
+                if (isset($ecrans[$routeEcran])) {
+                    $entrees[] = ['libelle' => $libelle, 'icone' => $icone] + $ecrans[$routeEcran];
+                }
+            }
+
+            return ['style' => $style, 'entrees' => $entrees];
+        }
+
+        $modules = [];
+        foreach (self::SECTIONS as $section => $libelle) {
+            $items = array_values(array_filter($ecrans, static fn (array $e): bool => $e['section'] === $section));
+            if ([] === $items) {
+                continue;
+            }
+            $modules[] = [
+                'cle' => $section,
+                'libelle' => $libelle,
+                'icone' => self::ICONES_SECTIONS[$section],
+                'route' => $items[0]['route'],
+                'parametres' => $items[0]['parametres'],
+                'actif' => $sectionActive === $section,
+                'pastille' => array_sum(array_column($items, 'pastille')),
+                'items' => \in_array($section, self::SANS_VOLET, true) || 1 === \count($items) ? [] : $items,
+            ];
+        }
+
+        return ['style' => $style, 'entrees' => $modules];
+    }
+
+    /**
+     * Barre du bas sur telephone (maquette R05) : quatre ecrans au plus, puis
+     * « Plus » qui ouvre le menu complet. Celui qui fait une tournee la voit
+     * a la place de l'accueil ; un employe a le pointage s'il reste une place,
+     * et « Moi » (son espace) quand la barre montre deja tout son menu.
+     *
+     * @return array{entrees: list<array<string, mixed>>, fin: array{libelle: string, icone: string, route: ?string, actif: bool}}
+     */
+    public function barreMobile(?string $route): array
+    {
+        $plus = ['libelle' => 'Plus', 'icone' => 'fas fa-bars', 'route' => null, 'actif' => false];
+        $menu = $this->menu($route);
+
+        if (RoleUtilisateur::MENU_VOLETS === $menu['style']) {
+            $section = $this->sectionPourRoute($route);
+            $entrees = [];
+            foreach (self::BARRE_DIRECTION as $cle => [$libelle, $icone]) {
+                $premier = $this->ongletsAutorises($cle)[0] ?? null;
+                if (null !== $premier) {
+                    $entrees[] = [
+                        'libelle' => $libelle,
+                        'icone' => $icone,
+                        'route' => $premier['route'],
+                        'parametres' => $premier['parametres'] ?? [],
+                        'actif' => $section === $cle,
+                        'pastille' => 0,
+                    ];
+                }
+            }
+
+            return ['entrees' => $entrees, 'fin' => $plus];
+        }
+
+        $ecrans = $menu['entrees'];
+        $routes = array_column($ecrans, 'route');
+        if (\in_array('app_livraisons_tournee', $routes, true)) {
+            $ecrans = array_values(array_filter($ecrans, static fn (array $e): bool => 'app_home' !== $e['route']));
+        }
+
+        $entrees = [];
+        foreach (\array_slice($ecrans, 0, 4) as $ecran) {
+            $entrees[] = ['libelle' => self::LIBELLES_BARRE[$ecran['route']] ?? $ecran['libelle']] + $ecran;
+        }
+
+        $utilisateur = $this->security?->getUser();
+        $employe = $utilisateur instanceof User ? $utilisateur->getEmploye() : null;
+        if (null !== $employe && \count($entrees) < 4) {
+            $entrees[] = [
+                'libelle' => 'Pointage',
+                'icone' => 'fas fa-qrcode',
+                'route' => 'app_pointer_index',
+                'parametres' => [],
+                'actif' => str_starts_with((string) $route, 'app_pointer_'),
+                'pastille' => 0,
+            ];
+        }
+
+        $restants = array_diff($routes, array_column($entrees, 'route'), ['app_home']);
+        if (null !== $employe && [] === $restants) {
+            return ['entrees' => $entrees, 'fin' => [
+                'libelle' => 'Moi',
+                'icone' => 'far fa-user',
+                'route' => 'app_mon_espace_index',
+                'actif' => str_starts_with((string) $route, 'app_mon_espace_'),
+            ]];
+        }
+
+        return ['entrees' => $entrees, 'fin' => $plus];
+    }
+
+    /**
+     * Nom du module en lecture seule pour la personne connectee sur cette
+     * page (bandeau « Lecture seule »), ou null.
+     */
+    public function moduleEnLecture(?string $route): ?string
+    {
+        $utilisateur = $this->security?->getUser();
+        if (null === $route || !$utilisateur instanceof User || \in_array(User::ROLE_ADMIN, $utilisateur->getRoles(), true)) {
+            return null;
+        }
+        $module = ModulesRoles::moduleEnLecture($route, $utilisateur->getRoles());
+
+        return null === $module ? null : ModulesRoles::catalogue()[$module]['libelle'];
     }
 }

@@ -11,6 +11,8 @@ use App\Entity\User;
 use App\Repository\RoleUtilisateurRepository;
 use App\Repository\UserRepository;
 use App\Security\Droits;
+use App\Security\ModulesRoles;
+use App\Twig\NavigationExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -163,7 +165,7 @@ final class UtilisateursController extends AbstractController
             $nouveauNom = trim($request->getPayload()->getString('nouveau_nom'));
 
             if ('' !== $nouveauNom) {
-                return $this->creerRole($nouveauNom, $this->roles->find($request->getPayload()->getInt('copier')), $roles);
+                return $this->creerRole($nouveauNom, $this->roles->find($request->getPayload()->getInt('copier')), $roles, 'menus' === $request->getPayload()->getString('retour'));
             }
 
             $coches = $request->getPayload()->all('droits');
@@ -192,6 +194,129 @@ final class UtilisateursController extends AbstractController
             'personnes' => $this->roles->nombresDePersonnes(),
             'droitsParGroupe' => Droits::parGroupe(),
         ]);
+    }
+
+    /**
+     * Roles et menus (maquette R04) : par module, ce que chaque role peut
+     * faire (Modifier, Voir, rien), les montants qu'il voit, la forme de
+     * son menu, et l'apercu du menu du role choisi.
+     */
+    #[Route('/roles-et-menus', name: 'roles_menus', methods: ['GET'])]
+    public function rolesEtMenus(Request $request, NavigationExtension $navigation): Response
+    {
+        $roles = $this->roles->dansLOrdre();
+        $choisi = null;
+        foreach ($roles as $role) {
+            if ($role->getId() === $request->query->getInt('role')) {
+                $choisi = $role;
+            }
+        }
+        $choisi ??= array_values(array_filter($roles, static fn (RoleUtilisateur $r): bool => !$r->estAdmin()))[0] ?? $roles[0] ?? null;
+
+        $modules = [];
+        foreach (ModulesRoles::catalogue() as $cle => $module) {
+            $cases = [];
+            foreach ($roles as $role) {
+                $niveau = ModulesRoles::niveau($cle, $role->getDroits(), $role->estAdmin());
+                $modifiable = !$role->estAdmin() && [] !== ModulesRoles::niveauxPossibles($cle);
+                $cases[(int) $role->getId()] = [
+                    'niveau' => $niveau,
+                    'partiel' => $modifiable && ModulesRoles::partiel($cle, $role->getDroits()),
+                    'suivant' => $modifiable ? ModulesRoles::suivant($cle, $niveau) : null,
+                ];
+            }
+            $modules[$cle] = $module + ['cases' => $cases];
+        }
+
+        $apercu = null;
+        if (null !== $choisi) {
+            $droits = $choisi->estAdmin() ? [...$choisi->getDroits(), User::ROLE_ADMIN] : $choisi->getDroits();
+            $personne = $this->users->findOneBy(['profil' => $choisi, 'actif' => true], ['id' => 'ASC']);
+            $apercu = [
+                'role' => $choisi,
+                'menu' => $navigation->menu(null, $choisi->getMenu(), $droits),
+                'personne' => null !== $personne ? self::nomComplet($personne) : 'Exemple',
+            ];
+        }
+
+        return $this->render('utilisateurs/roles_menus.html.twig', [
+            'roles' => $roles,
+            'personnes' => $this->roles->nombresDePersonnes(),
+            'modules' => $modules,
+            'niveaux' => ModulesRoles::NIVEAUX,
+            'montants' => array_intersect_key(Droits::catalogue(), array_flip(ModulesRoles::montants())),
+            'formes' => RoleUtilisateur::MENUS,
+            'apercu' => $apercu,
+        ]);
+    }
+
+    #[Route('/roles-et-menus/{id}/module', name: 'roles_menus_module', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function changerModule(RoleUtilisateur $role, Request $request): Response
+    {
+        $this->verifierRoleModifiable($role, $request);
+        $module = $request->getPayload()->getString('module');
+        $niveau = $request->getPayload()->getString('niveau');
+        if (!isset(ModulesRoles::catalogue()[$module]) || !\in_array($niveau, ModulesRoles::niveauxPossibles($module), true)) {
+            throw $this->createNotFoundException('Module ou niveau inconnu.');
+        }
+
+        $avant = $role->getDroits();
+        $role->setDroits(ModulesRoles::appliquer($module, $niveau, $avant));
+        if ($avant !== $role->getDroits()) {
+            $this->tracer('RoleUtilisateur', (int) $role->getId(), 'droits', ['role' => $role->getNom(), 'droits' => $avant], [
+                'role' => $role->getNom(),
+                'droits' => $role->getDroits(),
+                'module' => ModulesRoles::catalogue()[$module]['libelle'],
+                'niveau' => ModulesRoles::NIVEAUX[$niveau],
+            ]);
+            $this->em->flush();
+        }
+
+        return $this->redirectToRoute('app_utilisateurs_roles_menus', ['role' => $role->getId(), '_fragment' => 'matrice']);
+    }
+
+    #[Route('/roles-et-menus/{id}/montant', name: 'roles_menus_montant', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function changerMontant(RoleUtilisateur $role, Request $request): Response
+    {
+        $this->verifierRoleModifiable($role, $request);
+        $droit = $request->getPayload()->getString('droit');
+        if (!\in_array($droit, ModulesRoles::montants(), true)) {
+            throw $this->createNotFoundException('Droit inconnu.');
+        }
+
+        $avant = $role->getDroits();
+        $apres = $request->getPayload()->getBoolean('voir') ? [...$avant, $droit] : array_values(array_diff($avant, [$droit]));
+        $role->setDroits($apres);
+        if ($avant !== $role->getDroits()) {
+            $this->tracer('RoleUtilisateur', (int) $role->getId(), 'droits', ['role' => $role->getNom(), 'droits' => $avant], ['role' => $role->getNom(), 'droits' => $role->getDroits()]);
+            $this->em->flush();
+        }
+
+        return $this->redirectToRoute('app_utilisateurs_roles_menus', ['role' => $role->getId(), '_fragment' => 'matrice']);
+    }
+
+    #[Route('/roles-et-menus/{id}/forme', name: 'roles_menus_forme', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function changerForme(RoleUtilisateur $role, Request $request): Response
+    {
+        $this->verifierRoleModifiable($role, $request);
+        $avant = $role->getMenu();
+        $role->setMenu($request->getPayload()->getString('menu'));
+        if ($avant !== $role->getMenu()) {
+            $this->tracer('RoleUtilisateur', (int) $role->getId(), 'menu', ['role' => $role->getNom(), 'menu' => $avant], ['role' => $role->getNom(), 'menu' => $role->getMenu()]);
+            $this->em->flush();
+        }
+
+        return $this->redirectToRoute('app_utilisateurs_roles_menus', ['role' => $role->getId()]);
+    }
+
+    private function verifierRoleModifiable(RoleUtilisateur $role, Request $request): void
+    {
+        if (!$this->isCsrfTokenValid('roles-et-menus', $request->getPayload()->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton invalide.');
+        }
+        if ($role->estAdmin()) {
+            throw $this->createAccessDeniedException('La Direction garde tous les droits.');
+        }
     }
 
     /**
@@ -418,7 +543,7 @@ final class UtilisateursController extends AbstractController
     /**
      * @param list<RoleUtilisateur> $roles
      */
-    private function creerRole(string $nom, ?RoleUtilisateur $modele, array $roles): Response
+    private function creerRole(string $nom, ?RoleUtilisateur $modele, array $roles, bool $versMenus = false): Response
     {
         $code = 'ROLE_PERSO_' . strtoupper(trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', iconv('UTF-8', 'ASCII//TRANSLIT', $nom) ?: $nom), '_'));
 
@@ -438,6 +563,11 @@ final class UtilisateursController extends AbstractController
         $this->em->flush();
         $this->tracer('RoleUtilisateur', (int) $role->getId(), 'creation', null, ['role' => $role->getNom(), 'droits' => $role->getDroits()]);
         $this->em->flush();
+        if ($versMenus) {
+            $this->addFlash('success', sprintf('Rôle « %s » créé. Choisissez ce qu\'il voit dans chaque module.', $role->getNom()));
+
+            return $this->redirectToRoute('app_utilisateurs_roles_menus', ['role' => $role->getId()]);
+        }
         $this->addFlash('success', sprintf('Rôle « %s » créé. Cochez ses droits puis enregistrez.', $role->getNom()));
 
         return $this->redirectToRoute('app_utilisateurs_roles');

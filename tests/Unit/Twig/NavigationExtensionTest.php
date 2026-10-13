@@ -2,9 +2,16 @@
 
 namespace App\Tests\Unit\Twig;
 
+use App\Entity\Employes;
+use App\Entity\RoleUtilisateur;
+use App\Entity\User;
+use App\Security\Droits;
 use App\Twig\NavigationExtension;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\Security\Core\Authorization\AccessDecision;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 
 final class NavigationExtensionTest extends TestCase
 {
@@ -30,6 +37,11 @@ final class NavigationExtensionTest extends TestCase
         yield 'campagne' => ['app_campagne_index', 'clients'];
         yield 'produits' => ['app_produits_index', 'reglages'];
         yield 'utilisateurs' => ['app_user_index', 'reglages'];
+        yield 'rôles et menus' => ['app_utilisateurs_roles_menus', 'reglages'];
+        yield 'employés dans Équipe' => ['app_employes_index', 'equipe'];
+        yield 'pointage dans Équipe' => ['app_pointage_jour', 'equipe'];
+        yield 'équipes en direct avant production' => ['app_atelier_equipes', 'equipe'];
+        yield 'paie' => ['app_paie_voir', 'equipe'];
         yield 'messagerie hors menu' => ['app_chat_index', null];
         yield 'route vide' => ['', null];
         yield 'sans route' => [null, null];
@@ -73,15 +85,88 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(0, $extension->ongletActif('app_clients_soldes'));
         self::assertSame(0, $extension->ongletActif('app_reglages_parametres_index'));
         self::assertSame(2, $extension->ongletActif('app_couts_revient_index'));
-        self::assertSame(3, $extension->ongletActif('app_employes_index'));
-        self::assertSame(3, $extension->ongletActif('app_equipe_employes_dossier'));
-        self::assertSame(3, $extension->ongletActif('app_acces_index'));
-        self::assertSame(4, $extension->ongletActif('app_utilisateurs_index'));
-        self::assertSame(8, $extension->ongletActif('app_pointage_jour'));
-        self::assertSame(7, $extension->ongletActif('app_paie_voir'));
-        self::assertSame(6, $extension->ongletActif('app_demandes_conges'));
+        self::assertSame(0, $extension->ongletActif('app_employes_index'));
+        self::assertSame(0, $extension->ongletActif('app_equipe_employes_dossier'));
+        self::assertSame(0, $extension->ongletActif('app_acces_index'));
+        self::assertSame(3, $extension->ongletActif('app_utilisateurs_roles_menus'));
+        self::assertSame(1, $extension->ongletActif('app_pointage_jour'));
+        self::assertSame(4, $extension->ongletActif('app_paie_voir'));
+        self::assertSame(3, $extension->ongletActif('app_demandes_conges'));
         self::assertSame(5, $extension->ongletActif('app_actions_equipe_journal'));
         self::assertSame(5, $extension->ongletActif('app_actions_voir'));
         self::assertNull($extension->ongletActif('app_chat_index'));
+    }
+
+    public function testSeptModulesDansLOrdreDesMaquettes(): void
+    {
+        self::assertSame(['accueil', 'ventes', 'clients', 'atelier', 'finances', 'equipe', 'reglages'], array_keys(NavigationExtension::SECTIONS));
+    }
+
+    public function testMenuEnVoletsPourLaDirection(): void
+    {
+        $droits = [...Droits::sansRestriction(), 'ROLE_ADMIN'];
+        $menu = (new NavigationExtension())->menu('app_paiements_index', RoleUtilisateur::MENU_VOLETS, $droits);
+
+        self::assertSame('volets', $menu['style']);
+        self::assertSame(array_keys(NavigationExtension::SECTIONS), array_column($menu['entrees'], 'cle'));
+        $finances = $menu['entrees'][4];
+        self::assertTrue($finances['actif']);
+        self::assertContains('app_paiements_index', array_column(array_filter($finances['items'], static fn (array $i): bool => $i['actif']), 'route'));
+        // Reglages s'ouvre d'un clic sur ses tuiles, sans volet.
+        self::assertSame([], $menu['entrees'][6]['items']);
+    }
+
+    public function testMenuCourtSelonLesDroits(): void
+    {
+        $extension = new NavigationExtension();
+        $livreur = $extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_LIVRAISON', 'ROLE_STATS_PERSO']);
+        self::assertSame(['app_home', 'app_livraisons_tournee', 'app_livraisons_a_retirer'], array_column($livreur['entrees'], 'route'));
+
+        $caisse = array_column($extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_CLIENT', 'ROLE_COMMANDE', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_PAIEMENT_VOIR'])['entrees'], 'route');
+        self::assertSame(['app_home', 'app_caisse_index', 'app_actions_index', 'app_clients_index', 'app_ventes_index', 'app_paiements_index'], $caisse);
+        self::assertNotContains('app_stock_articles_index', $caisse, 'stock réservé à la Direction');
+    }
+
+    public function testBarreMobileDuLivreur(): void
+    {
+        $role = (new RoleUtilisateur())->setCode('ROLE_LIVREUR')->setNom('Livreur')->setDroits(['ROLE_LIVRAISON']);
+        $utilisateur = (new User())->setProfil($role)->setEmploye(new Employes());
+        $extension = $this->extensionPour($utilisateur);
+
+        $barre = $extension->barreMobile('app_livraisons_tournee');
+        self::assertSame(['Tournée', 'Livrer', 'Pointage'], array_column($barre['entrees'], 'libelle'));
+        self::assertTrue($barre['entrees'][0]['actif']);
+        self::assertSame('Moi', $barre['fin']['libelle']);
+        self::assertSame('app_mon_espace_index', $barre['fin']['route']);
+    }
+
+    public function testBarreMobileDeLaCaisse(): void
+    {
+        $role = (new RoleUtilisateur())->setCode('ROLE_CAISSE_COMMANDE')->setNom('Caisse')->setDroits(['ROLE_CLIENT', 'ROLE_COMMANDE', 'ROLE_PAIEMENT_ENCAISSER']);
+        $barre = $this->extensionPour((new User())->setProfil($role))->barreMobile('app_home');
+
+        self::assertSame(['Accueil', 'Caisse', 'Actions', 'Clients'], array_column($barre['entrees'], 'libelle'));
+        self::assertSame('Plus', $barre['fin']['libelle']);
+        self::assertNull($barre['fin']['route']);
+    }
+
+    private function extensionPour(User $utilisateur): NavigationExtension
+    {
+        $droits = $utilisateur->getRoles();
+        $autorisations = new class($droits) implements AuthorizationCheckerInterface {
+            /** @param list<string> $droits */
+            public function __construct(private readonly array $droits)
+            {
+            }
+
+            public function isGranted(mixed $attribute, mixed $subject = null, ?AccessDecision $accessDecision = null): bool
+            {
+                return \in_array($attribute, $this->droits, true);
+            }
+        };
+        $security = $this->createStub(Security::class);
+        $security->method('getUser')->willReturn($utilisateur);
+
+        return new NavigationExtension($autorisations, $security);
     }
 }

@@ -49,4 +49,28 @@ final class EspaceClientTest extends TestCase
         self::assertSame('en_cours', $etapes[5]['etat']);
         self::assertSame('Retirée', $etapes[5]['libelle']);
     }
+    public function testReperesVerifies(): void
+    {
+        $brut = [
+            ['i' => 0, 'x' => 0.5, 'y' => 0.25, 't' => "  Agrandir\n le logo  "],
+            ['i' => 1, 'x' => 1.7, 'y' => -2, 't' => 'Hors de l\'image : ramené au bord'],
+            ['i' => 2, 'x' => 0.5, 'y' => 0.5, 't' => 'Image qui n\'existe pas'],
+            ['i' => 0, 'x' => 0.5, 'y' => 0.5, 't' => '   '],
+            ['i' => 0, 'x' => 'abc', 'y' => 0.5, 't' => 'Position illisible'],
+            'pas un repère',
+            ['i' => 0, 'x' => 0.1, 'y' => 0.1, 't' => str_repeat('a', 300)],
+        ];
+
+        $reperes = EspaceClient::reperes($brut, 2);
+
+        self::assertSame([
+            ['i' => 0, 'x' => 0.5, 'y' => 0.25, 't' => 'Agrandir le logo'],
+            ['i' => 1, 'x' => 1.0, 'y' => 0.0, 't' => 'Hors de l\'image : ramené au bord'],
+        ], \array_slice($reperes, 0, 2));
+        self::assertSame(EspaceClient::REPERE_TEXTE_MAX, mb_strlen($reperes[2]['t']));
+        self::assertCount(3, $reperes);
+        self::assertSame([], EspaceClient::reperes(null, 2));
+        self::assertSame([], EspaceClient::reperes($brut, 0), 'BAT en PDF : pas de repère');
+        self::assertCount(EspaceClient::REPERES_MAX, EspaceClient::reperes(array_fill(0, 30, ['i' => 0, 'x' => 0.1, 'y' => 0.1, 't' => 'x']), 1));
+    }
 }

@@ -88,4 +88,24 @@ final class ConceptionTest extends TestCase
         $c->regler('complexe', null, null);
         self::assertSame(50, $c->getTempsPrevu(), 'un temps saisi à la main est gardé');
     }
+    public function testReperesDuClientGardesEtCorrigesEnVersionSuivante(): void
+    {
+        $c = $this->conception();
+        $c->demarrer(new User(), self::a('09:00'));
+        $c->envoyerBat(self::a('10:00'));
+        self::assertNull($c->derniersReperes());
+
+        $reperes = [['i' => 0, 'x' => 0.12, 'y' => 0.4, 't' => 'Agrandir le logo de 20 %']];
+        $c->retour(Conception::RETOUR_CLIENT, '', self::a('10:30'), $reperes);
+        self::assertSame(['reperes' => $reperes, 'version' => 1, 'corrigeeEn' => null], $c->derniersReperes());
+
+        $c->envoyerBat(self::a('11:00'));
+        self::assertSame(2, $c->derniersReperes()['corrigeeEn'] ?? null);
+
+        // Le client voit ses repères en ligne ; une demande sans repère les remplace.
+        $publics = Conception::evenementsPublics(array_map(static fn (array $e): array => ['le' => $e['le']->format(\DATE_ATOM)] + $e, $c->getEvenements()));
+        self::assertSame($reperes, array_values(array_filter(array_column($publics, 'reperes')))[0]);
+        $c->retour(Conception::RETOUR_CLIENT, 'Changer la couleur', self::a('11:20'));
+        self::assertNull($c->derniersReperes());
+    }
 }

@@ -33,6 +33,10 @@ final class EspaceClient
     public const ACTION_BAT_VALIDE = 'bat_valide';
     public const ACTION_BAT_MODIFIE = 'bat_modifie';
 
+    /** Repères posés sur l'image d'un BAT : 10 au plus, 200 caractères chacun. */
+    public const REPERES_MAX = 10;
+    public const REPERE_TEXTE_MAX = 200;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly SuiviCommandeService $suivi,
@@ -209,6 +213,16 @@ final class EspaceClient
         return array_values(array_filter($liste, static fn (CommandeDetailFichier $f): bool => $f->getVersion() === $version));
     }
 
+    /**
+     * Images du BAT, dans l'ordre : les repères du client s'y rapportent par leur rang.
+     *
+     * @return list<CommandeDetailFichier>
+     */
+    public function imagesBat(ControlePrePresse $ctl): array
+    {
+        return array_values(array_filter($this->fichiersBat($ctl), static fn (CommandeDetailFichier $f): bool => str_starts_with((string) $f->getTypeMime(), 'image/')));
+    }
+
     /** Fichier d'un BAT du client, sur le disque, ou null. */
     public function cheminFichier(Clients $client, int $id): ?array
     {
@@ -257,14 +271,53 @@ final class EspaceClient
         $this->em->flush();
     }
 
-    public function modifierBat(ControlePrePresse $ctl, string $texte, \DateTimeImmutable $maintenant): void
+    /**
+     * @param list<array{i: int, x: float, y: float, t: string}> $reperes repères posés sur l'image (voir reperes())
+     */
+    public function modifierBat(ControlePrePresse $ctl, string $texte, \DateTimeImmutable $maintenant, array $reperes = []): void
     {
         $ctl->setCorrectionNecessaire(true)->setStatut(ControlePrePresse::STATUT_CORRECTION_REQUISE);
-        $this->conception($ctl)?->retour(Conception::RETOUR_CLIENT, $texte, $maintenant);
-        $this->journal->noterAction($this->em, self::ACTION_BAT_MODIFIE, $ctl, ['texte' => $texte, 'le' => $maintenant->format(\DATE_ATOM)]);
+        $this->conception($ctl)?->retour(Conception::RETOUR_CLIENT, $texte, $maintenant, $reperes);
+        $this->journal->noterAction($this->em, self::ACTION_BAT_MODIFIE, $ctl, ['texte' => $texte, 'le' => $maintenant->format(\DATE_ATOM), 'reperes' => $reperes]);
         $this->em->flush();
-        $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('Modification demandée par le client sur %s (commande %s) : « %s »', TableauProduction::titre($ctl->getCommandeDetail()), $ctl->getCommandeDetail()->getCommande()->getNumero(), mb_substr($texte, 0, 120)), 'app_controle_pre_presse_controler', ['id' => $ctl->getId()]);
+        $resume = implode(' ; ', array_filter([
+            '' !== trim($texte) ? '« '.mb_substr(trim($texte), 0, 120).' »' : null,
+            match (\count($reperes)) { 0 => null, 1 => '1 repère sur le BAT', default => \count($reperes).' repères sur le BAT' },
+        ]));
+        $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('Modification demandée par le client sur %s (commande %s) : %s', TableauProduction::titre($ctl->getCommandeDetail()), $ctl->getCommandeDetail()->getCommande()->getNumero(), $resume), 'app_controle_pre_presse_controler', ['id' => $ctl->getId()]);
         $this->em->flush();
+    }
+
+    /**
+     * Repères posés par le client sur les images du BAT, vérifiés : image
+     * qui existe, position dans l'image, texte court, 10 au plus.
+     *
+     * @return list<array{i: int, x: float, y: float, t: string}>
+     */
+    public static function reperes(mixed $brut, int $images): array
+    {
+        $reperes = [];
+        foreach (\is_array($brut) ? $brut : [] as $r) {
+            if (!\is_array($r) || !is_numeric($r['x'] ?? null) || !is_numeric($r['y'] ?? null) || !\is_string($r['t'] ?? null)) {
+                continue;
+            }
+            $i = filter_var($r['i'] ?? 0, \FILTER_VALIDATE_INT);
+            $texte = trim((string) preg_replace('/\s+/u', ' ', $r['t']));
+            if (false === $i || $i < 0 || $i >= $images || '' === $texte) {
+                continue;
+            }
+            $reperes[] = [
+                'i' => $i,
+                'x' => round(min(1, max(0, (float) $r['x'])), 4),
+                'y' => round(min(1, max(0, (float) $r['y'])), 4),
+                't' => mb_substr($texte, 0, self::REPERE_TEXTE_MAX),
+            ];
+            if (\count($reperes) >= self::REPERES_MAX) {
+                break;
+            }
+        }
+
+        return $reperes;
     }
 
     /** @return list<Devis> */

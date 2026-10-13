@@ -425,7 +425,8 @@ final class Synchro
             ($this->espaceClient)()->validerBat($controle, mb_substr((string) ($donnees['nom'] ?? 'client'), 0, 80), $le);
             $message = 'BAT validé par le client en ligne';
         } else {
-            ($this->espaceClient)()->modifierBat($controle, mb_substr((string) ($donnees['texte'] ?? ''), 0, 2000), $le);
+            $espace = ($this->espaceClient)();
+            $espace->modifierBat($controle, mb_substr((string) ($donnees['texte'] ?? ''), 0, 2000), $le, EspaceClient::reperes($donnees['reperes'] ?? [], \count($espace->imagesBat($controle))));
             $message = 'Modification demandée par le client en ligne';
         }
         $this->em->persist(new SynchroJournal('controle', $publicId, SynchroJournal::MAJ)); // suivi du BAT à jour en ligne

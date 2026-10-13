@@ -96,7 +96,7 @@ class Conception
     #[ORM\Column(type: Types::JSON)]
     private array $faits = [];
 
-    /** @var list<array{le: string, type: string, titre: string, detail: ?string}> */
+    /** @var list<array{le: string, type: string, titre: string, detail: ?string, reperes?: list<array{i: int, x: float, y: float, t: string}>}> */
     #[ORM\Column(type: Types::JSON)]
     private array $evenements = [];
 
@@ -198,14 +198,44 @@ class Conception
 
     /**
      * Retour sur un BAT : un changement d'avis du client ne coûte rien,
-     * une erreur du graphiste retire des points.
+     * une erreur du graphiste retire des points. Les repères sont les
+     * endroits que le client a touchés sur l'image du BAT.
+     *
+     * @param list<array{i: int, x: float, y: float, t: string}> $reperes
      */
-    public function retour(string $raison, ?string $texte, \DateTimeImmutable $le): void
+    public function retour(string $raison, ?string $texte, \DateTimeImmutable $le, array $reperes = []): void
     {
         $erreur = $raison === self::RETOUR_ERREUR;
         $erreur ? ++$this->erreurs : ++$this->changementsClient;
         $texte = $texte !== null && trim($texte) !== '' ? '« '.mb_substr(trim($texte), 0, 160).' »' : null;
         $this->noter($le, $erreur ? 'erreur' : 'retour', $erreur ? 'Erreur à corriger' : 'Retour client', implode(' · ', array_filter([$texte, $erreur ? 'erreur du graphiste' : 'demande du client'])));
+        if ($reperes !== []) {
+            $this->evenements[array_key_last($this->evenements)]['reperes'] = $reperes;
+        }
+    }
+
+    /**
+     * Repères de la dernière demande du client, et la version du BAT qui
+     * y répond (null tant qu'elle n'est pas envoyée).
+     *
+     * @return array{reperes: list<array{i: int, x: float, y: float, t: string}>, version: int, corrigeeEn: ?int}|null
+     */
+    public function derniersReperes(): ?array
+    {
+        $dernier = null;
+        $bats = 0;
+        foreach ($this->evenements as $e) {
+            if ('bat' === $e['type']) {
+                ++$bats;
+            } elseif ('retour' === $e['type']) {
+                $dernier = [] !== ($e['reperes'] ?? []) ? ['reperes' => $e['reperes'], 'version' => $bats, 'corrigeeEn' => null] : null;
+            }
+            if (null !== $dernier && $bats > $dernier['version'] && null === $dernier['corrigeeEn']) {
+                $dernier['corrigeeEn'] = $bats;
+            }
+        }
+
+        return $dernier;
     }
 
     /**
@@ -294,7 +324,8 @@ class Conception
         $publics = [];
         foreach ($evenements as $e) {
             if (\in_array($e['type'] ?? null, ['bat', 'retour', 'valide'], true)) {
-                $publics[] = ['le' => $e['le'], 'type' => $e['type'], 'titre' => $e['titre'], 'detail' => 'retour' === $e['type'] ? $e['detail'] : null];
+                $publics[] = ['le' => $e['le'], 'type' => $e['type'], 'titre' => $e['titre'], 'detail' => 'retour' === $e['type'] ? $e['detail'] : null]
+                    + ('retour' === $e['type'] && [] !== ($e['reperes'] ?? []) ? ['reperes' => $e['reperes']] : []);
             }
         }
 

@@ -131,6 +131,9 @@ final class ConceptionController extends AbstractController
             'c' => $conception,
             'fichiers' => $fichiers,
             'evenements' => array_values(array_filter($conception->getEvenements(), static fn (array $e): bool => \in_array($e['type'], ['brief', 'bat', 'retour', 'erreur', 'valide'], true))),
+            // Repères posés par le client sur l'image : par rang d'image du BAT.
+            'reperes' => $conception->derniersReperes(),
+            'rangs' => array_flip(array_map(static fn (CommandeDetailFichier $f): int => (int) $f->getId(), $espace->imagesBat($conception->getControle()))),
             'message' => $this->tableau->message($conception),
             'maintenant' => $maintenant,
             'jeton' => self::CSRF,

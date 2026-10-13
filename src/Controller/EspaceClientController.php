@@ -443,6 +443,7 @@ final class EspaceClientController extends AbstractController
         if ($request->isMethod('POST')) {
             $this->jeton($request);
             $texte = trim((string) $request->request->get('texte'));
+            $reperes = EspaceClient::reperes(json_decode(mb_substr($request->request->getString('reperes', '[]'), 0, 8000), true, 4), \count($espace->imagesBat($controle)));
             if (!$attente) {
                 $this->addFlash('error', 'Ce BAT n\'attend plus votre réponse.');
             } elseif ('valider' === $request->request->get('action')) {
@@ -450,10 +451,10 @@ final class EspaceClientController extends AbstractController
                 $this->addFlash('succes', 'BAT validé, merci. Votre accord est enregistré avec la date et l\'heure ; l\'atelier lance l\'impression.');
 
                 return $this->redirectToRoute('app_espace_commande', ['id' => (string) $controle->getCommandeDetail()->getCommande()->getPublicId()]);
-            } elseif ('' === $texte) {
-                $this->addFlash('error', 'Dites-nous ce qu\'il faut modifier.');
+            } elseif ('' === $texte && [] === $reperes) {
+                $this->addFlash('error', 'Dites-nous ce qu\'il faut modifier, ou touchez l\'image à l\'endroit à changer.');
             } else {
-                $espace->modifierBat($controle, $texte, new \DateTimeImmutable());
+                $espace->modifierBat($controle, $texte, new \DateTimeImmutable(), $reperes);
                 $this->addFlash('succes', 'Demande envoyée à l\'atelier. Vous recevrez une nouvelle version du BAT.');
 
                 return $this->redirectToRoute('app_espace_fichiers');
@@ -470,6 +471,9 @@ final class EspaceClientController extends AbstractController
             'conception' => $conception,
             'frise' => self::frise($conception),
             'attente' => $attente,
+            // Rang de chaque image du BAT : les repères s'y rapportent.
+            'rangs' => array_flip(array_map(static fn ($f): int => (int) $f->getId(), $espace->imagesBat($controle))),
+            'reperes' => $conception?->derniersReperes(),
         ]);
     }
 
@@ -608,7 +612,7 @@ final class EspaceClientController extends AbstractController
      * Frise du BAT montrée au client : versions envoyées, ses demandes (ses
      * propres mots), validation. Rien de la vie interne de l'atelier.
      *
-     * @return list<array{le: \DateTimeImmutable, titre: string, detail: ?string}>
+     * @return list<array{le: \DateTimeImmutable, titre: string, detail: ?string, reperes?: list<string>}>
      */
     private static function frise(?\App\Entity\Conception $c): array
     {
@@ -616,7 +620,7 @@ final class EspaceClientController extends AbstractController
         foreach ($c?->getEvenements() ?? [] as $e) {
             $frise[] = match ($e['type']) {
                 'bat' => ['le' => $e['le'], 'titre' => $e['titre'], 'detail' => null],
-                'retour' => ['le' => $e['le'], 'titre' => 'Votre demande de modification', 'detail' => preg_match('/« (.+?) »/u', (string) $e['detail'], $m) ? $m[1] : null],
+                'retour' => ['le' => $e['le'], 'titre' => 'Votre demande de modification', 'detail' => preg_match('/« (.+?) »/u', (string) $e['detail'], $m) ? $m[1] : null, 'reperes' => array_column($e['reperes'] ?? [], 't')],
                 'valide' => ['le' => $e['le'], 'titre' => 'BAT validé', 'detail' => null],
                 default => null,
             };

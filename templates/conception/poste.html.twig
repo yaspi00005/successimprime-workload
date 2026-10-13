@@ -54,7 +54,13 @@
 						{% if not p.disponible %}
 							<div class="si-gp-sans"><i class="far fa-file"></i><b>{{ p.f.nomOriginal }}</b><small>Le fichier n'est pas sur ce poste.</small></div>
 						{% elseif p.type == 'image' %}
-							<img class="si-gp-zoom" src="{{ path('app_controle_pre_presse_visualiser_fichier', {id: p.f.id}) }}" alt="{{ p.f.nomOriginal }}">
+							{% set rang = rangs[p.f.id] ?? 0 %}
+							<div class="si-gp-cadre si-gp-zoom">
+								<img src="{{ path('app_controle_pre_presse_visualiser_fichier', {id: p.f.id}) }}" alt="{{ p.f.nomOriginal }}">
+								{% if reperes %}
+									{% for r in reperes.reperes %}{% if r.i == rang %}<span class="si-gp-repere{{ reperes.corrigeeEn ? ' corrige' }}" style="left:{{ r.x * 100 }}%;top:{{ r.y * 100 }}%" title="{{ r.t }}">{{ loop.index }}</span>{% endif %}{% endfor %}
+								{% endif %}
+							</div>
 						{% elseif p.type == 'pdf' %}
 							<iframe class="si-gp-zoom" src="{{ path('app_controle_pre_presse_visualiser_fichier', {id: p.f.id}) }}#toolbar=0&amp;view=Fit" title="{{ p.f.nomOriginal }}"></iframe>
 						{% else %}
@@ -96,7 +102,9 @@
 				<ol class="si-gp-fil">
 					{% for e in evenements %}
 						{% if e.type in ['retour', 'erreur'] %}
-							<li class="si-gp-client"><b>{{ e.type == 'erreur' ? 'Erreur à corriger' : 'Client' }}</b> : {{ e.detail ? '« ' ~ (e.detail|split(' · ')|first) ~ ' »' : 'correction demandée' }}<time>{{ e.le|date('d/m H:i') }}</time></li>
+							<li class="si-gp-client"><b>{{ e.type == 'erreur' ? 'Erreur à corriger' : 'Client' }}</b> : {{ e.detail and e.detail starts with '«' ? e.detail|split(' · ')|first : (e.reperes ?? [] ? 'repères sur le BAT' : 'correction demandée') }}
+								{% if e.reperes ?? [] %}<ol class="si-gp-reperes">{% for r in e.reperes %}<li>{{ r.t }}</li>{% endfor %}</ol>{% endif %}
+								<time>{{ e.le|date('d/m H:i') }}</time></li>
 						{% elseif e.type == 'bat' %}
 							<li class="si-gp-nous">{{ e.titre }}<time>{{ e.le|date('d/m H:i') }}</time></li>
 						{% elseif e.type == 'valide' %}

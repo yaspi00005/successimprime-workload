@@ -24,7 +24,7 @@
 					<li class="si-cp-ev-{{ e.type }}">
 						<time>{{ e.le|date(e.le|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}</time>
 						<i class="fas {{ e.type in ['retour', 'erreur'] ? 'fa-undo' : 'fa-check' }}"></i>
-						<div><b>{{ e.titre }}</b>{% if e.detail %}<small>{{ e.detail }}</small>{% endif %}</div>
+						<div><b>{{ e.titre }}</b>{% if e.detail %}<small>{{ e.detail }}</small>{% endif %}{% for r in e.reperes ?? [] %}<small>Repère {{ loop.index }} : {{ r.t }}</small>{% endfor %}</div>
 					</li>
 				{% endfor %}
 				{% if c.enCours %}

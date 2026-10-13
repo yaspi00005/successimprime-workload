@@ -164,6 +164,20 @@ a.ec-carte { display: block; color: inherit; }
 details.ec-modif summary { list-style: none; }
 details.ec-modif summary::-webkit-details-marker { display: none; }
 details.ec-modif[open] summary { display: none; }
+/* Repères posés par le client sur l'image du BAT (maquette 16) */
+.ec-bat-image { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+.ec-bat-image img { display: block; }
+.ec-placer .ec-bat-image { cursor: crosshair; }
+.ec-placer .ec-bat-image img { outline: 2px dashed var(--bleu); outline-offset: 4px; }
+.ec-repere { position: absolute; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; background: var(--rouge); color: #fff; font-size: .8rem; font-weight: 800; line-height: 26px; text-align: center; box-shadow: 0 0 0 3px #fff, 0 4px 10px rgba(18,33,58,.35); pointer-events: none; }
+.ec-placer .ec-repere.ancien, .ec-placer #reperes-precedents { display: none; }
+.ec-reperes { list-style: none; margin: 0 0 .85rem; padding: .8rem 1rem; display: grid; gap: .45rem; text-align: left; }
+.ec-reperes li { display: flex; gap: .55rem; align-items: center; font-size: .9rem; }
+.ec-reperes.ec-saisie { padding: 0; margin: .3rem 0 .7rem; }
+.ec-reperes.ec-saisie .ec-champ { min-height: 0; padding: .55rem .75rem; }
+.ec-num { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--rouge); color: var(--rouge); font-size: .72rem; font-weight: 800; display: grid; place-items: center; }
+.ec-retirer { flex: none; width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--fond); color: var(--gris); font-size: 1.2rem; cursor: pointer; }
+.ec-astuce { font-size: .85rem; color: var(--bleu); background: var(--bleu-clair); border-radius: 12px; padding: .6rem .8rem; margin: 0 0 .6rem; }
 
 /* Paiement */
 .ec-moyen { display: flex; align-items: center; gap: .9rem; padding: 1rem; border-radius: var(--rayon); background: #fff; border: 2px solid var(--trait); margin-bottom: .75rem; }

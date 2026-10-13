@@ -55,3 +55,6 @@
 
 # Données de démo (fichiers SQL générés, sans donnée réelle)
 !donnees-demo/*.sql
+
+# Copies de travail temporaires des assistants
+/.claude/worktrees/

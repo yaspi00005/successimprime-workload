@@ -1,0 +1,143 @@
+{% extends 'finances/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Prévision de trésorerie{% endblock %}
+{% block page_title %}Prévision 90 jours{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<form method="get" action="{{ path('app_finances_tresorerie') }}" class="si-fin-periode">
+			<label class="visually-hidden" for="si-fin-scenario">Scénario</label>
+			<select id="si-fin-scenario" name="scenario" class="form-select form-select-sm" onchange="this.form.submit()">
+				{% for cle, libelle in scenarios %}
+					<option value="{{ cle }}" {{ cle == scenario ? 'selected' }}>{{ libelle }}</option>
+				{% endfor %}
+			</select>
+		</form>
+	</li>
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_finances_tresorerie_export', {scenario: scenario}) }}" class="btn btn-light btn-sm si-btn-entete" title="Prévision jour par jour (CSV)"><i class="fas fa-download me-1"></i>Export</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% set sous = sous_seuil is not null %}
+	<div class="si-fin si-fin-prevision">
+		<section class="si-fin-kpis" aria-label="Prévision sur 90 jours">
+			<article class="card si-fin-kpi">
+				<h2>Trésorerie aujourd’hui</h2>
+				<strong class="{{ depart < 0 ? 'text-danger' }}">{{ m.f(depart) }}</strong>
+				<a class="si-fin-vert" href="{{ path(droits.admin ? 'app_tresorerie_index' : 'app_mouvement_tresorerie_index') }}" title="Comptes et mouvements">{{ nb_comptes }} compte{{ nb_comptes > 1 ? 's' }} · mouvements</a>
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Point bas</h2>
+				<strong class="{{ point_bas.solde < seuil ? 'text-danger' }}">{{ m.f(point_bas.solde) }}</strong>
+				{% if point_bas.index == 0 %}
+					<span class="si-fin-vert">aujourd’hui · le solde ne descend pas plus bas</span>
+				{% elseif point_bas.solde < seuil %}
+					<span class="si-fin-rouge">le {{ point_bas.date|date('d/m') }} · sous le seuil d’alerte</span>
+				{% else %}
+					<span class="si-fin-vert">le {{ point_bas.date|date('d/m') }} · reste au-dessus du seuil</span>
+				{% endif %}
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Entrées attendues (90 j)</h2>
+				<strong>{{ m.f(entrees) }}</strong>
+				<span class="si-fin-vert">créances + commandes + moyenne des ventes</span>
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Sorties prévues (90 j)</h2>
+				<strong>{{ m.f(sorties) }}</strong>
+				{% set postes = {fournisseur: 'fournisseurs', salaires: 'salaires', fiscal: 'taxes', charge: 'loyer', courantes: 'achats courants'}|filter((v, k) => detail_sorties[k]|default(0) > 0) %}
+				<span class="si-fin-vert">{{ postes is empty ? 'rien de prévu' : postes|join(', ') }}</span>
+			</article>
+		</section>
+
+		<section class="card si-fin-solde-prevu" aria-label="Solde prévu">
+			<header class="si-fin-tete">
+				<h2>Solde prévu</h2>
+				<span class="si-fin-unite">millions de F · seuil d’alerte {{ seuil|number_format(0, ',', ' ') }} F</span>
+			</header>
+			<div class="si-fin-courbe">
+				<div class="si-fin-courbe-zone">
+					{% for g in trace.graduations %}
+						<span class="si-fin-courbe-grille" style="top: {{ g.y }}%"></span>
+						<span class="si-fin-courbe-y" style="top: {{ g.y }}%">{{ g.libelle }}</span>
+					{% endfor %}
+					<svg viewBox="0 0 {{ trace.largeur }} {{ trace.hauteur }}" preserveAspectRatio="none" role="img" aria-label="Solde prévu jour par jour, de {{ m.f(depart)|striptags }} aujourd’hui à {{ m.f(points|last.solde)|striptags }} le {{ horizon|date('d/m') }} ; point bas {{ m.f(point_bas.solde)|striptags }} le {{ point_bas.date|date('d/m') }}">
+						<path d="{{ trace.aire }}" class="si-fin-courbe-aire"/>
+						{% if trace.seuil_visible %}
+							<line x1="0" x2="{{ trace.largeur }}" y1="{{ trace.seuil_y * trace.hauteur / 100 }}" y2="{{ trace.seuil_y * trace.hauteur / 100 }}" class="si-fin-courbe-seuil"/>
+						{% endif %}
+						<path d="{{ trace.ligne }}" class="si-fin-courbe-ligne"/>
+					</svg>
+					<span class="si-fin-repere si-fin-repere-depart" style="left: 0; top: {{ trace.depart.y }}%"><small>aujourd’hui</small></span>
+					{% for r in trace.reperes %}
+						<span class="si-fin-repere{{ r.y > 78 ? ' si-fin-repere-haut' }}{{ r.x > 88 ? ' si-fin-repere-droite' }}" style="left: {{ r.x }}%; top: {{ r.y }}%" title="{{ r.libelle }} : {{ r.total|number_format(0, ',', ' ') }} F"><small>{{ r.libelle }}</small></span>
+					{% endfor %}
+					{% if point_bas.index > 0 %}
+						<span class="si-fin-repere si-fin-repere-bas" style="left: {{ trace.bas.x }}%; top: {{ trace.bas.y }}%" title="Point bas : {{ point_bas.solde|number_format(0, ',', ' ') }} F le {{ point_bas.date|date('d/m') }}"></span>
+					{% endif %}
+				</div>
+				<div class="si-fin-courbe-x" aria-hidden="true">
+					{% for d in trace.dates %}
+						<span style="left: {{ d.x }}%">{{ d.libelle }}</span>
+					{% endfor %}
+				</div>
+			</div>
+			<p class="si-fin-note">{{ libelle_scenario }} : estimation recalculée à chaque affichage, rien n’est enregistré. Le solde de départ ne compte que les mouvements validés.</p>
+		</section>
+
+		<div class="si-fin-trois">
+			<section class="card si-fin-pris" aria-label="Entrées prises en compte">
+				<h2>Entrées prises en compte</h2>
+				<ul>
+					<li><span>Créances à échéance <small>{{ detail_entrees.creances.nombre }} reste{{ detail_entrees.creances.nombre > 1 ? 's' }} dû{{ detail_entrees.creances.nombre > 1 ? 's' }}, probabilité selon l’historique du client</small></span><b>{{ m.f(detail_entrees.creances.montant) }}</b></li>
+					<li><span>Commandes en cours <small>{{ detail_entrees.commandes.nombre }} solde{{ detail_entrees.commandes.nombre > 1 ? 's' }} attendu{{ detail_entrees.commandes.nombre > 1 ? 's' }} à la livraison</small></span><b>{{ m.f(detail_entrees.commandes.montant) }}</b></li>
+					<li><span>Ventes comptoir moyennes <small>{{ m.f(detail_entrees.comptoir.par_jour) }} par jour, sur les 90 derniers jours</small></span><b>{{ m.f(detail_entrees.comptoir.montant) }}</b></li>
+				</ul>
+				<p class="si-fin-note">Une créance échue compte moins (75 % jusqu’à 30 jours de retard, 10 % au-delà de 90) et arrive après une relance, d’autant plus tard qu’elle est ancienne.</p>
+			</section>
+
+			<section class="card si-fin-pris" aria-label="Sorties prises en compte">
+				<h2>Sorties prises en compte</h2>
+				<ul>
+					{% set libelles = {fournisseur: ['Échéancier fournisseurs', 'dépenses à payer'], salaires: ['Salaires nets', 'au jour de paie'], charge: ['Charges récurrentes', 'loyer, électricité, abonnements'], fiscal: ['Impôts et taxes', 'tâches du planning avec un montant'], planning: ['Achats et dépenses prévus', 'tâches du planning']} %}
+					{% for cle, l in libelles %}
+						{% if detail_sorties[cle] > 0 %}
+							<li><span>{{ l[0] }} <small>{{ l[1] }}</small></span><b>{{ m.f(detail_sorties[cle]) }}</b></li>
+						{% endif %}
+					{% endfor %}
+					<li><span>Dépenses courantes moyennes <small>{{ m.f(courantes_par_jour) }} par jour : achats au comptant, carburant, entretien</small></span><b>{{ m.f(detail_sorties.courantes) }}</b></li>
+				</ul>
+				{% if selon_declaration is not empty %}
+					<p class="si-fin-note si-fin-orange">{{ selon_declaration|length }} échéance{{ selon_declaration|length > 1 ? 's' }} fiscale{{ selon_declaration|length > 1 ? 's' }} sans montant ne {{ selon_declaration|length > 1 ? 'sont' : 'est' }} pas comptée{{ selon_declaration|length > 1 ? 's' }} ({{ selon_declaration|map(e => e.titre ~ ' ' ~ e.date|date('d/m'))|join(', ') }}) : indiquez un montant estimé dans le planning.</p>
+				{% endif %}
+			</section>
+
+			<section class="card si-fin-pris si-fin-alerte{{ sous ? ' si-fin-alerte-rouge' }}" aria-label="Alerte">
+				<h2>Alerte</h2>
+				{% if sous %}
+					<p><strong class="si-fin-rouge">{% if sous_seuil.date == aujourdhui %}La trésorerie est déjà sous {{ m.f(seuil) }}.{% else %}Le solde prévu passe sous {{ m.f(seuil) }} le {{ sous_seuil.date|date('d/m') }}.{% endif %}</strong> La direction est prévenue chaque semaine tant que la prévision reste sous le seuil.</p>
+					{% if a_relancer is not empty and (is_granted('ROLE_PAIEMENT_VOIR') or is_granted('ROLE_FACTURE')) %}
+						<h3>Créances à relancer en priorité</h3>
+						<ul>
+							{% for c in a_relancer %}
+								<li><span>{{ c.client }} <small>{{ c.document }} · échue depuis {{ c.jours }} j</small></span><b>{{ m.f(c.reste) }}</b></li>
+							{% endfor %}
+						</ul>
+						{% if is_granted('ROLE_FACTURE') %}
+							<a class="si-fin-lien" href="{{ path('app_creances_index', {filtre: 'echues'}) }}">Relancer depuis les créances</a>
+						{% endif %}
+					{% endif %}
+				{% else %}
+					<p>Si le solde prévu passe sous {{ m.f(seuil) }}, la direction est prévenue avec les créances à relancer en priorité.</p>
+					<p class="si-fin-vert fw-bold mb-0"><i class="fas fa-check-circle me-1"></i>Pas de passage sous le seuil sur 90 jours.</p>
+				{% endif %}
+				{% if droits.admin %}
+					<a class="si-fin-lien" href="{{ path('app_reglages_parametres_index', {tuile: 'finances'}) }}">Modifier le seuil</a>
+				{% endif %}
+			</section>
+		</div>
+	</div>
+{% endblock %}

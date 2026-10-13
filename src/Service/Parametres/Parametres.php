@@ -156,6 +156,7 @@ final class Parametres
             'modeles' => 'devis, facture, BL, bon de commande',
             'numerotation' => $this->exemplesNumeros(),
             'taxes' => 'TVA '.$v['taux_tva'].' % · '.($v['tva_par_defaut'] ? 'par défaut' : 'au choix par facture'),
+            'finances' => 'objectif '.number_format((int) $v['objectif_ca'], 0, ',', ' ').' F · approbation au-delà de '.number_format((int) $v['seuil_approbation'], 0, ',', ' ').' F',
             'grille' => self::nb($compter(ProduitConfiguration::class), 'configuration').' · '.self::nb($compter(Produits::class), 'produit'),
             'produits' => self::nb($compter(Produits::class), 'produit').' · '.self::nb($compter(Finition::class), 'finition'),
             'paiements' => implode(', ', array_map(static fn (string $m): string => Paiements::MODES_LABELS[$m], $this->modesPaiementActifs())) ?: 'aucun mode actif',

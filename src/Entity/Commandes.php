@@ -26,6 +26,10 @@ class Commandes
     public const CANAL_COMPTOIR = 'comptoir';
     public const CANAL_EN_LIGNE = 'en_ligne';
 
+    public const VALIDATION_A_FAIRE = 'a_valider';
+    public const VALIDATION_ACCEPTEE = 'validee';
+    public const VALIDATION_REFUSEE = 'refusee';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -165,6 +169,32 @@ class Commandes
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $adresseLivraison = null;
+
+    /** Numéro du bon de commande du client (entreprise). */
+    #[ORM\Column(length: 60, nullable: true)]
+    private ?string $bonCommande = null;
+
+    /**
+     * Commande en ligne d'un demandeur d'une entreprise (maquette 19) :
+     * a_valider, puis validee ou refusee par un valideur de l'entreprise.
+     * null : pas de validation interne demandée.
+     */
+    #[ORM\Column(length: 12, nullable: true)]
+    private ?string $validationEntreprise = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $demandeePar = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $valideePar = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $motifRefusEntreprise = null;
+
+    /** Compte de l'espace client qui a passé la commande (reste sur le site). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?CompteClient $compteDemandeur = null;
 
     public function __construct()
     {
@@ -749,6 +779,90 @@ class Commandes
     {
         $adresse = null === $adresse ? null : trim($adresse);
         $this->adresseLivraison = '' === $adresse ? null : $adresse;
+
+        return $this;
+    }
+
+    public function getBonCommande(): ?string
+    {
+        return $this->bonCommande;
+    }
+
+    public function setBonCommande(?string $numero): static
+    {
+        $numero = null !== $numero ? mb_substr(trim($numero), 0, 60) : null;
+        $this->bonCommande = '' === $numero ? null : $numero;
+
+        return $this;
+    }
+
+    public function getValidationEntreprise(): ?string
+    {
+        return $this->validationEntreprise;
+    }
+
+    public function setValidationEntreprise(?string $etat): static
+    {
+        $this->validationEntreprise = $etat;
+
+        return $this;
+    }
+
+    public function attendValidationEntreprise(): bool
+    {
+        return self::VALIDATION_A_FAIRE === $this->validationEntreprise;
+    }
+
+    public function estRefuseeParEntreprise(): bool
+    {
+        return self::VALIDATION_REFUSEE === $this->validationEntreprise;
+    }
+
+    public function getDemandeePar(): ?string
+    {
+        return $this->demandeePar;
+    }
+
+    public function setDemandeePar(?string $nom): static
+    {
+        $this->demandeePar = null !== $nom ? mb_substr($nom, 0, 80) : null;
+
+        return $this;
+    }
+
+    public function getValideePar(): ?string
+    {
+        return $this->valideePar;
+    }
+
+    public function setValideePar(?string $nom): static
+    {
+        $this->valideePar = null !== $nom ? mb_substr($nom, 0, 80) : null;
+
+        return $this;
+    }
+
+    public function getMotifRefusEntreprise(): ?string
+    {
+        return $this->motifRefusEntreprise;
+    }
+
+    public function setMotifRefusEntreprise(?string $motif): static
+    {
+        $motif = null !== $motif ? mb_substr(trim($motif), 0, 255) : null;
+        $this->motifRefusEntreprise = '' === $motif ? null : $motif;
+
+        return $this;
+    }
+
+    public function getCompteDemandeur(): ?CompteClient
+    {
+        return $this->compteDemandeur;
+    }
+
+    public function setCompteDemandeur(?CompteClient $compte): static
+    {
+        $this->compteDemandeur = $compte;
 
         return $this;
     }

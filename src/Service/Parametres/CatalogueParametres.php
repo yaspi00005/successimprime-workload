@@ -252,6 +252,11 @@ final class CatalogueParametres
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_appareils_index', 'champs' => [],
                 'motsCles' => ['Accès à l\'admin en ligne', 'Appareils à approuver', 'Code par SMS'],
             ],
+            'api' => [
+                'famille' => 'systeme', 'libelle' => 'Accès API', 'icone' => 'fa-plug',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_jetons_api_index', 'champs' => [],
+                'motsCles' => ['Jetons pour Excel, rapports, applications', 'Documentation de l\'API'],
+            ],
             'synchronisation' => [
                 'famille' => 'systeme', 'libelle' => 'Synchronisation', 'icone' => 'fa-sync-alt',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_synchronisation_index', 'champs' => [],

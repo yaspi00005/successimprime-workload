@@ -7,6 +7,7 @@ use App\Repository\UserRepository;
 
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -167,6 +168,20 @@ final class ForcePasswordChangeSubscriber implements EventSubscriberInterface
                 true
             )
         ) {
+            return;
+        }
+
+
+        /*
+         * API : pas de page où changer le mot de passe, on refuse.
+         */
+        if (str_starts_with($request->getPathInfo(), '/api/')) {
+            $event->setResponse(new JsonResponse(
+                ['title' => 'Accès refusé', 'status' => 403, 'detail' => 'Cette personne doit d\'abord changer son mot de passe dans l\'application.'],
+                403,
+                ['Content-Type' => 'application/problem+json']
+            ));
+
             return;
         }
 

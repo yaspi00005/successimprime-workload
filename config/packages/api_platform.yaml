@@ -1,0 +1,42 @@
+# API REST (docs/api.md) : ressources en lecture, construites à la main
+# dans src/ApiResource (aucune entité n'est exposée telle quelle), droits
+# vérifiés champ par champ. Documentation : /api/v1/docs.
+api_platform:
+    title: API Succès Imprim
+    description: |
+        Lecture du catalogue, des clients, des commandes, des factures et du stock de l'ERP local.
+        Chaque appel porte un jeton personnel (Réglages › Sécurité › Accès API) :
+        `Authorization: Bearer si_…`. Le jeton a les droits de la personne qui le porte ;
+        les montants, les coûts et les données sensibles ne sortent qu'avec le droit correspondant.
+    version: 1.0.0
+    mapping:
+        paths: ['%kernel.project_dir%/src/ApiResource']
+    formats:
+        json: ['application/json']
+        jsonld: ['application/ld+json']
+    docs_formats:
+        jsonopenapi: ['application/vnd.openapi+json']
+        jsonld: ['application/ld+json']
+        html: ['text/html']
+    error_formats:
+        jsonproblem: ['application/problem+json']
+    swagger:
+        http_auth:
+            Jeton:
+                scheme: bearer
+                bearerFormat: si_…
+    enable_re_doc: false
+    # Aucune entité Doctrine exposée : chaque ressource a son provider.
+    doctrine:
+        enabled: false
+    show_webby: false
+    defaults:
+        stateless: true
+        # Un champ caché par les droits reste présent, à null.
+        normalization_context:
+            skip_null_values: false
+        pagination_items_per_page: 50
+        pagination_maximum_items_per_page: 200
+        pagination_client_items_per_page: true
+        cache_headers:
+            vary: ['Content-Type', 'Authorization', 'Origin']

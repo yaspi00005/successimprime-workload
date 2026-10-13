@@ -31,6 +31,16 @@ security:
             stateless: true
             security: false
 
+        # API (docs/api.md) : un jeton par personne et par usage, sans
+        # session. Fermée sur le serveur en ligne (ApiHorsLigneSubscriber).
+        api:
+            pattern: ^/api/v1
+            stateless: true
+            provider: app_user_provider
+            custom_authenticator: App\Security\JetonApiAuthenticator
+            entry_point: App\Security\JetonApiAuthenticator
+            user_checker: App\Security\UserChecker
+
         # Espace client (maquettes CX01 et CX04) : comptes séparés du
         # personnel, connexion par numéro de téléphone.
         espace:
@@ -186,6 +196,19 @@ security:
         - {
             path: ^/devis/\d+/pdf-public/,
             roles: PUBLIC_ACCESS
+        }
+
+
+        # API : la documentation ne contient aucune donnée ; le reste
+        # demande un jeton, puis chaque ressource vérifie les droits fins.
+        - {
+            path: '^/api/v1(/docs(\.[a-z]+)?|/index(\.[a-z]+)?|/contexts/.*|/\.well-known/.*)?$',
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: ^/api/v1,
+            roles: ROLE_USER
         }
 
 

@@ -5,6 +5,7 @@ namespace App\Service\Parametres;
 use App\Entity\AppareilAutorise;
 use App\Entity\Articles;
 use App\Entity\DecaissementRecurrent;
+use App\Entity\JetonApi;
 use App\Entity\Entreprise;
 use App\Entity\Finition;
 use App\Entity\JournalActivite;
@@ -172,6 +173,7 @@ final class Parametres
             'messages' => self::nb($compter(ModeleMessage::class), 'modèle'),
             'ecran_tv' => 'playlist de '.ProgrammeEcranTv::dureeBoucle($this->ecranTv->programme()['scenes']).' s',
             'appareils' => $this->etatAppareils($badge),
+            'api' => $this->accesEnLigne->estEnLigne() ? 'fermée en ligne' : self::nb($compter(JetonApi::class, ['revoqueLe' => null]), 'jeton'),
             'synchronisation' => $this->synchro->estConfiguree() ? ($this->synchro->estEnLigne() ? 'site en ligne' : 'avec '.(parse_url($this->synchro->url(), \PHP_URL_HOST) ?: 'le site')) : 'pas encore réglée',
             'sauvegardes' => 'complète à '.self::heure($v['heure']).' · base toutes les '.$v['base_heures'].' h',
             'taches' => self::nb($compter(DecaissementRecurrent::class, ['actif' => true]), 'dépense récurrente', 'dépenses récurrentes'),

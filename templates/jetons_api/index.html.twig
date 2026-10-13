@@ -1,0 +1,122 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Accès API{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ docs }}" class="btn btn-outline-primary btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fas fa-book me-1"></i>Documentation</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% if en_ligne %}
+		<div class="alert alert-warning">L'API n'est pas ouverte sur le serveur en ligne. Les jetons se créent et s'utilisent sur l'ERP local de l'atelier.</div>
+	{% endif %}
+
+	<div class="row">
+		<div class="col-xl-8">
+			<div class="card si-bloc">
+				{% if jetons is empty %}
+					<p class="text-muted py-4 text-center mb-0">Aucun jeton pour le moment. Un jeton permet à un tableur, un outil de rapports ou une application de lire l'ERP.</p>
+				{% else %}
+					<div class="table-responsive">
+						<table class="table si-table align-middle mb-0">
+							<thead>
+								<tr>
+									<th>Jeton</th>
+									<th>Au nom de</th>
+									<th class="si-masque-mobile">Dernier usage</th>
+									<th class="si-masque-mobile">Fin</th>
+									<th>État</th>
+									<th class="text-end"></th>
+								</tr>
+							</thead>
+							<tbody>
+								{% set etats = {actif: ['Actif', 'si-pastille-vert'], expire: ['Expiré', 'si-pastille-gris'], revoque: ['Révoqué', 'si-pastille-gris']} %}
+								{% for jeton in jetons %}
+									{% set etat = jeton.etat(maintenant) %}
+									<tr class="{{ etat != 'actif' ? 'si-ligne-eteinte' }}">
+										<td><strong>{{ jeton.nom }}</strong><small class="d-block text-muted font-monospace">{{ jeton.debut }}…</small></td>
+										<td>{{ jeton.utilisateur.userIdentifier }}</td>
+										<td class="si-masque-mobile text-nowrap">{% if jeton.utiliseLe %}{{ jeton.utiliseLe|date('d/m/Y H:i') }}<small class="d-block text-muted">{{ jeton.derniereIp }}</small>{% else %}<span class="text-muted">Jamais</span>{% endif %}</td>
+										<td class="si-masque-mobile text-nowrap">{{ jeton.expireLe ? jeton.expireLe|date('d/m/Y') : 'Sans fin' }}</td>
+										<td><span class="si-pastille {{ etats[etat][1] }}">{{ etats[etat][0] }}</span></td>
+										<td class="text-end">
+											{% if etat != 'revoque' %}
+												<form method="post" action="{{ path('app_jetons_api_revoquer', {id: jeton.id}) }}" class="d-inline" onsubmit="return confirm('Révoquer « {{ jeton.nom|e('js') }} » ? L\'outil qui l\'utilise n\'aura plus accès.');">
+													<input type="hidden" name="_token" value="{{ csrf_token('jeton-api-' ~ jeton.id) }}">
+													<button class="btn btn-sm si-btn-discret">Révoquer</button>
+												</form>
+											{% endif %}
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="col-xl-4">
+			<div class="card si-bloc" id="nouveau">
+				{% if nouveau %}
+					<h2 class="si-bloc-titre">Jeton « {{ nouveau.nom }} »</h2>
+					<p class="small">Copiez-le maintenant dans l'outil qui l'utilisera : <strong>il ne sera plus jamais affiché</strong>.</p>
+					<div class="input-group input-group-sm">
+						<input type="text" class="form-control font-monospace" id="jeton-texte" value="{{ nouveau.texte }}" readonly onclick="this.select()">
+						<button type="button" class="btn btn-outline-secondary" id="jeton-copier">Copier</button>
+					</div>
+					<p class="small text-muted mt-2 mb-0">Il agit au nom de {{ nouveau.utilisateur }}, avec ses droits. En-tête à envoyer : <code>Authorization: Bearer si_…</code></p>
+					<a href="{{ path('app_jetons_api_index') }}" class="btn btn-sm si-btn-discret w-100 mt-3">J'ai copié le jeton</a>
+				{% elseif not en_ligne %}
+					<h2 class="si-bloc-titre">Nouveau jeton</h2>
+					<form method="post" action="{{ path('app_jetons_api_creer') }}">
+						<input type="hidden" name="_token" value="{{ csrf_token('jeton-api-creer') }}">
+						<label class="form-label" for="jeton-nom">Pour quel outil</label>
+						<input type="text" name="nom" id="jeton-nom" class="form-control form-control-sm" maxlength="80" placeholder="Tableau de bord Excel du gérant" required>
+						<label class="form-label mt-2" for="jeton-utilisateur">Au nom de</label>
+						<select name="utilisateur" id="jeton-utilisateur" class="form-select form-select-sm" required>
+							<option value="">Choisir…</option>
+							{% for utilisateur in utilisateurs %}
+								<option value="{{ utilisateur.id }}">{{ utilisateur.userIdentifier }}</option>
+							{% endfor %}
+						</select>
+						<small class="text-muted d-block mt-1">Le jeton voit ce que cette personne voit, pas plus. Pour un outil de rapports, créez une personne aux droits limités.</small>
+						<label class="form-label mt-2" for="jeton-duree">Valable</label>
+						<select name="duree" id="jeton-duree" class="form-select form-select-sm">
+							{% for jours, libelle in durees %}
+								<option value="{{ jours }}"{{ jours == 90 ? ' selected' }}>{{ libelle }}</option>
+							{% endfor %}
+						</select>
+						<button class="btn btn-danger btn-sm w-100 mt-3">Créer le jeton</button>
+					</form>
+				{% endif %}
+			</div>
+
+			<div class="card si-bloc">
+				<h2 class="si-bloc-titre">Règles de l'API</h2>
+				<ul class="si-regles-acces">
+					<li>Lecture seule : catalogue, clients, commandes, factures, stock</li>
+					<li>Les droits de la personne s'appliquent : montants payés, coûts et stock seulement avec le droit</li>
+					<li>Jamais de marges, de notes internes, de RH ni de trésorerie</li>
+					<li>Sur l'ERP local seulement, pas sur le serveur en ligne</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script>
+		(function () {
+			var bouton = document.getElementById('jeton-copier');
+			if (!bouton) return;
+			bouton.addEventListener('click', function () {
+				var champ = document.getElementById('jeton-texte');
+				champ.select();
+				(navigator.clipboard ? navigator.clipboard.writeText(champ.value) : Promise.reject()).then(function () { bouton.textContent = 'Copié'; }, function () { document.execCommand('copy'); bouton.textContent = 'Copié'; });
+			});
+		})();
+	</script>
+{% endblock %}

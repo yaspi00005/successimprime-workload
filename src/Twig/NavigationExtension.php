@@ -59,6 +59,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
         ],
         'finances' => [
+            ['libelle' => 'Vue d\'ensemble', 'route' => 'app_finances_vue_ensemble', 'role' => ['ROLE_TRESORERIE_VOIR', 'ROLE_STATS_GLOBAL', 'ROLE_PAIEMENT_VOIR', 'ROLE_COUT_MARGE'], 'prefixes' => ['app_finances_vue_ensemble', 'app_finances_du_jour']],
             ['libelle' => 'Caisse', 'route' => 'app_caisse_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_caisse_', 'app_journal_caisse_', 'app_clients_solde']],
             ['libelle' => 'À valider', 'route' => 'app_a_valider_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_a_valider_']],
             ['libelle' => 'Paiements', 'route' => 'app_paiements_index', 'role' => 'ROLE_PAIEMENT_VOIR', 'prefixes' => ['app_paiements_']],
@@ -117,6 +118,7 @@ final class NavigationExtension extends AbstractExtension
         'app_lot_etiquette_' => 'atelier',
         'app_suivi_etiquette' => 'atelier',
         'app_fichier_upload_' => 'atelier',
+        'app_finances_' => 'finances',
         'app_caisse_' => 'finances',
         'app_a_valider_' => 'finances',
         'app_creances_' => 'finances',

@@ -1,0 +1,133 @@
+/*
+ * Écrans Finances (maquettes F01 à F07) : vue d'ensemble, encaissements,
+ * dépenses et budgets, fournisseurs, prévision de trésorerie,
+ * rentabilité et finances du jour sur téléphone.
+ * Même famille que les écrans Caisse, Créances et Trésorerie (admin.css) :
+ * cartes blanches arrondies, pastilles, bouton rouge d'action.
+ */
+
+/* ---------- Commun ---------- */
+.si-fin { display: grid; gap: 20px; }
+.si-fin .card { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; margin: 0; background: #fff; min-width: 0; }
+.si-fin h2 { font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 12px; }
+.si-fin h3 { font-size: 15px; font-weight: 700; color: #0F172A; margin: 0 0 8px; }
+.si-fin-f { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.si-fin-vert { color: #15803D; }
+.si-fin-orange { color: #C2410C; }
+.si-fin-rouge { color: #DC2626; }
+.si-fin-bleu { color: #0F4590; }
+.si-fin-gris { color: #64748B; font-weight: 500 !important; }
+.si-fin-vide, .si-fin-rien { color: #64748B; margin: 0; }
+.si-fin-note { font-size: 12.5px; color: #64748B; margin: 12px 0 0; }
+.si-fin-lien { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 600; }
+.si-fin-imprime { display: none; }
+.si-fin-periode select { min-width: 170px; font-weight: 600; border-radius: 10px; }
+.si-fin-unite { color: #0F4590; font-weight: 700; font-size: 13px; white-space: nowrap; }
+.si-fin-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.si-fin-tete h2 { margin: 0; }
+
+/* Pastilles de statut */
+.si-fin-statut { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.si-fin-statut-vert { background: #DCFCE7; color: #15803D; }
+.si-fin-statut-orange { background: #FFEDD5; color: #C2410C; }
+.si-fin-statut-bleu { background: #E7EEFA; color: #0F4590; }
+.si-fin-statut-rouge { background: #FEE2E2; color: #B91C1C; }
+.si-fin-statut-gris { background: #EEF0F3; color: #5B6575; }
+
+/* Icônes carrées des comptes */
+.si-fin-icone { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; font-size: 17px; }
+.si-fin-icone-bleu { background: #E7EEFA; color: #0F4590; }
+.si-fin-icone-orange { background: #FFEDD5; color: #EA580C; }
+.si-fin-icone-cyan { background: #CFFAFE; color: #0E7490; }
+.si-fin-icone-vert { background: #DCFCE7; color: #15803D; }
+.si-fin-icone-gris { background: #EEF0F3; color: #5B6575; }
+
+/* Cartes chiffres (KPI) */
+.si-fin-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 20px; }
+.si-fin .si-fin-kpi h2 { font-size: 14px; font-weight: 500; color: #475569; margin: 0 0 6px; }
+.si-fin-kpi strong { display: block; font-size: clamp(22px, 2.1vw, 28px); font-weight: 800; color: #0F172A; white-space: nowrap; letter-spacing: -0.01em; }
+.si-fin-kpi > span, .si-fin-kpi > a { display: block; margin-top: 4px; font-size: 13px; font-weight: 700; }
+
+/* Tableaux */
+.si-fin .si-fin-table { margin: 0; }
+.si-fin .si-fin-table thead th { font-size: 13px; color: #64748B; font-weight: 600; text-transform: none; letter-spacing: 0; background: #F8FAFC; border-bottom: 0; padding: 10px 8px; white-space: nowrap; }
+.si-fin-table td { vertical-align: middle; padding: 12px 8px; color: #0F172A; border-color: #EEF2F7; }
+.si-fin-table td small { display: block; color: #64748B; font-size: 12px; }
+.si-fin-table a { font-weight: 600; }
+
+/* Jauges */
+.si-fin-jauge { display: block; height: 8px; border-radius: 999px; background: #EEF2F7; overflow: hidden; }
+.si-fin-jauge > span { display: block; height: 100%; border-radius: 999px; background: #16A34A; }
+.si-fin-jauge-ok > span, .si-fin-jauge-vert > span { background: #16A34A; }
+.si-fin-jauge-bleu > span { background: #0F4590; }
+.si-fin-jauge-attention > span, .si-fin-jauge-orange > span { background: #EA580C; }
+.si-fin-jauge-depasse > span, .si-fin-jauge-rouge > span { background: #DC2626; }
+.si-fin-jauge-plein > span, .si-fin-jauge-gris > span { background: #94A3B8; }
+
+/* ---------- F01 · Vue d'ensemble ---------- */
+.si-fin-comptes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+.si-fin .card.si-fin-compte { display: flex; flex-direction: row; align-items: center; text-align: left; gap: 14px; padding: 18px 20px; }
+.si-fin .si-fin-compte h2 { font-size: 13.5px; font-weight: 500; color: #475569; margin: 0 0 2px; line-height: 1.3; }
+.si-fin-compte strong { display: block; font-size: clamp(19px, 1.7vw, 24px); font-weight: 800; color: #0F172A; }
+.si-fin-deux { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.si-fin-graphe header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+.si-fin-graphe h2 { margin: 0 0 4px; }
+.si-fin-legende { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: 13px; color: #475569; }
+.si-fin-legende span { display: inline-flex; align-items: center; gap: 6px; }
+.si-fin-carre { display: inline-block; width: 11px; height: 11px; border-radius: 3px; }
+.si-fin-carre-ca { background: #0F4590; }
+.si-fin-carre-dep { background: #F4A58A; }
+.si-fin-barres { display: flex; gap: 12px; height: 300px; padding-top: 12px; }
+.si-fin-mois { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.si-fin-colonnes { flex: 1; display: flex; align-items: stretch; justify-content: center; gap: 6px; }
+.si-fin-colonne { flex: 1; max-width: 34px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
+.si-fin-colonne small { font-size: 11.5px; font-weight: 700; color: #334155; white-space: nowrap; }
+.si-fin-barre { display: block; width: 100%; border-radius: 6px 6px 2px 2px; min-height: 2px; }
+.si-fin-barre-ca { background: #0F4590; }
+.si-fin-barre-dep { background: #F4A58A; }
+.si-fin-lettre { text-align: center; font-size: 13px; color: #475569; margin-top: 8px; border-top: 1px solid #E2E8F0; padding-top: 6px; }
+.si-fin-surveiller ul { list-style: none; margin: 0; padding: 0; }
+.si-fin-surveiller li { border-left: 4px solid #CBD5E1; padding: 0 0 0 14px; margin: 0 0 14px; }
+.si-fin-surveiller .si-fin-ligne { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: inherit; text-decoration: none; padding: 2px 0 12px; border-bottom: 1px solid #EEF2F7; }
+.si-fin-surveiller li:last-child .si-fin-ligne { border-bottom: 0; padding-bottom: 2px; }
+.si-fin-surveiller a.si-fin-ligne:hover strong { color: #0F4590; }
+.si-fin-surveiller strong { display: block; font-size: 15px; color: #0F172A; }
+.si-fin-surveiller small { display: block; color: #64748B; font-size: 13px; }
+.si-fin-surveiller li span { font-weight: 800; color: #0F172A; white-space: nowrap; font-size: 15px; }
+.si-fin-surveiller li.si-fin-rien { border: 0; padding: 0; }
+.si-fin-trait-rouge { border-left-color: #DC2626 !important; }
+.si-fin-trait-orange { border-left-color: #EA580C !important; }
+.si-fin-trait-bleu { border-left-color: #0F4590 !important; }
+.si-fin-trait-rose { border-left-color: #DB2777 !important; }
+.si-fin-trait-canard { border-left-color: #0F766E !important; }
+.si-fin-trait-vert { border-left-color: #16A34A !important; }
+
+/* ---------- Écrans larges et téléphone ---------- */
+@media (max-width: 1199.98px) {
+  .si-fin-deux { grid-template-columns: 1fr; }
+}
+@media (max-width: 575.98px) {
+  .si-fin { gap: 14px; }
+  .si-fin .card { padding: 14px; border-radius: 14px; }
+  .si-fin h2 { font-size: 16px; }
+  .si-fin-comptes, .si-fin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .si-fin .card.si-fin-compte { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; }
+  .si-fin-icone { width: 34px; height: 34px; font-size: 14px; border-radius: 10px; }
+  .si-fin-compte strong { font-size: 17px; }
+  .si-fin-kpi strong { font-size: 18px; }
+  .si-fin-kpi > span, .si-fin-kpi > a { font-size: 12px; }
+  .si-fin-barres { height: 220px; gap: 4px; }
+  .si-fin-colonnes { gap: 2px; }
+  .si-fin-colonne small { font-size: 9.5px; }
+  .si-fin-lettre { font-size: 11px; }
+  .si-fin-graphe header { flex-direction: column; }
+  .si-fin-periode select { min-width: 0; max-width: 150px; }
+}
+
+/* ---------- Impression (« Rapport PDF ») ---------- */
+@media print {
+  .si-fin-imprime { display: block; font-weight: 700; margin-bottom: 8px; }
+  .si-fin .card { box-shadow: none; border: 1px solid #E2E8F0; break-inside: avoid; }
+  .si-fin-barre, .si-fin-carre, .si-fin-jauge > span, .si-fin-icone, .si-fin-statut { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .si-fin-deux { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+}

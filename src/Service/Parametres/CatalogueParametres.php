@@ -69,6 +69,19 @@ final class CatalogueParametres
                 'note' => 'Le taux s\'applique aux nouvelles lignes de devis et de commande quand la TVA est proposée par défaut. La retenue à la source sera appliquée avec les factures fournisseurs.',
             ],
 
+            'finances' => [
+                'famille' => 'entreprise', 'libelle' => 'Finances et budgets', 'icone' => 'fa-wallet',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_finances_vue_ensemble',
+                'champs' => [
+                    ['cle' => 'objectif_ca', 'type' => 'nombre', 'libelle' => 'Objectif de CA facturé par mois', 'aide' => 'Vue d\'ensemble : « % de l\'objectif »', 'suffixe' => 'F', 'min' => 0, 'max' => 10000000000, 'defaut' => 9000000],
+                    ['cle' => 'seuil_tresorerie', 'type' => 'nombre', 'libelle' => 'Seuil d\'alerte de trésorerie', 'aide' => 'Prévision à 90 jours : la direction est prévenue sous ce solde', 'suffixe' => 'F', 'min' => 0, 'max' => 10000000000, 'defaut' => 2000000],
+                    ['cle' => 'seuil_approbation', 'type' => 'nombre', 'libelle' => 'Dépense à faire approuver au-delà de', 'aide' => 'Approuvée par la direction (administrateur)', 'suffixe' => 'F', 'min' => 0, 'max' => 100000000, 'defaut' => 100000],
+                    ['cle' => 'cout_horaire', 'type' => 'nombre', 'libelle' => 'Coût d\'une heure de main d\'œuvre', 'aide' => 'Rentabilité : temps pointé PAO et atelier', 'suffixe' => 'F', 'min' => 0, 'max' => 1000000, 'defaut' => 1000],
+                ],
+                'motsCles' => ['Objectif de chiffre d\'affaires', 'Seuil d\'alerte de trésorerie', 'Approbation des dépenses', 'Budgets des dépenses · main d\'œuvre'],
+                'note' => 'Les budgets par catégorie de dépense se règlent sur Finances › Dépenses (bouton Budgets).',
+            ],
+
             // ---------- Ventes ----------
             'grille' => [
                 'famille' => 'ventes', 'libelle' => 'Grille tarifaire', 'icone' => 'fa-tag',

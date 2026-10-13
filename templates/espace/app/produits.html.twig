@@ -1,0 +1,386 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Mes produits (maquettes P01 à P03) : produits déjà validés, quantité en
+	pièces, en m² ou par lot. Le prix et la conversion viennent du serveur
+	(MesProduits::calculer) ; la sélection est commandée en une fois.
+#}
+
+{% block title %}Mes produits{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Mes produits</a>{% endblock %}
+
+{% block contenu %}
+	{% if fiches is empty %}
+		<div class="ec-carte ec-vide">
+			<b style="display:block;color:var(--encre);margin-bottom:.3rem">Aucun produit enregistré pour l'instant</b>
+			Après une commande validée, l'atelier peut l'enregistrer comme « votre produit » : vous la recommandez ensuite ici en deux gestes, sans nouveau BAT.
+		</div>
+		<div class="ec-boutons"><a class="ec-bouton" href="{{ path('app_espace_nouvelle_commande') }}">Nouvelle commande</a></div>
+	{% else %}
+		<div class="ec-pc-intro">
+			<p class="ec-sous">Vos produits déjà validés : choisissez la quantité, en m² ou en nombre. Pas de nouveau BAT, impression directe.</p>
+			<a class="ec-bouton-contour" href="{{ path('app_espace_nouvelle_commande') }}">+ Nouveau produit</a>
+		</div>
+
+		{% if categories|length > 1 %}
+			<div class="ec-filtres" role="group" aria-label="Filtrer">
+				<a href="#" class="actif" data-filtre="">Tous ({{ fiches|length }})</a>
+				{% for nom, nombre in categories %}<a href="#" data-filtre="{{ nom }}">{{ nom }}</a>{% endfor %}
+			</div>
+		{% endif %}
+
+		<div class="ec-pc-mise">
+			<ul class="ec-pc-grille" id="produits">
+				{% for f in fiches %}
+					{% set p = f.p %}
+					<li class="ec-pc" data-id="{{ f.id }}" data-categorie="{{ f.categorie }}">
+						<button type="button" class="ec-pc-ouvrir" aria-label="Choisir la quantité de {{ p.nom }}">
+							<span class="ec-pc-visuel teinte-{{ loop.index0 % 6 }}">
+								{% if f.image %}<img src="{{ path('app_espace_bat_fichier', {id: f.image}) }}" alt="" loading="lazy">{% else %}<span>{{ p.nom|split(' ')|slice(0, 2)|map(m => m|slice(0, 1))|join|upper }}</span>{% endif %}
+							</span>
+							<span class="ec-pc-texte">
+								<span class="ec-pc-ref">{{ p.reference }} <em>{{ f.badge }}</em></span>
+								<b>{{ p.nom }}</b>
+								{% if f.format %}<span class="ec-petit">{{ f.format }}</span>{% endif %}
+								<span class="ec-pc-prix">{{ f.prix }}{% if f.batLe %}<small> · ✓ BAT validé {{ f.batLe|date('d/m') }}</small>{% endif %}</span>
+							</span>
+							<span class="ec-pc-choix" aria-live="polite"><span class="plus" aria-hidden="true">+</span></span>
+						</button>
+					</li>
+				{% endfor %}
+			</ul>
+
+			<form method="post" action="{{ path('app_espace_produits_commander') }}" class="ec-carte ec-selection" id="selection" hidden>
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				<h2>Ma sélection (<span data-nombre>0</span>)</h2>
+				<ul class="ec-liste" id="lignes"></ul>
+				<div class="ec-ligne ec-selection-total"><span class="ec-petit">Total TTC</span><b data-total>0 F</b></div>
+				<p class="ec-pc-direct" id="direct">Impression directe : BAT déjà validés, pas d'attente PAO.</p>
+				{% if entreprise %}
+					<label class="ec-etiquette" for="bon_commande">N° de bon de commande (facultatif)</label>
+					<input class="ec-saisie" id="bon_commande" name="bon_commande" maxlength="60" autocomplete="off">
+				{% endif %}
+				<button class="ec-bouton" type="submit">{{ demandeValidation ? 'Envoyer la demande' : 'Commander la sélection' }}</button>
+				<p class="ec-petit" style="text-align:center;margin:.5rem 0 0">
+					{% if demandeValidation %}Une personne qui valide pour votre entreprise l'accepte d'abord.{% else %}L'atelier confirme, puis vous payez par Orange Money.{% endif %}
+				</p>
+				<div id="champs"></div>
+			</form>
+		</div>
+
+		<button type="button" class="ec-pc-barre" id="barre" hidden>Commander <span data-nombre>0</span> produit<span data-pluriel>s</span> · <span data-total>0 F</span></button>
+
+		<dialog class="ec-feuille" id="feuille" aria-labelledby="feuille-nom">
+			<form method="dialog" class="ec-feuille-corps">
+				<div class="ec-feuille-poignee" aria-hidden="true"></div>
+				<div class="ec-feuille-tete">
+					<span class="ec-pc-visuel" id="feuille-visuel"></span>
+					<div>
+						<span class="ec-pc-ref" id="feuille-ref"></span>
+						<b id="feuille-nom"></b>
+						<span class="ec-petit" id="feuille-format"></span>
+					</div>
+				</div>
+				<div class="ec-segment" id="feuille-modes" role="radiogroup" aria-label="Saisir la quantité">
+					<label><input type="radio" name="saisie" value="piece"><span>En nombre de pièces</span></label>
+					<label><input type="radio" name="saisie" value="m2"><span>En m²</span></label>
+				</div>
+				<label class="ec-etiquette" for="feuille-quantite" id="feuille-libelle">Quantité</label>
+				<div class="ec-quantite">
+					<button type="button" data-pas="-1" aria-label="Moins">−</button>
+					<input id="feuille-quantite" inputmode="decimal" autocomplete="off">
+					<button type="button" data-pas="1" aria-label="Plus">+</button>
+				</div>
+				<div class="ec-puces ec-pc-raccourcis" id="feuille-raccourcis"></div>
+				<div class="ec-pc-calcul" id="feuille-calcul" aria-live="polite">
+					<b>Ce que nous imprimerons</b>
+					<div id="feuille-production">—</div>
+					<div class="ec-pc-options" id="feuille-options" hidden></div>
+				</div>
+				<p class="ec-petit" id="feuille-erreur" role="alert" style="color:var(--rouge);margin:.3rem 0 0"></p>
+				<div class="ec-feuille-pied">
+					<div><span class="ec-petit">Prix TTC</span><div class="ec-gros" id="feuille-prix">—</div></div>
+					<button type="button" class="ec-bouton" id="feuille-ajouter" disabled>Ajouter</button>
+				</div>
+				<div class="ec-ligne" style="margin-top:.6rem">
+					<button type="button" class="ec-lien" id="feuille-retirer" hidden>Retirer de la sélection</button>
+					<button class="ec-lien" value="annuler" style="margin-left:auto">Annuler</button>
+				</div>
+				<p class="ec-petit" style="margin:.7rem 0 0">Changer le visuel ou la taille ? Cela crée un nouveau produit avec un nouveau BAT : passez une nouvelle commande.</p>
+			</form>
+		</dialog>
+
+		<script type="application/json" id="fiches">{{ fiches|map(f => {
+			id: f.id, ref: f.p.reference, nom: f.p.nom, format: f.format, prix: f.prix, badge: f.badge, saisies: f.saisies,
+			pas: f.pas, raccourcis: f.raccourcis, raccourcisM2: f.raccourcisM2, minimum: f.minimum, bat: f.batLe is not null,
+			image: f.image ? path('app_espace_bat_fichier', {id: f.image}) : null,
+		})|json_encode|raw }}</script>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	{% if fiches is not empty %}
+	<script>
+	(function () {
+		const fiches = JSON.parse(document.getElementById('fiches').textContent);
+		const parId = Object.fromEntries(fiches.map(function (f) { return [f.id, f]; }));
+		const jeton = {{ csrf_token('espace')|json_encode|raw }};
+		const urlCalcul = {{ path('app_espace_produits_calcul', {id: '00000000-0000-0000-0000-000000000000'})|json_encode|raw }};
+		const MAX = {{ max }};
+		const CLE = 'ec-mes-produits';
+		const fr = new Intl.NumberFormat('fr-FR');
+		const $ = function (id) { return document.getElementById(id); };
+		const feuille = $('feuille');
+		const quantite = $('feuille-quantite');
+		let selection = {};
+		let courant = null; // {fiche, quantite, saisie, inferieur, calcul}
+		let minuteur = null;
+		let demande = 0;
+
+		try { selection = JSON.parse(sessionStorage.getItem(CLE) || '{}') || {}; } catch (e) { selection = {}; }
+		Object.keys(selection).forEach(function (id) { if (!parId[id]) delete selection[id]; });
+
+		function garder() { try { sessionStorage.setItem(CLE, JSON.stringify(selection)); } catch (e) {} }
+
+		function libelleSaisie(f, saisie) {
+			if (saisie === 'lot') return 'Nombre d\'exemplaires (par ' + fr.format(f.pas) + ')';
+			return saisie === 'm2' ? 'Surface souhaitée en m²' : 'Nombre de pièces';
+		}
+
+		function unite(saisie) { return saisie === 'm2' ? ' m²' : (saisie === 'lot' ? ' ex.' : ''); }
+
+		// ---------- Cartes et sélection ----------
+
+		function rafraichir() {
+			const ids = Object.keys(selection);
+			let total = 0;
+			let direct = true;
+			const lignes = $('lignes');
+			lignes.textContent = '';
+			document.querySelectorAll('.ec-pc').forEach(function (li) {
+				const s = selection[li.dataset.id];
+				const zone = li.querySelector('.ec-pc-choix');
+				li.classList.toggle('choisi', !!s);
+				zone.textContent = '';
+				if (s) {
+					const b = document.createElement('b');
+					b.textContent = s.calcul.resume;
+					zone.append(b);
+					if (s.calcul.detail) {
+						const d = document.createElement('small');
+						d.textContent = s.calcul.detail;
+						zone.append(d);
+					}
+				} else {
+					const plus = document.createElement('span');
+					plus.className = 'plus';
+					plus.textContent = '+';
+					zone.append(plus);
+				}
+			});
+			ids.forEach(function (id) {
+				const s = selection[id];
+				const f = parId[id];
+				total += s.calcul.montant;
+				direct = direct && f.bat;
+				const li = document.createElement('li');
+				const b = document.createElement('b');
+				b.textContent = f.nom + ' · ' + s.calcul.resume;
+				const p = document.createElement('div');
+				p.className = 'ec-petit';
+				p.textContent = (s.calcul.saisie === 'lot' ? '' : s.calcul.production + ' · ') + fr.format(s.calcul.montant) + ' F';
+				const lien = document.createElement('button');
+				lien.type = 'button';
+				lien.className = 'ec-lien';
+				lien.textContent = 'Modifier';
+				lien.addEventListener('click', function () { ouvrir(id); });
+				const tete = document.createElement('div');
+				tete.className = 'ec-ligne';
+				tete.append(b, lien);
+				li.append(tete, p);
+				lignes.append(li);
+			});
+			document.querySelectorAll('[data-nombre]').forEach(function (e) { e.textContent = ids.length; });
+			document.querySelectorAll('[data-pluriel]').forEach(function (e) { e.textContent = ids.length > 1 ? 's' : ''; });
+			document.querySelectorAll('[data-total]').forEach(function (e) { e.textContent = fr.format(total) + ' F'; });
+			$('selection').hidden = ids.length === 0;
+			$('barre').hidden = ids.length === 0;
+			$('direct').hidden = !direct;
+			// Champs envoyés : le serveur refait tous les calculs.
+			const champs = $('champs');
+			champs.textContent = '';
+			ids.forEach(function (id, i) {
+				const s = selection[id];
+				[['produit', id], ['quantite', s.quantite], ['saisie', s.saisie], ['inferieur', s.inferieur ? '1' : '0']].forEach(function (c) {
+					const input = document.createElement('input');
+					input.type = 'hidden';
+					input.name = 'lignes[' + i + '][' + c[0] + ']';
+					input.value = c[1];
+					champs.append(input);
+				});
+			});
+			garder();
+		}
+
+		// ---------- Feuille de quantité ----------
+
+		function ouvrir(id) {
+			const f = parId[id];
+			const s = selection[id];
+			courant = s ? {fiche: f, quantite: s.quantite, saisie: s.saisie, inferieur: s.inferieur, calcul: s.calcul}
+				: {fiche: f, quantite: Math.max(f.minimum * (f.saisies[0] === 'lot' ? f.pas : 1), f.saisies[0] === 'm2' ? f.raccourcis[0] : 1), saisie: f.saisies[0], inferieur: false, calcul: null};
+			$('feuille-ref').textContent = f.ref + (f.bat ? ' · ✓ BAT validé' : '') + ' · ' + f.prix;
+			$('feuille-nom').textContent = f.nom;
+			$('feuille-format').textContent = f.format;
+			const visuel = $('feuille-visuel');
+			const carte = document.querySelector('.ec-pc[data-id="' + id + '"] .ec-pc-visuel');
+			visuel.className = carte ? carte.className : 'ec-pc-visuel';
+			visuel.innerHTML = carte ? carte.innerHTML : '';
+			$('feuille-modes').hidden = f.saisies.length < 2;
+			feuille.querySelectorAll('input[name=saisie]').forEach(function (r) { r.checked = r.value === courant.saisie; });
+			$('feuille-retirer').hidden = !s;
+			$('feuille-ajouter').textContent = s ? 'Mettre à jour' : 'Ajouter';
+			afficherSaisie();
+			if (typeof feuille.showModal === 'function') feuille.showModal(); else feuille.setAttribute('open', '');
+			calculer();
+		}
+
+		function afficherSaisie() {
+			const f = courant.fiche;
+			$('feuille-libelle').textContent = libelleSaisie(f, courant.saisie);
+			quantite.value = String(courant.quantite).replace('.', ',');
+			const zone = $('feuille-raccourcis');
+			zone.textContent = '';
+			(courant.saisie === 'm2' && f.saisies.length > 1 ? f.raccourcisM2 : f.raccourcis).forEach(function (v) {
+				const label = document.createElement('label');
+				label.className = 'ec-puce';
+				const input = document.createElement('input');
+				input.type = 'radio';
+				input.name = 'raccourci';
+				input.value = v;
+				input.checked = +courant.quantite === v;
+				input.addEventListener('change', function () { courant.quantite = v; quantite.value = v; calculer(); });
+				const t = document.createElement('span');
+				t.textContent = fr.format(v) + unite(courant.saisie);
+				label.append(input, t);
+				zone.append(label);
+			});
+		}
+
+		function calculer() {
+			clearTimeout(minuteur);
+			$('feuille-ajouter').disabled = true;
+			minuteur = setTimeout(async function () {
+				const n = ++demande;
+				try {
+					const r = await fetch(urlCalcul.replace('00000000-0000-0000-0000-000000000000', courant.fiche.id), {
+						method: 'POST',
+						headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': jeton, 'Accept': 'application/json'},
+						body: JSON.stringify({quantite: String(courant.quantite), saisie: courant.saisie, inferieur: courant.inferieur}),
+						credentials: 'same-origin',
+					});
+					const d = await r.json();
+					if (n !== demande) return;
+					afficherCalcul(d.erreur ? null : d, d.erreur || '');
+				} catch (e) {
+					if (n === demande) afficherCalcul(null, 'Connexion perdue. Réessayez.');
+				}
+			}, 200);
+		}
+
+		function afficherCalcul(d, erreur) {
+			courant.calcul = d;
+			$('feuille-erreur').textContent = erreur;
+			$('feuille-production').textContent = d ? d.production : '—';
+			$('feuille-prix').textContent = d ? fr.format(d.montant) + ' F' : '—';
+			$('feuille-ajouter').disabled = !d;
+			const options = $('feuille-options');
+			options.textContent = '';
+			options.hidden = !(d && d.alternative);
+			if (!d || !d.alternative) return;
+			// Format fixe en m² : le nombre au-dessus (recommandé) ou au-dessous.
+			const retenu = {pieces: d.pieces, surface: d.surface, montant: d.montant};
+			const deux = [retenu, d.alternative].sort(function (a, b) { return b.pieces - a.pieces; });
+			deux.forEach(function (o, i) {
+				const b = document.createElement('button');
+				b.type = 'button';
+				b.className = 'ec-pc-option' + (o.pieces === d.pieces ? ' actif' : '');
+				b.setAttribute('aria-pressed', o.pieces === d.pieces ? 'true' : 'false');
+				const t = document.createElement('b');
+				t.textContent = o.pieces + ' pièce' + (o.pieces > 1 ? 's' : '');
+				const l = document.createElement('span');
+				l.textContent = fr.format(o.surface).replace(/ /g, ' ') + ' m² · ' + fr.format(o.montant) + ' F';
+				const n = document.createElement('small');
+				const ecart = Math.round((courant.quantite - o.surface) * 100) / 100;
+				n.textContent = i === 0 ? 'Recommandé · couvre vos ' + fr.format(courant.quantite) + ' m²' : fr.format(ecart) + ' m² de moins que demandé';
+				b.append(t, l, n);
+				b.addEventListener('click', function () { courant.inferieur = i === 1; calculer(); });
+				options.append(b);
+			});
+		}
+
+		quantite.addEventListener('input', function () {
+			const v = parseFloat(quantite.value.replace(/\s/g, '').replace(',', '.'));
+			courant.quantite = isFinite(v) ? v : 0;
+			feuille.querySelectorAll('input[name=raccourci]').forEach(function (r) { r.checked = +r.value === courant.quantite; });
+			calculer();
+		});
+		feuille.querySelectorAll('.ec-quantite button').forEach(function (b) {
+			b.addEventListener('click', function () {
+				const pas = courant.saisie === 'lot' ? courant.fiche.pas : 1;
+				courant.quantite = Math.max(pas, Math.round(((+courant.quantite || 0) + (+b.dataset.pas) * pas) * 100) / 100);
+				afficherSaisie();
+				calculer();
+			});
+		});
+		feuille.querySelectorAll('input[name=saisie]').forEach(function (r) {
+			r.addEventListener('change', function () {
+				const c = courant.calcul;
+				// La même commande, dans l'autre unité.
+				courant.quantite = r.value === 'm2' ? (c && c.surface ? c.surface : courant.fiche.raccourcisM2[0]) : (c ? c.pieces : 1);
+				courant.saisie = r.value;
+				courant.inferieur = false;
+				afficherSaisie();
+				calculer();
+			});
+		});
+		$('feuille-ajouter').addEventListener('click', function () {
+			if (!courant.calcul) return;
+			if (!selection[courant.fiche.id] && Object.keys(selection).length >= MAX) {
+				$('feuille-erreur').textContent = MAX + ' produits au plus par commande.';
+				return;
+			}
+			selection[courant.fiche.id] = {quantite: courant.calcul.quantite, saisie: courant.calcul.saisie, inferieur: courant.calcul.inferieur, calcul: courant.calcul};
+			feuille.close();
+			rafraichir();
+		});
+		$('feuille-retirer').addEventListener('click', function () {
+			delete selection[courant.fiche.id];
+			feuille.close();
+			rafraichir();
+		});
+		feuille.addEventListener('click', function (e) { if (e.target === feuille) feuille.close(); });
+
+		document.querySelectorAll('.ec-pc-ouvrir').forEach(function (b) {
+			b.addEventListener('click', function () { ouvrir(b.closest('.ec-pc').dataset.id); });
+		});
+		document.querySelectorAll('.ec-filtres a').forEach(function (a) {
+			a.addEventListener('click', function (e) {
+				e.preventDefault();
+				document.querySelectorAll('.ec-filtres a').forEach(function (x) { x.classList.toggle('actif', x === a); });
+				document.querySelectorAll('.ec-pc').forEach(function (li) { li.hidden = a.dataset.filtre !== '' && li.dataset.categorie !== a.dataset.filtre; });
+			});
+		});
+		$('barre').addEventListener('click', function () { $('selection').requestSubmit(); });
+		$('selection').addEventListener('submit', function () {
+			this.querySelector('button[type=submit]').disabled = true;
+			$('barre').disabled = true;
+			try { sessionStorage.removeItem(CLE); } catch (e) {}
+		});
+
+		rafraichir();
+	})();
+	</script>
+	{% endif %}
+{% endblock %}

@@ -266,3 +266,86 @@ details.ec-modif[open] summary { display: none; }
 .ec-rc-photos { display: flex; gap: .6rem; margin: .6rem 0; }
 .ec-rc-photos img { width: 84px; height: 84px; object-fit: cover; border-radius: 12px; display: block; }
 .ec-rc-reponse { background: #EEF3FB; border-radius: 14px; padding: .75rem .9rem; color: #0F4590; margin-top: .5rem; }
+
+/* Mes produits (maquettes P01 à P03) : cartes, feuille de quantité, sélection */
+button.ec-lien { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; font-size: .88rem; color: var(--bleu); cursor: pointer; }
+.ec-bouton-contour { display: inline-block; border: 1.5px solid var(--bleu); color: var(--bleu); border-radius: 999px; padding: .45rem 1rem; font-weight: 700; font-size: .88rem; white-space: nowrap; }
+.ec-pc-intro { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; margin-bottom: .2rem; }
+.ec-pc-intro .ec-sous { margin: .2rem 0 .5rem; }
+.ec-pc-barre[hidden] { display: none; }
+a.ec-carte.ec-pc-entree { display: flex; align-items: center; gap: .85rem; }
+.ec-pc-entree .ec-pc-visuel { flex-basis: 48px; height: 48px; font-size: 1.2rem; }
+.ec-pc-grille { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; }
+.ec-pc button.ec-pc-ouvrir { display: flex; align-items: center; gap: .85rem; width: 100%; padding: .8rem; border: 2px solid transparent; border-radius: var(--rayon); background: #fff; box-shadow: 0 1px 3px rgba(18,33,58,.06); font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ec-pc.choisi button.ec-pc-ouvrir { border-color: var(--bleu); box-shadow: 0 6px 16px rgba(15,69,144,.12); }
+.ec-pc-visuel { flex: 0 0 64px; height: 64px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; color: #fff; font-weight: 900; font-size: 1.05rem; letter-spacing: .02em; background: linear-gradient(135deg, #F04B5D, var(--rouge)); }
+.ec-pc-visuel img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ec-pc-visuel.teinte-1 { background: linear-gradient(135deg, #FFB347, #F0592A); }
+.ec-pc-visuel.teinte-2 { background: linear-gradient(135deg, #DDE4EE, #B9C5D6); color: var(--bleu); }
+.ec-pc-visuel.teinte-3 { background: linear-gradient(135deg, #FCE3E7, #F6C9D2); color: #C2185B; }
+.ec-pc-visuel.teinte-4 { background: linear-gradient(135deg, #1E5BB8, var(--bleu)); }
+.ec-pc-visuel.teinte-5 { background: linear-gradient(135deg, #3A3F4B, #12161F); }
+.ec-pc-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.ec-pc-texte b { font-size: .98rem; line-height: 1.25; }
+.ec-pc-ref { color: var(--gris); font-size: .74rem; }
+.ec-pc-ref em { font-style: normal; font-weight: 700; color: var(--bleu); background: var(--bleu-clair); border-radius: 999px; padding: .05rem .5rem; margin-left: .3rem; }
+.ec-pc-prix { color: var(--bleu); font-weight: 700; font-size: .85rem; }
+.ec-pc-prix small { color: var(--gris); font-weight: 500; }
+.ec-pc-choix { flex: 0 0 auto; text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+.ec-pc-choix b { color: var(--bleu); font-size: 1rem; white-space: nowrap; }
+.ec-pc-choix small { color: var(--gris); font-size: .74rem; white-space: nowrap; }
+.ec-pc-choix .plus { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--bleu-clair); color: var(--bleu); font-weight: 800; font-size: 1.15rem; }
+.ec-selection { margin-top: .9rem; }
+.ec-selection .ec-liste > li .ec-ligne b { font-size: .92rem; }
+.ec-selection-total { border-top: 1px solid var(--trait); padding: .8rem 0 .2rem; margin-top: .3rem; }
+.ec-selection-total b { font-size: 1.5rem; font-weight: 900; color: var(--encre); }
+.ec-pc-direct { background: var(--vert-clair); color: #14532D; border-radius: 12px; padding: .6rem .8rem; font-size: .84rem; margin: .6rem 0 .8rem; }
+.ec-selection .ec-saisie { margin-bottom: .8rem; }
+.ec-pc-barre { position: sticky; bottom: calc(4.6rem + env(safe-area-inset-bottom)); display: block; width: 100%; margin-top: .9rem; border: 0; border-radius: 16px; padding: 1rem; background: var(--rouge); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; box-shadow: 0 10px 22px rgba(224,16,43,.3); cursor: pointer; z-index: 5; }
+
+.ec-feuille { border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; max-height: 92vh; border-radius: 22px 22px 0 0; background: #fff; color: var(--encre); box-shadow: 0 -10px 40px rgba(18,33,58,.25); }
+.ec-feuille::backdrop { background: rgba(18,33,58,.45); }
+.ec-feuille-corps { padding: .6rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom)); }
+.ec-feuille-poignee { width: 44px; height: 5px; border-radius: 999px; background: #D5DBE5; margin: 0 auto .8rem; }
+.ec-feuille-tete { display: flex; gap: .85rem; align-items: center; margin-bottom: 1rem; }
+.ec-feuille-tete b { display: block; font-size: 1.05rem; }
+.ec-feuille-tete .ec-petit { display: block; }
+.ec-segment { display: flex; background: #EEF1F6; border-radius: 12px; padding: 4px; margin-bottom: .9rem; }
+.ec-segment[hidden] { display: none; }
+.ec-segment label { flex: 1; }
+.ec-segment input { position: absolute; opacity: 0; pointer-events: none; }
+.ec-segment span { display: block; text-align: center; padding: .55rem .4rem; border-radius: 9px; font-weight: 600; font-size: .9rem; color: var(--gris); cursor: pointer; }
+.ec-segment input:checked + span { background: #fff; color: var(--bleu); box-shadow: 0 1px 3px rgba(18,33,58,.12); }
+.ec-segment input:focus-visible + span { outline: 2px solid var(--bleu); }
+.ec-feuille .ec-quantite input { font-size: 1.5rem; height: 52px; }
+.ec-pc-raccourcis { margin: .7rem 0 .9rem; }
+.ec-pc-raccourcis .ec-puce span { padding: .4rem .9rem; font-size: .88rem; }
+.ec-pc-calcul { background: #F2F6FC; border-radius: 14px; padding: .8rem .95rem; font-size: .9rem; }
+.ec-pc-calcul > b { display: block; margin-bottom: .2rem; }
+.ec-pc-options { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .7rem; }
+.ec-pc-options[hidden] { display: none; }
+.ec-pc-option { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; padding: .65rem .75rem; border: 1.5px solid var(--trait); border-radius: 12px; background: #fff; font: inherit; color: var(--encre); text-align: left; cursor: pointer; }
+.ec-pc-option.actif { border-color: var(--bleu); box-shadow: 0 0 0 1px var(--bleu); }
+.ec-pc-option b { font-size: 1rem; }
+.ec-pc-option span { font-size: .84rem; }
+.ec-pc-option small { color: var(--gris); font-size: .74rem; }
+.ec-feuille-pied { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-top: 1rem; }
+.ec-feuille-pied .ec-gros { color: var(--bleu); font-size: 1.9rem; margin: 0; white-space: nowrap; }
+.ec-feuille-pied .ec-bouton { width: auto; padding: .85rem 1.8rem; border-radius: 999px; }
+
+@media (min-width: 900px) {
+  .ec-pc-intro { flex-direction: row; justify-content: space-between; gap: 1rem; }
+  .ec-page.ec-page-large { max-width: 1120px; margin-left: calc(240px + max(0px, (100vw - 240px - 1120px) / 2)); }
+  .ec-pc-mise { display: grid; grid-template-columns: 1fr 320px; gap: 1.2rem; align-items: start; }
+  .ec-pc-grille { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .ec-pc button.ec-pc-ouvrir { flex-direction: column; align-items: stretch; height: 100%; padding: 0 0 .9rem; overflow: hidden; }
+  .ec-pc-visuel { flex-basis: auto; height: 108px; border-radius: 0; font-size: 1.6rem; }
+  .ec-pc-texte, .ec-pc-choix { padding: 0 .9rem; }
+  .ec-pc-choix { flex-direction: row; justify-content: space-between; align-items: baseline; gap: .5rem; margin-top: auto; }
+  .ec-pc-choix .plus { width: 30px; height: 30px; margin-left: auto; }
+  .ec-selection { position: sticky; top: 1rem; margin-top: 0; }
+  .ec-selection[hidden] { display: block; visibility: hidden; }
+  .ec-pc-barre { display: none; }
+  .ec-feuille { margin: auto; border-radius: 22px; max-width: 620px; }
+  .ec-feuille-poignee { display: none; }
+}

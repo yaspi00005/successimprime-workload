@@ -17,6 +17,7 @@
 | Fichiers envoyés par le client dans son espace (Mes fichiers, Nouvelle commande) | site → local | La fiche (nom, contrôle automatique, empreinte, logo) remonte dès que l'envoi est fini, puis les octets (voir **Fichiers**). |
 | Finitions choisies sur une ligne (nom, prix appliqué, quantité, montant) | avec leur ligne | Elles partent dans la ligne et sont remplacées en bloc ; retirer une finition renvoie la ligne. |
 | BAT : état (en attente, validé, à corriger), fichiers de la commande (nom, type, taille) et suivi visible par le client (versions envoyées, ses demandes, validation) | local → site | Restent au local : contrôles et anomalies, noms de l'atelier, graphiste, temps, erreurs, points, chemin et notes des fichiers. |
+| Produits du client (« Mes produits ») : référence, nom, format, unité de vente, prix négocié, minimum, lot, finitions, fichier et BAT validé | local → site | Restent au local : machine, ligne de commande d'origine. Une ligne de commande en ligne qui cite un produit du client est revérifiée à l'arrivée (même client, BAT validé), sinon elle repasse par la PAO. |
 | Devis et leurs lignes, factures | local → site seulement | Restent au local : coûts, notes, comptabilisation, majoration, PDF du serveur. |
 | Paiements | local → site, et site → local pour les **nouveaux** paiements | Restent au local : compte de trésorerie, mouvement, justificatif, note, encaisseur. |
 
@@ -35,7 +36,7 @@ Toute autre modification faite en ligne d'une fiche du local est notée **Confli
 
 **Fichiers** : vers le site, seuls les fichiers préparés par l'atelier pour un BAT partent (pas ceux de production). Du site, le local rapatrie les fichiers envoyés par les clients (60 derniers jours, ceux d'une commande d'abord). Par morceaux de 4 Mo, 64 Mo au plus par cycle dans les deux sens réunis, repris là où ça s'est arrêté après une coupure ; l'empreinte SHA-256 est vérifiée avant de ranger le fichier dans `var/uploads/commandes`. Un fichier n'est renvoyé que s'il change.
 
-**Ordre** : un élément qui cite une donnée arrivant plus loin dans le même lot (fichier mis dans une commande créée après lui) attend qu'elle soit appliquée, puis passe.
+**Ordre** : un élément qui cite une donnée arrivant plus loin dans le même lot (fichier mis dans une commande créée après lui) attend qu'elle soit appliquée, puis passe. Quelques liens sont **facultatifs** (`facultatives` dans `CatalogueSynchro`, par exemple le produit du client d'une ligne de commande) : si la donnée citée manque, le lien reste vide au lieu de bloquer l'élément.
 
 **Numéros** : une commande, un devis ou un client créé en ligne reçoit le préfixe **W-** (W-CMD-…) ; il ne prend donc jamais un numéro du local.
 

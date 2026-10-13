@@ -17,6 +17,7 @@ use App\Entity\Factures;
 use App\Entity\Paiements;
 use App\Entity\Finition;
 use App\Entity\Format;
+use App\Entity\ProduitClient;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
@@ -56,7 +57,9 @@ use App\Entity\TypesImpression;
  * bloc. « filtres » : fonction qui réduit un champ avant l'envoi.
  *
  * L'ordre du tableau est l'ordre de chargement initial : une donnée
- * vient après celles qu'elle référence.
+ * vient après celles qu'elle référence. « facultatives » : liens vers une
+ * donnée chargée plus loin ; tant qu'elle n'est pas arrivée, le lien
+ * reste vide au lieu de faire attendre la donnée.
  */
 final class CatalogueSynchro
 {
@@ -64,7 +67,7 @@ final class CatalogueSynchro
     public const DEUX = 'deux';
 
     /**
-     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, aLaCreation?: array<string, callable>, imposeAuLocal?: array<string, mixed>, pret?: callable, remontees?: array<string, ?array<string, list<string>>>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>, filtres?: array<string, callable>}>}>
+     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, aLaCreation?: array<string, callable>, imposeAuLocal?: array<string, mixed>, pret?: callable, remontees?: array<string, ?array<string, list<string>>>, facultatives?: list<string>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>, filtres?: array<string, callable>}>}>
      */
     public static function types(): array
     {
@@ -149,9 +152,11 @@ final class CatalogueSynchro
                     'quantiteDemandee', 'uniteDemandee', 'modeConfiguration', 'designation', 'largeur', 'longueur', 'surface', 'quantite', 'prixUnitaire',
                     'remise', 'tva', 'totalHt', 'totalTtc', 'profilCouleurs', 'resolution', 'grammage', 'epaisseur', 'rectoVerso', 'nombreFaces', 'laminage',
                     'oeillets', 'decoupe', 'pliage', 'emballage', 'batValide', 'etat', 'statutProduction', 'productionDebuteLe', 'productionTermineeLe',
-                    'quantiteLivree', 'modeSaisie', 'modeCalcul', 'typeLigne', 'demandeClient',
+                    'quantiteLivree', 'modeSaisie', 'modeCalcul', 'typeLigne', 'demandeClient', 'prePresseNecessaire',
                 ],
-                'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
+                // produitClient : ligne commandée depuis « Mes produits » (le produit du client vient après les BAT).
+                'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format', 'produitClient' => 'produit_client'],
+                'facultatives' => ['produitClient'],
                 'listes' => [],
                 'enfants' => ['finitions' => self::finitionsDeLigne(CommandeDetailFinition::class, 'commandeDetail')],
             ],
@@ -183,6 +188,14 @@ final class CatalogueSynchro
                     'relations' => [],
                     'filtres' => ['evenements' => [Conception::class, 'evenementsPublics']],
                 ]],
+            ],
+            // « Mes produits » (docs/mes-produits.md) : produits déjà validés que le client recommande en ligne.
+            // Machine, coût de revient et ligne d'origine restent au local.
+            'produit_client' => [
+                'classe' => ProduitClient::class, 'sens' => self::DESCENDANT, 'libelle' => 'Produit du client', 'titre' => ['reference', 'nom'],
+                'champs' => ['reference', 'nom', 'largeur', 'hauteur', 'uniteVente', 'prixUnitaire', 'quantiteMinimum', 'tailleLot', 'posesParFeuille', 'arrondiSuperieurImpose', 'actif', 'creeLe'],
+                'relations' => ['client' => 'client', 'produit' => 'produit', 'support' => 'support', 'fichier' => 'fichier', 'batValide' => 'controle'],
+                'listes' => ['finitions' => 'finition'],
             ],
             'devis' => [
                 'classe' => Devis::class, 'sens' => self::DESCENDANT, 'libelle' => 'Devis', 'titre' => ['numero'],

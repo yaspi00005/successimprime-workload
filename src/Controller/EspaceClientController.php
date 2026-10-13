@@ -14,6 +14,7 @@ use App\Repository\EntrepriseRepository;
 use App\Service\EspaceClient\CompteEntreprise;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FichiersClient;
+use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
@@ -192,7 +193,7 @@ final class EspaceClientController extends AbstractController
     }
 
     #[Route('/commandes', name: 'commandes', methods: ['GET'])]
-    public function commandes(EspaceClient $espace): Response
+    public function commandes(EspaceClient $espace, MesProduits $mesProduits): Response
     {
         $compte = $this->compte();
         $client = $compte->getClient();
@@ -202,6 +203,7 @@ final class EspaceClientController extends AbstractController
             'cartes' => array_map($espace->carte(...), $espace->commandes($client)),
             'aValider' => array_map($espace->carte(...), $this->compteEntreprise->aValider($compte)),
             'devisAAccepter' => \count(array_filter($espace->devis($client), static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())),
+            'mesProduits' => \count($mesProduits->liste($client)),
         ]);
     }
 

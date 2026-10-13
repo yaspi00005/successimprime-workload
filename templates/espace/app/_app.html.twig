@@ -37,7 +37,7 @@
 		<a href="{{ path('app_espace_deconnexion') }}" class="ec-menu-sortie">Se déconnecter</a>
 	</nav>
 
-	<div class="ec-page">
+	<div class="ec-page{% block page_classe %}{% endblock %}">
 		<header class="ec-entete">
 			{% block entete %}
 				<a href="{{ path('app_espace_accueil') }}" class="ec-entete-logo"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim"></a>

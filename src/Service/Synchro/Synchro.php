@@ -352,6 +352,9 @@ final class Synchro
                         foreach (CatalogueSynchro::types()[$type]['imposeAuLocal'] ?? [] as $champ => $valeur) {
                             $meta->setFieldValue($entite, $champ, $valeur);
                         }
+                        if ($existante === null && $entite instanceof CommandesDetails) {
+                            self::verifierLigneEnLigne($entite);
+                        }
                     }
                     $this->em->persist($entite);
                     if (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->attendValidationEntreprise()) {
@@ -390,6 +393,22 @@ final class Synchro
                 return $resultat;
             });
         });
+    }
+
+    /**
+     * Ligne créée en ligne : elle ne saute la PAO que si elle vient d'un
+     * produit de ce client dont le BAT est validé (« Mes produits »).
+     */
+    public static function verifierLigneEnLigne(CommandesDetails $ligne): void
+    {
+        $produit = $ligne->getProduitClient();
+        $client = $ligne->getCommande()?->getClients();
+        if (null !== $produit && (null === $client || $produit->getClient()?->getId() !== $client->getId())) {
+            $ligne->setProduitClient($produit = null);
+        }
+        if (null === $produit?->getBatValide()) {
+            $ligne->setPrePresseNecessaire(true)->setBatValide(false);
+        }
     }
 
     private static function clientDe(?object $entite): ?Clients

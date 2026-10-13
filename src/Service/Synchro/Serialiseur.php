@@ -216,7 +216,8 @@ final class Serialiseur
                 continue;
             }
             $id = $donnees['relations'][$champ];
-            $meta->setFieldValue($entite, $champ, $id === null ? null : $this->exiger($cible, $id));
+            $facultatif = \in_array($champ, $def['facultatives'] ?? [], true);
+            $meta->setFieldValue($entite, $champ, $id === null ? null : ($facultatif ? $this->trouver($cible, $id) : $this->exiger($cible, $id)));
         }
         foreach ($def['listes'] as $champ => $cible) {
             if (!\array_key_exists($champ, $donnees['listes'] ?? [])) {

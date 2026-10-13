@@ -918,12 +918,33 @@ for c in R.sample([c for c in CLIENTS if c['t'] != 'particulier'], 30):
         nref += 1
         p = P[code]
         pc = add('produit_client', {'reference': f'PC-D{nref:04d}', 'nom': f'{p["nom"]} {nom_client(c)[:40]}', 'largeur': 3.0 if code == 'D-BACHE' else None, 'hauteur': 1.0 if code == 'D-BACHE' else None,
-                                    'unite_vente': 'lot' if code in ('D-FLYER', 'D-CARTE') else 'piece', 'prix_unitaire': p['b2b'] if code != 'D-BACHE' else p['b2b'] * 3,
+                                    'unite_vente': 'lot' if code in ('D-FLYER', 'D-CARTE') else 'piece',
+                                    # Prix du lot de 500 pour les flyers et cartes, de la bâche de 3 m² pour la bâche.
+                                    'prix_unitaire': p['b2b'] * 500 if code in ('D-FLYER', 'D-CARTE') else p['b2b'] * 3 if code == 'D-BACHE' else p['b2b'],
                                     'quantite_minimum': 1, 'taille_lot': 500 if code in ('D-FLYER', 'D-CARTE') else None, 'poses_par_feuille': 8 if code in ('D-FLYER', 'D-CARTE') else None,
                                     'arrondi_superieur_impose': 0, 'actif': 1, 'cree_le': T(R.randint(10, 200)), 'public_id': uid(), 'client_id': c['id'], 'produit_id': p['id'], 'support_id': p['sup'],
                                     'machine_id': p['machine'], 'fichier_id': None, 'bat_valide_id': None, 'ligne_origine_id': None, 'remplace_id': None})
         if p['fins'] and R.random() < 0.5:
             add('produit_client_finition', {'produit_client_id': pc, 'finition_id': FINITIONS[list(p['fins'])[0]]}, False)
+
+# « Mes produits » (maquettes P01 à P03) : la gamme complète d'un client à compte en ligne (DEMO-0002),
+# avec un tirage à part pour ne rien décaler dans le reste de la démonstration.
+R3 = random.Random(1310)
+for nom, code, unite, prix, larg, haut, lot in [
+    ('Bâche façade', 'D-BACHE', 'piece_ou_m2', 29000, 4.0, 1.5, None),
+    ('Vinyle vitrine micro-perforé', 'D-MICRO', 'm2', 7500, 1.37, None, None),
+    ('Roll-up boutique', 'D-ROLLUP', 'piece', 25000, 0.85, 2.0, None),
+    ('T-shirt logo (DTF)', 'D-TSHIRT', 'piece', 3500, None, None, None),
+    ('Flyers A5', 'D-FLYER', 'lot', 30000, None, None, 500),
+    ('Cartes de visite', 'D-CARTE', 'lot', 20000, None, None, 500),
+]:
+    nref += 1
+    p = P[code]
+    add('produit_client', {'reference': f'PC-D{nref:04d}', 'nom': nom, 'largeur': larg, 'hauteur': haut, 'unite_vente': unite, 'prix_unitaire': prix,
+                           'quantite_minimum': 1, 'taille_lot': lot, 'poses_par_feuille': 8 if lot else None, 'arrondi_superieur_impose': 0, 'actif': 1,
+                           'cree_le': T(R3.randint(20, 120)), 'public_id': S('UNHEX(\'' + uuid.UUID(int=R3.getrandbits(128), version=4).hex + '\')'),
+                           'client_id': CLIENTS[1]['id'], 'produit_id': p['id'], 'support_id': p['sup'], 'machine_id': p['machine'],
+                           'fichier_id': None, 'bat_valide_id': None, 'ligne_origine_id': None, 'remplace_id': None})
 
 # Campagnes marketing.
 for nom, canal, segment, age, modele in [('Promo bâches saison sèche', 'sms', 'entreprises', 200, 'Promotion du mois (démo)'), ('Rentrée scolaire', 'whatsapp', 'administrations', 120, 'Promotion du mois (démo)'),

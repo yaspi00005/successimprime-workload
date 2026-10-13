@@ -211,14 +211,7 @@ final class NouvelleCommande
      */
     public function commander(Clients $client, ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, array $fichiers, ?string $note, \DateTimeImmutable $maintenant): Commandes
     {
-        $enAttente = (int) $this->em->getRepository(Commandes::class)->createQueryBuilder('c')
-            ->select('COUNT(c.id)')
-            ->where('c.clients = :cl')->andWhere('c.statut = false')->andWhere('c.deleted = false')->andWhere('c.canal = :canal')
-            ->setParameter('cl', $client)->setParameter('canal', Commandes::CANAL_EN_LIGNE)
-            ->getQuery()->getSingleScalarResult();
-        if ($enAttente >= self::EN_ATTENTE_MAX) {
-            throw new \DomainException('Vous avez déjà plusieurs commandes en attente de confirmation. L\'atelier vous recontacte.');
-        }
+        $this->verifierEnAttente($client);
 
         $ligne = self::construireLigne($config, $quantite, $largeurCm, $hauteurCm, $finitions, $client->isB2B());
         $ligne->setDemandeClient($note);
@@ -244,6 +237,19 @@ final class NouvelleCommande
         });
 
         return $commande;
+    }
+
+    /**
+     * Pas plus de EN_ATTENTE_MAX commandes en ligne non confirmées par client.
+     *
+     * @throws \DomainException
+     */
+    public function verifierEnAttente(Clients $client): void
+    {
+        $enAttente = $this->em->getRepository(Commandes::class)->count(['clients' => $client, 'statut' => false, 'deleted' => false, 'canal' => Commandes::CANAL_EN_LIGNE]);
+        if ($enAttente >= self::EN_ATTENTE_MAX) {
+            throw new \DomainException('Vous avez déjà plusieurs commandes en attente de confirmation. L\'atelier vous recontacte.');
+        }
     }
 
     public function enregistrer(): void

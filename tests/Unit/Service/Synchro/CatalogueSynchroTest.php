@@ -124,7 +124,9 @@ final class CatalogueSynchroTest extends TestCase
         $vus = [];
         foreach (CatalogueSynchro::types() as $cle => $t) {
             $enfants = array_merge([], ...array_map(static fn (array $e): array => array_values($e['relations']), array_values($t['enfants'] ?? [])));
-            foreach ([...array_values($t['relations']), ...array_values($t['listes']), ...$enfants] as $cible) {
+            // Les liens « facultatifs » peuvent viser une donnée chargée plus loin.
+            $relations = array_diff_key($t['relations'], array_flip($t['facultatives'] ?? []));
+            foreach ([...array_values($relations), ...array_values($t['listes']), ...$enfants] as $cible) {
                 self::assertArrayHasKey($cible, $vus, $cle.' référence '.$cible.' qui doit venir avant');
             }
             $vus[$cle] = true;

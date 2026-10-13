@@ -121,6 +121,7 @@ final class CatalogueParametres
                     ['cle' => 'facture_intervalle_jours', 'type' => 'nombre', 'libelle' => 'Relancer une facture échue tous les', 'suffixe' => 'jours', 'min' => 1, 'max' => 30, 'defaut' => 3],
                     ['cle' => 'source_devis', 'type' => 'interrupteur', 'libelle' => 'Devis sans réponse', 'aide' => 'Ni accepté ni refusé', 'defaut' => true],
                     ['cle' => 'devis_heures', 'type' => 'nombre', 'libelle' => 'Devis sans réponse après', 'suffixe' => 'h', 'min' => 4, 'max' => 720, 'defaut' => 48],
+                    ['cle' => 'devis_seconde_jours', 'type' => 'nombre', 'libelle' => 'Seconde relance du devis à', 'suffixe' => 'jours', 'aide' => 'J+7 : l\'agent du devis est prévenu ; 0 = pas de seconde relance', 'min' => 0, 'max' => 30, 'defaut' => 7],
                     ['cle' => 'source_commande', 'type' => 'interrupteur', 'libelle' => 'Commande prête', 'aide' => 'Prévenir le client', 'defaut' => true],
                     ['cle' => 'source_prospect', 'type' => 'interrupteur', 'libelle' => 'Nouveau prospect', 'aide' => 'Site, discussion, appel entrant', 'defaut' => true],
                     ['cle' => 'source_inactif', 'type' => 'interrupteur', 'libelle' => 'Client inactif', 'aide' => 'Plus de commande depuis un moment', 'defaut' => true],

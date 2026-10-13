@@ -13,6 +13,7 @@ use App\Entity\User;
 use App\Repository\ActionCaisseRepository;
 use App\Repository\PointageRepository;
 use App\Repository\UserRepository;
+use App\Service\NotificationService;
 use App\Service\Parametres\Parametres;
 use App\Service\Pointage\Pointages;
 use App\Service\RelanceRetraitService;
@@ -29,6 +30,8 @@ final class ActionsCaisse
     private const RECUL_FACTURES_JOURS = 90;
     private const RECUL_JOURS = 7;
     private const RAPPEL_MINUTES = 120;
+    /** Repère de la seconde relance d'un devis dans le détail de la ligne (message WhatsApp adapté). */
+    public const SECONDE_RELANCE = '2e relance';
 
     private ?HeuresTravail $heures = null;
     /** @var array<int, int>|null lignes ouvertes par personne, tenu à jour pendant une génération */
@@ -41,6 +44,7 @@ final class ActionsCaisse
         private readonly PointageRepository $pointages,
         private readonly Parametres $parametres,
         private readonly RelanceRetraitService $retraits,
+        private readonly NotificationService $notifications,
     ) {
     }
 
@@ -50,7 +54,7 @@ final class ActionsCaisse
     public function regles(): array
     {
         $regles = [];
-        foreach (['delai_heures', 'points_a_temps', 'points_retard', 'source_facture', 'facture_intervalle_jours', 'source_devis', 'devis_heures', 'source_commande', 'source_prospect', 'source_inactif', 'inactif_jours', 'source_avis', 'source_manuelle'] as $cle) {
+        foreach (['delai_heures', 'points_a_temps', 'points_retard', 'source_facture', 'facture_intervalle_jours', 'source_devis', 'devis_heures', 'devis_seconde_jours', 'source_commande', 'source_prospect', 'source_inactif', 'inactif_jours', 'source_avis', 'source_manuelle'] as $cle) {
             $regles[$cle] = $this->parametres->valeur('relances', $cle);
         }
         foreach (['jours', 'ouverture', 'fermeture', 'feries'] as $cle) {
@@ -179,9 +183,24 @@ final class ActionsCaisse
                 ->getQuery()->getResult();
             foreach ($devis as $d) {
                 /** @var Devis $d */
-                $candidats['devis:'.$d->getId()] = ['type' => 'devis', 'creer' => fn (string $cause): ActionCaisse => $this->nouvelle('devis', $cause, $this->nomClient($d->getClients()), $maintenant, $maintenant)
-                    ->lier($d->getClients(), null, 'devis', $d->getId())
-                    ->setDetail(\sprintf('Devis %s · sans réponse depuis %d h', $d->getNumero(), (int) round(($maintenant->getTimestamp() - $d->getDateDevis()->getTimestamp()) / 3600))), ];
+                $heures = (int) floor(($maintenant->getTimestamp() - $d->getDateDevis()->getTimestamp()) / 3600);
+                $relance = self::relanceDevis((int) $d->getId(), $heures, (int) $r['devis_heures'], (int) $r['devis_seconde_jours']);
+                if ($relance === null) {
+                    continue;
+                }
+                $candidats[$relance['cause']] = ['type' => 'devis', 'apres' => $relance['apres'], 'creer' => function (string $cause) use ($d, $heures, $relance, $maintenant): ActionCaisse {
+                    $detail = $relance['rang'] === 1
+                        ? \sprintf('Devis %s · sans réponse depuis %d h', $d->getNumero(), $heures)
+                        : \sprintf('Devis %s · %s, sans réponse depuis %d jours', $d->getNumero(), self::SECONDE_RELANCE, intdiv($heures, 24));
+                    if ($relance['rang'] === 2 && $d->getAgents() !== null) {
+                        // L'agent du devis sait que le client est relancé une seconde fois.
+                        $this->notifications->notifierUtilisateur($d->getAgents(), \sprintf('Devis %s (%s) sans réponse depuis %d jours : seconde relance confiée à la caisse.', $d->getNumero(), $this->nomClient($d->getClients()), intdiv($heures, 24)), 'app_devis_show', ['id' => $d->getId()]);
+                    }
+
+                    return $this->nouvelle('devis', $cause, $this->nomClient($d->getClients()), $maintenant, $maintenant)
+                        ->lier($d->getClients(), null, 'devis', $d->getId())
+                        ->setDetail($detail);
+                }, ];
             }
         }
 
@@ -246,11 +265,15 @@ final class ActionsCaisse
             }
         }
 
-        $etat = $this->actions->etatDesCauses(array_keys($candidats));
+        $etat = $this->actions->etatDesCauses([...array_keys($candidats), ...array_filter(array_column($candidats, 'apres'))]);
         $crees = 0;
         foreach ($candidats as $cause => $candidat) {
             $deja = $etat[$cause] ?? null;
             if ($deja !== null && ($deja['ouverte'] || !isset($candidat['repete']) || $deja['derniere'] > $maintenant->modify('-'.$candidat['repete'].' days'))) {
+                continue;
+            }
+            // Une seconde relance attend que la première soit faite.
+            if (isset($candidat['apres']) && ($etat[$candidat['apres']]['ouverte'] ?? false)) {
                 continue;
             }
             ($candidat['creer'])($cause);
@@ -426,6 +449,25 @@ final class ActionsCaisse
     }
 
     /**
+     * Relance d'un devis envoyé sans réponse depuis $heures : la première
+     * après le délai du réglage (48 h par défaut), la seconde à J+7. La
+     * seconde a sa propre cause et attend que la première soit faite.
+     *
+     * @return array{cause: string, rang: int, apres: ?string}|null
+     */
+    public static function relanceDevis(int $devisId, int $heures, int $heuresPremiere, int $joursSeconde): ?array
+    {
+        if ($heures < $heuresPremiere) {
+            return null;
+        }
+        if ($joursSeconde > 0 && $heures >= $joursSeconde * 24 && $joursSeconde * 24 > $heuresPremiere) {
+            return ['cause' => 'devis:'.$devisId.':2', 'rang' => 2, 'apres' => 'devis:'.$devisId];
+        }
+
+        return ['cause' => 'devis:'.$devisId, 'rang' => 1, 'apres' => null];
+    }
+
+    /**
      * Liens d'appel et de WhatsApp (message prêt), ou null sans numéro.
      *
      * @return array{tel: ?string, whatsapp: ?string}
@@ -439,7 +481,9 @@ final class ActionsCaisse
         $piece = preg_replace('/ · .*$/', '', (string) $a->getDetail());
         $message = match ($a->getType()) {
             'facture', 'verifier' => \sprintf('Bonjour, ici Succès Imprim. Petit rappel : %s reste à régler%s. Merci de nous dire quand le paiement est prévu.', mb_strtolower((string) $piece), $a->getMontant() ? \sprintf(' (%s F)', number_format($a->getMontant(), 0, ',', ' ')) : ''),
-            'devis' => \sprintf('Bonjour, ici Succès Imprim. Avez-vous pu regarder notre %s ? Nous restons disponibles pour l\'ajuster.', mb_strtolower((string) $piece)),
+            'devis' => str_contains((string) $a->getDetail(), self::SECONDE_RELANCE)
+                ? \sprintf('Bonjour, ici Succès Imprim. Notre %s est toujours valable. Souhaitez-vous le valider, ou que nous l\'ajustions avec vous ?', mb_strtolower((string) $piece))
+                : \sprintf('Bonjour, ici Succès Imprim. Avez-vous pu regarder notre %s ? Nous restons disponibles pour l\'ajuster.', mb_strtolower((string) $piece)),
             'commande' => \sprintf('Bonjour, ici Succès Imprim. Votre %s. Quand souhaitez-vous la récupérer ?', mb_strtolower((string) $a->getDetail())),
             'avis' => 'Bonjour, ici Succès Imprim. Êtes-vous satisfait de votre commande ? Votre avis nous aide beaucoup.',
             'inactif' => 'Bonjour, ici Succès Imprim. Cela fait un moment ! Avez-vous des impressions à prévoir ? Nous pouvons vous faire un devis rapidement.',

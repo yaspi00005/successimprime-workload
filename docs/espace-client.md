@@ -10,7 +10,7 @@ Construit, téléphone d'abord (onglets en bas), menu à gauche sur ordinateur :
 - **Mes commandes et suivi (15)** : liste avec état et avancement ; détail avec la frise datée (commande reçue, BAT validé par vous, impression, finition, prête à retirer ou à livrer, retirée ou livrée), livreur en route, montant et reste à payer, lien WhatsApp vers l'atelier (téléphone de la première entité).
 - **Mes devis (14, à droite)** : filtres Tous, À accepter, Acceptés ; « Accepter » passe le devis envoyé en accepté et prévient le droit Devis ; PDF par le lien public signé.
 - **Fichiers et BAT (16, à droite)** : BAT à valider et précédents ; page du BAT avec l'aperçu (image ou PDF) de la dernière version préparée par l'atelier, la frise des versions et des demandes du client. « Valider le BAT » note le BAT validé (horodaté, frise de conception, points du graphiste) et remet le contrôle à la prépresse pour la validation des fichiers et l'envoi en production ; « Demander une modification » repasse le contrôle en correction avec le texte du client. Sur un BAT en image, le client touche l'image pour poser des repères numérotés (10 au plus), chacun avec ce qu'il faut changer ; le graphiste les voit sur l'aperçu de son poste (R03) et dans le fil des échanges, et la version suivante les affiche au client avec « corrigé en version N » (maquette 16). Sur un PDF, la demande reste en texte. La prépresse est prévenue dans les deux cas.
-- **Factures et paiement (17)** : solde à payer par commande, factures émises (PDF signé, proforma marquée), page de paiement. Tant que les clés Orange Money ne sont pas posées, la page donne le numéro marchand (tuile Entités) et la référence de commande ; le paiement est validé par la caisse.
+- **Factures et paiement (17)** : solde à payer par commande, factures émises (PDF signé, proforma marquée), page de paiement Orange Money (voir plus bas). Tant que les clés Orange Money ne sont pas posées, la page donne le numéro marchand (tuile Entités) et la référence de commande ; le paiement est validé par la caisse.
 - **Mon compte et notifications (19)** : coordonnées (modifiées par le bureau), réglage SMS, mot de passe, déconnexion ; fil des notifications reconstruit à partir des commandes (BAT prêt, paiement reçu, impression lancée, commande prête, livreur en route, livrée).
 
 - **Nouvelle commande (14, à gauche)** : produits du catalogue publié (configurations actives avec un prix), largeur et hauteur en cm quand le produit se vend au m² ou sur mesure, finitions proposées (les obligatoires sont incluses), quantité, fichier choisi parmi les siens ou envoyé sur place, précisions pour l'atelier. Le total TTC indicatif est recalculé à chaque changement avec les prix du comptoir (prix B2B pour un client B2B) ; la commande arrive en brouillon « Reçue · à confirmer » (10 en attente au plus par client), sans paiement possible tant que l'atelier ne l'a pas confirmée. Au local, la fiche commande affiche « Commande passée par le client » avec le bouton Vérifier et confirmer.
@@ -53,9 +53,19 @@ Captures : `/mnt/project-files/captures/reclamations/`.
 - **À poser sur le serveur en ligne** (`.env.local`, jamais dans le dépôt) : les clés des notifications (`php bin/console app:push:cles`), les identifiants Orange SMS, et `MAILER_DSN` avec `MAILER_FROM_ADDRESS` pour l'e-mail. Sans elles, l'événement reste seulement dans le fil Notifications du client.
 - La réponse à une réclamation ne part plus par SMS depuis l'atelier : elle passe par cette chaîne quand elle arrive sur le site.
 
+## Paiement Orange Money (17, J5, construit le 13/10/2026)
+
+- **Parcours** : Payer › page sécurisée d'Orange Money (code secret du client) › retour sur la commande. Le lien d'Orange vaut 10 minutes ; s'il est encore valable pour le même montant, il est repris. Seul un payeur (compte entreprise) peut payer, et seulement une commande confirmée par l'atelier.
+- **Confirmation** : Orange prévient le site (`POST /om/notification/{référence}`, adresse publique). La notification n'est crue que si elle porte le jeton reçu à l'ouverture ; le site n'en garde que l'empreinte sha256. Au retour du client, l'état est aussi relu chez Orange (`transactionstatus`), sans attendre la notification.
+- **Argent reçu** : il devient un paiement Orange Money « en attente », référence `OM <n° de transaction Orange>`, jamais validé tout seul. La synchronisation le monte au local, où la caisse et la direction sont prévenues ; la caisse le valide dans Finances › À valider (ou sur le paiement) après contrôle du compte Orange Money. Le client est ensuite prévenu par la chaîne des notifications.
+- En attendant la caisse, la somme n'est plus redemandée en ligne : la commande affiche « Payé par Orange Money, en validation » et le solde ne la compte plus.
+- Table `transaction_orange_money` (site en ligne) : commande, compte, montant, référence, jeton de paiement, empreinte du jeton de notification, état (initiee, reussie, echouee, expiree), paiement créé.
+- **À poser sur le serveur en ligne** (`.env.local`, jamais dans le dépôt) : `ORANGE_MONEY_CLIENT_ID`, `ORANGE_MONEY_CLIENT_SECRET`, `ORANGE_MONEY_MERCHANT_KEY`. D'abord l'essai avec `ORANGE_MONEY_API=https://api.orange.com/orange-money-webpay/dev/v1` et `ORANGE_MONEY_DEVISE=OUV`, puis la production `https://api.orange.com/orange-money-webpay/ml/v1` avec `XOF`. Sans clés, la page garde le numéro marchand et la référence de commande.
+
+Captures : `/mnt/project-files/captures/orange-money/`.
+
 Reste à faire :
 
-- Paiement Orange Money en ligne (clés dans `.env.local` du serveur).
 - Fidélité (18 à droite) : règles de points, paliers et récompenses à fixer par Yaya.
 - Informations entreprise (NIF, RCCM) modifiables en ligne : aujourd'hui en lecture, changées par le bureau.
 - WhatsApp dans la chaîne des notifications, entre l'application et le SMS, quand la clé Meta sera posée.

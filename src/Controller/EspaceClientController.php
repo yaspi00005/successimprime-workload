@@ -7,6 +7,7 @@ use App\Entity\CommandesDetails;
 use App\Entity\CompteClient;
 use App\Entity\Devis;
 use App\Entity\Factures;
+use App\Entity\TransactionOrangeMoney;
 use App\Repository\CommandesRepository;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
@@ -14,6 +15,7 @@ use App\Service\EspaceClient\CompteEntreprise;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\NouvelleCommande;
+use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
 use App\Security\CodeParSms;
 use App\Security\EspaceClientComptes;
@@ -518,7 +520,7 @@ final class EspaceClientController extends AbstractController
 
     /** Paiement d'une commande (maquette 17) : Orange Money en ligne dès que les clés sont posées. */
     #[Route('/payer/{id}', name: 'payer', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET'])]
-    public function payer(string $id, EspaceClient $espace): Response
+    public function payer(string $id, Request $request, EspaceClient $espace, OrangeMoney $orangeMoney): Response
     {
         $compte = $this->payeur();
         $commande = $espace->commande($compte->getClient(), $id) ?? throw $this->createNotFoundException();
@@ -526,15 +528,58 @@ final class EspaceClientController extends AbstractController
             // Prix encore indicatif : on paie une fois la commande confirmée par l'atelier.
             return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
         }
+        if ($request->query->getBoolean('annule')) {
+            $this->addFlash('error', 'Paiement annulé sur la page Orange Money : rien n\'a été débité.');
+
+            return $this->redirectToRoute('app_espace_payer', ['id' => $id]);
+        }
 
         return $this->vue('espace/app/payer.html.twig', [
             'onglet' => 'factures',
             'commande' => $commande,
             'titre' => EspaceClient::titre($commande),
             'compte' => $compte,
+            'omActif' => $orangeMoney->estConfigure(),
+            'aPayer' => OrangeMoney::aPayer($commande),
+            'enValidation' => OrangeMoney::enValidation($commande),
             'marchand' => $espace->marchandOrangeMoney(),
-            'whatsapp' => $this->whatsapp(\sprintf('Bonjour, je souhaite payer ma commande %s (%s F).', $commande->getNumero(), number_format((float) $commande->getResteAPayer(), 0, ',', ' '))),
+            'whatsapp' => $this->whatsapp(\sprintf('Bonjour, je souhaite payer ma commande %s (%s F).', $commande->getNumero(), number_format((float) OrangeMoney::aPayer($commande), 0, ',', ' '))),
         ]);
+    }
+
+    /** Ouvre le paiement chez Orange et envoie le client sur sa page de paiement. */
+    #[Route('/payer/{id}', name: 'payer_orange_money', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['POST'])]
+    public function payerOrangeMoney(string $id, Request $request, EspaceClient $espace, OrangeMoney $orangeMoney): Response
+    {
+        $this->jeton($request);
+        $compte = $this->payeur();
+        $commande = $espace->commande($compte->getClient(), $id) ?? throw $this->createNotFoundException();
+        try {
+            return $this->redirect($orangeMoney->demarrer($commande, $compte, new \DateTimeImmutable())->getLienPaiement());
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $e->getMessage());
+
+            return $this->redirectToRoute('app_espace_payer', ['id' => $id]);
+        }
+    }
+
+    /** Retour de la page Orange Money : l'état est relu chez Orange, sans attendre sa notification. */
+    #[Route('/payer/{id}/retour', name: 'payer_retour', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET'])]
+    public function payerRetour(string $id, Request $request, EspaceClient $espace, OrangeMoney $orangeMoney, EntityManagerInterface $em): Response
+    {
+        $compte = $this->payeur();
+        $commande = $espace->commande($compte->getClient(), $id) ?? throw $this->createNotFoundException();
+        $transaction = $em->getRepository(TransactionOrangeMoney::class)->findOneBy(['commande' => $commande, 'orderId' => mb_substr($request->query->getString('o'), 0, 40)])
+            ?? throw $this->createNotFoundException();
+
+        $this->addFlash(...match ($orangeMoney->verifier($transaction, new \DateTimeImmutable())) {
+            TransactionOrangeMoney::REUSSIE => ['succes', \sprintf('Paiement Orange Money de %s FCFA reçu, merci ! La caisse le valide et votre reçu arrive dans l\'espace.', number_format($transaction->getMontant(), 0, ',', ' '))],
+            TransactionOrangeMoney::ECHOUEE => ['error', 'Le paiement Orange Money n\'a pas abouti : rien n\'a été débité. Vous pouvez réessayer.'],
+            TransactionOrangeMoney::EXPIREE => ['error', 'Le lien de paiement a expiré. Relancez le paiement.'],
+            default => ['succes', 'Paiement en cours chez Orange Money : il apparaît ici dès qu\'Orange le confirme.'],
+        });
+
+        return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
     }
 
     #[Route('/compte', name: 'compte', methods: ['GET'])]

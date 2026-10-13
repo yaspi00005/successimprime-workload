@@ -142,7 +142,7 @@ a.ec-carte { display: block; color: inherit; }
 .ec-bouton.clair { background: #fff; color: var(--encre); border: 1.5px solid var(--trait); }
 .ec-bouton.bleu { background: var(--bleu); }
 .ec-bouton[disabled] { opacity: .5; cursor: not-allowed; }
-.ec-bouton-petit { display: inline-block; border: 0; border-radius: 999px; padding: .4rem 1rem; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; background: var(--rouge); color: #fff; }
+.ec-bouton-petit { display: inline-block; border: 0; border-radius: 999px; padding: .4rem 1rem; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; background: var(--rouge); color: #fff; white-space: nowrap; flex-shrink: 0; }
 .ec-lien { font-weight: 700; font-size: .88rem; }
 .ec-boutons { display: grid; gap: .6rem; margin-top: .75rem; }
 

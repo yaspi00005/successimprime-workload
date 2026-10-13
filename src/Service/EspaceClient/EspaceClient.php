@@ -14,6 +14,7 @@ use App\Entity\Factures;
 use App\Entity\ReclamationClient;
 use App\Repository\EntrepriseRepository;
 use App\Service\NotificationService;
+use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
 use App\Service\SuiviCommandeService;
 use App\Service\Synchro\JournalSynchro;
@@ -348,12 +349,23 @@ final class EspaceClient
             ->orderBy('f.id', 'DESC')->setMaxResults(100)->getQuery()->getResult();
     }
 
-    /** Reste à payer sur les commandes en cours, et les commandes concernées. */
+    /**
+     * Reste à payer sur les commandes en cours, et les commandes concernées.
+     * Ce qui a été payé par Orange Money en ligne et attend la caisse n'est
+     * plus demandé (enValidation).
+     *
+     * @return array{total: float, enValidation: int, commandes: list<Commandes>}
+     */
     public function solde(Clients $client): array
     {
-        $aPayer = array_values(array_filter($this->commandes($client, 300), static fn (Commandes $c): bool => $c->isStatut() && 'annulee' !== $c->getStatutTravaux() && $c->getResteAPayer() > 0));
+        $enCours = array_values(array_filter($this->commandes($client, 300), static fn (Commandes $c): bool => $c->isStatut() && 'annulee' !== $c->getStatutTravaux() && $c->getResteAPayer() > 0));
+        $aPayer = array_values(array_filter($enCours, static fn (Commandes $c): bool => OrangeMoney::aPayer($c) > 0));
 
-        return ['total' => array_sum(array_map(static fn (Commandes $c): float => (float) $c->getResteAPayer(), $aPayer)), 'commandes' => $aPayer];
+        return [
+            'total' => (float) array_sum(array_map(OrangeMoney::aPayer(...), $aPayer)),
+            'enValidation' => array_sum(array_map(OrangeMoney::enValidation(...), $enCours)),
+            'commandes' => $aPayer,
+        ];
     }
 
     /** Numéro marchand Orange Money de l'entité principale, s'il est saisi. */

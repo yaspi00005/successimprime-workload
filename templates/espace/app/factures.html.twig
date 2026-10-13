@@ -10,12 +10,13 @@
 		{% if solde.total > 0 %}
 			<ul class="ec-liste">
 				{% for c in solde.commandes %}
-					<li class="ec-ligne"><div><b>{{ c|espace_titre }}</b><div class="ec-petit">Commande {{ c.numero }}</div></div><a class="ec-bouton-petit" style="background:var(--orange)" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer {{ c.resteAPayer|number_format(0, ',', ' ') }} F</a></li>
+					<li class="ec-ligne"><div><b>{{ c|espace_titre }}</b><div class="ec-petit">Commande {{ c.numero }}</div></div><a class="ec-bouton-petit" style="background:var(--orange)" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer {{ c|espace_a_payer|number_format(0, ',', ' ') }} F</a></li>
 				{% endfor %}
 			</ul>
-		{% else %}
+		{% elseif solde.enValidation <= 0 %}
 			<p class="ec-petit" style="margin:0">Tout est réglé, merci.</p>
 		{% endif %}
+		{% if solde.enValidation > 0 %}<p class="ec-petit" style="margin:.5rem 0 0">{{ solde.enValidation|number_format(0, ',', ' ') }} FCFA payés par Orange Money attendent la validation de la caisse.</p>{% endif %}
 	</div>
 
 	<div class="ec-carte">

@@ -165,6 +165,13 @@ security:
             roles: PUBLIC_ACCESS
         }
 
+        # Orange Money prévient le site après un paiement de l'espace client ;
+        # la notification n'est crue qu'avec le jeton reçu à l'ouverture.
+        - {
+            path: '^/om/notification/SI[0-9A-F]{18}$',
+            roles: PUBLIC_ACCESS
+        }
+
         - {
             path: ^/ecran-accueil,
             roles: PUBLIC_ACCESS

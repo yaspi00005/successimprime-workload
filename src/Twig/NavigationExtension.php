@@ -66,7 +66,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'À valider', 'route' => 'app_a_valider_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_a_valider_']],
             ['libelle' => 'Dépenses', 'route' => 'app_finances_depenses', 'role' => ['ROLE_TRESORERIE_VOIR', 'ROLE_TRESORERIE_SAISIR'], 'prefixes' => ['app_finances_depenses']],
             ['libelle' => 'Fournisseurs', 'route' => 'app_finances_fournisseurs', 'role' => 'ROLE_TRESORERIE_VOIR', 'prefixes' => ['app_finances_fournisseurs']],
-            ['libelle' => 'Trésorerie', 'route' => 'app_tresorerie_index', 'role' => 'ROLE_TRESORERIE_VOIR', 'prefixes' => ['app_tresorerie_', 'app_mouvement_tresorerie_', 'app_decaissement_recurrent_', 'app_compte_tresorerie_', 'app_rapprochement_bancaire_']],
+            ['libelle' => 'Trésorerie', 'route' => 'app_finances_tresorerie', 'role' => 'ROLE_TRESORERIE_VOIR', 'prefixes' => ['app_finances_tresorerie', 'app_tresorerie_', 'app_mouvement_tresorerie_', 'app_decaissement_recurrent_', 'app_compte_tresorerie_', 'app_rapprochement_bancaire_']],
             ['libelle' => 'Rentabilité', 'route' => 'app_finances_rentabilite', 'role' => 'ROLE_COUT_MARGE', 'prefixes' => ['app_finances_rentabilite']],
             ['libelle' => 'Comptabilité', 'route' => 'app_comptabilite_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_comptabilite_']],
         ],

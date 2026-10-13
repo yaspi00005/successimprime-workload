@@ -242,8 +242,38 @@
 .si-fin-echeancier li small a { color: #475569; }
 .si-fin-echeancier li b { white-space: nowrap; color: #0F172A; text-align: right; }
 
+/* ---------- F05 · Prévision de trésorerie ---------- */
+.si-fin-courbe { padding: 6px 0 0; }
+.si-fin-courbe-zone { position: relative; height: 290px; margin: 18px 46px 0 0; }
+.si-fin-courbe-zone svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.si-fin-courbe-grille { position: absolute; left: 0; right: 0; border-top: 1px solid #EEF2F7; }
+.si-fin-courbe-y { position: absolute; left: 100%; margin-left: 8px; transform: translateY(-50%); font-size: 12px; color: #64748B; white-space: nowrap; }
+.si-fin-courbe-aire { fill: #E7EEFA; opacity: 0.55; }
+.si-fin-courbe-ligne { fill: none; stroke: #0F4590; stroke-width: 2.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.si-fin-courbe-seuil { stroke: #DC2626; stroke-width: 1.5; stroke-dasharray: 6 5; vector-effect: non-scaling-stroke; }
+.si-fin-courbe-x { position: relative; height: 22px; margin: 8px 46px 0 0; font-size: 12px; color: #64748B; }
+.si-fin-courbe-x span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.si-fin-courbe-x span:first-child { transform: none; }
+.si-fin-repere { position: absolute; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: #DC2626; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(220, 38, 38, .35); }
+.si-fin-repere small { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); font-size: 11.5px; color: #475569; white-space: nowrap; background: rgba(255, 255, 255, .85); padding: 0 3px; border-radius: 4px; }
+.si-fin-repere-haut small { top: auto; bottom: 14px; }
+.si-fin-repere-droite small { left: auto; right: -4px; transform: none; }
+.si-fin-repere-depart { width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; background: #0F4590; box-shadow: none; }
+.si-fin-repere-depart small { top: auto; bottom: 13px; left: 0; transform: none; font-weight: 700; color: #0F172A; }
+.si-fin-repere-bas { width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; background: #fff; border: 3px solid #DC2626; box-shadow: none; }
+.si-fin-trois { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.si-fin-pris ul { list-style: none; margin: 0; padding: 0; }
+.si-fin-pris li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border-bottom: 1px solid #EEF2F7; font-size: 14px; color: #0F172A; }
+.si-fin-pris li:last-child { border-bottom: 0; }
+.si-fin-pris li > span { min-width: 0; }
+.si-fin-pris li small { display: block; color: #64748B; font-size: 12.5px; }
+.si-fin-pris li b { white-space: nowrap; }
+.si-fin-pris p:not(.si-fin-note) { font-size: 14px; color: #334155; }
+.si-fin .card.si-fin-alerte-rouge { box-shadow: inset 4px 0 0 #DC2626, var(--si-carte-ombre); }
+
 /* ---------- Écrans larges et téléphone ---------- */
 @media (max-width: 1199.98px) {
+  .si-fin-trois { grid-template-columns: 1fr; }
   .si-fin-deux, .si-fin-renta .si-fin-deux, .si-fin-dep-grille, .si-fin-four-grille { grid-template-columns: 1fr; }
 }
 @media (max-width: 575.98px) {
@@ -290,6 +320,12 @@
   .si-fin-four-table td small { white-space: normal; }
   .si-fin-four-table .si-fin-statut { font-size: 11px; padding: 2px 7px; white-space: normal; }
   .si-fin-avatar { width: 30px; height: 30px; font-size: 11px; }
+  .si-fin-courbe-zone { height: 210px; margin-right: 34px; }
+  .si-fin-courbe-x { margin-right: 34px; font-size: 10.5px; }
+  .si-fin-courbe-y { font-size: 10.5px; margin-left: 5px; }
+  .si-fin-repere small { display: none; }
+  .si-fin-repere-depart small { display: block; font-size: 10.5px; }
+  .si-fin-pris li { font-size: 13.5px; }
 }
 @media (max-width: 991.98px) {
   .si-fin-depense-grille { grid-template-columns: 1fr; }

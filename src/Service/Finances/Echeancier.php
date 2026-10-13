@@ -91,10 +91,15 @@ final class Echeancier
             $sorties[] = self::ligne($t->getPrevueLe(), $t->getTitre(), $fiscal ? 'impôts et taxes' : 'planning', null !== $montant && $montant > 0 ? $montant : null, $fiscal ? 'fiscal' : 'planning', false, 'app_planning_tache', ['id' => (int) $t->getId()]);
         }
 
-        $mois = $aujourdhui->modify('first day of this month');
-        foreach ([$mois->modify('-1 month'), $mois, $mois->modify('+1 month')] as $m) {
+        // Salaires du mois M versés en M+1 : on part du mois dernier
+        // jusqu'au dernier versement avant l'horizon (90 jours pour F05).
+        $m = $aujourdhui->modify('first day of this month')->modify('-1 month');
+        for ($i = 0; $i < 6; ++$i, $m = $m->modify('+1 month')) {
             $date = $this->paie->dateVersement($m);
-            if ($date < $aujourdhui || $date > $jusqua) {
+            if ($date > $jusqua) {
+                break;
+            }
+            if ($date < $aujourdhui) {
                 continue;
             }
             $salaires = $this->salairesNets($m);

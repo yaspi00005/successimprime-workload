@@ -32,6 +32,7 @@ final class VueEnsemble
         private readonly Rentabilite $rentabilite,
         private readonly ReglagesFinances $reglages,
         private readonly Echeancier $echeancier,
+        private readonly PrevisionTresorerie $prevision,
     ) {
     }
 
@@ -266,6 +267,22 @@ final class VueEnsemble
                         : (null !== $prochain ? \sprintf('dont %s le %s', $f($prochain['total']), $prochain['date']->format('d/m')) : 'à payer dès maintenant'),
                 ];
             }
+        }
+
+        if ($droits['tresorerie']) {
+            // Prévision F05, scénario prudent : toujours depuis aujourd'hui.
+            $p = $this->prevision->donnees($maintenant, 'prudent');
+            $bas = $p['point_bas'];
+            $sous = $p['sous_seuil'];
+            $lignes[] = [
+                'cle' => 'point_bas', 'titre' => 'Point bas de trésorerie', 'couleur' => null !== $sous ? 'rouge' : 'canard', 'valeur' => $f($bas['solde']), 'route' => 'app_finances_tresorerie',
+                'detail' => match (true) {
+                    null !== $sous && $sous['date'] <= $p['aujourdhui'] => \sprintf('déjà sous le seuil de %s', $f($p['seuil'])),
+                    null !== $sous => \sprintf('sous le seuil de %s le %s', $f($p['seuil']), $sous['date']->format('d/m')),
+                    0 === $bas['index'] => 'aujourd’hui : le solde prévu ne descend pas plus bas sur 90 jours',
+                    default => \sprintf('prévu le %s%s', $bas['date']->format('d/m'), null !== $p['cause_point_bas'] ? ', '.$p['cause_point_bas'] : ''),
+                },
+            ];
         }
 
         // Ordre de la maquette : créances, dettes, encaissements, dépenses, trésorerie.

@@ -6,13 +6,21 @@
 
 {% block header_actions %}
 	<li class="nav-item si-masque-mobile">
-		<a href="{{ path('app_finances_depenses', {periode: d.dateDepense|date('Y-m')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Dépenses</a>
+		{% if depuis == 'jour' %}
+			<a href="{{ path('app_finances_du_jour') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Finances du jour</a>
+		{% else %}
+			<a href="{{ path('app_finances_depenses', {periode: d.dateDepense|date('Y-m')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Dépenses</a>
+		{% endif %}
 	</li>
 {% endblock %}
 
 {% block body %}
 	<div class="si-fin si-fin-depense">
-		<a class="si-fin-retour" href="{{ path('app_finances_depenses', {periode: d.dateDepense|date('Y-m')}) }}"><i class="fas fa-chevron-left" aria-hidden="true"></i> Dépenses</a>
+		{% if depuis == 'jour' %}
+			<a class="si-fin-retour" href="{{ path('app_finances_du_jour') }}"><i class="fas fa-chevron-left" aria-hidden="true"></i> Finances du jour</a>
+		{% else %}
+			<a class="si-fin-retour" href="{{ path('app_finances_depenses', {periode: d.dateDepense|date('Y-m')}) }}"><i class="fas fa-chevron-left" aria-hidden="true"></i> Dépenses</a>
+		{% endif %}
 
 		<div class="si-fin-depense-grille">
 			<div class="si-fin-pile">
@@ -21,7 +29,7 @@
 					<h2>{{ d.objet }}</h2>
 					<strong class="si-fin-dep-montant">{{ m.f(d.montant) }}</strong>
 					<p class="si-fin-gris">
-						{{ d.payeA ?: categorie }}{% if d.echeance and not d.estPayee %} · paiement le {{ d.echeance|date('d/m') }}{% endif %} · {{ d.dateDepense|date('d/m/Y') }}
+						{{ d.payeA ?: categorie }}{% if d.echeance and not d.estPayee %} · paiement le {{ d.echeance|date('d/m') }}{% endif %}{% if d.dateDepense|date('Y-m-d') != d.creeLe|date('Y-m-d') %} · {{ d.dateDepense|date('d/m/Y') }}{% endif %}
 					</p>
 					<p class="mb-0">
 						<span class="si-fin-statut si-fin-statut-{{ etat.couleur }}">{{ etat.libelle }}</span>
@@ -43,6 +51,7 @@
 						<li>Catégorie : {{ categorie }}</li>
 						{% if achat %}
 							<li>Stock {{ achat.article|lower }} : <b class="{{ achat.bas ? 'si-fin-rouge' }}">{{ achat.stock|number_format(achat.stock == achat.stock|round ? 0 : 1, ',', ' ') }} {{ achat.unite }}</b></li>
+							{% if achat.commandes > 0 %}<li class="si-fin-dep-besoin">Besoin : {{ achat.commandes }} commande{{ achat.commandes > 1 ? 's' }} en cours ({{ achat.reserve|number_format(achat.reserve == achat.reserve|round ? 0 : 1, ',', ' ') }} {{ achat.unite }} réservé{{ achat.reserve > 1 ? 's' }})</li>{% endif %}
 							{% if d.quantite %}<li>Quantité : {{ d.quantite|number_format(d.quantite == d.quantite|round ? 0 : 1, ',', ' ') }} {{ achat.unite }}</li>{% endif %}
 						{% endif %}
 						{% if d.compte %}<li>Payé avec : {{ d.compte.nom }}</li>{% endif %}
@@ -76,14 +85,14 @@
 							<details class="si-fin-refus">
 								<summary class="btn btn-outline-secondary">Refuser</summary>
 								<form method="post" action="{{ path('app_finances_depenses_refuser', {id: d.id}) }}">
-									<input type="hidden" name="_token" value="{{ csrf_token('refuser-depense-' ~ d.id) }}">
+									<input type="hidden" name="_token" value="{{ csrf_token('refuser-depense-' ~ d.id) }}">{% if depuis == 'jour' %}<input type="hidden" name="depuis" value="jour">{% endif %}
 									<label class="form-label" for="motif-refus">Motif du refus</label>
 									<textarea id="motif-refus" name="motif" class="form-control" rows="2" required maxlength="255" placeholder="Prix trop élevé, attendre la fin du mois…"></textarea>
 									<button type="submit" class="btn btn-outline-danger mt-2 w-100">Confirmer le refus</button>
 								</form>
 							</details>
 							<form method="post" action="{{ path('app_finances_depenses_approuver', {id: d.id}) }}" class="si-fin-approuver">
-								<input type="hidden" name="_token" value="{{ csrf_token('approuver-depense-' ~ d.id) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('approuver-depense-' ~ d.id) }}">{% if depuis == 'jour' %}<input type="hidden" name="depuis" value="jour">{% endif %}
 								<button type="submit" class="btn btn-success w-100">Approuver</button>
 							</form>
 						</div>
@@ -112,7 +121,7 @@
 					<details class="card si-fin-refus si-fin-refus-carte">
 						<summary>Refuser cette dépense</summary>
 						<form method="post" action="{{ path('app_finances_depenses_refuser', {id: d.id}) }}">
-							<input type="hidden" name="_token" value="{{ csrf_token('refuser-depense-' ~ d.id) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('refuser-depense-' ~ d.id) }}">{% if depuis == 'jour' %}<input type="hidden" name="depuis" value="jour">{% endif %}
 							<label class="form-label" for="motif-refus-2">Motif du refus</label>
 							<textarea id="motif-refus-2" name="motif" class="form-control" rows="2" required maxlength="255"></textarea>
 							<button type="submit" class="btn btn-outline-danger mt-2">Confirmer le refus</button>

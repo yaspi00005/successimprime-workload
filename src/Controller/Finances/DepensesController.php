@@ -133,7 +133,7 @@ final class DepensesController extends AbstractController
     }
 
     #[Route('/{id}', name: '_voir', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function voir(Depense $depense): Response
+    public function voir(Depense $depense, Request $request): Response
     {
         $droits = $this->droitsSur($depense);
         $mois = $depense->getDateDepense();
@@ -164,6 +164,7 @@ final class DepensesController extends AbstractController
             'a_decider' => $droits['admin'] && Depense::A_APPROUVER === $depense->getStatut(),
             'comptes' => $droits['saisie'] ? $this->comptes->trouverDisponiblesPour($this->utilisateur(), $droits['admin']) : [],
             'seuil' => $this->reglages->seuilApprobation(),
+            'depuis' => 'jour' === $request->query->get('depuis') ? 'jour' : null,
         ]);
     }
 
@@ -179,7 +180,7 @@ final class DepensesController extends AbstractController
             $this->addFlash('danger', $e->getMessage());
         }
 
-        return $this->redirectToRoute('app_finances_depenses_voir', ['id' => $depense->getId()]);
+        return $this->apresDecision($depense, $request);
     }
 
     #[Route('/{id}/refuser', name: '_refuser', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -194,7 +195,7 @@ final class DepensesController extends AbstractController
             $this->addFlash('danger', $e->getMessage());
         }
 
-        return $this->redirectToRoute('app_finances_depenses_voir', ['id' => $depense->getId()]);
+        return $this->apresDecision($depense, $request);
     }
 
     #[Route('/{id}/payer', name: '_payer', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -250,6 +251,17 @@ final class DepensesController extends AbstractController
         }
 
         return $droits;
+    }
+
+    /**
+     * Après une décision prise depuis « Finances du jour » (téléphone), on
+     * y revient pour la décision suivante ; sinon on reste sur la dépense.
+     */
+    private function apresDecision(Depense $depense, Request $request): Response
+    {
+        return 'jour' === $request->request->get('depuis')
+            ? $this->redirectToRoute('app_finances_du_jour')
+            : $this->redirectToRoute('app_finances_depenses_voir', ['id' => $depense->getId()]);
     }
 
     private function verifierJeton(Request $request, string $intention): void

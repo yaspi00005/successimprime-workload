@@ -124,7 +124,7 @@ final class VueEnsemble
      *
      * @return list<array{nom: string, type: string, solde: int, rang: int}>
      */
-    private function comptes(): array
+    public function comptes(): array
     {
         /** @var list<CompteTresorerie> $comptes */
         $comptes = $this->em->getRepository(CompteTresorerie::class)->findBy(['actif' => true]);
@@ -140,7 +140,7 @@ final class VueEnsemble
     }
 
     /** Factures comptabilisées et émises du mois, TTC (montants de la comptabilité). */
-    private function facture(\DateTimeImmutable $debut, \DateTimeImmutable $fin): int
+    public function facture(\DateTimeImmutable $debut, \DateTimeImmutable $fin): int
     {
         return (int) $this->em->createQueryBuilder()
             ->select('COALESCE(SUM(f.totalTtc), 0)')

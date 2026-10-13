@@ -7,6 +7,7 @@ use App\Entity\Achats;
 use App\Entity\CompteTresorerie;
 use App\Entity\Depense;
 use App\Entity\MouvementTresorerie;
+use App\Entity\StockReservation;
 use App\Entity\User;
 use App\Service\MouvementTresorerieService;
 use App\Service\NotificationService;
@@ -206,9 +207,10 @@ final class Depenses
 
     /**
      * Pour décider d'un achat de matières : stock actuel de l'article,
+     * besoin des commandes en cours (réservations de stock actives),
      * prix unitaire de la dépense et dernier prix d'achat connu.
      *
-     * @return array{article: string, stock: float, bas: bool, unite: string, prix: ?int, dernier: ?int, ecart: ?int}|null
+     * @return array{article: string, stock: float, bas: bool, unite: string, prix: ?int, dernier: ?int, ecart: ?int, reserve: float, commandes: int}|null
      */
     public function infoAchat(Depense $d): ?array
     {
@@ -231,6 +233,16 @@ final class Depenses
             ->getQuery()
             ->getOneOrNullResult();
         $dernier = null !== $dernier ? (int) $dernier['prixUnitaire'] : $article->getPrixAchat();
+        $besoin = $this->em->createQueryBuilder()
+            ->select('COALESCE(SUM(r.quantite), 0) AS quantite', 'COUNT(DISTINCT IDENTITY(detail.commande)) AS commandes')
+            ->from(StockReservation::class, 'r')
+            ->innerJoin('r.commandeDetail', 'detail')
+            ->andWhere('r.article = :article')
+            ->andWhere('r.statut = :active')
+            ->setParameter('article', $article)
+            ->setParameter('active', StockReservation::STATUT_ACTIVE)
+            ->getQuery()
+            ->getSingleResult();
         $prix = $d->getQuantite() > 0 ? (int) round($d->getMontant() / $d->getQuantite()) : null;
 
         return [
@@ -241,6 +253,8 @@ final class Depenses
             'prix' => $prix,
             'dernier' => $dernier,
             'ecart' => self::ecart($prix, $dernier),
+            'reserve' => (float) $besoin['quantite'],
+            'commandes' => (int) $besoin['commandes'],
         ];
     }
 

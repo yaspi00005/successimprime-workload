@@ -48,10 +48,10 @@ final class ModulesRoles
             ],
             'clients' => [
                 'libelle' => 'Clients',
-                'detail' => 'fiches, prospects',
+                'detail' => 'fiches, prospects, réclamations',
                 'droits' => ['ROLE_CLIENT'],
                 'lecture' => Droits::LECTURE_CLIENTS,
-                'prefixes' => ['app_clients_', 'app_prospects_'],
+                'prefixes' => ['app_clients_', 'app_prospects_', 'app_reclamations_clients_'],
             ],
             'livraisons' => [
                 'libelle' => 'Livraisons',

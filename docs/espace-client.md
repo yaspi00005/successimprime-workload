@@ -34,8 +34,19 @@ Une fiche entreprise ou B2B peut avoir plusieurs personnes, chacune avec son num
 - **Synchronisation** : la demande monte au local sans prévenir l'atelier. La décision du valideur remonte (`validationEntreprise`, `valideePar`, `motifRefusEntreprise`) : validée, le droit Commande est prévenu comme pour toute commande en ligne ; refusée, le local la classe (supprimée) et le site la garde visible au client avec son motif. Au local, la fiche commande affiche « demandée en ligne par X » et le bon de commande.
 - Les demandes à valider ou refusées n'apparaissent pas dans « À confirmer » (API comprise).
 
+## Réclamations (18 à gauche, construit le 13/10/2026)
+
+Le client signale un souci sur un travail depuis Mon compte › Réclamations, ou depuis une commande confirmée (« Un problème avec cette commande ? »). Code : `src/Service/EspaceClient/ReclamationsClients.php`, entités `ReclamationClient` et `ReclamationClientPhoto` (à ne pas confondre avec `Reclamation`, qui sert aux réclamations des employés).
+
+- **Côté client** : commande concernée (facultative), motif (couleur, finition, quantité, texte, retard, livraison, autre), titre, description, jusqu'à 3 photos prises au téléphone. La liste montre le ticket (R-0001, W-R-0001 en ligne), l'état (Reçue, En cours, Résolue, Non retenue), les photos, la réponse de l'atelier et la durée de traitement (« Résolue en 1 h »). 5 réclamations ouvertes au plus par client.
+- **Photos** : ce qui n'est pas une image est refusé ; la photo est réduite à 1600 px et réencodée, ce qui retire la position GPS et les autres données EXIF (si le serveur ne sait pas lire le JPEG, la photo est gardée telle quelle mais sans ses segments de métadonnées, 5 Mo au plus). Elles sont rangées en base, pas dans `public/`, et servies seulement au client de la fiche et aux droits Clients.
+- **Côté atelier** : Clients › Réclamations, réservé au droit Clients (`ROLE_CLIENT`), avec une pastille sur le menu Clients pour les réclamations reçues sans réponse. La fiche montre la description, les photos, le client et la commande ; la réponse part avec un état : « En cours » la laisse ouverte, « Résolue » ou « Non retenue » la clôt. Le client reçoit un SMS sans détail (« nous avons répondu à votre réclamation R-0002 ») s'il accepte les SMS.
+- **Synchronisation** : la réclamation et ses photos montent au local (types `reclamation` et `reclamation_photo`) et le droit Clients est prévenu ; la réponse et l'état redescendent sur le site.
+
+Captures : `/mnt/project-files/captures/reclamations/`.
+
 Reste à faire :
 
 - Paiement Orange Money en ligne (clés dans `.env.local` du serveur).
-- Réclamations clients et fidélité (18) : nouvelles tables ; règles de points, paliers et récompenses à fixer par Yaya.
+- Fidélité (18 à droite) : règles de points, paliers et récompenses à fixer par Yaya.
 - Informations entreprise (NIF, RCCM) modifiables en ligne : aujourd'hui en lecture, changées par le bureau.

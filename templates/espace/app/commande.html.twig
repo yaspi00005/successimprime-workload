@@ -74,9 +74,10 @@
 		{% if c.resteAPayer > 0 and not carte.aConfirmer and peutPayer %}<div class="ec-boutons"><a class="ec-bouton orange" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer avec Orange Money</a></div>{% endif %}
 	</div>
 
-	{% if whatsapp %}
+	{% if whatsapp or c.isStatut %}
 		<div class="ec-boutons" id="recommander">
-			<a class="ec-bouton clair" href="{{ whatsapp }}" target="_blank" rel="noopener">Contacter l'atelier sur WhatsApp</a>
+			{% if whatsapp %}<a class="ec-bouton clair" href="{{ whatsapp }}" target="_blank" rel="noopener">Contacter l'atelier sur WhatsApp</a>{% endif %}
+			{% if c.isStatut %}<a class="ec-lien" href="{{ path('app_espace_reclamation_nouvelle', {commande: c.publicId}) }}" style="display:block;text-align:center;margin-top:.7rem">Un problème avec cette commande ?</a>{% endif %}
 		</div>
 	{% endif %}
 {% endblock %}

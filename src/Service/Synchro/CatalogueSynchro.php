@@ -20,6 +20,8 @@ use App\Entity\Format;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
+use App\Entity\ReclamationClient;
+use App\Entity\ReclamationClientPhoto;
 use App\Entity\Supports;
 use App\Entity\TypesImpression;
 
@@ -223,6 +225,18 @@ final class CatalogueSynchro
                 ],
                 'relations' => ['commande' => 'commande', 'facture' => 'facture'], 'listes' => [],
                 'imposeAuLocal' => ['statut' => Paiements::STATUT_EN_ATTENTE, 'dateValidation' => null, 'dateAnnulation' => null],
+            ],
+            // Réclamation écrite par le client en ligne (maquette 18) ; la réponse de l'atelier redescend.
+            'reclamation' => [
+                'classe' => ReclamationClient::class, 'sens' => self::DEUX, 'libelle' => 'Réclamation', 'titre' => ['numero', 'objet'],
+                'champs' => ['numero', 'auteur', 'motif', 'objet', 'description', 'statut', 'reponse', 'reponduPar', 'reponduLe', 'closeLe', 'creeLe'],
+                'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'numero' => 'numero',
+                'imposeAuLocal' => ['statut' => ReclamationClient::OUVERTE, 'reponse' => null, 'reponduPar' => null, 'reponduLe' => null, 'closeLe' => null],
+            ],
+            'reclamation_photo' => [
+                'classe' => ReclamationClientPhoto::class, 'sens' => self::DEUX, 'libelle' => 'Photo de réclamation', 'titre' => [],
+                'champs' => ['contenu', 'type', 'largeur', 'hauteur'],
+                'relations' => ['reclamation' => 'reclamation'], 'listes' => [],
             ],
         ];
     }

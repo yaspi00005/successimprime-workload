@@ -6,6 +6,7 @@ use App\Entity\ActionCaisse;
 use App\Entity\Commandes;
 use App\Entity\DemandeEmploye;
 use App\Entity\Paiements;
+use App\Entity\ReclamationClient;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -62,6 +63,10 @@ final class PastillesMenu
                 'c.canal = :canal AND c.statut = false AND c.deleted = false AND (c.validationEntreprise IS NULL OR c.validationEntreprise = :validee)',
                 ['canal' => Commandes::CANAL_EN_LIGNE, 'validee' => Commandes::VALIDATION_ACCEPTEE],
             );
+        }
+        if ($this->security->isGranted('ROLE_CLIENT')) {
+            // Réclamations écrites par les clients, pas encore répondues.
+            $compteurs['app_reclamations_clients_index'] = $this->compter(ReclamationClient::class, 'r', 'r.statut = :s', ['s' => ReclamationClient::OUVERTE]);
         }
         if ($this->security->isGranted('ROLE_RH')) {
             $compteurs['app_demandes_index'] = $this->compter(DemandeEmploye::class, 'd', 'd.etat = :e', ['e' => DemandeEmploye::EN_ATTENTE]);

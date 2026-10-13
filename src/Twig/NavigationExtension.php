@@ -68,6 +68,7 @@ final class NavigationExtension extends AbstractExtension
         'clients' => [
             ['libelle' => 'Fiches clients', 'route' => 'app_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_clients_', 'app_reclamation_']],
             ['libelle' => 'Prospects', 'route' => 'app_prospects_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_prospects_']],
+            ['libelle' => 'Réclamations', 'route' => 'app_reclamations_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_reclamations_clients_']],
             ['libelle' => 'Campagnes WhatsApp et SMS', 'route' => 'app_campagne_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_campagne_', 'app_modele_message_', 'app_regle_rappel_paiement_']],
         ],
         'atelier' => [

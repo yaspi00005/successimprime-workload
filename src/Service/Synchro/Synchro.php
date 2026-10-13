@@ -7,6 +7,7 @@ use App\Entity\Commandes;
 use App\Entity\ControlePrePresse;
 use App\Entity\Devis;
 use App\Entity\ModificationClient;
+use App\Entity\ReclamationClient;
 use App\Entity\SynchroEchange;
 use App\Entity\SynchroEtat;
 use App\Entity\SynchroJournal;
@@ -352,6 +353,10 @@ final class Synchro
                     if (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->attendValidationEntreprise()) {
                         // Demande d'un employé du client : rien à faire avant l'accord de son valideur.
                         $resultat = [self::RESULTAT_OK, 'Demande en attente de validation chez le client', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof ReclamationClient) {
+                        $this->em->flush();
+                        $this->notifications->notifierRoles(['ROLE_CLIENT'], \sprintf('Réclamation %s de %s : %s', $entite->getNumero(), $entite->getClient()?->getNomComplet() ?? 'un client', $entite->getObjet()), 'app_reclamations_clients_voir', ['id' => $entite->getId()]);
+                        $resultat = [self::RESULTAT_OK, 'Réclamation du client : à traiter', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->estRefuseeParEntreprise() && !$entite->isStatut()) {
                         // Refusée chez le client avant même d'arriver : classée, l'atelier n'en entend pas parler.
                         $entite->setDeleted(true);

@@ -1,0 +1,32 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Réclamations{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_compte') }}"><span class="fl">‹</span>Réclamations</a>{% endblock %}
+
+{% block contenu %}
+	<a class="ec-bouton" href="{{ path('app_espace_reclamation_nouvelle') }}" style="margin-bottom:.9rem">+ Nouvelle réclamation</a>
+
+	{% set couleurs = {ouverte: 'rouge', en_cours: 'ambre', resolue: 'vert', refusee: 'gris'} %}
+	{% for r in liste %}
+		<div class="ec-carte" id="{{ r.numero }}">
+			<div class="ec-ligne"><span class="ec-petit">Ticket {{ r.numero }}{{ r.commande ? ' · commande ' ~ r.commande.numero }}</span><span class="ec-pastille {{ couleurs[r.statut] }}">{{ r.libelleStatut }}</span></div>
+			<div class="ec-rc-titre">{{ r.objet }}</div>
+			{% if not r.estClose or not r.reponse %}<div class="ec-petit">{{ r.description|length > 140 ? r.description|slice(0, 140) ~ '…' : r.description }}</div>{% endif %}
+			{% if r.photos|length %}
+				<div class="ec-rc-photos">
+					{% for p in r.photos %}<a href="{{ path('app_espace_reclamation_photo', {id: p.publicId}) }}" target="_blank" rel="noopener"><img src="{{ path('app_espace_reclamation_photo', {id: p.publicId}) }}" alt="Photo {{ loop.index }}" loading="lazy"></a>{% endfor %}
+				</div>
+			{% endif %}
+			{% if r.reponse %}
+				<div class="ec-rc-reponse"><b>Atelier :</b> {{ r.reponse }}</div>
+			{% endif %}
+			<div class="ec-petit" style="margin-top:.4rem">
+				{% if r.dureeTraitement %}{{ r.statut == 'resolue' ? 'Résolue' : 'Close' }} en {{ r.dureeTraitement }}
+				{% elseif not r.reponse %}Envoyée le {{ r.creeLe|date('d/m à H:i') }}{{ r.auteur ? ' par ' ~ r.auteur }} · l'atelier vous répond ici
+				{% else %}Réponse du {{ r.reponduLe|date('d/m à H:i') }}{% endif %}
+			</div>
+		</div>
+	{% else %}
+		<div class="ec-carte ec-vide">Aucune réclamation. Si un travail ne vous convient pas, dites-le nous ici, photo à l'appui.</div>
+	{% endfor %}
+{% endblock %}

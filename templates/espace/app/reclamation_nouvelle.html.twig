@@ -1,0 +1,51 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Nouvelle réclamation{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_reclamations') }}"><span class="fl">‹</span>Nouvelle réclamation</a>{% endblock %}
+
+{% block contenu %}
+	<form class="ec-carte" method="post" enctype="multipart/form-data" style="display:grid;gap:.5rem">
+		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+		<label class="ec-etiquette" for="commande">Commande concernée</label>
+		<select class="ec-saisie" id="commande" name="commande">
+			<option value="">Aucune en particulier</option>
+			{% for c in commandes %}
+				<option value="{{ c.publicId }}"{{ saisie.commande == c.publicId ? ' selected' }}>{{ c.numero }}{{ c.dateCommande ? ' · ' ~ c.dateCommande|date('d/m') }}</option>
+			{% endfor %}
+		</select>
+		<label class="ec-etiquette" for="motif">Le problème</label>
+		<select class="ec-saisie" id="motif" name="motif">
+			{% for cle, libelle in motifs %}<option value="{{ cle }}"{{ saisie.motif == cle ? ' selected' }}>{{ libelle }}</option>{% endfor %}
+		</select>
+		<label class="ec-etiquette" for="objet">En quelques mots</label>
+		<input class="ec-saisie" id="objet" name="objet" maxlength="120" required value="{{ saisie.objet }}" placeholder="Ex. : couleur du logo trop foncée">
+		<label class="ec-etiquette" for="description">Expliquez-nous</label>
+		<textarea class="ec-champ" id="description" name="description" maxlength="2000" required placeholder="Ce qui ne va pas, combien de pièces sont concernées, ce que vous souhaitez">{{ saisie.description }}</textarea>
+		<label class="ec-etiquette" for="photos">Photos ({{ max }} au plus)</label>
+		<input class="ec-saisie" id="photos" name="photos[]" type="file" accept="image/jpeg,image/png,image/webp" multiple capture="environment">
+		<p class="ec-petit" id="photos-etat" style="margin:0">Une photo du défaut nous aide à répondre plus vite.</p>
+		<button type="submit" class="ec-bouton" id="envoyer">Envoyer la réclamation</button>
+	</form>
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	(function () {
+		var champ = document.getElementById('photos');
+		var etat = document.getElementById('photos-etat');
+		var max = {{ max }};
+		champ.addEventListener('change', function () {
+			if (champ.files.length > max) {
+				etat.textContent = max + ' photos au plus : choisissez-en moins.';
+				etat.style.color = 'var(--rouge)';
+				document.getElementById('envoyer').disabled = true;
+			} else {
+				etat.textContent = champ.files.length ? champ.files.length + ' photo' + (champ.files.length > 1 ? 's' : '') + ' choisie' + (champ.files.length > 1 ? 's' : '') : 'Une photo du défaut nous aide à répondre plus vite.';
+				etat.style.color = '';
+				document.getElementById('envoyer').disabled = false;
+			}
+		});
+		champ.form.addEventListener('submit', function () { document.getElementById('envoyer').disabled = true; });
+	})();
+	</script>
+{% endblock %}

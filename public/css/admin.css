@@ -5291,3 +5291,37 @@ body.si-param-bloque { overflow: hidden; }
   .si-gp-travaux { max-height: 40vh; }
   .si-gp-apercu { min-height: 60vh; }
 }
+
+/* ---------- Réclamations des clients (maquette 18, côté atelier) ---------- */
+.si-rc-liste { list-style: none; margin: 0; padding: 0; }
+.si-rc-ligne { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 12px 4px; border-bottom: 1px solid #EEF1F6; color: inherit; }
+.si-rc-ligne:hover { background: #F7F9FC; }
+.si-rc-num { font-weight: 700; color: #0F172A; font-size: 0.85rem; display: flex; flex-direction: column; }
+.si-rc-num small, .si-rc-texte small { font-weight: 400; color: #64748B; font-size: 0.75rem; }
+.si-rc-texte { display: flex; flex-direction: column; min-width: 0; }
+.si-rc-texte b { color: #0F172A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-rc-photos { color: #64748B; font-size: 0.8rem; }
+.si-rc-statut { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+.si-rc-ouverte { background: #FEE2E2; color: #B91C1C; }
+.si-rc-en_cours { background: #FEF3C7; color: #B45309; }
+.si-rc-resolue { background: #DCFCE7; color: #15803D; }
+.si-rc-refusee { background: #F1F5F9; color: #475569; }
+.si-rc { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
+.si-rc-tete { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.si-rc-tete h2 { margin: 0; }
+.si-rc-tete .si-pg-note { margin: 4px 0 0; }
+.si-rc-description { font-size: 0.95rem; color: #0F172A; margin: 12px 0; }
+.si-rc-galerie { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.si-rc-galerie img { width: 160px; height: 160px; object-fit: cover; border-radius: 12px; border: 1px solid #E2E8F0; }
+.si-rc-reponse { background: #EAF1FC; border-radius: 12px; padding: 12px 14px; font-size: 0.85rem; color: #0F4590; margin-bottom: 12px; }
+.si-rc-reponse p { margin: 6px 0 0; color: #0F172A; }
+.si-rc-form { display: flex; flex-direction: column; gap: 8px; }
+.si-rc-form > label { font-weight: 600; font-size: 0.85rem; }
+.si-rc-choix { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.si-rc-cote h2 { font-size: 0.9rem; margin-bottom: 6px; }
+@media (max-width: 991px) {
+  .si-rc { grid-template-columns: 1fr; }
+  .si-rc-ligne { grid-template-columns: 70px minmax(0, 1fr); }
+  .si-rc-photos { display: none; }
+  .si-rc-statut { grid-column: 2; justify-self: start; }
+}

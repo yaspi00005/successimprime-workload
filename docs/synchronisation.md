@@ -5,7 +5,7 @@
 - Deux installations du même code : l'**ERP local** de la boutique (base maître, `APP_EN_LIGNE=0`) et le **site en ligne** (sa propre base, `APP_EN_LIGNE=1`).
 - La boutique n'a pas d'adresse fixe : c'est **toujours l'agent du local qui appelle le site**, chaque minute. Le site ne contacte jamais le local.
 - Chaque donnée garde le même identifiant public (UUID) des deux côtés ; les id numériques diffèrent.
-- **Rien de sensible ne quitte le local.** Les champs envoyés sont listés un par un dans `src/Service/Synchro/CatalogueSynchro.php` ; une colonne ajoutée plus tard reste au local tant qu'on ne l'ajoute pas à la liste. Restent au local : coûts de revient, marges, comptabilité, trésorerie, dépenses et budgets (tables `depense` et `budget_depense`, avec les reçus), salaires et données du personnel, notes internes sur les clients, remise habituelle, commercial qui suit le client.
+- **Rien de sensible ne quitte le local.** Les champs envoyés sont listés un par un dans `src/Service/Synchro/CatalogueSynchro.php` ; une colonne ajoutée plus tard reste au local tant qu'on ne l'ajoute pas à la liste. Restent au local : coûts de revient, marges, comptabilité, trésorerie, dépenses et budgets (tables `depense` et `budget_depense`, avec les reçus), relevés Orange Money importés (table `ligne_releve_orange_money`), salaires et données du personnel, notes internes sur les clients, remise habituelle, commercial qui suit le client.
 
 ## Ce qui passe (étapes 1 et 2)
 

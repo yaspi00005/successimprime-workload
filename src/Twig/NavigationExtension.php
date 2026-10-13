@@ -60,8 +60,7 @@ final class NavigationExtension extends AbstractExtension
         ],
         'finances' => [
             ['libelle' => 'Vue d\'ensemble', 'route' => 'app_finances_vue_ensemble', 'role' => ['ROLE_TRESORERIE_VOIR', 'ROLE_STATS_GLOBAL', 'ROLE_PAIEMENT_VOIR', 'ROLE_COUT_MARGE'], 'prefixes' => ['app_finances_vue_ensemble', 'app_finances_du_jour']],
-            ['libelle' => 'Paiements', 'route' => 'app_paiements_index', 'role' => 'ROLE_PAIEMENT_VOIR', 'prefixes' => ['app_paiements_']],
-            ['libelle' => 'Factures et créances', 'route' => 'app_creances_index', 'role' => 'ROLE_FACTURE', 'prefixes' => ['app_creances_', 'app_factures_']],
+            ['libelle' => 'Encaissements', 'route' => 'app_finances_encaissements', 'role' => ['ROLE_PAIEMENT_VOIR', 'ROLE_FACTURE'], 'prefixes' => ['app_finances_encaissements', 'app_paiements_', 'app_creances_', 'app_factures_']],
             ['libelle' => 'Caisse', 'route' => 'app_caisse_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_caisse_', 'app_journal_caisse_', 'app_clients_solde']],
             ['libelle' => 'À valider', 'route' => 'app_a_valider_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_a_valider_']],
             ['libelle' => 'Dépenses', 'route' => 'app_finances_depenses', 'role' => ['ROLE_TRESORERIE_VOIR', 'ROLE_TRESORERIE_SAISIR'], 'prefixes' => ['app_finances_depenses']],

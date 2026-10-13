@@ -242,6 +242,39 @@
 .si-fin-echeancier li small a { color: #475569; }
 .si-fin-echeancier li b { white-space: nowrap; color: #0F172A; text-align: right; }
 
+/* ---------- F02 · Encaissements et Orange Money ---------- */
+.si-fin-enc-grille { grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); }
+.si-fin-enc-cote { display: grid; gap: 20px; min-width: 0; }
+.si-fin-enc-table td { font-size: 14px; }
+.si-fin-enc-table td strong { color: #0F172A; }
+.si-fin-enc-table td a strong { color: inherit; }
+.si-fin-enc-date { white-space: nowrap; color: #334155 !important; }
+.si-fin-enc-table td:nth-child(4) { white-space: nowrap; }
+.si-fin-enc-table tr.si-fin-enc-a-associer > td { background: #FFF7ED; }
+.si-fin-enc-table tr.si-fin-enc-choisie > td { background: #FFEDD5; }
+.si-fin-enc-table a.si-fin-statut { text-decoration: none; }
+.si-fin-liens { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; font-size: 13px; font-weight: 600; }
+.si-fin .card.si-fin-associer { border: 2px solid #FDBA74; }
+.si-fin .card.si-fin-associer-fait { border-color: #86EFAC; }
+.si-fin-om { background: #F8FAFC; border-radius: 12px; padding: 10px 14px; margin: 0 0 14px; }
+.si-fin-om > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0; font-size: 13.5px; }
+.si-fin-om dt { font-weight: 500; color: #64748B; }
+.si-fin-om dd { margin: 0; font-weight: 700; color: #0F172A; text-align: right; overflow-wrap: anywhere; }
+.si-fin-om dd small { display: block; font-weight: 500; color: #64748B; }
+.si-fin-piste { display: flex; align-items: center; gap: 10px; border: 2px solid #E2E8F0; border-radius: 14px; padding: 10px 12px; margin: 0 0 10px; cursor: pointer; }
+.si-fin-piste:has(input:checked) { border-color: #16A34A; background: #F0FDF4; }
+.si-fin-piste input[type=radio] { flex: 0 0 auto; accent-color: #16A34A; }
+.si-fin-piste .si-fin-avatar { background: #0F4590; }
+.si-fin-piste-texte { flex: 1; min-width: 0; }
+.si-fin-piste-texte strong { display: block; font-size: 14px; color: #0F172A; }
+.si-fin-piste-texte small { display: block; font-size: 12.5px; color: #64748B; }
+.si-fin-piste-autre select { flex: 1; min-width: 0; }
+.si-fin-autre { margin: 4px 0 10px; }
+.si-fin-autre summary { font-size: 13.5px; font-weight: 600; color: #0F4590; cursor: pointer; margin-bottom: 8px; }
+.si-fin-associer-boutons { margin-top: 6px; }
+.si-fin-ignorer { display: flex; gap: 8px; }
+.si-fin-importer input[type=file] { font-size: 13px; }
+
 /* ---------- F05 · Prévision de trésorerie ---------- */
 .si-fin-courbe { padding: 6px 0 0; }
 .si-fin-courbe-zone { position: relative; height: 290px; margin: 18px 46px 0 0; }
@@ -273,7 +306,8 @@
 
 /* ---------- Écrans larges et téléphone ---------- */
 @media (max-width: 1199.98px) {
-  .si-fin-trois { grid-template-columns: 1fr; }
+  .si-fin-trois, .si-fin-enc-grille { grid-template-columns: 1fr; }
+  .si-fin-enc-cote { order: -1; }
   .si-fin-deux, .si-fin-renta .si-fin-deux, .si-fin-dep-grille, .si-fin-four-grille { grid-template-columns: 1fr; }
 }
 @media (max-width: 575.98px) {
@@ -326,6 +360,16 @@
   .si-fin-repere small { display: none; }
   .si-fin-repere-depart small { display: block; font-size: 10.5px; }
   .si-fin-pris li { font-size: 13.5px; }
+  .si-fin-enc-table { table-layout: fixed; width: 100%; font-size: 13.5px; }
+  .si-fin-enc-table td, .si-fin-enc-table th { padding-left: 4px !important; padding-right: 4px !important; overflow-wrap: anywhere; }
+  .si-fin-enc-table th:nth-child(1), .si-fin-enc-table td:nth-child(1) { width: 74px; }
+  .si-fin-enc-table th:nth-child(5), .si-fin-enc-table td:nth-child(5) { width: 78px; }
+  .si-fin-enc-table th:nth-child(6), .si-fin-enc-table td:nth-child(6) { width: 86px; }
+  .si-fin-enc-table td { font-size: 13px; }
+  .si-fin-enc-date { white-space: normal; }
+  .si-fin-enc-table .si-fin-statut { font-size: 10.5px; padding: 2px 6px; white-space: nowrap; overflow-wrap: normal; }
+  .si-fin-om > div { font-size: 13px; }
+  .si-fin-enc-table .si-fin-statut i { display: none; }
 }
 @media (max-width: 991.98px) {
   .si-fin-depense-grille { grid-template-columns: 1fr; }

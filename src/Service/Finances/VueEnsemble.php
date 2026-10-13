@@ -5,6 +5,7 @@ namespace App\Service\Finances;
 use App\Entity\CompteTresorerie;
 use App\Entity\Depense;
 use App\Entity\Factures;
+use App\Entity\LigneReleveOrangeMoney;
 use App\Entity\Paiements;
 use App\Service\Creances;
 use Doctrine\ORM\EntityManagerInterface;
@@ -33,6 +34,7 @@ final class VueEnsemble
         private readonly ReglagesFinances $reglages,
         private readonly Echeancier $echeancier,
         private readonly PrevisionTresorerie $prevision,
+        private readonly Encaissements $encaissements,
     ) {
     }
 
@@ -231,7 +233,19 @@ final class VueEnsemble
                 $lignes[] = [
                     'cle' => 'en_attente', 'titre' => 'Encaissements à valider', 'couleur' => 'bleu', 'valeur' => (string) (int) $attente['nombre'],
                     'route' => $droits['admin'] ? 'app_a_valider_index' : null,
-                    'detail' => $f((int) $attente['montant']).($enLigne > 0 ? \sprintf(' · %d saisi%s en ligne', $enLigne, $enLigne > 1 ? 's' : '') : ' · virements et chèques'),
+                    'detail' => $f((int) $attente['montant']).($enLigne > 0 ? \sprintf(' · %d saisi%s en ligne', $enLigne, $enLigne > 1 ? 's' : '') : ' · à vérifier avant de compter'),
+                ];
+            }
+        }
+
+        if ($droits['paiements']) {
+            // Relevé Orange Money : transactions reçues pas encore rattachées (F02).
+            $releve = $this->encaissements->aAssocier();
+            if ([] !== $releve) {
+                $nombre = \count($releve);
+                $lignes[] = [
+                    'cle' => 'orange_money', 'titre' => 'Orange Money à associer', 'couleur' => 'orange', 'valeur' => (string) $nombre, 'route' => 'app_finances_encaissements',
+                    'detail' => \sprintf('%s reçu%s, pas encore rattaché%s à une commande', $f(array_sum(array_map(static fn (LigneReleveOrangeMoney $l): int => $l->getMontant(), $releve))), $nombre > 1 ? 's' : '', $nombre > 1 ? 's' : ''),
                 ];
             }
         }
@@ -286,7 +300,7 @@ final class VueEnsemble
         }
 
         // Ordre de la maquette : créances, dettes, encaissements, dépenses, trésorerie.
-        $ordre = array_flip(['creances', 'dettes', 'en_attente', 'depense_a_approuver', 'point_bas']);
+        $ordre = array_flip(['creances', 'dettes', 'en_attente', 'orange_money', 'depense_a_approuver', 'point_bas']);
         usort($lignes, static fn (array $a, array $b): int => ($ordre[$a['cle']] ?? 9) <=> ($ordre[$b['cle']] ?? 9));
 
         return $lignes;

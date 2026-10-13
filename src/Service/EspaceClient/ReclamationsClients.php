@@ -7,7 +7,6 @@ use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Entity\ReclamationClient;
 use App\Entity\ReclamationClientPhoto;
-use App\Service\OrangeSmsService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -28,10 +27,8 @@ final class ReclamationsClients
     /** Photo gardée sans réduction (serveur sans JPEG dans GD). */
     public const PHOTO_BRUTE_MAX = 5 * 1024 * 1024;
 
-    public function __construct(
-        private readonly EntityManagerInterface $em,
-        private readonly OrangeSmsService $sms,
-    ) {
+    public function __construct(private readonly EntityManagerInterface $em)
+    {
     }
 
     /** @return list<ReclamationClient> */
@@ -99,7 +96,9 @@ final class ReclamationsClients
     }
 
     /**
-     * Réponse de l'atelier ; le client est prévenu par SMS (sans détail).
+     * Réponse de l'atelier. Le client est prévenu par le site en ligne
+     * quand la réponse y arrive (NotificationsClient : application, SMS
+     * ou e-mail, sans détail).
      *
      * @throws \DomainException
      */
@@ -107,14 +106,6 @@ final class ReclamationsClients
     {
         $reclamation->repondre($reponse, $statut, $par, $le);
         $this->em->flush();
-
-        $client = $reclamation->getClient();
-        if (null !== $client && $client->isRecevoirSms() && '' !== (string) $client->getTelephone()) {
-            $this->sms->envoyerSms((string) $client->getTelephone(), \sprintf(
-                'Succès Imprim : nous avons répondu à votre réclamation %s. Lisez-la dans votre espace client.',
-                $reclamation->getNumero(),
-            ));
-        }
     }
 
     /** @return list<ReclamationClient> */

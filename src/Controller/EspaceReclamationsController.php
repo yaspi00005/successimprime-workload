@@ -59,7 +59,7 @@ final class EspaceReclamationsController extends AbstractController
             $commande = '' !== $saisie['commande'] ? $espace->commande($client, $saisie['commande']) : null;
             try {
                 $r = $this->reclamations->creer($compte, $commande, $saisie['motif'], $saisie['objet'], $saisie['description'], array_values($request->files->all('photos')), new \DateTimeImmutable());
-                $this->addFlash('succes', \sprintf('Réclamation %s envoyée. L\'atelier vous répond ici et par SMS.', $r->getNumero()));
+                $this->addFlash('succes', \sprintf('Réclamation %s envoyée. L\'atelier vous répond ici, et vous prévient sur votre téléphone.', $r->getNumero()));
 
                 return $this->redirectToRoute('app_espace_reclamations');
             } catch (\DomainException $e) {

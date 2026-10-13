@@ -35,7 +35,8 @@
 	}
 	if (Notification.permission === 'denied') { dire('Notifications bloquées : autorisez-les dans les réglages du navigateur pour ce site.', false, null); return; }
 
-	navigator.serviceWorker.register('/sw.js').then(function (reg) {
+	// Espace client : l'application installée couvre /espace seulement.
+	navigator.serviceWorker.register('/sw.js', bloc.dataset.portee ? {scope: bloc.dataset.portee} : undefined).then(function (reg) {
 		return reg.pushManager.getSubscription().then(function (abo) {
 			if (abo) {
 				// Toujours renvoyer l'abonnement : il a pu changer, ou ce téléphone a changé de personne.

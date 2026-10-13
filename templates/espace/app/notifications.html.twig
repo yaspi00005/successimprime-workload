@@ -4,7 +4,7 @@
 {% block entete %}<a class="ec-retour" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Notifications</a>{% endblock %}
 
 {% block contenu %}
-	{% set icones = {bat: ['🎨', '#FDE4E7'], paiement: ['💳', '#E3F6EA'], impression: ['🖨️', '#E8EFFA'], prete: ['📦', '#FDF0DD'], route: ['🚚', '#EEF0F4'], livree: ['✅', '#E3F6EA']} %}
+	{% set icones = {bat: ['🎨', '#FDE4E7'], paiement: ['💳', '#E3F6EA'], impression: ['🖨️', '#E8EFFA'], prete: ['📦', '#FDF0DD'], route: ['🚚', '#EEF0F4'], livree: ['✅', '#E3F6EA'], reclamation: ['💬', '#E8EFFA']} %}
 	{% for n in fil %}
 		<a class="ec-carte ec-notif" href="{{ n.lien ? path(n.lien[0], n.lien[1]) : '#' }}">
 			<span class="ec-notif-icone" style="background: {{ icones[n.type][1] }}" aria-hidden="true">{{ icones[n.type][0] }}</span>

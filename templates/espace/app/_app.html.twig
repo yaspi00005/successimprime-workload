@@ -20,6 +20,10 @@
 	<meta name="robots" content="noindex">
 	<title>{% block title %}Mon espace{% endblock %} · Succès Imprim</title>
 	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
+	{# Application installable sur le téléphone (J5) : /espace seulement. #}
+	<link rel="manifest" href="/espace.webmanifest">
+	<link rel="apple-touch-icon" href="{{ asset('images/icone-192.png') }}">
+	<meta name="apple-mobile-web-app-title" content="Succès Imprim">
 	<link href="{{ asset('css/espace-app.css') }}" rel="stylesheet">
 </head>
 <body class="ec">
@@ -50,6 +54,7 @@
 			{% block contenu %}{% endblock %}
 		</main>
 	</div>
+	<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js', {scope: '/espace'}).catch(function () {}); }</script>
 	{% block scripts %}{% endblock %}
 </body>
 </html>

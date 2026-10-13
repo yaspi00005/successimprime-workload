@@ -4,9 +4,11 @@ namespace App\Service\Synchro;
 
 use App\Entity\Clients;
 use App\Entity\Commandes;
+use App\Entity\CommandesDetails;
 use App\Entity\ControlePrePresse;
 use App\Entity\Devis;
 use App\Entity\ModificationClient;
+use App\Entity\Paiements;
 use App\Entity\ReclamationClient;
 use App\Entity\SynchroEchange;
 use App\Entity\SynchroEtat;
@@ -14,6 +16,7 @@ use App\Entity\SynchroJournal;
 use App\Entity\SynchroRecu;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\EspaceClient\NotificationsClient;
 use App\Service\NotificationService;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -45,6 +48,7 @@ final class Synchro
         private readonly NotificationService $notifications,
         /** @var \Closure(): EspaceClient (différé : Parametres dépend de Synchro) */
         #[AutowireServiceClosure(EspaceClient::class)] private readonly \Closure $espaceClient,
+        #[AutowireServiceClosure(NotificationsClient::class)] private readonly \Closure $notificationsClient,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $url,
         #[Autowire('%env(SYNC_CLE)%')] private readonly string $cle,
@@ -373,10 +377,26 @@ final class Synchro
 
                 $this->noterRecu($evenement);
                 $this->em->flush();
+                if ($this->enLigne) {
+                    // BAT prêt, commande prête, paiement validé… : le client est prévenu une fois la réception finie.
+                    ($this->notificationsClient)()->aVerifier(self::clientDe($this->serialiseur->trouver($type, $publicId)));
+                }
 
                 return $resultat;
             });
         });
+    }
+
+    private static function clientDe(?object $entite): ?Clients
+    {
+        return match (true) {
+            $entite instanceof Commandes => $entite->getClients(),
+            $entite instanceof CommandesDetails => $entite->getCommande()?->getClients(),
+            $entite instanceof ControlePrePresse => $entite->getCommandeDetail()?->getCommande()?->getClients(),
+            $entite instanceof Paiements => $entite->getCommande()?->getClients(),
+            $entite instanceof ReclamationClient => $entite->getClient(),
+            default => null,
+        };
     }
 
     /**

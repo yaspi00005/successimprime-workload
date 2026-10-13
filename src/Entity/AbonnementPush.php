@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Service\Push\DestinatairePush;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -12,7 +13,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity]
 #[ORM\Table(name: 'abonnement_push')]
 #[ORM\UniqueConstraint(name: 'uniq_abonnement_push', columns: ['empreinte'])]
-class AbonnementPush
+class AbonnementPush implements DestinatairePush
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

@@ -186,6 +186,10 @@ details.ec-modif[open] summary { display: none; }
 .ec-note { background: #FFF6E9; color: #8A4B0F; border-radius: 14px; padding: .9rem 1rem; font-size: .9rem; margin-bottom: .85rem; }
 
 /* Notifications */
+.ec-push, .ec-installer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .6rem 0; border-bottom: 1px solid var(--trait); }
+.ec-installer { border-bottom: 0; border-top: 1px solid var(--trait); margin-top: .4rem; }
+.ec-push > span, .ec-installer > span { display: grid; gap: .1rem; }
+.ec-push [hidden], .ec-installer[hidden] { display: none; }
 .ec-notif { display: flex; gap: .9rem; align-items: center; }
 .ec-notif-icone { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; font-size: 1.3rem; }
 .ec-notif b { display: block; }
@@ -249,8 +253,8 @@ details.ec-modif[open] summary { display: none; }
 .ec-choix-fichier input { width: 20px; height: 20px; accent-color: var(--bleu); flex: none; }
 
 /* Compte d'entreprise (maquette 19) */
-.ec-rangee { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: inherit; text-decoration: none; }
-.ec-rangee b, .ec-personne b { display: block; }
+.ec-rangee, a.ec-carte.ec-rangee { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: inherit; text-decoration: none; }
+.ec-rangee b, .ec-personne b, .ec-rangee .ec-petit { display: block; }
 .ec-rangee .fl, .ec-personne .fl { color: var(--gris, #8A97AB); font-size: 1.3rem; }
 .ec-personne { display: flex; align-items: center; gap: .75rem; color: inherit; text-decoration: none; }
 .ec-personne > span:nth-child(2) { flex: 1; }

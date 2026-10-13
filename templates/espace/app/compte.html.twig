@@ -62,8 +62,17 @@
 	<form class="ec-carte" method="post" action="{{ path('app_espace_preferences') }}">
 		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 		<h2>Notifications</h2>
-		<label class="ec-interrupteur"><span>Recevoir les SMS (BAT prêt, commande prête, paiement reçu)</span><input type="checkbox" name="sms" value="1"{{ client.recevoirSms ? ' checked' }} onchange="this.form.submit()"></label>
+		<p class="ec-petit" style="margin:0 0 .6rem">BAT prêt, commande prête, paiement reçu, réponse à une réclamation : d'abord sur ce téléphone si vous les activez, sinon par SMS, sinon par e-mail.</p>
+		<div class="ec-push" data-si-push data-cle="{{ push_cle_publique() }}" data-jeton="{{ csrf_token('espace-push') }}" data-abonner="{{ path('app_espace_push_abonner') }}" data-desabonner="{{ path('app_espace_push_desabonner') }}" data-portee="/espace">
+			<span><b>Sur ce téléphone</b><span class="ec-petit" data-si-push-etat>…</span></span>
+			<button type="button" class="ec-bouton-petit" hidden>Activer</button>
+		</div>
+		<label class="ec-interrupteur"><span>Recevoir les SMS</span><input type="checkbox" name="sms" value="1"{{ client.recevoirSms ? ' checked' }} onchange="this.form.submit()"></label>
 		<noscript><button class="ec-bouton-petit">Enregistrer</button></noscript>
+		<div class="ec-installer" data-installer hidden>
+			<span><b>Application Succès Imprim</b><span class="ec-petit" data-installer-texte>Ajoutez votre espace sur l'écran d'accueil.</span></span>
+			<button type="button" class="ec-bouton-petit">Installer</button>
+		</div>
 	</form>
 
 	<details class="ec-carte">
@@ -80,4 +89,34 @@
 	</details>
 
 	<div class="ec-boutons"><a class="ec-bouton clair" href="{{ path('app_espace_deconnexion') }}">Se déconnecter</a></div>
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('js/push.js') }}"></script>
+	<script>
+	(function () {
+		var bloc = document.querySelector('[data-installer]');
+		var installe = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+		if (!bloc || installe) { return; }
+		var bouton = bloc.querySelector('button');
+		if (/iPhone|iPad/.test(navigator.userAgent)) {
+			// Safari ne propose pas de bouton : on explique le geste.
+			bloc.querySelector('[data-installer-texte]').textContent = 'Dans Safari, touchez Partager puis « Sur l\'écran d\'accueil ».';
+			bouton.hidden = true;
+			bloc.hidden = false;
+			return;
+		}
+		var invite = null;
+		window.addEventListener('beforeinstallprompt', function (e) {
+			e.preventDefault();
+			invite = e;
+			bloc.hidden = false;
+		});
+		bouton.addEventListener('click', function () {
+			if (!invite) { return; }
+			invite.prompt();
+			invite.userChoice.then(function () { bloc.hidden = true; invite = null; });
+		});
+	})();
+	</script>
 {% endblock %}

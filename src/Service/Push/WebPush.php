@@ -2,7 +2,6 @@
 
 namespace App\Service\Push;
 
-use App\Entity\AbonnementPush;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -45,7 +44,7 @@ final class WebPush
      *
      * @param array<string, mixed> $contenu
      */
-    public function envoyer(AbonnementPush $a, array $contenu, int $duree = 86400): ResponseInterface
+    public function envoyer(DestinatairePush $a, array $contenu, int $duree = 86400): ResponseInterface
     {
         $corps = self::chiffrer((string) json_encode($contenu, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES), self::b64d($a->getClePublique()), self::b64d($a->getSecret()));
         $origine = parse_url($a->getAdresse(), \PHP_URL_SCHEME).'://'.parse_url($a->getAdresse(), \PHP_URL_HOST);

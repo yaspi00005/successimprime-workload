@@ -11,6 +11,7 @@ use App\Entity\Conception;
 use App\Entity\ControlePrePresse;
 use App\Entity\Devis;
 use App\Entity\Factures;
+use App\Entity\ReclamationClient;
 use App\Repository\EntrepriseRepository;
 use App\Service\NotificationService;
 use App\Service\Parametres\Parametres;
@@ -373,9 +374,10 @@ final class EspaceClient
     /**
      * Fil des notifications (maquette 19), reconstruit à partir des
      * commandes : BAT prêt, paiement reçu, impression lancée, commande
-     * prête, livreur en route, livrée.
+     * prête, livreur en route, livrée, réponse à une réclamation.
+     * NotificationsClient en envoie les nouveautés.
      *
-     * @return list<array{type: string, titre: string, texte: string, date: \DateTimeInterface, lien: ?array}>
+     * @return list<array{type: string, titre: string, texte: string, date: \DateTimeInterface, lien: ?array, numero: ?string}>
      */
     public function notifications(Clients $client, \DateTimeImmutable $maintenant, int $nombre = 30): array
     {
@@ -385,30 +387,36 @@ final class EspaceClient
             $id = (string) $c->getPublicId();
             foreach ($c->getPaiements() as $p) {
                 if ($p->estValide() && null !== $p->getDate()) {
-                    $fil[] = ['type' => 'paiement', 'titre' => 'Paiement reçu', 'texte' => \sprintf('%s F · %s · commande %s', number_format($p->getMontant(), 0, ',', ' '), $p->getModeLabel(), $c->getNumero()), 'date' => $p->getDateValidation() ?? $p->getDate(), 'lien' => ['app_espace_factures', []]];
+                    $fil[] = ['type' => 'paiement', 'titre' => 'Paiement reçu', 'texte' => \sprintf('%s F · %s · commande %s', number_format($p->getMontant(), 0, ',', ' '), $p->getModeLabel(), $c->getNumero()), 'date' => $p->getDateValidation() ?? $p->getDate(), 'lien' => ['app_espace_factures', []], 'numero' => $c->getNumero()];
                 }
             }
             foreach ($c->getCommandesDetails() as $l) {
                 foreach ($l->getControlesPrePresse() as $ctl) {
                     if (ControlePrePresse::STATUT_EN_ATTENTE_BAT === $ctl->getStatut()) {
-                        $fil[] = ['type' => 'bat', 'titre' => 'BAT prêt à valider', 'texte' => self::titreLigne($l), 'date' => $ctl->getTraiteLe() ?? $ctl->getCreeLe(), 'lien' => ['app_espace_bat', ['id' => $ctl->getId()]]];
+                        // Date de la dernière version envoyée : chaque nouvelle version compte.
+                        $fil[] = ['type' => 'bat', 'titre' => 'BAT prêt à valider', 'texte' => self::titreLigne($l), 'date' => $this->conception($ctl)?->getDernierBatLe() ?? $ctl->getTraiteLe() ?? $ctl->getCreeLe(), 'lien' => ['app_espace_bat', ['id' => $ctl->getId()]], 'numero' => $c->getNumero()];
                     }
                 }
                 if (null !== $l->getProductionDebuteLe()) {
-                    $fil[] = ['type' => 'impression', 'titre' => 'Impression lancée', 'texte' => \sprintf('Commande %s · %s', $c->getNumero(), self::titreLigne($l)), 'date' => $l->getProductionDebuteLe(), 'lien' => ['app_espace_commande', ['id' => $id]]];
+                    $fil[] = ['type' => 'impression', 'titre' => 'Impression lancée', 'texte' => \sprintf('Commande %s · %s', $c->getNumero(), self::titreLigne($l)), 'date' => $l->getProductionDebuteLe(), 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
                 }
             }
             $carte = $this->carte($c);
             $prete = $carte['etapes'][4];
             if ('faite' === $prete['etat'] && null !== $prete['date'] && 'faite' !== $carte['etapes'][5]['etat']) {
-                $fil[] = ['type' => 'prete', 'titre' => 'Commande prête', 'texte' => \sprintf('%s · %s', $c->getNumero(), $c->estALivrer() ? 'livraison à venir' : 'à retirer en boutique'), 'date' => $prete['date'], 'lien' => ['app_espace_commande', ['id' => $id]]];
+                $fil[] = ['type' => 'prete', 'titre' => 'Commande prête', 'texte' => \sprintf('%s · %s', $c->getNumero(), $c->estALivrer() ? 'livraison à venir' : 'à retirer en boutique'), 'date' => $prete['date'], 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
             }
             foreach ($this->em->getRepository(BonLivraison::class)->findBy(['commande' => $c]) as $bl) {
                 if (null !== $bl->getLivreLe()) {
-                    $fil[] = ['type' => 'livree', 'titre' => 'Commande livrée', 'texte' => \sprintf('%s · remise à %s', $c->getNumero(), $bl->getLivreLe()->format('H:i')), 'date' => $bl->getLivreLe(), 'lien' => ['app_espace_commande', ['id' => $id]]];
+                    $fil[] = ['type' => 'livree', 'titre' => 'Commande livrée', 'texte' => \sprintf('%s · remise à %s', $c->getNumero(), $bl->getLivreLe()->format('H:i')), 'date' => $bl->getLivreLe(), 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
                 } elseif (null !== $bl->getEnRouteLe()) {
-                    $fil[] = ['type' => 'route', 'titre' => 'Livreur en route', 'texte' => \sprintf('%s%s', $c->getNumero(), $bl->getCreneau() ? ' · créneau '.$bl->getCreneau() : ''), 'date' => $bl->getEnRouteLe(), 'lien' => ['app_espace_commande', ['id' => $id]]];
+                    $fil[] = ['type' => 'route', 'titre' => 'Livreur en route', 'texte' => \sprintf('%s%s', $c->getNumero(), $bl->getCreneau() ? ' · créneau '.$bl->getCreneau() : ''), 'date' => $bl->getEnRouteLe(), 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
                 }
+            }
+        }
+        foreach ($this->em->getRepository(ReclamationClient::class)->findBy(['client' => $client], ['id' => 'DESC'], 20) as $r) {
+            if (null !== $r->getReponduLe()) {
+                $fil[] = ['type' => 'reclamation', 'titre' => 'Réponse à votre réclamation', 'texte' => \sprintf('%s · %s', $r->getNumero(), $r->getObjet()), 'date' => $r->getReponduLe(), 'lien' => ['app_espace_reclamations', []], 'numero' => $r->getNumero()];
             }
         }
         $fil = array_values(array_filter($fil, static fn (array $n): bool => $n['date'] >= $depuis));

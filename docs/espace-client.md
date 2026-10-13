@@ -45,8 +45,18 @@ Le client signale un souci sur un travail depuis Mon compte › Réclamations, o
 
 Captures : `/mnt/project-files/captures/reclamations/`.
 
+## Notifications et application installable (J5, construit le 13/10/2026)
+
+- **Application** : l'espace client s'installe sur le téléphone (`public/espace.webmanifest`, portée `/espace`, même `sw.js` que le personnel). Mon compte propose « Installer » quand le navigateur le permet ; sur iPhone, il explique le geste (Partager › Sur l'écran d'accueil).
+- **Notifications** : quand la synchronisation apporte un changement au site (BAT prêt, y compris chaque nouvelle version, commande prête, paiement validé, réponse à une réclamation), `NotificationsClient` prévient le client une seule fois, en fin de requête : d'abord sur les téléphones où il a activé les notifications (Mon compte › Sur ce téléphone, gratuit), sinon par SMS s'il les accepte, sinon par e-mail. Les messages n'ont aucun montant (« Paiement reçu pour la commande CMD-… »). Un paiement ne va qu'aux payeurs d'un compte entreprise. Un événement de plus de 12 heures ne part plus (mise en service, synchronisation en retard).
+- Journal des envois : table `notification_client_envoyee` (moyen utilisé : push, sms, email, aucun). Les fiches de démonstration (code `DEMO-`) ne reçoivent jamais de SMS ni d'e-mail.
+- **À poser sur le serveur en ligne** (`.env.local`, jamais dans le dépôt) : les clés des notifications (`php bin/console app:push:cles`), les identifiants Orange SMS, et `MAILER_DSN` avec `MAILER_FROM_ADDRESS` pour l'e-mail. Sans elles, l'événement reste seulement dans le fil Notifications du client.
+- La réponse à une réclamation ne part plus par SMS depuis l'atelier : elle passe par cette chaîne quand elle arrive sur le site.
+
 Reste à faire :
 
 - Paiement Orange Money en ligne (clés dans `.env.local` du serveur).
 - Fidélité (18 à droite) : règles de points, paliers et récompenses à fixer par Yaya.
 - Informations entreprise (NIF, RCCM) modifiables en ligne : aujourd'hui en lecture, changées par le bureau.
+- WhatsApp dans la chaîne des notifications, entre l'application et le SMS, quand la clé Meta sera posée.
+- « Livreur en route » et « livrée » : les bons de livraison ne sont pas encore synchronisés, ces deux notifications partiront quand ils le seront.

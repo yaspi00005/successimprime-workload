@@ -6,6 +6,7 @@ use App\Controller\UtilisateursController;
 use App\Entity\Entreprise;
 use App\Repository\EntrepriseRepository;
 use App\Security\AccesEnLigne;
+use App\Service\Parametres\Parametres;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Extension\AbstractExtension;
@@ -48,6 +49,7 @@ final class SiteExtension extends AbstractExtension
         private readonly UrlGeneratorInterface $urls,
         private readonly EntrepriseRepository $entreprises,
         private readonly AccesEnLigne $acces,
+        private readonly Parametres $parametres,
     ) {
     }
 
@@ -59,6 +61,8 @@ final class SiteExtension extends AbstractExtension
             new TwigFunction('site_pied', fn (): array => $this->menu(self::PIED)),
             new TwigFunction('site_entreprise', $this->entreprise(...)),
             new TwigFunction('site_whatsapp', $this->whatsapp(...)),
+            new TwigFunction('site_en_ligne', $this->acces->estEnLigne(...)),
+            new TwigFunction('site_fiche_google', $this->ficheGoogle(...), ['is_safe' => ['html']]),
         ];
     }
 
@@ -114,5 +118,54 @@ final class SiteExtension extends AbstractExtension
         $telephone = trim((string) $this->entreprise()?->getTelephone());
 
         return '' === $telephone ? null : 'https://wa.me/'.UtilisateursController::numeroWhatsApp($telephone).'?text='.rawurlencode($texte);
+    }
+
+    /** Jours d'ouverture du réglage « Horaires » au format schema.org. */
+    public const JOURS_SCHEMA = ['lun-ven' => 'Mo-Fr', 'lun-sam' => 'Mo-Sa', 'lun-dim' => 'Mo-Su'];
+
+    /**
+     * Fiche de l'imprimerie pour les moteurs de recherche (JSON-LD
+     * LocalBusiness) : nom, adresse, téléphone, horaires. Les « < » sont
+     * échappés pour ne jamais fermer la balise script.
+     */
+    public function ficheGoogle(string $url, string $logo): string
+    {
+        $entreprise = $this->entreprise();
+        $fiche = [
+            '@context' => 'https://schema.org',
+            '@type' => 'LocalBusiness',
+            'name' => $entreprise?->getNomAffiche() ?? 'Succès Imprim',
+            'url' => $url,
+            'logo' => $logo,
+            'image' => $logo,
+        ];
+        if (null !== $entreprise) {
+            $fiche['legalName'] = $entreprise->getRaisonSociale();
+            if ($entreprise->getTelephone()) {
+                $fiche['telephone'] = $entreprise->getTelephone();
+            }
+            if ($entreprise->getEmail()) {
+                $fiche['email'] = $entreprise->getEmail();
+            }
+            if ($entreprise->getAdresse()) {
+                $fiche['address'] = ['@type' => 'PostalAddress', 'streetAddress' => $entreprise->getAdresse(), 'addressLocality' => 'Bamako', 'addressCountry' => 'ML'];
+            }
+        }
+        $fiche['openingHours'] = self::horaires($this->parametres->valeur('horaires', 'jours'), $this->parametres->valeur('horaires', 'ouverture'), $this->parametres->valeur('horaires', 'fermeture'));
+
+        return json_encode(array_filter($fiche, static fn ($v): bool => null !== $v && '' !== $v), \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_THROW_ON_ERROR);
+    }
+
+    /** Horaires au format schema.org (« Mo-Sa 08:00-18:00 »), ou null si le réglage est incomplet. */
+    public static function horaires(mixed $jours, mixed $ouverture, mixed $fermeture): ?string
+    {
+        $jours = self::JOURS_SCHEMA[(string) $jours] ?? null;
+        foreach ([$ouverture, $fermeture] as $heure) {
+            if (!\is_string($heure) || !preg_match('/^\d{2}:\d{2}$/', $heure)) {
+                return null;
+            }
+        }
+
+        return null === $jours ? null : $jours.' '.$ouverture.'-'.$fermeture;
     }
 }

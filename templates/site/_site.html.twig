@@ -16,6 +16,7 @@
 	<title>{% block title %}Succès Imprim · Imprimerie à Bamako{% endblock %}</title>
 	<meta name="description" content="{% block description %}Imprimerie à Bamako : banderoles, bâches, roll-up, textile DTF, cartes de visite et signalétique. BAT avant impression, prix immédiat.{% endblock %}">
 	<meta name="theme-color" content="#0F4590">
+	{% if not site_en_ligne() %}<meta name="robots" content="noindex, nofollow">{% endif %}
 	<link rel="canonical" href="{{ app.request.uri|split('?')|first }}">
 	<meta property="og:type" content="website">
 	<meta property="og:site_name" content="Succès Imprim">
@@ -24,6 +25,7 @@
 	<meta property="og:image" content="{{ absolute_url(asset('images/logo-succes-imprim.png')) }}">
 	<link rel="icon" href="{{ asset('images/icone-192.png') }}">
 	<link rel="stylesheet" href="{{ asset('css/site.css') }}">
+	<script type="application/ld+json">{{ site_fiche_google(url('app_home'), absolute_url(asset('images/logo-succes-imprim.png'))) }}</script>
 	{% block entete %}{% endblock %}
 </head>
 <body class="si-site">

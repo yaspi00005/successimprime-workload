@@ -223,9 +223,28 @@
 .si-fin-budget-total { border-bottom: 0; font-weight: 700; }
 .si-fin-budget-total strong { text-align: right; font-size: 18px; }
 
+/* ---------- F04 · Fournisseurs et échéancier ---------- */
+.si-fin-four-grille { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+.si-fin-qui { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.si-fin-qui > span:last-child { min-width: 0; }
+.si-fin-qui a, .si-fin-qui strong { font-weight: 700; color: #0F172A; }
+.si-fin-avatar { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: #5B6575; color: #fff; font-size: 12.5px; font-weight: 700; }
+.si-fin-achats { font-size: 13px; max-width: 220px; }
+.si-fin-achats a { color: #475569; font-weight: 500 !important; }
+.si-fin-four-table td small { white-space: nowrap; }
+.si-fin-echeancier ul { list-style: none; margin: 0; padding: 0; }
+.si-fin-echeancier li { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 0 11px 22px; border-bottom: 1px solid #EEF2F7; }
+.si-fin-echeancier li::before { content: ''; position: absolute; left: 2px; top: 17px; width: 10px; height: 10px; border-radius: 50%; background: #0F4590; }
+.si-fin-echeancier li.si-fin-point-rouge::before { background: #DC2626; }
+.si-fin-echeancier li > div { min-width: 0; }
+.si-fin-echeancier li strong { display: block; color: #0F172A; font-size: 14.5px; }
+.si-fin-echeancier li small { display: block; color: #64748B; font-size: 13px; }
+.si-fin-echeancier li small a { color: #475569; }
+.si-fin-echeancier li b { white-space: nowrap; color: #0F172A; text-align: right; }
+
 /* ---------- Écrans larges et téléphone ---------- */
 @media (max-width: 1199.98px) {
-  .si-fin-deux, .si-fin-renta .si-fin-deux, .si-fin-dep-grille { grid-template-columns: 1fr; }
+  .si-fin-deux, .si-fin-renta .si-fin-deux, .si-fin-dep-grille, .si-fin-four-grille { grid-template-columns: 1fr; }
 }
 @media (max-width: 575.98px) {
   .si-fin { gap: 14px; }
@@ -264,6 +283,13 @@
   .si-fin-actions .btn { width: 100%; }
   .si-fin-budget-ligne { grid-template-columns: 1fr; gap: 4px; }
   .si-fin-budget-total { grid-template-columns: 1fr auto; }
+  .si-fin-four-table { table-layout: fixed; width: 100%; font-size: 13.5px; }
+  .si-fin-four-table th:nth-child(3), .si-fin-four-table td:nth-child(3) { width: 92px; }
+  .si-fin-four-table th:nth-child(4), .si-fin-four-table td:nth-child(4) { width: 84px; }
+  .si-fin-four-table td, .si-fin-four-table th { padding-left: 4px !important; padding-right: 4px !important; overflow-wrap: anywhere; }
+  .si-fin-four-table td small { white-space: normal; }
+  .si-fin-four-table .si-fin-statut { font-size: 11px; padding: 2px 7px; white-space: normal; }
+  .si-fin-avatar { width: 30px; height: 30px; font-size: 11px; }
 }
 @media (max-width: 991.98px) {
   .si-fin-depense-grille { grid-template-columns: 1fr; }

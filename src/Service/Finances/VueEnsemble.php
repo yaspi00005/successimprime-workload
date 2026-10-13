@@ -31,6 +31,7 @@ final class VueEnsemble
         private readonly Budgets $budgets,
         private readonly Rentabilite $rentabilite,
         private readonly ReglagesFinances $reglages,
+        private readonly Echeancier $echeancier,
     ) {
     }
 
@@ -250,6 +251,26 @@ final class VueEnsemble
                 ];
             }
         }
+
+        if ($droits['tresorerie']) {
+            $aujourdhui = $maintenant->setTime(0, 0);
+            $du = array_sum(array_column($this->echeancier->dettes($aujourdhui), 'du'));
+            if ($du > 0) {
+                $fournisseurs = array_values(array_filter($this->echeancier->sorties($aujourdhui, $aujourdhui->modify('+60 days')), static fn (array $s): bool => 'fournisseur' === $s['type']));
+                $retard = array_sum(array_map(static fn (array $s): int => $s['en_retard'] ? (int) $s['montant'] : 0, $fournisseurs));
+                $prochain = Echeancier::parJour(array_values(array_filter($fournisseurs, static fn (array $s): bool => $s['date'] > $aujourdhui)))[0] ?? null;
+                $lignes[] = [
+                    'cle' => 'dettes', 'titre' => 'Dettes fournisseurs', 'couleur' => 'orange', 'valeur' => $f($du), 'route' => 'app_finances_fournisseurs',
+                    'detail' => $retard > 0
+                        ? \sprintf('dont %s en retard', $f($retard))
+                        : (null !== $prochain ? \sprintf('dont %s le %s', $f($prochain['total']), $prochain['date']->format('d/m')) : 'à payer dès maintenant'),
+                ];
+            }
+        }
+
+        // Ordre de la maquette : créances, dettes, encaissements, dépenses, trésorerie.
+        $ordre = array_flip(['creances', 'dettes', 'en_attente', 'depense_a_approuver', 'point_bas']);
+        usort($lignes, static fn (array $a, array $b): int => ($ordre[$a['cle']] ?? 9) <=> ($ordre[$b['cle']] ?? 9));
 
         return $lignes;
     }

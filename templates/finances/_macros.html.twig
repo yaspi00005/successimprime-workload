@@ -40,3 +40,9 @@
 
 {# Nom d'une personne : prénom et nom de sa fiche employé, sinon son identifiant. #}
 {% macro nom(u) %}{% if u is null %}—{% elseif u.employe and u.employe.prenom is not empty %}{{ u.employe.prenom }} {{ u.employe.nom }}{% else %}{{ u.userIdentifier }}{% endif %}{% endmacro %}
+
+{# « Mar. 20/10 ». #}
+{% macro jour_court(d) %}{{ ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.'][d|date('N') - 1] }} {{ d|date('d/m') }}{% endmacro %}
+
+{# « 1er novembre », « 20 octobre ». #}
+{% macro date_longue(d) %}{{ d|date('j') == 1 ? '1er' : d|date('j') }} {{ ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][d|date('n') - 1] }}{% endmacro %}

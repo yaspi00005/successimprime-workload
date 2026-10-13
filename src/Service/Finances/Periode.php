@@ -63,6 +63,14 @@ final class Periode
         return self::MOIS[(int) $mois->format('n')].' '.$mois->format('Y');
     }
 
+    /** « d'octobre », « de mai ». */
+    public static function deMois(\DateTimeImmutable $mois): string
+    {
+        $nom = self::MOIS[(int) $mois->format('n')];
+
+        return (\in_array($nom[0], ['a', 'o'], true) ? 'd\'' : 'de ').$nom;
+    }
+
     /** « Mar. 20/10 ». */
     public static function jourCourt(\DateTimeImmutable $jour): string
     {

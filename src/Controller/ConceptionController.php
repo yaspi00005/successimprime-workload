@@ -2,8 +2,11 @@
 
 namespace App\Controller;
 
+use App\Entity\CommandeDetailFichier;
 use App\Entity\Conception;
 use App\Entity\User;
+use App\Service\AnalyseFichierImpression;
+use App\Service\EspaceClient\EspaceClient;
 use App\Service\SuiviMetiers\Bareme;
 use App\Service\SuiviMetiers\TableauConception;
 use App\Service\Parametres\Parametres;
@@ -80,6 +83,60 @@ final class ConceptionController extends AbstractController
         ]);
     }
 
+    /**
+     * Poste du graphiste (maquette R03) : ses travaux à gauche, l'aperçu
+     * du fichier au centre, le chronomètre et les échanges à droite.
+     */
+    #[Route('/poste/{id}', name: 'poste', requirements: ['id' => '\d+'], defaults: ['id' => null], methods: ['GET'])]
+    public function poste(?int $id, EspaceClient $espace): Response
+    {
+        $moi = $this->moi();
+        $maintenant = new \DateTimeImmutable();
+        $this->tableau->synchroniser($maintenant);
+
+        $travaux = [];
+        foreach ($this->tableau->colonnes($moi, false, $maintenant) as $etape => $cartes) {
+            if ($etape !== Conception::VALIDE) {
+                array_push($travaux, ...$cartes);
+            }
+        }
+        // Celui en cours d'abord, puis par échéance ; ceux chez le client à la fin.
+        $rang = static fn (array $x): array => [
+            $x['c']->enCours() ? 0 : ($x['etape'] === Conception::BAT_ENVOYE ? 2 : 1),
+            $x['c']->getEcheanceBat()?->getTimestamp() ?? \PHP_INT_MAX,
+        ];
+        usort($travaux, static fn (array $a, array $b): int => $rang($a) <=> $rang($b));
+
+        $conception = null;
+        if ($id !== null) {
+            $conception = $this->em->find(Conception::class, $id) ?? throw $this->createNotFoundException();
+            $this->autoriser($conception);
+        } elseif ($travaux !== []) {
+            $conception = $travaux[0]['c'];
+        }
+        if ($conception === null) {
+            return $this->render('conception/poste.html.twig', ['travaux' => [], 'carte' => null]);
+        }
+
+        $fichiers = array_map(static fn (CommandeDetailFichier $f): array => [
+            'f' => $f,
+            'disponible' => $espace->cheminSurDisque($f) !== null,
+            'type' => str_starts_with((string) $f->getTypeMime(), 'image/') ? 'image' : ($f->getTypeMime() === 'application/pdf' ? 'pdf' : 'autre'),
+            'fondsPerdus' => self::fondsPerdus($f),
+        ], $espace->fichiersBat($conception->getControle()));
+
+        return $this->render('conception/poste.html.twig', [
+            'travaux' => $travaux,
+            'carte' => $this->tableau->carte($conception, $maintenant),
+            'c' => $conception,
+            'fichiers' => $fichiers,
+            'evenements' => array_values(array_filter($conception->getEvenements(), static fn (array $e): bool => \in_array($e['type'], ['brief', 'bat', 'retour', 'erreur', 'valide'], true))),
+            'message' => $this->tableau->message($conception),
+            'maintenant' => $maintenant,
+            'jeton' => self::CSRF,
+        ]);
+    }
+
     #[Route('/suivant', name: 'suivant', methods: ['POST'])]
     public function suivant(Request $request): Response
     {
@@ -148,9 +205,23 @@ final class ConceptionController extends AbstractController
                 break;
         }
 
-        return $request->request->get('retour') === 'voir'
-            ? $this->redirectToRoute('app_conception_voir', ['id' => $conception->getId()])
-            : $this->redirectToRoute('app_conception_tableau');
+        return match ($request->request->get('retour')) {
+            'voir' => $this->redirectToRoute('app_conception_voir', ['id' => $conception->getId()]),
+            'poste' => $this->redirectToRoute('app_conception_poste', ['id' => $conception->getId()]),
+            default => $this->redirectToRoute('app_conception_tableau'),
+        };
+    }
+
+    /** « fond perdu 2 mm ✓ » quand le contrôle automatique du fichier l'a mesuré. */
+    private static function fondsPerdus(CommandeDetailFichier $f): ?array
+    {
+        foreach ($f->getAnalyse() ?? [] as $controle) {
+            if (($controle['libelle'] ?? null) === 'Fonds perdus') {
+                return ['valeur' => (string) $controle['valeur'], 'ok' => ($controle['etat'] ?? null) === AnalyseFichierImpression::OK];
+            }
+        }
+
+        return null;
     }
 
     private function autoriser(Conception $c): void

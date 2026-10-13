@@ -24,6 +24,25 @@ Commun à toutes les formes :
 
 Sur tablette (768 à 1023 px), le menu est toujours en icônes.
 
+## Poste du graphiste (R03)
+
+Atelier › Conception PAO › « Poste » (`/atelier/pao/poste`) : trois volets,
+avec le menu replié pour laisser la place au fichier.
+
+- À gauche, « Mes travaux » : ceux de la personne et ceux que personne n'a
+  pris, celui en cours d'abord, puis par échéance, ceux chez le client à la
+  fin. Pastille de délai verte, orange, rouge ou bleue (attente client).
+- Au centre, l'aperçu de la dernière version préparée par l'atelier (sinon
+  le fichier du client), avec la version, le format et le fond perdu mesuré ;
+  zoom et plein écran.
+- À droite, le chronomètre (qui tourne en direct), Démarrer / Pause,
+  l'échéance du BAT et les échanges (brief, retours du client, versions
+  envoyées), la réponse du client quand le BAT est chez lui, et le lien vers
+  les heures et les points.
+- « Envoyer le BAT » en haut à droite.
+
+Les cartes du tableau de conception ouvrent ce poste.
+
 ## Téléphone (R05)
 
 La barre du bas suit le rôle :

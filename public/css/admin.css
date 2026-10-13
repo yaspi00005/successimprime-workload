@@ -5234,3 +5234,60 @@ body.si-param-bloque { overflow: hidden; }
 
 /* À valider : compte choisi pour un paiement saisi en ligne */
 .si-v-compte { display: block; max-width: 13rem; margin-top: .3rem; font-weight: 400; }
+
+/* ---------- Poste du graphiste (maquette R03) : trois volets ---------- */
+.si-gp { display: grid; grid-template-columns: 250px minmax(0, 1fr) 300px; gap: 14px; height: calc(100vh - 140px); min-height: 520px; }
+.si-gp > * { min-height: 0; }
+.si-gp-travaux, .si-gp-details { background: #fff; border-radius: 16px; box-shadow: var(--si-carte-ombre); overflow-y: auto; }
+.si-gp-travaux-tete { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 10px; border-bottom: 1px solid #EEF1F6; }
+.si-gp-travaux-tete b { font-size: 0.9rem; color: #0F172A; }
+.si-gp-travaux-tete a { color: #8A97AB; }
+.si-gp-travaux ul { list-style: none; margin: 0; padding: 0; }
+.si-gp-travail { display: flex; flex-direction: column; gap: 1px; padding: 11px 16px; border-bottom: 1px solid #EEF1F6; border-left: 3px solid transparent; color: inherit; }
+.si-gp-travail:hover { background: #F7F9FC; }
+.si-gp-travail.actif { background: #FDF0F4; border-left-color: #E11D48; }
+.si-gp-travail b { font-size: 0.85rem; color: #0F172A; }
+.si-gp-travail small { font-size: 0.75rem; color: #64748B; }
+.si-gp-vide { padding: 16px; font-size: 0.82rem; color: #64748B; }
+.si-gp-apercu { position: relative; display: flex; flex-direction: column; background: #262B35; border-radius: 16px; overflow: hidden; }
+.si-gp-legende { padding: 12px 16px; font-size: 0.75rem; color: #AEB7C6; }
+.si-gp-scene { --si-gp-zoom: 1; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; overflow: auto; padding: 8px 24px 24px; }
+.si-gp-scene img.si-gp-zoom { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45); transform: scale(var(--si-gp-zoom)); transform-origin: center top; transition: transform .15s; }
+.si-gp-scene iframe.si-gp-zoom { width: calc(100% * var(--si-gp-zoom)); height: calc(100% * var(--si-gp-zoom)); min-height: 360px; border: 0; background: #fff; flex: none; }
+.si-gp-sans { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #AEB7C6; text-align: center; }
+.si-gp-sans i { font-size: 2.4rem; opacity: .6; }
+.si-gp-sans b { color: #E5E9F0; font-size: 0.9rem; }
+.si-gp-outils { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 6px; align-items: center; }
+.si-gp-outils > * { background: #3A404C; color: #E5E9F0; border: 0; border-radius: 8px; padding: 4px 11px; font-size: 0.75rem; line-height: 1.4; }
+.si-gp-outils button:hover, .si-gp-outils a:hover { background: #4A5160; color: #fff; }
+.si-gp-apercu:fullscreen { border-radius: 0; }
+.si-gp-details { padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+.si-gp-details h2 { font-size: 0.95rem; font-weight: 700; color: #0F172A; margin: 0 0 8px; }
+.si-gp-etiquette { font-size: 0.72rem; color: #64748B; margin-top: 6px; }
+.si-gp-chrono { font-size: 1.55rem; font-weight: 800; color: #0F172A; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.si-gp-chrono[data-en-marche] { color: #0F4590; }
+.si-gp-boutons { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.si-gp-boutons small { color: #8A97AB; font-size: 0.72rem; }
+.si-gp-echeance { font-size: 0.85rem; font-weight: 600; color: #0F172A; }
+.si-gp-fil { list-style: none; margin: 12px 0 6px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.si-gp-fil li { border-radius: 12px; padding: 8px 12px; font-size: 0.8rem; color: #0F172A; max-width: 92%; }
+.si-gp-fil time { display: block; font-size: 0.66rem; color: #8A97AB; margin-top: 2px; }
+.si-gp-client { background: #E8F7EE; align-self: flex-start; }
+.si-gp-nous { background: #EAF1FC; align-self: flex-end; }
+.si-gp-nous.valide { background: #DCFCE7; font-weight: 700; }
+.si-gp-info { background: #F4F6FB; align-self: flex-start; color: #475569 !important; }
+.si-gp-details .si-cp-reponse { margin-top: 6px; }
+.si-gp-details .si-cp-retour input[name=texte] { flex-basis: 100%; }
+.si-gp-lien { margin-top: auto; padding-top: 12px; font-size: 0.8rem; font-weight: 600; color: #0F4590; }
+.si-gp-envoyer { font-weight: 700; }
+.si-gp-attente { display: inline-block; padding: 6px 12px; border-radius: 10px; background: #EAF1FC; color: #0F4590; font-size: 0.8rem; font-weight: 700; }
+@media (max-width: 1279px) {
+  .si-gp { grid-template-columns: 220px minmax(0, 1fr); height: auto; }
+  .si-gp-apercu { min-height: 70vh; }
+  .si-gp-details { grid-column: 1 / -1; }
+}
+@media (max-width: 767px) {
+  .si-gp { grid-template-columns: 1fr; }
+  .si-gp-travaux { max-height: 40vh; }
+  .si-gp-apercu { min-height: 60vh; }
+}

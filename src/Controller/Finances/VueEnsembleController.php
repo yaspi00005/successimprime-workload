@@ -18,6 +18,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/finances', name: 'app_finances_')]
 final class VueEnsembleController extends AbstractController
 {
+    use DroitsFinances;
+
     #[Route('', name: 'vue_ensemble', methods: ['GET'])]
     public function index(Request $request, VueEnsemble $vue): Response
     {
@@ -34,21 +36,5 @@ final class VueEnsembleController extends AbstractController
             'periodes' => Periode::choix($maintenant),
             'periode' => $mois->format('Y-m'),
         ]);
-    }
-
-    /**
-     * Ce que la personne peut voir sur les écrans Finances.
-     *
-     * @return array{tresorerie: bool, ca: bool, paiements: bool, marges: bool, admin: bool}
-     */
-    private function droits(): array
-    {
-        return [
-            'tresorerie' => $this->isGranted('ROLE_TRESORERIE_VOIR'),
-            'ca' => $this->isGranted('ROLE_STATS_GLOBAL'),
-            'paiements' => $this->isGranted('ROLE_PAIEMENT_VOIR'),
-            'marges' => $this->isGranted('ROLE_COUT_MARGE'),
-            'admin' => $this->isGranted('ROLE_ADMIN'),
-        ];
     }
 }

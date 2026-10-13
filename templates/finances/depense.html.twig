@@ -1,0 +1,138 @@
+{% extends 'finances/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}{{ a_decider ? 'Approuver une dépense' : 'Dépense' }}{% endblock %}
+{% block page_title %}{{ a_decider ? 'Approuver une dépense' : 'Dépense · ' ~ d.objet }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_finances_depenses', {periode: d.dateDepense|date('Y-m')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Dépenses</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-fin-depense">
+		<a class="si-fin-retour" href="{{ path('app_finances_depenses', {periode: d.dateDepense|date('Y-m')}) }}"><i class="fas fa-chevron-left" aria-hidden="true"></i> Dépenses</a>
+
+		<div class="si-fin-depense-grille">
+			<div class="si-fin-pile">
+				<section class="card si-fin-dep-tete">
+					<p class="si-fin-gris">Demandée par {{ m.nom(d.creePar) }} · {{ d.creeLe|date('d/m H:i') }}</p>
+					<h2>{{ d.objet }}</h2>
+					<strong class="si-fin-dep-montant">{{ m.f(d.montant) }}</strong>
+					<p class="si-fin-gris">
+						{{ d.payeA ?: categorie }}{% if d.echeance and not d.estPayee %} · paiement le {{ d.echeance|date('d/m') }}{% endif %} · {{ d.dateDepense|date('d/m/Y') }}
+					</p>
+					<p class="mb-0">
+						<span class="si-fin-statut si-fin-statut-{{ etat.couleur }}">{{ etat.libelle }}</span>
+						{% if etat.note %}<small class="si-fin-sous-statut d-inline ms-1">{{ etat.note }}</small>{% endif %}
+					</p>
+				</section>
+
+				<section class="card si-fin-pieces" aria-label="Justificatif">
+					<a class="si-fin-vignette" href="{{ path('app_finances_depenses_recu', {id: d.id}) }}" target="_blank" rel="noopener" title="Ouvrir le reçu">
+						{% if type_recu starts with 'image/' %}
+							<img src="{{ path('app_finances_depenses_recu', {id: d.id}) }}" alt="Reçu de la dépense" loading="lazy">
+						{% else %}
+							<i class="fas fa-file-pdf" aria-hidden="true"></i><span>PDF</span>
+						{% endif %}
+					</a>
+					<ul>
+						<li>Reçu joint <i class="fas fa-check si-fin-vert" aria-hidden="true"></i></li>
+						{% if d.lieA %}<li>Lié à : {{ d.lieA }}</li>{% endif %}
+						<li>Catégorie : {{ categorie }}</li>
+						{% if achat %}
+							<li>Stock {{ achat.article|lower }} : <b class="{{ achat.bas ? 'si-fin-rouge' }}">{{ achat.stock|number_format(achat.stock == achat.stock|round ? 0 : 1, ',', ' ') }} {{ achat.unite }}</b></li>
+							{% if d.quantite %}<li>Quantité : {{ d.quantite|number_format(d.quantite == d.quantite|round ? 0 : 1, ',', ' ') }} {{ achat.unite }}</li>{% endif %}
+						{% endif %}
+						{% if d.compte %}<li>Payé avec : {{ d.compte.nom }}</li>{% endif %}
+						{% if d.note %}<li class="si-fin-gris">{{ d.note }}</li>{% endif %}
+					</ul>
+				</section>
+			</div>
+
+			<div class="si-fin-pile">
+				{% if budget %}
+					<section class="card si-fin-dep-budget" aria-label="Budget de la catégorie">
+						<div class="si-fin-tete mb-2">
+							<span>Budget {{ categorie|lower }} {{ budget.compte_deja ? 'du mois' : 'après achat' }}</span>
+							<strong>{{ budget.apres|number_format(0, ',', ' ') }} / {{ m.f(budget.budget) }}</strong>
+						</div>
+						<span class="si-fin-jauge si-fin-jauge-{{ budget.etat_apres }}" role="img" aria-label="{{ budget.part_apres }} % du budget"><span style="width: {{ min(100, budget.part_apres) }}%"></span></span>
+						{% if achat and achat.prix %}
+							<p class="si-fin-note">
+								{{ m.f(achat.prix) }} {{ achat.unite == 'u' ? 'l’unité' : 'le ' ~ achat.unite }}{% if achat.dernier %} · dernier achat à {{ m.f(achat.dernier) }}{% if achat.ecart is not null and achat.ecart != 0 %} <span class="{{ achat.ecart > 0 ? 'si-fin-orange' : 'si-fin-vert' }}">({{ achat.ecart > 0 ? '+' : '−' }}{{ achat.ecart|abs }} %)</span>{% endif %}{% endif %}
+							</p>
+						{% else %}
+							<p class="si-fin-note">{{ budget.part_apres }} % du budget mensuel de la catégorie.</p>
+						{% endif %}
+					</section>
+				{% endif %}
+
+				{% if a_decider %}
+					<section class="card si-fin-decision" aria-label="Décision">
+						<p class="si-fin-gris mb-2">Au-delà de {{ m.f(seuil) }}, la dépense attend votre accord avant d’être payée.</p>
+						<div class="si-fin-boutons">
+							<details class="si-fin-refus">
+								<summary class="btn btn-outline-secondary">Refuser</summary>
+								<form method="post" action="{{ path('app_finances_depenses_refuser', {id: d.id}) }}">
+									<input type="hidden" name="_token" value="{{ csrf_token('refuser-depense-' ~ d.id) }}">
+									<label class="form-label" for="motif-refus">Motif du refus</label>
+									<textarea id="motif-refus" name="motif" class="form-control" rows="2" required maxlength="255" placeholder="Prix trop élevé, attendre la fin du mois…"></textarea>
+									<button type="submit" class="btn btn-outline-danger mt-2 w-100">Confirmer le refus</button>
+								</form>
+							</details>
+							<form method="post" action="{{ path('app_finances_depenses_approuver', {id: d.id}) }}" class="si-fin-approuver">
+								<input type="hidden" name="_token" value="{{ csrf_token('approuver-depense-' ~ d.id) }}">
+								<button type="submit" class="btn btn-success w-100">Approuver</button>
+							</form>
+						</div>
+					</section>
+				{% endif %}
+
+				{% if payable %}
+					<section class="card si-fin-decision" aria-label="Paiement">
+						<h2>Enregistrer le paiement</h2>
+						<form method="post" action="{{ path('app_finances_depenses_payer', {id: d.id}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('payer-depense-' ~ d.id) }}">
+							<label class="form-label" for="compte-paiement">Payé avec</label>
+							<select id="compte-paiement" name="compte" class="form-select" required>
+								<option value="">Choisir le compte…</option>
+								{% for c in comptes %}
+									<option value="{{ c.id }}" {{ d.compte and d.compte.id == c.id ? 'selected' }}>{{ c.nom }}</option>
+								{% endfor %}
+							</select>
+							<button type="submit" class="btn btn-danger w-100 mt-3">Payée : enregistrer le décaissement</button>
+						</form>
+						<p class="si-fin-note">Le décaissement reste en attente : il entre dans les soldes après validation dans « À valider ».</p>
+					</section>
+				{% endif %}
+
+				{% if droits.admin and d.statut == 'a_payer' %}
+					<details class="card si-fin-refus si-fin-refus-carte">
+						<summary>Refuser cette dépense</summary>
+						<form method="post" action="{{ path('app_finances_depenses_refuser', {id: d.id}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('refuser-depense-' ~ d.id) }}">
+							<label class="form-label" for="motif-refus-2">Motif du refus</label>
+							<textarea id="motif-refus-2" name="motif" class="form-control" rows="2" required maxlength="255"></textarea>
+							<button type="submit" class="btn btn-outline-danger mt-2">Confirmer le refus</button>
+						</form>
+					</details>
+				{% endif %}
+
+				<section class="card si-fin-historique" aria-label="Historique">
+					<h2>Suivi</h2>
+					<ul>
+						<li><span>Saisie</span><b>{{ m.nom(d.creePar) }} · {{ d.creeLe|date('d/m/Y H:i') }}</b></li>
+						{% if d.approuveePar and d.statut != 'refusee' %}<li><span>Approuvée</span><b>{{ m.nom(d.approuveePar) }} · {{ d.approuveeLe|date('d/m/Y H:i') }}</b></li>{% endif %}
+						{% if d.statut == 'refusee' %}<li><span>Refusée</span><b>{{ m.nom(d.approuveePar) }} · {{ d.approuveeLe ? d.approuveeLe|date('d/m/Y H:i') }}</b></li>{% endif %}
+						{% if d.payeeLe %}<li><span>Paiement</span><b>{{ m.nom(d.payeePar) }} · {{ d.payeeLe|date('d/m/Y H:i') }}{% if d.compte %} · {{ d.compte.nom }}{% endif %}</b></li>{% endif %}
+						{% if d.mouvement and droits.tresorerie %}
+							<li><span>Trésorerie</span><b><a href="{{ path('app_mouvement_tresorerie_show', {id: d.mouvement.id}) }}">{{ d.mouvement.reference }}</a> · {{ d.mouvement.enAttente ? 'à valider' : (d.mouvement.annule ? 'annulé' : 'validé') }}</b></li>
+						{% endif %}
+					</ul>
+				</section>
+			</div>
+		</div>
+	</div>
+{% endblock %}

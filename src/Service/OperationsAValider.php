@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\CompteTresorerie;
+use App\Entity\Depense;
 use App\Entity\Factures;
 use App\Entity\MouvementTresorerie;
 use App\Entity\Paiements;
@@ -98,7 +99,16 @@ final class OperationsAValider
             ->getQuery()
             ->getResult();
 
+        // Décaissements préparés par Finances › Dépenses : reçu joint, lien vers la dépense.
+        $depenses = [];
+        if ([] !== $mouvements) {
+            foreach ($this->em->getRepository(Depense::class)->findBy(['mouvement' => $mouvements]) as $depense) {
+                $depenses[(int) $depense->getMouvement()?->getId()] = $depense;
+            }
+        }
+
         foreach ($mouvements as $mouvement) {
+            $depense = $depenses[(int) $mouvement->getId()] ?? null;
             $controles = [];
             if (null !== $mouvement->getModePaiement() && Paiements::MODE_ESPECES !== $mouvement->getModePaiement()) {
                 $controles[] = '' === trim((string) $mouvement->getReferenceExterne())
@@ -113,9 +123,11 @@ final class OperationsAValider
                 'detail' => $mouvement->getCategorieLabel(),
                 'montant' => (int) $mouvement->getMontant(),
                 'controles' => [...$controles, ...self::controleDelai($mouvement->getDateOperation(), $maintenant)],
-                'justificatif' => false,
+                'justificatif' => null !== $depense,
                 'auteur' => $mouvement->getAgent()?->getUserIdentifier(),
-                'lien' => ['route' => 'app_mouvement_tresorerie_show', 'id' => (int) $mouvement->getId()],
+                'lien' => null !== $depense
+                    ? ['route' => 'app_finances_depenses_voir', 'id' => (int) $depense->getId()]
+                    : ['route' => 'app_mouvement_tresorerie_show', 'id' => (int) $mouvement->getId()],
                 'comptes' => null,
             ];
         }

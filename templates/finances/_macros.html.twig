@@ -30,3 +30,13 @@
 		</form>
 	</li>
 {% endmacro %}
+
+{# Pastille d'une dépense, corrigée par l'état de son décaissement. #}
+{% macro statut_depense(d) %}
+	{% set rejete = d.estPayee and d.mouvement and d.mouvement.annule %}
+	<span class="si-fin-statut si-fin-statut-{{ rejete ? 'rouge' : d.couleurStatut }}">{{ rejete ? 'Paiement rejeté' : d.libelleStatut }}</span>
+	{%- if d.estPayee and d.mouvement and d.mouvement.enAttente %}<small class="si-fin-sous-statut">décaissement à valider</small>{% endif %}
+{% endmacro %}
+
+{# Nom d'une personne : prénom et nom de sa fiche employé, sinon son identifiant. #}
+{% macro nom(u) %}{% if u is null %}—{% elseif u.employe and u.employe.prenom is not empty %}{{ u.employe.prenom }} {{ u.employe.nom }}{% else %}{{ u.userIdentifier }}{% endif %}{% endmacro %}

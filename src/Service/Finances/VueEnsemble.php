@@ -3,6 +3,7 @@
 namespace App\Service\Finances;
 
 use App\Entity\CompteTresorerie;
+use App\Entity\Depense;
 use App\Entity\Factures;
 use App\Entity\Paiements;
 use App\Service\Creances;
@@ -34,7 +35,7 @@ final class VueEnsemble
     }
 
     /**
-     * @param array{tresorerie: bool, ca: bool, paiements: bool, marges: bool, admin: bool} $droits
+     * @param array{tresorerie: bool, ca: bool, paiements: bool, marges: bool, admin: bool, saisie?: bool} $droits
      *
      * @return array<string, mixed>
      */
@@ -195,7 +196,7 @@ final class VueEnsemble
     /**
      * Ce qui demande une attention, chaque ligne selon les droits.
      *
-     * @param array{tresorerie: bool, ca: bool, paiements: bool, marges: bool, admin: bool} $droits
+     * @param array{tresorerie: bool, ca: bool, paiements: bool, marges: bool, admin: bool, saisie?: bool} $droits
      *
      * @return list<array{cle: string, titre: string, detail: string, valeur: string, couleur: string, route: ?string, parametres?: array<string, mixed>}>
      */
@@ -229,6 +230,23 @@ final class VueEnsemble
                     'cle' => 'en_attente', 'titre' => 'Encaissements à valider', 'couleur' => 'bleu', 'valeur' => (string) (int) $attente['nombre'],
                     'route' => $droits['admin'] ? 'app_a_valider_index' : null,
                     'detail' => $f((int) $attente['montant']).($enLigne > 0 ? \sprintf(' · %d saisi%s en ligne', $enLigne, $enLigne > 1 ? 's' : '') : ' · virements et chèques'),
+                ];
+            }
+        }
+
+        if ($droits['tresorerie'] || $droits['admin']) {
+            /** @var list<Depense> $aApprouver */
+            $aApprouver = $this->em->getRepository(Depense::class)->findBy(['statut' => Depense::A_APPROUVER], ['creeLe' => 'ASC']);
+            if ([] !== $aApprouver) {
+                $premiere = $aApprouver[0];
+                $nombre = \count($aApprouver);
+                $lignes[] = [
+                    'cle' => 'depense_a_approuver', 'titre' => $nombre > 1 ? 'Dépenses à approuver' : 'Dépense à approuver', 'couleur' => 'rose', 'valeur' => (string) $nombre,
+                    'route' => 1 === $nombre ? 'app_finances_depenses_voir' : 'app_finances_depenses',
+                    'parametres' => 1 === $nombre ? ['id' => $premiere->getId()] : [],
+                    'detail' => 1 === $nombre
+                        ? \sprintf('%s · %s', $premiere->getObjet(), $f($premiere->getMontant()))
+                        : \sprintf('%s au total · la plus ancienne : %s', $f(array_sum(array_map(static fn (Depense $d): int => $d->getMontant(), $aApprouver))), $premiere->getObjet()),
                 ];
             }
         }

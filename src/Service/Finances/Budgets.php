@@ -2,17 +2,25 @@
 
 namespace App\Service\Finances;
 
+use App\Entity\BudgetDepense;
+use App\Entity\Depense;
 use App\Entity\MouvementTresorerie;
+use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Budget mensuel des dépenses par catégorie (maquette F03), hors
  * salaires : les salaires sont suivis à part dans la Paie.
  *
- * Chaque catégorie de budget regroupe des catégories de mouvements de
- * trésorerie. Ce qui est consommé dans le mois, ce sont les décaissements
- * validés de ces catégories. Les transferts, ajustements et
- * remboursements de crédit ne sont pas des dépenses du budget.
+ * Ce qui est consommé dans le mois :
+ * - les dépenses saisies dans Finances › Dépenses dès qu'elles sont
+ *   engagées (à payer, validées ou payées ; pas celles à approuver ni
+ *   les refusées), à leur date ;
+ * - les autres décaissements validés en trésorerie, rangés par catégorie
+ *   de mouvement. Un décaissement créé par le paiement d'une dépense
+ *   n'est pas compté une seconde fois.
+ * Les transferts, ajustements et remboursements de crédit ne sont pas des
+ * dépenses du budget.
  */
 final class Budgets
 {
@@ -24,7 +32,7 @@ final class Budgets
      */
     public const CATEGORIES = [
         'matieres' => ['libelle' => 'Matières et consommables', 'mouvements' => [MouvementTresorerie::CATEGORIE_ACHAT], 'mouvement' => MouvementTresorerie::CATEGORIE_ACHAT, 'defaut' => 1200000],
-        'loyer' => ['libelle' => 'Loyer', 'mouvements' => [MouvementTresorerie::CATEGORIE_LOYER], 'mouvement' => MouvementTresorerie::CATEGORIE_LOYER, 'defaut' => 350000],
+        'loyer' => ['libelle' => 'Loyer', 'mouvements' => [MouvementTresorerie::CATEGORIE_LOYER], 'mouvement' => MouvementTresorerie::CATEGORIE_LOYER, 'defaut' => 450000],
         'electricite' => ['libelle' => 'Électricité et internet', 'mouvements' => [MouvementTresorerie::CATEGORIE_ELECTRICITE], 'mouvement' => MouvementTresorerie::CATEGORIE_ELECTRICITE, 'defaut' => 180000],
         'maintenance' => ['libelle' => 'Maintenance machines', 'mouvements' => [MouvementTresorerie::CATEGORIE_ENTRETIEN], 'mouvement' => MouvementTresorerie::CATEGORIE_ENTRETIEN, 'defaut' => 120000],
         'carburant' => ['libelle' => 'Carburant et livraison', 'mouvements' => [MouvementTresorerie::CATEGORIE_CARBURANT, MouvementTresorerie::CATEGORIE_TRANSPORT], 'mouvement' => MouvementTresorerie::CATEGORIE_CARBURANT, 'defaut' => 150000],
@@ -58,13 +66,46 @@ final class Budgets
     }
 
     /**
-     * Budget du mois de chaque catégorie.
+     * Budget du mois de chaque catégorie : celui des Réglages, sinon le
+     * montant proposé par défaut.
      *
      * @return array<string, int>
      */
     public function montants(): array
     {
-        return array_map(static fn (array $c): int => $c['defaut'], self::CATEGORIES);
+        $montants = array_map(static fn (array $c): int => $c['defaut'], self::CATEGORIES);
+        foreach ($this->em->getRepository(BudgetDepense::class)->findAll() as $budget) {
+            if (isset($montants[$budget->getCategorie()])) {
+                $montants[$budget->getCategorie()] = $budget->getMontantMensuel();
+            }
+        }
+
+        return $montants;
+    }
+
+    /**
+     * Enregistre les budgets mensuels (direction).
+     *
+     * @param array<string, int> $montants
+     */
+    public function enregistrer(array $montants, ?User $par, \DateTimeImmutable $maintenant): void
+    {
+        $existants = [];
+        foreach ($this->em->getRepository(BudgetDepense::class)->findAll() as $budget) {
+            $existants[$budget->getCategorie()] = $budget;
+        }
+        foreach (array_keys(self::CATEGORIES) as $cle) {
+            if (!isset($montants[$cle])) {
+                continue;
+            }
+            $budget = $existants[$cle] ?? new BudgetDepense($cle);
+            if ($budget->getId() !== null && $budget->getMontantMensuel() === max(0, $montants[$cle])) {
+                continue;
+            }
+            $budget->modifier($montants[$cle], $par, $maintenant);
+            $this->em->persist($budget);
+        }
+        $this->em->flush();
     }
 
     /**
@@ -80,6 +121,9 @@ final class Budgets
             if (null !== $cle) {
                 $consommes[$cle] += $montant;
             }
+        }
+        foreach ($this->depensesEngagees($debut, $fin) as $cle => $montant) {
+            $consommes[isset($consommes[$cle]) ? $cle : 'divers'] += $montant;
         }
 
         return $consommes;
@@ -121,7 +165,33 @@ final class Budgets
     }
 
     /**
-     * Total des décaissements validés de chaque catégorie de mouvement.
+     * Dépenses engagées entre deux dates, par catégorie de budget.
+     *
+     * @return array<string, int>
+     */
+    public function depensesEngagees(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        $totaux = [];
+        foreach ($this->em->createQueryBuilder()
+            ->select('d.categorie', 'SUM(d.montant) AS total')
+            ->from(Depense::class, 'd')
+            ->andWhere('d.statut IN (:engagees)')
+            ->andWhere('d.dateDepense >= :debut AND d.dateDepense < :fin')
+            ->setParameter('engagees', Depense::ENGAGEES)
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->groupBy('d.categorie')
+            ->getQuery()
+            ->getArrayResult() as $l) {
+            $totaux[(string) $l['categorie']] = (int) $l['total'];
+        }
+
+        return $totaux;
+    }
+
+    /**
+     * Total des décaissements validés de chaque catégorie de mouvement,
+     * hors paiements de dépenses saisies (déjà comptées à part).
      *
      * @return array<string, int>
      */
@@ -130,6 +200,8 @@ final class Budgets
         $lignes = $this->em->createQueryBuilder()
             ->select('m.categorie', 'SUM(m.montant) AS total')
             ->from(MouvementTresorerie::class, 'm')
+            ->leftJoin(Depense::class, 'depense', 'WITH', 'depense.mouvement = m')
+            ->andWhere('depense.id IS NULL')
             ->andWhere('m.type = :sortie')
             ->andWhere('m.statut = :valide')
             ->andWhere('m.dateOperation >= :debut AND m.dateOperation < :fin')
@@ -155,7 +227,7 @@ final class Budgets
      */
     public function chargesTotales(\DateTimeImmutable $debut, \DateTimeImmutable $fin): int
     {
-        $total = 0;
+        $total = array_sum($this->depensesEngagees($debut, $fin));
         foreach ($this->sortiesParCategorie($debut, $fin) as $categorie => $montant) {
             if (!\in_array($categorie, self::HORS_DEPENSES, true)) {
                 $total += $montant;

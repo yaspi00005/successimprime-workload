@@ -1,0 +1,225 @@
+{% extends 'finances/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Dépenses et budgets{% endblock %}
+{% block page_title %}Dépenses · {{ nom_mois }}{% endblock %}
+
+{% block header_actions %}
+	{{ m.periode(periodes, periode, 'app_finances_depenses') }}
+	{% if droits.admin %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_finances_depenses_budgets') }}" class="btn btn-light btn-sm si-btn-entete">Budgets</a>
+		</li>
+	{% endif %}
+	{% if formulaire %}
+		<li class="nav-item">
+			<a href="#saisir-depense" class="btn btn-danger btn-sm si-btn-entete" data-si-fin-saisir><i class="fas fa-plus me-1"></i>Dépense</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-fin-depenses">
+		{% if a_approuver is not empty %}
+			<section class="card si-fin-attente" aria-label="Dépenses à approuver">
+				<h2><i class="fas fa-hourglass-half me-2"></i>{{ a_approuver|length }} dépense{{ a_approuver|length > 1 ? 's' }} à approuver</h2>
+				<ul>
+					{% for d in a_approuver %}
+						<li>
+							<a href="{{ path('app_finances_depenses_voir', {id: d.id}) }}">
+								<span><strong>{{ d.objet }}</strong><small>{{ d.payeA ?: 'Saisie' }} · par {{ m.nom(d.creePar) }} le {{ d.creeLe|date('d/m à H:i') }}</small></span>
+								<b>{{ m.f(d.montant) }}</b>
+							</a>
+						</li>
+					{% endfor %}
+				</ul>
+			</section>
+		{% endif %}
+
+		<div class="si-fin-deux si-fin-dep-grille{{ budgets is null ? ' si-fin-dep-seule' }}">
+			{% if budgets is not null %}
+				<section class="card si-fin-budgets" aria-label="Budget du mois">
+					<header class="si-fin-tete">
+						<h2>Budget du mois</h2>
+						<span class="si-fin-unite">{{ m.f(consomme_total) }} sur {{ m.f(budget_total) }}</span>
+					</header>
+					<ul>
+						{% for b in budgets %}
+							<li>
+								<div>
+									<strong>{{ b.libelle }}</strong>
+									<span><b class="{{ b.etat == 'depasse' ? 'si-fin-rouge' }}">{{ b.consomme|number_format(0, ',', ' ') }}</b> / {{ m.f(b.budget) }}</span>
+								</div>
+								<span class="si-fin-jauge si-fin-jauge-{{ b.etat }}" role="img" aria-label="{{ b.part }} % du budget"><span style="width: {{ min(100, b.part) }}%"></span></span>
+							</li>
+						{% endfor %}
+					</ul>
+					<p class="si-fin-note">Salaires suivis à part dans la Paie. Une dépense au-delà de {{ m.f(seuil) }} est approuvée par la direction.</p>
+				</section>
+			{% endif %}
+
+			<div class="si-fin-pile">
+				<section class="card" aria-label="Dernières dépenses">
+					<header class="si-fin-tete">
+						<h2>{{ tout ? 'Dépenses de ' ~ nom_mois : 'Dernières dépenses' }}</h2>
+						{% if nombre > depenses|length %}
+							<a class="si-fin-lien mt-0" href="{{ path('app_finances_depenses', {periode: periode, tout: 1}) }}">Les {{ nombre }} dépenses du mois</a>
+						{% endif %}
+					</header>
+					{% if depenses is empty %}
+						<p class="si-fin-vide">Aucune dépense saisie en {{ libelle_mois }}.</p>
+					{% else %}
+						<table class="table si-fin-table si-fin-dep-table">
+							<thead>
+								<tr>
+									<th scope="col">Date</th>
+									<th scope="col">Objet</th>
+									<th scope="col" class="si-masque-mobile">Fournisseur</th>
+									<th scope="col" class="text-end">Montant</th>
+									<th scope="col">Statut</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for d in depenses %}
+									<tr>
+										<td class="si-fin-gris">{{ d.dateDepense|date('d/m') }}</td>
+										<td>
+											<a href="{{ path('app_finances_depenses_voir', {id: d.id}) }}">{{ d.objet }}</a>
+											<small class="d-md-none">{{ d.payeA }}</small>
+										</td>
+										<td class="si-masque-mobile si-fin-gris">{{ d.payeA ?: '—' }}</td>
+										<td class="text-end"><strong class="si-fin-f">{{ d.montant|number_format(0, ',', ' ') }} F</strong></td>
+										<td>{{ m.statut_depense(d) }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					{% endif %}
+				</section>
+
+				{% if formulaire %}
+					{% set f = formulaire %}
+					<section class="card si-fin-saisie" id="saisir-depense" aria-label="Saisir une dépense">
+						<h2>Saisir une dépense</h2>
+						{{ form_start(f, {attr: {class: 'si-fin-saisie-form', novalidate: 'novalidate', 'data-seuil': seuil, 'data-direction': droits.admin ? '1' : '0'}}) }}
+							<div class="si-fin-saisie-corps">
+								<label class="si-fin-recu" for="{{ f.justificatif.vars.id }}">
+									<span class="si-fin-recu-vide" data-recu-vide>
+										<i class="fas fa-camera" aria-hidden="true"></i>
+										<strong>Photo du reçu</strong>
+										<small>obligatoire · photo ou PDF</small>
+									</span>
+									<img alt="Aperçu du reçu" data-recu-apercu hidden>
+									<span class="si-fin-recu-nom" data-recu-nom hidden></span>
+									{{ form_widget(f.justificatif, {attr: {class: 'visually-hidden', 'data-recu': ''}}) }}
+								</label>
+								<div class="si-fin-champs">
+									<div class="si-fin-champ si-fin-champ-large">
+										{{ form_label(f.objet) }}
+										{{ form_widget(f.objet) }}
+										{{ form_errors(f.objet) }}
+									</div>
+									<div class="si-fin-champ">
+										{{ form_label(f.categorie) }}
+										{{ form_widget(f.categorie, {attr: {'data-categorie': ''}}) }}
+									</div>
+									<div class="si-fin-champ">
+										{{ form_label(f.montant) }}
+										{{ form_widget(f.montant, {attr: {'data-montant': ''}}) }}
+										{{ form_errors(f.montant) }}
+									</div>
+									<div class="si-fin-champ">
+										{{ form_label(f.compte) }}
+										{{ form_widget(f.compte, {attr: {'data-compte': ''}}) }}
+									</div>
+									<div class="si-fin-champ">
+										{{ form_label(f.lieA) }}
+										{{ form_widget(f.lieA) }}
+									</div>
+									<div class="si-fin-champ">
+										{{ form_label(f.fournisseur) }}
+										{{ form_widget(f.fournisseur) }}
+									</div>
+									<div class="si-fin-champ">
+										{{ form_label(f.beneficiaire) }}
+										{{ form_widget(f.beneficiaire) }}
+									</div>
+									<div class="si-fin-champ">
+										{{ form_label(f.dateDepense) }}
+										{{ form_widget(f.dateDepense) }}
+										{{ form_errors(f.dateDepense) }}
+									</div>
+									<div class="si-fin-champ" data-echeance>
+										{{ form_label(f.echeance) }}
+										{{ form_widget(f.echeance) }}
+									</div>
+									<div class="si-fin-champ" data-matieres>
+										{{ form_label(f.article) }}
+										{{ form_widget(f.article) }}
+									</div>
+									<div class="si-fin-champ" data-matieres>
+										{{ form_label(f.quantite) }}
+										{{ form_widget(f.quantite) }}
+									</div>
+									<div class="si-fin-champ si-fin-champ-large">
+										{{ form_label(f.note) }}
+										{{ form_widget(f.note) }}
+									</div>
+								</div>
+							</div>
+							{{ form_errors(f.justificatif) }}
+							{{ form_errors(f) }}
+							<p class="si-fin-note">Photo du reçu obligatoire : vérifiez que le montant et la date saisis correspondent au reçu.</p>
+							<p class="si-fin-alerte" data-approbation hidden><i class="fas fa-user-shield me-1"></i>Au-delà de {{ m.f(seuil) }}, la dépense attend l’accord de la direction avant d’être payée.</p>
+							<div class="si-fin-actions">
+								<button type="submit" class="btn btn-danger">Enregistrer la dépense</button>
+							</div>
+						{{ form_end(f, {render_rest: true}) }}
+					</section>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(() => {
+			const form = document.querySelector('.si-fin-saisie-form');
+			if (!form) return;
+			const seuil = parseInt(form.dataset.seuil, 10);
+			const direction = form.dataset.direction === '1';
+			const recu = form.querySelector('[data-recu]');
+			const apercu = form.querySelector('[data-recu-apercu]');
+			const vide = form.querySelector('[data-recu-vide]');
+			const nom = form.querySelector('[data-recu-nom]');
+			const montant = form.querySelector('[data-montant]');
+			const compte = form.querySelector('[data-compte]');
+			const categorie = form.querySelector('[data-categorie]');
+			const alerte = form.querySelector('[data-approbation]');
+			recu.addEventListener('change', () => {
+				const fichier = recu.files[0];
+				if (!fichier) return;
+				vide.hidden = true;
+				if (fichier.type.startsWith('image/')) {
+					apercu.src = URL.createObjectURL(fichier);
+					apercu.hidden = false;
+					nom.hidden = true;
+				} else {
+					apercu.hidden = true;
+					nom.textContent = fichier.name;
+					nom.hidden = false;
+				}
+			});
+			const maj = () => {
+				form.querySelectorAll('[data-echeance]').forEach((el) => { el.hidden = compte.value !== ''; });
+				form.querySelectorAll('[data-matieres]').forEach((el) => { el.hidden = categorie.value !== 'matieres'; });
+				alerte.hidden = direction || !(parseInt(montant.value, 10) > seuil);
+			};
+			[montant, compte, categorie].forEach((el) => el.addEventListener('input', maj));
+			[compte, categorie].forEach((el) => el.addEventListener('change', maj));
+			maj();
+		})();
+	</script>
+{% endblock %}

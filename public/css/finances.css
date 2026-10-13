@@ -23,7 +23,7 @@
 .si-fin-titre-lien:hover { color: #0F4590; text-decoration: underline; }
 .si-fin-lien { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 600; }
 .si-fin-imprime { display: none; }
-.si-fin-periode select { min-width: 170px; font-weight: 600; border-radius: 10px; }
+.si-fin-periode select { min-width: 150px; font-weight: 600; border-radius: 10px; }
 .si-fin-unite { color: #0F4590; font-weight: 700; font-size: 13px; white-space: nowrap; }
 .si-fin-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .si-fin-tete h2 { margin: 0; }
@@ -143,9 +143,89 @@
 .si-fin .si-fin-sous-titre { margin: 18px 0 8px; }
 .si-fin-machines td { padding: 12px 8px; }
 
+/* ---------- F03 · Dépenses et budgets ---------- */
+.si-fin-pile { display: grid; gap: 20px; align-content: start; min-width: 0; }
+.si-fin-dep-grille { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); }
+.si-fin-dep-grille.si-fin-dep-seule { grid-template-columns: minmax(0, 1fr); }
+.si-fin-budgets ul { list-style: none; margin: 0; padding: 0; }
+.si-fin-budgets li { padding: 10px 0 12px; border-bottom: 1px solid #EEF2F7; }
+.si-fin-budgets li > div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.si-fin-budgets li strong { font-size: 15px; color: #0F172A; }
+.si-fin-budgets li > div > span { font-size: 13px; color: #64748B; white-space: nowrap; }
+.si-fin-budgets li b { font-size: 15px; color: #0F172A; }
+.si-fin-budgets .si-fin-jauge { height: 9px; }
+.si-fin-dep-table td a { color: #0F172A; }
+.si-fin-dep-table td a:hover { color: #0F4590; }
+.si-fin-sous-statut { display: block; margin-top: 3px; font-size: 11.5px; color: #64748B; white-space: nowrap; }
+.si-fin-attente { border-left: 5px solid #EA580C !important; }
+.si-fin-attente h2 { color: #9A3412; font-size: 16px; }
+.si-fin-attente ul { list-style: none; margin: 0; padding: 0; }
+.si-fin-attente li a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; color: inherit; border-top: 1px solid #F1F5F9; }
+.si-fin-attente li a:hover strong { color: #0F4590; }
+.si-fin-attente li span { min-width: 0; }
+.si-fin-attente li strong { display: block; color: #0F172A; }
+.si-fin-attente li small { display: block; color: #64748B; font-size: 12.5px; }
+.si-fin-attente li b { white-space: nowrap; color: #0F172A; }
+.si-fin-saisie-corps { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 18px; align-items: start; }
+.si-fin-recu { position: relative; display: flex; align-items: center; justify-content: center; min-height: 230px; border: 2px dashed #CBD5E1; border-radius: 14px; background: #F8FAFC; cursor: pointer; overflow: hidden; margin: 0; }
+.si-fin-recu:hover, .si-fin-recu:focus-within { border-color: #0F4590; background: #F1F6FD; }
+.si-fin-recu-vide { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; color: #475569; padding: 12px; }
+.si-fin-recu-vide i { font-size: 28px; color: #0F4590; }
+.si-fin-recu-vide small { color: #64748B; }
+.si-fin-recu img { width: 100%; height: 100%; max-height: 300px; object-fit: contain; background: #fff; }
+.si-fin-recu-nom { padding: 12px; font-weight: 600; word-break: break-all; text-align: center; }
+.si-fin-champs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.si-fin-champ { min-width: 0; }
+.si-fin-champ[hidden] { display: none; }
+.si-fin-champ-large { grid-column: 1 / -1; }
+.si-fin-champ .form-label, .si-fin-champ label { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+.si-fin-saisie .form-control, .si-fin-saisie .form-select { border-radius: 10px; min-height: 42px; }
+.si-fin-saisie .invalid-feedback, .si-fin-saisie ul { font-size: 12.5px; color: #B91C1C; }
+.si-fin-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.si-fin-actions .btn { border-radius: 10px; font-weight: 700; padding: 10px 18px; }
+.si-fin-retour { display: none; font-weight: 600; color: #0F4590; }
+
+/* Page d'une dépense / « Approuver une dépense » (F07) */
+.si-fin-depense-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; max-width: 1100px; }
+.si-fin-dep-tete h2 { font-size: 22px; margin: 4px 0 6px; }
+.si-fin-dep-tete p { margin: 0 0 6px; font-size: 13.5px; }
+.si-fin .si-fin-dep-montant { display: block; font-size: clamp(30px, 3vw, 38px); font-weight: 800; color: #0F172A; margin-bottom: 4px; }
+.si-fin-pieces { display: flex !important; flex-direction: row !important; gap: 16px; align-items: flex-start; }
+.si-fin-vignette { flex: 0 0 96px; height: 124px; border-radius: 10px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; color: #B91C1C; font-weight: 700; gap: 4px; box-shadow: 0 4px 10px rgba(15, 23, 42, .08); }
+.si-fin-vignette img { width: 100%; height: 100%; object-fit: cover; }
+.si-fin-vignette i { font-size: 30px; }
+.si-fin-pieces ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: 14.5px; color: #1E293B; min-width: 0; }
+.si-fin-dep-budget .si-fin-tete span { color: #475569; font-size: 14px; }
+.si-fin-dep-budget .si-fin-tete strong { color: #0F172A; white-space: nowrap; }
+.si-fin-dep-budget .si-fin-jauge { height: 10px; }
+.si-fin-boutons { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 12px; align-items: start; }
+.si-fin-boutons .btn, .si-fin-decision .btn { border-radius: 12px; font-weight: 700; padding: 12px 16px; font-size: 16px; }
+.si-fin-boutons .btn-success { background: #16A34A; border-color: #16A34A; box-shadow: 0 8px 18px rgba(22, 163, 74, .25); }
+.si-fin-refus summary { list-style: none; width: 100%; }
+.si-fin-refus summary::-webkit-details-marker { display: none; }
+.si-fin-refus[open] { grid-column: 1 / -1; }
+.si-fin-refus[open] summary { display: none; }
+.si-fin-refus[open] + .si-fin-approuver { display: none; }
+.si-fin-refus form { margin-top: 4px; }
+.si-fin .si-fin-refus-carte { padding: 14px 20px; }
+.si-fin-refus-carte summary { cursor: pointer; color: #B91C1C; font-weight: 600; }
+.si-fin-refus-carte[open] summary { display: block; margin-bottom: 8px; }
+.si-fin-historique ul { list-style: none; margin: 0; padding: 0; }
+.si-fin-historique li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #F1F5F9; font-size: 13.5px; }
+.si-fin-historique li:last-child { border-bottom: 0; }
+.si-fin-historique li span { color: #64748B; }
+.si-fin-historique li b { font-weight: 600; color: #0F172A; text-align: right; }
+
+/* Budgets */
+.si-fin-budgets-page .card { max-width: 640px; }
+.si-fin-budget-ligne { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid #F1F5F9; }
+.si-fin-budget-ligne label { margin: 0; font-weight: 600; color: #1E293B; }
+.si-fin-budget-total { border-bottom: 0; font-weight: 700; }
+.si-fin-budget-total strong { text-align: right; font-size: 18px; }
+
 /* ---------- Écrans larges et téléphone ---------- */
 @media (max-width: 1199.98px) {
-  .si-fin-deux, .si-fin-renta .si-fin-deux { grid-template-columns: 1fr; }
+  .si-fin-deux, .si-fin-renta .si-fin-deux, .si-fin-dep-grille { grid-template-columns: 1fr; }
 }
 @media (max-width: 575.98px) {
   .si-fin { gap: 14px; }
@@ -168,6 +248,25 @@
   .si-fin-barres-h li { grid-template-columns: minmax(0, 1fr) 80px 44px; gap: 10px; font-size: 13.5px; }
   .si-fin-machines { font-size: 13px; }
   .si-fin-machines td, .si-fin-machines th { padding-left: 4px !important; padding-right: 4px !important; }
+  .si-fin-saisie-corps { grid-template-columns: 1fr; }
+  .si-fin-recu { min-height: 120px; }
+  .si-fin-champs { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .si-fin-dep-table { font-size: 13.5px; }
+  .si-fin-dep-table td, .si-fin-dep-table th { padding-left: 4px !important; padding-right: 4px !important; }
+  .si-fin-dep-table .si-fin-statut { font-size: 11px; padding: 2px 7px; white-space: normal; }
+  .si-fin-dep-table .si-fin-sous-statut { white-space: normal; font-size: 10.5px; }
+  .si-fin-dep-table { table-layout: fixed; width: 100%; }
+  .si-fin-dep-table th:nth-child(1), .si-fin-dep-table td:nth-child(1) { width: 48px; white-space: nowrap; word-break: normal; font-size: 12.5px; }
+  .si-fin-dep-table th:nth-child(4), .si-fin-dep-table td:nth-child(4) { width: 78px; }
+  .si-fin-dep-table th:nth-child(5), .si-fin-dep-table td:nth-child(5) { width: 92px; }
+  .si-fin-dep-table td { overflow-wrap: anywhere; }
+  .si-fin-retour { display: inline-block; }
+  .si-fin-actions .btn { width: 100%; }
+  .si-fin-budget-ligne { grid-template-columns: 1fr; gap: 4px; }
+  .si-fin-budget-total { grid-template-columns: 1fr auto; }
+}
+@media (max-width: 991.98px) {
+  .si-fin-depense-grille { grid-template-columns: 1fr; }
 }
 
 /* ---------- Impression (« Rapport PDF ») ---------- */

@@ -1,0 +1,40 @@
+{% extends 'finances/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Budgets des dépenses{% endblock %}
+{% block page_title %}Budgets des dépenses{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_finances_depenses') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Dépenses</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-fin-budgets-page">
+		<a class="si-fin-retour" href="{{ path('app_finances_depenses') }}"><i class="fas fa-chevron-left" aria-hidden="true"></i> Dépenses</a>
+		<section class="card">
+			<h2>Budget mensuel par catégorie</h2>
+			<p class="si-fin-gris">Le même budget s’applique chaque mois. Les salaires sont suivis à part dans la Paie. Le seuil d’approbation ({{ m.f(seuil) }}) se règle dans Réglages › Finances et budgets.</p>
+			<form method="post" class="si-fin-budgets-form">
+				<input type="hidden" name="_token" value="{{ csrf_token('budgets-depenses') }}">
+				{% for cle, c in categories %}
+					<div class="si-fin-budget-ligne">
+						<label for="budget-{{ cle }}">{{ c.libelle }}</label>
+						<div class="input-group">
+							<input id="budget-{{ cle }}" name="{{ cle }}" type="text" inputmode="numeric" class="form-control text-end" value="{{ montants[cle]|number_format(0, ',', ' ') }}">
+							<span class="input-group-text">F</span>
+						</div>
+					</div>
+				{% endfor %}
+				<div class="si-fin-budget-ligne si-fin-budget-total">
+					<span>Total du mois</span>
+					<strong>{{ m.f(montants|reduce((t, v) => t + v, 0)) }}</strong>
+				</div>
+				<div class="si-fin-actions">
+					<button type="submit" class="btn btn-danger">Enregistrer les budgets</button>
+				</div>
+			</form>
+		</section>
+	</div>
+{% endblock %}

@@ -45,7 +45,7 @@ final class Rentabilite
     /**
      * Marges du mois : globale, par produit et par machine.
      *
-     * @return array{taux: ?int, ht: int, cout: int, marge: int, part_chiffree: ?int, produits: list<array<string, mixed>>, machines: list<array<string, mixed>>, plus_faible: ?array<string, mixed>}
+     * @return array{taux: ?int, ht: int, cout: int, marge: int, part_chiffree: ?int, produits: list<array<string, mixed>>, machines: list<array<string, mixed>>, plus_faible: ?array<string, mixed>, faibles: list<array<string, mixed>>}
      */
     public function synthese(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
     {
@@ -65,6 +65,7 @@ final class Rentabilite
             'produits' => self::regrouper($complets, 'produit', 6),
             'machines' => $machines,
             'plus_faible' => self::plusFaible($machines),
+            'faibles' => self::commandesFaibles($complets, 5),
         ];
     }
 
@@ -92,7 +93,11 @@ final class Rentabilite
         $totaux = array_fill_keys(array_keys(self::POSTES), 0);
         $manquants = [];
         $produits = [];
+        $matieres = [];
         foreach ($chiffrees as $l) {
+            if ('Autres' !== $l['produit']) {
+                $matieres[self::nomCourt($l['produit'])] = true;
+            }
             foreach (array_keys(self::POSTES) as $poste) {
                 $totaux[$poste] += $l[$poste];
             }
@@ -104,6 +109,9 @@ final class Rentabilite
         $postes = [];
         foreach (self::POSTES as $cle => $libelle) {
             if ($totaux[$cle] > 0 || \in_array($cle, ['matieres', 'encre', 'machine', 'main_oeuvre'], true)) {
+                if ('matieres' === $cle && [] !== $matieres) {
+                    $libelle .= ' ('.self::liste(array_keys($matieres), 3).')';
+                }
                 $postes[] = ['cle' => $cle, 'libelle' => $libelle, 'montant' => $totaux[$cle], 'part' => round($totaux[$cle] * 100 / $base, 1)];
             }
         }
@@ -230,6 +238,38 @@ final class Rentabilite
     }
 
     /**
+     * Les commandes du mois qui marginent le moins (sous le seuil « moyen »),
+     * la pire d'abord : prix à revoir ou coûts à vérifier.
+     *
+     * @param list<array<string, mixed>> $lignes
+     *
+     * @return list<array{id: int, numero: string, client: string, ht: int, cout: int, taux: int, couleur: string}>
+     */
+    public static function commandesFaibles(array $lignes, int $limite): array
+    {
+        $commandes = [];
+        foreach ($lignes as $l) {
+            $id = (int) ($l['commande_id'] ?? 0);
+            if (0 === $id) {
+                continue;
+            }
+            $commandes[$id] ??= ['id' => $id, 'numero' => (string) $l['commande_numero'], 'client' => (string) $l['client'], 'ht' => 0, 'cout' => 0];
+            $commandes[$id]['ht'] += (int) $l['ht'];
+            $commandes[$id]['cout'] += (int) $l['total'];
+        }
+        $faibles = [];
+        foreach ($commandes as $c) {
+            $taux = self::taux($c['ht'], $c['cout']);
+            if (null !== $taux && $taux < self::SEUIL_MOYEN) {
+                $faibles[] = $c + ['taux' => $taux, 'couleur' => self::couleur($taux)];
+            }
+        }
+        usort($faibles, static fn (array $a, array $b): int => [$a['taux'], -$a['ht']] <=> [$b['taux'], -$b['ht']]);
+
+        return \array_slice($faibles, 0, $limite);
+    }
+
+    /**
      * La machine qui marge le moins, si l'écart avec la meilleure vaut
      * d'être signalé (10 points ou plus).
      *
@@ -250,6 +290,24 @@ final class Rentabilite
         return $meilleure['taux'] - $pire['taux'] >= 10 ? ['nom' => $pire['nom'], 'taux' => (int) $pire['taux']] : null;
     }
 
+    /**
+     * « bâche, roll-up, t-shirts » ; « bâche, roll-up… » au-delà de la limite.
+     *
+     * @param list<string> $noms
+     */
+    public static function liste(array $noms, int $limite): string
+    {
+        return implode(', ', \array_slice($noms, 0, $limite)).(\count($noms) > $limite ? '…' : '');
+    }
+
+    /** Nom de produit pour une liste : « Roll-up 85 × 200 cm (démo) » → « roll-up 85 × 200 cm ». */
+    public static function nomCourt(string $nom): string
+    {
+        $nom = trim((string) preg_replace('/\s*\([^()]*\)\s*$/u', '', trim($nom)));
+
+        return mb_strtolower(mb_substr($nom, 0, 1)).mb_substr($nom, 1);
+    }
+
     /** Résumé d'une ligne pour l'en-tête de la commande : « 2 bâche ». */
     public static function resumeLigne(int $quantite, string $nom): string
     {
@@ -264,9 +322,10 @@ final class Rentabilite
     private function lignes(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
     {
         return $this->em->createQueryBuilder()
-            ->select('l', 'c', 'p', 'm')
+            ->select('l', 'c', 'client', 'p', 'm')
             ->from(CommandesDetails::class, 'l')
             ->innerJoin('l.commande', 'c')
+            ->leftJoin('c.clients', 'client')
             ->leftJoin('l.produit', 'p')
             ->leftJoin('l.machine', 'm')
             ->andWhere('c.deleted = false')
@@ -306,6 +365,9 @@ final class Rentabilite
                 'manquants' => $l->getCoutRevient() > 0 ? [] : $calcul['manquants'],
                 'produit' => '' !== $nomProduit ? $nomProduit : 'Autres',
                 'machine_nom' => $l->getMachine()?->getNom() ?? '',
+                'commande_id' => (int) $l->getCommande()?->getId(),
+                'commande_numero' => (string) $l->getCommande()?->getNumero(),
+                'client' => (string) ($l->getCommande()?->getClients()?->getNomComplet() ?? ''),
                 'resume' => self::resumeLigne($l->getQuantite(), '' !== $nomProduit ? $nomProduit : (string) $l->getDesignation()),
             ];
         }

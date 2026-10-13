@@ -1,0 +1,143 @@
+{% extends 'finances/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Rentabilité{% endblock %}
+{% block page_title %}Rentabilité · {{ libelle_mois }}{% endblock %}
+
+{% block header_actions %}
+	{{ m.periode(periodes, periode, 'app_finances_rentabilite') }}
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-fin-renta">
+		<div class="si-fin-deux">
+			<section class="card si-fin-commande" aria-label="Rentabilité d'une commande">
+				{% if detail is null %}
+					<h2>Aucune commande confirmée en {{ libelle_mois }}</h2>
+					<p class="si-fin-vide">Choisissez un autre mois dans « Période ».</p>
+				{% else %}
+					{% set c = detail.commande %}
+					<header class="si-fin-tete">
+						<h2><a href="{{ path('app_commandes_show', {id: c.id}) }}">Commande {{ c.numero }}</a>{% if detail.client %} · {{ detail.client }}{% endif %}</h2>
+						<form method="get" action="{{ path('app_finances_rentabilite') }}" class="si-fin-choix">
+							<input type="hidden" name="periode" value="{{ periode }}">
+							<label class="visually-hidden" for="si-fin-commande">Détailler une autre commande</label>
+							<select id="si-fin-commande" name="commande" class="form-select form-select-sm" onchange="this.form.submit()">
+								{% for autre in commandes %}
+									<option value="{{ autre.id }}" {{ autre is same as(c) ? 'selected' }}>{{ autre.numero }}{% if autre.clients %}{% set nom = autre.clients.nomComplet %} · {{ nom|length > 22 ? nom|slice(0, 21) ~ '…' : nom }}{% endif %} · {{ autre.totalHt|number_format(0, ',', ' ') }} F</option>
+								{% endfor %}
+							</select>
+						</form>
+					</header>
+
+					<p class="si-fin-vendu">
+						<strong>{{ m.f(detail.ht) }}</strong>
+						<span>vendu HT{% if detail.resume %} · {{ detail.resume }}{% endif %}</span>
+					</p>
+
+					<ul class="si-fin-postes">
+						{% for p in detail.postes %}
+							<li>
+								<i class="si-fin-carre si-fin-poste-{{ p.cle }}" aria-hidden="true"></i>
+								<span>{{ p.libelle }}</span>
+								<strong>{{ p.montant > 0 ? '− ' }}{{ m.f(p.montant) }}</strong>
+							</li>
+						{% endfor %}
+					</ul>
+
+					{% set couleur = detail.taux is null ? 'gris' : (detail.taux >= constant('App\\Service\\Finances\\Rentabilite::SEUIL_MOYEN') ? 'vert' : (detail.taux >= 35 ? 'orange' : 'rouge')) %}
+					<div class="si-fin-marge si-fin-marge-{{ couleur }}">
+						<span>Marge</span>
+						<strong>{{ m.f(detail.marge) }}{% if detail.taux is not null %} · {{ detail.taux }} %{% endif %}</strong>
+					</div>
+
+					<div class="si-fin-empile" role="img" aria-label="Répartition du prix de vente : {% for p in detail.postes %}{{ p.libelle }} {{ p.part }} %, {% endfor %}marge {{ detail.part_marge }} %">
+						{% for p in detail.postes|filter(p => p.part > 0) %}
+							<span class="si-fin-poste-{{ p.cle }}" style="width: {{ p.part }}%" title="{{ p.libelle }} : {{ p.montant|number_format(0, ',', ' ') }} F"></span>
+						{% endfor %}
+						{% if detail.part_marge > 0 %}<span class="si-fin-poste-marge" style="width: {{ detail.part_marge }}%" title="Marge"></span>{% endif %}
+					</div>
+
+					<p class="si-fin-note">Coûts calculés automatiquement : nomenclature des articles, m² imprimés, compteurs machines et pointage. Le coût enregistré à la saisie de la commande fait foi.</p>
+					{% if detail.manquants is not empty %}
+						<p class="si-fin-alerte"><i class="fas fa-triangle-exclamation me-1"></i>Coût incomplet, à compléter dans les articles : {{ detail.manquants|slice(0, 4)|join(', ') }}{{ detail.manquants|length > 4 ? '…' }}</p>
+					{% endif %}
+				{% endif %}
+			</section>
+
+			<section class="card si-fin-produits" aria-label="Marges du mois">
+				<header class="si-fin-tete">
+					<h2>Marge par produit</h2>
+					<span class="si-fin-unite">{{ nom_mois }}</span>
+				</header>
+				{% if synthese.produits is empty %}
+					<p class="si-fin-vide">Aucune ligne au coût complet ce mois-ci.</p>
+				{% else %}
+					<ul class="si-fin-barres-h">
+						{% for p in synthese.produits %}
+							<li>
+								<span>{{ p.nom }}</span>
+								<span class="si-fin-jauge si-fin-jauge-{{ p.couleur }}"><span style="width: {{ max(0, min(100, p.taux ?? 0)) }}%"></span></span>
+								<strong>{{ p.taux }} %</strong>
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+
+				<h2 class="si-fin-sous-titre">Par machine</h2>
+				{% if synthese.machines is empty %}
+					<p class="si-fin-vide">Aucune ligne rattachée à une machine.</p>
+				{% else %}
+					<table class="table si-fin-table si-fin-machines">
+						<thead>
+							<tr><th scope="col">Machine</th><th scope="col" class="text-end">CA</th><th scope="col" class="text-end">Coûts</th><th scope="col" class="text-end">Marge</th></tr>
+						</thead>
+						<tbody>
+							{% for mach in synthese.machines %}
+								<tr>
+									<td>{{ mach.nom }}</td>
+									<td class="text-end si-fin-f">{{ mach.ht|number_format(0, ',', ' ') }}</td>
+									<td class="text-end si-fin-f">{{ mach.cout|number_format(0, ',', ' ') }}</td>
+									<td class="text-end"><strong class="si-fin-{{ mach.couleur == 'bleu' ? 'bleu' : mach.couleur }}">{{ mach.taux }} %</strong></td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endif %}
+				{% if synthese.plus_faible %}
+					<p class="si-fin-note">{{ synthese.plus_faible.nom }} a la marge la plus faible ({{ synthese.plus_faible.taux }} %) : prix de vente à revoir ou fournisseur à renégocier.</p>
+				{% endif %}
+				{% if synthese.part_chiffree is not null %}
+					<p class="si-fin-note">Marges calculées sur les lignes au coût complet, soit {{ synthese.part_chiffree }} % du chiffre d’affaires HT de {{ nom_mois }}{% if synthese.taux is not null %} · marge globale {{ synthese.taux }} %{% endif %}.</p>
+				{% endif %}
+			</section>
+		</div>
+
+		{% if synthese.faibles is not empty %}
+			<section class="card" aria-label="Commandes à marge faible">
+				<header class="si-fin-tete">
+					<h2>Commandes à marge faible</h2>
+					<span class="si-fin-unite">sous {{ constant('App\\Service\\Finances\\Rentabilite::SEUIL_MOYEN') }} % · {{ nom_mois }}</span>
+				</header>
+				<div class="table-responsive">
+					<table class="table si-fin-table">
+						<thead>
+							<tr><th scope="col">Commande</th><th scope="col" class="si-masque-mobile">Client</th><th scope="col" class="text-end">Vendu HT</th><th scope="col" class="text-end si-masque-mobile">Coûts</th><th scope="col" class="text-end">Marge</th></tr>
+						</thead>
+						<tbody>
+							{% for f in synthese.faibles %}
+								<tr>
+									<td><a href="{{ path('app_finances_rentabilite', {periode: periode, commande: f.id}) }}">{{ f.numero }}</a><small class="d-sm-none">{{ f.client }}</small></td>
+									<td class="si-masque-mobile">{{ f.client }}</td>
+									<td class="text-end si-fin-f">{{ f.ht|number_format(0, ',', ' ') }} F</td>
+									<td class="text-end si-fin-f si-masque-mobile">{{ f.cout|number_format(0, ',', ' ') }} F</td>
+									<td class="text-end"><span class="si-fin-statut si-fin-statut-{{ f.couleur }}">{{ f.taux }} %</span></td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		{% endif %}
+	</div>
+{% endblock %}

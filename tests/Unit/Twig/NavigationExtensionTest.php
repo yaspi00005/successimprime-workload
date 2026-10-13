@@ -26,6 +26,7 @@ final class NavigationExtensionTest extends TestCase
         yield 'trésorerie' => ['app_tresorerie_index', 'finances'];
         yield 'comptabilité' => ['app_comptabilite_index', 'finances'];
         yield 'vue d\'ensemble financière' => ['app_finances_vue_ensemble', 'finances'];
+        yield 'rentabilité' => ['app_finances_rentabilite', 'finances'];
         yield 'soldes clients avant clients' => ['app_clients_soldes', 'finances'];
         yield 'fiche client' => ['app_clients_show', 'clients'];
         yield 'campagne' => ['app_campagne_index', 'clients'];
@@ -74,7 +75,8 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(1, $extension->ongletActif('app_clients_soldes'));
         self::assertSame(0, $extension->ongletActif('app_finances_vue_ensemble'));
         self::assertSame(4, $extension->ongletActif('app_creances_index'));
-        self::assertSame(6, $extension->ongletActif('app_comptabilite_index'));
+        self::assertSame(6, $extension->ongletActif('app_finances_rentabilite'));
+        self::assertSame(7, $extension->ongletActif('app_comptabilite_index'));
         self::assertSame(0, $extension->ongletActif('app_reglages_parametres_index'));
         self::assertSame(2, $extension->ongletActif('app_couts_revient_index'));
         self::assertSame(3, $extension->ongletActif('app_employes_index'));

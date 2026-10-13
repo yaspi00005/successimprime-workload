@@ -65,6 +65,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Paiements', 'route' => 'app_paiements_index', 'role' => 'ROLE_PAIEMENT_VOIR', 'prefixes' => ['app_paiements_']],
             ['libelle' => 'Factures et créances', 'route' => 'app_creances_index', 'role' => 'ROLE_FACTURE', 'prefixes' => ['app_creances_', 'app_factures_']],
             ['libelle' => 'Trésorerie et dépenses', 'route' => 'app_tresorerie_index', 'role' => 'ROLE_TRESORERIE_VOIR', 'prefixes' => ['app_tresorerie_', 'app_mouvement_tresorerie_', 'app_decaissement_recurrent_', 'app_compte_tresorerie_', 'app_rapprochement_bancaire_']],
+            ['libelle' => 'Rentabilité', 'route' => 'app_finances_rentabilite', 'role' => 'ROLE_COUT_MARGE', 'prefixes' => ['app_finances_rentabilite']],
             ['libelle' => 'Comptabilité', 'route' => 'app_comptabilite_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_comptabilite_']],
         ],
         'clients' => [

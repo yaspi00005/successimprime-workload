@@ -63,7 +63,7 @@
 			{% endif %}
 			{% if marge is not null %}
 				<article class="card si-fin-kpi">
-					<h2>Marge brute estimée</h2>
+					<h2><a class="si-fin-titre-lien" href="{{ path('app_finances_rentabilite', {periode: periode}) }}">Marge brute estimée</a></h2>
 					<strong>{{ marge.taux is null ? '—' : marge.taux ~ ' %' }}</strong>
 					{% if marge.taux is null %}
 						<span class="si-fin-gris">coûts de revient à compléter</span>

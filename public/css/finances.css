@@ -19,6 +19,8 @@
 .si-fin-gris { color: #64748B; font-weight: 500 !important; }
 .si-fin-vide, .si-fin-rien { color: #64748B; margin: 0; }
 .si-fin-note { font-size: 12.5px; color: #64748B; margin: 12px 0 0; }
+.si-fin-titre-lien { color: inherit; text-decoration: none; }
+.si-fin-titre-lien:hover { color: #0F4590; text-decoration: underline; }
 .si-fin-lien { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 600; }
 .si-fin-imprime { display: none; }
 .si-fin-periode select { min-width: 170px; font-weight: 600; border-radius: 10px; }
@@ -102,9 +104,48 @@
 .si-fin-trait-canard { border-left-color: #0F766E !important; }
 .si-fin-trait-vert { border-left-color: #16A34A !important; }
 
+/* ---------- F06 · Rentabilité ---------- */
+.si-fin-renta .si-fin-deux { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.si-fin-commande h2 a { color: inherit; }
+.si-fin-choix select { max-width: 260px; font-size: 13px; border-radius: 10px; }
+.si-fin-vendu { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 10px; padding-bottom: 12px; border-bottom: 1px solid #EEF2F7; }
+.si-fin .si-fin-vendu > strong { font-size: clamp(26px, 2.6vw, 34px); font-weight: 800; color: #0F172A; }
+.si-fin-vendu > span { color: #64748B; font-size: 13.5px; }
+.si-fin-postes { list-style: none; margin: 0; padding: 0; }
+.si-fin-postes li { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid #EEF2F7; font-size: 15px; color: #1E293B; }
+.si-fin-postes li span { flex: 1; min-width: 0; }
+.si-fin-postes li strong { font-weight: 700; color: #0F172A; white-space: nowrap; }
+.si-fin-poste-matieres { background: #F4A58A; }
+.si-fin-poste-encre { background: #DB2777; }
+.si-fin-poste-machine { background: #6B7280; }
+.si-fin-poste-finitions { background: #7C3AED; }
+.si-fin-poste-main_oeuvre { background: #3B82F6; }
+.si-fin-poste-marge { background: #16A34A; }
+.si-fin-marge { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin: 16px 0 14px; padding: 14px 18px; border-radius: 12px; font-weight: 700; }
+.si-fin-marge > span { color: #0F172A; font-size: 16px; }
+.si-fin .si-fin-marge > strong { font-size: clamp(20px, 2vw, 26px); font-weight: 800; }
+.si-fin-marge-vert { background: #E8F7EE; }
+.si-fin-marge-vert strong { color: #15803D; }
+.si-fin-marge-orange { background: #FFF1E6; }
+.si-fin-marge-orange strong { color: #C2410C; }
+.si-fin-marge-rouge { background: #FEECEC; }
+.si-fin-marge-rouge strong { color: #B91C1C; }
+.si-fin-marge-gris { background: #F1F5F9; }
+.si-fin-marge-gris strong { color: #475569; }
+.si-fin-empile { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: #EEF2F7; }
+.si-fin-empile span { display: block; height: 100%; }
+.si-fin-alerte { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: #FFF7ED; color: #9A3412; font-size: 13px; }
+.si-fin-barres-h { list-style: none; margin: 0 0 6px; padding: 0; }
+.si-fin-barres-h li { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 52px; align-items: center; gap: 14px; padding: 6px 0; font-size: 14.5px; color: #334155; }
+.si-fin-barres-h li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-fin-barres-h .si-fin-jauge { height: 10px; }
+.si-fin-barres-h strong { text-align: right; color: #0F172A; white-space: nowrap; }
+.si-fin .si-fin-sous-titre { margin: 18px 0 8px; }
+.si-fin-machines td { padding: 12px 8px; }
+
 /* ---------- Écrans larges et téléphone ---------- */
 @media (max-width: 1199.98px) {
-  .si-fin-deux { grid-template-columns: 1fr; }
+  .si-fin-deux, .si-fin-renta .si-fin-deux { grid-template-columns: 1fr; }
 }
 @media (max-width: 575.98px) {
   .si-fin { gap: 14px; }
@@ -122,6 +163,11 @@
   .si-fin-lettre { font-size: 11px; }
   .si-fin-graphe header { flex-direction: column; }
   .si-fin-periode select { min-width: 0; max-width: 150px; }
+  .si-fin-choix, .si-fin-choix select { width: 100%; max-width: none; }
+  .si-fin-postes li { font-size: 14px; gap: 10px; }
+  .si-fin-barres-h li { grid-template-columns: minmax(0, 1fr) 80px 44px; gap: 10px; font-size: 13.5px; }
+  .si-fin-machines { font-size: 13px; }
+  .si-fin-machines td, .si-fin-machines th { padding-left: 4px !important; padding-right: 4px !important; }
 }
 
 /* ---------- Impression (« Rapport PDF ») ---------- */

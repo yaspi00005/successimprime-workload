@@ -78,6 +78,33 @@ final class RentabiliteTest extends TestCase
         self::assertNull(Rentabilite::plusFaible([['nom' => 'A', 'taux' => 50]]));
     }
 
+    public function testCommandesAMargeFaible(): void
+    {
+        $lignes = [
+            ['commande_id' => 7, 'commande_numero' => 'CMD-7', 'client' => 'Hôtel Niger', 'ht' => 100000, 'total' => 50000],
+            ['commande_id' => 8, 'commande_numero' => 'CMD-8', 'client' => 'Salon Espoir', 'ht' => 40000, 'total' => 30000],
+            ['commande_id' => 8, 'commande_numero' => 'CMD-8', 'client' => 'Salon Espoir', 'ht' => 10000, 'total' => 9000],
+            ['commande_id' => 9, 'commande_numero' => 'CMD-9', 'client' => 'Pharmacie', 'ht' => 20000, 'total' => 13000],
+        ];
+
+        $faibles = Rentabilite::commandesFaibles($lignes, 5);
+
+        // CMD-7 marge 50 % : au-dessus du seuil, absente. La pire d'abord.
+        self::assertSame(['CMD-8', 'CMD-9'], array_column($faibles, 'numero'));
+        self::assertSame(22, $faibles[0]['taux']);
+        self::assertSame('rouge', $faibles[0]['couleur']);
+        self::assertSame(50000, $faibles[0]['ht']);
+        self::assertCount(1, Rentabilite::commandesFaibles($lignes, 1));
+    }
+
+    public function testNomsDeProduitsPourLesMatieres(): void
+    {
+        self::assertSame('roll-up 85 × 200 cm', Rentabilite::nomCourt('Roll-up 85 × 200 cm (démo)'));
+        self::assertSame('flyers A5', Rentabilite::nomCourt('Flyers A5'));
+        self::assertSame('bâche, roll-up…', Rentabilite::liste(['bâche', 'roll-up', 't-shirts'], 2));
+        self::assertSame('bâche, roll-up', Rentabilite::liste(['bâche', 'roll-up'], 3));
+    }
+
     public function testResumeDeLigne(): void
     {
         self::assertSame('2 bâche 3x2', Rentabilite::resumeLigne(2, 'Bâche 3x2'));

@@ -2,6 +2,8 @@
 
 namespace App\Service\Synchro;
 
+use App\Entity\BonLivraison;
+use App\Entity\BonLivraisonLigne;
 use App\Entity\CategorieProduit;
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFinition;
@@ -250,6 +252,18 @@ final class CatalogueSynchro
                 'classe' => ReclamationClientPhoto::class, 'sens' => self::DEUX, 'libelle' => 'Photo de réclamation', 'titre' => [],
                 'champs' => ['contenu', 'type', 'largeur', 'hauteur'],
                 'relations' => ['reclamation' => 'reclamation'], 'listes' => [],
+            ],
+            // Où en est la livraison, pour l'espace client (livreur en route, livrée) et ses notifications.
+            // Livreur, réceptionnaire, adresse, photos, signature, position, encaissement, stock et notes restent au local.
+            'livraison' => [
+                'classe' => BonLivraison::class, 'sens' => self::DESCENDANT, 'libelle' => 'Bon de livraison', 'titre' => ['numero'],
+                'champs' => ['numero', 'statut', 'creeLe', 'valideLe', 'prevuLe', 'creneau', 'chargeLe', 'enRouteLe', 'arriveLe', 'livreLe'],
+                'relations' => ['commande' => 'commande'], 'listes' => [],
+                'enfants' => ['lignes' => [
+                    'classe' => BonLivraisonLigne::class, 'parent' => 'bonLivraison',
+                    'champs' => ['designation', 'quantiteCommandee', 'quantiteLivree', 'unite'],
+                    'relations' => ['commandeDetail' => 'commande_ligne'],
+                ]],
             ],
         ];
     }

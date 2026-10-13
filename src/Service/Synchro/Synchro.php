@@ -2,6 +2,7 @@
 
 namespace App\Service\Synchro;
 
+use App\Entity\BonLivraison;
 use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
@@ -419,6 +420,7 @@ final class Synchro
             $entite instanceof ControlePrePresse => $entite->getCommandeDetail()?->getCommande()?->getClients(),
             $entite instanceof Paiements => $entite->getCommande()?->getClients(),
             $entite instanceof ReclamationClient => $entite->getClient(),
+            $entite instanceof BonLivraison => $entite->getCommande()?->getClients(),
             default => null,
         };
     }

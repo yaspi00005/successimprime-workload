@@ -69,4 +69,4 @@ Reste à faire :
 - Fidélité (18 à droite) : règles de points, paliers et récompenses à fixer par Yaya.
 - Informations entreprise (NIF, RCCM) modifiables en ligne : aujourd'hui en lecture, changées par le bureau.
 - WhatsApp dans la chaîne des notifications, entre l'application et le SMS, quand la clé Meta sera posée.
-- « Livreur en route » et « livrée » : les bons de livraison ne sont pas encore synchronisés, ces deux notifications partiront quand ils le seront.
+- « Livreur en route » et « livrée » : les bons de livraison passent au site depuis le 13/10/2026 (sans livreur, photos ni signature). Après le déploiement : `php bin/console app:synchro --initialiser=livraison` sur le local.

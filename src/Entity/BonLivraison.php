@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\BonLivraisonRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -12,6 +13,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'bon_livraison')]
 class BonLivraison
 {
+    use PublicIdTrait;
+
     public const STATUT_BROUILLON = 'brouillon';
     public const STATUT_VALIDE = 'valide';
     public const STATUT_LIVRE = 'livre';
@@ -180,6 +183,7 @@ class BonLivraison
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->creeLe = new \DateTimeImmutable();
         $this->lignes = new ArrayCollection();
     }

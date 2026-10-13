@@ -74,6 +74,14 @@ def uid():
     return S('UNHEX(\'' + uuid.UUID(int=R.getrandbits(128), version=4).hex + '\')')
 
 
+# Identifiants des bons de livraison : tirage à part, pour ne pas décaler le reste des données.
+R_BL = random.Random(1311)
+
+
+def uid_bl():
+    return S('UNHEX(\'' + uuid.UUID(int=R_BL.getrandbits(128), version=4).hex + '\')')
+
+
 def hexa(n=64):
     return ''.join(R.choice('0123456789abcdef') for _ in range(n))
 
@@ -844,7 +852,7 @@ for k in COMMANDES:
                                'signataire': (k['c']['contacts'][0][0] if k['c']['contacts'] else k['c']['nom']) if livre else None, 'encaisse_montant': None, 'encaisse_mode': None, 'encaisse_le': None,
                                'livreur_id': livreur, 'paiement_livraison_id': None, 'remise_latitude': round(12.6 + R.uniform(-0.05, 0.05), 6) if livre and R.random() < 0.9 else None,
                                'remise_longitude': round(-7.99 + R.uniform(-0.07, 0.07), 6) if livre and R.random() < 0.9 else None,
-                               'retard_justifie': 'Embouteillage au pont des Martyrs' if retard and R.random() < 0.5 else None, 'erreur_livraison': 'Colis abîmé' if livre and R.random() < 0.02 else None})
+                               'retard_justifie': 'Embouteillage au pont des Martyrs' if retard and R.random() < 0.5 else None, 'erreur_livraison': 'Colis abîmé' if livre and R.random() < 0.02 else None, 'public_id': uid_bl()})
     for l in k['lignes']:
         add('bon_livraison_ligne', {'designation': l['p']['nom'] if l['p'] else l['libre'], 'quantite_commandee': l['qte'], 'quantite_livree': l['qte'] if livre else 0, 'unite': 'unité',
                                     'observation': None, 'bon_livraison_id': bl, 'commande_detail_id': l['id']})

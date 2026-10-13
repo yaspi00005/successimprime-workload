@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit\Service\Synchro;
 
+use App\Entity\BonLivraison;
 use App\Entity\Clients;
 use App\Entity\Finition;
 use App\Entity\Paiements;
@@ -38,6 +39,8 @@ final class CatalogueSynchroTest extends TestCase
             'fichier' => ['chemin', 'observation', 'montage', 'ajoutePar', 'jetonUpload', 'fichierSource'],
             'controle' => ['anomalies', 'observation', 'correctionsEffectuees', 'controlePar', 'traitePar', 'validePar', 'envoyeProductionPar'],
             'paiement' => ['compteTresorerie', 'mouvementTresorerie', 'justificatif', 'observation', 'encaissePar', 'validePar'],
+            'livraison' => ['livreur', 'creePar', 'validePar', 'livrePar', 'nomReceptionnaire', 'telephoneReceptionnaire', 'adresseLivraison', 'observation', 'photos', 'signature',
+                'signataire', 'encaisseMontant', 'encaisseMode', 'encaisseLe', 'paiementLivraison', 'remiseLatitude', 'remiseLongitude', 'retardJustifie', 'erreurLivraison', 'articleStock', 'ordreTournee'],
         ];
         foreach ($interdits as $type => $champs) {
             foreach ($champs as $champ) {
@@ -47,6 +50,10 @@ final class CatalogueSynchroTest extends TestCase
         }
         // Une facture ne se crée jamais en ligne.
         self::assertFalse(CatalogueSynchro::creationAcceptee('facture', false));
+        // Le bon de livraison ne part que dans un sens, et ses lignes sans observation.
+        self::assertFalse(CatalogueSynchro::accepte('livraison', false));
+        self::assertNotContains('observation', $types['livraison']['enfants']['lignes']['champs']);
+        self::assertSame('livraison', CatalogueSynchro::typeDe(new BonLivraison()));
     }
 
     public function testUnPaiementSaisiEnLigneResteAValider(): void

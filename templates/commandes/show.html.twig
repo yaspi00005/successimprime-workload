@@ -51,7 +51,15 @@
 		</div>
 	{% endif %}
 
-	{% if commande.canal == 'en_ligne' and not commande.statut and not annulee %}
+	{% if commande.attendValidationEntreprise %}
+		<div class="alert alert-info">
+			<strong>Demande en attente chez le client.</strong> {{ commande.demandeePar ?? 'Une personne de l\'entreprise' }} l'a passée dans l'espace client ; un valideur de l'entreprise doit l'accepter avant qu'elle arrive ici à confirmer. Rien à faire pour l'instant.
+		</div>
+	{% elseif commande.estRefuseeParEntreprise %}
+		<div class="alert alert-secondary">
+			<strong>Refusée par le client</strong> ({{ commande.valideePar ?? 'valideur de l\'entreprise' }}){% if commande.motifRefusEntreprise %} : « {{ commande.motifRefusEntreprise }} »{% endif %}.
+		</div>
+	{% elseif commande.canal == 'en_ligne' and not commande.statut and not annulee %}
 		<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
 			<div class="flex-grow-1"><strong>Commande passée par le client dans son espace.</strong> Le prix affiché est indicatif : vérifiez le prix et le fichier, puis confirmez-la. Elle ne part pas à l'atelier avant.</div>
 			{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_edit', {id: commande.id}) }}" class="btn btn-sm btn-danger">Vérifier et confirmer</a>{% endif %}
@@ -120,7 +128,8 @@
 				<span class="si-pastille si-pastille-{{ annulee ? 'gris' : (enCours ? 'bleu' : 'vert') }}">{{ annulee ? 'Annulée' : (enCours ? enCours.libelle : 'Livrée') }}</span>
 				<small class="text-muted">
 					Créée le {{ commande.dateCommande ? commande.dateCommande|date('d/m à H:i') : '—' }}
-					{% if commande.agents %} par {{ commande.agents.employe ? commande.agents.employe.prenom : commande.agents.username }}{% endif %}
+					{% if commande.agents %} par {{ commande.agents.employe ? commande.agents.employe.prenom : commande.agents.username }}{% elseif commande.demandeePar %} en ligne par {{ commande.demandeePar }}{% if commande.valideePar and commande.validationEntreprise == 'validee' and commande.valideePar != commande.demandeePar %}, validée par {{ commande.valideePar }}{% endif %}{% endif %}
+					{% if commande.bonCommande %} · bon de commande {{ commande.bonCommande }}{% endif %}
 				</small>
 			</div>
 			{% if commande.dateLivraison %}

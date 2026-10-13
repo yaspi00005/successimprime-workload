@@ -237,7 +237,7 @@
 				<div>
 					<span class="field-label">Adresse de livraison</span>
 					<span class="field-value">
-						{{ bon.adresseLivraison|default(client ? client.adresse : '—') }}
+						{{ bon.adresseLivraison|default(client ? client.adresse : '—')|nl2br }}
 					</span>
 				</div>
 

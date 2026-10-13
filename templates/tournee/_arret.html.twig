@@ -6,7 +6,7 @@
 	<div class="si-tr-info">
 		<b>{% if lien ?? false %}<a href="{{ lien }}" class="stretched-link si-tr-lien">{% endif %}{{ cli ? cli.nomComplet : (b.nomReceptionnaire ?? b.numero) }}{% if lien ?? false %}</a>{% endif %}</b>
 		<small>{{ b.lignes|map(l => l.designation ~ ' × ' ~ l.quantiteCommandee)|join(' · ') }}</small>
-		<small>{{ b.creneau ? 'Créneau ' ~ b.creneau ~ ' · ' }}{{ b.adresseLivraison ?? b.commande.adresseLivraison ?? (cli ? cli.repere : '') }}</small>
+		<small>{{ b.creneau ? 'Créneau ' ~ b.creneau ~ ' · ' }}{{ (b.adresseLivraison ?? b.commande.adresseLivraison ?? (cli ? cli.repere : ''))|replace({"\n": ' · '}) }}</small>
 		{% if b.statut == 'livre' %}<small>{{ b.arriveLe ? 'arrivé ' ~ b.arriveLe|date('H:i') ~ ' · ' }}remis {{ b.livreLe|date('H:i') }}</small>{% endif %}
 	</div>
 	<div class="si-tr-etat">

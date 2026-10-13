@@ -2,7 +2,7 @@
 
 Le client se connecte par code SMS ou mot de passe (CX01), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts, de marges ni de noms d'employés.
 
-## État (12/10/2026)
+## État (13/10/2026)
 
 Construit, téléphone d'abord (onglets en bas), menu à gauche sur ordinateur :
 
@@ -16,8 +16,26 @@ Construit, téléphone d'abord (onglets en bas), menu à gauche sur ordinateur :
 - **Nouvelle commande (14, à gauche)** : produits du catalogue publié (configurations actives avec un prix), largeur et hauteur en cm quand le produit se vend au m² ou sur mesure, finitions proposées (les obligatoires sont incluses), quantité, fichier choisi parmi les siens ou envoyé sur place, précisions pour l'atelier. Le total TTC indicatif est recalculé à chaque changement avec les prix du comptoir (prix B2B pour un client B2B) ; la commande arrive en brouillon « Reçue · à confirmer » (10 en attente au plus par client), sans paiement possible tant que l'atelier ne l'a pas confirmée. Au local, la fiche commande affiche « Commande passée par le client » avec le bouton Vérifier et confirmer.
 - **Mes fichiers (16, à gauche)** : envoi PDF, AI, EPS, PSD, JPG, PNG, TIFF jusqu'à 500 Mo, par morceaux de 4 Mo repris après une coupure ; le type réel est vérifié (un fichier renommé est refusé), 5 Go par client. Contrôle automatique à l'arrivée (`AnalyseFichierImpression`) : résolution à la taille prévue si le client la donne, couleurs, polices, fonds perdus (3 mm, petits formats), proportions ; résumé OK, Attention ou À refaire. Mes logos (20 Mo au plus) gardés pour les prochaines commandes. Un fichier se retire tant qu'il n'est pas dans une commande. Les fichiers sont rangés hors de `public/` et servis seulement à leur client.
 
+## Comptes entreprise (19, construit le 13/10/2026)
+
+Une fiche entreprise ou B2B peut avoir plusieurs personnes, chacune avec son numéro et ses droits (`CompteClient.droits`). Un particulier n'a qu'un compte et fait tout. Code : `src/Service/EspaceClient/CompteEntreprise.php`, `src/Controller/EspaceEntrepriseController.php`.
+
+| Droit | Ce qu'il permet |
+|---|---|
+| Administrateur (« gère le compte ») | tout, plus ajouter ou retirer des personnes, changer leurs droits, gérer les adresses |
+| Valideur | accepter ou refuser les demandes, accepter les devis |
+| Payeur | voir l'onglet Factures, le solde, le reste à payer, payer |
+| Aucun (demandeur) | commander ; la commande attend un valideur |
+
+- **Mon compte** : profil de la personne (son nom, son rôle), coordonnées de l'entreprise, ligne « Adresses de livraison », carte « Utilisateurs du compte » avec « + Ajouter ». La personne ajoutée reçoit un SMS et se connecte avec son propre numéro. 20 personnes au plus ; il reste toujours au moins un administrateur ; on ne change pas ses propres droits ; le compte principal ne se retire pas en ligne.
+- **Adresses de livraison** : nom court, adresse, repère, personne à appeler ; une adresse par défaut, présélectionnée en commandant (« Livrer : Siège » ou « Retrait en boutique »).
+- **Nouvelle commande** : choix de l'adresse, n° de bon de commande (imprimé sur la facture). Pour un demandeur, le bouton devient « Envoyer la demande » et les valideurs reçoivent un SMS sans montant.
+- **Validation** : l'accueil du valideur montre « N demandes à valider » ; la page de la commande propose « Valider et envoyer à l'atelier » ou « Refuser » avec un motif lu par le demandeur. Sans aucun valideur actif, la demande part directement.
+- **Synchronisation** : la demande monte au local sans prévenir l'atelier. La décision du valideur remonte (`validationEntreprise`, `valideePar`, `motifRefusEntreprise`) : validée, le droit Commande est prévenu comme pour toute commande en ligne ; refusée, le local la classe (supprimée) et le site la garde visible au client avec son motif. Au local, la fiche commande affiche « demandée en ligne par X » et le bon de commande.
+- Les demandes à valider ou refusées n'apparaissent pas dans « À confirmer » (API comprise).
+
 Reste à faire :
 
 - Paiement Orange Money en ligne (clés dans `.env.local` du serveur).
 - Réclamations clients et fidélité (18) : nouvelles tables ; règles de points, paliers et récompenses à fixer par Yaya.
-- Utilisateurs du compte entreprise (demandeur, valideur, payeur) et adresses de livraison (19).
+- Informations entreprise (NIF, RCCM) modifiables en ligne : aujourd'hui en lecture, changées par le bureau.

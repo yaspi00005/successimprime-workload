@@ -233,3 +233,12 @@ details.ec-modif[open] summary { display: none; }
 .ec-choix-fichier { display: flex; align-items: center; gap: .7rem; padding: .55rem 0; border-top: 1px solid var(--trait); }
 .ec-choix-fichier:first-child { border-top: 0; }
 .ec-choix-fichier input { width: 20px; height: 20px; accent-color: var(--bleu); flex: none; }
+
+/* Compte d'entreprise (maquette 19) */
+.ec-rangee { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: inherit; text-decoration: none; }
+.ec-rangee b, .ec-personne b { display: block; }
+.ec-rangee .fl, .ec-personne .fl { color: var(--gris, #8A97AB); font-size: 1.3rem; }
+.ec-personne { display: flex; align-items: center; gap: .75rem; color: inherit; text-decoration: none; }
+.ec-personne > span:nth-child(2) { flex: 1; }
+.ec-avatar.petit { width: 34px; height: 34px; font-size: .9rem; background: #E7EEFA; color: var(--bleu); }
+.ec-a-valider { border: 1.5px solid #F5C77A; }

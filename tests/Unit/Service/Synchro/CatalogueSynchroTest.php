@@ -67,6 +67,14 @@ final class CatalogueSynchroTest extends TestCase
         self::assertTrue(CatalogueSynchro::remonteePermise('client', 'recevoirSms', '1', '0'));
         self::assertFalse(CatalogueSynchro::remonteePermise('client', 'ville', 'Bamako', 'Kati'));
         self::assertFalse(CatalogueSynchro::remonteePermise('commande', 'totalTtc', '1', '0'));
+        // Décision du valideur de l'entreprise : reprise une seule fois, depuis « à valider ».
+        self::assertTrue(CatalogueSynchro::remonteePermise('commande', 'validationEntreprise', 'a_valider', 'validee'));
+        self::assertTrue(CatalogueSynchro::remonteePermise('commande', 'validationEntreprise', 'a_valider', 'refusee'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('commande', 'validationEntreprise', 'refusee', 'validee'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('commande', 'validationEntreprise', null, 'validee'));
+        self::assertTrue(CatalogueSynchro::remonteePermise('commande', 'valideePar', null, 'Awa'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('commande', 'valideePar', 'Awa', 'Moussa'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('commande', 'deleted', '0', '1'));
         // Jeton du lien PDF créé en ligne : gardé s'il n'y en avait pas au local.
         self::assertTrue(CatalogueSynchro::remonteePermise('facture', 'tokenAuthenticite', null, 'abc'));
         self::assertFalse(CatalogueSynchro::remonteePermise('facture', 'tokenAuthenticite', 'xyz', 'abc'));

@@ -36,10 +36,7 @@ final class CompteEntreprise
      */
     public function utilisateurs(Clients $client): array
     {
-        return $this->comptes->createQueryBuilder('c')
-            ->where('c.client = :cl')->setParameter('cl', $client)
-            ->orderBy('c.id', 'ASC')
-            ->getQuery()->getResult();
+        return array_values($this->comptes->findBy(['client' => $client], ['id' => 'ASC']));
     }
 
     /**
@@ -70,18 +67,18 @@ final class CompteEntreprise
             throw new \DomainException('Vous avez atteint le nombre maximum d\'utilisateurs.');
         }
         $existant = $this->comptes->parTelephone($normalise);
-        if (null !== $existant) {
+        if (null !== $existant && ($existant->getClient() !== $client || $existant->isActif())) {
             throw new \DomainException($existant->getClient() === $client
                 ? 'Ce numéro fait déjà partie du compte.'
                 : 'Ce numéro a déjà un compte client. Demandez-nous de le rattacher à votre entreprise.');
         }
 
-        $compte = (new CompteClient())
-            ->setClient($client)
-            ->setTelephone($normalise)
-            ->setNom($nom)
+        // Une personne retirée puis ajoutée de nouveau retrouve son compte.
+        $compte = ($existant ?? (new CompteClient())->setClient($client)->setTelephone($normalise))
+            ->setNom(trim($nom))
             ->setDroits($droits)
-            ->setAjoutePar($par);
+            ->setAjoutePar($par)
+            ->setActif(true);
         $this->em->persist($compte);
         $this->em->flush();
 
@@ -105,6 +102,9 @@ final class CompteEntreprise
         if ($par === $compte) {
             throw new \DomainException('Vous ne pouvez pas changer vos propres droits. Demandez à une autre personne qui gère le compte.');
         }
+        if (!\in_array(CompteClient::DROIT_ADMINISTRATEUR, $droits, true)) {
+            $this->garderUnAdministrateur($compte);
+        }
         $compte->setDroits($droits);
         $this->em->flush();
     }
@@ -119,6 +119,7 @@ final class CompteEntreprise
         if (null === $compte->getAjoutePar()) {
             throw new \DomainException('Le compte principal de l\'entreprise ne peut pas être retiré ici. Écrivez-nous.');
         }
+        $this->garderUnAdministrateur($compte);
         $compte->setActif(false);
         $this->em->flush();
     }
@@ -162,27 +163,55 @@ final class CompteEntreprise
      *
      * @throws \DomainException
      */
-    public function valider(CompteClient $par, Commandes $commande, \DateTimeImmutable $maintenant): void
+    public function valider(CompteClient $par, Commandes $commande): void
     {
         $this->verifierValideur($par, $commande);
         $commande
             ->setValidationEntreprise(Commandes::VALIDATION_ACCEPTEE)
             ->setValideePar($par->getNomAffiche())
-            ->setMotifRefusEntreprise(null)
-            ->setDateCommande($maintenant);
+            ->setMotifRefusEntreprise(null);
         $this->em->flush();
     }
 
-    /** @throws \DomainException */
+    /**
+     * Refuse la commande : elle ne part pas a l'atelier. Elle reste visible,
+     * marquee refusee, pour que le demandeur sache pourquoi ; l'ERP local
+     * l'annule en recevant la decision.
+     *
+     * @throws \DomainException
+     */
     public function refuser(CompteClient $par, Commandes $commande, ?string $motif): void
     {
         $this->verifierValideur($par, $commande);
+        $motif = null !== $motif ? mb_substr(trim($motif), 0, 255) : null;
         $commande
             ->setValidationEntreprise(Commandes::VALIDATION_REFUSEE)
             ->setValideePar($par->getNomAffiche())
-            ->setMotifRefusEntreprise($motif)
-            ->setDeleted(true);
+            ->setMotifRefusEntreprise('' === $motif ? null : $motif);
         $this->em->flush();
+    }
+
+    /**
+     * Ce que la personne ajoute a une commande passee en ligne : numero de
+     * bon de commande, adresse de livraison, et, pour un demandeur, la
+     * validation interne de l'entreprise. A appeler avant l'enregistrement.
+     */
+    public function preparerCommande(CompteClient $compte, Commandes $commande, ?string $bonCommande, ?AdresseLivraison $adresse): void
+    {
+        $client = $compte->getClient();
+        $bonCommande = null !== $bonCommande ? mb_substr(trim($bonCommande), 0, 60) : null;
+        $commande->setBonCommande('' === $bonCommande ? null : $bonCommande);
+
+        if (null !== $adresse && $adresse->getClient() === $client && $adresse->isActif()) {
+            $commande->setModeLivraison(Commandes::LIVRAISON_DOMICILE)->setAdresseLivraison($adresse->texte());
+        }
+
+        if (null !== $client && CompteClient::clientAPlusieursComptes($client)) {
+            $commande->setDemandeePar($compte->getNomAffiche())->setCompteDemandeur($compte);
+            if ($this->demandeValidation($compte)) {
+                $commande->setValidationEntreprise(Commandes::VALIDATION_A_FAIRE);
+            }
+        }
     }
 
     /* ---------- Adresses de livraison ---------- */
@@ -268,11 +297,12 @@ final class CompteEntreprise
         if (null === $client) {
             return;
         }
+        // Pas de montant dans le SMS : il se lit sur l'ecran verrouille.
         foreach ($this->valideurs($client) as $valideur) {
             $this->sms->envoyerSms($valideur->getTelephone(), \sprintf(
-                'Succès Imprim : %s a fait une demande de commande de %s F. À valider dans votre espace client.',
+                'Succès Imprim : %s demande la commande %s. À valider dans votre espace client.',
                 $demandeur->getNomAffiche(),
-                number_format((float) $commande->getTotalTtc(), 0, ',', ' '),
+                $commande->getNumero(),
             ));
         }
     }
@@ -288,10 +318,30 @@ final class CompteEntreprise
         }
     }
 
+    /**
+     * Il reste toujours quelqu'un pour gerer le compte.
+     *
+     * @throws \DomainException
+     */
+    private function garderUnAdministrateur(CompteClient $quiPerd): void
+    {
+        $client = $quiPerd->getClient();
+        if (null === $client || !\in_array(CompteClient::DROIT_ADMINISTRATEUR, $quiPerd->getDroits(), true)) {
+            return;
+        }
+        foreach ($this->utilisateurs($client) as $autre) {
+            if ($autre !== $quiPerd && $autre->isActif() && \in_array(CompteClient::DROIT_ADMINISTRATEUR, $autre->getDroits(), true)) {
+                return;
+            }
+        }
+
+        throw new \DomainException('Il doit rester au moins une personne qui gère le compte.');
+    }
+
     /** @throws \DomainException */
     private function verifierMemeEntreprise(CompteClient $par, CompteClient $compte): void
     {
-        if (!$par->peut(CompteClient::DROIT_ADMINISTRATEUR) || $par->getClient() !== $compte->getClient()) {
+        if (!$par->isActif() || !$par->peut(CompteClient::DROIT_ADMINISTRATEUR) || $par->getClient() !== $compte->getClient()) {
             throw new \DomainException('Seule une personne qui gère le compte peut faire ça.');
         }
     }

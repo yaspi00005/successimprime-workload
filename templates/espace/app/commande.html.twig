@@ -5,7 +5,29 @@
 {% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Commande n° {{ c.numero }}</a>{% endblock %}
 
 {% block contenu %}
-	{% if carte.aConfirmer %}
+	{% if carte.refuseeEntreprise %}
+		<div class="ec-note">Demande refusée par {{ c.valideePar ?? 'votre entreprise' }}{% if c.motifRefusEntreprise %} : « {{ c.motifRefusEntreprise }} »{% endif %}. Elle ne part pas à l'atelier.</div>
+	{% elseif carte.aValiderEntreprise %}
+		<div class="ec-note">Demandée par {{ c.demandeePar ?? 'une personne de votre entreprise' }}. Elle part à l'atelier dès qu'une personne qui valide pour l'entreprise l'accepte.</div>
+		{% if peutValider %}
+			<div class="ec-carte">
+				<h2>Valider cette demande ?</h2>
+				<form method="post" action="{{ path('app_espace_commande_valider', {id: c.publicId}) }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+					<button type="submit" class="ec-bouton">Valider et envoyer à l'atelier</button>
+				</form>
+				<details style="margin-top:.6rem">
+					<summary class="ec-lien" style="cursor:pointer">Refuser</summary>
+					<form method="post" action="{{ path('app_espace_commande_refuser', {id: c.publicId}) }}" style="margin-top:.5rem;display:grid;gap:.5rem">
+						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+						<label class="ec-petit" for="motif">Motif, lu par {{ c.demandeePar ?? 'la personne qui l\'a demandée' }} (facultatif)</label>
+						<textarea class="ec-champ" id="motif" name="motif" maxlength="255" style="min-height:4rem"></textarea>
+						<button type="submit" class="ec-bouton clair">Refuser la demande</button>
+					</form>
+				</details>
+			</div>
+		{% endif %}
+	{% elseif carte.aConfirmer %}
 		<div class="ec-note">Commande reçue. L'atelier vérifie le prix et votre fichier, puis la confirme : vous êtes prévenu à ce moment-là.</div>
 	{% endif %}
 	<div class="ec-carte">
@@ -23,12 +45,15 @@
 			{% if not carte.terminee and c.dateLivraison %}<span class="ec-pastille ambre">{{ c.estALivrer ? 'Livraison' : 'Prête' }} le {{ c.dateLivraison|date('d/m') }}</span>{% endif %}
 			<span class="ec-pastille">{{ c.estALivrer ? 'Livraison' : 'Retrait boutique' }}</span>
 		</div>
+		{% if c.estALivrer and c.adresseLivraison %}<div class="ec-petit" style="margin-top:.4rem">Livrer : {{ c.adresseLivraison|nl2br }}</div>{% endif %}
 	</div>
 
 	{% for ctl in bats %}
 		<a class="ec-alerte" href="{{ path('app_espace_bat', {id: ctl.id}) }}"><div><b>BAT à valider</b><small>{{ ctl.commandeDetail|espace_titre_ligne }}</small></div><span class="ec-bouton-blanc">Voir</span></a>
 	{% endfor %}
 
+	{# Une demande pas encore validée (ou refusée) par l'entreprise n'est pas à l'atelier : pas de frise. #}
+	{% if not carte.aValiderEntreprise and not carte.refuseeEntreprise %}
 	<div class="ec-carte">
 		<ol class="ec-frise">
 			{% for e in carte.etapes %}
@@ -40,11 +65,13 @@
 			{% endfor %}
 		</ol>
 	</div>
+	{% endif %}
 
 	<div class="ec-carte">
 		<div class="ec-ligne"><span>Total{{ carte.aConfirmer ? ' indicatif' }}</span><b>{{ c.totalTtc|number_format(0, ',', ' ') }} F</b></div>
-		<div class="ec-ligne" style="margin-top:.3rem"><span>Reste à payer</span><b class="{{ c.resteAPayer > 0 ? 'ec-montant' }}">{{ c.resteAPayer|number_format(0, ',', ' ') }} F</b></div>
-		{% if c.resteAPayer > 0 and not carte.aConfirmer %}<div class="ec-boutons"><a class="ec-bouton orange" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer avec Orange Money</a></div>{% endif %}
+		{% if peutPayer and not carte.refuseeEntreprise %}<div class="ec-ligne" style="margin-top:.3rem"><span>Reste à payer</span><b class="{{ c.resteAPayer > 0 ? 'ec-montant' }}">{{ c.resteAPayer|number_format(0, ',', ' ') }} F</b></div>{% endif %}
+		{% if c.bonCommande %}<div class="ec-ligne" style="margin-top:.3rem"><span class="ec-petit">Bon de commande</span><span>{{ c.bonCommande }}</span></div>{% endif %}
+		{% if c.resteAPayer > 0 and not carte.aConfirmer and peutPayer %}<div class="ec-boutons"><a class="ec-bouton orange" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer avec Orange Money</a></div>{% endif %}
 	</div>
 
 	{% if whatsapp %}

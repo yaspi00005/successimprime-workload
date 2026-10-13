@@ -10,6 +10,7 @@ use App\Entity\Factures;
 use App\Repository\CommandesRepository;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
+use App\Service\EspaceClient\CompteEntreprise;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\NouvelleCommande;
@@ -43,6 +44,7 @@ final class EspaceClientController extends AbstractController
         private readonly CompteClientRepository $repository,
         private readonly Parametres $parametres,
         private readonly EntrepriseRepository $entreprises,
+        private readonly CompteEntreprise $compteEntreprise,
     ) {
     }
 
@@ -168,7 +170,10 @@ final class EspaceClientController extends AbstractController
         $compte = $this->compte();
         $client = $compte->getClient();
         $cartes = array_map($espace->carte(...), $espace->commandes($client, 12));
-        $enCours = array_values(array_filter($cartes, static fn (array $c): bool => !$c['terminee'] && !$c['annulee']));
+        // Les demandes que cette personne doit valider sont deja dans leur propre encadre.
+        $aValider = array_map($espace->carte(...), $this->compteEntreprise->aValider($compte));
+        $dejaListees = array_map(static fn (array $c): ?int => $c['commande']->getId(), $aValider);
+        $enCours = array_values(array_filter($cartes, static fn (array $c): bool => !$c['terminee'] && !$c['annulee'] && !\in_array($c['commande']->getId(), $dejaListees, true)));
         $solde = $espace->solde($client);
 
         return $this->vue('espace/app/accueil.html.twig', [
@@ -180,17 +185,20 @@ final class EspaceClientController extends AbstractController
             'recentes' => \array_slice(array_values(array_filter($cartes, static fn (array $c): bool => $c['terminee'])), 0, 3),
             'solde' => $solde,
             'devisAAccepter' => array_values(array_filter($espace->devis($client), static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())),
+            'aValider' => $aValider,
         ]);
     }
 
     #[Route('/commandes', name: 'commandes', methods: ['GET'])]
     public function commandes(EspaceClient $espace): Response
     {
-        $client = $this->compte()->getClient();
+        $compte = $this->compte();
+        $client = $compte->getClient();
 
         return $this->vue('espace/app/commandes.html.twig', [
             'onglet' => 'commandes',
             'cartes' => array_map($espace->carte(...), $espace->commandes($client)),
+            'aValider' => array_map($espace->carte(...), $this->compteEntreprise->aValider($compte)),
             'devisAAccepter' => \count(array_filter($espace->devis($client), static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())),
         ]);
     }
@@ -198,12 +206,14 @@ final class EspaceClientController extends AbstractController
     #[Route('/commandes/{id}', name: 'commande', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET'])]
     public function commande(string $id, EspaceClient $espace): Response
     {
-        $client = $this->compte()->getClient();
+        $compte = $this->compte();
+        $client = $compte->getClient();
         $commande = $espace->commande($client, $id) ?? throw $this->createNotFoundException();
 
         return $this->vue('espace/app/commande.html.twig', [
             'onglet' => 'commandes',
             'carte' => $espace->carte($commande),
+            'peutValider' => $commande->attendValidationEntreprise() && $compte->peut(CompteClient::DROIT_VALIDEUR) && CompteClient::clientAPlusieursComptes($client),
             'lignes' => array_values(array_filter($commande->getCommandesDetails()->toArray(), static fn (CommandesDetails $l): bool => CommandesDetails::PRODUCTION_ANNULEE !== $l->getStatutProduction())),
             'livraison' => $espace->livraison($commande),
             'bats' => array_values(array_filter($espace->bats($client, true), static fn ($ctl): bool => $ctl->getCommandeDetail()->getCommande() === $commande)),
@@ -215,8 +225,10 @@ final class EspaceClientController extends AbstractController
     #[Route('/commandes/nouvelle', name: 'nouvelle_commande', methods: ['GET', 'POST'])]
     public function nouvelleCommande(Request $request, NouvelleCommande $service, FichiersClient $fichiers): Response
     {
-        $client = $this->compte()->getClient();
+        $compte = $this->compte();
+        $client = $compte->getClient();
         $produits = NouvelleCommande::fiches($service->produits(), $client->isB2B());
+        $adresses = $this->compteEntreprise->adresses($client);
 
         if ($request->isMethod('POST')) {
             $this->jeton($request);
@@ -238,8 +250,15 @@ final class EspaceClientController extends AbstractController
                 foreach ($choisis as $f) {
                     $fichiers->recontroler($f, $largeur, $hauteur);
                 }
+                $adresse = $request->request->getInt('adresse') > 0 ? $this->compteEntreprise->adresse($client, $request->request->getInt('adresse')) : null;
+                $this->compteEntreprise->preparerCommande($compte, $commande, $request->request->getString('bon_commande'), $adresse);
                 $service->enregistrer();
-                $this->addFlash('succes', \sprintf('Commande %s envoyée. L\'atelier confirme le prix et votre fichier, puis vous prévient.', $commande->getNumero()));
+                if ($commande->attendValidationEntreprise()) {
+                    $this->compteEntreprise->prevenirValideurs($commande, $compte);
+                    $this->addFlash('succes', \sprintf('Demande %s envoyée. Elle part à l\'atelier dès qu\'une personne qui valide pour votre entreprise l\'accepte.', $commande->getNumero()));
+                } else {
+                    $this->addFlash('succes', \sprintf('Commande %s envoyée. L\'atelier confirme le prix et votre fichier, puis vous prévient.', $commande->getNumero()));
+                }
 
                 return $this->redirectToRoute('app_espace_commande', ['id' => (string) $commande->getPublicId()]);
             } catch (\DomainException $e) {
@@ -254,6 +273,9 @@ final class EspaceClientController extends AbstractController
             'mesFichiers' => array_values(array_filter($fichiers->liste($client), static fn ($f): bool => null === $f->getCommandeDetail())),
             'extensions' => FichiersClient::extensions(),
             'morceau' => FichiersClient::MORCEAU,
+            'adresses' => $adresses,
+            'entreprise' => CompteClient::clientAPlusieursComptes($client),
+            'demandeValidation' => $this->compteEntreprise->demandeValidation($compte),
         ]);
     }
 
@@ -299,8 +321,13 @@ final class EspaceClientController extends AbstractController
     public function accepterDevis(Devis $devis, Request $request, EspaceClient $espace): Response
     {
         $this->jeton($request);
-        if ($devis->getClients()?->getId() !== $this->compte()->getClient()->getId()) {
+        $compte = $this->compte();
+        if ($devis->getClients()?->getId() !== $compte->getClient()->getId()) {
             throw $this->createNotFoundException();
+        }
+        // Accepter un devis engage l'entreprise comme valider une commande.
+        if (!$compte->peut(CompteClient::DROIT_VALIDEUR)) {
+            throw $this->createAccessDeniedException();
         }
         if (Devis::STATUT_ENVOYE !== $devis->getStatut()) {
             $this->addFlash('error', 'Ce devis ne peut plus être accepté.');
@@ -462,7 +489,7 @@ final class EspaceClientController extends AbstractController
     #[Route('/factures', name: 'factures', methods: ['GET'])]
     public function factures(EspaceClient $espace): Response
     {
-        $client = $this->compte()->getClient();
+        $client = $this->payeur()->getClient();
 
         return $this->vue('espace/app/factures.html.twig', [
             'onglet' => 'factures',
@@ -474,7 +501,7 @@ final class EspaceClientController extends AbstractController
     #[Route('/factures/{id}/pdf', name: 'facture_pdf', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function facturePdf(Factures $facture, EspaceClient $espace): Response
     {
-        if ($facture->getCommande()?->getClients()?->getId() !== $this->compte()->getClient()->getId() || Factures::ETAT_EMISE !== $facture->getEtat()) {
+        if ($facture->getCommande()?->getClients()?->getId() !== $this->payeur()->getClient()->getId() || Factures::ETAT_EMISE !== $facture->getEtat()) {
             throw $this->createNotFoundException();
         }
         if (null === $facture->getTokenAuthenticite()) {
@@ -489,7 +516,7 @@ final class EspaceClientController extends AbstractController
     #[Route('/payer/{id}', name: 'payer', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET'])]
     public function payer(string $id, EspaceClient $espace): Response
     {
-        $compte = $this->compte();
+        $compte = $this->payeur();
         $commande = $espace->commande($compte->getClient(), $id) ?? throw $this->createNotFoundException();
         if (!$commande->isStatut()) {
             // Prix encore indicatif : on paie une fois la commande confirmée par l'atelier.
@@ -510,8 +537,17 @@ final class EspaceClientController extends AbstractController
     public function monCompte(): Response
     {
         $compte = $this->compte();
+        $client = $compte->getClient();
+        $entreprise = CompteClient::clientAPlusieursComptes($client);
 
-        return $this->vue('espace/app/compte.html.twig', ['onglet' => 'compte', 'compte' => $compte, 'client' => $compte->getClient()]);
+        return $this->vue('espace/app/compte.html.twig', [
+            'onglet' => 'compte',
+            'compte' => $compte,
+            'client' => $client,
+            'entreprise' => $entreprise,
+            'utilisateurs' => $entreprise ? array_values(array_filter($this->compteEntreprise->utilisateurs($client), static fn (CompteClient $c): bool => $c->isActif())) : [],
+            'nombreAdresses' => \count($this->compteEntreprise->adresses($client)),
+        ]);
     }
 
     #[Route('/compte/preferences', name: 'preferences', methods: ['POST'])]
@@ -529,9 +565,16 @@ final class EspaceClientController extends AbstractController
     #[Route('/notifications', name: 'notifications', methods: ['GET'])]
     public function notifications(EspaceClient $espace): Response
     {
+        $compte = $this->compte();
+        $fil = $espace->notifications($compte->getClient(), new \DateTimeImmutable());
+        if (!$compte->peut(CompteClient::DROIT_PAYEUR)) {
+            // Les paiements de l'entreprise ne regardent que ceux qui paient.
+            $fil = array_values(array_filter($fil, static fn (array $n): bool => 'paiement' !== $n['type']));
+        }
+
         return $this->vue('espace/app/notifications.html.twig', [
             'onglet' => 'accueil',
-            'fil' => $espace->notifications($this->compte()->getClient(), new \DateTimeImmutable()),
+            'fil' => $fil,
         ]);
     }
 
@@ -585,7 +628,24 @@ final class EspaceClientController extends AbstractController
     /** @param array<string, mixed> $parametres */
     private function vue(string $gabarit, array $parametres): Response
     {
-        return $this->render($gabarit, $parametres + ['moi' => $this->compte()->getClient()]);
+        $compte = $this->compte();
+
+        return $this->render($gabarit, $parametres + [
+            'moi' => $compte->getClient(),
+            'peutPayer' => $compte->peut(CompteClient::DROIT_PAYEUR),
+            'peutValider' => $compte->peut(CompteClient::DROIT_VALIDEUR),
+        ]);
+    }
+
+    /** Factures, solde et paiement : réservés à qui paie pour l'entreprise. */
+    private function payeur(): CompteClient
+    {
+        $compte = $this->compte();
+        if (!$compte->peut(CompteClient::DROIT_PAYEUR)) {
+            throw $this->createAccessDeniedException('Les factures sont réservées aux personnes qui paient pour l\'entreprise.');
+        }
+
+        return $compte;
     }
 
     private function jeton(Request $request): void

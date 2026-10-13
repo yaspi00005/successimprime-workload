@@ -45,7 +45,9 @@ final class CommandeProvider extends LectureApi implements ProviderInterface
             $requete->andWhere('c.dateCommande >= :d')->setParameter('d', $depuis);
         }
         if (self::oui($filtres, 'aConfirmer')) {
-            $requete->andWhere('c.statut = false')->andWhere('c.canal = :canal')->setParameter('canal', Commandes::CANAL_EN_LIGNE);
+            $requete->andWhere('c.statut = false')->andWhere('c.canal = :canal')->setParameter('canal', Commandes::CANAL_EN_LIGNE)
+                // Une demande pas encore validée par l'entreprise cliente n'est pas à confirmer.
+                ->andWhere('c.validationEntreprise IS NULL OR c.validationEntreprise = :validee')->setParameter('validee', Commandes::VALIDATION_ACCEPTEE);
         }
 
         return $requete;

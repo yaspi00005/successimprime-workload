@@ -17,7 +17,9 @@
 			<div style="font-weight:800;margin:.3rem 0">{% for l in lignes|slice(0, 2) %}{{ l.designation ?: 'Travail' }}{% if l.largeur > 0 and l.longueur > 0 %} {{ l.largeur + 0 }} × {{ l.longueur + 0 }}{% endif %} × {{ l.quantite + 0 }}{{ not loop.last ? ', ' }}{% endfor %}{% if lignes|length > 2 %} + {{ lignes|length - 2 }}{% endif %}</div>
 			<div class="ec-ligne">
 				<span class="ec-montant" style="font-size:1.15rem">{{ d.totalTtc|number_format(0, ',', ' ') }} F</span>
-				{% if d.statut == 'envoye' %}
+				{% if d.statut == 'envoye' and not (peutValider ?? true) %}
+					<span class="ec-petit">À accepter par un valideur</span>
+				{% elseif d.statut == 'envoye' %}
 					<form method="post" action="{{ path('app_espace_devis_accepter', {id: d.id}) }}" onsubmit="return confirm('Accepter le devis {{ d.numero }} ({{ d.totalTtc|number_format(0, ',', ' ') }} F) ?')">
 						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 						<button class="ec-bouton-petit">Accepter</button>

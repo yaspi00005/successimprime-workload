@@ -129,8 +129,16 @@ final class CatalogueSynchro
                 'champs' => [
                     'numero', 'dateCommande', 'dateLivraison', 'recupereParClient', 'modifieLe', 'remise', 'tva', 'totalHt', 'totalTtc',
                     'montantApayer', 'deleted', 'statut', 'etat', 'statutPaiement', 'resteAPayer', 'totalPaye', 'canal', 'modeLivraison', 'adresseLivraison',
+                    // Compte d'entreprise (maquette 19) : qui a demandé, qui a validé.
+                    'bonCommande', 'validationEntreprise', 'demandeePar', 'valideePar', 'motifRefusEntreprise',
                 ],
                 'relations' => ['clients' => 'client'], 'listes' => [], 'numero' => 'numero',
+                // Décision du valideur de l'entreprise, prise en ligne.
+                'remontees' => [
+                    'validationEntreprise' => [Commandes::VALIDATION_A_FAIRE => [Commandes::VALIDATION_ACCEPTEE, Commandes::VALIDATION_REFUSEE]],
+                    'valideePar' => ['' => ['*']],
+                    'motifRefusEntreprise' => ['' => ['*']],
+                ],
             ],
             'commande_ligne' => [
                 'classe' => CommandesDetails::class, 'sens' => self::DEUX, 'libelle' => 'Ligne de commande', 'titre' => ['designation'],

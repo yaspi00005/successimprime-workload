@@ -309,6 +309,11 @@ final class Synchro
 
                 $ecarts = !$this->enLigne && $existante !== null && $operation === SynchroJournal::MAJ && $donnees !== null
                     ? $this->serialiseur->differences($type, $existante, $donnees) : [];
+                if ($existante instanceof Commandes && $existante->isDeleted() && $existante->estRefuseeParEntreprise()) {
+                    // Demande refusée chez le client et classée ici : le site la garde
+                    // visible pour le client avec son motif, ce n'est pas un conflit.
+                    unset($ecarts['deleted']);
+                }
                 $remontees = $this->remontees($type, $ecarts);
                 if (!$this->enLigne && $existante !== null && ($operation === SynchroJournal::SUPPRESSION || \count($ecarts) > \count($remontees))) {
                     // Ce qui n'est pas repris au local est remis en ligne : la fiche du local repart.
@@ -344,9 +349,17 @@ final class Synchro
                         }
                     }
                     $this->em->persist($entite);
-                    if (!$this->enLigne && $existante === null && $entite instanceof Commandes && Commandes::CANAL_EN_LIGNE === $entite->getCanal() && !$entite->isStatut()) {
+                    if (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->attendValidationEntreprise()) {
+                        // Demande d'un employé du client : rien à faire avant l'accord de son valideur.
+                        $resultat = [self::RESULTAT_OK, 'Demande en attente de validation chez le client', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->estRefuseeParEntreprise() && !$entite->isStatut()) {
+                        // Refusée chez le client avant même d'arriver : classée, l'atelier n'en entend pas parler.
+                        $entite->setDeleted(true);
+                        $resultat = [self::RESULTAT_OK, 'Demande refusée par l\'entreprise du client', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof Commandes && Commandes::CANAL_EN_LIGNE === $entite->getCanal() && !$entite->isStatut()) {
                         $this->em->flush();
-                        $this->notifications->notifierRoles(['ROLE_COMMANDE'], \sprintf('Nouvelle commande en ligne %s : prix et fichier à vérifier, puis à confirmer.', $entite->getNumero()), 'app_commandes_show', ['id' => $entite->getId()]);
+                        $validee = null !== $entite->getValideePar() ? ', validée par ' . $entite->getValideePar() : '';
+                        $this->notifications->notifierRoles(['ROLE_COMMANDE'], \sprintf('Nouvelle commande en ligne %s%s : prix et fichier à vérifier, puis à confirmer.', $entite->getNumero(), $validee), 'app_commandes_show', ['id' => $entite->getId()]);
                         $resultat = [self::RESULTAT_OK, 'Commande passée en ligne : à confirmer', $titre];
                     }
                 } else {
@@ -420,6 +433,15 @@ final class Synchro
     {
         if ($entite instanceof Devis && Devis::STATUT_ACCEPTE === ($remontees['statut'][1] ?? null)) {
             $this->notifications->notifierRoles(['ROLE_DEVIS'], \sprintf('Devis %s accepté par le client dans son espace : à transformer en commande.', $entite->getNumero()), 'app_devis_show', ['id' => $entite->getId()]);
+        }
+        if ($entite instanceof Commandes && isset($remontees['validationEntreprise'])) {
+            if (Commandes::VALIDATION_ACCEPTEE === $remontees['validationEntreprise'][1]) {
+                $this->em->flush();
+                $this->notifications->notifierRoles(['ROLE_COMMANDE'], \sprintf('Nouvelle commande en ligne %s, validée par %s : prix et fichier à vérifier, puis à confirmer.', $entite->getNumero(), $entite->getValideePar() ?? 'le client'), 'app_commandes_show', ['id' => $entite->getId()]);
+            } elseif (!$entite->isStatut()) {
+                // Refusée par l'entreprise avant toute confirmation : elle ne vient pas à l'atelier.
+                $entite->setDeleted(true);
+            }
         }
         if ($entite instanceof Clients) {
             $libelles = ['recevoirSms' => 'Recevoir les SMS', 'consentementMarketingLe' => 'Accord pour les offres'];

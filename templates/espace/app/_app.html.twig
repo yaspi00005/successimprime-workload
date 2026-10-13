@@ -2,7 +2,8 @@
 	Espace client connecté (maquettes 13 à 19) : en-tête, contenu et
 	barre d'onglets en bas sur téléphone ; menu à gauche sur ordinateur.
 #}
-{% set prenom = moi.prenom ?: moi.nom ?: moi.raisonSociale %}
+{# Compte d'entreprise : chaque personne est saluée par son propre nom. #}
+{% set prenom = (app.user.nom|default(null) ? app.user.nom|split(' ')|first) ?: moi.prenom ?: moi.nom ?: moi.raisonSociale %}
 {% set onglets = [
 	{cle: 'accueil', route: 'app_espace_accueil', libelle: 'Accueil', icone: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'},
 	{cle: 'commandes', route: 'app_espace_commandes', libelle: 'Commandes', icone: 'M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm8 1.5V8h4.5M8 12h8M8 16h8'},
@@ -24,7 +25,7 @@
 <body class="ec">
 	<nav class="ec-menu" aria-label="Espace client">
 		<a href="{{ path('app_espace_accueil') }}" class="ec-menu-logo"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim"></a>
-		{% for o in onglets %}
+		{% for o in onglets|filter(o => o.cle != 'factures' or (peutPayer ?? true)) %}
 			<a href="{{ path(o.route) }}" class="ec-onglet{{ onglet|default('') == o.cle ? ' actif' }}"{{ onglet|default('') == o.cle ? ' aria-current="page"' }}>
 				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ o.icone }}"/></svg><span>{{ o.libelle }}</span>
 			</a>

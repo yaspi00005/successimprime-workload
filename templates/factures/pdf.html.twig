@@ -95,6 +95,7 @@
 				<div class="dates">
 					Date : {{ facture.dateFacture|date('d/m/Y') }}<br>
 					Commande : {{ commande.numero|default('CMD-' ~ commande.id) }}<br>
+					{% if commande.bonCommande %}Votre bon de commande : {{ commande.bonCommande }}<br>{% endif %}
 					Échéance : {{ facture.dateEcheance ? facture.dateEcheance|date('d/m/Y') : 'à réception' }}
 				</div>
 				{% if facture.estAnnulee %}<div style="margin-top: 6px"><span class="annulee">ANNULÉE</span></div>{% endif %}

@@ -49,7 +49,8 @@ final class EspaceClient
     public function commandes(Clients $client, int $nombre = 100): array
     {
         return $this->em->getRepository(Commandes::class)->createQueryBuilder('c')
-            ->where('c.clients = :cl')->andWhere('c.deleted = false')
+            // Une demande refusée par l'entreprise reste visible avec son motif, même classée par l'atelier.
+            ->where('c.clients = :cl')->andWhere('c.deleted = false OR c.validationEntreprise = :refusee')->setParameter('refusee', Commandes::VALIDATION_REFUSEE)
             // Ses commandes passées en ligne se voient aussi pendant que l'atelier les confirme.
             ->andWhere('c.statut = true OR c.canal = :enLigne')->setParameter('enLigne', Commandes::CANAL_EN_LIGNE)
             ->setParameter('cl', $client)->orderBy('c.id', 'DESC')->setMaxResults($nombre)
@@ -59,7 +60,10 @@ final class EspaceClient
     /** La commande du client, ou null si elle est à un autre. */
     public function commande(Clients $client, string $publicId): ?Commandes
     {
-        foreach ($this->em->getRepository(Commandes::class)->findBy(['clients' => $client, 'deleted' => false]) as $c) {
+        foreach ($this->em->getRepository(Commandes::class)->findBy(['clients' => $client]) as $c) {
+            if ($c->isDeleted() && !$c->estRefuseeParEntreprise()) {
+                continue;
+            }
             if ((string) $c->getPublicId() === $publicId && ($c->isStatut() || Commandes::CANAL_EN_LIGNE === $c->getCanal())) {
                 return $c;
             }
@@ -71,7 +75,7 @@ final class EspaceClient
     /**
      * Carte d'une commande : titre court, étapes, avancement.
      *
-     * @return array{commande: Commandes, titre: string, etapes: list<array<string, mixed>>, courante: ?array<string, mixed>, avancement: int, terminee: bool, annulee: bool, batEnAttente: bool, aConfirmer: bool}
+     * @return array{commande: Commandes, titre: string, etapes: list<array<string, mixed>>, courante: ?array<string, mixed>, avancement: int, terminee: bool, annulee: bool, batEnAttente: bool, aConfirmer: bool, aValiderEntreprise: bool, refuseeEntreprise: bool}
      */
     public function carte(Commandes $c): array
     {
@@ -92,9 +96,11 @@ final class EspaceClient
             'courante' => $courante,
             'avancement' => (int) round(100 * $faites / \count($etapes)),
             'terminee' => null === $courante,
-            'annulee' => 'annulee' === $c->getStatutTravaux(),
+            'annulee' => 'annulee' === $c->getStatutTravaux() || $c->estRefuseeParEntreprise(),
             'batEnAttente' => $this->batEnAttente($c),
             'aConfirmer' => !$c->isStatut(),
+            'aValiderEntreprise' => $c->attendValidationEntreprise(),
+            'refuseeEntreprise' => $c->estRefuseeParEntreprise(),
         ];
     }
 

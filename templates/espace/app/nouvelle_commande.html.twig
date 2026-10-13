@@ -55,6 +55,29 @@
 				<p class="ec-petit" style="margin:.5rem 0 0">Pas encore de fichier ? Commandez quand même : l'atelier vous le demandera, ou le créera pour vous.</p>
 			</div>
 
+			{% if entreprise or adresses is not empty %}
+				<div class="ec-carte">
+					{% if adresses is not empty %}
+						{% set defaut = (adresses|filter(a => a.parDefaut)|first).id|default('') %}
+						<label class="ec-etiquette" for="adresse">Livraison</label>
+						<select class="ec-saisie" id="adresse" name="adresse" style="margin-bottom:.9rem">
+							<option value="">Retrait en boutique</option>
+							{% for a in adresses %}
+								<option value="{{ a.id }}"{{ (choix.adresse ?? defaut) == a.id ? ' selected' }}>Livrer : {{ a.libelle }} · {{ a.adresse }}</option>
+							{% endfor %}
+						</select>
+					{% endif %}
+					{% if entreprise %}
+						<label class="ec-etiquette" for="bon_commande">N° de bon de commande (facultatif)</label>
+						<input class="ec-saisie" id="bon_commande" name="bon_commande" maxlength="60" value="{{ choix.bon_commande|default('') }}" autocomplete="off">
+						<p class="ec-petit" style="margin:.4rem 0 0">Il figurera sur la facture.</p>
+					{% endif %}
+					{% if demandeValidation %}
+						<p class="ec-petit" style="margin:.6rem 0 0">Votre demande sera validée par une personne de votre entreprise avant de partir à l'atelier.</p>
+					{% endif %}
+				</div>
+			{% endif %}
+
 			<div class="ec-carte">
 				<label class="ec-etiquette" for="note">Précisions pour l'atelier (facultatif)</label>
 				<textarea class="ec-champ" id="note" name="note" maxlength="1000" placeholder="Ex. : couleurs du logo, date souhaitée, livraison">{{ choix.note|default('') }}</textarea>
@@ -62,7 +85,7 @@
 
 			<div class="ec-total">
 				<div><span class="ec-petit">Total TTC indicatif</span><div class="ec-gros" id="total">—</div></div>
-				<button class="ec-bouton" id="commander">Commander</button>
+				<button class="ec-bouton" id="commander">{{ demandeValidation ? 'Envoyer la demande' : 'Commander' }}</button>
 			</div>
 			<p class="ec-petit" id="erreur" role="alert" style="color:var(--rouge);text-align:center"></p>
 			<p class="ec-petit" style="text-align:center">Prix indicatif : l'atelier le confirme avec votre fichier avant de lancer l'impression.</p>

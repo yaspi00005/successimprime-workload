@@ -11,6 +11,7 @@
 
 | Donnée | Sens | Règle |
 |---|---|---|
+| Entreprises : code, raison sociale, nom commercial, mentions, adresse, téléphone, e-mail, site, RCCM, NIF, numéro marchand Orange Money, couleurs | local → site | Pour le pied de page et le bouton WhatsApp du site vitrine. Restent au local : banque, compte bancaire, numérotation, logos, cachet et signature. |
 | Catégories, types d'impression, finitions (sans le coût), formats, supports, produits, configurations de produit et leurs finitions proposées (prix de vente) | local → site | Le local est maître : le site reçoit et remplace. |
 | Clients | local → site, et site → local pour les **nouveaux** clients | Une modification faite en ligne d'un client du local n'est pas appliquée : elle est notée **Conflit** dans le journal, la fiche du local est gardée. |
 | Commandes et leurs lignes | local → site, et site → local pour les **nouvelles** commandes | Restent au local : note interne, agents, coût de revient, temps, machine, rebuts, notes d'atelier. Une commande créée en ligne n'a pas d'agent ; elle arrive en brouillon « à confirmer », avec la demande écrite par le client sur la ligne, et le rôle Commandes est prévenu. |

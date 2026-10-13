@@ -148,6 +148,24 @@ security:
             roles: PUBLIC_ACCESS
         }
 
+        # Site vitrine (maquettes 01 à 12, docs/site-vitrine.md). « / » est
+        # l'accueil du site pour un visiteur en ligne ; sinon le tableau de
+        # bord, qui renvoie lui-même vers la connexion (DashboardController).
+        - {
+            path: '^/$',
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: '^/(site|nos-produits|calculateur|realisations|equipements|guide-fichiers|a-propos|nos-engagements|faq|suivre-ma-commande|contact|conseils|demander-un-devis)(/|$)',
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: '^/(sitemap\.xml|robots\.txt)$',
+            roles: PUBLIC_ACCESS
+        }
+
         # Espace client : connexion, création de compte et suivi sans compte
         - {
             path: ^/espace/(connexion|code|creer-compte|suivre)$,

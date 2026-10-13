@@ -1,0 +1,64 @@
+{#
+	Accueil du site vitrine (maquette 01) : accroche, univers d'impression
+	(catégories publiées), engagements. Les pages pas encore construites
+	n'ont pas de lien (site_lien renvoie null).
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_accueil' %}
+{% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
+{% set calculateur = site_lien('app_site_calculateur') %}
+
+{% block title %}Succès Imprim · Nous imprimons vos succès à Bamako{% endblock %}
+
+{% block contenu %}
+	<section class="si-accroche">
+		<div class="si-cadre si-accroche-cadre">
+			<div class="si-accroche-texte">
+				<h1>Nous imprimons <span>vos succès&nbsp;!</span></h1>
+				<p>Banderoles, roll-up, Door Shape, textile DTF et cartes de visite. Grand format jusqu'à 3,20&nbsp;m, BAT avant chaque impression.</p>
+				<div class="si-accroche-actions">
+					{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge si-bouton-grand">Demander un devis</a>{% endif %}
+					{% if calculateur %}<a href="{{ calculateur }}" class="si-bouton si-bouton-clair si-bouton-grand">Calculer mon prix</a>{% endif %}
+					{% if not devis and not calculateur %}<a href="{{ path('app_espace_connexion') }}" class="si-bouton si-bouton-rouge si-bouton-grand">Ouvrir mon espace client</a>{% endif %}
+				</div>
+				<ul class="si-accroche-preuves">
+					<li>BAT avant impression</li>
+					<li>Réimpression si défaut</li>
+					<li>Paiement Orange Money</li>
+				</ul>
+			</div>
+			{{ include('site/_illustration_accueil.svg.twig') }}
+		</div>
+	</section>
+
+	{% if univers %}
+		<section class="si-univers" aria-label="Nos univers d'impression">
+			<div class="si-cadre si-univers-grille">
+				{% for u in univers %}
+					{% set lien = site_lien('app_site_calculateur', {categorie: u.categorie.id}) ?? site_lien('app_site_produits') %}
+					<article class="si-univers-carte si-famille-{{ u.famille }}">
+						<span class="si-univers-icone" aria-hidden="true">{{ include('site/_icone_famille.svg.twig', {famille: u.famille}) }}</span>
+						<h2>{{ u.nom }}</h2>
+						<p>{{ u.exemples }}</p>
+						{% if lien %}<a href="{{ lien }}">Calculer mon prix <span aria-hidden="true">→</span></a>{% endif %}
+					</article>
+				{% endfor %}
+			</div>
+		</section>
+	{% endif %}
+
+	<section class="si-engagements-bande" aria-label="Nos engagements">
+		<div class="si-cadre">
+			<ul>
+				<li><strong>BAT avant impression</strong><span>Rien n'est imprimé sans votre accord</span></li>
+				<li><strong>Réimpression garantie</strong><span>En cas de défaut de notre fait</span></li>
+				<li><strong>Délai annoncé</strong><span>Indiqué dès la commande</span></li>
+				<li><strong>Orange Money Mali</strong><span>Facture officielle et reçu immédiat</span></li>
+			</ul>
+			{% if site_lien('app_site_engagements') %}<p class="si-engagements-lien"><a href="{{ site_lien('app_site_engagements') }}">Tous nos engagements <span aria-hidden="true">→</span></a></p>{% endif %}
+		</div>
+	</section>
+
+	{% block apres_engagements %}{% endblock %}
+{% endblock %}

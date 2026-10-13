@@ -15,6 +15,7 @@ use App\Entity\CommandesDetails;
 use App\Entity\Devis;
 use App\Entity\DevisDetailFinition;
 use App\Entity\DevisDetails;
+use App\Entity\Entreprise;
 use App\Entity\Factures;
 use App\Entity\Paiements;
 use App\Entity\Finition;
@@ -74,6 +75,13 @@ final class CatalogueSynchro
     public static function types(): array
     {
         return [
+            // Coordonnées publiques (site vitrine, contact WhatsApp, numéro marchand Orange Money).
+            // Banque, numérotation, logos et signature restent au local.
+            'entreprise' => [
+                'classe' => Entreprise::class, 'sens' => self::DESCENDANT, 'libelle' => 'Entreprise', 'titre' => ['code'],
+                'champs' => ['code', 'raisonSociale', 'nomCommercial', 'mention', 'activite', 'adresse', 'telephone', 'email', 'siteWeb', 'rccm', 'nif', 'marchandOrangeMoney', 'couleurs', 'actif', 'ordre'],
+                'relations' => [], 'listes' => [],
+            ],
             'categorie' => [
                 'classe' => CategorieProduit::class, 'sens' => self::DESCENDANT, 'libelle' => 'Catégorie', 'titre' => ['nom'],
                 'champs' => ['nom', 'description', 'publie', 'ordre'],

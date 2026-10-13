@@ -3,6 +3,7 @@
 namespace App\Tests\Unit\Service\Synchro;
 
 use App\Entity\BonLivraison;
+use App\Entity\Entreprise;
 use App\Entity\Clients;
 use App\Entity\Finition;
 use App\Entity\Paiements;
@@ -41,6 +42,7 @@ final class CatalogueSynchroTest extends TestCase
             'paiement' => ['compteTresorerie', 'mouvementTresorerie', 'justificatif', 'observation', 'encaissePar', 'validePar'],
             'livraison' => ['livreur', 'creePar', 'validePar', 'livrePar', 'nomReceptionnaire', 'telephoneReceptionnaire', 'adresseLivraison', 'observation', 'photos', 'signature',
                 'signataire', 'encaisseMontant', 'encaisseMode', 'encaisseLe', 'paiementLivraison', 'remiseLatitude', 'remiseLongitude', 'retardJustifie', 'erreurLivraison', 'articleStock', 'ordreTournee'],
+            'entreprise' => ['banque', 'compteBancaire', 'prefixeFacture', 'compteur', 'logo', 'logoPied', 'signature', 'cachet'],
         ];
         foreach ($interdits as $type => $champs) {
             foreach ($champs as $champ) {
@@ -54,6 +56,9 @@ final class CatalogueSynchroTest extends TestCase
         self::assertFalse(CatalogueSynchro::accepte('livraison', false));
         self::assertNotContains('observation', $types['livraison']['enfants']['lignes']['champs']);
         self::assertSame('livraison', CatalogueSynchro::typeDe(new BonLivraison()));
+        // Les coordonnées de l'entreprise ne se modifient pas en ligne.
+        self::assertFalse(CatalogueSynchro::accepte('entreprise', false));
+        self::assertSame('entreprise', CatalogueSynchro::typeDe(new Entreprise()));
     }
 
     public function testUnPaiementSaisiEnLigneResteAValider(): void

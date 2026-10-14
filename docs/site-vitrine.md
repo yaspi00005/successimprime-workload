@@ -46,6 +46,7 @@ Le pied de page affiche « Succès Imprim est un nom commercial de Madial Group 
 - /robots.txt : en ligne, tout est permis sauf l'espace client, la connexion, l'API et les liens privés ; sur l'ERP local, tout est interdit et les pages portent `noindex`.
 - Chaque page a son titre, sa description, son adresse canonique et ses balises Open Graph. Le gabarit ajoute la fiche de l'imprimerie pour Google (JSON-LD LocalBusiness : nom, raison sociale, adresse, téléphone, horaires du réglage « Horaires »).
 - Mesure du 13/10/2026, accueil en ligne sur un téléphone en « 3G normale » (750 kb/s, 100 ms), sans cache : 30 Ko, premier affichage en 0,5 s, page chargée en 0,6 s.
+- Mesure du 14/10/2026 en production (APP_ENV=prod), téléphone en « Fast 3G » des outils Chrome (1,4 Mb/s, 562 ms) et processeur ralenti 4 fois, sans cache : accueil 69 Ko, affiché en 1,4 s ; réalisations 79 Ko, 1,6 s ; produits et calculateur 65 à 67 Ko, 1,4 s. En revenant sur une page : 0,8 à 1,4 s.
 
 ## Ce que le site n'affiche jamais
 

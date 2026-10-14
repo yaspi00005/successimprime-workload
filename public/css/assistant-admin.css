@@ -1,0 +1,59 @@
+/*
+ * Clients › Assistant du site (docs/assistant-client.md) : conversations,
+ * une conversation, analyse. Sobre, sur le modèle de Sondages et avis.
+ */
+.as-ad { display: flex; flex-direction: column; gap: 20px; }
+.as-ad h2 { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+.as-ad .card { padding: 18px 20px; margin: 0; height: auto; }
+
+.as-ad-sousnav, .as-ad-filtres { display: flex; flex-wrap: wrap; gap: 8px; }
+.as-ad-sousnav a { padding: 8px 15px; border-radius: 999px; background: #fff; color: #334155; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+.as-ad-sousnav a:hover { color: #0F4590; }
+.as-ad-sousnav a.actif { background: #0F4590; color: #fff; }
+.as-ad-filtres { margin-bottom: 10px; }
+.as-ad-filtres a { padding: 5px 12px; border-radius: 999px; border: 1px solid #E2E8F0; color: #334155; font-size: 13px; font-weight: 600; text-decoration: none; background: #fff; }
+.as-ad-filtres a:hover { border-color: #0F4590; color: #0F4590; }
+.as-ad-filtres a.actif { background: #0F4590; border-color: #0F4590; color: #fff; }
+.as-ad-recherche { display: flex; gap: 8px; max-width: 420px; margin-bottom: 14px; }
+.as-ad-periode select { min-width: 170px; font-weight: 600; border-radius: 10px; }
+
+.as-ad-table { margin: 0; }
+.as-ad-table thead th { font-size: 13px; color: #64748B; font-weight: 600; text-transform: none; letter-spacing: 0; background: #F8FAFC; border-bottom: 0; padding: 10px 8px; white-space: nowrap; }
+.as-ad-table td { vertical-align: middle; padding: 11px 8px; color: #0F172A; border-color: #EEF2F7; }
+.as-ad-table td small { display: block; color: #64748B; font-size: 12px; }
+.as-ad-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.as-ad-question { max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-ad-pouces { white-space: nowrap; font-size: 13px; }
+.as-ad-pouces span + span { margin-left: 8px; }
+.as-ad-vert { color: #178444; }
+.as-ad-rouge { color: #C40D22; }
+.as-ad-gris { color: #64748B; }
+.as-ad-vide { color: #64748B; margin: 0; }
+.as-ad-note { font-size: 12.5px; color: #64748B; margin: 12px 0 0; }
+
+.as-ad-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
+.as-ad-kpi h2 { font-size: 14px; font-weight: 500; color: #475569; margin: 0 0 6px; }
+.as-ad-kpi strong { display: block; font-size: clamp(22px, 2vw, 28px); font-weight: 800; color: #0F172A; white-space: nowrap; }
+.as-ad-kpi span { display: block; margin-top: 4px; font-size: 13px; color: #64748B; }
+.as-ad-deux { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.as-ad-liste { list-style: none; margin: 0; padding: 0; }
+.as-ad-liste > li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; font-size: 14px; }
+.as-ad-liste > li + li { border-top: 1px solid #EEF2F7; }
+.as-ad-liste b { font-variant-numeric: tabular-nums; }
+.as-ad-liste small { display: block; color: #64748B; font-size: 12px; }
+.as-ad-barre { display: block; height: 6px; margin-top: 4px; border-radius: 3px; background: #E5EEFA; }
+.as-ad-barre i { display: block; height: 100%; border-radius: 3px; background: #0F4590; }
+.as-ad-jauge { height: 8px; border-radius: 4px; background: #EEF0F3; margin: 8px 0 4px; overflow: hidden; }
+.as-ad-jauge i { display: block; height: 100%; background: #0F4590; }
+.as-ad-jauge.as-ad-pleine i { background: #C40D22; }
+
+/* Une conversation : les messages dans l'ordre, le détail technique replié. */
+.as-ad-fil { display: flex; flex-direction: column; gap: 10px; }
+.as-ad-msg { max-width: 760px; padding: 10px 14px; border-radius: 12px; background: #F5F7FB; border: 1px solid #E3E7EF; }
+.as-ad-msg.as-ad-client { align-self: flex-end; background: #EAF1FC; border-color: #D3E1F6; }
+.as-ad-msg p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.as-ad-msg footer { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-top: 6px; font-size: 12px; color: #64748B; }
+
+@media (max-width: 991px) {
+  .as-ad-deux { grid-template-columns: 1fr; }
+}

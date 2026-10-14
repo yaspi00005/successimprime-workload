@@ -68,6 +68,11 @@ final class VerificationInstallation
             $noter(match ($om) { 'complet' => self::OK, 'vide' => self::A_VOIR, default => self::ERREUR }, 'Orange Money', match ($om) { 'complet' => 'clés renseignées', 'vide' => 'pas de clés : paiement en ligne désactivé', default => 'clés incomplètes' });
             $push = self::groupe($v, ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY']);
             $noter(match ($push) { 'complet' => self::OK, 'vide' => self::A_VOIR, default => self::ERREUR }, 'Notifications (VAPID)', match ($push) { 'complet' => 'clés renseignées', 'vide' => 'pas de clés : les clients ne reçoivent pas de notifications sur leur téléphone', default => 'clé publique ou privée manquante' });
+            $cleIa = $v('ANTHROPIC_API_KEY');
+            $noter('' === $cleIa ? self::A_VOIR : (str_starts_with($cleIa, 'sk-ant-') ? self::OK : self::ERREUR), 'Assistant du site (ANTHROPIC_API_KEY)', '' === $cleIa ? 'pas de clé : l\'assistant est caché' : (str_starts_with($cleIa, 'sk-ant-') ? 'clé renseignée' : 'ne ressemble pas à une clé de l\'API Claude (sk-ant-…)'));
+            if (self::vrai($v('ASSISTANT_DEMO'))) {
+                $noter(self::ERREUR, 'ASSISTANT_DEMO', 'à retirer : les réponses de démonstration ne servent qu\'au poste de développement');
+            }
         } else {
             $synchro = self::groupe($v, ['SYNC_URL', 'SYNC_CLE']);
             if ('complet' === $synchro && !str_starts_with($v('SYNC_URL'), 'https://')) {
@@ -78,6 +83,9 @@ final class VerificationInstallation
             $noter('' !== $v('SAUVEGARDE_COPIE_DIR') ? self::OK : self::A_VOIR, 'Copie des sauvegardes', '' !== $v('SAUVEGARDE_COPIE_DIR') ? 'second disque renseigné' : 'SAUVEGARDE_COPIE_DIR vide : pas de copie sur un second disque');
             $noter('' !== $v('SAUVEGARDE_CLE_HORS_SITE') ? self::OK : self::A_VOIR, 'Sauvegarde hors site', '' !== $v('SAUVEGARDE_CLE_HORS_SITE') ? 'clé renseignée' : 'pas de clé : pas de copie chiffrée hors de l\'atelier');
             $noter('complet' === $sms ? self::OK : self::A_VOIR, 'SMS Orange', 'complet' === $sms ? 'renseignés' : 'pas de SMS (rappels, codes) depuis l\'ERP local');
+            if ('' !== $v('ANTHROPIC_API_KEY')) {
+                $noter(self::A_VOIR, 'ANTHROPIC_API_KEY', 'inutile ici : l\'assistant ne tourne que sur le site en ligne, retirer la clé de l\'ERP local');
+            }
         }
 
         return $resultats;
@@ -98,6 +106,11 @@ final class VerificationInstallation
             0 => 'vide',
             default => 'partiel',
         };
+    }
+
+    private static function vrai(string $valeur): bool
+    {
+        return \in_array(strtolower($valeur), ['1', 'true', 'on', 'yes'], true);
     }
 
     /** @param list<array{statut: string}> $resultats */

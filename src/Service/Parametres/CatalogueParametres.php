@@ -362,6 +362,27 @@ final class CatalogueParametres
                 'roles' => ['ROLE_ADMIN', 'ROLE_SITE_VITRINE'], 'route' => 'app_site_contenu_index', 'champs' => [],
                 'motsCles' => ['Pages du site · équipements, guide, à propos, engagements, FAQ', 'Réalisations et photos', 'Avis clients · conseils', 'Partenaires · chiffres du site'],
             ],
+            // Assistant du site et de l'espace client (docs/assistant-client.md), périmètre validé par Yaya le 10/10/2026.
+            'assistant' => [
+                'famille' => 'clients', 'libelle' => 'Assistant du site', 'icone' => 'fa-comments',
+                'roles' => ['ROLE_ADMIN', 'ROLE_ASSISTANT'], 'route' => 'app_assistant_conversations',
+                'champs' => [
+                    ['cle' => 'actif', 'type' => 'interrupteur', 'libelle' => 'Assistant sur le site et l\'espace client', 'aide' => 'Caché tant que la clé de l\'API n\'est pas posée sur le serveur en ligne.', 'defaut' => false],
+                    ['cle' => 'message_accueil', 'type' => 'texte', 'libelle' => 'Message d\'accueil', 'defaut' => 'Bonjour ! Posez votre question : produits, prix, horaires ou suivi de vos commandes.'],
+                    ['cle' => 'limite_jour', 'type' => 'nombre', 'libelle' => 'Plafond de dépense par jour', 'aide' => 'Atteinte, l\'assistant renvoie vers WhatsApp jusqu\'à minuit.', 'suffixe' => 'F', 'min' => 0, 'max' => 1000000, 'defaut' => 5000],
+                    ['cle' => 'whatsapp', 'type' => 'texte', 'libelle' => 'WhatsApp des conseillers', 'aide' => 'Vide : le téléphone de l\'entité Succès Imprim.', 'defaut' => ''],
+                    ['cle' => 'delais', 'type' => 'texte', 'libelle' => 'Délais à annoncer', 'aide' => 'Vide : « annoncé à la validation du BAT ». L\'assistant ne promet rien d\'autre.', 'defaut' => ''],
+                    ['cle' => 'modele', 'type' => 'choix', 'libelle' => 'Modèle', 'aide' => 'Vaut pour les nouvelles conversations. ASSISTANT_MODELE sur le serveur l\'emporte.', 'options' => ['claude-opus-5-5' => 'Opus 5.5 (conseillé)', 'claude-sonnet-5-5' => 'Sonnet 5.5', 'claude-haiku-5-5' => 'Haiku 5.5'], 'defaut' => 'claude-opus-5-5'],
+                    ['cle' => 'effort', 'type' => 'choix', 'libelle' => 'Effort de réflexion', 'options' => ['low' => 'Faible (conseillé)', 'medium' => 'Moyen', 'high' => 'Élevé'], 'defaut' => 'low'],
+                    ['cle' => 'taux_usd', 'type' => 'nombre', 'libelle' => 'Taux du dollar', 'suffixe' => 'F pour 1 $', 'min' => 1, 'max' => 5000, 'defaut' => 600],
+                    ['cle' => 'prix_entree', 'type' => 'nombre', 'libelle' => 'Tarif : entrée', 'aide' => 'En dollars par million de jetons. Opus 5.5 : 4 / 20 / 0,20 / 5 ; Sonnet 5.5 : 2 / 10 / 0,20 / 2,50 ; Haiku 5.5 : 0,10 / 0,50 / 0,01 / 0,125.', 'suffixe' => '$ / M', 'min' => 0, 'max' => 1000, 'decimales' => 3, 'defaut' => 4],
+                    ['cle' => 'prix_sortie', 'type' => 'nombre', 'libelle' => 'Tarif : sortie', 'suffixe' => '$ / M', 'min' => 0, 'max' => 1000, 'decimales' => 3, 'defaut' => 20],
+                    ['cle' => 'prix_cache_lecture', 'type' => 'nombre', 'libelle' => 'Tarif : lecture du cache', 'suffixe' => '$ / M', 'min' => 0, 'max' => 1000, 'decimales' => 3, 'defaut' => 0.2],
+                    ['cle' => 'prix_cache_ecriture', 'type' => 'nombre', 'libelle' => 'Tarif : écriture du cache', 'suffixe' => '$ / M', 'min' => 0, 'max' => 1000, 'decimales' => 3, 'defaut' => 5],
+                ],
+                'motsCles' => ['Assistant du site · questions des clients', 'Plafond de dépense par jour', 'Passage à un conseiller sur WhatsApp', 'Modèle Claude · tarif · taux du dollar'],
+                'note' => 'Plafond atteint : l\'assistant renvoie vers WhatsApp jusqu\'à minuit (0 l\'arrête). WhatsApp vide : le téléphone de l\'entité ; délais vides : « annoncés à la validation du BAT ». Tarifs en dollars par million de jetons, ceux du modèle choisi (Opus 5.5 : 4 / 20 / 0,20 / 5 ; Sonnet 5.5 : 2 / 10 / 0,20 / 2,50 ; Haiku 5.5 : 0,10 / 0,50 / 0,01 / 0,125). Conversations et analyse : Clients › Assistant du site, avec le droit « Assistant du site ». La clé de l\'API se pose dans .env.local du serveur en ligne (docs/deploiement.md).',
+            ],
 
             // ---------- Sécurité et système ----------
             'appareils' => [

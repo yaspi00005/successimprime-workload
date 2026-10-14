@@ -123,6 +123,7 @@ security:
             - ROLE_SITE_VITRINE
             - ROLE_PROMOTIONS
             - ROLE_COMPTABILITE
+            - ROLE_ASSISTANT
             
 
 
@@ -168,6 +169,13 @@ security:
 
         - {
             path: '^/(sitemap\.xml|robots\.txt)$',
+            roles: PUBLIC_ACCESS
+        }
+
+        # Assistant du site (docs/assistant-client.md) : questions des visiteurs
+        # sans compte, en JSON, sans session.
+        - {
+            path: '^/assistant/(message|note|historique)$',
             roles: PUBLIC_ACCESS
         }
 

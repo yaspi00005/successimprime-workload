@@ -93,8 +93,12 @@ Fichier `/srv/successimprim/.env.local` (droits 600, propriétaire `succes`). Le
 | VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT | notifications sur le téléphone des clients (`app:push:cles`) |
 | MAILER_DSN, MAILER_FROM_ADDRESS | envoi des e-mails |
 | SAUVEGARDE_DIR | dossier des sauvegardes du serveur |
+| ANTHROPIC_API_KEY | clé de l'API Claude (console Anthropic, « sk-ant-… ») pour l'assistant du site et de l'espace client (docs/assistant-client.md). Sans elle, l'assistant est caché |
+| ASSISTANT_MODELE | facultatif : impose un modèle à l'assistant (par défaut celui de la tuile Réglages › Assistant du site) |
 
-`SAUVEGARDE_CLE_HORS_SITE` ne va **jamais** sur le serveur en ligne : elle reste sur l'ERP local.
+`SAUVEGARDE_CLE_HORS_SITE` ne va **jamais** sur le serveur en ligne : elle reste sur l'ERP local. À l'inverse, `ANTHROPIC_API_KEY` ne va que sur le serveur en ligne : l'ERP local n'en a pas besoin. `ASSISTANT_DEMO` (réponses de démonstration sans API) ne sert qu'en développement : jamais sur un serveur en service.
+
+Pour l'assistant, le serveur doit pouvoir appeler `https://api.anthropic.com` en HTTPS. Mettre un plafond de dépense mensuel dans la console Anthropic, en plus du plafond par jour de la tuile.
 
 Puis :
 
@@ -171,6 +175,7 @@ Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trés
 - [ ] Un membre du personnel se connecte en ligne avec son appareil autorisé et le code SMS.
 - [ ] Un client se connecte à son espace et voit ses commandes.
 - [ ] Un paiement Orange Money de test arrive « en attente » au local.
+- [ ] Assistant : la clé posée (`app:verifier-installation`), la tuile Réglages › Assistant du site allumée au local et descendue en ligne ; une question sur le site reçoit une réponse, et la conversation arrive dans Clients › Assistant du site au local.
 - [ ] Une sauvegarde du serveur existe et se restaure (docs/sauvegardes.md).
 
 ## Mettre à jour

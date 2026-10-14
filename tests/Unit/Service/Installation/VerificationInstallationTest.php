@@ -16,6 +16,7 @@ final class VerificationInstallationTest extends TestCase
             'APP_ENV' => 'prod', 'APP_SECRET' => str_repeat('s3', 20), 'DEFAULT_URI' => 'https://succesimprim.com', 'MAILER_DSN' => 'smtp://relais',
             'SYNC_CLE' => str_repeat('k8', 32), 'ORANGE_SMS_CLIENT_ID' => 'id-sms-7Qx', 'ORANGE_SMS_CLIENT_SECRET' => 'secret-sms-9Zk',
             'ORANGE_MONEY_CLIENT_ID' => 'a', 'ORANGE_MONEY_CLIENT_SECRET' => 'b', 'ORANGE_MONEY_MERCHANT_KEY' => 'c', 'VAPID_PUBLIC_KEY' => 'BPub-5Rt', 'VAPID_PRIVATE_KEY' => 'priv-vapid-3Wm',
+            'ANTHROPIC_API_KEY' => 'sk-ant-essai-4Hv',
         ];
     }
 
@@ -44,7 +45,7 @@ final class VerificationInstallationTest extends TestCase
         $env = self::enLigne();
         $texte = json_encode(V::verifier($env, self::PHP, true));
 
-        foreach (['APP_SECRET', 'SYNC_CLE', 'ORANGE_SMS_CLIENT_SECRET', 'VAPID_PRIVATE_KEY'] as $cle) {
+        foreach (['APP_SECRET', 'SYNC_CLE', 'ORANGE_SMS_CLIENT_SECRET', 'VAPID_PRIVATE_KEY', 'ANTHROPIC_API_KEY'] as $cle) {
             self::assertStringNotContainsString($env[$cle], (string) $texte, $cle);
         }
     }
@@ -65,6 +66,19 @@ final class VerificationInstallationTest extends TestCase
         // Une clé oubliée en copiant est une erreur ; aucune clé désactive seulement la fonction.
         self::assertSame(V::ERREUR, self::statut($resultats, 'Orange Money'));
         self::assertSame(V::A_VOIR, self::statut($resultats, 'Notifications (VAPID)'));
+    }
+
+    public function testCleDeLAssistant(): void
+    {
+        $env = self::enLigne();
+        unset($env['ANTHROPIC_API_KEY']);
+        self::assertSame(V::A_VOIR, self::statut(V::verifier($env, self::PHP, true), 'Assistant du site (ANTHROPIC_API_KEY)'));
+        self::assertSame(V::ERREUR, self::statut(V::verifier(['ANTHROPIC_API_KEY' => 'abc'] + $env, self::PHP, true), 'Assistant du site (ANTHROPIC_API_KEY)'));
+
+        // Les réponses de démonstration ne vont jamais en ligne ; la clé ne reste pas sur l'ERP local.
+        self::assertSame(V::ERREUR, self::statut(V::verifier(['ASSISTANT_DEMO' => '1'] + self::enLigne(), self::PHP, true), 'ASSISTANT_DEMO'));
+        self::assertNull(self::statut(V::verifier(['ASSISTANT_DEMO' => '0'] + self::enLigne(), self::PHP, true), 'ASSISTANT_DEMO'));
+        self::assertSame(V::A_VOIR, self::statut(V::verifier(['APP_ENV' => 'prod', 'APP_SECRET' => str_repeat('s', 40), 'ANTHROPIC_API_KEY' => 'sk-ant-x'], self::PHP, false), 'ANTHROPIC_API_KEY'));
     }
 
     public function testEnLigneHttpsEtProdObligatoires(): void

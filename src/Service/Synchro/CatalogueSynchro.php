@@ -2,6 +2,8 @@
 
 namespace App\Service\Synchro;
 
+use App\Entity\AssistantConversation;
+use App\Entity\AssistantMessage;
 use App\Entity\BonLivraison;
 use App\Entity\BonLivraisonLigne;
 use App\Entity\CategorieProduit;
@@ -102,6 +104,8 @@ final class CatalogueSynchro
         'site_contact' => ['lien_plan'],
         // Le coût d'une image chez le fournisseur (cout_image) reste au local.
         'conception' => ['ia_active', 'prix_image', 'finalisation', 'packs', 'plafond_jour', 'limite_heure'],
+        // L'assistant tourne en ligne : tous ses réglages y servent (docs/assistant-client.md).
+        'assistant' => ['actif', 'message_accueil', 'limite_jour', 'whatsapp', 'delais', 'modele', 'effort', 'taux_usd', 'prix_entree', 'prix_sortie', 'prix_cache_lecture', 'prix_cache_ecriture'],
     ];
 
     /** Geste « réglages du local » (local → site) et « changement proposé » (admin en ligne → local). */
@@ -487,6 +491,23 @@ final class CatalogueSynchro
                 'relations' => ['client' => 'client', 'commande' => 'commande', 'paiement' => 'paiement'], 'listes' => [],
                 // Un achat payé au numéro marchand ne part qu'une fois acquis ; ensuite il ne change plus.
                 'pret' => static fn (MouvementCreditIa $m): bool => $m->estAcquis(),
+            ],
+            // Conversations avec l'assistant du site et de l'espace client (docs/assistant-client.md) : montent
+            // au local pour Clients › Assistant du site, ne redescendent pas. Le jeton du visiteur, le compte
+            // connecté, les échanges exacts avec l'API et les boutons proposés restent en ligne.
+            'assistant_conversation' => [
+                'classe' => AssistantConversation::class, 'sens' => self::ASCENDANT, 'libelle' => 'Conversation de l\'assistant', 'titre' => ['numero'],
+                'champs' => ['numero', 'contexte', 'interlocuteur', 'page', 'modele', 'debutLe', 'derniereLe', 'nombreQuestions', 'passageAgentLe'],
+                'relations' => ['client' => 'client'], 'listes' => [], 'numero' => 'numero',
+                // La conversation continue en ligne après sa création.
+                'remontees' => ['numero' => ['' => ['*']], 'derniereLe' => null, 'nombreQuestions' => null, 'passageAgentLe' => null],
+            ],
+            'assistant_message' => [
+                'classe' => AssistantMessage::class, 'sens' => self::ASCENDANT, 'libelle' => 'Message de l\'assistant', 'titre' => [],
+                'champs' => ['role', 'texte', 'issue', 'outils', 'note', 'modele', 'jetonsEntree', 'jetonsSortie', 'jetonsCacheLecture', 'jetonsCacheEcriture', 'depenseUsd', 'depenseFcfa', 'creeLe'],
+                'relations' => ['conversation' => 'assistant_conversation'], 'listes' => [],
+                // Le pouce est donné après la réponse.
+                'remontees' => ['note' => null],
             ],
         ];
     }

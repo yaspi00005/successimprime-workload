@@ -86,7 +86,7 @@ Chaque personne a un score sur 100 par mois. Sa prime est un pourcentage de la p
 - saisi : l'appréciation du responsable (note et commentaire visible par l'agent).
 
 **Évaluation (N02)** — `/equipe/primes/agent/{id}` :
-- **Données manquantes** : un critère sans données dans le mois (aucun avis, aucun devis, aucune vente enregistrée…) n'est pas noté 0. Son poids est réparti au prorata sur les autres, la colonne Poids montre le poids appliqué et la fiche nomme les critères concernés.
+- **Données manquantes** : un critère sans données dans le mois (aucun avis, aucun devis…) n'est pas noté 0. Son poids est réparti au prorata sur les autres, la colonne Poids montre le poids appliqué et la fiche nomme les critères concernés.
 - Le score se calcule en direct jusqu'à la validation.
 - **« Valider l'évaluation »** (le responsable ou l'admin, une fois le mois terminé ; appréciation obligatoire si la tuile l'exige) fige la photo des critères.
 - **Recalcul** : une évaluation validée ne change plus. « Recalculer » crée une version 2, 3… avec un motif obligatoire ; la version précédente reste en vigueur jusqu'à la validation de la nouvelle. L'historique garde toutes les versions.
@@ -133,7 +133,7 @@ Chaque personne a un score sur 100 par mois. Sa prime est un pourcentage de la p
 ## Ce qui reste
 
 - **Comptes d'essai** : la base de développement a des comptes et des machines d'essai (pas de démo) qui apparaissent dans M01 et N01. Sur la vraie base, désactiver les comptes inutilisés ou leur mettre « Pas de prime ».
-- **Ventes à 0** : un mois sans aucune vente enregistrée est traité comme « pas de données » (poids réparti), pas comme 0. À confirmer avec Yaya pour les commerciaux.
+- **Ventes à 0** : pour qui a un objectif de ventes, un mois sans vente compte 0 sur le critère Ventes (choix recommandé à Yaya le 14/10/2026 ; l'autre option était « pas de données », poids réparti). Sans objectif, le critère n'est pas noté.
 - **Surface des pièces** : sans dimensions sur la ligne de commande, l'usage prend la surface du format (A5, carte 85 × 55…) ; un format « taille unique » ne compte rien.
 - **Comptabilité par société** : les dotations sont dans le journal unique en attendant `docs/societes.md`.
 - **Relevés par l'atelier** : donner à la gestion de production une entrée vers la saisie des relevés (par exemple une alerte « relevé à saisir » sur son écran Production).

@@ -83,11 +83,8 @@ final class MesuresPrime
         if ($objectif <= 0) {
             return ['note' => null, 'mesure' => 'pas d\'objectif de ventes'];
         }
-        $realise = (int) round($this->objectifs->realises('ca', 'agent', $debut, $fin, $agent)[(int) $agent->getId()] ?? 0);
-        if ($realise <= 0) {
-            // Comme « aucun devis » ou « aucun avis » : pas de données, le poids va aux autres critères.
-            return ['note' => null, 'mesure' => 'aucune vente enregistrée', 'reste' => (int) $objectif];
-        }
+        // Un mois sans vente compte 0 pour qui a un objectif de ventes : pour un vendeur, c'est un résultat.
+        $realise = max(0, (int) round($this->objectifs->realises('ca', 'agent', $debut, $fin, $agent)[(int) $agent->getId()] ?? 0));
         $note = CalculPrime::noteObjectif($realise, $objectif);
 
         return [

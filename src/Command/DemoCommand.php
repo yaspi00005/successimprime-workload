@@ -35,6 +35,10 @@ final class DemoCommand extends Command
         "DELETE a FROM promotion_anniversaire a JOIN clients c ON c.id = a.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
         "DELETE p FROM promotion p JOIN promotion_client pc ON pc.promotion_id = p.id JOIN clients c ON c.id = pc.clients_id WHERE p.origine = 'anniversaire' AND (c.code LIKE 'DEMO-%' OR c.id >= 900000)",
         "DELETE FROM promotion WHERE note LIKE 'Démo : %'",
+        // Patrimoine et primes : dotations et évaluations calculées après le chargement.
+        'DELETE FROM dotation_amortissement WHERE immobilisation_id >= 900000',
+        'DELETE FROM evaluation_prime WHERE agent_id >= 900000',
+        'DELETE FROM prime_agent WHERE agent_id >= 900000',
     ];
 
     public function __construct(
@@ -98,6 +102,9 @@ final class DemoCommand extends Command
             $this->lancer('app:fidelite', ['--demo' => true], $output);
             $this->lancer('app:promotions', ['--demo' => true], $output);
             $this->lancer('app:sondages:demo', [], $output);
+            // Dotations aux amortissements et évaluations de primes des derniers mois.
+            $this->lancer('app:immobilisations:dotations', ['--demo' => true], $output);
+            $this->lancer('app:primes', ['--demo' => true], $output);
             $io->text('Connexion possible avec demo.kadiatou (direction), demo.aminata (caisse), demo.seydou (graphiste), demo.oumar (machine), demo.bakary (livreur) ou demo.awa (entretien), mot de passe demo1234.');
         }
 

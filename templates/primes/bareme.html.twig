@@ -1,0 +1,149 @@
+{#
+	Barème des primes par rôle (maquette N03) : critères, source des
+	données, poids et objectifs, prime cible du rôle, paliers et règles.
+	Direction seulement.
+#}
+{% extends 'primes/_base.html.twig' %}
+{% import 'primes/_macros.html.twig' as p %}
+{% import _self as b %}
+
+{% block title %}Barème des primes par rôle{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_primes_index') }}" class="btn btn-light btn-sm si-btn-entete">Performance et primes</a>
+	</li>
+	<li class="nav-item">
+		<button type="submit" form="form-bareme" class="btn btn-danger btn-sm si-btn-entete">Enregistrer</button>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% set utilises = ordre|filter(cle => (poids[cle] ?? 0) > 0) %}
+	{% set autres = ordre|filter(cle => (poids[cle] ?? 0) <= 0) %}
+	<div class="si-fin si-pr">
+		<ul class="si-pr-onglets" aria-label="Rôles">
+			{% for cle, libelle in roles %}
+				<li><a href="{{ path('app_bareme_primes', {role: cle}) }}" class="{{ cle == role ? 'active' }}" {{ cle == role ? 'aria-current="page"' }}>{{ libelle }}</a></li>
+			{% endfor %}
+		</ul>
+
+		<div class="si-pr-grille">
+			<section class="card" aria-labelledby="titre-criteres">
+				<form method="post" id="form-bareme" action="{{ path('app_bareme_primes', {role: role}) }}" class="si-pr-form">
+					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+					<div class="si-fin-tete">
+						<h2 id="titre-criteres">Critères du rôle</h2>
+						<span class="si-pr-total" data-total>total {{ poids|reduce((s, v) => s + v, 0) }} %</span>
+					</div>
+					<div class="row g-2 align-items-center mb-2">
+						<div class="col-auto"><label for="pr-prime" class="form-label mb-0">Prime cible du rôle</label></div>
+						<div class="col-auto"><div class="input-group input-group-sm"><input type="text" inputmode="numeric" id="pr-prime" name="prime" class="form-control" style="width: 120px" value="{{ prime|number_format(0, ',', ' ') }}" required><span class="input-group-text">F / mois</span></div></div>
+						<div class="col-auto"><small class="text-muted">une prime propre à une personne se règle depuis son évaluation</small></div>
+					</div>
+					<div class="table-responsive">
+						<table class="table si-fin-table si-pr-bareme">
+							<thead>
+								<tr><th scope="col">Critère</th><th scope="col">Source des données</th><th scope="col">Poids</th><th scope="col">Objectif</th></tr>
+							</thead>
+							<tbody>
+								{% for cle in utilises %}
+									{{ b.ligne(cle, criteres[cle], poids[cle] ?? 0, objectifs[cle] ?? criteres[cle].objectif) }}
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					{% if autres is not empty %}
+						<details class="mt-2">
+							<summary class="si-fin-note mt-0" style="cursor: pointer">Ajouter un critère ({{ autres|length }} disponible{{ autres|length > 1 ? 's' }})</summary>
+							<table class="table si-fin-table si-pr-bareme mt-2">
+								<tbody>
+									{% for cle in autres %}
+										{{ b.ligne(cle, criteres[cle], null, criteres[cle].objectif) }}
+									{% endfor %}
+								</tbody>
+							</table>
+						</details>
+					{% endif %}
+				</form>
+				<p class="si-fin-note">Points du métier : barème des points du suivi des métiers (production : travaux terminés ; livreur : livraisons à l'heure, encaissements, preuves complètes ; PAO : BAT validés ; entretien : tâches faites). Ventes : l'objectif de chiffre d'affaires fixé à la personne dans <a href="{{ path('app_statistiques_objectifs') }}">Objectifs</a> remplace celui du barème. Un critère sans données dans le mois ne compte pas pour 0 : son poids est réparti sur les autres.</p>
+				{% if modifie %}<p class="si-fin-note">Modifié le {{ modifie.modifieLe|date('d/m/Y à H:i') }}{{ modifie.modifiePar ? ' par ' ~ modifie.modifiePar|nom_pointage }}.</p>{% else %}<p class="si-fin-note">Barème proposé par défaut : enregistrez-le pour l'adapter.</p>{% endif %}
+			</section>
+
+			<div class="si-pr-colonne">
+				<section class="card" aria-labelledby="titre-paliers">
+					<h2 id="titre-paliers">Paliers</h2>
+					<table class="table si-fin-table">
+						<thead><tr><th scope="col">Score</th><th scope="col" class="text-end">Part de la prime</th></tr></thead>
+						<tbody>
+							{% for palier in paliers %}
+								<tr><td>{{ palier.libelle }}</td><td class="text-end"><b>{{ palier.taux }} %</b></td></tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</section>
+				<section class="card" aria-labelledby="titre-regles">
+					<h2 id="titre-regles">Règles</h2>
+					<ul class="si-pr-regles">
+						<li>Prime cible fixée par rôle et par personne</li>
+						<li>Faute grave ou écart de caisse non justifié : prime suspendue</li>
+						<li>{{ agent_voit_note ? 'Chaque agent voit sa note en temps réel' : 'Les agents ne voient pas leur note en cours de mois' }}</li>
+						<li>Validation par le responsable, puis par la direction avant la paie</li>
+						<li>Export vers la paie : somme due sur le bulletin, jamais versée automatiquement</li>
+					</ul>
+					<a class="si-fin-lien" href="{{ path('app_reglages_parametres_panneau', {tuile: 'primes'}) }}">Réglages de la tuile Primes</a>
+				</section>
+				<section class="card" aria-labelledby="titre-concernes">
+					<h2 id="titre-concernes">Concerne</h2>
+					{% if agents is empty %}
+						<p class="si-fin-note mt-0">Personne n'a ce rôle de prime pour l'instant.</p>
+					{% else %}
+						<p class="mb-0">{% for u in agents %}<a href="{{ path('app_primes_agent', {id: u.id}) }}">{{ u|nom_pointage }}</a>{{ not loop.last ? ', ' }}{% endfor %}</p>
+					{% endif %}
+				</section>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(function () {
+			var form = document.getElementById('form-bareme');
+			var total = document.querySelector('[data-total]');
+			if (!form || !total) { return; }
+			function majTotal() {
+				var somme = 0;
+				form.querySelectorAll('[data-poids]').forEach(function (champ) { somme += parseInt(champ.value || '0', 10) || 0; });
+				total.textContent = 'total ' + somme + ' %';
+				total.classList.toggle('si-pr-faux', somme !== 100);
+			}
+			form.addEventListener('input', majTotal);
+			majTotal();
+		})();
+	</script>
+{% endblock %}
+
+{% macro ligne(cle, c, poids, objectif) %}
+	<tr>
+		<td>{{ c.court }}</td>
+		<td>{{ c.source }}</td>
+		<td>
+			<div class="input-group input-group-sm" style="width: 96px">
+				<input type="number" min="0" max="100" step="1" name="criteres[{{ cle }}][poids]" value="{{ poids }}" class="form-control si-pr-poids-saisie" data-poids aria-label="Poids de « {{ c.court }} »">
+				<span class="input-group-text">%</span>
+			</div>
+		</td>
+		<td>
+			{% if c.objectif is null %}
+				—
+			{% else %}
+				<div class="input-group input-group-sm si-pr-objectif-saisie">
+					<input type="text" inputmode="decimal" name="criteres[{{ cle }}][objectif]" value="{{ objectif == objectif|round ? objectif|number_format(0, ',', ' ') : objectif|number_format(1, ',', ' ') }}" class="form-control" aria-label="Objectif de « {{ c.court }} »">
+					<span class="input-group-text">{{ c.unite }}</span>
+				</div>
+			{% endif %}
+		</td>
+	</tr>
+{% endmacro %}

@@ -7,6 +7,7 @@ use App\Entity\User;
 use App\Repository\BulletinPaieRepository;
 use App\Repository\CompteTresorerieRepository;
 use App\Service\EspaceEmploye\Paie;
+use App\Service\Primes\Primes;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -57,12 +58,17 @@ final class PaieController extends AbstractController
     }
 
     #[Route('/preparer', name: 'preparer', methods: ['POST'])]
-    public function preparer(Request $request): Response
+    public function preparer(Request $request, Primes $primes): Response
     {
         $this->verifierJeton($request);
         $mois = $this->mois($request);
         $r = $this->paie->preparer($mois, $this->moi(), new \DateTimeImmutable());
         $this->addFlash($r['crees'] > 0 ? 'success' : 'info', $r['crees'] > 0 ? \sprintf('%d bulletin%s préparé%2$s.', $r['crees'], $r['crees'] > 1 ? 's' : '') : 'Aucun bulletin à ajouter.');
+        // Primes validées par la direction (Performance et primes) : somme due sur le bulletin, jamais versée automatiquement.
+        $lignes = $primes->reporterEnPaie(new \DateTimeImmutable());
+        if ($lignes > 0) {
+            $this->addFlash('info', \sprintf('%d prime%s de performance validée%2$s ajoutée%2$s aux bulletins.', $lignes, $lignes > 1 ? 's' : ''));
+        }
         if ($r['sansSalaire'] !== []) {
             $this->addFlash('warning', 'Sans salaire sur la fiche employé : '.implode(', ', $r['sansSalaire']).'.');
         }

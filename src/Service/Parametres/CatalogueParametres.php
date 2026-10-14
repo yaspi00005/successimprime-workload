@@ -81,6 +81,16 @@ final class CatalogueParametres
                 'motsCles' => ['Objectif de chiffre d\'affaires', 'Seuil d\'alerte de trésorerie', 'Approbation des dépenses', 'Budgets des dépenses · main d\'œuvre'],
                 'note' => 'Les budgets par catégorie de dépense se règlent sur Finances › Dépenses (bouton Budgets).',
             ],
+            'patrimoine' => [
+                'famille' => 'entreprise', 'libelle' => 'Patrimoine et amortissements', 'icone' => 'fa-landmark',
+                'roles' => ['ROLE_ADMIN', 'ROLE_COMPTABILITE'], 'route' => 'app_immobilisations_patrimoine',
+                'champs' => [
+                    ['cle' => 'inventaire_mois', 'type' => 'nombre', 'libelle' => 'Contrôler chaque bien au moins tous les', 'aide' => 'Patrimoine : « Biens à contrôler » au-delà', 'suffixe' => 'mois', 'min' => 1, 'max' => 60, 'defaut' => 12],
+                    ['cle' => 'releve_jour', 'type' => 'nombre', 'libelle' => 'Relevés de compteurs attendus jusqu\'au', 'aide' => 'La dotation d\'une machine suivie par relevé attend son relevé jusqu\'à ce jour du mois suivant', 'suffixe' => 'du mois suivant', 'min' => 1, 'max' => 28, 'defaut' => 10],
+                ],
+                'motsCles' => ['Registre des immobilisations · IMM-0001', 'Dotation aux amortissements · SYSCOHADA 681 / 28x', 'Relevés de compteurs · Canon', 'Inventaire annuel · étiquettes QR'],
+                'note' => 'Les machines s\'amortissent à l\'usage (tuile Machines), les autres biens en linéaire sur leur durée. La dotation du mois est passée chaque matin pour le mois précédent (commande app:immobilisations:dotations).',
+            ],
             'statistiques' => [
                 'famille' => 'entreprise', 'libelle' => 'Objectifs et rapport de la semaine', 'icone' => 'fa-chart-line',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_statistiques_objectifs',
@@ -241,6 +251,16 @@ final class CatalogueParametres
                 ],
                 'motsCles' => ['Points par métier · primes', 'Graphiste · machiniste · livreur · entretien', 'Coefficient de difficulté · paliers de prime'],
                 'note' => 'Les points de chaque métier se modifient dans l\'écran du barème (bouton ci-dessous). Ils seront comptés quand les écrans de suivi des métiers seront branchés.',
+            ],
+            'primes' => [
+                'famille' => 'personnel', 'libelle' => 'Primes de performance', 'icone' => 'fa-trophy',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_bareme_primes',
+                'champs' => [
+                    ['cle' => 'appreciation_obligatoire', 'type' => 'interrupteur', 'libelle' => 'Appréciation du responsable obligatoire', 'aide' => 'Avant de valider l\'évaluation du mois', 'defaut' => true],
+                    ['cle' => 'agent_voit_note', 'type' => 'interrupteur', 'libelle' => 'L\'agent voit sa note en temps réel', 'aide' => 'Mon espace › Ma performance ; sinon seulement les mois validés', 'defaut' => true],
+                ],
+                'motsCles' => ['Barème des primes par rôle', 'Score sur 100 · paliers 90 / 80 / 70 / 60', 'Évaluation du mois · appréciation du responsable', 'Prime cible par rôle et par personne'],
+                'note' => 'Les critères, poids et primes cibles de chaque rôle se règlent dans le barème (bouton ci-dessous). Le responsable d\'un employé (fiche employé) évalue son équipe ; la direction valide les primes avant la paie.',
             ],
             'avantages' => [
                 'famille' => 'personnel', 'libelle' => 'Avantages', 'icone' => 'fa-gift',

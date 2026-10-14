@@ -54,6 +54,7 @@ final class Droits
             'ROLE_COUT_MARGE' => ['libelle' => 'Marges et coûts de revient', 'detail' => 'des commandes et des produits du client', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_PAIEMENT_VOIR' => ['libelle' => 'Paiements', 'detail' => 'paiements des commandes, écran Caisse', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_TRESORERIE_VOIR' => ['libelle' => 'Trésorerie et soldes', 'detail' => 'comptes, mouvements', 'groupe' => self::GROUPE_CHIFFRES],
+            'ROLE_COMPTABILITE' => ['libelle' => 'Comptabilité et patrimoine', 'detail' => 'écritures, dotations aux amortissements, valeurs des biens', 'groupe' => self::GROUPE_CHIFFRES],
             self::LECTURE_VENTES => ['libelle' => 'Ventes et caisse en lecture seule', 'detail' => 'voir les devis, commandes et factures sans les modifier', 'groupe' => self::GROUPE_LECTURE],
             self::LECTURE_CLIENTS => ['libelle' => 'Clients en lecture seule', 'detail' => 'voir les fiches sans les modifier', 'groupe' => self::GROUPE_LECTURE],
             self::LECTURE_PAO => ['libelle' => 'Montage PAO en lecture seule', 'detail' => 'voir les fichiers et BAT sans les modifier', 'groupe' => self::GROUPE_LECTURE],

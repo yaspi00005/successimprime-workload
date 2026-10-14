@@ -95,7 +95,8 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Fournisseurs', 'route' => 'app_finances_fournisseurs', 'role' => 'ROLE_TRESORERIE_VOIR', 'prefixes' => ['app_finances_fournisseurs']],
             ['libelle' => 'Trésorerie', 'route' => 'app_finances_tresorerie', 'role' => 'ROLE_TRESORERIE_VOIR', 'prefixes' => ['app_finances_tresorerie', 'app_tresorerie_', 'app_mouvement_tresorerie_', 'app_decaissement_recurrent_', 'app_compte_tresorerie_', 'app_rapprochement_bancaire_']],
             ['libelle' => 'Rentabilité', 'route' => 'app_finances_rentabilite', 'role' => 'ROLE_COUT_MARGE', 'prefixes' => ['app_finances_rentabilite']],
-            ['libelle' => 'Comptabilité', 'route' => 'app_comptabilite_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_comptabilite_']],
+            ['libelle' => 'Comptabilité', 'route' => 'app_comptabilite_index', 'role' => 'ROLE_COMPTABILITE', 'prefixes' => ['app_comptabilite_']],
+            ['libelle' => 'Immobilisations', 'route' => 'app_immobilisations_patrimoine', 'role' => 'ROLE_COMPTABILITE', 'prefixes' => ['app_immobilisations_']],
         ],
         'equipe' => [
             ['libelle' => 'Employés', 'route' => 'app_equipe_employes_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_equipe_employes_', 'app_acces_', 'app_employes_']],
@@ -104,6 +105,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Demandes du personnel', 'route' => 'app_demandes_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_demandes_']],
             ['libelle' => 'Paie', 'route' => 'app_paie_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_paie_']],
             ['libelle' => 'Actions commerciales', 'route' => 'app_actions_equipe_journal', 'role' => 'ROLE_ACTIONS_GERER', 'prefixes' => ['app_actions_equipe_']],
+            ['libelle' => 'Performance et primes', 'route' => 'app_primes_index', 'role' => 'PRIMES_EQUIPE', 'prefixes' => ['app_primes_']],
         ],
         'reglages' => [
             ['libelle' => 'Paramètres', 'route' => 'app_reglages_parametres_index', 'role' => ['ROLE_ADMIN', 'ROLE_PARAMETRES', 'ROLE_RH', 'ROLE_COUT_MARGE', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'prefixes' => ['app_reglages_parametres_', 'app_bareme_']],
@@ -210,6 +212,7 @@ final class NavigationExtension extends AbstractExtension
         'app_creances_' => 'finances',
         'app_tresorerie_' => 'finances',
         'app_comptabilite_' => 'finances',
+        'app_immobilisations_' => 'finances',
         'app_paiements_' => 'finances',
         'app_factures_' => 'finances',
         'app_journal_caisse_' => 'finances',
@@ -261,6 +264,7 @@ final class NavigationExtension extends AbstractExtension
         'app_demandes_' => 'equipe',
         'app_paie_' => 'equipe',
         'app_actions_equipe_' => 'equipe',
+        'app_primes_' => 'equipe',
         'app_actions_' => 'ventes',
     ];
 

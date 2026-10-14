@@ -1,0 +1,13 @@
+{# Petits morceaux communs aux écrans Immobilisations. #}
+
+{# Nombre d'unités : décimale seulement sous 10 (« 2,5 m », « 612 m² »). #}
+{% macro n(valeur) %}{{ valeur < 10 and valeur != valeur|round ? valeur|number_format(1, ',', ' ') : valeur|number_format(0, ',', ' ') }}{% endmacro %}
+
+{# Coût par unité : « 283 F / m² », « 6,7 F / page ». #}
+{% macro cout(valeur, machine) %}{% if valeur is null %}—{% else %}<span class="si-fin-f">{{ valeur < 10 ? valeur|number_format(1, ',', ' ') : valeur|number_format(0, ',', ' ') }} F / {{ machine.uniteUsage == 'page A4' ? 'page' : machine.uniteUsage }}</span>{% endif %}{% endmacro %}
+
+{# Couleur de repère d'une machine (carré du tableau, jauge, graphique). #}
+{% macro couleur(rang) %}{{ ['#1D4ED8', '#E11D48', '#EC4899', '#111827', '#0EA5E9', '#EA580C', '#FACC15', '#16A34A', '#7C3AED'][rang % 9] }}{% endmacro %}
+
+{# « octobre » #}
+{% macro mois(d) %}{{ ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][d|date('n') - 1] }}{% endmacro %}

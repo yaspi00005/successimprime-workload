@@ -1,0 +1,97 @@
+/*
+ * Finances › Immobilisations (maquettes M01 à M04) : patrimoine, registre,
+ * machines amorties à l'usage, fiche machine et relevés de compteurs.
+ * S'appuie sur finances.css (cartes, chiffres, tableaux, jauges).
+ */
+
+/* Titre de page et boutons d'en-tête sur deux lignes au besoin (comme les maquettes) plutôt que coupés. */
+@media (min-width: 768px) {
+  .si-header .si-titre-page .dashboard_bar { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.12; }
+  .si-header .si-btn-entete { white-space: normal; max-width: 10rem; line-height: 1.15; text-align: left; }
+}
+
+/* Sous-navigation Patrimoine · Registre · Machines */
+.si-imm-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.si-imm-nav a { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #fff; color: #334155; font-size: 13px; font-weight: 600; text-decoration: none; box-shadow: var(--si-carte-ombre); }
+.si-imm-nav a.active { background: #0F4590; color: #fff; }
+
+/* Cartes catégories (M03) */
+.si-imm-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.si-imm-categorie { display: block; color: inherit; text-decoration: none; }
+.si-imm-categorie:hover { color: inherit; box-shadow: 0 6px 22px rgba(15, 69, 144, .14); }
+.si-imm-categorie-tete { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.si-imm-categorie-tete strong { font-size: 28px; font-weight: 800; color: #0F172A; }
+.si-imm-categorie h3 { margin: 0 0 4px; }
+.si-imm-categorie p { margin: 0; font-size: 13px; color: #64748B; }
+.si-imm-categorie p b { color: #0F172A; }
+.si-imm-pastille { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; font-size: 18px; background: #EEF2F7; }
+
+/* Barres « Valeur nette par catégorie » */
+.si-imm-barres { display: grid; grid-template-columns: minmax(110px, 180px) minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; margin: 0; }
+.si-imm-barres dt { font-size: 13px; font-weight: 500; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-imm-barres dd { margin: 0; }
+.si-imm-barres dd.si-imm-montant { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.si-imm-barres .si-fin-jauge { height: 9px; }
+
+/* Registre (M04) */
+.si-imm-registre td { font-size: 13.5px; }
+.si-imm-code { font-weight: 600; color: #334155; white-space: nowrap; }
+.si-imm-filtre { display: flex; gap: 8px; align-items: center; }
+.si-imm-filtre select { width: 10rem; }
+.si-imm-registre .si-fin-statut { white-space: normal; max-width: 8.5rem; line-height: 1.25; text-align: center; }
+.si-header .si-btn-entete.si-imm-btn-court { max-width: 7.5rem; }
+.si-imm-explications { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.si-imm-explications > div { background: #F8FAFC; border-radius: 12px; padding: 12px 14px; font-size: 12.5px; color: #64748B; }
+.si-imm-explications h3 { font-size: 13.5px !important; margin-bottom: 4px !important; }
+
+/* Machines (M01) */
+.si-imm-machine { display: flex; align-items: center; gap: 12px; }
+.si-imm-carre { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 7px; }
+.si-imm-usage { min-width: 150px; }
+.si-imm-usage small { display: block; margin-bottom: 4px; }
+.si-imm-mois-nav { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #0F172A; }
+.si-imm-mois-nav a { color: #0F4590; }
+
+/* Fiche machine (M02) */
+.si-imm-fiche { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
+.si-imm-fiche-bas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 20px; align-items: stretch; }
+.si-imm-identite dt { font-size: 13px; font-weight: 500; color: #64748B; margin-top: 10px; }
+.si-imm-identite dt:first-child { margin-top: 0; }
+.si-imm-identite dd { margin: 2px 0 0; font-size: 15px; color: #0F172A; }
+.si-imm-valeur strong { display: block; font-size: 34px; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; line-height: 1.1; }
+.si-imm-valeur .si-fin-jauge { margin: 10px 0 6px; }
+.si-imm-valeur .si-fin-jauge > span { background: #0F172A; }
+.si-imm-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.si-imm-mini div { background: #F1F5F9; border-radius: 10px; padding: 8px 12px; font-size: 13px; color: #64748B; }
+.si-imm-mini b { display: block; color: #0F172A; font-size: 15px; }
+.si-imm-barres-mois { display: flex; align-items: flex-end; gap: 14px; height: 210px; padding-top: 10px; }
+.si-imm-barres-mois > div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.si-imm-barres-mois span.si-imm-barre { width: 100%; max-width: 64px; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, #3B82F6, #1D4ED8); min-height: 3px; }
+.si-imm-barres-mois span.si-imm-barre-courant { background: linear-gradient(180deg, #F43F5E, #DC2626); }
+.si-imm-barres-mois span.si-imm-barre-estime { opacity: .55; }
+.si-imm-barres-mois small { margin-top: 8px; font-size: 12.5px; color: #64748B; }
+.si-imm-barres-mois em { font-style: normal; font-size: 11.5px; color: #475569; margin-bottom: 4px; }
+.si-imm-total td { font-weight: 800; }
+
+/* Formulaires (bien, relevé) */
+.si-imm-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
+.si-imm-form .si-imm-large { grid-column: 1 / -1; }
+.si-imm-form label { font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 4px; }
+.si-imm-compteurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
+
+/* Étiquettes et inventaire */
+.si-imm-lieu { margin-top: 6px; }
+.si-imm-lieu h3 { display: flex; justify-content: space-between; }
+
+@media (max-width: 1199.98px) {
+	.si-imm-categories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.si-imm-fiche { grid-template-columns: 1fr 1fr; }
+	.si-imm-fiche > :last-child { grid-column: 1 / -1; }
+	.si-imm-fiche-bas { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 767.98px) {
+	.si-imm-categories, .si-imm-fiche, .si-imm-explications, .si-imm-form, .si-imm-compteurs { grid-template-columns: 1fr; }
+	.si-imm-barres { grid-template-columns: 96px minmax(0, 1fr) auto; }
+	.si-imm-categorie-tete strong { font-size: 24px; }
+}

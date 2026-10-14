@@ -986,11 +986,10 @@ public function terminer(
          * COMPTEUR D'USURE MACHINE
          * ========================================================
          *
-         * Suivi de l'usage uniquement (maintenance) : n'affecte pas
-         * l'amortissement, calculé sur le temps écoulé. Alimente
-         * compteurM2 ou compteurFeuilles selon le mode de facturation
-         * de la machine ; ignoré si la ligne n'a pas de dimensions
-         * (article en stock, saisie libre).
+         * Maintenance et amortissement à l'usage : alimente compteurM2,
+         * compteurFeuilles ou le compteur de pièces (cartes,
+         * transferts) selon l'unité de la machine. Sans dimensions
+         * (article en stock, saisie libre), seules les pièces comptent.
          */
         $machineUtilisee = $ordre->getMachine();
 
@@ -998,11 +997,9 @@ public function terminer(
             $largeurDetail = (float) ($detail->getLargeur() ?? 0);
             $longueurDetail = (float) ($detail->getLongueur() ?? 0);
 
-            if ($largeurDetail > 0 && $longueurDetail > 0) {
-                $machineUtilisee->enregistrerUsage(
-                    $largeurDetail * $longueurDetail * $quantiteTraitee
-                );
-            }
+            // Sans dimensions sur la ligne, celles du format (flyer A5, carte…), comme UsageMachines.
+            $surfacePiece = $largeurDetail > 0 && $longueurDetail > 0 ? $largeurDetail * $longueurDetail : ($detail->getFormat()?->surfaceM2() ?? 0.0);
+            $machineUtilisee->enregistrerUsage($surfacePiece * $quantiteTraitee, (float) $quantiteTraitee);
         }
 
         /*

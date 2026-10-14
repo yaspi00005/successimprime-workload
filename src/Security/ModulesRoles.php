@@ -121,7 +121,7 @@ final class ModulesRoles
      */
     public static function montants(): array
     {
-        return ['ROLE_PAIEMENT_VOIR', 'ROLE_COUT_MARGE', 'ROLE_STATS_VENTES', 'ROLE_STATS_GLOBAL', 'ROLE_STATS_PERSO'];
+        return ['ROLE_PAIEMENT_VOIR', 'ROLE_COUT_MARGE', 'ROLE_STATS_VENTES', 'ROLE_STATS_GLOBAL', 'ROLE_STATS_PERSO', 'ROLE_COMPTABILITE'];
     }
 
     /**

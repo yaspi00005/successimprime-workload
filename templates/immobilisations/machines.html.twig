@@ -1,0 +1,126 @@
+{% extends 'immobilisations/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+{% import 'immobilisations/_macros.html.twig' as im %}
+
+{% block title %}Immobilisations › Machines{% endblock %}
+{% block page_title %}Machines et amortissement{% endblock %}
+
+{% block header_actions %}
+	{% set premiere = releves.manquants|first %}
+	{% set suivie = lignes|filter(l => l.releve)|first %}
+	{% if premiere or suivie %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ premiere ? path('app_immobilisations_releve', {id: premiere.id, mois: releves.mois|date('Y-m')}) : path('app_immobilisations_releves', {id: suivie.machine.id}) }}" class="btn btn-light btn-sm si-btn-entete">Relevés de compteurs</a>
+		</li>
+	{% endif %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_immobilisations_tableau') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-download me-1"></i>Tableau d'amortissement</a>
+	</li>
+	{% if is_granted('ROLE_ADMIN') %}
+		<li class="nav-item">
+			<a href="{{ path('app_machines_liste') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Machine</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-imm">
+		<section class="si-fin-kpis" aria-label="Machines en chiffres">
+			<article class="card si-fin-kpi">
+				<h2>Valeur d'achat</h2>
+				<strong>{{ m.f(achat) }}</strong>
+				<span class="si-fin-vert">{{ lignes|length }} machine{{ lignes|length > 1 ? 's' }} de production</span>
+			</article>
+			<article class="card si-fin-kpi">
+				{% set nom_mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][mois|date('n') - 1] %}
+				<h2>Amortissement {{ nom_mois in ['avril', 'août', 'octobre'] ? 'd\'' : 'de ' }}{{ nom_mois }}</h2>
+				<strong>{{ m.f(dotation) }}</strong>
+				<span class="si-fin-vert">{{ aLUsage > 0 ? 'calculé sur l\'usage réel' : 'linéaire sur la durée' }}{{ courant ? ' · mois en cours' : '' }}</span>
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Valeur nette comptable</h2>
+				<strong>{{ m.f(nette) }}</strong>
+				<span class="si-fin-vert">{{ pourcentNette is not null ? pourcentNette ~ ' % de la valeur d\'achat' : '—' }}</span>
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Relevés de compteurs</h2>
+				<strong>{{ releves.saisis }} / {{ releves.attendus }}</strong>
+				{% if releves.attendus == 0 %}
+					<span class="si-fin-gris">aucune machine suivie par relevé</span>
+				{% elseif releves.manquants is empty %}
+					<span class="si-fin-vert">{{ im.mois(releves.mois) }} : tous saisis</span>
+				{% else %}
+					<a class="si-fin-rouge" href="{{ path('app_immobilisations_releve', {id: releves.manquants[0].id, mois: releves.mois|date('Y-m')}) }}">{{ releves.manquants|length }} à saisir ({{ releves.manquants|map(x => x.nom)|join(', ') }})</a>
+				{% endif %}
+			</article>
+		</section>
+
+		<section class="card">
+			<div class="si-fin-tete">
+				<div class="si-imm-mois-nav">
+					<a href="{{ path('app_immobilisations_machines', {mois: mois|date_modify('-1 month')|date('Y-m')}) }}" aria-label="Mois précédent"><i class="fas fa-chevron-left"></i></a>
+					<span>{{ im.mois(mois)|capitalize }} {{ mois|date('Y') }}</span>
+					{% if not courant %}<a href="{{ path('app_immobilisations_machines', {mois: mois|date_modify('+1 month')|date('Y-m')}) }}" aria-label="Mois suivant"><i class="fas fa-chevron-right"></i></a>{% endif %}
+				</div>
+				<span class="si-fin-gris small">Méthode de la tuile Machines : {{ methode == 'usage' ? 'à l\'usage' : 'linéaire' }}</span>
+			</div>
+			<div class="table-responsive">
+				<table class="table si-fin-table">
+					<thead>
+						<tr>
+							<th scope="col">Machine</th>
+							<th scope="col">Unité d'usage</th>
+							<th scope="col" class="text-end">Ce mois</th>
+							<th scope="col">Usage cumulé / capacité</th>
+							<th scope="col" class="text-end">Coût par unité</th>
+							<th scope="col" class="text-end">Amort. du mois</th>
+							<th scope="col" class="text-end">Valeur nette</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for l in lignes %}
+							{% set mac = l.machine %}
+							{% set c = l.calcul %}
+							{% set couleur = im.couleur(loop.index0) %}
+							{% set capacite = mac.capaciteUsage %}
+							<tr>
+								<td>
+									<div class="si-imm-machine">
+										<span class="si-imm-carre" style="background: {{ couleur }}" aria-hidden="true"></span>
+										<span>
+											<a href="{{ path('app_immobilisations_machine', {id: mac.id}) }}"><strong>{{ mac.nom }}</strong></a>
+											{% if l.bien %}
+												<small>{{ l.bien.code }} · achat {{ c.valeurAchat|number_format(0, ',', ' ') }} F</small>
+											{% else %}
+												<form method="post" action="{{ path('app_immobilisations_machine_registre', {id: mac.id}) }}" class="d-inline">
+													<input type="hidden" name="_token" value="{{ csrf_token('machine-registre-' ~ mac.id) }}">
+													<small>achat {{ c.valeurAchat|number_format(0, ',', ' ') }} F · <button class="btn btn-link btn-sm p-0 align-baseline">ajouter au registre</button></small>
+												</form>
+											{% endif %}
+										</span>
+									</div>
+								</td>
+								<td class="si-fin-gris">{{ mac.libelleUnite }}{% if l.releve %}<small>relevé mensuel</small>{% endif %}</td>
+								<td class="text-end text-nowrap"><strong>{{ c.usageMois is not null ? im.n(c.usageMois) ~ ' ' ~ mac.unitePluriel : '—' }}</strong></td>
+								<td class="si-imm-usage">
+									<small>{{ im.n(l.usageCumule) }}{% if capacite %} / {{ im.n(capacite) }}{% endif %} {{ mac.unitePluriel in ['m²', 'm'] ? mac.unitePluriel }}</small>
+									{% if capacite %}
+										<span class="si-fin-jauge"><span style="width: {{ min(100, l.usageCumule * 100 / capacite)|round(1) }}%; background: {{ couleur }}"></span></span>
+									{% else %}
+										<small class="si-fin-orange">capacité à définir (linéaire)</small>
+									{% endif %}
+								</td>
+								<td class="text-end">{{ c.coutUnitaire is not null ? im.cout(c.coutUnitaire, mac) : 'linéaire' }}</td>
+								<td class="text-end si-fin-f">{{ c.dotation|number_format(0, ',', ' ') }} F</td>
+								<td class="text-end si-fin-f"><strong>{{ c.valeurNette|number_format(0, ',', ' ') }} F</strong></td>
+							</tr>
+						{% else %}
+							<tr><td colspan="7" class="si-fin-vide">Aucune machine. Ajoutez-les dans Atelier › Machines et maintenance.</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			<p class="si-fin-note">Méthode des unités d'œuvre : (prix d'achat − valeur résiduelle) ÷ capacité totale prévue = coût par unité. Chaque m², mètre de film, page, carte ou transfert produit amortit la machine. Ce coût entre automatiquement dans le coût de revient de chaque commande. L'usage vient de la production terminée, ou du relevé de compteurs du mois quand la machine en a un. Capacité, unité et valeur résiduelle se règlent dans <a href="{{ path('app_machines_index') }}#plan">Machines et maintenance</a>.</p>
+		</section>
+	</div>
+{% endblock %}

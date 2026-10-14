@@ -120,6 +120,7 @@ security:
             - ROLE_RESPONSABLE_GESTION
             - ROLE_SITE_VITRINE
             - ROLE_PROMOTIONS
+            - ROLE_COMPTABILITE
             
 
 

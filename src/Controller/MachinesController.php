@@ -101,6 +101,14 @@ final class MachinesController extends AbstractController
         }
         $nombre = static fn (string $cle): ?int => ($v = preg_replace('/\D/', '', (string) $request->request->get($cle))) !== '' ? (int) $v : null;
         $machine->setCapaciteUsage(($c = $nombre('capacite')) !== null ? (float) $c : null)->setValeurResiduelle($nombre('residuelle'));
+        // Unité d'usage, relevé mensuel de compteurs et coût du toner par page A4 (M01, M02).
+        if ($request->request->has('unite')) {
+            $decimal = static fn (string $cle): ?float => is_numeric($v = str_replace([',', ' '], ['.', ''], (string) $request->request->get($cle))) ? (float) $v : null;
+            $machine->setUnite((string) $request->request->get('unite') ?: null)
+                ->setReleveCompteurs((string) $request->request->get('releve') ?: null)
+                ->setCoutPageCouleur($decimal('toner_couleur'))
+                ->setCoutPageNoir($decimal('toner_noir'));
+        }
         $em->flush();
         $this->addFlash('success', 'Amortissement de '.$machine->getNom().' enregistré.');
 

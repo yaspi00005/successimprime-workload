@@ -78,7 +78,7 @@
 							<span class="si-prospect-besoin">{{ p.besoin }}{% if p.besoin and p.montantEstime %} · {% endif %}{{ p.montantEstime ? p.montantEstime|number_format(0, ',', ' ') }}</span>
 							{% if etape == 'perdu' and p.motifPerte %}<span class="si-prospect-motif">{{ p.motifPerte }}</span>{% endif %}
 							<span class="si-prospect-pied">
-								<span class="si-prospect-source">{{ constant('App\\Entity\\Prospect::SOURCES')[p.source] }}</span>
+								{% if p.source == 'site' %}<span class="si-pastille si-pastille-bleu">Site</span>{% else %}<span class="si-prospect-source">{{ constant('App\\Entity\\Prospect::SOURCES')[p.source] }}</span>{% endif %}
 								{% if relance_due %}<span class="si-prospect-relance"><i class="fas fa-bell"></i> relance {{ p.prochaineRelance|date('Y-m-d') == aujourdhui ? 'aujourd’hui' : 'en retard' }}</span>
 								{% elseif p.prochaineRelance %}<span class="si-prospect-date">relance {{ p.prochaineRelance|date('d/m') }}</span>{% endif %}
 								{% if p.client %}<span class="si-prospect-client"><i class="fas fa-user-check"></i> client</span>{% endif %}

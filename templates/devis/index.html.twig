@@ -304,6 +304,7 @@
 											<a href="{{ path('app_devis_show', { id: devis.id }) }}" class="devis-reference">
 												{{ devis.numero|default('DEV-' ~ ('%05d'|format(devis.id))) }}
 											</a>
+											{% if devis_du_site()[devis.id] is defined %}<span class="si-pastille si-pastille-bleu" title="Demande {{ devis_du_site()[devis.id] }} écrite sur le site">Site</span>{% endif %}
 
 											<div class="small text-muted">
 												#{{ devis.id }}

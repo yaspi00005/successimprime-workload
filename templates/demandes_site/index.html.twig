@@ -1,0 +1,44 @@
+{#
+	Ventes › Demandes du site : demandes de devis et messages écrits sans
+	compte sur le site (maquette 11). Seulement sur l'ERP de la boutique.
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}Demandes du site{% endblock %}
+
+{% block header_actions %}
+	{% if not enLigne %}
+		<li class="nav-item"><a href="{{ path('app_demandes_site_index', traitees ? {} : {traitees: 1}) }}" class="btn btn-light btn-sm si-btn-entete">{{ traitees ? 'À traiter' : 'Traitées' }}</a></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<section class="card si-ac-bloc">
+		{% if enLigne %}
+			<h2>Demandes du site</h2>
+			<p class="si-ac-vide">Les demandes de devis et les messages du site se lisent sur l'ERP de la boutique, où ils arrivent par la synchronisation avec leur devis brouillon.</p>
+		{% else %}
+			<h2>{{ traitees ? 'Demandes traitées' : 'À traiter' }} <span class="si-pg-compte">{{ liste|length }}</span></h2>
+			{% if liste is empty %}
+				<p class="si-ac-vide">{{ traitees ? 'Aucune demande traitée.' : 'Aucune demande en attente.' }}</p>
+			{% else %}
+				<ul class="si-rc-liste">
+					{% for d in liste %}
+						<li>
+							<a href="{{ path('app_demandes_site_voir', {id: d.id}) }}" class="si-rc-ligne">
+								<span class="si-rc-num">{{ d.numero }}<small>{{ d.creeLe|date(d.creeLe|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m') }}</small></span>
+								<span class="si-rc-texte">
+									<b>{{ d.estDevis ? (d.resume ?: 'Projet décrit dans le message') : d.libelleObjet }}</b>
+									<small>{{ d.nom }} · {{ d.telephoneLocal }}{{ d.devis ? ' · devis ' ~ d.devis.numero }}{{ d.client and not d.prospect ? ' · client ' ~ d.client.code }}{{ d.fichier ? ' · fichier joint' }}</small>
+								</span>
+								<span class="si-pastille si-pastille-{{ d.estDevis ? 'bleu' : 'gris' }}">{{ d.estDevis ? 'Devis' : 'Message' }}</span>
+								<span class="si-pastille si-pastille-{{ d.estTraitee ? 'vert' : (d.prepareeLe ? 'orange' : 'rouge') }}">{{ d.estTraitee ? 'Traitée' ~ (d.traiteePar ? ' par ' ~ d.traiteePar) : (d.prepareeLe ? 'À traiter' : 'À préparer') }}</span>
+							</a>
+						</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+			<p class="si-pg-note">Les visiteurs écrivent sur le site sans compte (« Contact » et « Demander un devis »). Chaque demande de devis arrive ici avec un devis brouillon au tarif public, rattaché au client du même numéro ou à une fiche « Site » et à un prospect. Rien n'est envoyé au client : vérifiez le devis, puis envoyez-le vous-même.</p>
+		{% endif %}
+	</section>
+{% endblock %}

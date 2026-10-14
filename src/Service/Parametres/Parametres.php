@@ -174,6 +174,7 @@ final class Parametres
             'espace_client' => $v['code_sms'] ? 'connexion par code SMS' : 'connexion par mot de passe',
             'messages' => self::nb($compter(ModeleMessage::class), 'modèle'),
             'ecran_tv' => 'playlist de '.ProgrammeEcranTv::dureeBoucle($this->ecranTv->programme()['scenes']).' s',
+            'site_contact' => '' !== trim((string) $v['lien_plan']) ? 'plan et bouton Itinéraire affichés' : 'plan pas encore donné',
             'appareils' => $this->etatAppareils($badge),
             'api' => $this->accesEnLigne->estEnLigne() ? 'fermée en ligne' : self::nb($compter(JetonApi::class, ['revoqueLe' => null]), 'jeton'),
             'synchronisation' => $this->synchro->estConfiguree() ? ($this->synchro->estEnLigne() ? 'site en ligne' : 'avec '.(parse_url($this->synchro->url(), \PHP_URL_HOST) ?: 'le site')) : 'pas encore réglée',

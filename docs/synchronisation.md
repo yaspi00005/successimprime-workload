@@ -11,6 +11,7 @@
 
 | Donnée | Sens | Règle |
 |---|---|---|
+| Sociétés (`societe`, docs/societes.md) : code, raison sociale, par défaut, active | local → site seulement | Partent avant les entreprises. Restent au local : RCCM, NIF, adresse. Entreprises, devis, commandes, factures et paiements portent leur société par son identifiant public ; elle ne se change pas en ligne. Une commande ou un paiement créé en ligne la reçoit par la même règle qu'au local. |
 | Entreprises : code, raison sociale, nom commercial, mentions, adresse, téléphone, e-mail, site, RCCM, NIF, numéro marchand Orange Money, couleurs | local → site | Pour le pied de page et le bouton WhatsApp du site vitrine. Restent au local : banque, compte bancaire, numérotation, logos, cachet et signature. |
 | Images du site vitrine (`site_image`) : contenu réencodé (WebP ou PNG, 300 Ko au plus), type, dimensions, empreinte, usage (photo ou logo), texte alternatif, ordre | local → site | Revérifiée à l'arrivée (type, taille, empreinte) : une image refusée bloque l'élément. L'original envoyé dans l'admin reste au local. Chaque côté refait ses fichiers `public/uploads/site/` depuis la base. |
 | Pages du site vitrine (`site_page`) : adresse, titre, accroche, description, texte, image, publiée, ordre, date de modification | local → site | Saisies dans Réglages › Site vitrine, au local seulement. |

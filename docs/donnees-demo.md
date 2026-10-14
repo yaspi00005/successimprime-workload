@@ -47,8 +47,9 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
 - Tables non touchées :
   - `reglage` (les réglages restent ceux de l'admin) ;
   - `bareme_prime` (le barème des primes, réglé par l'admin) ;
-  - `role_utilisateur` et `entreprise` (créés par les migrations, et réutilisés par la démo) ;
+  - `role_utilisateur`, `entreprise` et `societe` (créés par les migrations, et réutilisés par la démo) ;
   - les tables techniques de Doctrine et de Messenger.
+- Sociétés (`docs/societes.md`) : les lignes de démo arrivent avec la société par défaut. Juste après, `app:demo` applique la règle de la migration à ses seules lignes : les devis, factures, commandes et paiements de DREPA passent à la société DREPA.
 - Les photos (pointage, entretien, livraisons) ne sont que des noms de fichiers : les images n'existent pas.
 - Promotions : leur identifiant n'est pas réservé, elles sont repérées par leur note (« Démo : … ») ; la purge les enlève avec les exceptions, les anniversaires et les promotions d'anniversaire des clients fictifs. Les modèles d'anniversaire restent (ce sont des réglages). Pour garder les totaux, factures et paiements des lignes passées, leur prix unitaire est relevé du montant de la promotion : modifier une de ces anciennes commandes recalcule la ligne au prix du catalogue, moins la promotion (jugée au jour de la commande).
 

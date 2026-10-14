@@ -17,7 +17,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 final class PatrimoinePrimesHorsLigneSubscriber implements EventSubscriberInterface
 {
     /** Routes (ou débuts de nom de route) fermées en ligne. */
-    public const ROUTES = ['app_immobilisations_', 'app_primes_', 'app_bareme_primes', 'app_mon_espace_performance', 'app_mon_espace_prime'];
+    public const ROUTES = ['app_immobilisations_', 'app_primes_', 'app_bareme_primes', 'app_mon_espace_performance', 'app_mon_espace_prime', 'app_atelier_releves'];
 
     public function __construct(private readonly AccesEnLigne $acces)
     {

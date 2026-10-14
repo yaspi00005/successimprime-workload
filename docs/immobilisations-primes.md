@@ -28,7 +28,7 @@ Chaque machine s'amortit selon son usage réel, avec une unité propre, choisie 
 - Ce coût entre dans le coût de revient de chaque commande (`CalculateurCoutRevient`) et dans la rentabilité de la machine.
 - Une machine sans capacité prévue reste en linéaire. La tuile Machines permet aussi de tout passer en linéaire.
 
-**Relevés de compteurs (M02).** Une machine peut être suivie par relevé : un compteur (traceur) ou quatre compteurs A4 / A3 (Canon), avec une photo du compteur. « Saisir le relevé » (fiche machine) est ouvert à la comptabilité ; la saisie accepte aussi la gestion de production, qui n'a pas encore d'entrée de menu vers elle. La carte « Relevés de compteurs » de M01 rappelle ceux qui manquent. La dotation d'une machine suivie par relevé attend son relevé jusqu'au jour réglé dans la tuile Patrimoine (10 du mois suivant par défaut).
+**Relevés de compteurs (M02).** Une machine peut être suivie par relevé : un compteur (traceur) ou quatre compteurs A4 / A3 (Canon), avec une photo du compteur. « Saisir le relevé » (fiche machine) est ouvert à la comptabilité ; la gestion de production y arrive par Atelier › Relevés de compteurs (`/atelier/releves`), qui liste les machines suivies avec le relevé du mois dernier fait ou à saisir, sans montant. La carte « Relevés de compteurs » de M01 rappelle ceux qui manquent. La dotation d'une machine suivie par relevé attend son relevé jusqu'au jour réglé dans la tuile Patrimoine (10 du mois suivant par défaut).
 
 **Fiche machine (M02)** :
 - identité, compteurs du mois, valeur nette, amortissements du mois et cumulé ;
@@ -107,7 +107,7 @@ Chaque personne a un score sur 100 par mois. Sa prime est un pourcentage de la p
 | Admin (direction) | tout | tout : barème, évaluations, validation des primes, export paie |
 | Droit « Comptabilité et patrimoine » (`ROLE_COMPTABILITE`, case dans l'accès de l'employé) | tout : valeurs, dotations, relevés, export cabinet, Comptabilité | sa propre note seulement |
 | Responsable (désigné sur la fiche employé) | ses biens confiés | son équipe : N01 filtré, évaluation et validation de ses agents ; pas de barème, pas de validation des primes |
-| Gestion de production | saisie des relevés de compteurs (par l'adresse de la saisie, pas encore dans son menu) | — |
+| Gestion de production | saisie des relevés de compteurs (Atelier › Relevés de compteurs) | — |
 | Agent | les biens qui lui sont confiés, **sans aucun montant** (ni achat, ni cumul, ni valeur nette) | sa note et sa prime dans Mon espace ; aucune autre personne |
 | RH sans droit Comptabilité | — | ni score ni critère ; seulement la ligne de prime sur le bulletin |
 
@@ -133,7 +133,7 @@ Chaque personne a un score sur 100 par mois. Sa prime est un pourcentage de la p
 ## Ce qui reste
 
 - **Comptes d'essai** : la base de développement a des comptes et des machines d'essai (pas de démo) qui apparaissent dans M01 et N01. Sur la vraie base, désactiver les comptes inutilisés ou leur mettre « Pas de prime ».
-- **Ventes à 0** : pour qui a un objectif de ventes, un mois sans vente compte 0 sur le critère Ventes (choix recommandé à Yaya le 14/10/2026 ; l'autre option était « pas de données », poids réparti). Sans objectif, le critère n'est pas noté.
+- **Ventes à 0** : pour qui a un objectif de ventes, un mois sans vente compte 0 sur le critère Ventes (décision de Yaya, 14/10/2026). Sans objectif, le critère n'est pas noté.
 - **Surface des pièces** : sans dimensions sur la ligne de commande, l'usage prend la surface du format (A5, carte 85 × 55…) ; un format « taille unique » ne compte rien.
 - **Comptabilité par société** : les dotations sont dans le journal unique en attendant `docs/societes.md`.
 - **Relevés par l'atelier** : donner à la gestion de production une entrée vers la saisie des relevés (par exemple une alerte « relevé à saisir » sur son écran Production).

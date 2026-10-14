@@ -6,7 +6,7 @@ use App\Service\OrangeSmsService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
-use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -43,8 +43,9 @@ final class CodeDeConnexion
         #[Autowire('%kernel.secret%')] private readonly string $secret,
         #[Autowire('%kernel.environment%')] private readonly string $environnement,
         private readonly OrangeSmsService $sms,
-        // Paresseux : rien ne casse si l'e-mail n'est pas configuré.
-        #[Autowire(lazy: true)] private readonly MailerInterface $mailer,
+        // Envoi direct, sans file d'attente : le code doit partir tout de suite (et un échec
+        // se voir tout de suite, pour le SMS). Paresseux : rien ne casse sans e-mail configuré.
+        #[Autowire(service: 'mailer.transports', lazy: true)] private readonly TransportInterface $mailer,
         #[Autowire('%env(MAILER_DSN)%')] private readonly string $mailerDsn,
         #[Autowire('%env(MAILER_FROM_ADDRESS)%')] private readonly string $expediteur,
         #[Autowire(service: 'limiter.code_connexion_destinataire')] private readonly RateLimiterFactoryInterface $parDestinataire,
@@ -147,6 +148,16 @@ final class CodeDeConnexion
         $etat = $session->get($cle);
 
         return \is_array($etat) ? (array) ($etat['donnees'] ?? []) : [];
+    }
+
+    /** Retire une donnée gardée avec le code (par exemple une adresse qui n'a pas reçu le code). */
+    public function oublier(SessionInterface $session, string $cle, string $donnee): void
+    {
+        $etat = $session->get($cle);
+        if (\is_array($etat) && \is_array($etat['donnees'] ?? null)) {
+            unset($etat['donnees'][$donnee]);
+            $session->set($cle, $etat);
+        }
     }
 
     public function secondesAvantRenvoi(SessionInterface $session, string $cle): int

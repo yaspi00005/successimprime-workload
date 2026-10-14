@@ -9,7 +9,8 @@ use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\Exception\TransportException;
-use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\RawMessage;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
@@ -30,18 +31,25 @@ final class FabriqueCodes
     {
         $sms = new OrangeSmsService(new MockHttpClient(), new ArrayAdapter(), new NullLogger(), '', '', '', '');
         $boite = $this;
-        $mailer = new class($boite) implements MailerInterface {
+        $mailer = new class($boite) implements TransportInterface {
             public function __construct(private readonly FabriqueCodes $boite)
             {
             }
 
-            public function send(RawMessage $message, ?Envelope $envelope = null): void
+            public function send(RawMessage $message, ?Envelope $envelope = null): ?SentMessage
             {
                 if ($this->boite->emailEnPanne) {
                     throw new TransportException('Connexion au serveur d\'envoi refusée.');
                 }
                 \assert($message instanceof Email);
                 $this->boite->emails[] = $message;
+
+                return null;
+            }
+
+            public function __toString(): string
+            {
+                return 'boite://essai';
             }
         };
         $stockage = new InMemoryStorage();

@@ -1,0 +1,53 @@
+{% extends 'espace/_page.html.twig' %}
+
+{% block title %}Sécuriser mon compte · Succès Imprim{% endblock %}
+{% block lien_haut %}<a href="{{ path('app_espace_deconnexion') }}">Se déconnecter</a>{% endblock %}
+
+{#
+	Après un code (première connexion, mot de passe oublié, code d'accès
+	de la boutique) : le mot de passe, et l'e-mail où partiront les
+	prochains codes. Obligatoire tant que etapes.bloquant.
+#}
+{% block contenu %}
+	{% set requis = 'requis' %}
+	<h1>{{ etapes.motDePasse == requis ? 'Choisissez votre mot de passe' : (etapes.motDePasse ? 'Nouveau mot de passe ?' : 'Votre adresse e-mail') }}</h1>
+	<p class="si-espace-sous-titre">
+		{% if etapes.bloquant %}
+			Dernière étape avant d'entrer. Ensuite, vous vous connecterez avec votre numéro et votre mot de passe.
+		{% else %}
+			Vous pouvez le faire maintenant, ou plus tard dans Mon compte.
+		{% endif %}
+	</p>
+
+	{% if erreur %}
+		<div class="si-espace-erreur" role="alert">{{ erreur }}</div>
+	{% endif %}
+
+	<form method="post" action="{{ path('app_espace_securiser') }}">
+		<input type="hidden" name="_token" value="{{ csrf_token('espace-securiser') }}">
+		<input type="hidden" name="telephone" value="{{ compte.telephone|slice(3) }}" autocomplete="username">
+
+		{% if etapes.email %}
+			<label for="email">Votre adresse e-mail{{ etapes.email != requis ? ' (facultatif)' }}</label>
+			<input type="email" id="email" name="email" value="{{ email }}" maxlength="180" autocomplete="email" placeholder="vous@exemple.com"{{ etapes.email == requis ? ' required' }}>
+			<p class="si-espace-aide">Si vous oubliez votre mot de passe, le code arrivera à cette adresse{{ etapes.email != requis ? ' au lieu d\'un SMS' }}.</p>
+		{% elseif email_masque %}
+			<p class="si-espace-info">Vos codes arrivent à <strong>{{ email_masque }}</strong>.</p>
+		{% endif %}
+
+		{% if etapes.motDePasse %}
+			<label for="mot-de-passe">{{ etapes.motDePasse == requis ? 'Mot de passe' : 'Nouveau mot de passe' }} <small>(8 caractères ou plus)</small></label>
+			<div class="si-espace-mdp">
+				<input type="password" id="mot-de-passe" name="mot_de_passe" minlength="8" autocomplete="new-password"{{ etapes.motDePasse == requis ? ' required' }}>
+				<button type="button" class="js-afficher" data-cible="mot-de-passe">Afficher</button>
+			</div>
+			<label for="confirmation">Confirmer le mot de passe</label>
+			<input type="password" id="confirmation" name="confirmation" minlength="8" autocomplete="new-password"{{ etapes.motDePasse == requis ? ' required' }}>
+		{% endif %}
+
+		<button type="submit" class="si-espace-bouton">{{ etapes.bloquant ? 'Enregistrer et entrer' : 'Enregistrer' }}</button>
+		{% if not etapes.bloquant %}
+			<p class="si-espace-aide"><a href="{{ path('app_espace_securiser', {plus_tard: 1}) }}">Plus tard</a></p>
+		{% endif %}
+	</form>
+{% endblock %}

@@ -25,7 +25,10 @@ use Symfony\Component\Security\Http\Util\TargetPathTrait;
 
 /**
  * Connexion à l'espace client (maquette CX01) : numéro de téléphone et
- * code reçu par SMS, ou numéro et mot de passe.
+ * mot de passe ; ou, pour la première connexion et le mot de passe
+ * oublié, numéro et code reçu par e-mail (par SMS sans adresse). Après
+ * un code, la personne passe par « Sécuriser mon compte » (mot de passe,
+ * e-mail) avant d'entrer.
  */
 final class EspaceClientAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
 {
@@ -87,13 +90,26 @@ final class EspaceClientAuthenticator extends AbstractAuthenticator implements A
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
+        $session = $request->getSession();
+        $par = match ($request->request->get('mode')) {
+            'mdp' => null,
+            'acces' => EspaceClientComptes::PAR_ACCES,
+            default => EspaceClientComptes::PAR_CODE,
+        };
+        null === $par ? $session->remove(EspaceClientComptes::SESSION_A_FINIR) : $session->set(EspaceClientComptes::SESSION_A_FINIR, $par);
+
         $compte = $token->getUser();
         if ($compte instanceof CompteClient) {
             $this->repository->find($compte->getId())?->setDerniereConnexion(new \DateTimeImmutable());
             $this->em->flush();
+            // Mot de passe à choisir, e-mail à donner : avant d'entrer.
+            $etapes = EspaceClientComptes::etapes($compte, $par);
+            if (null !== $etapes['motDePasse'] || null !== $etapes['email']) {
+                return new RedirectResponse($this->urls->generate('app_espace_securiser'));
+            }
         }
 
-        return new RedirectResponse($this->getTargetPath($request->getSession(), $firewallName) ?? $this->urls->generate('app_espace_accueil'));
+        return new RedirectResponse($this->getTargetPath($session, $firewallName) ?? $this->urls->generate('app_espace_accueil'));
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response

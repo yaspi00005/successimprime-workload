@@ -21,6 +21,8 @@ final class DroitsEspace
         'app_espace_push_abonner',
         'app_espace_push_desabonner',
         'app_espace_mot_de_passe',
+        'app_espace_securiser',
+        'app_espace_email',
         'app_espace_appareils_deconnecter',
         // Assistant : ses outils ne lui montrent que ce qu'un compte en lecture voit.
         'app_espace_assistant_message',

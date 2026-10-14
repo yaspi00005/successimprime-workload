@@ -232,7 +232,8 @@ final class CatalogueSynchro
                     'moyenPrefere', 'entiteFacturation', 'conseiller',
                 ],
                 'relations' => [], 'listes' => [], 'numero' => 'code',
-                'remontees' => ['recevoirSms' => null, 'consentementMarketingLe' => null],
+                // E-mail donné par le titulaire dans son espace : pris seulement si la fiche du local n'en a pas.
+                'remontees' => ['recevoirSms' => null, 'consentementMarketingLe' => null, 'email' => ['' => ['*']]],
             ],
             'commande' => [
                 'classe' => Commandes::class, 'sens' => self::DEUX, 'libelle' => 'Commande', 'titre' => ['numero'],

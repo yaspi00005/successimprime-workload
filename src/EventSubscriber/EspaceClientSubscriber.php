@@ -4,6 +4,7 @@ namespace App\EventSubscriber;
 
 use App\Entity\CompteClient;
 use App\Security\DroitsEspace;
+use App\Security\EspaceClientComptes;
 use App\Service\EspaceClient\AppareilsClient;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -22,12 +23,17 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
  * À chaque page de l'espace client connecté :
  *  - une session ouverte avant « Déconnecter les autres appareils » est
  *    fermée (version de session du compte) ;
+ *  - tant que le mot de passe n'est pas choisi (ou l'e-mail donné après un
+ *    code d'accès de la boutique), seule « Sécuriser mon compte » s'ouvre ;
  *  - un compte « Lecture · suivi » ne peut rien envoyer ni ouvrir de page
  *    qui écrit (DroitsEspace) ;
  *  - l'appareil est noté (Mon compte › Sécurité).
  */
 final class EspaceClientSubscriber implements EventSubscriberInterface
 {
+    /** Pages ouvertes tant que le compte n'est pas sécurisé. */
+    private const ROUTES_A_FINIR = ['app_espace_securiser', 'app_espace_deconnexion'];
+
     private ?Cookie $cookie = null;
 
     public function __construct(
@@ -81,6 +87,15 @@ final class EspaceClientSubscriber implements EventSubscriberInterface
         }
 
         $route = (string) $requete->attributes->get('_route', '');
+        if (!\in_array($route, self::ROUTES_A_FINIR, true)) {
+            $par = $requete->hasSession() ? $requete->getSession()->get(EspaceClientComptes::SESSION_A_FINIR) : null;
+            if (EspaceClientComptes::etapes($compte, \is_string($par) ? $par : null)['bloquant']) {
+                $event->setResponse(new RedirectResponse($this->urls->generate('app_espace_securiser')));
+
+                return;
+            }
+        }
+
         if (!DroitsEspace::permis($compte, $requete->getMethod(), $route)) {
             if ($requete->isMethod('GET') && $requete->hasSession() && $requete->getSession() instanceof FlashBagAwareSessionInterface) {
                 $requete->getSession()->getFlashBag()->add('error', 'Votre accès est en lecture seule : vous suivez les commandes, les livraisons et les fichiers.');

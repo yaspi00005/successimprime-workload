@@ -9,8 +9,10 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Accès d'un client à son espace (maquettes CX01 et CX04). Le client se
- * connecte avec son numéro de téléphone et un code reçu par SMS, ou un
- * mot de passe s'il en a choisi un. Il ne voit que ses propres données.
+ * connecte avec son numéro de téléphone et son mot de passe. Un code reçu
+ * par e-mail (par SMS sans adresse) sert à la première connexion et au
+ * mot de passe oublié ; un code d'accès donné par la boutique sur
+ * WhatsApp aussi. Il ne voit que ses propres données.
  *
  * Une entreprise (maquette 19) a plusieurs comptes sur la même fiche
  * client, chacun avec ses droits : demandeur (commande seulement, sa
@@ -70,6 +72,13 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(nullable: true)]
     private ?string $motDePasse = null;
+
+    /**
+     * E-mail de la personne, où partent ses codes de connexion. Donné par
+     * elle-même une fois connectée ; reste sur le site (pas de synchronisation).
+     */
+    #[ORM\Column(length: 180, nullable: true)]
+    private ?string $email = null;
 
     #[ORM\Column]
     private bool $actif = true;
@@ -310,6 +319,45 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
         $this->motDePasse = $empreinte;
 
         return $this;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(?string $email): static
+    {
+        $email = mb_strtolower(trim((string) $email));
+        $this->email = '' === $email ? null : mb_substr($email, 0, 180);
+
+        return $this;
+    }
+
+    /**
+     * Le compte du numéro principal de la fiche : celui de la personne
+     * dont la boutique a le numéro et l'e-mail sur la fiche client.
+     */
+    public function estTitulaire(): bool
+    {
+        return null !== $this->client && self::normaliserTelephone((string) $this->client->getTelephone()) === $this->telephone;
+    }
+
+    /**
+     * Où partent les codes de connexion : l'e-mail de la personne, sinon,
+     * pour le titulaire, celui de la fiche client ; null : par SMS. Une
+     * personne ajoutée à une entreprise ne reçoit jamais ses codes à
+     * l'adresse de l'entreprise.
+     */
+    public function emailDesCodes(): ?string
+    {
+        $propre = filter_var((string) $this->email, \FILTER_VALIDATE_EMAIL) ? $this->email : null;
+        if (null !== $propre || !$this->estTitulaire()) {
+            return $propre;
+        }
+        $fiche = mb_strtolower(trim((string) $this->client?->getEmail()));
+
+        return filter_var($fiche, \FILTER_VALIDATE_EMAIL) ? $fiche : null;
     }
 
     public function isActif(): bool

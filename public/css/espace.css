@@ -167,6 +167,7 @@ html, body { margin: 0; min-height: 100%; }
 
 .si-espace input[type="text"],
 .si-espace input[type="tel"],
+.si-espace input[type="email"],
 .si-espace input[type="password"] {
   width: 100%;
   border: 1.5px solid #D5DCE8;
@@ -511,4 +512,14 @@ html, body { margin: 0; min-height: 100%; }
   .si-espace-commandes .si-etat { grid-column: 1; justify-self: start; grid-row: 2; }
 
   .si-espace-montants { grid-row: 1 / span 2; grid-column: 2; }
+}
+
+/* Code d'accès donné par la boutique (8 caractères, sans lettres ambiguës). */
+.si-espace input.si-code-acces {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-align: center;
+  text-transform: uppercase;
 }

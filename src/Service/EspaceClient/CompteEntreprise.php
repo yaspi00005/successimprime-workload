@@ -41,7 +41,8 @@ final class CompteEntreprise
 
     /**
      * Ajoute une personne au compte de l'entreprise. Elle se connectera
-     * avec son propre numéro, par code SMS comme tout le monde.
+     * avec son propre numéro : un code à la première connexion (par SMS,
+     * puis à l'e-mail qu'elle aura donné), ensuite son mot de passe.
      *
      * @param list<string> $droits
      *
@@ -84,7 +85,7 @@ final class CompteEntreprise
         $this->em->flush();
 
         $this->sms->envoyerSms($normalise, \sprintf(
-            'Succès Imprim : %s vous a ajouté au compte %s. Connectez-vous sur notre espace client avec ce numéro, un code vous sera envoyé.',
+            'Succès Imprim : %s vous a ajouté au compte %s. Sur notre espace client, « Recevoir un code » avec ce numéro, puis choisissez votre mot de passe.',
             $par->getNomAffiche(),
             $client->getRaisonSociale() ?: $client->getNomComplet(),
         ));

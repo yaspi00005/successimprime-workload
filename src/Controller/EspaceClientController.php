@@ -23,6 +23,7 @@ use App\Service\EspaceClient\SuiviSansCompte;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
 use App\Security\CodeDeConnexion;
+use App\Security\DestinationCode;
 use App\Security\EspaceClientComptes;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -33,7 +34,9 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
+use Symfony\Component\Security\Http\Util\TargetPathTrait;
 
 /**
  * Espace client (maquettes CX01 et CX04) : connexion par code ou mot de
@@ -43,6 +46,8 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 #[Route('/espace', name: 'app_espace_')]
 final class EspaceClientController extends AbstractController
 {
+    use TargetPathTrait;
+
     public function __construct(
         private readonly CodeDeConnexion $codes,
         private readonly EspaceClientComptes $comptes,
@@ -64,8 +69,9 @@ final class EspaceClientController extends AbstractController
         // Paramètres › Espace client : la connexion par code peut être coupée.
         $codeActif = $this->codeActif();
 
+        // Le mot de passe d'abord ; le code sert à la première connexion et au mot de passe oublié.
         return $this->render('espace/connexion.html.twig', [
-            'mode' => 'mdp' === $request->query->get('mode') || !$codeActif ? 'mdp' : 'code',
+            'mode' => 'code' === $request->query->get('mode') && $codeActif ? 'code' : 'mdp',
             'code_actif' => $codeActif,
             'erreur' => $erreur?->getMessageKey(),
             'erreur_donnees' => $erreur?->getMessageData() ?? [],
@@ -98,12 +104,19 @@ final class EspaceClientController extends AbstractController
 
             return $this->redirectToRoute($retour);
         }
+        $email = trim((string) $request->request->get('email'));
+        if ($creation && '' !== $email && null === DestinationCode::emailValable($email)) {
+            $this->addFlash('error', 'Cette adresse e-mail n\'est pas valable. Corrigez-la, ou laissez-la vide pour recevoir le code par SMS.');
 
-        $identite = $creation ? ['nom' => $nom, 'prenom' => trim((string) $request->request->get('prenom'))] : [];
-        // « Renvoyer le code » pendant une création : on garde le nom saisi.
+            return $this->redirectToRoute($retour);
+        }
+
+        // Création : l'e-mail saisi ne sert que pour un numéro inconnu (EspaceClientComptes::destination).
+        $identite = $creation ? ['nom' => $nom, 'prenom' => trim((string) $request->request->get('prenom')), 'email' => $email] : [];
+        // « Renvoyer le code » pendant une création : on garde le nom et l'e-mail saisis.
         $enCours = $this->codes->donnees($request->getSession(), EspaceClientComptes::SESSION_CODE);
         if (!$creation && ($enCours['telephone'] ?? null) === $telephone && isset($enCours['nom'])) {
-            $identite = ['nom' => $enCours['nom'], 'prenom' => $enCours['prenom'] ?? ''];
+            $identite = ['nom' => $enCours['nom'], 'prenom' => $enCours['prenom'] ?? '', 'email' => $enCours['email'] ?? null];
         }
         $envoi = $this->comptes->envoyerCode($request->getSession(), $telephone, (string) $request->getClientIp(), $identite);
         if ($envoi['limite']) {
@@ -626,6 +639,7 @@ final class EspaceClientController extends AbstractController
             'utilisateurs' => $entreprise ? array_values(array_filter($this->compteEntreprise->utilisateurs($client), static fn (CompteClient $c): bool => $c->isActif())) : [],
             'adresses' => $this->compteEntreprise->adresses($client),
             'telephoneMasque' => MonCompte::telephoneMasque($compte->getTelephone()),
+            'emailCodesMasque' => null !== $compte->emailDesCodes() ? DestinationCode::masquerEmail((string) $compte->emailDesCodes()) : null,
             'appareils' => AppareilsClient::regrouper($appareils->liste($compte, $request)),
         ]);
     }
@@ -646,8 +660,91 @@ final class EspaceClientController extends AbstractController
         return 'notifications' === $request->request->get('retour') ? $this->redirect($this->generateUrl('app_espace_notifications').'#preferences') : $this->redirectToRoute('app_espace_compte');
     }
 
+    /**
+     * Avant d'entrer après un code (première connexion, mot de passe
+     * oublié, code d'accès de la boutique) : le mot de passe, et l'e-mail
+     * où partiront les prochains codes. Seule page ouverte tant que c'est
+     * obligatoire (EspaceClientSubscriber).
+     */
+    #[Route('/securiser', name: 'securiser', methods: ['GET', 'POST'])]
+    public function securiser(Request $request, UserPasswordHasherInterface $hasher, EntityManagerInterface $em, TokenStorageInterface $jetons): Response
+    {
+        $compte = $this->compte();
+        $session = $request->getSession();
+        $par = $session->get(EspaceClientComptes::SESSION_A_FINIR);
+        $etapes = EspaceClientComptes::etapes($compte, \is_string($par) ? $par : null);
+        if ((null === $etapes['motDePasse'] && null === $etapes['email']) || (!$etapes['bloquant'] && $request->query->getBoolean('plus_tard'))) {
+            $session->remove(EspaceClientComptes::SESSION_A_FINIR);
+
+            return $this->redirectToRoute('app_espace_accueil');
+        }
+
+        $erreur = null;
+        $email = (string) $compte->emailDesCodes();
+        if ($request->isMethod('POST')) {
+            $email = trim((string) $request->request->get('email', $email));
+            $valable = DestinationCode::emailValable($email);
+            $nouveau = (string) $request->request->get('mot_de_passe');
+            $erreur = match (true) {
+                !$this->isCsrfTokenValid('espace-securiser', (string) $request->request->get('_token')) => 'La page a expiré. Réessayez.',
+                EspaceClientComptes::REQUIS === $etapes['email'] && null === $valable => 'Indiquez votre adresse e-mail : vos prochains codes y arriveront.',
+                null !== $etapes['email'] && '' !== $email && null === $valable => 'Cette adresse e-mail n\'est pas valable.',
+                (EspaceClientComptes::REQUIS === $etapes['motDePasse'] || '' !== $nouveau) && mb_strlen($nouveau) < 8 => 'Le mot de passe doit faire au moins 8 caractères.',
+                '' !== $nouveau && $nouveau !== (string) $request->request->get('confirmation') => 'Les deux mots de passe ne sont pas identiques.',
+                default => null,
+            };
+            if (null === $erreur) {
+                if (null !== $etapes['email'] && null !== $valable) {
+                    $this->comptes->noterEmail($compte, $valable);
+                }
+                if (null !== $etapes['motDePasse'] && '' !== $nouveau) {
+                    $compte->setMotDePasse($hasher->hashPassword($compte, $nouveau));
+                }
+                $em->flush();
+                // La session garde le compte à jour : changer de mot de passe ne la ferme pas.
+                $jetons->getToken()?->setUser($compte);
+                $session->remove(EspaceClientComptes::SESSION_A_FINIR);
+                $this->addFlash('succes', '' !== $nouveau ? 'C\'est fait. La prochaine fois, connectez-vous avec votre numéro et votre mot de passe.' : 'C\'est enregistré.');
+
+                return $this->redirect($this->getTargetPath($session, 'espace') ?? $this->generateUrl('app_espace_accueil'));
+            }
+        }
+
+        $reponse = $this->render('espace/securiser.html.twig', [
+            'compte' => $compte,
+            'etapes' => $etapes,
+            'email' => $email,
+            'email_masque' => null !== $compte->emailDesCodes() ? DestinationCode::masquerEmail((string) $compte->emailDesCodes()) : null,
+            'erreur' => $erreur,
+        ], new Response(null, null === $erreur ? 200 : 422));
+        $reponse->headers->set('Cache-Control', 'no-store');
+
+        return $reponse;
+    }
+
+    /** Mon compte › Sécurité : l'e-mail où partent les codes, changé avec le mot de passe actuel. */
+    #[Route('/compte/email', name: 'email', methods: ['POST'])]
+    public function changerEmail(Request $request, UserPasswordHasherInterface $hasher, EntityManagerInterface $em): Response
+    {
+        $compte = $this->compte();
+        $email = DestinationCode::emailValable((string) $request->request->get('email'));
+        if (!$this->isCsrfTokenValid('espace-email', (string) $request->request->get('_token'))) {
+            $this->addFlash('error', 'La page a expiré. Réessayez.');
+        } elseif (null === $email) {
+            $this->addFlash('error', 'Cette adresse e-mail n\'est pas valable.');
+        } elseif (!$compte->aUnMotDePasse() || !$hasher->isPasswordValid($compte, (string) $request->request->get('mot_de_passe'))) {
+            $this->addFlash('error', 'Mot de passe incorrect : l\'adresse n\'a pas changé.');
+        } else {
+            $this->comptes->noterEmail($compte, $email);
+            $em->flush();
+            $this->addFlash('succes', 'Adresse enregistrée : vos prochains codes y arriveront.');
+        }
+
+        return $this->redirect($this->generateUrl('app_espace_compte').'#securite');
+    }
+
     #[Route('/mot-de-passe', name: 'mot_de_passe', methods: ['POST'])]
-    public function motDePasse(Request $request, UserPasswordHasherInterface $hasher, EntityManagerInterface $em): Response
+    public function motDePasse(Request $request, UserPasswordHasherInterface $hasher, EntityManagerInterface $em, TokenStorageInterface $jetons): Response
     {
         $compte = $this->compte();
         $nouveau = (string) $request->request->get('mot_de_passe');
@@ -660,7 +757,9 @@ final class EspaceClientController extends AbstractController
         } else {
             $compte->setMotDePasse($hasher->hashPassword($compte, $nouveau));
             $em->flush();
-            $this->addFlash('succes', 'Mot de passe enregistré. Vous pouvez aussi vous connecter avec.');
+            // La session garde le compte à jour : changer de mot de passe ne la ferme pas.
+            $jetons->getToken()?->setUser($compte);
+            $this->addFlash('succes', 'Mot de passe enregistré.');
         }
 
         return $this->redirectToRoute('app_espace_compte');

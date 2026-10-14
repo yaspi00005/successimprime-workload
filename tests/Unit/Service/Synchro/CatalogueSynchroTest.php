@@ -202,6 +202,10 @@ final class CatalogueSynchroTest extends TestCase
         // Offres cochées dans l'espace : l'accord remonte, rien d'autre.
         self::assertTrue(CatalogueSynchro::remonteePermise('client', 'consentementMarketingLe', null, '2026-10-14 10:00:00'));
         self::assertFalse(CatalogueSynchro::remonteePermise('client', 'raisonSociale', 'Hôtel Niger', 'Hôtel Niger SA'));
+        // E-mail donné par le titulaire dans son espace : seulement sur une fiche du local qui n'en a pas.
+        self::assertTrue(CatalogueSynchro::remonteePermise('client', 'email', null, 'yaya@gmail.com'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('client', 'email', 'contact@hotel-niger.ml', 'yaya@gmail.com'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('client', 'email', null, null));
 
         // Messages client ⇄ atelier : le texte, sans qui a traité ni l'employé qui a répondu.
         self::assertSame(['sens', 'auteur', 'texte', 'creeLe'], $types['message_client']['champs']);

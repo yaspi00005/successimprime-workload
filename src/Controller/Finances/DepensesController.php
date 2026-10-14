@@ -139,7 +139,8 @@ final class DepensesController extends AbstractController
         $mois = $depense->getDateDepense();
         [$debut, $fin] = Periode::bornes($mois);
         $budget = null;
-        if ($droits['tresorerie']) {
+        // Dette fournisseur reprise au démarrage : hors budgets (docs/import-donnees.md).
+        if ($droits['tresorerie'] && !$depense->isSoldeOuverture()) {
             $ligne = array_values(array_filter(
                 Budgets::lignes($this->budgets->montants(), $this->budgets->consommes($debut, $fin)),
                 static fn (array $l): bool => $l['cle'] === $depense->getCategorie(),

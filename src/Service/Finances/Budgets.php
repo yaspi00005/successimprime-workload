@@ -176,6 +176,8 @@ final class Budgets
             ->select('d.categorie', 'SUM(d.montant) AS total')
             ->from(Depense::class, 'd')
             ->andWhere('d.statut IN (:engagees)')
+            // Dette fournisseur du démarrage (docs/import-donnees.md) : pas une charge du mois.
+            ->andWhere('d.soldeOuverture = false')
             ->andWhere('d.dateDepense >= :debut AND d.dateDepense < :fin')
             ->setParameter('engagees', Depense::ENGAGEES)
             ->setParameter('debut', $debut)

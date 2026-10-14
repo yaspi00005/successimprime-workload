@@ -387,7 +387,7 @@ final class VentesService
         return $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Commandes::class, 'c')
-            ->andWhere('c.deleted = false');
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false');
     }
 
     /**
@@ -417,7 +417,7 @@ final class VentesService
         return (int) round((float) $this->entityManager->createQueryBuilder()
             ->select('AVG(c.totalTtc)')
             ->from(Commandes::class, 'c')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.dateCommande BETWEEN :debut AND :fin')
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
@@ -435,7 +435,7 @@ final class VentesService
             ->select('COUNT(DISTINCT c.id)')
             ->from(Commandes::class, 'c')
             ->join('c.commandesDetails', 'cd')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('cd.statutProduction IN (:statuts)')
             ->setParameter('statuts', self::PRODUCTION_EN_COURS);
 

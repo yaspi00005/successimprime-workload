@@ -242,8 +242,12 @@ final class CatalogueSynchro
                     'montantApayer', 'deleted', 'statut', 'etat', 'statutPaiement', 'resteAPayer', 'totalPaye', 'canal', 'modeLivraison', 'adresseLivraison',
                     // Compte d'entreprise (maquette 19) : qui a demandé, qui a validé.
                     'bonCommande', 'validationEntreprise', 'demandeePar', 'valideePar', 'motifRefusEntreprise',
+                    // Solde d'ouverture (docs/import-donnees.md) : compté dans le solde de l'espace client, pas dans ses commandes.
+                    'soldeOuverture',
                 ],
                 'relations' => ['clients' => 'client', 'societe' => 'societe'], 'listes' => [], 'numero' => 'numero',
+                // Seul l'import du local crée un solde d'ouverture : une commande venue du site n'en est jamais un.
+                'imposeAuLocal' => ['soldeOuverture' => false],
                 // Décision du valideur de l'entreprise, prise en ligne.
                 'remontees' => [
                     'validationEntreprise' => [Commandes::VALIDATION_A_FAIRE => [Commandes::VALIDATION_ACCEPTEE, Commandes::VALIDATION_REFUSEE]],

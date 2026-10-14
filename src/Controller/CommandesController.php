@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Commandes;
 use App\Entity\Factures;
 use App\Entity\Paiements;
+use App\Entity\SoldeOuverture;
 use App\Entity\User;
 use App\Entity\MouvementTresorerie;
 use App\Form\CommandesType;
@@ -561,8 +562,19 @@ final class CommandesController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_commandes_show', methods: ['GET'])]
-    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient, PromotionsSaisie $promotionsSaisie): Response
+    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient, PromotionsSaisie $promotionsSaisie, EntityManagerInterface $entityManager): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            // Ce que le client devait au démarrage (docs/import-donnees.md) : un montant, pas une vente.
+            $this->denyAccessUnlessGranted('ROLE_PAIEMENT_VOIR');
+
+            return $this->render('commandes/solde_ouverture.html.twig', [
+                'commande' => $commande,
+                'paiementsValides' => $suiviCommandeService->paiementsValides($commande),
+                'solde' => $entityManager->getRepository(SoldeOuverture::class)->findOneBy(['commande' => $commande]),
+            ]);
+        }
+
         $lignes = [];
         $voirCouts = $this->isGranted('ROLE_COUT_MARGE');
         $marge = ['ht' => 0, 'cout' => 0, 'incomplet' => false];
@@ -619,6 +631,9 @@ final class CommandesController extends AbstractController
         StockService $stockService,
         PromotionsSaisie $promotionsSaisie
     ): Response {
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
+        }
 
         /*
      * ============================================================
@@ -1038,6 +1053,9 @@ final class CommandesController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function delete(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
+        }
         /*
          * Suppression douce (Commandes::$deleted) plutôt qu'un
          * remove() en base : une commande a en général déjà des
@@ -1080,6 +1098,9 @@ final class CommandesController extends AbstractController
     #[Route('/{id}/annuler', name: 'app_commandes_annuler', methods: ['POST'])]
     public function annuler(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
+        }
         $user = $this->getUser();
 
         if (!$user instanceof User) {
@@ -1176,6 +1197,9 @@ final class CommandesController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function restaurer(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
+        }
         $user = $this->getUser();
 
         if (!$user instanceof User) {
@@ -2970,7 +2994,7 @@ final class CommandesController extends AbstractController
                     $notificationService->notifierRoles(
                         ['ROLE_ADMIN', 'ROLE_TRESORERIE_VOIR'],
                         sprintf(
-                            'Paiement de %s FCFA encaissé sur la commande %s.',
+                            $commande->estSoldeOuverture() ? 'Paiement de %s FCFA encaissé sur le solde d\'ouverture %s.' : 'Paiement de %s FCFA encaissé sur la commande %s.',
                             number_format($montant, 0, ',', ' '),
                             $commande->getNumero()
                         ),

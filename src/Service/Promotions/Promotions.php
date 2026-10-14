@@ -122,7 +122,7 @@ final class Promotions
         $qb = $this->em->createQueryBuilder()
             ->select('MAX(c.dateCommande) AS derniere', 'COUNT(c.id) AS nombre', 'SUM(CASE WHEN c.dateCommande >= :an THEN c.totalTtc ELSE 0 END) AS ca')
             ->from(Commandes::class, 'c')
-            ->where('c.clients = :client')->andWhere('c.deleted = false')
+            ->where('c.clients = :client')->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.dateCommande < :jusque')
             ->setParameter('client', $client)
             ->setParameter('an', $jour->modify('-12 months'))

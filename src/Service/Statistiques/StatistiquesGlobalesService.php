@@ -31,6 +31,7 @@ final class StatistiquesGlobalesService
             ->addSelect('agent')
             ->leftJoin('c.commandesDetails', 'detail')
             ->addSelect('detail')
+            ->andWhere('c.soldeOuverture = false')
             ->andWhere('c.dateCommande BETWEEN :debut AND :fin')
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)

@@ -236,7 +236,7 @@ final class SuiviPromotions
             return 0;
         }
         $qb = $this->em->createQueryBuilder()->select('COALESCE(SUM(c.totalHt), 0)')->from(Commandes::class, 'c')
-            ->where('c.deleted = false')->andWhere('c.statut = true')
+            ->where('c.deleted = false AND c.soldeOuverture = false')->andWhere('c.statut = true')
             ->andWhere('c.dateCommande >= :debut AND c.dateCommande < :fin')
             ->setParameter('debut', $debut->setTime(0, 0))->setParameter('fin', $fin->setTime(0, 0)->modify('+1 day'));
         if (null !== $clients) {
@@ -278,7 +278,7 @@ final class SuiviPromotions
         foreach ($this->em->createQueryBuilder()
             ->select('IDENTITY(c.clients) AS client', 'MAX(c.dateCommande) AS derniere', 'SUM(CASE WHEN c.dateCommande >= :an THEN c.totalTtc ELSE 0 END) AS ca')
             ->from(Commandes::class, 'c')
-            ->where('c.deleted = false')->andWhere('c.clients IS NOT NULL')->andWhere('c.dateCommande < :debut')
+            ->where('c.deleted = false AND c.soldeOuverture = false')->andWhere('c.clients IS NOT NULL')->andWhere('c.dateCommande < :debut')
             ->setParameter('an', $debut->modify('-12 months'))->setParameter('debut', $debut)
             ->groupBy('c.clients')->getQuery()->getArrayResult() as $l) {
             $achats[(int) $l['client']] = ['derniere' => new \DateTimeImmutable((string) $l['derniere']), 'ca' => (int) $l['ca']];

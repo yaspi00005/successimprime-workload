@@ -546,7 +546,7 @@ final class EspaceClientController extends AbstractController
     public function payer(string $id, Request $request, EspaceClient $espace, OrangeMoney $orangeMoney): Response
     {
         $compte = $this->payeur();
-        $commande = $espace->commande($compte->getClient(), $id) ?? throw $this->createNotFoundException();
+        $commande = $espace->commande($compte->getClient(), $id, true) ?? throw $this->createNotFoundException();
         if (!$commande->isStatut()) {
             // Prix encore indicatif : on paie une fois la commande confirmée par l'atelier.
             return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
@@ -576,7 +576,7 @@ final class EspaceClientController extends AbstractController
     {
         $this->jeton($request);
         $compte = $this->payeur();
-        $commande = $espace->commande($compte->getClient(), $id) ?? throw $this->createNotFoundException();
+        $commande = $espace->commande($compte->getClient(), $id, true) ?? throw $this->createNotFoundException();
         try {
             return $this->redirect($orangeMoney->demarrer($commande, $compte, new \DateTimeImmutable())->getLienPaiement());
         } catch (\DomainException $e) {

@@ -100,6 +100,10 @@ final class Fidelite
         if ($this->enLigne || null === $commande || null === $client || null === $p->getId()) {
             return false;
         }
+        if ($commande->estSoldeOuverture()) {
+            // Régler ce qui était dû au démarrage ne rapporte pas de points (docs/import-donnees.md).
+            return false;
+        }
         $le ??= new \DateTimeImmutable();
         $annulee = self::commandeAnnulee($commande);
 
@@ -347,6 +351,9 @@ final class Fidelite
     {
         $client = $c->getClients() ?? throw new \DomainException('Commande sans client.');
         $this->surLaBoutique();
+        if ($c->estSoldeOuverture()) {
+            throw new \DomainException('Les points ne règlent pas un solde d\'ouverture.');
+        }
         if ($client->isB2B()) {
             throw new \DomainException('Client au prix B2B : hors programme de fidélité.');
         }

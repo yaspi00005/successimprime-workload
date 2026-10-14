@@ -142,7 +142,7 @@ final class Rentabilite
             ->select('c', 'client')
             ->from(Commandes::class, 'c')
             ->leftJoin('c.clients', 'client')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.statut = true')
             ->andWhere('c.totalHt > 0')
             ->andWhere('c.dateCommande >= :debut AND c.dateCommande < :fin')

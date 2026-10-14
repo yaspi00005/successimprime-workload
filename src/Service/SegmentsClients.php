@@ -43,7 +43,7 @@ final class SegmentsClients
         $lignes = $this->em->createQueryBuilder()
             ->select('IDENTITY(c.clients) AS client, MAX(c.dateCommande) AS derniere, SUM(CASE WHEN c.dateCommande >= :an THEN c.totalTtc ELSE 0 END) AS ca')
             ->from(Commandes::class, 'c')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.clients IS NOT NULL')
             ->groupBy('c.clients')
             ->setParameter('an', $maintenant->modify('-12 months'))

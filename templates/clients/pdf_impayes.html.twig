@@ -233,7 +233,7 @@
 					{% for ligne in commandes %}
 
 						<tr class="commande-header">
-							<td>{{ ligne.commande.numero }}</td>
+							<td>{{ ligne.commande.libelle }}</td>
 							<td>{{ ligne.commande.dateCommande ? ligne.commande.dateCommande|date('d/m/Y') : '—' }}</td>
 							<td class="text-right">{{ ligne.totalTtc|number_format(0, ',', ' ') }} FCFA</td>
 							<td class="text-right">{{ ligne.totalPaye|number_format(0, ',', ' ') }} FCFA</td>

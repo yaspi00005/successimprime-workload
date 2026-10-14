@@ -233,7 +233,7 @@ final class ActionsCaisse
         if ($r['source_inactif']) {
             $jours = (int) $r['inactif_jours'];
             $lignes = $this->em->createQueryBuilder()->select('IDENTITY(c.clients) AS client, MAX(c.dateCommande) AS derniere')->from(Commandes::class, 'c')
-                ->where('c.deleted = false AND c.clients IS NOT NULL')
+                ->where('c.deleted = false AND c.soldeOuverture = false AND c.clients IS NOT NULL')
                 ->groupBy('c.clients')
                 ->having('MAX(c.dateCommande) <= :limite AND MAX(c.dateCommande) > :recul')
                 ->setParameter('limite', $aujourdhui->modify('-'.$jours.' days'))

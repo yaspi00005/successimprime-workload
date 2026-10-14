@@ -290,6 +290,9 @@ final class FideliteController extends AbstractController
     #[IsGranted('ROLE_COMMANDE')]
     public function utiliser(Request $request, Commandes $commande): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Ni points ni promotion sur un solde d\'ouverture.');
+        }
         if ($this->isCsrfTokenValid('fidelite-commande-'.$commande->getId(), $request->request->getString('_token'))) {
             try {
                 $points = (int) str_replace([' ', "\u{202f}", "\u{a0}"], '', $request->request->getString('points'));
@@ -332,6 +335,9 @@ final class FideliteController extends AbstractController
     #[IsGranted('ROLE_COMMANDE')]
     public function appliquerReveil(Request $request, Commandes $commande): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Ni points ni promotion sur un solde d\'ouverture.');
+        }
         if ($this->isCsrfTokenValid('fidelite-commande-'.$commande->getId(), $request->request->getString('_token'))) {
             try {
                 if ($this->fidelite->estEnLigne()) {

@@ -145,7 +145,7 @@ final class ChiffresSite
         $livrees = $this->em->createQueryBuilder()
             ->select('IDENTITY(c.clients) AS client, c.dateCommande AS date')
             ->from(Commandes::class, 'c')
-            ->where('c.deleted = false')
+            ->where('c.deleted = false AND c.soldeOuverture = false')
             // Toutes les lignes livrées (ou annulées), au moins une livrée : comme l'écran TV.
             ->andWhere(\sprintf('EXISTS (SELECT l1.id FROM %s l1 WHERE l1.commande = c AND l1.statutProduction = :livree)', CommandesDetails::class))
             ->andWhere(\sprintf('NOT EXISTS (SELECT l2.id FROM %s l2 WHERE l2.commande = c AND l2.statutProduction NOT IN (:finies))', CommandesDetails::class))
@@ -156,7 +156,7 @@ final class ChiffresSite
         $clients = (int) $this->em->createQueryBuilder()
             ->select('COUNT(DISTINCT IDENTITY(c.clients))')
             ->from(Commandes::class, 'c')
-            ->where('c.deleted = false')
+            ->where('c.deleted = false AND c.soldeOuverture = false')
             ->getQuery()->getSingleScalarResult();
 
         return [

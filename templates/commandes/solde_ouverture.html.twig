@@ -1,0 +1,96 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Solde d'ouverture d'un client (docs/import-donnees.md) : ce qu'il
+	devait au démarrage de l'ERP. Un montant à encaisser, pas une vente :
+	pas de lignes, pas de facture, pas de production.
+#}
+
+{% set client = commande.clients %}
+{% set totalPaye = paiementsValides|reduce((somme, p) => somme + p.montant, 0) %}
+{% set reste = max(commande.totalTtc - totalPaye, 0) %}
+{% set peutEncaisser = is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+
+{% block title %}Solde d'ouverture · {{ client ? client.nomComplet : commande.numero }}{% endblock %}
+
+{% block page_title %}Solde d'ouverture{% endblock %}
+
+{% block header_actions %}
+	{% if peutEncaisser and reste > 0 and client %}
+		<li class="nav-item">
+			<a href="{{ path('app_caisse_index', {client: client.id, commande: commande.id}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-cash-register me-1"></i>Encaisser</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="row">
+		<div class="col-xl-8">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Repris à l'ouverture</h4><span class="si-pastille si-pastille-gris">{{ commande.numero }}</span></div>
+				<p class="mb-3">
+					{% if client %}<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}"><strong>{{ client.nomComplet }}</strong></a>{% else %}<strong>Client supprimé</strong>{% endif %}
+					devait <strong>{{ commande.totalTtc|number_format(0, ',', ' ') }} F</strong> le {{ commande.dateCommande|date('d/m/Y') }}, jour d'ouverture de l'ERP.
+				</p>
+				<dl class="row mb-0 small">
+					<dt class="col-sm-4 text-muted fw-normal">Échéance</dt>
+					<dd class="col-sm-8">{{ commande.dateLivraison ? commande.dateLivraison|date('d/m/Y') : '—' }}</dd>
+					{% if commande.observation %}
+						<dt class="col-sm-4 text-muted fw-normal">Note</dt>
+						<dd class="col-sm-8">{{ commande.observation }}</dd>
+					{% endif %}
+					{% if solde and solde.import %}
+						<dt class="col-sm-4 text-muted fw-normal">Import</dt>
+						<dd class="col-sm-8">
+							{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_import_voir', {id: solde.import.id}) }}">n° {{ solde.import.id }}</a>{% else %}n° {{ solde.import.id }}{% endif %}
+							· {{ solde.import.nomFichier }} · {{ solde.import.le|date('d/m/Y H:i') }} par {{ solde.import.parNom }}
+						</dd>
+					{% endif %}
+				</dl>
+				<p class="text-muted small mt-3 mb-0">
+					Ce n'est pas une vente : il n'entre ni dans le chiffre d'affaires, ni dans les statistiques, les objectifs, les primes ou la fidélité. Il n'a ni lignes ni facture.
+					Son encaissement compte dans la caisse et la trésorerie comme n'importe quel paiement.
+					Pour le corriger, annulez l'import tant que rien n'a été encaissé, puis importez le bon montant.
+				</p>
+			</div>
+		</div>
+
+		<div class="col-xl-4">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Paiements</h4></div>
+				{% for paiement in commande.paiements|filter(p => not p.estAnnule) %}
+					<div class="si-paiement">
+						<div>
+							<strong>{{ constant('App\\Entity\\Paiements::MODES_LABELS')[paiement.mode]|default(paiement.mode) }}</strong>
+							<small class="d-block text-muted">{{ paiement.date ? paiement.date|date('d/m/Y H:i') }}</small>
+						</div>
+						<div class="text-end">
+							<strong>{{ paiement.montant|number_format(0, ',', ' ') }}</strong>
+							<span class="d-block si-pastille si-pastille-{{ paiement.estValide ? 'vert' : (paiement.estRejete ? 'rouge' : 'orange') }}">{{ paiement.estValide ? 'Validé' : (paiement.estRejete ? 'Rejeté' : 'À valider') }}</span>
+						</div>
+					</div>
+				{% else %}
+					<p class="text-muted small">Rien d'encaissé pour l'instant.</p>
+				{% endfor %}
+				{% if reste > 0 %}
+					<div class="si-paiement">
+						<div>
+							<strong>Reste à payer</strong>
+							{% if commande.dateLivraison %}<small class="d-block text-muted">échéance le {{ commande.dateLivraison|date('d/m/Y') }}</small>{% endif %}
+						</div>
+						<div class="text-end">
+							<strong>{{ reste|number_format(0, ',', ' ') }}</strong>
+							<span class="d-block si-pastille si-pastille-orange">À encaisser</span>
+						</div>
+					</div>
+				{% endif %}
+				{% set part = commande.totalTtc > 0 ? (totalPaye * 100 / commande.totalTtc)|round : 0 %}
+				<div class="si-jauge-piste mt-3"><span class="si-fond-vert" style="width: {{ min(part, 100) }}%"></span></div>
+				<small class="text-muted">{{ part }} % payé{% if reste > 0 %} · reste {{ reste|number_format(0, ',', ' ') }} F{% endif %}</small>
+				{% if peutEncaisser and reste > 0 and client %}
+					<a href="{{ path('app_caisse_index', {client: client.id, commande: commande.id}) }}" class="btn btn-danger w-100 mt-3"><i class="fas fa-cash-register me-1"></i>Encaisser</a>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock %}

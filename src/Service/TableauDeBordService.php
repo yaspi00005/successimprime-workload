@@ -273,7 +273,7 @@ final class TableauDeBordService
             ->select('COUNT(DISTINCT c.id)')
             ->from(Commandes::class, 'c')
             ->join('c.commandesDetails', 'cd')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.dateLivraison < :maintenant')
             ->andWhere('cd.statutProduction IN (:statuts)')
             ->setParameter('maintenant', $maintenant)

@@ -632,6 +632,20 @@ for k in COMMANDES:
         if not attente:
             mouvement('encaissement', 'vente', montant, f'Paiement commande {k["numero"]} · {nom_client(c)}', quand, h, m + 2, dest=COMPTES[compte], mode=mode, paiement=pid, agent=U['aminata'])
 
+CODES_SUIVI = set()
+
+
+def code_suivi():
+    """Code du QR de suivi, de la forme 7K4P-2Q comme Factures::genererCodeSuivi (route /f/{code})."""
+    while True:
+        # 9 tirages comme avant, pour ne pas décaler le reste de la démo.
+        c = ''.join(R.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(9))
+        c = c[:4] + '-' + c[4:6]
+        if c not in CODES_SUIVI:
+            CODES_SUIVI.add(c)
+            return c
+
+
 # Factures (une par commande de plus de 2 jours, 75 %), liées aux paiements.
 nfac = 0
 for k in COMMANDES:
@@ -647,7 +661,7 @@ for k in COMMANDES:
                            'motif_surfacturation': None, 'total_ttc': k['a_payer'], 'montant_paye': k['paye'], 'reste_apayer': k['a_payer'] - k['paye'], 'statut_paiement': k['statut_p'],
                            'etat': 'emise', 'observation': None, 'token_authenticite': hexa(64), 'facturer_aun_tiers': 0, 'nom_facturation': None, 'adresse_facturation': None,
                            'telephone_facturation': None, 'email_facturation': None, 'created_at': T(k['d'], k['h'], k['m'] + 10), 'updated_at': T(max(0, k['d'] - 3), 12),
-                           'commande_id': k['id'], 'public_id': uid(), 'code_suivi': ''.join(R.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(9))})
+                           'commande_id': k['id'], 'public_id': uid(), 'code_suivi': code_suivi()})
     FACTURE_DE[k['id']] = fid
     for row in ROWS['paiements']:
         if row['commande_id'] == k['id']:

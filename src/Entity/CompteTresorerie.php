@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\CompteTresorerieRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -27,8 +28,10 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
     columns: ['proprietaire_id']
 )]
 #[ORM\HasLifecycleCallbacks]
-class CompteTresorerie
+class CompteTresorerie implements AppartientASociete
 {
+    use SocieteTrait;
+
     /*
      * ============================================================
      * TYPES DE COMPTE

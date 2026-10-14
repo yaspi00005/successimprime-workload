@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\PaiementsRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -19,9 +20,10 @@ use Symfony\Component\Validator\Constraints as Assert;
     columns: ['compte_tresorerie_id', 'statut']
 )]
 #[ORM\HasLifecycleCallbacks]
-class Paiements
+class Paiements implements AppartientASociete
 {
     use PublicIdTrait;
+    use SocieteTrait;
 
     public const MODE_ESPECES = 'especes';
     public const MODE_ORANGE_MONEY = 'orange_money';

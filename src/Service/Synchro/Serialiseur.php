@@ -293,7 +293,9 @@ final class Serialiseur
 
     public function trouver(string $type, string $publicId): ?object
     {
-        if (!Uuid::isValid($publicId)) {
+        // Les identifiants tirés d'un code (entreprises, sociétés : MD5) n'ont pas toujours
+        // la variante RFC qu'exige Uuid::isValid : la forme 8-4-4-4-12 suffit.
+        if (!preg_match('/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i', $publicId)) {
             return null;
         }
 

@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\EntrepriseRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -12,12 +13,17 @@ use Doctrine\ORM\Mapping as ORM;
  *
  * Les factures et les devis la désignent par son code (colonne
  * `emetteur`) : drepa, mdg, mdg_success…
+ *
+ * Elle appartient à une société (docs/societes.md) : mdg_success et mdg
+ * à Madial Group SARL, drepa à DREPA TECHNOLOGIE. Un document émis par
+ * elle prend cette société.
  */
 #[ORM\Entity(repositoryClass: EntrepriseRepository::class)]
 #[ORM\Table(name: 'entreprise')]
-class Entreprise
+class Entreprise implements AppartientASociete
 {
     use PublicIdTrait;
+    use SocieteTrait;
 
     public const COULEURS_PAR_DEFAUT = ['#0F4590', '#DE1028', '#FDC82A', '#E95B35', '#E8398A'];
 

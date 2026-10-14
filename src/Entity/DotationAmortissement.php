@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\DotationAmortissementRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -15,8 +16,10 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: DotationAmortissementRepository::class)]
 #[ORM\UniqueConstraint(name: 'uniq_dotation_bien_mois', columns: ['immobilisation_id', 'mois'])]
-class DotationAmortissement
+class DotationAmortissement implements AppartientASociete
 {
+    use SocieteTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

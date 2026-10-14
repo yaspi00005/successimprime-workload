@@ -2,13 +2,16 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\StockEntreesRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: StockEntreesRepository::class)]
-class StockEntrees
+class StockEntrees implements AppartientASociete
 {
+    use SocieteTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

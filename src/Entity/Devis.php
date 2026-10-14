@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\DevisRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -13,9 +14,10 @@ use Doctrine\DBAL\Types\Types;
 #[ORM\Entity(repositoryClass: DevisRepository::class)]
 #[ORM\Table(name: 'devis')]
 
-class Devis
+class Devis implements AppartientASociete
 {
     use PublicIdTrait;
+    use SocieteTrait;
 
     /*
      * ============================================================

@@ -84,6 +84,15 @@
 							<label class="si-libelle-champ" for="activite">Activité</label>
 							<input type="text" name="activite" id="activite" value="{{ entreprise.activite }}" maxlength="150" class="form-control form-control-sm">
 						</div>
+						<div class="col-12">
+							<label class="si-libelle-champ" for="societe">Société</label>
+							<select name="societe" id="societe" class="form-select form-select-sm" required>
+								{% for s in societes %}
+									<option value="{{ s.id }}" {{ entreprise.societe and s.id == entreprise.societe.id ? 'selected' }}>{{ s.libelle }}{{ not s.actif ? ' · désactivée' }}</option>
+								{% endfor %}
+							</select>
+							<div class="form-text">Entité juridique (RCCM, NIF, comptabilité) qui émet sous cet en-tête. Les documents déjà émis gardent leur société.</div>
+						</div>
 						<div class="col-md-6">
 							<label class="si-libelle-champ" for="rccm">RCCM</label>
 							<input type="text" name="rccm" id="rccm" value="{{ entreprise.rccm }}" maxlength="60" class="form-control form-control-sm">

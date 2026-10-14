@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\AchatsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -10,8 +11,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: AchatsRepository::class)]
-class Achats
+class Achats implements AppartientASociete
 {
+    use SocieteTrait;
+
     public const STATUT_DEMANDE = 'demande';
     public const STATUT_RECU = 'recu';
     public const STATUT_ANNULE = 'annule';

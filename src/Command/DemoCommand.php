@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Service\Societes\RattachementSql;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -81,6 +82,12 @@ final class DemoCommand extends Command
             foreach ([...self::PURGE_MODULES, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
+            }
+            if (!$purger) {
+                // Chargés avec la société principale, les documents d'un autre émetteur (DREPA) prennent la leur (docs/societes.md).
+                foreach (RattachementSql::instructions(900000) as $sql) {
+                    $this->connexion->executeStatement($sql);
+                }
             }
             $this->connexion->commit();
         } catch (\Throwable $e) {

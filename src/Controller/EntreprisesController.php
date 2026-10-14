@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Entreprise;
 use App\Repository\EntrepriseRepository;
+use App\Repository\SocieteRepository;
 use App\Service\DocumentsEntreprise;
 use App\Service\MontantEnLettres;
 use App\Service\NumerotationFactures;
@@ -23,6 +24,8 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
  *
  * Chaque facture ou devis est rattaché à une entreprise émettrice ;
  * l'en-tête, les mentions, les couleurs et les QR suivent ce choix.
+ * Chaque entreprise appartient à une société (docs/societes.md), qui
+ * passe aux documents qu'elle émet.
  */
 #[Route('/reglages/entreprises', name: 'app_entreprises_')]
 #[IsGranted('ROLE_ADMIN')]
@@ -36,6 +39,7 @@ final class EntreprisesController extends AbstractController
         private readonly EntrepriseRepository $entreprises,
         private readonly EntityManagerInterface $em,
         private readonly DocumentsEntreprise $documents,
+        private readonly SocieteRepository $societes,
     ) {
     }
 
@@ -111,6 +115,7 @@ final class EntreprisesController extends AbstractController
             'entreprises' => $this->entreprises->dansLOrdre(),
             'entreprise' => $entreprise,
             'images' => $this->documents->images($entreprise),
+            'societes' => $this->societes->choix($entreprise->getSociete()),
             'erreurs' => $erreurs,
             'prochainNumero' => $format !== null
                 ? NumerotationFactures::formater($format, NumerotationFactures::suivant($format, $entreprise->getCompteur(), $entreprise->getCompteurAnnee(), new \DateTimeImmutable())[0], new \DateTimeImmutable())
@@ -167,6 +172,15 @@ final class EntreprisesController extends AbstractController
             'compte_bancaire' => ['setCompteBancaire', 80], 'marchand_orange_money' => ['setMarchandOrangeMoney', 40],
         ] as $champ => [$setter, $longueur]) {
             $entreprise->{$setter}(mb_substr((string) $champs->get($champ, ''), 0, $longueur));
+        }
+
+        // Les documents déjà émis gardent leur société : seuls les prochains suivent ce choix.
+        $societe = $this->societes->find((int) $champs->get('societe', 0));
+
+        if ($societe === null || (!$societe->isActif() && $societe !== $entreprise->getSociete())) {
+            $erreurs[] = 'Choisissez la société de cette entreprise.';
+        } else {
+            $entreprise->setSociete($societe);
         }
 
         $format = trim((string) $champs->get('format_numero', ''));
@@ -261,7 +275,7 @@ final class EntreprisesController extends AbstractController
                 'surfacturation' => false, 'montantSurfacturation' => 0, 'tauxSurfacturation' => null, 'comptabilisee' => true,
                 'totalTtc' => 233000, 'montantPaye' => 116500, 'resteAPayer' => 116500, 'codeSuivi' => '7K4P-2Q',
             ],
-            'commande' => ['id' => 144, 'numero' => 'CM-0144', 'commandesDetails' => $lignes],
+            'commande' => ['id' => 144, 'numero' => 'CM-0144', 'bonCommande' => null, 'commandesDetails' => $lignes],
             'client' => ['raisonSociale' => 'Hôtel Niger (exemple)', 'adresse' => 'Bamako, Mali', 'telephone' => '+223 XX XX XX XX'],
             'urlSuivi' => $url,
             'qrSuivi' => $entreprise->isQrSuivi() ? DocumentsEntreprise::qr($url) : null,

@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\RapprochementBancaireRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -15,8 +16,10 @@ use Doctrine\ORM\Mapping as ORM;
     name: 'uniq_rapprochement_reference',
     columns: ['reference']
 )]
-class RapprochementBancaire
+class RapprochementBancaire implements AppartientASociete
 {
+    use SocieteTrait;
+
     public const STATUT_BROUILLON = 'brouillon';
     public const STATUT_VALIDE = 'valide';
     public const STATUT_CLOTURE = 'cloture';

@@ -13,7 +13,7 @@ use Doctrine\Migrations\AbstractMigration;
  * (creation_atelier, écrits en ligne et montés au local), reliés à la
  * demande de devis du visiteur.
  */
-final class Version20261014203000 extends AbstractMigration
+final class Version20261014220000 extends AbstractMigration
 {
     public function getDescription(): string
     {

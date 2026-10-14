@@ -60,7 +60,7 @@ Un employé sans le rôle Devis ni Commandes (production, livreur) reçoit 403 s
 - **Couleur** : corrigée. La gestion des couleurs sRGB de three.js est active, sans compensation de tons, et l'éclairage totalise environ π sur la face avant. Le tissu est un matériau mat (peu de reflet, léger velours). Mesuré le 14/10/2026 au bas du buste, pastille → tissu : Bleu Succès #0F4590 → #154690 (le prototype le rendait bleu clair), Noir #1F2026 → #232429, Rouge #DE1028 → #DA152A, Blanc #F4F4F1 → #EEEEEB, Jaune #FDC82A → #F6C22B, Vert #1F8A4C → #228A4D, Ciel #6FB3E6 → #6DAFE1.
 - **Téléphone** : les pastilles du haut passent à la ligne au lieu de se chevaucher, et l'aide « Glissez pour tourner » disparaît au premier geste ou après 6 secondes (elle couvrait le col). Le doigt fait tourner le modèle et la page défile toujours à la verticale.
 - **Modèles 3D** : le t-shirt, le polo et la casquette sont dessinés par la page (formes simples). **Un vrai modèle se branche sans code** : déposer `public/modeles-3d/tshirt.glb`, `polo.glb` ou `casquette.glb`. Le modèle est mis à l'échelle tout seul. Ses pièces doivent porter dans leur nom (maillage ou matériau) `tissu` (prend la couleur choisie), `visiere` (casquette) et `zone_devant` / `zone_dos` (reçoivent le marquage, avec des coordonnées UV qui couvrent la zone d'impression).
-- Données : tables `atelier_modele` et `creation_atelier`, colonne `demande_devis.creation_id` (migration `Version20261014203000`).
+- Données : tables `atelier_modele` et `creation_atelier`, colonne `demande_devis.creation_id` (migration `Version20261014220000`).
 
 ## Synchronisation
 

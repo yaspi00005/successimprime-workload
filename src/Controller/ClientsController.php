@@ -1449,6 +1449,8 @@ final class ClientsController extends AbstractController
         name: 'app_clients_pdf_impayes',
         methods: ['GET']
     )]
+    // Relevé de ce que le client a payé et doit encore : avec le droit Paiements.
+    #[IsGranted('ROLE_PAIEMENT_VOIR')]
     public function pdfImpayes(
         #[MapEntity(mapping: [
             'publicId' => 'publicId',
@@ -1565,6 +1567,8 @@ final class ClientsController extends AbstractController
         name: 'app_clients_pdf_commandes',
         methods: ['GET']
     )]
+    // Relevé de ce que le client a payé et doit encore : avec le droit Paiements.
+    #[IsGranted('ROLE_PAIEMENT_VOIR')]
     public function pdfToutesCommandes(
         #[MapEntity(mapping: [
             'publicId' => 'publicId',

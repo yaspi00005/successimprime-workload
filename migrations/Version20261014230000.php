@@ -11,7 +11,7 @@ use Doctrine\Migrations\AbstractMigration;
  * Espace client : e-mail de la personne, où partent ses codes de
  * connexion (première connexion, mot de passe oublié). Reste sur le site.
  */
-final class Version20261014203100 extends AbstractMigration
+final class Version20261014230000 extends AbstractMigration
 {
     public function getDescription(): string
     {

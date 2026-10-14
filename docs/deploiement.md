@@ -28,16 +28,18 @@ cd successimprim
 php composer.phar install --no-dev --optimize-autoloader   # ou composer, s'il est installé
 ```
 
+Le projet va dans le dossier personnel, jamais dans `public_html` : tout ce qui est sous `public_html` peut être servi, `.env.local` compris. Le `.htaccess` à la racine du projet refuse tout sauf `public/` si cela arrive quand même, mais il ne protège rien sous Nginx ou chez un hébergeur qui ignore les `.htaccess`.
+
 Puis pointer le domaine sur `~/successimprim/public`, créer la base dans le panneau, écrire `.env.local` (mêmes variables que plus bas, avec `APP_ENV=prod` et `APP_EN_LIGNE=1`, droits 600) et lancer :
 
 ```
+php -d memory_limit=512M bin/console cache:clear
 php bin/console doctrine:migrations:migrate --no-interaction
-php bin/console cache:clear
 php bin/console app:verifier-installation
 php bin/console app:orange-money:tester --paiement
 ```
 
-Sur certains hébergeurs, la commande `php` du terminal ou du cron n'est pas la bonne version : utiliser le chemin donné par l'hébergeur (par exemple `/usr/local/bin/php8.4` ou `ea-php84`) et le vérifier avec `php -v`. Les tâches cron sont celles de « Tâches planifiées du serveur », avec ce chemin. `public/.htaccess` gère la réécriture des adresses, la compression et le cache des fichiers statiques sous Apache ou LiteSpeed.
+Sans `APP_ENV=prod`, `composer install` vide le cache en mode développement, qui dépasse 256 Mo de mémoire : écrire `.env.local` avant, ou relancer `cache:clear` comme ci-dessus. Sur certains hébergeurs, la commande `php` du terminal ou du cron n'est pas la bonne version : utiliser le chemin donné par l'hébergeur (par exemple `/usr/local/bin/php8.4` ou `ea-php84`) et le vérifier avec `php -v`. Les tâches cron sont celles de « Tâches planifiées du serveur », avec ce chemin. `public/.htaccess` gère la réécriture des adresses, la compression et le cache des fichiers statiques sous Apache ou LiteSpeed.
 
 ## Serveur
 

@@ -1,5 +1,14 @@
 DirectoryIndex index.php
 
+# Rouvre l'accès que le .htaccess à la racine du projet refuse.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 

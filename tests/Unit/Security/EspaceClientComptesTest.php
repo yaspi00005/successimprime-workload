@@ -2,8 +2,10 @@
 
 namespace App\Tests\Unit\Security;
 
+use App\Entity\AccesEspaceClient;
 use App\Entity\Clients;
 use App\Entity\CompteClient;
+use App\Repository\AccesEspaceClientRepository;
 use App\Repository\CompteClientRepository;
 use App\Security\CodeDeConnexion;
 use App\Security\DestinationCode;
@@ -24,10 +26,14 @@ final class EspaceClientComptesTest extends TestCase
     /** @var list<object> */
     private array $persistes = [];
 
+    /** @var list<AccesEspaceClient> codes d'accès « en base » */
+    private array $acces = [];
+
     protected function setUp(): void
     {
         $this->fabrique = new FabriqueCodes();
         $this->persistes = [];
+        $this->acces = [];
     }
 
     private static function fiche(string $telephone, ?string $email, string $code = 'CLI-000042'): Clients
@@ -63,7 +69,34 @@ final class EspaceClientComptesTest extends TestCase
             }
         });
 
-        return new EspaceClientComptes($repository, $em, $this->fabrique->codes());
+        $acces = $this->createStub(AccesEspaceClientRepository::class);
+        $acces->method('parEmpreinte')->willReturnCallback(function (string $empreinte): ?AccesEspaceClient {
+            foreach ($this->acces as $a) {
+                if ($a->getEmpreinte() === $empreinte) {
+                    return $a;
+                }
+            }
+
+            return null;
+        });
+        // Comme la requête : seulement si ce code n'a pas déjà servi.
+        $acces->method('consommer')->willReturnCallback(static function (AccesEspaceClient $a, \DateTimeImmutable $le): bool {
+            $libre = !$a->estUtilise();
+            $a->utiliser($le);
+
+            return $libre;
+        });
+
+        return new EspaceClientComptes($repository, $em, $this->fabrique->codes(), $acces);
+    }
+
+    /** Code d'accès donné par la boutique pour cette fiche ; rend le code en clair. */
+    private function donnerAcces(Clients $fiche, \DateTimeImmutable $le): string
+    {
+        $acces = (new AccesEspaceClient())->setClient($fiche);
+        $this->acces[] = $acces;
+
+        return $acces->nouveauCode((string) $fiche->getTelephone(), $le, null);
     }
 
     public function testCompteDuTitulaireLEmailDeLaFiche(): void
@@ -226,5 +259,82 @@ final class EspaceClientComptesTest extends TestCase
         $service->noterEmail(self::compte($entreprise, '76124212'), 'gerant@gmail.com');
         $service->noterEmail(self::compte($entreprise, '66000001'), 'awa@gmail.com');
         self::assertSame('contact@hotel-niger.ml', $entreprise->getEmail(), 'l\'adresse de la fiche ne change pas');
+    }
+    public function testPremiereConnexionAvecLeCodeDeLaBoutique(): void
+    {
+        $fiche = self::fiche('76124212', null);
+        (new \ReflectionProperty($fiche, 'id'))->setValue($fiche, 42);
+        $le = new \DateTimeImmutable('2026-10-14 10:00');
+        $code = $this->donnerAcces($fiche, $le);
+        $service = $this->service([], ['22376124212' => $fiche]);
+
+        $compte = $service->ouvrirParAcces('76 12 42 12', strtolower(AccesEspaceClient::afficherCode($code)), $le->modify('+1 hour'));
+
+        self::assertNotNull($compte, 'compte ouvert sur la fiche');
+        self::assertSame($fiche, $compte->getClient());
+        self::assertSame('22376124212', $compte->getTelephone());
+        self::assertTrue($this->acces[0]->estUtilise(), 'code consommé');
+        self::assertSame(['motDePasse' => EspaceClientComptes::REQUIS, 'email' => EspaceClientComptes::REQUIS, 'bloquant' => true], EspaceClientComptes::etapes($compte, EspaceClientComptes::PAR_ACCES));
+        self::assertNull($service->ouvrirParAcces('76124212', $code, $le->modify('+2 hours')), 'une seule fois');
+    }
+
+    public function testLeCodeDeLaBoutiqueServeDeMotDePasseOublie(): void
+    {
+        $fiche = self::fiche('76124212', 'yaya@gmail.com');
+        (new \ReflectionProperty($fiche, 'id'))->setValue($fiche, 42);
+        $existant = self::compte($fiche, '76124212')->setMotDePasse('ancienne-empreinte');
+        $le = new \DateTimeImmutable('2026-10-14 10:00');
+        $code = $this->donnerAcces($fiche, $le);
+
+        $compte = $this->service(['22376124212' => $existant])->ouvrirParAcces('76124212', $code, $le);
+
+        self::assertSame($existant, $compte);
+        self::assertSame(EspaceClientComptes::REQUIS, EspaceClientComptes::etapes($existant, EspaceClientComptes::PAR_ACCES)['motDePasse'], 'nouveau mot de passe obligatoire');
+    }
+
+    public function testCodeDAccesRefuse(): void
+    {
+        $le = new \DateTimeImmutable('2026-10-14 10:00');
+        $fiche = self::fiche('76124212', null);
+        (new \ReflectionProperty($fiche, 'id'))->setValue($fiche, 42);
+        $code = $this->donnerAcces($fiche, $le);
+        $service = $this->service();
+
+        self::assertNull($service->ouvrirParAcces('76124212', 'ABCD-EFGH', $le), 'faux');
+        self::assertNull($service->ouvrirParAcces('76124213', $code, $le), 'avec le numéro de quelqu\'un d\'autre');
+        self::assertNull($service->ouvrirParAcces('76124212', substr($code, 0, 7), $le), 'incomplet');
+        self::assertNull($service->ouvrirParAcces('76124212', $code, $le->modify('+49 hours')), 'expiré');
+        self::assertFalse($this->acces[0]->estUtilise(), 'un refus ne consomme rien');
+
+        // Un nouveau code annule le précédent.
+        $nouveau = $this->acces[0]->nouveauCode('76124212', $le->modify('+1 hour'), null);
+        self::assertNull($service->ouvrirParAcces('76124212', $code, $le->modify('+2 hours')));
+        self::assertNotNull($service->ouvrirParAcces('76124212', $nouveau, $le->modify('+2 hours')));
+    }
+
+    public function testCodeDAccesRefuseSiLeNumeroAChangeOuAppartientAUneAutreFiche(): void
+    {
+        $le = new \DateTimeImmutable('2026-10-14 10:00');
+        $fiche = self::fiche('76124212', null);
+        (new \ReflectionProperty($fiche, 'id'))->setValue($fiche, 42);
+        $code = $this->donnerAcces($fiche, $le);
+
+        $autre = self::fiche('76124212', null, 'CLI-000043');
+        (new \ReflectionProperty($autre, 'id'))->setValue($autre, 43);
+        self::assertNull($this->service(['22376124212' => self::compte($autre, '76124212')])->ouvrirParAcces('76124212', $code, $le), 'compte d\'une autre fiche');
+        self::assertNull($this->service(['22376124212' => self::compte($fiche, '76124212')->setActif(false)])->ouvrirParAcces('76124212', $code, $le), 'compte fermé');
+
+        $fiche->setTelephone('66000001');
+        self::assertNull($this->service()->ouvrirParAcces('76124212', $code, $le), 'numéro de la fiche changé depuis');
+        self::assertFalse($this->acces[0]->estUtilise());
+    }
+
+    public function testJamaisPourUneFicheDeDemonstration(): void
+    {
+        $le = new \DateTimeImmutable('2026-10-14 10:00');
+        $demo = self::fiche('60697804', null, 'DEMO-0002');
+        $code = $this->donnerAcces($demo, $le);
+
+        self::assertNull($this->service()->ouvrirParAcces('60697804', $code, $le));
     }
 }

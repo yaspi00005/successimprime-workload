@@ -80,6 +80,7 @@ final class ModulesRolesTest extends TestCase
         $droits = ['ROLE_CLIENT', Droits::LECTURE_CLIENTS, 'ROLE_COMMANDE'];
         self::assertSame('clients', ModulesRoles::moduleEnLecture('app_clients_edit', $droits));
         self::assertSame('clients', ModulesRoles::moduleEnLecture('app_prospects_index', $droits));
+        self::assertSame('clients', ModulesRoles::moduleEnLecture('app_clients_acces_espace', $droits));
         self::assertNull(ModulesRoles::moduleEnLecture('app_commandes_new', $droits));
         self::assertNull(ModulesRoles::moduleEnLecture('app_clients_edit', ['ROLE_CLIENT']));
     }
@@ -87,6 +88,8 @@ final class ModulesRolesTest extends TestCase
     public function testEcrituresRefuseesEnLecture(): void
     {
         self::assertTrue(LectureSeuleSubscriber::ecrit('POST', 'app_clients_show'));
+        // « Envoyer l'accès à l'espace client » : refusé en « Voir ».
+        self::assertTrue(LectureSeuleSubscriber::ecrit('POST', 'app_clients_acces_espace'));
         self::assertTrue(LectureSeuleSubscriber::ecrit('GET', 'app_clients_nouveau'));
         self::assertTrue(LectureSeuleSubscriber::ecrit('GET', 'app_clients_edit_form'));
         self::assertTrue(LectureSeuleSubscriber::ecrit('GET', 'app_devis_modifier'));

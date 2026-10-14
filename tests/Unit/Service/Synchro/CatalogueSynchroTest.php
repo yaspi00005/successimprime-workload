@@ -227,6 +227,26 @@ final class CatalogueSynchroTest extends TestCase
         self::assertNotContains('traiteLe', $types['message_client']['champs'], 'le classement par l\'atelier reste au local');
     }
 
+    public function testLAccesALEspaceClientNeDescendQuEnEmpreinte(): void
+    {
+        $acces = CatalogueSynchro::types()['acces_espace'];
+        // Jamais le code : son empreinte et son échéance seulement.
+        self::assertSame(['empreinte', 'expireLe'], $acces['champs']);
+        self::assertSame(['client' => 'client'], $acces['relations']);
+        foreach (['code', 'creePar', 'creeLe', 'empreinteUtilisee', 'utiliseLe'] as $interdit) {
+            self::assertNotContains($interdit, $acces['champs'], $interdit);
+            self::assertArrayNotHasKey($interdit, $acces['relations'], $interdit);
+        }
+        // Donné au local seulement : le site ne renvoie rien (son utilisation reste en ligne).
+        self::assertSame(CatalogueSynchro::DESCENDANT, $acces['sens']);
+        self::assertTrue(CatalogueSynchro::envoye('acces_espace', false));
+        self::assertFalse(CatalogueSynchro::envoye('acces_espace', true));
+        self::assertFalse(CatalogueSynchro::accepte('acces_espace', false));
+        self::assertSame(['client'], $acces['uniqueSur'] ?? null, 'un accès par client');
+        self::assertSame(['empreinte', 'expireLe', 'client'], CatalogueSynchro::champsSuivis('acces_espace'), 'un nouveau code repart, son utilisation non');
+        self::assertSame('acces_espace', CatalogueSynchro::typeDe(new \App\Entity\AccesEspaceClient()));
+    }
+
     public function testFicheUniqueParRelationRemplaceeSeulementDuLocalVersLeSite(): void
     {
         $types = CatalogueSynchro::types();

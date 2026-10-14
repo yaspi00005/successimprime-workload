@@ -2,8 +2,10 @@
 
 namespace App\Security;
 
+use App\Entity\AccesEspaceClient;
 use App\Entity\Clients;
 use App\Entity\CompteClient;
+use App\Repository\AccesEspaceClientRepository;
 use App\Repository\CompteClientRepository;
 use App\Service\EspaceClient\NotificationsClient;
 use Doctrine\ORM\EntityManagerInterface;
@@ -12,8 +14,9 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 /**
  * Connexion de l'espace client (CX01) hors mot de passe : le code de la
  * première connexion et du mot de passe oublié (par e-mail, par SMS sans
- * adresse), l'ouverture du compte une fois le code juste, et les étapes à
- * finir avant d'entrer (e-mail, mot de passe).
+ * adresse), le code d'accès donné par la boutique sur WhatsApp,
+ * l'ouverture du compte une fois le code juste, et les étapes à finir
+ * avant d'entrer (e-mail, mot de passe).
  */
 final class EspaceClientComptes
 {
@@ -31,6 +34,7 @@ final class EspaceClientComptes
         private readonly CompteClientRepository $comptes,
         private readonly EntityManagerInterface $em,
         private readonly CodeDeConnexion $codes,
+        private readonly AccesEspaceClientRepository $acces,
     ) {
     }
 
@@ -127,6 +131,43 @@ final class EspaceClientComptes
         }
 
         return $this->ouvrirPour($client, $telephone);
+    }
+
+    /**
+     * Première connexion avec le code d'accès donné par la boutique sur
+     * WhatsApp : le compte du numéro (créé sur la fiche s'il n'existe pas),
+     * et le code est consommé. null si le code est faux, expiré, déjà servi,
+     * remplacé par un plus récent, ou si le numéro n'est plus celui de la
+     * fiche : une seule réponse pour tous ces cas.
+     */
+    public function ouvrirParAcces(string $telephone, string $code, \DateTimeImmutable $maintenant): ?CompteClient
+    {
+        $numero = CompteClient::normaliserTelephone($telephone);
+        if (null === $numero || \strlen(AccesEspaceClient::normaliserCode($code)) !== AccesEspaceClient::LONGUEUR) {
+            return null;
+        }
+        $empreinte = AccesEspaceClient::empreinteDe($numero, $code);
+        $acces = $this->acces->parEmpreinte($empreinte);
+        $client = $acces?->getClient();
+        if (null === $acces || null === $client || !$acces->valide($empreinte, $maintenant)
+            || NotificationsClient::estDemo($client) || CompteClient::normaliserTelephone((string) $client->getTelephone()) !== $numero) {
+            return null;
+        }
+
+        $compte = $this->comptes->parTelephone($numero);
+        if (null !== $compte && ($compte->getClient()?->getId() !== $client->getId() || !$compte->isActif())) {
+            // Numéro déjà rattaché à une autre fiche, ou compte fermé : c'est à la boutique de voir.
+            return null;
+        }
+        if (!$this->acces->consommer($acces, $maintenant)) {
+            return null;
+        }
+        if (null === $compte) {
+            return $this->ouvrirPour($client, $numero);
+        }
+        $this->em->flush();
+
+        return $compte;
     }
 
     /** Nouveau compte pour ce numéro, sur cette fiche. */

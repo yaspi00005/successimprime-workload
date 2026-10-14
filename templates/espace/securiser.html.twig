@@ -10,7 +10,7 @@
 #}
 {% block contenu %}
 	{% set requis = 'requis' %}
-	<h1>{{ etapes.motDePasse == requis ? 'Choisissez votre mot de passe' : (etapes.motDePasse ? 'Nouveau mot de passe ?' : 'Votre adresse e-mail') }}</h1>
+	<h1>{{ etapes.motDePasse == requis and etapes.email == requis ? 'Votre e-mail et votre mot de passe' : (etapes.motDePasse == requis ? 'Choisissez votre mot de passe' : (etapes.motDePasse ? 'Nouveau mot de passe ?' : 'Votre adresse e-mail')) }}</h1>
 	<p class="si-espace-sous-titre">
 		{% if etapes.bloquant %}
 			Dernière étape avant d'entrer. Ensuite, vous vous connecterez avec votre numéro et votre mot de passe.

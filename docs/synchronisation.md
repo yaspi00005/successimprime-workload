@@ -22,6 +22,7 @@
 | Réglages du site (`site_reglage`) : règle des chiffres (afficher, calcul des projets, seuil) | local → site | Les chiffres eux-mêmes sont calculés de chaque côté. |
 | Catégories, types d'impression, finitions (sans le coût), formats, supports, produits, configurations de produit et leurs finitions proposées (prix de vente) | local → site | Le local est maître : le site reçoit et remplace. |
 | Clients | local → site, et site → local pour les **nouveaux** clients | Une modification faite en ligne d'un client du local n'est pas appliquée : elle est notée **Conflit** dans le journal, la fiche du local est gardée. |
+| Accès à l'espace client donné par la boutique sur WhatsApp (`acces_espace`, docs/espace-client.md) : empreinte du code (sha256 du numéro et du code), échéance, client | local → site seulement | **Jamais le code.** Un par client : un nouvel accès remplace le précédent sur le site. Reste au local : l'employé qui l'a donné. Reste sur le site : le code déjà servi et quand. |
 | Commandes et leurs lignes | local → site, et site → local pour les **nouvelles** commandes | Restent au local : note interne, agents, coût de revient, temps, machine, rebuts, notes d'atelier. Une commande créée en ligne n'a pas d'agent ; elle arrive en brouillon « à confirmer », avec la demande écrite par le client sur la ligne, et le rôle Commandes est prévenu. |
 | Fichiers envoyés par le client dans son espace (Mes fichiers, Nouvelle commande) | site → local | La fiche (nom, contrôle automatique, empreinte, logo) remonte dès que l'envoi est fini, puis les octets (voir **Fichiers**). |
 | Finitions choisies sur une ligne (nom, prix appliqué, quantité, montant) | avec leur ligne | Elles partent dans la ligne et sont remplacées en bloc ; retirer une finition renvoie la ligne. |
@@ -45,6 +46,7 @@
 
 - accepter un devis **envoyé** : le devis passe « accepté » au local et les personnes qui ont le rôle Devis sont prévenues (« à transformer en commande ») ;
 - ses préférences : recevoir les SMS, accord pour les offres. Le changement est noté dans le journal de la fiche client (« Espace client »).
+- l'e-mail donné par le titulaire dans son espace (où partent ses codes de connexion), **seulement si la fiche du local n'a pas d'e-mail** ; sinon c'est un conflit et l'adresse du local reste. Noté au journal de la fiche (« Espace client »).
 - le jeton du lien PDF d'un devis ou d'une facture créé en ligne quand le local n'en avait pas ;
 - ses fichiers : en retirer un (pas déjà dans une commande), en mettre un dans une commande, et le contrôle refait à la taille commandée.
 

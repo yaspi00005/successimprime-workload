@@ -36,6 +36,8 @@ final class CodeDeConnexion
     /** Usage du code : espace client ou administration en ligne (personnel). */
     public const ESPACE = 'espace';
     public const PERSONNEL = 'personnel';
+    /** Essais d'un code d'accès donné par la boutique sur WhatsApp (EspaceClientComptes::ouvrirParAcces). */
+    public const ACCES = 'acces';
 
     public const TROP_DE_CODES = 'Trop de codes demandés. Réessayez dans quelques minutes.';
 
@@ -199,6 +201,17 @@ final class CodeDeConnexion
             'expire' => 'Ce code a expiré. Demandez-en un nouveau.',
             default => 'Trop d\'essais. Demandez un nouveau code.',
         };
+    }
+
+    /**
+     * Un essai de code d'accès (première connexion) compte dans les mêmes
+     * limites qu'un code envoyé : par numéro et par adresse IP.
+     */
+    public function essaiPermis(string $telephone, string $ip): bool
+    {
+        $numero = \App\Entity\CompteClient::normaliserTelephone($telephone) ?? $telephone;
+
+        return $this->dansLesLimites(DestinationCode::vers($numero, null), self::SMS, self::ACCES, $ip);
     }
 
     /**

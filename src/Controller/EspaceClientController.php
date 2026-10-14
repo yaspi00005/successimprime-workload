@@ -80,6 +80,31 @@ final class EspaceClientController extends AbstractController
         ]);
     }
 
+    /**
+     * Première connexion avec le code d'accès donné par la boutique sur
+     * WhatsApp : le lien du message remplit le numéro (jamais le code).
+     * Le formulaire part vers app_espace_connexion (EspaceClientAuthenticator, mode « acces »).
+     */
+    #[Route('/premiere-connexion', name: 'premiere_connexion', methods: ['GET'])]
+    public function premiereConnexion(Request $request, AuthenticationUtils $authentification): Response
+    {
+        if ($this->getUser() instanceof CompteClient) {
+            return $this->redirectToRoute('app_espace_accueil');
+        }
+        $erreur = $authentification->getLastAuthenticationError();
+        $numero = CompteClient::normaliserTelephone((string) $request->query->get('tel'));
+
+        $reponse = $this->render('espace/premiere_connexion.html.twig', [
+            'erreur' => $erreur?->getMessageKey(),
+            'erreur_donnees' => $erreur?->getMessageData() ?? [],
+            'numero' => null !== $numero ? substr($numero, 3) : $authentification->getLastUsername(),
+            'code_actif' => $this->codeActif(),
+        ]);
+        $reponse->headers->set('Cache-Control', 'no-store, private');
+
+        return $reponse;
+    }
+
     #[Route('/code', name: 'code', methods: ['POST'])]
     public function code(Request $request): Response
     {

@@ -174,6 +174,23 @@ final class CodeDeConnexionTest extends TestCase
         self::assertSame('trop_essais', $codes->verifier($session, self::CLE, $code));
     }
 
+    public function testEssaisDUnCodeDAccesLimitesParNumeroEtParAdresseIp(): void
+    {
+        $codes = (new FabriqueCodes())->codes();
+
+        for ($i = 0; $i < 3; ++$i) {
+            self::assertTrue($codes->essaiPermis('76124212', '10.0.0.1'));
+        }
+        self::assertFalse($codes->essaiPermis('+223 76 12 42 12', '10.0.0.2'), '3 essais par numéro en 15 minutes');
+        // Compté à part des codes envoyés : on peut encore recevoir un code par e-mail ou SMS.
+        self::assertFalse($codes->envoyer(self::session(), self::CLE, DestinationCode::vers('76124212', 'yaya@gmail.com'), CodeDeConnexion::ESPACE, '10.0.0.3')['limite']);
+
+        for ($i = 0; $i < 10; ++$i) {
+            self::assertTrue($codes->essaiPermis('6600000'.$i, '10.0.0.9'));
+        }
+        self::assertFalse($codes->essaiPermis('66000010', '10.0.0.9'), '10 essais par adresse IP en une heure, numéros différents compris');
+    }
+
     public function testAdresseMasquee(): void
     {
         self::assertSame('y•••@gmail.com', DestinationCode::masquerEmail('yaya.diallo@gmail.com'));

@@ -235,6 +235,15 @@ final class CatalogueSynchro
                 // E-mail donné par le titulaire dans son espace : pris seulement si la fiche du local n'en a pas.
                 'remontees' => ['recevoirSms' => null, 'consentementMarketingLe' => null, 'email' => ['' => ['*']]],
             ],
+            // Code d'accès à l'espace client donné par la boutique sur WhatsApp (docs/espace-client.md) :
+            // seulement son empreinte et son échéance. Qui l'a donné reste au local ; son utilisation reste en ligne.
+            'acces_espace' => [
+                'classe' => \App\Entity\AccesEspaceClient::class, 'sens' => self::DESCENDANT, 'libelle' => 'Accès à l\'espace client', 'titre' => ['expireLe'],
+                'champs' => ['empreinte', 'expireLe'],
+                'relations' => ['client' => 'client'], 'listes' => [],
+                // Un seul accès par client : recréé au local, il remplace celui du site.
+                'uniqueSur' => ['client'],
+            ],
             'commande' => [
                 'classe' => Commandes::class, 'sens' => self::DEUX, 'libelle' => 'Commande', 'titre' => ['numero'],
                 // observation (note interne), agents et bonus de plafond restent au local.

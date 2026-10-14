@@ -12,6 +12,13 @@
 | Donnée | Sens | Règle |
 |---|---|---|
 | Entreprises : code, raison sociale, nom commercial, mentions, adresse, téléphone, e-mail, site, RCCM, NIF, numéro marchand Orange Money, couleurs | local → site | Pour le pied de page et le bouton WhatsApp du site vitrine. Restent au local : banque, compte bancaire, numérotation, logos, cachet et signature. |
+| Images du site vitrine (`site_image`) : contenu réencodé (WebP ou PNG, 300 Ko au plus), type, dimensions, empreinte, usage (photo ou logo), texte alternatif, ordre | local → site | Revérifiée à l'arrivée (type, taille, empreinte) : une image refusée bloque l'élément. L'original envoyé dans l'admin reste au local. Chaque côté refait ses fichiers `public/uploads/site/` depuis la base. |
+| Pages du site vitrine (`site_page`) : adresse, titre, accroche, description, texte, image, publiée, ordre, date de modification | local → site | Saisies dans Réglages › Site vitrine, au local seulement. |
+| Réalisations (`site_realisation`) : titre, catégorie (par son identifiant public), description, photos, client, accord, publiée, date | local → site | **Le nom du client ne part qu'avec son accord** (vide sinon). La catégorie suit par son identifiant public : la réalisation n'attend pas les catégories, envoyées plus loin. |
+| Avis clients (`site_avis`) : nom affiché, texte, note, source, date, accord, publié | local → site | **Sans l'accord du client, le nom et le texte partent vides.** |
+| Conseils (`site_article`) : titre, adresse, rubrique, résumé, texte, image, dates de publication et de modification, publié | local → site | |
+| Partenaires (`site_partenaire`) : nom, logo, lien, ordre, visible, accord obtenu | local → site | Le site n'affiche que ceux qui sont visibles avec l'accord. |
+| Réglages du site (`site_reglage`) : règle des chiffres (afficher, calcul des projets, seuil) | local → site | Les chiffres eux-mêmes sont calculés de chaque côté. |
 | Catégories, types d'impression, finitions (sans le coût), formats, supports, produits, configurations de produit et leurs finitions proposées (prix de vente) | local → site | Le local est maître : le site reçoit et remplace. |
 | Clients | local → site, et site → local pour les **nouveaux** clients | Une modification faite en ligne d'un client du local n'est pas appliquée : elle est notée **Conflit** dans le journal, la fiche du local est gardée. |
 | Commandes et leurs lignes | local → site, et site → local pour les **nouvelles** commandes | Restent au local : note interne, agents, coût de revient, temps, machine, rebuts, notes d'atelier. Une commande créée en ligne n'a pas d'agent ; elle arrive en brouillon « à confirmer », avec la demande écrite par le client sur la ligne, et le rôle Commandes est prévenu. |
@@ -39,6 +46,8 @@ Toute autre modification faite en ligne d'une fiche du local est notée **Confli
 **Réponse du client à un BAT** : quand il valide ou demande une modification en ligne, ce geste part vers le local, qui le **rejoue avec ses propres règles** : points du graphiste, alerte à la prépresse avec le texte du client, état du BAT. Le site reprend ensuite l'état du local. Si le BAT n'attendait plus le client au local (l'atelier a déjà avancé), le geste est noté en conflit et une demande de modification est quand même transmise à la prépresse.
 
 **Fichiers** : vers le site, seuls les fichiers préparés par l'atelier pour un BAT partent (pas ceux de production). Du site, le local rapatrie les fichiers envoyés par les clients (60 derniers jours, ceux d'une commande d'abord). Par morceaux de 4 Mo, 64 Mo au plus par cycle dans les deux sens réunis, repris là où ça s'est arrêté après une coupure ; l'empreinte SHA-256 est vérifiée avant de ranger le fichier dans `var/uploads/commandes`. Un fichier n'est renvoyé que s'il change.
+
+**Lots et images** : un lot d'envoi garde au plus 6 Mo de contenu (`Synchro::LOT_OCTETS`, un envoi signé fait 10 Mo au plus) ; au-delà, la suite part au lot suivant du même cycle. Une image du site fait au plus 300 Ko (400 Ko en base64).
 
 **Ordre** : un élément qui cite une donnée arrivant plus loin dans le même lot (fichier mis dans une commande créée après lui) attend qu'elle soit appliquée, puis passe. Quelques liens sont **facultatifs** (`facultatives` dans `CatalogueSynchro`, par exemple le produit du client d'une ligne de commande) : si la donnée citée manque, le lien reste vide au lieu de bloquer l'élément.
 

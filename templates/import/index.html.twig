@@ -1,0 +1,91 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Réglages › Import des données (docs/import-donnees.md) : choisir le
+	type, télécharger son modèle, envoyer le fichier ; journal des imports.
+#}
+
+{% set icones = {clients: 'fa-users', produits: 'fa-tags', articles: 'fa-boxes', soldes_clients: 'fa-hand-holding-usd', soldes_comptes: 'fa-wallet', soldes_fournisseurs: 'fa-truck'} %}
+
+{% block title %}Import des données{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/import.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_reglages_parametres_index', {tuile: 'import'}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i><span class="si-masque-mobile">Réglages</span></a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-im-intro">
+		<i class="fas fa-info-circle"></i>
+		<div>
+			<p><strong>Pour démarrer l'ERP avec vos données :</strong> les clients d'abord, puis les articles, puis les soldes d'ouverture. Partez du modèle de chaque type, remplissez-le dans Excel et envoyez-le.</p>
+			<p>Rien n'est enregistré avant que vous ayez vu l'aperçu ligne par ligne et confirmé. Aucun SMS, e-mail ni message n'est envoyé aux clients importés.</p>
+		</div>
+	</div>
+
+	<div class="si-im-types">
+		{% for cle, t in types %}
+			{% if loop.first %}<h2 class="si-im-groupe">Fiches</h2>{% endif %}
+			{% if cle == 'soldes_clients' %}<h2 class="si-im-groupe">Soldes d'ouverture · à-nouveaux</h2>{% endif %}
+			{% set dernier = journal|filter(j => j.type == cle and j.estFait)|first %}
+			<section class="si-im-type {{ cle starts with 'soldes' ? 'si-im-solde' }} {{ t.accessible ? '' : 'si-im-ferme' }}" aria-labelledby="im-{{ cle }}">
+				<div class="si-im-type-tete">
+					<span class="si-im-icone"><i class="fas {{ icones[cle]|default('fa-file-import') }}"></i></span>
+					<h3 id="im-{{ cle }}">{{ t.type.libelle }}</h3>
+				</div>
+				<p>{{ t.type.description }}</p>
+				{% if t.accessible %}
+					<div class="si-im-type-actions">
+						<a href="{{ path('app_import_modele', {type: cle}) }}" class="btn btn-outline-primary btn-sm"><i class="fas fa-download me-1"></i>Modèle</a>
+						<a href="{{ path('app_import_envoyer', {type: cle}) }}" class="btn btn-primary btn-sm"><i class="fas fa-file-upload me-1"></i>Importer</a>
+					</div>
+					{% if dernier %}<small class="si-im-dernier">Dernier import le {{ dernier.le|date('d/m/Y') }} · {{ dernier.crees }} créé{{ dernier.crees > 1 ? 's' }}{% if dernier.modifies %}, {{ dernier.modifies }} mis à jour{% endif %}</small>{% endif %}
+				{% else %}
+					<small class="text-muted">Demande les droits Finances (paiements, trésorerie ou comptabilité).</small>
+				{% endif %}
+			</section>
+		{% endfor %}
+	</div>
+
+	<div class="card si-bloc">
+		<div class="si-bloc-tete"><h4>Journal des imports</h4></div>
+		{% if journal is empty %}
+			<p class="text-muted text-center py-4 mb-0">Aucun import pour le moment.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0 si-im-journal si-im-cartes">
+					<thead>
+						<tr>
+							<th>Quand</th>
+							<th>Type</th>
+							<th>Fichier</th>
+							<th class="si-masque-mobile">Par</th>
+							<th>Lignes</th>
+							<th>Résultat</th>
+							<th class="text-end"></th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for j in journal %}
+							<tr class="{{ j.resultat != 'fait' ? 'si-ligne-eteinte' }}">
+								<td class="text-nowrap">{{ j.le|date('d/m/Y H:i') }}</td>
+								<td>{{ types[j.type] is defined ? types[j.type].type.libelle : j.type }}</td>
+								<td class="text-break">{{ j.nomFichier }}<span class="d-block si-im-empreinte" title="Empreinte SHA-256 : {{ j.empreinte }}">{{ j.empreinte[:12] }}…</span></td>
+								<td class="si-masque-mobile">{{ j.parNom }}</td>
+								<td class="si-im-compte"><span>{{ j.crees }} créé{{ j.crees > 1 ? 's' }}</span>{% if j.modifies %}<span>{{ j.modifies }} mis à jour</span>{% endif %}{% if j.ignores %}<span>{{ j.ignores }} écarté{{ j.ignores > 1 ? 's' }}</span>{% endif %}{% if j.erreurs %}<span>{{ j.erreurs }} en erreur</span>{% endif %}</td>
+								<td><span class="si-pastille si-pastille-{{ j.resultatCouleur }}">{{ j.resultatLibelle }}</span></td>
+								<td class="text-end"><a href="{{ path('app_import_voir', {id: j.id}) }}" class="btn btn-sm si-btn-discret">Détail</a></td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	</div>
+{% endblock %}

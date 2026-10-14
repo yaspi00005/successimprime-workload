@@ -63,7 +63,6 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Démarrer, mettre en pause, envoyer le BAT ; le client le voit dans son espace.
 - [ ] Outil de montage : poser plusieurs fichiers sur une feuille.
 - [ ] Ne voit pas : finances, montants des commandes, réglages, salaires.
-- [ ] Ne fait pas de factures et ne voit ni les créances ni les paiements (décision du 14/10/2026). Le droit se rend à une personne précise depuis sa fiche.
 
 ## Opérateur production (demo.oumar)
 

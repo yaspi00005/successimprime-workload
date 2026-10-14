@@ -12,10 +12,59 @@ Construit, téléphone d'abord (onglets en bas), menu à gauche sur ordinateur :
 - **Fichiers et BAT (16, à droite)** : BAT à valider et précédents ; page du BAT avec l'aperçu (image ou PDF) de la dernière version préparée par l'atelier, la frise des versions et des demandes du client. « Valider le BAT » note le BAT validé (horodaté, frise de conception, points du graphiste) et remet le contrôle à la prépresse pour la validation des fichiers et l'envoi en production ; « Demander une modification » repasse le contrôle en correction avec le texte du client. Sur un BAT en image, le client touche l'image pour poser des repères numérotés (10 au plus), chacun avec ce qu'il faut changer ; le graphiste les voit sur l'aperçu de son poste (R03) et dans le fil des échanges, et la version suivante les affiche au client avec « corrigé en version N » (maquette 16). Sur un PDF, la demande reste en texte. La prépresse est prévenue dans les deux cas.
 - **Factures et paiement (17)** : solde à payer par commande, factures émises (PDF signé, proforma marquée), page de paiement Orange Money (voir plus bas). Tant que les clés Orange Money ne sont pas posées, la page donne le numéro marchand (tuile Entités) et la référence de commande ; le paiement est validé par la caisse.
 - **Mon compte et notifications (19)** : coordonnées (modifiées par le bureau), réglage SMS, mot de passe, déconnexion ; fil des notifications reconstruit à partir des commandes (BAT prêt, paiement reçu, impression lancée, commande prête, livreur en route, livrée).
-- **Fidélité (18, à droite, construit le 14/10/2026)** : `/espace/fidelite`, depuis Mon compte, pour un particulier avec le droit payeur. Solde en points et en francs, progression vers chaque seuil, points qui expirent bientôt, promo de réveil, rappel du ×2 payé le jour même, historique (type, points, date, commande ; ni agent ni motif). Lecture seule : c'est l'atelier qui utilise les points sur une commande. Un client B2B voit seulement que le programme est réservé aux particuliers. Détails dans `docs/fidelite.md`.
+- **Fidélité (18, à droite, construit le 14/10/2026)** : `/espace/fidelite`, entrée Fidélité du menu, pour un client hors grille revendeur (`typeClient` autre que B2B) et une personne qui paie. Solde en points et en francs, progression vers chaque seuil, points qui expirent bientôt, promo de réveil, rappel du ×2 payé le jour même, historique (type, points, date, commande ; ni agent ni motif). Lecture seule : c'est l'atelier qui utilise les points sur une commande. Un client à la grille revendeur (B2B) n'a pas l'entrée : le programme ne s'applique pas à cette grille de prix. Détails dans `docs/fidelite.md`.
 
 - **Nouvelle commande (14, à gauche)** : produits du catalogue publié (configurations actives avec un prix), largeur et hauteur en cm quand le produit se vend au m² ou sur mesure, finitions proposées (les obligatoires sont incluses), quantité, fichier choisi parmi les siens ou envoyé sur place, précisions pour l'atelier. Le total TTC indicatif est recalculé à chaque changement avec les prix du comptoir (prix B2B pour un client B2B) ; la commande arrive en brouillon « Reçue · à confirmer » (10 en attente au plus par client), sans paiement possible tant que l'atelier ne l'a pas confirmée. Au local, la fiche commande affiche « Commande passée par le client » avec le bouton Vérifier et confirmer.
 - **Mes fichiers (16, à gauche)** : envoi PDF, AI, EPS, PSD, JPG, PNG, TIFF jusqu'à 500 Mo, par morceaux de 4 Mo repris après une coupure ; le type réel est vérifié (un fichier renommé est refusé), 5 Go par client. Contrôle automatique à l'arrivée (`AnalyseFichierImpression`) : résolution à la taille prévue si le client la donne, couleurs, polices, fonds perdus (3 mm, petits formats), proportions ; résumé OK, Attention ou À refaire. Mes logos (20 Mo au plus) gardés pour les prochaines commandes. Un fichier se retire tant qu'il n'est pas dans une commande. Les fichiers sont rangés hors de `public/` et servis seulement à leur client.
+
+## Coque, tableau de bord, notifications et Mon compte (maquettes EC01 à EC05, construit le 14/10/2026)
+
+Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, cloche, conseiller), `FilNotifications.php`, `PreferencesNotifications.php`, `NotificationsClient.php`, `MonCompte.php`, `AppareilsClient.php`, `MessagesClient.php`, `PropositionsClient.php`, `RecommanderClient.php`, `src/Security/DroitsEspace.php`, `src/EventSubscriber/EspaceClientSubscriber.php`. Migration `Version20261014142129`. Captures : `/mnt/project-files/captures/espace-client/ec-*.png`.
+
+**Coque (EC01, EC05).** Sur ordinateur : menu à gauche, barre du haut (recherche, « + Nouvelle commande », cloche, personne et fonction), carte « Votre conseiller(ère) » (nom ; WhatsApp et appel vers le numéro de la boutique, jamais celui de l'employé). Sur téléphone : en-tête (entreprise, « Bonjour Prénom », cloche) et cinq onglets (Accueil, Commandes, Fichiers, Factures, Compte).
+
+- Pastilles : rouge pour les notifications non lues ; jaune pour les devis à accepter (valideur), les BAT en attente et les commandes à régler (payeur).
+- Le menu est la liste `CoqueEspace::MENU` : une entrée = une ligne (route, libellé, icône, pages qui l'allument, qui la voit, onglet du téléphone). Factures et paiements : payeur seulement. Fidélité : payeur d'un client hors grille revendeur. Nouvelle commande, Mes produits, Mes devis, Messages : pas pour un compte Lecture · suivi.
+- La recherche de la barre du haut (`/espace/recherche`) cherche côté serveur dans les commandes, devis, factures et fichiers **du client seulement**, selon les droits : pas de devis en Lecture · suivi, pas de factures sans le droit payeur.
+
+**Tableau de bord (EC01, EC05).** Cartes d'action (BAT à valider, paiement en retard ou du jour, devis à accepter, demandes à valider), commandes en cours avec la frise en 5 étapes (Commande, BAT, Impression, Finition, Livraison ou Retrait), activité récente, « Mon compte en un coup d'œil » pour qui paie (solde dû et part échue, plafond de crédit utilisé ou dépassé, commandes de l'année, points fidélité hors grille revendeur), « Recommander rapidement » (derniers articles au prix recalculé par le serveur au jour même ; « + Panier » ouvre la commande pré-remplie, rien n'est commandé d'un clic), bandeau fidélité. Un compte Lecture · suivi voit le suivi et une carte qui explique son accès.
+
+**Notifications (EC02, EC03, EC05).**
+
+- La cloche ouvre les dernières notifications ; sans JavaScript, c'est un lien vers la page. Page `/espace/notifications` : filtres par catégorie avec leur nombre, groupes par jour, pastille de type, boutons d'action selon les droits (valider le BAT, accepter le devis, payer, suivre la livraison, lire le message), « Marquer comme lu », « Tout marquer comme lu » ; sur téléphone, glisser à gauche marque comme lu.
+- L'état lu est **propre à chaque personne et tenu en ligne seulement** (table `notification_client_lue`, et `compte_client.notifications_lues_jusqua` pour « Tout marquer comme lu ») : il ne passe pas au local. Un événement non lu de plus de 14 jours n'est plus « nouveau ».
+- Catégories et montants suivent les droits : factures et paiements seulement pour qui paie ; production et livraison seulement pour un compte Lecture · suivi. Les appels du conseiller ne sont pas dans le fil : rien des notes d'appel ne quitte le local.
+- **« Comment je suis prévenu »** : grille App, WhatsApp, SMS, E-mail par catégorie (BAT, Production, Livraison, Factures, Devis, Messages, Offres), propre à chaque personne (`compte_client.preferences_notifications`). Par défaut : le SMS (payant) seulement pour le titulaire, et pour BAT, Livraison et Messages ; la production dans l'application seulement ; Offres décochée. Cocher une case Offres vaut accord du client pour les offres (`consentementMarketingLe`, remonté au local par la liste blanche existante). Les factures ne vont jamais à quelqu'un qui ne paie pas, quelles que soient les cases.
+- **Heures calmes** : ni SMS ni WhatsApp de 21 h à 7 h. Le SMS est mis de côté (`notification_client_differee`) et part à 7 h, sauf la livraison du jour, qui part tout de suite. Il est abandonné si la personne a décoché la case entre-temps ou si l'événement a plus de 12 heures.
+- Chaque personne est prévenue sur **son propre numéro**, selon ses cases. Les fiches de démonstration (`DEMO-`) ne reçoivent jamais de SMS ni d'e-mail, et aucun message ne contient de montant.
+- **WhatsApp** : le choix est enregistré, mais rien ne part tant que l'atelier n'a pas branché WhatsApp ; la page le dit.
+- **« Qui reçoit quoi »** (pour la personne qui gère le compte) : ce que reçoit chaque personne du compte.
+- **Tâche planifiée du site en ligne, toutes les 15 minutes** : `php bin/console app:espace:notifications` envoie les SMS mis de côté pendant les heures calmes et les rappels d'échéance des factures (une fois chacun, sans montant). Elle refuse de tourner sur l'ERP local. Ligne de crontab dans `docs/deploiement.md`.
+
+**Mon compte (EC04).**
+
+- **Entreprise** : raison sociale et NIF modifiables par la personne qui gère le compte, mais **jamais appliqués en ligne**. La demande devient une proposition (`proposition_client`) qui monte au local ; l'équipe Clients est prévenue et l'applique ou la refuse depuis la fiche client (bloc « Changement demandé par le client »). Appliquée, elle passe par le journal des modifications de la fiche (« depuis l'espace client ») et la fiche redescend ; refusée, le motif se lit en ligne pendant 30 jours.
+- « Facturé par » (entité de facturation) et « Conditions » (délai de paiement) sont en lecture. Les conditions et la phrase « Les conditions commerciales sont fixées avec votre conseillère » ne se montrent qu'à la personne qui gère le compte et à qui paie.
+- **Adresses de livraison** et **Utilisateurs du compte** : « + Inviter » avec le nom, le numéro, la fonction (Intendante, Comptabilité, Réception…) et les droits. La personne invitée reçoit un SMS et se connecte avec son propre numéro.
+- **Sécurité** : numéro masqué (+223 6X XX XX XX), appareils connectés (regroupés par type, celui-ci en premier), dernière connexion, « Déconnecter les autres appareils », « Télécharger mes données », changement de mot de passe.
+- **Déconnecter les autres appareils** augmente `compte_client.version_session`. Les autres sessions tombent à leur requête suivante et leurs cookies « rester connecté » sont refusés (`signature_properties: [password, versionSession]` dans `security.yaml`). Au déploiement, les cookies « rester connecté » déjà posés ne valent plus : chaque client se reconnecte une fois.
+- **Télécharger mes données** (`/espace/compte/mes-donnees`, JSON) : seulement ce que la personne voit déjà dans son espace, selon ses droits (ni factures ni montants sans le droit payeur, pas de devis en Lecture · suivi), sans aucun champ interne.
+- Un **particulier** a la même page sans les parties entreprise : Mes coordonnées, adresses, sécurité.
+
+**Lecture · suivi (EC04).** Droit `lecture` d'un compte entreprise, proposé dans le formulaire d'invitation et le résumé des droits ; il remplace les autres droits. La personne suit les commandes, les livraisons et les fichiers. Elle ne commande pas, ne valide ni BAT ni devis, ne paie pas, n'écrit pas de message, n'ajoute personne et ne modifie rien. C'est **vérifié côté serveur à chaque requête** (`DroitsEspace`, appelé par `EspaceClientSubscriber`), en plus des contrôles de chaque page :
+
+- tout envoi est refusé (403), sauf ce qui ne regarde qu'elle : marquer lu, ses préférences, son mot de passe, ses appareils ;
+- les pages qui ne servent qu'à commander, payer ou accepter la renvoient au tableau de bord.
+
+**Livraisons.** `/espace/livraisons` : en route, à venir, livrées, à partir des bons de livraison synchronisés (créneau, heure de départ, heure de remise).
+
+**Messages.** `/espace/messages` : fil entre le client et l'atelier.
+
+- Texte seulement (1 000 caractères), une commande en sujet si on veut, 10 messages par heure et par personne (`espace_message_compte` dans `rate_limiter.yaml`).
+- Le message monte au local, où le droit Clients (`ROLE_CLIENT`) est prévenu. L'équipe répond depuis **Clients › Messages**, avec une pastille sur le menu Clients pour les messages non traités.
+- La réponse redescend et prévient le client (« Réponse de l'atelier », sans montant). Le traitement et l'employé qui a répondu restent au local.
+
+**Données de démonstration** : voir « Espace client de démonstration » dans `docs/donnees-demo.md`.
 
 ## Comptes entreprise (19, construit le 13/10/2026)
 
@@ -27,6 +76,7 @@ Une fiche entreprise ou B2B peut avoir plusieurs personnes, chacune avec son num
 | Valideur | accepter ou refuser les demandes, accepter les devis |
 | Payeur | voir l'onglet Factures, le solde, le reste à payer, payer |
 | Aucun (demandeur) | commander ; la commande attend un valideur |
+| Lecture · suivi | suivre les commandes, les livraisons et les fichiers, rien d'autre (voir plus haut) |
 
 - **Mon compte** : profil de la personne (son nom, son rôle), coordonnées de l'entreprise, ligne « Adresses de livraison », carte « Utilisateurs du compte » avec « + Ajouter ». La personne ajoutée reçoit un SMS et se connecte avec son propre numéro. 20 personnes au plus ; il reste toujours au moins un administrateur ; on ne change pas ses propres droits ; le compte principal ne se retire pas en ligne.
 - **Adresses de livraison** : nom court, adresse, repère, personne à appeler ; une adresse par défaut, présélectionnée en commandant (« Livrer : Siège » ou « Retrait en boutique »).
@@ -68,6 +118,7 @@ Captures : `/mnt/project-files/captures/orange-money/`.
 Reste à faire :
 
 - Fidélité (18 à droite) : règles de points, paliers et récompenses à fixer par Yaya.
-- Informations entreprise (NIF, RCCM) modifiables en ligne : aujourd'hui en lecture, changées par le bureau.
-- WhatsApp dans la chaîne des notifications, entre l'application et le SMS, quand la clé Meta sera posée.
+- RCCM et autres coordonnées de l'entreprise : en lecture en ligne, changées par le bureau (la raison sociale et le NIF se proposent depuis Mon compte).
+- WhatsApp dans la chaîne des notifications, entre l'application et le SMS, quand la clé Meta sera posée. Les choix des clients sont déjà enregistrés (colonne WhatsApp de « Comment je suis prévenu »).
+- Remise habituelle : elle reste au local (non synchronisée), donc Mon compte ne la montre pas. À décider par Yaya si elle doit apparaître dans « Conditions ».
 - « Livreur en route » et « livrée » : les bons de livraison passent au site depuis le 13/10/2026 (sans livreur, photos ni signature). Après le déploiement : `php bin/console app:synchro --initialiser=livraison` sur le local.

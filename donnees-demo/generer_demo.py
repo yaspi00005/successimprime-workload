@@ -1342,6 +1342,139 @@ for jour, libelle in [('01-01', 'Jour de l\'an'), ('01-20', 'Fête de l\'armée'
                       ('09-22', 'Fête de l\'indépendance'), ('12-25', 'Noël'), ('03-20', 'Korité (fin du Ramadan)'), ('05-27', 'Tabaski'), ('08-26', 'Maouloud')]:
     add('jour_ferie', {'jour': S(f"CONCAT(YEAR(CURDATE()), '-{jour}')"), 'libelle': libelle})
 
+# ------------------------------- patrimoine, amortissements et primes (M01 à N04)
+# Tirage à part, pour ne pas décaler le reste des données. Codes IMM-D001… :
+# le « D » des identifiants de démo, jamais en conflit avec les vrais IMM-0001.
+R_IMM = random.Random(1410)
+# Unité d'usage des machines : m² (solvant), mètre de film (DTF), page A4 (laser).
+for row in ROWS['machines']:
+    row.update({'unite_usage': None, 'compteur_unites': 0, 'releve_compteurs': None, 'cout_page_couleur': None, 'cout_page_noir': None})
+    if row['id'] == MACHINES['DTF XP600']:
+        row.update({'unite_usage': 'metre', 'capacite_usage': 25000.0})
+    if row['id'] == MACHINES['Laser SRA3']:
+        row.update({'cout_page_couleur': 42.0, 'cout_page_noir': 8.0})
+MODELE_MACHINE = {c: v for c, v in ROWS['machines'][0].items() if c != 'id'}
+for nom, marque, modele, typ, larg, mode, prix, residuelle, capacite, unite, releve, couleur, noir, achat, ip in [
+        ('Copieur Canon C3226i', 'Canon', 'imageRUNNER ADVANCE C3226i', 'Copieur A4 / A3', '0.297', 'feuille', 6500000, 500000, 1200000.0, 'page', 'a4a3', 38.0, 7.0, 620, '10.90.0.15'),
+        ('Traceur HP T830', 'HP', 'DesignJet T830', 'Traceur de plans', '0.91', 'metre_carre', 3200000, 200000, 20000.0, None, 'simple', None, None, 950, '10.90.0.16'),
+        ('Imprimante PVC Evolis', 'Evolis', 'Primacy 2', 'Cartes PVC', '0.09', 'feuille', 2400000, 150000, 150000.0, 'carte', None, None, None, 430, '10.90.0.17'),
+        ('Sublimation SC-F500', 'Epson', 'SureColor SC-F500', 'Sublimation', '0.61', 'feuille', 3800000, 300000, 60000.0, 'transfert', None, None, None, 310, '10.90.0.18')]:
+    MACHINES[nom] = add('machines', {**MODELE_MACHINE, 'nom': nom, 'marque': marque, 'modeles': modele, 'numero_serie': f'SN-D{R_IMM.randint(100000, 999999)}', 'type_machine': typ,
+                                     'largeur_impression': larg, 'nb_tetes': 1, 'date_achat': J(achat), 'date_mise_service': J(achat - 10), 'compteur_m2': 0.0,
+                                     'compteur_heures': R_IMM.randint(800, 4000), 'compteur_feuilles': 0, 'numero_machine': f'D-M{len(MACHINES) + 1}', 'adresse_ip': ip,
+                                     'mode_facturation': mode, 'prix_achat': prix, 'vitesse_m2_heure': None, 'cout_horaire': 2000, 'cout_encre_m2': None,
+                                     'plan_preventif': [{'tache': 'Nettoyage', 'frequence': 'semaine'}], 'formats_montage': 'A3' if releve == 'a4a3' else None,
+                                     'capacite_usage': capacite, 'valeur_residuelle': residuelle, 'unite_usage': unite, 'compteur_unites': 0, 'releve_compteurs': releve,
+                                     'cout_page_couleur': couleur, 'cout_page_noir': noir})
+# Cartes de visite sur l'imprimante PVC, polos sur la sublimation : ordres terminés comptés à la pièce.
+VERS = {}
+for k, l in DETAILS_RECENTS:
+    if l['p'] is P['D-POLO']:
+        VERS[l['id']] = MACHINES['Sublimation SC-F500']
+    elif l['p'] is P['D-CARTE'] and l['id'] % 2 == 0:
+        VERS[l['id']] = MACHINES['Imprimante PVC Evolis']
+# Zone imprimée des t-shirts et casquettes DTF : le film se compte en mètres (surface ÷ laize 60 cm).
+ZONES_DTF = {l['id']: ((0.28, 0.35) if l['p'] is P['D-TSHIRT'] else (0.10, 0.06)) for k, l in DETAILS_RECENTS if l['p'] is P['D-TSHIRT'] or l['p'] is P['D-CASQUETTE']}
+for row in ROWS['commandes_details']:
+    if row['id'] in ZONES_DTF and not row.get('largeur'):
+        row['largeur'], row['longueur'] = ZONES_DTF[row['id']]
+PIECES = defaultdict(int)
+for row in ROWS['ordre_production']:
+    if row['commande_detail_id'] in VERS:
+        row['machine_id'] = VERS[row['commande_detail_id']]
+        if row['statut'] == 'termine':
+            PIECES[row['machine_id']] += row['quantite_produite']
+for row in ROWS['production']:
+    if row['commande_details_id'] in VERS:
+        row['machine_id'] = VERS[row['commande_details_id']]
+# Relevés mensuels : Canon (A4 / A3, couleur et noir) sur 12 mois ; traceur sans le relevé du mois dernier.
+CANON, TRACEUR = MACHINES['Copieur Canon C3226i'], MACHINES['Traceur HP T830']
+c4, n4, c3, n3, metres = 182000, 264000, 21500, 9200, 3150.0
+for k in range(12, 0, -1):
+    c4 += R_IMM.randint(5200, 8200)
+    n4 += R_IMM.randint(6800, 10400)
+    c3 += R_IMM.randint(550, 950)
+    n3 += R_IMM.randint(180, 420)
+    saisi = S(f"TIMESTAMP(DATE_FORMAT(CURDATE() - INTERVAL {k - 1} MONTH, '%Y-%m-02'), '09:{R_IMM.randint(5, 50):02d}:00')")
+    add('releve_compteur', {'mois': M1(k), 'a4_couleur': c4, 'a4_noir': n4, 'a3_couleur': c3, 'a3_noir': n3, 'compteur': None, 'photo': None,
+                            'saisi_le': saisi, 'machine_id': CANON, 'saisi_par_id': U['fanta']})
+    if k > 1:
+        metres += R_IMM.randint(35, 95)
+        add('releve_compteur', {'mois': M1(k), 'a4_couleur': None, 'a4_noir': None, 'a3_couleur': None, 'a3_noir': None, 'compteur': round(metres, 1), 'photo': None,
+                                'saisi_le': saisi, 'machine_id': TRACEUR, 'saisi_par_id': U['oumar']})
+for row in ROWS['machines']:
+    if row['id'] == CANON:
+        row['compteur_feuilles'] = c4 + n4 + 2 * (c3 + n3)
+    elif row['id'] == TRACEUR:
+        row['compteur_m2'] = round(metres, 1)
+    elif row['id'] == MACHINES['Imprimante PVC Evolis']:
+        row['compteur_unites'] = 21400 + PIECES[row['id']]
+    elif row['id'] == MACHINES['Sublimation SC-F500']:
+        row['compteur_unites'] = 6400 + PIECES[row['id']]
+for nom in ('Copieur Canon C3226i', 'Traceur HP T830', 'Imprimante PVC Evolis', 'Sublimation SC-F500'):
+    for d in (25, 115, 205, 295) if nom.startswith('Copieur') else (60, 240):
+        add('maintenance', {'date': T(d, 10), 'type': 'Préventive', 'description': 'Révision et nettoyage' if nom.startswith('Copieur') else 'Nettoyage complet',
+                            'cout': str(R_IMM.choice([45000, 55000, 65000]) if nom.startswith('Copieur') else R_IMM.choice([15000, 25000])),
+                            'technicien': 'Canon Mali (démo)' if nom.startswith('Copieur') else 'Atelier Diallo', 'machine_id': MACHINES[nom], 'duree_arret_minutes': 90})
+
+# Registre des immobilisations (M03, M04) : machines d'abord, puis le reste.
+NIMM = 0
+
+
+def immobilisation(designation, categorie, lieu, achat, valeur, residuelle, duree, quantite=1, etat='bon', etat_note=None, fournisseur=None, confie=None,
+                   controle=None, sortie=None, machine=None):
+    global NIMM
+    NIMM += 1
+    return add('immobilisation', {'code': f'IMM-D{NIMM:03d}', 'designation': designation, 'categorie': categorie, 'lieu': lieu, 'date_achat': achat if isinstance(achat, S) else J(achat),
+                                  'date_mise_service': None, 'valeur_achat': valeur, 'valeur_residuelle': residuelle, 'duree_annees': duree, 'quantite': quantite, 'etat': etat,
+                                  'etat_note': etat_note, 'fournisseur': fournisseur,
+                                  'numero_serie': f'SN-{R_IMM.randint(10000, 99999)}' if categorie in ('informatique', 'vehicule', 'energie') else None,
+                                  'note': None, 'controle_le': J(controle) if controle is not None else None, 'sortie_le': J(sortie[0]) if sortie else None,
+                                  'sortie_motif': sortie[1] if sortie else None, 'prix_cession': sortie[2] if sortie else None, 'cree_le': T(R_IMM.randint(30, 200), 10),
+                                  'modifie_le': T(R_IMM.randint(1, 29), 11), 'machine_id': machine, 'confie_a_id': U[confie] if confie else None})
+
+
+for row in list(ROWS['machines']):
+    immobilisation(row['nom'], 'machine', 'Boutique et accueil' if row['nom'].startswith('Copieur') else 'Atelier', row['date_achat'], row['prix_achat'], row['valeur_residuelle'] or 0, 5,
+                   etat='revision' if row['nom'] == 'Solvant 1,80 m' else 'bon', etat_note='tête à changer' if row['nom'] == 'Solvant 1,80 m' else None,
+                   controle=R_IMM.randint(20, 200), machine=row['id'])
+for designation, categorie, lieu, achat, valeur, residuelle, duree, quantite, etat, etat_note, fournisseur, confie, controle, sortie in [
+        ('iMac 27" PAO', 'informatique', 'Atelier', 700, 1450000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', 'seydou', 120, None),
+        ('PC PAO Dell OptiPlex', 'informatique', 'Atelier', 420, 950000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', 'aissata', 120, None),
+        ('PC de caisse HP', 'informatique', 'Boutique et accueil', 560, 450000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', None, 120, None),
+        ('Tablette caisse Samsung', 'informatique', 'Boutique et accueil', 260, 280000, 0, 3, 1, 'bon', None, 'Orange Boutique (démo)', 'aminata', 120, None),
+        ('PC portable comptabilité', 'informatique', 'Bureau direction', 380, 520000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', 'fanta', 120, None),
+        ('PC atelier (file d\'impression)', 'informatique', 'Atelier', 820, 380000, 0, 3, 1, 'abime', 'écran fendu', 'Bamako Informatique (démo)', 'oumar', 420, None),
+        ('Serveur NAS sauvegardes', 'informatique', 'Bureau direction', 500, 650000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', None, 120, None),
+        ('Ancien PC de caisse', 'informatique', 'Boutique et accueil', 1500, 380000, 0, 3, 1, 'hors_service', None, None, None, 400, (75, 'vente', 40000)),
+        ('Chaises de bureau', 'chaise', 'Boutique et accueil', 640, 360000, 0, 5, 8, 'bon', None, 'Meubles du Sahel (démo)', None, 120, None),
+        ('Chaises d\'atelier', 'chaise', 'Atelier', 900, 150000, 0, 5, 6, 'abime', '2 à regarnir', 'Meubles du Sahel (démo)', None, 450, None),
+        ('Comptoir d\'accueil', 'table', 'Boutique et accueil', 980, 650000, 0, 10, 1, 'bon', None, 'Menuiserie Kati (démo)', None, 120, None),
+        ('Table de découpe 3 m', 'table', 'Atelier', 1100, 420000, 0, 10, 1, 'bon', None, 'Menuiserie Kati (démo)', None, 450, None),
+        ('Table de réunion', 'table', 'Bureau direction', 760, 380000, 0, 10, 1, 'bon', None, 'Meubles du Sahel (démo)', None, 120, None),
+        ('Moto Yamaha Crypton', 'vehicule', 'Livraison', 520, 950000, 100000, 4, 1, 'bon', None, 'Yamaha Mali (démo)', 'bakary', 60, None),
+        ('Moto Jakarta', 'vehicule', 'Livraison', 300, 750000, 80000, 4, 1, 'revision', 'vidange à faire', 'Moto Plus (démo)', 'sekou', 60, None),
+        ('Tricycle de livraison', 'vehicule', 'Livraison', 150, 1800000, 200000, 4, 1, 'neuf', None, 'Moto Plus (démo)', None, 60, None),
+        ('Climatiseur boutique 2 CV', 'climatiseur', 'Boutique et accueil', 600, 425000, 0, 5, 1, 'bon', None, 'Froid du Mali (démo)', None, 120, None),
+        ('Climatiseur atelier 2,5 CV', 'climatiseur', 'Atelier', 880, 525000, 0, 5, 1, 'revision', 'gaz à recharger', 'Froid du Mali (démo)', None, 120, None),
+        ('Climatiseur bureau 1,5 CV', 'climatiseur', 'Bureau direction', 450, 380000, 0, 5, 1, 'bon', None, 'Froid du Mali (démo)', None, 120, None),
+        ('Groupe électrogène 15 kVA', 'energie', 'Cour', 1200, 4200000, 400000, 5, 1, 'bon', None, 'Énergie Services (démo)', None, 90, None),
+        ('Kit solaire et batteries', 'energie', 'Cour', 400, 2800000, 0, 5, 1, 'bon', None, 'Soleil du Sahel (démo)', None, 90, None),
+        ('Écran TV boutique 55"', 'audiovisuel', 'Boutique et accueil', 330, 350000, 0, 5, 1, 'bon', None, 'Orange Boutique (démo)', None, 120, None),
+        ('Vidéoprojecteur', 'audiovisuel', 'Bureau direction', 700, 280000, 0, 5, 1, 'bon', None, 'Bamako Informatique (démo)', None, 420, None),
+        ('Licences Adobe Creative Cloud (3 ans)', 'logiciel', 'Atelier', 270, 1100000, 0, 3, 1, 'bon', None, 'Adobe (démo)', None, None, None),
+        ('Logiciel RIP Onyx', 'logiciel', 'Atelier', 650, 1500000, 0, 3, 1, 'bon', None, 'Dakar Signs (démo)', None, None, None)]:
+    immobilisation(designation, categorie, lieu, achat, valeur, residuelle, duree, quantite, etat, etat_note, fournisseur, confie, controle, sortie)
+
+# Primes : Fanta tient la comptabilité (droit Comptabilité et patrimoine) ; Seydou encadre Aïssata.
+for row in ROWS['user']:
+    if row['username'] == 'demo.fanta':
+        row['droits_ajoutes'] = row['droits_ajoutes'] + ['ROLE_COMPTABILITE']
+AISSATA_EMPLOYE = next(row['employe_id'] for row in ROWS['user'] if row['username'] == 'demo.aissata')
+for row in ROWS['employes']:
+    if row['id'] == AISSATA_EMPLOYE:
+        row['responsable_id'] = U['seydou']
+
 # ------------------------------------- messagerie, notifications et journal
 paires = [('aminata', 'seydou'), ('aminata', 'oumar'), ('kadiatou', 'fanta'), ('mariam', 'aissata'), ('moussa', 'bakary'), ('seydou', 'oumar')]
 PHRASES = ['Le BAT de la pharmacie est parti ?', 'Oui, envoyé ce matin.', 'Le client passe à 15 h pour la bâche.', 'La machine est libre après 11 h.', 'Il manque le logo en vectoriel.',

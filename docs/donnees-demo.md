@@ -26,6 +26,11 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - `demo.adama` (gardien de nuit, 19 h – 7 h) et `demo.nana` (aide atelier) pointent sur la tablette ;
   - `demo.rokia` (stagiaire) a une invitation en attente, dont le lien ne s'ouvre pas ;
   - `demo.lassana` est parti (accès retiré).
+- Le patrimoine (`docs/immobilisations-primes.md`) :
+  - 8 machines amorties à l'usage, dont le copieur Canon C3226i (pages A4 / A3, 12 mois de relevés saisis par `demo.fanta`), le traceur HP T830 (relevé simple par `demo.oumar`, celui du mois dernier manque), l'imprimante PVC (cartes) et la sublimation (transferts) ; les commandes de polos passent en sublimation et une partie des cartes en PVC ;
+  - 33 biens au registre, `IMM-D001` à `IMM-D033` (machines d'abord, puis informatique, mobilier, motos, climatiseurs, énergie, audiovisuel, logiciels), dont 7 confiés à une personne (l'iMac de Seydou, la tablette d'Aminata, la moto de Bakary…), un vendu et quelques-uns à contrôler ;
+  - les dotations des 6 derniers mois terminés, passées par `app:immobilisations:dotations --demo` (journal OD, 681 / 28x).
+- Les primes, par `app:primes --demo` : évaluations des 4 derniers mois de chaque employé qui a un rôle de prime, avec appréciation et validation. Les mois plus anciens ont leurs primes validées et reportées sur le bulletin ; le mois dernier attend « Valider les primes », et Seydou n'y a pas encore d'appréciation. Moussa a une version 2 en août (« Facture du 28 saisie en retard ») et Sékou une prime suspendue. `demo.fanta` a le droit Comptabilité et patrimoine, et Aïssata a Seydou pour responsable.
 - La fidélité et les avis, calculés juste après le chargement par `app:fidelite --demo` et `app:sondages:demo` : relevés de points des particuliers, 3 règles d'article, promos de réveil, avis après livraison et deux sondages. `--purger` les enlève aussi.
 - Le reste : planning et entretien (avec des rappels WhatsApp envoyés et à envoyer), charges récurrentes, clôtures de caisse, rapprochements bancaires, campagnes, actions de caisse, messagerie et notifications.
 
@@ -36,6 +41,7 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
 - Les téléphones des clients sont fictifs (60 xx xx xx) et la case « recevoir les SMS » est décochée : aucun message ne peut partir vers un vrai abonné.
 - Tables non touchées :
   - `reglage` (les réglages restent ceux de l'admin) ;
+  - `bareme_prime` (le barème des primes, réglé par l'admin) ;
   - `role_utilisateur` et `entreprise` (créés par les migrations, et réutilisés par la démo) ;
   - les tables techniques de Doctrine et de Messenger.
 - Les photos (pointage, entretien, livraisons) ne sont que des noms de fichiers : les images n'existent pas.

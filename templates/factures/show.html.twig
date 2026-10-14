@@ -8,6 +8,8 @@
 
 {% block body %}
 
+	{% set peutVoirPaiements = is_granted('ROLE_PAIEMENT_VOIR') or is_granted('ROLE_ADMIN') %}
+
 	{% set client =
         commande
             ? commande.clients|default(null)
@@ -446,6 +448,8 @@
 
 			{% if facture.comptabilisee %}
 
+				{# Payé et reste : avec le droit Paiements seulement (montants réglés à part). #}
+				{% if peutVoirPaiements %}
 				{# TOTAL PAYÉ #}
 
 				<div class="col-xl-3 col-md-6">
@@ -530,6 +534,8 @@
 
 				</div>
 
+
+				{% endif %}
 
 				{# STATUT #}
 
@@ -1670,7 +1676,7 @@
 										</tr>
 
 
-										{% if facture.comptabilisee %}
+										{% if facture.comptabilisee and peutVoirPaiements %}
 
 											<tr>
 
@@ -1760,7 +1766,7 @@
 																												           HISTORIQUE PAIEMENTS
 																												           ============================================================ #}
 
-		{% if facture.comptabilisee %}
+		{% if facture.comptabilisee and peutVoirPaiements %}
 
 			<div class="card">
 

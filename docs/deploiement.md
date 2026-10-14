@@ -28,7 +28,7 @@ cd successimprim
 php composer.phar install --no-dev --optimize-autoloader   # ou composer, s'il est installé
 ```
 
-Le projet va dans le dossier personnel, jamais dans `public_html` : tout ce qui est sous `public_html` peut être servi, `.env.local` compris. Le `.htaccess` à la racine du projet refuse tout sauf `public/` si cela arrive quand même, mais il ne protège rien sous Nginx ou chez un hébergeur qui ignore les `.htaccess`.
+Le domaine pointe toujours sur le dossier `public/` du projet, jamais sur sa racine. Le mieux est de ranger le projet hors de `public_html`, dans le dossier personnel. Si l'hébergeur n'accepte de racine que sous `public_html` (cas de LWS), le projet va dans `public_html/succesimprim` et le domaine pointe sur `public_html/succesimprim/public`. Une adresse qui sert `public_html` lui-même (adresse temporaire de l'hébergeur, autre domaine) atteindrait alors `.env.local` : le `.htaccess` à la racine du projet le refuse, à condition que l'hébergeur lise les `.htaccess` (Apache ou LiteSpeed). Vérifier que https://le-domaine/.env.local est introuvable.
 
 Puis pointer le domaine sur `~/successimprim/public`, créer la base dans le panneau, écrire `.env.local` (mêmes variables que plus bas, avec `APP_ENV=prod` et `APP_EN_LIGNE=1`, droits 600) et lancer :
 

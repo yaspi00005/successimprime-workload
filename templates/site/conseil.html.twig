@@ -1,0 +1,98 @@
+{#
+	Un conseil (maquette 12, page d'article) : texte en Markdown simplifié
+	rendu côté serveur, données Article pour Google, conseils à lire aussi.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{# Sans page de devis ni de contact, la demande part sur WhatsApp (« devis » est déjà pris par le gabarit). #}
+{% set lien_devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') ?? site_whatsapp('Bonjour Succès Imprim, je voudrais un devis.') %}
+{% set devis_externe = lien_devis and lien_devis starts with 'https://' %}
+{% set image = site_image(article.image) %}
+{% set conseils = path('app_site_conseils') %}
+
+{% block title %}{{ article.titre }} · Conseils Succès Imprim{% endblock %}
+{% block description %}{{ article.resume ?: article.corps|site_texte|slice(0, 160) }}{% endblock %}
+
+{% block entete %}
+	<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+	{% set donnees = {
+		'@context': 'https://schema.org',
+		'@type': 'Article',
+		headline: article.titre|slice(0, 110),
+		description: article.resume,
+		datePublished: article.publieLe|date('c'),
+		dateModified: article.modifieLe|date('c'),
+		inLanguage: 'fr',
+		mainEntityOfPage: url('app_site_conseil', {slug: article.slug}),
+		author: {'@type': 'Organization', name: 'Succès Imprim', url: url('app_home')},
+		publisher: {'@type': 'Organization', name: 'Succès Imprim', logo: {'@type': 'ImageObject', url: absolute_url(asset('images/logo-succes-imprim.png'))}},
+	} %}
+	{% if image %}{% set donnees = donnees|merge({image: absolute_url(asset(image.chemin))}) %}{% endif %}
+	{{ site_json_ld(donnees) }}
+{% endblock %}
+
+{% block contenu %}
+	<section class="si-bandeau">
+		<div class="si-cadre">
+			<nav class="si-ariane" aria-label="Fil d'Ariane">
+				<a href="{{ site_lien('app_site_accueil') }}">Accueil</a> <span aria-hidden="true">›</span>
+				<a href="{{ conseils }}">Conseils</a> <span aria-hidden="true">›</span>
+				<span aria-current="page">{{ article.rubrique ?? 'Conseil' }}</span>
+			</nav>
+			<h1>{{ article.titre }}</h1>
+			{% if article.resume %}<p>{{ article.resume }}</p>{% endif %}
+		</div>
+	</section>
+
+	<section class="sc-section">
+		<div class="si-cadre sc-article-cadre">
+			<article class="sc-article">
+				<p class="sc-meta">
+					{% if article.rubrique %}<span class="sc-etiquette sc-rubrique-{{ site_famille(article.rubrique) }}">{{ article.rubrique }}</span>{% endif %}
+					<time datetime="{{ article.publieLe|date('Y-m-d') }}">Publié le {{ article.publieLe|site_date }}</time>
+					{% if article.modifieLe|date('Y-m-d') > article.publieLe|date('Y-m-d') %} · mis à jour le {{ article.modifieLe|site_date }}{% endif %}
+				</p>
+				{% if image %}
+					<img src="{{ asset(image.chemin) }}" width="{{ image.largeur }}" height="{{ image.hauteur }}" alt="{{ article.image.texteAlternatif ?? '' }}" class="sc-article-image">
+				{% endif %}
+				<div class="sc-prose sc-article-texte">{{ article.corps|site_markdown }}</div>
+			</article>
+
+			<aside class="sc-article-aside">
+				<div class="sc-appel-carte">
+					<h2>Un projet en tête ?</h2>
+					<p>BAT avant chaque impression : rien n'est imprimé sans votre accord.</p>
+					{% if lien_devis %}<a href="{{ lien_devis }}" class="si-bouton si-bouton-rouge"{% if devis_externe %} target="_blank" rel="noopener"{% endif %}>Demander un devis</a>{% endif %}
+					{% set wa = site_whatsapp('Bonjour Succès Imprim, j\'ai lu votre conseil « ' ~ article.titre ~ ' » et j\'ai une question : ') %}
+					{% if wa %}<a href="{{ wa }}" class="si-bouton si-bouton-contour" target="_blank" rel="noopener">Poser une question</a>{% endif %}
+				</div>
+			</aside>
+		</div>
+
+		{% if autres is not empty %}
+			<div class="si-cadre sc-article-suite">
+				<h2 class="sc-titre-section">À lire aussi</h2>
+				<ul class="sc-conseils-grille">
+					{% for a in autres %}
+						{% set vignette = site_image(a.image, 'petite') %}
+						<li>
+							<a href="{{ path('app_site_conseil', {slug: a.slug}) }}">
+								<span class="sc-conseil-vignette">
+									{% if vignette %}
+										<img src="{{ asset(vignette.chemin) }}" width="{{ vignette.largeur }}" height="{{ vignette.hauteur }}" alt="" loading="lazy">
+									{% else %}
+										{{ include('site/_illustration_contenu.svg.twig', {famille: site_famille(a.rubrique ?? a.titre, a.id), id: 'a' ~ a.id}) }}
+									{% endif %}
+								</span>
+								{% if a.rubrique %}<span class="sc-etiquette sc-rubrique-{{ site_famille(a.rubrique) }}">{{ a.rubrique }}</span>{% endif %}
+								<h3>{{ a.titre }}</h3>
+								<p>{{ a.resume }}</p>
+							</a>
+						</li>
+					{% endfor %}
+				</ul>
+				<p class="sc-appel"><a href="{{ conseils }}" class="si-bouton si-bouton-contour">Tous les conseils</a></p>
+			</div>
+		{% endif %}
+	</section>
+{% endblock %}

@@ -1,0 +1,340 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Fiche d'un contenu du site vitrine (page, réalisation, avis, conseil,
+	partenaire). Les accords se cochent ici ; sans accord, la publication
+	est refusée par ContenuSite.
+#}
+
+{% set nouveau = objet.id is null %}
+{% set apercu = null %}
+{% if not nouveau %}
+	{% if type == 'pages' and objet.publie %}
+		{% set apercu = path(constant('App\\Entity\\PageSite::PAGES')[objet.slug].route) %}
+	{% elseif type == 'conseils' and objet.estVisible(date()) %}
+		{% set apercu = path('app_site_conseil', {slug: objet.slug}) %}
+	{% elseif type == 'realisations' and objet.publie %}
+		{% set apercu = path('app_site_realisations') %}
+	{% endif %}
+{% endif %}
+
+{% block title %}
+	{%- if type == 'pages' -%}
+		{{ constant('App\\Entity\\PageSite::PAGES')[objet.slug].libelle }}
+	{%- elseif nouveau -%}
+		{{ definition.nouveau }}
+	{%- else -%}
+		{{ definition.un }} · {{ (objet.titre ?? objet.nomAffiche ?? objet.nom)|default('sans titre') }}
+	{%- endif -%}
+{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/reglages-site.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if apercu %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ apercu }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener">Voir sur le site</a>
+		</li>
+	{% endif %}
+	<li class="nav-item">
+		<button type="submit" form="si-sv-fiche" class="btn btn-danger btn-sm si-btn-entete">Enregistrer</button>
+	</li>
+{% endblock %}
+
+{% macro interrupteur(nom, coche, titre, aide = null, id = null) %}
+	{% set id = id ?? 'champ-' ~ nom %}
+	<div class="si-sv-ligne-interrupteur">
+		<label class="si-interrupteur">
+			<input type="checkbox" name="{{ nom }}" value="1" id="{{ id }}" {{ coche ? 'checked' }} {% if aide %}aria-describedby="{{ id }}-aide"{% endif %}>
+			<span></span>
+		</label>
+		<div>
+			<label for="{{ id }}" class="mb-0"><strong>{{ titre }}</strong></label>
+			{% if aide %}<small id="{{ id }}-aide" class="d-block text-muted">{{ aide }}</small>{% endif %}
+		</div>
+	</div>
+{% endmacro %}
+
+{% macro image_unique(image, champ, titre, logo = false, formats = {}) %}
+	{% set fichier = site_image(image, 'petite') %}
+	<section class="card si-bloc si-sv-encadre">
+		<h2 class="si-sv-sous-titre">{{ titre }}</h2>
+		{% if fichier %}
+			<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="" class="si-sv-apercu {{ logo ? 'si-sv-apercu-logo' }}">
+			{% if not logo %}
+				<label class="si-libelle-champ mt-2" for="champ-image-alt">Description de l'image (pour les malvoyants et Google)</label>
+				<input type="text" name="image_alt" id="champ-image-alt" value="{{ image.texteAlternatif }}" maxlength="160" class="form-control form-control-sm">
+			{% endif %}
+			<label class="form-check mt-2">
+				<input type="checkbox" name="retirer_{{ champ }}" value="1" class="form-check-input">
+				<span class="form-check-label">Retirer {{ logo ? 'le logo' : 'l\'image' }}</span>
+			</label>
+		{% elseif image %}
+			<p class="si-sv-aide">Image enregistrée, mais ce serveur ne sait pas la lire pour l'aperçu.</p>
+		{% endif %}
+		<label class="si-libelle-champ mt-2" for="champ-{{ champ }}">{{ image ? 'Remplacer par' : 'Envoyer' }} {{ logo ? 'un logo' : 'une photo' }}</label>
+		<input type="file" name="{{ champ }}" id="champ-{{ champ }}" accept="{{ formats.jpeg ? 'image/jpeg,' }}image/png{{ formats.webpLu ? ',image/webp' }}" class="form-control form-control-sm">
+		{{ _self.aide_formats(formats, logo) }}
+	</section>
+{% endmacro %}
+
+{% macro aide_formats(formats, logo = false) %}
+	<div class="form-text">
+		{{ formats.jpeg ? 'JPG, PNG' : 'PNG' }}{{ formats.webpLu ? ' ou WebP' }}, 15 Mo au plus. Réduite à {{ logo ? '600' : '1 200' }} px et réencodée en {{ formats.webp ? 'WebP' : 'PNG' }} : les données de l'appareil photo (EXIF, position GPS) sont retirées.
+		{% if not formats.jpeg %}<br><strong>Ce serveur ne lit pas le JPG (GD sans JPEG) : envoyez un PNG.</strong>{% endif %}
+	</div>
+{% endmacro %}
+
+{% block body %}
+	<div class="si-sv si-sv-fiche">
+		<a href="{{ path('app_site_contenu_index', {onglet: type}) }}" class="si-sv-retour"><span aria-hidden="true">←</span> Site vitrine · {{ definition.libelle }}</a>
+
+		{% if erreurs %}
+			<div class="alert alert-danger" role="alert">
+				<strong>Rien n'a été enregistré :</strong>
+				<ul class="mb-0">{% for e in erreurs %}<li>{{ e }}</li>{% endfor %}</ul>
+			</div>
+		{% endif %}
+
+		<form id="si-sv-fiche" method="post" enctype="multipart/form-data" action="{{ nouveau ? path('app_site_contenu_nouveau', {type: type, page: type == 'pages' ? objet.slug : null}) : path('app_site_contenu_fiche', {type: type, id: objet.id}) }}">
+			<input type="hidden" name="_token" value="{{ csrf_token('site-contenu-' ~ type) }}">
+
+			<div class="row g-3">
+				<div class="col-xl-8">
+					<section class="card si-bloc si-sv-encadre">
+						{% if type == 'pages' %}
+							<p class="si-sv-adresse">Adresse sur le site : <code>{{ path(constant('App\\Entity\\PageSite::PAGES')[objet.slug].route) }}</code></p>
+							<label class="si-libelle-champ" for="champ-titre">Titre (en haut de la page)</label>
+							<input type="text" name="titre" id="champ-titre" value="{{ objet.titre }}" maxlength="160" class="form-control" required>
+							<label class="si-libelle-champ mt-3" for="champ-accroche">Phrase sous le titre</label>
+							<input type="text" name="accroche" id="champ-accroche" value="{{ objet.accroche }}" maxlength="255" class="form-control">
+							<label class="si-libelle-champ mt-3" for="champ-description">Description pour Google <small class="text-muted">(160 caractères conseillés)</small></label>
+							<textarea name="description" id="champ-description" maxlength="300" rows="2" class="form-control" data-compteur="160">{{ objet.description }}</textarea>
+							<label class="si-libelle-champ mt-3" for="champ-corps">Texte de la page</label>
+							<textarea name="corps" id="champ-corps" rows="26" class="form-control si-sv-markdown" spellcheck="true">{{ objet.corps }}</textarea>
+
+						{% elseif type == 'realisations' %}
+							<label class="si-libelle-champ" for="champ-titre">Titre</label>
+							<input type="text" name="titre" id="champ-titre" value="{{ objet.titre }}" maxlength="160" class="form-control" placeholder="Habillage de vitrine · pharmacie" required>
+							<div class="form-text">Ce qui a été fait, et pour quel type de client : pas de nom sans son accord.</div>
+							<div class="row g-3 mt-0">
+								<div class="col-md-7">
+									<label class="si-libelle-champ" for="champ-categorie">Catégorie (filtre de la page Réalisations)</label>
+									<select name="categorie" id="champ-categorie" class="form-select">
+										<option value="">Sans catégorie</option>
+										{% for c in categories %}
+											<option value="{{ c.id }}" {{ objet.categorie and objet.categorie.id == c.id ? 'selected' }}>{{ c.nom }}</option>
+										{% endfor %}
+									</select>
+								</div>
+								<div class="col-md-5">
+									<label class="si-libelle-champ" for="champ-date">Date de livraison</label>
+									<input type="date" name="dateRealisation" id="champ-date" value="{{ objet.dateRealisation|date('Y-m-d') }}" class="form-control">
+								</div>
+							</div>
+							<label class="si-libelle-champ mt-3" for="champ-description">Description</label>
+							<textarea name="description" id="champ-description" rows="5" maxlength="2000" class="form-control" placeholder="Support, dimensions, finitions, délai…">{{ objet.description }}</textarea>
+							<div class="form-text">Pas de prix ni de montant : la page est publique.</div>
+
+						{% elseif type == 'avis' %}
+							<div class="row g-3">
+								<div class="col-md-7">
+									<label class="si-libelle-champ" for="champ-nom">Nom affiché</label>
+									<input type="text" name="nomAffiche" id="champ-nom" value="{{ objet.nomAffiche }}" maxlength="80" class="form-control" placeholder="Awa, boutique de mode" required>
+									<div class="form-text">Un prénom ou une enseigne, comme le client l'a accepté.</div>
+								</div>
+								<div class="col-md-5">
+									<span class="si-libelle-champ">Note</span>
+									<div class="si-sv-note" role="radiogroup" aria-label="Note sur 5">
+										{% for n in 5..1 %}
+											<input type="radio" name="note" value="{{ n }}" id="note-{{ n }}" {{ objet.note == n ? 'checked' }}>
+											<label for="note-{{ n }}" title="{{ n }} sur 5">★</label>
+										{% endfor %}
+									</div>
+								</div>
+							</div>
+							<label class="si-libelle-champ mt-3" for="champ-texte">Texte de l'avis</label>
+							<textarea name="texte" id="champ-texte" rows="5" maxlength="{{ constant('App\\Entity\\AvisClient::TEXTE_MAX') }}" class="form-control" data-compteur="{{ constant('App\\Entity\\AvisClient::TEXTE_MAX') }}" required>{{ objet.texte }}</textarea>
+							<div class="form-text">Recopiez les mots du client, sans les embellir.</div>
+							<div class="row g-3 mt-0">
+								<div class="col-md-7">
+									<label class="si-libelle-champ" for="champ-source">Reçu</label>
+									<input type="text" name="source" id="champ-source" value="{{ objet.source }}" maxlength="60" class="form-control" list="sources-avis" placeholder="En boutique">
+									<datalist id="sources-avis"><option value="En boutique"><option value="WhatsApp"><option value="Avis Google"><option value="Par téléphone"></datalist>
+								</div>
+								<div class="col-md-5">
+									<label class="si-libelle-champ" for="champ-date">Date</label>
+									<input type="date" name="dateAvis" id="champ-date" value="{{ objet.dateAvis|date('Y-m-d') }}" class="form-control">
+								</div>
+							</div>
+
+						{% elseif type == 'conseils' %}
+							<label class="si-libelle-champ" for="champ-titre">Titre</label>
+							<input type="text" name="titre" id="champ-titre" value="{{ objet.titre }}" maxlength="160" class="form-control" required>
+							<div class="row g-3 mt-0">
+								<div class="col-md-7">
+									<label class="si-libelle-champ" for="champ-slug">Adresse</label>
+									<div class="input-group">
+										<span class="input-group-text">/conseils/</span>
+										<input type="text" name="slug" id="champ-slug" value="{{ objet.slug }}" maxlength="{{ constant('App\\Service\\Site\\ContenuSite::SLUG_MAX') }}" class="form-control" placeholder="tirée du titre">
+									</div>
+									<div class="form-text">Laissez vide : elle se fait à partir du titre. Changer l'adresse d'un conseil publié casse les liens déjà partagés.</div>
+								</div>
+								<div class="col-md-5">
+									<label class="si-libelle-champ" for="champ-rubrique">Rubrique</label>
+									<input type="text" name="rubrique" id="champ-rubrique" value="{{ objet.rubrique }}" maxlength="60" class="form-control" list="rubriques" placeholder="Grand format">
+									<datalist id="rubriques"><option value="Grand format"><option value="Fichiers et BAT"><option value="Textile"><option value="Signalétique"><option value="Vitrines"><option value="Petit format"></datalist>
+								</div>
+							</div>
+							<label class="si-libelle-champ mt-3" for="champ-resume">Résumé (liste des conseils et Google)</label>
+							<textarea name="resume" id="champ-resume" rows="2" maxlength="300" class="form-control" data-compteur="160">{{ objet.resume }}</textarea>
+							<label class="si-libelle-champ mt-3" for="champ-corps">Texte du conseil</label>
+							<textarea name="corps" id="champ-corps" rows="22" class="form-control si-sv-markdown" spellcheck="true">{{ objet.corps }}</textarea>
+
+						{% elseif type == 'partenaires' %}
+							<label class="si-libelle-champ" for="champ-nom">Nom</label>
+							<input type="text" name="nom" id="champ-nom" value="{{ objet.nom }}" maxlength="120" class="form-control" required>
+							<div class="form-text">Sert aussi de texte du logo pour les malvoyants.</div>
+							<div class="row g-3 mt-0">
+								<div class="col-md-9">
+									<label class="si-libelle-champ" for="champ-lien">Lien (facultatif)</label>
+									<input type="url" name="lien" id="champ-lien" value="{{ objet.lien }}" maxlength="255" class="form-control" placeholder="https://">
+								</div>
+								<div class="col-md-3">
+									<label class="si-libelle-champ" for="champ-ordre">Ordre</label>
+									<input type="number" name="ordre" id="champ-ordre" value="{{ objet.ordre }}" min="0" max="999" class="form-control">
+								</div>
+							</div>
+						{% endif %}
+					</section>
+
+					{% if type == 'realisations' %}
+						<section class="card si-bloc si-sv-encadre">
+							<h2 class="si-sv-sous-titre">Photos <small class="text-muted">({{ objet.images|length }} sur {{ imagesMax }} au plus · la première est la photo principale)</small></h2>
+							{% if objet.images is not empty %}
+								<ul class="si-sv-photos">
+									{% for image in objet.images %}
+										{% set fichier = site_image(image, 'petite') %}
+										<li>
+											{% if fichier %}
+												<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="" loading="lazy">
+											{% else %}
+												<span class="si-sv-vignette si-sv-vignette-vide" aria-hidden="true"><i class="far fa-image"></i></span>
+											{% endif %}
+											<label class="visually-hidden" for="photo-alt-{{ image.id }}">Description de la photo {{ loop.index }}</label>
+											<input type="text" name="photos[{{ image.id }}][alt]" id="photo-alt-{{ image.id }}" value="{{ image.texteAlternatif }}" maxlength="160" class="form-control form-control-sm" placeholder="Description de la photo">
+											<div class="si-sv-photo-actions">
+												<label>Ordre <input type="number" name="photos[{{ image.id }}][ordre]" value="{{ image.ordre }}" min="0" max="99" class="form-control form-control-sm"></label>
+												<label class="form-check mb-0"><input type="checkbox" name="photos[{{ image.id }}][retirer]" value="1" class="form-check-input"> <span class="form-check-label">Retirer</span></label>
+											</div>
+										</li>
+									{% endfor %}
+								</ul>
+							{% endif %}
+							{% if objet.images|length < imagesMax %}
+								<label class="si-libelle-champ mt-2" for="champ-images">Ajouter des photos</label>
+								<input type="file" name="images[]" id="champ-images" multiple accept="{{ formats.jpeg ? 'image/jpeg,' }}image/png{{ formats.webpLu ? ',image/webp' }}" class="form-control">
+								{{ _self.aide_formats(formats) }}
+							{% endif %}
+						</section>
+					{% endif %}
+				</div>
+
+				<div class="col-xl-4">
+					<section class="card si-bloc si-sv-encadre">
+						<h2 class="si-sv-sous-titre">Publication</h2>
+						{% if type == 'avis' %}
+							{{ _self.interrupteur('accordClient', objet.accordClient, 'Accord du client', 'Le client accepte que son avis et le nom affiché soient montrés sur le site. Sans accord, l\'avis reste à l\'atelier.') }}
+						{% elseif type == 'partenaires' %}
+							{{ _self.interrupteur('accordObtenu', objet.accordObtenu, 'Accord obtenu', 'Le partenaire accepte que son nom et son logo soient montrés. Obligatoire pour l\'afficher.') }}
+						{% endif %}
+						{{ _self.interrupteur('publie', type == 'partenaires' ? objet.visible : objet.publie, type == 'partenaires' ? 'Visible sur le site' : 'Publié sur le site',
+							type == 'conseils' ? 'À partir de la date de publication ci-dessous.' : (type == 'pages' ? 'Non publiée, la page n\'est pas montrée.' : null)) }}
+						{% if type == 'conseils' %}
+							<label class="si-libelle-champ mt-3" for="champ-publie-le">Date de publication</label>
+							<input type="date" name="publieLe" id="champ-publie-le" value="{{ objet.publieLe|date('Y-m-d') }}" class="form-control form-control-sm">
+						{% endif %}
+						{% if not nouveau and (type == 'pages' or type == 'conseils') %}
+							<p class="si-sv-aide mt-3 mb-0">Modifié le {{ objet.modifieLe|date('d/m/Y à H:i') }}.</p>
+						{% endif %}
+					</section>
+
+					{% if type == 'realisations' %}
+						<section class="card si-bloc si-sv-encadre">
+							<h2 class="si-sv-sous-titre">Client</h2>
+							<label class="si-libelle-champ" for="champ-client">Nom du client (facultatif)</label>
+							<input type="text" name="nomClient" id="champ-client" value="{{ objet.nomClient }}" maxlength="160" class="form-control form-control-sm">
+							<div class="mt-3">
+								{{ _self.interrupteur('accordClient', objet.accordClient, 'Accord du client', 'Le client accepte que son nom soit cité. Sans accord, le nom ne quitte pas l\'atelier.') }}
+							</div>
+						</section>
+					{% endif %}
+
+					{% if type in ['pages', 'conseils'] %}
+						{{ _self.image_unique(objet.image, 'image', type == 'pages' ? 'Photo de la page' : 'Image du conseil', false, formats) }}
+					{% elseif type == 'partenaires' %}
+						{{ _self.image_unique(objet.logo, 'logo', 'Logo', true, formats) }}
+					{% endif %}
+
+					{% if machines %}
+						<section class="card si-bloc si-sv-encadre">
+							<h2 class="si-sv-sous-titre">Machines de l'atelier</h2>
+							<p class="si-sv-aide">Nom, type et largeur seulement : ni coût, ni compteur. Copiez une machine dans le texte, puis complétez-la.</p>
+							<ul class="si-sv-machines">
+								{% for m in machines %}
+									{% set markdown = '### ' ~ m.nom ~ "\n" ~ (m.type ? '*' ~ m.type ~ "*\n" : '') ~ (m.largeur ? '- Largeur d\'impression jusqu\'à ' ~ m.largeur ~ "\n" : '') %}
+									<li>
+										<span><strong>{{ m.nom }}</strong>{% if m.type or m.largeur %}<small class="d-block text-muted">{{ [m.type, m.largeur]|filter(v => v)|join(' · ') }}</small>{% endif %}</span>
+										<button type="button" class="btn btn-sm si-btn-discret" data-inserer="{{ markdown }}">Ajouter</button>
+									</li>
+								{% endfor %}
+							</ul>
+						</section>
+					{% endif %}
+
+					{% if type in ['pages', 'conseils'] %}
+						{{ include('site_contenu/_aide_markdown.html.twig', {slug: type == 'pages' ? objet.slug : 'conseil'}) }}
+					{% endif %}
+				</div>
+			</div>
+		</form>
+
+		{% if not nouveau and type != 'pages' %}
+			<form method="post" action="{{ path('app_site_contenu_supprimer', {type: type, id: objet.id}) }}" class="si-sv-supprimer" onsubmit="return confirm('Supprimer définitivement ? Le site le retire à la prochaine synchronisation.');">
+				<input type="hidden" name="_token" value="{{ csrf_token('site-contenu-supprimer-' ~ type ~ '-' ~ objet.id) }}">
+				<button type="submit" class="btn btn-sm btn-outline-danger"><i class="far fa-trash-alt me-1"></i>Supprimer</button>
+			</form>
+		{% endif %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script>
+		// Compteur de caractères des champs de description, et copie d'une machine dans le texte.
+		document.querySelectorAll('[data-compteur]').forEach(function (champ) {
+			var conseil = parseInt(champ.dataset.compteur, 10);
+			var aide = document.createElement('div');
+			aide.className = 'form-text text-end';
+			champ.after(aide);
+			var maj = function () {
+				aide.textContent = champ.value.length + ' / ' + conseil + ' caractères';
+				aide.classList.toggle('text-danger', champ.value.length > conseil);
+			};
+			champ.addEventListener('input', maj);
+			maj();
+		});
+		document.querySelectorAll('[data-inserer]').forEach(function (bouton) {
+			bouton.addEventListener('click', function () {
+				var texte = document.getElementById('champ-corps');
+				if (!texte) { return; }
+				var ajout = (texte.value.trim() === '' ? '' : '\n\n') + bouton.dataset.inserer;
+				var fin = texte.selectionEnd || texte.value.length;
+				texte.value = texte.value.slice(0, fin).replace(/\s*$/, '') + ajout + texte.value.slice(fin);
+				texte.focus();
+				bouton.textContent = 'Ajoutée';
+			});
+		});
+	</script>
+{% endblock %}

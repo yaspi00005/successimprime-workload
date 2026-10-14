@@ -30,6 +30,10 @@ final class Serialiseur
         $champs = [];
         foreach ($def['champs'] as $champ) {
             $valeur = $meta->getFieldValue($entite, $champ);
+            if (isset($def['filtres'][$champ])) {
+                // Réduit le champ selon la donnée (nom d'un client sans son accord, par exemple).
+                $valeur = ($def['filtres'][$champ])($valeur, $entite);
+            }
             $champs[$champ] = $valeur === null ? null : Type::getType($meta->getTypeOfField($champ))->convertToDatabaseValue($valeur, $plateforme);
         }
         $relations = [];

@@ -1,0 +1,91 @@
+{#
+	Qui sommes-nous ? (maquette 07), page « a-propos » : la première
+	section (texte et petites cartes de valeurs) à côté de la photo de la
+	page, l'équipe (section dont le titre parle d'équipe), les autres
+	sections, puis les chiffres, les avis publiés avec accord et les
+	partenaires. L'entreprise affichée vient de Réglages › Entreprises.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set entreprise = site_entreprise() %}
+{% set photo = site_image(page.image) %}
+{% set equipe = contenu.sections|filter(s => 'équipe' in s.titre|lower or 'equipe' in s.titre|lower)|first %}
+{% set premiere = contenu.sections|filter(s => s != equipe)|first %}
+{% set autres = contenu.sections|filter(s => s != equipe and s != premiere) %}
+
+{% block title %}{{ page.titre }} · Succès Imprim, imprimerie à Bamako{% endblock %}
+{% block description %}{{ page.description ?? page.accroche ?? 'Succès Imprim, imprimerie à Bamako : impression grand format, textile DTF et finition dans notre atelier.' }}{% endblock %}
+
+{% block entete %}
+	<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: page.titre, accroche: page.accroche, ariane: definition.libelle}) }}
+
+	<section class="sc-section">
+		<div class="si-cadre sc-apropos">
+			<div class="sc-apropos-texte">
+				{% if contenu.intro %}<div class="sc-prose sc-intro">{{ site_blocs(contenu.intro) }}</div>{% endif %}
+				{% if premiere %}
+					{% if premiere.titre %}<h2 id="{{ premiere.ancre }}" class="sc-apropos-titre">{{ premiere.html|raw }}</h2>{% endif %}
+					{% if premiere.blocs %}<div class="sc-prose">{{ site_blocs(premiere.blocs) }}</div>{% endif %}
+					{% if premiere.cartes %}
+						<ul class="sc-valeurs">
+							{% for c in premiere.cartes %}
+								<li><h3>{{ c.html|raw }}</h3>{% if c.blocs %}<div>{{ site_blocs(c.blocs) }}</div>{% endif %}</li>
+							{% endfor %}
+						</ul>
+					{% endif %}
+				{% endif %}
+				{% if entreprise and entreprise.nomCommercial and entreprise.raisonSociale %}
+					<p class="sc-societe"><span class="sc-societe-sigle" aria-hidden="true">{{ entreprise.raisonSociale|slice(0, 1)|upper }}</span>{{ entreprise.nomAffiche }} est un nom commercial de {{ entreprise.raisonSociale }}, à Bamako.</p>
+				{% endif %}
+			</div>
+
+			<div class="sc-apropos-cote">
+				<figure class="sc-apropos-photo">
+					{% if photo %}
+						<img src="{{ asset(photo.chemin) }}" width="{{ photo.largeur }}" height="{{ photo.hauteur }}" alt="{{ page.image.texteAlternatif ?? 'L\'équipe et l\'atelier Succès Imprim' }}">
+						{% if page.image.texteAlternatif %}<figcaption>{{ page.image.texteAlternatif }}</figcaption>{% endif %}
+					{% else %}
+						<svg viewBox="0 0 520 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+							<defs><linearGradient id="sc-apropos-fond" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0A3068"/><stop offset="1" stop-color="#0F4590"/></linearGradient></defs>
+							<rect width="520" height="300" fill="url(#sc-apropos-fond)"/>
+							<path d="M-20 300 C 140 230, 300 170, 560 120 L 560 175 C 330 210, 190 260, 70 320 Z" fill="#2F6BC0" opacity=".85"/>
+							<path d="M40 330 C 200 270, 360 220, 560 190 L 560 250 C 380 270, 250 300, 150 340 Z" fill="#E95B35" opacity=".9"/>
+							<path d="M200 340 C 320 300, 430 280, 560 270 L 560 320 Z" fill="#FDC82A" opacity=".9"/>
+						</svg>
+					{% endif %}
+				</figure>
+				{% if equipe and equipe.cartes %}
+					<section class="sc-equipe" aria-labelledby="{{ equipe.ancre }}">
+						<h2 id="{{ equipe.ancre }}" class="sc-masque">{{ equipe.html|raw }}</h2>
+						{% if equipe.blocs %}<div class="sc-prose">{{ site_blocs(equipe.blocs) }}</div>{% endif %}
+						<ul>
+							{% for c in equipe.cartes %}
+								<li class="sc-teinte-{{ loop.index0 % 4 }}">
+									<span class="sc-equipe-pastille" aria-hidden="true">{{ include('site/_icone_contenu.svg.twig', {icone: site_icone(c.titre)}) }}</span>
+									<h3>{{ c.html|raw }}</h3>
+									{% if c.blocs %}<div>{{ site_blocs(c.blocs) }}</div>{% endif %}
+								</li>
+							{% endfor %}
+						</ul>
+					</section>
+				{% endif %}
+			</div>
+		</div>
+
+		{% if autres is not empty %}
+			<div class="si-cadre">
+				{% for s in autres %}
+					{{ include('site/_section.html.twig', {s: s}) }}
+				{% endfor %}
+			</div>
+		{% endif %}
+	</section>
+
+	{{ include('site/_chiffres.html.twig') }}
+	{{ include('site/_avis.html.twig', {avis: avis}) }}
+	{{ include('site/_partenaires.html.twig') }}
+{% endblock %}

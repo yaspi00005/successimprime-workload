@@ -60,5 +60,14 @@
 		</div>
 	</section>
 
-	{% block apres_engagements %}{% endblock %}
+	{% block apres_engagements %}
+		{# Chiffres et partenaires (contenu du site) : chacun absent quand il est vide. #}
+		{% set chiffres = site_chiffres() %}
+		{% set partenaires = site_partenaires() %}
+		{% if chiffres or partenaires %}
+			<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+			{{ include('site/_chiffres.html.twig', {chiffres: chiffres}) }}
+			{{ include('site/_partenaires.html.twig', {partenaires: partenaires}) }}
+		{% endif %}
+	{% endblock %}
 {% endblock %}

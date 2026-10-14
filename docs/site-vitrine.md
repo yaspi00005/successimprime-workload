@@ -108,3 +108,61 @@ Rien n'est confirmé ni envoyé au client sans geste de l'équipe : le devis bro
 **Limites connues**
 - Les réglages (horaires, lien du plan) ne descendent pas au site : en ligne, les horaires par défaut s'affichent et le plan reste caché tant qu'une synchronisation des réglages n'existe pas.
 - Les demandes restent dans la base en ligne après leur montée (pas de purge automatique).
+
+## Contenu du site (pages 04 à 09 et 12)
+
+Réalisations, équipements, guide des fichiers, à propos, engagements, FAQ et conseils : le texte se saisit dans **Réglages › Site vitrine**, sur l'ERP local seulement, et descend au site par la synchronisation (voir docs/synchronisation.md). En ligne, l'écran est fermé (« Le contenu du site se modifie à l'atelier »).
+
+### Accès
+
+Droit fin **Site vitrine** (`ROLE_SITE_VITRINE`), donné à la Direction ; il se donne à un autre rôle dans Réglages › Utilisateurs et droits. Tuile « Site vitrine » dans Réglages › Paramètres et entrée du menu Réglages.
+
+### Ce qui se gère
+
+| Onglet | Contenu | Règle de publication |
+|---|---|---|
+| Pages | Nos équipements, Préparer son fichier, Qui sommes-nous ?, Nos engagements, Questions fréquentes : titre, accroche, description (moteurs de recherche), texte, image | Titre et texte obligatoires. Page non publiée : l'adresse répond 404. |
+| Réalisations | Titre, catégorie (filtres de la page), description, 6 photos au plus, client | Le **nom du client** ne s'affiche et ne descend au site qu'avec la case « accord du client ». |
+| Avis clients | Nom affiché, texte, note, source, date | Sans « accord du client », l'avis reste non publié ; ni son texte ni son nom ne descendent au site. Affichés sur « À propos ». |
+| Conseils | Titre, adresse (créée depuis le titre, unique), rubrique, résumé, texte, image, date de publication | Un conseil daté dans le futur n'apparaît qu'à sa date. Chaque conseil entre dans /sitemap.xml. |
+| Partenaires | Nom, logo, lien (http ou https seulement), ordre | Sans « accord obtenu », le partenaire reste masqué. Bande de logos sur l'accueil et « À propos ». |
+| Chiffres | Afficher ou non, règle des « projets réalisés », seuil | Voir docs/site-public.md. Un chiffre nul ou sous le seuil n'est pas montré. |
+
+Une case « publié » cochée alors qu'une règle manque : la fiche est enregistrée **sans être publiée**, avec le message de ce qui manque.
+
+### Texte des pages
+
+Markdown simplifié (`App\Service\Site\MarkdownSite`), aide sous chaque champ : « ## » section, « ### » carte (ou question de la FAQ), listes « - », étapes « 1. », encadré « > », **gras**, *italique*, [lien](https://…). Une ligne « Œillets · Ourlets · Découpe » donne une rangée de pastilles ; dans une carte, une première ligne en italique (*Grand format*) devient son étiquette. Tout le texte est échappé : un HTML tapé s'affiche tel quel. Seuls les liens http, https, du site, mailto: et tel: sont gardés. L'icône d'une carte est choisie d'après les mots de son titre (`IconesSite`).
+
+Règles propres à certaines pages :
+- **Préparer son fichier** : la section dont le titre contient « gabarit » donne la liste des gabarits. « Nom — formats » ; un élément qui contient un lien affiche « Télécharger », sinon « Demander » (message WhatsApp).
+- **Questions fréquentes** : chaque « ### » est une question ; la page porte les données FAQPage pour Google.
+- **Conseils** : chaque article porte les données Article (titre, dates, auteur Succès Imprim, image).
+
+Sans page « Demander un devis » ni « Contact », les boutons « Demander un devis » de ces pages ouvrent WhatsApp.
+
+### Images
+
+Une image envoyée (JPG, PNG ou WebP, 15 Mo au plus) est lue par GD, remise droite, réduite, **réencodée** en WebP (en PNG si GD ne sait pas écrire le WebP), donc sans EXIF ni position GPS, et ramenée à **300 Ko au plus**. C'est cette version qui est en base et qui descend au site ; elle est revérifiée à l'arrivée (type, taille, empreinte). L'original reste au local dans `var/uploads/site/originaux` (hors de public/). Les fichiers servis (`public/uploads/site/`, ignoré par git) sont refaits depuis la base de chaque côté, en deux largeurs, avec largeur et hauteur dans la page et chargement différé.
+
+**Sur le serveur, GD doit avoir WebP et JPEG.** Le conteneur de développement n'a que le PNG : les images y sont en PNG et un JPG est refusé avec un message clair.
+
+### Textes provisoires
+
+`php bin/console app:site:contenu-initial` (sur l'ERP local) crée les cinq pages avec un texte provisoire ; `--demo` ajoute 6 réalisations et 5 conseils marqués « (démo) ». La commande se relance sans risque : ce qui existe déjà n'est jamais modifié. Les exemples « (démo) » gardent la mention sur le site, pour qu'un visiteur ne les prenne pas pour de vrais travaux (elle est seulement retirée du nom des catégories) : à supprimer quand les vraies réalisations sont saisies.
+
+Textes écrits sans information de l'atelier, **à relire et remplacer par Yaya** :
+- **Nos équipements** : les trois machines (grand format, roll-up et adhésifs, textile DTF) et leurs points forts, à remplacer par le vrai parc (nom, largeur, usages) ; la liste des finitions, dont « Pose sur site ».
+- **Préparer son fichier** : chiffres repris des maquettes, à confirmer par la PAO : 100 à 150 dpi en grand format, 300 dpi en petit format, fonds perdus 3 mm, marge de 5 cm sur une bâche, CMJN et noir riche ; les tailles des gabarits (roll-up 85 × 200 cm, carte 85 × 55 mm, flyer A5, Door Shape 80 × 180 cm, banderole). Aucun gabarit n'a encore de fichier : ajouter le lien quand le PDF est en ligne.
+- **Qui sommes-nous ?** : le paragraphe de présentation (clients cités par type : commerçants, entreprises, ONG, institutions), les trois valeurs et les rôles de l'équipe (Direction, Atelier, PAO). Pas de nom de personne ni d'année de création : à ajouter si Yaya le souhaite.
+- **Nos engagements** : « Prix sans surprise », « Délai annoncé » et les étapes de commande (dont « Paiement de l'acompte » et « Contrôle qualité ») sont à valider ; seuls le BAT, la réimpression si le défaut vient de l'atelier et le paiement Orange Money étaient déjà affirmés.
+- **Questions fréquentes** : toutes les réponses, en particulier l'acompte, la quantité minimale, la livraison à Bamako, la pose sur devis et l'entretien d'une bâche.
+- **Conseils (démo)** : cinq articles d'exemple (bâche, fichier, DTF ou sérigraphie, roll-up, micro-perforé), à relire ou supprimer.
+
+Aucun chiffre d'activité, aucune note ni aucun nom de client n'a été inventé. Les chiffres affichés sont calculés (docs/site-public.md) ; les avis et partenaires n'apparaissent qu'une fois saisis avec l'accord.
+
+### Fichiers
+
+- `src/Controller/SiteContenuController.php` (admin), `src/Controller/SitePagesController.php` (pages publiques), `src/Service/Site/` (`ContenuSite`, `MarkdownSite`, `ImagesSite`, `ChiffresSite`, `IconesSite`, `PlanConseils`, `ContenuInitial`), `src/Twig/SiteContenuExtension.php`.
+- `templates/site_contenu/` (admin), `templates/site/` (`realisations`, `equipements`, `guide`, `a_propos`, `engagements`, `faq`, `conseils`, `conseil`, `_chiffres`, `_partenaires`, `_avis`), `public/css/site-contenu.css`, `public/css/reglages-site.css`.
+- Chaque page est servie par `SiteController::cache()` (5 minutes dans le navigateur).

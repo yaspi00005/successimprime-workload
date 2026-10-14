@@ -9,6 +9,7 @@ use App\Repository\ArticleConseilRepository;
 use App\Repository\AvisClientRepository;
 use App\Repository\PageSiteRepository;
 use App\Repository\RealisationRepository;
+use App\Service\Site\AvantApres;
 use App\Service\Site\MarkdownSite;
 use App\Twig\SiteContenuExtension;
 use Doctrine\ORM\EntityManagerInterface;
@@ -140,6 +141,8 @@ final class SitePagesController extends AbstractController
             'categorie' => '' === $nom ? null : $nom,
             'filtre' => '' === $nom ? null : (MarkdownSite::ancre($nom) ?: null),
             'illustration' => $illustration,
+            // Photos « Avant … » et « Après … » : superposées avec un curseur.
+            'avantApres' => AvantApres::paire($realisation->getImages()),
         ];
     }
 

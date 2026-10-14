@@ -1,0 +1,41 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Messages avec l'atelier (maquette EC01) : texte seulement, rattaché si
+	besoin à une commande. Le message monte au local ; l'équipe répond
+	depuis Clients › Messages et la personne est prévenue de la réponse.
+#}
+{% block title %}Messages{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_compte') }}"><span class="fl">‹</span>Messages</a>{% endblock %}
+
+{% block contenu %}
+	<div class="ec-carte ec-messages">
+		{% for m in fil %}
+			<div class="ec-bulle {{ m.estDeLAtelier ? 'atelier' : 'client' }}"{{ loop.last ? ' id="dernier"' }}>
+				<span class="ec-bulle-tete">{{ m.estDeLAtelier ? 'Succès Imprim' : (m.auteur ?? 'Vous') }} · {{ m.creeLe|date('d/m à H:i') }}{% if m.commande %} · <a href="{{ path('app_espace_commande', {id: m.commande.publicId}) }}">commande {{ m.commande.numero }}</a>{% endif %}</span>
+				<p>{{ m.texte|nl2br }}</p>
+			</div>
+		{% else %}
+			<p class="ec-vide">Une question sur une commande, un fichier, une livraison ? Écrivez à l'atelier : la réponse arrive ici.</p>
+		{% endfor %}
+	</div>
+
+	<form class="ec-carte" method="post" action="{{ path('app_espace_messages') }}">
+		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+		<h2>Écrire à l'atelier</h2>
+		{% if commandes is not empty %}
+			<label class="ec-etiquette" for="commande">Au sujet de (facultatif)</label>
+			<select class="ec-saisie" id="commande" name="commande" style="margin-bottom:.7rem">
+				<option value="">Aucune commande en particulier</option>
+				{% for c in commandes %}<option value="{{ c.publicId }}"{{ choisie == c.publicId ? ' selected' }}>{{ c.numero }} · {{ c|espace_titre }}</option>{% endfor %}
+			</select>
+		{% endif %}
+		<label class="ec-etiquette" for="texte">Votre message</label>
+		<textarea class="ec-champ" id="texte" name="texte" maxlength="{{ max }}" required placeholder="Bonjour, …">{{ saisie.texte }}</textarea>
+		<p class="ec-petit" style="margin:.3rem 0 .7rem">Texte seulement, {{ max }} caractères au plus. Pour un fichier, utilisez Fichiers et BAT.</p>
+		<button type="submit" class="ec-bouton bleu">Envoyer</button>
+		{% if whatsapp %}
+			<p class="ec-petit" style="margin:.8rem 0 0;text-align:center">Pressé ? <a href="{{ whatsapp }}" target="_blank" rel="noopener">WhatsApp</a> · <a href="{{ appeler }}">Appeler la boutique</a></p>
+		{% endif %}
+	</form>
+{% endblock %}

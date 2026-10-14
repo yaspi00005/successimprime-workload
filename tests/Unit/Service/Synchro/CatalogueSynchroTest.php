@@ -192,4 +192,34 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame(['jours' => 'lun-sam', 'ouverture' => '08:00', 'fermeture' => '18:00'], $horaires);
         self::assertSame([], CatalogueSynchro::reglagesPublics('paie', ['mode' => 'mensuel']));
     }
+
+    public function testEspaceClientListeBlanche(): void
+    {
+        $types = CatalogueSynchro::types();
+        // Carte « Votre conseiller(ère) » : le nom seulement, jamais l'employé ni la remise.
+        self::assertContains('conseiller', $types['client']['champs']);
+        self::assertNotContains('remiseHabituelle', $types['client']['champs']);
+        // Offres cochées dans l'espace : l'accord remonte, rien d'autre.
+        self::assertTrue(CatalogueSynchro::remonteePermise('client', 'consentementMarketingLe', null, '2026-10-14 10:00:00'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('client', 'raisonSociale', 'Hôtel Niger', 'Hôtel Niger SA'));
+
+        // Messages client ⇄ atelier : le texte, sans qui a traité ni l'employé qui a répondu.
+        self::assertSame(['sens', 'auteur', 'texte', 'creeLe'], $types['message_client']['champs']);
+        self::assertSame(['client' => 'client', 'commande' => 'commande'], $types['message_client']['relations']);
+        self::assertSame(\App\Entity\MessageClient::CLIENT, $types['message_client']['imposeAuLocal']['sens'], 'un message écrit en ligne est toujours du client');
+        self::assertTrue(CatalogueSynchro::creationAcceptee('message_client', false));
+
+        // Changement de raison sociale ou NIF : arrive au local en attente, jamais appliqué tout seul.
+        self::assertSame(\App\Entity\PropositionClient::EN_ATTENTE, $types['proposition_client']['imposeAuLocal']['statut']);
+        self::assertArrayNotHasKey('traitePar', $types['proposition_client']['relations']);
+        self::assertTrue(CatalogueSynchro::creationAcceptee('proposition_client', false));
+
+        foreach (['message_client', 'proposition_client'] as $type) {
+            foreach (['ecritPar', 'traitePar', 'observation', 'suiviPar'] as $interdit) {
+                self::assertNotContains($interdit, $types[$type]['champs'], $type.'.'.$interdit);
+                self::assertArrayNotHasKey($interdit, $types[$type]['relations'], $type.'.'.$interdit);
+            }
+        }
+        self::assertNotContains('traiteLe', $types['message_client']['champs'], 'le classement par l\'atelier reste au local');
+    }
 }

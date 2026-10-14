@@ -19,6 +19,8 @@ class NotificationClientEnvoyee
     public const EMAIL = 'email';
     /** Aucun moyen de joindre le client : elle reste dans son fil de notifications. */
     public const AUCUN = 'aucun';
+    /** Heures calmes (21 h - 7 h) : le SMS part à 7 h (NotificationClientDifferee). */
+    public const DIFFERE = 'differe';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

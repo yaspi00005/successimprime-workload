@@ -1,0 +1,52 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Livraisons (menu de l'espace, maquette EC01) : d'après les bons de
+	livraison synchronisés. Le bon signé, le livreur, le réceptionnaire, les
+	photos et la position restent au local : on renvoie à la commande.
+#}
+{% block title %}Livraisons{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Livraisons</a>{% endblock %}
+
+{% macro ligne(l, etat) %}
+	{% set bl = l.bon %}
+	<li>
+		<a class="ec-rangee" href="{{ path('app_espace_commande', {id: l.commande.publicId}) }}">
+			<span>
+				<b>{{ l.commande.numero }} · {{ l.titre }}</b>
+				<span class="ec-petit">
+					{% if etat == 'route' %}Livreur parti à {{ bl.enRouteLe|date('H:i') }}{{ bl.creneau ? ' · créneau ' ~ bl.creneau }}
+					{% elseif etat == 'livree' %}Livrée le {{ bl.livreLe|date('d/m/Y') }} à {{ bl.livreLe|date('H:i') }}
+					{% elseif bl.prevuLe %}Prévue le {{ bl.prevuLe|date('d/m') }}{{ bl.creneau ? ' · créneau ' ~ bl.creneau }}
+					{% else %}Date à confirmer par l'atelier{% endif %}
+				</span>
+			</span>
+			<span class="ec-pastille {{ etat == 'livree' ? 'vert' : (etat == 'route' ? 'ambre' : '') }}">{{ etat == 'livree' ? 'Livrée' : (etat == 'route' ? 'En route' : 'À venir') }}</span>
+		</a>
+	</li>
+{% endmacro %}
+
+{% block contenu %}
+	{% from _self import ligne %}
+	{% if livraisons.route is empty and livraisons.aVenir is empty and livraisons.livrees is empty %}
+		<div class="ec-carte ec-vide">Aucune livraison pour le moment. Les commandes à livrer apparaissent ici dès que l'atelier prépare le bon de livraison.</div>
+	{% endif %}
+	{% if livraisons.route is not empty %}
+		<div class="ec-carte">
+			<h2>En route</h2>
+			<ul class="ec-liste">{% for l in livraisons.route %}{{ ligne(l, 'route') }}{% endfor %}</ul>
+		</div>
+	{% endif %}
+	{% if livraisons.aVenir is not empty %}
+		<div class="ec-carte">
+			<h2>À venir</h2>
+			<ul class="ec-liste">{% for l in livraisons.aVenir %}{{ ligne(l, 'avenir') }}{% endfor %}</ul>
+		</div>
+	{% endif %}
+	{% if livraisons.livrees is not empty %}
+		<div class="ec-carte">
+			<h2>Livrées</h2>
+			<ul class="ec-liste">{% for l in livraisons.livrees|slice(0, 30) %}{{ ligne(l, 'livree') }}{% endfor %}</ul>
+		</div>
+	{% endif %}
+{% endblock %}

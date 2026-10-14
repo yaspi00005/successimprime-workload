@@ -10,7 +10,9 @@ use App\Entity\CommandesDetails;
 use App\Entity\Conception;
 use App\Entity\ControlePrePresse;
 use App\Entity\Devis;
+use App\Entity\CompteClient;
 use App\Entity\Factures;
+use App\Entity\MessageClient;
 use App\Entity\ReclamationClient;
 use App\Repository\EntrepriseRepository;
 use App\Service\NotificationService;
@@ -38,6 +40,15 @@ final class EspaceClient
     /** Repères posés sur l'image d'un BAT : 10 au plus, 200 caractères chacun. */
     public const REPERES_MAX = 10;
     public const REPERE_TEXTE_MAX = 200;
+
+    /** Le fil remonte à 45 jours. */
+    public const FIL_JOURS = 45;
+
+    /** Rappel d'une facture restée due une semaine après l'échéance. */
+    public const RELANCE_ECHEANCE_JOURS = 7;
+
+    /** @var array<string, list<array<string, mixed>>> fil par client, pour la requête en cours */
+    private array $fils = [];
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -108,6 +119,43 @@ final class EspaceClient
             'aValiderEntreprise' => $c->attendValidationEntreprise(),
             'refuseeEntreprise' => $c->estRefuseeParEntreprise(),
         ];
+    }
+
+    /**
+     * Les cinq étapes du tableau de bord (maquette EC01) : Commande › BAT ›
+     * Impression › Finition › Livraison (prête, puis livrée ou retirée).
+     *
+     * @param list<array{cle: string, etat: string}> $etapes SuiviCommandeService::etapesClient
+     *
+     * @return array{etapes: list<array{libelle: string, etat: string}>, courante: ?string, avancement: int}
+     */
+    public static function etapesTableau(array $etapes, bool $retrait): array
+    {
+        $etat = array_column($etapes, 'etat', 'cle');
+        $livraison = match (true) {
+            'faite' === ($etat['livree'] ?? null) => 'faite',
+            'a_venir' !== ($etat['prete'] ?? 'a_venir') || 'a_venir' !== ($etat['livree'] ?? 'a_venir') => 'en_cours',
+            default => 'a_venir',
+        };
+        $cinq = [
+            ['libelle' => 'Commande', 'etat' => $etat['recue'] ?? 'faite'],
+            ['libelle' => 'BAT', 'etat' => $etat['bat'] ?? 'a_venir'],
+            ['libelle' => 'Impression', 'etat' => $etat['impression'] ?? 'a_venir'],
+            ['libelle' => 'Finition', 'etat' => $etat['finition'] ?? 'a_venir'],
+            ['libelle' => $retrait ? 'Retrait' : 'Livraison', 'etat' => $livraison],
+        ];
+        $courante = null;
+        $rang = 5;
+        foreach ($cinq as $i => $e) {
+            if ('en_cours' === $e['etat']) {
+                $courante = $e['libelle'];
+                $rang = $i;
+                break;
+            }
+        }
+
+        // Barre du téléphone : les étapes faites, et la moitié de celle en cours.
+        return ['etapes' => $cinq, 'courante' => $courante, 'avancement' => (int) round(100 * min(5, $rang + (null !== $courante ? .5 : 0)) / 5)];
     }
 
     private function batEnAttente(Commandes $c): bool
@@ -384,60 +432,320 @@ final class EspaceClient
     }
 
     /**
-     * Fil des notifications (maquette 19), reconstruit à partir des
-     * commandes : BAT prêt, paiement reçu, impression lancée, commande
-     * prête, livreur en route, livrée, réponse à une réclamation.
+     * Fil des notifications (maquettes EC02, EC03), reconstruit à partir
+     * des documents du client : BAT prêt, impression lancée, commande
+     * prête, livraison prévue, livreur en route, livrée, paiement reçu,
+     * facture émise, rappel d'échéance, nouveau devis, réponse de l'atelier
+     * à un message ou à une réclamation. Calculé une fois par requête.
+     * FilNotifications le filtre selon les droits de la personne,
      * NotificationsClient en envoie les nouveautés.
      *
-     * @return list<array{type: string, titre: string, texte: string, date: \DateTimeInterface, lien: ?array, numero: ?string}>
+     * Le montant est à part (« montant ») : il ne s'affiche qu'à qui a le
+     * droit de le voir et ne part jamais dans un SMS.
+     *
+     * @return list<array{type: string, titre: string, texte: string, montant: ?int, date: \DateTimeInterface, lien: array{0: string, 1: array<string, mixed>}, numero: ?string, jour: ?\DateTimeInterface, cible: array<string, mixed>}>
      */
     public function notifications(Clients $client, \DateTimeImmutable $maintenant, int $nombre = 30): array
     {
-        $depuis = $maintenant->modify('-45 days');
+        $cle = $client->getId().'|'.$maintenant->format('Y-m-d H:i');
+        $this->fils[$cle] ??= $this->construireFil($client, $maintenant);
+
+        return \array_slice($this->fils[$cle], 0, $nombre);
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function construireFil(Clients $client, \DateTimeImmutable $maintenant): array
+    {
+        $depuis = $maintenant->modify(\sprintf('-%d days', self::FIL_JOURS));
         $fil = [];
         foreach ($this->commandes($client, 40) as $c) {
             $id = (string) $c->getPublicId();
+            $suivre = ['app_espace_commande', ['id' => $id]];
             foreach ($c->getPaiements() as $p) {
                 if ($p->estValide() && null !== $p->getDate()) {
-                    $fil[] = ['type' => 'paiement', 'titre' => 'Paiement reçu', 'texte' => \sprintf('%s F · %s · commande %s', number_format($p->getMontant(), 0, ',', ' '), $p->getModeLabel(), $c->getNumero()), 'date' => $p->getDateValidation() ?? $p->getDate(), 'lien' => ['app_espace_factures', []], 'numero' => $c->getNumero()];
+                    $fil[] = self::evenement('paiement', 'Paiement reçu', \sprintf('%s · commande %s', $p->getModeLabel(), $c->getNumero()), $p->getDateValidation() ?? $p->getDate(), ['app_espace_factures', []], $c->getNumero(), ['montant' => $p->getMontant(), 'cible' => ['commande' => $id]]);
                 }
             }
             foreach ($c->getCommandesDetails() as $l) {
                 foreach ($l->getControlesPrePresse() as $ctl) {
                     if (ControlePrePresse::STATUT_EN_ATTENTE_BAT === $ctl->getStatut()) {
+                        $conception = $this->conception($ctl);
                         // Date de la dernière version envoyée : chaque nouvelle version compte.
-                        $fil[] = ['type' => 'bat', 'titre' => 'BAT prêt à valider', 'texte' => self::titreLigne($l), 'date' => $this->conception($ctl)?->getDernierBatLe() ?? $ctl->getTraiteLe() ?? $ctl->getCreeLe(), 'lien' => ['app_espace_bat', ['id' => $ctl->getId()]], 'numero' => $c->getNumero()];
+                        $fil[] = self::evenement('bat', \sprintf('BAT V%d disponible', max(1, (int) $conception?->getVersions())), \sprintf('%s · %s', self::titreLigne($l), $c->getNumero()), $conception?->getDernierBatLe() ?? $ctl->getTraiteLe() ?? $ctl->getCreeLe(), ['app_espace_bat', ['id' => $ctl->getId()]], $c->getNumero(), [
+                            'cible' => ['bat' => $ctl->getId(), 'commande' => $id, 'avant' => $conception?->getEcheanceBat()],
+                        ]);
                     }
                 }
                 if (null !== $l->getProductionDebuteLe()) {
-                    $fil[] = ['type' => 'impression', 'titre' => 'Impression lancée', 'texte' => \sprintf('Commande %s · %s', $c->getNumero(), self::titreLigne($l)), 'date' => $l->getProductionDebuteLe(), 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
+                    $fil[] = self::evenement('impression', 'En impression', \sprintf('%s · %s%s', self::titreLigne($l), $c->getNumero(), null !== $c->getDateLivraison() ? ' · '.($c->estALivrer() ? 'livraison prévue le ' : 'prête le ').$c->getDateLivraison()->format('d/m') : ''), $l->getProductionDebuteLe(), $suivre, $c->getNumero(), ['cible' => ['commande' => $id]]);
                 }
             }
             $carte = $this->carte($c);
             $prete = $carte['etapes'][4];
             if ('faite' === $prete['etat'] && null !== $prete['date'] && 'faite' !== $carte['etapes'][5]['etat']) {
-                $fil[] = ['type' => 'prete', 'titre' => 'Commande prête', 'texte' => \sprintf('%s · %s', $c->getNumero(), $c->estALivrer() ? 'livraison à venir' : 'à retirer en boutique'), 'date' => $prete['date'], 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
+                $fil[] = self::evenement('prete', 'Commande prête', \sprintf('%s · %s', $c->getNumero(), $c->estALivrer() ? 'livraison à venir' : 'à retirer en boutique'), $prete['date'], $suivre, $c->getNumero(), ['cible' => ['commande' => $id]]);
             }
             foreach ($this->em->getRepository(BonLivraison::class)->findBy(['commande' => $c]) as $bl) {
-                if (BonLivraison::STATUT_ANNULE === $bl->getStatut()) {
-                    continue;
-                }
-                if (null !== $bl->getLivreLe()) {
-                    $fil[] = ['type' => 'livree', 'titre' => 'Commande livrée', 'texte' => \sprintf('%s · remise à %s', $c->getNumero(), $bl->getLivreLe()->format('H:i')), 'date' => $bl->getLivreLe(), 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
-                } elseif (null !== $bl->getEnRouteLe()) {
-                    $fil[] = ['type' => 'route', 'titre' => 'Livreur en route', 'texte' => \sprintf('%s%s', $c->getNumero(), $bl->getCreneau() ? ' · créneau '.$bl->getCreneau() : ''), 'date' => $bl->getEnRouteLe(), 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
+                if (null !== ($e = self::evenementLivraison($bl, $c))) {
+                    $fil[] = $e;
                 }
             }
+        }
+        foreach ($this->factures($client) as $f) {
+            $commande = $f->getCommande();
+            $cible = ['facture' => $f->getId(), 'commande' => null !== $commande ? (string) $commande->getPublicId() : null];
+            $date = $f->getCreatedAt() ?? $f->getDateFacture();
+            if (null !== $date) {
+                $fil[] = self::evenement('facture', $f->estProforma() ? 'Facture proforma' : 'Nouvelle facture', \sprintf('%s · commande %s', $f->getNumero(), $commande?->getNumero()), $date, ['app_espace_factures', ['f' => $f->getId()]], $f->getNumero(), ['montant' => $f->getTotalTtc(), 'cible' => $cible]);
+            }
+            // Payée par Orange Money en attente de la caisse : plus de rappel.
+            if (null === $commande || OrangeMoney::aPayer($commande) > 0) {
+                array_push($fil, ...self::rappelsEcheance($f, $maintenant));
+            }
+        }
+        foreach ($this->devis($client) as $d) {
+            if (null !== $d->getDateDevis()) {
+                $ligne = $d->getDevisDetails()->first();
+                $fil[] = self::evenement('devis', 'Nouveau devis', trim(\sprintf('%s%s', $d->getNumero(), false !== $ligne && '' !== trim((string) $ligne->getDesignation()) ? ' · '.trim((string) $ligne->getDesignation()) : '')), $d->getDateDevis(), ['app_espace_devis', ['d' => $d->getId()]], $d->getNumero(), [
+                    'montant' => $d->getTotalTtc(),
+                    'cible' => ['devis' => $d->getId(), 'statut' => $d->getStatut()],
+                ]);
+            }
+        }
+        foreach ($this->em->getRepository(MessageClient::class)->findBy(['client' => $client, 'sens' => MessageClient::ATELIER], ['id' => 'DESC'], 20) as $m) {
+            $fil[] = self::evenement('message', 'Réponse de l\'atelier', mb_strimwidth((string) preg_replace('/\s+/u', ' ', $m->getTexte()), 0, 110, '…'), $m->getCreeLe(), ['app_espace_messages', []], $m->getCommande()?->getNumero(), ['cible' => ['commande' => null !== $m->getCommande() ? (string) $m->getCommande()->getPublicId() : null]]);
         }
         foreach ($this->em->getRepository(ReclamationClient::class)->findBy(['client' => $client], ['id' => 'DESC'], 20) as $r) {
             if (null !== $r->getReponduLe()) {
-                $fil[] = ['type' => 'reclamation', 'titre' => 'Réponse à votre réclamation', 'texte' => \sprintf('%s · %s', $r->getNumero(), $r->getObjet()), 'date' => $r->getReponduLe(), 'lien' => ['app_espace_reclamations', []], 'numero' => $r->getNumero()];
+                $fil[] = self::evenement('reclamation', 'Réponse à votre réclamation', \sprintf('%s · %s', $r->getNumero(), $r->getObjet()), $r->getReponduLe(), ['app_espace_reclamations', []], $r->getNumero());
             }
         }
-        $fil = array_values(array_filter($fil, static fn (array $n): bool => $n['date'] >= $depuis));
+        $fil = array_values(array_filter($fil, static fn (array $n): bool => $n['date'] >= $depuis && $n['date'] <= $maintenant));
         usort($fil, static fn (array $a, array $b): int => $b['date'] <=> $a['date']);
 
-        return \array_slice($fil, 0, $nombre);
+        return $fil;
+    }
+
+    /**
+     * @param array{0: string, 1: array<string, mixed>} $lien
+     * @param array{montant?: ?int, jour?: ?\DateTimeInterface, cible?: array<string, mixed>} $plus
+     *
+     * @return array{type: string, titre: string, texte: string, montant: ?int, date: \DateTimeInterface, lien: array{0: string, 1: array<string, mixed>}, numero: ?string, jour: ?\DateTimeInterface, cible: array<string, mixed>}
+     */
+    public static function evenement(string $type, string $titre, string $texte, \DateTimeInterface $date, array $lien, ?string $numero, array $plus = []): array
+    {
+        return ['type' => $type, 'titre' => $titre, 'texte' => $texte, 'montant' => $plus['montant'] ?? null, 'date' => $date, 'lien' => $lien, 'numero' => $numero, 'jour' => $plus['jour'] ?? null, 'cible' => $plus['cible'] ?? []];
+    }
+
+    /**
+     * Où en est un bon de livraison : livrée, livreur en route ou livraison
+     * prévue (jour et créneau). Ni livreur, ni réceptionnaire, ni photos,
+     * ni signature : ils restent au local.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function evenementLivraison(BonLivraison $bl, Commandes $c): ?array
+    {
+        if (BonLivraison::STATUT_ANNULE === $bl->getStatut()) {
+            return null;
+        }
+        $lien = ['app_espace_commande', ['id' => (string) $c->getPublicId()]];
+        $cible = ['commande' => (string) $c->getPublicId(), 'livraison' => $bl->getId()];
+        $creneau = null !== $bl->getCreneau() && '' !== trim($bl->getCreneau()) ? ' · créneau '.trim($bl->getCreneau()) : '';
+
+        return match (true) {
+            null !== $bl->getLivreLe() => self::evenement('livree', \sprintf('Commande %s livrée', $c->getNumero()), \sprintf('Remise à %s', $bl->getLivreLe()->format('H:i')), $bl->getLivreLe(), $lien, $c->getNumero(), ['cible' => $cible]),
+            null !== $bl->getEnRouteLe() => self::evenement('route', 'Livreur en route', $c->getNumero().$creneau, $bl->getEnRouteLe(), $lien, $c->getNumero(), ['cible' => $cible, 'jour' => $bl->getEnRouteLe()]),
+            null !== $bl->getPrevuLe() && null !== ($bl->getValideLe() ?? $bl->getCreeLe()) => self::evenement('livraison_prevue', \sprintf('Livraison prévue le %s', $bl->getPrevuLe()->format('d/m')), $c->getNumero().$creneau, $bl->getValideLe() ?? $bl->getCreeLe(), $lien, $c->getNumero(), ['cible' => $cible, 'jour' => $bl->getPrevuLe()]),
+            default => null,
+        };
+    }
+
+    /**
+     * Rappels d'une facture à régler (type ÉCH) : le jour de l'échéance à
+     * 8 h, puis une semaine après si elle reste due. Calculés en ligne à
+     * partir de la facture synchronisée ; les notes d'appel et promesses
+     * des créances restent au local.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function rappelsEcheance(Factures $f, \DateTimeImmutable $maintenant): array
+    {
+        if ($f->estProforma() || Factures::ETAT_EMISE !== $f->getEtat() || $f->getResteAPayer() <= 0 || null === $f->getDateEcheance()) {
+            return [];
+        }
+        $echeance = \DateTimeImmutable::createFromInterface($f->getDateEcheance())->setTime(8, 0);
+        $lien = ['app_espace_factures', ['f' => $f->getId()]];
+        $plus = ['montant' => $f->getResteAPayer(), 'cible' => ['facture' => $f->getId(), 'commande' => null !== $f->getCommande() ? (string) $f->getCommande()->getPublicId() : null, 'echeance' => $echeance]];
+        $rappels = [];
+        if ($echeance <= $maintenant) {
+            $aujourdhui = $echeance->format('Y-m-d') === $maintenant->format('Y-m-d');
+            $rappels[] = self::evenement('echeance', $aujourdhui ? 'Rappel : paiement prévu aujourd\'hui' : \sprintf('Échéance du %s', $echeance->format('d/m')), \sprintf('Facture %s', $f->getNumero()), $echeance, $lien, $f->getNumero(), $plus);
+        }
+        $relance = $echeance->modify(\sprintf('+%d days', self::RELANCE_ECHEANCE_JOURS));
+        if ($relance <= $maintenant) {
+            $rappels[] = self::evenement('echeance', 'Facture échue', \sprintf('Facture %s · échue depuis le %s', $f->getNumero(), $echeance->format('d/m')), $relance, $lien, $f->getNumero(), $plus);
+        }
+
+        return $rappels;
+    }
+
+    /**
+     * Factures émises qui restent à payer (pas les proformas), l'échéance la
+     * plus proche d'abord.
+     *
+     * @return list<Factures>
+     */
+    public function facturesARegler(Clients $client): array
+    {
+        $liste = array_values(array_filter($this->factures($client), static fn (Factures $f): bool => !$f->estProforma() && $f->getResteAPayer() > 0));
+        usort($liste, static fn (Factures $a, Factures $b): int => ($a->getDateEcheance() ?? $a->getDateFacture()) <=> ($b->getDateEcheance() ?? $b->getDateFacture()));
+
+        return $liste;
+    }
+
+    /**
+     * « Mon compte en un coup d'œil » (maquette EC01), pour qui paie :
+     * solde dû et part échue, plafond de crédit utilisé, commandes de
+     * l'année. Les points fidélité viennent de FideliteExtension.
+     *
+     * @return array{solde: float, echu: int, plafond: ?int, utilise: ?int, annee: int, commandesAnnee: int, montantAnnee: int, enValidation: int}
+     */
+    public function apercuCompte(Clients $client, \DateTimeImmutable $maintenant): array
+    {
+        $solde = $this->solde($client);
+        $echu = 0;
+        foreach ($this->facturesARegler($client) as $f) {
+            if (null !== $f->getDateEcheance() && $f->getDateEcheance()->format('Y-m-d') < $maintenant->format('Y-m-d')) {
+                $echu += $f->getResteAPayer();
+            }
+        }
+        $annee = (int) $maintenant->format('Y');
+        $commandesAnnee = array_values(array_filter(
+            $this->commandes($client, 500),
+            static fn (Commandes $c): bool => $c->isStatut() && !$c->isDeleted() && 'annulee' !== $c->getStatutTravaux() && (int) $c->getDateCommande()?->format('Y') === $annee,
+        ));
+        // Le plafond n'a de sens que pour un client qui paie à terme (entreprise).
+        $plafond = CompteClient::clientAPlusieursComptes($client) && (int) $client->getPlafondCredit() > 0 ? (int) $client->getPlafondCredit() : null;
+
+        return [
+            'solde' => $solde['total'],
+            'echu' => (int) min($echu, $solde['total']),
+            'plafond' => $plafond,
+            'utilise' => null !== $plafond ? (int) min(999, round(100 * $solde['total'] / $plafond)) : null,
+            'annee' => $annee,
+            'commandesAnnee' => \count($commandesAnnee),
+            'montantAnnee' => array_sum(array_map(static fn (Commandes $c): int => $c->getTotalTtc(), $commandesAnnee)),
+            'enValidation' => $solde['enValidation'],
+        ];
+    }
+
+    /**
+     * Livraisons du client (maquette EC01, menu Livraisons) : à venir, en
+     * route, livrées, d'après les bons de livraison synchronisés (statut,
+     * jour prévu, créneau, heures). Le reste du bon reste au local.
+     *
+     * @return array{route: list<array<string, mixed>>, aVenir: list<array<string, mixed>>, livrees: list<array<string, mixed>>}
+     */
+    public function livraisons(Clients $client): array
+    {
+        $bons = $this->em->createQueryBuilder()->select('bl', 'c')->from(BonLivraison::class, 'bl')->join('bl.commande', 'c')
+            ->where('c.clients = :cl')->andWhere('bl.statut != :annule')
+            ->setParameter('cl', $client)->setParameter('annule', BonLivraison::STATUT_ANNULE)
+            ->orderBy('bl.id', 'DESC')->setMaxResults(120)->getQuery()->getResult();
+        $liste = ['route' => [], 'aVenir' => [], 'livrees' => []];
+        foreach ($bons as $bl) {
+            $c = $bl->getCommande();
+            $ligne = ['bon' => $bl, 'commande' => $c, 'titre' => self::titre($c)];
+            match (true) {
+                null !== $bl->getLivreLe() => $liste['livrees'][] = $ligne,
+                null !== $bl->getEnRouteLe() => $liste['route'][] = $ligne,
+                default => $liste['aVenir'][] = $ligne,
+            };
+        }
+        usort($liste['aVenir'], static fn (array $a, array $b): int => [$a['bon']->getPrevuLe() ?? new \DateTimeImmutable('2999-01-01'), $a['bon']->getId()] <=> [$b['bon']->getPrevuLe() ?? new \DateTimeImmutable('2999-01-01'), $b['bon']->getId()]);
+
+        return $liste;
+    }
+
+    /**
+     * Recherche de la barre du haut (maquette EC01), dans les documents du
+     * client seulement et selon les droits de la personne : commandes
+     * (numéro, désignation), devis (sauf lecture seule), fichiers, factures (payeur).
+     *
+     * @return array{commandes: list<Commandes>, devis: list<Devis>, fichiers: list<CommandeDetailFichier>, factures: list<Factures>}
+     */
+    public function rechercher(CompteClient $compte, string $texte): array
+    {
+        $client = $compte->getClient();
+        $texte = trim(mb_substr($texte, 0, 60));
+        if (null === $client || mb_strlen($texte) < 2) {
+            return ['commandes' => [], 'devis' => [], 'fichiers' => [], 'factures' => []];
+        }
+
+        // Chargé par fiche client et selon les droits ; resultatsRecherche revérifie les deux.
+        return self::resultatsRecherche($compte, $texte, [
+            'commandes' => $this->commandes($client, 300),
+            'devis' => $compte->estLectureSeule() ? [] : $this->devis($client),
+            'fichiers' => $this->em->getRepository(CommandeDetailFichier::class)->findBy(['client' => $client, 'actif' => true, 'statut' => CommandeDetailFichier::STATUT_TERMINE], ['id' => 'DESC'], 300),
+            'factures' => $compte->peut(CompteClient::DROIT_PAYEUR) ? $this->factures($client) : [],
+        ]);
+    }
+
+    /**
+     * Ce qui correspond au texte, parmi ce qui appartient à la fiche de la
+     * personne et que ses droits lui montrent : pas de devis pour la
+     * lecture seule, les factures aux payeurs seulement. 20 par rubrique.
+     *
+     * @param array{commandes?: iterable<Commandes>, devis?: iterable<Devis>, fichiers?: iterable<CommandeDetailFichier>, factures?: iterable<Factures>} $sources
+     *
+     * @return array{commandes: list<Commandes>, devis: list<Devis>, fichiers: list<CommandeDetailFichier>, factures: list<Factures>}
+     */
+    public static function resultatsRecherche(CompteClient $compte, string $texte, array $sources): array
+    {
+        $resultats = ['commandes' => [], 'devis' => [], 'fichiers' => [], 'factures' => []];
+        $client = $compte->getClient();
+        $texte = trim(mb_substr($texte, 0, 60));
+        if (null === $client || mb_strlen($texte) < 2) {
+            return $resultats;
+        }
+        $aLui = static fn (?Clients $c): bool => null !== $c && $c === $client;
+        $trouve = static fn (?string ...$champs): bool => [] !== array_filter($champs, static fn (?string $c): bool => null !== $c && str_contains(self::sansAccents($c), self::sansAccents($texte)));
+        foreach ($sources['commandes'] ?? [] as $c) {
+            $designations = array_map(static fn (CommandesDetails $l): ?string => $l->getDesignation(), $c->getCommandesDetails()->toArray());
+            if ($aLui($c->getClients()) && $trouve($c->getNumero(), $c->getBonCommande(), ...$designations)) {
+                $resultats['commandes'][] = $c;
+            }
+        }
+        if (!$compte->estLectureSeule()) {
+            foreach ($sources['devis'] ?? [] as $d) {
+                $designations = array_map(static fn ($l): ?string => $l->getDesignation(), $d->getDevisDetails()->toArray());
+                if ($aLui($d->getClients()) && $trouve($d->getNumero(), ...$designations)) {
+                    $resultats['devis'][] = $d;
+                }
+            }
+        }
+        foreach ($sources['fichiers'] ?? [] as $f) {
+            if ($aLui($f->getClient()) && $trouve($f->getNomOriginal())) {
+                $resultats['fichiers'][] = $f;
+            }
+        }
+        if ($compte->peut(CompteClient::DROIT_PAYEUR)) {
+            foreach ($sources['factures'] ?? [] as $f) {
+                if ($aLui($f->getCommande()?->getClients()) && $trouve($f->getNumero(), $f->getCommande()?->getNumero())) {
+                    $resultats['factures'][] = $f;
+                }
+            }
+        }
+
+        return array_map(static fn (array $l): array => \array_slice($l, 0, 20), $resultats);
+    }
+
+    private static function sansAccents(string $texte): string
+    {
+        $t = mb_strtolower($texte);
+
+        return strtr($t, ['é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e', 'à' => 'a', 'â' => 'a', 'ä' => 'a', 'î' => 'i', 'ï' => 'i', 'ô' => 'o', 'ö' => 'o', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ç' => 'c', '×' => 'x']);
     }
 
     /** Bon de livraison en cours d'une commande (livreur en route, créneau). */

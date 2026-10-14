@@ -5,8 +5,10 @@ namespace App\Tests\Unit\Service\EspaceClient;
 use App\Entity\AbonnementPushClient;
 use App\Entity\Clients;
 use App\Entity\CompteClient;
+use App\Entity\NotificationClientDifferee;
 use App\Entity\NotificationClientEnvoyee;
 use App\Service\EspaceClient\NotificationsClient;
+use App\Service\EspaceClient\PreferencesNotifications;
 use App\Service\OrangeSmsService;
 use App\Service\Push\WebPush;
 use Doctrine\ORM\EntityManagerInterface;
@@ -21,7 +23,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class NotificationsClientTest extends TestCase
 {
-    /** @var list<string> SMS partis */
+    /** @var list<array{numero: string, texte: string}> SMS partis */
     private array $sms = [];
 
     /** @var list<string> corps des notifications push parties (chiffrés) */
@@ -30,24 +32,40 @@ final class NotificationsClientTest extends TestCase
     /** @var list<NotificationClientEnvoyee> */
     private array $journal = [];
 
-    public function testSansApplicationLeSmsPartUneSeuleFoisEtSansMontant(): void
+    /** @var list<NotificationClientDifferee> */
+    private array $differees = [];
+
+    public function testSmsCocheUneSeuleFoisSurLeNumeroDeLaPersonneEtSansMontant(): void
     {
         $client = $this->client();
-        $service = $this->service([$this->compte($client)]);
+        $compte = $this->compte($client, '76000002')->setPreferencesNotifications(['factures' => [PreferencesNotifications::SMS]]);
+        $service = $this->service([$compte]);
         $fil = [self::evenement('paiement', 'Paiement reçu', '25 000 F · Orange Money · commande CMD-D00766', '2026-10-13 10:00', 'CMD-D00766')];
 
         $envoyees = $service->envoyerFil($client, $fil, new \DateTimeImmutable('2026-10-13 10:05'));
 
         self::assertSame([['type' => 'paiement', 'canal' => NotificationClientEnvoyee::SMS]], $envoyees);
-        self::assertSame(['Succès Imprim : Paiement reçu pour la commande CMD-D00766. Merci ! Détails dans votre espace client.'], $this->sms);
-        self::assertStringNotContainsString('25 000', $this->sms[0]);
+        self::assertSame('tel:+22376000002', $this->sms[0]['numero']);
+        self::assertSame('Succès Imprim : Paiement reçu pour la commande CMD-D00766. Merci ! Détails dans votre espace client.', $this->sms[0]['texte']);
+        self::assertStringNotContainsString('25 000', $this->sms[0]['texte']);
 
         // Le même événement ne repart pas.
         self::assertSame([], $service->envoyerFil($client, $fil, new \DateTimeImmutable('2026-10-13 10:10')));
         self::assertCount(1, $this->sms);
     }
 
-    public function testEvenementAncienOuImpressionNePartentPas(): void
+    public function testParDefautLesFacturesNePartentPasParSms(): void
+    {
+        $client = $this->client();
+        $service = $this->service([$this->compte($client)]);
+
+        $envoyees = $service->envoyerFil($client, [self::evenement('facture', 'Nouvelle facture', 'F-0001', '2026-10-13 10:00', 'F-0001')], new \DateTimeImmutable('2026-10-13 10:01'));
+
+        self::assertSame([['type' => 'facture', 'canal' => NotificationClientEnvoyee::AUCUN]], $envoyees);
+        self::assertSame([], $this->sms);
+    }
+
+    public function testEvenementAncienNePartPasEtLaProductionResteDansLApplication(): void
     {
         $client = $this->client();
         $service = $this->service([$this->compte($client)]);
@@ -56,7 +74,8 @@ final class NotificationsClientTest extends TestCase
             self::evenement('prete', 'Commande prête', 'CMD-2 · à retirer en boutique', '2026-10-12 08:00', 'CMD-2'),
         ];
 
-        self::assertSame([], $service->envoyerFil($client, $fil, new \DateTimeImmutable('2026-10-13 10:00')));
+        // L'événement de la veille (plus de 12 h) est ignoré ; l'impression ne coûte pas de SMS par défaut.
+        self::assertSame([['type' => 'impression', 'canal' => NotificationClientEnvoyee::AUCUN]], $service->envoyerFil($client, $fil, new \DateTimeImmutable('2026-10-13 10:00')));
         self::assertSame([], $this->sms);
     }
 
@@ -88,19 +107,93 @@ final class NotificationsClientTest extends TestCase
         self::assertSame([], $this->sms);
     }
 
-    public function testPaiementPasEnvoyeAuDemandeurSurSonTelephone(): void
+    public function testPaiementJamaisAUnDemandeurMemeCoche(): void
     {
-        $client = $this->client();
-        $demandeur = $this->compte($client)->setDroits([]);
-        $client->setTypeCompte(Clients::TYPE_COMPTE_ENTREPRISE);
+        $client = $this->client()->setTypeCompte(Clients::TYPE_COMPTE_ENTREPRISE);
+        $demandeur = $this->compte($client, '76000003')->setDroits([])->setPreferencesNotifications(['factures' => [PreferencesNotifications::APP, PreferencesNotifications::SMS]]);
         $abonnement = new AbonnementPushClient($demandeur, 'https://fcm.googleapis.com/fcm/send/xyz', 'cle', 'secret', null, new \DateTimeImmutable());
         $service = $this->service([$demandeur], [$abonnement]);
 
-        // Pas de payeur avec l'application : le SMS part sur le numéro de l'entreprise.
         $envoyees = $service->envoyerFil($client, [self::evenement('paiement', 'Paiement reçu', '10 000 F', '2026-10-13 10:00', 'CMD-9')], new \DateTimeImmutable('2026-10-13 10:01'));
 
-        self::assertSame(NotificationClientEnvoyee::SMS, $envoyees[0]['canal']);
+        self::assertSame(NotificationClientEnvoyee::AUCUN, $envoyees[0]['canal']);
         self::assertSame([], $this->push);
+        self::assertSame([], $this->sms);
+    }
+
+    public function testChacunSelonSesReglages(): void
+    {
+        $client = $this->client()->setTypeCompte(Clients::TYPE_COMPTE_ENTREPRISE);
+        $titulaire = $this->compte($client, '76000004');
+        $valideur = $this->compte($client, '76000005')->setDroits([CompteClient::DROIT_VALIDEUR])->setAjoutePar($titulaire)
+            ->setPreferencesNotifications(['bat' => [PreferencesNotifications::APP]]);
+        $lecture = $this->compte($client, '76000006')->setDroits([CompteClient::DROIT_LECTURE])->setAjoutePar($titulaire)
+            ->setPreferencesNotifications(['bat' => [PreferencesNotifications::SMS], 'livraison' => [PreferencesNotifications::SMS]]);
+        $service = $this->service([$titulaire, $valideur, $lecture]);
+
+        // Le fil arrive le plus récent d'abord.
+        $service->envoyerFil($client, [
+            self::evenement('route', 'Livreur en route', 'CMD-2', '2026-10-13 10:30', 'CMD-2'),
+            self::evenement('bat', 'BAT prêt à valider', 'Vitrine', '2026-10-13 10:00', 'CMD-1'),
+        ], new \DateTimeImmutable('2026-10-13 10:31'));
+
+        // BAT : le titulaire (SMS par défaut) ; pas le valideur (application seulement), pas la lecture (catégorie interdite).
+        // Livraison : le titulaire et la lecture.
+        self::assertSame([
+            ['tel:+22376000004', 'BAT'],
+            ['tel:+22376000004', 'livreur'],
+            ['tel:+22376000006', 'livreur'],
+        ], array_map(static fn (array $s): array => [$s['numero'], str_contains($s['texte'], 'BAT') ? 'BAT' : 'livreur'], $this->sms));
+    }
+
+    public function testHeuresCalmesLeSmsAttendSeptHeures(): void
+    {
+        $client = $this->client();
+        $compte = $this->compte($client, '76000007');
+        $service = $this->service([$compte]);
+
+        $envoyees = $service->envoyerFil($client, [self::evenement('bat', 'BAT prêt à valider', 'Vitrine', '2026-10-13 22:10', 'CMD-1')], new \DateTimeImmutable('2026-10-13 22:15'));
+
+        self::assertSame([['type' => 'bat', 'canal' => NotificationClientEnvoyee::DIFFERE]], $envoyees);
+        self::assertSame([], $this->sms);
+        self::assertCount(1, $this->differees);
+        self::assertEquals(new \DateTimeImmutable('2026-10-14 07:00'), $this->differees[0]->getPrevuLe());
+
+        // Pendant la nuit, rien ne part ; à 7 h, le SMS part une fois.
+        self::assertSame(['envoyes' => 0, 'perimes' => 0, 'echecs' => 0], $service->envoyerDifferees(new \DateTimeImmutable('2026-10-14 05:00')));
+        self::assertSame(['envoyes' => 1, 'perimes' => 0, 'echecs' => 0], $service->envoyerDifferees(new \DateTimeImmutable('2026-10-14 07:00')));
+        self::assertCount(1, $this->sms);
+        self::assertSame(NotificationClientDifferee::ENVOYEE, $this->differees[0]->getResultat());
+        self::assertSame(['envoyes' => 0, 'perimes' => 0, 'echecs' => 0], $service->envoyerDifferees(new \DateTimeImmutable('2026-10-14 07:15')));
+    }
+
+    public function testSmsDiffereNePartPlusSiLaPersonneAChangeDAvisOuSiTropVieux(): void
+    {
+        $client = $this->client();
+        $compte = $this->compte($client, '76000008');
+        $service = $this->service([$compte]);
+        $service->envoyerFil($client, [self::evenement('bat', 'BAT prêt à valider', 'Vitrine', '2026-10-13 23:30', 'CMD-1')], new \DateTimeImmutable('2026-10-13 23:31'));
+        $service->envoyerFil($client, [self::evenement('message', 'Réponse de l\'atelier', '…', '2026-10-13 06:00', 'M')], new \DateTimeImmutable('2026-10-13 06:01'));
+        self::assertCount(2, $this->differees);
+
+        // Elle a décoché le SMS des BAT pendant la nuit ; le message de 6 h est daté de plus de 12 h le soir.
+        $compte->setPreferencesNotifications(['bat' => [PreferencesNotifications::APP]]);
+        $bilan = $service->envoyerDifferees(new \DateTimeImmutable('2026-10-14 07:00'));
+
+        self::assertSame(['envoyes' => 0, 'perimes' => 2, 'echecs' => 0], $bilan);
+        self::assertSame([], $this->sms);
+    }
+
+    public function testLivraisonDuJourPartMemeLaNuit(): void
+    {
+        $client = $this->client();
+        $service = $this->service([$this->compte($client, '76000009')]);
+
+        $envoyees = $service->envoyerFil($client, [self::evenement('route', 'Livreur en route', 'CMD-3', '2026-10-13 21:20', 'CMD-3')], new \DateTimeImmutable('2026-10-13 21:21'));
+
+        self::assertSame([['type' => 'route', 'canal' => NotificationClientEnvoyee::SMS]], $envoyees);
+        self::assertSame([], $this->differees);
+        self::assertSame('Succès Imprim : Le livreur est en route avec votre commande CMD-3. Détails dans votre espace client.', $this->sms[0]['texte']);
     }
 
     public function testMessages(): void
@@ -108,6 +201,8 @@ final class NotificationsClientTest extends TestCase
         self::assertSame('Votre commande CMD-1 est prête à retirer en boutique.', NotificationsClient::message(['type' => 'prete', 'texte' => 'CMD-1 · à retirer en boutique', 'numero' => 'CMD-1']));
         self::assertSame('Votre commande CMD-1 est prête : la livraison arrive bientôt.', NotificationsClient::message(['type' => 'prete', 'texte' => 'CMD-1 · livraison à venir', 'numero' => 'CMD-1']));
         self::assertSame('Nous avons répondu à votre réclamation R-0002.', NotificationsClient::message(['type' => 'reclamation', 'texte' => 'R-0002 · Couleur', 'numero' => 'R-0002']));
+        self::assertSame('L\'atelier a répondu à votre message.', NotificationsClient::message(['type' => 'message', 'texte' => 'Livraison jeudi, 120 000 F', 'numero' => null]));
+        self::assertSame('Rappel : la facture F-0009 est à régler.', NotificationsClient::message(['type' => 'echeance', 'texte' => 'Facture F-0009 · 45 000 F', 'numero' => 'F-0009']));
         // Une nouvelle version du BAT est un nouvel événement.
         $v1 = self::evenement('bat', 'BAT prêt à valider', 'x', '2026-10-13 10:00', 'CMD-1');
         $v2 = self::evenement('bat', 'BAT prêt à valider', 'x', '2026-10-13 11:00', 'CMD-1');
@@ -128,9 +223,10 @@ final class NotificationsClientTest extends TestCase
         return $client;
     }
 
-    private function compte(Clients $client): CompteClient
+    private function compte(Clients $client, string $telephone = '76000001'): CompteClient
     {
-        return (new CompteClient())->setClient($client)->setDroits([CompteClient::DROIT_ADMINISTRATEUR, CompteClient::DROIT_PAYEUR, CompteClient::DROIT_VALIDEUR]);
+        return (new CompteClient())->setClient($client)->setTelephone($telephone)
+            ->setDroits([CompteClient::DROIT_ADMINISTRATEUR, CompteClient::DROIT_PAYEUR, CompteClient::DROIT_VALIDEUR]);
     }
 
     /**
@@ -148,15 +244,20 @@ final class NotificationsClientTest extends TestCase
             $abonnements,
             static fn (AbonnementPushClient $a): bool => \in_array($a->getCompte(), $critere['compte'], true),
         )));
+        $repoDifferees = $this->createStub(EntityRepository::class);
+        $repoDifferees->method('findBy')->willReturnCallback(fn (): array => array_values(array_filter($this->differees, static fn (NotificationClientDifferee $d): bool => null === $d->getEnvoyeLe())));
         $em = $this->createStub(EntityManagerInterface::class);
         $em->method('getRepository')->willReturnMap([
             [NotificationClientEnvoyee::class, $journal],
             [CompteClient::class, $repoComptes],
             [AbonnementPushClient::class, $repoAbonnements],
+            [NotificationClientDifferee::class, $repoDifferees],
         ]);
         $em->method('persist')->willReturnCallback(function (object $o): void {
             if ($o instanceof NotificationClientEnvoyee) {
                 $this->journal[] = $o;
+            } elseif ($o instanceof NotificationClientDifferee) {
+                $this->differees[] = $o;
             }
         });
 
@@ -170,7 +271,8 @@ final class NotificationsClientTest extends TestCase
                 return new MockResponse('', ['http_code' => 201]);
             }
             $corps = json_decode((string) ($options['body'] ?? '{}'), true);
-            $this->sms[] = (string) ($corps['outboundSMSMessageRequest']['outboundSMSTextMessage']['message'] ?? '');
+            $requete = $corps['outboundSMSMessageRequest'] ?? [];
+            $this->sms[] = ['numero' => (string) ($requete['address'] ?? ''), 'texte' => (string) ($requete['outboundSMSTextMessage']['message'] ?? '')];
 
             return new MockResponse('{}', ['http_code' => 201]);
         });

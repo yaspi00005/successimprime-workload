@@ -231,6 +231,14 @@ class Clients
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $suiviPar = null;
 
+    /**
+     * Prénom et nom de la personne qui suit le client, tenus avec suiviPar.
+     * C'est tout ce qui part au site en ligne (carte « Votre conseiller »
+     * de l'espace client) : rien d'autre de l'employé.
+     */
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $conseiller = null;
+
     #[ORM\Column(length: 80, nullable: true)]
     private ?string $secteur = null;
 
@@ -271,7 +279,15 @@ class Clients
     private ?string $besoin = null;
 
     public function getSuiviPar(): ?User { return $this->suiviPar; }
-    public function setSuiviPar(?User $u): static { $this->suiviPar = $u; return $this; }
+    public function setSuiviPar(?User $u): static
+    {
+        $this->suiviPar = $u;
+        $nom = null === $u ? '' : trim(($u->getEmploye()?->getPrenom() ?? '').' '.($u->getEmploye()?->getNom() ?? ''));
+        $this->conseiller = '' === $nom ? null : mb_substr($nom, 0, 80);
+
+        return $this;
+    }
+    public function getConseiller(): ?string { return $this->conseiller; }
     public function getSecteur(): ?string { return $this->secteur; }
     public function setSecteur(?string $v): static { $this->secteur = self::texteCourt($v, 80); return $this; }
     public function getOrigine(): ?string { return $this->origine; }

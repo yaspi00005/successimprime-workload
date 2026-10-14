@@ -1,6 +1,7 @@
 /*
- * Espace client connecté (maquettes 13 à 19). Téléphone d'abord : cartes
- * blanches arrondies, onglets en bas. Sur ordinateur, menu à gauche.
+ * Espace client connecté (maquettes 13 à 19, coque EC01 à EC05). Téléphone
+ * d'abord : cartes blanches arrondies, onglets en bas. Sur ordinateur,
+ * barre du haut et menu à gauche.
  */
 
 :root {
@@ -33,45 +34,153 @@ body.ec {
 a { color: var(--bleu); text-decoration: none; }
 svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ---------- Menu : onglets en bas (téléphone), colonne à gauche (ordinateur) ---------- */
+/* ---------- Coque (maquettes EC01 à EC05) ----------
+ * Téléphone : en-tête (avatar, client, « Bonjour », cloche) et onglets en bas.
+ * Ordinateur (900 px et plus) : barre du haut, menu à gauche, contenu à droite.
+ */
 
-.ec-menu {
+.ec-haut, .ec-menu { display: none; }
+
+.ec-onglets {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
   display: flex; justify-content: space-around;
   padding: .4rem .25rem calc(.4rem + env(safe-area-inset-bottom));
   background: #fff; border-top: 1px solid var(--trait);
 }
-.ec-menu-logo, .ec-menu-sortie { display: none; }
 .ec-onglet {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: .15rem;
   padding: .25rem 0; font-size: .7rem; color: #8A93A6;
 }
 .ec-onglet.actif { color: var(--bleu); font-weight: 700; }
-.ec-onglet.actif svg { fill: var(--bleu); stroke: var(--bleu); }
+.ec-onglet.actif svg { fill: var(--bleu-clair); stroke: var(--bleu); }
 
 .ec-page { max-width: 640px; margin: 0 auto; padding: 0 1rem 6rem; }
 
-.ec-entete { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0 .5rem; gap: .75rem; }
-.ec-entete-logo img { height: 34px; display: block; }
-.ec-entete-droite { display: flex; align-items: center; gap: .6rem; }
-.ec-cloche { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #fff; color: var(--encre); box-shadow: 0 1px 2px rgba(18,33,58,.08); }
-.ec-avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #F04B5D, var(--rouge)); color: #fff; font-weight: 700; }
-.ec-retour { display: flex; align-items: center; gap: .6rem; font-size: 1.15rem; font-weight: 800; color: var(--encre); }
-.ec-retour span.fl { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(18,33,58,.1); font-size: 1rem; }
+.ec-entete { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0 .6rem; gap: .75rem; }
+.ec-salut { display: flex; align-items: center; gap: .7rem; min-width: 0; color: var(--encre); }
+.ec-salut > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.ec-salut small { color: var(--gris); font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ec-salut b { font-size: 1.35rem; font-weight: 800; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ec-salut .ec-avatar { width: 48px; height: 48px; border-radius: 14px; font-size: 1.05rem; flex: none; }
+.ec-cloche { position: relative; flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; background: #fff; color: var(--encre); box-shadow: 0 1px 2px rgba(18,33,58,.08); }
+.ec-cloche .ec-compteur { position: absolute; top: -6px; right: -6px; }
+.ec-avatar { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--bleu); color: #fff; font-weight: 800; letter-spacing: .02em; }
+.ec-avatar.rouge { background: var(--rouge); }
+.ec-retour { display: flex; align-items: center; gap: .6rem; font-size: 1.15rem; font-weight: 800; color: var(--encre); min-width: 0; }
+.ec-retour span.fl { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(18,33,58,.1); font-size: 1rem; }
+
+/* Pastilles de nombre : rouge (notifications), jaune (à faire). */
+.ec-compteur { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; font-size: .7rem; font-weight: 800; line-height: 1; background: var(--rouge); color: #fff; border: 2px solid #fff; }
+.ec-compteur.jaune { background: #F5B400; color: #3B2A00; }
+.ec-pilule { display: inline-block; padding: .2rem .6rem; border-radius: 999px; background: #EEF1F6; color: var(--encre); font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.ec-pilule.rouge { background: var(--rouge); color: #fff; }
+
+/* Sous-pages sur téléphone : le titre prend la place de la cloche. */
+.ec-entete:has(.ec-retour) .ec-cloche-tel { display: none; }
 
 @media (min-width: 900px) {
-  .ec-menu {
-    top: 0; right: auto; width: 240px; flex-direction: column; justify-content: flex-start; gap: .25rem;
-    padding: 1.25rem .9rem; border-top: 0; border-right: 1px solid var(--trait);
+  .ec-onglets { display: none; }
+
+  .ec-haut {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 30; height: 68px;
+    display: flex; align-items: center; gap: 1.5rem; padding: 0 1.5rem;
+    background: #fff; border-bottom: 1px solid var(--trait);
   }
-  .ec-menu-logo { display: block; padding: .25rem .5rem 1.25rem; }
-  .ec-menu-logo img { height: 44px; }
-  .ec-onglet { flex: 0; flex-direction: row; gap: .75rem; padding: .7rem .9rem; border-radius: 12px; font-size: .95rem; color: var(--gris); }
-  .ec-onglet.actif { background: var(--bleu-clair); }
-  .ec-menu-sortie { display: block; margin-top: auto; padding: .7rem .9rem; color: var(--gris); font-size: .9rem; }
-  .ec-page { margin-left: calc(240px + max(0px, (100vw - 240px - 640px) / 2)); padding-bottom: 3rem; }
-  .ec-entete-logo { visibility: hidden; }
+  .ec-haut-logo { display: flex; align-items: center; gap: .9rem; flex: none; width: 216px; }
+  .ec-haut-logo img { height: 40px; display: block; }
+  .ec-recherche { flex: 0 1 380px; display: flex; align-items: center; gap: .5rem; height: 42px; padding: 0 .9rem; border-radius: 12px; background: var(--fond); color: var(--gris); }
+  .ec-recherche svg { width: 18px; height: 18px; flex: none; }
+  .ec-recherche input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: .9rem; color: var(--encre); outline: none; }
+  .ec-haut-droite { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+  .ec-bouton-nouvelle { display: inline-flex; align-items: center; height: 42px; padding: 0 1.2rem; border-radius: 12px; background: var(--rouge); color: #fff; font-weight: 800; white-space: nowrap; box-shadow: 0 6px 14px rgba(224,16,43,.22); }
+  .ec-haut .ec-cloche { background: var(--fond); box-shadow: none; border-radius: 12px; }
+  .ec-moi { display: flex; align-items: center; gap: .65rem; color: var(--encre); max-width: 260px; }
+  .ec-moi .ec-avatar { border-radius: 12px; width: 42px; height: 42px; }
+  .ec-moi-texte { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+  .ec-moi-texte b { font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ec-moi-texte small { color: var(--gris); font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .ec-menu {
+    position: fixed; top: 68px; left: 0; bottom: 0; z-index: 20; width: 240px;
+    display: flex; flex-direction: column; gap: .15rem; padding: 1rem .75rem;
+    background: #fff; border-right: 1px solid var(--trait); overflow-y: auto;
+  }
+  .ec-entree { display: flex; align-items: center; gap: .75rem; padding: .62rem .8rem; border-radius: 12px; color: #3D4A60; font-size: .92rem; line-height: 1.2; }
+  .ec-entree svg { width: 20px; height: 20px; flex: none; color: var(--gris); }
+  .ec-entree span:not(.ec-compteur) { flex: 1; }
+  .ec-entree .ec-compteur { border: 0; }
+  .ec-entree:hover { background: var(--fond); }
+  .ec-entree.actif { background: var(--bleu-clair); color: var(--bleu); font-weight: 800; }
+  .ec-entree.actif svg { color: var(--bleu); }
+  .ec-menu-bas { margin-top: auto; padding-top: 1rem; display: grid; gap: .5rem; }
+  .ec-conseiller { display: flex; align-items: center; gap: .7rem; padding: .8rem; border-radius: 14px; background: var(--fond); }
+  .ec-conseiller > span:last-child { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+  .ec-conseiller small { color: var(--gris); font-size: .74rem; }
+  .ec-conseiller b { font-size: .9rem; }
+  .ec-conseiller-liens { font-size: .8rem; font-weight: 700; }
+  .ec-menu-sortie { padding: .4rem .8rem; color: var(--gris); font-size: .85rem; }
+
+  .ec-page { max-width: none; margin: 0 0 0 240px; padding: calc(68px + 1.5rem) 2rem 3rem; }
+  .ec-entete, .ec-contenu { max-width: 760px; margin-left: auto; margin-right: auto; }
+  .ec-page-large .ec-entete, .ec-page-large .ec-contenu { max-width: 1180px; }
+  /* Sur ordinateur, l'en-tête ne garde que le titre des sous-pages. */
+  .ec-entete { padding-top: 0; }
+  .ec-entete:not(:has(.ec-retour)) { display: none; }
+  .ec-cloche-tel { display: none; }
+  .ec-retour { font-size: 1.5rem; }
+  .ec-telephone { display: none !important; }
 }
+@media (max-width: 899px) {
+  .ec-bureau { display: none !important; }
+}
+
+/* Panneau de la cloche (maquette EC02) */
+.ec-cloche-zone { position: relative; }
+.ec-cloche-panneau { position: absolute; top: calc(100% + 10px); right: -8px; z-index: 40; width: 400px; max-height: calc(100vh - 100px); display: flex; flex-direction: column; background: #fff; border-radius: 16px; box-shadow: 0 20px 50px rgba(18,33,58,.22); overflow: hidden; }
+.ec-cloche-panneau[hidden] { display: none; }
+.ec-cp-tete { display: flex; align-items: center; gap: .6rem; padding: .9rem 1rem; border-bottom: 1px solid var(--trait); }
+.ec-cp-tete form { margin-left: auto; }
+.ec-cp-liste { list-style: none; margin: 0; padding: 0; overflow-y: auto; }
+.ec-cp-liste li { position: relative; display: grid; grid-template-columns: 10px 1fr auto; gap: .2rem .7rem; padding: .75rem 1.6rem .75rem 1rem; border-bottom: 1px solid var(--trait); }
+.ec-cp-liste li.nouveau { background: #F7FAFF; }
+.ec-cp-liste li .ec-point { margin-top: .4rem; }
+.ec-cp-liste li > div { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .15rem; }
+.ec-cp-titre { color: var(--encre); font-weight: 800; font-size: .9rem; }
+.ec-cp-liste small { color: var(--gris); font-size: .78rem; }
+.ec-cp-liste time { color: var(--gris); font-size: .74rem; white-space: nowrap; }
+.ec-cp-liste .ec-mini { margin-top: .3rem; padding: .22rem .6rem; font-size: .74rem; border-radius: 6px; }
+.ec-cp-liste small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ec-cp-tete b { font-size: .95rem; }
+.ec-cp-tete .ec-pilule { font-size: .72rem; white-space: nowrap; }
+.ec-cp-tete .ec-lien { white-space: nowrap; font-size: .8rem; }
+.ec-cp-vide { display: block !important; color: var(--gris); text-align: center; padding: 1.5rem 1rem !important; }
+.ec-cp-pied { display: block; padding: .8rem; text-align: center; font-weight: 800; font-size: .88rem; }
+.ec-non-lu { position: absolute; right: .7rem; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--bleu); }
+
+/* Points de couleur et pastilles de type (BAT, PRO, FAC, ÉCH, DEV, LIV, MSG) */
+.ec-point { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--gris); flex: none; }
+.ec-point.bat { background: #E8338A; }
+.ec-point.pro { background: var(--bleu); }
+.ec-point.fac { background: var(--rouge); }
+.ec-point.ech { background: #6B7385; }
+.ec-point.dev { background: var(--orange); }
+.ec-point.liv { background: #0F8A80; }
+.ec-point.msg { background: #7C3AED; }
+.ec-sigle { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; font-size: .68rem; font-weight: 900; letter-spacing: .02em; background: #EEF1F6; color: var(--gris); }
+.ec-sigle.bat { background: #FDE7F1; color: #C2185B; }
+.ec-sigle.pro { background: var(--bleu-clair); color: var(--bleu); }
+.ec-sigle.fac { background: #FDE4E7; color: #BE123C; }
+.ec-sigle.dev { background: #FFEBD9; color: #C2410C; }
+.ec-sigle.liv { background: #DDF3F1; color: #0F766E; }
+.ec-sigle.msg { background: #EDE7FB; color: #6D28D9; }
+
+/* Petits boutons d'action (Voir et valider, Payer, Accepter…) */
+.ec-mini { display: inline-flex; align-items: center; border: 0; border-radius: 8px; padding: .38rem .8rem; font: inherit; font-size: .8rem; font-weight: 800; white-space: nowrap; cursor: pointer; background: var(--bleu); color: #fff; }
+.ec-mini.bat { background: #E8338A; }
+.ec-mini.fac { background: var(--rouge); }
+.ec-mini.dev { background: var(--orange); }
+.ec-mini.liv { background: #0F8A80; }
+.ec-mini.secondaire { background: #EEF1F6; color: var(--encre); }
 
 /* ---------- Blocs ---------- */
 
@@ -190,21 +299,14 @@ details.ec-modif[open] summary { display: none; }
 .ec-installer { border-bottom: 0; border-top: 1px solid var(--trait); margin-top: .4rem; }
 .ec-push > span, .ec-installer > span { display: grid; gap: .1rem; }
 .ec-push [hidden], .ec-installer[hidden] { display: none; }
-.ec-notif { display: flex; gap: .9rem; align-items: center; }
-.ec-notif-icone { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; font-size: 1.3rem; }
-.ec-notif b { display: block; }
 
 /* Compte */
 .ec-profil { display: flex; align-items: center; gap: .9rem; }
 .ec-profil .ec-avatar { width: 52px; height: 52px; font-size: 1.3rem; }
 .ec-reglage > li { display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
 .ec-interrupteur { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .5rem 0; }
-.ec-interrupteur input { width: 44px; height: 24px; accent-color: var(--bleu); }
+.ec-interrupteur input { flex: none; width: 44px; height: 24px; accent-color: var(--bleu); }
 
-/* Sous-pages sur téléphone : le titre prend la place de la cloche et de l'avatar. */
-@media (max-width: 899px) {
-  .ec-entete:has(.ec-retour) .ec-entete-droite { display: none; }
-}
 
 /* ---------- Nouvelle commande (maquette 14) ---------- */
 .ec-etiquette { display: block; color: var(--gris); font-size: .82rem; margin: 0 0 .45rem; }
@@ -335,7 +437,6 @@ a.ec-carte.ec-pc-entree { display: flex; align-items: center; gap: .85rem; }
 
 @media (min-width: 900px) {
   .ec-pc-intro { flex-direction: row; justify-content: space-between; gap: 1rem; }
-  .ec-page.ec-page-large { max-width: 1120px; margin-left: calc(240px + max(0px, (100vw - 240px - 1120px) / 2)); }
   .ec-pc-mise { display: grid; grid-template-columns: 1fr 320px; gap: 1.2rem; align-items: start; }
   .ec-pc-grille { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
   .ec-pc button.ec-pc-ouvrir { flex-direction: column; align-items: stretch; height: 100%; padding: 0 0 .9rem; overflow: hidden; }
@@ -381,3 +482,172 @@ a.ec-carte.ec-pc-entree { display: flex; align-items: center; gap: .85rem; }
 .ec-fi-mouvement.plus { color: var(--vert); }
 .ec-fi-mouvement.moins { color: var(--rouge); }
 .ec-fi-note { margin: .2rem .3rem 0; }
+
+/* ---------- Tableau de bord (maquettes EC01 et EC05) ---------- */
+.ec-titre-page { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .9rem; }
+.ec-titre-page h1 { margin: 0; }
+.ec-titre-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.ec-titre-actions form { margin: 0; }
+.ec-bouton-blanc { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid var(--trait); border-radius: 12px; padding: .55rem 1rem; background: #fff; color: var(--encre); font: inherit; font-size: .88rem; font-weight: 800; cursor: pointer; white-space: nowrap; box-shadow: 0 1px 2px rgba(18,33,58,.05); }
+.ec-bouton-vert { display: inline-flex; align-items: center; border: 0; border-radius: 12px; padding: .6rem 1.2rem; background: var(--vert); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+
+.ec-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: .7rem; margin-bottom: .85rem; }
+.ec-action { display: flex; align-items: center; justify-content: space-between; gap: .8rem; background: #fff; border-radius: 16px; padding: .9rem 1rem; border-left: 5px solid var(--gris); box-shadow: 0 1px 3px rgba(18,33,58,.06); }
+.ec-action > div { min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
+.ec-action b { font-size: 1rem; }
+.ec-action small { color: var(--gris); font-size: .8rem; }
+.ec-action form { margin: 0; }
+.ec-action.bat { border-left-color: #E8338A; }
+.ec-action.fac { border-left-color: var(--rouge); }
+.ec-action.dev { border-left-color: var(--orange); }
+
+.ec-tableau { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1rem; }
+.ec-tableau-colonne { min-width: 0; }
+.ec-bloc h2 { margin: 0 0 .7rem; }
+.ec-bloc-tete { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.ec-bloc-tete .ec-lien { font-size: .82rem; white-space: nowrap; }
+
+.ec-encours { display: block; color: inherit; padding: .75rem 0; border-top: 1px solid var(--trait); }
+.ec-encours:first-of-type { border-top: 0; padding-top: .1rem; }
+.ec-encours-tete { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.ec-encours-tete b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .95rem; }
+.ec-encours-montant { font-weight: 800; white-space: nowrap; }
+.ec-etape-courante { color: var(--bleu); font-weight: 800; font-size: .9rem; white-space: nowrap; }
+.ec-encours-prevu { margin: .45rem 0 0; }
+.ec-encours p.ec-petit { margin: .35rem 0 0; }
+
+/* Frise des cinq étapes : vert fait, cercle bleu en cours, gris à venir. */
+.ec-pas { display: flex; list-style: none; margin: .8rem 0 .2rem; padding: 0; }
+.ec-pas li { flex: 1; position: relative; text-align: center; font-size: .72rem; color: #9AA3B5; }
+.ec-pas li::before { content: ""; display: block; width: 16px; height: 16px; margin: 0 auto .35rem; border-radius: 50%; background: #DCE2EC; position: relative; z-index: 1; box-sizing: border-box; }
+.ec-pas li::after { content: ""; position: absolute; top: 6px; left: -50%; width: 100%; height: 4px; background: #E3E8F0; }
+.ec-pas li:first-child::after { display: none; }
+.ec-pas li.faite { color: var(--gris); }
+.ec-pas li.faite::before { background: var(--vert); }
+.ec-pas li.faite::after, .ec-pas li.en_cours::after { background: var(--vert); }
+.ec-pas li.en_cours { color: var(--bleu); font-weight: 800; }
+.ec-pas li.en_cours::before { background: #fff; border: 3px solid var(--bleu); width: 18px; height: 18px; margin-top: -1px; }
+
+.ec-activite { list-style: none; margin: 0; padding: 0; }
+.ec-activite li { display: grid; grid-template-columns: 9px 48px 1fr; align-items: center; gap: .7rem; padding: .6rem 0; border-top: 1px solid var(--trait); font-size: .88rem; }
+.ec-activite li:first-child { border-top: 0; }
+.ec-activite time { color: var(--gris); font-size: .8rem; }
+.ec-activite a { color: var(--encre); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ec-activite li.ec-petit { display: block; }
+
+.ec-tuiles { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.ec-tuile { display: flex; flex-direction: column; gap: .1rem; padding: .75rem .85rem; border-radius: 14px; background: var(--fond); color: var(--encre); min-width: 0; }
+.ec-tuile small { color: var(--gris); font-size: .76rem; }
+.ec-tuile b { font-size: 1.35rem; font-weight: 900; letter-spacing: -.01em; white-space: nowrap; }
+.ec-tuile b.rouge, .ec-tuile small.rouge { color: var(--rouge); }
+.ec-tuile b.vert { color: var(--vert); }
+.ec-tuile b.bleu { color: var(--bleu); }
+
+.ec-reco > li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: .3rem .8rem; }
+.ec-reco > li > span:first-child { min-width: 0; display: flex; flex-direction: column; }
+.ec-reco b { font-size: .9rem; }
+.ec-reco-prix { font-weight: 800; white-space: nowrap; }
+.ec-reco-panier { color: var(--rouge); font-weight: 800; font-size: .85rem; white-space: nowrap; }
+
+.ec-fi-bande { display: flex; align-items: center; gap: .85rem; color: inherit; }
+.ec-fi-bande b { display: block; font-size: .92rem; }
+.ec-fi-bande .ec-petit { display: block; }
+
+@media (min-width: 900px) {
+  .ec-actions { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+  .ec-action { flex-direction: column; align-items: flex-start; justify-content: space-between; border-left-width: 4px; padding: 1rem 1.1rem; }
+  .ec-action .ec-mini { margin-top: .5rem; }
+  .ec-tableau { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: start; }
+}
+
+/* ---------- Page Notifications (maquettes EC03 et EC05) ---------- */
+.ec-deux-colonnes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1rem; }
+.ec-deux-colonnes > * { min-width: 0; }
+/* Toutes les catégories visibles d'un coup d'œil, sur deux lignes au besoin. */
+.ec-deux-colonnes .ec-filtres { flex-wrap: wrap; overflow: visible; gap: .4rem; }
+.ec-deux-colonnes .ec-filtres a { padding: .32rem .75rem; font-size: .82rem; }
+.ec-jour { margin: 1rem 0 .45rem; font-size: .74rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gris); }
+.ec-jour:first-of-type { margin-top: .2rem; }
+.ec-notifs { padding: .2rem 1rem; }
+.ec-notif { position: relative; display: flex; gap: .85rem; align-items: flex-start; padding: .85rem 0; border-top: 1px solid var(--trait); background: #fff; transition: transform .15s; }
+.ec-notif:first-child { border-top: 0; }
+.ec-notif > .ec-point { display: none; margin-top: .45rem; }
+.ec-notif-corps { flex: 1; min-width: 0; }
+.ec-notif-tete { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.ec-notif-titre { color: var(--encre); font-weight: 800; font-size: .95rem; }
+.ec-notif-quand { flex: none; color: var(--gris); font-size: .78rem; white-space: nowrap; }
+.ec-nouveau b { color: var(--bleu); font-weight: 800; }
+.ec-notif-texte { margin: .15rem 0 0; color: var(--gris); font-size: .85rem; }
+.ec-notif-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .55rem; }
+.ec-notif-actions form { margin: 0; }
+.ec-marquer { margin: .35rem 0 0; }
+.ec-lien-gris { border: 0; background: none; padding: 0; font: inherit; font-size: .78rem; color: var(--gris); text-decoration: underline; cursor: pointer; }
+.ec-astuce-glisser { text-align: center; margin: .2rem 0 1rem; }
+
+.ec-prefs table { width: 100%; border-collapse: collapse; margin: .2rem 0 .6rem; }
+.ec-prefs th, .ec-prefs td { padding: .42rem .2rem; text-align: center; font-size: .84rem; }
+.ec-prefs thead th { color: var(--gris); font-size: .72rem; font-weight: 700; }
+.ec-prefs tbody th { text-align: left; font-weight: 700; }
+.ec-prefs tbody tr + tr { border-top: 1px solid var(--trait); }
+.ec-prefs input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--bleu); }
+.ec-prefs .ec-petit { margin: .3rem 0 .6rem; }
+
+@media (max-width: 899px) {
+  /* Téléphone (maquette EC05) : un point de couleur, la notification en carte. */
+  .ec-notifs { padding: 0; background: none; box-shadow: none; }
+  .ec-notif { padding: .85rem 1rem; margin-bottom: .55rem; border: 0; border-radius: 16px; box-shadow: 0 1px 3px rgba(18,33,58,.06); }
+  .ec-notif > .ec-sigle { display: none; }
+  .ec-notif > .ec-point { display: block; }
+  .ec-notif-quand .ec-nouveau { display: none; }
+  .ec-notif.nouveau .ec-notif-titre::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: .4rem; border-radius: 50%; background: var(--bleu); vertical-align: middle; }
+}
+@media (min-width: 900px) {
+  .ec-deux-colonnes { grid-template-columns: minmax(0, 1fr) 330px; align-items: start; }
+  .ec-notif.nouveau { background: linear-gradient(90deg, #F7FAFF, #fff); }
+  /* « Marquer comme lu » discret, en bas à droite de la notification. */
+  .ec-marquer { position: absolute; right: 0; bottom: .85rem; margin: 0; }
+  .ec-notif:not(:has(.ec-notif-actions)) .ec-marquer { position: static; margin-top: .35rem; }
+}
+
+/* ---------- Mon compte (maquette EC04) ---------- */
+.ec-compte-grille { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1rem; }
+.ec-compte-grille > * { min-width: 0; }
+.ec-champs-deux { display: grid; grid-template-columns: minmax(0, 1fr); gap: .7rem 1rem; }
+.ec-champs-deux .ec-etiquette { margin-bottom: .3rem; }
+.ec-valeur { min-height: 44px; display: flex; align-items: center; padding: .6rem .9rem; border: 1.5px solid var(--trait); border-radius: 12px; background: #FAFBFD; color: var(--encre); font-weight: 600; overflow-wrap: anywhere; }
+.ec-saisie-sobre { color: var(--encre); }
+.ec-note-carte { margin: .7rem 0 0; }
+.ec-encart { margin: .8rem 0 0; padding: .7rem .9rem; border-radius: 12px; background: var(--fond); font-size: .85rem; color: var(--encre); }
+.ec-encart.ambre { background: var(--ambre-clair); color: #7A3E06; }
+.ec-adresse { display: flex; align-items: center; gap: .75rem; color: inherit; }
+.ec-epingle { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #FDECEE; color: var(--rouge); }
+.ec-epingle svg { width: 18px; height: 18px; }
+.ec-adresse-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ec-adresse-texte b { font-size: .92rem; }
+.ec-lien-ajout { display: inline-block; margin-top: .6rem; font-weight: 800; font-size: .88rem; }
+.ec-avatar-carre { border-radius: 12px; width: 40px; height: 40px; font-size: .85rem; }
+.ec-securite .ec-ligne { align-items: baseline; }
+.ec-securite b { font-size: .88rem; text-align: right; }
+.ec-securite-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .8rem; }
+.ec-securite-actions form { margin: 0; }
+.ec-mdp { margin-top: .9rem; border-top: 1px solid var(--trait); padding-top: .7rem; }
+.ec-mdp summary { font-weight: 700; font-size: .88rem; color: var(--bleu); cursor: pointer; }
+.ec-compte-liens .ec-installer { padding: 1rem 1.1rem; }
+@media (min-width: 900px) {
+  .ec-compte-grille { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .ec-champs-deux { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ec-compte-liens { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 1rem; margin-top: .4rem; }
+}
+
+/* ---------- Messages avec l'atelier ---------- */
+.ec-messages { display: flex; flex-direction: column; gap: .7rem; }
+.ec-bulle { max-width: 85%; padding: .65rem .85rem; border-radius: 16px; font-size: .92rem; }
+.ec-bulle p { margin: .2rem 0 0; overflow-wrap: anywhere; }
+.ec-bulle-tete { display: block; font-size: .74rem; color: var(--gris); }
+.ec-bulle.client { align-self: flex-end; background: var(--bleu); color: #fff; border-bottom-right-radius: 4px; }
+.ec-bulle.client .ec-bulle-tete, .ec-bulle.client .ec-bulle-tete a { color: rgba(255,255,255,.8); }
+.ec-bulle.atelier { align-self: flex-start; background: var(--fond); border-bottom-left-radius: 4px; }
+
+/* ---------- Recherche ---------- */
+.ec-recherche-page { display: flex; gap: .6rem; align-items: center; }
+.ec-recherche-page .ec-saisie { flex: 1; min-width: 0; }

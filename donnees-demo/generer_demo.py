@@ -209,6 +209,8 @@ COMMERCIAUX = [U['aminata'], U['mariam'], U['moussa'], U['aminata'], U['kadiatou
 GRAPHISTES = [U['seydou'], U['aissata']]
 LIVREURS = [U['bakary'], U['sekou']]
 PRENOM = {U[k]: p for k, p, *_ in EQUIPE}
+# Nom montré au client dans la carte « Votre conseiller(ère) » (clients.conseiller).
+NOM_COMPLET = {U[k]: f'{p} {n}' for k, p, n, *_ in EQUIPE}
 
 COMPTES = {}
 for code, nom, typ, portee, banque in [('D-CAISSE', 'Caisse boutique', 'caisse', 'partagee', None), ('D-OM', 'Orange Money marchand', 'orange_money', 'partagee', None),
@@ -454,7 +456,8 @@ for i in range(1, N_CLIENTS + 1):
                           'consentement_marketing_le': T(R.randint(1, cree)) if marketing else None, 'secteur': secteur, 'origine': R.choice(ORIGINES), 'delai_paiement': delai,
                           'remise_habituelle': float(R.choice([3, 5, 5, 7.5, 10])) if b2b and R.random() < 0.6 else None,
                           'acompte': R.choice([None, 30, 50, 50, 100]) if t != 'administration' else None, 'moyen_prefere': moyen, 'entite_facturation': 'mdg_success',
-                          'commune': commune, 'quartier': quartier, 'etiquettes': etiquettes, 'besoin': None, 'suivi_par_id': suivi})
+                          'commune': commune, 'quartier': quartier, 'etiquettes': etiquettes, 'besoin': None, 'suivi_par_id': suivi,
+                          'conseiller': NOM_COMPLET.get(suivi)})
     for (cn, fonction, ctel, wa, role) in contacts:
         add('contact_client', {'nom': cn, 'fonction': fonction, 'telephone': ctel, 'whatsapp': int(wa), 'email': None, 'role': role, 'client_id': cid})
     profil = R.choices(['actif', 'inactif', 'retard', 'nouveau'], weights=[55, 18, 15, 12])[0] if i > 15 else 'nouveau_actif'
@@ -918,8 +921,10 @@ for n in range(40):
                           'cloture_le': T(max(0, cree - 3), 12) if etape in ('perdu', 'gagne') else None, 'client_id': gagne['id'] if gagne else None, 'agent_id': R.choice(COMMERCIAUX[:3])})
     PROSPECTS.append((pr, etape, cree))
 
+# Comptes de l'espace client : téléphone enregistré comme le fait CompteClient (223 + 8 chiffres),
+# mot de passe demo1234 (les clients DEMO- ne reçoivent jamais de code SMS).
 for c in R.sample([c for c in CLIENTS if c['t'] != 'particulier'], 45):
-    add('compte_client', {'telephone': c['tel'], 'mot_de_passe': None, 'actif': 1, 'cree_le': T(R.randint(5, 120)), 'derniere_connexion': T(R.randint(0, 20), *heure()), 'client_id': c['id'],
+    add('compte_client', {'telephone': '223' + c['tel'], 'mot_de_passe': MDP, 'actif': 1, 'cree_le': T(R.randint(5, 120)), 'derniere_connexion': T(R.randint(0, 20), *heure()), 'client_id': c['id'],
                            'droits': '["valideur","payeur","administrateur"]'})
 nref = 0
 for c in R.sample([c for c in CLIENTS if c['t'] != 'particulier'], 30):
@@ -1498,6 +1503,183 @@ for k in COMMANDES[-600:]:
                                  'donnees_apres': json.dumps({'commande': k['numero'], 'montant': k['payes'][0]}), 'created_at': T(k['d'], k['h'], k['m'] + 5), 'utilisateur_id': k['agent']})
 
 add('parametres_paiement', {'taux_frais_retrait': 1.0, 'taux_fonds_soutien': 1.0})
+
+# ------------------------------- espace client (maquettes EC01 à EC05)
+# Salon Espoir (DEMO-0002, client à compte en ligne) : de quoi remplir le
+# tableau de bord, la cloche, les notifications, Livraisons et Messages :
+# un BAT à valider, des t-shirts en impression avec leur livraison prévue,
+# un roll-up en route, des kakémonos livrés, une facture à payer aujourd'hui,
+# une facture échue, un devis envoyé, un échange de messages, deux adresses
+# et les personnes du compte (dont un compte « Lecture · suivi »).
+# Tirage à part (R4) : rien ne bouge dans le reste de la démonstration.
+R4 = random.Random(1410)
+EC = CLIENTS[1]
+
+
+def uid4():
+    return S('UNHEX(\'' + uuid.UUID(int=R4.getrandbits(128), version=4).hex + '\')')
+
+
+def hexa4(n=64):
+    return ''.join(R4.choice('0123456789abcdef') for _ in range(n))
+
+
+def commande_ec(code, designation, qte, d, h, m, statut_ligne, livraison_dans, larg=None, haut=None, bat_valide=True):
+    """Commande d'une ligne pour DEMO-0002 ; livraison_dans : jours (négatif : déjà passée)."""
+    global ncmd
+    p = P[code]
+    ncmd += 1
+    prix = p['b2b'] if EC['b2b'] else p['prix']
+    surface = round(larg * haut, 4) if larg and haut else None
+    base = surface * qte if surface else qte
+    total = int(round(prix * base, -2))
+    numero = f'CMD-D{ncmd:05d}'
+    kid = add('commandes', {'numero': numero, 'date_commande': T(d, h, m), 'date_livraison': T(-livraison_dans, 17), 'recupere_par_client': 0,
+                            'modifie_le': None, 'remise': 0, 'tva': 0, 'total_ht': total, 'total_ttc': total, 'montant_apayer': total, 'observation': None, 'deleted': 0,
+                            'statut': 1, 'etat': 1, 'statut_paiement': 'impayee', 'reste_apayer': total, 'total_paye': 0, 'public_id': uid4(), 'bonus_plafond_applique': 0,
+                            'montant_bonus_plafond': 0, 'clients_id': EC['id'], 'agents_id': EC['suivi'], 'modifie_par_id': None, 'canal': 'comptoir',
+                            'mode_livraison': 'livraison', 'adresse_livraison': 'Entrée de service, Quartier du Fleuve, Bamako'})
+    debut = None if statut_ligne == 'a_produire' else max(0, d - 1)
+    fini = statut_ligne in ('terminee', 'prete_livraison', 'en_livraison', 'livree')
+    lid = add('commandes_details', {'mode_configuration': 'automatique', 'designation': designation, 'largeur': larg, 'longueur': haut, 'surface': surface, 'quantite': qte,
+                                    'prix_unitaire': float(prix), 'cout_revient': int(p['cout'] * base), 'remise': 0, 'tva': 0, 'total_ht': total, 'total_ttc': total,
+                                    'profil_couleurs': 'CMJN', 'resolution': '300 dpi', 'grammage': None, 'epaisseur': None, 'recto_verso': 0, 'nombre_faces': 1, 'laminage': None,
+                                    'oeillets': 0, 'decoupe': 0, 'pliage': None, 'emballage': 0, 'bat_valide': int(bat_valide), 'etat': 1, 'priorite': 'normale', 'temps_estime': None,
+                                    'temps_reel': None, 'fichier': None, 'observation': None, 'statut_production': statut_ligne,
+                                    'production_debute_le': T(debut, 10) if debut is not None else None, 'production_terminee_le': T(max(0, debut - 1), 15) if fini and debut is not None else None,
+                                    'quantite_produite': qte if fini else 0, 'quantite_rebut': 0, 'quantite_livree': qte if statut_ligne == 'livree' else 0, 'mode_saisie': 'automatique',
+                                    'mode_calcul': p['mode'], 'pre_presse_necessaire': 1, 'production_necessaire': 1, 'type_ligne': 'produit', 'commande_id': kid, 'produit_id': p['id'],
+                                    'produit_configuration_id': p['conf'], 'type_impression_id': p['typ'], 'support_id': p['sup'], 'machine_id': p['machine'], 'format_id': p['fmt'],
+                                    'production_debutee_par_id': U['oumar'] if debut is not None else None, 'production_terminee_par_id': U['oumar'] if fini else None,
+                                    'article_id': None, 'public_id': uid4(), 'quantite_demandee': None, 'unite_demandee': None, 'produit_client_id': None})
+    return dict(id=kid, numero=numero, lid=lid, total=total, qte=qte, designation=designation, d=d)
+
+
+def bat_ec(k, statut, minutes_bat):
+    """Contrôle et suivi de conception : BAT V1 envoyé à minutes_bat (minutes depuis minuit, jour k['d'] - 1 au plus tard)."""
+    jour = max(0, k['d'] - 1) if statut == 'envoye_production' else 0
+    envoye = statut == 'envoye_production'
+    fich = add('commande_detail_fichier', {'jeton_upload': hexa4(64), 'morceaux_recus': 1, 'nombre_morceaux': 1, 'termine_le': T(k['d'], 9, 5),
+                                           'nom_original': f'{k["designation"][:24].lower().replace(" ", "-")}-salon-espoir.pdf', 'nom_stockage': f'demo-{hexa4(16)}.pdf',
+                                           'chemin': None, 'type_mime': 'application/pdf', 'taille': R4.randint(900000, 9000000), 'statut': 'TERMINE', 'origine': 'client',
+                                           'etat': 'pret_impression' if envoye else 'a_traiter', 'deja_traite': 0, 'fichier_production': int(envoye), 'actif': 1, 'version': 1,
+                                           'quantite_aproduire': k['qte'], 'face': None, 'designation': k['designation'], 'groupe_fichier': None, 'observation': None,
+                                           'cree_le': T(k['d'], 9, 5), 'commande_detail_id': k['lid'], 'fichier_source_id': None, 'ajoute_par_id': EC['suivi'], 'public_id': uid4(), 'montage': None})
+    ok = int(envoye)
+    ctl = add('controle_pre_presse', {'statut': statut, 'format_conforme': 1, 'dimensions_conformes': 1, 'resolution_conforme': 1, 'profil_couleurs_conforme': 1, 'fonds_perdus_conformes': 1,
+                                      'marges_securite_conformes': 1, 'polices_conformes': 1, 'orthographe_verifiee': 1, 'orientation_conforme': 1, 'nombre_pages_conforme': 1,
+                                      'recto_verso_conforme': 1, 'support_conforme': 1, 'quantite_conforme': 1, 'fichier_deja_traite': 0, 'correction_necessaire': 0,
+                                      'bat_necessaire': 1, 'bat_valide': ok, 'anomalies': None, 'corrections_effectuees': None, 'observation': None, 'pre_presse_necessaire': 1,
+                                      'cree_le': T(k['d'], 9, 20), 'controle_le': T(k['d'], 10), 'traite_le': T(jour, 0, minutes_bat), 'valide_le': T(jour, 0, minutes_bat + 40) if envoye else None,
+                                      'envoye_production_le': T(jour, 0, minutes_bat + 50) if envoye else None, 'commande_detail_id': k['lid'], 'controle_par_id': GRAPHISTES[0],
+                                      'traite_par_id': GRAPHISTES[0], 'valide_par_id': GRAPHISTES[0] if envoye else None, 'envoye_production_par_id': GRAPHISTES[0] if envoye else None,
+                                      'public_id': uid4()})
+    add('controle_pre_presse_fichier', {'controle_pre_presse_id': ctl, 'fichier_id': fich}, False)
+    evts = [{'le': f'@{k["d"]}:{9 * 60 + 20}', 'type': 'brief', 'titre': 'Brief reçu', 'detail': None},
+            {'le': f'@{jour}:{minutes_bat - 50}', 'type': 'prise', 'titre': 'Prise en charge', 'detail': f'{PRENOM[GRAPHISTES[0]]} démarre le chronomètre'},
+            {'le': f'@{jour}:{minutes_bat}', 'type': 'bat', 'titre': 'BAT V1 envoyé', 'detail': 'par WhatsApp et espace client'}]
+    if envoye:
+        evts.append({'le': f'@{jour}:{minutes_bat + 40}', 'type': 'valide', 'titre': 'BAT validé', 'detail': 'par le client'})
+        evts.append({'le': f'@{jour}:{minutes_bat + 50}', 'type': 'production', 'titre': 'Envoyé en production', 'detail': 'fichier transmis à la file Solvant'})
+    add('conception', {'difficulte': 'simple', 'echeance_bat': T(jour, 17), 'temps_prevu': 45, 'demarre_le': None, 'secondes': 2400, 'versions': 1, 'erreurs': 0,
+                       'changements_client': 0, 'premier_bat_le': T(jour, 0, minutes_bat), 'dernier_bat_le': T(jour, 0, minutes_bat),
+                       'valide_le': T(jour, 0, minutes_bat + 40) if envoye else None, 'points': 10 if envoye else None, 'points_possibles': 15 if envoye else None,
+                       'faits': {'g_bat_a_temps': 1, 'g_sans_erreur': 1} if envoye else {}, 'evenements': evts, 'cree_le': T(k['d'], 9, 20), 'controle_id': ctl,
+                       'graphiste_id': GRAPHISTES[0]})
+
+
+def livraison_ec(k, jour, creneau, etat):
+    """Bon de livraison : etat prevue, route (livreur parti aujourd'hui) ou livree (jour dans le passé)."""
+    global nbl
+    nbl += 1
+    livre, route = etat == 'livree', etat in ('route', 'livree')
+    debut = int(creneau[:2])
+    bl = add('bon_livraison', {'numero': f'BL-D{nbl:05d}', 'cree_le': T(max(jour, 0), 8), 'valide_le': T(max(jour, 0), 8, 30), 'livre_le': T(jour, debut, 25) if livre else None,
+                               'statut': 'livre' if livre else 'valide', 'nom_receptionnaire': 'Awa Coulibaly', 'telephone_receptionnaire': EC['tel'],
+                               'adresse_livraison': 'Entrée de service, Quartier du Fleuve, Bamako', 'observation': None, 'gestion_stock': 0, 'coefficient_stock': 1.0, 'commande_id': k['id'],
+                               'cree_par_id': EC['suivi'], 'valide_par_id': EC['suivi'], 'livre_par_id': LIVREURS[0] if livre else None, 'article_stock_id': None, 'prevu_le': J(jour),
+                               'creneau': creneau, 'ordre_tournee': 1, 'charge_le': T(jour, debut - 1, 30) if route else None, 'en_route_le': T(jour, debut - 1, 45) if route else None,
+                               'arrive_le': T(jour, debut, 20) if livre else None, 'photos': [f'demo-livraison-{hexa4(8)}.jpg'] if livre else None,
+                               'signature': f'demo-signature-{hexa4(8)}.png' if livre else None, 'signataire': 'Awa Coulibaly' if livre else None, 'encaisse_montant': None,
+                               'encaisse_mode': None, 'encaisse_le': None, 'livreur_id': LIVREURS[0], 'paiement_livraison_id': None, 'remise_latitude': None, 'remise_longitude': None,
+                               'retard_justifie': None, 'erreur_livraison': None, 'public_id': uid4()})
+    add('bon_livraison_ligne', {'designation': k['designation'], 'quantite_commandee': k['qte'], 'quantite_livree': k['qte'] if livre else 0, 'unite': 'unité',
+                                'observation': None, 'bon_livraison_id': bl, 'commande_detail_id': k['lid']})
+
+
+def facture_ec(k, d, echeance_dans):
+    """Facture émise d jours avant le chargement, échéance dans echeance_dans jours (négatif : échue)."""
+    global nfac
+    nfac += 1
+    fid = add('factures', {'numero': f'F-D{nfac:05d}', 'type_document': 'facture', 'comptabilisee': 1, 'emetteur': 'mdg_success', 'pdf_fichier': None, 'pdf_genere_le': None,
+                           'pdf_hash': None, 'date_facture': T(d, 9, 10), 'date_echeance': J(-echeance_dans), 'total_ht': k['total'], 'remise': 0, 'tva': 0, 'montant_tva': 0,
+                           'surfacturation': 0, 'taux_surfacturation': None, 'montant_surfacturation': 0, 'motif_surfacturation': None, 'total_ttc': k['total'], 'montant_paye': 0,
+                           'reste_apayer': k['total'], 'statut_paiement': 'impayee', 'etat': 'emise', 'observation': None, 'token_authenticite': hexa4(64), 'facturer_aun_tiers': 0,
+                           'nom_facturation': None, 'adresse_facturation': None, 'telephone_facturation': None, 'email_facturation': None, 'created_at': T(d, 9, 10),
+                           'updated_at': T(d, 9, 10), 'commande_id': k['id'], 'public_id': uid4(),
+                           'code_suivi': ''.join(R4.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(9))})
+    FACTURE_DE[k['id']] = fid
+
+
+EC_PLAQUES = commande_ec('D-AKYLUX', 'Plaques des chambres 20 × 10 cm', 40, 1, 15, 10, 'a_produire', 6, larg=0.2, haut=0.1, bat_valide=False)
+bat_ec(EC_PLAQUES, 'en_attente_bat', 9 * 60 + 40)
+EC_TSHIRTS = commande_ec('D-TSHIRT', 'T-shirts DTF du personnel', 30, 3, 11, 0, 'en_production', 2)
+bat_ec(EC_TSHIRTS, 'envoye_production', 10 * 60 + 15)
+livraison_ec(EC_TSHIRTS, -2, '09:00-10:00', 'prevue')
+facture_ec(EC_TSHIRTS, 3, 0)
+EC_ROLLUP = commande_ec('D-ROLLUP', 'Roll-up accueil 85 × 200 cm', 1, 6, 10, 30, 'en_livraison', 0)
+livraison_ec(EC_ROLLUP, 0, '11:00-12:00', 'route')
+EC_KAKEMONOS = commande_ec('D-KAKEMONO', 'Kakémonos du hall', 2, 18, 9, 45, 'livree', -4)
+livraison_ec(EC_KAKEMONOS, 4, '09:00-11:00', 'livree')
+facture_ec(EC_KAKEMONOS, 16, -9)
+
+# Devis envoyé hier (à accepter par un valideur).
+ndev += 1
+EC_BACHE = dict(p=P['D-BACHE'], l=6.0, L=3.0)
+prix_bache = EC_BACHE['p']['b2b'] if EC['b2b'] else EC_BACHE['p']['prix']
+total_bache = int(round(prix_bache * 18, -2))
+did = add('devis', {'numero': f'DV-D{ndev:05d}', 'emetteur': 'mdg_success', 'date_devis': T(1, 16, 10), 'remise': 0, 'tva': 0, 'total_ht': total_bache, 'total_ttc': total_bache,
+                    'montant_apayer': total_bache, 'observation': None, 'deleted': 0, 'statut': 'envoye', 'etat': 1, 'token_authenticite': hexa4(64), 'facturer_aun_tiers': 0,
+                    'nom_facturation': None, 'adresse_facturation': None, 'telephone_facturation': None, 'email_facturation': None, 'clients_id': EC['id'],
+                    'agents_id': EC['suivi'], 'commande_id': None, 'public_id': uid4()})
+add('devis_details', {'mode_configuration': 'automatique', 'designation': 'Bâche façade 6 × 3 m', 'largeur': 6.0, 'longueur': 3.0, 'surface': 18.0, 'quantite': 1,
+                      'prix_unitaire': float(prix_bache), 'cout_revient': int(EC_BACHE['p']['cout'] * 18), 'remise': 0, 'tva': 0, 'total_ht': total_bache, 'total_ttc': total_bache,
+                      'type_ligne': 'produit', 'mode_saisie': 'automatique', 'bat_valide': 0, 'etat': 1, 'priorite': 'normale', 'mode_calcul': EC_BACHE['p']['mode'], 'devis_id': did,
+                      'produit_id': EC_BACHE['p']['id'], 'produit_configuration_id': EC_BACHE['p']['conf'], 'type_impression_id': EC_BACHE['p']['typ'],
+                      'support_id': EC_BACHE['p']['sup'], 'format_id': EC_BACHE['p']['fmt'], 'article_id': None, 'public_id': uid4()})
+
+# Adresses de livraison et messages avec l'atelier.
+add('adresse_livraison', {'libelle': 'Entrée de service', 'adresse': 'Quartier du Fleuve, Bamako', 'repere': 'avant 10 h', 'contact': 'Awa Coulibaly', 'telephone': None,
+                          'par_defaut': 1, 'actif': 1, 'client_id': EC['id']})
+add('adresse_livraison', {'libelle': 'Annexe · salle des fêtes', 'adresse': 'Quartier du Fleuve, Bamako', 'repere': 'même quartier, portail vert', 'contact': None, 'telephone': None,
+                          'par_defaut': 0, 'actif': 1, 'client_id': EC['id']})
+add('message_client', {'sens': 'client', 'auteur': 'Awa Coulibaly', 'texte': 'Bonjour, pouvez-vous livrer les t-shirts avant jeudi ? Le personnel en a besoin pour la réception de samedi.',
+                       'cree_le': T(1, 10, 5), 'traite_le': T(0, 8, 20), 'public_id': uid4(), 'client_id': EC['id'], 'commande_id': EC_TSHIRTS['id'], 'ecrit_par_id': None})
+add('message_client', {'sens': 'atelier', 'auteur': 'Succès Imprim', 'texte': 'Bonjour Awa, oui : livraison prévue après-demain entre 9 h et 10 h, à l\'entrée de service.',
+                       'cree_le': T(0, 8, 20), 'traite_le': None, 'public_id': uid4(), 'client_id': EC['id'], 'commande_id': EC_TSHIRTS['id'], 'ecrit_par_id': EC['suivi']})
+
+# Les personnes du compte en ligne (le titulaire existe peut-être déjà parmi les comptes tirés plus haut).
+# Un compte par type de droits sur la même entreprise, pour essayer l'espace client avec demo1234.
+ligne_titulaire = next((r for r in ROWS['compte_client'] if r['client_id'] == EC['id']), None)
+if ligne_titulaire is None:
+    titulaire = add('compte_client', {'telephone': '223' + EC['tel'], 'mot_de_passe': MDP, 'actif': 1, 'cree_le': T(60), 'derniere_connexion': T(0, 8, 2),
+                                      'client_id': EC['id'], 'droits': '["valideur","payeur","administrateur"]'})
+    ligne_titulaire = ROWS['compte_client'][-1]
+titulaire = ligne_titulaire['id']
+ligne_titulaire.update({'nom': EC['nom'], 'fonction': 'Gérant'})
+COMPTES_DEMO = [('Awa Coulibaly', 'Intendante', '["valideur"]', '60445101'), ('Ibrahim Touré', 'Comptabilité', '["payeur"]', '60445102'),
+                ('Mariam Dembélé', 'Assistante', '[]', '60445103'), ('Réception', 'Accueil', '["lecture"]', '60445104')]
+for nom, fonction, droits, tel in COMPTES_DEMO:
+    assert tel not in numeros, tel
+    add('compte_client', {'telephone': '223' + tel, 'mot_de_passe': MDP, 'actif': 1, 'cree_le': T(30), 'derniere_connexion': T(R4.randint(0, 6), 9), 'client_id': EC['id'],
+                          'droits': droits, 'nom': nom, 'fonction': fonction, 'ajoute_par_id': titulaire})
+
+# Un particulier (grille B2C : fidélité visible), celui qui a le plus de commandes.
+ACTIFS = {r['id'] for r in ROWS['clients'] if r['statut'] == 1}
+PARTICULIER = max((c for c in CLIENTS if c['t'] == 'particulier' and c['id'] in ACTIFS), key=lambda c: (sum(1 for k in COMMANDES if k['c'] is c), -c['id']))
+add('compte_client', {'telephone': '223' + PARTICULIER['tel'], 'mot_de_passe': MDP, 'actif': 1, 'cree_le': T(90), 'derniere_connexion': T(2, 19, 40),
+                      'client_id': PARTICULIER['id'], 'droits': '["valideur","payeur","administrateur"]', 'nom': PARTICULIER['nom']})
+print(f"Espace client : titulaire {EC['nom']} 223{EC['tel']} ({EC['rs']}), particulier {PARTICULIER['nom']} 223{PARTICULIER['tel']}")
 
 # ---------------------------------------------------------------- écriture SQL
 TABLES_SANS_ID = {'produits_finition', 'produits_types_impression', 'produits_supports', 'produits_format', 'support_types_impression', 'support_format', 'format_types_impression',

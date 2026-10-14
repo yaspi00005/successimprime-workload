@@ -39,6 +39,26 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - 3 modèles d'anniversaire (1, 3 et 5 ans), seulement s'il n'y en a encore aucun ; les anniversaires des derniers jours fêtés par le passage du jour (aucun message ne part vers une fiche `DEMO-`), un prochain exclu, les autres à valider.
 - Le reste : planning et entretien (avec des rappels WhatsApp envoyés et à envoyer), charges récurrentes, clôtures de caisse, rapprochements bancaires, campagnes, actions de caisse, messagerie et notifications.
 
+## Espace client de démonstration
+
+Connexion sur `/espace/connexion` avec « mot de passe » : le numéro (8 chiffres) et le mot de passe `demo1234`. Les fiches `DEMO-` ne reçoivent jamais de code SMS, d'où le mot de passe.
+
+Salon Espoir (`DEMO-0002`, entreprise à la grille revendeur), une personne par type de droits :
+
+| Personne | Numéro | Droits | Ce qu'on y voit |
+|---|---|---|---|
+| Oumar Guindo, Gérant (titulaire) | 60 69 78 04 | gère le compte, valideur, payeur | tout : utilisateurs, « Qui reçoit quoi », proposition de raison sociale ou NIF |
+| Awa Coulibaly, Intendante | 60 44 51 01 | valideur | devis à accepter, BAT ; ni factures ni montants dus |
+| Ibrahim Touré, Comptabilité | 60 44 51 02 | payeur | factures, solde, « Payer », plafond de crédit |
+| Mariam Dembélé, Assistante | 60 44 51 03 | demandeur (aucun droit) | sa commande attend un valideur |
+| Réception, Accueil | 60 44 51 04 | Lecture · suivi | commandes, livraisons, fichiers ; rien qui écrive |
+
+Contenu de Salon Espoir : un BAT à valider (plaques de chambres), des t-shirts en impression avec leur livraison prévue, un roll-up en route, des kakémonos livrés, une facture à payer aujourd'hui, une facture échue, un devis envoyé la veille (bâche de façade), un échange de messages avec l'atelier, deux adresses de livraison et la conseillère qui suit le client.
+
+Particulier : le client particulier qui a le plus de commandes (Amadou Sow, 60 00 62 12), avec la fidélité (les particuliers ne sont pas à la grille revendeur) et la page Mon compte sans les parties entreprise. 45 autres entreprises de la démonstration ont un compte titulaire sur le numéro de leur fiche, avec le même mot de passe.
+
+Le générateur affiche les deux comptes principaux à la fin (« Espace client : titulaire … particulier … »). L'espace client tourne sur le site en ligne (`APP_EN_LIGNE=1`) : charger la démo sur une base d'essai du site, ou synchroniser depuis un ERP local d'essai.
+
 ## Repères
 
 - Toutes les lignes de démo ont un identifiant à partir de 900001. La purge enlève donc aussi ce qui a été saisi dans ces tables après le chargement : la démo est faite pour une base d'essai.

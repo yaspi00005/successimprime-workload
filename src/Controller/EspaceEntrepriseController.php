@@ -90,17 +90,18 @@ final class EspaceEntrepriseController extends AbstractController
     public function nouvelUtilisateur(Request $request): Response
     {
         $compte = $this->compteQuiGere();
-        $saisie = ['nom' => '', 'telephone' => '', 'droits' => []];
+        $saisie = ['nom' => '', 'telephone' => '', 'fonction' => '', 'droits' => []];
 
         if ($request->isMethod('POST')) {
             $this->jeton($request);
             $saisie = [
                 'nom' => mb_substr(trim($request->request->getString('nom')), 0, 80),
                 'telephone' => $request->request->getString('telephone'),
+                'fonction' => mb_substr(trim($request->request->getString('fonction')), 0, 60),
                 'droits' => $request->request->all('droits'),
             ];
             try {
-                $ajoute = $this->entreprise->ajouter($compte, $saisie['telephone'], $saisie['nom'], $saisie['droits']);
+                $ajoute = $this->entreprise->ajouter($compte, $saisie['telephone'], $saisie['nom'], $saisie['droits'], $saisie['fonction']);
                 $this->addFlash('succes', \sprintf('%s est ajouté au compte. Un SMS lui explique comment se connecter.', $ajoute->getNomAffiche()));
 
                 return $this->redirectToRoute('app_espace_compte');
@@ -109,7 +110,7 @@ final class EspaceEntrepriseController extends AbstractController
             }
         }
 
-        return $this->vue('espace/app/utilisateur.html.twig', ['personne' => null, 'saisie' => $saisie, 'droits' => CompteClient::DROITS]);
+        return $this->vue('espace/app/utilisateur.html.twig', ['personne' => null, 'saisie' => $saisie, 'droits' => self::droitsProposes()]);
     }
 
     #[Route('/compte/utilisateurs/{id}', name: 'utilisateur', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
@@ -121,7 +122,7 @@ final class EspaceEntrepriseController extends AbstractController
         if ($request->isMethod('POST')) {
             $this->jeton($request);
             try {
-                $this->entreprise->changerDroits($compte, $personne, $request->request->all('droits'));
+                $this->entreprise->changerDroits($compte, $personne, $request->request->all('droits'), mb_substr(trim($request->request->getString('fonction')), 0, 60));
                 $this->addFlash('succes', \sprintf('Droits de %s enregistrés.', $personne->getNomAffiche()));
 
                 return $this->redirectToRoute('app_espace_compte');
@@ -132,8 +133,8 @@ final class EspaceEntrepriseController extends AbstractController
 
         return $this->vue('espace/app/utilisateur.html.twig', [
             'personne' => $personne,
-            'saisie' => ['nom' => $personne->getNomAffiche(), 'telephone' => $personne->getTelephone(), 'droits' => $personne->getDroits()],
-            'droits' => CompteClient::DROITS,
+            'saisie' => ['nom' => $personne->getNomAffiche(), 'telephone' => $personne->getTelephone(), 'fonction' => $personne->getFonction() ?? '', 'droits' => $personne->getDroits()],
+            'droits' => self::droitsProposes(),
         ]);
     }
 
@@ -240,6 +241,12 @@ final class EspaceEntrepriseController extends AbstractController
         if (!$this->isCsrfTokenValid('espace', $request->request->getString('_token'))) {
             throw $this->createAccessDeniedException('La page a expiré. Réessayez.');
         }
+    }
+
+    /** @return array<string, string> les droits du formulaire, « Lecture · suivi » en dernier */
+    private static function droitsProposes(): array
+    {
+        return CompteClient::DROITS + [CompteClient::DROIT_LECTURE => CompteClient::LIBELLE_LECTURE];
     }
 
     private static function texte(string $valeur, int $longueur): ?string

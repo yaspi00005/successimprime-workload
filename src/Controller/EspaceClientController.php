@@ -10,10 +10,15 @@ use App\Entity\TransactionOrangeMoney;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
 use App\Service\EspaceClient\CompteEntreprise;
+use App\Service\EspaceClient\AppareilsClient;
+use App\Service\EspaceClient\CoqueEspace;
+use App\Service\EspaceClient\MonCompte;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FichiersClient;
+use App\Service\EspaceClient\FilNotifications;
 use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\NouvelleCommande;
+use App\Service\EspaceClient\RecommanderClient;
 use App\Service\EspaceClient\SuiviSansCompte;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
@@ -154,28 +159,57 @@ final class EspaceClientController extends AbstractController
         return $reponse;
     }
 
+    /**
+     * Tableau de bord (maquettes EC01 et EC05) : ce qui attend la personne
+     * (BAT, paiement, devis, demandes à valider), commandes en cours,
+     * activité récente, compte en un coup d'œil et « Recommander », chacun
+     * selon ses droits.
+     */
     #[Route('', name: 'accueil', methods: ['GET'])]
-    public function accueil(EspaceClient $espace): Response
+    public function accueil(EspaceClient $espace, RecommanderClient $recommander, FilNotifications $fil): Response
     {
         $compte = $this->compte();
         $client = $compte->getClient();
-        $cartes = array_map($espace->carte(...), $espace->commandes($client, 12));
+        $maintenant = new \DateTimeImmutable();
+        $droits = CoqueEspace::droits($compte);
         // Les demandes que cette personne doit valider sont deja dans leur propre encadre.
         $aValider = array_map($espace->carte(...), $this->compteEntreprise->aValider($compte));
         $dejaListees = array_map(static fn (array $c): ?int => $c['commande']->getId(), $aValider);
-        $enCours = array_values(array_filter($cartes, static fn (array $c): bool => !$c['terminee'] && !$c['annulee'] && !\in_array($c['commande']->getId(), $dejaListees, true)));
-        $solde = $espace->solde($client);
+        $enCours = [];
+        foreach ($espace->commandes($client, 30) as $c) {
+            $carte = $espace->carte($c);
+            if (!$carte['terminee'] && !$carte['annulee'] && !\in_array($c->getId(), $dejaListees, true)) {
+                $enCours[] = $carte + ['tableau' => EspaceClient::etapesTableau($carte['etapes'], !$c->estALivrer()), 'livraison' => $espace->livraison($c)];
+            }
+            if (\count($enCours) >= 4) {
+                break;
+            }
+        }
+        // Paiement à régler : la facture échue ou due aujourd'hui la plus ancienne.
+        $factureDue = null;
+        if ($droits['payeur']) {
+            foreach ($espace->facturesARegler($client) as $f) {
+                if (null !== $f->getDateEcheance() && $f->getDateEcheance()->format('Y-m-d') <= $maintenant->format('Y-m-d') && null !== $f->getCommande() && OrangeMoney::aPayer($f->getCommande()) > 0) {
+                    $factureDue = $f;
+                    break;
+                }
+            }
+        }
 
         return $this->vue('espace/app/accueil.html.twig', [
             'onglet' => 'accueil',
             'compte' => $compte,
             'client' => $client,
-            'bats' => $espace->bats($client, true),
-            'enCours' => \array_slice($enCours, 0, 2),
-            'recentes' => \array_slice(array_values(array_filter($cartes, static fn (array $c): bool => $c['terminee'])), 0, 3),
-            'solde' => $solde,
-            'devisAAccepter' => array_values(array_filter($espace->devis($client), static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())),
+            'droits' => $droits,
+            'bats' => $droits['lecture'] ? [] : $espace->bats($client, true),
+            'factureDue' => $factureDue,
+            'solde' => $droits['payeur'] ? $espace->solde($client) : null,
+            'devisAAccepter' => $droits['valideur'] ? array_values(array_filter($espace->devis($client), static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())) : [],
             'aValider' => $aValider,
+            'enCours' => $enCours,
+            'activite' => \array_slice($fil->pour($compte, $maintenant), 0, 5),
+            'apercu' => $droits['payeur'] ? $espace->apercuCompte($client, $maintenant) : null,
+            'recommander' => $droits['ecrit'] ? $recommander->articles($client, 3) : [],
         ]);
     }
 
@@ -571,8 +605,14 @@ final class EspaceClientController extends AbstractController
         return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
     }
 
+    /**
+     * Mon compte (maquette EC04) : entreprise (raison sociale et NIF proposés
+     * à l'atelier), adresses, utilisateurs, sécurité (appareils, dernière
+     * connexion, mes données). Un particulier a la même page sans les
+     * parties entreprise.
+     */
     #[Route('/compte', name: 'compte', methods: ['GET'])]
-    public function monCompte(): Response
+    public function monCompte(Request $request, MonCompte $monCompte, AppareilsClient $appareils): Response
     {
         $compte = $this->compte();
         $client = $compte->getClient();
@@ -583,8 +623,15 @@ final class EspaceClientController extends AbstractController
             'compte' => $compte,
             'client' => $client,
             'entreprise' => $entreprise,
+            'gere' => $compte->peut(CompteClient::DROIT_ADMINISTRATEUR),
+            'facturePar' => $monCompte->facturePar($client),
+            'conditions' => MonCompte::voitConditions($compte) ? MonCompte::conditions($client) : null,
+            'voitConditions' => MonCompte::voitConditions($compte),
+            'proposition' => $entreprise ? $monCompte->proposition($client, new \DateTimeImmutable()) : null,
             'utilisateurs' => $entreprise ? array_values(array_filter($this->compteEntreprise->utilisateurs($client), static fn (CompteClient $c): bool => $c->isActif())) : [],
-            'nombreAdresses' => \count($this->compteEntreprise->adresses($client)),
+            'adresses' => $this->compteEntreprise->adresses($client),
+            'telephoneMasque' => MonCompte::telephoneMasque($compte->getTelephone()),
+            'appareils' => AppareilsClient::regrouper($appareils->liste($compte, $request)),
         ]);
     }
 
@@ -592,28 +639,16 @@ final class EspaceClientController extends AbstractController
     public function preferences(Request $request, EntityManagerInterface $em): Response
     {
         $this->jeton($request);
-        $client = $this->compte()->getClient();
-        $client->setRecevoirSms($request->request->getBoolean('sms'));
+        $compte = $this->compte();
+        // Réglage de la fiche (campagnes, sondages, notifications) : la personne qui gère le compte.
+        if (!$compte->peut(CompteClient::DROIT_ADMINISTRATEUR)) {
+            throw $this->createAccessDeniedException();
+        }
+        $compte->getClient()->setRecevoirSms($request->request->getBoolean('sms'));
         $em->flush();
         $this->addFlash('succes', 'Préférences enregistrées.');
 
-        return $this->redirectToRoute('app_espace_compte');
-    }
-
-    #[Route('/notifications', name: 'notifications', methods: ['GET'])]
-    public function notifications(EspaceClient $espace): Response
-    {
-        $compte = $this->compte();
-        $fil = $espace->notifications($compte->getClient(), new \DateTimeImmutable());
-        if (!$compte->peut(CompteClient::DROIT_PAYEUR)) {
-            // Les paiements de l'entreprise ne regardent que ceux qui paient.
-            $fil = array_values(array_filter($fil, static fn (array $n): bool => 'paiement' !== $n['type']));
-        }
-
-        return $this->vue('espace/app/notifications.html.twig', [
-            'onglet' => 'accueil',
-            'fil' => $fil,
-        ]);
+        return 'notifications' === $request->request->get('retour') ? $this->redirect($this->generateUrl('app_espace_notifications').'#preferences') : $this->redirectToRoute('app_espace_compte');
     }
 
     #[Route('/mot-de-passe', name: 'mot_de_passe', methods: ['POST'])]

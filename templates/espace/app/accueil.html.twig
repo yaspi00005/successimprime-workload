@@ -1,73 +1,55 @@
 {% extends 'espace/app/_app.html.twig' %}
 
+{#
+	Tableau de bord (maquettes EC01 et EC05). Chaque bloc est un gabarit à
+	part (_tableau_*.html.twig) et ne s'affiche que s'il concerne la
+	personne : paiement et compte pour qui paie, devis pour qui valide,
+	rien qui écrive pour un compte « Lecture · suivi ».
+	_tableau_promotions.html.twig, s'il existe, prend place à droite.
+#}
+{% block title %}Tableau de bord{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+
 {% block contenu %}
-	<h1>Bonjour {{ prenom }} 👋</h1>
-	<p class="ec-sous">{{ moi.entreprise ? 'Client entreprise' : 'Client particulier' }} · compte {{ moi.code }}</p>
+	<div class="ec-titre-page">
+		<h1 class="ec-bureau">Bonjour {{ prenom }} 👋</h1>
+		{% if droits.ecrit %}
+			<div class="ec-titre-actions ec-bureau">
+				<a class="ec-bouton-blanc" href="{{ path('app_espace_produits') }}">Mes produits</a>
+				<a class="ec-bouton-blanc" href="{{ path('app_espace_fichiers') }}#depot">Déposer un fichier</a>
+			</div>
+		{% endif %}
+	</div>
 
 	{% include 'espace/app/_a_valider.html.twig' %}
+	{% include 'espace/app/_tableau_actions.html.twig' %}
 
-	{% if bats|length == 1 %}
-		{% set ctl = bats|first %}
-		<a class="ec-alerte" href="{{ path('app_espace_bat', {id: ctl.id}) }}">
-			<div><b>1 BAT à valider</b><small>{{ ctl.commandeDetail|espace_titre_ligne }}{% if ctl.traiteLe %} · envoyé {{ ctl.traiteLe|temps_ecoule }}{% endif %}</small></div>
-			<span class="ec-bouton-blanc">Voir</span>
-		</a>
-	{% elseif bats|length > 1 %}
-		<a class="ec-alerte" href="{{ path('app_espace_fichiers') }}">
-			<div><b>{{ bats|length }} BAT à valider</b><small>{{ bats|map(c => c.commandeDetail.designation ?: 'Travail')|join(' · ') }}</small></div>
-			<span class="ec-bouton-blanc">Voir</span>
-		</a>
-	{% endif %}
-
-	{% for carte in enCours %}
-		<a class="ec-carte" href="{{ path('app_espace_commande', {id: carte.commande.publicId}) }}">
-			<div class="ec-ligne"><b style="font-size:1.05rem">{{ carte.titre }}</b>{% include 'espace/app/_statut.html.twig' %}</div>
-			<div class="ec-petit">Commande n° {{ carte.commande.numero }}{% if carte.commande.dateLivraison %} · {{ carte.commande.estALivrer ? 'livraison prévue' : 'prête prévue' }} le {{ carte.commande.dateLivraison|date('d/m') }}{% endif %}</div>
-			{% if carte.aValiderEntreprise %}
-				<div class="ec-petit" style="margin-top:.4rem">Demandée par {{ carte.commande.demandeePar ?? 'votre entreprise' }}, attend un valideur avant l'atelier.</div>
-			{% else %}
-				<ol class="ec-etapes">
-					{% for e in carte.etapes|slice(0, 5) %}<li class="{{ e.etat }}">{{ e.court }}</li>{% endfor %}
-				</ol>
+	<div class="ec-tableau">
+		<div class="ec-tableau-colonne">
+			{% include 'espace/app/_tableau_commandes.html.twig' %}
+			{% include 'espace/app/_tableau_activite.html.twig' %}
+		</div>
+		<div class="ec-tableau-colonne">
+			{% include 'espace/app/_tableau_compte.html.twig' %}
+			{% include 'espace/app/_tableau_promotions.html.twig' ignore missing %}
+			{% include 'espace/app/_tableau_recommander.html.twig' %}
+			{% include 'espace/app/_tableau_fidelite.html.twig' %}
+			{% if not droits.ecrit %}
+				<div class="ec-carte">
+					<h2>Votre accès : lecture · suivi</h2>
+					<p class="ec-petit" style="margin:.2rem 0 .7rem">Vous suivez les commandes, les livraisons et les fichiers de {{ client.nomComplet }}. Pour commander, valider un BAT ou payer, adressez-vous à la personne qui gère le compte de votre entreprise.</p>
+					<a class="ec-lien" href="{{ path('app_espace_livraisons') }}">Voir les livraisons →</a>
+				</div>
 			{% endif %}
-		</a>
-	{% else %}
-		<div class="ec-carte ec-vide">Aucune commande en cours.</div>
-	{% endfor %}
-	<a class="ec-bouton clair" href="{{ path('app_espace_nouvelle_commande') }}" style="margin-bottom:.85rem">+ Nouvelle commande</a>
-
-	{% if solde.total > 0 and peutPayer %}
-		{% set premiere = solde.commandes|first %}
-		<div class="ec-carte">
-			<b>{{ solde.commandes|length > 1 ? solde.commandes|length ~ ' commandes à régler' : 'Commande ' ~ premiere.numero }}</b>
-			<div class="ec-petit">Reste à payer : {{ solde.total|number_format(0, ',', ' ') }} FCFA</div>
-			<div class="ec-boutons"><a class="ec-bouton orange" href="{{ solde.commandes|length > 1 ? path('app_espace_factures') : path('app_espace_payer', {id: premiere.publicId}) }}">Payer avec Orange Money</a></div>
+			{% if droits.ecrit %}
+				{% set aDonner = avis_a_donner(client) %}
+				{% if aDonner > 0 %}
+					<a class="ec-carte ec-rangee" href="{{ path('app_espace_avis') }}">
+						<span><b>Votre avis compte</b><span class="ec-petit">{{ aDonner > 1 ? aDonner ~ ' avis à donner' : '1 avis à donner' }} : une minute pour nous aider à mieux vous servir.</span></span>
+						<span class="fl" aria-hidden="true">›</span>
+					</a>
+				{% endif %}
+			{% endif %}
 		</div>
-	{% endif %}
-
-	{% if devisAAccepter is not empty %}
-		<a class="ec-carte" href="{{ path('app_espace_devis', {filtre: 'a_accepter'}) }}">
-			<div class="ec-ligne"><b>{{ devisAAccepter|length }} devis à accepter</b><span class="ec-lien">Voir</span></div>
-			<div class="ec-petit">{{ devisAAccepter|map(d => d.numero)|join(', ') }}</div>
-		</a>
-	{% endif %}
-
-	{% set aDonner = avis_a_donner(moi) %}
-	{% if aDonner > 0 %}
-		<a class="ec-carte" href="{{ path('app_espace_avis') }}">
-			<div class="ec-ligne"><b>Votre avis compte</b><span class="ec-lien">Noter</span></div>
-			<div class="ec-petit">{{ aDonner > 1 ? aDonner ~ ' avis à donner' : '1 avis à donner' }} : une minute pour nous aider à mieux vous servir.</div>
-		</a>
-	{% endif %}
-
-	{% if recentes is not empty %}
-		<div class="ec-carte">
-			<h2>Commandes récentes</h2>
-			<ul class="ec-liste">
-				{% for carte in recentes %}
-					<li class="ec-ligne"><a href="{{ path('app_espace_commande', {id: carte.commande.publicId}) }}" style="color:inherit">{{ carte.titre }}</a><a class="ec-lien" href="{{ path('app_espace_commande', {id: carte.commande.publicId}) }}#recommander">Recommander</a></li>
-				{% endfor %}
-			</ul>
-		</div>
-	{% endif %}
+	</div>
 {% endblock %}

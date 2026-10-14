@@ -106,17 +106,32 @@ final class DroitsRoute
             return [];
         }
         $lignes = \array_slice(file($fichier) ?: [], $methode->getStartLine() - 1, $methode->getEndLine() - $methode->getStartLine() + 1);
+        $code = implode('', $lignes);
+        // Le corps seulement : après l'accolade qui ouvre la méthode.
+        $debut = strpos($code, '{', (int) strpos($code, 'function'));
 
-        return self::refusDansTexte(implode('', $lignes));
+        return self::refusDansTexte(false === $debut ? $code : substr($code, $debut + 1));
     }
 
     /**
+     * Appels au premier niveau du corps seulement : un refus dans un bloc
+     * (« if » d'un cas particulier, comme le solde d'ouverture d'une
+     * commande) ne vaut pas pour toute la page.
+     *
      * @return list<string>
      */
     public static function refusDansTexte(string $code): array
     {
-        preg_match_all('/^\s*\$this->denyAccessUnlessGranted\(\s*(?:\'(ROLE_[A-Z_]+)\'|User::(ROLE_[A-Z_]+))\s*\)\s*;/m', $code, $m, \PREG_SET_ORDER);
+        preg_match_all('/^\s*\$this->denyAccessUnlessGranted\(\s*(?:\'(ROLE_[A-Z_]+)\'|User::(ROLE_[A-Z_]+))\s*\)\s*;/m', $code, $m, \PREG_SET_ORDER | \PREG_OFFSET_CAPTURE);
+        $roles = [];
+        foreach ($m as $t) {
+            $avant = substr($code, 0, $t[0][1]);
+            if (substr_count($avant, '{') - substr_count($avant, '}') > 0) {
+                continue;
+            }
+            $roles[] = '' !== ($t[1][0] ?? '') && -1 !== $t[1][1] ? $t[1][0] : (string) \constant(\App\Entity\User::class.'::'.$t[2][0]);
+        }
 
-        return array_values(array_unique(array_map(static fn (array $t): string => '' !== $t[1] ? $t[1] : (string) \constant(\App\Entity\User::class.'::'.$t[2]), $m)));
+        return array_values(array_unique($roles));
     }
 }

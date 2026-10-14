@@ -41,8 +41,9 @@ final class RecetteOutilsTest extends TestCase
             $this->denyAccessUnlessGranted('ROLE_CLIENT', $client);
             PHP;
 
-        // Un appel seul sur sa ligne, sans sujet (dans un bloc « if » aussi : la page est ensuite ouverte pour de vrai).
+        // Un appel seul sur sa ligne, sans sujet, hors d'un bloc : celui du « if » ne vaut que pour un cas particulier.
         self::assertSame(['ROLE_RH', 'ROLE_ADMIN'], DroitsRoute::refusDansTexte($code));
+        self::assertSame(['ROLE_RH'], DroitsRoute::refusDansTexte(str_replace('User::ROLE_ADMIN', "'ROLE_RH'", $code)));
     }
 
     public function testOngletDuMenuLePlusPrecis(): void

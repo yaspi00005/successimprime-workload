@@ -23,6 +23,7 @@
 .si-produits-grille { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 12px; }
 .si-produit { position: relative; display: grid; grid-template-columns: 124px minmax(0, 1fr); background: #fff; border: 1px solid var(--bordure); border-radius: var(--rayon); box-shadow: var(--ombre); overflow: hidden; transition: border-color .15s, box-shadow .15s; }
 .si-produit:hover { border-color: var(--bleu-clair); box-shadow: 0 10px 28px rgba(15, 35, 75, .13); }
+.si-produit[data-incline] { transition: border-color .15s, box-shadow .15s, transform .2s ease-out; }
 .si-produit:focus-within { outline: 3px solid var(--jaune); outline-offset: 2px; }
 .si-produit-dessin { display: block; width: 100%; height: 100%; min-height: 116px; }
 .si-produit-corps { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; }

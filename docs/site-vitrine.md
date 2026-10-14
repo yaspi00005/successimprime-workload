@@ -9,6 +9,7 @@ Jalon J6. Le site public de Succès Imprim, servi par la même application que l
 | Accueil | 01 | « / » en ligne pour un visiteur ; /site sur l'ERP local (aperçu) |
 | Produits | 02 | /nos-produits |
 | Calculateur | 03 | /calculateur |
+| Atelier 3D | prototype du 10/10/2026 | /atelier-3d (docs/atelier-3d.md) |
 | Réalisations | 04 | /realisations |
 | Nos équipements | 05 | /equipements |
 | Préparer son fichier | 06 | /guide-fichiers |
@@ -29,6 +30,8 @@ Sur « / », un membre du personnel connecté voit toujours le tableau de bord. 
 - `templates/site/_bandeau.html.twig` : bandeau bleu des pages intérieures (fil d'Ariane, titre, accroche).
 - `public/css/site.css` : une seule feuille, sans police ni bibliothèque externe.
 - `App\Twig\SiteExtension` : menu, pied de page, entreprise affichée (code `mdg_success`), lien WhatsApp.
+- Menu à sept entrées (avec « Atelier 3D ») : sur une ligne au-dessus de 1 280 px ; entre 1 141 et 1 280 px, il se resserre et « Accueil » laisse la place au logo (qui y mène) ; en dessous, le menu à trois traits.
+- Animations (`public/js/site-animations.js`, docs/atelier-3d.md) : apparition au défilement (`data-revele`), inclinaison des cartes produit (`data-incline`), comparaison avant / après des réalisations. Coupées avec « réduire les animations ».
 
 ## Entreprise affichée
 
@@ -47,6 +50,7 @@ Le pied de page affiche « Succès Imprim est un nom commercial de Madial Group 
 - Chaque page a son titre, sa description, son adresse canonique et ses balises Open Graph. Le gabarit ajoute la fiche de l'imprimerie pour Google (JSON-LD LocalBusiness : nom, raison sociale, adresse, téléphone, horaires du réglage « Horaires »).
 - Mesure du 13/10/2026, accueil en ligne sur un téléphone en « 3G normale » (750 kb/s, 100 ms), sans cache : 30 Ko, premier affichage en 0,5 s, page chargée en 0,6 s.
 - Mesure du 14/10/2026 en production (APP_ENV=prod), téléphone en « Fast 3G » des outils Chrome (1,4 Mb/s, 562 ms) et processeur ralenti 4 fois, sans cache : accueil 69 Ko, affiché en 1,4 s ; réalisations 79 Ko, 1,6 s ; produits et calculateur 65 à 67 Ko, 1,4 s. En revenant sur une page : 0,8 à 1,4 s.
+- Mesure du 14/10/2026 au soir, après l'Atelier 3D et les animations (même méthode) : accueil 77 Ko, affiché en 1,6 s (1,1 s en « 3G normale ») ; atelier 121 Ko, affiché en 1,7 s (1,1 à 1,3 s en « 3G normale »), la 3D arrivant ensuite sans bloquer la page. Détails dans docs/atelier-3d.md.
 
 ## Ce que le site n'affiche jamais
 
@@ -101,6 +105,7 @@ Code : `SiteSuiviController`, `SiteDemandeController`, `App\Service\Site\{SuiviS
 - demande de devis d'un numéro connu : rattachée à ce client, devis brouillon à son nom ;
 - d'un numéro inconnu : un prospect source « Site » (montant estimé, relance le jour même) et une fiche client minimale (origine « site », à compléter) car un devis exige un client ;
 - devis brouillon au tarif public (même calcul que le calculateur), avec la demande du visiteur en observation ; un produit hors bornes reste « à chiffrer » ;
+- demande venue de l'Atelier 3D : même devis brouillon, au prix public de l'atelier (seconde face, palier de quantité) avec la désignation de la création ; ses vues et images sont dans Ventes › Créations Atelier 3D (docs/atelier-3d.md) ;
 - un message est rattaché au client connu ; un message « demande de devis » d'un inconnu devient un prospect ;
 - les personnes qui ont le droit Devis (et les administrateurs) sont prévenues.
 

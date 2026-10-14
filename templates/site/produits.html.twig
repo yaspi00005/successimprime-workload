@@ -42,7 +42,7 @@
 						{% for p in u.produits %}
 							{% set calcul = p.configuration ? site_lien('app_site_calculateur', {produit: p.configuration}) : null %}
 							{% set lien = calcul ?? devis %}
-							<li class="si-produit si-famille-{{ u.famille }}">
+							<li class="si-produit si-famille-{{ u.famille }}" data-incline>
 								<svg class="si-produit-dessin" aria-hidden="true" focusable="false"><use href="#si-dessin-{{ p.illustration }}"/></svg>
 								<div class="si-produit-corps">
 									<h2>{{ p.nom }}</h2>
@@ -77,3 +77,5 @@
 		</div>
 	</section>
 {% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/site-animations.js') }}" defer></script>{% endblock %}

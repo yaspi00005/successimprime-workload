@@ -3,6 +3,32 @@
 {% set c = carte.commande %}
 {% block title %}Commande {{ c.numero }}{% endblock %}
 {% block styles %}<link href="{{ asset('css/avis.css') }}" rel="stylesheet">{% endblock %}
+{% block scripts %}
+	<script>
+	(function () {
+		// Commande prête : quelques confettis autour de l'étape, une seule fois par appareil, jamais si l'on réduit les animations.
+		var frise = document.querySelector('.ec-frise[data-fete]');
+		var etape = frise && frise.querySelector('[data-etape-prete]');
+		if (!etape || !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		var cle = 'ec-fete-' + frise.getAttribute('data-fete');
+		try { if (localStorage.getItem(cle)) return; localStorage.setItem(cle, '1'); } catch (e) { return; }
+		var zone = document.createElement('span');
+		zone.className = 'ec-fete';
+		zone.setAttribute('aria-hidden', 'true');
+		var couleurs = ['#0F4590', '#DE1028', '#F5B800', '#E6007E', '#1F9D55'];
+		for (var i = 0; i < 18; i++) {
+			var b = document.createElement('i');
+			var angle = (i / 18) * Math.PI * 2 + Math.random() * 0.3;
+			var r = 38 + Math.random() * 34;
+			b.style.cssText = '--x:' + Math.round(Math.cos(angle) * r) + 'px;--y:' + Math.round(Math.sin(angle) * r - 12) + 'px;--r:' + Math.round(Math.random() * 360) + 'deg;background:' + couleurs[i % couleurs.length] + ';animation-delay:' + (0.9 + Math.random() * 0.15).toFixed(2) + 's';
+			zone.appendChild(b);
+		}
+		etape.classList.add('ec-frise-fete');
+		etape.appendChild(zone);
+		setTimeout(function () { zone.remove(); }, 2600);
+	}());
+	</script>
+{% endblock %}
 {% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Commande n° {{ c.numero }}</a>{% endblock %}
 
 {% block contenu %}
@@ -58,9 +84,11 @@
 	{# Une demande pas encore validée (ou refusée) par l'entreprise n'est pas à l'atelier : pas de frise. #}
 	{% if not carte.aValiderEntreprise and not carte.refuseeEntreprise %}
 	<div class="ec-carte">
-		<ol class="ec-frise">
+		{# Prête et pas encore remise : une petite fête, une fois par appareil (docs/atelier-3d.md, animations). #}
+		{% set prete = carte.etapes|filter(e => e.cle == 'prete' and e.etat == 'faite')|length > 0 and carte.etapes|filter(e => e.cle == 'livree' and e.etat == 'faite')|length == 0 %}
+		<ol class="ec-frise"{% if prete %} data-fete="{{ c.numero }}"{% endif %}>
 			{% for e in carte.etapes %}
-				<li class="{{ e.etat }}">
+				<li class="{{ e.etat }}" style="--i: {{ loop.index0 }}"{% if e.cle == 'prete' %} data-etape-prete{% endif %}>
 					<b>{{ e.libelle }}</b>
 					<small>{% if e.etat == 'faite' and e.date %}{{ e.date|date_fr('EEE') }} {{ e.date|date('d/m H:i') }}{% elseif e.etat == 'en_cours' %}{{ e.detail ?? 'en cours' }}{% else %}{{ e.detail }}{% endif %}</small>
 					{% if e.cle == 'livree' and livraison and livraison.enRouteLe and not livraison.livreLe %}<small> · livreur parti à {{ livraison.enRouteLe|date('H:i') }}{{ livraison.creneau ? ', créneau ' ~ livraison.creneau }}</small>{% endif %}

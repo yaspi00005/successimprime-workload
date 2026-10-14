@@ -651,3 +651,40 @@ a.ec-carte.ec-pc-entree { display: flex; align-items: center; gap: .85rem; }
 /* ---------- Recherche ---------- */
 .ec-recherche-page { display: flex; gap: .6rem; align-items: center; }
 .ec-recherche-page .ec-saisie { flex: 1; min-width: 0; }
+
+/* ---------- Mes créations (Atelier 3D, docs/atelier-3d.md) ---------- */
+.ec-cr-grille { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .85rem; }
+.ec-cr { display: grid; grid-template-columns: 1fr; gap: .8rem; margin: 0; }
+.ec-cr-vues { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.ec-cr-vues img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: #EEF2F8; }
+.ec-cr-texte { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.ec-cr-texte b { font-size: 1rem; }
+.ec-cr-marquage { margin: .2rem 0; padding-left: 1.1rem; color: var(--gris); font-size: .85rem; }
+.ec-cr-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.ec-cr-actions form { margin: 0; }
+.ec-cr-commander { width: auto; padding: .6rem 1.1rem; border-radius: 999px; }
+@media (min-width: 900px) {
+  .ec-cr-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ec-cr { grid-template-columns: 220px minmax(0, 1fr); }
+  .ec-cr-actions { grid-column: 1 / -1; }
+}
+.ec-atelier-entree { display: flex; flex-direction: column; gap: .15rem; border-left: 4px solid var(--orange); }
+.ec-atelier-entree b { color: var(--encre); }
+
+/* Frise de la commande : les étapes faites se remplissent l'une après l'autre ;
+   « Prête » reçoit quelques confettis la première fois (docs/atelier-3d.md). */
+@media (prefers-reduced-motion: no-preference) {
+  .ec-frise li.faite::after { transform-origin: 50% 0; animation: ec-frise-remplit .45s calc(var(--i, 0) * .16s + .12s) ease-out both; }
+  .ec-frise li.faite::before, .ec-frise li.en_cours::before { animation: ec-frise-point .35s calc(var(--i, 0) * .16s) cubic-bezier(.2, .9, .3, 1.4) both; }
+}
+@keyframes ec-frise-remplit { from { transform: scaleY(0); } to { transform: none; } }
+@keyframes ec-frise-point { from { transform: scale(.3); opacity: .2; } to { transform: none; opacity: 1; } }
+.ec-fete { position: absolute; left: 10px; top: 10px; width: 0; height: 0; pointer-events: none; }
+.ec-fete i { position: absolute; left: -3px; top: -4px; width: 6px; height: 9px; border-radius: 1px; opacity: 0; animation: ec-fete 1.1s ease-out both; }
+@keyframes ec-fete {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), calc(var(--y) + 26px)) rotate(var(--r)); }
+}
+.ec-frise li.ec-frise-fete b { transform-origin: 0 50%; animation: ec-fete-titre .6s .9s ease-out both; }
+@keyframes ec-fete-titre { 0% { transform: none; } 40% { transform: scale(1.06); color: var(--bleu); } 100% { transform: none; } }

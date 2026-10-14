@@ -125,6 +125,12 @@ Reste à faire :
 - Remise habituelle : elle reste au local (non synchronisée), donc Mon compte ne la montre pas. À décider par Yaya si elle doit apparaître dans « Conditions ».
 - « Livreur en route » et « livrée » : les bons de livraison passent au site depuis le 13/10/2026 (sans livreur, photos ni signature). Après le déploiement : `php bin/console app:synchro --initialiser=livraison` sur le local.
 
+## Atelier 3D et « Mes créations » (construit le 14/10/2026)
+
+`/espace/atelier-3d` : le client compose un t-shirt, un polo ou une casquette en 3D (couleur, logo, texte devant et dos, quantités par taille) et voit son prix (grille, prix B2B, paliers, promotion indiquée). « Commander » crée une commande « à confirmer » avec les vues jointes comme maquette ; un demandeur ne voit aucun montant et envoie une demande à son valideur. Entrées : carte en haut de « Nouvelle commande », « Mes créations » dans le menu et la puce de la page Commandes sur téléphone. `/espace/creations` : les modèles validés, à rouvrir ou à commander de nouveau. Pas pour un compte « Lecture · suivi ». Détails dans `docs/atelier-3d.md`.
+
+La page d'une commande remplit sa frise étape par étape, et fête la commande prête par quelques confettis (une fois par appareil, jamais avec « réduire les animations »).
+
 ## Demande de conception (DC01 à DC05, construit le 14/10/2026)
 
 `/espace/conception` : le client fait faire un visuel par un graphiste (acompte Orange Money) ou par l'IA (crédit IA, 1 000 F l'image), puis commande l'impression. Seuls un particulier, un administrateur ou un payeur paient, achètent du crédit ou génèrent ; un demandeur prépare et voit qui peut payer ; la lecture seule regarde. Détails, droits, règles d'argent et réglage du fournisseur d'images dans `docs/demande-conception.md`.

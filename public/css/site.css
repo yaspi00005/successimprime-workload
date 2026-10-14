@@ -56,14 +56,22 @@ body.si-site { margin: 0; font-family: var(--police); font-size: 16px; line-heig
 .si-logo { display: block; flex: 0 0 auto; line-height: 0; }
 .si-logo img { width: 112px; height: auto; }
 .si-menu { display: flex; align-items: center; gap: 20px; flex: 1; justify-content: flex-end; }
-.si-menu ul { display: flex; gap: 4px; list-style: none; margin: 0 auto 0 0; padding: 0; flex-wrap: wrap; }
-.si-menu ul a { display: block; padding: 8px 12px; color: var(--texte); font-weight: 600; font-size: 15px; text-decoration: none; border-radius: 8px; }
+.si-menu ul { display: flex; gap: 2px; list-style: none; margin: 0 auto 0 0; padding: 0; }
+.si-menu ul a { display: block; padding: 8px 10px; color: var(--texte); font-weight: 600; font-size: 15px; text-decoration: none; border-radius: 8px; white-space: nowrap; }
 .si-menu ul a:hover { color: var(--bleu); background: var(--bleu-pale); }
 .si-menu ul a.actif { color: var(--bleu); box-shadow: inset 0 -2px 0 var(--bleu); border-radius: 0; }
 .si-menu-actions { display: flex; gap: 10px; }
 .si-menu-case, .si-burger { display: none; }
+/* Sept entrées : entre 1 141 et 1 280 px, le logo mène à l'accueil et le menu se resserre pour tenir sur une ligne. */
+@media (max-width: 1280px) {
+  .si-entete-cadre { gap: 18px; }
+  .si-menu { gap: 14px; }
+  .si-menu ul li:first-child { display: none; }
+  .si-menu ul a { padding: 8px 9px; }
+}
 
-@media (max-width: 1040px) {
+@media (max-width: 1140px) {
+  .si-menu ul li:first-child { display: block; }
   .si-entete-cadre { justify-content: space-between; min-height: 64px; }
   .si-burger { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; cursor: pointer; }
   .si-burger span, .si-burger span::before, .si-burger span::after { content: ""; display: block; width: 22px; height: 2px; background: var(--noir); position: relative; transition: transform .2s; }
@@ -183,7 +191,54 @@ body.si-site { margin: 0; font-family: var(--police); font-size: 16px; line-heig
 .si-whatsapp:hover { transform: scale(1.06); }
 .si-whatsapp svg { width: 32px; height: 32px; fill: #fff; }
 
+/* Bande « Atelier 3D » de l'accueil (docs/atelier-3d.md) */
+.si-atelier-bande { padding: 8px 0 6px; }
+.si-atelier-carte { display: flex; align-items: center; justify-content: space-between; gap: 18px 28px; flex-wrap: wrap; padding: 20px 24px; border-radius: var(--rayon); color: #fff; background: linear-gradient(115deg, var(--bleu-fonce), var(--bleu) 60%, #2A93D5); box-shadow: var(--ombre); }
+.si-atelier-carte h2 { color: #fff; font-size: clamp(20px, 2.4vw, 26px); margin: 4px 0 6px; }
+.si-atelier-carte p { margin: 0; max-width: 40em; color: rgba(255, 255, 255, .9); }
+.si-atelier-nouveau { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--jaune); color: var(--noir); font-size: 12px; font-weight: 800; letter-spacing: .02em; }
+@media (max-width: 520px) { .si-atelier-carte .si-bouton { flex: 1 1 100%; } }
+
+/* Animations légères (docs/atelier-3d.md) : transformations seulement, jamais de clic bloqué. */
+.si-tshirt { transform-box: fill-box; transform-origin: 50% 50%; animation: si-tourne 9s ease-in-out infinite; }
+.si-tshirt-devant { animation: si-face-devant 9s steps(1, end) infinite; }
+.si-tshirt-dos { opacity: 0; animation: si-face-dos 9s steps(1, end) infinite; }
+@keyframes si-tourne { 0%, 38% { transform: scaleX(1); } 46% { transform: scaleX(.04); } 54%, 88% { transform: scaleX(1); } 96% { transform: scaleX(.04); } 100% { transform: scaleX(1); } }
+@keyframes si-face-devant { 0% { opacity: 1; } 46% { opacity: 0; } 96% { opacity: 1; } }
+@keyframes si-face-dos { 0% { opacity: 0; } 46% { opacity: 1; } 96% { opacity: 0; } }
+.si-anime [data-revele] { transition: transform .6s cubic-bezier(.2, .8, .2, 1) var(--si-delai, 0ms), opacity .6s ease var(--si-delai, 0ms); }
+.si-anime [data-revele]:not(.si-vu) { transform: translateY(22px); opacity: 0; }
+@media (hover: hover) and (pointer: fine) {
+  [data-incline] { transition: transform .2s ease-out, box-shadow .2s; will-change: transform; }
+  [data-incline]:hover { box-shadow: 0 14px 30px rgba(15, 35, 75, .14); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .si-site * { transition: none !important; }
+  .si-tshirt, .si-tshirt-devant, .si-tshirt-dos { animation: none; }
+  .si-tshirt-dos { opacity: 0; }
 }
+
+/* Avant / après (réalisations et accueil) : sans script, les deux photos l'une sous l'autre. */
+.si-aa { margin: 0; }
+.si-aa-cadre { position: relative; display: grid; gap: 4px; border-radius: 12px; overflow: hidden; background: var(--noir); }
+.si-aa-cadre img { display: block; width: 100%; height: auto; }
+.si-aa-etiquette, .si-aa-poignee { display: none; }
+.si-aa-pret .si-aa-cadre { display: block; gap: 0; }
+.si-aa-pret .si-aa-cadre img { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; object-fit: cover; }
+.si-aa-pret .si-aa-avant { clip-path: inset(0 calc(100% - var(--coupe, 50%)) 0 0); }
+.si-aa-pret .si-aa-etiquette { display: block; position: absolute; bottom: 10px; padding: 3px 10px; border-radius: 999px; background: rgba(10, 20, 40, .7); color: #fff; font-size: 12px; font-weight: 700; pointer-events: none; }
+.si-aa-gauche { left: 10px; }
+.si-aa-droite { right: 10px; }
+.si-aa-pret .si-aa-poignee { display: block; position: absolute; top: 0; bottom: 0; left: var(--coupe, 50%); width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .15); pointer-events: none; }
+.si-aa-poignee::after { content: "‹ ›"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 38px; height: 38px; border-radius: 50%; background: #fff; color: var(--bleu); font-weight: 800; font-size: 15px; line-height: 38px; text-align: center; box-shadow: var(--ombre); }
+/* Le curseur couvre toute la photo : on la glisse au doigt ou à la souris ; invisible, mais au clavier son focus se voit sur la poignée. */
+.si-aa-curseur { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; touch-action: pan-y; }
+.si-aa-curseur:focus-visible + .si-aa-poignee::after { outline: 3px solid var(--jaune); outline-offset: 2px; }
+.si-aa figcaption { margin-top: 6px; color: var(--gris, #5b6577); font-size: 14px; }
+.si-aa-bande { padding: 26px 0 8px; }
+.si-aa-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px 32px; align-items: center; }
+.si-aa-grille h2 { margin: 6px 0 8px; font-size: clamp(20px, 2.4vw, 26px); }
+.si-aa-grille p { margin: 0 0 14px; color: var(--texte); }
+@media (max-width: 860px) { .si-aa-grille { grid-template-columns: 1fr; } }

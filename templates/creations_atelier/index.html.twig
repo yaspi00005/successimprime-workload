@@ -1,0 +1,59 @@
+{#
+	Ventes › Créations Atelier 3D (docs/atelier-3d.md) : modèles validés par
+	les clients (commande « à confirmer ») et les visiteurs (demande de
+	devis), arrivés du site avec leurs vues. Aucun prix ici.
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}Créations Atelier 3D{% endblock %}
+
+{% block header_actions %}
+	{% if not enLigne and is_granted('ROLE_ADMIN') %}
+		<li class="nav-item"><a href="{{ path('app_reglages_parametres_atelier_modeles') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-tshirt me-1"></i>Articles de l'atelier</a></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<section class="card si-ac-bloc">
+		{% if enLigne %}
+			<h2>Créations Atelier 3D</h2>
+			<p class="si-ac-vide">Les créations se lisent sur l'ERP de la boutique, où elles arrivent par la synchronisation avec leurs vues et les images des clients.</p>
+		{% else %}
+			<div class="si-rc-tete">
+				<h2>Créations Atelier 3D <span class="si-pg-compte">{{ liste|length }}</span></h2>
+				<nav class="si-cr-filtres" aria-label="Filtrer">
+					{% for cle, libelle in {toutes: 'Toutes', commandes: 'Commandes de clients', devis: 'Demandes de visiteurs'} %}
+						<a href="{{ path('app_creations_atelier_index', cle == 'toutes' ? {} : {filtre: cle}) }}" class="{{ filtre == cle ? 'actif' }}"{{ filtre == cle ? ' aria-current="page"' }}>{{ libelle }}</a>
+					{% endfor %}
+				</nav>
+			</div>
+			{% if liste is empty %}
+				<p class="si-ac-vide">Aucune création pour l'instant : elles arrivent quand un client ou un visiteur valide son modèle dans l'atelier 3D du site.</p>
+			{% else %}
+				<ul class="si-rc-liste">
+					{% for c in liste %}
+						{% set d = demandes[c.id] ?? null %}
+						<li>
+							<a href="{{ path('app_creations_atelier_voir', {id: c.id}) }}" class="si-rc-ligne si-cr-ligne">
+								<span class="si-cr-vignette"><img src="{{ path('app_creations_atelier_fichier', {id: c.id, quoi: 'rendu-devant'}) }}" alt="" width="56" height="56" loading="lazy"></span>
+								<span class="si-rc-num">{{ c.numero }}<small>{{ c.creeLe|date('d/m H:i') }}</small></span>
+								<span class="si-rc-texte">
+									<b>{{ c.designation }}</b>
+									<small>{{ c.client ? c.client.nomComplet ~ ' · ' ~ c.client.code : 'Visiteur : ' ~ c.auteur }} · {{ c.resumeTailles }} · {{ c.facesMarquees|map(f => c.libelleFace(f))|join(' + ') }}</small>
+								</span>
+								{% if c.commande %}
+									<span class="si-pastille si-pastille-bleu">Commande {{ c.commande.numero }}{{ c.nombreCommandes > 1 ? ' · ' ~ c.nombreCommandes ~ ' fois' }}</span>
+								{% elseif d %}
+									<span class="si-pastille si-pastille-orange">Demande {{ d.numero }}</span>
+								{% else %}
+									<span class="si-pastille si-pastille-gris">En route</span>
+								{% endif %}
+							</a>
+						</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+			<p class="si-pg-note">Le client a composé son article dans l'atelier 3D (couleur, image, texte, quantités). Ses vues et ses images d'origine sont jointes à la ligne de la commande ou à la demande : c'est sa maquette, pas un BAT. Le graphiste prépare le BAT à partir de ces fichiers ; l'atelier confirme le prix en confirmant la commande.</p>
+		{% endif %}
+	</section>
+{% endblock %}

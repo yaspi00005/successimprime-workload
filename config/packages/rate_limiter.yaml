@@ -59,3 +59,9 @@ framework:
             policy: sliding_window
             limit: 3
             interval: '1 hour'
+        # Atelier 3D (docs/atelier-3d.md) : images déposées par les visiteurs
+        # et les clients (contrôlées et réencodées, donc coûteuses).
+        atelier_image_ip:
+            policy: sliding_window
+            limit: 40
+            interval: '1 hour'

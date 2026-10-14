@@ -3,6 +3,9 @@
 namespace App\Controller;
 
 use App\Entity\CategorieProduit;
+use App\Repository\RealisationRepository;
+use App\Service\Atelier\CatalogueAtelier;
+use App\Service\Site\AvantApres;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -33,7 +36,7 @@ final class SiteController extends AbstractController
     }
 
     #[Route('/site', name: 'app_site_accueil', methods: ['GET'])]
-    public function accueil(Request $request): Response
+    public function accueil(Request $request, CatalogueAtelier $atelier, RealisationRepository $realisations): Response
     {
         $univers = [];
         // Les catégories de démonstration portent « (démo) » : une seule carte par nom affiché.
@@ -54,7 +57,13 @@ final class SiteController extends AbstractController
             }
         }
 
-        return $this->cache($this->render('site/accueil.html.twig', ['univers' => array_values($univers)]), $request);
+        return $this->cache($this->render('site/accueil.html.twig', [
+            'univers' => array_values($univers),
+            // Bande « Atelier 3D » quand des articles y sont proposés (docs/atelier-3d.md).
+            'atelier' => [] !== $atelier->modeles(),
+            // Dernière réalisation avec ses photos « Avant » et « Après ».
+            'avantApres' => AvantApres::plusRecente($realisations->publiees()),
+        ]), $request);
     }
 
     /** Famille d'un univers d'après le nom de sa catégorie, sinon dans l'ordre des maquettes. */

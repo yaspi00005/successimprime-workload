@@ -206,15 +206,19 @@ final class NouvelleCommande
      *
      * @param list<int>                   $finitions
      * @param list<CommandeDetailFichier> $fichiers  fichiers du client, déjà vérifiés
+     * @param \Closure(CommandesDetails): void|null $ajuster prix propre à la page (Atelier 3D : seconde face, palier), recalculé ici
      *
      * @throws \DomainException
      */
-    public function commander(Clients $client, ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, array $fichiers, ?string $note, \DateTimeImmutable $maintenant): Commandes
+    public function commander(Clients $client, ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, array $fichiers, ?string $note, \DateTimeImmutable $maintenant, ?\Closure $ajuster = null): Commandes
     {
         $this->verifierEnAttente($client);
 
         $ligne = self::construireLigne($config, $quantite, $largeurCm, $hauteurCm, $finitions, $client->isB2B());
         $ligne->setDemandeClient($note);
+        if (null !== $ajuster) {
+            $ajuster($ligne);
+        }
 
         $commande = (new Commandes())
             ->setClients($client)

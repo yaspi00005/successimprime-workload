@@ -1,0 +1,21 @@
+{#
+	Avant / après d'une réalisation (docs/atelier-3d.md) : les deux photos
+	superposées, un curseur pour passer de l'une à l'autre (souris, doigt ou
+	flèches du clavier). Sans script, elles s'affichent l'une sous l'autre.
+	Paramètres : avant, apres (ImageSite), taille (« grande » par défaut), legende.
+#}
+{% set fa = site_image(avant, taille|default('grande')) %}
+{% set fp = site_image(apres, taille|default('grande')) %}
+{% if fa and fp %}
+	<figure class="si-aa" data-avant-apres>
+		<div class="si-aa-cadre" style="aspect-ratio: {{ fp.largeur }} / {{ fp.hauteur }}">
+			<img class="si-aa-apres" src="{{ asset(fp.chemin) }}" width="{{ fp.largeur }}" height="{{ fp.hauteur }}" alt="{{ apres.texteAlternatif }}" loading="lazy">
+			<img class="si-aa-avant" src="{{ asset(fa.chemin) }}" width="{{ fa.largeur }}" height="{{ fa.hauteur }}" alt="{{ avant.texteAlternatif }}" loading="lazy">
+			<span class="si-aa-etiquette si-aa-gauche" aria-hidden="true">Avant</span>
+			<span class="si-aa-etiquette si-aa-droite" aria-hidden="true">Après</span>
+			<input class="si-aa-curseur" type="range" min="0" max="100" value="50" step="1" aria-label="Comparer avant et après" hidden>
+			<span class="si-aa-poignee" aria-hidden="true"></span>
+		</div>
+		{% if legende|default(false) %}<figcaption>{{ legende }}</figcaption>{% endif %}
+	</figure>
+{% endif %}

@@ -64,11 +64,12 @@
 						<div class="sc-visionneuse-cadre">
 							<a href="#" class="sc-visionneuse-fermer" data-fermer aria-label="Fermer"><span aria-hidden="true">×</span></a>
 							<div class="sc-visionneuse-images">
-								{% for image in r.images %}
+								{% if c.avantApres %}{{ include('site/_avant_apres.html.twig', {avant: c.avantApres.avant, apres: c.avantApres.apres}) }}{% endif %}
+								{% for image in r.images|filter(i => not c.avantApres or (i is not same as(c.avantApres.avant) and i is not same as(c.avantApres.apres))) %}
 									{% set fichier = site_image(image, 'grande') %}
 									{% if fichier %}<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="{{ image.texteAlternatif ?? c.titre }}" loading="lazy">{% endif %}
 								{% else %}
-									<span class="sc-real-illu sc-format-0">{{ include('site/_illustration_contenu.svg.twig', {famille: c.illustration, id: 'v' ~ r.id}) }}</span>
+									{% if not c.avantApres %}<span class="sc-real-illu sc-format-0">{{ include('site/_illustration_contenu.svg.twig', {famille: c.illustration, id: 'v' ~ r.id}) }}</span>{% endif %}
 								{% endfor %}
 							</div>
 							<div class="sc-visionneuse-texte">
@@ -91,6 +92,7 @@
 {% endblock %}
 
 {% block scripts %}
+	<script src="{{ asset('js/site-animations.js') }}" defer></script>
 	<script>
 		(function () {
 			// Filtres sans rechargement ; l'adresse garde le filtre choisi.

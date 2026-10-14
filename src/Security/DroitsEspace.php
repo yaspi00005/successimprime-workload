@@ -45,6 +45,11 @@ final class DroitsEspace
         'app_espace_utilisateur_nouveau',
         'app_espace_utilisateur',
         'app_espace_messages',
+        // Atelier 3D (docs/atelier-3d.md) : il ne sert qu'à commander.
+        'app_espace_atelier',
+        'app_espace_atelier_prix',
+        'app_espace_creations',
+        'app_espace_creation_fichier',
     ];
 
     /** Le compte peut-il faire cette requête ? */

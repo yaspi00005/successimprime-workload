@@ -66,6 +66,8 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
             ['libelle' => 'Mes actions', 'route' => 'app_actions_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_actions_']],
             ['libelle' => 'Demandes du site', 'route' => 'app_demandes_site_index', 'role' => 'ROLE_DEVIS', 'prefixes' => ['app_demandes_site_']],
+            // Atelier 3D (docs/atelier-3d.md) : modèles validés par les clients, vues et images d'origine.
+            ['libelle' => 'Créations Atelier 3D', 'route' => 'app_creations_atelier_index', 'role' => ['ROLE_DEVIS', 'ROLE_COMMANDE'], 'prefixes' => ['app_creations_atelier_']],
             ['libelle' => 'Promotions', 'route' => 'app_promotions_index', 'role' => ['ROLE_PROMOTIONS', 'ROLE_COMMANDE', 'ROLE_DEVIS'], 'prefixes' => ['app_promotions_']],
         ],
         'clients' => [
@@ -267,6 +269,7 @@ final class NavigationExtension extends AbstractExtension
         'app_conception_' => 'atelier',
         'app_ma_file_' => 'atelier',
         'app_demandes_site_' => 'ventes',
+        'app_creations_atelier_' => 'ventes',
         'app_demandes_conception_' => 'atelier',
         'app_demandes_' => 'equipe',
         'app_paie_' => 'equipe',

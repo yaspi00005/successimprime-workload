@@ -37,13 +37,43 @@
 			<div class="si-cadre si-univers-grille">
 				{% for u in univers %}
 					{% set lien = site_lien('app_site_calculateur', {categorie: u.categorie.id}) ?? site_lien('app_site_produits') %}
-					<article class="si-univers-carte si-famille-{{ u.famille }}">
+					<article class="si-univers-carte si-famille-{{ u.famille }}" data-revele>
 						<span class="si-univers-icone" aria-hidden="true">{{ include('site/_icone_famille.svg.twig', {famille: u.famille}) }}</span>
 						<h2>{{ u.nom }}</h2>
 						<p>{{ u.exemples }}</p>
 						{% if lien %}<a href="{{ lien }}">Calculer mon prix <span aria-hidden="true">→</span></a>{% endif %}
 					</article>
 				{% endfor %}
+			</div>
+		</section>
+	{% endif %}
+
+	{% if atelier|default(false) and site_lien('app_site_atelier') %}
+		<section class="si-atelier-bande" aria-labelledby="si-atelier-titre">
+			<div class="si-cadre">
+				<div class="si-atelier-carte" data-revele>
+					<div>
+						<span class="si-atelier-nouveau">Nouveau · Atelier 3D</span>
+						<h2 id="si-atelier-titre">Votre t-shirt, polo ou casquette en 3D</h2>
+						<p>Choisissez la couleur, placez votre logo et votre texte devant et dos, voyez le prix selon la quantité. L'atelier prépare ensuite le BAT.</p>
+					</div>
+					<a class="si-bouton si-bouton-rouge si-bouton-grand" href="{{ site_lien('app_site_atelier') }}">Composer mon modèle</a>
+				</div>
+			</div>
+		</section>
+	{% endif %}
+
+	{% if avantApres|default(null) %}
+		{% set r = avantApres.realisation %}
+		<section class="si-aa-bande" aria-labelledby="si-aa-titre">
+			<div class="si-cadre si-aa-grille" data-revele>
+				<div>
+					<span class="si-atelier-nouveau">Avant · après</span>
+					<h2 id="si-aa-titre">{{ r.titre|replace({'(démo)': ''})|trim }}</h2>
+					{% if r.description %}<p>{{ r.description|length > 180 ? r.description|slice(0, 179)|trim ~ '…' : r.description }}</p>{% endif %}
+					{% if site_lien('app_site_realisations') %}<a class="si-bouton si-bouton-contour" href="{{ site_lien('app_site_realisations') }}">Voir nos réalisations</a>{% endif %}
+				</div>
+				{{ include('site/_avant_apres.html.twig', {avant: avantApres.avant, apres: avantApres.apres}) }}
 			</div>
 		</section>
 	{% endif %}
@@ -71,3 +101,5 @@
 		{% endif %}
 	{% endblock %}
 {% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/site-animations.js') }}" defer></script>{% endblock %}

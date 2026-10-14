@@ -14,6 +14,7 @@ use App\Entity\CommandeDetailFichier;
 use App\Entity\CompteFidelite;
 use App\Entity\Conception;
 use App\Entity\DemandeConception;
+use App\Entity\CreationAtelier;
 use App\Entity\DemandeDevis;
 use App\Entity\ControlePrePresse;
 use App\Entity\CommandesDetails;
@@ -27,6 +28,7 @@ use App\Entity\Finition;
 use App\Entity\Format;
 use App\Entity\InvitationSondage;
 use App\Entity\MessageClient;
+use App\Entity\ModeleAtelier;
 use App\Entity\MouvementCreditIa;
 use App\Entity\MouvementFidelite;
 use App\Entity\NoteArticleSondage;
@@ -104,6 +106,8 @@ final class CatalogueSynchro
         'site_contact' => ['lien_plan'],
         // Le coût d'une image chez le fournisseur (cout_image) reste au local.
         'conception' => ['ia_active', 'prix_image', 'finalisation', 'packs', 'plafond_jour', 'limite_heure'],
+        // Atelier 3D : les paliers et la seconde face servent au prix calculé en ligne (docs/atelier-3d.md).
+        'atelier_3d' => ['palier1_quantite', 'palier1_remise', 'palier2_quantite', 'palier2_remise', 'face_en_plus', 'paliers_b2b'],
         // L'assistant tourne en ligne : tous ses réglages y servent (docs/assistant-client.md).
         'assistant' => ['actif', 'message_accueil', 'limite_jour', 'whatsapp', 'delais', 'modele', 'effort', 'taux_usd', 'prix_entree', 'prix_sortie', 'prix_cache_lecture', 'prix_cache_ecriture'],
     ];
@@ -220,6 +224,12 @@ final class CatalogueSynchro
                     'champs' => ['obligatoire', 'selectionneeParDefaut', 'payante', 'active', 'prix', 'modeCalcul', 'quantiteMinimale', 'quantiteMaximale', 'ordre', 'description'],
                     'relations' => ['finition' => 'finition'],
                 ]],
+            ],
+            // Atelier 3D (docs/atelier-3d.md) : articles proposés, réglés au local. Le prix reste celui de la configuration.
+            'atelier_modele' => [
+                'classe' => ModeleAtelier::class, 'sens' => self::DESCENDANT, 'libelle' => 'Article de l\'Atelier 3D', 'titre' => ['forme'],
+                'champs' => ['forme', 'couleurs', 'tailles', 'zoneLargeurCm', 'zoneHauteurCm', 'actif', 'ordre'],
+                'relations' => ['configuration' => 'configuration'], 'listes' => [],
             ],
             'client' => [
                 'classe' => Clients::class, 'sens' => self::DEUX, 'libelle' => 'Client', 'titre' => ['raisonSociale', 'prenom', 'nom'],
@@ -455,11 +465,26 @@ final class CatalogueSynchro
             ],
             // Demande de devis ou message d'un visiteur du site (maquette 11) : monte au local, ne redescend pas.
             // Client, prospect, devis préparé et suivi par l'équipe restent au local.
+            // Modèle validé dans l'Atelier 3D : écrit en ligne, il monte avec la commande du client ou la
+            // demande de devis du visiteur (qui le vise : il vient donc avant elle). Ne redescend pas.
+            'atelier_creation' => [
+                'classe' => CreationAtelier::class, 'sens' => self::ASCENDANT, 'libelle' => 'Création de l\'Atelier 3D', 'titre' => ['numero', 'designation'],
+                'champs' => ['numero', 'auteur', 'designation', 'forme', 'couleur', 'couleurVisiere', 'tailles', 'quantite', 'reglages', 'nombreCommandes', 'creeLe', 'derniereCommandeLe'],
+                'relations' => [
+                    'client' => 'client', 'configuration' => 'configuration', 'commande' => 'commande',
+                    'renduDevant' => 'fichier', 'renduDos' => 'fichier', 'imageDevant' => 'fichier', 'imageDos' => 'fichier',
+                ],
+                // Un produit retiré du catalogue entre-temps ne bloque pas la création : la désignation reste.
+                'facultatives' => ['configuration'],
+                'listes' => [], 'numero' => 'numero',
+                // Numéro posé juste après la création ; « Commander à nouveau » change la dernière commande.
+                'remontees' => ['numero' => ['' => ['*']], 'commande' => null, 'nombreCommandes' => null, 'derniereCommandeLe' => null],
+            ],
             'demande_devis' => [
                 'classe' => DemandeDevis::class, 'sens' => self::ASCENDANT, 'libelle' => 'Demande du site', 'titre' => ['numero'],
                 'champs' => ['numero', 'nature', 'nom', 'telephone', 'email', 'objet', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'message', 'creeLe', 'accuseEnvoyeLe'],
                 // Un produit retiré du catalogue entre-temps ne bloque pas la demande : la désignation reste.
-                'relations' => ['configuration' => 'configuration', 'fichier' => 'fichier'],
+                'relations' => ['configuration' => 'configuration', 'fichier' => 'fichier', 'creation' => 'atelier_creation'],
                 'facultatives' => ['configuration'],
                 'listes' => ['finitions' => 'finition'], 'numero' => 'numero',
                 // Numéro et accusé de réception posés en ligne juste après la création.

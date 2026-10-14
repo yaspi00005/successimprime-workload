@@ -48,6 +48,10 @@
 				{% endif %}
 				<dt class="col-sm-3">Message</dt>
 				<dd class="col-sm-9">{{ d.message ? d.message|nl2br : '—' }}</dd>
+				{% if d.creation %}
+					<dt class="col-sm-3">Atelier 3D</dt>
+					<dd class="col-sm-9"><a href="{{ path('app_creations_atelier_voir', {id: d.creation.id}) }}"><i class="fas fa-tshirt me-1"></i>Création {{ d.creation.numero }}</a> <small class="text-muted">· vues de face et de dos, images d'origine et réglages du visiteur</small></dd>
+				{% endif %}
 				{% if d.fichier %}
 					<dt class="col-sm-3">Fichier</dt>
 					<dd class="col-sm-9">

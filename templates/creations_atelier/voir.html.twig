@@ -1,0 +1,96 @@
+{#
+	Une création de l'Atelier 3D (docs/atelier-3d.md) : vues de face et de
+	dos rendues par la page du client, réglages de chaque face, images
+	d'origine à télécharger (notées au journal), et où elle en est
+	(commande ou demande de devis). Aucun prix ici.
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}Création {{ c.numero }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_creations_atelier_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-list me-1"></i>Toutes</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-rc">
+		<section class="card si-ac-bloc">
+			<header class="si-rc-tete">
+				<div>
+					<h2>{{ c.designation }}</h2>
+					<p class="si-pg-note">{{ c.numero }} · validée dans l'atelier 3D le {{ c.creeLe|date('d/m/Y à H:i') }}{{ c.auteur ? ' par ' ~ c.auteur }}</p>
+				</div>
+				<span class="si-pastille si-pastille-bleu">{{ c.client ? 'Client' : 'Visiteur' }}</span>
+			</header>
+
+			<div class="si-cr-vues">
+				{% for face in ['devant', 'dos'] %}
+					<figure>
+						{% if presents['rendu-' ~ face] %}
+							<a href="{{ path('app_creations_atelier_fichier', {id: c.id, quoi: 'rendu-' ~ face}) }}" target="_blank" rel="noopener"><img src="{{ path('app_creations_atelier_fichier', {id: c.id, quoi: 'rendu-' ~ face}) }}" alt="Vue {{ c.libelleFace(face)|lower }}" loading="lazy"></a>
+						{% else %}
+							<div class="si-cr-absent">Vue pas encore arrivée du site : elle vient au prochain échange.</div>
+						{% endif %}
+						<figcaption>{{ c.libelleFace(face) }}{{ face in c.facesMarquees ? '' : ' · sans marquage' }}</figcaption>
+					</figure>
+				{% endfor %}
+			</div>
+			<p class="si-pg-note">Maquette du client, pas un BAT : préparez le BAT à partir de ces vues et des images d'origine, puis envoyez-le au client comme d'habitude.</p>
+
+			<dl class="row mt-3 mb-0">
+				<dt class="col-sm-3">Article</dt>
+				<dd class="col-sm-9">{{ c.configuration ?? c.designation }}</dd>
+				<dt class="col-sm-3">Couleur</dt>
+				<dd class="col-sm-9"><span class="si-cr-pastilles" aria-hidden="true">{% for couleur in [c.couleur, c.couleurVisiere]|filter(x => x and x.hex matches '/^#[0-9A-Fa-f]{6}$/') %}<i style="background: {{ couleur.hex }}"></i>{% endfor %}</span> {{ c.libelleCouleur }}</dd>
+				<dt class="col-sm-3">{{ c.tailles is empty ? 'Quantité' : 'Tailles' }}</dt>
+				<dd class="col-sm-9">{{ c.resumeTailles }}{{ c.tailles is not empty ? ' (' ~ c.quantite ~ ' pièces)' }}</dd>
+				{% for face in c.facesMarquees %}
+					{% set r = c.reglages[face] %}
+					{% set f = c.fichier('image-' ~ face) %}
+					<dt class="col-sm-3">{{ c.libelleFace(face) }}</dt>
+					<dd class="col-sm-9">
+						{% if r.texte %}Texte « <b>{{ r.texte }}</b> » · {{ r.police }} · {{ r.couleurTexte|lower }} · {{ r.placeTexte == 'dessus' ? 'au-dessus de l\'image' : 'sous l\'image' }}<br>{% endif %}
+						{% if r.image %}
+							Image à {{ r.taille }} % de la zone, position {{ r.hauteur > 0 ? '+' ~ r.hauteur : r.hauteur }}
+							{% if f and presents['image-' ~ face] %}
+								· <a href="{{ path('app_creations_atelier_fichier', {id: c.id, quoi: 'image-' ~ face}) }}"><i class="fas fa-download me-1"></i>{{ f.nomOriginal }}</a>
+							{% elseif f %}
+								· {{ f.nomOriginal }} <small class="text-muted">(pas encore arrivée du site)</small>
+							{% endif %}
+							{% if f and f.analyse %}
+								<br>{% for a in f.analyse %}<span class="si-pastille si-pastille-{{ a.etat == 'ok' ? 'vert' : (a.etat == 'attention' ? 'orange' : 'rouge') }}">{{ a.libelle }} : {{ a.valeur }}</span> {% endfor %}
+							{% endif %}
+						{% endif %}
+					</dd>
+				{% endfor %}
+			</dl>
+		</section>
+
+		<aside class="card si-ac-bloc si-rc-cote">
+			{% if c.client %}
+				<h2>Client</h2>
+				<p><a href="{{ path('app_clients_show', {publicId: c.client.publicId}) }}"><b>{{ c.client.nomComplet }}</b></a><br><small>{{ c.client.code }}{{ c.auteur ? ' · composé par ' ~ c.auteur }}</small></p>
+			{% else %}
+				<h2>Visiteur</h2>
+				<p><b>{{ c.auteur }}</b><br><small>Sans compte : coordonnées dans la demande de devis.</small></p>
+			{% endif %}
+			{% if c.commande %}
+				<h2>Commande</h2>
+				<p>
+					{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_show', {id: c.commande.id}) }}"><b>{{ c.commande.numero }}</b></a>{% else %}<b>{{ c.commande.numero }}</b>{% endif %}
+					<br><small>{{ c.nombreCommandes > 1 ? 'Commandée ' ~ c.nombreCommandes ~ ' fois, dernière le ' ~ c.derniereCommandeLe|date('d/m') : 'Commande « à confirmer » par l\'atelier' }}</small>
+				</p>
+			{% endif %}
+			{% if demande %}
+				<h2>Demande de devis</h2>
+				<p>
+					{% if is_granted('ROLE_DEVIS') %}<a href="{{ path('app_demandes_site_voir', {id: demande.id}) }}"><b>{{ demande.numero }}</b></a>{% else %}<b>{{ demande.numero }}</b>{% endif %}
+					{% if demande.devis %}<br><small>Devis brouillon {{ demande.devis.numero }}, à vérifier avant tout envoi</small>{% endif %}
+				</p>
+			{% endif %}
+			{% if not c.commande and not demande %}
+				<p class="si-pg-note">La commande ou la demande de cette création n'est pas encore arrivée du site.</p>
+			{% endif %}
+		</aside>
+	</div>
+{% endblock %}

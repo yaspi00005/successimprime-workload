@@ -4,6 +4,9 @@ namespace App\Service;
 
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
+use App\Repository\PartenaireRepository;
+use App\Repository\RealisationRepository;
+use App\Service\Site\ImagesSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -46,6 +49,9 @@ final class EcranTv
         private readonly string $dossierMedias,
         #[Autowire('%kernel.project_dir%/var/ecran-tv/reglages.json')]
         private readonly string $fichierReglages,
+        private readonly RealisationRepository $realisations,
+        private readonly PartenaireRepository $partenaires,
+        private readonly ImagesSite $imagesSite,
     ) {
     }
 
@@ -303,11 +309,19 @@ final class EcranTv
             $choisis = array_values(array_filter(array_map(static fn (string $f) => $medias[$f] ?? null, $scene['medias'])));
 
             if ($scene['type'] === ProgrammeEcranTv::TYPE_PHOTOS) {
-                // Aucune photo cochée : toutes les images de la bibliothèque.
-                $choisis = $choisis !== [] ? $choisis : array_values(array_filter($medias, static fn (array $m) => $m['type'] === 'image'));
+                // Aucune photo cochée : toutes les images de la bibliothèque, puis les réalisations publiées du site.
+                $choisis = $choisis !== [] ? $choisis : [...array_values(array_filter($medias, static fn (array $m) => $m['type'] === 'image')), ...$this->photosRealisations()];
                 $choisis = array_values(array_filter($choisis, static fn (array $m) => $m['type'] === 'image'));
 
                 if ($choisis === []) {
+                    continue;
+                }
+            }
+
+            if ($scene['type'] === ProgrammeEcranTv::TYPE_PARTENAIRES) {
+                $scene['logos'] = $this->logosPartenaires();
+
+                if ($scene['logos'] === []) {
                     continue;
                 }
             }
@@ -332,6 +346,51 @@ final class EcranTv
             'scenes' => $scenes,
             'signature' => $signature,
         ];
+    }
+
+    /**
+     * Réalisations publiées sur le site, en photos pour l'écran : le titre
+     * seulement, jamais le nom du client (l'écran est vu de tous).
+     *
+     * @return list<array{fichier: string, type: string, legende: string, chemin: string}>
+     */
+    private function photosRealisations(): array
+    {
+        $photos = [];
+        foreach (\array_slice($this->realisations->publiees(), 0, 12) as $r) {
+            $image = $r->getImagePrincipale();
+            $fichier = $image === null ? null : $this->imagesSite->fichier($image);
+            if ($fichier === null) {
+                continue;
+            }
+            $categorie = $r->getCategorie()?->getNom();
+            $photos[] = [
+                'fichier' => basename($fichier['chemin']),
+                'type' => 'image',
+                'legende' => $r->getTitre().($categorie !== null && $categorie !== '' ? ' · '.$categorie : ''),
+                'chemin' => $fichier['chemin'],
+            ];
+        }
+
+        return $photos;
+    }
+
+    /**
+     * Logos des partenaires montrés sur le site (visibles et avec leur accord).
+     *
+     * @return list<array{nom: string, chemin: string}>
+     */
+    private function logosPartenaires(): array
+    {
+        $logos = [];
+        foreach ($this->partenaires->visibles() as $p) {
+            $fichier = $p->getLogo() === null ? null : $this->imagesSite->fichier($p->getLogo());
+            if ($fichier !== null) {
+                $logos[] = ['nom' => $p->getNom(), 'chemin' => $fichier['chemin']];
+            }
+        }
+
+        return \array_slice($logos, 0, 12);
     }
 
     /**

@@ -175,9 +175,10 @@ Les scènes :
 | Scène | Contenu |
 |---|---|
 | Chiffres | Commandes livrées, m² imprimés, clients servis (cumul et croissance sur 12 mois), satisfaction Google, commandes par mois sur 12 mois |
-| Photos | Diaporama des photos choisies dans la bibliothèque |
+| Photos | Diaporama des photos choisies dans la bibliothèque. Sans photo cochée : toute la bibliothèque, puis les 12 dernières réalisations publiées sur le site (titre et catégorie, jamais le client) |
 | Vidéo | Une vidéo de la bibliothèque, muette sauf si le son est activé |
 | Avis | Un avis validé par passage |
+| Partenaires | « Ils nous font confiance » : les logos des partenaires visibles sur le site, avec leur accord (12 au plus). La scène est sautée s'il n'y en a aucun |
 | Promo, Texte | Une affiche plein cadre |
 
 Tout se règle dans Réglages › Écran TV :

@@ -18,6 +18,7 @@ final class ProgrammeEcranTv
     public const TYPE_AVIS = 'avis';
     public const TYPE_PROMO = 'promo';
     public const TYPE_TEXTE = 'texte';
+    public const TYPE_PARTENAIRES = 'partenaires';
 
     public const TYPES = [
         self::TYPE_CHIFFRES => 'Chiffres',
@@ -26,6 +27,7 @@ final class ProgrammeEcranTv
         self::TYPE_AVIS => 'Avis',
         self::TYPE_PROMO => 'Promo',
         self::TYPE_TEXTE => 'Texte',
+        self::TYPE_PARTENAIRES => 'Partenaires',
     ];
 
     public const FONDS = [
@@ -51,6 +53,7 @@ final class ProgrammeEcranTv
         self::TYPE_AVIS => 9,
         self::TYPE_PROMO => 9,
         self::TYPE_TEXTE => 6,
+        self::TYPE_PARTENAIRES => 10,
     ];
 
     private const MESSAGES_PAR_DEFAUT = [
@@ -72,6 +75,7 @@ final class ProgrammeEcranTv
                 ['id' => 'photos', 'type' => self::TYPE_PHOTOS, 'titre' => 'Dernières réalisations'],
                 ['id' => 'video', 'type' => self::TYPE_VIDEO, 'titre' => 'Impression grand format jusqu\'à 3,20 m', 'surtitre' => 'Dans notre atelier', 'heureDebut' => '08:00', 'heureFin' => '19:00'],
                 ['id' => 'avis', 'type' => self::TYPE_AVIS, 'titre' => 'Avis clients', 'surtitre' => 'Ils parlent de nous'],
+                ['id' => 'partenaires', 'type' => self::TYPE_PARTENAIRES, 'titre' => 'Ils nous font confiance', 'surtitre' => 'Nos partenaires'],
                 ['id' => 'promo', 'type' => self::TYPE_PROMO, 'titre' => 'T-shirts [DTF] dès 1 pièce', 'surtitre' => 'Nouveau', 'texte' => 'Votre logo en couleurs, sur coton ou polyester.', 'pastille' => '−10 % dès 25 pièces', 'actif' => false],
             ],
             'horaires' => [

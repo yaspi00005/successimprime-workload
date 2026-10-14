@@ -11,7 +11,7 @@ final class ProgrammeEcranTvTest extends TestCase
     public function testLeProgrammeDeDepartEstStable(): void
     {
         self::assertSame(ProgrammeEcranTv::defaut(), ProgrammeEcranTv::defaut());
-        self::assertSame(['chiffres', 'photos', 'video', 'avis', 'promo'], array_column(ProgrammeEcranTv::defaut()['scenes'], 'type'));
+        self::assertSame(['chiffres', 'photos', 'video', 'avis', 'partenaires', 'promo'], array_column(ProgrammeEcranTv::defaut()['scenes'], 'type'));
     }
 
     public function testNormaliserBorneLesValeursSaisies(): void
@@ -82,7 +82,7 @@ final class ProgrammeEcranTvTest extends TestCase
 
     public function testDureeDeLaBoucle(): void
     {
-        self::assertSame(55, ProgrammeEcranTv::dureeBoucle(ProgrammeEcranTv::defaut()['scenes']), 'La promo de départ est coupée.');
+        self::assertSame(65, ProgrammeEcranTv::dureeBoucle(ProgrammeEcranTv::defaut()['scenes']), 'La promo de départ est coupée.');
         self::assertSame('8 h 30', ProgrammeEcranTv::heureLisible('08:30'));
     }
 

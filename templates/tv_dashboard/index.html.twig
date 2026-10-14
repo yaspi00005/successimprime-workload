@@ -97,6 +97,16 @@
 		.pastille-video { position: absolute; right: 44px; top: 44px; background: rgba(0, 0, 0, .55); border-radius: 14px; padding: 10px 16px; font-size: 20px; font-weight: 700; }
 
 		/* Avis */
+		.titre-partenaires { font-family: var(--titre); font-weight: 800; font-size: 56px; line-height: 1.1; letter-spacing: -.02em; margin-top: 18px; }
+		.titre-partenaires em { font-style: normal; color: var(--jaune); }
+		.logos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; margin-top: 54px; }
+		.logos.n1, .logos.n2 { grid-template-columns: repeat(2, minmax(0, 360px)); }
+		.logos.n3 { grid-template-columns: repeat(3, 1fr); }
+		.logo-partenaire { background: #fff; border-radius: 22px; height: 170px; display: flex; align-items: center; justify-content: center; padding: 26px; opacity: 0; transform: translateY(16px); transition: opacity .6s, transform .6s; }
+		.scene.active .logo-partenaire { opacity: 1; transform: none; }
+		.scene.active .logo-partenaire:nth-child(2) { transition-delay: .12s; } .scene.active .logo-partenaire:nth-child(3) { transition-delay: .24s; } .scene.active .logo-partenaire:nth-child(4) { transition-delay: .36s; }
+		.scene.active .logo-partenaire:nth-child(n+5) { transition-delay: .48s; }
+		.logo-partenaire img { max-width: 100%; max-height: 100%; object-fit: contain; }
 		.citation { font-family: var(--titre); font-weight: 800; font-size: 64px; line-height: 1.1; letter-spacing: -.02em; margin-top: 60px; max-width: 22ch; }
 		.etoiles { color: var(--jaune); font-size: 50px; margin-top: 30px; letter-spacing: 6px; }
 		.etoiles s { text-decoration: none; color: rgba(255, 255, 255, .25); }
@@ -256,7 +266,7 @@
 							<div class="scene plein" data-duree="{{ scene.duree }}" data-type="photos">
 								{% for media in scene.medias %}
 									<div class="cliche">
-										<img src="{{ asset('uploads/tv/' ~ media.fichier) }}" alt="">
+										<img src="{{ asset(media.chemin ?? ('uploads/tv/' ~ media.fichier)) }}" alt="">
 										{% if media.legende %}
 											{% set parts = media.legende|split(' · ', 2) %}
 											<div class="legende"><b>{{ parts[0] }}</b>{% if parts[1] is defined %}<span>{{ parts[1] }}</span>{% endif %}</div>
@@ -284,6 +294,17 @@
 								<div class="citation" data-citation>«&nbsp;{{ premier.texte }}&nbsp;»</div>
 								<div class="etoiles" data-etoiles>{{ '★★★★★'|slice(0, premier.note) }}<s>{{ '★★★★★'|slice(0, 5 - premier.note) }}</s></div>
 								<div class="signature" data-signature>{{ premier.signature }}</div>
+							</div>
+
+						{% elseif scene.type == 'partenaires' %}
+							<div class="scene" data-duree="{{ scene.duree }}" data-type="partenaires">
+								<div class="surtitre">{{ scene.surtitre ?: 'Nos partenaires' }}</div>
+								<div class="titre-partenaires">{{ titre }}</div>
+								<div class="logos n{{ min(scene.logos|length, 6) }}">
+									{% for logo in scene.logos %}
+										<div class="logo-partenaire"><img src="{{ asset(logo.chemin) }}" alt="{{ logo.nom }}"></div>
+									{% endfor %}
+								</div>
 							</div>
 
 						{% else %}

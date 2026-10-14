@@ -22,6 +22,10 @@ final class DroitsEspace
         'app_espace_push_desabonner',
         'app_espace_mot_de_passe',
         'app_espace_appareils_deconnecter',
+        // Assistant : ses outils ne lui montrent que ce qu'un compte en lecture voit.
+        'app_espace_assistant_message',
+        'app_espace_assistant_note',
+        'app_espace_assistant_historique',
     ];
 
     /** Pages qui ne servent qu'à commander, payer, accepter ou écrire : refusées, même à l'ouverture. */

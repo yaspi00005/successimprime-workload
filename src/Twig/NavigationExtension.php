@@ -77,6 +77,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Campagnes WhatsApp et SMS', 'route' => 'app_campagne_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_campagne_', 'app_modele_message_', 'app_regle_rappel_paiement_']],
             ['libelle' => 'Fidélité', 'route' => 'app_fidelite_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_fidelite_']],
             ['libelle' => 'Anniversaires', 'route' => 'app_anniversaires_index', 'role' => 'ROLE_PROMOTIONS', 'prefixes' => ['app_anniversaires_']],
+            ['libelle' => 'Assistant du site', 'route' => 'app_assistant_conversations', 'role' => 'ROLE_ASSISTANT', 'prefixes' => ['app_assistant_']],
         ],
         'atelier' => [
             ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
@@ -232,6 +233,7 @@ final class NavigationExtension extends AbstractExtension
         'app_regle_rappel_paiement_' => 'clients',
         'app_fidelite_' => 'clients',
         'app_anniversaires_' => 'clients',
+        'app_assistant_' => 'clients',
         'app_promotions_' => 'ventes',
         'app_categorie_produit_' => 'reglages',
         'app_produits_' => 'reglages',

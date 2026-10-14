@@ -11,18 +11,13 @@ use App\Entity\TypesImpression;
 use App\Repository\AppareilAutoriseRepository;
 use App\Repository\EntrepriseRepository;
 use App\Security\AccesEnLigne;
-use App\Security\CodeParSms;
 use App\Service\NotificationService;
-use App\Service\OrangeSmsService;
 use App\Service\Parametres\Parametres;
 use App\Service\Site\Calculateur;
 use App\Twig\SiteExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
@@ -234,8 +229,7 @@ final class CalculateurTest extends TestCase
         }
         $urls = new UrlGenerator($routes, new RequestContext());
 
-        $sms = new OrangeSmsService(new MockHttpClient(), new ArrayAdapter(), new NullLogger(), '', '', '', '');
-        $acces = new AccesEnLigne(false, $this->createStub(AppareilAutoriseRepository::class), $this->createStub(EntityManagerInterface::class), new CodeParSms('secret-de-test', 'dev', $sms), $this->createStub(NotificationService::class));
+        $acces = new AccesEnLigne(false, $this->createStub(AppareilAutoriseRepository::class), $this->createStub(EntityManagerInterface::class), (new \App\Tests\Unit\Security\FabriqueCodes())->codes(), $this->createStub(NotificationService::class));
         $entreprises = $this->createStub(EntrepriseRepository::class);
         $entreprises->method('parCode')->willReturn((new Entreprise())->setCode('mdg_success')->setTelephone('+223 70 38 69 12'));
         $entreprises->method('dansLOrdre')->willReturn([]);

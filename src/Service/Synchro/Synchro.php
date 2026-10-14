@@ -684,7 +684,7 @@ final class Synchro
             }
         }
         if ($entite instanceof Clients) {
-            $libelles = ['recevoirSms' => 'Recevoir les SMS', 'consentementMarketingLe' => 'Accord pour les offres'];
+            $libelles = ['recevoirSms' => 'Recevoir les SMS', 'consentementMarketingLe' => 'Accord pour les offres', 'email' => 'E-mail'];
             $lisible = static fn (string $champ, ?string $v): ?string => 'recevoirSms' === $champ && null !== $v ? ('1' === $v ? 'Oui' : 'Non') : $v;
             foreach ($remontees as $champ => [$avant, $apres]) {
                 [$avant, $apres] = [$lisible($champ, $avant), $lisible($champ, $apres)];

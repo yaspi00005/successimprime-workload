@@ -3,7 +3,7 @@
 {% block title %}Code de sécurité · Succès Imprim{% endblock %}
 {% block classe_page %} si-verification{% endblock %}
 
-{# Code de sécurité reçu par SMS (maquette CX03, à droite). #}
+{# Code de sécurité reçu par e-mail, ou par SMS sans adresse (maquette CX03, à droite). #}
 {% block tete %}
 	<div class="si-verification-haut">
 		<a href="{{ path('app_logout') }}" class="si-verification-retour" aria-label="Annuler et revenir à la connexion">‹</a>
@@ -16,13 +16,15 @@
 	<h1>Code de sécurité</h1>
 	<p class="si-connexion-sous-titre">
 		{% if envoi.envoye|default(false) %}
-			Envoyé par SMS au {{ envoi.telephone }}. Valable 5 minutes.
+			{{ envoi.canal|default('sms') == 'email' ? 'Envoyé par e-mail à' : 'Envoyé par SMS au' }} {{ envoi.destination|default(envoi.telephone|default('')) }}. Valable 5 minutes.
+		{% elseif envoi.limite|default(false) %}
+			{{ envoi.erreur }}
 		{% else %}
-			Le SMS n'a pas pu partir : {{ envoi.erreur|default('envoi impossible.') }} Vérifiez le téléphone de votre fiche employé ou demandez un nouveau code.
+			Le code n'a pas pu partir : {{ envoi.erreur|default('envoi impossible.') }} Vérifiez l'e-mail et le téléphone de votre fiche employé ou demandez un nouveau code.
 		{% endif %}
 	</p>
 	{% if envoi.codeDev|default(null) %}
-		<p class="si-verification-dev">Hors production, sans SMS : le code est <strong>{{ envoi.codeDev }}</strong>.</p>
+		<p class="si-verification-dev">Hors production, sans envoi : le code est <strong>{{ envoi.codeDev }}</strong>.</p>
 	{% endif %}
 
 	{% if erreur %}

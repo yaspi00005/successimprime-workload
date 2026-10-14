@@ -4978,6 +4978,17 @@ body.si-param-bloque { overflow: hidden; }
 .si-fh-tout { display: block; margin: 8px auto 0; color: #64748B; text-decoration: none; }
 .si-fh-invitation { background: #F0FDF4; border-color: #86EFAC; }
 .si-fh-invitation > b { color: #15803D; }
+.si-fh-invitation form { margin: 0; }
+/* Accès à l'espace client donné sur WhatsApp (K03) */
+.si-fh-espace { border-top: 1px solid #F1F5F9; margin-top: 16px; padding-top: 14px; }
+.si-fh-espace h3 { font-size: 14px; font-weight: 700; color: #0F172A; margin: 0 0 4px; }
+.si-fh-espace p { font-size: 13px; color: #64748B; margin: 0 0 8px; }
+.si-fh-espace form { margin: 0; }
+.si-fh-espace .btn { width: 100%; }
+.si-acces-espace { max-width: 640px; margin: 0 auto; }
+.si-acces-message { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: 14px; color: #0F172A; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 12px 14px; margin: 0 0 14px; }
+.si-acces-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 575px) { .si-acces-actions .btn { flex: 1 1 100%; } }
 @media (max-width: 575px) {
   .si-fh-liste li { grid-template-columns: 40px minmax(0, 1fr) auto; }
   .si-fh-liste .si-fh-icone { display: none; }

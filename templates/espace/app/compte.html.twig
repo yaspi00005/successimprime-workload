@@ -118,7 +118,8 @@
 		<section class="ec-carte ec-bloc" id="securite">
 			<h2>Sécurité</h2>
 			<ul class="ec-liste ec-securite">
-				<li class="ec-ligne"><span class="ec-petit">Connexion</span><b>code SMS au {{ telephoneMasque }}{{ compte.aUnMotDePasse ? ' · mot de passe' }}</b></li>
+				<li class="ec-ligne"><span class="ec-petit">Connexion</span><b>numéro {{ telephoneMasque }}{{ compte.aUnMotDePasse ? ' et mot de passe' }}</b></li>
+				<li class="ec-ligne"><span class="ec-petit">Codes (mot de passe oublié)</span><b>{{ emailCodesMasque ? 'par e-mail à ' ~ emailCodesMasque : 'par SMS au ' ~ telephoneMasque }}</b></li>
 				<li class="ec-ligne"><span class="ec-petit">Appareils connectés</span><b>{% for a in appareils %}{{ a.libelle }}{{ a.courant ? ' (cet appareil)' : (a.nombre > 1 ? ' (' ~ a.nombre ~ ')') }}{{ not loop.last ? ' · ' }}{% else %}cet appareil{% endfor %}</b></li>
 				<li class="ec-ligne"><span class="ec-petit">Dernière connexion</span><b>{% if compte.derniereConnexion %}{{ compte.derniereConnexion|date('Y-m-d') == 'now'|date('Y-m-d') ? 'aujourd\'hui ' ~ compte.derniereConnexion|date('H:i') : 'le ' ~ compte.derniereConnexion|date('d/m/Y à H:i') }}{% else %}—{% endif %}</b></li>
 			</ul>
@@ -130,7 +131,7 @@
 				<a class="ec-bouton-blanc" href="{{ path('app_espace_mes_donnees') }}" download>Télécharger mes données</a>
 			</div>
 			<details class="ec-mdp">
-				<summary>{{ compte.aUnMotDePasse ? 'Changer mon mot de passe' : 'Choisir un mot de passe (facultatif)' }}</summary>
+				<summary>{{ compte.aUnMotDePasse ? 'Changer mon mot de passe' : 'Choisir un mot de passe' }}</summary>
 				<form method="post" action="{{ path('app_espace_mot_de_passe') }}" style="margin-top:.75rem;display:grid;gap:.5rem">
 					<input type="hidden" name="_token" value="{{ csrf_token('espace-mdp') }}">
 					<input type="hidden" name="telephone" value="{{ compte.telephone }}" autocomplete="username">
@@ -141,6 +142,19 @@
 					<button type="submit" class="ec-bouton bleu">Enregistrer</button>
 				</form>
 			</details>
+			{% if compte.aUnMotDePasse %}
+				<details class="ec-mdp">
+					<summary>{{ emailCodesMasque ? 'Changer l\'e-mail de mes codes' : 'Recevoir mes codes par e-mail' }}</summary>
+					<form method="post" action="{{ path('app_espace_email') }}" style="margin-top:.75rem;display:grid;gap:.5rem">
+						<input type="hidden" name="_token" value="{{ csrf_token('espace-email') }}">
+						<label for="email-codes" class="ec-petit">Adresse e-mail (les codes y arrivent au lieu d'un SMS)</label>
+						<input type="email" id="email-codes" name="email" maxlength="180" autocomplete="email" required class="ec-saisie ec-saisie-sobre">
+						<label for="mdp-actuel" class="ec-petit">Mot de passe actuel</label>
+						<input type="password" id="mdp-actuel" name="mot_de_passe" autocomplete="current-password" required class="ec-saisie ec-saisie-sobre">
+						<button type="submit" class="ec-bouton bleu">Enregistrer</button>
+					</form>
+				</details>
+			{% endif %}
 		</section>
 	</div>
 

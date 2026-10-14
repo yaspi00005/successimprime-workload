@@ -7,17 +7,12 @@ use App\Entity\Entreprise;
 use App\Repository\AppareilAutoriseRepository;
 use App\Repository\EntrepriseRepository;
 use App\Security\AccesEnLigne;
-use App\Security\CodeParSms;
 use App\Service\NotificationService;
-use App\Service\OrangeSmsService;
 use App\Service\Parametres\Parametres;
 use App\Twig\SiteExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGenerator;
@@ -35,8 +30,7 @@ final class SiteExtensionTest extends TestCase
         $routes->add('app_site_contact', new Route('/contact'));
         $routes->add('app_site_faq', new Route('/faq'));
 
-        $sms = new OrangeSmsService(new MockHttpClient(), new ArrayAdapter(), new NullLogger(), '', '', '', '');
-        $acces = new AccesEnLigne($enLigne, $this->createStub(AppareilAutoriseRepository::class), $this->createStub(EntityManagerInterface::class), new CodeParSms('secret-de-test', 'dev', $sms), $this->createStub(NotificationService::class));
+        $acces = new AccesEnLigne($enLigne, $this->createStub(AppareilAutoriseRepository::class), $this->createStub(EntityManagerInterface::class), (new \App\Tests\Unit\Security\FabriqueCodes())->codes(), $this->createStub(NotificationService::class));
 
         $entreprises = $this->createStub(EntrepriseRepository::class);
         $entreprises->method('parCode')->willReturn($entreprise);

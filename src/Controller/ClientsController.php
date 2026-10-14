@@ -977,6 +977,7 @@ final class ClientsController extends AbstractController
         Clients $client,
         FicheClient360 $fiche,
         \App\Service\Clients\EditionClient $edition,
+        \App\Service\EspaceClient\AccesEspace $accesEspace,
         Request $request
     ): Response {
         $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
@@ -990,24 +991,69 @@ final class ClientsController extends AbstractController
             default => 'inactif',
         };
         $whatsapp = $client->getTelephone() ? UtilisateursController::numeroWhatsApp($client->getTelephone()) : null;
-        $invitation = null;
-        if ($whatsapp && $request->query->getBoolean('inviter')) {
-            $invitation = 'https://wa.me/'.$whatsapp.'?text='.rawurlencode(sprintf(
-                "Bonjour, votre espace client Succès Imprim est prêt : suivez vos commandes, validez vos BAT et retrouvez vos factures.\n%s\nConnectez-vous avec votre numéro %s, un code vous sera envoyé.",
-                $this->generateUrl('app_espace_connexion', [], \Symfony\Component\Routing\Generator\UrlGeneratorInterface::ABSOLUTE_URL),
-                $client->getTelephone(),
-            ));
-        }
+        // Espace client : la boutique envoie elle-même le code d'accès sur WhatsApp (accesEspace()).
+        $empechement = $accesEspace->empechement($client);
 
         return $this->render('clients/fiche_360.html.twig', $donnees + [
             'client' => $client,
             'contacts' => $edition->contacts($client),
             'statut' => $statut,
-            'invitation' => $invitation,
+            'invitation' => null === $empechement && $request->query->getBoolean('inviter'),
+            'acces_espace' => [
+                'possible' => null === $empechement,
+                'empechement' => $empechement,
+                'dernier' => $accesEspace->dernier($client),
+                'maintenant' => new \DateTimeImmutable(),
+            ],
             'voir_paiements' => $voirPaiements,
             'voir_ca' => $this->isGranted('ROLE_STATS_VENTES'),
             'whatsapp' => $whatsapp,
         ]);
+    }
+
+    /**
+     * « Envoyer l'accès à l'espace client » (fiche client) : nouveau code
+     * d'accès (l'ancien ne sert plus), puis le message à ouvrir dans
+     * WhatsApp. Le code ne s'affiche qu'ici, une fois : la page n'est pas
+     * gardée par le navigateur et le code n'est enregistré nulle part.
+     * Refusé en « Voir » (LectureSeuleSubscriber), pour une fiche de
+     * démonstration et sur le site en ligne.
+     */
+    #[Route(
+        '/fiche/{publicId}/acces-espace',
+        name: 'app_clients_acces_espace',
+        methods: ['POST']
+    )]
+    public function accesEspace(
+        #[MapEntity(mapping: [
+            'publicId' => 'publicId',
+        ])]
+        Clients $client,
+        \App\Service\EspaceClient\AccesEspace $accesEspace,
+        Request $request
+    ): Response {
+        if (!$this->isCsrfTokenValid('acces-espace-'.$client->getId(), $request->getPayload()->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton invalide.');
+        }
+        $empechement = $accesEspace->empechement($client);
+        if (null !== $empechement) {
+            $this->addFlash('warning', $empechement);
+
+            return $this->redirectToRoute('app_clients_show', ['publicId' => $client->getPublicId()]);
+        }
+        $moi = $this->getUser();
+        $acces = $accesEspace->donner($client, $moi instanceof User ? $moi : null, new \DateTimeImmutable());
+
+        $reponse = $this->render('clients/acces_espace.html.twig', [
+            'client' => $client,
+            'acces' => $acces['acces'],
+            'message' => $acces['message'],
+            'lien_whatsapp' => $acces['whatsapp'],
+            'site_regle' => $accesEspace->siteRegle(),
+        ]);
+        $reponse->headers->set('Cache-Control', 'no-store, private');
+
+        return $reponse;
     }
 
     /**

@@ -202,6 +202,10 @@ final class CatalogueSynchroTest extends TestCase
         // Offres cochées dans l'espace : l'accord remonte, rien d'autre.
         self::assertTrue(CatalogueSynchro::remonteePermise('client', 'consentementMarketingLe', null, '2026-10-14 10:00:00'));
         self::assertFalse(CatalogueSynchro::remonteePermise('client', 'raisonSociale', 'Hôtel Niger', 'Hôtel Niger SA'));
+        // E-mail donné par le titulaire dans son espace : seulement sur une fiche du local qui n'en a pas.
+        self::assertTrue(CatalogueSynchro::remonteePermise('client', 'email', null, 'yaya@gmail.com'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('client', 'email', 'contact@hotel-niger.ml', 'yaya@gmail.com'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('client', 'email', null, null));
 
         // Messages client ⇄ atelier : le texte, sans qui a traité ni l'employé qui a répondu.
         self::assertSame(['sens', 'auteur', 'texte', 'creeLe'], $types['message_client']['champs']);
@@ -221,6 +225,26 @@ final class CatalogueSynchroTest extends TestCase
             }
         }
         self::assertNotContains('traiteLe', $types['message_client']['champs'], 'le classement par l\'atelier reste au local');
+    }
+
+    public function testLAccesALEspaceClientNeDescendQuEnEmpreinte(): void
+    {
+        $acces = CatalogueSynchro::types()['acces_espace'];
+        // Jamais le code : son empreinte et son échéance seulement.
+        self::assertSame(['empreinte', 'expireLe'], $acces['champs']);
+        self::assertSame(['client' => 'client'], $acces['relations']);
+        foreach (['code', 'creePar', 'creeLe', 'empreinteUtilisee', 'utiliseLe'] as $interdit) {
+            self::assertNotContains($interdit, $acces['champs'], $interdit);
+            self::assertArrayNotHasKey($interdit, $acces['relations'], $interdit);
+        }
+        // Donné au local seulement : le site ne renvoie rien (son utilisation reste en ligne).
+        self::assertSame(CatalogueSynchro::DESCENDANT, $acces['sens']);
+        self::assertTrue(CatalogueSynchro::envoye('acces_espace', false));
+        self::assertFalse(CatalogueSynchro::envoye('acces_espace', true));
+        self::assertFalse(CatalogueSynchro::accepte('acces_espace', false));
+        self::assertSame(['client'], $acces['uniqueSur'] ?? null, 'un accès par client');
+        self::assertSame(['empreinte', 'expireLe', 'client'], CatalogueSynchro::champsSuivis('acces_espace'), 'un nouveau code repart, son utilisation non');
+        self::assertSame('acces_espace', CatalogueSynchro::typeDe(new \App\Entity\AccesEspaceClient()));
     }
 
     public function testFicheUniqueParRelationRemplaceeSeulementDuLocalVersLeSite(): void

@@ -324,11 +324,11 @@ final class CatalogueParametres
                 'famille' => 'clients', 'libelle' => 'Espace client', 'icone' => 'fa-globe-africa',
                 'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => null,
                 'champs' => [
-                    ['cle' => 'code_sms', 'type' => 'interrupteur', 'libelle' => 'Connexion par code SMS', 'aide' => 'Sans mot de passe. La création de compte vérifie toujours le numéro par code.', 'defaut' => true],
+                    ['cle' => 'code_sms', 'type' => 'interrupteur', 'libelle' => 'Code de première connexion et de mot de passe oublié', 'aide' => 'Par e-mail, ou par SMS sans adresse. Coupé, le client demande son accès à la boutique ; la création de compte vérifie toujours par code.', 'defaut' => true],
                     ['cle' => 'commande_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Commande en ligne', 'defaut' => true],
                     ['cle' => 'paiement_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Paiement Orange Money en ligne', 'defaut' => false],
                 ],
-                'motsCles' => ['Connexion par code SMS', 'Commande en ligne du client', 'Paiement Orange Money en ligne', 'WhatsApp · mot de passe'],
+                'motsCles' => ['Connexion par code e-mail ou SMS', 'Mot de passe oublié', 'Commande en ligne du client', 'Paiement Orange Money en ligne', 'WhatsApp · mot de passe'],
                 'note' => 'La connexion par code est appliquée. La commande et le paiement en ligne le seront avec l\'espace client complet (jalon J5).',
             ],
             // Programme de points (docs/fidelite.md), règles de Yaya du 13/10/2026.

@@ -13,7 +13,8 @@ final class VerificationInstallationTest extends TestCase
     private static function enLigne(): array
     {
         return [
-            'APP_ENV' => 'prod', 'APP_SECRET' => str_repeat('s3', 20), 'DEFAULT_URI' => 'https://succesimprim.com', 'MAILER_DSN' => 'smtp://relais',
+            'APP_ENV' => 'prod', 'APP_SECRET' => str_repeat('s3', 20), 'DEFAULT_URI' => 'https://succesimprim.com',
+            'MAILER_DSN' => 'smtp://contact%40succesimprim.com:mdp-boite-6Jw@mail.succesimprim.com:465', 'MAILER_FROM_ADDRESS' => 'contact@succesimprim.com',
             'SYNC_CLE' => str_repeat('k8', 32), 'ORANGE_SMS_CLIENT_ID' => 'id-sms-7Qx', 'ORANGE_SMS_CLIENT_SECRET' => 'secret-sms-9Zk', 'ORANGE_SMS_SENDER_ADDRESS' => '2230000',
             'ORANGE_MONEY_CLIENT_ID' => 'a', 'ORANGE_MONEY_CLIENT_SECRET' => 'b', 'ORANGE_MONEY_MERCHANT_KEY' => 'c', 'VAPID_PUBLIC_KEY' => 'BPub-5Rt', 'VAPID_PRIVATE_KEY' => 'priv-vapid-3Wm',
             'ANTHROPIC_API_KEY' => 'sk-ant-essai-4Hv',
@@ -45,15 +46,37 @@ final class VerificationInstallationTest extends TestCase
         $env = self::enLigne();
         $texte = json_encode(V::verifier($env, self::PHP, true));
 
-        foreach (['APP_SECRET', 'SYNC_CLE', 'ORANGE_SMS_CLIENT_SECRET', 'VAPID_PRIVATE_KEY', 'ANTHROPIC_API_KEY'] as $cle) {
+        foreach (['APP_SECRET', 'SYNC_CLE', 'ORANGE_SMS_CLIENT_SECRET', 'VAPID_PRIVATE_KEY', 'ANTHROPIC_API_KEY', 'MAILER_DSN'] as $cle) {
             self::assertStringNotContainsString($env[$cle], (string) $texte, $cle);
         }
+        self::assertStringNotContainsString('mdp-boite-6Jw', (string) $texte, 'mot de passe de la boîte e-mail');
+    }
+
+    public function testSansEMailLesCodesDeConnexionPartentParSms(): void
+    {
+        $point = 'E-mail (MAILER_DSN, MAILER_FROM_ADDRESS)';
+        foreach ([['MAILER_DSN' => 'null://null'], ['MAILER_DSN' => ''], ['MAILER_FROM_ADDRESS' => '']] as $manque) {
+            $resultats = V::verifier($manque + self::enLigne(), self::PHP, true);
+            self::assertSame(V::A_VOIR, self::statut($resultats, $point));
+            $detail = (string) array_values(array_filter($resultats, static fn (array $r): bool => $r['point'] === $point))[0]['detail'];
+            self::assertStringContainsString('les codes de connexion (clients et personnel) partiront par SMS', $detail);
+            self::assertStringContainsString(array_key_first($manque), $detail, 'dit ce qui manque');
+            self::assertSame(V::OK, self::statut($resultats, 'SMS Orange'));
+        }
+
+        // Ni e-mail ni SMS : plus aucun code ne part.
+        $rien = V::verifier(['MAILER_FROM_ADDRESS' => '', 'ORANGE_SMS_CLIENT_ID' => '', 'ORANGE_SMS_CLIENT_SECRET' => '', 'ORANGE_SMS_SENDER_ADDRESS' => ''] + self::enLigne(), self::PHP, true);
+        self::assertSame(V::ERREUR, self::statut($rien, 'SMS Orange'));
+        // E-mail sans SMS : les codes partent à qui a une adresse.
+        $emailSeul = V::verifier(['ORANGE_SMS_CLIENT_ID' => '', 'ORANGE_SMS_CLIENT_SECRET' => '', 'ORANGE_SMS_SENDER_ADDRESS' => ''] + self::enLigne(), self::PHP, true);
+        self::assertSame(V::A_VOIR, self::statut($emailSeul, 'SMS Orange'));
+        self::assertSame(V::OK, self::statut($emailSeul, 'E-mail (MAILER_DSN, MAILER_FROM_ADDRESS)'));
     }
 
     public function testExpediteurSmsAuFormatOrange(): void
     {
         self::assertSame(V::A_VOIR, self::statut(V::verifier(['ORANGE_SMS_SENDER_ADDRESS' => '+223 76 00 00 99'] + self::enLigne(), self::PHP, true), 'SMS Orange'), 'numéro personnel au lieu de l\'expéditeur du contrat');
-        self::assertSame(V::ERREUR, self::statut(V::verifier(['ORANGE_SMS_SENDER_ADDRESS' => ''] + self::enLigne(), self::PHP, true), 'SMS Orange'));
+        self::assertSame(V::ERREUR, self::statut(V::verifier(['ORANGE_SMS_SENDER_ADDRESS' => ''] + self::enLigne(), self::PHP, true), 'SMS Orange'), 'clés incomplètes');
     }
 
     public function testLaCleHorsSiteNeDoitPasEtreEnLigne(): void

@@ -25,7 +25,9 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Client (espace client en ligne)
 
-- [ ] Connexion par code SMS, puis par mot de passe ; 5 essais faux bloquent 15 minutes.
+- [ ] Connexion par numéro et mot de passe ; 5 essais faux bloquent 15 minutes.
+- [ ] « Recevoir un code » : par e-mail si la fiche a une adresse, sinon par SMS ; destination masquée ; puis choix du mot de passe obligatoire.
+- [ ] Fiche client (ERP local) › « Envoyer l'accès à l'espace client » : message WhatsApp avec identifiant, code et lien ; première connexion avec ce code, e-mail et mot de passe obligatoires ; le même code ne sert pas deux fois.
 - [ ] Nouvelle commande avec fichier : elle arrive au local en brouillon « à confirmer » et ne peut pas être payée avant la confirmation.
 - [ ] BAT : poser des repères sur l'image, demander une modification ; au local, la prépresse reçoit le texte. Valider un autre BAT.
 - [ ] Factures et paiement Orange Money : le paiement arrive au local « en attente », sans compte, et n'est jamais validé tout seul.
@@ -88,7 +90,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 ## Administration en ligne
 
 - [ ] Depuis un appareil non autorisé, le bon mot de passe est refusé et les administrateurs sont prévenus une fois par jour.
-- [ ] Depuis un appareil autorisé : mot de passe, puis code SMS ; la session se ferme après 15 minutes sans activité.
+- [ ] Depuis un appareil autorisé : mot de passe, puis code de sécurité par e-mail (par SMS sans adresse) ; la session se ferme après 15 minutes sans activité.
 - [ ] Un appareil en « Encaissement » ne peut qu'encaisser ou livrer ; toute autre modification est refusée.
 - [ ] L'API répond « introuvable » en ligne ; les dépenses, budgets et relevés Orange Money restent sur l'ERP local.
 

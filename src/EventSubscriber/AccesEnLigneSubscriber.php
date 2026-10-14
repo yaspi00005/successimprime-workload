@@ -24,7 +24,7 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
  * Administration en ligne (maquettes 38 et CX03), seulement quand
  * APP_EN_LIGNE=1 :
  *  - le mot de passe ne suffit pas : l'appareil doit être autorisé ;
- *  - après le mot de passe, un code reçu par SMS ;
+ *  - après le mot de passe, un code reçu par e-mail (SMS sans adresse) ;
  *  - session fermée après 15 minutes sans activité ;
  *  - le rôle en ligne de l'appareil limite ce qui peut être modifié.
  */
@@ -97,7 +97,7 @@ final class AccesEnLigneSubscriber implements EventSubscriberInterface
         $session = $request->getSession();
         $session->set(AccesEnLigne::SESSION_APPAREIL, $appareil->getId());
         $session->remove(AccesEnLigne::SESSION_ACTIVITE);
-        $session->set('si_code_envoi', $this->acces->envoyerCode($utilisateur, $session));
+        $session->set('si_code_envoi', $this->acces->envoyerCode($utilisateur, $session, (string) $request->getClientIp()));
 
         $appareil->setDerniereConnexion(new \DateTimeImmutable())->setIp($request->getClientIp());
         $this->em->flush();
@@ -131,7 +131,7 @@ final class AccesEnLigneSubscriber implements EventSubscriberInterface
             // Code pas encore saisi (ou session ouverte avant la mise en ligne).
             if (!\in_array($route, self::ROUTES_PENDANT_CODE, true)) {
                 if (!$this->acces->codeEnAttente($session)) {
-                    $session->set('si_code_envoi', $this->acces->envoyerCode($utilisateur, $session));
+                    $session->set('si_code_envoi', $this->acces->envoyerCode($utilisateur, $session, (string) $request->getClientIp()));
                 }
                 $event->setResponse(new RedirectResponse($this->urls->generate('app_verification')));
             }

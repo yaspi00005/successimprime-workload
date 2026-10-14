@@ -172,7 +172,7 @@ final class Parametres
             'bareme' => '1 point = '.number_format((int) $v['valeur_point'], 0, ',', ' ').' F · prime dès '.$v['seuil_prime'].' pts',
             'avantages' => 'frais médicaux '.$v['frais_medicaux'].' %',
             'paie' => 'paie le '.$v['jour_paie'].($v['inps'] || $v['its'] ? ' · '.implode(' et ', array_keys(array_filter(['INPS' => $v['inps'], 'ITS' => $v['its']]))) : ''),
-            'espace_client' => $v['code_sms'] ? 'connexion par code SMS' : 'connexion par mot de passe',
+            'espace_client' => $v['code_sms'] ? 'mot de passe, code par e-mail ou SMS' : 'mot de passe seulement',
             'fidelite' => $v['actif'] ? str_replace('.', ',', (string) $v['points_m2']).' pts/m² dès '.str_replace('.', ',', (string) $v['seuil_m2']).' m² · '.str_replace('.', ',', (string) $v['taux_autre']).' % · ×'.$v['multiplicateur_jour'].' le jour même' : 'arrêté',
             'messages' => self::nb($compter(ModeleMessage::class), 'modèle'),
             'ecran_tv' => 'playlist de '.ProgrammeEcranTv::dureeBoucle($this->ecranTv->programme()['scenes']).' s',

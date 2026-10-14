@@ -46,7 +46,7 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
 
 ## Espace client de démonstration
 
-Connexion sur `/espace/connexion` avec « mot de passe » : le numéro (8 chiffres) et le mot de passe `demo1234`. Les fiches `DEMO-` ne reçoivent jamais de code SMS, d'où le mot de passe.
+Connexion sur `/espace/connexion` avec « mot de passe » : le numéro (8 chiffres) et le mot de passe `demo1234`. Les fiches `DEMO-` ne reçoivent jamais de code (ni e-mail ni SMS) et n'ont pas de bouton « Envoyer l'accès à l'espace client », d'où le mot de passe.
 
 Salon Espoir (`DEMO-0002`, entreprise à la grille revendeur), une personne par type de droits :
 

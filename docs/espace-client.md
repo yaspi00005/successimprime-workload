@@ -1,6 +1,6 @@
 # Espace client connecté (maquettes 13 à 19)
 
-Le client se connecte par code SMS ou mot de passe (CX01), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts, de marges ni de noms d'employés.
+Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connexion » plus bas), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts, de marges ni de noms d'employés.
 
 ## État (13/10/2026)
 
@@ -16,6 +16,44 @@ Construit, téléphone d'abord (onglets en bas), menu à gauche sur ordinateur :
 
 - **Nouvelle commande (14, à gauche)** : produits du catalogue publié (configurations actives avec un prix), largeur et hauteur en cm quand le produit se vend au m² ou sur mesure, finitions proposées (les obligatoires sont incluses), quantité, fichier choisi parmi les siens ou envoyé sur place, précisions pour l'atelier. Le total TTC indicatif est recalculé à chaque changement avec les prix du comptoir (prix B2B pour un client B2B) ; la commande arrive en brouillon « Reçue · à confirmer » (10 en attente au plus par client), sans paiement possible tant que l'atelier ne l'a pas confirmée. Au local, la fiche commande affiche « Commande passée par le client » avec le bouton Vérifier et confirmer.
 - **Mes fichiers (16, à gauche)** : envoi PDF, AI, EPS, PSD, JPG, PNG, TIFF jusqu'à 500 Mo, par morceaux de 4 Mo repris après une coupure ; le type réel est vérifié (un fichier renommé est refusé), 5 Go par client. Contrôle automatique à l'arrivée (`AnalyseFichierImpression`) : résolution à la taille prévue si le client la donne, couleurs, polices, fonds perdus (3 mm, petits formats), proportions ; résumé OK, Attention ou À refaire. Mes logos (20 Mo au plus) gardés pour les prochaines commandes. Un fichier se retire tant qu'il n'est pas dans une commande. Les fichiers sont rangés hors de `public/` et servis seulement à leur client.
+
+## Connexion (CX01, revue le 14/10/2026)
+
+Le client se connecte avec **son numéro et son mot de passe**. La première fois, ou s'il a oublié son mot de passe, il passe par un code. Deux chemins, qui finissent au même endroit :
+
+| | Code par e-mail ou SMS (le client seul) | Code d'accès de la boutique (WhatsApp) |
+|---|---|---|
+| Où | « Recevoir un code » sur `/espace/connexion`, ou « Créer mon compte » | `/espace/premiere-connexion`, lien du message WhatsApp |
+| Le code | 6 chiffres, 5 minutes, 5 essais | 8 caractères (sans 0, O, 1, I ni L), 48 heures, une seule fois |
+| Envoyé | par le site, à l'e-mail du compte ou de la fiche, sinon par SMS | par l'équipe, depuis la fiche client (ERP local) |
+| Ensuite | mot de passe obligatoire s'il n'y en a pas (proposé sinon), e-mail proposé à qui n'en a pas | e-mail et mot de passe obligatoires |
+
+**Code par e-mail ou SMS** (`CodeDeConnexion`, `EspaceClientComptes`) :
+
+- Le code part à l'e-mail de la personne (Mon compte › Sécurité), sinon, pour le titulaire (le numéro de la fiche), à l'e-mail de la fiche client, sinon par SMS. Une personne ajoutée à un compte entreprise ne reçoit jamais ses codes à l'adresse de l'entreprise : sans e-mail à elle, c'est le SMS.
+- « Créer mon compte » demande l'e-mail (conseillé). Si le numéro est déjà celui d'une fiche ou d'un compte, le code part à l'adresse ou au numéro de cette fiche, **jamais à l'adresse tapée**. Un nouveau client reçoit le code à l'adresse tapée, notée ensuite sur sa nouvelle fiche.
+- L'écran dit où le code est parti, masqué (« y•••@gmail.com », « +223 •• •• 42 12 »). Un numéro inconnu reçoit la même réponse, sans que rien parte.
+- Le message donne le code, sa durée et l'avertissement de ne le donner à personne. Jamais de montant ni de lien qui connecte. Les fiches `DEMO-` ne reçoivent rien.
+- Limites (`rate_limiter.yaml`) : 3 codes par numéro et par adresse e-mail en 15 minutes, 10 par adresse IP en une heure, quel que soit le moyen. Hors production seulement, un code qui n'a pas pu partir s'affiche à l'écran.
+- Sans e-mail réglé sur le site (`MAILER_DSN`, `MAILER_FROM_ADDRESS`, voir `docs/deploiement.md`), les codes partent par SMS. Un e-mail refusé par le serveur d'envoi passe aussi au SMS.
+- Paramètres › Espace client › « Code de première connexion et de mot de passe oublié » coupe ce chemin ; le code d'accès de la boutique reste possible.
+
+**Code d'accès de la boutique** (`AccesEspace`, `AccesEspaceClient`) :
+
+- Fiche client (ERP local) › **« Envoyer l'accès à l'espace client »**, pour le droit Clients (`ROLE_CLIENT`). Caché et refusé en « Voir », absent pour une fiche `DEMO-`, et il faut un numéro malien sur la fiche. À la création d'une fiche, la case « Inviter à l'espace client par WhatsApp » met le même bouton en haut de la fiche.
+- La page qui suit montre le message et « Ouvrir WhatsApp » (lien wa.me vers le numéro de la fiche) : l'identifiant (le numéro), le code, sa validité et le lien de la page « Première connexion », numéro rempli. Le lien prend l'adresse du site `SYNC_URL` ; **jamais le code dans un lien**. Le code ne s'affiche qu'une fois (page non gardée par le navigateur).
+- Seule l'empreinte est gardée (sha256 du numéro et du code). Elle descend sur le site avec l'échéance (synchronisation `acces_espace`). Un nouvel accès remplace le précédent, qui ne sert plus. Le journal de la fiche note qui a envoyé l'accès et quand, jamais le code ; la fiche montre le dernier envoi et son échéance.
+- Il sert aussi au **mot de passe oublié passé par la boutique** : un compte qui a déjà un mot de passe doit en choisir un nouveau.
+- Entreprise : l'accès va au numéro de la fiche (la personne principale). Elle invite les autres depuis Mon compte.
+- Chaque essai compte dans les mêmes limites que les codes (3 par numéro en 15 minutes, 10 par adresse IP en une heure). Faux, expiré, déjà servi ou remplacé : un seul message. Refusé aussi si le numéro de la fiche a changé depuis, ou si ce numéro a déjà un compte fermé ou sur une autre fiche : à régler par la boutique.
+
+**Sécuriser mon compte** (`/espace/securiser`) :
+
+- Tant qu'une étape obligatoire reste à faire, les autres pages de l'espace renvoient ici ; seule « Se déconnecter » reste ouverte.
+- L'e-mail donné par le titulaire d'une fiche sans e-mail va aussi sur la fiche : il monte au local, qui ne le prend que si sa fiche n'en a toujours pas. Il se change dans Mon compte › Sécurité (mot de passe actuel demandé). Une adresse ajoutée ici n'est pas vérifiée par un code ; seule celle d'un nouveau client l'est (il y a reçu son code).
+- Changer de mot de passe déconnecte les autres appareils restés connectés (cookies « rester connecté » signés avec le mot de passe).
+
+Le personnel de l'administration en ligne reçoit son code de sécurité de la même façon (e-mail de l'employé, sinon SMS) : voir `docs/deploiement.md`.
 
 ## Coque, tableau de bord, notifications et Mon compte (maquettes EC01 à EC05, construit le 14/10/2026)
 
@@ -45,7 +83,7 @@ Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, clo
 
 - **Entreprise** : raison sociale et NIF modifiables par la personne qui gère le compte, mais **jamais appliqués en ligne**. La demande devient une proposition (`proposition_client`) qui monte au local ; l'équipe Clients est prévenue et l'applique ou la refuse depuis la fiche client (bloc « Changement demandé par le client »). Appliquée, elle passe par le journal des modifications de la fiche (« depuis l'espace client ») et la fiche redescend ; refusée, le motif se lit en ligne pendant 30 jours.
 - « Facturé par » (entité de facturation) et « Conditions » (délai de paiement) sont en lecture. Les conditions et la phrase « Les conditions commerciales sont fixées avec votre conseillère » ne se montrent qu'à la personne qui gère le compte et à qui paie.
-- **Adresses de livraison** et **Utilisateurs du compte** : « + Inviter » avec le nom, le numéro, la fonction (Intendante, Comptabilité, Réception…) et les droits. La personne invitée reçoit un SMS et se connecte avec son propre numéro.
+- **Adresses de livraison** et **Utilisateurs du compte** : « + Inviter » avec le nom, le numéro, la fonction (Intendante, Comptabilité, Réception…) et les droits. La personne invitée reçoit un SMS et se connecte avec son propre numéro (« Recevoir un code », puis elle choisit son mot de passe).
 - **Sécurité** : numéro masqué (+223 6X XX XX XX), appareils connectés (regroupés par type, celui-ci en premier), dernière connexion, « Déconnecter les autres appareils », « Télécharger mes données », changement de mot de passe.
 - **Déconnecter les autres appareils** augmente `compte_client.version_session`. Les autres sessions tombent à leur requête suivante et leurs cookies « rester connecté » sont refusés (`signature_properties: [password, versionSession]` dans `security.yaml`). Au déploiement, les cookies « rester connecté » déjà posés ne valent plus : chaque client se reconnecte une fois.
 - **Télécharger mes données** (`/espace/compte/mes-donnees`, JSON) : seulement ce que la personne voit déjà dans son espace, selon ses droits (ni factures ni montants sans le droit payeur, pas de devis en Lecture · suivi), sans aucun champ interne.

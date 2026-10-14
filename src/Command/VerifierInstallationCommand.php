@@ -22,7 +22,7 @@ final class VerifierInstallationCommand extends Command
 {
     /** Variables lues ; leurs valeurs ne sortent jamais de la commande. */
     private const VARIABLES = [
-        'APP_ENV', 'APP_SECRET', 'DEFAULT_URI', 'MAILER_DSN', 'SYNC_URL', 'SYNC_CLE',
+        'APP_ENV', 'APP_SECRET', 'DEFAULT_URI', 'MAILER_DSN', 'MAILER_FROM_ADDRESS', 'SYNC_URL', 'SYNC_CLE',
         'SAUVEGARDE_COPIE_DIR', 'SAUVEGARDE_CLE_HORS_SITE', 'ORANGE_SMS_CLIENT_ID', 'ORANGE_SMS_CLIENT_SECRET', 'ORANGE_SMS_SENDER_ADDRESS',
         'ORANGE_MONEY_CLIENT_ID', 'ORANGE_MONEY_CLIENT_SECRET', 'ORANGE_MONEY_MERCHANT_KEY', 'VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY',
         'ANTHROPIC_API_KEY', 'ASSISTANT_DEMO',

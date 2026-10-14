@@ -22,11 +22,16 @@
 {% endblock %}
 
 {% block body %}
-	{% if invitation %}
+	{# « Envoyer l'accès à l'espace client » : caché en « Voir » (et refusé par LectureSeuleSubscriber). #}
+	{% set accesEspacePossible = acces_espace.possible and not module_en_lecture(app.request.attributes.get('_route')) %}
+	{% if invitation and accesEspacePossible %}
 		<div class="si-cf-doublon si-fh-invitation">
 			<b><i class="fab fa-whatsapp me-1"></i>Espace client</b>
-			<span>Envoyez au client le lien de son espace : il se connecte avec son numéro et un code.</span>
-			<a href="{{ invitation }}" target="_blank" rel="noopener" class="btn btn-success btn-sm">Envoyer l'invitation</a>
+			<span>Envoyez au client son accès sur WhatsApp : son identifiant, un code valable 48 h et le lien de la première connexion.</span>
+			<form method="post" action="{{ path('app_clients_acces_espace', {publicId: client.publicId}) }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('acces-espace-' ~ client.id) }}">
+				<button type="submit" class="btn btn-success btn-sm">Envoyer l'accès</button>
+			</form>
 		</div>
 	{% endif %}
 	{% include 'clients/_proposition_client.html.twig' %}
@@ -97,6 +102,33 @@
 				<a href="{{ path('app_clients_modifier', {publicId: client.publicId}) }}" class="btn btn-outline-primary btn-sm">Modifier</a>
 			</div>
 			</details>
+			{% set dernierAcces = acces_espace.dernier %}
+			{% if accesEspacePossible or dernierAcces %}
+				<div class="si-fh-espace">
+					<h3>Espace client</h3>
+					{% if dernierAcces %}
+						<p>
+							Dernier accès envoyé le {{ dernierAcces.creeLe|date('d/m/Y à H:i') }}{{ dernierAcces.creePar ? ' par ' ~ dernierAcces.creePar|nom_pointage }},
+							{{ dernierAcces.expireLe < acces_espace.maintenant ? 'expiré le' : 'valable jusqu\'au' }} {{ dernierAcces.expireLe|date('d/m/Y à H:i') }}.
+						</p>
+					{% else %}
+						<p>Le client se connecte avec son numéro. Envoyez-lui un code d'accès sur WhatsApp pour sa première connexion, ou s'il a oublié son mot de passe.</p>
+					{% endif %}
+					{% if accesEspacePossible %}
+						<form method="post" action="{{ path('app_clients_acces_espace', {publicId: client.publicId}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('acces-espace-' ~ client.id) }}">
+							<button type="submit" class="btn btn-outline-success btn-sm"><i class="fab fa-whatsapp me-1"></i>Envoyer l'accès à l'espace client</button>
+						</form>
+					{% elseif acces_espace.empechement and dernierAcces %}
+						<p class="mb-0">{{ acces_espace.empechement }}</p>
+					{% endif %}
+				</div>
+			{% elseif acces_espace.empechement == constant('App\\Service\\EspaceClient\\AccesEspace::SANS_NUMERO') %}
+				<div class="si-fh-espace">
+					<h3>Espace client</h3>
+					<p class="mb-0">{{ acces_espace.empechement }}</p>
+				</div>
+			{% endif %}
 		</aside>
 
 		<div class="si-fiche-principal">

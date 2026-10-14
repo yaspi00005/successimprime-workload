@@ -1,12 +1,15 @@
 framework:
     rate_limiter:
-        # Espace client (CX01) : les SMS coûtent, et un numéro ne doit pas
-        # être bombardé de codes.
-        espace_code_telephone:
+        # Codes de connexion (espace client CX01, administration en ligne
+        # CX03) : les SMS coûtent, et ni un numéro ni une adresse e-mail ne
+        # doivent être bombardés de codes. Clés : usage + numéro, usage +
+        # adresse e-mail (CodeDeConnexion), usage + adresse IP. Les essais
+        # d'un code d'accès reçu par WhatsApp comptent aussi.
+        code_connexion_destinataire:
             policy: sliding_window
             limit: 3
             interval: '15 minutes'
-        espace_code_ip:
+        code_connexion_ip:
             policy: sliding_window
             limit: 10
             interval: '1 hour'

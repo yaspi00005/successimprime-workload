@@ -317,9 +317,9 @@ class CommandeDetailFinition
 
             'heure' => max(0.0, $nombreHeures ?? 0.0),
 
-            'metre' => max(0.0, $longueur ?? 0.0),
+            'metre' => max(0.0, $longueur ?? 0.0) * max(1, $this->quantite),
 
-            'metre_carre' => max(0.0, $surface ?? 0.0),
+            'metre_carre' => max(0.0, $surface ?? 0.0) * max(1, $this->quantite),
 
             'face' => max(1, $nombreFaces),
 

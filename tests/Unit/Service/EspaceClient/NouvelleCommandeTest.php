@@ -24,6 +24,20 @@ final class NouvelleCommandeTest extends TestCase
         unset($ourlet);
     }
 
+    public function testFinitionAuMetreCarreCompteePourChaqueExemplaire(): void
+    {
+        [$bache] = $this->bache();
+        $fourreau = (new ProduitConfigurationFinition())->setFinition((new Finition())->setNom('Fourreau'))
+            ->setPayante(true)->setPrix(300)->setModeCalcul('metre_carre');
+        (new \ReflectionProperty($fourreau, 'id'))->setValue($fourreau, 3);
+        $bache->addConfigurationFinition($fourreau);
+
+        // 2 bâches de 3 m² : 6 m² de finition à 300 F, comme au comptoir.
+        $estimation = NouvelleCommande::estimer($bache, 2, 300, 100, [3], false);
+
+        self::assertSame(['libelle' => 'Fourreau', 'montant' => 1800], $estimation['detail'][1]);
+    }
+
     public function testFinitionObligatoireToujoursComptee(): void
     {
         [$bache, , $ourlet] = $this->bache();

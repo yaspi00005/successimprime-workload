@@ -1,9 +1,15 @@
 {% extends 'base.html.twig' %}
+{% import 'statistiques/_macros.html.twig' as st %}
 
 {% set moisCourts = ['jan', 'fév', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc'] %}
 {% set nomsMois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'] %}
 
 {% block title %}{{ autre ? 'Statistiques · ' ~ nom : 'Mes statistiques' }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/statistiques.css') }}" rel="stylesheet">
+{% endblock %}
 
 {% block header_actions %}
 	<li class="nav-item">
@@ -16,6 +22,9 @@
 			</select>
 		</form>
 	</li>
+	{% if local %}
+		{{ st.exporter('app_mes_statistiques_export', (autre ? {utilisateur: agent.id} : {})|merge({mois: mois|date('Y-m')})) }}
+	{% endif %}
 {% endblock %}
 
 {% macro montant(valeur) %}{{ valeur|number_format(0, ',', ' ') }} F{% endmacro %}
@@ -44,7 +53,14 @@
 		<div class="col-xl-3 col-6">
 			<div class="card si-kpi"><div class="card-body">
 				<span class="si-kpi-libelle">Objectif du mois</span>
-				{% if s.objectif %}
+				{% if objectif_ca is not null and objectif_ca.objectif is not null %}
+					{% set etat = etat_objectif(objectif_ca.etat) %}
+					<div class="si-kpi-valeur {{ objectif_ca.part >= 100 ? 'text-success' }}">{{ objectif_ca.part }} %</div>
+					<span class="si-tendance {{ etat.couleur == 'vert' ? 'si-hausse' : 'si-baisse' }}">{{ st.valeur(objectif_ca.realise, 'fcfa') }} / {{ st.valeur(objectif_ca.objectif, 'fcfa') }} facturés</span>
+				{% elseif objectif_ca is not null %}
+					<div class="si-kpi-valeur">—</div>
+					<span class="si-tendance">Aucun objectif fixé</span>
+				{% elseif s.objectif %}
 					<div class="si-kpi-valeur {{ s.avancementObjectif >= 100 ? 'text-success' }}">{{ s.avancementObjectif }} %</div>
 					<span class="si-tendance si-hausse">{{ s.ventes|number_format(0, ',', ' ') }} / {{ s.objectif|number_format(0, ',', ' ') }}</span>
 				{% else %}
@@ -68,6 +84,18 @@
 			</div></div>
 		</div>
 	</div>
+
+	{% if objectifs is not empty %}
+		<section class="si-st-objectifs si-st-mes-objectifs" aria-label="{{ autre ? 'Objectifs' : 'Mes objectifs' }} du mois">
+			<header>
+				<h2>{{ autre ? 'Objectifs' : 'Mes objectifs' }} du mois</h2>
+				{% if not autre %}<a href="{{ path('app_rapport_semaine') }}">Mon rapport de la semaine <i class="fas fa-chevron-right"></i></a>{% endif %}
+			</header>
+			<div class="si-st-objectifs-cartes">
+				{% for l in objectifs %}{{ st.carte(l, l.indicateur == 'ca' ? 'CA facturé du mois' : 'Commandes du mois') }}{% endfor %}
+			</div>
+		</section>
+	{% endif %}
 
 	<div class="row">
 		<div class="col-xl-8">

@@ -1,0 +1,39 @@
+{% extends 'statistiques/export/_page_pdf.html.twig' %}
+
+{% block titre %}{{ export.titre }}{% endblock %}
+{% block periode %}{{ export.periode }}{% endblock %}
+
+{% block contenu %}
+	{% for tableau in export.tableaux %}
+		<h2>{{ tableau.titre }}</h2>
+		<table class="donnees">
+			<thead><tr>
+				{% for col in tableau.colonnes %}<th class="{{ col.format not in ['texte', 'date'] ? 'droite' }}">{{ col.libelle }}</th>{% endfor %}
+			</tr></thead>
+			<tbody>
+				{% for ligne in tableau.lignes %}
+					<tr class="{{ loop.index is even ? 'paire' }}">
+						{% for valeur in ligne %}
+							{% set format = tableau.colonnes[loop.index0].format %}
+							<td class="{{ format not in ['texte', 'date'] ? 'droite' }}">{{ valeur_export(valeur, format) }}</td>
+						{% endfor %}
+					</tr>
+				{% else %}
+					<tr><td colspan="{{ tableau.colonnes|length }}" class="vide">Aucune donnée sur la période.</td></tr>
+				{% endfor %}
+				{% if tableau.total is not null %}
+					<tr class="total">
+						{% for valeur in tableau.total %}
+							{% set format = tableau.colonnes[loop.index0].format %}
+							<td class="{{ format not in ['texte', 'date'] ? 'droite' }}">{{ valeur is null ? '' : valeur_export(valeur, format) }}</td>
+						{% endfor %}
+					</tr>
+				{% endif %}
+			</tbody>
+		</table>
+		{% if tableau.note %}<div class="note">{{ tableau.note }}</div>{% endif %}
+	{% else %}
+		<p class="vide">Aucun chiffre à exporter avec vos droits.</p>
+	{% endfor %}
+	{% if export.note %}<p class="note">{{ export.note }}</p>{% endif %}
+{% endblock %}

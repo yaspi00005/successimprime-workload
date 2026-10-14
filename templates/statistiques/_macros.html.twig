@@ -1,0 +1,53 @@
+{# Morceaux communs aux écrans de statistiques : menu Exporter, objectifs. #}
+
+{# Menu « Exporter » de l'en-tête : même adresse que la page, mêmes filtres. #}
+{% macro exporter(route, parametres) %}
+	<li class="nav-item dropdown si-masque-mobile">
+		<button type="button" class="btn btn-primary btn-sm si-btn-entete dropdown-toggle si-st-exporter-bouton" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-download me-1"></i>Exporter</button>
+		<div class="dropdown-menu dropdown-menu-end si-st-exporter">
+			<a class="dropdown-item" href="{{ path(route, parametres|default({})|merge({format: 'xlsx'})) }}"><i class="far fa-file-excel text-success"></i><span>Excel (.xlsx)<small>une feuille par tableau</small></span></a>
+			<a class="dropdown-item" href="{{ path(route, parametres|default({})|merge({format: 'pdf'})) }}"><i class="far fa-file-pdf text-danger"></i><span>PDF<small>A4, en-tête de l'entreprise</small></span></a>
+			<div class="dropdown-divider"></div>
+			<span class="dropdown-item-text si-st-exporter-note">Seulement les chiffres que vos droits vous laissent voir.</span>
+		</div>
+	</li>
+{% endmacro %}
+
+{# Valeur d'un objectif selon son format : « 5,6 M F », « 142 », « 218 m² », « 82 % ». #}
+{% macro valeur(v, format) %}
+	{%- if v is null -%}—
+	{%- elseif format == 'fcfa' -%}{% if v|abs >= 1000000 %}{{ (v / 1000000)|number_format(v|abs >= 10000000 ? 1 : 2, ',', ' ') }}&nbsp;M&nbsp;F{% else %}{{ v|number_format(0, ',', ' ') }}&nbsp;F{% endif %}
+	{%- elseif format == 'm2' -%}{{ v|number_format(0, ',', ' ') }}&nbsp;m²
+	{%- elseif format == 'pourcent' -%}{{ v|number_format(v == v|round ? 0 : 1, ',', ' ') }}&nbsp;%
+	{%- else -%}{{ v|number_format(0, ',', ' ') }}
+	{%- endif -%}
+{% endmacro %}
+
+{# Carte d'avancement d'un objectif : réalisé / objectif, jauge avec le repère du jour, projection. #}
+{% macro carte(l, titre) %}
+	{% import _self as m %}
+	{% set etat = etat_objectif(l.etat) %}
+	<article class="card si-st-obj si-st-obj-{{ etat.couleur }}">
+		<header>
+			<h3>{{ titre|default(l.libelle) }}</h3>
+			<span class="si-st-etat si-st-etat-{{ etat.couleur }}">{{ etat.libelle }}</span>
+		</header>
+		<strong>{{ m.valeur(l.realise, l.format) }}<small> / {{ l.objectif is null ? 'pas d’objectif' : m.valeur(l.objectif, l.format) }}</small></strong>
+		{% if l.objectif is not null %}
+			<div class="si-st-jauge" role="progressbar" aria-valuenow="{{ l.part }}" aria-valuemin="0" aria-valuemax="100" aria-label="{{ l.libelle }} : {{ l.part }} % de l'objectif">
+				<span style="width: {{ min(100, max(0, l.part)) }}%"></span>
+				{% if l.cumul and l.ecoule > 0 and l.ecoule < 100 %}<i style="left: {{ l.ecoule }}%" title="Rythme attendu aujourd’hui : {{ m.valeur(l.attendu, l.format)|trim|replace({'&nbsp;': ' '}) }}"></i>{% endif %}
+			</div>
+			<p>
+				<b>{{ l.part }} %</b>
+				{% if l.cumul and l.projection is not null and l.ecoule < 100 %}
+					· projection fin de mois <span class="si-st-insecable">{{ m.valeur(l.projection, l.format) }} ({{ l.part_projetee }}&nbsp;%)</span>
+				{% elseif not l.cumul %}
+					· objectif {{ m.valeur(l.objectif, l.format) }}
+				{% endif %}
+			</p>
+		{% else %}
+			<p class="si-st-gris">Réalisé ce mois, sans objectif fixé.</p>
+		{% endif %}
+	</article>
+{% endmacro %}

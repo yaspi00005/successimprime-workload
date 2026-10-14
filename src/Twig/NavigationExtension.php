@@ -56,6 +56,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Entretien', 'route' => 'app_entretien_index', 'role' => ['ROLE_ENTRETIEN', 'ROLE_RH'], 'prefixes' => ['app_entretien_']],
             ['libelle' => 'Mes statistiques', 'route' => 'app_mes_statistiques', 'role' => 'ROLE_STATS_PERSO', 'prefixes' => ['app_mes_statistiques']],
             ['libelle' => 'Statistiques et rapports', 'route' => 'app_statistiques_index', 'role' => 'ROLE_STATS_GLOBAL', 'prefixes' => ['app_statistiques_']],
+            ['libelle' => 'Rapport de la semaine', 'route' => 'app_rapport_semaine', 'role' => ['ROLE_STATS_GLOBAL', 'ROLE_STATS_PERSO'], 'prefixes' => ['app_rapport_semaine']],
         ],
         'ventes' => [
             ['libelle' => 'Devis et commandes', 'route' => 'app_ventes_index', 'role' => ['ROLE_COMMANDE', 'ROLE_DEVIS'], 'prefixes' => ['app_ventes_', 'app_commandes_', 'app_commande_catalogue_', 'app_brouillon_', 'app_devis_']],
@@ -229,6 +230,7 @@ final class NavigationExtension extends AbstractExtension
         'app_finition_' => 'reglages',
         'app_utilisateurs_' => 'reglages',
         'app_mes_statistiques' => 'accueil',
+        'app_rapport_semaine' => 'accueil',
         'app_employes_' => 'equipe',
         'app_equipe_employes_' => 'equipe',
         'app_acces_' => 'equipe',

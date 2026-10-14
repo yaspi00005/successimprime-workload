@@ -1,7 +1,17 @@
 {% extends 'base.html.twig' %}
+{% import 'statistiques/_macros.html.twig' as st %}
 
 {% block title %}
 	Statistiques des clients
+{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/statistiques.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if local %}{{ st.exporter('app_statistiques_clients_export', filtres|merge({granularite: granulariteEvolution})) }}{% endif %}
 {% endblock %}
 
 {% block body %}
@@ -66,7 +76,7 @@
 
 		<div class="card-header">
 			<h3 class="card-title">
-				Chiffre d'affaires par client (top 30)
+				{{ droits.ventes ? 'Chiffre d\'affaires par client' : 'Commandes par client' }} (top 30)
 			</h3>
 		</div>
 
@@ -103,7 +113,7 @@
 					<tr>
 						<th>Client</th>
 						<th class="text-right">Commandes</th>
-						<th class="text-right">Chiffre d'affaires (FCFA)</th>
+						{% if droits.ventes %}<th class="text-right">Chiffre d'affaires (FCFA)</th>{% endif %}
 					</tr>
 				</thead>
 				<tbody>
@@ -111,7 +121,7 @@
 						<tr>
 							<td>{{ ligne.nom }}</td>
 							<td class="text-right">{{ ligne.nombre }}</td>
-							<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>
+							{% if droits.ventes %}<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>{% endif %}
 						</tr>
 					{% else %}
 						<tr>

@@ -15,6 +15,7 @@ use App\Entity\Factures;
 use App\Entity\MessageClient;
 use App\Entity\ReclamationClient;
 use App\Repository\EntrepriseRepository;
+use App\Service\Conception\DemandesConception;
 use App\Service\NotificationService;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
@@ -520,6 +521,7 @@ final class EspaceClient
                 $fil[] = self::evenement('reclamation', 'Réponse à votre réclamation', \sprintf('%s · %s', $r->getNumero(), $r->getObjet()), $r->getReponduLe(), ['app_espace_reclamations', []], $r->getNumero());
             }
         }
+        array_push($fil, ...DemandesConception::fil($this->em, $client));
         $fil = array_values(array_filter($fil, static fn (array $n): bool => $n['date'] >= $depuis && $n['date'] <= $maintenant));
         usort($fil, static fn (array $a, array $b): int => $b['date'] <=> $a['date']);
 

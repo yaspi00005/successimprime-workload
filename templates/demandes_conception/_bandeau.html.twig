@@ -1,0 +1,8 @@
+{# Bandeau des écrans PAO : demandes de conception reçues, pas encore prises en charge. #}
+{% set aPrendre = demandes_conception_a_prendre() %}
+{% if aPrendre > 0 %}
+	<a href="{{ path('app_demandes_conception_index') }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;margin:0 0 14px;border-radius:12px;background:#FCE7F1;color:#9D174D;font-size:.9rem;text-decoration:none">
+		<span><i class="fas fa-pencil-ruler me-1"></i><b>{{ aPrendre }} demande{{ aPrendre > 1 ? 's' }} de conception</b> reçue{{ aPrendre > 1 ? 's' }} de l'espace client, à prendre en charge.</span>
+		<b style="white-space:nowrap">Voir ›</b>
+	</a>
+{% endif %}

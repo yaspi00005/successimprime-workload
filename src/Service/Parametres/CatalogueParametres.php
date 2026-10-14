@@ -134,6 +134,23 @@ final class CatalogueParametres
                 ],
                 'motsCles' => ['Orange Money · numéro marchand et frais', 'Espèces · virement · acompte', 'Reçu de paiement WhatsApp'],
             ],
+            // Demande de conception dans l'espace client (docs/demande-conception.md). Le coût
+            // d'une image chez le fournisseur reste au local (CatalogueSynchro::REGLAGES_PUBLICS).
+            'conception' => [
+                'famille' => 'ventes', 'libelle' => 'Conception', 'icone' => 'fa-pencil-ruler',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_reglages_parametres_conception_supports',
+                'champs' => [
+                    ['cle' => 'ia_active', 'type' => 'interrupteur', 'libelle' => 'Génération par IA', 'aide' => 'Proposée seulement si la clé du fournisseur est posée sur le serveur en ligne', 'defaut' => true],
+                    ['cle' => 'prix_image', 'type' => 'nombre', 'libelle' => 'Prix d\'une image IA', 'suffixe' => 'F', 'min' => 0, 'max' => 100000, 'defaut' => 1000],
+                    ['cle' => 'finalisation', 'type' => 'nombre', 'libelle' => 'Finalisation d\'un visuel IA par un graphiste', 'suffixe' => 'F', 'min' => 0, 'max' => 1000000, 'defaut' => 5000],
+                    ['cle' => 'packs', 'type' => 'texte', 'libelle' => 'Packs de crédit IA (images)', 'aide' => 'Nombres séparés par des virgules', 'defaut' => '1, 3, 5, 10'],
+                    ['cle' => 'plafond_jour', 'type' => 'nombre', 'libelle' => 'Images IA par jour, tout le site', 'aide' => 'Au-delà, la génération reprend le lendemain', 'suffixe' => 'images', 'min' => 0, 'max' => 10000, 'defaut' => 200],
+                    ['cle' => 'limite_heure', 'type' => 'nombre', 'libelle' => 'Images IA par client et par heure', 'suffixe' => 'images', 'min' => 1, 'max' => 100, 'defaut' => 10],
+                    ['cle' => 'cout_image', 'type' => 'nombre', 'libelle' => 'Coût d\'une image chez le fournisseur', 'aide' => 'Pour suivre la dépense : jamais montré aux clients, ne part pas sur le site', 'suffixe' => 'F', 'min' => 0, 'max' => 100000, 'defaut' => 0],
+                ],
+                'motsCles' => ['Demande de conception · supports et forfaits', 'Acompte graphiste · premier BAT', 'IA · 1 000 F par image · packs de crédit', 'Plafond d\'images par jour'],
+                'note' => 'Supports, forfaits, acompte et produits du catalogue : bouton ci-dessous.',
+            ],
             'relances' => [
                 'famille' => 'ventes', 'libelle' => 'Relances et délais', 'icone' => 'fa-bell',
                 'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES', 'ROLE_ACTIONS_GERER'], 'route' => 'app_actions_equipe_regles',

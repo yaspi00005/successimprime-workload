@@ -11,6 +11,7 @@ use App\Entity\Commandes;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\CompteFidelite;
 use App\Entity\Conception;
+use App\Entity\DemandeConception;
 use App\Entity\DemandeDevis;
 use App\Entity\ControlePrePresse;
 use App\Entity\CommandesDetails;
@@ -24,6 +25,7 @@ use App\Entity\Finition;
 use App\Entity\Format;
 use App\Entity\InvitationSondage;
 use App\Entity\MessageClient;
+use App\Entity\MouvementCreditIa;
 use App\Entity\MouvementFidelite;
 use App\Entity\NoteArticleSondage;
 use App\Entity\ProduitClient;
@@ -38,6 +40,7 @@ use App\Entity\ReclamationClientPhoto;
 use App\Entity\ReponseSondage;
 use App\Entity\Societe;
 use App\Entity\Sondage;
+use App\Entity\SupportConception;
 use App\Entity\Supports;
 use App\Entity\TypesImpression;
 use App\Service\Parametres\CatalogueParametres;
@@ -97,6 +100,8 @@ final class CatalogueSynchro
         'taxes' => ['tva_par_defaut', 'taux_tva'],
         'horaires' => ['jours', 'ouverture', 'fermeture'],
         'site_contact' => ['lien_plan'],
+        // Le coût d'une image chez le fournisseur (cout_image) reste au local.
+        'conception' => ['ia_active', 'prix_image', 'finalisation', 'packs', 'plafond_jour', 'limite_heure'],
     ];
 
     /** Geste « réglages du local » (local → site) et « changement proposé » (admin en ligne → local). */
@@ -451,6 +456,37 @@ final class CatalogueSynchro
                 'listes' => ['finitions' => 'finition'], 'numero' => 'numero',
                 // Numéro et accusé de réception posés en ligne juste après la création.
                 'remontees' => ['numero' => ['' => ['*']], 'accuseEnvoyeLe' => ['' => ['*']]],
+            ],
+            // Demande de conception (docs/demande-conception.md) : supports réglés au local, demandes
+            // écrites en ligne. Le support ne dit rien des coûts : le forfait est le prix public.
+            'support_conception' => [
+                'classe' => SupportConception::class, 'sens' => self::DESCENDANT, 'libelle' => 'Support à concevoir', 'titre' => ['nom'],
+                'champs' => ['code', 'nom', 'court', 'format', 'largeurCm', 'hauteurCm', 'forfait', 'acomptePourcent', 'delaiBatHeures', 'correctionsIncluses', 'couleur', 'actif', 'ordre'],
+                'relations' => [], 'listes' => ['configurations' => 'configuration'],
+            ],
+            // Brouillon en ligne jusqu'à l'envoi (acompte reçu, visuel IA commandé) ; le suivi de l'atelier
+            // redescend. Compte en ligne, étape du parcours et graphiste qui l'a prise restent de leur côté.
+            'demande_conception' => [
+                'classe' => DemandeConception::class, 'sens' => self::DEUX, 'libelle' => 'Demande de conception', 'titre' => ['numero', 'supportNom'],
+                'champs' => [
+                    'numero', 'auteur', 'supportNom', 'supportFormat', 'largeurCm', 'hauteurCm', 'forfait', 'acomptePourcent', 'correctionsIncluses',
+                    'delaiBatHeures', 'titre', 'sousTitre', 'dateHeure', 'coordonnees', 'consignes', 'couleurs', 'styles', 'quantite', 'pourQuand',
+                    'exempleLien', 'choix', 'statut', 'finalisationGraphiste', 'nombreImages', 'creeLe', 'envoyeeLe', 'priseEnChargeLe', 'termineeLe',
+                ],
+                'relations' => ['client' => 'client', 'support' => 'support_conception', 'commande' => 'commande', 'paiementAcompte' => 'paiement', 'imageChoisie' => 'fichier'],
+                'facultatives' => ['support'],
+                'listes' => ['elements' => 'fichier'], 'numero' => 'numero',
+                'pret' => static fn (DemandeConception $d): bool => $d->estEnvoyee(),
+                // Le suivi se décide au local.
+                'imposeAuLocal' => ['priseEnChargeLe' => null, 'termineeLe' => null],
+            ],
+            // Relevé du crédit IA (achats, images, remboursements, rejets) : écrit en ligne, lu au local.
+            'mouvement_credit_ia' => [
+                'classe' => MouvementCreditIa::class, 'sens' => self::ASCENDANT, 'libelle' => 'Mouvement de crédit IA', 'titre' => ['type', 'montant'],
+                'champs' => ['type', 'montant', 'images', 'libelle', 'auteur', 'etat', 'cle', 'creeLe'],
+                'relations' => ['client' => 'client', 'commande' => 'commande', 'paiement' => 'paiement'], 'listes' => [],
+                // Un achat payé au numéro marchand ne part qu'une fois acquis ; ensuite il ne change plus.
+                'pret' => static fn (MouvementCreditIa $m): bool => $m->estAcquis(),
             ],
         ];
     }

@@ -5,6 +5,9 @@ DELETE k FROM commandes k JOIN clients c ON c.id = k.clients_id WHERE c.code LIK
 DELETE FROM commandes WHERE numero LIKE 'CMD-DK-%';
 DELETE FROM clients WHERE code LIKE 'DEMO-%' AND id < 900000;
 DELETE FROM prospect WHERE telephone LIKE '+223 60 %' AND id < 900000;
+DELETE FROM `credit_ia` WHERE id >= 900000;
+DELETE FROM `mouvement_credit_ia` WHERE id >= 900000;
+DELETE FROM `demande_conception` WHERE id >= 900000;
 DELETE FROM `message_client` WHERE id >= 900000;
 DELETE FROM `adresse_livraison` WHERE id >= 900000;
 DELETE FROM `parametres_paiement` WHERE id >= 900000;

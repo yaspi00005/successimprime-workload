@@ -39,7 +39,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  */
 final class NotificationsClient implements EventSubscriberInterface
 {
-    public const TYPES = ['bat', 'impression', 'prete', 'livraison_prevue', 'route', 'livree', 'paiement', 'facture', 'echeance', 'devis', 'message', 'reclamation'];
+    public const TYPES = ['bat', 'impression', 'prete', 'livraison_prevue', 'route', 'livree', 'paiement', 'facture', 'echeance', 'devis', 'message', 'reclamation', 'conception'];
 
     /** Un événement plus ancien ne part plus (mise en service, synchronisation en retard). */
     public const FRAICHEUR_HEURES = 12;
@@ -213,7 +213,7 @@ final class NotificationsClient implements EventSubscriberInterface
      * Phrase courte, sans montant : elle s'affiche sur l'écran verrouillé
      * ou part par SMS.
      *
-     * @param array{type: string, texte: string, numero?: ?string, jour?: ?\DateTimeInterface} $n
+     * @param array{type: string, texte: string, titre?: string, numero?: ?string, jour?: ?\DateTimeInterface} $n
      */
     public static function message(array $n): string
     {
@@ -232,6 +232,8 @@ final class NotificationsClient implements EventSubscriberInterface
             'devis' => \sprintf('Votre devis %s est prêt.', $numero),
             'message' => 'L\'atelier a répondu à votre message.',
             'reclamation' => \sprintf('Nous avons répondu à votre réclamation %s.', $numero),
+            // Demande de conception : prise en charge, terminée ou annulée (jamais de montant).
+            'conception' => \sprintf('%s : %s.', $n['titre'] ?? 'Demande de conception', $numero),
             default => 'Du nouveau dans votre espace client.',
         };
     }

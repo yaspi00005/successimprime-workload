@@ -39,6 +39,7 @@ final class FilNotifications
         'devis' => ['DEV', 'dev'],
         'message' => ['MSG', 'msg'],
         'reclamation' => ['MSG', 'msg'],
+        'conception' => ['PAO', 'pro'],
     ];
 
     /** Puces de filtre de la page, dans l'ordre. */
@@ -282,6 +283,7 @@ final class FilNotifications
             ])),
             'message' => [['libelle' => 'Lire le message', 'url' => $url('app_espace_messages'), 'style' => 'bleu']],
             'reclamation' => [['libelle' => 'Voir la réponse', 'url' => $url('app_espace_reclamations'), 'style' => 'bleu']],
+            'conception' => [['libelle' => 'Voir la demande', 'url' => $url($n['lien'][0], $n['lien'][1]), 'style' => 'bleu']],
             default => [],
         };
     }

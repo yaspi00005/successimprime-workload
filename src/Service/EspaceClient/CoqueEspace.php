@@ -39,6 +39,9 @@ final class CoqueEspace
             'pages' => ['app_espace_notification'], 'visible' => self::VISIBLE_TOUS, 'onglet' => 'tableau'],
         ['cle' => 'nouvelle', 'route' => 'app_espace_nouvelle_commande', 'libelle' => 'Nouvelle commande', 'icone' => 'M12 3 20 7.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9',
             'pages' => ['app_espace_nouvelle_commande'], 'visible' => self::VISIBLE_ECRIT, 'onglet' => 'commandes'],
+        // Lecture · suivi : la liste et le suivi des demandes, sans les préparer.
+        ['cle' => 'conception', 'route' => 'app_espace_conception', 'libelle' => 'Demande de conception', 'icone' => 'M12 19l7-7 3 3-7 7zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18zM2 2l7.6 7.6M13 11a2 2 0 1 1-4 0 2 2 0 0 1 4 0z',
+            'pages' => ['app_espace_conception'], 'visible' => self::VISIBLE_TOUS, 'onglet' => 'commandes'],
         ['cle' => 'produits', 'route' => 'app_espace_produits', 'libelle' => 'Mes produits', 'icone' => 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z',
             'pages' => ['app_espace_produits'], 'visible' => self::VISIBLE_ECRIT, 'onglet' => 'commandes'],
         ['cle' => 'devis', 'route' => 'app_espace_devis', 'libelle' => 'Mes devis', 'icone' => 'M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm8 1.5V8h4.5M8 13h8M8 17h5',

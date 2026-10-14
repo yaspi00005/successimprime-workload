@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\EntrepriseRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -16,6 +17,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'entreprise')]
 class Entreprise
 {
+    use PublicIdTrait;
+
     public const COULEURS_PAR_DEFAUT = ['#0F4590', '#DE1028', '#FDC82A', '#E95B35', '#E8398A'];
 
     #[ORM\Id]
@@ -131,6 +134,11 @@ class Entreprise
 
     #[ORM\Column(options: ['default' => 0])]
     private int $ordre = 0;
+
+    public function __construct()
+    {
+        $this->initialiserPublicId();
+    }
 
     public function getId(): ?int
     {

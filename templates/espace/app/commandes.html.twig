@@ -6,9 +6,17 @@
 {% block contenu %}
 	<nav class="ec-filtres">
 		<a href="{{ path('app_espace_commandes') }}" class="actif">Commandes</a>
+		<a href="{{ path('app_espace_produits') }}">Mes produits{% if mesProduits %} · {{ mesProduits }}{% endif %}</a>
 		<a href="{{ path('app_espace_devis') }}">Mes devis{% if devisAAccepter %} · {{ devisAAccepter }} à accepter{% endif %}</a>
 	</nav>
 	{% include 'espace/app/_a_valider.html.twig' %}
+	{% if mesProduits %}
+		<a class="ec-carte ec-pc-entree" href="{{ path('app_espace_produits') }}">
+			<span class="ec-pc-visuel">↻</span>
+			<span style="flex:1"><b>Recommander mes produits</b><span class="ec-petit" style="display:block">{{ mesProduits }} produit{{ mesProduits > 1 ? 's' }} déjà validé{{ mesProduits > 1 ? 's' }} : en pièces ou en m², sans nouveau BAT.</span></span>
+			<span class="ec-montant">›</span>
+		</a>
+	{% endif %}
 	<a class="ec-bouton" href="{{ path('app_espace_nouvelle_commande') }}" style="margin-bottom:.85rem">+ Nouvelle commande</a>
 	{% for carte in cartes %}
 		{% include 'espace/app/_carte.html.twig' %}

@@ -403,12 +403,14 @@ public function calculerMontant(
         'feuille',
         'exemplaire' => $this->prix * $quantite,
 
+        // Longueur et surface d'un exemplaire : la finition est posée sur chacun,
+        // comme dans les formulaires de devis et de commande.
         'metre' => (int) round(
-            $this->prix * max(0.0, $longueur ?? 0.0)
+            $this->prix * max(0.0, $longueur ?? 0.0) * $quantite
         ),
 
         'metre_carre' => (int) round(
-            $this->prix * max(0.0, $surface ?? 0.0)
+            $this->prix * max(0.0, $surface ?? 0.0) * $quantite
         ),
 
         'face' => $this->prix * max(1, $nombreFaces),

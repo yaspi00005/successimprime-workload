@@ -1,0 +1,94 @@
+{#
+	Finances du jour (maquette F07) : l'écran du téléphone de la direction.
+	Chaque carte n'apparaît qu'avec son droit ; « À décider » ne montre que
+	ce que la personne peut trancher.
+#}
+{% extends 'finances/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Finances du jour{% endblock %}
+{% block page_title %}Finances du jour{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_finances_vue_ensemble') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Vue d’ensemble</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-fin-jour">
+		<a class="si-fin-retour" href="{{ path('app_finances_vue_ensemble') }}"><i class="fas fa-chevron-left" aria-hidden="true"></i> Vue d’ensemble</a>
+
+		<div class="si-fin-jour-grille">
+			{% if comptes is not null %}
+				<section class="card si-fin-jour-treso" aria-label="Trésorerie">
+					<p class="si-fin-gris mb-1">Trésorerie · {{ comptes|length }} compte{{ comptes|length > 1 ? 's' }}</p>
+					<strong class="si-fin-jour-total {{ total < 0 ? 'si-fin-rouge' }}">{{ m.f(total) }}</strong>
+					<div class="si-fin-jour-comptes">
+						{% for c in comptes %}
+							<div class="si-fin-jour-compte">
+								<span>{{ c.nom }}</span>
+								<b class="{{ c.solde < 0 ? 'si-fin-rouge' }}">{{ m.f(c.solde) }}</b>
+							</div>
+						{% else %}
+							<p class="si-fin-vide">Aucun compte de trésorerie actif.</p>
+						{% endfor %}
+					</div>
+					<p class="si-fin-note mb-0">Soldes validés, hors opérations en attente.</p>
+					<a class="si-fin-lien" href="{{ path('app_finances_tresorerie') }}">Prévision 90 jours <i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+				</section>
+			{% endif %}
+
+			<div class="si-fin-pile">
+				{% if encaisse is not null or depense is not null or facture is not null %}
+					<section class="card si-fin-jour-chiffres" aria-label="Chiffres du jour">
+						<dl>
+							{% if encaisse is not null %}
+								<div>
+									<dt><a href="{{ path('app_finances_encaissements') }}">Encaissé aujourd’hui</a></dt>
+									<dd class="si-fin-vert">{{ m.signe(encaisse.montant) }}</dd>
+									{% if encaisse.en_attente > 0 %}<small class="si-fin-bleu">dont {{ m.f(encaisse.en_attente) }} à valider</small>{% endif %}
+								</div>
+							{% endif %}
+							{% if depense is not null %}
+								<div>
+									<dt><a href="{{ path('app_finances_depenses') }}">Dépenses aujourd’hui</a></dt>
+									<dd class="{{ depense.montant > 0 ? 'si-fin-rouge' }}">{{ depense.montant > 0 ? m.signe(-depense.montant) : m.f(0) }}</dd>
+									{% if depense.en_attente > 0 %}<small class="si-fin-bleu">dont {{ m.f(depense.en_attente) }} à valider</small>{% endif %}
+								</div>
+							{% endif %}
+							{% if facture is not null %}
+								<div>
+									<dt><a href="{{ path('app_finances_vue_ensemble') }}">Facturé ce mois</a></dt>
+									<dd>{{ m.f(facture.montant) }}{% if facture.part is not null %} · {{ facture.part }} %{% endif %}</dd>
+									{% if facture.part is not null %}<small>de l’objectif de {{ m.f(facture.objectif) }}</small>{% endif %}
+								</div>
+							{% endif %}
+						</dl>
+					</section>
+				{% endif %}
+
+				{% if a_decider is not null %}
+					<section class="card si-fin-surveiller si-fin-decider" aria-label="À décider">
+						<h2>À décider</h2>
+						<ul>
+							{% for l in a_decider %}
+								<li class="si-fin-trait-{{ l.couleur }}">
+									<a class="si-fin-ligne" href="{{ path(l.route, l.parametres) }}">
+										<div>
+											<strong>{{ l.titre }}</strong>
+											{% if l.detail %}<small>{{ l.detail }}</small>{% endif %}
+										</div>
+										<span>{{ m.f(l.montant) }}</span>
+									</a>
+								</li>
+							{% else %}
+								<li class="si-fin-rien">Rien à décider pour l’instant.</li>
+							{% endfor %}
+						</ul>
+					</section>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock %}

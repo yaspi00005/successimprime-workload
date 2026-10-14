@@ -35,9 +35,9 @@ Quand le client valide sa sélection :
 
 - une vraie commande est créée, une ligne par produit, avec la référence du produit ;
 - chaque ligne garde **deux quantités** : celle demandée par le client (« 20 m² ») et celle à produire (« 4 bâches = 24 m² ») ;
-- la ligne part directement en production avec le BAT déjà validé, sans passer par la PAO ;
+- la ligne part directement en production avec le BAT déjà validé, sans passer par la PAO (seulement si le produit a un BAT validé) ;
 - la matière est réservée en stock (m² de bâche, mètres de vinyle, film DTF) ;
-- l'acompte est demandé par Orange Money Mali ; payé en ligne, il reste provisoire jusqu'à la validation en local.
+- l'acompte est demandé par Orange Money Mali une fois la commande confirmée par l'atelier ; payé en ligne, il reste en attente jusqu'à la validation en local.
 
 ## 4. Le suivi
 
@@ -46,6 +46,20 @@ Pour chaque ligne : quantité produite, quantité livrée et reste à livrer. Le
 ## 5. Modifier un produit
 
 Changer le visuel ou la taille crée un nouveau produit, qui exige un nouveau BAT. L'ancien reste disponible tel quel.
+
+## Côté client (construit le 13/10/2026, maquettes P01 à P03)
+
+Espace client › Commandes › onglet **Mes produits** (ou la carte « Recommander mes produits »), adresse `/espace/produits`.
+
+- Le client ne voit que les produits actifs de sa fiche, avec leur référence, leur format et leur prix négocié. Un filtre par catégorie apparaît quand il y en a plusieurs.
+- En touchant un produit, une feuille s'ouvre : en pièces ou en m² selon le produit, raccourcis de quantité, et « Ce que nous imprimerons » (4 pièces = 24 m², 4,4 m linéaires, 1 000 ex.). Pour un format fixe saisi en m², il choisit entre le nombre au-dessus (recommandé) et celui au-dessous.
+- Le calcul vient du serveur (même service qu'à la commande) ; le navigateur n'envoie que le produit, la quantité et la façon de saisir. Le prix est toujours celui de la fiche.
+- La sélection (12 produits au plus, chacun une fois) devient **une commande « à confirmer »** par l'atelier, comme toute commande passée en ligne : elle ne peut pas être payée avant la confirmation. Un client a au plus 10 commandes en ligne en attente.
+- Compte entreprise : bon de commande possible, et la demande passe par un valideur quand la règle de l'entreprise l'exige.
+- **PAO** : une ligne ne saute la PAO que si son produit a un BAT validé **et** appartient au même client. Le local le revérifie à la réception (`Synchro::verifierLigneEnLigne`) ; sinon la ligne repasse par la prépresse.
+- Les produits du client passent à la synchronisation (type `produit_client`, local → site). Après le déploiement : `php bin/console app:synchro --initialiser=produit_client` sur le local. La machine et la ligne d'origine restent au local.
+
+Pas encore fait : réservation de la matière en stock à la commande, suivi des quantités livrées dans l'espace client.
 
 ## Dans le code
 

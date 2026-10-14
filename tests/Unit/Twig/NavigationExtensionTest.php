@@ -32,6 +32,12 @@ final class NavigationExtensionTest extends TestCase
         yield 'créances' => ['app_creances_index', 'finances'];
         yield 'trésorerie' => ['app_tresorerie_index', 'finances'];
         yield 'comptabilité' => ['app_comptabilite_index', 'finances'];
+        yield 'vue d\'ensemble financière' => ['app_finances_vue_ensemble', 'finances'];
+        yield 'rentabilité' => ['app_finances_rentabilite', 'finances'];
+        yield 'encaissements' => ['app_finances_encaissements', 'finances'];
+        yield 'trésorerie 90 jours' => ['app_finances_tresorerie', 'finances'];
+        yield 'fournisseurs' => ['app_finances_fournisseurs', 'finances'];
+        yield 'dépenses' => ['app_finances_depenses', 'finances'];
         yield 'soldes clients avant clients' => ['app_clients_soldes', 'finances'];
         yield 'fiche client' => ['app_clients_show', 'clients'];
         yield 'campagne' => ['app_campagne_index', 'clients'];
@@ -82,7 +88,16 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(4, $extension->ongletActif('app_livraisons_index'));
         self::assertSame(2, $extension->ongletActif('app_livraisons_bl'));
         self::assertSame(3, $extension->ongletActif('app_livraisons_remise'));
-        self::assertSame(0, $extension->ongletActif('app_clients_soldes'));
+        self::assertSame(2, $extension->ongletActif('app_clients_soldes'));
+        self::assertSame(0, $extension->ongletActif('app_finances_vue_ensemble'));
+        self::assertSame(1, $extension->ongletActif('app_creances_index'));
+        self::assertSame(4, $extension->ongletActif('app_finances_depenses_voir'));
+        self::assertSame(6, $extension->ongletActif('app_mouvement_tresorerie_index'));
+        self::assertSame(7, $extension->ongletActif('app_finances_rentabilite'));
+        self::assertSame(8, $extension->ongletActif('app_comptabilite_index'));
+        self::assertSame(5, $extension->ongletActif('app_finances_fournisseurs'));
+        self::assertSame(6, $extension->ongletActif('app_finances_tresorerie'));
+        self::assertSame(1, $extension->ongletActif('app_paiements_show'));
         self::assertSame(0, $extension->ongletActif('app_reglages_parametres_index'));
         self::assertSame(2, $extension->ongletActif('app_couts_revient_index'));
         self::assertSame(0, $extension->ongletActif('app_employes_index'));
@@ -111,7 +126,7 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(array_keys(NavigationExtension::SECTIONS), array_column($menu['entrees'], 'cle'));
         $finances = $menu['entrees'][4];
         self::assertTrue($finances['actif']);
-        self::assertContains('app_paiements_index', array_column(array_filter($finances['items'], static fn (array $i): bool => $i['actif']), 'route'));
+        self::assertContains('app_finances_encaissements', array_column(array_filter($finances['items'], static fn (array $i): bool => $i['actif']), 'route'));
         // Reglages s'ouvre d'un clic sur ses tuiles, sans volet.
         self::assertSame([], $menu['entrees'][6]['items']);
     }
@@ -123,7 +138,7 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(['app_home', 'app_livraisons_tournee', 'app_livraisons_a_retirer'], array_column($livreur['entrees'], 'route'));
 
         $caisse = array_column($extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_CLIENT', 'ROLE_COMMANDE', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_PAIEMENT_VOIR'])['entrees'], 'route');
-        self::assertSame(['app_home', 'app_caisse_index', 'app_actions_index', 'app_clients_index', 'app_ventes_index', 'app_paiements_index'], $caisse);
+        self::assertSame(['app_home', 'app_caisse_index', 'app_actions_index', 'app_clients_index', 'app_ventes_index', 'app_finances_encaissements'], $caisse);
         self::assertNotContains('app_stock_articles_index', $caisse, 'stock réservé à la Direction');
     }
 

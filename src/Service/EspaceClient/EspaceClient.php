@@ -419,6 +419,9 @@ final class EspaceClient
                 $fil[] = ['type' => 'prete', 'titre' => 'Commande prête', 'texte' => \sprintf('%s · %s', $c->getNumero(), $c->estALivrer() ? 'livraison à venir' : 'à retirer en boutique'), 'date' => $prete['date'], 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
             }
             foreach ($this->em->getRepository(BonLivraison::class)->findBy(['commande' => $c]) as $bl) {
+                if (BonLivraison::STATUT_ANNULE === $bl->getStatut()) {
+                    continue;
+                }
                 if (null !== $bl->getLivreLe()) {
                     $fil[] = ['type' => 'livree', 'titre' => 'Commande livrée', 'texte' => \sprintf('%s · remise à %s', $c->getNumero(), $bl->getLivreLe()->format('H:i')), 'date' => $bl->getLivreLe(), 'lien' => ['app_espace_commande', ['id' => $id]], 'numero' => $c->getNumero()];
                 } elseif (null !== $bl->getEnRouteLe()) {
@@ -440,9 +443,13 @@ final class EspaceClient
     /** Bon de livraison en cours d'une commande (livreur en route, créneau). */
     public function livraison(Commandes $c): ?BonLivraison
     {
-        $bons = $this->em->getRepository(BonLivraison::class)->findBy(['commande' => $c], ['id' => 'DESC'], 1);
+        foreach ($this->em->getRepository(BonLivraison::class)->findBy(['commande' => $c], ['id' => 'DESC']) as $bl) {
+            if (BonLivraison::STATUT_ANNULE !== $bl->getStatut()) {
+                return $bl;
+            }
+        }
 
-        return $bons[0] ?? null;
+        return null;
     }
 
     public function flush(): void

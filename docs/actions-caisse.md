@@ -34,7 +34,7 @@ Chaque source est activable :
 | Source | Quand la ligne est créée |
 |---|---|
 | Facture échue | « Relance facture » le lendemain de l'échéance, puis tous les 3 jours |
-| Devis sans réponse | 48 h sans acceptation ni refus |
+| Devis sans réponse | 48 h sans acceptation ni refus, puis seconde relance à J+7 une fois la première faite (réglage « Seconde relance du devis à », 0 pour l'arrêter). À la seconde, l'agent du devis est prévenu et le message WhatsApp proposé change |
 | Commande prête | dès que l'atelier passe la commande en « Prête » |
 | Nouveau prospect | formulaire du site, discussion, appel entrant non converti |
 | Client inactif | aucune commande depuis 60 jours |

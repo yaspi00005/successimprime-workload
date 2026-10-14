@@ -1,0 +1,138 @@
+{% extends 'finances/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Vue d'ensemble{% endblock %}
+{% block page_title %}Finances · {{ libelle_mois }}{% endblock %}
+
+{% block header_actions %}
+	{{ m.periode(periodes, periode, 'app_finances_vue_ensemble') }}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_finances_du_jour') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-mobile-alt me-1"></i>Finances du jour</a>
+	</li>
+	<li class="nav-item si-masque-mobile">
+		<button type="button" class="btn btn-light btn-sm si-btn-entete" onclick="window.print()" title="Imprimer ou enregistrer en PDF"><i class="fas fa-download me-1"></i>Rapport PDF</button>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-fin-vue">
+		<p class="si-fin-imprime">Finances Succès Imprim · {{ libelle_mois }} · édité le {{ 'now'|date('d/m/Y à H:i') }}</p>
+		<a class="si-fin-vers-jour" href="{{ path('app_finances_du_jour') }}">
+			<span><b>Finances du jour</b><small>trésorerie, encaissé aujourd’hui, à décider</small></span>
+			<i class="fas fa-chevron-right" aria-hidden="true"></i>
+		</a>
+
+		{% if comptes is not null %}
+			<section class="si-fin-comptes" aria-label="Soldes des comptes">
+				{% for c in comptes %}
+					<article class="card si-fin-compte">
+						{{ m.icone_compte(c.type, c.rang) }}
+						<div>
+							<h2>{{ c.nom }}</h2>
+							<strong class="{{ c.solde < 0 ? 'text-danger' }}">{{ m.f(c.solde) }}</strong>
+						</div>
+					</article>
+				{% else %}
+					<p class="si-fin-vide">Aucun compte de trésorerie actif.</p>
+				{% endfor %}
+			</section>
+		{% endif %}
+
+		<section class="si-fin-kpis" aria-label="Chiffres du mois">
+			{% if facture is not null %}
+				<article class="card si-fin-kpi">
+					<h2>Facturé {{ en_cours ? 'ce mois' : 'en ' ~ nom_mois }}</h2>
+					<strong>{{ m.f(facture.montant) }}</strong>
+					{% if facture.part is not null %}
+						<span class="{{ facture.part >= (jour * 100 / jours_mois) ? 'si-fin-vert' : 'si-fin-orange' }}">{{ facture.part }} % de l’objectif de {{ (facture.objectif / 1000000)|number_format(facture.objectif % 1000000 == 0 ? 0 : 1, ',', ' ') }} M{% if en_cours %} · jour {{ jour }}/{{ jours_mois }}{% endif %}</span>
+					{% endif %}
+				</article>
+			{% endif %}
+			{% if encaisse is not null %}
+				<article class="card si-fin-kpi">
+					<h2>Encaissé</h2>
+					<strong>{{ m.f(encaisse.montant) }}</strong>
+					{% if encaisse.part is not null %}
+						<span class="{{ encaisse.part >= 80 ? 'si-fin-vert' : 'si-fin-orange' }}">{{ encaisse.part }} % du facturé</span>
+					{% else %}
+						<span class="si-fin-gris">paiements validés du mois</span>
+					{% endif %}
+				</article>
+			{% endif %}
+			{% if depenses is not null %}
+				<article class="card si-fin-kpi">
+					<h2>Dépenses (hors salaires)</h2>
+					<strong>{{ m.f(depenses.montant) }}</strong>
+					{% if depenses.part is not null %}
+						<span class="{{ depenses.part > 100 ? 'si-fin-rouge' : (depenses.part > 85 ? 'si-fin-orange' : 'si-fin-vert') }}">{{ depenses.part }} % du budget du mois</span>
+					{% endif %}
+				</article>
+			{% endif %}
+			{% if marge is not null %}
+				<article class="card si-fin-kpi">
+					<h2><a class="si-fin-titre-lien" href="{{ path('app_finances_rentabilite', {periode: periode}) }}">Marge brute estimée</a></h2>
+					<strong>{{ marge.taux is null ? '—' : marge.taux ~ ' %' }}</strong>
+					{% if marge.taux is null %}
+						<span class="si-fin-gris">coûts de revient à compléter</span>
+					{% elseif marge.ecart is not null %}
+						<span class="{{ marge.ecart >= 0 ? 'si-fin-vert' : 'si-fin-rouge' }}"><i class="fas fa-caret-{{ marge.ecart >= 0 ? 'up' : 'down' }}"></i> {{ marge.ecart >= 0 ? '+' : '−' }}{{ marge.ecart|abs }} pt{{ marge.ecart|abs > 1 ? 's' }} vs {{ marge.mois_avant }}</span>
+					{% endif %}
+				</article>
+			{% endif %}
+		</section>
+
+		<div class="si-fin-deux">
+			{% if graphique is not null %}
+				{% set dernier = graphique.mois|last %}
+				<section class="card si-fin-graphe">
+					<header>
+						<div>
+							<h2>{{ droits.ca and droits.tresorerie ? 'Chiffre d’affaires et dépenses' : (droits.ca ? 'Chiffre d’affaires facturé' : 'Dépenses') }}</h2>
+							<p class="si-fin-legende">
+								{% if droits.ca %}<span><i class="si-fin-carre si-fin-carre-ca"></i>CA facturé</span>{% endif %}
+								{% if droits.tresorerie %}<span><i class="si-fin-carre si-fin-carre-dep"></i>Dépenses</span>{% endif %}
+								{% if en_cours %}<span class="si-fin-gris">{{ nom_mois }} : au {{ jour }}</span>{% endif %}
+							</p>
+						</div>
+						<span class="si-fin-unite">millions de F · 6 mois</span>
+					</header>
+					<div class="si-fin-barres" role="img" aria-label="{% for b in graphique.mois %}{{ b.libelle }} : {% if b.ca is not null %}CA {{ b.ca|number_format(0, ',', ' ') }} F{% endif %}{% if b.depenses is not null %}, dépenses {{ b.depenses|number_format(0, ',', ' ') }} F{% endif %}. {% endfor %}">
+						{% for b in graphique.mois %}
+							<div class="si-fin-mois">
+								<div class="si-fin-colonnes">
+									{% if b.ca is not null %}
+										<div class="si-fin-colonne"><small>{{ b.ca_m }}</small><span class="si-fin-barre si-fin-barre-ca" style="height: {{ b.h_ca }}%"></span></div>
+									{% endif %}
+									{% if b.depenses is not null %}
+										<div class="si-fin-colonne"><small>{{ b.depenses_m }}</small><span class="si-fin-barre si-fin-barre-dep" style="height: {{ b.h_depenses }}%"></span></div>
+									{% endif %}
+								</div>
+								<span class="si-fin-lettre">{{ b.libelle }}</span>
+							</div>
+						{% endfor %}
+					</div>
+				</section>
+			{% endif %}
+
+			<section class="card si-fin-surveiller">
+				<h2>À surveiller</h2>
+				<ul>
+					{% for s in surveiller %}
+						{% set balise = s.route ? 'a' : 'div' %}
+						<li class="si-fin-trait-{{ s.couleur }}">
+							<{{ balise }} class="si-fin-ligne"{% if s.route %} href="{{ path(s.route, s.parametres|default({})) }}"{% endif %}>
+								<div>
+									<strong>{{ s.titre }}</strong>
+									<small>{{ s.detail }}</small>
+								</div>
+								<span>{{ s.valeur }}</span>
+							</{{ balise }}>
+						</li>
+					{% else %}
+						<li class="si-fin-rien">Rien à signaler pour l’instant.</li>
+					{% endfor %}
+				</ul>
+			</section>
+		</div>
+	</div>
+{% endblock %}

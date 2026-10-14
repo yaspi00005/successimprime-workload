@@ -69,6 +69,19 @@ final class CatalogueParametres
                 'note' => 'Le taux s\'applique aux nouvelles lignes de devis et de commande quand la TVA est proposée par défaut. La retenue à la source sera appliquée avec les factures fournisseurs.',
             ],
 
+            'finances' => [
+                'famille' => 'entreprise', 'libelle' => 'Finances et budgets', 'icone' => 'fa-wallet',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_finances_vue_ensemble',
+                'champs' => [
+                    ['cle' => 'objectif_ca', 'type' => 'nombre', 'libelle' => 'Objectif de CA facturé par mois', 'aide' => 'Vue d\'ensemble : « % de l\'objectif »', 'suffixe' => 'F', 'min' => 0, 'max' => 10000000000, 'defaut' => 9000000],
+                    ['cle' => 'seuil_tresorerie', 'type' => 'nombre', 'libelle' => 'Seuil d\'alerte de trésorerie', 'aide' => 'Prévision à 90 jours : la direction est prévenue sous ce solde', 'suffixe' => 'F', 'min' => 0, 'max' => 10000000000, 'defaut' => 2000000],
+                    ['cle' => 'seuil_approbation', 'type' => 'nombre', 'libelle' => 'Dépense à faire approuver au-delà de', 'aide' => 'Approuvée par la direction (administrateur)', 'suffixe' => 'F', 'min' => 0, 'max' => 100000000, 'defaut' => 100000],
+                    ['cle' => 'cout_horaire', 'type' => 'nombre', 'libelle' => 'Coût d\'une heure de main d\'œuvre', 'aide' => 'Rentabilité : temps pointé PAO et atelier', 'suffixe' => 'F', 'min' => 0, 'max' => 1000000, 'defaut' => 1000],
+                ],
+                'motsCles' => ['Objectif de chiffre d\'affaires', 'Seuil d\'alerte de trésorerie', 'Approbation des dépenses', 'Budgets des dépenses · main d\'œuvre'],
+                'note' => 'Les budgets par catégorie de dépense se règlent sur Finances › Dépenses (bouton Budgets).',
+            ],
+
             // ---------- Ventes ----------
             'grille' => [
                 'famille' => 'ventes', 'libelle' => 'Grille tarifaire', 'icone' => 'fa-tag',
@@ -108,6 +121,7 @@ final class CatalogueParametres
                     ['cle' => 'facture_intervalle_jours', 'type' => 'nombre', 'libelle' => 'Relancer une facture échue tous les', 'suffixe' => 'jours', 'min' => 1, 'max' => 30, 'defaut' => 3],
                     ['cle' => 'source_devis', 'type' => 'interrupteur', 'libelle' => 'Devis sans réponse', 'aide' => 'Ni accepté ni refusé', 'defaut' => true],
                     ['cle' => 'devis_heures', 'type' => 'nombre', 'libelle' => 'Devis sans réponse après', 'suffixe' => 'h', 'min' => 4, 'max' => 720, 'defaut' => 48],
+                    ['cle' => 'devis_seconde_jours', 'type' => 'nombre', 'libelle' => 'Seconde relance du devis à', 'suffixe' => 'jours', 'aide' => 'J+7 : l\'agent du devis est prévenu ; 0 = pas de seconde relance', 'min' => 0, 'max' => 30, 'defaut' => 7],
                     ['cle' => 'source_commande', 'type' => 'interrupteur', 'libelle' => 'Commande prête', 'aide' => 'Prévenir le client', 'defaut' => true],
                     ['cle' => 'source_prospect', 'type' => 'interrupteur', 'libelle' => 'Nouveau prospect', 'aide' => 'Site, discussion, appel entrant', 'defaut' => true],
                     ['cle' => 'source_inactif', 'type' => 'interrupteur', 'libelle' => 'Client inactif', 'aide' => 'Plus de commande depuis un moment', 'defaut' => true],

@@ -1,0 +1,91 @@
+{#
+	Site vitrine (maquettes 01 à 12) : en-tête avec le menu, « Espace client »
+	et « Demander un devis », pied de page avec l'entreprise, bouton WhatsApp.
+	Une page définit les blocs title, description et contenu, et la variable
+	menu_actif (route du menu à souligner) ; les pages intérieures incluent
+	site/_bandeau.html.twig.
+#}
+{% set entreprise = site_entreprise() %}
+{% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
+{% set whatsapp = site_whatsapp() %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{% block title %}Succès Imprim · Imprimerie à Bamako{% endblock %}</title>
+	<meta name="description" content="{% block description %}Imprimerie à Bamako : banderoles, bâches, roll-up, textile DTF, cartes de visite et signalétique. BAT avant impression, prix immédiat.{% endblock %}">
+	<meta name="theme-color" content="#0F4590">
+	{% if not site_en_ligne() %}<meta name="robots" content="noindex, nofollow">{% endif %}
+	<link rel="canonical" href="{{ app.request.uri|split('?')|first }}">
+	<meta property="og:type" content="website">
+	<meta property="og:site_name" content="Succès Imprim">
+	<meta property="og:title" content="{{ block('title')|striptags|trim }}">
+	<meta property="og:description" content="{{ block('description')|striptags|trim }}">
+	<meta property="og:image" content="{{ absolute_url(asset('images/logo-succes-imprim.png')) }}">
+	<link rel="icon" href="{{ asset('images/icone-192.png') }}">
+	<link rel="stylesheet" href="{{ asset('css/site.css') }}">
+	<script type="application/ld+json">{{ site_fiche_google(url('app_home'), absolute_url(asset('images/logo-succes-imprim.png'))) }}</script>
+	{% block entete %}{% endblock %}
+</head>
+<body class="si-site">
+	<a class="si-evitement" href="#contenu">Aller au contenu</a>
+	<header class="si-entete">
+		<div class="si-cadre si-entete-cadre">
+			<a href="{{ site_lien('app_site_accueil') }}" class="si-logo"><img src="{{ asset('images/site/logo-succes-imprim-256.webp') }}" alt="Succès Imprim, accueil" width="128" height="71"></a>
+			<input type="checkbox" id="si-menu-ouvert" class="si-menu-case" aria-hidden="true">
+			<label for="si-menu-ouvert" class="si-burger" aria-label="Ouvrir le menu"><span></span></label>
+			<nav class="si-menu" aria-label="Menu principal">
+				<ul>
+					{% for lien in site_menu() %}
+						<li><a href="{{ lien.url }}"{% if lien.route == (menu_actif ?? '') %} class="actif" aria-current="page"{% endif %}>{{ lien.libelle }}</a></li>
+					{% endfor %}
+				</ul>
+				<div class="si-menu-actions">
+					<a href="{{ path('app_espace_connexion') }}" class="si-bouton si-bouton-contour">Espace client</a>
+					{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Demander un devis</a>{% endif %}
+				</div>
+			</nav>
+		</div>
+	</header>
+
+	<main id="contenu">
+		{% block contenu %}{% endblock %}
+	</main>
+
+	<footer class="si-pied">
+		<div class="si-cadre si-pied-cadre">
+			<div class="si-pied-marque">
+				<img src="{{ asset('images/site/logo-succes-imprim-256.webp') }}" alt="" width="72" height="40" loading="lazy">
+				<p>
+					{% if entreprise %}
+						{{ entreprise.nomAffiche }}{% if entreprise.nomCommercial and entreprise.raisonSociale %} est un nom commercial de {{ entreprise.raisonSociale }}{% endif %}
+						{%- if entreprise.rccm %} · RCCM {{ entreprise.rccm }}{% endif %}
+						{%- if entreprise.nif %} · NIF {{ entreprise.nif }}{% endif %}
+					{% else %}
+						Succès Imprim
+					{% endif %}
+				</p>
+			</div>
+			{% set pied = site_pied() %}
+			{% if pied %}
+				<ul class="si-pied-liens">
+					{% for lien in pied %}<li><a href="{{ lien.url }}">{{ lien.libelle }}</a></li>{% endfor %}
+				</ul>
+			{% endif %}
+			<p class="si-pied-adresse">
+				{{ entreprise.adresse ?? 'Bamako, Mali' }}
+				{% if entreprise and entreprise.telephone %} · <a href="tel:{{ entreprise.telephone|replace({' ': ''}) }}">{{ entreprise.telephone }}</a>{% endif %}
+				{% if entreprise and entreprise.siteWeb %} · {{ entreprise.siteWeb }}{% endif %}
+			</p>
+		</div>
+	</footer>
+
+	{% if whatsapp %}
+		<a href="{{ whatsapp }}" class="si-whatsapp" target="_blank" rel="noopener" aria-label="Écrire à l'atelier sur WhatsApp">
+			<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5A12.4 12.4 0 0 0 5.3 22.2L3.5 28.5l6.5-1.7A12.4 12.4 0 1 0 16 3.5Zm0 22.7a10.3 10.3 0 0 1-5.2-1.4l-.4-.2-3.9 1 1-3.8-.2-.4A10.3 10.3 0 1 1 16 26.2Zm5.7-7.7c-.3-.2-1.8-.9-2.1-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7 0a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6a1.1 1.1 0 0 0-.8.4 3.3 3.3 0 0 0-1 2.5 5.8 5.8 0 0 0 1.2 3.1 13.3 13.3 0 0 0 5.1 4.5c1.9.8 2.6.9 3.6.7a3 3 0 0 0 2-1.4 2.4 2.4 0 0 0 .2-1.4c-.1-.1-.3-.2-.6-.4Z"/></svg>
+		</a>
+	{% endif %}
+	{% block scripts %}{% endblock %}
+</body>
+</html>

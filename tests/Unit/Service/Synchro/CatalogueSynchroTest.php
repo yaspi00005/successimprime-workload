@@ -2,6 +2,8 @@
 
 namespace App\Tests\Unit\Service\Synchro;
 
+use App\Entity\BonLivraison;
+use App\Entity\Entreprise;
 use App\Entity\Clients;
 use App\Entity\Finition;
 use App\Entity\Paiements;
@@ -38,6 +40,9 @@ final class CatalogueSynchroTest extends TestCase
             'fichier' => ['chemin', 'observation', 'montage', 'ajoutePar', 'jetonUpload', 'fichierSource'],
             'controle' => ['anomalies', 'observation', 'correctionsEffectuees', 'controlePar', 'traitePar', 'validePar', 'envoyeProductionPar'],
             'paiement' => ['compteTresorerie', 'mouvementTresorerie', 'justificatif', 'observation', 'encaissePar', 'validePar'],
+            'livraison' => ['livreur', 'creePar', 'validePar', 'livrePar', 'nomReceptionnaire', 'telephoneReceptionnaire', 'adresseLivraison', 'observation', 'photos', 'signature',
+                'signataire', 'encaisseMontant', 'encaisseMode', 'encaisseLe', 'paiementLivraison', 'remiseLatitude', 'remiseLongitude', 'retardJustifie', 'erreurLivraison', 'articleStock', 'ordreTournee'],
+            'entreprise' => ['banque', 'compteBancaire', 'prefixeFacture', 'compteur', 'logo', 'logoPied', 'signature', 'cachet'],
         ];
         foreach ($interdits as $type => $champs) {
             foreach ($champs as $champ) {
@@ -47,6 +52,13 @@ final class CatalogueSynchroTest extends TestCase
         }
         // Une facture ne se crée jamais en ligne.
         self::assertFalse(CatalogueSynchro::creationAcceptee('facture', false));
+        // Le bon de livraison ne part que dans un sens, et ses lignes sans observation.
+        self::assertFalse(CatalogueSynchro::accepte('livraison', false));
+        self::assertNotContains('observation', $types['livraison']['enfants']['lignes']['champs']);
+        self::assertSame('livraison', CatalogueSynchro::typeDe(new BonLivraison()));
+        // Les coordonnées de l'entreprise ne se modifient pas en ligne.
+        self::assertFalse(CatalogueSynchro::accepte('entreprise', false));
+        self::assertSame('entreprise', CatalogueSynchro::typeDe(new Entreprise()));
     }
 
     public function testUnPaiementSaisiEnLigneResteAValider(): void
@@ -124,7 +136,9 @@ final class CatalogueSynchroTest extends TestCase
         $vus = [];
         foreach (CatalogueSynchro::types() as $cle => $t) {
             $enfants = array_merge([], ...array_map(static fn (array $e): array => array_values($e['relations']), array_values($t['enfants'] ?? [])));
-            foreach ([...array_values($t['relations']), ...array_values($t['listes']), ...$enfants] as $cible) {
+            // Les liens « facultatifs » peuvent viser une donnée chargée plus loin.
+            $relations = array_diff_key($t['relations'], array_flip($t['facultatives'] ?? []));
+            foreach ([...array_values($relations), ...array_values($t['listes']), ...$enfants] as $cible) {
                 self::assertArrayHasKey($cible, $vus, $cle.' référence '.$cible.' qui doit venir avant');
             }
             $vus[$cle] = true;

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Tache;
 use App\Entity\User;
+use App\Security\AccesEnLigne;
 use App\Service\OperationsAValider;
 use App\Service\Planning\Planning;
 use App\Service\Sauvegarde\HorsSite;
@@ -20,6 +21,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * production en cours, croissance du CA, encaissements du jour, charge
  * des machines et alertes. Le detail par periode est dans
  * « Statistiques et rapports ».
+ *
+ * Un visiteur non connecté voit l'accueil du site vitrine sur le serveur
+ * en ligne (maquette 01) et la page de connexion sur l'ERP local.
  */
 final class DashboardController extends AbstractController
 {
@@ -31,7 +35,12 @@ final class DashboardController extends AbstractController
         Sauvegardes $sauvegardes,
         HorsSite $horsSite,
         Synchro $synchro,
+        AccesEnLigne $acces,
     ): Response {
+        if (!$this->getUser() instanceof User) {
+            return $acces->estEnLigne() ? $this->forward(SiteController::class.'::accueil') : $this->redirectToRoute('app_login');
+        }
+
         /*
          * Un livreur n'a accès qu'aux livraisons : il n'a rien
          * à faire sur le tableau de bord général.

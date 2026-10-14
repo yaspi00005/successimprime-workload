@@ -5,18 +5,21 @@
 - Deux installations du même code : l'**ERP local** de la boutique (base maître, `APP_EN_LIGNE=0`) et le **site en ligne** (sa propre base, `APP_EN_LIGNE=1`).
 - La boutique n'a pas d'adresse fixe : c'est **toujours l'agent du local qui appelle le site**, chaque minute. Le site ne contacte jamais le local.
 - Chaque donnée garde le même identifiant public (UUID) des deux côtés ; les id numériques diffèrent.
-- **Rien de sensible ne quitte le local.** Les champs envoyés sont listés un par un dans `src/Service/Synchro/CatalogueSynchro.php` ; une colonne ajoutée plus tard reste au local tant qu'on ne l'ajoute pas à la liste. Restent au local : coûts de revient, marges, comptabilité, trésorerie, salaires et données du personnel, notes internes sur les clients, remise habituelle, commercial qui suit le client.
+- **Rien de sensible ne quitte le local.** Les champs envoyés sont listés un par un dans `src/Service/Synchro/CatalogueSynchro.php` ; une colonne ajoutée plus tard reste au local tant qu'on ne l'ajoute pas à la liste. Restent au local : coûts de revient, marges, comptabilité, trésorerie, dépenses et budgets (tables `depense` et `budget_depense`, avec les reçus), relevés Orange Money importés (table `ligne_releve_orange_money`), salaires et données du personnel, notes internes sur les clients, remise habituelle, commercial qui suit le client.
 
 ## Ce qui passe (étapes 1 et 2)
 
 | Donnée | Sens | Règle |
 |---|---|---|
+| Entreprises : code, raison sociale, nom commercial, mentions, adresse, téléphone, e-mail, site, RCCM, NIF, numéro marchand Orange Money, couleurs | local → site | Pour le pied de page et le bouton WhatsApp du site vitrine. Restent au local : banque, compte bancaire, numérotation, logos, cachet et signature. |
 | Catégories, types d'impression, finitions (sans le coût), formats, supports, produits, configurations de produit et leurs finitions proposées (prix de vente) | local → site | Le local est maître : le site reçoit et remplace. |
 | Clients | local → site, et site → local pour les **nouveaux** clients | Une modification faite en ligne d'un client du local n'est pas appliquée : elle est notée **Conflit** dans le journal, la fiche du local est gardée. |
 | Commandes et leurs lignes | local → site, et site → local pour les **nouvelles** commandes | Restent au local : note interne, agents, coût de revient, temps, machine, rebuts, notes d'atelier. Une commande créée en ligne n'a pas d'agent ; elle arrive en brouillon « à confirmer », avec la demande écrite par le client sur la ligne, et le rôle Commandes est prévenu. |
 | Fichiers envoyés par le client dans son espace (Mes fichiers, Nouvelle commande) | site → local | La fiche (nom, contrôle automatique, empreinte, logo) remonte dès que l'envoi est fini, puis les octets (voir **Fichiers**). |
 | Finitions choisies sur une ligne (nom, prix appliqué, quantité, montant) | avec leur ligne | Elles partent dans la ligne et sont remplacées en bloc ; retirer une finition renvoie la ligne. |
 | BAT : état (en attente, validé, à corriger), fichiers de la commande (nom, type, taille) et suivi visible par le client (versions envoyées, ses demandes, validation) | local → site | Restent au local : contrôles et anomalies, noms de l'atelier, graphiste, temps, erreurs, points, chemin et notes des fichiers. |
+| Produits du client (« Mes produits ») : référence, nom, format, unité de vente, prix négocié, minimum, lot, finitions, fichier et BAT validé | local → site | Restent au local : machine, ligne de commande d'origine. Une ligne de commande en ligne qui cite un produit du client est revérifiée à l'arrivée (même client, BAT validé), sinon elle repasse par la PAO. |
+| Bons de livraison : numéro, état, jour prévu, créneau, heures (préparé, chargé, en route, arrivé, livré) et quantités livrées par ligne | local → site | Pour « Livreur en route » et « Commande livrée » dans l'espace client, avec leur notification. Restent au local : livreur, réceptionnaire, adresse, photos, signature, position, encaissement, stock, notes. Un bon annulé n'est pas montré au client. |
 | Devis et leurs lignes, factures | local → site seulement | Restent au local : coûts, notes, comptabilisation, majoration, PDF du serveur. |
 | Paiements | local → site, et site → local pour les **nouveaux** paiements | Restent au local : compte de trésorerie, mouvement, justificatif, note, encaisseur. |
 
@@ -35,7 +38,7 @@ Toute autre modification faite en ligne d'une fiche du local est notée **Confli
 
 **Fichiers** : vers le site, seuls les fichiers préparés par l'atelier pour un BAT partent (pas ceux de production). Du site, le local rapatrie les fichiers envoyés par les clients (60 derniers jours, ceux d'une commande d'abord). Par morceaux de 4 Mo, 64 Mo au plus par cycle dans les deux sens réunis, repris là où ça s'est arrêté après une coupure ; l'empreinte SHA-256 est vérifiée avant de ranger le fichier dans `var/uploads/commandes`. Un fichier n'est renvoyé que s'il change.
 
-**Ordre** : un élément qui cite une donnée arrivant plus loin dans le même lot (fichier mis dans une commande créée après lui) attend qu'elle soit appliquée, puis passe.
+**Ordre** : un élément qui cite une donnée arrivant plus loin dans le même lot (fichier mis dans une commande créée après lui) attend qu'elle soit appliquée, puis passe. Quelques liens sont **facultatifs** (`facultatives` dans `CatalogueSynchro`, par exemple le produit du client d'une ligne de commande) : si la donnée citée manque, le lien reste vide au lieu de bloquer l'élément.
 
 **Numéros** : une commande, un devis ou un client créé en ligne reçoit le préfixe **W-** (W-CMD-…) ; il ne prend donc jamais un numéro du local.
 

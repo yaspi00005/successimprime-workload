@@ -1,0 +1,10 @@
+{#
+	Gabarit des écrans Finances (maquettes F01 à F07) : ajoute la feuille
+	de style des écrans neufs. Chaque écran garde les blocs de base.html.twig.
+#}
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/finances.css') }}" rel="stylesheet">
+{% endblock %}

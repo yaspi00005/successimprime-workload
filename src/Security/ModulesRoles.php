@@ -44,8 +44,8 @@ final class ModulesRoles
                 'detail' => 'devis, commandes, factures, encaissements',
                 'droits' => ['ROLE_DEVIS', 'ROLE_COMMANDE', 'ROLE_FACTURE', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_JOURNAL_CAISSE'],
                 'lecture' => Droits::LECTURE_VENTES,
-                // Aussi les encaissements par relevé, « Mes actions » de la caisse (pas celles de l'équipe) et les points fidélité posés sur une commande.
-                'prefixes' => ['app_ventes_', 'app_commandes_', 'app_commande_catalogue_', 'app_brouillon_', 'app_devis_', 'app_factures_', 'app_creances_', 'app_caisse_', 'app_journal_caisse_', 'app_paiements_', 'app_finances_encaissements', 'app_actions_index', 'app_actions_voir', 'app_actions_contact', 'app_actions_faire', 'app_fidelite_utiliser', 'app_fidelite_retirer', 'app_fidelite_reveil_appliquer'],
+                // Aussi les encaissements par relevé ou à la livraison, « Mes actions » de la caisse (pas celles de l'équipe) et les points fidélité posés sur une commande.
+                'prefixes' => ['app_ventes_', 'app_commandes_', 'app_commande_catalogue_', 'app_brouillon_', 'app_devis_', 'app_factures_', 'app_creances_', 'app_caisse_', 'app_journal_caisse_', 'app_paiements_', 'app_finances_encaissements', 'app_livraisons_bl_encaissement', 'app_actions_index', 'app_actions_voir', 'app_actions_contact', 'app_actions_faire', 'app_fidelite_utiliser', 'app_fidelite_retirer', 'app_fidelite_reveil_appliquer'],
             ],
             'clients' => [
                 'libelle' => 'Clients',

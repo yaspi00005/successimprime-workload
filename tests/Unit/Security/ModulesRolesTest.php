@@ -91,12 +91,13 @@ final class ModulesRolesTest extends TestCase
     public function testEcrituresDuModuleRangeesAilleurs(): void
     {
         $ventes = ['ROLE_COMMANDE', 'ROLE_PAIEMENT_ENCAISSER', Droits::LECTURE_VENTES];
-        foreach (['app_finances_encaissements_importer', 'app_finances_encaissements_associer', 'app_actions_contact', 'app_actions_faire', 'app_fidelite_utiliser', 'app_fidelite_retirer', 'app_fidelite_reveil_appliquer'] as $route) {
+        foreach (['app_finances_encaissements_importer', 'app_finances_encaissements_associer', 'app_livraisons_bl_encaissement', 'app_actions_contact', 'app_actions_faire', 'app_fidelite_utiliser', 'app_fidelite_retirer', 'app_fidelite_reveil_appliquer'] as $route) {
             self::assertSame('ventes', ModulesRoles::moduleEnLecture($route, $ventes), $route);
         }
         // Les actions de l'équipe et le réglage du programme fidélité ne sont pas les ventes.
         self::assertNull(ModulesRoles::moduleEnLecture('app_actions_equipe_nouvelle', $ventes));
         self::assertNull(ModulesRoles::moduleEnLecture('app_fidelite_regle_nouvelle', $ventes));
+        self::assertNull(ModulesRoles::moduleEnLecture('app_livraisons_planning_reordonner', $ventes));
         self::assertSame('clients', ModulesRoles::moduleEnLecture('app_messages_clients_repondre', ['ROLE_CLIENT', Droits::LECTURE_CLIENTS]));
         self::assertSame('pao', ModulesRoles::moduleEnLecture('app_fichier_dossier_partage_importer', ['ROLE_PREPRESSE', Droits::LECTURE_PAO]));
     }

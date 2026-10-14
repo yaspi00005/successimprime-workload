@@ -1,0 +1,99 @@
+{% extends 'immobilisations/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Immobilisations › {{ bien.code }}{% endblock %}
+{% block page_title %}{{ nouveau ? 'Nouveau bien · ' ~ bien.code : 'Modifier ' ~ bien.code }}{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-imm">
+		<section class="card" style="max-width: 980px;">
+			{% for e in erreurs %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
+			<form method="post" class="si-imm-form">
+				<input type="hidden" name="_token" value="{{ csrf_token('bien-' ~ (bien.id ?? 'nouveau')) }}">
+				<div class="si-imm-large">
+					<label for="designation">Bien</label>
+					<input class="form-control" id="designation" name="designation" value="{{ bien.designation }}" required maxlength="150" placeholder="Ordinateur PAO, Lot de 22 chaises, Moto Yamaha…">
+				</div>
+				<div>
+					<label for="categorie">Catégorie</label>
+					<select class="form-select" id="categorie" name="categorie" onchange="document.getElementById('bloc-machine').hidden = this.value !== 'machine'">
+						{% for cle, c in constant('App\\Entity\\Immobilisation::CATEGORIES') %}
+							<option value="{{ cle }}" {{ cle == bien.categorie ? 'selected' }}>{{ c.libelle }} ({{ c.compte }} / {{ c.amortissement }})</option>
+						{% endfor %}
+					</select>
+				</div>
+				<div id="bloc-machine" {{ bien.categorie != 'machine' ? 'hidden' }}>
+					<label for="machine">Fiche machine</label>
+					<select class="form-select" id="machine" name="machine">
+						<option value="">—</option>
+						{% for mac in machines %}<option value="{{ mac.id }}" {{ bien.machine and bien.machine.id == mac.id ? 'selected' }}>{{ mac.nom }}</option>{% endfor %}
+					</select>
+					<small class="si-fin-gris">Prix, mise en service et valeur résiduelle viennent alors de la machine ; elle s'amortit à l'usage.</small>
+				</div>
+				<div>
+					<label for="lieu">Lieu</label>
+					<input class="form-control" id="lieu" name="lieu" value="{{ bien.lieu }}" list="lieux" maxlength="80">
+					<datalist id="lieux">{% for l in constant('App\\Entity\\Immobilisation::LIEUX') %}<option value="{{ l }}">{% endfor %}</datalist>
+				</div>
+				<div>
+					<label for="confie-a">Confié à</label>
+					<select class="form-select" id="confie-a" name="confie_a">
+						<option value="">Personne</option>
+						{% for u in personnel %}<option value="{{ u.id }}" {{ bien.confieA and bien.confieA.id == u.id ? 'selected' }}>{{ m.nom(u) }}</option>{% endfor %}
+					</select>
+				</div>
+				<div>
+					<label for="date-achat">Date d'achat</label>
+					<input class="form-control" type="date" id="date-achat" name="date_achat" value="{{ bien.dateAchat ? bien.dateAchat|date('Y-m-d') }}">
+				</div>
+				<div>
+					<label for="date-service">Mise en service</label>
+					<input class="form-control" type="date" id="date-service" name="date_mise_service" value="{{ not bien.machine and bien.dateMiseService ? bien.dateMiseService|date('Y-m-d') }}">
+					<small class="si-fin-gris">Vide : la date d'achat. Le mois de mise en service compte en entier.</small>
+				</div>
+				<div>
+					<label for="valeur-achat">Valeur d'achat (F)</label>
+					<input class="form-control" id="valeur-achat" name="valeur_achat" inputmode="numeric" value="{{ bien.valeurAchat ?: '' }}">
+				</div>
+				<div>
+					<label for="valeur-residuelle">Valeur résiduelle (F)</label>
+					<input class="form-control" id="valeur-residuelle" name="valeur_residuelle" inputmode="numeric" value="{{ bien.valeurResiduelleSaisie ?: '' }}" placeholder="0">
+				</div>
+				<div>
+					<label for="duree">Durée d'amortissement (années)</label>
+					<input class="form-control" id="duree" name="duree" inputmode="numeric" value="{{ bien.dureeAnnees }}" placeholder="selon la catégorie">
+				</div>
+				<div>
+					<label for="quantite">Nombre d'unités</label>
+					<input class="form-control" id="quantite" name="quantite" inputmode="numeric" value="{{ bien.quantite }}">
+				</div>
+				<div>
+					<label for="etat">État</label>
+					<select class="form-select" id="etat" name="etat">
+						{% for cle, e in constant('App\\Entity\\Immobilisation::ETATS') %}<option value="{{ cle }}" {{ cle == bien.etat ? 'selected' }}>{{ e[0] }}</option>{% endfor %}
+					</select>
+				</div>
+				<div>
+					<label for="etat-note">Précision sur l'état</label>
+					<input class="form-control" id="etat-note" name="etat_note" value="{{ bien.etatNote }}" maxlength="80" placeholder="2 abîmées">
+				</div>
+				<div>
+					<label for="fournisseur">Fournisseur</label>
+					<input class="form-control" id="fournisseur" name="fournisseur" value="{{ bien.fournisseur }}" maxlength="120">
+				</div>
+				<div>
+					<label for="numero-serie">Numéro de série</label>
+					<input class="form-control" id="numero-serie" name="numero_serie" value="{{ bien.numeroSerie }}" maxlength="80">
+				</div>
+				<div class="si-imm-large">
+					<label for="note">Note</label>
+					<textarea class="form-control" id="note" name="note" rows="2">{{ bien.note }}</textarea>
+				</div>
+				<div class="si-imm-large d-flex gap-2">
+					<button class="btn btn-danger">Enregistrer</button>
+					<a class="btn btn-light" href="{{ bien.id ? path('app_immobilisations_bien', {id: bien.id}) : path('app_immobilisations_registre') }}">Annuler</a>
+				</div>
+			</form>
+		</section>
+	</div>
+{% endblock %}

@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Achats;
 use App\Entity\Commandes;
 use App\Entity\CompteTresorerie;
+use App\Entity\DotationAmortissement;
 use App\Entity\Factures;
 use App\Entity\MouvementTresorerie;
 use Doctrine\ORM\EntityManagerInterface;
@@ -12,8 +13,9 @@ use Doctrine\ORM\EntityManagerInterface;
 /**
  * Comptabilité SYSCOHADA (maquette 32) : les écritures sont déduites des
  * opérations validées (factures émises, mouvements de trésorerie
- * validés, achats reçus). Rien n'est saisi ici : corriger une écriture,
- * c'est corriger l'opération d'origine.
+ * validés, achats reçus, dotations aux amortissements passées). Rien
+ * n'est saisi ici : corriger une écriture, c'est corriger l'opération
+ * d'origine.
  *
  * Les numéros de comptes suivent le plan SYSCOHADA révisé ; leur choix
  * fin (sous-comptes) reste à valider avec le cabinet comptable.
@@ -40,6 +42,18 @@ final class JournalComptable
 
     public const COMPTES = [
         '162' => 'Emprunts auprès des établissements de crédit',
+        '2131' => 'Logiciels',
+        '2341' => 'Installations techniques',
+        '2411' => 'Matériel industriel',
+        '2441' => 'Matériel de bureau',
+        '2442' => 'Matériel informatique',
+        '2444' => 'Mobilier de bureau',
+        '2451' => 'Matériel automobile',
+        '2813' => 'Amortissements des logiciels',
+        '2834' => 'Amortissements des installations techniques',
+        '2841' => 'Amortissements du matériel industriel',
+        '2844' => 'Amortissements du matériel et mobilier',
+        '2845' => 'Amortissements du matériel de transport',
         '401' => 'Fournisseurs',
         '411' => 'Clients',
         '4431' => 'TVA facturée sur ventes',
@@ -59,6 +73,7 @@ final class JournalComptable
         '631' => 'Frais bancaires',
         '658' => 'Charges diverses',
         '661' => 'Rémunérations du personnel',
+        '681' => 'Dotations aux amortissements d’exploitation',
         '702' => 'Ventes de produits finis',
         '758' => 'Produits divers',
     ];
@@ -104,6 +119,7 @@ final class JournalComptable
         foreach ($this->achats($debut, $fin) as $achat) {
             array_push($journaux['achats'], ...self::ecrituresAchat($achat));
         }
+        array_push($journaux['od'], ...self::ecrituresDotations($this->dotations($debut, $fin)));
         foreach ($journaux as &$lignes) {
             // Tri stable : les lignes d'une même pièce restent ensemble.
             usort($lignes, static fn (array $a, array $b): int => [$a['date']->format('Y-m-d'), $a['piece']] <=> [$b['date']->format('Y-m-d'), $b['piece']]);
@@ -226,6 +242,38 @@ final class JournalComptable
         ], static fn (array $l): bool => $l['debit'] > 0 || $l['credit'] > 0));
     }
 
+    /**
+     * Dotations aux amortissements (M04) : pour chaque mois, une pièce
+     * DOT-AAAA-MM au dernier jour du mois, avec par compte d'amortissement
+     * le 681 au débit et le 28x de la catégorie au crédit.
+     *
+     * @param list<DotationAmortissement> $dotations
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function ecrituresDotations(array $dotations): array
+    {
+        $parPiece = [];
+        foreach ($dotations as $d) {
+            if ($d->getMontant() <= 0) {
+                continue;
+            }
+            $parPiece[$d->piece()]['date'] = $d->getMois()->modify('last day of this month');
+            $parPiece[$d->piece()]['comptes'][$d->getCompte()] = ($parPiece[$d->piece()]['comptes'][$d->getCompte()] ?? 0) + $d->getMontant();
+        }
+        $lignes = [];
+        foreach ($parPiece as $piece => ['date' => $date, 'comptes' => $comptes]) {
+            ksort($comptes, \SORT_STRING);
+            foreach ($comptes as $compte => $montant) {
+                $libelle = 'Dotation '.$date->format('m/Y').' · '.(self::COMPTES[$compte] ?? $compte);
+                $lignes[] = self::ligne($date, $piece, '681', null, $libelle, $montant, 0);
+                $lignes[] = self::ligne($date, $piece, (string) $compte, null, $libelle, 0, $montant);
+            }
+        }
+
+        return $lignes;
+    }
+
     public static function compteTresorerie(?CompteTresorerie $compte): string
     {
         return match ($compte?->getType()) {
@@ -302,6 +350,20 @@ final class JournalComptable
             ->andWhere('m.dateOperation BETWEEN :debut AND :fin')
             ->setParameter('valide', MouvementTresorerie::STATUT_VALIDE)
             ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<DotationAmortissement> */
+    private function dotations(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('d', 'i')
+            ->from(DotationAmortissement::class, 'd')
+            ->innerJoin('d.immobilisation', 'i')
+            ->andWhere('d.mois BETWEEN :debut AND :fin')
+            ->setParameter('debut', $debut->modify('first day of this month')->setTime(0, 0))
             ->setParameter('fin', $fin)
             ->getQuery()
             ->getResult();

@@ -121,7 +121,7 @@ final class CalculateurCoutRevient
                 $encre = (int) round($surfaceImprimee * $machine->getCoutEncreM2());
             }
 
-            $usage = AmortissementMachine::pourTravail($machine, $this->methodeAmortissement ?? (string) ($this->parametres?->valeur('machines', 'amortissement') ?? AmortissementMachine::LINEAIRE), $surfaceImprimee);
+            $usage = AmortissementMachine::pourTravail($machine, $this->methodeAmortissement ?? (string) ($this->parametres?->valeur('machines', 'amortissement') ?? AmortissementMachine::LINEAIRE), $surfaceImprimee, $quantite);
 
             if (null !== $usage) {
                 $tempsMachine = $usage;

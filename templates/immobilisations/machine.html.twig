@@ -1,0 +1,135 @@
+{% extends 'immobilisations/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+{% import 'immobilisations/_macros.html.twig' as im %}
+
+{% block title %}Immobilisations › {{ bien ? bien.code : machine.nom }}{% endblock %}
+{% block page_title %}{{ machine.nom }}{% endblock %}
+
+{% block header_actions %}
+	{% if machine.releveCompteurs %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_immobilisations_releves', {id: machine.id}) }}" class="btn btn-light btn-sm si-btn-entete">Historique des relevés</a>
+		</li>
+		<li class="nav-item">
+			<a href="{{ path('app_immobilisations_releve', {id: machine.id, mois: (courant ? 'first day of last month'|date('Y-m') : mois|date('Y-m'))}) }}" class="btn btn-danger btn-sm si-btn-entete">Saisir le relevé</a>
+		</li>
+	{% elseif is_granted('ROLE_ADMIN') %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_machines_index') }}#plan" class="btn btn-light btn-sm si-btn-entete">Régler l'amortissement</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% set nom_mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][mois|date('n') - 1] %}
+	{% set usage_mois = (parMois|last).usage %}
+	<div class="si-fin si-imm">
+		<div class="si-imm-fiche">
+			<section class="card si-imm-identite" aria-labelledby="titre-identite">
+				<h2 id="titre-identite">Identité</h2>
+				<dl class="mb-0">
+					<dt>Acquise le</dt>
+					<dd>{{ machine.dateAchat ? machine.dateAchat|date('d/m/Y') : '—' }}{% if bien and bien.fournisseur %} · {{ bien.fournisseur }}{% endif %}{% if bien %} · {{ bien.code }}{% endif %}</dd>
+					<dt>Prix d'achat · valeur résiduelle</dt>
+					<dd>{{ m.f(calcul.valeurAchat) }} · {{ m.f(machine.valeurResiduelle ?? 0) }}</dd>
+					<dt>Capacité prévue</dt>
+					<dd>{{ machine.capaciteUsage ? im.n(machine.capaciteUsage) ~ ' ' ~ (machine.unite == 'page' ? 'pages équivalent A4' : machine.unitePluriel) : 'à définir' }}</dd>
+					<dt>Méthode</dt>
+					<dd>{{ calcul.methode == 'usage' ? 'Unités d\'œuvre (' ~ machine.unitePluriel ~ ')' : 'Linéaire sur ' ~ (machine.dureeAmortissementMois ?? 60) ~ ' mois' }}</dd>
+				</dl>
+			</section>
+
+			<section class="card" aria-labelledby="titre-compteurs">
+				<div class="si-fin-tete mb-1">
+					<h2 id="titre-compteurs" class="mb-0">{{ machine.releveA4A3 ? 'Compteurs' : 'Usage' }} {{ nom_mois in ['avril', 'août', 'octobre'] ? 'd\'' : 'de ' }}{{ nom_mois }}</h2>
+					<span class="si-imm-mois-nav small">
+						<a href="{{ path('app_immobilisations_machine', {id: machine.id, mois: mois|date_modify('-1 month')|date('Y-m')}) }}" aria-label="Mois précédent"><i class="fas fa-chevron-left"></i></a>
+						{% if not courant %}<a href="{{ path('app_immobilisations_machine', {id: machine.id, mois: mois|date_modify('+1 month')|date('Y-m')}) }}" aria-label="Mois suivant"><i class="fas fa-chevron-right"></i></a>{% endif %}
+					</span>
+				</div>
+				{% if machine.releveA4A3 %}
+					<table class="table si-fin-table">
+						<thead><tr><th scope="col">Compteur</th><th scope="col" class="text-end">Pages</th><th scope="col" class="text-end">Équiv. A4</th></tr></thead>
+						<tbody>
+							{% set total_pages = 0 %}
+							{% set total_a4 = 0 %}
+							{% for cle, def in compteurs %}
+								{% set p = pages ? pages[cle] : null %}
+								<tr>
+									<td>{{ def[0] }}</td>
+									<td class="text-end">{{ p is not null ? p|number_format(0, ',', ' ') : '—' }}</td>
+									<td class="text-end">{{ p is not null ? (p * def[1])|number_format(0, ',', ' ') : '—' }}</td>
+								</tr>
+								{% set total_pages = total_pages + (p ?? 0) %}
+								{% set total_a4 = total_a4 + (p ?? 0) * def[1] %}
+							{% endfor %}
+							<tr class="si-imm-total"><td>Total</td><td class="text-end">{{ total_pages|number_format(0, ',', ' ') }}</td><td class="text-end">{{ total_a4|number_format(0, ',', ' ') }}</td></tr>
+						</tbody>
+					</table>
+				{% else %}
+					<p class="mb-1"><strong class="fs-4">{{ im.n(usage_mois) }} {{ machine.unitePluriel }}</strong></p>
+					<p class="si-fin-gris small mb-0">{{ machine.releveCompteurs ? 'écart entre deux relevés du compteur' : 'production terminée sur la machine' }}</p>
+					{% if releve %}<p class="small mb-0 mt-2">Compteur relevé : {{ im.n(releve.equivalent) }} {{ machine.unitePluriel }}</p>{% endif %}
+				{% endif %}
+				{% if releve %}
+					<p class="si-fin-note">Relevé saisi le {{ releve.saisiLe|date('d/m') }}{% if releve.photo %} · <a href="{{ path('app_immobilisations_releve_photo', {id: releve.id}) }}" target="_blank" rel="noopener">photo du compteur jointe</a>{% endif %}{% if releve.saisiPar %} · par {{ m.nom(releve.saisiPar) }}{% endif %}</p>
+				{% elseif machine.releveCompteurs %}
+					<p class="si-fin-note si-fin-orange">Pas de relevé pour {{ nom_mois }} : l'usage est estimé d'après la production terminée.</p>
+				{% endif %}
+			</section>
+
+			<section class="card si-imm-valeur" aria-labelledby="titre-valeur">
+				<h2 id="titre-valeur" class="mb-1">Valeur</h2>
+				<strong>{{ m.f(calcul.valeurNette) }}</strong>
+				<span class="si-fin-gris small">valeur nette comptable</span>
+				{% if machine.capaciteUsage %}
+					{% set part = min(100, usageCumule * 100 / machine.capaciteUsage) %}
+					<span class="si-fin-jauge"><span style="width: {{ part|round(1) }}%"></span></span>
+					<span class="si-fin-gris small">{{ im.n(usageCumule) }} / {{ im.n(machine.capaciteUsage) }} {{ machine.unitePluriel }} · {{ part|round }} % de la capacité</span>
+				{% endif %}
+				<div class="si-imm-mini">
+					<div>Amort. {{ nom_mois }}<b>{{ m.f(calcul.dotation) }}</b></div>
+					<div>Amort. cumulé<b>{{ m.f(calcul.cumul) }}</b></div>
+				</div>
+			</section>
+		</div>
+
+		<div class="si-imm-fiche-bas">
+			<section class="card" aria-labelledby="titre-pages">
+				<div class="si-fin-tete">
+					<h2 id="titre-pages" class="mb-0">{{ machine.unite == 'page' ? 'Pages' : machine.unitePluriel|capitalize }} par mois</h2>
+					<span class="si-fin-unite">{{ machine.unite == 'page' ? 'équiv. A4' : machine.uniteUsage }}</span>
+				</div>
+				<div class="si-imm-barres-mois" role="img" aria-label="Usage des six derniers mois">
+					{% for p in parMois %}
+						<div>
+							<em>{{ im.n(p.usage) }}</em>
+							<span class="si-imm-barre {{ loop.last ? 'si-imm-barre-courant' }} {{ machine.releveCompteurs and not p.releve ? 'si-imm-barre-estime' }}" style="height: {{ (p.usage * 100 / maxParMois)|round(1) }}%"></span>
+							<small>{{ ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'][p.mois|date('n') - 1] }}</small>
+						</div>
+					{% endfor %}
+				</div>
+				{% if machine.releveCompteurs %}<p class="si-fin-note">Barre pâle : mois sans relevé, estimé d'après la production.</p>{% endif %}
+			</section>
+
+			<section class="card" aria-labelledby="titre-cout">
+				<h2 id="titre-cout">Coût complet par {{ machine.unite == 'page' ? 'page' : machine.uniteUsage }}</h2>
+				<table class="table si-fin-table">
+					<thead><tr><th scope="col">Format</th><th scope="col" class="text-end">Amort.</th><th scope="col" class="text-end">{{ machine.unite == 'page' ? 'Toner' : 'Encre' }}</th><th scope="col" class="text-end">Entretien</th><th scope="col" class="text-end">Total</th></tr></thead>
+					<tbody>
+						{% for c in couts %}
+							<tr>
+								<td>{{ c.format }}</td>
+								<td class="text-end">{{ c.amort is not null ? c.amort|number_format(1, ',', ' ') : '—' }}</td>
+								<td class="text-end">{{ c.toner is not null ? c.toner|number_format(c.toner == c.toner|round ? 0 : 1, ',', ' ') : 'à renseigner' }}</td>
+								<td class="text-end">{{ c.entretien is not null ? c.entretien|number_format(c.entretien == c.entretien|round ? 0 : 1, ',', ' ') : '—' }}</td>
+								<td class="text-end"><strong>{{ c.total is not null ? c.total|number_format(1, ',', ' ') ~ ' F' : '—' }}</strong></td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				<p class="si-fin-note">Entretien : {{ m.f(entretien) }} d'interventions sur 12 mois, réparties sur l'usage de la période. {% if machine.unite == 'page' %}Une page A3 compte pour 2 pages A4. {% endif %}Ces coûts alimentent les prix et la marge des cartes, flyers et documents.</p>
+			</section>
+		</div>
+	</div>
+{% endblock %}

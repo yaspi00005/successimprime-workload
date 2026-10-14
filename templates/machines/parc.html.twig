@@ -106,6 +106,21 @@
 						<input class="form-control form-control-sm" id="cap-{{ m.id }}" name="capacite" inputmode="numeric" value="{{ m.capaciteUsage }}" placeholder="60000">
 						<label class="form-label small mb-1 mt-2" for="res-{{ m.id }}">Valeur résiduelle (F)</label>
 						<input class="form-control form-control-sm" id="res-{{ m.id }}" name="residuelle" inputmode="numeric" value="{{ m.valeurResiduelle }}" placeholder="0">
+						<label class="form-label small mb-1 mt-2" for="unite-{{ m.id }}">Unité d'usage</label>
+						<select class="form-select form-select-sm" id="unite-{{ m.id }}" name="unite">
+							{% for cle, u in constant('App\\Entity\\Machines::UNITES') %}<option value="{{ cle }}" {{ m.unite == cle ? 'selected' }}>{{ u[1] }}</option>{% endfor %}
+						</select>
+						<label class="form-label small mb-1 mt-2" for="releve-{{ m.id }}">Relevé mensuel de compteurs</label>
+						<select class="form-select form-select-sm" id="releve-{{ m.id }}" name="releve">
+							<option value="">Non : usage compté par la production</option>
+							{% for cle, libelle in constant('App\\Entity\\Machines::RELEVES') %}<option value="{{ cle }}" {{ m.releveCompteurs == cle ? 'selected' }}>{{ libelle }}</option>{% endfor %}
+						</select>
+						{% if m.unite == 'page' %}
+							<div class="d-flex gap-2 mt-2">
+								<span><label class="form-label small mb-1" for="tc-{{ m.id }}">Toner couleur (F / A4)</label><input class="form-control form-control-sm" id="tc-{{ m.id }}" name="toner_couleur" inputmode="decimal" value="{{ m.coutPageCouleur }}"></span>
+								<span><label class="form-label small mb-1" for="tn-{{ m.id }}">Toner noir (F / A4)</label><input class="form-control form-control-sm" id="tn-{{ m.id }}" name="toner_noir" inputmode="decimal" value="{{ m.coutPageNoir }}"></span>
+							</div>
+						{% endif %}
 						<p class="si-pg-note mt-2 mb-0">Prix d'achat {{ m.prixAchat ? m.prixAchat|number_format(0, ',', ' ') ~ ' F' : 'à saisir dans la fiche' }} · usage compté {{ m.usage|number_format(0, ',', ' ') }} {{ m.uniteUsage }}{% if m.coutUsageUnitaire is not null %} · valeur nette {{ max(m.valeurResiduelle ?? 0, m.prixAchat - min(m.usage * m.coutUsageUnitaire, m.baseAmortissable))|number_format(0, ',', ' ') }} F{% endif %}</p>
 						<button class="btn btn-sm btn-outline-primary mt-2">Enregistrer</button>
 					</form>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<style>
+		@page { margin: 10mm 8mm; }
+		body { font-family: "DejaVu Sans", sans-serif; font-size: 8pt; color: #1d2a44; }
+		table { width: 100%; border-collapse: separate; border-spacing: 3mm; }
+		td { width: 33%; border: 1px dashed #9aa4b6; border-radius: 3mm; padding: 2mm; vertical-align: top; height: 34mm; }
+		td img { width: 26mm; height: 26mm; float: left; margin-right: 2mm; }
+		.code { font-size: 12pt; font-weight: bold; color: #0d3a8a; }
+		.petit { color: #5b6780; font-size: 7pt; }
+	</style>
+</head>
+<body>
+	<table>
+		{% for ligne in etiquettes|batch(3) %}
+			<tr>
+				{% for e in ligne %}
+					<td>
+						<img src="{{ e.qr }}" alt="">
+						<div class="code">{{ e.bien.code }}</div>
+						<div>{{ e.bien.designation }}</div>
+						<div class="petit">{{ e.bien.lieu }}</div>
+						<div class="petit">Succès Imprim · propriété de l'entreprise</div>
+					</td>
+				{% endfor %}
+				{% if ligne|length < 3 %}{% for vide in 1..(3 - ligne|length) %}<td style="border: 0;"></td>{% endfor %}{% endif %}
+			</tr>
+		{% endfor %}
+	</table>
+</body>
+</html>

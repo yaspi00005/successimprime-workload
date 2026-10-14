@@ -1,0 +1,57 @@
+{% extends 'immobilisations/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+{% import 'immobilisations/_macros.html.twig' as im %}
+
+{% block title %}Immobilisations › Relevés de compteurs{% endblock %}
+{% block page_title %}Relevés · {{ machine.nom }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_immobilisations_releve', {id: machine.id}) }}" class="btn btn-danger btn-sm si-btn-entete">Saisir le relevé</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-imm">
+		<section class="card">
+			{% if lignes is empty %}
+				<p class="si-fin-vide mb-0">Aucun relevé pour l'instant.</p>
+			{% else %}
+				<div class="table-responsive">
+					<table class="table si-fin-table">
+						<thead>
+							<tr>
+								<th scope="col">Mois</th>
+								{% if machine.releveA4A3 %}
+									{% for cle, def in compteurs %}<th scope="col" class="text-end">{{ def[0] }}</th>{% endfor %}
+								{% endif %}
+								<th scope="col" class="text-end">{{ machine.releveA4A3 ? 'Total équiv. A4' : 'Compteur' }}</th>
+								<th scope="col" class="text-end">Du mois</th>
+								<th scope="col">Saisi</th>
+								<th scope="col">Photo</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for l in lignes %}
+								{% set r = l.releve %}
+								<tr>
+									<td><a href="{{ path('app_immobilisations_releve', {id: machine.id, mois: r.mois|date('Y-m')}) }}">{{ im.mois(r.mois)|capitalize }} {{ r.mois|date('Y') }}</a></td>
+									{% if machine.releveA4A3 %}
+										{% for cle, def in compteurs %}
+											<td class="text-end">{{ r.valeur(cle) is not null ? r.valeur(cle)|number_format(0, ',', ' ') : '—' }}{% if l.pages and l.pages[cle] is not null %}<small>+ {{ l.pages[cle]|number_format(0, ',', ' ') }}</small>{% endif %}</td>
+										{% endfor %}
+									{% endif %}
+									<td class="text-end"><strong>{{ r.equivalent is not null ? im.n(r.equivalent) : '—' }}</strong></td>
+									{% set precedent = loop.last ? null : lignes[loop.index].releve %}
+									<td class="text-end">{{ precedent and precedent.equivalent is not null and r.equivalent is not null and precedent.mois|date('Y-m') == r.mois|date_modify('-1 month')|date('Y-m') ? im.n(r.equivalent - precedent.equivalent) : '—' }}</td>
+									<td>{{ r.saisiLe|date('d/m/Y') }}<small>{{ m.nom(r.saisiPar) }}</small></td>
+									<td>{% if r.photo %}<a href="{{ path('app_immobilisations_releve_photo', {id: r.id}) }}" target="_blank" rel="noopener"><i class="fas fa-camera"></i> voir</a>{% else %}<span class="si-fin-gris">—</span>{% endif %}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}

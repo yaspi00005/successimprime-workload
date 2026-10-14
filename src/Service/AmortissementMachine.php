@@ -6,9 +6,10 @@ use App\Entity\Machines;
 
 /**
  * Méthode d'amortissement des machines (tuile Machines,
- * docs/immobilisations-primes.md) : à l'usage (m² ou pages A4 × coût par
- * unité) ou linéaire (prix d'achat étalé sur la durée en mois). Une
- * machine à l'usage sans capacité prévue reste en linéaire.
+ * docs/immobilisations-primes.md) : à l'usage (m², mètres de film, pages
+ * A4, cartes ou transferts × coût par unité) ou linéaire (prix d'achat
+ * étalé sur la durée en mois). Une machine à l'usage sans capacité prévue
+ * reste en linéaire.
  */
 final class AmortissementMachine
 {
@@ -43,9 +44,13 @@ final class AmortissementMachine
         return ['charge' => $mensuelle * $mois, 'methode' => self::LINEAIRE];
     }
 
-    /** Amortissement d'un travail à l'usage (F), ou null hors méthode à l'usage. */
-    public static function pourTravail(Machines $machine, string $methode, float $surfaceM2): ?int
+    /**
+     * Amortissement d'un travail à l'usage (F), ou null hors méthode à
+     * l'usage. La quantité sert aux machines comptées à la pièce (cartes,
+     * transferts).
+     */
+    public static function pourTravail(Machines $machine, string $methode, float $surfaceM2, float $quantite = 0): ?int
     {
-        return self::aLUsage($machine, $methode) ? (int) round($machine->usagePour($surfaceM2) * $machine->coutUsageUnitaire()) : null;
+        return self::aLUsage($machine, $methode) ? (int) round($machine->usagePour($surfaceM2, $quantite) * $machine->coutUsageUnitaire()) : null;
     }
 }

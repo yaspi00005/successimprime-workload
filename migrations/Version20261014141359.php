@@ -53,6 +53,13 @@ final class Version20261014141359 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
+        // Les lignes de devis et de commandes pointent vers promotion : leurs clés partent d'abord.
+        $this->addSql('ALTER TABLE commandes_details DROP FOREIGN KEY FK_B48B83DA139DF194');
+        $this->addSql('DROP INDEX IDX_B48B83DA139DF194 ON commandes_details');
+        $this->addSql('ALTER TABLE commandes_details DROP libelle_promotion, DROP remise_promotion, DROP montant_promotion, DROP promotion_retiree, DROP promotion_id');
+        $this->addSql('ALTER TABLE devis_details DROP FOREIGN KEY FK_E0C890D6139DF194');
+        $this->addSql('DROP INDEX IDX_E0C890D6139DF194 ON devis_details');
+        $this->addSql('ALTER TABLE devis_details DROP libelle_promotion, DROP remise_promotion, DROP montant_promotion, DROP promotion_retiree, DROP promotion_id');
         $this->addSql('ALTER TABLE promotion DROP FOREIGN KEY FK_C11D7DD1BCF5E72D');
         $this->addSql('ALTER TABLE promotion DROP FOREIGN KEY FK_C11D7DD1FC29C013');
         $this->addSql('ALTER TABLE promotion DROP FOREIGN KEY FK_C11D7DD1553B2554');
@@ -80,11 +87,5 @@ final class Version20261014141359 extends AbstractMigration
         $this->addSql('DROP TABLE promotion_anniversaire_modele');
         $this->addSql('DROP TABLE promotion_anniversaire_modele_produit');
         $this->addSql('DROP TABLE promotion_exception');
-        $this->addSql('ALTER TABLE commandes_details DROP FOREIGN KEY FK_B48B83DA139DF194');
-        $this->addSql('DROP INDEX IDX_B48B83DA139DF194 ON commandes_details');
-        $this->addSql('ALTER TABLE commandes_details DROP libelle_promotion, DROP remise_promotion, DROP montant_promotion, DROP promotion_retiree, DROP promotion_id');
-        $this->addSql('ALTER TABLE devis_details DROP FOREIGN KEY FK_E0C890D6139DF194');
-        $this->addSql('DROP INDEX IDX_E0C890D6139DF194 ON devis_details');
-        $this->addSql('ALTER TABLE devis_details DROP libelle_promotion, DROP remise_promotion, DROP montant_promotion, DROP promotion_retiree, DROP promotion_id');
     }
 }

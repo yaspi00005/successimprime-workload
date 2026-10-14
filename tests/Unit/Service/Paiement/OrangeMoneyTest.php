@@ -208,7 +208,39 @@ final class OrangeMoneyTest extends TestCase
         self::assertSame(['etape' => 'Adresse de l\'API', 'ok' => false, 'detail' => 'essai (dev), devise XOF (attendue : OUV)'], $etapes[1]);
     }
 
-    /** @param array{api?: string, devise?: string, secret?: string, merchant?: string, jeton?: MockResponse} $o */
+    public function testDepuisLocalhostLEssaiRenvoieVersExampleCom(): void
+    {
+        $etapes = $this->diagnostic(['base' => 'http://localhost:8000/'])->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
+
+        self::assertStringEndsWith('(retour vers example.com : Orange refuse localhost)', $etapes[3]['detail']);
+        $corps = $this->appels[1]['corps'];
+        self::assertSame('https://example.com/', $corps['return_url']);
+        self::assertSame('https://example.com/om/notification/'.$corps['order_id'], $corps['notif_url']);
+    }
+
+    public function testPaiementDepuisLocalhostRefuseSansAppelerOrange(): void
+    {
+        $service = $this->service([], 'cle-marchand', 'http://localhost:8000/espace/');
+
+        $this->expectExceptionMessage('Orange Money refuse les adresses localhost');
+        try {
+            $service->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable('2026-10-13 10:00'));
+        } finally {
+            self::assertSame([], $this->appels);
+        }
+    }
+
+    public function testAdresseLocale(): void
+    {
+        foreach (['http://localhost/', 'https://localhost:8000/espace', 'http://127.0.0.1:8000/', 'http://[::1]/', 'http://si.localhost/'] as $url) {
+            self::assertTrue(OrangeMoney::adresseLocale($url), $url);
+        }
+        foreach (['https://succes-imprim.ml/espace', 'https://abc.trycloudflare.com/', 'http://192.168.1.10/'] as $url) {
+            self::assertFalse(OrangeMoney::adresseLocale($url), $url);
+        }
+    }
+
+    /** @param array{api?: string, devise?: string, secret?: string, merchant?: string, jeton?: MockResponse, base?: string} $o */
     private function diagnostic(array $o): OrangeMoney
     {
         $em = $this->createStub(EntityManagerInterface::class);
@@ -223,7 +255,7 @@ final class OrangeMoneyTest extends TestCase
                 : new MockResponse((string) json_encode($this->ouverture), ['http_code' => 201]);
         });
         $urls = $this->createStub(UrlGeneratorInterface::class);
-        $urls->method('generate')->willReturnCallback(static fn (string $route, array $p): string => 'http://localhost:8000/'.$route.(isset($p['o']) ? '/'.$p['o'] : ''));
+        $urls->method('generate')->willReturnCallback(static fn (string $route, array $p): string => ($o['base'] ?? 'https://si.ml/').$route.(isset($p['o']) ? '/'.$p['o'] : ''));
 
         return new OrangeMoney($em, $http, new ArrayAdapter(), $urls, new NullLogger(), $o['api'] ?? 'https://api.orange.com/orange-money-webpay/dev/v1', $o['devise'] ?? 'OUV', 'id-om', $o['secret'] ?? 'secret-om', $o['merchant'] ?? 'cle-om');
     }
@@ -244,7 +276,7 @@ final class OrangeMoneyTest extends TestCase
     }
 
     /** @param list<TransactionOrangeMoney> $transactions */
-    private function service(array $transactions = [], string $cleMarchand = 'cle-marchand'): OrangeMoney
+    private function service(array $transactions = [], string $cleMarchand = 'cle-marchand', string $espace = 'https://si.ml/espace/'): OrangeMoney
     {
         $repository = $this->createStub(EntityRepository::class);
         $repository->method('findBy')->willReturnCallback(static fn (array $critere): array => array_values(array_filter(
@@ -279,7 +311,7 @@ final class OrangeMoneyTest extends TestCase
         $urls = $this->createStub(UrlGeneratorInterface::class);
         $urls->method('generate')->willReturnCallback(static fn (string $route, array $p): string => match ($route) {
             'app_orange_money_notification' => 'https://si.ml/om/notification/'.$p['o'],
-            default => 'https://si.ml/espace/'.$route,
+            default => $espace.$route,
         });
 
         return new OrangeMoney($em, $http, new ArrayAdapter(), $urls, new NullLogger(), 'https://api.orange.com/orange-money-webpay/dev/v1', 'OUV', 'id', 'secret', $cleMarchand);

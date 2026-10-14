@@ -91,6 +91,10 @@ final class OrangeMoney
 
         $transaction = new TransactionOrangeMoney($commande, $compte, $montant, \sprintf('SI%s%s', $maintenant->format('ymdHis'), strtoupper(bin2hex(random_bytes(3)))), $maintenant);
         $id = (string) $commande->getPublicId();
+        if (self::adresseLocale($this->urls->generate('app_espace_payer', ['id' => $id], UrlGeneratorInterface::ABSOLUTE_URL))) {
+            // Seulement sur un poste de développement : Orange refuse de renvoyer vers localhost.
+            throw new \DomainException('Orange Money refuse les adresses localhost : ouvrez l\'espace client par une adresse publique (tunnel ou site en ligne) pour payer.');
+        }
         try {
             $reponse = $this->http->request('POST', rtrim($this->api, '/').'/webpayment', [
                 'headers' => ['Authorization' => 'Bearer '.$this->jeton(), 'Accept' => 'application/json'],
@@ -114,7 +118,7 @@ final class OrangeMoney
         }
         $lien = (string) ($donnees['payment_url'] ?? '');
         if (!\in_array($reponse->getStatusCode(), [200, 201], true) || '' === (string) ($donnees['pay_token'] ?? '') || '' === (string) ($donnees['notif_token'] ?? '') || !self::lienOrange($lien)) {
-            $this->logger->error('Orange Money : réponse inattendue ({statut}, {message}).', ['statut' => $reponse->getStatusCode(), 'message' => (string) ($donnees['message'] ?? '')]);
+            $this->logger->error('Orange Money : paiement non ouvert, {raison}.', ['raison' => self::refus($reponse->getStatusCode(), $donnees)]);
             throw new \DomainException('Orange Money a refusé d\'ouvrir le paiement. Réessayez ou payez en boutique.');
         }
         $transaction->ouvrir((string) $donnees['pay_token'], (string) $donnees['notif_token'], $lien);
@@ -227,7 +231,15 @@ final class OrangeMoney
         }
 
         $orderId = \sprintf('SI%s%s', $maintenant->format('ymdHis'), strtoupper(bin2hex(random_bytes(3))));
+        // Orange refuse localhost : depuis un poste de développement, l'essai
+        // renvoie vers example.com (la notification d'un essai est ignorée).
         $accueil = $this->urls->generate('app_home', [], UrlGeneratorInterface::ABSOLUTE_URL);
+        $notification = $this->urls->generate('app_orange_money_notification', ['o' => $orderId], UrlGeneratorInterface::ABSOLUTE_URL);
+        $local = self::adresseLocale($accueil);
+        if ($local) {
+            $accueil = 'https://example.com/';
+            $notification = 'https://example.com/om/notification/'.$orderId;
+        }
         try {
             $reponse = $this->http->request('POST', rtrim($this->api, '/').'/webpayment', [
                 'headers' => ['Authorization' => 'Bearer '.$jeton, 'Accept' => 'application/json'],
@@ -238,7 +250,7 @@ final class OrangeMoney
                     'amount' => 100,
                     'return_url' => $accueil,
                     'cancel_url' => $accueil,
-                    'notif_url' => $this->urls->generate('app_orange_money_notification', ['o' => $orderId], UrlGeneratorInterface::ABSOLUTE_URL),
+                    'notif_url' => $notification,
                     'lang' => 'fr',
                     'reference' => 'Essai Succès Imprim',
                 ],
@@ -253,10 +265,18 @@ final class OrangeMoney
         }
         $lien = (string) ($donnees['payment_url'] ?? '');
         $etapes[] = \in_array($code, [200, 201], true) && self::lienOrange($lien)
-            ? ['etape' => 'Paiement d\'essai', 'ok' => true, 'detail' => 'clé marchand acceptée, page de paiement de 100 OUV : '.$lien]
+            ? ['etape' => 'Paiement d\'essai', 'ok' => true, 'detail' => 'clé marchand acceptée, page de paiement de 100 OUV : '.$lien.($local ? ' (retour vers example.com : Orange refuse localhost)' : '')]
             : ['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => self::refus($code, $donnees)];
 
         return $etapes;
+    }
+
+    /** Adresse que seul ce poste peut ouvrir, refusée par Orange. */
+    public static function adresseLocale(string $url): bool
+    {
+        $hote = strtolower(trim((string) parse_url($url, \PHP_URL_HOST), '[]'));
+
+        return '' === $hote || 'localhost' === $hote || str_ends_with($hote, '.localhost') || '::1' === $hote || str_starts_with($hote, '127.');
     }
 
     /** @return array<string, mixed> */

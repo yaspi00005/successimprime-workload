@@ -71,6 +71,8 @@ Chaque matin, sur l'ERP de la boutique uniquement :
 
 La page **Mes promotions** (lien dans Compte, sauf pour un client au prix B2B) montre au client ses promotions en cours, et elles seules : celles de son segment, de sa liste ou de son anniversaire. Elle donne le nom, les articles, la période, l'avantage et les conditions. Les promotions descendent par la synchronisation (type `promotion`, `docs/synchronisation.md`). Le code, la note interne, les auteurs et les exceptions restent au local. Une promotion à code descend éteinte : le code se donne au comptoir. Après la mise à jour, lancer une fois `php bin/console app:synchro --initialiser=promotion` sur le local pour envoyer les promotions déjà créées.
 
+L'**Atelier 3D** (`docs/atelier-3d.md`) montre la promotion qui s'appliquerait à l'article (« Promotion … : −29 250 F, déduite par l'atelier en confirmant la commande »), sans la déduire du total affiché : comme toute commande en ligne, elle est appliquée à la confirmation. Un visiteur sans compte et un demandeur d'entreprise ne la voient pas.
+
 ### Reste à faire
 
 - **Commande passée en ligne** : la promotion n'est pas posée à l'envoi par le client. Elle s'applique quand l'atelier ouvre et enregistre la commande pour en confirmer le prix.

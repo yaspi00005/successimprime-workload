@@ -37,6 +37,9 @@ final class Synchro
 {
     public const LOT = 100;
 
+    /** Volume au plus des contenus d'un lot (un envoi signé fait 10 Mo au plus). */
+    public const LOT_OCTETS = 6 * 1024 * 1024;
+
     /** Pas de synchro réussie depuis ce délai : alerte. */
     public const ALERTE_MINUTES = 15;
 
@@ -108,6 +111,7 @@ final class Synchro
 
         $contenus = [];
         $lot = [];
+        $octets = 0;
         foreach ($lignes as $l) {
             $cle = $l->getType().$l->getPublicId();
             if ($l->getOperation() === SynchroJournal::ACTION) {
@@ -115,6 +119,11 @@ final class Synchro
             } elseif (!\array_key_exists($cle, $contenus)) {
                 $entite = $l->getOperation() === SynchroJournal::MAJ ? $this->serialiseur->trouver($l->getType(), $l->getPublicId()) : null;
                 $contenus[$cle] = $entite === null ? null : $this->serialiseur->versTableau($l->getType(), $entite);
+            }
+            // Des images (site vitrine, photos de réclamation) : le lot reste sous la taille d'un envoi signé.
+            $octets += \strlen((string) json_encode($contenus[$cle]));
+            if ($lot !== [] && $octets > self::LOT_OCTETS) {
+                break;
             }
             $lot[] = [
                 'id' => (int) $l->getId(),

@@ -94,6 +94,51 @@ final class CatalogueSynchro
                 'champs' => ['code', 'raisonSociale', 'nomCommercial', 'mention', 'activite', 'adresse', 'telephone', 'email', 'siteWeb', 'rccm', 'nif', 'marchandOrangeMoney', 'couleurs', 'actif', 'ordre'],
                 'relations' => [], 'listes' => [],
             ],
+            // Contenu du site vitrine (Réglages › Site vitrine), saisi au local seulement.
+            // Les images d'abord : pages, réalisations, conseils et partenaires les citent.
+            // Image réencodée (WebP, ou PNG, 300 Ko au plus), revérifiée à l'arrivée (ImageSite::verifier) ;
+            // l'original envoyé reste au local.
+            'site_image' => [
+                'classe' => \App\Entity\ImageSite::class, 'sens' => self::DESCENDANT, 'libelle' => 'Image du site', 'titre' => ['texteAlternatif'],
+                'champs' => ['contenu', 'type', 'largeur', 'hauteur', 'empreinte', 'usage', 'texteAlternatif', 'ordre', 'creeLe'],
+                'relations' => [], 'listes' => [],
+            ],
+            'site_page' => [
+                'classe' => \App\Entity\PageSite::class, 'sens' => self::DESCENDANT, 'libelle' => 'Page du site', 'titre' => ['titre'],
+                'champs' => ['slug', 'titre', 'accroche', 'description', 'corps', 'publie', 'ordre', 'modifieLe'],
+                'relations' => ['image' => 'site_image'], 'listes' => [],
+            ],
+            // Le nom du client ne part qu'avec son accord. La catégorie part par son identifiant
+            // public (categorieRef) : la réalisation n'attend pas les catégories, chargées plus loin.
+            'site_realisation' => [
+                'classe' => \App\Entity\Realisation::class, 'sens' => self::DESCENDANT, 'libelle' => 'Réalisation', 'titre' => ['titre'],
+                'champs' => ['titre', 'categorieRef', 'description', 'nomClient', 'accordClient', 'publie', 'dateRealisation'],
+                'relations' => [], 'listes' => ['images' => 'site_image'],
+                'filtres' => ['nomClient' => [\App\Entity\Realisation::class, 'nomClientPublic']],
+            ],
+            // Sans l'accord du client, ni le texte ni le nom de l'avis ne quittent le local.
+            'site_avis' => [
+                'classe' => \App\Entity\AvisClient::class, 'sens' => self::DESCENDANT, 'libelle' => 'Avis client', 'titre' => ['nomAffiche'],
+                'champs' => ['nomAffiche', 'texte', 'note', 'source', 'dateAvis', 'accordClient', 'publie'],
+                'relations' => [], 'listes' => [],
+                'filtres' => ['nomAffiche' => [\App\Entity\AvisClient::class, 'textePublic'], 'texte' => [\App\Entity\AvisClient::class, 'textePublic']],
+            ],
+            'site_article' => [
+                'classe' => \App\Entity\ArticleConseil::class, 'sens' => self::DESCENDANT, 'libelle' => 'Conseil', 'titre' => ['titre'],
+                'champs' => ['titre', 'slug', 'rubrique', 'resume', 'corps', 'publieLe', 'publie', 'modifieLe'],
+                'relations' => ['image' => 'site_image'], 'listes' => [],
+            ],
+            'site_partenaire' => [
+                'classe' => \App\Entity\Partenaire::class, 'sens' => self::DESCENDANT, 'libelle' => 'Partenaire', 'titre' => ['nom'],
+                'champs' => ['nom', 'lien', 'ordre', 'visible', 'accordObtenu'],
+                'relations' => ['logo' => 'site_image'], 'listes' => [],
+            ],
+            // Règle de calcul des chiffres du site (ChiffresSite).
+            'site_reglage' => [
+                'classe' => \App\Entity\ReglageSite::class, 'sens' => self::DESCENDANT, 'libelle' => 'Réglage du site', 'titre' => ['cle'],
+                'champs' => ['cle', 'valeurs'],
+                'relations' => [], 'listes' => [],
+            ],
             'categorie' => [
                 'classe' => CategorieProduit::class, 'sens' => self::DESCENDANT, 'libelle' => 'Catégorie', 'titre' => ['nom'],
                 'champs' => ['nom', 'description', 'publie', 'ordre'],

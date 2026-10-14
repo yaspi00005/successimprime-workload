@@ -305,6 +305,11 @@ final class CatalogueParametres
                 'motsCles' => ['Plan d\'accès · bouton Itinéraire', 'Lien Google Maps · coordonnées GPS', 'Contact du site vitrine'],
                 'note' => 'Les horaires de la page viennent de la tuile Horaires ; l\'adresse, le téléphone et l\'e-mail, de l\'entité Succès Imprim (Entités et en-têtes).',
             ],
+            'site_vitrine' => [
+                'famille' => 'clients', 'libelle' => 'Site vitrine', 'icone' => 'fa-globe',
+                'roles' => ['ROLE_ADMIN', 'ROLE_SITE_VITRINE'], 'route' => 'app_site_contenu_index', 'champs' => [],
+                'motsCles' => ['Pages du site · équipements, guide, à propos, engagements, FAQ', 'Réalisations et photos', 'Avis clients · conseils', 'Partenaires · chiffres du site'],
+            ],
 
             // ---------- Sécurité et système ----------
             'appareils' => [

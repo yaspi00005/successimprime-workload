@@ -93,6 +93,12 @@ final class ModulesRoles
                 'detail' => 'planning d\'entretien, photos',
                 'droits' => ['ROLE_ENTRETIEN'],
             ],
+            // Contenu du site public : à la Direction, et à qui on confie la mise à jour du site.
+            'site' => [
+                'libelle' => 'Site vitrine',
+                'detail' => 'pages, réalisations, avis, conseils, partenaires',
+                'droits' => ['ROLE_SITE_VITRINE'],
+            ],
             'reglages' => [
                 'libelle' => 'Réglages',
                 'detail' => 'utilisateurs, prix, sécurité',

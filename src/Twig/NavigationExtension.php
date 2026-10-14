@@ -111,6 +111,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
             ['libelle' => 'Sécurité', 'route' => 'app_appareils_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_appareils_', 'app_jetons_api_', 'app_sauvegardes_', 'app_synchronisation_']],
             ['libelle' => 'Écran TV', 'route' => 'app_ecran_tv_reglages', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_ecran_tv_']],
+            ['libelle' => 'Site vitrine', 'route' => 'app_site_contenu_index', 'role' => 'ROLE_SITE_VITRINE', 'prefixes' => ['app_site_contenu_']],
         ],
     ];
 
@@ -242,6 +243,7 @@ final class NavigationExtension extends AbstractExtension
         'app_parametres_paiement_' => 'reglages',
         'app_fichier_dossier_partage' => 'reglages',
         'app_ecran_tv_' => 'reglages',
+        'app_site_contenu_' => 'reglages',
         'app_appareils_' => 'reglages',
         'app_sauvegardes_' => 'reglages',
         'app_synchronisation_' => 'reglages',

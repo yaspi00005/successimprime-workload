@@ -25,6 +25,11 @@
 
 {% block page_title %}Commande{% endblock %}
 
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+{% endblock %}
+
 {% block body %}
 	{% if app.request.query.get('creee') %}
 		{# Juste après la saisie (maquette C04, écran « Commande créée »). #}
@@ -217,6 +222,7 @@
 									<a href="{{ path('app_fichier_visualiser', {id: fichier.id}) }}" class="si-pastille si-pastille-gris" target="_blank" title="{{ fichier.nomOriginal }}"><i class="fas fa-paperclip"></i></a>
 								{% endfor %}
 							</div>
+							{{ include('promotions/_ligne.html.twig', {detail: detail, possibles: promotionsB2b[detail.id] ?? [], type: 'commande', peutDemander: peutModifier and not annulee}) }}
 						</div>
 						<div class="text-end text-nowrap">
 							<strong>{{ detail.totalTtc|number_format(0, ',', ' ') }} F</strong>

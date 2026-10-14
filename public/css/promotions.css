@@ -4,6 +4,8 @@
  * affichée sur une ligne de devis ou de commande.
  */
 
+/* Les états restent visibles quand le menu en volets est ouvert (admin.css masque les onglets de section). */
+#main-wrapper.si-avec-volets:not(.menu-toggle) .si-onglets.si-pr-etats { display: flex; }
 .si-pr-compte { display: inline-block; min-width: 1.4em; padding: 0 .35em; margin-left: 4px; border-radius: 999px; background: #EEF0F3; color: #5B6575; font-size: 11px; font-weight: 700; text-align: center; }
 .si-pr-table td { vertical-align: top; }
 .si-pr-articles { max-width: 260px; font-size: 13px; }
@@ -59,6 +61,8 @@
 .si-pr-ligne button { border: 0; background: none; padding: 0; color: #0F4590; font-weight: 600; text-decoration: underline; cursor: pointer; font-size: 12.5px; }
 .si-pr-ligne small { color: #64748B; }
 .si-pr-code { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.si-pr-fiche-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 13px; }
+.si-ligne-promo { display: block; margin-top: 2px; color: #BE123C; font-size: 12px; font-weight: 600; }
 .si-pr-code input { max-width: 180px; text-transform: uppercase; }
 
 @media (max-width: 575.98px) {

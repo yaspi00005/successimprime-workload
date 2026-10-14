@@ -43,7 +43,7 @@
 				<label for="jours">Sur les</label>
 				<input type="number" id="jours" name="jours" min="1" max="90" value="{{ jours }}" class="form-control form-control-sm">
 				<span>prochains jours</span>
-				<button class="btn btn-sm btn-light">Afficher</button>
+				<button class="btn btn-sm btn-outline-secondary">Afficher</button>
 			</form>
 		</div>
 		<p class="si-pg-note">
@@ -116,8 +116,8 @@
 										{% else %}<span class="si-pastille si-pastille-bleu">À valider</span>{% endif %}
 										{% if not en_ligne %}
 											<span class="si-pr-boutons">
-												{% if not (a and a.estValide) and e.modele %}<button form="decider-{{ loop.index }}" name="decision" value="valider" class="btn btn-sm btn-success" title="Valider avec la promotion choisie"><i class="fas fa-check"></i></button>{% elseif a and a.estValide %}<button form="decider-{{ loop.index }}" name="decision" value="valider" class="btn btn-sm btn-light" title="Changer la promotion">Changer</button>{% endif %}
-												{% if not (a and a.estExclu) %}<button form="decider-{{ loop.index }}" name="decision" value="exclure" class="btn btn-sm btn-light" title="Ni promotion ni SMS">Exclure</button>{% else %}<button form="decider-{{ loop.index }}" name="decision" value="valider" class="btn btn-sm btn-light">Réintégrer</button>{% endif %}
+												{% if not (a and a.estValide) and e.modele %}<button form="decider-{{ loop.index }}" name="decision" value="valider" class="btn btn-sm btn-success" title="Valider avec la promotion choisie"><i class="fas fa-check"></i></button>{% elseif a and a.estValide %}<button form="decider-{{ loop.index }}" name="decision" value="valider" class="btn btn-sm btn-outline-secondary" title="Changer la promotion">Changer</button>{% endif %}
+												{% if not (a and a.estExclu) %}<button form="decider-{{ loop.index }}" name="decision" value="exclure" class="btn btn-sm btn-outline-secondary" title="Ni promotion ni SMS">Exclure</button>{% else %}<button form="decider-{{ loop.index }}" name="decision" value="valider" class="btn btn-sm btn-outline-secondary">Réintégrer</button>{% endif %}
 											</span>
 										{% endif %}
 									{% endif %}
@@ -170,7 +170,7 @@
 									{% if a.promotion %} · {{ a.canal == 'sms' ? (a.envoyeLe ? 'SMS envoyé' : 'SMS en échec') : (a.canal == 'whatsapp' ? 'WhatsApp' : (a.erreur ?? 'sans message')) }}{{ a.rappelLe ? ' · rappel le ' ~ a.rappelLe|date('d/m') }}{% endif %}
 								</small>
 								{% if l and l.message %}<a href="{{ l.message }}" target="_blank" rel="noopener" class="btn btn-sm btn-success mt-1"><i class="fab fa-whatsapp me-1"></i>Message</a>{% endif %}
-								{% if l and l.rappel %}<a href="{{ l.rappel }}" target="_blank" rel="noopener" class="btn btn-sm btn-light mt-1"><i class="fab fa-whatsapp me-1"></i>Rappel</a>{% endif %}
+								{% if l and l.rappel %}<a href="{{ l.rappel }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary mt-1"><i class="fab fa-whatsapp me-1"></i>Rappel</a>{% endif %}
 							</li>
 						{% endfor %}
 					</ul>

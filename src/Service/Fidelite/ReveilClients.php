@@ -199,6 +199,10 @@ final class ReveilClients
             if (CommandesDetails::PRODUCTION_ANNULEE === $ligne->getStatutProduction() || $ligne->getPrixUnitaire() <= 0) {
                 continue;
             }
+            // Une seule promotion par ligne : celle qui porte déjà une promotion client la garde (docs/promotions.md).
+            if ($ligne->getRemisePromotion() > 0) {
+                continue;
+            }
             $ancien = $ligne->getTotalTtc();
             $ligne->setRemise($ligne->getRemise() + (int) round($ligne->getPrixUnitaire() * $promo->getTaux() / 100));
             $ligne->calculerTotaux($client->isB2B());

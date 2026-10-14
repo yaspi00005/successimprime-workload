@@ -106,6 +106,15 @@ class DemandeExceptionPromotion
         return $copie;
     }
 
+    /** Demande encore en attente sur un devis transformé : elle passe sur la ligne de la commande. */
+    public function transfererVers(CommandesDetails $ligne): static
+    {
+        $this->ligneCommande = $ligne;
+        $this->ligneDevis = null;
+
+        return $this;
+    }
+
     public function getId(): ?int { return $this->id; }
     public function getPromotion(): ?Promotion { return $this->promotion; }
     public function getLigneCommande(): ?CommandesDetails { return $this->ligneCommande; }

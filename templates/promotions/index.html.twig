@@ -30,13 +30,13 @@
 	{% endif %}
 
 	<div class="card si-bloc">
-		<nav class="si-onglets si-onglets-carte" aria-label="Promotions par état">
+		<nav class="si-onglets si-onglets-carte si-pr-etats" aria-label="Promotions par état">
 			{% for cle, libelle in etats %}
 				<a href="{{ path('app_promotions_index', {etat: cle}) }}" class="{{ etat == cle ? 'actif' }}">{{ libelle }} <span class="si-pr-compte">{{ comptes[cle] }}</span></a>
 			{% endfor %}
 		</nav>
 
-		<p class="si-pg-note">À la saisie d'un devis ou d'une commande, la promotion valable pour le client et l'article s'applique toute seule et s'affiche sur la ligne ; l'agent peut la retirer. Une seule par ligne, jamais en plus d'une remise meilleure. Les revendeurs au prix B2B n'en ont pas, sauf exception acceptée par un responsable.{% if anniversaires > 0 %} Les {{ anniversaires }} promotion{{ anniversaires > 1 ? 's' }} d'anniversaire en cours sont sur la page <a href="{{ path('app_anniversaires_index') }}">Anniversaires</a>.{% endif %}</p>
+		<p class="si-pg-note">À la saisie d'un devis ou d'une commande, la promotion valable pour le client et l'article s'applique toute seule et s'affiche sur la ligne ; l'agent peut la retirer. Une seule par ligne, jamais en plus d'une remise meilleure. Les revendeurs au prix B2B n'en ont pas, sauf exception acceptée par un responsable.{% if anniversaires > 0 %} {{ anniversaires > 1 ? 'Les ' ~ anniversaires ~ " promotions d'anniversaire en cours sont" : "La promotion d'anniversaire en cours est" }} sur la page <a href="{{ path('app_anniversaires_index') }}">Anniversaires</a>.{% endif %}</p>
 
 		{% if promotions is empty %}
 			<p class="si-ac-vide">Aucune promotion {{ {en_cours: 'en cours', a_venir: 'à venir', terminee: 'terminée', suspendue: 'suspendue'}[etat] }}.</p>

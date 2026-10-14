@@ -111,7 +111,7 @@ class ModeleAnniversaire
 
     public function getLibelleAvantage(): string
     {
-        return Promotion::libelleAvantage($this->avantage, $this->getValeur());
+        return Promotion::formaterAvantage($this->avantage, $this->getValeur());
     }
 
     public function getLibelleArticles(): string

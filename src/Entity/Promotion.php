@@ -240,6 +240,12 @@ class Promotion
     public function getOrigine(): string { return $this->origine; }
     public function setOrigine(string $origine): static { $this->origine = self::ORIGINE_ANNIVERSAIRE === $origine ? $origine : self::ORIGINE_MANUELLE; return $this; }
     public function estAnniversaire(): bool { return self::ORIGINE_ANNIVERSAIRE === $this->origine; }
+
+    /** Synchronisation : en ligne, une promotion à code reste éteinte (le code ne quitte pas la boutique). */
+    public static function activeEnLigne(?bool $active, self $p): bool
+    {
+        return (bool) $active && null === $p->code;
+    }
     public function getNote(): ?string { return $this->note; }
     public function setNote(?string $note): static { $this->note = null !== $note && '' !== trim($note) ? mb_substr(trim($note), 0, 255) : null; return $this; }
     public function getCreePar(): ?User { return $this->creePar; }
@@ -316,10 +322,10 @@ class Promotion
     /** « −15 % », « −1 000 F par unité », « 5 000 F par unité ». */
     public function getLibelleAvantage(): string
     {
-        return self::libelleAvantage($this->avantage, $this->getValeur());
+        return self::formaterAvantage($this->avantage, $this->getValeur());
     }
 
-    public static function libelleAvantage(string $avantage, float $valeur): string
+    public static function formaterAvantage(string $avantage, float $valeur): string
     {
         $nombre = static fn (float $n): string => rtrim(rtrim(number_format($n, 2, ',', ' '), '0'), ',');
 

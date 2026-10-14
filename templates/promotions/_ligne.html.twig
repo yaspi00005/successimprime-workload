@@ -1,0 +1,30 @@
+{#
+	Promotion d'une ligne sur la fiche d'un devis ou d'une commande
+	(docs/promotions.md). Variables : detail (la ligne), possibles (pour un
+	revendeur au prix B2B : promotions qu'une exception permettrait, avec la
+	dernière demande), type ('commande' ou 'devis'), peutDemander.
+	Le montant affiché est TTC, comme le total de la ligne.
+#}
+{%- if detail.libellePromotion or possibles is not empty -%}
+	<div class="si-pr-fiche-ligne">
+		{%- if detail.libellePromotion %}
+			{% set economie = (detail.montantPromotion * (1 + (detail.tva ?? 0) / 100))|round %}
+			<span class="si-pr-avantage" title="Promotion appliquée à cette ligne"><i class="fas fa-tag me-1"></i>{{ detail.libellePromotion }}{% if economie > 0 %} · −{{ economie|number_format(0, ',', ' ') }} F{% endif %}</span>
+		{%- endif %}
+		{%- for p in possibles %}
+			<span class="si-pastille si-pastille-bleu" title="Revendeur au prix B2B : la promotion ne s'applique qu'avec l'accord d'un responsable">Promotion possible : {{ p.promotion.libelleLigne }}</span>
+			{% if p.demande and p.demande.estEnAttente %}
+				<span class="si-pastille si-pastille-orange">Exception demandée, en attente</span>
+			{% elseif peutDemander %}
+				<form method="post" action="{{ path('app_promotions_exception_demander') }}" class="d-inline" data-confirmer="Demander à un responsable d'appliquer « {{ p.promotion.nom }} » à cette ligne ? Elle reste au prix B2B en attendant.">
+					<input type="hidden" name="_token" value="{{ csrf_token('exception-demande-' ~ detail.id) }}">
+					<input type="hidden" name="type" value="{{ type }}">
+					<input type="hidden" name="ligne" value="{{ detail.id }}">
+					<input type="hidden" name="promotion" value="{{ p.promotion.id }}">
+					<button type="submit" class="btn btn-link btn-sm p-0 si-lien-discret">Demander l'exception</button>
+				</form>
+				{% if p.demande and p.demande.estRefusee %}<small class="text-muted">Refusée{{ p.demande.reponse ? ' : ' ~ p.demande.reponse }}</small>{% endif %}
+			{% endif %}
+		{%- endfor %}
+	</div>
+{%- endif -%}

@@ -53,10 +53,13 @@
 				</dl>
 				{% if gestion and not en_ligne %}
 					<div class="d-flex gap-2 flex-wrap">
-						<form method="post" action="{{ path('app_promotions_suspendre', {id: promotion.id}) }}">
-							<input type="hidden" name="_token" value="{{ csrf_token('promotion-' ~ promotion.id) }}">
-							<button class="btn btn-sm btn-light">{{ promotion.active ? 'Suspendre' : 'Reprendre' }}</button>
-						</form>
+						{# Une promotion terminée ne se suspend plus. #}
+						{% if promotion.etat(jour) != 'terminee' %}
+							<form method="post" action="{{ path('app_promotions_suspendre', {id: promotion.id}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('promotion-' ~ promotion.id) }}">
+								<button class="btn btn-sm btn-outline-secondary">{{ promotion.active ? 'Suspendre' : 'Reprendre' }}</button>
+							</form>
+						{% endif %}
 						{% if not utilisee %}
 							<form method="post" action="{{ path('app_promotions_supprimer', {id: promotion.id}) }}" onsubmit="return confirm('Supprimer cette promotion ?');">
 								<input type="hidden" name="_token" value="{{ csrf_token('promotion-' ~ promotion.id) }}">

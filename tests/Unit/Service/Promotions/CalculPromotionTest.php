@@ -160,6 +160,22 @@ final class CalculPromotionTest extends TestCase
         self::assertSame('sans_effet', CalculPromotion::refus($p, $this->ligne(client: $revendeur, remise: 2500)));
     }
 
+    public function testPrixB2bDansLePrixUnitaireLaPromotionPartDuPrixPublic(): void
+    {
+        $revendeur = self::client(8)->setTypeClient('B2B');
+        $p = self::avecId($this->promo(Promotion::AVANTAGE_POURCENTAGE, 20)->addProduit($this->rollup), 4);
+
+        // Configuration du catalogue : prix B2B 9 000 F au lieu de 10 000 F, sans remise.
+        $ligne = $this->ligne(client: $revendeur, prix: 9000, exceptions: [4], prixPublic: 10000);
+        self::assertSame(1000, $ligne->avantageDeLaLigne());
+        // −20 % du prix public = 2 000 F ; le prix B2B en donnait déjà 1 000 : la ligne finit à 8 000 F, pas à 7 200 F.
+        self::assertSame(1000, CalculPromotion::remisePour($p, $ligne));
+        self::assertSame('sans_effet', CalculPromotion::refus($p, $this->ligne(client: $revendeur, prix: 7500, prixPublic: 10000)));
+
+        // Pour un client au prix public, la promotion part du prix de la ligne.
+        self::assertSame(1800, CalculPromotion::remisePour($p, $this->ligne(prix: 9000, prixPublic: 10000)));
+    }
+
     public function testUneEntrepriseAuPrixPublicNEstPasExclue(): void
     {
         $entreprise = self::client(9)->setTypeCompte(Clients::TYPE_COMPTE_ENTREPRISE);
@@ -237,10 +253,10 @@ final class CalculPromotionTest extends TestCase
 
     public function testLibellesDeLAvantage(): void
     {
-        self::assertSame('−15 %', Promotion::libelleAvantage(Promotion::AVANTAGE_POURCENTAGE, 15));
-        self::assertSame('−12,5 %', Promotion::libelleAvantage(Promotion::AVANTAGE_POURCENTAGE, 12.5));
-        self::assertSame('−1 000 F par unité', Promotion::libelleAvantage(Promotion::AVANTAGE_MONTANT, 1000));
-        self::assertSame('prix fixe 7 500 F par unité', Promotion::libelleAvantage(Promotion::AVANTAGE_PRIX_FIXE, 7500));
+        self::assertSame('−15 %', Promotion::formaterAvantage(Promotion::AVANTAGE_POURCENTAGE, 15));
+        self::assertSame('−12,5 %', Promotion::formaterAvantage(Promotion::AVANTAGE_POURCENTAGE, 12.5));
+        self::assertSame('−1 000 F par unité', Promotion::formaterAvantage(Promotion::AVANTAGE_MONTANT, 1000));
+        self::assertSame('prix fixe 7 500 F par unité', Promotion::formaterAvantage(Promotion::AVANTAGE_PRIX_FIXE, 7500));
     }
 
     /* ---------- Outils ---------- */
@@ -272,6 +288,7 @@ final class CalculPromotionTest extends TestCase
         ?string $code = null,
         array $utilisations = [],
         array $exceptions = [],
+        ?float $prixPublic = null,
     ): ContexteLigne {
         return new ContexteLigne(
             false === $client ? null : ($client ?? self::client(1)),
@@ -285,6 +302,7 @@ final class CalculPromotionTest extends TestCase
             $code,
             $utilisations,
             $exceptions,
+            $prixPublic,
         );
     }
 

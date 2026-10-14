@@ -53,6 +53,17 @@ final class CalculPromotion
         return max(0, self::remiseSurPrix($p, $prixUnitaire) - max(0, $remiseSaisie));
     }
 
+    /**
+     * Ce que la promotion ajoute sur cette ligne, par unité. Pour un
+     * revendeur, elle part du prix public et se compare à tout ce que la
+     * ligne a déjà (prix B2B compris) : la promotion à la place du prix B2B,
+     * jamais les deux.
+     */
+    public static function remisePour(Promotion $p, ContexteLigne $l): int
+    {
+        return self::remiseUnitaire($p, $l->prixDeReference(), $l->avantageDeLaLigne());
+    }
+
     /** Montant retiré sur la ligne par la promotion (plafonné au total, comme la remise). */
     public static function montantLigne(int $remiseUnitaire, int $remiseSaisie, float $unites, int $totalAvantRemise): int
     {
@@ -112,7 +123,7 @@ final class CalculPromotion
         if (null !== $p->getUtilisationsParClient() && ($l->utilisations[(int) $p->getId()] ?? 0) >= $p->getUtilisationsParClient()) {
             return 'utilisations';
         }
-        if (self::remiseUnitaire($p, $l->prixUnitaire, $l->remiseSaisie) <= 0) {
+        if (self::remisePour($p, $l) <= 0) {
             return 'sans_effet';
         }
         // En dernier : l'exception ne se demande que pour une promotion qui s'appliquerait.
@@ -150,11 +161,11 @@ final class CalculPromotion
             if (null !== $raison) {
                 $refus[(int) $p->getId()] = $raison;
                 if ('b2b' === $raison) {
-                    $b2b[] = ['promotion' => $p, 'remise' => self::remiseUnitaire($p, $l->prixUnitaire, $l->remiseSaisie)];
+                    $b2b[] = ['promotion' => $p, 'remise' => self::remisePour($p, $l)];
                 }
                 continue;
             }
-            $r = self::remiseUnitaire($p, $l->prixUnitaire, $l->remiseSaisie);
+            $r = self::remisePour($p, $l);
             if (null === $retenue || self::meilleure($p, $r, $retenue, $remise)) {
                 $retenue = $p;
                 $remise = $r;

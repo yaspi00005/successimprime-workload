@@ -617,6 +617,16 @@
 																										       FINITIONS
 																										       ======================================================== #}
 
+		{#
+			Promotion de la ligne (docs/promotions.md) : affichée par
+			public/js/promotions-saisie.js, recalculée par le serveur à
+			l'enregistrement. La case cachée garde le choix de l'agent de la
+			retirer ; la classe js-calcul-detail relance le calcul.
+		#}
+		{% set ligneEnregistree = detail.vars.data %}
+		<div hidden>{{ form_widget(detail.promotionRetiree) }}</div>
+		<div class="si-pr-ligne js-promo-ligne js-calcul-detail" data-ligne="{{ ligneEnregistree ? ligneEnregistree.id }}" data-remise-promotion="{{ ligneEnregistree ? ligneEnregistree.remisePromotion : 0 }}" data-libelle="{{ ligneEnregistree ? ligneEnregistree.libellePromotion }}"></div>
+
 		<div class="si-resume-ligne js-resume-ligne"></div>
 
 		<div class="travail-section js-zone-finitions">
@@ -948,6 +958,8 @@
 					<dt class="js-recap-tva-libelle">TVA</dt><dd class="js-recap-tva">0</dd>
 					<dt>Remise</dt>
 					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-saisie'}}) }}</dd>
+					<dt>Code promo</dt>
+					<dd>{{ form_widget(form.codePromo, {attr: {class: 'form-control form-control-sm si-remise js-code-promo', maxlength: 30, autocomplete: 'off', placeholder: 'Facultatif'}}) }}</dd>
 				</dl>
 				<div class="si-recap-total"><span>Total TTC</span><strong class="js-total-affiche">0 F</strong></div>
 				<div class="si-acompte">
@@ -979,6 +991,9 @@
 				<button type="submit" class="btn btn-danger w-100 d-md-none">{{ estNouveau ? 'Enregistrer le devis' : 'Enregistrer les modifications' }}</button>
 			</div>
 
+			{# Promotions des lignes : aperçu demandé au serveur pendant la saisie. #}
+			<div hidden class="js-promotions-saisie" data-url="{{ path('app_promotions_apercu') }}" data-csrf="{{ csrf_token('promotions-saisie') }}" data-type="devis" data-id="{{ devis.id }}" data-verrouille="0"></div>
+
 			{# Champs calculés par le script, envoyés tels quels. #}
 			<div hidden>
 				{{ form_widget(form.totalHt) }}
@@ -1005,6 +1020,8 @@
 
 
 <link href="{{ asset( 'assets/plugins/select2/select2.min.css' ) }}" rel="stylesheet">
+<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+<script src="{{ asset('js/promotions-saisie.js') }}"></script>
 
 
 <style>
@@ -1474,8 +1491,11 @@ montant += montantFinitionsManuelles(detail);
 }
 
 
+// Promotion de la ligne (docs/promotions.md) : remise par unité donnée par le serveur, ajoutée à la remise saisie.
+const remisePromotion = window.SiPromotions ? window.SiPromotions.remise(detail) : 0;
+
 // La remise est un montant par unité (ex. 500 FCFA par m²), pas un montant fixe sur toute la ligne.
-const remiseTotale = Math.min(montant, remise * Math.max(0, facteur));
+const remiseTotale = Math.min(montant, (remise + remisePromotion) * Math.max(0, facteur));
 
 const totalHt = Math.max(0, montant - remiseTotale);
 
@@ -1499,6 +1519,10 @@ definirValeurChamp(detail, 'surface', surface, false);
 definirValeurChamp(detail, 'totalHt', Math.round(totalHt), false);
 
 definirValeurChamp(detail, 'totalTtc', Math.round(totalTtc), false);
+
+if (window.SiPromotions) {
+window.SiPromotions.calculee(detail, montant, facteur);
+}
 
 
 calculerRecapitulatif();

@@ -123,7 +123,7 @@ final class PromotionsSaisie
                 continue;
             }
             $demandesLigne = null !== $existante ? ($demandes[spl_object_id($existante)] ?? []) : [];
-            $ctx = new ContexteLigne($client, $produit, max(0, $l['prix']), max(0, $l['remise']), max(1, $l['quantite']), max(0, $l['brut']), $jour, $segments, $code, $utilisations, self::acceptees($demandesLigne));
+            $ctx = new ContexteLigne($client, $produit, max(0, $l['prix']), max(0, $l['remise']), max(1, $l['quantite']), max(0, $l['brut']), $jour, $segments, $code, $utilisations, self::acceptees($demandesLigne), $produit->getPrixBase());
             $r = CalculPromotion::evaluer($candidates, $ctx, $existante?->getPromotion());
             $b2b = [];
             foreach ($r['b2b'] as $possible) {
@@ -209,7 +209,9 @@ final class PromotionsSaisie
             throw new \DomainException('Cette promotion ne s\'applique pas à cette ligne.');
         }
 
-        $demande = new DemandeExceptionPromotion($promotion, $client, $ligne, $possible['remise'], $ligne->getRemise(), $par, $maintenant);
+        // Avantage B2B de la ligne par unité (remise, ou écart avec le prix public), pour la décision.
+        $avantage = (new ContexteLigne($client, $ligne->getProduit(), $ligne->getPrixUnitaire(), $ligne->getRemise(), 1, 0, $maintenant, prixPublic: self::prixPublic($ligne)))->avantageDeLaLigne();
+        $demande = new DemandeExceptionPromotion($promotion, $client, $ligne, $possible['remise'], $avantage, $par, $maintenant);
         $this->em->persist($demande);
         $this->em->flush();
         $this->promotions->journaliser(self::ENTITE_EXCEPTION, (int) $demande->getId(), 'exception_demandee', null, self::resume($demande), $par);
@@ -259,7 +261,7 @@ final class PromotionsSaisie
             }
             $demande->decider(true, $reponse, $par, $maintenant);
             $ligne->setPromotionRetiree(false);
-            $ligne->appliquerPromotion($promotion, CalculPromotion::remiseUnitaire($promotion, $ligne->getPrixUnitaire(), $ligne->getRemise()));
+            $ligne->appliquerPromotion($promotion, CalculPromotion::remisePour($promotion, $ctx));
             $ligne->calculerTotaux(true);
             if ($document instanceof Commandes) {
                 $document->recalculerTotaux();
@@ -399,7 +401,16 @@ final class PromotionsSaisie
             $code,
             $utilisations,
             $acceptees,
+            self::prixPublic($ligne),
         );
+    }
+
+    /** Prix public de l'article de la ligne : celui de sa configuration, sinon celui du produit. */
+    private static function prixPublic(CommandesDetails|DevisDetails $ligne): ?float
+    {
+        $prix = $ligne->getProduitConfiguration()?->getPrixBase() ?? $ligne->getProduit()?->getPrixBase();
+
+        return null !== $prix ? (float) $prix : null;
     }
 
     /** @throws \DomainException */

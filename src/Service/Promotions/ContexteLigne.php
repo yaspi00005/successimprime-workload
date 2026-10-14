@@ -34,11 +34,29 @@ final class ContexteLigne
         public readonly ?string $code = null,
         public readonly array $utilisations = [],
         public readonly array $exceptionsAcceptees = [],
+        /** Prix public de l'article (configuration, sinon produit) : pour un revendeur, la promotion se calcule sur ce prix. */
+        public readonly ?float $prixPublic = null,
     ) {
     }
 
     public function estB2b(): bool
     {
         return null !== $this->client && $this->client->isB2B();
+    }
+
+    /**
+     * Prix sur lequel la promotion se calcule. Un revendeur peut avoir son
+     * prix B2B dans le prix unitaire (configuration du catalogue) ou en
+     * remise (saisie) : dans les deux cas, la promotion part du prix public.
+     */
+    public function prixDeReference(): float
+    {
+        return $this->estB2b() && null !== $this->prixPublic ? max($this->prixUnitaire, $this->prixPublic) : $this->prixUnitaire;
+    }
+
+    /** Avantage déjà sur la ligne, par unité : la remise et, pour un revendeur, l'écart entre prix public et prix B2B. */
+    public function avantageDeLaLigne(): int
+    {
+        return max(0, $this->remiseSaisie) + (int) round($this->prixDeReference() - $this->prixUnitaire);
     }
 }

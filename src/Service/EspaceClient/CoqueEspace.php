@@ -173,7 +173,11 @@ final class CoqueEspace implements ResetInterface
     /**
      * Droits de la personne, en clair pour les gabarits.
      *
-     * @return array{lecture: bool, payeur: bool, valideur: bool, administrateur: bool, ecrit: bool, fidelite: bool, promotions: bool}
+     * « montants » : prix et montants des commandes et des devis
+     * (CompteClient::montantsVisibles), lu par les gabarits en
+     * `coque.montants` ; ni demandeur ni lecture seule.
+     *
+     * @return array{lecture: bool, payeur: bool, valideur: bool, montants: bool, administrateur: bool, ecrit: bool, fidelite: bool, promotions: bool}
      */
     public static function droits(CompteClient $compte): array
     {
@@ -183,6 +187,7 @@ final class CoqueEspace implements ResetInterface
             'lecture' => $compte->estLectureSeule(),
             'payeur' => $compte->peut(CompteClient::DROIT_PAYEUR),
             'valideur' => $compte->peut(CompteClient::DROIT_VALIDEUR),
+            'montants' => $compte->montantsVisibles(),
             'administrateur' => $compte->peut(CompteClient::DROIT_ADMINISTRATEUR),
             'ecrit' => $compte->peutEcrire(),
             // Programme fidélité : tout client hors grille revendeur (B2B), pour qui paie.

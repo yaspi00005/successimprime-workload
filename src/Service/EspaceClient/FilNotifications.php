@@ -123,8 +123,8 @@ final class FilNotifications
 
     /**
      * Montants : factures et paiements aux payeurs (la catégorie est déjà
-     * réservée), devis à qui peut l'accepter ou le payer ; jamais à un
-     * compte « Lecture · suivi ».
+     * réservée), devis à qui voit les montants (CompteClient::montantsVisibles :
+     * valideur ou payeur) ; jamais à un demandeur ni à un compte « Lecture · suivi ».
      *
      * @param array<string, mixed> $n
      */
@@ -132,7 +132,7 @@ final class FilNotifications
     {
         return match (PreferencesNotifications::CATEGORIE_DU_TYPE[$n['type']] ?? null) {
             'factures' => $compte->peut(CompteClient::DROIT_PAYEUR),
-            'devis' => $compte->peut(CompteClient::DROIT_VALIDEUR) || $compte->peut(CompteClient::DROIT_PAYEUR),
+            'devis' => $compte->montantsVisibles(),
             default => false,
         };
     }
@@ -275,8 +275,9 @@ final class FilNotifications
             'livree' => null !== $commande ? [['libelle' => 'Voir la commande', 'url' => $commande, 'style' => 'liv']] : [],
             'paiement' => [['libelle' => 'Mes paiements', 'url' => $url('app_espace_factures'), 'style' => 'secondaire']],
             'facture', 'echeance' => $this->actionsFacture($c, $url),
+            // Le PDF porte les prix : un demandeur voit le devis dans la liste, sans montant.
             'devis' => array_values(array_filter([
-                ['libelle' => 'Voir le devis', 'court' => 'Voir', 'url' => $url('app_espace_devis_pdf', ['id' => $c['devis']]), 'style' => 'dev'],
+                ['libelle' => 'Voir le devis', 'court' => 'Voir', 'url' => $compte->montantsVisibles() ? $url('app_espace_devis_pdf', ['id' => $c['devis']]) : $url('app_espace_devis'), 'style' => 'dev'],
                 Devis::STATUT_ENVOYE === ($c['statut'] ?? null) && $compte->peut(CompteClient::DROIT_VALIDEUR)
                     ? ['libelle' => 'Accepter', 'url' => $url('app_espace_devis_accepter', ['id' => $c['devis']]), 'style' => 'secondaire', 'post' => true]
                     : null,

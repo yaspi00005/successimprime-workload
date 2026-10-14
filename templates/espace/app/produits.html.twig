@@ -3,7 +3,8 @@
 {#
 	Mes produits (maquettes P01 à P03) : produits déjà validés, quantité en
 	pièces, en m² ou par lot. Le prix et la conversion viennent du serveur
-	(MesProduits::calculer) ; la sélection est commandée en une fois.
+	(MesProduits::calculer) ; la sélection est commandée en une fois. Un
+	demandeur (coque.montants faux) reçoit les quantités sans aucun prix.
 #}
 
 {% block title %}Mes produits{% endblock %}
@@ -43,7 +44,7 @@
 								<span class="ec-pc-ref">{{ p.reference }} <em>{{ f.badge }}</em></span>
 								<b>{{ p.nom }}</b>
 								{% if f.format %}<span class="ec-petit">{{ f.format }}</span>{% endif %}
-								<span class="ec-pc-prix">{{ f.prix }}{% if f.batLe %}<small> · ✓ BAT validé {{ f.batLe|date('d/m') }}</small>{% endif %}</span>
+								{% if f.prix or f.batLe %}<span class="ec-pc-prix">{{ f.prix }}{% if f.batLe %}<small>{{ f.prix ? ' · ' }}✓ BAT validé {{ f.batLe|date('d/m') }}</small>{% endif %}</span>{% endif %}
 							</span>
 							<span class="ec-pc-choix" aria-live="polite"><span class="plus" aria-hidden="true">+</span></span>
 						</button>
@@ -55,7 +56,11 @@
 				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 				<h2>Ma sélection (<span data-nombre>0</span>)</h2>
 				<ul class="ec-liste" id="lignes"></ul>
-				<div class="ec-ligne ec-selection-total"><span class="ec-petit">Total TTC</span><b data-total>0 F</b></div>
+				{% if coque.montants %}
+					<div class="ec-ligne ec-selection-total"><span class="ec-petit">Total TTC</span><b data-total>0 F</b></div>
+				{% else %}
+					<div class="ec-ligne ec-selection-total"><span class="ec-petit">Prix</span><span class="ec-petit">confirmé par votre valideur</span></div>
+				{% endif %}
 				<p class="ec-pc-direct" id="direct">Impression directe : BAT déjà validés, pas d'attente PAO.</p>
 				{% if entreprise %}
 					<label class="ec-etiquette" for="bon_commande">N° de bon de commande (facultatif)</label>
@@ -69,7 +74,7 @@
 			</form>
 		</div>
 
-		<button type="button" class="ec-pc-barre" id="barre" hidden>Commander <span data-nombre>0</span> produit<span data-pluriel>s</span> · <span data-total>0 F</span></button>
+		<button type="button" class="ec-pc-barre" id="barre" hidden>Commander <span data-nombre>0</span> produit<span data-pluriel>s</span>{% if coque.montants %} · <span data-total>0 F</span>{% endif %}</button>
 
 		<dialog class="ec-feuille" id="feuille" aria-labelledby="feuille-nom">
 			<form method="dialog" class="ec-feuille-corps">
@@ -100,7 +105,11 @@
 				</div>
 				<p class="ec-petit" id="feuille-erreur" role="alert" style="color:var(--rouge);margin:.3rem 0 0"></p>
 				<div class="ec-feuille-pied">
-					<div><span class="ec-petit">Prix TTC</span><div class="ec-gros" id="feuille-prix">—</div></div>
+					{% if coque.montants %}
+						<div><span class="ec-petit">Prix TTC</span><div class="ec-gros" id="feuille-prix">—</div></div>
+					{% else %}
+						<div><span class="ec-petit">Prix</span><div class="ec-sans-prix">confirmé par votre valideur</div></div>
+					{% endif %}
 					<button type="button" class="ec-bouton" id="feuille-ajouter" disabled>Ajouter</button>
 				</div>
 				<div class="ec-ligne" style="margin-top:.6rem">
@@ -128,6 +137,8 @@
 		const jeton = {{ csrf_token('espace')|json_encode|raw }};
 		const urlCalcul = {{ path('app_espace_produits_calcul', {id: '00000000-0000-0000-0000-000000000000'})|json_encode|raw }};
 		const MAX = {{ max }};
+		// Un demandeur ne reçoit aucun prix du serveur (MesProduits::calculPourLaPage).
+		const MONTANTS = {{ coque.montants ? 'true' : 'false' }};
 		const CLE = 'ec-mes-produits';
 		const fr = new Intl.NumberFormat('fr-FR');
 		const $ = function (id) { return document.getElementById(id); };
@@ -182,14 +193,14 @@
 			ids.forEach(function (id) {
 				const s = selection[id];
 				const f = parId[id];
-				total += s.calcul.montant;
+				total += MONTANTS ? s.calcul.montant : 0;
 				direct = direct && f.bat;
 				const li = document.createElement('li');
 				const b = document.createElement('b');
 				b.textContent = f.nom + ' · ' + s.calcul.resume;
 				const p = document.createElement('div');
 				p.className = 'ec-petit';
-				p.textContent = (s.calcul.saisie === 'lot' ? '' : s.calcul.production + ' · ') + fr.format(s.calcul.montant) + ' F';
+				p.textContent = MONTANTS ? (s.calcul.saisie === 'lot' ? '' : s.calcul.production + ' · ') + fr.format(s.calcul.montant) + ' F' : s.calcul.production;
 				const lien = document.createElement('button');
 				lien.type = 'button';
 				lien.className = 'ec-lien';
@@ -230,7 +241,7 @@
 			const s = selection[id];
 			courant = s ? {fiche: f, quantite: s.quantite, saisie: s.saisie, inferieur: s.inferieur, calcul: s.calcul}
 				: {fiche: f, quantite: Math.max(f.minimum * (f.saisies[0] === 'lot' ? f.pas : 1), f.saisies[0] === 'm2' ? f.raccourcis[0] : 1), saisie: f.saisies[0], inferieur: false, calcul: null};
-			$('feuille-ref').textContent = f.ref + (f.bat ? ' · ✓ BAT validé' : '') + ' · ' + f.prix;
+			$('feuille-ref').textContent = f.ref + (f.bat ? ' · ✓ BAT validé' : '') + (f.prix ? ' · ' + f.prix : '');
 			$('feuille-nom').textContent = f.nom;
 			$('feuille-format').textContent = f.format;
 			const visuel = $('feuille-visuel');
@@ -293,7 +304,7 @@
 			courant.calcul = d;
 			$('feuille-erreur').textContent = erreur;
 			$('feuille-production').textContent = d ? d.production : '—';
-			$('feuille-prix').textContent = d ? fr.format(d.montant) + ' F' : '—';
+			if (MONTANTS) $('feuille-prix').textContent = d ? fr.format(d.montant) + ' F' : '—';
 			$('feuille-ajouter').disabled = !d;
 			const options = $('feuille-options');
 			options.textContent = '';
@@ -310,7 +321,7 @@
 				const t = document.createElement('b');
 				t.textContent = o.pieces + ' pièce' + (o.pieces > 1 ? 's' : '');
 				const l = document.createElement('span');
-				l.textContent = fr.format(o.surface).replace(/ /g, ' ') + ' m² · ' + fr.format(o.montant) + ' F';
+				l.textContent = fr.format(o.surface).replace(/ /g, ' ') + ' m²' + (MONTANTS ? ' · ' + fr.format(o.montant) + ' F' : '');
 				const n = document.createElement('small');
 				const ecart = Math.round((courant.quantite - o.surface) * 100) / 100;
 				n.textContent = i === 0 ? 'Recommandé · couvre vos ' + fr.format(courant.quantite) + ' m²' : fr.format(ecart) + ' m² de moins que demandé';

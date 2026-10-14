@@ -16,7 +16,8 @@
 			<div class="ec-ligne"><span class="ec-petit">{{ d.numero }}{{ d.dateDevis ? ' · ' ~ d.dateDevis|date('d/m/Y') }}</span><span class="ec-pastille {{ etats[d.statut][1] }}">{{ etats[d.statut][0] }}</span></div>
 			<div style="font-weight:800;margin:.3rem 0">{% for l in lignes|slice(0, 2) %}{{ l.designation ?: 'Travail' }}{% if l.largeur > 0 and l.longueur > 0 %} {{ l.largeur + 0 }} × {{ l.longueur + 0 }}{% endif %} × {{ l.quantite + 0 }}{{ not loop.last ? ', ' }}{% endfor %}{% if lignes|length > 2 %} + {{ lignes|length - 2 }}{% endif %}</div>
 			<div class="ec-ligne">
-				<span class="ec-montant" style="font-size:1.15rem">{{ d.totalTtc|number_format(0, ',', ' ') }} F</span>
+				{# Le prix des devis : CompteClient::montantsVisibles (valideur ou payeur). #}
+				{% if coque.montants %}<span class="ec-montant" style="font-size:1.15rem">{{ d.totalTtc|number_format(0, ',', ' ') }} F</span>{% elseif d.statut != 'envoye' %}<span class="ec-petit">Prix confirmé par votre valideur</span>{% endif %}
 				{% if d.statut == 'envoye' and not (peutValider ?? true) %}
 					<span class="ec-petit">À accepter par un valideur</span>
 				{% elseif d.statut == 'envoye' %}
@@ -26,7 +27,7 @@
 					</form>
 				{% endif %}
 			</div>
-			<div style="text-align:right;margin-top:.4rem"><a class="ec-lien" href="{{ path('app_espace_devis_pdf', {id: d.id}) }}" target="_blank">PDF ↓</a></div>
+			{% if coque.montants %}<div style="text-align:right;margin-top:.4rem"><a class="ec-lien" href="{{ path('app_espace_devis_pdf', {id: d.id}) }}" target="_blank">PDF ↓</a></div>{% endif %}
 		</div>
 	{% else %}
 		<div class="ec-carte ec-vide">Aucun devis ici.</div>

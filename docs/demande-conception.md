@@ -37,7 +37,7 @@ Chaque page et chaque envoi de formulaire est vérifié côté serveur (`src/Ser
 | Compte | Ce qu'il peut faire |
 |---|---|
 | Particulier, administrateur, payeur | tout : préparer, payer l'acompte, acheter du crédit IA, générer des images, commander l'impression |
-| Autre compte (demandeur) | préparer la demande. « Demander le paiement » prévient les payeurs par SMS, sans montant, et leur nom lui est affiché. La génération par IA lui montre qui peut payer. Il peut commander l'impression d'une image déjà générée : la commande reste à confirmer. |
+| Autre compte (demandeur) | préparer la demande. « Demander le paiement » prévient les payeurs par SMS, sans montant, et leur nom lui est affiché. La génération par IA lui montre qui peut payer. Il peut commander l'impression d'une image déjà générée : la commande reste à confirmer. Un demandeur ne voit aucun prix (forfait, acompte, image, impression) ; un valideur les voit sans payer (`CompteClient::montantsVisibles`, docs/espace-client.md). |
 | Lecture seule | suivre : la liste de ses demandes et leur suivi, même en préparation, sans montant (comme ses commandes). Le choix du support, les étapes, la page IA et le crédit IA le renvoient à la liste. |
 
 Ni coût ni marge ne sont montrés au client. Le coût d'une image chez le fournisseur ne quitte pas le local.

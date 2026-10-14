@@ -201,6 +201,21 @@ final class NouvelleCommande
     }
 
     /**
+     * Ce que la page reçoit de l'estimation : le total et son détail pour qui
+     * voit les montants (CompteClient::montantsVisibles) ; pour un demandeur,
+     * seulement « pas de montant » (sa quantité a été contrôlée, le prix est
+     * vu par son valideur).
+     *
+     * @param array{total: int, detail: list<array{libelle: string, montant: int}>} $estimation
+     *
+     * @return array<string, mixed>
+     */
+    public static function estimationPourLaPage(array $estimation, bool $montants): array
+    {
+        return $montants ? ['montants' => true] + $estimation : ['montants' => false];
+    }
+
+    /**
      * Enregistre la commande, « à confirmer » par l'atelier, avec les
      * fichiers du client choisis.
      *

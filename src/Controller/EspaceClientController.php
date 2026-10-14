@@ -243,7 +243,7 @@ final class EspaceClientController extends AbstractController
             'enCours' => $enCours,
             'activite' => \array_slice($fil->pour($compte, $maintenant), 0, 5),
             'apercu' => $droits['payeur'] ? $espace->apercuCompte($client, $maintenant) : null,
-            'recommander' => $droits['ecrit'] ? $recommander->articles($client, 3) : [],
+            'recommander' => $droits['ecrit'] ? $recommander->articles($client, 3, $droits['montants']) : [],
         ]);
     }
 
@@ -340,25 +340,30 @@ final class EspaceClientController extends AbstractController
         ]);
     }
 
-    /** Prix indicatif, recalculé à chaque changement (même calcul qu'à l'enregistrement). */
+    /**
+     * Prix indicatif, recalculé à chaque changement (même calcul qu'à
+     * l'enregistrement). Un demandeur reçoit les mêmes contrôles (taille,
+     * quantité) mais aucun montant.
+     */
     #[Route('/commandes/estimer', name: 'estimer', methods: ['POST'])]
     public function estimer(Request $request, NouvelleCommande $service): JsonResponse
     {
         $this->jetonEntete($request);
+        $compte = $this->compte();
         $donnees = $request->toArray();
         $config = $service->produit((int) ($donnees['produit'] ?? 0));
         if (null === $config) {
             return $this->json(['erreur' => 'Choisissez un produit.'], 422);
         }
         try {
-            return $this->json(NouvelleCommande::estimer(
+            return $this->json(NouvelleCommande::estimationPourLaPage(NouvelleCommande::estimer(
                 $config,
                 max(1, (int) ($donnees['quantite'] ?? 1)),
                 self::nombre($donnees['largeur'] ?? null),
                 self::nombre($donnees['hauteur'] ?? null),
                 array_map('intval', (array) ($donnees['finitions'] ?? [])),
-                $this->compte()->getClient()->isB2B(),
-            ));
+                $compte->getClient()->isB2B(),
+            ), $compte->montantsVisibles()));
         } catch (\DomainException $e) {
             return $this->json(['erreur' => $e->getMessage()], 422);
         }
@@ -403,8 +408,13 @@ final class EspaceClientController extends AbstractController
     #[Route('/devis/{id}/pdf', name: 'devis_pdf', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function devisPdf(Devis $devis, EspaceClient $espace): Response
     {
-        if ($devis->getClients()?->getId() !== $this->compte()->getClient()->getId() || !\in_array($devis->getStatut(), EspaceClient::DEVIS_VISIBLES, true)) {
+        $compte = $this->compte();
+        if ($devis->getClients()?->getId() !== $compte->getClient()->getId() || !\in_array($devis->getStatut(), EspaceClient::DEVIS_VISIBLES, true)) {
             throw $this->createNotFoundException();
+        }
+        // Le PDF porte les prix : pas pour un demandeur (son valideur le voit).
+        if (!$compte->montantsVisibles()) {
+            throw $this->createAccessDeniedException('Le prix des devis est vu par les personnes qui valident ou paient pour l\'entreprise.');
         }
         if (null === $devis->getTokenAuthenticite()) {
             $devis->genererTokenAuthenticite();

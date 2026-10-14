@@ -111,10 +111,12 @@ Une fiche entreprise ou B2B peut avoir plusieurs personnes, chacune avec son num
 | Droit | Ce qu'il permet |
 |---|---|
 | Administrateur (« gère le compte ») | tout, plus ajouter ou retirer des personnes, changer leurs droits, gérer les adresses |
-| Valideur | accepter ou refuser les demandes, accepter les devis |
+| Valideur | accepter ou refuser les demandes, accepter les devis, voir les prix |
 | Payeur | voir l'onglet Factures, le solde, le reste à payer, payer |
-| Aucun (demandeur) | commander ; la commande attend un valideur |
+| Aucun (demandeur) | commander, sans voir aucun prix ; la commande attend un valideur |
 | Lecture · suivi | suivre les commandes, les livraisons et les fichiers, rien d'autre (voir plus haut) |
+
+**Qui voit les montants** (une seule règle, `CompteClient::montantsVisibles()`, lue par les gabarits via `coque.montants`, par les appels JSON et par l'atelier 3D) : un particulier voit tout ; dans une entreprise, le payeur et le valideur voient les prix (total d'une commande, devis et son PDF, « Recommander rapidement », Mes produits, Nouvelle commande, tarifs de la conception), le payeur seul le solde, les factures, le reste à payer et le crédit. Un demandeur et la lecture seule ne reçoivent aucun montant, ni dans la page ni dans les réponses JSON : ils voient les quantités et « prix confirmé par votre valideur ». La recette des accès (`app:recette:acces`) le contrôle.
 
 - **Mon compte** : profil de la personne (son nom, son rôle), coordonnées de l'entreprise, ligne « Adresses de livraison », carte « Utilisateurs du compte » avec « + Ajouter ». La personne ajoutée reçoit un SMS et se connecte avec son propre numéro. 20 personnes au plus ; il reste toujours au moins un administrateur ; on ne change pas ses propres droits ; le compte principal ne se retire pas en ligne.
 - **Adresses de livraison** : nom court, adresse, repère, personne à appeler ; une adresse par défaut, présélectionnée en commandant (« Livrer : Siège » ou « Retrait en boutique »).

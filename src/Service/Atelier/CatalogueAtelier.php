@@ -104,13 +104,13 @@ final class CatalogueAtelier
     }
 
     /**
-     * Le compte voit-il les prix de l'atelier ? Un particulier, et dans une
-     * entreprise qui paie ou qui valide les commandes ; pas un demandeur
-     * (sa demande part chez son valideur), ni un compte en lecture seule.
+     * Le compte voit-il les prix de l'atelier ? La règle de tout l'espace
+     * client (CompteClient::montantsVisibles) : un particulier, et dans une
+     * entreprise qui paie ou qui valide ; pas un demandeur ni la lecture seule.
      */
     public static function montantsVisibles(CompteClient $compte): bool
     {
-        return $compte->peut(CompteClient::DROIT_PAYEUR) || $compte->peut(CompteClient::DROIT_VALIDEUR);
+        return $compte->montantsVisibles();
     }
 
     /**

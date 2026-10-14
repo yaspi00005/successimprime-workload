@@ -30,7 +30,7 @@
 				<h2>Devis</h2>
 				<ul class="ec-liste">
 					{% for d in resultats.devis %}
-						<li><a class="ec-rangee" href="{{ path('app_espace_devis_pdf', {id: d.id}) }}"><span><b>{{ d.numero }}</b><span class="ec-petit">{{ d.dateDevis ? 'du ' ~ d.dateDevis|date('d/m/Y') }}</span></span><span class="fl" aria-hidden="true">›</span></a></li>
+						<li><a class="ec-rangee" href="{{ coque.montants ? path('app_espace_devis_pdf', {id: d.id}) : path('app_espace_devis') }}"><span><b>{{ d.numero }}</b><span class="ec-petit">{{ d.dateDevis ? 'du ' ~ d.dateDevis|date('d/m/Y') }}</span></span><span class="fl" aria-hidden="true">›</span></a></li>
 					{% endfor %}
 				</ul>
 			</div>

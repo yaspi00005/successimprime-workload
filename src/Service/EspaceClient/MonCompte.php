@@ -200,7 +200,8 @@ final class MonCompte
         $lecture = $compte->estLectureSeule();
         $payeur = $compte->peut(CompteClient::DROIT_PAYEUR);
         $voitDevis = !$lecture;
-        $montantsDevis = $compte->peut(CompteClient::DROIT_VALIDEUR) || $payeur;
+        // Prix des devis : la règle de l'espace (valideur ou payeur) ; le total des commandes reste au payeur.
+        $montantsDevis = $compte->montantsVisibles();
         $entreprise = CompteClient::clientAPlusieursComptes($client);
         $date = static fn (?\DateTimeInterface $d): ?string => $d?->format('c');
         // Ce qui appartient à un autre client ne sort jamais, même s'il a été passé par erreur.

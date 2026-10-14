@@ -49,7 +49,7 @@
 				<li class="{{ envoyee ? 'faite' : 'en_cours' }}"><b>{{ envoyee ? 'Demande envoyée' : 'En préparation' }}</b><small>{{ envoyee ? demande.envoyeeLe|date('d/m/Y à H:i') : 'pas encore envoyée à l\'atelier' }}</small></li>
 				{% if acompteStatut %}
 					<li class="{{ acompteStatut == 'valide' ? 'faite' : 'en_cours' }}">
-						<b>Acompte{{ conceptionLecture ? '' : ' de ' ~ (acompte|francs_conception) }}</b>
+						<b>Acompte{{ coque.montants ? ' de ' ~ (acompte|francs_conception) }}</b>
 						<small>
 							{% if acompteStatut == 'valide' %}reçu, merci
 							{% elseif acompteStatut == 'a_valider' %}payé par Orange Money · en validation à la caisse
@@ -61,7 +61,7 @@
 				<li class="{{ demande.priseEnChargeLe ? 'faite' : (statut == 'recue' ? 'en_cours' : 'a_venir') }}"><b>Prise en charge par un graphiste</b><small>{{ demande.priseEnChargeLe ? demande.priseEnChargeLe|date('d/m/Y à H:i') : 'premier BAT sous ' ~ demande.delaiBatHeures ~ ' h ouvrées' }}</small></li>
 			{% endif %}
 			<li class="{{ batPasse ? 'faite' : (demande.priseEnChargeLe ? 'en_cours' : 'a_venir') }}"><b>BAT envoyé</b><small>{{ ia ? 'vous validez le visuel final avant l\'impression' : demande.correctionsIncluses ~ ' corrections incluses' }}</small></li>
-			<li class="{{ statut == 'terminee' ? 'faite' : 'a_venir' }}"><b>BAT validé</b><small>{{ statut == 'terminee' and demande.termineeLe ? demande.termineeLe|date('d/m/Y') : (ia ? 'puis l\'impression' : (conceptionLecture ? 'solde' : 'solde de ' ~ (solde|francs_conception)) ~ ' avec la commande d\'impression') }}</small></li>
+			<li class="{{ statut == 'terminee' ? 'faite' : 'a_venir' }}"><b>BAT validé</b><small>{{ statut == 'terminee' and demande.termineeLe ? demande.termineeLe|date('d/m/Y') : (ia ? 'puis l\'impression' : (coque.montants ? 'solde de ' ~ (solde|francs_conception) : 'solde') ~ ' avec la commande d\'impression') }}</small></li>
 		</ol>
 	</div>
 

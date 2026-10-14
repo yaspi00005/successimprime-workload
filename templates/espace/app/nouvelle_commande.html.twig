@@ -89,12 +89,17 @@
 				<textarea class="ec-champ" id="note" name="note" maxlength="1000" placeholder="Ex. : couleurs du logo, date souhaitée, livraison">{{ choix.note|default('') }}</textarea>
 			</div>
 
+			{# Un demandeur ne voit aucun montant (CompteClient::montantsVisibles) : l'estimation ne lui renvoie que les contrôles. #}
 			<div class="ec-total">
-				<div><span class="ec-petit">Total TTC indicatif</span><div class="ec-gros" id="total">—</div></div>
+				{% if coque.montants %}
+					<div><span class="ec-petit">Total TTC indicatif</span><div class="ec-gros" id="total">—</div></div>
+				{% else %}
+					<div><span class="ec-petit">Prix</span><div class="ec-total-sans-prix">confirmé par votre valideur</div></div>
+				{% endif %}
 				<button class="ec-bouton" id="commander">{{ demandeValidation ? 'Envoyer la demande' : 'Commander' }}</button>
 			</div>
 			<p class="ec-petit" id="erreur" role="alert" style="color:var(--rouge);text-align:center"></p>
-			<p class="ec-petit" style="text-align:center">Prix indicatif : l'atelier le confirme avec votre fichier avant de lancer l'impression.</p>
+			<p class="ec-petit" style="text-align:center">{{ coque.montants ? 'Prix indicatif : l\'atelier le confirme avec votre fichier avant de lancer l\'impression.' : 'Votre valideur voit le prix et accepte la demande ; l\'atelier confirme ensuite le prix et votre fichier.' }}</p>
 		</form>
 		<script type="application/json" id="produits">{{ produits|json_encode|raw }}</script>
 	{% endif %}
@@ -169,11 +174,11 @@
 					credentials: 'same-origin',
 				});
 				const d = await r.json();
-				total.textContent = d.erreur ? '—' : fr.format(d.total) + ' F';
+				if (total) total.textContent = d.erreur || !d.montants ? '—' : fr.format(d.total) + ' F';
 				erreur.textContent = d.erreur || '';
 				document.getElementById('commander').disabled = !!d.erreur;
 			} catch (e) {
-				total.textContent = '—';
+				if (total) total.textContent = '—';
 			}
 		}
 

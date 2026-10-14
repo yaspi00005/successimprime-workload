@@ -34,6 +34,9 @@
 /public/uploads/tv/*
 !/public/uploads/tv/.gitkeep
 
+# Images du site vitrine générées au réenregistrement (originaux dans var/uploads/site/)
+/public/uploads/site/
+
 # Copies locales des migrations
 /migrations copy/
 *.dmg

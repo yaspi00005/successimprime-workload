@@ -1,0 +1,26 @@
+{#
+	Aide du Markdown simplifié (App\Service\Site\MarkdownSite), avec ce que
+	chaque page du site attend. Variable : slug (page, ou « conseil »).
+#}
+{% set rangement = {
+	'equipements': 'Une section « ## Nos machines », puis une machine par « ### » : la première ligne en italique (*Grand format*) devient son étiquette, la liste « - » ses points forts. Une section « ## Finitions en atelier » avec une ligne « Œillets · Ourlets · Découpe » donne la bande de pastilles.',
+	'guide-fichiers': 'Une règle par « ### » (Formats acceptés, Résolution, Fonds perdus, Couleurs) : l\'icône suit le titre. Une section « ## Gabarits à télécharger » avec une liste « - » : un gabarit avec un lien [Roll-up 85 × 200 cm](https://…) se télécharge, sans lien il se demande sur WhatsApp.',
+	'a-propos': 'Le premier « ## » et son texte ouvrent la page, à côté de la photo ; ses « ### » (Qualité, Délais, Proximité) deviennent des petites cartes. Une section « ## L\'équipe » avec un « ### » par poste donne les pastilles de l\'équipe.',
+	'nos-engagements': 'Une section avec un engagement par « ### » donne les cartes de couleur. Une section avec une liste numérotée « 1. Devis » donne la frise « Comment se passe votre commande ».',
+	'faq': 'Une catégorie par « ## » (Commandes et délais, Paiement…), puis une question par « ### » avec sa réponse en dessous. Les questions alimentent aussi Google (FAQ).',
+	'conseil': 'Des intertitres « ## », des paragraphes, des listes. Restez concret : un conseil court et juste vaut mieux qu\'un long.',
+} %}
+<details class="card si-bloc si-sv-encadre si-sv-aide-markdown" open>
+	<summary class="si-sv-sous-titre">Écrire le texte</summary>
+	{% if rangement[slug] is defined %}<p class="si-sv-aide si-sv-rangement">{{ rangement[slug] }}</p>{% endif %}
+	<dl>
+		<dt><code>## Titre</code></dt><dd>section (<code>###</code> : carte ou question)</dd>
+		<dt><code>**gras**</code> <code>*italique*</code></dt><dd>mise en valeur</dd>
+		<dt><code>- élément</code></dt><dd>liste à coches</dd>
+		<dt><code>1. étape</code></dt><dd>étapes numérotées</dd>
+		<dt><code>&gt; texte</code></dt><dd>encadré</dd>
+		<dt><code>[texte](https://…)</code></dt><dd>lien (web, page du site, mailto:, tel:)</dd>
+		<dt><code>A · B · C</code></dt><dd>pastilles (3 ou plus)</dd>
+	</dl>
+	<p class="si-sv-aide mb-0">Une ligne vide sépare deux paragraphes. Le HTML n'est pas interprété : il s'affiche tel quel. Pas de montant d'un client, de coût ni de nom sans accord : la page est publique.</p>
+</details>

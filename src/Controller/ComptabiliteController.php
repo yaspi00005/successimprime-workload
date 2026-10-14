@@ -15,7 +15,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * grand livre et export pour le cabinet, déduits des opérations validées.
  */
 #[Route('/finances/comptabilite', name: 'app_comptabilite_')]
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_COMPTABILITE')]
 final class ComptabiliteController extends AbstractController
 {
     public const VUES = ['journal', 'balance', 'grand_livre'];

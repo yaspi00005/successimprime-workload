@@ -39,7 +39,7 @@ php bin/console app:verifier-installation
 php bin/console app:orange-money:tester --paiement
 ```
 
-Sans `APP_ENV=prod`, `composer install` vide le cache en mode développement, qui dépasse 256 Mo de mémoire : écrire `.env.local` avant, ou relancer `cache:clear` comme ci-dessus. Sur certains hébergeurs, la commande `php` du terminal ou du cron n'est pas la bonne version : utiliser le chemin donné par l'hébergeur (par exemple `/usr/local/bin/php8.4` ou `ea-php84`) et le vérifier avec `php -v`. Les tâches cron sont celles de « Tâches planifiées du serveur », avec ce chemin. `public/.htaccess` gère la réécriture des adresses, la compression et le cache des fichiers statiques sous Apache ou LiteSpeed.
+`app:verifier-installation` doit afficher « Vérification du site en ligne » : sinon `APP_EN_LIGNE=1` manque, et il réclame à tort le thème de l'administration et le dossier des sauvegardes. Sans `APP_ENV=prod`, `composer install` vide le cache en mode développement, qui dépasse 256 Mo de mémoire : écrire `.env.local` avant, ou relancer `cache:clear` comme ci-dessus. Sur certains hébergeurs, la commande `php` du terminal ou du cron n'est pas la bonne version : utiliser le chemin donné par l'hébergeur (par exemple `/usr/local/bin/php8.4` ou `ea-php84`) et le vérifier avec `php -v`. Les tâches cron sont celles de « Tâches planifiées du serveur », avec ce chemin. `public/.htaccess` gère la réécriture des adresses, la compression et le cache des fichiers statiques sous Apache ou LiteSpeed.
 
 ## Serveur
 
@@ -83,7 +83,7 @@ Fichier `/srv/successimprim/.env.local` (droits 600, propriétaire `succes`). Le
 | Variable | Valeur |
 |---|---|
 | APP_ENV | prod |
-| APP_SECRET | 32 caractères au hasard, propres à ce serveur |
+| APP_SECRET | 32 caractères au hasard, propres à ce serveur : `php -r 'echo bin2hex(random_bytes(16)), PHP_EOL;'` |
 | APP_EN_LIGNE | 1 |
 | DEFAULT_URI | https://succesimprim.com |
 | DATABASE_URL | mysql://succes:<mot de passe>@127.0.0.1:3306/succesimprim?serverVersion=10.11-MariaDB&charset=utf8mb4 |

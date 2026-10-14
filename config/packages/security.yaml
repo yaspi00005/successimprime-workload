@@ -590,6 +590,20 @@ security:
 
 
         # ============================================================
+        # FICHIERS DES COMMANDES
+        #
+        # Fichiers des clients (voir, envoyer par morceaux, retirer) :
+        # pour qui travaille la commande (vente, fiche client, prépresse,
+        # production). Le dossier partagé vérifie en plus la prépresse.
+        # ============================================================
+
+        - {
+            path: ^/commande-fichiers,
+            roles: [ROLE_COMMANDE, ROLE_CLIENT, ROLE_PREPRESSE, ROLE_PRODUCTION_VOIR]
+        }
+
+
+        # ============================================================
         # LIVRAISON
         # ============================================================
 

@@ -39,6 +39,14 @@ final class ReglesAccesTest extends TestCase
         }
     }
 
+    /** Fichiers des clients : pas pour le livreur ni l'agent d'entretien. */
+    public function testFichiersDesCommandes(): void
+    {
+        foreach (['/commande-fichiers/12/visualiser', '/commande-fichiers/initialiser', '/commande-fichiers/abc/morceaux/0', '/commande-fichiers/abc/statut', '/commande-fichiers/abc/supprimer', '/commande-fichiers/dossier-partage'] as $chemin) {
+            self::assertSame(['ROLE_COMMANDE', 'ROLE_CLIENT', 'ROLE_PREPRESSE', 'ROLE_PRODUCTION_VOIR'], self::roles($chemin), $chemin);
+        }
+    }
+
     public function testReglesInchangeesAutour(): void
     {
         self::assertSame(['ROLE_PRODUCTION_VOIR'], self::roles('/production/12'));

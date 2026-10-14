@@ -5,7 +5,9 @@ namespace App\Tests\Unit\Service\EspaceClient;
 use App\Entity\Clients;
 use App\Entity\CompteClient;
 use App\Service\EspaceClient\CoqueEspace;
+use App\Service\PastillesMenu;
 use PHPUnit\Framework\TestCase;
+use Symfony\Contracts\Service\ResetInterface;
 
 /** Menu de gauche de l'espace client selon le type de compte (maquette EC01). */
 final class CoqueEspaceTest extends TestCase
@@ -57,6 +59,24 @@ final class CoqueEspaceTest extends TestCase
         foreach (CoqueEspace::MENU as $e) {
             self::assertSame(['cle', 'route', 'libelle', 'icone', 'pages', 'visible', 'onglet'], array_keys($e), $e['cle']);
             self::assertStringStartsWith('app_espace_', $e['route']);
+        }
+    }
+
+    /**
+     * La coque (personne, droits, cloche) et les pastilles du menu sont
+     * gardées le temps d'une requête : vidées avant la suivante, sinon un
+     * processus qui sert plusieurs personnes montrerait celles de la
+     * première aux autres (recette des accès, serveur qui garde PHP en mémoire).
+     */
+    public function testVideesEntreDeuxRequetes(): void
+    {
+        foreach ([CoqueEspace::class => 'memo', PastillesMenu::class => 'compteurs'] as $classe => $propriete) {
+            $service = (new \ReflectionClass($classe))->newInstanceWithoutConstructor();
+            self::assertInstanceOf(ResetInterface::class, $service, $classe);
+            $memo = new \ReflectionProperty($classe, $propriete);
+            $memo->setValue($service, ['payeur' => true]);
+            $service->reset();
+            self::assertNull($memo->getValue($service), $classe);
         }
     }
 

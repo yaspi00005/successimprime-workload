@@ -1,0 +1,10 @@
+{% extends 'avis/_page.html.twig' %}
+
+{% block title %}Votre avis sur la commande {{ commande.numero }}{% endblock %}
+
+{% block contenu %}
+	<h1 style="font-size:1.35rem">Votre avis compte</h1>
+	<p class="av-intro">Commande n° {{ commande.numero }}{{ commande.dateCommande ? ' du ' ~ commande.dateCommande|date('d/m/Y') }}. Une minute suffit : votre note nous aide à mieux vous servir.</p>
+	{% if erreur %}<div class="ec-flash ec-flash-erreur" role="alert">{{ erreur }}</div>{% endif %}
+	{% include 'avis/_form_commande.html.twig' %}
+{% endblock %}

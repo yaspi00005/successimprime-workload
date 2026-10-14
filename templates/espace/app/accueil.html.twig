@@ -52,6 +52,14 @@
 		</a>
 	{% endif %}
 
+	{% set aDonner = avis_a_donner(moi) %}
+	{% if aDonner > 0 %}
+		<a class="ec-carte" href="{{ path('app_espace_avis') }}">
+			<div class="ec-ligne"><b>Votre avis compte</b><span class="ec-lien">Noter</span></div>
+			<div class="ec-petit">{{ aDonner > 1 ? aDonner ~ ' avis à donner' : '1 avis à donner' }} : une minute pour nous aider à mieux vous servir.</div>
+		</a>
+	{% endif %}
+
 	{% if recentes is not empty %}
 		<div class="ec-carte">
 			<h2>Commandes récentes</h2>

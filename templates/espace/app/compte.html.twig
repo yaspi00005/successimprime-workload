@@ -38,6 +38,12 @@
 		<span class="fl" aria-hidden="true">›</span>
 	</a>
 
+	{% set aDonner = avis_a_donner(client) %}
+	<a class="ec-carte ec-rangee" href="{{ path('app_espace_avis') }}">
+		<span><b>Mes avis</b><span class="ec-petit">{{ aDonner > 0 ? aDonner ~ ' avis à donner' : 'Notez vos commandes livrées' }}</span></span>
+		<span class="fl" aria-hidden="true">›</span>
+	</a>
+
 	{% if entreprise %}
 		<div class="ec-carte">
 			<div class="ec-ligne" style="margin-bottom:.4rem">

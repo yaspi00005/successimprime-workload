@@ -1,0 +1,10 @@
+{% extends 'avis/_page.html.twig' %}
+
+{% block title %}{{ sondage.titre }}{% endblock %}
+
+{% block contenu %}
+	<h1 style="font-size:1.35rem">{{ sondage.titre }}</h1>
+	<p class="av-intro">{{ sondage.introduction ?? 'Quelques questions pour mieux vous servir.' }}</p>
+	{% if erreur %}<div class="ec-flash ec-flash-erreur" role="alert">{{ erreur }}</div>{% endif %}
+	{% include 'avis/_form_sondage.html.twig' with {identite: true} %}
+{% endblock %}

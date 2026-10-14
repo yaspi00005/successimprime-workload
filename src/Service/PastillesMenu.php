@@ -7,6 +7,7 @@ use App\Entity\Commandes;
 use App\Entity\DemandeEmploye;
 use App\Entity\Paiements;
 use App\Entity\ReclamationClient;
+use App\Entity\ReponseSondage;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -67,6 +68,8 @@ final class PastillesMenu
         if ($this->security->isGranted('ROLE_CLIENT')) {
             // Réclamations écrites par les clients, pas encore répondues.
             $compteurs['app_reclamations_clients_index'] = $this->compter(ReclamationClient::class, 'r', 'r.statut = :s', ['s' => ReclamationClient::OUVERTE]);
+            // Notes de 1 ou 2 laissées dans un sondage : le client est à rappeler.
+            $compteurs['app_sondages_index'] = $this->compter(ReponseSondage::class, 'r', 'r.alerte = :a', ['a' => ReponseSondage::ALERTE_A_RAPPELER]);
         }
         if ($this->security->isGranted('ROLE_RH')) {
             $compteurs['app_demandes_index'] = $this->compter(DemandeEmploye::class, 'd', 'd.etat = :e', ['e' => DemandeEmploye::EN_ATTENTE]);

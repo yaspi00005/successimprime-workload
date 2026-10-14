@@ -1,0 +1,36 @@
+{#
+	Pages d'avis sans compte (lien de la livraison, sondage libre par
+	lien ou QR) : logo, contenu, pied. Pas de menu de l'espace client.
+#}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#F4F6FA">
+	<meta name="robots" content="noindex, nofollow">
+	<title>{% block title %}Votre avis{% endblock %} · Succès Imprim</title>
+	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
+	<link href="{{ asset('css/espace-app.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/avis.css') }}" rel="stylesheet">
+</head>
+<body class="ec av-public">
+	<div class="ec-page">
+		<header class="av-entete">
+			<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim">
+		</header>
+		<main class="ec-contenu">
+			{% block contenu %}{% endblock %}
+		</main>
+		<p class="av-pied">Succès Imprim · Bamako<br>Vos réponses servent seulement à améliorer nos services.</p>
+	</div>
+	<script>
+		document.querySelectorAll('form.av-form').forEach(function (form) {
+			form.addEventListener('submit', function () {
+				var b = form.querySelector('button[type="submit"]');
+				if (b) { setTimeout(function () { b.disabled = true; }, 0); }
+			});
+		});
+	</script>
+</body>
+</html>

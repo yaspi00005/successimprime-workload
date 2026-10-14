@@ -17,11 +17,15 @@ use App\Entity\Factures;
 use App\Entity\Paiements;
 use App\Entity\Finition;
 use App\Entity\Format;
+use App\Entity\InvitationSondage;
+use App\Entity\NoteArticleSondage;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
 use App\Entity\ReclamationClient;
 use App\Entity\ReclamationClientPhoto;
+use App\Entity\ReponseSondage;
+use App\Entity\Sondage;
 use App\Entity\Supports;
 use App\Entity\TypesImpression;
 
@@ -237,6 +241,31 @@ final class CatalogueSynchro
                 'classe' => ReclamationClientPhoto::class, 'sens' => self::DEUX, 'libelle' => 'Photo de réclamation', 'titre' => [],
                 'champs' => ['contenu', 'type', 'largeur', 'hauteur'],
                 'relations' => ['reclamation' => 'reclamation'], 'listes' => [],
+            ],
+            // Sondages (docs/sondages.md) : créés au local, les clients y répondent en ligne.
+            // Le créateur et le nombre de destinataires restent au local.
+            'sondage' => [
+                'classe' => Sondage::class, 'sens' => self::DESCENDANT, 'libelle' => 'Sondage', 'titre' => ['titre'],
+                'champs' => ['type', 'titre', 'introduction', 'statut', 'segment', 'anonymeAutorise', 'jeton', 'questions', 'ouvertLe', 'closLe', 'creeLe'],
+                'relations' => [], 'listes' => [],
+            ],
+            // Invitation créée à la livraison : son jeton ouvre le sondage sans compte. Les dates d'envoi restent au local.
+            'sondage_invitation' => [
+                'classe' => InvitationSondage::class, 'sens' => self::DESCENDANT, 'libelle' => 'Invitation à un sondage', 'titre' => [],
+                'champs' => ['jeton', 'creeLe'],
+                'relations' => ['commande' => 'commande', 'client' => 'client'], 'listes' => [],
+            ],
+            // Réponse écrite en ligne, avec ses notes par article. Le thème, le statut de la
+            // proposition et le suivi d'une mauvaise note (rappel, réclamation) restent au local.
+            'sondage_reponse' => [
+                'classe' => ReponseSondage::class, 'sens' => self::DEUX, 'libelle' => 'Réponse à un sondage', 'titre' => ['type'],
+                'champs' => ['type', 'auteur', 'nom', 'telephone', 'canal', 'noteGlobale', 'nps', 'noteDelai', 'noteAccueil', 'proposition', 'reponses', 'creeLe'],
+                'relations' => ['sondage' => 'sondage', 'commande' => 'commande', 'client' => 'client'], 'listes' => [],
+                'enfants' => ['notes' => [
+                    'classe' => NoteArticleSondage::class, 'parent' => 'reponse',
+                    'champs' => ['designation', 'note'],
+                    'relations' => ['ligne' => 'commande_ligne'],
+                ]],
             ],
         ];
     }

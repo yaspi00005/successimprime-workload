@@ -1,0 +1,10 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Votre avis · commande {{ commande.numero }}{% endblock %}
+{% block styles %}<link href="{{ asset('css/avis.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_commande', {id: commande.publicId}) }}"><span class="fl">‹</span>Votre avis</a>{% endblock %}
+
+{% block contenu %}
+	<p class="av-intro">Commande n° {{ commande.numero }}{{ commande.dateCommande ? ' du ' ~ commande.dateCommande|date('d/m/Y') }}. Une minute suffit : votre note nous aide à mieux vous servir.</p>
+	{% include 'avis/_form_commande.html.twig' with {jeton: 'espace'} %}
+{% endblock %}

@@ -1,0 +1,50 @@
+{#
+	Une question de sondage (docs/sondages.md) : étoiles, recommandation de
+	0 à 10, choix unique ou multiple, oui ou non, texte libre. Reçoit q
+	(la question), saisie (réponses déjà tapées, après une erreur) et
+	nom (nom du champ, la clé de la question par défaut).
+#}
+{% set nom = nom ?? q.cle %}
+{% set valeur = saisie[q.cle] ?? null %}
+{% set id = 'q-' ~ nom|replace({'[': '-', ']': ''}) %}
+<fieldset class="av-question{{ petites ?? false ? ' petite' }}">
+	<legend>{{ q.libelle }}{% if q.obligatoire %}<span class="av-requis" aria-hidden="true">*</span><span class="av-sr"> (obligatoire)</span>{% endif %}</legend>
+	{% if q.type == 'etoiles' %}
+		<div class="av-etoiles{{ petites ?? false ? ' petites' }}">
+			{% for n in 5..1 %}
+				<input type="radio" id="{{ id }}-{{ n }}" name="{{ nom }}" value="{{ n }}"{{ valeur is not null and valeur == n ? ' checked' }}{{ q.obligatoire and n == 5 ? ' required' }}>
+				<label for="{{ id }}-{{ n }}" title="{{ n }}/5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.95 6 6.6.95-4.78 4.65 1.13 6.57L12 17.67l-5.9 3.1 1.13-6.57L2.45 9.55l6.6-.95z"/></svg><span class="av-sr">{{ n }} étoile{{ n > 1 ? 's' }} sur 5</span></label>
+			{% endfor %}
+		</div>
+		{% if not (petites ?? false) %}<div class="av-bornes" aria-hidden="true"><span>Pas satisfait</span><span>Très satisfait</span></div>{% endif %}
+	{% elseif q.type == 'nps' %}
+		<div class="av-nps">
+			{% for n in 0..10 %}
+				<input type="radio" id="{{ id }}-{{ n }}" name="{{ nom }}" value="{{ n }}"{{ valeur is not null and valeur ~ '' == n ~ '' ? ' checked' }}{{ q.obligatoire and n == 0 ? ' required' }}>
+				<label for="{{ id }}-{{ n }}">{{ n }}</label>
+			{% endfor %}
+		</div>
+		<div class="av-nps-bornes" aria-hidden="true"><span>0 : pas du tout</span><span>10 : sans hésiter</span></div>
+	{% elseif q.type == 'oui_non' %}
+		<div class="ec-puces">
+			{% for v, l in {oui: 'Oui', non: 'Non'} %}
+				<label class="ec-puce"><input type="radio" name="{{ nom }}" value="{{ v }}"{{ valeur == v ? ' checked' }}{{ q.obligatoire and loop.first ? ' required' }}><span>{{ l }}</span></label>
+			{% endfor %}
+		</div>
+	{% elseif q.type == 'choix_unique' %}
+		<div class="ec-puces">
+			{% for c in q.choix %}
+				<label class="ec-puce"><input type="radio" name="{{ nom }}" value="{{ c }}"{{ valeur == c ? ' checked' }}{{ q.obligatoire and loop.first ? ' required' }}><span>{{ c }}</span></label>
+			{% endfor %}
+		</div>
+	{% elseif q.type == 'choix_multiple' %}
+		<div class="ec-puces">
+			{% for c in q.choix %}
+				<label class="ec-puce"><input type="checkbox" name="{{ nom }}[]" value="{{ c }}"{{ valeur is iterable and c in valeur ? ' checked' }}><span>{{ c }}</span></label>
+			{% endfor %}
+		</div>
+		<p class="ec-petit" style="margin:.4rem 0 0">Plusieurs réponses possibles.</p>
+	{% else %}
+		<textarea class="ec-champ" id="{{ id }}" name="{{ nom }}" maxlength="1000" rows="3"{{ q.obligatoire ? ' required' }} placeholder="{{ q.libelle == constant('App\\Service\\Sondages\\Questions::PROPOSITION') ? 'Délai, prix, qualité, accueil, livraison : dites-nous ce qui compte pour vous' : 'Votre réponse' }}" aria-label="{{ q.libelle }}">{{ valeur is iterable ? '' : valeur }}</textarea>
+	{% endif %}
+</fieldset>

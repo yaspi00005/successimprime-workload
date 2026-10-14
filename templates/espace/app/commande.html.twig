@@ -2,6 +2,7 @@
 
 {% set c = carte.commande %}
 {% block title %}Commande {{ c.numero }}{% endblock %}
+{% block styles %}<link href="{{ asset('css/avis.css') }}" rel="stylesheet">{% endblock %}
 {% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Commande n° {{ c.numero }}</a>{% endblock %}
 
 {% block contenu %}
@@ -65,6 +66,21 @@
 			{% endfor %}
 		</ol>
 	</div>
+	{% endif %}
+
+	{# Commande livrée : son avis (docs/sondages.md). #}
+	{% set avis = avis_commande(c) %}
+	{% if avis.reponse %}
+		<div class="ec-carte av-merci">
+			<span class="av-merci-icone" aria-hidden="true">★</span>
+			<div><b>Merci pour votre avis</b><div class="ec-petit">Donné le {{ avis.reponse.creeLe|date('d/m/Y') }}{{ avis.reponse.auteur ? ' par ' ~ avis.reponse.auteur }}{% if avis.reponse.noteGlobale %} · {% for i in 1..5 %}<span style="color:{{ i <= avis.reponse.noteGlobale ? '#F5A800' : '#D8DEE8' }}">★</span>{% endfor %}{% endif %}</div></div>
+		</div>
+	{% elseif avis.possible %}
+		<a class="ec-carte av-merci" href="{{ path('app_espace_avis_commande', {id: c.publicId}) }}" style="color:inherit">
+			<span class="av-merci-icone" aria-hidden="true">★</span>
+			<div style="flex:1"><b>Votre avis sur cette commande ?</b><div class="ec-petit">Une minute : notez le travail, le délai et l'accueil.</div></div>
+			<span class="ec-bouton-petit">Noter</span>
+		</a>
 	{% endif %}
 
 	<div class="ec-carte">

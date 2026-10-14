@@ -10,6 +10,7 @@ use App\Entity\Devis;
 use App\Entity\ModificationClient;
 use App\Entity\Paiements;
 use App\Entity\ReclamationClient;
+use App\Entity\ReponseSondage;
 use App\Entity\SynchroEchange;
 use App\Entity\SynchroEtat;
 use App\Entity\SynchroJournal;
@@ -18,6 +19,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\NotificationsClient;
 use App\Service\NotificationService;
+use App\Service\Sondages\Sondages;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
@@ -49,6 +51,8 @@ final class Synchro
         /** @var \Closure(): EspaceClient (différé : Parametres dépend de Synchro) */
         #[AutowireServiceClosure(EspaceClient::class)] private readonly \Closure $espaceClient,
         #[AutowireServiceClosure(NotificationsClient::class)] private readonly \Closure $notificationsClient,
+        /** @var \Closure(): Sondages */
+        #[AutowireServiceClosure(Sondages::class)] private readonly \Closure $sondages,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $url,
         #[Autowire('%env(SYNC_CLE)%')] private readonly string $cle,
@@ -361,6 +365,11 @@ final class Synchro
                         $this->em->flush();
                         $this->notifications->notifierRoles(['ROLE_CLIENT'], \sprintf('Réclamation %s de %s : %s', $entite->getNumero(), $entite->getClient()?->getNomComplet() ?? 'un client', $entite->getObjet()), 'app_reclamations_clients_voir', ['id' => $entite->getId()]);
                         $resultat = [self::RESULTAT_OK, 'Réclamation du client : à traiter', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof ReponseSondage && $entite->alerteOuverte()) {
+                        // Note de 1 ou 2 laissée en ligne : le client est à rappeler.
+                        $this->em->flush();
+                        ($this->sondages)()->notifierAlerte($entite);
+                        $resultat = [self::RESULTAT_OK, 'Mauvaise note : client à rappeler', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof Paiements && Paiements::MODE_ORANGE_MONEY === $entite->getMode() && str_starts_with((string) $entite->getReference(), 'OM ')) {
                         // Payé par le client depuis son espace : la caisse vérifie la réception sur le compte Orange Money.
                         $this->em->flush();

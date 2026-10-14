@@ -177,6 +177,13 @@ security:
             roles: PUBLIC_ACCESS
         }
 
+        # Sondages sans compte (docs/sondages.md) : lien reçu à la
+        # livraison, lien ou QR code d'un sondage libre.
+        - {
+            path: '^/avis/[cs]/[0-9a-f]{24}$',
+            roles: PUBLIC_ACCESS
+        }
+
         # Employés (maquette E05) : activation par le lien WhatsApp,
         # connexion par PIN sur le téléphone enregistré, tablette de
         # l'entrée (branchée par la RH, reconnue par son cookie).

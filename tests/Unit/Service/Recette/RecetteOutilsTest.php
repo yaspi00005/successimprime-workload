@@ -77,7 +77,10 @@ final class RecetteOutilsTest extends TestCase
         self::assertNotNull(RecetteAcces::contexteVoulu('CMD-D00751 50,5 Mo Solde disponible 1 728 points = 1 728 F'));
         self::assertNotNull(RecetteAcces::contexteVoulu('Acompte demandé50 % · 0 F'));
         self::assertNotNull(RecetteAcces::contexteVoulu('Salon Espoir — En préparation 2 travaux Impayée 5 000 FCFA'));
+        self::assertNotNull(RecetteAcces::contexteVoulu('Montant TTC Paiement CMD-D00753 10/10/2026 11:22 45 000 FCFA'));
         self::assertNull(RecetteAcces::contexteVoulu('Total payé 407 500 F'));
+        // Une ligne de paiement (date, commande, mode) reste à examiner.
+        self::assertNull(RecetteAcces::contexteVoulu('10/10/2026 11:27 CMD-D00753 Chèque Banque BDM — 45 000 FCFA'));
     }
 
     public function testDonneesDeLEspaceSansArgent(): void

@@ -78,6 +78,7 @@ final class RecetteAcces
         '/Acompte demandé ?\d+ % · [\d \x{00A0}\x{202F}.]+ F$/u' => 'acompte demandé sur le devis (un prix, pas un paiement reçu)',
         '/forfait de conception Acompte [\d \x{00A0}\x{202F}.]+ F$/u' => 'acompte demandé pour la conception (un prix)',
         '/(?:Payée|Impayée|Paiement partiel) [\d \x{00A0}\x{202F}.]+ F(?:CFA| CFA)?$/u' => 'total de la commande à côté de son état de paiement (le payé et le reste demandent le droit Paiements)',
+        '/\bCMD-[A-Z0-9-]+ \d{2}\/\d{2}\/\d{4}(?: \d{2}:\d{2})? [\d \x{00A0}\x{202F}.]+ F(?:CFA| CFA)?$/u' => 'total d\'une commande dans une liste (numéro, date, montant TTC)',
     ];
 
     private ?UsernamePasswordToken $jeton = null;

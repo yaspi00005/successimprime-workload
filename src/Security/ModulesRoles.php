@@ -44,14 +44,15 @@ final class ModulesRoles
                 'detail' => 'devis, commandes, factures, encaissements',
                 'droits' => ['ROLE_DEVIS', 'ROLE_COMMANDE', 'ROLE_FACTURE', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_JOURNAL_CAISSE'],
                 'lecture' => Droits::LECTURE_VENTES,
-                'prefixes' => ['app_ventes_', 'app_commandes_', 'app_commande_catalogue_', 'app_brouillon_', 'app_devis_', 'app_factures_', 'app_creances_', 'app_caisse_', 'app_journal_caisse_', 'app_paiements_'],
+                // Aussi les encaissements par relevé ou à la livraison, « Mes actions » de la caisse (pas celles de l'équipe) et les points fidélité posés sur une commande.
+                'prefixes' => ['app_ventes_', 'app_commandes_', 'app_commande_catalogue_', 'app_brouillon_', 'app_devis_', 'app_factures_', 'app_creances_', 'app_caisse_', 'app_journal_caisse_', 'app_paiements_', 'app_finances_encaissements', 'app_livraisons_bl_encaissement', 'app_actions_index', 'app_actions_voir', 'app_actions_contact', 'app_actions_faire', 'app_fidelite_utiliser', 'app_fidelite_retirer', 'app_fidelite_reveil_appliquer'],
             ],
             'clients' => [
                 'libelle' => 'Clients',
                 'detail' => 'fiches, prospects, réclamations, sondages',
                 'droits' => ['ROLE_CLIENT'],
                 'lecture' => Droits::LECTURE_CLIENTS,
-                'prefixes' => ['app_clients_', 'app_prospects_', 'app_reclamations_clients_', 'app_sondages_'],
+                'prefixes' => ['app_clients_', 'app_prospects_', 'app_reclamations_clients_', 'app_sondages_', 'app_messages_clients_'],
             ],
             'livraisons' => [
                 'libelle' => 'Livraisons',
@@ -69,7 +70,7 @@ final class ModulesRoles
                 'detail' => 'fichiers, BAT, conception',
                 'droits' => ['ROLE_PREPRESSE'],
                 'lecture' => Droits::LECTURE_PAO,
-                'prefixes' => ['app_controle_pre_presse_', 'app_conception_', 'app_demandes_conception_'],
+                'prefixes' => ['app_controle_pre_presse_', 'app_conception_', 'app_demandes_conception_', 'app_fichier_dossier_partage'],
             ],
             'stock' => [
                 'libelle' => 'Stock et achats',

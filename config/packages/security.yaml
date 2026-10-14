@@ -291,8 +291,11 @@ security:
         # PARAMÈTRES
         # ============================================================
 
+        # Types d'impression (/types/impression) et lots d'étiquettes
+        # (/lot/etiquette) : la page de suivi d'une étiquette (QR code)
+        # garde sa règle (tout compte connecté).
         - {
-            path: ^/(categorie-produit|produits|produit-configuration|type-impression|support|format|finition|machines|lot-etiquette),
+            path: '^/(categorie-produit|produits|produit-configuration|type-impression|types/impression|support|format|finition|machines|lot-etiquette|lot/etiquette(?!/suivi/))',
             roles: ROLE_ADMIN
         }
 
@@ -587,8 +590,30 @@ security:
 
 
         # ============================================================
+        # FICHIERS DES COMMANDES
+        #
+        # Fichiers des clients (voir, envoyer par morceaux, retirer) :
+        # pour qui travaille la commande (vente, fiche client, prépresse,
+        # production). Le dossier partagé vérifie en plus la prépresse.
+        # ============================================================
+
+        - {
+            path: ^/commande-fichiers,
+            roles: [ROLE_COMMANDE, ROLE_CLIENT, ROLE_PREPRESSE, ROLE_PRODUCTION_VOIR]
+        }
+
+
+        # ============================================================
         # LIVRAISON
         # ============================================================
+
+        # Planning et détail des livraisons (L01, L02) : aussi pour le
+        # bureau (ROLE_COMMANDE, entrée de son menu) ; TourneeController
+        # vérifie le reste (bureau, livreur du bon, encaissement).
+        - {
+            path: '^/livraisons/(planning|bl/\d+)',
+            roles: [ROLE_LIVRAISON, ROLE_COMMANDE]
+        }
 
         - {
             path: ^/(livraisons|bons-livraison),

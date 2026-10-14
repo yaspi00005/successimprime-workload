@@ -178,7 +178,7 @@
 										</td>
 
 										<td class="align-middle">
-											{{ etiquette.associePar ?: '-' }}
+											{{ etiquette.associePar ? etiquette.associePar.userIdentifier : '-' }}
 										</td>
 									</tr>
 								{% else %}

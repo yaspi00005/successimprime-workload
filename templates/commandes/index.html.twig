@@ -54,6 +54,7 @@
 {% endblock %}
 
 {% block body %}
+	{% set voirPaiements = is_granted('ROLE_PAIEMENT_VOIR') %}
 	{% set rechercheActive =
         filtres.q|default('')
         or filtres.client|default('')
@@ -270,7 +271,7 @@
 									<option value="recent" {{ filtres.tri|default('recent') == 'recent' ? 'selected' : '' }}>Plus récentes</option>
 									<option value="ancien" {{ filtres.tri|default('') == 'ancien' ? 'selected' : '' }}>Plus anciennes</option>
 									<option value="montant_desc" {{ filtres.tri|default('') == 'montant_desc' ? 'selected' : '' }}>Montant décroissant</option>
-									<option value="reste_desc" {{ filtres.tri|default('') == 'reste_desc' ? 'selected' : '' }}>Reste à payer décroissant</option>
+									{% if voirPaiements %}<option value="reste_desc" {{ filtres.tri|default('') == 'reste_desc' ? 'selected' : '' }}>Reste à payer décroissant</option>{% endif %}
 								</select>
 							</div>
 
@@ -314,8 +315,10 @@
 									<th scope="col">Travaux</th>
 									<th scope="col">Paiement</th>
 									<th scope="col" class="text-right">Total TTC</th>
-									<th scope="col" class="text-right">Payé</th>
-									<th scope="col" class="text-right">Reste à payer</th>
+									{% if voirPaiements %}
+										<th scope="col" class="text-right">Payé</th>
+										<th scope="col" class="text-right">Reste à payer</th>
+									{% endif %}
 									<th scope="col" class="text-center">Actions</th>
 								</tr>
 							</thead>
@@ -423,6 +426,8 @@
 											</strong>
 										</td>
 
+										{# 6 et 7. Payé et reste : avec le droit Paiements seulement (montants réglés à part). #}
+										{% if voirPaiements %}
 										{# 6. Montant payé #}
 										<td class="text-right text-success">
 											<strong>
@@ -439,6 +444,8 @@
 											</strong>
 										</td>
 
+										{% endif %}
+
 										{# 8. Actions #}
 										<td class="text-center commande-actions">
 											<a href="{{ path('app_commandes_show', { id: commande.id }) }}" class="btn btn-info-light btn-sm" title="Afficher">
@@ -452,7 +459,7 @@
 									</tr>
 								{% else %}
 									<tr>
-										<td colspan="10">
+										<td colspan="{{ voirPaiements ? 10 : 8 }}">
 											<div class="empty-state">
 												<i class="fa fa-inbox"></i>
 

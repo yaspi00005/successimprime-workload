@@ -96,6 +96,9 @@
 
 {% block body %}
 
+	{# Payé, reste et liste des paiements : avec le droit Paiements seulement (montants réglés à part). #}
+	{% set voirPaiements = is_granted('ROLE_PAIEMENT_VOIR') %}
+
 	<div
 		class="side-app">
 
@@ -123,6 +126,7 @@
 
 			<div>
 
+				{% if voirPaiements %}
 				<a href="{{ path('app_clients_pdf_impayes', { publicId: client.publicId }) }}" class="btn btn-danger" target="_blank">
 					<i class="fa fa-file-pdf-o mr-1"></i>
 					PDF des impayés
@@ -132,6 +136,7 @@
 					<i class="fa fa-file-pdf-o mr-1"></i>
 					PDF de toutes les commandes
 				</a>
+				{% endif %}
 
 				<a href="{{ path('app_clients_index') }}" class="btn btn-light">
 					<i class="fa fa-arrow-left mr-1"></i>
@@ -430,6 +435,8 @@
 			{% endif %}
 
 
+			{# Encours : avec le droit Paiements seulement, comme la colonne « Solde dû » de la liste. #}
+			{% if is_granted('ROLE_PAIEMENT_VOIR') %}
 			<div class="col-xl-3 col-md-6">
 
 				<div class="card client-card h-100">
@@ -460,6 +467,7 @@
 				</div>
 
 			</div>
+			{% endif %}
 
 
 			<div class="col-xl-3 col-md-6">
@@ -666,6 +674,8 @@
 		</div>
 
 
+		{# Avec le droit Paiements seulement, comme la colonne « Solde dû » de la liste. #}
+		{% if is_granted('ROLE_PAIEMENT_VOIR') %}
 		<div class="card client-card mt-4">
 
 			<div class="card-header d-flex justify-content-between align-items-center">
@@ -758,6 +768,7 @@
 			</div>
 
 		</div>
+		{% endif %}
 
 
 		{# ============================================================
@@ -804,6 +815,7 @@
 					</li>
 
 
+					{% if voirPaiements %}
 					<li class="nav-item">
 
 						<a class="nav-link" data-bs-toggle="tab" href="#client-paiements" role="tab">
@@ -819,6 +831,7 @@
 						</a>
 
 					</li>
+					{% endif %}
 
 				</ul>
 
@@ -852,6 +865,7 @@
 											Montant TTC
 										</th>
 
+										{% if voirPaiements %}
 										<th class="text-right">
 											Payé
 										</th>
@@ -859,6 +873,7 @@
 										<th class="text-right">
 											Reste
 										</th>
+										{% endif %}
 
 										<th>
 											Paiement
@@ -914,6 +929,7 @@
 											</td>
 
 
+											{% if voirPaiements %}
 											<td class="text-right text-money-positive">
 
 												{{
@@ -944,6 +960,7 @@
 												FCFA
 
 											</td>
+											{% endif %}
 
 
 											<td>
@@ -977,7 +994,7 @@
 
 										<tr>
 
-											<td colspan="6" class="text-center py-5 text-muted">
+											<td colspan="{{ voirPaiements ? 6 : 4 }}" class="text-center py-5 text-muted">
 
 												Aucune commande pour ce client.
 
@@ -1164,6 +1181,7 @@
 																								   PAIEMENTS
 																								   ================================================= #}
 
+					{% if voirPaiements %}
 					<div class="tab-pane fade" id="client-paiements" role="tabpanel">
 
 						<div class="table-responsive">
@@ -1339,6 +1357,7 @@
 						</div>
 
 					</div>
+					{% endif %}
 
 				</div>
 

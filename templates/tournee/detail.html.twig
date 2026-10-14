@@ -81,6 +81,8 @@
 			</div>
 
 			<aside>
+				{# Montants : avec le droit Paiements (comme le planning des livraisons) ou pour qui encaisse. #}
+				{% if is_granted('ROLE_PAIEMENT_VOIR') or is_granted('ROLE_PAIEMENT_ENCAISSER') %}
 				<section class="card si-ac-bloc">
 					<h2>Encaissement à la livraison</h2>
 					<p class="d-flex justify-content-between mb-2"><span>Reste à payer</span><b>{{ reste|number_format(0, ',', ' ') }} F</b></p>
@@ -102,6 +104,7 @@
 						<p class="text-muted mb-0">Rien encaissé pour l'instant.</p>
 					{% endif %}
 				</section>
+				{% endif %}
 				<section class="card si-ac-bloc">
 					<h2>Planification</h2>
 					{% if b.statut == 'brouillon' %}<p class="si-pg-note">Le bon doit être validé (préparé) pour apparaître dans la tournée.</p>{% endif %}

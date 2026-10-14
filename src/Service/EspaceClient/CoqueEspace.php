@@ -10,6 +10,7 @@ use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Ce que la coque de l'espace client montre sur chaque page (maquettes
@@ -18,8 +19,12 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * conseiller(ère) ». Calculé une fois par requête, toujours selon les
  * droits de la personne : pas de factures pour qui ne paie pas, rien qui
  * écrive pour un compte « Lecture · suivi ».
+ *
+ * Vidée entre deux requêtes (ResetInterface) : un processus qui sert
+ * plusieurs personnes (tests, recette des accès, serveur qui garde PHP en
+ * mémoire) ne montre jamais la coque de l'une à l'autre.
  */
-final class CoqueEspace
+final class CoqueEspace implements ResetInterface
 {
     /**
      * Menu de gauche, dans l'ordre d'affichage. Ajouter une entrée = ajouter
@@ -97,6 +102,11 @@ final class CoqueEspace
         private readonly EntrepriseRepository $entreprises,
         private readonly RequestStack $requetes,
     ) {
+    }
+
+    public function reset(): void
+    {
+        $this->memo = null;
     }
 
     /** @return array<string, mixed>|null rien hors de l'espace client connecté */

@@ -14,13 +14,15 @@ use App\Entity\ReponseSondage;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Pastilles jaunes du menu (maquettes R01 et R02) : ce qui attend une
  * décision ou une action de la personne connectée. Chaque compte n'est
- * calculé que pour qui a le droit de voir l'écran, une fois par requête.
+ * calculé que pour qui a le droit de voir l'écran, une fois par requête
+ * (vidé entre deux requêtes : ResetInterface).
  */
-final class PastillesMenu
+final class PastillesMenu implements ResetInterface
 {
     /** @var array<string, int>|null */
     private ?array $compteurs = null;
@@ -29,6 +31,11 @@ final class PastillesMenu
         private readonly EntityManagerInterface $em,
         private readonly Security $security,
     ) {
+    }
+
+    public function reset(): void
+    {
+        $this->compteurs = null;
     }
 
     /**

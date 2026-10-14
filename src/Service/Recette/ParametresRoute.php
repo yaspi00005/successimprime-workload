@@ -1,0 +1,210 @@
+<?php
+
+namespace App\Service\Recette;
+
+use App\Entity\AssistantConversation;
+use App\Entity\Campagne;
+use App\Entity\Clients;
+use App\Entity\DemandeConception;
+use App\Entity\DemandeDevis;
+use App\Entity\JournalActivite;
+use App\Entity\PageSite;
+use App\Service\Parametres\CatalogueParametres;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Mapping\ClassMetadata;
+use Symfony\Bridge\Doctrine\Attribute\MapEntity;
+use Symfony\Component\Routing\Route;
+use Symfony\Component\Uid\AbstractUid;
+
+/**
+ * Remplit les paramètres d'une adresse de l'admin avec des fiches de la
+ * démonstration (identifiants à partir de 900001), pour demander la page
+ * comme un vrai lien : « /commandes/{id} » devient « /commandes/900001 ».
+ *
+ * L'entité vient du type de l'argument du contrôleur (Commandes $commande) ;
+ * quelques routes qui prennent un nombre et cherchent elles-mêmes sont
+ * listées dans MANUELS.
+ */
+final class ParametresRoute
+{
+    public const PREMIER_ID_DEMO = 900001;
+
+    /** Paramètre « nombre » d'un contrôleur qui cherche lui-même sa fiche : l'entité à prendre. */
+    private const MANUELS = [
+        'app_assistant_conversation' => ['id' => AssistantConversation::class],
+        'app_campagne_show' => ['id' => Campagne::class],
+        'app_clients_modifier' => ['publicId' => Clients::class],
+        'app_clients_journal' => ['publicId' => Clients::class],
+        'app_demandes_conception_voir' => ['id' => DemandeConception::class],
+        'app_demandes_site_voir' => ['id' => DemandeDevis::class],
+        'app_demandes_site_fichier' => ['id' => DemandeDevis::class],
+        'app_journal_activite_show' => ['id' => JournalActivite::class],
+        'app_site_contenu_fiche' => ['id' => PageSite::class],
+    ];
+
+    /** @var array<string, string|int|null> valeur déjà cherchée, par entité et champ */
+    private array $cache = [];
+
+    public function __construct(private readonly EntityManagerInterface $em)
+    {
+    }
+
+    /**
+     * Jeux de paramètres pour cette route (un seul en général ; un par
+     * tuile pour les panneaux des Réglages), ou la raison de l'impossibilité.
+     *
+     * @return list<array<string, string|int>>|string
+     */
+    public function remplir(string $nom, Route $route): array|string
+    {
+        $variables = $route->compile()->getPathVariables();
+        if ([] === $variables) {
+            return [[]];
+        }
+        if ('app_reglages_parametres_panneau' === $nom) {
+            return array_map(static fn (string $tuile): array => ['tuile' => $tuile], array_keys(CatalogueParametres::tuiles()));
+        }
+
+        $arguments = self::argumentsDuControleur($route);
+        $valeurs = [];
+        foreach ($variables as $variable) {
+            $valeur = $this->valeur($nom, $route, $variable, $arguments);
+            if (null === $valeur) {
+                if (null !== $route->getDefault($variable) || $route->hasDefault($variable)) {
+                    continue;
+                }
+
+                return \sprintf('paramètre « %s » sans valeur de démonstration', $variable);
+            }
+            $valeurs[$variable] = $valeur;
+        }
+
+        return [$valeurs];
+    }
+
+    /**
+     * @param array<string, \ReflectionParameter> $arguments
+     */
+    private function valeur(string $nom, Route $route, string $variable, array $arguments): string|int|null
+    {
+        $exigence = (string) $route->getRequirement($variable);
+        // « pdf|xlsx », « arrivee|depart » : la première possibilité.
+        if (preg_match('/^[a-z_]+(\|[a-z_]+)+$/i', $exigence)) {
+            return explode('|', $exigence)[0];
+        }
+        if (isset(self::MANUELS[$nom][$variable])) {
+            return $this->premiere(self::MANUELS[$nom][$variable], 'id' === $variable ? 'id' : $variable);
+        }
+        [$classe, $champ] = $this->entiteDe($variable, $arguments);
+        if (null !== $classe) {
+            return $this->premiere($classe, $champ);
+        }
+
+        return match ($variable) {
+            'annee' => (int) date('Y'),
+            'mois' => (int) date('n'),
+            'date', 'jour' => date('Y-m-d'),
+            'page' => 1,
+            default => null,
+        };
+    }
+
+    /**
+     * Entité et champ qui donnent la valeur d'une variable de l'adresse.
+     *
+     * @param array<string, \ReflectionParameter> $arguments
+     *
+     * @return array{0: class-string|null, 1: string}
+     */
+    private function entiteDe(string $variable, array $arguments): array
+    {
+        $entites = [];
+        foreach ($arguments as $parametre) {
+            $type = $parametre->getType();
+            $classe = $type instanceof \ReflectionNamedType ? $type->getName() : null;
+            if (null === $classe || !class_exists($classe) || $this->em->getMetadataFactory()->isTransient($classe)) {
+                continue;
+            }
+            $entites[$parametre->getName()] = $classe;
+            foreach ($parametre->getAttributes(MapEntity::class) as $attribut) {
+                $carte = $attribut->newInstance();
+                if ($carte->id === $variable) {
+                    return [$classe, 'id'];
+                }
+                foreach ((array) ($carte->mapping ?? []) as $cle => $champ) {
+                    if ($cle === $variable) {
+                        return [$classe, \is_string($champ) ? $champ : $cle];
+                    }
+                }
+            }
+        }
+        if (isset($entites[$variable])) {
+            return [$entites[$variable], 'id'];
+        }
+        if (1 === \count($entites)) {
+            $classe = reset($entites);
+            $metadonnees = $this->em->getClassMetadata($classe);
+            if ('id' === $variable || $metadonnees->hasField($variable)) {
+                return [$classe, $variable];
+            }
+        }
+
+        return [null, ''];
+    }
+
+    /**
+     * Première fiche de la démonstration (sinon la première tout court).
+     *
+     * @param class-string $classe
+     */
+    public function premiere(string $classe, string $champ = 'id'): string|int|null
+    {
+        $cle = $classe.'::'.$champ;
+        if (\array_key_exists($cle, $this->cache)) {
+            return $this->cache[$cle];
+        }
+        /** @var ClassMetadata<object> $metadonnees */
+        $metadonnees = $this->em->getClassMetadata($classe);
+        $identifiant = $metadonnees->getSingleIdentifierFieldName();
+        $valeur = null;
+        foreach ([true, false] as $demo) {
+            $qb = $this->em->createQueryBuilder()->select('e.'.$champ)->from($classe, 'e')->orderBy('e.'.$identifiant, 'ASC')->setMaxResults(1);
+            if ($demo) {
+                $qb->where('e.'.$identifiant.' >= :demo')->setParameter('demo', self::PREMIER_ID_DEMO);
+            }
+            $ligne = $qb->getQuery()->getOneOrNullResult();
+            if (null !== $ligne) {
+                $valeur = $ligne[$champ];
+                break;
+            }
+        }
+
+        return $this->cache[$cle] = match (true) {
+            $valeur instanceof AbstractUid => $valeur->toRfc4122(),
+            \is_int($valeur), \is_string($valeur) => $valeur,
+            null === $valeur => null,
+            default => (string) $valeur,
+        };
+    }
+
+    /**
+     * @return array<string, \ReflectionParameter>
+     */
+    private static function argumentsDuControleur(Route $route): array
+    {
+        $controleur = $route->getDefault('_controller');
+        if (!\is_string($controleur) || !str_contains($controleur, '::')) {
+            return [];
+        }
+        [$classe, $methode] = explode('::', $controleur, 2);
+        if (!method_exists($classe, $methode)) {
+            return [];
+        }
+        $arguments = [];
+        foreach ((new \ReflectionMethod($classe, $methode))->getParameters() as $parametre) {
+            $arguments[$parametre->getName()] = $parametre;
+        }
+
+        return $arguments;
+    }
+}

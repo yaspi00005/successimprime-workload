@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\ActionCaisse;
 use App\Entity\Commandes;
 use App\Entity\DemandeEmploye;
+use App\Entity\MessageClient;
 use App\Entity\Paiements;
 use App\Entity\ReclamationClient;
 use App\Entity\ReponseSondage;
@@ -68,6 +69,8 @@ final class PastillesMenu
         if ($this->security->isGranted('ROLE_CLIENT')) {
             // Réclamations écrites par les clients, pas encore répondues.
             $compteurs['app_reclamations_clients_index'] = $this->compter(ReclamationClient::class, 'r', 'r.statut = :s', ['s' => ReclamationClient::OUVERTE]);
+            // Messages écrits par les clients dans leur espace, pas encore répondus ni classés.
+            $compteurs['app_messages_clients_index'] = $this->compter(MessageClient::class, 'm', 'm.sens = :sens AND m.traiteLe IS NULL', ['sens' => MessageClient::CLIENT]);
             // Notes de 1 ou 2 laissées dans un sondage : le client est à rappeler.
             $compteurs['app_sondages_index'] = $this->compter(ReponseSondage::class, 'r', 'r.alerte = :a', ['a' => ReponseSondage::ALERTE_A_RAPPELER]);
         }

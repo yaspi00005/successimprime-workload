@@ -5400,3 +5400,15 @@ body.si-param-bloque { overflow: hidden; }
   .si-fi-journal li { grid-template-columns: 70px 1fr; }
   .si-fi-journal .si-fi-qui { grid-column: 2; }
 }
+
+/* Clients › Messages (espace client, maquette EC01) et changements demandés en ligne (EC04) */
+.si-mc-fil { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.si-mc-bulle { max-width: 80%; padding: 10px 14px; border-radius: 14px; font-size: 0.9rem; }
+.si-mc-bulle small { display: block; color: #64748B; font-size: 0.75rem; }
+.si-mc-bulle p { margin: 4px 0 0; color: #0F172A; overflow-wrap: anywhere; }
+.si-mc-client { align-self: flex-start; background: #F1F5F9; border-bottom-left-radius: 4px; }
+.si-mc-atelier { align-self: flex-end; background: #EAF1FC; border-bottom-right-radius: 4px; }
+.si-mc-proposition { flex-wrap: wrap; }
+.si-mc-proposition form { margin: 0; }
+.si-mc-refus { display: flex; gap: 6px; align-items: center; }
+.si-mc-refus input { width: 220px; }

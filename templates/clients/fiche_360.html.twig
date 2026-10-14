@@ -29,6 +29,7 @@
 			<a href="{{ invitation }}" target="_blank" rel="noopener" class="btn btn-success btn-sm">Envoyer l'invitation</a>
 		</div>
 	{% endif %}
+	{% include 'clients/_proposition_client.html.twig' %}
 	<div class="si-fiche">
 		<aside class="card si-fiche-identite">
 			<div class="si-fiche-avatar" aria-hidden="true" style="background: {{ ['#0F4590', '#E8590C', '#0E7C66', '#15A34A', '#6B7280', '#DB2777', '#2563EB', '#7C2D12', '#DC2626'][client.id % 9] }}">{{ initiales ?: '?' }}</div>

@@ -23,6 +23,7 @@ use App\Entity\Paiements;
 use App\Entity\Finition;
 use App\Entity\Format;
 use App\Entity\InvitationSondage;
+use App\Entity\MessageClient;
 use App\Entity\MouvementFidelite;
 use App\Entity\NoteArticleSondage;
 use App\Entity\ProduitClient;
@@ -30,6 +31,7 @@ use App\Entity\PromoReveil;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
+use App\Entity\PropositionClient;
 use App\Entity\ReclamationClient;
 use App\Entity\ReclamationClientPhoto;
 use App\Entity\ReponseSondage;
@@ -203,12 +205,13 @@ final class CatalogueSynchro
             ],
             'client' => [
                 'classe' => Clients::class, 'sens' => self::DEUX, 'libelle' => 'Client', 'titre' => ['raisonSociale', 'prenom', 'nom'],
-                // observation (note interne), suiviPar et la remise habituelle restent au local.
+                // observation (note interne), suiviPar (l'employé) et remiseHabituelle restent au local. Du
+                // commercial qui suit le client, seul le nom affiché part (conseiller, carte « Votre conseiller(ère) »).
                 'champs' => [
                     'code', 'raisonSociale', 'nom', 'prenom', 'telephone', 'telephone2', 'email', 'adresse', 'ville', 'commune', 'quartier',
                     'latitude', 'longitude', 'repere', 'nif', 'rccm', 'typeClient', 'typeCompte', 'plafondCredit', 'soldeCredit',
                     'createdAt', 'updatedAt', 'statut', 'recevoirSms', 'consentementMarketingLe', 'delaiPaiement', 'acompte',
-                    'moyenPrefere', 'entiteFacturation',
+                    'moyenPrefere', 'entiteFacturation', 'conseiller',
                 ],
                 'relations' => [], 'listes' => [], 'numero' => 'code',
                 'remontees' => ['recevoirSms' => null, 'consentementMarketingLe' => null],
@@ -335,6 +338,25 @@ final class CatalogueSynchro
                 'classe' => ReclamationClientPhoto::class, 'sens' => self::DEUX, 'libelle' => 'Photo de réclamation', 'titre' => [],
                 'champs' => ['contenu', 'type', 'largeur', 'hauteur'],
                 'relations' => ['reclamation' => 'reclamation'], 'listes' => [],
+            ],
+            // Messages entre le client et l'atelier (Messages de l'espace client, maquette EC01) : le client
+            // écrit en ligne, l'atelier répond au local et la réponse redescend. Texte seulement. Le
+            // traitement par l'équipe (traiteLe) et l'employé qui a répondu restent au local.
+            'message_client' => [
+                'classe' => MessageClient::class, 'sens' => self::DEUX, 'libelle' => 'Message du client', 'titre' => ['auteur'],
+                'champs' => ['sens', 'auteur', 'texte', 'creeLe'],
+                'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'facultatives' => ['commande'],
+                // Écrit en ligne : toujours un message du client, à traiter par l'équipe.
+                'imposeAuLocal' => ['sens' => MessageClient::CLIENT, 'traiteLe' => null],
+            ],
+            // Raison sociale ou NIF que la personne qui gère le compte demande de changer (Mon compte,
+            // maquette EC04) : jamais appliqué en ligne ni à l'arrivée ; l'équipe l'applique ou le refuse
+            // depuis la fiche client, la décision et la fiche redescendent. L'employé qui l'a traité reste au local.
+            'proposition_client' => [
+                'classe' => PropositionClient::class, 'sens' => self::DEUX, 'libelle' => 'Changement demandé par le client', 'titre' => ['auteur'],
+                'champs' => ['champs', 'auteur', 'statut', 'creeLe', 'traiteLe', 'motif'],
+                'relations' => ['client' => 'client'], 'listes' => [],
+                'imposeAuLocal' => ['statut' => PropositionClient::EN_ATTENTE, 'traiteLe' => null, 'motif' => null],
             ],
             // Où en est la livraison, pour l'espace client (livreur en route, livrée) et ses notifications.
             // Livreur, réceptionnaire, adresse, photos, signature, position, encaissement, stock et notes restent au local.

@@ -11,6 +11,8 @@ use App\Entity\DemandeDevis;
 use App\Entity\Devis;
 use App\Entity\ModificationClient;
 use App\Entity\Paiements;
+use App\Entity\MessageClient;
+use App\Entity\PropositionClient;
 use App\Entity\ReclamationClient;
 use App\Entity\Reglage;
 use App\Entity\ReponseSondage;
@@ -404,6 +406,16 @@ final class Synchro
                         $this->em->flush();
                         $this->notifications->notifierRoles(['ROLE_CLIENT'], \sprintf('Réclamation %s de %s : %s', $entite->getNumero(), $entite->getClient()?->getNomComplet() ?? 'un client', $entite->getObjet()), 'app_reclamations_clients_voir', ['id' => $entite->getId()]);
                         $resultat = [self::RESULTAT_OK, 'Réclamation du client : à traiter', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof MessageClient) {
+                        // Message écrit dans l'espace client (Messages) : l'équipe répond depuis Clients › Messages.
+                        $this->em->flush();
+                        $this->notifications->notifierRoles(['ROLE_CLIENT'], \sprintf('Message de %s (%s) : « %s »', $entite->getAuteur() ?? 'un client', $entite->getClient()?->getNomComplet() ?? '?', mb_substr($entite->getTexte(), 0, 100)), 'app_messages_clients_voir', ['publicId' => $entite->getClient()?->getPublicId()]);
+                        $resultat = [self::RESULTAT_OK, 'Message du client : à lire', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof PropositionClient) {
+                        // Raison sociale ou NIF à changer : jamais appliqué tout seul, l'équipe décide sur la fiche.
+                        $this->em->flush();
+                        $this->notifications->notifierRoles(['ROLE_CLIENT'], \sprintf('%s demande de changer la raison sociale ou le NIF de %s : à appliquer ou refuser sur la fiche.', $entite->getAuteur() ?? 'Le client', $entite->getClient()?->getNomComplet() ?? '?'), 'app_clients_show', ['publicId' => $entite->getClient()?->getPublicId()]);
+                        $resultat = [self::RESULTAT_OK, 'Changement demandé par le client : à valider', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof ReponseSondage && $entite->alerteOuverte()) {
                         // Note de 1 ou 2 laissée en ligne : le client est à rappeler.
                         $this->em->flush();
@@ -465,6 +477,10 @@ final class Synchro
             $entite instanceof Paiements => $entite->getCommande()?->getClients(),
             $entite instanceof ReclamationClient => $entite->getClient(),
             $entite instanceof BonLivraison => $entite->getCommande()?->getClients(),
+            // Nouveau devis, facture émise, réponse de l'atelier : dans le fil du client (espace client).
+            $entite instanceof Devis => $entite->getClients(),
+            $entite instanceof \App\Entity\Factures => $entite->getCommande()?->getClients(),
+            $entite instanceof MessageClient => $entite->getClient(),
             default => null,
         };
     }

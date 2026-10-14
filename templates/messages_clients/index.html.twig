@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{# Clients › Messages : un client par ligne, ceux qui attendent une réponse d'abord. #}
+{% block title %}Messages des clients{% endblock %}
+
+{% block body %}
+	<section class="card si-ac-bloc">
+		<h2>Conversations <span class="si-pg-compte">{{ conversations|length }}</span></h2>
+		{% if conversations is empty %}
+			<p class="si-ac-vide">Aucun message de client pour le moment.</p>
+		{% else %}
+			<ul class="si-rc-liste">
+				{% for c in conversations %}
+					{% set m = c.dernier %}
+					<li>
+						<a href="{{ path('app_messages_clients_voir', {publicId: c.client.publicId}) }}" class="si-rc-ligne">
+							<span class="si-rc-num">{{ c.client.code }}<small>{{ m.creeLe|date(m.creeLe|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m') }}</small></span>
+							<span class="si-rc-texte"><b>{{ c.client.nomComplet }}</b><small>{{ m.estDeLAtelier ? 'Vous : ' : (m.auteur ? m.auteur ~ ' : ') }}{{ m.texte|length > 110 ? m.texte|slice(0, 110) ~ '…' : m.texte }}</small></span>
+							<span></span>
+							{% if c.attente > 0 %}
+								<span class="si-rc-statut si-rc-ouverte">{{ c.attente > 1 ? c.attente ~ ' à lire' : 'À répondre' }}</span>
+							{% else %}
+								<span class="si-rc-statut si-rc-resolue">{{ m.estDeLAtelier ? 'Répondu' : 'Classé' }}</span>
+							{% endif %}
+						</a>
+					</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+		<p class="si-pg-note">Les clients écrivent depuis Messages, dans leur espace (texte seulement, rattaché si besoin à une commande). Votre réponse s'affiche dans leur espace et ils en sont prévenus, sans montant.</p>
+	</section>
+{% endblock %}

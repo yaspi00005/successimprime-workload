@@ -543,8 +543,15 @@ security:
         # INFOGRAPHISTE + ADMIN UNIQUEMENT
         # ============================================================
 
+        # Fichiers des clients : aussi pour l'opérateur, qui les ouvre
+        # depuis l'ordre de production de sa machine.
         - {
-            path: ^/controle-pre-presse,
+            path: '^/pre-presse/fichier/\d+/(visualiser|telecharger)$',
+            roles: [ROLE_PREPRESSE, ROLE_PRODUCTION_VOIR]
+        }
+
+        - {
+            path: ^/pre-presse,
             roles: ROLE_PREPRESSE
         }
 

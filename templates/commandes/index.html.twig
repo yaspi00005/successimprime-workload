@@ -391,7 +391,7 @@
 
 											<div class="small text-muted mt-1">
 												{{ commande.commandesDetails|length }}
-												travail{{ commande.commandesDetails|length > 1 ? 'x' : '' }}
+												{{ commande.commandesDetails|length > 1 ? 'travaux' : 'travail' }}
 											</div>
 										</td>
 
@@ -496,7 +496,7 @@
 
 {% block javascripts %}
 	{{ parent() }}
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
 

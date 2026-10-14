@@ -184,7 +184,7 @@ final class CaisseController extends AbstractController
     public static function envoiRecu(Paiements $paiement, string $canal): ?array
     {
         $commande = $paiement->getCommande();
-        $client = $commande?->getClient();
+        $client = $commande?->getClients();
         $telephone = $client?->getTelephone() ? UtilisateursController::numeroWhatsApp($client->getTelephone()) : null;
         if (!\in_array($canal, ['whatsapp', 'sms'], true) || $telephone === null || $telephone === '') {
             return null;

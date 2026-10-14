@@ -64,7 +64,7 @@
 				<span class="si-planning-repere si-planning-repere-off">Ouvert de 8 h à 19 h</span>
 			{% endif %}
 			{% for saturee in saturees %}
-				<span class="si-planning-alerte"><i class="fas fa-exclamation-triangle"></i> {{ saturee.machine.nom }} saturée {{ aujourdhui ? 'demain' : 'le lendemain' }} ({{ saturee.occupation }} %, {{ saturee.travaux }} travail{{ saturee.travaux > 1 ? 'x' }}) : en déplacer ?</span>
+				<span class="si-planning-alerte"><i class="fas fa-exclamation-triangle"></i> {{ saturee.machine.nom }} saturée {{ aujourdhui ? 'demain' : 'le lendemain' }} ({{ saturee.occupation }} %, {{ saturee.travaux }} {{ saturee.travaux > 1 ? 'travaux' : 'travail' }}) : en déplacer ?</span>
 			{% endfor %}
 		</div>
 	</div>
@@ -79,7 +79,7 @@
 		<div class="col-md-4 col-6">
 			<div class="card si-kpi"><div class="card-body">
 				<span class="si-kpi-libelle">Retards</span>
-				<div class="si-kpi-valeur {{ retards > 0 ? 'text-danger' }}">{{ retards }} travail{{ retards > 1 ? 'x' }}</div>
+				<div class="si-kpi-valeur {{ retards > 0 ? 'text-danger' }}">{{ retards }} {{ retards > 1 ? 'travaux' : 'travail' }}</div>
 			</div></div>
 		</div>
 		<div class="col-md-4 col-12">

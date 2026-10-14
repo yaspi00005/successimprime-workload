@@ -318,7 +318,7 @@
 
 {% block javascripts %}
 	{{ parent() }}
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 	<script>
 		// Sans accès au CDN (serveur local hors ligne), les boîtes du navigateur prennent le relais.
 		if (typeof window.Swal === 'undefined') {

@@ -2,10 +2,13 @@
 
 namespace App\Service\Paiement;
 
+use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CompteClient;
+use App\Entity\DemandeConception;
 use App\Entity\Paiements;
 use App\Entity\TransactionOrangeMoney;
+use App\Service\Conception\CommandesConception;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -21,6 +24,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * aussi au retour du client. L'argent reçu devient un paiement « à
  * valider » : la caisse le valide au local sur le compte Orange Money,
  * jamais automatiquement.
+ *
+ * Il paie aussi l'acompte d'une demande de conception et les packs de
+ * crédit IA (docs/demande-conception.md) : la commande est alors créée à
+ * la réception de l'argent, par CommandesConception.
  *
  * Clés dans .env.local du serveur en ligne (jamais dans le dépôt). Essai :
  * ORANGE_MONEY_API=…/orange-money-webpay/dev/v1 et la devise OUV ;
@@ -41,6 +48,7 @@ final class OrangeMoney
         #[Autowire('%env(ORANGE_MONEY_CLIENT_ID)%')] private readonly string $clientId,
         #[Autowire('%env(ORANGE_MONEY_CLIENT_SECRET)%')] private readonly string $clientSecret,
         #[Autowire('%env(ORANGE_MONEY_MERCHANT_KEY)%')] private readonly string $merchantKey,
+        private readonly ?CommandesConception $conception = null,
     ) {
     }
 
@@ -89,9 +97,87 @@ final class OrangeMoney
             }
         }
 
-        $transaction = new TransactionOrangeMoney($commande, $compte, $montant, \sprintf('SI%s%s', $maintenant->format('ymdHis'), strtoupper(bin2hex(random_bytes(3)))), $maintenant);
+        $transaction = new TransactionOrangeMoney($commande, $compte, $montant, self::nouvelOrderId($maintenant), $maintenant);
         $id = (string) $commande->getPublicId();
-        if (self::adresseLocale($this->urls->generate('app_espace_payer', ['id' => $id], UrlGeneratorInterface::ABSOLUTE_URL))) {
+
+        return $this->ouvrirChezOrange(
+            $transaction,
+            $this->urls->generate('app_espace_payer_retour', ['id' => $id, 'o' => $transaction->getOrderId()], UrlGeneratorInterface::ABSOLUTE_URL),
+            $this->urls->generate('app_espace_payer', ['id' => $id, 'annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
+        );
+    }
+
+    /**
+     * Acompte d'une demande de conception (maquette DC03). Un lien encore
+     * valable pour la même demande et le même montant est repris.
+     *
+     * @throws \DomainException message à montrer au client
+     */
+    public function demarrerAcompte(DemandeConception $demande, CompteClient $compte, int $montant, \DateTimeImmutable $maintenant): TransactionOrangeMoney
+    {
+        if (!$this->estConfigure()) {
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert.');
+        }
+        if ($montant <= 0 || !$demande->estOuverte()) {
+            throw new \DomainException('Rien à payer en ligne pour cette demande.');
+        }
+        foreach ($this->em->getRepository(TransactionOrangeMoney::class)->findBy(['demandeConception' => $demande, 'statut' => TransactionOrangeMoney::INITIEE], ['id' => 'DESC'], 1) as $ouverte) {
+            if ($ouverte->estOuverte($maintenant) && $ouverte->getMontant() === $montant) {
+                return $ouverte;
+            }
+        }
+        $transaction = TransactionOrangeMoney::pourAcompte($demande, $compte, $montant, self::nouvelOrderId($maintenant), $maintenant);
+
+        return $this->ouvrirChezOrange(
+            $transaction,
+            $this->urls->generate('app_espace_conception_retour', ['o' => $transaction->getOrderId()], UrlGeneratorInterface::ABSOLUTE_URL),
+            $this->urls->generate('app_espace_conception_informations', ['id' => (string) $demande->getPublicId(), 'annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
+        );
+    }
+
+    /**
+     * Pack de crédit IA. Un lien encore valable pour le même pack est repris.
+     *
+     * @throws \DomainException message à montrer au client
+     */
+    public function demarrerCredit(Clients $client, CompteClient $compte, int $images, int $montant, \DateTimeImmutable $maintenant, ?string $demande = null): TransactionOrangeMoney
+    {
+        if (!$this->estConfigure()) {
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert.');
+        }
+        if ($montant <= 0 || $images <= 0) {
+            throw new \DomainException('Choisissez un pack de crédit.');
+        }
+        foreach ($this->em->getRepository(TransactionOrangeMoney::class)->findBy(['client' => $client, 'objet' => TransactionOrangeMoney::OBJET_CREDIT_IA, 'packImages' => $images, 'statut' => TransactionOrangeMoney::INITIEE], ['id' => 'DESC'], 1) as $ouverte) {
+            if ($ouverte->estOuverte($maintenant) && $ouverte->getMontant() === $montant) {
+                return $ouverte;
+            }
+        }
+        $transaction = TransactionOrangeMoney::pourCreditIa($client, $compte, $images, $montant, self::nouvelOrderId($maintenant), $maintenant);
+        $retour = ['o' => $transaction->getOrderId()] + (null !== $demande ? ['demande' => $demande] : []);
+
+        return $this->ouvrirChezOrange(
+            $transaction,
+            $this->urls->generate('app_espace_conception_retour', $retour, UrlGeneratorInterface::ABSOLUTE_URL),
+            $this->urls->generate('app_espace_conception_credit', ['annule' => 1] + (null !== $demande ? ['demande' => $demande] : []), UrlGeneratorInterface::ABSOLUTE_URL),
+        );
+    }
+
+    /** Notre référence chez Orange : la forme attendue par la route de notification. */
+    private static function nouvelOrderId(\DateTimeImmutable $maintenant): string
+    {
+        return \sprintf('SI%s%s', $maintenant->format('ymdHis'), strtoupper(bin2hex(random_bytes(3))));
+    }
+
+    /**
+     * Ouvre le paiement chez Orange et garde la transaction (jetons,
+     * lien de paiement vérifié).
+     *
+     * @throws \DomainException
+     */
+    private function ouvrirChezOrange(TransactionOrangeMoney $transaction, string $retour, string $annulation): TransactionOrangeMoney
+    {
+        if (self::adresseLocale($retour)) {
             // Seulement sur un poste de développement : Orange refuse de renvoyer vers localhost.
             throw new \DomainException('Orange Money refuse les adresses localhost : ouvrez l\'espace client par une adresse publique (tunnel ou site en ligne) pour payer.');
         }
@@ -102,9 +188,9 @@ final class OrangeMoney
                     'merchant_key' => $this->merchantKey,
                     'currency' => $this->devise,
                     'order_id' => $transaction->getOrderId(),
-                    'amount' => $montant,
-                    'return_url' => $this->urls->generate('app_espace_payer_retour', ['id' => $id, 'o' => $transaction->getOrderId()], UrlGeneratorInterface::ABSOLUTE_URL),
-                    'cancel_url' => $this->urls->generate('app_espace_payer', ['id' => $id, 'annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
+                    'amount' => $transaction->getMontant(),
+                    'return_url' => $retour,
+                    'cancel_url' => $annulation,
                     'notif_url' => $this->urls->generate('app_orange_money_notification', ['o' => $transaction->getOrderId()], UrlGeneratorInterface::ABSOLUTE_URL),
                     'lang' => 'fr',
                     'reference' => 'Succès Imprim',
@@ -316,7 +402,14 @@ final class OrangeMoney
             return; // déjà traitée : une notification rejouée ne crée rien de plus
         }
         if ('SUCCESS' === $statut) {
-            $commande = $transaction->getCommande();
+            // Acompte de conception, pack de crédit IA : la commande naît avec l'argent reçu.
+            $commande = $transaction->getCommande() ?? $this->conception?->commandePour($transaction, $maintenant);
+            if (null === $commande) {
+                $this->logger->error('Orange Money : argent reçu sans commande pour {order}.', ['order' => $transaction->getOrderId()]);
+
+                return;
+            }
+            $transaction->rattacher($commande);
             $paiement = (new Paiements())
                 ->setCommande($commande)
                 ->setMontant($transaction->getMontant())
@@ -327,6 +420,7 @@ final class OrangeMoney
             $commande->addPaiement($paiement);
             $this->em->persist($paiement);
             $transaction->reussir($txnid, $paiement, $maintenant);
+            $this->conception?->apresPaiement($transaction, $paiement, $maintenant);
         } elseif ('FAILED' === $statut) {
             $transaction->terminer(TransactionOrangeMoney::ECHOUEE, $maintenant);
         } elseif ('EXPIRED' === $statut) {

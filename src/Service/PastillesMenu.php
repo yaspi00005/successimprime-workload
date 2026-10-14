@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Entity\ActionCaisse;
 use App\Entity\Commandes;
+use App\Entity\DemandeConception;
 use App\Entity\DemandeEmploye;
 use App\Entity\DemandeExceptionPromotion;
 use App\Entity\MessageClient;
@@ -65,6 +66,14 @@ final class PastillesMenu
                 Commandes::class, 'c',
                 'c.canal = :canal AND c.statut = false AND c.deleted = false AND (c.validationEntreprise IS NULL OR c.validationEntreprise = :validee)',
                 ['canal' => Commandes::CANAL_EN_LIGNE, 'validee' => Commandes::VALIDATION_ACCEPTEE],
+            );
+        }
+        if ($this->security->isGranted('ROLE_PREPRESSE') || $this->security->isGranted('ROLE_COMMANDE')) {
+            // Demandes de conception envoyées de l'espace client, pas encore prises en charge.
+            $compteurs['app_demandes_conception_index'] = $this->compter(
+                DemandeConception::class, 'd',
+                'd.statut IN (:statuts) AND d.priseEnChargeLe IS NULL',
+                ['statuts' => [DemandeConception::RECUE, DemandeConception::COMMANDEE]],
             );
         }
         if ($this->security->isGranted('ROLE_CLIENT')) {

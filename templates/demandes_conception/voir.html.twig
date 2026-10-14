@@ -1,0 +1,117 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Demande de conception {{ d.numero }}{% endblock %}
+{% block stylesheets %}<link href="{{ asset('css/demandes-conception.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_demandes_conception_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-list me-1"></i>Toutes</a></li>
+{% endblock %}
+
+{% set close = d.statut in ['terminee', 'annulee'] %}
+{% set voitPaiements = is_granted('ROLE_COMMANDE') or is_granted('ROLE_PAIEMENT_VOIR') %}
+
+{% block body %}
+	<div class="si-rc">
+		<section class="card si-ac-bloc">
+			<header class="si-rc-tete">
+				<div>
+					<h2>{{ d.titreSupport }} · {{ d.choix == 'ia' ? 'visuel IA à finaliser' : 'conception par un graphiste' }}</h2>
+					<p class="si-pg-note">{{ d.numero }} · envoyée le {{ (d.envoyeeLe ?? d.creeLe)|date('d/m/Y à H:i') }}{{ d.auteur ? ' · par ' ~ d.auteur }}</p>
+				</div>
+				<span class="si-rc-statut si-dc-statut-{{ d.statut }}">{{ d.libelleStatut }}</span>
+			</header>
+
+			{% if d.choix == 'ia' %}
+				<div class="si-dc-alerte">Visuel généré par IA et choisi par le client : <b>remplacer les textes</b> par des polices nettes, placer le logo, agrandir pour {{ d.largeurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} × {{ d.hauteurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} cm{{ d.finalisationGraphiste ? ', et finaliser (finalisation graphiste commandée)' }}.</div>
+				{% if d.imageChoisie %}
+					<a href="{{ path('app_fichier_visualiser', {id: d.imageChoisie.id}) }}" target="_blank" rel="noopener"><img class="si-dc-image" src="{{ path('app_fichier_visualiser', {id: d.imageChoisie.id}) }}" alt="Image choisie par le client"></a>
+				{% endif %}
+			{% endif %}
+
+			<dl class="si-dc-brief">
+				{% for libelle, texte in {'Titre principal': d.titre, 'Sous-titre': d.sousTitre, 'Date et heure': d.dateHeure, 'Coordonnées': d.coordonnees, 'Autres textes ou consignes': d.consignes} %}
+					{% if texte %}<dt>{{ libelle }}</dt><dd>{{ texte|nl2br }}</dd>{% endif %}
+				{% endfor %}
+				{% if d.couleurs is not empty %}
+					<dt>Couleurs</dt><dd>{% for c in d.couleurs %}<span class="si-dc-couleur" style="background: {{ c }}" title="{{ c }}"></span>{% endfor %}</dd>
+				{% endif %}
+				{% if d.styles is not empty %}<dt>Style</dt><dd>{{ d.styles|map(s => {elegant: 'Élégant', moderne: 'Moderne', festif: 'Festif', institutionnel: 'Institutionnel'}[s] ?? s)|join(', ') }}</dd>{% endif %}
+				{% if d.quantite %}<dt>Quantité à imprimer ensuite</dt><dd>{{ d.quantite }}</dd>{% endif %}
+				{% if d.pourQuand %}<dt>Pour quand</dt><dd>{{ d.pourQuand|date('d/m/Y') }}</dd>{% endif %}
+				{# Lien donné par le client : jamais ouvert par le serveur, à ouvrir avec prudence. #}
+				{% if d.exempleLien %}<dt>Exemple aimé</dt><dd><a href="{{ d.exempleLien }}" target="_blank" rel="noopener noreferrer nofollow">{{ d.exempleLien|length > 70 ? d.exempleLien|slice(0, 69) ~ '…' : d.exempleLien }}</a></dd>{% endif %}
+			</dl>
+
+			{% if d.elements|length > 0 %}
+				<h3 class="si-dc-sous">Éléments du client</h3>
+				<div class="si-dc-elements">
+					{% for f in d.elements %}
+						<a href="{{ path('app_fichier_visualiser', {id: f.id}) }}" target="_blank" rel="noopener">
+							{% if f.typeMime in ['image/jpeg', 'image/png'] and f.statut == 'TERMINE' %}<img src="{{ path('app_fichier_visualiser', {id: f.id}) }}" alt="" loading="lazy">{% else %}<span>{{ f.nomOriginal|split('.')|last|upper|slice(0, 4) }}</span>{% endif %}
+							<small>{{ f.logo ? 'Logo · ' }}{{ f.nomOriginal }}</small>
+						</a>
+					{% endfor %}
+				</div>
+			{% endif %}
+
+			{% if not enLigne and not close %}
+				<div class="si-dc-actions">
+					{% if not d.priseEnChargeLe %}
+						<form method="post" action="{{ path('app_demandes_conception_prendre', {id: d.id}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+							<button class="btn btn-primary btn-sm"><i class="fas fa-hand-paper me-1"></i>Prendre en charge</button>
+						</form>
+					{% endif %}
+					{% if ligne %}
+						<a class="btn btn-outline-primary btn-sm" href="{{ path('app_controle_pre_presse_controler', {id: ligne.id}) }}"><i class="fas fa-pencil-ruler me-1"></i>Ouvrir le travail pré-presse et BAT</a>
+					{% endif %}
+					<form method="post" action="{{ path('app_demandes_conception_terminer', {id: d.id}) }}">
+						<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="statut" value="terminee">
+						<button class="btn btn-light btn-sm">Marquer terminée</button>
+					</form>
+					<form method="post" action="{{ path('app_demandes_conception_terminer', {id: d.id}) }}" onsubmit="return confirm('Annuler cette demande ? Le client le verra dans son espace.')">
+						<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="statut" value="annulee">
+						<button class="btn btn-light btn-sm text-danger">Annuler la demande</button>
+					</form>
+				</div>
+				<p class="si-pg-note">Le statut suit ensuite le BAT : envoyé au client, puis validé (demande terminée). Le client en est prévenu dans son espace, sans montant.</p>
+			{% elseif enLigne %}
+				<p class="si-pg-note">Consultation seulement : la demande se traite depuis le serveur de l'atelier.</p>
+			{% endif %}
+		</section>
+
+		<aside class="card si-ac-bloc si-rc-cote">
+			<h2>Client</h2>
+			{% if d.client %}
+				<p><a href="{{ path('app_clients_show', {publicId: d.client.publicId}) }}"><b>{{ d.client.nomComplet }}</b></a><br><small>{{ d.client.telephone }}{{ d.auteur ? ' · demandé par ' ~ d.auteur }}</small></p>
+			{% endif %}
+			{% if d.commande %}
+				<h2>Commande</h2>
+				<p><a href="{{ path('app_commandes_show', {id: d.commande.id}) }}"><b>{{ d.commande.numero }}</b></a><br><small>{{ d.choix == 'ia' ? 'impression du visuel IA' : 'forfait de conception' }}</small></p>
+			{% endif %}
+			{% if d.choix == 'graphiste' %}
+				<h2>Acompte</h2>
+				<p>
+					{% if d.paiementAcompte %}
+						{% if voitPaiements %}<b>{{ d.paiementAcompte.montant|number_format(0, ',', ' ') }} F</b> · {{ d.paiementAcompte.modeLabel }}<br>{% endif %}
+						<small>{{ d.paiementAcompte.statut == 'en_attente' ? 'reçu en ligne, à valider à la caisse' : d.paiementAcompte.statutLabel|lower }}</small>
+					{% elseif d.commande and d.commande.totalPaye >= acompte %}
+						<small>reçu</small>
+					{% else %}
+						<small>pas encore reçu{% if voitPaiements %} ({{ acompte|number_format(0, ',', ' ') }} F attendus){% endif %}</small>
+					{% endif %}
+				</p>
+				<h2>Conditions</h2>
+				<p><small>Premier BAT sous {{ d.delaiBatHeures }} h ouvrées · {{ d.correctionsIncluses }} corrections incluses</small></p>
+			{% endif %}
+			{% if d.priseEnChargeLe %}
+				<h2>Prise en charge</h2>
+				<p><small>le {{ d.priseEnChargeLe|date('d/m/Y à H:i') }}{{ d.prisePar ? ' par ' ~ d.prisePar }}</small></p>
+			{% endif %}
+			{% if controle %}
+				<h2>Dernier BAT</h2>
+				<p><small>{{ controle.statut|replace({'_': ' '}) }}</small></p>
+			{% endif %}
+		</aside>
+	</div>
+{% endblock %}

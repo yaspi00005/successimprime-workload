@@ -1695,6 +1695,145 @@ add('compte_client', {'telephone': '223' + PARTICULIER['tel'], 'mot_de_passe': M
                       'client_id': PARTICULIER['id'], 'droits': '["valideur","payeur","administrateur"]', 'nom': PARTICULIER['nom']})
 print(f"Espace client : titulaire {EC['nom']} 223{EC['tel']} ({EC['rs']}), particulier {PARTICULIER['nom']} 223{PARTICULIER['tel']}")
 
+# ------------------------------------------- demandes de conception (DC01 à DC05)
+# Ce que l'atelier voit après la synchronisation : une demande au graphiste
+# qui attend (acompte Orange Money à valider par la caisse), une en cours,
+# une terminée, et une affiche faite par l'IA dont l'impression est commandée.
+# Tirage à part, placé en dernier (après l'espace client) : rien ne bouge dans le reste de la démo.
+R5 = random.Random(1410)
+# Colonnes que le reste de la démo ne remplit pas : posées après coup, pour ne pas changer toutes les lignes du fichier.
+APRES = []
+
+
+def uid5():
+    return S('UNHEX(\'' + uuid.UUID(int=R5.getrandbits(128), version=4).hex + '\')')
+
+
+def hexa5(n):
+    return ''.join(R5.choice('0123456789abcdef') for _ in range(n))
+
+
+def commande_dc(c, numero, d, h, m, lignes, confirmee, payes):
+    """Commande en ligne d'une demande de conception ; payes : [(montant, validé, d, h, m)]."""
+    kid = nid('commandes')
+    total = sum(l['prix'] * l['qte'] for l in lignes)
+    paye = sum(p[0] for p in payes if p[1])
+    add('commandes', {'id': kid, 'numero': numero, 'date_commande': T(d, h, m), 'date_livraison': None, 'recupere_par_client': 0, 'modifie_le': None,
+                      'remise': 0, 'tva': 0, 'total_ht': total, 'total_ttc': total, 'montant_apayer': total, 'observation': None, 'deleted': 0,
+                      'statut': int(confirmee), 'etat': 1, 'statut_paiement': 'payee' if total and paye >= total else ('partielle' if paye else 'impayee'),
+                      'reste_apayer': total - paye, 'total_paye': paye, 'public_id': uid5(), 'bonus_plafond_applique': 0, 'montant_bonus_plafond': 0,
+                      'clients_id': c['id'], 'agents_id': None, 'modifie_par_id': None, 'canal': 'en_ligne', 'mode_livraison': 'retrait', 'adresse_livraison': None})
+    ids = []
+    for l in lignes:
+        lid = nid('commandes_details')
+        ids.append(lid)
+        add('commandes_details', {'id': lid, 'mode_configuration': 'manuelle', 'designation': l['nom'], 'largeur': None, 'longueur': None, 'surface': None,
+                                  'quantite': l['qte'], 'prix_unitaire': float(l['prix']), 'cout_revient': 0, 'remise': 0, 'tva': 0,
+                                  'total_ht': l['prix'] * l['qte'], 'total_ttc': l['prix'] * l['qte'], 'profil_couleurs': None, 'resolution': None, 'grammage': None,
+                                  'epaisseur': None, 'recto_verso': 0, 'nombre_faces': 1, 'laminage': None, 'oeillets': 0, 'decoupe': 0, 'pliage': None, 'emballage': 0,
+                                  'bat_valide': 0, 'etat': 1, 'priorite': 'normale', 'temps_estime': None, 'temps_reel': None, 'fichier': None, 'observation': None,
+                                  'statut_production': l.get('statut', 'non_requise'), 'production_debute_le': None, 'production_terminee_le': None,
+                                  'quantite_produite': 0, 'quantite_rebut': 0, 'quantite_livree': 0, 'mode_saisie': 'manuelle', 'mode_calcul': l.get('mode', 'forfait'),
+                                  'pre_presse_necessaire': int(l.get('prepresse', False)), 'production_necessaire': int(l.get('production', False)), 'type_ligne': 'libre',
+                                  'commande_id': kid, 'produit_id': None, 'produit_configuration_id': None, 'type_impression_id': None, 'support_id': None,
+                                  'machine_id': None, 'format_id': None, 'production_debutee_par_id': None, 'production_terminee_par_id': None, 'article_id': None,
+                                  'public_id': uid5(), 'quantite_demandee': None, 'unite_demandee': None, 'produit_client_id': None})
+        if l.get('brief'):
+            APRES.append(f"UPDATE `commandes_details` SET `demande_client` = {q(l['brief'])} WHERE id = {lid};")
+    pids = []
+    for montant, valide, dp, hp, mp in payes:
+        pid = nid('paiements')
+        pids.append(pid)
+        add('paiements', {'id': pid, 'montant': montant, 'mode': 'orange_money', 'statut': 'valide' if valide else 'en_attente', 'date': T(dp, hp, mp),
+                          'date_validation': T(dp, hp, mp + 20) if valide else None, 'date_annulation': None, 'reference': f'MP{R5.randint(10 ** 9, 10 ** 10 - 1)}',
+                          'numero_cheque': None, 'banque_emettrice': None, 'titulaire_cheque': None, 'date_emission_cheque': None, 'date_encaissement_prevue': None,
+                          'justificatif': None, 'observation': 'Payé en ligne (Orange Money)' if valide else 'Payé en ligne (Orange Money), à vérifier par la caisse',
+                          'motif_rejet': None, 'motif_annulation': None, 'frais_retrait_inclus': 0, 'fonds_soutien_inclus': 0, 'montant_frais_retrait': 0,
+                          'montant_fonds_soutien': 0, 'commande_id': kid, 'compte_tresorerie_id': COMPTES['orange_money'], 'encaisse_par_id': None,
+                          'valide_par_id': U['aminata'] if valide else None, 'annule_par_id': None, 'facture_id': None, 'public_id': uid5()})
+        if valide:
+            mouvement('encaissement', 'vente', montant, f'Paiement commande {numero} · {nom_client(c)}', dp, hp, mp + 20, dest=COMPTES['orange_money'], mode='orange_money', paiement=pid, agent=U['aminata'])
+    return kid, ids, pids
+
+
+SUPPORTS_DC = {'kakemono': ('Kakémono / roll-up', 'Kakémono', '85 × 200 cm', 85, 200, 10000), 'flyer': ('Flyer', 'Flyer', 'A5 · A4', 14.8, 21, 10000),
+               'carte_visite': ('Carte de visite', 'Carte', '85 × 55 mm', 8.5, 5.5, 5000), 'affiche': ('Affiche', 'Affiche', 'A3 · A2', 29.7, 42, 10000)}
+COULEURS_DC = {'#13285C': 'bleu nuit', '#F2C230': 'or', '#FFFFFF': 'blanc', '#E2468F': 'rose', '#E0102B': 'rouge', '#16A34A': 'vert', '#FF7900': 'orange', '#111111': 'noir'}
+STYLES_DC = {'elegant': 'Élégant', 'moderne': 'Moderne', 'festif': 'Festif', 'institutionnel': 'Institutionnel'}
+
+
+def demande_dc(n, c, code, choix, statut, d, contenu, couleurs, styles, quantite, pour_quand, auteur, prise=None, terminee=None, finalisation=False, images=0):
+    nom, court, fmt, larg, haut, forfait = SUPPORTS_DC[code]
+    numero = f'DC-D{n:03d}'
+    brief = [f'Demande de conception {numero}'] + [f'{k} : {v}' for k, v in contenu.items() if v]
+    brief += [f'Couleurs : {", ".join(COULEURS_DC[x] for x in couleurs)}', f'Style : {", ".join(STYLES_DC[x] for x in styles)}', f'Quantité à imprimer ensuite : {quantite}']
+    row = {'numero': numero, 'auteur': auteur, 'support_nom': nom, 'support_format': fmt, 'largeur_cm': larg, 'hauteur_cm': haut, 'forfait': forfait,
+           'acompte_pourcent': 50, 'corrections_incluses': 2, 'delai_bat_heures': 24, 'titre': contenu.get('Titre'), 'sous_titre': contenu.get('Sous-titre'),
+           'date_heure': contenu.get('Date et heure'), 'coordonnees': contenu.get('Coordonnées'), 'consignes': contenu.get('Consignes'), 'couleurs': couleurs,
+           'styles': styles, 'quantite': quantite, 'pour_quand': J(pour_quand), 'exemple_lien': None, 'choix': choix, 'statut': statut, 'etape': 4,
+           'finalisation_graphiste': int(finalisation), 'nombre_images': images, 'cree_le': T(d + 1, 18, 30),
+           'modifie_le': T(terminee if terminee is not None else (prise if prise is not None else d), 16), 'envoyee_le': T(d, 9, 12),
+           'prise_en_charge_le': T(prise, 8, 40) if prise is not None else None, 'prise_par': 'Seydou' if prise is not None else None,
+           'terminee_le': T(terminee, 15, 5) if terminee is not None else None, 'public_id': uid5(), 'client_id': c['id'], 'compte_id': None,
+           'support_id': S(f"(SELECT id FROM support_conception WHERE code = '{code}')"), 'commande_id': None, 'paiement_acompte_id': None, 'image_choisie_id': None}
+    return row, '\n'.join(brief), f'{court} {fmt}'
+
+
+DC_CLIENTS = (CLIENTS[1], CLIENTS[28], CLIENTS[6])  # DEMO-0002 (Salon Espoir), DEMO-0029, DEMO-0007
+
+# 1. Kakémono au graphiste : acompte payé ce matin, à vérifier par la caisse, aucun graphiste encore.
+dc, brief, titre = demande_dc(1, DC_CLIENTS[0], 'kakemono', 'graphiste', 'recue', 0,
+                              {'Titre': 'Salon Espoir', 'Sous-titre': 'Coiffure · tresses · soins', 'Coordonnées': '60 69 78 04 · Bagadadji, près de la station Total',
+                               'Consignes': 'Mettre la photo de la vitrine et les prix des tresses. Le nom bien visible de loin.'},
+                              ['#E2468F', '#111111'], ['moderne', 'elegant'], 1, -6, 'Oumar Guindo')
+kid, _, pids = commande_dc(DC_CLIENTS[0], 'CMD-DC0001', 0, 9, 12, [{'nom': f'Conception · {titre}', 'qte': 1, 'prix': 10000, 'prepresse': True, 'brief': brief}], True, [(5000, False, 0, 9, 14)])
+add('demande_conception', {**dc, 'commande_id': kid, 'paiement_acompte_id': pids[0]})
+
+# 2. Flyer au graphiste, pris en charge hier par Seydou (acompte validé par la caisse).
+dc, brief, titre = demande_dc(2, DC_CLIENTS[1], 'flyer', 'graphiste', 'en_cours', 2,
+                              {'Titre': 'Portes ouvertes', 'Sous-titre': 'Découvrez nos formations', 'Date et heure': 'Samedi 9 h – 13 h',
+                               'Consignes': 'Recto seul. Ajouter le logo et le plan d\'accès.'},
+                              ['#13285C', '#F2C230'], ['institutionnel'], 500, -10, None, prise=1)
+kid, _, pids = commande_dc(DC_CLIENTS[1], 'CMD-DC0002', 2, 10, 5, [{'nom': f'Conception · {titre}', 'qte': 1, 'prix': 10000, 'prepresse': True, 'brief': brief}], True, [(5000, True, 2, 10, 6)])
+add('demande_conception', {**dc, 'commande_id': kid, 'paiement_acompte_id': pids[0]})
+
+# 3. Cartes de visite : BAT validé, conception terminée et soldée.
+dc, brief, titre = demande_dc(3, DC_CLIENTS[2], 'carte_visite', 'graphiste', 'terminee', 20,
+                              {'Titre': nom_client(DC_CLIENTS[2])[:60], 'Coordonnées': fmt_tel(DC_CLIENTS[2]['tel'])},
+                              ['#111111', '#FFFFFF'], ['elegant'], 500, 14, None, prise=19, terminee=17)
+kid, _, pids = commande_dc(DC_CLIENTS[2], 'CMD-DC0003', 20, 9, 12, [{'nom': f'Conception · {titre}', 'qte': 1, 'prix': 5000, 'prepresse': True, 'brief': brief}], True,
+                           [(2500, True, 20, 9, 14), (2500, True, 17, 15, 0)])
+add('demande_conception', {**dc, 'commande_id': kid, 'paiement_acompte_id': pids[0]})
+
+# 4. Affiche par l'IA : pack de 3 images payé, 2 images générées, impression
+#    commandée avec la finalisation par un graphiste (à confirmer par l'atelier).
+kid, _, pids = commande_dc(DC_CLIENTS[0], 'CMD-DC0004', 2, 18, 2, [{'nom': 'Crédit IA · 3 images', 'qte': 1, 'prix': 3000}], True, [(3000, True, 2, 18, 3)])
+add('mouvement_credit_ia', {'type': 'achat', 'montant': 3000, 'images': 3, 'libelle': 'Crédit IA · 3 images · Orange Money', 'auteur': 'Oumar Guindo', 'etat': 'acquis',
+                            'cle': f'achat-DEMO{hexa5(12)}', 'cree_le': T(2, 18, 3), 'public_id': uid5(), 'client_id': DC_CLIENTS[0]['id'],
+                            'commande_id': kid, 'paiement_id': pids[0]})
+dc, brief, titre = demande_dc(4, DC_CLIENTS[0], 'affiche', 'ia', 'commandee', 1,
+                              {'Titre': 'Soirée jazz', 'Sous-titre': 'au bord du fleuve', 'Date et heure': 'Samedi 20 h · Salon Espoir',
+                               'Consignes': 'Ambiance chaude, saxophone, lumière du soir sur le fleuve.'},
+                              ['#13285C', '#F2C230'], ['elegant', 'festif'], 50, -4, 'Oumar Guindo', finalisation=True, images=2)
+for i, (h, m) in enumerate([(14, 10), (14, 21)], 1):
+    add('mouvement_credit_ia', {'type': 'debit', 'montant': -1000, 'images': -1, 'libelle': f'Image {i} · DC-D004', 'auteur': 'Oumar Guindo', 'etat': 'acquis', 'cle': None,
+                                'cree_le': T(1, h, m), 'public_id': uid5(), 'client_id': DC_CLIENTS[0]['id'], 'commande_id': None, 'paiement_id': None})
+add('credit_ia', {'solde': 1000, 'client_id': DC_CLIENTS[0]['id']})
+note = f"Visuel IA de la demande DC-D004 (image 2). Remplacement des textes par le graphiste avant impression.\n{brief}"
+kid, lids, _ = commande_dc(DC_CLIENTS[0], 'CMD-DC0005', 1, 14, 30,
+                           [{'nom': f'Impression · {titre} (prix confirmé par l\'atelier)', 'qte': 50, 'prix': 0, 'mode': 'unite', 'prepresse': True, 'production': True,
+                             'statut': 'a_produire', 'brief': note},
+                            {'nom': 'Finalisation graphiste · visuel IA', 'qte': 1, 'prix': 5000, 'prepresse': True,
+                             'brief': 'Reprendre le visuel IA choisi : textes, logo et photos du client, fichier prêt pour l\'impression.'}], False, [])
+fich = add('commande_detail_fichier', {'jeton_upload': hexa5(64), 'morceaux_recus': 1, 'nombre_morceaux': 1, 'termine_le': T(1, 14, 30),
+                                       'nom_original': 'visuel-ia-dc-d004-2.png', 'nom_stockage': f'demo-{hexa5(16)}.png', 'chemin': None, 'type_mime': 'image/png',
+                                       'taille': 1460000, 'statut': 'TERMINE', 'origine': 'client', 'etat': 'a_traiter', 'deja_traite': 0, 'fichier_production': 0,
+                                       'actif': 1, 'version': 1, 'quantite_aproduire': 50, 'face': None, 'designation': titre, 'groupe_fichier': None,
+                                       'observation': None, 'cree_le': T(1, 14, 30), 'commande_detail_id': lids[0], 'fichier_source_id': None, 'ajoute_par_id': None,
+                                       'public_id': uid5(), 'montage': None})
+APRES.append(f"UPDATE `commande_detail_fichier` SET `client_id` = {DC_CLIENTS[0]['id']} WHERE id = {fich};")
+add('demande_conception', {**dc, 'commande_id': kid, 'image_choisie_id': fich})
+
 # ---------------------------------------------------------------- écriture SQL
 TABLES_SANS_ID = {'produits_finition', 'produits_types_impression', 'produits_supports', 'produits_format', 'support_types_impression', 'support_format', 'format_types_impression',
                   'support_finition', 'finition_types_impression', 'controle_pre_presse_fichier', 'ordre_production_fichier', 'produit_client_finition'}
@@ -1765,6 +1904,9 @@ for table in ORDRE:
         lignes = [('(' + ', '.join(valeur(table, c, r[c]) if c in r else 'DEFAULT' for c in cols) + ')') for r in bloc]
         w(f"{verbe} INTO `{table}` ({', '.join('`' + c + '`' for c in cols)}) VALUES")
         w(',\n'.join(lignes) + ';')
+if APRES:
+    w('-- compléments des demandes de conception')
+    w('\n'.join(APRES))
 w('\nSET FOREIGN_KEY_CHECKS = 1;')
 
 dossier = Path(__file__).parent

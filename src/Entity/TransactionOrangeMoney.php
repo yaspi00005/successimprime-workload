@@ -8,6 +8,10 @@ use Doctrine\ORM\Mapping as ORM;
  * Paiement Orange Money lancé par le client depuis son espace (J5) :
  * jetons rendus par Orange, état, et le paiement « à valider » créé une
  * fois l'argent reçu. Tenu sur le site en ligne seulement.
+ *
+ * Il paie une commande, l'acompte d'une demande de conception ou un pack
+ * de crédit IA (docs/demande-conception.md) : pour ces deux-là, la
+ * commande n'existe qu'une fois l'argent reçu.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'transaction_orange_money')]
@@ -19,6 +23,10 @@ class TransactionOrangeMoney
     public const ECHOUEE = 'echouee';
     public const EXPIREE = 'expiree';
 
+    public const OBJET_COMMANDE = 'commande';
+    public const OBJET_ACOMPTE_CONCEPTION = 'acompte_conception';
+    public const OBJET_CREDIT_IA = 'credit_ia';
+
     /** Le lien de paiement d'Orange vaut 10 minutes. */
     public const VALIDITE_MINUTES = 10;
 
@@ -28,8 +36,24 @@ class TransactionOrangeMoney
     private ?int $id = null;
 
     #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private Commandes $commande;
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?Commandes $commande;
+
+    #[ORM\Column(length: 20, options: ['default' => self::OBJET_COMMANDE])]
+    private string $objet = self::OBJET_COMMANDE;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?DemandeConception $demandeConception = null;
+
+    /** Client qui paie un acompte ou un pack (la commande vient après). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?Clients $client = null;
+
+    /** Pack de crédit IA : nombre d'images achetées. */
+    #[ORM\Column(nullable: true)]
+    private ?int $packImages = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -68,13 +92,39 @@ class TransactionOrangeMoney
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Paiements $paiement = null;
 
-    public function __construct(Commandes $commande, ?CompteClient $compte, int $montant, string $orderId, \DateTimeImmutable $creeLe)
+    public function __construct(?Commandes $commande, ?CompteClient $compte, int $montant, string $orderId, \DateTimeImmutable $creeLe)
     {
         $this->commande = $commande;
         $this->compte = $compte;
         $this->montant = $montant;
         $this->orderId = $orderId;
         $this->creeLe = $creeLe;
+    }
+
+    public static function pourAcompte(DemandeConception $demande, ?CompteClient $compte, int $montant, string $orderId, \DateTimeImmutable $creeLe): self
+    {
+        $t = new self(null, $compte, $montant, $orderId, $creeLe);
+        $t->objet = self::OBJET_ACOMPTE_CONCEPTION;
+        $t->demandeConception = $demande;
+        $t->client = $demande->getClient();
+
+        return $t;
+    }
+
+    public static function pourCreditIa(Clients $client, ?CompteClient $compte, int $images, int $montant, string $orderId, \DateTimeImmutable $creeLe): self
+    {
+        $t = new self(null, $compte, $montant, $orderId, $creeLe);
+        $t->objet = self::OBJET_CREDIT_IA;
+        $t->client = $client;
+        $t->packImages = $images;
+
+        return $t;
+    }
+
+    /** Commande créée à la réception de l'argent (acompte, pack de crédit). */
+    public function rattacher(Commandes $commande): void
+    {
+        $this->commande ??= $commande;
     }
 
     public function ouvrir(string $payToken, string $notifToken, string $lien): void
@@ -113,7 +163,11 @@ class TransactionOrangeMoney
     }
 
     public function getId(): ?int { return $this->id; }
-    public function getCommande(): Commandes { return $this->commande; }
+    public function getCommande(): ?Commandes { return $this->commande; }
+    public function getObjet(): string { return $this->objet; }
+    public function getDemandeConception(): ?DemandeConception { return $this->demandeConception; }
+    public function getClient(): ?Clients { return $this->client ?? $this->commande?->getClients(); }
+    public function getPackImages(): ?int { return $this->packImages; }
     public function getCompte(): ?CompteClient { return $this->compte; }
     public function getMontant(): int { return $this->montant; }
     public function getOrderId(): string { return $this->orderId; }

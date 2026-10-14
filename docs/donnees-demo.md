@@ -37,6 +37,11 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - les lignes des commandes passées pendant les promotions en cours et terminée les portent, pour la fiche de suivi ;
   - 2 exceptions B2B sur le textile : une demandée par `demo.aminata` en attente, une acceptée par `demo.kadiatou` ;
   - 3 modèles d'anniversaire (1, 3 et 5 ans), seulement s'il n'y en a encore aucun ; les anniversaires des derniers jours fêtés par le passage du jour (aucun message ne part vers une fiche `DEMO-`), un prochain exclu, les autres à valider.
+- Les demandes de conception (`docs/demande-conception.md`), vues par l'atelier dans Atelier › Demandes de conception :
+  - `DC-D001` : kakémono de DEMO-0002 pour un graphiste, reçue, acompte Orange Money de 5 000 F à valider par la caisse, à prendre en charge ;
+  - `DC-D002` : flyer en cours chez Seydou, acompte validé ;
+  - `DC-D003` : cartes de visite terminées, acompte et solde payés ;
+  - `DC-D004` : affiche de DEMO-0002 faite par l'IA, impression commandée « à confirmer » avec la finalisation ; DEMO-0002 a un relevé de crédit IA (pack de 3 images payé, 2 utilisées, solde 1 000 F).
 - Le reste : planning et entretien (avec des rappels WhatsApp envoyés et à envoyer), charges récurrentes, clôtures de caisse, rapprochements bancaires, campagnes, actions de caisse, messagerie et notifications.
 
 ## Espace client de démonstration
@@ -70,7 +75,8 @@ Le générateur affiche les deux comptes principaux à la fin (« Espace client 
   - `role_utilisateur`, `entreprise` et `societe` (créés par les migrations, et réutilisés par la démo) ;
   - les tables techniques de Doctrine et de Messenger.
 - Sociétés (`docs/societes.md`) : les lignes de démo arrivent avec la société par défaut. Juste après, `app:demo` applique la règle de la migration à ses seules lignes : les devis, factures, commandes et paiements de DREPA passent à la société DREPA.
-- Les photos (pointage, entretien, livraisons) ne sont que des noms de fichiers : les images n'existent pas.
+- Les photos (pointage, entretien, livraisons) et l'image IA de `DC-D004` ne sont que des noms de fichiers : les images n'existent pas.
+- Demandes de conception : la purge enlève aussi les éléments, images IA, transactions Orange Money, crédits et relevés de crédit IA des clients fictifs.
 - Promotions : leur identifiant n'est pas réservé, elles sont repérées par leur note (« Démo : … ») ; la purge les enlève avec les exceptions, les anniversaires et les promotions d'anniversaire des clients fictifs. Les modèles d'anniversaire restent (ce sont des réglages). Pour garder les totaux, factures et paiements des lignes passées, leur prix unitaire est relevé du montant de la promotion : modifier une de ces anciennes commandes recalcule la ligne au prix du catalogue, moins la promotion (jugée au jour de la commande).
 
 Pour changer la démo, modifier `donnees-demo/generer_demo.py` puis le relancer (`python3 donnees-demo/generer_demo.py`). Le tirage est toujours le même.

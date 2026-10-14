@@ -7,6 +7,7 @@ use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\ControlePrePresse;
+use App\Entity\DemandeConception;
 use App\Entity\DemandeDevis;
 use App\Entity\Devis;
 use App\Entity\ModificationClient;
@@ -416,6 +417,11 @@ final class Synchro
                         $this->em->flush();
                         $this->notifications->notifierRoles(['ROLE_CLIENT'], \sprintf('%s demande de changer la raison sociale ou le NIF de %s : à appliquer ou refuser sur la fiche.', $entite->getAuteur() ?? 'Le client', $entite->getClient()?->getNomComplet() ?? '?'), 'app_clients_show', ['publicId' => $entite->getClient()?->getPublicId()]);
                         $resultat = [self::RESULTAT_OK, 'Changement demandé par le client : à valider', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof DemandeConception) {
+                        // Demande de conception du client (docs/demande-conception.md) : la PAO et les ventes sont prévenues.
+                        $this->em->flush();
+                        $this->notifications->notifierRoles(['ROLE_PREPRESSE', 'ROLE_COMMANDE'], \sprintf('Demande de conception %s de %s : %s (%s).', $entite->getNumero(), $entite->getClient()?->getNomComplet() ?? 'un client', $entite->titreSupport(), DemandeConception::IA === $entite->getChoix() ? 'visuel IA à finaliser' : 'graphiste'), 'app_demandes_conception_voir', ['id' => $entite->getId()]);
+                        $resultat = [self::RESULTAT_OK, 'Demande de conception : à prendre en charge', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof ReponseSondage && $entite->alerteOuverte()) {
                         // Note de 1 ou 2 laissée en ligne : le client est à rappeler.
                         $this->em->flush();
@@ -460,6 +466,10 @@ final class Synchro
     {
         $produit = $ligne->getProduitClient();
         $client = $ligne->getCommande()?->getClients();
+        if (CommandesDetails::TYPE_LIBRE === $ligne->getTypeLigne() && CommandesDetails::PRODUCTION_NON_REQUISE === $ligne->getStatutProduction() && !$ligne->isPrePresseNecessaire()) {
+            // Ligne sans rien à fabriquer (pack de crédit IA) : ni PAO ni production.
+            return;
+        }
         if (null !== $produit && (null === $client || $produit->getClient()?->getId() !== $client->getId())) {
             $ligne->setProduitClient($produit = null);
         }
@@ -476,6 +486,7 @@ final class Synchro
             $entite instanceof ControlePrePresse => $entite->getCommandeDetail()?->getCommande()?->getClients(),
             $entite instanceof Paiements => $entite->getCommande()?->getClients(),
             $entite instanceof ReclamationClient => $entite->getClient(),
+            $entite instanceof DemandeConception => $entite->getClient(),
             $entite instanceof BonLivraison => $entite->getCommande()?->getClients(),
             // Nouveau devis, facture émise, réponse de l'atelier : dans le fil du client (espace client).
             $entite instanceof Devis => $entite->getClients(),

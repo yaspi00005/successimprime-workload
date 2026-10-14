@@ -52,6 +52,8 @@ final class PreferencesNotifications
         'devis' => 'devis',
         'message' => 'messages',
         'reclamation' => 'messages',
+        // Demande de conception prise en charge, terminée ou annulée (docs/demande-conception.md).
+        'conception' => 'production',
     ];
 
     /** Heures calmes : ni SMS ni WhatsApp de 21 h à 7 h. */

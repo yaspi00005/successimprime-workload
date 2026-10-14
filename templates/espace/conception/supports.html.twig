@@ -1,0 +1,78 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Demande de conception, étape 1 (maquette DC01) : le support à concevoir.
+	Prix « dès » : le forfait du graphiste et le prix d'une image IA, tels
+	que réglés par l'atelier.
+#}
+
+{% block title %}Demande de conception{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}<link href="{{ asset('css/conception.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Demande de conception</a>{% endblock %}
+
+{% block contenu %}
+	<div class="dc-titre">
+		<h1 class="dc-bureau">Demande de conception</h1>
+		<a class="dc-pastille-lien" href="{{ path('app_espace_conception_demandes') }}">Mes demandes{% if enCours > 0 %} · <b>{{ enCours }} en cours</b>{% endif %}</a>
+	</div>
+	{% include 'espace/conception/_etapes.html.twig' %}
+
+	{% if supports is empty %}
+		<div class="ec-carte ec-vide">La demande de conception en ligne arrive bientôt. En attendant, écrivez-nous sur WhatsApp ou passez en boutique.</div>
+	{% else %}
+		{% set choisi = demande ? (demande.support.id ?? supports|first.id) : supports|first.id %}
+		<form method="post" action="{{ path('app_espace_conception_commencer') }}" class="dc-mise" id="dc-supports">
+			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+			{% if demande %}<input type="hidden" name="demande" value="{{ demande.publicId }}">{% endif %}
+			<div>
+				<p class="dc-question">Que voulez-vous faire concevoir ?</p>
+				<ul class="dc-supports">
+					{% for s in supports %}
+						<li class="dc-support">
+							<input type="radio" name="support" id="support-{{ s.id }}" value="{{ s.id }}" data-court="{{ s.court }}"{{ s.id == choisi ? ' checked' }}{{ conceptionPeutPreparer ? '' : ' disabled' }}>
+							<label for="support-{{ s.id }}">
+								<span class="dc-carre" style="--couleur: {{ s.couleur }}"></span>
+								<b>{{ s.nom }}</b>
+								<span class="ec-petit">{{ s.format }}</span>
+								<span class="dc-prix">Graphiste dès <b>{{ s.forfait|francs_conception }}</b> · IA {% if iaDisponible %}<b>{{ prixImage|francs_conception }}</b>{% else %}bientôt{% endif %}</span>
+							</label>
+						</li>
+					{% endfor %}
+				</ul>
+			</div>
+
+			<aside class="ec-carte dc-panneau">
+				<h2>Comment ça marche</h2>
+				<ol class="dc-comment">
+					<li><b>Choisissez le support</b><span>kakémono, bâche, flyer…</span></li>
+					<li><b>Donnez vos informations</b><span>textes, logo, photos, couleurs, style</span></li>
+					<li><b>Graphiste ou IA</b><span>un graphiste conçoit{% if iaDisponible %}, ou l'IA génère une image en 1 minute{% else %} ; la génération par IA arrive bientôt{% endif %}</span></li>
+					<li><b>Payez par Orange Money</b><span>acompte du graphiste{% if iaDisponible %} ou {{ prixImage|francs_conception }} par image IA{% endif %}</span></li>
+					<li><b>Validez puis imprimez</b><span>le visuel passe directement en commande</span></li>
+				</ol>
+				{% if conceptionPeutPreparer %}
+					<button class="ec-bouton" type="submit" id="continuer">Continuer avec {{ (supports|filter(s => s.id == choisi)|first).court }}</button>
+					{% if demande %}<p class="ec-petit" style="margin:.6rem 0 0">Vos textes et vos éléments restent dans la demande {{ demande.numero }}.</p>{% endif %}
+				{% else %}
+					<p class="ec-note" style="margin:0">Votre accès est en lecture seule : vous pouvez voir les demandes de l'entreprise, pas en préparer.</p>
+				{% endif %}
+			</aside>
+		</form>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	(function () {
+		const form = document.getElementById('dc-supports');
+		const bouton = document.getElementById('continuer');
+		if (!form || !bouton) return;
+		form.addEventListener('change', function () {
+			const coche = form.querySelector('input[name=support]:checked');
+			if (coche) bouton.textContent = 'Continuer avec ' + coche.dataset.court;
+		});
+		form.addEventListener('submit', function () { bouton.disabled = true; });
+	})();
+	</script>
+{% endblock %}

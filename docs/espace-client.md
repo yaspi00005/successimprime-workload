@@ -123,3 +123,7 @@ Reste à faire :
 - WhatsApp dans la chaîne des notifications, entre l'application et le SMS, quand la clé Meta sera posée. Les choix des clients sont déjà enregistrés (colonne WhatsApp de « Comment je suis prévenu »).
 - Remise habituelle : elle reste au local (non synchronisée), donc Mon compte ne la montre pas. À décider par Yaya si elle doit apparaître dans « Conditions ».
 - « Livreur en route » et « livrée » : les bons de livraison passent au site depuis le 13/10/2026 (sans livreur, photos ni signature). Après le déploiement : `php bin/console app:synchro --initialiser=livraison` sur le local.
+
+## Demande de conception (DC01 à DC05, construit le 14/10/2026)
+
+`/espace/conception` : le client fait faire un visuel par un graphiste (acompte Orange Money) ou par l'IA (crédit IA, 1 000 F l'image), puis commande l'impression. Seuls un particulier, un administrateur ou un payeur paient, achètent du crédit ou génèrent ; un demandeur prépare et voit qui peut payer ; la lecture seule regarde. Détails, droits, règles d'argent et réglage du fournisseur d'images dans `docs/demande-conception.md`.

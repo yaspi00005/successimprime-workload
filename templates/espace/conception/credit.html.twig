@@ -1,0 +1,82 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Crédit IA : solde, packs payés par Orange Money, relevé. Le crédit
+	payé par Orange Money sert tout de suite ; payé au numéro marchand,
+	il s'ajoute une fois le paiement validé par la caisse.
+#}
+
+{% block title %}Crédit IA{% endblock %}
+{% block styles %}<link href="{{ asset('css/conception.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ demande ? path('app_espace_conception_ia', {id: demande.publicId}) : path('app_espace_conception_demandes') }}"><span class="fl">‹</span>Crédit IA</a>{% endblock %}
+
+{% block contenu %}
+	<div class="ec-carte">
+		<span class="ec-petit">Votre crédit IA</span>
+		<div class="ec-solde" style="color:{{ solde < 0 ? 'var(--rouge)' : 'var(--bleu)' }}">{{ solde|francs_conception }}</div>
+		{% if prixImage > 0 %}
+			<span class="ec-petit">{{ solde < 0 ? 'Négatif : un paiement a été rejeté par la caisse. La génération reprend une fois le crédit rechargé.' : 'Soit ' ~ (solde // prixImage) ~ ' image' ~ ((solde // prixImage) > 1 ? 's' : '') ~ ' à ' ~ (prixImage|francs_conception) ~ '.' }}</span>
+		{% endif %}
+		{% if not iaDisponible %}<p class="ec-petit" style="margin:.5rem 0 0">La génération par IA arrive bientôt : le crédit servira dès son ouverture.</p>{% endif %}
+	</div>
+
+	{% for m in enAttente %}
+		<div class="ec-note">{{ m.libelle }} ({{ m.montant|francs_conception }}{% if m.commande %}, commande {{ m.commande.numero }}{% endif %}) : à régler {% if marchand %}au numéro marchand <b>{{ marchand }}</b> ou en boutique{% else %}en boutique, ou au numéro marchand Orange Money{% endif %}. Le crédit s'ajoute dès que la caisse valide le paiement.</div>
+	{% endfor %}
+
+	{% if conceptionPeutPayer %}
+		<form method="post" action="{{ path('app_espace_conception_credit_acheter') }}" class="ec-carte" id="dc-pack">
+			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+			{% if demande %}<input type="hidden" name="demande" value="{{ demande.publicId }}">{% endif %}
+			<h2>Recharger</h2>
+			<div class="dc-packs">
+				{% for p in packs %}
+					<label class="dc-pack"><input type="radio" name="images" value="{{ p.images }}" data-prix="{{ p.prix|francs_conception }}"{{ loop.index == (packs|length > 1 ? 2 : 1) ? ' checked' }}><span><b>{{ p.images }} image{{ p.images > 1 ? 's' }}</b><span class="ec-petit">{{ p.prix|francs_conception }}</span></span></label>
+				{% endfor %}
+			</div>
+			{% set defaut = packs|length > 1 ? packs[1] : packs|first %}
+			{% if omActif %}
+				<button class="ec-bouton orange" type="submit" id="payer-pack" data-modele="Payer %s par Orange Money">Payer {{ defaut.prix|francs_conception }} par Orange Money</button>
+				<p class="ec-petit" style="margin:.6rem 0 0">Vous confirmez sur la page sécurisée d'Orange Money avec votre code secret : le crédit sert dès votre retour. Ne communiquez jamais votre code secret : Succès Imprim ne vous le demandera ni par téléphone ni par message.</p>
+			{% else %}
+				<button class="ec-bouton orange" type="submit" id="payer-pack" data-modele="Commander le pack · %s">Commander le pack · {{ defaut.prix|francs_conception }}</button>
+				<p class="ec-petit" style="margin:.6rem 0 0">{% if marchand %}Payez ensuite au numéro marchand Orange Money <b>{{ marchand }}</b> en indiquant le numéro de commande, ou en boutique{% else %}Payez ensuite en boutique, ou demandez le numéro marchand sur WhatsApp{% endif %} : le crédit s'ajoute dès que la caisse a validé le paiement.</p>
+			{% endif %}
+		</form>
+	{% else %}
+		<div class="ec-note">Le crédit IA est acheté par une personne qui paie pour l'entreprise{% if payeurs is not empty %} : {{ payeurs|join(', ') }}{% endif %}.</div>
+	{% endif %}
+
+	<div class="ec-carte">
+		<h2>Relevé</h2>
+		<ul class="ec-liste ec-fi-historique">
+			{% for m in releve %}
+				<li class="ec-ligne{{ m.etat == 'annule' ? ' annule' }}">
+					<span>
+						<b>{{ m.libelle }}</b>
+						<span class="ec-petit">{{ m.creeLe|date('d/m/Y H:i') }}{% if m.auteur %} · {{ m.auteur }}{% endif %}{% if m.etat == 'en_attente' %} · attend la validation de la caisse{% elseif m.etat == 'annule' %} · annulé{% endif %}</span>
+					</span>
+					<span class="{{ m.montant >= 0 ? 'dc-montant-plus' : 'dc-montant-moins' }}">{{ m.montant >= 0 ? '+' : '−' }} {{ (m.montant|abs)|francs_conception }}</span>
+				</li>
+			{% else %}
+				<li class="ec-petit">Aucun mouvement pour l'instant.</li>
+			{% endfor %}
+		</ul>
+	</div>
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	(function () {
+		const form = document.getElementById('dc-pack');
+		if (!form) return;
+		const bouton = document.getElementById('payer-pack');
+		const debut = bouton.textContent.split(/\d/)[0];
+		form.addEventListener('change', function () {
+			const coche = form.querySelector('input[name=images]:checked');
+			if (coche) bouton.textContent = bouton.textContent.replace(/[\d \s]+F/, ' ' + coche.dataset.prix).replace(/\s+/g, ' ');
+		});
+		form.addEventListener('submit', function () { bouton.disabled = true; });
+	})();
+	</script>
+{% endblock %}

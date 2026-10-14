@@ -69,7 +69,7 @@ final class ModulesRoles
                 'detail' => 'fichiers, BAT, conception',
                 'droits' => ['ROLE_PREPRESSE'],
                 'lecture' => Droits::LECTURE_PAO,
-                'prefixes' => ['app_controle_pre_presse_', 'app_conception_'],
+                'prefixes' => ['app_controle_pre_presse_', 'app_conception_', 'app_demandes_conception_'],
             ],
             'stock' => [
                 'libelle' => 'Stock et achats',

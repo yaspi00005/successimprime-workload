@@ -40,6 +40,13 @@ final class DemoCommand extends Command
         'DELETE FROM dotation_amortissement WHERE immobilisation_id >= 900000',
         'DELETE FROM evaluation_prime WHERE agent_id >= 900000',
         'DELETE FROM prime_agent WHERE agent_id >= 900000',
+        // Demandes de conception, images et crédit IA des clients fictifs.
+        "DELETE e FROM demande_conception_element e JOIN demande_conception d ON d.id = e.demande_conception_id JOIN clients c ON c.id = d.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE i FROM image_ia i JOIN clients c ON c.id = i.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE t FROM transaction_orange_money t JOIN clients c ON c.id = t.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE d FROM demande_conception d JOIN clients c ON c.id = d.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE m FROM mouvement_credit_ia m JOIN clients c ON c.id = m.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE k FROM credit_ia k JOIN clients c ON c.id = k.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
     ];
 
     public function __construct(

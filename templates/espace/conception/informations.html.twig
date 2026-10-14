@@ -1,0 +1,357 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Demande de conception, étapes 2 et 3 (maquettes DC02, DC03 et DC05) :
+	les informations du client, enregistrées au fil de la saisie, puis
+	graphiste (acompte par Orange Money) ou génération par IA.
+	Les boutons d'action visent des formulaires séparés (attribut form)
+	pour ne pas imbriquer de formulaires.
+#}
+
+{% block title %}{{ demande.supportNom }} · vos informations{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}<link href="{{ asset('css/conception.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_conception', {demande: demande.publicId}) }}"><span class="fl">‹</span>Demande de conception</a>{% endblock %}
+
+{% set modifiable = conceptionPeutPreparer %}
+{% set choix = demande.choix ?? 'graphiste' %}
+{% set choix = (choix == 'ia' and not tarif.iaDisponible) ? 'graphiste' : choix %}
+{% set aPayer = demande.statut == 'a_payer' %}
+
+{% block contenu %}
+	<div class="dc-titre">
+		<div>
+			<h1>{{ demande.titreSupport }} · vos informations</h1>
+			<span class="ec-petit">Demande {{ demande.numero }}{% if demande.auteur %} · préparée par {{ demande.auteur }}{% endif %} · <span class="dc-enregistre" id="enregistre" role="status" aria-live="polite">{{ modifiable ? 'enregistrée au fil de la saisie' : 'lecture seule' }}</span></span>
+		</div>
+		<a class="dc-pastille-lien dc-bureau" href="{{ path('app_espace_conception_demandes') }}">Mes demandes{% if enCours > 0 %} · <b>{{ enCours }} en cours</b>{% endif %}</a>
+	</div>
+	{% include 'espace/conception/_etapes.html.twig' %}
+
+	{% if modifiable %}
+		{# Changer de support (téléphone, maquette DC05) : les textes restent. #}
+		<div class="dc-chips-supports dc-mobile-seul" role="group" aria-label="Support">
+			{% for s in supports|slice(0, 6) %}
+				<button type="submit" form="dc-support" name="support" value="{{ s.id }}" class="{{ s.id == (demande.support.id ?? 0) ? 'actif' }}">{{ s.court }}</button>
+			{% endfor %}
+		</div>
+	{% endif %}
+
+	<form method="post" action="{{ path('app_espace_conception_enregistrer', {id: demande.publicId}) }}" id="dc-form" class="dc-mise" novalidate>
+		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+		<fieldset style="border:0;padding:0;margin:0;min-width:0"{{ modifiable ? '' : ' disabled' }}>
+			<div class="ec-carte">
+				<h2>Le contenu</h2>
+				<div class="dc-champs deux">
+					<label><span>Titre principal</span><input class="ec-saisie" name="titre" maxlength="120" value="{{ demande.titre }}" placeholder="Soirée jazz" autocomplete="off"></label>
+					<label class="dc-bureau"><span>Sous-titre</span><input class="ec-saisie" name="sous_titre" maxlength="160" value="{{ demande.sousTitre }}" placeholder="au bord du fleuve" autocomplete="off"></label>
+					<label><span>Date et heure</span><input class="ec-saisie" name="date_heure" maxlength="120" value="{{ demande.dateHeure }}" placeholder="Samedi 24 octobre · 20 h" autocomplete="off"></label>
+					<label><span>Coordonnées</span><input class="ec-saisie" name="coordonnees" maxlength="160" value="{{ demande.coordonnees }}" placeholder="Réservations : +223 …" autocomplete="off"></label>
+					<label class="large"><span>Autres textes ou consignes</span><textarea class="ec-champ" name="consignes" maxlength="1000" placeholder="Mettre « Hôtel Niger présente » en haut. Ambiance chic, nuit, musique.">{{ demande.consignes }}</textarea></label>
+				</div>
+			</div>
+
+			<div class="ec-carte">
+				<h2>Vos éléments</h2>
+				<div class="dc-elements" id="elements">
+					{% for f in elements %}
+						{% set image = f.typeMime in ['image/jpeg', 'image/png'] %}
+						<div class="dc-element">
+							<input type="checkbox" name="elements[]" id="element-{{ f.id }}" value="{{ f.id }}"{{ f.id in choisis ? ' checked' }}>
+							<label for="element-{{ f.id }}">
+								<span class="vignette">{% if image %}<img src="{{ path('app_espace_fichier', {id: f.id}) }}" alt="" loading="lazy">{% else %}{{ f.nomOriginal|split('.')|last|upper|slice(0, 4) }}{% endif %}</span>
+								<span><b>{{ f.logo ? 'Logo' : (image ? 'Photo' : 'Fichier') }}</b><small>{{ f.nomOriginal }}</small></span>
+							</label>
+						</div>
+					{% endfor %}
+					{% if modifiable %}
+						<label class="dc-ajouter" id="ajouter">
+							<input type="file" id="envoi" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}">
+							<span>+ Ajouter une image</span>
+							<span class="ec-progres" hidden><span></span></span>
+						</label>
+					{% endif %}
+				</div>
+				<div class="ec-petit" id="envoi-etat" role="status" aria-live="polite" style="margin-top:.4rem"></div>
+				{% if elements is empty %}<p class="ec-petit" style="margin:.4rem 0 0">Logo, photos : ajoutez-les ici, ils sont gardés dans « Mes fichiers ».</p>{% endif %}
+
+				<div class="dc-deux-blocs">
+					<div>
+						<span class="dc-etiquette">Couleurs</span>
+						<div class="dc-couleurs">
+							{% for hex, nom in palette %}
+								<label class="dc-couleur" title="{{ nom|capitalize }}"><input type="checkbox" name="couleurs[]" value="{{ hex }}" aria-label="{{ nom|capitalize }}"{{ hex in demande.couleurs ? ' checked' }}><span style="--c: {{ hex }}"></span></label>
+							{% endfor %}
+						</div>
+					</div>
+					<div>
+						<span class="dc-etiquette">Style</span>
+						<div class="ec-puces dc-styles">
+							{% for cle, libelle in styles %}
+								<label class="ec-puce"><input type="checkbox" name="styles[]" value="{{ cle }}"{{ cle in demande.styles ? ' checked' }}><span>{{ libelle }}</span></label>
+							{% endfor %}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="ec-carte">
+				<div class="dc-trois dc-champs">
+					<label><span>Quantité à imprimer ensuite</span><input class="ec-saisie" name="quantite" inputmode="numeric" maxlength="6" value="{{ demande.quantite }}" placeholder="2" autocomplete="off"></label>
+					<label><span>Pour quand ?</span><input class="ec-saisie" type="date" name="pour_quand" value="{{ demande.pourQuand ? demande.pourQuand|date('Y-m-d') }}" min="{{ 'now'|date('Y-m-d') }}"><span class="dc-erreur" data-erreur="pour_quand"></span></label>
+					<label><span>Exemple aimé (lien)</span><input class="ec-saisie" type="url" name="exemple" maxlength="500" value="{{ demande.exempleLien }}" placeholder="facultatif · https://…" autocomplete="off"><span class="dc-erreur" data-erreur="exemple"></span></label>
+				</div>
+			</div>
+		</fieldset>
+
+		<aside class="dc-panneau">
+			<p class="dc-question">Qui réalise la conception ?</p>
+			<div class="dc-choix">
+				<input type="radio" name="choix" id="choix-graphiste" value="graphiste"{{ choix == 'graphiste' ? ' checked' }}{{ modifiable ? '' : ' disabled' }}>
+				<label for="choix-graphiste">
+					<span class="dc-choix-tete">
+						<span class="dc-icone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg></span>
+						<span><b>Un graphiste Succès Imprim</b><small>Création sur mesure, prête pour l'impression</small></span>
+						<span class="dc-coche"></span>
+					</span>
+					<span class="dc-lignes">
+						<span><span>Forfait {{ demande.supportNom|lower }}</span><b>{{ tarif.forfait|francs_conception }}</b></span>
+						{% if tarif.acompte > 0 %}<span><span>Acompte à payer maintenant ({{ tarif.pourcent }} %)</span><b>{{ tarif.acompte|francs_conception }}</b></span>{% endif %}
+						<span><span>Premier BAT</span><b>sous {{ tarif.delai }} h ouvrées</b></span>
+						<span><span>Corrections incluses</span><b>{{ tarif.corrections }}</b></span>
+					</span>
+				</label>
+
+				<input type="radio" name="choix" id="choix-ia" value="ia"{{ choix == 'ia' ? ' checked' }}{{ (modifiable and tarif.iaDisponible) ? '' : ' disabled' }}>
+				<label for="choix-ia">
+					<span class="dc-choix-tete">
+						<span class="dc-icone ia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span>
+						<span><b>Génération par IA</b><small>Une proposition d'image en 1 minute</small></span>
+						<span class="dc-coche"></span>
+					</span>
+					{% if tarif.iaDisponible %}
+						<span class="dc-lignes">
+							<span><span>Prix</span><b>{{ tarif.prixImage|francs_conception }} par image</b></span>
+							<span><span>Votre crédit IA</span><b>{{ tarif.credit|francs_conception }} · {{ tarif.imagesPossibles }} image{{ tarif.imagesPossibles > 1 ? 's' }}</b></span>
+							{% if tarif.finalisation > 0 %}<span><span>Finalisation par un graphiste</span><b>+ {{ tarif.finalisation|francs_conception }}, conseillée</b></span>{% endif %}
+						</span>
+					{% else %}
+						<span class="dc-bientot">Bientôt disponible</span>
+					{% endif %}
+				</label>
+			</div>
+
+			{# Graphiste : l'acompte, payé par une personne qui paie pour l'entreprise. #}
+			<div class="dc-action" data-pour="graphiste"{{ choix != 'graphiste' ? ' hidden' }}>
+				{% if conceptionPeutPayer %}
+					{% if tarif.acompte > 0 and omActif %}
+						<button class="ec-bouton" type="submit" form="dc-acompte" id="payer-acompte">Payer l'acompte de {{ tarif.acompte|francs_conception }} par Orange Money</button>
+						<p class="ec-petit">Le solde de la conception ({{ tarif.solde|francs_conception }}) se règle à la validation du BAT, avec la commande d'impression.</p>
+					{% else %}
+						<button class="ec-bouton" type="submit" form="dc-envoyer">Envoyer la demande au graphiste</button>
+						{% if tarif.acompte > 0 %}
+							<p class="ec-petit">La conception démarre dès réception de l'acompte de {{ tarif.acompte|francs_conception }} : {% if marchand %}Orange Money au numéro marchand <b>{{ marchand }}</b> en indiquant <b>{{ demande.numero }}</b>, ou en boutique{% else %}en boutique, ou demandez le numéro marchand sur WhatsApp{% endif %}. Le solde ({{ tarif.solde|francs_conception }}) se règle à la validation du BAT.</p>
+						{% endif %}
+					{% endif %}
+				{% elseif modifiable %}
+					{% if aPayer %}
+						<div class="ec-note">Demande prête : elle attend le paiement de l'acompte{% if payeurs is not empty %} par {{ payeurs|join(' ou ') }}{% endif %}.</div>
+					{% else %}
+						<button class="ec-bouton bleu" type="submit" form="dc-demander">Demander le paiement de l'acompte</button>
+						<p class="ec-petit">{% if payeurs is not empty %}{{ payeurs|join(' ou ') }} {{ payeurs|length > 1 ? 'peuvent' : 'peut' }} payer pour l'entreprise : nous {{ payeurs|length > 1 ? 'les' : 'le' }} prévenons, sans montant dans le message.{% else %}Personne ne peut encore payer pour votre entreprise : demandez à l'administrateur du compte.{% endif %}</p>
+					{% endif %}
+				{% else %}
+					<div class="ec-note">Votre accès est en lecture seule.</div>
+				{% endif %}
+			</div>
+
+			{# IA : chaque image est débitée du crédit IA, au moment de la générer. #}
+			<div class="dc-action" data-pour="ia"{{ choix != 'ia' ? ' hidden' }}>
+				{% if modifiable %}
+					<button class="ec-bouton rose" type="submit" name="suite" value="ia">Continuer vers la génération · {{ tarif.prixImage|francs_conception }} l'image</button>
+					<p class="ec-petit">
+						{% if conceptionPeutPayer %}Débitée de votre crédit IA ({{ tarif.credit|francs_conception }}), rechargeable par Orange Money.
+						{% else %}Chaque image est payée : {{ payeurs is not empty ? payeurs|join(' ou ') : 'une personne qui paie pour l\'entreprise' }} peut la générer. Vous pouvez préparer la consigne.{% endif %}
+					</p>
+				{% else %}
+					<a class="ec-bouton clair" href="{{ path('app_espace_conception_ia', {id: demande.publicId}) }}">Voir les images</a>
+				{% endif %}
+			</div>
+			<div class="ec-petit dc-erreur" id="erreur" role="alert"></div>
+
+			{% if modifiable %}
+				<div class="dc-supprimer"><button type="submit" form="dc-supprimer">Supprimer ce brouillon</button></div>
+			{% endif %}
+		</aside>
+	</form>
+
+	{# Formulaires des boutons d'action (jamais imbriqués dans le formulaire de saisie). #}
+	<form method="post" action="{{ path('app_espace_conception_commencer') }}" id="dc-support" hidden><input type="hidden" name="_token" value="{{ csrf_token('espace') }}"><input type="hidden" name="demande" value="{{ demande.publicId }}"></form>
+	<form method="post" action="{{ path('app_espace_conception_envoyer', {id: demande.publicId}) }}" id="dc-envoyer" hidden><input type="hidden" name="_token" value="{{ csrf_token('espace') }}"></form>
+	<form method="post" action="{{ path('app_espace_conception_demander_paiement', {id: demande.publicId}) }}" id="dc-demander" hidden><input type="hidden" name="_token" value="{{ csrf_token('espace') }}"></form>
+	<form method="post" action="{{ path('app_espace_conception_supprimer', {id: demande.publicId}) }}" id="dc-supprimer" hidden data-confirmer="Supprimer ce brouillon ?"><input type="hidden" name="_token" value="{{ csrf_token('espace') }}"></form>
+
+	{% if conceptionPeutPayer and tarif.acompte > 0 and omActif %}
+		{# Maquette DC03 : le paiement se confirme sur la page sécurisée d'Orange Money (WebPay). #}
+		<dialog class="ec-feuille dc-om" id="dialogue-om" aria-labelledby="om-titre">
+			<div class="dc-om-tete">
+				<span class="om">OM</span>
+				<div><b id="om-titre">Paiement Orange Money</b><small>Succès Imprim · marchand vérifié</small></div>
+			</div>
+			<form method="post" action="{{ path('app_espace_conception_acompte', {id: demande.publicId}) }}" id="dc-acompte" class="ec-feuille-corps" style="padding-top:1rem">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				<div class="dc-om-montant">
+					<span class="ec-petit">Acompte conception · {{ demande.numero }}</span>
+					<span class="ec-gros">{{ tarif.acompte|francs_conception }}</span>
+				</div>
+				<span class="dc-etiquette">Numéro Orange Money</span>
+				<div class="dc-om-numero">+223 {{ app.user.telephone|slice(3)|split('', 2)|join(' ') }} <span>· modifiable sur la page Orange Money</span></div>
+				<ol class="dc-om-etapes">
+					<li class="en_cours">Page de paiement sécurisée Orange Money<small>lien valable 10 min</small></li>
+					<li>Confirmez avec votre code secret Orange Money</li>
+					<li>Reçu dans votre espace, après validation de la caisse</li>
+				</ol>
+				<div class="dc-avertissement">Ne communiquez jamais votre code secret : Succès Imprim ne vous le demandera ni par téléphone ni par message.</div>
+				<div class="dc-om-pied">
+					<button class="ec-bouton clair" type="button" value="annuler" id="om-annuler">Annuler</button>
+					<button class="ec-bouton orange" type="submit" id="om-continuer">Continuer vers Orange Money</button>
+				</div>
+			</form>
+		</dialog>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	{% if modifiable %}<script src="{{ asset('js/espace-envoi.js') }}"></script>{% endif %}
+	<script>
+	(function () {
+		const form = document.getElementById('dc-form');
+		if (!form) return;
+		const jeton = {{ csrf_token('espace')|json_encode|raw }};
+		const modifiable = {{ modifiable ? 'true' : 'false' }};
+		const etat = document.getElementById('enregistre');
+		const erreur = document.getElementById('erreur');
+		let minuteur = null;
+		let enCours = null;
+
+		function donnees() {
+			const d = { couleurs: [], styles: [], elements: [] };
+			new FormData(form).forEach(function (valeur, cle) {
+				if (cle === '_token' || cle === 'suite') return;
+				if (cle.endsWith('[]')) d[cle.slice(0, -2)].push(valeur);
+				else d[cle] = valeur;
+			});
+			return d;
+		}
+
+		async function enregistrer() {
+			clearTimeout(minuteur);
+			if (!modifiable) return true;
+			if (enCours) await enCours;
+			etat.textContent = 'enregistrement…';
+			etat.classList.remove('ok');
+			enCours = fetch(form.action, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': jeton, 'Accept': 'application/json' },
+				body: JSON.stringify(donnees()),
+				credentials: 'same-origin',
+			}).then(function (r) { return r.json().then(function (d) { return { statut: r.status, d: d }; }); }).then(function (r) {
+				form.querySelectorAll('[data-erreur]').forEach(function (e) { e.textContent = (r.d.erreurs || {})[e.dataset.erreur] || ''; });
+				if (r.statut >= 400) { etat.textContent = r.d.erreur || 'non enregistré'; return false; }
+				etat.textContent = r.d.ok ? 'enregistrée' : 'à corriger';
+				etat.classList.toggle('ok', !!r.d.ok);
+				return !!r.d.ok;
+			}).catch(function () {
+				etat.textContent = 'hors ligne : pas encore enregistrée';
+				return false;
+			});
+			const resultat = await enCours;
+			enCours = null;
+			return resultat;
+		}
+
+		function plusTard() {
+			clearTimeout(minuteur);
+			etat.textContent = 'modifiée';
+			etat.classList.remove('ok');
+			minuteur = setTimeout(enregistrer, 900);
+		}
+
+		function montrerChoix() {
+			const coche = form.querySelector('input[name=choix]:checked');
+			document.querySelectorAll('.dc-action').forEach(function (b) { b.hidden = !coche || b.dataset.pour !== coche.value; });
+		}
+
+		form.addEventListener('input', function (e) { if (e.target.type !== 'file') plusTard(); });
+		// Entrée dans un champ : enregistre sans quitter la page.
+		form.addEventListener('keydown', function (e) {
+			if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); enregistrer(); }
+		});
+		form.addEventListener('change', function (e) {
+			if (e.target.type === 'file') return;
+			if (e.target.name === 'choix') montrerChoix();
+			if (e.target.type === 'checkbox' || e.target.type === 'radio' || e.target.type === 'date') enregistrer();
+		});
+		window.addEventListener('beforeunload', function () { if (minuteur) enregistrer(); });
+
+		// Chaque action part après le dernier enregistrement.
+		document.querySelectorAll('form[id^=dc-]:not(#dc-form)').forEach(function (f) {
+			f.addEventListener('submit', async function (e) {
+				if (f.dataset.envoye) return;
+				e.preventDefault();
+				if (f.dataset.confirmer && !confirm(f.dataset.confirmer)) return;
+				if (f.id !== 'dc-supprimer' && f.id !== 'dc-support' && !(await enregistrer())) { erreur.textContent = 'Corrigez les informations avant de continuer.'; return; }
+				f.dataset.envoye = '1';
+				// Le bouton cliqué (support choisi) part avec le formulaire.
+				if (e.submitter && e.submitter.name) {
+					const champ = document.createElement('input');
+					champ.type = 'hidden'; champ.name = e.submitter.name; champ.value = e.submitter.value;
+					f.append(champ);
+				}
+				f.submit();
+			});
+		});
+
+		// Maquette DC03 : le bouton ouvre d'abord le récapitulatif Orange Money.
+		const dialogue = document.getElementById('dialogue-om');
+		const payer = document.getElementById('payer-acompte');
+		if (dialogue && payer && dialogue.showModal) {
+			payer.addEventListener('click', function (e) { e.preventDefault(); erreur.textContent = ''; dialogue.showModal(); });
+			document.getElementById('om-annuler').addEventListener('click', function () { dialogue.close(); });
+			document.getElementById('dc-acompte').addEventListener('submit', function () { document.getElementById('om-continuer').disabled = true; });
+		}
+
+		const envoi = document.getElementById('envoi');
+		if (envoi) envoi.addEventListener('change', async function () {
+			const f = this.files[0];
+			if (!f) return;
+			const message = document.getElementById('envoi-etat');
+			const barre = document.querySelector('#ajouter .ec-progres');
+			barre.hidden = false;
+			message.textContent = 'Envoi de ' + f.name + '…';
+			try {
+				const recu = await EspaceEnvoi.envoyer(f, {
+					debut: {{ path('app_espace_fichier_envoi')|json_encode|raw }}, jeton: jeton,
+					largeur: {{ (demande.largeurCm ?? '')|json_encode|raw }}, hauteur: {{ (demande.hauteurCm ?? '')|json_encode|raw }},
+					progres: function (p) { barre.firstElementChild.style.width = p + '%'; },
+				});
+				const bloc = document.createElement('div'); bloc.className = 'dc-element';
+				const coche = document.createElement('input'); coche.type = 'checkbox'; coche.name = 'elements[]'; coche.value = recu.id; coche.checked = true; coche.id = 'element-' + recu.id;
+				const label = document.createElement('label'); label.htmlFor = coche.id;
+				const vignette = document.createElement('span'); vignette.className = 'vignette'; vignette.textContent = (recu.nom.split('.').pop() || '').toUpperCase().slice(0, 4);
+				const texte = document.createElement('span');
+				const b = document.createElement('b'); b.textContent = /\.(jpe?g|png)$/i.test(recu.nom) ? 'Photo' : 'Fichier';
+				const nom = document.createElement('small'); nom.textContent = recu.nom;
+				texte.append(b, nom); label.append(vignette, texte); bloc.append(coche, label);
+				document.getElementById('ajouter').before(bloc);
+				message.textContent = recu.controle && recu.controle.etat === 'a_refaire' ? recu.nom + ' : ' + recu.controle.texte : '';
+				enregistrer();
+			} catch (e) {
+				message.textContent = f.name + ' : ' + e.message;
+			}
+			barre.hidden = true;
+			this.value = '';
+		});
+	})();
+	</script>
+{% endblock %}

@@ -62,6 +62,13 @@ final class RecetteOutilsTest extends TestCase
         self::assertFalse(RecetteAcces::estPageAdmin('_profiler', new Route('/_profiler')));
     }
 
+    public function testProductionDepuisLePosteDUneMachine(): void
+    {
+        self::assertTrue(RecetteAcces::depuisUnPoste('app_production_index'));
+        self::assertFalse(RecetteAcces::depuisUnPoste('app_productivite_index'));
+        self::assertFalse(RecetteAcces::depuisUnPoste('app_commandes_index'));
+    }
+
     public function testEcartsVoulus(): void
     {
         $liste = ['app_planning_' => 'tout le personnel', 'app_user_change_password' => 'son mot de passe'];

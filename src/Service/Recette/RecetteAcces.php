@@ -83,6 +83,9 @@ final class RecetteAcces
 
     private ?UsernamePasswordToken $jeton = null;
 
+    /** Adresse d'un poste de machine de la démonstration : la production ne s'ouvre que depuis l'une d'elles. */
+    private string|false|null $posteMachine = null;
+
     public function __construct(
         private readonly NavigateurInterne $navigateur,
         private readonly ParametresRoute $parametres,
@@ -243,7 +246,7 @@ final class RecetteAcces
         $redirections = [];
 
         foreach ($pages as $p) {
-            $reponse = $this->navigateur->get($p['chemin'], $session);
+            $reponse = $this->navigateur->get($p['chemin'], $session, [], false, self::depuisUnPoste($p['route']) ? $this->posteMachine() : null);
             $etat = $reponse->etat();
             $bilan->matrice[$p['chemin']][$identifiant] = $etat;
             $etats[$p['route']] ??= $etat;
@@ -383,7 +386,8 @@ final class RecetteAcces
     private function verifierLectureSeule(array $comptes, BilanRecette $bilan): void
     {
         $compte = null;
-        foreach ($comptes as $c) {
+        // Un compte caisse parmi ceux demandés, sinon parmi toute la démonstration (--compte=demo.oumar).
+        foreach ([...$comptes, ...$this->comptes()] as $c) {
             if (!\in_array(User::ROLE_ADMIN, $c->getRoles(), true) && \in_array('ROLE_COMMANDE', $c->getRoles(), true)) {
                 $compte = $c;
                 break;
@@ -505,6 +509,19 @@ final class RecetteAcces
         }
 
         return true;
+    }
+
+    /** Les écrans de production ne répondent qu'au poste d'une machine (ProductionMachineSubscriber). */
+    public static function depuisUnPoste(string $route): bool
+    {
+        return str_starts_with($route, 'app_production_');
+    }
+
+    private function posteMachine(): ?string
+    {
+        $this->posteMachine ??= $this->em->getConnection()->fetchOne("SELECT adresse_ip FROM machines WHERE adresse_ip IS NOT NULL AND adresse_ip <> '' ORDER BY id LIMIT 1");
+
+        return \is_string($this->posteMachine) ? $this->posteMachine : null;
     }
 
     /** Raison pour laquelle ce montant n'est pas sensible (CONTEXTES_VOULUS), ou null. */

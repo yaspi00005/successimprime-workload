@@ -133,10 +133,11 @@ final class NavigateurInterne
     /**
      * @param array<string, string> $entetes
      * @param bool                  $intercepter ne pas jouer le contrôleur (statut CONTROLEUR_ATTEINT s'il est atteint)
+     * @param string|null           $adresse     adresse du poste qui demande la page (par défaut IP)
      */
-    public function get(string $chemin, ?MockArraySessionStorage $session = null, array $entetes = [], bool $intercepter = false): Reponse
+    public function get(string $chemin, ?MockArraySessionStorage $session = null, array $entetes = [], bool $intercepter = false, ?string $adresse = null): Reponse
     {
-        return $this->envoyer(Request::create($chemin, 'GET', [], [], [], $this->serveur($entetes)), $session, $intercepter);
+        return $this->envoyer(Request::create($chemin, 'GET', [], [], [], $this->serveur($entetes, $adresse)), $session, $intercepter);
     }
 
     /**
@@ -197,9 +198,9 @@ final class NavigateurInterne
      *
      * @return array<string, string>
      */
-    private function serveur(array $entetes): array
+    private function serveur(array $entetes, ?string $adresse = null): array
     {
-        $serveur = ['REMOTE_ADDR' => self::IP, 'HTTP_HOST' => 'recette.local', 'HTTP_USER_AGENT' => 'Recette des accès (app:recette:acces)', 'HTTP_ACCEPT' => 'text/html,*/*'];
+        $serveur = ['REMOTE_ADDR' => $adresse ?? self::IP, 'HTTP_HOST' => 'recette.local', 'HTTP_USER_AGENT' => 'Recette des accès (app:recette:acces)', 'HTTP_ACCEPT' => 'text/html,*/*'];
         foreach ($entetes as $nom => $valeur) {
             $serveur['HTTP_'.strtoupper(str_replace('-', '_', $nom))] = $valeur;
         }

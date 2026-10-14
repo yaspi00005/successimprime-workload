@@ -154,7 +154,7 @@ final class ContenuInitial
                     Cela dépend du produit. Le devis indique la quantité minimale de chaque support.
 
                     ### Comment suivre ma commande ?
-                    Depuis votre espace client : vous y voyez où en est chaque commande, du BAT à la livraison.
+                    Depuis votre espace client : vous y voyez où en est chaque commande, du BAT à la livraison. Sans compte, avec le numéro de commande et votre téléphone : [Suivre ma commande](/suivre-ma-commande).
 
                     ## Paiement
                     ### Puis-je payer par Orange Money ?

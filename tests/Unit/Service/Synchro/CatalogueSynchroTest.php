@@ -222,4 +222,17 @@ final class CatalogueSynchroTest extends TestCase
         }
         self::assertNotContains('traiteLe', $types['message_client']['champs'], 'le classement par l\'atelier reste au local');
     }
+
+    public function testFicheUniqueParRelationRemplaceeSeulementDuLocalVersLeSite(): void
+    {
+        $types = CatalogueSynchro::types();
+        self::assertSame(['client'], $types['fidelite_compte']['uniqueSur'] ?? null, 'un compte fidélité recréé au local ne bloque plus la file');
+        foreach ($types as $type => $def) {
+            foreach ($def['uniqueSur'] ?? [] as $champ) {
+                // Le site ne remplace une fiche que si le local est maître du type.
+                self::assertSame(CatalogueSynchro::DESCENDANT, $def['sens'], $type);
+                self::assertArrayHasKey($champ, $def['relations'], $type);
+            }
+        }
+    }
 }

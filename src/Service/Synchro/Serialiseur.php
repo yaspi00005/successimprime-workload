@@ -195,7 +195,7 @@ final class Serialiseur
         $meta = $this->em->getClassMetadata($def['classe']);
         $plateforme = $this->em->getConnection()->getDatabasePlatform();
 
-        $entite = $this->trouver($type, $publicId);
+        $entite = $this->trouver($type, $publicId) ?? $this->remplacee($def, $meta, $publicId, $donnees);
         $creee = $entite === null;
         if ($creee) {
             $entite = new ($def['classe'])();
@@ -236,6 +236,37 @@ final class Serialiseur
         }
 
         return [$entite, $creee];
+    }
+
+    /**
+     * Fiche unique par relation (un compte fidélité par client) recréée au
+     * local sous un autre identifiant, après une démo rechargée par exemple :
+     * le local est maître, la fiche du site prend le nouvel identifiant au
+     * lieu de bloquer toute la file sur la clé unique.
+     *
+     * @param array<string, mixed> $def
+     * @param array<string, mixed> $donnees
+     */
+    private function remplacee(array $def, ClassMetadata $meta, string $publicId, array $donnees): ?object
+    {
+        if (CatalogueSynchro::DESCENDANT !== $def['sens'] || [] === ($def['uniqueSur'] ?? [])) {
+            return null;
+        }
+        $critere = [];
+        foreach ($def['uniqueSur'] as $champ) {
+            $id = $donnees['relations'][$champ] ?? null;
+            $cible = \is_string($id) ? $this->trouver($def['relations'][$champ], $id) : null;
+            if (null === $cible) {
+                return null;
+            }
+            $critere[$champ] = $cible;
+        }
+        $ancienne = $this->em->getRepository($def['classe'])->findOneBy($critere);
+        if (null !== $ancienne) {
+            $meta->setFieldValue($ancienne, 'publicId', Uuid::fromString($publicId));
+        }
+
+        return $ancienne;
     }
 
     /**

@@ -104,7 +104,7 @@ final class CatalogueSynchro
     public const ACTION_PROPOSITION = 'reglage_propose';
 
     /**
-     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, aLaCreation?: array<string, callable>, imposeAuLocal?: array<string, mixed>, pret?: callable, remontees?: array<string, ?array<string, list<string>>>, facultatives?: list<string>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>, filtres?: array<string, callable>}>}>
+     * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, aLaCreation?: array<string, callable>, imposeAuLocal?: array<string, mixed>, pret?: callable, remontees?: array<string, ?array<string, list<string>>>, facultatives?: list<string>, uniqueSur?: list<string>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>, filtres?: array<string, callable>}>}>
      */
     public static function types(): array
     {
@@ -416,6 +416,8 @@ final class CatalogueSynchro
                     'tauxAutreApplique', 'multiplicateurJour', 'delaiHeures', 'pointsExpirant', 'expirationProchaine', 'majLe',
                 ],
                 'relations' => ['client' => 'client'], 'listes' => [],
+                // Un seul compte par client : recréé au local, il remplace celui du site.
+                'uniqueSur' => ['client'],
             ],
             'fidelite_mouvement' => [
                 'classe' => MouvementFidelite::class, 'sens' => self::DESCENDANT, 'libelle' => 'Mouvement de points', 'titre' => ['type', 'points'],

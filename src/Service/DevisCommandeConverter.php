@@ -135,6 +135,14 @@ final class DevisCommandeConverter
             $this->entityManager->persist($commande);
             $this->entityManager->flush();
 
+            /*
+             * Numéro de commande, comme une commande saisie à la caisse
+             * (CMD-000123-10-2026) : il faut l'identifiant, donc après
+             * le premier enregistrement.
+             */
+            $commande->setNumero(\sprintf('CMD-%06d-%s', $commande->getId(), (new \DateTimeImmutable())->format('m-Y')));
+            $this->entityManager->flush();
+
             $connection->commit();
 
             return $commande;

@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Service\Synchro\AgentSynchro;
+use App\Service\Synchro\Signature;
 use App\Service\Synchro\Synchro;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -32,7 +33,8 @@ final class SynchroCommand extends Command
         $this
             ->addOption('initialiser', null, InputOption::VALUE_OPTIONAL, 'Met en file tout ce qui part vers le site : catalogue, clients, devis, commandes, factures, paiements (premier chargement). Avec un type (ex. --initialiser=configuration) : ce type seulement', false)
             ->addOption('boucle', null, InputOption::VALUE_NONE, 'Tourne sans s\'arrêter, un cycle toutes les 30 s')
-            ->addOption('nouvelle-cle', null, InputOption::VALUE_NONE, 'Affiche une clé SYNC_CLE à copier dans .env.local des deux machines');
+            ->addOption('nouvelle-cle', null, InputOption::VALUE_NONE, 'Affiche une clé SYNC_CLE à copier dans .env.local des deux machines')
+            ->addOption('empreinte', null, InputOption::VALUE_NONE, 'Affiche l\'empreinte de SYNC_CLE et l\'heure de cette machine, à comparer avec l\'autre machine (la clé ne s\'affiche pas)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -42,6 +44,13 @@ final class SynchroCommand extends Command
         if ($input->getOption('nouvelle-cle')) {
             $io->writeln('SYNC_CLE='.bin2hex(random_bytes(32)));
             $io->note('À mettre dans .env.local de l\'ERP local ET du site. Ne jamais l\'envoyer par message ni la mettre dans le dépôt.');
+
+            return Command::SUCCESS;
+        }
+        if ($input->getOption('empreinte')) {
+            // Sur les deux machines : même empreinte et même longueur, heures à moins de 5 minutes.
+            $cle = $this->synchro->cle();
+            $io->writeln(\sprintf('Empreinte de SYNC_CLE : %s · longueur %d · heure de cette machine : %s UTC', $cle === '' ? 'aucune clé' : Signature::empreinte($cle), \strlen($cle), gmdate('H:i:s')));
 
             return Command::SUCCESS;
         }

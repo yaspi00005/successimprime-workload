@@ -23,6 +23,25 @@ final class SignatureTest extends TestCase
         self::assertFalse(Signature::verifier(self::CLE, 'POST', '/api/synchro/envoyer', 'abc', '{"a":1}', $sig, $heure), 'heure illisible');
     }
 
+    public function testMotifDuRefus(): void
+    {
+        $heure = 1_760_000_000;
+        $sig = Signature::calculer(self::CLE, 'POST', '/api/synchro/ping', $heure, '');
+
+        self::assertNull(Signature::motifRefus(self::CLE, 'POST', '/api/synchro/ping', (string) $heure, '', $sig, $heure));
+        self::assertSame(Signature::REFUS_ENTETES, Signature::motifRefus(self::CLE, 'POST', '/api/synchro/ping', '', '', '', $heure), 'en-têtes retirés en route');
+        self::assertSame(Signature::REFUS_HEURE, Signature::motifRefus(self::CLE, 'POST', '/api/synchro/ping', (string) $heure, '', $sig, $heure + 600));
+        self::assertSame(Signature::REFUS_SIGNATURE, Signature::motifRefus(strrev(self::CLE), 'POST', '/api/synchro/ping', (string) $heure, '', $sig, $heure));
+    }
+
+    public function testEmpreinteCourteQuiNeDonnePasLaCle(): void
+    {
+        self::assertSame(8, \strlen(Signature::empreinte(self::CLE)));
+        self::assertSame(Signature::empreinte(self::CLE), Signature::empreinte(self::CLE));
+        self::assertNotSame(Signature::empreinte(self::CLE), Signature::empreinte(self::CLE.' '), 'un espace en trop se voit');
+        self::assertStringNotContainsString(substr(self::CLE, 0, 8), Signature::empreinte(self::CLE));
+    }
+
     public function testRefuseUneCleTropCourte(): void
     {
         $sig = Signature::calculer('court', 'POST', '/x', 1, '');

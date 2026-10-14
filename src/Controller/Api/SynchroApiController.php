@@ -110,8 +110,10 @@ final class SynchroApiController
             return new Response('', Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
         }
         $chemin = $request->getPathInfo();
-        if (!Signature::verifier($this->synchro->cle(), $request->getMethod(), $chemin, (string) $request->headers->get(Signature::ENTETE_HEURE, ''), $corps, (string) $request->headers->get(Signature::ENTETE, ''), time())) {
-            return new Response('', Response::HTTP_UNAUTHORIZED);
+        $refus = Signature::motifRefus($this->synchro->cle(), $request->getMethod(), $chemin, (string) $request->headers->get(Signature::ENTETE_HEURE, ''), $corps, (string) $request->headers->get(Signature::ENTETE, ''), time());
+        if ($refus !== null) {
+            // Le motif et l'heure du site disent à l'agent quoi régler ; rien sur la clé ni sur les données.
+            return new JsonResponse(['refus' => $refus, 'heure_site' => time()], Response::HTTP_UNAUTHORIZED, ['Cache-Control' => 'no-store']);
         }
         $this->synchro->noterEtat(AgentSynchro::ETAT_CONTACT, (new \DateTimeImmutable())->format(\DATE_ATOM));
 

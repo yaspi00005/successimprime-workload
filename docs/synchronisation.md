@@ -97,6 +97,8 @@ Un cycle de l'agent : vérifier que le site répond, envoyer la file du local, r
 
 Les deux installations doivent avoir le même code et les mêmes migrations. L'écran affiche la version du schéma vue sur le site.
 
+**Si le site refuse la signature** : `php bin/console app:synchro --empreinte` sur les deux machines affiche l'empreinte de la clé (8 caractères, la clé ne s'affiche pas), sa longueur et l'heure. Les empreintes et les longueurs doivent être identiques, et les heures à moins de 5 minutes. Le site renvoie aussi le motif du refus (en-têtes absents, heure, clé), que l'agent traduit dans son message.
+
 ## Écran Réglages › Sécurité › Synchronisation (ROLE_ADMIN)
 
 - Dernière synchro réussie, file d'attente, reçus du jour, erreurs sur 24 h (résolues automatiquement quand un cycle complet réussit).

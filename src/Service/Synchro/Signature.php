@@ -17,6 +17,11 @@ final class Signature
     public const ECART_MAX_SECONDES = 300;
     public const LONGUEUR_CLE_MIN = 32;
 
+    /** Motifs de refus renvoyés par le site avec la réponse 401. */
+    public const REFUS_ENTETES = 'entetes_absents';
+    public const REFUS_HEURE = 'heure';
+    public const REFUS_SIGNATURE = 'signature';
+
     public static function calculer(string $cle, string $methode, string $chemin, int $horodatage, string $corps): string
     {
         return hash_hmac('sha256', strtoupper($methode)."\n".$chemin."\n".$horodatage."\n".hash('sha256', $corps), $cle);
@@ -24,11 +29,34 @@ final class Signature
 
     public static function verifier(string $cle, string $methode, string $chemin, string $horodatage, string $corps, string $signature, int $maintenant): bool
     {
-        if (\strlen($cle) < self::LONGUEUR_CLE_MIN || !ctype_digit($horodatage) || abs($maintenant - (int) $horodatage) > self::ECART_MAX_SECONDES) {
-            return false;
+        return self::motifRefus($cle, $methode, $chemin, $horodatage, $corps, $signature, $maintenant) === null;
+    }
+
+    /**
+     * Pourquoi une requête est refusée, null si elle est acceptée. Le motif
+     * aide à régler l'installation et ne dit rien de la clé.
+     *
+     * @return self::REFUS_*|null
+     */
+    public static function motifRefus(string $cle, string $methode, string $chemin, string $horodatage, string $corps, string $signature, int $maintenant): ?string
+    {
+        if (\strlen($cle) < self::LONGUEUR_CLE_MIN) {
+            return self::REFUS_SIGNATURE;
+        }
+        if ($horodatage === '' || $signature === '') {
+            return self::REFUS_ENTETES;
+        }
+        if (!ctype_digit($horodatage) || abs($maintenant - (int) $horodatage) > self::ECART_MAX_SECONDES) {
+            return self::REFUS_HEURE;
         }
 
-        return hash_equals(self::calculer($cle, $methode, $chemin, (int) $horodatage, $corps), $signature);
+        return hash_equals(self::calculer($cle, $methode, $chemin, (int) $horodatage, $corps), $signature) ? null : self::REFUS_SIGNATURE;
+    }
+
+    /** Début de l'empreinte SHA-256 de la clé : pour comparer les deux machines sans montrer la clé. */
+    public static function empreinte(string $cle): string
+    {
+        return substr(hash('sha256', $cle), 0, 8);
     }
 
     public static function cleValable(string $cle): bool

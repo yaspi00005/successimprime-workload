@@ -268,7 +268,7 @@ final class AgentSynchro
         $contenu = $reponse->getContent(false);
         if ($code !== 200) {
             throw new \RuntimeException(match ($code) {
-                401 => 'Le site refuse la signature : la clé SYNC_CLE n\'est pas la même des deux côtés, ou l\'heure d\'une des machines est fausse.',
+                401 => self::messageRefus($contenu, $reponse->getHeaders(false)['date'][0] ?? null, time()),
                 404 => 'Le site ne répond pas à la synchronisation (adresse fausse, ou SYNC_CLE absente sur le site).',
                 default => 'Le site a répondu '.$code.'.',
             });
@@ -279,6 +279,33 @@ final class AgentSynchro
         }
 
         return json_decode($contenu, true, 512, \JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Message d'un refus de signature (401) : le site donne le motif, l'heure
+     * vient de sa réponse (ou de l'en-tête Date d'un site pas encore à jour).
+     */
+    public static function messageRefus(string $contenu, ?string $date, int $maintenant): string
+    {
+        $refus = json_decode($contenu, true);
+        $motif = \is_array($refus) ? (string) ($refus['refus'] ?? '') : '';
+        $heureSite = \is_array($refus) && isset($refus['heure_site']) && is_numeric($refus['heure_site']) ? (int) $refus['heure_site'] : null;
+        if ($heureSite === null && $date !== null && ($lue = strtotime($date)) !== false) {
+            $heureSite = $lue;
+        }
+        $ecart = $heureSite !== null ? abs($maintenant - $heureSite) : null;
+
+        if ($motif === Signature::REFUS_HEURE || ($motif === '' && $ecart !== null && $ecart > Signature::ECART_MAX_SECONDES)) {
+            return \sprintf('Le site refuse la signature : l\'heure de cette machine et celle du site ont %s d\'écart (5 minutes au plus). Réglez cette machine à l\'heure automatique.', $ecart !== null ? (int) round($ecart / 60).' min' : 'trop');
+        }
+        if ($motif === Signature::REFUS_ENTETES) {
+            return 'Le site ne reçoit pas les en-têtes de signature (X-SI-Signature, X-SI-Horodatage) : l\'hébergeur ou un pare-feu les retire.';
+        }
+        if ($motif === Signature::REFUS_SIGNATURE) {
+            return 'Le site refuse la signature : la clé SYNC_CLE n\'est pas la même des deux côtés. Comparez « php bin/console app:synchro --empreinte » sur les deux machines.';
+        }
+
+        return 'Le site refuse la signature : la clé SYNC_CLE n\'est pas la même des deux côtés, ou l\'heure d\'une des machines est fausse. Comparez « php bin/console app:synchro --empreinte » sur les deux machines.';
     }
 
     private static function messageLiaison(\Throwable $e): string

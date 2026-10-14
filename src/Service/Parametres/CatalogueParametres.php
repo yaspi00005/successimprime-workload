@@ -151,6 +151,22 @@ final class CatalogueParametres
                 'motsCles' => ['Demande de conception · supports et forfaits', 'Acompte graphiste · premier BAT', 'IA · 1 000 F par image · packs de crédit', 'Plafond d\'images par jour'],
                 'note' => 'Supports, forfaits, acompte et produits du catalogue : bouton ci-dessous.',
             ],
+            // Atelier 3D du site et de l'espace client (docs/atelier-3d.md) : le prix vient du
+            // catalogue (prix public, prix B2B) ; ces paliers et le prix d'une face en plus s'y ajoutent.
+            'atelier_3d' => [
+                'famille' => 'ventes', 'libelle' => 'Atelier 3D', 'icone' => 'fa-tshirt',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_reglages_parametres_atelier_modeles',
+                'champs' => [
+                    ['cle' => 'palier1_quantite', 'type' => 'nombre', 'libelle' => 'Premier palier de remise à partir de', 'suffixe' => 'pièces', 'min' => 2, 'max' => 100000, 'defaut' => 25],
+                    ['cle' => 'palier1_remise', 'type' => 'nombre', 'libelle' => 'Remise du premier palier', 'suffixe' => '%', 'min' => 0, 'max' => 50, 'defaut' => 10],
+                    ['cle' => 'palier2_quantite', 'type' => 'nombre', 'libelle' => 'Second palier à partir de', 'aide' => 'Plus grand que le premier', 'suffixe' => 'pièces', 'min' => 2, 'max' => 100000, 'defaut' => 50],
+                    ['cle' => 'palier2_remise', 'type' => 'nombre', 'libelle' => 'Remise du second palier', 'suffixe' => '%', 'min' => 0, 'max' => 50, 'defaut' => 15],
+                    ['cle' => 'face_en_plus', 'type' => 'nombre', 'libelle' => 'Marquage de la seconde face (dos), par pièce', 'aide' => 'Le prix du catalogue comprend une face', 'suffixe' => 'F', 'min' => 0, 'max' => 100000, 'defaut' => 1500],
+                    ['cle' => 'paliers_b2b', 'type' => 'interrupteur', 'libelle' => 'Paliers aussi pour les revendeurs (prix B2B)', 'aide' => 'Éteint : le revendeur garde son prix B2B, sans palier', 'defaut' => false],
+                ],
+                'motsCles' => ['Atelier 3D · t-shirt, polo, casquette', 'Remise dès 25 et 50 pièces', 'Couleurs et tailles des articles', 'Seconde face'],
+                'note' => 'Articles proposés, couleurs, tailles et zone d\'impression : bouton ci-dessous.',
+            ],
             'relances' => [
                 'famille' => 'ventes', 'libelle' => 'Relances et délais', 'icone' => 'fa-bell',
                 'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES', 'ROLE_ACTIONS_GERER'], 'route' => 'app_actions_equipe_regles',

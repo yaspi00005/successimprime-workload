@@ -3,6 +3,7 @@
 namespace App\Tests\Unit\Service\Site;
 
 use App\Entity\Clients;
+use App\Entity\CreationAtelier;
 use App\Entity\DemandeDevis;
 use App\Entity\Devis;
 use App\Entity\DevisDetails;
@@ -10,7 +11,9 @@ use App\Entity\Finition;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
+use App\Service\Atelier\TarifAtelier;
 use App\Service\EspaceClient\NouvelleCommande;
+use App\Service\Parametres\CatalogueParametres;
 use App\Service\Site\PreparationDemande;
 use PHPUnit\Framework\TestCase;
 
@@ -145,6 +148,29 @@ final class PreparationDemandeTest extends TestCase
 
         self::assertSame([$ourlet->getId()], PreparationDemande::finitionsChoisies($demande));
         unset($oeillets);
+    }
+
+    public function testModeleDeLAtelierAuPrixPublicAvecSecondeFaceEtPalier(): void
+    {
+        $tshirt = (new ProduitConfiguration())->setProduit((new Produits())->setNom('T-shirt DTF'))
+            ->setModeDimension('fixe')->setModeCalcul('unite')->setPrixBase(5000)->setPrixB2B(4000);
+        $creation = (new CreationAtelier())->setNumero('W-CR-0001')->setDesignation('T-shirt DTF · Rouge')
+            ->setCouleur(['nom' => 'Rouge', 'hex' => '#DE1028'])->setQuantite(30)
+            ->setReglages(['devant' => ['texte' => 'TEAM'], 'dos' => ['texte' => 'DIALLO 10']]);
+        $demande = DemandeDevis::nouvelle('devis', 'Fatoumata Test', '22370112233', $this->le)
+            ->setConfiguration($tshirt)->setDesignation('T-shirt DTF')->setQuantite(30)->setCreation($creation);
+        $demande->setNumero('W-DD-0002');
+        $reglages = TarifAtelier::normaliser(CatalogueParametres::avecDefauts(CatalogueParametres::tuiles()['atelier_3d']['champs'], []));
+
+        $r = PreparationDemande::construire($demande, null, $this->le, $reglages);
+
+        $ligne = $r['devis']?->getDevisDetails()->first();
+        self::assertInstanceOf(DevisDetails::class, $ligne);
+        self::assertSame('T-shirt DTF · Rouge', $ligne->getDesignation());
+        self::assertSame(2, $ligne->getNombreFaces());
+        $attendu = TarifAtelier::calculer(5000, 2, 30, $reglages, false);
+        self::assertSame($attendu['prixUnitaire'] * 30 - $attendu['remiseUnitaire'] * 30, $ligne->getTotalTtc(), 'prix public : seconde face et palier de 25 pièces, comme sur la page');
+        self::assertStringContainsString('Atelier 3D W-CR-0001', (string) $r['devis']->getObservation());
     }
 
     private function demande(ProduitConfiguration $config): DemandeDevis

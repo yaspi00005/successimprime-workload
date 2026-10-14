@@ -5412,3 +5412,32 @@ body.si-param-bloque { overflow: hidden; }
 .si-mc-proposition form { margin: 0; }
 .si-mc-refus { display: flex; gap: 6px; align-items: center; }
 .si-mc-refus input { width: 220px; }
+
+/* Ventes › Créations Atelier 3D et Réglages › Atelier 3D (docs/atelier-3d.md) */
+.si-cr-filtres { display: flex; flex-wrap: wrap; gap: 6px; }
+.si-cr-filtres a { padding: 4px 12px; border-radius: 999px; border: 1px solid #E2E8F0; color: #334155; font-size: 0.8rem; font-weight: 600; }
+.si-cr-filtres a.actif { background: #0F4590; border-color: #0F4590; color: #fff; }
+.si-cr-ligne { grid-template-columns: 56px 88px minmax(0, 1fr) auto; }
+.si-cr-vignette { width: 56px; height: 56px; border-radius: 10px; overflow: hidden; background: #EEF2F8; }
+.si-cr-vignette img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.si-cr-vues { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); gap: 12px; margin: 14px 0 6px; }
+.si-cr-vues figure { margin: 0; border: 1px solid #E2E8F0; border-radius: 14px; overflow: hidden; background: #EEF2F8; }
+.si-cr-vues img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.si-cr-vues figcaption { padding: 6px 10px; background: #fff; border-top: 1px solid #E2E8F0; font-size: 0.8rem; font-weight: 700; }
+.si-cr-absent { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; padding: 16px; color: #64748B; font-size: 0.8rem; text-align: center; }
+.si-cr-pastilles { display: inline-flex; gap: 4px; vertical-align: middle; }
+.si-cr-pastilles i { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(15, 23, 42, .2); }
+.si-cr-etat { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0 6px; }
+.si-cr-modele { padding: 12px 14px; margin-bottom: 8px; border: 1px solid #E2E8F0; border-radius: 12px; background: #FAFBFD; }
+.si-cr-modele fieldset { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.si-cr-modele-ligne { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; }
+.si-cr-modele-ligne > label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; font-weight: 600; color: #334155; flex: 0 1 130px; }
+.si-cr-modele-ligne > label.si-cr-large { flex: 1 1 280px; }
+.si-cr-modele-ligne > label.si-pg-case { flex-direction: row; align-items: center; flex: 0 0 auto; padding-bottom: 6px; }
+.si-cr-modele .btn { align-self: flex-start; }
+@media (max-width: 991px) {
+  .si-cr-ligne { grid-template-columns: 56px minmax(0, 1fr); }
+  .si-cr-ligne .si-rc-num { display: none; }
+  .si-cr-ligne .si-pastille { grid-column: 2; justify-self: start; }
+  .si-cr-vues { grid-template-columns: 1fr 1fr; }
+}

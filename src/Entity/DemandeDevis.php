@@ -97,6 +97,11 @@ class DemandeDevis
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?CommandeDetailFichier $fichier = null;
 
+    /** Modèle de l'Atelier 3D validé par le visiteur (docs/atelier-3d.md) : vues, réglages, images. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?CreationAtelier $creation = null;
+
     #[ORM\Column]
     private \DateTimeImmutable $creeLe;
 
@@ -302,6 +307,18 @@ class DemandeDevis
     {
         $message = trim((string) $message);
         $this->message = '' === $message ? null : mb_substr($message, 0, self::MESSAGE_MAX);
+
+        return $this;
+    }
+
+    public function getCreation(): ?CreationAtelier
+    {
+        return $this->creation;
+    }
+
+    public function setCreation(?CreationAtelier $creation): static
+    {
+        $this->creation = $creation;
 
         return $this;
     }

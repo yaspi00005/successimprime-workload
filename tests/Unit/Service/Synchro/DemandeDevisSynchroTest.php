@@ -33,7 +33,7 @@ final class DemandeDevisSynchroTest extends TestCase
             self::assertNotContains($local, $voyagent, $local);
         }
         self::assertSame(['numero', 'nature', 'nom', 'telephone', 'email', 'objet', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'message', 'creeLe', 'accuseEnvoyeLe'], $type['champs']);
-        self::assertSame(['configuration' => 'configuration', 'fichier' => 'fichier'], $type['relations']);
+        self::assertSame(['configuration' => 'configuration', 'fichier' => 'fichier', 'creation' => 'atelier_creation'], $type['relations']);
         self::assertSame(['finitions' => 'finition'], $type['listes']);
     }
 

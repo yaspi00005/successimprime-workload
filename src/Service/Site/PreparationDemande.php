@@ -9,6 +9,7 @@ use App\Entity\DevisDetailFinition;
 use App\Entity\DevisDetails;
 use App\Entity\ProduitConfiguration;
 use App\Entity\Prospect;
+use App\Service\Atelier\TarifAtelier;
 use App\Service\EspaceClient\NouvelleCommande;
 
 /**
@@ -23,9 +24,11 @@ use App\Service\EspaceClient\NouvelleCommande;
 final class PreparationDemande
 {
     /**
+     * @param array{paliers: list<array{quantite: int, pourcentage: float}>, face_en_plus: int, paliers_b2b: bool}|null $tarifAtelier réglages de l'Atelier 3D (TarifAtelier::reglages)
+     *
      * @return array{client: ?Clients, nouveauClient: bool, prospect: ?Prospect, devis: ?Devis, aChiffrer: ?string}
      */
-    public static function construire(DemandeDevis $demande, ?Clients $existant, \DateTimeImmutable $le): array
+    public static function construire(DemandeDevis $demande, ?Clients $existant, \DateTimeImmutable $le, ?array $tarifAtelier = null): array
     {
         $resultat = ['client' => $existant, 'nouveauClient' => false, 'prospect' => null, 'devis' => null, 'aChiffrer' => null];
 
@@ -48,7 +51,14 @@ final class PreparationDemande
 
         if (null !== $demande->getConfiguration()) {
             try {
-                $devis->addDevisDetail(self::ligneDevis($demande->getConfiguration(), (int) ($demande->getQuantite() ?? 1), $demande->getLargeurCm(), $demande->getHauteurCm(), self::finitionsChoisies($demande)));
+                $ligne = self::ligneDevis($demande->getConfiguration(), (int) ($demande->getQuantite() ?? 1), $demande->getLargeurCm(), $demande->getHauteurCm(), self::finitionsChoisies($demande));
+                $creation = $demande->getCreation();
+                if (null !== $creation && null !== $tarifAtelier) {
+                    // Modèle de l'Atelier 3D : seconde face et palier de quantité, comme le visiteur les a vus (prix public).
+                    TarifAtelier::appliquer($ligne, \count($creation->facesMarquees()), $tarifAtelier, false);
+                    $ligne->setDesignation(mb_substr($creation->getDesignation(), 0, 255));
+                }
+                $devis->addDevisDetail($ligne);
             } catch (\DomainException $e) {
                 // Au-delà du maximum, taille hors limites... : l'équipe chiffre elle-même.
                 $resultat['aChiffrer'] = $e->getMessage();
@@ -163,6 +173,9 @@ final class PreparationDemande
         }
         if (null !== $demande->getFichier()) {
             $lignes[] = 'Fichier joint : '.$demande->getFichier()->getNomOriginal();
+        }
+        if (null !== $demande->getCreation()) {
+            $lignes[] = \sprintf('Modèle de l\'Atelier 3D %s : vues et images dans Ventes › Créations Atelier 3D.', $demande->getCreation()->getNumero() ?? '');
         }
 
         return implode("\n", $lignes);

@@ -4,12 +4,14 @@ namespace App\Service\Site;
 
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
+use App\Entity\CreationAtelier;
 use App\Entity\DemandeDevis;
 use App\Entity\Devis;
 use App\Entity\Finition;
 use App\Entity\SynchroJournal;
 use App\Repository\CompteClientRepository;
 use App\Service\AnalyseFichierImpression;
+use App\Service\Atelier\TarifAtelier;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\NotificationsClient;
 use App\Service\GrilleTarifaire;
@@ -47,6 +49,7 @@ final class DemandesSite
         private readonly NotificationService $notifications,
         private readonly CompteClientRepository $comptes,
         private readonly LoggerInterface $logger,
+        private readonly TarifAtelier $tarifAtelier,
         #[Autowire(service: 'limiter.site_accuse_telephone')] private readonly RateLimiterFactoryInterface $limiteAccuse,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
@@ -95,7 +98,7 @@ final class DemandesSite
      *
      * @throws \DomainException
      */
-    public function enregistrer(string $nature, array $valeurs, ?UploadedFile $fichier, \DateTimeImmutable $le): DemandeDevis
+    public function enregistrer(string $nature, array $valeurs, ?UploadedFile $fichier, \DateTimeImmutable $le, ?CreationAtelier $creation = null): DemandeDevis
     {
         if (null !== $fichier) {
             self::verifierFichier($fichier);
@@ -117,6 +120,11 @@ final class DemandesSite
             }
         } elseif (null !== ($valeurs['quantite'] ?? null)) {
             $demande->setQuantite($valeurs['quantite']);
+        }
+        if (null !== $creation) {
+            // Modèle de l'Atelier 3D : ses vues et images sont déjà rangées ; l'image du devant sert de fichier joint.
+            $demande->setCreation($creation)->setDesignation($creation->getDesignation())
+                ->setFichier($creation->getImageDevant() ?? $creation->getImageDos() ?? $creation->getRenduDevant());
         }
 
         $chemin = null;
@@ -210,7 +218,7 @@ final class DemandesSite
             return 'Déjà préparée';
         }
         $le = new \DateTimeImmutable();
-        $r = PreparationDemande::construire($demande, $this->comptes->clientDuTelephone($demande->getTelephone()), $le);
+        $r = PreparationDemande::construire($demande, $this->comptes->clientDuTelephone($demande->getTelephone()), $le, $this->tarifAtelier->reglages());
         $aEnvoyer = [];
 
         if ($r['nouveauClient']) {

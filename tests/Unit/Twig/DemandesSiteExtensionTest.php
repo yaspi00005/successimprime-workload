@@ -21,4 +21,17 @@ final class DemandesSiteExtensionTest extends TestCase
         self::assertSame('Demandes du site', $onglets[$rang]['libelle']);
         self::assertSame('ROLE_DEVIS', $onglets[$rang]['role']);
     }
+
+    public function testCreationsAtelierDansLesVentes(): void
+    {
+        $navigation = new NavigationExtension();
+
+        self::assertSame('ventes', $navigation->sectionPourRoute('app_creations_atelier_voir'));
+        $onglets = $navigation->ongletsSection('ventes');
+        $rang = $navigation->ongletActif('app_creations_atelier_index');
+        self::assertNotNull($rang);
+        self::assertSame('Créations Atelier 3D', $onglets[$rang]['libelle']);
+        // Le graphiste (Devis ou Commandes) les voit ; pas le livreur ni la caisse.
+        self::assertSame(['ROLE_DEVIS', 'ROLE_COMMANDE'], $onglets[$rang]['role']);
+    }
 }

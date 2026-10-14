@@ -1,0 +1,131 @@
+/*
+ * Équipe › Performance et primes (maquettes N01 à N04) : vue d'ensemble
+ * du mois, évaluation d'un agent, barème par rôle et, dans Mon espace,
+ * « Ma performance » et « Ma prime » sur téléphone.
+ * S'appuie sur finances.css (cartes, chiffres, tableaux, jauges, pastilles).
+ */
+
+/* Titre de page et boutons d'en-tête sur deux lignes au besoin (comme les maquettes) plutôt que coupés. */
+@media (min-width: 768px) {
+  .si-header .si-titre-page .dashboard_bar { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.12; }
+  .si-header .si-btn-entete { white-space: normal; max-width: 10rem; line-height: 1.15; text-align: left; }
+}
+
+/* Couleurs des paliers : 90+ vert, 80+ bleu, 70+ orange, 60+ rouge, sinon gris */
+.si-pr-vert { --si-pr: #16A34A; --si-pr-fond: #DCFCE7; --si-pr-texte: #15803D; }
+.si-pr-bleu { --si-pr: #0F4590; --si-pr-fond: #E7EEFA; --si-pr-texte: #0F4590; }
+.si-pr-orange { --si-pr: #EA580C; --si-pr-fond: #FFEDD5; --si-pr-texte: #C2410C; }
+.si-pr-rouge { --si-pr: #DC2626; --si-pr-fond: #FEE2E2; --si-pr-texte: #B91C1C; }
+.si-pr-gris { --si-pr: #94A3B8; --si-pr-fond: #EEF0F3; --si-pr-texte: #5B6575; }
+
+/* Navigation par mois */
+.si-pr-mois { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.si-pr-mois input[type="month"] { width: auto; min-width: 170px; border-radius: 10px; font-weight: 600; }
+.si-pr-mois .text-muted { font-size: 13px; }
+
+/* Vue d'ensemble (N01) */
+.si-pr-agent { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.si-pr-agent a, .si-pr-agent strong { font-weight: 700; color: #0F172A; text-decoration: none; line-height: 1.25; }
+.si-pr-agent a:hover { color: #0F4590; }
+.si-pr-avatar { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; color: #fff; font-size: 12.5px; font-weight: 800; letter-spacing: .02em; }
+.si-pr-score { display: flex; align-items: center; gap: 14px; min-width: 210px; }
+.si-pr-score b { font-size: 21px; font-weight: 800; color: var(--si-pr); line-height: 1; white-space: nowrap; }
+.si-pr-score b small { display: inline; font-size: 12px; font-weight: 500; color: #64748B; }
+.si-pr-score .si-fin-jauge { flex: 1; height: 9px; min-width: 90px; }
+.si-pr-score .si-fin-jauge > span, .si-pr-jauge > span { background: var(--si-pr); }
+.si-pr-table td { font-size: 14px; }
+.si-pr-table td.si-pr-role { color: #475569; font-size: 13.5px; line-height: 1.3; }
+.si-pr-paliers { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.si-pr-palier { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--si-pr-fond); color: var(--si-pr-texte); }
+.si-pr-palier.si-pr-gris { font-weight: 500; }
+.si-pr-statut { background: var(--si-pr-fond); color: var(--si-pr-texte); }
+.si-pr-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Évaluation d'un agent (N02) */
+.si-pr-grille { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+.si-pr-colonne { display: grid; gap: 20px; min-width: 0; }
+.si-pr-criteres td { font-size: 14px; }
+.si-pr-criteres td:first-child { font-weight: 600; max-width: 220px; }
+.si-pr-criteres .si-pr-poids { color: #64748B; white-space: nowrap; }
+.si-pr-criteres .si-pr-poids small { color: #0F4590; font-weight: 700; }
+.si-pr-criteres .si-pr-note { font-size: 16px; font-weight: 800; text-align: right; white-space: nowrap; }
+.si-pr-criteres tr.si-pr-manquant td { color: #94A3B8; }
+.si-pr-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; background: #E7EEFA; color: #0F4590; }
+.si-pr-badge-manuel { background: #FFEDD5; color: #C2410C; }
+.si-pr-badge-vide { background: #EEF0F3; color: #5B6575; }
+.si-pr-carte-score { text-align: center; }
+.si-pr-carte-score h2 { font-size: 15px !important; font-weight: 500 !important; color: #475569 !important; }
+.si-pr-gros { display: block; font-size: 76px; font-weight: 900; line-height: 1; color: var(--si-pr); letter-spacing: -0.03em; }
+.si-pr-sous { display: block; margin: 6px 0 10px; color: #64748B; font-size: 13.5px; }
+.si-pr-jauge { display: block; height: 9px; border-radius: 999px; background: #EEF2F7; overflow: hidden; }
+.si-pr-jauge > span { display: block; height: 100%; border-radius: 999px; }
+.si-pr-lignes { margin: 16px 0 0; text-align: left; }
+.si-pr-lignes > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 15px; color: #334155; }
+.si-pr-lignes dt { font-weight: 500; }
+.si-pr-lignes dd { margin: 0; font-weight: 700; color: #0F172A; white-space: nowrap; }
+.si-pr-lignes > div.si-pr-prime { border-top: 1px solid #E2E8F0; margin-top: 8px; padding-top: 12px; align-items: baseline; }
+.si-pr-lignes > div.si-pr-prime dd { font-size: 26px; font-weight: 800; color: #0F4590; }
+.si-pr-alerte { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: #FEF2F2; color: #B91C1C; font-size: 13px; text-align: left; }
+.si-pr-info { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: #F1F5F9; color: #475569; font-size: 13px; text-align: left; }
+.si-pr-six { display: flex; align-items: flex-end; gap: 12px; height: 150px; margin-top: 8px; }
+.si-pr-six > div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.si-pr-six .si-pr-barre { display: block; width: 100%; max-width: 46px; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, #3B6FD8, #0F4590); min-height: 3px; }
+.si-pr-six .si-pr-barre-courant { background: linear-gradient(180deg, #F43F5E, #E11D48); }
+.si-pr-six .si-pr-barre-vide { background: #E2E8F0; }
+.si-pr-six small { font-size: 11.5px; font-weight: 700; color: #334155; margin-bottom: 4px; }
+.si-pr-six span.si-pr-lettre { margin-top: 8px; font-size: 12.5px; color: #64748B; text-transform: uppercase; }
+.si-pr-form label { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+.si-pr-form .form-control, .si-pr-form .form-select { border-radius: 10px; }
+.si-pr-versions { list-style: none; margin: 0; padding: 0; }
+.si-pr-versions li { padding: 10px 0; border-bottom: 1px solid #EEF2F7; font-size: 13.5px; color: #334155; }
+.si-pr-versions li:last-child { border-bottom: 0; }
+.si-pr-versions li strong { color: #0F172A; }
+.si-pr-versions li small { display: block; color: #64748B; }
+
+/* Barème par rôle (N03) */
+.si-pr-onglets { display: flex; flex-wrap: wrap; gap: 4px 26px; margin: 0; padding: 0 0 0 4px; list-style: none; border-bottom: 1px solid #E2E8F0; }
+.si-pr-onglets a { display: inline-block; padding: 8px 2px 10px; color: #475569; font-size: 15px; font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.si-pr-onglets a.active { color: #0F4590; border-bottom-color: #0F4590; }
+.si-pr-bareme td { font-size: 14px; }
+.si-pr-bareme input.form-control { border-radius: 8px; font-size: 14px; padding: 4px 8px; }
+.si-pr-bareme .si-pr-poids-saisie { width: 78px; text-align: right; font-weight: 700; }
+.si-pr-bareme .si-pr-objectif-saisie { width: 190px; flex-wrap: nowrap; }
+.si-pr-total { font-size: 13.5px; font-weight: 700; color: #0F4590; }
+.si-pr-total.si-pr-faux { color: #DC2626; }
+.si-pr-regles { list-style: none; margin: 0; padding: 0; }
+.si-pr-regles li { position: relative; padding: 4px 0 4px 22px; font-size: 14px; color: #334155; }
+.si-pr-regles li::before { content: "\2713"; position: absolute; left: 2px; top: 4px; color: #0F4590; font-weight: 700; }
+
+/* Mon espace : Ma performance, Ma prime (N04) */
+.si-pr-mobile { display: grid; gap: 16px; max-width: 560px; }
+.si-pr-mobile .card { text-align: left; }
+.si-pr-mobile .card.si-pr-carte-score { text-align: center; }
+.si-pr-retour { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: #334155; text-decoration: none; }
+.si-pr-retour i { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #fff; box-shadow: var(--si-carte-ombre); font-size: 12px; color: #334155; }
+.si-pr-barres-criteres { list-style: none; margin: 0; padding: 0; }
+.si-pr-barres-criteres li { padding: 6px 0 8px; }
+.si-pr-barres-criteres li > div { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; color: #1E293B; margin-bottom: 6px; }
+.si-pr-barres-criteres li b { font-weight: 800; }
+.si-pr-conseil { background: #E7EEFA; color: #0F4590; border-radius: 14px; padding: 14px 16px; font-size: 14.5px; font-weight: 500; }
+.si-pr-montant { display: block; font-size: 46px; font-weight: 900; color: #0F4590; letter-spacing: -0.02em; line-height: 1.1; }
+.si-pr-paliers-liste { list-style: none; margin: 0; padding: 0; }
+.si-pr-paliers-liste li { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #EEF2F7; font-size: 15px; color: #334155; }
+.si-pr-paliers-liste li:last-child { border-bottom: 0; }
+.si-pr-paliers-liste li.si-pr-atteint { color: #15803D; font-weight: 800; }
+.si-pr-historique { list-style: none; margin: 0; padding: 0; }
+.si-pr-historique li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid #EEF2F7; font-size: 15px; color: #334155; }
+.si-pr-historique li:last-child { border-bottom: 0; }
+.si-pr-historique li b { color: #0F172A; white-space: nowrap; }
+
+@media (max-width: 1199.98px) {
+  .si-pr-grille { grid-template-columns: 1fr; }
+}
+@media (max-width: 575.98px) {
+  .si-pr-score { min-width: 0; gap: 8px; }
+  .si-pr-score .si-fin-jauge { display: none; }
+  .si-pr-gros { font-size: 64px; }
+  .si-pr-montant { font-size: 40px; }
+  .si-pr-onglets { gap: 4px 16px; }
+  .si-pr-onglets a { font-size: 14px; }
+  .si-pr-mobile { gap: 14px; }
+}

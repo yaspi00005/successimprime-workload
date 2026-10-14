@@ -27,6 +27,13 @@
 					<span class="si-p-neutre">{{ actions.pourcentage is null ? 'aucune ligne' : actions.pourcentage ~ ' % dans les délais' }}</span>
 				</article>
 			{% endif %}
+			{% if performance is not null %}
+				<a class="card text-reset text-decoration-none" href="{{ path('app_mon_espace_performance') }}">
+					<h2>Ma performance</h2>
+					<strong>{{ performance.resultat.score ?? '—' }}{{ performance.resultat.score is defined and performance.resultat.score is not null ? ' / 100' }}</strong>
+					<span class="si-p-neutre">{{ performance.resultat is defined ? 'prime estimée ' ~ performance.resultat.prime|number_format(0, ',', ' ') ~ ' F' : 'voir ma note et ma prime' }}</span>
+				</a>
+			{% endif %}
 			<article class="card">
 				<h2>Congés</h2>
 				{% if conge.actif %}
@@ -46,6 +53,8 @@
 				{% if conge.actif %}<a href="{{ path('app_mon_espace_demande', {type: 'conge'}) }}" class="btn btn-light si-btn-entete"><i class="fas fa-umbrella-beach me-1"></i>Demander un congé</a>{% endif %}
 				<a href="{{ path('app_mon_espace_demande', {type: 'reclamation'}) }}" class="btn btn-light si-btn-entete"><i class="fas fa-hand-holding-usd me-1"></i>Réclamer une somme due</a>
 				{% if reglage('avantages', 'frais_medicaux') > 0 %}<a href="{{ path('app_mon_espace_demande', {type: 'frais_medicaux'}) }}" class="btn btn-light si-btn-entete"><i class="fas fa-notes-medical me-1"></i>Frais médicaux ({{ reglage('avantages', 'frais_medicaux') }} % remboursés)</a>{% endif %}
+				{% if performance is not null %}<a href="{{ path('app_mon_espace_prime') }}" class="btn btn-light si-btn-entete"><i class="fas fa-trophy me-1"></i>Ma prime</a>{% endif %}
+				{% if biens > 0 %}<a href="{{ path('app_immobilisations_registre') }}" class="btn btn-light si-btn-entete"><i class="fas fa-laptop me-1"></i>Biens qui me sont confiés ({{ biens }})</a>{% endif %}
 			</div>
 		</section>
 

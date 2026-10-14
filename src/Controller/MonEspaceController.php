@@ -8,9 +8,12 @@ use App\Repository\BulletinPaieRepository;
 use App\Service\EspaceEmploye\Paie;
 use App\Entity\User;
 use App\Repository\DemandeEmployeRepository;
+use App\Repository\ImmobilisationRepository;
+use App\Security\AccesEnLigne;
 use App\Service\ActionsCaisse\ActionsCaisse;
 use App\Service\EspaceEmploye\EspaceEmploye;
 use App\Service\Pointage\Pointages;
+use App\Service\Primes\Primes;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -35,11 +38,14 @@ final class MonEspaceController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Pointages $pointages, ActionsCaisse $actions, BulletinPaieRepository $bulletins): Response
+    public function index(Pointages $pointages, ActionsCaisse $actions, BulletinPaieRepository $bulletins, Primes $primes, ImmobilisationRepository $immobilisations, AccesEnLigne $acces): Response
     {
         $moi = $this->employe();
         $maintenant = new \DateTimeImmutable();
         $debutMois = $maintenant->modify('first day of this month')->setTime(0, 0);
+        // Ma performance (N04) et biens confiés : ERP local seulement ; sa propre note, si la tuile Primes le permet.
+        $local = !$acces->estEnLigne();
+        $performance = $local && null !== $primes->role($moi) ? ($primes->agentVoitNote() ? $primes->fiche($moi, $debutMois, $maintenant) : []) : null;
 
         return $this->render('mon_espace/index.html.twig', [
             'nom' => Pointages::nom($moi),
@@ -49,6 +55,8 @@ final class MonEspaceController extends AbstractController
             'demandes' => $this->demandes->findBy(['utilisateur' => $moi], ['creeLe' => 'DESC'], 30),
             'bulletins' => $bulletins->visiblesPour($moi),
             'maintenant' => $maintenant,
+            'performance' => $performance,
+            'biens' => $local ? \count($immobilisations->registre(null, false, $moi)) : 0,
         ]);
     }
 

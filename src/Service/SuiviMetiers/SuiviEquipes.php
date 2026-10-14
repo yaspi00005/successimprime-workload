@@ -111,6 +111,58 @@ final class SuiviEquipes
         ];
     }
 
+    /**
+     * Points gagnés et possibles d'une personne sur un mois entier (ou
+     * jusqu'à maintenant pour le mois en cours), pour son métier : critère
+     * « Points du métier » des primes (docs/immobilisations-primes.md).
+     *
+     * @return array{gagnes: int, possibles: int}
+     */
+    public function pointsDuMois(User $u, string $metier, \DateTimeImmutable $mois, \DateTimeImmutable $maintenant): array
+    {
+        $debut = $mois->modify('first day of this month')->setTime(0, 0);
+        $fin = min($debut->modify('+1 month'), $maintenant);
+        if ($metier === Bareme::LIVREUR) {
+            $m = $this->livreurs->mois($u, $debut);
+
+            return ['gagnes' => $m['gagnes'], 'possibles' => $m['possibles']];
+        }
+        if ($metier === Bareme::ENTRETIEN) {
+            $m = $this->entretien->mois($u, $fin->modify('-1 second'));
+
+            return ['gagnes' => $m['gagnes'], 'possibles' => $m['possibles']];
+        }
+        if ($metier === Bareme::GRAPHISTE) {
+            $valides = $this->em->getRepository(Conception::class)->createQueryBuilder('c')
+                ->where('c.graphiste = :g')->andWhere('c.valideLe >= :d')->andWhere('c.valideLe < :f')
+                ->setParameter('g', $u)->setParameter('d', $debut)->setParameter('f', $fin)
+                ->getQuery()->getResult();
+            $valides = array_filter($valides, static fn (Conception $c): bool => $c->getPoints() !== null);
+
+            return [
+                'gagnes' => array_sum(array_map(static fn (Conception $c): int => (int) $c->getPoints(), $valides)),
+                'possibles' => array_sum(array_map(static fn (Conception $c): int => (int) $c->getPointsPossibles(), $valides)),
+            ];
+        }
+        $bareme = $this->parametres->bareme();
+        /** @var list<OrdreProduction> $ordres */
+        $ordres = $this->em->getRepository(OrdreProduction::class)->createQueryBuilder('o')
+            ->where('o.operateur = :u')->andWhere('o.statut = :termine')
+            ->andWhere('o.termineLe >= :d')->andWhere('o.termineLe < :f')
+            ->setParameter('u', $u)->setParameter('termine', OrdreProduction::STATUT_TERMINE)
+            ->setParameter('d', $debut)->setParameter('f', $fin)
+            ->getQuery()->getResult();
+        $gagnes = 0;
+        $possibles = 0;
+        foreach ($ordres as $o) {
+            $faits = FileMachine::faitsOrdre($o);
+            $gagnes += $bareme->points($faits);
+            $possibles += $bareme->possibles(['p_avant_heure' => 1] + array_intersect_key($faits, ['p_10m2' => 1]));
+        }
+
+        return ['gagnes' => $gagnes, 'possibles' => $possibles];
+    }
+
     /** « Bakary C. » */
     public static function court(string $nom): string
     {

@@ -1,0 +1,10 @@
+{#
+	Gabarit des écrans Performance et primes (maquettes N01 à N04) :
+	feuilles de style Finances (cartes, tableaux, jauges) et Primes.
+#}
+{% extends 'finances/_base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/primes.css') }}" rel="stylesheet">
+{% endblock %}

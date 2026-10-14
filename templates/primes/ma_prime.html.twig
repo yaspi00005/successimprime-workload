@@ -1,0 +1,70 @@
+{#
+	Mon espace › Ma prime (maquette N04, écran de droite) : prime estimée
+	du mois de l'agent connecté, paliers et primes des mois validés.
+	La prime validée passe sur le bulletin comme somme due ; rien n'est
+	versé automatiquement.
+#}
+{% extends 'primes/_base.html.twig' %}
+{% import 'primes/_macros.html.twig' as p %}
+
+{% block title %}Ma prime{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_mon_espace_performance') }}" class="btn btn-light btn-sm si-btn-entete">Ma performance</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-pr si-pr-mobile">
+		<a href="{{ path('app_mon_espace_index') }}" class="si-pr-retour"><i class="fas fa-chevron-left" aria-hidden="true"></i>Mon espace</a>
+
+		{% if fiche is not null %}
+			{% set r = fiche.resultat %}
+			{% set e = fiche.enVigueur %}
+			<section class="card" aria-label="Prime du mois">
+				<h2 class="si-fin-gris" style="font-size: 15px">Prime {{ fiche.enCours ? 'estimée ' }}{{ p.de_mois(fiche.mois) }}</h2>
+				<span class="si-pr-montant">{{ p.f(r.prime) }}</span>
+				<p class="si-fin-note mt-1 mb-0">
+					{{ r.taux }} % de la prime cible ({{ r.primeCible|number_format(0, ',', ' ') }} F)
+					{%- if fiche.fige and e and e.primeEstValidee %} · validée par la direction le {{ e.primeValideeLe|date('j/n') }}
+					{%- elseif fiche.fige %} · évaluation validée, en attente de la direction
+					{%- else %} · estimation du jour, validée après la fin du mois{% endif %}
+				</p>
+				{% if fiche.evaluation and fiche.evaluation.suspendue %}
+					<p class="si-pr-alerte">Prime suspendue ce mois-ci{{ fiche.evaluation.motifSuspension ? ' : ' ~ fiche.evaluation.motifSuspension }}.</p>
+				{% endif %}
+			</section>
+		{% elseif not a_un_role %}
+			<section class="card"><p class="mb-0">Votre poste n'a pas de prime de performance.</p></section>
+		{% elseif not voit_note %}
+			<section class="card"><p class="mb-0">La prime du mois s'affiche ici une fois l'évaluation validée par votre responsable.</p></section>
+		{% endif %}
+
+		<section class="card" aria-labelledby="titre-calcul">
+			<h2 id="titre-calcul">Comment elle est calculée</h2>
+			<ul class="si-pr-paliers-liste">
+				{% set score = fiche ? fiche.resultat.score : null %}
+				{% for palier in paliers|filter(pa => pa.de is not null) %}
+					<li class="{{ score is not null and score >= palier.de and score <= palier.a ? 'si-pr-atteint' }}"><span>Score {{ palier.de }} à {{ palier.a }}</span><span>{{ palier.taux }} %</span></li>
+				{% endfor %}
+			</ul>
+			<p class="si-fin-note">En dessous de {{ (paliers|last).a + 1 }}, pas de prime. Le score vient de vos ventes, avis clients, pointage… et de l'appréciation de votre responsable.</p>
+		</section>
+
+		<section class="card" aria-labelledby="titre-mes-primes">
+			<h2 id="titre-mes-primes">Mes primes</h2>
+			{% if historique is empty %}
+				<p class="si-fin-note mt-0">Aucune prime validée pour l'instant.</p>
+			{% else %}
+				<ul class="si-pr-historique">
+					{% for v in historique %}
+						<li>
+							<span>{{ p.mois(v.mois)|capitalize }} · score {{ v.score ?? '—' }}{% if not v.primeEstValidee %} <small class="text-muted">· en attente</small>{% endif %}</span>
+							<b>{{ p.f(v.suspendue ? 0 : v.prime) }}</b>
+						</li>
+					{% endfor %}
+				</ul>
+				<p class="si-fin-note">Une prime validée passe sur votre bulletin de paie, avec les autres sommes dues.</p>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}

@@ -17,8 +17,8 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final class MesStatistiques
 {
-    private const DEVIS_EMIS = [Devis::STATUT_ENVOYE, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_EXPIRE, Devis::STATUT_CONVERTI];
-    private const DEVIS_GAGNES = [Devis::STATUT_ACCEPTE, Devis::STATUT_CONVERTI];
+    public const DEVIS_EMIS = [Devis::STATUT_ENVOYE, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_EXPIRE, Devis::STATUT_CONVERTI];
+    public const DEVIS_GAGNES = [Devis::STATUT_ACCEPTE, Devis::STATUT_CONVERTI];
 
     public function __construct(private readonly EntityManagerInterface $em)
     {

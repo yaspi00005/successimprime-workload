@@ -76,7 +76,7 @@ jeton inconnu, expiré ou révoqué ; 403 sans le droit ; 404 fiche introuvable.
 
 L'API n'est ouverte que sur l'ERP local. Sur le serveur en ligne
 (`APP_EN_LIGNE=1`), `/api/v1` répond 404 : l'administration en ligne exige
-un appareil autorisé et un code SMS, qu'un jeton contournerait. La
+un appareil autorisé et un code de sécurité (e-mail ou SMS), qu'un jeton contournerait. La
 synchronisation entre l'ERP et le site garde ses propres adresses signées
 (`/api/synchro`, voir docs/synchronisation.md).
 

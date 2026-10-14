@@ -88,10 +88,10 @@ Fichier `/srv/successimprim/.env.local` (droits 600, propriétaire `succes`). Le
 | DEFAULT_URI | https://succesimprim.com |
 | DATABASE_URL | mysql://succes:<mot de passe>@127.0.0.1:3306/succesimprim?serverVersion=10.11-MariaDB&charset=utf8mb4 |
 | SYNC_CLE | la clé de `app:synchro --nouvelle-cle`, la même que sur l'ERP local |
-| ORANGE_SMS_CLIENT_ID, ORANGE_SMS_CLIENT_SECRET, ORANGE_SMS_SENDER_ADDRESS, ORANGE_SMS_SENDER_NAME | compte SMS Orange : sans lui, le personnel ne reçoit pas son code de connexion en ligne. L'expéditeur est celui du contrat, `tel:+2230000` au Mali, pas un numéro de téléphone ; les numéros maliens à 8 chiffres reçoivent +223 tout seuls |
+| ORANGE_SMS_CLIENT_ID, ORANGE_SMS_CLIENT_SECRET, ORANGE_SMS_SENDER_ADDRESS, ORANGE_SMS_SENDER_NAME | compte SMS Orange : sans lui, les clients et les employés sans adresse e-mail ne reçoivent pas leur code de connexion en ligne. L'expéditeur est celui du contrat, `tel:+2230000` au Mali, pas un numéro de téléphone ; les numéros maliens à 8 chiffres reçoivent +223 tout seuls |
 | ORANGE_MONEY_CLIENT_ID, ORANGE_MONEY_CLIENT_SECRET, ORANGE_MONEY_MERCHANT_KEY, ORANGE_MONEY_API, ORANGE_MONEY_DEVISE | paiement en ligne (docs/espace-client.md) |
 | VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT | notifications sur le téléphone des clients (`app:push:cles`) |
-| MAILER_DSN, MAILER_FROM_ADDRESS | envoi des e-mails |
+| MAILER_DSN, MAILER_FROM_ADDRESS | envoi des e-mails, dont les codes de connexion des clients et du personnel. Sans l'une des deux, ces codes partent par SMS. Voir « Boîte e-mail LWS » plus bas |
 | SAUVEGARDE_DIR | dossier des sauvegardes du serveur |
 | ANTHROPIC_API_KEY | clé de l'API Claude (console Anthropic, « sk-ant-… ») pour l'assistant du site et de l'espace client (docs/assistant-client.md). Sans elle, l'assistant est caché |
 | ASSISTANT_MODELE | facultatif : impose un modèle à l'assistant (par défaut celui de la tuile Réglages › Assistant du site) |
@@ -99,6 +99,26 @@ Fichier `/srv/successimprim/.env.local` (droits 600, propriétaire `succes`). Le
 `SAUVEGARDE_CLE_HORS_SITE` ne va **jamais** sur le serveur en ligne : elle reste sur l'ERP local. À l'inverse, `ANTHROPIC_API_KEY` ne va que sur le serveur en ligne : l'ERP local n'en a pas besoin. `ASSISTANT_DEMO` (réponses de démonstration sans API) ne sert qu'en développement : jamais sur un serveur en service.
 
 Pour l'assistant, le serveur doit pouvoir appeler `https://api.anthropic.com` en HTTPS. Mettre un plafond de dépense mensuel dans la console Anthropic, en plus du plafond par jour de la tuile.
+
+### Boîte e-mail LWS (MAILER_DSN)
+
+Les codes de connexion partent par e-mail (moins cher que le SMS) depuis une boîte de l'hébergement LWS, par exemple `contact@succesimprim.com` :
+
+1. Dans le panneau LWS, créer la boîte (Mails › Adresses e-mail) et noter son mot de passe. Il ne va **que** dans `.env.local` du serveur en ligne : jamais dans le dépôt, un message ou une capture d'écran.
+2. Dans `/srv/successimprim/.env.local` :
+
+   ```
+   MAILER_DSN=smtps://contact%40succesimprim.com:MOT_DE_PASSE_DE_LA_BOITE@mail.succesimprim.com:465
+   MAILER_FROM_ADDRESS=contact@succesimprim.com
+   ```
+
+   - `smtps` et le port 465 : SMTP chiffré en SSL, comme l'indique LWS pour ses boîtes. Le serveur sortant (SMTP) est donné dans le panneau LWS ; c'est en général `mail.` suivi du domaine.
+   - L'identifiant est l'adresse complète, avec `@` écrit `%40` (sinon le `@` coupe l'adresse en deux). Même chose pour un caractère spécial du mot de passe : `@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`, `?` → `%3F`, `%` → `%25`.
+   - `MAILER_FROM_ADDRESS` est l'adresse de la boîte ; le nom affiché « Succès Imprim » s'ajoute tout seul.
+3. `sudo -u succes php bin/console cache:clear`, puis `app:verifier-installation` : la ligne « E-mail » passe à OK.
+4. Essai : « Recevoir un code » sur l'espace client avec le numéro d'une fiche qui a votre adresse e-mail. Le message arrive en quelques secondes (sinon, regarder les courriers indésirables).
+
+Si une variable manque, ou si LWS refuse l'envoi, les codes partent par SMS : `app:verifier-installation` le dit (« les codes de connexion partiront par SMS »).
 
 Puis :
 
@@ -172,16 +192,17 @@ Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trés
 
 Les comptes du personnel ne descendent pas par la synchronisation : mots de passe et données du personnel restent à l'atelier. Seules les personnes qui ont besoin de l'administration en ligne y ont un compte, créé sur le serveur :
 
-1. `php bin/console app:creer-utilisateur <identifiant>` (prénom, nom, téléphone qui reçoit le code, mot de passe ; `--role=` pour un autre rôle que la direction).
+1. `php bin/console app:creer-utilisateur <identifiant>` (prénom, nom, téléphone, e-mail qui reçoit le code de sécurité, mot de passe ; `--email=` pour le donner d'avance, `--role=` pour un autre rôle que la direction). Sans e-mail, le code part par SMS au téléphone.
 2. `php bin/console app:autoriser-appareil <identifiant> --nom="…"` donne un lien valable 5 minutes, à ouvrir sur l'appareil à autoriser. Le lien prend l'adresse de `DEFAULT_URI`. Les appareils suivants s'autorisent depuis Réglages › Sécurité › Appareils autorisés.
-3. Connexion sur /login : mot de passe, puis code par SMS. Sans les clés Orange SMS, aucun code ne part et personne ne se connecte en ligne.
+3. Connexion sur /login : mot de passe, puis code de sécurité envoyé à l'e-mail de l'employé (par SMS s'il n'en a pas, ou si l'e-mail n'est pas réglé). Il vaut 5 minutes ; 3 codes par personne en 15 minutes. Sans e-mail réglé ni clés Orange SMS, aucun code ne part et personne ne se connecte en ligne.
 
 ## Avant d'ouvrir au public
 
 - [ ] `app:verifier-installation` sans erreur sur les deux machines.
 - [ ] https://succesimprim.com montre l'accueil du site ; /robots.txt et /sitemap.xml répondent.
-- [ ] Un membre du personnel se connecte en ligne avec son appareil autorisé et le code SMS.
-- [ ] Un client se connecte à son espace et voit ses commandes.
+- [ ] Un membre du personnel se connecte en ligne avec son appareil autorisé et le code reçu par e-mail.
+- [ ] Un client reçoit son accès par WhatsApp depuis sa fiche (ERP local), se connecte la première fois avec ce code, choisit son mot de passe et voit ses commandes.
+- [ ] « Recevoir un code » envoie un e-mail à une fiche qui a une adresse, un SMS à une fiche qui n'en a pas.
 - [ ] Un paiement Orange Money de test arrive « en attente » au local.
 - [ ] Assistant : la clé posée (`app:verifier-installation`), la tuile Réglages › Assistant du site allumée au local et descendue en ligne ; une question sur le site reçoit une réponse, et la conversation arrive dans Clients › Assistant du site au local.
 - [ ] Une sauvegarde du serveur existe et se restaure (docs/sauvegardes.md).

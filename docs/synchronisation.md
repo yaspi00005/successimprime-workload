@@ -64,7 +64,7 @@ Toute autre modification faite en ligne d'une fiche du local est notée **Confli
 
 **Espace client (14/10/2026)** : l'état lu des notifications, les préférences de notification, les appareils connectés et la version de session restent sur le site (rien ne monte au local). Après le déploiement de la migration `Version20261014142129`, lancer `php bin/console app:synchro --initialiser=client` sur le local pour envoyer le nom du conseiller des fiches déjà suivies.
 
-Étapes suivantes : modification des autres coordonnées par le client en ligne (la raison sociale et le NIF passent déjà par une proposition à valider au local). Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code SMS.
+Étapes suivantes : modification des autres coordonnées par le client en ligne (la raison sociale et le NIF passent déjà par une proposition à valider au local). Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code (e-mail ou SMS), ou avec un accès envoyé par la boutique sur WhatsApp.
 
 ## Fonctionnement
 

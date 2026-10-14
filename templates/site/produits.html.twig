@@ -1,0 +1,79 @@
+{#
+	Nos produits (maquette 02) : filtre par univers (?categorie=, sans
+	JavaScript), une carte par produit publié avec son prix de départ public
+	et un lien vers le calculateur, le produit déjà choisi.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_produits' %}
+{% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
+{% set whatsapp = site_whatsapp('Bonjour Succès Imprim, je cherche un produit qui n\'est pas sur le site : ') %}
+{% set univers_choisi = choisi is not null ? univers[choisi] : null %}
+
+{% block title %}{{ univers_choisi ? univers_choisi.nom ~ ' · ' }}Nos produits · Succès Imprim, imprimerie à Bamako{% endblock %}
+{% block description %}Bâches, vinyle, micro-perforé, roll-up, textile DTF, cartes de visite et signalétique à Bamako : nos produits et leur prix de départ en FCFA. Calculez votre prix en ligne.{% endblock %}
+
+{% block entete %}<link rel="stylesheet" href="{{ asset('css/site-produits.css') }}">{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: 'Nos produits', ariane: 'Produits', accroche: 'Grand format, textile, petit format et signalétique : choisissez, calculez, commandez.'}) }}
+
+	<section class="si-section si-produits">
+		<div class="si-cadre">
+			{% if univers is empty %}
+				<div class="si-carte si-produits-vide">
+					<h2>Le catalogue arrive bientôt</h2>
+					<p>En attendant, l'atelier vous répond pour toute impression.</p>
+					{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Demander un devis</a>{% endif %}
+				</div>
+			{% else %}
+				{% if univers|length > 1 %}
+					<nav class="si-filtres" aria-label="Filtrer par univers">
+						<a href="{{ path('app_site_produits') }}" class="si-filtre{{ choisi is null ? ' actif' }}"{% if choisi is null %} aria-current="page"{% endif %}>Tous</a>
+						{% for u in univers %}
+							<a href="{{ path('app_site_produits', {categorie: u.ids|first}) }}" class="si-filtre{{ choisi is same as(loop.index0) ? ' actif' }}"{% if choisi is same as(loop.index0) %} aria-current="page"{% endif %}>{{ u.nom }}</a>
+						{% endfor %}
+					</nav>
+				{% endif %}
+
+				{{ include('site/_illustrations_produits.svg.twig') }}
+				<ul class="si-produits-grille">
+					{% for u in univers_choisi ? [univers_choisi] : univers %}
+						{% for p in u.produits %}
+							{% set calcul = p.configuration ? site_lien('app_site_calculateur', {produit: p.configuration}) : null %}
+							{% set lien = calcul ?? devis %}
+							<li class="si-produit si-famille-{{ u.famille }}">
+								<svg class="si-produit-dessin" aria-hidden="true" focusable="false"><use href="#si-dessin-{{ p.illustration }}"/></svg>
+								<div class="si-produit-corps">
+									<h2>{{ p.nom }}</h2>
+									{% if p.description %}<p class="si-produit-texte">{{ p.description }}</p>{% endif %}
+									<p class="si-produit-prix">
+										{% if p.prix %}
+											À partir de <strong>{{ p.prix.montant|number_format(0, ',', ' ') }}&nbsp;FCFA</strong> {{ p.prix.unite }}{% if p.prix.minimum > 1 %}<span> · minimum {{ p.prix.minimum|number_format(0, ',', ' ') }}</span>{% endif %}
+										{% else %}
+											Prix sur devis
+										{% endif %}
+									</p>
+									{% if lien %}<a href="{{ lien }}" class="si-produit-lien">{{ calcul ? 'Calculer mon prix' : 'Demander un devis' }} <span aria-hidden="true">→</span></a>{% endif %}
+								</div>
+							</li>
+						{% endfor %}
+					{% endfor %}
+				</ul>
+			{% endif %}
+
+			{% if devis or whatsapp %}
+				<aside class="si-produits-autre">
+					<div>
+						<h2>Un autre support, une autre taille&nbsp;?</h2>
+						<p>L'atelier imprime aussi sur mesure. Décrivez votre projet : nous vous répondons avec un prix.</p>
+					</div>
+					<div class="si-produits-autre-actions">
+						{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-bleu">Demander un devis</a>{% endif %}
+						{% if whatsapp %}<a href="{{ whatsapp }}" class="si-bouton si-bouton-whatsapp" target="_blank" rel="noopener">Écrire sur WhatsApp</a>{% endif %}
+					</div>
+				</aside>
+			{% endif %}
+		</div>
+	</section>
+{% endblock %}

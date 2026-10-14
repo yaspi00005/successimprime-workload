@@ -11,8 +11,8 @@
 	</li>
 {% endblock %}
 
-{% macro scene(s, cle, medias) %}
-	{% set couleurs = {chiffres: '#0F4590', photos: '#E8398A', video: '#1d1d1b', avis: '#FDC82A', promo: '#DE1028', texte: '#5b6478'} %}
+{% macro scene(s, cle, medias, nb_partenaires = 0) %}
+	{% set couleurs = {chiffres: '#0F4590', photos: '#E8398A', video: '#1d1d1b', avis: '#FDC82A', promo: '#DE1028', texte: '#5b6478', partenaires: '#2a9d8f'} %}
 	{% set types = constant('App\\Service\\ProgrammeEcranTv::TYPES') %}
 	{% set images = medias|filter(m => m.type == 'image') %}
 	{% set videos = medias|filter(m => m.type == 'video') %}
@@ -30,7 +30,9 @@
 					{%- if s.type == 'video' -%}
 						{%- if s.medias is empty %} · <span class="text-danger">aucune vidéo choisie, la scène ne passe pas</span>{% else %} · {{ s.medias[0] }}{% endif -%}
 					{%- elseif s.type == 'photos' -%}
-						{%- if images is empty %} · <span class="text-danger">aucune photo dans la bibliothèque</span>{% else %} · {{ s.medias is empty ? 'toutes les photos' : s.medias|length ~ ' photo(s)' }}{% endif -%}
+						{%- if s.medias is not empty %} · {{ s.medias|length }} photo(s){% elseif images is empty %} · réalisations publiées du site{% else %} · toutes les photos et les réalisations du site{% endif -%}
+					{%- elseif s.type == 'partenaires' -%}
+						{%- if nb_partenaires == 0 %} · <span class="text-danger">aucun partenaire visible avec logo, la scène ne passe pas</span>{% else %} · {{ nb_partenaires }} logo(s){% endif -%}
 					{%- endif -%}
 				</small>
 			</button>
@@ -86,9 +88,9 @@
 					</div>
 				{% elseif s.type == 'photos' %}
 					<div class="col-12">
-						<span class="si-libelle-champ">Photos de la scène (aucune cochée : toutes les photos, dans l'ordre de la bibliothèque)</span>
+						<span class="si-libelle-champ">Photos de la scène (aucune cochée : toutes les photos de la bibliothèque, puis les réalisations publiées sur le site)</span>
 						{% if images is empty %}
-							<p class="text-muted small mb-0">Ajoutez des photos dans la bibliothèque en bas de page.</p>
+							<p class="text-muted small mb-0">La scène montre les réalisations publiées sur le site, sans nom de client. Pour d'autres photos, ajoutez-les dans la bibliothèque en bas de page.</p>
 						{% else %}
 							<div class="si-scene-photos">
 								{% for m in images %}
@@ -111,6 +113,8 @@
 					</div>
 				{% elseif s.type == 'avis' %}
 					<div class="col-12"><p class="text-muted small mb-0">Un avis validé par passage, à la suite. Les avis se gèrent dans le bloc « Avis validés ».</p></div>
+				{% elseif s.type == 'partenaires' %}
+					<div class="col-12"><p class="text-muted small mb-0">Les logos des partenaires visibles sur le site, avec leur accord (12 au plus). Ils se gèrent dans Réglages › Site vitrine › Partenaires.</p></div>
 				{% elseif s.type == 'chiffres' %}
 					<div class="col-12"><p class="text-muted small mb-0">Commandes livrées, m² imprimés, clients servis et satisfaction, puis les commandes des 12 derniers mois. Chiffres de l'application, sans montant.</p></div>
 				{% endif %}
@@ -170,12 +174,12 @@
 
 					<div class="si-scenes" id="scenes">
 						{% for s in programme.scenes %}
-							{{ _self.scene(s, s.id, medias) }}
+							{{ _self.scene(s, s.id, medias, nbPartenaires) }}
 						{% endfor %}
 					</div>
 
 					<div class="dropdown mt-2">
-						<button type="button" class="btn si-scene-ajout w-100" data-bs-toggle="dropdown" aria-expanded="false">+ Ajouter une scène (photos, vidéo, texte, chiffres, avis, promo)</button>
+						<button type="button" class="btn si-scene-ajout w-100" data-bs-toggle="dropdown" aria-expanded="false">+ Ajouter une scène (photos, vidéo, texte, chiffres, avis, promo, partenaires)</button>
 						<ul class="dropdown-menu">
 							{% for type, libelle in constant('App\\Service\\ProgrammeEcranTv::TYPES') %}
 								<li><button type="button" class="dropdown-item" data-ajouter="{{ type }}">{{ libelle }}</button></li>
@@ -184,7 +188,7 @@
 					</div>
 
 					{% for type, modele in modeles %}
-						<template id="modele-{{ type }}">{{ _self.scene(modele|merge({resume: 'Toujours'}), '__CLE__', medias) }}</template>
+						<template id="modele-{{ type }}">{{ _self.scene(modele|merge({resume: 'Toujours'}), '__CLE__', medias, nbPartenaires) }}</template>
 					{% endfor %}
 
 					<div class="d-flex justify-content-end gap-2 mt-3">

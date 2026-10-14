@@ -126,7 +126,10 @@
 										<small>{% if l.route and (l.type != 'salaires' or is_granted('ROLE_RH')) %}<a href="{{ path(l.route, l.parametres) }}">{{ l.titre }}</a>{% else %}{{ l.titre }}{% endif %}{% if l.detail %} · {{ l.detail }}{% endif %}</small>
 									{% endif %}
 								</div>
-								<b>{% if j.total > 0 %}{{ m.f(j.total) }}{% endif %}{% if j.selon_declaration %}{{ j.total > 0 ? ' + ' }}<span class="si-fin-gris">selon déclaration</span>{% endif %}</b>
+								{# Le montant des salaires reste aux RH (et à la direction). #}
+								{% set salaires_caches = is_granted('ROLE_RH') ? 0 : j.lignes|filter(l => l.type == 'salaires')|reduce((total, l) => total + (l.montant ?? 0), 0) %}
+								{% set total_visible = j.total - salaires_caches %}
+								<b>{% if total_visible > 0 %}{{ m.f(total_visible) }}{% endif %}{% if salaires_caches > 0 %}{{ total_visible > 0 ? ' + ' }}<span class="si-fin-gris">salaires (RH)</span>{% endif %}{% if j.selon_declaration %}{{ total_visible > 0 or salaires_caches > 0 ? ' + ' }}<span class="si-fin-gris">selon déclaration</span>{% endif %}</b>
 							</li>
 						{% endfor %}
 					</ul>

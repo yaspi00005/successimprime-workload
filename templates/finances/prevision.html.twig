@@ -73,7 +73,7 @@
 					</svg>
 					<span class="si-fin-repere si-fin-repere-depart" style="left: 0; top: {{ trace.depart.y }}%"><small>aujourd’hui</small></span>
 					{% for r in trace.reperes %}
-						<span class="si-fin-repere{{ r.y > 78 ? ' si-fin-repere-haut' }}{{ r.x > 88 ? ' si-fin-repere-droite' }}" style="left: {{ r.x }}%; top: {{ r.y }}%" title="{{ r.libelle }} : {{ r.total|number_format(0, ',', ' ') }} F"><small>{{ r.libelle }}</small></span>
+						<span class="si-fin-repere{{ r.y > 78 ? ' si-fin-repere-haut' }}{{ r.x > 88 ? ' si-fin-repere-droite' }}" style="left: {{ r.x }}%; top: {{ r.y }}%" title="{{ r.libelle }}{% if r.libelle starts with 'Salaires' and not is_granted('ROLE_RH') %}{% else %} : {{ r.total|number_format(0, ',', ' ') }} F{% endif %}"><small>{{ r.libelle }}</small></span>
 					{% endfor %}
 					{% if point_bas.index > 0 %}
 						<span class="si-fin-repere si-fin-repere-bas" style="left: {{ trace.bas.x }}%; top: {{ trace.bas.y }}%" title="Point bas : {{ point_bas.solde|number_format(0, ',', ' ') }} F le {{ point_bas.date|date('d/m') }}"></span>
@@ -105,7 +105,7 @@
 					{% set libelles = {fournisseur: ['Échéancier fournisseurs', 'dépenses à payer'], salaires: ['Salaires nets', 'au jour de paie'], charge: ['Charges récurrentes', 'loyer, électricité, abonnements'], fiscal: ['Impôts et taxes', 'tâches du planning avec un montant'], planning: ['Achats et dépenses prévus', 'tâches du planning']} %}
 					{% for cle, l in libelles %}
 						{% if detail_sorties[cle] > 0 %}
-							<li><span>{{ l[0] }} <small>{{ l[1] }}</small></span><b>{{ m.f(detail_sorties[cle]) }}</b></li>
+							<li><span>{{ l[0] }} <small>{{ l[1] }}</small></span><b>{% if cle == 'salaires' and not is_granted('ROLE_RH') %}<span class="si-fin-gris">montant réservé aux RH</span>{% else %}{{ m.f(detail_sorties[cle]) }}{% endif %}</b></li>
 						{% endif %}
 					{% endfor %}
 					<li><span>Dépenses courantes moyennes <small>{{ m.f(courantes_par_jour) }} par jour : achats au comptant, carburant, entretien</small></span><b>{{ m.f(detail_sorties.courantes) }}</b></li>

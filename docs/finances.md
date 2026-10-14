@@ -12,6 +12,8 @@ Module Finances de l'ERP local, construit le 13/10/2026. Tout reste au local : r
 | F06 Rentabilité par commande, produit, machine | `/finances/rentabilite` | Coûts et marges |
 | F07 Finances du jour (téléphone) | `/finances/jour` | comme F01 |
 
+Le montant des salaires (échéancier F04, sorties prises en compte et repères de la courbe F05) n'apparaît qu'avec le droit RH : les autres voient « salaires (RH) » à la place. Les totaux et la courbe restent justes, car le montant y est compté.
+
 ## Réglages
 
 Réglages › Paramètres › tuile **Finances et budgets** : objectif de CA du mois (9 000 000 F par défaut), seuil d'alerte de trésorerie (2 000 000 F), seuil d'approbation des dépenses (100 000 F), coût d'une heure de main d'œuvre (1 000 F). À ajuster par la direction.

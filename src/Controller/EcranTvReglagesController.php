@@ -61,6 +61,7 @@ final class EcranTvReglagesController extends AbstractController
         return $this->render('ecran_tv/reglages.html.twig', [
             'programme' => $programme,
             'medias' => $this->ecranTv->medias(),
+            'nbPartenaires' => $this->ecranTv->nombreLogosPartenaires(),
             'boucle' => ProgrammeEcranTv::dureeBoucle($programme['scenes']),
             'nonPublie' => $this->ecranTv->aDesModificationsNonPubliees(),
             'publieLe' => $this->ecranTv->publieLe(),

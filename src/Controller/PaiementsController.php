@@ -36,24 +36,11 @@ final class PaiementsController extends AbstractController
         ]);
     }
 
+    /** Un paiement se saisit toujours à la caisse, rattaché à une commande. */
     #[Route('/new', name: 'app_paiements_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $entityManager): Response
+    public function new(): Response
     {
-        $paiement = new Paiements();
-        $form = $this->createForm(PaiementsType::class, $paiement);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($paiement);
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_paiements_index', [], Response::HTTP_SEE_OTHER);
-        }
-
-        return $this->render('paiements/new.html.twig', [
-            'paiement' => $paiement,
-            'form' => $form,
-        ]);
+        return $this->redirectToRoute('app_caisse_index', [], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/{id}', name: 'app_paiements_show', methods: ['GET'])]
@@ -64,16 +51,29 @@ final class PaiementsController extends AbstractController
         ]);
     }
 
+    /**
+     * Seul un paiement en attente se modifie ou se supprime : un paiement validé
+     * a déjà crédité la trésorerie, il se corrige en l'annulant.
+     */
     #[Route('/{id}/edit', name: 'app_paiements_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, Paiements $paiement, EntityManagerInterface $entityManager): Response
     {
-        $form = $this->createForm(PaiementsType::class, $paiement);
+        if (!$paiement->estEnAttente()) {
+            $this->addFlash('error', 'Seul un paiement en attente peut être modifié. Un paiement validé se corrige en l\'annulant.');
+
+            return $this->redirectToRoute('app_paiements_show', ['id' => $paiement->getId()], Response::HTTP_SEE_OTHER);
+        }
+
+        $form = $this->createForm(PaiementsType::class, $paiement, [
+            'est_admin' => $this->isGranted('ROLE_ADMIN'),
+            'utilisateur' => $this->utilisateurConnecte(),
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $entityManager->flush();
 
-            return $this->redirectToRoute('app_paiements_index', [], Response::HTTP_SEE_OTHER);
+            return $this->redirectToRoute('app_paiements_show', ['id' => $paiement->getId()], Response::HTTP_SEE_OTHER);
         }
 
         return $this->render('paiements/edit.html.twig', [
@@ -85,6 +85,12 @@ final class PaiementsController extends AbstractController
     #[Route('/{id}', name: 'app_paiements_delete', methods: ['POST'])]
     public function delete(Request $request, Paiements $paiement, EntityManagerInterface $entityManager): Response
     {
+        if (!$paiement->estEnAttente()) {
+            $this->addFlash('error', 'Seul un paiement en attente peut être supprimé. Un paiement validé se corrige en l\'annulant.');
+
+            return $this->redirectToRoute('app_paiements_show', ['id' => $paiement->getId()], Response::HTTP_SEE_OTHER);
+        }
+
         if ($this->isCsrfTokenValid('delete'.$paiement->getId(), $request->getPayload()->getString('_token'))) {
             $entityManager->remove($paiement);
             $entityManager->flush();

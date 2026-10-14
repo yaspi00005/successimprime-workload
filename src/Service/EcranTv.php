@@ -375,6 +375,12 @@ final class EcranTv
         return $photos;
     }
 
+    /** Nombre de logos que la scène Partenaires montrerait (écran des réglages). */
+    public function nombreLogosPartenaires(): int
+    {
+        return \count($this->logosPartenaires());
+    }
+
     /**
      * Logos des partenaires montrés sur le site (visibles et avec leur accord).
      *

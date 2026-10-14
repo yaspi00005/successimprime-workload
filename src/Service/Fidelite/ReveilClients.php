@@ -12,7 +12,7 @@ use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Clients dormeurs (docs/fidelite.md) : les particuliers sans commande
+ * Clients dormeurs (docs/fidelite.md) : les clients au prix normal sans commande
  * depuis N jours, une « promo de réveil » (une remise en %, valable
  * quelques jours ou aujourd'hui seulement) que la direction leur offre,
  * que le client voit dans son espace et que l'atelier applique sur sa
@@ -39,7 +39,7 @@ final class ReveilClients
     }
 
     /**
-     * Les particuliers dont la dernière commande date de plus de $jours,
+     * Les clients hors grille revendeur dont la dernière commande date de plus de $jours,
      * du plus récemment endormi au plus ancien.
      *
      * @return list<array{client: Clients, derniere: \DateTimeImmutable, jours: int, commandes: int, promo: ?PromoReveil, whatsapp: ?string}>

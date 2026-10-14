@@ -8,7 +8,7 @@ Le calcul se fait sur l'ERP de la boutique. Le site en ligne reçoit le résumé
 
 | Règle | Valeur par défaut (Réglages › Paramètres › Fidélité) |
 |---|---|
-| Qui gagne | les particuliers seulement ; les clients au prix B2B sont exclus |
+| Qui gagne | tous les clients au prix normal (B2C), particuliers comme entreprises ; seuls les clients de la grille revendeur (B2B) sont exclus |
 | Valeur du point | 1 point = 1 F |
 | Grand format (lignes au m²) | 100 points par m², seulement au-delà de 5 m² payés |
 | Autres articles | 2 % du montant, seulement au-delà de 25 000 F payés |
@@ -136,7 +136,7 @@ Au premier déploiement : `php bin/console app:synchro --initialiser=fidelite_co
 
 ## Clients dormeurs et promo de réveil
 
-C'est une version minimale. **Clients › Fidélité › Clients dormeurs** liste les particuliers sans commande depuis N jours (90 par défaut, réglable sur l'écran), avec :
+C'est une version minimale. **Clients › Fidélité › Clients dormeurs** liste les clients au prix normal (hors grille revendeur) sans commande depuis N jours (90 par défaut, réglable sur l'écran), avec :
 
 - la date de leur dernière commande ;
 - leur nombre de commandes ;
@@ -170,7 +170,7 @@ Le programme commence au déploiement. Les paiements validés avant ne rapporten
 
 ## Démonstration
 
-`--demo` rejoue l'année de démonstration pour les particuliers `DEMO-` et `CL-DEMO`, puis ajoute une seule fois des gestes de la boutique :
+`--demo` rejoue l'année de démonstration pour les clients de démonstration `DEMO-` et `CL-DEMO` hors grille revendeur, puis ajoute une seule fois des gestes de la boutique :
 
 - trois règles d'article sur les produits « (démo) » : roll-up à 500 points par pièce dès le 3e, cartes de visite désactivées, vinyle à 150 points par m² avec un point à 2 F ;
 - des valeurs propres pour un gros client ;

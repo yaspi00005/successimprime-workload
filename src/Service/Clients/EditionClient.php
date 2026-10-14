@@ -17,7 +17,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * Toutes les saisies passent par appliquer() : la fiche, ses contacts et
  * le journal des modifications (K04) restent cohérents, quel que soit
  * l'écran. Une remise au-delà de 10 %, un plafond au-delà de 500 000 F
- * ou la grille Entreprise demandés par quelqu'un qui n'est pas de la
+ * ou la grille Revendeur demandés par quelqu'un qui n'est pas de la
  * direction ne sont pas appliqués : la fiche garde sa valeur et la
  * direction reçoit une demande.
  */
@@ -26,7 +26,12 @@ final class EditionClient
     public const REMISE_MAX = 10.0;
     public const PLAFOND_MAX = 500000;
 
-    public const GRILLES = ['B2C' => 'Standard', 'B2B' => 'Entreprise'];
+    /**
+     * Grilles de prix. « Revendeur » (B2B) est réservée aux gens du métier,
+     * démarchés et qui connaissent les prix ; une entreprise qui n'est pas
+     * dans ce cas paie le prix standard et garde fidélité et promotions.
+     */
+    public const GRILLES = ['B2C' => 'Standard', 'B2B' => 'Revendeur (B2B)'];
 
     /** Champs suivis par le journal : libellé, catégorie. */
     public const CHAMPS = [
@@ -177,7 +182,7 @@ final class EditionClient
         if ($a('grille')) {
             $grille = 'B2B' === $d['grille'] ? 'B2B' : 'B2C';
             if ('B2B' === $grille && !$c->isB2B() && !$direction) {
-                $demandes[] = 'grille Entreprise';
+                $demandes[] = 'grille Revendeur (B2B)';
             } else {
                 $c->setTypeClient($grille);
             }

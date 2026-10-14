@@ -77,14 +77,14 @@
 		{% elseif onglet == 'dormeurs' %}
 			<form method="get" class="si-fi-filtre">
 				<input type="hidden" name="onglet" value="dormeurs">
-				<label for="jours">Particuliers sans commande depuis</label>
+				<label for="jours">Clients sans commande depuis</label>
 				<input type="number" id="jours" name="jours" min="1" max="1000" value="{{ jours }}" class="form-control form-control-sm">
 				<span>jours</span>
 				<button class="btn btn-sm btn-light">Afficher</button>
 			</form>
 			<p class="si-pg-note">Offrez une promo de réveil : une remise sur la prochaine commande, que le client voit dans son espace (rubrique Fidélité) et que l'atelier applique sur la commande. Le message WhatsApp ne cite ni montant ni taux ; rien pour les fiches de démonstration.</p>
 			{% if dormeurs is empty %}
-				<p class="si-ac-vide">Aucun particulier sans commande depuis {{ jours }} jours.</p>
+				<p class="si-ac-vide">Aucun client sans commande depuis {{ jours }} jours.</p>
 			{% else %}
 				<div class="table-responsive">
 					<table class="table si-table si-fi-table mb-0">

@@ -29,7 +29,7 @@ final class EditionClientTest extends TestCase
         $i = EditionClient::instantane($c);
 
         self::assertSame('Entreprise', $i['typeCompte']);
-        self::assertSame('Entreprise', $i['typeClient']);
+        self::assertSame('Revendeur (B2B)', $i['typeClient'], 'la grille revendeur n\'est pas le type de compte');
         self::assertSame('5 %', $i['remiseHabituelle']);
         self::assertSame('30 jours fin de mois', $i['delaiPaiement']);
         self::assertSame('300 000 F', $i['plafondCredit']);

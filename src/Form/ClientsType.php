@@ -26,11 +26,11 @@ class ClientsType extends AbstractType
         array $options
     ): void {
         $typesClient = [
-            'Particulier (B2C)' => 'B2C',
+            'Prix normal (B2C)' => 'B2C',
         ];
 
         if ($this->security->isGranted('ROLE_ADMIN')) {
-            $typesClient['Entreprise (B2B)'] = 'B2B';
+            $typesClient['Revendeur, professionnel de l’impression (B2B)'] = 'B2B';
         }
 
         $builder

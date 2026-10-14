@@ -26,7 +26,9 @@ Toutes les saisies passent par `src/Service/Clients/EditionClient.php`.
 - **Seuils de la direction** : les demandes suivantes ne sont pas appliquées si elles viennent de quelqu'un sans `ROLE_ADMIN` :
   - une remise au-delà de 10 % ;
   - un plafond au-delà de 500 000 F ;
-  - le passage en grille Entreprise (B2B).
+  - le passage en grille Revendeur (B2B).
+
+  La grille Revendeur est réservée aux gens du métier de l'impression, démarchés et qui connaissent les prix (précision de Yaya, 14/10/2026). Une entreprise, une ONG ou une administration paie le prix normal (B2C) tant qu'elle n'est pas dans ce cas ; elle garde alors la fidélité et les promotions.
 
   La fiche garde sa valeur. La direction reçoit une notification, et le journal note une ligne « Demande à valider ».
 - **Journal** : chaque changement est enregistré dans `modification_client`, avec l'ancienne valeur, la nouvelle, l'auteur, l'heure et l'écran d'origine. La provenance vaut ERP local, Admin en ligne, Espace client ou Synchronisation. Rien ne s'efface.

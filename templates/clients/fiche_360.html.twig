@@ -67,7 +67,7 @@
 					<dt>Identifiants</dt>
 					<dd>{{ [client.nif ? 'NIF ' ~ client.nif, client.rccm ? 'RCCM ' ~ client.rccm]|filter(v => v)|join(' · ') }}</dd>
 				{% endif %}
-				{% set conditions = [client.delaiPaiementLabel, client.remiseHabituelle ? 'remise ' ~ client.remiseHabituelle|number_format(client.remiseHabituelle == client.remiseHabituelle|round ? 0 : 1, ',') ~ ' %', client.acompte ? 'acompte ' ~ client.acompte ~ ' %', client.moyenPrefereLabel, client.typeClient == 'B2B' ? 'grille Entreprise']|filter(v => v) %}
+				{% set conditions = [client.delaiPaiementLabel, client.remiseHabituelle ? 'remise ' ~ client.remiseHabituelle|number_format(client.remiseHabituelle == client.remiseHabituelle|round ? 0 : 1, ',') ~ ' %', client.acompte ? 'acompte ' ~ client.acompte ~ ' %', client.moyenPrefereLabel, client.typeClient == 'B2B' ? 'grille Revendeur (B2B)']|filter(v => v) %}
 				{% if conditions is not empty or voir_paiements %}
 					<dt>Conditions</dt>
 					{% if conditions is not empty %}<dd>{{ conditions|join(' · ') }}</dd>{% endif %}

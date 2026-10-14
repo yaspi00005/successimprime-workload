@@ -37,7 +37,7 @@ final class Client
         public readonly int $id,
         public readonly ?string $code,
         public readonly string $nom,
-        /** B2B (entreprise) ou B2C (particulier). */
+        /** Grille de prix : B2B (revendeur) ou B2C (prix normal), sans lien avec le type de compte. */
         public readonly string $type,
         public readonly ?string $telephone,
         public readonly ?string $email,

@@ -62,6 +62,7 @@ Captures : `/mnt/project-files/captures/reclamations/`.
 - En attendant la caisse, la somme n'est plus redemandée en ligne : la commande affiche « Payé par Orange Money, en validation » et le solde ne la compte plus.
 - Table `transaction_orange_money` (site en ligne) : commande, compte, montant, référence, jeton de paiement, empreinte du jeton de notification, état (initiee, reussie, echouee, expiree), paiement créé.
 - **À poser sur le serveur en ligne** (`.env.local`, jamais dans le dépôt) : `ORANGE_MONEY_CLIENT_ID`, `ORANGE_MONEY_CLIENT_SECRET`, `ORANGE_MONEY_MERCHANT_KEY`. D'abord l'essai avec `ORANGE_MONEY_API=https://api.orange.com/orange-money-webpay/dev/v1` et `ORANGE_MONEY_DEVISE=OUV`, puis la production `https://api.orange.com/orange-money-webpay/ml/v1` avec `XOF`. Sans clés, la page garde le numéro marchand et la référence de commande.
+- **Essayer les clés** : `php bin/console app:orange-money:tester` demande un jeton à Orange et dit, étape par étape, ce qui manque ou ce qu'Orange refuse, sans afficher aucune clé. Avec `--paiement` (API d'essai seulement), il ouvre aussi un paiement de 100 OUV pour vérifier la clé marchand. On met le Client ID et le Client Secret tels quels : l'en-tête « Authorization » du portail Orange est fabriqué par l'application. En local, Orange ne peut pas joindre l'adresse de notification ; le retour du client relit quand même l'état chez Orange.
 
 Captures : `/mnt/project-files/captures/orange-money/`.
 

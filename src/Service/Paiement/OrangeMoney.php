@@ -168,6 +168,120 @@ final class OrangeMoney
         return $transaction->getStatut();
     }
 
+    /**
+     * Essai des clés (app:orange-money:tester) sans rien enregistrer ni
+     * montrer de secret : chaque étape dit si elle passe et, sinon, la
+     * raison donnée par Orange. Le paiement d'essai n'est ouvert qu'avec
+     * l'API d'essai (dev) ; sa notification, sans transaction, est ignorée.
+     *
+     * @return list<array{etape: string, ok: bool, detail: string}>
+     */
+    public function diagnostic(bool $ouvrirPaiement, \DateTimeImmutable $maintenant): array
+    {
+        $cles = ['ORANGE_MONEY_CLIENT_ID' => $this->clientId, 'ORANGE_MONEY_CLIENT_SECRET' => $this->clientSecret, 'ORANGE_MONEY_MERCHANT_KEY' => $this->merchantKey];
+        $vides = array_keys(array_filter($cles, static fn (string $v): bool => '' === $v));
+        $etapes = [['etape' => 'Clés dans .env.local', 'ok' => [] === $vides, 'detail' => [] === $vides ? 'les trois clés sont renseignées' : 'vide : '.implode(', ', $vides)]];
+        foreach ($cles as $nom => $valeur) {
+            $souci = match (true) {
+                $valeur !== trim($valeur, " \t\n\r\"'") => 'espace ou guillemet en trop au début ou à la fin',
+                str_starts_with($valeur, 'Basic ') || str_starts_with($valeur, 'Bearer ') => 'contient un en-tête Authorization : mettre seulement la clé',
+                default => null,
+            };
+            if (null !== $souci) {
+                $etapes[] = ['etape' => $nom, 'ok' => false, 'detail' => $souci];
+            }
+        }
+        $essai = str_contains($this->api, '/dev/');
+        $deviseAttendue = $essai ? 'OUV' : 'XOF';
+        $etapes[] = [
+            'etape' => 'Adresse de l\'API',
+            'ok' => str_starts_with($this->api, 'https://') && $this->devise === $deviseAttendue,
+            'detail' => \sprintf('%s, devise %s%s', $essai ? 'essai (dev)' : 'production', $this->devise, $this->devise === $deviseAttendue ? '' : ' (attendue : '.$deviseAttendue.')'),
+        ];
+        if ('' === $this->clientId || '' === $this->clientSecret) {
+            return $etapes;
+        }
+
+        try {
+            $reponse = $this->http->request('POST', self::OAUTH, [
+                'headers' => ['Authorization' => 'Basic '.base64_encode($this->clientId.':'.$this->clientSecret), 'Content-Type' => 'application/x-www-form-urlencoded'],
+                'body' => 'grant_type=client_credentials',
+                'timeout' => 15,
+            ]);
+            $code = $reponse->getStatusCode();
+            $donnees = self::corps($reponse->getContent(false));
+        } catch (\Throwable $e) {
+            $etapes[] = ['etape' => 'Jeton Orange', 'ok' => false, 'detail' => 'Orange injoignable : '.mb_substr($e->getMessage(), 0, 160)];
+
+            return $etapes;
+        }
+        $jeton = (string) ($donnees['access_token'] ?? '');
+        $etapes[] = ['etape' => 'Jeton Orange', 'ok' => 200 === $code && '' !== $jeton, 'detail' => '' !== $jeton ? 'obtenu : Client ID et Client Secret acceptés' : self::refus($code, $donnees)];
+        if (!$ouvrirPaiement || '' === $jeton || '' === $this->merchantKey) {
+            return $etapes;
+        }
+        if (!$essai) {
+            $etapes[] = ['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => 'seulement avec l\'API d\'essai (dev), jamais en production'];
+
+            return $etapes;
+        }
+
+        $orderId = \sprintf('SI%s%s', $maintenant->format('ymdHis'), strtoupper(bin2hex(random_bytes(3))));
+        $accueil = $this->urls->generate('app_home', [], UrlGeneratorInterface::ABSOLUTE_URL);
+        try {
+            $reponse = $this->http->request('POST', rtrim($this->api, '/').'/webpayment', [
+                'headers' => ['Authorization' => 'Bearer '.$jeton, 'Accept' => 'application/json'],
+                'json' => [
+                    'merchant_key' => $this->merchantKey,
+                    'currency' => $this->devise,
+                    'order_id' => $orderId,
+                    'amount' => 100,
+                    'return_url' => $accueil,
+                    'cancel_url' => $accueil,
+                    'notif_url' => $this->urls->generate('app_orange_money_notification', ['o' => $orderId], UrlGeneratorInterface::ABSOLUTE_URL),
+                    'lang' => 'fr',
+                    'reference' => 'Essai Succès Imprim',
+                ],
+                'timeout' => 15,
+            ]);
+            $code = $reponse->getStatusCode();
+            $donnees = self::corps($reponse->getContent(false));
+        } catch (\Throwable $e) {
+            $etapes[] = ['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => 'Orange injoignable : '.mb_substr($e->getMessage(), 0, 160)];
+
+            return $etapes;
+        }
+        $lien = (string) ($donnees['payment_url'] ?? '');
+        $etapes[] = \in_array($code, [200, 201], true) && self::lienOrange($lien)
+            ? ['etape' => 'Paiement d\'essai', 'ok' => true, 'detail' => 'clé marchand acceptée, page de paiement de 100 OUV : '.$lien]
+            : ['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => self::refus($code, $donnees)];
+
+        return $etapes;
+    }
+
+    /** @return array<string, mixed> */
+    private static function corps(string $contenu): array
+    {
+        $donnees = json_decode($contenu, true);
+
+        return \is_array($donnees) ? $donnees : [];
+    }
+
+    /**
+     * Raison d'un refus d'Orange, sans rien de ce qui a été envoyé.
+     *
+     * @param array<string, mixed> $donnees
+     */
+    private static function refus(int $code, array $donnees): string
+    {
+        $raison = implode(' : ', array_filter(array_map(
+            static fn (string $champ): string => \is_scalar($donnees[$champ] ?? null) ? (string) $donnees[$champ] : '',
+            ['error', 'error_description', 'message', 'description'],
+        )));
+
+        return \sprintf('refusé par Orange (HTTP %d%s)', $code, '' !== $raison ? ', '.mb_substr($raison, 0, 200) : '');
+    }
+
     /** Lien de la page de paiement : seulement chez Orange Money, en https. */
     public static function lienOrange(string $lien): bool
     {

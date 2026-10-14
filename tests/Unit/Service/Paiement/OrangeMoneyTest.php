@@ -154,6 +154,80 @@ final class OrangeMoneyTest extends TestCase
         self::assertCount(1, $commande->getPaiements());
     }
 
+    public function testDiagnosticSignaleLaCleMarchandVideSansMontrerDeSecret(): void
+    {
+        $etapes = $this->diagnostic(['merchant' => ''])->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
+
+        self::assertSame(['etape' => 'Clés dans .env.local', 'ok' => false, 'detail' => 'vide : ORANGE_MONEY_MERCHANT_KEY'], $etapes[0]);
+        self::assertSame(['Clés dans .env.local' => false, 'Adresse de l\'API' => true, 'Jeton Orange' => true], array_column($etapes, 'ok', 'etape'));
+        self::assertCount(1, $this->appels, 'sans clé marchand, aucun paiement d\'essai n\'est ouvert');
+        self::assertStringNotContainsString('secret-om', serialize($etapes));
+    }
+
+    public function testDiagnosticDonneLaRaisonDuRefusDOrange(): void
+    {
+        $etapes = $this->diagnostic(['jeton' => new MockResponse('{"error":"invalid_client","error_description":"The requested service needs credentials, but the ones provided were invalid."}', ['http_code' => 401])])
+            ->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
+
+        self::assertFalse($etapes[2]['ok']);
+        self::assertSame('refusé par Orange (HTTP 401, invalid_client : The requested service needs credentials, but the ones provided were invalid.)', $etapes[2]['detail']);
+        self::assertCount(3, $etapes, 'sans jeton, pas de paiement d\'essai');
+    }
+
+    public function testDiagnosticRepereUnEnTeteCollePourUneCle(): void
+    {
+        $etapes = $this->diagnostic(['secret' => 'Basic aWQ6c2VjcmV0'])->diagnostic(false, new \DateTimeImmutable('2026-10-14 16:00'));
+
+        self::assertContains(['etape' => 'ORANGE_MONEY_CLIENT_SECRET', 'ok' => false, 'detail' => 'contient un en-tête Authorization : mettre seulement la clé'], $etapes);
+    }
+
+    public function testDiagnosticOuvreUnPaiementDEssaiDeCentOuv(): void
+    {
+        $etapes = $this->diagnostic([])->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
+
+        self::assertSame([true, true, true, true], array_column($etapes, 'ok'));
+        self::assertSame('clé marchand acceptée, page de paiement de 100 OUV : '.self::LIEN, $etapes[3]['detail']);
+        $corps = $this->appels[1]['corps'];
+        self::assertSame(['merchant_key' => 'cle-om', 'currency' => 'OUV', 'amount' => 100], array_intersect_key($corps, array_flip(['merchant_key', 'currency', 'amount'])));
+        self::assertMatchesRegularExpression('/^SI[0-9A-F]{18}$/', $corps['order_id']);
+        self::assertSame([], $this->persistes, 'l\'essai n\'enregistre aucune transaction');
+    }
+
+    public function testDiagnosticNOuvreJamaisDePaiementEnProduction(): void
+    {
+        $etapes = $this->diagnostic(['api' => 'https://api.orange.com/orange-money-webpay/ml/v1', 'devise' => 'XOF'])->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
+
+        self::assertSame(['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => 'seulement avec l\'API d\'essai (dev), jamais en production'], $etapes[3]);
+        self::assertCount(1, $this->appels, 'seul le jeton est demandé');
+    }
+
+    public function testDiagnosticSignaleUneDeviseQuiNeVaPasAvecLAPI(): void
+    {
+        $etapes = $this->diagnostic(['devise' => 'XOF'])->diagnostic(false, new \DateTimeImmutable('2026-10-14 16:00'));
+
+        self::assertSame(['etape' => 'Adresse de l\'API', 'ok' => false, 'detail' => 'essai (dev), devise XOF (attendue : OUV)'], $etapes[1]);
+    }
+
+    /** @param array{api?: string, devise?: string, secret?: string, merchant?: string, jeton?: MockResponse} $o */
+    private function diagnostic(array $o): OrangeMoney
+    {
+        $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('persist')->willReturnCallback(function (object $p): void {
+            $this->persistes[] = $p;
+        });
+        $http = new MockHttpClient(function (string $methode, string $url, array $options) use ($o): MockResponse {
+            $this->appels[] = ['url' => $url, 'corps' => str_contains($url, '/oauth/') ? [] : json_decode((string) $options['body'], true)];
+
+            return str_contains($url, '/oauth/')
+                ? ($o['jeton'] ?? new MockResponse('{"access_token":"jeton-api","expires_in":3600}'))
+                : new MockResponse((string) json_encode($this->ouverture), ['http_code' => 201]);
+        });
+        $urls = $this->createStub(UrlGeneratorInterface::class);
+        $urls->method('generate')->willReturnCallback(static fn (string $route, array $p): string => 'http://localhost:8000/'.$route.(isset($p['o']) ? '/'.$p['o'] : ''));
+
+        return new OrangeMoney($em, $http, new ArrayAdapter(), $urls, new NullLogger(), $o['api'] ?? 'https://api.orange.com/orange-money-webpay/dev/v1', $o['devise'] ?? 'OUV', 'id-om', $o['secret'] ?? 'secret-om', $o['merchant'] ?? 'cle-om');
+    }
+
     private function commande(): Commandes
     {
         return (new Commandes())->setNumero('CMD-D00766')->setTotalTtc(25000)->setStatut(true);

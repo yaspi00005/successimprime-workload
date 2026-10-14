@@ -139,8 +139,13 @@ final class EditionClient
         $avant = $creation ? [] : self::instantane($c);
         $erreurs = [];
         $demandes = [];
-        $texte = static fn (string $k): ?string => \array_key_exists($k, $d) && null !== $d[$k] && '' !== trim((string) $d[$k]) ? trim((string) $d[$k]) : null;
-        $a = static fn (string $k): bool => \array_key_exists($k, $d);
+        // Par référence : « nomComplet » (ajout terrain, import) remplit prénom et nom plus bas.
+        $texte = static function (string $k) use (&$d): ?string {
+            return \array_key_exists($k, $d) && null !== $d[$k] && '' !== trim((string) $d[$k]) ? trim((string) $d[$k]) : null;
+        };
+        $a = static function (string $k) use (&$d): bool {
+            return \array_key_exists($k, $d);
+        };
 
         if ($a('type')) {
             $c->setTypeCompte(isset(Clients::TYPES_COMPTE_LABELS[$d['type']]) ? $d['type'] : Clients::TYPE_COMPTE_PARTICULIER);

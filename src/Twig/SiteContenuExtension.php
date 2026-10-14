@@ -33,6 +33,8 @@ final class SiteContenuExtension extends AbstractExtension
             new TwigFilter('site_markdown', MarkdownSite::html(...), ['is_safe' => ['html']]),
             new TwigFilter('site_texte', MarkdownSite::texte(...)),
             new TwigFilter('site_sans_demo', self::sansDemo(...)),
+            new TwigFilter('site_sans_balises', self::sansBalises(...)),
+            new TwigFilter('site_date', self::date(...)),
         ];
     }
 
@@ -48,6 +50,8 @@ final class SiteContenuExtension extends AbstractExtension
             new TwigFunction('site_chiffres', $this->chiffres->aMontrer(...)),
             new TwigFunction('site_partenaires', $this->partenaires(...)),
             new TwigFunction('site_json_ld', self::jsonLd(...), ['is_safe' => ['html']]),
+            new TwigFunction('site_lien_de', self::lienDe(...)),
+            new TwigFunction('site_lien_sur', static fn (?string $url): ?string => null === $url ? null : MarkdownSite::lienSur($url)),
         ];
     }
 
@@ -67,6 +71,35 @@ final class SiteContenuExtension extends AbstractExtension
     public static function sansDemo(?string $texte): string
     {
         return trim(str_replace('(démo)', '', (string) $texte));
+    }
+
+    /** Texte d'un morceau de HTML produit par MarkdownSite (élément de liste…). */
+    public static function sansBalises(?string $html): string
+    {
+        return trim(html_entity_decode(strip_tags((string) $html), \ENT_QUOTES | \ENT_HTML5, 'UTF-8'));
+    }
+
+    /** Adresse du premier lien d'un morceau de HTML produit par MarkdownSite, revérifiée. */
+    public static function lienDe(?string $html): ?string
+    {
+        if (!preg_match('/<a href="([^"]*)"/', (string) $html, $m)) {
+            return null;
+        }
+
+        return MarkdownSite::lienSur(html_entity_decode($m[1], \ENT_QUOTES | \ENT_HTML5, 'UTF-8'));
+    }
+
+    public const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+    /** « 14 octobre 2026 », ou « octobre 2026 » sans le jour. */
+    public static function date(?\DateTimeInterface $date, bool $jour = true): string
+    {
+        if (null === $date) {
+            return '';
+        }
+        $mois = self::MOIS[(int) $date->format('n') - 1].' '.$date->format('Y');
+
+        return $jour ? ('1' === $date->format('j') ? '1er' : $date->format('j')).' '.$mois : $mois;
     }
 
     /**

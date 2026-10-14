@@ -157,9 +157,14 @@ final class MarkdownSite
                 continue;
             }
             if (null !== $carte) {
-                if ([] === $carte['blocs'] && null === $carte['etiquette'] && 'paragraphe' === $bloc['type'] && preg_match('/^([*_])([^*_\n]{1,40})\1$/u', $bloc['texte'], $m)) {
+                if ([] === $carte['blocs'] && null === $carte['etiquette'] && 'paragraphe' === $bloc['type'] && preg_match('/^([*_])([^*_\n]{1,40})\1(?:\n|$)/u', $bloc['texte'], $m)) {
                     $carte['etiquette'] = trim($m[2]);
-                    continue;
+                    // Le texte tapé juste sous l'étiquette reste le premier paragraphe de la carte.
+                    $suite = trim(mb_substr($bloc['texte'], mb_strlen($m[0])));
+                    if ('' === $suite) {
+                        continue;
+                    }
+                    $bloc = ['type' => 'paragraphe', 'texte' => $suite, 'html' => self::paragraphe(explode("\n", $suite))];
                 }
                 $carte['blocs'][] = $bloc;
             } elseif (null !== $section) {

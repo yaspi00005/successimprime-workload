@@ -1,0 +1,67 @@
+{#
+	Nos engagements (maquette 08), page « nos-engagements » : les cartes
+	de couleur (un engagement par « ### »), puis la frise des étapes de la
+	commande (liste numérotée « 1. »), puis les autres sections.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_engagements' %}
+{# Sans page de devis ni de contact, la demande part sur WhatsApp (« devis » est déjà pris par le gabarit). #}
+{% set lien_devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') ?? site_whatsapp('Bonjour Succès Imprim, je voudrais un devis.') %}
+{% set devis_externe = lien_devis and lien_devis starts with 'https://' %}
+
+{% block title %}{{ page.titre }} · Succès Imprim, imprimerie à Bamako{% endblock %}
+{% block description %}{{ page.description ?? page.accroche ?? 'BAT avant impression, réimpression si le défaut vient de nous, délai annoncé, prix sans surprise : les engagements de Succès Imprim.' }}{% endblock %}
+
+{% block entete %}
+	<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: page.titre, accroche: page.accroche, ariane: definition.libelle}) }}
+
+	<section class="sc-section">
+		<div class="si-cadre">
+			{% if contenu.intro %}<div class="sc-prose sc-intro">{{ site_blocs(contenu.intro) }}</div>{% endif %}
+
+			{% for s in contenu.sections %}
+				{% set etapes = s.blocs|filter(b => b.type == 'etapes') %}
+				{% if s.cartes is not empty %}
+					{% set niveau = s.titre ? 'h3' : 'h2' %}
+					<section class="sc-bloc-section"{% if s.titre %} aria-labelledby="{{ s.ancre }}"{% endif %}>
+						{% if s.titre %}<h2 id="{{ s.ancre }}" class="sc-titre-section">{{ s.html|raw }}</h2>{% endif %}
+						{% if s.blocs %}<div class="sc-prose">{{ site_blocs(s.blocs) }}</div>{% endif %}
+						<div class="sc-engagements">
+							{% for c in s.cartes %}
+								<article class="sc-engagement sc-teinte-{{ loop.index0 % 4 }}" id="{{ c.ancre }}">
+									<span class="sc-engagement-icone" aria-hidden="true">{{ include('site/_icone_contenu.svg.twig', {icone: site_icone(c.titre)}) }}</span>
+									<{{ niveau }} class="sc-carte-titre">{{ c.html|raw }}</{{ niveau }}>
+									{% if c.blocs %}<div class="sc-prose">{{ site_blocs(c.blocs) }}</div>{% endif %}
+								</article>
+							{% endfor %}
+						</div>
+					</section>
+				{% elseif etapes is not empty %}
+					<section class="sc-frise-cadre"{% if s.titre %} aria-labelledby="{{ s.ancre }}"{% endif %}>
+						{% if s.titre %}<h2 id="{{ s.ancre }}">{{ s.html|raw }}</h2>{% endif %}
+						{% for b in s.blocs %}
+							{% if b.type == 'etapes' %}
+								<ol class="sc-frise">
+									{% for e in b.elements %}<li><span class="sc-frise-numero" aria-hidden="true">{{ loop.index }}</span><span class="sc-frise-texte">{{ e|raw }}</span></li>{% endfor %}
+								</ol>
+							{% else %}
+								<div class="sc-prose">{{ site_blocs([b]) }}</div>
+							{% endif %}
+						{% endfor %}
+					</section>
+				{% else %}
+					{{ include('site/_section.html.twig', {s: s}) }}
+				{% endif %}
+			{% endfor %}
+
+			{% if lien_devis %}
+				<p class="sc-appel"><a href="{{ lien_devis }}" class="si-bouton si-bouton-rouge si-bouton-grand"{% if devis_externe %} target="_blank" rel="noopener"{% endif %}>Demander un devis</a></p>
+			{% endif %}
+		</div>
+	</section>
+{% endblock %}

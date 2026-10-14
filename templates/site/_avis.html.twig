@@ -1,0 +1,23 @@
+{#
+	Avis clients publiés avec l'accord du client (AvisClientRepository::visibles).
+	Pas de note moyenne ni de note Google : seulement les avis recopiés.
+	Variable : avis.
+#}
+{% if avis is not empty %}
+	<section class="sc-avis" aria-labelledby="sc-avis-titre">
+		<div class="si-cadre">
+			<h2 id="sc-avis-titre">Ce que disent nos clients</h2>
+			<ul>
+				{% for a in avis %}
+					<li>
+						<figure>
+							<p class="sc-etoiles" aria-label="{{ a.note }} sur 5">{{ '★★★★★'|slice(0, a.note) }}<span aria-hidden="true">{{ '★★★★★'|slice(a.note) }}</span></p>
+							<blockquote><p>{{ a.texte }}</p></blockquote>
+							<figcaption><strong>{{ a.nomAffiche }}</strong>{% if a.source %} · {{ a.source }}{% endif %} · {{ a.dateAvis|site_date(false) }}</figcaption>
+						</figure>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	</section>
+{% endif %}

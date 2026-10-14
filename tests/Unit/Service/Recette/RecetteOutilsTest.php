@@ -58,6 +58,7 @@ final class RecetteOutilsTest extends TestCase
         self::assertTrue(RecetteAcces::estPageAdmin('app_commandes_index', new Route('/commandes')));
         self::assertFalse(RecetteAcces::estPageAdmin('app_commandes_new', new Route('/commandes/new', methods: ['POST'])), 'envoi');
         self::assertFalse(RecetteAcces::estPageAdmin('app_espace_accueil', new Route('/espace')), 'espace client');
+        self::assertFalse(RecetteAcces::estPageAdmin('app_site_atelier', new Route('/atelier-3d')), 'atelier 3D public');
         self::assertFalse(RecetteAcces::estPageAdmin('app_site_accueil', new Route('/site/produits')), 'site public');
         self::assertFalse(RecetteAcces::estPageAdmin('app_factures_pdf_public', new Route('/factures/{id}/pdf-public/{token}')), 'lien signé');
         self::assertFalse(RecetteAcces::estPageAdmin('_profiler', new Route('/_profiler')));

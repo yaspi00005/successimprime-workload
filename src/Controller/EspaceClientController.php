@@ -9,6 +9,7 @@ use App\Entity\Factures;
 use App\Entity\TransactionOrangeMoney;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
+use App\Service\Atelier\CatalogueAtelier;
 use App\Service\EspaceClient\CompteEntreprise;
 use App\Service\EspaceClient\AppareilsClient;
 use App\Service\EspaceClient\CoqueEspace;
@@ -248,7 +249,7 @@ final class EspaceClientController extends AbstractController
 
     /** Nouvelle commande (maquette 14) : produit, taille, finitions, quantité, fichier. */
     #[Route('/commandes/nouvelle', name: 'nouvelle_commande', methods: ['GET', 'POST'])]
-    public function nouvelleCommande(Request $request, NouvelleCommande $service, FichiersClient $fichiers): Response
+    public function nouvelleCommande(Request $request, NouvelleCommande $service, FichiersClient $fichiers, CatalogueAtelier $atelier): Response
     {
         $compte = $this->compte();
         $client = $compte->getClient();
@@ -294,6 +295,8 @@ final class EspaceClientController extends AbstractController
         return $this->vue('espace/app/nouvelle_commande.html.twig', [
             'onglet' => 'commandes',
             'produits' => $produits,
+            // Textile à personnaliser : l'atelier 3D (docs/atelier-3d.md).
+            'atelier' => [] !== $atelier->modeles(),
             'choix' => $request->request->all() + $request->query->all(),
             'mesFichiers' => array_values(array_filter($fichiers->liste($client), static fn ($f): bool => null === $f->getCommandeDetail())),
             'extensions' => FichiersClient::extensions(),

@@ -29,7 +29,8 @@ use Symfony\Component\Routing\Attribute\Route;
  */
 final class SiteDemandeController extends AbstractController
 {
-    private const SESSION = 'site_demande_envoyee';
+    /** Confirmation montrée une fois (aussi après « Valider mon modèle » de l'Atelier 3D). */
+    public const SESSION = 'site_demande_envoyee';
 
     public function __construct(
         private readonly NouvelleCommande $catalogue,

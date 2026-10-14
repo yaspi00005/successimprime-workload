@@ -42,6 +42,9 @@ final class CoqueEspace
         // Lecture · suivi : la liste et le suivi des demandes, sans les préparer.
         ['cle' => 'conception', 'route' => 'app_espace_conception', 'libelle' => 'Demande de conception', 'icone' => 'M12 19l7-7 3 3-7 7zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18zM2 2l7.6 7.6M13 11a2 2 0 1 1-4 0 2 2 0 0 1 4 0z',
             'pages' => ['app_espace_conception'], 'visible' => self::VISIBLE_TOUS, 'onglet' => 'commandes'],
+        // Atelier 3D (docs/atelier-3d.md) : modèles validés, à rouvrir ou à commander à nouveau.
+        ['cle' => 'creations', 'route' => 'app_espace_creations', 'libelle' => 'Mes créations', 'icone' => 'M8.5 3 4 5 2 9.5l3 1.8 1-1.3V21h12V10l1 1.3 3-1.8L20 5l-4.5-2c-.6 1.6-1.9 2.6-3.5 2.6S9.1 4.6 8.5 3z',
+            'pages' => ['app_espace_creation', 'app_espace_atelier'], 'visible' => self::VISIBLE_ECRIT, 'onglet' => 'commandes'],
         ['cle' => 'produits', 'route' => 'app_espace_produits', 'libelle' => 'Mes produits', 'icone' => 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z',
             'pages' => ['app_espace_produits'], 'visible' => self::VISIBLE_ECRIT, 'onglet' => 'commandes'],
         ['cle' => 'devis', 'route' => 'app_espace_devis', 'libelle' => 'Mes devis', 'icone' => 'M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm8 1.5V8h4.5M8 13h8M8 17h5',

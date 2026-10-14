@@ -56,14 +56,22 @@ body.si-site { margin: 0; font-family: var(--police); font-size: 16px; line-heig
 .si-logo { display: block; flex: 0 0 auto; line-height: 0; }
 .si-logo img { width: 112px; height: auto; }
 .si-menu { display: flex; align-items: center; gap: 20px; flex: 1; justify-content: flex-end; }
-.si-menu ul { display: flex; gap: 4px; list-style: none; margin: 0 auto 0 0; padding: 0; flex-wrap: wrap; }
-.si-menu ul a { display: block; padding: 8px 12px; color: var(--texte); font-weight: 600; font-size: 15px; text-decoration: none; border-radius: 8px; }
+.si-menu ul { display: flex; gap: 2px; list-style: none; margin: 0 auto 0 0; padding: 0; }
+.si-menu ul a { display: block; padding: 8px 10px; color: var(--texte); font-weight: 600; font-size: 15px; text-decoration: none; border-radius: 8px; white-space: nowrap; }
 .si-menu ul a:hover { color: var(--bleu); background: var(--bleu-pale); }
 .si-menu ul a.actif { color: var(--bleu); box-shadow: inset 0 -2px 0 var(--bleu); border-radius: 0; }
 .si-menu-actions { display: flex; gap: 10px; }
 .si-menu-case, .si-burger { display: none; }
+/* Sept entrées : entre 1 141 et 1 280 px, le logo mène à l'accueil et le menu se resserre pour tenir sur une ligne. */
+@media (max-width: 1280px) {
+  .si-entete-cadre { gap: 18px; }
+  .si-menu { gap: 14px; }
+  .si-menu ul li:first-child { display: none; }
+  .si-menu ul a { padding: 8px 9px; }
+}
 
-@media (max-width: 1040px) {
+@media (max-width: 1140px) {
+  .si-menu ul li:first-child { display: block; }
   .si-entete-cadre { justify-content: space-between; min-height: 64px; }
   .si-burger { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; cursor: pointer; }
   .si-burger span, .si-burger span::before, .si-burger span::after { content: ""; display: block; width: 22px; height: 2px; background: var(--noir); position: relative; transition: transform .2s; }

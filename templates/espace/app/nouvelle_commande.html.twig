@@ -8,6 +8,12 @@
 		<div class="ec-carte ec-vide">La commande en ligne arrive bientôt. En attendant, demandez un devis par WhatsApp ou en boutique.</div>
 	{% else %}
 		{% set choisi = choix.produit|default(produits|first.id) %}
+		{% if atelier|default(false) %}
+			<a class="ec-carte ec-atelier-entree" href="{{ path('app_espace_atelier') }}">
+				<b>T-shirt, polo ou casquette à personnaliser ?</b>
+				<span class="ec-petit">Composez-le en 3D dans l'atelier : couleur, logo, texte devant et dos, quantités par taille. ›</span>
+			</a>
+		{% endif %}
 		<form method="post" id="commande">
 			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 

@@ -1,0 +1,61 @@
+{#
+	Mes créations (docs/atelier-3d.md) : modèles validés dans l'Atelier 3D,
+	à rouvrir pour les modifier ou à commander de nouveau (mêmes réglages
+	et quantités, prix du jour). Pas de montant ici.
+#}
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Mes créations{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Mes créations</a>{% endblock %}
+
+{% block contenu %}
+	<div class="ec-pc-intro">
+		<p class="ec-sous">Vos modèles validés dans l'atelier 3D : rouvrez-les pour les modifier, ou commandez-les de nouveau.</p>
+		{% if atelierOuvert %}<a class="ec-bouton-contour" href="{{ path('app_espace_atelier') }}">+ Nouvelle création</a>{% endif %}
+	</div>
+	{% if creations is empty %}
+		<div class="ec-carte ec-vide">
+			<b style="display:block;color:var(--encre);margin-bottom:.3rem">Aucune création pour l'instant</b>
+			Composez votre t-shirt, polo ou casquette en 3D : couleur, logo, texte devant et dos. Chaque modèle validé est gardé ici.
+		</div>
+		{% if atelierOuvert %}<div class="ec-boutons"><a class="ec-bouton" href="{{ path('app_espace_atelier') }}">Ouvrir l'atelier 3D</a></div>{% endif %}
+	{% else %}
+		<ul class="ec-cr-grille">
+			{% for c in creations %}
+				{% set id = c.publicId.toRfc4122 %}
+				{% set propose = c.configuration and (c.configuration.id ~ '') in modeles %}
+				<li class="ec-carte ec-cr">
+					<div class="ec-cr-vues">
+						{% for face in ['devant', 'dos'] %}
+							{% if c.fichier('rendu-' ~ face) %}<img src="{{ path('app_espace_creation_fichier', {id: id, quoi: 'rendu-' ~ face}) }}" alt="Vue {{ c.libelleFace(face)|lower }}" width="150" height="150" loading="lazy">{% endif %}
+						{% endfor %}
+					</div>
+					<div class="ec-cr-texte">
+						<span class="ec-petit">{{ c.numero }} · {{ c.creeLe|date('d/m/Y') }}{{ c.auteur ? ' · ' ~ c.auteur }}</span>
+						<b>{{ c.designation }}</b>
+						<span class="ec-petit">{{ c.resumeTailles }}</span>
+						<ul class="ec-cr-marquage">
+							{% for l in c.resumeMarquage %}<li>{{ l }}</li>{% endfor %}
+						</ul>
+						{% if c.commande %}
+							<a class="ec-petit" href="{{ path('app_espace_commande', {id: c.commande.publicId.toRfc4122}) }}">{{ c.nombreCommandes > 1 ? 'Commandée ' ~ c.nombreCommandes ~ ' fois · dernière : ' : 'Commande ' }}{{ c.commande.numero }} ›</a>
+						{% endif %}
+					</div>
+					<div class="ec-cr-actions">
+						{% if atelierOuvert %}<a class="ec-bouton-contour" href="{{ path('app_espace_atelier', {creation: id}) }}">Rouvrir dans l'atelier</a>{% endif %}
+						{% if propose %}
+							<form method="post" action="{{ path('app_espace_creation_commander', {id: id}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+								<button class="ec-bouton ec-cr-commander" title="Mêmes réglages et quantités, au prix du jour">{{ demandeValidation ? 'Redemander' : 'Commander à nouveau' }}</button>
+							</form>
+						{% else %}
+							<span class="ec-petit">Article plus proposé : rouvrez la création pour en choisir un autre.</span>
+						{% endif %}
+					</div>
+				</li>
+			{% endfor %}
+		</ul>
+		<p class="ec-petit" style="text-align:center">« Commander à nouveau » reprend les mêmes réglages et quantités, au prix du jour ; l'atelier confirme la commande avant l'impression.</p>
+	{% endif %}
+{% endblock %}

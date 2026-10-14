@@ -1,0 +1,34 @@
+{#
+	Atelier 3D dans l'espace client (docs/atelier-3d.md) : prix du client,
+	« Valider mon modèle » passe une commande « à confirmer » (ou une
+	demande à valider dans l'entreprise). ?creation= rouvre une création.
+#}
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Atelier 3D{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}
+	<link rel="stylesheet" href="{{ asset('css/atelier-3d.css') }}">
+	{% if fiches is not empty %}<script type="importmap">{"imports": {"three": "{{ asset('vendor/three/three.module.min.js') }}"}}</script>{% endif %}
+{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_creations') }}"><span class="fl">‹</span>Atelier 3D</a>{% endblock %}
+
+{% block contenu %}
+	{% if reprise %}
+		<div class="ec-carte ec-petit">Vous repartez de la création <b>{{ reprise.numero }}</b>. « Valider mon modèle » en fait une nouvelle création ; l'ancienne reste dans <a href="{{ path('app_espace_creations') }}">Mes créations</a>.</div>
+	{% endif %}
+	{% if fiches is empty %}
+		<div class="ec-carte ec-vide">L'atelier 3D ouvre bientôt. En attendant, passez par <a href="{{ path('app_espace_nouvelle_commande') }}">Nouvelle commande</a> avec votre fichier.</div>
+	{% else %}
+		{% include 'atelier/_outil.html.twig' with {
+			mode: 'espace',
+			csrf: csrf_token('espace'),
+			jeton: null,
+			urls: {prix: path('app_espace_atelier_prix'), image: path('app_espace_atelier_image'), valider: path('app_espace_atelier_valider')},
+		} %}
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	{% if fiches is not empty %}<script src="{{ asset('js/atelier-3d.js') }}" defer></script>{% endif %}
+{% endblock %}

@@ -13,7 +13,7 @@ final class CoqueEspaceTest extends TestCase
     public function testMenuSelonLesDroits(): void
     {
         $entreprise = (new Clients())->setTypeCompte(Clients::TYPE_COMPTE_ENTREPRISE)->setTypeClient('B2C');
-        $tous = ['tableau', 'notifications', 'nouvelle', 'conception', 'produits', 'devis', 'commandes', 'fichiers', 'factures', 'livraisons', 'messages', 'promotions', 'fidelite', 'compte'];
+        $tous = ['tableau', 'notifications', 'nouvelle', 'conception', 'creations', 'produits', 'devis', 'commandes', 'fichiers', 'factures', 'livraisons', 'messages', 'promotions', 'fidelite', 'compte'];
 
         self::assertSame($tous, CoqueEspace::entreesPermises(self::compte($entreprise, [CompteClient::DROIT_ADMINISTRATEUR])));
         self::assertSame($tous, CoqueEspace::entreesPermises(self::compte($entreprise, [CompteClient::DROIT_PAYEUR])));
@@ -45,6 +45,8 @@ final class CoqueEspaceTest extends TestCase
         self::assertSame(['cle' => 'nouvelle', 'onglet' => 'commandes'], CoqueEspace::entreeDeLaRoute('app_espace_nouvelle_commande'));
         self::assertSame(['cle' => 'fichiers', 'onglet' => 'fichiers'], CoqueEspace::entreeDeLaRoute('app_espace_bat'));
         self::assertSame(['cle' => 'conception', 'onglet' => 'commandes'], CoqueEspace::entreeDeLaRoute('app_espace_conception_credit'));
+        self::assertSame(['cle' => 'creations', 'onglet' => 'commandes'], CoqueEspace::entreeDeLaRoute('app_espace_atelier'));
+        self::assertSame(['cle' => 'creations', 'onglet' => 'commandes'], CoqueEspace::entreeDeLaRoute('app_espace_creation_fichier'));
         self::assertSame(['cle' => 'factures', 'onglet' => 'factures'], CoqueEspace::entreeDeLaRoute('app_espace_payer_retour'));
         self::assertSame(['cle' => 'compte', 'onglet' => 'compte'], CoqueEspace::entreeDeLaRoute('app_espace_mes_donnees'));
         self::assertNull(CoqueEspace::entreeDeLaRoute('app_espace_connexion'));

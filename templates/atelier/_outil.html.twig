@@ -1,0 +1,252 @@
+{#
+	Atelier 3D (docs/atelier-3d.md) : aperçu (3D, ou vues à plat) et
+	réglages, partagés par le site public et l'espace client. La page
+	n'envoie jamais de prix : elle demande celui du serveur à chaque
+	changement (urls.prix) et « Valider » n'envoie que les choix.
+
+	Variables : mode (site ou espace), fiches, paliers, montants (le compte
+	voit les prix), envoiMax, reprise (création rouverte), urls (prix,
+	image, valider), csrf. Site : jeton (délai signé du formulaire).
+	Espace : adresses, entreprise, demandeValidation.
+#}
+{% set casquette = (fiches|first).forme == 'casquette' %}
+<div class="a3d" data-mode="{{ mode }}">
+	<section class="a3d-scene" aria-label="Aperçu de votre modèle">
+		<canvas class="a3d-plat" role="img" aria-label="Vue à plat de votre modèle"></canvas>
+		<canvas class="a3d-3d" hidden role="img" aria-label="Modèle 3D : faites glisser pour le tourner"></canvas>
+		<div class="a3d-haut">
+			<div class="a3d-badges">
+				<span class="a3d-badge a3d-badge-direct"><b aria-hidden="true"></b><span data-texte="mode">Vue à plat</span></span>
+				<span class="a3d-badge a3d-aide" data-texte="aide" hidden>Glissez pour tourner</span>
+			</div>
+			<button type="button" class="a3d-bascule" data-action="bascule" hidden>Voir en 3D</button>
+		</div>
+		<div class="a3d-vues" role="group" aria-label="Vue">
+			<button type="button" data-vue="devant" aria-pressed="true">Devant</button>
+			<button type="button" data-vue="cote" aria-pressed="false" hidden>Côté</button>
+			<button type="button" data-vue="dos" aria-pressed="false" data-libelle-dos>Dos</button>
+			<button type="button" data-action="rotation" aria-pressed="false" hidden><span aria-hidden="true">⟳</span> Rotation</button>
+		</div>
+	</section>
+
+	<div class="a3d-panneau">
+		<section class="a3d-carte" aria-labelledby="a3d-t1">
+			<h2 id="a3d-t1"><span>1</span>Article</h2>
+			<div class="a3d-articles" role="group" aria-labelledby="a3d-t1">
+				{% for f in fiches %}
+					<button type="button" data-article="{{ f.id }}" aria-pressed="{{ loop.first ? 'true' : 'false' }}">
+						<svg class="a3d-icone" viewBox="0 0 40 34" aria-hidden="true">
+							{% if f.forme == 'casquette' %}
+								<path d="M5 22C5 11 12 5 20 5s15 6 15 17Z"/><path d="M3 22h34c0 3-6 5-17 5S3 25 3 22Z" opacity=".7"/>
+							{% elseif f.forme == 'polo' %}
+								<path d="M13 2 7 4 1 12l6 4 2-3v19h22V13l2 3 6-4-6-8-6-2-3 6h-8Z"/><path d="M17 8h6v9h-6z" fill="#fff" opacity=".5"/>
+							{% else %}
+								<path d="M13 2 7 4 1 12l6 4 2-3v19h22V13l2 3 6-4-6-8-6-2c-1 3-4 5-7 5s-6-2-7-5Z"/>
+							{% endif %}
+						</svg>
+						<span>{{ f.nom }}</span>
+					</button>
+				{% endfor %}
+			</div>
+		</section>
+
+		<section class="a3d-carte" aria-labelledby="a3d-t2">
+			<h2 id="a3d-t2"><span>2</span>Couleurs</h2>
+			<div class="a3d-libelle"><span id="a3d-l-tissu">{{ casquette ? 'Calotte' : 'Couleur du tissu' }}</span><output data-texte="couleur"></output></div>
+			<div class="a3d-pastilles" data-pastilles="tissu" role="group" aria-labelledby="a3d-l-tissu"></div>
+			<div data-bloc="visiere" hidden>
+				<div class="a3d-libelle a3d-espace"><span id="a3d-l-visiere">Visière</span><output data-texte="visiere"></output></div>
+				<div class="a3d-pastilles" data-pastilles="visiere" role="group" aria-labelledby="a3d-l-visiere"></div>
+			</div>
+		</section>
+
+		<section class="a3d-carte" aria-labelledby="a3d-t3">
+			<h2 id="a3d-t3"><span>3</span>Votre marquage</h2>
+			<div class="a3d-onglets" role="group" aria-label="Face à marquer">
+				<button type="button" data-face="devant" aria-pressed="true">Devant<i data-marque="devant" hidden></i></button>
+				<button type="button" data-face="dos" aria-pressed="false"><span data-libelle-dos>Dos</span><i data-marque="dos" hidden></i></button>
+			</div>
+			<label class="a3d-depot" data-zone="depot">
+				<span class="a3d-vignette"><img alt="" data-vignette hidden></span>
+				<span class="a3d-depot-texte">
+					<b data-texte="fichier">Aucune image</b>
+					<small data-texte="fichier-aide">Glissez ou choisissez votre logo ou une photo : PNG, JPG ou WebP, {{ (envoiMax / 1048576)|round(0, 'floor') }} Mo au plus</small>
+				</span>
+				<input type="file" accept="image/png,image/jpeg,image/webp" data-champ="fichier">
+			</label>
+			<div class="a3d-alerte" data-alerte role="status" hidden></div>
+			<div class="a3d-deux">
+				<div>
+					<div class="a3d-libelle"><label for="a3d-taille">Taille de l'image</label><output data-texte="taille" for="a3d-taille">60 %</output></div>
+					<input type="range" id="a3d-taille" min="15" max="100" value="60" data-champ="taille">
+				</div>
+				<div>
+					<div class="a3d-libelle"><label for="a3d-hauteur">Position verticale</label><output data-texte="hauteur" for="a3d-hauteur">0</output></div>
+					<input type="range" id="a3d-hauteur" min="-40" max="40" value="0" data-champ="hauteur">
+				</div>
+			</div>
+			<div class="a3d-deux">
+				<div>
+					<div class="a3d-libelle"><label for="a3d-texte">Texte</label><output data-texte="reste"></output></div>
+					<input type="text" id="a3d-texte" maxlength="{{ constant('App\\Entity\\CreationAtelier::TEXTE_MAX') }}" data-champ="texte" autocomplete="off" placeholder="Ex. : TEAM SUCCÈS">
+				</div>
+				<div>
+					<div class="a3d-libelle"><label for="a3d-police">Police</label></div>
+					<select id="a3d-police" data-champ="police">
+						{% for p in constant('App\\Entity\\CreationAtelier::POLICES') %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+					</select>
+				</div>
+			</div>
+			<div class="a3d-deux a3d-bas">
+				<div>
+					<div class="a3d-libelle"><span id="a3d-l-texte">Couleur du texte</span><output data-texte="couleur-texte"></output></div>
+					<div class="a3d-pastilles a3d-pastilles-petites" data-pastilles="texte" role="group" aria-labelledby="a3d-l-texte"></div>
+				</div>
+				<div>
+					<div class="a3d-libelle"><label for="a3d-place">Place du texte</label></div>
+					<select id="a3d-place" data-champ="place">
+						<option value="dessous">Sous l'image</option>
+						<option value="dessus">Au-dessus de l'image</option>
+					</select>
+				</div>
+			</div>
+			<button type="button" class="a3d-secondaire" data-action="retirer" hidden>Retirer l'image de cette face</button>
+		</section>
+
+		<section class="a3d-carte" aria-labelledby="a3d-t4">
+			<h2 id="a3d-t4"><span>4</span>Quantités</h2>
+			<div data-bloc="tailles">
+				<div class="a3d-libelle"><span>Par taille</span><output data-texte="pieces"></output></div>
+				<div class="a3d-tailles" data-tailles></div>
+			</div>
+			<div data-bloc="quantite" hidden>
+				<div class="a3d-libelle"><label for="a3d-quantite">Nombre de pièces</label></div>
+				<input type="number" id="a3d-quantite" min="1" max="{{ constant('App\\Entity\\CreationAtelier::QUANTITE_TAILLE_MAX') }}" value="20" inputmode="numeric" data-champ="quantite">
+			</div>
+			{% if paliers is not empty %}
+				<p class="a3d-paliers">Remise de quantité :
+					{%- for p in paliers %} −{{ p.pourcentage }} % dès {{ p.quantite }} pièces{{ not loop.last ? ',' : '.' }}{% endfor %}
+				</p>
+			{% endif %}
+			<div class="a3d-prix" data-prix aria-live="polite">
+				<div class="a3d-prix-montant">
+					<small data-texte="detail">Calcul du prix…</small>
+					{% if montants %}
+						<strong data-texte="total">—</strong>
+						<small>TTC · prix indicatif, confirmé par l'atelier avec votre maquette</small>
+					{% else %}
+						<strong class="a3d-sans-montant">Prix confirmé par votre valideur</strong>
+						<small>La personne qui valide les commandes de votre entreprise voit le montant.</small>
+					{% endif %}
+					<small class="a3d-promo" data-texte="promotion" hidden></small>
+					<small class="a3d-prochain" data-texte="prochain" hidden></small>
+				</div>
+				<button type="button" class="a3d-valider" data-action="valider">Valider mon modèle</button>
+			</div>
+			<label class="a3d-case" data-bloc="flotte" hidden><input type="checkbox" data-champ="flotte" checked> Animation douce de l'aperçu</label>
+		</section>
+	</div>
+</div>
+
+<dialog class="a3d-fenetre" aria-labelledby="a3d-f-titre">
+	<form method="post" data-formulaire novalidate>
+		<h2 id="a3d-f-titre">Votre modèle est prêt</h2>
+		<p class="a3d-doux">Ces vues accompagnent votre {{ mode == 'site' ? 'demande' : 'commande' }} : l'atelier prépare le BAT à partir de votre maquette et vérifie vos images avant l'impression.</p>
+		<div class="a3d-vues-rendues">
+			<figure><img alt="Vue de face" data-rendu="devant"><figcaption>Devant</figcaption></figure>
+			<figure><img alt="Vue de dos" data-rendu="dos"><figcaption data-libelle-dos>Dos</figcaption></figure>
+		</div>
+		<table class="a3d-recap" data-recap></table>
+
+		{% if mode == 'site' %}
+			<input type="hidden" name="_token" value="{{ csrf }}">
+			<input type="hidden" name="_t" value="{{ jeton }}">
+			<div class="si-piege" aria-hidden="true">
+				<label for="a3d-site-web">Site web (laissez ce champ vide)</label>
+				<input type="text" id="a3d-site-web" name="{{ constant('App\\Service\\Site\\FormulaireDemande::PIEGE') }}" value="" tabindex="-1" autocomplete="off">
+			</div>
+			<h3>Vos coordonnées</h3>
+			<p class="a3d-doux">Sans compte : l'atelier vous rappelle avec le devis, et un numéro vous permet de suivre votre demande.</p>
+			<div class="a3d-deux">
+				<div class="a3d-champ" data-erreur-pour="nom">
+					<label for="a3d-nom">Nom</label>
+					<input type="text" id="a3d-nom" name="nom" maxlength="120" autocomplete="name" required>
+					<p class="a3d-erreur" hidden></p>
+				</div>
+				<div class="a3d-champ" data-erreur-pour="telephone">
+					<label for="a3d-tel">Téléphone</label>
+					<div class="a3d-tel"><span aria-hidden="true">+223</span><input type="tel" id="a3d-tel" name="telephone" placeholder="7X XX XX XX" inputmode="tel" autocomplete="tel-national" maxlength="20" required></div>
+					<p class="a3d-erreur" hidden></p>
+				</div>
+			</div>
+			<div class="a3d-champ" data-erreur-pour="email">
+				<label for="a3d-email">E-mail <span class="a3d-doux">(facultatif)</span></label>
+				<input type="email" id="a3d-email" name="email" maxlength="180" autocomplete="email">
+				<p class="a3d-erreur" hidden></p>
+			</div>
+			<div class="a3d-champ" data-erreur-pour="message">
+				<label for="a3d-message">Précisions <span class="a3d-doux">(facultatif)</span></label>
+				<textarea id="a3d-message" name="message" maxlength="1000" rows="2" placeholder="Date souhaitée, livraison, couleurs du logo…"></textarea>
+				<p class="a3d-erreur" hidden></p>
+			</div>
+			<p class="a3d-doux a3d-petit">Déjà client ? <a href="{{ path('app_espace_atelier') }}">Composez depuis votre espace</a> : vos prix, vos remises et vos créations y sont gardés.</p>
+		{% else %}
+			<input type="hidden" name="_token" value="{{ csrf }}">
+			{% if adresses is not empty %}
+				{% set defaut = (adresses|filter(a => a.parDefaut)|first).id|default('') %}
+				<div class="a3d-champ">
+					<label for="a3d-adresse">Livraison</label>
+					<select id="a3d-adresse" name="adresse">
+						<option value="">Retrait en boutique</option>
+						{% for a in adresses %}<option value="{{ a.id }}"{{ defaut == a.id ? ' selected' }}>Livrer : {{ a.libelle }} · {{ a.adresse }}</option>{% endfor %}
+					</select>
+				</div>
+			{% endif %}
+			{% if entreprise %}
+				<div class="a3d-champ">
+					<label for="a3d-bon">N° de bon de commande <span class="a3d-doux">(facultatif)</span></label>
+					<input type="text" id="a3d-bon" name="bon_commande" maxlength="60" autocomplete="off">
+				</div>
+			{% endif %}
+			<div class="a3d-champ">
+				<label for="a3d-note">Précisions pour l'atelier <span class="a3d-doux">(facultatif)</span></label>
+				<textarea id="a3d-note" name="note" maxlength="1000" rows="2" placeholder="Date souhaitée, couleurs du logo…"></textarea>
+			</div>
+			{% if demandeValidation %}
+				<p class="a3d-doux a3d-petit">Votre demande sera validée par une personne de votre entreprise avant de partir à l'atelier.</p>
+			{% endif %}
+		{% endif %}
+
+		<p class="a3d-message-erreur" data-erreur role="alert" hidden></p>
+		<div class="a3d-actions">
+			<button type="button" class="a3d-secondaire" data-action="fermer">Modifier</button>
+			<button type="submit" class="a3d-valider" data-action="envoyer">
+				{%- if mode == 'site' %}Envoyer ma demande de devis{% elseif demandeValidation %}Envoyer la demande{% else %}Commander{% endif -%}
+			</button>
+		</div>
+	</form>
+</dialog>
+
+<script type="application/json" id="a3d-donnees">{{ {
+	mode: mode,
+	fiches: fiches,
+	paliers: paliers,
+	montants: montants,
+	envoiMax: envoiMax,
+	reprise: reprise ?? null,
+	csrf: csrf,
+	urls: urls|merge({
+		scene: asset('js/atelier-3d-scene.js'),
+		gltf: asset('vendor/three/addons/loaders/GLTFLoader.js'),
+	}),
+	polices: {
+		'Archivo Black': asset('vendor/polices-atelier/archivo-black.woff2'),
+		'Bebas Neue': asset('vendor/polices-atelier/bebas-neue.woff2'),
+		'Pacifico': asset('vendor/polices-atelier/pacifico.woff2'),
+		'Figtree': asset('vendor/polices-atelier/figtree-700.woff2'),
+	},
+	couleursTexte: constant('App\\Entity\\CreationAtelier::COULEURS_TEXTE'),
+	reduction: constant('App\\Entity\\CreationAtelier::REDUCTION_AVEC_TEXTE'),
+	quantiteMax: constant('App\\Entity\\CreationAtelier::QUANTITE_TAILLE_MAX'),
+	dpi: {conseille: constant('App\\Service\\Atelier\\ImagesAtelier::DPI_CONSEILLE'), minimum: constant('App\\Service\\Atelier\\ImagesAtelier::DPI_MINIMUM')},
+}|json_encode|raw }}</script>

@@ -8,6 +8,7 @@
 		<a href="{{ path('app_espace_commandes') }}" class="actif">Commandes</a>
 		{# Sur téléphone, pas de menu de gauche : l'entrée de la demande de conception est ici. #}
 		<a href="{{ path('app_espace_conception') }}">Conception</a>
+		{% if coque.ecrit %}<a href="{{ path('app_espace_creations') }}">Mes créations</a>{% endif %}
 		<a href="{{ path('app_espace_produits') }}">Mes produits{% if mesProduits %} · {{ mesProduits }}{% endif %}</a>
 		<a href="{{ path('app_espace_devis') }}">Mes devis{% if devisAAccepter %} · {{ devisAAccepter }} à accepter{% endif %}</a>
 	</nav>

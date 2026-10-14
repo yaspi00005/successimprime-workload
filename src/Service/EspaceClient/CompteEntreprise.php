@@ -47,7 +47,7 @@ final class CompteEntreprise
      *
      * @throws \DomainException message à montrer
      */
-    public function ajouter(CompteClient $par, string $telephone, string $nom, array $droits): CompteClient
+    public function ajouter(CompteClient $par, string $telephone, string $nom, array $droits, ?string $fonction = null): CompteClient
     {
         $client = $par->getClient() ?? throw new \DomainException('Compte sans fiche client.');
         if (!$par->peut(CompteClient::DROIT_ADMINISTRATEUR)) {
@@ -76,6 +76,7 @@ final class CompteEntreprise
         // Une personne retirée puis ajoutée de nouveau retrouve son compte.
         $compte = ($existant ?? (new CompteClient())->setClient($client)->setTelephone($normalise))
             ->setNom(trim($nom))
+            ->setFonction($fonction)
             ->setDroits($droits)
             ->setAjoutePar($par)
             ->setActif(true);
@@ -96,16 +97,17 @@ final class CompteEntreprise
      *
      * @throws \DomainException
      */
-    public function changerDroits(CompteClient $par, CompteClient $compte, array $droits): void
+    public function changerDroits(CompteClient $par, CompteClient $compte, array $droits, ?string $fonction = null): void
     {
         $this->verifierMemeEntreprise($par, $compte);
         if ($par === $compte) {
             throw new \DomainException('Vous ne pouvez pas changer vos propres droits. Demandez à une autre personne qui gère le compte.');
         }
-        if (!\in_array(CompteClient::DROIT_ADMINISTRATEUR, $droits, true)) {
+        // « Lecture · suivi » l'emporte sur les autres droits (CompteClient::setDroits).
+        if (!\in_array(CompteClient::DROIT_ADMINISTRATEUR, $droits, true) || \in_array(CompteClient::DROIT_LECTURE, $droits, true)) {
             $this->garderUnAdministrateur($compte);
         }
-        $compte->setDroits($droits);
+        $compte->setDroits($droits)->setFonction($fonction);
         $this->em->flush();
     }
 

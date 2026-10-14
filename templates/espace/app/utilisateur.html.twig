@@ -5,9 +5,10 @@
 
 {% block contenu %}
 	{% set aides = {
-		valideur: 'Accepte ou refuse les demandes de commande',
+		valideur: 'Accepte ou refuse les demandes de commande et les devis',
 		payeur: 'Voit les factures et paie',
-		administrateur: 'Ajoute ou retire des personnes, gère les adresses'
+		administrateur: 'Ajoute ou retire des personnes, gère les adresses',
+		lecture: 'Suit les commandes, les livraisons et les fichiers. Ne commande pas, ne valide ni BAT ni devis, ne paie pas, ne modifie rien.'
 	} %}
 	<form class="ec-carte" method="post" style="display:grid;gap:.5rem">
 		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
@@ -20,11 +21,13 @@
 			<input class="ec-saisie" id="telephone" name="telephone" inputmode="tel" required value="{{ saisie.telephone }}" placeholder="76 12 34 56">
 			<p class="ec-petit" style="margin:0">La personne se connecte avec son propre numéro ; un code lui est envoyé par SMS.</p>
 		{% endif %}
+		<label class="ec-etiquette" for="fonction" style="margin-top:.4rem">Fonction (facultatif)</label>
+		<input class="ec-saisie" id="fonction" name="fonction" maxlength="60" value="{{ saisie.fonction ?? '' }}" placeholder="Intendant, Comptabilité, Réception…">
 		<span class="ec-etiquette" style="margin-top:.5rem">Droits</span>
 		{% for code, libelle in droits %}
-			<label class="ec-interrupteur"><span><b>{{ libelle }}</b><span class="ec-petit" style="display:block">{{ aides[code] }}</span></span><input type="checkbox" name="droits[]" value="{{ code }}"{{ code in saisie.droits ? ' checked' }}></label>
+			<label class="ec-interrupteur"><span><b>{{ libelle }}</b><span class="ec-petit" style="display:block">{{ aides[code] }}</span></span><input type="checkbox" name="droits[]" value="{{ code }}"{{ code in saisie.droits ? ' checked' }}{{ code == 'lecture' ? ' data-lecture' : ' data-droit' }}></label>
 		{% endfor %}
-		<p class="ec-petit" style="margin:0">Sans aucun droit, la personne est demandeur : elle commande, et sa demande attend un valideur.</p>
+		<p class="ec-petit" style="margin:0">Sans aucun droit, la personne est demandeur : elle commande, et sa demande attend un valideur. « Lecture · suivi » remplace les autres droits.</p>
 		<button type="submit" class="ec-bouton bleu">{{ personne ? 'Enregistrer' : 'Ajouter au compte' }}</button>
 	</form>
 
@@ -34,4 +37,17 @@
 			<button type="submit" class="ec-bouton clair">Retirer l'accès</button>
 		</form>
 	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	// « Lecture · suivi » exclut les autres droits (le serveur l'impose aussi).
+	(function () {
+		var lecture = document.querySelector('[data-lecture]');
+		var autres = document.querySelectorAll('[data-droit]');
+		if (!lecture) { return; }
+		lecture.addEventListener('change', function () { if (lecture.checked) { autres.forEach(function (c) { c.checked = false; }); } });
+		autres.forEach(function (c) { c.addEventListener('change', function () { if (c.checked) { lecture.checked = false; } }); });
+	})();
+	</script>
 {% endblock %}

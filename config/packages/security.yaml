@@ -58,6 +58,8 @@ security:
                 lifetime: 2592000
                 path: /espace
                 name: SI_ESPACE_SOUVENIR
+                # « Déconnecter les autres appareils » (versionSession) annule aussi ces cookies.
+                signature_properties: [password, versionSession]
             login_throttling:
                 max_attempts: 5
                 interval: '15 minutes'

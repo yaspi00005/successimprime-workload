@@ -16,6 +16,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * client, chacun avec ses droits : demandeur (commande seulement, sa
  * commande attend un valideur), valideur, payeur, administrateur du
  * compte. Le compte ouvert avec le numéro de la fiche a tous les droits.
+ * Un compte « Lecture · suivi » (maquette EC04) voit les commandes, les
+ * livraisons et les fichiers, et n'écrit rien.
  */
 #[ORM\Entity(repositoryClass: CompteClientRepository::class)]
 #[ORM\Table(name: 'compte_client')]
@@ -32,6 +34,14 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
         self::DROIT_PAYEUR => 'Payeur',
         self::DROIT_ADMINISTRATEUR => 'Gère le compte',
     ];
+
+    /**
+     * Accès en lecture seule (réception, gardien…) : voit les commandes,
+     * les livraisons et les fichiers ; ne commande, ne valide, n'accepte,
+     * ne paie et ne modifie rien. Exclut les autres droits.
+     */
+    public const DROIT_LECTURE = 'lecture';
+    public const LIBELLE_LECTURE = 'Lecture · suivi';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -69,6 +79,31 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $derniereConnexion = null;
+
+    /** Fonction dans l'entreprise, en texte libre (Intendant, Comptabilité…). */
+    #[ORM\Column(length: 60, nullable: true)]
+    private ?string $fonction = null;
+
+    /**
+     * Augmentée par « Déconnecter les autres appareils » : une session
+     * ouverte avec une version plus ancienne est fermée à sa prochaine
+     * requête, et les cookies « rester connecté » ne valent plus.
+     */
+    #[ORM\Column(options: ['default' => 1])]
+    private int $versionSession = 1;
+
+    /**
+     * « Comment je suis prévenu » (maquette EC03) : canal par catégorie,
+     * voir PreferencesNotifications. Null : réglages par défaut.
+     *
+     * @var array<string, list<string>>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $preferencesNotifications = null;
+
+    /** « Tout marquer comme lu » : les notifications d'avant sont lues. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $notificationsLuesJusqua = null;
 
     public function __construct()
     {
@@ -134,16 +169,21 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->droits;
     }
 
-    /** @param list<string> $droits */
+    /** @param list<string> $droits « lecture » l'emporte : les autres droits sont retirés. */
     public function setDroits(array $droits): static
     {
-        $this->droits = array_values(array_intersect(array_keys(self::DROITS), $droits));
+        $this->droits = \in_array(self::DROIT_LECTURE, $droits, true)
+            ? [self::DROIT_LECTURE]
+            : array_values(array_intersect(array_keys(self::DROITS), $droits));
 
         return $this;
     }
 
     public function peut(string $droit): bool
     {
+        if ($this->estLectureSeule()) {
+            return false;
+        }
         // Un particulier n'a qu'un compte : il fait tout.
         if (null !== $this->client && !self::clientAPlusieursComptes($this->client)) {
             return true;
@@ -152,21 +192,77 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
         return \in_array($droit, $this->droits, true) || \in_array(self::DROIT_ADMINISTRATEUR, $this->droits, true);
     }
 
+    /** « Lecture · suivi » : rien de ce qui écrit (commander, valider, payer, modifier). */
+    public function estLectureSeule(): bool
+    {
+        return \in_array(self::DROIT_LECTURE, $this->droits, true);
+    }
+
+    /** Commander, valider un BAT, écrire un message ou une réclamation : tout le monde sauf la lecture seule. */
+    public function peutEcrire(): bool
+    {
+        return !$this->estLectureSeule();
+    }
+
     /** Ses commandes attendent la validation d'un valideur de l'entreprise. */
     public function estDemandeur(): bool
     {
-        return !$this->peut(self::DROIT_VALIDEUR);
+        return !$this->estLectureSeule() && !$this->peut(self::DROIT_VALIDEUR);
     }
 
     /** « Valideur et payeur », « Demandeur »... */
     public function getLibelleDroits(): string
     {
+        if ($this->estLectureSeule()) {
+            return self::LIBELLE_LECTURE;
+        }
         if (\in_array(self::DROIT_ADMINISTRATEUR, $this->droits, true)) {
             return 'Gère le compte · valide et paie';
         }
         $libelles = array_map(static fn (string $d): string => mb_strtolower(self::DROITS[$d]), $this->droits);
 
         return [] === $libelles ? 'Demandeur' : ucfirst(implode(' et ', $libelles));
+    }
+
+    /**
+     * Ce que la personne peut faire, en clair (maquette EC04) :
+     * « administrateur du compte · commandes, BAT, factures, utilisateurs ».
+     */
+    public function getResumeDroits(): string
+    {
+        if ($this->estLectureSeule()) {
+            return 'lecture · suivi des commandes et livraisons';
+        }
+        if ($this->peut(self::DROIT_ADMINISTRATEUR)) {
+            return 'administrateur du compte · commandes, BAT, factures, utilisateurs';
+        }
+        $parts = [$this->peut(self::DROIT_VALIDEUR) ? 'commandes et devis' : 'demandes de commande', 'BAT'];
+        if ($this->peut(self::DROIT_PAYEUR)) {
+            $parts[] = 'factures et paiements';
+        }
+
+        return implode(', ', $parts);
+    }
+
+    /** Initiales de la personne : « IM » pour Ibrahim Maïga. */
+    public function getInitiales(): string
+    {
+        return self::initiales($this->getNomAffiche());
+    }
+
+    /** « Hôtel Niger » → « HN », « Réception » → « R » (petits mots ignorés). */
+    public static function initiales(string $nom): string
+    {
+        $mots = array_values(array_filter(
+            preg_split('/[\s\-]+/u', trim($nom)) ?: [],
+            static fn (string $m): bool => '' !== $m && !\in_array(mb_strtolower($m), ['de', 'du', 'des', 'la', 'le', 'les', 'et', 'sa', 'sarl', 'sas'], true),
+        ));
+        if ([] === $mots) {
+            return '?';
+        }
+        $lettre = static fn (string $m): string => mb_strtoupper(mb_substr((string) preg_replace('/^[ldLD][\'’]/u', '', $m), 0, 1));
+
+        return \count($mots) > 1 ? $lettre($mots[0]).$lettre($mots[\count($mots) - 1]) : $lettre($mots[0]);
     }
 
     /** Seules les fiches entreprise ou B2B ont plusieurs utilisateurs. */
@@ -241,6 +337,56 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
     public function setDerniereConnexion(?\DateTimeImmutable $date): static
     {
         $this->derniereConnexion = $date;
+
+        return $this;
+    }
+
+    public function getFonction(): ?string
+    {
+        return $this->fonction;
+    }
+
+    public function setFonction(?string $fonction): static
+    {
+        $fonction = null !== $fonction ? mb_substr(trim((string) preg_replace('/\s+/u', ' ', $fonction)), 0, 60) : null;
+        $this->fonction = '' === $fonction ? null : $fonction;
+
+        return $this;
+    }
+
+    public function getVersionSession(): int
+    {
+        return $this->versionSession;
+    }
+
+    /** « Déconnecter les autres appareils ». */
+    public function nouvelleVersionSession(): int
+    {
+        return ++$this->versionSession;
+    }
+
+    /** @return array<string, list<string>>|null */
+    public function getPreferencesNotifications(): ?array
+    {
+        return $this->preferencesNotifications;
+    }
+
+    /** @param array<string, list<string>>|null $preferences déjà contrôlées (PreferencesNotifications::lire) */
+    public function setPreferencesNotifications(?array $preferences): static
+    {
+        $this->preferencesNotifications = $preferences;
+
+        return $this;
+    }
+
+    public function getNotificationsLuesJusqua(): ?\DateTimeImmutable
+    {
+        return $this->notificationsLuesJusqua;
+    }
+
+    public function setNotificationsLuesJusqua(?\DateTimeImmutable $le): static
+    {
+        $this->notificationsLuesJusqua = $le;
 
         return $this;
     }

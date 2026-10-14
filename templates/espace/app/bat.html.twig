@@ -41,7 +41,10 @@
 		</div>
 	{% endif %}
 
-	{% if attente %}
+	{% if attente and app.user.estLectureSeule() %}
+		{# Compte « Lecture · suivi » : il voit le BAT, une autre personne du compte le valide. #}
+		<div class="ec-note">BAT en attente : une personne de votre entreprise le valide ou demande une modification.</div>
+	{% elseif attente %}
 		<form method="post">
 			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 			<div class="ec-boutons">

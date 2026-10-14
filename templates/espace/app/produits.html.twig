@@ -380,6 +380,20 @@
 		});
 
 		rafraichir();
+
+		// « Recommander rapidement » (tableau de bord) : ?produit=…&quantite=…&saisie=… ouvre la feuille pré-remplie.
+		const demandee = new URLSearchParams(location.search);
+		const voulu = demandee.get('produit');
+		if (voulu && parId[voulu]) {
+			ouvrir(voulu);
+			const saisieVoulue = demandee.get('saisie');
+			const quantiteVoulue = parseFloat((demandee.get('quantite') || '').replace(',', '.'));
+			if (saisieVoulue && parId[voulu].saisies.indexOf(saisieVoulue) !== -1) courant.saisie = saisieVoulue;
+			if (quantiteVoulue > 0) courant.quantite = quantiteVoulue;
+			feuille.querySelectorAll('input[name=saisie]').forEach(function (r) { r.checked = r.value === courant.saisie; });
+			afficherSaisie();
+			calculer();
+		}
 	})();
 	</script>
 	{% endif %}

@@ -1,0 +1,42 @@
+{#
+	Cloche de la barre du haut (maquette EC02). Sans JavaScript, c'est un
+	lien vers la page Notifications ; avec, elle ouvre le panneau des
+	dernières notifications (espace-coque.js).
+#}
+<div class="ec-cloche-zone">
+	<a href="{{ path('app_espace_notifications') }}" class="ec-cloche" data-cloche aria-haspopup="true" aria-expanded="false" aria-label="Notifications{{ coque.nonLues > 0 ? ', ' ~ coque.nonLues ~ ' nouvelles' }}">
+		<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>
+		{% if coque.nonLues > 0 %}<span class="ec-compteur rouge">{{ coque.nonLues > 99 ? '99+' : coque.nonLues }}</span>{% endif %}
+	</a>
+	<div class="ec-cloche-panneau" data-cloche-panneau hidden>
+		<div class="ec-cp-tete">
+			<b>Notifications</b>
+			{% if coque.nonLues > 0 %}<span class="ec-pilule rouge">{{ coque.nonLues }} nouvelle{{ coque.nonLues > 1 ? 's' }}</span>{% endif %}
+			{% if coque.nonLues > 0 %}
+				<form method="post" action="{{ path('app_espace_notifications_tout_lu') }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+					<input type="hidden" name="retour" value="{{ app.request.pathInfo }}">
+					<button type="submit" class="ec-lien">Tout marquer comme lu</button>
+				</form>
+			{% endif %}
+		</div>
+		<ul class="ec-cp-liste">
+			{% for n in coque.cloche %}
+				{% set action = n.actions|filter(a => not (a.post ?? false))|first %}
+				<li class="{{ n.nouveau ? 'nouveau' }}">
+					<span class="ec-point {{ n.couleur }}" aria-hidden="true"></span>
+					<div>
+						<a class="ec-cp-titre" href="{{ path('app_espace_notification_ouvrir', {cle: n.cle}) }}">{{ n.titre }}</a>
+						<small>{{ n.texte }}{{ n.montant is not null ? ' · ' ~ n.montant|number_format(0, ',', ' ') ~ ' F' }}</small>
+						{% if action %}<a class="ec-mini {{ action.style }}" href="{{ action.url }}">{{ action.court ?? action.libelle }}</a>{% endif %}
+					</div>
+					<time datetime="{{ n.date|date('c') }}">{{ n.date|espace_quand }}</time>
+					{% if n.nouveau %}<i class="ec-non-lu" title="Nouveau"></i>{% endif %}
+				</li>
+			{% else %}
+				<li class="ec-cp-vide">Rien de nouveau ces dernières semaines.</li>
+			{% endfor %}
+		</ul>
+		<a class="ec-cp-pied" href="{{ path('app_espace_notifications') }}">Voir toutes les notifications</a>
+	</div>
+</div>

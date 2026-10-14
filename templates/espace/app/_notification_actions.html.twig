@@ -1,0 +1,15 @@
+{# Boutons d'une notification (maquette EC03), déjà filtrés selon les droits (FilNotifications). #}
+{% if n.actions is not empty %}
+	<div class="ec-notif-actions">
+		{% for a in n.actions %}
+			{% if a.post ?? false %}
+				<form method="post" action="{{ a.url }}" onsubmit="return confirm('{{ a.libelle|e('js') }} ?')">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+					<button type="submit" class="ec-mini {{ a.style }}">{{ a.libelle }}</button>
+				</form>
+			{% else %}
+				<a class="ec-mini {{ a.style }}" href="{{ a.url }}">{{ a.libelle }}</a>
+			{% endif %}
+		{% endfor %}
+	</div>
+{% endif %}

@@ -32,3 +32,9 @@ framework:
             policy: sliding_window
             limit: 3
             interval: '1 day'
+        # Messages de l'espace client à l'atelier (maquette EC01) : une
+        # personne n'en envoie pas plus de 10 par heure.
+        espace_message_compte:
+            policy: sliding_window
+            limit: 10
+            interval: '1 hour'

@@ -1,0 +1,59 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{# Recherche (barre du haut, maquette EC01) : dans les documents du client seulement, selon les droits de la personne. #}
+{% block title %}Recherche{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Recherche</a>{% endblock %}
+
+{% block contenu %}
+	<form class="ec-carte ec-recherche-page" method="get" action="{{ path('app_espace_recherche') }}" role="search">
+		<input class="ec-saisie" type="search" name="q" value="{{ texte }}" placeholder="N° de commande, désignation, facture, fichier…" maxlength="60" aria-label="Rechercher" autofocus>
+		<button type="submit" class="ec-bouton-petit">Chercher</button>
+	</form>
+
+	{% if texte|length < 2 %}
+		<p class="ec-petit">Tapez au moins deux lettres : un numéro de commande, une désignation (bâche, cartes…), un numéro de facture ou un nom de fichier.</p>
+	{% elseif total == 0 %}
+		<div class="ec-carte ec-vide">Rien trouvé pour « {{ texte }} ».</div>
+	{% else %}
+		{% if resultats.commandes is not empty %}
+			<div class="ec-carte">
+				<h2>Commandes</h2>
+				<ul class="ec-liste">
+					{% for c in resultats.commandes %}
+						<li><a class="ec-rangee" href="{{ path('app_espace_commande', {id: c.publicId}) }}"><span><b>{{ c.numero }} · {{ c|espace_titre }}</b><span class="ec-petit">{{ c.dateCommande ? 'du ' ~ c.dateCommande|date('d/m/Y') }}</span></span><span class="fl" aria-hidden="true">›</span></a></li>
+					{% endfor %}
+				</ul>
+			</div>
+		{% endif %}
+		{% if resultats.devis is not empty %}
+			<div class="ec-carte">
+				<h2>Devis</h2>
+				<ul class="ec-liste">
+					{% for d in resultats.devis %}
+						<li><a class="ec-rangee" href="{{ path('app_espace_devis_pdf', {id: d.id}) }}"><span><b>{{ d.numero }}</b><span class="ec-petit">{{ d.dateDevis ? 'du ' ~ d.dateDevis|date('d/m/Y') }}</span></span><span class="fl" aria-hidden="true">›</span></a></li>
+					{% endfor %}
+				</ul>
+			</div>
+		{% endif %}
+		{% if resultats.fichiers is not empty %}
+			<div class="ec-carte">
+				<h2>Fichiers</h2>
+				<ul class="ec-liste">
+					{% for f in resultats.fichiers %}
+						<li><a class="ec-rangee" href="{{ path('app_espace_fichier', {id: f.id}) }}"><span><b>{{ f.nomOriginal }}</b><span class="ec-petit">{{ f.creeLe ? 'envoyé le ' ~ f.creeLe|date('d/m/Y') }}</span></span><span class="fl" aria-hidden="true">›</span></a></li>
+					{% endfor %}
+				</ul>
+			</div>
+		{% endif %}
+		{% if resultats.factures is not empty %}
+			<div class="ec-carte">
+				<h2>Factures</h2>
+				<ul class="ec-liste">
+					{% for f in resultats.factures %}
+						<li><a class="ec-rangee" href="{{ path('app_espace_facture_pdf', {id: f.id}) }}"><span><b>{{ f.numero }}</b><span class="ec-petit">commande {{ f.commande.numero }} · {{ f.totalTtc|number_format(0, ',', ' ') }} F</span></span><span class="fl" aria-hidden="true">›</span></a></li>
+					{% endfor %}
+				</ul>
+			</div>
+		{% endif %}
+	{% endif %}
+{% endblock %}

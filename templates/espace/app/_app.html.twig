@@ -1,16 +1,13 @@
 {#
-	Espace client connecté (maquettes 13 à 19) : en-tête, contenu et
-	barre d'onglets en bas sur téléphone ; menu à gauche sur ordinateur.
+	Espace client connecté (maquettes EC01 à EC05). Ordinateur : barre du
+	haut (recherche, nouvelle commande, cloche, personne) et menu à gauche
+	avec ses pastilles et la carte du conseiller. Téléphone : en-tête
+	(avatar, client, « Bonjour Prénom », cloche) et onglets en bas.
+	Menu, pastilles et cloche viennent de espace_coque(), selon les droits
+	de la personne.
 #}
-{# Compte d'entreprise : chaque personne est saluée par son propre nom. #}
-{% set prenom = (app.user.nom|default(null) ? app.user.nom|split(' ')|first) ?: moi.prenom ?: moi.nom ?: moi.raisonSociale %}
-{% set onglets = [
-	{cle: 'accueil', route: 'app_espace_accueil', libelle: 'Accueil', icone: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'},
-	{cle: 'commandes', route: 'app_espace_commandes', libelle: 'Commandes', icone: 'M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm8 1.5V8h4.5M8 12h8M8 16h8'},
-	{cle: 'fichiers', route: 'app_espace_fichiers', libelle: 'Fichiers', icone: 'M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'},
-	{cle: 'factures', route: 'app_espace_factures', libelle: 'Factures', icone: 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM8 8h8M8 12h8M8 16h5'},
-	{cle: 'compte', route: 'app_espace_compte', libelle: 'Compte', icone: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm-8 9a8 8 0 0 1 16 0'},
-] %}
+{% set coque = espace_coque() %}
+{% set prenom = coque.prenom ?? '' %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -28,25 +25,71 @@
 	{% block styles %}{% endblock %}
 </head>
 <body class="ec">
-	<nav class="ec-menu" aria-label="Espace client">
-		<a href="{{ path('app_espace_accueil') }}" class="ec-menu-logo"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim"></a>
-		{% for o in onglets|filter(o => o.cle != 'factures' or (peutPayer ?? true)) %}
-			<a href="{{ path(o.route) }}" class="ec-onglet{{ onglet|default('') == o.cle ? ' actif' }}"{{ onglet|default('') == o.cle ? ' aria-current="page"' }}>
-				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ o.icone }}"/></svg><span>{{ o.libelle }}</span>
-			</a>
-		{% endfor %}
-		<a href="{{ path('app_espace_deconnexion') }}" class="ec-menu-sortie">Se déconnecter</a>
-	</nav>
+	{% if coque %}
+		<header class="ec-haut">
+			<a href="{{ path('app_espace_accueil') }}" class="ec-haut-logo"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim"><span class="ec-pilule">Espace client</span></a>
+			<form class="ec-recherche" method="get" action="{{ path('app_espace_recherche') }}" role="search">
+				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15zM21 21l-5.2-5.2"/></svg>
+				<input type="search" name="q" value="{{ app.request.query.get('q')|default('') }}" placeholder="Rechercher une commande, une facture, un fichier…" aria-label="Rechercher" maxlength="60">
+			</form>
+			<div class="ec-haut-droite">
+				{% if coque.ecrit %}<a class="ec-bouton-nouvelle" href="{{ path('app_espace_nouvelle_commande') }}">+ Nouvelle commande</a>{% endif %}
+				{% include 'espace/app/_cloche.html.twig' %}
+				<a class="ec-moi" href="{{ path('app_espace_compte') }}">
+					<span class="ec-avatar">{{ coque.initiales }}</span>
+					<span class="ec-moi-texte"><b>{{ coque.personne }}</b><small>{{ coque.sousTitre }}</small></span>
+				</a>
+			</div>
+		</header>
+
+		<nav class="ec-menu" aria-label="Espace client">
+			{% for e in coque.menu %}
+				<a href="{{ path(e.route) }}" class="ec-entree{{ e.actif ? ' actif' }}"{{ e.actif ? ' aria-current="page"' }}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ e.icone }}"/></svg>
+					<span>{{ e.libelle }}</span>
+					{% if e.pastille and e.pastille.nombre > 0 %}<span class="ec-compteur {{ e.pastille.couleur }}">{{ e.pastille.nombre }}</span>{% endif %}
+				</a>
+			{% endfor %}
+			<div class="ec-menu-bas">
+				{% if coque.conseiller %}
+					<div class="ec-conseiller">
+						<span class="ec-avatar rouge">{{ coque.conseiller.initiales }}</span>
+						<span>
+							<small>Votre conseiller(ère)</small>
+							<b>{{ coque.conseiller.nom }}</b>
+							{% if coque.conseiller.whatsapp %}<span class="ec-conseiller-liens"><a href="{{ coque.conseiller.whatsapp }}" target="_blank" rel="noopener">WhatsApp</a> · <a href="{{ coque.conseiller.appeler }}">Appeler</a></span>{% endif %}
+						</span>
+					</div>
+				{% endif %}
+				<a href="{{ path('app_espace_deconnexion') }}" class="ec-menu-sortie">Se déconnecter</a>
+			</div>
+		</nav>
+
+		<nav class="ec-onglets" aria-label="Espace client">
+			{% for o in coque.onglets %}
+				<a href="{{ path(o.route) }}" class="ec-onglet{{ o.actif ? ' actif' }}"{{ o.actif ? ' aria-current="page"' }}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ o.icone }}"/></svg><span>{{ o.libelle }}</span>
+				</a>
+			{% endfor %}
+		</nav>
+	{% endif %}
 
 	<div class="ec-page{% block page_classe %}{% endblock %}">
 		<header class="ec-entete">
 			{% block entete %}
-				<a href="{{ path('app_espace_accueil') }}" class="ec-entete-logo"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim"></a>
+				{% if coque %}
+					<a class="ec-salut" href="{{ path('app_espace_compte') }}">
+						<span class="ec-avatar">{{ coque.initiales }}</span>
+						<span><small>{{ coque.nomClient }}</small><b>Bonjour {{ coque.prenom }}</b></span>
+					</a>
+				{% endif %}
 			{% endblock %}
-			<div class="ec-entete-droite">
-				<a href="{{ path('app_espace_notifications') }}" class="ec-cloche" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg></a>
-				<a href="{{ path('app_espace_compte') }}" class="ec-avatar" aria-label="Mon compte">{{ prenom|slice(0, 1)|upper }}</a>
-			</div>
+			{% if coque %}
+				<a href="{{ path('app_espace_notifications') }}" class="ec-cloche ec-cloche-tel" aria-label="Notifications{{ coque.nonLues > 0 ? ', ' ~ coque.nonLues ~ ' nouvelles' }}">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>
+					{% if coque.nonLues > 0 %}<span class="ec-compteur rouge">{{ coque.nonLues > 99 ? '99+' : coque.nonLues }}</span>{% endif %}
+				</a>
+			{% endif %}
 		</header>
 
 		<main class="ec-contenu">
@@ -56,6 +99,7 @@
 		</main>
 	</div>
 	<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js', {scope: '/espace'}).catch(function () {}); }</script>
+	<script src="{{ asset('js/espace-coque.js') }}" defer></script>
 	{% block scripts %}{% endblock %}
 </body>
 </html>

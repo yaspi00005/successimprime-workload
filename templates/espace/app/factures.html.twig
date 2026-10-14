@@ -25,7 +25,7 @@
 			{% for f in factures %}
 				<li class="ec-ligne">
 					<div><b>{{ f.numero }}{{ f.commande ? ' · ' ~ f.commande|espace_titre }}</b><div class="ec-petit"><a href="{{ path('app_espace_facture_pdf', {id: f.id}) }}" target="_blank">PDF ↓</a>{{ f.typeDocument == 'proforma' ? ' · Proforma' }}{{ f.dateFacture ? ' · ' ~ f.dateFacture|date('d/m/Y') }}</div></div>
-					<div style="text-align:right"><b>{{ f.totalTtc|number_format(0, ',', ' ') }} F</b><br>
+					<div style="text-align:right;white-space:nowrap"><b>{{ f.totalTtc|number_format(0, ',', ' ') }} F</b><br>
 						{% set p = f.statutPaiement %}<span class="ec-pastille {{ p == 'payee' ? 'vert' : (p == 'partielle' ? 'ambre' : 'rouge') }}">{{ p == 'payee' ? 'Payée' : (p == 'partielle' ? 'Acompte reçu' : 'À payer') }}</span>
 					</div>
 				</li>

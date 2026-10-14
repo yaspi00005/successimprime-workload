@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\ImmobilisationRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -19,8 +20,10 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: ImmobilisationRepository::class)]
 #[ORM\Index(name: 'idx_immobilisation_categorie', columns: ['categorie'])]
-class Immobilisation
+class Immobilisation implements AppartientASociete
 {
+    use SocieteTrait;
+
     /**
      * Catégories : libellé, libellé court (registre), compte d'immobilisation
      * et compte d'amortissement SYSCOHADA, durée par défaut en années,

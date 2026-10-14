@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -19,8 +20,10 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity]
 #[ORM\Index(name: 'idx_depense_date', columns: ['date_depense'])]
 #[ORM\Index(name: 'idx_depense_statut', columns: ['statut'])]
-class Depense
+class Depense implements AppartientASociete
 {
+    use SocieteTrait;
+
     public const A_APPROUVER = 'a_approuver';
     public const A_PAYER = 'a_payer';
     /** Payée sur place à la saisie (reçu à l'appui). */

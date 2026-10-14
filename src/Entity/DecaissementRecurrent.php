@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\DecaissementRecurrentRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -18,8 +19,10 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 #[ORM\Entity(repositoryClass: DecaissementRecurrentRepository::class)]
 #[ORM\Table(name: 'decaissement_recurrent')]
 #[ORM\HasLifecycleCallbacks]
-class DecaissementRecurrent
+class DecaissementRecurrent implements AppartientASociete
 {
+    use SocieteTrait;
+
     public const FREQUENCE_MENSUELLE = 'mensuelle';
     public const FREQUENCE_ANNUELLE = 'annuelle';
 

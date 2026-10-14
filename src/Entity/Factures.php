@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\FacturesRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -29,9 +30,10 @@ use Symfony\Component\Validator\Constraints as Assert;
     columns: ['comptabilisee']
 )]
 #[ORM\HasLifecycleCallbacks]
-class Factures
+class Factures implements AppartientASociete
 {
     use PublicIdTrait;
+    use SocieteTrait;
 
     /*
      * ============================================================

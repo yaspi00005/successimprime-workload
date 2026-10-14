@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\MouvementTresorerieRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -39,8 +40,10 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
     columns: ['confidentiel']
 )]
 #[ORM\HasLifecycleCallbacks]
-class MouvementTresorerie
+class MouvementTresorerie implements AppartientASociete
 {
+    use SocieteTrait;
+
     /*
      * ============================================================
      * TYPES DE MOUVEMENT

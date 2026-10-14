@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -11,8 +12,10 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Index(name: 'idx_cloture_caisse_date', columns: ['cloture_le'])]
-class ClotureCaisse
+class ClotureCaisse implements AppartientASociete
 {
+    use SocieteTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

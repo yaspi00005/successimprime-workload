@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\ArticlesRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -14,8 +15,10 @@ use Doctrine\ORM\Mapping as ORM;
     name: 'uniq_article_reference',
     columns: ['reference']
 )]
-class Articles
+class Articles implements AppartientASociete
 {
+    use SocieteTrait;
+
     /*
      * Libellés courts des unités de stock, pour les tableaux.
      */

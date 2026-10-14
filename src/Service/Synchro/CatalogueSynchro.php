@@ -34,6 +34,7 @@ use App\Entity\Produits;
 use App\Entity\ReclamationClient;
 use App\Entity\ReclamationClientPhoto;
 use App\Entity\ReponseSondage;
+use App\Entity\Societe;
 use App\Entity\Sondage;
 use App\Entity\Supports;
 use App\Entity\TypesImpression;
@@ -106,12 +107,19 @@ final class CatalogueSynchro
     public static function types(): array
     {
         return [
+            // Sociétés (docs/societes.md) : de quoi rattacher en ligne les entreprises et les documents.
+            // RCCM, NIF et adresse de la société restent au local.
+            'societe' => [
+                'classe' => Societe::class, 'sens' => self::DESCENDANT, 'libelle' => 'Société', 'titre' => ['raisonSociale'],
+                'champs' => ['code', 'raisonSociale', 'parDefaut', 'actif'],
+                'relations' => [], 'listes' => [],
+            ],
             // Coordonnées publiques (site vitrine, contact WhatsApp, numéro marchand Orange Money).
             // Banque, numérotation, logos et signature restent au local.
             'entreprise' => [
                 'classe' => Entreprise::class, 'sens' => self::DESCENDANT, 'libelle' => 'Entreprise', 'titre' => ['code'],
                 'champs' => ['code', 'raisonSociale', 'nomCommercial', 'mention', 'activite', 'adresse', 'telephone', 'email', 'siteWeb', 'rccm', 'nif', 'marchandOrangeMoney', 'couleurs', 'actif', 'ordre'],
-                'relations' => [], 'listes' => [],
+                'relations' => ['societe' => 'societe'], 'listes' => [],
             ],
             // Contenu du site vitrine (Réglages › Site vitrine), saisi au local seulement.
             // Les images d'abord : pages, réalisations, conseils et partenaires les citent.
@@ -223,7 +231,7 @@ final class CatalogueSynchro
                     // Compte d'entreprise (maquette 19) : qui a demandé, qui a validé.
                     'bonCommande', 'validationEntreprise', 'demandeePar', 'valideePar', 'motifRefusEntreprise',
                 ],
-                'relations' => ['clients' => 'client'], 'listes' => [], 'numero' => 'numero',
+                'relations' => ['clients' => 'client', 'societe' => 'societe'], 'listes' => [], 'numero' => 'numero',
                 // Décision du valideur de l'entreprise, prise en ligne.
                 'remontees' => [
                     'validationEntreprise' => [Commandes::VALIDATION_A_FAIRE => [Commandes::VALIDATION_ACCEPTEE, Commandes::VALIDATION_REFUSEE]],
@@ -291,7 +299,7 @@ final class CatalogueSynchro
                     'numero', 'emetteur', 'dateDevis', 'remise', 'tva', 'totalHt', 'totalTtc', 'montantApayer', 'deleted', 'statut', 'etat',
                     'tokenAuthenticite', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation', 'telephoneFacturation', 'emailFacturation',
                 ],
-                'relations' => ['clients' => 'client', 'commande' => 'commande'], 'listes' => [], 'numero' => 'numero',
+                'relations' => ['clients' => 'client', 'commande' => 'commande', 'societe' => 'societe'], 'listes' => [], 'numero' => 'numero',
                 // Le jeton du lien PDF peut naître en ligne (le client ouvre son devis) : il est gardé.
                 'remontees' => ['statut' => [Devis::STATUT_ENVOYE => [Devis::STATUT_ACCEPTE]], 'tokenAuthenticite' => ['' => ['*']]],
             ],
@@ -315,7 +323,7 @@ final class CatalogueSynchro
                     'resteAPayer', 'statutPaiement', 'etat', 'tokenAuthenticite', 'codeSuivi', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation',
                     'telephoneFacturation', 'emailFacturation', 'createdAt', 'updatedAt',
                 ],
-                'relations' => ['commande' => 'commande'], 'listes' => [],
+                'relations' => ['commande' => 'commande', 'societe' => 'societe'], 'listes' => [],
                 'remontees' => ['tokenAuthenticite' => ['' => ['*']]],
             ],
             'paiement' => [
@@ -325,7 +333,7 @@ final class CatalogueSynchro
                     'montant', 'mode', 'statut', 'date', 'dateValidation', 'dateAnnulation', 'reference', 'numeroCheque', 'banqueEmettrice', 'titulaireCheque',
                     'dateEmissionCheque', 'dateEncaissementPrevue', 'motifRejet', 'fraisRetraitInclus', 'fondsSoutienInclus', 'montantFraisRetrait', 'montantFondsSoutien',
                 ],
-                'relations' => ['commande' => 'commande', 'facture' => 'facture'], 'listes' => [],
+                'relations' => ['commande' => 'commande', 'facture' => 'facture', 'societe' => 'societe'], 'listes' => [],
                 'imposeAuLocal' => ['statut' => Paiements::STATUT_EN_ATTENTE, 'dateValidation' => null, 'dateAnnulation' => null],
             ],
             // Réclamation écrite par le client en ligne (maquette 18) ; la réponse de l'atelier redescend.

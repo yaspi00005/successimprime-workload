@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\CommandesRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -14,8 +15,10 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity(repositoryClass: CommandesRepository::class)]
 #[ORM\Table(name: 'commandes')]
 #[ORM\Index(name: 'idx_commandes_canal_date', columns: ['canal', 'date_commande'])]
-class Commandes
+class Commandes implements AppartientASociete
 {
+    use SocieteTrait;
+
     /*
      * Canal de la commande : saisie au comptoir par un agent,
      * ou passée par le client en ligne (espace client, J5).

@@ -81,6 +81,20 @@ final class CatalogueParametres
                 'motsCles' => ['Objectif de chiffre d\'affaires', 'Seuil d\'alerte de trésorerie', 'Approbation des dépenses', 'Budgets des dépenses · main d\'œuvre'],
                 'note' => 'Les budgets par catégorie de dépense se règlent sur Finances › Dépenses (bouton Budgets).',
             ],
+            'statistiques' => [
+                'famille' => 'entreprise', 'libelle' => 'Objectifs et rapport de la semaine', 'icone' => 'fa-chart-line',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_statistiques_objectifs',
+                'champs' => [
+                    ['cle' => 'rapport_actif', 'type' => 'interrupteur', 'libelle' => 'Rapport de la semaine', 'aide' => 'Notification dans l\'application, lien vers la page et le PDF. Jamais par SMS ni WhatsApp.', 'defaut' => true],
+                    ['cle' => 'rapport_jour', 'type' => 'choix', 'libelle' => 'Envoyé le', 'options' => ['lundi' => 'lundi', 'mardi' => 'mardi', 'mercredi' => 'mercredi', 'jeudi' => 'jeudi', 'vendredi' => 'vendredi', 'samedi' => 'samedi', 'dimanche' => 'dimanche'], 'defaut' => 'lundi'],
+                    ['cle' => 'rapport_heure', 'type' => 'heure', 'libelle' => 'À partir de', 'defaut' => '08:00'],
+                    ['cle' => 'pour_direction', 'type' => 'interrupteur', 'libelle' => 'Pour la direction', 'aide' => 'Droit « Chiffre d\'affaires global » : version de l\'entreprise', 'defaut' => true],
+                    ['cle' => 'pour_agents', 'type' => 'interrupteur', 'libelle' => 'Pour les agents', 'aide' => 'Droit « Ses propres statistiques » : seulement leurs chiffres', 'defaut' => true],
+                    ['cle' => 'par_courriel', 'type' => 'interrupteur', 'libelle' => 'Aussi par e-mail', 'aide' => 'Si la messagerie est configurée et que la fiche employé a une adresse', 'defaut' => false],
+                ],
+                'motsCles' => ['Objectifs du mois · CA, commandes, m²', 'Objectif par agent, catégorie, machine', 'Rapport de la semaine · lundi 8 h', 'Destinataires du rapport'],
+                'note' => 'Les objectifs se fixent mois par mois sur Statistiques › Objectifs (bouton ci-dessous). Sans objectif du mois, le CA reprend l\'objectif de la tuile Finances et budgets.',
+            ],
 
             // ---------- Ventes ----------
             'grille' => [

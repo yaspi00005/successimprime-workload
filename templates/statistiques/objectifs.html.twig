@@ -1,0 +1,140 @@
+{% extends 'base.html.twig' %}
+{% import 'statistiques/_macros.html.twig' as st %}
+
+{% block title %}Objectifs du mois{% endblock %}
+{% block page_title %}Objectifs du mois{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/statistiques.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<form method="get" class="si-stats-periode">
+			{% if saisie is not null %}<input type="hidden" name="modifier" value="1">{% endif %}
+			<label class="visually-hidden" for="si-st-mois">Mois</label>
+			<select id="si-st-mois" name="mois" class="form-select form-select-sm" onchange="this.form.submit()">
+				{% for cle, libelle in choix_mois %}
+					<option value="{{ cle }}" {{ cle == mois|date('Y-m') ? 'selected' }}>{{ libelle }}</option>
+				{% endfor %}
+			</select>
+		</form>
+	</li>
+	{% if droits.admin and saisie is null %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_statistiques_objectifs', {mois: mois|date('Y-m'), modifier: 1}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-bullseye me-1"></i>Fixer les objectifs</a>
+		</li>
+	{% endif %}
+	{{ st.exporter('app_statistiques_objectifs_export', {mois: mois|date('Y-m')}) }}
+{% endblock %}
+
+{% block body %}
+	{% set globales = lignes|filter(l => l.axe == 'global') %}
+	{% set detail = lignes|filter(l => l.axe != 'global') %}
+	<div class="si-stats si-st">
+		<p class="si-st-intro">
+			{% if en_cours %}
+				Mois en cours : jour {{ jour }} sur {{ jours_mois }}. La projection prolonge le rythme actuel jusqu’à la fin du mois ; le trait sur chaque jauge marque où il faudrait en être aujourd’hui.
+			{% elseif a_venir %}
+				Mois à venir : les objectifs peuvent être fixés à l’avance.
+			{% else %}
+				Mois terminé : réalisé final face à l’objectif.
+			{% endif %}
+		</p>
+
+		{% if saisie is not null %}
+			<form method="post" action="{{ path('app_statistiques_objectifs_enregistrer', {mois: mois|date('Y-m')}) }}" class="card si-st-saisie">
+				<input type="hidden" name="_token" value="{{ csrf_token('objectifs-' ~ mois|date('Y-m')) }}">
+				<header>
+					<h2>Fixer les objectifs de {{ libelle_mois }}</h2>
+					<p>Laisser vide pour garder la valeur par défaut (en gris) ; 0 pour n’avoir aucun objectif.</p>
+				</header>
+				{% set groupe_courant = null %}
+				<table class="table si-st-table">
+					<tbody>
+						{% for s in saisie %}
+							{% if s.groupe != groupe_courant %}
+								{% set groupe_courant = s.groupe %}
+								<tr class="si-st-groupe"><th colspan="3">{{ s.groupe }}</th></tr>
+							{% endif %}
+							<tr>
+								<td><label for="obj-{{ loop.index }}">{{ s.libelle }}</label></td>
+								<td class="si-st-champ">
+									<input type="text" inputmode="numeric" id="obj-{{ loop.index }}" name="objectif[{{ s.cle }}]" value="{{ s.enregistre is not null ? s.enregistre }}" placeholder="{{ s.defaut is not null ? s.defaut|number_format(0, ',', ' ') : 'aucun' }}" class="form-control form-control-sm">
+								</td>
+								<td class="si-st-unite">{{ s.unite }}{% if s.defaut is not null and s.enregistre is null %} <small>par défaut</small>{% endif %}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				<footer>
+					<button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-check me-1"></i>Enregistrer</button>
+					<button type="submit" name="copier" value="1" class="btn btn-light btn-sm">Reprendre ceux du mois précédent</button>
+					<a href="{{ path('app_statistiques_objectifs', {mois: mois|date('Y-m')}) }}" class="btn btn-link btn-sm">Annuler</a>
+				</footer>
+			</form>
+		{% endif %}
+
+		{% if globales is not empty %}
+			<section class="si-st-objectifs" aria-label="Objectifs de l'entreprise">
+				<header><h2>Entreprise</h2></header>
+				<div class="si-st-objectifs-cartes">
+					{% for l in globales %}{{ st.carte(l) }}{% endfor %}
+				</div>
+			</section>
+		{% endif %}
+
+		{% set groupes = detail|map(l => l.groupe)|reduce((acc, g) => g in acc ? acc : acc|merge([g]), []) %}
+		{% if groupes is not empty %}
+			<div class="si-st-detail">
+				{% for groupe in groupes %}
+					{% set rangees = detail|filter(l => l.groupe == groupe) %}
+					<section class="card si-st-bloc">
+						<h2>{{ groupe|slice(0, 1)|upper ~ groupe|slice(1) }}</h2>
+						<table class="table si-st-table">
+							<thead><tr>
+								<th>{{ (rangees|first).axe == 'categorie' ? 'Catégorie' : ((rangees|first).axe == 'machine' ? 'Machine' : 'Agent') }}</th>
+								<th class="text-end">Réalisé</th>
+								<th class="text-end">Objectif</th>
+								<th class="si-st-col-jauge">Avancement</th>
+								<th class="text-end si-masque-mobile">Projection</th>
+								<th>État</th>
+							</tr></thead>
+							<tbody>
+								{% for l in rangees %}
+									{% set etat = etat_objectif(l.etat) %}
+									<tr>
+										<td>{{ l.libelle }}</td>
+										<td class="text-end">{{ st.valeur(l.realise, l.format) }}</td>
+										<td class="text-end">{{ st.valeur(l.objectif, l.format) }}</td>
+										<td class="si-st-col-jauge">
+											{% if l.objectif is not null %}
+												<div class="si-st-jauge si-st-jauge-fine"><span style="width: {{ min(100, max(0, l.part)) }}%"></span>{% if l.ecoule > 0 and l.ecoule < 100 %}<i style="left: {{ l.ecoule }}%"></i>{% endif %}</div>
+												<small>{{ l.part }} %</small>
+											{% else %}<small class="si-st-gris">—</small>{% endif %}
+										</td>
+										<td class="text-end si-masque-mobile">{{ l.projection is not null and l.ecoule < 100 ? st.valeur(l.projection, l.format) : '—' }}</td>
+										<td><span class="si-st-etat si-st-etat-{{ etat.couleur }}">{{ etat.libelle }}</span></td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</section>
+				{% endfor %}
+			</div>
+		{% endif %}
+
+		{% if lignes is empty %}
+			<p class="si-st-vide card">Aucun objectif à afficher avec vos droits.</p>
+		{% endif %}
+
+		<nav class="si-stats-rapports" aria-label="Autres pages">
+			<span>Voir aussi :</span>
+			<a href="{{ path('app_statistiques_index') }}">Statistiques et rapports</a>
+			<a href="{{ path('app_rapport_semaine') }}">Rapport de la semaine</a>
+			{% if droits.admin %}<a href="{{ path('app_reglages_parametres_panneau', {tuile: 'statistiques'}) }}">Réglages du rapport</a>{% endif %}
+		</nav>
+		<p class="si-stats-note">CA facturé : factures émises hors pro formas, TTC ; par agent celui de la commande, par catégorie réparti au prorata des lignes. Commandes : ni supprimées ni annulées. m² : lignes terminées en production dans le mois. Nouveaux clients : première commande dans le mois. Taux d’encaissement : paiements validés du mois ÷ CA facturé du mois. Sans objectif fixé, le CA reprend l’objectif des Réglages (Finances et budgets), chaque agent celui de sa fiche, et le taux d’encaissement vise 80 %.</p>
+	</div>
+{% endblock %}

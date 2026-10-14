@@ -40,6 +40,17 @@ class Paiements
      */
     public const MODE_SOLDE_CLIENT = 'solde_client';
 
+    /*
+     * Points de fidélité utilisés sur la commande (docs/fidelite.md) :
+     * 1 point = 1 F de remise. Comme le solde client, aucun compte de
+     * trésorerie n'est crédité et le mode n'est jamais proposé dans le
+     * formulaire : seul le bloc Fidélité de la commande le crée.
+     */
+    public const MODE_POINTS_FIDELITE = 'points_fidelite';
+
+    /** Modes qui ne font entrer aucun argent : hors des encaissements et de la caisse. */
+    public const MODES_SANS_ENCAISSEMENT = [self::MODE_SOLDE_CLIENT, self::MODE_POINTS_FIDELITE];
+
     public const MODES = [
         self::MODE_ESPECES,
         self::MODE_ORANGE_MONEY,
@@ -48,6 +59,7 @@ class Paiements
         self::MODE_CHEQUE,
         self::MODE_CARTE,
         self::MODE_SOLDE_CLIENT,
+        self::MODE_POINTS_FIDELITE,
     ];
 
     public const MODES_LABELS = [
@@ -58,6 +70,7 @@ class Paiements
         self::MODE_CHEQUE => 'Chèque',
         self::MODE_CARTE => 'Carte bancaire',
         self::MODE_SOLDE_CLIENT => 'Solde client (monnaie)',
+        self::MODE_POINTS_FIDELITE => 'Points fidélité',
     ];
 
     public const STATUT_EN_ATTENTE = 'en_attente';
@@ -583,10 +596,10 @@ class Paiements
          * concerné, l'argent étant déjà en caisse depuis un
          * paiement antérieur.
          */
-        if ($this->mode === self::MODE_SOLDE_CLIENT) {
+        if (\in_array($this->mode, self::MODES_SANS_ENCAISSEMENT, true)) {
             if ($this->compteTresorerie !== null) {
                 throw new \LogicException(
-                    'Un paiement par solde client ne doit pas être associé à un compte de trésorerie.'
+                    'Un paiement par solde client ou par points ne doit pas être associé à un compte de trésorerie.'
                 );
             }
 
@@ -706,7 +719,7 @@ class Paiements
          */
         $labels = self::MODES_LABELS;
 
-        unset($labels[self::MODE_SOLDE_CLIENT]);
+        unset($labels[self::MODE_SOLDE_CLIENT], $labels[self::MODE_POINTS_FIDELITE]);
 
         return array_flip($labels);
     }

@@ -1,0 +1,112 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Fidélité (maquette 18, téléphone de droite) avec les règles du
+	13/10/2026 : pas de palier, la progression vers chaque seuil ; pas de
+	parrainage, le ×2 du paiement le jour même. Lecture seule.
+#}
+
+{% import 'fidelite/_macros.html.twig' as f %}
+
+{% block title %}Fidélité{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_compte') }}"><span class="fl">‹</span>Fidélité</a>{% endblock %}
+
+{% block contenu %}
+	{% if exclu %}
+		<div class="ec-carte ec-vide">Le programme de fidélité est réservé aux particuliers. Vos conditions de client entreprise sont fixées avec Succès Imprim.</div>
+	{% else %}
+		{% set m2 = resume.m2 %}
+		{% set autre = resume.autre %}
+		{% set prochain = not m2.eligible ? 'm2' : (not autre.eligible ? 'autre' : null) %}
+
+		<section class="ec-fi-solde" aria-label="Mon solde de points">
+			<span class="ec-fi-sur">Mon solde</span>
+			<strong class="ec-fi-points">{{ resume.disponible|number_format(0, ',', ' ') }} <small>pts</small></strong>
+			<span class="ec-fi-valeur">soit <b>{{ resume.disponibleF|number_format(0, ',', ' ') }} F</b> à déduire d'une commande</span>
+			{% if prochain == 'm2' %}
+				<div class="ec-barre"><span style="width: {{ max(m2.part, 3) }}%"></span></div>
+				<span class="ec-fi-legende">{{ f.nombre(m2.cumule) }} / {{ f.nombre(m2.seuil) }} m² de grand format payés : vos m² rapportent au-delà</span>
+			{% elseif prochain == 'autre' %}
+				<div class="ec-barre"><span style="width: {{ max(autre.part, 3) }}%"></span></div>
+				<span class="ec-fi-legende">{{ autre.cumule|number_format(0, ',', ' ') }} / {{ autre.seuil|number_format(0, ',', ' ') }} F d'articles payés : ils rapportent au-delà</span>
+			{% else %}
+				<div class="ec-barre verte"><span style="width: 100%"></span></div>
+				<span class="ec-fi-legende">Tous vos achats payés rapportent des points</span>
+			{% endif %}
+		</section>
+
+		{% if promo %}
+			<div class="ec-carte ec-fi-promo">
+				<span class="ec-fi-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-1.5-3-5-3.5-5-1.2C7 7 9 7 12 7zm0 0c1.5-3 5-3.5 5-1.2C17 7 15 7 12 7z"/></svg></span>
+				<div>
+					<b>−{{ f.nombre(promo.taux) }} % sur votre prochaine commande</b>
+					<span class="ec-petit">{{ promo.estDuJourSeulement ? "Aujourd'hui seulement" : "Jusqu'au " ~ promo.fin|date('d/m/Y') }} · dites-le à l'atelier, il applique la remise sur votre commande.</span>
+				</div>
+			</div>
+		{% endif %}
+
+		<div class="ec-carte">
+			<h2>Ma progression</h2>
+			<ul class="ec-liste ec-fi-familles">
+				<li>
+					<span class="ec-fi-pastille bleu" aria-hidden="true">m²</span>
+					<span class="ec-fi-texte">
+						<b>Impression grand format</b>
+						<span class="ec-petit">{{ m2.eligible ? f.nombre(m2.taux) ~ ' points par m² payé' : 'Dès ' ~ f.nombre(m2.seuil) ~ ' m² payés, ' ~ f.nombre(m2.taux) ~ ' points par m²' }}</span>
+						{% if not m2.eligible %}<span class="ec-barre"><span style="width: {{ max(m2.part, 3) }}%"></span></span>{% endif %}
+					</span>
+					<span class="ec-pastille {{ m2.eligible ? 'vert' : 'gris' }}">{{ m2.eligible ? 'Actif' : f.nombre(m2.cumule) ~ ' / ' ~ f.nombre(m2.seuil) ~ ' m²' }}</span>
+				</li>
+				<li>
+					<span class="ec-fi-pastille orange" aria-hidden="true">%</span>
+					<span class="ec-fi-texte">
+						<b>Autres articles</b>
+						<span class="ec-petit">{{ autre.eligible ? f.nombre(autre.taux) ~ ' % du montant payé en points' : 'Dès ' ~ autre.seuil|number_format(0, ',', ' ') ~ ' F payés, ' ~ f.nombre(autre.taux) ~ ' % en points' }}</span>
+						{% if not autre.eligible %}<span class="ec-barre"><span style="width: {{ max(autre.part, 3) }}%"></span></span>{% endif %}
+					</span>
+					<span class="ec-pastille {{ autre.eligible ? 'vert' : 'gris' }}">{{ autre.eligible ? 'Actif' : autre.cumule|number_format(0, ',', ' ') ~ ' / ' ~ autre.seuil|number_format(0, ',', ' ') ~ ' F' }}</span>
+				</li>
+			</ul>
+		</div>
+
+		{% if resume.expirant > 0 %}
+			<div class="ec-carte ec-fi-expire">
+				<span class="ec-fi-icone ambre" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg></span>
+				<div>
+					<b>{{ resume.expirant|number_format(0, ',', ' ') }} points expirent le {{ resume.prochaineExpiration|date('d/m/Y') }}</b>
+					<span class="ec-petit">Demandez à l'atelier de les déduire de votre prochaine commande.</span>
+				</div>
+			</div>
+		{% endif %}
+
+		<div class="ec-carte ec-fi-double">
+			<div>
+				<span class="ec-fi-sur">Astuce</span>
+				<b>Payez le jour même : points ×{{ resume.multiplicateurJour }}</b>
+				<span class="ec-petit">Réglé le jour de la facture (ou de la commande), chaque paiement rapporte {{ resume.multiplicateurJour == 2 ? 'le double' : resume.multiplicateurJour ~ ' fois plus' }}. Sous {{ resume.delaiHeures }} h : points normaux. Au-delà : pas de points.</span>
+			</div>
+			<span class="ec-fi-x2" aria-hidden="true">×{{ resume.multiplicateurJour }}</span>
+		</div>
+
+		<div class="ec-carte">
+			<h2>Historique</h2>
+			{% if historique is empty %}
+				<p class="ec-petit" style="margin:0">Vos points apparaîtront ici à votre premier paiement validé.</p>
+			{% else %}
+				<ul class="ec-liste ec-fi-historique">
+					{% for h in historique %}
+						<li class="ec-ligne{{ h.annule ? ' annule' }}">
+							<span>
+								<b>{{ h.libelle }}</b>
+								<span class="ec-petit">{{ h.date|date('d/m/Y') }}{{ h.commande ? ' · commande ' ~ h.commande.numero }}{{ h.annule ? ' · annulé' }}</span>
+							</span>
+							<span class="ec-fi-mouvement {{ h.points > 0 ? 'plus' : 'moins' }}">{{ h.points > 0 ? '+' : '−' }}{{ h.points|abs|number_format(0, ',', ' ') }}</span>
+						</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+		</div>
+
+		<p class="ec-petit ec-fi-note">1 point = 1 F, sauf article à valeur spéciale. Les points se gagnent sur les paiements validés et sont valables {{ validiteMois }} mois ; les plus anciens sont utilisés d'abord. Pour les utiliser, demandez-le à l'atelier : il les déduit de votre commande.</p>
+	{% endif %}
+{% endblock %}

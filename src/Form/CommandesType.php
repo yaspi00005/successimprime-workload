@@ -223,6 +223,23 @@ class CommandesType extends AbstractType
                 ],
             ])
 
+            /*
+             * Code promo tapé au comptoir (docs/promotions.md) : il ne
+             * sert qu'à l'enregistrement, pour les promotions qui en
+             * demandent un. Les lignes qui l'ont eu le gardent ensuite.
+             */
+            ->add('codePromo', TextType::class, [
+                'label' => 'Code promo',
+                'mapped' => false,
+                'required' => false,
+                'attr' => [
+                    'class' => 'form-control js-code-promo',
+                    'maxlength' => 30,
+                    'autocomplete' => 'off',
+                    'placeholder' => 'Facultatif',
+                ],
+            ])
+
             ->add('tva', IntegerType::class, [
                 'label' => 'TVA',
                 'required' => false,

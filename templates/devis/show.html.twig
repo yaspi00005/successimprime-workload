@@ -330,6 +330,8 @@
 
 											</small>
 
+											{{ include('promotions/_ligne.html.twig', {detail: detail, possibles: promotionsB2b[detail.id] ?? [], type: 'devis', peutDemander: is_granted('ROLE_DEVIS')}) }}
+
 										</div>
 
 
@@ -1652,6 +1654,8 @@
 {% block stylesheets %}
 
 	{{ parent() }}
+
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
 
 	<style>
 

@@ -30,6 +30,11 @@ final class DemoCommand extends Command
         "DELETE f FROM compte_fidelite f JOIN clients c ON c.id = f.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
         "DELETE r FROM promo_reveil r JOIN clients c ON c.id = r.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
         "DELETE r FROM regle_fidelite r JOIN produits p ON p.id = r.produit_id WHERE p.id >= 900000 OR p.nom LIKE '%(démo)%'",
+        // Promotions (app:promotions --demo) : exceptions et anniversaires des clients fictifs, promotions repérées par leur note.
+        "DELETE e FROM promotion_exception e JOIN clients c ON c.id = e.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE a FROM promotion_anniversaire a JOIN clients c ON c.id = a.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE p FROM promotion p JOIN promotion_client pc ON pc.promotion_id = p.id JOIN clients c ON c.id = pc.clients_id WHERE p.origine = 'anniversaire' AND (c.code LIKE 'DEMO-%' OR c.id >= 900000)",
+        "DELETE FROM promotion WHERE note LIKE 'Démo : %'",
     ];
 
     public function __construct(
@@ -91,6 +96,7 @@ final class DemoCommand extends Command
         if (!$purger) {
             // Relevés de fidélité et avis des clients fictifs, calculés sur ce qui vient d'être chargé.
             $this->lancer('app:fidelite', ['--demo' => true], $output);
+            $this->lancer('app:promotions', ['--demo' => true], $output);
             $this->lancer('app:sondages:demo', [], $output);
             $io->text('Connexion possible avec demo.kadiatou (direction), demo.aminata (caisse), demo.seydou (graphiste), demo.oumar (machine), demo.bakary (livreur) ou demo.awa (entretien), mot de passe demo1234.');
         }

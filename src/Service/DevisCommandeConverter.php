@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\CommandeDetailFinition;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
+use App\Entity\DemandeExceptionPromotion;
 use App\Entity\Devis;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -87,6 +88,30 @@ final class DevisCommandeConverter
 ->setObservation(
     $devisDetail->getObservation()
 );
+
+                /*
+                 * Promotion de la ligne (docs/promotions.md) : elle suit
+                 * telle quelle, comme les montants. L'exception B2B
+                 * acceptée est recopiée sur la ligne de la commande ;
+                 * une demande encore en attente y passe.
+                 */
+                $commandeDetail->reprendrePromotion(
+                    $devisDetail->getPromotion(),
+                    $devisDetail->getLibellePromotion(),
+                    $devisDetail->getRemisePromotion(),
+                    $devisDetail->getMontantPromotion(),
+                    $devisDetail->isPromotionRetiree()
+                );
+
+                if (null !== $devisDetail->getId()) {
+                    foreach ($this->entityManager->getRepository(DemandeExceptionPromotion::class)->findBy(['ligneDevis' => $devisDetail]) as $demande) {
+                        if ($demande->estAcceptee()) {
+                            $this->entityManager->persist($demande->reprisePour($commandeDetail));
+                        } elseif ($demande->estEnAttente()) {
+                            $demande->transfererVers($commandeDetail);
+                        }
+                    }
+                }
 
                 /*
                  * addCommandesDetail() doit également appeler :

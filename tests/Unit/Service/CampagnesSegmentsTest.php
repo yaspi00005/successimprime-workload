@@ -24,6 +24,9 @@ final class CampagnesSegmentsTest extends TestCase
         self::assertSame(['tous', 'entreprises', 'nouveaux'], SegmentsClients::segmentsDe($client, null, $maintenant));
         self::assertSame(['tous', 'entreprises', 'actifs', 'inactifs', 'gros'], SegmentsClients::segmentsDe($client, ['derniere' => new \DateTimeImmutable('2026-05-01'), 'ca' => 600000], $maintenant));
         self::assertSame(['tous', 'particuliers', 'actifs'], SegmentsClients::segmentsDe(new Clients(), ['derniere' => new \DateTimeImmutable('2026-10-01'), 'ca' => 1000], $maintenant));
+        self::assertSame(['tous', 'entreprises', 'nouveaux'], SegmentsClients::segmentsDe((new Clients())->setTypeCompte(Clients::TYPE_COMPTE_ONG), null, $maintenant));
+        // Un revendeur au prix B2B reste un particulier s'il n'a pas de compte entreprise.
+        self::assertSame(['tous', 'particuliers', 'nouveaux'], SegmentsClients::segmentsDe((new Clients())->setTypeClient('B2B'), null, $maintenant));
     }
 
     public function testJoignables(): void

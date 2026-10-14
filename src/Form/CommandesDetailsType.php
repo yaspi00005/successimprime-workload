@@ -350,6 +350,20 @@ class CommandesDetailsType extends AbstractType
                 ],
             ])
 
+            /*
+             * Promotion de la ligne (docs/promotions.md) : le serveur la
+             * calcule à l'enregistrement ; l'agent peut seulement la
+             * retirer (elle ne revient alors pas toute seule).
+             */
+            ->add('promotionRetiree', CheckboxType::class, [
+                'label' => 'Promotion retirée',
+                'required' => false,
+                'attr' => [
+                    'class' => 'js-promotion-retiree',
+                    'data-detail-field' => 'promotionRetiree',
+                ],
+            ])
+
             ->add('tva', IntegerType::class, [
                 'label' => 'TVA (%)',
                 'required' => false,

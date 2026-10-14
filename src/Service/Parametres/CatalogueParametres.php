@@ -146,6 +146,21 @@ final class CatalogueParametres
                 'motsCles' => ['Actions de caisse · 4 heures de travail', 'Rappels de paiement · créances', 'Commande prête non retirée'],
                 'note' => 'Les lignes d\'action sont créées pour la caisse selon ces sources ; le délai se compte en heures de travail (tuile Horaires).',
             ],
+            // Promotions par segment et anniversaires des clients (docs/promotions.md).
+            'promotions' => [
+                'famille' => 'ventes', 'libelle' => 'Promotions', 'icone' => 'fa-percent',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PROMOTIONS'], 'route' => 'app_promotions_index',
+                'champs' => [
+                    ['cle' => 'alerte_cout_pct', 'type' => 'nombre', 'libelle' => 'Alerte coût : remises au-delà de', 'aide' => 'En % du CA facturé pendant la promotion (indicateur 2)', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'decimales' => 1, 'defaut' => 5],
+                    ['cle' => 'alerte_marge_pct', 'type' => 'nombre', 'libelle' => 'Alerte marge : sous', 'aide' => 'Marge brute des lignes en promotion', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'defaut' => 35],
+                    ['cle' => 'anniversaire_delai_jours', 'type' => 'nombre', 'libelle' => 'Anniversaires à venir sur', 'suffixe' => 'jours', 'min' => 7, 'max' => 60, 'defaut' => 21],
+                    ['cle' => 'anniversaire_validation', 'type' => 'interrupteur', 'libelle' => 'Valider les anniversaires avant le jour J', 'aide' => 'Sinon la promotion et le SMS partent tout seuls', 'defaut' => true],
+                    ['cle' => 'anniversaire_rappel_jours', 'type' => 'nombre', 'libelle' => 'Rappel avant la fin de validité', 'aide' => 'Si la promotion n\'a pas servi ; 0 = pas de rappel', 'suffixe' => 'jours', 'min' => 0, 'max' => 30, 'defaut' => 7],
+                    ['cle' => 'anniversaire_consentement', 'type' => 'choix', 'libelle' => 'SMS d\'anniversaire à', 'options' => ['sauf_refus' => 'Tous sauf ceux qui refusent les messages', 'accepte' => 'Ceux qui ont accepté les offres'], 'defaut' => 'sauf_refus'],
+                ],
+                'motsCles' => ['Promotions par segment de clients', 'Code promo · exception B2B', 'Anniversaire du client · SMS le jour J'],
+                'note' => 'Les promotions se créent sur l\'écran Promotions (Ventes) ; les anniversaires et leurs modèles sur l\'écran Anniversaires (Clients).',
+            ],
 
             // ---------- Atelier ----------
             'machines' => [

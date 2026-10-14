@@ -12,6 +12,7 @@ use App\Form\DevisType;
 use App\Repository\DevisRepository;
 use App\Repository\ClientsRepository;
 use App\Service\NotificationService;
+use App\Service\Promotions\PromotionsSaisie;
 use App\Service\WhatsAppService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -98,6 +99,7 @@ class DevisController extends AbstractController
         Request $request,
         EntityManagerInterface $entityManager,
         NotificationService $notificationService,
+        PromotionsSaisie $promotionsSaisie,
     ): Response {
         $devi = new Devis();
 
@@ -150,7 +152,8 @@ class DevisController extends AbstractController
                     $entityManager
                 );
 
-              
+                // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
+                $promotionsSaisie->appliquerDevis($devi, $form->get('codePromo')->getData(), new \DateTimeImmutable());
             } catch (\DomainException | \RuntimeException $exception) {
                 $form->addError(
                     new FormError($exception->getMessage())
@@ -229,10 +232,12 @@ $this->initialiserTokenAuthenticiteDevis(
     }
 
     #[Route('/{id}', name: 'show', methods: ['GET'])]
-    public function show(Devis $devi): Response
+    public function show(Devis $devi, PromotionsSaisie $promotionsSaisie): Response
     {
         return $this->render('devis/show.html.twig', [
             'devis' => $devi,
+            // Revendeur au prix B2B : promotions qu'une exception permettrait, ligne par ligne.
+            'promotionsB2b' => $promotionsSaisie->possibilitesB2b($devi, new \DateTimeImmutable()),
         ]);
     }
 
@@ -245,6 +250,7 @@ public function edit(
     Request $request,
     Devis $devi,
     EntityManagerInterface $entityManager,
+    PromotionsSaisie $promotionsSaisie,
 ): Response {
     $form = $this->createForm(DevisType::class, $devi);
     $form->handleRequest($request);
@@ -256,6 +262,9 @@ public function edit(
                 $form,
                 $entityManager
             );
+
+            // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
+            $promotionsSaisie->appliquerDevis($devi, $form->get('codePromo')->getData(), new \DateTimeImmutable());
 
             $entityManager->flush();
 

@@ -36,6 +36,13 @@
 		</a>
 	{% endif %}
 
+	{% if not client.isB2B %}
+		<a class="ec-carte ec-rangee" href="{{ path('app_espace_promotions') }}">
+			<span><b>Mes promotions</b><span class="ec-petit">Les offres en cours pour vous</span></span>
+			<span class="fl" aria-hidden="true">›</span>
+		</a>
+	{% endif %}
+
 	<a class="ec-carte ec-rangee" href="{{ path('app_espace_adresses') }}">
 		<span><b>Adresses de livraison</b><span class="ec-petit">{{ nombreAdresses == 0 ? 'Aucune adresse enregistrée' : nombreAdresses ~ ' adresse' ~ (nombreAdresses > 1 ? 's') }}</span></span>
 		<span class="fl" aria-hidden="true">›</span>

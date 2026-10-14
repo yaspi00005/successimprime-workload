@@ -30,6 +30,7 @@ use App\Service\SuiviCommandeService;
 use App\Repository\FacturesRepository;
 use App\Repository\ParametresPaiementRepository;
 use App\Service\Parametres\Parametres;
+use App\Service\Promotions\PromotionsSaisie;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
@@ -185,7 +186,8 @@ final class CommandesController extends AbstractController
         StockService $stockService,
         CommandesRepository $commandesRepository,
         NotificationService $notificationService,
-        Parametres $parametres
+        Parametres $parametres,
+        PromotionsSaisie $promotionsSaisie
     ): Response {
         $commande = new Commandes();
 
@@ -259,6 +261,9 @@ final class CommandesController extends AbstractController
                     $commande,
                     $fichierRepository
                 );
+
+                // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
+                $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());
 
                 /*
              * Contrôle du stock uniquement si
@@ -556,7 +561,7 @@ final class CommandesController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_commandes_show', methods: ['GET'])]
-    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient): Response
+    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient, PromotionsSaisie $promotionsSaisie): Response
     {
         $lignes = [];
         $voirCouts = $this->isGranted('ROLE_COUT_MARGE');
@@ -596,6 +601,8 @@ final class CommandesController extends AbstractController
             'historique' => \array_slice($suiviCommandeService->historique($commande, $this->isGranted('ROLE_PAIEMENT_VOIR')), 0, 8),
             'facture' => end($factures) ?: null,
             'marge' => $voirCouts ? $marge + ['taux' => CalculateurCoutRevient::tauxMarge($marge['ht'], $marge['cout'])] : null,
+            // Revendeur au prix B2B : promotions qu'une exception permettrait, ligne par ligne.
+            'promotionsB2b' => $promotionsSaisie->possibilitesB2b($commande, new \DateTimeImmutable()),
         ]);
     }
 
@@ -609,7 +616,8 @@ final class CommandesController extends AbstractController
         Commandes $commande,
         EntityManagerInterface $entityManager,
         CommandeDetailFichierRepository $fichierRepository,
-        StockService $stockService
+        StockService $stockService,
+        PromotionsSaisie $promotionsSaisie
     ): Response {
 
         /*
@@ -825,6 +833,9 @@ final class CommandesController extends AbstractController
                         $commande,
                         $fichierRepository
                     );
+
+                // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
+                $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());
             } catch (
                 \DomainException
                 | \RuntimeException

@@ -141,6 +141,8 @@
                 total: total,
                 fichiers: fichiers,
                 surface: largeur * longueur / 10000 * quantite,
+                // Promotion de la ligne, posée par promotions-saisie.js.
+                promotion: (detail.querySelector('.js-promo-ligne') || {dataset: {}}).dataset.etiquette || '',
             };
         }
 
@@ -159,7 +161,8 @@
                 return '<tr data-index="' + l.index + '"' + actif + '>'
                     + '<td class="si-col-vignette"><span class="si-carre si-carre-' + (l.index % 5) + '"></span></td>'
                     + '<td><span class="si-ligne-nom">' + echapper(l.nom) + '<span class="d-md-none"> × ' + nombre.format(l.quantite) + '</span></span>'
-                    + (l.caracteristiques ? '<span class="si-ligne-carac">' + echapper(l.caracteristiques) + '</span>' : '') + '</td>'
+                    + (l.caracteristiques ? '<span class="si-ligne-carac">' + echapper(l.caracteristiques) + '</span>' : '')
+                    + (l.promotion ? '<span class="si-ligne-promo"><i class="fas fa-tag me-1"></i>' + echapper(l.promotion) + '</span>' : '') + '</td>'
                     + '<td class="si-col-machine">' + (l.machine ? '<span class="si-machine">' + echapper(l.machine) + '</span>' : '') + '</td>'
                     + '<td class="si-col-qte text-end">' + nombre.format(l.quantite) + '</td>'
                     + '<td class="si-col-pu text-end">' + montant(l.total / l.quantite) + '</td>'

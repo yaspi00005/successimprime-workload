@@ -71,7 +71,8 @@ final class SegmentsClients
      */
     public static function segmentsDe(Clients $client, ?array $achat, \DateTimeImmutable $maintenant): array
     {
-        $segments = ['tous', Clients::TYPE_COMPTE_ENTREPRISE === $client->getTypeCompte() ? 'entreprises' : 'particuliers'];
+        // Entreprises et institutions : ONG et administrations comprises (nature du compte, pas la grille B2B).
+        $segments = ['tous', $client->isOrganisation() ? 'entreprises' : 'particuliers'];
         if (null === $achat) {
             $segments[] = 'nouveaux';
 

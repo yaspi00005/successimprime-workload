@@ -2,9 +2,90 @@
 
 Demande de Yaya le 10/10/2026. Aucune maquette dédiée pour l'instant ; ce document fixe le périmètre retenu.
 
-## Ce qui existe déjà
+## En place (14/10/2026)
 
-- Prix B2B par produit (`Produits::prixB2B`, remise dérivée `getRemiseB2B()`), appliqué aux comptes entreprise.
+Tout se gère sur l'ERP de la boutique. Le site en ligne reçoit les promotions pour l'espace client, mais ne les modifie pas.
+
+### Écrans et droits
+
+| Écran | Où | Qui |
+|---|---|---|
+| Liste des promotions, par état (en cours, à venir, terminées, suspendues) | Ventes › Promotions (`/promotions`) | Droit **Promotions**, ou qui saisit devis ou commandes (lecture) |
+| Fiche et suivi d'une promotion | `/promotions/{id}` | Idem. Le journal des modifications : droit Promotions seulement |
+| Créer, modifier, suspendre, supprimer | Boutons de la liste et de la fiche | Droit Promotions |
+| Exceptions B2B à décider | Ventes › Promotions, bouton « Exceptions B2B » (`/promotions/exceptions`), avec une pastille au menu | Droit Promotions |
+| Anniversaires à venir et modèles par palier | Clients › Anniversaires (`/promotions/anniversaires`) | Droit Promotions |
+| Réglages (alertes, anniversaires) | Paramètres › Promotions (famille Ventes) | Droit Paramètres |
+| Mes promotions | Espace client › Compte (`/espace/promotions`) | Le client connecté, pour ses promotions seulement |
+
+- **Droit Promotions** (`ROLE_PROMOTIONS`, Réglages › Rôles et droits, groupe Fonctions) : créer, suspendre, accepter les exceptions B2B, gérer les anniversaires. L'administrateur l'a par la hiérarchie de `security.yaml`.
+- **Montants** : ils ne sont calculés que pour qui a le droit de les voir (`DroitsStatistiques`, comme les statistiques). Le CA et les remises demandent le droit « ventes » (`ROLE_STATS_VENTES` ou `ROLE_STATS_GLOBAL`). La marge demande le droit « marges » (`ROLE_COUT_MARGE`). Sans ces droits, la liste et la fiche ne donnent que les nombres de lignes, de commandes et de clients. Les montants ne sont pas seulement cachés dans la page : ils ne sont pas calculés.
+- La caisse voit la promotion sur la ligne qu'elle saisit (libellé et remise), comme le reste du prix.
+
+### Une promotion
+
+- **Articles** : un ou plusieurs produits, et/ou une catégorie entière.
+- **Avantage** : pourcentage (90 % au plus), montant en francs par unité, ou prix fixe par unité.
+- **Période** : du premier au dernier jour compris. Une nouvelle promotion commence aujourd'hui au plus tôt.
+- **Segment** : tous les clients, particuliers, entreprises et institutions, nouveaux clients, actifs (achat sur 12 mois), inactifs depuis 90 jours, fidélité (seuil franchi), gros clients (500 000 F et plus sur 12 mois), ou liste choisie à la main. Les segments calculés sont ceux des campagnes (`SegmentsClients`).
+- **Conditions** : quantité minimale de la ligne, montant minimal de la ligne avant remise, code promo facultatif, nombre de commandes par client.
+- Une promotion déjà portée par des lignes ne se supprime pas : elle se suspend et reste dans l'historique. Chaque création, modification, suspension ou suppression est inscrite au journal d'activité.
+
+### À la saisie d'un devis ou d'une commande
+
+- Pendant la saisie, le formulaire demande au serveur la promotion de chaque ligne (`/promotions/saisie/apercu`). Il l'affiche sous la ligne avec un bouton **Retirer** et tient compte de la remise dans le total. Le champ « Code promo » du récapitulatif débloque les promotions à code.
+- **À l'enregistrement, le serveur recalcule tout** (`PromotionsSaisie`). Le navigateur n'envoie que le code tapé et, pour chaque ligne, le choix de retirer la promotion. La remise de la promotion est gardée à part (`remisePromotion`, `montantPromotion`) avec le lien vers la promotion et son libellé du jour. La ligne les garde après la fin de la promotion, pour l'historique et le suivi.
+- **Une seule promotion par ligne, sans cumul.** On retient la plus avantageuse pour le client. Elle ne donne que ce qui dépasse l'avantage déjà sur la ligne (remise à la main, promo de réveil). La promo de réveil (`docs/fidelite.md`) laisse la ligne qui porte déjà une promotion.
+- **La promotion se juge au jour du document** (date du devis ou de la commande), pas au jour de la modification.
+- Une commande facturée ne bouge plus. Un devis converti en commande transmet ses promotions et ses exceptions à la commande.
+- **Clients au prix B2B** (grille revendeur, `Clients::typeClient = 'B2B'`, et non le type de compte) : aucune promotion. Une entreprise au prix public est un client comme les autres. Le formulaire signale qu'une promotion serait possible. Après l'enregistrement, l'agent clique **Demander l'exception** sur la ligne, depuis la fiche du devis ou de la commande. La ligne reste au prix B2B. Les détenteurs du droit Promotions sont prévenus (notification et pastille). Le responsable accepte ou refuse avec un motif, et l'agent est prévenu. Une fois l'exception acceptée, la promotion est calculée **à partir du prix public** et remplace le prix B2B, sans cumul. Demande et décision sont inscrites au journal d'activité.
+
+### Suivi d'une promotion (fiche)
+
+| Indicateur | Calcul | Alerte (réglable) |
+|---|---|---|
+| CA avec la promotion | Lignes **facturées** qui la portent : factures émises, hors proformas (`docs/indicateurs.md`) | — |
+| Coût | Remises de la promotion, rapportées au CA facturé de toute l'entreprise sur la période (indicateur 2) | au-delà de 5 % |
+| Clients touchés | Clients distincts des commandes qui la portent | — |
+| Effet | Commandes HT des clients du segment pendant la promotion, comparées à la même durée juste avant, sur les mêmes clients | — |
+| Marge restante | Marge brute des lignes facturées dont le coût de revient est connu (enregistré, sinon calculé) | sous 35 % |
+
+### Anniversaires des clients
+
+- **Date de départ** : création de la fiche, ou première commande si elle est plus ancienne. Les clients au prix B2B ne sont pas fêtés.
+- **Modèles par palier** (1 an, 2 ans…) : articles, avantage, validité en jours, texte du SMS. Le palier le plus haut atteint s'applique. Le texte ne doit contenir aucun montant : sinon rien ne part.
+- **Anniversaires à venir** : les 21 prochains jours par défaut (réglable dans Paramètres, et modifiable dans la page). Pour chaque anniversaire : le nombre d'années, le CA sur 12 mois (avec le droit « ventes ») et la promotion prévue. L'admin peut changer le modèle, exclure, valider, ou **tout valider** d'un clic. Par défaut, il faut valider avant le jour J (réglage « Valider les anniversaires avant le jour J »).
+- **Jour J** (`app:promotions`) : création de la promotion du client seul (segment « liste », origine anniversaire), puis SMS par Orange. Quand les SMS ne sont pas branchés, un lien WhatsApp est préparé sur la page, comme pour les rappels. L'envoi est tracé dans la campagne du mois « Anniversaires clients ». Aucun message ne part vers une fiche de démonstration (`DEMO-`), ni vers un client qui refuse les messages (réglage du consentement). Les jours manqués sont rattrapés jusqu'à 7 jours.
+- **Rappel** 7 jours (réglable, 0 = pas de rappel) avant la fin, si la promotion n'a pas servi.
+- **Idempotent** : relancée le même jour, la tâche ne refait rien (un anniversaire par client et par nombre d'années, marqué traité).
+
+### Tâche planifiée
+
+Chaque matin, sur l'ERP de la boutique uniquement :
+
+- Linux ou Mac : `15 8 * * * cd /chemin/du/projet && php bin/console app:promotions -q >> var/log/promotions.log 2>&1`.
+- Windows : une tâche planifiée quotidienne à 8 h 15 qui lance `php bin/console app:promotions -q`, par exemple `schtasks /Create /SC DAILY /ST 08:15 /TN "SuccesImprim promotions" /TR "cmd /c cd /d C:\chemin\du\projet && php bin\console app:promotions -q >> var\log\promotions.log 2>&1"`.
+- `--jour=AAAA-MM-JJ` rejoue un autre jour (essai, rattrapage). `--demo` charge les données de démonstration (refusé en production, voir `docs/donnees-demo.md`).
+
+### Espace client
+
+La page **Mes promotions** (lien dans Compte, sauf pour un client au prix B2B) montre au client ses promotions en cours, et elles seules : celles de son segment, de sa liste ou de son anniversaire. Elle donne le nom, les articles, la période, l'avantage et les conditions. Les promotions descendent par la synchronisation (type `promotion`, `docs/synchronisation.md`). Le code, la note interne, les auteurs et les exceptions restent au local. Une promotion à code descend éteinte : le code se donne au comptoir. Après la mise à jour, lancer une fois `php bin/console app:synchro --initialiser=promotion` sur le local pour envoyer les promotions déjà créées.
+
+### Reste à faire
+
+- **Commande passée en ligne** : la promotion n'est pas posée à l'envoi par le client. Elle s'applique quand l'atelier ouvre et enregistre la commande pour en confirmer le prix.
+- **Nombre d'utilisations par client** : il se compte sur les commandes du local. Une commande passée en ligne et pas encore enregistrée à la boutique ne compte pas encore.
+- **Annonce par campagne** : pas de bouton « annoncer cette promotion » ; la campagne WhatsApp ou SMS se prépare à la main sur le même segment.
+- Propositions pas encore faites : le message plus personnel pour les gros clients (appel de la direction, cadeau à la livraison). L'anniversaire de la première commande n'a pas de fête à part : la date de départ la prend déjà quand elle est plus ancienne que la fiche.
+- Clients dormeurs : rien de nouveau, la promo de réveil existante (`docs/fidelite.md`) fait ce travail ; la promotion par segment « inactifs depuis 90 jours » le complète sans le dupliquer.
+
+---
+
+Le périmètre d'origine suit.
+
+## Ce qui existait déjà
+
+- Prix B2B par produit (`Produits::prixB2B`, remise dérivée `getRemiseB2B()`), appliqué aux clients revendeurs au prix B2B (`Clients::typeClient = 'B2B'`), qu'ils soient entreprise ou non.
 - Remise manuelle en francs par ligne de commande (`CommandesDetails::remise`).
 - Campagnes WhatsApp et SMS (`Campagne`), sans lien avec un prix.
 

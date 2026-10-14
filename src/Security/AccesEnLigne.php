@@ -14,7 +14,8 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
  * Règles d'accès à l'administration en ligne (maquettes 38 et CX03) :
- * appareil autorisé + mot de passe + code reçu par SMS, session fermée
+ * appareil autorisé + mot de passe + code reçu par e-mail (à l'adresse
+ * de la fiche employé, par SMS sans adresse), session fermée
  * après 15 minutes sans activité. Rien de tout ça ne s'applique sur le
  * serveur local de l'atelier (APP_EN_LIGNE=0).
  */
@@ -26,13 +27,13 @@ final class AccesEnLigne
     public const SESSION_APPAREIL = 'si_appareil_id';
     public const INACTIVITE_SECONDES = 900;
     public const VALIDITE_INVITATION_SECONDES = 300;
-    public const ESSAIS_MAX = CodeParSms::ESSAIS_MAX;
+    public const ESSAIS_MAX = CodeDeConnexion::ESSAIS_MAX;
 
     public function __construct(
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         private readonly AppareilAutoriseRepository $appareils,
         private readonly EntityManagerInterface $em,
-        private readonly CodeParSms $codes,
+        private readonly CodeDeConnexion $codes,
         private readonly NotificationService $notifications,
     ) {
     }
@@ -149,18 +150,29 @@ final class AccesEnLigne
     /* ---------- Code de sécurité ---------- */
 
     /**
-     * Envoie un nouveau code par SMS au téléphone de la fiche employé.
+     * Envoie un nouveau code à l'e-mail de la fiche employé, ou par SMS à
+     * son téléphone s'il n'a pas d'adresse (ou si l'e-mail n'est pas réglé
+     * sur le serveur).
      *
-     * @return array{envoye: bool, telephone: string, erreur: ?string, codeDev: ?string}
+     * @return array{envoye: bool, canal: ?string, destination: string, erreur: ?string, codeDev: ?string, limite: bool}
      */
-    public function envoyerCode(User $utilisateur, SessionInterface $session): array
+    public function envoyerCode(User $utilisateur, SessionInterface $session, string $ip): array
     {
-        return $this->codes->envoyer(
+        $employe = $utilisateur->getEmploye();
+        $envoi = $this->codes->envoyer(
             $session,
             self::SESSION_CODE,
-            (string) $utilisateur->getEmploye()?->getTelephone(),
-            'Succès Imprim : votre code de sécurité est %s. Valable 5 minutes. Ne le donnez à personne.',
+            DestinationCode::vers((string) $employe?->getTelephone(), $employe?->getEmail()),
+            CodeDeConnexion::PERSONNEL,
+            $ip,
         );
+        // Trop de codes : sans code en attente, la page du code renverrait à
+        // l'accueil, qui en redemanderait un. Elle s'affiche avec l'erreur.
+        if ($envoi['limite'] && !$this->codes->enAttente($session, self::SESSION_CODE)) {
+            $this->codes->sansEnvoi($session, self::SESSION_CODE);
+        }
+
+        return $envoi;
     }
 
     public function codeEnAttente(SessionInterface $session): bool
@@ -186,6 +198,6 @@ final class AccesEnLigne
 
     public static function masquer(string $telephone): string
     {
-        return CodeParSms::masquer($telephone);
+        return DestinationCode::masquerTelephone($telephone);
     }
 }

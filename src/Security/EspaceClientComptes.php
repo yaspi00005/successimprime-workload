@@ -19,7 +19,7 @@ final class EspaceClientComptes
     public function __construct(
         private readonly CompteClientRepository $comptes,
         private readonly EntityManagerInterface $em,
-        private readonly CodeParSms $codes,
+        private readonly CodeDeConnexion $codes,
     ) {
     }
 
@@ -36,25 +36,15 @@ final class EspaceClientComptes
      *
      * @param array{nom?: string, prenom?: string} $creation
      *
-     * @return array{envoye: bool, telephone: string, erreur: ?string, codeDev: ?string}
+     * @return array{envoye: bool, canal: ?string, destination: string, erreur: ?string, codeDev: ?string, limite: bool}
      */
-    public function envoyerCode(SessionInterface $session, string $telephone, array $creation = []): array
+    public function envoyerCode(SessionInterface $session, string $telephone, string $ip, array $creation = []): array
     {
-        $donnees = ['telephone' => $telephone] + $creation;
-        if ([] === $creation && !$this->estConnu($telephone)) {
-            // Code jamais envoyé : la saisie sera toujours fausse.
-            $this->codes->envoyer($session, self::SESSION_CODE, '', '%s', $donnees);
+        $destination = [] === $creation && !$this->estConnu($telephone)
+            ? DestinationCode::inconnue($telephone)
+            : DestinationCode::vers($telephone);
 
-            return ['envoye' => true, 'telephone' => CodeParSms::masquer($telephone), 'erreur' => null, 'codeDev' => null];
-        }
-
-        return $this->codes->envoyer(
-            $session,
-            self::SESSION_CODE,
-            $telephone,
-            'Succès Imprim : votre code de connexion est %s. Valable 5 minutes. Ne le donnez à personne.',
-            $donnees,
-        );
+        return $this->codes->envoyer($session, self::SESSION_CODE, $destination, CodeDeConnexion::ESPACE, $ip, ['telephone' => $telephone] + $creation);
     }
 
     /**

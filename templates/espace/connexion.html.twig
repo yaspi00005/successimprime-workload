@@ -20,20 +20,20 @@
 	{% if mode == 'code' and code.attente and not app.request.query.has('changer') %}
 		{% set donnees = code.envoi %}
 		<p class="si-espace-info">
-			Code envoyé au <strong>{{ donnees.telephone|default('') }}</strong>, valable 5 minutes.
+			Code envoyé {{ donnees.canal|default('sms') == 'email' ? 'par e-mail à' : 'par SMS au' }} <strong>{{ donnees.destination|default('') }}</strong>, valable 5 minutes.
 			<a href="{{ path('app_espace_connexion', {mode: 'code', changer: 1}) }}">Changer de numéro</a>
 		</p>
 		{% if donnees.envoye is defined and not donnees.envoye %}
-			<p class="si-espace-erreur">Le SMS n'a pas pu partir : {{ donnees.erreur }}</p>
+			<p class="si-espace-erreur">Le code n'a pas pu partir : {{ donnees.erreur }}</p>
 		{% endif %}
 		{% if donnees.codeDev|default(null) %}
-			<p class="si-espace-dev">Hors production, sans SMS : le code est <strong>{{ donnees.codeDev }}</strong>.</p>
+			<p class="si-espace-dev">Hors production, sans envoi : le code est <strong>{{ donnees.codeDev }}</strong>.</p>
 		{% endif %}
 
 		<form method="post" action="{{ path('app_espace_connexion') }}">
 			<input type="hidden" name="mode" value="code">
 			<input type="hidden" name="_csrf_token" value="{{ csrf_token('espace-connexion') }}">
-			<label>Code reçu par SMS</label>
+			<label>Code reçu {{ donnees.canal|default('sms') == 'email' ? 'par e-mail' : 'par SMS' }}</label>
 			<div class="si-code" role="group" aria-label="Code à 6 chiffres">
 				{% for i in 1..6 %}
 					<input type="text" name="code[]" inputmode="numeric" pattern="[0-9]" maxlength="1" required aria-label="Chiffre {{ i }}"{{ i == 1 ? ' autocomplete="one-time-code" autofocus' }}>

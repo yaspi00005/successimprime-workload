@@ -33,7 +33,7 @@ final class EspaceClientAuthenticator extends AbstractAuthenticator implements A
 
     public function __construct(
         private readonly UrlGeneratorInterface $urls,
-        private readonly CodeParSms $codes,
+        private readonly CodeDeConnexion $codes,
         private readonly EspaceClientComptes $comptes,
         private readonly CompteClientRepository $repository,
         private readonly EntityManagerInterface $em,
@@ -74,7 +74,7 @@ final class EspaceClientAuthenticator extends AbstractAuthenticator implements A
         $saisi = $request->request->all()['code'] ?? '';
         $resultat = $this->codes->verifier($session, EspaceClientComptes::SESSION_CODE, \is_array($saisi) ? implode('', $saisi) : (string) $saisi);
         if ('ok' !== $resultat) {
-            throw new CustomUserMessageAuthenticationException(CodeParSms::messageErreur($resultat));
+            throw new CustomUserMessageAuthenticationException(CodeDeConnexion::messageErreur($resultat));
         }
 
         $compte = $this->comptes->ouvrir($donnees);

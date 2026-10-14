@@ -4,7 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Security\AccesEnLigne;
-use App\Security\CodeParSms;
+use App\Security\CodeDeConnexion;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Administration en ligne (maquette CX03) : le code de sécurité reçu
- * par SMS après le mot de passe, et l'enrôlement d'un appareil depuis
+ * par e-mail (ou SMS) après le mot de passe, et l'enrôlement d'un appareil depuis
  * le QR affiché dans Réglages › Sécurité.
  */
 final class VerificationController extends AbstractController
@@ -46,7 +46,7 @@ final class VerificationController extends AbstractController
 
                 return $this->redirect('/');
             }
-            $erreur = CodeParSms::messageErreur($resultat);
+            $erreur = CodeDeConnexion::messageErreur($resultat);
         }
 
         return $this->render('security/verification.html.twig', [
@@ -67,7 +67,7 @@ final class VerificationController extends AbstractController
         }
         if ($this->isCsrfTokenValid('verification', (string) $request->request->get('_token'))
             && 0 === $this->acces->secondesAvantRenvoi($session)) {
-            $session->set('si_code_envoi', $this->acces->envoyerCode($utilisateur, $session));
+            $session->set('si_code_envoi', $this->acces->envoyerCode($utilisateur, $session, (string) $request->getClientIp()));
         }
 
         return $this->redirectToRoute('app_verification');

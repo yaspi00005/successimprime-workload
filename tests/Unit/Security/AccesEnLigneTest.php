@@ -8,14 +8,9 @@ use App\Entity\User;
 use App\EventSubscriber\AccesEnLigneSubscriber;
 use App\Repository\AppareilAutoriseRepository;
 use App\Security\AccesEnLigne;
-use App\Security\CodeParSms;
 use App\Service\NotificationService;
-use App\Service\OrangeSmsService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
@@ -23,23 +18,31 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 final class AccesEnLigneTest extends TestCase
 {
+    private FabriqueCodes $fabrique;
+
+    protected function setUp(): void
+    {
+        $this->fabrique = new FabriqueCodes();
+    }
+
     private function acces(string $environnement = 'dev'): AccesEnLigne
     {
         // SMS non configuré : l'envoi échoue sans appel réseau.
-        $sms = new OrangeSmsService(new MockHttpClient(), new ArrayAdapter(), new NullLogger(), '', '', '', '');
-
         return new AccesEnLigne(
             true,
             $this->createStub(AppareilAutoriseRepository::class),
             $this->createStub(EntityManagerInterface::class),
-            new CodeParSms('secret-de-test', $environnement, $sms),
+            $this->fabrique->codes($environnement),
             $this->createStub(NotificationService::class),
         );
     }
 
-    private function utilisateur(): User
+    private function utilisateur(?string $email = null): User
     {
         $employe = (new Employes())->setTelephone('76 12 42 12');
+        if (null !== $email) {
+            $employe->setEmail($email);
+        }
 
         return (new User())->setEmploye($employe);
     }
@@ -48,10 +51,11 @@ final class AccesEnLigneTest extends TestCase
     {
         $acces = $this->acces();
         $session = new Session(new MockArraySessionStorage());
-        $envoi = $acces->envoyerCode($this->utilisateur(), $session);
+        $envoi = $acces->envoyerCode($this->utilisateur(), $session, '10.0.0.1');
 
         self::assertFalse($envoi['envoye']);
-        self::assertSame('+223 •• •• 42 12', $envoi['telephone']);
+        self::assertSame('sms', $envoi['canal']);
+        self::assertSame('+223 •• •• 42 12', $envoi['destination']);
         self::assertMatchesRegularExpression('/^\d{6}$/', (string) $envoi['codeDev']);
         self::assertSame('ok', $acces->verifierCode($session, $envoi['codeDev']));
         self::assertIsInt($session->get(AccesEnLigne::SESSION_ACTIVITE));
@@ -62,7 +66,7 @@ final class AccesEnLigneTest extends TestCase
     {
         $acces = $this->acces();
         $session = new Session(new MockArraySessionStorage());
-        $code = $acces->envoyerCode($this->utilisateur(), $session)['codeDev'];
+        $code = $acces->envoyerCode($this->utilisateur(), $session, '10.0.0.1')['codeDev'];
         $faux = '000000' === $code ? '111111' : '000000';
 
         for ($i = 1; $i < AccesEnLigne::ESSAIS_MAX; ++$i) {
@@ -74,7 +78,7 @@ final class AccesEnLigneTest extends TestCase
 
     public function testLeCodeNEstJamaisAfficheEnProduction(): void
     {
-        $envoi = $this->acces('prod')->envoyerCode($this->utilisateur(), new Session(new MockArraySessionStorage()));
+        $envoi = $this->acces('prod')->envoyerCode($this->utilisateur(), new Session(new MockArraySessionStorage()), '10.0.0.1');
 
         self::assertNull($envoi['codeDev']);
     }
@@ -83,9 +87,40 @@ final class AccesEnLigneTest extends TestCase
     {
         $acces = $this->acces();
         $session = new Session(new MockArraySessionStorage());
-        $acces->envoyerCode($this->utilisateur(), $session);
+        $acces->envoyerCode($this->utilisateur(), $session, '10.0.0.1');
 
         self::assertGreaterThan(55, $acces->secondesAvantRenvoi($session));
+    }
+
+    public function testCodeDuPersonnelParEmailALAdresseDeSaFicheEmploye(): void
+    {
+        $acces = $this->acces();
+        $session = new Session(new MockArraySessionStorage());
+        $envoi = $acces->envoyerCode($this->utilisateur('Kadiatou@SuccesImprim.ml'), $session, '10.0.0.1');
+
+        self::assertTrue($envoi['envoye']);
+        self::assertSame('email', $envoi['canal']);
+        self::assertSame('k•••@s•••.ml', $envoi['destination']);
+        self::assertNull($envoi['codeDev']);
+        self::assertSame('kadiatou@succesimprim.ml', $this->fabrique->emails[0]->getTo()[0]->getAddress());
+        self::assertSame('Votre code de sécurité Succès Imprim', $this->fabrique->emails[0]->getSubject());
+        preg_match('/^\s+(\d{6})$/m', (string) $this->fabrique->emails[0]->getTextBody(), $m);
+        self::assertSame('ok', $acces->verifierCode($session, $m[1]));
+    }
+
+    public function testTropDeCodesLaPageDuCodeResteOuverte(): void
+    {
+        $acces = $this->acces();
+        for ($i = 0; $i < 3; ++$i) {
+            $acces->envoyerCode($this->utilisateur('kadiatou@succesimprim.ml'), new Session(new MockArraySessionStorage()), '10.0.0.'.$i);
+        }
+        $session = new Session(new MockArraySessionStorage());
+        $envoi = $acces->envoyerCode($this->utilisateur('kadiatou@succesimprim.ml'), $session, '10.0.0.9');
+
+        self::assertTrue($envoi['limite']);
+        self::assertCount(3, $this->fabrique->emails);
+        // Sinon la page du code renverrait à l'accueil, qui en redemanderait un, sans fin.
+        self::assertTrue($acces->codeEnAttente($session));
     }
 
     public function testRoleLecturePeutSeulementConsulter(): void

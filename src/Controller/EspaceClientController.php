@@ -22,18 +22,16 @@ use App\Service\EspaceClient\RecommanderClient;
 use App\Service\EspaceClient\SuiviSansCompte;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
-use App\Security\CodeParSms;
+use App\Security\CodeDeConnexion;
 use App\Security\EspaceClientComptes;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
@@ -46,7 +44,7 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 final class EspaceClientController extends AbstractController
 {
     public function __construct(
-        private readonly CodeParSms $codes,
+        private readonly CodeDeConnexion $codes,
         private readonly EspaceClientComptes $comptes,
         private readonly CompteClientRepository $repository,
         private readonly Parametres $parametres,
@@ -77,11 +75,8 @@ final class EspaceClientController extends AbstractController
     }
 
     #[Route('/code', name: 'code', methods: ['POST'])]
-    public function code(
-        Request $request,
-        #[Autowire(service: 'limiter.espace_code_telephone')] RateLimiterFactoryInterface $parTelephone,
-        #[Autowire(service: 'limiter.espace_code_ip')] RateLimiterFactoryInterface $parAdresse,
-    ): Response {
+    public function code(Request $request): Response
+    {
         $creation = 'creation' === $request->request->get('intention');
         $retour = $creation ? 'app_espace_creer_compte' : 'app_espace_connexion';
         if (!$this->isCsrfTokenValid('espace-code', (string) $request->request->get('_token'))) {
@@ -104,19 +99,19 @@ final class EspaceClientController extends AbstractController
             return $this->redirectToRoute($retour);
         }
 
-        if (!$parTelephone->create($telephone)->consume()->isAccepted() || !$parAdresse->create((string) $request->getClientIp())->consume()->isAccepted()) {
-            $this->addFlash('error', 'Trop de codes demandés. Réessayez dans quelques minutes.');
-
-            return $this->redirectToRoute($retour);
-        }
-
         $identite = $creation ? ['nom' => $nom, 'prenom' => trim((string) $request->request->get('prenom'))] : [];
         // « Renvoyer le code » pendant une création : on garde le nom saisi.
         $enCours = $this->codes->donnees($request->getSession(), EspaceClientComptes::SESSION_CODE);
         if (!$creation && ($enCours['telephone'] ?? null) === $telephone && isset($enCours['nom'])) {
             $identite = ['nom' => $enCours['nom'], 'prenom' => $enCours['prenom'] ?? ''];
         }
-        $envoi = $this->comptes->envoyerCode($request->getSession(), $telephone, $identite);
+        $envoi = $this->comptes->envoyerCode($request->getSession(), $telephone, (string) $request->getClientIp(), $identite);
+        if ($envoi['limite']) {
+            // Limites par numéro, par adresse e-mail et par adresse IP : le code déjà envoyé reste bon.
+            $this->addFlash('error', $envoi['erreur']);
+
+            return $this->redirectToRoute($retour);
+        }
         $request->getSession()->set('espace_code_envoi', $envoi);
 
         return $this->redirectToRoute('app_espace_connexion', ['mode' => 'code']);

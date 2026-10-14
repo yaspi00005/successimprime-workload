@@ -593,6 +593,14 @@ security:
         # LIVRAISON
         # ============================================================
 
+        # Planning et détail des livraisons (L01, L02) : aussi pour le
+        # bureau (ROLE_COMMANDE, entrée de son menu) ; TourneeController
+        # vérifie le reste (bureau, livreur du bon, encaissement).
+        - {
+            path: '^/livraisons/(planning|bl/\d+)',
+            roles: [ROLE_LIVRAISON, ROLE_COMMANDE]
+        }
+
         - {
             path: ^/(livraisons|bons-livraison),
             roles: ROLE_LIVRAISON

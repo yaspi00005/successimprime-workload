@@ -27,6 +27,18 @@ final class ReglesAccesTest extends TestCase
         self::assertSame(['ROLE_USER'], self::roles('/lot/etiquette/suivi/'.str_repeat('ab', 32)));
     }
 
+    /** Le bureau (ROLE_COMMANDE) a « Planning des livraisons » dans son menu. */
+    public function testPlanningDesLivraisonsAuBureau(): void
+    {
+        foreach (['/livraisons/planning', '/livraisons/planning/reordonner', '/livraisons/bl/3', '/livraisons/bl/3/planifier', '/livraisons/bl/3/preuve'] as $chemin) {
+            self::assertSame(['ROLE_LIVRAISON', 'ROLE_COMMANDE'], self::roles($chemin), $chemin);
+        }
+        // La tournée, les retraits et la liste restent aux livreurs.
+        foreach (['/livraisons/tournee', '/livraisons/tournee/3/remise', '/livraisons/a-retirer', '/livraisons', '/bons-livraison/3'] as $chemin) {
+            self::assertSame(['ROLE_LIVRAISON'], self::roles($chemin), $chemin);
+        }
+    }
+
     public function testReglesInchangeesAutour(): void
     {
         self::assertSame(['ROLE_PRODUCTION_VOIR'], self::roles('/production/12'));

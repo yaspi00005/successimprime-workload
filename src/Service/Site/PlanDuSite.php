@@ -32,7 +32,8 @@ final class PlanDuSite
     public function pages(): array
     {
         $pages = [['url' => $this->urls->generate('app_home', [], UrlGeneratorInterface::ABSOLUTE_URL), 'modifieLe' => null, 'priorite' => '1.0']];
-        $routes = array_diff(array_keys(SiteExtension::MENU + SiteExtension::PIED), ['app_site_accueil']);
+        // « Suivre ma commande » n'est pas indexée (recherche par numéro et téléphone).
+        $routes = array_diff(array_keys(SiteExtension::MENU + SiteExtension::PIED), ['app_site_accueil', 'app_site_suivi']);
         foreach ([...$routes, ...self::AUTRES_PAGES] as $route) {
             if (null !== $url = $this->url($route, [])) {
                 $pages[] = ['url' => $url, 'modifieLe' => null, 'priorite' => isset(SiteExtension::MENU[$route]) ? '0.8' : '0.6'];

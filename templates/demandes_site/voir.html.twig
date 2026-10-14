@@ -1,0 +1,97 @@
+{#
+	Une demande du site (maquette 11) : ce que le visiteur a écrit, son
+	fichier, et ce qui a été préparé (client ou prospect, devis brouillon).
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}Demande {{ d.numero }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_demandes_site_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-list me-1"></i>Toutes</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-rc">
+		<section class="card si-ac-bloc">
+			<header class="si-rc-tete">
+				<div>
+					<h2>{{ d.estDevis ? 'Demande de devis' : 'Message : ' ~ d.libelleObjet }}</h2>
+					<p class="si-pg-note">{{ d.numero }} · écrite sur le site le {{ d.creeLe|date('d/m/Y à H:i') }} · {{ d.accuseEnvoyeLe ? 'accusé de réception envoyé par SMS le ' ~ d.accuseEnvoyeLe|date('d/m à H:i') : 'pas d\'accusé de réception par SMS' }}</p>
+				</div>
+				<span class="si-pastille si-pastille-{{ d.estTraitee ? 'vert' : 'orange' }}">{{ d.estTraitee ? 'Traitée' ~ (d.traiteePar ? ' par ' ~ d.traiteePar) ~ ' le ' ~ d.traiteeLe|date('d/m') : 'À traiter' }}</span>
+			</header>
+
+			<dl class="row mt-3 mb-0">
+				<dt class="col-sm-3">Nom</dt>
+				<dd class="col-sm-9">{{ d.nom }} <small class="text-muted">(donné par le visiteur, non vérifié)</small></dd>
+				<dt class="col-sm-3">Téléphone</dt>
+				<dd class="col-sm-9"><a href="tel:+{{ d.telephone }}">{{ d.telephoneLocal }}</a> <small class="text-muted">(non vérifié : rappelez avant d'envoyer un prix)</small></dd>
+				{% if d.email %}
+					<dt class="col-sm-3">E-mail</dt>
+					<dd class="col-sm-9"><a href="mailto:{{ d.email }}">{{ d.email }}</a></dd>
+				{% endif %}
+				{% if d.estDevis %}
+					<dt class="col-sm-3">Produit</dt>
+					<dd class="col-sm-9">{{ d.designation ?: 'Non choisi : voir le message' }}</dd>
+					{% if d.largeurCm and d.hauteurCm %}
+						<dt class="col-sm-3">Taille</dt>
+						<dd class="col-sm-9">{{ d.largeurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} × {{ d.hauteurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} cm</dd>
+					{% endif %}
+					{% if d.quantite %}
+						<dt class="col-sm-3">Quantité</dt>
+						<dd class="col-sm-9">{{ d.quantite }}</dd>
+					{% endif %}
+					{% if d.finitions|length %}
+						<dt class="col-sm-3">Finitions</dt>
+						<dd class="col-sm-9">{{ d.finitions|map(f => f.nom)|join(', ') }}</dd>
+					{% endif %}
+				{% endif %}
+				<dt class="col-sm-3">Message</dt>
+				<dd class="col-sm-9">{{ d.message ? d.message|nl2br : '—' }}</dd>
+				{% if d.fichier %}
+					<dt class="col-sm-3">Fichier</dt>
+					<dd class="col-sm-9">
+						{% if fichierPresent %}
+							<a href="{{ path('app_demandes_site_fichier', {id: d.id}) }}"><i class="fas fa-download me-1"></i>{{ d.fichier.nomOriginal }}</a>
+						{% else %}
+							{{ d.fichier.nomOriginal }} <small class="text-muted">(pas encore arrivé du site : il vient au prochain échange)</small>
+						{% endif %}
+						<small class="text-muted">· {{ (d.fichier.taille / 1048576)|number_format(1, ',', ' ') }} Mo</small>
+					</dd>
+				{% endif %}
+			</dl>
+
+			<form method="post" action="{{ path('app_demandes_site_traiter', {id: d.id}) }}" class="mt-3 d-flex flex-wrap gap-2">
+				<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+				{% if d.estTraitee %}
+					<button class="btn btn-light btn-sm" name="rouvrir" value="1">Remettre à traiter</button>
+				{% else %}
+					<button class="btn btn-primary btn-sm">Marquer traitée</button>
+				{% endif %}
+			</form>
+		</section>
+
+		<aside class="card si-ac-bloc si-rc-cote">
+			{% if not d.prepareeLe %}
+				<h2>Pas encore préparée</h2>
+				<form method="post" action="{{ path('app_demandes_site_preparer', {id: d.id}) }}">
+					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+					<button class="btn btn-primary btn-sm">Préparer maintenant</button>
+				</form>
+				<p class="si-pg-note">Rattache le client du même numéro (sinon une fiche « Site » et un prospect) et fait le devis brouillon.</p>
+			{% endif %}
+			{% if d.devis %}
+				<h2>Devis brouillon</h2>
+				<p><a href="{{ path('app_devis_show', {id: d.devis.id}) }}"><b>{{ d.devis.numero }}</b></a><br><small>{{ d.devis.totalTtc ? d.devis.totalTtc|number_format(0, ',', ' ') ~ ' F TTC au tarif public' : 'À chiffrer' }}, à vérifier avant tout envoi</small></p>
+			{% endif %}
+			{% if d.client %}
+				<h2>Client</h2>
+				<p><a href="{{ path('app_clients_show', {publicId: d.client.publicId}) }}"><b>{{ d.client.nomComplet }}</b></a><br><small>{{ d.client.code }}{{ d.prospect ? ' · fiche créée par la demande' }}</small></p>
+			{% endif %}
+			{% if d.prospect %}
+				<h2>Prospect</h2>
+				<p><a href="{{ path('app_prospects_index', {q: d.telephoneLocal}) }}"><b>{{ d.prospect.nom }}</b></a><br><small>Source : site · relance le {{ d.prospect.prochaineRelance ? d.prospect.prochaineRelance|date('d/m') : '—' }}</small></p>
+			{% endif %}
+		</aside>
+	</div>
+{% endblock %}

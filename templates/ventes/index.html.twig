@@ -77,7 +77,7 @@
 						{% for ligne in lignes %}
 							{% set lien = ligne.type == 'devis' ? path('app_devis_show', {id: ligne.id}) : path('app_commandes_show', {id: ligne.id}) %}
 							<tr data-lien="{{ lien }}">
-								<td><a href="{{ lien }}" class="si-numero">{{ ligne.numero }}</a></td>
+								<td><a href="{{ lien }}" class="si-numero">{{ ligne.numero }}</a>{% if ligne.type == 'devis' and devis_du_site()[ligne.id] is defined %} <span class="si-pastille si-pastille-bleu" title="Demande {{ devis_du_site()[ligne.id] }} écrite sur le site">Site</span>{% endif %}</td>
 								<td>{{ ligne.client|default('—') }}</td>
 								<td class="si-objet">{{ ligne.objet }}</td>
 								<td class="si-masque-mobile">{{ ligne.agent }}</td>

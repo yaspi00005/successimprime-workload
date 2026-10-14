@@ -1,0 +1,179 @@
+/*
+ * Site vitrine : pages à formulaire (maquettes 10 et 11) : suivre ma
+ * commande, contact, demande de devis et sa confirmation. Complète
+ * site.css, sans police externe ni bibliothèque.
+ */
+.si-site [hidden] { display: none !important; }
+.si-visuel-cache { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.si-piege { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+
+.si-bouton svg { width: 20px; height: 20px; fill: currentColor; flex: 0 0 auto; }
+/* Vert WhatsApp foncé : texte blanc lisible (contraste AA). */
+.si-site a.si-bouton-wa, .si-bouton-wa { background: #15843F; color: #fff; }
+.si-bouton-wa:hover { background: #106A32; }
+
+/* Champs */
+.si-champ-libelle { font-weight: 600; font-size: 14px; }
+.si-facultatif { font-weight: 400; color: var(--texte-doux); font-size: 13px; }
+.si-aide { font-size: 13px; color: var(--texte-doux); margin: 2px 0 0; }
+.si-erreur { font-size: 13px; font-weight: 600; color: var(--rouge-fonce); margin: 2px 0 0; }
+.si-champ-erreur input, .si-champ-erreur select, .si-champ-erreur textarea, .si-champ-erreur .si-tel { border-color: var(--rouge); background: #FFF8F8; }
+.si-champ textarea { resize: vertical; min-height: 110px; }
+.si-tel { display: flex; align-items: stretch; border: 1px solid #C9D1DE; border-radius: 10px; background: #fff; overflow: hidden; }
+.si-tel span { display: flex; align-items: center; padding: 0 10px; background: var(--fond-doux); color: var(--texte-doux); font-weight: 600; font-size: 15px; border-right: 1px solid #C9D1DE; }
+.si-champ .si-tel input { border: 0; border-radius: 0; min-width: 0; min-height: 42px; }
+.si-tel:focus-within { outline: 2px solid var(--bleu-clair); border-color: var(--bleu-clair); }
+.si-champ .si-tel input:focus { outline: 0; }
+.si-champs-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.si-alerte { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 16px; padding: 12px 14px; border: 1px solid #F5C2C8; border-radius: 10px; background: #FDECEE; color: #7A0A18; }
+.si-alerte svg { width: 22px; height: 22px; fill: var(--rouge); flex: 0 0 auto; }
+.si-alerte p { margin: 4px 0 0; font-size: 14px; }
+.si-alerte a { color: #7A0A18; font-weight: 700; }
+
+.si-formulaire { padding: 22px 24px; }
+.si-formulaire-titre { font-size: 20px; }
+.si-formulaire-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
+.si-formulaire .si-note { margin: 12px 0 0; }
+
+/* Suivre ma commande (maquette 10) */
+.si-suivi-page { padding-top: 26px; }
+.si-suivi-recherche { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto; gap: 14px; align-items: end; }
+.si-suivi-recherche .si-champ { margin: 0; }
+.si-suivi-recherche label { color: var(--texte-doux); }
+.si-suivi-recherche input { min-height: 58px; font-size: 20px; }
+.si-suivi-numero input { font-weight: 700; letter-spacing: .5px; }
+.si-suivi-recherche .si-tel span { font-size: 18px; }
+.si-suivi-recherche .si-tel input { min-height: 56px; }
+.si-suivi-recherche .si-bouton { min-height: 58px; padding: 12px 34px; font-size: 18px; }
+.si-suivi-page .si-alerte { margin-top: 18px; }
+.si-suivi-carte { margin-top: 22px; padding: 24px 28px 22px; background: #fff; border: 1px solid var(--bordure); border-radius: 16px; box-shadow: var(--ombre); }
+.si-suivi-tete { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px 16px; flex-wrap: wrap; }
+.si-suivi-num { margin: 0; color: var(--texte-doux); font-size: 15px; }
+.si-suivi-tete h2 { font-size: clamp(22px, 2.6vw, 30px); margin: 2px 0 0; }
+.si-pastille { margin: 0; padding: 7px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.si-pastille-orange { background: #FFF1DD; color: #A2520A; }
+.si-pastille-vert { background: #E5F6EC; color: #126B34; }
+.si-pastille-rouge { background: #FDECEE; color: var(--rouge-fonce); }
+.si-suivi-annulee { margin: 18px 0; color: var(--rouge-fonce); font-weight: 600; }
+
+.si-etapes { list-style: none; margin: 28px 0 24px; padding: 0; display: grid; grid-template-columns: repeat(6, 1fr); }
+.si-etape { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.si-etape::before { content: ""; position: absolute; top: 19px; right: 50%; width: 100%; height: 3px; background: var(--bordure); }
+.si-etape:first-child::before { display: none; }
+.si-etape-faite::before, .si-etape-en_cours::before { background: var(--bleu); }
+.si-etape-rond { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 2px solid #CBD3E0; background: #fff; color: var(--texte-doux); font-weight: 700; }
+.si-etape-rond svg { width: 20px; height: 20px; fill: #fff; }
+.si-etape-faite .si-etape-rond { background: var(--bleu); border-color: var(--bleu); }
+.si-etape-en_cours .si-etape-rond { border: 3px solid var(--rouge); color: var(--rouge); box-shadow: 0 0 0 5px rgba(222, 16, 40, .1); }
+.si-etape-texte { display: flex; flex-direction: column; line-height: 1.3; }
+.si-etape-nom { font-size: 15px; color: var(--texte-doux); }
+.si-etape-quand { font-size: 13px; color: var(--texte-doux); }
+.si-etape-en_cours .si-etape-nom, .si-etape-en_cours .si-etape-quand { color: var(--noir); font-weight: 700; }
+.si-suivi-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.si-suivi-note { margin: 14px 0 0; }
+.si-suivi-aide { list-style: none; margin: 22px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.si-suivi-aide li { display: flex; gap: 12px; padding: 16px; border-radius: var(--rayon); background: var(--fond-doux); font-size: 14px; color: var(--texte-doux); }
+.si-suivi-aide strong { color: var(--noir); }
+.si-suivi-aide svg { width: 26px; height: 26px; fill: var(--bleu); flex: 0 0 auto; }
+
+/* Contact (maquette 11) */
+.si-contact { padding-top: 28px; }
+.si-contact-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; align-items: start; }
+.si-contact-infos { display: flex; flex-direction: column; gap: 14px; }
+.si-plan { position: relative; display: block; overflow: hidden; border: 1px solid var(--bordure); border-radius: var(--rayon); line-height: 0; }
+.si-plan > svg { display: block; width: 100%; height: 210px; }
+.si-plan .si-bouton { position: absolute; right: 14px; bottom: 14px; line-height: 1.2; }
+.si-plan:hover .si-bouton { background: var(--bleu-fonce); }
+.si-contact-cartes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.si-info { display: flex; gap: 12px; padding: 16px; }
+.si-info h2 { font-size: 16px; margin: 0 0 4px; }
+.si-info p { margin: 0 0 4px; font-size: 14px; color: var(--texte-doux); }
+.si-info a { font-weight: 600; }
+.si-info-icone { width: 24px; height: 24px; fill: var(--bleu); flex: 0 0 auto; margin-top: 2px; }
+.si-info-devis { background: var(--bleu-pale); border-color: #D5E1F3; }
+.si-ouvert { font-weight: 700; font-size: 13px; color: var(--rouge-fonce) !important; }
+.si-ouvert span { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--rouge); vertical-align: 1px; }
+.si-ouvert-oui { color: #126B34 !important; }
+.si-ouvert-oui span { background: #1FA855; }
+.si-lien-fleche { text-decoration: none; }
+.si-lien-fleche::after { content: " →"; }
+
+/* Demande de devis (maquette 11) */
+.si-devis { padding-top: 28px; }
+.si-devis-grille { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+.si-repris { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; padding: 10px 14px; border-radius: 10px; background: var(--bleu-pale); color: var(--bleu-fonce); font-weight: 600; font-size: 14px; }
+.si-repris svg { width: 20px; height: 20px; fill: var(--bleu); flex: 0 0 auto; }
+/* Le trait sépare les blocs par le bas : en haut, il passerait derrière la légende. */
+.si-bloc { border: 0; border-bottom: 1px solid var(--bordure); margin: 0 0 20px; padding: 0 0 6px; min-width: 0; }
+.si-bloc:last-of-type { border-bottom: 0; margin-bottom: 4px; }
+.si-bloc legend { display: flex; align-items: center; gap: 10px; padding: 0; margin-bottom: 14px; font-weight: 800; font-size: 18px; color: var(--noir); }
+.si-bloc-num { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--bleu); color: #fff; font-size: 14px; }
+.si-champs-3 { display: flex; flex-wrap: wrap; gap: 0 14px; }
+.si-taille { flex: 2 1 280px; display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.si-champs-3 > .si-champ { flex: 1 1 140px; }
+.si-devis #aide-taille { margin: -8px 0 14px; }
+/* Puces des finitions : mêmes que le calculateur (site-produits.css). */
+.si-puces { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-puce { position: relative; cursor: pointer; }
+.si-champ .si-puce input { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; opacity: 0; }
+.si-puce span { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 16px; border: 1px solid #C9D1DE; border-radius: 999px; background: #fff; font-size: 15px; font-weight: 600; transition: background .15s, color .15s, border-color .15s; }
+.si-puce:hover span { border-color: var(--bleu); }
+.si-puce input:checked + span { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.si-puce input:checked + span::before { content: "✓"; }
+.si-puce input:focus-visible + span { outline: 3px solid var(--jaune); outline-offset: 2px; }
+.si-puce input:disabled + span { cursor: default; }
+.si-depot { position: relative; display: flex; align-items: center; gap: 14px; padding: 16px; border: 2px dashed #B9C4D6; border-radius: var(--rayon); background: var(--fond-doux); }
+.si-depot:hover { border-color: var(--bleu-clair); background: var(--bleu-pale); }
+.si-depot:focus-within { outline: 3px solid var(--jaune); outline-offset: 2px; }
+.si-depot svg { width: 34px; height: 34px; fill: var(--bleu); flex: 0 0 auto; }
+.si-depot strong { display: block; color: var(--bleu); }
+.si-depot-nom { display: block; font-size: 13px; color: var(--texte-doux); word-break: break-word; }
+.si-champ .si-fichier-champ { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; }
+.si-devis-cote { position: sticky; top: 92px; display: flex; flex-direction: column; gap: 14px; }
+.si-devis-cote h2 { font-size: 18px; }
+.si-devis-wa p { margin: 0 0 12px; font-size: 14px; color: var(--texte-doux); }
+.si-devis-wa strong { color: var(--noir); }
+
+.si-parcours { list-style: none; counter-reset: etape; margin: 0; padding: 0; }
+.si-parcours li { position: relative; counter-increment: etape; padding: 0 0 14px 42px; }
+.si-parcours li::before { content: counter(etape); position: absolute; left: 0; top: 0; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--bleu-pale); color: var(--bleu); font-weight: 700; font-size: 14px; }
+.si-parcours li.fait::before { content: "✓"; background: #1E8E4A; color: #fff; }
+.si-parcours strong { display: block; font-size: 15px; color: var(--noir); }
+.si-parcours span { font-size: 14px; color: var(--texte-doux); }
+
+/* Confirmation */
+.si-envoyee-carte { max-width: 780px; margin: 0 auto; padding: 28px; }
+.si-envoyee-tete { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+.si-envoyee-tete h2 { font-size: clamp(20px, 2.4vw, 26px); margin: 0 0 4px; }
+.si-envoyee-icone { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 54px; height: 54px; border-radius: 50%; background: #E5F6EC; }
+.si-envoyee-icone svg { width: 30px; height: 30px; fill: #1E8E4A; }
+.si-envoyee-ref { margin: 0; color: var(--texte-doux); }
+.si-envoyee-ref strong { font-size: 22px; color: var(--bleu); letter-spacing: .5px; }
+.si-envoyee-resume { margin: 0 0 20px; padding: 10px 14px; border-radius: 10px; background: var(--fond-doux); font-size: 15px; }
+.si-parcours-ligne { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 8px; }
+.si-envoyee .si-note { margin: 4px 0 18px; }
+
+@media (max-width: 960px) {
+  .si-devis-grille, .si-contact-grille { grid-template-columns: 1fr; }
+  .si-devis-cote { position: static; }
+}
+@media (max-width: 720px) {
+  .si-suivi-recherche { grid-template-columns: 1fr; }
+  .si-suivi-recherche .si-bouton { width: 100%; }
+  .si-suivi-carte { padding: 18px 16px; }
+  .si-etapes { grid-template-columns: 1fr; margin: 18px 0; }
+  .si-etape { flex-direction: row; align-items: center; gap: 14px; padding: 7px 0; text-align: left; }
+  .si-etape::before { top: -50%; right: auto; left: 18.5px; width: 3px; height: 100%; }
+  .si-etape-texte { flex: 1; flex-direction: row; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .si-etape-nom { font-size: 16px; }
+  .si-suivi-actions .si-bouton { flex: 1 1 100%; }
+  .si-suivi-aide { grid-template-columns: 1fr; }
+  .si-parcours-ligne { grid-template-columns: 1fr; gap: 0; }
+}
+@media (max-width: 560px) {
+  .si-champs-2, .si-contact-cartes { grid-template-columns: 1fr; }
+  .si-formulaire { padding: 18px 16px; }
+  .si-formulaire-actions .si-bouton { flex: 1 1 100%; }
+  .si-envoyee-carte { padding: 20px 16px; }
+  .si-envoyee-tete { align-items: flex-start; }
+}

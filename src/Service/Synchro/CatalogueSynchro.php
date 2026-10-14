@@ -11,6 +11,7 @@ use App\Entity\Commandes;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\CompteFidelite;
 use App\Entity\Conception;
+use App\Entity\DemandeDevis;
 use App\Entity\ControlePrePresse;
 use App\Entity\CommandesDetails;
 use App\Entity\Devis;
@@ -49,6 +50,9 @@ use App\Entity\TypesImpression;
  *  - deux       : descendant, et les fiches CRÉÉES en ligne remontent.
  *                 Une modification faite en ligne d'une fiche du local
  *                 n'est pas appliquée : elle est notée comme conflit.
+ *  - ascendant  : créé en ligne, envoyé au local, qui ne renvoie rien
+ *                 (demande d'un visiteur du site : le site ne la montre
+ *                 plus, seule l'équipe la lit au local).
  *
  * « numero » : le champ de numéro d'une fiche créée en ligne reçoit le
  * préfixe W- (web) sur le site, pour ne jamais prendre un numéro du local.
@@ -75,6 +79,7 @@ final class CatalogueSynchro
 {
     public const DESCENDANT = 'descendant';
     public const DEUX = 'deux';
+    public const ASCENDANT = 'ascendant';
 
     /**
      * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, aLaCreation?: array<string, callable>, imposeAuLocal?: array<string, mixed>, pret?: callable, remontees?: array<string, ?array<string, list<string>>>, facultatives?: list<string>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>, filtres?: array<string, callable>}>}>
@@ -327,6 +332,18 @@ final class CatalogueSynchro
                 'champs' => ['taux', 'debut', 'fin', 'utiliseeLe', 'annuleeLe'],
                 'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'facultatives' => ['commande'],
             ],
+            // Demande de devis ou message d'un visiteur du site (maquette 11) : monte au local, ne redescend pas.
+            // Client, prospect, devis préparé et suivi par l'équipe restent au local.
+            'demande_devis' => [
+                'classe' => DemandeDevis::class, 'sens' => self::ASCENDANT, 'libelle' => 'Demande du site', 'titre' => ['numero'],
+                'champs' => ['numero', 'nature', 'nom', 'telephone', 'email', 'objet', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'message', 'creeLe', 'accuseEnvoyeLe'],
+                // Un produit retiré du catalogue entre-temps ne bloque pas la demande : la désignation reste.
+                'relations' => ['configuration' => 'configuration', 'fichier' => 'fichier'],
+                'facultatives' => ['configuration'],
+                'listes' => ['finitions' => 'finition'], 'numero' => 'numero',
+                // Numéro et accusé de réception posés en ligne juste après la création.
+                'remontees' => ['numero' => ['' => ['*']], 'accuseEnvoyeLe' => ['' => ['*']]],
+            ],
         ];
     }
 
@@ -381,24 +398,25 @@ final class CatalogueSynchro
     }
 
     /**
-     * Ce côté-ci doit-il envoyer ce type ? Le local envoie tout ; le site
-     * n'envoie que les types à double sens ou qui ont des remontées.
+     * Ce côté-ci doit-il envoyer ce type ? Le local envoie tout, sauf ce
+     * qui ne fait que monter ; le site n'envoie que les types à double
+     * sens, montants ou qui ont des remontées.
      */
     public static function envoye(string $type, bool $enLigne): bool
     {
-        return isset(self::types()[$type]) && (!$enLigne || self::remonte($type));
+        return isset(self::types()[$type]) && ($enLigne ? self::remonte($type) : !self::ascendant($type));
     }
 
     /** Ce côté-ci accepte-t-il ce type venant de l'autre ? */
     public static function accepte(string $type, bool $enLigne): bool
     {
-        return isset(self::types()[$type]) && ($enLigne || self::remonte($type));
+        return isset(self::types()[$type]) && ($enLigne ? !self::ascendant($type) : self::remonte($type));
     }
 
     /** Une fiche créée en ligne est-elle reprise au local ? */
     public static function creationAcceptee(string $type, bool $enLigne): bool
     {
-        return $enLigne || (self::types()[$type]['sens'] ?? null) === self::DEUX;
+        return $enLigne || \in_array(self::types()[$type]['sens'] ?? null, [self::DEUX, self::ASCENDANT], true);
     }
 
     /**
@@ -424,7 +442,12 @@ final class CatalogueSynchro
     {
         $t = self::types()[$type];
 
-        return $t['sens'] === self::DEUX || ($t['remontees'] ?? []) !== [];
+        return \in_array($t['sens'], [self::DEUX, self::ASCENDANT], true) || ($t['remontees'] ?? []) !== [];
+    }
+
+    private static function ascendant(string $type): bool
+    {
+        return self::types()[$type]['sens'] === self::ASCENDANT;
     }
 
     /** Les champs dont un changement doit partir. */

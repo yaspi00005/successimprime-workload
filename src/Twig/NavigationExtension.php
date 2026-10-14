@@ -65,6 +65,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Ma tournée', 'route' => 'app_livraisons_tournee', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_tournee', 'app_livraisons_remise']],
             ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
             ['libelle' => 'Mes actions', 'route' => 'app_actions_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_actions_']],
+            ['libelle' => 'Demandes du site', 'route' => 'app_demandes_site_index', 'role' => 'ROLE_DEVIS', 'prefixes' => ['app_demandes_site_']],
         ],
         'clients' => [
             ['libelle' => 'Fiches clients', 'route' => 'app_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_clients_', 'app_reclamation_']],
@@ -250,6 +251,7 @@ final class NavigationExtension extends AbstractExtension
         'app_bareme_' => 'reglages',
         'app_conception_' => 'atelier',
         'app_ma_file_' => 'atelier',
+        'app_demandes_site_' => 'ventes',
         'app_demandes_' => 'equipe',
         'app_paie_' => 'equipe',
         'app_actions_equipe_' => 'equipe',

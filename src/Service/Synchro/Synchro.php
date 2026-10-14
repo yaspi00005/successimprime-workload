@@ -7,6 +7,7 @@ use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\ControlePrePresse;
+use App\Entity\DemandeDevis;
 use App\Entity\Devis;
 use App\Entity\ModificationClient;
 use App\Entity\Paiements;
@@ -21,6 +22,7 @@ use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\NotificationsClient;
 use App\Service\NotificationService;
 use App\Service\Sondages\Sondages;
+use App\Service\Site\DemandesSite;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
@@ -54,6 +56,8 @@ final class Synchro
         #[AutowireServiceClosure(NotificationsClient::class)] private readonly \Closure $notificationsClient,
         /** @var \Closure(): Sondages */
         #[AutowireServiceClosure(Sondages::class)] private readonly \Closure $sondages,
+        /** @var \Closure(): DemandesSite */
+        #[AutowireServiceClosure(DemandesSite::class)] private readonly \Closure $demandesSite,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $url,
         #[Autowire('%env(SYNC_CLE)%')] private readonly string $cle,
@@ -374,6 +378,10 @@ final class Synchro
                     if (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->attendValidationEntreprise()) {
                         // Demande d'un employé du client : rien à faire avant l'accord de son valideur.
                         $resultat = [self::RESULTAT_OK, 'Demande en attente de validation chez le client', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof DemandeDevis) {
+                        // Demande d'un visiteur du site : prospect ou client du même numéro, devis brouillon, équipe prévenue.
+                        $this->em->flush();
+                        $resultat = [self::RESULTAT_OK, ($this->demandesSite)()->preparer($entite, true), $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof ReclamationClient) {
                         $this->em->flush();
                         $this->notifications->notifierRoles(['ROLE_CLIENT'], \sprintf('Réclamation %s de %s : %s', $entite->getNumero(), $entite->getClient()?->getNomComplet() ?? 'un client', $entite->getObjet()), 'app_reclamations_clients_voir', ['id' => $entite->getId()]);

@@ -43,7 +43,7 @@ final class FichiersClient
         'tiff' => ["II*\x00", "MM\x00*"],
     ];
 
-    private const MIME = [
+    public const MIME = [
         'pdf' => 'application/pdf', 'ai' => 'application/postscript', 'eps' => 'application/postscript',
         'psd' => 'image/vnd.adobe.photoshop', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
         'tif' => 'image/tiff', 'tiff' => 'image/tiff',
@@ -263,15 +263,24 @@ final class FichiersClient
         return mb_substr(trim($nom), -200) ?: 'fichier';
     }
 
-    /** Le début du fichier doit correspondre à son extension (pas d'exécutable renommé). */
+    /** Le début du fichier correspond-il à son extension (pas d'exécutable renommé) ? */
+    public static function signatureValide(string $extension, string $debut): bool
+    {
+        foreach (self::TYPES[strtolower($extension)] ?? [] as $signature) {
+            // Un PDF peut commencer par quelques octets avant %PDF.
+            if (str_starts_with($debut, $signature) || ('%PDF' === $signature && str_contains(substr($debut, 0, 1024), '%PDF'))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function verifierType(CommandeDetailFichier $fichier, string $debut): void
     {
         $extension = strtolower(pathinfo((string) $fichier->getNomStockage(), \PATHINFO_EXTENSION));
-        foreach (self::TYPES[$extension] ?? [] as $signature) {
-            // Un PDF peut commencer par quelques octets avant %PDF.
-            if (str_starts_with($debut, $signature) || ('%PDF' === $signature && str_contains(substr($debut, 0, 1024), '%PDF'))) {
-                return;
-            }
+        if (self::signatureValide($extension, $debut)) {
+            return;
         }
         $fichier->setStatut(CommandeDetailFichier::STATUT_ECHEC)->setActif(false);
         $this->em->flush();

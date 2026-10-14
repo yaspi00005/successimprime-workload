@@ -296,6 +296,15 @@ final class CatalogueParametres
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_ecran_tv_reglages', 'champs' => [],
                 'motsCles' => ['Playlist de l\'écran TV', 'Bandeau · avis clients', 'Horaires de l\'écran'],
             ],
+            'site_contact' => [
+                'famille' => 'clients', 'libelle' => 'Site : page Contact', 'icone' => 'fa-map-marker-alt',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => 'app_site_contact',
+                'champs' => [
+                    ['cle' => 'lien_plan', 'type' => 'texte', 'libelle' => 'Lien Google Maps de la boutique', 'aide' => 'Lien de partage (https://maps.app.goo.gl/…) ou coordonnées « 12.6392, -8.0029 ». Vide : pas de plan ni de bouton Itinéraire.', 'defaut' => ''],
+                ],
+                'motsCles' => ['Plan d\'accès · bouton Itinéraire', 'Lien Google Maps · coordonnées GPS', 'Contact du site vitrine'],
+                'note' => 'Les horaires de la page viennent de la tuile Horaires ; l\'adresse, le téléphone et l\'e-mail, de l\'entité Succès Imprim (Entités et en-têtes).',
+            ],
 
             // ---------- Sécurité et système ----------
             'appareils' => [

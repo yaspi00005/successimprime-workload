@@ -21,3 +21,14 @@ framework:
             policy: sliding_window
             limit: 10
             interval: '1 hour'
+        # Site vitrine (maquette 11) : demandes de devis et messages sans compte.
+        site_demande_ip:
+            policy: sliding_window
+            limit: 6
+            interval: '1 hour'
+        # Accusé de réception par SMS : le numéro a été tapé par un inconnu,
+        # il n'en reçoit pas plus de 3 par jour.
+        site_accuse_telephone:
+            policy: sliding_window
+            limit: 3
+            interval: '1 day'

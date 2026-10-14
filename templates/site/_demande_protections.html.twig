@@ -1,0 +1,23 @@
+{#
+	Protections des formulaires sans compte (maquette 11) : jeton CSRF,
+	heure d'affichage signée (temps de saisie minimum) et champ piège caché
+	aux humains. Montre aussi l'erreur générale (erreurs._).
+	Variable : nature (devis ou contact).
+#}
+<input type="hidden" name="_token" value="{{ csrf_token('site-demande-' ~ nature) }}">
+<input type="hidden" name="_t" value="{{ jeton }}">
+<div class="si-piege" aria-hidden="true">
+	<label for="champ-site-web">Site web (laissez ce champ vide)</label>
+	<input type="text" id="champ-site-web" name="{{ constant('App\\Service\\Site\\FormulaireDemande::PIEGE') }}" value="" tabindex="-1" autocomplete="off">
+</div>
+{% if erreurs._ is defined %}
+	<div class="si-alerte" role="alert">
+		<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2Zm0-4h-2V7h2Z"/></svg>
+		<div><strong>{{ erreurs._ }}</strong></div>
+	</div>
+{% elseif erreurs %}
+	<div class="si-alerte" role="alert">
+		<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2Zm0-4h-2V7h2Z"/></svg>
+		<div><strong>Vérifiez {{ erreurs|length > 1 ? 'les champs signalés' : 'le champ signalé' }} en rouge.</strong></div>
+	</div>
+{% endif %}

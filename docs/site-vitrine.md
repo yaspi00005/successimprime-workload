@@ -71,3 +71,40 @@ Code : `SiteProduitsController`, `App\Service\Site\CatalogueSite` et `App\Servic
 - Sur téléphone, le total reste en bas de l'écran pendant la saisie.
 
 Ces pages et le JSON n'ouvrent pas de session : `Cache-Control: public, max-age=300`.
+
+## Suivi, contact et demande de devis (maquettes 10 et 11)
+
+Code : `SiteSuiviController`, `SiteDemandeController`, `App\Service\Site\{SuiviSite, ContactSite, FormulaireDemande, DemandesSite, PreparationDemande}`, `App\Service\EspaceClient\SuiviSansCompte`, entité `DemandeDevis` (migration `Version20261013225222`), gabarits `site/suivi`, `site/contact`, `site/devis`, `site/demande_envoyee`, feuille `public/css/site-formulaires.css`. Au local : `DemandesSiteController` (Ventes › Demandes du site).
+
+**Suivre ma commande** (`app_site_suivi`, /suivre-ma-commande)
+- Numéro de commande (complet, ou ses chiffres : « 0765 ») et téléphone de la commande. Même recherche que /espace/suivre (`SuiviSansCompte`) : jeton CSRF, 20 recherches par heure et par adresse IP, et **la même réponse** si la commande n'existe pas ou n'est pas à ce téléphone.
+- Résultat : désignation, pastille (« En impression · prête vendredi », « BAT à valider »...) et les 6 étapes avec leur heure. Jamais de montant, de nom de client, de note ni de nom d'agent. Le détail, les factures et les BAT à valider renvoient à l'espace client.
+- `noindex` (en-tête `X-Robots-Tag` et balise), `Cache-Control: private, no-store`, absent du plan du site.
+
+**Contact** (`app_site_contact`, /contact)
+- Adresse, téléphone et e-mail de l'entreprise, horaires du réglage « Horaires » avec « Ouvert maintenant » ou « Fermé, ouvre lundi à 8 h », bouton WhatsApp.
+- Plan et bouton « Itinéraire » seulement si la tuile Réglages « Site : page Contact » (`site_contact.lien_plan`, droits Admin ou Paramètres) est remplie : « latitude, longitude » ou un lien https. Vide par défaut, le bloc du plan est alors caché. Le plan est un dessin SVG, sans carte externe.
+- Court message : nom, téléphone malien, e-mail facultatif, objet (devis, suivi d'une commande, conseil sur un fichier, autre ; `?objet=commande` le présélectionne), message de 2 000 caractères au plus.
+
+**Demander un devis** (`app_site_devis`, /demander-un-devis), sans compte
+- Produit parmi le catalogue publié (mêmes produits que le calculateur, groupés par catégorie, sans prix), taille en cm si le produit en demande une, quantité, finitions proposées pour ce produit, message, coordonnées, fichier facultatif.
+- Pré-remplissage depuis le calculateur : `produit` (identifiant de configuration), `largeur` et `hauteur` (cm), `quantite`, `finitions[]` (ou une liste séparée par des virgules). Une valeur inconnue ou hors bornes est ignorée, jamais affichée telle quelle.
+- Fichier : PDF, AI, EPS, PSD, JPG, PNG ou TIFF, 20 Mo au plus (moins si le serveur n'accepte pas plus ; le formulaire affiche la limite réelle). Le contenu est vérifié (un faux PNG est refusé), puis le fichier est rangé hors de `public/` dans `var/uploads/commandes` (droits 0640), avec son empreinte SHA-256 et le contrôle automatique, comme « Mes fichiers ». Au-delà, le visiteur est invité à l'envoyer par WhatsApp.
+- Confirmation (/demander-un-devis/envoyee, /contact/envoye) : numéro de la demande (W-DD-0005), résumé et prochaines étapes, **jamais de prix**. Montrée une seule fois, `noindex`.
+
+**Anti-spam** (contact et devis) : jeton CSRF ; champ piège `site_web` caché (rempli : fausse confirmation sans numéro, rien d'enregistré) ; jeton signé de l'heure d'affichage (envoi refusé avant 4 s, page expirée après 12 h) ; 6 demandes valides par heure et par adresse IP (`site_demande_ip`) ; tout est revérifié côté serveur. Une erreur renvoie la page en 422 avec la saisie gardée.
+
+**Accusé de réception** : un SMS sans montant (« nous avons bien reçu votre demande de devis W-DD-0005 ») part seulement si le service SMS est réglé, au plus 3 fois par jour vers un même numéro (`site_accuse_telephone`), jamais vers le numéro d'une fiche de démonstration ni d'un client qui a coupé les SMS. Si le site n'a pas pu l'envoyer, le local l'envoie à la réception, dans les 6 heures. Pas d'accusé WhatsApp pour l'instant (il faudrait un modèle de message approuvé).
+
+**Au local** : la demande monte par la synchronisation (type `demande_devis`, sens ascendant). Le site ne la montre plus : aucune liste des demandes en ligne. À la réception, `DemandesSite::preparer` :
+- demande de devis d'un numéro connu : rattachée à ce client, devis brouillon à son nom ;
+- d'un numéro inconnu : un prospect source « Site » (montant estimé, relance le jour même) et une fiche client minimale (origine « site », à compléter) car un devis exige un client ;
+- devis brouillon au tarif public (même calcul que le calculateur), avec la demande du visiteur en observation ; un produit hors bornes reste « à chiffrer » ;
+- un message est rattaché au client connu ; un message « demande de devis » d'un inconnu devient un prospect ;
+- les personnes qui ont le droit Devis (et les administrateurs) sont prévenues.
+
+Rien n'est confirmé ni envoyé au client sans geste de l'équipe : le devis brouillon n'est pas visible dans l'espace client. Badge « Site » dans Devis et commandes, Ventes et Prospects ; la fiche du devis rappelle la demande d'origine. Ventes › Demandes du site (droit Devis) liste les demandes à traiter et traitées ; la fiche montre le détail, le fichier à télécharger (téléchargement noté au journal d'activité) et « Marquer traitée ».
+
+**Limites connues**
+- Les réglages (horaires, lien du plan) ne descendent pas au site : en ligne, les horaires par défaut s'affichent et le plan reste caché tant qu'une synchronisation des réglages n'existe pas.
+- Les demandes restent dans la base en ligne après leur montée (pas de purge automatique).

@@ -44,7 +44,7 @@
 {% endblock %}
 
 {% macro interrupteur(nom, coche, titre, aide = null, id = null) %}
-	{% set id = id ?? 'champ-' ~ nom %}
+	{% set id = id ?? ('champ-' ~ nom) %}
 	<div class="si-sv-ligne-interrupteur">
 		<label class="si-interrupteur">
 			<input type="checkbox" name="{{ nom }}" value="1" id="{{ id }}" {{ coche ? 'checked' }} {% if aide %}aria-describedby="{{ id }}-aide"{% endif %}>

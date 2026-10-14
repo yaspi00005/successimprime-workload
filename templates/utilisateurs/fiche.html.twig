@@ -111,8 +111,8 @@
 								<li>
 									<span class="text-muted">{{ ligne.createdAt|date('d/m/Y H:i') }}{{ ligne.utilisateur ? ' · ' ~ ligne.utilisateur.username }}</span>
 									Rôle {{ apres.role ?? '—' }}
-									{% if apres.ajoutes|default([]) is not empty %}, en plus : {{ apres.ajoutes|map(d => catalogue[d].libelle ?? d)|join(', ') }}{% endif %}
-									{% if apres.retires|default([]) is not empty %}, retiré : {{ apres.retires|map(d => catalogue[d].libelle ?? d)|join(', ') }}{% endif %}
+									{% if apres.ajoutes|default([]) is not empty %}, en plus : {{ apres.ajoutes|map(d => (catalogue[d].libelle ?? d))|join(', ') }}{% endif %}
+									{% if apres.retires|default([]) is not empty %}, retiré : {{ apres.retires|map(d => (catalogue[d].libelle ?? d))|join(', ') }}{% endif %}
 								</li>
 							{% endfor %}
 						</ul>

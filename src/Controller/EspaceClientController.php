@@ -2,13 +2,11 @@
 
 namespace App\Controller;
 
-use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\CompteClient;
 use App\Entity\Devis;
 use App\Entity\Factures;
 use App\Entity\TransactionOrangeMoney;
-use App\Repository\CommandesRepository;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
 use App\Service\EspaceClient\CompteEntreprise;
@@ -16,6 +14,7 @@ use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\NouvelleCommande;
+use App\Service\EspaceClient\SuiviSansCompte;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
 use App\Security\CodeParSms;
@@ -130,30 +129,18 @@ final class EspaceClientController extends AbstractController
 
     /** Suivi sans compte : numéro de commande + téléphone du client, sans montants. */
     #[Route('/suivre', name: 'suivre', methods: ['GET', 'POST'])]
-    public function suivre(
-        Request $request,
-        CommandesRepository $commandes,
-        #[Autowire(service: 'limiter.espace_suivi_ip')] RateLimiterFactoryInterface $limite,
-    ): Response {
+    public function suivre(Request $request, SuiviSansCompte $suivi): Response
+    {
         $commande = null;
         $erreur = null;
         $numero = trim((string) $request->request->get('numero', $request->query->get('numero', '')));
 
         if ($request->isMethod('POST')) {
-            $telephone = CompteClient::normaliserTelephone((string) $request->request->get('telephone'));
             if (!$this->isCsrfTokenValid('espace-suivre', (string) $request->request->get('_token'))) {
                 $erreur = 'La page a expiré. Réessayez.';
-            } elseif (!$limite->create((string) $request->getClientIp())->consume()->isAccepted()) {
-                $erreur = 'Trop de recherches. Réessayez plus tard.';
             } else {
-                $trouvee = '' !== $numero ? $commandes->findOneBy(['numero' => $numero]) : null;
-                $client = null !== $telephone ? $this->repository->clientDuTelephone($telephone) : null;
                 // Même réponse si la commande n'existe pas ou n'est pas à ce numéro.
-                if ($trouvee instanceof Commandes && null !== $client && $trouvee->getClients()?->getId() === $client->getId() && $trouvee->isStatut()) {
-                    $commande = $trouvee;
-                } else {
-                    $erreur = 'Aucune commande ne correspond à ce numéro et à ce téléphone.';
-                }
+                ['commande' => $commande, 'erreur' => $erreur] = $suivi->chercher($numero, (string) $request->request->get('telephone'), (string) $request->getClientIp());
             }
         }
 

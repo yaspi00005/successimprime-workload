@@ -14,7 +14,7 @@ final class VerificationInstallationTest extends TestCase
     {
         return [
             'APP_ENV' => 'prod', 'APP_SECRET' => str_repeat('s3', 20), 'DEFAULT_URI' => 'https://succesimprim.com', 'MAILER_DSN' => 'smtp://relais',
-            'SYNC_CLE' => str_repeat('k8', 32), 'ORANGE_SMS_CLIENT_ID' => 'id-sms-7Qx', 'ORANGE_SMS_CLIENT_SECRET' => 'secret-sms-9Zk',
+            'SYNC_CLE' => str_repeat('k8', 32), 'ORANGE_SMS_CLIENT_ID' => 'id-sms-7Qx', 'ORANGE_SMS_CLIENT_SECRET' => 'secret-sms-9Zk', 'ORANGE_SMS_SENDER_ADDRESS' => '2230000',
             'ORANGE_MONEY_CLIENT_ID' => 'a', 'ORANGE_MONEY_CLIENT_SECRET' => 'b', 'ORANGE_MONEY_MERCHANT_KEY' => 'c', 'VAPID_PUBLIC_KEY' => 'BPub-5Rt', 'VAPID_PRIVATE_KEY' => 'priv-vapid-3Wm',
             'ANTHROPIC_API_KEY' => 'sk-ant-essai-4Hv',
         ];
@@ -48,6 +48,12 @@ final class VerificationInstallationTest extends TestCase
         foreach (['APP_SECRET', 'SYNC_CLE', 'ORANGE_SMS_CLIENT_SECRET', 'VAPID_PRIVATE_KEY', 'ANTHROPIC_API_KEY'] as $cle) {
             self::assertStringNotContainsString($env[$cle], (string) $texte, $cle);
         }
+    }
+
+    public function testExpediteurSmsAuFormatOrange(): void
+    {
+        self::assertSame(V::A_VOIR, self::statut(V::verifier(['ORANGE_SMS_SENDER_ADDRESS' => '+223 76 00 00 99'] + self::enLigne(), self::PHP, true), 'SMS Orange'), 'numéro personnel au lieu de l\'expéditeur du contrat');
+        self::assertSame(V::ERREUR, self::statut(V::verifier(['ORANGE_SMS_SENDER_ADDRESS' => ''] + self::enLigne(), self::PHP, true), 'SMS Orange'));
     }
 
     public function testLaCleHorsSiteNeDoitPasEtreEnLigne(): void

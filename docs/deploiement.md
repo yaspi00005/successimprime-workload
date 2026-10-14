@@ -88,7 +88,7 @@ Fichier `/srv/successimprim/.env.local` (droits 600, propriétaire `succes`). Le
 | DEFAULT_URI | https://succesimprim.com |
 | DATABASE_URL | mysql://succes:<mot de passe>@127.0.0.1:3306/succesimprim?serverVersion=10.11-MariaDB&charset=utf8mb4 |
 | SYNC_CLE | la clé de `app:synchro --nouvelle-cle`, la même que sur l'ERP local |
-| ORANGE_SMS_CLIENT_ID, ORANGE_SMS_CLIENT_SECRET, ORANGE_SMS_SENDER_ADDRESS, ORANGE_SMS_SENDER_NAME | compte SMS Orange : sans lui, le personnel ne reçoit pas son code de connexion en ligne |
+| ORANGE_SMS_CLIENT_ID, ORANGE_SMS_CLIENT_SECRET, ORANGE_SMS_SENDER_ADDRESS, ORANGE_SMS_SENDER_NAME | compte SMS Orange : sans lui, le personnel ne reçoit pas son code de connexion en ligne. L'expéditeur est celui du contrat, `tel:+2230000` au Mali, pas un numéro de téléphone ; les numéros maliens à 8 chiffres reçoivent +223 tout seuls |
 | ORANGE_MONEY_CLIENT_ID, ORANGE_MONEY_CLIENT_SECRET, ORANGE_MONEY_MERCHANT_KEY, ORANGE_MONEY_API, ORANGE_MONEY_DEVISE | paiement en ligne (docs/espace-client.md) |
 | VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT | notifications sur le téléphone des clients (`app:push:cles`) |
 | MAILER_DSN, MAILER_FROM_ADDRESS | envoi des e-mails |

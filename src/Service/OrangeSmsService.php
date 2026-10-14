@@ -81,10 +81,11 @@ final class OrangeSmsService
             ];
         }
 
+        $expediteur = self::adresseExpediteur($this->senderAddress);
         $corps = [
             'outboundSMSMessageRequest' => [
                 'address' => $destinataire,
-                'senderAddress' => $this->senderAddress,
+                'senderAddress' => $expediteur,
                 'outboundSMSTextMessage' => [
                     'message' => $message,
                 ],
@@ -103,7 +104,7 @@ final class OrangeSmsService
             $response = $this->httpClient->request(
                 'POST',
                 self::BASE_URL . '/smsmessaging/v1/outbound/'
-                    . urlencode($this->senderAddress) . '/requests',
+                    . urlencode($expediteur) . '/requests',
                 [
                     'auth_bearer' => $token,
                     'json' => $corps,
@@ -187,6 +188,9 @@ final class OrangeSmsService
     private function normaliserTelephone(string $telephone): ?string
     {
         $chiffres = preg_replace('/\D+/', '', $telephone) ?? '';
+        if (str_starts_with($chiffres, '00')) {
+            $chiffres = substr($chiffres, 2); // 00223… : indicatif international
+        }
 
         if (strlen($chiffres) === 8) {
             $chiffres = '223' . $chiffres;
@@ -199,18 +203,34 @@ final class OrangeSmsService
         return 'tel:+' . $chiffres;
     }
 
-    private function extraireMessageErreur(array $reponse): ?string
+    /**
+     * Adresse d'expéditeur au format attendu par Orange (tel:+2230000 pour
+     * le Mali), même si .env.local donne seulement les chiffres.
+     */
+    public static function adresseExpediteur(string $adresse): string
     {
-        if (!empty($reponse['requestError']['serviceException'])) {
-            $exception = $reponse['requestError']['serviceException'];
-
-            return trim(($exception['text'] ?? '') . ' ' . ($exception['variables'] ?? ''));
+        $chiffres = preg_replace('/\D+/', '', $adresse) ?? '';
+        if (str_starts_with($chiffres, '00')) {
+            $chiffres = substr($chiffres, 2);
         }
 
-        if (!empty($reponse['requestError']['policyException'])) {
-            $exception = $reponse['requestError']['policyException'];
+        return $chiffres === '' ? trim($adresse) : 'tel:+' . $chiffres;
+    }
 
-            return trim(($exception['text'] ?? '') . ' ' . ($exception['variables'] ?? ''));
+    private function extraireMessageErreur(array $reponse): ?string
+    {
+        $exception = $reponse['requestError']['serviceException'] ?? $reponse['requestError']['policyException'] ?? null;
+        if (\is_array($exception) && $exception !== []) {
+            // Orange met les valeurs à part (« %1 ») : on les remet dans le texte.
+            $texte = (string) ($exception['text'] ?? '');
+            foreach (array_values((array) ($exception['variables'] ?? [])) as $i => $valeur) {
+                $texte = str_replace('%' . ($i + 1), (string) $valeur, $texte);
+            }
+            if (str_contains($texte, 'No valid addresses')) {
+                $texte .= ' (l\'expéditeur ORANGE_SMS_SENDER_ADDRESS doit être celui de votre contrat Orange, tel:+2230000 pour le Mali ; le numéro du destinataire doit être un numéro malien)';
+            }
+
+            return trim($texte);
         }
 
         return $reponse['error_description'] ?? $reponse['message'] ?? null;

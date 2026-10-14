@@ -57,13 +57,16 @@ final class VerificationInstallation
         $noter(\strlen($v('APP_SECRET')) >= 32 ? self::OK : self::ERREUR, 'APP_SECRET', \strlen($v('APP_SECRET')) >= 32 ? 'renseignée' : 'vide ou trop courte (32 caractères au moins, propre à ce serveur)');
         $courriel = '' !== $v('MAILER_DSN') && !str_starts_with($v('MAILER_DSN'), 'null://');
         $noter($courriel ? self::OK : self::A_VOIR, 'E-mail (MAILER_DSN)', $courriel ? 'renseigné' : 'non configuré : aucun e-mail ne partira');
-        $sms = self::groupe($v, ['ORANGE_SMS_CLIENT_ID', 'ORANGE_SMS_CLIENT_SECRET']);
+        $sms = self::groupe($v, ['ORANGE_SMS_CLIENT_ID', 'ORANGE_SMS_CLIENT_SECRET', 'ORANGE_SMS_SENDER_ADDRESS']);
+        // Orange attend l'adresse de l'expéditeur du contrat, de la forme tel:+2230000 au Mali.
+        $expediteur = \App\Service\OrangeSmsService::adresseExpediteur($v('ORANGE_SMS_SENDER_ADDRESS'));
+        $smsDetail = 'complet' !== $sms ? null : (preg_match('/^tel:\+\d{3}0000$/', $expediteur) ? 'renseignés, expéditeur '.$expediteur : 'renseignés, mais l\'expéditeur '.$expediteur.' ne ressemble pas à tel:+2230000 : vérifiez-le dans votre contrat Orange');
 
         if ($enLigne) {
             $noter(str_starts_with($v('DEFAULT_URI'), 'https://') ? self::OK : self::ERREUR, 'DEFAULT_URI', str_starts_with($v('DEFAULT_URI'), 'https://') ? $v('DEFAULT_URI') : 'doit être l\'adresse https du site (liens des SMS, plan du site)');
             $noter(\strlen($v('SYNC_CLE')) >= 32 ? self::OK : self::ERREUR, 'SYNC_CLE', \strlen($v('SYNC_CLE')) >= 32 ? 'renseignée' : 'vide ou trop courte : l\'ERP local ne pourra pas envoyer ses données');
             $noter('' === $v('SAUVEGARDE_CLE_HORS_SITE') ? self::OK : self::ERREUR, 'SAUVEGARDE_CLE_HORS_SITE', '' === $v('SAUVEGARDE_CLE_HORS_SITE') ? 'absente, comme prévu' : 'à retirer : cette clé reste sur l\'ERP local seulement');
-            $noter(match ($sms) { 'complet' => self::OK, default => self::ERREUR }, 'SMS Orange', 'complet' === $sms ? 'renseignés' : 'sans SMS, le personnel ne reçoit pas son code de connexion en ligne');
+            $noter(match ($sms) { 'complet' => str_contains((string) $smsDetail, 'mais') ? self::A_VOIR : self::OK, default => self::ERREUR }, 'SMS Orange', 'complet' === $sms ? (string) $smsDetail : 'sans SMS (identifiant, secret et ORANGE_SMS_SENDER_ADDRESS), le personnel ne reçoit pas son code de connexion en ligne');
             $om = self::groupe($v, ['ORANGE_MONEY_CLIENT_ID', 'ORANGE_MONEY_CLIENT_SECRET', 'ORANGE_MONEY_MERCHANT_KEY']);
             $noter(match ($om) { 'complet' => self::OK, 'vide' => self::A_VOIR, default => self::ERREUR }, 'Orange Money', match ($om) { 'complet' => 'clés renseignées', 'vide' => 'pas de clés : paiement en ligne désactivé', default => 'clés incomplètes' });
             $push = self::groupe($v, ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY']);
@@ -82,7 +85,7 @@ final class VerificationInstallation
             }
             $noter('' !== $v('SAUVEGARDE_COPIE_DIR') ? self::OK : self::A_VOIR, 'Copie des sauvegardes', '' !== $v('SAUVEGARDE_COPIE_DIR') ? 'second disque renseigné' : 'SAUVEGARDE_COPIE_DIR vide : pas de copie sur un second disque');
             $noter('' !== $v('SAUVEGARDE_CLE_HORS_SITE') ? self::OK : self::A_VOIR, 'Sauvegarde hors site', '' !== $v('SAUVEGARDE_CLE_HORS_SITE') ? 'clé renseignée' : 'pas de clé : pas de copie chiffrée hors de l\'atelier');
-            $noter('complet' === $sms ? self::OK : self::A_VOIR, 'SMS Orange', 'complet' === $sms ? 'renseignés' : 'pas de SMS (rappels, codes) depuis l\'ERP local');
+            $noter('complet' === $sms && !str_contains((string) $smsDetail, 'mais') ? self::OK : self::A_VOIR, 'SMS Orange', 'complet' === $sms ? (string) $smsDetail : 'pas de SMS (rappels, codes) depuis l\'ERP local');
             if ('' !== $v('ANTHROPIC_API_KEY')) {
                 $noter(self::A_VOIR, 'ANTHROPIC_API_KEY', 'inutile ici : l\'assistant ne tourne que sur le site en ligne, retirer la clé de l\'ERP local');
             }

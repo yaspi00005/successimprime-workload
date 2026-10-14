@@ -14,6 +14,7 @@ use App\Security\AccesEnLigne;
 use App\Security\CodeParSms;
 use App\Service\NotificationService;
 use App\Service\OrangeSmsService;
+use App\Service\Parametres\Parametres;
 use App\Service\Site\Calculateur;
 use App\Twig\SiteExtension;
 use Doctrine\ORM\EntityManagerInterface;
@@ -239,7 +240,10 @@ final class CalculateurTest extends TestCase
         $entreprises->method('parCode')->willReturn((new Entreprise())->setCode('mdg_success')->setTelephone('+223 70 38 69 12'));
         $entreprises->method('dansLOrdre')->willReturn([]);
 
-        return new Calculateur($urls, new SiteExtension($urls, $entreprises, $acces));
+        // Les réglages ne servent qu'à la fiche Google, absente du calculateur.
+        $parametres = (new \ReflectionClass(Parametres::class))->newInstanceWithoutConstructor();
+
+        return new Calculateur($urls, new SiteExtension($urls, $entreprises, $acces, $parametres));
     }
 
     /** @return array{ProduitConfiguration, ProduitConfigurationFinition, ProduitConfigurationFinition} */

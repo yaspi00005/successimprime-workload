@@ -98,3 +98,12 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Coupure d'internet à l'atelier pendant 20 minutes : l'alerte part une fois, puis tout passe au retour, sans doublon.
 - [ ] Restauration d'une sauvegarde sur une machine d'essai (docs/sauvegardes.md).
 - [ ] L'API refuse un jeton inconnu et répond « introuvable » en ligne (docs/api.md).
+
+## Vérification automatique des accès
+
+Avant de cocher cette liste, et avant chaque mise en production, une commande ouvre chaque page avec chaque compte de démonstration et compare ce qu'elle obtient aux droits. Elle se lance sur une base d'essai qui a la démonstration (`app:demo`), jamais en production (elle refuse). Elle n'enregistre rien : les pages sont demandées dans une transaction annulée à la fin, sans aucun envoi de SMS, d'e-mail ni de notification.
+
+- **ERP local** : `php bin/console app:recette:acces` (un seul compte : `--compte=demo.oumar`). Chaque compte `demo.*` demande chaque page de l'admin ; la commande signale une page ouverte sans son droit, une entrée du menu qui répond « accès refusé », une erreur 500, des montants (marges, salaires, paiements, chiffre d'affaires) ou des photos de pointage montrés sans le droit, la fiche d'une autre personne (bulletin, justificatif, photo de pointage, preuve de livraison), et un module en « Voir » qui accepte un envoi.
+- **Site en ligne** (`APP_EN_LIGNE=1`, après une synchronisation depuis l'ERP d'essai) : la même commande essaie l'espace client avec un particulier, un client B2B et chaque personne d'un compte entreprise (titulaire, valideur, payeur, demandeur, lecture), les fiches et les envois d'un autre client, l'admin sans appareil autorisé, l'API, les pages publiques, `robots.txt`, `sitemap.xml`, le suivi de commande et le calculateur.
+
+Le bilan est écrit dans `var/recette/` (`acces-local-….md` et la matrice compte × page `…-matrice.csv` : O ouverte, R refusée, C connexion, > redirigée, I introuvable, E erreur). La commande se termine en échec s'il reste une fuite, une erreur ou un contrôle raté ; les pages « à examiner » sont à relire. Un écart voulu (page ouverte à tout le personnel, montant de ses propres ventes) s'ajoute avec sa raison dans `RecetteAcces::ECARTS_VOULUS` ou `MONTANTS_VOULUS` (`src/Service/Recette/`). Pour aller vite sur une grande base : `APP_DEBUG=0`.

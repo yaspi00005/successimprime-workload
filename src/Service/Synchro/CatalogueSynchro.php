@@ -27,6 +27,7 @@ use App\Entity\MouvementFidelite;
 use App\Entity\NoteArticleSondage;
 use App\Entity\ProduitClient;
 use App\Entity\PromoReveil;
+use App\Entity\Promotion;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
@@ -238,6 +239,8 @@ final class CatalogueSynchro
                     'remise', 'tva', 'totalHt', 'totalTtc', 'profilCouleurs', 'resolution', 'grammage', 'epaisseur', 'rectoVerso', 'nombreFaces', 'laminage',
                     'oeillets', 'decoupe', 'pliage', 'emballage', 'batValide', 'etat', 'statutProduction', 'productionDebuteLe', 'productionTermineeLe',
                     'quantiteLivree', 'modeSaisie', 'modeCalcul', 'typeLigne', 'demandeClient', 'prePresseNecessaire',
+                    // Promotion de la ligne (docs/promotions.md) : son libellé et sa remise, déjà dans les totaux.
+                    'libellePromotion', 'remisePromotion', 'montantPromotion',
                 ],
                 // produitClient : ligne commandée depuis « Mes produits » (le produit du client vient après les BAT).
                 'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format', 'produitClient' => 'produit_client'],
@@ -298,6 +301,7 @@ final class CatalogueSynchro
                     'modeConfiguration', 'designation', 'largeur', 'longueur', 'surface', 'quantite', 'prixUnitaire', 'remise', 'tva', 'totalHt', 'totalTtc',
                     'profilCouleurs', 'resolution', 'grammage', 'epaisseur', 'rectoVerso', 'nombreFaces', 'laminage', 'oeillets', 'decoupe', 'pliage',
                     'emballage', 'typeLigne', 'modeSaisie', 'batValide', 'etat', 'modeCalcul',
+                    'libellePromotion', 'remisePromotion', 'montantPromotion',
                 ],
                 'relations' => ['devis' => 'devis', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
@@ -394,6 +398,15 @@ final class CatalogueSynchro
                 'classe' => PromoReveil::class, 'sens' => self::DESCENDANT, 'libelle' => 'Promo de réveil', 'titre' => ['taux'],
                 'champs' => ['taux', 'debut', 'fin', 'utiliseeLe', 'annuleeLe'],
                 'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'facultatives' => ['commande'],
+            ],
+            // Promotions (docs/promotions.md) : ce que l'espace client montre à chacun des siennes. Le code promo,
+            // la note interne et les auteurs restent au local ; une promotion à code ne paraît pas en ligne.
+            'promotion' => [
+                'classe' => Promotion::class, 'sens' => self::DESCENDANT, 'libelle' => 'Promotion', 'titre' => ['nom'],
+                'champs' => ['nom', 'avantage', 'valeur', 'debut', 'fin', 'segment', 'active', 'origine', 'quantiteMin', 'montantMin', 'utilisationsParClient'],
+                'relations' => ['categorie' => 'categorie'], 'facultatives' => ['categorie'],
+                'listes' => ['produits' => 'produit', 'clients' => 'client'],
+                'filtres' => ['active' => [Promotion::class, 'activeEnLigne']],
             ],
             // Demande de devis ou message d'un visiteur du site (maquette 11) : monte au local, ne redescend pas.
             // Client, prospect, devis préparé et suivi par l'équipe restent au local.

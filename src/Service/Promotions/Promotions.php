@@ -21,8 +21,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * promotions valables un jour donné, segments et utilisations d'un client,
  * enregistrement contrôlé et journal d'activité.
  *
- * Tout se gère sur l'ERP de la boutique : le site en ligne n'a pas les
- * promotions (seul le libellé posé sur une ligne lui descend).
+ * Tout se gère sur l'ERP de la boutique. Le site en ligne reçoit les
+ * promotions sans code ni note, pour l'espace client, et ne les modifie pas.
  */
 final class Promotions
 {
@@ -88,6 +88,27 @@ final class Promotions
             ->setParameter('jour', $jour->setTime(0, 0))
             ->orderBy('p.fin', 'ASC')->addOrderBy('p.id', 'ASC')
             ->getQuery()->getResult();
+    }
+
+    /**
+     * Espace client (en ligne) : les promotions en cours qui concernent ce
+     * client, celles de son segment ou de sa liste (anniversaire compris).
+     * Aucune pour un revendeur au prix B2B ; une promotion à code n'est pas
+     * envoyée en ligne (CatalogueSynchro).
+     *
+     * @return list<Promotion>
+     */
+    public function pourLeClient(Clients $client, \DateTimeImmutable $jour): array
+    {
+        if ($client->isB2B()) {
+            return [];
+        }
+        $ctx = new ContexteLigne($client, null, 0, 0, 1, 0, $jour, $this->segmentsDe($client, null, $jour));
+
+        return array_values(array_filter(
+            $this->valables($jour),
+            static fn (Promotion $p): bool => null === $p->getCode() && CalculPromotion::dansSegment($p, $ctx),
+        ));
     }
 
     /**

@@ -93,9 +93,13 @@
 							<div class="col-md-6 mb-3">
 								<small class="text-muted d-block">Référence</small>
 								<strong>
+									{% if is_granted('ROLE_COMMANDE') %}
 									<a href="{{ path('app_commandes_show', { id: commande.id }) }}">
 										{{ commande.numero|default('CMD-' ~ commande.id) }}
 									</a>
+									{% else %}
+										{{ commande.numero|default('CMD-' ~ commande.id) }}
+									{% endif %}
 								</strong>
 							</div>
 
@@ -108,6 +112,8 @@
 								{% endif %}
 							</div>
 
+							{# Le montant de la commande : pas pour le livreur, qui ne voit que ce qu'il doit livrer. #}
+							{% if is_granted('ROLE_COMMANDE') or is_granted('ROLE_PAIEMENT_VOIR') %}
 							<div class="col-md-6 mb-3">
 								<small class="text-muted d-block">Total TTC</small>
 								<strong>
@@ -115,6 +121,7 @@
 									FCFA
 								</strong>
 							</div>
+							{% endif %}
 
 							<div class="col-md-6 mb-3">
 								<small class="text-muted d-block">Lignes à livrer</small>

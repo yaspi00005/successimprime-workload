@@ -49,7 +49,7 @@
 		<hr>
 		<dl>
 			{% if commande.clients %}<div><dt>Client</dt><dd>{{ commande.clients.nomComplet }}</dd></div>{% endif %}
-			<div><dt>Commande</dt><dd>{{ commande.numero }}</dd></div>
+			<div><dt>{{ commande.estSoldeOuverture ? 'Règlement' : 'Commande' }}</dt><dd>{{ commande.libelle }}</dd></div>
 			{% if paiement.facture %}<div><dt>Facture</dt><dd>{{ paiement.facture.numero }}</dd></div>{% endif %}
 			<div><dt>Mode</dt><dd>{{ paiement.modeLabel }}</dd></div>
 			{% if paiement.reference %}<div><dt>Référence</dt><dd>{{ paiement.reference }}</dd></div>{% endif %}

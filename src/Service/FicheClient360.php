@@ -76,6 +76,9 @@ final class FicheClient360
             ->orderBy('commande.dateCommande', 'DESC')
             ->getQuery()
             ->getResult();
+        // Le solde d'ouverture (docs/import-donnees.md) compte dans le solde dû, pas dans le chiffre d'affaires.
+        $soldesOuverture = array_values(array_filter($commandes, static fn (Commandes $c): bool => $c->estSoldeOuverture()));
+        $commandes = array_values(array_filter($commandes, static fn (Commandes $c): bool => !$c->estSoldeOuverture()));
         /** @var list<Devis> $devis */
         $devis = $this->em->getRepository(Devis::class)->findBy(['clients' => $client], ['dateDevis' => 'DESC']);
 
@@ -117,8 +120,9 @@ final class FicheClient360
                 'panier_moyen' => [] === $actives ? 0 : intdiv(array_sum(array_map(static fn (Commandes $c): int => (int) $c->getTotalTtc(), $actives)), \count($actives)),
                 'devis_ouverts' => \count(array_filter($devis, static fn (Devis $d): bool => \in_array($d->getStatut(), [Devis::STATUT_BROUILLON, Devis::STATUT_ENVOYE], true))),
             ],
-            'historique' => $this->historique($client, $commandes, $devis, $voirPaiements),
+            'historique' => $this->historique($client, $commandes, $devis, $voirPaiements, $soldesOuverture),
             'commandes' => $commandes,
+            'soldes_ouverture' => $voirPaiements ? $soldesOuverture : [],
             'devis' => $devis,
             'factures' => $this->factures($commandes),
             'fichiers' => $this->fichiers($commandes),
@@ -133,9 +137,35 @@ final class FicheClient360
      *
      * @return list<array{date: \DateTimeInterface, categorie: string, icone: string, titre: string, detail: ?string, montant: ?int, lien: ?array{route: string, parametres: array<string, mixed>}}>
      */
-    private function historique(Clients $client, array $commandes, array $devis, bool $voirPaiements): array
+    private function historique(Clients $client, array $commandes, array $devis, bool $voirPaiements, array $soldesOuverture = []): array
     {
         $evenements = [];
+        // Ce que le client devait au démarrage : seulement pour qui voit les paiements.
+        foreach ($voirPaiements ? $soldesOuverture : [] as $s) {
+            $evenements[] = [
+                'date' => $s->getDateCommande(),
+                'categorie' => 'paiements',
+                'icone' => 'fa-balance-scale',
+                'titre' => 'Solde d\'ouverture',
+                'detail' => 'Repris à l\'import des données de démarrage',
+                'montant' => (int) $s->getTotalTtc(),
+                'lien' => ['route' => 'app_commandes_show', 'parametres' => ['id' => $s->getId()]],
+            ];
+            foreach ($s->getPaiements() as $p) {
+                if (null === $p->getDate() || \in_array($p->getStatut(), [Paiements::STATUT_ANNULE, Paiements::STATUT_REJETE], true)) {
+                    continue;
+                }
+                $evenements[] = [
+                    'date' => $p->getDate(),
+                    'categorie' => 'paiements',
+                    'icone' => 'fa-money-bill-wave',
+                    'titre' => sprintf('Règlement du solde d\'ouverture · %s', $p->getModeLabel()),
+                    'detail' => null,
+                    'montant' => (int) $p->getMontant(),
+                    'lien' => null,
+                ];
+            }
+        }
         $qui = static fn (?\App\Entity\User $u): ?string => null !== $u ? Pointages::nom($u) : null;
         foreach ($devis as $d) {
             if (null === $d->getDateDevis()) {

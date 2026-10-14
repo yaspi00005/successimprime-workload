@@ -64,7 +64,7 @@ final class EvolutionFinanciereService
             ->getRepository(Commandes::class)
             ->createQueryBuilder('c')
             ->andWhere('c.dateCommande >= :debut')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->setParameter('debut', $debutFenetre)
             ->getQuery()
             ->getResult();
@@ -154,7 +154,7 @@ final class EvolutionFinanciereService
             ->getRepository(Commandes::class)
             ->createQueryBuilder('c')
             ->select('MIN(c.dateCommande)')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->getQuery()
             ->getSingleScalarResult();
 

@@ -46,6 +46,7 @@ final class RechercheController extends AbstractController
                     ->select('co', 'c')->from(Commandes::class, 'co')
                     ->leftJoin('co.clients', 'c')
                     ->where('co.numero LIKE :q OR c.nom LIKE :q OR c.raisonSociale LIKE :q OR c.telephone LIKE :q')
+                    ->andWhere('co.soldeOuverture = false')
                     ->setParameter('q', $motif)
                     ->orderBy('co.dateCommande', 'DESC')
                     ->setMaxResults(self::LIMITE)

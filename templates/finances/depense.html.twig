@@ -38,6 +38,10 @@
 				</section>
 
 				<section class="card si-fin-pieces" aria-label="Justificatif">
+					{% if d.isSoldeOuverture %}
+					<ul>
+						<li><b>Solde d'ouverture</b> : dette fournisseur reprise à l'import des données de démarrage, sans reçu (le fichier importé en tient lieu).</li>
+					{% else %}
 					<a class="si-fin-vignette" href="{{ path('app_finances_depenses_recu', {id: d.id}) }}" target="_blank" rel="noopener" title="Ouvrir le reçu">
 						{% if type_recu starts with 'image/' %}
 							<img src="{{ path('app_finances_depenses_recu', {id: d.id}) }}" alt="Reçu de la dépense" loading="lazy">
@@ -47,6 +51,7 @@
 					</a>
 					<ul>
 						<li>Reçu joint <i class="fas fa-check si-fin-vert" aria-hidden="true"></i></li>
+					{% endif %}
 						{% if d.lieA %}<li>Lié à : {{ d.lieA }}</li>{% endif %}
 						<li>Catégorie : {{ categorie }}</li>
 						{% if achat %}

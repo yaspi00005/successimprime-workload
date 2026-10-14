@@ -54,12 +54,12 @@ Toutes les saisies passent par `src/Service/Clients/EditionClient.php`.
   - la position GPS est prise automatiquement ;
   - « Enregistrer et créer un devis » ouvre le devis avec le client déjà choisi ;
   - une ligne « Prospection » faite est créée au nom du commercial, ce qui lui donne ses points.
+- **Import** : Réglages › Import des données (Direction, ERP local) crée les fiches en passant par les mêmes contrôles que la saisie (`EditionClient`), sans aucun message au client, et repère les doublons par code, téléphone (fiche, second numéro, contacts) puis nom dans n'importe quel ordre. Les soldes de départ des clients s'importent à part (« Solde d'ouverture »). Voir docs/import-donnees.md.
 - **Invitation à l'espace client** : la case cochée à la création affiche, sur la fiche, un bouton WhatsApp avec le lien de connexion. Le client se connecte ensuite avec son numéro et un code.
 
 ## Reste à faire
 
 - La recherche dans les noms et les numéros des contacts : aujourd'hui, elle ne porte que sur la fiche.
-- L'import de clients (bouton « Importer » de K01).
 - La note de satisfaction (KPI de K03), qui viendra avec les sondages (J5).
 - Les modifications faites en ligne qui attendent leur validation sur l'ERP local : elles dépendent de la synchronisation (J4).
 - Un écran pour accepter ou refuser les demandes à la direction. Pour l'instant, la direction modifie la fiche depuis la notification.

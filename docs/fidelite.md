@@ -44,6 +44,7 @@ La date de référence est celle de la facture si la commande en a une, sinon ce
 - **Commande annulée ou supprimée** : tous ses points sont retirés. Si elle est rétablie, ils sont recomptés.
 - **Article annulé seul** : ses points sont retirés. S'il est rétabli, il les retrouve, au même multiplicateur.
 - **Paiement en points** : il ne rapporte rien.
+- **Règlement d'un solde d'ouverture** (créance reprise à l'import, docs/import-donnees.md) : il ne rapporte rien, et ni points ni promo de réveil ne s'utilisent dessus. Ce n'est pas un achat.
 
 Si des points retirés ont déjà été dépensés, le solde ne descend pas sous zéro. La différence est notée comme une « dette », reprise sur les prochains gains.
 

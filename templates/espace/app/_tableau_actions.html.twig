@@ -31,7 +31,7 @@
 			<div class="ec-action fac">
 				<div>
 					<b>{{ solde.commandes|length > 1 ? solde.commandes|length ~ ' commandes à régler' : 'Commande à régler' }}</b>
-					<small>{{ solde.commandes|length == 1 ? premiere.numero ~ ' · ' }}reste {{ solde.total|number_format(0, ',', ' ') }} F</small>
+					<small>{{ solde.commandes|length == 1 ? (premiere.estSoldeOuverture ? 'Solde d\'ouverture' : premiere.numero) ~ ' · ' }}reste {{ solde.total|number_format(0, ',', ' ') }} F</small>
 				</div>
 				<a class="ec-mini fac" href="{{ solde.commandes|length > 1 ? path('app_espace_factures') : path('app_espace_payer', {id: premiere.publicId}) }}"><span class="ec-bureau">Payer par Orange Money</span><span class="ec-telephone">Payer</span></a>
 			</div>

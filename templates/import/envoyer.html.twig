@@ -1,0 +1,106 @@
+{% extends 'base.html.twig' %}
+
+{# Envoi du fichier d'un type d'import (docs/import-donnees.md). #}
+
+{% block title %}Importer · {{ type.libelle }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/import.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_import_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i><span class="si-masque-mobile">Import des données</span></a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% if erreur %}
+		<div class="alert alert-danger" role="alert"><i class="fas fa-exclamation-triangle me-2"></i>{{ erreur }}</div>
+	{% endif %}
+
+	<div class="row">
+		<div class="col-xl-7">
+			<div class="card si-bloc">
+				<ol class="si-im-etapes">
+					<li>
+						<h3>Téléchargez le modèle</h3>
+						<p class="small text-muted mb-2">Un classeur Excel avec l'en-tête, deux lignes d'exemple et une feuille « Notes » qui explique chaque colonne.</p>
+						<a href="{{ path('app_import_modele', {type: type.cle}) }}" class="btn btn-outline-primary btn-sm"><i class="fas fa-download me-1"></i>Modèle {{ type.libelle|lower }} (.xlsx)</a>
+					</li>
+					<li>
+						<h3>Remplissez-le</h3>
+						<p class="small text-muted mb-0">Une ligne par fiche. Les lignes d'exemple sont reconnues et écartées. Vous pouvez aussi envoyer un CSV (« ; » ou « , », UTF-8 ou Windows) ; 5 Mo et 5 000 lignes au plus.</p>
+					</li>
+					<li>
+						<h3>Envoyez-le pour voir l'aperçu</h3>
+						{% if not xlsx_lisible %}
+							<div class="alert alert-warning small py-2">Ce serveur ne lit pas encore les classeurs .xlsx (extension PHP zip absente) : enregistrez le fichier en CSV depuis Excel et envoyez ce CSV.</div>
+						{% endif %}
+						<form method="post" enctype="multipart/form-data" action="{{ path('app_import_envoyer', {type: type.cle}) }}" id="im-envoi">
+							<input type="hidden" name="_token" value="{{ csrf_token('import-envoyer-' ~ type.cle) }}">
+							<div class="si-im-depot" data-im-depot>
+								<label class="form-label" for="im-fichier">Fichier Excel ou CSV</label>
+								<input type="file" name="fichier" id="im-fichier" class="form-control" accept=".xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required>
+							</div>
+							{% if type.avecDateOuverture %}
+								<label class="form-label mt-3" for="im-date">Jour d'ouverture</label>
+								<input type="date" name="date_ouverture" id="im-date" class="form-control" value="{{ aujourdhui|date('Y-m-d') }}" max="{{ aujourdhui|date('Y-m-d') }}" required style="max-width: 14rem">
+								<small class="text-muted d-block mt-1">Le jour où ces soldes ont été comptés. Il date les à-nouveaux en comptabilité.</small>
+							{% endif %}
+							{% if type.avecCompletion %}
+								<div class="form-check mt-3">
+									<input class="form-check-input" type="checkbox" name="completer" value="1" id="im-completer">
+									<label class="form-check-label" for="im-completer">Compléter les fiches existantes</label>
+									<small class="text-muted d-block">Un client retrouvé (même code ou même téléphone) reçoit les informations qui lui manquent ; rien de ce qui est déjà rempli n'est remplacé. Sans cette case, il est seulement écarté.</small>
+								</div>
+							{% endif %}
+							<button class="btn btn-primary mt-3"><i class="fas fa-search me-1"></i>Voir l'aperçu</button>
+							<small class="text-muted d-block mt-2">Rien n'est enregistré à cette étape.</small>
+						</form>
+					</li>
+				</ol>
+			</div>
+		</div>
+
+		<div class="col-xl-5">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Colonnes</h4></div>
+				<ul class="list-unstyled si-im-colonnes">
+					{% for c in colonnes %}
+						<li>
+							<strong>{{ c.libelle }}</strong>{% if c.obligatoire %} <span class="si-im-oblig" title="obligatoire">*</span>{% endif %}
+							<small>{{ c.aide }}</small>
+						</li>
+					{% endfor %}
+				</ul>
+			</div>
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>À savoir</h4></div>
+				<ul class="si-regles-acces">
+					{% for n in type.notes %}<li>{{ n }}</li>{% endfor %}
+				</ul>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(function () {
+			var zone = document.querySelector('[data-im-depot]');
+			var champ = document.getElementById('im-fichier');
+			if (!zone || !champ) return;
+			['dragenter', 'dragover'].forEach(function (e) { zone.addEventListener(e, function (ev) { ev.preventDefault(); zone.classList.add('si-im-survol'); }); });
+			['dragleave', 'drop'].forEach(function (e) { zone.addEventListener(e, function () { zone.classList.remove('si-im-survol'); }); });
+			zone.addEventListener('drop', function (ev) { ev.preventDefault(); if (ev.dataTransfer && ev.dataTransfer.files.length) { champ.files = ev.dataTransfer.files; } });
+			document.getElementById('im-envoi').addEventListener('submit', function (ev) {
+				var bouton = ev.target.querySelector('button');
+				bouton.disabled = true;
+				bouton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Lecture du fichier…';
+			});
+		})();
+	</script>
+{% endblock %}

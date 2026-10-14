@@ -5,7 +5,7 @@
 
 {% block contenu %}
 	<div class="ec-carte" style="text-align:center">
-		<span class="ec-petit">Commande {{ commande.numero }} · {{ titre }}</span>
+		<span class="ec-petit">{{ commande.estSoldeOuverture ? 'Réf. ' ~ commande.numero : 'Commande ' ~ commande.numero }} · {{ titre }}</span>
 		{% if aPayer > 0 or enValidation <= 0 %}
 			<div class="ec-gros">{{ aPayer|number_format(0, ',', ' ') }} FCFA</div>
 			<span class="ec-petit">Succès Imprim · MDG SARL</span>

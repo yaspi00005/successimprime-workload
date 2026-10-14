@@ -199,6 +199,17 @@ class Commandes implements AppartientASociete
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?CompteClient $compteDemandeur = null;
 
+    /*
+     * Solde d'ouverture (docs/import-donnees.md) : ce que le client devait
+     * au démarrage, repris par l'import. Sans ligne ni facture, ce n'est
+     * pas une vente : il compte dans son solde, les créances et le plafond,
+     * et se règle comme une commande, mais il est écarté du chiffre
+     * d'affaires, des statistiques, de la fidélité, des promotions, des
+     * primes et de l'activité (voir estSoldeOuverture()).
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $soldeOuverture = false;
+
     public function __construct()
     {
         $this->dateCommande = new \DateTimeImmutable();
@@ -868,5 +879,49 @@ class Commandes implements AppartientASociete
         $this->compteDemandeur = $compte;
 
         return $this;
+    }
+
+    public function isSoldeOuverture(): bool
+    {
+        return $this->soldeOuverture;
+    }
+
+    public function estSoldeOuverture(): bool
+    {
+        return $this->soldeOuverture;
+    }
+
+    /**
+     * Commande « Solde d'ouverture » : le montant dû au démarrage, sans
+     * ligne, sans agent, sans facture. Seul l'import la crée. Datée du jour
+     * d'ouverture ; son échéance (date de livraison, comme pour toute
+     * commande sans facture) est celle du fichier, sinon ce même jour.
+     */
+    public static function soldeOuverture(Clients $client, int $montant, \DateTimeImmutable $date, string $numero, ?string $note = null, ?\DateTimeImmutable $echeance = null): self
+    {
+        if ($montant <= 0) {
+            throw new \InvalidArgumentException('Le solde d\'ouverture doit être positif.');
+        }
+        $c = new self();
+        $c->soldeOuverture = true;
+        $c->numero = $numero;
+        $c->clients = $client;
+        $c->dateCommande = $date;
+        $c->dateLivraison = $echeance ?? $date;
+        // Aucun travail à faire : rien n'apparaît à l'atelier.
+        $c->etat = false;
+        $c->totalHt = $montant;
+        $c->totalTtc = $montant;
+        $c->montantApayer = $montant;
+        $c->resteAPayer = $montant;
+        $c->observation = $note;
+
+        return $c;
+    }
+
+    /** Libellé à l'écran : « Solde d'ouverture » plutôt qu'un numéro de commande. */
+    public function getLibelle(): string
+    {
+        return $this->soldeOuverture ? 'Solde d\'ouverture' : ($this->numero ?? 'Nouvelle commande');
     }
 }

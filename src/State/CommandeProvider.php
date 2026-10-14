@@ -33,7 +33,7 @@ final class CommandeProvider extends LectureApi implements ProviderInterface
         $requete = $this->em->createQueryBuilder()
             ->select('c', 'cl')->from(Commandes::class, 'c')
             ->leftJoin('c.clients', 'cl')
-            ->where('c.deleted = false')
+            ->where('c.deleted = false AND c.soldeOuverture = false')
             ->orderBy('c.dateCommande', 'DESC')->addOrderBy('c.id', 'DESC');
         if (null !== $q = self::texte($filtres, 'q')) {
             $requete->andWhere('c.numero LIKE :q OR cl.nom LIKE :q OR cl.prenom LIKE :q OR cl.raisonSociale LIKE :q')->setParameter('q', self::like($q));

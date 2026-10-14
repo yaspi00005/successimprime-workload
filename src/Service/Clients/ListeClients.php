@@ -144,7 +144,7 @@ final class ListeClients
         $lignes = $this->em->createQueryBuilder()
             ->select('IDENTITY(c.clients) AS client', 'SUM(CASE WHEN c.dateCommande >= :depuis THEN c.totalTtc ELSE 0 END) AS ca', 'MAX(c.dateCommande) AS derniere', 'MIN(c.dateCommande) AS premiere', 'COUNT(c.id) AS nb')
             ->from(Commandes::class, 'c')
-            ->where('c.deleted = false')->andWhere('c.statut = true')->andWhere('c.clients IS NOT NULL')
+            ->where('c.deleted = false AND c.soldeOuverture = false')->andWhere('c.statut = true')->andWhere('c.clients IS NOT NULL')
             ->groupBy('c.clients')
             ->setParameter('depuis', $maintenant->modify('-12 months'))
             ->getQuery()->getArrayResult();
@@ -247,7 +247,7 @@ final class ListeClients
         }
         /** @var list<Commandes> $dernieres */
         $dernieres = $this->em->createQueryBuilder()->select('c')->from(Commandes::class, 'c')
-            ->where('c.clients IN (:cl)')->andWhere('c.deleted = false')->andWhere('c.statut = true')
+            ->where('c.clients IN (:cl)')->andWhere('c.deleted = false AND c.soldeOuverture = false')->andWhere('c.statut = true')
             ->setParameter('cl', $clients)->orderBy('c.id', 'DESC')->getQuery()->getResult();
         $derniereCommande = [];
         foreach ($dernieres as $c) {

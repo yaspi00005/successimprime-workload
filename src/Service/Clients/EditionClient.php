@@ -129,18 +129,29 @@ final class EditionClient
      * terrain n'envoie qu'une partie des champs). Rien n'est enregistré :
      * l'appelant enregistre seulement s'il n'y a pas d'erreur.
      *
+     * L'import (docs/import-donnees.md) passe chaque ligne par ici : d'abord
+     * pour l'aperçu ($simuler : la fiche est contrôlée et normalisée, rien
+     * n'est noté ni rattaché à la base), puis pour l'enregistrement. Il
+     * cherche lui-même les doublons sur tout le fichier client en une fois
+     * ($verifierDoublons = false) : même règle, sans une requête par ligne.
+     *
      * @param array<string, mixed> $d
      *
      * @return array{erreurs: array<string, string>, demandes: list<string>}
      */
-    public function appliquer(Clients $c, array $d, ?User $par, bool $direction, \DateTimeImmutable $maintenant, string $depuis = 'erp_local'): array
+    public function appliquer(Clients $c, array $d, ?User $par, bool $direction, \DateTimeImmutable $maintenant, string $depuis = 'erp_local', bool $simuler = false, bool $verifierDoublons = true): array
     {
         $creation = null === $c->getId();
         $avant = $creation ? [] : self::instantane($c);
         $erreurs = [];
         $demandes = [];
-        $texte = static fn (string $k): ?string => \array_key_exists($k, $d) && null !== $d[$k] && '' !== trim((string) $d[$k]) ? trim((string) $d[$k]) : null;
-        $a = static fn (string $k): bool => \array_key_exists($k, $d);
+        // Par référence : « nomComplet » (ajout terrain, import) remplit prénom et nom plus bas.
+        $texte = static function (string $k) use (&$d): ?string {
+            return \array_key_exists($k, $d) && null !== $d[$k] && '' !== trim((string) $d[$k]) ? trim((string) $d[$k]) : null;
+        };
+        $a = static function (string $k) use (&$d): bool {
+            return \array_key_exists($k, $d);
+        };
 
         if ($a('type')) {
             $c->setTypeCompte(isset(Clients::TYPES_COMPTE_LABELS[$d['type']]) ? $d['type'] : Clients::TYPE_COMPTE_PARTICULIER);
@@ -248,7 +259,7 @@ final class EditionClient
             $erreurs['telephone'] = $c->isOrganisation() ? 'Indiquez le téléphone du contact principal.' : 'Le téléphone est obligatoire.';
         } elseif (!preg_match('/^\d{8}$/', ContactClient::chiffres($tel))) {
             $erreurs['telephone'] = 'Le téléphone doit avoir 8 chiffres.';
-        } else {
+        } elseif ($verifierDoublons) {
             foreach ($this->doublons($tel, $c) as $doublon) {
                 if ('client' === $doublon['type']) {
                     $erreurs['telephone'] = 'Ce numéro est déjà celui de '.$doublon['nom'].'.';
@@ -288,6 +299,9 @@ final class EditionClient
 
         if ([] !== $erreurs) {
             return ['erreurs' => $erreurs, 'demandes' => []];
+        }
+        if ($simuler) {
+            return ['erreurs' => [], 'demandes' => $demandes];
         }
 
         if ($creation) {

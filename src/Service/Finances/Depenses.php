@@ -176,6 +176,8 @@ final class Depenses
             ->leftJoin('d.compte', 'c')
             ->leftJoin('d.mouvement', 'm')
             ->andWhere('d.dateDepense >= :debut AND d.dateDepense < :fin')
+            // Les dettes fournisseurs du démarrage restent dans « À payer », pas dans les dépenses du mois.
+            ->andWhere('d.soldeOuverture = false')
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
             ->orderBy('d.dateDepense', 'DESC')

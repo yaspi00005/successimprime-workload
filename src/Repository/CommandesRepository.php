@@ -33,6 +33,8 @@ final class CommandesRepository extends ServiceEntityRepository
             ->leftJoin('c.clients', 'cl')
             ->addSelect('cl')
             ->andWhere('c.deleted = :deleted')
+            // Les soldes d'ouverture n'ont pas de rappel automatique (docs/import-donnees.md).
+            ->andWhere('c.soldeOuverture = false')
             ->andWhere('c.statutPaiement != :statutPaye')
             ->setParameter('deleted', false)
             ->setParameter('statutPaye', Commandes::PAIEMENT_PAYE)
@@ -54,7 +56,7 @@ final class CommandesRepository extends ServiceEntityRepository
             ->addSelect('cl')
             ->leftJoin('c.commandesDetails', 'd')
             ->addSelect('d')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->distinct();
 
         $rechercheActive = $this->rechercheEstActive($filtres);
@@ -354,7 +356,7 @@ final class CommandesRepository extends ServiceEntityRepository
             ->addSelect('COALESCE(SUM(c.totalTtc), 0) AS caGenere')
             ->join('c.agents', 'a')
             ->leftJoin('a.employe', 'e')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->groupBy('a.id')
             ->addGroupBy('e.id')
             ->orderBy('caGenere', 'DESC');
@@ -391,7 +393,7 @@ final class CommandesRepository extends ServiceEntityRepository
     ): int {
         $qb = $this->createQueryBuilder('c')
             ->select('COUNT(c.id)')
-            ->andWhere('c.deleted = false');
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false');
 
         if ($debut) {
             $qb
@@ -422,7 +424,7 @@ final class CommandesRepository extends ServiceEntityRepository
         \DateTimeInterface $depuis
     ): ?Commandes {
         return $this->createQueryBuilder('c')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.agents = :agent')
             ->andWhere('c.clients = :client')
             ->andWhere('c.totalTtc = :totalTtc')

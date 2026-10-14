@@ -1,0 +1,120 @@
+{% extends 'base.html.twig' %}
+
+{# Un import du journal (docs/import-donnees.md) : qui, quand, quel fichier, ce qui a été fait ; annulation. #}
+
+{% set options = import.options %}
+{% set soldes = import.type starts with 'soldes' %}
+
+{% block title %}Import n° {{ import.id }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/import.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_import_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i><span class="si-masque-mobile">Import des données</span></a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="row">
+		<div class="col-xl-4 order-xl-2">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>{{ type ? type.libelle : import.type }}</h4><span class="si-pastille si-pastille-{{ import.resultatCouleur }}">{{ import.resultatLibelle }}</span></div>
+				<dl class="si-im-fiche small mb-0">
+					<dt>Fichier</dt>
+					<dd class="text-break">{{ import.nomFichier }} · {{ import.taille|taille_octets }}</dd>
+					<dt>Empreinte SHA-256</dt>
+					<dd class="si-im-empreinte">{{ import.empreinte }}</dd>
+					<dt>Importé</dt>
+					<dd>le {{ import.le|date('d/m/Y à H:i') }} par {{ import.parNom }}</dd>
+					{% if options.dateOuverture is defined %}
+						<dt>Jour d'ouverture</dt>
+						<dd>{{ options.dateOuverture|date('d/m/Y') }}</dd>
+					{% endif %}
+					{% if options.completer is defined %}
+						<dt>Option</dt>
+						<dd>Compléter les fiches existantes</dd>
+					{% endif %}
+					<dt>Lignes</dt>
+					<dd class="si-im-compte"><span>{{ import.lignes }} lue{{ import.lignes > 1 ? 's' }}</span><span>{{ import.crees }} créée{{ import.crees > 1 ? 's' }}</span><span>{{ import.modifies }} mise{{ import.modifies > 1 ? 's' }} à jour</span><span>{{ import.ignores }} écartée{{ import.ignores > 1 ? 's' }}</span><span>{{ import.erreurs }} en erreur</span></dd>
+					{% if import.annuleLe %}
+						<dt>Annulé</dt>
+						<dd>le {{ import.annuleLe|date('d/m/Y à H:i') }}{% if import.annulePar %} par {{ import.annulePar|nom_pointage }}{% endif %}</dd>
+					{% endif %}
+					{% if import.message %}
+						<dt>Message</dt>
+						<dd class="text-danger">{{ import.message }}</dd>
+					{% endif %}
+				</dl>
+				{% if fichier %}
+					<a href="{{ path('app_import_fichier', {id: import.id}) }}" class="btn btn-outline-primary btn-sm w-100 mt-3"><i class="fas fa-download me-1"></i>Télécharger le fichier importé</a>
+				{% endif %}
+			</div>
+
+			{% if import.estFait %}
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Annuler l'import</h4></div>
+					{% if blocages is empty %}
+						<p class="small text-muted">Rien de ce qu'il a enregistré n'a encore servi : l'annulation défait tout{{ soldes ? ', y compris les à-nouveaux en comptabilité' : '' }}. Le journal garde la trace de l'import.</p>
+						<form method="post" action="{{ path('app_import_annuler', {id: import.id}) }}" onsubmit="return confirm('Annuler l\'import n° {{ import.id }} ? Tout ce qu\'il a enregistré sera défait.');">
+							<input type="hidden" name="_token" value="{{ csrf_token('import-annuler-' ~ import.id) }}">
+							<button class="btn btn-outline-danger btn-sm w-100"><i class="fas fa-undo me-1"></i>Annuler l'import</button>
+						</form>
+					{% else %}
+						<p class="small mb-1"><strong>L'annulation n'est plus possible :</strong></p>
+						<ul class="si-im-blocages">
+							{% for b in blocages %}<li>{{ b }}</li>{% endfor %}
+						</ul>
+						<p class="small text-muted mt-2 mb-0">Corrigez les fiches une à une (docs/import-donnees.md, « Annuler un import »).</p>
+					{% endif %}
+				</div>
+			{% endif %}
+		</div>
+
+		<div class="col-xl-8 order-xl-1">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Ligne par ligne</h4></div>
+				{% set details = import.details|filter(d => d.ligne > 0)|sort((a, b) => a.ligne <=> b.ligne) %}
+				{% if details is empty %}
+					<p class="text-muted text-center py-4 mb-0">{{ import.resultat == 'echec' ? 'Rien n\'a été enregistré.' : 'Aucun détail.' }}</p>
+				{% else %}
+					<div class="table-responsive">
+						<table class="table si-table si-im-lignes si-im-cartes">
+							<thead>
+								<tr>
+									<th class="si-im-num">Ligne</th>
+									<th>Résultat</th>
+									<th>Fiche</th>
+									<th>Détail</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for d in details %}
+									<tr>
+										<td class="si-im-num">n° {{ d.ligne }}</td>
+										<td class="si-im-statut">
+											{% set s = statuts[d.statut]|default(null) %}
+											<span class="si-pastille si-pastille-{{ s ? s[1] : 'gris' }}">{{ d.statut == 'creer' ? 'Créé' : (d.statut == 'maj' ? 'Mis à jour' : (s ? s[0] : d.statut)) }}</span>
+										</td>
+										<td><strong>{{ d.libelle|default('—') }}</strong>{% if d.code is defined and d.code %}<small class="d-block text-muted">{{ d.code }}</small>{% endif %}</td>
+										<td class="si-im-detail">
+											{% if d.raison is defined and d.raison %}{{ d.raison }}{% endif %}
+											{% if d.detail is defined and d.detail %}{{ d.detail }}{% elseif d.montant is defined %}{{ d.montant|number_format(0, ',', ' ') }} F{% endif %}
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% endif %}
+				{% set categories = import.details|filter(d => d.ligne == 0 and d.statut == 'categorie') %}
+				{% if categories is not empty %}
+					<p class="small text-muted mt-3 mb-0">Catégories créées (non publiées) : {{ categories|map(c => c.libelle)|join(', ') }}.</p>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock %}

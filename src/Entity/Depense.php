@@ -131,6 +131,14 @@ class Depense implements AppartientASociete
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?MouvementTresorerie $mouvement = null;
 
+    /*
+     * Dette fournisseur reprise au démarrage (docs/import-donnees.md) : elle
+     * est à payer comme une autre, mais ce n'est pas une dépense du mois.
+     * Elle n'entre ni dans les budgets ni dans les dépenses de la période.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $soldeOuverture = false;
+
     public function __construct(?User $par = null, ?\DateTimeImmutable $le = null)
     {
         $this->creeLe = $le ?? new \DateTimeImmutable();
@@ -193,4 +201,15 @@ class Depense implements AppartientASociete
     public function getPayeePar(): ?User { return $this->payeePar; }
     public function payer(string $statut, User $par, \DateTimeImmutable $le, MouvementTresorerie $mouvement): static { $this->statut = $statut; $this->payeePar = $par; $this->payeeLe = $le; $this->mouvement = $mouvement; $this->compte = $mouvement->getCompteSource(); return $this; }
     public function getMouvement(): ?MouvementTresorerie { return $this->mouvement; }
+
+    public function isSoldeOuverture(): bool { return $this->soldeOuverture; }
+
+    /** Dette fournisseur du démarrage : à payer, sans reçu (le fichier d'import en tient lieu). */
+    public function marquerSoldeOuverture(): static
+    {
+        $this->soldeOuverture = true;
+        $this->statut = self::A_PAYER;
+
+        return $this;
+    }
 }

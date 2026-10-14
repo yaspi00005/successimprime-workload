@@ -61,7 +61,7 @@
 								{% set choisie = commande and commande.id == c.id %}
 								<tr class="{{ choisie ? 'si-caisse-choisie' }}">
 									<td class="text-nowrap">
-										<a href="{{ path('app_caisse_index', {client: client.id, commande: c.id}) }}" {{ choisie ? 'aria-current="true"' }}>{{ ligne.facture ?: c.numero }}</a>
+										<a href="{{ path('app_caisse_index', {client: client.id, commande: c.id}) }}" {{ choisie ? 'aria-current="true"' }}>{{ ligne.facture ?: c.libelle }}</a>
 									</td>
 									<td>
 										{% set objet = c.commandesDetails|map(d => d.designation ?: (d.produit ? d.produit.nom : ''))|filter(t => t)|join(', ') %}
@@ -88,7 +88,7 @@
 							{{ form_widget(formulaire.montant, {attr: {class: 'form-control', inputmode: 'numeric', autocomplete: 'off', 'aria-describedby': 'caisse-reste'}}) }}
 							<span aria-hidden="true">F</span>
 						</div>
-						<small id="caisse-reste">Reste dû sur {{ commande.numero }} : {{ reste|number_format(0, ',', ' ') }} F</small>
+						<small id="caisse-reste">Reste dû sur {{ commande.libelle }} : {{ reste|number_format(0, ',', ' ') }} F</small>
 						{{ form_errors(formulaire.montant) }}
 					</div>
 

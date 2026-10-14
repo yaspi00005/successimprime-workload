@@ -235,4 +235,24 @@ final class CatalogueSynchroTest extends TestCase
             }
         }
     }
+
+    public function testImportDesDonneesDeDemarrage(): void
+    {
+        $types = CatalogueSynchro::types();
+        // Le solde d'ouverture part avec sa commande : l'espace client le compte dans le solde, pas dans la liste.
+        self::assertContains('soldeOuverture', $types['commande']['champs']);
+        self::assertArrayNotHasKey('soldeOuverture', $types['commande']['remontees'] ?? [], 'seul le local crée un solde d\'ouverture');
+        self::assertSame(['soldeOuverture' => false], $types['commande']['imposeAuLocal'] ?? null);
+        // Clients et produits importés partent par la synchronisation habituelle, avec leur liste blanche.
+        self::assertSame(\App\Entity\Produits::class, $types['produit']['classe']);
+        self::assertContains('prixB2B', $types['produit']['champs']);
+        foreach (['import', 'importDonnees', 'empreinte'] as $champ) {
+            self::assertNotContains($champ, $types['client']['champs'], $champ);
+        }
+        // Le journal des imports, les soldes d'ouverture et les articles de stock restent au local.
+        $classes = array_column($types, 'classe');
+        foreach ([\App\Entity\ImportDonnees::class, \App\Entity\SoldeOuverture::class, \App\Entity\Articles::class, \App\Entity\Depense::class] as $classe) {
+            self::assertNotContains($classe, $classes, $classe);
+        }
+    }
 }

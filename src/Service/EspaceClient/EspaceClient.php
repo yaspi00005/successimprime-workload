@@ -63,23 +63,36 @@ final class EspaceClient
     ) {
     }
 
-    /** @return list<Commandes> */
-    public function commandes(Clients $client, int $nombre = 100): array
+    /**
+     * Commandes du client. Le solde d'ouverture (ce qu'il devait au
+     * démarrage, docs/import-donnees.md) n'est pas une commande : il n'est
+     * dans la liste que pour le solde, que seul le payeur voit.
+     *
+     * @return list<Commandes>
+     */
+    public function commandes(Clients $client, int $nombre = 100, bool $soldesOuverture = false): array
     {
-        return $this->em->getRepository(Commandes::class)->createQueryBuilder('c')
+        $qb = $this->em->getRepository(Commandes::class)->createQueryBuilder('c')
             // Une demande refusée par l'entreprise reste visible avec son motif, même classée par l'atelier.
             ->where('c.clients = :cl')->andWhere('c.deleted = false OR c.validationEntreprise = :refusee')->setParameter('refusee', Commandes::VALIDATION_REFUSEE)
             // Ses commandes passées en ligne se voient aussi pendant que l'atelier les confirme.
             ->andWhere('c.statut = true OR c.canal = :enLigne')->setParameter('enLigne', Commandes::CANAL_EN_LIGNE)
-            ->setParameter('cl', $client)->orderBy('c.id', 'DESC')->setMaxResults($nombre)
-            ->getQuery()->getResult();
+            ->setParameter('cl', $client)->orderBy('c.id', 'DESC')->setMaxResults($nombre);
+        if (!$soldesOuverture) {
+            $qb->andWhere('c.soldeOuverture = false');
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
-    /** La commande du client, ou null si elle est à un autre. */
-    public function commande(Clients $client, string $publicId): ?Commandes
+    /**
+     * La commande du client, ou null si elle est à un autre. Le solde
+     * d'ouverture ne se trouve que pour le payer (pages du payeur).
+     */
+    public function commande(Clients $client, string $publicId, bool $soldeOuverture = false): ?Commandes
     {
         foreach ($this->em->getRepository(Commandes::class)->findBy(['clients' => $client]) as $c) {
-            if ($c->isDeleted() && !$c->estRefuseeParEntreprise()) {
+            if (($c->isDeleted() && !$c->estRefuseeParEntreprise()) || ($c->estSoldeOuverture() && !$soldeOuverture)) {
                 continue;
             }
             if ((string) $c->getPublicId() === $publicId && ($c->isStatut() || Commandes::CANAL_EN_LIGNE === $c->getCanal())) {
@@ -177,6 +190,9 @@ final class EspaceClient
     /** « Banderole 300 × 100 × 2 », ou « Cartes de visite × 500 + 2 autres ». */
     public static function titre(Commandes $c): string
     {
+        if ($c->estSoldeOuverture()) {
+            return 'Solde d\'ouverture';
+        }
         $lignes = array_values(array_filter($c->getCommandesDetails()->toArray(), static fn (CommandesDetails $l): bool => CommandesDetails::PRODUCTION_ANNULEE !== $l->getStatutProduction()));
         if ([] === $lignes) {
             return 'Commande '.$c->getNumero();
@@ -407,7 +423,7 @@ final class EspaceClient
      */
     public function solde(Clients $client): array
     {
-        $enCours = array_values(array_filter($this->commandes($client, 300), static fn (Commandes $c): bool => $c->isStatut() && 'annulee' !== $c->getStatutTravaux() && $c->getResteAPayer() > 0));
+        $enCours = array_values(array_filter($this->commandes($client, 300, true), static fn (Commandes $c): bool => $c->isStatut() && 'annulee' !== $c->getStatutTravaux() && $c->getResteAPayer() > 0));
         $aPayer = array_values(array_filter($enCours, static fn (Commandes $c): bool => OrangeMoney::aPayer($c) > 0));
 
         return [

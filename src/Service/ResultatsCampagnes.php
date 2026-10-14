@@ -82,7 +82,7 @@ final class ResultatsCampagnes
             ->setParameter('c', $campagne)
             ->setParameter('envoye', CampagneDestinataire::STATUT_ENVOYE);
         if (Commandes::class === $classe) {
-            $qb->andWhere('x.deleted = false');
+            $qb->andWhere('x.deleted = false AND x.soldeOuverture = false');
         }
 
         return (int) $qb->getQuery()->getSingleScalarResult();

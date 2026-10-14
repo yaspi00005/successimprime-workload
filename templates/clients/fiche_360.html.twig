@@ -175,10 +175,19 @@
 				</div>
 
 				<div role="tabpanel" id="panneau-commandes" aria-labelledby="tab-commandes">
-					{% if commandes is empty %}<p class="si-fiche-vide">Aucune commande.</p>{% else %}
+					{% if commandes is empty and soldes_ouverture|default([]) is empty %}<p class="si-fiche-vide">Aucune commande.</p>{% else %}
 						<div class="table-responsive"><table class="table si-fiche-table">
 							<thead><tr><th>Commande</th><th>Date</th><th>Travaux</th><th class="text-end">Montant</th>{% if voir_paiements %}<th class="text-end">Payé</th>{% endif %}</tr></thead>
 							<tbody>
+								{% for c in soldes_ouverture|default([]) %}
+									<tr>
+										<td><a href="{{ path('app_commandes_show', {id: c.id}) }}">Solde d'ouverture</a></td>
+										<td class="text-nowrap">{{ c.dateCommande ? c.dateCommande|date('d/m/Y') }}</td>
+										<td><span class="si-badge">Repris à l'import</span></td>
+										<td class="text-end text-nowrap">{{ c.totalTtc|number_format(0, ',', ' ') }}</td>
+										{% if voir_paiements %}<td class="text-end text-nowrap">{{ c.totalPaye|number_format(0, ',', ' ') }}</td>{% endif %}
+									</tr>
+								{% endfor %}
 								{% for c in commandes %}
 									<tr>
 										<td><a href="{{ path('app_commandes_show', {id: c.id}) }}">{{ c.numero }}</a></td>

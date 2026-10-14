@@ -51,7 +51,7 @@ final class ReveilClients
             ->select('IDENTITY(c.clients) AS client', 'MAX(c.dateCommande) AS derniere', 'COUNT(c.id) AS nombre')
             ->from(Commandes::class, 'c')
             ->join('c.clients', 'cl')
-            ->where('c.deleted = false')->andWhere('cl.typeClient != :b2b')
+            ->where('c.deleted = false AND c.soldeOuverture = false')->andWhere('cl.typeClient != :b2b')
             ->andWhere('cl.statut = true OR cl.statut IS NULL')
             ->groupBy('c.clients')
             ->having('MAX(c.dateCommande) < :limite')
@@ -137,7 +137,7 @@ final class ReveilClients
             throw new \DomainException('Ce client a déjà une promo de réveil en cours.');
         }
         $derniere = $this->em->createQueryBuilder()->select('MAX(c.dateCommande)')->from(Commandes::class, 'c')
-            ->where('c.clients = :cl')->andWhere('c.deleted = false')->setParameter('cl', $client)
+            ->where('c.clients = :cl')->andWhere('c.deleted = false AND c.soldeOuverture = false')->setParameter('cl', $client)
             ->getQuery()->getSingleScalarResult();
         $jour = $maintenant->setTime(0, 0);
 

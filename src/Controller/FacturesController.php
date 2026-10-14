@@ -75,6 +75,10 @@ class FacturesController extends AbstractController
         EntrepriseRepository $entrepriseRepository,
         NumerotationFactures $numerotation
     ): Response {
+        if ($commande->estSoldeOuverture()) {
+            // Pas de facture à prix inventé : le solde d'ouverture n'est pas une vente.
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se facture pas.');
+        }
         /*
          * --------------------------------------------------------
          * Création du document

@@ -87,7 +87,7 @@ final class Creances
             $commande = $o['commande'];
             $client = $commande->getClients();
             $nom = $o['facture']?->getNomFacturation() ?: ($client?->getNomComplet() ?? '');
-            $document = $o['facture']?->getNumero() ?? $commande->getNumero();
+            $document = $o['facture']?->getNumero() ?? $commande->getLibelle();
             if ('' !== $recherche && !str_contains(mb_strtolower($nom.' '.$document.' '.$commande->getNumero()), $recherche)) {
                 continue;
             }

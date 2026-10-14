@@ -14,6 +14,16 @@ Module Finances de l'ERP local, construit le 13/10/2026. Tout reste au local : r
 
 Le montant des salaires (échéancier F04, sorties prises en compte et repères de la courbe F05) n'apparaît qu'avec le droit RH : les autres voient « salaires (RH) » à la place. Les totaux et la courbe restent justes, car le montant y est compté.
 
+## Soldes d'ouverture
+
+Les soldes de départ (ce que les clients devaient, l'argent des comptes, ce que la boutique devait aux fournisseurs) se reprennent par Réglages › Import des données (docs/import-donnees.md) :
+
+- une **dette fournisseur** devient une dépense « à payer », catégorie matières, marquée « Solde d'ouverture » : elle est dans l'échéancier (F04) et la prévision (F05), se paie comme les autres, mais reste **hors budgets et hors dépenses du mois** (ce n'est pas une charge de la période) ;
+- le solde d'un **compte de trésorerie** devient son solde initial (compte sans aucune opération seulement) ;
+- une **créance client** devient une commande « solde d'ouverture » sans lignes ni facture : elle est dans les créances et les encaissements quand elle est réglée, jamais dans le CA ni la rentabilité (F06).
+
+Chaque solde fait une écriture d'à-nouveaux (journal « AN », contrepartie 471) dans l'export comptable.
+
 ## Réglages
 
 Réglages › Paramètres › tuile **Finances et budgets** : objectif de CA du mois (9 000 000 F par défaut), seuil d'alerte de trésorerie (2 000 000 F), seuil d'approbation des dépenses (100 000 F), coût d'une heure de main d'œuvre (1 000 F). À ajuster par la direction.

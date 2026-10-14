@@ -54,7 +54,7 @@ final class MessagesClientsController extends AbstractController
         return $this->render('messages_clients/voir.html.twig', [
             'client' => $client,
             'fil' => $this->messages->fil($client),
-            'commandes' => $em->getRepository(Commandes::class)->findBy(['clients' => $client, 'deleted' => false], ['id' => 'DESC'], 15),
+            'commandes' => $em->getRepository(Commandes::class)->findBy(['clients' => $client, 'deleted' => false, 'soldeOuverture' => false], ['id' => 'DESC'], 15),
             'jeton' => self::CSRF,
             'enLigne' => $this->enLigne,
             'max' => MessageClient::TEXTE_MAX,

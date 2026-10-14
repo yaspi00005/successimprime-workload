@@ -59,7 +59,7 @@ final class AnniversairesClients
         $lignes = $this->em->createQueryBuilder()
             ->select('cl.id AS id', 'cl.createdAt AS creation', 'MIN(c.dateCommande) AS premiere')
             ->from(Clients::class, 'cl')
-            ->leftJoin(Commandes::class, 'c', 'WITH', 'c.clients = cl AND c.deleted = false')
+            ->leftJoin(Commandes::class, 'c', 'WITH', 'c.clients = cl AND c.deleted = false AND c.soldeOuverture = false')
             ->where('cl.typeClient != :b2b')->andWhere('cl.statut = true OR cl.statut IS NULL')
             ->setParameter('b2b', 'B2B')
             ->groupBy('cl.id')
@@ -423,7 +423,7 @@ final class AnniversairesClients
         foreach ($this->em->createQueryBuilder()
             ->select('IDENTITY(c.clients) AS client', 'COALESCE(SUM(c.totalTtc), 0) AS ca')
             ->from(Commandes::class, 'c')
-            ->where('c.clients IN (:ids)')->andWhere('c.deleted = false')->andWhere('c.dateCommande >= :an')
+            ->where('c.clients IN (:ids)')->andWhere('c.deleted = false AND c.soldeOuverture = false')->andWhere('c.dateCommande >= :an')
             ->setParameter('ids', $ids)->setParameter('an', $jour->modify('-12 months'))
             ->groupBy('c.clients')->getQuery()->getArrayResult() as $l) {
             $resultat[(int) $l['client']] = (int) $l['ca'];

@@ -532,7 +532,7 @@ final class EcranTv
             $qb = $this->em->createQueryBuilder()
                 ->select('COUNT(c.id)')
                 ->from(Commandes::class, 'c')
-                ->where('c.deleted = false')
+                ->where('c.deleted = false AND c.soldeOuverture = false')
                 ->andWhere(sprintf('EXISTS (SELECT l1.id FROM %s l1 WHERE l1.commande = c AND l1.statutProduction = :livree)', CommandesDetails::class))
                 ->andWhere(sprintf('NOT EXISTS (SELECT l2.id FROM %s l2 WHERE l2.commande = c AND l2.statutProduction NOT IN (:finies))', CommandesDetails::class))
                 ->setParameter('livree', CommandesDetails::PRODUCTION_LIVREE)
@@ -571,7 +571,7 @@ final class EcranTv
             $qb = $this->em->createQueryBuilder()
                 ->select('COUNT(DISTINCT IDENTITY(c.clients))')
                 ->from(Commandes::class, 'c')
-                ->where('c.deleted = false');
+                ->where('c.deleted = false AND c.soldeOuverture = false');
 
             return (int) self::periode($qb, 'c.dateCommande', $debut, $fin)->getQuery()->getSingleScalarResult();
         };
@@ -582,7 +582,7 @@ final class EcranTv
         return (int) $this->em->createQueryBuilder()
             ->select('COUNT(c.id)')
             ->from(Commandes::class, 'c')
-            ->where('c.deleted = false')
+            ->where('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.canal = :enLigne')
             ->andWhere('c.dateCommande >= :debut AND c.dateCommande <= :fin')
             ->setParameter('enLigne', Commandes::CANAL_EN_LIGNE)
@@ -597,7 +597,7 @@ final class EcranTv
         return (int) $this->em->createQueryBuilder()
             ->select('COUNT(c.id)')
             ->from(Commandes::class, 'c')
-            ->where('c.deleted = false')
+            ->where('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.dateCommande >= :debut AND c.dateCommande <= :fin')
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
@@ -616,7 +616,7 @@ final class EcranTv
         $commandes = $this->em->createQueryBuilder()
             ->select('c.id, c.dateCommande')
             ->from(Commandes::class, 'c')
-            ->where('c.deleted = false')
+            ->where('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.canal = :enLigne')
             ->andWhere('c.dateCommande >= :depuis')
             ->setParameter('enLigne', Commandes::CANAL_EN_LIGNE)
@@ -696,7 +696,7 @@ final class EcranTv
         $dates = $this->em->createQueryBuilder()
             ->select('c.dateCommande')
             ->from(Commandes::class, 'c')
-            ->where('c.deleted = false')
+            ->where('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.dateCommande >= :debut')
             ->setParameter('debut', $debut)
             ->getQuery()
@@ -733,7 +733,7 @@ final class EcranTv
         $lignes = $this->em->createQueryBuilder()
             ->select('c.id, c.numero')
             ->from(Commandes::class, 'c')
-            ->where('c.deleted = false')
+            ->where('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.recupereParClient = false')
             ->andWhere(sprintf('EXISTS (SELECT l1.id FROM %s l1 WHERE l1.commande = c AND l1.statutProduction = :prete)', CommandesDetails::class))
             ->andWhere(sprintf('NOT EXISTS (SELECT l2.id FROM %s l2 WHERE l2.commande = c AND l2.statutProduction IN (:enPreparation))', CommandesDetails::class))

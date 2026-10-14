@@ -149,7 +149,7 @@ final class Sondages
         $ligne = $this->em->createQueryBuilder()
             ->select('MAX(c.dateCommande) AS derniere, SUM(CASE WHEN c.dateCommande >= :an THEN c.totalTtc ELSE 0 END) AS ca')
             ->from(Commandes::class, 'c')
-            ->where('c.clients = :cl')->andWhere('c.deleted = false')
+            ->where('c.clients = :cl')->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->setParameter('cl', $client)->setParameter('an', $maintenant->modify('-12 months'))
             ->getQuery()->getSingleResult();
         $achat = null === $ligne['derniere'] ? null : ['derniere' => new \DateTimeImmutable((string) $ligne['derniere']), 'ca' => (int) $ligne['ca']];

@@ -22,7 +22,7 @@ final class VerificationInstallation
     /** Extensions conseillées : leur absence dégrade un usage précis. */
     public const EXTENSIONS_CONSEILLEES = [
         'intl' => 'dates et nombres en français plus rapides',
-        'zip' => 'exports Excel',
+        'zip' => 'exports Excel et import des fichiers .xlsx',
         'curl' => 'appels aux API (SMS, Orange Money) plus fiables',
         'Zend OPcache' => 'pages beaucoup plus rapides',
     ];

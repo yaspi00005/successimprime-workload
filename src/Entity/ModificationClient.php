@@ -14,7 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
 class ModificationClient
 {
     public const CATEGORIES = ['identite' => 'Identité', 'conditions' => 'Conditions commerciales', 'contacts' => 'Contacts'];
-    public const DEPUIS = ['erp_local' => 'ERP local', 'admin_en_ligne' => 'Admin en ligne', 'espace_client' => 'Espace client', 'synchronisation' => 'Synchronisation'];
+    public const DEPUIS = ['erp_local' => 'ERP local', 'admin_en_ligne' => 'Admin en ligne', 'espace_client' => 'Espace client', 'synchronisation' => 'Synchronisation', 'import' => 'Import de données'];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

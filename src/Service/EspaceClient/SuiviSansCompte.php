@@ -46,7 +46,7 @@ final class SuiviSansCompte
         }
 
         // Le numéro complet d'abord, sinon ses chiffres (« 0142 ») parmi les commandes de ce client.
-        $commandes = $this->em->getRepository(Commandes::class)->findBy(['clients' => $client, 'statut' => true, 'deleted' => false], ['id' => 'DESC'], 200);
+        $commandes = $this->em->getRepository(Commandes::class)->findBy(['clients' => $client, 'statut' => true, 'deleted' => false, 'soldeOuverture' => false], ['id' => 'DESC'], 200);
         foreach ([true, false] as $exact) {
             foreach ($commandes as $c) {
                 if ($exact ? 0 === strcasecmp((string) $c->getNumero(), $numero) : self::correspond($numero, (string) $c->getNumero())) {

@@ -73,6 +73,10 @@ php bin/console app:rapport-hebdomadaire --semaine=2026-W41    # une semaine ter
 
 Réglages › Paramètres › tuile **Objectifs et rapport de la semaine** (Direction seulement) : envoi oui ou non, jour (lundi par défaut) et heure (8 h), envoi à la direction, envoi aux agents, PDF par e-mail. « Ouvrir la page complète » mène à l'écran Objectifs.
 
+## Soldes d'ouverture
+
+Les créances reprises à l'import (commandes « solde d'ouverture », docs/import-donnees.md) ne sont pas des ventes : elles sont hors de tous les chiffres de ces écrans (CA, commandes, nouveaux clients, objectifs, Mes statistiques, rapport de la semaine, exports) et donc des primes. Leur règlement reste un encaissement réel dans la trésorerie et la caisse, mais il n'entre pas dans le taux d'encaissement des objectifs.
+
 ## ERP local seulement
 
 Les objectifs, les exports et le rapport de la semaine n'existent que sur l'ERP local : sur le serveur en ligne (`APP_EN_LIGNE=1`), ces adresses répondent 404 (`StatistiquesHorsLigneSubscriber`) et la tâche refuse de tourner. Les tables `objectif` et `rapport_hebdomadaire` ne sont pas synchronisées. Les écrans de statistiques qui existaient déjà en ligne y restent, sans objectifs ni menu Exporter.

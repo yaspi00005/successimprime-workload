@@ -8,14 +8,15 @@ use App\Entity\CompteTresorerie;
 use App\Entity\DotationAmortissement;
 use App\Entity\Factures;
 use App\Entity\MouvementTresorerie;
+use App\Entity\SoldeOuverture;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Comptabilité SYSCOHADA (maquette 32) : les écritures sont déduites des
  * opérations validées (factures émises, mouvements de trésorerie
- * validés, achats reçus, dotations aux amortissements passées). Rien
- * n'est saisi ici : corriger une écriture, c'est corriger l'opération
- * d'origine.
+ * validés, achats reçus, dotations aux amortissements passées, soldes
+ * d'ouverture importés). Rien n'est saisi ici : corriger une écriture,
+ * c'est corriger l'opération d'origine.
  *
  * Les numéros de comptes suivent le plan SYSCOHADA révisé ; leur choix
  * fin (sous-comptes) reste à valider avec le cabinet comptable.
@@ -23,6 +24,8 @@ use Doctrine\ORM\EntityManagerInterface;
 final class JournalComptable
 {
     public const JOURNAUX = [
+        // Soldes d'ouverture repris par l'import des données de démarrage (docs/import-donnees.md).
+        'an' => 'À-nouveaux',
         'ventes' => 'Journal des ventes',
         'banque' => 'Banque',
         'mobile' => 'Orange Money et Wave',
@@ -32,6 +35,7 @@ final class JournalComptable
     ];
 
     public const CODES_JOURNAUX = [
+        'an' => 'AN',
         'ventes' => 'VT',
         'banque' => 'BQ',
         'mobile' => 'MM',
@@ -120,6 +124,9 @@ final class JournalComptable
             array_push($journaux['achats'], ...self::ecrituresAchat($achat));
         }
         array_push($journaux['od'], ...self::ecrituresDotations($this->dotations($debut, $fin)));
+        foreach ($this->soldesOuverture($debut, $fin) as $solde) {
+            array_push($journaux['an'], ...self::ecrituresSoldeOuverture($solde));
+        }
         foreach ($journaux as &$lignes) {
             // Tri stable : les lignes d'une même pièce restent ensemble.
             usort($lignes, static fn (array $a, array $b): int => [$a['date']->format('Y-m-d'), $a['piece']] <=> [$b['date']->format('Y-m-d'), $b['piece']]);
@@ -274,6 +281,42 @@ final class JournalComptable
         return $lignes;
     }
 
+    /**
+     * À-nouveau d'un solde d'ouverture importé, le jour d'ouverture, avec
+     * le compte d'attente 471 en contrepartie : le cabinet le solde contre
+     * les capitaux propres au bilan d'ouverture.
+     *
+     * - client qui doit : 411 au débit (lettré avec ses règlements) ;
+     * - avance d'un client : 411 au crédit ;
+     * - compte de trésorerie : 571, 521, 5213 ou 5214 au débit ;
+     * - dette fournisseur : 401 au crédit (soldé au paiement de la dépense).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function ecrituresSoldeOuverture(SoldeOuverture $solde): array
+    {
+        $montant = $solde->getMontant();
+        if ($montant <= 0 || $solde->estAnnule()) {
+            return [];
+        }
+        $date = $solde->getDateOuverture();
+        $piece = sprintf('AN-%06d', (int) $solde->getId());
+        $tiers = $solde->getTiers();
+        $libelle = 'Solde d\'ouverture · '.$tiers;
+
+        [$debit, $credit] = match ($solde->getType()) {
+            SoldeOuverture::CLIENT => [['411', $tiers, self::lettrage($solde->getCommande())], ['471', null, null]],
+            SoldeOuverture::AVANCE_CLIENT => [['471', null, null], ['411', $tiers, null]],
+            SoldeOuverture::COMPTE => [[self::compteTresorerie($solde->getCompte()), $tiers, null], ['471', null, null]],
+            default => [['471', null, null], ['401', $tiers, null]],
+        };
+
+        return [
+            self::ligne($date, $piece, $debit[0], $debit[1], $libelle, $montant, 0, $debit[2]),
+            self::ligne($date, $piece, $credit[0], $credit[1], $libelle, 0, $montant, $credit[2]),
+        ];
+    }
+
     public static function compteTresorerie(?CompteTresorerie $compte): string
     {
         return match ($compte?->getType()) {
@@ -365,6 +408,22 @@ final class JournalComptable
             ->andWhere('d.mois BETWEEN :debut AND :fin')
             ->setParameter('debut', $debut->modify('first day of this month')->setTime(0, 0))
             ->setParameter('fin', $fin)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<SoldeOuverture> */
+    private function soldesOuverture(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('s')
+            ->from(SoldeOuverture::class, 's')
+            ->andWhere('s.annuleLe IS NULL')
+            ->andWhere('s.montant > 0')
+            ->andWhere('s.dateOuverture BETWEEN :debut AND :fin')
+            ->setParameter('debut', $debut->setTime(0, 0))
+            ->setParameter('fin', $fin)
+            ->orderBy('s.id', 'ASC')
             ->getQuery()
             ->getResult();
     }

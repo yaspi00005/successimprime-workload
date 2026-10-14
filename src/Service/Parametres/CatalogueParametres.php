@@ -417,6 +417,12 @@ final class CatalogueParametres
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_decaissement_recurrent_index', 'champs' => [],
                 'motsCles' => ['Dépenses récurrentes · loyer, taxes', 'Fournisseurs à payer chaque mois'],
             ],
+            'import' => [
+                'famille' => 'systeme', 'libelle' => 'Import des données', 'icone' => 'fa-file-import',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_import_index', 'champs' => [],
+                'motsCles' => ['Clients, articles et soldes de démarrage', 'Fichier Excel ou CSV', 'Soldes d\'ouverture · à-nouveaux', 'Journal des imports'],
+                'note' => 'Sur l\'ERP local seulement. Rien n\'est enregistré avant la confirmation de l\'aperçu ; aucun message n\'est envoyé aux clients importés (docs/import-donnees.md).',
+            ],
         ];
     }
 

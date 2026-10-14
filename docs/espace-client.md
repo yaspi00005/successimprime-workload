@@ -84,6 +84,7 @@ Une fiche entreprise ou B2B peut avoir plusieurs personnes, chacune avec son num
 - **Validation** : l'accueil du valideur montre « N demandes à valider » ; la page de la commande propose « Valider et envoyer à l'atelier » ou « Refuser » avec un motif lu par le demandeur. Sans aucun valideur actif, la demande part directement.
 - **Synchronisation** : la demande monte au local sans prévenir l'atelier. La décision du valideur remonte (`validationEntreprise`, `valideePar`, `motifRefusEntreprise`) : validée, le droit Commande est prévenu comme pour toute commande en ligne ; refusée, le local la classe (supprimée) et le site la garde visible au client avec son motif. Au local, la fiche commande affiche « demandée en ligne par X » et le bon de commande.
 - Les demandes à valider ou refusées n'apparaissent pas dans « À confirmer » (API comprise).
+- **Solde d'ouverture** (créance reprise à l'import, docs/import-donnees.md) : comme tout montant de l'entreprise, seul le payeur le voit, dans Factures et paiements (« Solde d'ouverture · Montant dû au démarrage du compte ») et le solde dû ; il peut le payer en ligne. Il n'est ni dans le fil des commandes ni dans les notifications.
 
 ## Réclamations (18 à gauche, construit le 13/10/2026)
 

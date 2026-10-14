@@ -60,6 +60,13 @@ final class SondagesExtension
         return $this->analyse->noteEcranTv(new \DateTimeImmutable());
     }
 
+    /** Mauvaises notes encore à rappeler, pour le sous-menu de l'onglet. */
+    #[AsTwigFunction('sondages_a_rappeler')]
+    public function aRappeler(): int
+    {
+        return $this->analyse->nombreAlertes();
+    }
+
     /** « 4,3 » : une note sur 5 avec une décimale. */
     #[AsTwigFilter('note_sur_5')]
     public function note(?float $note): string

@@ -1,0 +1,42 @@
+{% extends 'sondages/_base.html.twig' %}
+{% import 'sondages/_macros.html.twig' as m %}
+
+{% block title %}Mauvaises notes à rappeler{% endblock %}
+{% block page_title %}Sondages · à rappeler{% endblock %}
+{% block sous_ecran %}alertes{% endblock %}
+
+{% block contenu %}
+	<section class="card si-so-alerte">
+		<h2>À rappeler <span class="si-so-gris" style="font-size:14px">{{ ouvertes|length }}</span></h2>
+		{% if ouvertes is empty %}
+			<p class="si-so-vide">Aucune mauvaise note en attente. Bravo.</p>
+		{% else %}
+			<ul class="si-so-liste">
+				{% for r in ouvertes %}<li>{{ m.ligne_reponse(r, true) }}</li>{% endfor %}
+			</ul>
+		{% endif %}
+		<p class="si-so-note-bas">Ouvrez la réponse, appelez le client, puis notez la suite : rappelé, réclamation ouverte ou sans suite.</p>
+	</section>
+
+	<section class="card">
+		<h2>Déjà traitées</h2>
+		{% if traitees is empty %}
+			<p class="si-so-vide">Aucune pour l’instant.</p>
+		{% else %}
+			<ul class="si-so-liste">
+				{% for r in traitees %}
+					<li>
+						<a class="si-so-ligne" href="{{ path('app_sondages_reponse', {id: r.id}) }}">
+							{{ m.note(r.noteLaPlusBasse) }}
+							<span class="si-so-corps">
+								<b>{{ r.qui }}</b>
+								<small>{{ r.libelleAlerte }}{{ r.alerteTraiteePar ? ' par ' ~ r.alerteTraiteePar }}{{ r.alerteTraiteeLe ? ' le ' ~ r.alerteTraiteeLe|date('d/m/Y') }}{{ r.commande ? ' · commande ' ~ r.commande.numero }}</small>
+								{% if r.alerteNote %}<p class="si-so-citation">{{ r.alerteNote }}</p>{% endif %}
+							</span>
+						</a>
+					</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+	</section>
+{% endblock %}

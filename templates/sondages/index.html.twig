@@ -1,0 +1,101 @@
+{% extends 'sondages/_base.html.twig' %}
+{% import 'sondages/_macros.html.twig' as m %}
+
+{% block title %}Sondages et avis{% endblock %}
+{% block sous_ecran %}ensemble{% endblock %}
+
+{% block header_actions %}
+	{{ m.periode(constant('App\\Service\\Sondages\\AnalyseSondages::PERIODES'), periode, 'app_sondages_index', {type: type}) }}
+	{{ parent() }}
+{% endblock %}
+
+{% block contenu %}
+	<div class="si-so-filtres" aria-label="Type d'avis">
+		<a href="{{ path('app_sondages_index', {periode: periode}) }}" class="{{ type is null ? 'actif' }}">Tous les avis</a>
+		{% for cle, libelle in constant('App\\Entity\\ReponseSondage::TYPES') %}
+			<a href="{{ path('app_sondages_index', {periode: periode, type: cle}) }}" class="{{ type == cle ? 'actif' }}">{{ libelle }}</a>
+		{% endfor %}
+	</div>
+
+	{{ m.kpis(tableau) }}
+
+	<div class="si-so-deux">
+		<section class="card">
+			<div class="si-so-tete"><h2>Note moyenne sur 12 mois</h2><a href="{{ path('app_sondages_commandes') }}">Détail des commandes</a></div>
+			{{ m.par_mois(parMois) }}
+		</section>
+		<section class="card si-so-alerte">
+			<div class="si-so-tete">
+				<h2>À rappeler {% if nombreAlertes > 0 %}<span class="si-so-compte">{{ nombreAlertes }}</span>{% endif %}</h2>
+				<a href="{{ path('app_sondages_alertes') }}">Tout voir</a>
+			</div>
+			{% if alertes is empty %}
+				<p class="si-so-vide">Aucune mauvaise note à rappeler.</p>
+			{% else %}
+				<ul class="si-so-liste">
+					{% for r in alertes %}<li>{{ m.ligne_reponse(r, true) }}</li>{% endfor %}
+				</ul>
+			{% endif %}
+			<p class="si-so-note-bas">Une note de 1 ou 2 crée une alerte : l’agent rappelle le client, et peut ouvrir une réclamation.</p>
+		</section>
+	</div>
+
+	<div class="si-so-deux">
+		<section class="card">
+			<div class="si-so-tete">
+				<h2>Sondages</h2>
+				{% if is_granted('ROLE_ADMIN') %}
+					<span class="si-so-actions">
+						<a class="btn btn-sm btn-primary" href="{{ path('app_sondages_nouveau') }}">Sondage des clients</a>
+						<a class="btn btn-sm btn-outline-primary" href="{{ path('app_sondages_nouveau', {type: 'libre'}) }}">Sondage libre (lien, QR)</a>
+					</span>
+				{% endif %}
+			</div>
+			<div class="table-responsive">
+				<table class="table si-so-table">
+					<thead><tr><th>Sondage</th><th>Statut</th><th class="num">Réponses</th><th class="num">Moyenne</th><th class="num">Taux</th></tr></thead>
+					<tbody>
+						<tr>
+							<td><a href="{{ path('app_sondages_commandes') }}">Avis après livraison</a><small>Automatique, à chaque commande livrée · 12 derniers mois</small></td>
+							<td><span class="si-so-pastille si-so-p-vert">Toujours ouvert</span></td>
+							<td class="num">{{ commandes.reponses }}</td>
+							<td class="num">{{ commandes.moyenne|note_sur_5 }}</td>
+							<td class="num">{{ commandes.taux is null ? '—' : commandes.taux ~ ' %' }}</td>
+						</tr>
+						{% for ligne in sondages %}
+							{% set s = ligne.sondage %}
+							<tr>
+								<td><a href="{{ path('app_sondages_voir', {id: s.id}) }}">{{ s.titre }}</a><small>{{ s.libelleType }}{{ s.estLibre ? '' : ' · ' ~ s.libelleSegment }}{{ s.ouvertLe ? ' · lancé le ' ~ s.ouvertLe|date('d/m/Y') }}</small></td>
+								<td>{{ m.statut_sondage(s) }}</td>
+								<td class="num">{{ ligne.resultats.reponses }}</td>
+								<td class="num">{{ ligne.resultats.moyenne|note_sur_5 }}</td>
+								<td class="num">{{ ligne.resultats.taux is null ? '—' : ligne.resultats.taux ~ ' %' }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			{% if sondages is empty %}<p class="si-so-note-bas">Aucun sondage global ou libre pour l’instant. Un sondage des clients est proposé dans leur espace ; un sondage libre se partage par un lien ou un QR code en boutique.</p>{% endif %}
+		</section>
+		<section class="card">
+			<div class="si-so-tete"><h2>Dernières propositions</h2><a href="{{ path('app_sondages_propositions') }}">Toutes les propositions</a></div>
+			{% if propositions is empty %}
+				<p class="si-so-vide">Aucune proposition pour l’instant.</p>
+			{% else %}
+				<ul class="si-so-liste">
+					{% for r in propositions %}
+						<li>
+							<a class="si-so-ligne" href="{{ path('app_sondages_reponse', {id: r.id}) }}">
+								<span class="si-so-corps">
+									<small>{{ r.creeLe|date('d/m/Y') }} · {{ r.qui }}</small>
+									<p class="si-so-citation">{{ r.proposition|length > 140 ? r.proposition|slice(0, 139) ~ '…' : r.proposition }}</p>
+								</span>
+								<span class="si-so-pastille si-so-p-bleu">{{ r.libelleTheme }}</span>
+							</a>
+						</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}

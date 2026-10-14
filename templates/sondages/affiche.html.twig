@@ -1,0 +1,38 @@
+{# Affiche A4 pour la boutique : titre, QR code et lien du sondage libre. #}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex">
+	<title>Affiche · {{ sondage.titre }}</title>
+	<style>
+		@page { size: A4; margin: 0; }
+		* { box-sizing: border-box; }
+		body { margin: 0; font-family: "Inter", "Segoe UI", Arial, sans-serif; color: #1D1D1B; background: #EEF2F7; }
+		.affiche { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; padding: 22mm 18mm; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10mm; }
+		.affiche img.logo { height: 26mm; }
+		h1 { font-size: 30pt; line-height: 1.15; margin: 0; color: #0F4590; }
+		p.intro { font-size: 15pt; margin: 0; color: #334155; max-width: 150mm; }
+		.qr { border: 3mm solid #FDC82A; border-radius: 8mm; padding: 6mm; }
+		.qr img { width: 95mm; height: 95mm; display: block; }
+		.etapes { font-size: 15pt; font-weight: 700; margin: 0; }
+		.lien { font-size: 12pt; color: #475569; word-break: break-all; margin: 0; }
+		.bas { margin-top: auto; font-size: 11pt; color: #64748B; }
+		.imprimer { position: fixed; top: 12px; right: 12px; padding: 10px 18px; border: 0; border-radius: 10px; background: #DE1028; color: #fff; font-weight: 700; cursor: pointer; }
+		@media print { body { background: #fff; } .imprimer { display: none; } .affiche { margin: 0; } }
+	</style>
+</head>
+<body>
+	<button class="imprimer" type="button" onclick="window.print()">Imprimer</button>
+	<main class="affiche">
+		<img class="logo" src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim">
+		<h1>{{ sondage.titre }}</h1>
+		<p class="intro">{{ sondage.introduction ?: 'Votre avis nous aide à mieux vous servir. Une minute suffit.' }}</p>
+		<div class="qr"><img src="{{ qr }}" alt="QR code du sondage"></div>
+		<p class="etapes">Scannez avec l’appareil photo de votre téléphone</p>
+		<p class="lien">{{ lien }}</p>
+		<p class="bas">{{ sondage.anonymeAutorise ? 'Réponse anonyme possible.' : '' }} Merci de votre confiance.</p>
+	</main>
+</body>
+</html>

@@ -182,6 +182,24 @@
 				<p>{{ aValider.montant|number_format(0, ',', ' ') }} F non comptabilisés tant qu’ils ne sont pas validés.</p>
 			</a>
 		{% endif %}
+		{% if is_granted('ROLE_CLIENT') %}
+			{# Sondages et avis (docs/sondages.md) : note du mois et propositions récentes. #}
+			{% set satisfaction = satisfaction_direction() %}
+			<a href="{{ path('app_sondages_index') }}" class="card si-bloc" style="color:inherit;text-decoration:none">
+				<div class="si-bloc-tete">
+					<h4>Satisfaction des clients</h4>
+					<span class="si-bloc-note">ce mois</span>
+				</div>
+				<p class="mb-1">
+					<strong style="font-size:26px;{{ satisfaction.alerte ? 'color:#C2410C' }}">{{ satisfaction.moyenne|note_sur_5 }}</strong>{% if satisfaction.moyenne is not null %} / 5{% endif %}
+					{% if satisfaction.ecart is not null and satisfaction.ecart != 0 %}<small class="{{ satisfaction.ecart > 0 ? 'text-success' : 'text-danger' }} ms-2">{{ satisfaction.ecart > 0 ? '+' : '−' }}{{ satisfaction.ecart|abs|number_format(1, ',', ' ') }} vs mois précédent</small>{% endif %}
+				</p>
+				<p class="text-muted mb-2" style="font-size:13px">{{ satisfaction.reponses }} avis{% if satisfaction.satisfaits is not null %} · {{ satisfaction.satisfaits }} % satisfaits{% endif %}{% if satisfaction.alertes > 0 %} · <span class="text-danger">{{ satisfaction.alertes }} à rappeler</span>{% endif %}</p>
+				{% for r in satisfaction.propositions|slice(0, 3) %}
+					<p class="mb-1" style="font-size:13px;color:#334155">« {{ r.proposition|length > 90 ? r.proposition|slice(0, 89) ~ '…' : r.proposition }} »</p>
+				{% endfor %}
+			</a>
+		{% endif %}
 		<div class="card si-bloc">
 			<div class="si-bloc-tete">
 				<h4>Alertes</h4>

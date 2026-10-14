@@ -37,3 +37,30 @@ Le sondage de commande a un modèle fixe court : note globale, note par article 
 - Espace client et site public (J5) : réponse aux sondages, lien depuis la fiche commande livrée.
 - Tableau de bord direction : satisfaction moyenne et propositions récentes.
 - Écran TV : note moyenne seulement (jamais de nom ni de texte client).
+
+## Construit le 14/10/2026
+
+**Atelier** (Clients › Sondages et avis, rôle Clients ; créer, lancer, clore et la note par agent : direction) :
+
+| Écran | Adresse | Contenu |
+|---|---|---|
+| Vue d'ensemble | /clients/sondages | Satisfaction moyenne, clients satisfaits, NPS, taux de réponse, comparés à la période d'avant et à N−1 ; note par mois sur 12 mois ; mauvaises notes à rappeler ; liste des sondages ; dernières propositions. Filtres : période, type d'avis. |
+| Commandes livrées | /clients/sondages/commandes | Les mêmes chiffres pour l'avis après livraison ; note par produit (alerte sous 3,5), par machine, par agent (direction) ; avis pas encore reçus avec relance WhatsApp ; réponses filtrées par note. |
+| Sondage | /clients/sondages/{id} | Lancer, clore, modifier (sans réponse), supprimer (sans réponse) ; lien, QR code et affiche à imprimer d'un sondage libre ; résultats question par question. |
+| Nouveau sondage | /clients/sondages/nouveau | Titre, introduction, clients visés (global) ou anonymat (libre), questions à ajouter, déplacer et retirer. Questions figées dès la première réponse. |
+| Propositions | /clients/sondages/propositions | Classement par thème (mots-clés, puis à la main) et statut retenue, à étudier ou écartée ; les 60 plus récentes. |
+| À rappeler | /clients/sondages/alertes | Notes de 1 ou 2 : rappeler, noter la suite, ou ouvrir une réclamation que le client voit dans son espace. |
+
+**Client** : carte « Votre avis compte » sur l'accueil de l'espace, « Mes avis » dans le compte, lien depuis une commande livrée ; formulaire de commande (note globale, note par article, délai, accueil, recommandation, proposition) et formulaire des sondages globaux.
+
+**Sans compte** : /avis/c/{jeton} (lien de livraison, 60 jours) et /avis/s/{jeton} (lien ou QR code d'un sondage libre), avec jeton CSRF, champ piège et 10 réponses par heure et par connexion.
+
+**Ailleurs** : tableau de bord direction (note du mois, à rappeler, 3 propositions, rôle Clients) ; écran TV (note des 12 derniers mois à partir de 5 avis, seulement quand la note Google n'est pas réglée ; jamais de nom ni de texte).
+
+**Envoi à la livraison** : au local, quand la dernière ligne d'une commande passe livrée, une invitation est créée et le SMS part si le compte SMS et l'adresse du site sont réglés et que le client accepte les SMS ; jamais pour un client DEMO-. L'atelier a aussi un bouton WhatsApp. `php bin/console app:sondages:inviter` rattrape les commandes livrées sans invitation (`--sms` pour envoyer aussi le SMS). Aucun montant dans les messages.
+
+**Synchronisation** : sondages et invitations descendent ; les réponses remontent avec leurs notes par article. Le thème, le statut des propositions et le suivi des mauvaises notes restent au local.
+
+**Données d'essai** : `php bin/console app:sondages:demo` (clients DEMO- seulement ; `--purger` les enlève).
+
+Reste à faire : l'export Excel des réponses.

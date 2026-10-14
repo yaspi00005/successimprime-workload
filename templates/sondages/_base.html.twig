@@ -1,0 +1,39 @@
+{#
+	Clients › Sondages et avis (docs/sondages.md). Chaque écran remplit
+	« contenu » ; « sous_ecran » allume le bon bouton du sous-menu.
+#}
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/sondages.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_ADMIN') %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_sondages_nouveau') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Nouveau sondage</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% set aRappeler = sondages_a_rappeler() %}
+	<div class="si-so">
+		<nav class="si-so-sousnav" aria-label="Sondages et avis">
+			{% for cle, lien in {
+				ensemble: {libelle: 'Vue d’ensemble', route: 'app_sondages_index'},
+				commandes: {libelle: 'Commandes livrées', route: 'app_sondages_commandes'},
+				propositions: {libelle: 'Propositions', route: 'app_sondages_propositions'},
+				alertes: {libelle: 'À rappeler', route: 'app_sondages_alertes'},
+			} %}
+				<a href="{{ path(lien.route) }}" class="{{ cle == block('sous_ecran') ? 'actif' }}" {% if cle == block('sous_ecran') %}aria-current="page"{% endif %}>
+					{{ lien.libelle }}{% if cle == 'alertes' and aRappeler > 0 %}<span class="si-so-compte">{{ aRappeler }}</span>{% endif %}
+				</a>
+			{% endfor %}
+		</nav>
+		{% block contenu %}{% endblock %}
+	</div>
+{% endblock %}
+
+{% block sous_ecran %}{% endblock %}

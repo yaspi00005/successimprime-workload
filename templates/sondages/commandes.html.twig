@@ -1,0 +1,123 @@
+{% extends 'sondages/_base.html.twig' %}
+{% import 'sondages/_macros.html.twig' as m %}
+
+{% block title %}Avis après livraison{% endblock %}
+{% block page_title %}Sondages · avis après livraison{% endblock %}
+{% block sous_ecran %}commandes{% endblock %}
+
+{% block header_actions %}
+	{{ m.periode(constant('App\\Service\\Sondages\\AnalyseSondages::PERIODES'), periode, 'app_sondages_commandes', {note: note}) }}
+	{{ parent() }}
+{% endblock %}
+
+{% block contenu %}
+	{{ m.kpis(tableau) }}
+
+	<div class="si-so-deux">
+		<section class="card">
+			<h2>Note moyenne sur 12 mois</h2>
+			{{ m.par_mois(parMois) }}
+		</section>
+		<section class="card">
+			<h2>Par produit</h2>
+			{% if parProduit is empty %}
+				<p class="si-so-vide">Aucune note d’article sur la période.</p>
+			{% else %}
+				<table class="table si-so-table">
+					<thead><tr><th>Produit</th><th class="num">Note</th><th class="num">Notes</th></tr></thead>
+					<tbody>
+						{% for l in parProduit %}
+							<tr>
+								<td>{{ l.nom }}{% if l.alerte %} <span class="si-so-pastille si-so-p-orange">sous 3,5</span>{% endif %}</td>
+								<td class="num"><b class="{{ l.alerte ? 'si-so-orange' }}">{{ l.moyenne|note_sur_5 }}</b></td>
+								<td class="num">{{ l.nombre }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% endif %}
+		</section>
+	</div>
+
+	<div class="si-so-trois">
+		<section class="card">
+			<h2>Par machine</h2>
+			{% if parMachine is empty %}
+				<p class="si-so-vide">Aucune note d’article sur la période.</p>
+			{% else %}
+				<table class="table si-so-table">
+					<thead><tr><th>Machine</th><th class="num">Note</th><th class="num">Notes</th></tr></thead>
+					<tbody>
+						{% for l in parMachine %}
+							<tr><td>{{ l.nom }}</td><td class="num"><b class="{{ l.alerte ? 'si-so-orange' }}">{{ l.moyenne|note_sur_5 }}</b></td><td class="num">{{ l.nombre }}</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% endif %}
+		</section>
+		{% if parAgent is not null %}
+			<section class="card">
+				<h2>Par agent <small class="si-so-gris">(direction)</small></h2>
+				{% if parAgent is empty %}
+					<p class="si-so-vide">Aucune commande notée sur la période.</p>
+				{% else %}
+					<table class="table si-so-table">
+						<thead><tr><th>Agent</th><th class="num">Note</th><th class="num">Avis</th></tr></thead>
+						<tbody>
+							{% for l in parAgent %}
+								<tr>
+									<td>{{ l.agent ? (l.agent.employe ? l.agent.employe.nomComplet : l.agent.username) : 'Sans agent' }}</td>
+									<td class="num"><b class="{{ l.alerte ? 'si-so-orange' }}">{{ l.moyenne|note_sur_5 }}</b></td>
+									<td class="num">{{ l.nombre }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endif %}
+			</section>
+		{% endif %}
+		<section class="card">
+			<h2>Avis pas encore reçus</h2>
+			{% if enAttente is empty %}
+				<p class="si-so-vide">Toutes les commandes livrées récemment ont leur avis.</p>
+			{% else %}
+				<ul class="si-so-liste">
+					{% for e in enAttente %}
+						{% set i = e.invitation %}
+						<li class="si-so-ligne">
+							<span class="si-so-corps">
+								<b>{{ i.client ? i.client.nomComplet : 'Client' }}</b>
+								<small>Commande {{ i.commande ? i.commande.numero }} · livrée le {{ i.creeLe|date('d/m') }}{{ i.smsEnvoyeLe ? ' · SMS envoyé' }}{{ i.whatsappLe ? ' · WhatsApp le ' ~ i.whatsappLe|date('d/m') }}</small>
+							</span>
+							{% if e.whatsapp %}
+								<form method="post" action="{{ path('app_sondages_whatsapp', {id: i.id}) }}" target="_blank">
+									<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+									<button class="btn btn-sm btn-success" type="submit" title="Ouvrir WhatsApp avec le lien du sondage"><i class="fab fa-whatsapp me-1"></i>Relancer</button>
+								</form>
+							{% endif %}
+						</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+			<p class="si-so-note-bas">Le lien de l’avis part avec la livraison (SMS quand il est réglé) et reste valable {{ constant('App\\Service\\Sondages\\SondageCommande::JOURS_POUR_REPONDRE') }} jours. Le message ne contient aucun montant.</p>
+		</section>
+	</div>
+
+	<section class="card">
+		<div class="si-so-tete">
+			<h2>Réponses de la période</h2>
+			<div class="si-so-filtres" style="margin:0">
+				<a href="{{ path('app_sondages_commandes', {periode: periode}) }}" class="{{ note is null ? 'actif' }}">Toutes</a>
+				<a href="{{ path('app_sondages_commandes', {periode: periode, note: 'basses'}) }}" class="{{ note == 'basses' ? 'actif' }}">Notes de 1 et 2</a>
+				<a href="{{ path('app_sondages_commandes', {periode: periode, note: 'hautes'}) }}" class="{{ note == 'hautes' ? 'actif' }}">Notes de 4 et 5</a>
+			</div>
+		</div>
+		{% if reponses is empty %}
+			<p class="si-so-vide">Aucune réponse sur la période.</p>
+		{% else %}
+			<ul class="si-so-liste">
+				{% for r in reponses %}<li>{{ m.ligne_reponse(r) }}</li>{% endfor %}
+			</ul>
+		{% endif %}
+	</section>
+{% endblock %}

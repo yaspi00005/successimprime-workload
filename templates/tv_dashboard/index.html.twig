@@ -229,6 +229,14 @@
 											<div class="v" style="color: var(--jaune)">{{ programme.noteGoogle|number_format(1, ',') }}/5</div>
 											<div class="g neutre">★★★★★ {{ programme.avisGoogle ? programme.avisGoogle ~ ' ' }}avis Google</div>
 										</div>
+									{% elseif satisfaction_ecran_tv() is not null %}
+										{# Note des sondages clients sur 12 mois : un chiffre, jamais de nom ni de texte. #}
+										{% set satisfaction = satisfaction_ecran_tv() %}
+										<div class="compteur">
+											<div class="l">Satisfaction</div>
+											<div class="v" style="color: var(--jaune)">{{ satisfaction.moyenne|note_sur_5 }}/5</div>
+											<div class="g neutre">{{ satisfaction.nombre|number_format(0, ',', ' ') }} avis de nos clients</div>
+										</div>
 									{% else %}
 										<div class="compteur">
 											<div class="l">En ligne ce mois</div>

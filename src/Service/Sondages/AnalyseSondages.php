@@ -71,7 +71,10 @@ final class AnalyseSondages
     }
 
     /**
-     * @return array{reponses: int, moyenne: ?float, satisfaits: ?int, nps: ?int, taux: ?int, alerte: bool, alerteNps: bool, envoyes: ?int}
+     * « repondus » : les réponses comptées dans le taux (avis de commande
+     * quand tous les types sont mêlés).
+     *
+     * @return array{reponses: int, moyenne: ?float, satisfaits: ?int, nps: ?int, taux: ?int, alerte: bool, alerteNps: bool, envoyes: ?int, repondus: int}
      */
     public function indicateurs(?string $type, ?Sondage $sondage, \DateTimeImmutable $debut, \DateTimeImmutable $fin): array
     {
@@ -91,7 +94,7 @@ final class AnalyseSondages
         $resume = Indicateurs::resume(array_column($lignes, 'note'), array_column($lignes, 'nps'), \count($lignes), null);
         $resume['taux'] = Indicateurs::tauxReponse($reponsesComptees, $envoyes);
 
-        return $resume + ['envoyes' => $envoyes];
+        return $resume + ['envoyes' => $envoyes, 'repondus' => $reponsesComptees];
     }
 
     /**

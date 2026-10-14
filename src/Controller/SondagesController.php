@@ -38,6 +38,9 @@ final class SondagesController extends AbstractController
 {
     private const CSRF = 'sondages';
 
+    /** Propositions montrées à la fois : les filtres par thème et statut mènent aux autres. */
+    private const PROPOSITIONS_MONTREES = 60;
+
     public function __construct(
         private readonly Sondages $sondages,
         private readonly AnalyseSondages $analyse,
@@ -208,10 +211,11 @@ final class SondagesController extends AbstractController
         $theme = isset(Themes::THEMES[$theme]) ? $theme : null;
         $statut = isset(Themes::STATUTS[$statut]) ? $statut : null;
 
-        return $this->render('sondages/propositions.html.twig', $this->analyse->propositions($theme, $statut) + [
+        return $this->render('sondages/propositions.html.twig', $this->analyse->propositions($theme, $statut, self::PROPOSITIONS_MONTREES) + [
             'theme' => $theme,
             'statut' => $statut,
             'jeton' => self::CSRF,
+            'montrees' => self::PROPOSITIONS_MONTREES,
         ]);
     }
 

@@ -171,6 +171,15 @@ final class Synchro
                 continue;
             }
             $ids = $this->em->createQuery('SELECT e.publicId FROM '.$def['classe'].' e ORDER BY e.id ASC')->getSingleColumnResult();
+            if (isset($def['pret'])) {
+                // Comme au fil de l'eau : ce qui n'est pas « prêt » ne part pas (ligne de fidélité à 0 point, envoi de fichier inachevé).
+                $ids = [];
+                foreach ($this->em->createQuery('SELECT e FROM '.$def['classe'].' e ORDER BY e.id ASC')->toIterable() as $e) {
+                    if ($def['pret']($e)) {
+                        $ids[] = $e->getPublicId();
+                    }
+                }
+            }
             foreach ($ids as $publicId) {
                 // Lecture brute : la colonne revient en binaire.
                 $this->em->persist(new SynchroJournal($type, ($publicId instanceof Uuid ? $publicId : Uuid::fromString((string) $publicId))->toRfc4122(), SynchroJournal::MAJ));

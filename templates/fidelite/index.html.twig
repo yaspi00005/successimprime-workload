@@ -17,6 +17,7 @@
 {% endblock %}
 
 {% block body %}
+	{% if onglet == 'articles' %}
 	<section class="card si-fi-programme">
 		<div>
 			<span class="si-fi-sur">Programme {{ reglages.actif ? 'en cours' : 'arrêté' }}</span>
@@ -29,6 +30,7 @@
 			<li><b>Validité</b>{{ reglages.validiteMois }} mois, les plus anciens utilisés d'abord</li>
 		</ul>
 	</section>
+	{% endif %}
 
 	{% if en_ligne %}
 		<p class="si-pg-note"><i class="fas fa-info-circle me-1"></i>Site en ligne : la fidélité se gère sur l'ERP de la boutique, ces écrans sont en lecture.</p>
@@ -48,7 +50,7 @@
 			{% else %}
 				<div class="table-responsive">
 					<table class="table si-table si-fi-table mb-0">
-						<thead><tr><th>Article</th><th>Bonification</th><th>Gain</th><th class="text-end">Valeur du point</th><th>Plage</th><th>Période</th><th class="si-masque-mobile">Modifiée</th><th></th></tr></thead>
+						<thead><tr><th>Article</th><th>Bonification</th><th>Gain</th><th class="text-end">1 point</th><th>Plage</th><th>Période</th><th class="si-masque-mobile">Modifiée</th><th></th></tr></thead>
 						<tbody>
 							{% for r in regles %}
 								{% set m2 = r.produit.modeCalcul == 'metre_carre' %}
@@ -58,12 +60,12 @@
 									<td>{% if r.actif %}<span class="si-pastille si-pastille-vert">Active</span>{% else %}<span class="si-pastille si-pastille-rouge">Désactivée</span>{% endif %}</td>
 									<td class="text-nowrap">{{ r.actif ? f.gain(r, m2) : 'aucun point' }}</td>
 									<td class="text-end text-nowrap">{{ r.actif ? r.valeurPoint ~ ' F' : '—' }}</td>
-									<td class="text-nowrap">{{ r.actif ? f.plage(r, m2) : '—' }}</td>
+									<td>{{ r.actif ? f.plage(r, m2) : '—' }}</td>
 									<td class="text-nowrap">
 										{{ r.debut|date('d/m/Y') }} → {{ r.fin ? r.fin|date('d/m/Y') : 'sans fin' }}
 										<small class="d-block {{ etat == 'en_cours' ? 'text-success' : 'text-muted' }}">{{ {en_cours: 'En cours', a_venir: 'À venir', terminee: 'Terminée'}[etat] }}</small>
 									</td>
-									<td class="si-masque-mobile"><small class="text-muted">{{ r.modifieLe|date('d/m/Y H:i') }}{{ r.modifiePar ? ' · ' ~ r.modifiePar.userIdentifier }}</small></td>
+									<td class="si-masque-mobile text-nowrap"><small class="text-muted d-block">{{ r.modifieLe|date('d/m/Y H:i') }}</small><small class="text-muted d-block">{{ r.modifiePar ? r.modifiePar.userIdentifier }}</small></td>
 									<td class="text-end">{% if not en_ligne %}<a href="{{ path('app_fidelite_regle_modifier', {id: r.id}) }}" class="btn btn-sm btn-primary-light" title="Modifier"><i class="fa fa-edit"></i></a>{% endif %}</td>
 								</tr>
 							{% endfor %}

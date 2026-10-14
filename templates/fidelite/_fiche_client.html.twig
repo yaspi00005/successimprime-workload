@@ -59,9 +59,10 @@
 						<td class="text-nowrap">{{ h.date|date('d/m/Y') }}</td>
 						<td>
 							{{ h.libelle }}{% if h.annule %} <span class="si-badge">annulé</span>{% endif %}
+							{% if h.type == 'gain' and h.points == 0 and h.multiplicateur %}<small class="d-block text-muted">sous le seuil, ou article sans bonification : compte pour la progression</small>{% endif %}
 							{% if admin and (h.motif or h.agent) %}<small class="d-block text-muted">{{ h.motif }}{{ h.motif and h.agent ? ' · ' }}{{ h.agent ? h.agent.userIdentifier }}</small>{% endif %}
 						</td>
-						<td>{% if h.commande %}<a href="{{ path('app_commandes_show', {id: h.commande.id}) }}">{{ h.commande.numero }}</a>{% endif %}</td>
+						<td class="text-nowrap">{% if h.commande %}<a href="{{ path('app_commandes_show', {id: h.commande.id}) }}">{{ h.commande.numero }}</a>{% endif %}</td>
 						<td class="text-end text-nowrap fw-semibold {{ h.points > 0 ? 'text-success' : (h.points < 0 ? 'text-danger' : 'text-muted') }}">{{ h.points > 0 ? '+' }}{{ h.points|number_format(0, ',', ' ') }}</td>
 						<td class="si-masque-mobile text-nowrap"><small class="text-muted">{{ h.expireLe and h.points > 0 ? h.expireLe|date('d/m/Y') }}</small></td>
 					</tr>

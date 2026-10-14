@@ -364,7 +364,7 @@ final class FideliteController extends AbstractController
 
     private const CHAMPS = [
         'produit' => 'article', 'actif' => 'bonification', 'mode' => 'calcul', 'valeur' => 'points', 'valeurPoint' => 'valeur du point',
-        'seuil' => 'plage', 'portee' => 'compté sur', 'debut' => 'début', 'fin' => 'fin', 'note' => 'note',
+        'seuil' => 'plage', 'portee' => 'plage comptée', 'debut' => 'début', 'fin' => 'fin', 'note' => 'note',
         'pointsParM2' => 'points par m²', 'tauxAutre' => '% autres articles', 'seuilM2' => 'seuil m²', 'seuilMontant' => 'seuil F',
         'points' => 'points', 'motif' => 'motif', 'taux' => 'remise %', 'du' => 'du', 'au' => 'au', 'commande' => 'commande',
     ];
@@ -399,6 +399,7 @@ final class FideliteController extends AbstractController
             true === $v => 'active',
             false === $v => 'désactivée',
             \is_float($v) || \is_int($v) => rtrim(rtrim(number_format((float) $v, 2, ',', ' '), '0'), ','),
+            \is_string($v) && 1 === preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) => (new \DateTimeImmutable($v))->format('d/m/Y'),
             default => (string) (RegleFidelite::MODES[$v] ?? RegleFidelite::PORTEES[$v] ?? $v),
         };
 

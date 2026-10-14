@@ -31,7 +31,7 @@
 	{% if not client.isB2B and compte.peut('payeur') %}
 		{% set fidelite = fidelite_espace(client) %}
 		<a class="ec-carte ec-rangee" href="{{ path('app_espace_fidelite') }}">
-			<span><b>Fidélité</b><span class="ec-petit">{{ fidelite.disponible|number_format(0, ',', ' ') }} points · {{ fidelite.disponibleF|number_format(0, ',', ' ') }} F · payez le jour même : points ×{{ fidelite.multiplicateurJour }}</span></span>
+			<span><b>Fidélité</b><span class="ec-petit">{{ fidelite.disponible|number_format(0, ',', ' ') }} points · {{ fidelite.disponibleF|number_format(0, ',', ' ') }} F · payez le jour même : points&nbsp;×{{ fidelite.multiplicateurJour }}</span></span>
 			<span class="fl" aria-hidden="true">›</span>
 		</a>
 	{% endif %}

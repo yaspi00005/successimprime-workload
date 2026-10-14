@@ -168,6 +168,14 @@ Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trés
 3. Premier chargement : `php bin/console app:synchro --initialiser`.
 4. Tâche planifiée de la synchronisation (docs/synchronisation.md, « Mise en route »).
 
+## Comptes du personnel en ligne
+
+Les comptes du personnel ne descendent pas par la synchronisation : mots de passe et données du personnel restent à l'atelier. Seules les personnes qui ont besoin de l'administration en ligne y ont un compte, créé sur le serveur :
+
+1. `php bin/console app:creer-utilisateur <identifiant>` (prénom, nom, téléphone qui reçoit le code, mot de passe ; `--role=` pour un autre rôle que la direction).
+2. `php bin/console app:autoriser-appareil <identifiant> --nom="…"` donne un lien valable 5 minutes, à ouvrir sur l'appareil à autoriser. Le lien prend l'adresse de `DEFAULT_URI`. Les appareils suivants s'autorisent depuis Réglages › Sécurité › Appareils autorisés.
+3. Connexion sur /login : mot de passe, puis code par SMS. Sans les clés Orange SMS, aucun code ne part et personne ne se connecte en ligne.
+
 ## Avant d'ouvrir au public
 
 - [ ] `app:verifier-installation` sans erreur sur les deux machines.

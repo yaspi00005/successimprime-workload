@@ -12,15 +12,18 @@ use App\Entity\Devis;
 use App\Entity\ModificationClient;
 use App\Entity\Paiements;
 use App\Entity\ReclamationClient;
+use App\Entity\Reglage;
 use App\Entity\ReponseSondage;
 use App\Entity\SynchroEchange;
 use App\Entity\SynchroEtat;
 use App\Entity\SynchroJournal;
 use App\Entity\SynchroRecu;
+use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\NotificationsClient;
 use App\Service\NotificationService;
+use App\Service\Parametres\CatalogueParametres;
 use App\Service\Sondages\Sondages;
 use App\Service\Site\DemandesSite;
 use Doctrine\Persistence\ManagerRegistry;
@@ -170,10 +173,16 @@ final class Synchro
     /** Remet en file tout ce qui existe (premier chargement du site). Ligne de commande seulement. */
     public function initialiser(?string $seulement = null): int
     {
-        if ($seulement !== null && !isset(CatalogueSynchro::types()[$seulement])) {
-            throw new \InvalidArgumentException(\sprintf('Type inconnu : %s (%s)', $seulement, implode(', ', array_keys(CatalogueSynchro::types()))));
+        if ($seulement !== null && $seulement !== CatalogueSynchro::ACTION_REGLAGES && !isset(CatalogueSynchro::types()[$seulement])) {
+            throw new \InvalidArgumentException(\sprintf('Type inconnu : %s (%s)', $seulement, implode(', ', [...array_keys(CatalogueSynchro::types()), CatalogueSynchro::ACTION_REGLAGES])));
         }
         $n = 0;
+        if (!$this->enLigne && \in_array($seulement, [null, CatalogueSynchro::ACTION_REGLAGES], true)) {
+            foreach (array_keys(CatalogueSynchro::REGLAGES_PUBLICS) as $tuile) {
+                $this->noterReglages($tuile, $this->em->getRepository(Reglage::class)->findOneBy(['cle' => $tuile])?->getValeurs() ?? []);
+                ++$n;
+            }
+        }
         foreach (CatalogueSynchro::types() as $type => $def) {
             if (!CatalogueSynchro::envoye($type, $this->enLigne) || ($seulement !== null && $type !== $seulement)) {
                 continue;
@@ -476,6 +485,12 @@ final class Synchro
      */
     private function appliquerAction(string $action, string $publicId, array $donnees, string $titre): array
     {
+        if ($action === CatalogueSynchro::ACTION_REGLAGES && $this->enLigne) {
+            return $this->recevoirReglages($donnees);
+        }
+        if ($action === CatalogueSynchro::ACTION_PROPOSITION && !$this->enLigne) {
+            return $this->recevoirProposition($donnees);
+        }
         if ($this->enLigne || !\in_array($action, [EspaceClient::ACTION_BAT_VALIDE, EspaceClient::ACTION_BAT_MODIFIE], true)) {
             return [self::RESULTAT_IGNORE, 'Geste inconnu de ce côté', $titre];
         }
@@ -504,6 +519,117 @@ final class Synchro
         $this->em->persist(new SynchroJournal('controle', $publicId, SynchroJournal::MAJ)); // suivi du BAT à jour en ligne
 
         return [self::RESULTAT_OK, $message, $titre];
+    }
+
+    /* ---------- Réglages ---------- */
+
+    /**
+     * Au local : les champs publics d'une tuile partent vers le site (à
+     * appeler avant le flush qui enregistre le changement).
+     *
+     * @param array<string, mixed> $stockees valeurs enregistrées de la tuile
+     */
+    public function noterReglages(string $tuile, array $stockees): void
+    {
+        if ($this->enLigne || !isset(CatalogueSynchro::REGLAGES_PUBLICS[$tuile])) {
+            return;
+        }
+        $this->em->persist(new SynchroJournal(CatalogueSynchro::ACTION_REGLAGES, Uuid::v4()->toRfc4122(), SynchroJournal::ACTION, null, [
+            'tuile' => $tuile,
+            'valeurs' => CatalogueSynchro::reglagesPublics($tuile, $stockees),
+        ]));
+    }
+
+    /**
+     * Sur le site : un changement de l'admin en ligne part vers le local, où
+     * il attend qu'un administrateur le valide (à appeler avant le flush).
+     *
+     * @param array<string, mixed> $valeurs champs changés, déjà contrôlés
+     */
+    public function noterProposition(string $tuile, array $valeurs, ?User $par, \DateTimeImmutable $le): void
+    {
+        if (!$this->enLigne) {
+            return;
+        }
+        $this->em->persist(new SynchroJournal(CatalogueSynchro::ACTION_PROPOSITION, Uuid::v4()->toRfc4122(), SynchroJournal::ACTION, null, [
+            'tuile' => $tuile,
+            'valeurs' => $valeurs,
+            'par' => $par?->getUserIdentifier(),
+            'le' => $le->format(\DATE_ATOM),
+        ]));
+    }
+
+    /**
+     * Valeurs reçues de l'autre côté, contrôlées comme une saisie : seuls
+     * les champs connus de la tuile (et, si donnés, de la liste) passent.
+     *
+     * @param list<string>|null $permis
+     *
+     * @return array<string, mixed>|null null si une valeur est refusée
+     */
+    private static function lireReglages(string $tuile, mixed $valeurs, ?array $permis): ?array
+    {
+        if (!\is_array($valeurs)) {
+            return null;
+        }
+        $champs = array_values(array_filter(
+            CatalogueParametres::tuiles()[$tuile]['champs'] ?? [],
+            static fn (array $c): bool => \array_key_exists($c['cle'], $valeurs) && ($permis === null || \in_array($c['cle'], $permis, true)),
+        ));
+        if ($champs === []) {
+            return null;
+        }
+        $lu = CatalogueParametres::lireSaisie($champs, $valeurs);
+
+        return $lu['erreurs'] === [] ? $lu['valeurs'] : null;
+    }
+
+    /** @return array{0: string, 1: ?string, 2: string} */
+    private function recevoirReglages(array $donnees): array
+    {
+        $tuile = (string) ($donnees['tuile'] ?? '');
+        $titre = 'Réglages · '.(CatalogueParametres::tuiles()[$tuile]['libelle'] ?? $tuile);
+        $valeurs = isset(CatalogueSynchro::REGLAGES_PUBLICS[$tuile]) ? self::lireReglages($tuile, $donnees['valeurs'] ?? null, CatalogueSynchro::REGLAGES_PUBLICS[$tuile]) : null;
+        if ($valeurs === null) {
+            return [self::RESULTAT_IGNORE, 'Réglage non accepté sur le site', $titre];
+        }
+        $reglage = $this->em->getRepository(Reglage::class)->findOneBy(['cle' => $tuile]);
+        if ($reglage === null) {
+            $reglage = new Reglage($tuile);
+            $this->em->persist($reglage);
+        }
+        $reglage->modifier(array_replace($reglage->getValeurs(), $valeurs), null, new \DateTimeImmutable());
+
+        return [self::RESULTAT_OK, 'Réglages du local appliqués', $titre];
+    }
+
+    /** @return array{0: string, 1: ?string, 2: string} */
+    private function recevoirProposition(array $donnees): array
+    {
+        $tuile = (string) ($donnees['tuile'] ?? '');
+        $libelle = CatalogueParametres::tuiles()[$tuile]['libelle'] ?? null;
+        $titre = 'Réglages · '.($libelle ?? $tuile);
+        $valeurs = $libelle === null ? null : self::lireReglages($tuile, $donnees['valeurs'] ?? null, null);
+        if ($valeurs === null) {
+            return [self::RESULTAT_IGNORE, 'Proposition refusée : tuile ou valeur inconnue au local', $titre];
+        }
+        $nom = mb_substr((string) ($donnees['par'] ?? ''), 0, 180);
+        $par = $nom === '' ? null : $this->em->getRepository(User::class)->findOneBy(['username' => $nom]);
+        $reglage = $this->em->getRepository(Reglage::class)->findOneBy(['cle' => $tuile]);
+        if ($reglage === null) {
+            $reglage = new Reglage($tuile);
+            $this->em->persist($reglage);
+        }
+        try {
+            $le = new \DateTimeImmutable((string) ($donnees['le'] ?? 'now'));
+        } catch (\Exception) {
+            $le = new \DateTimeImmutable();
+        }
+        $reglage->proposer($valeurs, $par, $le);
+        $this->em->flush();
+        $this->notifications->notifierRoles(['ROLE_ADMIN'], \sprintf('Réglage « %s » changé depuis l\'admin en ligne%s : à valider ou refuser.', $libelle, $nom !== '' ? ' par '.$nom : ''), 'app_reglages_parametres_index');
+
+        return [self::RESULTAT_OK, 'Changement proposé en ligne, à valider au local', $titre];
     }
 
     /** @param array<string, array{0: ?string, 1: ?string}> $remontees */

@@ -173,4 +173,23 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame('Pas de synchronisation réussie depuis 3 h.', Synchro::alerte(true, new \DateTimeImmutable('2026-10-12 09:00'), null, $maintenant, null));
         self::assertStringStartsWith('La synchronisation n\'a jamais réussi', (string) Synchro::alerte(true, null, new \DateTimeImmutable('2026-10-12 11:00'), $maintenant, 'clé'));
     }
+
+    public function testLeSiteNeRecoitQueLesReglagesPublics(): void
+    {
+        foreach (CatalogueSynchro::REGLAGES_PUBLICS as $tuile => $champs) {
+            $connus = array_column(\App\Service\Parametres\CatalogueParametres::tuiles()[$tuile]['champs'] ?? [], 'cle');
+            foreach ($champs as $champ) {
+                self::assertContains($champ, $connus, $tuile.'.'.$champ);
+            }
+        }
+        self::assertArrayNotHasKey('paie', CatalogueSynchro::REGLAGES_PUBLICS);
+        self::assertArrayNotHasKey('synchronisation', CatalogueSynchro::REGLAGES_PUBLICS);
+
+        // Valeurs par défaut pour ce que le local n'a jamais changé ; les autres champs restent au local.
+        $paiements = CatalogueSynchro::reglagesPublics('paiements', ['orange_money' => false, 'acompte' => 30, 'virement_seuil' => 1]);
+        self::assertSame(['orange_money' => false], $paiements);
+        $horaires = CatalogueSynchro::reglagesPublics('horaires', ['feries' => '01/01']);
+        self::assertSame(['jours' => 'lun-sam', 'ouverture' => '08:00', 'fermeture' => '18:00'], $horaires);
+        self::assertSame([], CatalogueSynchro::reglagesPublics('paie', ['mode' => 'mensuel']));
+    }
 }

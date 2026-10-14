@@ -18,7 +18,7 @@
 		{% if panneau.proposition is not empty %}
 			<div class="si-pp-proposition">
 				<strong><i class="fas fa-hourglass-half me-1"></i>Changement proposé depuis l'admin en ligne</strong>
-				<span>{{ panneau.propose_par ? panneau.propose_par.username : 'Utilisateur supprimé' }}{{ panneau.propose_le ? ' · ' ~ panneau.propose_le|date('d/m à H:i') }}</span>
+				<span>{{ panneau.propose_par ? panneau.propose_par.username : 'Admin en ligne' }}{{ panneau.propose_le ? ' · ' ~ panneau.propose_le|date('d/m à H:i') }}</span>
 				<ul>
 					{% for p in panneau.proposition %}
 						<li>{{ p.libelle }} : <s>{{ p.avant }}</s> → <b>{{ p.apres }}</b></li>

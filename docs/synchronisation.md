@@ -24,6 +24,8 @@
 | Paiements | local → site, et site → local pour les **nouveaux** paiements | Restent au local : compte de trésorerie, mouvement, justificatif, note, encaisseur. |
 | Fidélité : résumé du compte de points, mouvements, promo de réveil (`fidelite_compte`, `fidelite_mouvement`, `promo_reveil`) | local → site seulement | Liste blanche : type, points, date, expiration, multiplicateur, numéro de commande, solde et progression. Restent au local : agent, motif, paiement, valeurs propres et qui les a fixées, règles par article. Un mouvement à 0 point ne part pas (`pret`, respecté aussi par l'initialisation). Voir `docs/fidelite.md`. |
 | Demandes du site (`demande_devis`, maquette 11) : message ou demande de devis d'un visiteur sans compte (nom, téléphone, e-mail, objet, produit, taille, quantité, finitions, message, fichier joint, accusé SMS) | site → local seulement (sens **ascendant**) | Le local ne renvoie rien : en ligne, personne ne les relit. À l'arrivée, le local crée le prospect « Site » ou rattache le client du même numéro, prépare un devis brouillon au tarif public et prévient le rôle Devis ; la fiche client et le devis redescendent ensuite comme les autres (brouillon, invisible du client). Un produit retiré du catalogue entre-temps ne bloque pas la demande. |
+| Réglages publics (geste `reglages`) : Espace client (connexion par code, commande et paiement en ligne), Orange Money oui/non, TVA par défaut et taux, horaires d'ouverture, lien du plan de la page Contact | local → site seulement | Partent à chaque enregistrement ou validation au local, champ par champ (`CatalogueSynchro::REGLAGES_PUBLICS`), et sont contrôlés à l'arrivée comme une saisie. Les autres tuiles et champs (paie, barème, comptes, sauvegardes…) ne quittent pas le local. Premier envoi : `app:synchro --initialiser=reglages`. |
+| Changement de réglage fait dans l'admin en ligne (geste `reglage_propose`) | site → local | Arrive comme proposition, jamais appliqué tout seul : la direction est prévenue et valide ou refuse dans Réglages › Paramètres ; une fois validé, la valeur redescend. Tuile inconnue ou valeur hors limites : refusé. |
 
 **Paiement saisi en ligne** : il arrive au local **toujours en attente**, quel que soit son statut en ligne, sans compte et sans encaisseur (« Client, en ligne »). Il apparaît dans Finances › À valider, où le responsable choisit le compte qui a reçu l'argent avant de valider ; sans compte choisi, la validation est refusée. Une fois validé, le statut repart vers le site.
 
@@ -47,6 +49,8 @@ Toute autre modification faite en ligne d'une fiche du local est notée **Confli
 Étapes suivantes : modification des coordonnées par le client en ligne, à faire valider au local quand l'espace client le proposera. Les comptes de l'espace client (connexion par téléphone) restent sur le site : un client qui les perd en recrée un par code SMS.
 
 ## Fonctionnement
+
+**Fichier de client perdu en ligne** : s'il manque sur le site, il ne bloque plus le cycle. Il est noté une fois dans le journal (« fichier de client introuvable sur le site ») et redemandé toutes les 6 heures ; les fiches et les autres fichiers passent.
 
 1. Toute création, modification ou suppression d'une donnée suivie ajoute une ligne à la file `synchro_journal`, **dans la même transaction** que la modification : si l'enregistrement réussit, l'envoi est garanti.
 2. Le contenu est relu au moment de l'envoi : une fiche modifiée trois fois avant l'envoi part avec son dernier état.

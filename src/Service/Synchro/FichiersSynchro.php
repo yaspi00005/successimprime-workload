@@ -8,6 +8,7 @@ use App\Entity\SynchroFichier;
 use App\Service\EspaceClient\EspaceClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 /**
  * Octets des fichiers entre l'ERP local et le site (docs/synchronisation.md).
@@ -26,12 +27,17 @@ final class FichiersSynchro
     /** Volume envoyé au plus par cycle : la liaison reste disponible pour le reste. */
     public const BUDGET_CYCLE = 64 * 1024 * 1024;
 
+    /** Un fichier de client que le site n'a pas donné est redemandé après ce délai. */
+    public const REESSAI_ABSENT = '6 hours';
+    private const ETAT_ABSENT = 'abs:'; // + identifiant (36) : 40 caractères, la taille de la clé
+
     private const NOM_SUR = '/^[A-Za-z0-9][A-Za-z0-9._-]{0,200}$/';
 
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly Serialiseur $serialiseur,
         private readonly EspaceClient $espaceClient,
+        private readonly Synchro $synchro,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
     ) {
     }
@@ -145,31 +151,54 @@ final class FichiersSynchro
      *
      * @param callable(string, array<string, mixed>): array<string, mixed> $appeler appel signé au site
      *
-     * @return array{recus: int, octets: int}
+     * Un fichier que le site ne donne pas (perdu en ligne) ne bloque pas
+     * les autres : il est noté dans « absents » et redemandé seulement
+     * après REESSAI_ABSENT.
+     *
+     * @return array{recus: int, octets: int, absents: list<string>}
      */
-    public function recuperer(callable $appeler, int $budget = self::BUDGET_CYCLE): array
+    public function recuperer(callable $appeler, int $budget = self::BUDGET_CYCLE, ?\DateTimeImmutable $maintenant = null): array
     {
-        $bilan = ['recus' => 0, 'octets' => 0];
+        $maintenant ??= new \DateTimeImmutable();
+        $bilan = ['recus' => 0, 'octets' => 0, 'absents' => []];
         $dossier = $this->projet.'/var/uploads/commandes';
         foreach ($this->aRecuperer() as $fichier) {
             if ($bilan['octets'] >= $budget) {
                 break;
             }
+            $cleAbsent = self::ETAT_ABSENT.$fichier->getPublicId()->toRfc4122();
+            $absentLe = $this->synchro->dateEtat($cleAbsent);
+            if ($absentLe !== null && $absentLe > $maintenant->modify('-'.self::REESSAI_ABSENT)) {
+                continue;
+            }
             $nom = basename(trim((string) $fichier->getNomStockage()));
             $empreinte = (string) $fichier->getEmpreinte();
             $taille = (int) $fichier->getTaille();
-            $etat = self::ecrire($dossier, $nom, $empreinte, $taille, -1, null);
-            while (!$etat['termine'] && $bilan['octets'] < $budget) {
-                $reponse = $appeler('/api/synchro/fichier-client', ['id' => $fichier->getPublicId()->toRfc4122(), 'position' => $etat['recu']]);
-                $morceau = base64_decode((string) ($reponse['morceau'] ?? ''), true);
-                if ($morceau === false || $morceau === '') {
-                    throw new \RuntimeException('Le site ne donne pas le fichier '.$fichier->getNomOriginal());
+            try {
+                $etat = self::ecrire($dossier, $nom, $empreinte, $taille, -1, null);
+                while (!$etat['termine'] && $bilan['octets'] < $budget) {
+                    $reponse = $appeler('/api/synchro/fichier-client', ['id' => $fichier->getPublicId()->toRfc4122(), 'position' => $etat['recu']]);
+                    $morceau = base64_decode((string) ($reponse['morceau'] ?? ''), true);
+                    if ($morceau === false || $morceau === '') {
+                        throw new \RuntimeException('Le site ne donne pas le fichier '.$fichier->getNomOriginal());
+                    }
+                    $etat = self::ecrire($dossier, $nom, $empreinte, $taille, $etat['recu'], $morceau);
+                    $bilan['octets'] += \strlen($morceau);
                 }
-                $etat = self::ecrire($dossier, $nom, $empreinte, $taille, $etat['recu'], $morceau);
-                $bilan['octets'] += \strlen($morceau);
+            } catch (TransportExceptionInterface $e) {
+                throw $e; // liaison coupée : tout le cycle s'arrête
+            } catch (\RuntimeException|\InvalidArgumentException) {
+                if ($absentLe === null) {
+                    $bilan['absents'][] = (string) $fichier->getNomOriginal();
+                }
+                $this->synchro->noterEtat($cleAbsent, $maintenant->format(\DATE_ATOM));
+                continue;
             }
             if ($etat['termine']) {
                 ++$bilan['recus'];
+                if ($absentLe !== null) {
+                    $this->synchro->noterEtat($cleAbsent, null);
+                }
             }
         }
 

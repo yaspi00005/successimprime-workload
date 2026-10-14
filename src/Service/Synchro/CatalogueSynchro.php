@@ -36,6 +36,7 @@ use App\Entity\ReponseSondage;
 use App\Entity\Sondage;
 use App\Entity\Supports;
 use App\Entity\TypesImpression;
+use App\Service\Parametres\CatalogueParametres;
 
 /**
  * Ce qui passe entre l'ERP local et l'application en ligne, et dans quel
@@ -80,6 +81,23 @@ final class CatalogueSynchro
     public const DESCENDANT = 'descendant';
     public const DEUX = 'deux';
     public const ASCENDANT = 'ascendant';
+
+    /**
+     * Réglages (tuiles de Paramètres) dont le site en ligne a besoin, champ
+     * par champ. Ils partent du local quand on les change, comme un geste ;
+     * les autres champs et les autres tuiles ne quittent jamais le local.
+     */
+    public const REGLAGES_PUBLICS = [
+        'espace_client' => ['code_sms', 'commande_en_ligne', 'paiement_en_ligne'],
+        'paiements' => ['orange_money'],
+        'taxes' => ['tva_par_defaut', 'taux_tva'],
+        'horaires' => ['jours', 'ouverture', 'fermeture'],
+        'site_contact' => ['lien_plan'],
+    ];
+
+    /** Geste « réglages du local » (local → site) et « changement proposé » (admin en ligne → local). */
+    public const ACTION_REGLAGES = 'reglages';
+    public const ACTION_PROPOSITION = 'reglage_propose';
 
     /**
      * @return array<string, array{classe: class-string, sens: string, libelle: string, titre: list<string>, champs: list<string>, relations: array<string, string>, listes: array<string, string>, numero?: string, aLaCreation?: array<string, callable>, imposeAuLocal?: array<string, mixed>, pret?: callable, remontees?: array<string, ?array<string, list<string>>>, facultatives?: list<string>, enfants?: array<string, array{classe: class-string, parent: string, champs: list<string>, relations: array<string, string>, filtres?: array<string, callable>}>}>
@@ -395,6 +413,24 @@ final class CatalogueSynchro
         }
 
         return null;
+    }
+
+    /**
+     * Ce que le site reçoit d'une tuile : seulement les champs publics, avec
+     * leur valeur par défaut si le local ne les a jamais changés.
+     *
+     * @param array<string, mixed> $stockees valeurs enregistrées au local
+     *
+     * @return array<string, mixed>
+     */
+    public static function reglagesPublics(string $tuile, array $stockees): array
+    {
+        $champs = array_values(array_filter(
+            CatalogueParametres::tuiles()[$tuile]['champs'] ?? [],
+            static fn (array $c): bool => \in_array($c['cle'], self::REGLAGES_PUBLICS[$tuile] ?? [], true) && !isset($c['source']),
+        ));
+
+        return CatalogueParametres::avecDefauts($champs, $stockees);
     }
 
     /**

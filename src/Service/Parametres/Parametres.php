@@ -250,6 +250,7 @@ final class Parametres
         if ($this->accesEnLigne->estEnLigne()) {
             $reglage->proposer($diff['apres'], $par, $maintenant);
             $this->journaliser($reglage, $cle, 'proposition', $diff, $par);
+            $this->synchro->noterProposition($cle, $diff['apres'], $par, $maintenant);
             $this->em->flush();
 
             return 'propose';
@@ -257,6 +258,7 @@ final class Parametres
 
         $this->appliquer($reglage, $cle, $diff['apres'], $par, $maintenant);
         $this->journaliser($reglage, $cle, JournalActivite::ACTION_MODIFICATION, $diff, $par);
+        $this->synchro->noterReglages($cle, $reglage->getValeurs());
         $this->em->flush();
 
         return 'applique';
@@ -277,6 +279,7 @@ final class Parametres
         $this->appliquer($reglage, $cle, $proposition, $par, new \DateTimeImmutable());
         $reglage->retirerProposition();
         $this->journaliser($reglage, $cle, 'validation', $diff, $par);
+        $this->synchro->noterReglages($cle, $reglage->getValeurs());
         $this->em->flush();
 
         return true;

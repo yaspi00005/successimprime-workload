@@ -150,6 +150,19 @@ final class NavigateurInterne
         return $this->envoyer(Request::create($chemin, 'POST', $donnees, [], [], $this->serveur($entetes)), $session, $intercepter);
     }
 
+    /**
+     * Appel JSON d'une page (corps JSON, comme fetch() dans le navigateur).
+     *
+     * @param array<string, mixed>  $donnees
+     * @param array<string, string> $entetes
+     */
+    public function postJson(string $chemin, array $donnees, ?MockArraySessionStorage $session = null, array $entetes = []): Reponse
+    {
+        $serveur = $this->serveur($entetes + ['Accept' => 'application/json']) + ['CONTENT_TYPE' => 'application/json'];
+
+        return $this->envoyer(Request::create($chemin, 'POST', [], [], [], $serveur, (string) json_encode($donnees)), $session, false);
+    }
+
     private function envoyer(Request $requete, ?MockArraySessionStorage $stockage, bool $intercepter): Reponse
     {
         if (!$this->commence) {

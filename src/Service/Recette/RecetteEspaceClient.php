@@ -17,11 +17,14 @@ use App\Entity\ReclamationClient;
 use App\Entity\ReclamationClientPhoto;
 use App\Entity\User;
 use App\Security\DroitsEspace;
+use App\Service\Atelier\CatalogueAtelier;
 use App\Service\EspaceClient\AppareilsClient;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FilNotifications;
+use App\Service\EspaceClient\NouvelleCommande;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
+use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Uid\AbstractUid;
 
@@ -31,7 +34,11 @@ use Symfony\Component\Uid\AbstractUid;
  *    personne d'un compte entreprise (titulaire, valideur, payeur,
  *    demandeur, lecture · suivi) ouvrent chaque page de l'espace ;
  *  - montants (solde, factures, crédit IA, paiement) seulement pour qui
- *    paie ; accepter un devis seulement pour un valideur ;
+ *    paie ; prix des commandes, des devis et du catalogue pour qui voit
+ *    les montants (CompteClient::montantsVisibles : valideur ou payeur) ;
+ *    rien du tout pour un demandeur ni un compte en lecture seule, ni dans
+ *    les pages, ni dans leurs données JSON, ni dans les appels de prix ;
+ *    accepter un devis seulement pour un valideur ;
  *  - les fiches d'un autre client (commande, facture, fichier, BAT, photo
  *    de réclamation, conception, notification, utilisateur, adresse…)
  *    demandées par leur numéro dans l'adresse ou glissées dans un envoi
@@ -65,20 +72,27 @@ final class RecetteEspaceClient
     /** Pages réservées à qui paie (factures, solde, paiement). */
     public const PAGES_PAYEUR = ['app_espace_factures', 'app_espace_facture_pdf', 'app_espace_payer', 'app_espace_conception_credit'];
 
-    /** Pages où un prix est voulu pour qui peut commander : catalogue et prix du jour. */
+    /** Pages où un prix est voulu pour qui voit les montants (valideur) : catalogue et prix du jour. */
     public const PAGES_PRIX = ['app_espace_nouvelle_commande', 'app_espace_produits', 'app_espace_promotions', 'app_espace_conception', 'app_espace_conception_demande', 'app_espace_conception_informations', 'app_espace_conception_ia', 'app_espace_devis'];
 
+    /** Pages qui ne sont que des montants (le PDF d'un devis) : refusées à qui ne voit pas les montants. */
+    public const PAGES_MONTANTS = ['app_espace_devis_pdf'];
+
+    /** Pages où un montant est une règle (seuil, avantage d'une promotion), pour tous, même un demandeur. */
+    public const PAGES_REGLES = ['app_espace_promotions'];
+
     /**
-     * Montants voulus pour toute personne qui voit la page, d'après ce qui
-     * les précède : motif => raison.
+     * Montants voulus pour qui voit les montants sans payer (valideur),
+     * d'après ce qui les précède : motif => raison. Jamais pour un
+     * demandeur ni un compte en lecture seule.
      */
     public const MONTANTS_VOULUS = [
-        '/dernière fois \d{2}\/\d{2} [\d \x{00A0}\x{202F}.]+ F$/u' => '« Recommander rapidement » : prix du jour du catalogue, pour qui peut commander',
-        '/\bTotal(?: indicatif)? [\d \x{00A0}\x{202F}.]+ F$/u' => 'total de la commande (le reste à payer est réservé au payeur)',
+        '/dernière fois \d{2}\/\d{2} [\d \x{00A0}\x{202F}.]+ F$/u' => '« Recommander rapidement » : prix du jour du catalogue, pour qui voit les montants',
+        '/\bTotal(?: indicatif)? [\d \x{00A0}\x{202F}.]+ F$/u' => 'total de la commande, pour qui voit les montants (le reste à payer est réservé au payeur)',
     ];
 
-    /** Clés du JSON « Télécharger mes données » réservées à qui paie. */
-    private const CLES_ARGENT = '/^(solde|factures?|paiements?|montant\w*|reste\w*|total\w*|credit\w*|plafond\w*)$/i';
+    /** Clés d'argent d'un JSON (« Télécharger mes données », données d'une page, appels de prix). */
+    private const CLES_ARGENT = '/^(solde|factures?|paiements?|montant\w*|reste\w*|total\w*|credit\w*|plafond\w*|prix\w*|remise\w*)$/i';
 
     public function __construct(
         private readonly NavigateurInterne $navigateur,
@@ -87,6 +101,8 @@ final class RecetteEspaceClient
         private readonly EntityManagerInterface $em,
         private readonly EspaceClient $espace,
         private readonly FilNotifications $fil,
+        private readonly NouvelleCommande $nouvelleCommande,
+        private readonly CatalogueAtelier $atelier,
     ) {
     }
 
@@ -112,6 +128,8 @@ final class RecetteEspaceClient
             }
             $suivi && $suivi('espace client : droits du compte entreprise');
             $this->verifierDroitsEntreprise($comptes, $sessions, $fiches, $bilan);
+            $suivi && $suivi('espace client : appels de prix sans montant');
+            $this->verifierAppelsSansMontant($comptes, $sessions, $fiches, $bilan);
             $suivi && $suivi('admin et API en ligne');
             $this->verifierAdminEnLigne($bilan);
         } finally {
@@ -244,6 +262,8 @@ final class RecetteEspaceClient
     private function verifierPages(string $libelle, CompteClient $compte, MockArraySessionStorage $session, array $fiches, BilanRecette $bilan): void
     {
         $payeur = $compte->peut(CompteClient::DROIT_PAYEUR);
+        // La règle de l'espace : prix et montants pour un particulier, un valideur ou un payeur.
+        $montants = $compte->montantsVisibles();
         foreach ($this->routeur->getRouteCollection() as $nom => $route) {
             $methodes = $route->getMethods();
             if (!str_starts_with($route->getPath(), '/espace') || \in_array($nom, self::EXCLUES, true) || ([] !== $methodes && !\in_array('GET', $methodes, true))) {
@@ -272,29 +292,113 @@ final class RecetteEspaceClient
             if (!$payeur && \in_array($nom, self::PAGES_PAYEUR, true) && $ouverte) {
                 $bilan->constater(BilanRecette::FUITE, 'payeur', $nom, $chemin, $libelle, 'page de paiement ou de factures ouverte sans le droit payeur');
             }
+            if (!$montants && \in_array($nom, self::PAGES_MONTANTS, true) && $ouverte) {
+                $bilan->constater(BilanRecette::FUITE, 'montant', $nom, $chemin, $libelle, 'document chiffré ouvert à un compte qui ne voit pas les montants');
+            }
             if ($compte->estLectureSeule() && !DroitsEspace::permis($compte, 'GET', $nom) && $ouverte) {
                 $bilan->constater(BilanRecette::FUITE, 'lecture', $nom, $chemin, $libelle, 'page qui commande, paie ou écrit ouverte à un compte Lecture · suivi');
             }
             if (Reponse::OUVERT !== $etat || $payeur) {
                 continue;
             }
-            // Le valideur voit le prix des devis qu'il accepte (FilNotifications::montantVisible, MonCompte::construire).
-            $valideur = $compte->peut(CompteClient::DROIT_VALIDEUR);
             if ('app_espace_mes_donnees' === $nom) {
-                $cles = array_values(array_filter(self::clesArgent(json_decode($reponse->contenu, true)), static fn (string $c): bool => !$valideur || !str_starts_with($c, 'devis.')));
+                // Qui voit les montants (valideur) a le prix des devis qu'il accepte (MonCompte::construire).
+                $cles = array_values(array_filter(self::clesArgent(json_decode($reponse->contenu, true)), static fn (string $c): bool => !$montants || !str_starts_with($c, 'devis.')));
                 if ([] !== $cles) {
                     $bilan->constater(BilanRecette::FUITE, 'montant', $nom, $chemin, $libelle, 'le fichier de ses données contient des montants sans le droit payeur : '.implode(', ', \array_slice($cles, 0, 5)));
                 }
                 continue;
             }
+            if (!$montants) {
+                $this->verifierSansMontant($libelle, $nom, $chemin, $reponse, $bilan);
+                continue;
+            }
             if (!$reponse->estHtml() || \in_array($nom, self::PAGES_PRIX, true)) {
                 continue;
             }
-            $montants = array_values(array_filter(ContenuSensible::montants($reponse->texte()), static fn (array $m): bool => !($valideur && self::montantDeDevis($m['contexte'])) && null === self::montantVoulu($m['contexte'])));
-            if ([] !== $montants) {
-                $argent = array_values(array_filter($montants, static fn (array $m): bool => 'paiement' === $m['categorie']));
-                $exemples = array_map(static fn (array $m): string => '« …'.$m['contexte'].' »', \array_slice([] !== $argent ? $argent : $montants, 0, 3));
-                $bilan->constater([] !== $argent ? BilanRecette::FUITE : BilanRecette::A_EXAMINER, 'montant', $nom, $chemin, $libelle, \sprintf('%d montant(s) sans le droit payeur : %s', \count($montants), implode(' ; ', $exemples)));
+            // Valideur : les prix des commandes et des devis, pas le solde, les factures ni les paiements.
+            $trouves = array_values(array_filter(ContenuSensible::montants($reponse->texte()), static fn (array $m): bool => !self::montantDeDevis($m['contexte']) && null === self::montantVoulu($m['contexte'])));
+            if ([] !== $trouves) {
+                $argent = array_values(array_filter($trouves, static fn (array $m): bool => 'paiement' === $m['categorie']));
+                $exemples = array_map(static fn (array $m): string => '« …'.$m['contexte'].' »', \array_slice([] !== $argent ? $argent : $trouves, 0, 3));
+                $bilan->constater([] !== $argent ? BilanRecette::FUITE : BilanRecette::A_EXAMINER, 'montant', $nom, $chemin, $libelle, \sprintf('%d montant(s) sans le droit payeur : %s', \count($trouves), implode(' ; ', $exemples)));
+            }
+        }
+    }
+
+    /**
+     * Demandeur ou lecture seule (CompteClient::montantsVisibles faux) : aucun
+     * montant dans le texte de la page (sauf les règles d'une promotion), ni
+     * dans ses données JSON (`<script type="application/json">`), ni dans
+     * une réponse JSON.
+     */
+    private function verifierSansMontant(string $libelle, string $nom, string $chemin, Reponse $reponse, BilanRecette $bilan): void
+    {
+        if (!$reponse->estHtml()) {
+            $cles = str_contains($reponse->type, 'json') ? self::clesArgent(json_decode($reponse->contenu, true)) : [];
+            if ([] !== $cles) {
+                $bilan->constater(BilanRecette::FUITE, 'montant', $nom, $chemin, $libelle, 'réponse JSON avec des montants pour un compte qui ne les voit pas : '.implode(', ', \array_slice($cles, 0, 5)));
+            }
+
+            return;
+        }
+        $trouves = \in_array($nom, self::PAGES_REGLES, true) ? [] : ContenuSensible::montants($reponse->texte());
+        if ([] !== $trouves) {
+            $exemples = array_map(static fn (array $m): string => '« …'.$m['contexte'].' »', \array_slice($trouves, 0, 3));
+            $bilan->constater(BilanRecette::FUITE, 'montant', $nom, $chemin, $libelle, \sprintf('%d montant(s) pour un compte qui ne voit pas les montants : %s', \count($trouves), implode(' ; ', $exemples)));
+        }
+        $cles = self::clesArgentDesScripts($reponse->contenu);
+        if ([] !== $cles) {
+            $bilan->constater(BilanRecette::FUITE, 'montant', $nom, $chemin, $libelle, 'données de la page avec des montants pour un compte qui ne les voit pas : '.implode(', ', \array_slice($cles, 0, 5)));
+        }
+    }
+
+    /**
+     * Appels de prix d'une page (estimation de Nouvelle commande, calcul de
+     * Mes produits, prix de l'atelier 3D) faits par chaque compte qui ne voit
+     * pas les montants : refusés, ou une réponse sans aucun montant.
+     *
+     * @param array<string, CompteClient>                   $comptes
+     * @param array<string, MockArraySessionStorage>        $sessions
+     * @param array<string, array<string, string|int|null>> $fiches
+     */
+    private function verifierAppelsSansMontant(array $comptes, array $sessions, array $fiches, BilanRecette $bilan): void
+    {
+        $produit = $this->nouvelleCommande->produits()[0] ?? null;
+        $modele = $this->atelier->modeles()[0] ?? null;
+        foreach ($comptes as $libelle => $compte) {
+            if ($compte->montantsVisibles() || !isset($sessions[$libelle])) {
+                continue;
+            }
+            $jeton = (string) ($this->jeton($sessions[$libelle]) ?? $this->jeton($sessions['titulaire'] ?? $sessions[$libelle]));
+            $entetes = ['X-CSRF-TOKEN' => $jeton];
+            $appels = [];
+            if (null !== $produit) {
+                $chemin = $this->routeur->generate('app_espace_estimer');
+                $appels['estimation de Nouvelle commande'] = ['app_espace_estimer', $chemin, $this->navigateur->postJson($chemin, ['produit' => $produit->getId(), 'quantite' => max(1, $produit->getQuantiteMinimale()), 'largeur' => 100, 'hauteur' => 100], $sessions[$libelle], $entetes)];
+            }
+            if (null !== ($fiches[$libelle]['produit'] ?? null)) {
+                $chemin = $this->routeur->generate('app_espace_produits_calcul', ['id' => $fiches[$libelle]['produit']]);
+                $appels['calcul de Mes produits'] = ['app_espace_produits_calcul', $chemin, $this->navigateur->postJson($chemin, ['quantite' => '10', 'saisie' => '', 'inferieur' => false], $sessions[$libelle], $entetes)];
+            }
+            try {
+                $chemin = null !== $modele ? $this->routeur->generate('app_espace_atelier_prix', ['modele' => $modele->getPublicId()->toRfc4122(), 'quantite' => 30, 'faces' => 2]) : null;
+            } catch (RoutingException) {
+                $chemin = null; // L'atelier 3D a changé d'adresse : la page elle-même est vérifiée avec les autres.
+            }
+            if (null !== $chemin) {
+                $appels['prix de l\'atelier 3D'] = ['app_espace_atelier_prix', $chemin, $this->navigateur->get($chemin, $sessions[$libelle], ['Accept' => 'application/json'])];
+            } else {
+                $bilan->ignorees['app_espace_atelier_prix ('.$libelle.')'] = null === $modele ? 'aucun article dans l\'atelier 3D' : 'appel de prix de l\'atelier 3D introuvable';
+            }
+            foreach ($appels as $quoi => [$route, $chemin, $reponse]) {
+                // Refusé (lecture seule) ou répondu : seule une réponse avec un montant est une fuite.
+                $cles = self::clesArgent(json_decode($reponse->contenu, true));
+                $ok = Reponse::ERREUR !== $reponse->etat() && [] === $cles;
+                $bilan->controler(\sprintf('Espace client : %s, %s sans montant', $libelle, $quoi), $ok, $chemin.' → '.$reponse->etat().([] !== $cles ? ' : '.implode(', ', \array_slice($cles, 0, 5)) : ''));
+                if (!$ok) {
+                    $bilan->constater(Reponse::ERREUR === $reponse->etat() ? BilanRecette::ERREUR : BilanRecette::FUITE, 'montant', $route, $chemin, $libelle, [] !== $cles ? $quoi.' avec des montants : '.implode(', ', \array_slice($cles, 0, 5)) : (string) $reponse->erreur);
+                }
             }
         }
     }
@@ -604,7 +708,8 @@ final class RecetteEspaceClient
     }
 
     /**
-     * Clés d'argent non vides d'un JSON (« Télécharger mes données »).
+     * Clés d'argent non vides d'un JSON (« Télécharger mes données », appel
+     * de prix). Un booléen (« montants » : false) n'est pas un montant.
      *
      * @return list<string>
      */
@@ -616,7 +721,7 @@ final class RecetteEspaceClient
         $trouvees = [];
         foreach ($donnees as $cle => $valeur) {
             $ici = '' === $chemin ? (string) $cle : $chemin.'.'.$cle;
-            if (\is_string($cle) && preg_match(self::CLES_ARGENT, $cle) && null !== $valeur && [] !== $valeur && '' !== $valeur) {
+            if (\is_string($cle) && preg_match(self::CLES_ARGENT, $cle) && null !== $valeur && [] !== $valeur && '' !== $valeur && !\is_bool($valeur)) {
                 $trouvees[] = $ici;
                 continue;
             }
@@ -626,7 +731,27 @@ final class RecetteEspaceClient
         return $trouvees;
     }
 
-    /** Raison pour laquelle ce montant est voulu pour tous (MONTANTS_VOULUS), ou null. */
+    /**
+     * Clés d'argent des données JSON glissées dans une page
+     * (`<script type="application/json">`), que le navigateur reçoit même
+     * si elles ne s'affichent pas.
+     *
+     * @return list<string>
+     */
+    public static function clesArgentDesScripts(string $html): array
+    {
+        preg_match_all('#<script\b[^>]*type="application/json"[^>]*>(.*?)</script>#is', $html, $m);
+        $cles = [];
+        foreach ($m[1] as $i => $json) {
+            foreach (self::clesArgent(json_decode(html_entity_decode($json), true)) as $c) {
+                $cles[] = 'script'.$i.'.'.$c;
+            }
+        }
+
+        return $cles;
+    }
+
+    /** Raison pour laquelle ce montant est voulu pour qui voit les montants (MONTANTS_VOULUS), ou null. */
     public static function montantVoulu(string $contexte): ?string
     {
         foreach (self::MONTANTS_VOULUS as $motif => $raison) {

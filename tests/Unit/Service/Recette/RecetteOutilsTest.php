@@ -105,6 +105,19 @@ final class RecetteOutilsTest extends TestCase
         self::assertSame(['commandes.0.resteAPayer', 'devis.0.totalTtc'], RecetteEspaceClient::clesArgent($donnees));
     }
 
+    public function testAppelsEtDonneesDePageSansMontant(): void
+    {
+        // Réponse d'un appel de prix pour un demandeur : un drapeau n'est pas un montant.
+        self::assertSame([], RecetteEspaceClient::clesArgent(['montants' => false, 'pieces' => 4, 'resume' => '4 pièces']));
+        self::assertSame(['total', 'detail.0.montant'], RecetteEspaceClient::clesArgent(['montants' => true, 'total' => 54000, 'detail' => [['libelle' => 'Impression', 'montant' => 48000]]]));
+        self::assertSame(['prixPiece'], RecetteEspaceClient::clesArgent(['prixPiece' => 1500, 'pourcentage' => 10]));
+
+        // Données glissées dans la page (fiches de Mes produits) : lues même si elles ne s'affichent pas.
+        $page = '<p>Bâche</p><script type="application/json" id="fiches">[{"nom":"B\u00e2che","prix":"29 000 F \/ pi\u00e8ce"},{"nom":"Vinyle","prix":null}]</script><script>var x = 1;</script>';
+        self::assertSame(['script0.0.prix'], RecetteEspaceClient::clesArgentDesScripts($page));
+        self::assertSame([], RecetteEspaceClient::clesArgentDesScripts(str_replace('"29 000 F \/ pi\u00e8ce"', 'null', $page)));
+    }
+
     public function testMontantsVoulusDeLEspace(): void
     {
         self::assertNotNull(RecetteEspaceClient::montantVoulu('Kakémonos du hall × 2dernière fois 26/09 54 000 F'));

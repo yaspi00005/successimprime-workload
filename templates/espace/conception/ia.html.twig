@@ -52,7 +52,7 @@
 				{% if not tarif.iaDisponible %}
 					<button class="ec-bouton rose" disabled>Génération bientôt disponible</button>
 				{% elseif not conceptionPeutPayer %}
-					<button class="ec-bouton rose" disabled>Générer une image · {{ tarif.prixImage|francs_conception }}</button>
+					<button class="ec-bouton rose" disabled>Générer une image{{ coque.montants ? ' · ' ~ tarif.prixImage|francs_conception }}</button>
 					<p class="ec-petit" style="margin:.5rem 0 0">Chaque image est payée : {{ payeurs is not empty ? payeurs|join(' ou ') : 'une personne qui paie pour l\'entreprise' }} peut la générer.</p>
 				{% elseif not assez %}
 					<a class="ec-bouton rose" href="{{ path('app_espace_conception_credit', {demande: demande.publicId}) }}">Recharger le crédit IA</a>
@@ -101,7 +101,7 @@
 			{% if choisie %}
 				{# Téléphone (maquette DC05) : carte de l'image, Régénérer et Commander. #}
 				<div class="ec-carte dc-proposition" style="margin-top:.85rem">
-					<div class="ec-ligne"><b>Image {{ position }} · {{ (choisie.termineeLe ?? choisie.creeLe)|date('H:i') }}</b><b>{{ choisie.prix|francs_conception }} payé</b></div>
+					<div class="ec-ligne"><b>Image {{ position }} · {{ (choisie.termineeLe ?? choisie.creeLe)|date('H:i') }}</b>{% if coque.montants %}<b>{{ choisie.prix|francs_conception }} payé</b>{% endif %}</div>
 					<div class="ec-petit">Textes replacés par le graphiste avant impression</div>
 				</div>
 				<div class="dc-mobile-actions">
@@ -125,7 +125,7 @@
 							<a href="{{ path('app_espace_conception_ia', {id: demande.publicId, image: i.id}) }}" class="{{ choisie and i.id == choisie.id ? 'actif' }}" title="Image {{ loop.index }}"{{ choisie and i.id == choisie.id ? ' aria-current="true"' }}><img src="{{ path('app_espace_conception_image', {id: i.id, taille: 'v'}) }}" alt="Image {{ loop.index }}" loading="lazy"></a>
 						{% endfor %}
 					</div>
-					<span class="ec-petit">{{ images|length }} image{{ images|length > 1 ? 's' }} générée{{ images|length > 1 ? 's' }} · {{ (images|reduce((total, i) => total + i.prix, 0))|francs_conception }}</span>
+					<span class="ec-petit">{{ images|length }} image{{ images|length > 1 ? 's' }} générée{{ images|length > 1 ? 's' }}{{ coque.montants ? ' · ' ~ (images|reduce((total, i) => total + i.prix, 0))|francs_conception }}</span>
 				{% endif %}
 			</div>
 
@@ -135,13 +135,14 @@
 					<input type="hidden" name="image" value="{{ choisie.id }}">
 					<button class="ec-bouton" type="submit">Choisir et commander l'impression</button>
 					{% if tarif.finalisation > 0 %}
-						<label class="dc-finaliser"><input type="checkbox" name="finalisation" value="1" id="finalisation"><span>Faire finaliser par un graphiste · + {{ tarif.finalisation|francs_conception }}</span></label>
+						<label class="dc-finaliser"><input type="checkbox" name="finalisation" value="1" id="finalisation"><span>Faire finaliser par un graphiste{{ coque.montants ? ' · + ' ~ tarif.finalisation|francs_conception }}</span></label>
 					{% endif %}
 					<div class="ec-carte dc-recap">
 						<div class="dc-lignes">
-							{% if estimation %}<div><span>{{ estimation.libelle }}</span><b>{{ estimation.total|francs_conception }}</b></div>
-							{% else %}<div><span>Impression {{ demande.supportNom|lower }}</span><b>prix confirmé par l'atelier</b></div>{% endif %}
-							{% if tarif.finalisation > 0 %}<div id="ligne-finalisation" hidden><span>Finalisation graphiste</span><b>{{ tarif.finalisation|francs_conception }}</b></div>{% endif %}
+							{# Un demandeur : sa commande attend son valideur, qui en voit le prix (CompteClient::montantsVisibles). #}
+							{% if estimation and coque.montants %}<div><span>{{ estimation.libelle }}</span><b>{{ estimation.total|francs_conception }}</b></div>
+							{% else %}<div><span>{{ estimation ? estimation.libelle : 'Impression ' ~ demande.supportNom|lower }}</span><b>prix confirmé par {{ coque.montants ? 'l\'atelier' : 'votre valideur' }}</b></div>{% endif %}
+							{% if tarif.finalisation > 0 %}<div id="ligne-finalisation" hidden><span>Finalisation graphiste</span><b>{{ coque.montants ? tarif.finalisation|francs_conception : 'prix confirmé par votre valideur' }}</b></div>{% endif %}
 							{% if demande.largeurCm and demande.hauteurCm %}<div><span>Résolution pour {{ demande.largeurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} × {{ demande.hauteurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} cm</span><b class="vert">agrandie ✓</b></div>{% endif %}
 						</div>
 						<p class="ec-petit" style="margin:.6rem 0 0">Prix indicatif : l'atelier le confirme, remplace les textes par des polices nettes et agrandit l'image avant l'impression.</p>

@@ -58,7 +58,7 @@ L'assistant ne lit jamais la base. Il appelle des fonctions de l'application (`A
 La règle de Yaya : toute information sensible tient compte des droits et des rôles. Elle est appliquée côté serveur, dans les outils, pas dans les consignes du modèle.
 
 - **Client** : il vient toujours de la session (`ContexteAssistant`), jamais d'un paramètre. Aucun outil n'accepte de numéro de client, de compte, de téléphone ou d'identifiant (test `OutilsAssistantTest`).
-- **Montants** : seulement pour un compte qui paie (droit « payeur ») ou un particulier. Un compte « demandeur » d'une entreprise voit l'étape et la livraison, pas les montants ; `reste_a_payer` lui est refusé. C'est plus strict que certaines pages de l'espace (prix de « Mes produits », totaux des commandes) : l'assistant n'en dit pas plus que le droit le plus prudent.
+- **Montants** : seulement pour un compte qui paie (droit « payeur ») ou un particulier. Un compte « demandeur » d'une entreprise voit l'étape et la livraison, pas les montants ; `reste_a_payer` lui est refusé. C'est plus strict que les pages de l'espace, où un valideur voit aussi les prix (`CompteClient::montantsVisibles`) : l'assistant n'en dit pas plus que le droit le plus prudent.
 - **Lecture · suivi** : suivi des commandes seulement ; ni montants, ni « Mes produits », ni demande de devis.
 - **Site public** : catalogue et prix publics seulement. Un client revendeur connecté obtient le tarif public avec une note : son prix est celui de Nouvelle commande et du devis. Jamais de montants d'un client, de noms de clients, de coûts, de marges, de prix B2B ni de notes internes.
 - **Argent** : aucune action. Remise, annulation, remboursement ou litige passent à un conseiller.

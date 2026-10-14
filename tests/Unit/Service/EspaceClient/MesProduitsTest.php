@@ -51,6 +51,26 @@ final class MesProduitsTest extends TestCase
         self::assertSame(['3 pièces', '= 18 m²', 87000], [$pieces['resume'], $pieces['detail'], $pieces['montant']]);
     }
 
+    public function testSansPrixPourUnDemandeur(): void
+    {
+        $service = $this->service();
+        $bache = $this->bache();
+
+        self::assertSame('29 000 F / pièce', $service->fiche($bache)['prix']);
+        self::assertNull($service->fiche($bache, false)['prix']);
+
+        $calcul = $service->calculer($bache, 20, 'm2');
+        $page = MesProduits::calculPourLaPage($calcul, true);
+        self::assertSame([true, 116000, 87000], [$page['montants'], $page['montant'], $page['alternative']['montant']]);
+
+        // Le demandeur garde la conversion (ce que l'atelier imprimera), sans aucun prix.
+        $demandeur = MesProduits::calculPourLaPage($calcul, false);
+        self::assertFalse($demandeur['montants']);
+        self::assertArrayNotHasKey('montant', $demandeur);
+        self::assertSame(['pieces' => 3, 'surface' => 18.0], $demandeur['alternative']);
+        self::assertSame([4, 24.0, '4 pièces'], [$demandeur['pieces'], $demandeur['surface'], $demandeur['resume']]);
+    }
+
     public function testRouleauEtLots(): void
     {
         $service = $this->service();

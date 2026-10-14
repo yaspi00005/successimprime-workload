@@ -33,7 +33,9 @@ final class EspaceProduitsController extends AbstractController
     {
         $compte = $this->compte();
         $client = $compte->getClient();
-        $fiches = array_map($this->mesProduits->fiche(...), $this->mesProduits->liste($client));
+        // Un demandeur ne reçoit aucun prix (CompteClient::montantsVisibles).
+        $montants = $compte->montantsVisibles();
+        $fiches = array_map(fn ($p): array => $this->mesProduits->fiche($p, $montants), $this->mesProduits->liste($client));
         $categories = array_count_values(array_filter(array_map(static fn (array $f): ?string => $f['categorie'], $fiches)));
         ksort($categories);
 
@@ -50,20 +52,21 @@ final class EspaceProduitsController extends AbstractController
         ]);
     }
 
-    /** Conversion et prix pour la quantité saisie (même calcul qu'à la commande). */
+    /** Conversion et prix pour la quantité saisie (même calcul qu'à la commande) ; sans prix pour un demandeur. */
     #[Route('/{id}/calcul', name: '_calcul', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['POST'])]
     public function calcul(string $id, Request $request): JsonResponse
     {
         if (!$this->isCsrfTokenValid('espace', (string) $request->headers->get('X-CSRF-TOKEN'))) {
             return $this->json(['erreur' => 'La page a expiré. Rechargez-la.'], 403);
         }
-        $produit = $this->mesProduits->trouver($this->compte()->getClient(), $id) ?? throw $this->createNotFoundException();
+        $compte = $this->compte();
+        $produit = $this->mesProduits->trouver($compte->getClient(), $id) ?? throw $this->createNotFoundException();
         $donnees = json_decode(mb_substr($request->getContent(), 0, 2000), true, 3);
         $donnees = \is_array($donnees) ? $donnees : [];
         try {
             $r = $this->mesProduits->calculer($produit, self::nombre($donnees['quantite'] ?? null), (string) ($donnees['saisie'] ?? ''), (bool) ($donnees['inferieur'] ?? false));
 
-            return $this->json(array_intersect_key($r, array_flip(['quantite', 'saisie', 'inferieur', 'pieces', 'surface', 'longueur', 'montant', 'production', 'resume', 'detail', 'alternative'])));
+            return $this->json(MesProduits::calculPourLaPage($r, $compte->montantsVisibles()));
         } catch (\DomainException $e) {
             return $this->json(['erreur' => $e->getMessage()], 422);
         }

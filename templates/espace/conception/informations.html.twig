@@ -115,8 +115,13 @@
 						<span class="dc-coche"></span>
 					</span>
 					<span class="dc-lignes">
-						<span><span>Forfait {{ demande.supportNom|lower }}</span><b>{{ tarif.forfait|francs_conception }}</b></span>
-						{% if tarif.acompte > 0 %}<span><span>Acompte à payer maintenant ({{ tarif.pourcent }} %)</span><b>{{ tarif.acompte|francs_conception }}</b></span>{% endif %}
+						{# Forfait et acompte : pour qui voit les montants (CompteClient::montantsVisibles). #}
+						{% if coque.montants %}
+							<span><span>Forfait {{ demande.supportNom|lower }}</span><b>{{ tarif.forfait|francs_conception }}</b></span>
+							{% if tarif.acompte > 0 %}<span><span>Acompte à payer maintenant ({{ tarif.pourcent }} %)</span><b>{{ tarif.acompte|francs_conception }}</b></span>{% endif %}
+						{% else %}
+							<span><span>Forfait {{ demande.supportNom|lower }}{{ tarif.acompte > 0 ? ' et acompte' }}</span><b>vus par la personne qui paie</b></span>
+						{% endif %}
 						<span><span>Premier BAT</span><b>sous {{ tarif.delai }} h ouvrées</b></span>
 						<span><span>Corrections incluses</span><b>{{ tarif.corrections }}</b></span>
 					</span>
@@ -131,9 +136,9 @@
 					</span>
 					{% if tarif.iaDisponible %}
 						<span class="dc-lignes">
-							<span><span>Prix</span><b>{{ tarif.prixImage|francs_conception }} par image</b></span>
+							<span><span>Prix</span><b>{{ coque.montants ? tarif.prixImage|francs_conception ~ ' par image' : 'vu par la personne qui paie' }}</b></span>
 							{% if conceptionPeutPayer %}<span><span>Votre crédit IA</span><b>{{ tarif.credit|francs_conception }} · {{ tarif.imagesPossibles }} image{{ tarif.imagesPossibles > 1 ? 's' }}</b></span>{% endif %}
-							{% if tarif.finalisation > 0 %}<span><span>Finalisation par un graphiste</span><b>+ {{ tarif.finalisation|francs_conception }}, conseillée</b></span>{% endif %}
+							{% if tarif.finalisation > 0 %}<span><span>Finalisation par un graphiste</span><b>{{ coque.montants ? '+ ' ~ tarif.finalisation|francs_conception ~ ', ' }}conseillée</b></span>{% endif %}
 						</span>
 					{% else %}
 						<span class="dc-bientot">Bientôt disponible</span>
@@ -168,7 +173,7 @@
 			{# IA : chaque image est débitée du crédit IA, au moment de la générer. #}
 			<div class="dc-action" data-pour="ia"{{ choix != 'ia' ? ' hidden' }}>
 				{% if modifiable %}
-					<button class="ec-bouton rose" type="submit" name="suite" value="ia">Continuer vers la génération · {{ tarif.prixImage|francs_conception }} l'image</button>
+					<button class="ec-bouton rose" type="submit" name="suite" value="ia">Continuer vers la génération{{ coque.montants ? ' · ' ~ tarif.prixImage|francs_conception ~ ' l\'image' }}</button>
 					<p class="ec-petit">
 						{% if conceptionPeutPayer %}Débitée de votre crédit IA ({{ tarif.credit|francs_conception }}), rechargeable par Orange Money.
 						{% else %}Chaque image est payée : {{ payeurs is not empty ? payeurs|join(' ou ') : 'une personne qui paie pour l\'entreprise' }} peut la générer. Vous pouvez préparer la consigne.{% endif %}

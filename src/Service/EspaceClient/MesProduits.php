@@ -62,11 +62,12 @@ final class MesProduits
     }
 
     /**
-     * Ce que montre la carte du produit.
+     * Ce que montre la carte du produit. Sans $montants (demandeur,
+     * CompteClient::montantsVisibles), pas de prix : « prix » reste null.
      *
      * @return array<string, mixed>
      */
-    public function fiche(ProduitClient $p): array
+    public function fiche(ProduitClient $p, bool $montants = true): array
     {
         $saisies = self::saisies($p);
         $lot = (int) ($p->getTailleLot() ?? 1);
@@ -87,7 +88,7 @@ final class MesProduits
                 [CommandeProduitClient::SAISIE_M2] === $saisies => 'au m²',
                 default => 'à l\'unité',
             },
-            'prix' => match ($p->getUniteVente()) {
+            'prix' => !$montants ? null : match ($p->getUniteVente()) {
                 ProduitClient::UNITE_LOT => \sprintf('%s F / %s', self::f($p->getPrixUnitaire()), self::f($lot)),
                 ProduitClient::UNITE_M2 => \sprintf('%s F / m²', self::f($p->getPrixUnitaire())),
                 default => \sprintf('%s F / pièce', self::f($p->getPrixUnitaire())),
@@ -139,6 +140,29 @@ final class MesProduits
         };
 
         return $r + ['quantite' => $quantite, 'saisie' => $saisie, 'inferieur' => $inferieur, 'resume' => $resume, 'detail' => $detail];
+    }
+
+    /**
+     * Ce que la page reçoit du calcul (feuille de quantité) : la conversion
+     * toujours, le prix seulement pour qui voit les montants. Un demandeur
+     * reçoit les pièces, les m² et ce que l'atelier imprimera, sans montant
+     * (ni pour le choix au-dessous).
+     *
+     * @param array<string, mixed> $calcul MesProduits::calculer
+     *
+     * @return array<string, mixed>
+     */
+    public static function calculPourLaPage(array $calcul, bool $montants): array
+    {
+        $page = array_intersect_key($calcul, array_flip(['quantite', 'saisie', 'inferieur', 'pieces', 'surface', 'longueur', 'montant', 'production', 'resume', 'detail', 'alternative']));
+        if (!$montants) {
+            unset($page['montant']);
+            if (\is_array($page['alternative'] ?? null)) {
+                unset($page['alternative']['montant']);
+            }
+        }
+
+        return ['montants' => $montants] + $page;
     }
 
     /**

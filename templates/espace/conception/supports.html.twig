@@ -35,7 +35,12 @@
 								<span class="dc-carre" style="--couleur: {{ s.couleur }}"></span>
 								<b>{{ s.nom }}</b>
 								<span class="ec-petit">{{ s.format }}</span>
-								<span class="dc-prix">Graphiste dès <b>{{ s.forfait|francs_conception }}</b> · IA {% if iaDisponible %}<b>{{ prixImage|francs_conception }}</b>{% else %}bientôt{% endif %}</span>
+								{# Prix « dès » : pour qui voit les montants (CompteClient::montantsVisibles), pas pour un demandeur. #}
+								{% if coque.montants %}
+									<span class="dc-prix">Graphiste dès <b>{{ s.forfait|francs_conception }}</b> · IA {% if iaDisponible %}<b>{{ prixImage|francs_conception }}</b>{% else %}bientôt{% endif %}</span>
+								{% else %}
+									<span class="dc-prix">Graphiste · IA{% if not iaDisponible %} bientôt{% endif %}</span>
+								{% endif %}
 							</label>
 						</li>
 					{% endfor %}
@@ -48,7 +53,7 @@
 					<li><b>Choisissez le support</b><span>kakémono, bâche, flyer…</span></li>
 					<li><b>Donnez vos informations</b><span>textes, logo, photos, couleurs, style</span></li>
 					<li><b>Graphiste ou IA</b><span>un graphiste conçoit{% if iaDisponible %}, ou l'IA génère une image en 1 minute{% else %} ; la génération par IA arrive bientôt{% endif %}</span></li>
-					<li><b>Payez par Orange Money</b><span>acompte du graphiste{% if iaDisponible %} ou {{ prixImage|francs_conception }} par image IA{% endif %}</span></li>
+					<li><b>Payez par Orange Money</b><span>acompte du graphiste{% if iaDisponible %} ou {% if coque.montants %}{{ prixImage|francs_conception }} par image IA{% else %}chaque image IA{% endif %}{% endif %}</span></li>
 					<li><b>Validez puis imprimez</b><span>le visuel passe directement en commande</span></li>
 				</ol>
 				{% if conceptionPeutPreparer %}

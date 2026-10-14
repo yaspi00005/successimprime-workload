@@ -24,11 +24,12 @@ final class RecommanderClient
      * « Recommander rapidement » (maquette EC01) : les derniers articles
      * commandés, prix recalculé maintenant (catalogue du jour ou fiche
      * « Mes produits »), avec le lien qui ouvre la commande pré-remplie.
-     * Un article qui ne se commande plus en ligne est passé.
+     * Un article qui ne se commande plus en ligne est passé. Sans $montants
+     * (demandeur, CompteClient::montantsVisibles), le prix reste null.
      *
-     * @return list<array{titre: string, derniere: \DateTimeInterface, prix: int, lien: array{0: string, 1: array<string, mixed>}}>
+     * @return list<array{titre: string, derniere: \DateTimeInterface, prix: ?int, lien: array{0: string, 1: array<string, mixed>}}>
      */
-    public function articles(Clients $client, int $nombre = 3): array
+    public function articles(Clients $client, int $nombre = 3, bool $montants = true): array
     {
         $vus = [];
         $liste = [];
@@ -49,7 +50,7 @@ final class RecommanderClient
                     continue;
                 }
                 $vus[$article['cle']] = true;
-                $liste[] = ['titre' => EspaceClient::titreLigne($l), 'derniere' => $c->getDateCommande() ?? new \DateTimeImmutable(), 'prix' => $article['prix'], 'lien' => $article['lien']];
+                $liste[] = ['titre' => EspaceClient::titreLigne($l), 'derniere' => $c->getDateCommande() ?? new \DateTimeImmutable(), 'prix' => $montants ? $article['prix'] : null, 'lien' => $article['lien']];
                 if (\count($liste) >= $nombre) {
                     return $liste;
                 }

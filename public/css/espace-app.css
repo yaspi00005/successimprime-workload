@@ -324,6 +324,7 @@ details.ec-modif[open] summary { display: none; }
 .ec-quantite input { flex: 1; min-width: 0; border: 0; text-align: center; font: inherit; font-weight: 700; color: var(--bleu); background: none; }
 .ec-total { position: sticky; bottom: calc(4.6rem + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: #fff; border: 1.5px solid var(--bleu-clair); border-radius: var(--rayon); padding: .85rem 1rem; box-shadow: 0 10px 24px rgba(18,33,58,.12); z-index: 5; }
 .ec-total .ec-gros { font-size: 1.8rem; color: var(--bleu); margin: 0; white-space: nowrap; }
+.ec-total-sans-prix, .ec-feuille-pied .ec-sans-prix { font-weight: 800; color: var(--bleu); font-size: 1rem; line-height: 1.25; margin-top: .1rem; }
 .ec-total .ec-bouton { width: auto; padding: .85rem 1.4rem; border-radius: 999px; }
 @media (min-width: 900px) { .ec-total { bottom: 1rem; } }
 
@@ -547,6 +548,7 @@ a.ec-carte.ec-pc-entree { display: flex; align-items: center; gap: .85rem; }
 .ec-reco > li > span:first-child { min-width: 0; display: flex; flex-direction: column; }
 .ec-reco b { font-size: .9rem; }
 .ec-reco-prix { font-weight: 800; white-space: nowrap; }
+.ec-reco-sans-prix { max-width: 9.5rem; text-align: right; line-height: 1.25; }
 .ec-reco-panier { color: var(--rouge); font-weight: 800; font-size: .85rem; white-space: nowrap; }
 
 .ec-fi-bande { display: flex; align-items: center; gap: .85rem; color: inherit; }

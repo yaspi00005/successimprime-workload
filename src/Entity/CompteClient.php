@@ -219,6 +219,20 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
         return !$this->estLectureSeule() && !$this->peut(self::DROIT_VALIDEUR);
     }
 
+    /**
+     * Voit-il les prix et les montants (total d'une commande, devis, prix du
+     * catalogue et de Mes produits, prix de l'atelier 3D, tarifs de la
+     * conception) ? Un particulier, et dans une entreprise qui paie ou qui
+     * valide ; jamais un demandeur (le prix est vu par son valideur) ni un
+     * compte en lecture seule. C'est la seule règle : l'espace client
+     * (`coque.montants`), ses appels JSON et l'atelier 3D la suivent. Le
+     * solde, les factures et le crédit restent au payeur (DROIT_PAYEUR).
+     */
+    public function montantsVisibles(): bool
+    {
+        return $this->peut(self::DROIT_PAYEUR) || $this->peut(self::DROIT_VALIDEUR);
+    }
+
     /** « Valideur et payeur », « Demandeur »... */
     public function getLibelleDroits(): string
     {

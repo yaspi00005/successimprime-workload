@@ -4,6 +4,41 @@ L'ERP local reste à l'atelier (Windows, XAMPP). Le site vitrine, l'espace clien
 
 Ce guide suppose Ubuntu 24.04 LTS. Le choix du fournisseur reste à faire par Yaya.
 
+## Essai sur un hébergement mutualisé
+
+Avant le VPS, un hébergement mutualisé suffit pour essayer le site en ligne : espace client, paiement Orange Money avec une vraie adresse, synchronisation avec l'ERP local. Ce n'est pas la cible de production (pas de pare-feu à soi, sauvegardes et performances limitées).
+
+À vérifier avec l'hébergeur avant de commander :
+
+| Point | Pourquoi |
+|---|---|
+| PHP 8.4 au choix, extensions intl, gd (JPEG et WebP), mbstring, curl, zip, pdo_mysql | Symfony 8.1 demande PHP 8.4 ; `app:verifier-installation` contrôle le reste |
+| Accès SSH | composer et `bin/console` (migrations, vérification, essai Orange Money) |
+| Dossier racine du domaine ou du sous-domaine réglable sur `public/` | sinon `.env.local` et le code seraient servis ; ne jamais contourner par une réécriture vers `public/` |
+| HTTPS (Let's Encrypt) avec redirection forcée dans le panneau | notifications sur téléphone, paiement, connexion ; la redirection ne va pas dans `public/.htaccess`, qui sert aussi à XAMPP en local |
+| Base MySQL ou MariaDB, tâches cron | données ; `app:espace:notifications` toutes les 15 minutes |
+| Envoi de fichiers de 64 Mo | `public/.user.ini` le règle quand PHP tourne en FPM ou CGI ; sinon, réglage PHP du panneau |
+| Appels sortants en HTTPS | API Orange SMS et Orange Money |
+
+Installation par SSH :
+
+```
+cd ~ && git clone https://github.com/yaspi00005/successimprime-workload.git successimprim
+cd successimprim
+php composer.phar install --no-dev --optimize-autoloader   # ou composer, s'il est installé
+```
+
+Puis pointer le domaine sur `~/successimprim/public`, créer la base dans le panneau, écrire `.env.local` (mêmes variables que plus bas, avec `APP_ENV=prod` et `APP_EN_LIGNE=1`, droits 600) et lancer :
+
+```
+php bin/console doctrine:migrations:migrate --no-interaction
+php bin/console cache:clear
+php bin/console app:verifier-installation
+php bin/console app:orange-money:tester --paiement
+```
+
+Sur certains hébergeurs, la commande `php` du terminal ou du cron n'est pas la bonne version : utiliser le chemin donné par l'hébergeur (par exemple `/usr/local/bin/php8.4` ou `ea-php84`) et le vérifier avec `php -v`. Les tâches cron sont celles de « Tâches planifiées du serveur », avec ce chemin. `public/.htaccess` gère la réécriture des adresses, la compression et le cache des fichiers statiques sous Apache ou LiteSpeed.
+
 ## Serveur
 
 - 2 processeurs, 4 Go de mémoire, 60 Go de disque SSD au minimum. Les fichiers des clients (BAT, fichiers d'impression) prennent la place : prévoir plus si on les garde longtemps en ligne.

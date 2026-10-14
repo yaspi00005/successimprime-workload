@@ -65,9 +65,10 @@ final class SynchroCommand extends Command
 
         do {
             $r = $this->agent->cycle();
-            $ligne = \sprintf('[%s] %s : %d envoyées, %d reçues%s%s', date('H:i:s'), $r['statut'], $r['envoyes'], $r['recus'], $r['conflits'] > 0 ? ', '.$r['conflits'].' conflit(s)' : '', $r['message'] ? ' · '.$r['message'] : '');
-            // Un cycle sans rien à faire ne remplit pas le journal de la tâche planifiée.
-            $rien = $r['statut'] === 'ok' && $r['envoyes'] === 0 && $r['recus'] === 0;
+            $reste = $this->synchro->enAttente();
+            $ligne = \sprintf('[%s] %s : %d envoyées, %d reçues%s%s%s', date('H:i:s'), $r['statut'], $r['envoyes'], $r['recus'], $r['conflits'] > 0 ? ', '.$r['conflits'].' conflit(s)' : '', $reste > 0 ? ' · '.$reste.' en attente' : '', $r['message'] ? ' · '.$r['message'] : '');
+            // Un cycle sans rien à faire ne remplit pas le journal de la tâche planifiée ; une file qui n'avance pas, si.
+            $rien = $r['statut'] === 'ok' && $r['envoyes'] === 0 && $r['recus'] === 0 && $reste === 0;
             $io->writeln($ligne, $rien ? OutputInterface::VERBOSITY_VERBOSE : OutputInterface::VERBOSITY_NORMAL);
             if ($input->getOption('boucle')) {
                 sleep(30);

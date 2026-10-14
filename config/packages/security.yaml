@@ -291,8 +291,11 @@ security:
         # PARAMÈTRES
         # ============================================================
 
+        # Types d'impression (/types/impression) et lots d'étiquettes
+        # (/lot/etiquette) : la page de suivi d'une étiquette (QR code)
+        # garde sa règle (tout compte connecté).
         - {
-            path: ^/(categorie-produit|produits|produit-configuration|type-impression|support|format|finition|machines|lot-etiquette),
+            path: '^/(categorie-produit|produits|produit-configuration|type-impression|types/impression|support|format|finition|machines|lot-etiquette|lot/etiquette(?!/suivi/))',
             roles: ROLE_ADMIN
         }
 

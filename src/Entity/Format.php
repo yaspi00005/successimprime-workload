@@ -256,6 +256,24 @@ public function removeSupport(Supports $support): static
         return $this;
     }
 
+    /** Surface d'une pièce à ce format, en m² (0 si le format n'a pas de dimensions : « Sur mesure », « Taille unique »). */
+    public function surfaceM2(): float
+    {
+        return self::surfaceDe($this->largeur, $this->hauteur, $this->unite);
+    }
+
+    /** Surface en m² d'une largeur et d'une hauteur exprimées en mm, cm ou m. */
+    public static function surfaceDe(int|float|string|null $largeur, int|float|string|null $hauteur, ?string $unite): float
+    {
+        $facteur = match (strtolower(trim((string) $unite))) {
+            'm' => 1.0,
+            'cm' => 0.01,
+            default => 0.001,
+        };
+
+        return max(0.0, (float) $largeur * $facteur) * max(0.0, (float) $hauteur * $facteur);
+    }
+
     public function __toString(): string
     {
         return sprintf(

@@ -1,0 +1,22 @@
+{# Petits formats des promotions (docs/promotions.md). #}
+
+{% macro montant(v) %}{{ (v ?? 0)|number_format(0, ',', ' ') }} F{% endmacro %}
+
+{% macro taux(v) -%}
+	{%- if v is null %}—{% else %}{{ v|number_format(v == v|round(0, 'floor') ? 0 : 1, ',', ' ') }} %{% endif -%}
+{%- endmacro %}
+
+{% macro etat(p, jour) -%}
+	{%- set e = p.etat(jour) -%}
+	<span class="si-pastille {{ {en_cours: 'si-pastille-vert', a_venir: 'si-pastille-bleu', terminee: 'si-pastille-gris', suspendue: 'si-pastille-orange'}[e] }}">{{ {en_cours: 'En cours', a_venir: 'À venir', terminee: 'Terminée', suspendue: 'Suspendue'}[e] }}</span>
+{%- endmacro %}
+
+{# Conditions, sans la valeur du code pour qui ne gère pas les promotions. #}
+{% macro conditions(p, gestion) -%}
+	{%- set c = [] -%}
+	{%- if p.quantiteMin %}{% set c = c|merge(['dès ' ~ p.quantiteMin ~ ' par ligne']) %}{% endif -%}
+	{%- if p.montantMin %}{% set c = c|merge(['ligne dès ' ~ p.montantMin|number_format(0, ',', ' ') ~ ' F']) %}{% endif -%}
+	{%- if p.code %}{% set c = c|merge([gestion ? 'code ' ~ p.code : 'avec code promo']) %}{% endif -%}
+	{%- if p.utilisationsParClient %}{% set c = c|merge([p.utilisationsParClient ~ ' commande' ~ (p.utilisationsParClient > 1 ? 's') ~ ' par client']) %}{% endif -%}
+	{{- c is empty ? 'aucune' : c|join(' · ') -}}
+{%- endmacro %}

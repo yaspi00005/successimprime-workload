@@ -119,6 +119,7 @@ security:
             - ROLE_ACTIONS_GERER
             - ROLE_RESPONSABLE_GESTION
             - ROLE_SITE_VITRINE
+            - ROLE_PROMOTIONS
             
 
 

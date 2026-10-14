@@ -1,0 +1,187 @@
+{% extends 'base.html.twig' %}
+
+{# Créer ou modifier une promotion (docs/promotions.md). #}
+
+{% block title %}{{ nouvelle ? 'Nouvelle promotion' : promotion.nom }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ nouvelle ? path('app_promotions_index') : path('app_promotions_voir', {id: promotion.id}) }}" class="btn btn-light btn-sm si-btn-entete">Retour</a></li>
+{% endblock %}
+
+{% block body %}
+	{% set choisis = promotion.produits|map(p => p.id) %}
+	{% set clientsChoisis = promotion.clients|map(c => c.id) %}
+	<form method="post" id="promotion" class="row">
+		<input type="hidden" name="_token" value="{{ csrf_token('promotion-formulaire') }}">
+		<div class="col-xl-8">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>{{ nouvelle ? 'Nouvelle promotion' : 'Modifier la promotion' }}</h4></div>
+
+				{% for e in erreurs %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
+				{% if utilisee %}<div class="alert alert-info py-2">Déjà sur des devis ou des commandes : ces lignes gardent la promotion telle qu'elle était ; vos changements valent pour les prochaines saisies.</div>{% endif %}
+
+				<div class="mb-3">
+					<label class="form-label" for="nom">Nom</label>
+					<input type="text" id="nom" name="nom" maxlength="120" value="{{ promotion.nom }}" class="form-control" required placeholder="Ex. : Rentrée : −15 % sur les roll-up">
+					<small class="text-muted">Le client le voit sur son devis, sa facture et dans son espace : n'y mettez ni segment ni remarque interne.</small>
+				</div>
+
+				<fieldset class="mb-3">
+					<legend class="form-label fs-6">Articles visés</legend>
+					<div class="row g-3">
+						<div class="col-md-7">
+							<input type="search" class="form-control form-control-sm mb-2" placeholder="Filtrer les produits…" data-si-filtre="produits" aria-label="Filtrer les produits">
+							<div class="si-pr-choix" data-si-liste="produits">
+								{% for p in produits %}
+									<label><input type="checkbox" name="produits[]" value="{{ p.id }}"{{ p.id in choisis ? ' checked' }}> {{ p.nom }}{% if p.categorieProduit %} <small class="text-muted">· {{ p.categorieProduit.nom }}</small>{% endif %}</label>
+								{% endfor %}
+							</div>
+						</div>
+						<div class="col-md-5">
+							<label class="form-label" for="categorie">Ou toute une catégorie</label>
+							<select id="categorie" name="categorie" class="form-select">
+								<option value="">—</option>
+								{% for c in categories %}
+									<option value="{{ c.id }}"{{ promotion.categorie and promotion.categorie.id == c.id ? ' selected' }}>{{ c.nom }}</option>
+								{% endfor %}
+							</select>
+							<small class="text-muted">Tous ses produits, y compris ceux ajoutés plus tard.</small>
+						</div>
+					</div>
+				</fieldset>
+
+				<fieldset class="mb-3">
+					<legend class="form-label fs-6">Avantage</legend>
+					<div class="row g-3 align-items-end">
+						<div class="col-md-7">
+							<div class="si-pr-avantages">
+								{% for cle, libelle in constant('App\\Entity\\Promotion::AVANTAGES') %}
+									<label><input type="radio" name="avantage" value="{{ cle }}"{{ promotion.avantage == cle ? ' checked' }}> {{ libelle }}</label>
+								{% endfor %}
+							</div>
+						</div>
+						<div class="col-md-5">
+							<label class="form-label" for="valeur">Valeur</label>
+							<div class="input-group">
+								<input type="text" inputmode="decimal" id="valeur" name="valeur" value="{{ promotion.valeur > 0 ? promotion.valeur|number_format(promotion.valeur == promotion.valeur|round(0, 'floor') ? 0 : 2, ',', '') }}" class="form-control" required>
+								<span class="input-group-text" data-si-unite>%</span>
+							</div>
+						</div>
+					</div>
+					<small class="text-muted d-block mt-1">Par unité facturable (m², pièce, mètre…). Pas de cumul : la ligne garde la meilleure des deux, la remise déjà saisie ou la promotion.</small>
+				</fieldset>
+
+				<div class="row g-3 mb-3">
+					<div class="col-sm-6">
+						<label class="form-label" for="debut">Du</label>
+						<input type="date" id="debut" name="debut" value="{{ promotion.debut|date('Y-m-d') }}" class="form-control" required>
+					</div>
+					<div class="col-sm-6">
+						<label class="form-label" for="fin">Au (inclus)</label>
+						<input type="date" id="fin" name="fin" value="{{ promotion.fin|date('Y-m-d') }}" class="form-control" required>
+					</div>
+				</div>
+
+				<fieldset class="mb-3">
+					<legend class="form-label fs-6">Clients</legend>
+					<select id="segment" name="segment" class="form-select" aria-label="Segment de clients">
+						{% for cle, libelle in constant('App\\Entity\\Promotion::SEGMENTS') %}
+							<option value="{{ cle }}"{{ promotion.segment == cle ? ' selected' }}>{{ libelle }}</option>
+						{% endfor %}
+					</select>
+					<small class="text-muted d-block mt-1">Calculé au jour du devis ou de la commande, sans compter celle-ci. Les revendeurs au prix B2B restent exclus, quel que soit le segment.</small>
+					<div class="mt-2" data-si-liste-clients{{ promotion.segment != 'liste' ? ' hidden' }}>
+						<input type="search" class="form-control form-control-sm mb-2" placeholder="Filtrer les clients…" data-si-filtre="clients" aria-label="Filtrer les clients">
+						<div class="si-pr-choix" data-si-liste="clients">
+							{% for c in clients %}
+								<label><input type="checkbox" name="clients[]" value="{{ c.id }}"{{ c.id in clientsChoisis ? ' checked' }}> {{ c.nomComplet }} <small class="text-muted">· {{ c.code }}{{ c.isB2B ? ' · revendeur B2B' }}</small></label>
+							{% endfor %}
+						</div>
+					</div>
+				</fieldset>
+
+				<fieldset class="mb-3">
+					<legend class="form-label fs-6">Conditions (facultatives)</legend>
+					<div class="row g-3">
+						<div class="col-sm-6 col-lg-3">
+							<label class="form-label" for="quantite_min">Quantité minimale</label>
+							<input type="number" id="quantite_min" name="quantite_min" min="2" value="{{ promotion.quantiteMin }}" class="form-control" placeholder="—">
+						</div>
+						<div class="col-sm-6 col-lg-3">
+							<label class="form-label" for="montant_min">Ligne d'au moins</label>
+							<div class="input-group">
+								<input type="text" inputmode="numeric" id="montant_min" name="montant_min" value="{{ promotion.montantMin }}" class="form-control" placeholder="—">
+								<span class="input-group-text">F</span>
+							</div>
+						</div>
+						<div class="col-sm-6 col-lg-3">
+							<label class="form-label" for="code">Code promo</label>
+							<input type="text" id="code" name="code" maxlength="30" value="{{ promotion.code }}" class="form-control text-uppercase" placeholder="—">
+						</div>
+						<div class="col-sm-6 col-lg-3">
+							<label class="form-label" for="utilisations">Commandes par client</label>
+							<input type="number" id="utilisations" name="utilisations" min="1" value="{{ promotion.utilisationsParClient }}" class="form-control" placeholder="sans limite">
+						</div>
+					</div>
+				</fieldset>
+
+				<div class="mb-3">
+					<label class="form-label" for="note">Note interne</label>
+					<input type="text" id="note" name="note" maxlength="255" value="{{ promotion.note }}" class="form-control" placeholder="Jamais montrée au client">
+				</div>
+
+				<div class="d-flex gap-2 flex-wrap">
+					<button class="btn btn-danger">Enregistrer</button>
+					<a href="{{ nouvelle ? path('app_promotions_index') : path('app_promotions_voir', {id: promotion.id}) }}" class="btn btn-light">Annuler</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-xl-4">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Sur la ligne</h4></div>
+				<p class="si-pr-apercu"><i class="fas fa-tag me-1"></i><span data-si-apercu>{{ promotion.nom ?: 'Nom de la promotion' }} ({{ promotion.libelleAvantage }})</span></p>
+				<ol class="si-pr-regles">
+					<li>Elle s'applique toute seule si le client, l'article, la période et les conditions conviennent.</li>
+					<li>Une seule par ligne : la plus forte remise ; à égalité, celle qui finit le plus tôt.</li>
+					<li>L'agent peut la retirer d'une ligne ; elle ne revient pas toute seule.</li>
+					<li>Revendeur au prix B2B : la ligne reste au prix B2B ; l'agent peut demander une exception, que vous acceptez ou refusez.</li>
+					<li>La ligne garde la promotion pour l'historique et les rapports, même après la fin.</li>
+				</ol>
+			</div>
+		</div>
+	</form>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(function () {
+			var form = document.getElementById('promotion');
+			var unites = {pourcentage: '%', montant: 'F / unité', prix_fixe: 'F / unité'};
+			var signes = {pourcentage: function (v) { return '−' + v + ' %'; }, montant: function (v) { return '−' + v + ' F par unité'; }, prix_fixe: function (v) { return 'prix fixe ' + v + ' F par unité'; }};
+			var maj = function () {
+				var avantage = form.querySelector('input[name="avantage"]:checked').value;
+				form.querySelector('[data-si-unite]').textContent = unites[avantage];
+				form.querySelector('[data-si-liste-clients]').hidden = form.querySelector('#segment').value !== 'liste';
+				var valeur = form.querySelector('#valeur').value.trim() || '…';
+				form.querySelector('[data-si-apercu]').textContent = (form.querySelector('#nom').value.trim() || 'Nom de la promotion') + ' (' + signes[avantage](valeur) + ')';
+			};
+			form.addEventListener('input', maj);
+			form.addEventListener('change', maj);
+			form.querySelectorAll('[data-si-filtre]').forEach(function (champ) {
+				var liste = form.querySelector('[data-si-liste="' + champ.dataset.siFiltre + '"]');
+				champ.addEventListener('input', function () {
+					var t = champ.value.trim().toLowerCase();
+					liste.querySelectorAll('label').forEach(function (l) { l.hidden = t !== '' && l.textContent.toLowerCase().indexOf(t) === -1; });
+				});
+			});
+			maj();
+		})();
+	</script>
+{% endblock %}

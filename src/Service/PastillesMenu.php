@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\ActionCaisse;
 use App\Entity\Commandes;
 use App\Entity\DemandeEmploye;
+use App\Entity\DemandeExceptionPromotion;
 use App\Entity\Paiements;
 use App\Entity\ReclamationClient;
 use App\Entity\ReponseSondage;
@@ -73,6 +74,10 @@ final class PastillesMenu
         }
         if ($this->security->isGranted('ROLE_RH')) {
             $compteurs['app_demandes_index'] = $this->compter(DemandeEmploye::class, 'd', 'd.etat = :e', ['e' => DemandeEmploye::EN_ATTENTE]);
+        }
+        if ($this->security->isGranted('ROLE_PROMOTIONS')) {
+            // Exceptions B2B demandées par un agent sur une ligne, à accepter ou refuser.
+            $compteurs['app_promotions_index'] = $this->compter(DemandeExceptionPromotion::class, 'x', 'x.statut = :s', ['s' => DemandeExceptionPromotion::EN_ATTENTE]);
         }
 
         return $this->compteurs = array_filter($compteurs);

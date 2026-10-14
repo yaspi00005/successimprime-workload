@@ -66,6 +66,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
             ['libelle' => 'Mes actions', 'route' => 'app_actions_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_actions_']],
             ['libelle' => 'Demandes du site', 'route' => 'app_demandes_site_index', 'role' => 'ROLE_DEVIS', 'prefixes' => ['app_demandes_site_']],
+            ['libelle' => 'Promotions', 'route' => 'app_promotions_index', 'role' => ['ROLE_PROMOTIONS', 'ROLE_COMMANDE', 'ROLE_DEVIS'], 'prefixes' => ['app_promotions_']],
         ],
         'clients' => [
             ['libelle' => 'Fiches clients', 'route' => 'app_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_clients_', 'app_reclamation_']],
@@ -74,6 +75,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Sondages et avis', 'route' => 'app_sondages_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_sondages_']],
             ['libelle' => 'Campagnes WhatsApp et SMS', 'route' => 'app_campagne_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_campagne_', 'app_modele_message_', 'app_regle_rappel_paiement_']],
             ['libelle' => 'Fidélité', 'route' => 'app_fidelite_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_fidelite_']],
+            ['libelle' => 'Anniversaires', 'route' => 'app_anniversaires_index', 'role' => 'ROLE_PROMOTIONS', 'prefixes' => ['app_anniversaires_']],
         ],
         'atelier' => [
             ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
@@ -223,6 +225,8 @@ final class NavigationExtension extends AbstractExtension
         'app_modele_message_' => 'clients',
         'app_regle_rappel_paiement_' => 'clients',
         'app_fidelite_' => 'clients',
+        'app_anniversaires_' => 'clients',
+        'app_promotions_' => 'ventes',
         'app_categorie_produit_' => 'reglages',
         'app_produits_' => 'reglages',
         'app_grille_tarifaire_' => 'reglages',

@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PromotionLigneTrait;
 use App\Entity\Trait\PublicIdTrait;
 use App\Repository\CommandesDetailsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -16,6 +17,7 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 class CommandesDetails
 {
     use PublicIdTrait;
+    use PromotionLigneTrait;
 
     public const PRODUCTION_A_PRODUIRE = 'a_produire';
     public const PRODUCTION_EN_COURS = 'en_production';
@@ -999,6 +1001,7 @@ class CommandesDetails
 
         $totalBrut = $this->calculerTotalBrut();
         $montantRemise = $this->calculerMontantRemise($totalBrut);
+        $this->montantPromotion = $this->calculerMontantPromotion($totalBrut, $this->calculerFacteur());
 
         $this->totalHt = max(
             0,
@@ -1032,13 +1035,14 @@ class CommandesDetails
      * La remise est un montant par unité facturable (ex. 500 FCFA par
      * m²), pas un montant fixe sur toute la ligne : elle se multiplie
      * donc par le même facteur que le prix unitaire
-     * (calculerFacteur()), plafonné au total brut de la ligne.
+     * (calculerFacteur()), plafonné au total brut de la ligne. La remise
+     * de la promotion (docs/promotions.md) s'y ajoute.
      */
     private function calculerMontantRemise(int $totalBrut): int
     {
         return min(
             $totalBrut,
-            max(0, (int) round($this->remise * $this->calculerFacteur()))
+            max(0, (int) round(($this->remise + $this->remisePromotion) * $this->calculerFacteur()))
         );
     }
 

@@ -1,0 +1,85 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Promotions par segment de clients (docs/promotions.md). Qui gère les
+	promotions voit tout ; qui saisit les devis et commandes voit les
+	promotions, sans le code ni les montants.
+#}
+
+{% import 'promotions/_macros.html.twig' as pr %}
+
+{% block title %}Promotions{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if gestion %}
+		<li class="nav-item si-masque-mobile"><a href="{{ path('app_promotions_exceptions') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-user-check me-1"></i>Exceptions B2B{% if exceptions > 0 %} <span class="badge bg-danger">{{ exceptions }}</span>{% endif %}</a></li>
+		{% if not en_ligne %}
+			<li class="nav-item"><a href="{{ path('app_promotions_nouvelle') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Promotion</a></li>
+		{% endif %}
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% if en_ligne %}
+		<p class="si-pg-note"><i class="fas fa-info-circle me-1"></i>Site en ligne : les promotions se gèrent sur l'ERP de la boutique, cet écran est en lecture.</p>
+	{% endif %}
+
+	<div class="card si-bloc">
+		<nav class="si-onglets si-onglets-carte" aria-label="Promotions par état">
+			{% for cle, libelle in etats %}
+				<a href="{{ path('app_promotions_index', {etat: cle}) }}" class="{{ etat == cle ? 'actif' }}">{{ libelle }} <span class="si-pr-compte">{{ comptes[cle] }}</span></a>
+			{% endfor %}
+		</nav>
+
+		<p class="si-pg-note">À la saisie d'un devis ou d'une commande, la promotion valable pour le client et l'article s'applique toute seule et s'affiche sur la ligne ; l'agent peut la retirer. Une seule par ligne, jamais en plus d'une remise meilleure. Les revendeurs au prix B2B n'en ont pas, sauf exception acceptée par un responsable.{% if anniversaires > 0 %} Les {{ anniversaires }} promotion{{ anniversaires > 1 ? 's' }} d'anniversaire en cours sont sur la page <a href="{{ path('app_anniversaires_index') }}">Anniversaires</a>.{% endif %}</p>
+
+		{% if promotions is empty %}
+			<p class="si-ac-vide">Aucune promotion {{ {en_cours: 'en cours', a_venir: 'à venir', terminee: 'terminée', suspendue: 'suspendue'}[etat] }}.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-table si-pr-table mb-0">
+					<thead>
+						<tr>
+							<th>Promotion</th>
+							<th>Articles</th>
+							<th>Avantage</th>
+							<th>Période</th>
+							<th class="si-masque-mobile">Clients</th>
+							<th class="si-masque-mobile">Conditions</th>
+							{% if gestion %}<th class="text-end">Utilisée</th>{% endif %}
+						</tr>
+					</thead>
+					<tbody>
+						{% for p in promotions %}
+							{% set r = resumes[p.id] ?? null %}
+							<tr>
+								<td>
+									<a href="{{ path('app_promotions_voir', {id: p.id}) }}"><b>{{ p.nom }}</b></a>
+									{% if gestion and p.note %}<small class="d-block text-muted">{{ p.note }}</small>{% endif %}
+								</td>
+								<td class="si-pr-articles">{{ p.libelleArticles }}</td>
+								<td class="text-nowrap"><span class="si-pr-avantage">{{ p.libelleAvantage }}</span></td>
+								<td class="text-nowrap">{{ p.debut|date('d/m/Y') }} → {{ p.fin|date('d/m/Y') }}<small class="d-block">{{ pr.etat(p, jour) }}</small></td>
+								<td class="si-masque-mobile">{{ p.segmentLabel }}{% if p.segment == 'liste' %} <small class="text-muted">({{ p.clients|length }})</small>{% endif %}</td>
+								<td class="si-masque-mobile"><small>{{ pr.conditions(p, gestion) }}</small></td>
+								{% if gestion %}
+									<td class="text-end text-nowrap">
+										{% if r %}
+											{{ r.lignes }} ligne{{ r.lignes > 1 ? 's' }} · {{ r.clients }} client{{ r.clients > 1 ? 's' }}
+											{% if voir_montants %}<small class="d-block text-muted">−{{ pr.montant(r.remises) }} de remises</small>{% endif %}
+										{% else %}<span class="text-muted">—</span>{% endif %}
+									</td>
+								{% endif %}
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	</div>
+{% endblock %}

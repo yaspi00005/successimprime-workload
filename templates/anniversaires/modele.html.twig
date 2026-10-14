@@ -1,0 +1,113 @@
+{% extends 'base.html.twig' %}
+
+{# Modèle de promotion d'anniversaire pour un nombre d'années (docs/promotions.md). #}
+
+{% block title %}{{ nouveau ? 'Nouveau modèle d\'anniversaire' : 'Anniversaire : ' ~ modele.annees ~ ' an' ~ (modele.annees > 1 ? 's') }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_anniversaires_index') }}#modeles" class="btn btn-light btn-sm si-btn-entete">Retour</a></li>
+{% endblock %}
+
+{% block body %}
+	{% set choisis = modele.produits|map(p => p.id) %}
+	<div class="row">
+		<div class="col-xl-8">
+			<form method="post" class="card si-bloc" id="modele">
+				<input type="hidden" name="_token" value="{{ csrf_token('modele-anniversaire') }}">
+				<div class="si-bloc-tete"><h4>{{ nouveau ? 'Nouveau modèle' : 'Modifier le modèle' }}</h4></div>
+
+				{% for e in erreurs %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
+
+				<div class="row g-3 mb-3">
+					<div class="col-sm-4">
+						<label class="form-label" for="annees">À partir de</label>
+						<div class="input-group">
+							<input type="number" id="annees" name="annees" min="1" max="99" value="{{ modele.annees }}" class="form-control" required>
+							<span class="input-group-text">an(s)</span>
+						</div>
+					</div>
+					<div class="col-sm-8">
+						<label class="form-label" for="nom">Nom de la promotion (vu par le client)</label>
+						<input type="text" id="nom" name="nom" maxlength="120" value="{{ modele.nom }}" class="form-control" required placeholder="Ex. : Joyeux anniversaire : vos cartes de visite">
+					</div>
+				</div>
+
+				<div class="row g-3 mb-3">
+					<div class="col-md-7">
+						<span class="form-label d-block">Articles</span>
+						<div class="si-pr-choix">
+							{% for p in produits %}
+								<label><input type="checkbox" name="produits[]" value="{{ p.id }}"{{ p.id in choisis ? ' checked' }}> {{ p.nom }}</label>
+							{% endfor %}
+						</div>
+					</div>
+					<div class="col-md-5">
+						<label class="form-label" for="categorie">Ou toute une catégorie</label>
+						<select id="categorie" name="categorie" class="form-select">
+							<option value="">—</option>
+							{% for c in categories %}
+								<option value="{{ c.id }}"{{ modele.categorie and modele.categorie.id == c.id ? ' selected' }}>{{ c.nom }}</option>
+							{% endfor %}
+						</select>
+					</div>
+				</div>
+
+				<div class="row g-3 mb-3 align-items-end">
+					<div class="col-md-6">
+						<div class="si-pr-avantages">
+							{% for cle, libelle in constant('App\\Entity\\Promotion::AVANTAGES') %}
+								<label><input type="radio" name="avantage" value="{{ cle }}"{{ modele.avantage == cle ? ' checked' }}> {{ libelle }}</label>
+							{% endfor %}
+						</div>
+					</div>
+					<div class="col-md-3">
+						<label class="form-label" for="valeur">Valeur</label>
+						<input type="text" inputmode="decimal" id="valeur" name="valeur" value="{{ modele.valeur|number_format(modele.valeur == modele.valeur|round(0, 'floor') ? 0 : 2, ',', '') }}" class="form-control" required>
+					</div>
+					<div class="col-md-3">
+						<label class="form-label" for="validite">Valable</label>
+						<div class="input-group">
+							<input type="number" id="validite" name="validite" min="1" max="365" value="{{ modele.validiteJours }}" class="form-control">
+							<span class="input-group-text">jours</span>
+						</div>
+					</div>
+				</div>
+
+				<div class="mb-3">
+					<label class="form-label" for="texte">Texte du SMS</label>
+					<textarea id="texte" name="texte" rows="3" maxlength="320" class="form-control" required>{{ modele.texteSms }}</textarea>
+					<small class="text-muted">Variables : {prénom}, {années}, {fin}. Ni montant ni pourcentage : le client découvre son cadeau en boutique ou dans son espace.</small>
+				</div>
+
+				<label class="form-check mb-3"><input type="checkbox" name="actif" value="1" class="form-check-input"{{ modele.actif ? ' checked' }}> <span class="form-check-label">Actif</span></label>
+
+				<div class="d-flex gap-2 flex-wrap">
+					<button class="btn btn-danger">Enregistrer</button>
+					<a href="{{ path('app_anniversaires_index') }}#modeles" class="btn btn-light">Annuler</a>
+				</div>
+			</form>
+			{% if not nouveau %}
+				<form method="post" action="{{ path('app_anniversaires_modele_supprimer', {id: modele.id}) }}" class="mt-2" onsubmit="return confirm('Supprimer ce modèle ? Les promotions déjà créées restent.');">
+					<input type="hidden" name="_token" value="{{ csrf_token('modele-anniversaire-' ~ modele.id) }}">
+					<button class="btn btn-link text-danger btn-sm p-0">Supprimer le modèle</button>
+				</form>
+			{% endif %}
+		</div>
+		<div class="col-xl-4">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Le jour J</h4></div>
+				<p class="si-pr-sms-apercu">{{ exemple }}</p>
+				<ul class="si-pr-regles">
+					<li>Une promotion pour ce client seul, du jour J au dernier jour de validité, utilisable une fois.</li>
+					<li>Elle s'applique toute seule à la saisie, comme les autres promotions.</li>
+					<li>Ce modèle vaut aussi pour les années suivantes tant qu'il n'y en a pas d'autre.</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+{% endblock %}

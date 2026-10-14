@@ -103,9 +103,27 @@ Site en ligne en production (`APP_ENV=prod`), serveur PHP intégré sans compres
 
 La page de l'atelier est utilisable à plat dès son affichage. La 3D arrive ensuite sans bloquer la page ; en production, la compression du serveur (docs/deploiement.md) divise son poids par 4.
 
+## Vrais modèles 3D (recherche du 14/10/2026)
+
+Aucun modèle réaliste de t-shirt, de polo ou de casquette n'a été trouvé libre de toute condition (CC0). Les meilleurs modèles gratuits sont sur Sketchfab, en licence **CC BY 4.0** ([texte de la licence](https://creativecommons.org/licenses/by/4.0/deed.fr)) : usage commercial permis, à condition d'afficher l'auteur, le titre et la licence. Sketchfab demande un compte gratuit pour télécharger : c'est à Yaya de le faire avec son compte (bouton « Download 3D Model », format **glTF binaire, .glb**), puis de transmettre les fichiers pour la préparation. Des copies trouvées ailleurs (GitHub) n'ont pas été reprises : leur auteur et leur licence ne sont pas sûrs. `public/modeles-3d/` est donc encore vide et la page garde ses modèles dessinés.
+
+| Article | Modèles conseillés, le meilleur d'abord | Pourquoi |
+|---|---|---|
+| T-shirt | 1. [Basic T-Shirt](https://sketchfab.com/3d-models/basic-t-shirt-71bdf5940b5d41b8b46628a615e9b0ed), MadeByYeshe | Coupe classique, plis réalistes, maillage léger (7 200 triangles) ; textures à réduire (18 Mo téléchargés, 2 à 3 Mo une fois préparé). |
+| | 2. [T Shirt](https://sketchfab.com/3d-models/t-shirt-c1a3e5eb9b5445f4b7d4be82f1127eba), funlab117 | Blanc, le plus proche de la maquette, mais très lourd (238 000 triangles, 6,8 Mo) : à alléger. |
+| | 3. [Men Regular Apparel Fit Sporty T-Shirt](https://sketchfab.com/3d-models/men-regular-apparel-fit-sporty-t-shirt-4d055bb8c1e04549a4b2dac7b27ebb2c), BINARYCLOTH | Très propre, mais manches raglan et dessin « RUN » à retirer ; prendre la version 2K (4,4 Mo). |
+| Polo | 1. [T-shirt Polo Lengan Pendek](https://sketchfab.com/3d-models/t-shirt-polo-lengan-pendek-74c33d16b31346f1a46a55c3ec8e8a78), Ikal.Ichwan | Col, patte à boutons, poche ; col et bords de manches d'une autre couleur (ils deviennent les `bords`) ; 54 000 triangles, 1,6 Mo. |
+| | 2. [T-shirt](https://sketchfab.com/3d-models/t-shirt-7c8a4dede482474fa5a74f24c6fc5e81), Hyperrealitystudio | En fait un polo de rugby, réaliste ; rayures à retirer ; 54 000 triangles, 2,5 Mo. |
+| | 3. [T-shirt Polo Lengan Pendek (Model 2)](https://sketchfab.com/3d-models/t-shirt-polo-lengan-pendek-model-2-0ca5cefbaecd4ece83e8b2fe9d011225), Ikal.Ichwan | Variante du premier ; 56 000 triangles, 1,7 Mo. |
+| Casquette | 1. [Baseball Cap 01 Package](https://sketchfab.com/3d-models/baseball-cap-01-package-823e79f5e5ee41668abce9d8755c4926), dennismfrancisart | Six panneaux, œillets, visière, textures 2 048 px ; léger (14 700 triangles, 1,8 Mo). |
+| | 2. [Baseball Cap](https://sketchfab.com/3d-models/baseball-cap-75d11d363e1c4884a714a776049ea4a0), jomalon | Blanche, panneaux et visière nets, sans texture ; 93 000 triangles, 3 Mo. |
+| | 3. [Baseball Cap](https://sketchfab.com/3d-models/baseball-cap-1c1d34d73fd94e6b9e8f82b1eb7194a0), Scott VanArsdale | La plus réaliste (coutures, œillets, bride), mais 151 Mo : textures 8K à réduire. |
+
+**Préparation, une fois les fichiers reçus** : un GLB de moins de 3 Mo (6 Mo au plus), textures de 2 048 px au plus, sans compression Draco ni meshopt (la page n'a pas leur décodeur). Le modèle est centré, debout, le devant vers +Z, à sa taille réelle en mètres (t-shirt 72 cm de haut, polo 74 cm, casquette 20 cm de large). Les pièces s'appellent `tissu` (prend la couleur choisie et reçoit le marquage ; couleur de base blanche, relief du tissu gardé), `visiere` et `bords` (col et bords de manches du polo). `public/modeles-3d/modeles.json` donne pour chaque article le devant, les points de marquage (`poitrine`, `dos`, et pour la casquette `cote` et `arriere`), la taille réelle et les crédits (titre, auteur, licence, liens) ; `public/modeles-3d/LICENCES.md` reprend une ligne par modèle (auteur, licence, source).
+
 ## Ce qui reste à faire
 
-- **Vrais modèles 3D** (t-shirt, polo et casquette avec plis et coutures, format GLB, avec les noms de pièces ci-dessus), à acheter ou à faire faire par un modélisateur 3D : à prévoir au budget. Le reste fonctionne déjà avec les modèles dessinés.
+- **Vrais modèles 3D** : gratuits en licence CC BY 4.0 sur Sketchfab, à télécharger par Yaya avec son compte (choix et marche à suivre dans « Vrais modèles 3D » ci-dessus), puis à préparer. Le reste fonctionne déjà avec les modèles dessinés.
 - Photos avant / après des vraies réalisations, à saisir dans l'admin.
 - Questions ouvertes pour Yaya :
   - faut-il les paliers pour les revendeurs ? (éteint par défaut) ;

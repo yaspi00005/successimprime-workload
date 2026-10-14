@@ -22,6 +22,7 @@
 | Bons de livraison : numéro, état, jour prévu, créneau, heures (préparé, chargé, en route, arrivé, livré) et quantités livrées par ligne | local → site | Pour « Livreur en route » et « Commande livrée » dans l'espace client, avec leur notification. Restent au local : livreur, réceptionnaire, adresse, photos, signature, position, encaissement, stock, notes. Un bon annulé n'est pas montré au client. |
 | Devis et leurs lignes, factures | local → site seulement | Restent au local : coûts, notes, comptabilisation, majoration, PDF du serveur. |
 | Paiements | local → site, et site → local pour les **nouveaux** paiements | Restent au local : compte de trésorerie, mouvement, justificatif, note, encaisseur. |
+| Fidélité : résumé du compte de points, mouvements, promo de réveil (`fidelite_compte`, `fidelite_mouvement`, `promo_reveil`) | local → site seulement | Liste blanche : type, points, date, expiration, multiplicateur, numéro de commande, solde et progression. Restent au local : agent, motif, paiement, valeurs propres et qui les a fixées, règles par article. Un mouvement à 0 point ne part pas (`pret`, respecté aussi par l'initialisation). Voir `docs/fidelite.md`. |
 
 **Paiement saisi en ligne** : il arrive au local **toujours en attente**, quel que soit son statut en ligne, sans compte et sans encaisseur (« Client, en ligne »). Il apparaît dans Finances › À valider, où le responsable choisit le compte qui a reçu l'argent avant de valider ; sans compte choisi, la validation est refusée. Une fois validé, le statut repart vers le site.
 

@@ -9,6 +9,7 @@ use App\Entity\Clients;
 use App\Entity\CommandeDetailFinition;
 use App\Entity\Commandes;
 use App\Entity\CommandeDetailFichier;
+use App\Entity\CompteFidelite;
 use App\Entity\Conception;
 use App\Entity\ControlePrePresse;
 use App\Entity\CommandesDetails;
@@ -21,8 +22,10 @@ use App\Entity\Paiements;
 use App\Entity\Finition;
 use App\Entity\Format;
 use App\Entity\InvitationSondage;
+use App\Entity\MouvementFidelite;
 use App\Entity\NoteArticleSondage;
 use App\Entity\ProduitClient;
+use App\Entity\PromoReveil;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
@@ -301,6 +304,28 @@ final class CatalogueSynchro
                     'champs' => ['designation', 'note'],
                     'relations' => ['ligne' => 'commande_ligne'],
                 ]],
+            ],
+            // Fidélité (docs/fidelite.md) : le site montre au client son solde, sa progression et son relevé,
+            // calculés au local. Valeurs propres, motifs, agents, lignes, paiements et montants restent au local.
+            'fidelite_compte' => [
+                'classe' => CompteFidelite::class, 'sens' => self::DESCENDANT, 'libelle' => 'Compte fidélité', 'titre' => ['solde'],
+                'champs' => [
+                    'exclu', 'solde', 'soldeF', 'm2Cumules', 'montantCumule', 'seuilM2Applique', 'seuilMontantApplique', 'pointsParM2Applique',
+                    'tauxAutreApplique', 'multiplicateurJour', 'delaiHeures', 'pointsExpirant', 'expirationProchaine', 'majLe',
+                ],
+                'relations' => ['client' => 'client'], 'listes' => [],
+            ],
+            'fidelite_mouvement' => [
+                'classe' => MouvementFidelite::class, 'sens' => self::DESCENDANT, 'libelle' => 'Mouvement de points', 'titre' => ['type', 'points'],
+                'champs' => ['type', 'points', 'date', 'expireLe', 'multiplicateur'],
+                'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'facultatives' => ['commande'],
+                // Une ligne à 0 point (paiement tardif, article sans bonification) ne sert qu'à la progression, calculée au local.
+                'pret' => static fn (MouvementFidelite $m): bool => 0 !== $m->getPoints(),
+            ],
+            'promo_reveil' => [
+                'classe' => PromoReveil::class, 'sens' => self::DESCENDANT, 'libelle' => 'Promo de réveil', 'titre' => ['taux'],
+                'champs' => ['taux', 'debut', 'fin', 'utiliseeLe', 'annuleeLe'],
+                'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'facultatives' => ['commande'],
             ],
         ];
     }

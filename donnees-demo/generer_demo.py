@@ -919,7 +919,8 @@ for n in range(40):
     PROSPECTS.append((pr, etape, cree))
 
 for c in R.sample([c for c in CLIENTS if c['t'] != 'particulier'], 45):
-    add('compte_client', {'telephone': c['tel'], 'mot_de_passe': None, 'actif': 1, 'cree_le': T(R.randint(5, 120)), 'derniere_connexion': T(R.randint(0, 20), *heure()), 'client_id': c['id']})
+    add('compte_client', {'telephone': c['tel'], 'mot_de_passe': None, 'actif': 1, 'cree_le': T(R.randint(5, 120)), 'derniere_connexion': T(R.randint(0, 20), *heure()), 'client_id': c['id'],
+                           'droits': '["valideur","payeur","administrateur"]'})
 nref = 0
 for c in R.sample([c for c in CLIENTS if c['t'] != 'particulier'], 30):
     for code in R.sample(['D-BACHE', 'D-ROLLUP', 'D-FLYER', 'D-CARTE', 'D-TSHIRT', 'D-KAKEMONO'], R.randint(1, 2)):

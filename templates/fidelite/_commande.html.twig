@@ -1,0 +1,76 @@
+{#
+	Bloc Fidélité de la commande (docs/fidelite.md) : les points du client
+	à utiliser sur le reste à payer, ceux déjà utilisés, ce que le paiement
+	du jour rapporterait, la promo de réveil. Pour qui gère les commandes
+	(ROLE_COMMANDE, vérifié aussi dans FideliteController).
+#}
+{% import 'fidelite/_macros.html.twig' as f %}
+{% if is_granted('ROLE_COMMANDE') %}
+	{% set fc = fidelite_commande(commande) %}
+	{% if fc and (fc.actif or fc.disponible > 0 or fc.paiements is not empty or fc.promo) %}
+		{% set jeton = csrf_token('fidelite-commande-' ~ commande.id) %}
+		<div class="card si-bloc si-fi-commande">
+			<div class="si-bloc-tete">
+				<h4><i class="fas fa-award me-1 text-warning"></i>Fidélité</h4>
+				{% if is_granted('ROLE_CLIENT') %}<a href="{{ path('app_clients_show', {publicId: commande.clients.publicId}) }}#fidelite">Relevé</a>{% endif %}
+			</div>
+			<div class="si-paiement">
+				<div><strong>{{ fc.disponible|number_format(0, ',', ' ') }} points</strong><small class="d-block text-muted">disponibles · {{ fc.disponibleF|number_format(0, ',', ' ') }} F</small></div>
+				{% if fc.expirant > 0 %}<small class="text-warning text-end">{{ fc.expirant|number_format(0, ',', ' ') }} expirent le {{ fc.prochaineExpiration|date('d/m') }}</small>{% endif %}
+			</div>
+
+			{% for p in fc.paiements %}
+				<div class="si-paiement">
+					<div><strong>{{ p.montant|number_format(0, ',', ' ') }} F en points</strong><small class="d-block text-muted">{{ p.date|date('d/m H:i') }}{{ p.encaissePar ? ' · ' ~ p.encaissePar.userIdentifier }}</small></div>
+					<form method="post" action="{{ path('app_fidelite_retirer', {id: commande.id, paiement: p.id}) }}" onsubmit="return confirm('Retirer ces points de la commande ? Ils sont rendus au client.');">
+						<input type="hidden" name="_token" value="{{ jeton }}">
+						<button class="btn btn-sm btn-light">Retirer</button>
+					</form>
+				</div>
+			{% endfor %}
+
+			{% if fc.annulee %}
+				<small class="text-muted">Commande annulée : les points ne s'utilisent pas.</small>
+			{% elseif not fc.confirmee %}
+				<small class="text-muted">Les points s'utilisent une fois la commande confirmée.</small>
+			{% elseif fc.reste > 0 and fc.disponible > 0 %}
+				{% set propose = min(fc.disponible, fc.reste) %}
+				<form method="post" action="{{ path('app_fidelite_utiliser', {id: commande.id}) }}" class="si-fi-utiliser">
+					<input type="hidden" name="_token" value="{{ jeton }}">
+					<label class="small text-muted" for="fi-points">Utiliser sur le reste à payer ({{ fc.reste|number_format(0, ',', ' ') }} F)</label>
+					<div class="input-group input-group-sm">
+						<input type="number" id="fi-points" name="points" min="1" max="{{ fc.disponible }}" value="{{ propose }}" class="form-control">
+						<span class="input-group-text">points</span>
+						<button class="btn btn-primary fw-semibold">Utiliser</button>
+					</div>
+					<small class="text-muted">Jamais plus que le reste à payer. Le client ne peut pas le faire lui-même.</small>
+				</form>
+			{% endif %}
+
+			{% if fc.estimation and fc.estimation.points > 0 and not fc.annulee %}
+				<div class="si-fi-estimation{{ fc.estimation.multiplicateur > 1 ? ' double' }}">
+					{% if fc.estimation.multiplicateur > 1 %}
+						Payé aujourd'hui, le reste rapporte <b>{{ fc.estimation.points|number_format(0, ',', ' ') }} points</b> (×{{ fc.estimation.multiplicateur }}).
+					{% else %}
+						Payé maintenant, le reste rapporte <b>{{ fc.estimation.points|number_format(0, ',', ' ') }} points</b>.
+					{% endif %}
+				</div>
+			{% elseif fc.estimation and fc.estimation.multiplicateur == 0 and not fc.annulee %}
+				<small class="text-muted d-block mt-2">Délai dépassé : le reste ne rapporte plus de points.</small>
+			{% endif %}
+
+			{% if fc.promo %}
+				<div class="si-fi-promo">
+					<i class="fas fa-gift"></i>
+					<span><b>Promo de réveil −{{ f.nombre(fc.promo.taux) }} %</b> {{ fc.promo.estDuJourSeulement ? "aujourd'hui seulement" : "jusqu'au " ~ fc.promo.fin|date('d/m') }}</span>
+					{% if not fc.annulee and not fc.facturee %}
+						<form method="post" action="{{ path('app_fidelite_reveil_appliquer', {id: commande.id}) }}" onsubmit="return confirm('Appliquer la remise de {{ f.nombre(fc.promo.taux) }} % sur les articles de cette commande ?');">
+							<input type="hidden" name="_token" value="{{ jeton }}">
+							<button class="btn btn-sm btn-danger">Appliquer</button>
+						</form>
+					{% endif %}
+				</div>
+			{% endif %}
+		</div>
+	{% endif %}
+{% endif %}

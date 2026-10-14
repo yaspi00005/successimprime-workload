@@ -5333,3 +5333,70 @@ body.si-param-bloque { overflow: hidden; }
   .si-rc-photos { display: none; }
   .si-rc-statut { grid-column: 2; justify-self: start; }
 }
+
+/* ---------- Fidélité (docs/fidelite.md) ---------- */
+.si-fi-programme { display: flex; flex-direction: row; gap: 24px; align-items: flex-start; flex-wrap: wrap; padding: 18px 20px; margin: 0 0 16px; background: linear-gradient(135deg, #F8FAFD 0%, #E8EEF7 55%, #D9E2EF 100%); border: 0; }
+.si-fi-programme > div { flex: 0 0 210px; }
+.si-fi-programme strong { display: block; font-size: 17px; color: #0F4590; }
+.si-fi-programme ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px 22px; flex: 1; font-size: 13px; color: #334155; }
+.si-fi-programme li b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #64748B; }
+.si-fi-sur { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748B; }
+.si-fi-table td { vertical-align: middle; }
+.si-fi-table td:first-child { min-width: 230px; }
+.si-fi-table td small { font-size: 12px; line-height: 1.35; }
+.si-fi-passee td { opacity: .55; }
+.si-fi-filtre { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 4px; font-size: 13px; }
+.si-fi-filtre input { width: 90px; }
+.si-fi-offrir { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.si-fi-offrir select { width: auto; }
+.si-fi-champ { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.si-fi-champ input { width: 70px; }
+.si-fi-journal { list-style: none; margin: 0; padding: 0; }
+.si-fi-journal li { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; padding: 10px 0; border-top: 1px solid #EEF1F6; font-size: 13px; }
+.si-fi-journal li:first-child { border-top: 0; }
+.si-fi-journal.compact li { grid-template-columns: 78px 1fr; }
+.si-fi-journal.compact .si-fi-qui { grid-column: 2; }
+.si-fi-quand small { display: block; color: #94A3B8; }
+.si-fi-qui { color: #64748B; font-size: 12px; white-space: nowrap; }
+.si-fi-choix { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.si-fi-choix label { display: block; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 10px 12px; cursor: pointer; }
+.si-fi-choix label:has(input:checked) { border-color: #0F4590; background: #F4F8FE; }
+.si-fi-choix small { display: block; color: #64748B; margin-left: 22px; }
+.si-fi-ordre li { list-style: decimal; }
+.si-fi-ordre { list-style: decimal; margin: 0 0 8px; padding-left: 18px; font-size: 13px; display: grid; gap: 6px; }
+.si-fi-fiche { display: grid; grid-template-columns: minmax(220px, 1fr) 2fr; gap: 16px; margin: 6px 0 12px; }
+.si-fi-solde { background: linear-gradient(135deg, #F8FAFD, #DCE4F0); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.si-fi-solde strong { font-size: 30px; line-height: 1.1; color: #0F4590; font-weight: 800; }
+.si-fi-solde strong small { font-size: 14px; font-weight: 700; }
+.si-fi-solde > span { font-size: 12.5px; color: #475569; }
+.si-fi-alerte { color: #B45309 !important; font-weight: 600; margin-top: 4px; }
+.si-fi-progres { display: grid; gap: 12px; align-content: center; font-size: 13px; }
+.si-fi-fond-bleu { background: #0F4590; }
+.si-fi-promo { display: flex; align-items: center; gap: 10px; background: #FFF7ED; color: #9A3412; border-radius: 12px; padding: 9px 12px; font-size: 13px; margin: 8px 0; }
+.si-fi-promo i { font-size: 16px; }
+.si-fi-promo span { flex: 1; }
+.si-fi-promo form { margin: 0; }
+.si-fi-titre { font-size: 14px; font-weight: 700; margin: 14px 0 6px; }
+.si-fi-releve td { font-size: 13px; }
+.si-fi-annule td { color: #94A3B8; }
+.si-fi-annule td a { color: inherit; }
+.si-fi-admin { display: grid; gap: 12px; margin-top: 16px; }
+.si-fi-cadre { border: 1px dashed #CBD5E1; border-radius: 12px; padding: 12px 14px; }
+.si-fi-cadre h6 { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
+.si-fi-points { flex: 0 0 150px; width: 150px !important; }
+.si-fi-cadre .form-control, .si-fi-cadre .form-select, .si-fi-offrir .form-control, .si-fi-offrir .form-select, .si-fi-filtre .form-control, .si-fi-utiliser .form-control { height: 36px; min-height: 36px; padding: 4px 10px; font-size: 13px; border-radius: 8px; }
+.si-fi-cadre .d-flex > .flex-grow-1 { flex: 1 1 240px; width: auto; }
+.si-fi-cadre .btn, .si-fi-offrir .btn, .si-fi-filtre .btn { height: 36px; padding: 0 14px; font-size: 13px; }
+.si-fi-offrir select, .si-fi-cadre select.w-auto { min-width: 170px; }
+.si-fi-commande .si-paiement form { margin: 0; }
+.si-fi-utiliser { margin-top: 10px; display: grid; gap: 4px; }
+.si-fi-utiliser .input-group > .form-control, .si-fi-utiliser .input-group > .input-group-text, .si-fi-utiliser .input-group > .btn { height: 38px; min-height: 38px; font-size: 13px; }
+.si-fi-estimation { margin-top: 10px; font-size: 13px; background: #F1F5F9; border-radius: 10px; padding: 8px 10px; color: #334155; }
+.si-fi-estimation.double { background: #E2F6EA; color: #166534; }
+.si-fi-regle .form-control, .si-fi-regle .form-select, .si-fi-regle .input-group-text { height: 42px; min-height: 42px; font-size: 14px; }
+.si-fi-regle .input-group-text { background: #F1F5F9; }
+@media (max-width: 767.98px) {
+  .si-fi-fiche { grid-template-columns: 1fr; }
+  .si-fi-journal li { grid-template-columns: 70px 1fr; }
+  .si-fi-journal .si-fi-qui { grid-column: 2; }
+}

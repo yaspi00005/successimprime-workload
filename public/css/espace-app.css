@@ -349,3 +349,35 @@ a.ec-carte.ec-pc-entree { display: flex; align-items: center; gap: .85rem; }
   .ec-feuille { margin: auto; border-radius: 22px; max-width: 620px; }
   .ec-feuille-poignee { display: none; }
 }
+
+/* ---------- Fidélité (maquette 18, docs/fidelite.md) ---------- */
+.ec-fi-solde { display: flex; flex-direction: column; gap: .15rem; padding: 1.2rem 1.25rem 1.1rem; margin-bottom: .85rem; border-radius: 22px; color: var(--bleu); background: linear-gradient(135deg, #F7F9FC 0%, #DDE3EC 45%, #F3F5F9 70%, #C9D2DF 100%); box-shadow: 0 10px 24px rgba(18,33,58,.12); }
+.ec-fi-sur { font-size: .8rem; color: var(--gris); font-weight: 600; }
+.ec-fi-points { font-size: 2.6rem; line-height: 1.05; font-weight: 800; letter-spacing: -.02em; }
+.ec-fi-points small { font-size: 1.4rem; }
+.ec-fi-valeur { font-size: .9rem; color: var(--encre); }
+.ec-fi-solde .ec-barre { background: rgba(255,255,255,.75); margin-top: .9rem; }
+.ec-fi-legende { font-size: .8rem; color: #3D4A60; margin-top: .35rem; }
+.ec-fi-familles > li { display: flex; align-items: center; gap: .75rem; }
+.ec-fi-pastille { flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; font-weight: 800; font-size: .85rem; }
+.ec-fi-pastille.bleu { background: var(--bleu-clair); color: var(--bleu); }
+.ec-fi-pastille.orange { background: #FFEBD9; color: #C2410C; }
+.ec-fi-texte { flex: 1; min-width: 0; }
+.ec-fi-texte b, .ec-fi-texte .ec-petit { display: block; }
+.ec-fi-texte .ec-barre { display: block; margin-top: .4rem; height: 5px; }
+.ec-fi-promo, .ec-fi-expire { display: flex; align-items: center; gap: .8rem; }
+.ec-fi-promo { background: #FFF4E8; }
+.ec-fi-promo b, .ec-fi-expire b, .ec-fi-double b { display: block; }
+.ec-fi-promo .ec-petit, .ec-fi-expire .ec-petit, .ec-fi-double .ec-petit { display: block; margin-top: .15rem; }
+.ec-fi-icone { flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #fff; color: var(--orange); }
+.ec-fi-icone.ambre { background: var(--ambre-clair); color: var(--ambre); }
+.ec-fi-double { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.ec-fi-double b { color: var(--bleu); font-size: 1.05rem; margin-top: .1rem; }
+.ec-fi-x2 { flex-shrink: 0; display: grid; place-items: center; min-width: 64px; height: 64px; padding: 0 .4rem; border-radius: 18px; background: var(--vert-clair); color: #15803D; font-size: 1.6rem; font-weight: 900; }
+.ec-fi-historique b { display: block; font-size: .92rem; }
+.ec-fi-historique .ec-petit { display: block; }
+.ec-fi-historique li.annule b { color: var(--gris); text-decoration: line-through; }
+.ec-fi-mouvement { font-weight: 800; white-space: nowrap; }
+.ec-fi-mouvement.plus { color: var(--vert); }
+.ec-fi-mouvement.moins { color: var(--rouge); }
+.ec-fi-note { margin: .2rem .3rem 0; }

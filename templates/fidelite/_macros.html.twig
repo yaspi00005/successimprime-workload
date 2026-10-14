@@ -1,0 +1,17 @@
+{# Petits formats de la fidélité (docs/fidelite.md). #}
+
+{% macro nombre(v) %}{% apply spaceless %}
+	{% set v = v ?? 0 %}
+	{% if v == v|round(0, 'floor') %}{{ v|number_format(0, ',', ' ') }}{% elseif (v * 10) == (v * 10)|round(0, 'floor') %}{{ v|number_format(1, ',', ' ') }}{% else %}{{ v|number_format(2, ',', ' ') }}{% endif %}
+{% endapply %}{% endmacro %}
+
+{# Unité de la plage d'une règle : m² (grand format), pièces, ou francs. #}
+{% macro unite_plage(r, m2) %}{{ m2 ? 'm²' : (r.portee == 'famille' or r.mode == 'pourcentage' ? 'F' : 'pièces') }}{% endmacro %}
+
+{% macro gain(r, m2) %}{% apply spaceless %}
+	{% if r.mode == 'pourcentage' %}{{ _self.nombre(r.valeur) }} % du montant{% else %}{{ _self.nombre(r.valeur) }} pts par {{ m2 ? 'm²' : 'pièce' }}{% endif %}
+{% endapply %}{% endmacro %}
+
+{% macro plage(r, m2) %}{% apply spaceless %}
+	{% if r.seuil <= 0 %}dès le premier achat{% else %}au-delà de {{ _self.nombre(r.seuil) }} {{ _self.unite_plage(r, m2) }} {{ r.portee == 'famille' ? (m2 ? 'de grand format' : 'd\'autres articles') : 'de cet article' }}{% endif %}
+{% endapply %}{% endmacro %}

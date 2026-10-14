@@ -5,6 +5,7 @@ namespace App\Command;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -19,6 +20,18 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 #[AsCommand(name: 'app:demo', description: 'Charge une année d\'activité fictive dans toutes les tables (ou l\'enlève avec --purger).', aliases: ['app:demo:clients'])]
 final class DemoCommand extends Command
 {
+    /**
+     * Ce que le fichier de purge ne connaît pas : lignes rattachées aux clients
+     * et produits de démonstration par les modules venus après lui. La purge
+     * coupe les clés étrangères, donc les « ON DELETE CASCADE » ne jouent pas.
+     */
+    private const PURGE_MODULES = [
+        "DELETE m FROM mouvement_fidelite m JOIN clients c ON c.id = m.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE f FROM compte_fidelite f JOIN clients c ON c.id = f.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE r FROM promo_reveil r JOIN clients c ON c.id = r.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE r FROM regle_fidelite r JOIN produits p ON p.id = r.produit_id WHERE p.id >= 900000 OR p.nom LIKE '%(démo)%'",
+    ];
+
     public function __construct(
         private readonly Connection $connexion,
         #[Autowire('%kernel.project_dir%')] private readonly string $dossier,
@@ -47,10 +60,16 @@ final class DemoCommand extends Command
             return Command::FAILURE;
         }
 
+        $purger = (bool) $input->getOption('purger');
+        if ($purger) {
+            // Les avis fictifs d'abord : leur commande les enlève proprement.
+            $this->lancer('app:sondages:demo', ['--purger' => true], $output);
+        }
+
         $n = 0;
         try {
             $this->connexion->beginTransaction();
-            foreach (self::instructions((string) file_get_contents($fichier)) as $sql) {
+            foreach ([...self::PURGE_MODULES, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
             }
@@ -69,11 +88,26 @@ final class DemoCommand extends Command
             '%d instructions passées sur la base « %s ». Démo présente : %d clients, %d commandes, %d paiements, %d mouvements de trésorerie.',
             $n, $this->connexion->getDatabase(), $compte('clients'), $compte('commandes'), $compte('paiements'), $compte('mouvement_tresorerie'),
         ));
-        if (!$input->getOption('purger')) {
+        if (!$purger) {
+            // Relevés de fidélité et avis des clients fictifs, calculés sur ce qui vient d'être chargé.
+            $this->lancer('app:fidelite', ['--demo' => true], $output);
+            $this->lancer('app:sondages:demo', [], $output);
             $io->text('Connexion possible avec demo.kadiatou (direction), demo.aminata (caisse), demo.seydou (graphiste), demo.oumar (machine), demo.bakary (livreur) ou demo.awa (entretien), mot de passe demo1234.');
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    private function lancer(string $commande, array $options, OutputInterface $output): void
+    {
+        $application = $this->getApplication();
+        if (null === $application || !$application->has($commande)) {
+            return;
+        }
+        $application->find($commande)->run(new ArrayInput($options), $output);
     }
 
     /**

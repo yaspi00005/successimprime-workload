@@ -26,6 +26,7 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - `demo.adama` (gardien de nuit, 19 h – 7 h) et `demo.nana` (aide atelier) pointent sur la tablette ;
   - `demo.rokia` (stagiaire) a une invitation en attente, dont le lien ne s'ouvre pas ;
   - `demo.lassana` est parti (accès retiré).
+- La fidélité et les avis, calculés juste après le chargement par `app:fidelite --demo` et `app:sondages:demo` : relevés de points des particuliers, 3 règles d'article, promos de réveil, avis après livraison et deux sondages. `--purger` les enlève aussi.
 - Le reste : planning et entretien (avec des rappels WhatsApp envoyés et à envoyer), charges récurrentes, clôtures de caisse, rapprochements bancaires, campagnes, actions de caisse, messagerie et notifications.
 
 ## Repères

@@ -167,7 +167,8 @@
 
 			<section class="card si-fiche-onglets">
 				<div class="si-fiche-tabs" role="tablist" aria-label="Fiche client">
-					{% for cle, libelle in {commandes: 'Commandes', devis: 'Devis', factures: 'Factures', fichiers: 'Fichiers et logos'} %}
+					{% set voir_fidelite = is_granted('ROLE_COMMANDE') and not client.isB2B %}
+					{% for cle, libelle in {commandes: 'Commandes', devis: 'Devis', factures: 'Factures', fichiers: 'Fichiers et logos'}|merge(voir_fidelite ? {fidelite: 'Fidélité'} : {}) %}
 						<button type="button" role="tab" id="tab-{{ cle }}" aria-controls="panneau-{{ cle }}" aria-selected="{{ loop.first ? 'true' : 'false' }}" {{ loop.first ? '' : 'tabindex="-1"' }}>{{ libelle }}</button>
 					{% endfor %}
 				</div>
@@ -244,6 +245,12 @@
 						</ul>
 					{% endif %}
 				</div>
+
+				{% if voir_fidelite %}
+					<div role="tabpanel" id="panneau-fidelite" aria-labelledby="tab-fidelite" hidden>
+						{% include 'fidelite/_fiche_client.html.twig' %}
+					</div>
+				{% endif %}
 			</section>
 		</div>
 	</div>
@@ -295,6 +302,8 @@
 					choisir(suivant); suivant.focus();
 				});
 			});
+			var demande = location.hash ? document.getElementById('tab-' + location.hash.slice(1)) : null;
+			if (demande && onglets.indexOf(demande) >= 0) { choisir(demande); }
 		})();
 	</script>
 {% endblock %}

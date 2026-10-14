@@ -315,6 +315,8 @@
 																																																																																																																			}}"></i>
 											</button>
 
+											<a href="{{ path('app_fidelite_regle_produit', {id: produit.id}) }}" class="btn btn-sm btn-warning-light" title="Fidélité de cet article"><i class="fa fa-award"></i></a>
+
 											<button type="button" class="btn btn-sm btn-danger-light btn-delete-produit" data-url="{{ path( 'app_produits_delete_ajax', {id: produit.id} ) }}" data-token="{{ csrf_token( 'delete_produit_' ~ produit.id ) }}" data-nom="{{ produit.nom }}">
 												<i class="fa fa-trash"></i>
 											</button>

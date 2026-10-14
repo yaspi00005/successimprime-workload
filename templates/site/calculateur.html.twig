@@ -1,0 +1,261 @@
+{#
+	Calculateur de prix (maquette 03). Le formulaire part en GET et la page
+	revient avec le prix calculé par le serveur : il marche sans JavaScript.
+	Le script du bas le met à jour en direct (app_site_calculateur_estimation),
+	sans rien calculer lui-même. Prix normal seulement, jamais le prix B2B.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_calculateur' %}
+{% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
+{% set guide = site_lien('app_site_guide') %}
+
+{% block title %}Calculateur de prix · Succès Imprim, imprimerie à Bamako{% endblock %}
+{% block description %}Calculez le prix de votre bâche, vinyle, roll-up, t-shirt DTF ou de vos cartes de visite : prix indicatif immédiat en FCFA, confirmé au BAT. Puis commandez ou demandez un devis.{% endblock %}
+
+{% block entete %}<link rel="stylesheet" href="{{ asset('css/site-produits.css') }}">{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: 'Calculez votre prix', ariane: 'Calculateur de prix', accroche: 'Prix indicatif immédiat, confirmé après contrôle de votre fichier.'}) }}
+
+	<section class="si-section si-calc-section">
+		<div class="si-cadre">
+			{% if resultat is null %}
+				<div class="si-carte si-produits-vide">
+					<h2>Le calculateur arrive bientôt</h2>
+					<p>En attendant, l'atelier vous fait un prix pour toute impression.</p>
+					{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Demander un devis</a>{% endif %}
+				</div>
+			{% else %}
+				<div class="si-calc">
+					<form class="si-calc-formulaire" id="si-calc" method="get" action="{{ path('app_site_calculateur') }}" data-estimation="{{ path('app_site_calculateur_estimation') }}">
+						<input type="hidden" name="precedent" value="{{ valeurs.produit }}">
+
+						<div class="si-calc-etape">
+							<label class="si-calc-titre" for="si-calc-produit"><span class="si-calc-num"></span> Produit et support</label>
+							<div class="si-calc-select">
+								<select id="si-calc-produit" name="produit">
+									{% for g in groupes %}
+										{% if groupes|length > 1 %}<optgroup label="{{ g.nom }}">{% endif %}
+										{% for o in g.options %}
+											<option value="{{ o.id }}"{{ o.id == valeurs.produit ? ' selected' }}>{{ o.nom }}</option>
+										{% endfor %}
+										{% if groupes|length > 1 %}</optgroup>{% endif %}
+									{% endfor %}
+								</select>
+							</div>
+						</div>
+
+						<div class="si-calc-etape si-calc-deux" id="si-calc-taille"{% if not fiche.taille %} hidden{% endif %}>
+							<div>
+								<label class="si-calc-titre" for="si-calc-largeur"><span class="si-calc-num"></span> Largeur (cm)</label>
+								<input class="si-calc-saisie" id="si-calc-largeur" name="largeur" inputmode="decimal" autocomplete="off" value="{{ valeurs.largeur is not null ? valeurs.largeur|replace({'.': ','}) }}"{% if not fiche.taille %} disabled{% endif %}>
+							</div>
+							<div>
+								<label class="si-calc-titre" for="si-calc-hauteur">Hauteur (cm)</label>
+								<input class="si-calc-saisie" id="si-calc-hauteur" name="hauteur" inputmode="decimal" autocomplete="off" value="{{ valeurs.hauteur is not null ? valeurs.hauteur|replace({'.': ','}) }}"{% if not fiche.taille %} disabled{% endif %}>
+							</div>
+						</div>
+
+						<fieldset class="si-calc-etape" id="si-calc-bloc-finitions"{% if fiche.finitions is empty %} hidden{% endif %}>
+							<legend class="si-calc-titre"><span class="si-calc-num"></span> Finitions</legend>
+							<div class="si-puces" id="si-calc-finitions">
+								{% for f in fiche.finitions %}
+									<label class="si-puce"><input type="checkbox" name="finitions[]" value="{{ f.id }}"{{ f.obligatoire or f.id in valeurs.finitions ? ' checked' }}{{ f.obligatoire ? ' disabled' }}><span>{{ f.nom }}{{ f.obligatoire ? ' (inclus)' }}</span></label>
+								{% endfor %}
+							</div>
+						</fieldset>
+
+						<div class="si-calc-etape si-calc-ligne">
+							<div>
+								<label class="si-calc-titre" for="si-calc-quantite"><span class="si-calc-num"></span> Quantité</label>
+								<div class="si-calc-quantite">
+									<button type="button" data-pas="-1" aria-label="Une de moins" hidden>−</button>
+									<input class="si-calc-saisie" id="si-calc-quantite" name="quantite" inputmode="numeric" autocomplete="off" value="{{ valeurs.quantite }}">
+									<button type="button" data-pas="1" aria-label="Une de plus" hidden>+</button>
+								</div>
+								<p class="si-note si-calc-minimum" id="si-calc-minimum">{% if fiche.min > 1 %}Minimum {{ fiche.min|number_format(0, ',', ' ') }}{% endif %}</p>
+							</div>
+							<div>
+								<span class="si-calc-titre"><span class="si-calc-num"></span> Votre fichier</span>
+								<div class="si-calc-fichier">
+									<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									<p>Vous l'envoyez en commandant (PDF, AI, PSD, JPG ou PNG). L'atelier le contrôle à la taille commandée.{% if guide %} <a href="{{ guide }}">Préparer son fichier</a>{% endif %}</p>
+								</div>
+							</div>
+						</div>
+
+						<div class="si-calc-envoi">
+							<button type="submit" class="si-bouton si-bouton-bleu si-bouton-grand">Calculer le prix</button>
+						</div>
+
+						{# Téléphone, avec le script : le total reste en bas de l'écran pendant la saisie. #}
+						<div class="si-calc-barre">
+							<p><span>Total TTC indicatif</span><strong data-champ="total">{{ resultat.totalTexte ?? '—' }}</strong></p>
+							<a href="#si-calc-resultat" class="si-bouton si-bouton-rouge">Voir le détail</a>
+						</div>
+					</form>
+
+					<aside class="si-calc-resultat" id="si-calc-resultat" aria-labelledby="si-calc-resultat-titre">
+						<h2 id="si-calc-resultat-titre">Votre estimation</h2>
+						<p class="si-calc-produit" data-champ="nom">{{ resultat.nom }}</p>
+						<dl class="si-calc-lignes" data-champ="lignes"{% if resultat.lignes is empty %} hidden{% endif %}>
+							{% for l in resultat.lignes %}<div><dt>{{ l.libelle }}</dt><dd>{{ l.valeur }}</dd></div>{% endfor %}
+						</dl>
+						<p class="si-calc-erreur" role="alert" data-champ="erreur"{% if not resultat.erreur %} hidden{% endif %}>{{ resultat.erreur }}</p>
+						<ul class="si-calc-detail" data-champ="detail" aria-label="Détail du prix"{% if resultat.detail is empty %} hidden{% endif %}>
+							{% for d in resultat.detail %}<li><span>{{ d.libelle }}</span><span>{{ d.texte }}</span></li>{% endfor %}
+						</ul>
+						<div class="si-calc-total" aria-live="polite">
+							<span>Total TTC indicatif</span>
+							<strong data-champ="total">{{ resultat.totalTexte ?? '—' }}</strong>
+						</div>
+						<div class="si-calc-actions">
+							<a{% if resultat.liens.commander %} href="{{ resultat.liens.commander }}"{% else %} hidden{% endif %} class="si-bouton si-bouton-rouge si-bouton-grand" data-lien="commander">Commander</a>
+							{% if resultat.liens.devis %}<a href="{{ resultat.liens.devis }}" class="si-bouton si-bouton-contour si-bouton-grand" data-lien="devis">Demander un devis</a>{% endif %}
+							{% if resultat.liens.whatsapp %}
+								<a href="{{ resultat.liens.whatsapp }}" class="si-bouton si-bouton-whatsapp si-bouton-grand" data-lien="whatsapp" target="_blank" rel="noopener">
+									<svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true" focusable="false"><path fill="currentColor" d="M16 3.5A12.4 12.4 0 0 0 5.3 22.2L3.5 28.5l6.5-1.7A12.4 12.4 0 1 0 16 3.5Zm0 22.7a10.3 10.3 0 0 1-5.2-1.4l-.4-.2-3.9 1 1-3.8-.2-.4A10.3 10.3 0 1 1 16 26.2Zm5.7-7.7c-.3-.2-1.8-.9-2.1-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7 0a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6a1.1 1.1 0 0 0-.8.4 3.3 3.3 0 0 0-1 2.5 5.8 5.8 0 0 0 1.2 3.1 13.3 13.3 0 0 0 5.1 4.5c1.9.8 2.6.9 3.6.7a3 3 0 0 0 2-1.4 2.4 2.4 0 0 0 .2-1.4c-.1-.1-.3-.2-.6-.4Z"/></svg>
+									Recevoir le devis sur WhatsApp
+								</a>
+							{% endif %}
+						</div>
+						<p class="si-note si-calc-precision">Prix indicatif : l'atelier le confirme sur le devis ou le BAT, après contrôle de votre fichier. Rien n'est imprimé sans votre accord. «&nbsp;Commander&nbsp;» ouvre votre espace client (connexion par code SMS).</p>
+					</aside>
+				</div>
+				<script type="application/json" id="si-calc-fiches">{{ fiches|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>
+			{% endif %}
+		</div>
+	</section>
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	(function () {
+		// Mise à jour en direct : le serveur calcule, le script n'affiche que sa réponse.
+		var form = document.getElementById('si-calc');
+		if (!form || !window.fetch || !window.URLSearchParams || !window.FormData) return;
+		var fiches = JSON.parse(document.getElementById('si-calc-fiches').textContent);
+		var resultat = document.getElementById('si-calc-resultat');
+		var el = form.elements;
+		var minuteur = null;
+		var demande = 0;
+
+		function champ(nom) { return resultat.querySelector('[data-champ="' + nom + '"]'); }
+
+		function fiche() {
+			for (var i = 0; i < fiches.length; i++) {
+				if (String(fiches[i].id) === el.produit.value) return fiches[i];
+			}
+			return null;
+		}
+
+		// Nouveau produit : sa taille (sinon 1 m × 1 m), son minimum et ses finitions par défaut.
+		function changerProduit() {
+			var f = fiche();
+			if (!f) return;
+			document.getElementById('si-calc-taille').hidden = !f.taille;
+			el.largeur.disabled = el.hauteur.disabled = !f.taille;
+			if (f.taille && f.largeur && f.hauteur) {
+				el.largeur.value = Math.round(f.largeur);
+				el.hauteur.value = Math.round(f.hauteur);
+			} else if (f.taille) {
+				el.largeur.value = el.largeur.value || 100;
+				el.hauteur.value = el.hauteur.value || 100;
+			}
+			var zone = document.getElementById('si-calc-finitions');
+			zone.textContent = '';
+			f.finitions.forEach(function (fi) {
+				var label = document.createElement('label');
+				label.className = 'si-puce';
+				var coche = document.createElement('input');
+				coche.type = 'checkbox';
+				coche.name = 'finitions[]';
+				coche.value = fi.id;
+				coche.checked = fi.parDefaut;
+				coche.disabled = fi.obligatoire;
+				var texte = document.createElement('span');
+				texte.textContent = fi.nom + (fi.obligatoire ? ' (inclus)' : '');
+				label.append(coche, texte);
+				zone.append(label);
+			});
+			document.getElementById('si-calc-bloc-finitions').hidden = f.finitions.length === 0;
+			if ((parseInt(el.quantite.value, 10) || 0) < f.min) el.quantite.value = f.min;
+			document.getElementById('si-calc-minimum').textContent = f.min > 1 ? 'Minimum ' + f.min.toLocaleString('fr-FR') : '';
+			el.precedent.value = f.id;
+		}
+
+		function remplir(conteneur, lignes, construire) {
+			conteneur.textContent = '';
+			(lignes || []).forEach(function (l) { conteneur.append(construire(l)); });
+			conteneur.hidden = !(lignes || []).length;
+		}
+
+		function element(nom, texte) {
+			var e = document.createElement(nom);
+			e.textContent = texte;
+			return e;
+		}
+
+		function afficher(d) {
+			champ('nom').textContent = d.nom || '';
+			remplir(champ('lignes'), d.lignes, function (l) {
+				var div = document.createElement('div');
+				div.append(element('dt', l.libelle), element('dd', l.valeur));
+				return div;
+			});
+			remplir(champ('detail'), d.detail, function (l) {
+				var li = document.createElement('li');
+				li.append(element('span', l.libelle), element('span', l.texte));
+				return li;
+			});
+			champ('erreur').textContent = d.erreur || '';
+			champ('erreur').hidden = !d.erreur;
+			form.parentNode.querySelectorAll('[data-champ="total"]').forEach(function (t) { t.textContent = d.totalTexte || '—'; });
+			var liens = d.liens || {};
+			resultat.querySelectorAll('[data-lien]').forEach(function (a) {
+				var adresse = liens[a.getAttribute('data-lien')];
+				if (adresse) a.href = adresse; else a.removeAttribute('href');
+				a.hidden = !adresse;
+			});
+		}
+
+		function estimer() {
+			var parametres = new URLSearchParams(new FormData(form)).toString();
+			var numero = ++demande;
+			resultat.classList.add('si-calc-attente');
+			if (window.history.replaceState) window.history.replaceState(null, '', form.action + '?' + parametres);
+			fetch(form.getAttribute('data-estimation') + '?' + parametres, { headers: { Accept: 'application/json' } })
+				.then(function (r) { return r.json(); })
+				.then(function (d) { if (numero === demande) afficher(d); })
+				.catch(function () {})
+				.then(function () { if (numero === demande) resultat.classList.remove('si-calc-attente'); });
+		}
+
+		function plusTard() {
+			clearTimeout(minuteur);
+			minuteur = setTimeout(estimer, 300);
+		}
+
+		form.addEventListener('input', function (e) { if (e.target.tagName === 'INPUT' && e.target.type === 'text') plusTard(); });
+		form.addEventListener('change', function (e) {
+			if (e.target === el.produit) changerProduit();
+			plusTard();
+		});
+		form.addEventListener('submit', function (e) {
+			e.preventDefault();
+			clearTimeout(minuteur);
+			estimer();
+		});
+		form.querySelectorAll('[data-pas]').forEach(function (b) {
+			b.hidden = false;
+			b.addEventListener('click', function () {
+				var f = fiche();
+				el.quantite.value = Math.max(f ? f.min : 1, (parseInt(el.quantite.value, 10) || 0) + Number(b.getAttribute('data-pas')));
+				plusTard();
+			});
+		});
+		form.classList.add('si-calc-vivant');
+	})();
+	</script>
+{% endblock %}

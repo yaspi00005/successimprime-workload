@@ -285,7 +285,8 @@ final class AgentSynchro
     {
         $message = $e->getMessage();
         if ($e instanceof \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface) {
-            return 'Site injoignable (connexion internet coupée ou site arrêté).';
+            // La cause (DNS, certificat, délai) aide à régler l'installation ; elle ne contient pas la clé.
+            return 'Site injoignable (connexion internet coupée ou site arrêté) : '.mb_substr($message, 0, 300);
         }
 
         return mb_substr($message, 0, 500);

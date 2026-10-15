@@ -18,13 +18,13 @@ Le local et le site sont synchronisés : le client travaille en ligne, l'atelier
    - Brouillon gardé sur le serveur à chaque saisie. Numéro `W-DC-AAAA-NNN`.
 3. **Graphiste ou IA** : panneau « Qui réalise la conception ? » avec les deux offres.
 4. **Paiement de l'acompte (DC03)** :
-   - Le bouton « Payer l'acompte de 5 000 F par Orange Money » ouvre le rappel (référence, montant, étapes, code secret jamais demandé par l'atelier). Le client passe ensuite par la page sécurisée d'Orange Money (WebPay, comme les commandes).
+   - Le bouton « Payer l'acompte de 5 000 F par Orange Money » ouvre le rappel : référence, récapitulatif (acompte, fonds de soutien, frais de retrait, « Total payé avec Orange Money », 5 100 F avec les taux par défaut), étapes, code secret jamais demandé par l'atelier. « Continuer vers Orange Money » mène à la page sécurisée d'Orange Money (WebPay, comme les commandes).
    - Sans clés Orange Money, « Envoyer à l'atelier » : la commande est créée et l'acompte se règle au numéro marchand ou en boutique.
 5. **IA (DC04, et « Proposition IA » de DC05 sur téléphone)** :
    - Résumé de la demande, consigne de 300 caractères au plus, « Générer une image · 1 000 F ».
    - Grande image avec zoom et « Voir sur le support ». Mes images (vignettes) et récapitulatif.
    - « Choisir et commander l'impression » : commande en ligne « à confirmer » par l'atelier. Le prix est recalculé par le serveur avec le produit du catalogue lié au support (« prix confirmé par l'atelier » s'il n'y en a pas). L'image devient un fichier du client, avec la finalisation en option.
-6. **Crédit IA** (`/espace/conception/credit`) : solde, packs (1, 3, 5, 10 images par défaut), relevé (achats, images, remboursements, rejets).
+6. **Crédit IA** (`/espace/conception/credit`) : solde, packs (1, 3, 5, 10 images par défaut), relevé (achats, images, remboursements, rejets). « Payer » ouvre d'abord le récapitulatif du pack choisi (prix du pack, fonds de soutien, frais de retrait, total) ; le relevé montre, pour un achat Orange Money, ce qui a été payé frais compris.
 7. **Suivi d'une demande envoyée** :
    - Frise graphiste : envoyée, acompte, prise en charge, BAT envoyé, BAT validé.
    - Frise IA : images générées, impression commandée, textes replacés, BAT envoyé, BAT validé.
@@ -47,6 +47,7 @@ Ni coût ni marge ne sont montrés au client. Le coût d'une image chez le fourn
 - **Acompte et packs** :
   - Orange Money WebPay, mêmes protections que le paiement des commandes : jeton de notification dont seule l'empreinte est gardée, état relu chez Orange au retour, lien repris pendant 10 minutes.
   - Quand l'argent est reçu, la commande est créée (« Conception · Kakémono 85 × 200 cm », ou « Crédit IA · 3 images ») avec un paiement Orange Money **en attente**, jamais validé tout seul. La caisse le valide au local.
+  - Frais Orange Money (docs/espace-client.md) : le client paie en plus le fonds de soutien et le frais de retrait (Réglages › Paiements, 1 % chacun par défaut). Orange reçoit le total ; le paiement porte l'acompte ou le prix du pack, et les frais à part. Le forfait, l'acompte, le crédit IA et la facture ne changent pas : un pack de 3 000 F payé 3 060 F donne 3 000 F de crédit.
 - **Brouillon** : une demande dont un paiement Orange Money a réussi, ou est ouvert depuis moins de 30 minutes, ne peut plus être supprimée. Un deuxième acompte, payé depuis un autre onglet, va sur la même commande.
 - **Crédit IA** :
   - Un pack payé en ligne est utilisable tout de suite. S'il a été payé au numéro marchand, il compte quand la caisse a validé le paiement.

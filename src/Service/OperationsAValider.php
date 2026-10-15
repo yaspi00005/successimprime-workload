@@ -36,7 +36,10 @@ final class OperationsAValider
     }
 
     /**
-     * @return list<array{cle: string, date: ?\DateTimeImmutable, type: string, objet: string, detail: ?string, montant: int, controles: list<array{libelle: string, etat: string}>, justificatif: bool, auteur: ?string, lien: array{route: string, id: int}, comptes: ?array<int, string>}>
+     * « frais » : fonds de soutien et frais de retrait payés en plus du
+     * montant (le compte Orange Money a reçu montant + frais).
+     *
+     * @return list<array{cle: string, date: ?\DateTimeImmutable, type: string, objet: string, detail: ?string, montant: int, frais: int, controles: list<array{libelle: string, etat: string}>, justificatif: bool, auteur: ?string, lien: array{route: string, id: int}, comptes: ?array<int, string>}>
      */
     public function enAttente(\DateTimeImmutable $maintenant): array
     {
@@ -78,6 +81,7 @@ final class OperationsAValider
                 'objet' => trim(($commande?->getClients()?->getNomComplet() ?? '').' · '.($commande?->getNumero() ?? ''), ' ·'),
                 'detail' => $paiement->getReference(),
                 'montant' => $paiement->getMontant(),
+                'frais' => $paiement->getMontantTotalEncaisse() - $paiement->getMontant(),
                 'controles' => [
                     ...self::controlesPaiement($paiement->getMontant(), $reste, $paiement->getMode(), $reference, null !== $reference && ($references[$reference] ?? 0) > 0),
                     ...self::controleDelai($paiement->getDate(), $maintenant),
@@ -122,6 +126,7 @@ final class OperationsAValider
                 'objet' => $mouvement->getLibelle(),
                 'detail' => $mouvement->getCategorieLabel(),
                 'montant' => (int) $mouvement->getMontant(),
+                'frais' => 0,
                 'controles' => [...$controles, ...self::controleDelai($mouvement->getDateOperation(), $maintenant)],
                 'justificatif' => null !== $depense,
                 'auteur' => $mouvement->getAgent()?->getUserIdentifier(),

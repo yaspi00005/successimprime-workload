@@ -100,7 +100,8 @@ final class CatalogueSynchro
      */
     public const REGLAGES_PUBLICS = [
         'espace_client' => ['code_sms', 'commande_en_ligne', 'paiement_en_ligne'],
-        'paiements' => ['orange_money'],
+        // Taux des frais Orange Money (tenus dans ParametresPaiement) : le paiement de l'espace client les applique.
+        'paiements' => ['orange_money', 'tauxFondsSoutien', 'tauxFraisRetrait'],
         'taxes' => ['tva_par_defaut', 'taux_tva'],
         'horaires' => ['jours', 'ouverture', 'fermeture'],
         'site_contact' => ['lien_plan'],
@@ -603,7 +604,9 @@ final class CatalogueSynchro
 
     /**
      * Ce que le site reçoit d'une tuile : seulement les champs publics, avec
-     * leur valeur par défaut si le local ne les a jamais changés.
+     * leur valeur par défaut si le local ne les a jamais changés. Un champ
+     * tenu ailleurs (« source » paiement : taux des frais Orange Money)
+     * part seulement si l'appelant a ajouté sa valeur (Synchro::noterReglages).
      *
      * @param array<string, mixed> $stockees valeurs enregistrées au local
      *
@@ -613,10 +616,37 @@ final class CatalogueSynchro
     {
         $champs = array_values(array_filter(
             CatalogueParametres::tuiles()[$tuile]['champs'] ?? [],
-            static fn (array $c): bool => \in_array($c['cle'], self::REGLAGES_PUBLICS[$tuile] ?? [], true) && !isset($c['source']),
+            static fn (array $c): bool => \in_array($c['cle'], self::REGLAGES_PUBLICS[$tuile] ?? [], true),
         ));
+        $valeurs = CatalogueParametres::avecDefauts($champs, $stockees);
+        foreach ($champs as $c) {
+            if ('paiement' === ($c['source'] ?? null) && \array_key_exists($c['cle'], $stockees)) {
+                $valeurs[$c['cle']] = $stockees[$c['cle']];
+            }
+        }
 
-        return CatalogueParametres::avecDefauts($champs, $stockees);
+        return $valeurs;
+    }
+
+    /**
+     * Valeurs reçues d'une tuile, séparées : celles de la table des réglages
+     * (Reglage) et les taux tenus dans ParametresPaiement (« source » paiement).
+     *
+     * @param array<string, mixed> $valeurs
+     *
+     * @return array{0: array<string, mixed>, 1: array<string, float>}
+     */
+    public static function separerSourcePaiement(string $tuile, array $valeurs): array
+    {
+        $paiement = [];
+        foreach (CatalogueParametres::tuiles()[$tuile]['champs'] ?? [] as $c) {
+            if ('paiement' === ($c['source'] ?? null) && \array_key_exists($c['cle'], $valeurs)) {
+                $paiement[$c['cle']] = (float) $valeurs[$c['cle']];
+                unset($valeurs[$c['cle']]);
+            }
+        }
+
+        return [$valeurs, $paiement];
     }
 
     /**

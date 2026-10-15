@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\CompteTresorerie;
 use App\Entity\MouvementTresorerie;
 use App\Entity\Paiements;
 use App\Entity\User;
@@ -114,6 +115,17 @@ final class PaiementService
              */
             $this->mouvementTresorerieService->enregistrer($mouvement);
 
+            /*
+             * Frais mobile money payés par le client (paiement Orange
+             * Money de l'espace client) : le compte reçoit aussi les
+             * frais, dans un mouvement à part en « Autre produit »,
+             * comme à la caisse, pour ne pas gonfler les ventes.
+             */
+            $frais = self::mouvementFrais($paiement, $compte, $utilisateur);
+            if ($frais !== null) {
+                $this->mouvementTresorerieService->enregistrer($frais);
+            }
+
             $connexion->commit();
 
             return $mouvement;
@@ -200,6 +212,14 @@ final class PaiementService
              * marque le mouvement comme annulé.
              */
             $this->mouvementTresorerieService->annulerValide($mouvement, $motif);
+
+            // Les frais crédités à la validation repartent avec le paiement.
+            $frais = $this->entityManager->getRepository(MouvementTresorerie::class)
+                ->findOneBy(['reference' => self::referenceFrais($paiement)]);
+            if ($frais !== null && $frais->isValide()) {
+                $this->mouvementTresorerieService->annulerValide($frais, $motif);
+            }
+
             $paiement->annuler($motif, $utilisateur);
 
             $this->entityManager->flush();
@@ -264,6 +284,55 @@ final class PaiementService
 
             throw $exception;
         }
+    }
+
+    /** Référence du mouvement des frais d'un paiement validé ici. */
+    public static function referenceFrais(Paiements $paiement): string
+    {
+        return sprintf('MVT-FRAIS-P%d', $paiement->getId());
+    }
+
+    /**
+     * Mouvement des frais mobile money d'un paiement (fonds de soutien,
+     * frais de retrait), ou null s'il n'y en a pas.
+     */
+    public static function mouvementFrais(
+        Paiements $paiement,
+        CompteTresorerie $compte,
+        ?User $utilisateur
+    ): ?MouvementTresorerie {
+        $montant = $paiement->getMontantFondsSoutien() + $paiement->getMontantFraisRetrait();
+        if ($montant <= 0) {
+            return null;
+        }
+
+        $detail = array_filter([
+            $paiement->getMontantFondsSoutien() > 0 ? sprintf('fonds de soutien : %s FCFA', number_format($paiement->getMontantFondsSoutien(), 0, ',', ' ')) : null,
+            $paiement->getMontantFraisRetrait() > 0 ? sprintf('frais de retrait : %s FCFA', number_format($paiement->getMontantFraisRetrait(), 0, ',', ' ')) : null,
+        ]);
+        $commande = $paiement->getCommande();
+
+        return (new MouvementTresorerie())
+            ->setReference(self::referenceFrais($paiement))
+            ->setType(MouvementTresorerie::TYPE_ENCAISSEMENT)
+            ->setCategorie(MouvementTresorerie::CATEGORIE_AUTRE_PRODUIT)
+            ->setConfidentiel(false)
+            ->setCompteDestination($compte)
+            ->setMontant($montant)
+            ->setModePaiement($paiement->getMode())
+            ->setReferenceExterne($paiement->getReference())
+            ->setLibelle(mb_substr(sprintf(
+                'Frais mobile money - commande %s — %s',
+                $commande?->getNumero() ?? '#'.$commande?->getId(),
+                $commande?->getClients()?->getNomComplet() ?? 'Client inconnu'
+            ), 0, 255))
+            ->setDescription(sprintf(
+                'Frais mobile money à la charge du client sur le paiement de %s FCFA (%s).',
+                number_format((int) $paiement->getMontant(), 0, ',', ' '),
+                implode(', ', $detail)
+            ))
+            ->setAgent($utilisateur)
+            ->setDateOperation($paiement->getDate() ?? new \DateTimeImmutable());
     }
 
     private function construireReferencePaiement(

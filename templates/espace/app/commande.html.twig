@@ -124,6 +124,18 @@
 		{% if peutPayer and not carte.refuseeEntreprise %}<div class="ec-ligne" style="margin-top:.3rem"><span>Reste à payer</span><b class="{{ c.resteAPayer > 0 ? 'ec-montant' }}">{{ c.resteAPayer|number_format(0, ',', ' ') }} F</b></div>{% endif %}
 		{% if c.bonCommande %}<div class="ec-ligne" style="margin-top:.3rem"><span class="ec-petit">Bon de commande</span><span>{{ c.bonCommande }}</span></div>{% endif %}
 		{% if peutPayer and c|espace_en_validation > 0 %}<div class="ec-ligne" style="margin-top:.3rem"><span class="ec-petit">Payé par Orange Money, en validation</span><span>{{ (c|espace_en_validation)|number_format(0, ',', ' ') }} F</span></div>{% endif %}
+		{# Frais Orange Money payés en plus (fonds de soutien, retrait) : sur le paiement, hors commande. Pour qui paie seulement. #}
+		{% if peutPayer %}
+			{% for p in c|espace_paiements_om %}
+				<div class="ec-ligne" style="margin-top:.3rem;align-items:flex-start">
+					<span class="ec-petit">
+						Payé avec Orange Money le {{ p.date|date('d/m') }}{{ p.statut == 'en_attente' ? ' · en validation' }}<br>
+						<span class="ec-nowrap">{{ p.montant|number_format(0, ',', ' ') }} F</span> pour la commande{% if p.montantFondsSoutien > 0 %} + fonds de soutien <span class="ec-nowrap">{{ p.montantFondsSoutien|number_format(0, ',', ' ') }} F</span>{% endif %}{% if p.montantFraisRetrait > 0 %} + frais de retrait <span class="ec-nowrap">{{ p.montantFraisRetrait|number_format(0, ',', ' ') }} F</span>{% endif %}
+					</span>
+					<span class="ec-nowrap">{{ p.montantTotalEncaisse|number_format(0, ',', ' ') }} F</span>
+				</div>
+			{% endfor %}
+		{% endif %}
 		{% if c|espace_a_payer > 0 and not carte.aConfirmer and peutPayer %}<div class="ec-boutons"><a class="ec-bouton orange" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer avec Orange Money</a></div>{% endif %}
 	</div>
 	{% endif %}

@@ -5,7 +5,10 @@ namespace App\Tests\Unit\Service\Paiement;
 use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Entity\Paiements;
+use App\Entity\ParametresPaiement;
 use App\Entity\TransactionOrangeMoney;
+use App\Repository\ParametresPaiementRepository;
+use App\Service\Paiement\FraisOrangeMoney;
 use App\Service\Paiement\OrangeMoney;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
@@ -40,7 +43,9 @@ final class OrangeMoneyTest extends TestCase
         self::assertCount(1, $this->appels);
         $corps = $this->appels[0]['corps'];
         self::assertStringEndsWith('/webpayment', $this->appels[0]['url']);
-        self::assertSame(['merchant_key' => 'cle-marchand', 'currency' => 'OUV', 'amount' => 25000, 'lang' => 'fr'], array_intersect_key($corps, array_flip(['merchant_key', 'currency', 'amount', 'lang'])));
+        // Orange reçoit le total : 25 000 F + fonds de soutien 1 % + frais de retrait 1 % (taux par défaut).
+        self::assertSame(['merchant_key' => 'cle-marchand', 'currency' => 'OUV', 'amount' => 25500, 'lang' => 'fr'], array_intersect_key($corps, array_flip(['merchant_key', 'currency', 'amount', 'lang'])));
+        self::assertSame([25000, 250, 250, 25500], [$transaction->getMontant(), $transaction->getFondsSoutien(), $transaction->getFraisRetrait(), $transaction->getTotal()]);
         self::assertMatchesRegularExpression('/^SI[0-9A-F]{18}$/', $corps['order_id']); // forme attendue par la route de notification
         self::assertSame('https://si.ml/om/notification/'.$corps['order_id'], $corps['notif_url']);
         self::assertSame(self::LIEN, $transaction->getLienPaiement());
@@ -55,14 +60,29 @@ final class OrangeMoneyTest extends TestCase
     public function testLienDePaiementEncoreValableRepris(): void
     {
         $commande = $this->commande();
-        $ouverte = new TransactionOrangeMoney($commande, null, 25000, 'SI261013100000ABCDEF', new \DateTimeImmutable('2026-10-13 10:00'));
+        $ouverte = (new TransactionOrangeMoney($commande, null, 25000, 'SI261013100000ABCDEF', new \DateTimeImmutable('2026-10-13 10:00')))->avecFrais(250, 250);
         $ouverte->ouvrir('pt', 'jeton', self::LIEN);
 
         self::assertSame($ouverte, $this->service([$ouverte])->demarrer($commande, new CompteClient(), new \DateTimeImmutable('2026-10-13 10:05')));
         self::assertSame([], $this->appels);
 
+        // Taux changés entre-temps : le total n'est plus le même, un autre paiement est ouvert.
+        $nouvelle = $this->service([$ouverte], taux: (new ParametresPaiement())->setTauxFraisRetrait(1.5))->demarrer($commande, new CompteClient(), new \DateTimeImmutable('2026-10-13 10:05'));
+        self::assertNotSame($ouverte, $nouvelle);
+        self::assertSame(25625, $nouvelle->getTotal());
+        self::assertSame(25625, $this->appels[0]['corps']['amount']);
+
         // Passé 10 minutes, un nouveau paiement est ouvert.
         self::assertNotSame($ouverte, $this->service([$ouverte])->demarrer($commande, new CompteClient(), new \DateTimeImmutable('2026-10-13 10:11')));
+    }
+
+    public function testTauxAZeroSansFrais(): void
+    {
+        $transaction = $this->service(taux: (new ParametresPaiement())->setTauxFondsSoutien(0)->setTauxFraisRetrait(0))
+            ->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable('2026-10-13 10:00'));
+
+        self::assertSame(25000, $this->appels[0]['corps']['amount']);
+        self::assertSame(25000, $transaction->getTotal());
     }
 
     public function testLienHorsOrangeMoneyRefuse(): void
@@ -119,6 +139,11 @@ final class OrangeMoneyTest extends TestCase
         $paiement = $commande->getPaiements()->first();
         self::assertInstanceOf(Paiements::class, $paiement);
         self::assertSame(Paiements::STATUT_EN_ATTENTE, $paiement->getStatut()); // jamais validé tout seul
+        // Les frais vont sur le paiement, jamais dans la part de la commande.
+        self::assertSame(25000, $paiement->getMontant());
+        self::assertSame([true, 250, true, 250], [$paiement->isFondsSoutienInclus(), $paiement->getMontantFondsSoutien(), $paiement->isFraisRetraitInclus(), $paiement->getMontantFraisRetrait()]);
+        self::assertSame(25500, $paiement->getMontantTotalEncaisse());
+        self::assertSame(25000, $commande->getTotalTtc(), 'le prix de la commande ne change pas');
         self::assertSame(Paiements::MODE_ORANGE_MONEY, $paiement->getMode());
         self::assertSame('OM MP261013.1000.A12345', $paiement->getReference());
         self::assertSame(TransactionOrangeMoney::REUSSIE, $transaction->getStatut());
@@ -150,7 +175,8 @@ final class OrangeMoneyTest extends TestCase
         $this->etat = ['status' => 'SUCCESS', 'txnid' => 'MP9'];
 
         self::assertSame(TransactionOrangeMoney::REUSSIE, $this->service([$transaction])->verifier($transaction, new \DateTimeImmutable()));
-        self::assertSame(['order_id' => $transaction->getOrderId(), 'amount' => 25000, 'pay_token' => 'pt-123'], $this->appels[0]['corps']);
+        // L'état se lit avec le montant envoyé à Orange : frais compris.
+        self::assertSame(['order_id' => $transaction->getOrderId(), 'amount' => 25500, 'pay_token' => 'pt-123'], $this->appels[0]['corps']);
         self::assertCount(1, $commande->getPaiements());
     }
 
@@ -159,7 +185,7 @@ final class OrangeMoneyTest extends TestCase
         $etapes = $this->diagnostic(['merchant' => ''])->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
 
         self::assertSame(['etape' => 'Clés dans .env.local', 'ok' => false, 'detail' => 'vide : ORANGE_MONEY_MERCHANT_KEY'], $etapes[0]);
-        self::assertSame(['Clés dans .env.local' => false, 'Adresse de l\'API' => true, 'Jeton Orange' => true], array_column($etapes, 'ok', 'etape'));
+        self::assertSame(['Clés dans .env.local' => false, 'Adresse de l\'API' => true, 'Frais Orange Money' => true, 'Jeton Orange' => true], array_column($etapes, 'ok', 'etape'));
         self::assertCount(1, $this->appels, 'sans clé marchand, aucun paiement d\'essai n\'est ouvert');
         self::assertStringNotContainsString('secret-om', serialize($etapes));
     }
@@ -169,9 +195,9 @@ final class OrangeMoneyTest extends TestCase
         $etapes = $this->diagnostic(['jeton' => new MockResponse('{"error":"invalid_client","error_description":"The requested service needs credentials, but the ones provided were invalid."}', ['http_code' => 401])])
             ->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
 
-        self::assertFalse($etapes[2]['ok']);
-        self::assertSame('refusé par Orange (HTTP 401, invalid_client : The requested service needs credentials, but the ones provided were invalid.)', $etapes[2]['detail']);
-        self::assertCount(3, $etapes, 'sans jeton, pas de paiement d\'essai');
+        self::assertFalse($etapes[3]['ok']);
+        self::assertSame('refusé par Orange (HTTP 401, invalid_client : The requested service needs credentials, but the ones provided were invalid.)', $etapes[3]['detail']);
+        self::assertCount(4, $etapes, 'sans jeton, pas de paiement d\'essai');
     }
 
     public function testDiagnosticRepereUnEnTeteCollePourUneCle(): void
@@ -185,10 +211,12 @@ final class OrangeMoneyTest extends TestCase
     {
         $etapes = $this->diagnostic([])->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
 
-        self::assertSame([true, true, true, true], array_column($etapes, 'ok'));
-        self::assertSame('clé marchand acceptée, page de paiement de 100 OUV : '.self::LIEN, $etapes[3]['detail']);
+        self::assertSame([true, true, true, true, true], array_column($etapes, 'ok'));
+        // Les frais d'un paiement de 100, puis le paiement d'essai ouvert frais compris, comme pour un client.
+        self::assertSame(['etape' => 'Frais Orange Money', 'ok' => true, 'detail' => '100 OUV + fonds de soutien 1 % (1) + frais de retrait 1 % (1) = 102 OUV payés par le client'], $etapes[2]);
+        self::assertSame('clé marchand acceptée, page de paiement de 102 OUV (frais compris) : '.self::LIEN, $etapes[4]['detail']);
         $corps = $this->appels[1]['corps'];
-        self::assertSame(['merchant_key' => 'cle-om', 'currency' => 'OUV', 'amount' => 100], array_intersect_key($corps, array_flip(['merchant_key', 'currency', 'amount'])));
+        self::assertSame(['merchant_key' => 'cle-om', 'currency' => 'OUV', 'amount' => 102], array_intersect_key($corps, array_flip(['merchant_key', 'currency', 'amount'])));
         self::assertMatchesRegularExpression('/^SI[0-9A-F]{18}$/', $corps['order_id']);
         self::assertSame([], $this->persistes, 'l\'essai n\'enregistre aucune transaction');
     }
@@ -197,8 +225,19 @@ final class OrangeMoneyTest extends TestCase
     {
         $etapes = $this->diagnostic(['api' => 'https://api.orange.com/orange-money-webpay/ml/v1', 'devise' => 'XOF'])->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
 
-        self::assertSame(['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => 'seulement avec l\'API d\'essai (dev), jamais en production'], $etapes[3]);
+        self::assertSame(['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => 'seulement avec l\'API d\'essai (dev), jamais en production'], $etapes[4]);
         self::assertCount(1, $this->appels, 'seul le jeton est demandé');
+    }
+
+    public function testDiagnosticMontreLesFraisSansCleNiSecret(): void
+    {
+        $etapes = $this->diagnostic(['secret' => '', 'merchant' => ''])->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
+
+        // Sans clé : rien n'est demandé à Orange, mais le calcul des frais est montré.
+        self::assertSame([], $this->appels);
+        self::assertSame('Frais Orange Money', $etapes[2]['etape']);
+        self::assertStringContainsString('= 102 OUV payés par le client', $etapes[2]['detail']);
+        self::assertSame('100 OUV + frais de retrait 2 % (2) = 102 OUV payés par le client', OrangeMoney::detailFrais(FraisOrangeMoney::calculer(100, (new ParametresPaiement())->setTauxFondsSoutien(0)->setTauxFraisRetrait(2)), 'OUV'), 'un taux à 0 n\'a pas de ligne');
     }
 
     public function testDiagnosticSignaleUneDeviseQuiNeVaPasAvecLAPI(): void
@@ -212,7 +251,7 @@ final class OrangeMoneyTest extends TestCase
     {
         $etapes = $this->diagnostic(['base' => 'http://localhost:8000/'])->diagnostic(true, new \DateTimeImmutable('2026-10-14 16:00'));
 
-        self::assertStringEndsWith('(retour vers example.com : Orange refuse localhost)', $etapes[3]['detail']);
+        self::assertStringEndsWith('(retour vers example.com : Orange refuse localhost)', $etapes[4]['detail']);
         $corps = $this->appels[1]['corps'];
         self::assertSame('https://example.com/', $corps['return_url']);
         self::assertSame('https://example.com/om/notification/'.$corps['order_id'], $corps['notif_url']);
@@ -269,14 +308,14 @@ final class OrangeMoneyTest extends TestCase
     private function transactionOuverte(): array
     {
         $commande = $this->commande();
-        $transaction = new TransactionOrangeMoney($commande, null, 25000, 'SI261013100000'.strtoupper(bin2hex(random_bytes(3))), new \DateTimeImmutable('2026-10-13 10:00'));
+        $transaction = (new TransactionOrangeMoney($commande, null, 25000, 'SI261013100000'.strtoupper(bin2hex(random_bytes(3))), new \DateTimeImmutable('2026-10-13 10:00')))->avecFrais(250, 250);
         $transaction->ouvrir('pt-123', 'jeton-secret-orange', self::LIEN);
 
         return [$commande, $transaction];
     }
 
     /** @param list<TransactionOrangeMoney> $transactions */
-    private function service(array $transactions = [], string $cleMarchand = 'cle-marchand', string $espace = 'https://si.ml/espace/'): OrangeMoney
+    private function service(array $transactions = [], string $cleMarchand = 'cle-marchand', string $espace = 'https://si.ml/espace/', ?ParametresPaiement $taux = null): OrangeMoney
     {
         $repository = $this->createStub(EntityRepository::class);
         $repository->method('findBy')->willReturnCallback(static fn (array $critere): array => array_values(array_filter(
@@ -314,6 +353,12 @@ final class OrangeMoneyTest extends TestCase
             default => $espace.$route,
         });
 
-        return new OrangeMoney($em, $http, new ArrayAdapter(), $urls, new NullLogger(), 'https://api.orange.com/orange-money-webpay/dev/v1', 'OUV', 'id', 'secret', $cleMarchand);
+        $parametres = null;
+        if (null !== $taux) {
+            $parametres = $this->createStub(ParametresPaiementRepository::class);
+            $parametres->method('recuperer')->willReturn($taux);
+        }
+
+        return new OrangeMoney($em, $http, new ArrayAdapter(), $urls, new NullLogger(), 'https://api.orange.com/orange-money-webpay/dev/v1', 'OUV', 'id', 'secret', $cleMarchand, null, $parametres);
     }
 }

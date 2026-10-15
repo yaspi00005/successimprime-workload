@@ -587,7 +587,11 @@ final class EspaceClientController extends AbstractController
         return $this->redirectToRoute('app_factures_pdf_public', ['id' => $facture->getId(), 'token' => $facture->getTokenAuthenticite()]);
     }
 
-    /** Paiement d'une commande (maquette 17) : Orange Money en ligne dès que les clés sont posées. */
+    /**
+     * Paiement d'une commande (maquette 17) : récapitulatif avant Orange
+     * Money (montant, fonds de soutien, frais de retrait, total), calculé
+     * ici ; Orange Money en ligne dès que les clés sont posées.
+     */
     #[Route('/payer/{id}', name: 'payer', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET'])]
     public function payer(string $id, Request $request, EspaceClient $espace, OrangeMoney $orangeMoney): Response
     {
@@ -610,19 +614,29 @@ final class EspaceClientController extends AbstractController
             'compte' => $compte,
             'omActif' => $orangeMoney->estConfigure(),
             'aPayer' => OrangeMoney::aPayer($commande),
+            'frais' => $orangeMoney->frais(OrangeMoney::aPayer($commande)),
             'enValidation' => OrangeMoney::enValidation($commande),
             'marchand' => $espace->marchandOrangeMoney(),
             'whatsapp' => $this->whatsapp(\sprintf('Bonjour, je souhaite payer ma commande %s (%s F).', $commande->getNumero(), number_format((float) OrangeMoney::aPayer($commande), 0, ',', ' '))),
         ]);
     }
 
-    /** Ouvre le paiement chez Orange et envoie le client sur sa page de paiement. */
+    /**
+     * « Continuer vers Orange Money » : ouvre le paiement chez Orange (total
+     * recalculé ici) et envoie le client sur sa page de paiement. Si le
+     * total a changé depuis le récapitulatif, il le revoit d'abord.
+     */
     #[Route('/payer/{id}', name: 'payer_orange_money', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['POST'])]
     public function payerOrangeMoney(string $id, Request $request, EspaceClient $espace, OrangeMoney $orangeMoney): Response
     {
         $this->jeton($request);
         $compte = $this->payeur();
         $commande = $espace->commande($compte->getClient(), $id, true) ?? throw $this->createNotFoundException();
+        if (OrangeMoney::totalChange($request->request->getString('total'), $orangeMoney->frais(OrangeMoney::aPayer($commande)))) {
+            $this->addFlash('error', 'Le montant a changé : vérifiez le récapitulatif avant de payer.');
+
+            return $this->redirectToRoute('app_espace_payer', ['id' => $id]);
+        }
         try {
             return $this->redirect($orangeMoney->demarrer($commande, $compte, new \DateTimeImmutable())->getLienPaiement());
         } catch (\DomainException $e) {
@@ -642,7 +656,7 @@ final class EspaceClientController extends AbstractController
             ?? throw $this->createNotFoundException();
 
         $this->addFlash(...match ($orangeMoney->verifier($transaction, new \DateTimeImmutable())) {
-            TransactionOrangeMoney::REUSSIE => ['succes', \sprintf('Paiement Orange Money de %s FCFA reçu, merci ! La caisse le valide et votre reçu arrive dans l\'espace.', number_format($transaction->getMontant(), 0, ',', ' '))],
+            TransactionOrangeMoney::REUSSIE => ['succes', \sprintf('Paiement Orange Money de %s FCFA reçu, merci ! La caisse le valide et votre reçu arrive dans l\'espace.', number_format($transaction->getTotal(), 0, ',', ' '))],
             TransactionOrangeMoney::ECHOUEE => ['error', 'Le paiement Orange Money n\'a pas abouti : rien n\'a été débité. Vous pouvez réessayer.'],
             TransactionOrangeMoney::EXPIREE => ['error', 'Le lien de paiement a expiré. Relancez le paiement.'],
             default => ['succes', 'Paiement en cours chez Orange Money : il apparaît ici dès qu\'Orange le confirme.'],

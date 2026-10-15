@@ -122,6 +122,9 @@
 .dc-om-tete b { display: block; font-size: 1.05rem; }
 .dc-om-tete small { opacity: .9; }
 .dc-om-montant { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin: .2rem 0 .8rem; }
+.dc-om-recap { margin: .35rem 0 .5rem; }
+.dc-om-recap + .ec-recap-explication { margin: 0 0 .8rem; }
+.dc-om .ec-recap-lignes > div { padding: .45rem 0; }
 .dc-om-montant .ec-gros { font-size: 1.9rem; margin: 0; white-space: nowrap; }
 .dc-om-numero { border: 1.5px solid var(--trait); border-radius: 12px; padding: .7rem .9rem; font-weight: 700; margin-bottom: .8rem; }
 .dc-om-numero span { color: var(--gris); font-weight: 500; }

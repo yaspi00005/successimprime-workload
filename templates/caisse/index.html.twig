@@ -127,11 +127,28 @@
 							{{ form_errors(formulaire.reference) }}
 						</div>
 					</div>
+					{# Orange Money : fonds de soutien et frais de retrait payés par le client en plus du
+					   montant, cochés d'office (Réglages › Paiements). Le serveur recalcule les montants. #}
+					{% if frais_om.fonds > 0 or frais_om.retrait > 0 %}
+						<fieldset class="si-caisse-frais" data-taux-fonds="{{ frais_om.fonds }}" data-taux-retrait="{{ frais_om.retrait }}" hidden>
+							<legend>Frais Orange Money, payés par le client en plus</legend>
+							{% for cle, ligne in {fonds: {champ: formulaire.fondsSoutienInclus, libelle: 'Fonds de soutien', taux: frais_om.fonds}, retrait: {champ: formulaire.fraisRetraitInclus, libelle: 'Frais de retrait Orange Money', taux: frais_om.retrait}} %}
+								{% if ligne.taux > 0 %}
+									<label class="si-caisse-frais-ligne">
+										<input type="checkbox" class="form-check-input" name="{{ ligne.champ.vars.full_name }}" value="1" data-frais="{{ cle }}">
+										<span>{{ ligne.libelle }} ({{ ligne.taux|frais_taux }})</span>
+										<b data-montant-frais="{{ cle }}">0 F</b>
+									</label>
+								{% endif %}
+							{% endfor %}
+							<p class="si-caisse-frais-total">Total à recevoir <b data-total-om>0 F</b></p>
+						</fieldset>
+					{% endif %}
 					{% do formulaire.fraisRetraitInclus.setRendered() %}
 					{% do formulaire.fondsSoutienInclus.setRendered() %}
 
 					<button type="submit" class="btn btn-success si-caisse-valider"><i class="fas fa-print me-2"></i>Encaisser et imprimer le reçu</button>
-					<p class="si-caisse-note">Les frais Orange Money, Wave ou carte se saisissent depuis <a href="{{ path('app_commandes_paiement', {id: commande.id}) }}">la page de paiement de la commande</a>.</p>
+					<p class="si-caisse-note">Les frais Wave ou carte se saisissent depuis <a href="{{ path('app_commandes_paiement', {id: commande.id}) }}">la page de paiement de la commande</a>.</p>
 				{{ form_end(formulaire) }}
 			{% endif %}
 		</section>
@@ -258,6 +275,36 @@
 					montant.addEventListener('input', verifier);
 					form.querySelectorAll('.si-caisse-mode').forEach(function (b) { b.addEventListener('click', verifier); });
 					verifier();
+				}
+				// Frais Orange Money : visibles et cochés d'office quand on choisit Orange Money, décochables.
+				var frais = form.querySelector('.si-caisse-frais');
+				if (frais && montant) {
+					var taux = {fonds: +frais.dataset.tauxFonds, retrait: +frais.dataset.tauxRetrait};
+					var francs = function (n) { return new Intl.NumberFormat('fr-FR').format(n).replace(/\u202f/g, ' ') + ' F'; };
+					var calculer = function () {
+						var valeur = parseInt(String(montant.value).replace(/\D/g, ''), 10) || 0;
+						var total = valeur;
+						frais.querySelectorAll('input[data-frais]').forEach(function (c) {
+							var f = Math.round(valeur * taux[c.dataset.frais] / 100);
+							frais.querySelector('[data-montant-frais="' + c.dataset.frais + '"]').textContent = francs(f);
+							if (c.checked) { total += f; }
+						});
+						frais.querySelector('[data-total-om]').textContent = francs(total);
+					};
+					var modeFrais = null;
+					var suivreMode = function () {
+						var om = select.value === 'orange_money';
+						frais.hidden = !om;
+						if (om !== (modeFrais === 'orange_money')) {
+							frais.querySelectorAll('input[data-frais]').forEach(function (c) { c.checked = om; });
+						}
+						modeFrais = select.value;
+						calculer();
+					};
+					form.querySelectorAll('.si-caisse-mode').forEach(function (b) { b.addEventListener('click', suivreMode); });
+					frais.addEventListener('change', calculer);
+					montant.addEventListener('input', calculer);
+					suivreMode();
 				}
 				form.addEventListener('submit', function () {
 					form.querySelector('.si-caisse-valider').disabled = true;

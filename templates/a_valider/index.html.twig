@@ -58,7 +58,7 @@
 											{% endif %}
 										</td>
 										<td class="si-v-objet">{{ op.objet }}{% if op.detail %}<small class="d-block text-muted">{{ op.detail }}</small>{% endif %}</td>
-										<td class="text-end text-nowrap fw-bold si-v-montant">{{ op.montant|number_format(0, ',', ' ') }}</td>
+										<td class="text-end text-nowrap fw-bold si-v-montant">{{ op.montant|number_format(0, ',', ' ') }}{% if op.frais|default(0) > 0 %}<small class="d-block text-muted fw-normal" title="Fonds de soutien et frais de retrait payés par le client : le compte a reçu {{ (op.montant + op.frais)|number_format(0, ',', ' ') }} F">+ {{ op.frais|number_format(0, ',', ' ') }} de frais</small>{% endif %}</td>
 										<td class="si-v-controles">
 											{% for c in op.controles %}
 												<span class="si-controle si-controle-{{ c.etat }}">{{ c.etat == 'ok' ? '✓' : '⚠' }} {{ c.libelle }}</span>

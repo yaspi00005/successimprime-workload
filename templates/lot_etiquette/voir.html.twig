@@ -122,8 +122,8 @@
 										</td>
 
 										<td class="text-center align-middle">
-											<a href="{{ asset(etiquette.fichierQr) }}" target="_blank" title="Afficher le QR code">
-												<img src="{{ asset(etiquette.fichierQr) }}" alt="QR {{ etiquette.numero }}" width="70" height="70" style="object-fit: contain;">
+											<a href="{{ path('app_lot_etiquette_qr', {id: etiquette.id}) }}" target="_blank" title="Afficher le QR code">
+												<img src="{{ path('app_lot_etiquette_qr', {id: etiquette.id}) }}" alt="QR {{ etiquette.numero }}" width="70" height="70" style="object-fit: contain;">
 											</a>
 										</td>
 

@@ -47,6 +47,20 @@ final class ReglesAccesTest extends TestCase
         }
     }
 
+    /**
+     * Fichiers privés (docs/securite.md) : l'adresse demande au moins une
+     * connexion du personnel ; le contrôleur vérifie le reste
+     * (FichiersPrivesVoter). Les QR codes des étiquettes restent à la direction.
+     */
+    public function testFichiersPrives(): void
+    {
+        self::assertSame(['ROLE_ADMIN'], self::roles('/lot/etiquette/qr/12'));
+        self::assertSame(['ROLE_PREPRESSE', 'ROLE_PRODUCTION_VOIR'], self::roles('/pre-presse/fichier/12/visualiser'));
+        foreach (['/chat/'.str_repeat('a1', 16).'/fichier/3', '/equipe/photo/3', '/reclamations/3/justificatif', '/uploads/chat/chat_1.jpg', '/uploads/prepresse/commande_1/detail_2/a.pdf', '/uploads/etiquettes/LOT-1/ETQ-000001.png', '/uploads/reclamations/j.pdf', '/uploads/employes/p.jpg'] as $chemin) {
+            self::assertSame(['ROLE_USER'], self::roles($chemin), $chemin);
+        }
+    }
+
     public function testReglesInchangeesAutour(): void
     {
         self::assertSame(['ROLE_PRODUCTION_VOIR'], self::roles('/production/12'));

@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Security\AccesEnLigne;
+use App\Service\FichiersPrives;
 use App\Service\Installation\VerificationInstallation;
 use Doctrine\DBAL\Connection;
 use Doctrine\Migrations\DependencyFactory;
@@ -40,6 +41,7 @@ final class VerifierInstallationCommand extends Command
         #[Autowire(service: 'doctrine.migrations.dependency_factory')] private readonly DependencyFactory $migrations,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
         #[Autowire('%env(default:app.sauvegarde_dir:SAUVEGARDE_DIR)%')] private readonly string $dossierSauvegardes,
+        private readonly FichiersPrives $fichiersPrives,
     ) {
         parent::__construct();
     }
@@ -111,6 +113,11 @@ final class VerifierInstallationCommand extends Command
             $ok = is_dir($chemin) && is_writable($chemin);
             $resultats[] = ['statut' => $ok ? VerificationInstallation::OK : VerificationInstallation::ERREUR, 'point' => 'Dossier '.$nom, 'detail' => $ok ? 'accessible en écriture' : 'absent ou en lecture seule pour le compte du site'];
         }
+        // Fichiers du chat, de la pré-presse… envoyés avant la mise à jour du 15/10/2026 (docs/securite.md).
+        $restants = $this->fichiersPrives->restantsSousPublic();
+        $resultats[] = 0 === $restants
+            ? ['statut' => VerificationInstallation::OK, 'point' => 'Fichiers privés', 'detail' => 'tous hors de public/']
+            : ['statut' => VerificationInstallation::A_VOIR, 'point' => 'Fichiers privés', 'detail' => \sprintf('%d encore sous public/uploads : php bin/console app:fichiers:deplacer --executer', $restants)];
         if (!$enLigne) {
             $theme = is_file($this->projet.'/public/theme/css/style.css');
             $resultats[] = ['statut' => $theme ? VerificationInstallation::OK : VerificationInstallation::ERREUR, 'point' => 'Thème de l\'administration', 'detail' => $theme ? 'installé' : 'à installer : php bin/console app:installer-theme <dossier du thème>'];

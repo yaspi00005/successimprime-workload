@@ -220,7 +220,26 @@ sudo -u succes git pull
 sudo -u succes composer install --no-dev --optimize-autoloader
 sudo -u succes php bin/console doctrine:migrations:migrate --no-interaction
 sudo -u succes php bin/console cache:clear
+sudo -u succes php bin/console app:fichiers:deplacer --executer
 sudo systemctl reload php8.4-fpm
 ```
 
-Mettre à jour l'ERP local en même temps : les deux installations doivent avoir les mêmes migrations.
+Sur l'hébergement mutualisé (LWS), par SSH, une fois `git pull` et `composer install` faits dans le dossier du projet :
+
+```
+cd ~/successimprim 2>/dev/null || cd ~/public_html/succesimprim
+php bin/console doctrine:migrations:migrate --no-interaction
+php -d memory_limit=512M bin/console cache:clear
+php bin/console app:fichiers:deplacer --executer
+php bin/console app:verifier-installation
+```
+
+`app:fichiers:deplacer --executer` range hors de `public/` les fichiers privés envoyés avant la mise à jour du 15/10/2026 (chat, pré-presse, étiquettes…, docs/securite.md). Il ne sert qu'une fois, mais se relance sans risque à chaque mise à jour : « Rien à déplacer : tout est déjà rangé. » S'il signale un conflit ou une erreur, envoyer sa sortie au développeur.
+
+Mettre à jour l'ERP local en même temps : les deux installations doivent avoir les mêmes migrations. Au local aussi, dans le dossier du projet, après `git pull` :
+
+```
+php bin/console doctrine:migrations:migrate --no-interaction
+php bin/console cache:clear
+php bin/console app:fichiers:deplacer --executer
+```

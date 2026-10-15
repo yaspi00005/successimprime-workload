@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\CommandeDetailFichier;
 use App\Repository\CommandeDetailFichierRepository;
 use App\Repository\CommandesDetailsRepository;
+use App\Security\FichierEnvoye;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -12,7 +13,6 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -398,17 +398,10 @@ final class FichierUploadController extends AbstractController
             );
         }
 
-        $response = new BinaryFileResponse($chemin);
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_INLINE,
-            $fichier->getNomOriginal() ?: basename($chemin)
-        );
-        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        // Type lu dans le contenu, pas celui annoncé à l'envoi : une page
+        // HTML déguisée se télécharge sans s'ouvrir (FichierEnvoye).
+        $response = FichierEnvoye::reponse($chemin, $fichier->getNomOriginal());
         $response->headers->set('Cache-Control', 'private, no-store');
-
-        if ($fichier->getTypeMime()) {
-            $response->headers->set('Content-Type', $fichier->getTypeMime());
-        }
 
         return $response;
     }

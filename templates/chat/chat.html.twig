@@ -2,7 +2,7 @@
 
 {% macro avatar(utilisateur, classe) %}
 	{% if utilisateur and utilisateur.employe and utilisateur.employe.photos %}
-		<img src="{{ asset('uploads/employes/' ~ utilisateur.employe.photos) }}" class="{{ classe }}" alt="{{ utilisateur.username }}">
+		<img src="{{ path('app_photo_employe', {id: utilisateur.employe.id}) }}" class="{{ classe }}" alt="{{ utilisateur.username }}">
 	{% else %}
 		<span class="{{ classe }} d-flex align-items-center justify-content-center bg-primary text-white" style="font-weight: 600;">
 			{{ utilisateur ? (utilisateur.username|first|upper) : '?' }}
@@ -14,6 +14,14 @@
 
 {% block title %}
 	Messagerie
+{% endblock %}
+
+{% block stylesheets %}
+	<style>
+		/* Le thème range « .chatbox » hors de l'écran (panneau qui glisse) : ici, la messagerie est la page elle-même. */
+		.chatbox.si-chat { position: static; width: auto; height: auto; right: auto; z-index: auto; box-shadow: none; background: transparent; transition: none; }
+		.chatbox.si-chat .msg_card_body { overflow-y: auto; max-height: 70vh; }
+	</style>
 {% endblock %}
 
 {% block body %}
@@ -39,7 +47,7 @@
 
 	</div>
 
-	<div class="row chatbox">
+	<div class="row chatbox si-chat">
 
 		<div class="col-md-12 col-lg-5 col-xl-4">
 			<div class="card">
@@ -152,11 +160,11 @@
 									{% if message.aUnePieceJointe %}
 
 										{% if message.pieceJointeEstUneImage %}
-											<a href="{{ asset('uploads/chat/' ~ message.pieceJointeFichier) }}" target="_blank">
-												<img src="{{ asset('uploads/chat/' ~ message.pieceJointeFichier) }}" alt="{{ message.pieceJointeNomOriginal }}" class="img-fluid rounded mb-1 d-block" style="max-height: 220px;">
+											<a href="{{ path('app_chat_fichier', {jeton: conversationActive.jeton, id: message.id}) }}" target="_blank">
+												<img src="{{ path('app_chat_fichier', {jeton: conversationActive.jeton, id: message.id}) }}" alt="{{ message.pieceJointeNomOriginal }}" class="img-fluid rounded mb-1 d-block" style="max-height: 220px;">
 											</a>
 										{% else %}
-											<a href="{{ asset('uploads/chat/' ~ message.pieceJointeFichier) }}" target="_blank" class="d-flex align-items-center mb-1" style="color: inherit;">
+											<a href="{{ path('app_chat_fichier', {jeton: conversationActive.jeton, id: message.id}) }}" target="_blank" class="d-flex align-items-center mb-1" style="color: inherit;">
 												<i class="fa fa-file-o mr-2"></i>
 												{{ message.pieceJointeNomOriginal }}
 											</a>

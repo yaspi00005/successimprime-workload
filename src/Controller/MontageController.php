@@ -5,17 +5,17 @@ namespace App\Controller;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\CommandesDetails;
 use App\Entity\Machines;
+use App\Security\FichierEnvoye;
+use App\Service\EspaceClient\EspaceClient;
 use App\Service\Montage;
 use App\Entity\User;
 use App\Service\Parametres\Parametres;
 use App\Service\SuiviMetiers\TableauConception;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -83,13 +83,8 @@ final class MontageController extends AbstractController
         if ($chemin === null) {
             throw $this->createNotFoundException('Fichier introuvable sur le serveur.');
         }
-        $reponse = new BinaryFileResponse($chemin);
-        $reponse->setContentDisposition(ResponseHeaderBag::DISPOSITION_INLINE, $fichier->getNomOriginal() ?: basename($chemin));
-        $reponse->headers->set('Content-Type', $fichier->getTypeMime() ?: (mime_content_type($chemin) ?: 'application/octet-stream'));
-        $reponse->headers->set('X-Content-Type-Options', 'nosniff');
-        $reponse->setPrivate();
-
-        return $reponse;
+        // Type lu dans le contenu, jamais celui enregistré : rien ne s'exécute (FichierEnvoye).
+        return FichierEnvoye::reponse($chemin, $fichier->getNomOriginal());
     }
 
     #[Route('/{id}/enregistrer', name: 'enregistrer', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -162,27 +157,10 @@ final class MontageController extends AbstractController
         return $dernier;
     }
 
-    /** Même règle que l'écran prépresse : public/<chemin> ou var/uploads/commandes. */
+    /** Même règle que l'écran prépresse : var/<chemin> (FichiersPrives) ou var/uploads/commandes. */
     private function chemin(CommandeDetailFichier $fichier): ?string
     {
-        $projet = (string) $this->getParameter('kernel.project_dir');
-        $candidats = [];
-        if (trim((string) $fichier->getChemin()) !== '') {
-            $candidats[] = [$projet.'/public', $projet.'/public/'.ltrim((string) $fichier->getChemin(), '/')];
-        }
-        $nom = basename(trim((string) $fichier->getNomStockage()));
-        if ($nom !== '' && $nom !== '.') {
-            $candidats[] = [$projet.'/var/uploads/commandes', $projet.'/var/uploads/commandes/'.$nom];
-        }
-        foreach ($candidats as [$racine, $chemin]) {
-            $racine = realpath($racine);
-            $reel = realpath($chemin);
-            if ($racine !== false && $reel !== false && str_starts_with($reel, $racine.\DIRECTORY_SEPARATOR) && is_file($reel)) {
-                return $reel;
-            }
-        }
-
-        return null;
+        return EspaceClient::cheminDansProjet((string) $this->getParameter('kernel.project_dir'), $fichier);
     }
 
     private function autoriser(): void

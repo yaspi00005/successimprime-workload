@@ -16,7 +16,7 @@ git pull
 cp -an ~/uploads-avant-retrait/. public/uploads/
 ```
 
-La dernière ligne remet les fichiers effacés sans écraser les autres. Les fichiers envoyés ensuite restent sur la machine : Git ne les touche plus. Quand tout marche, `~/uploads-avant-retrait` peut être supprimé.
+La dernière ligne remet les fichiers effacés sans écraser les autres. Puis `php bin/console app:fichiers:deplacer --executer` les range hors de `public/` (docs/securite.md, « Fichiers envoyés »). Les fichiers envoyés ensuite restent sur la machine : Git ne les touche plus. Quand tout marche, `~/uploads-avant-retrait` peut être supprimé.
 
 ## 1. Créer la clé sur le serveur
 

@@ -71,6 +71,11 @@ class CommandeDetailFichier
     #[ORM\Column(length: 255)]
     private ?string $nomStockage = null;
 
+    /**
+     * Fichier traité en pré-presse : « uploads/prepresse/commande_X/detail_Y/… »,
+     * relatif à var/ (hors de public/, FichiersPrives). Vide pour les
+     * fichiers rangés à plat dans var/uploads/commandes.
+     */
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $chemin = null;
 

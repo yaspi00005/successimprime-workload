@@ -68,7 +68,8 @@ class Reclamation
     private int $montant = 0;
 
     /**
-     * Nom du fichier stocké (public/uploads/reclamations/...) — le
+     * Nom du fichier stocké (var/uploads/reclamations/..., hors de public/ :
+     * servi par ReclamationController::justificatif) — le
      * justificatif est facultatif ("si possible").
      */
     #[ORM\Column(length: 255, nullable: true)]

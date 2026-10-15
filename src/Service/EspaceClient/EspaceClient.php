@@ -16,6 +16,7 @@ use App\Entity\MessageClient;
 use App\Entity\ReclamationClient;
 use App\Repository\EntrepriseRepository;
 use App\Service\Conception\DemandesConception;
+use App\Service\FichiersPrives;
 use App\Service\NotificationService;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
@@ -302,26 +303,34 @@ final class EspaceClient
         return null === $chemin ? null : ['chemin' => $chemin, 'nom' => (string) $f->getNomOriginal(), 'type' => (string) ($f->getTypeMime() ?: 'application/octet-stream')];
     }
 
-    /** Où le fichier est rangé sur ce serveur (public/ ou var/uploads/commandes), ou null. */
+    /**
+     * Où le fichier est rangé sur ce serveur, ou null. Sert aussi à la
+     * synchronisation (FichiersSynchro) dans les deux sens.
+     */
     public function cheminSurDisque(CommandeDetailFichier $f): ?string
     {
-        $candidats = [];
-        if ('' !== trim((string) $f->getChemin())) {
-            $candidats[] = [$this->projet.'/public', $this->projet.'/public/'.ltrim((string) $f->getChemin(), '/')];
+        return self::cheminDansProjet($this->projet, $f);
+    }
+
+    /**
+     * Fichier traité en pré-presse sous var/<chemin> (encore sous public/
+     * avant app:fichiers:deplacer, FichiersPrives), sinon rangé à plat
+     * dans var/uploads/commandes (fichiers des clients, BAT reçus par la
+     * synchronisation). Jamais hors de ces dossiers.
+     */
+    public static function cheminDansProjet(string $projet, CommandeDetailFichier $f): ?string
+    {
+        if ('' !== trim((string) $f->getChemin()) && null !== ($chemin = (new FichiersPrives($projet))->chemin($f->getChemin()))) {
+            return $chemin;
         }
         $nom = basename(trim((string) $f->getNomStockage()));
-        if ('' !== $nom && '.' !== $nom) {
-            $candidats[] = [$this->projet.'/var/uploads/commandes', $this->projet.'/var/uploads/commandes/'.$nom];
+        if ('' === $nom || '.' === $nom) {
+            return null;
         }
-        foreach ($candidats as [$racine, $chemin]) {
-            $racine = realpath($racine);
-            $reel = realpath($chemin);
-            if (false !== $racine && false !== $reel && str_starts_with($reel, $racine.\DIRECTORY_SEPARATOR) && is_file($reel)) {
-                return $reel;
-            }
-        }
+        $racine = realpath($projet.'/var/uploads/commandes');
+        $reel = realpath($projet.'/var/uploads/commandes/'.$nom);
 
-        return null;
+        return false !== $racine && false !== $reel && str_starts_with($reel, $racine.\DIRECTORY_SEPARATOR) && is_file($reel) ? $reel : null;
     }
 
     /**

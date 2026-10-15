@@ -31,7 +31,8 @@ class Message
     private ?\DateTimeImmutable $dateEnvoi = null;
 
     /**
-     * Nom du fichier tel que stocké sur le disque (uploads/chat).
+     * Nom du fichier tel que stocké sur le disque (var/uploads/chat,
+     * hors de public/ : servi par ChatController::fichier).
      */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $pieceJointeFichier = null;

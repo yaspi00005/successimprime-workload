@@ -7,22 +7,23 @@ use App\Entity\LotEtiquette;
 use App\Entity\User;
 use App\Repository\EtiquetteRepository;
 use App\Repository\LotEtiquetteRepository;
+use App\Security\FichierEnvoye;
+use App\Security\FichiersPrivesVoter;
+use App\Service\FichiersPrives;
 use App\Service\GenerateurEtiquetteService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/lot/etiquette')]
 final class LotEtiquetteController extends AbstractController
 {
+    /** QR codes et ZIP rangés hors de public/ (var/uploads/etiquettes, docs/securite.md). */
     public function __construct(
-        #[Autowire('%kernel.project_dir%/public')]
-        private readonly string $publicDirectory,
+        private readonly FichiersPrives $fichiersPrives,
     ) {
     }
 
@@ -168,6 +169,8 @@ final class LotEtiquetteController extends AbstractController
     public function telecharger(
         LotEtiquette $lot,
     ): BinaryFileResponse|RedirectResponse {
+        $this->denyAccessUnlessGranted(FichiersPrivesVoter::ETIQUETTE, $lot);
+
         if ($lot->getStatut() !== LotEtiquette::STATUT_PRET) {
             $this->addFlash(
                 'error',
@@ -194,34 +197,9 @@ final class LotEtiquetteController extends AbstractController
             );
         }
 
-        $cheminPublic = realpath($this->publicDirectory);
+        $cheminFichier = $this->fichiersPrives->chemin($fichierZip);
 
-        $cheminFichier = realpath(
-            rtrim($this->publicDirectory, DIRECTORY_SEPARATOR)
-            . DIRECTORY_SEPARATOR
-            . ltrim(
-                str_replace(
-                    ['/', '\\'],
-                    DIRECTORY_SEPARATOR,
-                    $fichierZip
-                ),
-                DIRECTORY_SEPARATOR
-            )
-        );
-
-        /*
-         * On vérifie que le fichier existe et se trouve réellement
-         * dans le dossier public du projet.
-         */
-        if (
-            $cheminPublic === false
-            || $cheminFichier === false
-            || !is_file($cheminFichier)
-            || !str_starts_with(
-                $cheminFichier,
-                $cheminPublic . DIRECTORY_SEPARATOR
-            )
-        ) {
+        if ($cheminFichier === null) {
             $this->addFlash(
                 'error',
                 'Le fichier ZIP du lot est introuvable.'
@@ -238,11 +216,32 @@ final class LotEtiquetteController extends AbstractController
             $lot->getNumero()
         );
 
-        return $this->file(
+        return FichierEnvoye::reponse(
             $cheminFichier,
             $nomTelechargement,
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT
+            true
         );
+    }
+
+    /**
+     * Image du QR code d'une étiquette, servie hors de public/ à la
+     * direction seulement (comme les écrans des lots).
+     */
+    #[Route(
+        '/qr/{id}',
+        name: 'app_lot_etiquette_qr',
+        requirements: ['id' => '\d+'],
+        methods: ['GET']
+    )]
+    public function qr(
+        Etiquette $etiquette,
+    ): Response {
+        $this->denyAccessUnlessGranted(FichiersPrivesVoter::ETIQUETTE, $etiquette);
+
+        $chemin = $this->fichiersPrives->chemin($etiquette->getFichierQr())
+            ?? throw $this->createNotFoundException('QR code introuvable.');
+
+        return FichierEnvoye::reponse($chemin, $etiquette->getNumero().'.png');
     }
 
     /**

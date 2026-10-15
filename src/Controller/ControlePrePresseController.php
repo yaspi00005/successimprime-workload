@@ -13,9 +13,11 @@ use App\Repository\CommandesDetailsRepository;
 use App\Repository\OrdreProductionRepository;
 
 use App\Security\FichierEnvoye;
+use App\Security\FichiersPrivesVoter;
 use App\Service\ControleCreditClientService;
 use App\Service\BonusPlafondClientService;
 use App\Service\AnalyseFichierImpression;
+use App\Service\FichiersPrives;
 use App\Service\TableauProduction;
 use App\Service\SuiviMetiers\TableauConception;
 use App\Controller\UtilisateursController;
@@ -29,7 +31,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\String\Slugger\SluggerInterface;
 
 
@@ -37,6 +38,16 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 #[Route('/pre-presse', name: 'app_controle_pre_presse_')]
 final class ControlePrePresseController extends AbstractController
 {
+    /**
+     * Les fichiers traités sont rangés hors de public/ : sous
+     * var/uploads/prepresse/commande_X/detail_Y (FichiersPrives), servis
+     * par visualiserFichier() et telechargerFichier() après contrôle des
+     * droits (docs/securite.md).
+     */
+    public function __construct(private readonly FichiersPrives $fichiersPrives)
+    {
+    }
+
     #[Route('/', name: 'index', methods: ['GET'])]
     public function index(
         CommandesDetailsRepository $detailsRepository
@@ -1265,7 +1276,7 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
             ->slug($nomSansExtension)
             ->lower();
 
-        // Rangé sous public/ : jamais une extension que le serveur exécuterait (FichierEnvoye).
+        // Jamais une extension qu'un serveur exécuterait (FichierEnvoye), même hors de public/.
         $extension = FichierEnvoye::extensionPublique(
             $fichierUpload->guessExtension()
                 ?: $fichierUpload->getClientOriginalExtension()
@@ -1285,9 +1296,8 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
             $detail->getId()
         );
 
-        $repertoireAbsolu = $this->getParameter('kernel.project_dir')
-            . '/public/'
-            . $repertoireRelatif;
+        // Hors de public/ : var/uploads/prepresse/… (le chemin enregistré ne change pas).
+        $repertoireAbsolu = $this->fichiersPrives->cible($repertoireRelatif);
 
         try {
             $fichierDeplace = $fichierUpload->move(
@@ -1473,7 +1483,7 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
 
         $nomSansExtension = pathinfo($nomOriginal, PATHINFO_FILENAME);
         $nomSecurise = $slugger->slug($nomSansExtension)->lower();
-        // Rangé sous public/ : jamais une extension que le serveur exécuterait (FichierEnvoye).
+        // Jamais une extension qu'un serveur exécuterait (FichierEnvoye), même hors de public/.
         $extension = FichierEnvoye::extensionPublique(pathinfo($nomOriginal, PATHINFO_EXTENSION));
 
         $jeton = bin2hex(random_bytes(32));
@@ -1681,10 +1691,9 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
         CommandeDetailFichier $fichier,
         string $dossierTemporaire
     ): void {
-        $projet = (string) $this->getParameter('kernel.project_dir');
-        $chemin = (string) $fichier->getChemin();
-
-        $repertoireAbsolu = $projet . '/public/' . dirname($chemin);
+        // Hors de public/ : var/uploads/prepresse/… (FichiersPrives).
+        $cheminFinal = $this->fichiersPrives->cible((string) $fichier->getChemin());
+        $repertoireAbsolu = dirname($cheminFinal);
 
         if (
             !is_dir($repertoireAbsolu)
@@ -1696,7 +1705,6 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
             );
         }
 
-        $cheminFinal = $projet . '/public/' . $chemin;
         $cheminAssemblage = $cheminFinal . '.assemblage';
 
         $sortie = fopen($cheminAssemblage, 'wb');
@@ -1774,13 +1782,12 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
      * Retrouve le chemin reel sur disque d'un fichier de commande,
      * quel que soit le circuit d'upload par lequel il est arrive :
      *   - fichiers "traites" en pre-presse (ajouterFichierTraite) :
-     *     stockes sous public/{chemin} (chemin relatif enregistre
-     *     en base) ;
+     *     stockes sous var/{chemin} (chemin relatif enregistre en
+     *     base, « uploads/prepresse/… ») ; avant app:fichiers:deplacer,
+     *     encore sous public/{chemin} (FichiersPrives::chemin) ;
      *   - fichiers originaux du client (FichierUploadController) :
      *     stockes a plat sous var/uploads/commandes/{nomStockage},
      *     sans valeur de "chemin" en base.
-     * Sans ceci, seul le deuxieme circuit fonctionnait : visualiser
-     * ou telecharger un fichier traite renvoyait une 404.
      */
     /**
      * @param bool $apercu image réduite quand elle existe (affichage) ;
@@ -1793,26 +1800,8 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
         $projet = (string) $this->getParameter('kernel.project_dir');
         $chemin = trim((string) $fichier->getChemin());
 
-        if ($chemin !== '') {
-            $racinePublique = realpath($projet . '/public');
-
-            if ($racinePublique !== false) {
-                $cheminComplet = realpath(
-                    $projet . '/public/' . $chemin
-                );
-
-                if (
-                    $cheminComplet !== false
-                    && str_starts_with(
-                        $cheminComplet,
-                        $racinePublique . DIRECTORY_SEPARATOR
-                    )
-                    && is_file($cheminComplet)
-                    && is_readable($cheminComplet)
-                ) {
-                    return $cheminComplet;
-                }
-            }
+        if ($chemin !== '' && null !== ($cheminComplet = $this->fichiersPrives->chemin($chemin)) && is_readable($cheminComplet)) {
+            return $cheminComplet;
         }
 
         /*
@@ -1888,6 +1877,12 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
 
         return $cheminComplet;
     }
+    /*
+     * Voir ou télécharger un fichier : la prépresse, et la production qui
+     * l'ouvre depuis l'ordre de sa machine (security.yaml et
+     * FichiersPrivesVoter::PREPRESSE). Type lu dans le contenu : une
+     * image ou un PDF s'ouvre, le reste se télécharge (FichierEnvoye).
+     */
     #[Route(
         '/fichier/{id}/visualiser',
         name: 'visualiser_fichier',
@@ -1897,47 +1892,9 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
     public function visualiserFichier(
         CommandeDetailFichier $fichier
     ): BinaryFileResponse {
-        if (!$fichier->isActif()) {
-            throw $this->createNotFoundException(
-                'Le fichier demandé est indisponible.'
-            );
-        }
-
-        $cheminComplet = $this->resoudreCheminFichierStocke($fichier);
-
-        if ($cheminComplet === null) {
-            throw $this->createNotFoundException(
-                'Le fichier est introuvable sur le serveur.'
-            );
-        }
-        $typeMime = mime_content_type($cheminComplet);
-
-        if ($typeMime === false) {
-            $typeMime = $fichier->getTypeMime()
-                ?: 'application/octet-stream';
-        }
-
-        $nomOriginal = trim(
-            (string) $fichier->getNomOriginal()
-        );
-
-        if ($nomOriginal === '') {
-            $nomOriginal = basename($cheminComplet);
-        }
-
-        $response = new BinaryFileResponse($cheminComplet);
-
-        $response->headers->set('Content-Type', $typeMime);
-        $response->headers->set('X-Content-Type-Options', 'nosniff');
-        $response->headers->set('Cache-Control', 'private, max-age=0');
-
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_INLINE,
-            $nomOriginal
-        );
-
-        return $response;
+        return $this->servirFichier($fichier, true);
     }
+
     #[Route(
         '/fichier/{id}/telecharger',
         name: 'telecharger_fichier',
@@ -1947,51 +1904,31 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
     public function telechargerFichier(
         CommandeDetailFichier $fichier
     ): BinaryFileResponse {
+        return $this->servirFichier($fichier, false);
+    }
+
+    /**
+     * @param bool $apercu true : image réduite quand elle existe, ouverte
+     *                     dans le navigateur ; false : l'original, téléchargé
+     */
+    private function servirFichier(CommandeDetailFichier $fichier, bool $apercu): BinaryFileResponse
+    {
+        $this->denyAccessUnlessGranted(FichiersPrivesVoter::PREPRESSE, $fichier);
+
         if (!$fichier->isActif()) {
             throw $this->createNotFoundException(
                 'Le fichier demandé est indisponible.'
             );
         }
 
-        $cheminComplet = $this->resoudreCheminFichierStocke($fichier, false);
+        $cheminComplet = $this->resoudreCheminFichierStocke($fichier, $apercu);
 
         if ($cheminComplet === null) {
             throw $this->createNotFoundException(
-                'Le fichier original est introuvable sur le serveur.'
+                'Le fichier est introuvable sur le serveur.'
             );
         }
 
-        $nomOriginal = trim(
-            (string) $fichier->getNomOriginal()
-        );
-
-        if ($nomOriginal === '') {
-            $nomOriginal = basename($cheminComplet);
-        }
-
-        $response = new BinaryFileResponse($cheminComplet);
-
-        /*
-     * ATTACHMENT force le téléchargement.
-     * La route de visualisation utilise INLINE.
-     */
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            $nomOriginal
-        );
-
-        $typeMime = mime_content_type($cheminComplet);
-
-        $response->headers->set(
-            'Content-Type',
-            $typeMime ?: 'application/octet-stream'
-        );
-
-        $response->headers->set(
-            'X-Content-Type-Options',
-            'nosniff'
-        );
-
-        return $response;
+        return FichierEnvoye::reponse($cheminComplet, $fichier->getNomOriginal(), !$apercu);
     }
 }

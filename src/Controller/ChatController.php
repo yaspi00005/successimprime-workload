@@ -8,11 +8,11 @@ use App\Entity\User;
 use App\Repository\ConversationRepository;
 use App\Repository\UserRepository;
 use App\Security\FichierEnvoye;
+use App\Security\FichiersPrivesVoter;
 use App\Service\ChatService;
+use App\Service\PiecesJointesChat;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Asset\Packages;
-use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -111,8 +111,7 @@ final class ChatController extends AbstractController
     public function messages(
         #[MapEntity(mapping: ['jeton' => 'jeton'])] Conversation $conversation,
         Request $request,
-        ChatService $chatService,
-        Packages $assets
+        ChatService $chatService
     ): JsonResponse {
         $utilisateur = $this->utilisateurConnecte();
         $this->verifierAcces($conversation, $utilisateur);
@@ -130,7 +129,7 @@ final class ChatController extends AbstractController
 
         return $this->json([
             'messages' => array_map(
-                fn (Message $message): array => $this->serialiserMessage($message, $utilisateur, $assets),
+                fn (Message $message): array => $this->serialiserMessage($message, $utilisateur),
                 $nouveaux
             ),
         ]);
@@ -141,7 +140,7 @@ final class ChatController extends AbstractController
         #[MapEntity(mapping: ['jeton' => 'jeton'])] Conversation $conversation,
         Request $request,
         ChatService $chatService,
-        Packages $assets
+        PiecesJointesChat $piecesJointes
     ): Response {
         $utilisateur = $this->utilisateurConnecte();
         $this->verifierAcces($conversation, $utilisateur);
@@ -167,39 +166,15 @@ final class ChatController extends AbstractController
         $pieceJointeNomOriginal = null;
 
         if ($fichier instanceof UploadedFile) {
-            $dossier = $this->getParameter('chat_directory');
-            $nomOriginal = $fichier->getClientOriginalName();
-            // Type lu dans le contenu, liste fermée : jamais de .php ni de .html dans public/uploads.
-            $extension = FichierEnvoye::extensionPour($fichier, FichierEnvoye::TYPES_CHAT, FichierEnvoye::TAILLE_MAX_CHAT);
-
-            if (null === $extension) {
-                $refus = 'Fichier refusé : images, PDF, documents Word, Excel, PowerPoint, texte ou ZIP de 10 Mo au plus.';
-                if ($estAjax) {
-                    return $this->json(['erreur' => $refus], Response::HTTP_BAD_REQUEST);
-                }
-
-                $this->addFlash('error', $refus);
-
-                return $this->redirectToRoute('app_chat_show', ['jeton' => $conversation->getJeton()]);
-            }
-
-            $nomStocke = 'chat_' . bin2hex(random_bytes(12)) . '.' . $extension;
-
+            // Hors de public/ (var/uploads/chat), photo réencodée sans EXIF (PiecesJointesChat).
             try {
-                if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
-                    throw new FileException(sprintf('Impossible de créer le dossier "%s".', $dossier));
-                }
-
-                $fichier->move($dossier, $nomStocke);
-
-                $pieceJointeFichier = $nomStocke;
-                $pieceJointeNomOriginal = $nomOriginal;
-            } catch (FileException $exception) {
+                ['fichier' => $pieceJointeFichier, 'nomOriginal' => $pieceJointeNomOriginal] = $piecesJointes->ranger($fichier);
+            } catch (\DomainException $exception) {
                 if ($estAjax) {
-                    return $this->json(['erreur' => 'Le fichier n’a pas pu être envoyé : ' . $exception->getMessage()], Response::HTTP_BAD_REQUEST);
+                    return $this->json(['erreur' => $exception->getMessage()], Response::HTTP_BAD_REQUEST);
                 }
 
-                $this->addFlash('error', 'Le fichier n’a pas pu être envoyé : ' . $exception->getMessage());
+                $this->addFlash('error', $exception->getMessage());
 
                 return $this->redirectToRoute('app_chat_show', ['jeton' => $conversation->getJeton()]);
             }
@@ -219,7 +194,7 @@ final class ChatController extends AbstractController
 
         if ($estAjax) {
             return $this->json([
-                'message' => $message !== null ? $this->serialiserMessage($message, $utilisateur, $assets) : null,
+                'message' => $message !== null ? $this->serialiserMessage($message, $utilisateur) : null,
             ]);
         }
 
@@ -227,9 +202,30 @@ final class ChatController extends AbstractController
     }
 
     /**
+     * Pièce jointe d'un message, servie hors de public/ aux seuls
+     * participants de la conversation (docs/securite.md).
+     */
+    #[Route('/{jeton}/fichier/{id}', name: 'fichier', requirements: ['jeton' => self::REGEX_JETON, 'id' => '\d+'], methods: ['GET'])]
+    public function fichier(
+        #[MapEntity(mapping: ['jeton' => 'jeton'])] Conversation $conversation,
+        #[MapEntity(id: 'id')] Message $message,
+        PiecesJointesChat $piecesJointes
+    ): Response {
+        $this->verifierAcces($conversation, $this->utilisateurConnecte());
+        if ($message->getConversation() !== $conversation) {
+            throw $this->createNotFoundException();
+        }
+        $this->denyAccessUnlessGranted(FichiersPrivesVoter::CHAT, $message);
+
+        $chemin = $piecesJointes->chemin($message) ?? throw $this->createNotFoundException('Fichier introuvable.');
+
+        return FichierEnvoye::reponse($chemin, $message->getPieceJointeNomOriginal());
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    private function serialiserMessage(Message $message, User $utilisateur, Packages $assets): array
+    private function serialiserMessage(Message $message, User $utilisateur): array
     {
         $auteur = $message->getAuteur();
 
@@ -237,7 +233,7 @@ final class ChatController extends AbstractController
 
         if ($message->aUnePieceJointe()) {
             $pieceJointe = [
-                'url' => $assets->getUrl('uploads/chat/' . $message->getPieceJointeFichier()),
+                'url' => $this->generateUrl('app_chat_fichier', ['jeton' => $message->getConversation()?->getJeton(), 'id' => $message->getId()]),
                 'nomOriginal' => $message->getPieceJointeNomOriginal(),
                 'estImage' => $message->pieceJointeEstUneImage(),
             ];

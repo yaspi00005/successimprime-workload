@@ -4,14 +4,16 @@
 
 - **La base complète**, en `.sql.gz`. `mysqldump` (ou `mariadb-dump`) est utilisé s'il est trouvé, y compris dans les dossiers de XAMPP. Sinon, ou s'il échoue, l'export est fait en PHP. Les deux se restaurent de la même façon.
 - **Les fichiers**, dans une archive `.tar.gz` :
-  - `public/uploads` : photos des employés, fichiers clients, BAT, chat, réclamations, logos, écran TV, étiquettes ;
-  - `var/uploads` : fichiers des commandes, livraisons, entretien ;
+  - `public/uploads` : images du site vitrine et médias de l'écran TV ;
+  - `var/uploads` : fichiers des commandes et des clients, BAT, chat, pré-presse, étiquettes, justificatifs, photos des employés, logos des entreprises, livraisons, entretien ;
   - `var/storage` : factures PDF ;
   - `var/pointage` : photos de pointage ;
   - `var/espace-employe` ;
   - `var/ecran-tv`.
 
   L'archive s'ouvre aussi avec tar, 7-Zip ou WinRAR.
+
+Une archive faite avant la mise à jour du 15/10/2026 remet les fichiers privés sous `public/uploads` : après l'avoir restaurée, lancer `php bin/console app:fichiers:deplacer --executer` (docs/securite.md).
 
 Chaque sauvegarde est un dossier `AAAAMMJJ-HHMMSS` qui contient `base.sql.gz`, `fichiers.tar.gz` (une fois par jour) et `manifeste.json`. Le manifeste donne les tailles, les empreintes sha256 et la version du schéma.
 

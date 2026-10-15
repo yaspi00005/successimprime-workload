@@ -95,7 +95,7 @@
 						<div class="col-md-6 mb-3">
 							<div class="text-muted small">Justificatif</div>
 							{% if reclamation.justificatif %}
-								<a href="{{ asset('uploads/reclamations/' ~ reclamation.justificatif) }}" target="_blank">
+								<a href="{{ path('app_reclamation_justificatif', {id: reclamation.id}) }}" target="_blank">
 									<i class="fa fa-file-o mr-1"></i>
 									Voir le justificatif
 								</a>

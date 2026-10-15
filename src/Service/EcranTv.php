@@ -45,6 +45,8 @@ final class EcranTv
 
     public function __construct(
         private readonly EntityManagerInterface $em,
+        // Reste sous public/ (docs/securite.md) : affiches et vidéos faites pour être vues de
+        // tous à l'accueil, jamais de montant ni de nom de client ; la TV les lit sans compte.
         #[Autowire('%kernel.project_dir%/public/uploads/tv')]
         private readonly string $dossierMedias,
         #[Autowire('%kernel.project_dir%/var/ecran-tv/reglages.json')]

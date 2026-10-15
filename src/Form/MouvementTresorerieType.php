@@ -45,6 +45,14 @@ class MouvementTresorerieType extends AbstractType
             );
         }
 
+        /*
+         * Sans le droit « Trésorerie et soldes » (ROLE_TRESORERIE_VOIR),
+         * aucun solde de compte dans les listes : la caisse saisit sans
+         * voir l'argent des comptes.
+         */
+        $voirSoldes =
+            (bool) $options['voir_soldes'];
+
 
         /*
          * ============================================================
@@ -52,16 +60,12 @@ class MouvementTresorerieType extends AbstractType
          * ============================================================
          */
 
-        $typesMouvements = [
-            'Encaissement' =>
-                MouvementTresorerie::TYPE_ENCAISSEMENT,
-
-            'Décaissement' =>
-                MouvementTresorerie::TYPE_DECAISSEMENT,
-
-            'Transfert' =>
-                MouvementTresorerie::TYPE_TRANSFERT,
-        ];
+        $typesMouvements =
+            self::typesPermis(
+                $estAdmin,
+                (bool) $options['peut_saisir'],
+                (bool) $options['peut_transferer']
+            );
 
 
         /*
@@ -440,41 +444,12 @@ class MouvementTresorerieType extends AbstractType
                  */
 
                 'choice_label' =>
-    static function (
-        CompteTresorerie $compte
-    ): string {
-        /*
-         * Banque :
-         * on n'affiche pas forcément son solde
-         * à la caissière.
-         */
-        if (
-            $compte->getType()
-            === CompteTresorerie::TYPE_BANQUE
-        ) {
-            return sprintf(
-                '%s — %s',
-                $compte->getNom(),
-                $compte->getTypeLabel()
-            );
-        }
-
-        /*
-         * Caisse / Orange Money / Wave :
-         * le solde peut être utile.
-         */
-        return sprintf(
-            '%s — %s — %s FCFA',
-            $compte->getNom(),
-            $compte->getTypeLabel(),
-            number_format(
-                (int) $compte->getSoldeActuel(),
-                0,
-                ',',
-                ' '
-            )
-        );
-    },
+                    static fn (
+                        CompteTresorerie $compte
+                    ): string => self::libelleSource(
+                        $compte,
+                        $voirSoldes
+                    ),
 
 
                 'placeholder' =>
@@ -659,117 +634,14 @@ class MouvementTresorerieType extends AbstractType
                  */
 
                 'choice_label' =>
-                    static function (
+                    static fn (
                         CompteTresorerie $compte
-                    ) use (
+                    ): string => self::libelleDestination(
+                        $compte,
                         $estAdmin,
+                        $voirSoldes,
                         $utilisateur
-                    ): string {
-                        /*
-                         * ============================================
-                         * ADMIN
-                         * ============================================
-                         *
-                         * Peut voir les soldes.
-                         * ============================================
-                         */
-
-                        if ($estAdmin) {
-                            return sprintf(
-                                '%s — %s — %s FCFA',
-                                $compte->getNom(),
-                                $compte
-                                    ->getPorteeLabel(),
-                                number_format(
-                                    (int)
-                                    $compte
-                                        ->getSoldeActuel(),
-                                    0,
-                                    ',',
-                                    ' '
-                                )
-                            );
-                        }
-
-
-                        /*
-                         * ============================================
-                         * COMPTE ADMIN
-                         * ============================================
-                         *
-                         * Pour une caissière :
-                         *
-                         * nom visible pour permettre la remise,
-                         * mais aucun solde exposé.
-                         * ============================================
-                         */
-
-                        if (
-                            $compte
-                                ->estAdministratif()
-                        ) {
-                            if (
-                                $compte
-                                    ->estCompteBancaire()
-                            ) {
-                                return sprintf(
-                                    '%s — Banque',
-                                    $compte->getNom()
-                                );
-                            }
-
-
-                            return sprintf(
-                                '%s — Administration',
-                                $compte->getNom()
-                            );
-                        }
-
-
-                        /*
-                         * ============================================
-                         * CAISSE PERSONNELLE D'UN AUTRE AGENT
-                         * ============================================
-                         *
-                         * Permet la remise en main propre entre deux
-                         * agents sans exposer le solde de la caisse
-                         * d'un collègue.
-                         * ============================================
-                         */
-
-                        if (
-                            $compte->getPortee()
-                            === CompteTresorerie::PORTEE_PERSONNELLE
-                            &&
-                            $compte->getProprietaire()
-                            !== $utilisateur
-                        ) {
-                            return sprintf(
-                                '%s — Caisse personnelle',
-                                $compte->getNom()
-                            );
-                        }
-
-
-                        /*
-                         * ============================================
-                         * SON PROPRE COMPTE PERSONNEL / PARTAGÉ
-                         * ============================================
-                         */
-
-                        return sprintf(
-                            '%s — %s FCFA',
-                            $compte->getNom(),
-                            number_format(
-                                (int)
-                                $compte
-                                    ->getSoldeActuel(),
-                                0,
-                                ',',
-                                ' '
-                            )
-                        );
-                    },
+                    ),
 
 
                 'placeholder' =>
@@ -1145,6 +1017,20 @@ class MouvementTresorerieType extends AbstractType
 
             'utilisateur' =>
                 null,
+
+            /*
+             * Par défaut, ni solde ni type de mouvement : le
+             * contrôleur dit ce que la personne a le droit de voir
+             * et de saisir.
+             */
+            'voir_soldes' =>
+                false,
+
+            'peut_saisir' =>
+                false,
+
+            'peut_transferer' =>
+                false,
         ]);
 
 
@@ -1160,6 +1046,227 @@ class MouvementTresorerieType extends AbstractType
                 User::class,
                 'null',
             ]
+        );
+
+
+        foreach (['voir_soldes', 'peut_saisir', 'peut_transferer'] as $option) {
+            $resolver->setAllowedTypes(
+                $option,
+                'bool'
+            );
+        }
+    }
+
+
+    /*
+     * ================================================================
+     * TYPES PERMIS
+     * ================================================================
+     *
+     * Encaissement et décaissement : droit de saisie
+     * (ROLE_TRESORERIE_SAISIR). Transfert : droit de virement
+     * (ROLE_TRESORERIE_TRANSFERER). L'administrateur : tout.
+     * ================================================================
+     */
+
+    /**
+     * @return array<string, string> libellé => type
+     */
+    public static function typesPermis(
+        bool $estAdmin,
+        bool $peutSaisir,
+        bool $peutTransferer
+    ): array {
+        $types = [];
+
+        if ($estAdmin || $peutSaisir) {
+            $types['Encaissement'] =
+                MouvementTresorerie::TYPE_ENCAISSEMENT;
+
+            $types['Décaissement'] =
+                MouvementTresorerie::TYPE_DECAISSEMENT;
+        }
+
+        if ($estAdmin || $peutTransferer) {
+            $types['Transfert'] =
+                MouvementTresorerie::TYPE_TRANSFERT;
+        }
+
+        return $types;
+    }
+
+
+    /*
+     * ================================================================
+     * LIBELLÉS DES COMPTES
+     * ================================================================
+     *
+     * Sans le droit de voir la trésorerie : le nom et la sorte de
+     * compte, jamais le solde (pas même celui de la caisse).
+     * ================================================================
+     */
+
+    public static function libelleSource(
+        CompteTresorerie $compte,
+        bool $voirSoldes
+    ): string {
+        /*
+         * Banque :
+         * on n'affiche pas forcément son solde
+         * à la caissière.
+         */
+        if (
+            !$voirSoldes
+            ||
+            $compte->getType()
+            === CompteTresorerie::TYPE_BANQUE
+        ) {
+            return sprintf(
+                '%s — %s',
+                $compte->getNom(),
+                $compte->getTypeLabel()
+            );
+        }
+
+        /*
+         * Caisse / Orange Money / Wave :
+         * le solde peut être utile.
+         */
+        return sprintf(
+            '%s — %s — %s FCFA',
+            $compte->getNom(),
+            $compte->getTypeLabel(),
+            number_format(
+                (int) $compte->getSoldeActuel(),
+                0,
+                ',',
+                ' '
+            )
+        );
+    }
+
+
+    public static function libelleDestination(
+        CompteTresorerie $compte,
+        bool $estAdmin,
+        bool $voirSoldes,
+        User $utilisateur
+    ): string {
+        /*
+         * ============================================
+         * ADMIN
+         * ============================================
+         *
+         * Peut voir les soldes.
+         * ============================================
+         */
+
+        if ($estAdmin && $voirSoldes) {
+            return sprintf(
+                '%s — %s — %s FCFA',
+                $compte->getNom(),
+                $compte
+                    ->getPorteeLabel(),
+                number_format(
+                    (int)
+                    $compte
+                        ->getSoldeActuel(),
+                    0,
+                    ',',
+                    ' '
+                )
+            );
+        }
+
+
+        /*
+         * ============================================
+         * COMPTE ADMIN
+         * ============================================
+         *
+         * Pour une caissière :
+         *
+         * nom visible pour permettre la remise,
+         * mais aucun solde exposé.
+         * ============================================
+         */
+
+        if (
+            $compte
+                ->estAdministratif()
+        ) {
+            if (
+                $compte
+                    ->estCompteBancaire()
+            ) {
+                return sprintf(
+                    '%s — Banque',
+                    $compte->getNom()
+                );
+            }
+
+
+            return sprintf(
+                '%s — Administration',
+                $compte->getNom()
+            );
+        }
+
+
+        /*
+         * ============================================
+         * CAISSE PERSONNELLE D'UN AUTRE AGENT
+         * ============================================
+         *
+         * Permet la remise en main propre entre deux
+         * agents sans exposer le solde de la caisse
+         * d'un collègue.
+         * ============================================
+         */
+
+        if (
+            $compte->getPortee()
+            === CompteTresorerie::PORTEE_PERSONNELLE
+            &&
+            $compte->getProprietaire()
+            !== $utilisateur
+        ) {
+            return sprintf(
+                '%s — Caisse personnelle',
+                $compte->getNom()
+            );
+        }
+
+
+        /*
+         * ============================================
+         * SON PROPRE COMPTE PERSONNEL / PARTAGÉ
+         * ============================================
+         *
+         * Le solde seulement avec le droit de voir la
+         * trésorerie.
+         * ============================================
+         */
+
+        if (!$voirSoldes) {
+            return sprintf(
+                '%s — %s',
+                $compte->getNom(),
+                $compte->getTypeLabel()
+            );
+        }
+
+        return sprintf(
+            '%s — %s FCFA',
+            $compte->getNom(),
+            number_format(
+                (int)
+                $compte
+                    ->getSoldeActuel(),
+                0,
+                ',',
+                ' '
+            )
         );
     }
 }

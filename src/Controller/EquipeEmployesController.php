@@ -47,7 +47,7 @@ final class EquipeEmployesController extends AbstractController
         'ROLE_ENTRETIEN' => 'Entretien',
         'ROLE_PAIEMENT_ENCAISSER' => 'Caisse',
         'ROLE_CLIENT' => 'Clients',
-        'ROLE_TRESORERIE_VOIR' => 'Finances',
+        'ROLE_TRESORERIE_VOIR' => 'Trésorerie et soldes',
         'ROLE_STATS_GLOBAL' => 'Statistiques',
     ];
 

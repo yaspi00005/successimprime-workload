@@ -11,8 +11,28 @@ Module Finances de l'ERP local, construit le 13/10/2026. Tout reste au local : r
 | F05 Prévision de trésorerie à 90 jours | `/finances/prevision` | Trésorerie (voir) |
 | F06 Rentabilité par commande, produit, machine | `/finances/rentabilite` | Coûts et marges |
 | F07 Finances du jour (téléphone) | `/finances/jour` | comme F01 |
+| Saisie d'un mouvement (entrée, sortie, virement) | `/gestion/tresorerie/mouvements/nouveau` | Trésorerie (saisir) ou Virements entre comptes ; sans Trésorerie (voir) : aucun solde, retour à la caisse |
 
 Le montant des salaires (échéancier F04, sorties prises en compte et repères de la courbe F05) n'apparaît qu'avec le droit RH : les autres voient « salaires (RH) » à la place. Les totaux et la courbe restent justes, car le montant y est compté.
+
+## La caisse et la trésorerie
+
+Depuis le 15/10/2026, le rôle « Caisse et commercial » n'a plus
+« Trésorerie et soldes » (Trésorerie (voir)) par défaut : la Direction le
+donne à une personne sur sa fiche (docs/menus-par-role.md). Sans ce droit :
+
+- la caisse du jour et la clôture restent visibles sur l'écran Caisse
+  (c'est son tiroir qu'elle compte) ;
+- les listes de comptes (paiement d'une commande, remboursement, saisie
+  d'un mouvement) donnent le nom et la sorte du compte, jamais le solde ;
+- la saisie d'un mouvement (bouton « Virement » de la caisse) ne propose
+  que ce que la personne a le droit de faire : entrée et sortie avec
+  Trésorerie (saisir), virement avec Virements entre comptes. Après
+  l'enregistrement, elle revient à la caisse (ou aux dépenses) avec le
+  montant, les comptes et la référence, sans solde ;
+- la liste et le détail des mouvements, la prévision (F05), les
+  fournisseurs (F04) et le planning annuel des échéances répondent
+  « accès refusé ».
 
 ## Soldes d'ouverture
 

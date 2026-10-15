@@ -13,16 +13,25 @@ use App\Service\MouvementTresorerieService;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+/*
+ * Comptes et mouvements de trésorerie : la liste, le détail et la gestion
+ * demandent le droit « Trésorerie et soldes » (ROLE_TRESORERIE_VOIR).
+ *
+ * Seul le formulaire de saisie (new) s'ouvre aussi sans ce droit, avec
+ * celui de saisir (entrée, sortie) ou de faire un virement : la caisse y
+ * verse par exemple sa caisse à la banque. Il ne montre alors aucun
+ * solde, et l'enregistrement ramène à la caisse (ou aux dépenses).
+ */
 #[Route(
     '/gestion/tresorerie/mouvements',
     name: 'app_mouvement_tresorerie_'
 )]
-#[IsGranted('ROLE_TRESORERIE_VOIR')]
 class MouvementTresorerieController extends AbstractController
 {
     /*
@@ -36,6 +45,7 @@ class MouvementTresorerieController extends AbstractController
         name: 'index',
         methods: ['GET']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     public function index(
         Request $request,
         MouvementTresorerieRepository $repository,
@@ -768,7 +778,7 @@ foreach ($comptes as $compte) {
         name: 'new',
         methods: ['GET', 'POST']
     )]
-    #[IsGranted('ROLE_TRESORERIE_SAISIR')]
+    #[IsGranted(new Expression('is_granted("ROLE_TRESORERIE_SAISIR") or is_granted("ROLE_TRESORERIE_TRANSFERER")'))]
     public function new(
         Request $request,
         EntityManagerInterface $entityManager,
@@ -792,6 +802,38 @@ foreach ($comptes as $compte) {
             );
 
 
+        /*
+         * Sans le droit « Trésorerie et soldes », le formulaire ne
+         * montre aucun solde et l'enregistrement ramène à la caisse.
+         */
+        $voirSoldes =
+            $this->isGranted(
+                'ROLE_TRESORERIE_VOIR'
+            );
+
+
+        $peutSaisir =
+            $this->isGranted(
+                'ROLE_TRESORERIE_SAISIR'
+            );
+
+
+        $peutTransferer =
+            $this->isGranted(
+                'ROLE_TRESORERIE_TRANSFERER'
+            );
+
+
+        $retour =
+            self::routeApresSaisie(
+                $voirSoldes,
+                $this->isGranted(
+                    'ROLE_PAIEMENT_ENCAISSER'
+                ),
+                $peutSaisir
+            );
+
+
         $mouvement =
             new MouvementTresorerie();
 
@@ -806,6 +848,33 @@ foreach ($comptes as $compte) {
         $mouvement->setDateOperation(
             new \DateTimeImmutable()
         );
+
+
+        /*
+         * Type choisi d'avance (bouton « Virement » de la caisse),
+         * seulement parmi ceux que la personne peut saisir.
+         */
+        $typeDemande =
+            (string) $request->query->get(
+                'type',
+                ''
+            );
+
+        if (
+            \in_array(
+                $typeDemande,
+                MouvementTresorerieType::typesPermis(
+                    $estAdmin,
+                    $peutSaisir,
+                    $peutTransferer
+                ),
+                true
+            )
+        ) {
+            $mouvement->setType(
+                $typeDemande
+            );
+        }
 
 
         /*
@@ -835,12 +904,17 @@ foreach ($comptes as $compte) {
                     'est_admin' =>
                         $estAdmin,
 
-                    /*
-                     * On ajoutera cette option dans
-                     * MouvementTresorerieType juste après.
-                     */
                     'utilisateur' =>
                         $user,
+
+                    'voir_soldes' =>
+                        $voirSoldes,
+
+                    'peut_saisir' =>
+                        $peutSaisir,
+
+                    'peut_transferer' =>
+                        $peutTransferer,
                 ]
             );
 
@@ -1000,15 +1074,24 @@ foreach ($comptes as $compte) {
                         );
 
 
+                    /*
+                     * Sans le droit de voir la trésorerie : retour à
+                     * la caisse (ou aux dépenses), avec un message
+                     * qui ne donne aucun solde.
+                     */
                     $this->addFlash(
                         'success',
-                        'Le mouvement a été enregistré avec succès.'
+                        $voirSoldes
+                            ? 'Le mouvement a été enregistré avec succès.'
+                            : self::confirmationSansSolde(
+                                $mouvement
+                            )
                     );
 
 
                     return $this
                         ->redirectToRoute(
-                            'app_mouvement_tresorerie_index'
+                            $retour
                         );
 
                 } catch (
@@ -1066,6 +1149,18 @@ foreach ($comptes as $compte) {
 
                 'estAdmin' =>
                     $estAdmin,
+
+                'voirSoldes' =>
+                    $voirSoldes,
+
+                'peutSaisir' =>
+                    $estAdmin || $peutSaisir,
+
+                'peutTransferer' =>
+                    $estAdmin || $peutTransferer,
+
+                'retour' =>
+                    $retour,
             ]
         );
     }
@@ -1085,6 +1180,7 @@ foreach ($comptes as $compte) {
         ],
         methods: ['GET']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     public function show(
         MouvementTresorerie $mouvement
     ): Response {
@@ -1139,6 +1235,7 @@ foreach ($comptes as $compte) {
         ],
         methods: ['POST']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     #[IsGranted('ROLE_ADMIN')]
     public function validateMovement(
         Request $request,
@@ -1227,6 +1324,7 @@ foreach ($comptes as $compte) {
         ],
         methods: ['POST']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     #[IsGranted('ROLE_ADMIN')]
     public function toggleVerification(
         Request $request,
@@ -1301,6 +1399,7 @@ foreach ($comptes as $compte) {
         ],
         methods: ['POST']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     #[IsGranted('ROLE_TRESORERIE_SAISIR')]
     public function cancel(
         Request $request,
@@ -2051,6 +2150,40 @@ foreach ($comptes as $compte) {
 
         /*
          * ========================================================
+         * ENTRÉE OU SORTIE : DROIT DE SAISIE
+         * ========================================================
+         *
+         * Le formulaire s'ouvre aussi avec le seul droit de
+         * virement : il ne permet alors que le transfert.
+         * ========================================================
+         */
+
+        if (
+            \in_array(
+                $type,
+                [
+                    MouvementTresorerie::TYPE_ENCAISSEMENT,
+                    MouvementTresorerie::TYPE_DECAISSEMENT,
+                ],
+                true
+            )
+            &&
+            !$this->isGranted(
+                'ROLE_TRESORERIE_SAISIR'
+            )
+            &&
+            !$this->isGranted(
+                'ROLE_ADMIN'
+            )
+        ) {
+            throw new \LogicException(
+                'Vous n’êtes pas autorisé à enregistrer une entrée ou une sortie d’argent.'
+            );
+        }
+
+
+        /*
+         * ========================================================
          * ENCAISSEMENT
          * ========================================================
          */
@@ -2520,6 +2653,73 @@ foreach ($comptes as $compte) {
         throw new \LogicException(
             'Le type de mouvement est invalide.'
         );
+    }
+
+
+    /*
+     * ============================================================
+     * APRÈS LA SAISIE
+     * ============================================================
+     *
+     * Avec le droit de voir la trésorerie : la liste des
+     * mouvements. Sans : une page que la personne ouvre, la caisse
+     * d'abord, puis les dépenses, sinon l'accueil.
+     * ============================================================
+     */
+
+    public static function routeApresSaisie(
+        bool $voirTresorerie,
+        bool $encaisser,
+        bool $saisir
+    ): string {
+        return match (true) {
+            $voirTresorerie => 'app_mouvement_tresorerie_index',
+            $encaisser => 'app_caisse_index',
+            $saisir => 'app_finances_depenses',
+            default => 'app_home',
+        };
+    }
+
+
+    /**
+     * Message de confirmation pour qui ne voit pas la trésorerie :
+     * le montant saisi et les comptes choisis, jamais un solde.
+     */
+    public static function confirmationSansSolde(
+        MouvementTresorerie $mouvement
+    ): string {
+        $montant =
+            number_format(
+                $mouvement->getMontant(),
+                0,
+                ',',
+                ' '
+            );
+
+        $nom =
+            static fn (?CompteTresorerie $compte): string => $compte?->getNom() ?? '?';
+
+        return match ($mouvement->getType()) {
+            MouvementTresorerie::TYPE_TRANSFERT => sprintf(
+                'Virement de %s F de « %s » vers « %s » enregistré (%s).',
+                $montant,
+                $nom($mouvement->getCompteSource()),
+                $nom($mouvement->getCompteDestination()),
+                $mouvement->getReference()
+            ),
+            MouvementTresorerie::TYPE_ENCAISSEMENT => sprintf(
+                'Entrée de %s F sur « %s » enregistrée (%s).',
+                $montant,
+                $nom($mouvement->getCompteDestination()),
+                $mouvement->getReference()
+            ),
+            default => sprintf(
+                'Sortie de %s F de « %s » enregistrée (%s).',
+                $montant,
+                $nom($mouvement->getCompteSource()),
+                $mouvement->getReference()
+            ),
+        };
     }
 
 

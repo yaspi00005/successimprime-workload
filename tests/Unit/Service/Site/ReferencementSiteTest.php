@@ -62,6 +62,17 @@ final class ReferencementSiteTest extends TestCase
         self::assertSame(['bing', 'instagram'], array_keys($lu['erreurs']));
     }
 
+    public function testFicheGoogleDeLaBoutiqueParDefaut(): void
+    {
+        self::assertSame('https://maps.app.goo.gl/S53cwaekd2L3FHP86', ReferencementSite::lire([])['valeurs']['fiche_google']);
+        self::assertSame(ReferencementSite::FICHE_GOOGLE, ReferencementSite::lien(ReferencementSite::FICHE_GOOGLE, ReferencementSite::DOMAINES_FICHE_GOOGLE));
+        // Un lien saisi la remplace ; un lien refusé laisse celle de la boutique.
+        self::assertSame('https://g.page/autre-fiche', ReferencementSite::lire(['fiche_google' => 'https://g.page/autre-fiche'])['valeurs']['fiche_google']);
+        $refuse = ReferencementSite::lire(['fiche_google' => 'https://evil.example.org/x']);
+        self::assertSame(ReferencementSite::FICHE_GOOGLE, $refuse['valeurs']['fiche_google']);
+        self::assertSame(['fiche_google'], array_keys($refuse['erreurs']));
+    }
+
     public function testManquesDansLOrdre(): void
     {
         $manques = ReferencementSite::manques(['site' => true, 'adresse' => true, 'telephone' => true, 'plan' => true, 'reseaux' => false]);

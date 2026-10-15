@@ -55,6 +55,7 @@ final class SiteDemandeController extends AbstractController
             'objets' => DemandeDevis::OBJETS,
             'horaires' => $this->contact->horaires(new \DateTimeImmutable()),
             'lienPlan' => $this->contact->lienPlan(),
+            'positionPlan' => $this->contact->position(),
         ]);
     }
 

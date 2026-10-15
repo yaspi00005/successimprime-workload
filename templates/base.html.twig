@@ -40,6 +40,9 @@
 	<link href="{{ asset('theme/vendor/select2/css/select2.min.css') }}" rel="stylesheet">
 	<link href="{{ asset('theme/vendor/toastr/css/toastr.min.css') }}" rel="stylesheet">
 	{% block stylesheets %}{% endblock %}
+	{# Polices du thème servies par le site (docs/securite.md) : le thème les demandait à Google. #}
+	<link href="{{ asset('vendor/poppins-v24/poppins.css') }}" rel="stylesheet">
+	<link href="{{ asset('vendor/roboto-v51/roboto.css') }}" rel="stylesheet">
 	<link href="{{ asset('theme/css/style.css') }}" rel="stylesheet">
 	<link href="{{ asset('css/charte.css') }}" rel="stylesheet">
 	<link href="{{ asset('css/admin.css') }}" rel="stylesheet">

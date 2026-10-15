@@ -1,7 +1,9 @@
 {#
 	Contact (maquette 11) : message court (nom, téléphone, objet, message),
 	WhatsApp, adresse, horaires (tuile Horaires) et plan seulement quand le
-	lien du plan est réglé (tuile « Site : page Contact »).
+	lien du plan est réglé (tuile « Site : page Contact »). Avec la position
+	de la boutique, une vraie carte remplace le plan dessiné quand le bloc
+	arrive à l'écran (docs/site-vitrine.md, « Carte de la boutique »).
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -16,6 +18,7 @@
 
 {% block entete %}
 	{{ site_styles('css/site-formulaires.css') }}
+	{% if positionPlan %}{{ site_styles('css/site-carte.css') }}{% endif %}
 {% endblock %}
 
 {% block contenu %}
@@ -64,6 +67,9 @@
 
 			<div class="si-contact-infos">
 				{% if lienPlan %}
+					{# Plan dessiné : seul sans la position, sans JavaScript ou si la carte ne vient pas ; sinon sous la carte. #}
+					<div class="si-carte-boutique"
+						{%- if positionPlan %} data-carte-boutique data-lat="{{ positionPlan.latitude }}" data-lng="{{ positionPlan.longitude }}" data-nom="Boutique {{ entreprise.nomAffiche ?? 'Succès Imprim' }}" data-adresse="{{ (entreprise.adresse ?? null) ?: 'Bamako, Mali' }}" data-leaflet-css="{{ asset('vendor/leaflet/leaflet.css') }}" data-leaflet-js="{{ asset('vendor/leaflet/leaflet.js') }}" data-script="{{ asset('js/site-carte.js') }}"{% endif %}>
 					<a href="{{ lienPlan }}" class="si-plan" target="_blank" rel="noopener" aria-label="Voir l'itinéraire jusqu'à la boutique (s'ouvre dans une autre fenêtre)">
 						<svg viewBox="0 0 560 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
 							<rect width="560" height="200" fill="#EEF2F8"/>
@@ -84,6 +90,7 @@
 							Itinéraire
 						</span>
 					</a>
+					</div>
 				{% endif %}
 
 				<div class="si-contact-cartes">
@@ -131,4 +138,28 @@
 			</div>
 		</div>
 	</section>
+{% endblock %}
+
+{% block scripts %}
+	{% if positionPlan %}
+		{# Carte de la boutique : rien n'est téléchargé avant que le bloc soit à l'écran. #}
+		<script>
+			(function () {
+				var bloc = document.querySelector('[data-carte-boutique]');
+				if (!bloc || !('IntersectionObserver' in window)) {
+					return;
+				}
+				var guetteur = new IntersectionObserver(function (entrees) {
+					if (!entrees.some(function (entree) { return entree.isIntersecting; })) {
+						return;
+					}
+					guetteur.disconnect();
+					var script = document.createElement('script');
+					script.src = bloc.getAttribute('data-script');
+					document.head.appendChild(script);
+				});
+				guetteur.observe(bloc);
+			})();
+		</script>
+	{% endif %}
 {% endblock %}

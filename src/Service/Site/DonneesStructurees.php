@@ -232,8 +232,11 @@ final class DonneesStructurees
     /**
      * Position de la boutique, seulement si le réglage du plan la donne :
      * coordonnées « 12.6392, -8.0029 », ou lien Google Maps qui les
-     * contient (« @12.6392,-8.0029 », « destination=12.6392,-8.0029 »,
-     * « q=12.6392,-8.0029 »). Un lien court (maps.app.goo.gl) n'en dit rien.
+     * contient. Dans le lien long d'une fiche, le repère est la paire
+     * « !3d12.6517571!4d-7.9299376 » ; « @12.6517571,-7.9325125 » n'est que
+     * le centre de la vue (quelques centaines de mètres à côté) et ne sert
+     * qu'à défaut, comme « destination=… » ou « q=… ». Un lien court
+     * (maps.app.goo.gl) n'en dit rien.
      *
      * @return array{'@type': string, latitude: float, longitude: float}|null
      */
@@ -242,6 +245,7 @@ final class DonneesStructurees
         $lienPlan = rawurldecode(trim((string) $lienPlan));
         $nombre = '(-?\d{1,3}\.\d{3,})';
         if (!preg_match('/^'.$nombre.'\s*[,;]\s*'.$nombre.'$/', $lienPlan, $m)
+            && !preg_match('/!3d'.$nombre.'!4d'.$nombre.'/', $lienPlan, $m)
             && !preg_match('/[@=]'.$nombre.',\s*'.$nombre.'/', $lienPlan, $m)) {
             return null;
         }

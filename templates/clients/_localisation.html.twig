@@ -61,7 +61,7 @@
 	var repere = null;
 
 	if (carte) {
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(carte);
+		L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(carte);
 		carte.on('click', function (e) { placer(e.latlng.lat, e.latlng.lng, false); });
 	}
 

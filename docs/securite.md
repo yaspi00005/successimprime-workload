@@ -2,6 +2,8 @@
 
 Ce que l'application fait pour se protéger, comment le revérifier, et les règles pour le code nouveau. Le dernier audit (15/10/2026) a donné ces règles ; le serveur en ligne a aussi sa liste dans « Sur le serveur » plus bas.
 
+Points de l'audit traités depuis : **D4** fait (plus aucun fichier d'un autre site dans l'administration : « Bibliothèques copiées dans le site ») ; **D6** fait (jeton des modifications en JSON des finitions et des types d'impression : « Jetons des formulaires et des appels en JSON »).
+
 ## En-têtes de sécurité
 
 Toutes les réponses de l'application reçoivent les mêmes en-têtes, au local comme en ligne. Ils sont posés à un seul endroit : `src/EventSubscriber/EntetesSecuriteSubscriber.php`, avec les valeurs de `src/Security/EntetesSecurite.php`. Un en-tête déjà posé par une page est gardé (le suivi de facture garde `Referrer-Policy: no-referrer`, les photos de réclamation leur politique stricte).
@@ -18,16 +20,51 @@ Toutes les réponses de l'application reçoivent les mêmes en-têtes, au local 
 
 ### Politique de contenu
 
-Deux zones :
+Tout vient du site lui-même : `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`, `form-action 'self'` plus la page de paiement d'Orange Money (`*.orange-money.com`, où le bouton « Payer » renvoie), images `data:` et `blob:` (atelier 3D, repères du BAT, aperçus avant envoi), `worker-src 'self' blob:`.
 
-- **site public, espace client, pages sans compte** (connexion, suivi de facture, Orange Money, avis) : tout vient du site lui-même. `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`, `form-action 'self'` plus la page de paiement d'Orange Money (`*.orange-money.com`, où le bouton « Payer » renvoie), images `data:` et `blob:` (atelier 3D, repères du BAT, aperçus avant envoi), `worker-src 'self' blob:`.
-- **administration** (personnel connecté, écran TV, tablette, pages de la zone `/lot/etiquette/suivi`) : en plus, ce que le thème charge encore d'ailleurs — polices Google, `cdn.jsdelivr.net` (Sortable, Chart.js, Bootstrap), `cdnjs.cloudflare.com` (Font Awesome) et les fonds de carte OpenStreetMap. À retirer quand ces fichiers seront copiés dans `public/vendor` (règle : pas de CDN).
+Seule exception : les fonds de carte OpenStreetMap, `https://tile.openstreetmap.org` en `img-src` (des images, aucun code), pour la carte de la page Contact et les cartes des clients et des tournées. Aucun script, style ou police d'un autre site, ni sur le site public ni dans l'administration (audit D4, voir « Bibliothèques copiées dans le site »).
+
+Le code garde deux zones (site public, espace client et pages sans compte ; administration : personnel connecté, écran TV, tablette) ; l'administration n'a aujourd'hui rien de plus (`AJOUTS_ADMIN` vide).
 
 Les scripts et styles écrits dans les pages restent permis (`'unsafe-inline'`) : beaucoup de pages en ont. `'unsafe-eval'` ne l'est pas.
 
 Un fichier servi par l'application (image, JSON, BAT en image…) reçoit une politique qui n'exécute rien (`default-src 'none'; … sandbox`). Les PDF reçoivent seulement `frame-ancestors 'self'` : le lecteur PDF de Chrome refuse de s'ouvrir dans une page « sandbox ».
 
-**Une page a besoin d'un fichier d'un autre site ?** Copier le fichier dans `public/vendor` (avec sa licence) plutôt qu'ajouter un site à la politique. Si c'est impossible, ajouter le site dans `AJOUTS_ADMIN` (administration seulement) et dans `tests/Unit/Security/EntetesSecuriteTest.php`, jamais dans la zone publique.
+**Une page a besoin d'un fichier d'un autre site ?** Le copier dans `public/vendor/<bibliothèque>-<version>/` avec sa licence plutôt qu'ajouter un site à la politique. `tests/Unit/Security/SansCdnTest.php` refuse toute balise `<script src>`, `<link href>`, `@import` ou police venant d'un autre site dans `templates/`, `public/css` et `public/js`, et vérifie que chaque fichier de `public/vendor` appelé existe et que chaque dossier a sa licence.
+
+## Bibliothèques copiées dans le site
+
+Règle : rien d'un autre site à l'exécution (ni CDN, ni Google Fonts). Les fichiers sont ceux des paquets officiels, sans modification (empreinte sha512 du paquet npm vérifiée au téléchargement), avec leur licence à côté.
+
+| Bibliothèque | Version | Dossier de `public/vendor` | Licence | Pages |
+|---|---|---|---|---|
+| Sortable | 1.15.6 | `sortablejs-1.15.6/` (`Sortable.min.js`, `LICENSE`) | MIT | réglages du catalogue, nouveau devis, réglages de l'écran TV |
+| Chart.js | 4.4.4 | `chart.js-4.4.4/` (`chart.umd.js`, `LICENSE.md`) | MIT | statistiques (globales, clients, commandes, trésorerie) |
+| Bootstrap (CSS) | 4.6.2 | `bootstrap-4.6.2/` (`bootstrap.min.css`, `LICENSE`) | MIT | suivi d'une étiquette (QR code) |
+| Font Awesome | 4.7.0 | `font-awesome-4.7.0/` (`css/font-awesome.min.css`, `fonts/*.woff2`, `*.woff`, `LICENSE.txt`) | police SIL OFL 1.1, CSS MIT | suivi d'une étiquette |
+| Poppins | Google Fonts v24, 300 à 800 | `poppins-v24/` (`poppins.css`, 12 fichiers woff2, `OFL.txt`) | SIL OFL 1.1 | administration (police du thème) |
+| Roboto | Google Fonts v51, 400, 500, 700 | `roboto-v51/` (`roboto.css`, 2 fichiers woff2, `OFL.txt`) | SIL OFL 1.1 | administration (bulles du thème) |
+| Archivo | Google Fonts v25, 600, 800, 900 | `archivo-v25/` (`archivo.css`, 2 fichiers woff2, `OFL.txt`) | SIL OFL 1.1 | écran TV |
+| Figtree | Google Fonts v9, 400 à 800 | `figtree-v9/` (`figtree.css`, 2 fichiers woff2, `OFL.txt`) | SIL OFL 1.1 | écran TV |
+| Leaflet | 1.9.4 | `leaflet/` | BSD 2 clauses | cartes des clients et des tournées, carte de la page Contact |
+| three.js | 0.186.0 | `three/` | MIT | Studio textile |
+| pdf.js, pdf-lib | 4.10.38, — | `montage/` | Apache 2.0, MIT | montage d'impression |
+| SweetAlert2 | 11.26.25 | `sweetalert2/` | MIT | fenêtres de confirmation |
+| Polices du Studio textile | — | `polices-atelier/` | SIL OFL 1.1 | Studio textile |
+
+- Chart.js : `chart.umd.js` est le fichier compressé du paquet. L'adresse du CDN (`chart.umd.min.js`) n'existe pas dans le paquet : le CDN la fabriquait en recompressant ce fichier.
+- Polices Google : CSS de Google Fonts demandée comme Chrome, gardée telle quelle pour les sous-ensembles latin et latin-ext (`unicode-range` compris), adresses remplacées par les fichiers copiés ; `font-display: swap`. Roboto, Archivo et Figtree sont des polices variables : un fichier par sous-ensemble sert tous les poids.
+- Les commentaires `sourceMappingURL` (Chart.js, Bootstrap) sont gardés, comme pour Leaflet : seuls les outils de développement du navigateur les lisent (404 sans effet).
+
+### Thème de l'administration
+
+Le `style.css` du thème Workload (sous licence, hors dépôt) demandait six familles de polices à Google (`@import url("https://fonts.googleapis.com/…")`). `app:installer-theme` retire ces lignes à l'installation ; pour un thème déjà installé, **une fois sur l'ERP et une fois sur le site en ligne** après la mise à jour :
+
+```
+php bin/console app:installer-theme --polices-locales
+```
+
+Les polices utilisées (Poppins, Roboto) sont servies par le site (`templates/base.html.twig`). Tant que la commande n'a pas été lancée, l'affichage est le même, mais le navigateur note six refus de la politique de contenu dans sa console ; `app:verifier-installation` le signale (« Polices du thème », à voir).
 
 ## Cookies
 
@@ -51,6 +88,15 @@ Sans les règles écrites, Symfony mettait le cookie « rester connecté » sans
 | Sondage, demande de devis, assistant, images de l'atelier 3D | voir `rate_limiter.yaml` |
 
 Les limites par connexion supposent que l'application voit la vraie adresse du visiteur (voir « Sur le serveur »).
+
+## Jetons des formulaires et des appels en JSON
+
+Toute route qui modifie quelque chose vérifie un jeton CSRF, en plus du cookie `SameSite=Lax` (qui laisse passer une requête venue d'un autre port ou d'un sous-domaine du même site).
+
+- Formulaires : champ `_token`.
+- Appels en JSON depuis une page : en-tête `X-CSRF-TOKEN`, ou champ `_token` du corps (fenêtres des réglages du catalogue).
+- Audit D6 : la modification d'une finition (`FinitionController::updateFinitionAjax`) et d'un type d'impression (`TypesImpressionController::updateAjax`) demande maintenant le jeton de sa route (`update_finition`, `update_type_impression`), lu par `App\Security\JetonJson` (en-tête, sinon `_token`). Sans jeton ou avec un mauvais : 403 en JSON, « Jeton de sécurité absent ou périmé : rechargez la page puis recommencez. », rien d'enregistré.
+- Les scripts de ces deux pages (`public/assets/js/traitement_parametrage.js`, `traitement_types_impression.js`) ne sont pas dans le dépôt (dossier ignoré par git). Pour qu'ils marchent sans les modifier, la page charge `public/js/jeton-json.js` avec son jeton : il ajoute l'en-tête `X-CSRF-TOKEN` aux requêtes POST de la page vers `…/update/ajax` (fetch et XMLHttpRequest, donc jQuery), sans toucher aux autres requêtes ni à un en-tête déjà posé.
 
 ## Fichiers envoyés
 
@@ -155,11 +201,11 @@ Attendu : les six en-têtes de la table, `Strict-Transport-Security` compris, et
 
 ## Règles pour le code nouveau
 
-- Une route qui modifie quelque chose : `POST`, jeton CSRF vérifié, droits vérifiés dans le contrôleur.
+- Une route qui modifie quelque chose : `POST`, jeton CSRF vérifié (en JSON : en-tête `X-CSRF-TOKEN`, `JetonJson::lire`), droits vérifiés dans le contrôleur.
 - Une fiche demandée par son numéro : chercher **dans** les fiches du client ou du compte connecté (`…duClientParId`), jamais `find($id)` puis comparer.
 - Un fichier envoyé : sous `var/uploads` (`FichiersPrives`), servi par `FichierEnvoye::reponse()` après la vérification des droits, une photo réencodée. `public/uploads` seulement pour ce qui est fait pour être vu de tous (site, écran TV), avec `FichierEnvoye`.
 - Un code ou un numéro tapé sans compte : une limite dans `rate_limiter.yaml`.
 - Un message d'erreur de connexion : le même, que le compte existe ou non.
 - Pas de `|raw` sur un texte saisi ; pour du JSON dans un `<script>`, `json_encode` avec `JSON_HEX_TAG`.
-- Pas de fichier d'un autre site à l'exécution : copier dans `public/vendor`.
+- Pas de fichier d'un autre site à l'exécution : copier dans `public/vendor/<bibliothèque>-<version>/`, avec sa licence (`SansCdnTest`).
 - Aucune clé, aucun mot de passe dans le dépôt, un message ou une capture d'écran.

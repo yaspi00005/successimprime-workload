@@ -31,7 +31,10 @@ final class ReferencementSite
     /** Lien de la fiche Google : domaines de Google seulement. */
     public const DOMAINES_FICHE_GOOGLE = ['google.com', 'google.ml', 'goo.gl', 'g.page', 'g.co'];
 
-    public const DEFAUTS = ['google' => '', 'bing' => '', 'fiche_google' => '', 'facebook' => '', 'instagram' => '', 'tiktok' => '', 'linkedin' => '', 'youtube' => ''];
+    /** Fiche Google de la boutique : lien « Partager » envoyé par Yaya le 15/10/2026 (un lien saisi la remplace). */
+    public const FICHE_GOOGLE = 'https://maps.app.goo.gl/S53cwaekd2L3FHP86';
+
+    public const DEFAUTS = ['google' => '', 'bing' => '', 'fiche_google' => self::FICHE_GOOGLE, 'facebook' => '', 'instagram' => '', 'tiktok' => '', 'linkedin' => '', 'youtube' => ''];
 
     /** @var array<string, string>|null */
     private ?array $reglages = null;

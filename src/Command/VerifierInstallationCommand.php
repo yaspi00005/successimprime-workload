@@ -122,6 +122,11 @@ final class VerifierInstallationCommand extends Command
             $theme = is_file($this->projet.'/public/theme/css/style.css');
             $resultats[] = ['statut' => $theme ? VerificationInstallation::OK : VerificationInstallation::ERREUR, 'point' => 'Thème de l\'administration', 'detail' => $theme ? 'installé' : 'à installer : php bin/console app:installer-theme <dossier du thème>'];
         }
+        // Polices Google du thème : la politique de contenu les refuse, celles du site (public/vendor) les remplacent.
+        $style = $this->projet.'/public/theme/css/style.css';
+        if (is_file($style) && ($externes = InstallerThemeCommand::importsExternes((string) file_get_contents($style))) > 0) {
+            $resultats[] = ['statut' => VerificationInstallation::A_VOIR, 'point' => 'Polices du thème', 'detail' => $externes.' demandes à Google encore dans le thème : php bin/console app:installer-theme --polices-locales'];
+        }
 
         return $resultats;
     }

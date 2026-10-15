@@ -1,0 +1,26 @@
+/*
+ * Carte de la boutique sur la page Contact (docs/site-vitrine.md,
+ * « Carte de la boutique »). Écrite dans la page (site_styles) : le plan
+ * dessiné tient la place de la carte, rien ne bouge quand elle arrive.
+ * Les styles de Leaflet viennent avec la carte (public/vendor/leaflet).
+ */
+.si-carte-boutique { position: relative; }
+.si-carte-boutique .si-plan > svg { height: 260px; }
+.si-carte-zone { position: absolute; inset: 0; z-index: 1; overflow: hidden; border: 1px solid var(--bordure); border-radius: var(--rayon); background: #EEF2F8; font: 14px/1.4 var(--police); }
+.si-carte-zone:focus-visible { outline: 3px solid var(--jaune); outline-offset: 2px; }
+.si-carte-zone .leaflet-control-attribution { font-size: 11px; }
+.si-carte-active .si-plan { pointer-events: none; }
+.si-carte-active .si-plan .si-bouton { z-index: 2; top: 12px; right: 12px; bottom: auto; pointer-events: auto; box-shadow: var(--ombre); }
+.si-carte-astuce { position: absolute; z-index: 2; left: 50%; bottom: 28px; transform: translateX(-50%); margin: 0; padding: 4px 12px; border-radius: 999px; background: rgba(29, 29, 27, .74); color: #fff; font-size: 13px; line-height: 1.4; white-space: nowrap; pointer-events: none; transition: opacity .25s; }
+.si-carte-libre .si-carte-astuce { opacity: 0; }
+.si-carte-repere { background: none; border: 0; }
+.si-carte-repere svg { display: block; width: 36px; height: 54px; }
+.si-carte-repere:focus-visible { outline: 3px solid var(--jaune); outline-offset: 2px; border-radius: 6px; }
+.si-carte-bulle { font-size: 14px; color: var(--texte); }
+.si-carte-bulle strong { display: block; color: var(--bleu); }
+@media (max-width: 640px) {
+  .si-carte-boutique .si-plan > svg { height: 230px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .si-carte-astuce { transition: none; }
+}

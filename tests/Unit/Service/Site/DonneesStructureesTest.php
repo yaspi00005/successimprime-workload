@@ -149,6 +149,9 @@ final class DonneesStructureesTest extends TestCase
         yield 'point-virgule' => ['12.6392;-7.9561', [12.6392, -7.9561]];
         yield 'lien @' => ['https://www.google.com/maps/place/X/@12.6392,-7.9561,17z', [12.6392, -7.9561]];
         yield 'lien destination' => ['https://www.google.com/maps/dir/?api=1&destination=12.6392%2C-7.9561', [12.6392, -7.9561]];
+        // Lien long d'une fiche (celui de la boutique) : le repère !3d…!4d…, pas le centre de la vue @….
+        yield 'fiche : repère plutôt que vue' => ['https://www.google.com/maps/place/Succ%C3%A8s+Imprim/@12.6517571,-7.9325125,17z/data=!3m1!4b1!4m6!3m5!1s0xe51cd45a9a50e9b:0x85d0df3e6b3309bd!8m2!3d12.6517571!4d-7.9299376!16s%2Fg%2F11', [12.6517571, -7.9299376]];
+        yield 'repère seul' => ['https://www.google.com/maps/place/X/data=!4m5!3m4!1s0x0:0x0!8m2!3d12.6517571!4d-7.9299376', [12.6517571, -7.9299376]];
         yield 'lien court' => ['https://maps.app.goo.gl/AbCdEf', null];
         yield 'trop imprécis' => ['12.6, -7.9', null];
         yield 'hors limites' => ['112.6392, -7.9561', null];

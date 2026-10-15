@@ -151,7 +151,7 @@ Code : `SiteSuiviController`, `SiteDemandeController`, `App\Service\Site\{SuiviS
 
 **Contact** (`app_site_contact`, /contact)
 - Adresse, téléphone et e-mail de l'entreprise, horaires du réglage « Horaires » avec « Ouvert maintenant » ou « Fermé, ouvre lundi à 8 h », bouton WhatsApp.
-- Plan et bouton « Itinéraire » seulement si la tuile Réglages « Site : page Contact » (`site_contact.lien_plan`, droits Admin ou Paramètres) est remplie : « latitude, longitude » ou un lien https. Vide par défaut, le bloc du plan est alors caché. Le plan est un dessin SVG, sans carte externe.
+- Carte (ou plan dessiné) et bouton « Itinéraire » : voir « Carte de la boutique » plus bas.
 - Court message : nom, téléphone malien, e-mail facultatif, objet (devis, suivi d'une commande, conseil sur un fichier, autre ; `?objet=commande` le présélectionne), message de 2 000 caractères au plus.
 
 **Demander un devis** (`app_site_devis`, /demander-un-devis), sans compte
@@ -236,3 +236,15 @@ Aucun chiffre d'activité, aucune note ni aucun nom de client n'a été inventé
 - `src/Controller/SiteContenuController.php` (admin), `src/Controller/SitePagesController.php` (pages publiques), `src/Service/Site/` (`ContenuSite`, `MarkdownSite`, `ImagesSite`, `ChiffresSite`, `IconesSite`, `PlanConseils`, `ContenuInitial`), `src/Twig/SiteContenuExtension.php`.
 - `templates/site_contenu/` (admin), `templates/site/` (`realisations`, `equipements`, `guide`, `a_propos`, `engagements`, `faq`, `conseils`, `conseil`, `_chiffres`, `_partenaires`, `_avis`), `public/css/site-contenu.css`, `public/css/reglages-site.css`.
 - Chaque page est servie par `SiteController::cache()` (5 minutes dans le navigateur).
+
+## Carte de la boutique (page Contact)
+
+- **Position** : tuile Réglages « Site : page Contact » (`site_contact.lien_plan`, droits Admin ou Paramètres). Par défaut, le repère de la fiche Google de la boutique, « 12.6517571, -7.9299376 » (lien envoyé par Yaya le 15/10/2026) ; une valeur saisie la remplace et descend au site par la synchronisation des réglages. Vide : ni carte ni bouton.
+- **Ce qui se saisit** : « latitude, longitude » (Google Maps : appui long sur la boutique au téléphone, clic droit à l'ordinateur, puis copier les deux nombres), ou un lien long de Google Maps. Dans un lien long, le repère `!3d<latitude>!4d<longitude>` passe avant `@latitude,longitude`, qui n'est que le centre de la vue (environ 280 m à côté pour la boutique). Un lien court (`maps.app.goo.gl`) ne donne pas la position : plan dessiné et bouton « Itinéraire » seulement. Les données structurées (`geo`) prennent le même repère (`DonneesStructurees::position`).
+- **Affichage** : le plan dessiné (SVG) tient la place. Quand le bloc arrive à l'écran (IntersectionObserver), la page charge `public/js/site-carte.js`, qui charge Leaflet 1.9.4 (`public/vendor/leaflet`) et pose la carte : repère rouge, bulle avec le nom et l'adresse, bouton « Itinéraire » en haut à droite. Rien de la carte n'est téléchargé avant (au téléphone, 0 requête tant que le bloc n'est pas à l'écran). Styles : `public/css/site-carte.css`, écrits dans la page.
+- **Fonds de carte** : `https://tile.openstreetmap.org`, seul site extérieur permis par la politique de contenu (des images, `img-src`), avec la mention « © OpenStreetMap » et son lien vers la page des droits, obligatoire.
+- **Sans piège au défilement** : la molette ne zoome qu'après un clic sur la carte et s'arrête quand la souris en sort ; au téléphone, un doigt fait défiler la page tant que la carte n'a pas été touchée (deux doigts zooment), et faire défiler la page la rebloque. Une petite bulle le dit (« Cliquez sur la carte pour zoomer à la molette », « Touchez la carte pour la déplacer »).
+- **Clavier** : la carte se prend au Tab (flèches pour la déplacer, + et − pour zoomer), puis le repère (Entrée ouvre la bulle), les boutons + et −, enfin « Itinéraire ». Mouvements réduits (`prefers-reduced-motion`) : ni fondu, ni animation de zoom, ni glissé de la carte (flèches, bulle qui se recadre).
+- **Repli** : sans JavaScript, sans IntersectionObserver, si Leaflet ne se charge pas ou si aucun fond de carte n'arrive (trois erreurs ou 12 s), le plan dessiné reste, avec son lien d'itinéraire.
+- **« Itinéraire »** : Google Maps, itinéraire jusqu'aux coordonnées (ou le lien saisi).
+- **Fiche Google** (Référencement) : par défaut https://maps.app.goo.gl/S53cwaekd2L3FHP86 (`ReferencementSite::FICHE_GOOGLE`), lien « Voir notre fiche Google » de la page et `sameAs` des données structurées ; un lien saisi la remplace.

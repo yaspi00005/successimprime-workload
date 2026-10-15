@@ -39,7 +39,7 @@ Le champ « Site » doit être l'adresse que Google doit garder : avec ou sans �
 Sur l'ERP local, droit **Site vitrine** (`ROLE_SITE_VITRINE`) ; enregistré par `POST /reglages/site-vitrine/referencement`, fermé en ligne.
 
 - Code de vérification **Google Search Console** et **Bing** : coller la balise donnée ou le code seul ; le site affiche la balise `<meta>` correspondante. Ces codes ne sont pas secrets.
-- Lien de la **fiche Google** (Google Business Profile) : lien « Partager » de la fiche (maps.app.goo.gl, g.page, google.com). Il apparaît sur la page Contact, dans le pied de page et dans les données structurées.
+- Lien de la **fiche Google** (Google Business Profile) : lien « Partager » de la fiche (maps.app.goo.gl, g.page, google.com). Il apparaît sur la page Contact, dans le pied de page et dans les données structurées. Par défaut, celui de la boutique (https://maps.app.goo.gl/S53cwaekd2L3FHP86, envoyé par Yaya le 15/10/2026) ; un lien saisi le remplace, un champ laissé vide le garde.
 - Pages **Facebook, Instagram, TikTok, LinkedIn, YouTube** : adresse https du réseau seulement ; liens du pied de page et « sameAs » des données structurées.
 - La colonne de droite donne les adresses à déclarer à Google et la liste de ce qui manque encore (e-mail, position GPS, fiche Google…).
 

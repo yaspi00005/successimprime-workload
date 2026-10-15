@@ -12,6 +12,7 @@ use App\Repository\CommandeDetailFichierRepository;
 use App\Repository\CommandesDetailsRepository;
 use App\Repository\OrdreProductionRepository;
 
+use App\Security\FichierEnvoye;
 use App\Service\ControleCreditClientService;
 use App\Service\BonusPlafondClientService;
 use App\Service\AnalyseFichierImpression;
@@ -1264,9 +1265,11 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
             ->slug($nomSansExtension)
             ->lower();
 
-        $extension = $fichierUpload->guessExtension()
-            ?: $fichierUpload->getClientOriginalExtension()
-            ?: 'bin';
+        // Rangé sous public/ : jamais une extension que le serveur exécuterait (FichierEnvoye).
+        $extension = FichierEnvoye::extensionPublique(
+            $fichierUpload->guessExtension()
+                ?: $fichierUpload->getClientOriginalExtension()
+        );
 
         $nomStockage = sprintf(
             '%s-v%d-%s.%s',
@@ -1470,7 +1473,8 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
 
         $nomSansExtension = pathinfo($nomOriginal, PATHINFO_FILENAME);
         $nomSecurise = $slugger->slug($nomSansExtension)->lower();
-        $extension = strtolower(pathinfo($nomOriginal, PATHINFO_EXTENSION)) ?: 'bin';
+        // Rangé sous public/ : jamais une extension que le serveur exécuterait (FichierEnvoye).
+        $extension = FichierEnvoye::extensionPublique(pathinfo($nomOriginal, PATHINFO_EXTENSION));
 
         $jeton = bin2hex(random_bytes(32));
 

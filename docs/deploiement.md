@@ -157,6 +157,8 @@ server {
         internal;
     }
     location ~ \.php$ { return 404; }
+    # Fichiers envoyés : jamais servis comme une page du site (docs/securite.md).
+    location ~* ^/uploads/.*\.(html?|xhtml|shtml|svgz?|xml|js|mjs)(\.|$) { return 404; }
 }
 ```
 

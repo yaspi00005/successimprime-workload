@@ -58,6 +58,11 @@ security:
                 lifetime: 2592000
                 path: /espace
                 name: SI_ESPACE_SOUVENIR
+                # Comme le cookie de session : https seulement quand le site l'est,
+                # illisible par un script, pas envoyé par un autre site (docs/securite.md).
+                secure: auto
+                httponly: true
+                samesite: lax
                 # « Déconnecter les autres appareils » (versionSession) annule aussi ces cookies.
                 signature_properties: [password, versionSession]
             login_throttling:

@@ -28,7 +28,7 @@
 								{% if not msg.estDuClient %}
 									<span class="si-pastille si-pastille-{{ msg.estRepondue ? (msg.issue == 'agent' ? 'orange' : 'vert') : 'rouge' }}">{{ msg.libelleIssue }}</span>
 									{% if msg.note == 1 %}<span class="as-ad-vert"><i class="fas fa-thumbs-up"></i> utile</span>{% elseif msg.note == -1 %}<span class="as-ad-rouge"><i class="fas fa-thumbs-down"></i> pas utile</span>{% endif %}
-									{% if msg.listeOutils is not empty %}<span>Outils : {{ msg.listeOutils|map(o => constant('App\\Service\\Assistant\\OutilsAssistant::LIBELLES')[o] ?? o)|join(', ') }}</span>{% endif %}
+									{% if msg.listeOutils is not empty %}<span>Outils : {{ msg.listeOutils|map(o => (constant('App\\Service\\Assistant\\OutilsAssistant::LIBELLES')[o] ?? o))|join(', ') }}</span>{% endif %}
 									{% if msg.depenseFcfa > 0 %}<span>{{ msg.depenseFcfa|number_format(1, ',', ' ') }} F</span>{% endif %}
 								{% endif %}
 							</footer>

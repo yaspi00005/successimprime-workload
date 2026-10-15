@@ -434,6 +434,7 @@
 {% endblock %}
 {% block javascripts %}
 	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
+	<script src="{{ asset('js/jeton-json.js') }}" data-jeton="{{ csrf_token('update_type_impression') }}" data-fin="/update/ajax"></script>
 	<script src="../assets/js/traitement_types_impression.js"></script>
 	<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>
 

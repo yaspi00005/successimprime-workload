@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\TypesImpression;
 use App\Repository\FinitionRepository;
 use App\Repository\TypesImpressionRepository;
+use App\Security\JetonJson;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -185,6 +186,14 @@ final class TypesImpressionController extends AbstractController
         FinitionRepository $finitionRepository
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
+
+        // Jeton de la page (en-tête X-CSRF-TOKEN ou « _token »), audit D6.
+        if (!$this->isCsrfTokenValid('update_type_impression', JetonJson::lire($request, $data))) {
+            return $this->json([
+                'success' => false,
+                'message' => JetonJson::MESSAGE,
+            ], Response::HTTP_FORBIDDEN);
+        }
 
         if (!is_array($data)) {
             return $this->json([

@@ -2,7 +2,7 @@
 
 Ce que l'application fait pour se protéger, comment le revérifier, et les règles pour le code nouveau. Le dernier audit (15/10/2026) a donné ces règles ; le serveur en ligne a aussi sa liste dans « Sur le serveur » plus bas.
 
-Points de l'audit traités depuis : **D4** fait (plus aucun fichier d'un autre site dans l'administration : « Bibliothèques copiées dans le site »).
+Points de l'audit traités depuis : **D4** fait (plus aucun fichier d'un autre site dans l'administration : « Bibliothèques copiées dans le site ») ; **D6** fait (jeton des modifications en JSON des finitions et des types d'impression : « Jetons des formulaires et des appels en JSON »).
 
 ## En-têtes de sécurité
 
@@ -89,6 +89,15 @@ Sans les règles écrites, Symfony mettait le cookie « rester connecté » sans
 
 Les limites par connexion supposent que l'application voit la vraie adresse du visiteur (voir « Sur le serveur »).
 
+## Jetons des formulaires et des appels en JSON
+
+Toute route qui modifie quelque chose vérifie un jeton CSRF, en plus du cookie `SameSite=Lax` (qui laisse passer une requête venue d'un autre port ou d'un sous-domaine du même site).
+
+- Formulaires : champ `_token`.
+- Appels en JSON depuis une page : en-tête `X-CSRF-TOKEN`, ou champ `_token` du corps (fenêtres des réglages du catalogue).
+- Audit D6 : la modification d'une finition (`FinitionController::updateFinitionAjax`) et d'un type d'impression (`TypesImpressionController::updateAjax`) demande maintenant le jeton de sa route (`update_finition`, `update_type_impression`), lu par `App\Security\JetonJson` (en-tête, sinon `_token`). Sans jeton ou avec un mauvais : 403 en JSON, « Jeton de sécurité absent ou périmé : rechargez la page puis recommencez. », rien d'enregistré.
+- Les scripts de ces deux pages (`public/assets/js/traitement_parametrage.js`, `traitement_types_impression.js`) ne sont pas dans le dépôt (dossier ignoré par git). Pour qu'ils marchent sans les modifier, la page charge `public/js/jeton-json.js` avec son jeton : il ajoute l'en-tête `X-CSRF-TOKEN` aux requêtes POST de la page vers `…/update/ajax` (fetch et XMLHttpRequest, donc jQuery), sans toucher aux autres requêtes ni à un en-tête déjà posé.
+
 ## Fichiers envoyés
 
 Règle : un fichier de client se range **hors de `public/`** (`var/uploads/…`) et se sert par un contrôleur qui vérifie les droits ; une image de client est réencodée (sans EXIF).
@@ -136,7 +145,7 @@ Attendu : les six en-têtes de la table, `Strict-Transport-Security` compris, et
 
 ## Règles pour le code nouveau
 
-- Une route qui modifie quelque chose : `POST`, jeton CSRF vérifié, droits vérifiés dans le contrôleur.
+- Une route qui modifie quelque chose : `POST`, jeton CSRF vérifié (en JSON : en-tête `X-CSRF-TOKEN`, `JetonJson::lire`), droits vérifiés dans le contrôleur.
 - Une fiche demandée par son numéro : chercher **dans** les fiches du client ou du compte connecté (`…duClientParId`), jamais `find($id)` puis comparer.
 - Un fichier envoyé : hors de `public/`, ou `FichierEnvoye` si le dossier est public.
 - Un code ou un numéro tapé sans compte : une limite dans `rate_limiter.yaml`.

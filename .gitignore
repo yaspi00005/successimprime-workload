@@ -27,8 +27,12 @@
 # Fichiers temporaires Google Drive
 .tmp.driveupload/
 
-# Fichiers privés uploadés par les utilisateurs
-/public/uploads/employes/
+# Fichiers envoyés par les utilisateurs (chat, pré-presse, étiquettes,
+# employés…) : jamais dans le dépôt (audit de sécurité du 15/10/2026, D2).
+# Seuls restent le filet de sécurité .htaccess et le dossier de l'écran TV.
+/public/uploads/*
+!/public/uploads/.htaccess
+!/public/uploads/tv/
 
 # Médias du diaporama de l'écran d'accueil (images/vidéos déposées manuellement)
 /public/uploads/tv/*

@@ -6,6 +6,18 @@ Ordre à suivre : préparer la clé du serveur (étapes 1 à 3) **avant** de pas
 
 Une clé privée ne s'envoie jamais dans une conversation, un e-mail ou une capture : seule la ligne publique (`….pub`, qui commence par `ssh-ed25519`) est collée dans GitHub.
 
+## Avant le premier `git pull` : mettre de côté les fichiers envoyés
+
+Le 15/10/2026, 25 fichiers envoyés enregistrés par erreur dans le dépôt (pièce jointe du chat, fichiers de pré-presse, étiquettes) en ont été retirés (constat D2 de l'audit) ; `public/uploads/` n'est plus suivi, sauf son `.htaccess` et le dossier de l'écran TV. Un `git pull` efface ces 25 fichiers de l'ordinateur qui le fait. Pour les garder, sur **chaque** installation (serveur en ligne, Mac, poste de la boutique), une seule fois, dans le dossier du projet :
+
+```
+cp -a public/uploads ~/uploads-avant-retrait
+git pull
+cp -an ~/uploads-avant-retrait/. public/uploads/
+```
+
+La dernière ligne remet les fichiers effacés sans écraser les autres. Les fichiers envoyés ensuite restent sur la machine : Git ne les touche plus. Quand tout marche, `~/uploads-avant-retrait` peut être supprimé.
+
 ## 1. Créer la clé sur le serveur
 
 Dans le terminal SSH du serveur (LWS ou VPS) :

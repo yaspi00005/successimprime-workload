@@ -22,7 +22,9 @@ Toutes les réponses de l'application reçoivent les mêmes en-têtes, au local 
 
 Tout vient du site lui-même : `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`, `form-action 'self'` plus la page de paiement d'Orange Money (`*.orange-money.com`, où le bouton « Payer » renvoie), images `data:` et `blob:` (atelier 3D, repères du BAT, aperçus avant envoi), `worker-src 'self' blob:`.
 
-Seule exception : les fonds de carte OpenStreetMap, `https://tile.openstreetmap.org` en `img-src` (des images, aucun code), pour la carte de la page Contact et les cartes des clients et des tournées. Aucun script, style ou police d'un autre site, ni sur le site public ni dans l'administration (audit D4, voir « Bibliothèques copiées dans le site »).
+Exception permanente : les fonds de carte OpenStreetMap, `https://tile.openstreetmap.org` en `img-src` (des images, aucun code), pour la carte de la page Contact et les cartes des clients et des tournées. Aucun script, style ou police d'un autre site, ni sur le site public ni dans l'administration (audit D4, voir « Bibliothèques copiées dans le site »).
+
+Seule autre exception, demandée par Yaya le 15/10/2026 : la **mesure d'audience Google** (gtag.js). Sur les pages publiques du site en ligne qui portent la balise, et sur elles seules (`App\Service\Site\MesureAudience`, docs/referencement.md, « Mesure d'audience »), la politique ajoute `https://www.googletagmanager.com` en `script-src`, et `https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com` en `img-src` et `connect-src` (`EntetesSecurite::AJOUTS_MESURE_AUDIENCE`). La même décision pose la balise dans la page et ouvre la politique : l'une ne va jamais sans l'autre. Espace client, connexions, adresses à code (`/f/…`, `/avis/…`, PDF publics, retours de paiement), écran TV, administration et ERP local gardent la politique sans Google. Rien de personnel n'est envoyé (ni utilisateur, ni client, ni paramètre d'adresse hors campagne).
 
 Le code garde deux zones (site public, espace client et pages sans compte ; administration : personnel connecté, écran TV, tablette) ; l'administration n'a aujourd'hui rien de plus (`AJOUTS_ADMIN` vide).
 
@@ -30,11 +32,11 @@ Les scripts et styles écrits dans les pages restent permis (`'unsafe-inline'`) 
 
 Un fichier servi par l'application (image, JSON, BAT en image…) reçoit une politique qui n'exécute rien (`default-src 'none'; … sandbox`). Les PDF reçoivent seulement `frame-ancestors 'self'` : le lecteur PDF de Chrome refuse de s'ouvrir dans une page « sandbox ».
 
-**Une page a besoin d'un fichier d'un autre site ?** Le copier dans `public/vendor/<bibliothèque>-<version>/` avec sa licence plutôt qu'ajouter un site à la politique. `tests/Unit/Security/SansCdnTest.php` refuse toute balise `<script src>`, `<link href>`, `@import` ou police venant d'un autre site dans `templates/`, `public/css` et `public/js`, et vérifie que chaque fichier de `public/vendor` appelé existe et que chaque dossier a sa licence.
+**Une page a besoin d'un fichier d'un autre site ?** Le copier dans `public/vendor/<bibliothèque>-<version>/` avec sa licence plutôt qu'ajouter un site à la politique. `tests/Unit/Security/SansCdnTest.php` refuse toute balise `<script src>`, `<link href>`, `@import` ou police venant d'un autre site dans `templates/`, `public/css` et `public/js`, et vérifie que chaque fichier de `public/vendor` appelé existe et que chaque dossier a sa licence. Il vérifie aussi la seule exception : l'adresse de gtag.js n'est écrite que dans `public/js/mesure-audience.js`, qui n'appelle rien d'autre, et seul `templates/site/_site.html.twig` appelle ce fichier, quand `site_mesure_audience()` donne un identifiant.
 
 ## Bibliothèques copiées dans le site
 
-Règle : rien d'un autre site à l'exécution (ni CDN, ni Google Fonts). Les fichiers sont ceux des paquets officiels, sans modification (empreinte sha512 du paquet npm vérifiée au téléchargement), avec leur licence à côté.
+Règle : rien d'un autre site à l'exécution (ni CDN, ni Google Fonts). Seule exception : la mesure d'audience Google du site public, plus haut. Les fichiers sont ceux des paquets officiels, sans modification (empreinte sha512 du paquet npm vérifiée au téléchargement), avec leur licence à côté.
 
 | Bibliothèque | Version | Dossier de `public/vendor` | Licence | Pages |
 |---|---|---|---|---|
@@ -185,7 +187,7 @@ APP_EN_LIGNE=1 APP_DEBUG=0 php bin/console app:recette:acces
 composer audit
 ```
 
-`app:recette:acces` vérifie aussi les en-têtes de sécurité de `/`, `/espace/connexion` et `/login`. La lancer avec `APP_DEBUG=0` : en mode débogage, une page refusée contient la trace de l'erreur, que la recette prend pour des montants.
+`app:recette:acces` vérifie aussi les en-têtes de sécurité de `/`, `/espace/connexion` et `/login`, et la mesure d'audience Google : balise et politique sur `/` et `/demander-un-devis` du site en ligne (si l'identifiant est réglé), ni l'une ni l'autre sur l'ERP local, dans l'espace client, aux connexions, sur « Suivre ma commande » et sur les adresses à code. La lancer avec `APP_DEBUG=0` : en mode débogage, une page refusée contient la trace de l'erreur, que la recette prend pour des montants.
 
 Dans le navigateur (Chrome, outils de développement, onglet Console) : aucune ligne « Content Security Policy » sur les pages modifiées, à l'ordinateur et au téléphone.
 
@@ -218,5 +220,5 @@ Attendu : les six en-têtes de la table, `Strict-Transport-Security` compris, et
 - Un message d'erreur de connexion : le même, que le compte existe ou non.
 - Un texte saisi : sa longueur vérifiée avant l'enregistrement, à la taille de sa colonne, avec un message clair (« Nom du support : 255 caractères au plus. ») et `maxlength` sur le champ ; sinon la base refuse et la page tombe en erreur (exemple : `LongueursCatalogue` pour Réglages › Finitions, Formats, Supports et Types d'impression).
 - Pas de `|raw` sur un texte saisi ; pour du JSON dans un `<script>`, `json_encode` avec `JSON_HEX_TAG`.
-- Pas de fichier d'un autre site à l'exécution : copier dans `public/vendor/<bibliothèque>-<version>/`, avec sa licence (`SansCdnTest`).
+- Pas de fichier d'un autre site à l'exécution : copier dans `public/vendor/<bibliothèque>-<version>/`, avec sa licence (`SansCdnTest`). Seule exception : la balise Google de mesure d'audience, sur les pages de `MesureAudience::PAGES` (jamais une page privée ou à code).
 - Aucune clé, aucun mot de passe dans le dépôt, un message ou une capture d'écran.

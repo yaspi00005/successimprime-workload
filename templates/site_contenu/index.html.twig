@@ -268,6 +268,11 @@
 								<input type="text" name="bing" id="ref-bing" value="{{ r.bing }}" maxlength="300" class="form-control form-control-sm" autocomplete="off" spellcheck="false" aria-describedby="aide-ref-bing">
 								<div id="aide-ref-bing" class="form-text">Bing Webmaster Tools › Balise meta (msvalidate.01). Bing peut aussi reprendre la propriété Google.</div>
 
+								<h2 class="si-sv-sous-titre mt-4">Mesure d'audience</h2>
+								<label class="si-libelle-champ" for="ref-mesure">Identifiant de mesure Google Analytics</label>
+								<input type="text" name="mesure" id="ref-mesure" value="{{ r.mesure }}" maxlength="600" class="form-control form-control-sm" autocomplete="off" spellcheck="false" placeholder="G-XXXXXXXXXX" aria-describedby="aide-ref-mesure">
+								<div id="aide-ref-mesure" class="form-text">Analytics › Administration › Flux de données › le site : identifiant « G-… », ou la balise Google (gtag.js) entière. Laissez vide pour couper la mesure. Elle passe seulement sur les pages publiques du site en ligne, pour les visiteurs : jamais dans l'espace client, l'administration, les pages de connexion ni les liens à code (factures, sondages, paiements). Aucune donnée de client n'est envoyée.</div>
+
 								<h2 class="si-sv-sous-titre mt-4">Fiche Google et réseaux sociaux</h2>
 								<label class="si-libelle-champ" for="ref-fiche">Lien de la fiche Google (Google Business Profile)</label>
 								<input type="url" name="fiche_google" id="ref-fiche" value="{{ r.fiche_google }}" maxlength="500" class="form-control form-control-sm" placeholder="https://maps.app.goo.gl/…" aria-describedby="aide-ref-fiche">

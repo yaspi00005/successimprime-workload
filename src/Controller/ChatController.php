@@ -7,6 +7,7 @@ use App\Entity\Message;
 use App\Entity\User;
 use App\Repository\ConversationRepository;
 use App\Repository\UserRepository;
+use App\Security\FichierEnvoye;
 use App\Service\ChatService;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -168,7 +169,21 @@ final class ChatController extends AbstractController
         if ($fichier instanceof UploadedFile) {
             $dossier = $this->getParameter('chat_directory');
             $nomOriginal = $fichier->getClientOriginalName();
-            $nomStocke = uniqid('chat_') . '.' . $fichier->guessExtension();
+            // Type lu dans le contenu, liste fermée : jamais de .php ni de .html dans public/uploads.
+            $extension = FichierEnvoye::extensionPour($fichier, FichierEnvoye::TYPES_CHAT, FichierEnvoye::TAILLE_MAX_CHAT);
+
+            if (null === $extension) {
+                $refus = 'Fichier refusé : images, PDF, documents Word, Excel, PowerPoint, texte ou ZIP de 10 Mo au plus.';
+                if ($estAjax) {
+                    return $this->json(['erreur' => $refus], Response::HTTP_BAD_REQUEST);
+                }
+
+                $this->addFlash('error', $refus);
+
+                return $this->redirectToRoute('app_chat_show', ['jeton' => $conversation->getJeton()]);
+            }
+
+            $nomStocke = 'chat_' . bin2hex(random_bytes(12)) . '.' . $extension;
 
             try {
                 if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {

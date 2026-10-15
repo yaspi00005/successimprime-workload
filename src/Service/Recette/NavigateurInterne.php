@@ -188,6 +188,7 @@ final class NavigateurInterne
                 false === $reponse->getContent() ? '' : (string) $reponse->getContent(),
                 self::resumerErreur($this->derniereErreur, $reponse->getStatusCode()),
                 $this->ecritures,
+                array_map(static fn (array $valeurs): string => (string) ($valeurs[0] ?? ''), $reponse->headers->all()),
             );
         } catch (\Throwable $e) {
             $resultat = new Reponse(500, '', '', '', self::resumerErreur($e, 500), $this->ecritures);

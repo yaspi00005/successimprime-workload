@@ -3,7 +3,14 @@ framework:
     secret: '%env(APP_SECRET)%'
 
     # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    # Cookie de session (docs/securite.md) : illisible par un script, envoyé
+    # seulement en https quand la page l'est, jamais avec un formulaire
+    # envoyé depuis un autre site. Écrit ici pour que le cookie « rester
+    # connecté » de l'espace client reprenne les mêmes règles.
+    session:
+        cookie_secure: auto
+        cookie_httponly: true
+        cookie_samesite: lax
 
     #esi: true
     #fragments: true

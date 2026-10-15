@@ -7,6 +7,7 @@ use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
 use App\Entity\CompteClient;
+use App\Entity\CreationAtelier;
 use App\Entity\DemandeConception;
 use App\Entity\Devis;
 use App\Entity\Factures;
@@ -67,6 +68,8 @@ final class RecetteEspaceClient
         'app_espace_reclamation_photo' => 'photo',
         'app_espace_notification_ouvrir' => 'notification',
         'app_espace_utilisateur' => 'utilisateur',
+        // Vue rendue ou image d'une création de l'atelier 3D.
+        'app_espace_creation_fichier' => 'creation',
     ];
 
     /** Pages réservées à qui paie (factures, solde, paiement). */
@@ -253,6 +256,7 @@ final class RecetteEspaceClient
             'utilisateur' => $this->autreCompte($compte),
             'adresse' => $this->premiere(AdresseLivraison::class, $client, 'e.actif = true'),
             'produit' => $this->premiere(ProduitClient::class, $client, '1 = 1', 'publicId'),
+            'creation' => $this->premiere(CreationAtelier::class, $client, '1 = 1', 'publicId'),
         ];
     }
 
@@ -271,7 +275,11 @@ final class RecetteEspaceClient
             }
             $parametres = [];
             foreach ($route->compile()->getPathVariables() as $variable) {
-                $valeur = 'taille' === $variable ? 'v' : ($fiches[self::FICHES_DES_ROUTES[$nom] ?? ''] ?? null);
+                $valeur = match ($variable) {
+                    'taille' => 'v',
+                    'quoi' => 'rendu-devant',
+                    default => $fiches[self::FICHES_DES_ROUTES[$nom] ?? ''] ?? null,
+                };
                 if (null === $valeur) {
                     $bilan->ignorees[$nom.' ('.$libelle.')'] = 'pas de fiche « '.(self::FICHES_DES_ROUTES[$nom] ?? $variable).' » pour ce client';
                     continue 2;
@@ -423,6 +431,8 @@ final class RecetteEspaceClient
                 $parametres = ['cle' => $valeur];
             } elseif ('image' === $sorte) {
                 $parametres['taille'] = 'v';
+            } elseif ('creation' === $sorte) {
+                $parametres['quoi'] = 'rendu-devant';
             }
             $chemin = $this->routeur->generate($route, $parametres);
             $reponse = $this->navigateur->get($chemin, $session);
@@ -721,7 +731,9 @@ final class RecetteEspaceClient
         $trouvees = [];
         foreach ($donnees as $cle => $valeur) {
             $ici = '' === $chemin ? (string) $cle : $chemin.'.'.$cle;
-            if (\is_string($cle) && preg_match(self::CLES_ARGENT, $cle) && null !== $valeur && [] !== $valeur && '' !== $valeur && !\is_bool($valeur)) {
+            // Une adresse du site (« urls.prix » de l'atelier 3D) n'est pas un montant.
+            $adresse = \is_string($valeur) && str_starts_with($valeur, '/');
+            if (\is_string($cle) && preg_match(self::CLES_ARGENT, $cle) && null !== $valeur && [] !== $valeur && '' !== $valeur && !\is_bool($valeur) && !$adresse) {
                 $trouvees[] = $ici;
                 continue;
             }

@@ -10,6 +10,7 @@ use App\Entity\Produits;
 use App\Entity\PromoReveil;
 use App\Entity\RegleFidelite;
 use App\Entity\User;
+use App\Security\RetourInterne;
 use App\Service\Fidelite\CalculFidelite;
 use App\Service\Fidelite\Fidelite;
 use App\Service\Fidelite\ReveilClients;
@@ -265,7 +266,7 @@ final class FideliteController extends AbstractController
             }
         }
 
-        return $this->redirect($request->request->getString('retour') ?: $this->generateUrl('app_fidelite_index', ['onglet' => 'dormeurs']));
+        return $this->redirect(RetourInterne::chemin($request->request->getString('retour')) ?? $this->generateUrl('app_fidelite_index', ['onglet' => 'dormeurs']));
     }
 
     #[Route('/reveil/{id}/retirer', name: 'app_fidelite_reveil_annuler', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -281,7 +282,7 @@ final class FideliteController extends AbstractController
             }
         }
 
-        return $this->redirect($request->request->getString('retour') ?: $this->generateUrl('app_fidelite_index', ['onglet' => 'dormeurs']));
+        return $this->redirect(RetourInterne::chemin($request->request->getString('retour')) ?? $this->generateUrl('app_fidelite_index', ['onglet' => 'dormeurs']));
     }
 
     /* ---------- Commande (qui gère les commandes) ---------- */

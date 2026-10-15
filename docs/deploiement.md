@@ -157,6 +157,8 @@ server {
         internal;
     }
     location ~ \.php$ { return 404; }
+    # Fichiers envoyés : jamais servis comme une page du site (docs/securite.md).
+    location ~* ^/uploads/.*\.(html?|xhtml|shtml|svgz?|xml|js|mjs)(\.|$) { return 404; }
 }
 ```
 
@@ -208,6 +210,7 @@ Les comptes du personnel ne descendent pas par la synchronisation : mots de pass
 - [ ] Un paiement Orange Money de test arrive « en attente » au local.
 - [ ] Assistant : la clé posée (`app:verifier-installation`), la tuile Réglages › Assistant du site allumée au local et descendue en ligne ; une question sur le site reçoit une réponse, et la conversation arrive dans Clients › Assistant du site au local.
 - [ ] Une sauvegarde du serveur existe et se restaure (docs/sauvegardes.md).
+- [ ] Les trois commandes de « Revérifier » de docs/securite.md donnent le résultat attendu (en-têtes, fichiers introuvables, http renvoyé vers https).
 
 ## Mettre à jour
 

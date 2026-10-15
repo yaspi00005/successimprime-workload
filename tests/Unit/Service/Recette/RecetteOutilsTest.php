@@ -111,6 +111,8 @@ final class RecetteOutilsTest extends TestCase
         self::assertSame([], RecetteEspaceClient::clesArgent(['montants' => false, 'pieces' => 4, 'resume' => '4 pièces']));
         self::assertSame(['total', 'detail.0.montant'], RecetteEspaceClient::clesArgent(['montants' => true, 'total' => 54000, 'detail' => [['libelle' => 'Impression', 'montant' => 48000]]]));
         self::assertSame(['prixPiece'], RecetteEspaceClient::clesArgent(['prixPiece' => 1500, 'pourcentage' => 10]));
+        // L'adresse de l'appel des prix n'est pas un montant ; un prix en texte en est un.
+        self::assertSame(['prix'], RecetteEspaceClient::clesArgent(['urls' => ['prix' => '/espace/atelier-3d/prix'], 'prix' => '12 000 F']));
 
         // Données glissées dans la page (fiches de Mes produits) : lues même si elles ne s'affichent pas.
         $page = '<p>Bâche</p><script type="application/json" id="fiches">[{"nom":"B\u00e2che","prix":"29 000 F \/ pi\u00e8ce"},{"nom":"Vinyle","prix":null}]</script><script>var x = 1;</script>';

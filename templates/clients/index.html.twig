@@ -129,17 +129,18 @@
 			</div>
 		{% else %}
 			<div class="table-responsive">
-				<table class="table si-cl-table">
+				{# Liste coupée en pages : les flèches des en-têtes règlent les filtres et le tri du serveur (docs/filtres-tableaux.md). #}
+				<table class="table si-cl-table" data-filtres="serveur" data-filtres-tri-defaut="derniere">
 					<thead>
 						<tr>
-							<th>Client</th>
-							<th class="si-masque-mobile">Type</th>
+							<th data-filtre-recherche="q" data-filtre-tri-asc="nom">Client</th>
+							<th class="si-masque-mobile" data-filtre-param="type" data-filtre-choix="{{ constant('App\\Entity\\Clients::TYPES_COMPTE_LABELS')|json_encode }}">Type</th>
 							<th class="si-masque-mobile">Contact principal</th>
-							{% if is_granted('ROLE_STATS_VENTES') %}<th class="text-end">CA 12 mois</th>{% endif %}
-							<th class="si-masque-mobile">Dernière commande</th>
-							{% if is_granted('ROLE_PAIEMENT_VOIR') %}<th class="text-end">Solde dû</th>{% endif %}
-							<th>Statut</th>
-							<th class="si-masque-mobile">Suivi par</th>
+							{% if is_granted('ROLE_STATS_VENTES') %}<th class="text-end" data-filtre-type="nombre" data-filtre-tri-desc="ca">CA 12 mois</th>{% endif %}
+							<th class="si-masque-mobile" data-filtre-type="date" data-filtre-tri-desc="derniere">Dernière commande</th>
+							{% if is_granted('ROLE_PAIEMENT_VOIR') %}<th class="text-end" data-filtre-type="nombre" data-filtre-tri-desc="solde">Solde dû</th>{% endif %}
+							<th data-filtre-param="statut" data-filtre-choix="{{ constant('App\\Service\\Clients\\ListeClients::STATUTS')|json_encode }}">Statut</th>
+							<th class="si-masque-mobile" data-filtre-param="suivi" data-filtre-choix="{{ commerciaux|map(u => [u.id, u|nom_pointage])|json_encode }}">Suivi par</th>
 						</tr>
 					</thead>
 					<tbody>

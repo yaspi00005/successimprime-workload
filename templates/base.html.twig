@@ -212,7 +212,8 @@
 	{% block vendor_javascripts %}{% endblock %}
 	<script src="{{ asset('theme/js/custom.min.js') }}"></script>
 	<script src="{{ asset('theme/js/dlabnav-init.js') }}"></script>
-	<script src="{{ asset('js/admin.js') }}"></script>
+	{# admin.js charge les filtres des tableaux seulement sur les pages qui ont une liste (docs/filtres-tableaux.md). #}
+	<script src="{{ asset('js/admin.js') }}" data-filtres-js="{{ asset('js/filtres-tableaux.js') }}" data-filtres-css="{{ asset('css/filtres-tableaux.css') }}" data-filtres-compte="{{ app.user ? app.user.id }}"></script>
 	{% block javascripts %}{% endblock %}
 </body>
 </html>

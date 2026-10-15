@@ -27,7 +27,7 @@
 			<button type="button" class="btn btn-light js-copier" data-cible="message-acces">Copier le message</button>
 			<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}" class="btn btn-light">Retour à la fiche</a>
 		</div>
-		<p class="si-cf-aide mt-3 mb-0">Ne le donnez qu'au client, sur son numéro. Une fois connecté, il ajoute son adresse e-mail et choisit son mot de passe ; ensuite il se connecte avec son numéro et ce mot de passe.</p>
+		<p class="si-cf-aide mt-3 mb-0">{{ constant('App\\Service\\EspaceClient\\AccesEspace::CONSIGNE_BOUTIQUE') }}</p>
 	</section>
 	<script>
 		document.querySelectorAll('.js-copier').forEach(function (bouton) {

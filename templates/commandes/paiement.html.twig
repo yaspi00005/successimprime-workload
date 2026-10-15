@@ -279,8 +279,9 @@
 							</label>
 
 							<div class="alert alert-light border mb-2">
-								Le client paie parfois ces frais en plus du prix de la commande.
-								Cochez ce qui s'applique à ce versement.
+								Payés par le client en plus du montant, hors commande et hors facture.
+								Orange Money : cochés d'office, décochez si le client ne les paie pas.
+								Wave : cochez ce qui s'applique.
 							</div>
 
 							<div class="custom-control custom-checkbox mb-2">
@@ -415,7 +416,7 @@
 								<td class="text-muted">
 									{% if paiement.montantFraisRetrait > 0 or paiement.montantFondsSoutien > 0 %}
 										{% if paiement.montantFraisRetrait > 0 %}
-											Retrait :
+											Frais de retrait :
 											{{ paiement.montantFraisRetrait|number_format(0, ',', ' ') }}
 											FCFA
 											<br>
@@ -533,6 +534,20 @@ const tauxFondsSoutien = {{ parametresPaiement.tauxFondsSoutien|default(0)|json_
 
 const modesMobileMoney = ['orange_money', 'wave'];
 
+// Orange Money : fonds de soutien et frais de retrait cochés d'office en
+// arrivant sur ce mode (le client les paie en plus) ; la personne peut
+// les décocher. Un taux à 0 cache sa ligne.
+const formulaireRenvoye = {{ form.vars.submitted ? 'true' : 'false' }};
+
+let modePrecedent = formulaireRenvoye && modeSelect ? modeSelect.value : '';
+
+[[checkboxFondsSoutien, tauxFondsSoutien], [checkboxFraisRetrait, tauxFraisRetrait]].forEach(function (paire) {
+if (paire[0] && ! (paire[1] > 0)) {
+paire[0].checked = false;
+paire[0].closest('.custom-control').hidden = true;
+}
+});
+
 
 function formaterFcfa(valeur) {
 return new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0}).format(Math.round(valeur)) + ' FCFA';
@@ -548,7 +563,8 @@ const estMobileMoney = modesMobileMoney.includes(modeSelect.value);
 
 zoneFraisMobileMoney.style.display = estMobileMoney ? '' : 'none';
 
-if (! estMobileMoney) {
+// Hors mobile money, ou en quittant Orange Money pour Wave (cases à cocher à la main, comme avant).
+if (! estMobileMoney || (modePrecedent === 'orange_money' && modeSelect.value !== 'orange_money')) {
 if (checkboxFraisRetrait) {
 checkboxFraisRetrait.checked = false;
 }
@@ -556,7 +572,17 @@ checkboxFraisRetrait.checked = false;
 if (checkboxFondsSoutien) {
 checkboxFondsSoutien.checked = false;
 }
+} else if (modeSelect.value === 'orange_money' && modePrecedent !== 'orange_money') {
+if (checkboxFraisRetrait && tauxFraisRetrait > 0) {
+checkboxFraisRetrait.checked = true;
 }
+
+if (checkboxFondsSoutien && tauxFondsSoutien > 0) {
+checkboxFondsSoutien.checked = true;
+}
+}
+
+modePrecedent = modeSelect.value;
 
 actualiserApercuFrais();
 }

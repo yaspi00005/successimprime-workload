@@ -12,8 +12,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * Essai des clés Orange Money posées dans .env.local, sans en afficher
- * aucune. Avec --paiement (API d'essai seulement), ouvre un paiement de
- * 100 OUV pour vérifier la clé marchand.
+ * aucune. Montre aussi les frais d'un paiement de 100 (fonds de soutien et
+ * frais de retrait, taux de Réglages › Paiements), même sans clé. Avec
+ * --paiement (API d'essai seulement), ouvre un paiement de 100 OUV, frais
+ * compris, pour vérifier la clé marchand.
  */
 #[AsCommand(name: 'app:orange-money:tester', description: 'Teste les clés Orange Money de .env.local (aucun secret affiché).')]
 final class OrangeMoneyTesterCommand extends Command
@@ -25,7 +27,7 @@ final class OrangeMoneyTesterCommand extends Command
 
     protected function configure(): void
     {
-        $this->addOption('paiement', null, InputOption::VALUE_NONE, 'Ouvre aussi un paiement d\'essai de 100 OUV (API d\'essai seulement) pour vérifier la clé marchand.');
+        $this->addOption('paiement', null, InputOption::VALUE_NONE, 'Ouvre aussi un paiement d\'essai de 100 OUV frais compris (API d\'essai seulement) pour vérifier la clé marchand.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

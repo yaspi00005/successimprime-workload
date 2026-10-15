@@ -55,6 +55,11 @@
 							{% elseif acompteStatut == 'a_valider' %}payé par Orange Money · en validation à la caisse
 							{% elseif acompteStatut == 'rejete' %}paiement non reçu par la caisse : contactez-nous
 							{% else %}à régler par Orange Money au numéro marchand ou en boutique, en indiquant {{ demande.numero }}{% endif %}
+							{# Frais Orange Money payés en plus de l'acompte : pour qui paie seulement. #}
+							{% set pa = demande.paiementAcompte %}
+							{% if conceptionPeutPayer and pa and acompteStatut in ['valide', 'a_valider'] and pa.montantTotalEncaisse > pa.montant %}
+								· {{ pa.montantTotalEncaisse|francs_conception }} payés avec Orange Money ({% if pa.montantFondsSoutien > 0 %}fonds de soutien {{ pa.montantFondsSoutien|francs_conception }}{% endif %}{% if pa.montantFondsSoutien > 0 and pa.montantFraisRetrait > 0 %}, {% endif %}{% if pa.montantFraisRetrait > 0 %}frais de retrait {{ pa.montantFraisRetrait|francs_conception }}{% endif %})
+							{% endif %}
 						</small>
 					</li>
 				{% endif %}

@@ -12,6 +12,10 @@ use Symfony\Component\Validator\Constraints as Assert;
  * client paie par mobile money (Orange Money / Wave) et couvre les
  * frais de retrait et le fonds de soutien en plus du prix de la
  * commande. Voir Paiements::$fraisRetraitInclus / $fondsSoutienInclus.
+ *
+ * Réglés au local (Réglages › Paiements), ils descendent sur le site
+ * en ligne (geste « reglages ») pour le paiement Orange Money de
+ * l'espace client ; sans envoi, le site garde 1 % et 1 %.
  */
 #[ORM\Entity(repositoryClass: ParametresPaiementRepository::class)]
 #[ORM\Table(name: 'parametres_paiement')]
@@ -59,6 +63,31 @@ class ParametresPaiement
         $this->tauxFondsSoutien = $tauxFondsSoutien;
 
         return $this;
+    }
+
+    /*
+     * Champs de la tuile Réglages › Paiements tenus dans cette table
+     * (« source » paiement) : ils descendent aussi sur le site en ligne,
+     * où ils servent au paiement Orange Money de l'espace client.
+     */
+    public const CHAMPS_REGLAGES = ['tauxFraisRetrait', 'tauxFondsSoutien'];
+
+    public function taux(string $champ): float
+    {
+        return match ($champ) {
+            'tauxFraisRetrait' => $this->tauxFraisRetrait,
+            'tauxFondsSoutien' => $this->tauxFondsSoutien,
+            default => throw new \InvalidArgumentException('Taux inconnu : '.$champ),
+        };
+    }
+
+    public function changerTaux(string $champ, float $taux): static
+    {
+        return match ($champ) {
+            'tauxFraisRetrait' => $this->setTauxFraisRetrait($taux),
+            'tauxFondsSoutien' => $this->setTauxFondsSoutien($taux),
+            default => throw new \InvalidArgumentException('Taux inconnu : '.$champ),
+        };
     }
 
     /*

@@ -205,10 +205,16 @@
 			</div>
 			<form method="post" action="{{ path('app_espace_conception_acompte', {id: demande.publicId}) }}" id="dc-acompte" class="ec-feuille-corps" style="padding-top:1rem">
 				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-				<div class="dc-om-montant">
-					<span class="ec-petit">Acompte conception · {{ demande.numero }}</span>
-					<span class="ec-gros">{{ tarif.acompte|francs_conception }}</span>
-				</div>
+				{# Récapitulatif calculé par le serveur ; « total » ne sert qu'à le revoir s'il a changé. #}
+				<input type="hidden" name="total" value="{{ tarif.omAcompte.total }}">
+				<span class="ec-petit">Acompte conception · {{ demande.numero }}</span>
+				<dl class="ec-recap-lignes dc-om-recap">
+					<div><dt>Acompte de la conception ({{ tarif.pourcent }} %)</dt><dd>{{ tarif.omAcompte.montant|francs_conception }}</dd></div>
+					{% if tarif.omAcompte.tauxFondsSoutien > 0 %}<div><dt>Fonds de soutien ({{ tarif.omAcompte.tauxFondsSoutien|frais_taux }})</dt><dd>{{ tarif.omAcompte.fondsSoutien|francs_conception }}</dd></div>{% endif %}
+					{% if tarif.omAcompte.tauxFraisRetrait > 0 %}<div><dt>Frais de retrait Orange Money ({{ tarif.omAcompte.tauxFraisRetrait|frais_taux }})</dt><dd>{{ tarif.omAcompte.fraisRetrait|francs_conception }}</dd></div>{% endif %}
+					<div class="ec-recap-total"><dt>Total payé avec Orange Money</dt><dd>{{ tarif.omAcompte.total|francs_conception }}</dd></div>
+				</dl>
+				{% if tarif.omAcompte.frais > 0 %}<p class="ec-petit ec-recap-explication">Le fonds de soutien (prélevé par l'État sur les retraits mobile money) et le frais de retrait d'Orange Money s'ajoutent à l'acompte, sans changer le prix de la conception.</p>{% endif %}
 				<span class="dc-etiquette">Numéro Orange Money</span>
 				<div class="dc-om-numero">+223 {{ app.user.telephone|slice(3)|split('', 2)|join(' ') }} <span>· modifiable sur la page Orange Money</span></div>
 				<ol class="dc-om-etapes">

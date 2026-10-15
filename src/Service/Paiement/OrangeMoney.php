@@ -7,7 +7,9 @@ use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Entity\DemandeConception;
 use App\Entity\Paiements;
+use App\Entity\ParametresPaiement;
 use App\Entity\TransactionOrangeMoney;
+use App\Repository\ParametresPaiementRepository;
 use App\Service\Conception\CommandesConception;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -29,6 +31,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * crédit IA (docs/demande-conception.md) : la commande est alors créée à
  * la réception de l'argent, par CommandesConception.
  *
+ * Chaque paiement porte le fonds de soutien et le frais de retrait
+ * (FraisOrangeMoney, taux de Réglages › Paiements, 1 % et 1 % tant que le
+ * local n'a rien envoyé) : calculés ici, gardés sur la transaction, et
+ * Orange reçoit le total. Le client les voit dans le récapitulatif avant
+ * de partir chez Orange.
+ *
  * Clés dans .env.local du serveur en ligne (jamais dans le dépôt). Essai :
  * ORANGE_MONEY_API=…/orange-money-webpay/dev/v1 et la devise OUV ;
  * production au Mali : …/orange-money-webpay/ml/v1 et XOF.
@@ -49,12 +57,30 @@ final class OrangeMoney
         #[Autowire('%env(ORANGE_MONEY_CLIENT_SECRET)%')] private readonly string $clientSecret,
         #[Autowire('%env(ORANGE_MONEY_MERCHANT_KEY)%')] private readonly string $merchantKey,
         private readonly ?CommandesConception $conception = null,
+        private readonly ?ParametresPaiementRepository $parametresPaiement = null,
     ) {
+    }
+
+    /** Récapitulatif d'un paiement : montant, fonds de soutien, frais de retrait, total. */
+    public function frais(int $montant): FraisOrangeMoney
+    {
+        return FraisOrangeMoney::calculer($montant, $this->parametresPaiement?->recuperer() ?? new ParametresPaiement());
     }
 
     public function estConfigure(): bool
     {
         return '' !== $this->clientId && '' !== $this->clientSecret && '' !== $this->merchantKey && str_starts_with($this->api, 'https://');
+    }
+
+    /**
+     * Le total montré dans le récapitulatif n'est plus celui d'aujourd'hui
+     * (paiement reçu entre-temps, taux changés) : le client le revoit avant
+     * de partir chez Orange. Le total envoyé à Orange est toujours celui du
+     * serveur ; la valeur de la page ne sert qu'à cette comparaison.
+     */
+    public static function totalChange(string $totalVu, FraisOrangeMoney $frais): bool
+    {
+        return '' !== $totalVu && (int) $totalVu !== $frais->total();
     }
 
     /** Montant Orange Money déjà reçu en ligne pour la commande, que la caisse n'a pas encore validé. */
@@ -78,7 +104,7 @@ final class OrangeMoney
 
     /**
      * Ouvre le paiement chez Orange et rend le lien de sa page de
-     * paiement. Un lien encore valable pour le même montant est repris.
+     * paiement. Un lien encore valable pour le même total est repris.
      *
      * @throws \DomainException message à montrer au client
      */
@@ -91,13 +117,15 @@ final class OrangeMoney
         if (!$commande->isStatut() || $montant <= 0) {
             throw new \DomainException('Rien à payer en ligne pour cette commande.');
         }
+        $frais = $this->frais($montant);
         foreach ($this->em->getRepository(TransactionOrangeMoney::class)->findBy(['commande' => $commande, 'statut' => TransactionOrangeMoney::INITIEE], ['id' => 'DESC'], 1) as $ouverte) {
-            if ($ouverte->estOuverte($maintenant) && $ouverte->getMontant() === $montant) {
+            if (self::reprendre($ouverte, $frais, $maintenant)) {
                 return $ouverte;
             }
         }
 
-        $transaction = new TransactionOrangeMoney($commande, $compte, $montant, self::nouvelOrderId($maintenant), $maintenant);
+        $transaction = (new TransactionOrangeMoney($commande, $compte, $montant, self::nouvelOrderId($maintenant), $maintenant))
+            ->avecFrais($frais->fondsSoutien, $frais->fraisRetrait);
         $id = (string) $commande->getPublicId();
 
         return $this->ouvrirChezOrange(
@@ -109,7 +137,7 @@ final class OrangeMoney
 
     /**
      * Acompte d'une demande de conception (maquette DC03). Un lien encore
-     * valable pour la même demande et le même montant est repris.
+     * valable pour la même demande et le même total est repris.
      *
      * @throws \DomainException message à montrer au client
      */
@@ -121,12 +149,14 @@ final class OrangeMoney
         if ($montant <= 0 || !$demande->estOuverte()) {
             throw new \DomainException('Rien à payer en ligne pour cette demande.');
         }
+        $frais = $this->frais($montant);
         foreach ($this->em->getRepository(TransactionOrangeMoney::class)->findBy(['demandeConception' => $demande, 'statut' => TransactionOrangeMoney::INITIEE], ['id' => 'DESC'], 1) as $ouverte) {
-            if ($ouverte->estOuverte($maintenant) && $ouverte->getMontant() === $montant) {
+            if (self::reprendre($ouverte, $frais, $maintenant)) {
                 return $ouverte;
             }
         }
-        $transaction = TransactionOrangeMoney::pourAcompte($demande, $compte, $montant, self::nouvelOrderId($maintenant), $maintenant);
+        $transaction = TransactionOrangeMoney::pourAcompte($demande, $compte, $montant, self::nouvelOrderId($maintenant), $maintenant)
+            ->avecFrais($frais->fondsSoutien, $frais->fraisRetrait);
 
         return $this->ouvrirChezOrange(
             $transaction,
@@ -136,7 +166,8 @@ final class OrangeMoney
     }
 
     /**
-     * Pack de crédit IA. Un lien encore valable pour le même pack est repris.
+     * Pack de crédit IA. Un lien encore valable pour le même pack et le
+     * même total est repris.
      *
      * @throws \DomainException message à montrer au client
      */
@@ -148,12 +179,14 @@ final class OrangeMoney
         if ($montant <= 0 || $images <= 0) {
             throw new \DomainException('Choisissez un pack de crédit.');
         }
+        $frais = $this->frais($montant);
         foreach ($this->em->getRepository(TransactionOrangeMoney::class)->findBy(['client' => $client, 'objet' => TransactionOrangeMoney::OBJET_CREDIT_IA, 'packImages' => $images, 'statut' => TransactionOrangeMoney::INITIEE], ['id' => 'DESC'], 1) as $ouverte) {
-            if ($ouverte->estOuverte($maintenant) && $ouverte->getMontant() === $montant) {
+            if (self::reprendre($ouverte, $frais, $maintenant)) {
                 return $ouverte;
             }
         }
-        $transaction = TransactionOrangeMoney::pourCreditIa($client, $compte, $images, $montant, self::nouvelOrderId($maintenant), $maintenant);
+        $transaction = TransactionOrangeMoney::pourCreditIa($client, $compte, $images, $montant, self::nouvelOrderId($maintenant), $maintenant)
+            ->avecFrais($frais->fondsSoutien, $frais->fraisRetrait);
         $retour = ['o' => $transaction->getOrderId()] + (null !== $demande ? ['demande' => $demande] : []);
 
         return $this->ouvrirChezOrange(
@@ -161,6 +194,15 @@ final class OrangeMoney
             $this->urls->generate('app_espace_conception_retour', $retour, UrlGeneratorInterface::ABSOLUTE_URL),
             $this->urls->generate('app_espace_conception_credit', ['annule' => 1] + (null !== $demande ? ['demande' => $demande] : []), UrlGeneratorInterface::ABSOLUTE_URL),
         );
+    }
+
+    /**
+     * Lien encore valable pour le même montant et les mêmes frais : le
+     * client y retourne. Taux changés entre-temps : un autre paiement.
+     */
+    private static function reprendre(TransactionOrangeMoney $ouverte, FraisOrangeMoney $frais, \DateTimeImmutable $maintenant): bool
+    {
+        return $ouverte->estOuverte($maintenant) && $ouverte->getMontant() === $frais->montant && $ouverte->getTotal() === $frais->total();
     }
 
     /** Notre référence chez Orange : la forme attendue par la route de notification. */
@@ -188,7 +230,8 @@ final class OrangeMoney
                     'merchant_key' => $this->merchantKey,
                     'currency' => $this->devise,
                     'order_id' => $transaction->getOrderId(),
-                    'amount' => $transaction->getMontant(),
+                    // Frais compris : c'est ce que le client a vu dans le récapitulatif.
+                    'amount' => $transaction->getTotal(),
                     'return_url' => $retour,
                     'cancel_url' => $annulation,
                     'notif_url' => $this->urls->generate('app_orange_money_notification', ['o' => $transaction->getOrderId()], UrlGeneratorInterface::ABSOLUTE_URL),
@@ -245,7 +288,7 @@ final class OrangeMoney
         try {
             $donnees = $this->http->request('POST', rtrim($this->api, '/').'/transactionstatus', [
                 'headers' => ['Authorization' => 'Bearer '.$this->jeton(), 'Accept' => 'application/json'],
-                'json' => ['order_id' => $transaction->getOrderId(), 'amount' => $transaction->getMontant(), 'pay_token' => $transaction->getPayToken()],
+                'json' => ['order_id' => $transaction->getOrderId(), 'amount' => $transaction->getTotal(), 'pay_token' => $transaction->getPayToken()],
                 'timeout' => 15,
             ])->toArray(false);
         } catch (\Throwable $e) {
@@ -263,6 +306,8 @@ final class OrangeMoney
      * montrer de secret : chaque étape dit si elle passe et, sinon, la
      * raison donnée par Orange. Le paiement d'essai n'est ouvert qu'avec
      * l'API d'essai (dev) ; sa notification, sans transaction, est ignorée.
+     * Les frais d'un paiement de 100 sont montrés avec les taux réglés, et
+     * le paiement d'essai s'ouvre frais compris, comme celui d'un client.
      *
      * @return list<array{etape: string, ok: bool, detail: string}>
      */
@@ -288,6 +333,8 @@ final class OrangeMoney
             'ok' => str_starts_with($this->api, 'https://') && $this->devise === $deviseAttendue,
             'detail' => \sprintf('%s, devise %s%s', $essai ? 'essai (dev)' : 'production', $this->devise, $this->devise === $deviseAttendue ? '' : ' (attendue : '.$deviseAttendue.')'),
         ];
+        $frais = $this->frais(100);
+        $etapes[] = ['etape' => 'Frais Orange Money', 'ok' => true, 'detail' => self::detailFrais($frais, $this->devise)];
         if ('' === $this->clientId || '' === $this->clientSecret) {
             return $etapes;
         }
@@ -333,7 +380,7 @@ final class OrangeMoney
                     'merchant_key' => $this->merchantKey,
                     'currency' => $this->devise,
                     'order_id' => $orderId,
-                    'amount' => 100,
+                    'amount' => $frais->total(),
                     'return_url' => $accueil,
                     'cancel_url' => $accueil,
                     'notif_url' => $notification,
@@ -351,10 +398,24 @@ final class OrangeMoney
         }
         $lien = (string) ($donnees['payment_url'] ?? '');
         $etapes[] = \in_array($code, [200, 201], true) && self::lienOrange($lien)
-            ? ['etape' => 'Paiement d\'essai', 'ok' => true, 'detail' => 'clé marchand acceptée, page de paiement de 100 OUV : '.$lien.($local ? ' (retour vers example.com : Orange refuse localhost)' : '')]
+            ? ['etape' => 'Paiement d\'essai', 'ok' => true, 'detail' => \sprintf('clé marchand acceptée, page de paiement de %d %s (frais compris) : ', $frais->total(), $this->devise).$lien.($local ? ' (retour vers example.com : Orange refuse localhost)' : '')]
             : ['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => self::refus($code, $donnees)];
 
         return $etapes;
+    }
+
+    /** « 100 OUV + fonds de soutien 1 % (1) + frais de retrait 1 % (1) = 102 OUV payés par le client ». */
+    public static function detailFrais(FraisOrangeMoney $frais, string $devise): string
+    {
+        $lignes = [\sprintf('%d %s', $frais->montant, $devise)];
+        if ($frais->tauxFondsSoutien > 0) {
+            $lignes[] = \sprintf('fonds de soutien %s (%d)', FraisOrangeMoney::taux($frais->tauxFondsSoutien), $frais->fondsSoutien);
+        }
+        if ($frais->tauxFraisRetrait > 0) {
+            $lignes[] = \sprintf('frais de retrait %s (%d)', FraisOrangeMoney::taux($frais->tauxFraisRetrait), $frais->fraisRetrait);
+        }
+
+        return \sprintf('%s = %d %s payés par le client', implode(' + ', $lignes), $frais->total(), $devise);
     }
 
     /** Adresse que seul ce poste peut ouvrir, refusée par Orange. */
@@ -410,13 +471,23 @@ final class OrangeMoney
                 return;
             }
             $transaction->rattacher($commande);
+            // Le montant va à la commande ; les frais restent sur le paiement (comme à la caisse).
             $paiement = (new Paiements())
                 ->setCommande($commande)
                 ->setMontant($transaction->getMontant())
+                ->setFondsSoutienInclus($transaction->getFondsSoutien() > 0)
+                ->setMontantFondsSoutien($transaction->getFondsSoutien())
+                ->setFraisRetraitInclus($transaction->getFraisRetrait() > 0)
+                ->setMontantFraisRetrait($transaction->getFraisRetrait())
                 ->setMode(Paiements::MODE_ORANGE_MONEY)
                 ->setDate($maintenant)
                 ->setReference(mb_substr('OM '.($txnid ?? $transaction->getOrderId()), 0, 100))
-                ->setObservation(\sprintf('Payé en ligne depuis l\'espace client%s (Orange Money, %s).', null !== $transaction->getCompte() ? ' par '.$transaction->getCompte()->getNomAffiche() : '', $transaction->getOrderId()));
+                ->setObservation(\sprintf(
+                    'Payé en ligne depuis l\'espace client%s (Orange Money, %s%s).',
+                    null !== $transaction->getCompte() ? ' par '.$transaction->getCompte()->getNomAffiche() : '',
+                    $transaction->getOrderId(),
+                    $transaction->getTotal() > $transaction->getMontant() ? \sprintf(', %s F reçus frais compris', number_format($transaction->getTotal(), 0, ',', ' ')) : '',
+                ));
             $commande->addPaiement($paiement);
             $this->em->persist($paiement);
             $transaction->reussir($txnid, $paiement, $maintenant);

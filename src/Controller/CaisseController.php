@@ -10,6 +10,7 @@ use App\Entity\Paiements;
 use App\Entity\User;
 use App\Form\PaiementsType;
 use App\Repository\ClientsRepository;
+use App\Repository\ParametresPaiementRepository;
 use App\Security\AccesEnLigne;
 use App\Service\Caisse;
 use App\Service\DocumentsEntreprise;
@@ -29,6 +30,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  *
  * L'enregistrement réutilise la route app_commandes_paiement (mêmes
  * contrôles, mouvement de trésorerie, facture) avec retour à la caisse.
+ * Orange Money : le fonds de soutien et le frais de retrait, payés par le
+ * client en plus, sont cochés d'office ; ils restent sur le paiement.
  */
 #[Route('/caisse', name: 'app_caisse_')]
 #[IsGranted('ROLE_PAIEMENT_ENCAISSER')]
@@ -47,7 +50,7 @@ final class CaisseController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request, ClientsRepository $clients, EntityManagerInterface $em, AccesEnLigne $acces, Parametres $parametres): Response
+    public function index(Request $request, ClientsRepository $clients, EntityManagerInterface $em, AccesEnLigne $acces, Parametres $parametres, ParametresPaiementRepository $parametresPaiement): Response
     {
         $utilisateur = $this->utilisateur();
         $maintenant = new \DateTimeImmutable();
@@ -75,6 +78,9 @@ final class CaisseController extends AbstractController
         // Les comptes que la personne peut créditer : ce sont aussi ses caisses du jour.
         $comptes = array_map(static fn ($choix): CompteTresorerie => $choix->data, array_values($formulaire->get('compteTresorerie')->createView()->vars['choices']));
 
+        // Frais Orange Money payés par le client en plus (Réglages › Paiements) : cochés d'office à la caisse.
+        $taux = $parametresPaiement->recuperer();
+
         $recu = null;
         if ($request->query->getInt('recu') > 0) {
             $recu = $this->recuAutorise($em->getRepository(Paiements::class)->find($request->query->getInt('recu')));
@@ -95,6 +101,7 @@ final class CaisseController extends AbstractController
             'modes' => array_intersect_key(self::LIBELLES_MODES, array_flip($parametres->modesPaiementActifs())),
             'virement_seuil' => (int) $parametres->valeur('paiements', 'virement_seuil'),
             'recu_envoi' => $recu ? self::envoiRecu($recu, (string) $parametres->valeur('paiements', 'recu')) : null,
+            'frais_om' => ['fonds' => $taux->getTauxFondsSoutien(), 'retrait' => $taux->getTauxFraisRetrait()],
         ]);
     }
 

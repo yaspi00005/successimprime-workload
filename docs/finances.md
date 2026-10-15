@@ -65,6 +65,14 @@ Elle prévient la direction (notification dans l'ERP, aucun SMS ni WhatsApp) qua
 
 Export CSV du compte marchand (colonnes Date, Référence, Montant, et si possible Numéro, Nom, Type, Statut). Les envois, retraits et échecs sont écartés ; une transaction déjà importée n'est pas reprise ; le fichier n'est pas conservé. Le format exact du vrai export reste à confirmer avec un fichier réel.
 
+Frais Orange Money (15/10/2026) : le client paie le fonds de soutien et le frais de retrait en plus du montant (Réglages › Paiements, 1 % chacun par défaut). Le compte marchand reçoit donc le total, frais compris :
+
+- à la caisse, choisir Orange Money montre les deux lignes de frais cochées d'office (la caissière peut les décocher) et le « Total à recevoir » ; la page de paiement d'une commande les coche aussi d'office pour Orange Money. Wave et les autres modes ne changent pas. Le reçu sépare « Pour la commande », « Fonds de soutien », « Frais de retrait » et « Total payé » ;
+- un paiement porte son montant (la part de la commande) et ses frais à part ; « Encaissements », « À valider », la commande et la fiche du paiement montrent les frais en plus du montant (et le total reçu) ;
+- le rapprochement compare la ligne du relevé au total reçu (montant + frais) : un paiement de 25 000 F avec 500 F de frais se rattache à une ligne de 25 500 F ;
+- rattacher une ligne à une commande sans paiement saisi retrouve, quand la ligne dépasse ce qui reste dû, le montant et les frais aux taux du jour (25 500 F → 25 000 F + 250 + 250) ;
+- à la validation d'un paiement en ligne, la trésorerie reçoit le montant (vente) et les frais à part (« Frais mobile money », autre produit, compte 758 au journal) ; l'annulation d'un paiement validé dans « À valider » reprend les deux. Ni le prix de la commande ni la facture ne changent.
+
 ## Questions ouvertes (Yaya)
 
 1. Une dépense doit-elle être liée à un achat ou un bon de commande fournisseur ?
@@ -74,3 +82,4 @@ Export CSV du compte marchand (colonnes Date, Référence, Montant, et si possib
 5. Comment estimer une échéance fiscale qui n'a pas encore de montant ?
 6. Format réel de l'export du compte marchand Orange Money.
 7. Les demandes d'employés acceptées mais pas encore payées doivent-elles apparaître dans « À décider » ?
+8. Frais Orange Money : le frais de retrait d'Orange revient-il à Succès Imprim (produit) ou faut-il le reverser ou le compter en charge ? Le fonds de soutien est-il à reverser à l'État (compte de tiers plutôt que produit) ?

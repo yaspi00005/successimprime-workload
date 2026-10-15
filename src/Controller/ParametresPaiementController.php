@@ -2,16 +2,22 @@
 
 namespace App\Controller;
 
-use App\Entity\ParametresPaiement;
+use App\Entity\User;
 use App\Form\ParametresPaiementType;
 use App\Repository\ParametresPaiementRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\Parametres\Parametres;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+/**
+ * Réglages › Paiements › frais mobile money (fonds de soutien, frais de
+ * retrait). L'enregistrement passe par la tuile Paiements : journal des
+ * réglages, envoi au site en ligne (paiement Orange Money de l'espace
+ * client) et, depuis l'admin en ligne, simple proposition au local.
+ */
 #[Route('/parametres/paiement')]
 #[IsGranted('ROLE_ADMIN')]
 final class ParametresPaiementController extends AbstractController
@@ -20,18 +26,26 @@ final class ParametresPaiementController extends AbstractController
     public function edit(
         Request $request,
         ParametresPaiementRepository $repository,
-        EntityManagerInterface $entityManager
+        Parametres $reglages,
     ): Response {
-        $parametres = $repository->recuperer();
+        // Le formulaire travaille sur une copie : la tuile compare avant / après.
+        $saisie = clone $repository->recuperer();
 
-        $form = $this->createForm(ParametresPaiementType::class, $parametres);
+        $form = $this->createForm(ParametresPaiementType::class, $saisie);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($parametres);
-            $entityManager->flush();
+            $utilisateur = $this->getUser();
+            $resultat = $reglages->enregistrer('paiements', [
+                'tauxFondsSoutien' => $saisie->getTauxFondsSoutien(),
+                'tauxFraisRetrait' => $saisie->getTauxFraisRetrait(),
+            ], $utilisateur instanceof User ? $utilisateur : null);
 
-            $this->addFlash('success', 'Les paramètres de paiement ont été enregistrés.');
+            $this->addFlash('success', match ($resultat) {
+                'propose' => 'Changement proposé : il s\'applique quand la direction le valide sur le serveur de l\'atelier.',
+                'inchange' => 'Rien n\'a changé.',
+                default => 'Les paramètres de paiement ont été enregistrés.',
+            });
 
             return $this->redirectToRoute('app_parametres_paiement_edit');
         }

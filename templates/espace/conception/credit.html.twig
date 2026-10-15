@@ -32,18 +32,49 @@
 			<h2>Recharger</h2>
 			<div class="dc-packs">
 				{% for p in packs %}
-					<label class="dc-pack"><input type="radio" name="images" value="{{ p.images }}" data-prix="{{ p.prix|francs_conception }}"{{ loop.index == (packs|length > 1 ? 2 : 1) ? ' checked' }}><span><b>{{ p.images }} image{{ p.images > 1 ? 's' }}</b><span class="ec-petit">{{ p.prix|francs_conception }}</span></span></label>
+					{# Récapitulatif Orange Money de chaque pack, calculé par le serveur. #}
+					<label class="dc-pack"><input type="radio" name="images" value="{{ p.images }}" data-prix="{{ p.prix|francs_conception }}" data-libelle="{{ p.images }} image{{ p.images > 1 ? 's' }}" data-fonds="{{ p.om.fondsSoutien|francs_conception }}" data-retrait="{{ p.om.fraisRetrait|francs_conception }}" data-total="{{ p.om.total|francs_conception }}" data-total-brut="{{ p.om.total }}"{{ loop.index == (packs|length > 1 ? 2 : 1) ? ' checked' }}><span><b>{{ p.images }} image{{ p.images > 1 ? 's' }}</b><span class="ec-petit">{{ p.prix|francs_conception }}</span></span></label>
 				{% endfor %}
 			</div>
 			{% set defaut = packs|length > 1 ? packs[1] : packs|first %}
 			{% if omActif %}
+				<input type="hidden" name="total" value="{{ defaut.om.total }}" id="pack-total">
 				<button class="ec-bouton orange" type="submit" id="payer-pack" data-modele="Payer %s par Orange Money">Payer {{ defaut.prix|francs_conception }} par Orange Money</button>
-				<p class="ec-petit" style="margin:.6rem 0 0">Vous confirmez sur la page sécurisée d'Orange Money avec votre code secret : le crédit sert dès votre retour. Ne communiquez jamais votre code secret : Succès Imprim ne vous le demandera ni par téléphone ni par message.</p>
+				<p class="ec-petit" style="margin:.6rem 0 0">{% if defaut.om.frais > 0 %}Le fonds de soutien et le frais de retrait Orange Money s'ajoutent au prix du pack : vous voyez le total avant de partir chez Orange. {% endif %}Vous confirmez sur la page sécurisée d'Orange Money avec votre code secret : le crédit sert dès votre retour. Ne communiquez jamais votre code secret : Succès Imprim ne vous le demandera ni par téléphone ni par message.</p>
 			{% else %}
 				<button class="ec-bouton orange" type="submit" id="payer-pack" data-modele="Commander le pack · %s">Commander le pack · {{ defaut.prix|francs_conception }}</button>
 				<p class="ec-petit" style="margin:.6rem 0 0">{% if marchand %}Payez ensuite au numéro marchand Orange Money <b>{{ marchand }}</b> en indiquant le numéro de commande, ou en boutique{% else %}Payez ensuite en boutique, ou demandez le numéro marchand sur WhatsApp{% endif %} : le crédit s'ajoute dès que la caisse a validé le paiement.</p>
 			{% endif %}
 		</form>
+	{% endif %}
+
+	{% if conceptionPeutPayer and omActif and packs is not empty %}
+		{# Récapitulatif avant Orange Money : rempli pour le pack choisi (valeurs du serveur). #}
+		<dialog class="ec-feuille dc-om" id="dialogue-pack" aria-labelledby="pack-titre">
+			<div class="dc-om-tete">
+				<span class="om">OM</span>
+				<div><b id="pack-titre">Paiement Orange Money</b><small>Succès Imprim · marchand vérifié</small></div>
+			</div>
+			<div class="ec-feuille-corps" style="padding-top:1rem">
+				<span class="ec-petit">Crédit IA · <span data-recap="libelle"></span></span>
+				<dl class="ec-recap-lignes dc-om-recap">
+					<div><dt>Prix du pack</dt><dd data-recap="prix"></dd></div>
+					{% if defaut.om.tauxFondsSoutien > 0 %}<div><dt>Fonds de soutien ({{ defaut.om.tauxFondsSoutien|frais_taux }})</dt><dd data-recap="fonds"></dd></div>{% endif %}
+					{% if defaut.om.tauxFraisRetrait > 0 %}<div><dt>Frais de retrait Orange Money ({{ defaut.om.tauxFraisRetrait|frais_taux }})</dt><dd data-recap="retrait"></dd></div>{% endif %}
+					<div class="ec-recap-total"><dt>Total payé avec Orange Money</dt><dd data-recap="total"></dd></div>
+				</dl>
+				{% if defaut.om.frais > 0 %}<p class="ec-petit ec-recap-explication">Le fonds de soutien (prélevé par l'État sur les retraits mobile money) et le frais de retrait d'Orange Money s'ajoutent au prix du pack. Votre crédit reçoit le prix du pack.</p>{% endif %}
+				<ol class="dc-om-etapes">
+					<li class="en_cours">Page de paiement sécurisée Orange Money<small>lien valable 10 min</small></li>
+					<li>Confirmez avec votre code secret Orange Money</li>
+					<li>Crédit prêt dès votre retour</li>
+				</ol>
+				<div class="dc-om-pied">
+					<button class="ec-bouton clair" type="button" id="pack-annuler">Annuler</button>
+					<button class="ec-bouton orange" type="submit" form="dc-pack" id="pack-continuer">Continuer vers Orange Money</button>
+				</div>
+			</div>
+		</dialog>
 	{% endif %}
 
 	<div class="ec-carte">
@@ -54,6 +85,10 @@
 					<span>
 						<b>{{ m.libelle }}</b>
 						<span class="ec-petit">{{ m.creeLe|date('d/m/Y H:i') }}{% if m.auteur %} · {{ m.auteur }}{% endif %}{% if m.etat == 'en_attente' %} · attend la validation de la caisse{% elseif m.etat == 'annule' %} · annulé{% endif %}</span>
+						{# Achat par Orange Money : les frais payés en plus, qui ne vont pas au crédit. #}
+						{% if m.type == 'achat' and m.paiement and m.paiement.montantTotalEncaisse > m.paiement.montant %}
+							<span class="ec-petit">payé {{ m.paiement.montantTotalEncaisse|francs_conception }} avec Orange Money{% if m.paiement.montantFondsSoutien > 0 %} · fonds de soutien {{ m.paiement.montantFondsSoutien|francs_conception }}{% endif %}{% if m.paiement.montantFraisRetrait > 0 %} · frais de retrait {{ m.paiement.montantFraisRetrait|francs_conception }}{% endif %}</span>
+						{% endif %}
 					</span>
 					<span class="{{ m.montant >= 0 ? 'dc-montant-plus' : 'dc-montant-moins' }}">{{ m.montant >= 0 ? '+' : '−' }} {{ (m.montant|abs)|francs_conception }}</span>
 				</li>
@@ -75,7 +110,31 @@
 			const coche = form.querySelector('input[name=images]:checked');
 			if (coche) bouton.textContent = bouton.textContent.replace(/[\d \s]+F/, ' ' + coche.dataset.prix).replace(/\s+/g, ' ');
 		});
-		form.addEventListener('submit', function () { bouton.disabled = true; });
+		form.addEventListener('submit', function () {
+			bouton.disabled = true;
+			const continuer = document.getElementById('pack-continuer');
+			if (continuer) continuer.disabled = true;
+		});
+
+		// « Payer » ouvre d'abord le récapitulatif du pack choisi.
+		const dialogue = document.getElementById('dialogue-pack');
+		const total = document.getElementById('pack-total');
+		if (dialogue && dialogue.showModal) {
+			bouton.addEventListener('click', function (e) {
+				const coche = form.querySelector('input[name=images]:checked');
+				if (!coche) return;
+				e.preventDefault();
+				dialogue.querySelector('[data-recap=libelle]').textContent = coche.dataset.libelle;
+				dialogue.querySelector('[data-recap=prix]').textContent = coche.dataset.prix;
+				['fonds', 'retrait', 'total'].forEach(function (cle) {
+					const cible = dialogue.querySelector('[data-recap=' + cle + ']');
+					if (cible) cible.textContent = coche.dataset[cle];
+				});
+				if (total) total.value = coche.dataset.totalBrut;
+				dialogue.showModal();
+			});
+			document.getElementById('pack-annuler').addEventListener('click', function () { dialogue.close(); });
+		}
 	})();
 	</script>
 {% endblock %}

@@ -285,6 +285,7 @@
 						</div>
 						<div class="text-end">
 							<strong>{{ paiement.montant|number_format(0, ',', ' ') }}</strong>
+							{% if paiement.montantTotalEncaisse > paiement.montant %}<small class="d-block text-muted" title="Fonds de soutien {{ paiement.montantFondsSoutien|number_format(0, ',', ' ') }} F, frais de retrait {{ paiement.montantFraisRetrait|number_format(0, ',', ' ') }} F : payés par le client en plus, hors commande">+ {{ (paiement.montantTotalEncaisse - paiement.montant)|number_format(0, ',', ' ') }} de frais</small>{% endif %}
 							<span class="d-block si-pastille si-pastille-{{ paiement.estValide ? 'vert' : (paiement.estRejete ? 'rouge' : 'orange') }}">{{ paiement.estValide ? 'Validé' : (paiement.estRejete ? 'Rejeté' : 'À valider') }}</span>
 						</div>
 					</div>

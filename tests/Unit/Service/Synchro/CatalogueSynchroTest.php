@@ -193,6 +193,26 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame([], CatalogueSynchro::reglagesPublics('paie', ['mode' => 'mensuel']));
     }
 
+    public function testTauxDesFraisOrangeMoneyDescendent(): void
+    {
+        // Tenus dans ParametresPaiement : Synchro::noterReglages les ajoute aux valeurs de la tuile.
+        $envoyes = CatalogueSynchro::reglagesPublics('paiements', ['orange_money' => true, 'acompte' => 30, 'tauxFondsSoutien' => 1.5, 'tauxFraisRetrait' => 1.0]);
+        self::assertSame(['orange_money' => true, 'tauxFondsSoutien' => 1.5, 'tauxFraisRetrait' => 1.0], $envoyes);
+
+        // À l'arrivée : les taux vont dans ParametresPaiement, le reste dans la tuile.
+        [$tuile, $taux] = CatalogueSynchro::separerSourcePaiement('paiements', $envoyes);
+        self::assertSame(['orange_money' => true], $tuile);
+        self::assertSame(['tauxFondsSoutien' => 1.5, 'tauxFraisRetrait' => 1.0], $taux);
+
+        // Contrôlés comme une saisie : un taux hors limites fait refuser l'envoi.
+        $lire = new \ReflectionMethod(\App\Service\Synchro\Synchro::class, 'lireReglages');
+        $publics = CatalogueSynchro::REGLAGES_PUBLICS['paiements'];
+        self::assertSame($envoyes, $lire->invoke(null, 'paiements', $envoyes, $publics));
+        self::assertNull($lire->invoke(null, 'paiements', ['tauxFondsSoutien' => 50] + $envoyes, $publics));
+        // Un autre champ de la tuile (seuil de virement) ne passe jamais.
+        self::assertSame(['orange_money' => true], $lire->invoke(null, 'paiements', ['orange_money' => true, 'virement_seuil' => 1], $publics));
+    }
+
     public function testEspaceClientListeBlanche(): void
     {
         $types = CatalogueSynchro::types();

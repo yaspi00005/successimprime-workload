@@ -12,6 +12,7 @@ use App\Entity\DemandeDevis;
 use App\Entity\Devis;
 use App\Entity\ModificationClient;
 use App\Entity\Paiements;
+use App\Entity\ParametresPaiement;
 use App\Entity\MessageClient;
 use App\Entity\PropositionClient;
 use App\Entity\ReclamationClient;
@@ -22,6 +23,7 @@ use App\Entity\SynchroEtat;
 use App\Entity\SynchroJournal;
 use App\Entity\SynchroRecu;
 use App\Entity\User;
+use App\Repository\ParametresPaiementRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\NotificationsClient;
@@ -570,6 +572,14 @@ final class Synchro
         if ($this->enLigne || !isset(CatalogueSynchro::REGLAGES_PUBLICS[$tuile])) {
             return;
         }
+        if ('paiements' === $tuile) {
+            // Taux des frais Orange Money : tenus dans ParametresPaiement, pas dans la tuile.
+            $parametres = $this->em->getRepository(ParametresPaiement::class);
+            $p = $parametres instanceof ParametresPaiementRepository ? $parametres->recuperer() : new ParametresPaiement();
+            foreach (ParametresPaiement::CHAMPS_REGLAGES as $champ) {
+                $stockees[$champ] = $p->taux($champ);
+            }
+        }
         $this->em->persist(new SynchroJournal(CatalogueSynchro::ACTION_REGLAGES, Uuid::v4()->toRfc4122(), SynchroJournal::ACTION, null, [
             'tuile' => $tuile,
             'valeurs' => CatalogueSynchro::reglagesPublics($tuile, $stockees),
@@ -629,12 +639,24 @@ final class Synchro
         if ($valeurs === null) {
             return [self::RESULTAT_IGNORE, 'Réglage non accepté sur le site', $titre];
         }
-        $reglage = $this->em->getRepository(Reglage::class)->findOneBy(['cle' => $tuile]);
-        if ($reglage === null) {
-            $reglage = new Reglage($tuile);
-            $this->em->persist($reglage);
+        [$valeurs, $taux] = CatalogueSynchro::separerSourcePaiement($tuile, $valeurs);
+        if ([] !== $taux) {
+            // Taux des frais Orange Money : le paiement de l'espace client les lit dans ParametresPaiement.
+            $parametres = $this->em->getRepository(ParametresPaiement::class);
+            $p = $parametres instanceof ParametresPaiementRepository ? $parametres->recuperer() : new ParametresPaiement();
+            foreach ($taux as $champ => $valeur) {
+                $p->changerTaux($champ, $valeur);
+            }
+            $this->em->persist($p);
         }
-        $reglage->modifier(array_replace($reglage->getValeurs(), $valeurs), null, new \DateTimeImmutable());
+        if ([] !== $valeurs) {
+            $reglage = $this->em->getRepository(Reglage::class)->findOneBy(['cle' => $tuile]);
+            if ($reglage === null) {
+                $reglage = new Reglage($tuile);
+                $this->em->persist($reglage);
+            }
+            $reglage->modifier(array_replace($reglage->getValeurs(), $valeurs), null, new \DateTimeImmutable());
+        }
 
         return [self::RESULTAT_OK, 'Réglages du local appliqués', $titre];
     }

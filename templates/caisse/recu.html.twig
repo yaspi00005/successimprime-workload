@@ -20,6 +20,8 @@
 		dt { color: #475569; }
 		dd { margin: 0; text-align: right; font-weight: 600; }
 		.montant { font-size: 24px; font-weight: 800; text-align: center; margin: 6px 0; }
+		.paye { border-top: 1px solid #CBD5E1; margin-top: 2px; padding-top: 4px !important; }
+		.paye dt { color: #0F172A; font-weight: 700; }
 		.attente { border: 1px solid #F59E0B; color: #92400E; padding: 6px; font-size: 12px; text-align: center; margin-top: 8px; }
 		.merci { font-size: 12px; text-align: center; color: #475569; margin-top: 10px; }
 		.actions { text-align: center; margin: 0 auto 16px; }
@@ -55,9 +57,16 @@
 			{% if paiement.reference %}<div><dt>Référence</dt><dd>{{ paiement.reference }}</dd></div>{% endif %}
 		</dl>
 		<hr>
+		{% if paiement.montantFraisRetrait + paiement.montantFondsSoutien > 0 %}<div class="coord centre">Pour la commande</div>{% endif %}
 		<div class="montant">{{ paiement.montant|number_format(0, ',', ' ') }} F</div>
+		{# Frais payés par le client en plus du montant : hors commande et hors facture. #}
 		{% if paiement.montantFraisRetrait + paiement.montantFondsSoutien > 0 %}
-			<dl><div><dt>Frais mobile money</dt><dd>{{ (paiement.montantFraisRetrait + paiement.montantFondsSoutien)|number_format(0, ',', ' ') }} F</dd></div></dl>
+			<dl>
+				{% if paiement.montantFondsSoutien > 0 %}<div><dt>Fonds de soutien</dt><dd>{{ paiement.montantFondsSoutien|number_format(0, ',', ' ') }} F</dd></div>{% endif %}
+				{% if paiement.montantFraisRetrait > 0 %}<div><dt>Frais de retrait</dt><dd>{{ paiement.montantFraisRetrait|number_format(0, ',', ' ') }} F</dd></div>{% endif %}
+				<div class="paye"><dt>Total payé</dt><dd>{{ paiement.montantTotalEncaisse|number_format(0, ',', ' ') }} F</dd></div>
+			</dl>
+			<hr>
 		{% endif %}
 		<dl>
 			<div><dt>Total commande</dt><dd>{{ commande.totalTtc|number_format(0, ',', ' ') }} F</dd></div>

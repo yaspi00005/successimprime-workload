@@ -66,10 +66,12 @@ final class CatalogueParametresTest extends TestCase
             'virement_seuil' => '500 000',
             'acompte' => '30',
             'recu' => 'sms',
+            'tauxFondsSoutien' => '1',
             'tauxFraisRetrait' => '1,5',
         ]);
 
         self::assertSame([], $lecture['erreurs']);
+        self::assertSame(1.0, $lecture['valeurs']['tauxFondsSoutien']);
         self::assertTrue($lecture['valeurs']['orange_money']);
         self::assertFalse($lecture['valeurs']['especes'], 'case décochée = non');
         self::assertSame(500000, $lecture['valeurs']['virement_seuil']);

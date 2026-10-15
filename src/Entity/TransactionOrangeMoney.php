@@ -12,6 +12,10 @@ use Doctrine\ORM\Mapping as ORM;
  * Il paie une commande, l'acompte d'une demande de conception ou un pack
  * de crédit IA (docs/demande-conception.md) : pour ces deux-là, la
  * commande n'existe qu'une fois l'argent reçu.
+ *
+ * Le montant est la part de la commande ; le fonds de soutien et le frais
+ * de retrait (FraisOrangeMoney) sont payés en plus : Orange reçoit le
+ * total, et les frais passent sur le paiement créé.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'transaction_orange_money')]
@@ -59,8 +63,16 @@ class TransactionOrangeMoney
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?CompteClient $compte;
 
+    /** Part de la commande (acompte, pack), sans les frais. */
     #[ORM\Column]
     private int $montant;
+
+    /** Frais calculés au départ (taux des réglages), payés en plus du montant. */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $fondsSoutien = 0;
+
+    #[ORM\Column(options: ['default' => 0])]
+    private int $fraisRetrait = 0;
 
     /** Notre référence chez Orange (order_id), unique. */
     #[ORM\Column(length: 40)]
@@ -121,6 +133,21 @@ class TransactionOrangeMoney
         return $t;
     }
 
+    /** Frais Orange Money du paiement, calculés par le serveur avant de partir chez Orange. */
+    public function avecFrais(int $fondsSoutien, int $fraisRetrait): static
+    {
+        $this->fondsSoutien = max(0, $fondsSoutien);
+        $this->fraisRetrait = max(0, $fraisRetrait);
+
+        return $this;
+    }
+
+    /** Ce qu'Orange débite au client : le montant et les frais. */
+    public function getTotal(): int
+    {
+        return $this->montant + $this->fondsSoutien + $this->fraisRetrait;
+    }
+
     /** Commande créée à la réception de l'argent (acompte, pack de crédit). */
     public function rattacher(Commandes $commande): void
     {
@@ -170,6 +197,8 @@ class TransactionOrangeMoney
     public function getPackImages(): ?int { return $this->packImages; }
     public function getCompte(): ?CompteClient { return $this->compte; }
     public function getMontant(): int { return $this->montant; }
+    public function getFondsSoutien(): int { return $this->fondsSoutien; }
+    public function getFraisRetrait(): int { return $this->fraisRetrait; }
     public function getOrderId(): string { return $this->orderId; }
     public function getPayToken(): string { return $this->payToken; }
     public function getLienPaiement(): string { return $this->lienPaiement; }

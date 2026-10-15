@@ -223,6 +223,9 @@ final class EspaceConceptionController extends AbstractController
             }
             DemandesConception::verifierComplete($demande);
             $montant = TarifConception::acompte($demande->getForfait(), $demande->getAcomptePourcent());
+            if (OrangeMoney::totalChange($request->request->getString('total'), $this->orangeMoney->frais($montant))) {
+                throw new \DomainException('Le montant a changé : vérifiez le récapitulatif avant de payer.');
+            }
             $demande->setChoix(DemandeConception::GRAPHISTE)->setEtape(4);
             $this->em->flush();
 
@@ -423,7 +426,8 @@ final class EspaceConceptionController extends AbstractController
         return $this->vue('espace/conception/credit.html.twig', [
             'solde' => $this->credits->solde($client),
             'prixImage' => $prix,
-            'packs' => array_map(static fn (int $n): array => ['images' => $n, 'prix' => TarifConception::prixPack($n, $prix)], $this->reglages->packs()),
+            // Chaque pack avec son récapitulatif Orange Money, calculé ici.
+            'packs' => array_map(fn (int $n): array => ['images' => $n, 'prix' => TarifConception::prixPack($n, $prix), 'om' => $this->orangeMoney->frais(TarifConception::prixPack($n, $prix))], $this->reglages->packs()),
             'releve' => $this->credits->releve($client),
             'enAttente' => $this->credits->enAttente($client),
             'omActif' => $this->orangeMoney->estConfigure(),
@@ -452,6 +456,10 @@ final class EspaceConceptionController extends AbstractController
                 throw new \DomainException('Ce pack n\'est pas à vendre.');
             }
             if ($this->orangeMoney->estConfigure()) {
+                if (OrangeMoney::totalChange($request->request->getString('total'), $this->orangeMoney->frais($montant))) {
+                    throw new \DomainException('Le montant a changé : vérifiez le récapitulatif avant de payer.');
+                }
+
                 return $this->redirect($this->orangeMoney->demarrerCredit($client, $compte, $images, $montant, new \DateTimeImmutable(), $retour['demande'] ?? null)->getLienPaiement());
             }
             $commande = $commandes->packEnAttente($client, $compte, $images, $montant, new \DateTimeImmutable());
@@ -476,12 +484,13 @@ final class EspaceConceptionController extends AbstractController
             throw $this->createNotFoundException();
         }
         $statut = $this->orangeMoney->verifier($transaction, new \DateTimeImmutable());
-        $montant = TarifConception::francs($transaction->getMontant());
+        // Ce qu'Orange a débité : le montant et les frais.
+        $total = TarifConception::francs($transaction->getTotal());
         $credit = TransactionOrangeMoney::OBJET_CREDIT_IA === $transaction->getObjet();
         $this->addFlash(...match ($statut) {
             TransactionOrangeMoney::REUSSIE => ['succes', $credit
-                ? \sprintf('Paiement Orange Money de %s reçu, merci ! Votre crédit IA est prêt ; la caisse valide le paiement et le reçu arrive dans votre espace.', $montant)
-                : \sprintf('Acompte de %s reçu, merci ! Votre demande part à l\'atelier ; la caisse valide le paiement et le reçu arrive dans votre espace.', $montant)],
+                ? \sprintf('Paiement Orange Money de %s reçu, merci ! Votre crédit IA est prêt ; la caisse valide le paiement et le reçu arrive dans votre espace.', $total)
+                : \sprintf('Acompte de %s reçu (%s payés avec Orange Money), merci ! Votre demande part à l\'atelier ; la caisse valide le paiement et le reçu arrive dans votre espace.', TarifConception::francs($transaction->getMontant()), $total)],
             TransactionOrangeMoney::ECHOUEE => ['error', 'Le paiement Orange Money n\'a pas abouti : rien n\'a été débité. Vous pouvez réessayer.'],
             TransactionOrangeMoney::EXPIREE => ['error', 'Le lien de paiement a expiré. Relancez le paiement.'],
             default => ['succes', 'Paiement en cours chez Orange Money : il apparaît ici dès qu\'Orange le confirme.'],
@@ -518,6 +527,8 @@ final class EspaceConceptionController extends AbstractController
             'iaDisponible' => $this->reglages->iaDisponible(),
             'prixImage' => $prix,
             'finalisation' => $this->reglages->finalisation(),
+            // Récapitulatif Orange Money de l'acompte (fonds de soutien, frais de retrait, total).
+            'omAcompte' => $this->orangeMoney->frais(TarifConception::acompte($demande->getForfait(), $demande->getAcomptePourcent())),
             'credit' => $solde,
             'imagesPossibles' => TarifConception::imagesPossibles($solde, $prix),
         ];

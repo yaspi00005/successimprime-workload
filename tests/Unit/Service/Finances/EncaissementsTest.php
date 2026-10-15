@@ -94,6 +94,12 @@ final class EncaissementsTest extends TestCase
 
         // Plus que le reste dû : jamais proposé.
         self::assertSame(0, Encaissements::scoreCreance(['montant' => 50000] + $ligne, $creance)['score']);
+
+        // Sauf le reste dû plus les frais Orange Money (1 % + 1 %) : le client a tout payé par Orange Money.
+        $avecFrais = Encaissements::scoreCreance(['montant' => 42840] + $ligne, ['reste_frais' => 42840] + $creance);
+        self::assertSame(99, $avecFrais['score']);
+        self::assertContains('montant identique, frais Orange Money compris', $avecFrais['raisons']);
+        self::assertSame(0, Encaissements::scoreCreance(['montant' => 42900] + $ligne, ['reste_frais' => 42840] + $creance)['score']);
     }
 
     public function testScoreDUnPaiementDejaSaisi(): void

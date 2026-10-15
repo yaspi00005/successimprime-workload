@@ -29,6 +29,7 @@ use App\Service\SuiviMetiers\Bareme;
 use App\Service\CatalogueStock;
 use App\Service\EcranTv;
 use App\Service\NumerotationFactures;
+use App\Service\Paiement\FraisOrangeMoney;
 use App\Service\ProgrammeEcranTv;
 use App\Service\Synchro\Synchro;
 use Doctrine\ORM\EntityManagerInterface;
@@ -161,7 +162,7 @@ final class Parametres
             'statistiques' => $v['rapport_actif'] ? 'rapport le '.$v['rapport_jour'].' à '.self::heure($v['rapport_heure']) : 'rapport de la semaine désactivé',
             'grille' => self::nb($compter(ProduitConfiguration::class), 'configuration').' · '.self::nb($compter(Produits::class), 'produit'),
             'produits' => self::nb($compter(Produits::class), 'produit').' · '.self::nb($compter(Finition::class), 'finition'),
-            'paiements' => implode(', ', array_map(static fn (string $m): string => Paiements::MODES_LABELS[$m], $this->modesPaiementActifs())) ?: 'aucun mode actif',
+            'paiements' => (implode(', ', array_map(static fn (string $m): string => Paiements::MODES_LABELS[$m], $this->modesPaiementActifs())) ?: 'aucun mode actif').$this->etatFraisOrangeMoney(),
             'relances' => $v['delai_heures'].' h de travail · +'.$v['points_a_temps'].' / −'.$v['points_retard'],
             'machines' => self::nb($compter(Machines::class), 'machine').' · amortissement '.($v['amortissement'] === 'usage' ? 'à l\'usage' : 'linéaire'),
             'stock' => $this->etatStock($badge),
@@ -439,7 +440,7 @@ final class Parametres
         foreach (CatalogueParametres::tuiles()[$cle]['champs'] ?? [] as $champ) {
             $valeurs[$champ['cle']] = match ($champ['source'] ?? null) {
                 'entreprise' => $this->lireEntreprise($champ['cle']),
-                'paiement' => $this->parametresPaiement->recuperer()->getTauxFraisRetrait(),
+                'paiement' => $this->parametresPaiement->recuperer()->taux($champ['cle']),
                 default => $valeurs[$champ['cle']],
             };
         }
@@ -458,7 +459,7 @@ final class Parametres
             $definition = CatalogueParametres::champ($cle, $champ);
             match ($definition['source'] ?? null) {
                 'entreprise' => $this->ecrireEntreprise($champ, (bool) $valeur),
-                'paiement' => $this->ecrirePaiement((float) $valeur),
+                'paiement' => $this->ecrirePaiement($champ, (float) $valeur),
                 default => $stockees[$champ] = $valeur,
             };
         }
@@ -545,11 +546,22 @@ final class Parametres
         };
     }
 
-    private function ecrirePaiement(float $taux): void
+    private function ecrirePaiement(string $champ, float $taux): void
     {
         $parametres = $this->parametresPaiement->recuperer();
-        $parametres->setTauxFraisRetrait($taux);
+        $parametres->changerTaux($champ, $taux);
         $this->em->persist($parametres);
+    }
+
+    /** « · frais Orange Money 1 % + 1 % » (fonds de soutien + retrait), si l'un des deux s'applique. */
+    private function etatFraisOrangeMoney(): string
+    {
+        $p = $this->parametresPaiement->recuperer();
+        if ($p->getTauxFondsSoutien() <= 0 && $p->getTauxFraisRetrait() <= 0) {
+            return ' · sans frais Orange Money';
+        }
+
+        return ' · frais Orange Money '.FraisOrangeMoney::taux($p->getTauxFondsSoutien()).' + '.FraisOrangeMoney::taux($p->getTauxFraisRetrait());
     }
 
     private function exemplesNumeros(): string

@@ -95,7 +95,7 @@
 										<small class="d-md-none">{{ p.facture ? p.facture.numero : (commande ? commande.libelle : '') }}</small>
 									</td>
 									<td class="si-masque-mobile">{{ p.facture ? p.facture.numero : (commande ? commande.libelle : '—') }}</td>
-									<td class="text-end"><b class="si-fin-f">{{ p.montant|number_format(0, ',', ' ') }} F</b></td>
+									<td class="text-end"><b class="si-fin-f">{{ p.montant|number_format(0, ',', ' ') }} F</b>{% if p.montantTotalEncaisse > p.montant %}<small class="d-block text-muted">+ {{ (p.montantTotalEncaisse - p.montant)|number_format(0, ',', ' ') }} F de frais</small>{% endif %}</td>
 									<td class="text-center">
 										{% if p.statut == 'valide' %}
 											<span class="si-fin-statut si-fin-statut-vert" title="{{ l.lie ? 'Rattaché au relevé Orange Money' : 'Paiement validé, rattaché à sa commande' }}">Rapproché{% if l.lie %} <i class="fas fa-check" aria-hidden="true"></i>{% endif %}</span>
@@ -130,6 +130,7 @@
 							<div><dt>Commande</dt><dd>{{ recu.paiement.commande.libelle }}</dd></div>
 							<div><dt>Client</dt><dd>{{ recu.paiement.commande.clients ? recu.paiement.commande.clients.nomComplet : '—' }}</dd></div>
 							<div><dt>Montant</dt><dd>{{ m.f(recu.paiement.montant) }}</dd></div>
+							{% if recu.paiement.montantTotalEncaisse > recu.paiement.montant %}<div><dt>Frais Orange Money</dt><dd>{{ m.f(recu.paiement.montantTotalEncaisse - recu.paiement.montant) }}</dd></div>{% endif %}
 							<div><dt>Référence Orange Money</dt><dd>{{ recu.ligne.reference }}</dd></div>
 						</dl>
 						<p class="si-fin-note">{% if recu.paiement.statut == 'en_attente' %}Paiement provisoire : il compte dans la caisse et ferme la créance une fois validé dans « À valider ».{% else %}Le paiement était déjà saisi : la transaction du relevé lui est rattachée.{% endif %}</p>
@@ -178,7 +179,7 @@
 										<select name="autre" class="form-select form-select-sm" aria-label="Facture ou commande payée" onchange="this.closest('label').querySelector('input[type=radio]').checked = true">
 											<option value="">Choisir…</option>
 											{% for c in creances %}
-												<option value="commande-{{ c.commande_id }}" {{ c.reste < choisie.montant ? 'disabled' }}>{{ c.client }} · {{ c.document }} · reste {{ c.reste|number_format(0, ',', ' ') }} F</option>
+												<option value="commande-{{ c.commande_id }}" {{ c.reste_frais|default(c.reste) < choisie.montant ? 'disabled' }}>{{ c.client }} · {{ c.document }} · reste {{ c.reste|number_format(0, ',', ' ') }} F</option>
 											{% endfor %}
 										</select>
 									</label>

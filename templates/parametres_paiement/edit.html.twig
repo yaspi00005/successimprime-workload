@@ -12,8 +12,10 @@
 			</h1>
 
 			<p class="text-muted mb-0">
-				Frais facturés au client en plus du prix de la commande quand il paie par
-				Orange Money ou Wave.
+				Frais payés par le client en plus du montant quand il paie par Orange Money
+				(ou par Wave, si la case est cochée). Ils restent sur le paiement : ni le prix
+				de la commande ni la facture ne changent. Les taux partent aussi sur le site en
+				ligne, pour le paiement Orange Money de l’espace client.
 			</p>
 		</div>
 	</div>
@@ -44,23 +46,16 @@
 				<div class="card-body">
 					{{ form_start(form) }}
 
-					<div class="form-group">
-						{{ form_label(form.tauxFraisRetrait) }}
-						{{ form_widget(form.tauxFraisRetrait) }}
-						<small class="form-text text-muted">
-							{{ form.tauxFraisRetrait.vars.help }}
-						</small>
-						{{ form_errors(form.tauxFraisRetrait) }}
-					</div>
-
-					<div class="form-group">
-						{{ form_label(form.tauxFondsSoutien) }}
-						{{ form_widget(form.tauxFondsSoutien) }}
-						<small class="form-text text-muted">
-							{{ form.tauxFondsSoutien.vars.help }}
-						</small>
-						{{ form_errors(form.tauxFondsSoutien) }}
-					</div>
+					{% for champ in [form.tauxFondsSoutien, form.tauxFraisRetrait] %}
+						<div class="form-group">
+							{{ form_label(champ) }}
+							{{ form_widget(champ) }}
+							<small class="form-text text-muted">
+								{{ champ.vars.help }}
+							</small>
+							{{ form_errors(champ) }}
+						</div>
+					{% endfor %}
 
 					<div class="text-right">
 						<button type="submit" class="btn btn-primary">

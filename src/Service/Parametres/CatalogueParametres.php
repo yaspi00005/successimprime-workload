@@ -130,9 +130,11 @@ final class CatalogueParametres
                     ['cle' => 'virement_seuil', 'type' => 'nombre', 'libelle' => 'Virement conseillé au-delà de', 'aide' => 'La caisse le rappelle pour un paiement en espèces plus élevé', 'suffixe' => 'F', 'min' => 0, 'max' => 100000000, 'defaut' => 500000],
                     ['cle' => 'acompte', 'type' => 'nombre', 'libelle' => 'Acompte par défaut', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'defaut' => 50],
                     ['cle' => 'recu', 'type' => 'choix', 'libelle' => 'Reçu envoyé', 'options' => ['whatsapp' => 'WhatsApp', 'sms' => 'SMS', 'aucun' => 'Aucun'], 'defaut' => 'whatsapp'],
-                    ['cle' => 'tauxFraisRetrait', 'type' => 'nombre', 'libelle' => 'Frais de retrait Orange Money', 'suffixe' => '%', 'min' => 0, 'max' => 20, 'decimales' => 2, 'source' => 'paiement'],
+                    // Frais Orange Money payés par le client en plus du montant (espace client, caisse) ; tenus dans ParametresPaiement.
+                    ['cle' => 'tauxFondsSoutien', 'type' => 'nombre', 'libelle' => 'Fonds de soutien Orange Money', 'aide' => 'Payé par le client en plus du montant, à chaque paiement Orange Money. 0 : la ligne disparaît.', 'suffixe' => '%', 'min' => 0, 'max' => 20, 'decimales' => 2, 'source' => 'paiement'],
+                    ['cle' => 'tauxFraisRetrait', 'type' => 'nombre', 'libelle' => 'Frais de retrait Orange Money', 'aide' => 'Payé par le client en plus du montant, à chaque paiement Orange Money. 0 : la ligne disparaît.', 'suffixe' => '%', 'min' => 0, 'max' => 20, 'decimales' => 2, 'source' => 'paiement'],
                 ],
-                'motsCles' => ['Orange Money · numéro marchand et frais', 'Espèces · virement · acompte', 'Reçu de paiement WhatsApp'],
+                'motsCles' => ['Orange Money · numéro marchand et frais', 'Fonds de soutien · frais de retrait', 'Espèces · virement · acompte', 'Reçu de paiement WhatsApp'],
             ],
             // Demande de conception dans l'espace client (docs/demande-conception.md). Le coût
             // d'une image chez le fournisseur reste au local (CatalogueSynchro::REGLAGES_PUBLICS).

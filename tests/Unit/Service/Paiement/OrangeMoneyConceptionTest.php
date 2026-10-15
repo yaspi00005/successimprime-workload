@@ -63,7 +63,9 @@ final class OrangeMoneyConceptionTest extends TestCase
         self::assertNull($transaction->getCommande());
         self::assertSame($demande, $transaction->getDemandeConception());
         self::assertSame($this->client, $transaction->getClient());
-        self::assertSame(5000, $this->appels[0]['corps']['amount']);
+        // L'acompte et ses frais Orange Money (1 % + 1 %) : Orange reçoit le total.
+        self::assertSame(5100, $this->appels[0]['corps']['amount']);
+        self::assertSame([5000, 50, 50], [$transaction->getMontant(), $transaction->getFondsSoutien(), $transaction->getFraisRetrait()]);
         self::assertSame(self::LIEN, $transaction->getLienPaiement());
         self::assertSame(hash('sha256', 'jeton-dc'), (new \ReflectionProperty(TransactionOrangeMoney::class, 'notifEmpreinte'))->getValue($transaction));
         self::assertStringContainsString('app_espace_conception_retour', $this->appels[0]['corps']['return_url']);
@@ -98,6 +100,7 @@ final class OrangeMoneyConceptionTest extends TestCase
         $paiement = $commande->getPaiements()->first();
         self::assertInstanceOf(Paiements::class, $paiement);
         self::assertSame(5000, $paiement->getMontant());
+        self::assertSame([50, 50, 5100], [$paiement->getMontantFondsSoutien(), $paiement->getMontantFraisRetrait(), $paiement->getMontantTotalEncaisse()]);
         self::assertSame(Paiements::STATUT_EN_ATTENTE, $paiement->getStatut());
 
         self::assertSame(DemandeConception::RECUE, $demande->getStatut());
@@ -125,7 +128,10 @@ final class OrangeMoneyConceptionTest extends TestCase
         self::assertFalse($commande->getCommandesDetails()->first()->isPrePresseNecessaire());
         $achats = array_values(array_filter($this->persistes, static fn (object $o): bool => $o instanceof MouvementCreditIa));
         self::assertCount(1, $achats);
+        // Le crédit reçoit le prix du pack ; les frais (30 + 30 F) restent sur le paiement.
         self::assertSame(3000, $achats[0]->getMontant());
+        self::assertSame(3000, $commande->getTotalTtc());
+        self::assertSame([3000, 3060], [$transaction->getPaiement()?->getMontant(), $transaction->getPaiement()?->getMontantTotalEncaisse()]);
         self::assertTrue($achats[0]->estAcquis());
         self::assertSame(Paiements::STATUT_EN_ATTENTE, $transaction->getPaiement()?->getStatut());
     }

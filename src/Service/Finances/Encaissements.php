@@ -7,8 +7,11 @@ use App\Entity\Commandes;
 use App\Entity\CompteTresorerie;
 use App\Entity\LigneReleveOrangeMoney;
 use App\Entity\Paiements;
+use App\Entity\ParametresPaiement;
 use App\Entity\User;
+use App\Repository\ParametresPaiementRepository;
 use App\Service\Creances;
+use App\Service\Paiement\FraisOrangeMoney;
 use App\Service\OperationsAValider;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -22,6 +25,11 @@ use Doctrine\ORM\EntityManagerInterface;
  * PROPOSE des commandes ou des paiements avec un score ; c'est une
  * personne qui clique pour associer. L'association crée un paiement
  * Orange Money en attente, validé ensuite dans À valider (ERP local).
+ *
+ * Le relevé montre ce que le client a envoyé, frais Orange Money compris
+ * (fonds de soutien et frais de retrait) : un paiement saisi se compare
+ * donc par son total encaissé, et une transaction qui dépasse le reste dû
+ * de ces seuls frais est découpée en montant et frais.
  */
 final class Encaissements
 {
@@ -61,6 +69,7 @@ final class Encaissements
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly Creances $creances,
+        private readonly ?ParametresPaiementRepository $parametresPaiement = null,
     ) {
     }
 
@@ -191,22 +200,26 @@ final class Encaissements
      * numéro du document dans le message 40, créance échue 5, relancée
      * dans le mois 5. Jamais 100 : ce n'est qu'une proposition.
      *
+     * « reste_frais » (facultatif) : le reste dû plus les frais Orange Money,
+     * ce que le client envoie quand il paie tout par Orange Money.
+     *
      * @param array{montant: int, expediteur: ?string, nom: ?string, libelle: ?string, recu_le: \DateTimeImmutable} $ligne
-     * @param array{reste: int, documents: list<string>, client: string, telephone: ?string, jours: int, relance: ?\DateTimeImmutable} $creance
+     * @param array{reste: int, reste_frais?: int, documents: list<string>, client: string, telephone: ?string, jours: int, relance: ?\DateTimeImmutable} $creance
      *
      * @return array{score: int, raisons: list<string>}
      */
     public static function scoreCreance(array $ligne, array $creance): array
     {
         $f = static fn (int $n): string => number_format($n, 0, ',', ' ').' F';
-        if ($ligne['montant'] > $creance['reste'] || $creance['reste'] <= 0) {
+        $avecFrais = ($creance['reste_frais'] ?? 0) > $creance['reste'] && $ligne['montant'] === $creance['reste_frais'];
+        if ((!$avecFrais && $ligne['montant'] > $creance['reste']) || $creance['reste'] <= 0) {
             return ['score' => 0, 'raisons' => []];
         }
         $score = 0;
         $raisons = [$f($creance['reste']).($creance['jours'] > 0 ? ' échus' : ' dus')];
-        if ($ligne['montant'] === $creance['reste']) {
+        if ($ligne['montant'] === $creance['reste'] || $avecFrais) {
             $score += 55;
-            $raisons[] = 'montant identique';
+            $raisons[] = $avecFrais ? 'montant identique, frais Orange Money compris' : 'montant identique';
         } else {
             $score += 20;
             $raisons[] = 'acompte';
@@ -323,7 +336,8 @@ final class Encaissements
             $connues[$l['reference']] = true;
             $ligne = (new LigneReleveOrangeMoney($l['reference'], $l['recu_le'], $l['montant'], $par, $maintenant))->decrire($l['expediteur'], $l['nom'], $l['libelle']);
             $paiement = $paiements[OperationsAValider::normaliserReference($l['reference'])] ?? null;
-            if (null !== $paiement && $paiement->getMontant() === $l['montant']) {
+            // Le relevé a reçu le montant et les frais Orange Money du paiement.
+            if (null !== $paiement && $paiement->getMontantTotalEncaisse() === $l['montant']) {
                 $ligne->rapprocher($paiement, $maintenant);
                 unset($paiements[OperationsAValider::normaliserReference($l['reference'])]);
                 ++$bilan['rapprochees'];
@@ -393,7 +407,7 @@ final class Encaissements
         $du = $ligne->getRecuLe()->setTime(0, 0)->modify('-'.self::JOURS_PAIEMENT.' days');
         foreach ($this->paiementsOrangeMoney($du, $du->modify('+'.(2 * self::JOURS_PAIEMENT + 1).' days'), false) as $p) {
             $client = $p->getCommande()?->getClients();
-            $s = self::scorePaiement($l, ['montant' => $p->getMontant(), 'date' => $p->getDate() ?? $maintenant, 'telephone' => $client?->getTelephone(), 'reference' => $p->getReference()]);
+            $s = self::scorePaiement($l, ['montant' => $p->getMontantTotalEncaisse(), 'date' => $p->getDate() ?? $maintenant, 'telephone' => $client?->getTelephone(), 'reference' => $p->getReference()]);
             if ($s['score'] >= self::SCORE_MINIMUM) {
                 $pistes[] = [
                     'choix' => 'paiement-'.$p->getId(),
@@ -429,6 +443,7 @@ final class Encaissements
         }
         $lignes = $this->creances->donnees($maintenant)['lignes'];
         $attente = $this->enAttenteParCommande(array_map(static fn (array $l): int => (int) $l['commande']->getId(), $lignes));
+        $parametres = $this->parametresPaiement();
         $ouvertes = [];
         foreach ($lignes as $l) {
             $commande = $l['commande'];
@@ -443,6 +458,8 @@ final class Encaissements
                 'client' => $l['client'],
                 'telephone' => $l['telephone'],
                 'reste' => $reste,
+                // Tout payé par Orange Money : le reste et les frais (fonds de soutien, retrait).
+                'reste_frais' => FraisOrangeMoney::calculer($reste, $parametres)->total(),
                 'jours' => $l['jours'],
                 'relance' => $l['relance']['date'] ?? null,
             ];
@@ -468,7 +485,7 @@ final class Encaissements
 
         if ('paiement' === $m[1]) {
             $paiement = $this->em->find(Paiements::class, (int) $m[2]);
-            if (null === $paiement || !\in_array($paiement->getStatut(), [Paiements::STATUT_VALIDE, Paiements::STATUT_EN_ATTENTE], true) || $paiement->getMontant() !== $ligne->getMontant()) {
+            if (null === $paiement || !\in_array($paiement->getStatut(), [Paiements::STATUT_VALIDE, Paiements::STATUT_EN_ATTENTE], true) || $paiement->getMontantTotalEncaisse() !== $ligne->getMontant()) {
                 throw new \InvalidArgumentException('Ce paiement ne correspond pas à la transaction.');
             }
             if (null !== $this->em->getRepository(LigneReleveOrangeMoney::class)->findOneBy(['paiement' => $paiement])) {
@@ -486,13 +503,23 @@ final class Encaissements
         }
         $attente = $this->enAttenteParCommande([(int) $commande->getId()])[(int) $commande->getId()] ?? 0;
         $dispo = (int) $commande->getTotalTtc() - $commande->getTotalPaye() - $attente;
-        if ($ligne->getMontant() > $dispo) {
+        // Le client a pu envoyer le reste dû plus les frais Orange Money : ils vont sur le paiement, pas sur la commande.
+        $frais = $ligne->getMontant() > $dispo ? FraisOrangeMoney::decomposer($ligne->getMontant(), $this->parametresPaiement()) : null;
+        if (null !== $frais && ($frais->montant > $dispo || 0 === $frais->frais())) {
+            $frais = null;
+        }
+        $montant = $frais?->montant ?? $ligne->getMontant();
+        if ($montant > $dispo) {
             throw new \InvalidArgumentException(\sprintf('Le montant dépasse ce qui reste à payer sur %s (%s F, paiements en attente compris).', $commande->getNumero(), number_format(max(0, $dispo), 0, ',', ' ')));
         }
 
         $qui = $ligne->getNomExpediteur() ?? $ligne->getExpediteur();
         $paiement = (new Paiements())
-            ->setMontant($ligne->getMontant())
+            ->setMontant($montant)
+            ->setFondsSoutienInclus(($frais?->fondsSoutien ?? 0) > 0)
+            ->setMontantFondsSoutien($frais?->fondsSoutien ?? 0)
+            ->setFraisRetraitInclus(($frais?->fraisRetrait ?? 0) > 0)
+            ->setMontantFraisRetrait($frais?->fraisRetrait ?? 0)
             ->setMode(Paiements::MODE_ORANGE_MONEY)
             ->setDate($ligne->getRecuLe())
             ->setReference($ligne->getReference())
@@ -642,6 +669,12 @@ final class Encaissements
             ->getSingleColumnResult()));
 
         return array_map(static fn (Paiements $p): array => ['paiement' => $p, 'releve' => isset($lies[(int) $p->getId()])], $paiements);
+    }
+
+    /** Taux des frais Orange Money (1 % et 1 % tant que rien n'est réglé). */
+    private function parametresPaiement(): ParametresPaiement
+    {
+        return $this->parametresPaiement?->recuperer() ?? new ParametresPaiement();
     }
 
     /**

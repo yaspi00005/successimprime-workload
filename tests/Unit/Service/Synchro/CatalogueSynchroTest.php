@@ -41,7 +41,7 @@ final class CatalogueSynchroTest extends TestCase
             'controle' => ['anomalies', 'observation', 'correctionsEffectuees', 'controlePar', 'traitePar', 'validePar', 'envoyeProductionPar'],
             'paiement' => ['compteTresorerie', 'mouvementTresorerie', 'justificatif', 'observation', 'encaissePar', 'validePar'],
             'livraison' => ['livreur', 'creePar', 'validePar', 'livrePar', 'nomReceptionnaire', 'telephoneReceptionnaire', 'adresseLivraison', 'observation', 'photos', 'signature',
-                'signataire', 'encaisseMontant', 'encaisseMode', 'encaisseLe', 'paiementLivraison', 'remiseLatitude', 'remiseLongitude', 'retardJustifie', 'erreurLivraison', 'articleStock', 'ordreTournee'],
+                'signataire', 'encaisseMontant', 'encaisseMode', 'encaisseLe', 'paiementLivraison', 'remiseLatitude', 'remiseLongitude', 'retardJustifie', 'erreurLivraison', 'articleStock', 'ordreTournee', 'echecPar', 'echecMotif'],
             'entreprise' => ['banque', 'compteBancaire', 'prefixeFacture', 'compteur', 'logo', 'logoPied', 'signature', 'cachet'],
         ];
         foreach ($interdits as $type => $champs) {

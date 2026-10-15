@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Tache;
 use App\Entity\User;
 use App\Security\AccesEnLigne;
+use App\Security\LivreurSeul;
 use App\Service\OperationsAValider;
 use App\Service\Planning\Planning;
 use App\Service\Sauvegarde\HorsSite;
@@ -43,10 +44,12 @@ final class DashboardController extends AbstractController
 
         /*
          * Un livreur n'a accès qu'aux livraisons : il n'a rien
-         * à faire sur le tableau de bord général.
+         * à faire sur le tableau de bord général (LivreurSeul).
          */
-        if ($this->isGranted('ROLE_LIVREUR') && !$this->isGranted('ROLE_ADMIN')) {
-            return $this->redirectToRoute('app_livraisons_tournee');
+        $connecte = $this->getUser();
+        \assert($connecte instanceof User);
+        if (($this->isGranted('ROLE_LIVREUR') || LivreurSeul::est($connecte->getRoles())) && !$this->isGranted('ROLE_ADMIN')) {
+            return $this->redirectToRoute(LivreurSeul::accueil($acces->estEnLigne(), null !== $connecte->getEmploye()));
         }
 
         $maintenant = new \DateTimeImmutable();

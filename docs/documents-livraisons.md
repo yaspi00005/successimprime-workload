@@ -43,7 +43,7 @@ Le montant en lettres est calculé par un petit service testé, en français, sa
 
 ### Droits
 
-- Le livreur voit seulement ses tournées du jour : adresse, téléphone du réceptionnaire, articles et montant à encaisser. Il ne voit ni les prix d'achat, ni les marges, ni les autres clients.
+- Le livreur voit seulement ses tournées du jour : adresse, téléphone du réceptionnaire, articles et montant à encaisser. Il ne voit ni les prix d'achat, ni les marges, ni les autres clients. Depuis le 15/10/2026, il ne voit rien d'autre que sa tournée et ses livraisons (voir « Écrans du livreur » plus bas).
 - Le lien de suivi du client montre sa livraison seulement : la position du livreur pendant la tournée, jamais son historique.
 
 ### État (11/10/2026)
@@ -56,6 +56,27 @@ Fait (L02, L03) :
 - Le détail (L02) montre les étapes avec leurs heures, le contenu commandé, livré et le reste, les preuves, l'encaissement et la planification.
 
 Fait (L01) : **Planning des livraisons** (`/livraisons/planning`, bureau) : livraisons du jour, livrées et à l'heure (avant la fin du créneau), montant à encaisser et déjà encaissé (droit Paiements), partielles et reportées (bons validés d'un jour passé non livrés). Carte de toutes les tournées depuis la boutique (premier lieu de pointage placé sur la carte), liste par livreur avec l'état et l'encaissement de chaque arrêt. « Réordonner la tournée » range les arrêts restants au plus proche, à vol d'oiseau. « Prévenir les clients » ouvre un message WhatsApp prêt par client (envoi groupé avec l'API WhatsApp).
+
+### Écrans du livreur et suivi des livraisons (15/10/2026)
+
+Décision de Yaya : « Pour le rôle livreur, il faut dédier des vues pour eux, car ils ne voient absolument rien sauf les livraisons et leur tournée, rien d'autre. » Et : « pour les admins, la caisse et les prépresses, ils ont un aperçu détaillé, savoir si c'est livré ou pas, à quel moment et par qui. »
+
+**Le livreur seul.** Une personne dont le seul droit est « Livraisons » est un livreur seul (`LivreurSeul`). Son droit « Ses propres statistiques » ne compte pas : il montrait ses ventes et encaissements, et le rôle Livreur ne l'a plus (migration `Version20261016081500`). Dès qu'un autre droit est coché pour la personne (clients, entretien…), elle n'est plus livreur seul et retrouve les écrans de ce droit.
+
+- Son menu : **Ma tournée** et **Mes livraisons**, plus « Mon espace » (pointage, absences, prime, bulletins). Sur le téléphone, la barre du bas montre Tournée, Livraisons, Pointage et Moi. Il n'a ni la recherche, ni la messagerie, ni « Aller à… », ni ses statistiques.
+- Toute autre page lui répond « accès refusé », même tapée à la main : tableau de bord (il arrive sur sa tournée), clients, commandes, statistiques, recherche, messagerie, planning, liste générale des livraisons, « À retirer », suivi des livraisons. La règle est dans `LivreurSeulSubscriber`, avant le contrôleur. Les pages ouvertes à tout le personnel pour lui-même restent : Mon espace, pointage, mot de passe, guide de son rôle, ses notifications.
+- Ses notifications : seulement celles qui mènent à une page qu'il peut ouvrir. Il ne reçoit plus « Production terminée » ni les autres alertes de la boutique.
+- **Ma tournée** (téléphone d'abord) : les livraisons du jour dans l'ordre de la tournée. Pour chacune : le client, le téléphone à toucher pour appeler, l'adresse et « Voir sur la carte », les articles, et le reste à encaisser s'il y en a un (sur ses propres livraisons seulement). Puis l'étape suivante (Chargée, Je pars, Je suis arrivé), **Livrée** (la remise : nom de la personne qui reçoit, obligatoire, signature, photos, encaissement) ou **Échec** avec la raison.
+- **Échec** : la raison se choisit dans une liste (client absent, client injoignable, adresse introuvable, client refuse la livraison, paiement pas prêt, autre avec une précision). On garde la date et l'heure, le livreur et la raison. Les étapes du passage sont effacées : le colis revient à la boutique. Le bureau (droit Commandes) et la Direction reçoivent une notification « à replanifier », sans montant. La livraison redevient « à livrer » quand le bureau lui donne un jour, quand le livreur touche « Réessayer » (le client a rappelé), ou à la remise. Le dernier échec reste dans l'historique.
+- **Mes livraisons** (`/livraisons/mes-livraisons`) : ses livraisons des 30 derniers jours (ou 90), jour par jour : remises (heure, articles, reçue par) et échecs (raison). Aucun montant. Une remise s'ouvre sur son détail.
+
+**Le suivi pour le bureau.** Direction, caisse (droit Commandes) et prépresse (droit Prépresse), sans droit nouveau :
+
+- **Suivi des livraisons** (`/livraisons/suivi`, menu Ventes) : filtres par dates (aujourd'hui, 7 jours, 30 jours, à venir), par livreur et par statut (à livrer, en tournée, livrée, échec). Pour chaque livraison : jour prévu, numéro du bon et de la commande, client et articles, statut, le moment (remise, échec ou dernière étape), le livreur, la personne qui a reçu ou la raison de l'échec. Sans montant.
+- **Bloc « Livraison »** sur la page d'une commande : chaque bon avec son statut, le moment, le livreur et la personne qui a reçu ; « à livrer » quand la commande n'a pas encore de bon.
+- Le planning du jour (L01) compte les échecs du jour et montre la raison sur l'arrêt ; le détail d'une livraison (L02) résume le statut, le moment, le livreur et la personne qui a reçu.
+
+**En ligne.** Ma tournée, la remise, Mes livraisons et le suivi n'existent que sur l'ERP local : en ligne, ils répondent « page introuvable » (le site ne connaît ni le livreur ni le réceptionnaire). Un livreur qui se connecte en ligne arrive sur son espace. L'espace client voit « Reportée » et la date après un échec (`echecLe` et « en cours » passent au site), jamais la raison ni le livreur ; rien de plus n'est envoyé au client.
 
 Reste : la position du livreur en direct, L04 (suivi par le client, avec l'espace client J5) et l'étape « Pose » de la maquette.
 

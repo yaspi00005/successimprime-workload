@@ -4,6 +4,8 @@ namespace App\Twig;
 
 use App\Entity\RoleUtilisateur;
 use App\Entity\User;
+use App\Security\LivreurSeul;
+use App\Security\LivreurVoter;
 use App\Security\ModulesRoles;
 use App\Service\PastillesMenu;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -64,6 +66,10 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Planning des livraisons', 'route' => 'app_livraisons_planning', 'role' => ['ROLE_ADMIN', 'ROLE_COMMANDE'], 'prefixes' => ['app_livraisons_planning', 'app_livraisons_bl']],
             ['libelle' => 'Ma tournée', 'route' => 'app_livraisons_tournee', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_tournee', 'app_livraisons_remise']],
             ['libelle' => 'Livraisons', 'route' => 'app_livraisons_index', 'role' => 'ROLE_LIVRAISON', 'prefixes' => ['app_livraisons_', 'app_bons_livraison_', 'app_bon_livraison_']],
+            // Le livreur : celles qu'il a remises ou manquées (LivreurVoter, pas la Direction).
+            ['libelle' => 'Mes livraisons', 'route' => 'app_livraisons_mes_livraisons', 'role' => LivreurVoter::LIVREUR, 'prefixes' => ['app_livraisons_mes_livraisons']],
+            // Direction, caisse, prépresse : livrée ou pas, quand, par qui.
+            ['libelle' => 'Suivi des livraisons', 'route' => 'app_livraisons_suivi', 'role' => ['ROLE_COMMANDE', 'ROLE_PREPRESSE'], 'prefixes' => ['app_livraisons_suivi']],
             ['libelle' => 'Mes actions', 'route' => 'app_actions_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_actions_']],
             ['libelle' => 'Demandes du site', 'route' => 'app_demandes_site_index', 'role' => 'ROLE_DEVIS', 'prefixes' => ['app_demandes_site_']],
             // Atelier 3D (docs/atelier-3d.md) : modèles validés par les clients, vues et images d'origine.
@@ -135,12 +141,14 @@ final class NavigationExtension extends AbstractExtension
     public const MENU_COURT = [
         'app_home' => ['Ma journée', 'fas fa-th-large'],
         'app_livraisons_tournee' => ['Ma tournée', 'fas fa-route'],
+        'app_livraisons_mes_livraisons' => ['Mes livraisons', 'fas fa-clipboard-check'],
         'app_livraisons_a_retirer' => ['À livrer ou retirer', 'fas fa-box'],
         'app_caisse_index' => ['Caisse', 'fas fa-cash-register'],
         'app_actions_index' => ['Mes actions', 'far fa-bell'],
         'app_clients_index' => ['Clients', 'fas fa-user-friends'],
         'app_ventes_index' => ['Devis et commandes', 'far fa-file-alt'],
         'app_finances_encaissements' => ['Encaissements', 'far fa-credit-card'],
+        'app_livraisons_suivi' => ['Suivi des livraisons', 'fas fa-truck'],
         'app_controle_pre_presse_index' => ['Fichiers et BAT', 'far fa-file'],
         'app_conception_tableau' => ['Mes travaux PAO', 'fas fa-pencil-ruler'],
         'app_atelier_production' => ['Production', 'fas fa-sliders-h'],
@@ -164,12 +172,14 @@ final class NavigationExtension extends AbstractExtension
     public const LIBELLES_BARRE = [
         'app_home' => 'Accueil',
         'app_livraisons_tournee' => 'Tournée',
+        'app_livraisons_mes_livraisons' => 'Livraisons',
         'app_livraisons_a_retirer' => 'Livrer',
         'app_caisse_index' => 'Caisse',
         'app_actions_index' => 'Actions',
         'app_clients_index' => 'Clients',
         'app_ventes_index' => 'Ventes',
         'app_finances_encaissements' => 'Encaisser',
+        'app_livraisons_suivi' => 'Suivi',
         'app_controle_pre_presse_index' => 'Fichiers',
         'app_conception_tableau' => 'Travaux',
         'app_atelier_production' => 'Production',
@@ -332,7 +342,8 @@ final class NavigationExtension extends AbstractExtension
      * Onglets de la section que l'utilisateur peut ouvrir (un seul des
      * roles listes suffit), avec leur rang d'origine dans 'rang'. Avec
      * $droits, pour ces droits-la plutot que ceux de la personne connectee
-     * (apercu du menu d'un role, maquette R04).
+     * (apercu du menu d'un role, maquette R04). Le livreur seul n'a que
+     * sa tournee et ses livraisons (LivreurSeul::MENU).
      *
      * @param list<string>|null $droits
      *
@@ -341,6 +352,7 @@ final class NavigationExtension extends AbstractExtension
     public function ongletsAutorises(?string $section, ?array $droits = null): array
     {
         $autorises = [];
+        $livreurSeul = null !== $droits ? LivreurSeul::est($droits) : $this->livreurSeulConnecte();
 
         foreach ($this->ongletsSection($section) as $rang => $onglet) {
             $roles = (array) $onglet['role'];
@@ -348,8 +360,12 @@ final class NavigationExtension extends AbstractExtension
 
             foreach ($roles as $role) {
                 $autorise = $autorise || (null !== $droits
-                    ? \in_array($role, $droits, true)
+                    ? (LivreurVoter::LIVREUR === $role ? LivreurVoter::livre($droits) : \in_array($role, $droits, true))
                     : null !== $this->autorisations && $this->autorisations->isGranted($role));
+            }
+
+            if ($autorise && $livreurSeul && !\in_array($onglet['route'], LivreurSeul::MENU, true)) {
+                $autorise = false;
             }
 
             if ($autorise) {
@@ -361,7 +377,9 @@ final class NavigationExtension extends AbstractExtension
     }
 
     /**
-     * Rang de l'onglet de la section qui couvre cette route, ou null.
+     * Rang de l'onglet de la section qui couvre cette route, ou null. Le
+     * prefixe le plus precis gagne (« Suivi des livraisons » plutot que
+     * « Livraisons ») ; a egalite, le premier onglet.
      */
     public function ongletActif(?string $route): ?int
     {
@@ -371,15 +389,25 @@ final class NavigationExtension extends AbstractExtension
             return null;
         }
 
+        $actif = null;
+        $longueur = -1;
         foreach ($this->ongletsSection($section) as $rang => $onglet) {
             foreach ($onglet['prefixes'] as $prefixe) {
-                if (str_starts_with((string) $route, $prefixe)) {
-                    return $rang;
+                if (\strlen($prefixe) > $longueur && str_starts_with((string) $route, $prefixe)) {
+                    $actif = $rang;
+                    $longueur = \strlen($prefixe);
                 }
             }
         }
 
-        return null;
+        return $actif;
+    }
+
+    private function livreurSeulConnecte(): bool
+    {
+        $utilisateur = $this->security?->getUser();
+
+        return $utilisateur instanceof User && LivreurSeul::est($utilisateur->getRoles());
     }
 
     /**

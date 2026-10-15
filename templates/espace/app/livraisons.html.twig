@@ -17,11 +17,12 @@
 				<span class="ec-petit">
 					{% if etat == 'route' %}Livreur parti à {{ bl.enRouteLe|date('H:i') }}{{ bl.creneau ? ' · créneau ' ~ bl.creneau }}
 					{% elseif etat == 'livree' %}Livrée le {{ bl.livreLe|date('d/m/Y') }} à {{ bl.livreLe|date('H:i') }}
+					{% elseif bl.echecEnCours %}Pas pu être livrée le {{ bl.echecLe ? bl.echecLe|date('d/m') : (bl.prevuLe ? bl.prevuLe|date('d/m')) }} : l'atelier vous recontacte pour une nouvelle date
 					{% elseif bl.prevuLe %}Prévue le {{ bl.prevuLe|date('d/m') }}{{ bl.creneau ? ' · créneau ' ~ bl.creneau }}
 					{% else %}Date à confirmer par l'atelier{% endif %}
 				</span>
 			</span>
-			<span class="ec-pastille {{ etat == 'livree' ? 'vert' : (etat == 'route' ? 'ambre' : '') }}">{{ etat == 'livree' ? 'Livrée' : (etat == 'route' ? 'En route' : 'À venir') }}</span>
+			<span class="ec-pastille {{ etat == 'livree' ? 'vert' : (etat == 'route' or bl.echecEnCours ? 'ambre' : '') }}">{{ etat == 'livree' ? 'Livrée' : (etat == 'route' ? 'En route' : (bl.echecEnCours ? 'Reportée' : 'À venir')) }}</span>
 		</a>
 	</li>
 {% endmacro %}

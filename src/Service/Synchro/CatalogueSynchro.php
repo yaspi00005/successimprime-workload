@@ -436,11 +436,12 @@ final class CatalogueSynchro
                 'relations' => ['client' => 'client'], 'listes' => [],
                 'imposeAuLocal' => ['statut' => PropositionClient::EN_ATTENTE, 'traiteLe' => null, 'motif' => null],
             ],
-            // Où en est la livraison, pour l'espace client (livreur en route, livrée) et ses notifications.
-            // Livreur, réceptionnaire, adresse, photos, signature, position, encaissement, stock et notes restent au local.
+            // Où en est la livraison, pour l'espace client (livreur en route, livrée, reportée) et ses notifications.
+            // Livreur, réceptionnaire, adresse, photos, signature, position, encaissement, stock et notes restent au local,
+            // comme la raison d'un échec et qui l'a noté : le client voit seulement « reportée » et la date.
             'livraison' => [
                 'classe' => BonLivraison::class, 'sens' => self::DESCENDANT, 'libelle' => 'Bon de livraison', 'titre' => ['numero'],
-                'champs' => ['numero', 'statut', 'creeLe', 'valideLe', 'prevuLe', 'creneau', 'chargeLe', 'enRouteLe', 'arriveLe', 'livreLe'],
+                'champs' => ['numero', 'statut', 'creeLe', 'valideLe', 'prevuLe', 'creneau', 'chargeLe', 'enRouteLe', 'arriveLe', 'livreLe', 'echecLe', 'echecEnCours'],
                 'relations' => ['commande' => 'commande'], 'listes' => [],
                 'enfants' => ['lignes' => [
                     'classe' => BonLivraisonLigne::class, 'parent' => 'bonLivraison',

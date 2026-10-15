@@ -7,7 +7,8 @@
 		<b>{% if lien ?? false %}<a href="{{ lien }}" class="stretched-link si-tr-lien">{% endif %}{{ cli ? cli.nomComplet : (b.nomReceptionnaire ?? b.numero) }}{% if lien ?? false %}</a>{% endif %}</b>
 		<small>{{ b.lignes|map(l => l.designation ~ ' × ' ~ l.quantiteCommandee)|join(' · ') }}</small>
 		<small>{{ b.creneau ? 'Créneau ' ~ b.creneau ~ ' · ' }}{{ (b.adresseLivraison ?? b.commande.adresseLivraison ?? (cli ? cli.repere : ''))|replace({"\n": ' · '}) }}</small>
-		{% if b.statut == 'livre' %}<small>{{ b.arriveLe ? 'arrivé ' ~ b.arriveLe|date('H:i') ~ ' · ' }}remis {{ b.livreLe|date('H:i') }}</small>{% endif %}
+		{% if b.statut == 'livre' %}<small>{{ b.arriveLe ? 'arrivé ' ~ b.arriveLe|date('H:i') ~ ' · ' }}remis {{ b.livreLe|date('H:i') }}{{ b.receptionnaireSuivi ? ' à ' ~ b.receptionnaireSuivi }}</small>{% endif %}
+		{% if b.etatSuivi == 'echec' %}<small class="si-p-alerte">Échec : {{ b.echecMotif }}{{ b.echecPar ? ' (' ~ b.echecPar|nom_pointage ~ ')' }}</small>{% endif %}
 	</div>
 	<div class="si-tr-etat">
 		{% if b.statut == 'livre' %}
@@ -15,7 +16,11 @@
 			{% set aLHeure = livraison_a_l_heure(b) %}
 			<span class="si-tr-badge {{ aLHeure ? 'si-tr-ok' : 'si-tr-retard' }}">{% set retard = livraison_retard(b) %}{{ aLHeure ? 'À l\'heure' : (retard is not null ? 'Retard ' ~ retard|minutes : 'Hors délai') }}</span>
 		{% else %}
-			<span class="si-tr-badge">{{ b.etape ? attribute(constant('App\\Entity\\BonLivraison::ETAPES'), b.etape) : 'À venir' }}</span>
+			{% if b.etatSuivi == 'echec' %}
+				<span class="si-tr-badge si-tr-retard">Échec {{ b.echecLe|date('H:i') }}</span>
+			{% else %}
+				<span class="si-tr-badge">{{ b.etape ? attribute(constant('App\\Entity\\BonLivraison::ETAPES'), b.etape) : 'À venir' }}</span>
+			{% endif %}
 		{% endif %}
 	</div>
 </li>

@@ -79,10 +79,19 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Livreur (demo.bakary)
 
-- [ ] L'accueil ouvre la tournée du jour (Livraisons › Ma tournée) ; barre du bas Tournée, Livrer, Pointage, Moi.
-- [ ] « En route » puis « Livrée » avec photo, signature et position ; le client est prévenu.
+- [ ] L'accueil ouvre la tournée du jour (Ma tournée) ; menu Ma tournée, Mes livraisons et Mon espace ; barre du bas Tournée, Livraisons, Pointage, Moi. Ni recherche, ni messagerie, ni « Aller à… ».
+- [ ] Sur le téléphone : appeler le client d'un toucher, ouvrir l'adresse sur la carte ; le reste à encaisser n'apparaît que sur ses propres livraisons.
+- [ ] « Je pars » puis « Livrée » avec le nom de la personne qui reçoit, la signature, une photo et la position ; le client est prévenu.
+- [ ] « Échec » avec une raison : le bureau et la Direction reçoivent « à replanifier » ; le client voit « Reportée » dans son espace, sans la raison.
+- [ ] Mes livraisons : ses remises et ses échecs des 30 derniers jours, sans montant, jamais ceux d'un autre livreur.
 - [ ] Encaissement à la livraison : il arrive en caisse à valider.
-- [ ] Ne voit que ses livraisons : tableau de bord, ventes et finances refusés.
+- [ ] Ne voit que sa tournée et ses livraisons : tableau de bord, clients, commandes, statistiques, recherche, messagerie, planning, liste des livraisons, « À retirer » et suivi refusés, même tapés à la main.
+
+## Suivi des livraisons (demo.kadiatou, demo.fanta, demo.seydou)
+
+- [ ] Ventes › Suivi des livraisons : filtrer par jour, livreur et statut ; chaque livraison dit si elle est livrée ou pas, à quel moment, par qui et qui l'a reçue (ou la raison de l'échec). Aucun montant.
+- [ ] Page d'une commande : bloc « Livraison » avec le statut, le moment, le livreur et la personne qui a reçu.
+- [ ] Sur le site en ligne, `/livraisons/suivi` et `/livraisons/tournee` répondent « page introuvable ».
 
 ## Guide et formation (jalon J7)
 
@@ -118,7 +127,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 Avant de cocher cette liste, et avant chaque mise en production, une commande ouvre chaque page avec chaque compte de démonstration et compare ce qu'elle obtient aux droits. Elle se lance sur une base d'essai qui a la démonstration (`app:demo`), jamais en production (elle refuse). Elle n'enregistre rien : les pages sont demandées dans une transaction annulée à la fin, sans aucun envoi de SMS, d'e-mail ni de notification.
 
-- **ERP local** : `php bin/console app:recette:acces` (un seul compte : `--compte=demo.oumar`). Chaque compte `demo.*` demande chaque page de l'admin ; la commande signale une page ouverte sans son droit, une entrée du menu qui répond « accès refusé », une erreur 500, des montants (marges, salaires, paiements, chiffre d'affaires) ou des photos de pointage montrés sans le droit, la fiche d'une autre personne (bulletin, justificatif, photo de pointage, preuve de livraison), et un module en « Voir » qui accepte un envoi.
+- **ERP local** : `php bin/console app:recette:acces` (un seul compte : `--compte=demo.oumar`). Chaque compte `demo.*` demande chaque page de l'admin ; la commande signale une page ouverte sans son droit, une entrée du menu qui répond « accès refusé », une erreur 500, des montants (marges, salaires, paiements, chiffre d'affaires) ou des photos de pointage montrés sans le droit, la fiche d'une autre personne (bulletin, justificatif, photo de pointage, preuve de livraison, échec noté sur la livraison d'un autre livreur, livraisons d'un autre dans « Mes livraisons »), et un module en « Voir » qui accepte un envoi. Pour le livreur seul, toute page ouverte hors de sa tournée, de ses livraisons et de son espace est une fuite, et l'accueil doit le renvoyer sur sa tournée.
 - **Site en ligne** (`APP_EN_LIGNE=1`, après une synchronisation depuis l'ERP d'essai) : la même commande essaie l'espace client avec un particulier, un client B2B et chaque personne d'un compte entreprise (titulaire, valideur, payeur, demandeur, lecture), les fiches et les envois d'un autre client, aucun montant pour un demandeur ou la lecture seule (pages, données JSON des pages et appels de prix compris), l'admin sans appareil autorisé, l'API, les pages publiques, `robots.txt`, `sitemap.xml`, le suivi de commande et le calculateur.
 
 Le bilan est écrit dans `var/recette/` (`acces-local-….md` et la matrice compte × page `…-matrice.csv` : O ouverte, R refusée, C connexion, > redirigée, I introuvable, E erreur). La commande se termine en échec s'il reste une fuite, une erreur ou un contrôle raté ; les pages « à examiner » sont à relire. Un écart voulu (page ouverte à tout le personnel, montant de ses propres ventes) s'ajoute avec sa raison dans `RecetteAcces::ECARTS_VOULUS` ou `MONTANTS_VOULUS` (`src/Service/Recette/`). Pour aller vite sur une grande base : `APP_DEBUG=0`.

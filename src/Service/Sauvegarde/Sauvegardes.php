@@ -2,8 +2,11 @@
 
 namespace App\Service\Sauvegarde;
 
+use App\Service\Parametres\CatalogueParametres;
 use App\Service\Parametres\Parametres;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\InvalidFieldNameException;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 
 /**
  * Sauvegardes automatiques (jalon J4) : base + fichiers des clients et du
@@ -481,9 +484,25 @@ final class Sauvegardes
         }
     }
 
+    /**
+     * Réglage de la tuile Sauvegardes. Une base pas encore à jour (bascule
+     * d'une ancienne base, restauration d'une ancienne sauvegarde) n'a pas
+     * la table des réglages, ou pas sous cette forme : les valeurs par
+     * défaut sont prises, pour que la sauvegarde de sécurité ne soit jamais
+     * refusée à ce moment-là.
+     */
     private function reglage(string $cle): mixed
     {
-        return $this->parametres->valeur('sauvegardes', $cle);
+        try {
+            return $this->parametres->valeur('sauvegardes', $cle);
+        } catch (TableNotFoundException|InvalidFieldNameException) {
+            return self::reglageParDefaut($cle);
+        }
+    }
+
+    public static function reglageParDefaut(string $cle): mixed
+    {
+        return CatalogueParametres::avecDefauts(CatalogueParametres::tuiles()['sauvegardes']['champs'], [])[$cle] ?? null;
     }
 
     /** @param array<string, mixed> $entree */

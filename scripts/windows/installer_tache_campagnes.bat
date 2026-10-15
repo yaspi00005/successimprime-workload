@@ -11,7 +11,7 @@
 :: existante du meme nom au lieu d'en creer un doublon.
 :: ============================================================
 
-set SCRIPT_CAMPAGNES=C:\xampp\htdocs\successImprim\scripts\windows\campagnes.bat
+set SCRIPT_CAMPAGNES=C:\xamppok\htdocs\successImprim\scripts\windows\campagnes.bat
 
 echo Installation de la tache "campagnes" (toutes les 10 minutes)...
 schtasks /create ^
@@ -31,6 +31,6 @@ echo Pour tester tout de suite, sans attendre 10 minutes :
 echo   schtasks /run /tn "SuccessImprim_Campagnes"
 echo.
 echo Le resultat de chaque execution est journalise dans :
-echo   C:\xampp\htdocs\successImprim\var\log\campagnes.log
+echo   C:\xamppok\htdocs\successImprim\var\log\campagnes.log
 echo.
 pause

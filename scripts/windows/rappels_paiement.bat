@@ -14,8 +14,8 @@
 :: visible si aucun rappel n'est du ce jour-la.
 :: ============================================================
 
-set PROJET=C:\xampp\htdocs\successImprim
-set PHP=C:\xampp\php\php.exe
+set PROJET=C:\xamppok\htdocs\successImprim
+set PHP=C:\xamppok\php\php.exe
 set LOG_FILE=%PROJET%\var\log\rappels_paiement.log
 
 if not exist "%PROJET%\var\log" mkdir "%PROJET%\var\log"

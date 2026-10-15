@@ -11,7 +11,7 @@
 :: existante du meme nom au lieu d'en creer un doublon.
 :: ============================================================
 
-set SCRIPT_RAPPELS=C:\xampp\htdocs\successImprim\scripts\windows\rappels_paiement.bat
+set SCRIPT_RAPPELS=C:\xamppok\htdocs\successImprim\scripts\windows\rappels_paiement.bat
 
 echo Installation de la tache "rappels de paiement" (tous les jours a 07:00)...
 schtasks /create ^
@@ -31,6 +31,6 @@ echo Pour tester tout de suite, sans attendre demain 07:00 :
 echo   schtasks /run /tn "SuccessImprim_RappelsPaiement"
 echo.
 echo Le resultat de chaque execution est journalise dans :
-echo   C:\xampp\htdocs\successImprim\var\log\rappels_paiement.log
+echo   C:\xamppok\htdocs\successImprim\var\log\rappels_paiement.log
 echo.
 pause

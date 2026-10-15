@@ -76,7 +76,7 @@
 									{% elseif champ.type == 'dates' %}
 										<textarea id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" rows="3">{{ valeur }}</textarea>
 									{% else %}
-										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="text" maxlength="120" value="{{ valeur }}">
+										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="text" maxlength="{{ champ.longueur ?? 120 }}" value="{{ valeur }}">
 									{% endif %}
 									{% if champ.suffixe is defined %}<span>{{ champ.suffixe }}</span>{% endif %}
 								</div>

@@ -4,6 +4,7 @@ namespace App\Twig;
 
 use App\Service\ActionsCaisse\ActionsCaisse;
 use App\Service\Parametres\Parametres;
+use App\Service\Parametres\ReglagesSaisie;
 use App\Service\Pointage\CalculPointage;
 use App\Service\Pointage\Pointages;
 use Twig\Extension\AbstractExtension;
@@ -16,7 +17,7 @@ use Twig\TwigFunction;
  */
 final class ReglagesExtension extends AbstractExtension
 {
-    public function __construct(private readonly Parametres $parametres)
+    public function __construct(private readonly Parametres $parametres, private readonly ReglagesSaisie $reglagesSaisie)
     {
     }
 
@@ -24,6 +25,8 @@ final class ReglagesExtension extends AbstractExtension
     {
         return [
             new TwigFunction('reglage', $this->parametres->valeur(...)),
+            // Objets suggérés à la saisie d'un devis ou d'une commande (liste du champ Objet).
+            new TwigFunction('objets_suggeres', $this->reglagesSaisie->objets(...)),
             // Liens tel: et wa.me d'une ligne d'action de caisse.
             new TwigFunction('liens_action', ActionsCaisse::liens(...)),
         ];

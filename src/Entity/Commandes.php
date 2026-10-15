@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\CodePromoDocumentTrait;
+use App\Entity\Trait\LivraisonObjetDocumentTrait;
 use App\Entity\Trait\SocieteTrait;
 use App\Repository\CommandesRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -20,6 +21,7 @@ class Commandes implements AppartientASociete
 {
     use SocieteTrait;
     use CodePromoDocumentTrait;
+    use LivraisonObjetDocumentTrait;
 
     /*
      * Canal de la commande : saisie au comptoir par un agent,
@@ -620,12 +622,15 @@ class Commandes implements AppartientASociete
     /**
      * Totaux de la commande depuis ses lignes non annulees, comme le
      * formulaire les calcule (remise de commande deduite du montant a
-     * payer). Pour les commandes creees hors formulaire (« Mes produits »).
+     * payer). Pour les commandes creees hors formulaire (« Mes produits »)
+     * et, a chaque enregistrement du formulaire, pour ne jamais garder les
+     * totaux envoyes par le navigateur. Les frais de livraison (sans TVA)
+     * s'ajoutent au HT et au TTC.
      */
     public function recalculerTotaux(): static
     {
-        $ht = 0;
-        $ttc = 0;
+        $ht = $this->getFraisLivraison();
+        $ttc = $this->getFraisLivraison();
         $code = 0;
 
         foreach ($this->commandesDetails as $ligne) {

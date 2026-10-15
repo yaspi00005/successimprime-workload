@@ -92,6 +92,7 @@ final class RecetteEspaceClient
     public const MONTANTS_VOULUS = [
         '/dernière fois \d{2}\/\d{2} [\d \x{00A0}\x{202F}.]+ F$/u' => '« Recommander rapidement » : prix du jour du catalogue, pour qui voit les montants',
         '/\bTotal(?: indicatif)? [\d \x{00A0}\x{202F}.]+ F$/u' => 'total de la commande, pour qui voit les montants (le reste à payer est réservé au payeur)',
+        '/\bFrais de livraison [\d \x{00A0}\x{202F}.]+ F$/u' => 'frais de livraison de la commande, compris dans son total, pour qui voit les montants',
     ];
 
     /** Clés d'argent d'un JSON (« Télécharger mes données », données d'une page, appels de prix). */

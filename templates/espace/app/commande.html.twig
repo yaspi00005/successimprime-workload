@@ -75,6 +75,7 @@
 			<span class="ec-pastille">{{ c.estALivrer ? 'Livraison' : 'Retrait boutique' }}</span>
 		</div>
 		{% if c.estALivrer and c.adresseLivraison %}<div class="ec-petit" style="margin-top:.4rem">Livrer : {{ c.adresseLivraison|nl2br }}</div>{% endif %}
+		{% if c.objet %}<div class="ec-petit" style="margin-top:.4rem">Objet : {{ c.objet }}</div>{% endif %}
 	</div>
 
 	{% for ctl in bats %}
@@ -122,6 +123,12 @@
 			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Code promo {{ c.libelleCodePromo }}</span>
 				{% if not retenu %}<span class="ec-petit">non retenu</span>{% elseif coque.montants and c.remiseCodePromoTtc > 0 %}<span>−{{ c.remiseCodePromoTtc|number_format(0, ',', ' ') }} F{{ carte.aConfirmer ? ' indicatif' }}</span>{% else %}<span class="ec-petit">{{ carte.aConfirmer ? 'à confirmer par l\'atelier' : 'appliqué' }}</span>{% endif %}
 			</div>
+		{% endif %}
+		{# Frais de livraison : choisis par l'atelier quand il confirme la commande, compris dans le total ; le montant pour qui voit les montants (comme le total). #}
+		{% if c.estALivrer and c.fraisLivraison > 0 %}
+			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Frais de livraison</span>{% if coque.montants %}<span>{{ c.fraisLivraison|number_format(0, ',', ' ') }} F</span>{% else %}<span class="ec-petit">comprise</span>{% endif %}</div>
+		{% elseif c.estALivrer and carte.aConfirmer %}
+			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Frais de livraison</span><span class="ec-petit">fixés par l'atelier à la confirmation</span></div>
 		{% endif %}
 		{% if coque.montants %}
 			<div class="ec-ligne"><span>Total{{ carte.aConfirmer ? ' indicatif' }}</span><b>{{ c.totalTtc|number_format(0, ',', ' ') }} F</b></div>

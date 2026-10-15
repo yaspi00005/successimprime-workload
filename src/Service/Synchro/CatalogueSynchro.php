@@ -135,7 +135,8 @@ final class CatalogueSynchro
             // Banque, numérotation, logos et signature restent au local.
             'entreprise' => [
                 'classe' => Entreprise::class, 'sens' => self::DESCENDANT, 'libelle' => 'Entreprise', 'titre' => ['code'],
-                'champs' => ['code', 'raisonSociale', 'nomCommercial', 'mention', 'activite', 'adresse', 'telephone', 'email', 'siteWeb', 'rccm', 'nif', 'marchandOrangeMoney', 'couleurs', 'actif', 'ordre'],
+                // conditionsPaiement : bloc « NB » des factures, que le PDF montre aussi en ligne.
+                'champs' => ['code', 'raisonSociale', 'nomCommercial', 'mention', 'activite', 'adresse', 'telephone', 'email', 'siteWeb', 'rccm', 'nif', 'marchandOrangeMoney', 'couleurs', 'actif', 'ordre', 'conditionsPaiement'],
                 'relations' => ['societe' => 'societe'], 'listes' => [],
             ],
             // Contenu du site vitrine (Réglages › Site vitrine), saisi au local seulement.
@@ -293,12 +294,15 @@ final class CatalogueSynchro
                     // Code promo (docs/promotions.md) : le code tapé (en clair : c'est le client qui l'a tapé) et
                     // l'avantage, déjà dans les totaux. Le motif d'un code non retenu reste au local.
                     'codeSaisi', 'remiseCodePromo',
+                    // Frais de livraison (déjà dans les totaux) et objet (docs/documents-livraisons.md).
+                    'fraisLivraison', 'objet',
                 ],
                 // codePromo : le code retenu par la boutique, pour compter en ligne les utilisations du client.
                 'relations' => ['clients' => 'client', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 // Seul l'import du local crée un solde d'ouverture : une commande venue du site n'en est jamais un.
                 // Le code promo d'une commande passée en ligne n'est retenu que par la boutique, à la confirmation.
-                'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null],
+                // Les frais de livraison d'une commande passée en ligne sont choisis par la boutique, à la confirmation.
+                'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null, 'fraisLivraison' => 0],
                 // Décision du valideur de l'entreprise, prise en ligne.
                 'remontees' => [
                     'validationEntreprise' => [Commandes::VALIDATION_A_FAIRE => [Commandes::VALIDATION_ACCEPTEE, Commandes::VALIDATION_REFUSEE]],
@@ -366,7 +370,7 @@ final class CatalogueSynchro
                 'champs' => [
                     'numero', 'emetteur', 'dateDevis', 'remise', 'tva', 'totalHt', 'totalTtc', 'montantApayer', 'deleted', 'statut', 'etat',
                     'tokenAuthenticite', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation', 'telephoneFacturation', 'emailFacturation',
-                    'codeSaisi', 'remiseCodePromo',
+                    'codeSaisi', 'remiseCodePromo', 'fraisLivraison', 'objet',
                 ],
                 'relations' => ['clients' => 'client', 'commande' => 'commande', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 // Le jeton du lien PDF peut naître en ligne (le client ouvre son devis) : il est gardé.
@@ -390,7 +394,7 @@ final class CatalogueSynchro
                 'champs' => [
                     'numero', 'typeDocument', 'emetteur', 'dateFacture', 'dateEcheance', 'totalHt', 'remise', 'tva', 'montantTva', 'totalTtc', 'montantPaye',
                     'resteAPayer', 'statutPaiement', 'etat', 'tokenAuthenticite', 'codeSuivi', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation',
-                    'telephoneFacturation', 'emailFacturation', 'createdAt', 'updatedAt',
+                    'telephoneFacturation', 'emailFacturation', 'createdAt', 'updatedAt', 'fraisLivraison', 'objet',
                 ],
                 'relations' => ['commande' => 'commande', 'societe' => 'societe'], 'listes' => [],
                 'remontees' => ['tokenAuthenticite' => ['' => ['*']]],

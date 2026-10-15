@@ -723,21 +723,10 @@ final class PromotionsSaisie
         ));
     }
 
-    /** Totaux du devis, comme les calcule le formulaire. */
+    /** Totaux du devis, comme les calcule le formulaire (frais de livraison compris). */
     private static function recalculerDevis(Devis $devis): void
     {
-        $ht = 0;
-        $ttc = 0;
-        $code = 0;
-        foreach ($devis->getDevisDetails() as $ligne) {
-            $ht += $ligne->getTotalHt();
-            $ttc += $ligne->getTotalTtc();
-            $code += $ligne->getRemiseCodePromo();
-        }
-        $devis->setTotalHt($ht);
-        $devis->setRemiseCodePromo($code);
-        $devis->setTotalTtc($ttc);
-        $devis->setMontantApayer(max(0, $ttc - (int) $devis->getRemise()));
+        $devis->recalculerTotaux();
     }
 
     /**

@@ -39,6 +39,8 @@
 
 		.lignes { margin-top: 12px; }
 		.lignes th { background: {{ c[0] }}; color: #fff; font-size: 7.6px; text-align: left; padding: 6px 7px; }
+		.lignes th.droite { text-align: right; }
+		.lignes th.centre { text-align: center; }
 		.lignes td { padding: 6px 7px; border-bottom: 1px solid #e5e7eb; }
 		.lignes tr.paire td { background: #f8fafc; }
 		.designation { font-weight: bold; color: #111827; }
@@ -47,6 +49,10 @@
 		.totaux td { padding: 4px 7px; border-bottom: 1px solid #eef0f4; }
 		.totaux .final td { background: {{ c[0] }}; color: #fff; font-size: 11px; font-weight: bold; padding: 7px; border: 0; }
 		.lettres { background: #f3f5f9; padding: 7px 10px; margin-top: 12px; font-size: 8px; }
+		.objet { margin-top: 10px; font-size: 9px; color: #111827; }
+		.objet b { color: {{ c[0] }}; }
+		.nb { border: 1px solid #d5dce6; border-left: 3px solid {{ c[0] }}; padding: 6px 9px; margin-top: 12px; font-size: 7.8px; color: #374151; }
+		.nb b { color: #111827; }
 
 		.cadre-om { border: 1.4px solid #f97316; padding: 7px; }
 		.cadre-om img { width: 58px; height: 58px; }
@@ -125,8 +131,13 @@
 			{% endif %}
 		</tr></table>
 
+		{# Objet de la commande (« Impressions »…), copié sur la facture à sa création. #}
+		{% if facture.objet|default(null) %}<div class="objet"><b>Objet :</b> {{ facture.objet }}</div>{% endif %}
+
+		{% set fraisLivraison = facture.fraisLivraison|default(0) %}
 		<table class="lignes">
 			<thead><tr>
+				<th class="centre" style="width: 5%">N°</th>
 				<th>Désignation</th>
 				<th class="centre" style="width: 9%">Qté</th>
 				<th class="droite" style="width: 15%">PU (F)</th>
@@ -136,6 +147,7 @@
 			<tbody>
 				{% for detail in details %}
 					<tr class="{{ loop.index is even ? 'paire' }}">
+						<td class="centre muted">{{ loop.index }}</td>
 						<td>
 							<div class="designation">{{ detail.designation|default('Prestation') }}</div>
 							{% if detail.observation|default('') %}<div class="detail">{{ detail.observation }}</div>{% endif %}
@@ -149,8 +161,19 @@
 						<td class="droite fort">{{ (detail.totalTtc|default(detail.totalHt|default(0)))|number_format(0, ',', ' ') }}</td>
 					</tr>
 				{% else %}
-					<tr><td colspan="5" class="centre muted">Aucune ligne.</td></tr>
+					<tr><td colspan="6" class="centre muted">Aucune ligne.</td></tr>
 				{% endfor %}
+				{# Frais de livraison : une ligne visible, déjà comprise dans le total HT. #}
+				{% if fraisLivraison > 0 %}
+					<tr class="{{ (details|length + 1) is even ? 'paire' }}">
+						<td class="centre muted">{{ details|length + 1 }}</td>
+						<td><div class="designation">Livraison</div></td>
+						<td class="centre">1</td>
+						<td class="droite">{{ fraisLivraison|number_format(0, ',', ' ') }}</td>
+						{% if avecRemise %}<td class="droite">—</td>{% endif %}
+						<td class="droite fort">{{ fraisLivraison|number_format(0, ',', ' ') }}</td>
+					</tr>
+				{% endif %}
 			</tbody>
 		</table>
 
@@ -179,9 +202,10 @@
 					{% if facture.surfacturation and facture.montantSurfacturation > 0 %}
 						<tr><td>Majoration{{ facture.tauxSurfacturation ? ' (' ~ facture.tauxSurfacturation ~ ' %)' }}</td><td class="droite">+ {{ (facture.montantSurfacturation)|number_format(0, ',', ' ') }} F</td></tr>
 					{% endif %}
-					{% if facture.comptabilisee and facture.montantPaye > 0 %}
+					{# Facture : total, déjà payé (même 0) et reste à payer, comme l'ancien modèle. #}
+					{% if facture.comptabilisee %}
 						<tr><td class="fort">Total TTC</td><td class="droite fort">{{ (facture.totalTtc)|number_format(0, ',', ' ') }} F</td></tr>
-						<tr><td>Déjà payé</td><td class="droite">− {{ (facture.montantPaye)|number_format(0, ',', ' ') }} F</td></tr>
+						<tr><td>Déjà payé</td><td class="droite">{{ facture.montantPaye > 0 ? '− ' }}{{ (facture.montantPaye)|number_format(0, ',', ' ') }} F</td></tr>
 						<tr class="final"><td>Reste à payer</td><td class="droite">{{ (facture.resteAPayer)|number_format(0, ',', ' ') }} F</td></tr>
 					{% else %}
 						<tr class="final"><td>Total TTC{{ facture.estProforma ? '' : ' à payer' }}</td><td class="droite">{{ (facture.totalTtc)|number_format(0, ',', ' ') }} F</td></tr>
@@ -209,9 +233,10 @@
 			</td>
 			<td style="width: 4%"></td>
 			<td>
-				<div class="etiquette">Conditions</div>
-				{{ facture.estProforma ? 'Proforma valable 30 jours, sans valeur comptable.' : 'Paiement à réception.' }}
-				Frais de transaction mobile money à la charge du client.
+				{% if facture.estProforma %}
+					<div class="etiquette">Conditions</div>
+					Proforma valable 30 jours, sans valeur comptable.
+				{% endif %}
 			</td>
 			{% if images.signature %}
 				<td class="signature droite" style="width: 26%">
@@ -220,6 +245,11 @@
 				</td>
 			{% endif %}
 		</tr></table>
+
+		{# Conditions de paiement de l'entreprise (Réglages › Entreprises) ; vide : pas de bloc. #}
+		{% if entreprise.conditionsPaiement|default('') %}
+			<div class="nb"><b>NB :</b> {{ entreprise.conditionsPaiement|nl2br }}</div>
+		{% endif %}
 	</div>
 </body>
 </html>

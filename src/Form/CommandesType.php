@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Service\Parametres\Parametres;
+use App\Service\Parametres\ReglagesSaisie;
 use App\Entity\Clients;
 use App\Entity\Commandes;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
@@ -18,6 +19,7 @@ use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\GreaterThanOrEqual;
+use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotNull;
 use Symfony\Component\Validator\Constraints\Valid;
 use App\Entity\CommandesDetails;
@@ -28,7 +30,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 
 class CommandesType extends AbstractType
 {
-    public function __construct(private readonly Security $security, private readonly ?Parametres $parametres = null)
+    public function __construct(private readonly Security $security, private readonly ?Parametres $parametres = null, private readonly ?ReglagesSaisie $reglagesSaisie = null)
     {
     }
 
@@ -203,6 +205,47 @@ class CommandesType extends AbstractType
                     'class' => 'form-control',
                     'maxlength' => 255,
                     'placeholder' => 'Adresse ou repère',
+                ],
+            ])
+
+            /*
+             * Frais de livraison (docs/documents-livraisons.md) : « Sans
+             * frais » ou un palier des Réglages, jamais un montant tapé.
+             * Un autre montant envoyé est refusé ; en retrait boutique, les
+             * frais retombent à 0 (voir POST_SUBMIT ci-dessous).
+             */
+            ->add('fraisLivraison', ChoiceType::class, [
+                'label' => 'Frais de livraison',
+                'choices' => ReglagesSaisie::choixFrais(
+                    $this->reglagesSaisie?->paliers() ?? ReglagesSaisie::lirePaliers(ReglagesSaisie::PALIERS_DEFAUT) ?? [],
+                    ($options['data'] ?? null) instanceof Commandes ? $options['data']->getFraisLivraison() : 0
+                ),
+                'expanded' => true,
+                'required' => false,
+                'placeholder' => false,
+                'empty_data' => '0',
+                'invalid_message' => 'Frais de livraison non permis : choisissez « Sans frais » ou un montant proposé.',
+            ])
+            ->addEventListener(FormEvents::POST_SUBMIT, static function (FormEvent $event): void {
+                $commande = $event->getData();
+                if ($commande instanceof Commandes && !$commande->estALivrer()) {
+                    $commande->setFraisLivraison(0);
+                }
+            })
+
+            // Objet de la commande (« Impressions »…), imprimé sur la facture.
+            ->add('objet', TextType::class, [
+                'label' => 'Objet',
+                'required' => false,
+                'attr' => [
+                    'class' => 'form-control',
+                    'maxlength' => 150,
+                    'list' => 'objets-suggeres',
+                    'autocomplete' => 'off',
+                    'placeholder' => 'Impressions, prestations informatiques…',
+                ],
+                'constraints' => [
+                    new Length(max: 150, maxMessage: 'L\'objet tient en {{ limit }} caractères au plus.'),
                 ],
             ])
 

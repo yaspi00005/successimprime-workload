@@ -59,6 +59,39 @@ Fait (L01) : **Planning des livraisons** (`/livraisons/planning`, bureau) : livr
 
 Reste : la position du livreur en direct, L04 (suivi par le client, avec l'espace client J5) et l'étape « Pose » de la maquette.
 
+## Frais de livraison et objet (15/10/2026)
+
+Demande de Yaya : des boutons pour les frais de livraison au lieu de taper le montant, et l'objet de la commande sur les devis et les factures.
+
+**Paliers.** Réglages › Ventes › « Livraison et objet » (direction seulement, `ReglagesSaisie`). Par défaut 1 000, 1 500, 2 000 et 2 500 F : le plus grand est le maximum. De 1 à 100 000 F, 8 paliers au plus ; vide : pas de frais. La tuile ne part pas sur le site.
+
+**Saisie.**
+- Commande : dans « Livraison et délai », en mode Livraison seulement, des boutons « Sans frais · 1 000 F · 1 500 F · 2 000 F · 2 500 F ». Sur téléphone, à l'étape 3 (récapitulatif).
+- Devis : une carte « Livraison » avec les mêmes boutons. Un devis avec des frais devient une commande à livrer quand il est accepté.
+- Le récapitulatif montre une ligne « Livraison » et l'ajoute au total.
+
+**Contrôles du serveur.**
+- Seuls 0 et les paliers sont acceptés (le formulaire refuse un autre montant avec « Frais de livraison non permis »). Un montant enregistré avant un changement de réglage reste permis sur ce document.
+- Retrait boutique : les frais sont remis à 0.
+- Les totaux du devis et de la commande sont refaits par le serveur depuis les lignes et les frais (`recalculerTotaux`), jamais repris du navigateur.
+
+**Montants.** Les frais sont sans TVA et compris dans le total HT et le total TTC. Ils comptent donc dans le reste à payer, le solde du client et les statistiques. C'est toujours une ligne « Livraison » visible (devis, commande, proforma, facture), jamais un prix de ligne gonflé. Aucun montant dans les notifications ni les SMS.
+
+**Suivi.** Devis → commande → facture : les frais et l'objet sont copiés. Sur la facture, la copie est figée avec les montants.
+
+**Commande passée en ligne.** Le client ne choisit pas les frais. La commande arrive au local sans frais (`imposeAuLocal` de `CatalogueSynchro`). La boutique les choisit dans le formulaire avant de confirmer le brouillon. Dans l'espace client, la ligne « Frais de livraison » montre :
+- le montant, si le compte voit les montants (comme le total : payeur et valideur) ;
+- « comprise » sinon (demandeur) ;
+- « fixés par l'atelier à la confirmation » tant que la commande est à confirmer.
+
+La recette des accès accepte ce montant pour le valideur (`RecetteEspaceClient::MONTANTS_VOULUS`), comme le total.
+
+**Objet.**
+- Champ libre et facultatif, 150 caractères au plus, sous le client du devis et de la commande.
+- Suggestions réglables dans la même tuile : Impressions, Prestations informatiques, Conception graphique, Signalétique, Textile personnalisé.
+- Imprimé « Objet : … » en haut du devis, de la proforma et de la facture.
+- Montré sur les fiches et dans l'espace client.
+
 ## Ordre proposé
 
 1. **D01 à D04 :** les documents servent tous les jours. Le montant en lettres et les mentions par société sont la base.

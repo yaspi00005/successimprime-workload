@@ -136,6 +136,18 @@ final class CatalogueParametres
                 ],
                 'motsCles' => ['Orange Money · numéro marchand et frais', 'Fonds de soutien · frais de retrait', 'Espèces · virement · acompte', 'Reçu de paiement WhatsApp'],
             ],
+            // Saisie des devis et commandes (docs/documents-livraisons.md) : boutons des frais de
+            // livraison et objets suggérés. Ne part pas sur le site : le client ne choisit pas les frais.
+            ReglagesSaisie::TUILE => [
+                'famille' => 'ventes', 'libelle' => 'Livraison et objet', 'icone' => 'fa-truck',
+                'roles' => ['ROLE_ADMIN'], 'route' => null,
+                'champs' => [
+                    ['cle' => 'paliers_livraison', 'type' => 'texte', 'format' => 'montants', 'libelle' => 'Frais de livraison proposés', 'aide' => 'Montants en F séparés par des virgules, du plus petit au plus grand : le plus grand est le maximum. Vide : pas de frais de livraison.', 'suffixe' => 'F', 'defaut' => ReglagesSaisie::PALIERS_DEFAUT],
+                    ['cle' => 'objets', 'type' => 'texte', 'longueur' => 500, 'libelle' => 'Objets suggérés', 'aide' => 'Séparés par des virgules. L\'objet reste libre à la saisie (150 caractères).', 'defaut' => ReglagesSaisie::OBJETS_DEFAUT],
+                ],
+                'motsCles' => ['Frais de livraison · 1 000, 1 500, 2 000, 2 500 F', 'Objet de la commande · impressions, prestations informatiques', 'Devis, commande, facture'],
+                'note' => 'Frais : montants en F séparés par des virgules ; le plus grand est le maximum, vide = pas de frais. À la saisie d\'un devis ou d\'une commande livrée, l\'agent choisit « Sans frais » ou un palier : une ligne « Livraison » paraît sur le devis, la commande et la facture. Objets : séparés par des virgules, simples suggestions. Les conditions de paiement (bloc « NB » des factures) se règlent par entreprise, tuile Entités et en-têtes.',
+            ],
             // Demande de conception dans l'espace client (docs/demande-conception.md). Le coût
             // d'une image chez le fournisseur reste au local (CatalogueSynchro::REGLAGES_PUBLICS).
             'conception' => [
@@ -533,9 +545,19 @@ final class CatalogueParametres
 
                 default:
                     $texte = trim((string) $brut);
-                    if (mb_strlen($texte) > 120) {
-                        $erreurs[$cle] = '120 caractères au plus.';
+                    $longueur = $champ['longueur'] ?? 120;
+                    if (mb_strlen($texte) > $longueur) {
+                        $erreurs[$cle] = $longueur.' caractères au plus.';
                         break;
+                    }
+                    // Liste de montants (paliers des frais de livraison) : contrôlée, puis rangée.
+                    if (($champ['format'] ?? null) === 'montants') {
+                        $paliers = ReglagesSaisie::lirePaliers($texte);
+                        if ($paliers === null) {
+                            $erreurs[$cle] = \sprintf('Montants entiers de 1 à %s F, %d au plus, séparés par des virgules (ex. 1000, 1500, 2000).', number_format(ReglagesSaisie::PALIER_MAX, 0, ',', ' '), ReglagesSaisie::PALIERS_NOMBRE_MAX);
+                            break;
+                        }
+                        $texte = ReglagesSaisie::ecrirePaliers($paliers);
                     }
                     $valeurs[$cle] = $texte;
             }

@@ -1334,6 +1334,7 @@
                                 }}
 
 							</h5>
+							{% if devis.interlocuteur %}<p class="mb-2"><span class="text-muted">À l'attention de</span> <strong>{{ devis.interlocuteur }}</strong></p>{% endif %}
 
 
 							{% if client.telephone|default('') %}

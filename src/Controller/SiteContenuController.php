@@ -23,8 +23,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Contenu du site vitrine (Réglages › Site vitrine) : pages, réalisations,
- * avis clients, conseils, partenaires, chiffres et référencement
- * (docs/referencement.md).
+ * avis clients, conseils, partenaires, annonces (bandes du site et de
+ * l'espace client), chiffres et référencement (docs/referencement.md).
  *
  * Se modifie sur l'ERP local seulement, puis descend au site avec la
  * synchronisation : en ligne, l'écran est fermé.
@@ -35,7 +35,7 @@ final class SiteContenuController extends AbstractController
 {
     private const ONGLETS = [...ContenuSite::TYPES, 'chiffres' => ['libelle' => 'Chiffres'], 'referencement' => ['libelle' => 'Référencement']];
 
-    private const TYPES = 'pages|realisations|avis|conseils|partenaires';
+    private const TYPES = 'pages|realisations|avis|conseils|partenaires|annonces';
 
     public function __construct(
         private readonly ContenuSite $contenu,

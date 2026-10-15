@@ -1101,6 +1101,7 @@
 					{# Repris par le script existant (tarif B2B ou B2C). #}
 					<small class="text-muted"><span class="js-profil-client">Sélectionnez un client</span> · <span class="js-profil-client-aide">Le tarif B2B ou B2C sera appliqué automatiquement.</span></small>
 				</div>
+				{% include 'partials/_interlocuteur.html.twig' with {champ: form.demandeePar, libelle: 'Commandé par'} %}
 			</div>
 
 			{# ---------- Lignes ---------- #}

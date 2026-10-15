@@ -179,7 +179,14 @@ class Devis implements AppartientASociete
     #[Assert\Email(message: 'L’adresse email de facturation n’est pas valide.')]
     private ?string $emailFacturation = null;
 
-
+    /**
+     * Personne du client à qui le devis s'adresse (« À l'attention de ») :
+     * une entreprise a souvent deux ou trois interlocuteurs. Texte libre,
+     * proposé parmi les contacts de la fiche ; repris par la commande
+     * (Commandes::$demandeePar, « Commandé par »).
+     */
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $interlocuteur = null;
 
     public function __construct()
     {
@@ -537,6 +544,19 @@ class Devis implements AppartientASociete
     public function setEmailFacturation(?string $emailFacturation): static
     {
         $this->emailFacturation = $emailFacturation;
+
+        return $this;
+    }
+
+    public function getInterlocuteur(): ?string
+    {
+        return $this->interlocuteur;
+    }
+
+    public function setInterlocuteur(?string $nom): static
+    {
+        $nom = mb_substr(trim((string) preg_replace('/\s+/u', ' ', (string) $nom)), 0, 80);
+        $this->interlocuteur = '' === $nom ? null : $nom;
 
         return $this;
     }

@@ -1,0 +1,21 @@
+{#
+	Champ « Interlocuteur » de la saisie d'un devis (« À l'attention de »)
+	ou d'une commande (« Commandé par ») : la personne du client qui
+	demande, quand une entreprise en a plusieurs. Liste proposée par
+	public/js/interlocuteurs.js (contacts de la fiche et noms déjà notés).
+	Paramètres : champ (le champ du formulaire), libelle.
+#}
+<div class="si-interlocuteur mt-2">
+	{{ form_label(champ, libelle, {label_attr: {class: 'form-label mb-1'}}) }}
+	{{ form_widget(champ, {attr: {
+		class: 'form-control form-control-sm js-interlocuteur',
+		list: champ.vars.id ~ '-liste',
+		autocomplete: 'off',
+		maxlength: 80,
+		placeholder: 'La personne qui demande, chez le client (facultatif)',
+		'data-url': path('app_saisie_interlocuteurs', {id: 0})|replace({'/0': '/__id__'}),
+	}}) }}
+	<datalist id="{{ champ.vars.id }}-liste"></datalist>
+	{{ form_errors(champ) }}
+</div>
+<script src="{{ asset('js/interlocuteurs.js') }}" defer></script>

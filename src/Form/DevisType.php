@@ -101,6 +101,14 @@ class DevisType extends AbstractType
 
            
 
+            // « À l'attention de » : la personne du client qui demande (une entreprise en a souvent plusieurs).
+            ->add('interlocuteur', TextType::class, [
+                'label' => 'À l\'attention de',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 80],
+            ])
+
             ->add('remise', IntegerType::class, [
                 'label' => 'Remise globale',
                 'required' => false,

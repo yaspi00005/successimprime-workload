@@ -14,7 +14,7 @@ final class DevisCommandeConverterTest extends TestCase
 {
     public function testLaCommandeIssueDUnDevisAccepteRecoitSonNumero(): void
     {
-        $devis = (new Devis())->setStatut(Devis::STATUT_ACCEPTE);
+        $devis = (new Devis())->setStatut(Devis::STATUT_ACCEPTE)->setInterlocuteur('  Awa   Koné ');
         $devis->addDevisDetail((new DevisDetails())->setDesignation('Bâche 300 × 100 cm')->setQuantite(1));
 
         $commande = null;
@@ -38,5 +38,7 @@ final class DevisCommandeConverterTest extends TestCase
         self::assertSame('CMD-000777-'.(new \DateTimeImmutable())->format('m-Y'), $resultat->getNumero());
         self::assertSame($resultat, $devis->getCommande());
         self::assertSame(Devis::STATUT_CONVERTI, $devis->getStatut());
+        // La personne à qui s'adressait le devis a commandé (« Commandé par »).
+        self::assertSame('Awa Koné', $resultat->getDemandeePar());
     }
 }

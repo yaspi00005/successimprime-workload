@@ -183,6 +183,12 @@ final class CatalogueSynchro
                 'champs' => ['cle', 'valeurs'],
                 'relations' => [], 'listes' => [],
             ],
+            // Bandes d'annonces du site public et de l'espace client (Réglages › Site vitrine › Annonces).
+            'site_annonce' => [
+                'classe' => \App\Entity\Annonce::class, 'sens' => self::DESCENDANT, 'libelle' => 'Annonce', 'titre' => ['texte'],
+                'champs' => ['texte', 'lien', 'libelleLien', 'style', 'cible', 'debut', 'fin', 'publie', 'ordre', 'modifieLe'],
+                'relations' => [], 'listes' => [],
+            ],
             'categorie' => [
                 'classe' => CategorieProduit::class, 'sens' => self::DESCENDANT, 'libelle' => 'Catégorie', 'titre' => ['nom'],
                 'champs' => ['nom', 'description', 'publie', 'ordre'],
@@ -255,6 +261,13 @@ final class CatalogueSynchro
                 'relations' => ['client' => 'client'], 'listes' => [],
                 // Un seul accès par client : recréé au local, il remplace celui du site.
                 'uniqueSur' => ['client'],
+            ],
+            // Accès à l'espace client suspendu par la boutique (fiche client, docs/espace-client.md) : la fiche, le
+            // numéro de la personne (vide : tout le compte), le début et la levée. Motif, nom et employés restent au local.
+            'suspension_espace' => [
+                'classe' => \App\Entity\SuspensionEspace::class, 'sens' => self::DESCENDANT, 'libelle' => 'Suspension de l\'espace client', 'titre' => ['telephone', 'suspenduLe'],
+                'champs' => ['telephone', 'suspenduLe', 'leveeLe'],
+                'relations' => ['client' => 'client'], 'listes' => [],
             ],
             // Promotions (docs/promotions.md) : ce que l'espace client montre à chacun des siennes. Le code promo
             // simple, la note interne et les auteurs restent au local ; une promotion à code simple ne paraît pas
@@ -367,6 +380,8 @@ final class CatalogueSynchro
                     'numero', 'emetteur', 'dateDevis', 'remise', 'tva', 'totalHt', 'totalTtc', 'montantApayer', 'deleted', 'statut', 'etat',
                     'tokenAuthenticite', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation', 'telephoneFacturation', 'emailFacturation',
                     'codeSaisi', 'remiseCodePromo',
+                    // Personne du client à qui le devis s'adresse (« À l'attention de »).
+                    'interlocuteur',
                 ],
                 'relations' => ['clients' => 'client', 'commande' => 'commande', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 // Le jeton du lien PDF peut naître en ligne (le client ouvre son devis) : il est gardé.

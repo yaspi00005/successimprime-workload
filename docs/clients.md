@@ -56,6 +56,8 @@ Toutes les saisies passent par `src/Service/Clients/EditionClient.php`.
   - une ligne « Prospection » faite est créée au nom du commercial, ce qui lui donne ses points.
 - **Import** : Réglages › Import des données (Direction, ERP local) crée les fiches en passant par les mêmes contrôles que la saisie (`EditionClient`), sans aucun message au client, et repère les doublons par code, téléphone (fiche, second numéro, contacts) puis nom dans n'importe quel ordre. Les soldes de départ des clients s'importent à part (« Solde d'ouverture »). Voir docs/import-donnees.md.
 - **Invitation à l'espace client** : la case cochée à la création affiche, sur la fiche, un bouton WhatsApp avec le lien de connexion. Le client se connecte ensuite avec son numéro et un code.
+- **Suspendre l'accès à l'espace client** (bloc « Accès à l'espace client » de la fiche, droit Clients, ERP local) : tout le compte ou une personne (son numéro), avec un motif gardé à l'atelier ; « Rétablir » rend l'accès. Chaque geste est au journal de la fiche ; rien n'est effacé. Sans rapport avec le statut « Bloqué ». Voir docs/espace-client.md, « Suspendre l'accès à l'espace client ».
+- **Plusieurs interlocuteurs** : une entreprise a souvent deux ou trois personnes qui commandent. Le devis note « À l'attention de », la commande « Commandé par » (liste proposée : contacts de la fiche et noms déjà notés) ; la fiche les montre sous le numéro, dans les onglets Commandes (« par X ») et Devis (« pour X »). Voir docs/espace-client.md, « Plusieurs interlocuteurs pour une entreprise ».
 
 ## Reste à faire
 

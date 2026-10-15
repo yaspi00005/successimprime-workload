@@ -8,6 +8,7 @@ use App\Entity\CompteClient;
 use App\Repository\AccesEspaceClientRepository;
 use App\Repository\CompteClientRepository;
 use App\Service\EspaceClient\NotificationsClient;
+use App\Service\EspaceClient\SuspensionsEspace;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
@@ -35,6 +36,7 @@ final class EspaceClientComptes
         private readonly EntityManagerInterface $em,
         private readonly CodeDeConnexion $codes,
         private readonly AccesEspaceClientRepository $acces,
+        private readonly ?SuspensionsEspace $suspensions = null,
     ) {
     }
 
@@ -50,7 +52,8 @@ final class EspaceClientComptes
      *    de la fiche, sinon par SMS (CompteClient::emailDesCodes) ;
      *  - une fiche client a ce numéro : l'e-mail de la fiche, sinon par SMS ;
      *  - « Créer un compte » pour un numéro inconnu : l'e-mail saisi, sinon par SMS ;
-     *  - numéro inconnu sans création, ou compte fermé : rien ne part.
+     *  - numéro inconnu sans création, compte fermé, ou accès suspendu par
+     *    la boutique : rien ne part (même réponse qu'un numéro inconnu).
      *
      * L'e-mail tapé dans « Créer un compte » ne sert jamais pour un numéro
      * déjà connu : avec seulement le numéro de quelqu'un, on ne reçoit pas
@@ -60,7 +63,7 @@ final class EspaceClientComptes
     {
         $compte = $this->comptes->parTelephone($telephone);
         if (null !== $compte) {
-            if (!$compte->isActif() || null === $compte->getClient()) {
+            if (!$compte->isActif() || null === $compte->getClient() || true === $this->suspensions?->compteSuspendu($compte)) {
                 return DestinationCode::inconnue($telephone);
             }
 
@@ -70,6 +73,9 @@ final class EspaceClientComptes
         }
 
         $client = $this->comptes->clientDuTelephone($telephone);
+        if (null !== $client && true === $this->suspensions?->numeroSuspendu($client, $telephone)) {
+            return DestinationCode::inconnue($telephone);
+        }
         if (null !== $client) {
             return NotificationsClient::estDemo($client)
                 ? DestinationCode::demonstration($telephone)

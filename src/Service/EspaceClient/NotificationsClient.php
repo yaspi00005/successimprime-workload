@@ -59,6 +59,8 @@ final class NotificationsClient implements EventSubscriberInterface
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(MAILER_DSN)%')] private readonly string $mailerDsn,
         #[Autowire('%env(MAILER_FROM_ADDRESS)%')] private readonly string $expediteur,
+        // Accès suspendu par la boutique : ni notification, ni SMS, ni e-mail.
+        private readonly ?SuspensionsEspace $suspensions = null,
     ) {
     }
 
@@ -114,6 +116,7 @@ final class NotificationsClient implements EventSubscriberInterface
             $this->em->getRepository(NotificationClientEnvoyee::class)->findBy(['client' => $client]),
         ));
         $comptes = $this->em->getRepository(CompteClient::class)->findBy(['client' => $client, 'actif' => true]);
+        $comptes = null !== $this->suspensions ? $this->suspensions->sansSuspendus($comptes) : $comptes;
         $depuis = $maintenant->modify(\sprintf('-%d hours', self::FRAICHEUR_HEURES));
         $envoyees = [];
         foreach (array_reverse($fil) as $n) {
@@ -180,7 +183,7 @@ final class NotificationsClient implements EventSubscriberInterface
             $compte = $d->getCompte();
             $client = $compte->getClient();
             $categorie = PreferencesNotifications::CATEGORIE_DU_TYPE[$d->getType()] ?? null;
-            $toujours = null !== $client && null !== $categorie && $compte->isActif() && \in_array($d->getCanal(), PreferencesNotifications::canaux($compte, $categorie), true);
+            $toujours = null !== $client && null !== $categorie && $compte->isActif() && true !== $this->suspensions?->compteSuspendu($compte) && \in_array($d->getCanal(), PreferencesNotifications::canaux($compte, $categorie), true);
             $numero = CompteClient::normaliserTelephone($compte->getTelephone()) ?? $compte->getTelephone();
             if (!$toujours || $d->getEvenementLe() < $depuis || !$this->smsPossible($client) || isset($partis[$numero.'|'.$d->getCle()])) {
                 $d->terminer(NotificationClientDifferee::PERIMEE, $maintenant);

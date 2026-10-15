@@ -4,10 +4,10 @@ namespace App\Controller;
 
 use App\Entity\Finition;
 use App\Entity\TypesImpression;
-use App\Form\FinitionType;
 use App\Repository\FinitionRepository;
 use App\Repository\TypesImpressionRepository;
 use App\Security\JetonJson;
+use App\Service\Parametres\LongueursCatalogue;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -118,6 +118,18 @@ public function index(
             return $this->json([
                 'success' => false,
                 'message' => 'La description de la finition est obligatoire.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Au-delà de sa colonne, la base refuserait le nom (erreur 500).
+        $tropLong = LongueursCatalogue::erreur([
+            'Nom de la finition' => [$nom, LongueursCatalogue::FINITION_NOM],
+        ]);
+
+        if ($tropLong !== null) {
+            return $this->json([
+                'success' => false,
+                'message' => $tropLong,
             ], Response::HTTP_BAD_REQUEST);
         }
 
@@ -507,6 +519,18 @@ public function index(
             ], Response::HTTP_BAD_REQUEST);
         }
 
+        // Au-delà de sa colonne, la base refuserait le nom (erreur 500).
+        $tropLong = LongueursCatalogue::erreur([
+            'Nom de la finition' => [$nom, LongueursCatalogue::FINITION_NOM],
+        ]);
+
+        if ($tropLong !== null) {
+            return $this->json([
+                'success' => false,
+                'message' => $tropLong,
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
         if ($typeIds === []) {
             return $this->json([
                 'success' => false,
@@ -689,7 +713,10 @@ public function index(
 
     /*
      * =========================================================
-     * ROUTES CLASSIQUES GÉNÉRÉES PAR SYMFONY
+     * ANCIENNES ADRESSES DES PAGES DU THÈME
+     * Ajout, fiche et modification se font dans la liste (fenêtres
+     * de la page) : ces adresses y renvoient. Mêmes droits que la
+     * liste (access_control : ROLE_ADMIN sur /finition).
      * =========================================================
      */
 
@@ -698,107 +725,21 @@ public function index(
         name: 'app_finition_new',
         methods: ['GET', 'POST']
     )]
-    public function new(
-        Request $request,
-        EntityManagerInterface $entityManager
-    ): Response {
-        $finition = new Finition();
-
-        $form = $this->createForm(
-            FinitionType::class,
-            $finition
-        );
-
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($finition);
-            $entityManager->flush();
-
-            return $this->redirectToRoute(
-                'app_finition_index',
-                [],
-                Response::HTTP_SEE_OTHER
-            );
-        }
-
-        return $this->render('finition/new.html.twig', [
-            'finition' => $finition,
-            'form' => $form,
-        ]);
-    }
-
     #[Route(
         '/{id}',
         name: 'app_finition_show',
         requirements: ['id' => '\d+'],
         methods: ['GET']
     )]
-    public function show(
-        Finition $finition
-    ): Response {
-        return $this->render('finition/show.html.twig', [
-            'finition' => $finition,
-        ]);
-    }
-
     #[Route(
         '/{id}/edit',
         name: 'app_finition_edit',
         requirements: ['id' => '\d+'],
         methods: ['GET', 'POST']
     )]
-    public function edit(
-        Request $request,
-        Finition $finition,
-        EntityManagerInterface $entityManager
-    ): Response {
-        $form = $this->createForm(
-            FinitionType::class,
-            $finition
-        );
-
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
-
-            return $this->redirectToRoute(
-                'app_finition_index',
-                [],
-                Response::HTTP_SEE_OTHER
-            );
-        }
-
-        return $this->render('finition/edit.html.twig', [
-            'finition' => $finition,
-            'form' => $form,
-        ]);
-    }
-
-    #[Route(
-        '/{id}',
-        name: 'app_finition_delete',
-        requirements: ['id' => '\d+'],
-        methods: ['POST']
-    )]
-    public function delete(
-        Request $request,
-        Finition $finition,
-        EntityManagerInterface $entityManager
-    ): Response {
-        if ($this->isCsrfTokenValid(
-            'delete'.$finition->getId(),
-            $request->getPayload()->getString('_token')
-        )) {
-            $this->retirerRelationsTypesImpression(
-                $finition
-            );
-
-            $entityManager->remove($finition);
-            $entityManager->flush();
-        }
-
+    #[IsGranted('ROLE_ADMIN')]
+    public function anciennePage(): Response
+    {
         return $this->redirectToRoute(
             'app_finition_index',
             [],

@@ -1,13 +1,62 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Edit Paiements{% endblock %}
+{# Modification d'un paiement en attente (PaiementsController::edit, droit
+   « Encaisser »). Un paiement validé ne passe jamais par ici : il se corrige
+   en l'annulant depuis sa fiche. #}
+
+{% block title %}Modifier le paiement #{{ paiement.id }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_paiements_show', {id: paiement.id}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Retour au paiement</a>
+	</li>
+{% endblock %}
 
 {% block body %}
-    <h1>Edit Paiements</h1>
+	<div class="row">
+		<div class="col-xl-7 col-lg-9">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete">
+					<h4>Paiement en attente</h4>
+					{% if paiement.commande %}
+						<a href="{{ path('app_commandes_show', {id: paiement.commande.id}) }}">Commande {{ paiement.commande.numero|default('#' ~ paiement.commande.id) }}</a>
+					{% endif %}
+				</div>
+				<p class="text-muted small mb-3">Seul un paiement en attente se modifie. Une fois validé, il se corrige en l'annulant.</p>
 
-    {{ include('paiements/_form.html.twig', {'button_label': 'Update'}) }}
+				{{ form_start(form, {attr: {class: 'si-paiement-modifier'}}) }}
+					{{ form_errors(form) }}
+					<div class="row g-2">
+						{% for nom, classe in {montant: 'form-control', mode: 'form-select', compteTresorerie: 'form-select', reference: 'form-control'} %}
+							{% set champ = form[nom] %}
+							<div class="col-md-6">
+								{{ form_label(champ, null, {label_attr: {class: 'si-libelle-champ'}}) }}
+								{{ form_widget(champ, {attr: champ.vars.attr|merge({class: classe})}) }}
+								{{ form_help(champ, {help_attr: {class: 'form-text text-muted small'}}) }}
+								{{ form_errors(champ) }}
+							</div>
+						{% endfor %}
+						<div class="col-12 pt-1">
+							<span class="si-libelle-champ">Frais payés par le client en plus (Orange Money et Wave seulement)</span>
+							<div class="d-flex flex-wrap gap-3">
+								{% for champ in [form.fondsSoutienInclus, form.fraisRetraitInclus] %}
+									<div class="form-check">
+										{{ form_widget(champ, {attr: {class: 'form-check-input'}}) }}
+										{{ form_label(champ, null, {label_attr: {class: 'form-check-label'}}) }}
+									</div>
+								{% endfor %}
+							</div>
+						</div>
+					</div>
+					<div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+						<a href="{{ path('app_paiements_show', {id: paiement.id}) }}" class="btn si-btn-discret">Annuler</a>
+						<button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
+					</div>
+				{{ form_end(form) }}
 
-    <a href="{{ path('app_paiements_index') }}">back to list</a>
-
-    {{ include('paiements/_delete_form.html.twig') }}
+				<hr>
+				{{ include('paiements/_delete_form.html.twig') }}
+			</div>
+		</div>
+	</div>
 {% endblock %}

@@ -6,6 +6,7 @@ use App\Entity\TypesImpression;
 use App\Repository\FinitionRepository;
 use App\Repository\TypesImpressionRepository;
 use App\Security\JetonJson;
+use App\Service\Parametres\LongueursCatalogue;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -91,6 +92,19 @@ final class TypesImpressionController extends AbstractController
             return $this->json([
                 'success' => false,
                 'message' => 'Le nom du type d’impression est obligatoire.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Au-delà de leur colonne, la base refuserait le texte (erreur 500).
+        $tropLong = LongueursCatalogue::erreur([
+            'Nom du type d’impression' => [$nom, LongueursCatalogue::TYPE_IMPRESSION_NOM],
+            'Description' => [$description, LongueursCatalogue::TYPE_IMPRESSION_DESCRIPTION],
+        ]);
+
+        if ($tropLong !== null) {
+            return $this->json([
+                'success' => false,
+                'message' => $tropLong,
             ], Response::HTTP_BAD_REQUEST);
         }
 
@@ -209,6 +223,19 @@ final class TypesImpressionController extends AbstractController
             return $this->json([
                 'success' => false,
                 'message' => 'Le nom du type d’impression est obligatoire.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Au-delà de leur colonne, la base refuserait le texte (erreur 500).
+        $tropLong = LongueursCatalogue::erreur([
+            'Nom du type d’impression' => [$nom, LongueursCatalogue::TYPE_IMPRESSION_NOM],
+            'Description' => [$description, LongueursCatalogue::TYPE_IMPRESSION_DESCRIPTION],
+        ]);
+
+        if ($tropLong !== null) {
+            return $this->json([
+                'success' => false,
+                'message' => $tropLong,
             ], Response::HTTP_BAD_REQUEST);
         }
 

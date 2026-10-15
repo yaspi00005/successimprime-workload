@@ -3402,6 +3402,34 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
 .si-pp-formulaire .form-check { display: flex; gap: 8px; align-items: flex-start; padding-left: 0; min-height: 0; margin-bottom: 0; }
 .si-pp-formulaire .form-check-input { float: none; flex: none; margin: 2px 0 0; }
 
+/* ---------- Prépresse et BAT : téléphone et tablette ----------
+   Conteneur du contrôle d'un travail : « si-prepresse » et non « si-pp »,
+   déjà pris par le panneau des Réglages plus bas (sa hauteur limitée à 88vh
+   écrasait l'aperçu sur téléphone et le faisait passer sur les onglets).
+   Aperçu puis cartes l'un sous l'autre, à toutes les largeurs, avec les mêmes
+   espacements et titres qu'avant sur grand écran. */
+.si-prepresse { display: flex; flex-direction: column; align-items: stretch; gap: 20px; margin-bottom: 20px; color: #0F172A; }
+.si-prepresse > * { width: 100%; min-width: 0; }
+.si-prepresse .si-pp-carte h2 { margin: 0; font-size: 20px; font-weight: 800; }
+.si-pp-formulaire .si-pp-carte-tete .btn { white-space: nowrap; }
+/* Version affichée et envoi du BAT : dans l'en-tête sur grand écran, dans
+   cette barre au-dessus de l'aperçu en dessous de 1280 px (l'en-tête poussait
+   le menu du compte hors de l'écran). */
+.si-prepresse-barre { display: none; }
+@media (max-width: 1279.98px) {
+  .si-prepresse-entete { display: none !important; }
+  .si-prepresse-barre { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .si-prepresse-barre .si-pp-version { flex: 1 1 160px; max-width: 320px; }
+  .si-prepresse-barre .si-pp-version select { width: 100%; min-width: 0; }
+}
+@media (max-width: 767.98px) {
+  .si-prepresse .si-pp-planche iframe { width: min(460px, 72vw); height: min(520px, 62vh); }
+}
+
+/* ---------- Modifier un paiement en attente (paiements/edit) ----------
+   Champs de même hauteur, comme les autres formulaires de l'administration. */
+.si-paiement-modifier .form-control, .si-paiement-modifier .form-select { height: 40px; min-height: 40px; padding-top: 6px; padding-bottom: 6px; font-size: 14px; border-radius: 10px; }
+
 /* ---------- Stock consommables (maquette 26) ---------- */
 .si-encres { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; margin-bottom: 20px; }
 .si-encre { border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 16px 18px; color: inherit; text-decoration: none; display: flex; flex-direction: column; gap: 10px; }

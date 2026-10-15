@@ -30,7 +30,7 @@ final class DemandesSiteExtensionTest extends TestCase
         $onglets = $navigation->ongletsSection('ventes');
         $rang = $navigation->ongletActif('app_creations_atelier_index');
         self::assertNotNull($rang);
-        self::assertSame('Créations Atelier 3D', $onglets[$rang]['libelle']);
+        self::assertSame('Créations Studio textile', $onglets[$rang]['libelle']);
         // Le graphiste (Devis ou Commandes) les voit ; pas le livreur ni la caisse.
         self::assertSame(['ROLE_DEVIS', 'ROLE_COMMANDE'], $onglets[$rang]['role']);
     }

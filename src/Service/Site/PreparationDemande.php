@@ -175,7 +175,7 @@ final class PreparationDemande
             $lignes[] = 'Fichier joint : '.$demande->getFichier()->getNomOriginal();
         }
         if (null !== $demande->getCreation()) {
-            $lignes[] = \sprintf('Modèle de l\'Atelier 3D %s : vues et images dans Ventes › Créations Atelier 3D.', $demande->getCreation()->getNumero() ?? '');
+            $lignes[] = \sprintf('Modèle du Studio textile %s : vues et images dans Ventes › Créations Studio textile.', $demande->getCreation()->getNumero() ?? '');
         }
 
         return implode("\n", $lignes);

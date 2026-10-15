@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit\Service;
 
+use App\Entity\Commandes;
 use App\Service\SuiviCommandeService;
 use PHPUnit\Framework\TestCase;
 
@@ -45,5 +46,21 @@ final class SuiviCommandeServiceTest extends TestCase
         );
 
         self::assertSame(array_fill(0, 7, 'faite'), $etats);
+    }
+
+    public function testCommandeEnLigneAConfirmerNEstPasMontreeConfirmee(): void
+    {
+        $commande = (new Commandes())->setStatut(false)->setDateCommande(new \DateTimeImmutable('2026-10-15 09:00'));
+
+        $premiere = (new SuiviCommandeService())->etapes($commande)[0];
+
+        self::assertSame('en_cours', $premiere['etat']);
+        self::assertSame('à confirmer', $premiere['detail']);
+
+        $commande->setStatut(true);
+        $premiere = (new SuiviCommandeService())->etapes($commande)[0];
+
+        self::assertSame('faite', $premiere['etat']);
+        self::assertSame('15/10', $premiere['detail']);
     }
 }

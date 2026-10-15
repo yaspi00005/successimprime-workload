@@ -46,7 +46,7 @@ final class DashboardController extends AbstractController
          * à faire sur le tableau de bord général.
          */
         if ($this->isGranted('ROLE_LIVREUR') && !$this->isGranted('ROLE_ADMIN')) {
-            return $this->redirectToRoute('app_livraisons_index');
+            return $this->redirectToRoute('app_livraisons_tournee');
         }
 
         $maintenant = new \DateTimeImmutable();

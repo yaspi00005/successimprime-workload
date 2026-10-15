@@ -79,7 +79,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Livreur (demo.bakary)
 
-- [ ] L'accueil ouvre la tournée du jour ; barre du bas Tournée, Livrer, Pointage, Moi.
+- [ ] L'accueil ouvre la tournée du jour (Livraisons › Ma tournée) ; barre du bas Tournée, Livrer, Pointage, Moi.
 - [ ] « En route » puis « Livrée » avec photo, signature et position ; le client est prévenu.
 - [ ] Encaissement à la livraison : il arrive en caisse à valider.
 - [ ] Ne voit que ses livraisons : tableau de bord, ventes et finances refusés.

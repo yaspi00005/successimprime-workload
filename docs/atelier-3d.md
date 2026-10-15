@@ -18,7 +18,7 @@ Le client choisit un t-shirt, un polo ou une casquette et sa couleur. Il charge 
 | Client (particulier, titulaire, payeur, valideur) | Espace client : carte en haut de « Nouvelle commande », puce « Mes créations » de la page Commandes (téléphone), menu de gauche « Mes créations » | Son prix (grille, prix B2B, promotions), « Commander » |
 | Demandeur d'une entreprise | Les mêmes entrées | Aucun montant (« Prix confirmé par votre valideur »), « Envoyer la demande » |
 | Compte « Lecture · suivi » | — | Ni l'atelier ni « Mes créations » : renvoyé au tableau de bord avec le message « lecture seule » (règle de l'espace) ; un envoi reçoit 403 |
-| Graphiste, caisse-commandes, direction (rôle Devis ou Commandes) | Ventes › Créations Atelier 3D (local) | Vues, réglages, images d'origine à télécharger (noté au journal), lien vers la commande ou la demande. Pas de prix |
+| Graphiste, caisse-commandes, direction (rôle Devis ou Commandes) | Ventes › Créations Studio textile (local) | Vues, réglages, images d'origine à télécharger (noté au journal), lien vers la commande ou la demande. Pas de prix |
 | Direction (ROLE_ADMIN) | Réglages › Paramètres › Atelier 3D | Paliers de remise, seconde face, articles proposés |
 
 Un employé sans le rôle Devis ni Commandes (production, livreur) reçoit 403 sur la liste, une fiche et chaque fichier ; sans session, c'est la page de connexion. Un client ne voit que les créations de son compte client (entreprise : celles de tous ses comptes) ; l'adresse d'une création d'un autre client donne 404.

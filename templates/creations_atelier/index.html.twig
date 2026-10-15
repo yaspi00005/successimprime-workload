@@ -1,11 +1,11 @@
 {#
-	Ventes › Créations Atelier 3D (docs/atelier-3d.md) : modèles validés par
+	Ventes › Créations Studio textile (docs/atelier-3d.md) : modèles validés par
 	les clients (commande « à confirmer ») et les visiteurs (demande de
 	devis), arrivés du site avec leurs vues. Aucun prix ici.
 #}
 {% extends 'base.html.twig' %}
 
-{% block title %}Créations Atelier 3D{% endblock %}
+{% block title %}Créations Studio textile{% endblock %}
 
 {% block header_actions %}
 	{% if not enLigne and is_granted('ROLE_ADMIN') %}
@@ -16,11 +16,11 @@
 {% block body %}
 	<section class="card si-ac-bloc">
 		{% if enLigne %}
-			<h2>Créations Atelier 3D</h2>
+			<h2>Créations Studio textile</h2>
 			<p class="si-ac-vide">Les créations se lisent sur l'ERP de la boutique, où elles arrivent par la synchronisation avec leurs vues et les images des clients.</p>
 		{% else %}
 			<div class="si-rc-tete">
-				<h2>Créations Atelier 3D <span class="si-pg-compte">{{ liste|length }}</span></h2>
+				<h2>Créations Studio textile <span class="si-pg-compte">{{ liste|length }}</span></h2>
 				<nav class="si-cr-filtres" aria-label="Filtrer">
 					{% for cle, libelle in {toutes: 'Toutes', commandes: 'Commandes de clients', devis: 'Demandes de visiteurs'} %}
 						<a href="{{ path('app_creations_atelier_index', cle == 'toutes' ? {} : {filtre: cle}) }}" class="{{ filtre == cle ? 'actif' }}"{{ filtre == cle ? ' aria-current="page"' }}>{{ libelle }}</a>

@@ -50,6 +50,15 @@ final class SauvegardesTest extends TestCase
         self::assertSame('12/10/2026 à 18 h 06', Sauvegardes::dateLisible('20261012-180617'));
     }
 
+    public function testReglagesParDefautQuandLaBaseNEstPasAJour(): void
+    {
+        // Sauvegarde avant la bascule d'une ancienne base, sans table des réglages.
+        self::assertSame(14, Sauvegardes::reglageParDefaut('jours'));
+        self::assertSame(8, Sauvegardes::reglageParDefaut('semaines'));
+        self::assertSame(12, Sauvegardes::reglageParDefaut('mois'));
+        self::assertSame('02:00', Sauvegardes::reglageParDefaut('heure'));
+    }
+
     public function testTousLesDossiersDeFichiersSontCouverts(): void
     {
         // Un nouveau dossier d'envoi sous public/uploads ou var/uploads est couvert d'office.

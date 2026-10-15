@@ -11,8 +11,8 @@
 :: il ne fait rien de visible si aucun message n'est en attente.
 :: ============================================================
 
-set PROJET=C:\xampp\htdocs\successImprim
-set PHP=C:\xampp\php\php.exe
+set PROJET=C:\xamppok\htdocs\successImprim
+set PHP=C:\xamppok\php\php.exe
 set LOG_FILE=%PROJET%\var\log\campagnes.log
 
 if not exist "%PROJET%\var\log" mkdir "%PROJET%\var\log"

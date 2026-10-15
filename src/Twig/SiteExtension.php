@@ -24,7 +24,7 @@ final class SiteExtension extends AbstractExtension
         'app_site_accueil' => 'Accueil',
         'app_site_produits' => 'Produits',
         'app_site_calculateur' => 'Calculateur',
-        'app_site_atelier' => 'Atelier 3D',
+        'app_site_atelier' => 'Studio textile',
         'app_site_realisations' => 'Réalisations',
         'app_site_engagements' => 'Nos engagements',
         'app_site_contact' => 'Contact',

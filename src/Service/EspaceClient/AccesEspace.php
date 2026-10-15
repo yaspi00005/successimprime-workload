@@ -128,7 +128,7 @@ final class AccesEspace
             ."Code d'accès : %s\n"
             ."Valable %d heures (jusqu'au %s), pour une seule connexion.\n\n"
             ."Première connexion : %s\n"
-            ."Vous ajouterez ensuite votre adresse e-mail et choisirez votre mot de passe. Après, vous vous connecterez avec votre numéro et ce mot de passe.\n\n"
+            ."Vous choisirez ensuite votre mot de passe (et votre adresse e-mail si vous en avez une). Après, vous vous connecterez avec votre numéro et ce mot de passe.\n\n"
             ."Ne donnez ce code à personne.",
             implode(' ', str_split($local, 2)),
             AccesEspaceClient::afficherCode($code),

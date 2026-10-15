@@ -239,11 +239,13 @@ final class EspaceClientComptesTest extends TestCase
         self::assertNull(EspaceClientComptes::etapes($compte, null)['email']);
     }
 
-    public function testApresUnCodeDAccesDeLaBoutiqueEmailEtMotDePasseObligatoires(): void
+    public function testApresUnCodeDAccesDeLaBoutiqueMotDePasseObligatoireEmailFacultatif(): void
     {
         $compte = self::compte(self::fiche('76124212', 'yaya@gmail.com'), '76124212')->setMotDePasse('ancienne');
+        self::assertSame(['motDePasse' => EspaceClientComptes::REQUIS, 'email' => null, 'bloquant' => true], EspaceClientComptes::etapes($compte, EspaceClientComptes::PAR_ACCES), 'e-mail déjà connu');
 
-        self::assertSame(['motDePasse' => EspaceClientComptes::REQUIS, 'email' => EspaceClientComptes::REQUIS, 'bloquant' => true], EspaceClientComptes::etapes($compte, EspaceClientComptes::PAR_ACCES));
+        $sansEmail = self::compte(self::fiche('76124213', null), '76124213');
+        self::assertSame(['motDePasse' => EspaceClientComptes::REQUIS, 'email' => EspaceClientComptes::PROPOSE, 'bloquant' => true], EspaceClientComptes::etapes($sansEmail, EspaceClientComptes::PAR_ACCES), 'proposé, pas obligatoire');
     }
 
     public function testLEmailDuTitulaireVaSurUneFicheQuiNEnAPas(): void
@@ -274,7 +276,7 @@ final class EspaceClientComptesTest extends TestCase
         self::assertSame($fiche, $compte->getClient());
         self::assertSame('22376124212', $compte->getTelephone());
         self::assertTrue($this->acces[0]->estUtilise(), 'code consommé');
-        self::assertSame(['motDePasse' => EspaceClientComptes::REQUIS, 'email' => EspaceClientComptes::REQUIS, 'bloquant' => true], EspaceClientComptes::etapes($compte, EspaceClientComptes::PAR_ACCES));
+        self::assertSame(['motDePasse' => EspaceClientComptes::REQUIS, 'email' => EspaceClientComptes::PROPOSE, 'bloquant' => true], EspaceClientComptes::etapes($compte, EspaceClientComptes::PAR_ACCES));
         self::assertNull($service->ouvrirParAcces('76124212', $code, $le->modify('+2 hours')), 'une seule fois');
     }
 

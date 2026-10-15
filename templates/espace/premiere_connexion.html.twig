@@ -6,11 +6,11 @@
 {#
 	Première connexion avec le code d'accès que la boutique a envoyé sur
 	WhatsApp (8 caractères, valable 48 h, une seule fois). Ensuite :
-	e-mail et mot de passe obligatoires (Sécuriser mon compte).
+	mot de passe obligatoire, e-mail facultatif (Sécuriser mon compte).
 #}
 {% block contenu %}
 	<h1>Première connexion</h1>
-	<p class="si-espace-sous-titre">Entrez votre numéro et le code d'accès reçu de Succès Imprim sur WhatsApp. Vous ajouterez ensuite votre adresse e-mail et choisirez votre mot de passe.</p>
+	<p class="si-espace-sous-titre">Entrez votre numéro et le code d'accès reçu de Succès Imprim sur WhatsApp. Vous choisirez ensuite votre mot de passe et, si vous en avez une, votre adresse e-mail.</p>
 
 	{% if erreur %}
 		<div class="si-espace-erreur" role="alert">{{ erreur|trans(erreur_donnees, 'security') }}</div>

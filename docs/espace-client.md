@@ -26,7 +26,7 @@ Le client se connecte avec **son numéro et son mot de passe**. La première foi
 | Où | « Recevoir un code » sur `/espace/connexion`, ou « Créer mon compte » | `/espace/premiere-connexion`, lien du message WhatsApp |
 | Le code | 6 chiffres, 5 minutes, 5 essais | 8 caractères (sans 0, O, 1, I ni L), 48 heures, une seule fois |
 | Envoyé | par le site, à l'e-mail du compte ou de la fiche, sinon par SMS | par l'équipe, depuis la fiche client (ERP local) |
-| Ensuite | mot de passe obligatoire s'il n'y en a pas (proposé sinon), e-mail proposé à qui n'en a pas | e-mail et mot de passe obligatoires |
+| Ensuite | mot de passe obligatoire s'il n'y en a pas (proposé sinon), e-mail proposé à qui n'en a pas | mot de passe obligatoire ; e-mail proposé, facultatif (décision de Yaya du 15/10 : sans e-mail, un mot de passe oublié passe par la boutique ou par SMS) |
 
 **Code par e-mail ou SMS** (`CodeDeConnexion`, `EspaceClientComptes`) :
 

@@ -185,8 +185,9 @@ final class EspaceClientComptes
      *  - mot de passe : requis sans mot de passe et après un code d'accès
      *    de la boutique (mot de passe oublié passé par la boutique) ;
      *    proposé après un code par e-mail ou SMS (mot de passe oublié) ;
-     *  - e-mail : requis après un code d'accès de la boutique ; proposé à
-     *    qui n'en a pas encore quand il entre par un code ou sans mot de passe.
+     *  - e-mail : proposé à qui n'en a pas encore quand il entre par un code
+     *    (de la boutique aussi) ou sans mot de passe, jamais obligatoire : un
+     *    client sans e-mail repasse par la boutique ou par SMS (Yaya, 15/10).
      *
      * @param ?string $par self::PAR_CODE, self::PAR_ACCES ou null (mot de passe, « rester connecté »)
      *
@@ -200,7 +201,6 @@ final class EspaceClientComptes
             default => null,
         };
         $email = match (true) {
-            self::PAR_ACCES === $par => self::REQUIS,
             (null !== $par || !$compte->aUnMotDePasse()) && null === $compte->emailDesCodes() => self::PROPOSE,
             default => null,
         };

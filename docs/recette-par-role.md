@@ -27,7 +27,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 - [ ] Connexion par numéro et mot de passe ; 5 essais faux bloquent 15 minutes.
 - [ ] « Recevoir un code » : par e-mail si la fiche a une adresse, sinon par SMS ; destination masquée ; puis choix du mot de passe obligatoire.
-- [ ] Fiche client (ERP local) › « Envoyer l'accès à l'espace client » : message WhatsApp avec identifiant, code et lien ; première connexion avec ce code, e-mail et mot de passe obligatoires ; le même code ne sert pas deux fois.
+- [ ] Fiche client (ERP local) › « Envoyer l'accès à l'espace client » : message WhatsApp avec identifiant, code et lien ; première connexion avec ce code, mot de passe obligatoire et e-mail facultatif ; le même code ne sert pas deux fois.
 - [ ] Nouvelle commande avec fichier : elle arrive au local en brouillon « à confirmer » et ne peut pas être payée avant la confirmation.
 - [ ] BAT : poser des repères sur l'image, demander une modification ; au local, la prépresse reçoit le texte. Valider un autre BAT.
 - [ ] Factures et paiement Orange Money : le paiement arrive au local « en attente », sans compte, et n'est jamais validé tout seul.

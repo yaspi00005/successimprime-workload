@@ -98,6 +98,16 @@ Toute route qui modifie quelque chose vérifie un jeton CSRF, en plus du cookie 
 - Audit D6 : la modification d'une finition (`FinitionController::updateFinitionAjax`) et d'un type d'impression (`TypesImpressionController::updateAjax`) demande maintenant le jeton de sa route (`update_finition`, `update_type_impression`), lu par `App\Security\JetonJson` (en-tête, sinon `_token`). Sans jeton ou avec un mauvais : 403 en JSON, « Jeton de sécurité absent ou périmé : rechargez la page puis recommencez. », rien d'enregistré.
 - Les scripts de ces deux pages (`public/assets/js/traitement_parametrage.js`, `traitement_types_impression.js`) ne sont pas dans le dépôt (dossier ignoré par git). Pour qu'ils marchent sans les modifier, la page charge `public/js/jeton-json.js` avec son jeton : il ajoute l'en-tête `X-CSRF-TOKEN` aux requêtes POST de la page vers `…/update/ajax` (fetch et XMLHttpRequest, donc jQuery), sans toucher aux autres requêtes ni à un en-tête déjà posé.
 
+## Anciennes pages du thème
+
+Le thème avait laissé des pages en anglais (« Create new », « back to list », « Edit », « Delete ») pour les catégories, clients, finitions, formats, paiements, configurations de produit, produits, supports, types d'impression et utilisateurs (mise à jour du 15/10/2026) :
+
+- celles qu'aucune route n'affichait sont supprimées (dont deux pages d'exemple « Hello … »), avec leurs formulaires (`src/Form/FinitionType.php`, `FormatType`, `SupportsType`, `TypesImpressionType`, `CategorieProduitType`, `ProduitConfigurationType`, `ProduitsType`, `UserType`) ;
+- `/finition/new`, `/finition/{id}` et `/finition/{id}/edit` renvoient à la liste des finitions, où l'ajout et la modification se font dans des fenêtres. Toujours réservées à la direction (`ROLE_ADMIN`). L'ancienne suppression par formulaire (`POST /finition/{id}`) n'existe plus : la liste supprime par `…/delete/ajax` ;
+- `/paiements/{id}/edit` (paiement en attente, droit « Encaisser ») est en français, avec la présentation de l'administration.
+
+Les routes en JSON que les scripts du thème appellent (`…/create/ajax`, `…/update/ajax`, `…/delete/ajax`, `…/mass-action`, `…/reorder`) restent (`AnciennesPagesThemeTest`).
+
 ## Fichiers envoyés
 
 Règle : un fichier envoyé (par un client ou par le personnel) se range **hors de `public/`**, sous `var/uploads/…`, et s'ouvre seulement par une adresse de l'application qui vérifie les droits. Taper l'adresse sans le droit donne « accès refusé », ou la page de connexion sans compte. Une photo est réencodée : ses données EXIF, dont la position GPS du téléphone, disparaissent (constats D3 et D9 de l'audit du 15/10/2026).
@@ -206,6 +216,7 @@ Attendu : les six en-têtes de la table, `Strict-Transport-Security` compris, et
 - Un fichier envoyé : sous `var/uploads` (`FichiersPrives`), servi par `FichierEnvoye::reponse()` après la vérification des droits, une photo réencodée. `public/uploads` seulement pour ce qui est fait pour être vu de tous (site, écran TV), avec `FichierEnvoye`.
 - Un code ou un numéro tapé sans compte : une limite dans `rate_limiter.yaml`.
 - Un message d'erreur de connexion : le même, que le compte existe ou non.
+- Un texte saisi : sa longueur vérifiée avant l'enregistrement, à la taille de sa colonne, avec un message clair (« Nom du support : 255 caractères au plus. ») et `maxlength` sur le champ ; sinon la base refuse et la page tombe en erreur (exemple : `LongueursCatalogue` pour Réglages › Finitions, Formats, Supports et Types d'impression).
 - Pas de `|raw` sur un texte saisi ; pour du JSON dans un `<script>`, `json_encode` avec `JSON_HEX_TAG`.
 - Pas de fichier d'un autre site à l'exécution : copier dans `public/vendor/<bibliothèque>-<version>/`, avec sa licence (`SansCdnTest`).
 - Aucune clé, aucun mot de passe dans le dépôt, un message ou une capture d'écran.

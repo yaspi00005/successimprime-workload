@@ -6,6 +6,7 @@ use App\Entity\Format;
 use App\Entity\TypesImpression;
 use App\Repository\FormatRepository;
 use App\Repository\TypesImpressionRepository;
+use App\Service\Parametres\LongueursCatalogue;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -462,6 +463,15 @@ final class FormatController extends AbstractController
     ): ?string {
         if ($nom === '') {
             return 'Le nom du format est obligatoire.';
+        }
+
+        // Au-delà de sa colonne, la base refuserait le nom (erreur 500).
+        $tropLong = LongueursCatalogue::erreur([
+            'Nom du format' => [$nom, LongueursCatalogue::FORMAT_NOM],
+        ]);
+
+        if ($tropLong !== null) {
+            return $tropLong;
         }
 
         if ($largeur <= 0) {

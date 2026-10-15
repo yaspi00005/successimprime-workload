@@ -16,27 +16,34 @@
 
 {% block title %}Prépresse · {{ titre_travail }}{% if largeur_cm and hauteur_cm %} {{ largeur_cm|number_format(0, ',', ' ') }} × {{ hauteur_cm|number_format(0, ',', ' ') }}{% endif %} · {{ commande.clients ? commande.clients.nomComplet : 'Client' }}{% endblock %}
 
+{# Version affichée et envoi du BAT : dans l'en-tête sur grand écran, dans une
+   barre au-dessus de l'aperçu sur tablette et téléphone, où l'en-tête n'a pas
+   la place (il poussait le menu du compte hors de l'écran). #}
+{% macro choix_version(versions, fichierAffiche, suffixe) %}
+	<form method="get" class="si-pp-version">
+		<label class="visually-hidden" for="pp-version{{ suffixe }}">Version affichée</label>
+		<select id="pp-version{{ suffixe }}" name="fichier" class="form-select form-select-sm" onchange="this.form.submit()">
+			{% for fichier in versions %}
+				<option value="{{ fichier.id }}" {{ fichierAffiche and fichier.id == fichierAffiche.id ? 'selected' }}>
+					Version {{ fichier.version }}{{ fichier.etat in ['traite', 'pret_impression'] ? ' · corrigée' }}{{ fichier.face ? ' · ' ~ fichier.face }}
+				</option>
+			{% endfor %}
+		</select>
+	</form>
+{% endmacro %}
+
+{% macro bouton_bat() %}
+	<button type="submit" form="form-controle-pre-presse" name="action" value="envoyer_bat" class="btn btn-danger btn-sm si-btn-entete bouton-controle" data-message="Envoyer cette version du BAT au client ? Le travail attendra sa réponse.">
+		<i class="fas fa-paper-plane me-1"></i>Envoyer le BAT au client
+	</button>
+{% endmacro %}
+
 {% block header_actions %}
 	{% if versions is not empty %}
-		<li class="nav-item">
-			<form method="get" class="si-pp-version">
-				<label class="visually-hidden" for="pp-version">Version affichée</label>
-				<select id="pp-version" name="fichier" class="form-select form-select-sm" onchange="this.form.submit()">
-					{% for fichier in versions %}
-						<option value="{{ fichier.id }}" {{ fichierAffiche and fichier.id == fichierAffiche.id ? 'selected' }}>
-							Version {{ fichier.version }}{{ fichier.etat in ['traite', 'pret_impression'] ? ' · corrigée' }}{{ fichier.face ? ' · ' ~ fichier.face }}
-						</option>
-					{% endfor %}
-				</select>
-			</form>
-		</li>
-		<li class="nav-item">
-			<button type="submit" form="form-controle-pre-presse" name="action" value="envoyer_bat" class="btn btn-danger btn-sm si-btn-entete bouton-controle" data-message="Envoyer cette version du BAT au client ? Le travail attendra sa réponse.">
-				<i class="fas fa-paper-plane me-1"></i>Envoyer le BAT au client
-			</button>
-		</li>
+		<li class="nav-item si-prepresse-entete">{{ _self.choix_version(versions, fichierAffiche, '') }}</li>
+		<li class="nav-item si-prepresse-entete">{{ _self.bouton_bat() }}</li>
 	{% endif %}
-	<li class="nav-item si-masque-mobile"><a href="{{ path('app_montage_outil', {ligne: detail.id}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-th-large me-1"></i>Monter</a></li>
+	<li class="nav-item si-masque-mobile si-prepresse-entete"><a href="{{ path('app_montage_outil', {ligne: detail.id}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-th-large me-1"></i>Monter</a></li>
 {% endblock %}
 
 {% block body %}
@@ -47,7 +54,15 @@
 		</div>
 	{% endfor %}
 
-	<div class="si-pp">
+	<div class="si-prepresse-barre">
+		{% if versions is not empty %}
+			{{ _self.choix_version(versions, fichierAffiche, '-barre') }}
+			{{ _self.bouton_bat() }}
+		{% endif %}
+		<a href="{{ path('app_montage_outil', {ligne: detail.id}) }}" class="btn btn-light btn-sm si-btn-entete si-masque-mobile"><i class="fas fa-th-large me-1"></i>Monter</a>
+	</div>
+
+	<div class="si-prepresse">
 		{# ---------- Aperçu du fichier, cotes de la commande ---------- #}
 		<section class="si-pp-apercu" aria-label="Aperçu du fichier">
 			{% if fichierAffiche %}

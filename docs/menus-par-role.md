@@ -58,6 +58,12 @@ Règle : les quatre premiers écrans du menu court (la tournée remplace
 l'accueil pour qui en a une), le pointage s'il reste une place, puis
 « Moi » quand la barre montre déjà tout le menu, sinon « Plus ».
 
+Contrôle prépresse d'un travail (`/pre-presse/travail/{id}`) : sous
+1 280 px de large, la version affichée, « Envoyer le BAT au client » et
+« Monter » (tablette seulement) passent de l'en-tête à une barre au-dessus
+de l'aperçu ; l'aperçu, les cartes et les boutons se suivent l'un sous
+l'autre. Sur grand écran, rien ne change.
+
 ## Rôles et menus (R04)
 
 Une ligne par module, une colonne par rôle. Cliquer sur une case la fait

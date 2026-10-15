@@ -292,6 +292,48 @@
 
 	</div>
 
+	{# Orange Money : le compte des paiements en ligne (API), un seul. #}
+	<div class="col-md-12 mt-3" id="blocOrangeMoneyEnLigne">
+
+		<div class="card">
+
+			<div class="card-body">
+
+				<div class="custom-control custom-checkbox">
+
+					{{ form_widget(
+                        form.orangeMoneyEnLigne,
+                        {
+                            attr: {
+                                class: 'custom-control-input'
+                            }
+                        }
+                    ) }}
+
+					{{ form_label(
+                        form.orangeMoneyEnLigne,
+                        null,
+                        {
+                            label_attr: {
+                                class: 'custom-control-label'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+				<small class="text-muted d-block mt-2">
+					{{ form.orangeMoneyEnLigne.vars.help }}
+				</small>
+
+				{{ form_errors(form.orangeMoneyEnLigne) }}
+
+			</div>
+
+		</div>
+
+	</div>
+
 </div>
 
 
@@ -618,6 +660,16 @@ texteInfo.textContent = 'Sélectionnez le type du compte.';
 
 if (type) {
 type.addEventListener('change', actualiserInterface);
+
+// Paiements Orange Money en ligne : seulement pour un compte Orange Money.
+const blocOmEnLigne = document.getElementById('blocOrangeMoneyEnLigne');
+const actualiserOmEnLigne = function () {
+if (blocOmEnLigne) {
+blocOmEnLigne.hidden = type.value !== 'orange_money';
+}
+};
+type.addEventListener('change', actualiserOmEnLigne);
+actualiserOmEnLigne();
 }
 
 

@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\CompteTresorerie;
 use App\Form\CompteTresorerieType;
 use App\Repository\CompteTresorerieRepository;
+use App\Service\Paiement\ComptesOrangeMoney;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -73,7 +74,8 @@ class CompteTresorerieController extends AbstractController
     public function new(
         Request $request,
         EntityManagerInterface $entityManager,
-        CompteTresorerieRepository $repository
+        CompteTresorerieRepository $repository,
+        ComptesOrangeMoney $comptesOrangeMoney
     ): Response {
         $compte = new CompteTresorerie();
 
@@ -96,6 +98,8 @@ class CompteTresorerieController extends AbstractController
             } else {
                 try {
                     $entityManager->persist($compte);
+                    // Un seul compte reçoit les paiements Orange Money en ligne.
+                    $comptesOrangeMoney->marquerSeul($compte);
                     $entityManager->flush();
 
                     $this->addFlash(
@@ -142,7 +146,8 @@ class CompteTresorerieController extends AbstractController
         Request $request,
         CompteTresorerie $compte,
         EntityManagerInterface $entityManager,
-        CompteTresorerieRepository $repository
+        CompteTresorerieRepository $repository,
+        ComptesOrangeMoney $comptesOrangeMoney
     ): Response {
         /*
          * Le formulaire désactive déjà ce champ en modification.
@@ -180,6 +185,8 @@ class CompteTresorerieController extends AbstractController
                 );
             } else {
                 try {
+                    // Un seul compte reçoit les paiements Orange Money en ligne.
+                    $comptesOrangeMoney->marquerSeul($compte);
                     $entityManager->flush();
 
                     $this->addFlash(

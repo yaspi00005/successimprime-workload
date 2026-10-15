@@ -49,7 +49,12 @@
 										<td class="text-nowrap si-v-date"><label for="op-{{ op.cle }}">{{ op.date ? op.date|date('d/m') : '—' }}<small class="d-block">{{ op.date ? op.date|date('H:i') }}</small></label></td>
 										<td class="si-v-type">
 											<a href="{{ path(op.lien.route, {id: op.lien.id}) }}">{{ op.type }}</a>
-											{% if op.comptes is not null %}
+											{% if op.compte_impose|default(false) %}
+												{# Payé avec l’API Orange Money : toujours sur le compte « Orange Money en ligne ». #}
+												{% for nom in op.comptes %}
+													<span class="si-v-compte si-v-compte-impose" title="Payé en ligne avec Orange Money : il va toujours sur ce compte"><i class="fas fa-lock" aria-hidden="true"></i> {{ nom }}<span class="visually-hidden"> (compte imposé)</span></span>
+												{% endfor %}
+											{% elseif op.comptes is not null %}
 												<label class="visually-hidden" for="compte-{{ op.cle }}">Compte qui a reçu l’argent</label>
 												<select class="form-select form-select-sm si-v-compte" id="compte-{{ op.cle }}" name="compte[{{ op.cle }}]">
 													{% if op.comptes|length != 1 %}<option value="">Compte reçu…</option>{% endif %}

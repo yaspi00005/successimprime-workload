@@ -6,6 +6,7 @@ use App\Entity\ClotureCaisse;
 use App\Entity\CompteTresorerie;
 use App\Entity\DecaissementRecurrent;
 use App\Entity\MouvementTresorerie;
+use App\Service\Paiement\ComptesOrangeMoney;
 use App\Service\Planning\Planning;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -26,6 +27,7 @@ final class TableauTresorerie
         private readonly EntityManagerInterface $em,
         private readonly Creances $creances,
         private readonly Planning $planning,
+        private readonly ComptesOrangeMoney $comptesOrangeMoney,
     ) {
     }
 
@@ -40,10 +42,19 @@ final class TableauTresorerie
 
         $groupes = [
             'banque' => ['libelle' => 'Banque', 'solde' => 0, 'comptes' => 0],
-            'mobile' => ['libelle' => 'Orange Money et Wave', 'solde' => 0, 'comptes' => 0],
+            'mobile' => ['libelle' => 'Orange Money et Wave', 'solde' => 0, 'comptes' => 0, 'a_prelever' => 0],
             'caisse' => ['libelle' => 'Caisses', 'solde' => 0, 'comptes' => 0],
         ];
         $caisses = [];
+        // Orange Money : la part qu'Orange débitera à la sortie (frais payés par les clients) et la part transférable.
+        $orange = [];
+        foreach ($comptes as $compte) {
+            $etat = $this->comptesOrangeMoney->etat($compte);
+            if (null !== $etat) {
+                $orange[] = ['compte' => $compte] + $etat;
+                $groupes['mobile']['a_prelever'] += $etat['a_prelever'];
+            }
+        }
         foreach ($comptes as $compte) {
             $cle = match ($compte->getType()) {
                 CompteTresorerie::TYPE_BANQUE => 'banque',
@@ -85,6 +96,7 @@ final class TableauTresorerie
 
         return [
             'groupes' => $groupes,
+            'orange' => $orange,
             'a_rapprocher' => $aRapprocher,
             'caisses_cloturees' => $cloturees,
             'nb_caisses' => \count($caisses),
@@ -268,7 +280,8 @@ final class TableauTresorerie
     /** @return list<array{categorie: string, libelle: string, montant: int}> */
     private function depensesDuMois(\DateTimeImmutable $maintenant): array
     {
-        $lignes = $this->em->createQueryBuilder()
+        // Les frais débités par Orange au retrait ne sont pas une dépense : ils sortent ce que les clients ont payé en plus.
+        $lignes = MouvementTresorerie::exclureHorsActivite($this->em->createQueryBuilder()
             ->select('m.categorie', 'SUM(m.montant) AS total')
             ->from(MouvementTresorerie::class, 'm')
             ->andWhere('m.statut = :valide')
@@ -276,7 +289,7 @@ final class TableauTresorerie
             ->andWhere('m.dateOperation >= :debut')
             ->setParameter('valide', MouvementTresorerie::STATUT_VALIDE)
             ->setParameter('sortie', MouvementTresorerie::TYPE_DECAISSEMENT)
-            ->setParameter('debut', $maintenant->modify('first day of this month')->setTime(0, 0))
+            ->setParameter('debut', $maintenant->modify('first day of this month')->setTime(0, 0)))
             ->groupBy('m.categorie')
             ->orderBy('total', 'DESC')
             ->getQuery()

@@ -86,10 +86,11 @@ final class StatistiquesTresorerieService
             ->getQuery()
             ->getResult();
 
+        // Frais Orange Money à prélever : de passage sur le compte, ni recette ni dépense.
         return array_values(array_filter(
             $resultats,
             static fn ($mouvement): bool =>
-                $mouvement instanceof MouvementTresorerie && $mouvement->isValide()
+                $mouvement instanceof MouvementTresorerie && $mouvement->isValide() && !$mouvement->estHorsActivite()
         ));
     }
 }

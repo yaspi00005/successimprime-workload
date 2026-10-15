@@ -55,6 +55,22 @@ class MouvementTresorerieType extends AbstractType
 
 
         /*
+         * Comptes Orange Money (ComptesOrangeMoney) : solde, frais à
+         * prélever par Orange et part transférable, connus seulement
+         * de qui voit les soldes.
+         */
+        $etatsOrange =
+            $voirSoldes
+                ? (array) $options['etats_orange']
+                : [];
+
+        $transferable =
+            static fn (
+                CompteTresorerie $compte
+            ): ?int => $etatsOrange[(int) $compte->getId()]['transferable'] ?? null;
+
+
+        /*
          * ============================================================
          * TYPES DE MOUVEMENTS
          * ============================================================
@@ -457,6 +473,11 @@ class MouvementTresorerieType extends AbstractType
                     ),
 
 
+                /*
+                 * Orange Money : data-orange fait paraître la ligne des
+                 * frais prélevés par Orange ; data-transferable (avec
+                 * le droit de voir les soldes) pré-remplit le montant.
+                 */
                 'choice_attr' =>
                     static fn (
                         mixed $compte
@@ -468,7 +489,15 @@ class MouvementTresorerieType extends AbstractType
                                 true
                             )
                         ),
-                    ],
+                    ] + (
+                        $compte instanceof CompteTresorerie && $compte->estOrangeMoney()
+                            ? array_filter([
+                                'data-orange' => '1',
+                                'data-transferable' => $transferable($compte),
+                                'data-a-prelever' => $etatsOrange[(int) $compte->getId()]['a_prelever'] ?? null,
+                            ], static fn (mixed $v): bool => null !== $v)
+                            : []
+                    ),
 
 
                 /*
@@ -482,7 +511,8 @@ class MouvementTresorerieType extends AbstractType
                         CompteTresorerie $compte
                     ): string => self::libelleSource(
                         $compte,
-                        $voirSoldes
+                        $voirSoldes,
+                        $transferable($compte)
                     ),
 
 
@@ -768,6 +798,69 @@ class MouvementTresorerieType extends AbstractType
 
                         message:
                             'Le montant doit contenir uniquement des chiffres.'
+                    ),
+                ],
+            ]
+        );
+
+
+        /*
+         * ============================================================
+         * FRAIS PRÉLEVÉS PAR ORANGE
+         * ============================================================
+         *
+         * Quand l'argent sort d'un compte Orange Money (transfert vers
+         * la banque ou la caisse, retrait, chèque d'Orange), Orange
+         * débite le fonds de soutien et le frais de retrait. Pré-rempli
+         * aux taux de Réglages › Paiements, corrigé avec ce qu'Orange a
+         * vraiment débité. Non lié à l'entité : le contrôleur en fait
+         * un mouvement à part (ComptesOrangeMoney).
+         * ============================================================
+         */
+
+        $builder->add(
+            'fraisOrange',
+            TextType::class,
+            [
+                'label' =>
+                    'Fonds de soutien et frais de retrait prélevés par Orange',
+
+                'mapped' =>
+                    false,
+
+                'required' =>
+                    false,
+
+                'attr' => [
+                    'class' =>
+                        'form-control montant-input text-right',
+
+                    'inputmode' =>
+                        'numeric',
+
+                    'autocomplete' =>
+                        'off',
+
+                    'data-frais-orange' =>
+                        'true',
+
+                    'data-taux-fonds' =>
+                        (float) ($options['taux_orange']['fonds'] ?? 0),
+
+                    'data-taux-retrait' =>
+                        (float) ($options['taux_orange']['retrait'] ?? 0),
+                ],
+
+                'help' =>
+                    'Calculé avec les taux de Réglages › Paiements : corrigez-le avec ce qu’Orange a vraiment débité.',
+
+                'constraints' => [
+                    new Assert\Regex(
+                        pattern:
+                            '/^[0-9\s]*$/',
+
+                        message:
+                            'Les frais doivent contenir uniquement des chiffres.'
                     ),
                 ],
             ]
@@ -1088,7 +1181,33 @@ class MouvementTresorerieType extends AbstractType
 
             'peut_transferer' =>
                 false,
+
+            /*
+             * Comptes Orange Money : compte => solde, frais à prélever,
+             * transférable (vide sans le droit de voir les soldes) ; taux
+             * des frais d'Orange pour pré-remplir la ligne des frais.
+             */
+            'etats_orange' =>
+                [],
+
+            'taux_orange' =>
+                [
+                    'fonds' => 0.0,
+                    'retrait' => 0.0,
+                ],
         ]);
+
+
+        $resolver->setAllowedTypes(
+            'etats_orange',
+            'array'
+        );
+
+
+        $resolver->setAllowedTypes(
+            'taux_orange',
+            'array'
+        );
 
 
         $resolver->setAllowedTypes(
@@ -1237,7 +1356,8 @@ class MouvementTresorerieType extends AbstractType
 
     public static function libelleSource(
         CompteTresorerie $compte,
-        bool $voirSoldes
+        bool $voirSoldes,
+        ?int $transferable = null
     ): string {
         /*
          * Banque :
@@ -1259,10 +1379,11 @@ class MouvementTresorerieType extends AbstractType
 
         /*
          * Caisse / Orange Money / Wave :
-         * le solde peut être utile.
+         * le solde peut être utile. Orange Money : aussi la part
+         * transférable (sans les frais qu'Orange va débiter).
          */
         return sprintf(
-            '%s — %s — %s FCFA',
+            '%s — %s — %s FCFA%s',
             $compte->getNom(),
             $compte->getTypeLabel(),
             number_format(
@@ -1270,7 +1391,18 @@ class MouvementTresorerieType extends AbstractType
                 0,
                 ',',
                 ' '
-            )
+            ),
+            $transferable === null
+                ? ''
+                : sprintf(
+                    ' (transférable %s)',
+                    number_format(
+                        $transferable,
+                        0,
+                        ',',
+                        ' '
+                    )
+                )
         );
     }
 

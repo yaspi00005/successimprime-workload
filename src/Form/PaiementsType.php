@@ -163,11 +163,19 @@ $builder->add(
                 $estAdmin,
                 $utilisateur
             ): QueryBuilder {
+                /*
+                 * Le compte « Orange Money en ligne » (API de l'espace
+                 * client) ne reçoit jamais un paiement de la caisse : la
+                 * caisse choisit un numéro Orange Money de la boutique.
+                 */
                 $qb =
                     $repository
                         ->createQueryBuilder('compte')
                         ->andWhere(
                             'compte.actif = :actif'
+                        )
+                        ->andWhere(
+                            'compte.orangeMoneyEnLigne = false'
                         )
                         ->setParameter(
                             'actif',

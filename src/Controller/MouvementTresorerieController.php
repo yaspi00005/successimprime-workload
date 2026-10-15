@@ -10,10 +10,12 @@ use App\Repository\CompteTresorerieRepository;
 use App\Repository\MouvementTresorerieRepository;
 use App\Repository\UserRepository;
 use App\Service\MouvementTresorerieService;
+use App\Service\Paiement\ComptesOrangeMoney;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\ExpressionLanguage\Expression;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -782,7 +784,8 @@ foreach ($comptes as $compte) {
     public function new(
         Request $request,
         EntityManagerInterface $entityManager,
-        MouvementTresorerieRepository $repository
+        MouvementTresorerieRepository $repository,
+        ComptesOrangeMoney $comptesOrangeMoney
     ): Response {
         $user =
             $this->getUser();
@@ -878,6 +881,49 @@ foreach ($comptes as $compte) {
 
 
         /*
+         * Compte source choisi d'avance (bouton « Virer » d'un compte
+         * Orange Money), seulement s'il est permis pour ce type.
+         */
+        $sourceDemandee =
+            $request->query->getInt(
+                'source'
+            );
+
+        if (
+            $sourceDemandee > 0
+        ) {
+            $compteDemande =
+                $entityManager->find(
+                    CompteTresorerie::class,
+                    $sourceDemandee
+                );
+
+            if (
+                $compteDemande instanceof CompteTresorerie
+                &&
+                $compteDemande->isActif()
+                &&
+                \in_array(
+                    $mouvement->getType(),
+                    MouvementTresorerieType::typesPourCompte(
+                        $compteDemande,
+                        true,
+                        $estAdmin,
+                        $peutSaisir,
+                        $peutTransferer,
+                        $user
+                    ),
+                    true
+                )
+            ) {
+                $mouvement->setCompteSource(
+                    $compteDemande
+                );
+            }
+        }
+
+
+        /*
          * Agent toujours imposé par la session.
          */
         $mouvement->setAgent(
@@ -915,6 +961,22 @@ foreach ($comptes as $compte) {
 
                     'peut_transferer' =>
                         $peutTransferer,
+
+                    /*
+                     * Solde, frais à prélever par Orange et part
+                     * transférable des comptes Orange Money : avec le
+                     * droit de voir les soldes seulement.
+                     */
+                    'etats_orange' =>
+                        $voirSoldes
+                            ? $this->etatsOrangeMoney(
+                                $entityManager,
+                                $comptesOrangeMoney
+                            )
+                            : [],
+
+                    'taux_orange' =>
+                        $comptesOrangeMoney->taux(),
                 ]
             );
 
@@ -1025,16 +1087,60 @@ foreach ($comptes as $compte) {
             }
 
 
+            /*
+             * ====================================================
+             * FRAIS PRÉLEVÉS PAR ORANGE
+             * ====================================================
+             *
+             * Sortie d'un compte Orange Money (transfert ou
+             * décaissement) : Orange débite le fonds de soutien et le
+             * frais de retrait. Ils deviennent un mouvement à part sur
+             * le compte Orange Money (ComptesOrangeMoney).
+             * ====================================================
+             */
+
+            $fraisOrange =
+                self::fraisOrangeSaisis(
+                    $mouvement,
+                    $form->has('fraisOrange')
+                        ? $form->get('fraisOrange')->getData()
+                        : null
+                );
+
+            if (
+                $fraisOrange > 0
+                &&
+                $fraisOrange > (int) $mouvement->getMontant()
+            ) {
+                $form
+                    ->get('fraisOrange')
+                    ->addError(
+                        new FormError(
+                            'Les frais prélevés par Orange ne peuvent pas dépasser le montant transféré.'
+                        )
+                    );
+            }
+
+
             if (
                 $form->isValid()
             ) {
+                $prelevements =
+                    ComptesOrangeMoney::mouvementsPrelevement(
+                        $mouvement,
+                        $fraisOrange,
+                        $comptesOrangeMoney->fraisAPrelever()[(int) $mouvement->getCompteSource()?->getId()] ?? 0,
+                        $user
+                    );
+
                 try {
                     $entityManager
                         ->wrapInTransaction(
                             function (
                                 EntityManagerInterface $entityManager
                             ) use (
-                                $mouvement
+                                $mouvement,
+                                $prelevements
                             ): void {
                                 /*
                                  * Les mouvements saisis ici
@@ -1068,6 +1174,35 @@ foreach ($comptes as $compte) {
                                     );
 
 
+                                /*
+                                 * Frais débités par Orange avec
+                                 * cette sortie : sur le même compte,
+                                 * après la sortie elle-même.
+                                 */
+                                foreach ($prelevements as $prelevement) {
+                                    $prelevement
+                                        ->setStatut(
+                                            MouvementTresorerie
+                                                ::STATUT_VALIDE
+                                        );
+
+                                    $prelevement
+                                        ->setDateValidation(
+                                            new \DateTimeImmutable()
+                                        );
+
+                                    $this
+                                        ->appliquerMouvementAuxComptes(
+                                            $prelevement
+                                        );
+
+                                    $entityManager
+                                        ->persist(
+                                            $prelevement
+                                        );
+                                }
+
+
                                 $entityManager
                                     ->flush();
                             }
@@ -1081,11 +1216,14 @@ foreach ($comptes as $compte) {
                      */
                     $this->addFlash(
                         'success',
-                        $voirSoldes
+                        ($voirSoldes
                             ? 'Le mouvement a été enregistré avec succès.'
                             : self::confirmationSansSolde(
                                 $mouvement
-                            )
+                            ))
+                        . self::confirmationFraisOrange(
+                            $prelevements
+                        )
                     );
 
 
@@ -1404,7 +1542,8 @@ foreach ($comptes as $compte) {
     public function cancel(
         Request $request,
         MouvementTresorerie $mouvement,
-        MouvementTresorerieService $service
+        MouvementTresorerieService $service,
+        MouvementTresorerieRepository $mouvements
     ): Response {
         $user =
             $this->getUser();
@@ -1527,6 +1666,35 @@ foreach ($comptes as $compte) {
                         $mouvement,
                         $motif
                     );
+
+                /*
+                 * Les frais débités par Orange avec cette sortie
+                 * d'un compte Orange Money repartent avec elle.
+                 */
+                foreach (
+                    [
+                        ComptesOrangeMoney::SUFFIXE_PASSAGE,
+                        ComptesOrangeMoney::SUFFIXE_CHARGE,
+                    ]
+                    as $suffixe
+                ) {
+                    $frais =
+                        $mouvements->findOneBy([
+                            'reference' => $mouvement->getReference() . $suffixe,
+                        ]);
+
+                    if (
+                        $frais instanceof MouvementTresorerie
+                        &&
+                        $frais->isValide()
+                    ) {
+                        $service
+                            ->annulerValide(
+                                $frais,
+                                $motif
+                            );
+                    }
+                }
 
                 $this->addFlash(
                     'success',
@@ -2653,6 +2821,113 @@ foreach ($comptes as $compte) {
         throw new \LogicException(
             'Le type de mouvement est invalide.'
         );
+    }
+
+
+    /*
+     * ============================================================
+     * FRAIS PRÉLEVÉS PAR ORANGE
+     * ============================================================
+     */
+
+    /**
+     * Frais saisis sur la ligne « Fonds de soutien et frais de retrait
+     * prélevés par Orange » : comptés seulement quand l'argent sort d'un
+     * compte Orange Money (transfert ou décaissement), jamais négatifs.
+     */
+    public static function fraisOrangeSaisis(
+        MouvementTresorerie $mouvement,
+        mixed $saisie
+    ): int {
+        $source =
+            $mouvement->getCompteSource();
+
+        if (
+            $source === null
+            ||
+            !$source->estOrangeMoney()
+            ||
+            !\in_array(
+                $mouvement->getType(),
+                [
+                    MouvementTresorerie::TYPE_TRANSFERT,
+                    MouvementTresorerie::TYPE_DECAISSEMENT,
+                ],
+                true
+            )
+        ) {
+            return 0;
+        }
+
+        $chiffres =
+            preg_replace(
+                '/\D/',
+                '',
+                (string) $saisie
+            ) ?? '';
+
+        return $chiffres === ''
+            ? 0
+            : (int) $chiffres;
+    }
+
+
+    /**
+     * Fin du message de confirmation : les frais débités par Orange
+     * (le montant saisi, jamais un solde).
+     *
+     * @param list<MouvementTresorerie> $prelevements
+     */
+    public static function confirmationFraisOrange(
+        array $prelevements
+    ): string {
+        $total =
+            array_sum(
+                array_map(
+                    static fn (MouvementTresorerie $m): int => (int) $m->getMontant(),
+                    $prelevements
+                )
+            );
+
+        return $total > 0
+            ? sprintf(
+                ' Frais prélevés par Orange : %s F.',
+                number_format(
+                    $total,
+                    0,
+                    ',',
+                    ' '
+                )
+            )
+            : '';
+    }
+
+
+    /**
+     * @return array<int, array{solde: int, a_prelever: int, transferable: int}>
+     */
+    private function etatsOrangeMoney(
+        EntityManagerInterface $entityManager,
+        ComptesOrangeMoney $comptesOrangeMoney
+    ): array {
+        $etats = [];
+
+        foreach (
+            $entityManager
+                ->getRepository(CompteTresorerie::class)
+                ->findBy([
+                    'type' => CompteTresorerie::TYPE_ORANGE_MONEY,
+                    'actif' => true,
+                ])
+            as $compte
+        ) {
+            $etats[(int) $compte->getId()] =
+                $comptesOrangeMoney->etat(
+                    $compte
+                );
+        }
+
+        return array_filter($etats);
     }
 
 

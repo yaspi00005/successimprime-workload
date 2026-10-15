@@ -71,7 +71,45 @@ Frais Orange Money (15/10/2026) : le client paie le fonds de soutien et le frais
 - un paiement porte son montant (la part de la commande) et ses frais à part ; « Encaissements », « À valider », la commande et la fiche du paiement montrent les frais en plus du montant (et le total reçu) ;
 - le rapprochement compare la ligne du relevé au total reçu (montant + frais) : un paiement de 25 000 F avec 500 F de frais se rattache à une ligne de 25 500 F ;
 - rattacher une ligne à une commande sans paiement saisi retrouve, quand la ligne dépasse ce qui reste dû, le montant et les frais aux taux du jour (25 500 F → 25 000 F + 250 + 250) ;
-- à la validation d'un paiement en ligne, la trésorerie reçoit le montant (vente) et les frais à part (« Frais mobile money », autre produit, compte 758 au journal) ; l'annulation d'un paiement validé dans « À valider » reprend les deux. Ni le prix de la commande ni la facture ne changent.
+- à la validation d'un paiement en ligne, la trésorerie reçoit le montant (vente) et les frais à part, sur le compte « Orange Money en ligne » ; à la caisse, sur le numéro Orange Money choisi. Les frais sont « à prélever » par Orange, ce n'est pas une recette (section suivante). L'annulation d'un paiement validé dans « À valider » reprend les deux. Ni le prix de la commande ni la facture ne changent.
+
+## Orange Money : deux sortes de comptes, frais prélevés au retrait
+
+Explications de Yaya du 15/10/2026.
+
+**Deux sortes de comptes Orange Money.**
+
+- **Le compte de l'API, « Orange Money en ligne »** : il reçoit les paiements faits depuis l'espace client (commandes, acomptes de conception, crédit IA). Il porte la marque « Reçoit les paiements Orange Money en ligne » sur sa fiche (Trésorerie › Comptes › Modifier, compte de type Orange Money). S'il n'existe pas, il est créé au premier paiement en ligne validé (code OM-EN-LIGNE, compte administration : la caisse ne le voit pas et n'en fait rien sortir). Un seul compte porte la marque : la mettre sur un autre compte Orange Money la retire au premier. Si ce compte est désactivé, la validation d'un paiement en ligne est refusée avec un message qui dit quoi faire.
+- **Les numéros de la boutique** (paiement à la caisse, transfert direct du client) : rien ne change, la caissière choisit le numéro comme avant. La caisse et le rapprochement du relevé ne proposent jamais le compte en ligne.
+
+Dans Finances › À valider, un paiement Orange Money venu de l'espace client affiche son compte, « Orange Money en ligne », verrouillé : il n'y a rien à choisir. Les autres paiements saisis en ligne (Wave, virement déclaré par le client) gardent le choix du compte, sans le compte en ligne.
+
+**Les frais ne sont pas une recette.** Le client paie en plus du montant le fonds de soutien (1 %) et le frais de retrait (1 %) (Réglages › Paiements). Ils arrivent sur le compte Orange Money avec le paiement, mais Orange les reprend quand l'argent sort du compte (retrait, chèque, transfert). Ils sont donc enregistrés à part, catégorie « Frais Orange Money à prélever » : ni produit ni charge, compte de passage 4712 (créditeurs divers) au journal. Ni 467 ni 4718 : ces comptes du plan SYSCOHADA révisé ne sont pas faits pour ça ; 4712 est un compte de tiers qui revient à zéro quand Orange débite. La même règle vaut pour les deux sortes de comptes, en ligne et à la caisse. Le tableau de bord, Finances (vue d'ensemble, du jour, dépenses, budgets), les statistiques, l'objectif du mois et la rentabilité ne comptent pas ces frais ; les soldes, si. Wave et les autres modes ne changent pas (frais en « autre produit »).
+
+**Exemple.** Une commande de 25 000 F payée avec Orange Money :
+
+1. le compte Orange Money reçoit 25 500 F : 25 000 F de vente et 500 F de frais à prélever. Il affiche « Solde 25 500 F, dont frais Orange à prélever 500 F, transférable 25 000 F » ;
+2. on vire 25 000 F à la banque (Orange envoie un chèque) : Orange débite en plus 500 F de fonds de soutien et de frais de retrait ;
+3. le compte Orange Money revient à 0, la banque a 25 000 F de plus. Le chiffre d'affaires est de 25 000 F ; les 500 F sont entrés puis sortis sans toucher au résultat.
+
+**Ce qui se voit**, seulement avec Trésorerie (voir) : sur Finances › Trésorerie (« Orange Money : ce qui peut sortir », avec un bouton « Virer » pour qui a Virements entre comptes), dans la vue d'ensemble, Finances du jour, la liste et la fiche des comptes : le solde, « dont frais Orange à prélever » et « transférable ».
+
+- À prélever : les frais payés par les clients qu'Orange n'a pas encore débités ; au moins ce qu'Orange prendrait pour vider le compte quand de l'argent y est entré sans frais suivis (solde d'avant le 15/10, dépôt).
+- Transférable : le solde moins ce qui est à prélever.
+
+Le rôle « Caisse et commercial » ne voit jamais ces chiffres ni aucun solde.
+
+**Virer l'argent d'un compte Orange Money** : bouton « Virer » de la trésorerie ou de la fiche du compte, bouton « Virement » de la caisse, ou Trésorerie › Nouveau mouvement, type Transfert. Quand le compte source est un compte Orange Money :
+
+- le montant se remplit avec la part transférable (seulement pour qui voit les soldes) ;
+- une ligne « Fonds de soutien et frais de retrait prélevés par Orange » se remplit avec les taux de Réglages › Paiements appliqués au montant ; on la corrige avec ce qu'Orange a vraiment débité ;
+- « Référence externe » reçoit le numéro du chèque d'Orange ou de la transaction.
+
+À l'enregistrement : le transfert, plus une sortie « Frais Orange Money à prélever » du compte Orange Money (référence du transfert suivie de -FO). Si Orange débite plus que les frais payés par les clients encore à prélever (argent entré sans frais : frais décochés à la caisse, solde d'avant le 15/10, dépôt), le surplus devient une charge « Frais bancaires » (référence suivie de -FC). Les frais d'avant le 15/10 avaient été comptés en « autre produit » : cette charge les équilibre. Annuler le virement annule aussi ces lignes. Une sortie (décaissement) d'un compte Orange Money a la même ligne.
+
+**Annulation d'un paiement validé** (inchangée) : dans « À valider » ou sur le paiement, l'annulation reprend du compte Orange Money le montant et les frais entrés avec le paiement (25 500 F dans l'exemple). Elle sert à corriger une erreur de saisie.
+
+**Remboursement d'un client** : c'est une dépense ordinaire, payée depuis la caisse ou la banque.
 
 ## Questions ouvertes (Yaya)
 
@@ -82,4 +120,8 @@ Frais Orange Money (15/10/2026) : le client paie le fonds de soutien et le frais
 5. Comment estimer une échéance fiscale qui n'a pas encore de montant ?
 6. Format réel de l'export du compte marchand Orange Money.
 7. Les demandes d'employés acceptées mais pas encore payées doivent-elles apparaître dans « À décider » ?
-8. Frais Orange Money : le frais de retrait d'Orange revient-il à Succès Imprim (produit) ou faut-il le reverser ou le compter en charge ? Le fonds de soutien est-il à reverser à l'État (compte de tiers plutôt que produit) ?
+8. ~~Frais Orange Money : produit, charge ou à reverser ?~~ Réponse du 15/10/2026 : ni produit ni charge, Orange les reprend quand l'argent sort du compte (section « Orange Money : deux sortes de comptes »).
+9. Les frais Wave suivent-ils la même règle qu'Orange Money (repris par Wave au retrait) ?
+10. Le relevé importé dans « Encaissements » est-il celui du compte de l'API ou d'un numéro de la boutique ?
+11. Faut-il reclasser les frais Orange Money d'avant le 15/10 (comptés en « autre produit ») ?
+12. Quand Orange débite plus que les frais payés par les clients, le surplus est-il bien une charge de la boutique (« Frais bancaires ») ?

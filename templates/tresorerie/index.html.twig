@@ -30,7 +30,11 @@
 			<article class="card si-tresorerie-carte">
 				<h2>{{ groupes.mobile.libelle }}</h2>
 				<strong>{{ groupes.mobile.solde|number_format(0, ',', ' ') }} F</strong>
-				<span class="si-t-neutre">{{ groupes.mobile.comptes }} compte{{ groupes.mobile.comptes > 1 ? 's' }} marchand{{ groupes.mobile.comptes > 1 ? 's' }}</span>
+				{% if groupes.mobile.a_prelever > 0 %}
+					<span class="si-t-attention">dont {{ groupes.mobile.a_prelever|number_format(0, ',', ' ') }} F de frais Orange à prélever</span>
+				{% else %}
+					<span class="si-t-neutre">{{ groupes.mobile.comptes }} compte{{ groupes.mobile.comptes > 1 ? 's' }} marchand{{ groupes.mobile.comptes > 1 ? 's' }}</span>
+				{% endif %}
 			</article>
 			<article class="card si-tresorerie-carte">
 				<h2>{{ groupes.caisse.libelle }}</h2>
@@ -49,6 +53,35 @@
 				<span class="si-t-ok">{{ prevision.entrees|number_format(0, ',', ' ') }} attendus − {{ prevision.charges|number_format(0, ',', ' ') }} de charges</span>
 			</article>
 		</div>
+
+		{% if orange is not empty %}
+			{# Orange Money : Orange débite le fonds de soutien et le frais de retrait quand l’argent sort du compte. #}
+			<section class="card si-tresorerie-orange" aria-labelledby="titre-orange">
+				<header>
+					<h2 id="titre-orange">Orange Money : ce qui peut sortir</h2>
+					<span>frais prélevés par Orange au retrait</span>
+				</header>
+				<ul>
+					{% for o in orange %}
+						<li>
+							<span class="si-t-orange-nom">
+								<a href="{{ path('app_compte_tresorerie_show', {id: o.compte.id}) }}">{{ o.compte.nom }}</a>
+								<small>{{ o.compte.orangeMoneyEnLigne ? 'Paiements en ligne (API)' : 'Numéro de la boutique' }}</small>
+							</span>
+							<span class="si-t-orange-chiffres">
+								<span>Solde <b>{{ o.solde|number_format(0, ',', ' ') }} F</b></span>
+								<span>dont frais Orange à prélever <b class="{{ o.a_prelever > 0 ? 'si-t-attention' }}">{{ o.a_prelever|number_format(0, ',', ' ') }} F</b></span>
+								<span>Transférable <b class="si-t-ok">{{ o.transferable|number_format(0, ',', ' ') }} F</b></span>
+							</span>
+							{% if is_granted('ROLE_TRESORERIE_TRANSFERER') or is_granted('ROLE_ADMIN') %}
+								<a class="btn btn-outline-primary btn-sm si-t-orange-virer" href="{{ path('app_mouvement_tresorerie_new', {type: 'transfert', source: o.compte.id}) }}"><i class="fas fa-exchange-alt me-1" aria-hidden="true"></i>Virer</a>
+							{% endif %}
+						</li>
+					{% endfor %}
+				</ul>
+				<p class="si-tresorerie-legende mb-0"><span>Au virement vers la banque ou la caisse, la ligne « Fonds de soutien et frais de retrait prélevés par Orange » sort ces frais du compte.</span></p>
+			</section>
+		{% endif %}
 
 		<section class="card si-tresorerie-courbe">
 			<header>

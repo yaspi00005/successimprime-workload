@@ -30,6 +30,9 @@
 						<div>
 							<h2>{{ c.nom }}</h2>
 							<strong class="{{ c.solde < 0 ? 'text-danger' }}">{{ m.f(c.solde) }}</strong>
+							{% if c.a_prelever|default(0) > 0 %}
+								<small class="si-fin-compte-om">dont {{ m.f(c.a_prelever) }} de frais Orange · transférable {{ m.f(c.transferable) }}</small>
+							{% endif %}
 						</div>
 					</article>
 				{% else %}

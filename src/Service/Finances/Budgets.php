@@ -39,11 +39,16 @@ final class Budgets
         'divers' => ['libelle' => 'Divers', 'mouvements' => [MouvementTresorerie::CATEGORIE_AUTRE_CHARGE, MouvementTresorerie::CATEGORIE_FRAIS_BANCAIRE], 'mouvement' => MouvementTresorerie::CATEGORIE_AUTRE_CHARGE, 'defaut' => 100000],
     ];
 
-    /** Sorties d'argent qui ne sont pas des charges du mois. */
+    /**
+     * Sorties d'argent qui ne sont pas des charges du mois. Les frais
+     * Orange Money débités au retrait sortent ce que les clients ont payé
+     * en plus : ni dépense ni budget.
+     */
     public const HORS_DEPENSES = [
         MouvementTresorerie::CATEGORIE_TRANSFERT_INTERNE,
         MouvementTresorerie::CATEGORIE_AJUSTEMENT,
         MouvementTresorerie::CATEGORIE_REMBOURSEMENT_CREDIT,
+        MouvementTresorerie::CATEGORIE_FRAIS_ORANGE,
     ];
 
     public function __construct(private readonly EntityManagerInterface $em)

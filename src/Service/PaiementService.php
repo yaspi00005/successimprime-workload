@@ -6,6 +6,7 @@ use App\Entity\CompteTresorerie;
 use App\Entity\MouvementTresorerie;
 use App\Entity\Paiements;
 use App\Entity\User;
+use App\Service\Paiement\ComptesOrangeMoney;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -13,7 +14,8 @@ final class PaiementService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly MouvementTresorerieService $mouvementTresorerieService
+        private readonly MouvementTresorerieService $mouvementTresorerieService,
+        private readonly ?ComptesOrangeMoney $comptesOrangeMoney = null,
     ) {
     }
 
@@ -63,6 +65,17 @@ final class PaiementService
             if ($paiement->getMouvementTresorerie() !== null) {
                 throw new \LogicException(
                     'Ce paiement possède déjà un mouvement de trésorerie.'
+                );
+            }
+
+            /*
+             * Payé avec l'API Orange Money depuis l'espace client : il va
+             * toujours sur le compte « Orange Money en ligne », jamais sur
+             * un numéro de la boutique (docs/finances.md).
+             */
+            if ($paiement->estOrangeMoneyEnLigne() && $this->comptesOrangeMoney !== null) {
+                $paiement->setCompteTresorerie(
+                    $this->comptesOrangeMoney->compteEnLigne()
                 );
             }
 
@@ -116,10 +129,11 @@ final class PaiementService
             $this->mouvementTresorerieService->enregistrer($mouvement);
 
             /*
-             * Frais mobile money payés par le client (paiement Orange
-             * Money de l'espace client) : le compte reçoit aussi les
-             * frais, dans un mouvement à part en « Autre produit »,
-             * comme à la caisse, pour ne pas gonfler les ventes.
+             * Frais payés par le client (paiement Orange Money de
+             * l'espace client) : le compte reçoit aussi les frais, dans
+             * un mouvement à part, comme à la caisse. Sur un compte
+             * Orange Money ils sont « à prélever » : Orange les débite
+             * quand l'argent sort du compte ; ni vente ni produit.
              */
             $frais = self::mouvementFrais($paiement, $compte, $utilisateur);
             if ($frais !== null) {
@@ -311,25 +325,29 @@ final class PaiementService
             $paiement->getMontantFraisRetrait() > 0 ? sprintf('frais de retrait : %s FCFA', number_format($paiement->getMontantFraisRetrait(), 0, ',', ' ')) : null,
         ]);
         $commande = $paiement->getCommande();
+        $categorie = ComptesOrangeMoney::categorieFrais($compte);
+        $orange = MouvementTresorerie::CATEGORIE_FRAIS_ORANGE === $categorie;
 
         return (new MouvementTresorerie())
             ->setReference(self::referenceFrais($paiement))
             ->setType(MouvementTresorerie::TYPE_ENCAISSEMENT)
-            ->setCategorie(MouvementTresorerie::CATEGORIE_AUTRE_PRODUIT)
+            ->setCategorie($categorie)
             ->setConfidentiel(false)
             ->setCompteDestination($compte)
             ->setMontant($montant)
             ->setModePaiement($paiement->getMode())
             ->setReferenceExterne($paiement->getReference())
             ->setLibelle(mb_substr(sprintf(
-                'Frais mobile money - commande %s — %s',
+                '%s - commande %s — %s',
+                $orange ? 'Frais Orange Money à prélever' : 'Frais mobile money',
                 $commande?->getNumero() ?? '#'.$commande?->getId(),
                 $commande?->getClients()?->getNomComplet() ?? 'Client inconnu'
             ), 0, 255))
             ->setDescription(sprintf(
-                'Frais mobile money à la charge du client sur le paiement de %s FCFA (%s).',
+                'Frais mobile money à la charge du client sur le paiement de %s FCFA (%s).%s',
                 number_format((int) $paiement->getMontant(), 0, ',', ' '),
-                implode(', ', $detail)
+                implode(', ', $detail),
+                $orange ? ' Orange les débite quand l\'argent sort du compte.' : ''
             ))
             ->setAgent($utilisateur)
             ->setDateOperation($paiement->getDate() ?? new \DateTimeImmutable());

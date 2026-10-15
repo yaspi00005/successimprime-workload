@@ -3636,6 +3636,28 @@ a.si-planning-bloc[href]:hover { filter: brightness(1.08); }
 .si-t-jauge span { display: block; height: 100%; background: #0F4590; border-radius: 999px; }
 .si-t-vide { color: #64748B; grid-template-columns: 1fr !important; }
 .si-t-lien { display: inline-block; margin-top: 8px; font-size: 13px; font-weight: 600; }
+/* Orange Money : solde, frais à prélever par Orange, transférable */
+.si-tresorerie-orange { grid-column: 1 / -1; }
+.si-tresorerie-orange ul { list-style: none; margin: 0; padding: 0; }
+.si-tresorerie-orange li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid #EEF2F7; }
+.si-tresorerie-orange li:first-child { border-top: 0; }
+.si-t-orange-nom a { font-weight: 700; color: #0F172A; }
+.si-t-orange-nom small { display: block; color: #64748B; font-size: 12px; }
+.si-t-orange-chiffres { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 13px; color: #475569; }
+.si-t-orange-chiffres b { font-variant-numeric: tabular-nums; color: #0F172A; white-space: nowrap; }
+.si-t-orange-chiffres b.si-t-attention { color: #C2410C; }
+.si-t-orange-chiffres b.si-t-ok { color: #15803D; }
+/* Fiche du compte : les cartes de la colonne gauche gardent leur hauteur (sinon la première prend toute la colonne et pousse le solde sous le pied de page). */
+.si-compte-colonne > .card { height: auto; }
+.si-compte-orange dl > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.si-compte-orange dt { font-weight: 500; color: #475569; }
+.si-compte-orange dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.si-compte-orange dd.si-compte-orange-attention { color: #C2410C; }
+.si-compte-orange dd.si-compte-orange-ok { color: #15803D; }
+@media (max-width: 575px) {
+  .si-tresorerie-orange li { grid-template-columns: minmax(0, 1fr) auto; }
+  .si-t-orange-chiffres { grid-column: 1 / -1; grid-row: 2; flex-direction: column; }
+}
 @media (max-width: 1199px) {
   .si-tresorerie-cartes { grid-template-columns: repeat(2, 1fr); }
 }
@@ -5245,6 +5267,8 @@ body.si-param-bloque { overflow: hidden; }
 
 /* À valider : compte choisi pour un paiement saisi en ligne */
 .si-v-compte { display: block; max-width: 13rem; margin-top: .3rem; font-weight: 400; }
+.si-v-compte-impose { display: inline-block; padding: .15rem .5rem; border-radius: .4rem; background: #FFF4E5; color: #8A4B00; font-size: .78rem; line-height: 1.35; }
+.si-v-compte-impose i { font-size: .7rem; margin-right: .15rem; }
 
 /* ---------- Poste du graphiste (maquette R03) : trois volets ---------- */
 .si-gp { display: grid; grid-template-columns: 250px minmax(0, 1fr) 300px; gap: 14px; height: calc(100vh - 140px); min-height: 520px; }

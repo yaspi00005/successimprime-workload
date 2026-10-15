@@ -137,6 +137,8 @@ class PaiementsType extends AbstractType
                 ]
             );
             $estAdmin = (bool) $options['est_admin'];
+            // Sans « Trésorerie et soldes » (ROLE_TRESORERIE_VOIR) : aucun solde dans la liste des comptes.
+            $voirSoldes = (bool) $options['voir_soldes'];
 
 $utilisateur =
     $options['utilisateur'];
@@ -257,43 +259,19 @@ $builder->add(
                     );
             },
 
+        /*
+         * Banque : la caissière choisit la banque (chèque, virement)
+         * sans voir son solde. Caisse, Orange Money, Wave : le solde
+         * seulement avec le droit de voir la trésorerie (même logique
+         * que MouvementTresorerieType).
+         */
         'choice_label' =>
-            static function (
+            static fn (
                 CompteTresorerie $compte
-            ): string {
-                /*
-                 * Banque : la caissière doit pouvoir choisir la
-                 * banque (chèque/virement) sans voir son solde
-                 * (même logique que MouvementTresorerieType).
-                 */
-                if (
-                    $compte->getType()
-                    === CompteTresorerie::TYPE_BANQUE
-                ) {
-                    return sprintf(
-                        '%s — %s',
-                        $compte->getNom(),
-                        $compte->getTypeLabel()
-                    );
-                }
-
-                /*
-                 * Caisse / Orange Money / Wave : on affiche le
-                 * solde ici car le paiement va réellement
-                 * créditer ce compte.
-                 */
-                return sprintf(
-                    '%s — %s — %s FCFA',
-                    $compte->getNom(),
-                    $compte->getTypeLabel(),
-                    number_format(
-                        (int) $compte->getSoldeActuel(),
-                        0,
-                        ',',
-                        ' '
-                    )
-                );
-            },
+            ): string => MouvementTresorerieType::libelleSource(
+                $compte,
+                $voirSoldes
+            ),
 
         'label' =>
             'Compte de trésorerie',
@@ -424,10 +402,19 @@ $builder->add(
 
         'utilisateur' =>
             null,
+
+        // Soldes des comptes : seulement si le contrôleur le dit (ROLE_TRESORERIE_VOIR).
+        'voir_soldes' =>
+            false,
     ]);
 
     $resolver->setAllowedTypes(
         'est_admin',
+        'bool'
+    );
+
+    $resolver->setAllowedTypes(
+        'voir_soldes',
         'bool'
     );
 

@@ -67,6 +67,8 @@ final class CaisseController extends AbstractController
         $formulaire = $this->createForm(PaiementsType::class, $paiement, [
             'est_admin' => $this->isGranted('ROLE_ADMIN'),
             'utilisateur' => $utilisateur,
+            // Le solde des comptes reste à la trésorerie ; la caisse du jour (à droite) suffit pour clôturer.
+            'voir_soldes' => $this->isGranted('ROLE_TRESORERIE_VOIR'),
             'action' => null !== $commande ? $this->generateUrl('app_commandes_paiement', ['id' => $commande->getId(), 'retour' => 'caisse']) : '#',
         ]);
 

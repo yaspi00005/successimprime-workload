@@ -13,7 +13,7 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
 
 ## Contenu
 
-- 12 employés avec leur compte : `demo.kadiatou` (direction), `demo.fanta` (comptable et RH), `demo.aminata`, `demo.mariam` et `demo.moussa` (caisse et commercial), `demo.seydou` et `demo.aissata` (graphistes), `demo.oumar` et `demo.ibrahim` (machines), `demo.bakary` et `demo.sekou` (livreurs), `demo.awa` (entretien). Mot de passe : `demo1234`.
+- 12 employés avec leur compte : `demo.kadiatou` (direction), `demo.fanta` (comptable et RH : rôle caisse avec la trésorerie, les paiements, les statistiques, la RH et la comptabilité ajoutés sur sa fiche), `demo.aminata`, `demo.mariam` et `demo.moussa` (caisse et commercial, sans la trésorerie ; Moussa sans les virements), `demo.seydou` et `demo.aissata` (graphistes), `demo.oumar` et `demo.ibrahim` (machines), `demo.bakary` et `demo.sekou` (livreurs), `demo.awa` (entretien). Mot de passe : `demo1234`.
 - Le catalogue : 13 produits, avec leurs supports, formats, finitions et machines, ainsi que les articles de stock et les fournisseurs.
 - 200 clients (`DEMO-0001` à `DEMO-0200`) et environ 770 commandes sur 12 mois, avec :
   - devis, factures, paiements et relances ;

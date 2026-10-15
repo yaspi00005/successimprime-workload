@@ -204,6 +204,7 @@ final class ReclamationController extends AbstractController
         $form = $this->createForm(ReclamationPaiementType::class, null, [
             'est_admin' => $this->isGranted('ROLE_ADMIN'),
             'utilisateur' => $this->utilisateurConnecte(),
+            'voir_soldes' => $this->isGranted('ROLE_TRESORERIE_VOIR'),
         ]);
         $form->handleRequest($request);
 

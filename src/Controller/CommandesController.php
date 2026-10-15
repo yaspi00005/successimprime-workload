@@ -2134,6 +2134,10 @@ final class CommandesController extends AbstractController
 
                 'utilisateur' =>
                 $user,
+
+                // Soldes des comptes : avec « Trésorerie et soldes » seulement.
+                'voir_soldes' =>
+                $this->isGranted('ROLE_TRESORERIE_VOIR'),
             ]
         );
 

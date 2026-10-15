@@ -472,11 +472,16 @@ security:
 
         # ============================================================
         # MOUVEMENTS DE TRÉSORERIE - ÉCRITURE
+        #
+        # Le formulaire de saisie (entrée, sortie, virement) s'ouvre
+        # aussi sans le droit de voir la trésorerie : la caisse y
+        # verse sa caisse à la banque, sans aucun solde affiché
+        # (MouvementTresorerieController::new).
         # ============================================================
 
         - {
-            path: ^/gestion/tresorerie/mouvements/new$,
-            roles: ROLE_TRESORERIE_SAISIR
+            path: ^/gestion/tresorerie/mouvements/nouveau$,
+            roles: [ROLE_TRESORERIE_SAISIR, ROLE_TRESORERIE_TRANSFERER]
         }
 
 

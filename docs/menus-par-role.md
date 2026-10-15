@@ -86,6 +86,49 @@ module, niveau).
 Un aperçu du menu du rôle choisi (clic sur le nom du rôle) est affiché à
 droite.
 
+## Rôle « Caisse et commercial » : sans les soldes des comptes
+
+Décision de Yaya (15/10/2026) : le rôle caisse ne voit plus la trésorerie
+ni les soldes des comptes. Ses droits par défaut sont : clients, devis,
+commandes, factures, encaisser et voir les paiements, journal et clôture
+de caisse, dépenses et recettes (saisir), virements entre comptes, ses
+statistiques et les indicateurs commerciaux. « Trésorerie et soldes » n'y
+est plus (migration `Version20261015090000`, pour les bases existantes
+comme pour une nouvelle installation).
+
+Dans la matrice, la case Finances du rôle caisse affiche donc
+« Modifier* » : il a la saisie et les virements, pas la lecture des
+soldes. La Direction donne la trésorerie à une personne précise sur sa
+fiche (Réglages › Utilisateurs et droits, droits détaillés : « Trésorerie
+et soldes » ajouté), comme pour `demo.fanta` ; ce droit ajouté n'est pas
+touché par la migration.
+
+Ce que la caisse garde sans ce droit :
+
+- Caisse : encaisser, le reçu, la caisse du jour (fond, encaissé, sorties,
+  théorique) et la clôture de sa caisse : compter son tiroir fait partie
+  de son travail, ce n'est pas le solde des comptes ;
+- Finances › Dépenses : saisir une dépense et voir les siennes seulement
+  (« Aller à… › Nouveau › Dépense » ouvre ce formulaire, pour tout le
+  monde) ;
+- Caisse › « Virement » (et « Aller à… › Nouveau › Virement entre
+  comptes ») : le formulaire de saisie des mouvements (entrée, sortie,
+  virement), par exemple verser la caisse du jour sur le compte de la
+  boutique. Les comptes y sont proposés par leur nom, sans aucun solde, et
+  l'enregistrement ramène à la caisse avec un message (montant, comptes,
+  référence). Les règles des comptes ne changent pas, et les listes ne
+  proposent que les comptes que l'enregistrement acceptera pour le type
+  choisi : l'argent sort de sa caisse personnelle ou d'un compte partagé
+  (jamais de la banque ni de la caisse d'un collègue) ; il va vers une
+  caisse personnelle, un compte partagé ou la banque pour un virement,
+  vers sa caisse ou un compte partagé pour une entrée ;
+- payer une demande de remboursement : comptes proposés sans solde.
+
+Ce qu'elle ne voit plus (« accès refusé », et absent de son menu) :
+Finances › Trésorerie (prévision à 90 jours et son export), Fournisseurs,
+la liste et le détail des mouvements (même les siens), le planning annuel
+des échéances et les tâches fiscales ou de paie qui ne la concernent pas.
+
 ## Pour les développeurs
 
 - Menu : `NavigationExtension::menu()` (volets ou court), `MENU_COURT`,

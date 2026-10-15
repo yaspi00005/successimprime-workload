@@ -8,6 +8,13 @@
 			<a href="{{ path('app_journal_caisse_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-book me-1"></i>Journal</a>
 		</li>
 	{% endif %}
+	{# Verser la caisse à la banque, ou d'un compte à un autre : sans aucun solde affiché.
+	   Sur téléphone, l'icône seule laisse la place au titre « Caisse ». #}
+	{% if is_granted('ROLE_TRESORERIE_TRANSFERER') %}
+		<li class="nav-item">
+			<a href="{{ path('app_mouvement_tresorerie_new', {type: 'transfert'}) }}" class="btn btn-light btn-sm si-btn-entete" title="Verser la caisse à la banque, ou d’un compte à un autre" aria-label="Virement"><i class="fas fa-exchange-alt"></i><span class="si-masque-mobile ms-1">Virement</span></a>
+		</li>
+	{% endif %}
 	{% if is_granted('ROLE_JOURNAL_CAISSE') %}
 		{% if caisses is not empty %}
 			<li class="nav-item">

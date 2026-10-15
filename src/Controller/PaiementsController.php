@@ -67,6 +67,7 @@ final class PaiementsController extends AbstractController
         $form = $this->createForm(PaiementsType::class, $paiement, [
             'est_admin' => $this->isGranted('ROLE_ADMIN'),
             'utilisateur' => $this->utilisateurConnecte(),
+            'voir_soldes' => $this->isGranted('ROLE_TRESORERIE_VOIR'),
         ]);
         $form->handleRequest($request);
 

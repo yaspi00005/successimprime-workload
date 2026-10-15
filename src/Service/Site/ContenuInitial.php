@@ -156,6 +156,9 @@ final class ContenuInitial
                     ### Comment suivre ma commande ?
                     Depuis votre espace client : vous y voyez où en est chaque commande, du BAT à la livraison. Sans compte, avec le numéro de commande et votre téléphone : [Suivre ma commande](/suivre-ma-commande).
 
+                    ### Puis-je mettre mon espace client sur mon téléphone ?
+                    Oui, comme une application : à votre première connexion sur le téléphone, touchez « Ajouter à l'écran d'accueil ». Sur iPhone, dans Safari : Partager, puis « Sur l'écran d'accueil ». Le bouton reste ensuite dans Mon compte.
+
                     ## Paiement
                     ### Puis-je payer par Orange Money ?
                     Oui. Une facture vous est remise pour chaque paiement.

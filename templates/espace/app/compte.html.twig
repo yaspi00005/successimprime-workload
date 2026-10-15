@@ -181,39 +181,16 @@
 				<span class="fl" aria-hidden="true">›</span>
 			</a>
 		{% endif %}
+		{# Toujours là (la carte du tableau de bord, elle, s'arrête après deux « Plus tard ») : public/js/espace-installer.js. #}
 		<div class="ec-carte ec-installer" data-installer hidden>
-			<span><b>Application Succès Imprim</b><span class="ec-petit" data-installer-texte>Ajoutez votre espace sur l'écran d'accueil.</span></span>
-			<button type="button" class="ec-bouton-petit">Installer</button>
+			<span><b>Application Succès Imprim</b><span class="ec-petit">Ajoutez votre espace sur l'écran d'accueil.</span></span>
+			<button type="button" class="ec-bouton-petit" data-installer-ajouter aria-controls="ec-compte-etapes">Installer</button>
+			{% include 'espace/app/_installer_etapes.html.twig' with {id: 'ec-compte-etapes'} %}
 		</div>
 		<div class="ec-boutons ec-telephone"><a class="ec-bouton clair" href="{{ path('app_espace_deconnexion') }}">Se déconnecter</a></div>
 	</div>
 {% endblock %}
 
 {% block scripts %}
-	<script>
-	(function () {
-		var bloc = document.querySelector('[data-installer]');
-		var installe = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-		if (!bloc || installe) { return; }
-		var bouton = bloc.querySelector('button');
-		if (/iPhone|iPad/.test(navigator.userAgent)) {
-			// Safari ne propose pas de bouton : on explique le geste.
-			bloc.querySelector('[data-installer-texte]').textContent = 'Dans Safari, touchez Partager puis « Sur l\'écran d\'accueil ».';
-			bouton.hidden = true;
-			bloc.hidden = false;
-			return;
-		}
-		var invite = null;
-		window.addEventListener('beforeinstallprompt', function (e) {
-			e.preventDefault();
-			invite = e;
-			bloc.hidden = false;
-		});
-		bouton.addEventListener('click', function () {
-			if (!invite) { return; }
-			invite.prompt();
-			invite.userChoice.then(function () { bloc.hidden = true; invite = null; });
-		});
-	})();
-	</script>
+	<script src="{{ asset('js/espace-installer.js') }}" defer></script>
 {% endblock %}

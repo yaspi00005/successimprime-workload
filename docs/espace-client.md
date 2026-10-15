@@ -139,11 +139,36 @@ Captures : `/mnt/project-files/captures/reclamations/`.
 
 ## Notifications et application installable (J5, construit le 13/10/2026)
 
-- **Application** : l'espace client s'installe sur le téléphone (`public/espace.webmanifest`, portée `/espace`, même `sw.js` que le personnel). Mon compte propose « Installer » quand le navigateur le permet ; sur iPhone, il explique le geste (Partager › Sur l'écran d'accueil).
+- **Application** : l'espace client s'installe sur le téléphone (`public/espace.webmanifest`, portée `/espace`, même `sw.js` que le personnel). Le tableau de bord le propose à la première visite sur l'appareil, Mon compte le garde toujours : voir « Application sur l'écran d'accueil » plus bas.
 - **Notifications** : quand la synchronisation apporte un changement au site (BAT prêt, y compris chaque nouvelle version, commande prête, paiement validé, réponse à une réclamation), `NotificationsClient` prévient le client une seule fois, en fin de requête : d'abord sur les téléphones où il a activé les notifications (Mon compte › Sur ce téléphone, gratuit), sinon par SMS s'il les accepte, sinon par e-mail. Les messages n'ont aucun montant (« Paiement reçu pour la commande CMD-… »). Un paiement ne va qu'aux payeurs d'un compte entreprise. Un événement de plus de 12 heures ne part plus (mise en service, synchronisation en retard).
 - Journal des envois : table `notification_client_envoyee` (moyen utilisé : push, sms, email, aucun). Les fiches de démonstration (code `DEMO-`) ne reçoivent jamais de SMS ni d'e-mail.
 - **À poser sur le serveur en ligne** (`.env.local`, jamais dans le dépôt) : les clés des notifications (`php bin/console app:push:cles`), les identifiants Orange SMS, et `MAILER_DSN` avec `MAILER_FROM_ADDRESS` pour l'e-mail. Sans elles, l'événement reste seulement dans le fil Notifications du client.
 - La réponse à une réclamation ne part plus par SMS depuis l'atelier : elle passe par cette chaîne quand elle arrive sur le site.
+
+## Application sur l'écran d'accueil (construit le 15/10/2026)
+
+En attendant les applications Android et iPhone, le client met son espace sur l'écran d'accueil de son téléphone : une icône Succès Imprim qui ouvre `/espace` en plein écran, comme une application, et qui reçoit les notifications (sur iPhone, seule l'application ajoutée à l'écran d'accueil les reçoit). Code : `templates/espace/app/_installer_carte.html.twig`, `_installer_etapes.html.twig`, `public/js/espace-installer.js`, styles en fin de `public/css/espace-app.css`. Captures : `/mnt/project-files/captures/ecran-accueil/`.
+
+**La carte du tableau de bord.** À la première visite du tableau de bord sur un appareil, une carte « Installez Succès Imprim sur votre téléphone » apparaît : une phrase (ouvrir son espace d'un geste, recevoir les alertes de ses commandes), « Ajouter à l'écran d'accueil » et « Plus tard ». Feuille posée au-dessus des onglets sur téléphone, petit panneau en bas à gauche sur ordinateur (« sur cet ordinateur », « Installer l'application »). Ni montant ni donnée du client.
+
+| Où | Ce que fait le bouton |
+|---|---|
+| Android : Chrome, Edge, Samsung Internet ; Chrome et Edge sur ordinateur | la fenêtre d'installation du navigateur. La carte attend que le navigateur dise qu'il sait installer (événement `beforeinstallprompt`) : sur un premier passage, Chrome attend souvent un clic et une trentaine de secondes sur le site. Installée : « C'est fait… Merci ! », puis plus jamais. Refusée dans la fenêtre du navigateur : compte comme « Plus tard ». |
+| iPhone et iPad, Safari | Safari n'a pas de bouton : la carte montre trois gestes illustrés (Partager, en bas de l'écran ou dans « ⋯ » ; « Sur l'écran d'accueil » ; « Ajouter »), puis « C'est fait ». |
+| iPhone dans une autre application (WhatsApp, Chrome, Facebook…) | les mêmes gestes, avec « Ouvrez d'abord cette page dans Safari » et « Copier l'adresse » (l'adresse de l'espace, rien d'autre). |
+| Application déjà ouverte depuis l'écran d'accueil, Firefox sur ordinateur, ou tout navigateur qui ne sait pas installer | rien. |
+
+- **« Plus tard »** (ou Échap dans la carte) la cache sur cet appareil. Elle revient **une seule fois**, sept jours après ; au deuxième « Plus tard », elle ne revient plus. **Mon compte** garde toujours le bloc « Application Succès Imprim » (« Installer », ou les gestes sur iPhone) tant que l'application n'est pas installée.
+- **Mémoire de l'appareil, pas du compte** : clé `si-espace-installer` du `localStorage` (`plusTard`, `le`, `installee`). C'est l'écran d'accueil de ce téléphone qui compte : une marque sur le serveur, au compte, cacherait la carte sur un nouveau téléphone dès qu'on a dit « Plus tard » sur l'ordinateur. Le serveur garantit déjà le reste : la carte n'est que dans le tableau de bord d'un client connecté (pare-feu de l'espace, jamais le personnel), après les étapes obligatoires de « Sécuriser mon compte », et seulement sur le site en ligne (`site_en_ligne()`), jamais sur les pages publiques. Rien à synchroniser, pas de table. Si le navigateur refuse toute mémoire (données du site bloquées), la carte ne s'affiche pas, puisqu'elle ne pourrait pas retenir « Plus tard » ; la page marche normalement et Mon compte garde le bouton. Pour revoir la carte en essai : effacer la clé dans les outils du navigateur.
+- **Accessibilité** : pas de voile, la page reste cliquable ; elle s'allonge de la hauteur de la carte, rien ne reste caché dessous, et le bouton de l'assistant remonte au-dessus. La carte ne prend pas le focus en apparaissant ; elle est annoncée poliment au lecteur d'écran, se joint au clavier dans l'ordre de la page et ne retient pas le focus. Animation d'entrée seulement sans « réduire les animations ». Boutons d'au moins 44 px.
+- La barre « Installer » propre au navigateur (Chrome sur Android) ne s'affiche ni sur les pages de connexion ni dans l'espace : c'est l'espace qui propose, au bon moment.
+
+**Conditions d'installation** (vérifiées dans Chromium et par `ApplicationEcranAccueilTest`) :
+
+- `public/espace.webmanifest` : nom et nom court en français, `start_url` et `scope` `/espace`, `display: standalone`, couleurs, icônes 192 et 512 px (`any`) et leurs versions `maskable` (logo dans le cercle central, pour les icônes rondes d'Android).
+- iPhone : `images/icone-180.png` (180 px, fond blanc sans transparence) en `apple-touch-icon`, titre « Succès Imprim », plein écran.
+- `public/sw.js`, portée `/espace` : il laisse passer chaque page par le réseau ; sans réseau, il montre `public/hors-ligne-espace.html` (« Pas de connexion internet », « Réessayer », recharge seule au retour du réseau). Cette page sans aucune donnée est la seule chose gardée dans le téléphone : aucune page de l'espace, aucun montant, aucun fichier n'est mis en cache. Le personnel (même fichier, portée `/`) garde le comportement d'avant : notifications seulement, pas d'écoute des pages.
+- Il faut une adresse https sur le serveur (ou localhost en essai).
 
 ## Paiement Orange Money (17, J5, construit le 13/10/2026)
 

@@ -18,6 +18,12 @@ framework:
             policy: sliding_window
             limit: 20
             interval: '1 hour'
+        # Suivi d'une facture par son QR (/f/{code}, EssaisCodeFacture) :
+        # seuls les codes faux comptent.
+        facture_suivi_ip:
+            policy: sliding_window
+            limit: 20
+            interval: '1 hour'
         # Sondages sans compte (lien de livraison, QR code) : freine les
         # réponses en rafale depuis une même connexion.
         sondage_public_ip:

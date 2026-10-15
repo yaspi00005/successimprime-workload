@@ -4,6 +4,7 @@ namespace App\EventSubscriber;
 
 use App\Entity\User;
 use App\Security\EntetesSecurite;
+use App\Service\Site\MesureAudience;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
@@ -15,11 +16,16 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * référent, fonctions du navigateur, type de contenu et, en https
  * seulement, HSTS. Un en-tête déjà posé par la page est gardé (par
  * exemple « Referrer-Policy: no-referrer » du suivi de facture).
+ *
+ * La politique s'ouvre à Google Analytics seulement sur les pages qui
+ * portent la balise Google (MesureAudience, même décision que la page).
  */
 final class EntetesSecuriteSubscriber implements EventSubscriberInterface
 {
-    public function __construct(private readonly Security $security)
-    {
+    public function __construct(
+        private readonly Security $security,
+        private readonly MesureAudience $mesureAudience,
+    ) {
     }
 
     public static function getSubscribedEvents(): array
@@ -37,7 +43,9 @@ final class EntetesSecuriteSubscriber implements EventSubscriberInterface
         $reponse = $event->getResponse();
         $zone = EntetesSecurite::zone((string) $requete->attributes->get('_route', ''), $this->security->getUser() instanceof User);
 
-        foreach (EntetesSecurite::entetes($reponse->headers->get('Content-Type'), $zone, $requete->isSecure()) as $nom => $valeur) {
+        $mesure = null !== $this->mesureAudience->identifiant($requete);
+
+        foreach (EntetesSecurite::entetes($reponse->headers->get('Content-Type'), $zone, $requete->isSecure(), $mesure) as $nom => $valeur) {
             if (!$reponse->headers->has($nom)) {
                 $reponse->headers->set($nom, $valeur);
             }

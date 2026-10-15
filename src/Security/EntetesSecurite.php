@@ -23,6 +23,10 @@ namespace App\Security;
  * Deux zones gardées pour la suite : le site public, l'espace client et
  * les pages sans compte ; l'administration (personnel connecté, écran TV,
  * tablette), qui n'a aujourd'hui rien de plus (AJOUTS_ADMIN vide).
+ *
+ * Seule exception demandée par Yaya (15/10/2026) : la mesure d'audience
+ * Google (gtag.js), sur les pages publiques du site en ligne que
+ * MesureAudience retient, et sur elles seules (AJOUTS_MESURE_AUDIENCE).
  */
 final class EntetesSecurite
 {
@@ -71,6 +75,20 @@ final class EntetesSecurite
     private const AJOUTS_ADMIN = [];
 
     /**
+     * Mesure d'audience Google (MesureAudience) : le script gtag.js, puis
+     * les envois des mesures (régions de Google Analytics comprises). Pas
+     * de Google Signals ni de publicité (public/js/mesure-audience.js) :
+     * aucun site de Google de plus.
+     *
+     * @var array<string, list<string>>
+     */
+    public const AJOUTS_MESURE_AUDIENCE = [
+        'script-src' => ['https://www.googletagmanager.com'],
+        'img-src' => ['https://*.google-analytics.com', 'https://*.googletagmanager.com'],
+        'connect-src' => ['https://*.google-analytics.com', 'https://*.analytics.google.com', 'https://*.googletagmanager.com'],
+    ];
+
+    /**
      * Fichier servi par l'application (image, PDF, JSON…) : rien ne s'y
      * exécute, même un SVG ou un HTML déguisé en fichier de client.
      */
@@ -97,13 +115,18 @@ final class EntetesSecurite
         return self::ZONE_ADMIN;
     }
 
-    public static function politique(string $zone): string
+    /**
+     * @param bool $mesureAudience page qui porte la balise Google (MesureAudience::identifiant)
+     */
+    public static function politique(string $zone, bool $mesureAudience = false): string
     {
         $directives = self::POLITIQUE;
-        if (self::ZONE_ADMIN === $zone) {
-            foreach (self::AJOUTS_ADMIN as $nom => $sources) {
-                $directives[$nom] = [...$directives[$nom], ...$sources];
-            }
+        $ajouts = self::ZONE_ADMIN === $zone ? self::AJOUTS_ADMIN : [];
+        if ($mesureAudience) {
+            $ajouts = array_merge_recursive($ajouts, self::AJOUTS_MESURE_AUDIENCE);
+        }
+        foreach ($ajouts as $nom => $sources) {
+            $directives[$nom] = [...$directives[$nom], ...$sources];
         }
 
         return implode('; ', array_map(static fn (string $nom, array $sources): string => $nom.' '.implode(' ', $sources), array_keys($directives), $directives));
@@ -112,9 +135,11 @@ final class EntetesSecurite
     /**
      * En-têtes à poser sur une réponse (ceux déjà posés par la page sont gardés).
      *
+     * @param bool $mesureAudience page HTML qui porte la balise Google (MesureAudience::identifiant)
+     *
      * @return array<string, string>
      */
-    public static function entetes(?string $typeContenu, string $zone, bool $https): array
+    public static function entetes(?string $typeContenu, string $zone, bool $https, bool $mesureAudience = false): array
     {
         $type = strtolower(trim(explode(';', (string) $typeContenu)[0]));
         $entetes = [
@@ -124,7 +149,7 @@ final class EntetesSecurite
             'Permissions-Policy' => self::PERMISSIONS,
         ];
         if ('' === $type || 'text/html' === $type || 'application/xhtml+xml' === $type) {
-            $entetes['Content-Security-Policy'] = self::politique($zone);
+            $entetes['Content-Security-Policy'] = self::politique($zone, $mesureAudience);
         } elseif ('application/pdf' === $type) {
             // Le lecteur PDF du navigateur ne s'ouvre pas dans une page « sandbox ».
             $entetes['Content-Security-Policy'] = "frame-ancestors 'self'";

@@ -8,12 +8,14 @@ use Doctrine\ORM\EntityManagerInterface;
 /**
  * Réglages de référencement du site vitrine (Réglages › Site vitrine ›
  * Référencement, docs/referencement.md) : codes de vérification de Google
- * Search Console et de Bing, lien de la fiche Google (Google Business
- * Profile) et pages des réseaux sociaux.
+ * Search Console et de Bing, identifiant de mesure Google Analytics (balise
+ * Google, gtag.js), lien de la fiche Google (Google Business Profile) et
+ * pages des réseaux sociaux.
  *
- * Rien de secret : les codes de vérification sont faits pour être lus dans
- * la page. Rangés dans un ReglageSite, ils descendent au site par la
- * synchronisation (type site_reglage), comme la règle des chiffres.
+ * Rien de secret : les codes de vérification et l'identifiant de mesure
+ * sont faits pour être lus dans la page. Rangés dans un ReglageSite, ils
+ * descendent au site par la synchronisation (type site_reglage), comme la
+ * règle des chiffres.
  */
 final class ReferencementSite
 {
@@ -34,7 +36,14 @@ final class ReferencementSite
     /** Fiche Google de la boutique : lien « Partager » envoyé par Yaya le 15/10/2026 (un lien saisi la remplace). */
     public const FICHE_GOOGLE = 'https://maps.app.goo.gl/S53cwaekd2L3FHP86';
 
-    public const DEFAUTS = ['google' => '', 'bing' => '', 'fiche_google' => self::FICHE_GOOGLE, 'facebook' => '', 'instagram' => '', 'tiktok' => '', 'linkedin' => '', 'youtube' => ''];
+    /**
+     * Identifiant de mesure Google Analytics de la boutique, envoyé par Yaya
+     * le 15/10/2026 avec la balise Google (gtag.js). Un identifiant saisi le
+     * remplace ; un champ vidé coupe la mesure (MesureAudience).
+     */
+    public const MESURE_GOOGLE = 'G-634VEQPP69';
+
+    public const DEFAUTS = ['google' => '', 'bing' => '', 'mesure' => self::MESURE_GOOGLE, 'fiche_google' => self::FICHE_GOOGLE, 'facebook' => '', 'instagram' => '', 'tiktok' => '', 'linkedin' => '', 'youtube' => ''];
 
     /** @var array<string, string>|null */
     private ?array $reglages = null;
@@ -126,6 +135,18 @@ final class ReferencementSite
             }
         }
 
+        // Mesure d'audience : absente (réglage enregistré avant elle), celle de la
+        // boutique ; vidée exprès, coupée ; sinon l'identifiant saisi.
+        if (\array_key_exists('mesure', $saisie)) {
+            if ('' === $texte('mesure')) {
+                $valeurs['mesure'] = '';
+            } elseif (null === $mesure = self::identifiantMesure($texte('mesure'))) {
+                $erreurs['mesure'] = 'Identifiant de mesure Google non reconnu : collez la balise Google (gtag.js) ou seulement l\'identifiant « G-… » ; laissez vide pour couper la mesure.';
+            } else {
+                $valeurs['mesure'] = $mesure;
+            }
+        }
+
         if ('' !== $texte('fiche_google')) {
             $lien = self::lien($texte('fiche_google'), self::DOMAINES_FICHE_GOOGLE);
             if (null === $lien) {
@@ -200,6 +221,23 @@ final class ReferencementSite
             'bing' => preg_match('/^[A-Fa-f0-9]{32}$/', $saisie) ? strtoupper($saisie) : null,
             default => null,
         };
+    }
+
+    /**
+     * Identifiant de mesure Google Analytics 4 (« G-XXXXXXXXXX »), tapé seul
+     * ou trouvé dans la balise Google copiée depuis Analytics
+     * (gtag/js?id=G-… ou gtag('config', 'G-…')). Rien d'autre de la balise
+     * n'est gardé.
+     */
+    public static function identifiantMesure(string $saisie): ?string
+    {
+        $saisie = trim($saisie);
+        if (preg_match('/(?:[?&]id=|config[\'"]?\s*,\s*[\'"])(G-[A-Za-z0-9]+)/', $saisie, $m)) {
+            $saisie = $m[1];
+        }
+        $saisie = strtoupper($saisie);
+
+        return preg_match('/^G-[A-Z0-9]{4,20}$/', $saisie) ? $saisie : null;
     }
 
     /**

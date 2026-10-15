@@ -4,7 +4,8 @@ namespace App\Service;
 
 /**
  * Programme de l'écran TV : scènes de la zone principale, zones fixes,
- * avis validés, messages du bandeau et horaires d'ouverture.
+ * avis validés, messages du bandeau, horaires d'ouverture et alertes
+ * sonores (AlertesEcranTv).
  *
  * Fonctions pures : le programme est un tableau, lu et écrit par
  * EcranTv. Chaque entrée de l'admin passe par normaliser(), l'écran
@@ -92,7 +93,7 @@ final class ProgrammeEcranTv
     /**
      * @param array<mixed> $brut
      *
-     * @return array{scenes: list<array<string, mixed>>, zones: array{colonneLive: bool, bandeau: bool, horlogeLogo: bool, son: bool}, avis: list<array{texte: string, note: int, signature: string}>, messages: list<string>, noteGoogle: ?float, avisGoogle: ?int, horaires: array<int, ?array{ouverture: string, fermeture: string}>, horsHoraires: string}
+     * @return array{scenes: list<array<string, mixed>>, zones: array{colonneLive: bool, bandeau: bool, horlogeLogo: bool, son: bool}, avis: list<array{texte: string, note: int, signature: string}>, messages: list<string>, noteGoogle: ?float, avisGoogle: ?int, horaires: array<int, ?array{ouverture: string, fermeture: string}>, horsHoraires: string, alertes: array{son: bool, voix: bool, volume: int, silenceDebut: ?string, silenceFin: ?string, evenements: list<string>}}
      */
     public static function normaliser(array $brut): array
     {
@@ -149,6 +150,32 @@ final class ProgrammeEcranTv
             'avisGoogle' => is_numeric($nombreAvis) && (int) $nombreAvis >= 0 ? (int) $nombreAvis : null,
             'horaires' => $horaires,
             'horsHoraires' => ($brut['horsHoraires'] ?? null) === self::HORS_HORAIRES_ETEINT ? self::HORS_HORAIRES_ETEINT : self::HORS_HORAIRES_FERME,
+            'alertes' => self::alertes(\is_array($brut['alertes'] ?? null) ? $brut['alertes'] : []),
+        ];
+    }
+
+    /**
+     * Alertes sonores : carillon, voix, volume (0 à 100), heures de
+     * silence (vides : jamais) et événements annoncés. Un programme
+     * enregistré avant les alertes prend les valeurs par défaut.
+     *
+     * @param array<mixed> $brut
+     *
+     * @return array{son: bool, voix: bool, volume: int, silenceDebut: ?string, silenceFin: ?string, evenements: list<string>}
+     */
+    private static function alertes(array $brut): array
+    {
+        $evenements = \is_array($brut['evenements'] ?? null)
+            ? array_values(array_intersect(array_keys(AlertesEcranTv::TYPES), array_map('strval', array_filter($brut['evenements'], 'is_scalar'))))
+            : AlertesEcranTv::evenementsParDefaut();
+
+        return [
+            'son' => (bool) ($brut['son'] ?? true),
+            'voix' => (bool) ($brut['voix'] ?? true),
+            'volume' => is_numeric($brut['volume'] ?? null) ? max(0, min(100, (int) $brut['volume'])) : AlertesEcranTv::VOLUME,
+            'silenceDebut' => \array_key_exists('silenceDebut', $brut) ? self::heure($brut['silenceDebut']) : AlertesEcranTv::SILENCE_DEBUT,
+            'silenceFin' => \array_key_exists('silenceFin', $brut) ? self::heure($brut['silenceFin']) : AlertesEcranTv::SILENCE_FIN,
+            'evenements' => $evenements,
         ];
     }
 

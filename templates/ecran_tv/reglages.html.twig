@@ -251,6 +251,54 @@
 					{% endfor %}
 				</div>
 
+				{% set alertes = programme.alertes %}
+				<div class="card si-bloc" id="alertes-sonores">
+					<div class="si-bloc-tete">
+						<h4>Alertes sonores</h4>
+						<span class="si-bloc-note">carillon puis voix</span>
+					</div>
+					<p class="text-muted small">Quand une commande ou une demande arrive, l'écran sonne, une voix l'annonce (« Nouvelle commande en ligne disponible ») et l'alerte s'affiche en haut. Jamais de nom, de montant ni de numéro.</p>
+					{% for champ, interrupteur in {
+						alertes_son: {actif: alertes.son, titre: 'Carillon', texte: 'Deux notes avant chaque annonce'},
+						alertes_voix: {actif: alertes.voix, titre: 'Voix', texte: 'En français ; sans voix française sur la Smart TV, seulement le carillon'}
+					} %}
+						<div class="si-zone-fixe">
+							<div>
+								<b>{{ interrupteur.titre }}</b>
+								<small>{{ interrupteur.texte }}</small>
+							</div>
+							<label class="si-interrupteur">
+								<input type="checkbox" name="{{ champ }}" value="1" {{ interrupteur.actif ? 'checked' }} aria-label="{{ interrupteur.titre }}" id="{{ champ }}">
+								<span></span>
+							</label>
+						</div>
+					{% endfor %}
+					<label class="si-libelle-champ mt-3" for="alertes_volume">Volume : <output id="volumeAffiche" for="alertes_volume">{{ alertes.volume }}</output> %</label>
+					<input type="range" class="form-range" name="alertes_volume" id="alertes_volume" min="0" max="100" step="5" value="{{ alertes.volume }}">
+					<span class="si-libelle-champ mt-2">Heures de silence</span>
+					<div class="si-silence">
+						<label for="alertes_silence_debut" class="small text-muted">De</label>
+						<input type="time" name="alertes_silence_debut" id="alertes_silence_debut" value="{{ alertes.silenceDebut }}" class="form-control form-control-sm">
+						<label for="alertes_silence_fin" class="small text-muted">à</label>
+						<input type="time" name="alertes_silence_fin" id="alertes_silence_fin" value="{{ alertes.silenceFin }}" class="form-control form-control-sm">
+					</div>
+					<p class="text-muted small mt-1 mb-2">Pendant ces heures, l'alerte s'affiche sans carillon ni voix. Heures vides : jamais de silence.</p>
+					<span class="si-libelle-champ">Annoncer</span>
+					<div class="si-alertes-evenements">
+						{% for type, evenement in constant('App\\Service\\AlertesEcranTv::TYPES') %}
+							<label>
+								<input type="checkbox" name="alertes_evenements[]" value="{{ type }}" {{ type in alertes.evenements ? 'checked' }} data-phrase="{{ evenement.un }}">
+								<span><b>{{ evenement.libelle }}</b> <small>{{ evenement.aide }} · « {{ evenement.un }} »</small></span>
+							</label>
+						{% endfor %}
+					</div>
+					<div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+						<button type="button" class="btn btn-light btn-sm" id="testerSon">Tester le son</button>
+						<span id="resultatTest" class="small text-muted" aria-live="polite"></span>
+					</div>
+					<p class="text-muted small mt-2 mb-0">Le test joue sur cet ordinateur, avec les réglages ci-dessus. Sur la Smart TV, touchez une fois « Activer le son » : le navigateur bloque le son tant que personne n'a touché l'écran. Les changements passent à l'écran avec « Publier sur l'écran ».</p>
+				</div>
+
 				<div class="card si-bloc">
 					<div class="si-bloc-tete"><h4>Horaires d'ouverture</h4></div>
 					<div class="si-horaires">
@@ -291,6 +339,7 @@
 					<div class="si-bloc-tete"><h4>Règles de l'écran</h4></div>
 					<ul class="si-regles-ecran">
 						<li>Jamais de montant, de marge ni de nom de client</li>
+						<li>Annonces sonores : des phrases fixes, sans nom, montant ni numéro</li>
 						<li>Seulement les photos et avis validés ici</li>
 						<li>Écran noir ou « Fermé » hors horaires</li>
 						<li>Reprise automatique après une coupure de courant ou d'internet</li>
@@ -387,6 +436,7 @@
 {% block javascripts %}
 	{{ parent() }}
 	<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>
+	<script src="{{ asset('js/ecran-tv-alertes.js') }}"></script>
 	<script>
 	(function () {
 		'use strict';
@@ -464,6 +514,30 @@
 		});
 		avis.addEventListener('click', function (e) {
 			if (e.target.closest('[data-retirer-avis]')) { e.target.closest('[data-avis]').remove(); }
+		});
+
+		/* ---------- Alertes sonores : volume et « Tester le son » ---------- */
+		var volume = document.getElementById('alertes_volume');
+		volume.addEventListener('input', function () { document.getElementById('volumeAffiche').textContent = volume.value; });
+		document.getElementById('testerSon').addEventListener('click', function () {
+			var resultat = document.getElementById('resultatTest');
+			var reglages = {
+				son: document.getElementById('alertes_son').checked,
+				voix: document.getElementById('alertes_voix').checked,
+				volume: parseInt(volume.value, 10) || 0
+			};
+			var coche = document.querySelector('input[name="alertes_evenements[]"]:checked');
+			var phrase = (coche ? coche.dataset.phrase : 'Nouvelle commande en ligne disponible') + '.';
+			if (!window.AlertesSonores) { resultat.textContent = 'Ce navigateur ne peut pas jouer les alertes.'; return; }
+			if (!reglages.son && !reglages.voix) { resultat.textContent = 'Carillon et voix coupés : l\'alerte s\'affiche seulement.'; return; }
+			resultat.textContent = 'Écoutez…';
+			AlertesSonores.tester(reglages, phrase).then(function (r) {
+				var morceaux = [];
+				if (!r.son) { morceaux.push('Le navigateur a bloqué le son.'); }
+				if (reglages.son) { morceaux.push(r.carillon ? 'Carillon joué.' : 'Carillon impossible sur ce navigateur.'); }
+				if (reglages.voix) { morceaux.push(r.voix ? 'Voix : ' + r.voix + '.' : 'Aucune voix française sur cet ordinateur : seulement le carillon.'); }
+				resultat.textContent = morceaux.join(' ');
+			});
 		});
 
 		document.getElementById('copierLien').addEventListener('click', function () {

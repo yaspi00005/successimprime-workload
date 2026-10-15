@@ -95,6 +95,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 
 - [ ] `.env.local` des deux machines : [docs/synchronisation.md, « Mise en route »](synchronisation.md#mise-en-route), étapes 2 et 3 (la même `SYNC_CLE` des deux côtés).
 - [ ] `php bin/console app:verifier-installation` sur les deux machines.
+- [ ] Le site en ligne qui a servi aux essais peut garder des données de démonstration envoyées par une machine de test : avant d'ouvrir, repartir d'une base en ligne vide (nouvelle base dans le panneau, `DATABASE_URL` du serveur vers elle, puis `php bin/console doctrine:migrations:migrate -n` sur le serveur), que la ligne suivante remplit depuis l'ERP de la boutique.
 - [ ] Sur l'ERP local, une seule fois : `php bin/console app:synchro --initialiser`.
 - [ ] Tâche planifiée de la synchronisation (« Mise en route », étape 5) : `scripts\windows\installer_tache_synchro.bat` en administrateur. L'écran Réglages › Sécurité › Synchronisation montre une synchronisation réussie.
 

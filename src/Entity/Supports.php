@@ -45,7 +45,6 @@ class Supports
         new ORM\JoinColumn(
             name: 'support_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ],
@@ -53,7 +52,6 @@ class Supports
         new ORM\JoinColumn(
             name: 'types_impression_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ]
@@ -75,7 +73,6 @@ private Collection $typesImpressions;
         new ORM\JoinColumn(
             name: 'support_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ],
@@ -83,7 +80,6 @@ private Collection $typesImpressions;
         new ORM\JoinColumn(
             name: 'format_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ]
@@ -106,7 +102,6 @@ private Collection $formats;
         new ORM\JoinColumn(
             name: 'support_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ],
@@ -114,7 +109,6 @@ private Collection $formats;
         new ORM\JoinColumn(
             name: 'finition_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ]

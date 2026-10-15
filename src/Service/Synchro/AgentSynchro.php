@@ -3,6 +3,7 @@
 namespace App\Service\Synchro;
 
 use App\Entity\SynchroEchange;
+use App\Service\Push\EnvoiPush;
 use App\Service\Sauvegarde\HorsSite;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -31,6 +32,10 @@ final class AgentSynchro
     public const ETAT_SCHEMA = 'schema_site';
     public const ETAT_CONTACT = 'dernier_contact_agent';
 
+    /** Les alertes de panne dans la cloche des administrateurs : leur lien et le début de leur texte. */
+    public const ALERTE_ROUTE = 'app_synchronisation_index';
+    public const ALERTE_PREFIXE = 'Synchronisation : ';
+
     /** Données déjà notées pendant ce cycle : une fiche modifiée trois fois n'a qu'une ligne. */
     private array $notees = [];
 
@@ -41,6 +46,7 @@ final class AgentSynchro
         private readonly EntityManagerInterface $em,
         private readonly FichiersSynchro $fichiers,
         private readonly HorsSite $horsSite,
+        private readonly EnvoiPush $push,
         #[Autowire('%kernel.project_dir%')] private readonly string $projectDir,
     ) {
     }
@@ -118,6 +124,7 @@ final class AgentSynchro
             if ($this->synchro->etat(self::ETAT_ALERTE) !== null) {
                 $this->synchro->noterEtat(self::ETAT_ALERTE, null);
                 $this->synchro->noterEchange(SynchroEchange::SYSTEME, null, 'Liaison rétablie', SynchroEchange::OK);
+                $this->retirerAlertes();
             }
         } else {
             $this->synchro->noterEtat(self::ETAT_ERREUR, $resume['message']);
@@ -127,6 +134,10 @@ final class AgentSynchro
         $purge = $this->synchro->dateEtat(self::ETAT_PURGE);
         if ($purge === null || $purge < $maintenant->modify('-1 day')) {
             $this->synchro->purger($maintenant);
+            if ($resume['statut'] === 'ok') {
+                // Alertes restées non lues alors que la liaison marche (celles d'avant cette version comprises).
+                $this->retirerAlertes();
+            }
             $this->synchro->noterEtat(self::ETAT_PURGE, $maintenant->format(\DATE_ATOM));
         }
 
@@ -237,10 +248,22 @@ final class AgentSynchro
         if ($alerte === null || $this->synchro->etat(self::ETAT_ALERTE) !== null) {
             return;
         }
-        // Une notification par panne (avec l'envoi sur le téléphone des administrateurs).
-        $this->notifications->notifierRoles(['ROLE_ADMIN'], 'Synchronisation : '.$alerte, 'app_synchronisation_index');
+        // Une notification par panne, avec l'envoi sur le téléphone des administrateurs. Celui qui a
+        // encore l'alerte d'une panne précédente non lue la voit remise à jour : une seule dans sa cloche.
+        $misesAJour = $this->notifications->notifierRolesSansDoublon(['ROLE_ADMIN'], self::ALERTE_PREFIXE.$alerte, self::ALERTE_ROUTE, self::ALERTE_PREFIXE, $maintenant);
         $this->em->flush();
+        foreach ($misesAJour as $notification) {
+            $this->push->aEnvoyer($notification);
+        }
         $this->synchro->noterEtat(self::ETAT_ALERTE, $maintenant->format(\DATE_ATOM));
+    }
+
+    /** La liaison marche : les alertes de panne encore non lues n'ont plus d'objet. */
+    private function retirerAlertes(): void
+    {
+        if ($this->notifications->marquerLuesParSorte(self::ALERTE_ROUTE, self::ALERTE_PREFIXE) > 0) {
+            $this->em->flush();
+        }
     }
 
     /**

@@ -19,7 +19,7 @@
 <body class="si-espace">
 	<aside class="si-espace-panneau">
 		<div class="si-espace-bandes" aria-hidden="true"><span></span><span></span><span></span></div>
-		<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim" class="si-espace-logo">
+		<img src="{{ asset('images/site/logo-succes-imprim-256.webp') }}" alt="Succès Imprim" class="si-espace-logo" width="128" height="71">
 		<div class="si-espace-accroche">
 			<h2>Vos impressions, suivies de près.</h2>
 			<p>Dans votre espace : commandes en cours, BAT à valider, factures et paiements Orange Money.</p>
@@ -29,7 +29,8 @@
 				<li><strong>Retrouvez vos factures</strong><small>et payez en ligne</small></li>
 			</ul>
 		</div>
-		<p class="si-espace-societe">Succès Imprim · un service de Madial Groupe (MDG SARL) · Bamako</p>
+		{% set entreprise = site_entreprise() %}
+		<p class="si-espace-societe">{{ entreprise ? entreprise.nomAffiche : 'Succès Imprim' }}{% if entreprise and entreprise.nomCommercial and entreprise.raisonSociale %} · nom commercial de {{ entreprise.raisonSociale }}{% endif %} · Bamako</p>
 	</aside>
 
 	<main class="si-espace-contenu">

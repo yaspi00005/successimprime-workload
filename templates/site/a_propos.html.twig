@@ -9,15 +9,17 @@
 
 {% set entreprise = site_entreprise() %}
 {% set photo = site_image(page.image) %}
+{% set image_partage = photo %}
+{% set donnees_entreprise = true %}
 {% set equipe = contenu.sections|filter(s => 'équipe' in s.titre|lower or 'equipe' in s.titre|lower)|first %}
 {% set premiere = contenu.sections|filter(s => s != equipe)|first %}
 {% set autres = contenu.sections|filter(s => s != equipe and s != premiere) %}
 
-{% block title %}{{ page.titre }} · Succès Imprim, imprimerie à Bamako{% endblock %}
-{% block description %}{{ page.description ?? page.accroche ?? 'Succès Imprim, imprimerie à Bamako : impression grand format, textile DTF et finition dans notre atelier.' }}{% endblock %}
+{% block title %}{{ page.titre|site_titre }}{% endblock %}
+{% block description %}{{ (page.description ?? page.accroche ?? 'Succès Imprim, imprimerie à Bamako : impression grand format, textile DTF et finition dans notre atelier.')|site_description }}{% endblock %}
 
 {% block entete %}
-	<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+	{{ site_styles('css/site-contenu.css') }}
 {% endblock %}
 
 {% block contenu %}

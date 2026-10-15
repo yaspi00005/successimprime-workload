@@ -8,7 +8,6 @@ use App\Repository\AppareilAutoriseRepository;
 use App\Repository\EntrepriseRepository;
 use App\Security\AccesEnLigne;
 use App\Service\NotificationService;
-use App\Service\Parametres\Parametres;
 use App\Twig\SiteExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -36,10 +35,7 @@ final class SiteExtensionTest extends TestCase
         $entreprises->method('parCode')->willReturn($entreprise);
         $entreprises->method('dansLOrdre')->willReturn([]);
 
-        // Les réglages ne servent qu'à la fiche Google, testée par SiteExtension::horaires().
-        $parametres = (new \ReflectionClass(Parametres::class))->newInstanceWithoutConstructor();
-
-        return new SiteExtension(new UrlGenerator($routes, new RequestContext()), $entreprises, $acces, $parametres);
+        return new SiteExtension(new UrlGenerator($routes, new RequestContext()), $entreprises, $acces);
     }
 
     public function testUnePagePasEncoreConstruiteNAPasDeLien(): void
@@ -101,12 +97,5 @@ final class SiteExtensionTest extends TestCase
         $page = $controleur->cache(new Response('faq'), Request::create('/faq'));
         self::assertSame(300, $page->getMaxAge());
         self::assertTrue($page->headers->hasCacheControlDirective('public'));
-    }
-
-    public function testHorairesPourLaFicheGoogle(): void
-    {
-        self::assertSame('Mo-Sa 08:00-18:00', SiteExtension::horaires('lun-sam', '08:00', '18:00'));
-        self::assertNull(SiteExtension::horaires('lun-sam', '', '18:00'));
-        self::assertNull(SiteExtension::horaires('tous', '08:00', '18:00'));
     }
 }

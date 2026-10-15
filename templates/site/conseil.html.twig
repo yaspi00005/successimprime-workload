@@ -10,25 +10,15 @@
 {% set image = site_image(article.image) %}
 {% set conseils = path('app_site_conseils') %}
 
-{% block title %}{{ article.titre }} · Conseils Succès Imprim{% endblock %}
-{% block description %}{{ article.resume ?: article.corps|site_texte|slice(0, 160) }}{% endblock %}
+{% block title %}{{ article.titre|site_titre }}{% endblock %}
+{% block description %}{{ (article.resume ?: article.corps|site_texte)|site_description }}{% endblock %}
+{% set og_type = 'article' %}
+{% set image_partage = image %}
 
 {% block entete %}
-	<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
-	{% set donnees = {
-		'@context': 'https://schema.org',
-		'@type': 'Article',
-		headline: article.titre|slice(0, 110),
-		description: article.resume,
-		datePublished: article.publieLe|date('c'),
-		dateModified: article.modifieLe|date('c'),
-		inLanguage: 'fr',
-		mainEntityOfPage: url('app_site_conseil', {slug: article.slug}),
-		author: {'@type': 'Organization', name: 'Succès Imprim', url: url('app_home')},
-		publisher: {'@type': 'Organization', name: 'Succès Imprim', logo: {'@type': 'ImageObject', url: absolute_url(asset('images/logo-succes-imprim.png'))}},
-	} %}
-	{% if image %}{% set donnees = donnees|merge({image: absolute_url(asset(image.chemin))}) %}{% endif %}
-	{{ site_json_ld(donnees) }}
+	{{ site_styles('css/site-contenu.css') }}
+	{{ site_donnees_article(article, image) }}
+	{{ site_fil_ariane([{nom: 'Conseils', url: conseils}, {nom: article.titre}]) }}
 {% endblock %}
 
 {% block contenu %}

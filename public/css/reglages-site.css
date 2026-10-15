@@ -43,6 +43,13 @@
 .si-sv .si-sv-chiffres strong { display: block; font-size: 26px; color: #0F4590; font-variant-numeric: tabular-nums; }
 .si-sv .si-sv-chiffres span { font-size: 13px; color: #475569; }
 .si-sv .si-sv-chiffres small { display: block; color: #C46A00; font-size: 11px; margin-top: 2px; }
+/* Onglet Référencement */
+.si-sv .si-sv-referencement-form { padding-bottom: 18px; }
+.si-sv .si-sv-adresses { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 8px; font-size: 13px; }
+.si-sv .si-sv-adresses dt { font-weight: 600; color: #475569; }
+.si-sv .si-sv-adresses dd { margin: 0; overflow-wrap: anywhere; }
+.si-sv .si-sv-manques { padding-left: 18px; margin: 0 0 10px; font-size: 13px; color: #475569; }
+.si-sv .si-sv-manques li { margin-bottom: 6px; }
 .si-sv .si-sv-chiffre-masque strong { color: #94A3B8; }
 
 /* Fiche */

@@ -55,7 +55,7 @@
 				{% for cle, o in onglets %}
 					<a href="{{ path('app_site_contenu_index', {onglet: cle}) }}" class="{{ cle == onglet ? 'active' }}" {{ cle == onglet ? 'aria-current="page"' }}>
 						{{- o.libelle -}}
-						{% if cle == onglet and cle not in ['pages', 'chiffres'] %} <small>{{ elements|length }}</small>{% endif %}
+						{% if cle == onglet and cle not in ['pages', 'chiffres', 'referencement'] %} <small>{{ elements|length }}</small>{% endif %}
 					</a>
 				{% endfor %}
 			</nav>
@@ -251,6 +251,52 @@
 								{% endfor %}
 							</ul>
 							<p class="form-text mb-0">Calculés sur les commandes livrées (comme l'écran TV) et gardés une heure par le serveur qui affiche la page.</p>
+						</div>
+					</div>
+
+				{% elseif onglet == 'referencement' %}
+					{% set r = referencement.reglages %}
+					<div class="row g-4">
+						<div class="col-lg-6">
+							<form method="post" action="{{ path('app_site_contenu_referencement') }}" class="si-sv-referencement-form">
+								<input type="hidden" name="_token" value="{{ csrf_token('site-contenu-referencement') }}">
+								<h2 class="si-sv-sous-titre">Moteurs de recherche</h2>
+								<label class="si-libelle-champ" for="ref-google">Code de vérification Google Search Console</label>
+								<input type="text" name="google" id="ref-google" value="{{ r.google }}" maxlength="300" class="form-control form-control-sm" autocomplete="off" spellcheck="false" aria-describedby="aide-ref-google">
+								<div id="aide-ref-google" class="form-text">Search Console › Ajouter une propriété › « Préfixe de l'URL » › Balise HTML : collez la balise entière ou seulement le code. Ce n'est pas un secret.</div>
+								<label class="si-libelle-champ mt-3" for="ref-bing">Code de vérification Bing (facultatif)</label>
+								<input type="text" name="bing" id="ref-bing" value="{{ r.bing }}" maxlength="300" class="form-control form-control-sm" autocomplete="off" spellcheck="false" aria-describedby="aide-ref-bing">
+								<div id="aide-ref-bing" class="form-text">Bing Webmaster Tools › Balise meta (msvalidate.01). Bing peut aussi reprendre la propriété Google.</div>
+
+								<h2 class="si-sv-sous-titre mt-4">Fiche Google et réseaux sociaux</h2>
+								<label class="si-libelle-champ" for="ref-fiche">Lien de la fiche Google (Google Business Profile)</label>
+								<input type="url" name="fiche_google" id="ref-fiche" value="{{ r.fiche_google }}" maxlength="500" class="form-control form-control-sm" placeholder="https://maps.app.goo.gl/…" aria-describedby="aide-ref-fiche">
+								<div id="aide-ref-fiche" class="form-text">Sur la fiche, bouton « Partager » › copier le lien. Il apparaît sur la page Contact (« Voir notre fiche Google ») et dans les données pour Google.</div>
+								{% for cle, reseau in constant('App\\Service\\Site\\ReferencementSite::RESEAUX') %}
+									<label class="si-libelle-champ mt-3" for="ref-{{ cle }}">Page {{ reseau.libelle }}</label>
+									<input type="url" name="{{ cle }}" id="ref-{{ cle }}" value="{{ r[cle] }}" maxlength="500" class="form-control form-control-sm" placeholder="https://www.{{ reseau.domaines|first }}/…">
+								{% endfor %}
+								<div class="form-text">Les pages réglées apparaissent en pied de page du site et sont reliées à la fiche de l'imprimerie pour Google.</div>
+								<button type="submit" class="btn btn-danger btn-sm mt-3">Enregistrer</button>
+							</form>
+						</div>
+						<div class="col-lg-6">
+							<h2 class="si-sv-sous-titre">Adresses à donner à Google</h2>
+							<dl class="si-sv-adresses">
+								<dt>Site</dt><dd><code>{{ referencement.adresse }}/</code></dd>
+								<dt>Plan du site</dt><dd><code>{{ referencement.adresse }}/sitemap.xml</code></dd>
+								<dt>Consignes aux robots</dt><dd><code>{{ referencement.adresse }}/robots.txt</code></dd>
+							</dl>
+							<p class="form-text">Adresse prise dans Réglages › Entités et en-têtes › Succès Imprim, champ « Site ». Les adresses canoniques des pages, le plan du site et les images de partage l'utilisent, jamais l'adresse de ce serveur.</p>
+							<h2 class="si-sv-sous-titre mt-4">Ce qui manque encore pour Google</h2>
+							{% if referencement.manques is empty %}
+								<p class="mb-0"><span class="si-pastille si-pastille-vert">Complet</span> Tout ce que le site peut dire de l'imprimerie est renseigné.</p>
+							{% else %}
+								<ul class="si-sv-manques">
+									{% for manque in referencement.manques %}<li>{{ manque }}</li>{% endfor %}
+								</ul>
+							{% endif %}
+							<p class="form-text mb-0">Rien n'est inventé : un renseignement absent n'est pas donné à Google. Règles pour une nouvelle page : docs/referencement.md.</p>
 						</div>
 					</div>
 				{% endif %}

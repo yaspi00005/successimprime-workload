@@ -3,25 +3,39 @@
 namespace App\Controller;
 
 use App\Security\AccesEnLigne;
+use App\Service\Site\AdresseSite;
 use App\Service\Site\PlanDuSite;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\EventListener\AbstractSessionListener;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * Référencement du site vitrine : plan du site et consignes aux robots.
- * L'ERP local ne doit pas être indexé : tout y est interdit aux robots.
+ * Référencement du site vitrine (docs/referencement.md) : plan du site et
+ * consignes aux robots. L'ERP local ne doit pas être indexé : tout y est
+ * interdit aux robots.
  */
 final class SiteReferencementController extends AbstractController
 {
-    /** Espaces privés du serveur en ligne, fermés aux robots. */
-    public const INTERDITS = ['/espace', '/login', '/api', '/verification', '/appareil', '/acces', '/f/', '/om/'];
+    /**
+     * Espaces privés du serveur en ligne, fermés aux robots : espace client,
+     * connexions, API, liens privés (factures, avis, Orange Money), écrans de
+     * l'atelier, administration, recherche, réponses en JSON du calculateur
+     * et du studio textile. Préfixes : « /atelier/ » (administration) ne
+     * ferme pas « /atelier-3d » (studio textile). Les autres pages de
+     * l'administration portent « noindex » (ReferencementSubscriber).
+     */
+    public const INTERDITS = [
+        '/espace', '/login', '/api', '/verification', '/appareil', '/acces', '/f/', '/om/',
+        '/avis/', '/assistant/', '/tablette', '/ecran-accueil', '/recherche', '/reglages',
+        '/atelier/', '/calculateur/estimation', '/atelier-3d/', '/changer-utilisateur', '/lockscreen',
+    ];
 
-    public function __construct(private readonly AccesEnLigne $acces)
-    {
+    public function __construct(
+        private readonly AccesEnLigne $acces,
+        private readonly AdresseSite $adresse,
+    ) {
     }
 
     #[Route('/robots.txt', name: 'app_site_robots', methods: ['GET'])]
@@ -35,7 +49,7 @@ final class SiteReferencementController extends AbstractController
             $lignes[] = 'Disallow: '.$chemin;
         }
         $lignes[] = '';
-        $lignes[] = 'Sitemap: '.$this->generateUrl('app_site_plan', [], UrlGeneratorInterface::ABSOLUTE_URL);
+        $lignes[] = 'Sitemap: '.$this->adresse->url($this->generateUrl('app_site_plan'));
 
         return $this->texte(implode("\n", $lignes)."\n", 'text/plain');
     }

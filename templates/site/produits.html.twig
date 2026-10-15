@@ -10,10 +10,14 @@
 {% set whatsapp = site_whatsapp('Bonjour Succès Imprim, je cherche un produit qui n\'est pas sur le site : ') %}
 {% set univers_choisi = choisi is not null ? univers[choisi] : null %}
 
-{% block title %}{{ univers_choisi ? univers_choisi.nom ~ ' · ' }}Nos produits · Succès Imprim, imprimerie à Bamako{% endblock %}
-{% block description %}Bâches, vinyle, micro-perforé, roll-up, textile DTF, cartes de visite et signalétique à Bamako : nos produits et leur prix de départ en FCFA. Calculez votre prix en ligne.{% endblock %}
+{% block title %}{{ univers_choisi ? (univers_choisi.nom ~ ' · Nos produits')|site_titre : 'Nos produits et prix d\'impression à Bamako · Succès Imprim' }}{% endblock %}
+{% block description %}Bâches, banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite, autocollants : nos produits et leur prix de départ en FCFA, à Bamako.{% endblock %}
 
-{% block entete %}<link rel="stylesheet" href="{{ asset('css/site-produits.css') }}">{% endblock %}
+{% block entete %}
+	{{ site_styles('css/site-produits.css') }}
+	{# Prix de départ publics, les mêmes que sur la page (adresse canonique : tous les produits). #}
+	{% if univers_choisi is null %}{{ site_donnees_catalogue(univers) }}{% endif %}
+{% endblock %}
 
 {% block contenu %}
 	{{ include('site/_bandeau.html.twig', {titre: 'Nos produits', ariane: 'Produits', accroche: 'Grand format, textile, petit format et signalétique : choisissez, calculez, commandez.'}) }}

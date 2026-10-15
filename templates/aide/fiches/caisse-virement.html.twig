@@ -1,0 +1,19 @@
+{# Fiche du guide « caisse-virement » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu « Caisse », puis « Virement » en haut de l'écran.</li>
+	<li>Le type est déjà sur « Transfert ». Tapez le « Montant de l'opération ».</li>
+	<li>« Compte source » : d'où part l'argent (Caisse boutique ou Orange Money). « Compte destination » : la banque.</li>
+	<li>Remplissez le libellé, le mode et la référence du bordereau.</li>
+	<li>Touchez « Enregistrer le mouvement », puis « Oui, enregistrer ».</li>
+	<li>Retour à la caisse avec le message « Virement de … enregistré ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Les comptes sont proposés par leur nom : aucun solde n'est affiché.</li>
+	<li>Un transfert n'est ni une recette ni une charge : il ne change pas le résultat du mois.</li>
+	<li>Le virement est enregistré à votre nom.</li>
+</ul>
+{% endblock %}

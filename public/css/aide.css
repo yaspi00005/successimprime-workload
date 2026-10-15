@@ -1,0 +1,400 @@
+/*
+ * Guide utilisateur (docs/guide-utilisateur.md) : liste des fiches,
+ * fiche, et vue « Imprimer mon guide » en A4.
+ */
+
+/* ---------- Liste ---------- */
+
+.si-aide {
+  max-width: 1100px;
+}
+
+.si-aide-intro {
+  color: #475569;
+  margin-bottom: 1.25rem;
+}
+
+.si-aide-groupe {
+  margin-bottom: 1.75rem;
+}
+
+.si-aide-groupe-tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.si-aide-groupe h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary, #0F4590);
+  margin: 0 0 0.25rem;
+}
+
+.si-aide-groupe-texte {
+  color: #64748B;
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.si-aide-imprimer-groupe {
+  font-size: 0.85rem;
+}
+
+.si-aide-cartes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.si-aide-parcours {
+  counter-reset: parcours;
+}
+
+.si-aide-parcours > li {
+  counter-increment: parcours;
+  display: flex;
+}
+
+.si-aide-carte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.75rem;
+  color: #0F172A;
+}
+
+.si-aide-carte:hover,
+.si-aide-carte:focus-visible {
+  border-color: var(--primary, #0F4590);
+  color: #0F172A;
+}
+
+.si-aide-carte strong {
+  font-size: 0.95rem;
+}
+
+.si-aide-parcours .si-aide-carte strong::before {
+  content: counter(parcours) ". ";
+  color: var(--secondary, #DE1028);
+}
+
+.si-aide-carte span {
+  font-size: 0.85rem;
+  color: #64748B;
+}
+
+.si-aide-ecran .si-aide-carte {
+  border-color: var(--primary, #0F4590);
+  background: #EAF1FC;
+}
+
+.si-aide-note {
+  font-size: 0.85rem;
+  color: #64748B;
+}
+
+/* ---------- Fiche ---------- */
+
+.si-aide-fiche {
+  max-width: 920px;
+  background: #fff;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.si-aide-pastille {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #EAF1FC;
+  color: var(--primary, #0F4590);
+  margin-bottom: 0.5rem;
+}
+
+.si-aide-but {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.si-aide-fiche h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary, #0F4590);
+  margin: 1.25rem 0 0.5rem;
+}
+
+.si-aide-etapes ol {
+  counter-reset: etape;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.si-aide-etapes ol > li {
+  counter-increment: etape;
+  position: relative;
+  padding: 0.35rem 0 0.35rem 2.4rem;
+  min-height: 2rem;
+}
+
+.si-aide-etapes ol > li::before {
+  content: counter(etape);
+  position: absolute;
+  left: 0;
+  top: 0.2rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--primary, #0F4590);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1.7rem;
+  text-align: center;
+}
+
+.si-aide-etapes ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.si-aide-captures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.si-aide-capture {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.si-aide-capture img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.5rem;
+  background: #F1F5F9;
+}
+
+.si-aide-capture-mobile {
+  flex: 0 1 15rem;
+}
+
+.si-aide-capture figcaption {
+  font-size: 0.8rem;
+  color: #64748B;
+  margin-top: 0.35rem;
+}
+
+.si-aide-savoir ul {
+  padding-left: 1.1rem;
+  margin: 0;
+}
+
+.si-aide-savoir li {
+  margin-bottom: 0.35rem;
+}
+
+.si-aide kbd,
+.si-aide-impression kbd {
+  font-size: 0.8em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.25rem;
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.si-aide-suite {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #E2E8F0;
+}
+
+.si-aide-voisine {
+  display: flex;
+  flex-direction: column;
+  max-width: 48%;
+  font-weight: 600;
+}
+
+.si-aide-voisine small {
+  font-weight: 400;
+  color: #64748B;
+}
+
+.si-aide-voisine-suivante {
+  text-align: right;
+  margin-left: auto;
+}
+
+@media (max-width: 767.98px) {
+  .si-aide-fiche {
+    padding: 1rem;
+  }
+
+  .si-aide-capture-mobile {
+    flex-basis: 100%;
+    max-width: 17rem;
+    margin: 0 auto;
+  }
+}
+
+/* ---------- Imprimer mon guide (A4) ---------- */
+
+.si-aide-impression {
+  margin: 0;
+  background: #F1F5F9;
+  color: #0F172A;
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.si-aide-impression a {
+  color: #0F4590;
+}
+
+.si-aide-barre-impression {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #E2E8F0;
+  z-index: 1;
+}
+
+.si-aide-barre-impression span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.si-aide-barre-impression [aria-current] {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.si-aide-barre-impression button {
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #0F4590;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.si-aide-couverture,
+.si-aide-page {
+  box-sizing: border-box;
+  max-width: 210mm;
+  margin: 1rem auto;
+  padding: 14mm 16mm;
+  background: #fff;
+  border-radius: 0;
+}
+
+.si-aide-marque {
+  font-weight: 800;
+  color: #DE1028;
+  letter-spacing: 0.02em;
+}
+
+.si-aide-couverture h1 {
+  font-size: 1.8rem;
+  color: #0F4590;
+  margin: 0 0 0.5rem;
+}
+
+.si-aide-date {
+  color: #64748B;
+}
+
+.si-aide-sommaire {
+  margin: 1.5rem 0;
+  padding-left: 1.2rem;
+}
+
+.si-aide-sommaire ol {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.2rem;
+}
+
+.si-aide-page .si-aide-titre {
+  font-size: 1.4rem;
+  color: #0F4590;
+  margin: 0 0 0.25rem;
+}
+
+.si-aide-page .si-aide-capture-mobile {
+  flex: 0 1 55mm;
+}
+
+.si-aide-page .si-aide-capture:not(.si-aide-capture-mobile) {
+  flex-basis: 100%;
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  .si-aide-impression {
+    background: #fff;
+    font-size: 11pt;
+  }
+
+  .si-aide-barre-impression {
+    display: none;
+  }
+
+  .si-aide-couverture,
+  .si-aide-page {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .si-aide-page {
+    break-before: page;
+  }
+
+  .si-aide-capture,
+  .si-aide-etapes li,
+  .si-aide-savoir li {
+    break-inside: avoid;
+  }
+
+  .si-aide-page h2 {
+    break-after: avoid;
+  }
+
+  .si-aide-impression a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

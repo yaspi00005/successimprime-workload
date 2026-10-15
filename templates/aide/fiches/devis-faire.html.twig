@@ -1,0 +1,20 @@
+{# Fiche du guide « devis-faire » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Sur la fiche du client, touchez « Devis ». Ou menu « Devis et commandes » › « Nouveau devis ».</li>
+	<li>Touchez « + Ajouter une ligne ».</li>
+	<li>Laissez « Produit / prestation » (ou « Article en stock », « Saisie libre »). Tapez quelques lettres et choisissez le produit. Son mode de calcul et son prix s'affichent.</li>
+	<li>Remplissez les mesures ou la quantité, par exemple « Largeur » et « Longueur » en cm pour une bâche.</li>
+	<li>Touchez les finitions voulues (par exemple « Œillets tous les 50 cm »).</li>
+	<li>Ajoutez les autres lignes, vérifiez le total, puis touchez « Enregistrer le devis ».</li>
+	<li>Le devis s'ouvre en « Brouillon ». Remettez-le : « Imprimer », « Télécharger PDF » ou « Envoyer par WhatsApp ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Un devis se corrige avec « Modifier » tant qu'il n'est pas devenu une commande.</li>
+	<li>« Envoyer par WhatsApp » marche quand la Direction a réglé WhatsApp. Sinon un message d'erreur s'affiche : envoyez le PDF vous-même.</li>
+	<li>Le devis n'envoie rien à l'atelier. La commande se crée à la fiche suivante.</li>
+</ul>
+{% endblock %}

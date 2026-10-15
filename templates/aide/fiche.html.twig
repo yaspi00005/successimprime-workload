@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+{% import 'aide/_macros.html.twig' as aide %}
+
+{% set groupe = constant('App\\Service\\Guide\\CatalogueGuide::GROUPES')[fiche.groupe] %}
+
+{% block title %}{{ fiche.titre }}{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/aide.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_aide_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-list me-1"></i>Toutes les fiches</a>
+	</li>
+	<li class="nav-item">
+		<a href="{{ path(fiche.route) }}" class="btn btn-primary btn-sm si-btn-entete">Ouvrir l'écran</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<article class="si-aide si-aide-fiche">
+		<header class="si-aide-fiche-tete">
+			<a href="{{ path('app_aide_index') }}#aide-{{ fiche.groupe }}" class="si-aide-pastille"><i class="{{ groupe.icone }} me-1" aria-hidden="true"></i>{{ groupe.libelle }} · {{ rang }}/{{ total }}</a>
+			<p class="si-aide-but">{{ fiche.but }}</p>
+		</header>
+
+		{{ aide.corps(fiche, tailles) }}
+
+		<nav class="si-aide-suite" aria-label="Fiches voisines">
+			{% if precedente %}
+				<a href="{{ path('app_aide_fiche', {cle: precedente.cle}) }}" class="si-aide-voisine"><small>‹ Précédente</small>{{ precedente.titre }}</a>
+			{% else %}<span></span>{% endif %}
+			{% if suivante %}
+				<a href="{{ path('app_aide_fiche', {cle: suivante.cle}) }}" class="si-aide-voisine si-aide-voisine-suivante"><small>Suivante ›</small>{{ suivante.titre }}</a>
+			{% endif %}
+		</nav>
+	</article>
+{% endblock %}

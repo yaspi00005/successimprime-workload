@@ -1,0 +1,34 @@
+{# Une capture d'écran du guide. c : {nom, legende, mobile?} ; tailles : nom => [largeur, hauteur]. #}
+{% macro capture(c, tailles, impression = false) %}
+	{% set taille = tailles[c.nom] ?? null %}
+	<figure class="si-aide-capture{{ c.mobile|default(false) ? ' si-aide-capture-mobile' }}">
+		<img src="{{ path('app_aide_capture', {nom: c.nom}) }}" alt="{{ c.legende }}"{% if taille %} width="{{ taille[0] }}" height="{{ taille[1] }}"{% endif %}{{ impression ? '' : ' loading="lazy"' }} decoding="async">
+		<figcaption>{{ c.legende }}</figcaption>
+	</figure>
+{% endmacro %}
+
+{# Le contenu d'une fiche : étapes, captures, « À savoir ». #}
+{% macro corps(fiche, tailles, impression = false) %}
+	{% set gabarit = 'aide/fiches/' ~ fiche.cle ~ '.html.twig' %}
+	<section class="si-aide-etapes">
+		<h2>Étapes</h2>
+		{{ block('etapes', gabarit) }}
+	</section>
+	{% if fiche.captures is not empty %}
+		<div class="si-aide-captures">
+			{% for c in fiche.captures %}{{ _self.capture(c, tailles, impression) }}{% endfor %}
+		</div>
+	{% endif %}
+	<section class="si-aide-savoir">
+		<h2>À savoir</h2>
+		{{ block('savoir', gabarit) }}
+	</section>
+{% endmacro %}
+
+{# Carte d'une fiche dans la liste. #}
+{% macro carte(fiche) %}
+	<a href="{{ path('app_aide_fiche', {cle: fiche.cle}) }}" class="si-aide-carte">
+		<strong>{{ fiche.titre }}</strong>
+		<span>{{ fiche.but }}</span>
+	</a>
+{% endmacro %}

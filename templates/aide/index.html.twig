@@ -1,0 +1,55 @@
+{% extends 'base.html.twig' %}
+{% import 'aide/_macros.html.twig' as aide %}
+
+{% block title %}Aide{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/aide.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_aide_imprimer') }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fas fa-print me-1"></i>Imprimer mon guide</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-aide">
+		<p class="si-aide-intro">Une fiche par tâche : le but, les étapes, une image de l'écran et ce qu'il faut savoir. Vous voyez seulement les fiches des écrans que votre rôle ouvre.</p>
+
+		{% if pour_ecran is not empty %}
+			<section class="si-aide-groupe si-aide-ecran" aria-labelledby="aide-ecran">
+				<h2 id="aide-ecran"><i class="fas fa-map-marker-alt me-2" aria-hidden="true"></i>Pour l'écran que vous quittez</h2>
+				<div class="si-aide-cartes">
+					{% for fiche in pour_ecran %}{{ aide.carte(fiche) }}{% endfor %}
+				</div>
+			</section>
+		{% endif %}
+
+		{% for cle, fiches in groupes %}
+			{% set g = constant('App\\Service\\Guide\\CatalogueGuide::GROUPES')[cle] %}
+			<section class="si-aide-groupe" aria-labelledby="aide-{{ cle }}">
+				<div class="si-aide-groupe-tete">
+					<h2 id="aide-{{ cle }}"><i class="{{ g.icone }} me-2" aria-hidden="true"></i>{{ g.libelle }}</h2>
+					<a href="{{ path('app_aide_imprimer', {groupe: cle}) }}" class="si-aide-imprimer-groupe" target="_blank" rel="noopener">Imprimer ces fiches</a>
+				</div>
+				<p class="si-aide-groupe-texte">{{ g.texte }}</p>
+				{% if cle == 'premiers-pas' %}
+					<ol class="si-aide-cartes si-aide-parcours">
+						{% for fiche in fiches %}<li>{{ aide.carte(fiche) }}</li>{% endfor %}
+					</ol>
+				{% else %}
+					<div class="si-aide-cartes">
+						{% for fiche in fiches %}{{ aide.carte(fiche) }}{% endfor %}
+					</div>
+				{% endif %}
+			</section>
+		{% else %}
+			<p class="si-aide-intro">Aucune fiche pour votre rôle pour le moment.</p>
+		{% endfor %}
+
+		{% if mes_groupes is null and groupes|length > 3 %}
+			<p class="si-aide-note">« Imprimer mon guide » imprime toutes les fiches ci-dessus.</p>
+		{% endif %}
+	</div>
+{% endblock %}

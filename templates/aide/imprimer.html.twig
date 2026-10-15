@@ -1,0 +1,54 @@
+{% import 'aide/_macros.html.twig' as aide %}
+{% set groupesConnus = constant('App\\Service\\Guide\\CatalogueGuide::GROUPES') %}
+{% set nom = app.user.employe.prenom is defined and app.user.employe.prenom is not empty ? (app.user.employe.prenom ~ ' ' ~ app.user.employe.nom) : app.user.username %}
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>Guide · {{ nom }} · Succès Imprim</title>
+	<link href="{{ asset('css/aide.css') }}" rel="stylesheet">
+</head>
+<body class="si-aide-impression">
+	<nav class="si-aide-barre-impression">
+		<a href="{{ path('app_aide_index') }}">‹ Retour au guide</a>
+		<span>
+			<a href="{{ path('app_aide_imprimer') }}"{{ choix == '' ? ' aria-current="page"' }}>Mon guide</a>
+			<a href="{{ path('app_aide_imprimer', {groupe: 'tout'}) }}"{{ choix == 'tout' ? ' aria-current="page"' }}>Toutes mes fiches</a>
+		</span>
+		<button type="button" onclick="window.print()">Imprimer</button>
+	</nav>
+
+	<header class="si-aide-couverture">
+		<p class="si-aide-marque">Succès Imprim</p>
+		<h1>Guide de l'application</h1>
+		<p>{{ nom }}{{ app.user.profil ? ' · ' ~ app.user.profil.nom }}</p>
+		<p class="si-aide-date">Imprimé le {{ 'now'|date('d/m/Y') }}</p>
+		<ol class="si-aide-sommaire">
+			{% for cle, fiches in groupes %}
+				<li>
+					<b>{{ groupesConnus[cle].libelle }}</b>
+					<ol>
+						{% for fiche in fiches %}<li>{{ fiche.titre }}</li>{% endfor %}
+					</ol>
+				</li>
+			{% endfor %}
+		</ol>
+		<p class="si-aide-note">L'aide en ligne de l'application (« ? Aide » en haut de chaque écran) suit toujours la dernière version.</p>
+	</header>
+
+	{% for cle, fiches in groupes %}
+		{% for fiche in fiches %}
+			<article class="si-aide-fiche si-aide-page">
+				<p class="si-aide-pastille">{{ groupesConnus[cle].libelle }}</p>
+				<h2 class="si-aide-titre">{{ fiche.titre }}</h2>
+				<p class="si-aide-but">{{ fiche.but }}</p>
+				{{ aide.corps(fiche, tailles, true) }}
+			</article>
+		{% endfor %}
+	{% else %}
+		<p>Aucune fiche à imprimer pour votre rôle.</p>
+	{% endfor %}
+</body>
+</html>

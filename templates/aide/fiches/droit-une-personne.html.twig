@@ -1,0 +1,19 @@
+{# Fiche du guide « droit-une-personne » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu « Réglages », tuile « Utilisateurs et rôles ». Sur la ligne de la personne, touchez « Droits ».</li>
+	<li>La fiche montre le « Rôle de base » et toutes les cases de droits.</li>
+	<li>La légende dit d'où vient chaque case : hérité du rôle, ajouté pour cette personne, retiré pour cette personne, non accordé.</li>
+	<li>Cochez la case à ajouter (par exemple « Encaissements ») ou décochez celle à retirer.</li>
+	<li>Touchez « Enregistrer ». Le message « Droits de … enregistrés. » s'affiche.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Le changement vaut pour cette personne seulement. Pour tout un rôle, passez par « Rôles et menus ».</li>
+	<li>Un graphiste n'encaisse pas, sauf si « Encaissements » est ajouté sur sa fiche.</li>
+	<li>La caisse ne voit pas les soldes des comptes. « Trésorerie et soldes » s'ajoute à une personne précise.</li>
+	<li>Sur la même fiche : « Réinitialiser le mot de passe » et « Désactiver ».</li>
+</ul>
+{% endblock %}

@@ -84,6 +84,14 @@
 									<kbd>Ctrl K</kbd>
 								</form>
 							</li>
+							{# Guide utilisateur (docs/guide-utilisateur.md) : ERP local seulement. #}
+							{% if not site_en_ligne() %}
+								<li class="nav-item si-aide-item">
+									<a class="nav-link si-aide-lien" href="{{ path('app_aide_index', {ecran: app.request.attributes.get('_route')}) }}" title="Aide : les fiches de votre rôle">
+										<i class="far fa-question-circle" aria-hidden="true"></i><span class="si-aide-texte">Aide</span>
+									</a>
+								</li>
+							{% endif %}
 							<li class="nav-item dropdown notification_dropdown">
 								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
 									<i class="fa fa-bell"></i>
@@ -132,6 +140,9 @@
 									{% if app.user.employe is defined and app.user.employe %}
 										<a class="dropdown-item" href="{{ path('app_mon_espace_index') }}"><i class="fas fa-id-badge text-primary"></i><span class="ms-2">Mon espace</span></a>
 										<a class="dropdown-item" href="{{ path('app_pointer_index') }}"><i class="fas fa-qrcode text-success"></i><span class="ms-2">Pointer</span></a>
+									{% endif %}
+									{% if not site_en_ligne() %}
+										<a class="dropdown-item" href="{{ path('app_aide_index') }}"><i class="far fa-question-circle text-primary"></i><span class="ms-2">Aide et guide</span></a>
 									{% endif %}
 									<a class="dropdown-item" href="{{ path('app_user_change_password') }}"><i class="fas fa-key text-primary"></i><span class="ms-2">Changer mon mot de passe</span></a>
 									<a class="dropdown-item" href="{{ path('app_logout') }}"><i class="fas fa-sign-out-alt text-danger"></i><span class="ms-2">Déconnexion</span></a>

@@ -84,6 +84,15 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Encaissement à la livraison : il arrive en caisse à valider.
 - [ ] Ne voit que ses livraisons : tableau de bord, ventes et finances refusés.
 
+## Guide et formation (jalon J7)
+
+- [ ] « ? Aide » en haut de chaque écran, sur le bureau et le téléphone : les fiches du rôle, avec en premier celles de l'écran quitté (docs/guide-utilisateur.md).
+- [ ] demo.aminata, demo.seydou et demo.bakary tapent l'adresse d'une fiche d'un autre rôle (`/aide/a-valider`, `/aide/tournee`, `/aide/caisse-virement`) ou de son image : « accès refusé ».
+- [ ] « Imprimer mon guide » : couverture, sommaire, une page A4 par fiche, seulement les fiches de la personne.
+- [ ] « Fiches du formateur » (`/aide/formation`) : Direction seulement.
+- [ ] Sur le site en ligne, `/aide` répond « page introuvable ».
+- [ ] Une personne nouvelle, après sa demi-journée « Caisse et commercial » (docs/formation.md), réussit seule l'exercice final J7 : client, devis, commande, acompte encaissé avec son reçu, facture.
+
 ## Personnel, sur la tablette d'entrée et en ligne
 
 - [ ] Accès par lien WhatsApp et code PIN ; 5 PIN faux bloquent le compte un moment.

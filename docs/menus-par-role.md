@@ -21,6 +21,9 @@ Commun à toutes les formes :
   (flèches, Entrée, Échap), et la recherche dans les clients, commandes et
   factures ;
 - « Replier le menu » : le choix est gardé sur l'appareil, par forme de menu.
+- « ? Aide » en haut de chaque écran (ERP local seulement) : le guide des
+  fiches que le rôle peut suivre (`docs/guide-utilisateur.md`), sans entrée de
+  plus dans le menu de gauche ; aussi « Aide et guide » dans le menu de la personne.
 
 Sur tablette (768 à 1023 px), le menu est toujours en icônes.
 

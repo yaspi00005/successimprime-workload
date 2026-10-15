@@ -10,11 +10,14 @@
 {% set gabarits = contenu.sections|filter(s => 'gabarit' in s.titre|lower)|first %}
 {% set regles = contenu.sections|filter(s => s != gabarits) %}
 
-{% block title %}{{ page.titre }} · Succès Imprim, imprimerie à Bamako{% endblock %}
-{% block description %}{{ page.description ?? page.accroche ?? 'Formats acceptés, résolution, fonds perdus, couleurs : préparer un fichier prêt à imprimer, et les gabarits à télécharger.' }}{% endblock %}
+{# Image de la page (Réglages › Site vitrine) pour le partage sur les réseaux. #}
+{% set image_partage = site_image(page.image) %}
+
+{% block title %}{{ page.titre|site_titre }}{% endblock %}
+{% block description %}{{ (page.description ?? page.accroche ?? 'Formats acceptés, résolution, fonds perdus, couleurs : préparer un fichier prêt à imprimer, et les gabarits à télécharger.')|site_description }}{% endblock %}
 
 {% block entete %}
-	<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+	{{ site_styles('css/site-contenu.css') }}
 {% endblock %}
 
 {% block contenu %}

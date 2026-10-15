@@ -1,7 +1,8 @@
 {#
 	Bandeau bleu des pages intérieures (maquettes 02 à 12) : fil d'Ariane,
 	titre et phrase d'accroche. Variables : titre, accroche, ariane (libellé
-	de la page dans le fil, le titre par défaut).
+	de la page dans le fil, le titre par défaut). Le fil est aussi donné à
+	Google (BreadcrumbList).
 #}
 <section class="si-bandeau">
 	<div class="si-cadre">
@@ -11,4 +12,5 @@
 		<h1>{{ titre }}</h1>
 		{% if accroche ?? false %}<p>{{ accroche }}</p>{% endif %}
 	</div>
+	{{ site_fil_ariane([{nom: ariane ?? titre}]) }}
 </section>

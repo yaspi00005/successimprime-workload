@@ -10,11 +10,14 @@
 {% set lien_devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') ?? site_whatsapp('Bonjour Succès Imprim, je voudrais un devis.') %}
 {% set devis_externe = lien_devis and lien_devis starts with 'https://' %}
 
-{% block title %}{{ page.titre }} · Succès Imprim, imprimerie à Bamako{% endblock %}
-{% block description %}{{ page.description ?? page.accroche ?? 'BAT avant impression, réimpression si le défaut vient de nous, délai annoncé, prix sans surprise : les engagements de Succès Imprim.' }}{% endblock %}
+{# Image de la page (Réglages › Site vitrine) pour le partage sur les réseaux. #}
+{% set image_partage = site_image(page.image) %}
+
+{% block title %}{{ page.titre|site_titre }}{% endblock %}
+{% block description %}{{ (page.description ?? page.accroche ?? 'BAT avant impression, réimpression si le défaut vient de nous, délai annoncé, prix sans surprise : les engagements de Succès Imprim.')|site_description }}{% endblock %}
 
 {% block entete %}
-	<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+	{{ site_styles('css/site-contenu.css') }}
 {% endblock %}
 
 {% block contenu %}

@@ -9,11 +9,11 @@
 {% set cote = articles|slice(1, 4) %}
 {% set suite = articles|slice(5) %}
 
-{% block title %}Conseils d'imprimeur · Succès Imprim, imprimerie à Bamako{% endblock %}
+{% block title %}{{ 'Conseils d\'imprimeur'|site_titre }}{% endblock %}
 {% block description %}Bien choisir sa bâche, préparer son fichier, réussir son roll-up ou sa vitrine : les conseils de l'atelier Succès Imprim à Bamako.{% endblock %}
 
 {% block entete %}
-	<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+	{{ site_styles('css/site-contenu.css') }}
 {% endblock %}
 
 {% macro visuel(article, taille, id) %}

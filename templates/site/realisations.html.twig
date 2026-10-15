@@ -11,11 +11,14 @@
 {% set lien_devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') ?? site_whatsapp('Bonjour Succès Imprim, je voudrais un devis.') %}
 {% set devis_externe = lien_devis and lien_devis starts with 'https://' %}
 
-{% block title %}Nos réalisations · Succès Imprim, imprimerie à Bamako{% endblock %}
-{% block description %}Travaux livrés par l'atelier Succès Imprim à Bamako : bâches et banderoles, vitrines, textile, signalétique, petit format. Une idée vous plaît ? Demandez la même chose.{% endblock %}
+{# La photo de la réalisation la plus récente pour le partage sur les réseaux. #}
+{% set image_partage = cartes is not empty ? site_image((cartes|first).realisation.imagePrincipale) : null %}
+
+{% block title %}Nos réalisations : bâches, vitrines, textile · Succès Imprim{% endblock %}
+{% block description %}Bâches et banderoles, vitrines, t-shirts, signalétique et petit format livrés par l'atelier Succès Imprim à Bamako. Une idée vous plaît ? Demandez la même.{% endblock %}
 
 {% block entete %}
-	<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+	{{ site_styles('css/site-contenu.css') }}
 {% endblock %}
 
 {% block contenu %}

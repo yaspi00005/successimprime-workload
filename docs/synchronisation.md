@@ -19,7 +19,7 @@
 | Avis clients (`site_avis`) : nom affiché, texte, note, source, date, accord, publié | local → site | **Sans l'accord du client, le nom et le texte partent vides.** |
 | Conseils (`site_article`) : titre, adresse, rubrique, résumé, texte, image, dates de publication et de modification, publié | local → site | |
 | Partenaires (`site_partenaire`) : nom, logo, lien, ordre, visible, accord obtenu | local → site | Le site n'affiche que ceux qui sont visibles avec l'accord. |
-| Réglages du site (`site_reglage`) : règle des chiffres (afficher, calcul des projets, seuil) | local → site | Les chiffres eux-mêmes sont calculés de chaque côté. |
+| Réglages du site (`site_reglage`) : règle des chiffres (afficher, calcul des projets, seuil), référencement (codes de vérification Google et Bing, fiche Google, réseaux sociaux) | local → site | Les chiffres eux-mêmes sont calculés de chaque côté. |
 | Catégories, types d'impression, finitions (sans le coût), formats, supports, produits, configurations de produit et leurs finitions proposées (prix de vente) | local → site | Le local est maître : le site reçoit et remplace. |
 | Clients | local → site, et site → local pour les **nouveaux** clients | Une modification faite en ligne d'un client du local n'est pas appliquée : elle est notée **Conflit** dans le journal, la fiche du local est gardée. |
 | Accès à l'espace client donné par la boutique sur WhatsApp (`acces_espace`, docs/espace-client.md) : empreinte du code (sha256 du numéro et du code), échéance, client | local → site seulement | **Jamais le code.** Un par client : un nouvel accès remplace le précédent sur le site. Reste au local : l'employé qui l'a donné. Reste sur le site : le code déjà servi et quand. |

@@ -7,11 +7,12 @@
 {% extends 'site/_site.html.twig' %}
 {% set menu_actif = 'app_site_atelier' %}
 
-{% block title %}Studio textile : t-shirts, polos et casquettes personnalisés · Succès Imprim{% endblock %}
-{% block description %}Personnalisez vos t-shirts, polos et casquettes en 3D : couleur, logo, position et texte, vues de face, de dos et de côté, prix selon la quantité. L'atelier prépare le BAT avant l'impression, à Bamako.{% endblock %}
+{% block title %}T-shirts personnalisés à Bamako : studio textile · Succès Imprim{% endblock %}
+{% block description %}Créez vos t-shirts, polos et casquettes personnalisés en 3D : couleur, logo, texte, prix selon la quantité. BAT avant impression, atelier à Bamako.{% endblock %}
 
 {% block entete %}
-	<link rel="stylesheet" href="{{ asset('css/atelier-3d.css') }}">
+	{{ site_styles('css/atelier-3d.css') }}
+	{{ site_fil_ariane([{nom: 'Studio textile'}]) }}
 	{% if fiches is not empty %}<script type="importmap">{{ {imports: {'three': asset('vendor/three/three.module.min.js'), 'three/addons/': asset('vendor/three/addons/')}}|json_encode(constant('JSON_UNESCAPED_SLASHES'))|raw }}</script>{% endif %}
 {% endblock %}
 

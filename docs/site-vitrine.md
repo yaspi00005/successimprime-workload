@@ -28,8 +28,9 @@ Sur « / », un membre du personnel connecté voit toujours le tableau de bord. 
 
 - `templates/site/_site.html.twig` : en-tête (menu, « Espace client », « Demander un devis »), pied de page, bouton WhatsApp flottant. Une page définit `title`, `description`, `contenu` et la variable `menu_actif`.
 - `templates/site/_bandeau.html.twig` : bandeau bleu des pages intérieures (fil d'Ariane, titre, accroche).
-- `public/css/site.css` : une seule feuille, sans police ni bibliothèque externe.
+- `public/css/site.css` : une seule feuille, sans police ni bibliothèque externe, écrite dans la page par `site_styles()` (docs/referencement.md).
 - `App\Twig\SiteExtension` : menu, pied de page, entreprise affichée (code `mdg_success`), lien WhatsApp.
+- `App\Twig\ReferencementExtension` : titre, description, adresse canonique, balises de partage, données structurées, codes de vérification, réseaux sociaux (docs/referencement.md).
 - Menu à sept entrées (avec « Atelier 3D ») : sur une ligne au-dessus de 1 280 px ; entre 1 141 et 1 280 px, il se resserre et « Accueil » laisse la place au logo (qui y mène) ; en dessous, le menu à trois traits.
 - Animations (`public/js/site-animations.js`, docs/atelier-3d.md) : apparition au défilement (`data-revele`), inclinaison des cartes produit (`data-incline`), comparaison avant / après des réalisations. Coupées avec « réduire les animations ».
 
@@ -37,20 +38,28 @@ Sur « / », un membre du personnel connecté voit toujours le tableau de bord. 
 
 Le pied de page affiche « Succès Imprim est un nom commercial de Madial Group SARL », le RCCM, le NIF, l'adresse et le téléphone de l'entreprise `mdg_success` (Réglages › Entreprises). Ces coordonnées publiques descendent au site par la synchronisation ; la banque, la numérotation, les logos et la signature restent au local.
 
-## Rapidité (objectif : moins de 3 s en 3G)
+## Rapidité (objectif : lisible en moins de 2 s en 3G)
 
 - Logo en WebP (21 Ko au lieu de 107 Ko), illustration de l'accueil en SVG dans la page.
+- Feuilles de style écrites dans la page (`site_styles()`, docs/referencement.md) : le texte s'affiche dès l'arrivée du HTML, sans attendre un aller-retour de plus. HTML compressé de 8 à 12 Ko par page (17 Ko pour le studio textile).
+- `public/.htaccess` : texte compressé (y compris les scripts, servis en `text/javascript` par un Apache récent), CSS et JS gardés 7 jours, images, polices et modèles 3D 30 jours.
 - Pages sans formulaire : `Cache-Control: public, max-age=300`. « / » : `no-cache` avec ETag (réponse 304 si rien n'a changé), car la même adresse sert le tableau de bord après connexion.
 - Une page qui démarre la session (jeton CSRF d'un formulaire) reste privée : `SiteController::cache()` ne la rend pas publique.
 
 ## Référencement
 
-- /sitemap.xml (serveur en ligne seulement) : l'accueil, les pages du menu et du pied de page qui existent, la demande de devis, puis les pages à contenu variable. Une page à contenu variable s'y ajoute en écrivant un service qui implémente `App\Service\Site\SourcePlanSite`.
-- /robots.txt : en ligne, tout est permis sauf l'espace client, la connexion, l'API et les liens privés ; sur l'ERP local, tout est interdit et les pages portent `noindex`.
-- Chaque page a son titre, sa description, son adresse canonique et ses balises Open Graph. Le gabarit ajoute la fiche de l'imprimerie pour Google (JSON-LD LocalBusiness : nom, raison sociale, adresse, téléphone, horaires du réglage « Horaires »).
+Règles complètes pour une nouvelle page : **docs/referencement.md**.
+
+- Adresse du site : champ « Site » de l'entité Succès Imprim (Réglages › Entités et en-têtes). Adresses canoniques, plan du site, robots.txt et images de partage l'utilisent, jamais l'adresse de l'ERP local.
+- /sitemap.xml (serveur en ligne seulement) : l'accueil, les pages du menu et du pied de page qui existent, la demande de devis, les pages de contenu publiées, les conseils, avec la date de dernière modification quand elle est connue et les photos (réalisations, conseils). Une page à contenu variable s'y ajoute en écrivant un service qui implémente `App\Service\Site\SourcePlanSite`.
+- /robots.txt : en ligne, tout est permis sauf l'espace client, la connexion, l'API, l'administration et les liens privés ; sur l'ERP local, tout est interdit. En-tête `X-Robots-Tag: noindex` sur tout l'ERP local et, en ligne, sur tout ce qui n'est pas une page publique du site (`ReferencementSubscriber`).
+- Chaque page a son titre (60 caractères au plus), sa description, un seul `<h1>`, son adresse canonique sans paramètres et ses balises de partage (Open Graph, Twitter) avec une image 1 200 × 630. Données structurées : fiche de l'imprimerie (accueil, contact, à propos), fil d'Ariane, produits avec leur prix de départ, questions fréquentes, conseils.
+- Réglages › Site vitrine › Référencement : codes de vérification Google Search Console et Bing, fiche Google, réseaux sociaux, et la liste de ce qui manque encore pour Google.
+- Page introuvable : statut 404, en français, avec les liens utiles.
 - Mesure du 13/10/2026, accueil en ligne sur un téléphone en « 3G normale » (750 kb/s, 100 ms), sans cache : 30 Ko, premier affichage en 0,5 s, page chargée en 0,6 s.
 - Mesure du 14/10/2026 en production (APP_ENV=prod), téléphone en « Fast 3G » des outils Chrome (1,4 Mb/s, 562 ms) et processeur ralenti 4 fois, sans cache : accueil 69 Ko, affiché en 1,4 s ; réalisations 79 Ko, 1,6 s ; produits et calculateur 65 à 67 Ko, 1,4 s. En revenant sur une page : 0,8 à 1,4 s.
 - Mesure du 14/10/2026 au soir, après l'Atelier 3D et les animations (même méthode) : accueil 77 Ko, affiché en 1,6 s (1,1 s en « 3G normale ») ; atelier 121 Ko, affiché en 1,7 s (1,1 à 1,3 s en « 3G normale »), la 3D arrivant ensuite sans bloquer la page. Détails dans docs/atelier-3d.md.
+- Mesure du 15/10/2026 (production derrière Apache comme chez LWS, téléphone 390 px, processeur ralenti 4 fois, sans cache, médiane de 3 passages) : en « Fast 3G », pages affichées en 0,7 à 0,8 s au lieu de 1,4 s, 32 à 39 Ko au lieu de 54 à 60 Ko ; studio textile 0,8 s au lieu de 1,5 s, 121 Ko au lieu de 245 Ko. En « 3G lente » des outils Chrome (2 s d'attente par requête), 2,2 s au lieu de 4,5 s : le minimum possible, la page n'ayant plus qu'une requête avant d'être lisible. Détails : /mnt/project-files/referencement/audit-2026-10-15.md.
 
 ## Ce que le site n'affiche jamais
 
@@ -133,6 +142,7 @@ Droit fin **Site vitrine** (`ROLE_SITE_VITRINE`), donné à la Direction ; il se
 | Conseils | Titre, adresse (créée depuis le titre, unique), rubrique, résumé, texte, image, date de publication | Un conseil daté dans le futur n'apparaît qu'à sa date. Chaque conseil entre dans /sitemap.xml. |
 | Partenaires | Nom, logo, lien (http ou https seulement), ordre | Sans « accord obtenu », le partenaire reste masqué. Bande de logos sur l'accueil et « À propos ». |
 | Chiffres | Afficher ou non, règle des « projets réalisés », seuil | Voir docs/site-public.md. Un chiffre nul ou sous le seuil n'est pas montré. |
+| Référencement | Codes Google Search Console et Bing, lien de la fiche Google, pages des réseaux sociaux | Valeur refusée (mauvais domaine, code illisible) : l'ancienne reste. Voir docs/referencement.md. |
 
 Une case « publié » cochée alors qu'une règle manque : la fiche est enregistrée **sans être publiée**, avec le message de ce qui manque.
 

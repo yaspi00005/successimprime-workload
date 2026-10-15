@@ -10,10 +10,10 @@
 {% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
 {% set guide = site_lien('app_site_guide') %}
 
-{% block title %}Calculateur de prix · Succès Imprim, imprimerie à Bamako{% endblock %}
-{% block description %}Calculez le prix de votre bâche, vinyle, roll-up, t-shirt DTF ou de vos cartes de visite : prix indicatif immédiat en FCFA, confirmé au BAT. Puis commandez ou demandez un devis.{% endblock %}
+{% block title %}Calculateur de prix d'impression en FCFA · Succès Imprim{% endblock %}
+{% block description %}Prix immédiat en FCFA pour votre bâche, roll-up, t-shirt DTF ou vos cartes de visite à Bamako : taille et quantité, puis commande ou devis.{% endblock %}
 
-{% block entete %}<link rel="stylesheet" href="{{ asset('css/site-produits.css') }}">{% endblock %}
+{% block entete %}{{ site_styles('css/site-produits.css') }}{% endblock %}
 
 {% block contenu %}
 	{{ include('site/_bandeau.html.twig', {titre: 'Calculez votre prix', ariane: 'Calculateur de prix', accroche: 'Prix indicatif immédiat, confirmé après contrôle de votre fichier.'}) }}

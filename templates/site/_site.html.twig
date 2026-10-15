@@ -3,29 +3,45 @@
 	et « Demander un devis », pied de page avec l'entreprise, bouton WhatsApp.
 	Une page définit les blocs title, description et contenu, et la variable
 	menu_actif (route du menu à souligner) ; les pages intérieures incluent
-	site/_bandeau.html.twig.
+	site/_bandeau.html.twig. Référencement (docs/referencement.md) :
+	image_partage (image de la page pour les réseaux), og_type,
+	donnees_entreprise (fiche de l'imprimerie pour Google, sur l'accueil,
+	le contact et « Qui sommes-nous ? ») et le bloc canonique.
 #}
 {% set entreprise = site_entreprise() %}
 {% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
 {% set whatsapp = site_whatsapp() %}
+{# Image de partage : celle de la page (image_partage : chemin, largeur, hauteur), sinon le logo sur fond blanc. #}
+{% set partage = image_partage ?? constant('App\\Twig\\ReferencementExtension::IMAGE_PARTAGE') %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>{% block title %}Succès Imprim · Imprimerie à Bamako{% endblock %}</title>
-	<meta name="description" content="{% block description %}Imprimerie à Bamako : banderoles, bâches, roll-up, textile DTF, cartes de visite et signalétique. BAT avant impression, prix immédiat.{% endblock %}">
+	<title>{% block title %}Imprimerie à Bamako : bâches, roll-up, t-shirts · Succès Imprim{% endblock %}</title>
+	<meta name="description" content="{% block description %}Imprimerie à Bamako : bâches et banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite et signalétique. BAT avant impression, prix immédiat.{% endblock %}">
 	<meta name="theme-color" content="#0F4590">
 	{% if not site_en_ligne() %}<meta name="robots" content="noindex, nofollow">{% endif %}
-	<link rel="canonical" href="{{ app.request.uri|split('?')|first }}">
-	<meta property="og:type" content="website">
-	<meta property="og:site_name" content="Succès Imprim">
-	<meta property="og:title" content="{{ block('title')|striptags|trim }}">
-	<meta property="og:description" content="{{ block('description')|striptags|trim }}">
-	<meta property="og:image" content="{{ absolute_url(asset('images/logo-succes-imprim.png')) }}">
-	<link rel="icon" href="{{ asset('images/icone-192.png') }}">
-	<link rel="stylesheet" href="{{ asset('css/site.css') }}">
-	<script type="application/ld+json">{{ site_fiche_google(url('app_home'), absolute_url(asset('images/logo-succes-imprim.png'))) }}</script>
+	{% for nom, code in site_verifications() %}<meta name="{{ nom }}" content="{{ code }}">{% endfor %}
+	{% block canonique %}
+		{% set canonique = site_canonique() %}
+		<link rel="canonical" href="{{ canonique }}">
+		<meta property="og:url" content="{{ canonique }}">
+	{% endblock %}
+	<meta property="og:type" content="{{ og_type ?? 'website' }}">
+	<meta property="og:locale" content="fr_FR">
+	<meta property="og:site_name" content="{{ entreprise.nomAffiche ?? 'Succès Imprim' }}">
+	<meta property="og:title" content="{{ block('title')|site_sans_balises }}">
+	<meta property="og:description" content="{{ block('description')|site_sans_balises }}">
+	<meta property="og:image" content="{{ site_adresse(partage.chemin) }}">
+	<meta property="og:image:width" content="{{ partage.largeur }}">
+	<meta property="og:image:height" content="{{ partage.hauteur }}">
+	<meta name="twitter:card" content="summary_large_image">
+	<link rel="icon" href="{{ asset('images/icone-32.png') }}" sizes="32x32" type="image/png">
+	<link rel="apple-touch-icon" href="{{ asset('images/icone-192.png') }}">
+	{# Feuilles écrites dans la page : le premier affichage n'attend pas un aller-retour de plus (docs/referencement.md). #}
+	{{ site_styles('css/site.css') }}
+	{% if donnees_entreprise ?? false %}{{ site_donnees_entreprise() }}{% endif %}
 	{% block entete %}{% endblock %}
 </head>
 <body class="si-site">
@@ -73,11 +89,20 @@
 					{% for lien in pied %}<li><a href="{{ lien.url }}">{{ lien.libelle }}</a></li>{% endfor %}
 				</ul>
 			{% endif %}
-			<p class="si-pied-adresse">
+			<address class="si-pied-adresse">
 				{{ entreprise.adresse ?? 'Bamako, Mali' }}
 				{% if entreprise and entreprise.telephone %} · <a href="tel:{{ entreprise.telephone|replace({' ': ''}) }}">{{ entreprise.telephone }}</a>{% endif %}
+				{% if entreprise and entreprise.email %} · <a href="mailto:{{ entreprise.email }}">{{ entreprise.email }}</a>{% endif %}
 				{% if entreprise and entreprise.siteWeb %} · {{ entreprise.siteWeb }}{% endif %}
-			</p>
+			</address>
+			{% set reseaux = site_reseaux() %}
+			{% set fiche_google = site_fiche_google() %}
+			{% if reseaux or fiche_google %}
+				<ul class="si-pied-reseaux" aria-label="Succès Imprim ailleurs sur Internet">
+					{% for reseau in reseaux %}<li><a href="{{ reseau.url }}" rel="noopener me" target="_blank">{{ reseau.libelle }}</a></li>{% endfor %}
+					{% if fiche_google %}<li><a href="{{ fiche_google }}" rel="noopener" target="_blank">Fiche Google</a></li>{% endif %}
+				</ul>
+			{% endif %}
 		</div>
 	</footer>
 

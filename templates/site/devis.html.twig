@@ -11,11 +11,11 @@
 {% set fiche = saisie.produit ? (fiches[saisie.produit] ?? null) : null %}
 {% set tailleMo = (tailleMax / 1048576)|round(0, 'floor') %}
 
-{% block title %}Demander un devis · Succès Imprim, imprimerie à Bamako{% endblock %}
-{% block description %}Demandez un devis d'impression à Succès Imprim, sans créer de compte : banderole, bâche, roll-up, textile, cartes de visite. Fichier accepté, réponse pendant nos horaires.{% endblock %}
+{% block title %}Demander un devis d'impression à Bamako · Succès Imprim{% endblock %}
+{% block description %}Bâche, banderole, roll-up, t-shirts, cartes de visite : décrivez votre impression, joignez votre fichier et recevez un devis, sans créer de compte.{% endblock %}
 
 {% block entete %}
-	<link rel="stylesheet" href="{{ asset('css/site-formulaires.css') }}">
+	{{ site_styles('css/site-formulaires.css') }}
 {% endblock %}
 
 {% block contenu %}

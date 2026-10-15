@@ -8,14 +8,16 @@
 {% set menu_actif = 'app_site_accueil' %}
 {% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
 {% set calculateur = site_lien('app_site_calculateur') %}
+{% set donnees_entreprise = true %}
 
-{% block title %}Succès Imprim · Nous imprimons vos succès à Bamako{% endblock %}
+{% block title %}Imprimerie à Bamako : bâches, roll-up, t-shirts · Succès Imprim{% endblock %}
+{% block description %}Succès Imprim, imprimerie à Bamako : impression de bâches et banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite. BAT avant impression.{% endblock %}
 
 {% block contenu %}
 	<section class="si-accroche">
 		<div class="si-cadre si-accroche-cadre">
 			<div class="si-accroche-texte">
-				<h1>Nous imprimons <span>vos succès&nbsp;!</span></h1>
+				<h1><small class="si-accroche-sur">Imprimerie à Bamako</small> Nous imprimons <span>vos succès&nbsp;!</span></h1>
 				<p>Banderoles, roll-up, Door Shape, textile DTF et cartes de visite. Grand format jusqu'à 3,20&nbsp;m, BAT avant chaque impression.</p>
 				<div class="si-accroche-actions">
 					{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge si-bouton-grand">Demander un devis</a>{% endif %}
@@ -95,6 +97,7 @@
 		{% set chiffres = site_chiffres() %}
 		{% set partenaires = site_partenaires() %}
 		{% if chiffres or partenaires %}
+			{# Sous la ligne de flottaison : feuille à part, gardée par le navigateur, qui ne retarde pas le haut de la page. #}
 			<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
 			{{ include('site/_chiffres.html.twig', {chiffres: chiffres}) }}
 			{{ include('site/_partenaires.html.twig', {partenaires: partenaires}) }}

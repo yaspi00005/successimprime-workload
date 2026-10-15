@@ -5,9 +5,15 @@ namespace App\Controller;
 use App\Entity\Machines;
 use App\Entity\PageSite;
 use App\Security\AccesEnLigne;
+use App\Service\Parametres\Parametres;
+use App\Service\Site\AdresseSite;
 use App\Service\Site\ChiffresSite;
+use App\Service\Site\ContactSite;
 use App\Service\Site\ContenuSite;
+use App\Service\Site\DonneesStructurees;
 use App\Service\Site\ImagesSite;
+use App\Service\Site\ReferencementSite;
+use App\Twig\SiteExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,7 +23,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Contenu du site vitrine (Réglages › Site vitrine) : pages, réalisations,
- * avis clients, conseils, partenaires et chiffres.
+ * avis clients, conseils, partenaires, chiffres et référencement
+ * (docs/referencement.md).
  *
  * Se modifie sur l'ERP local seulement, puis descend au site avec la
  * synchronisation : en ligne, l'écran est fermé.
@@ -26,7 +33,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_SITE_VITRINE')]
 final class SiteContenuController extends AbstractController
 {
-    private const ONGLETS = [...ContenuSite::TYPES, 'chiffres' => ['libelle' => 'Chiffres']];
+    private const ONGLETS = [...ContenuSite::TYPES, 'chiffres' => ['libelle' => 'Chiffres'], 'referencement' => ['libelle' => 'Référencement']];
 
     private const TYPES = 'pages|realisations|avis|conseils|partenaires';
 
@@ -34,11 +41,12 @@ final class SiteContenuController extends AbstractController
         private readonly ContenuSite $contenu,
         private readonly ChiffresSite $chiffres,
         private readonly AccesEnLigne $acces,
+        private readonly ReferencementSite $referencement,
     ) {
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request): Response
+    public function index(Request $request, AdresseSite $adresse, SiteExtension $site, Parametres $parametres): Response
     {
         if ($this->acces->estEnLigne()) {
             return $this->render('site_contenu/index.html.twig', ['ferme' => true, 'onglets' => self::ONGLETS, 'onglet' => null]);
@@ -54,14 +62,62 @@ final class SiteContenuController extends AbstractController
             'onglet' => $onglet,
             'elements' => match ($onglet) {
                 'pages' => $this->contenu->pages(),
-                'chiffres' => [],
+                'chiffres', 'referencement' => [],
                 default => $this->contenu->liste($onglet),
             },
             'reglagesChiffres' => 'chiffres' === $onglet ? $this->chiffres->reglages() : null,
             'valeursChiffres' => 'chiffres' === $onglet ? $this->chiffres->chiffres() : null,
             'categories' => 'realisations' === $onglet ? self::nomsCategories($this->contenu->categories()) : [],
             'maintenant' => new \DateTimeImmutable(),
+            'referencement' => 'referencement' === $onglet ? $this->ecranReferencement($adresse, $site, $parametres) : null,
         ]);
+    }
+
+    #[Route('/referencement', name: 'referencement', methods: ['POST'])]
+    public function referencement(Request $request): Response
+    {
+        if (null !== $ferme = $this->fermeEnLigne()) {
+            return $ferme;
+        }
+        if (!$this->isCsrfTokenValid('site-contenu-referencement', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+        $erreurs = $this->referencement->enregistrer($request->request->all());
+        foreach ($erreurs as $erreur) {
+            $this->addFlash('warning', $erreur);
+        }
+        $this->addFlash('success', ([] === $erreurs ? 'Référencement enregistré.' : 'Le reste est enregistré.').' Le site le reçoit à la prochaine synchronisation.');
+
+        return $this->redirectToRoute('app_site_contenu_index', ['onglet' => 'referencement']);
+    }
+
+    /**
+     * Onglet Référencement : réglages, adresses à donner à Google et ce
+     * qui manque encore à la fiche de l'imprimerie.
+     *
+     * @return array<string, mixed>
+     */
+    private function ecranReferencement(AdresseSite $adresse, SiteExtension $site, Parametres $parametres): array
+    {
+        $entreprise = $site->entreprise();
+        $reglages = $this->referencement->reglages();
+        $lienPlan = (string) $parametres->valeur('site_contact', 'lien_plan');
+
+        return [
+            'reglages' => $reglages,
+            'adresse' => $adresse->base(),
+            'manques' => ReferencementSite::manques([
+                'site' => null !== AdresseSite::normaliser($entreprise?->getSiteWeb()),
+                'adresse' => '' !== trim((string) $entreprise?->getAdresse()),
+                'telephone' => '' !== trim((string) $entreprise?->getTelephone()),
+                'email' => '' !== trim((string) $entreprise?->getEmail()),
+                'position' => null !== DonneesStructurees::position($lienPlan),
+                'plan' => null !== ContactSite::lien($lienPlan),
+                'fiche_google' => '' !== $reglages['fiche_google'],
+                'reseaux' => [] !== $this->referencement->reseaux(),
+                'google' => '' !== $reglages['google'],
+            ]),
+        ];
     }
 
     #[Route('/{type}/nouveau', name: 'nouveau', requirements: ['type' => self::TYPES], methods: ['GET', 'POST'])]
@@ -151,6 +207,8 @@ final class SiteContenuController extends AbstractController
             'categories' => 'realisations' === $type ? $this->contenu->categories() : [],
             'machines' => $objet instanceof PageSite && 'equipements' === $objet->getSlug() ? self::machines($em) : [],
             'imagesMax' => ContenuSite::IMAGES_MAX,
+            // date() de Twig donne un DateTime : estVisible() attend l'instant immuable.
+            'maintenant' => new \DateTimeImmutable(),
             // Ce que GD sait faire ici : l'aide des champs d'image le dit.
             'formats' => ['jpeg' => ImagesSite::lit(\IMAGETYPE_JPEG), 'webpLu' => ImagesSite::lit(\IMAGETYPE_WEBP), 'webp' => ImagesSite::ecritWebp()],
         ], new Response(status: [] === $resultat['erreurs'] ? 200 : 422));

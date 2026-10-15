@@ -11,7 +11,7 @@
 {% if not nouveau %}
 	{% if type == 'pages' and objet.publie %}
 		{% set apercu = path(constant('App\\Entity\\PageSite::PAGES')[objet.slug].route) %}
-	{% elseif type == 'conseils' and objet.estVisible(date()) %}
+	{% elseif type == 'conseils' and objet.estVisible(maintenant) %}
 		{% set apercu = path('app_site_conseil', {slug: objet.slug}) %}
 	{% elseif type == 'realisations' and objet.publie %}
 		{% set apercu = path('app_site_realisations') %}

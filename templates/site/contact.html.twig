@@ -8,12 +8,14 @@
 {% set menu_actif = 'app_site_contact' %}
 {% set entreprise = site_entreprise() %}
 {% set wa = site_whatsapp() %}
+{% set fiche_google = site_fiche_google() %}
+{% set donnees_entreprise = true %}
 
-{% block title %}Contact · Succès Imprim, imprimerie à Bamako{% endblock %}
-{% block description %}Contactez Succès Imprim à Bamako : devis, question sur une commande, conseil sur un fichier. Téléphone, WhatsApp, adresse et horaires de la boutique.{% endblock %}
+{% block title %}Contact et adresse de l'imprimerie à Bamako · Succès Imprim{% endblock %}
+{% block description %}Adresse, téléphone, WhatsApp et horaires de Succès Imprim à Bamako. Écrivez-nous pour un devis, une commande en cours ou un conseil sur un fichier.{% endblock %}
 
 {% block entete %}
-	<link rel="stylesheet" href="{{ asset('css/site-formulaires.css') }}">
+	{{ site_styles('css/site-formulaires.css') }}
 {% endblock %}
 
 {% block contenu %}
@@ -91,6 +93,7 @@
 							<h2>Adresse</h2>
 							<p>Boutique {{ entreprise.nomAffiche ?? 'Succès Imprim' }}<br>{{ (entreprise.adresse ?? null) ?: 'Bamako, Mali' }}</p>
 							{% if lienPlan %}<p><a href="{{ lienPlan }}" target="_blank" rel="noopener">Itinéraire</a></p>{% endif %}
+							{% if fiche_google %}<p><a href="{{ fiche_google }}" target="_blank" rel="noopener">Voir notre fiche Google (avis, photos)</a></p>{% endif %}
 						</div>
 					</div>
 					<div class="si-carte si-info">

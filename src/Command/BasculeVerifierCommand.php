@@ -7,6 +7,7 @@ use App\Service\Bascule\Bascule;
 use App\Service\Bascule\BasculeInterrompue;
 use App\Service\Bascule\Classement;
 use App\Service\Bascule\Constat;
+use App\Service\Bascule\Conversion;
 use App\Service\Bascule\Ecart;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -25,9 +26,13 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * rapport est aussi écrit dans var/bascule/ (noms de tables et de colonnes,
  * nombres de lignes : jamais une donnée).
  *
- * --corriger : seulement s'il n'y a rien de bloquant. Sauvegarde, applique,
- * revérifie, puis note la migration de base comme faite. Il reste ensuite
- * à lancer doctrine:migrations:migrate.
+ * Elle annonce aussi les conversions de données à rejouer (anciennes mises
+ * à jour qui changeaient le sens des données : remises en pourcentage…),
+ * avec des nombres de lignes seulement.
+ *
+ * --corriger : seulement s'il n'y a rien de bloquant. Sauvegarde, convertit
+ * les données, applique, revérifie, puis note la migration de base comme
+ * faite. Il reste ensuite à lancer doctrine:migrations:migrate.
  */
 #[AsCommand(name: 'app:bascule:verifier', description: 'Compare la base de la boutique à la migration de base avant la bascule ; --corriger applique les écarts sans risque après une sauvegarde.')]
 final class BasculeVerifierCommand extends Command
@@ -37,6 +42,8 @@ final class BasculeVerifierCommand extends Command
         Constat::SANS_PERTE => 'Changements sans perte (vérifiés sur les données)',
         Constat::AJOUT => 'Ajouts sans risque',
     ];
+
+    private const TITRE_CONVERSIONS = 'Conversions de données à faire (par --corriger, après la sauvegarde)';
 
     public function __construct(
         private readonly Bascule $bascule,
@@ -108,7 +115,7 @@ final class BasculeVerifierCommand extends Command
         if (!$corriger) {
             $io->success($analyse->identique()
                 ? 'La base est identique au schéma de la migration de base. Étape suivante : php bin/console app:bascule:verifier --corriger'
-                : 'Rien de bloquant. Étape suivante : php bin/console app:bascule:verifier --corriger (sauvegarde d\'abord, puis correction).');
+                : 'Rien de bloquant. Étape suivante : php bin/console app:bascule:verifier --corriger (sauvegarde d\'abord, puis correction'.([] === $analyse->conversions ? '' : ' et conversions de données').').');
 
             return Command::SUCCESS;
         }
@@ -140,6 +147,10 @@ final class BasculeVerifierCommand extends Command
             $lignes[] = [$table, $r['avant'][$table] ?? '—', $r['apres'][$table] ?? '—'];
         }
         $io->table(['Table', 'Lignes avant', 'Lignes après'], $lignes);
+        if ([] !== $r['remises']) {
+            $io->section('Remises converties (chaque ligne recalculée, comparée à son total enregistré)');
+            $io->listing(array_map(static fn (string $table, string $bilan): string => $table.' : '.$bilan, array_keys($r['remises']), $r['remises']));
+        }
         $io->success([
             \sprintf('Bascule faite (sauvegarde %s). La base est au niveau de la migration de base.', $r['sauvegarde']),
             'Étapes suivantes : php bin/console doctrine:migrations:migrate -n',
@@ -157,6 +168,7 @@ final class BasculeVerifierCommand extends Command
             ['Tables dans la base / attendues', $analyse->tables.' / '.$analyse->tablesAttendues],
             ['Ajouts sans risque', \count($analyse->niveau(Constat::AJOUT))],
             ['Changements sans perte', \count($analyse->niveau(Constat::SANS_PERTE))],
+            ['Conversions de données', \count($analyse->conversions)],
             ['Bloquants', \count($analyse->bloquants())],
         ]);
 
@@ -166,6 +178,10 @@ final class BasculeVerifierCommand extends Command
                 $io->section(self::TITRES[$niveau]);
                 $io->listing(array_map(static fn (Constat $c): string => $c->ecart->cible().' : '.$c->message, $liste));
             }
+        }
+        if ([] !== $analyse->conversions) {
+            $io->section(self::TITRE_CONVERSIONS);
+            $io->listing(array_map(self::conversion(...), $analyse->conversions));
         }
         $ajouts = $analyse->niveau(Constat::AJOUT);
         if ([] !== $ajouts) {
@@ -184,6 +200,12 @@ final class BasculeVerifierCommand extends Command
 
         $io->section('Lignes des tables principales');
         $io->table(Bascule::TABLES_PRINCIPALES, [array_map(static fn (string $t) => $comptes[$t] ?? '—', Bascule::TABLES_PRINCIPALES)]);
+    }
+
+    /** « commandes_details.remise : 12 ligne(s) avec une remise… » (des nombres, jamais une valeur). */
+    public static function conversion(Conversion $c): string
+    {
+        return $c->cible().' : '.$c->message;
     }
 
     /** La question à se poser sur la vraie base pour un écart qui dépend des données. */
@@ -244,10 +266,15 @@ final class BasculeVerifierCommand extends Command
             'Vérification avant bascule - base '.$base.' - '.(new \DateTimeImmutable())->format('d/m/Y H:i'),
             'Référence : migration de base '.Bascule::MIGRATION_DE_BASE,
             \sprintf('Tables : %d dans la base, %d attendues', $analyse->tables, $analyse->tablesAttendues),
-            \sprintf('Ajouts : %d - Sans perte : %d - Bloquants : %d', \count($analyse->niveau(Constat::AJOUT)), \count($analyse->niveau(Constat::SANS_PERTE)), \count($analyse->bloquants())),
+            \sprintf('Ajouts : %d - Sans perte : %d - Conversions de données : %d - Bloquants : %d', \count($analyse->niveau(Constat::AJOUT)), \count($analyse->niveau(Constat::SANS_PERTE)), \count($analyse->conversions), \count($analyse->bloquants())),
         ];
         if (null !== $version) {
             $l[] = 'ATTENTION : '.$version;
+        }
+        $l[] = '';
+        $l[] = '== '.self::TITRE_CONVERSIONS;
+        foreach ($analyse->conversions as $c) {
+            $l[] = '- '.self::conversion($c);
         }
         foreach ([Constat::BLOQUANT, Constat::SANS_PERTE, Constat::AJOUT] as $niveau) {
             $l[] = '';

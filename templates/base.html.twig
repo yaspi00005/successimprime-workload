@@ -95,34 +95,49 @@
 									</a>
 								</li>
 							{% endif %}
-							<li class="nav-item dropdown notification_dropdown">
-								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
-									<i class="fa fa-bell"></i>
-									{% set nombreNotifs = nombre_notifications_generales() + mes_reclamations_a_notifier()|length %}
-									{% if nombreNotifs > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreNotifs }}</span>{% endif %}
+							{# Cloche : les 10 dernières notifications non lues ; chacune s'ouvre par app_notification_ouvrir (marquée lue, puis sa page). #}
+							{% set reclamationsANotifier = mes_reclamations_a_notifier() %}
+							{% set notificationsNonLues = mes_notifications() %}
+							{% set nombreNotifs = nombre_notifications_generales() + reclamationsANotifier|length %}
+							<li class="nav-item dropdown notification_dropdown si-cloche">
+								<a class="nav-link" href="{{ path('app_notification_index') }}" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" aria-label="Notifications{{ nombreNotifs > 0 ? ', ' ~ nombreNotifs ~ ' non lue' ~ (nombreNotifs > 1 ? 's') }}">
+									<i class="fa fa-bell" aria-hidden="true"></i>
+									{% if nombreNotifs > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreNotifs > 99 ? '99+' : nombreNotifs }}</span>{% endif %}
 								</a>
-								<div class="dropdown-menu dropdown-menu-end">
-									<div class="widget-media dz-scroll p-3 height380">
-										<ul class="timeline">
-											{% for reclamationANotifier in mes_reclamations_a_notifier() %}
+								<div class="dropdown-menu dropdown-menu-end si-cloche-menu">
+									<div class="si-cloche-tete">
+										<b>Notifications</b>
+										{% if nombreNotifs > 0 %}<span>{{ nombreNotifs }} non lue{{ nombreNotifs > 1 ? 's' }}</span>{% endif %}
+									</div>
+									{% if reclamationsANotifier is not empty or notificationsNonLues is not empty %}
+										<ul class="si-cloche-liste">
+											{% for reclamationANotifier in reclamationsANotifier %}
 												<li>
-													<a href="{{ path('app_reclamation_show', {id: reclamationANotifier.id}) }}" class="dropdown-item d-flex pb-3">
-														<i class="fa fa-money me-2 text-success"></i>
-														<span>Réclamation validée — passez à la caisse</span>
+													<a href="{{ path('app_reclamation_show', {id: reclamationANotifier.id}) }}" class="dropdown-item si-cloche-item" title="Réclamation validée — passez à la caisse">
+														<span class="si-cloche-icone si-cloche-icone-caisse" aria-hidden="true"><i class="fa fa-money"></i></span>
+														<span class="si-cloche-corps">
+															<span class="si-cloche-texte">Réclamation validée — passez à la caisse</span>
+															{% if reclamationANotifier.dateValidation %}<time class="si-cloche-quand" datetime="{{ reclamationANotifier.dateValidation|date('c') }}">{{ reclamationANotifier.dateValidation|temps_ecoule(true) }}</time>{% endif %}
+														</span>
 													</a>
 												</li>
 											{% endfor %}
-											{% for notificationGenerale in mes_notifications() %}
+											{% for notificationGenerale in notificationsNonLues %}
 												<li>
-													<a href="{{ path('app_notification_index') }}" class="dropdown-item d-flex pb-3">
-														<i class="fa fa-bell me-2 text-warning"></i>
-														<span>{{ notificationGenerale.message|default('Notification') }}</span>
+													<a href="{{ path('app_notification_ouvrir', {id: notificationGenerale.id}) }}" class="dropdown-item si-cloche-item" title="{{ notificationGenerale.message }}">
+														<span class="si-cloche-icone" aria-hidden="true"><i class="fa fa-bell"></i></span>
+														<span class="si-cloche-corps">
+															<span class="si-cloche-texte">{{ notificationGenerale.message|default('Notification') }}</span>
+															<time class="si-cloche-quand" datetime="{{ notificationGenerale.dateCreation|date('c') }}">{{ notificationGenerale.dateCreation|temps_ecoule(true) }}</time>
+														</span>
 													</a>
 												</li>
 											{% endfor %}
 										</ul>
-									</div>
-									<a href="{{ path('app_notification_index') }}" class="dropdown-item text-center">Voir toutes les notifications</a>
+									{% else %}
+										<p class="si-cloche-vide"><i class="far fa-bell-slash" aria-hidden="true"></i>Aucune nouvelle notification</p>
+									{% endif %}
+									<a href="{{ path('app_notification_index') }}" class="dropdown-item si-cloche-pied">Voir toutes les notifications</a>
 								</div>
 							</li>
 							<li class="nav-item dropdown notification_dropdown si-masque-mobile">

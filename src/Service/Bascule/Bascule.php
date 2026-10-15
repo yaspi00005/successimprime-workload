@@ -26,10 +26,14 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *    base dans une base provisoire, aussitôt supprimée.
  * 2. Doctrine compare la base de la boutique à cette référence ; chaque
  *    écart est classé d'après les données (Classement).
- * 3. Sans écart bloquant, la correction fait une sauvegarde, applique les
- *    écarts, revérifie que la base est identique à la référence et que
- *    chaque table a gardé ses lignes, puis remplace l'historique des
- *    migrations par la migration de base. Les migrations suivantes se
+ * 3. La structure dit aussi quelles anciennes mises à jour de DONNÉES
+ *    manquent (remises en pourcentage, articles non vendables… :
+ *    ConversionsDonnees) ; elles sont rejouées pendant la correction.
+ * 4. Sans écart bloquant, la correction fait une sauvegarde, convertit les
+ *    données, applique les écarts, revérifie que la base est identique à
+ *    la référence, que chaque table a gardé ses lignes et que chaque ligne
+ *    convertie retombe sur son total enregistré, puis remplace l'historique
+ *    des migrations par la migration de base. Les migrations suivantes se
  *    lancent ensuite normalement (doctrine:migrations:migrate).
  */
 final class Bascule
@@ -111,20 +115,52 @@ final class Bascule
         return preg_match('/^(\d+\.\d+\.\d+)/', $reelle, $m) ? $m[1] : $reelle;
     }
 
-    public function analyser(?Schema $reference = null, bool $garderOrphelins = false): Analyse
+    /**
+     * @param list<Conversion> $faites conversions déjà rejouées pendant la correction en cours
+     */
+    public function analyser(?Schema $reference = null, bool $garderOrphelins = false, array $faites = []): Analyse
     {
         $reference ??= $this->schemaReference();
         $boutique = $this->schemaBoutique();
         $ecarts = LectureDiff::ecarts($this->comparer($boutique, $reference));
-        $constats = Classement::classer($ecarts, new SondeBase($this->connexion), $garderOrphelins);
+        $sansDonnees = 0 === array_sum($this->compterLignes());
+
+        // Anciennes mises à jour de données qui manquent : la colonne remise convertie
+        // d'abord change ensuite de type sans être classée comme un simple changement.
+        $conversions = (new ConversionsDonnees($this->connexion))->detecter($boutique, $sansDonnees, array_map(static fn (Conversion $c): string => $c->cible(), $faites));
+        $converties = [];
+        foreach ($faites as $c) {
+            if (Conversion::REMISE === $c->code) {
+                $converties[$c->cible()] = 'valeurs déjà converties juste avant, en francs entiers par unité.';
+            }
+        }
+        foreach ($conversions as $c) {
+            if (Conversion::REMISE === $c->code && Conversion::A_REVOIR !== $c->etat) {
+                $converties[$c->cible()] = 'le pourcentage est d\'abord converti en F par unité (voir « Conversions de données »).';
+            }
+        }
+        $constats = Classement::classer($ecarts, new SondeBase($this->connexion), $garderOrphelins, $converties);
+        $aRevoir = [];
+        foreach ($conversions as $c) {
+            $constat = new Constat(new Ecart(Ecart::DONNEES, $c->table, $c->colonne), Constat::BLOQUANT, $c->message);
+            if (Conversion::BLOQUANT === $c->etat) {
+                $constats[] = $constat;
+            } elseif (Conversion::A_REVOIR === $c->etat) {
+                $aRevoir[] = $constat;
+            } elseif ($sansDonnees && Conversion::REMISE === $c->code) {
+                $aRevoir[] = new Constat($constat->ecart, Constat::BLOQUANT, 'remise en pourcentage : les valeurs sont-elles toutes entre 0 et 100, et chaque ligne retombe-t-elle sur son total enregistré après conversion (à 1 F près par unité) ?');
+            }
+        }
 
         // Copie de la structure sans aucune ligne : ce qui bloquerait si les tables étaient remplies.
-        $sansDonnees = 0 === array_sum($this->compterLignes());
         $pireCas = $sansDonnees
-            ? array_values(array_filter(Classement::classer($ecarts, new SondePessimiste(), $garderOrphelins), static fn (Constat $c): bool => $c->estBloquant()))
+            ? [...array_values(array_filter(Classement::classer($ecarts, new SondePessimiste(), $garderOrphelins, $converties), static fn (Constat $c): bool => $c->estBloquant())), ...$aRevoir]
             : [];
 
-        return new Analyse($constats, $this->orphelinsExistants($boutique), \count($boutique->getTables()), \count($reference->getTables()), $pireCas, $sansDonnees);
+        return new Analyse(
+            $constats, $this->orphelinsExistants($boutique), \count($boutique->getTables()), \count($reference->getTables()), $pireCas, $sansDonnees,
+            array_values(array_filter($conversions, static fn (Conversion $c): bool => $c->aFaire())),
+        );
     }
 
     /**
@@ -203,7 +239,7 @@ final class Bascule
      *
      * @param callable(string): void $note
      *
-     * @return array{sauvegarde: string, avant: array<string, int>, apres: array<string, int>, instructions: int}
+     * @return array{sauvegarde: string, avant: array<string, int>, apres: array<string, int>, instructions: int, remises: array<string, string>}
      *
      * @throws BasculeInterrompue
      */
@@ -232,7 +268,7 @@ final class Bascule
     /**
      * @param callable(string): void $note
      *
-     * @return array{avant: array<string, int>, apres: array<string, int>, instructions: int}
+     * @return array{avant: array<string, int>, apres: array<string, int>, instructions: int, remises: array<string, string>}
      */
     private function appliquer(Schema $reference, Analyse $analyse, callable $note, bool $garderOrphelins): array
     {
@@ -241,6 +277,12 @@ final class Bascule
         $this->connexion->executeStatement(self::MODE_STRICT);
         $plateforme = $this->connexion->getDatabasePlatform();
         $instructions = 0;
+
+        // 0. Conversions de données qui lisent l'ancien sens d'une colonne (remise en
+        //    pourcentage…), avant tout changement de type. Les totaux enregistrés ne changent pas.
+        $donnees = new ConversionsDonnees($this->connexion);
+        $aRejouer = $analyse->conversions;
+        $suiviRemises = $donnees->appliquer($aRejouer, Conversion::AVANT, $this->schemaBoutique(), $note);
 
         // 1. Valeurs choisies pour les lignes existantes : colonne obligatoire ajoutée
         //    (d'abord facultative, remplie, puis rendue obligatoire à l'étape 2) et
@@ -271,7 +313,7 @@ final class Bascule
         }
 
         // 2. Tout le reste, dans l'ordre choisi par Doctrine, après une nouvelle lecture.
-        $analyse = $this->analyser($reference, $garderOrphelins);
+        $analyse = $this->analyser($reference, $garderOrphelins, $aRejouer);
         if ([] !== $analyse->bloquants()) {
             throw new \RuntimeException('Écart bloquant apparu pendant la correction : '.$analyse->bloquants()[0]->ecart->cible());
         }
@@ -302,7 +344,11 @@ final class Bascule
         }
         $note(\sprintf('%d instruction(s) appliquée(s) sur %d table(s).', $instructions, \count($parTable)));
 
-        // 3. Contrôles : identique à la référence, aucune ligne perdue.
+        // 2 bis. Conversions de données qui remplissent une colonne ajoutée à l'étape 2.
+        $donnees->appliquer($aRejouer, Conversion::APRES, $this->schemaBoutique(), $note);
+
+        // 3. Contrôles : identique à la référence, aucune ligne perdue, remises converties
+        //    qui redonnent le total enregistré de chaque ligne avec le nouveau calcul.
         $reste = LectureDiff::ecarts($this->comparer($this->schemaBoutique(), $reference));
         if ([] !== $reste) {
             throw new \RuntimeException(\sprintf('La base n\'est pas encore identique à la référence (%d écart(s), par exemple %s).', \count($reste), $reste[0]->cible()));
@@ -314,11 +360,16 @@ final class Bascule
             }
         }
         $note('Base identique au schéma de la migration de base ; chaque table a gardé ses lignes.');
+        $remises = [];
+        foreach ($donnees->controlerRemises($suiviRemises, $this->schemaBoutique()) as $table => $bilan) {
+            $remises[$table] = \sprintf('%d ligne(s) recalculée(s) avec le nouveau calcul : %s', $bilan->lignes(), $bilan->texte());
+            $note(\sprintf('Contrôle %s.remise : %s.', $table, $remises[$table]));
+        }
 
         $this->marquerMigrationDeBase();
         $note('Historique des migrations remplacé par la migration de base.');
 
-        return ['avant' => $avant, 'apres' => $apres, 'instructions' => $instructions];
+        return ['avant' => $avant, 'apres' => $apres, 'instructions' => $instructions, 'remises' => $remises];
     }
 
     /** Vide l'historique des anciennes migrations et note la migration de base comme faite. */

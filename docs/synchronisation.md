@@ -114,7 +114,7 @@ Les deux installations doivent avoir le même code et les mêmes migrations. L'�
 - « Synchroniser maintenant » lance un cycle tout de suite.
 - En bas du menu : « Synchronisé avec … il y a … », en rouge en cas de panne.
 
-**Alerte** : si aucune synchro ne réussit pendant 15 minutes, chaque administrateur reçoit une notification, une seule fois par panne, avec l'envoi sur son téléphone si les notifications sont activées. L'alerte s'affiche aussi sur le tableau de bord. Une ligne « Liaison rétablie » est notée au retour.
+**Alerte** : si aucune synchro ne réussit pendant 15 minutes, chaque administrateur reçoit une notification (« Synchronisation : … », lien vers cet écran), une seule fois par panne, avec l'envoi sur son téléphone si les notifications sont activées. L'alerte s'affiche aussi sur le tableau de bord. Au retour de la liaison, une ligne « Liaison rétablie » est notée et les alertes de panne encore non lues sont marquées lues : la cloche ne garde pas les pannes finies (une connexion qui coupe souvent en donnait une quinzaine par jour). Si une alerte non lue est encore là quand une nouvelle panne commence, elle est remise à jour (texte, heure) au lieu d'en ajouter une, et repart sur le téléphone, où elle remplace la précédente. Une fois par jour, quand la liaison marche, les alertes restées non lues (celles d'avant cette version comprises) sont aussi marquées lues.
 
 ## Testé le 12/10/2026
 

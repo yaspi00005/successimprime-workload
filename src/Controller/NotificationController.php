@@ -11,6 +11,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
 
 #[Route('/notifications', name: 'app_notification_')]
 final class NotificationController extends AbstractController
@@ -62,7 +63,8 @@ final class NotificationController extends AbstractController
     {
         $utilisateur = $this->getUser();
 
-        if (!$utilisateur instanceof User || $notification->getDestinataire() !== $utilisateur) {
+        // Seule la personne à qui elle est adressée l'ouvre (lien de la cloche ou du téléphone).
+        if (!$utilisateur instanceof User || $notification->getDestinataire()?->getId() !== $utilisateur->getId()) {
             throw $this->createAccessDeniedException('Cette notification ne vous appartient pas.');
         }
 
@@ -72,7 +74,12 @@ final class NotificationController extends AbstractController
         }
 
         if ($notification->getRoute() !== null) {
-            return $this->redirectToRoute($notification->getRoute(), $notification->getRouteParametres());
+            try {
+                return $this->redirectToRoute($notification->getRoute(), $notification->getRouteParametres());
+            } catch (RoutingException) {
+                // Page renommée ou retirée depuis la notification : la liste plutôt qu'une erreur.
+                return $this->redirectToRoute('app_notification_index');
+            }
         }
 
         return $this->redirectToRoute('app_home');

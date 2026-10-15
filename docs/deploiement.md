@@ -28,6 +28,13 @@ cd successimprim
 php composer.phar install --no-dev --optimize-autoloader   # ou composer, s'il est installé
 ```
 
+À la fin, `composer install` lance de lui-même `cache:clear` et `assets:install` avec la mémoire par défaut de PHP en ligne de commande, souvent trop basse chez un hébergeur : il peut finir sur « Allowed memory size … exhausted » ou « Script cache:clear returned with error code 255 ». Le code est quand même installé ; lancer alors ces deux commandes à la main (voir « Mémoire des commandes » plus bas) :
+
+```
+php -d memory_limit=512M bin/console cache:clear
+php -d memory_limit=512M bin/console assets:install public
+```
+
 Le domaine pointe toujours sur le dossier `public/` du projet, jamais sur sa racine. Le mieux est de ranger le projet hors de `public_html`, dans le dossier personnel. Si l'hébergeur n'accepte de racine que sous `public_html` (cas de LWS), le projet va dans `public_html/succesimprim` et le domaine pointe sur `public_html/succesimprim/public`. Une adresse qui sert `public_html` lui-même (adresse temporaire de l'hébergeur, autre domaine) atteindrait alors `.env.local` : le `.htaccess` à la racine du projet le refuse, à condition que l'hébergeur lise les `.htaccess` (Apache ou LiteSpeed). Vérifier que https://le-domaine/.env.local est introuvable.
 
 Puis pointer le domaine sur `~/successimprim/public`, créer la base dans le panneau, écrire `.env.local` (mêmes variables que plus bas, avec `APP_ENV=prod` et `APP_EN_LIGNE=1`, droits 600) et lancer :
@@ -39,7 +46,7 @@ php bin/console app:verifier-installation
 php bin/console app:orange-money:tester --paiement
 ```
 
-`app:verifier-installation` doit afficher « Vérification du site en ligne » : sinon `APP_EN_LIGNE=1` manque, et il réclame à tort le thème de l'administration et le dossier des sauvegardes. Sans `APP_ENV=prod`, `composer install` vide le cache en mode développement, qui dépasse 256 Mo de mémoire : écrire `.env.local` avant, ou relancer `cache:clear` comme ci-dessus. Sur certains hébergeurs, la commande `php` du terminal ou du cron n'est pas la bonne version : utiliser le chemin donné par l'hébergeur (par exemple `/usr/local/bin/php8.4` ou `ea-php84`) et le vérifier avec `php -v`. Les tâches cron sont celles de « Tâches planifiées du serveur », avec ce chemin. `public/.htaccess` gère la réécriture des adresses, la compression et le cache des fichiers statiques sous Apache ou LiteSpeed.
+`app:verifier-installation` doit afficher « Vérification du site en ligne » : sinon `APP_EN_LIGNE=1` manque, et il réclame à tort le thème de l'administration et le dossier des sauvegardes. Sans `APP_ENV=prod`, `composer install` vide le cache en mode développement, plus gourmand : écrire `.env.local` avant, ou relancer `cache:clear` comme ci-dessus. Sur certains hébergeurs, la commande `php` du terminal ou du cron n'est pas la bonne version : utiliser le chemin donné par l'hébergeur (par exemple `/usr/local/bin/php8.4` ou `ea-php84`) et le vérifier avec `php -v`. Les tâches cron sont celles de « Tâches planifiées du serveur », avec ce chemin. `public/.htaccess` gère la réécriture des adresses, la compression et le cache des fichiers statiques sous Apache ou LiteSpeed.
 
 ## Serveur
 
@@ -117,7 +124,7 @@ Les codes de connexion partent par e-mail (moins cher que le SMS) depuis une bo�
    - `smtps` et le port 465 : SMTP chiffré en SSL, comme l'indique LWS pour ses boîtes. Le serveur sortant (SMTP) est donné dans le panneau LWS ; c'est en général `mail.` suivi du domaine.
    - L'identifiant est l'adresse complète, avec `@` écrit `%40` (sinon le `@` coupe l'adresse en deux). Même chose pour un caractère spécial du mot de passe : `@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`, `?` → `%3F`, `%` → `%25`.
    - `MAILER_FROM_ADDRESS` est l'adresse de la boîte ; le nom affiché « Succès Imprim » s'ajoute tout seul.
-3. `sudo -u succes php bin/console cache:clear`, puis `app:verifier-installation` : la ligne « E-mail » passe à OK.
+3. `sudo -u succes php -d memory_limit=512M bin/console cache:clear`, puis `app:verifier-installation` : la ligne « E-mail » passe à OK.
 4. Essai : « Recevoir un code » sur l'espace client avec le numéro d'une fiche qui a votre adresse e-mail. Le message arrive en quelques secondes (sinon, regarder les courriers indésirables).
 
 Si une variable manque, ou si LWS refuse l'envoi, les codes partent par SMS : `app:verifier-installation` le dit (« les codes de connexion partiront par SMS »).
@@ -126,7 +133,7 @@ Puis :
 
 ```
 sudo -u succes php bin/console doctrine:migrations:migrate --no-interaction
-sudo -u succes php bin/console cache:clear
+sudo -u succes php -d memory_limit=512M bin/console cache:clear
 sudo -u succes php bin/console app:verifier-installation
 ```
 
@@ -219,7 +226,8 @@ cd /srv/successimprim
 sudo -u succes git pull
 sudo -u succes composer install --no-dev --optimize-autoloader
 sudo -u succes php bin/console doctrine:migrations:migrate --no-interaction
-sudo -u succes php bin/console cache:clear
+sudo -u succes php -d memory_limit=512M bin/console cache:clear
+sudo -u succes php -d memory_limit=512M bin/console assets:install public
 sudo -u succes php bin/console app:fichiers:deplacer --executer
 sudo systemctl reload php8.4-fpm
 ```
@@ -230,6 +238,7 @@ Sur l'hébergement mutualisé (LWS), par SSH, une fois `git pull` et `composer i
 cd ~/successimprim 2>/dev/null || cd ~/public_html/succesimprim
 php bin/console doctrine:migrations:migrate --no-interaction
 php -d memory_limit=512M bin/console cache:clear
+php -d memory_limit=512M bin/console assets:install public
 php bin/console app:fichiers:deplacer --executer
 php bin/console app:verifier-installation
 ```
@@ -240,6 +249,18 @@ Mettre à jour l'ERP local en même temps : les deux installations doivent avoir
 
 ```
 php bin/console doctrine:migrations:migrate --no-interaction
-php bin/console cache:clear
+php -d memory_limit=512M bin/console cache:clear
 php bin/console app:fichiers:deplacer --executer
 ```
+
+## Mémoire des commandes
+
+Sur le serveur, `cache:clear`, `cache:warmup` et `assets:install` se lancent toujours avec `php -d memory_limit=512M bin/console …`, comme dans les blocs ci-dessus. La limite de mémoire de PHP en ligne de commande dépend de l'hébergeur (souvent 128 ou 256 Mo) et ne change pas le site lui-même.
+
+- `cache:clear` en production prépare les plus de 500 gabarits de l'application. Jusqu'au 15/10/2026 il lui fallait plus de 256 Mo et il échouait à 256 Mo ; il compile maintenant les gabarits un par un sans les garder en mémoire (`src/Twig/GabaritsCacheWarmer.php`) et reste vers 130 Mo. Les 512 Mo laissent de la marge pour la suite.
+- `composer install` lance à la fin `cache:clear`, `assets:install` et `importmap:install` avec la limite par défaut. S'il s'arrête sur « Allowed memory size … exhausted », le code est bien installé : lancer `php -d memory_limit=512M bin/console cache:clear` puis `php -d memory_limit=512M bin/console assets:install public`.
+- Pour vérifier la limite du serveur : `php -r 'echo ini_get("memory_limit"), PHP_EOL;'`.
+
+## Journaux
+
+En production, les commandes n'affichent plus les avis « User Deprecated » (longues lignes en JSON après chaque commande) : ce sont des annonces de changements des prochaines versions de Symfony, Twig ou Doctrine, pas des erreurs. Ils vont dans `var/log/deprecations-AAAA-MM-JJ.log`, un fichier par jour, 3 jours gardés, pour préparer une mise à jour. Les vraies erreurs s'affichent toujours dans le terminal et vont dans le journal d'erreurs de PHP du serveur.

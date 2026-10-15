@@ -37,6 +37,18 @@ final class OrangeMoneyTest extends TestCase
 
     private int $codeOuverture = 201;
 
+    /** @var list<string> jetons rendus par Orange, dans l'ordre (sinon « jeton-api ») */
+    private array $jetons = [];
+
+    private int $demandesJeton = 0;
+
+    /** Jeton qu'Orange refuse à l'ouverture (403 insufficient scope). */
+    private ?string $jetonRefuse = null;
+
+    private ?ArrayAdapter $cache = null;
+
+    private string $clientId = 'id';
+
     private ?string $fichierRefus = null;
 
     protected function tearDown(): void
@@ -136,6 +148,50 @@ final class OrangeMoneyTest extends TestCase
             self::assertStringNotContainsString($interdit, $contenu, 'ni clé, ni jeton, ni montant dans le fichier des refus');
         }
         self::assertSame([], $this->persistes);
+    }
+
+    public function testJetonGardeDAvantUnChangementChezOrangeRenouveleUneFois(): void
+    {
+        // Jeton pris avant que l'API soit ajoutée à l'application : Orange répond 403, un jeton neuf passe.
+        $this->cache = new ArrayAdapter();
+        $this->jetons = ['jeton-ancien', 'jeton-neuf'];
+        $this->jetonRefuse = 'jeton-ancien';
+
+        $transaction = $this->service()->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable('2026-10-13 10:00'));
+
+        self::assertSame(self::LIEN, $transaction->getLienPaiement());
+        self::assertSame(2, $this->demandesJeton);
+        self::assertCount(2, $this->appels);
+
+        // Le jeton neuf est gardé pour les paiements suivants.
+        $this->service()->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable('2026-10-13 10:05'));
+        self::assertSame(2, $this->demandesJeton);
+    }
+
+    public function testRefusQuiDureUnSeulNouvelEssai(): void
+    {
+        $this->codeOuverture = 403;
+        $this->ouverture = ['code' => 53, 'message' => 'Insufficient scope'];
+
+        try {
+            $this->service()->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable());
+            self::fail('Un refus d\'Orange doit être signalé au client.');
+        } catch (\DomainException) {
+        }
+
+        self::assertCount(2, $this->appels);
+        self::assertSame(2, $this->demandesJeton);
+    }
+
+    public function testChangerLesClesNeReprendPasLAncienJeton(): void
+    {
+        $this->cache = new ArrayAdapter();
+        $this->jetons = ['jeton-a', 'jeton-b'];
+        $this->service()->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable('2026-10-13 10:00'));
+
+        $this->clientId = 'autre-application';
+        $this->service()->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable('2026-10-13 10:01'));
+        self::assertSame(2, $this->demandesJeton);
     }
 
     public function testSeulsLesCinqDerniersRefusSontGardes(): void
@@ -409,9 +465,14 @@ final class OrangeMoneyTest extends TestCase
 
         $http = new MockHttpClient(function (string $methode, string $url, array $options): MockResponse {
             if (str_contains($url, '/oauth/')) {
-                return new MockResponse((string) json_encode(['access_token' => 'jeton-api', 'expires_in' => 3600]));
+                ++$this->demandesJeton;
+
+                return new MockResponse((string) json_encode(['access_token' => array_shift($this->jetons) ?? 'jeton-api', 'expires_in' => 3600]));
             }
             $this->appels[] = ['url' => $url, 'corps' => json_decode((string) $options['body'], true)];
+            if (null !== $this->jetonRefuse && \in_array('Authorization: Bearer '.$this->jetonRefuse, $options['headers'], true)) {
+                return new MockResponse((string) json_encode(['code' => 53, 'message' => 'Insufficient scope']), ['http_code' => 403]);
+            }
 
             return new MockResponse((string) json_encode(str_ends_with($url, '/webpayment') ? $this->ouverture : $this->etat), ['http_code' => str_ends_with($url, '/webpayment') ? $this->codeOuverture : 200]);
         });
@@ -427,6 +488,6 @@ final class OrangeMoneyTest extends TestCase
             $parametres->method('recuperer')->willReturn($taux);
         }
 
-        return new OrangeMoney($em, $http, new ArrayAdapter(), $urls, new NullLogger(), 'https://api.orange.com/orange-money-webpay/dev/v1', 'OUV', 'id', 'secret', $cleMarchand, null, $parametres, $this->fichierRefus);
+        return new OrangeMoney($em, $http, $this->cache ?? new ArrayAdapter(), $urls, new NullLogger(), 'https://api.orange.com/orange-money-webpay/dev/v1', 'OUV', $this->clientId, 'secret', $cleMarchand, null, $parametres, $this->fichierRefus);
     }
 }

@@ -23,7 +23,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
   - il fait une **sauvegarde complète** dans `C:\xamppok\sauvegardes-bascule` (à garder à la boutique) ;
   - il met sur le **Bureau** la copie de la **structure seule** : `structure-<base>-<date>.sql`.
 - [ ] Nous envoyer **seulement** le fichier `structure-….sql`, et le nom de la base affiché (« Base de l'ERP : … »).
-- [ ] Nous la rejouons sur une base d'essai avec `app:bascule:verifier` ([docs/migration-de-base.md](migration-de-base.md)) et la bascule complète. Nous renvoyons la liste des points à vérifier sur la vraie base et, s'il y en a, les décisions à prendre ensemble (lignes qui pointent vers une commande absente, colonne en trop remplie…).
+- [ ] Nous la rejouons sur une base d'essai avec `app:bascule:verifier` ([docs/migration-de-base.md](migration-de-base.md)) et la bascule complète. Nous renvoyons la liste des points à vérifier sur la vraie base et, s'il y en a, les décisions à prendre ensemble (lignes qui pointent vers une commande absente, colonne en trop remplie…). Avec la structure du 15/10/2026, la bascule fait aussi des **conversions de données** : les remises des lignes de commande et de devis passent du pourcentage aux F par unité, et les articles non vendables deviennent vendables ([« Conversions de données »](migration-de-base.md#conversions-de-données)).
 
 ### Vérifier l'ordinateur de l'ERP
 
@@ -35,7 +35,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
   php bin/console app:bascule:verifier
   ```
 
-  La vérification ne modifie pas la base de la boutique (elle crée une base provisoire `<base>_ref_bascule` et la supprime). Nous envoyer le rapport `var\bascule\verification-….txt` : il ne contient que des noms de tables et des nombres. Si « Bloquants » n'est pas à 0, on en parle avant le jour J. Ce dossier servira le jour J.
+  La vérification ne modifie pas la base de la boutique (elle crée une base provisoire `<base>_ref_bascule` et la supprime). Nous envoyer le rapport `var\bascule\verification-….txt` : il ne contient que des noms de tables et des nombres. Si « Bloquants » n'est pas à 0, on en parle avant le jour J. Dans « Conversions de données à faire », la ligne de chaque remise donne l'essai du calcul sur les vraies lignes : attendu « 0 au-delà ». Ce dossier servira le jour J.
 
 ### Clés
 
@@ -57,6 +57,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 - [ ] ERP local : dans `C:\xamppok\htdocs\successImprim\backups`, le fichier le plus récent est d'aujourd'hui et n'est pas vide. Sinon l'ancienne sauvegarde automatique ne marche pas : nous le dire.
 - [ ] ERP local : lancer `avant_bascule.bat`, puis copier la sauvegarde complète (`C:\xamppok\sauvegardes-bascule\…_complete_….sql`) sur le second disque ou une clé USB.
 - [ ] Site en ligne : une sauvegarde existe (`php bin/console app:sauvegarde --liste`, [docs/sauvegardes.md](sauvegardes.md)).
+- [ ] Dans l'ancien ERP, choisir **3 commandes et 1 devis qui ont une remise** sur une ligne (si possible une ligne au m² et une grosse quantité de flyers ou de cartes). Noter sur papier, pour chacun : le numéro, le total de chaque ligne remisée, le total HT, le total TTC et le reste à payer. Ces notes restent à la boutique.
 - [ ] Le soir, après la dernière saisie : **gel**. Plus personne ne saisit dans l'ancien ERP.
 
 ## Jour J
@@ -74,11 +75,15 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
   - Si « Bloquants » n'est pas à 0 : **s'arrêter**. Rien n'a été modifié. Nous envoyer le rapport (`var\bascule\verification-….txt`) et remettre l'ancienne version (« Revenir en arrière » plus bas).
 - [ ] `php bin/console app:bascule:verifier --corriger`, puis taper le nom de la base quand il est demandé. Ajouter `--garder-orphelins` seulement si nous l'avons décidé ensemble à J-7.
   - Elle fait d'abord une sauvegarde : **noter son nom** (« Sauvegarde de la base faite : … »).
-  - À la fin, le tableau « Lignes avant / Lignes après » doit montrer les mêmes nombres.
+  - Puis les conversions de données (« Conversion commandes_details.remise : … ligne(s) passées du pourcentage aux F par unité », « Conversion articles.vendable : … »).
+  - À la fin, le tableau « Lignes avant / Lignes après » doit montrer les mêmes nombres, et « Remises converties » doit finir par **« 0 au-delà »** pour les commandes et pour les devis. Noter les nombres « déjà différente(s) avant la bascule » s'il y en a (lignes dont l'ancien calcul ne redonnait déjà pas le total) et nous les envoyer : des nombres seulement.
+  - Si elle s'arrête sur une ligne de remise, elle donne la ligne pour remettre la sauvegarde : suivre « Revenir en arrière » plus bas.
 - [ ] `php bin/console doctrine:migrations:migrate -n`
 - [ ] `php bin/console doctrine:schema:validate` : deux lignes « [OK] ».
 - [ ] `php bin/console cache:clear`, puis `php bin/console app:verifier-installation` : aucune erreur.
 - [ ] Ouvrir l'ERP dans le navigateur avec son compte habituel : la liste des clients, celle des commandes, quelques fiches. Si un mot de passe ne passe plus : `php bin/console app:creer-utilisateur <identifiant>` le remplace.
+- [ ] Ouvrir les 3 commandes et le devis notés la veille : chaque total de ligne, le total HT, le total TTC et le reste à payer doivent être **les mêmes que sur le papier**. La remise s'affiche maintenant en F par unité (par exemple 12,5 % sur des flyers à 25 F → 3 F par flyer, arrondi au franc). Ne pas réenregistrer ces commandes « pour voir » : l'enregistrement recalcule la ligne, et un arrondi peut la faire bouger de quelques francs (au plus 1 F par unité). Si un total a changé : s'arrêter et nous appeler.
+- [ ] Liste des articles : tous sont vendables (comme l'ancienne mise à jour du 19/08/2026). Pour ceux qui ne se vendent pas (encre, papier, bâche en rouleau…), décocher « Cet article peut être vendu directement » sur leur fiche : ils reviennent dans l'écran Consommables.
 
 ### 2. ERP local : sauvegardes et tâches planifiées
 
@@ -95,6 +100,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 
 - [ ] `.env.local` des deux machines : [docs/synchronisation.md, « Mise en route »](synchronisation.md#mise-en-route), étapes 2 et 3 (la même `SYNC_CLE` des deux côtés).
 - [ ] `php bin/console app:verifier-installation` sur les deux machines.
+- [ ] Le site en ligne qui a servi aux essais peut garder des données de démonstration envoyées par une machine de test : avant d'ouvrir, repartir d'une base en ligne vide (nouvelle base dans le panneau, `DATABASE_URL` du serveur vers elle, puis `php bin/console doctrine:migrations:migrate -n` sur le serveur), que la ligne suivante remplit depuis l'ERP de la boutique.
 - [ ] Sur l'ERP local, une seule fois : `php bin/console app:synchro --initialiser`.
 - [ ] Tâche planifiée de la synchronisation (« Mise en route », étape 5) : `scripts\windows\installer_tache_synchro.bat` en administrateur. L'écran Réglages › Sécurité › Synchronisation montre une synchronisation réussie.
 

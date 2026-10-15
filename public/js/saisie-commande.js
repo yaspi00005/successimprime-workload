@@ -344,10 +344,12 @@
             });
 
             const remise = nombreChamp(form.querySelector('.js-remise-saisie'));
-            const aPayer = Math.max(0, Math.round(ttc - remise));
+            // Code promo de la commande (promotions-saisie.js) : déjà réparti sur les lignes par le serveur à l'enregistrement.
+            const code = window.SiPromotions && window.SiPromotions.codeCommande ? window.SiPromotions.codeCommande() : {ht: 0, ttc: 0};
+            const aPayer = Math.max(0, Math.round(ttc - code.ttc - remise));
 
             page.querySelector('.js-recap-ht').textContent = montant(ht);
-            page.querySelector('.js-recap-tva').textContent = montant(ttc - ht);
+            page.querySelector('.js-recap-tva').textContent = montant((ttc - code.ttc) - (ht - code.ht));
             page.querySelector('.js-recap-tva-libelle').textContent = taux.size === 1 && !taux.has(0) ? 'TVA ' + Array.from(taux)[0] + ' %' : 'TVA';
             page.querySelector('.js-recap-lignes').textContent = lignes.length > 0 ? 'Sous-total HT (' + lignes.length + (lignes.length > 1 ? ' lignes)' : ' ligne)') : 'Sous-total HT';
             page.querySelectorAll('.js-total-affiche').forEach(function (el) {
@@ -379,6 +381,7 @@
         }
         form.addEventListener('input', plusTard);
         form.addEventListener('change', plusTard);
+        form.addEventListener('si:code-promo', plusTard);
         window.setInterval(rafraichir, 1500);
 
         /* Ligne ajoutée : on l'ouvre. Ligne retirée : on ouvre la dernière. */

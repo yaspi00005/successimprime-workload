@@ -10,6 +10,7 @@ use App\Entity\CommandesDetails;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Service\GrilleTarifaire;
+use App\Service\Promotions\PromotionsSaisie;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -27,8 +28,11 @@ final class NouvelleCommande
     /** Taille saisie par le client, en cm. */
     public const COTE_MAX_CM = 5000;
 
-    public function __construct(private readonly EntityManagerInterface $em)
-    {
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        /** Code promo tapé par le client (docs/promotions.md) ; absent dans les tests qui n'en ont pas besoin. */
+        private readonly ?PromotionsSaisie $promotionsSaisie = null,
+    ) {
     }
 
     /**
@@ -222,10 +226,12 @@ final class NouvelleCommande
      * @param list<int>                   $finitions
      * @param list<CommandeDetailFichier> $fichiers  fichiers du client, déjà vérifiés
      * @param \Closure(CommandesDetails): void|null $ajuster prix propre à la page (Atelier 3D : seconde face, palier), recalculé ici
+     * @param string|null $codePromo code promo tapé : vérifié avant d'enregistrer (PromotionsSaisie::appliquerCodeEnLigne)
      *
      * @throws \DomainException
+     * @throws \App\Service\Promotions\CodePromoRefuse code promo refusé : rien n'est enregistré
      */
-    public function commander(Clients $client, ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, array $fichiers, ?string $note, \DateTimeImmutable $maintenant, ?\Closure $ajuster = null): Commandes
+    public function commander(Clients $client, ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, array $fichiers, ?string $note, \DateTimeImmutable $maintenant, ?\Closure $ajuster = null, ?string $codePromo = null): Commandes
     {
         $this->verifierEnAttente($client);
 
@@ -243,6 +249,9 @@ final class NouvelleCommande
             ->setEtat(true);
         $commande->addCommandesDetail($ligne);
         $commande->recalculerTotaux();
+        if (null !== $this->promotionsSaisie && null !== $codePromo && '' !== trim($codePromo)) {
+            $this->promotionsSaisie->appliquerCodeEnLigne($commande, $codePromo, $maintenant);
+        }
 
         $this->em->wrapInTransaction(function () use ($commande, $ligne, $fichiers, $maintenant): void {
             $this->em->persist($commande);

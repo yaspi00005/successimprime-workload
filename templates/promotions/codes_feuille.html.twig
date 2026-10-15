@@ -1,0 +1,56 @@
+{# Feuille A4 pour le comptoir : un coupon par code promo, à découper (docs/promotions.md, « Codes promo »). #}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex">
+	<title>Codes promo · {{ promotion.nom }}</title>
+	<style>
+		@page { size: A4; margin: 10mm; }
+		* { box-sizing: border-box; }
+		body { margin: 0; font-family: "Inter", "Segoe UI", Arial, sans-serif; color: #1D1D1B; background: #EEF2F7; }
+		.feuille { width: 210mm; margin: 0 auto; background: #fff; padding: 10mm; }
+		.tete { display: flex; justify-content: space-between; align-items: baseline; gap: 6mm; margin-bottom: 6mm; font-size: 10pt; color: #475569; }
+		.tete b { color: #0F4590; font-size: 12pt; }
+		.coupons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; }
+		.coupon { border: .4mm dashed #94A3B8; padding: 5mm 6mm; min-height: 46mm; display: flex; flex-direction: column; gap: 2mm; break-inside: avoid; page-break-inside: avoid; }
+		.coupon img { height: 9mm; align-self: flex-start; }
+		.coupon .nom { font-size: 11pt; font-weight: 700; color: #0F4590; }
+		.coupon .avantage { font-size: 10pt; color: #C40D22; font-weight: 700; }
+		.coupon .code { font-family: "JetBrains Mono", "Consolas", "Courier New", monospace; font-size: 20pt; font-weight: 800; letter-spacing: .08em; border: .5mm solid #FDC82A; border-radius: 3mm; padding: 2mm 4mm; align-self: flex-start; }
+		.coupon .petit { font-size: 8.5pt; color: #475569; margin-top: auto; }
+		.vide { padding: 20mm; text-align: center; color: #64748B; }
+		.imprimer { position: fixed; top: 12px; right: 12px; padding: 10px 18px; border: 0; border-radius: 10px; background: #DE1028; color: #fff; font-weight: 700; cursor: pointer; }
+		@media print { body { background: #fff; } .imprimer { display: none; } .feuille { width: auto; margin: 0; padding: 0; } }
+		@media (max-width: 800px) { .feuille { width: auto; } .coupons { grid-template-columns: 1fr; } }
+	</style>
+</head>
+<body>
+	<button class="imprimer" type="button" onclick="window.print()">Imprimer</button>
+	<main class="feuille">
+		<div class="tete">
+			<span><b>{{ promotion.nom }}</b>{{ lot ? ' · lot ' ~ lot }}</span>
+			<span>{{ codes|length }} code{{ codes|length > 1 ? 's' }} · imprimé le {{ 'now'|date('d/m/Y') }}</span>
+		</div>
+		{% if codes is empty %}
+			<p class="vide">Aucun code actif à imprimer.</p>
+		{% else %}
+			<div class="coupons">
+				{% for c in codes %}
+					<section class="coupon">
+						<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim">
+						<span class="nom">{{ promotion.nom }}</span>
+						<span class="avantage">{{ promotion.aUnAvantageCommande ? promotion.libelleAvantageCommande : promotion.libelleAvantage ~ ' sur ' ~ promotion.libelleArticles }}</span>
+						<span class="code">{{ c.codeAffiche }}</span>
+						<span class="petit">
+							{{ c.estDUnLot ? 'Code personnel, valable une fois' : 'Valable ' ~ c.utilisationsParClient ~ ' fois par client' }}{{ c.debut ? ' du ' ~ c.debutEffectif|date('d/m/Y') }} jusqu'au {{ c.finEffective|date('d/m/Y') }} inclus{% if promotion.minimumCommande %}, dès {{ promotion.minimumCommande|number_format(0, ',', ' ') }} F HT de commande{% endif %}.
+							À donner au comptoir ou à taper dans votre espace client. Non cumulable avec un prix revendeur.
+						</span>
+					</section>
+				{% endfor %}
+			</div>
+		{% endif %}
+	</main>
+</body>
+</html>

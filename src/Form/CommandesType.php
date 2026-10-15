@@ -239,6 +239,13 @@ class CommandesType extends AbstractType
                     'placeholder' => 'Facultatif',
                 ],
             ])
+            // Le code retenu (ou tapé en ligne) revient dans le champ : l'enregistrer de nouveau le garde.
+            ->addEventListener(\Symfony\Component\Form\FormEvents::POST_SET_DATA, static function (\Symfony\Component\Form\FormEvent $event): void {
+                $document = $event->getData();
+                if ($document instanceof \App\Entity\Commandes && null !== $document->getLibelleCodePromo()) {
+                    $event->getForm()->get('codePromo')->setData($document->getLibelleCodePromo());
+                }
+            })
 
             ->add('tva', IntegerType::class, [
                 'label' => 'TVA',

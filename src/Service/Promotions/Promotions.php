@@ -6,6 +6,7 @@ use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\CompteFidelite;
+use App\Entity\Devis;
 use App\Entity\DevisDetails;
 use App\Entity\JournalActivite;
 use App\Entity\Promotion;
@@ -107,7 +108,7 @@ final class Promotions
 
         return array_values(array_filter(
             $this->valables($jour),
-            static fn (Promotion $p): bool => null === $p->getCode() && CalculPromotion::dansSegment($p, $ctx),
+            static fn (Promotion $p): bool => $p->estSansCode() && CalculPromotion::dansSegment($p, $ctx),
         ));
     }
 
@@ -188,13 +189,19 @@ final class Promotions
         return $resultat;
     }
 
-    /** Lignes de devis et de commande qui portent la promotion. */
+    /** Lignes de devis et de commande qui portent la promotion, et documents qui portent un de ses codes. */
     public function nombreLignes(Promotion $p): int
     {
         $n = 0;
         foreach ([CommandesDetails::class, DevisDetails::class] as $classe) {
             $n += (int) $this->em->createQueryBuilder()->select('COUNT(l.id)')->from($classe, 'l')
                 ->where('l.promotion = :p')->setParameter('p', $p)->getQuery()->getSingleScalarResult();
+        }
+        if ($p->hasCodes()) {
+            foreach ([Commandes::class, Devis::class] as $classe) {
+                $n += (int) $this->em->createQueryBuilder()->select('COUNT(d.id)')->from($classe, 'd')->join('d.codePromo', 'cp')
+                    ->where('cp.promotion = :p')->setParameter('p', $p)->getQuery()->getSingleScalarResult();
+            }
         }
 
         return $n;
@@ -211,14 +218,34 @@ final class Promotions
         if ('' === $p->getNom()) {
             $erreurs[] = 'Donnez un nom à la promotion (le client le voit).';
         }
-        if ($p->getProduits()->isEmpty() && null === $p->getCategorie()) {
+        $articles = !$p->getProduits()->isEmpty() || null !== $p->getCategorie();
+        // Avec un avantage sur la commande (codes générés), les articles visés sont facultatifs.
+        if (!$articles && null === $p->getAvantageCommande()) {
             $erreurs[] = 'Choisissez au moins un produit ou une catégorie.';
         }
-        if ($p->getValeur() <= 0) {
+        if ($articles && $p->getValeur() <= 0) {
             $erreurs[] = 'L\'avantage doit être supérieur à zéro.';
         }
         if (Promotion::AVANTAGE_POURCENTAGE === $p->getAvantage() && $p->getValeur() > 90) {
             $erreurs[] = 'Un pourcentage ne peut pas dépasser 90 %.';
+        }
+        if (null !== $p->getAvantageCommande()) {
+            if ($p->getValeurCommande() <= 0) {
+                $erreurs[] = 'L\'avantage sur la commande doit être supérieur à zéro.';
+            }
+            if (Promotion::COMMANDE_POURCENTAGE === $p->getAvantageCommande() && $p->getValeurCommande() > CalculCodePromo::POURCENTAGE_MAX) {
+                $erreurs[] = \sprintf('Un pourcentage de la commande ne peut pas dépasser %d %%.', CalculCodePromo::POURCENTAGE_MAX);
+            }
+            if (Promotion::COMMANDE_MONTANT === $p->getAvantageCommande() && null !== $p->getPlafondCommande()) {
+                $erreurs[] = 'Le plafond ne sert qu\'avec un pourcentage de la commande.';
+            }
+            if ($p->estAnniversaire()) {
+                $erreurs[] = 'Une promotion d\'anniversaire n\'a pas d\'avantage sur la commande.';
+            }
+        }
+        // Un code simple (ancien) et des codes générés ne vont pas ensemble.
+        if (null !== $p->getCode() && $p->exigeCodeGenere()) {
+            $erreurs[] = 'Code simple ou codes générés : choisissez l\'un ou l\'autre (videz le code simple).';
         }
         if ($p->getFin() < $p->getDebut()) {
             $erreurs[] = 'La fin est avant le début.';

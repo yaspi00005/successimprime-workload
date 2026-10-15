@@ -286,7 +286,7 @@ final class CatalogueSynchroTest extends TestCase
         // Le solde d'ouverture part avec sa commande : l'espace client le compte dans le solde, pas dans la liste.
         self::assertContains('soldeOuverture', $types['commande']['champs']);
         self::assertArrayNotHasKey('soldeOuverture', $types['commande']['remontees'] ?? [], 'seul le local crée un solde d\'ouverture');
-        self::assertSame(['soldeOuverture' => false], $types['commande']['imposeAuLocal'] ?? null);
+        self::assertFalse($types['commande']['imposeAuLocal']['soldeOuverture'] ?? null);
         // Clients et produits importés partent par la synchronisation habituelle, avec leur liste blanche.
         self::assertSame(\App\Entity\Produits::class, $types['produit']['classe']);
         self::assertContains('prixB2B', $types['produit']['champs']);

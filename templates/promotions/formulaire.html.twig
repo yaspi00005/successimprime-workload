@@ -53,6 +53,7 @@
 							<small class="text-muted">Tous ses produits, y compris ceux ajoutés plus tard.</small>
 						</div>
 					</div>
+					<small class="text-muted d-block mt-1">Facultatifs pour une promotion qui n'a qu'un avantage sur la commande (plus bas).</small>
 				</fieldset>
 
 				<fieldset class="mb-3">
@@ -68,7 +69,7 @@
 						<div class="col-md-5">
 							<label class="form-label" for="valeur">Valeur</label>
 							<div class="input-group">
-								<input type="text" inputmode="decimal" id="valeur" name="valeur" value="{{ promotion.valeur > 0 ? promotion.valeur|number_format(promotion.valeur == promotion.valeur|round(0, 'floor') ? 0 : 2, ',', '') }}" class="form-control" required>
+								<input type="text" inputmode="decimal" id="valeur" name="valeur" value="{{ promotion.valeur > 0 ? promotion.valeur|number_format(promotion.valeur == promotion.valeur|round(0, 'floor') ? 0 : 2, ',', '') }}" class="form-control" placeholder="—">
 								<span class="input-group-text" data-si-unite>%</span>
 							</div>
 						</div>
@@ -105,6 +106,46 @@
 					</div>
 				</fieldset>
 
+				{# Codes promo générés (docs/promotions.md, « Codes promo ») : l'avantage sur la commande ne passe que par eux. #}
+				<fieldset class="mb-3 si-pr-commande">
+					<legend class="form-label fs-6">Codes promo générés et avantage sur la commande</legend>
+					<label class="d-block mb-2"><input type="checkbox" name="a_codes" value="1"{{ promotion.hasCodes or codes_generes ? ' checked' }}{{ codes_generes ? ' disabled' }}> Réservée aux codes promo générés <small class="text-muted">(un code partagé limité, ou un lot de codes uniques, qui expirent ; à créer sur la fiche, « Codes promo »)</small></label>
+					{% if codes_generes %}<input type="hidden" name="a_codes" value="1">{% endif %}
+					<div class="row g-3 align-items-end">
+						<div class="col-sm-6 col-lg-3">
+							<label class="form-label" for="avantage_commande">Sur la commande</label>
+							<select id="avantage_commande" name="avantage_commande" class="form-select">
+								<option value="">Aucun</option>
+								{% for cle, libelle in constant('App\\Entity\\Promotion::AVANTAGES_COMMANDE') %}
+									<option value="{{ cle }}"{{ promotion.avantageCommande == cle ? ' selected' }}>{{ libelle }}</option>
+								{% endfor %}
+							</select>
+						</div>
+						<div class="col-sm-6 col-lg-3" data-si-commande>
+							<label class="form-label" for="valeur_commande">Valeur</label>
+							<div class="input-group">
+								<input type="text" inputmode="decimal" id="valeur_commande" name="valeur_commande" value="{{ promotion.valeurCommande > 0 ? promotion.valeurCommande|number_format(promotion.valeurCommande == promotion.valeurCommande|round(0, 'floor') ? 0 : 2, ',', '') }}" class="form-control" placeholder="—">
+								<span class="input-group-text" data-si-unite-commande>{{ promotion.avantageCommande == 'montant' ? 'F HT' : '%' }}</span>
+							</div>
+						</div>
+						<div class="col-sm-6 col-lg-3" data-si-commande data-si-plafond>
+							<label class="form-label" for="plafond_commande">Au plus</label>
+							<div class="input-group">
+								<input type="text" inputmode="numeric" id="plafond_commande" name="plafond_commande" value="{{ promotion.plafondCommande }}" class="form-control" placeholder="—">
+								<span class="input-group-text">F</span>
+							</div>
+						</div>
+						<div class="col-sm-6 col-lg-3" data-si-commande>
+							<label class="form-label" for="minimum_commande">Commande d'au moins</label>
+							<div class="input-group">
+								<input type="text" inputmode="numeric" id="minimum_commande" name="minimum_commande" value="{{ promotion.minimumCommande }}" class="form-control" placeholder="—">
+								<span class="input-group-text">F HT</span>
+							</div>
+						</div>
+					</div>
+					<small class="text-muted d-block mt-1">Pourcentage : {{ pourcentage_max }} % au plus. Montants hors TVA, après les remises des lignes. L'avantage va aux lignes qui n'ont pas déjà une promotion (pas de double remise) et se voit sur le devis et la facture. Un seul code par commande.</small>
+				</fieldset>
+
 				<fieldset class="mb-3">
 					<legend class="form-label fs-6">Conditions (facultatives)</legend>
 					<div class="row g-3">
@@ -120,8 +161,8 @@
 							</div>
 						</div>
 						<div class="col-sm-6 col-lg-3">
-							<label class="form-label" for="code">Code promo</label>
-							<input type="text" id="code" name="code" maxlength="30" value="{{ promotion.code }}" class="form-control text-uppercase" placeholder="—">
+							<label class="form-label" for="code">Code simple</label>
+							<input type="text" id="code" name="code" maxlength="30" value="{{ promotion.code }}" class="form-control text-uppercase" placeholder="—"{{ promotion.exigeCodeGenere or codes_generes ? ' disabled' }} title="Un mot fixe, sans limite ni expiration propre. Pour des codes limités, cochez « Réservée aux codes promo générés ».">
 						</div>
 						<div class="col-sm-6 col-lg-3">
 							<label class="form-label" for="utilisations">Commandes par client</label>
@@ -147,7 +188,7 @@
 				<div class="si-bloc-tete"><h4>Sur la ligne</h4></div>
 				<p class="si-pr-apercu"><i class="fas fa-tag me-1"></i><span data-si-apercu>{{ promotion.nom ?: 'Nom de la promotion' }} ({{ promotion.libelleAvantage }})</span></p>
 				<ol class="si-pr-regles">
-					<li>Elle s'applique toute seule si le client, l'article, la période et les conditions conviennent.</li>
+					<li>Elle s'applique toute seule si le client, l'article, la période et les conditions conviennent ; réservée aux codes générés, seulement quand un code valable est tapé.</li>
 					<li>Une seule par ligne : la plus forte remise ; à égalité, celle qui finit le plus tôt.</li>
 					<li>L'agent peut la retirer d'une ligne ; elle ne revient pas toute seule.</li>
 					<li>Revendeur au prix B2B : la ligne reste au prix B2B ; l'agent peut demander une exception, que vous acceptez ou refusez.</li>
@@ -169,8 +210,17 @@
 				var avantage = form.querySelector('input[name="avantage"]:checked').value;
 				form.querySelector('[data-si-unite]').textContent = unites[avantage];
 				form.querySelector('[data-si-liste-clients]').hidden = form.querySelector('#segment').value !== 'liste';
-				var valeur = form.querySelector('#valeur').value.trim() || '…';
-				form.querySelector('[data-si-apercu]').textContent = (form.querySelector('#nom').value.trim() || 'Nom de la promotion') + ' (' + signes[avantage](valeur) + ')';
+				var commande = form.querySelector('#avantage_commande').value;
+				form.querySelectorAll('[data-si-commande]').forEach(function (b) { b.hidden = commande === ''; });
+				form.querySelector('[data-si-plafond]').hidden = commande !== 'pourcentage';
+				form.querySelector('[data-si-unite-commande]').textContent = commande === 'montant' ? 'F HT' : '%';
+				var codes = form.querySelector('input[name="a_codes"][type="checkbox"]');
+				if (commande !== '' && !codes.checked) { codes.checked = true; }
+				form.querySelector('#code').disabled = codes.checked;
+				var valeur = form.querySelector('#valeur').value.trim();
+				var valeurCommande = form.querySelector('#valeur_commande').value.trim() || '…';
+				var surCommande = commande === 'montant' ? '−' + valeurCommande + ' F sur la commande' : '−' + valeurCommande + ' % sur la commande';
+				form.querySelector('[data-si-apercu]').textContent = (form.querySelector('#nom').value.trim() || 'Nom de la promotion') + ' (' + (valeur === '' && commande !== '' ? surCommande : signes[avantage](valeur || '…')) + ')';
 			};
 			form.addEventListener('input', maj);
 			form.addEventListener('change', maj);

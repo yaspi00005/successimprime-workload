@@ -35,6 +35,7 @@ use App\Entity\NoteArticleSondage;
 use App\Entity\ProduitClient;
 use App\Entity\PromoReveil;
 use App\Entity\Promotion;
+use App\Entity\CodePromo;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
@@ -255,6 +256,30 @@ final class CatalogueSynchro
                 // Un seul accès par client : recréé au local, il remplace celui du site.
                 'uniqueSur' => ['client'],
             ],
+            // Promotions (docs/promotions.md) : ce que l'espace client montre à chacun des siennes. Le code promo
+            // simple, la note interne et les auteurs restent au local ; une promotion à code simple ne paraît pas
+            // en ligne. Elles viennent avant les commandes et les devis, qui citent leurs codes générés.
+            'promotion' => [
+                'classe' => Promotion::class, 'sens' => self::DESCENDANT, 'libelle' => 'Promotion', 'titre' => ['nom'],
+                'champs' => [
+                    'nom', 'avantage', 'valeur', 'debut', 'fin', 'segment', 'active', 'origine', 'quantiteMin', 'montantMin', 'utilisationsParClient',
+                    // Avantage sur la commande, donné par un code généré (« Codes promo »).
+                    'avantageCommande', 'valeurCommande', 'plafondCommande', 'minimumCommande', 'aCodes',
+                ],
+                'relations' => ['categorie' => 'categorie'], 'facultatives' => ['categorie'],
+                'listes' => ['produits' => 'produit', 'clients' => 'client'],
+                'filtres' => ['active' => [Promotion::class, 'activeEnLigne']],
+            ],
+            // Codes promo générés (docs/promotions.md, « Codes promo ») : pour vérifier en ligne le code que le
+            // client tape. Jamais le code : son empreinte (HMAC-SHA256 avec SYNC_CLE), ses dates, ses limites et
+            // ses utilisations comptées au local. Restent au local : le code, le lot, qui l'a créé ou désactivé.
+            'code_promo' => [
+                'classe' => CodePromo::class, 'sens' => self::DESCENDANT, 'libelle' => 'Code promo', 'titre' => ['type', 'expiration'],
+                'champs' => ['empreinte', 'type', 'debut', 'expiration', 'utilisationsMax', 'utilisationsParClient', 'utilisations', 'active', 'creeLe'],
+                'relations' => ['promotion' => 'promotion'], 'listes' => [],
+                // Sans clé de synchronisation, pas d'empreinte (CodesPromo::empreinte) : rien à envoyer.
+                'pret' => static fn (CodePromo $c): bool => '' !== $c->getEmpreinte(),
+            ],
             'commande' => [
                 'classe' => Commandes::class, 'sens' => self::DEUX, 'libelle' => 'Commande', 'titre' => ['numero'],
                 // observation (note interne), agents et bonus de plafond restent au local.
@@ -265,10 +290,15 @@ final class CatalogueSynchro
                     'bonCommande', 'validationEntreprise', 'demandeePar', 'valideePar', 'motifRefusEntreprise',
                     // Solde d'ouverture (docs/import-donnees.md) : compté dans le solde de l'espace client, pas dans ses commandes.
                     'soldeOuverture',
+                    // Code promo (docs/promotions.md) : le code tapé (en clair : c'est le client qui l'a tapé) et
+                    // l'avantage, déjà dans les totaux. Le motif d'un code non retenu reste au local.
+                    'codeSaisi', 'remiseCodePromo',
                 ],
-                'relations' => ['clients' => 'client', 'societe' => 'societe'], 'listes' => [], 'numero' => 'numero',
+                // codePromo : le code retenu par la boutique, pour compter en ligne les utilisations du client.
+                'relations' => ['clients' => 'client', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 // Seul l'import du local crée un solde d'ouverture : une commande venue du site n'en est jamais un.
-                'imposeAuLocal' => ['soldeOuverture' => false],
+                // Le code promo d'une commande passée en ligne n'est retenu que par la boutique, à la confirmation.
+                'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null],
                 // Décision du valideur de l'entreprise, prise en ligne.
                 'remontees' => [
                     'validationEntreprise' => [Commandes::VALIDATION_A_FAIRE => [Commandes::VALIDATION_ACCEPTEE, Commandes::VALIDATION_REFUSEE]],
@@ -284,8 +314,9 @@ final class CatalogueSynchro
                     'remise', 'tva', 'totalHt', 'totalTtc', 'profilCouleurs', 'resolution', 'grammage', 'epaisseur', 'rectoVerso', 'nombreFaces', 'laminage',
                     'oeillets', 'decoupe', 'pliage', 'emballage', 'batValide', 'etat', 'statutProduction', 'productionDebuteLe', 'productionTermineeLe',
                     'quantiteLivree', 'modeSaisie', 'modeCalcul', 'typeLigne', 'demandeClient', 'prePresseNecessaire',
-                    // Promotion de la ligne (docs/promotions.md) : son libellé et sa remise, déjà dans les totaux.
-                    'libellePromotion', 'remisePromotion', 'montantPromotion',
+                    // Promotion de la ligne (docs/promotions.md) : son libellé et sa remise, déjà dans les totaux ;
+                    // la part du code promo de la commande, aussi.
+                    'libellePromotion', 'remisePromotion', 'montantPromotion', 'remiseCodePromo',
                 ],
                 // produitClient : ligne commandée depuis « Mes produits » (le produit du client vient après les BAT).
                 'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format', 'produitClient' => 'produit_client'],
@@ -335,8 +366,9 @@ final class CatalogueSynchro
                 'champs' => [
                     'numero', 'emetteur', 'dateDevis', 'remise', 'tva', 'totalHt', 'totalTtc', 'montantApayer', 'deleted', 'statut', 'etat',
                     'tokenAuthenticite', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation', 'telephoneFacturation', 'emailFacturation',
+                    'codeSaisi', 'remiseCodePromo',
                 ],
-                'relations' => ['clients' => 'client', 'commande' => 'commande', 'societe' => 'societe'], 'listes' => [], 'numero' => 'numero',
+                'relations' => ['clients' => 'client', 'commande' => 'commande', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 // Le jeton du lien PDF peut naître en ligne (le client ouvre son devis) : il est gardé.
                 'remontees' => ['statut' => [Devis::STATUT_ENVOYE => [Devis::STATUT_ACCEPTE]], 'tokenAuthenticite' => ['' => ['*']]],
             ],
@@ -346,7 +378,7 @@ final class CatalogueSynchro
                     'modeConfiguration', 'designation', 'largeur', 'longueur', 'surface', 'quantite', 'prixUnitaire', 'remise', 'tva', 'totalHt', 'totalTtc',
                     'profilCouleurs', 'resolution', 'grammage', 'epaisseur', 'rectoVerso', 'nombreFaces', 'laminage', 'oeillets', 'decoupe', 'pliage',
                     'emballage', 'typeLigne', 'modeSaisie', 'batValide', 'etat', 'modeCalcul',
-                    'libellePromotion', 'remisePromotion', 'montantPromotion',
+                    'libellePromotion', 'remisePromotion', 'montantPromotion', 'remiseCodePromo',
                 ],
                 'relations' => ['devis' => 'devis', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
@@ -464,15 +496,6 @@ final class CatalogueSynchro
                 'classe' => PromoReveil::class, 'sens' => self::DESCENDANT, 'libelle' => 'Promo de réveil', 'titre' => ['taux'],
                 'champs' => ['taux', 'debut', 'fin', 'utiliseeLe', 'annuleeLe'],
                 'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'facultatives' => ['commande'],
-            ],
-            // Promotions (docs/promotions.md) : ce que l'espace client montre à chacun des siennes. Le code promo,
-            // la note interne et les auteurs restent au local ; une promotion à code ne paraît pas en ligne.
-            'promotion' => [
-                'classe' => Promotion::class, 'sens' => self::DESCENDANT, 'libelle' => 'Promotion', 'titre' => ['nom'],
-                'champs' => ['nom', 'avantage', 'valeur', 'debut', 'fin', 'segment', 'active', 'origine', 'quantiteMin', 'montantMin', 'utilisationsParClient'],
-                'relations' => ['categorie' => 'categorie'], 'facultatives' => ['categorie'],
-                'listes' => ['produits' => 'produit', 'clients' => 'client'],
-                'filtres' => ['active' => [Promotion::class, 'activeEnLigne']],
             ],
             // Demande de devis ou message d'un visiteur du site (maquette 11) : monte au local, ne redescend pas.
             // Client, prospect, devis préparé et suivi par l'équipe restent au local.

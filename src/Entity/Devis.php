@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\CodePromoDocumentTrait;
 use App\Entity\Trait\PublicIdTrait;
 use App\Entity\Trait\SocieteTrait;
 use App\Repository\DevisRepository;
@@ -18,6 +19,7 @@ class Devis implements AppartientASociete
 {
     use PublicIdTrait;
     use SocieteTrait;
+    use CodePromoDocumentTrait;
 
     /*
      * ============================================================

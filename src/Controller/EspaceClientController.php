@@ -26,6 +26,8 @@ use App\Service\Parametres\Parametres;
 use App\Security\CodeDeConnexion;
 use App\Security\DestinationCode;
 use App\Security\EspaceClientComptes;
+use App\Security\EssaisCodePromo;
+use App\Service\Promotions\CodePromoRefuse;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -282,7 +284,7 @@ final class EspaceClientController extends AbstractController
 
     /** Nouvelle commande (maquette 14) : produit, taille, finitions, quantité, fichier. */
     #[Route('/commandes/nouvelle', name: 'nouvelle_commande', methods: ['GET', 'POST'])]
-    public function nouvelleCommande(Request $request, NouvelleCommande $service, FichiersClient $fichiers, CatalogueAtelier $atelier): Response
+    public function nouvelleCommande(Request $request, NouvelleCommande $service, FichiersClient $fichiers, CatalogueAtelier $atelier, EssaisCodePromo $essaisCode): Response
     {
         $compte = $this->compte();
         $client = $compte->getClient();
@@ -304,7 +306,17 @@ final class EspaceClientController extends AbstractController
                     throw new \DomainException('Choisissez un produit.');
                 }
                 [$largeur, $hauteur] = [self::nombre($request->request->get('largeur')), self::nombre($request->request->get('hauteur'))];
-                $commande = $service->commander($client, $config, $request->request->getInt('quantite', 1), $largeur, $hauteur, array_map('intval', $request->request->all('finitions')), $choisis, $request->request->getString('note'), new \DateTimeImmutable());
+                // Code promo (docs/promotions.md) : les codes refusés sont comptés par compte et par connexion.
+                $codePromo = mb_substr(trim($request->request->getString('code_promo')), 0, 40);
+                if ('' !== $codePromo && $essaisCode->bloque((int) $client->getId(), (string) $request->getClientIp())) {
+                    throw new \DomainException('Trop de codes promo refusés : réessayez plus tard, ou passez la commande sans code.');
+                }
+                try {
+                    $commande = $service->commander($client, $config, $request->request->getInt('quantite', 1), $largeur, $hauteur, array_map('intval', $request->request->all('finitions')), $choisis, $request->request->getString('note'), new \DateTimeImmutable(), null, $codePromo);
+                } catch (CodePromoRefuse $e) {
+                    $essaisCode->noterRefus((int) $client->getId(), (string) $request->getClientIp());
+                    throw $e;
+                }
                 // Le fichier se contrôle à la taille commandée.
                 foreach ($choisis as $f) {
                     $fichiers->recontroler($f, $largeur, $hauteur);
@@ -337,6 +349,8 @@ final class EspaceClientController extends AbstractController
             'adresses' => $adresses,
             'entreprise' => CompteClient::clientAPlusieursComptes($client),
             'demandeValidation' => $this->compteEntreprise->demandeValidation($compte),
+            // Code promo : pas pour un revendeur au prix B2B (refusé aussi au serveur, docs/promotions.md).
+            'champCodePromo' => !$client->isB2B(),
         ]);
     }
 

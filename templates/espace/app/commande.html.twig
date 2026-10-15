@@ -116,6 +116,13 @@
 	{% if not lecture %}
 	<div class="ec-carte">
 		{# Montants : CompteClient::montantsVisibles ; un demandeur voit la commande, son valideur en voit le prix. #}
+		{# Code promo (docs/promotions.md) : le montant pour qui voit les montants ; un code non retenu, sans raison interne. #}
+		{% if c.codeSaisi or c.codePromo %}
+			{% set retenu = c.codePromo or c.remiseCodePromo > 0 or (carte.aConfirmer and not c.motifCodePromo) %}
+			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Code promo {{ c.libelleCodePromo }}</span>
+				{% if not retenu %}<span class="ec-petit">non retenu</span>{% elseif coque.montants and c.remiseCodePromoTtc > 0 %}<span>−{{ c.remiseCodePromoTtc|number_format(0, ',', ' ') }} F{{ carte.aConfirmer ? ' indicatif' }}</span>{% else %}<span class="ec-petit">{{ carte.aConfirmer ? 'à confirmer par l\'atelier' : 'appliqué' }}</span>{% endif %}
+			</div>
+		{% endif %}
 		{% if coque.montants %}
 			<div class="ec-ligne"><span>Total{{ carte.aConfirmer ? ' indicatif' }}</span><b>{{ c.totalTtc|number_format(0, ',', ' ') }} F</b></div>
 		{% else %}

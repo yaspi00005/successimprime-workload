@@ -102,6 +102,8 @@ final class DevisCommandeConverter
                     $devisDetail->getMontantPromotion(),
                     $devisDetail->isPromotionRetiree()
                 );
+                // Part du code promo du devis : elle suit aussi, déjà dans les montants.
+                $commandeDetail->setRemiseCodePromo($devisDetail->getRemiseCodePromo());
 
                 if (null !== $devisDetail->getId()) {
                     foreach ($this->entityManager->getRepository(DemandeExceptionPromotion::class)->findBy(['ligneDevis' => $devisDetail]) as $demande) {
@@ -201,6 +203,15 @@ final class DevisCommandeConverter
             ->setMontantApayer($devis->getMontantApayer())
             ->setObservation($devis->getObservation())
             ->setEtat(true);
+
+        /*
+         * Code promo (docs/promotions.md) : la commande reprend le code du
+         * devis et son utilisation (le devis transformé ne compte plus).
+         */
+        $commande
+            ->setCodePromo($devis->getCodePromo())
+            ->setCodeSaisi($devis->getCodeSaisi())
+            ->setRemiseCodePromo($devis->getRemiseCodePromo());
 
         /*
          * Utilisez directement la constante si elle existe

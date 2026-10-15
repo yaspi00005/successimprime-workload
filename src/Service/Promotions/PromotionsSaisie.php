@@ -34,12 +34,22 @@ final class PromotionsSaisie
         private readonly EntityManagerInterface $em,
         private readonly Promotions $promotions,
         private readonly NotificationService $notifications,
+        private readonly CodesPromo $codes,
     ) {
     }
 
     /**
      * Commande enregistrée depuis le formulaire. Remet les totaux d'aplomb
-     * quand une ligne porte (ou portait) une promotion.
+     * quand une ligne porte (ou portait) une promotion, ou que la commande
+     * porte (ou portait) un code promo.
+     *
+     * Le code promo tapé est vérifié ici (CodesPromo) : refusé, il bloque
+     * l'enregistrement avec la raison. Seule exception : une commande passée
+     * en ligne qu'on confirme avec le code tapé par le client. La boutique
+     * tranche alors sans bloquer : la commande perd l'avantage et garde le
+     * motif, que l'équipe lit sur la fiche.
+     *
+     * @throws \DomainException code promo refusé
      */
     public function appliquerCommande(Commandes $commande, ?string $code, \DateTimeImmutable $maintenant): bool
     {
@@ -48,7 +58,9 @@ final class PromotionsSaisie
         }
         $client = $commande->getClients();
         $lignes = self::lignesVivantes($commande);
-        if (!$this->appliquerLignes($client, $lignes, $commande->getId(), $commande->getDateCommande() ?? $maintenant, $code)) {
+        $souple = Commandes::CANAL_EN_LIGNE === $commande->getCanal() && null === $commande->getCodePromo()
+            && null !== $commande->getCodeSaisi() && CalculCodePromo::canonique($code) === $commande->getCodeSaisi();
+        if (!$this->appliquerAvecCode($commande, $client, $lignes, $commande->getId(), $commande->getDateCommande() ?? $maintenant, $code, $souple)) {
             return false;
         }
         foreach ($lignes as $ligne) {
@@ -59,6 +71,7 @@ final class PromotionsSaisie
         return true;
     }
 
+    /** @throws \DomainException code promo refusé */
     public function appliquerDevis(Devis $devis, ?string $code, \DateTimeImmutable $maintenant): bool
     {
         if ($this->promotions->estEnLigne() || null !== $devis->getCommande()) {
@@ -66,7 +79,7 @@ final class PromotionsSaisie
         }
         $client = $devis->getClients();
         $lignes = array_values($devis->getDevisDetails()->toArray());
-        if (!$this->appliquerLignes($client, $lignes, null, $devis->getDateDevis() ?? $maintenant, $code)) {
+        if (!$this->appliquerAvecCode($devis, $client, $lignes, null, $devis->getDateDevis() ?? $maintenant, $code, false)) {
             return false;
         }
         foreach ($lignes as $ligne) {
@@ -78,23 +91,198 @@ final class PromotionsSaisie
     }
 
     /**
+     * Promotions des lignes, puis code promo du document. Rien n'est
+     * enregistré : l'appelant refait les totaux si la méthode rend true.
+     *
+     * Le code débloque les lignes de sa promotion et, si elle en a un, son
+     * avantage sur la commande. Cet avantage se calcule sur les lignes sans
+     * promotion (une ligne n'a qu'un avantage promotionnel : sa promotion,
+     * ou sa part du code), après leurs remises, et se répartit sur elles.
+     *
+     * @param list<CommandesDetails|DevisDetails> $lignes
+     *
+     * @throws \DomainException code refusé, sauf en mode souple
+     */
+    private function appliquerAvecCode(Commandes|Devis $document, ?Clients $client, array $lignes, ?int $commandeId, \DateTimeImmutable $jour, ?string $saisi, bool $souple): bool
+    {
+        $canonique = CalculCodePromo::canonique($saisi);
+        $avant = $document->getCodePromo();
+        $avaitUneRemise = $document->getRemiseCodePromo() > 0;
+        foreach ($lignes as $ligne) {
+            $avaitUneRemise = $avaitUneRemise || $ligne->getRemiseCodePromo() > 0;
+        }
+
+        $verification = $this->codes->verifier($canonique, $client, $document, $jour, true);
+        $code = $verification['code'];
+        $refus = $verification['refus'];
+        $debloquees = null !== $code && null === $refus ? [(int) $code->getPromotion()?->getId()] : [];
+        $touche = $this->appliquerLignes($client, $lignes, $commandeId, $jour, $saisi, $debloquees);
+
+        $parts = [];
+        if (null !== $code && null === $refus && null !== $client && null !== $code->getPromotion()) {
+            [$refus, $parts] = self::avantageCommande($code->getPromotion(), $lignes);
+            if (null !== $refus) {
+                // Le code ne sert pas : les lignes de sa promotion non plus.
+                $touche = $this->appliquerLignes($client, $lignes, $commandeId, $jour, $saisi, []) || $touche;
+            }
+        }
+        if (null !== $refus) {
+            if (!$souple) {
+                throw new \DomainException(CalculCodePromo::message($refus, true));
+            }
+            $document->setMotifCodePromo(CalculCodePromo::raison($refus));
+            $code = null;
+            $parts = [];
+        } else {
+            $document->setMotifCodePromo(null);
+        }
+
+        $document->setCodePromo($code);
+        if (!$souple) {
+            // Le code simple d'une promotion ne se garde pas : les lignes gardent leur promotion.
+            $document->setCodeSaisi(null !== $code ? $canonique : null);
+        }
+        foreach ($lignes as $ligne) {
+            $ligne->setRemiseCodePromo($parts[spl_object_id($ligne)] ?? 0);
+        }
+        $document->setRemiseCodePromo(array_sum($parts));
+
+        // Compte des utilisations, pour la liste et pour le site en ligne.
+        if (null !== $avant && $avant !== $code) {
+            $this->codes->recompter($avant, $document, false);
+        }
+        if (null !== $code) {
+            $this->codes->recompter($code, $document, true);
+        }
+
+        return $touche || $avaitUneRemise || [] !== $parts || $avant !== $code || null !== $refus;
+    }
+
+    /**
+     * Espace client (site en ligne) : le code tapé par le client en passant
+     * commande, vérifié avec ce que le site sait (empreinte, dates, limites
+     * et utilisations venues du local, commandes en ligne pas encore
+     * confirmées). Valable : la promotion du code s'applique aux lignes
+     * qu'elle vise, son avantage sur la commande se répartit sur les autres,
+     * et la commande garde le code tapé. Elle ne retient pas le code : la
+     * boutique le revérifie en la confirmant (appliquerCommande).
+     *
+     * @throws CodePromoRefuse
+     */
+    public function appliquerCodeEnLigne(Commandes $commande, string $saisi, \DateTimeImmutable $jour): void
+    {
+        $canonique = CalculCodePromo::canonique($saisi);
+        $client = $commande->getClients();
+        if ('' === $canonique || null === $client) {
+            return;
+        }
+        if ($client->isB2B()) {
+            // Avant même de chercher le code : la réponse est la même pour tout code tapé (rien à deviner).
+            throw new CodePromoRefuse('b2b');
+        }
+        $verification = $this->codes->verifier($canonique, $client, null, $jour, false);
+        $code = $verification['code'];
+        $promotion = $code?->getPromotion();
+        if (null === $code || null === $promotion) {
+            // En ligne, seul un code généré se reconnaît (une promotion à code simple n'y est pas active).
+            throw new CodePromoRefuse('inconnu');
+        }
+        if (null !== $verification['refus']) {
+            throw new CodePromoRefuse($verification['refus']);
+        }
+
+        $lignes = self::lignesVivantes($commande);
+        $debloquees = [(int) $promotion->getId()];
+        $segments = $this->promotions->segmentsDe($client, null, $jour);
+        $utilisations = $this->promotions->utilisations($client, $debloquees, null);
+        foreach ($lignes as $ligne) {
+            if (null === $ligne->getProduit()) {
+                continue;
+            }
+            $r = CalculPromotion::evaluer([$promotion], $this->contexte($client, $ligne, $jour, $segments, $canonique, $utilisations, [], $debloquees));
+            if (null !== $r['promotion']) {
+                $ligne->appliquerPromotion($r['promotion'], $r['remise'])->calculerTotaux($client->isB2B());
+            }
+        }
+        [$refus, $parts] = self::avantageCommande($promotion, $lignes);
+        if (null !== $refus) {
+            foreach ($lignes as $ligne) {
+                if ($ligne->getPromotion() === $promotion) {
+                    $ligne->retirerPromotion();
+                    $ligne->calculerTotaux($client->isB2B());
+                }
+            }
+            throw new CodePromoRefuse($refus);
+        }
+        foreach ($lignes as $ligne) {
+            $ligne->setRemiseCodePromo($parts[spl_object_id($ligne)] ?? 0);
+            $ligne->calculerTotaux($client->isB2B());
+        }
+        $commande->setCodeSaisi($canonique)->setMotifCodePromo(null);
+        $commande->recalculerTotaux();
+    }
+
+    /**
+     * Avantage de la promotion sur la commande et sa part sur chaque ligne
+     * (par spl_object_id), ou la raison pour laquelle le code ne sert pas.
+     *
+     * @param list<CommandesDetails|DevisDetails> $lignes
+     *
+     * @return array{0: ?string, 1: array<int, int>}
+     */
+    public static function avantageCommande(Promotion $promotion, array $lignes): array
+    {
+        $total = 0;
+        $bases = [];
+        $surLesLignes = false;
+        foreach ($lignes as $ligne) {
+            $net = $ligne->getTotalAvantCodePromo();
+            $total += $net;
+            if (null === $ligne->getPromotion()) {
+                $bases[spl_object_id($ligne)] = $net;
+            } elseif ($ligne->getPromotion() === $promotion || (null !== $promotion->getId() && $ligne->getPromotion()->getId() === $promotion->getId())) {
+                $surLesLignes = true;
+            }
+        }
+        if (!CalculCodePromo::minimumAtteint($promotion, $total)) {
+            return ['minimum', []];
+        }
+        $montant = CalculCodePromo::montantCommande($promotion, array_sum($bases));
+        if (0 === $montant && !$surLesLignes) {
+            return ['sans_effet', []];
+        }
+
+        return [null, array_filter(CalculCodePromo::repartir($montant, $bases))];
+    }
+
+    /**
      * Aperçu pour le formulaire : la promotion de chaque ligne en cours de
-     * saisie, calculée comme à l'enregistrement. Rien n'est écrit.
+     * saisie, et le code promo tapé, calculés comme à l'enregistrement.
+     * Rien n'est écrit, aucun code n'est compté.
      *
-     * @param list<array{cle: string, id: ?int, produit: ?int, prix: float, remise: int, quantite: int, brut: int}> $lignes
+     * @param list<array{cle: string, id: ?int, produit: ?int, prix: float, remise: int, quantite: int, brut: int, unites?: float, tva?: int}> $lignes
      *
-     * @return array<string, array{promotion: ?array{id: int, libelle: string}, remise: int, b2b: list<array{id: int, libelle: string, demande: ?string}>}>
+     * @return array{lignes: array<string, array{promotion: ?array{id: int, libelle: string}, remise: int, b2b: list<array{id: int, libelle: string, demande: ?string}>, code: int}>, code: ?array{etat: string, message: ?string, libelle: ?string, remise: int, remiseTtc: int}}
      */
     public function apercu(?Clients $client, Commandes|Devis|null $document, array $lignes, ?string $code, \DateTimeImmutable $maintenant): array
     {
         $resultat = [];
-        $vide = ['promotion' => null, 'remise' => 0, 'b2b' => []];
+        $vide = ['promotion' => null, 'remise' => 0, 'b2b' => [], 'code' => 0];
+        $canonique = CalculCodePromo::canonique($code);
         if (null === $client || $this->promotions->estEnLigne() || ($document instanceof Commandes && self::estFacturee($document))) {
             foreach ($lignes as $l) {
                 $resultat[$l['cle']] = $vide;
             }
 
-            return $resultat;
+            $infoCode = null;
+            if ($document instanceof Commandes && null !== $document->getCodePromo() && !$this->promotions->estEnLigne()) {
+                // Facturée : rien ne change plus, le code retenu reste tel quel.
+                $infoCode = ['etat' => 'ok', 'message' => null, 'libelle' => $document->getLibelleCodePromo(), 'remise' => $document->getRemiseCodePromo(), 'remiseTtc' => $document->getRemiseCodePromoTtc()];
+            } elseif ('' !== $canonique && null === $client) {
+                $infoCode = ['etat' => 'refus', 'message' => CalculCodePromo::raison('client'), 'libelle' => null, 'remise' => 0, 'remiseTtc' => 0];
+            }
+
+            return ['lignes' => $resultat, 'code' => $infoCode];
         }
         $jour = ($document instanceof Commandes ? $document->getDateCommande() : $document?->getDateDevis()) ?? $maintenant;
         $commandeId = $document instanceof Commandes ? $document->getId() : null;
@@ -114,30 +302,118 @@ final class PromotionsSaisie
         $utilisations = $this->promotions->utilisations($client, self::ids($candidates), $commandeId);
         $demandes = $this->demandesParLigne(array_values($existantes));
         $produits = $this->produits(array_filter(array_column($lignes, 'produit')));
+        $verification = '' === $canonique ? null : $this->codes->verifier($canonique, $client, $document, $jour, false);
+        $codePromo = $verification['code'] ?? null;
+        $refus = $verification['refus'] ?? null;
 
-        foreach ($lignes as $l) {
-            $existante = null !== $l['id'] ? ($existantes[$l['id']] ?? null) : null;
-            $produit = $produits[(int) $l['produit']] ?? null;
-            if (null === $produit) {
-                $resultat[$l['cle']] = $vide;
-                continue;
+        $evaluer = function (array $debloquees) use ($lignes, $existantes, $produits, $demandes, $client, $jour, $segments, $code, $utilisations, $candidates, $vide): array {
+            $resultat = [];
+            foreach ($lignes as $l) {
+                $existante = null !== $l['id'] ? ($existantes[$l['id']] ?? null) : null;
+                $produit = $produits[(int) $l['produit']] ?? null;
+                if (null === $produit) {
+                    $resultat[$l['cle']] = $vide + ['_promotion' => null];
+                    continue;
+                }
+                $demandesLigne = null !== $existante ? ($demandes[spl_object_id($existante)] ?? []) : [];
+                $ctx = new ContexteLigne($client, $produit, max(0, $l['prix']), max(0, $l['remise']), max(1, $l['quantite']), max(0, $l['brut']), $jour, $segments, $code, $utilisations, self::acceptees($demandesLigne), $produit->getPrixBase(), $debloquees);
+                $r = CalculPromotion::evaluer($candidates, $ctx, $existante?->getPromotion());
+                $b2b = [];
+                foreach ($r['b2b'] as $possible) {
+                    $demande = self::derniereDemande($demandesLigne, $possible['promotion']);
+                    $b2b[] = ['id' => (int) $possible['promotion']->getId(), 'libelle' => $possible['promotion']->libelleLigne(), 'demande' => $demande?->getStatut()];
+                }
+                $resultat[$l['cle']] = [
+                    'promotion' => null !== $r['promotion'] ? ['id' => (int) $r['promotion']->getId(), 'libelle' => $r['promotion']->libelleLigne()] : null,
+                    'remise' => $r['remise'],
+                    'b2b' => $b2b,
+                    'code' => 0,
+                    '_promotion' => $r['promotion'],
+                ];
             }
-            $demandesLigne = null !== $existante ? ($demandes[spl_object_id($existante)] ?? []) : [];
-            $ctx = new ContexteLigne($client, $produit, max(0, $l['prix']), max(0, $l['remise']), max(1, $l['quantite']), max(0, $l['brut']), $jour, $segments, $code, $utilisations, self::acceptees($demandesLigne), $produit->getPrixBase());
-            $r = CalculPromotion::evaluer($candidates, $ctx, $existante?->getPromotion());
-            $b2b = [];
-            foreach ($r['b2b'] as $possible) {
-                $demande = self::derniereDemande($demandesLigne, $possible['promotion']);
-                $b2b[] = ['id' => (int) $possible['promotion']->getId(), 'libelle' => $possible['promotion']->libelleLigne(), 'demande' => $demande?->getStatut()];
+
+            return $resultat;
+        };
+
+        $debloquees = null !== $codePromo && null === $refus ? [(int) $codePromo->getPromotion()?->getId()] : [];
+        $resultat = $evaluer($debloquees);
+        $infoCode = null;
+        if (null !== $verification) {
+            $remise = 0;
+            $remiseTtc = 0;
+            if (null !== $codePromo && null === $refus && null !== $codePromo->getPromotion()) {
+                [$refus, $remise, $remiseTtc, $parts] = self::avantageApercu($codePromo->getPromotion(), $lignes, $resultat);
+                if (null !== $refus) {
+                    $resultat = $evaluer([]);
+                } else {
+                    foreach ($parts as $cle => $part) {
+                        $resultat[$cle]['code'] = $part;
+                    }
+                }
             }
-            $resultat[$l['cle']] = [
-                'promotion' => null !== $r['promotion'] ? ['id' => (int) $r['promotion']->getId(), 'libelle' => $r['promotion']->libelleLigne()] : null,
-                'remise' => $r['remise'],
-                'b2b' => $b2b,
-            ];
+            $infoCode = match (true) {
+                $verification['simple'] => ['etat' => 'simple', 'message' => 'Code d\'une promotion : il s\'applique aux articles visés.', 'libelle' => null, 'remise' => 0, 'remiseTtc' => 0],
+                null !== $refus => ['etat' => 'refus', 'message' => CalculCodePromo::raison($refus), 'libelle' => null, 'remise' => 0, 'remiseTtc' => 0],
+                default => [
+                    'etat' => 'ok',
+                    'message' => null,
+                    'libelle' => $codePromo?->getCodeAffiche().' · '.($codePromo?->getPromotion()?->getLibelleAvantageCommande() ?? $codePromo?->getPromotion()?->getNom()),
+                    'remise' => $remise,
+                    'remiseTtc' => $remiseTtc,
+                ],
+            };
+        }
+        foreach ($resultat as $cle => $r) {
+            unset($resultat[$cle]['_promotion']);
         }
 
-        return $resultat;
+        return ['lignes' => $resultat, 'code' => $infoCode];
+    }
+
+    /**
+     * L'avantage du code sur la commande pour l'aperçu, à partir des lignes
+     * envoyées par le formulaire (total avant remise, unités facturables,
+     * remise saisie, TVA) et de la promotion trouvée pour chacune.
+     *
+     * @param list<array<string, mixed>>        $lignes
+     * @param array<string, array<string, mixed>> $resultat
+     *
+     * @return array{0: ?string, 1: int, 2: int, 3: array<string, int>}
+     */
+    private static function avantageApercu(Promotion $promotion, array $lignes, array $resultat): array
+    {
+        $total = 0;
+        $bases = [];
+        $tva = [];
+        $surLesLignes = false;
+        foreach ($lignes as $l) {
+            $r = $resultat[$l['cle']] ?? null;
+            $brut = max(0, (int) $l['brut']);
+            $parUnite = max(0, (int) $l['remise']) + (null !== ($r['_promotion'] ?? null) ? (int) $r['remise'] : 0);
+            $net = max(0, $brut - min($brut, (int) round($parUnite * max(0.0, (float) ($l['unites'] ?? 0)))));
+            $total += $net;
+            if (null === ($r['_promotion'] ?? null)) {
+                $bases[$l['cle']] = $net;
+                $tva[$l['cle']] = max(0, (int) ($l['tva'] ?? 0));
+            } elseif ($r['_promotion']->getId() === $promotion->getId()) {
+                $surLesLignes = true;
+            }
+        }
+        if (!CalculCodePromo::minimumAtteint($promotion, $total)) {
+            return ['minimum', 0, 0, []];
+        }
+        $montant = CalculCodePromo::montantCommande($promotion, array_sum($bases));
+        if (0 === $montant && !$surLesLignes) {
+            return ['sans_effet', 0, 0, []];
+        }
+        $parts = CalculCodePromo::repartir($montant, $bases);
+        $ttc = static fn (int $ht, int $taux): int => $ht + (int) round($ht * $taux / 100);
+        $remiseTtc = 0;
+        foreach ($parts as $cle => $part) {
+            $remiseTtc += $ttc($bases[$cle], $tva[$cle]) - $ttc($bases[$cle] - $part, $tva[$cle]);
+        }
+
+        return [null, $montant, $remiseTtc, $parts];
     }
 
     /**
@@ -336,8 +612,9 @@ final class PromotionsSaisie
 
     /**
      * @param list<CommandesDetails|DevisDetails> $lignes
+     * @param list<int>                           $debloquees promotions débloquées par un code généré vérifié
      */
-    private function appliquerLignes(?Clients $client, array $lignes, ?int $commandeId, \DateTimeImmutable $jour, ?string $code): bool
+    private function appliquerLignes(?Clients $client, array $lignes, ?int $commandeId, \DateTimeImmutable $jour, ?string $code, array $debloquees = []): bool
     {
         $touche = false;
         foreach ($lignes as $ligne) {
@@ -369,7 +646,7 @@ final class PromotionsSaisie
                 $ligne->retirerPromotion();
                 continue;
             }
-            $ctx = $this->contexte($client, $ligne, $jour, $segments, $code, $utilisations, self::acceptees($demandes[spl_object_id($ligne)] ?? []));
+            $ctx = $this->contexte($client, $ligne, $jour, $segments, $code, $utilisations, self::acceptees($demandes[spl_object_id($ligne)] ?? []), $debloquees);
             $r = CalculPromotion::evaluer($candidates, $ctx, $ligne->getPromotion());
             if (null !== $r['promotion']) {
                 $ligne->appliquerPromotion($r['promotion'], $r['remise']);
@@ -386,8 +663,9 @@ final class PromotionsSaisie
      * @param list<string>    $segments
      * @param array<int, int> $utilisations
      * @param list<int>       $acceptees
+     * @param list<int>       $debloquees
      */
-    private function contexte(Clients $client, CommandesDetails|DevisDetails $ligne, \DateTimeImmutable $jour, array $segments, ?string $code, array $utilisations, array $acceptees): ContexteLigne
+    private function contexte(Clients $client, CommandesDetails|DevisDetails $ligne, \DateTimeImmutable $jour, array $segments, ?string $code, array $utilisations, array $acceptees, array $debloquees = []): ContexteLigne
     {
         return new ContexteLigne(
             $client,
@@ -402,6 +680,7 @@ final class PromotionsSaisie
             $utilisations,
             $acceptees,
             self::prixPublic($ligne),
+            $debloquees,
         );
     }
 
@@ -449,11 +728,14 @@ final class PromotionsSaisie
     {
         $ht = 0;
         $ttc = 0;
+        $code = 0;
         foreach ($devis->getDevisDetails() as $ligne) {
             $ht += $ligne->getTotalHt();
             $ttc += $ligne->getTotalTtc();
+            $code += $ligne->getRemiseCodePromo();
         }
         $devis->setTotalHt($ht);
+        $devis->setRemiseCodePromo($code);
         $devis->setTotalTtc($ttc);
         $devis->setMontantApayer(max(0, $ttc - (int) $devis->getRemise()));
     }

@@ -20,6 +20,7 @@ final class ContexteLigne
      * @param list<string>    $segments              segments calculés du client (sans le document en cours)
      * @param array<int, int> $utilisations          par promotion : commandes du client qui l'ont déjà utilisée (sans celle-ci)
      * @param list<int>       $exceptionsAcceptees   promotions dont l'exception B2B est acceptée pour cette ligne
+     * @param list<int>       $promotionsDebloquees  promotions débloquées par un code généré valable
      */
     public function __construct(
         public readonly ?Clients $client,
@@ -36,6 +37,8 @@ final class ContexteLigne
         public readonly array $exceptionsAcceptees = [],
         /** Prix public de l'article (configuration, sinon produit) : pour un revendeur, la promotion se calcule sur ce prix. */
         public readonly ?float $prixPublic = null,
+        /** Promotions débloquées par le code promo généré tapé et vérifié (CodesPromo) : une au plus. */
+        public readonly array $promotionsDebloquees = [],
     ) {
     }
 

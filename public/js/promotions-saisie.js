@@ -11,6 +11,11 @@
  * avec le total avant remise ; ce script demande alors au serveur la
  * promotion des lignes (une requête pour toutes, après une courte pause)
  * et l'affiche dans la zone .js-promo-ligne de chaque ligne.
+ *
+ * Code promo généré (docs/promotions.md, « Codes promo ») : la même
+ * requête dit si le code tapé est valable et ce qu'il retire à la
+ * commande ; le message s'affiche sous le champ et le récapitulatif
+ * (saisie-commande.js) lit SiPromotions.codeCommande().
  */
 (function () {
     'use strict';
@@ -19,6 +24,7 @@
     let minuteur = null;
     let derniere = '';
     let numero = 0;
+    let codeCommande = {ht: 0, ttc: 0};
 
     const nombre = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
 
@@ -126,6 +132,7 @@
         const promo = Math.max(0, Number(zone.dataset.remisePromotion || 0));
         const f = Math.max(0, facteur || 0);
         zone.dataset.brut = String(Math.round(brut || 0));
+        zone.dataset.facteur = String(f);
         zone.dataset.economie = String(Math.max(0, Math.min(brut, (saisie + promo) * f) - Math.min(brut, saisie * f)));
         afficher(zone);
         planifier();
@@ -196,6 +203,8 @@
                     remise: Math.round(Math.max(0, valeur(travail, 'remise'))),
                     quantite: Math.max(1, Math.round(valeur(travail, 'quantite')) || 1),
                     brut: Number(zone.dataset.brut || 0),
+                    unites: Number(zone.dataset.facteur || 0),
+                    tva: Math.max(0, Math.round(valeur(travail, 'tva'))),
                 },
             };
         }).filter(function (l) {
@@ -251,11 +260,48 @@
                     recalculer(l.zone);
                 }
             });
+            afficherCode(r, resultat.code || null);
         }).catch(function (erreur) {
             derniere = '';
             console.warn('Promotions : aperçu indisponible', erreur);
         });
     }
 
-    window.SiPromotions = {remise: remise, calculee: calculee};
+    /** Message du code promo sous le champ, et ce qu'il retire à la commande. */
+    function afficherCode(r, code) {
+        if (!r.code) {
+            return;
+        }
+        let el = r.code.parentNode.querySelector('.js-code-promo-resultat');
+        if (!el) {
+            el = document.createElement('small');
+            el.className = 'si-cp-resultat js-code-promo-resultat';
+            el.setAttribute('aria-live', 'polite');
+            r.code.insertAdjacentElement('afterend', el);
+        }
+        const ok = code && code.etat === 'ok';
+        codeCommande = ok ? {ht: Math.max(0, Number(code.remise || 0)), ttc: Math.max(0, Number(code.remiseTtc || 0))} : {ht: 0, ttc: 0};
+        if (!code) {
+            el.textContent = '';
+            el.className = 'si-cp-resultat js-code-promo-resultat';
+        } else if (ok) {
+            el.textContent = (code.libelle || 'Code valable') + (codeCommande.ttc > 0 ? ' · −' + nombre.format(codeCommande.ttc).replace(/\s/g, ' ') + ' F TTC' : '');
+            el.className = 'si-cp-resultat si-cp-ok js-code-promo-resultat';
+        } else {
+            el.textContent = code.message || '';
+            el.className = 'si-cp-resultat ' + (code.etat === 'simple' ? 'si-cp-simple' : 'si-cp-refus') + ' js-code-promo-resultat';
+        }
+        if (r.form) {
+            r.form.dispatchEvent(new CustomEvent('si:code-promo', {bubbles: true}));
+        }
+    }
+
+    window.SiPromotions = {
+        remise: remise,
+        calculee: calculee,
+        /** Ce que le code promo retire à la commande (F hors TVA et TTC), d'après le dernier aperçu. */
+        codeCommande: function () {
+            return codeCommande;
+        },
+    };
 })();

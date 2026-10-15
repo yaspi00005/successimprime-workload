@@ -62,8 +62,8 @@
 									<a href="{{ path('app_promotions_voir', {id: p.id}) }}"><b>{{ p.nom }}</b></a>
 									{% if gestion and p.note %}<small class="d-block text-muted">{{ p.note }}</small>{% endif %}
 								</td>
-								<td class="si-pr-articles">{{ p.libelleArticles }}</td>
-								<td class="text-nowrap"><span class="si-pr-avantage">{{ p.libelleAvantage }}</span></td>
+								<td class="si-pr-articles">{{ p.aUnAvantageLignes or not p.aUnAvantageCommande ? p.libelleArticles : 'toute la commande' }}{% if p.exigeCodeGenere %} <i class="fas fa-ticket-alt text-muted" title="Avec un code promo généré"></i>{% endif %}</td>
+								<td class="text-nowrap">{% if p.aUnAvantageLignes or not p.aUnAvantageCommande %}<span class="si-pr-avantage">{{ p.libelleAvantage }}</span>{% endif %}{% if p.aUnAvantageCommande %} <span class="si-pr-avantage">{{ p.libelleAvantageCommande }}</span>{% endif %}</td>
 								<td class="text-nowrap">{{ p.debut|date('d/m/Y') }} → {{ p.fin|date('d/m/Y') }}<small class="d-block">{{ pr.etat(p, jour) }}</small></td>
 								<td class="si-masque-mobile">{{ p.segmentLabel }}{% if p.segment == 'liste' %} <small class="text-muted">({{ p.clients|length }})</small>{% endif %}</td>
 								<td class="si-masque-mobile"><small>{{ pr.conditions(p, gestion) }}</small></td>

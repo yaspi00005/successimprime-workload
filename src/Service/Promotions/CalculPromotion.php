@@ -86,11 +86,26 @@ final class CalculPromotion
     }
 
     /**
+     * Le code qu'il faut est donné : aucun code demandé, le code simple de la
+     * promotion tapé tel quel, ou, pour une promotion à codes générés, un de
+     * ses codes vérifié (limites, dates, client) par CodesPromo.
+     */
+    public static function codeDonne(Promotion $p, ContexteLigne $l): bool
+    {
+        if ($p->exigeCodeGenere()) {
+            return \in_array((int) $p->getId(), $l->promotionsDebloquees, true);
+        }
+
+        return null === $p->getCode() || $p->getCode() === Promotion::normaliserCode($l->code);
+    }
+
+    /**
      * null si la promotion s'applique à la ligne, sinon la clé de REFUS.
      *
      * La période se juge au jour du document. $dejaAppliquee : la ligne la
      * porte déjà (enregistrement précédent) ; elle la garde même si la
-     * promotion a été suspendue depuis, et le code n'est pas redemandé.
+     * promotion a été suspendue depuis, et le code simple n'est pas
+     * redemandé (un code généré, si : il doit rester retenu sur le document).
      * L'article, le segment et les conditions, eux, si : la ligne a pu
      * changer.
      */
@@ -117,7 +132,9 @@ final class CalculPromotion
         if (null !== $p->getMontantMin() && $l->totalAvantRemise < $p->getMontantMin()) {
             return 'montant';
         }
-        if (!$dejaAppliquee && null !== $p->getCode() && $p->getCode() !== Promotion::normaliserCode($l->code)) {
+        // Codes générés : la ligne ne la garde qu'avec le code retenu sur le document (sinon, le retirer rendrait
+        // son utilisation tout en gardant la remise).
+        if ((!$dejaAppliquee || $p->exigeCodeGenere()) && !self::codeDonne($p, $l)) {
             return 'code';
         }
         if (null !== $p->getUtilisationsParClient() && ($l->utilisations[(int) $p->getId()] ?? 0) >= $p->getUtilisationsParClient()) {

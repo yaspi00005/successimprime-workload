@@ -72,7 +72,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Opérateur production (demo.oumar)
 
-- [ ] Tableau de production : passer un travail d'une colonne à l'autre.
+- [ ] Ma file machine : démarrer puis terminer un travail ; sur le tableau de production, la carte avance d'elle-même à la colonne suivante (on ne la déplace pas à la main).
 - [ ] Planning des machines et m² du jour.
 - [ ] Pointage par QR et photo à l'arrivée et au départ.
 - [ ] Ne voit pas : montants, clients en détail, finances, réglages.

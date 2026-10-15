@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Devis;
 use App\Entity\DevisDetails;
 use App\Entity\User;
+use App\Service\MontantFinitionSaisie;
 use App\Service\DevisCommandeConverter;
 use App\Entity\DevisDetailFinition;
 use App\Entity\ProduitConfigurationFinition;
@@ -154,6 +155,9 @@ class DevisController extends AbstractController
 
                 // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
                 $promotionsSaisie->appliquerDevis($devi, $form->get('codePromo')->getData(), new \DateTimeImmutable());
+
+                // Totaux refaits depuis les lignes calculées ici, jamais repris du navigateur.
+                $devi->recalculerTotaux();
             } catch (\DomainException | \RuntimeException $exception) {
                 $form->addError(
                     new FormError($exception->getMessage())
@@ -265,6 +269,9 @@ public function edit(
 
             // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
             $promotionsSaisie->appliquerDevis($devi, $form->get('codePromo')->getData(), new \DateTimeImmutable());
+
+            // Totaux refaits depuis les lignes calculées ici, jamais repris du navigateur.
+            $devi->recalculerTotaux();
 
             $entityManager->flush();
 
@@ -812,9 +819,16 @@ public function edit(
             $modeCalcul = $finition->getModeCalcul()
                 ?: 'forfait';
 
-            $montant = $modeCalcul === 'forfait'
-                ? $prix
-                : $prix * $quantite;
+            // Finition enregistrée et inchangée : son montant ne bouge pas (MontantFinitionSaisie).
+            $montant = MontantFinitionSaisie::calculer(
+                [
+                    'finition' => $finition->getFinition()->getId(),
+                    'prixApplique' => $prix,
+                    'modeCalcul' => $modeCalcul,
+                    'quantite' => $quantite,
+                ],
+                MontantFinitionSaisie::origine($finition, $entityManager)
+            );
 
             $finition->setPrixApplique($prix);
             $finition->setQuantite($quantite);

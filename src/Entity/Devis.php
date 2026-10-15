@@ -405,6 +405,32 @@ class Devis implements AppartientASociete
         return $this->devisDetails;
     }
 
+    /**
+     * Totaux du devis depuis ses lignes, comme le formulaire les calcule
+     * (remise du devis déduite du montant à payer). Le serveur les refait
+     * à chaque enregistrement : ceux envoyés par le navigateur ne sont pas
+     * repris.
+     */
+    public function recalculerTotaux(): static
+    {
+        $ht = 0;
+        $ttc = 0;
+        $code = 0;
+
+        foreach ($this->devisDetails as $ligne) {
+            $ht += $ligne->getTotalHt();
+            $ttc += $ligne->getTotalTtc();
+            $code += $ligne->getRemiseCodePromo();
+        }
+
+        $this->setTotalHt($ht);
+        $this->setRemiseCodePromo($code);
+        $this->setTotalTtc($ttc);
+        $this->setMontantApayer(max(0, $ttc - $this->getRemise()));
+
+        return $this;
+    }
+
     public function addDevisDetail(
         DevisDetails $devisDetail
     ): static {

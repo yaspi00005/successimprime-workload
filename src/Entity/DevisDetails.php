@@ -773,29 +773,25 @@ private string $modeSaisie = 'automatique';
         return $this;
     }
 
+    /**
+     * @param bool $clientB2B sans effet ici (le tarif B2B est choisi à la
+     *                        création de la ligne) ; gardé pour les appelants
+     */
     public function calculerTotaux(
         bool $clientB2B = false
     ): static {
         /*
-     * Reprend les données fiables de ProduitConfiguration,
-     * puis calcule ou verrouille les dimensions.
-     */
+         * La configuration du catalogue s'applique quand la ligne est
+         * créée, jamais en recalculant ses totaux : une ancienne ligne
+         * « automatique » garde ses dimensions, son prix et ses
+         * finitions (voir CommandesDetails::calculerTotaux()).
+         */
         if (
-    $this->typeLigne === self::TYPE_PRODUIT
-    && $this->isConfigurationAutomatique()
-) {
-    $this->appliquerConfiguration(
-        $clientB2B
-    );
-}
-
-       if (
-    $this->typeLigne === self::TYPE_PRODUIT
-    && !$this->isConfigurationAutomatique()
-    && $this->modeCalcul === 'metre_carre'
-) {
-    $this->calculerSurface();
-}
+            $this->typeLigne === self::TYPE_PRODUIT
+            && $this->modeCalcul === 'metre_carre'
+        ) {
+            $this->calculerSurface();
+        }
 
         $this->appliquerDimensionsALaDesignation();
 
@@ -1367,9 +1363,10 @@ public function validerModeDevis(
     ) {
         $context
             ->buildViolation(
-                'La largeur et la longueur sont obligatoires '
+                '{{ ligne }} : la largeur et la longueur sont obligatoires '
                 . 'pour un calcul au mètre carré.'
             )
+            ->setParameter('{{ ligne }}', $this->libelleLigneErreur())
             ->atPath('largeur')
             ->addViolation();
     }
@@ -1385,12 +1382,29 @@ public function validerModeDevis(
     ) {
         $context
             ->buildViolation(
-                'La longueur est obligatoire pour un calcul au mètre.'
+                '{{ ligne }} : la longueur est obligatoire pour un calcul au mètre.'
             )
+            ->setParameter('{{ ligne }}', $this->libelleLigneErreur())
             ->atPath('longueur')
             ->addViolation();
     }
 }
+    /**
+     * La ligne nommée dans un message d'erreur : sa place et sa désignation
+     * (« Ligne 2 « Bâche imprimée » »). L'erreur s'affiche aussi en haut du
+     * formulaire, loin du volet de la ligne, et deux lignes peuvent porter
+     * la même désignation.
+     */
+    private function libelleLigneErreur(): string
+    {
+        $lignes = $this->devis?->getDevisDetails()->getValues() ?? [];
+        $rang = array_search($this, $lignes, true);
+        $place = false === $rang ? 'Ligne' : sprintf('Ligne %d', $rang + 1);
+        $designation = trim((string) $this->designation);
+
+        return '' === $designation ? $place : sprintf('%s « %s »', $place, $designation);
+    }
+
     public function __toString(): string
     {
         return sprintf(

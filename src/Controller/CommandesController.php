@@ -24,6 +24,7 @@ use App\Entity\ProduitConfigurationFinition;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 use App\Entity\CommandesDetails;
+use App\Service\MontantFinitionSaisie;
 use App\Service\NotificationService;
 use App\Service\StockService;
 use App\Service\CalculateurCoutRevient;
@@ -266,6 +267,9 @@ final class CommandesController extends AbstractController
 
                 // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
                 $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());
+
+                // Totaux refaits depuis les lignes calculées ici, jamais repris du navigateur.
+                $commande->recalculerTotaux();
 
                 /*
              * Contrôle du stock uniquement si
@@ -852,6 +856,9 @@ final class CommandesController extends AbstractController
 
                 // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
                 $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());
+
+                // Totaux refaits depuis les lignes calculées ici, jamais repris du navigateur.
+                $commande->recalculerTotaux();
             } catch (
                 \DomainException
                 | \RuntimeException
@@ -1831,9 +1838,16 @@ final class CommandesController extends AbstractController
             $modeCalcul = $finition->getModeCalcul()
                 ?: 'forfait';
 
-            $montant = $modeCalcul === 'forfait'
-                ? $prix
-                : $prix * $quantite;
+            // Finition enregistrée et inchangée : son montant ne bouge pas (MontantFinitionSaisie).
+            $montant = MontantFinitionSaisie::calculer(
+                [
+                    'finition' => $finition->getFinition()->getId(),
+                    'prixApplique' => $prix,
+                    'modeCalcul' => $modeCalcul,
+                    'quantite' => $quantite,
+                ],
+                MontantFinitionSaisie::origine($finition, $entityManager)
+            );
 
             $finition->setPrixApplique($prix);
             $finition->setQuantite($quantite);

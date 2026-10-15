@@ -832,7 +832,14 @@
 	</div>
 
 	{% if not form.vars.valid %}
-		<div class="alert alert-danger">{{ form_errors(form) }}</div>
+		{# Toutes les erreurs, celles des lignes comprises : le volet de la ligne concernée peut être fermé. #}
+		<div class="alert alert-danger">
+			<ul class="mb-0 ps-3">
+				{% for erreur in form.vars.errors.form.getErrors(true) %}
+					<li>{{ erreur.message }}</li>
+				{% endfor %}
+			</ul>
+		</div>
 	{% endif %}
 
 	<div class="si-saisie-grille">

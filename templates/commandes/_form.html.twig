@@ -1067,7 +1067,14 @@
 	</div>
 
 	{% if not form.vars.valid %}
-		<div class="alert alert-danger">{{ form_errors(form) }}</div>
+		{# Toutes les erreurs, celles des lignes comprises : le volet de la ligne concernée peut être fermé. #}
+		<div class="alert alert-danger">
+			<ul class="mb-0 ps-3">
+				{% for erreur in form.vars.errors.form.getErrors(true) %}
+					<li>{{ erreur.message }}</li>
+				{% endfor %}
+			</ul>
+		</div>
 	{% endif %}
 
 	{% if commandeVerrouillee %}
@@ -2342,7 +2349,7 @@ production.checked = true;
 }
 }
 
-appliquerModeConfiguration(detail);
+appliquerModeConfiguration(detail, viaChangementUtilisateur);
 
 appliquerCircuit(detail);
 
@@ -2436,7 +2443,7 @@ calculerDetail(detail);
          * ====================================================
          */
 
-function appliquerModeConfiguration(detail) {
+function appliquerModeConfiguration(detail, viaChangementUtilisateur) {
 if (valeurTypeLigne(detail) !== 'produit') {
 return;
 }
@@ -2472,7 +2479,7 @@ if (produitChamp && produitChamp.value) {
 if (auto) {
 chargerConfigurationsProduit(detail);
 } else {
-chargerOptionsManuelles(detail);
+chargerOptionsManuelles(detail, ! viaChangementUtilisateur);
 }
 }
 }
@@ -2733,7 +2740,7 @@ filtrerOptions(select, ids);
  * - Produit avec surface/longueur mais aucun format lié :
  *   largeur/longueur à saisir directement.
  */
-function appliquerZoneFormatDimensions(detail, infosProduit, formats) {
+function appliquerZoneFormatDimensions(detail, infosProduit, formats, conserverValeurs = false) {
 const besoinDimensions = Boolean(infosProduit.utiliseSurface) || Boolean(infosProduit.utiliseLongueur);
 
 const aDesFormats = besoinDimensions && formats.length > 0;
@@ -2755,7 +2762,7 @@ unite: f.unite
 })
 );
 
-if (! besoinDimensions) {
+if (! besoinDimensions && ! conserverValeurs) {
 definirValeur(detail, 'format', '');
 definirValeur(detail, 'largeur', '');
 definirValeur(detail, 'longueur', '');
@@ -2836,7 +2843,13 @@ calculerDetail(detail);
 }
 
 
-async function chargerOptionsManuelles(detail) {
+/*
+ * chargementInitial : ligne deja enregistree qu'on affiche. Son format,
+ * sa largeur et sa longueur restent tels qu'enregistres, meme si le
+ * produit ne les demande pas : un simple « Enregistrer » ne doit
+ * jamais effacer une dimension.
+ */
+async function chargerOptionsManuelles(detail, chargementInitial = false) {
 if (valeurTypeLigne(detail) !== 'produit') {
 return;
 }
@@ -2882,7 +2895,7 @@ filtrerOptions(champDetail(detail, 'format'), (json.formats || []).map(function 
 return f.id;
 }));
 
-appliquerZoneFormatDimensions(detail, infosProduit, json.formats || []);
+appliquerZoneFormatDimensions(detail, infosProduit, json.formats || [], chargementInitial);
 
 /*
  * Finitions compatibles avec le produit : memorisees sur le
@@ -3073,7 +3086,7 @@ appliquerTypeLigne(travail, true);
              */
 travail.querySelectorAll('[name$="[modeConfiguration]"]').forEach(function (input) {
 input.addEventListener('change', function () {
-appliquerModeConfiguration(travail);
+appliquerModeConfiguration(travail, true);
 });
 });
 

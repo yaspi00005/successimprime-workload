@@ -32,6 +32,8 @@ final class SaisieTresorerieSansSoldeTest extends TestCase
         foreach ($comptes as $compte) {
             foreach ([
                 MouvementTresorerieType::libelleSource($compte, false),
+                // La part transférable d'un Orange Money n'apparaît pas non plus.
+                MouvementTresorerieType::libelleSource($compte, false, 1234000),
                 MouvementTresorerieType::libelleDestination($compte, false, false, $caissiere),
                 // Même la Direction sans le droit (retiré sur sa fiche) ne voit pas de solde.
                 MouvementTresorerieType::libelleDestination($compte, true, false, $caissiere),
@@ -58,6 +60,9 @@ final class SaisieTresorerieSansSoldeTest extends TestCase
         self::assertSame('Caisse Moussa — Caisse personnelle', MouvementTresorerieType::libelleDestination($collegue, false, true, $caissiere));
         // La Direction voit tout.
         self::assertStringEndsWith('1 234 567 FCFA', MouvementTresorerieType::libelleDestination($banque, true, true, $caissiere));
+        // Orange Money : la part transférable, sans les frais qu'Orange va débiter.
+        $om = $this->compte('Orange Money marchand', CompteTresorerie::TYPE_ORANGE_MONEY, CompteTresorerie::PORTEE_PARTAGEE);
+        self::assertSame('Orange Money marchand — Orange Money — 1 234 567 FCFA (transférable 1 210 000)', MouvementTresorerieType::libelleSource($om, true, 1210000));
     }
 
     public function testTypesSelonLesDroits(): void

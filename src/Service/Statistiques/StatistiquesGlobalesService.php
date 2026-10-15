@@ -88,7 +88,8 @@ final class StatistiquesGlobalesService
         $parCaissiere = [];
 
         foreach ($mouvements as $mouvement) {
-            if (!$mouvement instanceof MouvementTresorerie || !$mouvement->isValide()) {
+            // Frais Orange Money à prélever : de passage sur le compte, pas un encaissement de la caissière.
+            if (!$mouvement instanceof MouvementTresorerie || !$mouvement->isValide() || $mouvement->estHorsActivite()) {
                 continue;
             }
 

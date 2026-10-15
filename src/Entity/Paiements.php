@@ -588,6 +588,20 @@ class Paiements implements AppartientASociete
         return $this->mode === self::MODE_CHEQUE;
     }
 
+    /**
+     * Payé par le client depuis l'espace client avec l'API Orange Money
+     * (commande, acompte de conception, crédit IA) : référence « OM
+     * <transaction Orange> », personne de la boutique ne l'a encaissé.
+     * Il va toujours sur le compte « Orange Money en ligne », jamais sur
+     * un numéro Orange Money de la boutique.
+     */
+    public function estOrangeMoneyEnLigne(): bool
+    {
+        return self::MODE_ORANGE_MONEY === $this->mode
+            && null === $this->encaissePar
+            && str_starts_with((string) $this->reference, 'OM ');
+    }
+
     /*
      * Vérifie que le type du compte correspond au mode choisi.
      */

@@ -429,10 +429,11 @@ final class Synchro
                         $this->em->flush();
                         ($this->sondages)()->notifierAlerte($entite);
                         $resultat = [self::RESULTAT_OK, 'Mauvaise note : client à rappeler', $titre];
-                    } elseif (!$this->enLigne && $existante === null && $entite instanceof Paiements && Paiements::MODE_ORANGE_MONEY === $entite->getMode() && str_starts_with((string) $entite->getReference(), 'OM ')) {
-                        // Payé par le client depuis son espace : la caisse vérifie la réception sur le compte Orange Money.
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof Paiements && $entite->estOrangeMoneyEnLigne()) {
+                        // Payé par le client depuis son espace : la caisse vérifie la réception sur le compte
+                        // « Orange Money en ligne ». Pas de montant dans la notification (il est sur le paiement).
                         $this->em->flush();
-                        $this->notifications->notifierRoles(['ROLE_PAIEMENT_ENCAISSER', 'ROLE_ADMIN'], \sprintf('Paiement Orange Money reçu en ligne pour la commande %s (%s F, %s) : à valider après contrôle du compte Orange Money.', $entite->getCommande()?->getNumero() ?? '?', number_format((float) $entite->getMontant(), 0, ',', ' '), $entite->getReference()), 'app_paiements_show', ['id' => $entite->getId()]);
+                        $this->notifications->notifierRoles(['ROLE_PAIEMENT_ENCAISSER', 'ROLE_ADMIN'], \sprintf('Paiement Orange Money reçu en ligne pour la commande %s (%s) : à valider après contrôle du compte Orange Money en ligne.', $entite->getCommande()?->getNumero() ?? '?', $entite->getReference()), 'app_paiements_show', ['id' => $entite->getId()]);
                         $resultat = [self::RESULTAT_OK, 'Paiement Orange Money du client : à valider', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->estRefuseeParEntreprise() && !$entite->isStatut()) {
                         // Refusée chez le client avant même d'arriver : classée, l'atelier n'en entend pas parler.

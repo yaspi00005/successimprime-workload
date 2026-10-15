@@ -525,7 +525,8 @@ final class Encaissements
             ->setReference($ligne->getReference())
             ->setEncaissePar($par)
             ->setObservation(mb_substr('Relevé Orange Money'.(null !== $qui ? ' · '.$qui : ''), 0, 255));
-        $comptes = $this->em->getRepository(CompteTresorerie::class)->findBy(['type' => CompteTresorerie::TYPE_ORANGE_MONEY, 'actif' => true]);
+        // Un seul numéro Orange Money de la boutique : il est proposé (le compte des paiements en ligne n'en est pas un).
+        $comptes = $this->em->getRepository(CompteTresorerie::class)->findBy(['type' => CompteTresorerie::TYPE_ORANGE_MONEY, 'actif' => true, 'orangeMoneyEnLigne' => false]);
         if (1 === \count($comptes)) {
             $paiement->setCompteTresorerie($comptes[0]);
         }

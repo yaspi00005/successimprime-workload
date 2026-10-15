@@ -27,7 +27,7 @@
 					<div class="si-fin-jour-comptes">
 						{% for c in comptes %}
 							<div class="si-fin-jour-compte">
-								<span>{{ c.nom }}</span>
+								<span>{{ c.nom }}{% if c.a_prelever|default(0) > 0 %}<small class="d-block si-fin-gris">dont {{ m.f(c.a_prelever) }} de frais Orange · transférable {{ m.f(c.transferable) }}</small>{% endif %}</span>
 								<b class="{{ c.solde < 0 ? 'si-fin-rouge' }}">{{ m.f(c.solde) }}</b>
 							</div>
 						{% else %}

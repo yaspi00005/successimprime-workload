@@ -8,6 +8,7 @@ use App\Entity\Factures;
 use App\Entity\LigneReleveOrangeMoney;
 use App\Entity\Paiements;
 use App\Service\Creances;
+use App\Service\Paiement\ComptesOrangeMoney;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -35,6 +36,7 @@ final class VueEnsemble
         private readonly Echeancier $echeancier,
         private readonly PrevisionTresorerie $prevision,
         private readonly Encaissements $encaissements,
+        private readonly ?ComptesOrangeMoney $comptesOrangeMoney = null,
     ) {
     }
 
@@ -120,9 +122,11 @@ final class VueEnsemble
     }
 
     /**
-     * Comptes actifs avec leur solde : banque, mobile money, caisses.
+     * Comptes actifs avec leur solde : banque, mobile money, caisses. Pour
+     * Orange Money, la part qu'Orange débitera à la sortie (frais payés par
+     * les clients) et la part transférable ; null pour les autres comptes.
      *
-     * @return list<array{nom: string, type: string, solde: int, rang: int}>
+     * @return list<array{nom: string, type: string, solde: int, rang: int, a_prelever: ?int, transferable: ?int}>
      */
     public function comptes(): array
     {
@@ -132,10 +136,13 @@ final class VueEnsemble
 
         $rangs = [];
 
-        return array_map(static function (CompteTresorerie $c) use (&$rangs): array {
-            $rangs[$c->getType()] = ($rangs[$c->getType()] ?? -1) + 1;
+        $orange = $this->comptesOrangeMoney;
 
-            return ['nom' => $c->getNom(), 'type' => $c->getType(), 'solde' => $c->getSoldeActuel(), 'rang' => $rangs[$c->getType()]];
+        return array_map(static function (CompteTresorerie $c) use (&$rangs, $orange): array {
+            $rangs[$c->getType()] = ($rangs[$c->getType()] ?? -1) + 1;
+            $etat = $orange?->etat($c);
+
+            return ['nom' => $c->getNom(), 'type' => $c->getType(), 'solde' => $c->getSoldeActuel(), 'rang' => $rangs[$c->getType()], 'a_prelever' => $etat['a_prelever'] ?? null, 'transferable' => $etat['transferable'] ?? null];
         }, $comptes);
     }
 

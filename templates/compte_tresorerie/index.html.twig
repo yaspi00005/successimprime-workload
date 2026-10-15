@@ -375,6 +375,19 @@
                                     </small>
                                 {% endif %}
 
+                                {# Orange Money : la part qu’Orange débitera à la sortie et ce qui peut sortir. #}
+                                {% set etat_om = etat_orange_money(compte) %}
+                                {% if etat_om is not null and etat_om.a_prelever > 0 %}
+                                    <br>
+                                    <small class="text-muted">
+                                        dont {{ etat_om.a_prelever|number_format(0, ',', ' ') }} de frais Orange à prélever
+                                    </small>
+                                    <br>
+                                    <small class="text-success">
+                                        transférable {{ etat_om.transferable|number_format(0, ',', ' ') }}
+                                    </small>
+                                {% endif %}
+
                             </td>
 
                             <td class="align-middle">

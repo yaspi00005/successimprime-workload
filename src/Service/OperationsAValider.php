@@ -8,6 +8,7 @@ use App\Entity\Factures;
 use App\Entity\MouvementTresorerie;
 use App\Entity\Paiements;
 use App\Entity\User;
+use App\Service\Paiement\ComptesOrangeMoney;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -32,14 +33,17 @@ final class OperationsAValider
         private readonly PaiementService $paiements,
         private readonly MouvementTresorerieService $mouvements,
         private readonly NotificationService $notifications,
+        private readonly ?ComptesOrangeMoney $comptesOrangeMoney = null,
     ) {
     }
 
     /**
      * « frais » : fonds de soutien et frais de retrait payés en plus du
      * montant (le compte Orange Money a reçu montant + frais).
+     * « compte_impose » : payé en ligne avec l'API Orange Money, le compte
+     * « Orange Money en ligne » est imposé (la liste ne le propose que lui).
      *
-     * @return list<array{cle: string, date: ?\DateTimeImmutable, type: string, objet: string, detail: ?string, montant: int, frais: int, controles: list<array{libelle: string, etat: string}>, justificatif: bool, auteur: ?string, lien: array{route: string, id: int}, comptes: ?array<int, string>}>
+     * @return list<array{cle: string, date: ?\DateTimeImmutable, type: string, objet: string, detail: ?string, montant: int, frais: int, controles: list<array{libelle: string, etat: string}>, justificatif: bool, auteur: ?string, lien: array{route: string, id: int}, comptes: ?array<int, string>, compte_impose: bool}>
      */
     public function enAttente(\DateTimeImmutable $maintenant): array
     {
@@ -63,13 +67,19 @@ final class OperationsAValider
             $commande = $paiement->getCommande();
             $reste = null === $commande ? null : max(0, (int) $commande->getTotalTtc() - $commande->getTotalPaye());
             $reference = self::normaliserReference($paiement->getReference());
-            // Saisi en ligne par le client : le compte qui a reçu l'argent se choisit ici.
+            // Saisi en ligne par le client : le compte qui a reçu l'argent se choisit ici,
+            // sauf l'API Orange Money, qui va toujours sur « Orange Money en ligne ».
             $choixCompte = null;
-            if (null === $paiement->getCompteTresorerie() && [] !== Paiements::typesComptesPour($paiement->getMode())) {
+            $compteImpose = $paiement->estOrangeMoneyEnLigne();
+            if ($compteImpose) {
+                $enLigne = $this->comptesOrangeMoney?->trouverCompteEnLigne();
+                $choixCompte = [(int) $enLigne?->getId() => $enLigne?->getNom() ?? ComptesOrangeMoney::NOM_EN_LIGNE];
+            } elseif (null === $paiement->getCompteTresorerie() && [] !== Paiements::typesComptesPour($paiement->getMode())) {
                 $comptes ??= $this->em->getRepository(CompteTresorerie::class)->findBy(['actif' => true], ['nom' => 'ASC']);
                 $choixCompte = [];
                 foreach ($comptes as $compte) {
-                    if (\in_array($compte->getType(), Paiements::typesComptesPour($paiement->getMode()), true)) {
+                    // Le compte des paiements en ligne ne reçoit que l'API Orange Money.
+                    if (\in_array($compte->getType(), Paiements::typesComptesPour($paiement->getMode()), true) && !$compte->isOrangeMoneyEnLigne()) {
                         $choixCompte[(int) $compte->getId()] = $compte->getNom();
                     }
                 }
@@ -90,6 +100,7 @@ final class OperationsAValider
                 'auteur' => $paiement->getEncaissePar()?->getUserIdentifier() ?? 'Client, en ligne',
                 'lien' => ['route' => 'app_paiements_show', 'id' => (int) $paiement->getId()],
                 'comptes' => $choixCompte,
+                'compte_impose' => $compteImpose,
             ];
         }
 
@@ -134,6 +145,7 @@ final class OperationsAValider
                     ? ['route' => 'app_finances_depenses_voir', 'id' => (int) $depense->getId()]
                     : ['route' => 'app_mouvement_tresorerie_show', 'id' => (int) $mouvement->getId()],
                 'comptes' => null,
+                'compte_impose' => false,
             ];
         }
 
@@ -225,9 +237,10 @@ final class OperationsAValider
         if ('paiement' === $m[1]) {
             $paiement = $this->em->find(Paiements::class, (int) $m[2]) ?? throw new \InvalidArgumentException('Paiement introuvable.');
             if ($valider) {
-                if (null === $paiement->getCompteTresorerie() && [] !== Paiements::typesComptesPour($paiement->getMode())) {
+                // API Orange Money : le compte « Orange Money en ligne » est posé par PaiementService.
+                if (null === $paiement->getCompteTresorerie() && !$paiement->estOrangeMoneyEnLigne() && [] !== Paiements::typesComptesPour($paiement->getMode())) {
                     $compte = null === $compteId ? null : $this->em->find(CompteTresorerie::class, $compteId);
-                    if (null === $compte || !$compte->isActif()) {
+                    if (null === $compte || !$compte->isActif() || $compte->isOrangeMoneyEnLigne()) {
                         throw new \InvalidArgumentException(\sprintf('Paiement de %s F saisi en ligne : choisissez le compte qui a reçu l\'argent.', number_format($paiement->getMontant(), 0, ',', ' ')));
                     }
                     $paiement->setCompteTresorerie($compte); // le type est contrôlé à la validation

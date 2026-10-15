@@ -112,7 +112,8 @@ final class EvolutionFinanciereService
             ->getResult();
 
         foreach ($listeMouvements as $mouvement) {
-            if (!$mouvement instanceof MouvementTresorerie || !$mouvement->isValide()) {
+            // Frais Orange Money à prélever : de passage sur le compte, ni encaissement ni décaissement.
+            if (!$mouvement instanceof MouvementTresorerie || !$mouvement->isValide() || $mouvement->estHorsActivite()) {
                 continue;
             }
 

@@ -491,7 +491,8 @@ final class TableauDeBordService
      */
     private function mouvementsDepuis(\DateTimeImmutable $debut, string $type): array
     {
-        $resultats = $this->entityManager->createQueryBuilder()
+        // Sans les frais Orange Money à prélever : ils ne font que traverser le compte.
+        $resultats = MouvementTresorerie::exclureHorsActivite($this->entityManager->createQueryBuilder()
             ->select('m.dateOperation AS date', 'm.montant AS montant')
             ->from(MouvementTresorerie::class, 'm')
             ->andWhere('m.type = :type')
@@ -499,7 +500,7 @@ final class TableauDeBordService
             ->andWhere('m.dateOperation >= :debut')
             ->setParameter('type', $type)
             ->setParameter('valide', MouvementTresorerie::STATUT_VALIDE)
-            ->setParameter('debut', $debut)
+            ->setParameter('debut', $debut))
             ->getQuery()
             ->getArrayResult();
 

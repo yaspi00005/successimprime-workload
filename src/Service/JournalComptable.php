@@ -63,6 +63,7 @@ final class JournalComptable
         '4431' => 'TVA facturée sur ventes',
         '4452' => 'TVA récupérable sur achats',
         '471' => 'Compte d’attente',
+        '4712' => 'Créditeurs divers · frais Orange Money à prélever',
         '521' => 'Banques',
         '5213' => 'Orange Money marchand',
         '5214' => 'Wave marchand',
@@ -99,6 +100,16 @@ final class JournalComptable
         MouvementTresorerie::CATEGORIE_AJUSTEMENT => '471',
         MouvementTresorerie::CATEGORIE_FRAIS_BANCAIRE => '631',
         MouvementTresorerie::CATEGORIE_REMBOURSEMENT_CREDIT => '162',
+        /*
+         * Fonds de soutien et frais de retrait payés par le client sur un
+         * compte Orange Money : ils appartiennent à Orange, qui les débite
+         * quand l'argent sort du compte. Compte de tiers (crédit à la
+         * réception, débit au prélèvement), il revient à zéro ; jamais un
+         * produit. 4712 « Créditeurs divers » du SYSCOHADA révisé : 467 y
+         * est « Actionnaires, restant dû sur capital appelé » et 4718
+         * « Apport, compte de fusion », qui ne conviennent pas.
+         */
+        MouvementTresorerie::CATEGORIE_FRAIS_ORANGE => '4712',
     ];
 
     public function __construct(private readonly EntityManagerInterface $em)

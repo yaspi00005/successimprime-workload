@@ -32,6 +32,7 @@ use App\Repository\FacturesRepository;
 use App\Repository\ParametresPaiementRepository;
 use App\Service\Parametres\Parametres;
 use App\Service\Promotions\PromotionsSaisie;
+use App\Service\Paiement\ComptesOrangeMoney;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
@@ -2744,12 +2745,12 @@ final class CommandesController extends AbstractController
                      * MOUVEMENT SÉPARÉ POUR LES FRAIS MOBILE MONEY
                      * =============================================
                      *
-                     * Classé en "Autre produit" (pas "Vente") pour
-                     * ne pas gonfler le chiffre d'affaires réel, tout
-                     * en restant compté dans le résultat -- c'est
-                     * bien de l'argent réellement encaissé, que la
-                     * boutique reversera ensuite en frais de retrait
-                     * mobile money.
+                     * Sur un compte Orange Money : « Frais Orange
+                     * Money à prélever », de passage (ni vente ni
+                     * produit) -- Orange les débite quand l'argent
+                     * sort du compte (retrait, chèque, transfert),
+                     * docs/finances.md. Ailleurs (Wave) : « Autre
+                     * produit », comme avant.
                      * =============================================
                      */
 
@@ -2773,7 +2774,7 @@ final class CommandesController extends AbstractController
                             );
 
                             $mouvementFrais->setCategorie(
-                                MouvementTresorerie::CATEGORIE_AUTRE_PRODUIT
+                                ComptesOrangeMoney::categorieFrais($compte)
                             );
 
                             $mouvementFrais->setConfidentiel(false);
@@ -2788,7 +2789,8 @@ final class CommandesController extends AbstractController
 
                             $mouvementFrais->setLibelle(
                                 sprintf(
-                                    'Frais mobile money - commande %s — %s',
+                                    '%s - commande %s — %s',
+                                    $compte->estOrangeMoney() ? 'Frais Orange Money à prélever' : 'Frais mobile money',
                                     $commande->getNumero() ?? '#' . $commande->getId(),
                                     $commande->getClients()?->getNomComplet() ?? 'Client inconnu'
                                 )

@@ -32,6 +32,27 @@ class NotificationRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * Notifications non lues d'une même sorte (même route, message qui
+     * commence par le même préfixe), de toutes les personnes, les plus
+     * récentes en premier. Exemple : les alertes de synchronisation.
+     *
+     * @return Notification[]
+     */
+    public function findNonLuesParSorte(string $route, string $prefixe): array
+    {
+        return $this->createQueryBuilder('n')
+            ->andWhere('n.lue = false')
+            ->andWhere('n.route = :route')
+            ->andWhere('n.message LIKE :prefixe')
+            ->setParameter('route', $route)
+            ->setParameter('prefixe', addcslashes($prefixe, '%_\\').'%')
+            ->orderBy('n.dateCreation', 'DESC')
+            ->addOrderBy('n.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function countNonLuesPourUtilisateur(User $utilisateur): int
     {
         return (int) $this->createQueryBuilder('n')

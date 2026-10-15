@@ -128,7 +128,9 @@ final class OrangeMoneyTest extends TestCase
         $refus = $this->service()->derniersRefus();
         self::assertCount(1, $refus);
         self::assertMatchesRegularExpression('/^SI[0-9A-F]{18}$/', $refus[0]['reference']);
-        self::assertStringStartsWith('refusé par Orange (HTTP 403, Insufficient scope : Authorization features insufficient scope (Your scope is not allowed)) : l\'application Orange de ce Client ID n\'a pas l\'API Orange Money Web Payment', $refus[0]['raison']);
+        // Clés de production avec l'adresse d'essai : le cas vécu le 15/10.
+        self::assertSame('refusé par Orange (HTTP 403, Insufficient scope : Authorization features insufficient scope (Your scope is not allowed)) : ces clés n\'ont pas l\'API d\'essai ; avec des clés de production au Mali, mettre ORANGE_MONEY_API=https://api.orange.com/orange-money-webpay/ml/v1 et ORANGE_MONEY_DEVISE=XOF', $refus[0]['raison']);
+        self::assertStringEndsWith('avec la clé marchand de la même application', OrangeMoney::raisonRefus(403, ['message' => 'Insufficient scope'], '', 'https://api.orange.com/orange-money-webpay/ml/v1'));
         $contenu = (string) file_get_contents($this->fichierRefus);
         foreach (['cle-marchand', 'secret', 'jeton-api', '25500'] as $interdit) {
             self::assertStringNotContainsString($interdit, $contenu, 'ni clé, ni jeton, ni montant dans le fichier des refus');

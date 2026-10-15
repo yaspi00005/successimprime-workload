@@ -172,6 +172,28 @@
 
 		.apercu { position: fixed; left: 50%; transform: translateX(-50%); top: 10px; z-index: 5; font: 600 13px var(--texte); color: #cfd8ea; background: rgba(0, 0, 0, .55); border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
 
+		/* Alertes : l'annonce affichée (sans nom ni montant) et « Activer le son » */
+		.alerte { position: absolute; left: 300px; top: 30px; width: 850px; z-index: 6; display: flex; align-items: center; gap: 22px; background: var(--jaune); color: var(--marine); border-radius: 26px; padding: 18px 28px 18px 18px; box-shadow: 0 18px 50px rgba(0, 0, 0, .45); opacity: 0; transform: translateY(-30px); transition: opacity .5s, transform .5s cubic-bezier(.2, .9, .3, 1.2); }
+		.alerte.visible { opacity: 1; transform: none; }
+		.alerte .cloche { flex: 0 0 72px; height: 72px; border-radius: 50%; background: var(--marine); color: var(--jaune); display: flex; align-items: center; justify-content: center; }
+		.alerte .cloche svg { width: 40px; height: 40px; }
+		.alerte.visible .cloche svg { animation: sonne 1s ease-in-out 2; transform-origin: 50% 10%; }
+		@keyframes sonne { 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }
+		.alerte [data-lignes] { min-width: 0; font-family: var(--titre); font-weight: 800; font-size: 30px; line-height: 1.15; letter-spacing: -.01em; }
+		.alerte [data-lignes] div:first-child { font-size: 34px; }
+		.alerte [data-lignes] div + div { margin-top: 6px; }
+		.activer-son { position: absolute; left: 701px; bottom: 120px; transform: translateX(-50%); z-index: 7; display: flex; align-items: center; gap: 22px; border: 0; border-radius: 28px; background: #fff; color: var(--marine); font-family: var(--texte); padding: 24px 40px 24px 28px; cursor: pointer; box-shadow: 0 0 0 0 rgba(253, 200, 42, .7), 0 20px 50px rgba(0, 0, 0, .45); animation: appel 2.2s ease-out infinite; text-align: left; }
+		.activer-son:focus-visible { outline: 6px solid var(--jaune); outline-offset: 6px; }
+		.activer-son svg { flex: 0 0 64px; width: 64px; height: 64px; color: var(--rouge); }
+		.activer-son b { display: block; font-family: var(--titre); font-size: 44px; font-weight: 900; letter-spacing: -.02em; line-height: 1; }
+		.activer-son small { display: block; font-size: 22px; color: #3d4b66; margin-top: 8px; }
+		/* Écran « Fermé » : logo au centre, l'alerte et le bouton aussi. */
+		.tv-ferme .alerte { left: 535px; }
+		.tv-ferme .activer-son, .sans-colonne .activer-son { left: 960px; }
+		/* Écran noir hors horaires : rien d'allumé (un toucher n'importe où active quand même le son). */
+		.eteint .activer-son { display: none; }
+		@keyframes appel { 70% { box-shadow: 0 0 0 26px rgba(253, 200, 42, 0), 0 20px 50px rgba(0, 0, 0, .45); } 100% { box-shadow: 0 0 0 0 rgba(253, 200, 42, 0), 0 20px 50px rgba(0, 0, 0, .45); } }
+
 		@media (prefers-reduced-motion: reduce) {
 			*, *::before { animation: none !important; transition: none !important; }
 		}
@@ -184,8 +206,8 @@
 	{% endif %}
 
 	<div class="cadre">
-		<div class="tv {{ not zones.colonneLive ? 'sans-colonne' }} {{ not zones.bandeau ? 'sans-bandeau' }} {{ not zones.horlogeLogo ? 'sans-logo' }}" id="tv"
-			data-url="{{ urlDonnees }}" data-signature="{{ etat.signature }}" data-son="{{ zones.son ? '1' : '0' }}">
+		<div class="tv {{ not etat.ouvert ? 'tv-ferme' }} {{ not zones.colonneLive ? 'sans-colonne' }} {{ not zones.bandeau ? 'sans-bandeau' }} {{ not zones.horlogeLogo ? 'sans-logo' }}" id="tv"
+			data-url="{{ urlDonnees }}" data-signature="{{ etat.signature }}" data-son="{{ zones.son ? '1' : '0' }}" data-alertes="{{ alertes|json_encode }}">
 
 			{% if not etat.ouvert %}
 				{% if programme.horsHoraires == 'ferme' %}
@@ -364,9 +386,24 @@
 					</div>
 				</div>
 			{% endif %}
+
+			{# Alertes sonores (Réglages › Écran TV) : des phrases fixes, jamais un nom, un montant ni un numéro. #}
+			{% if alertes.reglages.evenements is not empty %}
+				<div class="alerte" id="alerte" role="status" aria-live="polite" hidden>
+					<span class="cloche" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg></span>
+					<div data-lignes></div>
+				</div>
+				{% if alertes.reglages.son or alertes.reglages.voix %}
+					<button type="button" class="activer-son" id="activerSon" hidden>
+						<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3Zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.48 4.48 0 0 0 16.5 12ZM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54Z"/></svg>
+						<span><b>Activer le son</b><small>Touchez une fois : l'écran annoncera les nouvelles commandes</small></span>
+					</button>
+				{% endif %}
+			{% endif %}
 		</div>
 	</div>
 
+	<script src="{{ asset('js/ecran-tv-alertes.js') }}"></script>
 	<script>
 	(function () {
 		'use strict';
@@ -545,6 +582,19 @@
 		}
 		colonne(donnees, true);
 
+		/* ---------- Alertes sonores (public/js/ecran-tv-alertes.js) ---------- */
+		var alertes = null;
+		if (window.AlertesSonores && tv.dataset.alertes) {
+			var configAlertes = JSON.parse(tv.dataset.alertes);
+			alertes = AlertesSonores.ecran({
+				reglages: configAlertes.reglages,
+				phrases: configAlertes.phrases,
+				etat: configAlertes.etat,
+				bouton: document.getElementById('activerSon'),
+				bandeau: document.getElementById('alerte')
+			});
+		}
+
 		/* ---------- Rafraîchissement et reprise après coupure ---------- */
 		var chargeeLe = Date.now();
 		var RECHARGEMENT = 30 * 60 * 1000;
@@ -559,10 +609,12 @@
 					document.body.classList.remove('hors-ligne');
 					// Programme publié, horaires ou scènes du moment changés, ou page ouverte depuis longtemps :
 					// on recharge, seulement quand le serveur répond (jamais vers une page d'erreur).
+					// Les alertes arrivées entre-temps sont annoncées après le rechargement (ce qui est déjà vu est noté dans le navigateur).
 					if (d.signature !== tv.dataset.signature || Date.now() - chargeeLe > RECHARGEMENT) {
 						window.location.reload();
 						return;
 					}
+					if (alertes) { alertes.recevoir(d.alertes); }
 					colonne(d, false);
 					document.querySelectorAll('.compteur .v[data-cle]').forEach(function (el) {
 						var v = el.dataset.cle === 'enLigneMois' ? d.enLigne.mois : (d[el.dataset.cle] || {}).total;

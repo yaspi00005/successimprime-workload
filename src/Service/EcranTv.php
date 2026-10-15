@@ -13,7 +13,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Écran TV de l'accueil (maquette 42) : chiffres publics, médias qui
- * défilent et réglages.
+ * défilent, alertes sonores (AlertesEcranTv) et réglages.
  *
  * Uniquement des volumes et des pourcentages, jamais de montants ni de
  * noms de clients (docs/indicateurs.md, section 12) : la page est
@@ -54,6 +54,7 @@ final class EcranTv
         private readonly RealisationRepository $realisations,
         private readonly PartenaireRepository $partenaires,
         private readonly ImagesSite $imagesSite,
+        private readonly AlertesEcranTv $alertes,
     ) {
     }
 
@@ -421,11 +422,17 @@ final class EcranTv
             'donnees' => $this->donnees($maintenant),
             'messages' => array_map(self::morceauxMessage(...), $programme['messages']),
             'apercu' => $apercu,
+            // Alertes sonores : réglages, phrases préparées et ce qui attend une action (jetons opaques).
+            'alertes' => [
+                'reglages' => $programme['alertes'],
+                'phrases' => AlertesEcranTv::phrases($programme['alertes']['evenements']),
+                'etat' => $this->alertes->etat($programme['alertes'], $maintenant),
+            ],
         ];
     }
 
     /**
-     * Chiffres relus par l'écran toutes les minutes.
+     * Chiffres et alertes relus par l'écran toutes les minutes.
      *
      * @return array<string, mixed>
      */
@@ -434,7 +441,11 @@ final class EcranTv
         $programme = $this->programme(!$apercu);
         $etat = $this->etat($programme, $maintenant, $apercu);
 
-        return $this->donnees($maintenant) + ['signature' => $etat['signature'], 'ouvert' => $etat['ouvert']];
+        return $this->donnees($maintenant) + [
+            'signature' => $etat['signature'],
+            'ouvert' => $etat['ouvert'],
+            'alertes' => $this->alertes->etat($programme['alertes'], $maintenant),
+        ];
     }
 
     /**
@@ -732,21 +743,31 @@ final class EcranTv
      */
     private function commandesPretes(): array
     {
-        $lignes = $this->em->createQueryBuilder()
+        $lignes = self::requeteCommandesPretes($this->em)
             ->select('c.id, c.numero')
-            ->from(Commandes::class, 'c')
-            ->where('c.deleted = false AND c.soldeOuverture = false')
-            ->andWhere('c.recupereParClient = false')
-            ->andWhere(sprintf('EXISTS (SELECT l1.id FROM %s l1 WHERE l1.commande = c AND l1.statutProduction = :prete)', CommandesDetails::class))
-            ->andWhere(sprintf('NOT EXISTS (SELECT l2.id FROM %s l2 WHERE l2.commande = c AND l2.statutProduction IN (:enPreparation))', CommandesDetails::class))
-            ->setParameter('prete', CommandesDetails::PRODUCTION_PRETE_LIVRAISON)
-            ->setParameter('enPreparation', self::STATUTS_EN_PREPARATION)
             ->orderBy('c.dateCommande', 'ASC')
             ->setMaxResults(12)
             ->getQuery()
             ->getArrayResult();
 
         return array_map(static fn (array $l) => self::numeroCourt($l['numero'], (int) $l['id']), $lignes);
+    }
+
+    /**
+     * Commandes prêtes à retirer (alias c) : toutes les lignes prêtes ou
+     * finies, pas encore retirées. Aussi pour les alertes (AlertesEcranTv).
+     */
+    public static function requeteCommandesPretes(EntityManagerInterface $em): QueryBuilder
+    {
+        return $em->createQueryBuilder()
+            ->select('c')
+            ->from(Commandes::class, 'c')
+            ->where('c.deleted = false AND c.soldeOuverture = false')
+            ->andWhere('c.recupereParClient = false')
+            ->andWhere(sprintf('EXISTS (SELECT l1.id FROM %s l1 WHERE l1.commande = c AND l1.statutProduction = :prete)', CommandesDetails::class))
+            ->andWhere(sprintf('NOT EXISTS (SELECT l2.id FROM %s l2 WHERE l2.commande = c AND l2.statutProduction IN (:enPreparation))', CommandesDetails::class))
+            ->setParameter('prete', CommandesDetails::PRODUCTION_PRETE_LIVRAISON)
+            ->setParameter('enPreparation', self::STATUTS_EN_PREPARATION);
     }
 
     private static function periode(QueryBuilder $qb, string $champ, ?\DateTimeImmutable $debut, ?\DateTimeImmutable $fin): QueryBuilder

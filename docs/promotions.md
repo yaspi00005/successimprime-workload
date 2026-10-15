@@ -14,6 +14,7 @@ Tout se gère sur l'ERP de la boutique. Le site en ligne reçoit les promotions 
 | Fiche et suivi d'une promotion | `/promotions/{id}` | Idem. Le journal des modifications : droit Promotions seulement |
 | Créer, modifier, suspendre, supprimer | Boutons de la liste et de la fiche | Droit Promotions |
 | Exceptions B2B à décider | Ventes › Promotions, bouton « Exceptions B2B » (`/promotions/exceptions`), avec une pastille au menu | Droit Promotions |
+| Codes promo d'une promotion : code partagé, lot de codes uniques, export CSV, feuille à imprimer, désactiver | Fiche de la promotion, bouton « Codes promo » (`/promotions/{id}/codes`) | Droit Promotions (voir « Codes promo » plus bas) |
 | Anniversaires à venir et modèles par palier | Clients › Anniversaires (`/promotions/anniversaires`) | Droit Promotions |
 | Réglages (alertes, anniversaires) | Paramètres › Promotions (famille Ventes) | Droit Paramètres |
 | Mes promotions | Espace client › Compte (`/espace/promotions`) | Le client connecté, pour ses promotions seulement |
@@ -28,7 +29,8 @@ Tout se gère sur l'ERP de la boutique. Le site en ligne reçoit les promotions 
 - **Avantage** : pourcentage (90 % au plus), montant en francs par unité, ou prix fixe par unité.
 - **Période** : du premier au dernier jour compris. Une nouvelle promotion commence aujourd'hui au plus tôt.
 - **Segment** : tous les clients, particuliers, entreprises et institutions, nouveaux clients, actifs (achat sur 12 mois), inactifs depuis 90 jours, fidélité (seuil franchi), gros clients (500 000 F et plus sur 12 mois), ou liste choisie à la main. Les segments calculés sont ceux des campagnes (`SegmentsClients`).
-- **Conditions** : quantité minimale de la ligne, montant minimal de la ligne avant remise, code promo facultatif, nombre de commandes par client.
+- **Conditions** : quantité minimale de la ligne, montant minimal de la ligne avant remise, code simple facultatif, nombre de commandes par client.
+- **Codes promo générés et avantage sur la commande** (facultatifs) : voir « Codes promo » plus bas.
 - Une promotion déjà portée par des lignes ne se supprime pas : elle se suspend et reste dans l'historique. Chaque création, modification, suspension ou suppression est inscrite au journal d'activité.
 
 ### À la saisie d'un devis ou d'une commande
@@ -69,12 +71,59 @@ Chaque matin, sur l'ERP de la boutique uniquement :
 
 ### Espace client
 
-La page **Mes promotions** (lien dans Compte, sauf pour un client au prix B2B) montre au client ses promotions en cours, et elles seules : celles de son segment, de sa liste ou de son anniversaire. Elle donne le nom, les articles, la période, l'avantage et les conditions. Les promotions descendent par la synchronisation (type `promotion`, `docs/synchronisation.md`). Le code, la note interne, les auteurs et les exceptions restent au local. Une promotion à code descend éteinte : le code se donne au comptoir. Après la mise à jour, lancer une fois `php bin/console app:synchro --initialiser=promotion` sur le local pour envoyer les promotions déjà créées.
+La page **Mes promotions** (lien dans Compte, sauf pour un client au prix B2B) montre au client ses promotions en cours, et elles seules : celles de son segment, de sa liste ou de son anniversaire. Elle donne le nom, les articles, la période, l'avantage et les conditions. Les promotions descendent par la synchronisation (type `promotion`, `docs/synchronisation.md`). Le code, la note interne, les auteurs et les exceptions restent au local. Une promotion à code simple descend éteinte : le code se donne au comptoir. Une promotion réservée aux codes générés descend active (le site vérifie le code tapé), mais ne paraît pas dans « Mes promotions ». Après la mise à jour, lancer une fois `php bin/console app:synchro --initialiser=promotion` sur le local pour envoyer les promotions déjà créées.
 
 L'**Atelier 3D** (`docs/atelier-3d.md`) montre la promotion qui s'appliquerait à l'article (« Promotion … : −29 250 F, déduite par l'atelier en confirmant la commande »), sans la déduire du total affiché : comme toute commande en ligne, elle est appliquée à la confirmation. Un visiteur sans compte et un demandeur d'entreprise ne la voient pas.
 
+### Codes promo (15/10/2026)
+
+Demande de Yaya : « faut prevoir des code promo. qui peut etre apliqué sur commande , le code doit généré avec une limitation et expiration ».
+
+**Créer les codes** (fiche de la promotion › **Codes promo**, droit Promotions, ERP de la boutique seulement) :
+
+- **Un code partagé** : le même pour tous (affiche, SMS, réseaux), tapé par l'équipe (4 à 20 lettres ou chiffres, par exemple `RENTREE25`) ou tiré au hasard. Limité à N utilisations en tout et à M par client (1 par défaut).
+- **Un lot de codes uniques** : de 1 à 500 codes d'un coup, chacun pour une seule utilisation. Forme `SI-7K4P-2Q` : 6 caractères tirés avec `random_int` dans un alphabet de 31 signes sans 0, O, 1, I ni L. Chaque code est unique dans la base (index unique, et vérifié contre les codes simples des promotions).
+- **Dates** : chaque code a une **expiration** (par défaut le dernier jour de la promotion, jamais après) et un premier jour facultatif (jamais avant la promotion). Le jour d'expiration compte encore. Un code se juge à la date du document, comme la promotion.
+- Un lot s'**exporte en CSV** (une seule colonne `code`) et s'**imprime** sur une feuille A4 de coupons à découper pour le comptoir (codes actifs seulement). Un code se **désactive** (et se réactive) : il ne sert plus, les devis et commandes qui le portent le gardent.
+- La liste montre, pour chaque code, ses utilisations sur la limite, son état (valable, à venir, épuisé, expiré, désactivé) et les devis et commandes qui le portent, avec le client ; le montant retiré seulement avec le droit « ventes ».
+- **Journal d'activité** de la promotion : code partagé créé, lot généré (lot, nombre, dates : jamais les codes d'un lot en clair), code désactivé ou réactivé (ce code-là est nommé, même d'un lot), avec l'auteur.
+
+**La promotion d'un code** : dans le formulaire, la case « Réservée aux codes promo générés » (cochée d'office dès qu'un code existe ou qu'il y a un avantage sur la commande). Elle ne s'applique alors plus toute seule : seulement quand un de ses codes, vérifié, est tapé. Elle ne paraît pas dans « Mes promotions ». Le code simple (ancien champ, sans limite ni expiration propres) et les codes générés ne vont pas ensemble.
+
+**Avantage sur la commande** (section du formulaire) : un pourcentage de la commande (90 % au plus, avec un plafond en F facultatif) ou un montant en F, hors TVA, avec un montant minimal de commande facultatif (hors TVA, après les remises des lignes). Avec un avantage sur la commande, les articles visés sont facultatifs ; avec des articles, la promotion du code les remise aussi, comme une promotion de ligne.
+
+**Comment l'avantage est porté (choix)** : il est **réparti sur les lignes** (`remiseCodePromo` de chaque ligne, hors TVA), au prorata du total de chaque ligne après ses remises, au franc près (plus forts restes : la somme des parts fait exactement l'avantage). La ligne le déduit de son total HT, puis calcule sa TVA. Ainsi :
+
+- le total HT, la TVA (par ligne, avec ou sans TVA) et le TTC restent justes ; les totaux du document sont la somme des lignes ; aucun prix unitaire n'est gonflé ni changé ;
+- le devis et la facture montrent « Total HT avant code promo », « Code promo SI-7K4P-2Q − N F », puis le « Total HT » ; la colonne « Remise » de chaque ligne compte sa part ; la fiche de la commande montre le code et ce qu'il a retiré (déjà déduit) ;
+- le journal des ventes reprend le HT de la facture, déjà net ; le CA et les statistiques par article sont nets ;
+- le **coût de la promotion** (fiche et liste) compte les parts de ses codes ; le taux de remise des agents (Mes statistiques) ne les compte pas : ce n'est pas une remise accordée par l'agent.
+
+La « Remise » globale du document (`Commandes::remise`) n'a pas été reprise : elle se retire du montant à payer après la TVA, sans toucher au HT, et la facture, qui prend sa TVA comme TTC − (HT − remise), la compterait dans la TVA.
+
+**Pas de double remise** : un seul code par document. Une ligne n'a qu'un avantage promotionnel : sa promotion de ligne, ou sa part du code. Les lignes qui ont déjà une promotion (automatique ou celle du code) ne reçoivent pas de part de l'avantage sur la commande. Une remise saisie à la main reste, et le code s'applique après elle. Une ligne ne garde la promotion d'un code que tant que le code est retenu sur le document : retirer le code du champ retire aussi cette promotion des lignes (sinon l'utilisation serait rendue et la remise gardée).
+
+**Utilisations** : un devis en cours (brouillon, envoyé ou accepté, pas encore transformé) ou une commande (ni supprimée, ni annulée en entier) qui porte le code. Un devis réserve donc son utilisation ; transformé, il la passe à sa commande. Une commande supprimée ou annulée, un devis refusé ou expiré, la rendent. Le compte exclut toujours le document en cours : l'enregistrer de nouveau ne compte pas deux fois.
+
+**Vérification au serveur**, à chaque enregistrement d'un devis ou d'une commande (`CodesPromo::verifier`, `CalculCodePromo::refus`) : le code existe ; il est actif et sa promotion n'est pas suspendue ; la date du document est entre son premier jour et son expiration ; la limite en tout et la limite par client ne sont pas atteintes ; le client n'a pas déjà profité de la promotion autant de fois que ses « Commandes par client » (toutes ses lignes et tous ses codes ensemble : deux coupons d'un même lot ne servent pas au même client si la promotion dit « 1 commande par client ») ; le client n'est pas au prix B2B ; il est dans le segment de la promotion ; le minimum de commande est atteint ; le code apporte quelque chose. Refusé, le formulaire revient avec la raison et rien n'est enregistré. Pendant la saisie, la raison s'affiche aussi sous le champ. Deux caisses qui prennent la dernière utilisation au même instant : un verrou MariaDB par code (`GET_LOCK`, `VerrousCodesPromo`) fait passer l'une après l'autre. Un code déjà retenu sur le document reste, même désactivé depuis.
+
+**Messages** : l'équipe lit la raison (sauf pour un code inconnu). Le client lit « Ce code n'est pas valable pour cette commande. », et la raison seulement quand elle tient à sa propre commande : code expiré, déjà utilisé par lui (ce code, ou cette offre autant de fois que permis), minimum non atteint, aucun article qui en profite. Un revendeur au prix B2B lit « Les prix revendeur ne se cumulent pas avec un code promo. » pour **tout** code tapé, avant même que le site le cherche : la réponse ne dit pas si le code existe. Jamais si le code existe ni combien il en reste. Aucun montant.
+
+**Espace client** (Nouvelle commande) : un champ « Code promo (facultatif) », absent pour un revendeur au prix B2B (refusé aussi au serveur).
+
+- Le site vérifie avec ce que la synchronisation lui donne. Il ne garde **pas le code**, seulement son **empreinte** : HMAC-SHA256 du code avec la clé de synchronisation `SYNC_CLE` (la même des deux côtés, jamais en base). Une copie de la base du site ne permet donc pas de retrouver les codes, même ceux d'un lot de 6 caractères. Il a aussi les dates, les limites et les utilisations comptées au local (`utilisations`), auxquelles il ajoute les commandes en ligne pas encore confirmées qui ont tapé le même code. Sans clé de synchronisation, le local ne calcule pas d'empreinte et le code ne part pas au site (une empreinte sans clé se retrouverait trop facilement) ; la tâche du matin la pose une fois la clé réglée.
+- Refusé : la commande n'est pas envoyée et le client lit le message. **Les codes refusés sont comptés** (`EssaisCodePromo`) : au plus 8 par heure par compte et 30 par heure par connexion (`code_promo_client`, `code_promo_ip`), puis plus d'essai jusqu'à la fin de la fenêtre.
+- Valable : la commande part « à confirmer » avec le code tapé (`codeSaisi`) et l'avantage indicatif (promotion des articles visés, part de l'avantage sur la commande). Elle ne retient pas le code.
+- **À la confirmation** (l'atelier ouvre et enregistre la commande), la boutique revérifie : **le local fait foi**. Code toujours valable : il est retenu et l'avantage recalculé. Plus valable (la limite a été atteinte entre-temps, par exemple) : la commande s'enregistre quand même, sans l'avantage, et la fiche dit pourquoi (bandeau « Code promo … non retenu », `motifCodePromo`, qui reste au local).
+- Le client voit l'avantage dans sa commande s'il voit les montants (`CompteClient::montantsVisibles` : compte particulier, payeur ou valideur d'une entreprise). Un demandeur lit « à confirmer » ou « appliqué », sans montant. Un code non retenu s'affiche « non retenu », sans la raison interne. Aucune notification ni aucun SMS ne part avec un montant.
+
+**Synchronisation** : type `code_promo` (local → site) : empreinte, type, dates, limites, utilisations, actif, création, promotion. Restent au local : le code en clair, le lot, qui l'a créé ou désactivé. Sur les devis et commandes : `codeSaisi`, `remiseCodePromo` et le lien vers le code retenu (une commande créée en ligne arrive toujours sans code retenu, `imposeAuLocal` : seule la boutique le retient) ; sur les lignes, `remiseCodePromo` ; sur la promotion, l'avantage sur la commande et la marque « codes générés ». Les promotions et les codes partent avant les commandes et les devis. Après la mise à jour du local : `php bin/console app:synchro --initialiser=promotion` puis `--initialiser=code_promo`. Après un changement de `SYNC_CLE`, lancer `php bin/console app:promotions` (ou attendre le lendemain matin) : les empreintes sont refaites et repartent au site ; d'ici là, les codes tapés en ligne sont refusés.
+
+**Tâche du matin** (`app:promotions`) : recompte les utilisations des codes encore valables (une commande supprimée ou annulée rend la sienne) pour la liste et pour le site, et refait l'empreinte si la clé de synchronisation a changé.
+
 ### Reste à faire
 
+- **Codes promo** : pas d'exception B2B pour l'avantage sur la commande (un revendeur au prix B2B est toujours refusé) ; une commande restaurée après suppression (ou un devis rouvert après refus) reprend son code sans nouvelle vérification de la limite ; en ligne, la limite « Commandes par client » de la promotion ne compte que les commandes confirmées avec un de ses codes (la boutique revérifie tout à la confirmation) ; la commande de l'Atelier 3D n'a pas de champ code promo ; en ligne, l'avantage se voit après l'envoi (pas d'aperçu pendant la saisie).
 - **Commande passée en ligne** : la promotion n'est pas posée à l'envoi par le client. Elle s'applique quand l'atelier ouvre et enregistre la commande pour en confirmer le prix.
 - **Nombre d'utilisations par client** : il se compte sur les commandes du local. Une commande passée en ligne et pas encore enregistrée à la boutique ne compte pas encore.
 - **Annonce par campagne** : pas de bouton « annoncer cette promotion » ; la campagne WhatsApp ou SMS se prépare à la main sur le même segment.

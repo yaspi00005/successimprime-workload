@@ -74,3 +74,14 @@ framework:
             policy: sliding_window
             limit: 40
             interval: '1 hour'
+        # Codes promo tapés dans l'espace client (EssaisCodePromo,
+        # docs/promotions.md) : seuls les codes refusés comptent, par compte
+        # et par connexion, pour qu'on ne devine pas les codes d'un lot.
+        code_promo_client:
+            policy: sliding_window
+            limit: 8
+            interval: '1 hour'
+        code_promo_ip:
+            policy: sliding_window
+            limit: 30
+            interval: '1 hour'

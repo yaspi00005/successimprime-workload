@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\CodePromoDocumentTrait;
 use App\Entity\Trait\SocieteTrait;
 use App\Repository\CommandesRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -18,6 +19,7 @@ use Symfony\Component\Uid\Uuid;
 class Commandes implements AppartientASociete
 {
     use SocieteTrait;
+    use CodePromoDocumentTrait;
 
     /*
      * Canal de la commande : saisie au comptoir par un agent,
@@ -624,6 +626,7 @@ class Commandes implements AppartientASociete
     {
         $ht = 0;
         $ttc = 0;
+        $code = 0;
 
         foreach ($this->commandesDetails as $ligne) {
             if (CommandesDetails::PRODUCTION_ANNULEE === $ligne->getStatutProduction()) {
@@ -632,9 +635,11 @@ class Commandes implements AppartientASociete
 
             $ht += $ligne->getTotalHt();
             $ttc += $ligne->getTotalTtc();
+            $code += $ligne->getRemiseCodePromo();
         }
 
         $this->setTotalHt($ht);
+        $this->setRemiseCodePromo($code);
         $this->setTotalTtc($ttc);
         $this->setMontantApayer(max(0, $ttc - (int) $this->getRemise()));
         $this->setResteAPayer(max(0, (int) $this->getMontantApayer() - $this->getTotalPaye()));

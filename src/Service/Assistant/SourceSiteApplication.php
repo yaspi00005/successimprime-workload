@@ -79,7 +79,7 @@ final class SourceSiteApplication implements SourceSite
         // Sur le site : seulement les offres faites à tout le monde, sans code ni liste de clients.
         return array_values(array_filter(
             $this->promotions->valables($jour),
-            static fn (Promotion $p): bool => Promotion::SEGMENT_TOUS === $p->getSegment() && null === $p->getCode() && !$p->estAnniversaire() && 0 === $p->getClients()->count(),
+            static fn (Promotion $p): bool => Promotion::SEGMENT_TOUS === $p->getSegment() && $p->estSansCode() && !$p->estAnniversaire() && 0 === $p->getClients()->count(),
         ));
     }
 

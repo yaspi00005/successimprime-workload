@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\CategorieProduit;
 use App\Entity\Clients;
+use App\Entity\CodePromo;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\DemandeExceptionPromotion;
@@ -13,7 +14,9 @@ use App\Entity\JournalActivite;
 use App\Entity\Produits;
 use App\Entity\Promotion;
 use App\Entity\User;
+use App\Service\Promotions\CalculCodePromo;
 use App\Service\Promotions\CalculPromotion;
+use App\Service\Promotions\CodesPromo;
 use App\Service\Promotions\Promotions;
 use App\Service\Promotions\PromotionsSaisie;
 use App\Service\Promotions\SuiviPromotions;
@@ -50,6 +53,7 @@ final class PromotionsController extends AbstractController
         private readonly Promotions $promotions,
         private readonly PromotionsSaisie $saisie,
         private readonly SuiviPromotions $suivi,
+        private readonly CodesPromo $codes,
     ) {
     }
 
@@ -132,7 +136,166 @@ final class PromotionsController extends AbstractController
             'utilisee' => $this->promotions->nombreLignes($promotion) > 0,
             'historique' => $this->isGranted('ROLE_PROMOTIONS') ? $this->journal(Promotions::ENTITE_JOURNAL, (int) $promotion->getId()) : [],
             'en_ligne' => $this->promotions->estEnLigne(),
+            // Les codes eux-mêmes : droit Promotions seulement.
+            'nombre_codes' => $this->isGranted('ROLE_PROMOTIONS') ? \count($this->codes->codes($promotion)) : 0,
         ]);
+    }
+
+    /* ---------- Codes promo générés ---------- */
+
+    /**
+     * Codes de la promotion : un code partagé, ou un lot de codes uniques,
+     * avec leurs utilisations (document et client).
+     */
+    #[Route('/{id}/codes', name: 'app_promotions_codes', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[IsGranted('ROLE_PROMOTIONS')]
+    public function codes(Promotion $promotion): Response
+    {
+        $codes = $this->codes->codes($promotion);
+        // La liste recompte : une commande supprimée ou annulée a pu rendre son utilisation.
+        foreach ($codes as $c) {
+            $this->codes->recompter($c);
+        }
+        if (!$this->promotions->estEnLigne()) {
+            $this->em->flush();
+        }
+
+        return $this->render('promotions/codes.html.twig', [
+            'promotion' => $promotion,
+            'codes' => $codes,
+            'lots' => $this->codes->lots($promotion),
+            'documents' => $this->codes->documents($codes),
+            'jour' => new \DateTimeImmutable('today'),
+            'en_ligne' => $this->promotions->estEnLigne(),
+            'voir_montants' => $this->droits()['ventes'],
+            'lot_max' => CalculCodePromo::LOT_MAX,
+        ]);
+    }
+
+    #[Route('/{id}/codes/partage', name: 'app_promotions_code_partage', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[IsGranted('ROLE_PROMOTIONS')]
+    public function codePartage(Request $request, Promotion $promotion): Response
+    {
+        $this->verifierJetonCodes($request, $promotion);
+        $f = $request->request;
+        try {
+            $code = $this->codes->creerPartage(
+                $promotion,
+                $f->getString('code'),
+                (int) self::entier($f->getString('utilisations_max')),
+                (int) (self::entier($f->getString('par_client')) ?? 1),
+                self::date($f->getString('debut')),
+                self::date($f->getString('expiration')),
+                $this->agent(),
+                new \DateTimeImmutable(),
+            );
+            $this->addFlash('success', \sprintf('Code %s créé.', $code->getCodeAffiche()));
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_promotions_codes', ['id' => $promotion->getId()], Response::HTTP_SEE_OTHER);
+    }
+
+    #[Route('/{id}/codes/lot', name: 'app_promotions_codes_lot', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[IsGranted('ROLE_PROMOTIONS')]
+    public function codesLot(Request $request, Promotion $promotion): Response
+    {
+        $this->verifierJetonCodes($request, $promotion);
+        $f = $request->request;
+        try {
+            $nombre = (int) self::entier($f->getString('nombre'));
+            $lot = $this->codes->genererLot($promotion, $nombre, self::date($f->getString('debut')), self::date($f->getString('expiration')), $this->agent(), new \DateTimeImmutable());
+            $this->addFlash('success', \sprintf('Lot %s : %d code%s unique%s généré%s.', $lot, $nombre, $nombre > 1 ? 's' : '', $nombre > 1 ? 's' : '', $nombre > 1 ? 's' : ''));
+
+            return $this->redirectToRoute('app_promotions_codes', ['id' => $promotion->getId(), 'lot' => $lot, '_fragment' => 'lot-'.$lot], Response::HTTP_SEE_OTHER);
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_promotions_codes', ['id' => $promotion->getId()], Response::HTTP_SEE_OTHER);
+    }
+
+    #[Route('/codes/{id}/basculer', name: 'app_promotions_code_basculer', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[IsGranted('ROLE_PROMOTIONS')]
+    public function codeBasculer(Request $request, CodePromo $code): Response
+    {
+        $promotion = $code->getPromotion();
+        if (null === $promotion) {
+            throw $this->createNotFoundException();
+        }
+        $this->verifierJetonCodes($request, $promotion);
+        try {
+            $this->codes->basculer($code, $this->agent(), new \DateTimeImmutable());
+            $this->addFlash('success', $code->isActive()
+                ? \sprintf('Code %s réactivé.', $code->getCodeAffiche())
+                : \sprintf('Code %s désactivé : il ne sert plus ; les devis et commandes qui le portent le gardent.', $code->getCodeAffiche()));
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_promotions_codes', ['id' => $promotion->getId(), 'lot' => $code->getLot()], Response::HTTP_SEE_OTHER);
+    }
+
+    /** Les codes d'un lot (ou de toute la promotion), un par ligne, pour un tableur ou un envoi. */
+    #[Route('/{id}/codes/export', name: 'app_promotions_codes_export', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[IsGranted('ROLE_PROMOTIONS')]
+    public function codesExport(Request $request, Promotion $promotion): Response
+    {
+        $codes = $this->codesDuLot($promotion, $request->query->getString('lot'));
+        $lignes = ['code'];
+        foreach ($codes as $c) {
+            $lignes[] = $c->getCodeAffiche();
+        }
+        $nom = \sprintf('codes-promo-%d%s.csv', $promotion->getId(), '' !== $request->query->getString('lot') ? '-'.strtolower(preg_replace('/[^A-Za-z0-9]/', '', $request->query->getString('lot')) ?? '') : '');
+
+        return new Response(implode("\r\n", $lignes)."\r\n", Response::HTTP_OK, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$nom.'"',
+            'Cache-Control' => 'no-store, private',
+        ]);
+    }
+
+    /** Feuille à imprimer pour le comptoir : un coupon par code, à découper. */
+    #[Route('/{id}/codes/feuille', name: 'app_promotions_codes_feuille', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[IsGranted('ROLE_PROMOTIONS')]
+    public function codesFeuille(Request $request, Promotion $promotion): Response
+    {
+        $codes = array_values(array_filter($this->codesDuLot($promotion, $request->query->getString('lot')), static fn (CodePromo $c): bool => $c->isActive()));
+
+        $reponse = $this->render('promotions/codes_feuille.html.twig', [
+            'promotion' => $promotion,
+            'codes' => $codes,
+            'lot' => $request->query->getString('lot'),
+        ]);
+        $reponse->headers->set('Cache-Control', 'no-store, private');
+
+        return $reponse;
+    }
+
+    /** @return list<CodePromo> */
+    private function codesDuLot(Promotion $promotion, string $lot): array
+    {
+        return array_values(array_filter($this->codes->codes($promotion), static fn (CodePromo $c): bool => '' === $lot || $c->getLot() === $lot));
+    }
+
+    private function verifierJetonCodes(Request $request, Promotion $promotion): void
+    {
+        if (!$this->isCsrfTokenValid('codes-promo-'.$promotion->getId(), $request->request->getString('_token'))) {
+            throw $this->createAccessDeniedException('La page a expiré. Réessayez.');
+        }
+    }
+
+    private static function entier(string $v): ?int
+    {
+        $v = preg_replace('/[^\d]/', '', $v) ?? '';
+
+        return '' === $v ? null : (int) $v;
+    }
+
+    private static function date(string $v): ?\DateTimeImmutable
+    {
+        return '' === $v ? null : (\DateTimeImmutable::createFromFormat('!Y-m-d', $v) ?: null);
     }
 
     #[Route('/{id}/suspendre', name: 'app_promotions_suspendre', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -286,11 +449,13 @@ final class PromotionsController extends AbstractController
                 'remise' => (int) round((float) ($l['remise'] ?? 0)),
                 'quantite' => (int) ($l['quantite'] ?? 1),
                 'brut' => (int) round((float) ($l['brut'] ?? 0)),
+                'unites' => max(0.0, (float) ($l['unites'] ?? 0)),
+                'tva' => max(0, min(100, (int) ($l['tva'] ?? 0))),
             ];
         }
-        $resultat = $this->saisie->apercu($client, $document, $lignes, isset($donnees['code']) ? (string) $donnees['code'] : null, new \DateTimeImmutable());
+        $resultat = $this->saisie->apercu($client, $document, $lignes, isset($donnees['code']) ? mb_substr((string) $donnees['code'], 0, 40) : null, new \DateTimeImmutable());
 
-        return new JsonResponse(['lignes' => $resultat, 'b2b' => null !== $client && $client->isB2B()]);
+        return new JsonResponse($resultat + ['b2b' => null !== $client && $client->isB2B()]);
     }
 
     /* ---------- Formulaire ---------- */
@@ -317,7 +482,9 @@ final class PromotionsController extends AbstractController
                 $erreurs[] = 'Indiquez le début et la fin.';
             }
             $produits = $this->em->getRepository(Produits::class)->findBy(['id' => array_map('intval', $f->all('produits'))]);
-            $categorie = $f->getInt('categorie') > 0 ? $this->em->find(CategorieProduit::class, $f->getInt('categorie')) : null;
+            // « — » envoie une chaîne vide, que getInt() refuse (400).
+            $idCategorie = (int) $f->getString('categorie');
+            $categorie = $idCategorie > 0 ? $this->em->find(CategorieProduit::class, $idCategorie) : null;
             $clients = Promotion::SEGMENT_LISTE === $f->getString('segment')
                 ? $this->em->getRepository(Clients::class)->findBy(['id' => array_map('intval', $f->all('clients'))])
                 : [];
@@ -333,7 +500,16 @@ final class PromotionsController extends AbstractController
                 ->setMontantMin($entier($f->getString('montant_min')))
                 ->setCode($f->getString('code'))
                 ->setUtilisationsParClient($entier($f->getString('utilisations')))
+                ->setAvantageCommande($f->getString('avantage_commande'))
+                ->setValeurCommande((float) str_replace([',', ' ', "\u{202f}", "\u{a0}"], ['.', '', '', ''], $f->getString('valeur_commande')))
+                ->setPlafondCommande($entier($f->getString('plafond_commande')))
+                ->setMinimumCommande($entier($f->getString('minimum_commande')))
+                // Des codes déjà générés la gardent réservée aux codes.
+                ->setACodes($f->getBoolean('a_codes') || (!$nouvelle && [] !== $this->codes->codes($promotion)))
                 ->setNote($f->getString('note'));
+            if (null === $promotion->getAvantageCommande()) {
+                $promotion->setValeurCommande(0)->setPlafondCommande(null)->setMinimumCommande(null);
+            }
             if (null !== $debut) {
                 $promotion->setDebut($debut);
             }
@@ -365,6 +541,8 @@ final class PromotionsController extends AbstractController
                 ->where('c.statut = true OR c.statut IS NULL')->orderBy('c.nom', 'ASC')->addOrderBy('c.prenom', 'ASC')
                 ->getQuery()->getResult(),
             'utilisee' => !$nouvelle && $this->promotions->nombreLignes($promotion) > 0,
+            'codes_generes' => !$nouvelle && [] !== $this->codes->codes($promotion),
+            'pourcentage_max' => CalculCodePromo::POURCENTAGE_MAX,
         ]);
     }
 
@@ -374,7 +552,10 @@ final class PromotionsController extends AbstractController
     private function journal(string $entite, int $id): array
     {
         $lignes = $this->em->getRepository(JournalActivite::class)->findBy(['entite' => $entite, 'entiteId' => $id], ['createdAt' => 'DESC', 'id' => 'DESC'], 20);
-        $libelles = [JournalActivite::ACTION_CREATION => 'Création', JournalActivite::ACTION_MODIFICATION => 'Modification', JournalActivite::ACTION_SUPPRESSION => 'Suppression'];
+        $libelles = [
+            JournalActivite::ACTION_CREATION => 'Création', JournalActivite::ACTION_MODIFICATION => 'Modification', JournalActivite::ACTION_SUPPRESSION => 'Suppression',
+            'code_cree' => 'Code partagé créé', 'codes_generes' => 'Lot de codes généré', 'code_desactive' => 'Code désactivé', 'code_reactive' => 'Code réactivé',
+        ];
 
         return array_map(static function (JournalActivite $j) use ($libelles): array {
             $avant = $j->getDonneesAvant() ?? [];
@@ -383,6 +564,16 @@ final class PromotionsController extends AbstractController
                 if (\array_key_exists($cle, $avant) && $avant[$cle] !== $valeur) {
                     $details[] = $cle.' : '.self::texte($avant[$cle]).' → '.self::texte($valeur);
                 }
+            }
+            // Codes : ce qui a été créé (jamais les codes d'un lot).
+            if (\in_array($j->getAction(), ['code_cree', 'codes_generes', 'code_desactive', 'code_reactive'], true)) {
+                $apres = $j->getDonneesApres() ?? [];
+                $details = array_values(array_filter([
+                    isset($apres['code']) ? 'code '.$apres['code'] : null,
+                    isset($apres['lot']) ? 'lot '.$apres['lot'] : null,
+                    isset($apres['nombre']) ? $apres['nombre'].' codes' : null,
+                    isset($apres['au']) ? 'jusqu\'au '.(new \DateTimeImmutable((string) $apres['au']))->format('d/m/Y') : null,
+                ]));
             }
 
             return ['le' => $j->getCreatedAt(), 'action' => $libelles[$j->getAction()] ?? $j->getAction(), 'qui' => $j->getUtilisateur(), 'details' => $details];

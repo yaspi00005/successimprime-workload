@@ -1054,6 +1054,12 @@
 
 					<table class="totals-table">
 
+						{# Code promo du devis (docs/promotions.md) : déjà déduit des lignes, montré à part. #}
+						{% if devis.remiseCodePromo > 0 %}
+							<tr><td>Total HT avant code promo</td><td>{{ devis.totalHtAvantCodePromo|number_format(0, ',', ' ') }} F CFA</td></tr>
+							<tr><td>Code promo {{ devis.libelleCodePromo }}</td><td>- {{ devis.remiseCodePromo|number_format(0, ',', ' ') }} F CFA</td></tr>
+						{% endif %}
+
 						<tr>
 
 							<td>

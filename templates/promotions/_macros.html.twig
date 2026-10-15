@@ -17,6 +17,8 @@
 	{%- if p.quantiteMin %}{% set c = c|merge(['dès ' ~ p.quantiteMin ~ ' par ligne']) %}{% endif -%}
 	{%- if p.montantMin %}{% set c = c|merge(['ligne dès ' ~ p.montantMin|number_format(0, ',', ' ') ~ ' F']) %}{% endif -%}
 	{%- if p.code %}{% set c = c|merge([gestion ? 'code ' ~ p.code : 'avec code promo']) %}{% endif -%}
+	{%- if p.exigeCodeGenere %}{% set c = c|merge(['avec un code promo généré']) %}{% endif -%}
+	{%- if p.minimumCommande %}{% set c = c|merge(['commande dès ' ~ p.minimumCommande|number_format(0, ',', ' ') ~ ' F HT']) %}{% endif -%}
 	{%- if p.utilisationsParClient %}{% set c = c|merge([p.utilisationsParClient ~ ' commande' ~ (p.utilisationsParClient > 1 ? 's') ~ ' par client']) %}{% endif -%}
 	{{- c is empty ? 'aucune' : c|join(' · ') -}}
 {%- endmacro %}

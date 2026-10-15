@@ -37,12 +37,41 @@ trait PromotionLigneTrait
     #[ORM\Column(options: ['default' => false])]
     private bool $promotionRetiree = false;
 
+    /**
+     * Part de l'avantage du code promo de la commande sur cette ligne (F,
+     * hors TVA, pour toute la ligne), posée par le serveur
+     * (PromotionsSaisie) et déduite du total de la ligne après ses remises.
+     */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $remiseCodePromo = 0;
+
     public function getPromotion(): ?Promotion { return $this->promotion; }
     public function getLibellePromotion(): ?string { return $this->libellePromotion; }
     public function getRemisePromotion(): int { return $this->remisePromotion; }
     public function getMontantPromotion(): int { return $this->montantPromotion; }
     public function isPromotionRetiree(): bool { return $this->promotionRetiree; }
     public function setPromotionRetiree(bool $retiree): static { $this->promotionRetiree = $retiree; return $this; }
+    public function getRemiseCodePromo(): int { return $this->remiseCodePromo; }
+    public function setRemiseCodePromo(int $montant): static { $this->remiseCodePromo = max(0, $montant); return $this; }
+
+    /** Total de la ligne hors TVA après ses remises (saisie et promotion), avant le code de la commande. */
+    public function getTotalAvantCodePromo(): int
+    {
+        $brut = $this->calculerTotalBrut();
+
+        return max(0, $brut - $this->calculerMontantRemise($brut));
+    }
+
+    /** Ce que le code retire au total TTC de la ligne (pour l'affichage). */
+    public function getRemiseCodePromoTtc(): int
+    {
+        if ($this->remiseCodePromo <= 0) {
+            return 0;
+        }
+        $avant = $this->getTotalHt() + $this->remiseCodePromo;
+
+        return max(0, $avant + (int) round($avant * $this->getTva() / 100) - $this->getTotalTtc());
+    }
 
     public function appliquerPromotion(Promotion $promotion, int $remiseUnitaire): static
     {
@@ -85,6 +114,17 @@ trait PromotionLigneTrait
     public function getTotalAvantRemise(): int
     {
         return $this->calculerTotalBrut();
+    }
+
+    /**
+     * Part du code de la commande réellement retirée : jamais plus que ce
+     * qui reste de la ligne après ses remises. Appelé par calculerTotaux().
+     */
+    private function plafonnerRemiseCodePromo(int $totalApresRemises): int
+    {
+        $this->remiseCodePromo = min(max(0, $this->remiseCodePromo), max(0, $totalApresRemises));
+
+        return $this->remiseCodePromo;
     }
 
     /**

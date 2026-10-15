@@ -1007,6 +1007,8 @@ class CommandesDetails
             0,
             $totalBrut - $montantRemise
         );
+        // Part du code promo de la commande (docs/promotions.md), après les remises de la ligne.
+        $this->totalHt -= $this->plafonnerRemiseCodePromo($this->totalHt);
 
         $montantTva = (int) round(
             $this->totalHt * $this->tva / 100
@@ -1054,7 +1056,11 @@ class CommandesDetails
      */
     public function getMontantRemise(): int
     {
-        return $this->calculerMontantRemise($this->calculerTotalBrut());
+        $brut = $this->calculerTotalBrut();
+        $remise = $this->calculerMontantRemise($brut);
+
+        // Avec la part du code promo de la commande : la ligne montre tout ce qui lui est retiré.
+        return $remise + min($this->getRemiseCodePromo(), max(0, $brut - $remise));
     }
 
     /**

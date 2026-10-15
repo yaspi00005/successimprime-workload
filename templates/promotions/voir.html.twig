@@ -33,8 +33,13 @@
 					{{ pr.etat(promotion, jour) }}
 				</div>
 				<dl class="si-pr-fiche">
-					<dt>Avantage</dt><dd><span class="si-pr-avantage">{{ promotion.libelleAvantage }}</span></dd>
-					<dt>Articles</dt><dd>{{ promotion.libelleArticles }}</dd>
+					{% if promotion.aUnAvantageLignes or not promotion.aUnAvantageCommande %}
+						<dt>Avantage</dt><dd><span class="si-pr-avantage">{{ promotion.libelleAvantage }}</span></dd>
+						<dt>Articles</dt><dd>{{ promotion.libelleArticles }}</dd>
+					{% endif %}
+					{% if promotion.aUnAvantageCommande %}
+						<dt>Sur la commande</dt><dd><span class="si-pr-avantage">{{ promotion.libelleAvantageCommande }}</span> <small class="text-muted">hors TVA, sur les lignes sans autre promotion</small></dd>
+					{% endif %}
 					<dt>Période</dt><dd>du {{ promotion.debut|date('d/m/Y') }} au {{ promotion.fin|date('d/m/Y') }} inclus</dd>
 					<dt>Clients</dt>
 					<dd>
@@ -51,6 +56,12 @@
 					{% if gestion and promotion.note %}<dt>Note interne</dt><dd>{{ promotion.note }}</dd>{% endif %}
 					<dt>Origine</dt><dd>{{ promotion.estAnniversaire ? 'Anniversaire du client (tâche du jour J)' : 'Créée par ' ~ (promotion.creePar ? promotion.creePar.userIdentifier : '—') ~ ' le ' ~ promotion.creeLe|date('d/m/Y') }}</dd>
 				</dl>
+				{% if gestion and promotion.exigeCodeGenere %}
+					<p class="si-pr-codes-lien">
+						<a href="{{ path('app_promotions_codes', {id: promotion.id}) }}" class="btn btn-sm btn-outline-danger"><i class="fas fa-ticket-alt me-1"></i>Codes promo ({{ nombre_codes }})</a>
+						<small class="text-muted">{{ nombre_codes == 0 ? 'Aucun code encore : la promotion ne sert à personne tant qu\'aucun n\'est créé.' : 'Code partagé ou lot de codes uniques, à exporter ou imprimer.' }}</small>
+					</p>
+				{% endif %}
 				{% if gestion and not en_ligne %}
 					<div class="d-flex gap-2 flex-wrap">
 						{# Une promotion terminée ne se suspend plus. #}

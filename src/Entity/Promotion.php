@@ -63,6 +63,19 @@ class Promotion
         self::SEGMENT_LISTE => 'Liste choisie à la main',
     ];
 
+    /*
+     * Avantage sur toute la commande (docs/promotions.md, « Codes promo ») :
+     * il ne passe que par un code généré (CodePromo) et s'ajoute aux
+     * promotions des lignes, sur les lignes qui n'en ont pas.
+     */
+    public const COMMANDE_POURCENTAGE = 'pourcentage';
+    public const COMMANDE_MONTANT = 'montant';
+
+    public const AVANTAGES_COMMANDE = [
+        self::COMMANDE_POURCENTAGE => 'Pourcentage',
+        self::COMMANDE_MONTANT => 'Montant en F',
+    ];
+
     public const ORIGINE_MANUELLE = 'manuelle';
     public const ORIGINE_ANNIVERSAIRE = 'anniversaire';
 
@@ -126,6 +139,26 @@ class Promotion
     /** Nombre de commandes par client ; vide = sans limite. */
     #[ORM\Column(nullable: true)]
     private ?int $utilisationsParClient = null;
+
+    /** Avantage sur la commande (avec un code généré) : pourcentage ou montant ; vide = aucun. */
+    #[ORM\Column(length: 12, nullable: true)]
+    private ?string $avantageCommande = null;
+
+    /** Pourcentage (90 % au plus) ou montant en F (hors TVA) sur la commande. */
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['default' => '0.00'])]
+    private string $valeurCommande = '0';
+
+    /** Pourcentage : remise de la commande au plus (F, hors TVA). */
+    #[ORM\Column(nullable: true)]
+    private ?int $plafondCommande = null;
+
+    /** Commande d'au moins (F, hors TVA, après les remises des lignes). */
+    #[ORM\Column(nullable: true)]
+    private ?int $minimumCommande = null;
+
+    /** Des codes ont été générés (CodePromo) : la promotion ne s'applique plus qu'avec l'un d'eux. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $aCodes = false;
 
     /** Suspendue : ne s'applique plus, les lignes déjà faites la gardent. */
     #[ORM\Column(options: ['default' => true])]
@@ -235,6 +268,56 @@ class Promotion
     public function setCode(?string $code): static { $this->code = self::normaliserCode($code); return $this; }
     public function getUtilisationsParClient(): ?int { return $this->utilisationsParClient; }
     public function setUtilisationsParClient(?int $n): static { $this->utilisationsParClient = null !== $n && $n > 0 ? $n : null; return $this; }
+    public function getAvantageCommande(): ?string { return $this->avantageCommande; }
+    public function setAvantageCommande(?string $a): static { $this->avantageCommande = isset(self::AVANTAGES_COMMANDE[(string) $a]) ? $a : null; return $this; }
+    public function getValeurCommande(): float { return (float) $this->valeurCommande; }
+    public function setValeurCommande(float $v): static { $this->valeurCommande = number_format(max(0, $v), 2, '.', ''); return $this; }
+    public function getPlafondCommande(): ?int { return $this->plafondCommande; }
+    public function setPlafondCommande(?int $m): static { $this->plafondCommande = null !== $m && $m > 0 ? $m : null; return $this; }
+    public function getMinimumCommande(): ?int { return $this->minimumCommande; }
+    public function setMinimumCommande(?int $m): static { $this->minimumCommande = null !== $m && $m > 0 ? $m : null; return $this; }
+    public function hasCodes(): bool { return $this->aCodes; }
+    public function marquerACodes(): static { $this->aCodes = true; return $this; }
+    public function setACodes(bool $a): static { $this->aCodes = $a; return $this; }
+
+    /** Elle ne s'applique qu'avec un code généré : choisie ainsi, des codes générés, ou un avantage sur la commande. */
+    public function exigeCodeGenere(): bool
+    {
+        return $this->aCodes || $this->aUnAvantageCommande();
+    }
+
+    /** Un avantage sur toute la commande, donné par un code généré. */
+    public function aUnAvantageCommande(): bool
+    {
+        return null !== $this->avantageCommande && $this->getValeurCommande() > 0;
+    }
+
+    /** Une remise sur des articles (produits ou catégorie). */
+    public function aUnAvantageLignes(): bool
+    {
+        return $this->getValeur() > 0 && (!$this->produits->isEmpty() || null !== $this->categorie);
+    }
+
+    /** Sans aucun code (ni code simple, ni codes générés) : elle s'applique toute seule et se montre au client. */
+    public function estSansCode(): bool
+    {
+        return null === $this->code && !$this->exigeCodeGenere();
+    }
+
+    /** « −10 % sur la commande (au plus 20 000 F) », « −5 000 F sur la commande ». */
+    public function getLibelleAvantageCommande(): ?string
+    {
+        if (!$this->aUnAvantageCommande()) {
+            return null;
+        }
+        $nombre = static fn (float $n): string => rtrim(rtrim(number_format($n, 2, ',', ' '), '0'), ',');
+        if (self::COMMANDE_MONTANT === $this->avantageCommande) {
+            return '−'.$nombre($this->getValeurCommande()).' F sur la commande';
+        }
+
+        return '−'.$nombre($this->getValeurCommande()).' % sur la commande'.(null !== $this->plafondCommande ? ' (au plus '.$nombre($this->plafondCommande).' F)' : '');
+    }
+
     public function isActive(): bool { return $this->active; }
     public function setActive(bool $active): static { $this->active = $active; return $this; }
     public function getOrigine(): string { return $this->origine; }
@@ -372,6 +455,9 @@ class Promotion
             'montant_min' => $this->montantMin,
             'code' => null !== $this->code,
             'utilisations' => $this->utilisationsParClient,
+            'avantage_commande' => $this->getLibelleAvantageCommande(),
+            'minimum_commande' => $this->minimumCommande,
+            'codes_generes' => $this->aCodes,
             'active' => $this->active,
         ];
     }

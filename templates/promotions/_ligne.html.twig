@@ -3,10 +3,14 @@
 	(docs/promotions.md). Variables : detail (la ligne), possibles (pour un
 	revendeur au prix B2B : promotions qu'une exception permettrait, avec la
 	dernière demande), type ('commande' ou 'devis'), peutDemander.
-	Le montant affiché est TTC, comme le total de la ligne.
+	Le montant affiché est TTC, comme le total de la ligne. La part du code
+	promo de la commande (remiseCodePromo) se montre aussi.
 #}
-{%- if detail.libellePromotion or possibles is not empty -%}
+{%- if detail.libellePromotion or possibles is not empty or detail.remiseCodePromo > 0 -%}
 	<div class="si-pr-fiche-ligne">
+		{%- if detail.remiseCodePromo > 0 %}
+			<span class="si-pr-avantage" title="Part de l'avantage du code promo de la commande"><i class="fas fa-ticket-alt me-1"></i>Code promo · −{{ detail.remiseCodePromoTtc|number_format(0, ',', ' ') }} F</span>
+		{%- endif %}
 		{%- if detail.libellePromotion %}
 			{% set economie = (detail.montantPromotion * (1 + (detail.tva ?? 0) / 100))|round %}
 			<span class="si-pr-avantage" title="Promotion appliquée à cette ligne"><i class="fas fa-tag me-1"></i>{{ detail.libellePromotion }}{% if economie > 0 %} · −{{ economie|number_format(0, ',', ' ') }} F{% endif %}</span>

@@ -89,6 +89,15 @@
 				<textarea class="ec-champ" id="note" name="note" maxlength="1000" placeholder="Ex. : couleurs du logo, date souhaitée, livraison">{{ choix.note|default('') }}</textarea>
 			</div>
 
+			{# Code promo (docs/promotions.md) : vérifié à l'envoi, puis par la boutique à la confirmation. Pas pour un revendeur au prix B2B. #}
+			{% if champCodePromo|default(false) %}
+			<div class="ec-carte">
+				<label class="ec-etiquette" for="code_promo">Code promo (facultatif)</label>
+				<input class="ec-saisie" id="code_promo" name="code_promo" maxlength="30" value="{{ choix.code_promo|default('') }}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex. : SI-7K4P-2Q" style="text-transform:uppercase;letter-spacing:.04em">
+				<div class="ec-petit" style="margin-top:.35rem">Un code par commande. L'avantage se voit sur la commande et l'atelier le confirme avec le prix.</div>
+			</div>
+			{% endif %}
+
 			{# Un demandeur ne voit aucun montant (CompteClient::montantsVisibles) : l'estimation ne lui renvoie que les contrôles. #}
 			<div class="ec-total">
 				{% if coque.montants %}

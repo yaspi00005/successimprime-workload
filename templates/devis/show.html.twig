@@ -1496,6 +1496,18 @@
 
 					<div class="card-body">
 
+						{# Code promo du devis (docs/promotions.md) : déjà déduit des lignes, montré à part. #}
+						{% if devis.codePromo %}
+							<div class="d-flex justify-content-between mb-2 small">
+								<span class="text-muted">Total HT avant code promo</span>
+								<span>{{ devis.totalHtAvantCodePromo|number_format(0, ',', ' ') }} FCFA</span>
+							</div>
+							<div class="d-flex justify-content-between mb-3 small">
+								<span><i class="fas fa-ticket-alt me-1"></i>Code promo <b class="si-cp-code">{{ devis.libelleCodePromo }}</b>{{ devis.codePromo.promotion ? ' · ' ~ devis.codePromo.promotion.nom }}</span>
+								<span>{{ devis.remiseCodePromo > 0 ? '− ' ~ devis.remiseCodePromo|number_format(0, ',', ' ') ~ ' FCFA' : 'articles en promotion' }}</span>
+							</div>
+						{% endif %}
+
 						<div class="d-flex justify-content-between mb-3">
 
 							<span>

@@ -14,6 +14,7 @@ use App\Entity\Promotion;
 use App\Entity\User;
 use App\Service\Promotions\AnniversairesClients;
 use App\Service\Promotions\CalculPromotion;
+use App\Service\Promotions\CodesPromo;
 use App\Service\Promotions\ContexteLigne;
 use App\Service\Promotions\Promotions;
 use App\Service\Promotions\PromotionsSaisie;
@@ -31,7 +32,10 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * - sans option (chaque matin) : anniversaires du jour (et des jours
  *   manqués), promotion du client et message sans montant, puis rappels
- *   avant la fin des promotions d'anniversaire pas encore utilisées.
+ *   avant la fin des promotions d'anniversaire pas encore utilisées ;
+ *   recompte les utilisations des codes promo encore valables (une
+ *   commande supprimée ou annulée rend la sienne) pour le site en ligne,
+ *   et refait leur empreinte si la clé de synchronisation a changé.
  *   Relancée le même jour, elle ne refait rien ;
  * - --jour=AAAA-MM-JJ : rejoue un autre jour (essai, rattrapage) ;
  * - --demo : promotions, exceptions B2B et anniversaires de démonstration
@@ -48,6 +52,7 @@ final class PromotionsCommand extends Command
         private readonly Promotions $promotions,
         private readonly PromotionsSaisie $saisie,
         private readonly AnniversairesClients $anniversaires,
+        private readonly CodesPromo $codes,
         #[Autowire('%kernel.environment%')] private readonly string $environnement,
     ) {
         parent::__construct();
@@ -92,6 +97,10 @@ final class PromotionsCommand extends Command
             $r['ecartes'], $r['ecartes'] > 1 ? 's' : '', $r['attente'],
             $r['rappels'], $r['rappels'] > 1 ? 's' : '',
         ));
+        $corriges = $this->codes->recompterTout($jour);
+        if ($corriges > 0) {
+            $io->note(\sprintf('Codes promo : %d remis à jour (utilisations, ou empreinte après un changement de clé de synchronisation).', $corriges));
+        }
 
         return Command::SUCCESS;
     }

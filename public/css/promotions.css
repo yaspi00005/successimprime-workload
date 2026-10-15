@@ -65,7 +65,32 @@
 .si-ligne-promo { display: block; margin-top: 2px; color: #BE123C; font-size: 12px; font-weight: 600; }
 .si-pr-code input { max-width: 180px; text-transform: uppercase; }
 
+/* Codes promo générés */
+.si-cp-code { font-family: "JetBrains Mono", Consolas, "Courier New", monospace; letter-spacing: .04em; white-space: nowrap; }
+.si-cp-saisie { font-family: "JetBrains Mono", Consolas, "Courier New", monospace; letter-spacing: .04em; }
+.si-cp-groupe > summary { cursor: pointer; list-style: none; }
+.si-cp-groupe > summary::-webkit-details-marker { display: none; }
+.si-cp-groupe > summary h4::before { content: "\25B8"; display: inline-block; margin-right: 6px; color: #94A3B8; transition: transform .15s; }
+.si-cp-groupe[open] > summary h4::before { transform: rotate(90deg); }
+.si-cp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.si-cp-table td { vertical-align: top; font-size: 13.5px; }
+.si-cp-docs { min-width: 180px; }
+.si-pr-codes-lien { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+.si-pr-commande { border-top: 1px dashed #E2E8F0; padding-top: 10px; }
+.si-cp-resultat { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 600; }
+.si-cp-resultat.si-cp-ok { color: #178444; }
+.si-cp-resultat.si-cp-refus { color: #C40D22; }
+.si-cp-resultat.si-cp-simple { color: #0F4590; }
+
 @media (max-width: 575.98px) {
+  /* Codes : une carte par code au lieu d'un tableau large. */
+  .si-cp-table thead { display: none; }
+  .si-cp-table, .si-cp-table tbody { display: block; }
+  .si-cp-table tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 0; border-bottom: 1px solid #F1F5F9; }
+  .si-cp-table.table > :not(caption) > * > * { display: block; border: 0; padding: 0; min-width: 0; text-align: left; background: none; box-shadow: none; }
+  .si-cp-table.table > :not(caption) > * > :nth-child(odd) { text-align: left !important; }
+  .si-cp-table.table > :not(caption) > * > :nth-child(even) { text-align: right !important; }
+  .si-cp-docs { min-width: 0; }
   .si-pr-fiche { grid-template-columns: 1fr; gap: 2px; }
   .si-pr-fiche dd { margin-bottom: 8px; }
   .si-pr-boutons { margin: 4px 0 0; }

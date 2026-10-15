@@ -16,6 +16,9 @@ use Doctrine\ORM\EntityManagerInterface;
 /**
  * Suivi d'une promotion (docs/promotions.md) : CA réalisé avec elle, son
  * coût, les clients touchés, l'effet sur le segment et la marge restante.
+ * Avec des codes promo générés, les lignes qui ont reçu une part de
+ * l'avantage sur la commande comptent aussi, et cette part entre dans le
+ * coût de la promotion.
  *
  * Règle du propriétaire : un montant n'est calculé que pour qui a le droit
  * de le voir (DroitsStatistiques : « ventes » pour le CA et les remises,
@@ -55,7 +58,8 @@ final class SuiviPromotions
         $periode = ['debut' => $p->getDebut(), 'fin' => $fin, 'jours' => max(0, (int) $p->getDebut()->diff($fin)->format('%r%a') + 1)];
         $comptes = [
             'lignes' => \count($lignes),
-            'devis' => (int) $this->em->createQueryBuilder()->select('COUNT(d.id)')->from(DevisDetails::class, 'd')->where('d.promotion = :p')->setParameter('p', $p)->getQuery()->getSingleScalarResult(),
+            'devis' => (int) $this->em->createQueryBuilder()->select('COUNT(d.id)')->from(DevisDetails::class, 'd')->join('d.devis', 'dv')->leftJoin('dv.codePromo', 'cp')
+                ->where('d.promotion = :p OR (cp.promotion = :p AND d.remiseCodePromo > 0)')->setParameter('p', $p)->getQuery()->getSingleScalarResult(),
             'commandes' => \count($commandes),
             'facturees' => \count($facturees),
             'clients' => \count($clients),
@@ -159,15 +163,33 @@ final class SuiviPromotions
         if ([] === $ids) {
             return [];
         }
-        $r = $this->em->createQueryBuilder()
-            ->select('IDENTITY(l.promotion) AS promotion', 'COUNT(l.id) AS lignes', 'COUNT(DISTINCT c.clients) AS clients', 'COALESCE(SUM(l.montantPromotion), 0) AS remises')
-            ->from(CommandesDetails::class, 'l')->join('l.commande', 'c')
-            ->where('l.promotion IN (:ids)')->andWhere('c.deleted = false')->andWhere('l.statutProduction != :annulee')
-            ->setParameter('ids', $ids)->setParameter('annulee', CommandesDetails::PRODUCTION_ANNULEE)
-            ->groupBy('l.promotion')->getQuery()->getArrayResult();
+        // Lignes qui portent la promotion, puis parts de l'avantage d'un de ses codes sur la commande.
+        $sources = [
+            ['IDENTITY(l.promotion)', 'l.promotion IN (:ids)', 'l.montantPromotion', false],
+            ['IDENTITY(cp.promotion)', 'cp.promotion IN (:ids) AND l.remiseCodePromo > 0', 'l.remiseCodePromo', true],
+        ];
+        $parPromotion = [];
+        foreach ($sources as [$promotion, $condition, $montant, $code]) {
+            $qb = $this->em->createQueryBuilder()
+                ->select($promotion.' AS promotion', 'IDENTITY(c.clients) AS client', 'l.id AS ligne', $montant.' AS remise')
+                ->from(CommandesDetails::class, 'l')->join('l.commande', 'c')
+                ->where($condition)->andWhere('c.deleted = false')->andWhere('l.statutProduction != :annulee')
+                ->setParameter('ids', $ids)->setParameter('annulee', CommandesDetails::PRODUCTION_ANNULEE);
+            if ($code) {
+                $qb->join('c.codePromo', 'cp');
+            }
+            foreach ($qb->getQuery()->getArrayResult() as $r) {
+                $id = (int) $r['promotion'];
+                $parPromotion[$id]['lignes'][(int) $r['ligne']] = true;
+                $parPromotion[$id]['remises'] = ($parPromotion[$id]['remises'] ?? 0) + (int) $r['remise'];
+                if (null !== $r['client']) {
+                    $parPromotion[$id]['clients'][(int) $r['client']] = true;
+                }
+            }
+        }
         $resultat = [];
-        foreach ($r as $ligne) {
-            $resultat[(int) $ligne['promotion']] = ['lignes' => (int) $ligne['lignes'], 'clients' => (int) $ligne['clients'], 'remises' => (int) $ligne['remises']];
+        foreach ($parPromotion as $id => $d) {
+            $resultat[$id] = ['lignes' => \count($d['lignes'] ?? []), 'clients' => \count($d['clients'] ?? []), 'remises' => (int) ($d['remises'] ?? 0)];
         }
 
         return $resultat;
@@ -179,8 +201,8 @@ final class SuiviPromotions
         /** @var list<CommandesDetails> $lignes */
         $lignes = $this->em->createQueryBuilder()
             ->select('l', 'c')
-            ->from(CommandesDetails::class, 'l')->join('l.commande', 'c')
-            ->where('l.promotion = :p')->andWhere('c.deleted = false')->andWhere('l.statutProduction != :annulee')
+            ->from(CommandesDetails::class, 'l')->join('l.commande', 'c')->leftJoin('c.codePromo', 'cp')
+            ->where('l.promotion = :p OR (cp.promotion = :p AND l.remiseCodePromo > 0)')->andWhere('c.deleted = false')->andWhere('l.statutProduction != :annulee')
             ->setParameter('p', $p)->setParameter('annulee', CommandesDetails::PRODUCTION_ANNULEE)
             ->getQuery()->getResult();
         $ids = array_values(array_unique(array_map(static fn (CommandesDetails $l): int => (int) $l->getCommande()?->getId(), $lignes)));
@@ -194,13 +216,17 @@ final class SuiviPromotions
             }
         }
 
+        $estP = static fn (?Promotion $autre): bool => null !== $autre && ($autre === $p || $autre->getId() === $p->getId());
+
         return array_map(static fn (CommandesDetails $l): array => [
             'entite' => $l,
             'commande' => (int) $l->getCommande()?->getId(),
             'client' => $l->getCommande()?->getClients()?->getId(),
             'facturee' => isset($facturees[(int) $l->getCommande()?->getId()]),
             'ht' => $l->getTotalHt(),
-            'promotion' => $l->getMontantPromotion(),
+            // Ce que la promotion a coûté sur la ligne : sa remise, et la part de son code sur la commande.
+            'promotion' => ($estP($l->getPromotion()) ? $l->getMontantPromotion() : 0)
+                + ($estP($l->getCommande()?->getCodePromo()?->getPromotion()) ? $l->getRemiseCodePromo() : 0),
         ], $lignes);
     }
 

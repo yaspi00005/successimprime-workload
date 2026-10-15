@@ -4,6 +4,7 @@ namespace App\Tests\Unit\Command;
 
 use App\Command\BasculeVerifierCommand;
 use App\Service\Bascule\Constat;
+use App\Service\Bascule\Conversion;
 use App\Service\Bascule\Ecart;
 use PHPUnit\Framework\TestCase;
 
@@ -36,5 +37,15 @@ final class BasculeVerifierCommandTest extends TestCase
 
         self::assertSame('paiements.mode : string(100) obligatoire → string(30) obligatoire, les valeurs y tiennent-elles ?', BasculeVerifierCommand::aRevoir($modifiee));
         self::assertSame('paiements.FK_X : lien vers commandes, des lignes pointent-elles vers une ligne absente ?', BasculeVerifierCommand::aRevoir($lien));
+    }
+
+    public function testUneConversionSeDecritParDesNombres(): void
+    {
+        $c = new Conversion(Conversion::VENDABLE, 'articles', 'vendable', Conversion::A_FAIRE, '3 article(s) non vendable(s) rendus vendables.', lignes: 3);
+        self::assertSame('articles.vendable : 3 article(s) non vendable(s) rendus vendables.', BasculeVerifierCommand::conversion($c));
+
+        // Conversion impossible : un constat bloquant comme les autres, sa question telle quelle.
+        $bloquant = new Constat(new Ecart(Ecart::DONNEES, 'commandes_details', 'remise'), Constat::BLOQUANT, 'remise en nombre : pourcentage ou F par unité ?');
+        self::assertSame('commandes_details.remise : remise en nombre : pourcentage ou F par unité ?', BasculeVerifierCommand::aRevoir($bloquant));
     }
 }

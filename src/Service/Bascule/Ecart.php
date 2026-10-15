@@ -24,6 +24,8 @@ final class Ecart
     public const INDEX_RENOMME = 'index_renomme';
     public const CLE_AJOUTEE = 'cle_ajoutee';
     public const CLE_RETIREE = 'cle_retiree';
+    /** Pas un écart de schéma : une conversion de données impossible à faire sans risque (ConversionsDonnees). */
+    public const DONNEES = 'donnees';
 
     /**
      * @param array<string, mixed> $avant ce qu'il y a dans la base de la boutique

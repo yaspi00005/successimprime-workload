@@ -5,6 +5,7 @@ namespace App\EventSubscriber;
 use App\Entity\AppareilAutorise;
 use App\Entity\User;
 use App\Security\AccesEnLigne;
+use App\Security\UserAuthenticator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -14,9 +15,13 @@ use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
+use Symfony\Component\Security\Http\Authenticator\Debug\TraceableAuthenticator;
+use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Event\CheckPassportEvent;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 
@@ -30,6 +35,9 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
  */
 final class AccesEnLigneSubscriber implements EventSubscriberInterface
 {
+    /** Même réponse que le mot de passe soit juste ou faux. */
+    public const MESSAGE_APPAREIL_INCONNU = 'Cet appareil n\'est pas autorisé pour l\'administration en ligne. Demandez à la direction de l\'autoriser.';
+
     /** Pages ouvertes pendant que le code est attendu. */
     private const ROUTES_PENDANT_CODE = ['app_verification', 'app_verification_renvoyer', 'app_logout'];
 
@@ -51,35 +59,62 @@ final class AccesEnLigneSubscriber implements EventSubscriberInterface
         private readonly UrlGeneratorInterface $urls,
         private readonly RequestStack $requetes,
         private readonly TokenStorageInterface $jetons,
+        private readonly UserPasswordHasherInterface $hacheur,
     ) {
     }
 
     public static function getSubscribedEvents(): array
     {
         return [
-            CheckPassportEvent::class => ['verifierAppareil', -10],
+            // Après le jeton du formulaire (512), avant le compte (256) et le mot de passe (0).
+            CheckPassportEvent::class => ['verifierAppareil', 300],
             LoginSuccessEvent::class => 'demanderCode',
             // Après le pare-feu (8), avant le changement de mot de passe obligatoire (-10).
             KernelEvents::REQUEST => ['controlerRequete', -5],
         ];
     }
 
+    /**
+     * Appareil inconnu : refus avant la vérification du mot de passe, avec le
+     * même message que le mot de passe soit juste ou faux. Sinon, depuis
+     * n'importe quel ordinateur, la réponse dirait si le mot de passe essayé
+     * est le bon (et l'identifiant celui d'un compte) sans jamais ouvrir de
+     * session. Les administrateurs sont prévenus seulement quand le mot de
+     * passe était juste, comme avant.
+     */
     public function verifierAppareil(CheckPassportEvent $event): void
     {
         if (!$this->acces->estEnLigne()) {
             return;
         }
-        $utilisateur = $event->getPassport()->getUser();
+        $authentificateur = $event->getAuthenticator();
+        if ($authentificateur instanceof TraceableAuthenticator) {
+            $authentificateur = $authentificateur->getAuthenticator();
+        }
         $request = $this->requete();
-        if (!$utilisateur instanceof User || null === $request) {
+        if (!$authentificateur instanceof UserAuthenticator || null === $request) {
             return;
         }
 
-        if (null === $this->acces->appareilAutorisePour($utilisateur, $request)) {
-            $this->acces->noterRefus($utilisateur->getUserIdentifier(), $request);
-
-            throw new CustomUserMessageAuthenticationException('Accès refusé depuis un appareil non enrôlé, même avec le bon mot de passe.');
+        $passport = $event->getPassport();
+        try {
+            $utilisateur = $passport->getUser();
+        } catch (AuthenticationException) {
+            $utilisateur = null;
         }
+        if ($utilisateur instanceof User && null !== $this->acces->appareilAutorisePour($utilisateur, $request)) {
+            return;
+        }
+
+        if ($utilisateur instanceof User && $passport->hasBadge(PasswordCredentials::class)) {
+            /** @var PasswordCredentials $motDePasse */
+            $motDePasse = $passport->getBadge(PasswordCredentials::class);
+            if ($this->hacheur->isPasswordValid($utilisateur, $motDePasse->getPassword())) {
+                $this->acces->noterRefus($utilisateur->getUserIdentifier(), $request);
+            }
+        }
+
+        throw new CustomUserMessageAuthenticationException(self::MESSAGE_APPAREIL_INCONNU);
     }
 
     public function demanderCode(LoginSuccessEvent $event): void

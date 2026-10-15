@@ -8,13 +8,25 @@ use App\Entity\User;
 use App\EventSubscriber\AccesEnLigneSubscriber;
 use App\Repository\AppareilAutoriseRepository;
 use App\Security\AccesEnLigne;
+use App\Security\UserAuthenticator;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
+use Symfony\Component\Security\Core\Exception\UserNotFoundException;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
+use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+use Symfony\Component\Security\Http\Event\CheckPassportEvent;
 
 final class AccesEnLigneTest extends TestCase
 {
@@ -152,5 +164,76 @@ final class AccesEnLigneTest extends TestCase
 
         self::assertTrue($invitation->invitationValide(new \DateTimeImmutable('2026-10-11 10:04:59')));
         self::assertFalse($invitation->invitationValide(new \DateTimeImmutable('2026-10-11 10:05:01')));
+    }
+
+    /**
+     * Depuis un appareil inconnu, la réponse est la même que le mot de passe
+     * soit juste, faux, ou que l'identifiant n'existe pas : elle ne sert pas
+     * à deviner un mot de passe. Les admins sont prévenus seulement quand il
+     * était juste.
+     */
+    public function testAppareilInconnuMemeReponseQuelQueSoitLeMotDePasse(): void
+    {
+        $utilisateur = $this->utilisateur()->setUsername('demo.kadiatou');
+        $messages = [];
+        foreach ([[true, $utilisateur, 1], [false, $utilisateur, 0], [false, null, 0]] as [$juste, $compte, $alertes]) {
+            $notifications = $this->createMock(NotificationService::class);
+            $notifications->expects(self::exactly($alertes))->method('notifierRoles');
+            $appareils = $this->createStub(AppareilAutoriseRepository::class);
+            $appareils->method('parEmpreinte')->willReturn(null);
+
+            try {
+                $this->subscriber($appareils, $notifications, $juste)->verifierAppareil($this->tentative($compte));
+                self::fail('Un appareil inconnu ne doit pas passer.');
+            } catch (CustomUserMessageAuthenticationException $e) {
+                $messages[] = $e->getMessageKey();
+            }
+        }
+
+        self::assertSame([AccesEnLigneSubscriber::MESSAGE_APPAREIL_INCONNU], array_values(array_unique($messages)));
+        self::assertStringNotContainsString('mot de passe', AccesEnLigneSubscriber::MESSAGE_APPAREIL_INCONNU);
+    }
+
+    public function testAppareilAutoriseLaisseVerifierLeMotDePasse(): void
+    {
+        $utilisateur = $this->utilisateur()->setUsername('demo.kadiatou');
+        $appareil = (new AppareilAutorise())->setUtilisateur($utilisateur)->setEtat(AppareilAutorise::ETAT_AUTORISE);
+        $appareils = $this->createStub(AppareilAutoriseRepository::class);
+        $appareils->method('parEmpreinte')->willReturn($appareil);
+        $notifications = $this->createMock(NotificationService::class);
+        $notifications->expects(self::never())->method('notifierRoles');
+
+        // Pas d'exception : le mot de passe est vérifié ensuite par Symfony, avec son message habituel.
+        $this->subscriber($appareils, $notifications, false)->verifierAppareil($this->tentative($utilisateur));
+        $this->addToAssertionCount(1);
+    }
+
+    private function subscriber(AppareilAutoriseRepository $appareils, NotificationService $notifications, bool $motDePasseJuste): AccesEnLigneSubscriber
+    {
+        $requetes = new RequestStack();
+        $requete = Request::create('https://succesimprim.com/login', 'POST', [], [AccesEnLigne::COOKIE => str_repeat('a', 43)]);
+        $requetes->push($requete);
+        $hacheur = $this->createStub(UserPasswordHasherInterface::class);
+        $hacheur->method('isPasswordValid')->willReturn($motDePasseJuste);
+
+        return new AccesEnLigneSubscriber(
+            new AccesEnLigne(true, $appareils, $this->createStub(EntityManagerInterface::class), $this->fabrique->codes('prod'), $notifications),
+            $this->createStub(Security::class),
+            $this->createStub(EntityManagerInterface::class),
+            $this->createStub(UrlGeneratorInterface::class),
+            $requetes,
+            $this->createStub(TokenStorageInterface::class),
+            $hacheur,
+        );
+    }
+
+    private function tentative(?User $compte): CheckPassportEvent
+    {
+        $passport = new Passport(
+            new UserBadge('demo.kadiatou', static fn () => $compte ?? throw new UserNotFoundException()),
+            new PasswordCredentials('essai'),
+        );
+
+        return new CheckPassportEvent(new UserAuthenticator($this->createStub(UrlGeneratorInterface::class)), $passport);
     }
 }

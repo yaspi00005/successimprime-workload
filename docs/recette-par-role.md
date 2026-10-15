@@ -93,7 +93,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Administration en ligne
 
-- [ ] Depuis un appareil non autorisé, le bon mot de passe est refusé et les administrateurs sont prévenus une fois par jour.
+- [ ] Depuis un appareil non autorisé, le bon mot de passe est refusé et les administrateurs sont prévenus une fois par jour. Le message est le même avec un mauvais mot de passe ou un identifiant inconnu (« Cet appareil n'est pas autorisé… »).
 - [ ] Depuis un appareil autorisé : mot de passe, puis code de sécurité par e-mail (par SMS sans adresse) ; la session se ferme après 15 minutes sans activité.
 - [ ] Un appareil en « Encaissement » ne peut qu'encaisser ou livrer ; toute autre modification est refusée.
 - [ ] L'API répond « introuvable » en ligne ; les dépenses, budgets et relevés Orange Money restent sur l'ERP local.

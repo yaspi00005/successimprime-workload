@@ -6,6 +6,7 @@ use App\Entity\Notification;
 use App\Entity\User;
 use App\Repository\NotificationRepository;
 use App\Repository\ReclamationRepository;
+use App\Security\LivreurSeul;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -30,6 +31,11 @@ final class NotificationController extends AbstractController
             return $this->json(['total' => 0]);
         }
 
+        if (LivreurSeul::est($utilisateur->getRoles())) {
+            // Le livreur seul : ses notifications visibles, pas les réclamations des clients.
+            return $this->json(['total' => \count(LivreurSeul::notificationsVisibles($notificationRepository->findNonLuesPourUtilisateur($utilisateur, 500)))]);
+        }
+
         $total = $notificationRepository->countNonLuesPourUtilisateur($utilisateur)
             + count($reclamationRepository->findNotificationsNonLuesPourAgent($utilisateur));
 
@@ -49,8 +55,13 @@ final class NotificationController extends AbstractController
             throw $this->createAccessDeniedException();
         }
 
+        $notifications = $notificationRepository->findToutesPourUtilisateur($utilisateur);
+        if (LivreurSeul::est($utilisateur->getRoles())) {
+            $notifications = LivreurSeul::notificationsVisibles($notifications);
+        }
+
         return $this->render('notification/index.html.twig', [
-            'notifications' => $notificationRepository->findToutesPourUtilisateur($utilisateur),
+            'notifications' => $notifications,
         ]);
     }
 
@@ -71,6 +82,11 @@ final class NotificationController extends AbstractController
         if (!$notification->isLue()) {
             $notification->marquerLue();
             $entityManager->flush();
+        }
+
+        // Le livreur seul n'ouvre que sa tournée et ses livraisons.
+        if (LivreurSeul::est($utilisateur->getRoles()) && !LivreurSeul::routePermise($notification->getRoute())) {
+            return $this->redirectToRoute('app_livraisons_tournee');
         }
 
         if ($notification->getRoute() !== null) {

@@ -1,0 +1,50 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Mes livraisons (livreur) : celles qu'il a remises et celles où il a noté
+	un échec, jour par jour, sans aucun montant. Une remise s'ouvre sur son
+	détail (heures, preuve, points).
+#}
+
+{% block title %}Mes livraisons{% endblock %}
+
+{% block stylesheets %}<link href="{{ asset('css/livraisons.css') }}" rel="stylesheet">{% endblock %}
+
+{% block body %}
+	<div class="si-tr si-lv">
+		<section class="card si-tr-jour">
+			<div class="si-tr-jour-tete"><small>{{ jours }} derniers jours</small></div>
+			<b class="si-tr-total">{{ livrees }} livrée{{ livrees > 1 ? 's' }}{% if echecs > 0 %} <span class="si-lv-badge si-lv-badge-echec">{{ echecs }} échec{{ echecs > 1 ? 's' }}</span>{% endif %}</b>
+			<div class="si-tr-jour-pied">
+				{% if jours == 30 %}<a href="{{ path('app_livraisons_mes_livraisons', {jours: 90}) }}">Voir les 90 derniers jours</a>{% else %}<a href="{{ path('app_livraisons_mes_livraisons') }}">Revenir aux 30 derniers jours</a>{% endif %}
+			</div>
+		</section>
+
+		{% for jour, vues in parJour %}
+			<h2 class="si-lv-jour">{{ (vues|first).le|date_fr('EEEE d MMMM')|capitalize }}</h2>
+			<ul class="si-lv-liste">
+				{% for v in vues %}
+					{% set b = v.bon %}
+					{% set cli = b.commande.clients %}
+					<li class="card si-lv-arret si-lv-{{ v.etat }} position-relative">
+						<div class="si-lv-tete">
+							<span class="si-lv-heure">{{ v.le|date('H:i') }}</span>
+							<div class="si-lv-qui">
+								<b>{% if v.etat == 'livree' %}<a class="stretched-link si-tr-lien" href="{{ path('app_livraisons_tournee_terminee', {id: b.id}) }}">{% endif %}{{ cli ? cli.nomComplet : (b.nomReceptionnaire ?? b.numero) }}{% if v.etat == 'livree' %}</a>{% endif %}</b>
+								<small>{{ b.numero }} · {{ b.lignes|map(l => l.designation ~ ' × ' ~ (v.etat == 'livree' ? l.quantiteLivree : l.quantiteCommandee))|join(' · ') }}</small>
+								{% if v.etat == 'livree' %}
+									<small>Reçu par {{ b.receptionnaireSuivi ?? '—' }}{% if b.estPartielle %} · remise partielle{% endif %}</small>
+								{% else %}
+									<small class="si-lv-motif">{{ b.echecMotif }}{% if b.statut == 'livre' %} · livrée ensuite le {{ b.livreLe|date('d/m') }}{% elseif b.etatSuivi != 'echec' %} · replanifiée{% endif %}</small>
+								{% endif %}
+							</div>
+							<span class="si-lv-badge si-lv-badge-{{ v.etat }}">{{ v.etat == 'livree' ? 'Livrée' : 'Échec' }}</span>
+						</div>
+					</li>
+				{% endfor %}
+			</ul>
+		{% else %}
+			<p class="si-ac-vide card p-3">Aucune livraison sur cette période.</p>
+		{% endfor %}
+	</div>
+{% endblock %}

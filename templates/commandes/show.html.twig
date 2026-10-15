@@ -326,6 +326,9 @@
 			</div>
 			{% endif %}
 
+			{# ---------- Livraison : livrée ou pas, quand, par qui, reçue par qui (docs/documents-livraisons.md) ---------- #}
+			{% include 'commandes/_livraison.html.twig' %}
+
 			{# ---------- Fidélité (docs/fidelite.md) ---------- #}
 			{% include 'fidelite/_commande.html.twig' %}
 

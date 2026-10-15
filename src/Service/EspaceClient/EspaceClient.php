@@ -565,9 +565,11 @@ final class EspaceClient
     }
 
     /**
-     * Où en est un bon de livraison : livrée, livreur en route ou livraison
-     * prévue (jour et créneau). Ni livreur, ni réceptionnaire, ni photos,
-     * ni signature : ils restent au local.
+     * Où en est un bon de livraison : livrée, livreur en route, reportée
+     * après un échec ou livraison prévue (jour et créneau). Ni livreur, ni
+     * réceptionnaire, ni photos, ni signature, ni raison de l'échec : ils
+     * restent au local. Reportée garde la clé de « prévue » (même type, même
+     * date) : rien de plus n'est envoyé au client, l'atelier l'appelle.
      *
      * @return array<string, mixed>|null
      */
@@ -583,6 +585,7 @@ final class EspaceClient
         return match (true) {
             null !== $bl->getLivreLe() => self::evenement('livree', \sprintf('Commande %s livrée', $c->getNumero()), \sprintf('Remise à %s', $bl->getLivreLe()->format('H:i')), $bl->getLivreLe(), $lien, $c->getNumero(), ['cible' => $cible]),
             null !== $bl->getEnRouteLe() => self::evenement('route', 'Livreur en route', $c->getNumero().$creneau, $bl->getEnRouteLe(), $lien, $c->getNumero(), ['cible' => $cible, 'jour' => $bl->getEnRouteLe()]),
+            $bl->isEchecEnCours() && null !== $bl->getPrevuLe() && null !== ($bl->getValideLe() ?? $bl->getCreeLe()) => self::evenement('livraison_prevue', 'Livraison reportée', $c->getNumero().' · l\'atelier vous recontacte pour une nouvelle date', $bl->getValideLe() ?? $bl->getCreeLe(), $lien, $c->getNumero(), ['cible' => $cible]),
             null !== $bl->getPrevuLe() && null !== ($bl->getValideLe() ?? $bl->getCreeLe()) => self::evenement('livraison_prevue', \sprintf('Livraison prévue le %s', $bl->getPrevuLe()->format('d/m')), $c->getNumero().$creneau, $bl->getValideLe() ?? $bl->getCreeLe(), $lien, $c->getNumero(), ['cible' => $cible, 'jour' => $bl->getPrevuLe()]),
             default => null,
         };

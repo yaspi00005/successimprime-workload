@@ -94,7 +94,7 @@ Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, clo
 - tout envoi est refusé (403), sauf ce qui ne regarde qu'elle : marquer lu, ses préférences, son mot de passe, ses appareils ;
 - les pages qui ne servent qu'à commander, payer ou accepter la renvoient au tableau de bord.
 
-**Livraisons.** `/espace/livraisons` : en route, à venir, livrées, à partir des bons de livraison synchronisés (créneau, heure de départ, heure de remise).
+**Livraisons.** `/espace/livraisons` : en route, à venir, livrées, à partir des bons de livraison synchronisés (créneau, heure de départ, heure de remise). Après un échec, la livraison est « Reportée » avec la date : l'atelier recontacte le client pour une nouvelle date (ni la raison ni le livreur ne passent au site).
 
 **Messages.** `/espace/messages` : fil entre le client et l'atelier.
 

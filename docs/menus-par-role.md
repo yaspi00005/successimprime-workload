@@ -27,6 +27,19 @@ Commun à toutes les formes :
 
 Sur tablette (768 à 1023 px), le menu est toujours en icônes.
 
+## Livreur seul
+
+Le livreur dont le seul droit est « Livraisons » ne voit que sa tournée et
+ses livraisons (décision de Yaya du 15/10/2026,
+`docs/documents-livraisons.md`) : son menu a « Ma tournée » et « Mes
+livraisons », puis « Mon espace » sans « Mes statistiques ». Il n'a ni la
+recherche, ni la messagerie, ni « Aller à… ». Les autres pages lui sont
+refusées même tapées à la main. Avec un droit de plus coché pour lui, il
+retrouve le menu de ses droits.
+
+« Suivi des livraisons » (menu Ventes) est dans le menu de la Direction, de
+la caisse (droit Commandes) et de la prépresse.
+
 ## Poste du graphiste (R03)
 
 Atelier › Conception PAO › « Poste » (`/atelier/pao/poste`) : trois volets,
@@ -52,7 +65,7 @@ La barre du bas suit le rôle :
 
 - Direction : Résumé, Ventes, Caisse, Clients, Plus ;
 - caisse : Accueil, Caisse, Actions, Clients, Plus ;
-- livreur : Tournée, Livrer, Pointage, Moi.
+- livreur : Tournée, Livraisons, Pointage, Moi.
 
 Règle : les quatre premiers écrans du menu court (la tournée remplace
 l'accueil pour qui en a une), le pointage s'il reste une place, puis

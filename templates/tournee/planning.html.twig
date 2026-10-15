@@ -4,6 +4,8 @@
 
 {% block title %}Livraisons · {{ jour|date_fr('EEE d/MM') }}{% endblock %}
 
+{% block stylesheets %}<link href="{{ asset('css/livraisons.css') }}" rel="stylesheet">{% endblock %}
+
 {% block header_actions %}
 	<li class="nav-item"><a href="{{ path('app_livraisons_planning', {jour: jour|date_modify('-1 day')|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete">‹ Hier</a></li>
 	<li class="nav-item"><a href="{{ path('app_livraisons_planning', {jour: jour|date_modify('+1 day')|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete">Demain ›</a></li>
@@ -16,7 +18,7 @@
 			<div class="card"><small>Livraisons du jour</small><strong>{{ p.total }}</strong><span class="si-p-ok">{{ p.tournees|length }} tournée{{ p.tournees|length > 1 ? 's' }}</span></div>
 			<div class="card"><small>Livrées</small><strong>{{ p.livrees }}</strong><span class="si-p-ok">à l'heure : {{ p.aLHeure }} / {{ p.livrees }}</span></div>
 			{% if voirMontants %}<div class="card"><small>À encaisser à la livraison</small><strong>{{ p.aEncaisser|number_format(0, ',', ' ') }} F</strong><span class="si-p-ok">dont {{ p.encaisse|number_format(0, ',', ' ') }} encaissés</span></div>{% endif %}
-			<div class="card"><small>Partielles / reportées</small><strong>{{ p.partielles }} / {{ p.reportees }}</strong>{% if p.reportees > 0 %}<span class="si-p-alerte">jours précédents non livrés</span>{% endif %}</div>
+			<div class="card"><small>Partielles / reportées</small><strong>{{ p.partielles }} / {{ p.reportees }}</strong>{% if p.echecs > 0 %}<span class="si-p-alerte">{{ p.echecs }} échec{{ p.echecs > 1 ? 's' }} aujourd'hui : à replanifier</span>{% elseif p.reportees > 0 %}<span class="si-p-alerte">jours précédents non livrés</span>{% endif %}</div>
 		</div>
 
 		<div class="si-tr-colonnes si-tr-colonnes-carte">

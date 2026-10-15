@@ -1,0 +1,82 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Suivi des livraisons (Direction, caisse, prépresse) : livrée ou pas, à
+	quel moment, par qui, reçue par qui ; la raison d'un échec. Sans montant.
+#}
+
+{% block title %}Suivi des livraisons{% endblock %}
+
+{% block stylesheets %}<link href="{{ asset('css/livraisons.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_COMMANDE') %}<li class="nav-item si-masque-mobile"><a href="{{ path('app_livraisons_planning') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-map-location-dot me-1"></i>Planning du jour</a></li>{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% set filtres = {du: du|date('Y-m-d'), au: au|date('Y-m-d'), livreur: livreur ? livreur.id : null} %}
+	<div class="si-lv si-lv-suivi">
+		<form method="get" class="card si-lv-filtres" aria-label="Filtres">
+			<label>Du<input type="date" name="du" value="{{ du|date('Y-m-d') }}" class="form-control form-control-sm"></label>
+			<label>Au<input type="date" name="au" value="{{ au|date('Y-m-d') }}" class="form-control form-control-sm"></label>
+			<label>Livreur
+				<select name="livreur" class="form-select form-select-sm">
+					<option value="">Tous</option>
+					{% for l in livreurs %}<option value="{{ l.id }}"{{ livreur and l.id == livreur.id ? ' selected' }}>{{ l|nom_pointage }}</option>{% endfor %}
+				</select>
+			</label>
+			{% if etat %}<input type="hidden" name="etat" value="{{ etat }}">{% endif %}
+			<button class="btn btn-primary btn-sm">Afficher</button>
+			<span class="si-lv-raccourcis">
+				<a href="{{ path('app_livraisons_suivi', filtres|merge({du: aujourdhui|date('Y-m-d'), au: aujourdhui|date('Y-m-d'), etat: etat})) }}">Aujourd'hui</a>
+				<a href="{{ path('app_livraisons_suivi', filtres|merge({du: aujourdhui|date_modify('-6 days')|date('Y-m-d'), au: aujourdhui|date('Y-m-d'), etat: etat})) }}">7 jours</a>
+				<a href="{{ path('app_livraisons_suivi', filtres|merge({du: aujourdhui|date_modify('-29 days')|date('Y-m-d'), au: aujourdhui|date('Y-m-d'), etat: etat})) }}">30 jours</a>
+				<a href="{{ path('app_livraisons_suivi', filtres|merge({du: aujourdhui|date('Y-m-d'), au: aujourdhui|date_modify('+13 days')|date('Y-m-d'), etat: etat})) }}">À venir</a>
+			</span>
+		</form>
+
+		<nav class="si-lv-etats" aria-label="Statut">
+			<a href="{{ path('app_livraisons_suivi', filtres) }}" class="{{ etat is null ? 'actif' }}"{% if etat is null %} aria-current="page"{% endif %}>Toutes <b>{{ compteurs|reduce((s, n) => s + n, 0) }}</b></a>
+			{% for cle, n in compteurs %}
+				<a href="{{ path('app_livraisons_suivi', filtres|merge({etat: cle})) }}" class="si-lv-etat-{{ cle }} {{ etat == cle ? 'actif' }}"{% if etat == cle %} aria-current="page"{% endif %}>{{ attribute(constant('App\\Entity\\BonLivraison::ETATS_SUIVI'), cle) }} <b>{{ n }}</b></a>
+			{% endfor %}
+		</nav>
+
+		<section class="card si-ac-liste">
+			<header>
+				<h2>{{ du == au ? du|date_fr('EEEE d MMMM')|capitalize : 'Du ' ~ du|date('d/m') ~ ' au ' ~ au|date('d/m/Y') }}{{ livreur ? ' · ' ~ livreur|nom_pointage }}</h2>
+				<span>{{ bons|length }} livraison{{ bons|length > 1 ? 's' }}{{ limite ? ' (les ' ~ bons|length ~ ' premières : resserrez les filtres)' }}</span>
+			</header>
+			{% if bons is empty %}
+				<p class="si-ac-vide">Aucune livraison pour ces filtres.</p>
+			{% else %}
+				<table class="table si-lv-table">
+					<thead><tr><th>Prévue</th><th>Livraison</th><th>Client</th><th>Statut</th><th>Quand</th><th>Livreur</th><th>Reçue par · raison</th><th></th></tr></thead>
+					<tbody>
+						{% for b in bons %}
+							{% set e = b.etatSuivi %}
+							{% set cli = b.commande.clients %}
+							{% set le = b.momentSuivi %}
+							{% set qui = b.livreurSuivi %}
+							<tr class="si-lv-ligne-{{ e }}">
+								<td data-libelle="Prévue">{{ b.prevuLe ? b.prevuLe|date_fr('EEE d/MM') : 'non planifiée' }}{% if b.creneau %}<small class="d-block text-muted">{{ b.creneau }}</small>{% endif %}</td>
+								<td data-libelle="Livraison"><b>{{ b.numero }}</b><small class="d-block text-muted">{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_show', {id: b.commande.id}) }}">{{ b.commande.numero }}</a>{% else %}{{ b.commande.numero }}{% endif %}</small></td>
+								<td data-libelle="Client">{{ cli ? cli.nomComplet : 'Client comptoir' }}{% set articles = b.lignes|map(l => l.designation ~ ' × ' ~ (e == 'livree' ? l.quantiteLivree : l.quantiteCommandee))|join(' · ') %}<small class="d-block text-muted">{{ articles|length > 70 ? articles|slice(0, 69) ~ '…' : articles }}</small></td>
+								<td data-libelle="Statut"><span class="si-lv-badge si-lv-badge-{{ e }}">{{ attribute(constant('App\\Entity\\BonLivraison::ETATS_SUIVI'), e) }}</span>{% if e == 'en_tournee' %}<small class="d-block text-muted">{{ attribute(constant('App\\Entity\\BonLivraison::ETAPES'), b.etape) }}</small>{% elseif e == 'a_livrer' and b.statut == 'brouillon' %}<small class="d-block text-muted">bon à valider</small>{% elseif e == 'livree' and b.estPartielle %}<small class="d-block text-muted">partielle</small>{% endif %}</td>
+								<td data-libelle="Quand">{% if le %}<b>{{ le|date('d/m') }} à {{ le|date('H:i') }}</b>{% if e == 'livree' and not livraison_a_l_heure(b) %}<small class="d-block si-p-alerte">{% set r = livraison_retard(b) %}{{ r is not null ? 'retard ' ~ r|minutes : 'hors délai' }}</small>{% endif %}{% else %}—{% endif %}</td>
+								<td data-libelle="Livreur">{{ qui ? qui|nom_pointage : 'à choisir' }}</td>
+								<td data-libelle="{{ e == 'echec' ? 'Raison' : 'Reçue par' }}">
+									{% if e == 'livree' %}{{ b.receptionnaireSuivi ?? '—' }}{% if b.signature %} <i class="fas fa-signature text-muted" title="Signature reçue" aria-label="Signature reçue"></i>{% endif %}
+									{% elseif e == 'echec' %}<span class="si-lv-motif">{{ b.echecMotif }}</span>
+									{% elseif b.echecLe %}<small class="text-muted">Échec le {{ b.echecLe|date('d/m H:i') }} : {{ b.echecMotif }}</small>
+									{% else %}—{% endif %}
+								</td>
+								<td class="text-end">{% if voirDetail %}<a href="{{ path('app_livraisons_bl', {id: b.id}) }}" class="btn btn-light btn-sm si-btn-entete">Détail</a>{% endif %}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}

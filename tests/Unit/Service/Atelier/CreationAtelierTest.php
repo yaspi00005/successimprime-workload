@@ -54,12 +54,13 @@ final class CreationAtelierTest extends TestCase
 
     public function testReglagesDUneFaceRamenesAuxValeursPermises(): void
     {
-        self::assertNull(CreationAtelier::reglagesFace(['texte' => '  '], false, null), 'face vide : pas gardée');
+        self::assertNull(CreationAtelier::reglagesFace(['texte' => '  '], false, null, ModeleAtelier::TSHIRT, 'devant'), 'face vide : pas gardée');
         $r = CreationAtelier::reglagesFace([
             'texte' => "TEAM\x07 SUCCÈS ".str_repeat('X', 40),
             'taille' => 400, 'hauteur' => -90,
             'police' => 'Comic Sans', 'couleurTexte' => 'Violet', 'placeTexte' => 'dessus',
-        ], true, 'logo.png');
+            'position' => 'dos-haut', 'gras' => 'oui',
+        ], true, 'logo.png', ModeleAtelier::TSHIRT, 'devant');
         self::assertNotNull($r);
         self::assertSame(CreationAtelier::TEXTE_MAX, mb_strlen($r['texte']));
         self::assertStringStartsWith('TEAM  SUCCÈS', $r['texte'], 'caractères de contrôle remplacés');
@@ -69,6 +70,34 @@ final class CreationAtelierTest extends TestCase
         self::assertSame('Blanc', $r['couleurTexte']);
         self::assertSame('dessus', $r['placeTexte']);
         self::assertSame('logo.png', $r['nomImage']);
+        self::assertSame('devant-centre', $r['position'], 'emplacement du dos refusé devant : celui des créations d\'avant le studio');
+        self::assertFalse($r['gras'], 'seul un vrai oui (true) met le texte en gras');
+
+        $r = CreationAtelier::reglagesFace(['texte' => 'SI', 'position' => 'poitrine-gauche', 'gras' => true, 'police' => 'Montserrat'], false, null, ModeleAtelier::POLO, 'devant');
+        self::assertSame(['poitrine-gauche', true, 'Montserrat'], [$r['position'] ?? null, $r['gras'] ?? null, $r['police'] ?? null]);
+        self::assertSame('devant', CreationAtelier::reglagesFace(['texte' => 'SI', 'position' => 'poitrine-gauche'], false, null, ModeleAtelier::CASQUETTE, 'devant')['position'] ?? null);
+        self::assertSame('cote', CreationAtelier::reglagesFace(['texte' => 'SI', 'position' => 'cote'], false, null, ModeleAtelier::CASQUETTE, 'dos')['position'] ?? null);
+    }
+
+    public function testZoneImprimeeSelonLEmplacement(): void
+    {
+        // T-shirt, zone 28 × 35 cm : un logo de poitrine tient dans 10 × 10 cm, le dos haut dans une bande de 10 cm.
+        self::assertSame([28.0, 35.0], CreationAtelier::zoneImpression(ModeleAtelier::TSHIRT, 'devant', 'devant-centre', 28.0, 35.0));
+        self::assertSame([10.0, 10.0], CreationAtelier::zoneImpression(ModeleAtelier::TSHIRT, 'devant', 'poitrine-droite', 28.0, 35.0));
+        self::assertSame([28.0, 10.0], CreationAtelier::zoneImpression(ModeleAtelier::TSHIRT, 'dos', 'dos-haut', 28.0, 35.0));
+        self::assertSame([28.0, 35.0], CreationAtelier::zoneImpression(ModeleAtelier::TSHIRT, 'dos', null, 28.0, 35.0), 'création d\'avant le studio : toute la zone');
+        // La zone de l'article borne toujours : une petite zone de 8 × 6 cm reste 8 × 6.
+        self::assertSame([8.0, 6.0], CreationAtelier::zoneImpression(ModeleAtelier::POLO, 'devant', 'poitrine-gauche', 8.0, 6.0));
+        self::assertSame([6.0, 4.0], CreationAtelier::zoneImpression(ModeleAtelier::CASQUETTE, 'dos', 'cote', 10.0, 6.0));
+        self::assertSame([8.0, 4.0], CreationAtelier::zoneImpression(ModeleAtelier::CASQUETTE, 'dos', 'inconnu', 10.0, 6.0));
+
+        // La même image passe sur la poitrine et devient juste sur tout le devant.
+        $modele = self::tshirt();
+        $poitrine = CreationsAtelier::analyse(600, 600, $modele, 60, 'devant', 'poitrine-gauche');
+        $devant = CreationsAtelier::analyse(600, 600, $modele, 60, 'devant', 'devant-centre');
+        self::assertSame('ok', $poitrine[1]['etat']);
+        self::assertStringContainsString('6 × 6 cm', $poitrine[1]['libelle']);
+        self::assertSame('erreur', $devant[1]['etat']);
     }
 
     public function testTailleDeLImageAvecOuSansTexte(): void
@@ -90,13 +119,16 @@ final class CreationAtelierTest extends TestCase
     {
         $lu = CreationsAtelier::lire(self::tshirt(), [
             'couleur' => 'Noir',
+            'bords' => 'Blanc', // pas de bords sur un t-shirt
             'tailles' => ['M' => 10, 'L' => 5, 'XXXL' => 9],
             'prix' => 1, 'total' => 1, // ignorés : le prix est toujours recalculé
-            'faces' => json_encode(['devant' => ['texte' => 'BAMAKO', 'image' => null], 'dos' => ['texte' => '']]),
+            'faces' => json_encode(['devant' => ['texte' => 'BAMAKO', 'image' => null, 'position' => 'poitrine-gauche'], 'dos' => ['texte' => '']]),
         ]);
         self::assertSame(15, $lu['quantite']);
         self::assertSame(['M' => 10, 'L' => 5], $lu['tailles']);
         self::assertSame(['devant'], array_keys($lu['faces']));
+        self::assertSame('poitrine-gauche', $lu['faces']['devant']['reglages']['position']);
+        self::assertNull($lu['visiere']);
         self::assertArrayNotHasKey('prix', $lu);
 
         foreach ([
@@ -123,10 +155,40 @@ final class CreationAtelierTest extends TestCase
 
         $c = (new CreationAtelier())->setForme(ModeleAtelier::CASQUETTE)->setCouleur($lu['couleur'])->setCouleurVisiere(['nom' => 'Noir', 'hex' => '#1F2026'])
             ->setQuantite(30)->setNumero('W-CR-0009')
-            ->setReglages(['dos' => CreationAtelier::reglagesFace(['texte' => 'ÉQUIPE'], false, null)]);
+            ->setReglages(['dos' => CreationAtelier::reglagesFace(['texte' => 'ÉQUIPE'], false, null, ModeleAtelier::CASQUETTE, 'dos')]);
         self::assertSame('Rouge · visière Noir', $c->libelleCouleur());
         self::assertSame('30 pièces', $c->resumeTailles());
-        self::assertSame(['Arrière : texte « ÉQUIPE » (Archivo Black, blanc, dessous)'], $c->resumeMarquage());
+        self::assertSame(['Arrière : texte « ÉQUIPE » (Montserrat, blanc, dessous)'], $c->resumeMarquage());
+        self::assertSame('Arrière', $c->libelleFace('dos'));
+
+        $c->setReglages(['dos' => CreationAtelier::reglagesFace(['texte' => 'SI', 'position' => 'cote', 'gras' => true], false, null, ModeleAtelier::CASQUETTE, 'dos')]);
+        self::assertSame('Côté', $c->libelleFace('dos'), 'la vue de l\'arrière montre le côté marqué');
+        self::assertSame(['Côté : texte « SI » (Montserrat gras, blanc, dessous)'], $c->resumeMarquage());
+    }
+
+    public function testPoloAvecOuSansBordsDeCouleur(): void
+    {
+        $polo = ModeleAtelier::pour(new ProduitConfiguration(), ModeleAtelier::POLO)
+            ->setCouleurs([['nom' => 'Blanc', 'hex' => '#F4F4F1'], ['nom' => 'Orange', 'hex' => '#E95B35']]);
+        $faces = json_encode(['devant' => ['texte' => 'SI', 'position' => 'poitrine-gauche']]);
+        $lu = CreationsAtelier::lire($polo, ['couleur' => 'Blanc', 'bords' => 'Orange', 'tailles' => ['M' => 3], 'faces' => $faces]);
+        self::assertSame('Orange', $lu['visiere']['nom'] ?? null);
+        self::assertNull(CreationsAtelier::lire($polo, ['couleur' => 'Blanc', 'bords' => 'Fuchsia', 'tailles' => ['M' => 3], 'faces' => $faces])['visiere'], 'bords inconnus : sans bord de couleur');
+        self::assertNull(CreationsAtelier::lire($polo, ['couleur' => 'Blanc', 'tailles' => ['M' => 3], 'faces' => $faces])['visiere']);
+
+        $c = (new CreationAtelier())->setForme(ModeleAtelier::POLO)->setCouleur($lu['couleur'])->setCouleurVisiere($lu['visiere'])
+            ->setReglages(['devant' => $lu['faces']['devant']['reglages']]);
+        self::assertSame('Blanc · bords Orange', $c->libelleCouleur());
+        self::assertSame(['Poitrine gauche : texte « SI » (Montserrat, blanc, dessous)'], $c->resumeMarquage());
+        self::assertSame('Devant', $c->libelleFace('devant'));
+    }
+
+    public function testCreationDAvantLeStudioGardeSesLibelles(): void
+    {
+        // Réglages enregistrés avant le studio : ni emplacement ni gras.
+        $c = (new CreationAtelier())->setForme(ModeleAtelier::TSHIRT)->setCouleur(['nom' => 'Noir', 'hex' => '#1F2026'])
+            ->setReglages(['dos' => ['image' => false, 'nomImage' => null, 'taille' => 60, 'hauteur' => 0, 'texte' => 'DIALLO 10', 'police' => 'Bebas Neue', 'couleurTexte' => 'Jaune', 'placeTexte' => 'dessous']]);
+        self::assertSame(['Dos : texte « DIALLO 10 » (Bebas Neue, jaune, dessous)'], $c->resumeMarquage());
     }
 
     public function testNotePourLAtelierSansMontant(): void
@@ -134,14 +196,14 @@ final class CreationAtelierTest extends TestCase
         $c = (new CreationAtelier())->setForme(ModeleAtelier::TSHIRT)->setCouleur(['nom' => 'Blanc', 'hex' => '#F4F4F1'])
             ->setTailles(['S' => 5, 'M' => 10])->setQuantite(15)->setNumero('W-CR-0001')
             ->setReglages([
-                'devant' => CreationAtelier::reglagesFace(['taille' => 60, 'texte' => 'TEAM'], true, 'logo.png'),
-                'dos' => CreationAtelier::reglagesFace(['texte' => 'DIALLO 10', 'police' => 'Bebas Neue', 'couleurTexte' => 'Jaune'], false, null),
+                'devant' => CreationAtelier::reglagesFace(['taille' => 60, 'texte' => 'TEAM', 'position' => 'poitrine-gauche', 'police' => 'Archivo Black'], true, 'logo.png', ModeleAtelier::TSHIRT, 'devant'),
+                'dos' => CreationAtelier::reglagesFace(['texte' => 'DIALLO 10', 'police' => 'Bebas Neue', 'gras' => true, 'couleurTexte' => 'Jaune'], false, null, ModeleAtelier::TSHIRT, 'dos'),
             ]);
         self::assertSame(['devant', 'dos'], $c->facesMarquees());
         $note = $c->note();
         self::assertStringContainsString('Atelier 3D W-CR-0001 : Blanc, S × 5, M × 10.', $note);
-        self::assertStringContainsString('Devant : image « logo.png » à 60 % + texte « TEAM » (Archivo Black, blanc, dessous)', $note);
-        self::assertStringContainsString('Dos : texte « DIALLO 10 » (Bebas Neue, jaune, dessous)', $note);
+        self::assertStringContainsString('Poitrine gauche : image « logo.png » à 60 % + texte « TEAM » (Archivo Black, blanc, dessous)', $note);
+        self::assertStringContainsString('Dos centre : texte « DIALLO 10 » (Bebas Neue gras, jaune, dessous)', $note);
         self::assertDoesNotMatchRegularExpression('/\d\s?F\b|FCFA/u', $note, 'pas de montant dans la note');
     }
 

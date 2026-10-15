@@ -39,7 +39,7 @@
 								<span class="si-rc-num">{{ c.numero }}<small>{{ c.creeLe|date('d/m H:i') }}</small></span>
 								<span class="si-rc-texte">
 									<b>{{ c.designation }}</b>
-									<small>{{ c.client ? c.client.nomComplet ~ ' · ' ~ c.client.code : 'Visiteur : ' ~ c.auteur }} · {{ c.resumeTailles }} · {{ c.facesMarquees|map(f => c.libelleFace(f))|join(' + ') }}</small>
+									<small>{{ c.client ? c.client.nomComplet ~ ' · ' ~ c.client.code : 'Visiteur : ' ~ c.auteur }} · {{ c.resumeTailles }} · {{ c.facesMarquees|map(f => c.libelleEmplacement(f))|join(' + ') }}</small>
 								</span>
 								{% if c.commande %}
 									<span class="si-pastille si-pastille-bleu">Commande {{ c.commande.numero }}{{ c.nombreCommandes > 1 ? ' · ' ~ c.nombreCommandes ~ ' fois' }}</span>

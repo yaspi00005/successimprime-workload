@@ -30,6 +30,36 @@ final class CatalogueAtelier
     /** Modèle GLB acheté plus tard : public/modeles-3d/<forme>.glb remplace le modèle dessiné. */
     public const DOSSIER_GLB = 'modeles-3d';
 
+    /**
+     * Fiche des modèles GLB (public/modeles-3d/modeles.json) : repères pour
+     * placer le marquage et crédits à afficher sous les vues.
+     */
+    public const FICHE_GLB = 'modeles.json';
+
+    /**
+     * Repères lus dans la fiche : direction de l'avant, puis points (unités
+     * du GLB). « poitrine » est aussi le centre du devant d'une casquette.
+     */
+    private const REPERES = [
+        'devant' => ['devant', 'front'],
+        'poitrine' => ['poitrine', 'chest', 'face'],
+        'dos' => ['dos', 'back'],
+        'cote' => ['cote', 'côté', 'side'],
+        'arriere' => ['arriere', 'arrière', 'rear'],
+    ];
+
+    /** Crédits lus dans la fiche, avec leurs autres noms. */
+    private const CREDITS = [
+        'titre' => ['titre', 'title', 'nom', 'name'],
+        'auteur' => ['auteur', 'author'],
+        'licence' => ['licence', 'license'],
+        'licenceUrl' => ['licenceUrl', 'licenseUrl', 'licence_url', 'license_url'],
+        'sourceUrl' => ['sourceUrl', 'source_url', 'source', 'url'],
+    ];
+
+    /** @var array<string, array<string, mixed>>|null fiche lue une fois par requête */
+    private ?array $modeles3d = null;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly NouvelleCommande $nouvelleCommande,
@@ -89,7 +119,110 @@ final class CatalogueAtelier
             'min' => max(1, (int) $c?->getQuantiteMinimale()),
             'max' => $c?->getQuantiteMaximale(),
             'glb' => $this->glb($m->getForme()),
+            'modele3d' => null !== $this->glb($m->getForme()) ? ($this->modeles3d()[$m->getForme()] ?? null) : null,
         ];
+    }
+
+    /**
+     * Repères et crédits des modèles GLB déposés, par forme (fiche absente
+     * ou illisible : aucun, la page se repère sur la boîte du modèle).
+     *
+     * @return array<string, array{reperes: array<string, list<float>>, tailleCm: ?float, credits: ?array<string, string>}>
+     */
+    public function modeles3d(): array
+    {
+        if (null === $this->modeles3d) {
+            $chemin = $this->projet.'/public/'.self::DOSSIER_GLB.'/'.self::FICHE_GLB;
+            $this->modeles3d = is_file($chemin) && filesize($chemin) <= 256 * 1024 ? self::lireModeles3d((string) file_get_contents($chemin)) : [];
+        }
+
+        return $this->modeles3d;
+    }
+
+    /**
+     * Lit la fiche des modèles GLB sans la croire : seules les formes
+     * connues, des nombres pour les repères, du texte court et des
+     * adresses http(s) pour les crédits. Clés en français ou en anglais,
+     * par forme (« tshirt ») ou par fichier (« tshirt.glb »).
+     *
+     * @return array<string, array{reperes: array<string, list<float>>, tailleCm: ?float, credits: ?array<string, string>}>
+     */
+    public static function lireModeles3d(string $json): array
+    {
+        $brut = json_decode($json, true);
+        if (!\is_array($brut)) {
+            return [];
+        }
+        $entrees = [];
+        foreach ($brut as $cle => $valeur) {
+            if (!\is_array($valeur)) {
+                continue;
+            }
+            $nom = \is_string($cle) ? $cle : (string) ($valeur['fichier'] ?? $valeur['file'] ?? $valeur['forme'] ?? '');
+            $forme = strtolower((string) preg_replace('/\.glb$/i', '', basename($nom)));
+            if (isset(ModeleAtelier::FORMES[$forme])) {
+                $entrees[$forme] = $valeur;
+            }
+        }
+
+        $modeles = [];
+        foreach ($entrees as $forme => $v) {
+            $reperes = [];
+            foreach (self::REPERES as $repere => $noms) {
+                $point = self::premier($v, $noms);
+                if (\is_array($point) && 3 === \count($point) && array_is_list($point) && [] === array_filter($point, static fn ($n): bool => !\is_int($n) && !\is_float($n))) {
+                    $point = array_map(static fn ($n): float => max(-1000.0, min(1000.0, (float) $n)), $point);
+                    if ('devant' !== $repere || abs($point[0]) + abs($point[1]) + abs($point[2]) > 0) {
+                        $reperes[$repere] = $point;
+                    }
+                }
+            }
+            // Taille réelle : hauteur d'un vêtement, largeur d'une casquette (sinon le GLB est en mètres).
+            $cm = self::premier($v, ['hauteurCm', 'heightCm', 'largeurCm', 'widthCm']);
+            $credits = null;
+            $c = self::premier($v, ['credits', 'credit', 'attribution']);
+            if (\is_array($c)) {
+                $credits = [];
+                foreach (self::CREDITS as $champ => $noms) {
+                    $texte = self::premier($c, $noms);
+                    if (!\is_string($texte) || '' === trim($texte)) {
+                        continue;
+                    }
+                    $texte = trim(mb_substr(trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $texte)), 0, str_ends_with($champ, 'Url') ? 500 : 160));
+                    if (str_ends_with($champ, 'Url') && (!preg_match('#^https?://[^\s<>"]+$#i', $texte) || false === filter_var($texte, \FILTER_VALIDATE_URL))) {
+                        continue;
+                    }
+                    $credits[$champ] = $texte;
+                }
+                if (!isset($credits['titre']) && !isset($credits['auteur'])) {
+                    $credits = null;
+                }
+            }
+            $modeles[$forme] = [
+                'reperes' => $reperes,
+                'tailleCm' => (\is_int($cm) || \is_float($cm)) && $cm > 0 && $cm < 1000 ? (float) $cm : null,
+                'credits' => $credits,
+            ];
+        }
+
+        return $modeles;
+    }
+
+    /**
+     * Première valeur présente parmi ces noms.
+     *
+     * @param array<mixed> $tableau
+     * @param list<string> $noms
+     */
+    private static function premier(array $tableau, array $noms): mixed
+    {
+        foreach ($noms as $nom) {
+            if (\array_key_exists($nom, $tableau)) {
+                return $tableau[$nom];
+            }
+        }
+
+        return null;
     }
 
     /** Adresse du modèle GLB de cette forme s'il a été déposé, sinon null (modèle dessiné). */

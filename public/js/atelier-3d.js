@@ -1,15 +1,23 @@
 /*
- * Atelier 3D (docs/atelier-3d.md) : la page du site public et de l'espace
- * client (gabarit templates/atelier/_outil.html.twig).
+ * Studio textile (docs/atelier-3d.md) : la page du site public et de
+ * l'espace client (gabarit templates/atelier/_outil.html.twig).
  *
- * - Vues à plat dessinées tout de suite : la page est utilisable sans 3D.
- * - La scène three.js (atelier-3d-scene.js) se charge après le premier
- *   affichage, si le navigateur a WebGL et que l'appareil n'est pas trop
- *   modeste ; trop lente (moins de 20 images par seconde), la page revient
- *   aux vues à plat. Le bouton « Voir en 3D » / « Vue à plat » laisse le
- *   choix, gardé dans ce navigateur.
+ * - Les vues à plat sont dessinées tout de suite : la page se lit et
+ *   s'utilise sans 3D.
+ * - La scène three.js (atelier-3d-scene.js) arrive après le premier
+ *   affichage si le navigateur a WebGL et que l'appareil le permet (sinon
+ *   le bouton « Voir en 3D »). Chaque vue fixe (face, dos, côté…) est
+ *   rendue à la demande, seulement quand quelque chose change ; seule la
+ *   vue 360° s'anime.
+ * - Logo, texte et couleur valent pour toutes les rangées : chaque article
+ *   montre le même marquage, à l'emplacement choisi pour sa famille
+ *   (vêtement ou casquette).
  * - Le prix vient toujours du serveur (urls.prix) ; « Valider » n'envoie
- *   que les choix, les images déposées (jetons) et les deux vues.
+ *   que les choix, l'image déposée (jeton) et deux vues de l'article
+ *   choisi. « Télécharger la maquette » est préparée ici et ne part nulle
+ *   part.
+ * - Un SVG n'est lu que dans la page (comme une image, sans script) et
+ *   envoyé en PNG : le serveur refuse toujours les SVG.
  */
 (function () {
   'use strict';
@@ -23,17 +31,22 @@
   const fenetre = document.querySelector('.a3d-fenetre');
   const formulaire = fenetre.querySelector('[data-formulaire]');
   const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const tactile = window.matchMedia('(pointer: coarse)').matches;
   const fr = new Intl.NumberFormat('fr-FR');
   const $ = (s, dans) => (dans || racine).querySelector(s);
   const $$ = (s, dans) => Array.prototype.slice.call((dans || racine).querySelectorAll(s));
   const texte = (cle) => $('[data-texte="' + cle + '"]');
+  const champ = (nom) => $('[data-champ="' + nom + '"]');
   const montant = (n) => fr.format(Math.round(n)) + ' F';
+  const borne = (v, a, b) => Math.max(a, Math.min(b, v));
   const FACES = ['devant', 'dos'];
   const TAILLES_DEFAUT = { S: 5, M: 10, L: 10, XL: 5, XXL: 0 };
-  /** Taille du texte (en part de la largeur de la zone), comme le prototype. */
-  const CORPS = { 'Bebas Neue': 0.146, Pacifico: 0.094, 'Archivo Black': 0.102, Figtree: 0.102 };
-  const FOND_VUE = '#eef2f8';
+  /** Corps du texte en part de la largeur de l'emplacement (le texte seul est plus grand). */
+  const CORPS = { Montserrat: 0.1, 'Archivo Black': 0.1, 'Bebas Neue': 0.142, Pacifico: 0.092, Figtree: 0.1 };
+  /** Unités du dessin par centimètre : les mêmes que la 3D dessinée (atelier-3d-scene.js). */
+  const CM = { vetement: 0.0275, casquette: 0.1 };
+  const FOND_CAPTURE = '#EEF2F8';
+  const SVG_COTE = 2400;
+  const SVG_POIDS_MAX = 2 * 1024 * 1024;
 
   function memoire(cle, valeur) {
     try {
@@ -44,115 +57,193 @@
   }
 
   // ---------------------------------------------------------------- état
+  const POLICE_DEFAUT = Object.keys(D.polices)[0] || 'Montserrat';
+  const texteVide = () => ({ texte: '', police: POLICE_DEFAUT, gras: false, couleurTexte: 'Blanc', auto: true, placeTexte: 'dessous' });
+  const premierePlace = (fam, face) => Object.keys(D.emplacements[fam][face])[0];
+
   const etat = {
     fiche: null,
     couleur: null,
     visiere: null,
-    face: 'devant',
-    faces: {
-      devant: { image: null, taille: 60, hauteur: 0, texte: 'TEAM SUCCÈS', police: 'Archivo Black', couleurTexte: 'Blanc', placeTexte: 'dessous' },
-      dos: { image: null, taille: 45, hauteur: -10, texte: 'DIALLO 10', police: 'Bebas Neue', couleurTexte: 'Jaune', placeTexte: 'dessous' },
+    bords: null,
+    /** Le logo déposé (ou celui d'exemple) : { dessin, vignette, nom, largeur, hauteur, jeton, source, exemple, envoi, erreur }. */
+    logo: null,
+    /** Images propres à une face (création rouverte qui en avait deux). */
+    surcharges: { devant: null, dos: null },
+    taille: 80,
+    /** Emplacement retenu par face et par famille, et si le logo y est. */
+    places: {
+      vetement: { devant: { position: 'poitrine-gauche', logo: true }, dos: { position: 'dos-centre', logo: false } },
+      casquette: { devant: { position: 'devant', logo: true }, dos: { position: 'arriere', logo: false } },
     },
+    textes: { devant: texteVide(), dos: texteVide() },
+    faceTexte: 'devant',
     tailles: {},
     quantite: 20,
-    vue: 'devant',
-    rendu: 'plat',
     prix: null,
+    rendu: 'plat',
   };
 
-  const estCasquette = () => etat.fiche.forme === 'casquette';
-  const libelleFace = (f) => (f === 'dos' ? (estCasquette() ? 'Arrière' : 'Dos') : 'Devant');
-  const couleurDe = (nom) => etat.fiche.couleurs.find((c) => c.nom === nom) || etat.fiche.couleurs[0];
-  const faceMarquee = (f) => !!(etat.faces[f].image || etat.faces[f].texte.trim());
-  const facesMarquees = () => FACES.filter(faceMarquee);
+  const famille = (fiche) => (fiche.forme === 'casquette' ? 'casquette' : 'vetement');
+  const couleurDans = (fiche, nom) => (nom ? fiche.couleurs.find((c) => c.nom === nom) || null : null);
+  const couleurDefaut = (fiche) => couleurDans(fiche, 'Blanc') || fiche.couleurs[0];
+  const imageDe = (face) => etat.surcharges[face] || etat.logo;
+  const logoSur = (fam, face) => !!imageDe(face) && etat.places[fam][face].logo;
+  const faceMarquee = (fam, face) => logoSur(fam, face) || !!etat.textes[face].texte.trim();
+  const facesMarquees = (fam) => FACES.filter((f) => faceMarquee(fam || famille(etat.fiche), f));
+  const libelleEmplacement = (fam, face) => D.emplacements[fam][face][etat.places[fam][face].position][0];
+
+  function libelleFace(face, fiche) {
+    if (face === 'devant') return 'Devant';
+    if (famille(fiche || etat.fiche) === 'casquette') return etat.places.casquette.dos.position === 'cote' ? 'Côté' : 'Arrière';
+    return 'Dos';
+  }
+
+  /** Taille imprimée la plus grande à cet emplacement, en cm (CreationAtelier::zoneImpression). */
+  function zoneImpression(fiche, face, position) {
+    const e = D.emplacements[famille(fiche)][face][position];
+    const z = fiche.zone;
+    return {
+      l: e && e[1] !== null ? Math.min(e[1], z.largeur) : z.largeur,
+      h: e && e[2] !== null ? Math.min(e[2], z.hauteur) : z.hauteur,
+    };
+  }
+
+  /** Taille de l'image en % de l'emplacement, place du texte retirée (même règle que le serveur). */
+  function tailleImage(face) {
+    const t = borne(etat.taille | 0, 15, 100);
+    return etat.textes[face].texte.trim() ? Math.round(t * D.reduction) : t;
+  }
 
   function quantite() {
     if (!etat.fiche.tailles.length) return Math.max(0, etat.quantite | 0);
     return etat.fiche.tailles.reduce((s, t) => s + Math.max(0, etat.tailles[t] | 0), 0);
   }
 
-  /** Taille de l'image en % de la zone, place du texte retirée (même règle que le serveur). */
-  function tailleImage(f) {
-    const t = Math.max(15, Math.min(100, f.taille | 0));
-    return f.texte.trim() ? Math.round(t * D.reduction) : t;
+  function clair(hex) {
+    const n = parseInt(String(hex).slice(1), 16);
+    const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    return l > 0.62;
   }
 
   // ---------------------------------------------------------------- polices
   const polices = {};
+  /** Charge une police de la page (copiée dans public/vendor, sous licence OFL). */
   function police(nom) {
     if (!polices[nom]) {
-      const url = D.polices[nom];
-      polices[nom] = url && 'FontFace' in window
-        ? new FontFace(nom, 'url(' + url + ') format("woff2")', nom === 'Figtree' ? { weight: '700' } : {}).load()
+      const faces = D.polices[nom] || [];
+      polices[nom] = 'FontFace' in window && faces.length
+        ? Promise.all(faces.map((p) => new FontFace(nom, 'url(' + p.url + ') format("woff2")', { weight: p.poids }).load()
           .then((f) => { document.fonts.add(f); })
-          .catch(() => {})
+          .catch(() => {}))).then(() => {})
         : Promise.resolve();
     }
     return polices[nom];
   }
-  const fonte = (nom, px) => (nom === 'Figtree' ? '700 ' : '') + Math.round(px) + 'px "' + nom + '", "Arial Black", sans-serif';
 
-  // ---------------------------------------------------------------- décalques
-  // Un canevas par face, aux proportions de la zone d'impression : la vue à
-  // plat et la 3D affichent le même dessin.
-  const decalques = { devant: document.createElement('canvas'), dos: document.createElement('canvas') };
-
-  function dimensionnerDecalques() {
-    const z = etat.fiche.zone;
-    const h = Math.max(400, Math.min(1600, Math.round(1024 * z.hauteur / Math.max(1, z.largeur))));
-    FACES.forEach((f) => { decalques[f].width = 1024; decalques[f].height = h; });
+  /** Graisse à demander, et s'il faut épaissir le trait (police sans version grasse). */
+  function graisse(nom, gras) {
+    const poids = (D.polices[nom] || [{ poids: '400' }]).map((p) => parseInt(p.poids, 10) || 400);
+    const max = Math.max.apply(null, poids);
+    const min = Math.min.apply(null, poids);
+    return { poids: gras ? max : min, epaissir: gras && max === min };
   }
 
-  function dessinerDecalque(nom) {
-    const f = etat.faces[nom];
-    const c = decalques[nom];
-    const g = c.getContext('2d');
-    const W = c.width;
-    const H = c.height;
-    g.clearRect(0, 0, W, H);
-    const mots = f.texte.trim();
-    const img = f.image && f.image.dessin;
+  const fonte = (nom, poids, px) => poids + ' ' + Math.max(1, Math.round(px)) + 'px "' + nom + '", "Arial Black", sans-serif';
+
+  // ---------------------------------------------------------------- dessin du marquage
+  /**
+   * Logo et texte d'une face dans un rectangle W × H (la boîte de
+   * l'emplacement) ; « haut » les pose en haut de la boîte (devant ou dos
+   * entier) au lieu du milieu.
+   */
+  function composer(g, W, H, face, avecLogo, haut) {
+    const t = etat.textes[face];
+    const mots = t.texte.trim();
+    const img = avecLogo ? imageDe(face) : null;
     let iw = 0;
     let ih = 0;
     if (img) {
-      const t = tailleImage(f) / 100;
-      const r = f.image.largeur / Math.max(1, f.image.hauteur);
-      iw = W * t;
+      const k = tailleImage(face) / 100;
+      const r = img.largeur / Math.max(1, img.hauteur);
+      iw = W * k;
       ih = iw / r;
-      if (ih > H * t) { ih = H * t; iw = ih * r; }
+      if (ih > H * k) { ih = H * k; iw = ih * r; }
     }
-    let px = W * (CORPS[f.police] || 0.102);
-    g.font = fonte(f.police, px);
-    while (mots && g.measureText(mots).width > W * 0.94 && px > W * 0.03) {
-      px -= W * 0.006;
-      g.font = fonte(f.police, px);
+    const ecart = img && mots ? Math.min(W, H) * 0.04 : 0;
+    let px = 0;
+    let th = 0;
+    const gr = graisse(t.police, t.gras);
+    if (mots) {
+      px = Math.min(W * (CORPS[t.police] || 0.1) * (img ? 1 : 1.7), Math.max(4, (img ? H - ih - ecart : H) / 1.22));
+      g.font = fonte(t.police, gr.poids, px);
+      const mesure = g.measureText(mots).width + (gr.epaissir ? px * 0.08 : 0);
+      if (mesure > W * 0.96) {
+        px *= (W * 0.96) / mesure;
+        g.font = fonte(t.police, gr.poids, px);
+      }
+      th = px * 1.22;
     }
-    const th = mots ? px * 1.15 : 0;
-    const ecart = img && mots ? W * 0.03 : 0;
     const total = ih + ecart + th;
-    let y = H / 2 - total / 2 + (f.hauteur / 100) * H * 0.6;
-    y = Math.max(0, Math.min(H - total, y));
-    const morceaux = f.placeTexte === 'dessus' ? ['texte', 'image'] : ['image', 'texte'];
-    morceaux.forEach((m) => {
+    let y = haut ? Math.min(H * 0.02, Math.max(0, H - total)) : Math.max(0, (H - total) / 2);
+    const morceaux = t.placeTexte === 'dessus' ? ['texte', 'image'] : ['image', 'texte'];
+    for (const m of morceaux) {
       if (m === 'image' && img) {
-        g.drawImage(img, (W - iw) / 2, y, iw, ih);
+        g.drawImage(img.dessin, (W - iw) / 2, y, iw, ih);
         y += ih + ecart;
       } else if (m === 'texte' && mots) {
-        g.fillStyle = D.couleursTexte[f.couleurTexte] || '#ffffff';
+        const couleur = D.couleursTexte[t.couleurTexte] || '#ffffff';
+        g.fillStyle = couleur;
         g.textAlign = 'center';
         g.textBaseline = 'middle';
+        if (gr.epaissir) {
+          g.strokeStyle = couleur;
+          g.lineJoin = 'round';
+          g.lineWidth = px * 0.07;
+          g.strokeText(mots, W / 2, y + th / 2);
+        }
         g.fillText(mots, W / 2, y + th / 2);
         y += th + ecart;
       }
-    });
-    if (scene3d) scene3d.decalque(nom);
-    dessinerPlat();
+    }
+  }
+
+  /**
+   * Toile d'une face pour une rangée : aux proportions de la boîte de
+   * l'emplacement (projetée sur le tissu), ou de toute la zone si le
+   * modèle 3D a une pièce « zone_devant » / « zone_dos ».
+   */
+  function toileFace(r, face) {
+    const fiche = r.fiche;
+    const fam = famille(fiche);
+    const place = etat.places[fam][face];
+    const boite = zoneImpression(fiche, face, place.position);
+    const uv = !!(r.zones && r.zones[face]);
+    const cadre = uv ? { l: fiche.zone.largeur, h: fiche.zone.hauteur } : boite;
+    const c = r.toiles[face];
+    const W = 1024;
+    const H = borne(Math.round(W * cadre.h / Math.max(1, cadre.l)), 160, 2048);
+    if (c.width !== W) c.width = W;
+    if (c.height !== H) c.height = H;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, W, H);
+    const s = W / cadre.l;
+    let x = 0;
+    let y = 0;
+    if (uv) {
+      const decale = place.position === 'poitrine-gauche' ? 9 : place.position === 'poitrine-droite' ? -9 : 0;
+      x = borne((cadre.l - boite.l) / 2 + decale, 0, Math.max(0, cadre.l - boite.l));
+      y = /^poitrine/.test(place.position) ? Math.min(2, cadre.h - boite.h) : 0;
+    }
+    const haut = place.position === 'devant-centre' || place.position === 'dos-centre';
+    g.save();
+    g.translate(x * s, y * s);
+    composer(g, boite.l * s, boite.h * s, face, logoSur(fam, face), haut);
+    g.restore();
+    return { canevas: c, boite, position: place.position, visible: faceMarquee(fam, face), mode: uv ? 'uv' : 'projection' };
   }
 
   // ---------------------------------------------------------------- vues à plat
-  const toilePlat = $('.a3d-plat');
-  const toile3d = $('.a3d-3d');
-
   function nuance(hex, ecart) {
     const n = parseInt(hex.slice(1), 16);
     const canal = (v) => Math.max(0, Math.min(255, Math.round(v + ecart * 255)));
@@ -178,49 +269,68 @@
     g.closePath();
   }
 
-  /** Même placement que la 3D (atelier-3d-scene.js, placerZone). */
-  function zone(haut, bas, largeurMax) {
-    const CM = 0.0275;
-    let l = etat.fiche.zone.largeur * CM;
-    let h = etat.fiche.zone.hauteur * CM;
-    const r = Math.min(1, largeurMax / l, (haut - bas) / h);
-    l *= r;
-    h *= r;
-    return { l, h, y: haut - h / 2 };
-  }
-
   function ombrer(g, x0, x1) {
     const lat = g.createLinearGradient(x0, 0, x1, 0);
-    lat.addColorStop(0, 'rgba(10,20,40,.16)');
+    lat.addColorStop(0, 'rgba(10,20,40,.18)');
     lat.addColorStop(0.22, 'rgba(10,20,40,0)');
     lat.addColorStop(0.78, 'rgba(10,20,40,0)');
-    lat.addColorStop(1, 'rgba(10,20,40,.16)');
+    lat.addColorStop(1, 'rgba(10,20,40,.18)');
     g.fillStyle = lat;
     g.fillRect(x0, -2, x1 - x0, 4);
   }
 
-  /** Une face du modèle à plat, dans un repère où le modèle tient entre -1,25 et 1,25. */
-  function modelePlat(g, face) {
-    const tissu = couleurDe(etat.couleur).hex;
-    const bord = nuance(tissu, -0.12);
-    if (estCasquette()) {
-      casquettePlat(g, face, tissu, bord);
-      return;
-    }
-    const polo = etat.fiche.forme === 'polo';
-    const encolure = face === 'dos' ? (polo ? 0.95 : 0.92) : (polo ? 0.86 : 0.74);
-    // ombre au sol
+  function solPlat(g, y, rayon) {
     g.save();
     g.scale(1, 0.18);
-    const sol2 = g.createRadialGradient(0, -1.18 / 0.18, 0.02, 0, -1.18 / 0.18, 1.1);
-    sol2.addColorStop(0, 'rgba(10,20,40,.22)');
-    sol2.addColorStop(1, 'rgba(10,20,40,0)');
-    g.fillStyle = sol2;
+    const sol = g.createRadialGradient(0, y / 0.18, 0.02, 0, y / 0.18, rayon);
+    sol.addColorStop(0, 'rgba(0,0,0,.32)');
+    sol.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = sol;
     g.beginPath();
-    g.arc(0, -1.18 / 0.18, 1.1, 0, Math.PI * 2);
+    g.arc(0, y / 0.18, rayon, 0, Math.PI * 2);
     g.fill();
     g.restore();
+  }
 
+  /** Boîte de l'emplacement dans le dessin à plat : mêmes repères que la 3D dessinée. */
+  function boitePlat(r, face) {
+    const fiche = r.fiche;
+    const fam = famille(fiche);
+    const pos = etat.places[fam][face].position;
+    const b = zoneImpression(fiche, face, pos);
+    const cm = CM[fam];
+    const l = b.l * cm;
+    const h = b.h * cm;
+    if (fam === 'casquette') return { x: 0, y: 0, l, h };
+    const poitrine = 0.5;
+    if (face === 'devant') {
+      if (pos === 'devant-centre') {
+        const haut = poitrine + (fiche.forme === 'polo' ? -4 : 5) * cm;
+        const k = Math.min(1, (haut - (-1 + 3 * cm)) / h);
+        return { x: 0, y: haut - (h * k) / 2, l, h };
+      }
+      return { x: (pos === 'poitrine-droite' ? -9 : 9) * cm, y: poitrine + 2 * cm, l, h };
+    }
+    const haut = poitrine + (pos === 'dos-haut' ? 9.5 : 7.3) * cm;
+    return { x: 0, y: haut - h / 2, l, h };
+  }
+
+  function poserDecal(g, r, face, b) {
+    const reg = r.reglages[face];
+    if (!reg || !reg.visible || reg.mode !== 'projection') return;
+    g.save();
+    g.scale(1, -1);
+    g.drawImage(r.toiles[face], b.x - b.l / 2, -(b.y + b.h / 2), b.l, b.h);
+    g.restore();
+  }
+
+  function vetementPlat(g, r, face, decal) {
+    const c = couleursDe(r);
+    const polo = r.fiche.forme === 'polo';
+    const tissu = c.tissu;
+    const bord = polo && c.secondeChoisie ? c.seconde : nuance(tissu, -0.12);
+    const encolure = face === 'dos' ? (polo ? 0.95 : 0.92) : (polo ? 0.86 : 0.74);
+    solPlat(g, -1.16, 1.1);
     contourTshirt(g, polo, encolure);
     g.fillStyle = tissu;
     g.fill();
@@ -228,8 +338,7 @@
     contourTshirt(g, polo, encolure);
     g.clip();
     ombrer(g, -1.2, 1.2);
-    // coutures des manches et ourlets
-    g.strokeStyle = 'rgba(10,20,40,.18)';
+    g.strokeStyle = 'rgba(10,20,40,.2)';
     g.lineWidth = 0.012;
     [-1, 1].forEach((s) => {
       g.beginPath();
@@ -241,9 +350,18 @@
     g.moveTo(-0.64, -0.93);
     g.quadraticCurveTo(0, -0.97, 0.64, -0.93);
     g.stroke();
+    if (polo && c.secondeChoisie) {
+      // Bords des manches.
+      g.strokeStyle = bord;
+      g.lineWidth = 0.035;
+      [-1, 1].forEach((s) => {
+        g.beginPath();
+        g.moveTo(s * 1.16, 0.58);
+        g.lineTo(s * (0.97 - 0.044), 0.30 + 0.066);
+        g.stroke();
+      });
+    }
     g.restore();
-
-    // col
     g.strokeStyle = bord;
     g.lineCap = 'round';
     if (!polo) {
@@ -264,9 +382,10 @@
         g.closePath();
         g.fill();
       });
+      g.fillStyle = nuance(tissu, -0.05);
       g.fillRect(-0.065, 0.44, 0.13, 0.36);
-      g.fillStyle = '#f2f2f2';
-      [0.70, 0.54].forEach((y) => { g.beginPath(); g.arc(0, y, 0.022, 0, Math.PI * 2); g.fill(); });
+      g.fillStyle = clair(tissu) ? '#d9d6cf' : '#f2f2f2';
+      [0.70, 0.60, 0.50].forEach((y) => { g.beginPath(); g.arc(0, y, 0.02, 0, Math.PI * 2); g.fill(); });
     } else {
       g.lineWidth = 0.06;
       g.beginPath();
@@ -274,37 +393,25 @@
       g.quadraticCurveTo(0, encolure + 0.03, 0.33, 1.0);
       g.stroke();
     }
-
-    const z = face === 'dos' ? zone(polo ? 0.66 : 0.70, -0.92, 1.0) : zone(polo ? 0.40 : 0.64, -0.92, 1.0);
-    g.save();
-    g.scale(1, -1);
-    g.drawImage(decalques[face], -z.l / 2, -(z.y + z.h / 2), z.l, z.h);
-    g.restore();
+    if (decal) poserDecal(g, r, face, boitePlat(r, face));
   }
 
-  function casquettePlat(g, face, tissu, bord) {
-    const visiere = couleurDe(etat.visiere).hex;
+  function casquettePlat(g, r, face, decal, deCote) {
+    const c = couleursDe(r);
+    const tissu = c.tissu;
+    const visiere = c.seconde || tissu;
     const base = -0.45;
     const rx = 1.12;
     const ry = 0.95;
-    g.save();
-    g.scale(1, 0.2);
-    const sol = g.createRadialGradient(0, -1.0 / 0.2, 0.02, 0, -1.0 / 0.2, 1.2);
-    sol.addColorStop(0, 'rgba(10,20,40,.2)');
-    sol.addColorStop(1, 'rgba(10,20,40,0)');
-    g.fillStyle = sol;
-    g.beginPath();
-    g.arc(0, -1.0 / 0.2, 1.2, 0, Math.PI * 2);
-    g.fill();
-    g.restore();
+    solPlat(g, -0.98, 1.2);
     const calotte = () => {
       g.beginPath();
       g.ellipse(0, base, rx, ry, 0, 0, Math.PI);
       g.closePath();
     };
-    if (face === 'devant') {
-      // visière, sous la calotte
-      g.fillStyle = nuance(visiere, -0.05);
+    const devant = face === 'devant' || deCote;
+    if (devant) {
+      g.fillStyle = nuance(visiere, -0.06);
       g.beginPath();
       g.ellipse(0, base - 0.02, rx * 1.08, 0.36, 0, Math.PI, Math.PI * 2);
       g.fill();
@@ -324,12 +431,12 @@
       g.quadraticCurveTo(x * 1.05, base + ry * 0.55, x * 1.35, base);
       g.stroke();
     });
-    if (face === 'dos') {
+    if (!devant) {
       g.fillStyle = nuance(tissu, -0.35);
       g.beginPath();
       g.ellipse(0, base, 0.34, 0.26, 0, 0, Math.PI);
       g.fill();
-      g.fillStyle = bord;
+      g.fillStyle = nuance(tissu, -0.12);
       g.fillRect(-0.36, base, 0.72, 0.06);
     }
     g.restore();
@@ -339,66 +446,244 @@
     g.beginPath();
     g.ellipse(0, base + ry + 0.02, 0.07, 0.05, 0, 0, Math.PI * 2);
     g.fill();
-    if (face === 'devant') {
+    if (devant) {
       g.fillStyle = visiere;
       g.beginPath();
       g.ellipse(0, base - 0.03, rx * 1.1, 0.2, 0, 0, Math.PI);
       g.closePath();
       g.fill();
     }
-    // zone marquée sur le panneau avant ou arrière
-    const zl = etat.fiche.zone.largeur;
-    const zh = etat.fiche.zone.hauteur;
-    let l = 1.0;
-    let h = l * zh / zl;
-    if (h > 0.55) { h = 0.55; l = h * zl / zh; }
-    const centre = face === 'dos' ? base + 0.62 : base + 0.48;
-    g.save();
-    g.scale(1, -1);
-    g.drawImage(decalques[face], -l / 2, -(centre + h / 2), l, h);
-    g.restore();
+    if (!decal) return;
+    // La calotte va de -0,45 à 0,5 : le marquage se pose sur le panneau avant ou au-dessus de l'ouverture.
+    const b = boitePlat(r, face);
+    const k = Math.min(1, 1.3 / b.l, 0.62 / b.h);
+    poserDecal(g, r, face, { x: 0, y: base + (face === 'devant' ? 0.45 : 0.6), l: b.l * k, h: b.h * k });
   }
 
-  function peindrePlat(g, cote, face, fond) {
+  /** Une vue à plat (clé de vue de la scène : face, dos, cote-gauche, angle, arriere…). */
+  function peindrePlat(g, w, h, r, vue, zoom, fond) {
     g.save();
     g.setTransform(1, 0, 0, 1, 0, 0);
-    g.clearRect(0, 0, g.canvas.width, g.canvas.height);
+    g.clearRect(0, 0, w, h);
     if (fond) {
       g.fillStyle = fond;
-      g.fillRect(0, 0, g.canvas.width, g.canvas.height);
+      g.fillRect(0, 0, w, h);
     }
-    const s = cote.s;
-    g.translate(cote.x, cote.y);
+    const s = (Math.min(w, h) / 2.75) * (zoom || 1);
+    g.translate(w / 2, h / 2 + 0.04 * s);
     g.scale(s, -s);
-    modelePlat(g, face);
+    if (famille(r.fiche) === 'casquette') {
+      g.translate(0, 0.2);
+      const cote = etat.places.casquette.dos.position === 'cote';
+      if (vue === 'angle') { g.scale(0.86, 1); casquettePlat(g, r, 'devant', true, false); }
+      else if (vue === 'cote') { g.scale(0.62, 1); casquettePlat(g, r, cote ? 'dos' : 'devant', cote, true); }
+      else if (vue === 'arriere') casquettePlat(g, r, 'dos', true, false);
+      else casquettePlat(g, r, 'devant', true, false);
+    } else if (vue === 'dos') {
+      vetementPlat(g, r, 'dos', true);
+    } else if (/^cote/.test(vue)) {
+      g.scale(0.5, 1);
+      vetementPlat(g, r, 'devant', false);
+    } else {
+      vetementPlat(g, r, 'devant', true);
+    }
     g.restore();
   }
 
-  let entreePlat = 0;
-  function dessinerPlat() {
-    if (etat.rendu !== 'plat' || !etat.fiche) return;
-    const r = toilePlat.getBoundingClientRect();
-    if (r.width < 2) return;
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.round(r.width * ratio);
-    const h = Math.round(r.height * ratio);
-    if (toilePlat.width !== w || toilePlat.height !== h) { toilePlat.width = w; toilePlat.height = h; }
-    const g = toilePlat.getContext('2d');
-    const s = Math.min(w / 2.9, h / 2.9);
-    peindrePlat(g, { x: w / 2, y: h / 2 - 0.02 * s, s }, etat.vue === 'dos' ? 'dos' : 'devant', null);
+  // ---------------------------------------------------------------- rangées
+  const rangees = D.fiches.map((fiche) => {
+    const el = $('[data-rangee="' + fiche.id + '"]');
+    const vues = {};
+    $$('.a3d-vue', el).forEach((fig) => {
+      vues[fig.dataset.vue] = { figure: fig, canvas: $('canvas', fig), libelle: $('[data-libelle-vue]', fig) };
+    });
+    const minis = {};
+    $$('[data-miniature]', el).forEach((b) => { minis[b.dataset.miniature] = { bouton: b, canvas: $('canvas', b) }; });
+    const outils = {};
+    $$('[data-outil]', el).forEach((b) => { outils[b.dataset.outil] = b; });
+    const carte = $('[data-article="' + fiche.id + '"] [data-miniature-article]');
+    return {
+      fiche, el, vues, minis, outils, carte,
+      tour: $('[data-tour]', el),
+      tourCanvas: $('[data-tour] canvas', el),
+      credits: $('[data-credits]', el),
+      toiles: { devant: document.createElement('canvas'), dos: document.createElement('canvas') },
+      reglages: { devant: null, dos: null },
+      zones: {},
+      zoom: 1,
+      pret: false,
+      sales: new Set(),
+      marquageSale: true,
+      tourCtrl: null,
+    };
+  });
+  const rangeeDe = (fiche) => rangees.find((r) => r.fiche === fiche);
+  const rangeeActive = () => rangeeDe(etat.fiche) || rangees[0];
+
+  /** Couleurs d'une rangée : celle choisie si l'article l'a, sinon la sienne. */
+  function couleursDe(r) {
+    const f = r.fiche;
+    const tissu = couleurDans(f, etat.couleur) || couleurDans(f, r.couleurPropre) || couleurDefaut(f);
+    r.couleurPropre = tissu.nom;
+    let seconde = null;
+    let secondeChoisie = false;
+    if (f.forme === 'casquette') {
+      const v = couleurDans(f, etat.visiere);
+      seconde = (v || tissu).hex;
+      secondeChoisie = !!v;
+    } else if (f.forme === 'polo') {
+      const b = couleurDans(f, etat.bords);
+      seconde = (b || tissu).hex;
+      secondeChoisie = !!b;
+    }
+    return { tissu: tissu.hex, seconde, secondeChoisie };
   }
 
-  function animerPlat() {
-    if (reduit) return;
-    toilePlat.classList.remove('a3d-entree');
-    void toilePlat.offsetWidth;
-    toilePlat.classList.add('a3d-entree');
-    window.clearTimeout(entreePlat);
-    entreePlat = window.setTimeout(() => toilePlat.classList.remove('a3d-entree'), 700);
+  /** Vue de la scène derrière une vue de la rangée (le côté montre le logo ; la casquette marquée derrière montre l'arrière). */
+  function vueScene(r, cle) {
+    if (cle !== 'cote') return cle;
+    if (famille(r.fiche) === 'vetement') {
+      const p = etat.places.vetement.devant;
+      return p.position === 'poitrine-droite' && faceMarquee('vetement', 'devant') ? 'cote-droit' : 'cote-gauche';
+    }
+    return etat.places.casquette.dos.position === 'arriere' && faceMarquee('casquette', 'dos') ? 'arriere' : 'cote';
   }
+
+  /** Vue envoyée comme « dos » (casquette : l'arrière, ou le côté marqué). */
+  function vueDos(r) {
+    if (famille(r.fiche) === 'vetement') return 'dos';
+    return etat.places.casquette.dos.position === 'cote' ? 'cote' : 'arriere';
+  }
+
+  function majLibellesVues() {
+    rangees.forEach((r) => {
+      if (famille(r.fiche) !== 'casquette' || !r.vues.cote) return;
+      const libelle = vueScene(r, 'cote') === 'arriere' ? 'Arrière' : 'Côté';
+      if (r.vues.cote.libelle.textContent !== libelle) {
+        r.vues.cote.libelle.textContent = libelle;
+        r.vues.cote.canvas.setAttribute('aria-label', r.fiche.libelleForme + ' : vue ' + libelle.toLowerCase());
+        if (r.minis.cote) r.minis.cote.bouton.setAttribute('aria-label', 'Vue ' + libelle.toLowerCase());
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------- rendu à la demande
+  let studio = null;
+  let prevu = false;
+  let minuteurAutres = 0;
+
+  function planifier() {
+    if (prevu) return;
+    prevu = true;
+    requestAnimationFrame(rendreFile);
+  }
+
+  function salir(r, cles) {
+    (cles || Object.keys(r.vues)).forEach((k) => r.sales.add(k));
+    planifier();
+  }
+
+  /** Tout est à redessiner : la rangée choisie tout de suite, les autres un peu après (frappe au clavier). */
+  function toutSalir(marquage) {
+    const active = rangeeActive();
+    if (marquage) active.marquageSale = true;
+    salir(active);
+    window.clearTimeout(minuteurAutres);
+    minuteurAutres = window.setTimeout(() => {
+      rangees.forEach((r) => {
+        if (r === active) return;
+        if (marquage) r.marquageSale = true;
+        salir(r);
+      });
+    }, 180);
+  }
+
+  function majMarquage(r) {
+    r.marquageSale = false;
+    FACES.forEach((face) => {
+      const reg = toileFace(r, face);
+      r.reglages[face] = reg;
+      if (studio && r.pret) studio.marquage(r.fiche.id, face, reg);
+    });
+    if (r.tourCtrl) r.tourCtrl.rafraichir();
+  }
+
+  function taillePhysique(c, max) {
+    const rect = c.getBoundingClientRect();
+    if (rect.width < 4 || rect.height < 4) return null;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let w = Math.round(rect.width * dpr);
+    let h = Math.round(rect.height * dpr);
+    const k = Math.min(1, max / Math.max(w, h));
+    w = Math.round(w * k);
+    h = Math.round(h * k);
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    return { w, h };
+  }
+
+  /** Recopie une vue dans une miniature (cadrage « couvrir »). */
+  function copier(depuis, vers, l, h) {
+    if (!vers) return;
+    const w = l || vers.width;
+    const hh = h || vers.height;
+    if (vers.width !== w) vers.width = w;
+    if (vers.height !== hh) vers.height = hh;
+    const g = vers.getContext('2d');
+    g.clearRect(0, 0, w, hh);
+    const k = Math.max(w / depuis.width, hh / depuis.height) * 1.08;
+    const dw = depuis.width * k;
+    const dh = depuis.height * k;
+    g.drawImage(depuis, (w - dw) / 2, (hh - dh) / 2, dw, dh);
+  }
+
+  function rendreVue(r, cle) {
+    const v = r.vues[cle];
+    const t = taillePhysique(v.canvas, 1100);
+    if (!t) return;
+    const vue = vueScene(r, cle);
+    if (etat.rendu === '3d' && studio && r.pret) studio.rendre(r.fiche.id, vue, v.canvas, r.zoom);
+    else peindrePlat(v.canvas.getContext('2d'), t.w, t.h, r, vue, r.zoom, null);
+    const m = r.minis[cle];
+    if (m && m.canvas.getBoundingClientRect().width > 0) copier(v.canvas, m.canvas, 132, 132);
+    if (cle === 'face' && r.carte) {
+      copier(v.canvas, r.carte, 256, 208);
+      r.carte.hidden = false;
+    }
+  }
+
+  function rendreFile() {
+    prevu = false;
+    const t0 = performance.now();
+    const active = rangeeActive();
+    const ordre = [active].concat(rangees.filter((r) => r !== active));
+    let fait = 0;
+    for (const r of ordre) {
+      if (r.marquageSale && (fait === 0 || performance.now() - t0 < 12)) {
+        majMarquage(r);
+        fait++;
+      }
+      for (const cle of Array.from(r.sales)) {
+        if (fait > 0 && performance.now() - t0 > 12) { planifier(); return; }
+        if (r.marquageSale) { planifier(); return; }
+        r.sales.delete(cle);
+        rendreVue(r, cle);
+        fait++;
+      }
+    }
+  }
+
+  rangees.forEach((r) => {
+    if (!('ResizeObserver' in window)) return;
+    const obs = new ResizeObserver((entrees) => {
+      entrees.forEach((e) => {
+        const fig = e.target.closest('[data-vue]');
+        if (fig) salir(r, [fig.dataset.vue]);
+      });
+    });
+    Object.values(r.vues).forEach((v) => obs.observe(v.canvas));
+  });
 
   // ---------------------------------------------------------------- 3D
-  let scene3d = null;
   let chargement3d = false;
   let echec3d = false;
   const bascule = $('[data-action="bascule"]');
@@ -430,178 +715,284 @@
     return !essaiWebgl({ failIfMajorPerformanceCaveat: true });
   }
 
-  let aideLue = false;
-  let minuterieAide = 0;
-  function lireAide() {
-    aideLue = true;
-    texte('aide').hidden = true;
-  }
-  toile3d.addEventListener('pointerdown', lireAide, { once: true });
-
-  function majBascule() {
+  function majEtat3d() {
     racine.dataset.rendu = etat.rendu;
-    if (!peut3d) { bascule.hidden = true; return; }
-    bascule.hidden = false;
-    bascule.disabled = chargement3d;
-    bascule.textContent = chargement3d ? 'Chargement de la 3D…' : (etat.rendu === '3d' ? 'Vue à plat' : (echec3d ? 'Réessayer la 3D' : 'Voir en 3D'));
-    texte('mode').textContent = etat.rendu === '3d' ? 'Aperçu 3D en temps réel' : 'Vue à plat';
-    const aide = texte('aide');
-    aide.hidden = etat.rendu !== '3d' || aideLue;
-    aide.textContent = tactile ? 'Glissez pour tourner' : 'Glissez pour tourner · Ctrl + molette : zoom';
-    // Sur téléphone, l'aide couvrirait le col : elle part au premier geste ou après quelques secondes.
-    if (!aide.hidden && !minuterieAide) minuterieAide = setTimeout(lireAide, 6000);
-    $('[data-vue="cote"]').hidden = etat.rendu !== '3d';
-    $('[data-action="rotation"]').hidden = etat.rendu !== '3d';
-    $('[data-bloc="flotte"]').hidden = etat.rendu !== '3d' || reduit;
+    texte('mode').textContent = chargement3d ? 'Chargement de la 3D…' : (etat.rendu === '3d' ? 'Aperçu 3D' : 'Vue à plat');
+    bascule.hidden = !peut3d || etat.rendu === '3d' || chargement3d;
+    bascule.textContent = echec3d ? 'Réessayer la 3D' : 'Voir en 3D';
+    rangees.forEach((r) => {
+      r.outils.tour.disabled = !peut3d;
+      r.outils.tour.title = peut3d ? 'Rotation libre à 360°' : 'La rotation à 360° demande un navigateur avec la 3D (WebGL)';
+    });
   }
 
-  function afficherRendu(r) {
-    etat.rendu = r;
-    toile3d.hidden = r !== '3d';
-    toilePlat.hidden = r === '3d';
-    if (r === 'plat') {
-      if (etat.vue === 'cote') choisirVue('devant');
-      rotation(false);
-      dessinerPlat();
-    } else if (scene3d) {
-      scene3d.vue(etat.vue);
-    }
-    majBascule();
+  function perte3d() {
+    studio = null;
+    echec3d = true;
+    etat.rendu = 'plat';
+    rangees.forEach((r) => {
+      if (r.tourCtrl) arreterTour(r);
+      r.pret = false;
+      r.zones = {};
+      r.marquageSale = true;
+      if (r.credits) r.credits.hidden = true;
+      salir(r);
+    });
+    majEtat3d();
+    toast('La 3D s\'est arrêtée : la vue à plat prend le relais.');
   }
 
+  let apres3d = null;
   async function charger3d(auto) {
-    if (chargement3d) return;
-    if (scene3d) { afficherRendu('3d'); return; }
+    if (chargement3d || studio) return;
     chargement3d = true;
-    majBascule();
+    majEtat3d();
     try {
       const module = await import(D.urls.scene);
-      scene3d = module.creerScene(toile3d, {
-        reduit,
-        decalques,
-        urlGltf: D.urls.gltf,
-        surVue: (v) => { if (!v) marquerVue(null); },
-        surRotation: (oui) => { $('[data-action="rotation"]').setAttribute('aria-pressed', String(oui)); },
-        surErreur: () => {
-          scene3d = null;
-          echec3d = true;
-          afficherRendu('plat');
-          toast('La 3D s\'est arrêtée : la vue à plat prend le relais.');
-        },
-      });
-      toile3d.hidden = false;
-      toilePlat.hidden = true;
-      await scene3d.article(etat.fiche);
-      scene3d.couleurs({ tissu: couleurDe(etat.couleur).hex, visiere: couleurDe(etat.visiere).hex });
-      scene3d.flottement($('[data-champ="flotte"]').checked);
-      chargement3d = false;
-      afficherRendu('3d');
-      const ips = await scene3d.mesurer();
-      if (auto && ips > 0 && ips < 20 && etat.rendu === '3d') {
-        afficherRendu('plat');
-        toast('Vue à plat : elle est plus fluide sur cet appareil. « Voir en 3D » remet la 3D.');
+      studio = module.creerStudio({ reduit, surErreur: perte3d });
+      const active = rangeeActive();
+      const ordre = [active].concat(rangees.filter((r) => r !== active));
+      for (const r of ordre) {
+        const info = await studio.article(r.fiche.id, r.fiche);
+        if (!studio) return;
+        r.pret = true;
+        r.zones = info.zones || {};
+        if (r.credits) r.credits.hidden = !info.glb;
+        studio.couleurs(r.fiche.id, couleursScene(r));
+        r.marquageSale = true;
+        if (etat.rendu !== '3d') {
+          etat.rendu = '3d';
+          chargement3d = false;
+          majEtat3d();
+        }
+        salir(r);
+        if (apres3d && apres3d.r === r) {
+          const suite = apres3d;
+          apres3d = null;
+          demarrerTour(r, suite.vue);
+        }
       }
     } catch (e) {
-      if (window.console) console.warn('Atelier 3D : vue à plat', e);
-      scene3d = null;
+      if (window.console) console.warn('Studio textile : vue à plat', e);
+      if (studio) { try { studio.detruire(); } catch (_) { /* déjà perdu */ } }
+      studio = null;
       echec3d = true;
-      chargement3d = false;
-      afficherRendu('plat');
+      etat.rendu = 'plat';
+      rangees.forEach((r) => { r.pret = false; r.zones = {}; r.marquageSale = true; salir(r); });
       if (!auto) toast('La 3D ne peut pas s\'afficher ici : la vue à plat reste disponible.');
+    } finally {
+      chargement3d = false;
+      apres3d = null;
+      majEtat3d();
     }
-    chargement3d = false;
-    majBascule();
   }
 
   bascule.addEventListener('click', () => {
-    if (etat.rendu === '3d') {
-      memoire('atelier3d-vue', 'plat');
-      afficherRendu('plat');
-    } else {
-      memoire('atelier3d-vue', '3d');
-      charger3d(false);
-    }
+    memoire('atelier3d-vue', '3d');
+    echec3d = false;
+    charger3d(false);
   });
 
-  // ---------------------------------------------------------------- vues
-  function marquerVue(v) {
-    $$('[data-vue]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.vue === v)));
+  function couleursScene(r) {
+    const c = couleursDe(r);
+    return { tissu: c.tissu, seconde: c.seconde };
   }
 
-  function choisirVue(v) {
-    etat.vue = v;
-    marquerVue(v);
-    if (etat.rendu === '3d' && scene3d) {
-      rotation(false);
-      scene3d.vue(v);
-    } else {
-      dessinerPlat();
-      animerPlat();
+  function majCouleurs() {
+    let texteChange = false;
+    FACES.forEach((f) => {
+      const t = etat.textes[f];
+      if (!t.auto) return;
+      const c = couleurDans(etat.fiche, etat.couleur) || couleurDefaut(etat.fiche);
+      const voulue = clair(c.hex) ? 'Noir' : 'Blanc';
+      if (t.couleurTexte !== voulue) { t.couleurTexte = voulue; texteChange = true; }
+    });
+    rangees.forEach((r) => {
+      if (studio && r.pret) studio.couleurs(r.fiche.id, couleursScene(r));
+    });
+    if (texteChange) majTexte();
+    toutSalir(texteChange);
+  }
+
+  // ---------------------------------------------------------------- 360°, zoom, plein écran
+  function demarrerTour(r, vue) {
+    rangees.forEach((x) => { if (x !== r && x.tourCtrl) arreterTour(x); });
+    r.el.setAttribute('data-tour-actif', '');
+    r.tour.hidden = false;
+    const angles = studio.angles(r.fiche.id, vue ? vueScene(r, vue) : 'face');
+    r.tourCtrl = studio.tour(r.fiche.id, r.tourCanvas, { az: angles[0], el: angles[1], zoom: r.zoom, auto: !vue });
+    r.outils.tour.setAttribute('aria-pressed', String(!vue));
+    Object.keys(r.minis).forEach((k) => r.minis[k].bouton.setAttribute('aria-pressed', String(k === (vue || ''))));
+  }
+
+  function arreterTour(r) {
+    if (r.tourCtrl) r.tourCtrl.arreter();
+    r.tourCtrl = null;
+    r.el.removeAttribute('data-tour-actif');
+    r.tour.hidden = true;
+    r.outils.tour.setAttribute('aria-pressed', 'false');
+    Object.keys(r.minis).forEach((k) => r.minis[k].bouton.setAttribute('aria-pressed', String(k === 'face')));
+    salir(r);
+  }
+
+  /** 360° ou vue en grand (miniature) : demande la 3D si elle n'est pas encore là. */
+  function voirEnGrand(r, vue) {
+    if (studio && r.pret) {
+      if (r.tourCtrl && !vue) {
+        // 360° pressé : on s'arrête ; vue en grand (miniature) : on se remet à tourner.
+        if (r.outils.tour.getAttribute('aria-pressed') === 'true') { arreterTour(r); return; }
+        r.tourCtrl.tourner(true);
+        r.outils.tour.setAttribute('aria-pressed', 'true');
+        Object.keys(r.minis).forEach((k) => r.minis[k].bouton.setAttribute('aria-pressed', 'false'));
+        return;
+      }
+      if (r.tourCtrl && vue) {
+        const a = studio.angles(r.fiche.id, vueScene(r, vue));
+        r.tourCtrl.aller(a[0], a[1]);
+        r.outils.tour.setAttribute('aria-pressed', 'false');
+        Object.keys(r.minis).forEach((k) => r.minis[k].bouton.setAttribute('aria-pressed', String(k === vue)));
+        return;
+      }
+      demarrerTour(r, vue);
+      return;
     }
+    if (!peut3d) {
+      toast('La rotation à 360° demande un navigateur avec la 3D (WebGL).');
+      return;
+    }
+    apres3d = { r, vue };
+    echec3d = false;
+    memoire('atelier3d-vue', '3d');
+    charger3d(false);
   }
 
-  function rotation(oui) {
-    $('[data-action="rotation"]').setAttribute('aria-pressed', String(oui));
-    if (scene3d) scene3d.rotation(oui);
-    if (oui) marquerVue(null);
+  function zoomer(r, f) {
+    if (r.tourCtrl) { r.tourCtrl.zoomer(f); return; }
+    r.zoom = borne(r.zoom * f, 0.8, 2.4);
+    salir(r);
   }
 
-  $$('[data-vue]').forEach((b) => b.addEventListener('click', () => choisirVue(b.dataset.vue)));
-  $('[data-action="rotation"]').addEventListener('click', (e) => rotation(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
-  $('[data-champ="flotte"]').addEventListener('change', (e) => { if (scene3d) scene3d.flottement(e.target.checked); });
+  function pleinEcran(r) {
+    if (document.fullscreenElement === r.el) { document.exitFullscreen().catch(() => {}); return; }
+    if (r.el.classList.contains('a3d-plein')) { sortirPlein(r); return; }
+    if (r.el.requestFullscreen && document.fullscreenEnabled) r.el.requestFullscreen().catch(() => entrerPlein(r));
+    else entrerPlein(r);
+  }
+
+  function entrerPlein(r) {
+    r.el.classList.add('a3d-plein');
+    document.documentElement.style.overflow = 'hidden';
+    r.outils.plein.setAttribute('aria-pressed', 'true');
+    salir(r);
+  }
+
+  function sortirPlein(r) {
+    r.el.classList.remove('a3d-plein');
+    document.documentElement.style.overflow = '';
+    r.outils.plein.setAttribute('aria-pressed', 'false');
+    salir(r);
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    rangees.forEach((r) => {
+      r.outils.plein.setAttribute('aria-pressed', String(document.fullscreenElement === r.el));
+      salir(r);
+    });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    rangees.forEach((r) => { if (r.el.classList.contains('a3d-plein')) sortirPlein(r); });
+  });
+
+  rangees.forEach((r) => {
+    r.outils.tour.addEventListener('click', () => voirEnGrand(r, null));
+    r.outils.plus.addEventListener('click', () => zoomer(r, 1.18));
+    r.outils.moins.addEventListener('click', () => zoomer(r, 1 / 1.18));
+    r.outils.plein.addEventListener('click', () => pleinEcran(r));
+    Object.keys(r.minis).forEach((k) => r.minis[k].bouton.addEventListener('click', () => voirEnGrand(r, k)));
+    $('[data-choisir]', r.el).addEventListener('click', () => choisirFiche(r.fiche, null));
+    // Toucher une vue choisit l'article (sans gêner le glissement des vues sur téléphone).
+    Object.values(r.vues).forEach((v) => v.canvas.addEventListener('click', () => {
+      if (etat.fiche !== r.fiche) choisirFiche(r.fiche, null);
+    }));
+  });
 
   // ---------------------------------------------------------------- pastilles
-  function pastilles(zone, liste, choisie, choisir) {
+  function pastilles(zone, liste, choisie, choisir, sans) {
     const conteneur = $('[data-pastilles="' + zone + '"]');
     conteneur.textContent = '';
-    liste.forEach((c) => {
+    const ajouter = (nom, hex, libelle) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.style.background = c.hex;
-      b.title = c.nom;
-      b.setAttribute('aria-label', c.nom);
-      b.setAttribute('aria-pressed', String(c.nom === choisie));
+      if (hex) b.style.background = hex;
+      else b.className = 'a3d-sans';
+      b.title = libelle;
+      b.setAttribute('aria-label', libelle);
+      b.setAttribute('aria-pressed', String(nom === choisie));
       b.addEventListener('click', () => {
         $$('button', conteneur).forEach((x) => x.setAttribute('aria-pressed', 'false'));
         b.setAttribute('aria-pressed', 'true');
-        choisir(c.nom);
+        choisir(nom);
       });
       conteneur.appendChild(b);
-    });
+    };
+    if (sans) ajouter(null, null, sans);
+    liste.forEach((c) => ajouter(c.nom, c.hex, c.nom));
   }
 
   function choisirCouleur(nom) {
     etat.couleur = nom;
+    rangeeActive().couleurPropre = nom;
     texte('couleur').textContent = nom;
-    if (scene3d) scene3d.couleurs({ tissu: couleurDe(nom).hex });
-    dessinerPlat();
+    majCouleurs();
   }
 
   function choisirVisiere(nom) {
     etat.visiere = nom;
     texte('visiere').textContent = nom;
-    if (scene3d) scene3d.couleurs({ visiere: couleurDe(nom).hex });
-    dessinerPlat();
+    majCouleurs();
+  }
+
+  function choisirBords(nom) {
+    etat.bords = nom;
+    texte('bords').textContent = nom || 'comme le polo';
+    majCouleurs();
   }
 
   // ---------------------------------------------------------------- article
-  function choisirArticle(fiche, reprise) {
+  function choisirFiche(fiche, reprise) {
+    const avant = etat.fiche;
     etat.fiche = fiche;
     $$('[data-article]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.article === fiche.id)));
+    $$('[data-onglet]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.onglet === fiche.forme)));
+    rangees.forEach((r) => r.el.classList.toggle('a3d-rangee-active', r.fiche === fiche));
+
     const noms = fiche.couleurs.map((c) => c.nom);
     if (reprise && noms.includes(reprise.couleur)) etat.couleur = reprise.couleur;
-    else if (!noms.includes(etat.couleur)) etat.couleur = noms.includes('Bleu Succès') ? 'Bleu Succès' : noms[0];
-    if (reprise && reprise.visiere && noms.includes(reprise.visiere)) etat.visiere = reprise.visiere;
-    else if (!noms.includes(etat.visiere)) etat.visiere = noms.includes('Rouge') ? 'Rouge' : etat.couleur;
+    else if (!noms.includes(etat.couleur)) etat.couleur = (couleurDans(fiche, rangeeDe(fiche).couleurPropre) || couleurDefaut(fiche)).nom;
+    if (fiche.forme === 'casquette') {
+      if (reprise && noms.includes(reprise.visiere)) etat.visiere = reprise.visiere;
+      else if (!noms.includes(etat.visiere)) etat.visiere = noms.includes('Rouge') ? 'Rouge' : etat.couleur;
+    }
+    if (fiche.forme === 'polo') {
+      if (reprise) etat.bords = noms.includes(reprise.visiere) ? reprise.visiere : null;
+      else if (!noms.includes(etat.bords)) etat.bords = null;
+    }
     pastilles('tissu', fiche.couleurs, etat.couleur, choisirCouleur);
-    pastilles('visiere', fiche.couleurs, etat.visiere, choisirVisiere);
     texte('couleur').textContent = etat.couleur;
-    texte('visiere').textContent = etat.visiere;
-    $('[data-bloc="visiere"]').hidden = !estCasquette();
-    $('#a3d-l-tissu').textContent = estCasquette() ? 'Calotte' : 'Couleur du tissu';
-    $$('[data-libelle-dos]').concat($$('[data-libelle-dos]', fenetre)).forEach((e) => { e.textContent = libelleFace('dos'); });
+    $('[data-bloc="visiere"]').hidden = fiche.forme !== 'casquette';
+    $('[data-bloc="bords"]').hidden = fiche.forme !== 'polo';
+    if (fiche.forme === 'casquette') {
+      pastilles('visiere', fiche.couleurs, etat.visiere, choisirVisiere);
+      texte('visiere').textContent = etat.visiere;
+    }
+    if (fiche.forme === 'polo') {
+      pastilles('bords', fiche.couleurs, etat.bords, choisirBords, 'Comme le polo');
+      texte('bords').textContent = etat.bords || 'comme le polo';
+    }
+    $$('[data-positions]').forEach((g) => { g.hidden = g.dataset.positions !== famille(fiche); });
 
-    // quantités
+    // Quantités.
     const grille = $('[data-tailles]');
     grille.textContent = '';
     fiche.tailles.forEach((t) => {
@@ -615,7 +1006,7 @@
       i.inputMode = 'numeric';
       i.value = String(etat.tailles[t]);
       i.addEventListener('input', () => {
-        etat.tailles[t] = Math.max(0, Math.min(D.quantiteMax, parseInt(i.value, 10) || 0));
+        etat.tailles[t] = borne(parseInt(i.value, 10) || 0, 0, D.quantiteMax);
         majQuantite();
       });
       l.appendChild(i);
@@ -627,86 +1018,173 @@
       $$('input', grille).forEach((i, k) => { i.value = String(etat.tailles[fiche.tailles[k]] || 0); });
     }
     if (!fiche.tailles.length && etat.quantite < fiche.min) etat.quantite = Math.max(fiche.min, 20);
-    $('[data-champ="quantite"]').value = String(etat.quantite);
-    $('[data-champ="quantite"]').min = String(fiche.min);
+    champ('quantite').value = String(etat.quantite);
+    champ('quantite').min = String(fiche.min);
     $('[data-bloc="tailles"]').hidden = !fiche.tailles.length;
     $('[data-bloc="quantite"]').hidden = !!fiche.tailles.length;
 
-    dimensionnerDecalques();
-    FACES.forEach(dessinerDecalque);
-    majFace();
+    majPositions();
+    majTexte();
+    majLogo();
     majQuantite();
-    if (scene3d) {
-      scene3d.article(fiche).then(() => scene3d && scene3d.couleurs({ tissu: couleurDe(etat.couleur).hex, visiere: couleurDe(etat.visiere).hex }));
-      if (etat.vue !== 'devant') choisirVue('devant');
-    } else {
-      etat.vue = 'devant';
-      marquerVue('devant');
-      dessinerPlat();
-      animerPlat();
-    }
+    if (avant !== fiche) majCouleurs();
   }
 
   $$('[data-article]').forEach((b) => b.addEventListener('click', () => {
     const fiche = D.fiches.find((f) => f.id === b.dataset.article);
-    if (fiche && fiche !== etat.fiche) choisirArticle(fiche, null);
+    if (fiche && fiche !== etat.fiche) choisirFiche(fiche, null);
+  }));
+  $$('[data-onglet]').forEach((b) => b.addEventListener('click', () => {
+    if (etat.fiche.forme === b.dataset.onglet) return;
+    const fiche = D.fiches.find((f) => f.forme === b.dataset.onglet);
+    if (!fiche) return;
+    choisirFiche(fiche, null);
+    // Sur téléphone, la rangée de l'article choisi vient à l'écran si les étapes sont déjà passées.
+    const r = rangeeDe(fiche);
+    const empile = $('.a3d-scene').getBoundingClientRect().top >= $('.a3d-panneau').getBoundingClientRect().bottom - 1;
+    if (empile && r.el.getBoundingClientRect().top < 0) r.el.scrollIntoView({ behavior: reduit ? 'auto' : 'smooth', block: 'start' });
   }));
 
-  // ---------------------------------------------------------------- marquage
-  const champ = (nom) => $('[data-champ="' + nom + '"]');
-
-  function majFace() {
-    const f = etat.faces[etat.face];
-    $$('[data-face]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.face === etat.face)));
-    FACES.forEach((n) => { $('[data-marque="' + n + '"]').hidden = !faceMarquee(n); });
-    champ('taille').value = String(f.taille);
-    texte('taille').textContent = f.taille + ' %';
-    champ('hauteur').value = String(f.hauteur);
-    texte('hauteur').textContent = f.hauteur > 0 ? '+' + f.hauteur : String(f.hauteur);
-    champ('texte').value = f.texte;
-    texte('reste').textContent = f.texte.length + ' / ' + champ('texte').maxLength;
-    champ('police').value = f.police;
-    champ('place').value = f.placeTexte;
-    texte('couleur-texte').textContent = f.couleurTexte;
-    pastilles('texte', Object.keys(D.couleursTexte).map((n) => ({ nom: n, hex: D.couleursTexte[n] })), f.couleurTexte, (n) => {
-      etat.faces[etat.face].couleurTexte = n;
-      texte('couleur-texte').textContent = n;
-      dessinerDecalque(etat.face);
+  // ---------------------------------------------------------------- positions
+  function majPositions() {
+    const fam = famille(etat.fiche);
+    $$('[data-positions="' + fam + '"] [data-position]').forEach((b) => {
+      const face = b.dataset.face;
+      const place = etat.places[fam][face];
+      const ici = place.position === b.dataset.position;
+      b.setAttribute('aria-pressed', String(ici && place.logo));
+      b.classList.toggle('a3d-texte-ici', ici && !place.logo && !!etat.textes[face].texte.trim());
     });
-    const vignette = $('[data-vignette]');
-    const img = f.image;
-    vignette.hidden = !img;
-    if (img) vignette.src = img.vignette;
-    texte('fichier').textContent = img ? img.nom : 'Aucune image';
-    texte('fichier-aide').textContent = img && img.envoi === 'encours'
-      ? 'Envoi en cours…'
-      : 'Glissez ou choisissez votre logo ou une photo : PNG, JPG ou WebP, ' + Math.floor(D.envoiMax / 1048576) + ' Mo au plus';
+    $$('[data-libelle-dos]').concat($$('[data-libelle-rendu-dos]', fenetre)).forEach((e) => { e.textContent = libelleFace('dos'); });
+    majLibellesVues();
+  }
+
+  $$('[data-position]').forEach((b) => b.addEventListener('click', () => {
+    const fam = famille(etat.fiche);
+    const face = b.dataset.face;
+    const place = etat.places[fam][face];
+    const avant = facesMarquees().length;
+    if (place.position === b.dataset.position && place.logo) {
+      place.logo = false;
+    } else {
+      place.position = b.dataset.position;
+      place.logo = true;
+    }
+    majPositions();
+    majAlerte();
+    toutSalir(true);
+    if (avant !== facesMarquees().length) demanderPrix();
+  }));
+
+  champ('taille').addEventListener('input', (e) => {
+    etat.taille = borne(parseInt(e.target.value, 10) || 80, 15, 100);
+    texte('taille').textContent = etat.taille + ' %';
+    majAlerte();
+    toutSalir(true);
+  });
+
+  // ---------------------------------------------------------------- texte
+  function majTexte() {
+    const f = etat.faceTexte;
+    const t = etat.textes[f];
+    $$('[data-face-texte]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.faceTexte === f)));
+    FACES.forEach((n) => { $('[data-marque="' + n + '"]').hidden = !faceMarquee(famille(etat.fiche), n); });
+    if (champ('texte').value !== t.texte) champ('texte').value = t.texte;
+    champ('police').value = t.police;
+    champ('police').style.fontFamily = '"' + t.police + '", inherit';
+    champ('gras').setAttribute('aria-pressed', String(t.gras));
+    champ('place').value = t.placeTexte;
+    pastilles('texte', Object.keys(D.couleursTexte).map((n) => ({ nom: n, hex: D.couleursTexte[n] })), t.couleurTexte, (n) => {
+      const x = etat.textes[etat.faceTexte];
+      x.couleurTexte = n;
+      x.auto = false;
+      toutSalir(true);
+    });
+  }
+
+  function reglerTexte(cle, valeur) {
+    const fam = famille(etat.fiche);
+    const avant = facesMarquees(fam).length;
+    etat.textes[etat.faceTexte][cle] = valeur;
+    FACES.forEach((n) => { $('[data-marque="' + n + '"]').hidden = !faceMarquee(fam, n); });
+    if (cle === 'texte') {
+      majPositions();
+      majAlerte();
+    }
+    toutSalir(true);
+    if (avant !== facesMarquees(fam).length) demanderPrix();
+  }
+
+  $$('[data-face-texte]').forEach((b) => b.addEventListener('click', () => {
+    etat.faceTexte = b.dataset.faceTexte;
+    majTexte();
+  }));
+  champ('texte').addEventListener('input', (e) => reglerTexte('texte', e.target.value));
+  champ('police').addEventListener('change', (e) => {
+    const nom = e.target.value;
+    champ('police').style.fontFamily = '"' + nom + '", inherit';
+    reglerTexte('police', nom);
+    police(nom).then(() => toutSalir(true));
+  });
+  champ('gras').addEventListener('click', (e) => {
+    const oui = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(oui));
+    reglerTexte('gras', oui);
+  });
+  champ('place').addEventListener('change', (e) => reglerTexte('placeTexte', e.target.value));
+
+  // ---------------------------------------------------------------- logo
+  function majLogo() {
+    const img = etat.logo;
+    const reel = img && !img.exemple;
+    $('[data-depot="vide"]').hidden = !!reel;
+    $('[data-depot="plein"]').hidden = !reel;
+    if (reel) {
+      $('[data-vignette]').src = img.vignette;
+      texte('fichier').textContent = img.nom;
+      texte('fichier-aide').textContent = img.envoi === 'encours'
+        ? 'Envoi en cours…'
+        : img.envoi === 'erreur' ? 'Non envoyé' : img.largeur + ' × ' + img.hauteur + ' px' + (img.svg ? ' · SVG converti en PNG' : '') + ' · touchez pour changer';
+    }
     $('[data-zone="depot"]').classList.toggle('a3d-envoi', !!(img && img.envoi === 'encours'));
-    $('[data-action="retirer"]').hidden = !img;
+    const retirer = $('[data-action="retirer"]');
+    retirer.hidden = !img && !etat.surcharges.devant && !etat.surcharges.dos;
+    retirer.textContent = img && img.exemple ? 'Retirer le logo d\'exemple' : 'Retirer le logo';
     majAlerte();
   }
 
-  /** Résolution de l'image à sa taille d'impression : même calcul que le serveur (ImagesAtelier). */
-  function controle(f) {
-    const z = etat.fiche.zone;
-    const t = Math.max(5, tailleImage(f)) / 100;
-    const echelle = Math.min(z.largeur * t / Math.max(1, f.image.largeur), z.hauteur * t / Math.max(1, f.image.hauteur));
-    const cm = f.image.largeur * echelle;
-    const dpi = Math.floor(f.image.largeur / Math.max(0.1, cm / 2.54));
+  /** Résolution de l'image à sa taille d'impression : même calcul que le serveur (ImagesAtelier::controleResolution). */
+  function controle(face) {
+    const img = imageDe(face);
+    const fam = famille(etat.fiche);
+    const z = zoneImpression(etat.fiche, face, etat.places[fam][face].position);
+    const t = Math.max(5, tailleImage(face)) / 100;
+    const echelle = Math.min(z.l * t / Math.max(1, img.largeur), z.h * t / Math.max(1, img.hauteur));
+    const cm = img.largeur * echelle;
+    const dpi = Math.floor(img.largeur / Math.max(0.1, cm / 2.54));
     const conseil = Math.ceil(cm / 2.54 * D.dpi.conseille);
     const cmTexte = (Math.round(cm * 10) / 10).toString().replace('.', ',');
+    const ou = ' (' + libelleEmplacement(fam, face).toLowerCase() + ')';
     if (dpi >= D.dpi.conseille) return null;
-    if (dpi >= D.dpi.minimum) return { etat: 'attention', message: 'Image un peu juste (' + f.image.largeur + ' px de large) pour ' + cmTexte + ' cm : préférez au moins ' + fr.format(conseil) + ' px, ou réduisez la taille.' };
-    return { etat: 'erreur', message: 'Image en basse résolution (' + f.image.largeur + ' px de large) : risque de flou à l\'impression sur ' + cmTexte + ' cm. Préférez au moins ' + fr.format(conseil) + ' px.' };
+    if (dpi >= D.dpi.minimum) return { etat: 'attention', message: 'Image un peu juste (' + img.largeur + ' px de large) pour ' + cmTexte + ' cm' + ou + ' : préférez au moins ' + fr.format(conseil) + ' px, ou réduisez la taille.' };
+    return { etat: 'erreur', message: 'Image en basse résolution (' + img.largeur + ' px de large) : risque de flou à l\'impression sur ' + cmTexte + ' cm' + ou + '. Préférez au moins ' + fr.format(conseil) + ' px.' };
   }
 
   function majAlerte() {
-    const f = etat.faces[etat.face];
     const a = $('[data-alerte]');
+    const fam = famille(etat.fiche);
     let m = null;
-    if (f.image && f.image.exemple) m = { etat: 'info', message: 'Logo d\'exemple : remplacez-le par le vôtre, ou retirez-le, avant de valider.' };
-    else if (f.image && f.image.envoi === 'erreur') m = { etat: 'erreur', message: f.image.erreur };
-    else if (f.image) m = controle(f);
+    const img = etat.logo;
+    if (img && img.exemple) m = { etat: 'info', message: 'Logo d\'exemple : chargez le vôtre, ou retirez-le, avant de valider.' };
+    else if (img && img.envoi === 'erreur') m = { etat: 'erreur', message: img.erreur };
+    else {
+      for (const face of FACES) {
+        if (!logoSur(fam, face) || imageDe(face).exemple) continue;
+        const c = controle(face);
+        if (c && (!m || c.etat === 'erreur')) m = c;
+      }
+    }
+    if (!m && imageDe('devant') && !logoSur(fam, 'devant') && !logoSur(fam, 'dos')) m = { etat: 'info', message: 'Choisissez une position pour y mettre le logo.' };
     a.hidden = !m;
     if (m) {
       a.textContent = m.message;
@@ -714,53 +1192,6 @@
     }
   }
 
-  function changerFace(nom) {
-    etat.face = nom;
-    majFace();
-    choisirVue(nom === 'dos' ? 'dos' : 'devant');
-  }
-
-  $$('[data-face]').forEach((b) => b.addEventListener('click', () => changerFace(b.dataset.face)));
-
-  function regler(cle, valeur, prix) {
-    etat.faces[etat.face][cle] = valeur;
-    dessinerDecalque(etat.face);
-    FACES.forEach((n) => { $('[data-marque="' + n + '"]').hidden = !faceMarquee(n); });
-    if (prix) demanderPrix();
-  }
-
-  champ('taille').addEventListener('input', (e) => {
-    texte('taille').textContent = e.target.value + ' %';
-    regler('taille', parseInt(e.target.value, 10), false);
-    majAlerte();
-  });
-  champ('hauteur').addEventListener('input', (e) => {
-    const v = parseInt(e.target.value, 10);
-    texte('hauteur').textContent = v > 0 ? '+' + v : String(v);
-    regler('hauteur', v, false);
-  });
-  champ('texte').addEventListener('input', (e) => {
-    const avant = faceMarquee(etat.face);
-    texte('reste').textContent = e.target.value.length + ' / ' + e.target.maxLength;
-    regler('texte', e.target.value, avant !== !!(etat.faces[etat.face].image || e.target.value.trim()));
-    majAlerte();
-  });
-  champ('police').addEventListener('change', (e) => {
-    const nom = e.target.value;
-    const face = etat.face;
-    etat.faces[face].police = nom;
-    dessinerDecalque(face);
-    police(nom).then(() => dessinerDecalque(face));
-  });
-  champ('place').addEventListener('change', (e) => regler('placeTexte', e.target.value, false));
-  $('[data-action="retirer"]').addEventListener('click', () => {
-    etat.faces[etat.face].image = null;
-    dessinerDecalque(etat.face);
-    majFace();
-    demanderPrix();
-  });
-
-  // ---------------------------------------------------------------- images
   /** Image décodée, et une copie réduite pour dessiner vite (1 200 px au plus). */
   function preparer(img) {
     const l = img.naturalWidth;
@@ -786,12 +1217,73 @@
     });
   }
 
+  /**
+   * SVG lu dans la page seulement : chargé comme une image (aucun script ni
+   * ressource extérieure n'y tourne), dessiné à 2 400 px de côté puis
+   * envoyé en PNG. Le serveur, lui, refuse toujours les SVG.
+   */
+  async function rasteriser(fichier) {
+    if (fichier.size > SVG_POIDS_MAX) throw new Error('SVG trop lourd (2 Mo au plus) : exportez-le en PNG.');
+    const brut = await fichier.text();
+    const doc = new DOMParser().parseFromString(brut, 'image/svg+xml');
+    const svg = doc.documentElement;
+    if (!svg || svg.nodeName.toLowerCase() !== 'svg' || doc.getElementsByTagName('parsererror').length) {
+      throw new Error('Ce SVG est illisible : exportez-le en PNG.');
+    }
+    let l = 0;
+    let h = 0;
+    const vb = (svg.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+    if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) {
+      l = vb[2];
+      h = vb[3];
+    } else {
+      l = parseFloat(svg.getAttribute('width')) || 300;
+      h = parseFloat(svg.getAttribute('height')) || 150;
+      svg.setAttribute('viewBox', '0 0 ' + l + ' ' + h);
+    }
+    const k = SVG_COTE / Math.max(l, h);
+    const W = Math.max(1, Math.round(l * k));
+    const H = Math.max(1, Math.round(h * k));
+    svg.setAttribute('width', String(W));
+    svg.setAttribute('height', String(H));
+    const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
+    try {
+      const img = await charger(url).catch(() => { throw new Error('Ce SVG ne s\'affiche pas ici : exportez-le en PNG.'); });
+      const c = document.createElement('canvas');
+      c.width = W;
+      c.height = H;
+      c.getContext('2d').drawImage(img, 0, 0, W, H);
+      const png = await new Promise((ok, ko) => {
+        try {
+          c.toBlob((b) => (b ? ok(b) : ko(new Error('Ce SVG n\'a pas pu être converti : exportez-le en PNG.'))), 'image/png');
+        } catch (e) {
+          ko(new Error('Ce SVG n\'a pas pu être converti : exportez-le en PNG.'));
+        }
+      });
+      const nom = (fichier.name || 'logo.svg').replace(/\.svg$/i, '') + '.png';
+      return new File([png], nom, { type: 'image/png' });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   async function deposer(fichier) {
-    const nom = etat.face;
     if (!fichier) return;
-    if (!/^image\/(png|jpeg|webp)$/.test(fichier.type)) { toast('Choisissez une image PNG, JPG ou WebP.'); return; }
-    if (fichier.size > D.envoiMax) { toast('Image trop lourde : ' + Math.floor(D.envoiMax / 1048576) + ' Mo au plus.'); return; }
-    const url = URL.createObjectURL(fichier);
+    const svg = /svg/i.test(fichier.type) || /\.svg$/i.test(fichier.name || '');
+    let envoi = fichier;
+    if (svg) {
+      try {
+        envoi = await rasteriser(fichier);
+      } catch (e) {
+        toast(e.message || 'Ce SVG ne peut pas être lu : exportez-le en PNG.');
+        return;
+      }
+    } else if (!/^image\/(png|jpeg|webp)$/.test(fichier.type)) {
+      toast('Choisissez une image PNG, JPG, SVG ou WebP.');
+      return;
+    }
+    if (envoi.size > D.envoiMax) { toast('Image trop lourde : ' + Math.floor(D.envoiMax / 1048576) + ' Mo au plus.'); return; }
+    const url = URL.createObjectURL(envoi);
     let img;
     try {
       img = await charger(url);
@@ -800,22 +1292,26 @@
       return;
     }
     const p = preparer(img);
-    const image = { dessin: p.dessin, vignette: url, nom: fichier.name, largeur: p.largeur, hauteur: p.hauteur, jeton: null, source: null, exemple: false, envoi: 'encours', erreur: null };
-    const avant = faceMarquee(nom);
-    etat.faces[nom].image = image;
-    dessinerDecalque(nom);
-    if (etat.face === nom) majFace();
-    if (!avant) demanderPrix();
-    toast('Image placée ' + (nom === 'dos' ? (estCasquette() ? 'à l\'arrière' : 'au dos') : 'devant') + '.');
+    const image = { dessin: p.dessin, vignette: url, nom: fichier.name || envoi.name, largeur: p.largeur, hauteur: p.hauteur, jeton: null, source: null, exemple: false, envoi: 'encours', erreur: null, svg };
+    const fam = famille(etat.fiche);
+    const avant = facesMarquees(fam).length;
+    etat.logo = image;
+    etat.surcharges = { devant: null, dos: null };
+    if (!etat.places[fam].devant.logo && !etat.places[fam].dos.logo) etat.places[fam].devant.logo = true;
+    majLogo();
+    majPositions();
+    majTexte();
+    toutSalir(true);
+    if (avant !== facesMarquees(fam).length) demanderPrix();
 
     const corps = new FormData();
-    corps.append('image', fichier);
+    corps.append('image', envoi, envoi.name || 'logo.png');
     try {
       const r = await fetch(D.urls.image, { method: 'POST', body: corps, credentials: 'same-origin', headers: { 'X-CSRF-TOKEN': D.csrf, Accept: 'application/json' } });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.jeton) throw new Error(j.erreur || (r.status === 413 ? 'Image trop lourde pour être envoyée.' : 'L\'image n\'est pas arrivée : réessayez.'));
       image.jeton = j.jeton;
-      image.nom = j.nom;
+      image.nom = svg ? image.nom : j.nom;
       image.largeur = j.largeur;
       image.hauteur = j.hauteur;
       image.envoi = 'ok';
@@ -823,7 +1319,7 @@
       image.envoi = 'erreur';
       image.erreur = e && e.message && !/fetch|network/i.test(e.message) ? e.message : 'L\'image n\'est pas arrivée (connexion ?) : choisissez-la de nouveau.';
     }
-    if (etat.face === nom) majFace();
+    if (etat.logo === image) majLogo();
   }
 
   const depot = $('[data-zone="depot"]');
@@ -831,23 +1327,41 @@
   ['dragenter', 'dragover'].forEach((ev) => depot.addEventListener(ev, (e) => { e.preventDefault(); depot.classList.add('a3d-survol'); }));
   ['dragleave', 'drop'].forEach((ev) => depot.addEventListener(ev, (e) => { e.preventDefault(); depot.classList.remove('a3d-survol'); }));
   depot.addEventListener('drop', (e) => deposer(e.dataTransfer.files[0]));
+  $('[data-action="retirer"]').addEventListener('click', () => {
+    const fam = famille(etat.fiche);
+    const avant = facesMarquees(fam).length;
+    etat.logo = null;
+    etat.surcharges = { devant: null, dos: null };
+    majLogo();
+    majPositions();
+    majTexte();
+    toutSalir(true);
+    if (avant !== facesMarquees(fam).length) demanderPrix();
+  });
 
   /** Logo d'exemple, dessiné ici : montré, jamais envoyé. */
   function logoExemple() {
     const c = document.createElement('canvas');
-    c.width = c.height = 600;
+    c.width = 900;
+    c.height = 640;
     const g = c.getContext('2d');
-    g.fillStyle = '#FDC82A';
-    g.beginPath(); g.arc(300, 300, 270, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#E8398A';
-    g.beginPath(); g.arc(300, 300, 200, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#fff';
-    g.beginPath(); g.moveTo(300, 150); g.lineTo(430, 380); g.lineTo(170, 380); g.closePath(); g.fill();
-    g.fillStyle = '#0F4590';
-    g.font = '900 64px "Arial Black", sans-serif';
+    g.translate(450, 300);
+    g.fillStyle = '#1B6CF2';
+    g.beginPath(); g.arc(0, -40, 190, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#FF7A1F';
+    g.beginPath(); g.moveTo(-120, 40); g.lineTo(0, -170); g.lineTo(120, 40); g.closePath(); g.fill();
+    g.fillStyle = '#ffffff';
+    g.beginPath(); g.arc(0, -30, 52, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#14213D';
+    g.font = '900 104px "Arial Black", "Helvetica Neue", sans-serif';
     g.textAlign = 'center';
-    g.fillText('AWA', 300, 470);
-    return { dessin: c, vignette: c.toDataURL('image/png'), nom: 'Logo d\'exemple', largeur: 600, hauteur: 600, jeton: null, source: null, exemple: true, envoi: 'ok', erreur: null };
+    g.textBaseline = 'alphabetic';
+    g.lineWidth = 16;
+    g.strokeStyle = '#ffffff';
+    g.lineJoin = 'round';
+    g.strokeText('VOTRE LOGO', 0, 300);
+    g.fillText('VOTRE LOGO', 0, 300);
+    return { dessin: c, vignette: c.toDataURL('image/png'), nom: 'Logo d\'exemple', largeur: 900, hauteur: 640, jeton: null, source: null, exemple: true, envoi: 'ok', erreur: null };
   }
 
   // ---------------------------------------------------------------- quantités et prix
@@ -858,7 +1372,7 @@
   }
 
   champ('quantite').addEventListener('input', (e) => {
-    etat.quantite = Math.max(0, Math.min(D.quantiteMax, parseInt(e.target.value, 10) || 0));
+    etat.quantite = borne(parseInt(e.target.value, 10) || 0, 0, D.quantiteMax);
     majQuantite();
   });
 
@@ -873,8 +1387,7 @@
 
   async function chargerPrix() {
     const n = ++numeroPrix;
-    const q = quantite();
-    const parametres = new URLSearchParams({ modele: etat.fiche.id, quantite: String(q), faces: String(Math.max(1, facesMarquees().length)) });
+    const parametres = new URLSearchParams({ modele: etat.fiche.id, quantite: String(quantite()), faces: String(Math.max(1, facesMarquees().length)) });
     let d;
     try {
       const r = await fetch(D.urls.prix + '?' + parametres, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
@@ -936,44 +1449,135 @@
     if (d.prochain) prochain.textContent = 'Plus que ' + d.prochain.manque + ' pièce' + (d.prochain.manque > 1 ? 's' : '') + ' pour −' + d.prochain.pourcentage + ' % sur chaque pièce.';
   }
 
+  // ---------------------------------------------------------------- vues pour l'atelier et maquette
+  async function policesPretes() {
+    await Promise.all(FACES.map((n) => police(etat.textes[n].police)));
+    rangees.forEach((r) => { r.marquageSale = true; });
+  }
+
+  /** Image carrée d'une vue de la rangée, en 3D si elle est là, sinon à plat. */
+  function capture(r, vue, cote, fond) {
+    if (r.marquageSale) majMarquage(r);
+    if (etat.rendu === '3d' && studio && r.pret) return studio.capturer(r.fiche.id, vue, cote, fond);
+    const c = document.createElement('canvas');
+    c.width = c.height = cote;
+    peindrePlat(c.getContext('2d'), cote, cote, r, vue, 1, fond);
+    return c;
+  }
+
+  const enPng = (c) => new Promise((ok, ko) => c.toBlob((b) => (b ? ok(b) : ko(new Error('vue'))), 'image/png'));
+
+  function chargerLogoSite() {
+    return charger(D.urls.logo).catch(() => null);
+  }
+
+  /** Maquette PNG : les trois vues de l'article choisi, le nom du site ; ni prix ni nom du client. Rien ne part au serveur. */
+  async function telecharger() {
+    const bouton = $('[data-action="telecharger"]');
+    bouton.disabled = true;
+    try {
+      await Promise.all([policesPretes(), police('Montserrat')]);
+      const r = rangeeActive();
+      const cles = Object.keys(r.vues);
+      const cote = 960;
+      const marge = 56;
+      const tete = 190;
+      const pied = 120;
+      const W = marge * 2 + cles.length * cote + (cles.length - 1) * 28;
+      const H = tete + cote + 64 + pied;
+      const c = document.createElement('canvas');
+      c.width = W;
+      c.height = H;
+      const g = c.getContext('2d');
+      g.fillStyle = '#F4F6FA';
+      g.fillRect(0, 0, W, H);
+      const logo = await chargerLogoSite();
+      let x = marge;
+      if (logo) {
+        const lh = 96;
+        const lw = lh * logo.naturalWidth / Math.max(1, logo.naturalHeight);
+        g.drawImage(logo, marge, 48, lw, lh);
+        x = marge + lw + 36;
+      }
+      g.fillStyle = '#14213D';
+      g.textBaseline = 'alphabetic';
+      g.textAlign = 'left';
+      g.font = '800 54px "Montserrat", "Segoe UI", Arial, sans-serif';
+      g.fillText('STUDIO TEXTILE', x, 100);
+      g.fillStyle = '#5D6782';
+      g.font = '600 30px "Montserrat", "Segoe UI", Arial, sans-serif';
+      const c2 = couleursDe(r);
+      let ligne = r.fiche.nom + ' · ' + (couleurDans(r.fiche, etat.couleur) || couleurDefaut(r.fiche)).nom;
+      if (r.fiche.forme === 'casquette' && etat.visiere) ligne += ' · visière ' + etat.visiere;
+      if (r.fiche.forme === 'polo' && c2.secondeChoisie) ligne += ' · bords ' + etat.bords;
+      g.fillText(ligne, x, 146);
+      g.textAlign = 'right';
+      g.fillStyle = '#FF7A1F';
+      g.font = '700 26px "Montserrat", "Segoe UI", Arial, sans-serif';
+      g.fillText('Maquette', W - marge, 100);
+      cles.forEach((cle, i) => {
+        const vue = vueScene(r, cle);
+        const image = capture(r, vue, cote, '#EAEFF7');
+        const vx = marge + i * (cote + 28);
+        g.save();
+        g.beginPath();
+        if (g.roundRect) g.roundRect(vx, tete, cote, cote, 28);
+        else g.rect(vx, tete, cote, cote);
+        g.clip();
+        g.drawImage(image, vx, tete, cote, cote);
+        g.restore();
+        g.fillStyle = '#14213D';
+        g.textAlign = 'center';
+        g.font = '700 30px "Montserrat", "Segoe UI", Arial, sans-serif';
+        g.fillText(r.vues[cle].libelle.textContent, vx + cote / 2, tete + cote + 48);
+      });
+      g.fillStyle = '#DFE4EE';
+      g.fillRect(marge, H - pied + 12, W - marge * 2, 2);
+      g.textAlign = 'left';
+      g.fillStyle = '#14213D';
+      g.font = '800 30px "Montserrat", "Segoe UI", Arial, sans-serif';
+      g.fillText('Succès Imprim', marge, H - 48);
+      g.fillStyle = '#5D6782';
+      g.font = '500 24px "Montserrat", "Segoe UI", Arial, sans-serif';
+      g.textAlign = 'right';
+      g.fillText('Aperçu indicatif : couleurs et proportions confirmées sur le BAT.', W - marge, H - 48);
+      const blob = await enPng(c);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const propre = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      a.href = url;
+      a.download = 'maquette-' + propre(r.fiche.libelleForme) + '-' + propre(etat.couleur || '') + '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+      toast('Maquette enregistrée sur votre appareil.');
+    } catch (e) {
+      if (window.console) console.warn(e);
+      toast('La maquette n\'a pas pu être préparée : réessayez.');
+    } finally {
+      bouton.disabled = false;
+    }
+  }
+  $('[data-action="telecharger"]').addEventListener('click', telecharger);
+
   // ---------------------------------------------------------------- valider
   function probleme() {
     const q = quantite();
+    const fam = famille(etat.fiche);
     if (q < 1) return 'Indiquez au moins une pièce.';
     if (q < etat.fiche.min) return 'Minimum ' + etat.fiche.min + ' pièces pour cet article.';
     if (etat.fiche.max && q > etat.fiche.max) return 'Au plus ' + etat.fiche.max + ' pièces en ligne : demandez un devis pour davantage.';
-    if (!facesMarquees().length) return 'Ajoutez une image ou un texte sur au moins une face.';
+    if (!facesMarquees(fam).length) return 'Ajoutez votre logo ou un texte sur au moins une face.';
     for (const n of FACES) {
-      const img = etat.faces[n].image;
-      if (!img) continue;
-      if (img.exemple) return 'Remplacez le logo d\'exemple (' + libelleFace(n).toLowerCase() + ') par le vôtre, ou retirez-le.';
-      if (img.envoi === 'encours') return 'Un instant : votre image finit d\'arriver.';
-      if (img.envoi === 'erreur') return 'L\'image (' + libelleFace(n).toLowerCase() + ') n\'est pas arrivée : choisissez-la de nouveau ou retirez-la.';
+      if (!logoSur(fam, n)) continue;
+      const img = imageDe(n);
+      if (img.exemple) return 'Le logo affiché est un exemple : chargez le vôtre, ou retirez-le.';
+      if (img.envoi === 'encours') return 'Un instant : votre logo finit d\'arriver.';
+      if (img.envoi === 'erreur') return 'Votre logo n\'est pas arrivé : choisissez-le de nouveau ou retirez-le.';
     }
     if (etat.prix && etat.prix.erreur) return etat.prix.erreur;
     return null;
-  }
-
-  function enBlob(dataUrl) {
-    const [entete, b64] = dataUrl.split(',');
-    const binaire = atob(b64);
-    const octets = new Uint8Array(binaire.length);
-    for (let i = 0; i < binaire.length; i++) octets[i] = binaire.charCodeAt(i);
-    return new Blob([octets], { type: entete.split(':')[1].split(';')[0] });
-  }
-
-  function vuePlate(face) {
-    const c = document.createElement('canvas');
-    c.width = c.height = 1024;
-    peindrePlat(c.getContext('2d'), { x: 512, y: 500, s: 1024 / 2.9 }, face, FOND_VUE);
-    return new Promise((ok) => c.toBlob(ok, 'image/png'));
-  }
-
-  async function vuesRendues() {
-    if (etat.rendu === '3d' && scene3d) {
-      return { devant: enBlob(scene3d.capturer('devant')), dos: enBlob(scene3d.capturer('dos')) };
-    }
-    return { devant: await vuePlate('devant'), dos: await vuePlate('dos') };
   }
 
   let rendus = null;
@@ -990,11 +1594,13 @@
   }
 
   function resumeFace(n) {
-    const f = etat.faces[n];
+    const fam = famille(etat.fiche);
+    if (!faceMarquee(fam, n)) return '—';
+    const t = etat.textes[n];
     const m = [];
-    if (f.texte.trim()) m.push('« ' + f.texte.trim() + ' » (' + f.police + ', ' + f.couleurTexte.toLowerCase() + ')');
-    if (f.image) m.push('image ' + f.image.nom);
-    return m.length ? m.join(' + ') : '—';
+    if (logoSur(fam, n)) m.push('logo ' + imageDe(n).nom);
+    if (t.texte.trim()) m.push('« ' + t.texte.trim() + ' » (' + t.police + (t.gras ? ' gras' : '') + ', ' + t.couleurTexte.toLowerCase() + ')');
+    return libelleEmplacement(fam, n) + ' : ' + m.join(' + ');
   }
 
   async function ouvrirRecap() {
@@ -1002,28 +1608,33 @@
     if (p) { toast(p); return; }
     const bouton = $('[data-action="valider"]');
     bouton.disabled = true;
+    const r = rangeeActive();
     try {
-      await Promise.all(FACES.map((n) => police(etat.faces[n].police)));
-      FACES.forEach((n) => { if (scene3d) scene3d.decalque(n); });
-      rendus = await vuesRendues();
+      await policesPretes();
+      const devant = await enPng(capture(r, 'face', 1024, FOND_CAPTURE));
+      const dos = await enPng(capture(r, vueDos(r), 1024, FOND_CAPTURE));
+      rendus = { devant, dos };
     } catch (e) {
       bouton.disabled = false;
       toast('Les vues de votre modèle n\'ont pas pu être préparées : réessayez.');
       return;
     }
     bouton.disabled = false;
+    salir(r);
     urlsRendus.splice(0).forEach((u) => URL.revokeObjectURL(u));
     FACES.forEach((n) => {
       const u = URL.createObjectURL(rendus[n]);
       urlsRendus.push(u);
       fenetre.querySelector('[data-rendu="' + n + '"]').src = u;
     });
+    fenetre.querySelector('[data-libelle-rendu-dos]').textContent = libelleFace('dos');
     const table = fenetre.querySelector('[data-recap]');
     table.textContent = '';
     const f = etat.fiche;
     const q = quantite();
+    const c = couleursDe(r);
     ligne(table, 'Article', f.nom);
-    ligne(table, 'Couleur', etat.couleur + (estCasquette() ? ' · visière ' + etat.visiere : ''));
+    ligne(table, 'Couleur', etat.couleur + (f.forme === 'casquette' ? ' · visière ' + etat.visiere : '') + (f.forme === 'polo' && c.secondeChoisie ? ' · bords ' + etat.bords : ''));
     ligne(table, f.tailles.length ? 'Tailles' : 'Quantité', f.tailles.length ? f.tailles.filter((t) => etat.tailles[t] > 0).map((t) => t + ' × ' + etat.tailles[t]).join(', ') : q + ' pièce' + (q > 1 ? 's' : ''));
     FACES.forEach((n) => ligne(table, libelleFace(n), resumeFace(n)));
     const d = etat.prix || {};
@@ -1083,16 +1694,30 @@
     const libelle = envoyer.textContent;
     envoyer.disabled = true;
     envoyer.textContent = 'Envoi…';
+    const fam = famille(etat.fiche);
     const corps = new FormData(formulaire);
     corps.append('modele', etat.fiche.id);
     corps.append('couleur', etat.couleur);
-    if (estCasquette()) corps.append('visiere', etat.visiere);
+    if (etat.fiche.forme === 'casquette') corps.append('visiere', etat.visiere);
+    if (etat.fiche.forme === 'polo' && etat.bords) corps.append('bords', etat.bords);
     if (etat.fiche.tailles.length) etat.fiche.tailles.forEach((t) => corps.append('tailles[' + t + ']', String(etat.tailles[t] || 0)));
     else corps.append('quantite', String(etat.quantite));
     const faces = {};
     FACES.forEach((n) => {
-      const f = etat.faces[n];
-      faces[n] = { image: f.image ? (f.image.jeton || f.image.source) : null, taille: f.taille, hauteur: f.hauteur, texte: f.texte.trim(), police: f.police, couleurTexte: f.couleurTexte, placeTexte: f.placeTexte };
+      if (!faceMarquee(fam, n)) return;
+      const t = etat.textes[n];
+      const img = logoSur(fam, n) ? imageDe(n) : null;
+      faces[n] = {
+        image: img ? (img.jeton || img.source) : null,
+        position: etat.places[fam][n].position,
+        taille: etat.taille,
+        hauteur: 0,
+        texte: t.texte.trim(),
+        police: t.police,
+        gras: t.gras,
+        couleurTexte: t.couleurTexte,
+        placeTexte: t.placeTexte,
+      };
     });
     corps.append('faces', JSON.stringify(faces));
     corps.append('rendu_devant', rendus.devant, 'devant.png');
@@ -1131,46 +1756,72 @@
 
   // ---------------------------------------------------------------- démarrage
   async function reprendre(r) {
+    const fiche = D.fiches.find((f) => f.id === r.modele);
+    const fam = fiche ? famille(fiche) : 'vetement';
+    let taille = null;
     FACES.forEach((n) => {
       const x = (r.faces || {})[n];
-      etat.faces[n] = x
-        ? { image: null, taille: x.taille, hauteur: x.hauteur, texte: x.texte || '', police: x.police, couleurTexte: x.couleurTexte, placeTexte: x.placeTexte }
-        : { image: null, taille: 60, hauteur: 0, texte: '', police: 'Archivo Black', couleurTexte: 'Blanc', placeTexte: 'dessous' };
+      if (!x) {
+        etat.places[fam][n].logo = false;
+        return;
+      }
+      etat.textes[n] = {
+        texte: x.texte || '',
+        police: D.polices[x.police] ? x.police : POLICE_DEFAUT,
+        gras: !!x.gras,
+        couleurTexte: D.couleursTexte[x.couleurTexte] ? x.couleurTexte : 'Blanc',
+        auto: false,
+        placeTexte: x.placeTexte === 'dessus' ? 'dessus' : 'dessous',
+      };
+      // Création d'avant le studio : pas d'emplacement, le premier de la face (centre du devant, du dos ; arrière).
+      etat.places[fam][n].position = x.position && D.emplacements[fam][n][x.position] ? x.position : premierePlace(fam, n);
+      etat.places[fam][n].logo = !!x.image;
+      if (taille === null && x.image) taille = x.taille;
     });
-    const fiche = D.fiches.find((f) => f.id === r.modele);
+    etat.taille = borne(parseInt(taille, 10) || 80, 15, 100);
+    champ('taille').value = String(etat.taille);
+    texte('taille').textContent = etat.taille + ' %';
     if (!fiche) toast('L\'article de la création ' + r.numero + ' n\'est plus proposé : choisissez-en un autre.');
-    choisirArticle(fiche || D.fiches[0], fiche ? r : null);
+    choisirFiche(fiche || D.fiches[0], fiche ? r : null);
+    const images = {};
     await Promise.all(FACES.map(async (n) => {
       const x = (r.faces || {})[n];
       if (!x || !x.url || !x.source) return;
       try {
         const img = await charger(x.url);
         const p = preparer(img);
-        etat.faces[n].image = { dessin: p.dessin, vignette: x.url, nom: x.nomImage || 'Image', largeur: p.largeur, hauteur: p.hauteur, jeton: null, source: x.source, exemple: false, envoi: 'ok', erreur: null };
-        dessinerDecalque(n);
+        images[n] = { dessin: p.dessin, vignette: x.url, nom: x.nomImage || 'Image', largeur: p.largeur, hauteur: p.hauteur, jeton: null, source: x.source, exemple: false, envoi: 'ok', erreur: null };
       } catch (e) {
         toast('Une image de la création n\'a pas pu être relue : choisissez-la de nouveau.');
       }
     }));
-    majFace();
+    // Une image pour tout l'article ; celle du dos reste à part si la création en avait deux.
+    etat.logo = images.devant || images.dos || null;
+    etat.surcharges = { devant: null, dos: images.devant && images.dos ? images.dos : null };
+    majLogo();
+    majPositions();
+    majTexte();
+    toutSalir(true);
     demanderPrix();
   }
 
+  majEtat3d();
+  // Visière rouge d'office, dès la première image (comme quand on choisit la casquette).
+  const casquette = D.fiches.find((f) => f.forme === 'casquette');
+  if (casquette && casquette.couleurs.some((c) => c.nom === 'Rouge')) etat.visiere = 'Rouge';
   if (D.reprise) {
     reprendre(D.reprise);
   } else {
-    etat.faces.devant.image = logoExemple();
-    choisirArticle(D.fiches[0], null);
+    etat.logo = logoExemple();
+    choisirFiche(D.fiches[0], null);
   }
-  majBascule();
-  new ResizeObserver(() => dessinerPlat()).observe(toilePlat);
 
   // Polices, puis la 3D, après le premier affichage.
   const ensuite = window.requestIdleCallback || ((f) => window.setTimeout(f, 200));
   const demarrer = () => ensuite(() => {
-    Promise.all(FACES.map((n) => police(etat.faces[n].police))).then(() => FACES.forEach(dessinerDecalque));
+    Promise.all(FACES.map((n) => police(etat.textes[n].police))).then(() => toutSalir(true));
     const choix = memoire('atelier3d-vue');
-    if (!peut3d || choix === 'plat') return;
+    if (!peut3d) return;
     if (choix === '3d' || !appareilModeste()) charger3d(choix !== '3d');
   }, { timeout: 1500 });
   if (document.readyState === 'complete') demarrer();

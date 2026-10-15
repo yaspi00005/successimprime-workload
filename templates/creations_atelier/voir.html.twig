@@ -47,11 +47,11 @@
 				{% for face in c.facesMarquees %}
 					{% set r = c.reglages[face] %}
 					{% set f = c.fichier('image-' ~ face) %}
-					<dt class="col-sm-3">{{ c.libelleFace(face) }}</dt>
+					<dt class="col-sm-3">{{ c.libelleEmplacement(face) }}</dt>
 					<dd class="col-sm-9">
-						{% if r.texte %}Texte « <b>{{ r.texte }}</b> » · {{ r.police }} · {{ r.couleurTexte|lower }} · {{ r.placeTexte == 'dessus' ? 'au-dessus de l\'image' : 'sous l\'image' }}<br>{% endif %}
+						{% if r.texte %}Texte « <b>{{ r.texte }}</b> » · {{ r.police }}{{ (r.gras ?? false) ? ' gras' }} · {{ r.couleurTexte|lower }} · {{ r.placeTexte == 'dessus' ? 'au-dessus de l\'image' : 'sous l\'image' }}<br>{% endif %}
 						{% if r.image %}
-							Image à {{ r.taille }} % de la zone, position {{ r.hauteur > 0 ? '+' ~ r.hauteur : r.hauteur }}
+							Image à {{ r.taille }} % de {{ r.position is defined ? 'l\'emplacement' : 'la zone' }}{% if r.hauteur != 0 %}, position {{ r.hauteur > 0 ? '+' ~ r.hauteur : r.hauteur }}{% endif %}
 							{% if f and presents['image-' ~ face] %}
 								· <a href="{{ path('app_creations_atelier_fichier', {id: c.id, quoi: 'image-' ~ face}) }}"><i class="fas fa-download me-1"></i>{{ f.nomOriginal }}</a>
 							{% elseif f %}

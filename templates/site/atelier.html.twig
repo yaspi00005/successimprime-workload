@@ -1,37 +1,30 @@
 {#
-	Atelier 3D du site public (docs/atelier-3d.md) : sans compte, prix
-	public calculé par le serveur ; « Valider mon modèle » envoie une
-	demande de devis. three.js n'est chargé que sur cette page, après le
-	premier affichage (public/js/atelier-3d.js).
+	Studio textile (ancien « Atelier 3D ») du site public (docs/atelier-3d.md) :
+	sans compte, prix public calculé par le serveur ; « Valider mon modèle »
+	envoie une demande de devis. three.js n'est chargé que sur cette page,
+	après le premier affichage (public/js/atelier-3d.js).
 #}
 {% extends 'site/_site.html.twig' %}
 {% set menu_actif = 'app_site_atelier' %}
 
-{% block title %}Atelier 3D : t-shirts, polos et casquettes personnalisés · Succès Imprim{% endblock %}
-{% block description %}Composez votre t-shirt, polo ou casquette en 3D : couleur, logo et texte devant et dos, prix selon la quantité. L'atelier prépare le BAT avant l'impression, à Bamako.{% endblock %}
+{% block title %}Studio textile : t-shirts, polos et casquettes personnalisés · Succès Imprim{% endblock %}
+{% block description %}Personnalisez vos t-shirts, polos et casquettes en 3D : couleur, logo, position et texte, vues de face, de dos et de côté, prix selon la quantité. L'atelier prépare le BAT avant l'impression, à Bamako.{% endblock %}
 
 {% block entete %}
 	<link rel="stylesheet" href="{{ asset('css/atelier-3d.css') }}">
-	{% if fiches is not empty %}<script type="importmap">{"imports": {"three": "{{ asset('vendor/three/three.module.min.js') }}"}}</script>{% endif %}
+	{% if fiches is not empty %}<script type="importmap">{{ {imports: {'three': asset('vendor/three/three.module.min.js'), 'three/addons/': asset('vendor/three/addons/')}}|json_encode(constant('JSON_UNESCAPED_SLASHES'))|raw }}</script>{% endif %}
 {% endblock %}
 
 {% block contenu %}
-	<section class="a3d-bandeau">
-		<div class="a3d-bandes" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-		<div class="si-cadre">
-			<nav class="si-ariane" aria-label="Fil d'Ariane">
-				<a href="{{ site_lien('app_site_accueil') }}">Accueil</a> <span aria-hidden="true">›</span> <span aria-current="page">Atelier 3D</span>
-			</nav>
-			<h1>Votre textile, <em>en 3D</em>, avant l'impression</h1>
-			<p>Choisissez l'article et sa couleur, ajoutez votre logo et votre texte, devant ou dos. L'aperçu suit chaque réglage et le prix se met à jour selon la quantité.</p>
-		</div>
-	</section>
-
 	<div class="a3d-zone-outil">
-		<div class="si-cadre">
+		<div class="a3d-cadre">
+			<nav class="si-ariane a3d-ariane" aria-label="Fil d'Ariane">
+				<a href="{{ site_lien('app_site_accueil') }}">Accueil</a> <span aria-hidden="true">›</span> <span aria-current="page">Studio textile</span>
+			</nav>
 			{% if fiches is empty %}
+				<h1 class="a3d-titre-vide">Studio textile</h1>
 				<div class="a3d-vide">
-					<p>L'atelier 3D ouvre bientôt. En attendant, l'équipe prépare votre t-shirt, polo ou casquette sur devis.</p>
+					<p>Le studio textile ouvre bientôt. En attendant, l'équipe prépare votre t-shirt, polo ou casquette sur devis.</p>
 					{% if site_lien('app_site_devis') %}<a class="si-bouton si-bouton-rouge" href="{{ site_lien('app_site_devis') }}">Demander un devis</a>{% endif %}
 				</div>
 			{% else %}
@@ -50,8 +43,8 @@
 		<div class="si-cadre">
 			<h2>Comment ça marche</h2>
 			<ol>
-				<li><strong>Composez</strong><span>Article, couleur, logo, texte et quantités par taille. Le prix tient compte des remises de quantité.</span></li>
-				<li><strong>Validez votre modèle</strong><span>Les vues de face et de dos partent avec votre demande. Sans compte : un numéro vous permet de la suivre.</span></li>
+				<li><strong>Composez</strong><span>Article, couleur, logo et sa position, texte et quantités par taille. Le prix tient compte des remises de quantité.</span></li>
+				<li><strong>Validez votre modèle</strong><span>Les vues de face et de dos partent avec votre demande. Sans compte : un numéro vous permet de la suivre. « Télécharger la maquette » garde une image pour vous.</span></li>
 				<li><strong>L'atelier prépare le BAT</strong><span>Un graphiste vérifie vos images, confirme le prix et vous envoie le BAT avant l'impression.</span></li>
 			</ol>
 		</div>

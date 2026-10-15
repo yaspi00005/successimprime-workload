@@ -29,8 +29,46 @@ class CreationAtelier
     public const DOS = 'dos';
     public const FACES = [self::DEVANT, self::DOS];
 
-    /** Polices proposées (public/vendor/polices-atelier, licence OFL). */
-    public const POLICES = ['Archivo Black', 'Bebas Neue', 'Pacifico', 'Figtree'];
+    /**
+     * Polices proposées (public/vendor/polices-atelier, licence OFL). La
+     * première est celle du studio et celle retenue pour un nom inconnu.
+     */
+    public const POLICES = ['Montserrat', 'Archivo Black', 'Bebas Neue', 'Pacifico', 'Figtree'];
+
+    public const FAMILLE_VETEMENT = 'vetement';
+    public const FAMILLE_CASQUETTE = 'casquette';
+
+    /**
+     * Emplacements du marquage (« Position du logo » du studio), par
+     * famille d'article et par face : libellé, puis plus grande largeur et
+     * hauteur imprimées en cm (null : celle de la zone d'impression de
+     * l'article, qui borne toujours). Le premier emplacement de chaque face
+     * est celui des créations faites avant le studio (logo centré).
+     *
+     * @var array<string, array<string, array<string, array{0: string, 1: ?float, 2: ?float}>>>
+     */
+    public const EMPLACEMENTS = [
+        self::FAMILLE_VETEMENT => [
+            self::DEVANT => [
+                'devant-centre' => ['Devant centre', null, null],
+                'poitrine-gauche' => ['Poitrine gauche', 10.0, 10.0],
+                'poitrine-droite' => ['Poitrine droite', 10.0, 10.0],
+            ],
+            self::DOS => [
+                'dos-centre' => ['Dos centre', null, null],
+                'dos-haut' => ['Dos haut', null, 10.0],
+            ],
+        ],
+        self::FAMILLE_CASQUETTE => [
+            self::DEVANT => [
+                'devant' => ['Devant', null, null],
+            ],
+            self::DOS => [
+                'arriere' => ['Arrière', 8.0, 4.0],
+                'cote' => ['Côté', 6.0, 4.0],
+            ],
+        ],
+    ];
 
     /** Couleurs du texte : nom => couleur. */
     public const COULEURS_TEXTE = ['Blanc' => '#FFFFFF', 'Noir' => '#111111', 'Jaune' => '#FDC82A', 'Rouge' => '#DE1028', 'Bleu' => '#0F4590'];
@@ -81,7 +119,12 @@ class CreationAtelier
     #[ORM\Column(type: 'json')]
     private array $couleur = ['nom' => '', 'hex' => '#FFFFFF'];
 
-    /** @var array{nom: string, hex: string}|null visière d'une casquette */
+    /**
+     * Seconde couleur : visière d'une casquette, bords (col et manches)
+     * d'un polo ; vide pour un t-shirt ou un polo sans bord de couleur.
+     *
+     * @var array{nom: string, hex: string}|null
+     */
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $couleurVisiere = null;
 
@@ -146,9 +189,9 @@ class CreationAtelier
      *
      * @param array<string, mixed> $brut
      *
-     * @return array{image: bool, nomImage: ?string, taille: int, hauteur: int, texte: string, police: string, couleurTexte: string, placeTexte: string}|null
+     * @return array{image: bool, nomImage: ?string, position: string, taille: int, hauteur: int, texte: string, police: string, gras: bool, couleurTexte: string, placeTexte: string}|null
      */
-    public static function reglagesFace(array $brut, bool $image, ?string $nomImage): ?array
+    public static function reglagesFace(array $brut, bool $image, ?string $nomImage, string $forme, string $face): ?array
     {
         $texte = trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string) ($brut['texte'] ?? '')));
         $texte = mb_substr($texte, 0, self::TEXTE_MAX);
@@ -161,12 +204,48 @@ class CreationAtelier
         return [
             'image' => $image,
             'nomImage' => $image && null !== $nomImage ? mb_substr($nomImage, 0, 120) : null,
+            'position' => self::emplacement($forme, $face, $brut['position'] ?? null),
             'taille' => max(15, min(100, (int) ($brut['taille'] ?? 60))),
             'hauteur' => max(-40, min(40, (int) ($brut['hauteur'] ?? 0))),
             'texte' => $texte,
             'police' => \in_array($police, self::POLICES, true) ? $police : self::POLICES[0],
+            'gras' => true === ($brut['gras'] ?? false),
             'couleurTexte' => isset(self::COULEURS_TEXTE[$couleur]) ? $couleur : 'Blanc',
             'placeTexte' => 'dessus' === ($brut['placeTexte'] ?? null) ? 'dessus' : 'dessous',
+        ];
+    }
+
+    /** « casquette » ou « vetement » (t-shirt, polo) : les emplacements en dépendent. */
+    public static function famille(string $forme): string
+    {
+        return ModeleAtelier::CASQUETTE === $forme ? self::FAMILLE_CASQUETTE : self::FAMILLE_VETEMENT;
+    }
+
+    /**
+     * Emplacement permis pour cette face, ou le premier de la face (celui
+     * des créations faites avant le studio).
+     */
+    public static function emplacement(string $forme, string $face, mixed $position): string
+    {
+        $permis = self::EMPLACEMENTS[self::famille($forme)][self::DOS === $face ? self::DOS : self::DEVANT];
+
+        return \is_string($position) && isset($permis[$position]) ? $position : (string) array_key_first($permis);
+    }
+
+    /**
+     * Taille imprimée la plus grande à cet emplacement (largeur, hauteur en
+     * cm) : celle de l'emplacement, bornée par la zone d'impression de
+     * l'article. Le contrôle de résolution part de là.
+     *
+     * @return array{0: float, 1: float}
+     */
+    public static function zoneImpression(string $forme, string $face, ?string $position, float $zoneLargeurCm, float $zoneHauteurCm): array
+    {
+        $e = self::EMPLACEMENTS[self::famille($forme)][self::DOS === $face ? self::DOS : self::DEVANT][self::emplacement($forme, $face, $position)];
+
+        return [
+            null !== $e[1] ? min($e[1], $zoneLargeurCm) : $zoneLargeurCm,
+            null !== $e[2] ? min($e[2], $zoneHauteurCm) : $zoneHauteurCm,
         ];
     }
 
@@ -221,7 +300,7 @@ class CreationAtelier
         return implode(', ', array_map(static fn (string $t, int $n): string => $t.' × '.$n, array_keys($this->tailles), $this->tailles));
     }
 
-    /** « Devant : logo + « BAMAKO » (Archivo Black, blanc) ». @return list<string> */
+    /** « Poitrine gauche : image « logo.png » à 60 % + texte « BAMAKO » (Montserrat gras, blanc, dessous) ». @return list<string> */
     public function resumeMarquage(): array
     {
         $lignes = [];
@@ -232,24 +311,52 @@ class CreationAtelier
                 $morceaux[] = 'image'.(null !== ($r['nomImage'] ?? null) ? ' « '.$r['nomImage'].' »' : '').' à '.($r['taille'] ?? 60).' %';
             }
             if ('' !== ($r['texte'] ?? '')) {
-                $morceaux[] = \sprintf('texte « %s » (%s, %s, %s)', $r['texte'], $r['police'] ?? '', mb_strtolower((string) ($r['couleurTexte'] ?? '')), 'dessus' === ($r['placeTexte'] ?? '') ? 'au-dessus' : 'dessous');
+                $morceaux[] = \sprintf('texte « %s » (%s%s, %s, %s)', $r['texte'], $r['police'] ?? '', ($r['gras'] ?? false) ? ' gras' : '', mb_strtolower((string) ($r['couleurTexte'] ?? '')), 'dessus' === ($r['placeTexte'] ?? '') ? 'au-dessus' : 'dessous');
             }
-            $lignes[] = $this->libelleFace($f).' : '.implode(' + ', $morceaux);
+            $lignes[] = $this->libelleEmplacement($f).' : '.implode(' + ', $morceaux);
         }
 
         return $lignes;
     }
 
-    /** « Devant », « Dos », ou « Arrière » pour une casquette. */
+    /**
+     * « Devant », « Dos », ou « Arrière » pour une casquette (« Côté »
+     * quand le marquage de l'arrière est sur le côté) : nom de la vue.
+     */
     public function libelleFace(string $face): string
     {
-        return self::DOS === $face ? (ModeleAtelier::CASQUETTE === $this->forme ? 'Arrière' : 'Dos') : 'Devant';
+        if (self::DOS !== $face) {
+            return 'Devant';
+        }
+        if (ModeleAtelier::CASQUETTE !== $this->forme) {
+            return 'Dos';
+        }
+
+        return 'cote' === ($this->reglages[self::DOS]['position'] ?? null) ? 'Côté' : 'Arrière';
     }
 
-    /** Couleur lisible : « Noir », « Rouge · visière Noir ». */
+    /**
+     * Emplacement du marquage de la face (« Poitrine gauche ») ; le nom de
+     * la face pour une création faite avant le studio.
+     */
+    public function libelleEmplacement(string $face): string
+    {
+        $position = $this->reglages[$face]['position'] ?? null;
+        if (!\is_string($position)) {
+            return $this->libelleFace($face);
+        }
+
+        return self::EMPLACEMENTS[self::famille($this->forme)][self::DOS === $face ? self::DOS : self::DEVANT][self::emplacement($this->forme, $face, $position)][0];
+    }
+
+    /** Couleur lisible : « Noir », « Rouge · visière Noir », « Blanc · bords Orange ». */
     public function libelleCouleur(): string
     {
-        return $this->couleur['nom'].(null !== $this->couleurVisiere ? ' · visière '.$this->couleurVisiere['nom'] : '');
+        if (null === $this->couleurVisiere) {
+            return $this->couleur['nom'];
+        }
+
+        return $this->couleur['nom'].(ModeleAtelier::POLO === $this->forme ? ' · bords ' : ' · visière ').$this->couleurVisiere['nom'];
     }
 
     /** Note pour l'atelier, sur la ligne de commande ou la demande (sans montant). */

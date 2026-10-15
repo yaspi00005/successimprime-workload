@@ -15,7 +15,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * aucune. Montre aussi les frais d'un paiement de 100 (fonds de soutien et
  * frais de retrait, taux de Réglages › Paiements), même sans clé. Avec
  * --paiement (API d'essai seulement), ouvre un paiement de 100 OUV, frais
- * compris, pour vérifier la clé marchand.
+ * compris, pour vérifier la clé marchand. Montre enfin les derniers
+ * paiements de clients qu'Orange n'a pas ouverts, avec sa réponse.
  */
 #[AsCommand(name: 'app:orange-money:tester', description: 'Teste les clés Orange Money de .env.local (aucun secret affiché).')]
 final class OrangeMoneyTesterCommand extends Command
@@ -39,6 +40,15 @@ final class OrangeMoneyTesterCommand extends Command
             static fn (array $e): array => [$e['etape'], $e['ok'] ? '<info>OK</info>' : '<error>Erreur</error>', $e['detail']],
             $etapes,
         ));
+        // Ce qu'Orange a répondu quand un client n'a pas pu payer (le site ne le montre pas au client).
+        $refus = $this->orangeMoney->derniersRefus();
+        if ([] !== $refus) {
+            $io->section('Derniers paiements de clients refusés par Orange');
+            $io->table(['Date', 'Référence', 'Raison'], array_map(
+                static fn (array $r): array => [(new \DateTimeImmutable($r['le']))->format('d/m/Y H:i'), $r['reference'], $r['raison']],
+                $refus,
+            ));
+        }
         if (array_filter($etapes, static fn (array $e): bool => !$e['ok'])) {
             $io->error('Corrigez .env.local, puis php bin/console cache:clear et relancez l\'essai.');
 

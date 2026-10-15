@@ -35,6 +35,18 @@ final class OrangeMoneyTest extends TestCase
     /** @var array<string, mixed> réponse d'Orange à la lecture de l'état */
     private array $etat = ['status' => 'PENDING'];
 
+    private int $codeOuverture = 201;
+
+    private ?string $fichierRefus = null;
+
+    protected function tearDown(): void
+    {
+        if (null !== $this->fichierRefus && is_file($this->fichierRefus)) {
+            unlink($this->fichierRefus);
+            rmdir(\dirname($this->fichierRefus));
+        }
+    }
+
     public function testOuvreLePaiementEtNeGardeQueLEmpreinteDuJeton(): void
     {
         $commande = $this->commande();
@@ -98,6 +110,60 @@ final class OrangeMoneyTest extends TestCase
         self::assertFalse(OrangeMoney::lienOrange('http://mpayment.orange-money.com/x'));
         self::assertFalse(OrangeMoney::lienOrange('https://orange-money.com.exemple.net/x'));
         self::assertTrue(OrangeMoney::lienOrange('https://orange-money.com/x'));
+    }
+
+    public function testRefusDOrangeNotePourLeTesteurSansSecret(): void
+    {
+        $this->fichierRefus = sys_get_temp_dir().'/om-refus-'.bin2hex(random_bytes(4)).'/refus.json';
+        $this->codeOuverture = 403;
+        $this->ouverture = ['code' => 53, 'message' => 'Insufficient scope', 'description' => 'Authorization features insufficient scope (Your scope is not allowed)'];
+
+        try {
+            $this->service()->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable());
+            self::fail('Un refus d\'Orange doit être signalé au client.');
+        } catch (\DomainException $e) {
+            self::assertSame('Orange Money a refusé d\'ouvrir le paiement. Réessayez ou payez en boutique.', $e->getMessage());
+        }
+
+        $refus = $this->service()->derniersRefus();
+        self::assertCount(1, $refus);
+        self::assertMatchesRegularExpression('/^SI[0-9A-F]{18}$/', $refus[0]['reference']);
+        self::assertStringStartsWith('refusé par Orange (HTTP 403, Insufficient scope : Authorization features insufficient scope (Your scope is not allowed)) : l\'application Orange de ce Client ID n\'a pas l\'API Orange Money Web Payment', $refus[0]['raison']);
+        $contenu = (string) file_get_contents($this->fichierRefus);
+        foreach (['cle-marchand', 'secret', 'jeton-api', '25500'] as $interdit) {
+            self::assertStringNotContainsString($interdit, $contenu, 'ni clé, ni jeton, ni montant dans le fichier des refus');
+        }
+        self::assertSame([], $this->persistes);
+    }
+
+    public function testSeulsLesCinqDerniersRefusSontGardes(): void
+    {
+        $this->fichierRefus = sys_get_temp_dir().'/om-refus-'.bin2hex(random_bytes(4)).'/refus.json';
+        $this->codeOuverture = 400;
+        $references = [];
+        for ($i = 0; $i < 6; ++$i) {
+            $this->ouverture = ['message' => 'Essai '.$i];
+            try {
+                $this->service()->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable());
+            } catch (\DomainException) {
+            }
+        }
+
+        $refus = $this->service()->derniersRefus();
+        self::assertCount(5, $refus);
+        self::assertSame('refusé par Orange (HTTP 400, Essai 5)', $refus[0]['raison'], 'le plus récent d\'abord');
+        self::assertSame('refusé par Orange (HTTP 400, Essai 1)', $refus[4]['raison']);
+    }
+
+    public function testRaisonDUneReponseIncomplete(): void
+    {
+        self::assertSame(
+            'réponse d\'Orange incomplète (HTTP 201) : notif_token absent, payment_url hors d\'Orange Money (https://paiement.exemple.com)',
+            OrangeMoney::raisonRefus(201, ['pay_token' => 'pt'], 'https://paiement.exemple.com/om?jeton=x'),
+        );
+        self::assertSame('réponse d\'Orange incomplète (HTTP 200) : pay_token absent, notif_token absent, payment_url absente', OrangeMoney::raisonRefus(200, [], ''));
+        self::assertSame('refusé par Orange (HTTP 401, invalid_client)', OrangeMoney::raisonRefus(401, ['error' => 'invalid_client'], ''));
+        self::assertSame([], $this->service()->derniersRefus(), 'sans fichier, aucun refus');
     }
 
     public function testRienAPayerOuCommandeNonConfirmee(): void
@@ -345,7 +411,7 @@ final class OrangeMoneyTest extends TestCase
             }
             $this->appels[] = ['url' => $url, 'corps' => json_decode((string) $options['body'], true)];
 
-            return new MockResponse((string) json_encode(str_ends_with($url, '/webpayment') ? $this->ouverture : $this->etat), ['http_code' => str_ends_with($url, '/webpayment') ? 201 : 200]);
+            return new MockResponse((string) json_encode(str_ends_with($url, '/webpayment') ? $this->ouverture : $this->etat), ['http_code' => str_ends_with($url, '/webpayment') ? $this->codeOuverture : 200]);
         });
         $urls = $this->createStub(UrlGeneratorInterface::class);
         $urls->method('generate')->willReturnCallback(static fn (string $route, array $p): string => match ($route) {
@@ -359,6 +425,6 @@ final class OrangeMoneyTest extends TestCase
             $parametres->method('recuperer')->willReturn($taux);
         }
 
-        return new OrangeMoney($em, $http, new ArrayAdapter(), $urls, new NullLogger(), 'https://api.orange.com/orange-money-webpay/dev/v1', 'OUV', 'id', 'secret', $cleMarchand, null, $parametres);
+        return new OrangeMoney($em, $http, new ArrayAdapter(), $urls, new NullLogger(), 'https://api.orange.com/orange-money-webpay/dev/v1', 'OUV', 'id', 'secret', $cleMarchand, null, $parametres, $this->fichierRefus);
     }
 }

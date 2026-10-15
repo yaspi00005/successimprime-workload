@@ -58,6 +58,7 @@ final class OrangeMoney
         #[Autowire('%env(ORANGE_MONEY_MERCHANT_KEY)%')] private readonly string $merchantKey,
         private readonly ?CommandesConception $conception = null,
         private readonly ?ParametresPaiementRepository $parametresPaiement = null,
+        #[Autowire('%kernel.project_dir%/var/orange-money/refus.json')] private readonly ?string $fichierRefus = null,
     ) {
     }
 
@@ -243,11 +244,14 @@ final class OrangeMoney
             $donnees = $reponse->toArray(false);
         } catch (\Throwable $e) {
             $this->logger->error('Orange Money : paiement non ouvert ({erreur}).', ['erreur' => $e->getMessage()]);
+            $this->noterRefus($transaction->getOrderId(), 'Orange injoignable ou réponse illisible : '.mb_substr($e->getMessage(), 0, 160));
             throw new \DomainException('Orange Money ne répond pas. Réessayez dans un instant.');
         }
         $lien = (string) ($donnees['payment_url'] ?? '');
         if (!\in_array($reponse->getStatusCode(), [200, 201], true) || '' === (string) ($donnees['pay_token'] ?? '') || '' === (string) ($donnees['notif_token'] ?? '') || !self::lienOrange($lien)) {
-            $this->logger->error('Orange Money : paiement non ouvert, {raison}.', ['raison' => self::refus($reponse->getStatusCode(), $donnees)]);
+            $raison = self::raisonRefus($reponse->getStatusCode(), $donnees, $lien);
+            $this->logger->error('Orange Money : paiement non ouvert, {raison}.', ['raison' => $raison]);
+            $this->noterRefus($transaction->getOrderId(), $raison);
             throw new \DomainException('Orange Money a refusé d\'ouvrir le paiement. Réessayez ou payez en boutique.');
         }
         $transaction->ouvrir((string) $donnees['pay_token'], (string) $donnees['notif_token'], $lien);
@@ -435,6 +439,72 @@ final class OrangeMoney
     }
 
     /**
+     * Raison d'un paiement non ouvert : le refus d'Orange, ou ce qui manque
+     * dans une réponse acceptée (jamais un jeton ni une clé).
+     *
+     * @param array<string, mixed> $donnees
+     */
+    public static function raisonRefus(int $code, array $donnees, string $lien): string
+    {
+        if (!\in_array($code, [200, 201], true)) {
+            return self::refus($code, $donnees);
+        }
+        $manque = array_values(array_filter([
+            '' === (string) ($donnees['pay_token'] ?? '') ? 'pay_token absent' : null,
+            '' === (string) ($donnees['notif_token'] ?? '') ? 'notif_token absent' : null,
+            self::lienOrange($lien) ? null : ('' === $lien ? 'payment_url absente' : 'payment_url hors d\'Orange Money ('.mb_substr((string) parse_url($lien, \PHP_URL_SCHEME).'://'.(string) parse_url($lien, \PHP_URL_HOST), 0, 80).')'),
+        ]));
+
+        return \sprintf('réponse d\'Orange incomplète (HTTP %d) : %s', $code, implode(', ', $manque));
+    }
+
+    /**
+     * Garde les 5 derniers paiements non ouverts (date, référence, raison)
+     * pour app:orange-money:tester : rien d'autre, ni clé ni jeton ni
+     * montant. Un fichier illisible ou impossible à écrire ne gêne pas le
+     * client.
+     */
+    private function noterRefus(string $orderId, string $raison): void
+    {
+        if (null === $this->fichierRefus) {
+            return;
+        }
+        try {
+            $refus = array_slice($this->derniersRefus(), 0, 4);
+            array_unshift($refus, ['le' => (new \DateTimeImmutable())->format(\DATE_ATOM), 'reference' => mb_substr($orderId, 0, 40), 'raison' => mb_substr($raison, 0, 300)]);
+            if (!is_dir(\dirname($this->fichierRefus))) {
+                mkdir(\dirname($this->fichierRefus), 0770, true);
+            }
+            file_put_contents($this->fichierRefus, json_encode($refus, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT), \LOCK_EX);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Orange Money : refus non noté ({erreur}).', ['erreur' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Derniers paiements qu'Orange n'a pas ouverts, du plus récent au plus ancien.
+     *
+     * @return list<array{le: string, reference: string, raison: string}>
+     */
+    public function derniersRefus(): array
+    {
+        if (null === $this->fichierRefus || !is_file($this->fichierRefus)) {
+            return [];
+        }
+        $refus = json_decode((string) @file_get_contents($this->fichierRefus), true);
+        if (!\is_array($refus)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn (mixed $r): ?array => \is_array($r) && \is_string($r['le'] ?? null) && \is_string($r['reference'] ?? null) && \is_string($r['raison'] ?? null)
+                ? ['le' => $r['le'], 'reference' => $r['reference'], 'raison' => $r['raison']]
+                : null,
+            $refus,
+        )));
+    }
+
+    /**
      * Raison d'un refus d'Orange, sans rien de ce qui a été envoyé.
      *
      * @param array<string, mixed> $donnees
@@ -446,7 +516,12 @@ final class OrangeMoney
             ['error', 'error_description', 'message', 'description'],
         )));
 
-        return \sprintf('refusé par Orange (HTTP %d%s)', $code, '' !== $raison ? ', '.mb_substr($raison, 0, 200) : '');
+        // 403 « insufficient scope » : le jeton est bon, mais l'application Orange de ces clés n'a pas l'API de paiement.
+        $aide = 403 === $code && str_contains(strtolower($raison), 'scope')
+            ? ' : l\'application Orange de ce Client ID n\'a pas l\'API Orange Money Web Payment ; l\'ajouter dans My apps sur developer.orange.com, avec la clé marchand de la même application'
+            : '';
+
+        return \sprintf('refusé par Orange (HTTP %d%s)%s', $code, '' !== $raison ? ', '.mb_substr($raison, 0, 200) : '', $aide);
     }
 
     /** Lien de la page de paiement : seulement chez Orange Money, en https. */

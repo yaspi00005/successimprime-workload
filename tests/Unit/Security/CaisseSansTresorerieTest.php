@@ -93,6 +93,15 @@ final class CaisseSansTresorerieTest extends TestCase
     }
 
     /** @return list<string|Expression> */
+    public function testAllerANouvelleDepenseOuvreLeFormulaireDesDepenses(): void
+    {
+        $menu = (string) file_get_contents(__DIR__.'/../../../templates/partials/_menu.html.twig');
+
+        // « Aller à… › Nouveau › Dépense » : Finances › Dépenses (reçu, approbation), pas la saisie d'un mouvement.
+        self::assertMatchesRegularExpression('/path\(\'app_finances_depenses\'\) }}#saisir-depense"[^>]*><small>Nouveau<\/small>Dépense</', $menu);
+        self::assertDoesNotMatchRegularExpression('/app_mouvement_tresorerie_new[^>]*><small>Nouveau<\/small>Dépense</', $menu);
+    }
+
     private static function exigences(string $methode): array
     {
         return array_map(

@@ -71,6 +71,47 @@ final class SaisieTresorerieSansSoldeTest extends TestCase
         self::assertSame([], MouvementTresorerieType::typesPermis(false, false, false));
     }
 
+    public function testListesSansLesComptesQueLEnregistrementRefuserait(): void
+    {
+        $caissiere = new User();
+        $sienne = $this->compte('Caisse Aminata', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PERSONNELLE, $caissiere);
+        $collegue = $this->compte('Caisse Moussa', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PERSONNELLE, new User());
+        $boutique = $this->compte('Caisse boutique', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PARTAGEE);
+        $banque = $this->compte('Banque BDM', CompteTresorerie::TYPE_BANQUE, CompteTresorerie::PORTEE_ADMIN);
+        $administration = $this->compte('Caisse Administration', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_ADMIN);
+        [$enc, $dec, $vir] = [MouvementTresorerie::TYPE_ENCAISSEMENT, MouvementTresorerie::TYPE_DECAISSEMENT, MouvementTresorerie::TYPE_TRANSFERT];
+        $types = static fn (CompteTresorerie $c, bool $source, bool $admin, bool $saisir, bool $virer): array => MouvementTresorerieType::typesPourCompte($c, $source, $admin, $saisir, $virer, $caissiere);
+
+        // Caisse avec saisie et virements (demo.aminata) : l'argent ne sort jamais de la banque ni de la caisse d'un collègue.
+        self::assertSame([$dec, $vir], $types($sienne, true, false, true, true));
+        self::assertSame([$dec, $vir], $types($boutique, true, false, true, true));
+        self::assertSame([], $types($banque, true, false, true, true));
+        self::assertSame([], $types($collegue, true, false, true, true));
+        self::assertSame([], $types($administration, true, false, true, true));
+        // Destination : la banque et la caisse d'un collègue pour un virement seulement, jamais la caisse de l'administration.
+        self::assertSame([$enc, $vir], $types($sienne, false, false, true, true));
+        self::assertSame([$enc, $vir], $types($boutique, false, false, true, true));
+        self::assertSame([$vir], $types($banque, false, false, true, true));
+        self::assertSame([$vir], $types($collegue, false, false, true, true));
+        self::assertSame([], $types($administration, false, false, true, true));
+
+        // Saisie sans virement (demo.moussa) : ni la banque, ni la caisse d'un collègue.
+        self::assertSame([$dec], $types($boutique, true, false, true, false));
+        self::assertSame([$enc], $types($boutique, false, false, true, false));
+        self::assertSame([], $types($banque, false, false, true, false));
+        self::assertSame([], $types($collegue, false, false, true, false));
+
+        // Virement seulement : de sa caisse ou d'un compte partagé vers la banque.
+        self::assertSame([$vir], $types($boutique, true, false, false, true));
+        self::assertSame([$vir], $types($banque, false, false, false, true));
+
+        // La Direction : les comptes administratifs, mais jamais la caisse d'un collègue comme source.
+        self::assertSame([$dec, $vir], $types($banque, true, true, true, true));
+        self::assertSame([$enc, $vir], $types($administration, false, true, true, true));
+        self::assertSame([], $types($collegue, true, true, true, true));
+        self::assertSame([$vir], $types($collegue, false, true, true, true));
+    }
+
     public function testRetourApresLaSaisie(): void
     {
         self::assertSame('app_mouvement_tresorerie_index', MouvementTresorerieController::routeApresSaisie(true, true, true));

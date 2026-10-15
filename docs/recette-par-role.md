@@ -55,12 +55,12 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Menu court : Ma journée, Caisse, Mes actions, Clients, Devis et commandes, Encaissements.
 - [ ] Actions de caisse : une facture échue, un devis sans réponse depuis 48 h puis à J+7, une commande prête ; le lien WhatsApp ouvre un message sans montant pour le devis.
 - [ ] Encaisser un paiement sur une commande ; il apparaît dans la caisse du jour. La liste des comptes ne montre aucun solde.
-- [ ] Finances › Dépenses : saisir une dépense avec son reçu ; seules ses propres dépenses sont listées, sans budget.
-- [ ] Caisse › « Virement » : verser la caisse sur le compte de la banque ; aucun solde dans le formulaire ni dans le message, retour à la caisse.
+- [ ] Finances › Dépenses (aussi par « Aller à… › Nouveau › Dépense ») : saisir une dépense avec son reçu ; seules ses propres dépenses sont listées, sans budget.
+- [ ] Caisse › « Virement » : verser la caisse sur le compte de la banque ; la banque n'est pas proposée comme compte source ; aucun solde dans le formulaire ni dans le message, retour à la caisse.
 - [ ] Clôturer la caisse : le théorique de sa caisse est affiché, l'écart est signalé à la direction.
 - [ ] Clients : liste, nouvelle fiche, fiche avec historique, journal.
 - [ ] demo.aminata ne voit pas : stock et achats, réglages, salaires, montants de trésorerie (soldes des comptes, Finances › Trésorerie, Fournisseurs, liste des mouvements), statistiques globales.
-- [ ] demo.moussa n'a pas le bouton « Virement » ; le formulaire ne lui propose que l'entrée et la sortie.
+- [ ] demo.moussa n'a pas le bouton « Virement » ; le formulaire ne lui propose que l'entrée et la sortie, sans la banque.
 - [ ] demo.fanta voit en plus la trésorerie, les paiements et les statistiques, mais toujours pas les réglages ni le stock.
 
 ## Graphiste PAO (demo.seydou)

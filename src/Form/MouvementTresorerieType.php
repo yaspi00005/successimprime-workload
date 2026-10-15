@@ -60,12 +60,40 @@ class MouvementTresorerieType extends AbstractType
          * ============================================================
          */
 
+        $peutSaisir =
+            (bool) $options['peut_saisir'];
+
+        $peutTransferer =
+            (bool) $options['peut_transferer'];
+
         $typesMouvements =
             self::typesPermis(
                 $estAdmin,
-                (bool) $options['peut_saisir'],
-                (bool) $options['peut_transferer']
+                $peutSaisir,
+                $peutTransferer
             );
+
+
+        /*
+         * Comptes proposés : seulement ceux que l'enregistrement
+         * acceptera (mêmes règles que le contrôleur). Chaque compte
+         * porte les types pour lesquels il est permis (data-types) :
+         * le formulaire masque les autres selon le type choisi.
+         */
+        $typesDuCompte =
+            static fn (
+                mixed $compte,
+                bool $commeSource
+            ): array => $compte instanceof CompteTresorerie
+                ? self::typesPourCompte(
+                    $compte,
+                    $commeSource,
+                    $estAdmin,
+                    $peutSaisir,
+                    $peutTransferer,
+                    $utilisateur
+                )
+                : [];
 
 
         /*
@@ -380,18 +408,17 @@ class MouvementTresorerieType extends AbstractType
          * CAISSIÈRE
          * ====================================================
          *
-         * Elle peut recevoir un paiement sur :
+         * L'argent ne peut sortir que de :
          *
          * 1. sa caisse personnelle
-         * 2. Orange Money partagé
-         * 3. Wave partagé
-         * 4. les comptes bancaires de l'entreprise
+         * 2. un compte partagé (caisse boutique, Orange
+         *    Money, Wave)
          *
-         * Elle ne voit PAS :
-         *
-         * - la caisse personnelle d'un autre agent
-         * - la caisse Administration
+         * Jamais d'un compte administratif (la banque y
+         * comprise) ni de la caisse d'un autre agent :
+         * l'enregistrement le refuserait.
          */
+
         return $qb
             ->andWhere(
                 '
@@ -404,14 +431,6 @@ class MouvementTresorerieType extends AbstractType
                 OR
 
                 compte.portee = :partagee
-
-                OR
-
-                (
-                    compte.portee = :admin
-                    AND
-                    compte.type = :typeBanque
-                )
                 '
             )
             ->setParameter(
@@ -423,18 +442,33 @@ class MouvementTresorerieType extends AbstractType
                 CompteTresorerie::PORTEE_PARTAGEE
             )
             ->setParameter(
-                'admin',
-                CompteTresorerie::PORTEE_ADMIN
-            )
-            ->setParameter(
-                'typeBanque',
-                CompteTresorerie::TYPE_BANQUE
-            )
-            ->setParameter(
                 'utilisateur',
                 $utilisateur
             );
     },
+
+
+                'choice_filter' =>
+                    static fn (
+                        mixed $compte
+                    ): bool => [] !== $typesDuCompte(
+                        $compte,
+                        true
+                    ),
+
+
+                'choice_attr' =>
+                    static fn (
+                        mixed $compte
+                    ): array => [
+                        'data-types' => implode(
+                            ' ',
+                            $typesDuCompte(
+                                $compte,
+                                true
+                            )
+                        ),
+                    ],
 
 
                 /*
@@ -642,6 +676,29 @@ class MouvementTresorerieType extends AbstractType
                         $voirSoldes,
                         $utilisateur
                     ),
+
+
+                'choice_filter' =>
+                    static fn (
+                        mixed $compte
+                    ): bool => [] !== $typesDuCompte(
+                        $compte,
+                        false
+                    ),
+
+
+                'choice_attr' =>
+                    static fn (
+                        mixed $compte
+                    ): array => [
+                        'data-types' => implode(
+                            ' ',
+                            $typesDuCompte(
+                                $compte,
+                                false
+                            )
+                        ),
+                    ],
 
 
                 'placeholder' =>
@@ -1090,6 +1147,78 @@ class MouvementTresorerieType extends AbstractType
         if ($estAdmin || $peutTransferer) {
             $types['Transfert'] =
                 MouvementTresorerie::TYPE_TRANSFERT;
+        }
+
+        return $types;
+    }
+
+
+    /*
+     * ================================================================
+     * COMPTES PERMIS
+     * ================================================================
+     *
+     * Les types de mouvement pour lesquels la personne peut utiliser
+     * ce compte, comme source ou comme destination. Mêmes règles que
+     * le contrôle à l'enregistrement, qui reste en place
+     * (MouvementTresorerieController::verifierMouvementAutorise) :
+     *
+     * - entrée ou sortie (droit de saisie) : sa caisse personnelle,
+     *   un compte partagé ; un compte administratif pour la Direction ;
+     * - virement (droit de virement), source : sa caisse personnelle,
+     *   un compte partagé ; un compte administratif pour la Direction ;
+     * - virement, destination : toute caisse personnelle (remise en
+     *   main propre), un compte partagé, la banque ; les autres
+     *   comptes administratifs pour la Direction seulement.
+     *
+     * Jamais la caisse personnelle d'un autre agent comme source,
+     * même pour la Direction.
+     * ================================================================
+     */
+
+    /**
+     * @return list<string>
+     */
+    public static function typesPourCompte(
+        CompteTresorerie $compte,
+        bool $commeSource,
+        bool $estAdmin,
+        bool $peutSaisir,
+        bool $peutTransferer,
+        User $utilisateur
+    ): array {
+        $sien =
+            $compte->appartientA(
+                $utilisateur
+            );
+
+        $entreeOuSortie =
+            ($estAdmin || $peutSaisir)
+            && match (true) {
+                $compte->estPersonnel() => $sien,
+                $compte->estPartage() => true,
+                default => $compte->estAdministratif() && $estAdmin,
+            };
+
+        $virement =
+            ($estAdmin || $peutTransferer)
+            && match (true) {
+                $compte->estPersonnel() => $commeSource ? $sien : true,
+                $compte->estPartage() => true,
+                default => $compte->estAdministratif()
+                    && ($estAdmin || (!$commeSource && $compte->estCompteBancaire())),
+            };
+
+        $types = [];
+
+        if ($entreeOuSortie) {
+            $types[] = $commeSource
+                ? MouvementTresorerie::TYPE_DECAISSEMENT
+                : MouvementTresorerie::TYPE_ENCAISSEMENT;
+        }
+
+        if ($virement) {
+            $types[] = MouvementTresorerie::TYPE_TRANSFERT;
         }
 
         return $types;

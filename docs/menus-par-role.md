@@ -108,14 +108,20 @@ Ce que la caisse garde sans ce droit :
 - Caisse : encaisser, le reçu, la caisse du jour (fond, encaissé, sorties,
   théorique) et la clôture de sa caisse : compter son tiroir fait partie
   de son travail, ce n'est pas le solde des comptes ;
-- Finances › Dépenses : saisir une dépense et voir les siennes seulement ;
-- Caisse › « Virement » (et « Aller à… › Nouveau ») : le formulaire de
-  saisie des mouvements (entrée, sortie, virement), par exemple verser la
-  caisse du jour sur le compte de la boutique. Les comptes y sont proposés
-  par leur nom, sans aucun solde, et l'enregistrement ramène à la caisse
-  avec un message (montant, comptes, référence). Les règles des comptes ne
-  changent pas : sa caisse personnelle, les comptes partagés, la banque
-  comme destination, jamais la caisse d'un collègue comme source ;
+- Finances › Dépenses : saisir une dépense et voir les siennes seulement
+  (« Aller à… › Nouveau › Dépense » ouvre ce formulaire, pour tout le
+  monde) ;
+- Caisse › « Virement » (et « Aller à… › Nouveau › Virement entre
+  comptes ») : le formulaire de saisie des mouvements (entrée, sortie,
+  virement), par exemple verser la caisse du jour sur le compte de la
+  boutique. Les comptes y sont proposés par leur nom, sans aucun solde, et
+  l'enregistrement ramène à la caisse avec un message (montant, comptes,
+  référence). Les règles des comptes ne changent pas, et les listes ne
+  proposent que les comptes que l'enregistrement acceptera pour le type
+  choisi : l'argent sort de sa caisse personnelle ou d'un compte partagé
+  (jamais de la banque ni de la caisse d'un collègue) ; il va vers une
+  caisse personnelle, un compte partagé ou la banque pour un virement,
+  vers sa caisse ou un compte partagé pour une entrée ;
 - payer une demande de remboursement : comptes proposés sans solde.
 
 Ce qu'elle ne voit plus (« accès refusé », et absent de son menu) :

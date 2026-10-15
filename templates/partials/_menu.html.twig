@@ -126,7 +126,7 @@
 			{% endfor %}
 			{% if is_granted('ROLE_DEVIS') %}<li><a href="{{ path('app_devis_new') }}" data-texte="nouveau devis"><small>Nouveau</small>Devis</a></li>{% endif %}
 			{% if is_granted('ROLE_COMMANDE') %}<li><a href="{{ path('app_commandes_new') }}" data-texte="nouvelle commande"><small>Nouveau</small>Commande</a></li>{% endif %}
-			{% if is_granted('ROLE_TRESORERIE_SAISIR') %}<li><a href="{{ path('app_mouvement_tresorerie_new') }}" data-texte="nouvelle dépense"><small>Nouveau</small>Dépense</a></li>{% endif %}
+			{% if is_granted('ROLE_TRESORERIE_SAISIR') %}<li><a href="{{ path('app_finances_depenses') }}#saisir-depense" data-texte="nouvelle dépense reçu"><small>Nouveau</small>Dépense</a></li>{% endif %}
 			{% if is_granted('ROLE_TRESORERIE_TRANSFERER') %}<li><a href="{{ path('app_mouvement_tresorerie_new', {type: 'transfert'}) }}" data-texte="nouveau virement entre comptes verser la caisse à la banque"><small>Nouveau</small>Virement entre comptes</a></li>{% endif %}
 			{% if is_granted('ROLE_CLIENT') %}<li><a href="{{ path('app_clients_index', {nouveau: 1}) }}" data-texte="nouveau client"><small>Nouveau</small>Client</a></li>{% endif %}
 			{% if employe %}<li><a href="{{ path('app_mon_espace_index') }}" data-texte="mon espace pointage congés bulletins"><small>Moi</small>Mon espace</a></li>{% endif %}

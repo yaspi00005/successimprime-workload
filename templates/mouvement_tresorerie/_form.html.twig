@@ -1086,6 +1086,33 @@ champ.setCustomValidity('');
 
 /*
          * ========================================================
+         * COMPTES PERMIS POUR LE TYPE CHOISI
+         * ========================================================
+         *
+         * Chaque compte porte les types pour lesquels
+         * l'enregistrement l'acceptera (data-types, calculé par
+         * MouvementTresorerieType::typesPourCompte) : les autres
+         * sont masqués. Le serveur contrôle de toute façon.
+         * ========================================================
+         */
+function filtrerComptes(champ, type) {
+if (! champ) {
+return;
+}
+Array.from(champ.options).forEach(function (option) {
+if (option.value === '') {
+return;
+}
+const permis = (option.dataset.types || '').split(' ').indexOf(type) !== -1;
+option.hidden = ! permis;
+option.disabled = ! permis;
+if (! permis && option.selected) {
+champ.value = '';
+}
+});
+}
+/*
+         * ========================================================
          * CONTRÔLER LE TRANSFERT
          * ========================================================
          */
@@ -1286,6 +1313,9 @@ afficherBloc(blocSource, champSource, type === 'decaissement' || type === 'trans
              * source + destination.
              */
 afficherBloc(blocDestination, champDestination, type === 'encaissement' || type === 'transfert');
+
+filtrerComptes(champSource, type);
+filtrerComptes(champDestination, type);
 
 
 actualiserCategorie();

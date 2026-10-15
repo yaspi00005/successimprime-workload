@@ -2,6 +2,7 @@
 
 namespace App\Service\Recette;
 
+use App\Service\Guide\CatalogueGuide;
 use App\Twig\NavigationExtension;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\ExpressionLanguage\Expression;
@@ -17,7 +18,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  *  - les #[IsGranted] du contrôleur et les denyAccessUnlessGranted('…')
  *    écrits dans la méthode ;
  *  - l'onglet du menu qui la range (NavigationExtension::ONGLETS), avec le
- *    droit qui fait apparaître cet onglet (matrice « Rôles et menus »).
+ *    droit qui fait apparaître cet onglet (matrice « Rôles et menus ») ;
+ *  - pour le guide, la fiche que montre l'adresse : elle suit les droits
+ *    de l'écran qu'elle décrit (CatalogueGuide), pas seulement la connexion.
  */
 final class DroitsRoute
 {
@@ -27,7 +30,7 @@ final class DroitsRoute
     }
 
     /**
-     * @return array{regle: list<string>, attributs: list<string>, menu: list<string>|null, onglet: ?string}
+     * @return array{regle: list<string>, attributs: list<string>, menu: list<string>|null, onglet: ?string, guide: list<array<string, mixed>>|null}
      */
     public function exigences(Route $route, string $nom, string $chemin): array
     {
@@ -39,7 +42,26 @@ final class DroitsRoute
             'attributs' => self::attributsDuControleur($route),
             'menu' => null === $menu ? null : (array) $menu['role'],
             'onglet' => $menu['libelle'] ?? null,
+            'guide' => self::fichesDuGuide($nom, $chemin),
         ];
+    }
+
+    /**
+     * Fiches du guide que montre l'adresse : la fiche elle-même, ou toutes
+     * celles qui utilisent la capture. La page s'ouvre si l'une d'elles est
+     * permise (AideController). null hors des fiches et captures du guide.
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    public static function fichesDuGuide(string $nom, string $chemin): ?array
+    {
+        $dernier = basename((string) parse_url($chemin, \PHP_URL_PATH));
+
+        return match ($nom) {
+            'app_aide_fiche' => array_values(array_filter([CatalogueGuide::fiche($dernier)])),
+            'app_aide_capture' => array_values(array_filter(CatalogueGuide::fiches(), static fn (array $f): bool => \in_array(basename($dernier, '.webp'), array_column($f['captures'], 'nom'), true))),
+            default => null,
+        };
     }
 
     /**

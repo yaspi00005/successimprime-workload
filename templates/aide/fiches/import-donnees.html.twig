@@ -1,0 +1,20 @@
+{# Fiche du guide « import-donnees » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Réglages, famille « Sécurité et système », tuile « Import des données ».</li>
+	<li>Faites dans l'ordre : les clients, puis les articles, puis les soldes d'ouverture (soldes clients, soldes des comptes, dettes fournisseurs).</li>
+	<li>Pour chaque type, touchez « Modèle » et remplissez le fichier dans Excel.</li>
+	<li>Touchez « Importer » et envoyez le fichier rempli.</li>
+	<li>Lisez l'aperçu ligne par ligne, puis confirmez. « Journal des imports » garde chaque import.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Rien n'est enregistré avant la confirmation de l'aperçu.</li>
+	<li>Aucun SMS, e-mail ni message n'est envoyé aux clients importés.</li>
+	<li>Les soldes clients demandent des clients déjà créés.</li>
+	<li>« Soldes des comptes » : seulement pour les comptes qui n'ont encore aucune opération.</li>
+	<li>L'import n'existe que sur l'ERP de la boutique.</li>
+</ul>
+{% endblock %}

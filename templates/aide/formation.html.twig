@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>Fiches du formateur · Succès Imprim</title>
+	<link href="{{ asset('css/aide.css') }}" rel="stylesheet">
+</head>
+<body class="si-aide-impression">
+	<nav class="si-aide-barre-impression">
+		<a href="{{ path('app_aide_index') }}">‹ Retour au guide</a>
+		<span>
+			{% for cle, plan in plans %}
+				<a href="#formation-{{ cle }}">{{ plan.titre }}</a>
+			{% endfor %}
+		</span>
+		<button type="button" onclick="window.print()">Imprimer</button>
+	</nav>
+
+	<header class="si-aide-couverture">
+		<p class="si-aide-marque">Succès Imprim</p>
+		<h1>Fiches du formateur</h1>
+		<p>Une demi-journée par rôle, en blocs de 30 minutes. La personne formée travaille sur la base de démonstration, avec son compte de démonstration (mot de passe donné par le formateur), jamais sur de vrais clients.</p>
+		<p class="si-aide-date">Imprimé le {{ 'now'|date('d/m/Y') }}</p>
+		<ol class="si-aide-sommaire">
+			{% for cle, plan in plans %}
+				<li><b>{{ plan.titre }}</b> · {{ plan.duree }} · compte {{ plan.compte }}</li>
+			{% endfor %}
+		</ol>
+		<p class="si-aide-note">Imprimez seulement les pages du rôle formé. La personne garde son guide (« Imprimer mon guide ») ; le formateur garde ces fiches, avec les résultats attendus.</p>
+	</header>
+
+	{% for cle, plan in plans %}
+		<article class="si-aide-page si-formation" id="formation-{{ cle }}">
+			<p class="si-aide-pastille">Formation · {{ plan.duree }} · compte {{ plan.compte }}</p>
+			<h2 class="si-aide-titre">{{ plan.titre }}</h2>
+			<p class="si-aide-but"><b>À la fin, la personne sait :</b> {{ plan.objectif }}</p>
+
+			<h3>Déroulé</h3>
+			<table class="si-formation-blocs">
+				<thead>
+					<tr><th scope="col">Heure</th><th scope="col">Bloc</th><th scope="col">Fiches du guide</th><th scope="col">À faire</th></tr>
+				</thead>
+				<tbody>
+					{% for bloc in plan.blocs %}
+						<tr>
+							<td>{{ bloc.heure }}</td>
+							<td>{{ bloc.titre }}</td>
+							<td>
+								{% for f in bloc.fiches %}
+									{% if fiches[f] is defined %}<a href="{{ path('app_aide_fiche', {cle: f}) }}">{{ fiches[f].titre }}</a>{{ not loop.last ? ' · ' }}{% endif %}
+								{% else %}
+									—
+								{% endfor %}
+							</td>
+							<td>{{ bloc.faire }}</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+
+			<h3>Exercices</h3>
+			<ol class="si-formation-exercices">
+				{% for ex in plan.exercices %}
+					<li>
+						<b>{{ ex.titre }}</b> <small>({{ ex.compte }})</small>
+						<ul>
+							{% for etape in ex.consigne %}<li>{{ etape }}</li>{% endfor %}
+						</ul>
+						<p class="si-formation-attendu"><b>Résultat attendu :</b> {{ ex.attendu }}</p>
+					</li>
+				{% endfor %}
+			</ol>
+
+			<section class="si-formation-final">
+				<h3>{{ plan.final.titre }}</h3>
+				<p>Seul, sans le formateur et sans le guide ouvert.</p>
+				<ol>
+					{% for etape in plan.final.consigne %}<li>{{ etape }}</li>{% endfor %}
+				</ol>
+				<p class="si-formation-attendu"><b>Résultat attendu :</b> {{ plan.final.attendu }}</p>
+				<p class="si-formation-signature">Réussi le ____ / ____ / ________ · Formateur : ______________________ · Personne formée : ______________________</p>
+			</section>
+		</article>
+	{% endfor %}
+</body>
+</html>

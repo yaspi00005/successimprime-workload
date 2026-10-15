@@ -1,0 +1,19 @@
+{# Fiche du guide « ma-file » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Sur le poste de la machine, menu « Ma file machine ». L'écran dit « Poste de » et le nom de la machine.</li>
+	<li>La file montre les travaux du jour, dans l'ordre, avec les m² à imprimer.</li>
+	<li>Touchez le travail. S'il attend, touchez « Démarrer ». En pause : « Reprendre ».</li>
+	<li>Pendant l'impression : « Pause », « + Gâche » pour noter le gâché, « Incident » en cas de panne.</li>
+	<li>À la fin, touchez « Terminer », tapez la « Quantité bonne » et le « Rebut », puis « Confirmer la fin ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>La production se fait seulement depuis le poste de la machine, reconnu par son adresse IP. Ailleurs : « Consultation seulement ».</li>
+	<li>« Buses nettoyées » note l'entretien des têtes. « Réimpression » refait un travail raté.</li>
+	<li>Une réimpression due à l'opérateur retire des points. Une panne signalée n'en retire pas.</li>
+	<li>En haut : les m² du jour, l'entretien des têtes, la gâche et vos points.</li>
+</ul>
+{% endblock %}

@@ -5452,3 +5452,11 @@ body.si-param-bloque { overflow: hidden; }
   .si-cr-ligne .si-pastille { grid-column: 2; justify-self: start; }
   .si-cr-vues { grid-template-columns: 1fr 1fr; }
 }
+
+/* Guide utilisateur : « ? Aide » dans l'en-tête (docs/guide-utilisateur.md) */
+.si-header .si-aide-lien { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--primary); }
+.si-header .si-aide-lien i { font-size: 1.25rem; }
+.si-header .si-aide-texte { font-size: 0.9rem; }
+@media (max-width: 420px) {
+  .si-header .si-aide-texte { display: none; }
+}

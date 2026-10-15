@@ -9,6 +9,7 @@ use App\Entity\DemandeConception;
 use App\Entity\DemandeDevis;
 use App\Entity\JournalActivite;
 use App\Entity\PageSite;
+use App\Service\Guide\CatalogueGuide;
 use App\Service\Parametres\CatalogueParametres;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -51,7 +52,8 @@ final class ParametresRoute
 
     /**
      * Jeux de paramètres pour cette route (un seul en général ; un par
-     * tuile pour les panneaux des Réglages), ou la raison de l'impossibilité.
+     * tuile pour les panneaux des Réglages, un par fiche ou capture du
+     * guide), ou la raison de l'impossibilité.
      *
      * @return list<array<string, string|int>>|string
      */
@@ -63,6 +65,13 @@ final class ParametresRoute
         }
         if ('app_reglages_parametres_panneau' === $nom) {
             return array_map(static fn (string $tuile): array => ['tuile' => $tuile], array_keys(CatalogueParametres::tuiles()));
+        }
+        // Guide : chaque fiche et chaque capture, pour juger leurs droits un par un.
+        if ('app_aide_fiche' === $nom) {
+            return array_map(static fn (array $fiche): array => ['cle' => $fiche['cle']], CatalogueGuide::fiches());
+        }
+        if ('app_aide_capture' === $nom) {
+            return array_map(static fn (string $capture): array => ['nom' => $capture], array_keys(CatalogueGuide::captures()));
         }
 
         $arguments = self::argumentsDuControleur($route);

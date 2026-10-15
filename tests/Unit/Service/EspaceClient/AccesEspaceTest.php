@@ -68,6 +68,17 @@ final class AccesEspaceTest extends TestCase
         self::assertSame($message, rawurldecode(substr($resultat['whatsapp'], \strlen('https://wa.me/22376124212?text='))));
     }
 
+    public function testLaPageDeLaBoutiqueNeRendPasLEmailObligatoire(): void
+    {
+        // Même règle que le message : mot de passe à la première connexion, e-mail seulement si le client en a un.
+        self::assertStringContainsString('s\'il en a une (ce n\'est pas obligatoire)', AccesEspace::CONSIGNE_BOUTIQUE);
+        self::assertStringContainsString('et votre adresse e-mail si vous en avez une', AccesEspace::message('76124212', 'ABCD-EFGH', new \DateTimeImmutable('2026-10-14 10:00'), 'https://exemple.ml'));
+
+        $page = (string) file_get_contents(\dirname(__DIR__, 4).'/templates/clients/acces_espace.html.twig');
+        self::assertStringContainsString('AccesEspace::CONSIGNE_BOUTIQUE', $page);
+        self::assertStringNotContainsString('il ajoute son adresse e-mail et choisit', $page);
+    }
+
     public function testJamaisLeCodeDansLeLienNiDansLeJournal(): void
     {
         $resultat = $this->service()->donner(self::fiche(), null, new \DateTimeImmutable('2026-10-14 10:00'));

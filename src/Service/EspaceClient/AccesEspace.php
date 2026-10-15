@@ -29,6 +29,9 @@ final class AccesEspace
 {
     public const SANS_NUMERO = 'Ajoutez d\'abord un numéro malien à 8 chiffres sur la fiche : c\'est l\'identifiant du client.';
 
+    /** Consigne de la page « Accès prêt » (boutique) : comme le message, l'adresse e-mail du client n'est pas obligatoire. */
+    public const CONSIGNE_BOUTIQUE = 'Ne le donnez qu\'au client, sur son numéro. À sa première connexion, il choisit son mot de passe et ajoute son adresse e-mail s\'il en a une (ce n\'est pas obligatoire). Ensuite il se connecte avec son numéro et ce mot de passe.';
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly AccesEspaceClientRepository $acces,

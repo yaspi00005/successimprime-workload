@@ -6,6 +6,8 @@
 	personne : paiement et compte pour qui paie, devis pour qui valide,
 	rien qui écrive pour un compte « Lecture · suivi ».
 	_tableau_promotions.html.twig, s'il existe, prend place à droite.
+	Sur le site en ligne, la carte « Installez Succès Imprim »
+	(_installer_carte.html.twig) s'ajoute la première fois sur l'appareil.
 #}
 {% block title %}Tableau de bord{% endblock %}
 {% block page_classe %} ec-page-large{% endblock %}
@@ -52,4 +54,10 @@
 			{% endif %}
 		</div>
 	</div>
+
+	{% if site_en_ligne() %}{% include 'espace/app/_installer_carte.html.twig' %}{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	{% if site_en_ligne() %}<script src="{{ asset('js/espace-installer.js') }}" defer></script>{% endif %}
 {% endblock %}

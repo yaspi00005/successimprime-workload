@@ -17,10 +17,13 @@
 	<meta name="robots" content="noindex">
 	<title>{% block title %}Mon espace{% endblock %} · Succès Imprim</title>
 	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
-	{# Application installable sur le téléphone (J5) : /espace seulement. #}
+	{# Application installable sur le téléphone (J5) : /espace seulement. iPhone : icône 180 px, plein écran. #}
 	<link rel="manifest" href="/espace.webmanifest">
-	<link rel="apple-touch-icon" href="{{ asset('images/icone-192.png') }}">
+	<link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/icone-180.png') }}">
 	<meta name="apple-mobile-web-app-title" content="Succès Imprim">
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="default">
 	<link href="{{ asset('css/espace-app.css') }}" rel="stylesheet">
 	{% block styles %}{% endblock %}
 </head>
@@ -98,7 +101,16 @@
 			{% block contenu %}{% endblock %}
 		</main>
 	</div>
-	<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js', {scope: '/espace'}).catch(function () {}); }</script>
+	<script>
+		if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js', {scope: '/espace'}).catch(function () {}); }
+		// Installation sur l'écran d'accueil : c'est l'espace qui la propose (tableau de bord, Mon compte,
+		// public/js/espace-installer.js), pas la barre du navigateur. L'invitation est gardée pour le bouton.
+		window.addEventListener('beforeinstallprompt', function (e) {
+			e.preventDefault();
+			window.siInvitation = e;
+			document.dispatchEvent(new CustomEvent('si-invitation'));
+		});
+	</script>
 	<script src="{{ asset('js/espace-coque.js') }}" defer></script>
 	{% if coque %}{% include 'assistant/_widget.html.twig' with {contexte: 'espace'} %}{% endif %}
 	{% block scripts %}{% endblock %}

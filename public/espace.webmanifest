@@ -9,8 +9,12 @@
 	"background_color": "#F4F6FA",
 	"theme_color": "#0F4590",
 	"lang": "fr",
+	"dir": "ltr",
+	"categories": ["business", "shopping"],
 	"icons": [
-		{"src": "/images/icone-192.png", "sizes": "192x192", "type": "image/png"},
-		{"src": "/images/icone-512.png", "sizes": "512x512", "type": "image/png"}
+		{"src": "/images/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+		{"src": "/images/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+		{"src": "/images/icone-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+		{"src": "/images/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
 	]
 }

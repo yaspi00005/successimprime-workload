@@ -35,6 +35,8 @@ final class Reponse
         public readonly string $contenu,
         public readonly ?string $erreur = null,
         public readonly int $ecritures = 0,
+        /** @var array<string, string> en-têtes de la réponse, noms en minuscules */
+        public readonly array $entetes = [],
     ) {
     }
 

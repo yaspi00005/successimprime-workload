@@ -14,8 +14,8 @@ use Symfony\Component\Routing\RouterInterface;
  * Lignes « Visiteur du site » de docs/recette-par-role.md qu'une machine
  * peut vérifier : robots.txt et sitemap.xml, suivi de commande sans compte
  * (mauvais téléphone = commande inconnue, pas de montant), calculateur
- * jamais au prix B2B, et aucun nom de client sans son accord ni montant
- * d'un client sur les pages publiques.
+ * jamais au prix B2B, aucun nom de client sans son accord ni montant
+ * d'un client sur les pages publiques, et les en-têtes de sécurité.
  */
 final class RecetteVisiteur
 {
@@ -38,6 +38,7 @@ final class RecetteVisiteur
         $this->navigateur->commencer();
         try {
             $this->referencement($bilan, $enLigne);
+            $this->entetesSecurite($bilan);
             if ($enLigne) {
                 $this->suivi($bilan);
                 $this->calculateur($bilan);
@@ -60,6 +61,27 @@ final class RecetteVisiteur
             $bilan->controler('Visiteur : /sitemap.xml ne liste aucune page privée', 0 === $prives, $prives.' adresse(s) privée(s)');
         } else {
             $bilan->controler('ERP local : /robots.txt répond « Disallow: / »', 200 === $robots->statut && 1 === preg_match('#^Disallow: /\s*$#m', $robots->contenu), trim($robots->contenu));
+        }
+    }
+
+    /**
+     * En-têtes de sécurité (EntetesSecuriteSubscriber, docs/securite.md) sur
+     * le site, l'espace client et la connexion du personnel : politique de
+     * contenu, cadre, type de contenu, référent. (L'en-tête X-Powered-By de
+     * PHP ne passe pas par ici : il se vérifie sur le serveur, docs/securite.md.)
+     */
+    private function entetesSecurite(BilanRecette $bilan): void
+    {
+        foreach (['/', '/espace/connexion', '/login'] as $chemin) {
+            $e = $this->navigateur->get($chemin)->entetes;
+            $politique = $e['content-security-policy'] ?? '';
+            $manque = array_keys(array_filter([
+                'politique de contenu' => !str_contains($politique, "object-src 'none'") || !str_contains($politique, "frame-ancestors 'self'") || !str_contains($politique, "base-uri 'self'"),
+                'nosniff' => 'nosniff' !== ($e['x-content-type-options'] ?? ''),
+                'cadre' => 'SAMEORIGIN' !== ($e['x-frame-options'] ?? ''),
+                'référent' => '' === ($e['referrer-policy'] ?? ''),
+            ]));
+            $bilan->controler('Visiteur : '.$chemin.' a ses en-têtes de sécurité', [] === $manque, [] === $manque ? 'complets' : 'à revoir : '.implode(', ', $manque));
         }
     }
 

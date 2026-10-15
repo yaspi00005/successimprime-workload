@@ -52,16 +52,25 @@ final class EntetesSecuriteTest extends TestCase
         self::assertStringNotContainsString("'unsafe-eval'", EntetesSecurite::politique(EntetesSecurite::ZONE_ADMIN));
     }
 
-    public function testAdministrationGardeSesFichiersExterieurs(): void
+    public function testAdministrationSansCdn(): void
     {
-        $d = self::directives(EntetesSecurite::politique(EntetesSecurite::ZONE_ADMIN));
+        $admin = self::directives(EntetesSecurite::politique(EntetesSecurite::ZONE_ADMIN));
+        $public = self::directives(EntetesSecurite::politique(EntetesSecurite::ZONE_PUBLIQUE));
 
-        self::assertStringContainsString('https://cdn.jsdelivr.net', $d['script-src']);
-        self::assertStringContainsString('https://fonts.googleapis.com', $d['style-src']);
-        self::assertStringContainsString('https://fonts.gstatic.com', $d['font-src']);
-        self::assertStringContainsString('https://*.tile.openstreetmap.org', $d['img-src']);
-        self::assertSame("'none'", $d['object-src']);
-        self::assertSame("'self'", $d['frame-ancestors']);
+        // Scripts, styles et polices : seulement le site (public/vendor), comme le site public (D4).
+        foreach (['script-src', 'style-src', 'font-src', 'connect-src', 'default-src'] as $nom) {
+            self::assertSame($public[$nom], $admin[$nom], $nom);
+            self::assertStringNotContainsString('https:', $admin[$nom], $nom);
+        }
+        foreach (['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'googleapis', 'gstatic'] as $hote) {
+            self::assertStringNotContainsString($hote, EntetesSecurite::politique(EntetesSecurite::ZONE_ADMIN), $hote);
+        }
+        // Seule exception, la même partout : les fonds de carte (des images) de la page Contact,
+        // des clients et des tournées.
+        self::assertSame("'self' data: blob: https://tile.openstreetmap.org", $public['img-src']);
+        self::assertSame($public['img-src'], $admin['img-src']);
+        self::assertSame("'none'", $admin['object-src']);
+        self::assertSame("'self'", $admin['frame-ancestors']);
     }
 
     public function testZones(): void

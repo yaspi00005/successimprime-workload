@@ -80,7 +80,7 @@
 			if (!window.L || !el) { return; }
 			var points = JSON.parse(el.dataset.points), depot = JSON.parse(el.dataset.depot || 'null');
 			var carte = L.map(el, {scrollWheelZoom: false});
-			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(carte);
+			L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(carte);
 			var couleurs = {livree: '#16A34A', encours: '#DC2626', avenir: '#94A3B8'}, traits = ['#0F3D8C', '#7C3AED', '#C2410C', '#0E7490'];
 			var tout = [], tournees = {};
 			if (depot) { tout.push(depot); L.marker(depot, {icon: L.divIcon({className: 'si-tr-pin', html: '<span style="background:#0F172A">D</span>', iconSize: [26, 26]})}).addTo(carte); }

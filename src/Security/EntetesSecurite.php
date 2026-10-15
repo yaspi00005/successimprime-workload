@@ -13,13 +13,16 @@ namespace App\Security;
  * formulaire envoyé hors du site (sauf la page de paiement d'Orange
  * Money), aucune page du site affichée dans le cadre d'un autre site.
  *
- * Deux zones :
- *  - le site public, l'espace client et les pages sans compte : tout vient
- *    du site lui-même ;
- *  - l'administration (personnel connecté, écran TV, tablette) : en plus,
- *    les polices Google du thème, les scripts de cdn.jsdelivr.net
- *    (Sortable, Chart.js) et les fonds de carte OpenStreetMap. À retirer
- *    quand ces fichiers seront copiés dans public/vendor.
+ * Tout vient du site lui-même, sauf les fonds de carte OpenStreetMap
+ * (tile.openstreetmap.org : des images, aucun code) des cartes Leaflet :
+ * page Contact du site, clients et tournées dans l'administration. Aucun
+ * script, style ou police d'un autre site : Sortable, Chart.js,
+ * Bootstrap 4, Font Awesome 4, Leaflet et les polices (thème, écran TV)
+ * sont copiés dans public/vendor (docs/securite.md).
+ *
+ * Deux zones gardées pour la suite : le site public, l'espace client et
+ * les pages sans compte ; l'administration (personnel connecté, écran TV,
+ * tablette), qui n'a aujourd'hui rien de plus (AJOUTS_ADMIN vide).
  */
 final class EntetesSecurite
 {
@@ -45,7 +48,8 @@ final class EntetesSecurite
         'script-src' => ["'self'", "'unsafe-inline'"],
         'style-src' => ["'self'", "'unsafe-inline'"],
         // data: et blob: : vues de l'atelier 3D, repères du BAT, aperçus avant envoi.
-        'img-src' => ["'self'", 'data:', 'blob:'],
+        // Fonds de carte OpenStreetMap (page Contact, clients, tournées).
+        'img-src' => ["'self'", 'data:', 'blob:', 'https://tile.openstreetmap.org'],
         'font-src' => ["'self'", 'data:'],
         'connect-src' => ["'self'"],
         'media-src' => ["'self'", 'blob:'],
@@ -59,13 +63,12 @@ final class EntetesSecurite
         'manifest-src' => ["'self'"],
     ];
 
-    /** Ce que l'administration charge encore d'ailleurs. */
-    private const AJOUTS_ADMIN = [
-        'script-src' => ['https://cdn.jsdelivr.net'],
-        'style-src' => ['https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com'],
-        'font-src' => ['https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
-        'img-src' => ['https://*.tile.openstreetmap.org'],
-    ];
+    /**
+     * Ce que l'administration seule chargerait d'ailleurs : rien aujourd'hui.
+     *
+     * @var array<string, list<string>>
+     */
+    private const AJOUTS_ADMIN = [];
 
     /**
      * Fichier servi par l'application (image, PDF, JSON…) : rien ne s'y

@@ -54,9 +54,12 @@ final class CreationsAtelier
     {
         $couleur = $modele->couleur(\is_string($donnees['couleur'] ?? null) ? $donnees['couleur'] : null)
             ?? throw new \DomainException('Choisissez une couleur de la liste.');
+        // Seconde couleur : la visière d'une casquette (celle du tissu si inconnue), les bords d'un polo (aucun si inconnue).
         $visiere = null;
         if (ModeleAtelier::CASQUETTE === $modele->getForme()) {
             $visiere = $modele->couleur(\is_string($donnees['visiere'] ?? null) ? $donnees['visiere'] : null) ?? $couleur;
+        } elseif (ModeleAtelier::POLO === $modele->getForme()) {
+            $visiere = $modele->couleur(\is_string($donnees['bords'] ?? null) ? $donnees['bords'] : null);
         }
 
         if ($modele->aDesTailles()) {
@@ -76,7 +79,7 @@ final class CreationsAtelier
         foreach (CreationAtelier::FACES as $face) {
             $f = \is_array($brut[$face] ?? null) ? $brut[$face] : [];
             $image = $f['image'] ?? null;
-            $reglages = CreationAtelier::reglagesFace($f, null !== $image && '' !== $image, null);
+            $reglages = CreationAtelier::reglagesFace($f, null !== $image && '' !== $image, null, $modele->getForme(), $face);
             if (null !== $reglages) {
                 $faces[$face] = ['reglages' => $reglages, 'image' => $image];
             }
@@ -287,7 +290,7 @@ final class CreationsAtelier
         foreach ($lu['faces'] as $face => $f) {
             $r = $f['reglages'];
             if ($r['image']) {
-                [$fichier, $nom] = $this->imageDeLaFace($f['image'], $face, CreationAtelier::tailleImage($r), $modele, $client, $session, $ecrits, $jetons);
+                [$fichier, $nom] = $this->imageDeLaFace($f['image'], $face, $r, $modele, $client, $session, $ecrits, $jetons);
                 $r['nomImage'] = mb_substr($nom, 0, 120);
                 CreationAtelier::DEVANT === $face ? $creation->setImageDevant($fichier) : $creation->setImageDos($fichier);
             }
@@ -322,14 +325,18 @@ final class CreationsAtelier
      * L'image d'une face : un dépôt de cette session, ou celle d'une
      * création du même client (création rouverte dans l'atelier).
      *
-     * @param list<string> $ecrits
-     * @param list<string> $jetons
+     * @param array<string, mixed> $reglages réglages de la face (emplacement, taille)
+     * @param list<string>         $ecrits
+     * @param list<string>         $jetons
      *
      * @return array{0: CommandeDetailFichier, 1: string} le fichier rangé et le nom donné par le client
      */
-    private function imageDeLaFace(mixed $source, string $face, int $taille, ModeleAtelier $modele, ?Clients $client, SessionInterface $session, array &$ecrits, array &$jetons): array
+    private function imageDeLaFace(mixed $source, string $face, array $reglages, ModeleAtelier $modele, ?Clients $client, SessionInterface $session, array &$ecrits, array &$jetons): array
     {
-        $libelle = 'Image du client · '.('dos' === $face ? (ModeleAtelier::CASQUETTE === $modele->getForme() ? 'arrière' : 'dos') : 'devant').' (Atelier 3D)';
+        $taille = CreationAtelier::tailleImage($reglages);
+        $position = \is_string($reglages['position'] ?? null) ? $reglages['position'] : null;
+        $emplacement = CreationAtelier::EMPLACEMENTS[CreationAtelier::famille($modele->getForme())][$face][CreationAtelier::emplacement($modele->getForme(), $face, $position)][0];
+        $libelle = 'Image du client · '.mb_strtolower($emplacement).' (Atelier 3D)';
         if (\is_string($source) && preg_match('/^creation:([0-9a-f-]{36}):(devant|dos)$/', $source, $m)) {
             $ancienne = null !== $client ? $this->duClientParId($client, $m[1]) : null;
             $original = $ancienne?->fichier('image-'.$m[2]);
@@ -340,7 +347,7 @@ final class CreationsAtelier
             $ecrits[] = (string) $this->images->chemin($copie);
             $copie->setFace($face)->setDesignation($libelle);
             [$largeur, $hauteur] = @getimagesize((string) $this->images->chemin($copie)) ?: [0, 0];
-            $copie->setAnalyse(self::analyse((int) $largeur, (int) $hauteur, $modele, $taille));
+            $copie->setAnalyse(self::analyse((int) $largeur, (int) $hauteur, $modele, $taille, $face, $position));
 
             return [$copie, (string) $original->getNomOriginal()];
         }
@@ -350,7 +357,7 @@ final class CreationsAtelier
             throw new \DomainException('Une image n\'est plus disponible (page restée ouverte trop longtemps) : choisissez-la de nouveau.');
         }
         $octets = (string) file_get_contents($depot['chemin']);
-        $fichier = $this->images->ranger($octets, $depot['extension'], $depot['mime'], $depot['nom'], $client, $face, $libelle, self::analyse($depot['largeur'], $depot['hauteur'], $modele, $taille));
+        $fichier = $this->images->ranger($octets, $depot['extension'], $depot['mime'], $depot['nom'], $client, $face, $libelle, self::analyse($depot['largeur'], $depot['hauteur'], $modele, $taille, $face, $position));
         $ecrits[] = (string) $this->images->chemin($fichier);
         $jetons[] = (string) $source;
 
@@ -374,16 +381,19 @@ final class CreationsAtelier
 
     /**
      * Contrôle de l'image à sa taille d'impression, au format de
-     * « Mes fichiers » (AnalyseFichierImpression).
+     * « Mes fichiers » (AnalyseFichierImpression) : la taille imprimée
+     * dépend de l'emplacement (un logo de poitrine est plus petit qu'un
+     * dos entier).
      *
      * @return list<array{libelle: string, valeur: string, etat: string}>
      */
-    public static function analyse(int $largeurPx, int $hauteurPx, ModeleAtelier $modele, int $taille): array
+    public static function analyse(int $largeurPx, int $hauteurPx, ModeleAtelier $modele, int $taille, string $face = CreationAtelier::DEVANT, ?string $position = null): array
     {
         if ($largeurPx < 1 || $hauteurPx < 1) {
             return [];
         }
-        $c = ImagesAtelier::controleResolution($largeurPx, $hauteurPx, $modele->getZoneLargeurCm(), $modele->getZoneHauteurCm(), $taille);
+        [$zoneL, $zoneH] = CreationAtelier::zoneImpression($modele->getForme(), $face, $position, $modele->getZoneLargeurCm(), $modele->getZoneHauteurCm());
+        $c = ImagesAtelier::controleResolution($largeurPx, $hauteurPx, $zoneL, $zoneH, $taille);
 
         return [
             ['libelle' => 'Dimensions', 'valeur' => \sprintf('%d × %d px', $largeurPx, $hauteurPx), 'etat' => 'ok'],

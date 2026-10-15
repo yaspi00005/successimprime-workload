@@ -1,7 +1,9 @@
 {#
-	Atelier 3D (docs/atelier-3d.md) : aperçu (3D, ou vues à plat) et
-	réglages, partagés par le site public et l'espace client. La page
-	n'envoie jamais de prix : elle demande celui du serveur à chaque
+	Studio textile (docs/atelier-3d.md, maquette « studio-textile.png ») :
+	en-tête, réglages en étapes à gauche, et pour chaque article une rangée
+	de trois vues fixes tirées du même modèle 3D (vue à plat dessinée tant
+	que la 3D n'est pas là), partagés par le site public et l'espace client.
+	La page n'envoie jamais de prix : elle demande celui du serveur à chaque
 	changement (urls.prix) et « Valider » n'envoie que les choix.
 
 	Variables : mode (site ou espace), fiches, paliers, montants (le compte
@@ -9,142 +11,246 @@
 	image, valider), csrf. Site : jeton (délai signé du formulaire).
 	Espace : adresses, entreprise, demandeValidation.
 #}
-{% set casquette = (fiches|first).forme == 'casquette' %}
-<div class="a3d" data-mode="{{ mode }}">
-	<section class="a3d-scene" aria-label="Aperçu de votre modèle">
-		<canvas class="a3d-plat" role="img" aria-label="Vue à plat de votre modèle"></canvas>
-		<canvas class="a3d-3d" hidden role="img" aria-label="Modèle 3D : faites glisser pour le tourner"></canvas>
-		<div class="a3d-haut">
-			<div class="a3d-badges">
-				<span class="a3d-badge a3d-badge-direct"><b aria-hidden="true"></b><span data-texte="mode">Vue à plat</span></span>
-				<span class="a3d-badge a3d-aide" data-texte="aide" hidden>Glissez pour tourner</span>
-			</div>
-			<button type="button" class="a3d-bascule" data-action="bascule" hidden>Voir en 3D</button>
+{% set premiere = fiches|first %}
+{% set libelles_formes = constant('App\\Entity\\ModeleAtelier::FORMES') %}
+{% set formes = [] %}
+{% for f in fiches %}{% if f.forme not in formes %}{% set formes = formes|merge([f.forme]) %}{% endif %}{% endfor %}
+{% set emplacements = constant('App\\Entity\\CreationAtelier::EMPLACEMENTS') %}
+{% set vues_formes = {
+	tshirt: [{cle: 'face', libelle: 'Face'}, {cle: 'dos', libelle: 'Dos'}, {cle: 'cote', libelle: 'Côté'}],
+	polo: [{cle: 'face', libelle: 'Face'}, {cle: 'dos', libelle: 'Dos'}, {cle: 'cote', libelle: 'Côté'}],
+	casquette: [{cle: 'face', libelle: 'Face'}, {cle: 'angle', libelle: 'Angle'}, {cle: 'cote', libelle: 'Côté'}],
+} %}
+{% macro icone(forme) %}
+	<svg class="a3d-icone" viewBox="0 0 40 34" aria-hidden="true">
+		{% if forme == 'casquette' %}
+			<path d="M6 23C6 12 12 6 20 6s14 6 14 17"/><path d="M4 23h30c3 0 5 1.5 5 3-4 1-12 1.5-20 1.5S4 26 4 23Z"/><path d="M20 6v17M13 8.5c2 4 2.5 9 2 14.5M27 8.5c-2 4-2.5 9-2 14.5"/>
+		{% elseif forme == 'polo' %}
+			<path d="M14 3 7 5 2 12l6 4 2-3v18h20V13l2 3 6-4-5-7-7-2-2.5 3.5h-5Z"/><path d="M14 3l3 5.5L20 7l3 1.5L26 3M20 7v9"/><circle cx="20" cy="11" r=".9"/><circle cx="20" cy="14" r=".9"/>
+		{% else %}
+			<path d="M14 3 7 5 2 12l6 4 2-3v18h20V13l2 3 6-4-5-7-7-2c-1 2.5-3.3 4-6 4s-5-1.5-6-4Z"/>
+		{% endif %}
+	</svg>
+{% endmacro %}
+{% macro icone_emplacement(famille, position) %}
+	{% set spots = {
+		'poitrine-gauche': [24, 12, 6, 6], 'poitrine-droite': [10, 12, 6, 6], 'devant-centre': [13, 12, 14, 13],
+		'dos-haut': [12, 10, 16, 5], 'dos-centre': [13, 13, 14, 12],
+		'devant': [14, 11, 12, 7], 'cote': [27, 14, 6, 5], 'arriere': [15, 13, 10, 5],
+	} %}
+	{% set s = spots[position] %}
+	<svg viewBox="0 0 40 34" aria-hidden="true" class="a3d-icone-emplacement">
+		{% if famille == 'casquette' %}
+			{% if position == 'cote' %}
+				<path d="M8 24C8 14 14 8 21 8c7 0 13 5 13 16Z" class="a3d-trace"/><path d="M8 24c-3 0-6 1-6 2h12" class="a3d-trace"/>
+			{% else %}
+				<path d="M6 23C6 12 12 6 20 6s14 6 14 17Z" class="a3d-trace"/>{% if position == 'devant' %}<path d="M4 23h32c0 2.5-6 4-16 4S4 25.5 4 23Z" class="a3d-trace"/>{% else %}<path d="M15 23c0-3 2-5 5-5s5 2 5 5" class="a3d-trace"/>{% endif %}
+			{% endif %}
+		{% else %}
+			<path d="M14 3 7 5 2 12l6 4 2-3v18h20V13l2 3 6-4-5-7-7-2c-1 {{ position starts with 'dos' ? '1-3.3 1.5-6 1.5s-5-.5-6-1.5' : '2.5-3.3 4-6 4s-5-1.5-6-4' }}Z" class="a3d-trace"/>
+		{% endif %}
+		<rect x="{{ s[0] }}" y="{{ s[1] }}" width="{{ s[2] }}" height="{{ s[3] }}" rx="1.5" class="a3d-spot"/>
+	</svg>
+{% endmacro %}
+{% import _self as m %}
+{% set titre_balise = 'h1' %}
+<div class="a3d" data-mode="{{ mode }}" data-rendu="plat">
+	<header class="a3d-tete">
+		<div class="a3d-marque">
+			<span class="a3d-logo"><img src="{{ asset('images/site/logo-succes-imprim-256.webp') }}" alt="Succès Imprim" width="92" height="51"></span>
+			<{{ titre_balise }} class="a3d-titre">Studio textile <span>Personnalisez vos vêtements</span></{{ titre_balise }}>
 		</div>
-		<div class="a3d-vues" role="group" aria-label="Vue">
-			<button type="button" data-vue="devant" aria-pressed="true">Devant</button>
-			<button type="button" data-vue="cote" aria-pressed="false" hidden>Côté</button>
-			<button type="button" data-vue="dos" aria-pressed="false" data-libelle-dos>Dos</button>
-			<button type="button" data-action="rotation" aria-pressed="false" hidden><span aria-hidden="true">⟳</span> Rotation</button>
+		<div class="a3d-onglets-formes" role="group" aria-label="Article">
+			{% for forme in formes %}
+				<button type="button" data-onglet="{{ forme }}" aria-pressed="{{ forme == premiere.forme ? 'true' : 'false' }}">{{ m.icone(forme) }}<span>{{ libelles_formes[forme] }}</span></button>
+			{% endfor %}
 		</div>
-	</section>
+		<p class="a3d-devise">Votre style, notre passion&nbsp;!</p>
+	</header>
 
-	<div class="a3d-panneau">
-		<section class="a3d-carte" aria-labelledby="a3d-t1">
-			<h2 id="a3d-t1"><span>1</span>Article</h2>
-			<div class="a3d-articles" role="group" aria-labelledby="a3d-t1">
-				{% for f in fiches %}
-					<button type="button" data-article="{{ f.id }}" aria-pressed="{{ loop.first ? 'true' : 'false' }}">
-						<svg class="a3d-icone" viewBox="0 0 40 34" aria-hidden="true">
-							{% if f.forme == 'casquette' %}
-								<path d="M5 22C5 11 12 5 20 5s15 6 15 17Z"/><path d="M3 22h34c0 3-6 5-17 5S3 25 3 22Z" opacity=".7"/>
-							{% elseif f.forme == 'polo' %}
-								<path d="M13 2 7 4 1 12l6 4 2-3v19h22V13l2 3 6-4-6-8-6-2-3 6h-8Z"/><path d="M17 8h6v9h-6z" fill="#fff" opacity=".5"/>
-							{% else %}
-								<path d="M13 2 7 4 1 12l6 4 2-3v19h22V13l2 3 6-4-6-8-6-2c-1 3-4 5-7 5s-6-2-7-5Z"/>
-							{% endif %}
-						</svg>
-						<span>{{ f.nom }}</span>
-					</button>
+	<div class="a3d-corps">
+		<div class="a3d-panneau">
+			<section class="a3d-etape" aria-labelledby="a3d-t1">
+				<h2 id="a3d-t1">1. Choisissez le modèle</h2>
+				<div class="a3d-articles" role="group" aria-labelledby="a3d-t1">
+					{% for f in fiches %}
+						{% set unique = fiches|filter(x => x.forme == f.forme)|length == 1 %}
+						<button type="button" data-article="{{ f.id }}" aria-pressed="{{ loop.first ? 'true' : 'false' }}">
+							<span class="a3d-article-image">{{ m.icone(f.forme) }}<canvas data-miniature-article width="128" height="104" aria-hidden="true" hidden></canvas></span>
+							<span class="a3d-article-nom">{{ unique ? f.libelleForme : f.nom }}</span>
+						</button>
+					{% endfor %}
+				</div>
+			</section>
+
+			<section class="a3d-etape" aria-labelledby="a3d-t2">
+				<h2 id="a3d-t2">2. Couleur du textile <output data-texte="couleur"></output></h2>
+				<div class="a3d-pastilles" data-pastilles="tissu" role="group" aria-labelledby="a3d-t2"></div>
+				<div data-bloc="visiere" hidden>
+					<p class="a3d-sous-titre" id="a3d-l-visiere">Visière <output data-texte="visiere"></output></p>
+					<div class="a3d-pastilles a3d-pastilles-petites" data-pastilles="visiere" role="group" aria-labelledby="a3d-l-visiere"></div>
+				</div>
+				<div data-bloc="bords" hidden>
+					<p class="a3d-sous-titre" id="a3d-l-bords">Bords du col et des manches <output data-texte="bords"></output></p>
+					<div class="a3d-pastilles a3d-pastilles-petites" data-pastilles="bords" role="group" aria-labelledby="a3d-l-bords"></div>
+				</div>
+			</section>
+
+			<section class="a3d-etape" aria-labelledby="a3d-t3">
+				<h2 id="a3d-t3">3. Ajoutez votre logo</h2>
+				<label class="a3d-depot" data-zone="depot">
+					<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg" data-champ="fichier">
+					<span class="a3d-depot-vide" data-depot="vide">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 9.5"/><path d="M12 12v8m0-8-3 3m3-3 3 3"/></svg>
+						<b>Cliquez pour charger votre logo</b>
+						<small>(PNG, JPG, SVG · {{ (envoiMax / 1048576)|round(0, 'floor') }} Mo au plus)</small>
+					</span>
+					<span class="a3d-depot-plein" data-depot="plein" hidden>
+						<span class="a3d-vignette"><img alt="" data-vignette></span>
+						<span class="a3d-depot-texte"><b data-texte="fichier"></b><small data-texte="fichier-aide"></small></span>
+					</span>
+				</label>
+				<button type="button" class="a3d-lien" data-action="retirer" hidden>Retirer le logo</button>
+				{# Message du logo d'exemple écrit dès le HTML : il s'affiche sans attendre le script. #}
+				{% if reprise ?? null %}
+					<div class="a3d-alerte" data-alerte role="status" hidden></div>
+				{% else %}
+					<div class="a3d-alerte" data-alerte role="status" data-etat="info">Logo d'exemple : chargez le vôtre, ou retirez-le, avant de valider.</div>
+				{% endif %}
+			</section>
+
+			<section class="a3d-etape" aria-labelledby="a3d-t4">
+				<h2 id="a3d-t4">4. Position du logo</h2>
+				{# Ordre de la maquette : devant puis dos (casquette : devant, côté, arrière). #}
+				{% set ordre = {vetement: ['poitrine-gauche', 'poitrine-droite', 'devant-centre', 'dos-haut', 'dos-centre'], casquette: ['devant', 'cote', 'arriere']} %}
+				{% for famille, cles in ordre %}
+					<div class="a3d-positions a3d-positions-{{ cles|length }}" data-positions="{{ famille }}" role="group" aria-labelledby="a3d-t4"{{ (famille == 'casquette') != (premiere.forme == 'casquette') ? ' hidden' }}>
+						{% for cle in cles %}
+							{% set face = emplacements[famille].devant[cle] is defined ? 'devant' : 'dos' %}
+							<button type="button" data-position="{{ cle }}" data-face="{{ face }}" aria-pressed="false">{{ m.icone_emplacement(famille, cle) }}<span>{{ emplacements[famille][face][cle][0] }}</span></button>
+						{% endfor %}
+					</div>
 				{% endfor %}
-			</div>
-		</section>
+				<p class="a3d-aide-position">Touchez une position pour y mettre le logo, ou pour l'enlever. Un logo devant et un au dos : la seconde face est comptée dans le prix.</p>
+				<div class="a3d-libelle"><label for="a3d-taille">Taille du logo</label><output data-texte="taille" for="a3d-taille">80 %</output></div>
+				<input type="range" id="a3d-taille" min="15" max="100" value="80" data-champ="taille">
+			</section>
 
-		<section class="a3d-carte" aria-labelledby="a3d-t2">
-			<h2 id="a3d-t2"><span>2</span>Couleurs</h2>
-			<div class="a3d-libelle"><span id="a3d-l-tissu">{{ casquette ? 'Calotte' : 'Couleur du tissu' }}</span><output data-texte="couleur"></output></div>
-			<div class="a3d-pastilles" data-pastilles="tissu" role="group" aria-labelledby="a3d-l-tissu"></div>
-			<div data-bloc="visiere" hidden>
-				<div class="a3d-libelle a3d-espace"><span id="a3d-l-visiere">Visière</span><output data-texte="visiere"></output></div>
-				<div class="a3d-pastilles" data-pastilles="visiere" role="group" aria-labelledby="a3d-l-visiere"></div>
-			</div>
-		</section>
-
-		<section class="a3d-carte" aria-labelledby="a3d-t3">
-			<h2 id="a3d-t3"><span>3</span>Votre marquage</h2>
-			<div class="a3d-onglets" role="group" aria-label="Face à marquer">
-				<button type="button" data-face="devant" aria-pressed="true">Devant<i data-marque="devant" hidden></i></button>
-				<button type="button" data-face="dos" aria-pressed="false"><span data-libelle-dos>Dos</span><i data-marque="dos" hidden></i></button>
-			</div>
-			<label class="a3d-depot" data-zone="depot">
-				<span class="a3d-vignette"><img alt="" data-vignette hidden></span>
-				<span class="a3d-depot-texte">
-					<b data-texte="fichier">Aucune image</b>
-					<small data-texte="fichier-aide">Glissez ou choisissez votre logo ou une photo : PNG, JPG ou WebP, {{ (envoiMax / 1048576)|round(0, 'floor') }} Mo au plus</small>
-				</span>
-				<input type="file" accept="image/png,image/jpeg,image/webp" data-champ="fichier">
-			</label>
-			<div class="a3d-alerte" data-alerte role="status" hidden></div>
-			<div class="a3d-deux">
-				<div>
-					<div class="a3d-libelle"><label for="a3d-taille">Taille de l'image</label><output data-texte="taille" for="a3d-taille">60 %</output></div>
-					<input type="range" id="a3d-taille" min="15" max="100" value="60" data-champ="taille">
+			<section class="a3d-etape" aria-labelledby="a3d-t5">
+				<h2 id="a3d-t5">5. Texte (optionnel)</h2>
+				<div class="a3d-faces-texte" role="group" aria-label="Face du texte">
+					<button type="button" data-face-texte="devant" aria-pressed="true">Devant<i data-marque="devant" hidden></i></button>
+					<button type="button" data-face-texte="dos" aria-pressed="false"><span data-libelle-dos>Dos</span><i data-marque="dos" hidden></i></button>
 				</div>
-				<div>
-					<div class="a3d-libelle"><label for="a3d-hauteur">Position verticale</label><output data-texte="hauteur" for="a3d-hauteur">0</output></div>
-					<input type="range" id="a3d-hauteur" min="-40" max="40" value="0" data-champ="hauteur">
-				</div>
-			</div>
-			<div class="a3d-deux">
-				<div>
-					<div class="a3d-libelle"><label for="a3d-texte">Texte</label><output data-texte="reste"></output></div>
-					<input type="text" id="a3d-texte" maxlength="{{ constant('App\\Entity\\CreationAtelier::TEXTE_MAX') }}" data-champ="texte" autocomplete="off" placeholder="Ex. : TEAM SUCCÈS">
-				</div>
-				<div>
-					<div class="a3d-libelle"><label for="a3d-police">Police</label></div>
+				<label class="a3d-cache" for="a3d-texte">Texte à imprimer</label>
+				<input type="text" id="a3d-texte" maxlength="{{ constant('App\\Entity\\CreationAtelier::TEXTE_MAX') }}" data-champ="texte" autocomplete="off" placeholder="Ex : Awa Couture">
+				<div class="a3d-ligne-police">
+					<label class="a3d-cache" for="a3d-police">Police</label>
 					<select id="a3d-police" data-champ="police">
 						{% for p in constant('App\\Entity\\CreationAtelier::POLICES') %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
 					</select>
+					<button type="button" class="a3d-gras" data-champ="gras" aria-pressed="false" title="Texte en gras"><b aria-hidden="true">B</b><span class="a3d-cache">Gras</span></button>
 				</div>
-			</div>
-			<div class="a3d-deux a3d-bas">
-				<div>
-					<div class="a3d-libelle"><span id="a3d-l-texte">Couleur du texte</span><output data-texte="couleur-texte"></output></div>
-					<div class="a3d-pastilles a3d-pastilles-petites" data-pastilles="texte" role="group" aria-labelledby="a3d-l-texte"></div>
-				</div>
-				<div>
-					<div class="a3d-libelle"><label for="a3d-place">Place du texte</label></div>
-					<select id="a3d-place" data-champ="place">
-						<option value="dessous">Sous l'image</option>
-						<option value="dessus">Au-dessus de l'image</option>
+				<div class="a3d-ligne-police">
+					<div class="a3d-pastilles a3d-pastilles-petites" data-pastilles="texte" role="group" aria-label="Couleur du texte"></div>
+					<label class="a3d-cache" for="a3d-place">Place du texte</label>
+					<select id="a3d-place" data-champ="place" class="a3d-select-court">
+						<option value="dessous">Sous le logo</option>
+						<option value="dessus">Au-dessus</option>
 					</select>
 				</div>
-			</div>
-			<button type="button" class="a3d-secondaire" data-action="retirer" hidden>Retirer l'image de cette face</button>
-		</section>
+			</section>
 
-		<section class="a3d-carte" aria-labelledby="a3d-t4">
-			<h2 id="a3d-t4"><span>4</span>Quantités</h2>
-			<div data-bloc="tailles">
-				<div class="a3d-libelle"><span>Par taille</span><output data-texte="pieces"></output></div>
-				<div class="a3d-tailles" data-tailles></div>
-			</div>
-			<div data-bloc="quantite" hidden>
-				<div class="a3d-libelle"><label for="a3d-quantite">Nombre de pièces</label></div>
-				<input type="number" id="a3d-quantite" min="1" max="{{ constant('App\\Entity\\CreationAtelier::QUANTITE_TAILLE_MAX') }}" value="20" inputmode="numeric" data-champ="quantite">
-			</div>
-			{% if paliers is not empty %}
-				<p class="a3d-paliers">Remise de quantité :
-					{%- for p in paliers %} −{{ p.pourcentage }} % dès {{ p.quantite }} pièces{{ not loop.last ? ',' : '.' }}{% endfor %}
-				</p>
-			{% endif %}
-			<div class="a3d-prix" data-prix aria-live="polite">
-				<div class="a3d-prix-montant">
-					<small data-texte="detail">Calcul du prix…</small>
-					{% if montants %}
-						<strong data-texte="total">—</strong>
-						<small>TTC · prix indicatif, confirmé par l'atelier avec votre maquette</small>
-					{% else %}
-						<strong class="a3d-sans-montant">Prix confirmé par votre valideur</strong>
-						<small>La personne qui valide les commandes de votre entreprise voit le montant.</small>
-					{% endif %}
-					<small class="a3d-promo" data-texte="promotion" hidden></small>
-					<small class="a3d-prochain" data-texte="prochain" hidden></small>
+			<section class="a3d-etape" aria-labelledby="a3d-t6">
+				<h2 id="a3d-t6">6. Aperçu / Export</h2>
+				<button type="button" class="a3d-telecharger" data-action="telecharger">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14"/></svg>
+					Télécharger la maquette
+				</button>
+				<p class="a3d-note">Image PNG des trois vues, préparée sur votre appareil, sans prix.</p>
+			</section>
+
+			<section class="a3d-etape a3d-etape-commande" aria-labelledby="a3d-t7">
+				<h2 id="a3d-t7">7. Quantités et {{ mode == 'site' ? 'devis' : 'commande' }}</h2>
+				<div data-bloc="tailles">
+					<div class="a3d-libelle"><span>Par taille</span><output data-texte="pieces"></output></div>
+					<div class="a3d-tailles" data-tailles></div>
 				</div>
-				<button type="button" class="a3d-valider" data-action="valider">Valider mon modèle</button>
+				<div data-bloc="quantite" hidden>
+					<div class="a3d-libelle"><label for="a3d-quantite">Nombre de pièces</label></div>
+					<input type="number" id="a3d-quantite" min="1" max="{{ constant('App\\Entity\\CreationAtelier::QUANTITE_TAILLE_MAX') }}" value="20" inputmode="numeric" data-champ="quantite">
+				</div>
+				{% if paliers is not empty %}
+					<p class="a3d-paliers">Remise de quantité :
+						{%- for p in paliers %} −{{ p.pourcentage }} % dès {{ p.quantite }} pièces{{ not loop.last ? ',' : '.' }}{% endfor %}
+					</p>
+				{% endif %}
+				<div class="a3d-prix" data-prix aria-live="polite">
+					<div class="a3d-prix-montant">
+						<small data-texte="detail">Calcul du prix…</small>
+						{% if montants %}
+							<strong data-texte="total">—</strong>
+							<small>TTC · prix indicatif, confirmé par l'atelier avec votre maquette</small>
+						{% else %}
+							<strong class="a3d-sans-montant">Prix confirmé par votre valideur</strong>
+							<small>La personne qui valide les commandes de votre entreprise voit le montant.</small>
+						{% endif %}
+						<small class="a3d-promo" data-texte="promotion" hidden></small>
+						<small class="a3d-prochain" data-texte="prochain" hidden></small>
+					</div>
+					<button type="button" class="a3d-valider" data-action="valider">Valider mon modèle</button>
+				</div>
+			</section>
+		</div>
+
+		<div class="a3d-scene" aria-label="Aperçu de vos articles">
+			<div class="a3d-etat" data-etat-3d>
+				<span data-texte="mode" role="status">Vue à plat</span>
+				<button type="button" class="a3d-bascule" data-action="bascule" hidden>Voir en 3D</button>
 			</div>
-			<label class="a3d-case" data-bloc="flotte" hidden><input type="checkbox" data-champ="flotte" checked> Animation douce de l'aperçu</label>
-		</section>
+			{% for f in fiches %}
+				{% set vues = vues_formes[f.forme] %}
+				<section class="a3d-rangee{{ loop.first ? ' a3d-rangee-active' }}" data-rangee="{{ f.id }}" data-forme="{{ f.forme }}" aria-labelledby="a3d-r{{ loop.index }}">
+					<div class="a3d-rangee-tete">
+						<h2 id="a3d-r{{ loop.index }}"><button type="button" data-choisir="{{ f.id }}">{{ f.libelleForme }}</button></h2>
+						<p>{{ f.nom }}</p>
+					</div>
+					<div class="a3d-rangee-corps">
+						<div class="a3d-vues" data-vues>
+							{% for v in vues %}
+								<figure class="a3d-vue" data-vue="{{ v.cle }}">
+									<canvas role="img" aria-label="{{ f.libelleForme }} : vue {{ v.libelle|lower }}"></canvas>
+									<figcaption data-libelle-vue>{{ v.libelle }}</figcaption>
+								</figure>
+							{% endfor %}
+							<div class="a3d-tour" data-tour hidden>
+								<canvas role="img" aria-label="{{ f.libelleForme }} en 360° : faites glisser pour le tourner"></canvas>
+								<p class="a3d-tour-aide">Glissez pour tourner · pincez ou + / − pour zoomer</p>
+							</div>
+						</div>
+						<div class="a3d-miniatures" role="group" aria-label="Vues de l'article">
+							{% for v in vues %}
+								<button type="button" data-miniature="{{ v.cle }}" aria-pressed="{{ loop.first ? 'true' : 'false' }}" aria-label="Vue {{ v.libelle|lower }}"><canvas width="66" height="66" aria-hidden="true"></canvas></button>
+							{% endfor %}
+						</div>
+						<div class="a3d-outils" role="group" aria-label="Affichage de l'article">
+							<button type="button" data-outil="tour" aria-pressed="false" title="Rotation libre à 360°"><span aria-hidden="true">360°</span><span class="a3d-cache">Rotation libre</span></button>
+							<button type="button" data-outil="plus" title="Zoomer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg><span class="a3d-cache">Zoomer</span></button>
+							<button type="button" data-outil="moins" title="Dézoomer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg><span class="a3d-cache">Dézoomer</span></button>
+							<button type="button" data-outil="plein" aria-pressed="false" title="Plein écran"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg><span class="a3d-cache">Plein écran</span></button>
+						</div>
+					</div>
+					{% set credits = f.modele3d.credits ?? null %}
+					{% if credits %}
+						<p class="a3d-credits" data-credits hidden>Modèle 3D :
+							{% if credits.sourceUrl ?? null %}<a href="{{ credits.sourceUrl }}" target="_blank" rel="noopener noreferrer nofollow">{{ credits.titre ?? 'sans titre' }}</a>{% else %}{{ credits.titre ?? 'sans titre' }}{% endif %}
+							{%- if credits.auteur ?? null %}, {{ credits.auteur }}{% endif %}
+							{%- if credits.licence ?? null %}, {% if credits.licenceUrl ?? null %}<a href="{{ credits.licenceUrl }}" target="_blank" rel="noopener noreferrer nofollow">{{ credits.licence }}</a>{% else %}{{ credits.licence }}{% endif %}{% endif %}
+						</p>
+					{% endif %}
+				</section>
+			{% endfor %}
+		</div>
 	</div>
 </div>
 
@@ -154,7 +260,7 @@
 		<p class="a3d-doux">Ces vues accompagnent votre {{ mode == 'site' ? 'demande' : 'commande' }} : l'atelier prépare le BAT à partir de votre maquette et vérifie vos images avant l'impression.</p>
 		<div class="a3d-vues-rendues">
 			<figure><img alt="Vue de face" data-rendu="devant"><figcaption>Devant</figcaption></figure>
-			<figure><img alt="Vue de dos" data-rendu="dos"><figcaption data-libelle-dos>Dos</figcaption></figure>
+			<figure><img alt="Vue de dos" data-rendu="dos"><figcaption data-libelle-rendu-dos>Dos</figcaption></figure>
 		</div>
 		<table class="a3d-recap" data-recap></table>
 
@@ -237,14 +343,16 @@
 	csrf: csrf,
 	urls: urls|merge({
 		scene: asset('js/atelier-3d-scene.js'),
-		gltf: asset('vendor/three/addons/loaders/GLTFLoader.js'),
+		logo: asset('images/site/logo-succes-imprim-256.webp'),
 	}),
 	polices: {
-		'Archivo Black': asset('vendor/polices-atelier/archivo-black.woff2'),
-		'Bebas Neue': asset('vendor/polices-atelier/bebas-neue.woff2'),
-		'Pacifico': asset('vendor/polices-atelier/pacifico.woff2'),
-		'Figtree': asset('vendor/polices-atelier/figtree-700.woff2'),
+		'Montserrat': [{url: asset('vendor/polices-atelier/montserrat-400.woff2'), poids: '400'}, {url: asset('vendor/polices-atelier/montserrat-700.woff2'), poids: '700'}],
+		'Archivo Black': [{url: asset('vendor/polices-atelier/archivo-black.woff2'), poids: '400'}],
+		'Bebas Neue': [{url: asset('vendor/polices-atelier/bebas-neue.woff2'), poids: '400'}],
+		'Pacifico': [{url: asset('vendor/polices-atelier/pacifico.woff2'), poids: '400'}],
+		'Figtree': [{url: asset('vendor/polices-atelier/figtree-700.woff2'), poids: '700'}],
 	},
+	emplacements: emplacements,
 	couleursTexte: constant('App\\Entity\\CreationAtelier::COULEURS_TEXTE'),
 	reduction: constant('App\\Entity\\CreationAtelier::REDUCTION_AVEC_TEXTE'),
 	quantiteMax: constant('App\\Entity\\CreationAtelier::QUANTITE_TAILLE_MAX'),

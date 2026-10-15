@@ -83,6 +83,25 @@ final class ImagesAtelierTest extends TestCase
         }
     }
 
+    /**
+     * Un logo SVG est dessiné en PNG par la page du studio : le serveur,
+     * lui, refuse toujours un SVG (il peut contenir un script), même
+     * présenté comme une image.
+     */
+    public function testSvgRefuseMemeDeguise(): void
+    {
+        $svg = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><script>alert(1)</script><rect width="400" height="400" fill="red"/></svg>';
+        try {
+            ImagesAtelier::reencoder($svg);
+            self::fail('SVG refusé attendu');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('PNG, JPG ou WebP', $e->getMessage());
+        }
+        // Précédé d'une fausse signature PNG : illisible, refusé aussi.
+        $this->expectException(\DomainException::class);
+        ImagesAtelier::reencoder("\x89PNG\r\n\x1a\n".$svg);
+    }
+
     public function testVueRenduePngSeulementEtDeTailleRaisonnable(): void
     {
         $im = imagecreatetruecolor(64, 64);

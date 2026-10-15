@@ -9,6 +9,8 @@
 {% block body %}
 
 	{% set peutVoirPaiements = is_granted('ROLE_PAIEMENT_VOIR') or is_granted('ROLE_ADMIN') %}
+	{# « Encaisser » mène à la page de paiement, refusée sans le droit Encaissements (graphiste par défaut). #}
+	{% set peutEncaisser = is_granted('ROLE_PAIEMENT_ENCAISSER') %}
 
 	{% set client =
         commande
@@ -154,7 +156,8 @@
 				{# PAIEMENT : UNIQUEMENT FACTURE OFFICIELLE #}
 
 				{% if
-                    facture.comptabilisee
+                    peutEncaisser
+                    and facture.comptabilisee
                     and commande
                     and resteAPayer > 0
                     and not facture.estAnnulee
@@ -1093,7 +1096,8 @@
 																																																																																				                           FACTURE OFFICIELLE UNIQUEMENT #}
 
 						{% if
-                            facture.comptabilisee
+                            peutEncaisser
+                            and facture.comptabilisee
                             and commande
                             and resteAPayer > 0
                             and not facture.estAnnulee

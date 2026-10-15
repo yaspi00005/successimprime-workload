@@ -6,6 +6,7 @@ use App\Entity\CategorieProduit;
 use App\Repository\RealisationRepository;
 use App\Service\Atelier\CatalogueAtelier;
 use App\Service\Site\AvantApres;
+use App\Service\Site\PhotosSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,12 +32,17 @@ final class SiteController extends AbstractController
         'signaletique' => ['mots' => ['signalétique', 'signaletique', 'roll-up', 'enseigne', 'panneau'], 'exemples' => 'Roll-up, Door Shape, enseignes'],
     ];
 
+    /** Photos de l'accueil (PhotosSite) : en haut de la page, en fond de la bande « Un projet à imprimer ? », dans la bande Studio textile. */
+    public const PHOTO_ACCROCHE = 'enseigne-succes-imprim-bamako';
+    public const PHOTO_PROJET = 'rubans-encre-couleurs';
+    public const PHOTO_ATELIER = 't-shirts-dtf-succes-imprim';
+
     public function __construct(private readonly EntityManagerInterface $em)
     {
     }
 
     #[Route('/site', name: 'app_site_accueil', methods: ['GET'])]
-    public function accueil(Request $request, CatalogueAtelier $atelier, RealisationRepository $realisations): Response
+    public function accueil(Request $request, CatalogueAtelier $atelier, RealisationRepository $realisations, PhotosSite $photos): Response
     {
         $univers = [];
         // Les catégories de démonstration portent « (démo) » : une seule carte par nom affiché.
@@ -57,8 +63,17 @@ final class SiteController extends AbstractController
             }
         }
 
+        // Une photo par univers, d'après sa famille, jamais deux fois la même dans la page.
+        $univers = array_values($univers);
+        $photosUnivers = $photos->pourFamilles(array_column($univers, 'famille'), [self::PHOTO_ACCROCHE, self::PHOTO_PROJET]);
+        foreach (array_keys($univers) as $i) {
+            $univers[$i]['photo'] = $photos->photo($photosUnivers[$i]);
+        }
+
         return $this->cache($this->render('site/accueil.html.twig', [
-            'univers' => array_values($univers),
+            'univers' => $univers,
+            // La bande Studio textile prend la photo des t-shirts si aucun univers ne la montre déjà.
+            'photoAtelier' => \in_array(self::PHOTO_ATELIER, $photosUnivers, true) ? null : $photos->photo(self::PHOTO_ATELIER),
             // Bande « Atelier 3D » quand des articles y sont proposés (docs/atelier-3d.md).
             'atelier' => [] !== $atelier->modeles(),
             // Dernière réalisation avec ses photos « Avant » et « Après ».

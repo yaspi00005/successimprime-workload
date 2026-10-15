@@ -65,6 +65,7 @@
 .sc-machine { display: flex; flex-direction: column; background: #fff; border: 1px solid var(--bordure); border-radius: 16px; overflow: hidden; box-shadow: var(--ombre); }
 .sc-machine-illu { display: flex; align-items: center; justify-content: center; padding: 18px 24px 8px; background: linear-gradient(180deg, #F3F6FB, #E9EEF6); color: var(--teinte); }
 .sc-machine-illu svg { width: 100%; max-width: 300px; height: auto; }
+.sc-machine-photo { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: #E9EEF6; }
 .sc-machine-corps { padding: 16px 18px 20px; }
 .sc-machine-corps .sc-etiquette { margin-bottom: 8px; }
 .sc-machine .sc-carte-titre { font-size: 19px; }
@@ -114,6 +115,13 @@
 .sc-equipe h3 { font-size: 14.5px; margin: 0; }
 .sc-equipe li p { margin: 0; font-size: 12.5px; color: var(--texte-doux); }
 
+/* « Venez nous voir » (à propos) : photo de la boutique et adresse. */
+.sc-boutique { display: grid; gap: 16px 28px; align-items: center; margin-top: 34px; }
+.sc-boutique-photo { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; background: var(--fond-doux); }
+.sc-boutique h2 { margin: 0 0 8px; font-size: clamp(22px, 2.6vw, 28px); }
+.sc-boutique p { margin: 0 0 6px; color: var(--texte-doux); }
+.sc-boutique .si-bouton { margin-top: 10px; }
+
 /* Engagements (maquette 08) */
 .sc-engagements { display: grid; gap: 14px; grid-template-columns: 1fr; }
 .sc-engagements .sc-teinte-2 { --teinte: var(--orange); --teinte-pale: #FDEBE4; }
@@ -122,6 +130,11 @@
 .sc-engagement-icone { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; background: var(--teinte); color: #fff; margin-bottom: 12px; }
 .sc-engagement .sc-carte-titre { font-size: 19px; }
 .sc-engagement .sc-prose { color: var(--texte-doux); }
+/* Deux photos (BAT sur le téléphone, livraison) avant la frise. */
+.sc-duo { display: grid; gap: 16px; margin-top: 24px; }
+.sc-duo-photo { margin: 0; }
+.sc-duo-photo img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; background: var(--fond-doux); }
+.sc-duo-photo figcaption { margin-top: 8px; font-size: 15px; font-weight: 600; color: var(--texte); }
 .sc-frise-cadre { margin-top: 24px; padding: 20px 18px; background: #fff; border: 1px solid var(--bordure); border-radius: 16px; box-shadow: var(--ombre); }
 .sc-frise-cadre h2 { font-size: 20px; margin: 0 0 16px; }
 .sc-frise { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; position: relative; }
@@ -247,6 +260,7 @@
 @media (min-width: 560px) {
   .sc-cartes, .sc-guide .sc-cartes, .sc-valeurs, .sc-engagements, .sc-avis ul, .sc-conseils-grille { grid-template-columns: repeat(2, 1fr); }
   .sc-machines { grid-template-columns: repeat(2, 1fr); }
+  .sc-duo { grid-template-columns: repeat(2, 1fr); }
   .sc-mosaique { columns: 2; }
   .sc-chiffres-liste.sc-chiffres-2, .sc-chiffres-liste.sc-chiffres-3 { grid-template-columns: repeat(var(--colonnes, 2), 1fr); }
   .sc-chiffres-liste.sc-chiffres-3 { --colonnes: 3; }
@@ -275,6 +289,7 @@
   .sc-faq-menu ul { flex-direction: column; overflow: visible; margin: 0; padding: 0; }
   .sc-faq-menu a { background: transparent; }
   .sc-bande { padding: 18px 22px; }
+  .sc-boutique { grid-template-columns: 1.25fr 1fr; }
 }
 
 @media (min-width: 960px) {

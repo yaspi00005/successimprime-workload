@@ -1,7 +1,9 @@
 {#
-	Accueil du site vitrine (maquette 01) : accroche, univers d'impression
-	(catégories publiées), engagements. Les pages pas encore construites
-	n'ont pas de lien (site_lien renvoie null).
+	Accueil du site vitrine (maquette 01) : accroche avec la photo de la
+	boutique, univers d'impression (catégories publiées, chacune avec sa
+	photo), engagements, bande « Un projet à imprimer ? ». Les photos sont
+	livrées avec le site (PhotosSite, docs/site-vitrine.md). Les pages pas
+	encore construites n'ont pas de lien (site_lien renvoie null).
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -9,6 +11,9 @@
 {% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
 {% set calculateur = site_lien('app_site_calculateur') %}
 {% set donnees_entreprise = true %}
+{% set photo_accroche = site_photo(constant('App\\Controller\\SiteController::PHOTO_ACCROCHE')) %}
+{% set photo_projet = site_photo(constant('App\\Controller\\SiteController::PHOTO_PROJET')) %}
+{% set whatsapp_projet = site_whatsapp('Bonjour Succès Imprim, j\'ai un projet à imprimer : ') %}
 
 {% block title %}Imprimerie à Bamako : bâches, roll-up, t-shirts · Succès Imprim{% endblock %}
 {% block description %}Succès Imprim, imprimerie à Bamako : impression de bâches et banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite. BAT avant impression.{% endblock %}
@@ -30,7 +35,11 @@
 					<li>Paiement Orange Money</li>
 				</ul>
 			</div>
-			{{ include('site/_illustration_accueil.svg.twig') }}
+			{% if photo_accroche %}
+				<figure class="si-accroche-photo">
+					{{ include('site/_photo.html.twig', {photo: photo_accroche, sizes: '(max-width: 860px) calc(100vw - 32px), (max-width: 1180px) 46vw, 540px', principale: true, telephone: 800}) }}
+				</figure>
+			{% endif %}
 		</div>
 	</section>
 
@@ -39,8 +48,12 @@
 			<div class="si-cadre si-univers-grille">
 				{% for u in univers %}
 					{% set lien = site_lien('app_site_calculateur', {categorie: u.categorie.id}) ?? site_lien('app_site_produits') %}
-					<article class="si-univers-carte si-famille-{{ u.famille }}" data-revele>
-						<span class="si-univers-icone" aria-hidden="true">{{ include('site/_icone_famille.svg.twig', {famille: u.famille}) }}</span>
+					<article class="si-univers-carte si-famille-{{ u.famille }}{{ u.photo ? ' si-univers-avec-photo' }}" data-revele>
+						{% if u.photo %}
+							{{ include('site/_photo.html.twig', {photo: u.photo, sizes: '(max-width: 520px) 104px, (max-width: 960px) calc(50vw - 25px), 274px', classe: 'si-univers-photo'}) }}
+						{% else %}
+							<span class="si-univers-icone" aria-hidden="true">{{ include('site/_icone_famille.svg.twig', {famille: u.famille}) }}</span>
+						{% endif %}
 						<h2>{{ u.nom }}</h2>
 						<p>{{ u.exemples }}</p>
 						{% if lien %}<a href="{{ lien }}">Calculer mon prix <span aria-hidden="true">→</span></a>{% endif %}
@@ -53,8 +66,9 @@
 	{% if atelier|default(false) and site_lien('app_site_atelier') %}
 		<section class="si-atelier-bande" aria-labelledby="si-atelier-titre">
 			<div class="si-cadre">
-				<div class="si-atelier-carte" data-revele>
-					<div>
+				<div class="si-atelier-carte{{ photoAtelier ? ' si-atelier-avec-photo' }}" data-revele>
+					{% if photoAtelier %}{{ include('site/_photo.html.twig', {photo: photoAtelier, sizes: '(max-width: 520px) calc(100vw - 80px), 160px', classe: 'si-atelier-photo'}) }}{% endif %}
+					<div class="si-atelier-texte">
 						<span class="si-atelier-nouveau">Nouveau · Studio textile</span>
 						<h2 id="si-atelier-titre">Votre t-shirt, polo ou casquette en 3D</h2>
 						<p>Choisissez la couleur, placez votre logo et votre texte devant et dos, voyez le prix selon la quantité. L'atelier prépare ensuite le BAT.</p>
@@ -91,6 +105,23 @@
 			{% if site_lien('app_site_engagements') %}<p class="si-engagements-lien"><a href="{{ site_lien('app_site_engagements') }}">Tous nos engagements <span aria-hidden="true">→</span></a></p>{% endif %}
 		</div>
 	</section>
+
+	{% if devis or whatsapp_projet %}
+		{# Fond décoratif (rubans d'encre) ; le texte reste sur un cadre blanc, lisible quel que soit le recadrage. #}
+		<section class="si-projet" aria-labelledby="si-projet-titre">
+			{% if photo_projet %}{{ include('site/_photo.html.twig', {photo: photo_projet, sizes: '100vw', classe: 'si-projet-fond', alt: ''}) }}{% endif %}
+			<div class="si-cadre">
+				<div class="si-projet-texte" data-revele>
+					<h2 id="si-projet-titre">Un projet à imprimer&nbsp;?</h2>
+					<p>Décrivez-nous votre idée ou envoyez votre fichier&nbsp;: l'atelier vous répond avec un prix, puis vous montre le BAT avant d'imprimer.</p>
+					<div class="si-projet-actions">
+						{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge si-bouton-grand">Demander un devis</a>{% endif %}
+						{% if whatsapp_projet %}<a href="{{ whatsapp_projet }}" class="si-bouton si-bouton-contour si-bouton-grand" target="_blank" rel="noopener">Écrire sur WhatsApp</a>{% endif %}
+					</div>
+				</div>
+			</div>
+		</section>
+	{% endif %}
 
 	{% block apres_engagements %}
 		{# Chiffres et partenaires (contenu du site) : chacun absent quand il est vide. #}

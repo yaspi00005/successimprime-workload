@@ -11,8 +11,8 @@
 {% set entreprise = site_entreprise() %}
 {% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
 {% set whatsapp = site_whatsapp() %}
-{# Image de partage : celle de la page (image_partage : chemin, largeur, hauteur), sinon le logo sur fond blanc. #}
-{% set partage = image_partage ?? constant('App\\Twig\\ReferencementExtension::IMAGE_PARTAGE') %}
+{# Image de partage : celle de la page (image_partage : chemin, largeur, hauteur), sinon la façade de la boutique (le logo sur fond blanc si la photo manque). #}
+{% set partage = image_partage ?? site_image_partage() %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>

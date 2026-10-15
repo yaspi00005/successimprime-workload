@@ -1,7 +1,9 @@
 {#
 	Nos engagements (maquette 08), page « nos-engagements » : les cartes
-	de couleur (un engagement par « ### »), puis la frise des étapes de la
-	commande (liste numérotée « 1. »), puis les autres sections.
+	de couleur (un engagement par « ### »), deux photos livrées avec le site
+	(le BAT validé sur le téléphone, la livraison : PhotosSite), la frise
+	des étapes de la commande (liste numérotée « 1. »), puis les autres
+	sections.
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -12,6 +14,23 @@
 
 {# Image de la page (Réglages › Site vitrine) pour le partage sur les réseaux. #}
 {% set image_partage = site_image(page.image) %}
+
+{# Les deux photos, juste avant la frise des étapes (à la fin s'il n'y a pas de frise). #}
+{% set frise = contenu.sections|filter(s => s.blocs|filter(b => b.type == 'etapes') is not empty)|first %}
+{% set photo_bat = site_photo('bat-valide-sur-telephone') %}
+{% set photo_livraison = site_photo('livraison-moto-bamako') %}
+{% set duo %}
+	{% if photo_bat or photo_livraison %}
+		<div class="sc-duo">
+			{% for p in [{photo: photo_bat, legende: 'Le BAT se valide aussi sur le téléphone, dans l\'espace client'}, {photo: photo_livraison, legende: 'Livraison à Bamako'}]|filter(p => p.photo) %}
+				<figure class="sc-duo-photo">
+					{{ include('site/_photo.html.twig', {photo: p.photo, sizes: '(max-width: 559px) calc(100vw - 32px), (max-width: 1180px) calc(50vw - 24px), 566px'}) }}
+					<figcaption>{{ p.legende }}</figcaption>
+				</figure>
+			{% endfor %}
+		</div>
+	{% endif %}
+{% endset %}
 
 {% block title %}{{ page.titre|site_titre }}{% endblock %}
 {% block description %}{{ (page.description ?? page.accroche ?? 'BAT avant impression, réimpression si le défaut vient de nous, délai annoncé, prix sans surprise : les engagements de Succès Imprim.')|site_description }}{% endblock %}
@@ -45,6 +64,7 @@
 						</div>
 					</section>
 				{% elseif etapes is not empty %}
+					{% if s is same as(frise) %}{{ duo }}{% endif %}
 					<section class="sc-frise-cadre"{% if s.titre %} aria-labelledby="{{ s.ancre }}"{% endif %}>
 						{% if s.titre %}<h2 id="{{ s.ancre }}">{{ s.html|raw }}</h2>{% endif %}
 						{% for b in s.blocs %}
@@ -61,6 +81,8 @@
 					{{ include('site/_section.html.twig', {s: s}) }}
 				{% endif %}
 			{% endfor %}
+
+			{% if not frise %}{{ duo }}{% endif %}
 
 			{% if lien_devis %}
 				<p class="sc-appel"><a href="{{ lien_devis }}" class="si-bouton si-bouton-rouge si-bouton-grand"{% if devis_externe %} target="_blank" rel="noopener"{% endif %}>Demander un devis</a></p>

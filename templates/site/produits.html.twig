@@ -1,7 +1,8 @@
 {#
 	Nos produits (maquette 02) : filtre par univers (?categorie=, sans
 	JavaScript), une carte par produit publié avec son prix de départ public
-	et un lien vers le calculateur, le produit déjà choisi.
+	et un lien vers le calculateur, le produit déjà choisi. En bas, « Un
+	autre support ? » avec la photo du fourgon habillé (PhotosSite).
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -9,6 +10,7 @@
 {% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
 {% set whatsapp = site_whatsapp('Bonjour Succès Imprim, je cherche un produit qui n\'est pas sur le site : ') %}
 {% set univers_choisi = choisi is not null ? univers[choisi] : null %}
+{% set photo_sur_mesure = site_photo('fourgon-publicitaire-succes-imprim') %}
 
 {% block title %}{{ univers_choisi ? (univers_choisi.nom ~ ' · Nos produits')|site_titre : 'Nos produits et prix d\'impression à Bamako · Succès Imprim' }}{% endblock %}
 {% block description %}Bâches, banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite, autocollants : nos produits et leur prix de départ en FCFA, à Bamako.{% endblock %}
@@ -67,8 +69,9 @@
 			{% endif %}
 
 			{% if devis or whatsapp %}
-				<aside class="si-produits-autre">
-					<div>
+				<aside class="si-produits-autre{{ photo_sur_mesure ? ' si-produits-autre-photo' }}">
+					{% if photo_sur_mesure %}{{ include('site/_photo.html.twig', {photo: photo_sur_mesure, sizes: '(max-width: 859px) calc(100vw - 72px), 240px', classe: 'si-produits-autre-image'}) }}{% endif %}
+					<div class="si-produits-autre-texte">
 						<h2>Un autre support, une autre taille&nbsp;?</h2>
 						<p>L'atelier imprime aussi sur mesure. Décrivez votre projet : nous vous répondons avec un prix.</p>
 					</div>

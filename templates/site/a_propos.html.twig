@@ -2,13 +2,18 @@
 	Qui sommes-nous ? (maquette 07), page « a-propos » : la première
 	section (texte et petites cartes de valeurs) à côté de la photo de la
 	page, l'équipe (section dont le titre parle d'équipe), les autres
-	sections, puis les chiffres, les avis publiés avec accord et les
-	partenaires. L'entreprise affichée vient de Réglages › Entreprises.
+	sections, « Venez nous voir » (photo de la boutique, adresse), puis les
+	chiffres, les avis publiés avec accord et les partenaires. L'entreprise
+	affichée vient de Réglages › Entreprises. Sans image choisie dans
+	Réglages › Site vitrine, la photo de l'atelier livrée avec le site
+	(PhotosSite) la remplace.
 #}
 {% extends 'site/_site.html.twig' %}
 
 {% set entreprise = site_entreprise() %}
 {% set photo = site_image(page.image) %}
+{% set photo_atelier = photo ? null : site_photo('atelier-impression-grand-format') %}
+{% set photo_boutique = site_photo('enseigne-succes-imprim-bamako') %}
 {% set image_partage = photo %}
 {% set donnees_entreprise = true %}
 {% set equipe = contenu.sections|filter(s => 'équipe' in s.titre|lower or 'equipe' in s.titre|lower)|first %}
@@ -50,6 +55,8 @@
 					{% if photo %}
 						<img src="{{ asset(photo.chemin) }}" width="{{ photo.largeur }}" height="{{ photo.hauteur }}" alt="{{ page.image.texteAlternatif ?? 'L\'équipe et l\'atelier Succès Imprim' }}">
 						{% if page.image.texteAlternatif %}<figcaption>{{ page.image.texteAlternatif }}</figcaption>{% endif %}
+					{% elseif photo_atelier %}
+						{{ include('site/_photo.html.twig', {photo: photo_atelier, sizes: '(max-width: 959px) calc(100vw - 32px), 545px', immediate: true}) }}
 					{% else %}
 						<svg viewBox="0 0 520 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
 							<defs><linearGradient id="sc-apropos-fond" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0A3068"/><stop offset="1" stop-color="#0F4590"/></linearGradient></defs>
@@ -83,6 +90,20 @@
 				{% for s in autres %}
 					{{ include('site/_section.html.twig', {s: s}) }}
 				{% endfor %}
+			</div>
+		{% endif %}
+
+		{% if photo_boutique %}
+			<div class="si-cadre">
+				<section class="sc-boutique" aria-labelledby="sc-boutique-titre">
+					{{ include('site/_photo.html.twig', {photo: photo_boutique, sizes: '(max-width: 759px) calc(100vw - 32px), (max-width: 1180px) 56vw, 640px', classe: 'sc-boutique-photo'}) }}
+					<div class="sc-boutique-texte">
+						<h2 id="sc-boutique-titre">Venez nous voir</h2>
+						<p class="sc-boutique-adresse">{{ entreprise.adresse ?? 'Bamako, Mali' }}</p>
+						{% if entreprise and entreprise.telephone %}<p><a href="tel:{{ entreprise.telephone|replace({' ': ''}) }}">{{ entreprise.telephone }}</a></p>{% endif %}
+						{% if site_lien('app_site_contact') %}<a href="{{ site_lien('app_site_contact') }}" class="si-bouton si-bouton-contour">Nous trouver</a>{% endif %}
+					</div>
+				</section>
 			</div>
 		{% endif %}
 	</section>

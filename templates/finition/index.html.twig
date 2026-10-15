@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}User index
+{% block title %}Finitions
 {% endblock %}
 
 {% block body %}
@@ -9,9 +9,9 @@
 	<div class="page-header">
 		<ol class="breadcrumb">
 			<li class="breadcrumb-item">
-				<a href="#">Utilisateurs</a>
+				<a href="{{ path('app_reglages_parametres_index') }}">Paramètres</a>
 			</li>
-			<li class="breadcrumb-item active" aria-current="page">Liste des Utilisateurs</li>
+			<li class="breadcrumb-item active" aria-current="page">Finitions</li>
 		</ol>
 		<div>
 			<button type="button" class="btn btn-primary btn-create-finition" data-bs-toggle="modal" data-bs-target="#finitionCreateModal">
@@ -47,7 +47,7 @@
 		<!-- COL-END -->
 		<div class="col-lg-8 col-xl-12">
 			<div class="input-group mb-5">
-				<input type="text" class="form-control" placeholder="">
+				<input type="text" class="form-control" placeholder="Rechercher une finition…">
 				<div class="input-group-append ">
 					<button type="button" class="btn btn-primary-light">
 						<i class="fa fa-search" aria-hidden="true"></i>
@@ -56,11 +56,11 @@
 			</div>
 			<div class="card">
 				<div class="card-header border-bottom-0 p-4">
-					<h2 class="card-title">1 - 30 of 546 users</h2>
+					<h2 class="card-title" style="text-transform: none">{{ finitions|length }} {{ finitions|length > 1 ? 'finitions' : 'finition' }}</h2>
 					<div class="page-options d-flex float-right">
 						<select class="form-control custom-select w-auto">
-							<option value="asc">Latest</option>
-							<option value="desc">Oldest</option>
+							<option value="asc">Plus récentes</option>
+							<option value="desc">Plus anciennes</option>
 						</select>
 					</div>
 				</div>

@@ -370,9 +370,10 @@ final class CatalogueParametres
                 'famille' => 'clients', 'libelle' => 'Site : page Contact', 'icone' => 'fa-map-marker-alt',
                 'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => 'app_site_contact',
                 'champs' => [
-                    ['cle' => 'lien_plan', 'type' => 'texte', 'libelle' => 'Lien Google Maps de la boutique', 'aide' => 'Lien de partage (https://maps.app.goo.gl/…) ou coordonnées « 12.6392, -8.0029 ». Vide : pas de plan ni de bouton Itinéraire.', 'defaut' => ''],
+                    // Repère de la fiche Google de la boutique (lien envoyé par Yaya le 15/10/2026).
+                    ['cle' => 'lien_plan', 'type' => 'texte', 'libelle' => 'Position de la boutique (carte et Itinéraire)', 'aide' => 'Coordonnées « latitude, longitude » pour la carte de la page Contact : dans Google Maps, appui long sur la boutique (téléphone) ou clic droit (ordinateur) affiche « 12.6517571, -7.9299376 » ; copiez ces deux nombres ici. Un lien court (https://maps.app.goo.gl/…) donne seulement le bouton Itinéraire, sans carte. Vide : ni carte ni bouton.', 'defaut' => '12.6517571, -7.9299376'],
                 ],
-                'motsCles' => ['Plan d\'accès · bouton Itinéraire', 'Lien Google Maps · coordonnées GPS', 'Contact du site vitrine'],
+                'motsCles' => ['Carte de la boutique · bouton Itinéraire', 'Lien Google Maps · coordonnées GPS', 'Contact du site vitrine'],
                 'note' => 'Les horaires de la page viennent de la tuile Horaires ; l\'adresse, le téléphone et l\'e-mail, de l\'entité Succès Imprim (Entités et en-têtes).',
             ],
             'site_vitrine' => [

@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit\Service\Site;
 
+use App\Service\Parametres\CatalogueParametres;
 use App\Service\Site\ContactSite;
 use PHPUnit\Framework\TestCase;
 
@@ -16,6 +17,21 @@ final class ContactSiteTest extends TestCase
         self::assertNull(ContactSite::lien('javascript:alert(1)'));
         self::assertNull(ContactSite::lien('https://exemple.ml/"><script>'));
         self::assertNull(ContactSite::lien('120.5, 9'), 'latitude impossible');
+    }
+
+    public function testRepereDeLaCarte(): void
+    {
+        // Par défaut : le repère de la fiche Google de la boutique.
+        $defaut = (string) CatalogueParametres::champ('site_contact', 'lien_plan')['defaut'];
+        self::assertSame(['latitude' => 12.6517571, 'longitude' => -7.9299376], ContactSite::repere($defaut));
+        self::assertSame('https://www.google.com/maps/dir/?api=1&destination=12.6517571,-7.9299376', ContactSite::lien($defaut));
+
+        // Lien long de la fiche : le repère (!3d…!4d…), pas le centre de la vue (@…).
+        self::assertSame(['latitude' => 12.6517571, 'longitude' => -7.9299376], ContactSite::repere('https://www.google.com/maps/place/Succ%C3%A8s+Imprim/@12.6517571,-7.9325125,17z/data=!3m1!4b1!4m6!3m5!1s0xe51cd45a9a50e9b:0x85d0df3e6b3309bd!8m2!3d12.6517571!4d-7.9299376'));
+        // Lien court : bouton Itinéraire et plan dessiné, pas de carte.
+        self::assertNull(ContactSite::repere('https://maps.app.goo.gl/S53cwaekd2L3FHP86'));
+        self::assertNull(ContactSite::repere(''));
+        self::assertNull(ContactSite::repere('http://www.google.com/maps/@12.6517571,-7.9299376,17z'), 'pas de lien d\'itinéraire en http');
     }
 
     public function testTexteDesHoraires(): void

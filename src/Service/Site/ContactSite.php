@@ -6,8 +6,9 @@ use App\Service\Parametres\Parametres;
 
 /**
  * Page Contact du site (maquette 11) : horaires de la boutique (tuile
- * Horaires des Paramètres), ouvert ou fermé en ce moment, et lien du plan
- * (tuile « Site : page Contact »), vide tant que le patron ne l'a pas donné.
+ * Horaires des Paramètres), ouvert ou fermé en ce moment, lien du plan et
+ * repère de la carte (tuile « Site : page Contact », par défaut la position
+ * de la boutique sur sa fiche Google).
  */
 final class ContactSite
 {
@@ -34,6 +35,27 @@ final class ContactSite
     public function lienPlan(): ?string
     {
         return self::lien((string) $this->parametres->valeur('site_contact', 'lien_plan'));
+    }
+
+    /**
+     * Repère de la boutique pour la carte de la page Contact (coordonnées
+     * saisies ou lues dans un lien long, DonneesStructurees::position),
+     * seulement s'il y a aussi un lien d'itinéraire ; sinon null (plan
+     * dessiné seul).
+     *
+     * @return array{latitude: float, longitude: float}|null
+     */
+    public function position(): ?array
+    {
+        return self::repere((string) $this->parametres->valeur('site_contact', 'lien_plan'));
+    }
+
+    /** @return array{latitude: float, longitude: float}|null */
+    public static function repere(string $saisi): ?array
+    {
+        $position = null === self::lien($saisi) ? null : DonneesStructurees::position($saisi);
+
+        return null === $position ? null : ['latitude' => $position['latitude'], 'longitude' => $position['longitude']];
     }
 
     /** « Lun – sam : 8 h – 18 h 30 ». */

@@ -170,7 +170,7 @@ final class PreparationDemandeTest extends TestCase
         self::assertSame(2, $ligne->getNombreFaces());
         $attendu = TarifAtelier::calculer(5000, 2, 30, $reglages, false);
         self::assertSame($attendu['prixUnitaire'] * 30 - $attendu['remiseUnitaire'] * 30, $ligne->getTotalTtc(), 'prix public : seconde face et palier de 25 pièces, comme sur la page');
-        self::assertStringContainsString('Atelier 3D W-CR-0001', (string) $r['devis']->getObservation());
+        self::assertStringContainsString('Studio textile W-CR-0001', (string) $r['devis']->getObservation());
     }
 
     private function demande(ProduitConfiguration $config): DemandeDevis

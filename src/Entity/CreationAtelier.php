@@ -363,7 +363,7 @@ class CreationAtelier
     public function note(): string
     {
         return mb_substr(implode("\n", [
-            \sprintf('Atelier 3D %s : %s, %s.', $this->numero ?? '', $this->libelleCouleur(), $this->resumeTailles()),
+            \sprintf('Studio textile %s : %s, %s.', $this->numero ?? '', $this->libelleCouleur(), $this->resumeTailles()),
             ...$this->resumeMarquage(),
             'Vues de face et de dos jointes : maquette du client, le BAT reste à préparer par le graphiste.',
         ]), 0, 2000);

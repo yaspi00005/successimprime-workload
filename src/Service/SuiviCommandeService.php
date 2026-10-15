@@ -40,8 +40,11 @@ final class SuiviCommandeService
         $batValides = \count(array_filter($avecBat, fn (CommandesDetails $ligne): bool => $this->batValide($ligne)));
         $premierPaiement = $this->paiementsValides($commande)[0] ?? null;
 
+        // Une commande passée en ligne reste « à confirmer » tant que l'atelier
+        // n'a pas vérifié le prix et le fichier (statut faux).
+        $confirmee = $commande->isStatut();
         $faites = [
-            true,
+            $confirmee,
             null !== $premierPaiement,
             [] !== $lignes && $rangMin >= 1,
             [] !== $lignes && $batValides === \count($avecBat) && $rangMin >= 2,
@@ -51,7 +54,7 @@ final class SuiviCommandeService
         ];
 
         $etapes = [
-            ['libelle' => 'Confirmée', 'detail' => $commande->getDateCommande()?->format('d/m')],
+            ['libelle' => 'Confirmée', 'detail' => $confirmee ? $commande->getDateCommande()?->format('d/m') : 'à confirmer'],
             ['libelle' => 'Acompte payé', 'detail' => $premierPaiement?->getDate()?->format('d/m')],
             ['libelle' => 'PAO', 'detail' => null],
             ['libelle' => 'BAT validés', 'detail' => [] === $avecBat ? 'sans BAT' : sprintf('%d / %d', $batValides, \count($avecBat))],

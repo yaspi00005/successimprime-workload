@@ -201,7 +201,7 @@ final class CreationAtelierTest extends TestCase
             ]);
         self::assertSame(['devant', 'dos'], $c->facesMarquees());
         $note = $c->note();
-        self::assertStringContainsString('Atelier 3D W-CR-0001 : Blanc, S × 5, M × 10.', $note);
+        self::assertStringContainsString('Studio textile W-CR-0001 : Blanc, S × 5, M × 10.', $note);
         self::assertStringContainsString('Poitrine gauche : image « logo.png » à 60 % + texte « TEAM » (Archivo Black, blanc, dessous)', $note);
         self::assertStringContainsString('Dos centre : texte « DIALLO 10 » (Bebas Neue gras, jaune, dessous)', $note);
         self::assertDoesNotMatchRegularExpression('/\d\s?F\b|FCFA/u', $note, 'pas de montant dans la note');

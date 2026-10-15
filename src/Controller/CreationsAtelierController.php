@@ -19,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Ventes › Créations Atelier 3D (docs/atelier-3d.md) : modèles validés
+ * Ventes › Créations Studio textile (docs/atelier-3d.md) : modèles validés
  * par les clients et les visiteurs, arrivés par la synchronisation avec
  * leur commande « à confirmer » ou leur demande de devis. Le graphiste y
  * voit les vues de face et de dos (maquette du client, pas un BAT) et

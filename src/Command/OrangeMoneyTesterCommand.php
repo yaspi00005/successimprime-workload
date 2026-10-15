@@ -54,7 +54,12 @@ final class OrangeMoneyTesterCommand extends Command
 
             return Command::FAILURE;
         }
-        $io->success($input->getOption('paiement') ? 'Les clés et la clé marchand sont acceptées par Orange.' : 'Clés acceptées par Orange. Ajoutez --paiement pour vérifier aussi la clé marchand.');
+        $io->success(match (true) {
+            (bool) $input->getOption('paiement') => 'Les clés et la clé marchand sont acceptées par Orange.',
+            $this->orangeMoney->apiDEssai() => 'Clés acceptées par Orange. Ajoutez --paiement pour vérifier aussi la clé marchand.',
+            // En production, le testeur n'ouvre jamais de paiement.
+            default => 'Clés acceptées par Orange. Pour vérifier la clé marchand, faites un petit paiement depuis l\'espace client.',
+        });
 
         return Command::SUCCESS;
     }

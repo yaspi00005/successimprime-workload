@@ -36,7 +36,7 @@
 								{{ form_errors(champ) }}
 							</div>
 						{% endfor %}
-						<div class="col-12 pt-1">
+						<div class="col-12 pt-1 js-zone-frais-mobile-money">
 							<span class="si-libelle-champ">Frais payés par le client en plus (Orange Money et Wave seulement)</span>
 							<div class="d-flex flex-wrap gap-3">
 								{% for champ in [form.fondsSoutienInclus, form.fraisRetraitInclus] %}
@@ -59,4 +59,29 @@
 			</div>
 		</div>
 	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{# Hors Orange Money et Wave, les cases de frais disparaissent et se
+	   décochent. Le serveur refait de toute façon les frais
+	   (FraisOrangeMoney::appliquer). #}
+	<script>
+		(function () {
+			const mode = document.getElementById('{{ form.mode.vars.id }}');
+			const zone = document.querySelector('.js-zone-frais-mobile-money');
+			const cases = [document.getElementById('{{ form.fondsSoutienInclus.vars.id }}'), document.getElementById('{{ form.fraisRetraitInclus.vars.id }}')];
+			if (!mode || !zone) {
+				return;
+			}
+			function actualiser() {
+				const mobileMoney = ['orange_money', 'wave'].includes(mode.value);
+				zone.hidden = !mobileMoney;
+				if (!mobileMoney) {
+					cases.forEach(function (c) { if (c) { c.checked = false; } });
+				}
+			}
+			mode.addEventListener('change', actualiser);
+			actualiser();
+		})();
+	</script>
 {% endblock %}

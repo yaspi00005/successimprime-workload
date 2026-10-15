@@ -34,6 +34,7 @@ use App\Repository\ParametresPaiementRepository;
 use App\Service\Parametres\Parametres;
 use App\Service\Promotions\PromotionsSaisie;
 use App\Service\Paiement\ComptesOrangeMoney;
+use App\Service\Paiement\FraisOrangeMoney;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
@@ -2299,15 +2300,7 @@ final class CommandesController extends AbstractController
              * ====================================================
              */
 
-                $modesMobileMoney = [
-                    Paiements::MODE_ORANGE_MONEY,
-                    Paiements::MODE_WAVE,
-                ];
-
-                if (!in_array($paiement->getMode(), $modesMobileMoney, true)) {
-                    $paiement->setFraisRetraitInclus(false);
-                    $paiement->setFondsSoutienInclus(false);
-                }
+                FraisOrangeMoney::appliquer($paiement, $parametresPaiement);
 
                 /*
                  * Chèque : le numéro saisi dans "Référence de
@@ -2317,18 +2310,6 @@ final class CommandesController extends AbstractController
                 if ($paiement->getMode() === Paiements::MODE_CHEQUE) {
                     $paiement->setNumeroCheque($paiement->getReference());
                 }
-
-                $paiement->setMontantFraisRetrait(
-                    $paiement->isFraisRetraitInclus()
-                        ? $parametresPaiement->calculerFraisRetrait($montant)
-                        : 0
-                );
-
-                $paiement->setMontantFondsSoutien(
-                    $paiement->isFondsSoutienInclus()
-                        ? $parametresPaiement->calculerFondsSoutien($montant)
-                        : 0
-                );
 
 
                 /*

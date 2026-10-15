@@ -10,13 +10,15 @@ use App\Service\Site\ChiffresSite;
 use App\Service\Site\IconesSite;
 use App\Service\Site\ImagesSite;
 use App\Service\Site\MarkdownSite;
+use App\Service\Site\PhotosSite;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
 
 /**
  * Contenu du site vitrine dans les gabarits : texte en Markdown simplifié
- * (déjà échappé), images, chiffres et partenaires.
+ * (déjà échappé), images, photos livrées avec le site, chiffres et
+ * partenaires.
  */
 final class SiteContenuExtension extends AbstractExtension
 {
@@ -24,6 +26,7 @@ final class SiteContenuExtension extends AbstractExtension
         private readonly ImagesSite $images,
         private readonly ChiffresSite $chiffres,
         private readonly PartenaireRepository $partenaires,
+        private readonly PhotosSite $photos,
     ) {
     }
 
@@ -45,6 +48,8 @@ final class SiteContenuExtension extends AbstractExtension
             // Les blocs viennent de MarkdownSite, qui échappe tout le texte saisi.
             new TwigFunction('site_blocs', MarkdownSite::rendreBlocs(...), ['is_safe' => ['html']]),
             new TwigFunction('site_image', $this->image(...)),
+            new TwigFunction('site_photo', $this->photos->photo(...)),
+            new TwigFunction('site_photos_sections', $this->photos->pourSections(...)),
             new TwigFunction('site_icone', IconesSite::pour(...)),
             new TwigFunction('site_famille', static fn (?string $nom, int $rang = 0): string => SiteController::famille(self::sansDemo((string) $nom), $rang)),
             new TwigFunction('site_chiffres', $this->chiffres->aMontrer(...)),

@@ -40,7 +40,7 @@ Le pied de page affiche « Succès Imprim est un nom commercial de Madial Group 
 
 ## Rapidité (objectif : lisible en moins de 2 s en 3G)
 
-- Logo en WebP (21 Ko au lieu de 107 Ko), illustration de l'accueil en SVG dans la page.
+- Logo en WebP (21 Ko au lieu de 107 Ko). Photos en WebP à plusieurs largeurs, chargées après le texte (voir « Photos du site »).
 - Feuilles de style écrites dans la page (`site_styles()`, docs/referencement.md) : le texte s'affiche dès l'arrivée du HTML, sans attendre un aller-retour de plus. HTML compressé de 8 à 12 Ko par page (17 Ko pour le studio textile).
 - `public/.htaccess` : texte compressé (y compris les scripts, servis en `text/javascript` par un Apache récent), CSS et JS gardés 7 jours, images, polices et modèles 3D 30 jours.
 - Pages sans formulaire : `Cache-Control: public, max-age=300`. « / » : `no-cache` avec ETag (réponse 304 si rien n'a changé), car la même adresse sert le tableau de bord après connexion.
@@ -65,6 +65,60 @@ Règles complètes pour une nouvelle page : **docs/referencement.md**.
 
 Montants d'un client, noms de clients sans accord, coûts, marges, prix B2B. Pas de note Google inventée : la bande d'avis n'apparaîtra qu'avec le lien de la vraie fiche.
 
+## Photos du site
+
+Dix photos envoyées par Yaya le 15/10/2026 « pour le site » (originaux dans /mnt/project-files/uploads/hearth/, décrits dans /mnt/project-files/.notes/inputs.md). Ce sont des **visuels de présentation générés par intelligence artificielle pour la marque**, pas des photos de travaux livrés ni de clients : elles n'entrent ni dans Réalisations ni parmi les partenaires, et aucun texte ne les présente comme un travail fait pour un client.
+
+### Où elles sont
+
+| Photo (nom du fichier) | Page et endroit |
+|---|---|
+| Façade et enseigne (`enseigne-succes-imprim-bamako`) | Accueil, en haut à côté de « Nous imprimons vos succès ! » ; « Qui sommes-nous ? », bloc « Venez nous voir » (adresse, téléphone, lien vers Contact) ; image de partage (Facebook, WhatsApp) et image de la fiche de l'imprimerie pour Google |
+| Bannière aux couleurs, sans logo (`banniere-grand-format-couleurs`) | Accueil, carte « Grand format » |
+| Dépliants et BAT sur le téléphone, recadrés (`depliants-imprimes-succes-imprim`) | Accueil, carte « Impression numérique » (petit format) |
+| T-shirts DTF (`t-shirts-dtf-succes-imprim`) | Accueil, carte « Textile » (si aucune carte ne la montre : bande Studio textile) ; « Nos équipements », carte textile |
+| Porte et vitrine en vinyle (`vitrophanie-porte-vitrine`) | Accueil, carte « Signalétique » ; « Nos équipements », carte « Roll-up, vitrines et adhésifs » |
+| Rubans d'encre (`rubans-encre-couleurs`) | Accueil, fond de la bande « Un projet à imprimer ? » (décoratif ; le texte est sur un cadre blanc, lisible quel que soit le recadrage) |
+| Atelier, opérateur à l'imprimante (`atelier-impression-grand-format`) | « Qui sommes-nous ? », à côté du texte, tant qu'aucune image n'est choisie pour cette page |
+| Bannière au logo sur l'imprimante (`banniere-vinyle-succes-imprim`) | « Nos équipements », carte grand format |
+| BAT validé sur le téléphone (`bat-valide-sur-telephone`) | « Nos engagements », avant la frise « Comment se passe votre commande » |
+| Livreur à moto (`livraison-moto-bamako`) | « Nos engagements », à côté de la précédente |
+| Fourgon habillé (`fourgon-publicitaire-succes-imprim`) | « Nos produits », encadré « Un autre support, une autre taille ? » |
+
+Une photo ne revient jamais deux fois dans une page. Les cartes produit gardent leurs dessins (une photo par produit se répéterait), comme les réalisations sans photo, le guide, la FAQ et les conseils.
+
+Choix automatiques (`App\Service\Site\PhotosSite`) :
+- **Cartes de l'accueil** : d'après la famille de l'univers (`PhotosSite::FAMILLES` : grand format, petit format, textile, signalétique). Un univers sans photo libre garde son icône.
+- **Cartes de « Nos équipements »** : d'après les mots du titre de la carte, puis de son étiquette et de son texte (`PhotosSite::MOTS` : « textile », « DTF » → t-shirts ; « vitrine », « adhésif », « roll-up » → vitrine ; « grand format », « solvant », « bâche » → imprimantes). Exemple : « Imprimante solvant 3,20 m », « Imprimante solvant 1,80 m » et « Imprimante DTF » prennent les deux imprimantes puis les t-shirts. Une machine sans mot reconnu garde son dessin.
+
+### Fichiers
+
+- `public/images/site/photos/<nom>-<largeur>.webp` : WebP sans aucune métadonnée (ni EXIF ni profil), en 320 (vignettes de l'accueil sur téléphone), 480, 800, 1 200 ou 1 600 px de large selon l'usage (liste dans `PhotosSite::PHOTOS`), 200 Ko au plus chacun. Image de partage : `public/images/site/partage-enseigne-succes-imprim.jpg`, la façade recadrée en 1 200 × 630 (148 Ko, JPEG pour WhatsApp et Facebook).
+- Dans la page, `templates/site/_photo.html.twig` : `srcset` et `sizes` (le navigateur prend la plus petite largeur qui suffit), largeur et hauteur écrites (rien ne bouge à l'arrivée), texte alternatif qui décrit la scène (vide pour les rubans, décoratifs). Chargement différé, sauf la photo du haut de l'accueil (prioritaire, `fetchpriority="high"`) et la première photo d'une page intérieure. Sur un téléphone, la photo du haut de l'accueil ne dépasse pas 800 px (57 Ko ; 27 Ko en 480 px).
+- Une photo dont le fichier manque n'est pas affichée : la page garde son dessin ou son icône. Sans la façade, l'image de partage revient au logo sur fond blanc (`partage-succes-imprim.jpg`).
+- `tests/Unit/Service/Site/PhotosSiteTest.php` vérifie les largeurs, les proportions, le poids, l'absence de métadonnée et le choix sans doublon.
+
+### Remplacer une photo
+
+- **Le plus simple : une image choisie dans Réglages › Site vitrine** (champ image de la page). Elle passe toujours avant la photo livrée et devient l'image de partage de la page. Aujourd'hui, seule « Qui sommes-nous ? » affiche l'image de la page à côté du texte ; « Nos équipements » la montre en tête.
+- **Un autre fichier, sous le même nom** : refaire chaque largeur de la liste, aux mêmes proportions, sans métadonnée, par exemple avec `cwebp` (libwebp) : `cwebp -q 64 -resize 800 0 -metadata none nouvelle.png -o enseigne-succes-imprim-bamako-800.webp`, et de même pour les autres largeurs (qualité 70 en 320 px, 68 en 480, 64 en 800, 60 en 1 200, 58 en 1 600). Lancer ensuite le test `PhotosSiteTest`. Les navigateurs gardent une image 30 jours (`public/.htaccess`) : pour un changement immédiat, prendre un nouveau nom et le changer dans `PhotosSite`.
+- **Changer d'endroit** : les noms sont dans `SiteController` (accueil : `PHOTO_ACCROCHE`, `PHOTO_PROJET`, `PHOTO_ATELIER`), dans `PhotosSite::FAMILLES` et `MOTS`, et dans les gabarits `a_propos`, `engagements` et `produits`.
+- **Si la vraie boutique ou l'atelier ne ressemble pas aux visuels**, remplacer d'abord la façade (accueil, « Qui sommes-nous ? », partage) et l'atelier par de vraies photos.
+
+### Poids (mesure du 15/10/2026)
+
+Site en ligne en production (APP_ENV=prod, HTML compressé), téléphone 390 px, sans cache, somme des réponses (Playwright) :
+
+| Page | Écran normal | Écran ×2 |
+|---|---|---|
+| Accueil | 172 Ko (photos 113 Ko) | 201 Ko (photos 143 Ko) |
+| Qui sommes-nous ? | 79 Ko | 125 Ko |
+| Nos équipements | 119 Ko | 210 Ko |
+| Nos engagements | 94 Ko | 156 Ko |
+| Nos produits | 52 Ko | 95 Ko |
+
+Accueil avant les photos : environ 60 Ko. Ces chiffres comptent la feuille `site-contenu.css` non compressée par le serveur d'essai (24 Ko, environ 5 Ko compressée chez LWS). Le texte s'affiche toujours au premier aller-retour : premier affichage de l'accueil en 0,8 s en « Fast 3G » et en 2,2 s en « 3G lente » (le minimum, 2 s d'attente par requête, comme avant les photos) ; la photo du haut arrive ensuite (2,0 s en Fast 3G, 7,2 s en 3G lente) sans retarder la lecture.
+
 ## Produits et calculateur (maquettes 02 et 03)
 
 Code : `SiteProduitsController`, `App\Service\Site\CatalogueSite` et `App\Service\Site\Calculateur`, gabarits `site/produits.html.twig` et `site/calculateur.html.twig`, feuille `public/css/site-produits.css`.
@@ -72,7 +126,7 @@ Code : `SiteProduitsController`, `App\Service\Site\CatalogueSite` et `App\Servic
 **Nos produits** (`app_site_produits`, /nos-produits)
 - Catégories publiées, avec leurs produits publiés et actifs. Une catégorie et sa copie de démonstration « (démo) » ne font qu'un filtre, comme sur l'accueil ; `?categorie=<id>` filtre sans JavaScript.
 - Prix de départ : la configuration la moins chère au prix normal, avec son unité (le m², l'unité...). Un produit sans configuration chiffrable affiche « Prix sur devis ».
-- Pas de photo de produit en base : chaque carte a un dessin SVG choisi d'après le nom du produit (`CatalogueSite::ILLUSTRATIONS`), sinon d'après sa famille.
+- Pas de photo de produit en base : chaque carte a un dessin SVG choisi d'après le nom du produit (`CatalogueSite::ILLUSTRATIONS`), sinon d'après sa famille. En bas de page, l'encadré « Un autre support, une autre taille ? » porte la photo du fourgon habillé (« Photos du site »).
 
 **Calculateur** (`app_site_calculateur`, /calculateur)
 - Paramètres : `produit` (identifiant de la configuration, comme dans l'espace client), `categorie`, `largeur` et `hauteur` en cm, `quantite`, `finitions[]`.

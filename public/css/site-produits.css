@@ -50,8 +50,12 @@
 .si-produits-autre h2 { margin: 0 0 4px; font-size: 20px; }
 .si-produits-autre p { margin: 0; color: var(--texte-doux); }
 .si-produits-autre-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.si-produits-autre-image { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; }
 @media (min-width: 860px) {
   .si-produits-autre { flex-direction: row; align-items: center; justify-content: space-between; padding: 22px 28px; }
+  .si-produits-autre-photo { gap: 24px; padding-left: 22px; }
+  .si-produits-autre-photo .si-produits-autre-image { flex: 0 0 240px; width: 240px; }
+  .si-produits-autre-photo .si-produits-autre-texte { flex: 1 1 auto; }
 }
 
 /* Calculateur */

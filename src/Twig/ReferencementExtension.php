@@ -33,8 +33,14 @@ final class ReferencementExtension extends AbstractExtension
     /** Suffixes du titre, du plus complet au plus court. */
     public const SUFFIXES_TITRE = [' · Succès Imprim, imprimerie à Bamako', ' · Succès Imprim'];
 
-    /** Image de partage par défaut (réseaux sociaux, WhatsApp) : le logo sur fond blanc, 1200 × 630. */
-    public const IMAGE_PARTAGE = ['chemin' => 'images/site/partage-succes-imprim.jpg', 'largeur' => 1200, 'hauteur' => 630];
+    /**
+     * Image de partage par défaut (réseaux sociaux, WhatsApp) et image de la
+     * fiche de l'imprimerie pour Google : la façade de la boutique, 1200 × 630
+     * (photo livrée avec le site, docs/site-vitrine.md). Si le fichier
+     * manque : le logo sur fond blanc.
+     */
+    public const IMAGE_PARTAGE = ['chemin' => 'images/site/partage-enseigne-succes-imprim.jpg', 'largeur' => 1200, 'hauteur' => 630];
+    public const IMAGE_PARTAGE_LOGO = ['chemin' => 'images/site/partage-succes-imprim.jpg', 'largeur' => 1200, 'hauteur' => 630];
 
     /** Logo pour Google (au moins 112 px de côté). */
     public const LOGO = ['chemin' => 'images/logo-succes-imprim.png', 'largeur' => 640, 'hauteur' => 357];
@@ -73,6 +79,7 @@ final class ReferencementExtension extends AbstractExtension
             new TwigFunction('site_donnees_article', $this->donneesArticle(...), ['is_safe' => ['html']]),
             new TwigFunction('site_donnees_catalogue', $this->donneesCatalogue(...), ['is_safe' => ['html']]),
             new TwigFunction('site_styles', $this->styles(...), ['is_safe' => ['html']]),
+            new TwigFunction('site_image_partage', $this->imagePartage(...)),
         ];
     }
 
@@ -174,8 +181,19 @@ final class ReferencementExtension extends AbstractExtension
             ],
             self::lienPlan((string) $this->parametres->valeur('site_contact', 'lien_plan')),
             $memeQue,
-            $this->adresse->url(self::IMAGE_PARTAGE['chemin']),
+            $this->adresse->url($this->imagePartage()['chemin']),
         ));
+    }
+
+    /**
+     * Image de partage par défaut : la façade (IMAGE_PARTAGE), sinon le logo
+     * sur fond blanc si la photo a été retirée de public/.
+     *
+     * @return array{chemin: string, largeur: int, hauteur: int}
+     */
+    public function imagePartage(): array
+    {
+        return is_file($this->dossierPublic.'/'.self::IMAGE_PARTAGE['chemin']) ? self::IMAGE_PARTAGE : self::IMAGE_PARTAGE_LOGO;
     }
 
     /** Le réglage du plan tel que saisi s'il donne des coordonnées, sinon le lien retenu par la page Contact. */

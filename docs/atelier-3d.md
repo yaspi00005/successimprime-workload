@@ -166,7 +166,7 @@ Les vues et les images sont des fichiers du client (`origine = client`, avec emp
 
 | Où | Animation |
 |---|---|
-| Accueil | Les blocs (univers, bande Atelier 3D) glissent en place au défilement. Le t-shirt du bandeau se retourne de temps en temps (devant « TEAM 2026 », dos « DIALLO 10 »). La dernière réalisation qui a une paire avant / après s'affiche avec un curseur à faire glisser. |
+| Accueil | Les blocs (univers, bande Atelier 3D, bande « Un projet à imprimer ? ») glissent en place au défilement. Le dessin animé du bandeau (t-shirt qui se retournait) a laissé la place à la photo de la boutique le 15/10/2026 (docs/site-vitrine.md, « Photos du site »). La dernière réalisation qui a une paire avant / après s'affiche avec un curseur à faire glisser. |
 | Réalisations | Dans la visionneuse, les photos avant / après se comparent avec un curseur (souris, doigt ou flèches du clavier). |
 | Produits | Légère inclinaison des cartes sous la souris (pas sur téléphone). |
 | Calculateur | Le total défile jusqu'au nouveau montant (0,45 s). |

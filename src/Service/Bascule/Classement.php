@@ -37,11 +37,16 @@ final class Classement
      * ne bloquent plus la création du lien ; elles restent telles quelles
      * (option --garder-orphelins, après en avoir parlé avec nous).
      *
-     * @param list<Ecart> $ecarts
+     * $converties : colonnes dont les valeurs sont d'abord converties par
+     * l'étape « conversions de données » (ConversionsDonnees) ; leur
+     * changement de type suit la conversion, avec ce message.
+     *
+     * @param list<Ecart>           $ecarts
+     * @param array<string, string> $converties « table.colonne » => explication
      *
      * @return list<Constat>
      */
-    public static function classer(array $ecarts, SondeDonnees $sonde, bool $garderOrphelins = false): array
+    public static function classer(array $ecarts, SondeDonnees $sonde, bool $garderOrphelins = false, array $converties = []): array
     {
         $tablesNouvelles = [];
         $colonnesNouvelles = [];
@@ -60,7 +65,9 @@ final class Classement
                 Ecart::TABLE_EN_TROP => self::tableEnTrop($e, $sonde),
                 Ecart::COLONNE_AJOUTEE => self::colonneAjoutee($e, $sonde),
                 Ecart::COLONNE_EN_TROP => self::colonneEnTrop($e, $sonde),
-                Ecart::COLONNE_MODIFIEE => self::colonneModifiee($e, $sonde),
+                Ecart::COLONNE_MODIFIEE => isset($converties[$e->cible()])
+                    ? new Constat($e, Constat::SANS_PERTE, self::decrire($e->avant).' → '.self::decrire($e->apres).' : '.$converties[$e->cible()])
+                    : self::colonneModifiee($e, $sonde),
                 Ecart::INDEX_AJOUTE => self::indexAjoute($e, $sonde, isset($tablesNouvelles[$e->table]), $colonnesNouvelles[$e->table] ?? []),
                 Ecart::INDEX_RETIRE => new Constat($e, Constat::SANS_PERTE, 'Index en trop, retiré : aucune donnée touchée.'),
                 Ecart::INDEX_RENOMME => new Constat($e, Constat::SANS_PERTE, \sprintf('Index renommé en %s : aucune donnée touchée.', $e->apres['nom'] ?? '?')),

@@ -248,4 +248,17 @@ final class ClassementTest extends TestCase
         $bloquants = array_map(static fn (Constat $c): string => $c->ecart->cible(), array_filter(Classement::classer($ecarts, new SondePessimiste()), static fn (Constat $c): bool => $c->estBloquant()));
         self::assertSame(['devis.date_creation', 'devis.date_devis'], array_values($bloquants));
     }
+
+    public function testRemiseConvertieAvantLeChangementDeType(): void
+    {
+        // Pourcentage DECIMAL(5,2) → montant entier : bloquant comme simple changement de type,
+        // sans perte quand l'étape « conversions de données » convertit d'abord les valeurs.
+        $remise = new Ecart(Ecart::COLONNE_MODIFIEE, 'commandes_details', 'remise', self::colonne('decimal', ['precision' => 5, 'echelle' => 2, 'defaut' => '0.00']), self::colonne('integer', ['defaut' => '0']));
+        $donnees = ['lignes' => ['commandes_details' => 4]];
+        self::assertTrue(self::un($remise, $donnees)->estBloquant());
+        $c = Classement::classer([$remise], self::sonde($donnees), false, ['commandes_details.remise' => 'converti d\'abord.'])[0];
+        self::assertSame(Constat::SANS_PERTE, $c->niveau);
+        self::assertStringEndsWith('converti d\'abord.', $c->message);
+        self::assertFalse(Classement::classer([$remise], new SondePessimiste(), false, ['commandes_details.remise' => 'converti d\'abord.'])[0]->estBloquant());
+    }
 }

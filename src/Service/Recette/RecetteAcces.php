@@ -11,6 +11,7 @@ use App\Entity\User;
 use App\EventSubscriber\LectureSeuleSubscriber;
 use App\Security\Droits;
 use App\Security\ModulesRoles;
+use App\Service\Guide\CatalogueGuide;
 use App\Twig\NavigationExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\Route;
@@ -254,19 +255,25 @@ final class RecetteAcces
             $redirections[$p['route']] ??= $reponse->redirection;
             $exigences = $this->droits->exigences($p['definition'], $p['route'], $p['chemin']);
 
+            // Guide : une fiche ou une capture suit les droits de l'écran décrit (CatalogueGuide).
+            $guide = null === $exigences['guide'] ? null : $this->guidePermis($exigences['guide'], $roles);
+
             if (Reponse::ERREUR === $etat) {
                 $bilan->constater(BilanRecette::ERREUR, 'erreur', $p['route'], $p['chemin'], $identifiant, (string) $reponse->erreur);
                 continue;
             }
             if (Reponse::OUVERT !== $etat) {
+                if (true === $guide && \in_array($etat, [Reponse::REFUSE, Reponse::CONNEXION], true)) {
+                    $bilan->constater(BilanRecette::A_EXAMINER, 'guide_refuse', $p['route'], $p['chemin'], $identifiant, \sprintf('le guide répond « %s » alors que la personne a les droits de l\'écran décrit', $etat));
+                }
                 continue;
             }
             if ($reponse->ecritures > 0) {
                 $bilan->constater(BilanRecette::INFO, 'get_ecrit', $p['route'], $p['chemin'], $identifiant, \sprintf('la page enregistre %d changement(s) à l\'ouverture (annulés par la recette)', $reponse->ecritures));
             }
-            $declare = $this->auMoinsUn($exigences['regle']) && $this->tous($exigences['attributs']);
+            $declare = $this->auMoinsUn($exigences['regle']) && $this->tous($exigences['attributs']) && false !== $guide;
             if (!$declare) {
-                $bilan->constater(BilanRecette::FUITE, 'sans_droit', $p['route'], $p['chemin'], $identifiant, 'page ouverte alors que les droits déclarés la refusent ('.implode(', ', [...$exigences['regle'], ...$exigences['attributs']]).')');
+                $bilan->constater(BilanRecette::FUITE, 'sans_droit', $p['route'], $p['chemin'], $identifiant, 'page ouverte alors que les droits déclarés la refusent ('.implode(', ', [...$exigences['regle'], ...$exigences['attributs'], ...self::droitsDuGuide($exigences['guide'] ?? [])]).')');
             } elseif (null !== $exigences['menu'] && [] !== $exigences['menu'] && !$this->auMoinsUn($exigences['menu'])) {
                 $voulu = self::raison(self::ECARTS_VOULUS, $p['route']);
                 $bilan->constater(null === $voulu ? BilanRecette::A_EXAMINER : BilanRecette::INFO, 'hors_menu', $p['route'], $p['chemin'], $identifiant, null === $voulu
@@ -456,6 +463,36 @@ final class RecetteAcces
             ->orderBy('e.id', 'DESC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
 
         return null === $id ? null : (int) $id['id'];
+    }
+
+    /**
+     * Une des fiches est-elle permise à la personne (ses droits, le mode « Voir ») ?
+     *
+     * @param list<array<string, mixed>> $fiches
+     * @param list<string>               $roles
+     */
+    private function guidePermis(array $fiches, array $roles): bool
+    {
+        foreach ($fiches as $fiche) {
+            if (CatalogueGuide::autorisee($fiche, $this->accorde(...), $roles)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $fiches
+     *
+     * @return list<string>
+     */
+    private static function droitsDuGuide(array $fiches): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (mixed $droit): string => implode(' ou ', (array) $droit),
+            array_merge(...array_map(static fn (array $f): array => $f['droits'], $fiches)),
+        )));
     }
 
     private function accorde(string $attribut): bool

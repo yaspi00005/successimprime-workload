@@ -2,13 +2,16 @@
 
 namespace App\Tests\Unit\Service\Recette;
 
+use App\Service\Guide\CatalogueGuide;
 use App\Service\Recette\BilanRecette;
 use App\Service\Recette\DroitsRoute;
+use App\Service\Recette\ParametresRoute;
 use App\Service\Recette\RapportRecette;
 use App\Service\Recette\RecetteAcces;
 use App\Service\Recette\RecetteEspaceClient;
 use App\Service\Recette\RecetteVisiteur;
 use App\Service\Recette\Reponse;
+use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\Route;
 
@@ -157,5 +160,20 @@ final class RecetteOutilsTest extends TestCase
         self::assertStringContainsString('# Recette des accès (ERP local, 14/10/2026 20:00)', $md);
         self::assertStringContainsString('| demo.oumar | `/types/impression` | app_type_impression_index | ouverte sans ROLE_ADMIN / réglages |', $md, 'la barre ne casse pas le tableau');
         self::assertStringContainsString('- OK Mode « Voir » : 0 arrivé au contrôleur', $md);
+    }
+
+    /** Le guide : chaque fiche et chaque capture est jugée avec les droits de l'écran qu'elle décrit. */
+    public function testFichesEtCapturesDuGuide(): void
+    {
+        self::assertSame(['a-valider'], array_column((array) DroitsRoute::fichesDuGuide('app_aide_fiche', '/aide/a-valider'), 'cle'));
+        self::assertSame([], DroitsRoute::fichesDuGuide('app_aide_fiche', '/aide/inconnue'));
+        self::assertSame(['tournee'], array_column((array) DroitsRoute::fichesDuGuide('app_aide_capture', '/aide/capture/tournee.webp'), 'cle'));
+        self::assertNull(DroitsRoute::fichesDuGuide('app_aide_index', '/aide'));
+        self::assertNull(DroitsRoute::fichesDuGuide('app_home', '/'));
+
+        // Une ouverture par fiche et par capture, sans lire la base.
+        $parametres = new ParametresRoute($this->createStub(EntityManagerInterface::class));
+        self::assertSame(\count(CatalogueGuide::fiches()), \count((array) $parametres->remplir('app_aide_fiche', new Route('/aide/{cle}'))));
+        self::assertContains(['nom' => 'remise'], (array) $parametres->remplir('app_aide_capture', new Route('/aide/capture/{nom}.webp')));
     }
 }

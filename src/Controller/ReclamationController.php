@@ -8,19 +8,30 @@ use App\Entity\User;
 use App\Form\ReclamationPaiementType;
 use App\Form\ReclamationType;
 use App\Repository\ReclamationRepository;
+use App\Security\FichierEnvoye;
+use App\Security\FichiersPrivesVoter;
+use App\Service\Atelier\ImagesAtelier;
+use App\Service\FichiersPrives;
 use App\Service\MouvementTresorerieService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\FileException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/reclamations', name: 'app_reclamation_')]
 final class ReclamationController extends AbstractController
 {
+    /** Justificatif : type lu dans le contenu => extension enregistrée. */
+    private const TYPES_JUSTIFICATIF = [
+        'application/pdf' => 'pdf',
+        'image/png' => 'png',
+        'image/jpeg' => 'jpg',
+    ];
+
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(
         ReclamationRepository $reclamationRepository
@@ -51,7 +62,8 @@ final class ReclamationController extends AbstractController
     public function new(
         Request $request,
         EntityManagerInterface $entityManager,
-        ReclamationRepository $reclamationRepository
+        ReclamationRepository $reclamationRepository,
+        FichiersPrives $fichiersPrives
     ): Response {
         $user = $this->utilisateurConnecte();
 
@@ -67,21 +79,10 @@ final class ReclamationController extends AbstractController
             $justificatif = $form->get('justificatifFichier')->getData();
 
             if ($justificatif) {
-                $nomFichier = uniqid('justificatif_') . '.' . $justificatif->guessExtension();
-                $dossier = $this->getParameter('reclamations_directory');
-
+                // Hors de public/ (var/uploads/reclamations), servi par justificatif() après contrôle des droits.
                 try {
-                    if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
-                        throw new FileException(sprintf('Impossible de créer le dossier "%s".', $dossier));
-                    }
-
-                    $justificatif->move(
-                        $dossier,
-                        $nomFichier
-                    );
-
-                    $reclamation->setJustificatif($nomFichier);
-                } catch (FileException $exception) {
+                    $reclamation->setJustificatif($this->rangerJustificatif($justificatif, $fichiersPrives));
+                } catch (\DomainException $exception) {
                     $this->addFlash('error', 'Le justificatif n’a pas pu être enregistré : ' . $exception->getMessage());
 
                     return $this->render('reclamation/new.html.twig', [
@@ -117,6 +118,17 @@ final class ReclamationController extends AbstractController
                 || $this->isGranted('ROLE_CAISSE_COMMANDE'),
             'peutVoirTresorerie' => $this->isGranted('ROLE_TRESORERIE_VOIR'),
         ]);
+    }
+
+    /** Justificatif (reçu, facture), servi hors de public/ à qui peut voir la demande. */
+    #[Route('/{id}/justificatif', name: 'justificatif', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function justificatif(Reclamation $reclamation, FichiersPrives $fichiersPrives): Response
+    {
+        $this->verifierAccesReclamation($reclamation);
+        $chemin = $fichiersPrives->cheminDans('reclamations', $reclamation->getJustificatif())
+            ?? throw $this->createNotFoundException('Justificatif introuvable.');
+
+        return FichierEnvoye::reponse($chemin, 'justificatif-' . $reclamation->getReference() . '.' . pathinfo($chemin, PATHINFO_EXTENSION));
     }
 
     #[Route('/{id}/valider', name: 'valider', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -270,17 +282,41 @@ final class ReclamationController extends AbstractController
      */
     private function verifierAccesReclamation(Reclamation $reclamation): void
     {
-        if (
-            $this->isGranted('ROLE_ADMIN')
-            || $this->isGranted('ROLE_TRESORERIE_SAISIR')
-            || $this->isGranted('ROLE_CAISSE_COMMANDE')
-        ) {
-            return;
-        }
-
-        if ($reclamation->getAgent() !== $this->utilisateurConnecte()) {
+        // Même règle pour la demande et son justificatif (FichiersPrivesVoter).
+        if (!$this->isGranted(FichiersPrivesVoter::JUSTIFICATIF, $reclamation)) {
             throw $this->createAccessDeniedException('Vous ne pouvez pas consulter cette réclamation.');
         }
+    }
+
+    /**
+     * Range le justificatif : PDF, ou photo réencodée sans EXIF (position
+     * GPS), sous un nom choisi par le serveur.
+     *
+     * @throws \DomainException
+     */
+    private function rangerJustificatif(UploadedFile $fichier, FichiersPrives $fichiersPrives): string
+    {
+        $extension = FichierEnvoye::extensionPour($fichier, self::TYPES_JUSTIFICATIF, 5 * 1024 * 1024)
+            ?? throw new \DomainException('envoyez un PDF ou une photo (PNG, JPG) de 5 Mo au plus.');
+        $dossier = $fichiersPrives->dossier('reclamations');
+        $nom = 'justificatif_' . bin2hex(random_bytes(12));
+
+        if ('pdf' === $extension) {
+            try {
+                $fichier->move($dossier, $nom . '.pdf');
+            } catch (\Throwable) {
+                throw new \DomainException('réessayez.');
+            }
+
+            return $nom . '.pdf';
+        }
+
+        $image = ImagesAtelier::reencoder((string) file_get_contents($fichier->getPathname()));
+        if (false === file_put_contents($dossier . '/' . $nom . '.' . $image['extension'], $image['octets'], LOCK_EX)) {
+            throw new \DomainException('réessayez.');
+        }
+
+        return $nom . '.' . $image['extension'];
     }
 
     private function genererReference(ReclamationRepository $repository): string

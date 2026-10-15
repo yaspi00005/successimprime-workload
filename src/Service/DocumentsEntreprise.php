@@ -22,6 +22,12 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  */
 final class DocumentsEntreprise
 {
+    /**
+     * Logos, logo du pied et cachet-signature déposés dans les réglages :
+     * chemin enregistré « uploads/entreprises/… », relatif à var/ (hors de
+     * public/, FichiersPrives). Jamais servis par une adresse : ils sont
+     * copiés dans les documents (dataUri).
+     */
     public const DOSSIER_IMAGES = 'uploads/entreprises';
 
     public function __construct(
@@ -31,6 +37,7 @@ final class DocumentsEntreprise
         private readonly UrlGeneratorInterface $urls,
         #[Autowire('%kernel.project_dir%/public')]
         private readonly string $dossierPublic,
+        private readonly FichiersPrives $fichiersPrives,
     ) {
     }
 
@@ -124,11 +131,18 @@ final class DocumentsEntreprise
             return null;
         }
 
-        $fichier = $this->dossierPublic.'/'.ltrim($chemin, '/');
-        $reel = realpath($fichier);
+        if (str_starts_with(ltrim($chemin, '/'), self::DOSSIER_IMAGES.'/')) {
+            // Image déposée dans les réglages : sous var/ (encore sous public/ avant app:fichiers:deplacer).
+            $reel = $this->fichiersPrives->chemin($chemin) ?? false;
+        } else {
+            // Image livrée avec l'application (public/images/…) : jamais un chemin qui sort de public/.
+            $reel = realpath($this->dossierPublic.'/'.ltrim($chemin, '/'));
+            if ($reel !== false && !str_starts_with($reel, (string) realpath($this->dossierPublic).\DIRECTORY_SEPARATOR)) {
+                $reel = false;
+            }
+        }
 
-        // Seulement un fichier sous public/ : jamais un chemin qui en sort.
-        if ($reel === false || !str_starts_with($reel, (string) realpath($this->dossierPublic)) || !is_readable($reel)) {
+        if ($reel === false || !is_readable($reel)) {
             return null;
         }
 

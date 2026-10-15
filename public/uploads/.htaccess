@@ -1,5 +1,7 @@
-# Fichiers envoyés (chat, pré-presse, étiquettes, écran TV…) : le serveur
-# les donne tels quels, il n'en exécute aucun (docs/securite.md).
+# Fichiers publics par nature (images du site vitrine, médias de l'écran
+# TV) : le serveur les donne tels quels, il n'en exécute aucun
+# (docs/securite.md). Les fichiers privés (chat, pré-presse, étiquettes…)
+# sont sous var/uploads, servis par l'application après contrôle des droits.
 # Seulement des directives déjà permises par les deux autres .htaccess
 # (Require, Header), pour ne pas risquer une erreur 500 chez l'hébergeur.
 

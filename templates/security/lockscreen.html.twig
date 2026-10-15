@@ -6,11 +6,8 @@
 {% block carte %}
 	{% set nom = user.employe ? (user.employe.prenom ~ ' ' ~ user.employe.nom)|trim : user.username %}
 	<div class="si-connexion-personne">
-		{% if user.employe and user.employe.photos %}
-			<img src="{{ asset('uploads/employes/' ~ user.employe.photos) }}" alt="">
-		{% else %}
-			<span>{{ nom|slice(0, 1)|upper }}</span>
-		{% endif %}
+		{# Pas de photo ici : la page s'ouvre sans être connecté et les photos du personnel ne sortent qu'après connexion (docs/securite.md). #}
+		<span>{{ nom|slice(0, 1)|upper }}</span>
 		<div>
 			<h1>Bonjour {{ user.employe ? user.employe.prenom : user.username }}</h1>
 			<p class="si-connexion-sous-titre">{{ user.username }}</p>

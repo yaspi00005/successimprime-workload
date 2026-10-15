@@ -2,7 +2,9 @@
 
 namespace App\Tests\Unit\Service\Synchro;
 
+use App\Entity\CommandeDetailFichier;
 use App\Entity\Conception;
+use App\Service\EspaceClient\EspaceClient;
 use App\Service\Synchro\FichiersSynchro;
 use PHPUnit\Framework\TestCase;
 
@@ -62,6 +64,39 @@ final class FichiersSynchroTest extends TestCase
             } catch (\InvalidArgumentException) {
                 self::assertTrue(true);
             }
+        }
+    }
+
+    /**
+     * Ce que la synchronisation envoie au site (BAT préparé en pré-presse)
+     * et ce qu'elle range en le recevant : le fichier traité est sous
+     * var/ depuis l'audit D3, encore sous public/ tant que
+     * app:fichiers:deplacer n'est pas passé ; le BAT reçu par le site et
+     * les fichiers des clients restent à plat dans var/uploads/commandes.
+     */
+    public function testFichiersTrouvesAvantEtApresLeRangementHorsDePublic(): void
+    {
+        $projet = $this->dossier.'-projet';
+        $traite = (new CommandeDetailFichier())->setChemin('uploads/prepresse/commande_3/detail_4/bat-v2-ab12.pdf')->setNomStockage('bat-v2-ab12.pdf');
+        try {
+            mkdir($projet.'/public/uploads/prepresse/commande_3/detail_4', 0777, true);
+            file_put_contents($projet.'/public/uploads/prepresse/commande_3/detail_4/bat-v2-ab12.pdf', 'ancien');
+            self::assertSame(realpath($projet.'/public/uploads/prepresse/commande_3/detail_4/bat-v2-ab12.pdf'), EspaceClient::cheminDansProjet($projet, $traite));
+
+            mkdir($projet.'/var/uploads/prepresse/commande_3/detail_4', 0777, true);
+            rename($projet.'/public/uploads/prepresse/commande_3/detail_4/bat-v2-ab12.pdf', $projet.'/var/uploads/prepresse/commande_3/detail_4/bat-v2-ab12.pdf');
+            self::assertSame(realpath($projet.'/var/uploads/prepresse/commande_3/detail_4/bat-v2-ab12.pdf'), EspaceClient::cheminDansProjet($projet, $traite));
+
+            // Côté site : le BAT reçu est rangé à plat sous son nom (FichiersSynchro::recevoir).
+            $recu = FichiersSynchro::ecrire($projet.'/var/uploads/commandes', 'bat-v2-ab12.pdf', hash('sha256', 'ancien'), 6, 0, 'ancien');
+            self::assertTrue($recu['termine']);
+            $surLeSite = (new CommandeDetailFichier())->setNomStockage('bat-v2-ab12.pdf'); // le chemin ne part pas en ligne
+            self::assertSame(realpath($projet.'/var/uploads/commandes/bat-v2-ab12.pdf'), EspaceClient::cheminDansProjet($projet, $surLeSite));
+
+            // Jamais hors des dossiers prévus.
+            self::assertNull(EspaceClient::cheminDansProjet($projet, (new CommandeDetailFichier())->setChemin('uploads/site/../../.env.local')->setNomStockage('../../.env.local')));
+        } finally {
+            exec('rm -rf '.escapeshellarg($projet));
         }
     }
 

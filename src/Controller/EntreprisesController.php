@@ -6,6 +6,7 @@ use App\Entity\Entreprise;
 use App\Repository\EntrepriseRepository;
 use App\Repository\SocieteRepository;
 use App\Service\DocumentsEntreprise;
+use App\Service\FichiersPrives;
 use App\Service\MontantEnLettres;
 use App\Service\NumerotationFactures;
 use Doctrine\ORM\EntityManagerInterface;
@@ -40,6 +41,7 @@ final class EntreprisesController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly DocumentsEntreprise $documents,
         private readonly SocieteRepository $societes,
+        private readonly FichiersPrives $fichiersPrives,
     ) {
     }
 
@@ -237,9 +239,11 @@ final class EntreprisesController extends AbstractController
             return null;
         }
 
-        $dossier = $this->getParameter('kernel.project_dir').'/public/'.DocumentsEntreprise::DOSSIER_IMAGES;
-
-        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+        // Hors de public/ (le cachet et la signature ne doivent pas se télécharger) :
+        // var/uploads/entreprises, lu seulement pour les documents (DocumentsEntreprise::dataUri).
+        try {
+            $dossier = $this->fichiersPrives->dossier('entreprises');
+        } catch (\RuntimeException) {
             return null;
         }
 

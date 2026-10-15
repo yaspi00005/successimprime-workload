@@ -1212,6 +1212,14 @@
 
 								{% endif %}
 
+								{# Objet copié de la commande à la création de la facture. #}
+								{% if facture.objet %}
+									<div class="col-12 mb-3">
+										<small class="text-muted d-block">Objet</small>
+										<strong>{{ facture.objet }}</strong>
+									</div>
+								{% endif %}
+
 							</div>
 
 
@@ -1406,6 +1414,17 @@
 
 										</tr>
 
+									{% endif %}
+
+									{# Frais de livraison copiés de la commande, déjà compris dans le total HT. #}
+									{% if facture.fraisLivraison > 0 %}
+										<tr>
+											<td>{{ (commande ? commande.commandesDetails|length : 0) + 1 }}</td>
+											<td><strong>Livraison</strong></td>
+											<td class="text-center">1</td>
+											<td class="text-right">{{ facture.fraisLivraison|number_format(0, ',', ' ') }} FCFA</td>
+											<td class="text-right">{{ facture.fraisLivraison|number_format(0, ',', ' ') }} FCFA</td>
+										</tr>
 									{% endif %}
 
 								</tbody>

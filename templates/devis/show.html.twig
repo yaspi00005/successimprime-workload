@@ -1508,6 +1508,20 @@
 							</div>
 						{% endif %}
 
+						{# Objet du devis, et frais de livraison (sans TVA, déjà compris dans le total HT). #}
+						{% if devis.objet %}
+							<div class="d-flex justify-content-between gap-2 mb-2 small">
+								<span class="text-muted">Objet</span>
+								<span class="text-end">{{ devis.objet }}</span>
+							</div>
+						{% endif %}
+						{% if devis.fraisLivraison > 0 %}
+							<div class="d-flex justify-content-between mb-2 small">
+								<span class="text-muted"><i class="fas fa-truck me-1"></i>Livraison</span>
+								<span>{{ devis.fraisLivraison|number_format(0, ',', ' ') }} FCFA</span>
+							</div>
+						{% endif %}
+
 						<div class="d-flex justify-content-between mb-3">
 
 							<span>

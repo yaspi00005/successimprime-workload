@@ -797,6 +797,14 @@
 																										   DÉTAILS
 																										   ================================================================ #}
 
+		{# Objet du devis (« Impressions »…), suivi à la commande puis à la facture. #}
+		{% if devis.objet|default(null) %}
+			<div style="margin: 0 0 8px; font-size: 10px; color: #202938;">
+				<strong style="color: #12346b;">Objet :</strong>
+				{{ devis.objet }}
+			</div>
+		{% endif %}
+
 		<table class="details-table">
 
 			<thead>
@@ -964,6 +972,18 @@
 					</tr>
 
 				{% endfor %}
+
+				{# Frais de livraison : une ligne visible, déjà comprise dans le total HT. #}
+				{% if devis.fraisLivraison|default(0) > 0 %}
+					<tr>
+						<td class="text-center">{{ details|length + 1 }}</td>
+						<td><div class="designation">Livraison</div></td>
+						<td class="text-center">1</td>
+						<td class="text-right">{{ devis.fraisLivraison|number_format(0, ',', ' ') }} F CFA</td>
+						<td class="text-right">—</td>
+						<td class="text-right font-bold">{{ devis.fraisLivraison|number_format(0, ',', ' ') }} F CFA</td>
+					</tr>
+				{% endif %}
 
 			</tbody>
 

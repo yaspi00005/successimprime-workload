@@ -154,6 +154,9 @@ class DevisController extends AbstractController
 
                 // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
                 $promotionsSaisie->appliquerDevis($devi, $form->get('codePromo')->getData(), new \DateTimeImmutable());
+
+                // Totaux refaits depuis les lignes et les frais de livraison : ceux du navigateur ne sont pas gardés.
+                $devi->recalculerTotaux();
             } catch (\DomainException | \RuntimeException $exception) {
                 $form->addError(
                     new FormError($exception->getMessage())
@@ -265,6 +268,9 @@ public function edit(
 
             // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
             $promotionsSaisie->appliquerDevis($devi, $form->get('codePromo')->getData(), new \DateTimeImmutable());
+
+            // Totaux refaits depuis les lignes et les frais de livraison : ceux du navigateur ne sont pas gardés.
+            $devi->recalculerTotaux();
 
             $entityManager->flush();
 

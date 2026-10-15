@@ -61,6 +61,22 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame('entreprise', CatalogueSynchro::typeDe(new Entreprise()));
     }
 
+    public function testFraisDeLivraisonEtObjetDesDocuments(): void
+    {
+        $types = CatalogueSynchro::types();
+        foreach (['commande', 'devis', 'facture'] as $type) {
+            self::assertContains('fraisLivraison', $types[$type]['champs'], $type);
+            self::assertContains('objet', $types[$type]['champs'], $type);
+            self::assertArrayNotHasKey('fraisLivraison', $types[$type]['remontees'] ?? [], $type.' : le site ne change pas les frais');
+        }
+        // Le client ne choisit pas les frais : une commande passée en ligne arrive sans frais, la boutique les fixe.
+        self::assertSame(0, $types['commande']['imposeAuLocal']['fraisLivraison']);
+        // Le bloc « NB » des factures descend avec l'entreprise.
+        self::assertContains('conditionsPaiement', $types['entreprise']['champs']);
+        // Les paliers et les objets suggérés restent au local.
+        self::assertArrayNotHasKey(\App\Service\Parametres\ReglagesSaisie::TUILE, CatalogueSynchro::REGLAGES_PUBLICS);
+    }
+
     public function testUnPaiementSaisiEnLigneResteAValider(): void
     {
         $impose = CatalogueSynchro::types()['paiement']['imposeAuLocal'];

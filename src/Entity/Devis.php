@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\CodePromoDocumentTrait;
+use App\Entity\Trait\LivraisonObjetDocumentTrait;
 use App\Entity\Trait\PublicIdTrait;
 use App\Entity\Trait\SocieteTrait;
 use App\Repository\DevisRepository;
@@ -20,6 +21,7 @@ class Devis implements AppartientASociete
     use PublicIdTrait;
     use SocieteTrait;
     use CodePromoDocumentTrait;
+    use LivraisonObjetDocumentTrait;
 
     /*
      * ============================================================
@@ -433,6 +435,30 @@ class Devis implements AppartientASociete
     public function __toString(): string
     {
         return $this->numero ?? 'Nouveau devis';
+    }
+
+    /**
+     * Totaux du devis depuis ses lignes, comme le formulaire les calcule
+     * (remise du devis deduite du montant a payer), plus les frais de
+     * livraison (sans TVA). Refaits a chaque enregistrement : les totaux
+     * envoyes par le navigateur ne sont jamais gardes.
+     */
+    public function recalculerTotaux(): static
+    {
+        $ht = $this->getFraisLivraison();
+        $ttc = $this->getFraisLivraison();
+        $code = 0;
+        foreach ($this->devisDetails as $ligne) {
+            $ht += $ligne->getTotalHt();
+            $ttc += $ligne->getTotalTtc();
+            $code += $ligne->getRemiseCodePromo();
+        }
+        $this->setTotalHt($ht);
+        $this->setRemiseCodePromo($code);
+        $this->setTotalTtc($ttc);
+        $this->setMontantApayer(max(0, $ttc - $this->remise));
+
+        return $this;
     }
 
 

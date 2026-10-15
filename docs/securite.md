@@ -83,7 +83,7 @@ Sur le site en ligne, depuis n'importe quel ordinateur :
 
 ```
 curl -sI https://succesimprim.com/ | grep -iE 'content-security|strict-transport|x-frame|x-content|referrer|permissions|x-powered|server'
-for p in /.env /.env.local /composer.json /composer.lock /.git/HEAD /var/log/prod.log /_profiler /info.php /uploads/essai.php /api/v1; do printf '%s ' "$p"; curl -s -o /dev/null -w '%{http_code}\n' "https://succesimprim.com$p"; done
+for p in /.env /.env.local /.htaccess /composer.json /composer.lock /.git/HEAD /var/log/prod.log /_profiler /info.php /uploads/essai.php /api/v1; do printf '%s ' "$p"; curl -s -o /dev/null -w '%{http_code}\n' "https://succesimprim.com$p"; done
 curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' http://succesimprim.com/
 ```
 
@@ -92,7 +92,7 @@ Attendu : les six en-têtes de la table, `Strict-Transport-Security` compris, et
 ## Sur le serveur
 
 - HTTPS forcé dans le panneau de l'hébergeur (pas dans `public/.htaccess`, qui sert aussi à XAMPP).
-- PHP : `display_errors` désactivé, `expose_php` désactivé.
+- PHP : `display_errors` désactivé (`public/.user.ini` le fait quand PHP tourne en FPM ou CGI, comme sur un hébergement mutualisé ; sinon réglage PHP du panneau), `expose_php` désactivé (réglage du panneau seulement).
 - `.env.local` en droits 600, jamais dans le dépôt ; `APP_ENV=prod`, `APP_SECRET` de 32 caractères au moins, propre au serveur.
 - L'application doit voir la vraie adresse des visiteurs : si l'hébergeur passe par un relais, régler `SYMFONY_TRUSTED_PROXIES` ; sinon toutes les limites par connexion tombent sur la même adresse.
 - Sauvegardes de la base et de `var/uploads` (docs/sauvegardes.md).

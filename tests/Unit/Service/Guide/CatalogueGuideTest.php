@@ -126,11 +126,12 @@ final class CatalogueGuideTest extends TestCase
                 self::assertNotEmpty(array_filter($noms, static fn (string $n): bool => str_starts_with($n, $prefixe)), $fiche['cle'].' : écran '.$prefixe);
             }
         }
-        foreach (['app_aide_index', 'app_aide_imprimer', 'app_aide_capture', 'app_aide_fiche'] as $aide) {
+        foreach (['app_aide_index', 'app_aide_imprimer', 'app_aide_formation', 'app_aide_capture', 'app_aide_fiche'] as $aide) {
             self::assertContains($aide, $noms);
         }
-        // « imprimer » passe avant la fiche, qui prendrait son adresse.
+        // « formation » et « imprimer » passent avant la fiche, qui prendrait leur adresse.
         $ordre = array_flip($noms);
+        self::assertLessThan($ordre['app_aide_fiche'], $ordre['app_aide_formation']);
         self::assertLessThan($ordre['app_aide_fiche'], $ordre['app_aide_imprimer']);
     }
 

@@ -50,7 +50,7 @@ final class AideAccesTest extends TestCase
     {
         $abonne = new AideHorsLigneSubscriber($this->acces(true));
 
-        foreach (['app_aide_index', 'app_aide_fiche', 'app_aide_capture', 'app_aide_imprimer'] as $route) {
+        foreach (['app_aide_index', 'app_aide_fiche', 'app_aide_capture', 'app_aide_imprimer', 'app_aide_formation'] as $route) {
             try {
                 $abonne->fermer($this->evenement($route));
                 self::fail($route.' répond en ligne');
@@ -89,6 +89,7 @@ final class AideAccesTest extends TestCase
         $droits = static fn (\ReflectionClass|\ReflectionMethod $r): array => array_map(static fn (\ReflectionAttribute $a): mixed => $a->newInstance()->attribute, $r->getAttributes(IsGranted::class));
 
         self::assertSame(['ROLE_USER'], $droits($classe));
+        self::assertSame(['ROLE_ADMIN'], $droits($classe->getMethod('formation')));
         // Fiche, capture et impression : droits de chaque fiche, vérifiés dans la méthode.
         foreach (['fiche', 'capture', 'imprimer', 'index'] as $methode) {
             self::assertSame([], $droits($classe->getMethod($methode)), $methode);

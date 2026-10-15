@@ -11,6 +11,11 @@
 	<li class="nav-item">
 		<a href="{{ path('app_aide_imprimer') }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fas fa-print me-1"></i>Imprimer mon guide</a>
 	</li>
+	{% if is_granted('ROLE_ADMIN') %}
+		<li class="nav-item">
+			<a href="{{ path('app_aide_formation') }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fas fa-chalkboard-teacher me-1"></i>Fiches du formateur</a>
+		</li>
+	{% endif %}
 {% endblock %}
 
 {% block body %}

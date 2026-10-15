@@ -398,3 +398,101 @@
     text-decoration: none;
   }
 }
+
+/* ---------- Fiches du formateur (/aide/formation) ---------- */
+
+.si-formation h3 {
+  font-size: 1.05rem;
+  color: #0F4590;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.si-formation-blocs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.si-formation-blocs th,
+.si-formation-blocs td {
+  border: 1px solid #CBD5E1;
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.si-formation-blocs th {
+  background: #F1F5F9;
+}
+
+.si-formation-blocs td:first-child {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.si-formation-exercices {
+  padding-left: 1.3rem;
+}
+
+.si-formation-exercices > li {
+  margin-bottom: 0.75rem;
+}
+
+.si-formation-exercices ul {
+  margin: 0.2rem 0;
+  padding-left: 1.1rem;
+}
+
+.si-formation-attendu {
+  margin: 0.2rem 0 0;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid #16A34A;
+  background: #F0FDF4;
+}
+
+.si-formation-final {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid #0F4590;
+  border-radius: 0.5rem;
+}
+
+.si-formation-final h3 {
+  margin-top: 0;
+}
+
+.si-formation-signature {
+  margin: 0.75rem 0 0;
+  color: #475569;
+  font-size: 0.9em;
+}
+
+@media (max-width: 575.98px) {
+  .si-formation-blocs thead {
+    display: none;
+  }
+
+  .si-formation-blocs tr,
+  .si-formation-blocs td {
+    display: block;
+    border: 0;
+    padding: 0.1rem 0;
+  }
+
+  .si-formation-blocs tr {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #CBD5E1;
+  }
+}
+
+@media print {
+  .si-formation-blocs tr,
+  .si-formation-exercices > li,
+  .si-formation-final {
+    break-inside: avoid;
+  }
+
+  .si-formation h3 {
+    break-after: avoid;
+  }
+}

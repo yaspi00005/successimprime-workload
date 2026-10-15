@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Service\Guide\CatalogueGuide;
+use App\Service\Guide\Formation;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -61,6 +62,21 @@ final class AideController extends AbstractController
             'groupes' => CatalogueGuide::parGroupe($fiches),
             'tailles' => $this->tailles($fiches),
             'choix' => $choix,
+        ]);
+    }
+
+    /**
+     * Fiches du formateur (docs/formation.md) : la demi-journée de chaque
+     * rôle, les exercices sur les comptes de démonstration et le résultat
+     * attendu. Pour la Direction, qui organise la formation.
+     */
+    #[Route('/formation', name: 'formation', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function formation(): Response
+    {
+        return $this->render('aide/formation.html.twig', [
+            'plans' => Formation::plans(),
+            'fiches' => array_column(CatalogueGuide::fiches(), null, 'cle'),
         ]);
     }
 

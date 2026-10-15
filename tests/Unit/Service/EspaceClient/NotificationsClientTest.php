@@ -146,6 +146,31 @@ final class NotificationsClientTest extends TestCase
         ], array_map(static fn (array $s): array => [$s['numero'], str_contains($s['texte'], 'BAT') ? 'BAT' : 'livreur'], $this->sms));
     }
 
+    public function testRienPourUnePersonneSuspendue(): void
+    {
+        $client = $this->client()->setTypeCompte(Clients::TYPE_COMPTE_ENTREPRISE);
+        $titulaire = $this->compte($client, '76000004');
+        $suspendue = $this->compte($client, '76000006')->setDroits([CompteClient::DROIT_LECTURE])->setAjoutePar($titulaire)
+            ->setPreferencesNotifications(['livraison' => [PreferencesNotifications::SMS]]);
+        $suspension = (new \App\Entity\SuspensionEspace())->setClient($client)->setTelephone('76000006')->setMotif('Départ');
+        $repository = $this->createStub(\App\Repository\SuspensionEspaceRepository::class);
+        $repository->method('pour')->willReturnCallback(static fn (Clients $c, string $t): ?\App\Entity\SuspensionEspace => $suspension->vise($t) ? $suspension : null);
+        $service = $this->service([$titulaire, $suspendue], [], new \App\Service\EspaceClient\SuspensionsEspace($this->createStub(EntityManagerInterface::class), $repository, true));
+
+        $service->envoyerFil($client, [self::evenement('route', 'Livreur en route', 'CMD-2', '2026-10-13 10:30', 'CMD-2')], new \DateTimeImmutable('2026-10-13 10:31'));
+
+        // Le titulaire est prévenu ; la personne suspendue, non.
+        self::assertSame(['tel:+22376000004'], array_column($this->sms, 'numero'));
+
+        // Tout le compte suspendu : plus personne.
+        $this->sms = [];
+        $this->journal = [];
+        $suspension->setTelephone(null);
+        $service = $this->service([$titulaire, $suspendue], [], new \App\Service\EspaceClient\SuspensionsEspace($this->createStub(EntityManagerInterface::class), $repository, true));
+        $service->envoyerFil($client, [self::evenement('route', 'Livreur en route', 'CMD-3', '2026-10-13 11:30', 'CMD-3')], new \DateTimeImmutable('2026-10-13 11:31'));
+        self::assertSame([], $this->sms);
+    }
+
     public function testHeuresCalmesLeSmsAttendSeptHeures(): void
     {
         $client = $this->client();
@@ -233,7 +258,7 @@ final class NotificationsClientTest extends TestCase
      * @param list<CompteClient>          $comptes
      * @param list<AbonnementPushClient> $abonnements
      */
-    private function service(array $comptes, array $abonnements = []): NotificationsClient
+    private function service(array $comptes, array $abonnements = [], ?\App\Service\EspaceClient\SuspensionsEspace $suspensions = null): NotificationsClient
     {
         $journal = $this->createStub(EntityRepository::class);
         $journal->method('findBy')->willReturnCallback(fn (): array => $this->journal);
@@ -291,6 +316,7 @@ final class NotificationsClientTest extends TestCase
             true,
             'null://null',
             '',
+            $suspensions,
         );
     }
 }

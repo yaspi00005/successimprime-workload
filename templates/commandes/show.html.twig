@@ -139,6 +139,7 @@
 				<small class="text-muted">
 					Créée le {{ commande.dateCommande ? commande.dateCommande|date('d/m à H:i') : '—' }}
 					{% if commande.agents %} par {{ commande.agents.employe ? commande.agents.employe.prenom : commande.agents.username }}{% elseif commande.demandeePar %} en ligne par {{ commande.demandeePar }}{% if commande.valideePar and commande.validationEntreprise == 'validee' and commande.valideePar != commande.demandeePar %}, validée par {{ commande.valideePar }}{% endif %}{% endif %}
+					{% if commande.agents and commande.demandeePar %} · commandée par <strong class="text-body">{{ commande.demandeePar }}</strong>{% endif %}
 					{% if commande.bonCommande %} · bon de commande {{ commande.bonCommande }}{% endif %}
 				</small>
 			</div>

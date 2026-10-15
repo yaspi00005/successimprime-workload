@@ -96,6 +96,7 @@
 		</header>
 
 		<main class="ec-contenu">
+			{% if coque %}{% include 'site/_annonces.html.twig' with {cible: 'espace'} only %}{% endif %}
 			{% for message in app.flashes('succes') %}<div class="ec-flash ec-flash-ok" role="status">{{ message }}</div>{% endfor %}
 			{% for message in app.flashes('error') %}<div class="ec-flash ec-flash-erreur" role="alert">{{ message }}</div>{% endfor %}
 			{% block contenu %}{% endblock %}

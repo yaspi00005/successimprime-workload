@@ -84,6 +84,37 @@ final class ContenuSiteTest extends TestCase
         self::assertSame(IconesSite::DEFAUT, IconesSite::pour('Le combat'));
     }
 
+    public function testUneAnnonceSeRegleDansLAtelier(): void
+    {
+        $em = $this->createStub(\Doctrine\ORM\EntityManagerInterface::class);
+        $contenu = new ContenuSite($em, new \App\Service\Site\ImagesSite(sys_get_temp_dir().'/si-annonces-public', sys_get_temp_dir().'/si-annonces-originaux'));
+        $maintenant = new \DateTimeImmutable('2026-10-15 09:00');
+        self::assertSame('annonces', ContenuSite::typeDe(new \App\Entity\Annonce()));
+        self::assertSame([], ContenuSite::imagesDe(new \App\Entity\Annonce()), 'une annonce n\'a pas d\'image');
+
+        $annonce = new \App\Entity\Annonce();
+        $retour = $contenu->enregistrer($annonce, [
+            'texte' => "Fermé le 20 octobre\r\n(Maouloud).", 'lien' => 'javascript:alert(1)', 'style' => 'alerte', 'cible' => 'espace',
+            'debut' => '2026-10-16', 'fin' => '2026-10-20', 'ordre' => '2', 'publie' => '1',
+        ], [], $maintenant);
+        self::assertSame([], $retour['erreurs']);
+        self::assertSame(['Lien ignoré : seule une adresse web (https://…) ou une page du site (/nos-produits) est acceptée.'], $retour['avertissements']);
+        self::assertSame('Fermé le 20 octobre (Maouloud).', $annonce->getTexte());
+        self::assertNull($annonce->getLien());
+        self::assertSame(['alerte', 'espace', 2], [$annonce->getStyle(), $annonce->getCible(), $annonce->getOrdre()]);
+        self::assertTrue($annonce->isPublie());
+        self::assertSame('programmee', $annonce->etat($maintenant));
+        self::assertEquals($maintenant, $annonce->getModifieLe(), 'la date de modification part avec la synchronisation');
+
+        // Trop long, période à l'envers, date impossible : rien n'est gardé.
+        $retour = $contenu->enregistrer(new \App\Entity\Annonce(), ['texte' => str_repeat('a', 201), 'debut' => '2026-10-20', 'fin' => '2026-10-18'], [], $maintenant);
+        self::assertCount(2, $retour['erreurs']);
+        $retour = $contenu->enregistrer(new \App\Entity\Annonce(), ['texte' => 'Promo', 'fin' => '2026-02-31'], [], $maintenant);
+        self::assertSame(['Le dernier jour n\'est pas valable.'], $retour['erreurs']);
+        $retour = $contenu->enregistrer(new \App\Entity\Annonce(), ['texte' => '   '], [], $maintenant);
+        self::assertSame(['Le texte de l\'annonce est obligatoire.'], $retour['erreurs']);
+    }
+
     private static function png(): string
     {
         $image = imagecreatetruecolor(4, 4);

@@ -713,6 +713,9 @@
 
 					{% endif %}
 
+					{# Une entreprise a souvent plusieurs interlocuteurs : la personne à qui s'adresse le devis. #}
+					{% if devis.interlocuteur %}<div style="margin-top: 4px;">À l'attention de : <strong>{{ devis.interlocuteur }}</strong></div>{% endif %}
+
 				</td>
 
 

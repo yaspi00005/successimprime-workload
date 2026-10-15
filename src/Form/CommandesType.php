@@ -249,6 +249,22 @@ class CommandesType extends AbstractType
                 ],
             ])
 
+            // « Commandé par » : la personne du client qui commande (une entreprise en a souvent plusieurs).
+            // Pour une commande passée en ligne, c'est déjà le nom de la personne connectée.
+            ->add('demandeePar', TextType::class, [
+                'label' => 'Commandé par',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 80],
+            ])
+            // Passée en ligne : c'est la personne connectée, le nom ne se change pas à la boutique.
+            ->addEventListener(FormEvents::PRE_SET_DATA, static function (FormEvent $event): void {
+                $commande = $event->getData();
+                if ($commande instanceof Commandes && $commande->isEnLigne() && null !== $commande->getDemandeePar()) {
+                    $event->getForm()->add('demandeePar', TextType::class, ['label' => 'Commandé par', 'required' => false, 'disabled' => true]);
+                }
+            })
+
             ->add('remise', IntegerType::class, [
                 'label' => 'Remise globale',
                 'required' => false,

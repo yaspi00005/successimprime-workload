@@ -6,6 +6,7 @@ use App\Entity\CompteClient;
 use App\Security\DroitsEspace;
 use App\Security\EspaceClientComptes;
 use App\Service\EspaceClient\AppareilsClient;
+use App\Service\EspaceClient\SuspensionsEspace;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -23,6 +24,8 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
  * À chaque page de l'espace client connecté :
  *  - une session ouverte avant « Déconnecter les autres appareils » est
  *    fermée (version de session du compte) ;
+ *  - une session ouverte par une personne dont la boutique a suspendu
+ *    l'accès est fermée (SuspensionsEspace) ;
  *  - tant que le mot de passe n'est pas choisi (ou l'e-mail donné après un
  *    code d'accès de la boutique), seule « Sécuriser mon compte » s'ouvre ;
  *  - un compte « Lecture · suivi » ne peut rien envoyer ni ouvrir de page
@@ -41,6 +44,7 @@ final class EspaceClientSubscriber implements EventSubscriberInterface
         private readonly AppareilsClient $appareils,
         private readonly UrlGeneratorInterface $urls,
         private readonly LoggerInterface $logger,
+        private readonly ?SuspensionsEspace $suspensions = null,
     ) {
     }
 
@@ -80,6 +84,17 @@ final class EspaceClientSubscriber implements EventSubscriberInterface
             $session = $requete->getSession();
             if ($session instanceof FlashBagAwareSessionInterface) {
                 $session->getFlashBag()->add('error', 'Vous avez été déconnecté de cet appareil depuis un autre. Reconnectez-vous.');
+            }
+            $event->setResponse(new RedirectResponse($this->urls->generate('app_espace_connexion')));
+
+            return;
+        }
+        // Accès suspendu par la boutique pendant que la session était ouverte : fermée tout de suite.
+        if (null !== $this->suspensions && $this->suspensions->compteSuspendu($compte)) {
+            $this->security->logout(false);
+            $session = $requete->getSession();
+            if ($session instanceof FlashBagAwareSessionInterface) {
+                $session->getFlashBag()->add('error', SuspensionsEspace::MESSAGE);
             }
             $event->setResponse(new RedirectResponse($this->urls->generate('app_espace_connexion')));
 

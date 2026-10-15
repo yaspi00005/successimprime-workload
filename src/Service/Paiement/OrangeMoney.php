@@ -249,7 +249,7 @@ final class OrangeMoney
         }
         $lien = (string) ($donnees['payment_url'] ?? '');
         if (!\in_array($reponse->getStatusCode(), [200, 201], true) || '' === (string) ($donnees['pay_token'] ?? '') || '' === (string) ($donnees['notif_token'] ?? '') || !self::lienOrange($lien)) {
-            $raison = self::raisonRefus($reponse->getStatusCode(), $donnees, $lien);
+            $raison = self::raisonRefus($reponse->getStatusCode(), $donnees, $lien, $this->api);
             $this->logger->error('Orange Money : paiement non ouvert, {raison}.', ['raison' => $raison]);
             $this->noterRefus($transaction->getOrderId(), $raison);
             throw new \DomainException('Orange Money a refusé d\'ouvrir le paiement. Réessayez ou payez en boutique.');
@@ -357,7 +357,7 @@ final class OrangeMoney
             return $etapes;
         }
         $jeton = (string) ($donnees['access_token'] ?? '');
-        $etapes[] = ['etape' => 'Jeton Orange', 'ok' => 200 === $code && '' !== $jeton, 'detail' => '' !== $jeton ? 'obtenu : Client ID et Client Secret acceptés' : self::refus($code, $donnees)];
+        $etapes[] = ['etape' => 'Jeton Orange', 'ok' => 200 === $code && '' !== $jeton, 'detail' => '' !== $jeton ? 'obtenu : Client ID et Client Secret acceptés' : self::refus($code, $donnees, $this->api)];
         if (!$ouvrirPaiement || '' === $jeton || '' === $this->merchantKey) {
             return $etapes;
         }
@@ -403,7 +403,7 @@ final class OrangeMoney
         $lien = (string) ($donnees['payment_url'] ?? '');
         $etapes[] = \in_array($code, [200, 201], true) && self::lienOrange($lien)
             ? ['etape' => 'Paiement d\'essai', 'ok' => true, 'detail' => \sprintf('clé marchand acceptée, page de paiement de %d %s (frais compris) : ', $frais->total(), $this->devise).$lien.($local ? ' (retour vers example.com : Orange refuse localhost)' : '')]
-            : ['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => self::refus($code, $donnees)];
+            : ['etape' => 'Paiement d\'essai', 'ok' => false, 'detail' => self::refus($code, $donnees, $this->api)];
 
         return $etapes;
     }
@@ -444,10 +444,10 @@ final class OrangeMoney
      *
      * @param array<string, mixed> $donnees
      */
-    public static function raisonRefus(int $code, array $donnees, string $lien): string
+    public static function raisonRefus(int $code, array $donnees, string $lien, string $api = ''): string
     {
         if (!\in_array($code, [200, 201], true)) {
-            return self::refus($code, $donnees);
+            return self::refus($code, $donnees, $api);
         }
         $manque = array_values(array_filter([
             '' === (string) ($donnees['pay_token'] ?? '') ? 'pay_token absent' : null,
@@ -509,17 +509,20 @@ final class OrangeMoney
      *
      * @param array<string, mixed> $donnees
      */
-    private static function refus(int $code, array $donnees): string
+    private static function refus(int $code, array $donnees, string $api = ''): string
     {
         $raison = implode(' : ', array_filter(array_map(
             static fn (string $champ): string => \is_scalar($donnees[$champ] ?? null) ? (string) $donnees[$champ] : '',
             ['error', 'error_description', 'message', 'description'],
         )));
 
-        // 403 « insufficient scope » : le jeton est bon, mais l'application Orange de ces clés n'a pas l'API de paiement.
-        $aide = 403 === $code && str_contains(strtolower($raison), 'scope')
-            ? ' : l\'application Orange de ce Client ID n\'a pas l\'API Orange Money Web Payment ; l\'ajouter dans My apps sur developer.orange.com, avec la clé marchand de la même application'
-            : '';
+        // 403 « insufficient scope » : le jeton est bon, mais l'application Orange de ces clés n'a pas
+        // cette API. Le cas vécu : des clés de production au Mali avec l'adresse de l'API d'essai.
+        $aide = match (true) {
+            403 !== $code || !str_contains(strtolower($raison), 'scope') => '',
+            str_contains($api, '/dev/') => ' : ces clés n\'ont pas l\'API d\'essai ; avec des clés de production au Mali, mettre ORANGE_MONEY_API=https://api.orange.com/orange-money-webpay/ml/v1 et ORANGE_MONEY_DEVISE=XOF',
+            default => ' : l\'application Orange de ce Client ID n\'a pas l\'API Orange Money Web Payment de cette adresse ; l\'ajouter dans My apps sur developer.orange.com, avec la clé marchand de la même application',
+        };
 
         return \sprintf('refusé par Orange (HTTP %d%s)%s', $code, '' !== $raison ? ', '.mb_substr($raison, 0, 200) : '', $aide);
     }

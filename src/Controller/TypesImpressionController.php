@@ -116,9 +116,7 @@ final class TypesImpressionController extends AbstractController
 
         $typeImpression = new TypesImpression();
         $typeImpression->setNom($nom);
-        $typeImpression->setDescription(
-            $description !== '' ? $description : null
-        );
+        $typeImpression->setDescription($description);
         $typeImpression->setPublie($actif);
         $typeImpression->setOrdre($prochainOrdre);
 
@@ -227,9 +225,8 @@ final class TypesImpressionController extends AbstractController
         }
 
         $typeImpression->setNom($nom);
-        $typeImpression->setDescription(
-            $description !== '' ? $description : null
-        );
+        // Colonne obligatoire (NOT NULL) : une description effacée s'enregistre vide.
+        $typeImpression->setDescription($description);
         $typeImpression->setPublie($actif);
 
         foreach ($typeImpression->getFinitions()->toArray() as $finition) {

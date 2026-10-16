@@ -16,6 +16,7 @@
 .ef-tuile b.rouge { color: var(--rouge); }
 .ef-tuile b.vert { color: var(--vert); }
 .ef-tuile span { display: block; color: var(--gris); font-size: .8rem; }
+.ef-tuile span span { display: inline; }
 .ef-tuile.principale b { font-size: 2.1rem; }
 
 /* Grille : à payer et onglets, panneaux à droite */

@@ -61,6 +61,18 @@ final class ElementAPayer
         return $this->montant < $this->commande->getTotalTtc();
     }
 
+    /** Quand payer, en clair : « avant le 30/10 », « dès que possible (échue le 12/10) »… */
+    public function quand(): string
+    {
+        return match ($this->etat) {
+            self::ECHUE => 'dès que possible (échue le '.$this->echeance->format('d/m').')',
+            self::AUJOURDHUI => 'aujourd\'hui',
+            self::A_VENIR => 'avant le '.$this->echeance->format('d/m'),
+            // Commande prête ou livrée sans facture, acompte : dû dès maintenant.
+            default => 'dès maintenant',
+        };
+    }
+
     /** Ce que la boutique a déjà validé sur la commande. */
     public function dejaPaye(): int
     {

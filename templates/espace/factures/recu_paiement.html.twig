@@ -99,7 +99,7 @@
 				<section class="ec-carte ef-reste ec-telephone">
 					<div>
 						<b>Reste à payer</b>
-						<small>{{ suivant.commande|espace_titre }} · {{ suivant.etat == 'echue' ? 'échue le ' ~ suivant.echeance|date('d/m') : 'avant le ' ~ suivant.echeance|date('d/m') }}</small>
+						<small>{{ suivant.commande|espace_titre }} · à payer {{ suivant.quand }}</small>
 					</div>
 					<b>{{ aPayer.total|francs }}</b>
 				</section>

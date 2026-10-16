@@ -20,6 +20,7 @@ use App\Service\Paiement\OrangeMoney;
 use App\Service\Paiement\ReglementsEnLigne;
 use App\Service\Paiement\RepartitionPaiement;
 use App\Service\Parametres\Parametres;
+use App\Twig\EspaceFacturesExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -306,7 +307,7 @@ final class EspaceFacturesController extends AbstractController
 
     /** Reçu d'un paiement validé par la boutique, en PDF (numéro de la caisse). */
     #[Route('/factures/recu/{id}', name: 'facture_recu', requirements: ['id' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'], methods: ['GET'])]
-    public function recuPdf(string $id, DocumentsEntreprise $documents): Response
+    public function recuPdf(string $id, DocumentsEntreprise $documents, EspaceFacturesExtension $vues): Response
     {
         $compte = $this->payeur();
         $client = $compte->getClient();
@@ -330,7 +331,7 @@ final class EspaceFacturesController extends AbstractController
             'logo' => $documents->images($entreprise)['logo'] ?? $documents->dataUri('images/logo-succes-imprim.png'),
             'moyen' => FacturesClient::moyen($paiement),
             'reste' => $commande?->getResteAPayer() ?? 0,
-        ], \sprintf('recu-%s.pdf', preg_replace('/[^A-Za-z0-9-]/', '', $paiement->getNumeroRecu() ?? 'paiement')));
+        ], \sprintf('recu-%s.pdf', preg_replace('/[^A-Za-z0-9-]/', '', $vues->numeroRecu($paiement) ?? 'paiement')));
     }
 
     /**

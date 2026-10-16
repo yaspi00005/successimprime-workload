@@ -485,7 +485,7 @@ final class FacturesClient
                 'texte' => \sprintf(
                     '%s F à payer %s%s',
                     number_format($e->montant, 0, ',', ' '),
-                    ElementAPayer::ECHUE === $e->etat ? 'dès que possible (échue le '.$e->echeance->format('d/m').')' : 'avant le '.$e->echeance->format('d/m'),
+                    $e->quand(),
                     null !== $rappel ? ' · prochain rappel le '.$rappel->format('d/m') : '',
                 ),
                 'lien' => null !== $e->facture ? ['app_espace_facture_detail', ['id' => (string) $e->facture->getPublicId()]] : null,
@@ -512,7 +512,7 @@ final class FacturesClient
      * (crédit), solde après chaque ligne. Les paiements encore en
      * validation sont à part.
      *
-     * @return array{ouverture: int, lignes: list<array{date: \DateTimeImmutable, libelle: string, debit: int, credit: int, solde: int}>, cloture: int, debits: int, credits: int, enValidation: int}
+     * @return array{ouverture: int, lignes: list<array{date: \DateTimeImmutable, libelle: string, debit: int, credit: int, solde: int, paiement?: Paiements}>, cloture: int, debits: int, credits: int, enValidation: int}
      */
     public function releve(Clients $client, \DateTimeImmutable $du, \DateTimeImmutable $au): array
     {
@@ -532,7 +532,8 @@ final class FacturesClient
             if ($p->estEnAttente()) {
                 $enValidation += $p->getDate() <= $au->setTime(23, 59, 59) ? $p->getMontant() : 0;
             } elseif ($p->estValide() && null !== $p->getDate()) {
-                $mouvements[] = ['date' => $p->getDate(), 'libelle' => trim(\sprintf('Paiement %s · commande %s%s', mb_strtolower(self::moyen($p)), $p->getCommande()?->getNumero(), null !== $p->getNumeroRecu() ? ' · reçu '.$p->getNumeroRecu() : '')), 'debit' => 0, 'credit' => $p->getMontant()];
+                // Le numéro du reçu est ajouté par le gabarit (filtre numero_recu : celui de la caisse, en ligne comme au local).
+                $mouvements[] = ['date' => $p->getDate(), 'libelle' => \sprintf('%s · commande %s', self::moyen($p), $p->getCommande()?->getNumero()), 'debit' => 0, 'credit' => $p->getMontant(), 'paiement' => $p];
             }
         }
 

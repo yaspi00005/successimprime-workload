@@ -49,6 +49,7 @@ final class FacturesClientTest extends TestCase
         self::assertFalse($c->productionLancee);
         self::assertSame([ElementAPayer::FACTURE, ElementAPayer::A_VENIR, 64000], [$d->nature, $d->etat, $d->montant]);
         self::assertSame($d, FacturesClient::prochaineEcheance($elements));
+        self::assertSame(['dès que possible (échue le 12/10)', 'dès maintenant', 'dès maintenant', 'avant le 30/10'], array_map(static fn (ElementAPayer $e): string => $e->quand(), $elements));
         self::assertMatchesRegularExpression('/^c-[0-9a-f-]{36}$/', $a->cle());
     }
 

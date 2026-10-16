@@ -24,6 +24,7 @@
 		.nom { font-size: 11px; font-weight: bold; margin-top: 5px; color: #111827; }
 		.coord { font-size: 7.6px; color: #4b5563; margin-top: 2px; }
 		.droite { text-align: right; }
+		.insecable { white-space: nowrap; }
 		.muted { color: #6b7280; }
 		.titre { font-size: 20px; font-weight: bold; letter-spacing: .5px; color: {{ c[1] ?? c[0] ?? '#0f2f6b' }}; }
 		.bloc { background: #f3f5f9; padding: 9px 11px; margin-top: 12px; }
@@ -92,7 +93,7 @@
 				{% for l in releve.lignes %}
 					<tr class="{{ loop.index is odd ? 'paire' }}">
 						<td>{{ l.date|date('d/m/Y') }}</td>
-						<td>{{ l.libelle }}</td>
+						<td>{{ l.libelle }}{% if l.paiement is defined %}{% set numero = l.paiement|numero_recu %}{% if numero %} · reçu <span class="insecable">{{ numero }}</span>{% endif %}{% endif %}</td>
 						<td class="num">{{ l.debit > 0 ? l.debit|number_format(0, ',', ' ') }}</td>
 						<td class="num">{{ l.credit > 0 ? l.credit|number_format(0, ',', ' ') }}</td>
 						<td class="num">{{ l.solde|number_format(0, ',', ' ') }}</td>

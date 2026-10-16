@@ -11,7 +11,9 @@ use Doctrine\ORM\Mapping as ORM;
  *
  * Il paie une commande, l'acompte d'une demande de conception ou un pack
  * de crédit IA (docs/demande-conception.md) : pour ces deux-là, la
- * commande n'existe qu'une fois l'argent reçu.
+ * commande n'existe qu'une fois l'argent reçu. Il paie aussi un règlement
+ * de plusieurs factures et acomptes (ReglementEnLigne, « Factures et
+ * paiements ») : un paiement par commande à la réception de l'argent.
  *
  * Le montant est la part de la commande ; le fonds de soutien et le frais
  * de retrait (FraisOrangeMoney) sont payés en plus : Orange reçoit le
@@ -30,6 +32,7 @@ class TransactionOrangeMoney
     public const OBJET_COMMANDE = 'commande';
     public const OBJET_ACOMPTE_CONCEPTION = 'acompte_conception';
     public const OBJET_CREDIT_IA = 'credit_ia';
+    public const OBJET_REGLEMENT = 'reglement';
 
     /** Le lien de paiement d'Orange vaut 10 minutes. */
     public const VALIDITE_MINUTES = 10;
@@ -54,6 +57,11 @@ class TransactionOrangeMoney
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?Clients $client = null;
+
+    /** Règlement de plusieurs factures et acomptes (« Factures et paiements »). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?ReglementEnLigne $reglement = null;
 
     /** Pack de crédit IA : nombre d'images achetées. */
     #[ORM\Column(nullable: true)]
@@ -133,6 +141,17 @@ class TransactionOrangeMoney
         return $t;
     }
 
+    /** Règlement : la part Orange Money et ses frais sont ceux du règlement, calculés au départ. */
+    public static function pourReglement(ReglementEnLigne $reglement, ?CompteClient $compte, \DateTimeImmutable $creeLe): self
+    {
+        $t = new self(null, $compte, $reglement->getMontantOm(), $reglement->getReference(), $creeLe);
+        $t->objet = self::OBJET_REGLEMENT;
+        $t->reglement = $reglement;
+        $t->client = $reglement->getClient();
+
+        return $t->avecFrais($reglement->getFondsSoutien(), $reglement->getFraisRetrait());
+    }
+
     /** Frais Orange Money du paiement, calculés par le serveur avant de partir chez Orange. */
     public function avecFrais(int $fondsSoutien, int $fraisRetrait): static
     {
@@ -193,6 +212,7 @@ class TransactionOrangeMoney
     public function getCommande(): ?Commandes { return $this->commande; }
     public function getObjet(): string { return $this->objet; }
     public function getDemandeConception(): ?DemandeConception { return $this->demandeConception; }
+    public function getReglement(): ?ReglementEnLigne { return $this->reglement; }
     public function getClient(): ?Clients { return $this->client ?? $this->commande?->getClients(); }
     public function getPackImages(): ?int { return $this->packImages; }
     public function getCompte(): ?CompteClient { return $this->compte; }

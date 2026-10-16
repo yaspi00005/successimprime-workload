@@ -13,9 +13,11 @@ use App\Entity\Devis;
 use App\Entity\Factures;
 use App\Entity\ImageIa;
 use App\Entity\MessageClient;
+use App\Entity\Paiements;
 use App\Entity\ProduitClient;
 use App\Entity\ReclamationClient;
 use App\Entity\ReclamationClientPhoto;
+use App\Entity\ReglementEnLigne;
 use App\Entity\User;
 use App\Security\DroitsEspace;
 use App\Service\Atelier\CatalogueAtelier;
@@ -58,6 +60,10 @@ final class RecetteEspaceClient
         'app_espace_payer' => 'commande',
         'app_espace_devis_pdf' => 'devis',
         'app_espace_facture_pdf' => 'facture',
+        // Factures et paiements : détail d'une facture, reçu d'un paiement validé, retour d'Orange Money.
+        'app_espace_facture_detail' => 'facture_uuid',
+        'app_espace_facture_recu' => 'paiement',
+        'app_espace_payer_recu' => 'reglement',
         'app_espace_fichier' => 'fichier',
         'app_espace_bat' => 'bat',
         'app_espace_bat_fichier' => 'bat_fichier',
@@ -73,7 +79,10 @@ final class RecetteEspaceClient
     ];
 
     /** Pages réservées à qui paie (factures, solde, paiement). */
-    public const PAGES_PAYEUR = ['app_espace_factures', 'app_espace_facture_pdf', 'app_espace_payer', 'app_espace_conception_credit'];
+    public const PAGES_PAYEUR = [
+        'app_espace_factures', 'app_espace_facture_pdf', 'app_espace_payer', 'app_espace_conception_credit',
+        'app_espace_facture_detail', 'app_espace_facture_recu', 'app_espace_facture_releve', 'app_espace_payer_selection', 'app_espace_payer_recu',
+    ];
 
     /** Pages où un prix est voulu pour qui voit les montants (valideur) : catalogue et prix du jour. */
     public const PAGES_PRIX = ['app_espace_nouvelle_commande', 'app_espace_produits', 'app_espace_promotions', 'app_espace_conception', 'app_espace_conception_demande', 'app_espace_conception_informations', 'app_espace_conception_ia', 'app_espace_devis'];
@@ -246,6 +255,9 @@ final class RecetteEspaceClient
             'devis' => [] === $devis ? null : $devis[0]->getId(),
             'devis_envoye' => [] === $envoye ? null : $envoye[0]->getId(),
             'facture' => [] === $factures ? null : $factures[0]->getId(),
+            'facture_uuid' => [] === $factures ? null : self::uuid($factures[0]->getPublicId()),
+            'paiement' => $this->paiementValide($client),
+            'reglement' => $this->premiere(ReglementEnLigne::class, $client, '1 = 1', 'reference'),
             'fichier' => $this->premiere(CommandeDetailFichier::class, $client, 'e.actif = true'),
             'bat' => [] === $bats ? null : $bats[0]->getId(),
             'bat_fichier' => [] === $fichiersBat ? null : $fichiersBat[0]->getId(),
@@ -429,6 +441,8 @@ final class RecetteEspaceClient
             $parametres = ['id' => $valeur];
             if ('notification' === $sorte) {
                 $parametres = ['cle' => $valeur];
+            } elseif ('reglement' === $sorte) {
+                $parametres = ['reference' => $valeur];
             } elseif ('image' === $sorte) {
                 $parametres['taille'] = 'v';
             } elseif ('creation' === $sorte) {
@@ -531,6 +545,35 @@ final class RecetteEspaceClient
             if (!$ok) {
                 $bilan->constater(BilanRecette::FUITE, 'autre_client_envoi', 'app_espace_adresses', '/espace/compte/adresses', $a, 'adresse de livraison d\'un autre client modifiée');
             }
+        }
+        if (null !== $commandeB) {
+            $this->verifierPaiementAutreClient($a, $session, $jeton, $b, (string) $commandeB, $bilan);
+        }
+    }
+
+    /**
+     * La commande d'un autre client glissée dans « Factures et paiements » :
+     * le récapitulatif et le départ vers Orange Money répondent
+     * « introuvable » (ou refusé sans le droit payeur), et aucun règlement
+     * n'est créé.
+     */
+    private function verifierPaiementAutreClient(string $a, MockArraySessionStorage $session, string $jeton, string $b, string $commandeB, BilanRecette $bilan): void
+    {
+        $cle = 'c-'.$commandeB;
+        $chemin = $this->routeur->generate('app_espace_payer_selection', ['e' => [$cle]]);
+        $reponse = $this->navigateur->get($chemin, $session);
+        $ok = \in_array($reponse->etat(), [Reponse::INTROUVABLE, Reponse::REFUSE], true);
+        $bilan->controler(\sprintf('Espace client : %s prépare le paiement de la commande de %s', $a, $b), $ok, $chemin.' → '.$reponse->etat());
+        if (!$ok) {
+            $bilan->constater(Reponse::ERREUR === $reponse->etat() ? BilanRecette::ERREUR : BilanRecette::FUITE, 'autre_client', 'app_espace_payer_selection', $chemin, $a, 'récapitulatif de paiement d\'une commande d\'un autre client ('.$reponse->etat().')');
+        }
+        $avant = (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM reglement_en_ligne');
+        $chemin = $this->routeur->generate('app_espace_payer_reglement');
+        $reponse = $this->navigateur->post($chemin, ['_token' => $jeton, 'e' => [$cle], 'avoir' => '1', 'total' => '0', 'avoir_montant' => '0'], $session);
+        $ok = \in_array($reponse->etat(), [Reponse::INTROUVABLE, Reponse::REFUSE], true) && (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM reglement_en_ligne') === $avant;
+        $bilan->controler(\sprintf('Espace client : %s paie la commande de %s', $a, $b), $ok, $chemin.' → '.$reponse->etat());
+        if (!$ok) {
+            $bilan->constater(BilanRecette::FUITE, 'autre_client_envoi', 'app_espace_payer_reglement', $chemin, $a, 'paiement lancé pour la commande d\'un autre client ('.$reponse->etat().')');
         }
     }
 
@@ -691,6 +734,16 @@ final class RecetteEspaceClient
         $valeur = $ligne[$champ] ?? null;
 
         return $valeur instanceof AbstractUid ? $valeur->toRfc4122() : $valeur;
+    }
+
+    /** Un paiement validé du client (son reçu existe), le plus récent. */
+    private function paiementValide(Clients $client): ?string
+    {
+        $ligne = $this->em->createQueryBuilder()->select('p.publicId')->from(Paiements::class, 'p')->join('p.commande', 'c')
+            ->where('c.clients = :cl')->andWhere('p.statut = :valide')->setParameter('cl', $client)->setParameter('valide', Paiements::STATUT_VALIDE)
+            ->orderBy('p.id', 'DESC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
+
+        return null === $ligne ? null : self::uuid($ligne['publicId']);
     }
 
     private function photo(Clients $client): ?string

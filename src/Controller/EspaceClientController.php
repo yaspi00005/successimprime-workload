@@ -575,17 +575,7 @@ final class EspaceClientController extends AbstractController
         return $reponse;
     }
 
-    #[Route('/factures', name: 'factures', methods: ['GET'])]
-    public function factures(EspaceClient $espace): Response
-    {
-        $client = $this->payeur()->getClient();
-
-        return $this->vue('espace/app/factures.html.twig', [
-            'onglet' => 'factures',
-            'solde' => $espace->solde($client),
-            'factures' => $espace->factures($client),
-        ]);
-    }
+    // Factures et paiements (vue d'ensemble, détail, règlement, reçus, relevé) : EspaceFacturesController.
 
     #[Route('/factures/{id}/pdf', name: 'facture_pdf', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function facturePdf(Factures $facture, EspaceClient $espace): Response
@@ -631,7 +621,8 @@ final class EspaceClientController extends AbstractController
             'frais' => $orangeMoney->frais(OrangeMoney::aPayer($commande)),
             'enValidation' => OrangeMoney::enValidation($commande),
             'marchand' => $espace->marchandOrangeMoney(),
-            'whatsapp' => $this->whatsapp(\sprintf('Bonjour, je souhaite payer ma commande %s (%s F).', $commande->getNumero(), number_format((float) OrangeMoney::aPayer($commande), 0, ',', ' '))),
+            // Jamais de montant dans un message WhatsApp : la commande suffit à la boutique.
+            'whatsapp' => $this->whatsapp(\sprintf('Bonjour, je souhaite payer ma commande %s.', $commande->getNumero())),
         ]);
     }
 

@@ -1,0 +1,152 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Paiement reçu (maquettes FP04 et FP05) : retour de la page Orange
+	Money, ou paiement par l'avoir. États honnêtes : « en cours chez Orange
+	Money » tant qu'Orange n'a pas confirmé, puis chaque élément « reçu · en
+	validation » jusqu'à la validation de la boutique ; le reçu (numéro de
+	la caisse) n'existe qu'après. « Et maintenant » vient des vraies données
+	(FacturesClient::etMaintenant). Le partage WhatsApp ne dit aucun montant.
+#}
+{% set enCours = reglement.estEnCours %}
+{% set recu = reglement.estRecu %}
+{% set parOm = reglement.montantOm > 0 %}
+{% block title %}{{ recu ? 'Paiement reçu' : (enCours ? 'Paiement en cours' : 'Paiement non abouti') }}{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-factures.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_factures') }}"><span class="fl">‹</span>Paiement</a>{% endblock %}
+
+{% block contenu %}
+	{% set parts = reglement.parts %}
+	{% set recus = [] %}
+	{% for part in parts %}
+		{% for p in [part.paiementOm, part.paiementAvoir]|filter(p => p is not null and p.estValide) %}
+			{% set recus = recus|merge([p]) %}
+		{% endfor %}
+	{% endfor %}
+	{% set quand = reglement.recuLe ?? reglement.creeLe %}
+
+	<div class="ef-titre">
+		<h1 class="ec-bureau">{{ recu ? 'Paiement reçu' : (enCours ? 'Paiement en cours' : 'Paiement non abouti') }}</h1>
+		<a class="ec-bouton-blanc ec-bureau" href="{{ path('app_espace_factures') }}">Retour aux factures</a>
+	</div>
+
+	<div class="ef-grille large">
+		<div class="ef-colonne">
+			<section class="ec-carte ef-recu"{{ enCours ? ' data-ef-actualiser' }}>
+				<div class="ef-recu-icone{{ enCours ? ' attente' : (not recu ? ' echec') }}" aria-hidden="true">
+					{% if recu %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+					{% elseif enCours %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/></svg>
+					{% else %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 7l10 10M17 7 7 17"/></svg>{% endif %}
+				</div>
+
+				{% if recu %}
+					<h2>{{ parOm ? reglement.montantOm|francs ~ ' payés' : 'Avoir utilisé' }}</h2>
+					<p class="ef-recu-sous">
+						{{ parOm ? 'Orange Money' : 'Avoir' }} · {{ quand|date('d/m/Y') }} à {{ quand|date('H:i') }} · réf. {{ transaction and transaction.txnid ? transaction.txnid : reglement.reference }}
+						{%- if parOm and reglement.totalOm > reglement.montantOm %}<br>{{ reglement.totalOm|francs }} débités, frais Orange Money compris{% endif %}
+					</p>
+				{% elseif enCours %}
+					<h2>En attente d'Orange Money</h2>
+					<p class="ef-recu-sous">Orange Money n'a pas encore confirmé ce paiement. Cette page se met à jour toute seule ; rien n'est validé tant qu'Orange n'a pas répondu.</p>
+				{% else %}
+					<h2>Paiement non abouti</h2>
+					<p class="ef-recu-sous">Annulé, refusé ou lien expiré sur la page Orange Money : rien n'a été débité.</p>
+				{% endif %}
+
+				<ul class="ef-recu-lignes">
+					{% for part in parts %}
+						{% set etat = part|part_etat %}
+						<li>
+							<span>{{ part.facture ? part.facture.numero : part.commande.numero }} · {{ part.commande|espace_titre }}</span>
+							<b>{{ part.montant|francs }}</b>
+							<span class="ef-recu-etat {{ etat.couleur }}">{{ etat.libelle }}{{ etat.couleur == 'vert' ? ' ✓' }}</span>
+						</li>
+					{% endfor %}
+					{% if reglement.avoir > 0 %}
+						{% set etat = reglement|avoir_etat %}
+						<li>
+							<span>Votre avoir</span>
+							<b>− {{ reglement.avoir|francs }}</b>
+							<span class="ef-recu-etat {{ etat.couleur }}">{{ etat.libelle }}{{ etat.couleur == 'vert' ? ' ✓' }}</span>
+						</li>
+					{% endif %}
+				</ul>
+
+				{% if recu and recus is empty %}
+					<p class="ef-recu-note">La boutique valide le paiement, puis le reçu arrive dans « Reçus ». Vous êtes prévenu dans l'espace.</p>
+				{% endif %}
+
+				<div class="ef-recu-actions">
+					{% for p in recus %}
+						{% set numero = p|numero_recu %}
+						<a class="ec-bouton-blanc" href="{{ path('app_espace_facture_recu', {id: p.publicId}) }}" target="_blank" rel="noopener">↓ Reçu{{ numero ? ' ' ~ numero }}</a>
+					{% endfor %}
+					{% if recu %}
+						<a class="ec-bouton-blanc" href="{{ partage }}" target="_blank" rel="noopener">Partager sur WhatsApp</a>
+					{% elseif enCours %}
+						{% if ouverte %}<a class="ef-bouton-om" href="{{ ouverte }}">Revenir sur la page Orange Money</a>{% endif %}
+						<a class="ec-bouton-blanc" href="{{ path('app_espace_payer_recu', {reference: reglement.reference}) }}">Actualiser</a>
+					{% else %}
+						{% set cles = parts|map(part => 'c-' ~ part.commande.publicId) %}
+						<a class="ef-bouton-om" href="{{ path('app_espace_payer_selection', {e: cles}) }}">Réessayer</a>
+					{% endif %}
+				</div>
+			</section>
+
+			{% if aPayer.total > 0 %}
+				{% set suivant = aPayer.elements|first %}
+				<section class="ec-carte ef-reste ec-telephone">
+					<div>
+						<b>Reste à payer</b>
+						<small>{{ suivant.commande|espace_titre }} · {{ suivant.etat == 'echue' ? 'échue le ' ~ suivant.echeance|date('d/m') : 'avant le ' ~ suivant.echeance|date('d/m') }}</small>
+					</div>
+					<b>{{ aPayer.total|francs }}</b>
+				</section>
+			{% endif %}
+			{% if recus is not empty %}
+				<a class="ec-bouton clair ec-telephone" href="{{ path('app_espace_facture_recu', {id: (recus|first).publicId}) }}" target="_blank" rel="noopener" style="margin-bottom:.85rem">↓ Télécharger le reçu</a>
+			{% endif %}
+		</div>
+
+		<aside class="ef-colonne">
+			{% if etMaintenant is not empty %}
+				<section class="ec-carte">
+					<h2>Et maintenant</h2>
+					<ul class="ef-etapes">
+						{% for e in etMaintenant %}
+							<li>
+								{% if e.lien %}<a href="{{ path(e.lien[0], e.lien[1]) }}" style="color:inherit"><b>{{ e.titre }}</b></a>{% else %}<b>{{ e.titre }}</b>{% endif %}
+								<span>{{ e.texte }}</span>
+							</li>
+						{% endfor %}
+					</ul>
+				</section>
+			{% endif %}
+
+			<section class="ec-carte">
+				<nav class="ef-onglets" aria-label="Documents" style="margin-bottom:.6rem">
+					<a href="{{ path('app_espace_factures', {onglet: 'factures'}) }}#onglets">Factures</a>
+					<a href="{{ path('app_espace_factures', {onglet: 'paiements'}) }}#onglets">Paiements</a>
+					<a href="{{ path('app_espace_factures', {onglet: 'avoirs'}) }}#onglets">Avoirs</a>
+					<a class="actif" aria-current="true" href="{{ path('app_espace_factures', {onglet: 'recus'}) }}#onglets">Reçus</a>
+				</nav>
+				<ul class="ef-recus">
+					{% for p in derniersRecus %}
+						{% set numero = p|numero_recu %}
+						<li>
+							<b>{{ numero|default('Reçu') }}</b>
+							<span class="ec-petit">{{ p.date ? p.date|date('d/m') }}</span>
+							<span class="moyen">{{ p|paiement_moyen }}</span>
+							<a href="{{ path('app_espace_facture_recu', {id: p.publicId}) }}" target="_blank" rel="noopener" style="color:inherit;font-weight:800;white-space:nowrap">{{ p.montant|francs }} ↓</a>
+						</li>
+					{% else %}
+						<li class="ec-petit" style="display:block">Pas encore de reçu : il arrive quand la boutique valide un paiement.</li>
+					{% endfor %}
+				</ul>
+			</section>
+		</aside>
+	</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/espace-factures.js') }}" defer></script>{% endblock %}

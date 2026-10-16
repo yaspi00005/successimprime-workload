@@ -94,6 +94,7 @@ final class OperationsAValider
                 'frais' => $paiement->getMontantTotalEncaisse() - $paiement->getMontant(),
                 'controles' => [
                     ...self::controlesPaiement($paiement->getMontant(), $reste, $paiement->getMode(), $reference, null !== $reference && ($references[$reference] ?? 0) > 0),
+                    ...(Paiements::MODE_SOLDE_CLIENT === $paiement->getMode() ? self::controleAvoir($paiement->getMontant(), $commande?->getClients()?->getSoldeCredit() ?? 0) : []),
                     ...self::controleDelai($paiement->getDate(), $maintenant),
                 ],
                 'justificatif' => null !== $paiement->getJustificatif() && '' !== $paiement->getJustificatif(),
@@ -236,6 +237,13 @@ final class OperationsAValider
 
         if ('paiement' === $m[1]) {
             $paiement = $this->em->find(Paiements::class, (int) $m[2]) ?? throw new \InvalidArgumentException('Paiement introuvable.');
+            if ($valider && Paiements::MODE_SOLDE_CLIENT === $paiement->getMode()) {
+                // Avoir utilisé en ligne : pas de compte de trésorerie, le solde du client baisse.
+                $this->paiements->validerAvoir($paiement, $responsable);
+                $this->actualiserCommande($paiement);
+
+                return;
+            }
             if ($valider) {
                 // API Orange Money : le compte « Orange Money en ligne » est posé par PaiementService.
                 if (null === $paiement->getCompteTresorerie() && !$paiement->estOrangeMoneyEnLigne() && [] !== Paiements::typesComptesPour($paiement->getMode())) {
@@ -304,6 +312,18 @@ final class OperationsAValider
         }
 
         return $controles;
+    }
+
+    /**
+     * Avoir utilisé en ligne : le solde du client doit encore le couvrir.
+     *
+     * @return list<array{libelle: string, etat: string}>
+     */
+    public static function controleAvoir(int $montant, int $soldeClient): array
+    {
+        return [$soldeClient >= $montant
+            ? ['libelle' => 'Couvert par le solde du client', 'etat' => self::OK]
+            : ['libelle' => 'Solde du client insuffisant', 'etat' => self::ERREUR]];
     }
 
     /**

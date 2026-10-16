@@ -8,6 +8,7 @@ use App\Entity\CompteClient;
 use App\Entity\DemandeConception;
 use App\Entity\Paiements;
 use App\Entity\ParametresPaiement;
+use App\Entity\ReglementEnLigne;
 use App\Entity\TransactionOrangeMoney;
 use App\Repository\ParametresPaiementRepository;
 use App\Service\Conception\CommandesConception;
@@ -29,7 +30,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  *
  * Il paie aussi l'acompte d'une demande de conception et les packs de
  * crédit IA (docs/demande-conception.md) : la commande est alors créée à
- * la réception de l'argent, par CommandesConception.
+ * la réception de l'argent, par CommandesConception. Et un règlement de
+ * plusieurs factures et acomptes (ReglementsEnLigne) : un paiement par
+ * commande à la réception de l'argent, par PaiementsDuReglement.
  *
  * Chaque paiement porte le fonds de soutien et le frais de retrait
  * (FraisOrangeMoney, taux de Réglages › Paiements, 1 % et 1 % tant que le
@@ -59,13 +62,20 @@ final class OrangeMoney
         private readonly ?CommandesConception $conception = null,
         private readonly ?ParametresPaiementRepository $parametresPaiement = null,
         #[Autowire('%kernel.project_dir%/var/orange-money/refus.json')] private readonly ?string $fichierRefus = null,
+        private readonly ?PaiementsDuReglement $reglements = null,
     ) {
+    }
+
+    /** Taux des frais réglés (Réglages › Paiements). */
+    public function parametres(): ParametresPaiement
+    {
+        return $this->parametresPaiement?->recuperer() ?? new ParametresPaiement();
     }
 
     /** Récapitulatif d'un paiement : montant, fonds de soutien, frais de retrait, total. */
     public function frais(int $montant): FraisOrangeMoney
     {
-        return FraisOrangeMoney::calculer($montant, $this->parametresPaiement?->recuperer() ?? new ParametresPaiement());
+        return FraisOrangeMoney::calculer($montant, $this->parametres());
     }
 
     public function estConfigure(): bool
@@ -97,10 +107,23 @@ final class OrangeMoney
         return $total;
     }
 
-    /** Ce qui reste à payer en ligne : le reste dû, moins ce qui attend la caisse. */
+    /** Avoir utilisé en ligne pour la commande (« Factures et paiements »), que la boutique n'a pas encore validé. */
+    public static function avoirEnValidation(Commandes $commande): int
+    {
+        $total = 0;
+        foreach ($commande->getPaiements() as $p) {
+            if (Paiements::MODE_SOLDE_CLIENT === $p->getMode() && Paiements::STATUT_EN_ATTENTE === $p->getStatut()) {
+                $total += (int) $p->getMontant();
+            }
+        }
+
+        return $total;
+    }
+
+    /** Ce qui reste à payer en ligne : le reste dû, moins ce qui attend la caisse (Orange Money, avoir). */
     public static function aPayer(Commandes $commande): int
     {
-        return max(0, $commande->getResteAPayer() - self::enValidation($commande));
+        return max(0, $commande->getResteAPayer() - self::enValidation($commande) - self::avoirEnValidation($commande));
     }
 
     /**
@@ -198,6 +221,31 @@ final class OrangeMoney
     }
 
     /**
+     * Règlement de plusieurs factures et acomptes (« Factures et paiements ») :
+     * la part Orange Money et ses frais viennent du règlement, calculés par
+     * le serveur (ReglementsEnLigne). Orange renvoie le client sur la page
+     * « Paiement reçu » du règlement.
+     *
+     * @throws \DomainException message à montrer au client
+     */
+    public function demarrerReglement(ReglementEnLigne $reglement, CompteClient $compte, \DateTimeImmutable $maintenant): TransactionOrangeMoney
+    {
+        if (!$this->estConfigure()) {
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert.');
+        }
+        if ($reglement->getMontantOm() <= 0 || !$reglement->estEnCours()) {
+            throw new \DomainException('Rien à payer par Orange Money.');
+        }
+        $transaction = TransactionOrangeMoney::pourReglement($reglement, $compte, $maintenant);
+
+        return $this->ouvrirChezOrange(
+            $transaction,
+            $this->urls->generate('app_espace_payer_recu', ['reference' => $reglement->getReference()], UrlGeneratorInterface::ABSOLUTE_URL),
+            $this->urls->generate('app_espace_factures', ['annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
+        );
+    }
+
+    /**
      * Lien encore valable pour le même montant et les mêmes frais : le
      * client y retourne. Taux changés entre-temps : un autre paiement.
      */
@@ -207,7 +255,7 @@ final class OrangeMoney
     }
 
     /** Notre référence chez Orange : la forme attendue par la route de notification. */
-    private static function nouvelOrderId(\DateTimeImmutable $maintenant): string
+    public static function nouvelOrderId(\DateTimeImmutable $maintenant): string
     {
         return \sprintf('SI%s%s', $maintenant->format('ymdHis'), strtoupper(bin2hex(random_bytes(3))));
     }
@@ -540,6 +588,11 @@ final class OrangeMoney
         if (TransactionOrangeMoney::INITIEE !== $transaction->getStatut()) {
             return; // déjà traitée : une notification rejouée ne crée rien de plus
         }
+        if (TransactionOrangeMoney::OBJET_REGLEMENT === $transaction->getObjet()) {
+            $this->appliquerReglement($transaction, $statut, $txnid, $maintenant);
+
+            return;
+        }
         if ('SUCCESS' === $statut) {
             // Acompte de conception, pack de crédit IA : la commande naît avec l'argent reçu.
             $commande = $transaction->getCommande() ?? $this->conception?->commandePour($transaction, $maintenant);
@@ -574,6 +627,35 @@ final class OrangeMoney
             $transaction->terminer(TransactionOrangeMoney::ECHOUEE, $maintenant);
         } elseif ('EXPIRED' === $statut) {
             $transaction->terminer(TransactionOrangeMoney::EXPIREE, $maintenant);
+        }
+        $this->em->flush();
+    }
+
+    /**
+     * Règlement de plusieurs factures : l'argent reçu devient un paiement
+     * « en attente » par commande (PaiementsDuReglement), et l'avoir utilisé
+     * un paiement « solde client » en attente. Refusé ou expiré : le
+     * règlement est abandonné, son avoir n'est plus réservé.
+     */
+    private function appliquerReglement(TransactionOrangeMoney $transaction, string $statut, ?string $txnid, \DateTimeImmutable $maintenant): void
+    {
+        $reglement = $transaction->getReglement();
+        if ('SUCCESS' === $statut) {
+            if (null === $reglement || null === $this->reglements) {
+                $this->logger->error('Orange Money : argent reçu sans règlement pour {order}.', ['order' => $transaction->getOrderId()]);
+
+                return;
+            }
+            $premier = $this->reglements->creer($reglement, $txnid, $maintenant);
+            if (null === $premier) {
+                $this->logger->error('Orange Money : règlement {order} sans paiement créé.', ['order' => $transaction->getOrderId()]);
+
+                return;
+            }
+            $transaction->reussir($txnid, $premier, $maintenant);
+        } elseif ('FAILED' === $statut || 'EXPIRED' === $statut) {
+            $transaction->terminer('FAILED' === $statut ? TransactionOrangeMoney::ECHOUEE : TransactionOrangeMoney::EXPIREE, $maintenant);
+            $reglement?->abandonner();
         }
         $this->em->flush();
     }

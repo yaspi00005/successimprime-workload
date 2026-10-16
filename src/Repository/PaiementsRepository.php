@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Clients;
 use App\Entity\Paiements;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -14,6 +15,21 @@ class PaiementsRepository extends ServiceEntityRepository
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Paiements::class);
+    }
+
+    /**
+     * Avoir du client déjà utilisé en ligne, que la boutique n'a pas encore
+     * validé (paiements « solde client » en attente, « Factures et
+     * paiements »).
+     */
+    public function avoirEnValidation(Clients $client): int
+    {
+        return (int) $this->createQueryBuilder('p')
+            ->select('COALESCE(SUM(p.montant), 0)')
+            ->join('p.commande', 'c')
+            ->where('c.clients = :client')->andWhere('p.mode = :mode')->andWhere('p.statut = :attente')
+            ->setParameter('client', $client)->setParameter('mode', Paiements::MODE_SOLDE_CLIENT)->setParameter('attente', Paiements::STATUT_EN_ATTENTE)
+            ->getQuery()->getSingleScalarResult();
     }
 
     /**

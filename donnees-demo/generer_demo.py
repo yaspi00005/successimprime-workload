@@ -82,6 +82,14 @@ def uid_bl():
     return S('UNHEX(\'' + uuid.UUID(int=R_BL.getrandbits(128), version=4).hex + '\')')
 
 
+# Identifiants des règles et des rappels de paiement (envoyés au site) : tirage à part, lui aussi.
+R_RAPPEL = random.Random(2610)
+
+
+def uid_rappel():
+    return S('UNHEX(\'' + uuid.UUID(int=R_RAPPEL.getrandbits(128), version=4).hex + '\')')
+
+
 def hexa(n=64):
     return ''.join(R.choice('0123456789abcdef') for _ in range(n))
 
@@ -384,9 +392,9 @@ for nom, canal, contenu in [('Relance facture (démo)', 'sms', 'Bonjour {{nom}},
                             ('Commande prête (démo)', 'sms', 'Bonjour {{nom}}, votre commande {{numeroCommande}} est prête. Nous vous attendons.'),
                             ('Anniversaire client (démo)', 'sms', 'Joyeux anniversaire de la part de Succès Imprim ! Un cadeau vous attend à la boutique.')]:
     MODELES[nom] = add('modele_message', {'nom': nom, 'canal': canal, 'sujet': None, 'contenu': contenu, 'actif': 1, 'date_creation': T(300)})
-REGLES = [add('regle_rappel_paiement', {'nom': 'Relance à 7 jours (démo)', 'delai_jours': 7, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement'}),
-          add('regle_rappel_paiement', {'nom': 'Relance à 30 jours (démo)', 'delai_jours': 30, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement'}),
-          add('regle_rappel_paiement', {'nom': 'Commande prête depuis 3 jours (démo)', 'delai_jours': 3, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Commande prête (démo)'], 'type': 'retrait'})]
+REGLES = [add('regle_rappel_paiement', {'nom': 'Relance à 7 jours (démo)', 'delai_jours': 7, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement', 'public_id': uid_rappel()}),
+          add('regle_rappel_paiement', {'nom': 'Relance à 30 jours (démo)', 'delai_jours': 30, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement', 'public_id': uid_rappel()}),
+          add('regle_rappel_paiement', {'nom': 'Commande prête depuis 3 jours (démo)', 'delai_jours': 3, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Commande prête (démo)'], 'type': 'retrait', 'public_id': uid_rappel()})]
 
 # --------------------------------------------------------------------- clients
 types = ['entreprise'] * 90 + ['ong'] * 20 + ['administration'] * 20 + ['particulier'] * 70
@@ -891,9 +899,9 @@ for k in COMMANDES:
     if reste > 0 and k['d'] > 7:
         for n in range(R.randint(1, 3)):
             add('relance_creance', {'canal': R.choice(['whatsapp', 'sms', 'appel']), 'envoyee_le': T(max(0, k['d'] - 7 - n * 10), 10), 'commande_id': k['id'], 'par_id': k['agent']})
-        add('rappel_paiement_envoye', {'canal': 'sms', 'date_envoi': T(max(0, k['d'] - 7), 8), 'commande_id': k['id'], 'regle_id': REGLES[0]})
+        add('rappel_paiement_envoye', {'canal': 'sms', 'date_envoi': T(max(0, k['d'] - 7), 8), 'commande_id': k['id'], 'regle_id': REGLES[0], 'public_id': uid_rappel()})
         if k['d'] > 30:
-            add('rappel_paiement_envoye', {'canal': 'sms', 'date_envoi': T(k['d'] - 30, 8), 'commande_id': k['id'], 'regle_id': REGLES[1]})
+            add('rappel_paiement_envoye', {'canal': 'sms', 'date_envoi': T(k['d'] - 30, 8), 'commande_id': k['id'], 'regle_id': REGLES[1], 'public_id': uid_rappel()})
     if k['etat'] in ('terminee', 'prete_livraison') and not k['livraison']:
         add('relance_retrait', {'canal': R.choice(['whatsapp', 'sms']), 'envoyee_le': T(max(0, k['d'] - 3), 9), 'commande_id': k['id'], 'par_id': k['agent'], 'regle_id': REGLES[2]})
 
@@ -1631,8 +1639,18 @@ def facture_ec(k, d, echeance_dans):
                            'reste_apayer': k['total'], 'statut_paiement': 'impayee', 'etat': 'emise', 'observation': None, 'token_authenticite': hexa4(64), 'facturer_aun_tiers': 0,
                            'nom_facturation': None, 'adresse_facturation': None, 'telephone_facturation': None, 'email_facturation': None, 'created_at': T(d, 9, 10),
                            'updated_at': T(d, 9, 10), 'commande_id': k['id'], 'public_id': uid4(),
-                           'code_suivi': ''.join(R4.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(9))})
+                           'code_suivi': code_suivi_ec()})
     FACTURE_DE[k['id']] = fid
+
+
+def code_suivi_ec():
+    """Code du QR (7K4P-2Q) des factures de l'espace client : mêmes 9 tirages qu'avant, pour ne rien décaler."""
+    c = ''.join(R4.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(9))
+    c = c[:4] + '-' + c[4:6]
+    if c in CODES_SUIVI:
+        raise SystemExit('Code de suivi en double : ' + c)
+    CODES_SUIVI.add(c)
+    return c
 
 
 EC_PLAQUES = commande_ec('D-AKYLUX', 'Plaques des chambres 20 × 10 cm', 40, 1, 15, 10, 'a_produire', 6, larg=0.2, haut=0.1, bat_valide=False)

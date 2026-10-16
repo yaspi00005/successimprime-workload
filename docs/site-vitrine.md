@@ -180,7 +180,7 @@ Rien n'est confirmé ni envoyé au client sans geste de l'équipe : le devis bro
 
 ## Contenu du site (pages 04 à 09 et 12)
 
-Réalisations, équipements, guide des fichiers, à propos, engagements, FAQ et conseils : le texte se saisit dans **Réglages › Site vitrine**, sur l'ERP local seulement, et descend au site par la synchronisation (voir docs/synchronisation.md). En ligne, l'écran est fermé (« Le contenu du site se modifie à l'atelier »).
+Réalisations, équipements, guide des fichiers, à propos, engagements, FAQ, conseils et annonces : le texte se saisit dans **Réglages › Site vitrine**, sur l'ERP local seulement, et descend au site par la synchronisation (voir docs/synchronisation.md). En ligne, l'écran est fermé (« Le contenu du site se modifie à l'atelier »).
 
 ### Accès
 
@@ -195,10 +195,23 @@ Droit fin **Site vitrine** (`ROLE_SITE_VITRINE`), donné à la Direction ; il se
 | Avis clients | Nom affiché, texte, note, source, date | Sans « accord du client », l'avis reste non publié ; ni son texte ni son nom ne descendent au site. Affichés sur « À propos ». |
 | Conseils | Titre, adresse (créée depuis le titre, unique), rubrique, résumé, texte, image, date de publication | Un conseil daté dans le futur n'apparaît qu'à sa date. Chaque conseil entre dans /sitemap.xml. |
 | Partenaires | Nom, logo, lien (http ou https seulement), ordre | Sans « accord obtenu », le partenaire reste masqué. Bande de logos sur l'accueil et « À propos ». |
+| Annonces | Texte (200 caractères, une ligne), lien facultatif (page du site ou adresse web) et son texte, style (information, promotion, alerte), où la montrer (site public, espace client, les deux), premier et dernier jour, ordre | Montrée seulement « Active » et dans sa période (dates comprises ; sans date : tout de suite et sans fin). Voir « Bandes d'annonces » ci-dessous. |
 | Chiffres | Afficher ou non, règle des « projets réalisés », seuil | Voir docs/site-public.md. Un chiffre nul ou sous le seuil n'est pas montré. |
 | Référencement | Codes Google Search Console et Bing, lien de la fiche Google, pages des réseaux sociaux | Valeur refusée (mauvais domaine, code illisible) : l'ancienne reste. Voir docs/referencement.md. |
 
 Une case « publié » cochée alors qu'une règle manque : la fiche est enregistrée **sans être publiée**, avec le message de ce qui manque.
+
+### Bandes d'annonces
+
+Demande de Yaya du 15/10/2026 : une phrase courte en haut du site public, de l'espace client, ou des deux (fermeture exceptionnelle, promotion du mois, retard de livraison…). Saisie dans l'onglet **Annonces** (même droit `ROLE_SITE_VITRINE`, à l'ERP local), elle descend au site par la synchronisation (type `site_annonce`, docs/synchronisation.md). La liste montre l'état de chacune : Affichée, Programmée (pas encore commencée), Terminée, Inactive ; la fiche a un aperçu.
+
+- **Site public** : une bande fine au-dessus de l'en-tête (`templates/site/_annonces.html.twig`, inclus par `site/_site.html.twig`). **Espace client** : la même bande, arrondie, en haut du contenu de chaque page connectée (`espace/app/_app.html.twig`).
+- Plusieurs annonces visibles (5 au plus, dans l'ordre choisi) : une à la fois, la suivante toutes les 7 s ; pause au survol et au clavier ; arrêt après 4 tours ou dès qu'on touche « 1/2 › ». Avec « réduire les animations », pas de défilement ni d'animation.
+- « × » ferme les annonces pour la visite (`sessionStorage` du navigateur, rien sur le serveur) ; elles reviennent à la visite suivante.
+- La bande est dans le fil de la page : elle ne couvre jamais un bouton ; boutons de 44 px. Sans JavaScript, toutes les annonces sont montrées l'une sous l'autre, sans boutons.
+- Sans annonce à montrer, la page n'a ni bande, ni style, ni script en plus. Le style et le petit script sont écrits dans la page seulement quand une annonce est montrée.
+- Le lien n'accepte qu'une page du site (« /nos-produits ») ou une adresse http(s) ; une adresse web s'ouvre dans un nouvel onglet. Pas de montant de client dans une annonce : elle est lue par tout le monde.
+- Les pages du site restent 5 minutes en cache dans le navigateur : une annonce peut mettre ce temps à paraître ou à partir après la synchronisation.
 
 ### Texte des pages
 
@@ -234,6 +247,7 @@ Aucun chiffre d'activité, aucune note ni aucun nom de client n'a été inventé
 ### Fichiers
 
 - `src/Controller/SiteContenuController.php` (admin), `src/Controller/SitePagesController.php` (pages publiques), `src/Service/Site/` (`ContenuSite`, `MarkdownSite`, `ImagesSite`, `ChiffresSite`, `IconesSite`, `PlanConseils`, `ContenuInitial`), `src/Twig/SiteContenuExtension.php`.
+- Annonces : `src/Entity/Annonce.php`, `src/Repository/AnnonceRepository.php`, `src/Twig/AnnoncesExtension.php` (`site_annonces()`), `templates/site/_annonces.html.twig`.
 - `templates/site_contenu/` (admin), `templates/site/` (`realisations`, `equipements`, `guide`, `a_propos`, `engagements`, `faq`, `conseils`, `conseil`, `_chiffres`, `_partenaires`, `_avis`), `public/css/site-contenu.css`, `public/css/reglages-site.css`.
 - Chaque page est servie par `SiteController::cache()` (5 minutes dans le navigateur).
 

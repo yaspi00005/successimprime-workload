@@ -2,6 +2,7 @@
 
 namespace App\Service\Site;
 
+use App\Entity\Annonce;
 use App\Entity\ArticleConseil;
 use App\Entity\AvisClient;
 use App\Entity\CategorieProduit;
@@ -31,6 +32,8 @@ final class ContenuSite
         'avis' => ['classe' => AvisClient::class, 'libelle' => 'Avis clients', 'un' => 'Avis', 'nouveau' => 'Nouvel avis', 'cree' => 'Avis créé.', 'supprime' => 'Avis supprimé.'],
         'conseils' => ['classe' => ArticleConseil::class, 'libelle' => 'Conseils', 'un' => 'Conseil', 'nouveau' => 'Nouveau conseil', 'cree' => 'Conseil créé.', 'supprime' => 'Conseil supprimé.'],
         'partenaires' => ['classe' => Partenaire::class, 'libelle' => 'Partenaires', 'un' => 'Partenaire', 'nouveau' => 'Nouveau partenaire', 'cree' => 'Partenaire créé.', 'supprime' => 'Partenaire supprimé.'],
+        // Bandes en haut du site public et de l'espace client (demande de Yaya du 15/10/2026).
+        'annonces' => ['classe' => Annonce::class, 'libelle' => 'Annonces', 'un' => 'Annonce', 'nouveau' => 'Nouvelle annonce', 'cree' => 'Annonce créée.', 'supprime' => 'Annonce supprimée.'],
     ];
 
     /** Photos d'une réalisation, au plus. */
@@ -138,6 +141,7 @@ final class ContenuSite
             $objet instanceof AvisClient => $this->lireAvis($objet, $donnees, $erreurs),
             $objet instanceof ArticleConseil => $this->lireConseil($objet, $donnees, $erreurs, $avertissements),
             $objet instanceof Partenaire => $this->lirePartenaire($objet, $donnees, $erreurs, $avertissements),
+            $objet instanceof Annonce => $this->lireAnnonce($objet, $donnees, $erreurs, $avertissements),
             default => throw new \InvalidArgumentException('Contenu du site inconnu.'),
         };
 
@@ -166,7 +170,7 @@ final class ContenuSite
             $publier = false;
         }
         $objet instanceof Partenaire ? $objet->setVisible($publier) : $objet->setPublie($publier);
-        if ($objet instanceof PageSite || $objet instanceof ArticleConseil) {
+        if ($objet instanceof PageSite || $objet instanceof ArticleConseil || $objet instanceof Annonce) {
             $objet->noterModification($maintenant);
         }
 
@@ -350,6 +354,39 @@ final class ContenuSite
         }
         if ('' === $partenaire->getNom()) {
             $erreurs[] = 'Le nom du partenaire est obligatoire.';
+        }
+    }
+
+    /**
+     * Annonce : une phrase de 200 caractères au plus, un lien facultatif
+     * (adresse web ou page du site), un style, où la montrer, sa période.
+     *
+     * @param array<string, mixed> $donnees
+     * @param list<string>         $erreurs
+     * @param list<string>         $avertissements
+     */
+    private function lireAnnonce(Annonce $annonce, array $donnees, array &$erreurs, array &$avertissements): void
+    {
+        $texte = trim((string) preg_replace('/\s+/u', ' ', self::texte($donnees, 'texte')));
+        $lien = self::texte($donnees, 'lien');
+        $annonce->setTexte($texte)
+            ->setLien($lien)
+            ->setLibelleLien(self::texte($donnees, 'libelleLien'))
+            ->setStyle(self::texte($donnees, 'style'))
+            ->setCible(self::texte($donnees, 'cible'))
+            ->setOrdre((int) ($donnees['ordre'] ?? 0));
+        $annonce->setDebut(self::date($donnees, 'debut', 'Le premier jour', $erreurs));
+        $annonce->setFin(self::date($donnees, 'fin', 'Le dernier jour', $erreurs));
+        if ('' === $texte) {
+            $erreurs[] = 'Le texte de l\'annonce est obligatoire.';
+        } elseif (mb_strlen($texte) > Annonce::TEXTE_MAX) {
+            $erreurs[] = \sprintf('Le texte fait %d caractères : %d au plus, pour tenir sur une ligne.', mb_strlen($texte), Annonce::TEXTE_MAX);
+        }
+        if ('' !== $lien && null === $annonce->getLien()) {
+            $avertissements[] = 'Lien ignoré : seule une adresse web (https://…) ou une page du site (/nos-produits) est acceptée.';
+        }
+        if (null !== $annonce->getDebut() && null !== $annonce->getFin() && $annonce->getFin() < $annonce->getDebut()) {
+            $erreurs[] = 'Le dernier jour est avant le premier : corrigez la période.';
         }
     }
 

@@ -6,6 +6,7 @@ use App\Entity\Employes;
 use App\Entity\RoleUtilisateur;
 use App\Entity\User;
 use App\Security\Droits;
+use App\Security\LivreurVoter;
 use App\Twig\NavigationExtension;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -88,6 +89,10 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(4, $extension->ongletActif('app_livraisons_index'));
         self::assertSame(2, $extension->ongletActif('app_livraisons_bl'));
         self::assertSame(3, $extension->ongletActif('app_livraisons_remise'));
+        self::assertSame(3, $extension->ongletActif('app_livraisons_tournee_echec'));
+        // Le préfixe le plus précis gagne sur « Livraisons » (app_livraisons_).
+        self::assertSame(5, $extension->ongletActif('app_livraisons_mes_livraisons'));
+        self::assertSame(6, $extension->ongletActif('app_livraisons_suivi'));
         self::assertSame(2, $extension->ongletActif('app_clients_soldes'));
         self::assertSame(0, $extension->ongletActif('app_finances_vue_ensemble'));
         self::assertSame(1, $extension->ongletActif('app_creances_index'));
@@ -108,7 +113,7 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(4, $extension->ongletActif('app_paie_voir'));
         self::assertSame(3, $extension->ongletActif('app_demandes_conges'));
         self::assertSame(5, $extension->ongletActif('app_actions_equipe_journal'));
-        self::assertSame(5, $extension->ongletActif('app_actions_voir'));
+        self::assertSame(7, $extension->ongletActif('app_actions_voir'));
         self::assertNull($extension->ongletActif('app_chat_index'));
     }
 
@@ -134,12 +139,30 @@ final class NavigationExtensionTest extends TestCase
     public function testMenuCourtSelonLesDroits(): void
     {
         $extension = new NavigationExtension();
+        // Le livreur seul : sa tournée et ses livraisons, rien d'autre (même avec ses statistiques cochées).
         $livreur = $extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_LIVRAISON', 'ROLE_STATS_PERSO']);
-        self::assertSame(['app_home', 'app_livraisons_tournee', 'app_livraisons_a_retirer'], array_column($livreur['entrees'], 'route'));
+        self::assertSame(['app_livraisons_tournee', 'app_livraisons_mes_livraisons'], array_column($livreur['entrees'], 'route'));
+        self::assertSame(['app_livraisons_tournee', 'app_livraisons_mes_livraisons'], array_column($extension->menu(null, RoleUtilisateur::MENU_VOLETS, ['ROLE_LIVRAISON'])['entrees'][0]['items'], 'route'));
+
+        // Un autre droit coché : il n'est plus livreur seul et retrouve ses écrans.
+        $livreurClients = array_column($extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_LIVRAISON', 'ROLE_CLIENT'])['entrees'], 'route');
+        self::assertSame(['app_home', 'app_livraisons_tournee', 'app_livraisons_mes_livraisons', 'app_livraisons_a_retirer', 'app_clients_index'], $livreurClients);
 
         $caisse = array_column($extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_CLIENT', 'ROLE_COMMANDE', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_PAIEMENT_VOIR'])['entrees'], 'route');
-        self::assertSame(['app_home', 'app_caisse_index', 'app_actions_index', 'app_clients_index', 'app_ventes_index', 'app_finances_encaissements'], $caisse);
+        self::assertSame(['app_home', 'app_caisse_index', 'app_actions_index', 'app_clients_index', 'app_ventes_index', 'app_finances_encaissements', 'app_livraisons_suivi'], $caisse);
         self::assertNotContains('app_stock_articles_index', $caisse, 'stock réservé à la Direction');
+        self::assertNotContains('app_livraisons_mes_livraisons', $caisse);
+
+        // Prépresse : le suivi des livraisons, sans les écrans du livreur.
+        $prepresse = array_column($extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_PREPRESSE'])['entrees'], 'route');
+        self::assertContains('app_livraisons_suivi', $prepresse);
+        self::assertNotContains('app_livraisons_tournee', $prepresse);
+
+        // La Direction suit les livraisons mais n'a pas « Mes livraisons ».
+        $direction = $extension->menu(null, RoleUtilisateur::MENU_VOLETS, [...Droits::sansRestriction(), 'ROLE_ADMIN']);
+        $ventes = array_column($direction['entrees'][1]['items'], 'route');
+        self::assertContains('app_livraisons_suivi', $ventes);
+        self::assertNotContains('app_livraisons_mes_livraisons', $ventes);
     }
 
     public function testBarreMobileDuLivreur(): void
@@ -149,7 +172,8 @@ final class NavigationExtensionTest extends TestCase
         $extension = $this->extensionPour($utilisateur);
 
         $barre = $extension->barreMobile('app_livraisons_tournee');
-        self::assertSame(['Tournée', 'Livrer', 'Pointage'], array_column($barre['entrees'], 'libelle'));
+        self::assertSame(['Tournée', 'Livraisons', 'Pointage'], array_column($barre['entrees'], 'libelle'));
+        self::assertSame(['app_livraisons_tournee', 'app_livraisons_mes_livraisons', 'app_pointer_index'], array_column($barre['entrees'], 'route'));
         self::assertTrue($barre['entrees'][0]['actif']);
         self::assertSame('Moi', $barre['fin']['libelle']);
         self::assertSame('app_mon_espace_index', $barre['fin']['route']);
@@ -176,6 +200,10 @@ final class NavigationExtensionTest extends TestCase
 
             public function isGranted(mixed $attribute, mixed $subject = null, ?AccessDecision $accessDecision = null): bool
             {
+                if (LivreurVoter::LIVREUR === $attribute) {
+                    return LivreurVoter::livre($this->droits);
+                }
+
                 return \in_array($attribute, $this->droits, true);
             }
         };

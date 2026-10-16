@@ -7,6 +7,8 @@
 	(Ctrl K) ouvre n'importe quelle page autorisee sans passer par le menu.
 #}
 {% set menu = menu_admin(routeCourante) %}
+{# Livreur seul : sa tournée et ses livraisons, sans « Aller à… » ni ses statistiques de vente (LivreurSeul). #}
+{% set livreurSeul = livreur_seul() %}
 {% set utilisateur = app.user %}
 {% set employe = utilisateur.employe is defined ? utilisateur.employe : null %}
 {% set nomComplet = employe and employe.prenom is not empty ? (employe.prenom ~ ' ' ~ employe.nom)|trim : utilisateur.userIdentifier %}
@@ -19,9 +21,11 @@
 			<span class="nav-text"><b>{{ nomComplet }}</b>{% if nomRole %}<small>{{ nomRole }}</small>{% endif %}</span>
 		</a>
 
+		{% if not livreurSeul %}
 		<button type="button" class="si-menu-aller" data-aller-a title="Aller à… (Ctrl K)">
 			<i class="fas fa-search" aria-hidden="true"></i><span class="nav-text">Aller à…</span><kbd class="nav-text">Ctrl K</kbd>
 		</button>
+		{% endif %}
 
 		<ul class="si-menu" id="si-menu">
 			{% if menu.style == 'volets' %}
@@ -65,7 +69,7 @@
 						<ul class="si-menu-ecrans">
 							<li><a href="{{ path('app_mon_espace_index') }}" class="{{ routeCourante starts with 'app_mon_espace_' ? 'actif' }}">Mes points, congés et bulletins</a></li>
 							<li><a href="{{ path('app_pointer_index') }}" class="{{ routeCourante starts with 'app_pointer_' ? 'actif' }}">Pointer</a></li>
-							{% if is_granted('ROLE_STATS_PERSO') %}<li><a href="{{ path('app_mes_statistiques') }}" class="{{ routeCourante == 'app_mes_statistiques' ? 'actif' }}">Mes statistiques</a></li>{% endif %}
+							{% if is_granted('ROLE_STATS_PERSO') and not livreurSeul %}<li><a href="{{ path('app_mes_statistiques') }}" class="{{ routeCourante == 'app_mes_statistiques' ? 'actif' }}">Mes statistiques</a></li>{% endif %}
 						</ul>
 					</li>
 				{% endif %}
@@ -114,6 +118,7 @@
 </script>
 
 {# « Aller à… » : toutes les pages autorisées, filtrées au clavier. #}
+{% if not livreurSeul %}
 {% set toutes = menu_admin(routeCourante, 'volets') %}
 <div class="si-aller" id="si-aller" hidden>
 	<div class="si-aller-boite" role="dialog" aria-modal="true" aria-label="Aller à une page">
@@ -134,3 +139,4 @@
 		<a class="si-aller-recherche" href="{{ path('app_recherche') }}" data-aller-recherche>Rechercher « <span></span> » dans les clients, commandes et factures</a>
 	</div>
 </div>
+{% endif %}

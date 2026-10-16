@@ -129,6 +129,7 @@
 					<p class="mb-0">{{ acces_espace.empechement }}</p>
 				</div>
 			{% endif %}
+			{% include 'clients/_espace_suspension.html.twig' %}
 		</aside>
 
 		<div class="si-fiche-principal">
@@ -222,7 +223,7 @@
 								{% endfor %}
 								{% for c in commandes %}
 									<tr>
-										<td><a href="{{ path('app_commandes_show', {id: c.id}) }}">{{ c.numero }}</a></td>
+										<td><a href="{{ path('app_commandes_show', {id: c.id}) }}">{{ c.numero }}</a>{% if c.demandeePar %}<br><small class="text-muted">par {{ c.demandeePar }}</small>{% endif %}</td>
 										<td class="text-nowrap">{{ c.dateCommande ? c.dateCommande|date('d/m/Y') }}</td>
 										<td>{{ constant('App\\Service\\FicheClient360::STATUTS_TRAVAUX')[c.statutTravaux]|default(c.statutTravaux) }}</td>
 										<td class="text-end text-nowrap">{{ c.totalTtc|number_format(0, ',', ' ') }}</td>
@@ -241,7 +242,7 @@
 							<tbody>
 								{% for d in devis %}
 									<tr>
-										<td><a href="{{ path('app_devis_show', {id: d.id}) }}">{{ d.numero ?: '#' ~ d.id }}</a></td>
+										<td><a href="{{ path('app_devis_show', {id: d.id}) }}">{{ d.numero ?: '#' ~ d.id }}</a>{% if d.interlocuteur %}<br><small class="text-muted">pour {{ d.interlocuteur }}</small>{% endif %}</td>
 										<td class="text-nowrap">{{ d.dateDevis ? d.dateDevis|date('d/m/Y') }}</td>
 										<td>{{ constant('App\\Service\\FicheClient360::STATUTS_DEVIS')[d.statut]|default(d.statut) }}</td>
 										<td class="text-end text-nowrap">{{ d.totalTtc|number_format(0, ',', ' ') }}</td>

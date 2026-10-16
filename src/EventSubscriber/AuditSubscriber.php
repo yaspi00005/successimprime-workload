@@ -136,6 +136,14 @@ final class AuditSubscriber
         $this->enAttente = [];
 
         foreach ($aEnregistrer as $journal) {
+            // Après un $em->clear() (synchronisation lancée depuis l'écran
+            // Synchronisation), la personne connectée n'est plus suivie par
+            // Doctrine : on la rattache par sa référence, sinon Doctrine la
+            // prend pour un nouvel utilisateur et refuse le flush.
+            $utilisateur = $journal->getUtilisateur();
+            if (null !== $utilisateur && !$em->contains($utilisateur)) {
+                $journal->setUtilisateur(null !== $utilisateur->getId() ? $em->getReference(User::class, $utilisateur->getId()) : null);
+            }
             $em->persist($journal);
         }
 

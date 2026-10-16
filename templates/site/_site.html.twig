@@ -50,6 +50,7 @@
 </head>
 <body class="si-site">
 	<a class="si-evitement" href="#contenu">Aller au contenu</a>
+	{% include 'site/_annonces.html.twig' with {cible: 'site'} only %}
 	<header class="si-entete">
 		<div class="si-cadre si-entete-cadre">
 			<a href="{{ site_lien('app_site_accueil') }}" class="si-logo"><img src="{{ asset('images/site/logo-succes-imprim-256.webp') }}" alt="Succès Imprim, accueil" width="128" height="71"></a>

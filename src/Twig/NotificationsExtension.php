@@ -5,6 +5,7 @@ namespace App\Twig;
 use App\Entity\Notification;
 use App\Entity\User;
 use App\Repository\NotificationRepository;
+use App\Security\LivreurSeul;
 use App\Service\Push\WebPush;
 use Symfony\Bundle\SecurityBundle\Security;
 use Twig\Extension\AbstractExtension;
@@ -45,7 +46,12 @@ class NotificationsExtension extends AbstractExtension
             return [];
         }
 
-        return $this->notificationRepository->findNonLuesPourUtilisateur($utilisateur);
+        if (!LivreurSeul::est($utilisateur->getRoles())) {
+            return $this->notificationRepository->findNonLuesPourUtilisateur($utilisateur);
+        }
+
+        // Le livreur seul : celles qui mènent à une page qu'il peut ouvrir.
+        return \array_slice(LivreurSeul::notificationsVisibles($this->notificationRepository->findNonLuesPourUtilisateur($utilisateur, 500)), 0, 10);
     }
 
     /**
@@ -61,6 +67,10 @@ class NotificationsExtension extends AbstractExtension
             return 0;
         }
 
-        return $this->notificationRepository->countNonLuesPourUtilisateur($utilisateur);
+        if (!LivreurSeul::est($utilisateur->getRoles())) {
+            return $this->notificationRepository->countNonLuesPourUtilisateur($utilisateur);
+        }
+
+        return \count(LivreurSeul::notificationsVisibles($this->notificationRepository->findNonLuesPourUtilisateur($utilisateur, 500)));
     }
 }

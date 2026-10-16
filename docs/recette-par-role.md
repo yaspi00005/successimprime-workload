@@ -34,6 +34,9 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Réclamation avec photo : la photo n'est visible que du client et du personnel autorisé.
 - [ ] Mes produits : recommander un produit ; le prix vient de la fiche du produit, pas de la page.
 - [ ] Compte entreprise : un demandeur ne voit ni factures ni solde, ni aucun prix (commande, devis, Mes produits, Nouvelle commande, conception) ; seul un valideur accepte un devis ; seul un payeur paie.
+- [ ] Plusieurs personnes d'une entreprise commandent chacune avec son numéro : la demande d'un demandeur attend un valideur, qui la voit « demandée par X » ; au local, la commande montre qui l'a demandée et qui l'a validée.
+- [ ] Accès suspendu (fiche client, ERP local, puis synchronisation) : la personne lit « Votre accès à l'espace client est suspendu. Contactez Succès Imprim. » après son mot de passe, sa session ouverte se ferme, elle ne reçoit plus de notification ; les autres personnes de l'entreprise entrent toujours. « Rétablir » rend l'accès.
+- [ ] Bandes d'annonces : une annonce « Espace client » s'affiche en haut des pages connectées, pas sur le site public ; « × » la ferme pour la visite.
 - [ ] Fidélité : solde, progression vers le seuil, historique, sans nom d'agent ni motif interne.
 - [ ] Les notifications (BAT prêt, commande prête, livreur en route, livrée) arrivent sans montant.
 
@@ -47,6 +50,9 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Rôles et menus : passer un module en « Voir » pour un rôle ; une personne de ce rôle voit l'écran mais toute modification est refusée.
 - [ ] Statistiques : objectifs du mois, export Excel et PDF, rapport de la semaine.
 - [ ] Contenu du site : publier une réalisation ; elle apparaît en ligne après la synchronisation. Un nom de client n'apparaît qu'avec l'accord coché.
+- [ ] Annonces (Réglages › Site vitrine › Annonces) : une annonce active pour le site public apparaît au-dessus de l'en-tête après la synchronisation ; programmée, elle n'apparaît qu'à son premier jour ; inactive ou terminée, plus du tout.
+- [ ] Fiche client › Accès à l'espace client : suspendre une personne avec un motif, puis tout le compte ; le journal de la fiche note qui, quand et pourquoi ; « Rétablir » ; en « Voir », aucun bouton.
+- [ ] Devis « À l'attention de » et commande « Commandé par » : la liste propose les contacts de la fiche ; le nom est imprimé sur le PDF du devis et sur la facture, et se lit sous le numéro dans la fiche client.
 - [ ] Fidélité : régler un article (activé, points, seuil, dates), ajuster les points d'un client avec un motif ; l'action est inscrite au journal.
 - [ ] Synchronisation et sauvegardes : écrans à jour, « Synchroniser maintenant » fonctionne.
 
@@ -79,10 +85,19 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Livreur (demo.bakary)
 
-- [ ] L'accueil ouvre la tournée du jour (Livraisons › Ma tournée) ; barre du bas Tournée, Livrer, Pointage, Moi.
-- [ ] « En route » puis « Livrée » avec photo, signature et position ; le client est prévenu.
+- [ ] L'accueil ouvre la tournée du jour (Ma tournée) ; menu Ma tournée, Mes livraisons et Mon espace ; barre du bas Tournée, Livraisons, Pointage, Moi. Ni recherche, ni messagerie, ni « Aller à… ».
+- [ ] Sur le téléphone : appeler le client d'un toucher, ouvrir l'adresse sur la carte ; le reste à encaisser n'apparaît que sur ses propres livraisons.
+- [ ] « Je pars » puis « Livrée » avec le nom de la personne qui reçoit, la signature, une photo et la position ; le client est prévenu.
+- [ ] « Échec » avec une raison : le bureau et la Direction reçoivent « à replanifier » ; le client voit « Reportée » dans son espace, sans la raison.
+- [ ] Mes livraisons : ses remises et ses échecs des 30 derniers jours, sans montant, jamais ceux d'un autre livreur.
 - [ ] Encaissement à la livraison : il arrive en caisse à valider.
-- [ ] Ne voit que ses livraisons : tableau de bord, ventes et finances refusés.
+- [ ] Ne voit que sa tournée et ses livraisons : tableau de bord, clients, commandes, statistiques, recherche, messagerie, planning, liste des livraisons, « À retirer » et suivi refusés, même tapés à la main.
+
+## Suivi des livraisons (demo.kadiatou, demo.fanta, demo.seydou)
+
+- [ ] Ventes › Suivi des livraisons : filtrer par jour, livreur et statut ; chaque livraison dit si elle est livrée ou pas, à quel moment, par qui et qui l'a reçue (ou la raison de l'échec). Aucun montant.
+- [ ] Page d'une commande : bloc « Livraison » avec le statut, le moment, le livreur et la personne qui a reçu.
+- [ ] Sur le site en ligne, `/livraisons/suivi` et `/livraisons/tournee` répondent « page introuvable ».
 
 ## Guide et formation (jalon J7)
 
@@ -118,7 +133,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 Avant de cocher cette liste, et avant chaque mise en production, une commande ouvre chaque page avec chaque compte de démonstration et compare ce qu'elle obtient aux droits. Elle se lance sur une base d'essai qui a la démonstration (`app:demo`), jamais en production (elle refuse). Elle n'enregistre rien : les pages sont demandées dans une transaction annulée à la fin, sans aucun envoi de SMS, d'e-mail ni de notification.
 
-- **ERP local** : `php bin/console app:recette:acces` (un seul compte : `--compte=demo.oumar`). Chaque compte `demo.*` demande chaque page de l'admin ; la commande signale une page ouverte sans son droit, une entrée du menu qui répond « accès refusé », une erreur 500, des montants (marges, salaires, paiements, chiffre d'affaires) ou des photos de pointage montrés sans le droit, la fiche d'une autre personne (bulletin, justificatif, photo de pointage, preuve de livraison), et un module en « Voir » qui accepte un envoi.
-- **Site en ligne** (`APP_EN_LIGNE=1`, après une synchronisation depuis l'ERP d'essai) : la même commande essaie l'espace client avec un particulier, un client B2B et chaque personne d'un compte entreprise (titulaire, valideur, payeur, demandeur, lecture), les fiches et les envois d'un autre client, aucun montant pour un demandeur ou la lecture seule (pages, données JSON des pages et appels de prix compris), l'admin sans appareil autorisé, l'API, les pages publiques, `robots.txt`, `sitemap.xml`, le suivi de commande et le calculateur.
+- **ERP local** : `php bin/console app:recette:acces` (un seul compte : `--compte=demo.oumar`). Chaque compte `demo.*` demande chaque page de l'admin ; la commande signale une page ouverte sans son droit, une entrée du menu qui répond « accès refusé », une erreur 500, des montants (marges, salaires, paiements, chiffre d'affaires) ou des photos de pointage montrés sans le droit, la fiche d'une autre personne (bulletin, justificatif, photo de pointage, preuve de livraison, échec noté sur la livraison d'un autre livreur, livraisons d'un autre dans « Mes livraisons »), et un module en « Voir » qui accepte un envoi. Pour le livreur seul, toute page ouverte hors de sa tournée, de ses livraisons et de son espace est une fuite, et l'accueil doit le renvoyer sur sa tournée.
+- **Site en ligne** (`APP_EN_LIGNE=1`, après une synchronisation depuis l'ERP d'essai) : la même commande essaie l'espace client avec un particulier, un client B2B et chaque personne d'un compte entreprise (titulaire, valideur, payeur, demandeur, lecture), les fiches et les envois d'un autre client, aucun montant pour un demandeur ou la lecture seule (pages, données JSON des pages et appels de prix compris), la session d'une personne suspendue par la boutique (fermée à la page suivante, les autres personnes de l'entreprise entrent toujours), l'admin sans appareil autorisé, l'API, les pages publiques, `robots.txt`, `sitemap.xml`, le suivi de commande et le calculateur.
 
 Le bilan est écrit dans `var/recette/` (`acces-local-….md` et la matrice compte × page `…-matrice.csv` : O ouverte, R refusée, C connexion, > redirigée, I introuvable, E erreur). La commande se termine en échec s'il reste une fuite, une erreur ou un contrôle raté ; les pages « à examiner » sont à relire. Un écart voulu (page ouverte à tout le personnel, montant de ses propres ventes) s'ajoute avec sa raison dans `RecetteAcces::ECARTS_VOULUS` ou `MONTANTS_VOULUS` (`src/Service/Recette/`). Pour aller vite sur une grande base : `APP_DEBUG=0`.

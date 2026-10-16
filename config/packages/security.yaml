@@ -626,6 +626,14 @@ security:
             roles: [ROLE_LIVRAISON, ROLE_COMMANDE]
         }
 
+        # Suivi des livraisons (livrée ou pas, quand, par qui) : la
+        # Direction, la caisse (ROLE_COMMANDE) et la prépresse. Pas le
+        # livreur, qui n'a que « Mes livraisons ».
+        - {
+            path: '^/livraisons/suivi',
+            roles: [ROLE_COMMANDE, ROLE_PREPRESSE]
+        }
+
         - {
             path: ^/(livraisons|bons-livraison),
             roles: ROLE_LIVRAISON

@@ -16,6 +16,7 @@ use App\Entity\MessageClient;
 use App\Entity\ProduitClient;
 use App\Entity\ReclamationClient;
 use App\Entity\ReclamationClientPhoto;
+use App\Entity\SuspensionEspace;
 use App\Entity\User;
 use App\Security\DroitsEspace;
 use App\Service\Atelier\CatalogueAtelier;
@@ -135,6 +136,8 @@ final class RecetteEspaceClient
             $this->verifierDroitsEntreprise($comptes, $sessions, $fiches, $bilan);
             $suivi && $suivi('espace client : appels de prix sans montant');
             $this->verifierAppelsSansMontant($comptes, $sessions, $fiches, $bilan);
+            $suivi && $suivi('espace client : accès suspendu par la boutique');
+            $this->verifierSuspension($comptes, $bilan);
             $suivi && $suivi('admin et API en ligne');
             $this->verifierAdminEnLigne($bilan);
         } finally {
@@ -592,6 +595,49 @@ final class RecetteEspaceClient
                 }
             }
             $bilan->controler('Espace client : envois d\'un compte Lecture · suivi', $refus === $essais, \sprintf('%d sur %d conformes', $refus, $essais));
+        }
+    }
+
+    /**
+     * Accès suspendu par la boutique (fiche client, SuspensionsEspace) : la
+     * session ouverte de la personne tombe à la page suivante, avec le
+     * message ; les autres personnes de l'entreprise entrent toujours. La
+     * suspension d'essai est retirée ensuite (et la transaction de la
+     * recette est annulée à la fin).
+     *
+     * @param array<string, CompteClient> $comptes
+     */
+    private function verifierSuspension(array $comptes, BilanRecette $bilan): void
+    {
+        $compte = $comptes['demandeur'] ?? null;
+        $autre = $comptes['valideur'] ?? $comptes['titulaire'] ?? null;
+        $client = $compte?->getClient();
+        if (null === $compte || null === $autre || null === $client) {
+            $bilan->controler('Espace client : session d\'une personne suspendue', false, 'pas de compte demandeur dans la démonstration');
+
+            return;
+        }
+        $session = $this->navigateur->session($compte, 'espace', [AppareilsClient::SESSION_VERSION => $compte->getVersionSession()]);
+        $sessionAutre = $this->navigateur->session($autre, 'espace', [AppareilsClient::SESSION_VERSION => $autre->getVersionSession()]);
+        $chemin = $this->routeur->generate('app_espace_accueil');
+        $avant = $this->navigateur->get($chemin, $session)->etat();
+
+        // Les vérifications d'avant vident l'EntityManager : la fiche est reprise.
+        $fiche = $this->em->getReference(Clients::class, $client->getId());
+        $suspension = (new SuspensionEspace())->setClient($fiche)->setTelephone($compte->getTelephone())->setMotif('Recette des accès');
+        $this->em->persist($suspension);
+        $this->em->flush();
+        try {
+            $coupee = $this->navigateur->get($chemin, $session);
+            $toujours = $this->navigateur->get($chemin, $sessionAutre)->etat();
+        } finally {
+            // Les pages demandées vident l'EntityManager : retirée par son identifiant.
+            $this->em->createQuery('DELETE FROM '.SuspensionEspace::class.' s WHERE s.id = :id')->setParameter('id', $suspension->getId())->execute();
+        }
+        $ok = Reponse::OUVERT === $avant && Reponse::CONNEXION === $coupee->etat() && Reponse::OUVERT === $toujours;
+        $bilan->controler('Espace client : session d\'une personne suspendue', $ok, \sprintf('avant %s, suspendue %s, une autre personne %s', $avant, $coupee->etat(), $toujours));
+        if (!$ok && Reponse::CONNEXION !== $coupee->etat()) {
+            $bilan->constater(BilanRecette::FUITE, 'suspension', 'app_espace_accueil', $chemin, 'demandeur', 'page ouverte malgré l\'accès suspendu ('.$coupee->etat().')');
         }
     }
 

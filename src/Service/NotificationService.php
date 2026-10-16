@@ -6,6 +6,7 @@ use App\Entity\Notification;
 use App\Entity\User;
 use App\Repository\NotificationRepository;
 use App\Repository\UserRepository;
+use App\Security\LivreurSeul;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -14,6 +15,10 @@ use Doctrine\ORM\EntityManagerInterface;
  * l'appelant (déjà en train de flusher la commande/le paiement/etc.)
  * s'en charge, pour que la notification fasse partie de la même
  * transaction que l'évènement qui la déclenche.
+ *
+ * Le livreur seul (LivreurSeul) ne reçoit que les notifications qui
+ * mènent à une page qu'il peut ouvrir : rien sur les commandes, les
+ * clients ou la caisse.
  */
 class NotificationService
 {
@@ -37,7 +42,7 @@ class NotificationService
         array $routeParametres = [],
         ?User $exclure = null,
     ): void {
-        foreach ($this->utilisateursAyantUnRole($roles) as $utilisateur) {
+        foreach ($this->utilisateursAyantUnRole($roles, $route) as $utilisateur) {
             if ($exclure !== null && $utilisateur === $exclure) {
                 continue;
             }
@@ -79,7 +84,7 @@ class NotificationService
         }
 
         $misesAJour = [];
-        foreach ($this->utilisateursAyantUnRole($roles) as $utilisateur) {
+        foreach ($this->utilisateursAyantUnRole($roles, $route) as $utilisateur) {
             $siennes = $existantes[$utilisateur->getId()] ?? [];
             if ($siennes === []) {
                 $this->notifierUtilisateur($utilisateur, $message, $route);
@@ -121,6 +126,10 @@ class NotificationService
         ?string $route = null,
         array $routeParametres = [],
     ): void {
+        if (!self::peutRecevoir($utilisateur, $route, true)) {
+            return;
+        }
+
         $this->entityManager->persist(
             (new Notification())
                 ->setDestinataire($utilisateur)
@@ -140,16 +149,30 @@ class NotificationService
     }
 
     /**
+     * Le livreur seul : seulement ce qui mène à une page qu'il peut ouvrir
+     * (une notification sans lien, seulement si elle lui est adressée).
+     */
+    public static function peutRecevoir(User $utilisateur, ?string $route, bool $personnelle): bool
+    {
+        if (!LivreurSeul::est($utilisateur->getRoles())) {
+            return true;
+        }
+
+        return null === $route ? $personnelle : LivreurSeul::routePermise($route);
+    }
+
+    /**
      * @param string[] $roles
      * @return User[]
      */
-    private function utilisateursAyantUnRole(array $roles): array
+    private function utilisateursAyantUnRole(array $roles, ?string $route): array
     {
         $tousLesUtilisateurs = $this->userRepository->findBy(['actif' => true]);
 
         return array_values(array_filter(
             $tousLesUtilisateurs,
             static fn (User $utilisateur): bool => array_intersect($roles, $utilisateur->getRoles()) !== []
+                && self::peutRecevoir($utilisateur, $route, false)
         ));
     }
 }

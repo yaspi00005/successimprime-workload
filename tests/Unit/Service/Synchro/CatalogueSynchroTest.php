@@ -41,7 +41,7 @@ final class CatalogueSynchroTest extends TestCase
             'controle' => ['anomalies', 'observation', 'correctionsEffectuees', 'controlePar', 'traitePar', 'validePar', 'envoyeProductionPar'],
             'paiement' => ['compteTresorerie', 'mouvementTresorerie', 'justificatif', 'observation', 'encaissePar', 'validePar'],
             'livraison' => ['livreur', 'creePar', 'validePar', 'livrePar', 'nomReceptionnaire', 'telephoneReceptionnaire', 'adresseLivraison', 'observation', 'photos', 'signature',
-                'signataire', 'encaisseMontant', 'encaisseMode', 'encaisseLe', 'paiementLivraison', 'remiseLatitude', 'remiseLongitude', 'retardJustifie', 'erreurLivraison', 'articleStock', 'ordreTournee'],
+                'signataire', 'encaisseMontant', 'encaisseMode', 'encaisseLe', 'paiementLivraison', 'remiseLatitude', 'remiseLongitude', 'retardJustifie', 'erreurLivraison', 'articleStock', 'ordreTournee', 'echecPar', 'echecMotif'],
             'entreprise' => ['banque', 'compteBancaire', 'prefixeFacture', 'compteur', 'logo', 'logoPied', 'signature', 'cachet'],
         ];
         foreach ($interdits as $type => $champs) {
@@ -281,6 +281,39 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame(['client'], $acces['uniqueSur'] ?? null, 'un accès par client');
         self::assertSame(['empreinte', 'expireLe', 'client'], CatalogueSynchro::champsSuivis('acces_espace'), 'un nouveau code repart, son utilisation non');
         self::assertSame('acces_espace', CatalogueSynchro::typeDe(new \App\Entity\AccesEspaceClient()));
+    }
+
+    public function testLesAnnoncesDescendentAuSite(): void
+    {
+        $annonce = CatalogueSynchro::types()['site_annonce'];
+        self::assertSame(\App\Entity\Annonce::class, $annonce['classe']);
+        self::assertSame(CatalogueSynchro::DESCENDANT, $annonce['sens'], 'saisies à l\'atelier seulement');
+        self::assertSame(['texte', 'lien', 'libelleLien', 'style', 'cible', 'debut', 'fin', 'publie', 'ordre', 'modifieLe'], $annonce['champs']);
+        self::assertTrue(CatalogueSynchro::envoye('site_annonce', false));
+        self::assertFalse(CatalogueSynchro::envoye('site_annonce', true));
+        self::assertFalse(CatalogueSynchro::accepte('site_annonce', false));
+        self::assertSame('site_annonce', CatalogueSynchro::typeDe(new \App\Entity\Annonce()));
+    }
+
+    public function testLaSuspensionDeLEspaceClientDescendSansSonMotif(): void
+    {
+        $suspension = CatalogueSynchro::types()['suspension_espace'];
+        // La fiche, le numéro (vide : tout le compte), le début et la levée : rien de plus.
+        self::assertSame(['telephone', 'suspenduLe', 'leveeLe'], $suspension['champs']);
+        self::assertSame(['client' => 'client'], $suspension['relations']);
+        foreach (['motif', 'nom', 'suspenduPar', 'leveePar', 'noteLevee'] as $interdit) {
+            self::assertNotContains($interdit, $suspension['champs'], $interdit);
+            self::assertArrayNotHasKey($interdit, $suspension['relations'], $interdit);
+        }
+        // Décidée à la boutique : le site ne renvoie rien.
+        self::assertSame(CatalogueSynchro::DESCENDANT, $suspension['sens']);
+        self::assertTrue(CatalogueSynchro::envoye('suspension_espace', false));
+        self::assertFalse(CatalogueSynchro::envoye('suspension_espace', true));
+        self::assertFalse(CatalogueSynchro::accepte('suspension_espace', false));
+        self::assertSame('suspension_espace', CatalogueSynchro::typeDe(new \App\Entity\SuspensionEspace()));
+
+        // La personne à qui s'adresse un devis le suit au site.
+        self::assertContains('interlocuteur', CatalogueSynchro::types()['devis']['champs']);
     }
 
     public function testFicheUniqueParRelationRemplaceeSeulementDuLocalVersLeSite(): void

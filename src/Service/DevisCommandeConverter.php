@@ -202,6 +202,8 @@ final class DevisCommandeConverter
             ->setTotalTtc($devis->getTotalTtc())
             ->setMontantApayer($devis->getMontantApayer())
             ->setObservation($devis->getObservation())
+            // La personne à qui le devis s'adressait commande (« Commandé par »).
+            ->setDemandeePar($devis->getInterlocuteur())
             ->setEtat(true);
 
         /*

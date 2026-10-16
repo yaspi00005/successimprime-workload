@@ -44,6 +44,7 @@ final class RecetteVisiteur
             $this->entetesSecurite($bilan);
             $this->mesureAudience($bilan, $enLigne);
             if ($enLigne) {
+                $this->ecransDuLivreurFermes($bilan);
                 $this->suivi($bilan);
                 $this->calculateur($bilan);
                 $this->pagesPubliques($bilan);
@@ -66,6 +67,21 @@ final class RecetteVisiteur
         } else {
             $bilan->controler('ERP local : /robots.txt répond « Disallow: / »', 200 === $robots->statut && 1 === preg_match('#^Disallow: /\s*$#m', $robots->contenu), trim($robots->contenu));
         }
+    }
+
+    /**
+     * Ma tournée, la remise, Mes livraisons et le suivi des livraisons
+     * n'existent que sur l'ERP local (LivreurSeulSubscriber).
+     */
+    private function ecransDuLivreurFermes(BilanRecette $bilan): void
+    {
+        $reponses = [];
+        foreach (['app_livraisons_tournee', 'app_livraisons_mes_livraisons', 'app_livraisons_suivi'] as $route) {
+            $chemin = $this->routeur->generate($route);
+            $reponses[] = $chemin.' → '.$this->navigateur->get($chemin)->statut;
+        }
+        $ok = [] === array_filter($reponses, static fn (string $r): bool => !str_ends_with($r, '→ 404'));
+        $bilan->controler('Site en ligne : écrans du livreur et suivi des livraisons introuvables', $ok, implode(', ', $reponses));
     }
 
     /**

@@ -715,7 +715,7 @@
 									Montant
 								</th>
 
-								<th>
+								<th data-filtre-libelle="Règlement (reste à payer)">
 									Règlement
 								</th>
 
@@ -1009,7 +1009,8 @@
 																																																																																																																																																									   RÈGLEMENT
 																																																																																																																																																									   ========================================= #}
 
-									<td class="facture-reglement-cell">
+									{# Filtre de la colonne : le reste à payer, seulement pour qui voit les paiements (docs/filtres-tableaux.md). #}
+									<td class="facture-reglement-cell" data-filtre-valeur="{{ facture.comptabilisee and peutVoirPaiements ? facture.resteAPayer|default(0)|number_format(0, ',', ' ') ~ ' F' : '' }}">
 
 
 										{% if facture.comptabilisee and peutVoirPaiements %}

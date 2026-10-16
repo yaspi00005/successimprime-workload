@@ -26,6 +26,8 @@ final class CompteEntreprise
         private readonly EntityManagerInterface $em,
         private readonly CompteClientRepository $comptes,
         private readonly OrangeSmsService $sms,
+        // Accès suspendu par la boutique : pas de SMS (SuspensionsEspace).
+        private readonly ?SuspensionsEspace $suspensions = null,
     ) {
     }
 
@@ -84,6 +86,9 @@ final class CompteEntreprise
         $this->em->persist($compte);
         $this->em->flush();
 
+        if (true === $this->suspensions?->compteSuspendu($compte)) {
+            return $compte;
+        }
         $this->sms->envoyerSms($normalise, \sprintf(
             'Succès Imprim : %s vous a ajouté au compte %s. Sur notre espace client, « Recevoir un code » avec ce numéro, puis choisissez votre mot de passe.',
             $par->getNomAffiche(),
@@ -301,7 +306,8 @@ final class CompteEntreprise
             return;
         }
         // Pas de montant dans le SMS : il se lit sur l'ecran verrouille.
-        foreach ($this->valideurs($client) as $valideur) {
+        $valideurs = $this->valideurs($client);
+        foreach (null !== $this->suspensions ? $this->suspensions->sansSuspendus($valideurs) : $valideurs as $valideur) {
             $this->sms->envoyerSms($valideur->getTelephone(), \sprintf(
                 'Succès Imprim : %s demande la commande %s. À valider dans votre espace client.',
                 $demandeur->getNomAffiche(),

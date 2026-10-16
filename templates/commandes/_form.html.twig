@@ -2843,10 +2843,13 @@ calculerDetail(detail);
 
 
 /*
- * chargementInitial : ligne deja enregistree qu'on affiche. Son format,
- * sa largeur et sa longueur restent tels qu'enregistres, meme si le
- * produit ne les demande pas : un simple « Enregistrer » ne doit
- * jamais effacer une dimension.
+ * chargementInitial : ligne deja enregistree qu'on affiche. Sa
+ * designation, son prix, sa remise, son mode de calcul, son format, sa
+ * largeur et sa longueur restent tels qu'enregistres, meme si le
+ * catalogue a change : un simple « Enregistrer » ne doit jamais effacer
+ * une dimension ni changer le prix d'une ligne (remise convertie a la
+ * bascule, total d'origine conserve). Le catalogue ne s'applique que
+ * quand on choisit un autre produit ou un autre client.
  */
 async function chargerOptionsManuelles(detail, chargementInitial = false) {
 if (valeurTypeLigne(detail) !== 'produit') {
@@ -2873,6 +2876,7 @@ throw new Error(json.message || 'Impossible de charger le produit.');
 const infosProduit = json.produit || {};
 
 
+if (! chargementInitial) {
 definirValeur(detail, 'designation', infosProduit.nom || '');
 
 definirValeur(detail, 'prixUnitaire', infosProduit.prixBase || 0);
@@ -2880,6 +2884,7 @@ definirValeur(detail, 'prixUnitaire', infosProduit.prixBase || 0);
 definirValeur(detail, 'remise', clientEstB2B() ? Math.round((infosProduit.prixBase || 0) * (infosProduit.remiseB2B || 0) / 100) : 0);
 
 definirValeur(detail, 'modeCalcul', infosProduit.modeCalcul || 'unite');
+}
 
 
 filtrerOptions(champDetail(detail, 'typeImpression'), (json.typesImpression || []).map(function (t) {
@@ -3082,7 +3087,19 @@ appliquerTypeLigne(travail, true);
 
 /*
              * MODE CONFIG
+             *
+             * Ancienne ligne « automatique » : le serveur l'enregistre en
+             * « manuel » (ModeConfigurationLigne). La page fait de même, pour
+             * ne pas réappliquer la configuration du catalogue à l'ouverture
+             * (prix, remise, désignation, dimensions, finitions).
              */
+const radioAutomatique = travail.querySelector('[name$="[modeConfiguration]"][value="automatique"]');
+const radioManuel = travail.querySelector('[name$="[modeConfiguration]"][value="manuel"]');
+
+if (radioAutomatique && radioAutomatique.checked && radioManuel) {
+radioManuel.checked = true;
+}
+
 travail.querySelectorAll('[name$="[modeConfiguration]"]').forEach(function (input) {
 input.addEventListener('change', function () {
 appliquerModeConfiguration(travail, true);

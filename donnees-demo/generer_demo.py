@@ -577,7 +577,7 @@ for k in COMMANDES:
         livre_le = 0
     k['livre_le'] = livre_le
     add('commandes', {'id': kid, 'numero': k['numero'], 'date_commande': T(d, k['h'], k['m']), 'date_livraison': T(max(-5, d - R.randint(2, 5)), 17), 'recupere_par_client': int(etat_lignes == 'livree' and not k['livraison']),
-                      'modifie_le': T(livre_le, 16) if livre_le is not None else None, 'remise': remise, 'tva': 0, 'total_ht': total, 'total_ttc': total, 'montant_apayer': a_payer,
+                      'modifie_le': T(livre_le, 16) if livre_le is not None else None, 'remise': remise, 'tva': 0, 'total_ht': total, 'total_ttc': a_payer, 'montant_apayer': a_payer,
                       'observation': None, 'deleted': 0, 'statut': 1, 'etat': 1, 'statut_paiement': statut_p, 'reste_apayer': a_payer - k['paye'], 'total_paye': k['paye'], 'public_id': uid(),
                       'bonus_plafond_applique': 0, 'montant_bonus_plafond': 0, 'clients_id': c['id'], 'agents_id': k['agent'], 'modifie_par_id': k['agent'] if livre_le is not None else None,
                       'canal': k['canal'], 'mode_livraison': 'livraison' if k['livraison'] else 'retrait',

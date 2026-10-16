@@ -287,9 +287,9 @@
 									<th scope="col">Client</th>
 									<th scope="col">Date / statut</th>
 									<th scope="col">Paiement</th>
+									<th scope="col" class="text-right">Sous-total HT</th>
+									<th scope="col" class="text-right">Remise globale</th>
 									<th scope="col" class="text-right">Total TTC</th>
-									<th scope="col" class="text-right">Remise</th>
-									<th scope="col" class="text-right">Montant à payer</th>
 									<th scope="col" class="text-center">Actions</th>
 								</tr>
 							</thead>
@@ -337,10 +337,10 @@
 											</span>
 										</td>
 
-										{# 5. Total TTC #}
+										{# 5. Sous-total HT, avant la remise globale #}
 										<td class="text-right">
 											<strong>
-												{{ total|number_format(0, ',', ' ') }}
+												{{ devis.totalHt|default(0)|number_format(0, ',', ' ') }}
 												FCFA
 											</strong>
 										</td>
@@ -348,15 +348,15 @@
 										{# 6. Remise globale #}
 										<td class="text-right">
 											<strong>
-												{{ devis.remise|default(0)|number_format(0, ',', ' ') }}
+												{{ devis.remiseGlobale|number_format(0, ',', ' ') }}
 												FCFA
 											</strong>
 										</td>
 
-										{# 7. Montant final à payer #}
+										{# 7. Total TTC : remise déduite, ce que le client paiera #}
 										<td class="text-right">
 											<strong class="text-primary">
-												{{ devis.montantApayer|default(0)|number_format(0, ',', ' ') }}
+												{{ devis.totalTtc|default(0)|number_format(0, ',', ' ') }}
 												FCFA
 											</strong>
 										</td>

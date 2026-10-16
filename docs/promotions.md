@@ -99,7 +99,7 @@ Demande de Yaya : « faut prevoir des code promo. qui peut etre apliqué sur com
 - le journal des ventes reprend le HT de la facture, déjà net ; le CA et les statistiques par article sont nets ;
 - le **coût de la promotion** (fiche et liste) compte les parts de ses codes ; le taux de remise des agents (Mes statistiques) ne les compte pas : ce n'est pas une remise accordée par l'agent.
 
-La « Remise » globale du document (`Commandes::remise`) n'a pas été reprise : elle se retire du montant à payer après la TVA, sans toucher au HT, et la facture, qui prend sa TVA comme TTC − (HT − remise), la compterait dans la TVA.
+La « Remise » globale du document (`Commandes::remise`) n'a pas été reprise pour porter l'avantage du code : elle se saisit à la main. Depuis le 16/10/2026, elle vient après le code promo et les frais de livraison, se retire du HT avant la TVA et fait sa propre ligne « Remise globale » (docs/factures-entreprises.md, « Remise globale »).
 
 **Pas de double remise** : un seul code par document. Une ligne n'a qu'un avantage promotionnel : sa promotion de ligne, ou sa part du code. Les lignes qui ont déjà une promotion (automatique ou celle du code) ne reçoivent pas de part de l'avantage sur la commande. Une remise saisie à la main reste, et le code s'applique après elle. Une ligne ne garde la promotion d'un code que tant que le code est retenu sur le document : retirer le code du champ retire aussi cette promotion des lignes (sinon l'utilisation serait rendue et la remise gardée).
 

@@ -19,6 +19,10 @@
   --fond: #F4F6FA;
   --carte: #fff;
   --rayon: 18px;
+  /* Onglets du bas sur téléphone : hauteur sans la zone du geste de l'iPhone. */
+  --ec-onglets-h: 3.8rem;
+  /* Bas de page laissé libre sous le contenu : onglets, zone du geste, respiration. */
+  --ec-bas-libre: calc(var(--ec-onglets-h) + env(safe-area-inset-bottom) + 2.5rem);
 }
 
 * { box-sizing: border-box; }
@@ -54,7 +58,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .ec-onglet.actif { color: var(--bleu); font-weight: 700; }
 .ec-onglet.actif svg { fill: var(--bleu-clair); stroke: var(--bleu); }
 
-.ec-page { max-width: 640px; margin: 0 auto; padding: 0 1rem 6rem; }
+/* Le bas de page dépasse toujours les onglets fixes, zone du geste de
+ * l'iPhone comprise : les totaux d'une commande et la dernière carte restent
+ * lisibles au bout du défilement, sur toutes les pages de l'espace. */
+.ec-page { max-width: 640px; margin: 0 auto; padding: 0 1rem var(--ec-bas-libre); }
 
 .ec-entete { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0 .6rem; gap: .75rem; }
 .ec-salut { display: flex; align-items: center; gap: .7rem; min-width: 0; color: var(--encre); }
@@ -731,7 +738,7 @@ a.ec-carte.ec-pc-entree { display: flex; align-items: center; gap: .85rem; }
 .ec-inviter .ec-boutons { margin-top: .9rem; gap: .5rem; }
 .ec-inviter .ec-bouton { padding: .8rem 1rem; }
 .ec-inviter :focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
-body.ec-inviter-ouvert .ec-page { padding-bottom: calc(var(--ec-inviter-h, 16rem) + 6rem); }
+body.ec-inviter-ouvert .ec-page { padding-bottom: calc(var(--ec-inviter-h, 16rem) + var(--ec-bas-libre)); }
 @media (max-width: 899px) {
   body.ec.ec-inviter-ouvert .as-bouton.as-espace { bottom: calc(var(--ec-inviter-h, 16rem) + 5.2rem + env(safe-area-inset-bottom)); }
 }

@@ -42,10 +42,10 @@ final class LivraisonObjetDocumentTest extends TestCase
 
         $commande->recalculerTotaux();
 
-        self::assertSame(11500, $commande->getTotalHt());
-        self::assertSame(11500, $commande->getTotalTtc());
-        self::assertSame(10500, $commande->getMontantApayer(), 'la remise se déduit, pas les frais');
-        self::assertSame(11500, $commande->getResteAPayer(), 'le reste à payer part du TTC, frais compris');
+        self::assertSame(11500, $commande->getTotalHt(), 'sous-total HT : lignes et frais');
+        self::assertSame(10500, $commande->getTotalTtc(), 'remise globale déduite, frais compris');
+        self::assertSame(10500, $commande->getMontantApayer());
+        self::assertSame(10500, $commande->getResteAPayer(), 'le reste à payer part du TTC remisé');
     }
 
     public function testLesFraisSAjoutentAuxTotauxDuDevis(): void
@@ -58,8 +58,10 @@ final class LivraisonObjetDocumentTest extends TestCase
         $devis->recalculerTotaux();
 
         self::assertSame(10000, $devis->getTotalHt());
-        self::assertSame(11440, $devis->getTotalTtc());
-        self::assertSame(10940, $devis->getMontantApayer());
+        // Remise de 500 sur 10 000 HT : la TVA des lignes (1 440) baisse de 5 %.
+        self::assertSame(1368, $devis->getMontantTva());
+        self::assertSame(10868, $devis->getTotalTtc());
+        self::assertSame(10868, $devis->getMontantApayer());
     }
 
     public function testLaFactureCopieFraisEtObjetDeLaCommande(): void

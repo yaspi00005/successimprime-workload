@@ -1,0 +1,22 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Récapitulatif avant Orange Money en page (maquette FP03) : sans
+	JavaScript, ou depuis un lien. Le même contenu que la fenêtre de la vue
+	d'ensemble (_paiement.html.twig), réservé à qui paie (contrôleur).
+#}
+{% block title %}Payer{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-factures.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_factures') }}"><span class="fl">‹</span>Paiement</a>{% endblock %}
+
+{% block contenu %}
+	<div class="ef-titre ec-bureau">
+		<h1>Paiement</h1>
+		<a class="ec-bouton-blanc" href="{{ path('app_espace_factures') }}">Retour aux factures</a>
+	</div>
+	<div class="ef-page-om" data-ef-zone="page">
+		{% include 'espace/factures/_paiement.html.twig' with {pleinePage: true} %}
+	</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/espace-factures.js') }}" defer></script>{% endblock %}

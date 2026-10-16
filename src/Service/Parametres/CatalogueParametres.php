@@ -128,6 +128,8 @@ final class CatalogueParametres
                     ['cle' => 'cheque', 'type' => 'interrupteur', 'libelle' => 'Chèque', 'defaut' => true],
                     ['cle' => 'carte', 'type' => 'interrupteur', 'libelle' => 'Carte bancaire', 'defaut' => true],
                     ['cle' => 'virement_seuil', 'type' => 'nombre', 'libelle' => 'Virement conseillé au-delà de', 'aide' => 'La caisse le rappelle pour un paiement en espèces plus élevé', 'suffixe' => 'F', 'min' => 0, 'max' => 100000000, 'defaut' => 500000],
+                    // Montrées aux clients qui paient, dans « Factures et paiements » de l'espace client.
+                    ['cle' => 'virement_coordonnees', 'type' => 'texte', 'libelle' => 'Coordonnées bancaires pour les virements', 'aide' => 'Banque, titulaire et RIB, montrés dans l\'espace client aux personnes qui paient. Vide : « coordonnées à demander en boutique ».', 'defaut' => ''],
                     ['cle' => 'acompte', 'type' => 'nombre', 'libelle' => 'Acompte par défaut', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'defaut' => 50],
                     ['cle' => 'recu', 'type' => 'choix', 'libelle' => 'Reçu envoyé', 'options' => ['whatsapp' => 'WhatsApp', 'sms' => 'SMS', 'aucun' => 'Aucun'], 'defaut' => 'whatsapp'],
                     // Frais Orange Money payés par le client en plus du montant (espace client, caisse) ; tenus dans ParametresPaiement.

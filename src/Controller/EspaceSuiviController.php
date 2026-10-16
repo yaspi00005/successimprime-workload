@@ -66,7 +66,8 @@ final class EspaceSuiviController extends AbstractController
     ): Response {
         $compte = $this->compte();
         $client = $compte->getClient();
-        $saisie = ['texte' => '', 'commande' => ''];
+        // « Message » d'une facture (Factures et paiements) : le texte arrive déjà commencé, avec sa référence.
+        $saisie = ['texte' => mb_substr($request->query->getString('texte'), 0, 300), 'commande' => ''];
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('espace', (string) $request->request->get('_token'))) {
                 throw $this->createAccessDeniedException('La page a expiré. Réessayez.');

@@ -435,6 +435,11 @@ final class Synchro
                         $this->em->flush();
                         $this->notifications->notifierRoles(['ROLE_PAIEMENT_ENCAISSER', 'ROLE_ADMIN'], \sprintf('Paiement Orange Money reçu en ligne pour la commande %s (%s) : à valider après contrôle du compte Orange Money en ligne.', $entite->getCommande()?->getNumero() ?? '?', $entite->getReference()), 'app_paiements_show', ['id' => $entite->getId()]);
                         $resultat = [self::RESULTAT_OK, 'Paiement Orange Money du client : à valider', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof Paiements && $entite->estAvoirEnLigne()) {
+                        // Avoir utilisé par le client depuis son espace : la validation retire le montant de son solde.
+                        $this->em->flush();
+                        $this->notifications->notifierRoles(['ROLE_PAIEMENT_ENCAISSER', 'ROLE_ADMIN'], \sprintf('Avoir utilisé en ligne pour la commande %s (%s) : à valider, le solde du client baisse à la validation.', $entite->getCommande()?->getNumero() ?? '?', $entite->getReference()), 'app_paiements_show', ['id' => $entite->getId()]);
+                        $resultat = [self::RESULTAT_OK, 'Avoir utilisé par le client : à valider', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->estRefuseeParEntreprise() && !$entite->isStatut()) {
                         // Refusée chez le client avant même d'arriver : classée, l'atelier n'en entend pas parler.
                         $entite->setDeleted(true);

@@ -1,0 +1,14 @@
+{#
+	« Une question sur une facture ? » (maquette FP03) : Contester ouvre une
+	réclamation préremplie, Message ouvre la messagerie avec la référence
+	de la facture. Variable : facture (nulle sur la vue d'ensemble).
+#}
+{% set reference = facture ? facture.numero : null %}
+<section class="ec-carte">
+	<h2>Une question sur une facture ?</h2>
+	<p class="ef-texte-doux">Montant, remise, erreur… La boutique vous répond dans l'espace.</p>
+	<div class="ef-boutons">
+		<a class="ec-bouton-blanc" href="{{ path('app_espace_reclamation_nouvelle', reference ? {commande: facture.commande ? facture.commande.publicId : null, objet: 'Contestation de la facture ' ~ reference}|filter(v => v is not null) : {objet: 'Contestation d\'une facture'}) }}">Contester</a>
+		<a class="ec-bouton-blanc" href="{{ path('app_espace_messages', reference ? {texte: 'Question sur la facture ' ~ reference ~ ' : ', commande: facture.commande ? facture.commande.publicId : null}|filter(v => v is not null) : {texte: 'Question sur une facture : '}) }}">Message</a>
+	</div>
+</section>

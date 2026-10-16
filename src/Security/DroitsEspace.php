@@ -40,6 +40,12 @@ final class DroitsEspace
         'app_espace_payer_retour',
         'app_espace_factures',
         'app_espace_facture_pdf',
+        // Factures et paiements (docs/espace-client.md) : détail, reçus, relevé, récapitulatif et retour d'Orange Money.
+        'app_espace_facture_detail',
+        'app_espace_facture_recu',
+        'app_espace_facture_releve',
+        'app_espace_payer_selection',
+        'app_espace_payer_recu',
         'app_espace_fidelite',
         'app_espace_reclamation_nouvelle',
         'app_espace_avis_commande',

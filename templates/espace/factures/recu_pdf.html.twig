@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	{% set numero = paiement|numero_recu %}
+	<title>Reçu {{ numero ?? '' }} · {{ entreprise.nomAffiche }}</title>
+	{#
+		Reçu d'un paiement validé par la boutique, en PDF pour le client
+		(EspaceFacturesController::recuPdf) : en-tête de l'entreprise de la
+		facture, numéro de la caisse, montant, frais Orange Money payés en
+		plus, reste à payer. Le nom de la personne qui a encaissé n'y est pas.
+		Mise en page en tableaux pour Dompdf.
+	#}
+	{% set c = entreprise.couleurs %}
+	<style>
+		@page { margin: 0; }
+		* { box-sizing: border-box; }
+		body { margin: 0; font-family: DejaVu Sans, sans-serif; font-size: 9.5px; line-height: 1.45; color: #1f2937; }
+		table { width: 100%; border-collapse: collapse; }
+		td { vertical-align: top; }
+		.bandes td { height: 5px; padding: 0; }
+		.page { padding: 9mm 18mm 18mm; }
+		.logo { max-height: 46px; max-width: 180px; }
+		.nom { font-size: 11px; font-weight: bold; margin-top: 5px; color: #111827; }
+		.coord { font-size: 8px; color: #4b5563; margin-top: 2px; }
+		.droite { text-align: right; }
+		.titre { font-size: 20px; font-weight: bold; letter-spacing: .5px; color: {{ c[1] ?? c[0] ?? '#0f2f6b' }}; }
+		.numero { font-size: 11px; font-weight: bold; color: #111827; }
+		.muted { color: #6b7280; }
+		.bloc { background: #f3f5f9; padding: 9px 11px; margin-top: 14px; }
+		.etiquette { font-size: 7px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #6b7280; }
+		.lignes { margin-top: 14px; }
+		.lignes td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
+		.lignes .val { text-align: right; font-weight: bold; }
+		.montant { margin-top: 16px; background: {{ c[0] ?? '#0f2f6b' }}; color: #fff; }
+		.montant td { padding: 10px 12px; font-size: 13px; font-weight: bold; }
+		.frais td { padding: 4px 8px; color: #4b5563; }
+		.reste td { padding: 7px 8px; font-weight: bold; }
+		.pied { margin-top: 22px; font-size: 7.6px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+	</style>
+</head>
+<body>
+	<table class="bandes"><tr>{% for couleur in c %}<td style="background: {{ couleur }}"></td>{% endfor %}</tr></table>
+	<div class="page">
+		<table><tr>
+			<td style="width: 58%">
+				{% if logo %}<img src="{{ logo }}" class="logo" alt="">{% endif %}
+				<div class="nom">{{ entreprise.nomAffiche }}</div>
+				<div class="coord">
+					{{ [entreprise.adresse, entreprise.rccm ? 'RCCM ' ~ entreprise.rccm, entreprise.nif ? 'NIF ' ~ entreprise.nif]|filter(v => v)|join(' · ') }}<br>
+					{{ [entreprise.telephone, entreprise.email]|filter(v => v)|join(' · ') }}
+				</div>
+			</td>
+			<td class="droite">
+				<div class="titre">REÇU DE PAIEMENT</div>
+				<div class="numero">N° {{ numero ?? '—' }}</div>
+				<div class="coord">
+					Payé le {{ paiement.date ? paiement.date|date('d/m/Y') }}<br>
+					{% if paiement.dateValidation %}Validé par la boutique le {{ paiement.dateValidation|date('d/m/Y') }}{% endif %}
+				</div>
+			</td>
+		</tr></table>
+
+		<div class="bloc">
+			<div class="etiquette">Client</div>
+			<b>{{ client.raisonSociale|default(client.nomComplet) }}</b>{% if client.raisonSociale and client.nomComplet and client.nomComplet != client.raisonSociale %} · {{ client.nomComplet }}{% endif %}
+			{% if client.telephone %}<br>{{ client.telephone }}{% endif %}
+		</div>
+
+		<table class="lignes">
+			{% if commande %}<tr><td class="muted">{{ commande.estSoldeOuverture ? 'Règlement' : 'Commande' }}</td><td class="val">{{ commande.numero }}{{ commande.estSoldeOuverture ? '' : ' · ' ~ commande|espace_titre }}</td></tr>{% endif %}
+			{% if paiement.facture %}<tr><td class="muted">Facture</td><td class="val">{{ paiement.facture.numero }}</td></tr>{% endif %}
+			<tr><td class="muted">Moyen de paiement</td><td class="val">{{ moyen }}</td></tr>
+			{% if paiement.reference %}<tr><td class="muted">Référence</td><td class="val">{{ paiement.reference }}</td></tr>{% endif %}
+		</table>
+
+		<table class="montant"><tr><td>Montant reçu</td><td class="droite">{{ paiement.montant|francs }}</td></tr></table>
+		{# Frais payés en plus du montant : hors commande et hors facture. #}
+		{% if paiement.montantFraisRetrait + paiement.montantFondsSoutien > 0 %}
+			<table class="frais">
+				{% if paiement.montantFondsSoutien > 0 %}<tr><td>Fonds de soutien, payé en plus</td><td class="droite">{{ paiement.montantFondsSoutien|francs }}</td></tr>{% endif %}
+				{% if paiement.montantFraisRetrait > 0 %}<tr><td>Frais de retrait Orange Money, payés en plus</td><td class="droite">{{ paiement.montantFraisRetrait|francs }}</td></tr>{% endif %}
+				<tr><td>Total débité</td><td class="droite">{{ paiement.montantTotalEncaisse|francs }}</td></tr>
+			</table>
+		{% endif %}
+		{% if commande %}
+			<table class="reste" style="margin-top: 8px"><tr><td>Reste à payer sur {{ commande.estSoldeOuverture ? 'ce règlement' : 'la commande' }}</td><td class="droite">{{ reste > 0 ? reste|francs : 'soldé' }}</td></tr></table>
+		{% endif %}
+
+		<div class="pied">
+			Reçu émis par {{ entreprise.nomAffiche }} après validation du paiement par la boutique. Merci pour votre confiance.<br>
+			{{ entreprise.mentionsLegales }}
+		</div>
+	</div>
+</body>
+</html>

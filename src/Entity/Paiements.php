@@ -265,6 +265,15 @@ class Paiements implements AppartientASociete
     #[ORM\Column(options: ['default' => 0])]
     private int $montantFondsSoutien = 0;
 
+    /*
+     * Numéro du reçu (« R-000123 ») tel que la caisse l'imprime : il naît
+     * de l'id du local à la validation. Le local ne le stocke pas (il le
+     * calcule, CaisseController::recu) ; la synchronisation l'envoie au
+     * site, qui le montre au client dans « Reçus » (CatalogueSynchro).
+     */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $numeroRecu = null;
+
     public function __construct()
     {
         $this->initialiserPublicId();
@@ -602,6 +611,19 @@ class Paiements implements AppartientASociete
             && str_starts_with((string) $this->reference, 'OM ');
     }
 
+    /**
+     * Avoir de la boutique (solde du client) utilisé par le client depuis
+     * « Factures et paiements » : référence « AV <règlement> », personne de
+     * la boutique ne l'a saisi. Il attend la validation (PaiementService::
+     * validerAvoir), qui retire le montant du solde du client.
+     */
+    public function estAvoirEnLigne(): bool
+    {
+        return self::MODE_SOLDE_CLIENT === $this->mode
+            && null === $this->encaissePar
+            && str_starts_with((string) $this->reference, 'AV ');
+    }
+
     /*
      * Vérifie que le type du compte correspond au mode choisi.
      */
@@ -879,6 +901,39 @@ class Paiements implements AppartientASociete
         $this->montantFondsSoutien = max(0, $montantFondsSoutien);
 
         return $this;
+    }
+
+    public function getNumeroRecu(): ?string
+    {
+        return $this->numeroRecu;
+    }
+
+    public function setNumeroRecu(?string $numeroRecu): static
+    {
+        $this->numeroRecu = null !== $numeroRecu && '' !== trim($numeroRecu) ? mb_substr(trim($numeroRecu), 0, 20) : null;
+
+        return $this;
+    }
+
+    /**
+     * Numéro du reçu de la caisse, envoyé au site une fois le paiement
+     * validé au local (filtre de CatalogueSynchro) : celui que le site a
+     * déjà, sinon « R-<id du local> ». Rien tant que la boutique n'a pas
+     * validé.
+     */
+    public static function numeroRecuEnvoye(?string $numero, self $paiement): ?string
+    {
+        if (null !== $numero) {
+            return $numero;
+        }
+
+        return $paiement->estValide() && null !== $paiement->getId() ? self::numeroRecuDe($paiement->getId()) : null;
+    }
+
+    /** Le numéro du reçu imprimé par la caisse pour un paiement du local. */
+    public static function numeroRecuDe(int $id): string
+    {
+        return sprintf('R-%06d', $id);
     }
 
     /*

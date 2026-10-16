@@ -135,9 +135,14 @@ final class PaiementsController extends AbstractController
     {
         if ($this->isCsrfTokenValid('paiement_valider' . $paiement->getId(), $request->getPayload()->getString('_token'))) {
             try {
-                $paiementService->valider($paiement, $this->utilisateurConnecte());
-
-                $this->addFlash('success', 'Le paiement a été validé et le compte crédité.');
+                if (Paiements::MODE_SOLDE_CLIENT === $paiement->getMode()) {
+                    // Avoir utilisé en ligne par le client : le solde de sa fiche baisse, aucun compte n'est crédité.
+                    $paiementService->validerAvoir($paiement, $this->utilisateurConnecte());
+                    $this->addFlash('success', 'Le paiement a été validé et le solde du client diminué.');
+                } else {
+                    $paiementService->valider($paiement, $this->utilisateurConnecte());
+                    $this->addFlash('success', 'Le paiement a été validé et le compte crédité.');
+                }
             } catch (\Throwable $exception) {
                 $this->addFlash('error', $exception->getMessage());
             }

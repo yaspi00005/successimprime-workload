@@ -47,6 +47,12 @@ framework:
             policy: sliding_window
             limit: 10
             interval: '1 hour'
+        # Paiements lancés depuis « Factures et paiements » (Orange Money,
+        # avoir) : une personne n'en ouvre pas plus de 8 en 15 minutes.
+        espace_paiement_compte:
+            policy: sliding_window
+            limit: 8
+            interval: '15 minutes'
         # Assistant du site et de l'espace client (docs/assistant-client.md) :
         # chaque question coûte un appel à l'API. Les connexions mobiles
         # partagent souvent une adresse : la limite par adresse reste large,

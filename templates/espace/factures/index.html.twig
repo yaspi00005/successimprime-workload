@@ -1,0 +1,271 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Factures et paiements (maquettes FP01 et FP05), pour qui paie seulement
+	(EspaceFacturesController). Tuiles et « À payer » calculés par le
+	serveur (FacturesClient) ; cocher plusieurs lignes les paie en une fois
+	par Orange Money, avoir déduit. Onglets Factures, Paiements, Avoirs,
+	Reçus ; moyens de paiement et questions à droite.
+#}
+{% block title %}Factures et paiements{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-factures.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Factures et paiements</a>{% endblock %}
+
+{% block contenu %}
+	{% set elements = aPayer.elements %}
+	{% set avoirPossible = min(avoir.disponible, aPayer.total) %}
+	{% set preselection = elements|filter(e => e.etat != 'a_venir') %}
+
+	<div class="ef-titre ec-bureau">
+		<h1>Factures et paiements</h1>
+		<a class="ec-bouton-blanc" href="{{ path('app_espace_facture_releve') }}" data-ef-ouvrir="ef-releve">
+			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>Relevé de compte
+		</a>
+	</div>
+
+	<section class="ef-tuiles" aria-label="Résumé">
+		<div class="ef-tuile principale">
+			<small>Total à payer</small>
+			<b class="{{ aPayer.total > 0 ? 'rouge' : 'vert' }}">{{ aPayer.total|francs }}</b>
+			<span>
+				{%- if aPayer.echu > 0 %}dont {{ aPayer.echu|francs }} échus{% elseif aPayer.total > 0 %}rien d'échu{% else %}tout est réglé, merci{% endif -%}
+				<span class="ec-telephone">{{ avoir.disponible > 0 ? ' · avoir ' ~ avoir.disponible|francs }}</span>
+			</span>
+			{% if aPayer.plusTard > 0 %}<span>+ {{ aPayer.plusTard|francs }} à régler à la livraison ou sur facture</span>{% endif %}
+		</div>
+		<div class="ef-tuile ec-bureau">
+			<small>Payé en {{ anneeCourante }}</small>
+			<b>{{ payeAnnee.montant|francs }}</b>
+			<span>{{ payeAnnee.nombre }} paiement{{ payeAnnee.nombre > 1 ? 's' }} validé{{ payeAnnee.nombre > 1 ? 's' }} par la boutique</span>
+		</div>
+		<div class="ef-tuile ec-bureau">
+			<small>Prochaine échéance</small>
+			{% if prochaine %}
+				<b>{{ prochaine.echeance|date('d/m') }}</b>
+				<span>{{ prochaine.montant|francs }} · {{ prochaine.facture.numero }}</span>
+			{% else %}
+				<b>—</b>
+				<span>aucune facture à venir</span>
+			{% endif %}
+		</div>
+		<div class="ef-tuile ec-bureau">
+			<small>Avoir disponible</small>
+			<b class="{{ avoir.disponible > 0 ? 'vert' }}">{{ avoir.disponible|francs }}</b>
+			<span>
+				{%- if avoir.enValidation + avoir.reserve > 0 %}{{ (avoir.enValidation + avoir.reserve)|francs }} en cours de validation
+				{%- elseif avoir.disponible > 0 %}utilisable sur un paiement
+				{%- else %}aucun avoir pour l'instant{% endif -%}
+			</span>
+		</div>
+	</section>
+
+	<div class="ef-grille">
+		<div class="ef-colonne">
+			<section class="ec-carte ef-carte-large" id="a-payer">
+				<div class="ef-entete"><h2>À payer</h2><span class="ec-petit">factures et acomptes de commandes</span></div>
+				<form method="get" action="{{ path('app_espace_payer_selection') }}" data-ef-selection data-avoir="{{ avoir.disponible }}">
+					<ul class="ef-lignes">
+						{% for e in elements %}
+							{% set titre = e.commande|espace_titre %}
+							<li class="ef-ligne {{ e.etat }} {{ e.nature }}">
+								<label class="ef-case"><input type="checkbox" name="e[]" value="{{ e.cle }}" data-montant="{{ e.montant }}"{{ e.etat != 'a_venir' ? ' checked' }} aria-label="Choisir {{ titre }}"></label>
+								<div class="ef-texte">
+									<b>{% if e.facture %}<a href="{{ path('app_espace_facture_detail', {id: e.facture.publicId}) }}" style="color:inherit">{{ titre }}</a>{% else %}{{ titre }}{% endif %}</b>
+									{%- if e.nature == 'acompte' %}<span class="ec-pastille orange">Acompte {{ e.pourcentage }}&nbsp;%</span>
+									{%- elseif e.nature == 'solde' %}<span class="ec-pastille gris">Solde d'ouverture</span>
+									{%- elseif e.etat == 'echue' %}<span class="ec-pastille rouge">Échue</span>
+									{%- elseif e.etat == 'aujourdhui' %}<span class="ec-pastille ambre">Aujourd'hui</span>
+									{%- elseif e.etat == 'a_venir' %}<span class="ec-pastille bleu">À venir</span>
+									{%- else %}<span class="ec-pastille ambre">À payer</span>{% endif %}
+									<small>
+										{%- if e.nature == 'facture' -%}
+											Facture {{ e.facture.numero }} · commande {{ e.commande.numero }} ·
+											{{ e.etat == 'echue' ? 'échue depuis le ' ~ e.echeance|date('d/m') : (e.etat == 'aujourdhui' ? 'à payer aujourd\'hui' : (e.etat == 'a_venir' ? 'échéance le ' ~ e.echeance|date('d/m') : 'à régler à réception')) }}
+										{%- elseif e.nature == 'acompte' -%}
+											Acompte de commande {{ e.commande.numero }} · {{ e.productionLancee ? 'production en cours' : 'à payer pour lancer la production' }}
+										{%- elseif e.nature == 'solde' -%}
+											Montant dû au démarrage du compte · réf. {{ e.commande.numero }}
+										{%- else -%}
+											Commande {{ e.commande.numero }} · {{ e.commande.statutTravaux == 'livree' ? 'livrée' : 'prête' }}, sans facture
+										{%- endif -%}
+									</small>
+								</div>
+								<div class="ef-montant">
+									<b>{{ e.montant|francs }}</b>
+									{% set enValidation = e.commande.totalTtc - e.reste - e.dejaPaye %}
+									{% if e.estPartiel or e.dejaPaye > 0 or enValidation > 0 %}
+										<small>
+											{{- e.estPartiel ? 'sur ' ~ e.commande.totalTtc|francs -}}
+											{{- e.dejaPaye > 0 ? ' · déjà payé ' ~ e.dejaPaye|francs -}}
+											{{- enValidation > 0 ? ' · ' ~ enValidation|francs ~ ' en validation' -}}
+										</small>
+									{% endif %}
+								</div>
+								<a class="ef-payer" href="{{ path('app_espace_payer_selection', {e: [e.cle]}) }}" data-ef-payer>Payer</a>
+							</li>
+						{% else %}
+							<li class="ef-vide">Rien à payer pour l'instant. Merci !</li>
+						{% endfor %}
+					</ul>
+					{% if elements is not empty %}
+						{% set totalChoisi = preselection|reduce((s, e) => s + e.montant, 0) %}
+						{% set avoirChoisi = min(avoir.disponible, totalChoisi) %}
+						<div class="ef-barre ec-bureau" data-ef-barre{{ preselection is empty ? ' hidden' }}>
+							<span><b data-ef-nombre>{{ preselection|length }} sélectionné{{ preselection|length > 1 ? 's' }}</b> · <b data-ef-total>{{ totalChoisi|francs }}</b> <span class="avoir" data-ef-avoir{{ avoirChoisi <= 0 ? ' hidden' }}>(− avoir {{ avoirChoisi|francs }})</span></span>
+							<button type="submit" class="ef-bouton-om">{% if totalChoisi - avoirChoisi > 0 %}Payer {{ (totalChoisi - avoirChoisi)|francs }} par Orange Money{% else %}Payer avec mon avoir{% endif %}</button>
+						</div>
+					{% endif %}
+				</form>
+				{% if aPayer.plusTard > 0 %}<p class="ef-plus-tard">Le reste des commandes en préparation ({{ aPayer.plusTard|francs }}) se règle à la livraison ou sur facture.</p>{% endif %}
+			</section>
+
+			{% if elements is not empty %}
+				<div class="ef-tout ec-telephone">
+					<a class="ec-bouton orange" href="{{ path('app_espace_payer_selection', {e: elements|map(e => e.cle)}) }}" data-ef-payer>Tout payer · {{ (aPayer.total - avoirPossible)|francs }}</a>
+					<small>Orange Money{{ avoirPossible > 0 ? ' · avoir de ' ~ avoirPossible|francs ~ ' déduit' }}</small>
+				</div>
+			{% endif %}
+
+			<section class="ec-carte ef-carte-large" id="onglets">
+				<div class="ef-onglets-tete">
+					<nav class="ef-onglets" aria-label="Documents">
+						{% for cle, libelle in {factures: 'Factures', paiements: 'Paiements', avoirs: 'Avoirs', recus: 'Reçus'} %}
+							{% set nombre = {factures: facturesAnnee|length, paiements: paiementsAnnee|length, avoirs: avoirs|length, recus: recus|length}[cle] %}
+							<a href="{{ path('app_espace_factures', {onglet: cle, annee: annee}) }}#onglets" data-ef-onglet="{{ cle }}" class="{{ onglet == cle ? 'actif' }}"{{ onglet == cle ? ' aria-current="true"' }}>{{ libelle }}{{ nombre > 0 ? ' · ' ~ nombre }}</a>
+						{% endfor %}
+					</nav>
+					{% if annees|length > 1 %}
+						<form class="ef-annee" method="get" action="{{ path('app_espace_factures') }}#onglets">
+							<input type="hidden" name="onglet" value="{{ onglet }}" data-ef-onglet-champ>
+							<label class="ec-petit" for="ef-annee">Année</label>
+							<select id="ef-annee" name="annee" data-ef-annee>
+								{% for a in annees %}<option value="{{ a }}"{{ a == annee ? ' selected' }}>{{ a }}</option>{% endfor %}
+							</select>
+							<button type="submit" class="ec-bouton-blanc ef-sans-js">Voir</button>
+						</form>
+					{% endif %}
+				</div>
+
+				<div class="ef-panneau" data-ef-panneau="factures"{{ onglet != 'factures' ? ' hidden' }}>
+					<table class="ef-table">
+						<thead><tr><th>N°</th><th>Date</th><th>Pour</th><th class="num">Montant</th><th class="num">Reste</th><th>Statut</th><th></th></tr></thead>
+						<tbody>
+							{% for f in facturesAnnee %}
+								{% set etat = f|facture_etat %}
+								<tr>
+									<td class="fort"><a href="{{ path('app_espace_facture_detail', {id: f.publicId}) }}" style="color:inherit">{{ f.numero }}</a></td>
+									<td data-col="date">{{ f.dateFacture ? f.dateFacture|date('d/m') }}</td>
+									<td class="pour">{{ f.commande ? f.commande.numero ~ ' · ' ~ f.commande|espace_titre }}</td>
+									<td class="num" data-col="montant">{{ f.totalTtc|francs }}</td>
+									<td class="num fort">{{ f.estProforma or f.resteAPayer <= 0 ? '—' : f.resteAPayer|francs }}</td>
+									<td class="etat"><span class="ec-pastille {{ etat.couleur }}">{{ etat.libelle }}</span></td>
+									<td class="actions">
+										<a href="{{ path('app_espace_facture_pdf', {id: f.id}) }}" target="_blank" rel="noopener">PDF</a>
+										{%- if f.commande and ('c-' ~ f.commande.publicId) in clesAPayer and not f.estProforma %}<a class="orange" href="{{ path('app_espace_payer_selection', {e: ['c-' ~ f.commande.publicId]}) }}" data-ef-payer>Payer</a>{% endif -%}
+									</td>
+								</tr>
+							{% else %}
+								<tr><td colspan="7" class="ef-table-vide">Pas de facture en {{ annee }}.</td></tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+				<div class="ef-panneau" data-ef-panneau="paiements"{{ onglet != 'paiements' ? ' hidden' }}>
+					<table class="ef-table">
+						<thead><tr><th>Date</th><th>Pour</th><th>Moyen</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+						<tbody>
+							{% for p in paiementsAnnee %}
+								{% set etat = p|paiement_etat %}
+								<tr>
+									<td class="fort">{{ p.date ? p.date|date('d/m') }}</td>
+									<td class="pour">{{ p.facture ? p.facture.numero : (p.commande ? 'commande ' ~ p.commande.numero) }}</td>
+									<td>{{ p|paiement_moyen }}</td>
+									<td class="num fort">{{ p.montant|francs }}</td>
+									<td class="etat"><span class="ec-pastille {{ etat.couleur }}">{{ etat.libelle }}</span></td>
+									<td class="actions">{% if p.estValide %}<a href="{{ path('app_espace_facture_recu', {id: p.publicId}) }}" target="_blank" rel="noopener">Reçu</a>{% endif %}</td>
+								</tr>
+							{% else %}
+								<tr><td colspan="6" class="ef-table-vide">Pas de paiement en {{ annee }}.</td></tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+				<div class="ef-panneau" data-ef-panneau="avoirs"{{ onglet != 'avoirs' ? ' hidden' }}>
+					<p class="ef-texte-doux">
+						Votre avoir, c'est ce que la boutique vous doit (monnaie non rendue, trop-perçu) : <b>{{ avoir.solde|francs }}</b> sur votre compte.
+						{% if avoir.enValidation + avoir.reserve > 0 %}Dont {{ (avoir.enValidation + avoir.reserve)|francs }} déjà utilisés, en attente de validation par la boutique.{% endif %}
+						Vous l'utilisez en payant ici : la boutique le valide, puis il disparaît de votre solde.
+					</p>
+					<table class="ef-table">
+						<thead><tr><th>Date</th><th>Pour</th><th class="num">Montant</th><th>Statut</th></tr></thead>
+						<tbody>
+							{% for p in avoirs %}
+								{% set etat = p|paiement_etat %}
+								<tr>
+									<td class="fort">{{ p.date ? p.date|date('d/m/Y') }}</td>
+									<td class="pour">{{ p.facture ? p.facture.numero : (p.commande ? 'commande ' ~ p.commande.numero) }}</td>
+									<td class="num fort">− {{ p.montant|francs }}</td>
+									<td class="etat"><span class="ec-pastille {{ etat.couleur }}">{{ p.estValide ? 'Utilisé' : etat.libelle }}</span></td>
+								</tr>
+							{% else %}
+								<tr><td colspan="4" class="ef-table-vide">Aucun avoir utilisé pour l'instant.</td></tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+				<div class="ef-panneau" data-ef-panneau="recus"{{ onglet != 'recus' ? ' hidden' }}>
+					<table class="ef-table">
+						<thead><tr><th>N°</th><th>Date</th><th>Moyen</th><th class="num">Montant</th><th></th></tr></thead>
+						<tbody>
+							{% for p in recus %}
+								<tr>
+									<td class="fort">{{ (p|numero_recu)|default('Reçu') }}</td>
+									<td data-col="date">{{ p.date ? p.date|date('d/m') }}</td>
+									<td class="pour">{{ p|paiement_moyen }}</td>
+									<td class="num fort">{{ p.montant|francs }}</td>
+									<td class="actions"><a href="{{ path('app_espace_facture_recu', {id: p.publicId}) }}" target="_blank" rel="noopener">PDF</a></td>
+								</tr>
+							{% else %}
+								<tr><td colspan="5" class="ef-table-vide">Pas encore de reçu en {{ annee }} : il arrive ici quand la boutique valide un paiement.</td></tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</section>
+
+			<a class="ec-bouton clair ec-telephone" href="{{ path('app_espace_facture_releve') }}" data-ef-ouvrir="ef-releve" style="margin-bottom:.85rem">Relevé de compte (PDF)</a>
+		</div>
+
+		<aside class="ef-colonne">
+			{% include 'espace/factures/_moyens.html.twig' %}
+			<section class="ec-carte">
+				<h2>Bon à savoir</h2>
+				<p class="ef-texte-doux">Un <b>acompte</b> lance la production d'une commande. La <b>facture</b> est émise à la livraison ; le reste se paie avant l'échéance.</p>
+				<p class="ef-texte-doux">Un paiement Orange Money arrive ici « reçu, en cours de validation ». Quand la boutique l'a validé, son reçu est dans « Reçus ».</p>
+			</section>
+			{% include 'espace/factures/_question.html.twig' with {facture: null} %}
+		</aside>
+	</div>
+
+	<dialog class="ef-dialogue" id="ef-paiement" aria-label="Payer par Orange Money"></dialog>
+	<dialog class="ef-dialogue" id="ef-releve" aria-labelledby="ef-releve-titre">
+		<form class="ef-releve" method="get" action="{{ path('app_espace_facture_releve') }}" target="_blank">
+			<h2 id="ef-releve-titre">Relevé de compte</h2>
+			<p class="ec-petit" style="margin:0">Factures, paiements validés et solde, en PDF.</p>
+			<div class="ef-releve-dates">
+				<div><label for="ef-du">Du</label><input id="ef-du" type="date" name="du" value="{{ maintenant|date('Y') }}-01-01" max="{{ maintenant|date('Y-m-d') }}" required></div>
+				<div><label for="ef-au">Au</label><input id="ef-au" type="date" name="au" value="{{ maintenant|date('Y-m-d') }}" max="{{ maintenant|date('Y-m-d') }}" required></div>
+			</div>
+			<div class="ef-boutons">
+				<button type="submit" class="ef-bouton-om" style="background:var(--bleu);box-shadow:none">Télécharger le PDF</button>
+				<button type="button" class="ec-bouton-blanc" data-ef-fermer>Fermer</button>
+			</div>
+		</form>
+	</dialog>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/espace-factures.js') }}" defer></script>{% endblock %}

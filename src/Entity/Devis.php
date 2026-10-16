@@ -5,8 +5,10 @@ namespace App\Entity;
 use App\Entity\Trait\CodePromoDocumentTrait;
 use App\Entity\Trait\LivraisonObjetDocumentTrait;
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\RemiseGlobaleDocumentTrait;
 use App\Entity\Trait\SocieteTrait;
 use App\Repository\DevisRepository;
+use App\Service\TotauxDocument;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -22,6 +24,7 @@ class Devis implements AppartientASociete
     use SocieteTrait;
     use CodePromoDocumentTrait;
     use LivraisonObjetDocumentTrait;
+    use RemiseGlobaleDocumentTrait;
 
     /*
      * ============================================================
@@ -446,24 +449,27 @@ class Devis implements AppartientASociete
 
     /**
      * Totaux du devis depuis ses lignes, comme le formulaire les calcule
-     * (remise du devis deduite du montant a payer), plus les frais de
-     * livraison (sans TVA). Refaits a chaque enregistrement : les totaux
-     * envoyes par le navigateur ne sont jamais gardes.
+     * (TotauxDocument) : sous-total HT (lignes et frais de livraison, sans
+     * TVA), remise globale deduite du HT, TVA des lignes au prorata, total
+     * TTC = ce que le client paiera. Refaits a chaque enregistrement : les
+     * totaux envoyes par le navigateur ne sont jamais gardes.
      */
     public function recalculerTotaux(): static
     {
         $ht = $this->getFraisLivraison();
-        $ttc = $this->getFraisLivraison();
+        $tva = 0;
         $code = 0;
         foreach ($this->devisDetails as $ligne) {
             $ht += $ligne->getTotalHt();
-            $ttc += $ligne->getTotalTtc();
+            $tva += $ligne->getTotalTtc() - $ligne->getTotalHt();
             $code += $ligne->getRemiseCodePromo();
         }
-        $this->setTotalHt($ht);
+        $totaux = TotauxDocument::calculer($ht, $tva, $this->remise);
+        $this->setTotalHt($totaux['sousTotalHt']);
+        $this->setRemise($totaux['remise']);
         $this->setRemiseCodePromo($code);
-        $this->setTotalTtc($ttc);
-        $this->setMontantApayer(max(0, $ttc - $this->remise));
+        $this->setTotalTtc($totaux['totalTtc']);
+        $this->setMontantApayer($totaux['totalTtc']);
 
         return $this;
     }

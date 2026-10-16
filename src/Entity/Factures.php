@@ -1025,6 +1025,12 @@ private ?string $pdfHash = null;
     }
 
 
+    /** Total HT après la remise globale (avant TVA et majoration). */
+    public function getTotalHtNet(): int
+    {
+        return max(0, $this->totalHt - $this->remise);
+    }
+
     public function recalculerTotal(): static
     {
         $base =
@@ -1445,11 +1451,9 @@ private ?string $pdfHash = null;
                 ?? 0
             );
 
+        // Remise globale de la commande (au plus son sous-total HT).
         $this->remise =
-            (int) (
-                $commande->getRemise()
-                ?? 0
-            );
+            $commande->getRemiseGlobale();
 
         $this->tva =
             (int) (
@@ -1461,22 +1465,13 @@ private ?string $pdfHash = null;
         $this->setFraisLivraison($commande->getFraisLivraison());
         $this->setObjet($commande->getObjet());
 
-        $commandeTtc =
-            (int) (
-                $commande->getTotalTtc()
-                ?? 0
-            );
-
+        /*
+         * TVA de la commande, remise globale déduite (0 sans TVA sur
+         * les lignes). Le total TTC de la facture retombe ainsi sur
+         * celui de la commande : total HT − remise + TVA.
+         */
         $this->montantTva =
-            max(
-                0,
-                $commandeTtc
-                - max(
-                    0,
-                    $this->totalHt
-                    - $this->remise
-                )
-            );
+            $commande->getMontantTva();
 
         $this->recalculerTotal();
 

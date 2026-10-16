@@ -1556,58 +1556,21 @@
 									<tbody>
 
 
-										<tr>
-
-											<td>
-												Total HT
-											</td>
-
-											<td class="text-right text-white ">
-
-												{{
-                                                    facture.totalHt
-                                                    |default(0)
-                                                    |number_format(
-                                                        0,
-                                                        ',',
-                                                        ' '
-                                                    )
-                                                }}
-												FCFA
-
-											</td>
-
-										</tr>
-
-
+										{# Remise globale : une ligne visible, déduite du sous-total HT ; Total HT = après remise, TTC = HT + TVA. #}
 										{% if facture.remise > 0 %}
-
 											<tr>
-
-												<td>
-													Remise
-												</td>
-
-												<td class="text-right text-danger">
-
-													-
-													{{
-                                                        facture.remise
-                                                        |number_format(
-                                                            0,
-                                                            ',',
-                                                            ' '
-                                                        )
-                                                    }}
-													FCFA
-
-												</td>
-
+												<td>Sous-total HT</td>
+												<td class="text-right text-white">{{ facture.totalHt|default(0)|number_format(0, ',', ' ') }} FCFA</td>
 											</tr>
-
+											<tr>
+												<td>Remise globale</td>
+												<td class="text-right text-danger">− {{ facture.remise|number_format(0, ',', ' ') }} FCFA</td>
+											</tr>
 										{% endif %}
-
-
+										<tr>
+											<td>Total HT</td>
+											<td class="text-right text-white">{{ facture.totalHtNet|number_format(0, ',', ' ') }} FCFA</td>
+										</tr>
 										{% if facture.montantTva > 0 %}
 
 											<tr>

@@ -1526,67 +1526,25 @@
 							</div>
 						{% endif %}
 
+						{# Remise globale : une ligne visible, déduite du sous-total HT ; TTC = Total HT après remise + TVA (TotauxDocument). #}
+						{% if devis.remiseGlobale > 0 %}
+							<div class="d-flex justify-content-between mb-2 small">
+								<span class="text-muted">Sous-total HT</span>
+								<span>{{ devis.totalHt|number_format(0, ',', ' ') }} FCFA</span>
+							</div>
+							<div class="d-flex justify-content-between mb-3">
+								<span>Remise globale</span>
+								<strong class="text-danger">− {{ devis.remiseGlobale|number_format(0, ',', ' ') }} FCFA</strong>
+							</div>
+						{% endif %}
 						<div class="d-flex justify-content-between mb-3">
-
-							<span>
-								Total HT
-							</span>
-
-							<strong>
-								{{
-                                    devis.totalHt
-                                    |default(0)
-                                    |number_format(
-                                        0,
-                                        ',',
-                                        ' '
-                                    )
-                                }}
-								FCFA
-							</strong>
-
+							<span>Total HT</span>
+							<strong>{{ devis.totalHtNet|number_format(0, ',', ' ') }} FCFA</strong>
 						</div>
-
-
 						<div class="d-flex justify-content-between mb-3">
-
-							<span>
-								Remise
-							</span>
-
-							<strong>
-								{{
-                                    devis.remise
-                                    |default(0)
-                                    |number_format(
-                                        0,
-                                        ',',
-                                        ' '
-                                    )
-                                }}
-								FCFA
-							</strong>
-
+							<span>TVA{{ devis.tva > 0 ? ' (' ~ devis.tva ~ ' %)' }}</span>
+							<strong>{{ devis.montantTva|number_format(0, ',', ' ') }} FCFA</strong>
 						</div>
-
-
-						<div class="d-flex justify-content-between mb-3">
-
-							<span>
-								TVA
-							</span>
-
-							<strong>
-								{{
-                                    devis.tva
-                                    |default(0)
-                                }}
-								%
-							</strong>
-
-						</div>
-
-
 						<hr>
 
 
@@ -1614,28 +1572,6 @@
 						</div>
 
 
-						<div class="d-flex justify-content-between">
-
-							<span>
-								Montant à payer
-							</span>
-
-							<strong class="text-success">
-
-								{{
-                                    devis.montantApayer
-                                    |default(0)
-                                    |number_format(
-                                        0,
-                                        ',',
-                                        ' '
-                                    )
-                                }}
-								FCFA
-
-							</strong>
-
-						</div>
 
 					</div>
 

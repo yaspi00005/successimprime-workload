@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
+use App\Entity\Paiements;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -311,11 +312,14 @@ final class CommandesRepository extends ServiceEntityRepository
             'montant_desc' => $qb
                 ->orderBy('c.totalTtc', 'DESC'),
 
+            // Reste à payer réel : total TTC (remise globale déduite) − paiements validés.
             'reste_desc' => $qb
                 ->addSelect(
-                    '(c.totalTtc - COALESCE(c.montantApayer, 0))
+                    '(c.totalTtc - COALESCE((SELECT SUM(pr.montant) FROM '.Paiements::class.' pr
+                     WHERE pr.commande = c AND pr.statut = :resteStatutValide), 0))
                      AS HIDDEN resteAPayer'
                 )
+                ->setParameter('resteStatutValide', Paiements::STATUT_VALIDE)
                 ->orderBy('resteAPayer', 'DESC'),
 
             default => $qb->orderBy('c.id', 'DESC'),

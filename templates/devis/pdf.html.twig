@@ -409,9 +409,8 @@
     |default([])
 %}
 
-		{% set montantTvaDevis =
-    (devis.totalTtc|default(0)) - (devis.totalHt|default(0))
-%}
+		{# TVA du devis, remise globale déduite (TotauxDocument) : TOTAL TTC = Total HT après remise + TVA. #}
+		{% set montantTvaDevis = devis.montantTva %}
 
 
 		{# ================================================================
@@ -1083,55 +1082,13 @@
 							<tr><td>Code promo {{ devis.libelleCodePromo }}</td><td>- {{ devis.remiseCodePromo|number_format(0, ',', ' ') }} F CFA</td></tr>
 						{% endif %}
 
-						<tr>
-
-							<td>
-								Total HT
-							</td>
-
-							<td>
-
-								{{
-                            devis.totalHt
-                            |number_format(
-                                0,
-                                ',',
-                                ' '
-                            )
-                        }}
-								F CFA
-
-							</td>
-
-						</tr>
-
-
-						{% if devis.remise > 0 %}
-
-							<tr>
-
-								<td>
-									Remise
-								</td>
-
-								<td>
-
-									-
-									{{
-                                devis.remise
-                                |number_format(
-                                    0,
-                                    ',',
-                                    ' '
-                                )
-                            }}
-									F CFA
-
-								</td>
-
-							</tr>
-
+						{# Remise globale : une ligne visible, déduite du sous-total HT. #}
+						{% if devis.remiseGlobale > 0 %}
+							<tr><td>Sous-total HT</td><td>{{ devis.totalHt|number_format(0, ',', ' ') }} F CFA</td></tr>
+							<tr><td>Remise globale</td><td>- {{ devis.remiseGlobale|number_format(0, ',', ' ') }} F CFA</td></tr>
 						{% endif %}
+
+						<tr><td>Total HT</td><td>{{ devis.totalHtNet|number_format(0, ',', ' ') }} F CFA</td></tr>
 
 
 						{% if montantTvaDevis > 0 %}

@@ -1591,14 +1591,18 @@ const remiseForm = document.getElementById('{{ form.remise.vars.id }}');
 const montantForm = document.getElementById('{{ form.montantApayer.vars.id }}');
 
 
-const remise = Math.max(0, nombreDepuisChamp(remiseForm));
+const remise = Math.min(Math.max(0, nombreDepuisChamp(remiseForm)), Math.max(0, totalHt));
+
+// Remise globale déduite du sous-total HT, TVA au prorata (TotauxDocument) : le total TTC est ce que le client paiera.
+const tvaNette = totalHt > 0 ? Math.round(Math.max(0, totalTtc - totalHt) * (totalHt - remise) / totalHt) : 0;
+const net = Math.max(0, totalHt - remise + tvaNette);
 
 
 ecrireMontant(totalHtForm, totalHt);
 
-ecrireMontant(totalTtcForm, totalTtc);
+ecrireMontant(totalTtcForm, net);
 
-ecrireMontant(montantForm, Math.max(0, totalTtc - remise));
+ecrireMontant(montantForm, net);
 }
 
 

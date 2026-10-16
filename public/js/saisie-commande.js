@@ -362,7 +362,16 @@
             // Code promo de la commande (promotions-saisie.js) : déjà réparti sur les lignes par le serveur à l'enregistrement.
             const code = window.SiPromotions && window.SiPromotions.codeCommande ? window.SiPromotions.codeCommande() : {ht: 0, ttc: 0};
             const livraison = fraisLivraison();
-            const aPayer = Math.max(0, Math.round(ttc + livraison - code.ttc - remise));
+            /*
+             * Comme TotauxDocument côté serveur : la remise globale se déduit
+             * du sous-total HT (lignes et livraison), la TVA des lignes baisse
+             * dans la même proportion, total TTC = total HT + TVA.
+             */
+            const sousTotalHt = Math.max(0, ht - code.ht + livraison);
+            const remiseRetenue = Math.min(Math.max(0, remise), sousTotalHt);
+            const tvaLignes = Math.max(0, (ttc - code.ttc) - (ht - code.ht));
+            const tva = sousTotalHt > 0 ? Math.round(tvaLignes * (sousTotalHt - remiseRetenue) / sousTotalHt) : 0;
+            const aPayer = Math.max(0, Math.round(sousTotalHt - remiseRetenue + tva));
 
             page.querySelectorAll('.js-recap-livraison').forEach(function (el) {
                 el.hidden = livraison <= 0;
@@ -373,7 +382,7 @@
             }
 
             page.querySelector('.js-recap-ht').textContent = montant(ht);
-            page.querySelector('.js-recap-tva').textContent = montant((ttc - code.ttc) - (ht - code.ht));
+            page.querySelector('.js-recap-tva').textContent = montant(tva);
             page.querySelector('.js-recap-tva-libelle').textContent = taux.size === 1 && !taux.has(0) ? 'TVA ' + Array.from(taux)[0] + ' %' : 'TVA';
             page.querySelector('.js-recap-lignes').textContent = lignes.length > 0 ? 'Sous-total HT (' + lignes.length + (lignes.length > 1 ? ' lignes)' : ' ligne)') : 'Sous-total HT';
             page.querySelectorAll('.js-total-affiche').forEach(function (el) {

@@ -2199,17 +2199,22 @@ const remise = document.getElementById('{{ form.remise.vars.id }}');
 const payer = document.getElementById('{{ form.montantApayer.vars.id }}');
 
 
+// Remise globale déduite du sous-total HT, TVA au prorata (TotauxDocument) : le total TTC est ce que le client doit.
+const remiseRetenue = Math.min(Math.max(0, nombreDepuisChamp(remise)), Math.max(0, ht));
+const tvaNette = ht > 0 ? Math.round(Math.max(0, ttc - ht) * (ht - remiseRetenue) / ht) : 0;
+const net = Math.max(0, Math.round(ht - remiseRetenue + tvaNette));
+
 if (totalHt) {
 totalHt.value = Math.round(ht);
 }
 
 if (totalTtc) {
-totalTtc.value = Math.round(ttc);
+totalTtc.value = net;
 }
 
 if (payer) {
 
-payer.value = Math.max(0, Math.round(ttc - nombreDepuisChamp(remise)));
+payer.value = net;
 }
 }
 

@@ -4,8 +4,10 @@ namespace App\Entity;
 
 use App\Entity\Trait\CodePromoDocumentTrait;
 use App\Entity\Trait\LivraisonObjetDocumentTrait;
+use App\Entity\Trait\RemiseGlobaleDocumentTrait;
 use App\Entity\Trait\SocieteTrait;
 use App\Repository\CommandesRepository;
+use App\Service\TotauxDocument;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -22,6 +24,7 @@ class Commandes implements AppartientASociete
     use SocieteTrait;
     use CodePromoDocumentTrait;
     use LivraisonObjetDocumentTrait;
+    use RemiseGlobaleDocumentTrait;
 
     /*
      * Canal de la commande : saisie au comptoir par un agent,
@@ -621,16 +624,17 @@ class Commandes implements AppartientASociete
     }
     /**
      * Totaux de la commande depuis ses lignes non annulees, comme le
-     * formulaire les calcule (remise de commande deduite du montant a
-     * payer). Pour les commandes creees hors formulaire (« Mes produits »)
-     * et, a chaque enregistrement du formulaire, pour ne jamais garder les
-     * totaux envoyes par le navigateur. Les frais de livraison (sans TVA)
-     * s'ajoutent au HT et au TTC.
+     * formulaire les calcule (TotauxDocument) : sous-total HT (lignes et
+     * frais de livraison, sans TVA), remise globale deduite du HT, TVA des
+     * lignes au prorata, total TTC = ce que le client doit. Pour les
+     * commandes creees hors formulaire (« Mes produits ») et, a chaque
+     * enregistrement du formulaire, pour ne jamais garder les totaux
+     * envoyes par le navigateur.
      */
     public function recalculerTotaux(): static
     {
         $ht = $this->getFraisLivraison();
-        $ttc = $this->getFraisLivraison();
+        $tva = 0;
         $code = 0;
 
         foreach ($this->commandesDetails as $ligne) {
@@ -639,15 +643,19 @@ class Commandes implements AppartientASociete
             }
 
             $ht += $ligne->getTotalHt();
-            $ttc += $ligne->getTotalTtc();
+            $tva += $ligne->getTotalTtc() - $ligne->getTotalHt();
             $code += $ligne->getRemiseCodePromo();
         }
 
-        $this->setTotalHt($ht);
+        $totaux = TotauxDocument::calculer($ht, $tva, $this->getRemise());
+
+        $this->setTotalHt($totaux['sousTotalHt']);
+        $this->setRemise($totaux['remise']);
         $this->setRemiseCodePromo($code);
-        $this->setTotalTtc($ttc);
-        $this->setMontantApayer(max(0, $ttc - (int) $this->getRemise()));
-        $this->setResteAPayer(max(0, (int) $this->getMontantApayer() - $this->getTotalPaye()));
+        $this->setTotalTtc($totaux['totalTtc']);
+        // Montant a payer : le total TTC, remise deja deduite (ancienne copie gardee pour la synchronisation).
+        $this->setMontantApayer($totaux['totalTtc']);
+        $this->setResteAPayer(max(0, $totaux['totalTtc'] - $this->getTotalPaye()));
 
         return $this->actualiserStatutPaiement();
     }

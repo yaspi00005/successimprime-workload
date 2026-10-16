@@ -3,7 +3,12 @@
 	section (texte et petites cartes de valeurs) à côté de la photo de la
 	page, l'équipe (section dont le titre parle d'équipe), les autres
 	sections, « Venez nous voir » (photo de la boutique, adresse), puis les
-	chiffres, les avis publiés avec accord et les partenaires. L'entreprise
+	chiffres, les avis publiés avec accord et les partenaires.
+	Dès qu'une personne de Réglages › Site vitrine › Équipe est visible avec
+	son accord (variable membres), « Notre équipe » (site/_equipe) prend la
+	place des cartes de la section équipe (Direction, Atelier, PAO), en
+	pleine largeur sous le premier bloc. Sans personne, rien ne change.
+	L'entreprise
 	affichée vient de Réglages › Entreprises. Sans image choisie dans
 	Réglages › Site vitrine, la photo de l'atelier livrée avec le site
 	(PhotosSite) la remplace.
@@ -19,6 +24,7 @@
 {% set equipe = contenu.sections|filter(s => 'équipe' in s.titre|lower or 'equipe' in s.titre|lower)|first %}
 {% set premiere = contenu.sections|filter(s => s != equipe)|first %}
 {% set autres = contenu.sections|filter(s => s != equipe and s != premiere) %}
+{% set membres = membres ?? [] %}
 
 {% block title %}{{ page.titre|site_titre }}{% endblock %}
 {% block description %}{{ (page.description ?? page.accroche ?? 'Succès Imprim, imprimerie à Bamako : impression grand format, textile DTF et finition dans notre atelier.')|site_description }}{% endblock %}
@@ -67,7 +73,7 @@
 						</svg>
 					{% endif %}
 				</figure>
-				{% if equipe and equipe.cartes %}
+				{% if equipe and equipe.cartes and membres is empty %}
 					<section class="sc-equipe" aria-labelledby="{{ equipe.ancre }}">
 						<h2 id="{{ equipe.ancre }}" class="sc-masque">{{ equipe.html|raw }}</h2>
 						{% if equipe.blocs %}<div class="sc-prose">{{ site_blocs(equipe.blocs) }}</div>{% endif %}
@@ -84,6 +90,12 @@
 				{% endif %}
 			</div>
 		</div>
+
+		{% if membres is not empty %}
+			<div class="si-cadre">
+				{{ include('site/_equipe.html.twig', {membres: membres, intro: equipe ? equipe.blocs : null}) }}
+			</div>
+		{% endif %}
 
 		{% if autres is not empty %}
 			<div class="si-cadre">

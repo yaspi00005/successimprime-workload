@@ -140,7 +140,7 @@ final class CatalogueSynchro
                 'relations' => ['societe' => 'societe'], 'listes' => [],
             ],
             // Contenu du site vitrine (Réglages › Site vitrine), saisi au local seulement.
-            // Les images d'abord : pages, réalisations, conseils et partenaires les citent.
+            // Les images d'abord : pages, réalisations, conseils, partenaires et équipe les citent.
             // Image réencodée (WebP, ou PNG, 300 Ko au plus), revérifiée à l'arrivée (ImageSite::verifier) ;
             // l'original envoyé reste au local.
             'site_image' => [
@@ -177,6 +177,15 @@ final class CatalogueSynchro
                 'classe' => \App\Entity\Partenaire::class, 'sens' => self::DESCENDANT, 'libelle' => 'Partenaire', 'titre' => ['nom'],
                 'champs' => ['nom', 'lien', 'ordre', 'visible', 'accordObtenu'],
                 'relations' => ['logo' => 'site_image'], 'listes' => [],
+            ],
+            // « Notre équipe » (page « Qui sommes-nous ? ») : nom affiché, poste, photo, ordre, visible,
+            // accord. Sans l'accord de la personne, son nom et son poste partent vides, et elle n'a
+            // pas de photo (ContenuSite). Rien d'autre sur elle : elle n'est liée à aucune fiche du personnel.
+            'site_equipe' => [
+                'classe' => \App\Entity\MembreEquipe::class, 'sens' => self::DESCENDANT, 'libelle' => 'Personne de l\'équipe', 'titre' => ['nom'],
+                'champs' => ['nom', 'poste', 'ordre', 'visible', 'accordPersonne'],
+                'relations' => ['photo' => 'site_image'], 'listes' => [],
+                'filtres' => ['nom' => [\App\Entity\MembreEquipe::class, 'textePublic'], 'poste' => [\App\Entity\MembreEquipe::class, 'textePublic']],
             ],
             // Règle de calcul des chiffres du site (ChiffresSite).
             'site_reglage' => [

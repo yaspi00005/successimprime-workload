@@ -7,6 +7,7 @@ use App\Entity\ArticleConseil;
 use App\Entity\AvisClient;
 use App\Entity\CategorieProduit;
 use App\Entity\ImageSite;
+use App\Entity\MembreEquipe;
 use App\Entity\PageSite;
 use App\Entity\Partenaire;
 use App\Entity\Realisation;
@@ -20,8 +21,10 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
  * lecture des formulaires, règles de publication et images.
  *
  * Les accords se font respecter ici : un avis sans « accord du client »,
- * un partenaire sans « accord obtenu » restent hors du site, même si la
- * case « publié » est cochée.
+ * un partenaire sans « accord obtenu », une personne de l'équipe qui n'a
+ * pas accepté de paraître restent hors du site, même si la case « publié »
+ * (« Visible ») est cochée. Sans cet accord, la photo d'une personne n'est
+ * même pas gardée.
  */
 final class ContenuSite
 {
@@ -34,6 +37,8 @@ final class ContenuSite
         'partenaires' => ['classe' => Partenaire::class, 'libelle' => 'Partenaires', 'un' => 'Partenaire', 'nouveau' => 'Nouveau partenaire', 'cree' => 'Partenaire créé.', 'supprime' => 'Partenaire supprimé.'],
         // Bandes en haut du site public et de l'espace client (demande de Yaya du 15/10/2026).
         'annonces' => ['classe' => Annonce::class, 'libelle' => 'Annonces', 'un' => 'Annonce', 'nouveau' => 'Nouvelle annonce', 'cree' => 'Annonce créée.', 'supprime' => 'Annonce supprimée.'],
+        // « Notre équipe » de la page « Qui sommes-nous ? » (demande de Yaya du 16/10/2026).
+        'equipe' => ['classe' => MembreEquipe::class, 'libelle' => 'Équipe', 'un' => 'Équipe', 'nouveau' => 'Ajouter une personne', 'cree' => 'Personne ajoutée.', 'supprime' => 'Personne retirée de l\'équipe.'],
     ];
 
     /** Photos d'une réalisation, au plus. */
@@ -142,6 +147,7 @@ final class ContenuSite
             $objet instanceof ArticleConseil => $this->lireConseil($objet, $donnees, $erreurs, $avertissements),
             $objet instanceof Partenaire => $this->lirePartenaire($objet, $donnees, $erreurs, $avertissements),
             $objet instanceof Annonce => $this->lireAnnonce($objet, $donnees, $erreurs, $avertissements),
+            $objet instanceof MembreEquipe => $this->lireMembre($objet, $donnees, $erreurs),
             default => throw new \InvalidArgumentException('Contenu du site inconnu.'),
         };
 
@@ -150,7 +156,7 @@ final class ContenuSite
         $retirees = [];
         if ([] === $erreurs) {
             try {
-                [$nouvelles, $retirees] = $this->lireImages($objet, $donnees, $fichiers);
+                [$nouvelles, $retirees] = $this->lireImages($objet, $donnees, $fichiers, $avertissements);
             } catch (\DomainException $e) {
                 $erreurs[] = $e->getMessage();
             }
@@ -169,7 +175,7 @@ final class ContenuSite
             $avertissements[] = 'Enregistré sans être publié sur le site.';
             $publier = false;
         }
-        $objet instanceof Partenaire ? $objet->setVisible($publier) : $objet->setPublie($publier);
+        $objet instanceof Partenaire || $objet instanceof MembreEquipe ? $objet->setVisible($publier) : $objet->setPublie($publier);
         if ($objet instanceof PageSite || $objet instanceof ArticleConseil || $objet instanceof Annonce) {
             $objet->noterModification($maintenant);
         }
@@ -247,6 +253,7 @@ final class ContenuSite
             $objet instanceof Realisation => $objet->getImages()->toArray(),
             $objet instanceof PageSite, $objet instanceof ArticleConseil => [$objet->getImage()],
             $objet instanceof Partenaire => [$objet->getLogo()],
+            $objet instanceof MembreEquipe => [$objet->getPhoto()],
             default => [],
         }));
     }
@@ -358,6 +365,28 @@ final class ContenuSite
     }
 
     /**
+     * Personne de l'équipe : nom affiché et poste obligatoires, ordre,
+     * accord de la personne. Rien d'autre sur elle (ni téléphone, ni
+     * e-mail, ni lien vers sa fiche d'employé).
+     *
+     * @param array<string, mixed> $donnees
+     * @param list<string>         $erreurs
+     */
+    private function lireMembre(MembreEquipe $membre, array $donnees, array &$erreurs): void
+    {
+        $membre->setNom(self::texte($donnees, 'nom'))
+            ->setPoste(self::texte($donnees, 'poste'))
+            ->setOrdre((int) ($donnees['ordre'] ?? 0))
+            ->setAccordPersonne(!empty($donnees['accordPersonne']));
+        if ('' === $membre->getNom()) {
+            $erreurs[] = 'Le nom à afficher est obligatoire (un prénom suffit).';
+        }
+        if ('' === $membre->getPoste()) {
+            $erreurs[] = 'Le poste est obligatoire (« Graphiste PAO », « Accueil et caisse »…).';
+        }
+    }
+
+    /**
      * Annonce : une phrase de 200 caractères au plus, un lien facultatif
      * (adresse web ou page du site), un style, où la montrer, sa période.
      *
@@ -396,13 +425,18 @@ final class ContenuSite
      *
      * @param array<string, mixed> $donnees
      * @param array<string, mixed> $fichiers
+     * @param list<string>         $avertissements
      *
      * @return array{0: list<ImageSite>, 1: list<ImageSite>} nouvelles, retirées
      */
-    private function lireImages(object $objet, array $donnees, array $fichiers): array
+    private function lireImages(object $objet, array $donnees, array $fichiers, array &$avertissements = []): array
     {
         $nouvelles = [];
         $retirees = [];
+
+        if ($objet instanceof MembreEquipe) {
+            return $this->lirePortrait($objet, $donnees, $fichiers, $avertissements);
+        }
 
         if ($objet instanceof Realisation) {
             $reglages = \is_array($donnees['photos'] ?? null) ? $donnees['photos'] : [];
@@ -462,6 +496,57 @@ final class ContenuSite
         $image = $remplacee ?? $actuelle;
         $image?->setTexteAlternatif($logo ? $objet->getNom() : (isset($donnees['image_alt']) ? (string) $donnees['image_alt'] : $image->getTexteAlternatif()));
         $logo ? $objet->setLogo($image) : $objet->setImage($image);
+
+        return [$nouvelles, $retirees];
+    }
+
+    /**
+     * Photo d'une personne de l'équipe : recadrée en carré, réencodée sans
+     * métadonnées, sans original gardé. Elle n'existe qu'avec l'accord de
+     * la personne : un envoi sans la case cochée est refusé, et décocher
+     * la case retire la photo (ici, et du site à la prochaine
+     * synchronisation).
+     *
+     * @param array<string, mixed> $donnees
+     * @param array<string, mixed> $fichiers
+     * @param list<string>         $avertissements
+     *
+     * @return array{0: list<ImageSite>, 1: list<ImageSite>} nouvelles, retirées
+     *
+     * @throws \DomainException
+     */
+    private function lirePortrait(MembreEquipe $membre, array $donnees, array $fichiers, array &$avertissements): array
+    {
+        $actuelle = $membre->getPhoto();
+        $fichier = $fichiers['photo'] ?? null;
+        $envoi = $fichier instanceof UploadedFile && \UPLOAD_ERR_NO_FILE !== $fichier->getError();
+        if (!$membre->isAccordPersonne()) {
+            if ($envoi) {
+                throw new \DomainException('Photo non enregistrée : cochez d\'abord « La personne a accepté que sa photo et son nom paraissent sur le site », puis choisissez de nouveau la photo.');
+            }
+            if (null === $actuelle) {
+                return [[], []];
+            }
+            $membre->setPhoto(null);
+            $avertissements[] = 'Sans l\'accord de la personne, sa photo n\'est pas gardée : elle a été retirée (et le sera du site à la prochaine synchronisation).';
+
+            return [[], [$actuelle]];
+        }
+
+        $nouvelles = [];
+        $retirees = [];
+        $remplacee = null;
+        if ($envoi) {
+            $remplacee = $this->images->depuisEnvoi($fichier, ImageSite::USAGE_PORTRAIT);
+            $nouvelles[] = $remplacee;
+        }
+        if (null !== $actuelle && (null !== $remplacee || !empty($donnees['retirer_photo']))) {
+            $retirees[] = $actuelle;
+            $actuelle = null;
+        }
+        $photo = $remplacee ?? $actuelle;
+        $photo?->setTexteAlternatif($membre->getTexteAlternatif());
+        $membre->setPhoto($photo);
 
         return [$nouvelles, $retirees];
     }

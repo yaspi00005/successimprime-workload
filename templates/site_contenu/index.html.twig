@@ -15,7 +15,7 @@
 	<li class="nav-item si-masque-mobile">
 		<a href="{{ path('app_site_accueil') }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener">Voir le site</a>
 	</li>
-	{% if not ferme and onglet in ['realisations', 'avis', 'conseils', 'partenaires', 'annonces'] %}
+	{% if not ferme and onglet in ['realisations', 'avis', 'conseils', 'partenaires', 'annonces', 'equipe'] %}
 		<li class="nav-item">
 			<a href="{{ path('app_site_contenu_nouveau', {type: onglet}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>{{ onglets[onglet].nouveau }}</a>
 		</li>
@@ -42,13 +42,13 @@
 				<i class="fas fa-lock" aria-hidden="true"></i>
 				<div>
 					<h2>Le contenu du site se modifie à l'atelier</h2>
-					<p class="mb-0">Pages, réalisations, avis, conseils, partenaires et annonces se saisissent sur le serveur local de l'atelier, puis descendent au site avec la synchronisation. En ligne, cet écran est fermé.</p>
+					<p class="mb-0">Pages, réalisations, avis, conseils, partenaires, équipe et annonces se saisissent sur le serveur local de l'atelier, puis descendent au site avec la synchronisation. En ligne, cet écran est fermé.</p>
 				</div>
 			</div>
 		{% else %}
 			<p class="si-sv-intro">
 				Ce que vous enregistrez ici part sur le site à la prochaine synchronisation.
-				<strong>Noms de clients, avis et logos : seulement avec l'accord de la personne.</strong>
+				<strong>Noms de clients, avis, logos, photos et noms de l'équipe : seulement avec l'accord de la personne.</strong>
 			</p>
 
 			<nav class="si-sv-onglets" aria-label="Contenu du site">
@@ -243,6 +243,39 @@
 												{% else %}<span class="si-pastille si-pastille-gris">Inactive</span>{% endif %}
 											</td>
 											<td class="text-end"><a href="{{ path('app_site_contenu_fiche', {type: 'annonces', id: a.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a></td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+
+				{% elseif onglet == 'equipe' %}
+					<p class="si-sv-aide">Section « Notre équipe » de la page « Qui sommes-nous ? » : photo, nom et poste. Une personne n'apparaît que si « Visible » est coché <strong>et</strong> qu'elle a accepté que sa photo et son nom paraissent sur le site. Tant que personne n'est affiché, la page garde ses cartes Direction, Atelier, PAO.</p>
+					{% if elements is empty %}
+						<p class="si-sv-vide">Personne pour le moment. Demandez d'abord à chacun s'il accepte de paraître sur le site, avec quelle photo et sous quel nom (un prénom suffit).</p>
+					{% else %}
+						<div class="table-responsive">
+							<table class="table si-table align-middle mb-0">
+								<thead>
+									<tr><th></th><th>Personne</th><th class="si-masque-mobile">Ordre</th><th>Accord</th><th>État</th><th class="text-end"></th></tr>
+								</thead>
+								<tbody>
+									{% for m in elements %}
+										{% set fichier = site_image(m.photo, 'petite') %}
+										<tr>
+											<td class="si-sv-col-vignette">
+												{% if fichier %}
+													<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="" class="si-sv-vignette si-sv-vignette-rond" loading="lazy">
+												{% else %}
+													<span class="si-sv-vignette si-sv-vignette-rond si-sv-initiales" aria-hidden="true">{{ m.initiales }}</span>
+												{% endif %}
+											</td>
+											<td><strong>{{ m.nom }}</strong><small class="d-block text-muted">{{ m.poste }}{{ m.photo ? '' : ' · sans photo' }}</small></td>
+											<td class="si-masque-mobile">{{ m.ordre }}</td>
+											<td><span class="si-pastille {{ m.accordPersonne ? 'si-pastille-vert' : 'si-pastille-orange' }}">{{ m.accordPersonne ? 'Donné' : 'À obtenir' }}</span></td>
+											<td>{{ _self.etat(m.estVisible, 'Visible', 'Masquée') }}</td>
+											<td class="text-end"><a href="{{ path('app_site_contenu_fiche', {type: 'equipe', id: m.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a></td>
 										</tr>
 									{% endfor %}
 								</tbody>

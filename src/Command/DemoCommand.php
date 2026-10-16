@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Service\Site\EquipeDemo;
 use App\Service\Societes\RattachementSql;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -86,7 +87,7 @@ final class DemoCommand extends Command
         $n = 0;
         try {
             $this->connexion->beginTransaction();
-            foreach ([...self::PURGE_MODULES, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
+            foreach ([...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
             }
@@ -95,6 +96,8 @@ final class DemoCommand extends Command
                 foreach (RattachementSql::instructions(900000) as $sql) {
                     $this->connexion->executeStatement($sql);
                 }
+                // « Notre équipe » de la page « Qui sommes-nous ? » : avatars dessinés, une personne sans accord.
+                EquipeDemo::charger($this->connexion);
             }
             $this->connexion->commit();
         } catch (\Throwable $e) {

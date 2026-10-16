@@ -97,7 +97,7 @@ final class ModulesRoles
             // Contenu du site public : à la Direction, et à qui on confie la mise à jour du site.
             'site' => [
                 'libelle' => 'Site vitrine',
-                'detail' => 'pages, réalisations, avis, conseils, partenaires',
+                'detail' => 'pages, réalisations, avis, conseils, partenaires, équipe, annonces',
                 'droits' => ['ROLE_SITE_VITRINE'],
             ],
             'reglages' => [

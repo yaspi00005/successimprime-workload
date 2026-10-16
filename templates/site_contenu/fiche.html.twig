@@ -2,8 +2,8 @@
 
 {#
 	Fiche d'un contenu du site vitrine (page, réalisation, avis, conseil,
-	partenaire, annonce). Les accords se cochent ici ; sans accord, la publication
-	est refusée par ContenuSite.
+	partenaire, annonce, personne de l'équipe). Les accords se cochent ici ;
+	sans accord, la publication est refusée par ContenuSite.
 #}
 
 {% set nouveau = objet.id is null %}
@@ -17,6 +17,8 @@
 		{% set apercu = path('app_site_realisations') %}
 	{% elseif type == 'annonces' and objet.estVisible(maintenant) and objet.pourCible('site') %}
 		{% set apercu = path('app_site_accueil') %}
+	{% elseif type == 'equipe' and objet.estVisible %}
+		{% set apercu = path('app_site_a_propos') ~ '#notre-equipe' %}
 	{% endif %}
 {% endif %}
 
@@ -237,6 +239,29 @@
 								</div>
 							</div>
 
+						{% elseif type == 'equipe' %}
+							<div class="row g-3">
+								<div class="col-md-6">
+									<label class="si-libelle-champ" for="champ-nom">Nom affiché</label>
+									<input type="text" name="nom" id="champ-nom" value="{{ objet.nom }}" maxlength="{{ constant('App\\Entity\\MembreEquipe::NOM_MAX') }}" class="form-control" placeholder="Awa, ou Seydou K." required>
+									<div class="form-text">Comme la personne le souhaite : un prénom seul, ou prénom et initiale, suffit.</div>
+								</div>
+								<div class="col-md-6">
+									<label class="si-libelle-champ" for="champ-poste">Poste</label>
+									<input type="text" name="poste" id="champ-poste" value="{{ objet.poste }}" maxlength="{{ constant('App\\Entity\\MembreEquipe::POSTE_MAX') }}" class="form-control" list="postes-equipe" placeholder="Graphiste PAO" required>
+									<datalist id="postes-equipe"><option value="Direction"><option value="Accueil et caisse"><option value="Graphiste PAO"><option value="Opérateur grand format"><option value="Finition et pose"><option value="Livraison"></datalist>
+								</div>
+							</div>
+							<div class="row g-3 mt-0">
+								<div class="col-md-3">
+									<label class="si-libelle-champ" for="champ-ordre">Ordre</label>
+									<input type="number" name="ordre" id="champ-ordre" value="{{ objet.ordre }}" min="0" max="999" class="form-control">
+								</div>
+								<div class="col-md-9 d-flex align-items-end">
+									<p class="form-text mb-2">Les plus petits numéros d'abord. Rien d'autre sur la personne n'est demandé ni montré : ni téléphone, ni e-mail, ni lien vers sa fiche d'employé.</p>
+								</div>
+							</div>
+
 						{% elseif type == 'partenaires' %}
 							<label class="si-libelle-champ" for="champ-nom">Nom</label>
 							<input type="text" name="nom" id="champ-nom" value="{{ objet.nom }}" maxlength="120" class="form-control" required>
@@ -293,6 +318,10 @@
 							{{ _self.interrupteur('accordClient', objet.accordClient, 'Accord du client', 'Le client accepte que son avis et le nom affiché soient montrés sur le site. Sans accord, l\'avis reste à l\'atelier.') }}
 						{% elseif type == 'partenaires' %}
 							{{ _self.interrupteur('accordObtenu', objet.accordObtenu, 'Accord obtenu', 'Le partenaire accepte que son nom et son logo soient montrés. Obligatoire pour l\'afficher.') }}
+						{% elseif type == 'equipe' %}
+							<div class="si-sv-accord {{ objet.accordPersonne ? 'si-sv-accord-ok' }} mb-3">
+								{{ _self.interrupteur('accordPersonne', objet.accordPersonne, 'La personne a accepté que sa photo et son nom paraissent sur le site', 'Obligatoire pour l\'afficher, et pour garder sa photo. Sans accord, ni son nom, ni son poste, ni sa photo ne quittent l\'atelier. Décocher retire sa photo.') }}
+							</div>
 						{% endif %}
 						{% if type == 'annonces' %}
 							{{ _self.interrupteur('publie', objet.publie, 'Active', 'Montrée pendant sa période ci-dessous ; sans date, tout de suite et sans fin.') }}
@@ -307,8 +336,8 @@
 								</div>
 							</div>
 						{% else %}
-						{{ _self.interrupteur('publie', type == 'partenaires' ? objet.visible : objet.publie, type == 'partenaires' ? 'Visible sur le site' : 'Publié sur le site',
-							type == 'conseils' ? 'À partir de la date de publication ci-dessous.' : (type == 'pages' ? 'Non publiée, la page n\'est pas montrée.' : null)) }}
+						{{ _self.interrupteur('publie', type in ['partenaires', 'equipe'] ? objet.visible : objet.publie, type in ['partenaires', 'equipe'] ? 'Visible sur le site' : 'Publié sur le site',
+							type == 'conseils' ? 'À partir de la date de publication ci-dessous.' : (type == 'pages' ? 'Non publiée, la page n\'est pas montrée.' : (type == 'equipe' ? 'Décochez pour masquer la personne sans la supprimer (départ, congé…).' : null))) }}
 						{% endif %}
 						{% if type == 'conseils' %}
 							<label class="si-libelle-champ mt-3" for="champ-publie-le">Date de publication</label>
@@ -341,6 +370,32 @@
 						{{ _self.image_unique(objet.image, 'image', type == 'pages' ? 'Photo de la page' : 'Image du conseil', false, formats) }}
 					{% elseif type == 'partenaires' %}
 						{{ _self.image_unique(objet.logo, 'logo', 'Logo', true, formats) }}
+					{% elseif type == 'equipe' %}
+						{% set fichier = site_image(objet.photo, 'petite') %}
+						<section class="card si-bloc si-sv-encadre">
+							<h2 class="si-sv-sous-titre">Photo</h2>
+							<div class="si-sv-portrait">
+								{% if fichier %}
+									<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="">
+								{% else %}
+									<span class="si-sv-initiales" aria-hidden="true">{{ objet.initiales ?: '?' }}</span>
+								{% endif %}
+								<p>{{ fichier ? 'Montrée dans un rond, avec « ' ~ objet.texteAlternatif ~ ' » pour les malvoyants.' : (objet.photo ? 'Photo enregistrée, mais ce serveur ne sait pas la lire pour l\'aperçu.' : 'Sans photo, le site montre ses initiales dans un rond aux couleurs de Succès Imprim.') }}</p>
+							</div>
+							{% if objet.photo %}
+								<label class="form-check">
+									<input type="checkbox" name="retirer_photo" value="1" class="form-check-input">
+									<span class="form-check-label">Retirer la photo</span>
+								</label>
+							{% endif %}
+							<label class="si-libelle-champ mt-2" for="champ-photo">{{ objet.photo ? 'Remplacer par' : 'Envoyer' }} une photo</label>
+							<input type="file" name="photo" id="champ-photo" accept="{{ formats.jpeg ? 'image/jpeg,' }}image/png{{ formats.webpLu ? ',image/webp' }}" class="form-control form-control-sm" aria-describedby="aide-photo">
+							<div id="aide-photo" class="form-text">
+								Une photo de face, cadrée sur le visage et les épaules : elle est recadrée en carré (plutôt vers le haut), réduite à 480 px et réencodée en {{ formats.webp ? 'WebP' : 'PNG' }}. Les données du téléphone (EXIF, position GPS) sont retirées et l'original n'est pas gardé.
+								{{ formats.jpeg ? 'JPG, PNG' : 'PNG' }}{{ formats.webpLu ? ' ou WebP' }}, 15 Mo au plus. Seulement avec l'accord de la personne.
+								{% if not formats.jpeg %}<br><strong>Ce serveur ne lit pas le JPG (GD sans JPEG) : envoyez un PNG.</strong>{% endif %}
+							</div>
+						</section>
 					{% endif %}
 
 					{% if machines %}

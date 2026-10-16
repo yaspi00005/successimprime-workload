@@ -100,3 +100,13 @@
 .si-sv-annonce-choix input { margin-right: 6px; }
 .si-sv-annonce-choix:has(input:checked) { border-color: #0F4590; background: #EEF3FB; font-weight: 600; }
 .si-sv-annonce-apercu { border-radius: 10px; overflow: hidden; }
+
+/* Équipe (« Notre équipe » de « Qui sommes-nous ? ») : photos rondes, initiales sans photo. */
+.si-sv .si-sv-vignette-rond { width: 48px; height: 48px; border-radius: 50%; }
+.si-sv .si-sv-initiales { display: flex; align-items: center; justify-content: center; background: #0F4590; color: #fff; font-weight: 700; font-size: 16px; letter-spacing: .5px; }
+.si-sv .si-sv-portrait { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.si-sv .si-sv-portrait img, .si-sv .si-sv-portrait .si-sv-initiales { flex: 0 0 auto; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px #fff, 0 0 0 5px #E5EEFA; }
+.si-sv .si-sv-portrait .si-sv-initiales { font-size: 32px; }
+.si-sv .si-sv-portrait p { margin: 0; font-size: 13px; color: #475569; }
+.si-sv .si-sv-accord { padding: 12px; border-radius: 10px; background: #FFF8E6; }
+.si-sv .si-sv-accord.si-sv-accord-ok { background: #ECFDF3; }

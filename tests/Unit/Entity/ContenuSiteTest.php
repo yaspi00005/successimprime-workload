@@ -6,6 +6,7 @@ use App\Entity\ArticleConseil;
 use App\Entity\AvisClient;
 use App\Entity\CategorieProduit;
 use App\Entity\PageSite;
+use App\Entity\MembreEquipe;
 use App\Entity\Partenaire;
 use App\Entity\Realisation;
 use PHPUnit\Framework\TestCase;
@@ -43,6 +44,41 @@ final class ContenuSiteTest extends TestCase
         self::assertTrue($partenaire->estVisible());
         self::assertSame([], $partenaire->reglesDePublication());
         self::assertFalse($partenaire->setVisible(false)->estVisible());
+    }
+
+    public function testUnePersonneDeLEquipeNeSeMontreQuAvecSonAccord(): void
+    {
+        $membre = (new MembreEquipe())->setNom('  Awa   Traoré ')->setPoste(' Graphiste  PAO ')->setVisible(true);
+        self::assertSame(['Awa Traoré', 'Graphiste PAO'], [$membre->getNom(), $membre->getPoste()]);
+        self::assertFalse($membre->estVisible(), 'visible coché, mais sans accord');
+        self::assertNotSame([], $membre->reglesDePublication());
+        // La synchronisation ne fait descendre ni le nom ni le poste sans accord.
+        self::assertSame('', MembreEquipe::textePublic('Awa Traoré', $membre));
+        self::assertSame('', MembreEquipe::textePublic('Graphiste PAO', $membre));
+
+        $membre->setAccordPersonne(true);
+        self::assertTrue($membre->estVisible());
+        self::assertSame([], $membre->reglesDePublication());
+        self::assertSame('Awa Traoré', MembreEquipe::textePublic('Awa Traoré', $membre));
+        self::assertFalse((clone $membre)->setVisible(false)->estVisible(), 'masquée : départ, congé…');
+        self::assertFalse((clone $membre)->setNom('  ')->estVisible(), 'sans nom');
+
+        self::assertSame('Photo de Awa Traoré, Graphiste PAO', $membre->getTexteAlternatif());
+        self::assertSame('Photo de Awa Traoré', (clone $membre)->setPoste('')->getTexteAlternatif());
+        self::assertSame(MembreEquipe::NOM_MAX, mb_strlen($membre->setNom(str_repeat('é', 90))->getNom()));
+        self::assertSame(999, $membre->setOrdre(5000)->getOrdre());
+        self::assertSame(0, $membre->setOrdre(-3)->getOrdre());
+    }
+
+    public function testInitialesSansPhoto(): void
+    {
+        $initiales = static fn (string $nom): string => (new MembreEquipe())->setNom($nom)->getInitiales();
+        self::assertSame('AT', $initiales('Awa Traoré'));
+        self::assertSame('SK', $initiales('Seydou K.'));
+        self::assertSame('M', $initiales('Moussa'));
+        self::assertSame('ÉD', $initiales('élise dembélé'));
+        self::assertSame('AM', $initiales('Aïssata-Maïmouna Diallo'));
+        self::assertSame('', $initiales('  '));
     }
 
     public function testLeLienDUnPartenaireEstUneAdresseWeb(): void

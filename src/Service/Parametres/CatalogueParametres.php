@@ -391,7 +391,7 @@ final class CatalogueParametres
             'site_vitrine' => [
                 'famille' => 'clients', 'libelle' => 'Site vitrine', 'icone' => 'fa-globe',
                 'roles' => ['ROLE_ADMIN', 'ROLE_SITE_VITRINE'], 'route' => 'app_site_contenu_index', 'champs' => [],
-                'motsCles' => ['Pages du site · équipements, guide, à propos, engagements, FAQ', 'Réalisations et photos', 'Avis clients · conseils', 'Partenaires · chiffres du site'],
+                'motsCles' => ['Pages du site · équipements, guide, à propos, engagements, FAQ', 'Réalisations et photos', 'Avis clients · conseils', 'Partenaires · chiffres du site', 'Équipe · photos, noms et postes'],
             ],
             // Assistant du site et de l'espace client (docs/assistant-client.md), périmètre validé par Yaya le 10/10/2026.
             'assistant' => [

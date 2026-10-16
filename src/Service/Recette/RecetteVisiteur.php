@@ -4,9 +4,12 @@ namespace App\Service\Recette;
 
 use App\Entity\Clients;
 use App\Entity\Commandes;
+use App\Entity\MembreEquipe;
+use App\Entity\PageSite;
 use App\Entity\ProduitConfiguration;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\Site\Calculateur;
+use App\Service\Site\ContenuInitial;
 use App\Service\Site\ReferencementSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\RouterInterface;
@@ -16,8 +19,10 @@ use Symfony\Component\Routing\RouterInterface;
  * peut vérifier : robots.txt et sitemap.xml, suivi de commande sans compte
  * (mauvais téléphone = commande inconnue, pas de montant), calculateur
  * jamais au prix B2B, aucun nom de client sans son accord ni montant
- * d'un client sur les pages publiques, les en-têtes de sécurité et la
- * mesure d'audience Google (pages publiques du site en ligne seulement).
+ * d'un client sur les pages publiques, aucune personne de l'équipe
+ * masquée ou sans son accord sur « Qui sommes-nous ? », les en-têtes de
+ * sécurité et la mesure d'audience Google (pages publiques du site en
+ * ligne seulement).
  */
 final class RecetteVisiteur
 {
@@ -48,6 +53,7 @@ final class RecetteVisiteur
                 $this->suivi($bilan);
                 $this->calculateur($bilan);
                 $this->pagesPubliques($bilan);
+                $this->equipe($bilan);
             }
         } finally {
             $this->navigateur->terminer();
@@ -252,6 +258,65 @@ final class RecetteVisiteur
             }
         }
         $bilan->controler('Visiteur : pages publiques sans erreur ni nom de client sans accord', 0 === $problemes, \sprintf('%d pages lues, %d nom(s) de client cherché(s)', $lues, \count($noms)));
+    }
+
+    /**
+     * « Notre équipe » de « Qui sommes-nous ? » : une personne masquée ou
+     * qui n'a pas donné son accord n'y paraît ni par son nom, ni par le
+     * texte de sa photo. Trois témoins sont ajoutés le temps de la recette
+     * (la transaction est annulée à la fin) : visible avec accord (doit
+     * paraître, sinon le contrôle ne prouve rien), visible sans accord,
+     * masqué avec accord. Les personnes cachées déjà en base (la personne
+     * sans accord de la démonstration) sont cherchées aussi. Sans page
+     * publiée, la page est publiée le temps du contrôle.
+     */
+    private function equipe(BilanRecette $bilan): void
+    {
+        if (null === $this->routeur->getRouteCollection()->get('app_site_a_propos')) {
+            return;
+        }
+        $marque = strtoupper(bin2hex(random_bytes(3)));
+        $temoin = static fn (string $nom, bool $visible, bool $accord): MembreEquipe => (new MembreEquipe())
+            ->setNom($nom.' '.$marque)->setPoste('Témoin de recette')->setOrdre(999)->setVisible($visible)->setAccordPersonne($accord);
+        $montre = $temoin('Témoin Montré', true, true);
+        $caches = [$temoin('Témoin SansAccord', true, false), $temoin('Témoin Masqué', false, true)];
+        $page = $this->em->getRepository(PageSite::class)->findOneBy(['slug' => 'a-propos']);
+        if (null === $page) {
+            $texte = ContenuInitial::pages()['a-propos'];
+            $page = (new PageSite('a-propos'))->setTitre($texte['titre'])->setCorps($texte['corps'])->noterModification(new \DateTimeImmutable());
+            $this->em->persist($page);
+        }
+        $page->setPublie(true);
+        foreach ([$montre, ...$caches] as $m) {
+            $this->em->persist($m);
+        }
+        $this->em->flush();
+        $noms = [];
+        foreach ($this->em->getRepository(MembreEquipe::class)->findAll() as $m) {
+            if (!$m->estVisible() && '' !== $m->getNom()) {
+                $noms[] = $m->getNom();
+            }
+        }
+
+        $chemin = $this->routeur->generate('app_site_a_propos');
+        $reponse = $this->navigateur->get($chemin);
+        $html = html_entity_decode($reponse->contenu, \ENT_QUOTES | \ENT_HTML5, 'UTF-8');
+        // La section « Notre équipe » seule : un même prénom ailleurs (un avis) n'est pas une fuite.
+        $section = preg_match('#<section[^>]*id="notre-equipe".*?</section>#su', $html, $m) ? mb_strtolower($m[0]) : '';
+        $fuites = 0;
+        foreach (array_unique($noms) as $nom) {
+            $cherche = mb_strtolower($nom);
+            if (str_contains($section, $cherche) || str_contains(mb_strtolower($html), 'photo de '.$cherche)) {
+                ++$fuites;
+                $bilan->constater(BilanRecette::FUITE, 'equipe_sans_accord', 'app_site_a_propos', $chemin, 'visiteur', 'personne de l\'équipe montrée alors qu\'elle est masquée ou sans son accord : « '.$nom.' »');
+            }
+        }
+        $temoinVu = str_contains($section, mb_strtolower($montre->getNom()));
+        $bilan->controler(
+            'Visiteur : « Qui sommes-nous ? » ne montre de l\'équipe que les personnes visibles avec leur accord',
+            200 === $reponse->statut && $temoinVu && 0 === $fuites,
+            \sprintf('%d, témoin visible %s, %d personne(s) cachée(s) cherchée(s), %d montrée(s)', $reponse->statut, $temoinVu ? 'montré' : 'absent', \count(array_unique($noms)), $fuites),
+        );
     }
 
     /**

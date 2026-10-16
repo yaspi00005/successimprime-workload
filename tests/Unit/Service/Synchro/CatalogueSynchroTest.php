@@ -295,6 +295,36 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame('site_annonce', CatalogueSynchro::typeDe(new \App\Entity\Annonce()));
     }
 
+    public function testLEquipeDuSiteDescendSansRienDePrive(): void
+    {
+        $equipe = CatalogueSynchro::types()['site_equipe'];
+        self::assertSame(\App\Entity\MembreEquipe::class, $equipe['classe']);
+        self::assertSame(CatalogueSynchro::DESCENDANT, $equipe['sens'], 'saisie à l\'atelier seulement');
+        self::assertSame(['nom', 'poste', 'ordre', 'visible', 'accordPersonne'], $equipe['champs'], 'ni téléphone, ni e-mail, ni salaire, ni compte');
+        self::assertSame(['photo' => 'site_image'], $equipe['relations'], 'aucun lien vers le personnel ou un utilisateur');
+        self::assertTrue(CatalogueSynchro::envoye('site_equipe', false));
+        self::assertFalse(CatalogueSynchro::envoye('site_equipe', true));
+        self::assertFalse(CatalogueSynchro::accepte('site_equipe', false));
+        self::assertSame('site_equipe', CatalogueSynchro::typeDe(new \App\Entity\MembreEquipe()));
+        // La photo (image du site) part avant la personne qui la cite.
+        $ordre = array_keys(CatalogueSynchro::types());
+        self::assertLessThan(array_search('site_equipe', $ordre, true), array_search('site_image', $ordre, true));
+
+        // Masquer la personne, retirer son accord ou changer sa photo la renvoie au site.
+        foreach (['visible', 'accordPersonne', 'photo', 'nom', 'poste', 'ordre'] as $champ) {
+            self::assertContains($champ, CatalogueSynchro::champsSuivis('site_equipe'), $champ);
+        }
+
+        // Sans son accord, son nom et son poste partent vides.
+        $membre = (new \App\Entity\MembreEquipe())->setNom('Awa')->setPoste('Graphiste PAO')->setVisible(true);
+        foreach (['nom' => 'Awa', 'poste' => 'Graphiste PAO'] as $champ => $valeur) {
+            self::assertSame('', ($equipe['filtres'][$champ])($valeur, $membre), $champ);
+        }
+        $membre->setAccordPersonne(true);
+        self::assertSame('Awa', ($equipe['filtres']['nom'])('Awa', $membre));
+        self::assertSame('Graphiste PAO', ($equipe['filtres']['poste'])('Graphiste PAO', $membre));
+    }
+
     public function testLaSuspensionDeLEspaceClientDescendSansSonMotif(): void
     {
         $suspension = CatalogueSynchro::types()['suspension_espace'];

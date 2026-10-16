@@ -95,8 +95,9 @@ final class LigneAuMetreCarreTest extends TestCase
 
         $devis->recalculerTotaux();
 
-        // Le total envoyé par le navigateur (39 000) n'est pas repris.
-        self::assertSame(16000, $devis->getTotalTtc());
+        // Le total envoyé par le navigateur (39 000) n'est pas repris ; la
+        // remise globale est déduite du total (TotauxDocument).
+        self::assertSame(15000, $devis->getTotalTtc());
         self::assertSame(15000, $devis->getMontantApayer());
     }
 

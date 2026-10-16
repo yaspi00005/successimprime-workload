@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit\Service;
 
+use App\Service\AlertesEcranTv;
 use App\Service\EcranTv;
 use App\Service\ProgrammeEcranTv;
 use PHPUnit\Framework\TestCase;
@@ -46,6 +47,30 @@ final class ProgrammeEcranTvTest extends TestCase
         self::assertNull($programme['horaires'][1], 'Une fermeture avant l\'ouverture vaut « fermé ».');
         self::assertSame(['ouverture' => '09:00', 'fermeture' => '13:00'], $programme['horaires'][6]);
         self::assertSame(ProgrammeEcranTv::HORS_HORAIRES_FERME, $programme['horsHoraires']);
+    }
+
+    public function testAlertesSonoresParDefautEtBornees(): void
+    {
+        // Programme enregistré avant les alertes : carillon et voix, 80 %, silence de 20:00 à 07:30.
+        self::assertSame([
+            'son' => true, 'voix' => true, 'volume' => 80, 'silenceDebut' => '20:00', 'silenceFin' => '07:30',
+            'evenements' => AlertesEcranTv::evenementsParDefaut(),
+        ], ProgrammeEcranTv::normaliser([])['alertes']);
+
+        $alertes = ProgrammeEcranTv::normaliser(['alertes' => [
+            'son' => '0', 'voix' => '1', 'volume' => '250', 'silenceDebut' => '', 'silenceFin' => '31:00',
+            'evenements' => ['paiement', 'inconnu', ['x'], 'commande_en_ligne', 'paiement'],
+        ]])['alertes'];
+        self::assertFalse($alertes['son']);
+        self::assertTrue($alertes['voix']);
+        self::assertSame(100, $alertes['volume']);
+        self::assertNull($alertes['silenceDebut']);
+        self::assertNull($alertes['silenceFin']);
+        // Dans l'ordre des réglages, sans doublon ni inconnu.
+        self::assertSame(['commande_en_ligne', 'paiement'], $alertes['evenements']);
+        // Aucune case cochée : rien n'est annoncé.
+        self::assertSame([], ProgrammeEcranTv::normaliser(['alertes' => ['evenements' => []]])['alertes']['evenements']);
+        self::assertSame(0, ProgrammeEcranTv::normaliser(['alertes' => ['volume' => '-5']])['alertes']['volume']);
     }
 
     public function testUneSceneSuitSesHeuresSesDatesEtSesJours(): void

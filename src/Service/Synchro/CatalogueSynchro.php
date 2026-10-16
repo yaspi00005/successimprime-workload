@@ -135,7 +135,8 @@ final class CatalogueSynchro
             // Banque, numérotation, logos et signature restent au local.
             'entreprise' => [
                 'classe' => Entreprise::class, 'sens' => self::DESCENDANT, 'libelle' => 'Entreprise', 'titre' => ['code'],
-                'champs' => ['code', 'raisonSociale', 'nomCommercial', 'mention', 'activite', 'adresse', 'telephone', 'email', 'siteWeb', 'rccm', 'nif', 'marchandOrangeMoney', 'couleurs', 'actif', 'ordre'],
+                // conditionsPaiement : bloc « NB » des factures, que le PDF montre aussi en ligne.
+                'champs' => ['code', 'raisonSociale', 'nomCommercial', 'mention', 'activite', 'adresse', 'telephone', 'email', 'siteWeb', 'rccm', 'nif', 'marchandOrangeMoney', 'couleurs', 'actif', 'ordre', 'conditionsPaiement'],
                 'relations' => ['societe' => 'societe'], 'listes' => [],
             ],
             // Contenu du site vitrine (Réglages › Site vitrine), saisi au local seulement.
@@ -181,6 +182,12 @@ final class CatalogueSynchro
             'site_reglage' => [
                 'classe' => \App\Entity\ReglageSite::class, 'sens' => self::DESCENDANT, 'libelle' => 'Réglage du site', 'titre' => ['cle'],
                 'champs' => ['cle', 'valeurs'],
+                'relations' => [], 'listes' => [],
+            ],
+            // Bandes d'annonces du site public et de l'espace client (Réglages › Site vitrine › Annonces).
+            'site_annonce' => [
+                'classe' => \App\Entity\Annonce::class, 'sens' => self::DESCENDANT, 'libelle' => 'Annonce', 'titre' => ['texte'],
+                'champs' => ['texte', 'lien', 'libelleLien', 'style', 'cible', 'debut', 'fin', 'publie', 'ordre', 'modifieLe'],
                 'relations' => [], 'listes' => [],
             ],
             'categorie' => [
@@ -256,6 +263,13 @@ final class CatalogueSynchro
                 // Un seul accès par client : recréé au local, il remplace celui du site.
                 'uniqueSur' => ['client'],
             ],
+            // Accès à l'espace client suspendu par la boutique (fiche client, docs/espace-client.md) : la fiche, le
+            // numéro de la personne (vide : tout le compte), le début et la levée. Motif, nom et employés restent au local.
+            'suspension_espace' => [
+                'classe' => \App\Entity\SuspensionEspace::class, 'sens' => self::DESCENDANT, 'libelle' => 'Suspension de l\'espace client', 'titre' => ['telephone', 'suspenduLe'],
+                'champs' => ['telephone', 'suspenduLe', 'leveeLe'],
+                'relations' => ['client' => 'client'], 'listes' => [],
+            ],
             // Promotions (docs/promotions.md) : ce que l'espace client montre à chacun des siennes. Le code promo
             // simple, la note interne et les auteurs restent au local ; une promotion à code simple ne paraît pas
             // en ligne. Elles viennent avant les commandes et les devis, qui citent leurs codes générés.
@@ -293,12 +307,15 @@ final class CatalogueSynchro
                     // Code promo (docs/promotions.md) : le code tapé (en clair : c'est le client qui l'a tapé) et
                     // l'avantage, déjà dans les totaux. Le motif d'un code non retenu reste au local.
                     'codeSaisi', 'remiseCodePromo',
+                    // Frais de livraison (déjà dans les totaux) et objet (docs/documents-livraisons.md).
+                    'fraisLivraison', 'objet',
                 ],
                 // codePromo : le code retenu par la boutique, pour compter en ligne les utilisations du client.
                 'relations' => ['clients' => 'client', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 // Seul l'import du local crée un solde d'ouverture : une commande venue du site n'en est jamais un.
                 // Le code promo d'une commande passée en ligne n'est retenu que par la boutique, à la confirmation.
-                'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null],
+                // Les frais de livraison d'une commande passée en ligne sont choisis par la boutique, à la confirmation.
+                'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null, 'fraisLivraison' => 0],
                 // Décision du valideur de l'entreprise, prise en ligne.
                 'remontees' => [
                     'validationEntreprise' => [Commandes::VALIDATION_A_FAIRE => [Commandes::VALIDATION_ACCEPTEE, Commandes::VALIDATION_REFUSEE]],
@@ -366,7 +383,9 @@ final class CatalogueSynchro
                 'champs' => [
                     'numero', 'emetteur', 'dateDevis', 'remise', 'tva', 'totalHt', 'totalTtc', 'montantApayer', 'deleted', 'statut', 'etat',
                     'tokenAuthenticite', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation', 'telephoneFacturation', 'emailFacturation',
-                    'codeSaisi', 'remiseCodePromo',
+                    'codeSaisi', 'remiseCodePromo', 'fraisLivraison', 'objet',
+                    // Personne du client à qui le devis s'adresse (« À l'attention de »).
+                    'interlocuteur',
                 ],
                 'relations' => ['clients' => 'client', 'commande' => 'commande', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 // Le jeton du lien PDF peut naître en ligne (le client ouvre son devis) : il est gardé.
@@ -390,7 +409,7 @@ final class CatalogueSynchro
                 'champs' => [
                     'numero', 'typeDocument', 'emetteur', 'dateFacture', 'dateEcheance', 'totalHt', 'remise', 'tva', 'montantTva', 'totalTtc', 'montantPaye',
                     'resteAPayer', 'statutPaiement', 'etat', 'tokenAuthenticite', 'codeSuivi', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation',
-                    'telephoneFacturation', 'emailFacturation', 'createdAt', 'updatedAt',
+                    'telephoneFacturation', 'emailFacturation', 'createdAt', 'updatedAt', 'fraisLivraison', 'objet',
                 ],
                 'relations' => ['commande' => 'commande', 'societe' => 'societe'], 'listes' => [],
                 'remontees' => ['tokenAuthenticite' => ['' => ['*']]],
@@ -436,11 +455,12 @@ final class CatalogueSynchro
                 'relations' => ['client' => 'client'], 'listes' => [],
                 'imposeAuLocal' => ['statut' => PropositionClient::EN_ATTENTE, 'traiteLe' => null, 'motif' => null],
             ],
-            // Où en est la livraison, pour l'espace client (livreur en route, livrée) et ses notifications.
-            // Livreur, réceptionnaire, adresse, photos, signature, position, encaissement, stock et notes restent au local.
+            // Où en est la livraison, pour l'espace client (livreur en route, livrée, reportée) et ses notifications.
+            // Livreur, réceptionnaire, adresse, photos, signature, position, encaissement, stock et notes restent au local,
+            // comme la raison d'un échec et qui l'a noté : le client voit seulement « reportée » et la date.
             'livraison' => [
                 'classe' => BonLivraison::class, 'sens' => self::DESCENDANT, 'libelle' => 'Bon de livraison', 'titre' => ['numero'],
-                'champs' => ['numero', 'statut', 'creeLe', 'valideLe', 'prevuLe', 'creneau', 'chargeLe', 'enRouteLe', 'arriveLe', 'livreLe'],
+                'champs' => ['numero', 'statut', 'creeLe', 'valideLe', 'prevuLe', 'creneau', 'chargeLe', 'enRouteLe', 'arriveLe', 'livreLe', 'echecLe', 'echecEnCours'],
                 'relations' => ['commande' => 'commande'], 'listes' => [],
                 'enfants' => ['lignes' => [
                     'classe' => BonLivraisonLigne::class, 'parent' => 'bonLivraison',

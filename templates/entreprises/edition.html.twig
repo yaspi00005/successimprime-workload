@@ -140,6 +140,11 @@
 						<div class="col-12 form-text mt-0">
 							{AAAA} année, {MM} mois, {0000} compteur. Vide : la numérotation actuelle continue. Le compteur repart à 1 chaque année. Changez de format de préférence en début d'année.
 						</div>
+						<div class="col-12">
+							<label class="si-libelle-champ" for="conditions_paiement">Conditions de paiement (bloc « NB » des factures)</label>
+							<textarea name="conditions_paiement" id="conditions_paiement" rows="3" maxlength="{{ constant('App\\Entity\\Entreprise::CONDITIONS_PAIEMENT_LONGUEUR') }}" class="form-control form-control-sm" placeholder="Conditions de paiement : …">{{ entreprise.conditionsPaiement }}</textarea>
+							<div class="form-text">Imprimé en bas des factures et des proformas, après « NB : ». Vide : pas de bloc. Les factures déjà archivées ne changent pas.</div>
+						</div>
 					</div>
 
 					<span class="si-libelle-champ mt-3">Couleurs du document</span>

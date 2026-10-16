@@ -50,7 +50,7 @@ final class EspaceClientComptesTest extends TestCase
      * @param array<string, CompteClient> $comptes par numéro normalisé
      * @param array<string, Clients>      $fiches  par numéro normalisé
      */
-    private function service(array $comptes = [], array $fiches = []): EspaceClientComptes
+    private function service(array $comptes = [], array $fiches = [], ?\App\Service\EspaceClient\SuspensionsEspace $suspensions = null): EspaceClientComptes
     {
         $repository = $this->createStub(CompteClientRepository::class);
         $repository->method('parTelephone')->willReturnCallback(static fn (string $t): ?CompteClient => $comptes[CompteClient::normaliserTelephone($t)] ?? null);
@@ -87,7 +87,7 @@ final class EspaceClientComptesTest extends TestCase
             return $libre;
         });
 
-        return new EspaceClientComptes($repository, $em, $this->fabrique->codes(), $acces);
+        return new EspaceClientComptes($repository, $em, $this->fabrique->codes(), $acces, $suspensions);
     }
 
     /** Code d'accès donné par la boutique pour cette fiche ; rend le code en clair. */
@@ -212,6 +212,27 @@ final class EspaceClientComptesTest extends TestCase
         self::assertSame(DestinationCode::DEMONSTRATION, $service->destination('60697804')->type);
         $service->envoyerCode(new Session(new MockArraySessionStorage()), '60697804', '10.0.0.1');
         self::assertSame([], $this->fabrique->emails, 'jamais d\'e-mail à une fiche de démonstration');
+    }
+
+    public function testAccesSuspenduParLaBoutiqueRienNePart(): void
+    {
+        $fiche = self::fiche('76124212', 'yaya@gmail.com');
+        (new \ReflectionProperty(Clients::class, 'id'))->setValue($fiche, 42);
+        $titulaire = self::compte($fiche, '76124212');
+        $personne = self::compte($fiche, '76124213', 'awa@exemple.ml');
+        $suspension = (new \App\Entity\SuspensionEspace())->setClient($fiche)->setTelephone('76124213')->setMotif('Départ');
+        $repository = $this->createStub(\App\Repository\SuspensionEspaceRepository::class);
+        $repository->method('pour')->willReturnCallback(static fn (Clients $c, string $t): ?\App\Entity\SuspensionEspace => $suspension->vise($t) ? $suspension : null);
+        $suspensions = new \App\Service\EspaceClient\SuspensionsEspace($this->createStub(EntityManagerInterface::class), $repository, true);
+
+        $service = $this->service(['22376124212' => $titulaire, '22376124213' => $personne], ['22376124212' => $fiche, '22376124213' => $fiche], $suspensions);
+        // Même réponse qu'un numéro inconnu : rien ne dit qu'elle est suspendue, et aucun code ne part.
+        self::assertSame(DestinationCode::INCONNUE, $service->destination('76124213')->type);
+        $envoi = $service->envoyerCode(new Session(new MockArraySessionStorage()), '76124213', '10.0.0.1');
+        self::assertTrue($envoi['envoye']);
+        self::assertSame([], $this->fabrique->emails);
+        // Les autres personnes de l'entreprise reçoivent toujours leur code.
+        self::assertNotSame(DestinationCode::INCONNUE, $service->destination('76124212')->type);
     }
 
     public function testMotDePasseObligatoireTantQuIlNyEnAPas(): void

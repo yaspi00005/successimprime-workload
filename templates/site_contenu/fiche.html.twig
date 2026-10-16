@@ -2,7 +2,7 @@
 
 {#
 	Fiche d'un contenu du site vitrine (page, réalisation, avis, conseil,
-	partenaire). Les accords se cochent ici ; sans accord, la publication
+	partenaire, annonce). Les accords se cochent ici ; sans accord, la publication
 	est refusée par ContenuSite.
 #}
 
@@ -15,6 +15,8 @@
 		{% set apercu = path('app_site_conseil', {slug: objet.slug}) %}
 	{% elseif type == 'realisations' and objet.publie %}
 		{% set apercu = path('app_site_realisations') %}
+	{% elseif type == 'annonces' and objet.estVisible(maintenant) and objet.pourCible('site') %}
+		{% set apercu = path('app_site_accueil') %}
 	{% endif %}
 {% endif %}
 
@@ -193,6 +195,48 @@
 							<label class="si-libelle-champ mt-3" for="champ-corps">Texte du conseil</label>
 							<textarea name="corps" id="champ-corps" rows="22" class="form-control si-sv-markdown" spellcheck="true">{{ objet.corps }}</textarea>
 
+						{% elseif type == 'annonces' %}
+							<label class="si-libelle-champ" for="champ-texte">Texte de l'annonce</label>
+							<textarea name="texte" id="champ-texte" rows="2" maxlength="{{ constant('App\\Entity\\Annonce::TEXTE_MAX') }}" class="form-control" data-compteur="{{ constant('App\\Entity\\Annonce::TEXTE_MAX') }}" placeholder="Boutique fermée le samedi 1er novembre. Les commandes en ligne restent ouvertes." required>{{ objet.texte }}</textarea>
+							<div class="form-text">Une phrase, sans montant de client. Elle tient sur une ligne sur ordinateur, deux sur téléphone.</div>
+							<div class="row g-3 mt-0">
+								<div class="col-md-8">
+									<label class="si-libelle-champ" for="champ-lien">Lien (facultatif)</label>
+									<input type="text" name="lien" id="champ-lien" value="{{ objet.lien }}" maxlength="255" class="form-control" placeholder="/nos-produits ou https://…" inputmode="url">
+									<div class="form-text">Une page du site (/nos-produits, /contact) ou une adresse web.</div>
+								</div>
+								<div class="col-md-4">
+									<label class="si-libelle-champ" for="champ-libelle-lien">Texte du lien</label>
+									<input type="text" name="libelleLien" id="champ-libelle-lien" value="{{ objet.libelleLien }}" maxlength="{{ constant('App\\Entity\\Annonce::LIBELLE_LIEN_MAX') }}" class="form-control" placeholder="En savoir plus">
+								</div>
+							</div>
+							<fieldset class="mt-3">
+								<legend class="si-libelle-champ">Style</legend>
+								<div class="si-sv-annonce-styles">
+									{% for cle, libelle in constant('App\\Entity\\Annonce::STYLES') %}
+										<label class="si-sv-annonce-choix">
+											<input type="radio" name="style" value="{{ cle }}" {{ objet.style == cle ? 'checked' }}>
+											<span class="si-sv-annonce-style si-sv-annonce-{{ cle }}" aria-hidden="true"></span>
+											{{ libelle }}
+										</label>
+									{% endfor %}
+								</div>
+							</fieldset>
+							<div class="row g-3 mt-0">
+								<div class="col-md-8">
+									<label class="si-libelle-champ" for="champ-cible">Où la montrer</label>
+									<select name="cible" id="champ-cible" class="form-select">
+										{% for cle, libelle in constant('App\\Entity\\Annonce::CIBLES') %}
+											<option value="{{ cle }}" {{ objet.cible == cle ? 'selected' }}>{{ libelle }}</option>
+										{% endfor %}
+									</select>
+								</div>
+								<div class="col-md-4">
+									<label class="si-libelle-champ" for="champ-ordre">Ordre</label>
+									<input type="number" name="ordre" id="champ-ordre" value="{{ objet.ordre }}" min="0" max="999" class="form-control">
+								</div>
+							</div>
+
 						{% elseif type == 'partenaires' %}
 							<label class="si-libelle-champ" for="champ-nom">Nom</label>
 							<input type="text" name="nom" id="champ-nom" value="{{ objet.nom }}" maxlength="120" class="form-control" required>
@@ -250,13 +294,27 @@
 						{% elseif type == 'partenaires' %}
 							{{ _self.interrupteur('accordObtenu', objet.accordObtenu, 'Accord obtenu', 'Le partenaire accepte que son nom et son logo soient montrés. Obligatoire pour l\'afficher.') }}
 						{% endif %}
+						{% if type == 'annonces' %}
+							{{ _self.interrupteur('publie', objet.publie, 'Active', 'Montrée pendant sa période ci-dessous ; sans date, tout de suite et sans fin.') }}
+							<div class="row g-2 mt-1">
+								<div class="col-6">
+									<label class="si-libelle-champ" for="champ-debut">Premier jour</label>
+									<input type="date" name="debut" id="champ-debut" value="{{ objet.debut ? objet.debut|date('Y-m-d') }}" class="form-control form-control-sm">
+								</div>
+								<div class="col-6">
+									<label class="si-libelle-champ" for="champ-fin">Dernier jour</label>
+									<input type="date" name="fin" id="champ-fin" value="{{ objet.fin ? objet.fin|date('Y-m-d') }}" class="form-control form-control-sm">
+								</div>
+							</div>
+						{% else %}
 						{{ _self.interrupteur('publie', type == 'partenaires' ? objet.visible : objet.publie, type == 'partenaires' ? 'Visible sur le site' : 'Publié sur le site',
 							type == 'conseils' ? 'À partir de la date de publication ci-dessous.' : (type == 'pages' ? 'Non publiée, la page n\'est pas montrée.' : null)) }}
+						{% endif %}
 						{% if type == 'conseils' %}
 							<label class="si-libelle-champ mt-3" for="champ-publie-le">Date de publication</label>
 							<input type="date" name="publieLe" id="champ-publie-le" value="{{ objet.publieLe|date('Y-m-d') }}" class="form-control form-control-sm">
 						{% endif %}
-						{% if not nouveau and (type == 'pages' or type == 'conseils') %}
+						{% if not nouveau and (type == 'pages' or type == 'conseils' or type == 'annonces') %}
 							<p class="si-sv-aide mt-3 mb-0">Modifié le {{ objet.modifieLe|date('d/m/Y à H:i') }}.</p>
 						{% endif %}
 					</section>
@@ -269,6 +327,13 @@
 							<div class="mt-3">
 								{{ _self.interrupteur('accordClient', objet.accordClient, 'Accord du client', 'Le client accepte que son nom soit cité. Sans accord, le nom ne quitte pas l\'atelier.') }}
 							</div>
+						</section>
+					{% endif %}
+
+					{% if type == 'annonces' and objet.texte %}
+						<section class="card si-bloc si-sv-encadre">
+							<h2 class="si-sv-sous-titre">Aperçu <small class="text-muted">(enregistré)</small></h2>
+							<div class="si-sv-annonce-apercu">{% include 'site/_annonces.html.twig' with {annonces: [objet], cible: 'apercu', apercu: true} %}</div>
 						</section>
 					{% endif %}
 

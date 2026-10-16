@@ -28,6 +28,7 @@ Une table `entreprise` remplace les valeurs en dur. Pour chaque entreprise :
 - préfixe et format de numérotation (`F-SI-{AAAA}-{0000}`), avec le prochain numéro ;
 - les 5 couleurs du document ;
 - options : QR de suivi, QR Orange Money, logo MDG en pied de page, montant en lettres.
+- les conditions de paiement imprimées dans le bloc « NB » des factures et des proformas (500 caractères au plus ; vide : pas de bloc).
 
 La migration crée les trois entreprises actuelles avec les coordonnées déjà dans les PDF, et relie les factures et devis existants. Un émetteur sans réglage n'empêche jamais de sortir une facture : les champs vides sont simplement absents.
 
@@ -45,6 +46,16 @@ On y trouve :
 Les deux QR :
 - **QR de suivi :** il ouvre `/f/{code}`. Le code court (par exemple `7K4P-2Q`) est aussi imprimé en pied de page pour le vérifier à la main.
 - **QR Orange Money :** tant que le paiement en ligne n'est pas branché, il ouvre la même page avec le code marchand et la référence à indiquer. Avec les clés Orange Money dans `.env.local`, il lance le paiement du reste à payer.
+
+**Mise à jour du 15/10/2026, inspirée de l'ancienne facture :**
+- **Objet.** « Objet : … » au-dessus des lignes, copié de la commande à la création de la facture (docs/documents-livraisons.md).
+- **Colonnes.** N°, Désignation, Qté, PU, Remise et Total. La colonne Remise n'apparaît que si une ligne a une remise.
+- **Livraison.** Les frais de livraison font une ligne « Livraison » à part, déjà comprise dans le total HT.
+- **Totaux.** Total HT, TVA (s'il y en a), Total TTC, Déjà payé (même 0 F) et Reste à payer. Une proforma garde « Total TTC » et « Proforma valable 30 jours ».
+- **Bloc « NB ».** Il reprend les conditions de paiement de l'entreprise émettrice. La direction les règle dans Réglages › Entités et en-têtes (Entreprises).
+- **Texte par défaut.** La migration le met sur les entreprises existantes. Il reprend la mention écrite jusqu'ici dans le modèle : « Conditions de paiement : paiement à réception de la facture. Les frais de transaction mobile money (Orange Money, Wave) sont à la charge du client. » Il est à confirmer par Yaya.
+- **PDF déjà archivés.** Ils ne changent pas.
+- **Synchronisation.** Les conditions de paiement descendent sur le site avec l'entreprise : le PDF ouvert en ligne est le même.
 
 ### 3. La page du QR (I04)
 

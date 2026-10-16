@@ -14,6 +14,7 @@ use App\Entity\ProduitConfiguration;
 use App\Entity\SupportConception;
 use App\Entity\TransactionOrangeMoney;
 use App\Service\EspaceClient\CompteEntreprise;
+use App\Service\EspaceClient\SuspensionsEspace;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\NotificationsClient;
 use App\Service\EspaceClient\NouvelleCommande;
@@ -35,6 +36,8 @@ final class DemandesConception
         private readonly CompteEntreprise $compteEntreprise,
         private readonly NouvelleCommande $nouvelleCommande,
         private readonly OrangeSmsService $sms,
+        // Accès suspendu par la boutique : pas de SMS (SuspensionsEspace).
+        private readonly ?SuspensionsEspace $suspensions = null,
     ) {
     }
 
@@ -188,7 +191,7 @@ final class DemandesConception
         $demande->setChoix($demande->getChoix() ?? DemandeConception::GRAPHISTE)->setStatut(DemandeConception::A_PAYER)->toucher($le);
         $this->em->flush();
         if (!$deja && !NotificationsClient::estDemo($client)) {
-            foreach ($payeurs as $p) {
+            foreach (null !== $this->suspensions ? $this->suspensions->sansSuspendus($payeurs) : $payeurs as $p) {
                 $this->sms->envoyerSms($p->getTelephone(), \sprintf('Succès Imprim : %s a préparé la demande de conception %s. À payer dans votre espace client.', $demandeur->getNomAffiche(), $demande->getNumero()));
             }
         }

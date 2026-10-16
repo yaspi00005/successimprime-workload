@@ -1337,6 +1337,7 @@
                                 }}
 
 							</h5>
+							{% if devis.interlocuteur %}<p class="mb-2"><span class="text-muted">À l'attention de</span> <strong>{{ devis.interlocuteur }}</strong></p>{% endif %}
 
 
 							{% if client.telephone|default('') %}
@@ -1508,6 +1509,20 @@
 							<div class="d-flex justify-content-between mb-3 small">
 								<span><i class="fas fa-ticket-alt me-1"></i>Code promo <b class="si-cp-code">{{ devis.libelleCodePromo }}</b>{{ devis.codePromo.promotion ? ' · ' ~ devis.codePromo.promotion.nom }}</span>
 								<span>{{ devis.remiseCodePromo > 0 ? '− ' ~ devis.remiseCodePromo|number_format(0, ',', ' ') ~ ' FCFA' : 'articles en promotion' }}</span>
+							</div>
+						{% endif %}
+
+						{# Objet du devis, et frais de livraison (sans TVA, déjà compris dans le total HT). #}
+						{% if devis.objet %}
+							<div class="d-flex justify-content-between gap-2 mb-2 small">
+								<span class="text-muted">Objet</span>
+								<span class="text-end">{{ devis.objet }}</span>
+							</div>
+						{% endif %}
+						{% if devis.fraisLivraison > 0 %}
+							<div class="d-flex justify-content-between mb-2 small">
+								<span class="text-muted"><i class="fas fa-truck me-1"></i>Livraison</span>
+								<span>{{ devis.fraisLivraison|number_format(0, ',', ' ') }} FCFA</span>
 							</div>
 						{% endif %}
 

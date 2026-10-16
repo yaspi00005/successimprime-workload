@@ -207,7 +207,21 @@ final class DevisCommandeConverter
             ->setTotalTtc($devis->getTotalTtc())
             ->setMontantApayer($devis->getMontantApayer())
             ->setObservation($devis->getObservation())
+            // La personne à qui le devis s'adressait commande (« Commandé par »).
+            ->setDemandeePar($devis->getInterlocuteur())
             ->setEtat(true);
+
+        /*
+         * Frais de livraison (déjà dans les totaux copiés) et objet du
+         * devis. Des frais de livraison font une commande à livrer.
+         */
+        $commande
+            ->setFraisLivraison($devis->getFraisLivraison())
+            ->setObjet($devis->getObjet());
+
+        if ($devis->getFraisLivraison() > 0) {
+            $commande->setModeLivraison(Commandes::LIVRAISON_DOMICILE);
+        }
 
         /*
          * Code promo (docs/promotions.md) : la commande reprend le code du

@@ -94,7 +94,7 @@ Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, clo
 - tout envoi est refusé (403), sauf ce qui ne regarde qu'elle : marquer lu, ses préférences, son mot de passe, ses appareils ;
 - les pages qui ne servent qu'à commander, payer ou accepter la renvoient au tableau de bord.
 
-**Livraisons.** `/espace/livraisons` : en route, à venir, livrées, à partir des bons de livraison synchronisés (créneau, heure de départ, heure de remise).
+**Livraisons.** `/espace/livraisons` : en route, à venir, livrées, à partir des bons de livraison synchronisés (créneau, heure de départ, heure de remise). Après un échec, la livraison est « Reportée » avec la date : l'atelier recontacte le client pour une nouvelle date (ni la raison ni le livreur ne passent au site).
 
 **Messages.** `/espace/messages` : fil entre le client et l'atelier.
 
@@ -125,6 +125,40 @@ Une fiche entreprise ou B2B peut avoir plusieurs personnes, chacune avec son num
 - **Synchronisation** : la demande monte au local sans prévenir l'atelier. La décision du valideur remonte (`validationEntreprise`, `valideePar`, `motifRefusEntreprise`) : validée, le droit Commande est prévenu comme pour toute commande en ligne ; refusée, le local la classe (supprimée) et le site la garde visible au client avec son motif. Au local, la fiche commande affiche « demandée en ligne par X » et le bon de commande.
 - Les demandes à valider ou refusées n'apparaissent pas dans « À confirmer » (API comprise).
 - **Solde d'ouverture** (créance reprise à l'import, docs/import-donnees.md) : comme tout montant de l'entreprise, seul le payeur le voit, dans Factures et paiements (« Solde d'ouverture · Montant dû au démarrage du compte ») et le solde dû ; il peut le payer en ligne. Il n'est ni dans le fil des commandes ni dans les notifications.
+
+### Plusieurs interlocuteurs pour une entreprise (vérifié le 15/10/2026)
+
+Demande de Yaya : « Un compte pour une entreprise peut avoir plusieurs interlocuteurs […] deux ou trois personnes qui font des commandes pour une entreprise. »
+
+**Ce qui existait** : chaque personne a son propre numéro, son mot de passe et ses droits (tableau ci-dessus) ; une commande en ligne note qui l'a demandée (`Commandes::demandeePar`, « en ligne par X ») et qui l'a validée. Vérifié de bout en bout le 15/10/2026 sur Salon Espoir : Mariam (demandeur) envoie une demande sans voir de prix, Awa (valideur) la voit « demandée par Mariam Dembélé » et la valide, Ibrahim (payeur) commande aussi avec son propre numéro ; au local, la commande montre « en ligne par Mariam Dembélé, validée par Awa Coulibaly » et son bon de commande.
+
+**Ajouté pour la boutique** (une commande ou un devis saisi au comptoir pour une entreprise) :
+
+- Devis : champ **« À l'attention de »** (`Devis::interlocuteur`, 80 caractères) ; commande : champ **« Commandé par »** (le même `demandeePar` que les commandes en ligne). Dans la carte du client de la saisie, avec une liste proposée : les contacts de la fiche (fonction, contact principal) puis les noms déjà notés sur ses devis et commandes, dont les personnes qui commandent en ligne (`/saisie/interlocuteurs/{id}`, droits Devis, Commande ou Clients ; des noms seulement, ni numéro ni montant). Le champ reste libre.
+- Un devis transformé en commande donne son interlocuteur au « Commandé par » de la commande. Une commande passée en ligne garde le nom de la personne connectée : le champ n'est pas modifiable à la boutique.
+- Affiché sur le devis (« À l'attention de »), la commande (« commandée par X »), la fiche client (onglets Commandes et Devis, sous le numéro) ; imprimé sur le PDF du devis (cadre client) et de la facture (« Commandé par », sous le bon de commande). Une facture déjà émise garde son PDF.
+- Le devis le fait descendre au site (synchronisation, champ `interlocuteur`).
+
+## Suspendre l'accès à l'espace client (construit le 15/10/2026)
+
+Demande de Yaya : « on a la possibilité de bloquer l'espace client d'un utilisateur ». Code : `src/Service/EspaceClient/SuspensionsEspace.php`, `src/Entity/SuspensionEspace.php`, `src/Controller/EspaceSuspensionController.php`, `templates/clients/_espace_suspension.html.twig`.
+
+- **Où** : fiche client (ERP local), bloc « Accès à l'espace client », pour le droit Clients (`ROLE_CLIENT`). Caché et refusé en « Voir » (LectureSeuleSubscriber) ; en ligne, le bloc montre les suspensions sans bouton (« se suspend et se rétablit depuis l'ERP de la boutique »).
+- **Qui** : tout le compte (chaque personne de l'entreprise), ou une personne, reconnue à son numéro de connexion : le numéro de la fiche, un contact de la fiche qui a un numéro, ou un autre numéro tapé (une personne ajoutée en ligne par l'entreprise, que la boutique ne voit pas dans sa liste).
+- **Motif obligatoire**, gardé à l'atelier : le client lit seulement « Votre accès à l'espace client est suspendu. Contactez Succès Imprim. ».
+- **Journal** : chaque suspension et chaque rétablissement est noté au journal de la fiche (catégorie Contacts : qui, quand, pourquoi). La suspension levée reste dans la base (« Rétablir » ne l'efface pas) et les trois dernières se lisent sous le bloc.
+- **Rien n'est effacé** : commandes, factures, fichiers et compte restent ; « Rétablir » rend l'accès tel qu'il était (mot de passe compris).
+- **Sur le site** (après la synchronisation, type `suspension_espace` : seuls la fiche, le numéro, le début et la levée descendent ; ni le motif, ni le nom, ni l'employé) :
+  - la connexion est refusée avec le message, **seulement après le bon mot de passe ou le bon code** (avec un mauvais mot de passe, rien ne dit que l'accès est suspendu) ; « rester connecté » aussi (`EspaceClientChecker`) ;
+  - une session ouverte se ferme à la page suivante, avec le message (`EspaceClientSubscriber`) ;
+  - « Recevoir un code » ne part pas : même réponse qu'un numéro inconnu (`EspaceClientComptes`) ; la boutique ne peut pas envoyer de code d'accès au numéro suspendu ;
+  - ni notification (application, SMS, e-mail), ni SMS d'invitation, de demande à valider ou de conception à payer (`NotificationsClient`, `CompteEntreprise`, `DemandesConception`). Les autres personnes de l'entreprise continuent normalement.
+- Le statut « Bloqué » de la fiche (conditions commerciales) est une autre chose : il ne coupe pas l'espace client.
+- La recette des accès vérifie qu'une session tombe dès la suspension et que les autres personnes entrent toujours.
+
+## Bandes d'annonces
+
+Les annonces saisies dans Réglages › Site vitrine › Annonces avec la cible « Espace client » ou « les deux » s'affichent en haut du contenu de chaque page connectée. Règles et comportement : docs/site-vitrine.md, « Bandes d'annonces ».
 
 ## Réclamations (18 à gauche, construit le 13/10/2026)
 

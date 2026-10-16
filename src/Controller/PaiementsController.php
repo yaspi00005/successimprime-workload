@@ -7,6 +7,7 @@ use App\Entity\User;
 use App\Form\PaiementsType;
 use App\Repository\PaiementsRepository;
 use App\Repository\ParametresPaiementRepository;
+use App\Service\Paiement\FiltresListePaiements;
 use App\Service\PaiementService;
 use App\Service\Paiement\FraisOrangeMoney;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,19 +23,32 @@ final class PaiementsController extends AbstractController
     private const LIMITE_PAR_DEFAUT = 100;
     private const LIMITE_RECHERCHE = 500;
 
+    /**
+     * Liste : les 100 derniers paiements. La recherche et les filtres des
+     * en-têtes (petites flèches, docs/filtres-tableaux.md) cherchent dans
+     * tous les paiements, 500 au plus.
+     */
     #[Route(name: 'app_paiements_index', methods: ['GET'])]
     public function index(Request $request, PaiementsRepository $paiementsRepository): Response
     {
         $q = trim((string) $request->query->get('q', ''));
+        $filtres = FiltresListePaiements::depuis($request->query->all());
+        $colonnesFiltrees = FiltresListePaiements::actifs($filtres);
+        $filtre = $q !== '' || $colonnesFiltrees;
 
-        $limite = $q !== ''
+        $limite = $filtre
             ? self::LIMITE_RECHERCHE
             : self::LIMITE_PAR_DEFAUT;
 
         return $this->render('paiements/index.html.twig', [
-            'paiements' => $paiementsRepository->rechercher($q, $limite),
+            'paiements' => $paiementsRepository->rechercher($q, $limite, $filtres),
             'q' => $q,
+            'filtre' => $filtre,
+            'colonnesFiltrees' => $colonnesFiltrees,
+            'parametresFiltres' => FiltresListePaiements::enParametres($filtres),
+            'trie' => $filtres['tri'] !== FiltresListePaiements::TRI_PAR_DEFAUT,
             'limite' => $limite,
+            'comptes' => $paiementsRepository->comptesUtilises(),
         ]);
     }
 

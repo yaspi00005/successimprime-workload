@@ -2,13 +2,16 @@
 
 namespace App\Tests\Unit\Security;
 
+use App\Service\Site\MesureAudience;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Finder\Finder;
 
 /**
  * Rien d'un autre site à l'exécution (docs/securite.md, audit D4) :
  * aucune page ne charge un script, un style ou une police depuis un CDN,
- * et chaque fichier de public/vendor appelé par une page existe.
+ * et chaque fichier de public/vendor appelé par une page existe. Seule
+ * exception, demandée par Yaya : la balise Google de mesure d'audience,
+ * sur les pages publiques du site en ligne (MesureAudience).
  */
 final class SansCdnTest extends TestCase
 {
@@ -33,6 +36,38 @@ final class SansCdnTest extends TestCase
         }
 
         self::assertSame([], $fautes);
+    }
+
+    /**
+     * L'adresse de gtag.js n'est écrite que dans public/js/mesure-audience.js,
+     * qui n'appelle rien d'autre d'un autre site ; seul le gabarit du site
+     * public appelle ce fichier, et seulement quand MesureAudience donne un
+     * identifiant (pages publiques du site en ligne).
+     */
+    public function testSeuleExceptionLaMesureDAudienceDuSitePublic(): void
+    {
+        $script = 'public/js/mesure-audience.js';
+        $gabarit = 'templates/site/_site.html.twig';
+        $fautes = [];
+        $fichiers = (new Finder())->files()->in([self::RACINE.'/templates', self::RACINE.'/public/css', self::RACINE.'/public/js'])->name(['*.twig', '*.css', '*.js']);
+        foreach ($fichiers as $fichier) {
+            $chemin = substr(str_replace('\\', '/', $fichier->getPathname()), \strlen(self::RACINE) + 1);
+            $contenu = $fichier->getContents();
+            if (preg_match('~googletagmanager|google-analytics|analytics\.google|doubleclick~i', $contenu) && $script !== $chemin) {
+                $fautes[] = $chemin.' : adresse de Google';
+            }
+            if (str_contains($contenu, 'mesure-audience.js') && !\in_array($chemin, [$script, $gabarit], true)) {
+                $fautes[] = $chemin.' : appelle la mesure d\'audience';
+            }
+        }
+        self::assertSame([], $fautes);
+
+        preg_match_all('~(?:https?:)?//[a-z0-9.-]+\.[a-z]{2,}[^\s\'"]*~i', (string) file_get_contents(self::RACINE.'/'.$script), $adresses);
+        self::assertSame([MesureAudience::SCRIPT.'?id='], $adresses[0], 'mesure-audience.js n\'appelle que gtag.js');
+
+        $page = (string) file_get_contents(self::RACINE.'/'.$gabarit);
+        self::assertSame(1, substr_count($page, 'mesure-audience.js'));
+        self::assertMatchesRegularExpression("~\\{% set mesure_audience = site_mesure_audience\\(\\) %\\}\\s*\\{% if mesure_audience %\\}<script src=\"\\{\\{ asset\\('js/mesure-audience\\.js'\\) \\}\\}\" data-mesure=\"\\{\\{ mesure_audience \\}\\}\" defer></script>\\{% endif %\\}~", $page);
     }
 
     public function testLesFichiersDePublicVendorAppelesExistent(): void

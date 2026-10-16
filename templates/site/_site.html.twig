@@ -6,7 +6,9 @@
 	site/_bandeau.html.twig. Référencement (docs/referencement.md) :
 	image_partage (image de la page pour les réseaux), og_type,
 	donnees_entreprise (fiche de l'imprimerie pour Google, sur l'accueil,
-	le contact et « Qui sommes-nous ? ») et le bloc canonique.
+	le contact et « Qui sommes-nous ? ») et le bloc canonique. Mesure
+	d'audience Google : seulement sur les pages que MesureAudience retient
+	(site en ligne, pages publiques sans code secret), docs/securite.md.
 #}
 {% set entreprise = site_entreprise() %}
 {% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
@@ -23,6 +25,8 @@
 	<meta name="theme-color" content="#0F4590">
 	{% if not site_en_ligne() %}<meta name="robots" content="noindex, nofollow">{% endif %}
 	{% for nom, code in site_verifications() %}<meta name="{{ nom }}" content="{{ code }}">{% endfor %}
+	{% set mesure_audience = site_mesure_audience() %}
+	{% if mesure_audience %}<script src="{{ asset('js/mesure-audience.js') }}" data-mesure="{{ mesure_audience }}" defer></script>{% endif %}
 	{% block canonique %}
 		{% set canonique = site_canonique() %}
 		<link rel="canonical" href="{{ canonique }}">
@@ -46,6 +50,7 @@
 </head>
 <body class="si-site">
 	<a class="si-evitement" href="#contenu">Aller au contenu</a>
+	{% include 'site/_annonces.html.twig' with {cible: 'site'} only %}
 	<header class="si-entete">
 		<div class="si-cadre si-entete-cadre">
 			<a href="{{ site_lien('app_site_accueil') }}" class="si-logo"><img src="{{ asset('images/site/logo-succes-imprim-256.webp') }}" alt="Succès Imprim, accueil" width="128" height="71"></a>

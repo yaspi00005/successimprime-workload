@@ -10,8 +10,21 @@
 	{% if whatsapp %}<li class="nav-item"><a href="https://wa.me/{{ whatsapp }}?text={{ ('Bonjour, votre livraison ' ~ b.numero ~ (b.prevuLe ? ' est prévue le ' ~ b.prevuLe|date('d/m') : '') ~ (b.creneau ? ' entre ' ~ b.creneau|replace({'-': ' et '}) : '') ~ '. Succès Imprim')|url_encode }}" class="btn btn-success btn-sm" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>WhatsApp client</a></li>{% endif %}
 {% endblock %}
 
+{% block stylesheets %}<link href="{{ asset('css/livraisons.css') }}" rel="stylesheet">{% endblock %}
+
 {% block body %}
 	<div class="si-tr si-tr-detail">
+		{# Livrée ou pas, à quel moment, par qui, reçue par qui. #}
+		{% set e = b.etatSuivi %}
+		{% set le = b.momentSuivi %}
+		<section class="card si-lv-resume">
+			<div><small>Statut</small><span class="si-lv-badge si-lv-badge-{{ e }}">{{ attribute(constant('App\\Entity\\BonLivraison::ETATS_SUIVI'), e) }}</span></div>
+			<div><small>{{ e == 'livree' ? 'Remise le' : (e == 'echec' ? 'Échec le' : (e == 'en_tournee' ? 'Depuis' : 'Prévue le')) }}</small><b>{% if le %}{{ le|date('d/m/Y') }} à {{ le|date('H:i') }}{% elseif b.prevuLe %}{{ b.prevuLe|date_fr('EEE d/MM') }}{{ b.creneau ? ' · ' ~ b.creneau }}{% else %}non planifiée{% endif %}</b></div>
+			<div><small>Livreur</small><b>{{ b.livreurSuivi ? b.livreurSuivi|nom_pointage : 'à choisir' }}</b></div>
+			<div><small>{{ e == 'echec' ? 'Raison' : 'Reçue par' }}</small><b{{ e == 'echec' ? ' class="si-lv-motif"' }}>{{ e == 'echec' ? b.echecMotif : (b.receptionnaireSuivi ?? '—') }}</b></div>
+			{% if e != 'echec' and b.echecLe %}<div style="grid-column: 1 / -1"><small>Échec précédent</small><b class="si-lv-motif">{{ b.echecLe|date('d/m/Y H:i') }}{{ b.echecPar ? ' · ' ~ b.echecPar|nom_pointage }} : {{ b.echecMotif }}</b></div>{% endif %}
+		</section>
+
 		<section class="card si-tr-etapes">
 			{% for cle, libelle in constant('App\\Entity\\BonLivraison::ETAPES') %}
 				{% set le = b.etapes[cle] %}
@@ -108,6 +121,7 @@
 				<section class="card si-ac-bloc">
 					<h2>Planification</h2>
 					{% if b.statut == 'brouillon' %}<p class="si-pg-note">Le bon doit être validé (préparé) pour apparaître dans la tournée.</p>{% endif %}
+					{% if e == 'echec' %}<p class="si-tr-provisoire">Échec : choisissez un nouveau jour (et un livreur) puis enregistrez, la livraison revient dans sa tournée.</p>{% endif %}
 					<form method="post" action="{{ path('app_livraisons_bl_planifier', {id: b.id}) }}" class="si-py-form">
 						<input type="hidden" name="_token" value="{{ token }}">
 						<label>Livreur<select name="livreur" class="form-select form-select-sm"><option value="">—</option>{% for l in livreurs %}<option value="{{ l.id }}"{{ l == b.livreur ? ' selected' }}>{{ l|nom_pointage }}</option>{% endfor %}</select></label>

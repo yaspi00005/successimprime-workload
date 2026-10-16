@@ -15,7 +15,7 @@
 	<li class="nav-item si-masque-mobile">
 		<a href="{{ path('app_site_accueil') }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener">Voir le site</a>
 	</li>
-	{% if not ferme and onglet in ['realisations', 'avis', 'conseils', 'partenaires'] %}
+	{% if not ferme and onglet in ['realisations', 'avis', 'conseils', 'partenaires', 'annonces'] %}
 		<li class="nav-item">
 			<a href="{{ path('app_site_contenu_nouveau', {type: onglet}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>{{ onglets[onglet].nouveau }}</a>
 		</li>
@@ -42,7 +42,7 @@
 				<i class="fas fa-lock" aria-hidden="true"></i>
 				<div>
 					<h2>Le contenu du site se modifie à l'atelier</h2>
-					<p class="mb-0">Pages, réalisations, avis, conseils et partenaires se saisissent sur le serveur local de l'atelier, puis descendent au site avec la synchronisation. En ligne, cet écran est fermé.</p>
+					<p class="mb-0">Pages, réalisations, avis, conseils, partenaires et annonces se saisissent sur le serveur local de l'atelier, puis descendent au site avec la synchronisation. En ligne, cet écran est fermé.</p>
 				</div>
 			</div>
 		{% else %}
@@ -210,6 +210,46 @@
 						</div>
 					{% endif %}
 
+				{% elseif onglet == 'annonces' %}
+					<p class="si-sv-aide">Une phrase courte en haut du site public, de l'espace client, ou des deux : fermeture exceptionnelle, promotion du mois, retard… Montrée pendant sa période, dates comprises. Plusieurs annonces actives défilent l'une après l'autre ; le visiteur peut les fermer pour sa visite.</p>
+					{% if elements is empty %}
+						<p class="si-sv-vide">Aucune annonce.</p>
+					{% else %}
+						<div class="table-responsive">
+							<table class="table si-table align-middle mb-0">
+								<thead>
+									<tr><th>Annonce</th><th class="si-masque-mobile">Où</th><th class="si-masque-mobile">Période</th><th>État</th><th class="text-end"></th></tr>
+								</thead>
+								<tbody>
+									{% for a in elements %}
+										{% set etat = a.etat(maintenant) %}
+										<tr>
+											<td>
+												<span class="si-sv-annonce-style si-sv-annonce-{{ a.style }}" aria-hidden="true"></span>
+												<strong>{{ a.texte }}</strong>
+												<small class="d-block text-muted">{{ a.styleLibelle }}{% if a.lien %} · lien {{ a.lien }}{% endif %}<span class="d-md-none"> · {{ a.cibleLibelle|lower }}</span></small>
+											</td>
+											<td class="si-masque-mobile">{{ a.cibleLibelle }}</td>
+											<td class="si-masque-mobile text-nowrap">
+												{%- if a.debut and a.fin -%}du {{ a.debut|date('d/m') }} au {{ a.fin|date('d/m/Y') }}
+												{%- elseif a.debut -%}à partir du {{ a.debut|date('d/m/Y') }}
+												{%- elseif a.fin -%}jusqu'au {{ a.fin|date('d/m/Y') }}
+												{%- else -%}sans date{%- endif -%}
+											</td>
+											<td>
+												{% if etat == 'active' %}<span class="si-pastille si-pastille-vert">Affichée</span>
+												{% elseif etat == 'programmee' %}<span class="si-pastille si-pastille-bleu">Programmée</span>
+												{% elseif etat == 'terminee' %}<span class="si-pastille si-pastille-gris">Terminée</span>
+												{% else %}<span class="si-pastille si-pastille-gris">Inactive</span>{% endif %}
+											</td>
+											<td class="text-end"><a href="{{ path('app_site_contenu_fiche', {type: 'annonces', id: a.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a></td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+
 				{% elseif onglet == 'chiffres' %}
 					<div class="row g-4">
 						<div class="col-lg-6">
@@ -267,6 +307,11 @@
 								<label class="si-libelle-champ mt-3" for="ref-bing">Code de vérification Bing (facultatif)</label>
 								<input type="text" name="bing" id="ref-bing" value="{{ r.bing }}" maxlength="300" class="form-control form-control-sm" autocomplete="off" spellcheck="false" aria-describedby="aide-ref-bing">
 								<div id="aide-ref-bing" class="form-text">Bing Webmaster Tools › Balise meta (msvalidate.01). Bing peut aussi reprendre la propriété Google.</div>
+
+								<h2 class="si-sv-sous-titre mt-4">Mesure d'audience</h2>
+								<label class="si-libelle-champ" for="ref-mesure">Identifiant de mesure Google Analytics</label>
+								<input type="text" name="mesure" id="ref-mesure" value="{{ r.mesure }}" maxlength="600" class="form-control form-control-sm" autocomplete="off" spellcheck="false" placeholder="G-XXXXXXXXXX" aria-describedby="aide-ref-mesure">
+								<div id="aide-ref-mesure" class="form-text">Analytics › Administration › Flux de données › le site : identifiant « G-… », ou la balise Google (gtag.js) entière. Laissez vide pour couper la mesure. Elle passe seulement sur les pages publiques du site en ligne, pour les visiteurs : jamais dans l'espace client, l'administration, les pages de connexion ni les liens à code (factures, sondages, paiements). Aucune donnée de client n'est envoyée.</div>
 
 								<h2 class="si-sv-sous-titre mt-4">Fiche Google et réseaux sociaux</h2>
 								<label class="si-libelle-champ" for="ref-fiche">Lien de la fiche Google (Google Business Profile)</label>

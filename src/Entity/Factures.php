@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\LivraisonObjetDocumentTrait;
 use App\Entity\Trait\PublicIdTrait;
 use App\Entity\Trait\SocieteTrait;
 use App\Repository\FacturesRepository;
@@ -34,6 +35,8 @@ class Factures implements AppartientASociete
 {
     use PublicIdTrait;
     use SocieteTrait;
+    // Copiés de la commande avec les montants (déjà compris dans totalHt).
+    use LivraisonObjetDocumentTrait;
 
     /*
      * ============================================================
@@ -1453,6 +1456,10 @@ private ?string $pdfHash = null;
                 $commande->getTva()
                 ?? 0
             );
+
+        // Frais de livraison (déjà dans le total HT) et objet de la commande.
+        $this->setFraisLivraison($commande->getFraisLivraison());
+        $this->setObjet($commande->getObjet());
 
         $commandeTtc =
             (int) (

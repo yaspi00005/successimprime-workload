@@ -51,6 +51,11 @@
 
 				<form method="get" class="row g-2 align-items-end">
 
+					{# Les filtres des en-têtes (petites flèches) restent posés pendant la recherche. #}
+					{% for cle, valeur in parametresFiltres %}
+						<input type="hidden" name="{{ cle }}" value="{{ valeur }}">
+					{% endfor %}
+
 					<div class="col-lg-6 col-md-8">
 						<label class="form-label">Rechercher</label>
 						<input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Client, code client, n° commande, référence, n° chèque…">
@@ -62,7 +67,7 @@
 							Rechercher
 						</button>
 						{% if q %}
-							<a href="{{ path('app_paiements_index') }}" class="btn btn-secondary">
+							<a href="{{ path('app_paiements_index', parametresFiltres) }}" class="btn btn-secondary" title="Effacer la recherche">
 								<i class="fa fa-times"></i>
 							</a>
 						{% endif %}
@@ -85,7 +90,11 @@
 
 				<div class="text-muted small">
 					{% if q %}
-						{{ paiements|length }} résultat{{ paiements|length > 1 ? 's' : '' }} pour « {{ q }} »
+						{{ paiements|length }} résultat{{ paiements|length > 1 ? 's' : '' }} pour « {{ q }} »{{ colonnesFiltrees ? ' avec ces filtres' }}{{ paiements|length >= limite ? ' (les ' ~ limite ~ ' premiers)' }}
+					{% elseif filtre %}
+						{{ paiements|length }} paiement{{ paiements|length > 1 ? 's' : '' }} avec ces filtres{{ paiements|length >= limite ? ' (les ' ~ limite ~ ' premiers)' }}
+					{% elseif trie %}
+						{{ paiements|length }} premiers paiements dans cet ordre
 					{% else %}
 						{{ paiements|length }} derniers paiements
 					{% endif %}
@@ -95,19 +104,20 @@
 
 			<div class="table-responsive">
 
-				<table class="table table-bordered table-hover mb-0">
+				{# Filtres des en-têtes (docs/filtres-tableaux.md) : ils interrogent le serveur, pas seulement les lignes affichées. #}
+				<table class="table table-bordered table-hover mb-0" data-filtres="serveur" data-filtres-tri-defaut="{{ constant('App\\Service\\Paiement\\FiltresListePaiements::TRI_PAR_DEFAUT') }}">
 
 					<thead>
 
 						<tr>
 							<th>#</th>
-							<th>Client</th>
-							<th class="text-right">Montant</th>
-							<th>Mode</th>
-							<th>Compte</th>
-							<th>Commande</th>
-							<th>Date</th>
-							<th class="text-center">Statut</th>
+							<th data-filtre-recherche="q">Client</th>
+							<th class="text-right" data-filtre-type="nombre" data-filtre-tri-asc="montant_asc" data-filtre-tri-desc="montant_desc" data-filtre-min="min" data-filtre-max="max">Montant</th>
+							<th data-filtre-param="mode" data-filtre-choix="{{ constant('App\\Entity\\Paiements::MODES_LABELS')|json_encode }}">Mode</th>
+							<th data-filtre-param="compte" data-filtre-choix="{{ comptes|map(c => [c.id, c.nom])|json_encode }}">Compte</th>
+							<th data-filtre-recherche="q">Commande</th>
+							<th data-filtre-type="date" data-filtre-tri-asc="ancien" data-filtre-tri-desc="recent" data-filtre-min="du" data-filtre-max="au">Date</th>
+							<th class="text-center" data-filtre-param="statut" data-filtre-choix="{{ constant('App\\Entity\\Paiements::STATUTS_LABELS')|json_encode }}">Statut</th>
 							<th class="text-center">Actions</th>
 						</tr>
 
@@ -209,6 +219,8 @@
 								<td colspan="9" class="text-center text-muted py-5">
 									{% if q %}
 										Aucun paiement ne correspond à « {{ q }} ».
+									{% elseif filtre %}
+										Aucun paiement avec ces filtres. <a href="{{ path('app_paiements_index') }}">Tout afficher</a>
 									{% else %}
 										Aucun paiement enregistré.
 									{% endif %}

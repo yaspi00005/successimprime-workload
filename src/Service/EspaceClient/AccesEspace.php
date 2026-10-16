@@ -27,6 +27,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  */
 final class AccesEspace
 {
+    public const SUSPENDU = 'Accès à l\'espace client suspendu pour ce numéro : rétablissez-le avant d\'envoyer un code.';
+
     public const SANS_NUMERO = 'Ajoutez d\'abord un numéro malien à 8 chiffres sur la fiche : c\'est l\'identifiant du client.';
 
     /** Consigne de la page « Accès prêt » (boutique) : comme le message, l'adresse e-mail du client n'est pas obligatoire. */
@@ -38,6 +40,7 @@ final class AccesEspace
         private readonly UrlGeneratorInterface $urls,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $urlSite,
+        private readonly ?SuspensionsEspace $suspensions = null,
     ) {
     }
 
@@ -48,6 +51,7 @@ final class AccesEspace
             $this->enLigne => 'L\'accès à l\'espace client se donne depuis l\'ERP de la boutique.',
             NotificationsClient::estDemo($client) => 'Fiche de démonstration : pas d\'accès à l\'espace client.',
             null === CompteClient::normaliserTelephone((string) $client->getTelephone()) => self::SANS_NUMERO,
+            true === $this->suspensions?->numeroSuspendu($client, (string) $client->getTelephone()) => self::SUSPENDU,
             default => null,
         };
     }

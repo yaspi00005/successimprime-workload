@@ -32,10 +32,13 @@
 		</section>
 
 		<section class="card si-ac-bloc">
-			<h2>Signature du client</h2>
+			<h2>Reçu par</h2>
+			<label class="d-block mb-2">Nom de la personne qui reçoit le colis
+				<input name="signataire" maxlength="120" required class="form-control" placeholder="Ex. Awa Coulibaly, accueil" value="{{ b.nomReceptionnaire }}" autocomplete="off">
+			</label>
 			<canvas id="si-signature" class="si-tr-signature" width="600" height="220" aria-label="Zone de signature"></canvas>
-			<div class="d-flex gap-2 mt-2 align-items-center">
-				<input name="signataire" maxlength="120" class="form-control form-control-sm" placeholder="Nom de la personne qui signe" value="{{ b.nomReceptionnaire }}">
+			<div class="d-flex gap-2 mt-2 align-items-center justify-content-between">
+				<small class="text-muted">Elle signe ici, avec le doigt.</small>
 				<button type="button" class="btn btn-light btn-sm si-btn-entete" id="si-effacer">Effacer</button>
 			</div>
 			<input type="hidden" name="signature" id="si-signature-png">
@@ -62,6 +65,7 @@
 		</section>
 
 		<button class="btn btn-success w-100 si-tr-valider">Valider la remise</button>
+		<p class="si-pg-note text-center">Pas de remise possible ? Revenez à <a href="{{ path('app_livraisons_tournee') }}#arret-{{ b.id }}">Ma tournée</a> et touchez « Échec ».</p>
 	</form>
 	<script>
 	(function () {

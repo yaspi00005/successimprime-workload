@@ -80,6 +80,9 @@
 						</div>
 						<ul class="navbar-nav header-right">
 							{% block header_actions %}{% endblock %}
+							{# Le livreur seul n'a ni recherche ni messagerie : sa tournée et ses livraisons seulement (LivreurSeul). #}
+							{% set livreurSeul = livreur_seul() %}
+							{% if not livreurSeul %}
 							<li class="nav-item si-recherche-item">
 								<form action="{{ path('app_recherche') }}" method="get" class="si-recherche" role="search">
 									<i class="fas fa-search"></i>
@@ -87,6 +90,7 @@
 									<kbd>Ctrl K</kbd>
 								</form>
 							</li>
+							{% endif %}
 							{# Guide utilisateur (docs/guide-utilisateur.md) : ERP local seulement. #}
 							{% if not site_en_ligne() %}
 								<li class="nav-item si-aide-item">
@@ -96,7 +100,7 @@
 								</li>
 							{% endif %}
 							{# Cloche : les 10 dernières notifications non lues ; chacune s'ouvre par app_notification_ouvrir (marquée lue, puis sa page). #}
-							{% set reclamationsANotifier = mes_reclamations_a_notifier() %}
+							{% set reclamationsANotifier = livreurSeul ? [] : mes_reclamations_a_notifier() %}
 							{% set notificationsNonLues = mes_notifications() %}
 							{% set nombreNotifs = nombre_notifications_generales() + reclamationsANotifier|length %}
 							<li class="nav-item dropdown notification_dropdown si-cloche">
@@ -140,6 +144,7 @@
 									<a href="{{ path('app_notification_index') }}" class="dropdown-item si-cloche-pied">Voir toutes les notifications</a>
 								</div>
 							</li>
+							{% if not livreurSeul %}
 							<li class="nav-item dropdown notification_dropdown si-masque-mobile">
 								<a class="nav-link" href="{{ path('app_chat_index') }}" role="button" title="Messagerie">
 									<i class="fa fa-comments"></i>
@@ -147,6 +152,7 @@
 									{% if nombreMessages > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreMessages }}</span>{% endif %}
 								</a>
 							</li>
+							{% endif %}
 							<li class="nav-item dropdown header-profile">
 								{% set nomAffiche = app.user.employe.prenom is defined and app.user.employe.prenom is not empty ? (app.user.employe.prenom ~ ' ' ~ app.user.employe.nom) : app.user.username %}
 								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ nomAffiche }}">
@@ -212,7 +218,8 @@
 	{% block vendor_javascripts %}{% endblock %}
 	<script src="{{ asset('theme/js/custom.min.js') }}"></script>
 	<script src="{{ asset('theme/js/dlabnav-init.js') }}"></script>
-	<script src="{{ asset('js/admin.js') }}"></script>
+	{# admin.js charge les filtres des tableaux seulement sur les pages qui ont une liste (docs/filtres-tableaux.md). #}
+	<script src="{{ asset('js/admin.js') }}" data-filtres-js="{{ asset('js/filtres-tableaux.js') }}" data-filtres-css="{{ asset('css/filtres-tableaux.css') }}" data-filtres-compte="{{ app.user ? app.user.id }}"></script>
 	{% block javascripts %}{% endblock %}
 </body>
 </html>

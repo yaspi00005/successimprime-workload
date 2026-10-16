@@ -176,6 +176,14 @@ final class EntreprisesController extends AbstractController
             $entreprise->{$setter}(mb_substr((string) $champs->get($champ, ''), 0, $longueur));
         }
 
+        // Bloc « NB » des factures : texte libre, vide pour ne pas l'imprimer.
+        $conditions = trim((string) $champs->get('conditions_paiement', ''));
+        if (mb_strlen($conditions) > Entreprise::CONDITIONS_PAIEMENT_LONGUEUR) {
+            $erreurs[] = \sprintf('Les conditions de paiement tiennent en %d caractères au plus.', Entreprise::CONDITIONS_PAIEMENT_LONGUEUR);
+        } else {
+            $entreprise->setConditionsPaiement($conditions);
+        }
+
         // Les documents déjà émis gardent leur société : seuls les prochains suivent ce choix.
         $societe = $this->societes->find((int) $champs->get('societe', 0));
 
@@ -275,16 +283,18 @@ final class EntreprisesController extends AbstractController
             'images' => $this->documents->images($entreprise),
             'facture' => [
                 'id' => 112, 'numero' => $numero, 'dateFacture' => $maintenant, 'dateEcheance' => null, 'estProforma' => false, 'estAnnulee' => false,
-                'facturerAUnTiers' => false, 'observation' => null, 'totalHt' => 197458, 'remise' => 0, 'tva' => 18, 'montantTva' => 35542,
+                'facturerAUnTiers' => false, 'observation' => null, 'totalHt' => 199458, 'remise' => 0, 'tva' => 18, 'montantTva' => 35542,
                 'surfacturation' => false, 'montantSurfacturation' => 0, 'tauxSurfacturation' => null, 'comptabilisee' => true,
-                'totalTtc' => 233000, 'montantPaye' => 116500, 'resteAPayer' => 116500, 'codeSuivi' => '7K4P-2Q',
+                'totalTtc' => 235000, 'montantPaye' => 117500, 'resteAPayer' => 117500, 'codeSuivi' => '7K4P-2Q',
+                // Objet et frais de livraison (sans TVA, compris dans le total HT).
+                'objet' => 'Impressions', 'fraisLivraison' => 2000,
             ],
             'commande' => ['id' => 144, 'numero' => 'CM-0144', 'bonCommande' => null, 'commandesDetails' => $lignes],
             'client' => ['raisonSociale' => 'Hôtel Niger (exemple)', 'adresse' => 'Bamako, Mali', 'telephone' => '+223 XX XX XX XX'],
             'urlSuivi' => $url,
             'qrSuivi' => $entreprise->isQrSuivi() ? DocumentsEntreprise::qr($url) : null,
             'qrPaiement' => $entreprise->isQrPaiement() ? DocumentsEntreprise::qr($url.'#payer') : null,
-            'montantLettres' => $entreprise->isMontantEnLettres() ? MontantEnLettres::phraseFacture(233000) : null,
+            'montantLettres' => $entreprise->isMontantEnLettres() ? MontantEnLettres::phraseFacture(235000) : null,
         ];
     }
 }

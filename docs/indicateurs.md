@@ -189,7 +189,28 @@ Tout se règle dans Réglages › Écran TV :
 
 Les modifications restent en brouillon. « Aperçu plein écran » montre le brouillon, et « Publier sur l'écran » l'envoie.
 
-**Rafraîchissement :** la Smart TV relit les chiffres chaque minute. Elle se recharge seule après une publication, quand une scène entre ou sort de sa plage horaire, et toutes les 30 minutes. Elle ne recharge jamais quand internet est coupé : elle garde son affichage et réessaie.
+**Alertes sonores** (demande de Yaya du 15/10/2026 ; `App\Service\AlertesEcranTv`, `public/js/ecran-tv-alertes.js`) : quand quelque chose arrive, l'écran joue un carillon (deux notes fabriquées par le navigateur, aucun fichier), une voix française l'annonce, et l'alerte s'affiche en jaune en haut de l'écran une dizaine de secondes.
+
+| Événement (Réglages › Écran TV) | Annonce | Compté comme nouveau quand |
+|---|---|---|
+| Commande passée en ligne | « Nouvelle commande en ligne disponible » | elle arrive à confirmer (comme la pastille de Ventes), validée par l'entreprise du client s'il le faut |
+| Commande saisie à la boutique | « Nouvelle commande disponible » | elle est créée (commandes depuis la veille) |
+| Demande de devis du site | « Nouvelle demande de devis » | elle arrive, pas encore traitée |
+| Message de la page Contact | « Nouveau message du site » | il arrive, pas encore traité |
+| Demande de conception | « Nouvelle demande de conception » | elle est reçue, pas encore prise en charge |
+| Paiement à valider | « Nouveau paiement à valider » | il est en attente (Orange Money en ligne ou saisi au comptoir) |
+| Réclamation d'un client | « Nouvelle réclamation d'un client » | elle est ouverte |
+| Message de l'espace client | « Nouveau message d'un client » | il arrive, pas encore traité |
+| Devis accepté par le client | « Devis accepté par un client » | le client l'accepte |
+| Commande prête à retirer (non cochée au départ) | « Une commande est prête à retirer » | elle entre dans « Prêtes à retirer » |
+
+- **Plusieurs à la fois** : regroupées, un seul carillon puis les phrases à la suite : « Trois nouvelles commandes disponibles. Nouvelle demande de devis. » En lettres jusqu'à dix, puis « Plus de dix… ».
+- **Jamais de nom, de montant ni de numéro** : des phrases fixes, préparées par le serveur. Chaque minute, la page reçoit pour chaque événement coché des jetons opaques (empreinte HMAC avec le secret du serveur) des fiches en attente, jamais leur numéro. L'écran compare avec ce qu'il a déjà vu (gardé dans le navigateur) : une fiche n'est annoncée qu'une fois, même après un rechargement. À la toute première ouverture, rien n'est annoncé.
+- **« Activer le son »** : le navigateur bloque le son tant que personne n'a touché la page. L'écran montre une fois un grand bouton « Activer le son » ; un toucher, un clic ou la touche OK de la télécommande n'importe où suffit, et la voix répond « Le son des alertes est activé ». L'écran s'en souvient, et Chrome garde l'accord quand la page se recharge ; s'il le perd (autre navigateur, données effacées), le bouton revient. Sur l'écran noir hors horaires, le bouton reste caché (un toucher suffit quand même). Smart TV sans toucher ni télécommande : lancer Chrome avec `--autoplay-policy=no-user-gesture-required`, ou permettre la lecture du son dans l'application de démarrage (Fully Kiosk Browser…).
+- **Voix** : une voix française de l'appareil (fr-FR de préférence). Sans voix française, seulement le carillon.
+- **Réglages › Écran TV › Alertes sonores** (direction) : carillon, voix, volume, heures de silence (par défaut de 20:00 à 07:30 : l'alerte s'affiche sans son ; heures vides : jamais de silence) et événements annoncés. « Tester le son » joue l'exemple sur l'ordinateur de la personne, avec les réglages de l'écran (pas encore enregistrés). Comme le reste du programme, les changements passent sur l'écran avec « Publier sur l'écran ». L'aperçu plein écran sonne aussi.
+
+**Rafraîchissement :** la Smart TV relit les chiffres et les alertes chaque minute. Elle se recharge seule après une publication, quand une scène entre ou sort de sa plage horaire, et toutes les 30 minutes. Elle ne recharge jamais quand internet est coupé : elle garde son affichage et réessaie.
 
 **Accès :** l'écran s'ouvre par un lien secret, sans compte (`/ecran-accueil/{jeton}`), que l'admin peut remplacer. Pour reprendre après une coupure de courant, la Smart TV doit ouvrir ce lien au démarrage, avec son application de démarrage automatique ou en page d'accueil du navigateur.
 

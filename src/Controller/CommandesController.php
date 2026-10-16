@@ -24,6 +24,7 @@ use App\Entity\ProduitConfigurationFinition;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 use App\Entity\CommandesDetails;
+use App\Service\MontantFinitionSaisie;
 use App\Service\NotificationService;
 use App\Service\StockService;
 use App\Service\CalculateurCoutRevient;
@@ -33,6 +34,7 @@ use App\Repository\ParametresPaiementRepository;
 use App\Service\Parametres\Parametres;
 use App\Service\Promotions\PromotionsSaisie;
 use App\Service\Paiement\ComptesOrangeMoney;
+use App\Service\Paiement\FraisOrangeMoney;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
@@ -1837,9 +1839,16 @@ final class CommandesController extends AbstractController
             $modeCalcul = $finition->getModeCalcul()
                 ?: 'forfait';
 
-            $montant = $modeCalcul === 'forfait'
-                ? $prix
-                : $prix * $quantite;
+            // Finition enregistrée et inchangée : son montant ne bouge pas (MontantFinitionSaisie).
+            $montant = MontantFinitionSaisie::calculer(
+                [
+                    'finition' => $finition->getFinition()->getId(),
+                    'prixApplique' => $prix,
+                    'modeCalcul' => $modeCalcul,
+                    'quantite' => $quantite,
+                ],
+                MontantFinitionSaisie::origine($finition, $entityManager)
+            );
 
             $finition->setPrixApplique($prix);
             $finition->setQuantite($quantite);
@@ -2291,15 +2300,7 @@ final class CommandesController extends AbstractController
              * ====================================================
              */
 
-                $modesMobileMoney = [
-                    Paiements::MODE_ORANGE_MONEY,
-                    Paiements::MODE_WAVE,
-                ];
-
-                if (!in_array($paiement->getMode(), $modesMobileMoney, true)) {
-                    $paiement->setFraisRetraitInclus(false);
-                    $paiement->setFondsSoutienInclus(false);
-                }
+                FraisOrangeMoney::appliquer($paiement, $parametresPaiement);
 
                 /*
                  * Chèque : le numéro saisi dans "Référence de
@@ -2309,18 +2310,6 @@ final class CommandesController extends AbstractController
                 if ($paiement->getMode() === Paiements::MODE_CHEQUE) {
                     $paiement->setNumeroCheque($paiement->getReference());
                 }
-
-                $paiement->setMontantFraisRetrait(
-                    $paiement->isFraisRetraitInclus()
-                        ? $parametresPaiement->calculerFraisRetrait($montant)
-                        : 0
-                );
-
-                $paiement->setMontantFondsSoutien(
-                    $paiement->isFondsSoutienInclus()
-                        ? $parametresPaiement->calculerFondsSoutien($montant)
-                        : 0
-                );
 
 
                 /*

@@ -30,6 +30,14 @@ final class ConversionsDonnees
         'devis_details' => ['devis_detail_finition', 'devis_detail_id'],
     ];
 
+    /**
+     * « Garder le total » : colonne des lignes converties qui gardent leur
+     * total enregistré. Même définition que la migration
+     * Version20261015231500, qui ne la recrée pas quand elle existe.
+     */
+    public const COLONNE_TOTAL_FIGE = 'total_fige';
+    public const DEFINITION_TOTAL_FIGE = 'TINYINT DEFAULT 0 NOT NULL';
+
     /** Types de la remise en pourcentage dans l'ancienne version : DECIMAL(5,2) (commandes), DECIMAL(7,4). */
     private const TYPES_POURCENTAGE = [[5, 2], [7, 4]];
 
@@ -252,6 +260,47 @@ final class ConversionsDonnees
         }
 
         return $bilans;
+    }
+
+    /**
+     * « Garder le total » (décision de Yaya, 15/10/2026) : chaque ligne
+     * convertie dont le nouveau calcul ne redonne pas exactement son total
+     * enregistré (à 1 F près par unité, ou déjà différente avant la
+     * bascule) est marquée total_fige : elle garde ce total quand on la
+     * réenregistre sans rien changer, et n'est recalculée que si sa
+     * quantité, son prix, sa remise, ses dimensions ou ses finitions
+     * changent (TotalFigeTrait).
+     *
+     * Appelé après les contrôles (la base est alors identique à la
+     * référence) : la colonne, qui vient d'une migration postérieure à la
+     * migration de base, est ajoutée ici si elle manque.
+     *
+     * @param array<string, array<int, array{total: int, coherente: bool}>> $suivi
+     *
+     * @return array<string, int> nombre de lignes figées, par table
+     */
+    public function figerTotaux(array $suivi, Schema $boutique): array
+    {
+        $figees = [];
+        foreach ($suivi as $table => $attendues) {
+            if (!$boutique->getTable($table)->hasColumn(self::COLONNE_TOTAL_FIGE)) {
+                $this->connexion->executeStatement(\sprintf('ALTER TABLE `%s` ADD `%s` %s', $table, self::COLONNE_TOTAL_FIGE, self::DEFINITION_TOTAL_FIGE));
+            }
+            $ids = [];
+            foreach (array_chunk(array_keys($attendues), 500) as $lot) {
+                foreach ($this->lignesRemise($boutique, $table, $lot) as $l) {
+                    if (Remises::IDENTIQUE !== $l->verdict((int) $l->remise, $attendues[$l->id]['coherente'])) {
+                        $ids[] = $l->id;
+                    }
+                }
+            }
+            foreach (array_chunk($ids, 500) as $lot) {
+                $this->connexion->executeStatement(\sprintf('UPDATE `%s` SET `%s` = 1 WHERE `id` IN (%s)', $table, self::COLONNE_TOTAL_FIGE, implode(', ', array_map('intval', $lot))));
+            }
+            $figees[$table] = \count($ids);
+        }
+
+        return $figees;
     }
 
     /**

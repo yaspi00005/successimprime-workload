@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Devis;
 use App\Entity\DevisDetails;
 use App\Entity\User;
+use App\Service\MontantFinitionSaisie;
 use App\Service\DevisCommandeConverter;
 use App\Entity\DevisDetailFinition;
 use App\Entity\ProduitConfigurationFinition;
@@ -818,9 +819,16 @@ public function edit(
             $modeCalcul = $finition->getModeCalcul()
                 ?: 'forfait';
 
-            $montant = $modeCalcul === 'forfait'
-                ? $prix
-                : $prix * $quantite;
+            // Finition enregistrée et inchangée : son montant ne bouge pas (MontantFinitionSaisie).
+            $montant = MontantFinitionSaisie::calculer(
+                [
+                    'finition' => $finition->getFinition()->getId(),
+                    'prixApplique' => $prix,
+                    'modeCalcul' => $modeCalcul,
+                    'quantite' => $quantite,
+                ],
+                MontantFinitionSaisie::origine($finition, $entityManager)
+            );
 
             $finition->setPrixApplique($prix);
             $finition->setQuantite($quantite);

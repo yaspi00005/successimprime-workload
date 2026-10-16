@@ -654,7 +654,16 @@ class DevisDetailsType extends AbstractType
                         return;
                     }
 
-                    $mode = $data['modeConfiguration'] ?? 'automatique';
+                    /*
+                     * Toujours "manuel" (ou l'ancien "libre") : le choix du
+                     * mode n'est plus propose, et une ancienne ligne
+                     * enregistree en "automatique" renvoie son radio coche,
+                     * qu'il ne faut plus suivre (voir ModeConfigurationLigne).
+                     * Sans cle envoyee, le repli valait "automatique" et
+                     * vidait les finitions de la ligne.
+                     */
+                    $mode = ModeConfigurationLigne::soumis($data);
+                    $data['modeConfiguration'] = $mode;
 
                     /*
          * En mode automatique, on ne doit pas envoyer
@@ -788,9 +797,7 @@ class DevisDetailsType extends AbstractType
             $data['typeLigne']
             ?? DevisDetails::TYPE_PRODUIT;
 
-        $mode =
-            $data['modeConfiguration']
-            ?? 'automatique';
+        $mode = ModeConfigurationLigne::soumis($data);
 
 
         /*

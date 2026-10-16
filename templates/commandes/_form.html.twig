@@ -610,6 +610,7 @@
 			<div class="si-pr-ligne js-promo-ligne js-calcul-detail" data-ligne="{{ ligneEnregistree ? ligneEnregistree.id }}" data-remise-promotion="{{ ligneEnregistree ? ligneEnregistree.remisePromotion : 0 }}" data-libelle="{{ ligneEnregistree ? ligneEnregistree.libellePromotion }}"></div>
 
 			<div class="si-resume-ligne js-resume-ligne"></div>
+			{% if ligneEnregistree and ligneEnregistree.totalFige %}<small class="d-block text-muted" title="Ligne d'avant la nouvelle version : son total enregistré reste tant que la quantité, le prix, la remise, les dimensions et les finitions ne changent pas. L'aperçu ci-dessus refait le calcul ; le total enregistré, lui, ne bouge pas.">Total d'origine conservé : recalculé seulement si la quantité, le prix, la remise, les dimensions ou les finitions changent.</small>{% endif %}
 
 		</div>
 
@@ -1067,7 +1068,14 @@
 	</div>
 
 	{% if not form.vars.valid %}
-		<div class="alert alert-danger">{{ form_errors(form) }}</div>
+		{# Toutes les erreurs, celles des lignes comprises : le volet de la ligne concernée peut être fermé. #}
+		<div class="alert alert-danger">
+			<ul class="mb-0 ps-3">
+				{% for erreur in form.vars.errors.form.getErrors(true) %}
+					<li>{{ erreur.message }}</li>
+				{% endfor %}
+			</ul>
+		</div>
 	{% endif %}
 
 	{% if commandeVerrouillee %}
@@ -1278,7 +1286,6 @@
 ) }}
 
 
-<link href="{{ asset( 'assets/plugins/select2/select2.min.css' ) }}" rel="stylesheet">
 <link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
 <script src="{{ asset('js/promotions-saisie.js') }}"></script>
 
@@ -2372,7 +2379,7 @@ production.checked = true;
 }
 }
 
-appliquerModeConfiguration(detail);
+appliquerModeConfiguration(detail, viaChangementUtilisateur);
 
 appliquerCircuit(detail);
 
@@ -2466,7 +2473,7 @@ calculerDetail(detail);
          * ====================================================
          */
 
-function appliquerModeConfiguration(detail) {
+function appliquerModeConfiguration(detail, viaChangementUtilisateur) {
 if (valeurTypeLigne(detail) !== 'produit') {
 return;
 }
@@ -2502,7 +2509,7 @@ if (produitChamp && produitChamp.value) {
 if (auto) {
 chargerConfigurationsProduit(detail);
 } else {
-chargerOptionsManuelles(detail);
+chargerOptionsManuelles(detail, ! viaChangementUtilisateur);
 }
 }
 }
@@ -2763,7 +2770,7 @@ filtrerOptions(select, ids);
  * - Produit avec surface/longueur mais aucun format lié :
  *   largeur/longueur à saisir directement.
  */
-function appliquerZoneFormatDimensions(detail, infosProduit, formats) {
+function appliquerZoneFormatDimensions(detail, infosProduit, formats, conserverValeurs = false) {
 const besoinDimensions = Boolean(infosProduit.utiliseSurface) || Boolean(infosProduit.utiliseLongueur);
 
 const aDesFormats = besoinDimensions && formats.length > 0;
@@ -2785,7 +2792,7 @@ unite: f.unite
 })
 );
 
-if (! besoinDimensions) {
+if (! besoinDimensions && ! conserverValeurs) {
 definirValeur(detail, 'format', '');
 definirValeur(detail, 'largeur', '');
 definirValeur(detail, 'longueur', '');
@@ -2866,7 +2873,16 @@ calculerDetail(detail);
 }
 
 
-async function chargerOptionsManuelles(detail) {
+/*
+ * chargementInitial : ligne deja enregistree qu'on affiche. Sa
+ * designation, son prix, sa remise, son mode de calcul, son format, sa
+ * largeur et sa longueur restent tels qu'enregistres, meme si le
+ * catalogue a change : un simple « Enregistrer » ne doit jamais effacer
+ * une dimension ni changer le prix d'une ligne (remise convertie a la
+ * bascule, total d'origine conserve). Le catalogue ne s'applique que
+ * quand on choisit un autre produit ou un autre client.
+ */
+async function chargerOptionsManuelles(detail, chargementInitial = false) {
 if (valeurTypeLigne(detail) !== 'produit') {
 return;
 }
@@ -2891,6 +2907,7 @@ throw new Error(json.message || 'Impossible de charger le produit.');
 const infosProduit = json.produit || {};
 
 
+if (! chargementInitial) {
 definirValeur(detail, 'designation', infosProduit.nom || '');
 
 definirValeur(detail, 'prixUnitaire', infosProduit.prixBase || 0);
@@ -2898,6 +2915,7 @@ definirValeur(detail, 'prixUnitaire', infosProduit.prixBase || 0);
 definirValeur(detail, 'remise', clientEstB2B() ? Math.round((infosProduit.prixBase || 0) * (infosProduit.remiseB2B || 0) / 100) : 0);
 
 definirValeur(detail, 'modeCalcul', infosProduit.modeCalcul || 'unite');
+}
 
 
 filtrerOptions(champDetail(detail, 'typeImpression'), (json.typesImpression || []).map(function (t) {
@@ -2912,7 +2930,7 @@ filtrerOptions(champDetail(detail, 'format'), (json.formats || []).map(function 
 return f.id;
 }));
 
-appliquerZoneFormatDimensions(detail, infosProduit, json.formats || []);
+appliquerZoneFormatDimensions(detail, infosProduit, json.formats || [], chargementInitial);
 
 /*
  * Finitions compatibles avec le produit : memorisees sur le
@@ -3100,10 +3118,22 @@ appliquerTypeLigne(travail, true);
 
 /*
              * MODE CONFIG
+             *
+             * Ancienne ligne « automatique » : le serveur l'enregistre en
+             * « manuel » (ModeConfigurationLigne). La page fait de même, pour
+             * ne pas réappliquer la configuration du catalogue à l'ouverture
+             * (prix, remise, désignation, dimensions, finitions).
              */
+const radioAutomatique = travail.querySelector('[name$="[modeConfiguration]"][value="automatique"]');
+const radioManuel = travail.querySelector('[name$="[modeConfiguration]"][value="manuel"]');
+
+if (radioAutomatique && radioAutomatique.checked && radioManuel) {
+radioManuel.checked = true;
+}
+
 travail.querySelectorAll('[name$="[modeConfiguration]"]').forEach(function (input) {
 input.addEventListener('change', function () {
-appliquerModeConfiguration(travail);
+appliquerModeConfiguration(travail, true);
 });
 });
 

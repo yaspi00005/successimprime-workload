@@ -342,7 +342,7 @@ for k, (code, nom, cat, mode, prix, b2b, typ, sup, fmt, machine, fins, art, cout
     pid = add('produits', {'nom': nom + ' (démo)', 'description': f'{nom} — produit de démonstration', 'publie': 1, 'ordre': k + 1, 'code': code, 'prix_base': float(prix),
                            'prix_b2_b': float(b2b), 'personnalisable': 1, 'actif': 1, 'mode_calcul': mode, 'gestion_stock': 0, 'categorie_produit_id': CATEGORIES[cat],
                            'article_stock_id': ARTICLES[art], 'public_id': uid()})
-    conf = add('produit_configuration', {'active': 1, 'ordre': 1, 'description': None, 'prix_base': prix, 'mode_calcul': mode, 'mode_dimension': 'libre' if fmt == 'Sur mesure' else 'format',
+    conf = add('produit_configuration', {'active': 1, 'ordre': 1, 'description': None, 'prix_base': prix, 'mode_calcul': mode, 'mode_dimension': 'mesure' if fmt == 'Sur mesure' else 'format',
                                           'largeur_defaut': None, 'longueur_defaut': None, 'quantite_minimale': 1, 'quantite_maximale': None, 'prix_b2_b': b2b,
                                           'produit_id': pid, 'type_impression_id': TYPES[typ], 'support_id': SUPPORTS[sup], 'format_id': FORMATS[fmt], 'public_id': uid()})
     conf_fins = {}
@@ -593,7 +593,7 @@ for k in COMMANDES:
         debut = None if st == 'a_produire' or not prod else max(0, d - R.randint(0, 2))
         fin = None if st in ('a_produire', 'en_production') or not prod else max(0, (debut if debut is not None else d) - R.randint(0, 1))
         l['debut'], l['fin'] = debut, fin
-        add('commandes_details', {'id': lid, 'mode_configuration': 'automatique' if prod else 'manuelle', 'designation': p['nom'] if prod else l['libre'],
+        add('commandes_details', {'id': lid, 'mode_configuration': 'automatique' if prod else 'manuel', 'designation': p['nom'] if prod else l['libre'],
                                   'largeur': l.get('l'), 'longueur': l.get('L'), 'surface': l.get('surface'), 'quantite': l['qte'],
                                   'prix_unitaire': float(l['prix'] if prod else l['ht']), 'cout_revient': l['cout'], 'remise': 0, 'tva': 0, 'total_ht': l['ht'], 'total_ttc': l['ht'],
                                   'profil_couleurs': 'CMJN' if prod else None, 'resolution': '150 dpi' if prod and p['mode'] == 'metre_carre' else ('300 dpi' if prod else None), 'grammage': None, 'epaisseur': None,
@@ -682,7 +682,7 @@ def devis(c, d, lignes, statut, commande=None):
     for l in lignes:
         p = l['p']
         prod = p is not None
-        ddid = add('devis_details', {'mode_configuration': 'automatique' if prod else 'manuelle', 'designation': p['nom'] if prod else l['libre'], 'largeur': l.get('l'), 'longueur': l.get('L'),
+        ddid = add('devis_details', {'mode_configuration': 'automatique' if prod else 'manuel', 'designation': p['nom'] if prod else l['libre'], 'largeur': l.get('l'), 'longueur': l.get('L'),
                                      'surface': l.get('surface'), 'quantite': l['qte'], 'prix_unitaire': float(l['prix'] if prod else l['ht']), 'cout_revient': l['cout'], 'remise': 0, 'tva': 0,
                                      'total_ht': l['ht'], 'total_ttc': l['ht'], 'type_ligne': 'produit' if prod else 'libre', 'mode_saisie': 'automatique', 'bat_valide': 0, 'etat': 1,
                                      'priorite': 'normale', 'mode_calcul': p['mode'] if prod else 'forfait', 'devis_id': did, 'produit_id': p['id'] if prod else None,
@@ -1727,7 +1727,7 @@ def commande_dc(c, numero, d, h, m, lignes, confirmee, payes):
     for l in lignes:
         lid = nid('commandes_details')
         ids.append(lid)
-        add('commandes_details', {'id': lid, 'mode_configuration': 'manuelle', 'designation': l['nom'], 'largeur': None, 'longueur': None, 'surface': None,
+        add('commandes_details', {'id': lid, 'mode_configuration': 'manuel', 'designation': l['nom'], 'largeur': None, 'longueur': None, 'surface': None,
                                   'quantite': l['qte'], 'prix_unitaire': float(l['prix']), 'cout_revient': 0, 'remise': 0, 'tva': 0,
                                   'total_ht': l['prix'] * l['qte'], 'total_ttc': l['prix'] * l['qte'], 'profil_couleurs': None, 'resolution': None, 'grammage': None,
                                   'epaisseur': None, 'recto_verso': 0, 'nombre_faces': 1, 'laminage': None, 'oeillets': 0, 'decoupe': 0, 'pliage': None, 'emballage': 0,

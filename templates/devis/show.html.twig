@@ -335,6 +335,7 @@
 										</div>
 
 
+										<div class="text-end">
 										<strong class="h5 mb-0 text-primary">
 
 											{{
@@ -349,6 +350,8 @@
 											FCFA
 
 										</strong>
+										{% if detail.totalFige|default(false) %}<small class="d-block text-muted" title="Ligne d'avant la nouvelle version : son total enregistré reste tant que la quantité, le prix, la remise, les dimensions et les finitions ne changent pas.">Total d'origine conservé</small>{% endif %}
+										</div>
 
 									</div>
 

@@ -628,6 +628,7 @@
 		<div class="si-pr-ligne js-promo-ligne js-calcul-detail" data-ligne="{{ ligneEnregistree ? ligneEnregistree.id }}" data-remise-promotion="{{ ligneEnregistree ? ligneEnregistree.remisePromotion : 0 }}" data-libelle="{{ ligneEnregistree ? ligneEnregistree.libellePromotion }}"></div>
 
 		<div class="si-resume-ligne js-resume-ligne"></div>
+		{% if ligneEnregistree and ligneEnregistree.totalFige %}<small class="d-block text-muted" title="Ligne d'avant la nouvelle version : son total enregistré reste tant que la quantité, le prix, la remise, les dimensions et les finitions ne changent pas. L'aperçu ci-dessus refait le calcul ; le total enregistré, lui, ne bouge pas.">Total d'origine conservé : recalculé seulement si la quantité, le prix, la remise, les dimensions ou les finitions changent.</small>{% endif %}
 
 		<div class="travail-section js-zone-finitions">
 

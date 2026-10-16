@@ -22,6 +22,17 @@ Une ancienne ligne automatique devient manuelle au premier enregistrement, en ga
 
 Dans le code : `ModeConfigurationLigne` (le mode lu à l'envoi du formulaire), `MontantFinitionSaisie` (une finition enregistrée et inchangée garde son montant).
 
+## Total d'origine conservé
+
+Après la bascule de la base de la boutique, une ligne dont la remise a été convertie (pourcentage → F par unité) et dont le nouveau calcul ne redonne pas exactement le total enregistré garde ce total (décision « Garder le total », [docs/migration-de-base.md](migration-de-base.md#garder-le-total)). La fiche et la saisie l'indiquent discrètement : « Total d'origine conservé ».
+
+- Enregistrer sans rien changer : le total enregistré reste, même si l'aperçu de la page affiche le nouveau calcul.
+- Changer la quantité, le prix, la remise (y compris celle d'une promotion ou d'un code promo), la TVA, le mode de calcul, les dimensions ou les finitions : la ligne est recalculée et redevient une ligne ordinaire.
+- Un devis accepté dont une ligne garde son total le passe à la ligne de la commande créée.
+- Sur un devis ou une facture, la remise affichée de la ligne est ce qui a vraiment été retiré (brut − total), pour que brut − remise = total.
+
+Dans le code : `TotalFigeTrait` (colonne `total_fige` de `commandes_details` et `devis_details`).
+
 ## Les erreurs
 
 Toutes les erreurs s'affichent en haut du formulaire, celles des lignes comprises. Une erreur de dimensions dit quelle ligne est en cause, par sa place et sa désignation :

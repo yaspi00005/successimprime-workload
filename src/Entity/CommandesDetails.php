@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Entity\Trait\PromotionLigneTrait;
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\TotalFigeTrait;
 use App\Repository\CommandesDetailsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -14,10 +15,12 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Entity(repositoryClass: CommandesDetailsRepository::class)]
 #[ORM\Table(name: 'commandes_details')]
+#[ORM\HasLifecycleCallbacks]
 class CommandesDetails
 {
     use PublicIdTrait;
     use PromotionLigneTrait;
+    use TotalFigeTrait;
 
     public const PRODUCTION_A_PRODUIRE = 'a_produire';
     public const PRODUCTION_EN_COURS = 'en_production';
@@ -982,6 +985,12 @@ class CommandesDetails
     public function calculerTotaux(
         bool $clientB2B = false
     ): static {
+        // Total d'origine conservé (bascule, TotalFigeTrait) : rien de ce
+        // qui fait le total n'a changé depuis sa lecture.
+        if ($this->garderTotalFige()) {
+            return $this;
+        }
+
         /*
          * La configuration du catalogue s'applique quand la ligne est
          * créée, jamais en recalculant ses totaux : une ancienne ligne
@@ -1057,6 +1066,12 @@ class CommandesDetails
     public function getMontantRemise(): int
     {
         $brut = $this->calculerTotalBrut();
+
+        // Total d'origine conservé : ce qui a vraiment été retiré du brut.
+        if ($this->totalFige) {
+            return max(0, $brut - $this->totalHt);
+        }
+
         $remise = $this->calculerMontantRemise($brut);
 
         // Avec la part du code promo de la commande : la ligne montre tout ce qui lui est retiré.

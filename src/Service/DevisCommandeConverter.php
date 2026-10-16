@@ -125,6 +125,11 @@ final class DevisCommandeConverter
                     $devisDetail,
                     $commandeDetail
                 );
+
+                // Total d'origine conservé (bascule) : la commande garde aussi celui du devis.
+                if ($devisDetail->isTotalFige()) {
+                    $commandeDetail->figerTotal();
+                }
             }
 
             /*

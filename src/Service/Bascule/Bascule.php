@@ -32,8 +32,9 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * 4. Sans écart bloquant, la correction fait une sauvegarde, convertit les
  *    données, applique les écarts, revérifie que la base est identique à
  *    la référence, que chaque table a gardé ses lignes et que chaque ligne
- *    convertie retombe sur son total enregistré, puis remplace l'historique
- *    des migrations par la migration de base. Les migrations suivantes se
+ *    convertie retombe sur son total enregistré, marque celles qui gardent
+ *    leur total d'origine (total_fige), puis remplace l'historique des
+ *    migrations par la migration de base. Les migrations suivantes se
  *    lancent ensuite normalement (doctrine:migrations:migrate).
  */
 final class Bascule
@@ -364,6 +365,12 @@ final class Bascule
         foreach ($donnees->controlerRemises($suiviRemises, $this->schemaBoutique()) as $table => $bilan) {
             $remises[$table] = \sprintf('%d ligne(s) recalculée(s) avec le nouveau calcul : %s', $bilan->lignes(), $bilan->texte());
             $note(\sprintf('Contrôle %s.remise : %s.', $table, $remises[$table]));
+        }
+
+        // 4. « Garder le total » : les lignes converties qui ne retombent pas exactement sur
+        //    leur total enregistré le gardent tant que rien de ce qui le fait ne change.
+        foreach ($donnees->figerTotaux($suiviRemises, $this->schemaBoutique()) as $table => $n) {
+            $note(\sprintf('%s : %d ligne(s) gardent leur total d\'origine tant qu\'elles ne sont pas modifiées.', $table, $n));
         }
 
         $this->marquerMigrationDeBase();

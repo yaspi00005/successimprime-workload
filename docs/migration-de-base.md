@@ -72,9 +72,10 @@ Une colonne ajoutée avec une valeur par défaut prend cette valeur sur les lign
 6. Tous les autres écarts, dans l'ordre choisi par Doctrine, en mode strict de MariaDB : une valeur qui ne tiendrait pas fait échouer l'instruction au lieu d'être coupée. Attention : un DECIMAL passé en INT est arrondi sans erreur, même en mode strict ; c'est pourquoi un tel changement avec des valeurs est bloquant, sauf pour une remise convertie à l'étape 4 (francs entiers, vérifiés).
 7. Conversions de données qui remplissent une colonne créée à l'étape 6 (consommables, type de compte, amortissement).
 8. Contrôles : la base doit être identique à la référence, chaque table doit avoir le même nombre de lignes qu'avant, et chaque ligne dont la remise a été convertie est recalculée (voir « Conversions de données »).
-9. L'historique des migrations est remplacé par la seule migration de base.
+9. « Garder le total » : chaque ligne convertie qui ne retombe pas exactement sur son total enregistré est marquée `total_fige` (voir plus bas). La colonne vient d'une migration postérieure à la migration de base (`Version20261015231500`) : la bascule l'ajoute ici, avec la même définition, et la migration ne la recrée pas.
+10. L'historique des migrations est remplacé par la seule migration de base.
 
-Ensuite : `php bin/console doctrine:migrations:migrate -n`, puis `php bin/console doctrine:schema:validate` (deux lignes « OK »).
+Ensuite : `php bin/console doctrine:migrations:migrate -n`, puis `php bin/console doctrine:schema:validate` (deux lignes « OK »). L'avertissement « Migration DoctrineMigrations\Version20261015231500 was executed but did not result in any SQL statements » est normal : la bascule a déjà ajouté la colonne `total_fige`.
 
 Si une étape échoue après la sauvegarde, la commande affiche la ligne exacte pour la remettre : `php bin/console app:sauvegarde:restaurer <nom> --base`.
 
@@ -119,7 +120,19 @@ Sans changement de sens, rien à rejouer : remise INT → `DECIMAL(5,2)` (14 et 
 - *déjà différente avant la bascule* : l'ancien calcul ne redonnait déjà pas le total enregistré (total changé à la main, prix modifié…). Signalée, pas bloquante : la bascule ne peut pas faire mieux que l'ancienne mise à jour ;
 - *au-delà* : sur une ligne qui était cohérente. La vérification le dit d'avance (essai du calcul en mémoire, **bloquant**) ; si cela arrivait quand même pendant `--corriger`, la commande s'arrête et donne la ligne pour remettre la sauvegarde.
 
-Le total enregistré ne bouge que si quelqu'un modifie et réenregistre une ancienne ligne dans la nouvelle version : il est alors recalculé, à 1 F près par unité.
+### Garder le total
+
+Décision de Yaya (15/10/2026) : une ligne convertie garde son total enregistré, même réenregistrée dans la nouvelle version, tant que rien de ce qui fait son total ne change.
+
+- `--corriger` marque `total_fige` = 1 chaque ligne convertie dont le contrôle n'est pas *identique* (à 1 F près par unité, ou déjà différente avant la bascule). Il l'annonce : « commandes_details : N ligne(s) gardent leur total d'origine tant qu'elles ne sont pas modifiées. »
+- Réenregistrer la ligne sans rien changer garde le total lu en base, même si la page en affiche un autre dans son aperçu.
+- Changer sa quantité, son prix, sa remise (y compris celle d'une promotion ou d'un code promo), sa TVA, son mode de calcul, ses dimensions ou ses finitions la recalcule ; elle redevient alors une ligne ordinaire (`total_fige` = 0).
+- La fiche du devis ou de la commande et la saisie l'indiquent discrètement : « Total d'origine conservé ». Un devis accepté transformé en commande passe la marque à la ligne de la commande.
+- Sur le devis et la facture, la remise affichée de la ligne est ce qui a vraiment été retiré (brut − total enregistré).
+
+Les lignes *identiques* ne sont pas marquées : recalculées, elles redonnent leur total.
+
+Dans le code : `ConversionsDonnees::figerTotaux` (bascule), `TotalFigeTrait` (lignes), migration `Version20261015231500`.
 
 **Répétition du 15/10/2026** sur la structure du 15/10 avec des données d'essai fictives (2 clients « Client essai », 2 commandes, 2 devis, 16 lignes : 0 %, 10 %, 12,5 %, 33,33 %, 100 %, 14,2857 %, au m², au mètre, recto verso, au forfait, avec finitions, totaux calculés comme l'ancienne version, plus une ligne au total changé à la main), puis `--corriger`, `migrate`, `schema:validate` (OK), et contrôle par les entités de l'application :
 
@@ -131,6 +144,7 @@ Le total enregistré ne bouge que si quelqu'un modifie et réenregistre une anci
 | Remise en nombre entier, une ligne en F par unité au milieu | bloquant, avec les nombres de lignes de chaque calcul |
 | Structure plus ancienne (`type_compte`, amortissement absents, `vendable` déjà par défaut à 1) | 1 client B2B → « entreprise », 2 articles → « consommable en production », 1 traceur → récapitulatif d'amortissement |
 | Structure seule (sans lignes) | 3 conversions annoncées, 2 questions « à revérifier » ; `--corriger`, `migrate`, `schema:validate` OK |
+| « Garder le total » (même structure, mêmes données fictives, base supprimée ensuite) | `--corriger` : 5 lignes de commande (4 à 1 F près, 1 déjà différente) et 2 lignes de devis marquées `total_fige` ; `migrate` (la migration `Version20261015231500` ne recrée pas la colonne), `schema:validate` OK ; totaux des lignes et des documents identiques avant et après ; contrôle par les entités : les 16 lignes réenregistrées sans changement gardent leur total, une ligne marquée passée de 1 000 à 1 200 exemplaires est recalculée (26 400 F) et n'est plus marquée |
 
 ## Revenir en arrière
 

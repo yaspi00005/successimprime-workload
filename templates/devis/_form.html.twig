@@ -858,6 +858,14 @@
 						}
 					}) }}
 				</div>
+				{# Objet du devis, imprimé sur le devis puis sur la facture (« Objet : … ») ; suggestions des Réglages. #}
+				<div class="mt-2">
+					{{ form_row(form.objet, {label: 'Objet (facultatif)'}) }}
+					<datalist id="objets-suggeres">
+						{% for objet in objets_suggeres() %}<option value="{{ objet }}"></option>{% endfor %}
+					</datalist>
+				</div>
+				{% include 'partials/_interlocuteur.html.twig' with {champ: form.interlocuteur, libelle: 'À l\'attention de'} %}
 			</div>
 
 			{# ---------- Lignes ---------- #}
@@ -950,12 +958,25 @@
 				</div>
 			{% endif %}
 
+			{# ---------- Livraison : un des paliers des Réglages (Ventes › Livraison et objet), jamais un montant tapé. ---------- #}
+			<div class="card si-bloc si-saisie-livraison js-zone-frais-livraison">
+				<h4>Livraison</h4>
+				<div class="si-choix-pilules js-frais-livraison mb-1" role="radiogroup" aria-label="Frais de livraison">
+					{% for choix in form.fraisLivraison %}
+						<label class="si-pilule">{{ form_widget(choix) }}<span class="text-nowrap">{{ choix.vars.label }}</span></label>
+					{% endfor %}
+				</div>
+				{{ form_errors(form.fraisLivraison) }}
+				<small class="text-muted d-block">Des frais choisis font une commande à livrer quand le devis est accepté.</small>
+			</div>
+
 			{# ---------- Récapitulatif ---------- #}
 			<div class="card si-bloc si-saisie-recap">
 				<h4>Récapitulatif</h4>
 				<dl class="si-recap">
 					<dt class="js-recap-lignes">Sous-total HT</dt><dd class="js-recap-ht">0</dd>
 					<dt class="js-recap-tva-libelle">TVA</dt><dd class="js-recap-tva">0</dd>
+					<dt class="js-recap-livraison" hidden>Livraison</dt><dd class="js-recap-livraison js-recap-livraison-montant" hidden>0</dd>
 					<dt>Remise</dt>
 					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-saisie'}}) }}</dd>
 					<dt>Code promo</dt>
@@ -1547,6 +1568,11 @@ totalHt += nombreDepuisChamp(champDetail(detail, 'totalHt'));
 
 totalTtc += nombreDepuisChamp(champDetail(detail, 'totalTtc'));
 });
+
+// Frais de livraison choisis, sans TVA. Le serveur refait ces totaux.
+const fraisLivraison = document.querySelector('.js-frais-livraison input:checked');
+totalHt += fraisLivraison ? (Number(fraisLivraison.value) || 0) : 0;
+totalTtc += fraisLivraison ? (Number(fraisLivraison.value) || 0) : 0;
 
 
 const totalHtForm = document.getElementById('{{ form.totalHt.vars.id }}');

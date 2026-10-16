@@ -128,6 +128,8 @@ final class RecetteOutilsTest extends TestCase
         self::assertNotNull(RecetteEspaceClient::montantVoulu('Kakémonos du hall × 2dernière fois 26/09 54 000 F'));
         self::assertNotNull(RecetteEspaceClient::montantVoulu('Finition Prête à retirer Total indicatif 3 000 F'));
         self::assertNull(RecetteEspaceClient::montantVoulu('Reste à payer 3 000 F'));
+        self::assertNotNull(RecetteEspaceClient::montantVoulu('Prête à livrer Livrée en cours Frais de livraison 2 000 F'));
+        self::assertNull(RecetteEspaceClient::montantVoulu('Encaissé à la livraison 2 000 F'));
         self::assertNull(RecetteEspaceClient::montantVoulu('Paiement reçu Wave · commande CMD-D00654 · 37 500 F'));
         self::assertTrue(RecetteEspaceClient::montantDeDevis('Nouveau devis DV-D00557 · Kakémono 80 × 180 cm · 31 000 F'));
         self::assertFalse(RecetteEspaceClient::montantDeDevis('Nouvelle facture F-D00498 · commande CMD-D00654 · 75 000 F'));

@@ -19,6 +19,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class Notification
 {
+    public const LONGUEUR_MAX = 255;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -81,7 +83,22 @@ class Notification
 
     public function setMessage(string $message): static
     {
-        $this->message = trim($message);
+        // La colonne garde 255 caractères : un message plus long (cause d'une panne) est coupé proprement.
+        $message = trim($message);
+        $this->message = mb_strlen($message) > self::LONGUEUR_MAX ? rtrim(mb_substr($message, 0, self::LONGUEUR_MAX - 1)).'…' : $message;
+
+        return $this;
+    }
+
+    /**
+     * Une alerte qui se répète (synchronisation en panne) reprend la
+     * notification encore non lue au lieu d'en ajouter une : nouveau texte,
+     * nouvelle date, elle remonte en haut de la cloche.
+     */
+    public function remettreAJour(string $message, \DateTimeImmutable $le): static
+    {
+        $this->setMessage($message);
+        $this->dateCreation = $le;
 
         return $this;
     }

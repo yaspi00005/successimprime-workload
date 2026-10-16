@@ -18,13 +18,16 @@ class TempsEcouleExtension extends AbstractExtension
         ];
     }
 
-    public function tempsEcoule(?\DateTimeInterface $date): string
+    /**
+     * @param bool $court « il y a 16 min », « il y a 3 h » (cloche de l'en-tête) au lieu de « il y a 16 minutes »
+     */
+    public function tempsEcoule(?\DateTimeInterface $date, bool $court = false, ?\DateTimeInterface $maintenant = null): string
     {
         if ($date === null) {
             return '';
         }
 
-        $secondes = (new \DateTimeImmutable())->getTimestamp() - $date->getTimestamp();
+        $secondes = ($maintenant ?? new \DateTimeImmutable())->getTimestamp() - $date->getTimestamp();
 
         if ($secondes < 60) {
             return 'à l\'instant';
@@ -33,13 +36,13 @@ class TempsEcouleExtension extends AbstractExtension
         if ($secondes < 3600) {
             $minutes = (int) floor($secondes / 60);
 
-            return 'il y a ' . $minutes . ' minute' . ($minutes > 1 ? 's' : '');
+            return 'il y a ' . $minutes . ($court ? ' min' : ' minute' . ($minutes > 1 ? 's' : ''));
         }
 
         if ($secondes < 86400) {
             $heures = (int) floor($secondes / 3600);
 
-            return 'il y a ' . $heures . ' heure' . ($heures > 1 ? 's' : '');
+            return 'il y a ' . $heures . ($court ? ' h' : ' heure' . ($heures > 1 ? 's' : ''));
         }
 
         $jours = (int) floor($secondes / 86400);

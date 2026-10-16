@@ -2,6 +2,7 @@
 
 namespace App\Service\Guide;
 
+use App\Security\LivreurSeul;
 use App\Security\ModulesRoles;
 use App\Security\PersonnelVoter;
 
@@ -459,6 +460,11 @@ final class CatalogueGuide
             if (!$unSuffit) {
                 return false;
             }
+        }
+
+        // Livreur seul : les fiches des seules pages qu'il ouvre (sa tournée, Mon espace…).
+        if (LivreurSeul::est($roles) && !LivreurSeul::routePermise($fiche['route'])) {
+            return false;
         }
 
         // Module en « Voir » : pas de fiche qui crée ou modifie (LectureSeuleSubscriber le refuserait).

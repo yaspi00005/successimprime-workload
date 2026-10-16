@@ -2,6 +2,7 @@
 
 namespace App\Service\Recette;
 
+use App\Controller\TourneeController;
 use App\Entity\BonLivraison;
 use App\Entity\BulletinPaie;
 use App\Entity\DemandeEmploye;
@@ -10,10 +11,12 @@ use App\Entity\Reclamation;
 use App\Entity\User;
 use App\EventSubscriber\LectureSeuleSubscriber;
 use App\Security\Droits;
+use App\Security\LivreurSeul;
 use App\Security\ModulesRoles;
 use App\Service\Guide\CatalogueGuide;
 use App\Twig\NavigationExtension;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -69,6 +72,8 @@ final class RecetteAcces
         'app_planning_annee' => [['ROLE_TRESORERIE_VOIR'], 'budget des échéances, montré avec le droit trésorerie'],
         'app_immobilisations_' => [['ROLE_COMPTABILITE'], 'valeurs des immobilisations, pour la comptabilité'],
         'app_reclamation_' => [[], 'ses propres demandes de remboursement (celles des autres : trésorerie ou caisse)'],
+        'app_livraisons_tournee' => [['ROLE_LIVRAISON'], 'reste à encaisser à la livraison, sur ses propres livraisons (le bureau : avec le droit Paiements)'],
+        'app_livraisons_remise' => [['ROLE_LIVRAISON'], 'reste à encaisser à la remise de sa propre livraison'],
     ];
 
     /**
@@ -81,6 +86,17 @@ final class RecetteAcces
         '/forfait de conception Acompte [\d \x{00A0}\x{202F}.]+ F$/u' => 'acompte demandé pour la conception (un prix)',
         '/(?:Payée|Impayée|Paiement partiel) [\d \x{00A0}\x{202F}.]+ F(?:CFA| CFA)?$/u' => 'total de la commande à côté de son état de paiement (le payé et le reste demandent le droit Paiements)',
         '/\bCMD-[A-Z0-9-]+ \d{2}\/\d{2}\/\d{4}(?: \d{2}:\d{2})? [\d \x{00A0}\x{202F}.]+ F(?:CFA| CFA)?$/u' => 'total d\'une commande dans une liste (numéro, date, montant TTC)',
+    ];
+
+    /**
+     * Pages que le livreur seul ne doit jamais ouvrir (décision de Yaya du
+     * 15/10/2026 : il ne voit que ses livraisons et sa tournée). L'accueil
+     * le renvoie sur sa tournée.
+     */
+    public const REFUSEES_AU_LIVREUR = [
+        'app_clients_index', 'app_commandes_index', 'app_ventes_index', 'app_statistiques_index', 'app_mes_statistiques',
+        'app_recherche', 'app_chat_index', 'app_planning_index', 'app_livraisons_index', 'app_bons_livraison_index',
+        'app_livraisons_a_retirer', 'app_livraisons_planning', 'app_livraisons_suivi', 'app_reclamation_index',
     ];
 
     private ?UsernamePasswordToken $jeton = null;
@@ -246,6 +262,7 @@ final class RecetteAcces
         $rh = $this->accorde('ROLE_RH');
         $etats = [];
         $redirections = [];
+        $chemins = [];
 
         foreach ($pages as $p) {
             $reponse = $this->navigateur->get($p['chemin'], $session, [], false, self::depuisUnPoste($p['route']) ? $this->posteMachine() : null);
@@ -253,6 +270,7 @@ final class RecetteAcces
             $bilan->matrice[$p['chemin']][$identifiant] = $etat;
             $etats[$p['route']] ??= $etat;
             $redirections[$p['route']] ??= $reponse->redirection;
+            $chemins[$p['route']] ??= $p['chemin'];
             $exigences = $this->droits->exigences($p['definition'], $p['route'], $p['chemin']);
 
             // Guide : une fiche ou une capture suit les droits de l'écran décrit (CatalogueGuide).
@@ -286,10 +304,19 @@ final class RecetteAcces
             }
         }
 
+        $livreurSeul = LivreurSeul::est($roles);
+        if ($livreurSeul) {
+            $this->verifierLivreurSeul($identifiant, $session, $etats, $chemins, $bilan);
+        }
+
         // Entrées du menu et onglets que la personne voit : ils doivent s'ouvrir.
         foreach (NavigationExtension::ONGLETS as $onglets) {
             foreach ($onglets as $onglet) {
                 if (!$this->auMoinsUn((array) $onglet['role'], true) || !isset($etats[$onglet['route']])) {
+                    continue;
+                }
+                // Le menu du livreur seul n'a que sa tournée et ses livraisons (NavigationExtension).
+                if ($livreurSeul && !\in_array($onglet['route'], LivreurSeul::MENU, true)) {
                     continue;
                 }
                 $etat = $etats[$onglet['route']];
@@ -332,6 +359,40 @@ final class RecetteAcces
     }
 
     /**
+     * Livreur seul (LivreurSeul) : aucune page ouverte hors de sa tournée,
+     * de ses livraisons et de ce que tout le personnel a pour lui-même ;
+     * l'accueil le renvoie sur sa tournée.
+     *
+     * @param array<string, string> $etats
+     * @param array<string, string> $chemins
+     */
+    private function verifierLivreurSeul(string $identifiant, MockArraySessionStorage $session, array $etats, array $chemins, BilanRecette $bilan): void
+    {
+        $hors = [];
+        foreach ($etats as $route => $etat) {
+            if (Reponse::OUVERT === $etat && !LivreurSeul::routePermise($route)) {
+                $hors[] = $route;
+                $bilan->constater(BilanRecette::FUITE, 'livreur_seul', $route, $chemins[$route], $identifiant, 'page ouverte au livreur, hors de sa tournée et de ses livraisons');
+            }
+        }
+        $bilan->controler(\sprintf('%s : livreur seul, aucune page hors de sa tournée, de ses livraisons et de son espace', $identifiant), [] === $hors, [] === $hors ? \sprintf('%d pages demandées', \count($etats)) : implode(', ', $hors));
+
+        $ouvertes = [];
+        foreach (self::REFUSEES_AU_LIVREUR as $route) {
+            if (isset($etats[$route]) && !\in_array($etats[$route], [Reponse::REFUSE, Reponse::INTROUVABLE, Reponse::CONNEXION], true)) {
+                $ouvertes[] = $route.' → '.$etats[$route];
+            }
+        }
+        $essayees = \count(array_intersect(self::REFUSEES_AU_LIVREUR, array_keys($etats)));
+        $bilan->controler(\sprintf('%s : tableau de bord, clients, commandes, statistiques, recherche, messagerie, listes des livraisons et suivi refusés', $identifiant), [] === $ouvertes, [] === $ouvertes ? \sprintf('%d pages refusées', $essayees) : implode(', ', $ouvertes));
+
+        // L'accueil (« / », hors de la liste des pages de l'admin) le renvoie sur sa tournée.
+        $reponse = $this->navigateur->get($this->routeur->generate('app_home'), $session);
+        $arrivee = (string) parse_url($reponse->redirection, \PHP_URL_PATH);
+        $bilan->controler(\sprintf('%s : l\'accueil mène à sa tournée', $identifiant), Reponse::REDIRIGE === $reponse->etat() && $arrivee === $this->routeur->generate('app_livraisons_tournee'), '/ → '.$reponse->etat().' '.$arrivee);
+    }
+
+    /**
      * Fiches d'une autre personne demandées par leur numéro : bulletin,
      * justificatif, photo de pointage, livraison d'un autre livreur.
      */
@@ -366,6 +427,7 @@ final class RecetteAcces
                 $essais[] = ['app_livraisons_remise', ['id' => $bon], 'remise d\'une livraison confiée à un autre livreur'];
                 $essais[] = ['app_livraisons_bl_preuve', ['id' => $bon], 'photo ou signature d\'une livraison d\'un autre livreur'];
             }
+            $this->verifierLivraisonsDesAutres($compte, $bilan);
         }
         foreach ($essais as [$route, $parametres, $libelle]) {
             if (null === $this->routeur->getRouteCollection()->get($route)) {
@@ -377,6 +439,57 @@ final class RecetteAcces
             $bilan->controler(\sprintf('%s : %s', $identifiant, $libelle), $ok, $chemin.' → '.$etat);
             if (!$ok) {
                 $bilan->constater(Reponse::ERREUR === $etat ? BilanRecette::ERREUR : BilanRecette::FUITE, 'objet_autrui', $route, $chemin, $identifiant, $libelle.' : la page répond « '.$etat.' »');
+            }
+        }
+    }
+
+    /**
+     * Le livreur ne note pas l'échec d'une livraison confiée à un autre, et
+     * « Mes livraisons » ne montre que les siennes. L'envoi porte un jeton
+     * valide (posé dans sa session) : un refus vient bien du livreur du bon.
+     * Dans la transaction de la recette : rien n'est gardé.
+     */
+    private function verifierLivraisonsDesAutres(User $compte, BilanRecette $bilan): void
+    {
+        $identifiant = $compte->getUserIdentifier();
+        $jeton = 'recette-'.bin2hex(random_bytes(8));
+        $session = $this->navigateur->session($compte, 'main', ['_csrf/'.TourneeController::CSRF => $jeton]);
+
+        $sien = $this->em->createQueryBuilder()->select('e.id')->from(BonLivraison::class, 'e')
+            ->where('e.livreur = :moi')->andWhere('e.statut = :valide')->setParameter('moi', $compte)->setParameter('valide', BonLivraison::STATUT_VALIDE)
+            ->orderBy('e.id', 'DESC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
+        if (null !== $sien) {
+            // Sans raison : le contrôleur répond « choisissez la raison » sans rien écrire.
+            $chemin = $this->routeur->generate('app_livraisons_tournee_echec', ['id' => $sien['id']]);
+            $etat = $this->navigateur->post($chemin, ['_token' => $jeton], $session)->etat();
+            $bilan->controler(\sprintf('%s : le jeton de la recette est accepté sur sa propre livraison', $identifiant), Reponse::REDIRIGE === $etat, $chemin.' → '.$etat);
+        }
+
+        $autre = $this->autre(BonLivraison::class, 'livreur', $compte, "e.livreur IS NOT NULL AND e.statut = 'valide'");
+        if (null !== $autre) {
+            $chemin = $this->routeur->generate('app_livraisons_tournee_echec', ['id' => $autre]);
+            $etat = $this->navigateur->post($chemin, ['_token' => $jeton, 'motif' => BonLivraison::MOTIFS_ECHEC[0]], $session)->etat();
+            $ok = \in_array($etat, [Reponse::REFUSE, Reponse::INTROUVABLE, Reponse::CONNEXION], true);
+            $bilan->controler(\sprintf('%s : échec noté sur la livraison d\'un autre livreur', $identifiant), $ok, $chemin.' → '.$etat);
+            if (!$ok) {
+                $bilan->constater(Reponse::ERREUR === $etat ? BilanRecette::ERREUR : BilanRecette::FUITE, 'objet_autrui', 'app_livraisons_tournee_echec', $chemin, $identifiant, 'échec noté sur la livraison d\'un autre livreur : la page répond « '.$etat.' »');
+            }
+        }
+
+        // « Mes livraisons » (90 jours) : aucune livraison remise par un autre.
+        $remises = $this->em->createQueryBuilder()->select('e.numero')->from(BonLivraison::class, 'e')
+            ->where('e.livrePar <> :moi')->andWhere('e.statut = :livre')->andWhere('e.livreLe >= :depuis')
+            ->setParameter('moi', $compte)->setParameter('livre', BonLivraison::STATUT_LIVRE)->setParameter('depuis', new \DateTimeImmutable('-89 days midnight'))
+            ->getQuery()->getSingleColumnResult();
+        if ([] !== $remises) {
+            $chemin = $this->routeur->generate('app_livraisons_mes_livraisons', ['jours' => 90]);
+            $reponse = $this->navigateur->get($chemin, $session);
+            $texte = $reponse->texte();
+            $vues = array_values(array_filter($remises, static fn (string $n): bool => 1 === preg_match('/(?<![\w-])'.preg_quote($n, '/').'(?![\w-])/u', $texte)));
+            $ok = Reponse::OUVERT === $reponse->etat() && [] === $vues;
+            $bilan->controler(\sprintf('%s : « Mes livraisons » sans celles des autres livreurs', $identifiant), $ok, $chemin.' → '.$reponse->etat().([] !== $vues ? ' ; montre '.implode(', ', \array_slice($vues, 0, 3)) : ''));
+            if ([] !== $vues) {
+                $bilan->constater(BilanRecette::FUITE, 'objet_autrui', 'app_livraisons_mes_livraisons', $chemin, $identifiant, 'livraisons d\'autres livreurs dans « Mes livraisons » : '.implode(', ', \array_slice($vues, 0, 3)));
             }
         }
     }

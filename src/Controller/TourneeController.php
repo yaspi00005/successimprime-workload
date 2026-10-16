@@ -5,7 +5,10 @@ namespace App\Controller;
 use App\Entity\BonLivraison;
 use App\Entity\User;
 use App\Repository\CompteTresorerieRepository;
+use App\Security\LivreurVoter;
+use App\Service\Livraisons\SuiviLivraisons;
 use App\Service\Livraisons\Tournee;
+use App\Service\NotificationService;
 use App\Service\SuiviMetiers\PointsLivreur;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,20 +18,24 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Tournée du livreur et remise signée (L03, mobile), détail d'une
- * livraison pour le bureau (L02). Le livreur ne voit que ses livraisons
- * du jour : adresse, réceptionnaire, articles et montant à encaisser.
- * L'accès à /livraisons demande déjà le droit Livraisons.
+ * Tournée du livreur et remise signée (L03, mobile), échec avec sa raison,
+ * « Mes livraisons » ; détail d'une livraison (L02), planning (L01) et
+ * « Suivi des livraisons » pour le bureau. Le livreur ne voit que ses
+ * livraisons : adresse, téléphone, articles et montant à encaisser
+ * (LivreurSeulSubscriber lui ferme le reste). L'accès à /livraisons
+ * demande déjà le droit Livraisons (le suivi : commandes ou prépresse).
  */
 #[Route('/livraisons', name: 'app_livraisons_')]
 final class TourneeController extends AbstractController
 {
-    private const CSRF = 'tournee';
+    public const CSRF = 'tournee';
 
     public function __construct(
         private readonly Tournee $tournee,
         private readonly PointsLivreur $points,
         private readonly EntityManagerInterface $em,
+        private readonly SuiviLivraisons $suivi,
+        private readonly NotificationService $notifications,
     ) {
     }
 
@@ -51,7 +58,114 @@ final class TourneeController extends AbstractController
             'livreur' => $livreur,
             'livreurs' => $this->bureau() ? $this->tournee->livreurs() : [],
             'faites' => \count(array_filter($bons, static fn (BonLivraison $b): bool => $b->getStatut() === BonLivraison::STATUT_LIVRE)),
+            'echecs' => \count(array_filter($bons, static fn (BonLivraison $b): bool => $b->etatSuivi() === BonLivraison::ETAT_ECHEC)),
             'jeton' => self::CSRF,
+        ]);
+    }
+
+    /**
+     * Échec : le livreur n'a pas pu remettre. La raison est obligatoire ;
+     * le bureau est prévenu pour replanifier.
+     */
+    #[Route('/tournee/{id}/echec', name: 'tournee_echec', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function echec(BonLivraison $bon, Request $request): Response
+    {
+        $this->verifierJeton($request);
+        $moi = $this->livreurDe($bon);
+        $motif = trim((string) $request->request->get('motif'));
+        $precision = trim(mb_substr((string) $request->request->get('precision'), 0, 200));
+        if (!\in_array($motif, BonLivraison::MOTIFS_ECHEC, true) || ('Autre' === $motif && '' === $precision)) {
+            $this->addFlash('danger', 'Choisissez la raison de l\'échec (avec une précision pour « Autre »).');
+
+            return $this->redirectToRoute('app_livraisons_tournee');
+        }
+        try {
+            $bon->echouer($moi, 'Autre' === $motif ? $precision : $motif.('' !== $precision ? ' : '.$precision : ''), new \DateTimeImmutable());
+            $client = $bon->getCommande()?->getClients()?->getNomComplet();
+            $this->notifications->notifierRoles(['ROLE_COMMANDE', 'ROLE_ADMIN'], \sprintf('Livraison %s%s non aboutie (%s) : à replanifier.', $bon->getNumero(), $client ? ' ('.$client.')' : '', $bon->getEchecMotif()), 'app_livraisons_bl', ['id' => $bon->getId()], $moi);
+            $this->em->flush();
+            $this->addFlash('success', \sprintf('Échec noté pour %s : le bureau est prévenu.', $bon->getNumero()));
+        } catch (\LogicException|\InvalidArgumentException $e) {
+            $this->addFlash('danger', $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_livraisons_tournee');
+    }
+
+    /** Nouveau passage après un échec, le même jour (le client rappelle). */
+    #[Route('/tournee/{id}/reessayer', name: 'tournee_reessayer', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function reessayer(BonLivraison $bon, Request $request): Response
+    {
+        $this->verifierJeton($request);
+        $this->livreurDe($bon);
+        if ($bon->etatSuivi() === BonLivraison::ETAT_ECHEC) {
+            $bon->reprendre();
+            $this->em->flush();
+        }
+
+        return $this->redirectToRoute('app_livraisons_tournee');
+    }
+
+    /** Mes livraisons : celles que le livreur a remises ou manquées, sans montant. */
+    #[Route('/mes-livraisons', name: 'mes_livraisons', methods: ['GET'])]
+    public function mesLivraisons(Request $request): Response
+    {
+        $this->denyAccessUnlessGranted(LivreurVoter::LIVREUR);
+        $moi = $this->moi();
+        $jours = 90 === $request->query->getInt('jours') ? 90 : 30;
+        $depuis = (new \DateTimeImmutable('today'))->modify(\sprintf('-%d days', $jours - 1));
+        $vues = SuiviLivraisons::vuesDuLivreur($this->suivi->duLivreur($moi, $depuis), $moi);
+        $parJour = [];
+        foreach ($vues as $v) {
+            $parJour[$v['le']->format('Y-m-d')][] = $v;
+        }
+
+        return $this->render('tournee/mes_livraisons.html.twig', [
+            'parJour' => $parJour,
+            'jours' => $jours,
+            'livrees' => \count(array_filter($vues, static fn (array $v): bool => $v['etat'] === BonLivraison::ETAT_LIVREE)),
+            'echecs' => \count(array_filter($vues, static fn (array $v): bool => $v['etat'] === BonLivraison::ETAT_ECHEC)),
+        ]);
+    }
+
+    /**
+     * Suivi des livraisons (Direction, caisse, prépresse) : livrée ou pas,
+     * à quel moment, par qui, reçue par qui ; filtres jour, livreur, état.
+     */
+    #[Route('/suivi', name: 'suivi', methods: ['GET'])]
+    public function suiviLivraisons(Request $request): Response
+    {
+        if (!$this->isGranted('ROLE_COMMANDE') && !$this->isGranted('ROLE_PREPRESSE')) {
+            throw $this->createAccessDeniedException('Le suivi des livraisons est réservé au bureau, à la caisse et à la prépresse.');
+        }
+        $aujourdhui = new \DateTimeImmutable('today');
+        $du = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->query->get('du')) ?: $aujourdhui->modify('-6 days');
+        $au = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->query->get('au')) ?: $aujourdhui;
+        if ($au < $du) {
+            [$du, $au] = [$au, $du];
+        }
+        $livreurs = $this->tournee->livreurs();
+        $livreur = null;
+        foreach ($livreurs as $l) {
+            if ($l->getId() === $request->query->getInt('livreur')) {
+                $livreur = $l;
+            }
+        }
+        $etat = (string) $request->query->get('etat');
+        $etat = isset(BonLivraison::ETATS_SUIVI[$etat]) && BonLivraison::ETAT_ANNULEE !== $etat ? $etat : null;
+        $bons = $this->suivi->rechercher($du, $au, $livreur, $etat);
+
+        return $this->render('tournee/suivi.html.twig', [
+            'bons' => $bons,
+            'du' => $du,
+            'au' => $au,
+            'aujourdhui' => $aujourdhui,
+            'livreur' => $livreur,
+            'livreurs' => $livreurs,
+            'etat' => $etat,
+            'compteurs' => $this->suivi->compter($du, $au, $livreur),
+            'limite' => \count($bons) >= SuiviLivraisons::LIMITE,
+            'voirDetail' => $this->bureau(),
         ]);
     }
 
@@ -210,8 +324,13 @@ final class TourneeController extends AbstractController
             ->setPrevuLe(\DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->request->get('jour')) ?: null)
             ->setCreneau((string) $request->request->get('creneau'))
             ->setOrdreTournee((int) $request->request->get('ordre') > 0 ? (int) $request->request->get('ordre') : null);
+        // Après un échec, la nouvelle planification remet la livraison dans la tournée.
+        $replanifiee = $bon->etatSuivi() === BonLivraison::ETAT_ECHEC && $bon->getPrevuLe() !== null;
+        if ($replanifiee) {
+            $bon->reprendre();
+        }
         $this->em->flush();
-        $this->addFlash('success', 'Livraison planifiée.');
+        $this->addFlash('success', $replanifiee ? 'Livraison replanifiée : elle revient dans la tournée.' : 'Livraison planifiée.');
 
         return $this->redirectToRoute('app_livraisons_bl', ['id' => $bon->getId()]);
     }

@@ -79,6 +79,7 @@
 		<div class="min-w-0">
 			<h2>{{ commande.numero }}</h2>
 			<small class="text-muted">{{ client ? client.nomComplet : 'Client comptoir' }}{% if commande.dateLivraison %} · {{ commande.recupereParClient ? 'retrait' : 'livraison' }} {{ ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'][commande.dateLivraison|date('w')] }} {{ commande.dateLivraison|date('d/m') }}{% endif %}</small>
+			{% if commande.objet %}<small class="d-block text-muted">Objet : {{ commande.objet }}</small>{% endif %}
 		</div>
 		<ul class="si-actions-fiche">
 	<li class="nav-item si-masque-mobile">
@@ -138,6 +139,7 @@
 				<small class="text-muted">
 					Créée le {{ commande.dateCommande ? commande.dateCommande|date('d/m à H:i') : '—' }}
 					{% if commande.agents %} par {{ commande.agents.employe ? commande.agents.employe.prenom : commande.agents.username }}{% elseif commande.demandeePar %} en ligne par {{ commande.demandeePar }}{% if commande.valideePar and commande.validationEntreprise == 'validee' and commande.valideePar != commande.demandeePar %}, validée par {{ commande.valideePar }}{% endif %}{% endif %}
+					{% if commande.agents and commande.demandeePar %} · commandée par <strong class="text-body">{{ commande.demandeePar }}</strong>{% endif %}
 					{% if commande.bonCommande %} · bon de commande {{ commande.bonCommande }}{% endif %}
 				</small>
 			</div>
@@ -260,6 +262,13 @@
 						{% if commande.remiseCodePromo > 0 %}<span class="text-end text-nowrap">−{{ commande.remiseCodePromoTtc|number_format(0, ',', ' ') }} F<small class="d-block text-muted">déjà déduit</small></span>{% endif %}
 					</div>
 				{% endif %}
+				{# Frais de livraison (palier choisi à la saisie), déjà dans le total. #}
+				{% if commande.fraisLivraison > 0 %}
+					<div class="d-flex justify-content-between align-items-center pt-3 small">
+						<span class="text-muted"><i class="fas fa-truck me-1"></i>Livraison</span>
+						<span class="text-nowrap fw-semibold">{{ commande.fraisLivraison|number_format(0, ',', ' ') }} F</span>
+					</div>
+				{% endif %}
 				<div class="d-flex justify-content-between align-items-center pt-3">
 					<span class="text-muted">Total TTC</span>
 					<strong class="fs-4">{{ totalTtc|number_format(0, ',', ' ') }} F</strong>
@@ -317,6 +326,9 @@
 				<small class="text-muted">{{ part }} % payé{% if reste > 0 %} · reste {{ reste|number_format(0, ',', ' ') }} F{% endif %}</small>
 			</div>
 			{% endif %}
+
+			{# ---------- Livraison : livrée ou pas, quand, par qui, reçue par qui (docs/documents-livraisons.md) ---------- #}
+			{% include 'commandes/_livraison.html.twig' %}
 
 			{# ---------- Fidélité (docs/fidelite.md) ---------- #}
 			{% include 'fidelite/_commande.html.twig' %}

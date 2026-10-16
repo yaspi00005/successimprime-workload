@@ -19,6 +19,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * Paiement Orange Money depuis l'espace client (API Orange Money Web
@@ -273,22 +274,13 @@ final class OrangeMoney
             throw new \DomainException('Orange Money refuse les adresses localhost : ouvrez l\'espace client par une adresse publique (tunnel ou site en ligne) pour payer.');
         }
         try {
-            $reponse = $this->http->request('POST', rtrim($this->api, '/').'/webpayment', [
-                'headers' => ['Authorization' => 'Bearer '.$this->jeton(), 'Accept' => 'application/json'],
-                'json' => [
-                    'merchant_key' => $this->merchantKey,
-                    'currency' => $this->devise,
-                    'order_id' => $transaction->getOrderId(),
-                    // Frais compris : c'est ce que le client a vu dans le récapitulatif.
-                    'amount' => $transaction->getTotal(),
-                    'return_url' => $retour,
-                    'cancel_url' => $annulation,
-                    'notif_url' => $this->urls->generate('app_orange_money_notification', ['o' => $transaction->getOrderId()], UrlGeneratorInterface::ABSOLUTE_URL),
-                    'lang' => 'fr',
-                    'reference' => 'Succès Imprim',
-                ],
-                'timeout' => 15,
-            ]);
+            $reponse = $this->demanderOuverture($transaction, $retour, $annulation, false);
+            // 401 ou 403 : le jeton gardé peut dater d'avant un changement chez
+            // Orange (API ajoutée à l'application, clés changées). Un seul
+            // nouvel essai, avec un jeton neuf.
+            if (\in_array($reponse->getStatusCode(), [401, 403], true)) {
+                $reponse = $this->demanderOuverture($transaction, $retour, $annulation, true);
+            }
             $donnees = $reponse->toArray(false);
         } catch (\Throwable $e) {
             $this->logger->error('Orange Money : paiement non ouvert ({erreur}).', ['erreur' => $e->getMessage()]);
@@ -307,6 +299,26 @@ final class OrangeMoney
         $this->em->flush();
 
         return $transaction;
+    }
+
+    private function demanderOuverture(TransactionOrangeMoney $transaction, string $retour, string $annulation, bool $jetonNeuf): ResponseInterface
+    {
+        return $this->http->request('POST', rtrim($this->api, '/').'/webpayment', [
+            'headers' => ['Authorization' => 'Bearer '.$this->jeton($jetonNeuf), 'Accept' => 'application/json'],
+            'json' => [
+                'merchant_key' => $this->merchantKey,
+                'currency' => $this->devise,
+                'order_id' => $transaction->getOrderId(),
+                // Frais compris : c'est ce que le client a vu dans le récapitulatif.
+                'amount' => $transaction->getTotal(),
+                'return_url' => $retour,
+                'cancel_url' => $annulation,
+                'notif_url' => $this->urls->generate('app_orange_money_notification', ['o' => $transaction->getOrderId()], UrlGeneratorInterface::ABSOLUTE_URL),
+                'lang' => 'fr',
+                'reference' => 'Succès Imprim',
+            ],
+            'timeout' => 15,
+        ]);
     }
 
     /**
@@ -363,11 +375,17 @@ final class OrangeMoney
      *
      * @return list<array{etape: string, ok: bool, detail: string}>
      */
+    /** API d'essai (dev) : seul cas où le testeur ouvre un paiement. */
+    public function apiDEssai(): bool
+    {
+        return str_contains($this->api, '/dev/');
+    }
+
     public function diagnostic(bool $ouvrirPaiement, \DateTimeImmutable $maintenant): array
     {
         $cles = ['ORANGE_MONEY_CLIENT_ID' => $this->clientId, 'ORANGE_MONEY_CLIENT_SECRET' => $this->clientSecret, 'ORANGE_MONEY_MERCHANT_KEY' => $this->merchantKey];
         $vides = array_keys(array_filter($cles, static fn (string $v): bool => '' === $v));
-        $etapes = [['etape' => 'Clés dans .env.local', 'ok' => [] === $vides, 'detail' => [] === $vides ? 'les trois clés sont renseignées' : 'vide : '.implode(', ', $vides)]];
+        $etapes = [['etape' => 'Clés dans .env.local', 'ok' => [] === $vides, 'detail' => [] === $vides ? 'les trois clés sont renseignées ; Client ID commençant par « '.mb_substr(trim($this->clientId), 0, 6).' » (à comparer avec l\'application de developer.orange.com)' : 'vide : '.implode(', ', $vides)]];
         foreach ($cles as $nom => $valeur) {
             $souci = match (true) {
                 $valeur !== trim($valeur, " \t\n\r\"'") => 'espace ou guillemet en trop au début ou à la fin',
@@ -660,9 +678,16 @@ final class OrangeMoney
         $this->em->flush();
     }
 
-    private function jeton(): string
+    private function jeton(bool $neuf = false): string
     {
-        return $this->cache->get('orange_money_jeton', function (ItemInterface $item): string {
+        // La clé du cache suit l'adresse et les clés : un changement dans
+        // .env.local prend effet sans vider le cache.
+        $cle = 'orange_money_jeton_'.substr(hash('sha256', $this->api."\n".$this->clientId."\n".$this->clientSecret), 0, 16);
+        if ($neuf) {
+            $this->cache->delete($cle);
+        }
+
+        return $this->cache->get($cle, function (ItemInterface $item): string {
             $donnees = $this->http->request('POST', self::OAUTH, [
                 'headers' => ['Authorization' => 'Basic '.base64_encode($this->clientId.':'.$this->clientSecret), 'Content-Type' => 'application/x-www-form-urlencoded'],
                 'body' => 'grant_type=client_credentials',

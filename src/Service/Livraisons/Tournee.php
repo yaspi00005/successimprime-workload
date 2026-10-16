@@ -55,13 +55,13 @@ final class Tournee
     /**
      * Planning du jour (L01) : tournées par livreur et chiffres.
      *
-     * @return array{tournees: list<array{livreur: ?User, bons: list<BonLivraison>, livrees: int}>, total: int, livrees: int, aLHeure: int, aEncaisser: int, encaisse: int, partielles: int, reportees: int}
+     * @return array{tournees: list<array{livreur: ?User, bons: list<BonLivraison>, livrees: int}>, total: int, livrees: int, aLHeure: int, aEncaisser: int, encaisse: int, partielles: int, echecs: int, reportees: int}
      */
     public function planning(\DateTimeImmutable $jour): array
     {
         $bons = $this->duJour($jour);
         $tournees = [];
-        $c = ['livrees' => 0, 'aLHeure' => 0, 'aEncaisser' => 0, 'encaisse' => 0, 'partielles' => 0];
+        $c = ['livrees' => 0, 'aLHeure' => 0, 'aEncaisser' => 0, 'encaisse' => 0, 'partielles' => 0, 'echecs' => 0];
         foreach ($bons as $b) {
             $cle = $b->getLivreur()?->getId() ?? 0;
             $tournees[$cle] ??= ['livreur' => $b->getLivreur(), 'bons' => [], 'livrees' => 0];
@@ -75,6 +75,7 @@ final class Tournee
                 $c['aEncaisser'] += (int) $b->getEncaisseMontant();
             } else {
                 $c['aEncaisser'] += (int) $b->getCommande()?->getResteAPayer();
+                $c['echecs'] += $b->etatSuivi() === BonLivraison::ETAT_ECHEC ? 1 : 0;
             }
         }
         $reportees = (int) $this->em->getRepository(BonLivraison::class)->createQueryBuilder('b')->select('COUNT(b.id)')
@@ -206,6 +207,10 @@ final class Tournee
         }
         if ($signaturePng === null || $signaturePng === '') {
             return 'La signature du client est obligatoire.';
+        }
+        // Qui a reçu le colis : le bureau doit pouvoir le dire (suivi des livraisons).
+        if ($signataire === null || trim($signataire) === '') {
+            return 'Indiquez le nom de la personne qui reçoit le colis.';
         }
         $remises = [];
         foreach ($bon->getLignes() as $ligne) {

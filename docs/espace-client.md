@@ -94,7 +94,7 @@ Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, clo
 - tout envoi est refusé (403), sauf ce qui ne regarde qu'elle : marquer lu, ses préférences, son mot de passe, ses appareils ;
 - les pages qui ne servent qu'à commander, payer ou accepter la renvoient au tableau de bord.
 
-**Livraisons.** `/espace/livraisons` : en route, à venir, livrées, à partir des bons de livraison synchronisés (créneau, heure de départ, heure de remise).
+**Livraisons.** `/espace/livraisons` : en route, à venir, livrées, à partir des bons de livraison synchronisés (créneau, heure de départ, heure de remise). Après un échec, la livraison est « Reportée » avec la date : l'atelier recontacte le client pour une nouvelle date (ni la raison ni le livreur ne passent au site).
 
 **Messages.** `/espace/messages` : fil entre le client et l'atelier.
 
@@ -125,6 +125,40 @@ Une fiche entreprise ou B2B peut avoir plusieurs personnes, chacune avec son num
 - **Synchronisation** : la demande monte au local sans prévenir l'atelier. La décision du valideur remonte (`validationEntreprise`, `valideePar`, `motifRefusEntreprise`) : validée, le droit Commande est prévenu comme pour toute commande en ligne ; refusée, le local la classe (supprimée) et le site la garde visible au client avec son motif. Au local, la fiche commande affiche « demandée en ligne par X » et le bon de commande.
 - Les demandes à valider ou refusées n'apparaissent pas dans « À confirmer » (API comprise).
 - **Solde d'ouverture** (créance reprise à l'import, docs/import-donnees.md) : comme tout montant de l'entreprise, seul le payeur le voit, dans Factures et paiements (« Solde d'ouverture · Montant dû au démarrage du compte ») et le solde dû ; il peut le payer en ligne. Il n'est ni dans le fil des commandes ni dans les notifications.
+
+### Plusieurs interlocuteurs pour une entreprise (vérifié le 15/10/2026)
+
+Demande de Yaya : « Un compte pour une entreprise peut avoir plusieurs interlocuteurs […] deux ou trois personnes qui font des commandes pour une entreprise. »
+
+**Ce qui existait** : chaque personne a son propre numéro, son mot de passe et ses droits (tableau ci-dessus) ; une commande en ligne note qui l'a demandée (`Commandes::demandeePar`, « en ligne par X ») et qui l'a validée. Vérifié de bout en bout le 15/10/2026 sur Salon Espoir : Mariam (demandeur) envoie une demande sans voir de prix, Awa (valideur) la voit « demandée par Mariam Dembélé » et la valide, Ibrahim (payeur) commande aussi avec son propre numéro ; au local, la commande montre « en ligne par Mariam Dembélé, validée par Awa Coulibaly » et son bon de commande.
+
+**Ajouté pour la boutique** (une commande ou un devis saisi au comptoir pour une entreprise) :
+
+- Devis : champ **« À l'attention de »** (`Devis::interlocuteur`, 80 caractères) ; commande : champ **« Commandé par »** (le même `demandeePar` que les commandes en ligne). Dans la carte du client de la saisie, avec une liste proposée : les contacts de la fiche (fonction, contact principal) puis les noms déjà notés sur ses devis et commandes, dont les personnes qui commandent en ligne (`/saisie/interlocuteurs/{id}`, droits Devis, Commande ou Clients ; des noms seulement, ni numéro ni montant). Le champ reste libre.
+- Un devis transformé en commande donne son interlocuteur au « Commandé par » de la commande. Une commande passée en ligne garde le nom de la personne connectée : le champ n'est pas modifiable à la boutique.
+- Affiché sur le devis (« À l'attention de »), la commande (« commandée par X »), la fiche client (onglets Commandes et Devis, sous le numéro) ; imprimé sur le PDF du devis (cadre client) et de la facture (« Commandé par », sous le bon de commande). Une facture déjà émise garde son PDF.
+- Le devis le fait descendre au site (synchronisation, champ `interlocuteur`).
+
+## Suspendre l'accès à l'espace client (construit le 15/10/2026)
+
+Demande de Yaya : « on a la possibilité de bloquer l'espace client d'un utilisateur ». Code : `src/Service/EspaceClient/SuspensionsEspace.php`, `src/Entity/SuspensionEspace.php`, `src/Controller/EspaceSuspensionController.php`, `templates/clients/_espace_suspension.html.twig`.
+
+- **Où** : fiche client (ERP local), bloc « Accès à l'espace client », pour le droit Clients (`ROLE_CLIENT`). Caché et refusé en « Voir » (LectureSeuleSubscriber) ; en ligne, le bloc montre les suspensions sans bouton (« se suspend et se rétablit depuis l'ERP de la boutique »).
+- **Qui** : tout le compte (chaque personne de l'entreprise), ou une personne, reconnue à son numéro de connexion : le numéro de la fiche, un contact de la fiche qui a un numéro, ou un autre numéro tapé (une personne ajoutée en ligne par l'entreprise, que la boutique ne voit pas dans sa liste).
+- **Motif obligatoire**, gardé à l'atelier : le client lit seulement « Votre accès à l'espace client est suspendu. Contactez Succès Imprim. ».
+- **Journal** : chaque suspension et chaque rétablissement est noté au journal de la fiche (catégorie Contacts : qui, quand, pourquoi). La suspension levée reste dans la base (« Rétablir » ne l'efface pas) et les trois dernières se lisent sous le bloc.
+- **Rien n'est effacé** : commandes, factures, fichiers et compte restent ; « Rétablir » rend l'accès tel qu'il était (mot de passe compris).
+- **Sur le site** (après la synchronisation, type `suspension_espace` : seuls la fiche, le numéro, le début et la levée descendent ; ni le motif, ni le nom, ni l'employé) :
+  - la connexion est refusée avec le message, **seulement après le bon mot de passe ou le bon code** (avec un mauvais mot de passe, rien ne dit que l'accès est suspendu) ; « rester connecté » aussi (`EspaceClientChecker`) ;
+  - une session ouverte se ferme à la page suivante, avec le message (`EspaceClientSubscriber`) ;
+  - « Recevoir un code » ne part pas : même réponse qu'un numéro inconnu (`EspaceClientComptes`) ; la boutique ne peut pas envoyer de code d'accès au numéro suspendu ;
+  - ni notification (application, SMS, e-mail), ni SMS d'invitation, de demande à valider ou de conception à payer (`NotificationsClient`, `CompteEntreprise`, `DemandesConception`). Les autres personnes de l'entreprise continuent normalement.
+- Le statut « Bloqué » de la fiche (conditions commerciales) est une autre chose : il ne coupe pas l'espace client.
+- La recette des accès vérifie qu'une session tombe dès la suspension et que les autres personnes entrent toujours.
+
+## Bandes d'annonces
+
+Les annonces saisies dans Réglages › Site vitrine › Annonces avec la cible « Espace client » ou « les deux » s'affichent en haut du contenu de chaque page connectée. Règles et comportement : docs/site-vitrine.md, « Bandes d'annonces ».
 
 ## Réclamations (18 à gauche, construit le 13/10/2026)
 
@@ -182,7 +216,7 @@ En attendant les applications Android et iPhone, le client met son espace sur l'
 - Table `transaction_orange_money` (site en ligne) : commande, compte, montant, fonds de soutien et frais de retrait (le total est ce qu'Orange débite), référence, jeton de paiement, empreinte du jeton de notification, état (initiee, reussie, echouee, expiree), paiement créé.
 - **À poser sur le serveur en ligne** (`.env.local`, jamais dans le dépôt) : `ORANGE_MONEY_CLIENT_ID`, `ORANGE_MONEY_CLIENT_SECRET`, `ORANGE_MONEY_MERCHANT_KEY`. D'abord l'essai avec `ORANGE_MONEY_API=https://api.orange.com/orange-money-webpay/dev/v1` et `ORANGE_MONEY_DEVISE=OUV`, puis la production `https://api.orange.com/orange-money-webpay/ml/v1` avec `XOF`. Sans clés, la page garde le numéro marchand et la référence de commande.
 - **Essayer les clés** : `php bin/console app:orange-money:tester` demande un jeton à Orange et dit, étape par étape, ce qui manque ou ce qu'Orange refuse, sans afficher aucune clé. Il montre aussi le calcul des frais pour 100 OUV (« 100 OUV + fonds de soutien 1 % (1) + frais de retrait 1 % (1) = 102 OUV payés par le client »), même sans clé. Avec `--paiement` (API d'essai seulement), il ouvre aussi un paiement de 100 OUV frais compris (102 OUV) pour vérifier la clé marchand. On met le Client ID et le Client Secret tels quels : l'en-tête « Authorization » du portail Orange est fabriqué par l'application. Orange refuse les adresses localhost : l'essai renvoie alors vers example.com, et l'espace client ouvert sur localhost affiche « Orange Money refuse les adresses localhost » sans appeler Orange. Pour un essai complet depuis un poste, ouvrir l'espace par un tunnel public (par exemple `cloudflared tunnel --url http://localhost:8000`) avec `SYMFONY_TRUSTED_PROXIES=127.0.0.1` dans `.env.local` pour que les liens soient en https ; la notification arrive alors aussi.
-- **Paiement d'un client refusé** : le client voit seulement « Orange Money a refusé d'ouvrir le paiement ». La réponse d'Orange est gardée pour les 5 derniers refus (date, référence SI…, raison ; ni clé, ni jeton, ni montant) dans `var/orange-money/refus.json`, et `app:orange-money:tester` l'affiche sous le tableau. Un refus « HTTP 403 … insufficient scope (Your scope is not allowed) » veut dire que l'application Orange du Client ID n'a pas l'API appelée. Cas le plus courant : des clés de production au Mali avec l'adresse de l'API d'essai ; mettre alors `ORANGE_MONEY_API=https://api.orange.com/orange-money-webpay/ml/v1` et `ORANGE_MONEY_DEVISE=XOF`. Sinon, ajouter l'API Orange Money Web Payment dans « My apps » sur developer.orange.com, et prendre la clé marchand de la même application.
+- **Paiement d'un client refusé** : le client voit seulement « Orange Money a refusé d'ouvrir le paiement ». La réponse d'Orange est gardée pour les 5 derniers refus (date, référence SI…, raison ; ni clé, ni jeton, ni montant) dans `var/orange-money/refus.json`, et `app:orange-money:tester` l'affiche sous le tableau. Un refus « HTTP 403 … insufficient scope (Your scope is not allowed) » veut dire que l'application Orange du Client ID n'a pas l'API appelée. Cas le plus courant : des clés de production au Mali avec l'adresse de l'API d'essai ; mettre alors `ORANGE_MONEY_API=https://api.orange.com/orange-money-webpay/ml/v1` et `ORANGE_MONEY_DEVISE=XOF`. Sinon, ajouter l'API Orange Money Web Payment dans « My apps » sur developer.orange.com, et prendre la clé marchand de la même application. Le testeur affiche les 6 premiers caractères du Client ID pour vérifier qu'il s'agit bien de l'application qui a l'API (« Approved »). Le jeton Orange est gardé en cache sous une clé qui suit l'adresse de l'API et les clés : changer `.env.local` prend effet sans vider le cache. Sur un 401 ou un 403, le site redemande une seule fois un jeton neuf avant de déclarer le refus (cas d'un jeton pris avant l'ajout de l'API à l'application).
 
 Captures : `/mnt/project-files/captures/orange-money/` ; frais et récapitulatif : `/mnt/project-files/captures/frais-om/`.
 

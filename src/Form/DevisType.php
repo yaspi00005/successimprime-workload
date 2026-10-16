@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Service\Parametres\Parametres;
+use App\Service\Parametres\ReglagesSaisie;
 use App\Entity\DevisDetails;
 use App\Repository\EntrepriseRepository;
 use App\Entity\Clients;
@@ -24,11 +25,12 @@ use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Validator\Constraints\GreaterThanOrEqual;
+use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotNull;
 
 class DevisType extends AbstractType
 {
-    public function __construct(private readonly EntrepriseRepository $entreprises, private readonly ?Parametres $parametres = null)
+    public function __construct(private readonly EntrepriseRepository $entreprises, private readonly ?Parametres $parametres = null, private readonly ?ReglagesSaisie $reglagesSaisie = null)
     {
     }
 
@@ -99,7 +101,47 @@ class DevisType extends AbstractType
                 ],
             ])
 
-           
+            /*
+             * Frais de livraison (docs/documents-livraisons.md) : « Sans
+             * frais » ou un palier des Réglages, jamais un montant tapé ;
+             * un autre montant envoyé est refusé. Ils suivent à la commande.
+             */
+            ->add('fraisLivraison', ChoiceType::class, [
+                'label' => 'Frais de livraison',
+                'choices' => ReglagesSaisie::choixFrais(
+                    $this->reglagesSaisie?->paliers() ?? ReglagesSaisie::lirePaliers(ReglagesSaisie::PALIERS_DEFAUT) ?? [],
+                    ($options['data'] ?? null) instanceof Devis ? $options['data']->getFraisLivraison() : 0
+                ),
+                'expanded' => true,
+                'required' => false,
+                'placeholder' => false,
+                'empty_data' => '0',
+                'invalid_message' => 'Frais de livraison non permis : choisissez « Sans frais » ou un montant proposé.',
+            ])
+
+            // Objet du devis (« Impressions »…), imprimé sur le devis puis sur la facture.
+            ->add('objet', TextType::class, [
+                'label' => 'Objet',
+                'required' => false,
+                'attr' => [
+                    'class' => 'form-control',
+                    'maxlength' => 150,
+                    'list' => 'objets-suggeres',
+                    'autocomplete' => 'off',
+                    'placeholder' => 'Impressions, prestations informatiques…',
+                ],
+                'constraints' => [
+                    new Length(max: 150, maxMessage: 'L\'objet tient en {{ limit }} caractères au plus.'),
+                ],
+            ])
+
+            // « À l'attention de » : la personne du client qui demande (une entreprise en a souvent plusieurs).
+            ->add('interlocuteur', TextType::class, [
+                'label' => 'À l\'attention de',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 80],
+            ])
 
             ->add('remise', IntegerType::class, [
                 'label' => 'Remise globale',

@@ -4,6 +4,7 @@ namespace App\Security;
 
 use App\Entity\User;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -36,7 +37,8 @@ final class UserAuthenticator extends AbstractLoginFormAuthenticator
 
 
     public function __construct(
-        private readonly UrlGeneratorInterface $urlGenerator
+        private readonly UrlGeneratorInterface $urlGenerator,
+        #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne = false,
     ) {
     }
 
@@ -171,11 +173,11 @@ final class UserAuthenticator extends AbstractLoginFormAuthenticator
 
         if (
             $utilisateur instanceof User
-            && $utilisateur->isLivreur()
+            && ($utilisateur->isLivreur() || LivreurSeul::est($utilisateur->getRoles()))
             && !$utilisateur->isAdmin()
         ) {
             return new RedirectResponse(
-                $this->urlGenerator->generate('app_livraisons_tournee')
+                $this->urlGenerator->generate(LivreurSeul::accueil($this->enLigne, null !== $utilisateur->getEmploye()))
             );
         }
 

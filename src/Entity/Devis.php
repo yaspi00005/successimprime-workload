@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\CodePromoDocumentTrait;
+use App\Entity\Trait\LivraisonObjetDocumentTrait;
 use App\Entity\Trait\PublicIdTrait;
 use App\Entity\Trait\SocieteTrait;
 use App\Repository\DevisRepository;
@@ -20,6 +21,7 @@ class Devis implements AppartientASociete
     use PublicIdTrait;
     use SocieteTrait;
     use CodePromoDocumentTrait;
+    use LivraisonObjetDocumentTrait;
 
     /*
      * ============================================================
@@ -179,7 +181,14 @@ class Devis implements AppartientASociete
     #[Assert\Email(message: 'L’adresse email de facturation n’est pas valide.')]
     private ?string $emailFacturation = null;
 
-
+    /**
+     * Personne du client à qui le devis s'adresse (« À l'attention de ») :
+     * une entreprise a souvent deux ou trois interlocuteurs. Texte libre,
+     * proposé parmi les contacts de la fiche ; repris par la commande
+     * (Commandes::$demandeePar, « Commandé par »).
+     */
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $interlocuteur = null;
 
     public function __construct()
     {
@@ -435,6 +444,30 @@ class Devis implements AppartientASociete
         return $this->numero ?? 'Nouveau devis';
     }
 
+    /**
+     * Totaux du devis depuis ses lignes, comme le formulaire les calcule
+     * (remise du devis deduite du montant a payer), plus les frais de
+     * livraison (sans TVA). Refaits a chaque enregistrement : les totaux
+     * envoyes par le navigateur ne sont jamais gardes.
+     */
+    public function recalculerTotaux(): static
+    {
+        $ht = $this->getFraisLivraison();
+        $ttc = $this->getFraisLivraison();
+        $code = 0;
+        foreach ($this->devisDetails as $ligne) {
+            $ht += $ligne->getTotalHt();
+            $ttc += $ligne->getTotalTtc();
+            $code += $ligne->getRemiseCodePromo();
+        }
+        $this->setTotalHt($ht);
+        $this->setRemiseCodePromo($code);
+        $this->setTotalTtc($ttc);
+        $this->setMontantApayer(max(0, $ttc - $this->remise));
+
+        return $this;
+    }
+
 
     public function getCommande(): ?Commandes
     {
@@ -537,6 +570,19 @@ class Devis implements AppartientASociete
     public function setEmailFacturation(?string $emailFacturation): static
     {
         $this->emailFacturation = $emailFacturation;
+
+        return $this;
+    }
+
+    public function getInterlocuteur(): ?string
+    {
+        return $this->interlocuteur;
+    }
+
+    public function setInterlocuteur(?string $nom): static
+    {
+        $nom = mb_substr(trim((string) preg_replace('/\s+/u', ' ', (string) $nom)), 0, 80);
+        $this->interlocuteur = '' === $nom ? null : $nom;
 
         return $this;
     }

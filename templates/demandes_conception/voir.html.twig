@@ -35,7 +35,7 @@
 				{% if d.couleurs is not empty %}
 					<dt>Couleurs</dt><dd>{% for c in d.couleurs %}<span class="si-dc-couleur" style="background: {{ c }}" title="{{ c }}"></span>{% endfor %}</dd>
 				{% endif %}
-				{% if d.styles is not empty %}<dt>Style</dt><dd>{{ d.styles|map(s => {elegant: 'Élégant', moderne: 'Moderne', festif: 'Festif', institutionnel: 'Institutionnel'}[s] ?? s)|join(', ') }}</dd>{% endif %}
+				{% if d.styles is not empty %}<dt>Style</dt><dd>{{ d.styles|map(s => ({elegant: 'Élégant', moderne: 'Moderne', festif: 'Festif', institutionnel: 'Institutionnel'}[s] ?? s))|join(', ') }}</dd>{% endif %}
 				{% if d.quantite %}<dt>Quantité à imprimer ensuite</dt><dd>{{ d.quantite }}</dd>{% endif %}
 				{% if d.pourQuand %}<dt>Pour quand</dt><dd>{{ d.pourQuand|date('d/m/Y') }}</dd>{% endif %}
 				{# Lien donné par le client : jamais ouvert par le serveur, à ouvrir avec prudence. #}

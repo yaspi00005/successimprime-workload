@@ -7,6 +7,7 @@ use App\Entity\Commandes;
 use App\Entity\ProduitConfiguration;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\Site\Calculateur;
+use App\Service\Site\ReferencementSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\RouterInterface;
 
@@ -15,7 +16,8 @@ use Symfony\Component\Routing\RouterInterface;
  * peut vérifier : robots.txt et sitemap.xml, suivi de commande sans compte
  * (mauvais téléphone = commande inconnue, pas de montant), calculateur
  * jamais au prix B2B, aucun nom de client sans son accord ni montant
- * d'un client sur les pages publiques, et les en-têtes de sécurité.
+ * d'un client sur les pages publiques, les en-têtes de sécurité et la
+ * mesure d'audience Google (pages publiques du site en ligne seulement).
  */
 final class RecetteVisiteur
 {
@@ -30,6 +32,7 @@ final class RecetteVisiteur
         private readonly RouterInterface $routeur,
         private readonly EntityManagerInterface $em,
         private readonly ParametresRoute $parametres,
+        private readonly ReferencementSite $referencement,
     ) {
     }
 
@@ -39,7 +42,9 @@ final class RecetteVisiteur
         try {
             $this->referencement($bilan, $enLigne);
             $this->entetesSecurite($bilan);
+            $this->mesureAudience($bilan, $enLigne);
             if ($enLigne) {
+                $this->ecransDuLivreurFermes($bilan);
                 $this->suivi($bilan);
                 $this->calculateur($bilan);
                 $this->pagesPubliques($bilan);
@@ -65,6 +70,21 @@ final class RecetteVisiteur
     }
 
     /**
+     * Ma tournée, la remise, Mes livraisons et le suivi des livraisons
+     * n'existent que sur l'ERP local (LivreurSeulSubscriber).
+     */
+    private function ecransDuLivreurFermes(BilanRecette $bilan): void
+    {
+        $reponses = [];
+        foreach (['app_livraisons_tournee', 'app_livraisons_mes_livraisons', 'app_livraisons_suivi'] as $route) {
+            $chemin = $this->routeur->generate($route);
+            $reponses[] = $chemin.' → '.$this->navigateur->get($chemin)->statut;
+        }
+        $ok = [] === array_filter($reponses, static fn (string $r): bool => !str_ends_with($r, '→ 404'));
+        $bilan->controler('Site en ligne : écrans du livreur et suivi des livraisons introuvables', $ok, implode(', ', $reponses));
+    }
+
+    /**
      * En-têtes de sécurité (EntetesSecuriteSubscriber, docs/securite.md) sur
      * le site, l'espace client et la connexion du personnel : politique de
      * contenu, cadre, type de contenu, référent. (L'en-tête X-Powered-By de
@@ -83,6 +103,38 @@ final class RecetteVisiteur
             ]));
             $bilan->controler('Visiteur : '.$chemin.' a ses en-têtes de sécurité', [] === $manque, [] === $manque ? 'complets' : 'à revoir : '.implode(', ', $manque));
         }
+    }
+
+    /**
+     * Mesure d'audience Google (MesureAudience, docs/securite.md) : la balise
+     * et la politique qui l'autorise sur les pages publiques du site en
+     * ligne quand l'identifiant est réglé ; ni l'une ni l'autre sur l'ERP
+     * local, dans l'espace client, aux connexions ni sur une adresse à code.
+     */
+    private function mesureAudience(BilanRecette $bilan, bool $enLigne): void
+    {
+        $avec = static function (Reponse $r): array {
+            return [str_contains($r->contenu, 'mesure-audience.js'), str_contains($r->entetes['content-security-policy'] ?? '', 'googletagmanager')];
+        };
+        $reglee = '' !== $this->referencement->reglages()['mesure'];
+        foreach (['/', '/demander-un-devis'] as $chemin) {
+            [$balise, $politique] = $avec($this->navigateur->get($chemin));
+            $attendu = $enLigne && $reglee;
+            $bilan->controler(
+                'Visiteur : '.$chemin.($attendu ? ' porte la mesure d\'audience et sa politique' : ' sans mesure d\'audience'.($enLigne ? ' (identifiant vidé)' : ' (ERP local)')),
+                $attendu === $balise && $attendu === $politique,
+                \sprintf('balise %s, politique %s', $balise ? 'oui' : 'non', $politique ? 'oui' : 'non'),
+            );
+        }
+        $privees = ['/espace/connexion', '/login', '/suivre-ma-commande', '/f/ABCD-EF', '/avis/c/'.str_repeat('0', 24), '/ecran-accueil/'.str_repeat('a', 32)];
+        $fuites = [];
+        foreach ($privees as $chemin) {
+            [$balise, $politique] = $avec($this->navigateur->get($chemin));
+            if ($balise || $politique) {
+                $fuites[] = $chemin;
+            }
+        }
+        $bilan->controler('Visiteur : pas de mesure d\'audience dans l\'espace client, aux connexions ni sur une adresse à code', [] === $fuites, [] === $fuites ? \count($privees).' pages lues' : 'sur '.implode(', ', $fuites));
     }
 
     /**

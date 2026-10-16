@@ -27,6 +27,11 @@ class Entreprise implements AppartientASociete
 
     public const COULEURS_PAR_DEFAUT = ['#0F4590', '#DE1028', '#FDC82A', '#E95B35', '#E8398A'];
 
+    /** Texte du bloc « NB » des factures d'une nouvelle entreprise (à confirmer par Yaya). */
+    public const CONDITIONS_PAIEMENT_DEFAUT = 'Conditions de paiement : paiement à réception de la facture. Les frais de transaction mobile money (Orange Money, Wave) sont à la charge du client.';
+
+    public const CONDITIONS_PAIEMENT_LONGUEUR = 500;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -137,6 +142,13 @@ class Entreprise implements AppartientASociete
 
     #[ORM\Column(options: ['default' => true])]
     private bool $actif = true;
+
+    /*
+     * Conditions de paiement imprimées en bas des factures et des
+     * proformas, dans un bloc « NB : ». Vide : pas de bloc.
+     */
+    #[ORM\Column(length: self::CONDITIONS_PAIEMENT_LONGUEUR, nullable: true)]
+    private ?string $conditionsPaiement = self::CONDITIONS_PAIEMENT_DEFAUT;
 
     #[ORM\Column(options: ['default' => 0])]
     private int $ordre = 0;
@@ -496,6 +508,21 @@ class Entreprise implements AppartientASociete
     public function setOrdre(int $ordre): static
     {
         $this->ordre = $ordre;
+
+        return $this;
+    }
+
+    public function getConditionsPaiement(): ?string
+    {
+        return $this->conditionsPaiement;
+    }
+
+    public function setConditionsPaiement(?string $conditions): static
+    {
+        // Espaces et retours à la ligne superflus retirés : le bloc NB tient en quelques lignes.
+        $conditions = preg_replace('/[ \t]+/u', ' ', str_replace("\r", '', (string) $conditions));
+        $conditions = preg_replace("/\n{3,}/", "\n\n", (string) $conditions);
+        $this->conditionsPaiement = self::texte(mb_substr((string) $conditions, 0, self::CONDITIONS_PAIEMENT_LONGUEUR));
 
         return $this;
     }

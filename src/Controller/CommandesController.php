@@ -267,6 +267,9 @@ final class CommandesController extends AbstractController
                 // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
                 $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());
 
+                // Totaux refaits depuis les lignes et les frais de livraison : ceux du navigateur ne sont pas gardés.
+                $commande->recalculerTotaux();
+
                 /*
              * Contrôle du stock uniquement si
              * la commande est validée.
@@ -852,6 +855,9 @@ final class CommandesController extends AbstractController
 
                 // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
                 $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());
+
+                // Totaux refaits depuis les lignes et les frais de livraison : ceux du navigateur ne sont pas gardés.
+                $commande->recalculerTotaux();
             } catch (
                 \DomainException
                 | \RuntimeException

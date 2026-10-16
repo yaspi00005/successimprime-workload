@@ -7,6 +7,7 @@ use App\Service\Parametres\Parametres;
 use App\Service\Site\AdresseSite;
 use App\Service\Site\ContactSite;
 use App\Service\Site\DonneesStructurees;
+use App\Service\Site\MesureAudience;
 use App\Service\Site\ReferencementSite;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,9 +19,10 @@ use Twig\TwigFunction;
 /**
  * Référencement du site vitrine dans les gabarits (docs/referencement.md) :
  * adresse canonique, titre de la page, données structurées, codes de
- * vérification des moteurs de recherche, réseaux sociaux, image de partage
- * et feuilles de style écrites dans la page (une requête de moins avant
- * le premier affichage sur un téléphone en 3G).
+ * vérification des moteurs de recherche, mesure d'audience Google,
+ * réseaux sociaux, image de partage et feuilles de style écrites dans la
+ * page (une requête de moins avant le premier affichage sur un téléphone
+ * en 3G).
  */
 final class ReferencementExtension extends AbstractExtension
 {
@@ -54,6 +56,7 @@ final class ReferencementExtension extends AbstractExtension
         private readonly SiteExtension $site,
         private readonly Parametres $parametres,
         private readonly RequestStack $requetes,
+        private readonly MesureAudience $mesureAudience,
         #[Autowire('%kernel.project_dir%/public')] private readonly string $dossierPublic,
     ) {
     }
@@ -72,6 +75,8 @@ final class ReferencementExtension extends AbstractExtension
             new TwigFunction('site_adresse', $this->adresse->url(...)),
             new TwigFunction('site_canonique', $this->canonique(...)),
             new TwigFunction('site_verifications', $this->verifications(...)),
+            // Identifiant de mesure Google de la page affichée, ou null (MesureAudience).
+            new TwigFunction('site_mesure_audience', fn (): ?string => $this->mesureAudience->identifiant($this->requetes->getMainRequest())),
             new TwigFunction('site_reseaux', $this->referencement->reseaux(...)),
             new TwigFunction('site_fiche_google', fn (): ?string => $this->referencement->reglages()['fiche_google'] ?: null),
             new TwigFunction('site_donnees_entreprise', $this->donneesEntreprise(...), ['is_safe' => ['html']]),

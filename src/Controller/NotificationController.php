@@ -6,11 +6,13 @@ use App\Entity\Notification;
 use App\Entity\User;
 use App\Repository\NotificationRepository;
 use App\Repository\ReclamationRepository;
+use App\Security\LivreurSeul;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
 
 #[Route('/notifications', name: 'app_notification_')]
 final class NotificationController extends AbstractController
@@ -27,6 +29,11 @@ final class NotificationController extends AbstractController
 
         if (!$utilisateur instanceof User) {
             return $this->json(['total' => 0]);
+        }
+
+        if (LivreurSeul::est($utilisateur->getRoles())) {
+            // Le livreur seul : ses notifications visibles, pas les réclamations des clients.
+            return $this->json(['total' => \count(LivreurSeul::notificationsVisibles($notificationRepository->findNonLuesPourUtilisateur($utilisateur, 500)))]);
         }
 
         $total = $notificationRepository->countNonLuesPourUtilisateur($utilisateur)
@@ -48,8 +55,13 @@ final class NotificationController extends AbstractController
             throw $this->createAccessDeniedException();
         }
 
+        $notifications = $notificationRepository->findToutesPourUtilisateur($utilisateur);
+        if (LivreurSeul::est($utilisateur->getRoles())) {
+            $notifications = LivreurSeul::notificationsVisibles($notifications);
+        }
+
         return $this->render('notification/index.html.twig', [
-            'notifications' => $notificationRepository->findToutesPourUtilisateur($utilisateur),
+            'notifications' => $notifications,
         ]);
     }
 
@@ -62,7 +74,8 @@ final class NotificationController extends AbstractController
     {
         $utilisateur = $this->getUser();
 
-        if (!$utilisateur instanceof User || $notification->getDestinataire() !== $utilisateur) {
+        // Seule la personne à qui elle est adressée l'ouvre (lien de la cloche ou du téléphone).
+        if (!$utilisateur instanceof User || $notification->getDestinataire()?->getId() !== $utilisateur->getId()) {
             throw $this->createAccessDeniedException('Cette notification ne vous appartient pas.');
         }
 
@@ -71,8 +84,18 @@ final class NotificationController extends AbstractController
             $entityManager->flush();
         }
 
+        // Le livreur seul n'ouvre que sa tournée et ses livraisons.
+        if (LivreurSeul::est($utilisateur->getRoles()) && !LivreurSeul::routePermise($notification->getRoute())) {
+            return $this->redirectToRoute('app_livraisons_tournee');
+        }
+
         if ($notification->getRoute() !== null) {
-            return $this->redirectToRoute($notification->getRoute(), $notification->getRouteParametres());
+            try {
+                return $this->redirectToRoute($notification->getRoute(), $notification->getRouteParametres());
+            } catch (RoutingException) {
+                // Page renommée ou retirée depuis la notification : la liste plutôt qu'une erreur.
+                return $this->redirectToRoute('app_notification_index');
+            }
         }
 
         return $this->redirectToRoute('app_home');

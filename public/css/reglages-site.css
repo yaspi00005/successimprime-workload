@@ -90,3 +90,13 @@
   .si-sv .si-sv-col-vignette { width: 56px; }
   .si-sv .si-sv-vignette { width: 48px; height: 40px; }
 }
+
+/* Annonces (bandes du site public et de l'espace client) */
+.si-sv-annonce-style { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; background: #0F4590; }
+.si-sv-annonce-promotion { background: #FDC82A; }
+.si-sv-annonce-alerte { background: #C40D22; }
+.si-sv-annonce-styles { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-sv-annonce-choix { display: inline-flex; align-items: center; gap: 2px; padding: 6px 12px; border: 1px solid #E3E7EF; border-radius: 10px; cursor: pointer; font-size: 14px; }
+.si-sv-annonce-choix input { margin-right: 6px; }
+.si-sv-annonce-choix:has(input:checked) { border-color: #0F4590; background: #EEF3FB; font-weight: 600; }
+.si-sv-annonce-apercu { border-radius: 10px; overflow: hidden; }

@@ -173,6 +173,25 @@ class BonLivraison
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $erreurLivraison = null;
 
+    /*
+     * Échec de la livraison (docs/documents-livraisons.md) : le livreur
+     * n'a pas pu remettre (client absent, adresse introuvable…). On garde
+     * le dernier échec : quand, qui, pourquoi. « En cours » tant que le
+     * bureau n'a pas replanifié ou que le livreur n'a pas réessayé.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $echecLe = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $echecPar = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $echecMotif = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $echecEnCours = false;
+
     #[ORM\OneToMany(
         targetEntity: BonLivraisonLigne::class,
         mappedBy: 'bonLivraison',
@@ -406,6 +425,9 @@ class BonLivraison
         $this->statut =
             self::STATUT_LIVRE;
 
+        // Remise après un échec : le dernier échec reste en historique.
+        $this->echecEnCours = false;
+
         $this->livreLe =
             new \DateTimeImmutable();
 
@@ -518,12 +540,20 @@ class BonLivraison
         return $derniere;
     }
 
-    /** Franchit l'étape suivante (chargée, en route, arrivée) ; les étapes manquées prennent la même heure. */
+    /**
+     * Franchit l'étape suivante (chargée, en route, arrivée) ; les étapes
+     * manquées prennent la même heure. Après un échec, c'est un nouveau
+     * passage : l'échec n'est plus « en cours ».
+     */
     public function avancer(string $etape, \DateTimeImmutable $le): void
     {
         if ($this->statut !== self::STATUT_VALIDE) {
             throw new \LogicException('La livraison doit être validée (préparée) et pas encore remise.');
         }
+        if (!\in_array($etape, ['arrive', 'en_route', 'charge'], true)) {
+            throw new \InvalidArgumentException('Étape inconnue.');
+        }
+        $this->echecEnCours = false;
         switch ($etape) {
             case 'arrive':
                 $this->arriveLe ??= $le;
@@ -606,4 +636,96 @@ class BonLivraison
     public function getErreurLivraison(): ?string { return $this->erreurLivraison; }
     public function setErreurLivraison(?string $motif): static { $this->erreurLivraison = $motif !== null && trim($motif) !== '' ? mb_substr(trim($motif), 0, 255) : null; return $this; }
     public function setPaiementLivraison(?Paiements $p): static { $this->paiementLivraison = $p; return $this; }
+
+    /* ---------- Échec et suivi (statut lisible pour le bureau et le livreur) ---------- */
+
+    public const ETAT_A_LIVRER = 'a_livrer';
+    public const ETAT_EN_TOURNEE = 'en_tournee';
+    public const ETAT_LIVREE = 'livree';
+    public const ETAT_ECHEC = 'echec';
+    public const ETAT_ANNULEE = 'annulee';
+
+    public const ETATS_SUIVI = [
+        self::ETAT_A_LIVRER => 'À livrer',
+        self::ETAT_EN_TOURNEE => 'En tournée',
+        self::ETAT_LIVREE => 'Livrée',
+        self::ETAT_ECHEC => 'Échec',
+        self::ETAT_ANNULEE => 'Annulée',
+    ];
+
+    /** Motifs proposés au livreur ; « Autre » demande une précision. */
+    public const MOTIFS_ECHEC = ['Client absent', 'Client injoignable', 'Adresse introuvable', 'Client refuse la livraison', 'Paiement pas prêt', 'Autre'];
+
+    /**
+     * Le livreur n'a pas pu remettre : on note quand, qui et pourquoi. Les
+     * étapes de ce passage (chargée, en route, arrivée) sont effacées : le
+     * colis revient à la boutique, et un nouveau passage les refera.
+     */
+    public function echouer(User $livreur, string $motif, \DateTimeImmutable $le): void
+    {
+        if ($this->statut !== self::STATUT_VALIDE) {
+            throw new \LogicException('Seule une livraison en cours peut être notée en échec.');
+        }
+        $motif = trim(preg_replace('/\s+/u', ' ', $motif) ?? '');
+        if ($motif === '') {
+            throw new \InvalidArgumentException('Indiquez la raison de l\'échec.');
+        }
+        $this->echecLe = $le;
+        $this->echecPar = $livreur;
+        $this->echecMotif = mb_substr($motif, 0, 255);
+        $this->echecEnCours = true;
+        $this->chargeLe = null;
+        $this->enRouteLe = null;
+        $this->arriveLe = null;
+    }
+
+    /** Nouveau passage (replanifiée par le bureau ou réessayée par le livreur) : le dernier échec reste en historique. */
+    public function reprendre(): void
+    {
+        $this->echecEnCours = false;
+    }
+
+    public function getEchecLe(): ?\DateTimeImmutable { return $this->echecLe; }
+    public function getEchecPar(): ?User { return $this->echecPar; }
+    public function getEchecMotif(): ?string { return $this->echecMotif; }
+    public function isEchecEnCours(): bool { return $this->echecEnCours; }
+
+    /** À livrer, en tournée (chargée, en route ou arrivée), livrée, échec ou annulée. */
+    public function etatSuivi(): string
+    {
+        return match (true) {
+            $this->statut === self::STATUT_ANNULE => self::ETAT_ANNULEE,
+            $this->statut === self::STATUT_LIVRE => self::ETAT_LIVREE,
+            $this->statut === self::STATUT_VALIDE && $this->echecEnCours => self::ETAT_ECHEC,
+            $this->statut === self::STATUT_VALIDE && $this->chargeLe !== null => self::ETAT_EN_TOURNEE,
+            default => self::ETAT_A_LIVRER,
+        };
+    }
+
+    /** Moment de l'état : remise, échec, dernière étape de la tournée ; null quand rien n'a encore eu lieu. */
+    public function momentSuivi(): ?\DateTimeImmutable
+    {
+        return match ($this->etatSuivi()) {
+            self::ETAT_LIVREE => $this->livreLe,
+            self::ETAT_ECHEC => $this->echecLe,
+            self::ETAT_EN_TOURNEE => $this->arriveLe ?? $this->enRouteLe ?? $this->chargeLe,
+            default => null,
+        };
+    }
+
+    /** Qui : le livreur qui a remis, celui qui a noté l'échec, sinon celui qui est prévu. */
+    public function livreurSuivi(): ?User
+    {
+        return match ($this->etatSuivi()) {
+            self::ETAT_LIVREE => $this->livrePar ?? $this->livreur,
+            self::ETAT_ECHEC => $this->echecPar ?? $this->livreur,
+            default => $this->livreur,
+        };
+    }
+
+    /** La personne qui a reçu le colis (nom donné à la signature). */
+    public function receptionnaireSuivi(): ?string
+    {
+        return $this->statut === self::STATUT_LIVRE ? ($this->signataire ?? $this->nomReceptionnaire) : null;
+    }
 }

@@ -16,7 +16,8 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 
 /**
  * Programmation de l'écran TV : scènes, zones fixes, avis validés,
- * horaires, bandeau, médias et lien sécurisé de la Smart TV.
+ * horaires, bandeau, alertes sonores, médias et lien sécurisé de la
+ * Smart TV.
  *
  * Le programme s'enregistre en brouillon ; « Publier sur l'écran »
  * l'envoie à la boutique.
@@ -137,6 +138,15 @@ final class EcranTvReglagesController extends AbstractController
             'avisGoogle' => trim((string) $champs->get('avis_google', '')),
             'horaires' => $champs->all('horaires'),
             'horsHoraires' => (string) $champs->get('hors_horaires'),
+            'alertes' => [
+                'son' => $champs->getBoolean('alertes_son'),
+                'voix' => $champs->getBoolean('alertes_voix'),
+                'volume' => $champs->get('alertes_volume'),
+                'silenceDebut' => $champs->get('alertes_silence_debut'),
+                'silenceFin' => $champs->get('alertes_silence_fin'),
+                // Aucune case cochée : aucune annonce (liste vide, pas les valeurs par défaut).
+                'evenements' => array_values(array_filter($champs->all('alertes_evenements'), 'is_string')),
+            ],
         ];
     }
 

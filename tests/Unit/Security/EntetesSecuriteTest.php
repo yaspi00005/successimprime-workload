@@ -4,7 +4,12 @@ namespace App\Tests\Unit\Security;
 
 use App\Entity\User;
 use App\EventSubscriber\EntetesSecuriteSubscriber;
+use App\Entity\ReglageSite;
 use App\Security\EntetesSecurite;
+use App\Service\Site\MesureAudience;
+use App\Service\Site\ReferencementSite;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -137,12 +142,69 @@ final class EntetesSecuriteTest extends TestCase
         self::assertSame("default-src 'none'", $fichier->headers->get('Content-Security-Policy'));
     }
 
-    private function poser(Request $requete, Response $reponse, ?User $utilisateur, string $route): void
+    public function testGoogleAnalyticsSeulementSurLesPagesMesurees(): void
+    {
+        $publique = self::directives(EntetesSecurite::politique(EntetesSecurite::ZONE_PUBLIQUE));
+        $mesuree = self::directives(EntetesSecurite::politique(EntetesSecurite::ZONE_PUBLIQUE, true));
+
+        self::assertSame("'self' 'unsafe-inline' https://www.googletagmanager.com", $mesuree['script-src']);
+        self::assertSame($publique['img-src'].' https://*.google-analytics.com https://*.googletagmanager.com', $mesuree['img-src']);
+        self::assertSame("'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com", $mesuree['connect-src']);
+        // Rien d'autre ne s'ouvre : styles, polices, cadres, formulaires restent ceux du site.
+        foreach (['default-src', 'style-src', 'font-src', 'frame-src', 'form-action', 'object-src', 'base-uri', 'frame-ancestors'] as $nom) {
+            self::assertSame($publique[$nom], $mesuree[$nom], $nom);
+        }
+        foreach ([EntetesSecurite::politique(EntetesSecurite::ZONE_PUBLIQUE), EntetesSecurite::politique(EntetesSecurite::ZONE_ADMIN)] as $politique) {
+            self::assertStringNotContainsString('google', $politique);
+        }
+
+        // Le PDF et les fichiers ne changent pas, même demandés avec la mesure.
+        self::assertSame(EntetesSecurite::POLITIQUE_FICHIER, EntetesSecurite::entetes('application/json', EntetesSecurite::ZONE_PUBLIQUE, true, true)['Content-Security-Policy']);
+        self::assertSame("frame-ancestors 'self'", EntetesSecurite::entetes('application/pdf', EntetesSecurite::ZONE_PUBLIQUE, true, true)['Content-Security-Policy']);
+    }
+
+    public function testAbonneOuvreGoogleSeulementSurUnePageMesureeDuSiteEnLigne(): void
+    {
+        $avecGoogle = static fn (Response $r): bool => str_contains((string) $r->headers->get('Content-Security-Policy'), 'googletagmanager');
+
+        // Site en ligne, page publique, visiteur : la page porte la balise, la politique l'autorise.
+        $faq = new Response('<p>FAQ</p>', 200, ['Content-Type' => 'text/html']);
+        $this->poser(Request::create('https://succesimprim.com/faq'), $faq, null, 'app_site_faq', true);
+        self::assertTrue($avecGoogle($faq));
+
+        // Espace client, connexion, code secret, écran TV, suivi de commande : jamais.
+        foreach (['app_espace_connexion', 'app_espace_commandes', 'app_login', 'app_facture_suivi', 'app_avis_commande', 'app_avis_sondage', 'app_espace_payer_retour', 'app_devis_pdf_public', 'app_tv_ecran', 'app_site_suivi', 'app_appareil_autoriser', ''] as $route) {
+            $page = new Response('<p>Page</p>', 200, ['Content-Type' => 'text/html']);
+            $this->poser(Request::create('https://succesimprim.com/x'), $page, null, $route, true);
+            self::assertFalse($avecGoogle($page), $route);
+        }
+
+        // ERP local, personnel connecté, mesure coupée : jamais.
+        $local = new Response('<p>FAQ</p>', 200, ['Content-Type' => 'text/html']);
+        $this->poser(Request::create('http://localhost/faq'), $local, null, 'app_site_faq', false);
+        self::assertFalse($avecGoogle($local));
+        $personnel = new Response('<p>Accueil</p>', 200, ['Content-Type' => 'text/html']);
+        $this->poser(Request::create('https://succesimprim.com/'), $personnel, new User(), 'app_home', true);
+        self::assertFalse($avecGoogle($personnel));
+        $coupee = new Response('<p>FAQ</p>', 200, ['Content-Type' => 'text/html']);
+        $this->poser(Request::create('https://succesimprim.com/faq'), $coupee, null, 'app_site_faq', true, ['mesure' => '']);
+        self::assertFalse($avecGoogle($coupee));
+    }
+
+    /**
+     * @param array<string, string>|null $referencement valeurs du réglage « referencement » (null : jamais réglé)
+     */
+    private function poser(Request $requete, Response $reponse, ?User $utilisateur, string $route, bool $enLigne = false, ?array $referencement = null): void
     {
         $requete->attributes->set('_route', $route);
         $security = $this->createStub(Security::class);
         $security->method('getUser')->willReturn($utilisateur);
         $kernel = $this->createStub(HttpKernelInterface::class);
-        (new EntetesSecuriteSubscriber($security))->poser(new ResponseEvent($kernel, $requete, HttpKernelInterface::MAIN_REQUEST, $reponse));
+        $depot = $this->createStub(EntityRepository::class);
+        $depot->method('findOneBy')->willReturn(null === $referencement ? null : (new ReglageSite(ReferencementSite::CLE_REGLAGE))->setValeurs($referencement));
+        $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('getRepository')->willReturn($depot);
+        $mesure = new MesureAudience($enLigne, new ReferencementSite($em), $security);
+        (new EntetesSecuriteSubscriber($security, $mesure))->poser(new ResponseEvent($kernel, $requete, HttpKernelInterface::MAIN_REQUEST, $reponse));
     }
 }

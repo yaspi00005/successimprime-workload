@@ -39,11 +39,22 @@ Le champ « Site » doit être l'adresse que Google doit garder : avec ou sans �
 Sur l'ERP local, droit **Site vitrine** (`ROLE_SITE_VITRINE`) ; enregistré par `POST /reglages/site-vitrine/referencement`, fermé en ligne.
 
 - Code de vérification **Google Search Console** et **Bing** : coller la balise donnée ou le code seul ; le site affiche la balise `<meta>` correspondante. Ces codes ne sont pas secrets.
+- **Mesure d'audience Google Analytics** (balise Google, gtag.js, demandée par Yaya le 15/10/2026) : l'identifiant « G-… » du flux de données du site, ou la balise entière collée telle quelle (seul l'identifiant est gardé). Par défaut celui de la boutique, `G-634VEQPP69` ; un champ vidé coupe la mesure. Voir « Mesure d'audience » plus bas.
 - Lien de la **fiche Google** (Google Business Profile) : lien « Partager » de la fiche (maps.app.goo.gl, g.page, google.com). Il apparaît sur la page Contact, dans le pied de page et dans les données structurées. Par défaut, celui de la boutique (https://maps.app.goo.gl/S53cwaekd2L3FHP86, envoyé par Yaya le 15/10/2026) ; un lien saisi le remplace, un champ laissé vide le garde.
 - Pages **Facebook, Instagram, TikTok, LinkedIn, YouTube** : adresse https du réseau seulement ; liens du pied de page et « sameAs » des données structurées.
 - La colonne de droite donne les adresses à déclarer à Google et la liste de ce qui manque encore (e-mail, position GPS, fiche Google…).
 
 Une valeur refusée n'est pas enregistrée (l'ancienne reste) et son message s'affiche. Le réglage descend au site par la synchronisation (`site_reglage`, docs/synchronisation.md).
+
+## Mesure d'audience (Google Analytics)
+
+`App\Service\Site\MesureAudience`, `public/js/mesure-audience.js`, posé par `site/_site.html.twig`.
+
+- **Où** : seulement sur le site en ligne (`APP_EN_LIGNE=1`), sur les pages de `MesureAudience::PAGES` (les pages faites pour être trouvées, plus les confirmations « Demande envoyée » et « Message envoyé »), pour un visiteur. Jamais sur l'ERP local, dans l'espace client, l'administration, les pages de connexion ou de code, ni sur une adresse qui porte un code ou un jeton (suivi de facture `/f/…`, sondages `/avis/…`, PDF publics de devis et de factures, suivi d'étiquette, retours de paiement, écran TV, tablette, activation d'un appareil), ni sur « Suivre ma commande ». Le personnel connecté n'est pas compté.
+- **Une nouvelle page publique** n'entre dans `PAGES` que si son adresse ne porte rien de privé (ni code, ni numéro de client, ni jeton).
+- **Ce qui part chez Google** : la page vue, sans donnée personnelle. Ni identifiant d'utilisateur, ni client. L'adresse de la page part sans ses paramètres, sauf ceux d'une campagne (`utm_…`, `gclid`). Une page précédente du site part réduite à l'adresse du site (elle pourrait porter un code). Google Signals et la personnalisation des annonces sont coupés.
+- **Quand** : gtag.js (plus de 100 Ko) est demandé une fois la page chargée : en 3G lente, il ne retarde ni le texte, ni les images, ni les polices. Le test d'installation d'Analytics peut répondre « balise non détectée » pour cette raison : vérifier plutôt dans Analytics › Rapports › Temps réel, après avoir ouvert le site sur un téléphone.
+- **Sécurité** : seule exception à « rien d'un autre site » ; la politique de contenu de ces pages-là, et d'elles seules, s'ouvre à Google (docs/securite.md, « Politique de contenu »). `app:recette:acces` vérifie la balise et la politique sur l'accueil, et leur absence dans l'espace client, aux connexions et sur les adresses à code.
 
 ## Fichiers servis
 
@@ -52,5 +63,5 @@ Une valeur refusée n'est pas enregistrée (l'ancienne reste) et son message s'a
 
 ## Vérifier
 
-- Tests : `tests/Unit/Service/Site/AdresseSiteTest.php`, `DonneesStructureesTest.php`, `ReferencementSiteTest.php`, `PlanDuSiteTest.php`, `tests/Unit/Twig/ReferencementExtensionTest.php`, `tests/Unit/EventSubscriber/ReferencementSubscriberTest.php`.
+- Tests : `tests/Unit/Service/Site/AdresseSiteTest.php`, `DonneesStructureesTest.php`, `ReferencementSiteTest.php`, `MesureAudienceTest.php`, `PlanDuSiteTest.php`, `tests/Unit/Twig/ReferencementExtensionTest.php`, `tests/Unit/EventSubscriber/ReferencementSubscriberTest.php`, `tests/Unit/Security/SansCdnTest.php` (mesure d'audience).
 - Après mise en ligne : test des résultats enrichis de Google (search.google.com/test/rich-results), Search Console › Inspection de l'URL, PageSpeed Insights sur téléphone.

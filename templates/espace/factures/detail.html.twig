@@ -83,8 +83,12 @@
 							{%- elseif commande.dateCommande %} · du {{ commande.dateCommande|date('d/m/Y') }}{% endif %}
 							{% if livraison %}<br>Bon de livraison {{ livraison.numero }}{% endif %}
 							{% if commande.bonCommande %}<br>Votre bon de commande : {{ commande.bonCommande }}{% endif %}
+							{% if commande.demandeePar|default(null) %}<br>Commandé par : {{ commande.demandeePar }}{% endif %}
 						</div>
 					</div>
+					{# Objet et frais de livraison copiés sur la facture, comme sur son PDF (frais déjà dans le total). #}
+					{% if facture.objet|default(null) %}<p class="ef-doc-objet"><b>Objet :</b> {{ facture.objet }}</p>{% endif %}
+					{% set fraisLivraison = facture.fraisLivraison|default(0) %}
 
 					<div class="ef-doc-defile">
 						<table class="ef-doc-lignes">
@@ -100,6 +104,9 @@
 								{% else %}
 									<tr><td colspan="4" class="ef-table-vide">Les lignes sont sur le PDF.</td></tr>
 								{% endfor %}
+								{% if fraisLivraison > 0 %}
+									<tr><td>Livraison</td><td class="num">1</td><td class="num">{{ fraisLivraison|number_format(0, ',', ' ') }}</td><td class="num">{{ fraisLivraison|number_format(0, ',', ' ') }}</td></tr>
+								{% endif %}
 							</tbody>
 						</table>
 					</div>

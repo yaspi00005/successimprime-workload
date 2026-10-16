@@ -332,6 +332,21 @@
 
         /* ---------- Récapitulatif ---------- */
 
+        /*
+         * Frais de livraison : le palier coché (bouton), sans TVA. Une
+         * commande en retrait boutique n'en a pas ; un devis n'a pas de
+         * mode de livraison, ses frais comptent dès qu'un palier est choisi.
+         */
+        function fraisLivraison() {
+            const coche = page.querySelector('.js-frais-livraison input:checked');
+            const mode = page.querySelector('.js-mode-livraison input:checked');
+            if (!coche || (page.querySelector('.js-mode-livraison') && (!mode || mode.value !== 'livraison'))) {
+                return 0;
+            }
+
+            return Number(coche.value) || 0;
+        }
+
         function rafraichirRecap(lignes) {
             let ht = 0;
             let ttc = 0;
@@ -346,7 +361,16 @@
             const remise = nombreChamp(form.querySelector('.js-remise-saisie'));
             // Code promo de la commande (promotions-saisie.js) : déjà réparti sur les lignes par le serveur à l'enregistrement.
             const code = window.SiPromotions && window.SiPromotions.codeCommande ? window.SiPromotions.codeCommande() : {ht: 0, ttc: 0};
-            const aPayer = Math.max(0, Math.round(ttc - code.ttc - remise));
+            const livraison = fraisLivraison();
+            const aPayer = Math.max(0, Math.round(ttc + livraison - code.ttc - remise));
+
+            page.querySelectorAll('.js-recap-livraison').forEach(function (el) {
+                el.hidden = livraison <= 0;
+            });
+            const montantLivraison = page.querySelector('.js-recap-livraison-montant');
+            if (montantLivraison) {
+                montantLivraison.textContent = montant(livraison);
+            }
 
             page.querySelector('.js-recap-ht').textContent = montant(ht);
             page.querySelector('.js-recap-tva').textContent = montant((ttc - code.ttc) - (ht - code.ht));
@@ -468,12 +492,17 @@
         /* ---------- Livraison et délai ---------- */
 
         const zoneAdresse = page.querySelector('.js-zone-adresse');
+        // Les boutons des frais de livraison ne servent qu'à une commande livrée.
+        const zoneFrais = page.querySelector('.js-mode-livraison') ? page.querySelector('.js-zone-frais-livraison') : null;
         function afficherAdresse() {
-            if (!zoneAdresse) {
-                return;
-            }
             const mode = page.querySelector('.js-mode-livraison input:checked');
-            zoneAdresse.hidden = !mode || mode.value !== 'livraison';
+            const livree = !!mode && mode.value === 'livraison';
+            if (zoneAdresse) {
+                zoneAdresse.hidden = !livree;
+            }
+            if (zoneFrais) {
+                zoneFrais.hidden = !livree;
+            }
         }
         page.querySelectorAll('.js-mode-livraison input').forEach(function (r) {
             r.addEventListener('change', afficherAdresse);

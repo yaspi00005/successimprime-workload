@@ -40,6 +40,17 @@ final class EnvoiPush implements EventSubscriberInterface
 
     public function postPersist(Notification $notification): void
     {
+        $this->aEnvoyer($notification);
+    }
+
+    /**
+     * Une notification nouvelle part d'elle-même (postPersist). Une
+     * notification remise à jour (alerte de synchronisation, une par panne)
+     * est confiée ici par l'appelant ; sur le téléphone elle remplace la
+     * précédente, qui porte le même identifiant.
+     */
+    public function aEnvoyer(Notification $notification): void
+    {
         if ($this->push->estConfigure()) {
             $this->enAttente[] = $notification;
         }

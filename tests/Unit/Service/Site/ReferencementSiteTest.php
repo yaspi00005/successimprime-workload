@@ -73,6 +73,32 @@ final class ReferencementSiteTest extends TestCase
         self::assertSame(['fiche_google'], array_keys($refuse['erreurs']));
     }
 
+    public function testIdentifiantDeMesureSeulOuDansLaBaliseGoogle(): void
+    {
+        $balise = '<!-- Google tag (gtag.js) --> <script async src="https://www.googletagmanager.com/gtag/js?id=G-634VEQPP69"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag(\'js\', new Date()); gtag(\'config\', \'G-634VEQPP69\'); </script>';
+
+        self::assertSame('G-634VEQPP69', ReferencementSite::identifiantMesure($balise));
+        self::assertSame('G-634VEQPP69', ReferencementSite::identifiantMesure(' g-634veqpp69 '));
+        self::assertSame('G-ABCD1234', ReferencementSite::identifiantMesure("gtag('config', 'G-ABCD1234');"));
+        // Ni ancien identifiant Universal Analytics, ni conteneur Tag Manager, ni balise piégée.
+        foreach (['UA-12345-1', 'GTM-ABCD12', 'G-', 'G-634VEQPP69"><script>alert(1)</script>', 'G-ABC', ''] as $refuse) {
+            self::assertNull(ReferencementSite::identifiantMesure($refuse), $refuse);
+        }
+    }
+
+    public function testMesureDeLaBoutiqueParDefautEtCoupeeQuandOnVideLeChamp(): void
+    {
+        // Jamais réglée (ou réglage enregistré avant la mesure) : l'identifiant de la boutique.
+        self::assertSame('G-634VEQPP69', ReferencementSite::lire([])['valeurs']['mesure']);
+        self::assertSame(ReferencementSite::MESURE_GOOGLE, ReferencementSite::lire(['google' => ''])['valeurs']['mesure']);
+        // Champ vidé : coupée.
+        self::assertSame('', ReferencementSite::lire(['mesure' => '  '])['valeurs']['mesure']);
+        // Un autre identifiant le remplace ; un identifiant refusé est signalé.
+        self::assertSame('G-NOUVEAU123', ReferencementSite::lire(['mesure' => 'G-NOUVEAU123'])['valeurs']['mesure']);
+        $refuse = ReferencementSite::lire(['mesure' => 'UA-12345-1']);
+        self::assertSame(['mesure'], array_keys($refuse['erreurs']));
+    }
+
     public function testManquesDansLOrdre(): void
     {
         $manques = ReferencementSite::manques(['site' => true, 'adresse' => true, 'telephone' => true, 'plan' => true, 'reseaux' => false]);

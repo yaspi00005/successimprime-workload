@@ -233,3 +233,59 @@ var AllerA = (function () {
 
     return { ouvrir: ouvrir };
 })();
+
+// Filtres des tableaux (petite fleche dans l'en-tete des listes,
+// docs/filtres-tableaux.md) : le script et sa feuille de style ne se
+// chargent que si la page a une liste.
+(function () {
+    var balise = document.currentScript;
+    var script = balise && balise.getAttribute('data-filtres-js');
+    var style = balise && balise.getAttribute('data-filtres-css');
+    var compte = (balise && balise.getAttribute('data-filtres-compte')) || '';
+    if (!script || !style) {
+        return;
+    }
+    // A la deconnexion, les filtres retenus sur cet appareil sont oublies
+    // (un poste partage : la personne suivante ne les retrouve pas).
+    document.addEventListener('click', function (evenement) {
+        if (!evenement.target.closest('a[href$="/logout"]')) {
+            return;
+        }
+        try {
+            Object.keys(window.localStorage).forEach(function (cle) {
+                if (cle.indexOf('si-filtres:') === 0) {
+                    window.localStorage.removeItem(cle);
+                }
+            });
+        } catch (e) {
+            // Stockage indisponible : rien a oublier.
+        }
+    });
+    function aUneListe() {
+        return Array.prototype.some.call(document.querySelectorAll('table'), function (table) {
+            return table.tHead && table.tBodies.length === 1 && !table.closest('[data-sans-filtres]')
+                && (table.getAttribute('data-filtres') === 'serveur' || table.tBodies[0].rows.length >= 2);
+        });
+    }
+    function charger() {
+        if (!aUneListe()) {
+            return;
+        }
+        var lien = document.createElement('link');
+        lien.rel = 'stylesheet';
+        lien.href = style;
+        // Le script attend sa feuille de style : pas de fleche sans mise en forme.
+        lien.onload = lien.onerror = function () {
+            var code = document.createElement('script');
+            code.src = script;
+            code.setAttribute('data-compte', compte);
+            document.body.appendChild(code);
+        };
+        document.head.appendChild(lien);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', charger);
+    } else {
+        charger();
+    }
+})();

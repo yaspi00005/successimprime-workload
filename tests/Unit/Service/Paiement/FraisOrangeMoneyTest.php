@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit\Service\Paiement;
 
+use App\Entity\Paiements;
 use App\Entity\ParametresPaiement;
 use App\Service\Paiement\FraisOrangeMoney;
 use App\Service\Paiement\OrangeMoney;
@@ -81,5 +82,95 @@ final class FraisOrangeMoneyTest extends TestCase
         self::assertSame([0.5, 2.0], [$p->taux('tauxFondsSoutien'), $p->taux('tauxFraisRetrait')]);
         $this->expectException(\InvalidArgumentException::class);
         $p->taux('montant');
+    }
+
+    /** Paiement en attente tel que relu en base, frais déjà posés. */
+    private static function paiementEnAttente(string $mode, int $montant, bool $fonds, bool $retrait, int $montantFonds, int $montantRetrait): Paiements
+    {
+        return (new Paiements())->setMode($mode)->setMontant($montant)
+            ->setFondsSoutienInclus($fonds)->setFraisRetraitInclus($retrait)
+            ->setMontantFondsSoutien($montantFonds)->setMontantFraisRetrait($montantRetrait);
+    }
+
+    /** @return array{montant: int, mode: string, fondsSoutienInclus: bool, fraisRetraitInclus: bool} */
+    private static function avant(Paiements $p): array
+    {
+        return ['montant' => $p->getMontant(), 'mode' => $p->getMode(), 'fondsSoutienInclus' => $p->isFondsSoutienInclus(), 'fraisRetraitInclus' => $p->isFraisRetraitInclus()];
+    }
+
+    public function testCaisseFraisSeulementPourLesCasesCochees(): void
+    {
+        $p = (new Paiements())->setMode(Paiements::MODE_WAVE)->setMontant(20000)->setFraisRetraitInclus(true);
+
+        FraisOrangeMoney::appliquer($p, new ParametresPaiement());
+
+        self::assertSame([0, 200], [$p->getMontantFondsSoutien(), $p->getMontantFraisRetrait()]);
+        self::assertSame(20000, $p->getMontant(), 'les frais ne vont jamais dans le montant');
+    }
+
+    public function testModificationCocherLaCaseCalculeLesFrais(): void
+    {
+        $p = self::paiementEnAttente(Paiements::MODE_ORANGE_MONEY, 25000, false, false, 0, 0);
+        $avant = self::avant($p);
+
+        $p->setFondsSoutienInclus(true)->setFraisRetraitInclus(true);
+        FraisOrangeMoney::appliquer($p, new ParametresPaiement(), $avant);
+
+        self::assertSame([250, 250], [$p->getMontantFondsSoutien(), $p->getMontantFraisRetrait()]);
+    }
+
+    public function testModificationDecocherLaCaseRetireLesFrais(): void
+    {
+        $p = self::paiementEnAttente(Paiements::MODE_ORANGE_MONEY, 25000, true, true, 250, 250);
+        $avant = self::avant($p);
+
+        $p->setFraisRetraitInclus(false);
+        FraisOrangeMoney::appliquer($p, new ParametresPaiement(), $avant);
+
+        self::assertSame([250, 0], [$p->getMontantFondsSoutien(), $p->getMontantFraisRetrait()]);
+    }
+
+    public function testModificationAutreModeVideLesCases(): void
+    {
+        foreach ([Paiements::MODE_ESPECES, Paiements::MODE_VIREMENT, Paiements::MODE_CARTE] as $mode) {
+            $p = self::paiementEnAttente(Paiements::MODE_ORANGE_MONEY, 25000, true, true, 250, 250);
+            $avant = self::avant($p);
+
+            $p->setMode($mode);
+            FraisOrangeMoney::appliquer($p, new ParametresPaiement(), $avant);
+
+            self::assertSame([false, false, 0, 0], [$p->isFondsSoutienInclus(), $p->isFraisRetraitInclus(), $p->getMontantFondsSoutien(), $p->getMontantFraisRetrait()], $mode);
+        }
+    }
+
+    public function testModificationSansChangementGardeLesFraisEnregistres(): void
+    {
+        // Frais d'un paiement en ligne, pris aux taux du jour du paiement (1,5 % depuis changé en 1 %).
+        $p = self::paiementEnAttente(Paiements::MODE_ORANGE_MONEY, 20000, true, true, 300, 200);
+
+        FraisOrangeMoney::appliquer($p, new ParametresPaiement(), self::avant($p));
+
+        self::assertSame([300, 200], [$p->getMontantFondsSoutien(), $p->getMontantFraisRetrait()]);
+    }
+
+    public function testModificationDuMontantRecalculeLesFrais(): void
+    {
+        $p = self::paiementEnAttente(Paiements::MODE_ORANGE_MONEY, 20000, true, true, 300, 200);
+        $avant = self::avant($p);
+
+        $p->setMontant(30000);
+        FraisOrangeMoney::appliquer($p, new ParametresPaiement(), $avant);
+
+        self::assertSame([300, 300], [$p->getMontantFondsSoutien(), $p->getMontantFraisRetrait()]);
+    }
+
+    public function testCaseCocheeSansFraisEnregistresLesCalcule(): void
+    {
+        // Case enregistrée cochée mais sans montant (ancienne modification) : on calcule.
+        $p = self::paiementEnAttente(Paiements::MODE_WAVE, 10000, true, false, 0, 0);
+
+        FraisOrangeMoney::appliquer($p, new ParametresPaiement(), self::avant($p));
+
+        self::assertSame([100, 0], [$p->getMontantFondsSoutien(), $p->getMontantFraisRetrait()]);
     }
 }

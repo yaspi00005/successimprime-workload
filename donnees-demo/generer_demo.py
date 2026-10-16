@@ -82,6 +82,14 @@ def uid_bl():
     return S('UNHEX(\'' + uuid.UUID(int=R_BL.getrandbits(128), version=4).hex + '\')')
 
 
+# Identifiants des règles et des rappels de paiement (envoyés au site) : tirage à part, lui aussi.
+R_RAPPEL = random.Random(2610)
+
+
+def uid_rappel():
+    return S('UNHEX(\'' + uuid.UUID(int=R_RAPPEL.getrandbits(128), version=4).hex + '\')')
+
+
 def hexa(n=64):
     return ''.join(R.choice('0123456789abcdef') for _ in range(n))
 
@@ -342,7 +350,7 @@ for k, (code, nom, cat, mode, prix, b2b, typ, sup, fmt, machine, fins, art, cout
     pid = add('produits', {'nom': nom + ' (démo)', 'description': f'{nom} — produit de démonstration', 'publie': 1, 'ordre': k + 1, 'code': code, 'prix_base': float(prix),
                            'prix_b2_b': float(b2b), 'personnalisable': 1, 'actif': 1, 'mode_calcul': mode, 'gestion_stock': 0, 'categorie_produit_id': CATEGORIES[cat],
                            'article_stock_id': ARTICLES[art], 'public_id': uid()})
-    conf = add('produit_configuration', {'active': 1, 'ordre': 1, 'description': None, 'prix_base': prix, 'mode_calcul': mode, 'mode_dimension': 'libre' if fmt == 'Sur mesure' else 'format',
+    conf = add('produit_configuration', {'active': 1, 'ordre': 1, 'description': None, 'prix_base': prix, 'mode_calcul': mode, 'mode_dimension': 'mesure' if fmt == 'Sur mesure' else 'format',
                                           'largeur_defaut': None, 'longueur_defaut': None, 'quantite_minimale': 1, 'quantite_maximale': None, 'prix_b2_b': b2b,
                                           'produit_id': pid, 'type_impression_id': TYPES[typ], 'support_id': SUPPORTS[sup], 'format_id': FORMATS[fmt], 'public_id': uid()})
     conf_fins = {}
@@ -384,9 +392,9 @@ for nom, canal, contenu in [('Relance facture (démo)', 'sms', 'Bonjour {{nom}},
                             ('Commande prête (démo)', 'sms', 'Bonjour {{nom}}, votre commande {{numeroCommande}} est prête. Nous vous attendons.'),
                             ('Anniversaire client (démo)', 'sms', 'Joyeux anniversaire de la part de Succès Imprim ! Un cadeau vous attend à la boutique.')]:
     MODELES[nom] = add('modele_message', {'nom': nom, 'canal': canal, 'sujet': None, 'contenu': contenu, 'actif': 1, 'date_creation': T(300)})
-REGLES = [add('regle_rappel_paiement', {'nom': 'Relance à 7 jours (démo)', 'delai_jours': 7, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement'}),
-          add('regle_rappel_paiement', {'nom': 'Relance à 30 jours (démo)', 'delai_jours': 30, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement'}),
-          add('regle_rappel_paiement', {'nom': 'Commande prête depuis 3 jours (démo)', 'delai_jours': 3, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Commande prête (démo)'], 'type': 'retrait'})]
+REGLES = [add('regle_rappel_paiement', {'nom': 'Relance à 7 jours (démo)', 'delai_jours': 7, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement', 'public_id': uid_rappel()}),
+          add('regle_rappel_paiement', {'nom': 'Relance à 30 jours (démo)', 'delai_jours': 30, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement', 'public_id': uid_rappel()}),
+          add('regle_rappel_paiement', {'nom': 'Commande prête depuis 3 jours (démo)', 'delai_jours': 3, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Commande prête (démo)'], 'type': 'retrait', 'public_id': uid_rappel()})]
 
 # --------------------------------------------------------------------- clients
 types = ['entreprise'] * 90 + ['ong'] * 20 + ['administration'] * 20 + ['particulier'] * 70
@@ -577,7 +585,7 @@ for k in COMMANDES:
         livre_le = 0
     k['livre_le'] = livre_le
     add('commandes', {'id': kid, 'numero': k['numero'], 'date_commande': T(d, k['h'], k['m']), 'date_livraison': T(max(-5, d - R.randint(2, 5)), 17), 'recupere_par_client': int(etat_lignes == 'livree' and not k['livraison']),
-                      'modifie_le': T(livre_le, 16) if livre_le is not None else None, 'remise': remise, 'tva': 0, 'total_ht': total, 'total_ttc': total, 'montant_apayer': a_payer,
+                      'modifie_le': T(livre_le, 16) if livre_le is not None else None, 'remise': remise, 'tva': 0, 'total_ht': total, 'total_ttc': a_payer, 'montant_apayer': a_payer,
                       'observation': None, 'deleted': 0, 'statut': 1, 'etat': 1, 'statut_paiement': statut_p, 'reste_apayer': a_payer - k['paye'], 'total_paye': k['paye'], 'public_id': uid(),
                       'bonus_plafond_applique': 0, 'montant_bonus_plafond': 0, 'clients_id': c['id'], 'agents_id': k['agent'], 'modifie_par_id': k['agent'] if livre_le is not None else None,
                       'canal': k['canal'], 'mode_livraison': 'livraison' if k['livraison'] else 'retrait',
@@ -593,7 +601,7 @@ for k in COMMANDES:
         debut = None if st == 'a_produire' or not prod else max(0, d - R.randint(0, 2))
         fin = None if st in ('a_produire', 'en_production') or not prod else max(0, (debut if debut is not None else d) - R.randint(0, 1))
         l['debut'], l['fin'] = debut, fin
-        add('commandes_details', {'id': lid, 'mode_configuration': 'automatique' if prod else 'manuelle', 'designation': p['nom'] if prod else l['libre'],
+        add('commandes_details', {'id': lid, 'mode_configuration': 'automatique' if prod else 'manuel', 'designation': p['nom'] if prod else l['libre'],
                                   'largeur': l.get('l'), 'longueur': l.get('L'), 'surface': l.get('surface'), 'quantite': l['qte'],
                                   'prix_unitaire': float(l['prix'] if prod else l['ht']), 'cout_revient': l['cout'], 'remise': 0, 'tva': 0, 'total_ht': l['ht'], 'total_ttc': l['ht'],
                                   'profil_couleurs': 'CMJN' if prod else None, 'resolution': '150 dpi' if prod and p['mode'] == 'metre_carre' else ('300 dpi' if prod else None), 'grammage': None, 'epaisseur': None,
@@ -682,7 +690,7 @@ def devis(c, d, lignes, statut, commande=None):
     for l in lignes:
         p = l['p']
         prod = p is not None
-        ddid = add('devis_details', {'mode_configuration': 'automatique' if prod else 'manuelle', 'designation': p['nom'] if prod else l['libre'], 'largeur': l.get('l'), 'longueur': l.get('L'),
+        ddid = add('devis_details', {'mode_configuration': 'automatique' if prod else 'manuel', 'designation': p['nom'] if prod else l['libre'], 'largeur': l.get('l'), 'longueur': l.get('L'),
                                      'surface': l.get('surface'), 'quantite': l['qte'], 'prix_unitaire': float(l['prix'] if prod else l['ht']), 'cout_revient': l['cout'], 'remise': 0, 'tva': 0,
                                      'total_ht': l['ht'], 'total_ttc': l['ht'], 'type_ligne': 'produit' if prod else 'libre', 'mode_saisie': 'automatique', 'bat_valide': 0, 'etat': 1,
                                      'priorite': 'normale', 'mode_calcul': p['mode'] if prod else 'forfait', 'devis_id': did, 'produit_id': p['id'] if prod else None,
@@ -891,9 +899,9 @@ for k in COMMANDES:
     if reste > 0 and k['d'] > 7:
         for n in range(R.randint(1, 3)):
             add('relance_creance', {'canal': R.choice(['whatsapp', 'sms', 'appel']), 'envoyee_le': T(max(0, k['d'] - 7 - n * 10), 10), 'commande_id': k['id'], 'par_id': k['agent']})
-        add('rappel_paiement_envoye', {'canal': 'sms', 'date_envoi': T(max(0, k['d'] - 7), 8), 'commande_id': k['id'], 'regle_id': REGLES[0]})
+        add('rappel_paiement_envoye', {'canal': 'sms', 'date_envoi': T(max(0, k['d'] - 7), 8), 'commande_id': k['id'], 'regle_id': REGLES[0], 'public_id': uid_rappel()})
         if k['d'] > 30:
-            add('rappel_paiement_envoye', {'canal': 'sms', 'date_envoi': T(k['d'] - 30, 8), 'commande_id': k['id'], 'regle_id': REGLES[1]})
+            add('rappel_paiement_envoye', {'canal': 'sms', 'date_envoi': T(k['d'] - 30, 8), 'commande_id': k['id'], 'regle_id': REGLES[1], 'public_id': uid_rappel()})
     if k['etat'] in ('terminee', 'prete_livraison') and not k['livraison']:
         add('relance_retrait', {'canal': R.choice(['whatsapp', 'sms']), 'envoyee_le': T(max(0, k['d'] - 3), 9), 'commande_id': k['id'], 'par_id': k['agent'], 'regle_id': REGLES[2]})
 
@@ -1631,8 +1639,18 @@ def facture_ec(k, d, echeance_dans):
                            'reste_apayer': k['total'], 'statut_paiement': 'impayee', 'etat': 'emise', 'observation': None, 'token_authenticite': hexa4(64), 'facturer_aun_tiers': 0,
                            'nom_facturation': None, 'adresse_facturation': None, 'telephone_facturation': None, 'email_facturation': None, 'created_at': T(d, 9, 10),
                            'updated_at': T(d, 9, 10), 'commande_id': k['id'], 'public_id': uid4(),
-                           'code_suivi': ''.join(R4.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(9))})
+                           'code_suivi': code_suivi_ec()})
     FACTURE_DE[k['id']] = fid
+
+
+def code_suivi_ec():
+    """Code du QR (7K4P-2Q) des factures de l'espace client : mêmes 9 tirages qu'avant, pour ne rien décaler."""
+    c = ''.join(R4.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(9))
+    c = c[:4] + '-' + c[4:6]
+    if c in CODES_SUIVI:
+        raise SystemExit('Code de suivi en double : ' + c)
+    CODES_SUIVI.add(c)
+    return c
 
 
 EC_PLAQUES = commande_ec('D-AKYLUX', 'Plaques des chambres 20 × 10 cm', 40, 1, 15, 10, 'a_produire', 6, larg=0.2, haut=0.1, bat_valide=False)
@@ -1727,7 +1745,7 @@ def commande_dc(c, numero, d, h, m, lignes, confirmee, payes):
     for l in lignes:
         lid = nid('commandes_details')
         ids.append(lid)
-        add('commandes_details', {'id': lid, 'mode_configuration': 'manuelle', 'designation': l['nom'], 'largeur': None, 'longueur': None, 'surface': None,
+        add('commandes_details', {'id': lid, 'mode_configuration': 'manuel', 'designation': l['nom'], 'largeur': None, 'longueur': None, 'surface': None,
                                   'quantite': l['qte'], 'prix_unitaire': float(l['prix']), 'cout_revient': 0, 'remise': 0, 'tva': 0,
                                   'total_ht': l['prix'] * l['qte'], 'total_ttc': l['prix'] * l['qte'], 'profil_couleurs': None, 'resolution': None, 'grammage': None,
                                   'epaisseur': None, 'recto_verso': 0, 'nombre_faces': 1, 'laminage': None, 'oeillets': 0, 'decoupe': 0, 'pliage': None, 'emballage': 0,

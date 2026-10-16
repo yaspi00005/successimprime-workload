@@ -1,0 +1,277 @@
+/*
+ * Espace client › Factures et paiements (maquettes FP01 à FP05).
+ * Chargé seulement par ces pages, après espace-app.css (dont il reprend
+ * les couleurs). Téléphone d'abord ; ordinateur à partir de 900 px.
+ */
+
+.ef-titre { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.ef-titre h1 { margin: 0; }
+.ef-titre .ec-bouton-blanc svg { width: 16px; height: 16px; }
+
+/* Tuiles */
+.ef-tuiles { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; margin-bottom: .85rem; }
+.ef-tuile { background: #fff; border-radius: var(--rayon); padding: 1rem 1.1rem; box-shadow: 0 1px 3px rgba(18,33,58,.06); min-width: 0; }
+.ef-tuile small { display: block; color: var(--gris); font-size: .82rem; }
+.ef-tuile b { display: block; font-size: 1.55rem; font-weight: 900; letter-spacing: -.01em; margin: .15rem 0 .1rem; color: var(--encre); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ef-tuile b.rouge { color: var(--rouge); }
+.ef-tuile b.vert { color: var(--vert); }
+.ef-tuile span { display: block; color: var(--gris); font-size: .8rem; }
+.ef-tuile span span { display: inline; }
+.ef-tuile.principale b { font-size: 2.1rem; }
+
+/* Grille : à payer et onglets, panneaux à droite */
+.ef-grille { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1rem; }
+.ef-colonne { min-width: 0; }
+
+/* À payer */
+.ef-entete { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; margin-bottom: .4rem; }
+.ef-entete h2 { margin: 0; }
+.ef-lignes { list-style: none; margin: 0; padding: 0; }
+.ef-ligne { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .2rem .8rem; align-items: center; padding: .85rem .2rem .85rem 1rem; border-top: 1px solid var(--trait); }
+.ef-lignes > .ef-ligne:first-child { border-top: 0; }
+.ef-ligne::before { content: ""; position: absolute; left: 0; top: .85rem; bottom: .85rem; width: 4px; border-radius: 4px; background: var(--ambre); }
+.ef-ligne.echue::before { background: var(--rouge); }
+.ef-ligne.acompte::before { background: var(--orange); }
+.ef-ligne.a_venir::before { background: var(--bleu); }
+.ef-ligne.solde::before { background: var(--gris); }
+.ef-case { display: none; }
+.ef-texte { min-width: 0; }
+.ef-texte b { font-size: .98rem; margin-right: .35rem; }
+.ef-texte small, .ef-montant small { display: block; color: var(--gris); font-size: .8rem; line-height: 1.35; margin-top: .15rem; }
+.ef-montant { text-align: right; }
+.ef-montant b { font-size: 1.02rem; white-space: nowrap; }
+.ef-payer { font-weight: 800; color: var(--orange); font-size: .92rem; }
+.ef-ligne .ef-payer { grid-column: 2; justify-self: end; }
+.ec-pastille.orange { background: #FFEEDD; color: #C2410C; }
+.ec-pastille.bleu { background: var(--bleu-clair); color: var(--bleu); }
+.ef-vide { padding: 1.2rem .2rem; color: var(--gris); text-align: center; }
+.ef-plus-tard { margin: .6rem 0 0; font-size: .8rem; color: var(--gris); }
+
+.ef-barre { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: .6rem; padding: .7rem .8rem .7rem 1rem; border-radius: 14px; background: #FFF4E8; font-size: .9rem; }
+.ef-barre[hidden] { display: none; }
+.ef-barre .avoir { color: var(--gris); }
+.ef-bouton-om { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border: 0; border-radius: 12px; padding: .7rem 1.2rem; font: inherit; font-weight: 800; background: var(--orange); color: #fff; cursor: pointer; white-space: nowrap; box-shadow: 0 6px 14px rgba(255,121,0,.25); }
+.ef-bouton-om[disabled] { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+/* Téléphone : « Tout payer » reste sous la main */
+.ef-tout { position: sticky; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 5; margin: .2rem 0 .85rem; text-align: center; }
+.ef-tout .ec-bouton { box-shadow: 0 10px 22px rgba(255,121,0,.32); }
+.ef-tout small { display: block; margin-top: .45rem; color: var(--gris); font-size: .8rem; background: var(--fond); }
+
+/* Onglets */
+.ef-onglets-tete { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.ef-onglets { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; }
+.ef-onglets a { padding: .42rem .9rem; border-radius: 999px; border: 1px solid var(--trait); background: #fff; color: var(--encre); font-weight: 700; font-size: .85rem; white-space: nowrap; }
+.ef-onglets a.actif { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.ef-annee select { border: 1px solid var(--trait); border-radius: 10px; padding: .35rem .5rem; font: inherit; font-size: .85rem; background: #fff; color: var(--encre); }
+.ef-panneau[hidden] { display: none; }
+
+.ef-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.ef-table th { text-align: left; color: var(--gris); font-weight: 600; font-size: .76rem; padding: .45rem .5rem; border-bottom: 1px solid var(--trait); }
+.ef-table td { padding: .7rem .5rem; border-bottom: 1px solid var(--trait); vertical-align: middle; }
+.ef-table tr:last-child td { border-bottom: 0; }
+.ef-table .num { text-align: right; white-space: nowrap; }
+.ef-table .fort { font-weight: 800; white-space: nowrap; }
+.ef-table .actions { text-align: right; white-space: nowrap; font-weight: 800; }
+.ef-table .actions a + a::before { content: "·"; color: var(--gris); margin: 0 .3rem; }
+.ef-table .actions .orange { color: var(--orange); }
+.ef-table .pour { color: #3D4A60; }
+.ef-table-vide { color: var(--gris); text-align: center; padding: 1.2rem; }
+
+@media (max-width: 899px) {
+  /* Les tableaux deviennent des cartes empilées. */
+  .ef-table thead { display: none; }
+  .ef-table, .ef-table tbody, .ef-table tr, .ef-table td { display: block; width: 100%; }
+  .ef-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .1rem .6rem; padding: .7rem 0; border-bottom: 1px solid var(--trait); }
+  .ef-table tr:last-child { border-bottom: 0; }
+  .ef-table td { padding: 0; border: 0; }
+  .ef-table td[data-col="montant"], .ef-table td[data-col="date"] { display: none; }
+  .ef-table td.num, .ef-table td.actions { text-align: right; }
+  .ef-table td.pour { grid-column: 1; font-size: .8rem; color: var(--gris); }
+  .ef-table td.etat { grid-column: 1; }
+}
+
+/* Panneaux de droite */
+.ef-moyen { display: flex; align-items: center; gap: .8rem; padding: .65rem 0; border-top: 1px solid var(--trait); }
+.ef-moyen:first-of-type { border-top: 0; padding-top: .2rem; }
+.ef-moyen .sigle { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; font-size: .72rem; font-weight: 900; }
+.ef-moyen .om { background: #FFEEDD; color: var(--orange); }
+.ef-moyen .esp { background: var(--vert-clair); color: var(--vert); }
+.ef-moyen .vir { background: var(--bleu-clair); color: var(--bleu); }
+.ef-moyen b { display: block; font-size: .92rem; }
+.ef-moyen small { display: block; color: var(--gris); font-size: .78rem; line-height: 1.35; overflow-wrap: anywhere; }
+.ef-texte-doux { color: #3D4A60; font-size: .88rem; line-height: 1.5; margin: 0 0 .6rem; }
+.ef-texte-doux:last-child { margin-bottom: 0; }
+.ef-boutons { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+/* Fenêtres : paiement, relevé */
+.ef-dialogue { border: 0; padding: 0; border-radius: 22px; width: min(560px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; box-shadow: 0 30px 80px rgba(18,33,58,.35); color: var(--encre); }
+.ef-dialogue::backdrop { background: rgba(18,33,58,.45); }
+.ef-dialogue .ef-om { border-radius: 0; box-shadow: none; margin: 0; }
+.ef-releve { padding: 1.2rem 1.3rem 1.3rem; }
+.ef-releve h2 { margin: 0 0 .3rem; font-size: 1.1rem; }
+.ef-releve-dates { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; margin: .9rem 0; }
+.ef-releve label { display: block; font-size: .8rem; color: var(--gris); margin-bottom: .25rem; }
+.ef-releve input { width: 100%; border: 1.5px solid var(--trait); border-radius: 12px; padding: .6rem .7rem; font: inherit; }
+
+/* Récapitulatif Orange Money (maquette FP03) */
+.ef-om { background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 1px 3px rgba(18,33,58,.06); margin-bottom: .85rem; }
+.ef-om-tete { display: flex; align-items: center; gap: .8rem; padding: 1rem 1.2rem; background: var(--orange); color: #fff; }
+.ef-om-logo { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #fff; color: var(--orange); font-weight: 900; font-size: .85rem; }
+.ef-om-tete b { display: block; font-size: 1.1rem; }
+.ef-om-tete small { display: block; font-size: .8rem; opacity: .92; }
+.ef-fermer { margin-left: auto; border: 0; background: rgba(255,255,255,.2); color: #fff; width: 34px; height: 34px; border-radius: 10px; font-size: 1.3rem; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.ef-om-corps { padding: 1rem 1.2rem 1.2rem; }
+.ef-om-lignes { list-style: none; margin: 0 0 .6rem; padding: 0; }
+.ef-om-lignes li { display: flex; justify-content: space-between; gap: 1rem; padding: .4rem 0; font-size: .9rem; border-bottom: 1px dashed var(--trait); }
+.ef-om-lignes li b { white-space: nowrap; }
+.ef-om-lignes .avoir { color: var(--vert); font-weight: 700; }
+.ef-om-case { display: flex; align-items: center; gap: .5rem; font-size: .88rem; margin: .5rem 0; cursor: pointer; }
+.ef-om-case input { width: 18px; height: 18px; accent-color: var(--vert); }
+.ef-om-a-payer { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin: .5rem 0 .7rem; }
+.ef-om-a-payer span { font-weight: 700; }
+.ef-om-a-payer b { font-size: 1.9rem; font-weight: 900; white-space: nowrap; }
+.ef-om-modes { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.ef-om-mode { position: relative; display: block; padding: .7rem .85rem; border: 2px solid var(--trait); border-radius: 14px; cursor: pointer; }
+.ef-om-mode input { position: absolute; opacity: 0; pointer-events: none; }
+.ef-om-mode b { display: block; font-size: .92rem; }
+.ef-om-mode small { display: block; color: var(--gris); font-size: .78rem; }
+.ef-om-mode.choisi, .ef-om-mode:has(input:checked) { border-color: var(--orange); background: #FFF8F1; }
+.ef-om-mode:has(input:focus-visible) { outline: 2px solid var(--bleu); outline-offset: 2px; }
+.ef-om-montant { display: flex; gap: .5rem; align-items: center; margin-top: .6rem; }
+.ef-om-montant[hidden] { display: none; }
+.ef-om-montant input { flex: 1; min-width: 0; border: 1.5px solid var(--trait); border-radius: 12px; padding: .65rem .8rem; font: inherit; font-size: 1rem; font-weight: 700; }
+.ef-om-montant input:focus { outline: 2px solid var(--bleu-clair); border-color: var(--bleu); }
+.ef-om-frais { margin: .9rem 0 .2rem; padding: .7rem .85rem; border-radius: 14px; background: var(--fond); font-size: .86rem; }
+.ef-om-frais div { display: flex; justify-content: space-between; gap: 1rem; padding: .15rem 0; }
+.ef-om-frais dt { color: #3D4A60; }
+.ef-om-frais dd { margin: 0; white-space: nowrap; }
+.ef-om-frais .total { border-top: 1px solid var(--trait); margin-top: .3rem; padding-top: .45rem; font-weight: 800; }
+.ef-om-frais .total dt { color: var(--encre); }
+.ef-om-etapes { list-style: none; margin: .9rem 0 .6rem; padding: 0; }
+.ef-om-etapes li { position: relative; padding: .35rem 0 .35rem 2rem; font-size: .88rem; line-height: 1.4; }
+.ef-om-etapes li::before { content: counter(list-item); position: absolute; left: 0; top: .3rem; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--trait); display: grid; place-items: center; font-size: .72rem; font-weight: 800; color: var(--gris); }
+.ef-om-etapes li.cle { font-weight: 700; }
+.ef-om-etapes li.cle::before { border-color: var(--orange); color: var(--orange); }
+.ef-om-alerte { margin: .2rem 0 .9rem; padding: .6rem .8rem; border-radius: 12px; background: #FFF6E9; color: #8A4B0F; font-size: .82rem; }
+.ef-om-erreur { margin: 0 0 .8rem; }
+.ef-sans-js { white-space: nowrap; margin-top: .6rem; }
+.ef-js .ef-sans-js, .ef-js .replie { display: none; }
+.ef-om-aide { margin: .35rem 0 0; }
+.ef-om-numero { display: flex; justify-content: space-between; gap: .8rem; flex-wrap: wrap; margin: .9rem 0 0; padding: .6rem .85rem; border: 1.5px solid var(--trait); border-radius: 12px; font-size: .86rem; }
+.ef-om-boutons { justify-content: flex-end; }
+.ef-om-boutons .ef-bouton-om { white-space: normal; text-align: center; }
+.ef-dialogue[aria-busy="true"] { cursor: progress; }
+.ef-om-refus { margin: .35rem 0 0; color: var(--rouge, #d81f26); font-weight: 700; font-size: .9rem; }
+.ef-page-om { margin-bottom: 1rem; }
+
+/* Détail d'une facture (maquette FP02) */
+.ef-doc-objet { margin: .2rem 0 .7rem; font-size: .92rem; }
+.ef-titre-gauche { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+.ef-rond { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 1px solid var(--trait); color: var(--encre); font-size: 1.3rem; font-weight: 800; line-height: 1; }
+.ef-partage-note { margin: -.4rem 0 .8rem; }
+.ef-doc-defile { overflow-x: auto; }
+.ef-totaux .fort { font-weight: 800; }
+.ef-paiements .refuse { color: var(--gris); text-decoration: line-through; white-space: nowrap; }
+.ef-reste { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.ef-reste small { display: block; color: var(--gris); font-size: .8rem; }
+.ef-reste > b { font-size: 1.15rem; white-space: nowrap; }
+.ef-detail-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.ef-detail-actions .ef-bouton-om { padding: .55rem 1rem; }
+.ef-doc { position: relative; background: #fff; border-radius: var(--rayon); box-shadow: 0 1px 3px rgba(18,33,58,.06); overflow: hidden; margin-bottom: .85rem; }
+.ef-bandes { display: flex; height: 6px; }
+.ef-bandes span { flex: 1; }
+.ef-doc-corps { padding: 1.1rem 1.2rem 1.3rem; }
+.ef-doc-tete { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.ef-doc-tete img { max-height: 46px; max-width: 170px; display: block; }
+.ef-doc-tete .coord { color: var(--gris); font-size: .78rem; margin-top: .35rem; line-height: 1.45; }
+.ef-doc-titre { text-align: right; }
+.ef-doc-titre b { display: block; font-size: 1.5rem; letter-spacing: .02em; color: var(--bleu); }
+.ef-doc-titre span { display: block; font-size: .82rem; color: #3D4A60; }
+.ef-doc-titre .echue { color: var(--rouge); font-weight: 800; }
+.ef-doc-blocs { display: grid; grid-template-columns: minmax(0, 1fr); gap: .6rem; margin: 1rem 0; }
+.ef-doc-bloc { background: var(--fond); border-radius: 12px; padding: .7rem .85rem; font-size: .86rem; line-height: 1.45; }
+.ef-doc-bloc small { display: block; font-size: .68rem; font-weight: 800; letter-spacing: .08em; color: var(--gris); text-transform: uppercase; margin-bottom: .2rem; }
+.ef-doc-lignes { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.ef-doc-lignes th { background: var(--bleu); color: #fff; text-align: left; font-size: .76rem; padding: .55rem .6rem; }
+.ef-doc-lignes td { padding: .6rem; border-bottom: 1px solid var(--trait); }
+.ef-doc-lignes .num { text-align: right; white-space: nowrap; }
+.ef-totaux { margin: .6rem 0 0 auto; width: min(340px, 100%); font-size: .88rem; }
+.ef-totaux div { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem .6rem; }
+.ef-totaux dd { margin: 0; white-space: nowrap; }
+.ef-totaux .reste { background: var(--rouge); color: #fff; font-weight: 900; font-size: 1rem; border-radius: 6px; padding: .55rem .7rem; margin-top: .3rem; }
+.ef-totaux .reste.solde { background: var(--vert); }
+.ef-totaux .attente { color: var(--ambre); }
+.ef-qr { display: flex; align-items: center; gap: .8rem; margin-top: 1.1rem; color: var(--gris); font-size: .8rem; }
+.ef-qr img { width: 72px; height: 72px; flex: none; }
+.ef-paiements { list-style: none; margin: 0; padding: 0; }
+.ef-paiements li { display: flex; justify-content: space-between; gap: .8rem; padding: .5rem 0; border-top: 1px solid var(--trait); font-size: .86rem; }
+.ef-paiements li:first-child { border-top: 0; padding-top: 0; }
+.ef-paiements small { display: block; color: var(--gris); font-size: .76rem; }
+.ef-paiements .valide { color: var(--vert); font-weight: 800; white-space: nowrap; }
+.ef-paiements .attente { color: var(--ambre); font-weight: 800; white-space: nowrap; }
+.ef-progression { height: 8px; border-radius: 99px; background: var(--trait); overflow: hidden; margin: .7rem 0 .25rem; }
+.ef-progression span { display: block; height: 100%; background: var(--vert); border-radius: 99px; }
+.ef-rappels { list-style: none; margin: 0; padding: 0; font-size: .84rem; color: #3D4A60; }
+.ef-rappels li { padding: .2rem 0; }
+.ef-rappels .prochain { font-weight: 800; color: var(--encre); margin-top: .3rem; }
+
+/* Paiement reçu (maquettes FP04, FP05) */
+.ef-recu { text-align: center; padding: 1.6rem 1.2rem 1.3rem; }
+.ef-recu-icone { display: grid; place-items: center; width: 76px; height: 76px; margin: 0 auto .8rem; border-radius: 50%; background: var(--vert); color: #fff; }
+.ef-recu-icone svg { width: 38px; height: 38px; }
+.ef-recu-icone.attente { background: var(--ambre); }
+.ef-recu-icone.echec { background: var(--rouge); }
+.ef-recu h2 { margin: 0; font-size: 1.6rem; font-weight: 900; }
+.ef-recu-sous { color: var(--gris); font-size: .85rem; margin: .25rem 0 1rem; overflow-wrap: anywhere; }
+.ef-recu-lignes { list-style: none; margin: 0 0 1rem; padding: 0; text-align: left; }
+.ef-recu-lignes li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .2rem .8rem; align-items: center; padding: .6rem 0; border-top: 1px solid var(--trait); font-size: .9rem; }
+.ef-recu-lignes li:first-child { border-top: 0; }
+.ef-recu-lignes b { white-space: nowrap; }
+.ef-recu-etat { font-size: .8rem; font-weight: 800; white-space: nowrap; }
+.ef-recu-etat.vert { color: var(--vert); }
+.ef-recu-etat.ambre { color: var(--ambre); }
+.ef-recu-etat.rouge { color: var(--rouge); }
+.ef-recu-etat.gris { color: var(--gris); }
+.ef-recu-note { font-size: .82rem; color: var(--gris); margin: 0 0 1rem; }
+.ef-recu-actions { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+.ef-etapes { list-style: none; margin: 0; padding: 0; }
+.ef-etapes li { padding: .7rem 0; border-top: 1px solid var(--trait); }
+.ef-etapes li:first-child { border-top: 0; padding-top: .1rem; }
+.ef-etapes b { display: block; font-size: .9rem; }
+.ef-etapes span { display: block; color: var(--gris); font-size: .8rem; }
+.ef-recus { list-style: none; margin: 0; padding: 0; font-size: .86rem; }
+.ef-recus li { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: .6rem; align-items: center; padding: .5rem 0; border-top: 1px solid var(--trait); }
+.ef-recus li:first-child { border-top: 0; }
+.ef-recus .moyen { color: var(--gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (min-width: 900px) {
+  .ef-tuiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+  .ef-tuile.principale b { font-size: 1.55rem; }
+  .ef-grille { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+  .ef-grille.large { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .ef-carte-large { padding: 1.1rem 1.3rem; }
+  .ef-ligne { grid-template-columns: auto minmax(0, 1fr) auto auto; padding-left: .6rem; }
+  .ef-ligne::before { left: 2.4rem; }
+  .ef-case { display: block; padding-right: 1.2rem; }
+  .ef-case input { width: 18px; height: 18px; accent-color: var(--bleu); cursor: pointer; }
+  .ef-ligne .ef-texte { padding-left: .6rem; }
+  .ef-ligne .ef-payer { grid-column: auto; display: inline-flex; align-items: center; border-radius: 10px; padding: .5rem .95rem; background: var(--orange); color: #fff; box-shadow: 0 4px 10px rgba(255,121,0,.22); }
+  .ef-doc-blocs { grid-template-columns: 1fr 1fr; }
+  .ef-tout { display: none; }
+}
+@media (max-width: 899px) {
+  /* Le détail sous le montant passe à la ligne : le titre garde sa largeur. */
+  .ef-ligne .ef-montant { grid-row: 1; grid-column: 2; max-width: 9.5rem; }
+  .ef-ligne .ef-payer { grid-row: 2; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ef-dialogue[open] { animation: ef-entree .18s ease-out; }
+  @keyframes ef-entree { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+}
+
+@media print {
+  .ec-haut, .ec-menu, .ec-onglets, .ef-detail-actions, .ef-tout { display: none !important; }
+  .ec-page { margin: 0; padding: 0; }
+}

@@ -107,6 +107,15 @@ Le rôle « Caisse et commercial » ne voit jamais ces chiffres ni aucun solde.
 
 À l'enregistrement : le transfert, plus une sortie « Frais Orange Money à prélever » du compte Orange Money (référence du transfert suivie de -FO). Si Orange débite plus que les frais payés par les clients encore à prélever (argent entré sans frais : frais décochés à la caisse, solde d'avant le 15/10, dépôt), le surplus devient une charge « Frais bancaires » (référence suivie de -FC). Les frais d'avant le 15/10 avaient été comptés en « autre produit » : cette charge les équilibre. Annuler le virement annule aussi ces lignes. Une sortie (décaissement) d'un compte Orange Money a la même ligne.
 
+**Modifier un paiement en attente** (bouton « Modifier » du paiement, droit Encaisser) : les frais suivent la même règle qu'à la caisse (`FraisOrangeMoney::appliquer`), refaits par le serveur à l'enregistrement :
+
+- les cases « Fonds de soutien » et « Frais de retrait » ne se montrent qu'en Orange Money ou Wave ; passer à un autre mode les décoche et remet les frais à 0 ;
+- cocher une case calcule son frais aux taux de Réglages › Paiements, décocher le remet à 0 ;
+- changer le montant ou le mode recalcule les frais des cases cochées ;
+- enregistrer sans rien changer garde les frais déjà posés (ceux d'un paiement en ligne viennent de la transaction Orange Money, aux taux du jour du paiement).
+
+Les frais restent sur le paiement : jamais dans le montant de la commande ni sur la facture.
+
 **Annulation d'un paiement validé** (inchangée) : dans « À valider » ou sur le paiement, l'annulation reprend du compte Orange Money le montant et les frais entrés avec le paiement (25 500 F dans l'exemple). Elle sert à corriger une erreur de saisie.
 
 **Remboursement d'un client** : c'est une dépense ordinaire, payée depuis la caisse ou la banque.

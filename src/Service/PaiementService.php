@@ -3,9 +3,11 @@
 namespace App\Service;
 
 use App\Entity\CompteTresorerie;
+use App\Entity\ModificationClient;
 use App\Entity\MouvementTresorerie;
 use App\Entity\Paiements;
 use App\Entity\User;
+use App\Service\Import\Valeurs;
 use App\Service\Paiement\ComptesOrangeMoney;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -143,6 +145,85 @@ final class PaiementService
             $connexion->commit();
 
             return $mouvement;
+        } catch (\Throwable $exception) {
+            if ($connexion->isTransactionActive()) {
+                $connexion->rollBack();
+            }
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * Valide l'avoir (solde du client) qu'il a utilisé en ligne depuis
+     * « Factures et paiements » : aucun compte de trésorerie (l'argent est
+     * déjà à la boutique), le solde du client baisse du montant, et la fiche
+     * le note dans son journal. Refusé si le solde ne suffit plus ou si le
+     * montant dépasse ce qui reste dû sur la commande.
+     */
+    public function validerAvoir(
+        Paiements $paiement,
+        User $utilisateur
+    ): void {
+        if ($paiement->getMode() !== Paiements::MODE_SOLDE_CLIENT) {
+            throw new \LogicException('Ce paiement n’utilise pas le solde du client.');
+        }
+
+        $connexion = $this->entityManager->getConnection();
+        $connexion->beginTransaction();
+
+        try {
+            if ($paiement->getId() !== null) {
+                $this->entityManager->lock($paiement, LockMode::PESSIMISTIC_WRITE);
+                $this->entityManager->refresh($paiement);
+            }
+
+            if (!$paiement->estEnAttente()) {
+                throw new \LogicException('Seul un paiement en attente peut être validé.');
+            }
+
+            $commande = $paiement->getCommande();
+            $client = $commande?->getClients();
+
+            if ($commande === null || $client === null) {
+                throw new \LogicException('Ce paiement n’est rattaché à aucun client.');
+            }
+
+            if ($client->getId() !== null) {
+                $this->entityManager->lock($client, LockMode::PESSIMISTIC_WRITE);
+                $this->entityManager->refresh($client);
+            }
+
+            $montant = $paiement->getMontant();
+            $avant = $client->getSoldeCredit();
+
+            if ($avant < $montant) {
+                throw new \LogicException(sprintf(
+                    'Solde du client insuffisant : %s disponibles pour %s. Rejetez ce paiement.',
+                    Valeurs::francs($avant),
+                    Valeurs::francs($montant)
+                ));
+            }
+
+            if ($montant > $commande->getResteAPayer()) {
+                throw new \LogicException('Le montant dépasse le reste à payer de la commande. Rejetez ce paiement.');
+            }
+
+            $paiement->validerPar($utilisateur);
+            $client->setSoldeCredit($avant - $montant);
+
+            $this->entityManager->persist(new ModificationClient(
+                $client,
+                'Solde client',
+                'conditions',
+                Valeurs::francs($avant),
+                sprintf('%s (avoir utilisé en ligne, %s)', Valeurs::francs($client->getSoldeCredit()), $paiement->getReference() ?? 'commande '.$commande->getNumero()),
+                new \DateTimeImmutable(),
+                $utilisateur
+            ));
+
+            $this->entityManager->flush();
+            $connexion->commit();
         } catch (\Throwable $exception) {
             if ($connexion->isTransactionActive()) {
                 $connexion->rollBack();

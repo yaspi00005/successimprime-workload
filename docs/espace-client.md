@@ -7,10 +7,10 @@ Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connex
 Construit, téléphone d'abord (onglets en bas), menu à gauche sur ordinateur :
 
 - **Accueil (13)** : bandeau des BAT à valider, commandes en cours avec la frise Reçue › BAT › Impression › Finition › Prête, reste à payer avec le bouton Orange Money, devis à accepter, commandes récentes.
-- **Mes commandes et suivi (15)** : liste avec état et avancement ; détail avec la frise datée (commande reçue, BAT validé par vous, impression, finition, prête à retirer ou à livrer, retirée ou livrée), livreur en route, montant et reste à payer, lien WhatsApp vers l'atelier (téléphone de la première entité).
+- **Mes commandes et suivi (15)** : liste avec état et avancement ; détail avec la frise datée (commande reçue, BAT validé par vous, impression, finition, prête à retirer ou à livrer, retirée ou livrée), livreur en route, montant (avec la ligne « Remise − N F » s'il y a une remise globale, déjà déduite) et reste à payer, lien WhatsApp vers l'atelier (téléphone de la première entité).
 - **Mes devis (14, à droite)** : filtres Tous, À accepter, Acceptés ; « Accepter » passe le devis envoyé en accepté et prévient le droit Devis ; PDF par le lien public signé.
 - **Fichiers et BAT (16, à droite)** : BAT à valider et précédents ; page du BAT avec l'aperçu (image ou PDF) de la dernière version préparée par l'atelier, la frise des versions et des demandes du client. « Valider le BAT » note le BAT validé (horodaté, frise de conception, points du graphiste) et remet le contrôle à la prépresse pour la validation des fichiers et l'envoi en production ; « Demander une modification » repasse le contrôle en correction avec le texte du client. Sur un BAT en image, le client touche l'image pour poser des repères numérotés (10 au plus), chacun avec ce qu'il faut changer ; le graphiste les voit sur l'aperçu de son poste (R03) et dans le fil des échanges, et la version suivante les affiche au client avec « corrigé en version N » (maquette 16). Sur un PDF, la demande reste en texte. La prépresse est prévenue dans les deux cas.
-- **Factures et paiement (17)** : solde à payer par commande, factures émises (PDF signé, proforma marquée), page de paiement Orange Money (voir plus bas). Tant que les clés Orange Money ne sont pas posées, la page donne le numéro marchand (tuile Entités) et la référence de commande ; le paiement est validé par la caisse.
+- **Factures et paiements (17, refait le 16/10/2026 sur les maquettes FP01 à FP05)** : ce qui est à payer, plusieurs factures et acomptes payés en une fois par Orange Money avec l'avoir déduit, détail d'une facture, reçus, relevé de compte en PDF. Voir « Factures et paiements » plus bas. Tant que les clés Orange Money ne sont pas posées, la page donne le numéro marchand (tuile Entités) et les références ; le paiement est validé par la caisse.
 - **Mon compte et notifications (19)** : coordonnées (modifiées par le bureau), réglage SMS, mot de passe, déconnexion ; fil des notifications reconstruit à partir des commandes (BAT prêt, paiement reçu, impression lancée, commande prête, livreur en route, livrée).
 - **Fidélité (18, à droite, construit le 14/10/2026)** : `/espace/fidelite`, entrée Fidélité du menu, pour un client hors grille revendeur (`typeClient` autre que B2B) et une personne qui paie. Solde en points et en francs, progression vers chaque seuil, points qui expirent bientôt, promo de réveil, rappel du ×2 payé le jour même, historique (type, points, date, commande ; ni agent ni motif). Lecture seule : c'est l'atelier qui utilise les points sur une commande. Un client à la grille revendeur (B2B) n'a pas l'entrée : le programme ne s'applique pas à cette grille de prix. Détails dans `docs/fidelite.md`.
 
@@ -59,7 +59,7 @@ Le personnel de l'administration en ligne reçoit son code de sécurité de la m
 
 Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, cloche, conseiller), `FilNotifications.php`, `PreferencesNotifications.php`, `NotificationsClient.php`, `MonCompte.php`, `AppareilsClient.php`, `MessagesClient.php`, `PropositionsClient.php`, `RecommanderClient.php`, `src/Security/DroitsEspace.php`, `src/EventSubscriber/EspaceClientSubscriber.php`. Migration `Version20261014142129`. Captures : `/mnt/project-files/captures/espace-client/ec-*.png`.
 
-**Coque (EC01, EC05).** Sur ordinateur : menu à gauche, barre du haut (recherche, « + Nouvelle commande », cloche, personne et fonction), carte « Votre conseiller(ère) » (nom ; WhatsApp et appel vers le numéro de la boutique, jamais celui de l'employé). Sur téléphone : en-tête (entreprise, « Bonjour Prénom », cloche) et cinq onglets (Accueil, Commandes, Fichiers, Factures, Compte).
+**Coque (EC01, EC05).** Sur ordinateur : menu à gauche, barre du haut (recherche, « + Nouvelle commande », cloche, personne et fonction), carte « Votre conseiller(ère) » (nom ; WhatsApp et appel vers le numéro de la boutique, jamais celui de l'employé). Sur téléphone : en-tête (entreprise, « Bonjour Prénom », cloche) et cinq onglets (Accueil, Commandes, Fichiers, Factures, Compte). Le bas de chaque page laisse la hauteur des onglets, la zone du geste de l'iPhone et une marge (`--ec-bas-libre` dans `espace-app.css`) : au bout du défilement, les totaux et la dernière carte restent au-dessus des onglets.
 
 - Pastilles : rouge pour les notifications non lues ; jaune pour les devis à accepter (valideur), les BAT en attente et les commandes à régler (payeur).
 - Le menu est la liste `CoqueEspace::MENU` : une entrée = une ligne (route, libellé, icône, pages qui l'allument, qui la voit, onglet du téléphone). Factures et paiements : payeur seulement. Fidélité : payeur d'un client hors grille revendeur. Nouvelle commande, Mes produits, Mes devis, Messages : pas pour un compte Lecture · suivi.
@@ -227,6 +227,80 @@ Reste à faire :
 - WhatsApp dans la chaîne des notifications, entre l'application et le SMS, quand la clé Meta sera posée. Les choix des clients sont déjà enregistrés (colonne WhatsApp de « Comment je suis prévenu »).
 - Remise habituelle : elle reste au local (non synchronisée), donc Mon compte ne la montre pas. À décider par Yaya si elle doit apparaître dans « Conditions ».
 - « Livreur en route » et « livrée » : les bons de livraison passent au site depuis le 13/10/2026 (sans livreur, photos ni signature). Après le déploiement : `php bin/console app:synchro --initialiser=livraison` sur le local.
+
+## Factures et paiements (FP01 à FP05, construit le 16/10/2026)
+
+`/espace/factures` remplace l'ancienne page Factures. Tout y est calculé par le serveur (`FacturesClient`, `ReglementsEnLigne`) ; le navigateur ne fait qu'afficher et recalculer la barre de sélection.
+
+**Qui y entre.** Un particulier, le titulaire d'une entreprise et un compte « payeur » (`EspaceFacturesController::peutVoirLesFactures`). Le valideur (prix et devis, sans le droit payeur), le demandeur et la lecture seule reçoivent « accès refusé » sur chaque adresse, même tapée à la main (`DroitsEspace` et le contrôleur) : ce sont le solde, les factures et le crédit de l'entreprise, que la règle `montantsVisibles` réserve au payeur. Une facture, un paiement, un reçu ou un règlement d'un autre client répond « introuvable » (404), de même qu'une commande d'un autre client glissée dans la sélection.
+
+| Adresse | Page |
+| --- | --- |
+| `GET /espace/factures` | Vue d'ensemble (FP01 ; FP05 sur téléphone) |
+| `GET /espace/factures/{id}` | Détail d'une facture (FP02) |
+| `GET /espace/factures/payer?e[]=…` | Récapitulatif avant Orange Money (FP03), en fenêtre ou en page sans JavaScript |
+| `POST /espace/factures/payer` | Lance le règlement (jeton CSRF, limite par compte) |
+| `GET /espace/factures/paiement/{référence}` | Paiement reçu (FP04, FP05) |
+| `GET /espace/factures/recu/{id}` | Reçu d'un paiement validé, en PDF |
+| `GET /espace/factures/releve?du=…&au=…` | Relevé de compte en PDF |
+
+**Vue d'ensemble (FP01).**
+
+- Tuiles : Total à payer (dont échu, et ce qui se réglera à la livraison), Payé dans l'année (paiements validés), Prochaine échéance, Avoir disponible. Sur téléphone, seule la tuile du total reste.
+- « À payer » : factures non soldées, commandes livrées ou prêtes sans facture, acomptes des commandes en préparation (pourcentage du client, sinon l'acompte par défaut des Réglages), solde d'ouverture. Ordre : la plus ancienne échéance d'abord. Ce qui attend la validation de la boutique n'est plus redemandé.
+- Les cases cochées font la barre « N sélectionnés · total (− avoir) · Payer X par Orange Money ».
+- Onglets Factures, Paiements, Avoirs, Reçus (année au choix).
+- À droite : Moyens de paiement, Bon à savoir, « Une question sur une facture ? ». « Contester » ouvre une réclamation pré-remplie ; « Message » ouvre la messagerie avec la référence de la facture.
+
+**Payer plusieurs éléments en une fois (FP03).**
+
+- Le récapitulatif liste les éléments, l'avoir déduit (case à décocher), « Tout payer » ou « Autre montant ». Un paiement partiel va de 1 000 F (ou moins s'il reste moins) jusqu'au total ; il paie d'abord la plus ancienne échéance.
+- Les frais Orange Money sont montrés avant de partir : fonds de soutien et frais de retrait, 1 % chacun par défaut, calculés une fois sur le montant payé, puis partagés au prorata entre les commandes.
+- Le numéro Orange Money se saisit sur la page d'Orange : Web Payment ne le reçoit pas d'ici, il n'est donc ni demandé ni pré-rempli. La page dit « Vous confirmez sur la page Orange Money avec votre code secret » et « Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais ».
+- Au clic, le serveur recalcule tout (dû, avoir, répartition, frais). Si le total a changé depuis l'affichage, le client revoit le récapitulatif. Il y a un seul passage chez Orange pour le total ; un second clic dans les 9 minutes reprend le même lien.
+- Limite : 8 lancements par compte et par 15 minutes (`espace_paiement_compte`).
+- Tables `reglement_en_ligne` et `reglement_en_ligne_part` (une ligne par commande : part Orange Money, part d'avoir, frais, rang). `transaction_orange_money.reglement_id` relie la transaction Orange. L'ancien paiement d'une seule commande (`/espace/payer/{id}`) reste en place.
+
+**Argent reçu.**
+
+- À la confirmation d'Orange, il y a **un paiement « en attente » par commande** (`PaiementsDuReglement`), jamais validé tout seul. Sa référence est `OM <transaction Orange> n/N`, une par paiement, pour que « Référence déjà utilisée » ne bloque pas la validation au local. Ses frais sont dans les champs de frais du paiement, comme à la caisse.
+- Une notification rejouée ne crée rien de plus. Un paiement échoué ou expiré marque le règlement « non abouti » et libère l'avoir.
+
+**Avoir.**
+
+- L'avoir est le solde créditeur du client (`soldeCredit`), en lecture seule en ligne.
+- L'utiliser crée un paiement « solde client » en attente (`AV <règlement>`), validé par la caisse dans Finances › À valider (`PaiementService::validerAvoir`). Le solde ne baisse qu'à la validation.
+- En attendant, l'avoir est montré « réservé » ou « en validation » et n'est pas promis deux fois : 30 minutes pour un règlement encore chez Orange, puis tant que le paiement attend la boutique.
+- Payé par l'avoir seul, le règlement est reçu tout de suite, sans Orange.
+
+**Paiement reçu (FP04, FP05).**
+
+- États honnêtes, ligne par ligne : « en cours chez Orange Money », « reçu · en validation », « soldée », « non payé ». Le titre dit « X F payés » pour la part Orange Money, « Avoir utilisé » pour un avoir seul.
+- Au retour d'Orange, l'état est relu chez Orange ; la page s'actualise toute seule pendant 2 minutes.
+- Le vrai numéro de reçu (« R-000123 », celui de la caisse) n'apparaît qu'une fois la boutique passée, avec son bouton PDF.
+- « Et maintenant » vient des données : BAT à valider, prochaine échéance avec le prochain rappel, commande prête.
+- « Partager sur WhatsApp » ouvre wa.me avec un texte sans montant ni lien privé.
+
+**Détail d'une facture (FP02).**
+
+- Lignes, totaux comme sur le PDF (remise, TVA ; la majoration ne s'affiche qu'au local), acompte payé, reste à payer ou « Soldée », QR de vérification (`/f/{code}`) si la facture a un code au bon format.
+- Paiements reçus avec barre de progression et reçus.
+- Rappels envoyés et prochain rappel (règles de rappel synchronisées). Une facture soldée n'en a plus.
+- Boutons : PDF, Partager (lien de la page, qui demande la connexion ; texte sans montant), « Payer le reste », « Payer un montant ».
+
+**Reçu et relevé (PDF, Dompdf).**
+
+- Reçu : en-tête de l'entité qui facture, numéro R-…, date du paiement et de la validation, client, commande et facture, moyen et référence, montant reçu, frais Orange Money payés en plus, reste à payer ; aucun nom d'employé.
+- Relevé : du … au …, en-tête de l'entreprise, bloc client (raison sociale, RCCM, NIF), lignes Débit, Crédit et Solde (factures et paiements validés), solde d'ouverture, solde de clôture. Une note signale ce qui attend la validation.
+
+**Moyens de paiement.**
+
+- Orange Money (ici, ou le numéro marchand tant que les clés ne sont pas posées), espèces au comptoir, virement au-delà du seuil des Réglages.
+- Les coordonnées bancaires sont un réglage, Réglages › Paiements › « Coordonnées bancaires pour les virements », réservé à la direction (ROLE_ADMIN, ou ROLE_PARAMETRES donné par elle). Il part au site avec les réglages publics. Vide, la page dit « coordonnées à demander en boutique ».
+
+**Notifications.** Aucune notification ni aucun SMS ne porte de montant ni de clé. Le paiement validé est annoncé par la chaîne existante (« Paiement reçu pour la commande … »), aux payeurs seulement.
+
+Captures : `/mnt/project-files/captures/factures-paiements/`.
 
 ## Atelier 3D et « Mes créations » (construit le 14/10/2026)
 

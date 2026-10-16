@@ -682,13 +682,12 @@ class CommandesDetailsType extends AbstractType
         }
 
         /*
-         * Repli sur "manuel" (pas "automatique") : le champ
-         * modeConfiguration est desormais cache a l'utilisateur, le
-         * groupe de radios ne soumet donc plus jamais aucune cle
-         * pour ce champ -- $data['modeConfiguration'] est toujours
-         * absent ici.
+         * Toujours "manuel" (ou l'ancien "libre") : une ancienne
+         * ligne enregistree en "automatique" renvoie son radio coche,
+         * qu'il ne faut plus suivre (voir ModeConfigurationLigne).
          */
-        $mode = $data['modeConfiguration'] ?? 'manuel';
+        $mode = ModeConfigurationLigne::soumis($data);
+        $data['modeConfiguration'] = $mode;
 
         /*
          * En mode automatique, on ne doit pas envoyer
@@ -809,24 +808,16 @@ class CommandesDetailsType extends AbstractType
                 }
 
                 /*
-                 * Repli sur "manuel" (pas "automatique") : le champ
-                 * modeConfiguration est desormais cache a
-                 * l'utilisateur, la cle est donc toujours absente
-                 * des donnees soumises. Avec un repli sur
-                 * "automatique", cette ligne finissait toujours en
-                 * mode automatique sans configuration catalogue
-                 * choisie, ce que le validateur d'entite refusait
-                 * ("Une configuration est obligatoire en mode
-                 * automatique.") -- avant meme que le controleur
-                 * n'ait la main pour forcer "manuel".
+                 * "manuel" (ou l'ancien "libre"), jamais "automatique" :
+                 * le champ modeConfiguration est cache a l'utilisateur
+                 * et le controleur enregistre toute ligne produit en
+                 * "manuel". Une ancienne ligne "automatique" renvoie
+                 * pourtant son radio coche : la suivre reappliquait la
+                 * configuration du catalogue (dimensions effacees, voir
+                 * ModeConfigurationLigne). La branche automatique
+                 * ci-dessous n'est donc plus jamais prise.
                  */
-                $mode = strtolower(trim(
-                    (string) ($donnees['modeConfiguration'] ?? 'manuel')
-                ));
-
-                if (!in_array($mode, ['automatique', 'manuel', 'libre'], true)) {
-                    $mode = 'manuel';
-                }
+                $mode = ModeConfigurationLigne::soumis($donnees);
 
                 $donnees['modeConfiguration'] = $mode;
                 $configuration = null;

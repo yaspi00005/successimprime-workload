@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Entity\Trait\PromotionLigneTrait;
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\TotalFigeTrait;
 use App\Repository\DevisDetailsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -15,10 +16,12 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Entity(repositoryClass: DevisDetailsRepository::class)]
 #[ORM\Table(name: 'devis_details')]
+#[ORM\HasLifecycleCallbacks]
 class DevisDetails
 {
     use PublicIdTrait;
     use PromotionLigneTrait;
+    use TotalFigeTrait;
 
 
 public const TYPE_PRODUIT = 'produit';
@@ -773,29 +776,31 @@ private string $modeSaisie = 'automatique';
         return $this;
     }
 
+    /**
+     * @param bool $clientB2B sans effet ici (le tarif B2B est choisi à la
+     *                        création de la ligne) ; gardé pour les appelants
+     */
     public function calculerTotaux(
         bool $clientB2B = false
     ): static {
-        /*
-     * Reprend les données fiables de ProduitConfiguration,
-     * puis calcule ou verrouille les dimensions.
-     */
-        if (
-    $this->typeLigne === self::TYPE_PRODUIT
-    && $this->isConfigurationAutomatique()
-) {
-    $this->appliquerConfiguration(
-        $clientB2B
-    );
-}
+        // Total d'origine conservé (bascule, TotalFigeTrait) : rien de ce
+        // qui fait le total n'a changé depuis sa lecture.
+        if ($this->garderTotalFige()) {
+            return $this;
+        }
 
-       if (
-    $this->typeLigne === self::TYPE_PRODUIT
-    && !$this->isConfigurationAutomatique()
-    && $this->modeCalcul === 'metre_carre'
-) {
-    $this->calculerSurface();
-}
+        /*
+         * La configuration du catalogue s'applique quand la ligne est
+         * créée, jamais en recalculant ses totaux : une ancienne ligne
+         * « automatique » garde ses dimensions, son prix et ses
+         * finitions (voir CommandesDetails::calculerTotaux()).
+         */
+        if (
+            $this->typeLigne === self::TYPE_PRODUIT
+            && $this->modeCalcul === 'metre_carre'
+        ) {
+            $this->calculerSurface();
+        }
 
         $this->appliquerDimensionsALaDesignation();
 
@@ -907,6 +912,12 @@ private string $modeSaisie = 'automatique';
     public function getMontantRemise(): int
     {
         $brut = $this->calculerTotalBrut();
+
+        // Total d'origine conservé : ce qui a vraiment été retiré du brut.
+        if ($this->totalFige) {
+            return max(0, $brut - $this->totalHt);
+        }
+
         $remise = $this->calculerMontantRemise($brut);
 
         // Avec la part du code promo de la commande : la ligne montre tout ce qui lui est retiré.
@@ -1367,9 +1378,10 @@ public function validerModeDevis(
     ) {
         $context
             ->buildViolation(
-                'La largeur et la longueur sont obligatoires '
+                '{{ ligne }} : la largeur et la longueur sont obligatoires '
                 . 'pour un calcul au mètre carré.'
             )
+            ->setParameter('{{ ligne }}', $this->libelleLigneErreur())
             ->atPath('largeur')
             ->addViolation();
     }
@@ -1385,12 +1397,29 @@ public function validerModeDevis(
     ) {
         $context
             ->buildViolation(
-                'La longueur est obligatoire pour un calcul au mètre.'
+                '{{ ligne }} : la longueur est obligatoire pour un calcul au mètre.'
             )
+            ->setParameter('{{ ligne }}', $this->libelleLigneErreur())
             ->atPath('longueur')
             ->addViolation();
     }
 }
+    /**
+     * La ligne nommée dans un message d'erreur : sa place et sa désignation
+     * (« Ligne 2 « Bâche imprimée » »). L'erreur s'affiche aussi en haut du
+     * formulaire, loin du volet de la ligne, et deux lignes peuvent porter
+     * la même désignation.
+     */
+    private function libelleLigneErreur(): string
+    {
+        $lignes = $this->devis?->getDevisDetails()->getValues() ?? [];
+        $rang = array_search($this, $lignes, true);
+        $place = false === $rang ? 'Ligne' : sprintf('Ligne %d', $rang + 1);
+        $designation = trim((string) $this->designation);
+
+        return '' === $designation ? $place : sprintf('%s « %s »', $place, $designation);
+    }
+
     public function __toString(): string
     {
         return sprintf(

@@ -102,7 +102,8 @@ final class CatalogueSynchro
     public const REGLAGES_PUBLICS = [
         'espace_client' => ['code_sms', 'commande_en_ligne', 'paiement_en_ligne'],
         // Taux des frais Orange Money (tenus dans ParametresPaiement) : le paiement de l'espace client les applique.
-        'paiements' => ['orange_money', 'tauxFondsSoutien', 'tauxFraisRetrait'],
+        // Moyens acceptés, acompte par défaut, seuil et coordonnées du virement : « Factures et paiements ».
+        'paiements' => ['orange_money', 'tauxFondsSoutien', 'tauxFraisRetrait', 'especes', 'virement', 'virement_seuil', 'acompte', 'virement_coordonnees'],
         'taxes' => ['tva_par_defaut', 'taux_tva'],
         'horaires' => ['jours', 'ouverture', 'fermeture'],
         'site_contact' => ['lien_plan'],
@@ -429,9 +430,25 @@ final class CatalogueSynchro
                 'champs' => [
                     'montant', 'mode', 'statut', 'date', 'dateValidation', 'dateAnnulation', 'reference', 'numeroCheque', 'banqueEmettrice', 'titulaireCheque',
                     'dateEmissionCheque', 'dateEncaissementPrevue', 'motifRejet', 'fraisRetraitInclus', 'fondsSoutienInclus', 'montantFraisRetrait', 'montantFondsSoutien',
+                    // Numéro du reçu de la caisse (« R-000123 », de l'id du local) : le client le voit dans « Reçus » une fois validé.
+                    'numeroRecu',
                 ],
                 'relations' => ['commande' => 'commande', 'facture' => 'facture', 'societe' => 'societe'], 'listes' => [],
-                'imposeAuLocal' => ['statut' => Paiements::STATUT_EN_ATTENTE, 'dateValidation' => null, 'dateAnnulation' => null],
+                'filtres' => ['numeroRecu' => [Paiements::class, 'numeroRecuEnvoye']],
+                'imposeAuLocal' => ['statut' => Paiements::STATUT_EN_ATTENTE, 'dateValidation' => null, 'dateAnnulation' => null, 'numeroRecu' => null],
+            ],
+            // Rappels de paiement (docs/espace-client.md, « Factures et paiements ») : le client voit dans le détail
+            // d'une facture les rappels envoyés et le prochain. D'une règle, seuls le délai, le type et l'état
+            // partent ; son nom et son modèle de message restent au local (sur le site, une règle n'envoie rien).
+            'regle_rappel' => [
+                'classe' => \App\Entity\RegleRappelPaiement::class, 'sens' => self::DESCENDANT, 'libelle' => 'Règle de rappel de paiement', 'titre' => ['delaiJours'],
+                'champs' => ['delaiJours', 'actif', 'type'],
+                'relations' => [], 'listes' => [],
+            ],
+            'rappel_paiement' => [
+                'classe' => \App\Entity\RappelPaiementEnvoye::class, 'sens' => self::DESCENDANT, 'libelle' => 'Rappel de paiement envoyé', 'titre' => ['dateEnvoi'],
+                'champs' => ['dateEnvoi', 'canal'],
+                'relations' => ['commande' => 'commande', 'regle' => 'regle_rappel'], 'listes' => [],
             ],
             // Réclamation écrite par le client en ligne (maquette 18) ; la réponse de l'atelier redescend.
             'reclamation' => [

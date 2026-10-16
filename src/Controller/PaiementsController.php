@@ -6,8 +6,10 @@ use App\Entity\Paiements;
 use App\Entity\User;
 use App\Form\PaiementsType;
 use App\Repository\PaiementsRepository;
+use App\Repository\ParametresPaiementRepository;
 use App\Service\Paiement\FiltresListePaiements;
 use App\Service\PaiementService;
+use App\Service\Paiement\FraisOrangeMoney;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -70,13 +72,21 @@ final class PaiementsController extends AbstractController
      * a déjà crédité la trésorerie, il se corrige en l'annulant.
      */
     #[Route('/{id}/edit', name: 'app_paiements_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Paiements $paiement, EntityManagerInterface $entityManager): Response
+    public function edit(Request $request, Paiements $paiement, EntityManagerInterface $entityManager, ParametresPaiementRepository $parametresPaiementRepository): Response
     {
         if (!$paiement->estEnAttente()) {
             $this->addFlash('error', 'Seul un paiement en attente peut être modifié. Un paiement validé se corrige en l\'annulant.');
 
             return $this->redirectToRoute('app_paiements_show', ['id' => $paiement->getId()], Response::HTTP_SEE_OTHER);
         }
+
+        // Le paiement tel qu'enregistré : ses frais restent s'il ne change pas.
+        $avant = [
+            'montant' => $paiement->getMontant(),
+            'mode' => $paiement->getMode(),
+            'fondsSoutienInclus' => $paiement->isFondsSoutienInclus(),
+            'fraisRetraitInclus' => $paiement->isFraisRetraitInclus(),
+        ];
 
         $form = $this->createForm(PaiementsType::class, $paiement, [
             'est_admin' => $this->isGranted('ROLE_ADMIN'),
@@ -86,6 +96,11 @@ final class PaiementsController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // Frais Orange Money / Wave refaits ici, comme à la caisse :
+            // décochés hors de ces deux modes, recalculés quand une case est
+            // cochée ou que le montant change.
+            FraisOrangeMoney::appliquer($paiement, $parametresPaiementRepository->recuperer(), $avant);
+
             $entityManager->flush();
 
             return $this->redirectToRoute('app_paiements_show', ['id' => $paiement->getId()], Response::HTTP_SEE_OTHER);
@@ -120,9 +135,14 @@ final class PaiementsController extends AbstractController
     {
         if ($this->isCsrfTokenValid('paiement_valider' . $paiement->getId(), $request->getPayload()->getString('_token'))) {
             try {
-                $paiementService->valider($paiement, $this->utilisateurConnecte());
-
-                $this->addFlash('success', 'Le paiement a été validé et le compte crédité.');
+                if (Paiements::MODE_SOLDE_CLIENT === $paiement->getMode()) {
+                    // Avoir utilisé en ligne par le client : le solde de sa fiche baisse, aucun compte n'est crédité.
+                    $paiementService->validerAvoir($paiement, $this->utilisateurConnecte());
+                    $this->addFlash('success', 'Le paiement a été validé et le solde du client diminué.');
+                } else {
+                    $paiementService->valider($paiement, $this->utilisateurConnecte());
+                    $this->addFlash('success', 'Le paiement a été validé et le compte crédité.');
+                }
             } catch (\Throwable $exception) {
                 $this->addFlash('error', $exception->getMessage());
             }

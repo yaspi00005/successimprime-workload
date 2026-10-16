@@ -232,6 +232,7 @@
 						</div>
 						<div class="text-end text-nowrap">
 							<strong>{{ detail.totalTtc|number_format(0, ',', ' ') }} F</strong>
+							{% if detail.totalFige %}<small class="d-block text-muted" title="Ligne d'avant la nouvelle version : son total enregistré reste tant que la quantité, le prix, la remise, les dimensions et les finitions ne changent pas.">Total d'origine conservé</small>{% endif %}
 							{% if ligne.cout %}
 								<small class="d-block text-muted" {% if ligne.cout.manquants %}title="Coût incomplet : {{ ligne.cout.manquants|join(', ') }}"{% endif %}>
 									Coût {{ ligne.cout.montant|number_format(0, ',', ' ') }} F{% if ligne.cout.manquants %} <i class="fas fa-exclamation-triangle text-warning"></i>{% endif %}
@@ -269,10 +270,23 @@
 						<span class="text-nowrap fw-semibold">{{ commande.fraisLivraison|number_format(0, ',', ' ') }} F</span>
 					</div>
 				{% endif %}
+				{# Remise globale : déduite du sous-total HT, déjà dans le total TTC (TotauxDocument). #}
+				{% if commande.remiseGlobale > 0 %}
+					<div class="d-flex justify-content-between align-items-center pt-3 small">
+						<span class="text-muted"><i class="fas fa-percent me-1"></i>Remise globale</span>
+						<span class="text-nowrap fw-semibold">−{{ commande.remiseGlobale|number_format(0, ',', ' ') }} F</span>
+					</div>
+				{% endif %}
 				<div class="d-flex justify-content-between align-items-center pt-3">
 					<span class="text-muted">Total TTC</span>
 					<strong class="fs-4">{{ totalTtc|number_format(0, ',', ' ') }} F</strong>
 				</div>
+				{% if commande.montantTva > 0 %}
+					<div class="d-flex justify-content-between align-items-center small">
+						<span class="text-muted">dont TVA</span>
+						<span class="text-nowrap">{{ commande.montantTva|number_format(0, ',', ' ') }} F</span>
+					</div>
+				{% endif %}
 				{% if marge and marge.taux is not null %}
 					<div class="d-flex justify-content-between align-items-center small">
 						<span class="text-muted">Marge brute{% if marge.incomplet %} <span class="text-warning" title="Des coûts manquent : voir Réglages, Coûts de revient">(coût incomplet)</span>{% endif %}</span>

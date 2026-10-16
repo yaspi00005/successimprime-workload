@@ -130,6 +130,10 @@
 		{% elseif c.estALivrer and carte.aConfirmer %}
 			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Frais de livraison</span><span class="ec-petit">fixés par l'atelier à la confirmation</span></div>
 		{% endif %}
+		{# Remise globale accordée par la boutique, déjà déduite du total ; le montant pour qui voit les montants (comme le total). #}
+		{% if c.remiseGlobale > 0 %}
+			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Remise</span>{% if coque.montants %}<span>−{{ c.remiseGlobale|number_format(0, ',', ' ') }} F</span>{% else %}<span class="ec-petit">appliquée</span>{% endif %}</div>
+		{% endif %}
 		{% if coque.montants %}
 			<div class="ec-ligne"><span>Total{{ carte.aConfirmer ? ' indicatif' }}</span><b>{{ c.totalTtc|number_format(0, ',', ' ') }} F</b></div>
 		{% else %}

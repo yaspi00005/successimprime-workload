@@ -78,4 +78,19 @@ final class DevisCommandeConverterTest extends TestCase
 
         return $em;
     }
+
+    public function testUneLigneAuTotalDOrigineLeGardeDansLaCommande(): void
+    {
+        $ligne = (new DevisDetails())->setDesignation('Flyers A5')->setModeCalcul('exemplaire')->setQuantite(1000)->setPrixUnitaire(25)
+            ->setRemise(3)->setTotalHt(21875)->setTotalTtc(21875)->figerTotal();
+        $devis = (new Devis())->setStatut(Devis::STATUT_ACCEPTE);
+        $devis->addDevisDetail($ligne);
+        $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('getConnection')->willReturn($this->createStub(Connection::class));
+
+        $copie = (new DevisCommandeConverter($em))->convertir($devis)->getCommandesDetails()->first();
+
+        self::assertTrue($copie->isTotalFige());
+        self::assertSame(21875, $copie->calculerTotaux()->getTotalHt(), 'réenregistrée sans changement, la ligne de la commande garde le total du devis');
+    }
 }

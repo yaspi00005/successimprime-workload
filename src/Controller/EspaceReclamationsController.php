@@ -44,7 +44,8 @@ final class EspaceReclamationsController extends AbstractController
         $compte = $this->compte();
         $client = $compte->getClient();
         $commandes = array_values(array_filter($espace->commandes($client, 30), static fn (Commandes $c): bool => $c->isStatut()));
-        $saisie = ['commande' => $request->query->getString('commande'), 'motif' => 'autre', 'objet' => '', 'description' => ''];
+        // « Contester » une facture (Factures et paiements) : la commande et l'objet arrivent déjà remplis.
+        $saisie = ['commande' => $request->query->getString('commande'), 'motif' => 'autre', 'objet' => mb_substr($request->query->getString('objet'), 0, 120), 'description' => ''];
 
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('espace', $request->request->getString('_token'))) {

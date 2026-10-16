@@ -23,6 +23,14 @@ final class OperationsAValiderTest extends TestCase
         self::assertSame(OperationsAValider::OK, OperationsAValider::controlesPaiement(1000, null, Paiements::MODE_VIREMENT, 'VIR1', false)[0]['etat']);
     }
 
+    public function testAvoirUtiliseEnLigneCouvertParLeSolde(): void
+    {
+        self::assertSame([['libelle' => 'Couvert par le solde du client', 'etat' => OperationsAValider::OK]], OperationsAValider::controleAvoir(5000, 5000));
+        self::assertSame(OperationsAValider::ERREUR, OperationsAValider::controleAvoir(5000, 4999)[0]['etat']);
+        // Plusieurs paiements d'un même règlement : chacun sa référence, aucun « déjà utilisée ».
+        self::assertNotSame(OperationsAValider::normaliserReference('OM MP261015.1015.A1 1/2'), OperationsAValider::normaliserReference('OM MP261015.1015.A1 2/2'));
+    }
+
     public function testReferenceNormalisee(): void
     {
         self::assertSame('VIR7781', OperationsAValider::normaliserReference(' vir 7781 '));

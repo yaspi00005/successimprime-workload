@@ -85,6 +85,49 @@ final class CatalogueSynchroTest extends TestCase
         self::assertTrue(CatalogueSynchro::accepte('paiement', false));
     }
 
+    public function testLeNumeroDuRecuDescendUneFoisValide(): void
+    {
+        $paiement = CatalogueSynchro::types()['paiement'];
+        self::assertContains('numeroRecu', $paiement['champs']);
+        self::assertSame([Paiements::class, 'numeroRecuEnvoye'], $paiement['filtres']['numeroRecu']);
+        // Un paiement créé en ligne n'arrive jamais au local avec un numéro de reçu.
+        self::assertArrayHasKey('numeroRecu', $paiement['imposeAuLocal']);
+        self::assertNull($paiement['imposeAuLocal']['numeroRecu']);
+
+        $p = new Paiements();
+        (new \ReflectionProperty(Paiements::class, 'id'))->setValue($p, 123);
+        self::assertNull(\call_user_func($paiement['filtres']['numeroRecu'], null, $p), 'en attente : pas de reçu');
+        (new \ReflectionProperty(Paiements::class, 'statut'))->setValue($p, Paiements::STATUT_VALIDE);
+        self::assertSame('R-000123', \call_user_func($paiement['filtres']['numeroRecu'], null, $p), 'le numéro imprimé par la caisse');
+        self::assertSame('R-000045', \call_user_func($paiement['filtres']['numeroRecu'], 'R-000045', $p), 'un numéro déjà connu ne change pas');
+    }
+
+    public function testRappelsDePaiementDescendentSansLeurModele(): void
+    {
+        $types = CatalogueSynchro::types();
+        self::assertSame(CatalogueSynchro::DESCENDANT, $types['regle_rappel']['sens']);
+        self::assertSame(CatalogueSynchro::DESCENDANT, $types['rappel_paiement']['sens']);
+        // D'une règle : le délai, le type, l'état ; ni son nom ni son modèle de message.
+        self::assertSame(['delaiJours', 'actif', 'type'], $types['regle_rappel']['champs']);
+        self::assertSame([], $types['regle_rappel']['relations']);
+        self::assertSame(['dateEnvoi', 'canal'], $types['rappel_paiement']['champs']);
+        self::assertSame(['commande' => 'commande', 'regle' => 'regle_rappel'], $types['rappel_paiement']['relations']);
+        // Rien ne remonte ni ne se crée en ligne.
+        self::assertFalse(CatalogueSynchro::accepte('regle_rappel', false));
+        self::assertFalse(CatalogueSynchro::accepte('rappel_paiement', false));
+        self::assertTrue(CatalogueSynchro::accepte('rappel_paiement', true));
+        self::assertSame('regle_rappel', CatalogueSynchro::typeDe(new \App\Entity\RegleRappelPaiement()));
+        self::assertSame('rappel_paiement', CatalogueSynchro::typeDe(new \App\Entity\RappelPaiementEnvoye()));
+        // Chargés après la commande et la règle qu'ils référencent.
+        $ordre = array_keys($types);
+        self::assertGreaterThan(array_search('commande', $ordre, true), array_search('rappel_paiement', $ordre, true));
+        self::assertGreaterThan(array_search('regle_rappel', $ordre, true), array_search('rappel_paiement', $ordre, true));
+        // Le règlement en ligne (plusieurs factures en une fois) reste sur le site : seuls les paiements qu'il crée remontent.
+        foreach ($types as $t) {
+            self::assertNotSame(\App\Entity\ReglementEnLigne::class, $t['classe']);
+        }
+    }
+
     public function testDecisionsDuClientEnLigne(): void
     {
         // Accepter un devis envoyé : repris au local. Le reste : conflit.
@@ -202,8 +245,9 @@ final class CatalogueSynchroTest extends TestCase
         self::assertArrayNotHasKey('synchronisation', CatalogueSynchro::REGLAGES_PUBLICS);
 
         // Valeurs par défaut pour ce que le local n'a jamais changé ; les autres champs restent au local.
-        $paiements = CatalogueSynchro::reglagesPublics('paiements', ['orange_money' => false, 'acompte' => 30, 'virement_seuil' => 1]);
-        self::assertSame(['orange_money' => false], $paiements);
+        // Paiements : ce que « Factures et paiements » montre au client (moyens, seuil et coordonnées du virement, acompte).
+        $paiements = CatalogueSynchro::reglagesPublics('paiements', ['orange_money' => false, 'acompte' => 30, 'virement_seuil' => 1, 'wave' => false, 'recu' => 'sms']);
+        self::assertSame(['orange_money' => false, 'especes' => true, 'virement' => true, 'virement_seuil' => 1, 'virement_coordonnees' => '', 'acompte' => 30], $paiements);
         $horaires = CatalogueSynchro::reglagesPublics('horaires', ['feries' => '01/01']);
         self::assertSame(['jours' => 'lun-sam', 'ouverture' => '08:00', 'fermeture' => '18:00'], $horaires);
         self::assertSame([], CatalogueSynchro::reglagesPublics('paie', ['mode' => 'mensuel']));
@@ -213,11 +257,11 @@ final class CatalogueSynchroTest extends TestCase
     {
         // Tenus dans ParametresPaiement : Synchro::noterReglages les ajoute aux valeurs de la tuile.
         $envoyes = CatalogueSynchro::reglagesPublics('paiements', ['orange_money' => true, 'acompte' => 30, 'tauxFondsSoutien' => 1.5, 'tauxFraisRetrait' => 1.0]);
-        self::assertSame(['orange_money' => true, 'tauxFondsSoutien' => 1.5, 'tauxFraisRetrait' => 1.0], $envoyes);
+        self::assertSame(['orange_money' => true, 'especes' => true, 'virement' => true, 'virement_seuil' => 500000, 'virement_coordonnees' => '', 'acompte' => 30, 'tauxFondsSoutien' => 1.5, 'tauxFraisRetrait' => 1.0], $envoyes);
 
         // À l'arrivée : les taux vont dans ParametresPaiement, le reste dans la tuile.
         [$tuile, $taux] = CatalogueSynchro::separerSourcePaiement('paiements', $envoyes);
-        self::assertSame(['orange_money' => true], $tuile);
+        self::assertSame(['orange_money' => true, 'especes' => true, 'virement' => true, 'virement_seuil' => 500000, 'virement_coordonnees' => '', 'acompte' => 30], $tuile);
         self::assertSame(['tauxFondsSoutien' => 1.5, 'tauxFraisRetrait' => 1.0], $taux);
 
         // Contrôlés comme une saisie : un taux hors limites fait refuser l'envoi.
@@ -225,8 +269,8 @@ final class CatalogueSynchroTest extends TestCase
         $publics = CatalogueSynchro::REGLAGES_PUBLICS['paiements'];
         self::assertSame($envoyes, $lire->invoke(null, 'paiements', $envoyes, $publics));
         self::assertNull($lire->invoke(null, 'paiements', ['tauxFondsSoutien' => 50] + $envoyes, $publics));
-        // Un autre champ de la tuile (seuil de virement) ne passe jamais.
-        self::assertSame(['orange_money' => true], $lire->invoke(null, 'paiements', ['orange_money' => true, 'virement_seuil' => 1], $publics));
+        // Un autre champ de la tuile (reçu envoyé, Wave) ne passe jamais.
+        self::assertSame(['orange_money' => true], $lire->invoke(null, 'paiements', ['orange_money' => true, 'recu' => 'sms', 'wave' => false], $publics));
     }
 
     public function testEspaceClientListeBlanche(): void

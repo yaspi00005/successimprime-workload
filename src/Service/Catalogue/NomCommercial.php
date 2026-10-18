@@ -245,6 +245,29 @@ final class NomCommercial
     }
 
     /**
+     * Configuration pour l'ERP, au format de ProduitConfiguration::__toString
+     * avec le nom commercial entre parenthèses : « Vinyle adhésif
+     * (Autocollant) — Solvant grand format — Vinyle blanc — Sur mesure ».
+     * La liste « Configuration » de la saisie des devis et des commandes la
+     * cherche ainsi par l'un ou l'autre nom.
+     */
+    public static function texteConfigurationInterne(?ProduitConfiguration $config): string
+    {
+        if (null === $config) {
+            return '—';
+        }
+        $partie = static fn (?AUnNomCommercial $e, string $defaut): string => null === $e || '' === trim($e->getNomTechnique()) ? $defaut : self::texteInterne($e->getNomCommercial(), $e->getNomTechnique());
+
+        return \sprintf(
+            '%s — %s — %s — %s',
+            $partie($config->getProduit(), 'Produit'),
+            $partie($config->getTypeImpression(), 'Type d’impression'),
+            $partie($config->getSupport(), 'Support'),
+            $config->getFormat()?->getNom() ?? 'Format',
+        );
+    }
+
+    /**
      * Clé de recherche : les noms donnés, en minuscules, sans accents, sans
      * ponctuation et au singulier (« vinyle adhesif autocollant »). Pour un
      * attribut data-recherche lu par un script (même calcul en JavaScript :

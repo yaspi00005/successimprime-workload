@@ -10,6 +10,7 @@ use App\Repository\ProduitConfigurationRepository;
 use App\Repository\ProduitsRepository;
 use App\Repository\SupportsRepository;
 use App\Repository\TypesImpressionRepository;
+use App\Service\Catalogue\NomCommercial;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -823,7 +824,8 @@ final class ProduitConfigurationController extends AbstractController
                 return [
                     'id' => $configuration->getId(),
 
-                    'libelle' => (string) $configuration,
+                    // Avec les noms commerciaux : la liste de saisie les cherche aussi (docs/noms-commerciaux.md).
+                    'libelle' => NomCommercial::texteConfigurationInterne($configuration),
 
                     'typeImpression' => [
                         'id' => $typeImpression?->getId(),

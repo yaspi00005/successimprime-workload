@@ -113,6 +113,14 @@ final class NomCommercialTest extends TestCase
             ->setSupport((new Supports())->setNom('Bâche 440 g roll-up')->setNomCommercial('Toile de roll-up'));
         self::assertSame(['nom' => 'Roll-up · Toile de roll-up', 'technique' => 'Bâche 440 g roll-up', 'texte' => 'Roll-up · Toile de roll-up (Bâche 440 g roll-up)'], NomCommercial::configuration($rollup));
         self::assertSame('—', NomCommercial::texteConfiguration(null));
+
+        // ERP (liste « Configuration » de la saisie) : désignation d'abord, nom commercial entre parenthèses.
+        $config->setTypeImpression((new TypesImpression())->setNom('Solvant grand format')->setNomCommercial('Impression extérieure'));
+        self::assertSame('Vinyle adhésif (Autocollant) — Solvant grand format (Impression extérieure) — Vinyle blanc mat — Sur mesure', NomCommercial::texteConfigurationInterne($config));
+        self::assertTrue(NomCommercial::correspond('autocollants', NomCommercial::texteConfigurationInterne($config)));
+        // Sans nom commercial ni type : le même libellé qu'avant (ProduitConfiguration::__toString).
+        self::assertSame((string) $rollup->setSupport((new Supports())->setNom('Bâche 440 g roll-up')), NomCommercial::texteConfigurationInterne($rollup));
+        self::assertSame('—', NomCommercial::texteConfigurationInterne(null));
     }
 
     public function testRechercheSansAccentsNiMajuscules(): void

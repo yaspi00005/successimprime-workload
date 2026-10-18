@@ -149,6 +149,8 @@ class DevisDetailsType extends AbstractType
 
             ->add('produitConfiguration', EntityType::class, [
                 'class' => ProduitConfiguration::class,
+                // Désignations et noms commerciaux : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (ProduitConfiguration $c): string => NomCommercial::texteConfigurationInterne($c),
                 'choice_attr' => static function (
                     ProduitConfiguration $configuration
                 ): array {

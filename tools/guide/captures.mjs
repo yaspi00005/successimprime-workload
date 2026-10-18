@@ -363,6 +363,23 @@ await scene(['tableau-de-bord', 'a-valider', 'utilisateurs', 'utilisateur-nouvea
     await capture(page, 'import');
 });
 
+// Crédits SMS et e-mail : solde saisi à la main (pas de clés Orange en démonstration), image coupée avant « Derniers envois ».
+await scene(['credits-messages'], async () => {
+    const page = await session('demo.kadiatou');
+    const dans = (jours) => new Date(Date.now() + jours * 86400000).toISOString().slice(0, 10);
+    await aller(page, '/communications/credits');
+    if (await page.locator('#cm-solde').count()) {
+        await page.fill('#cm-solde', '1250');
+        await page.fill('#cm-fin-sms', dans(45));
+        await suivre(page, page.getByRole('button', { name: 'Enregistrer le solde' }));
+    }
+    await page.fill('#cm-fin-email', dans(200));
+    await suivre(page, page.getByRole('button', { name: 'Enregistrer la date' }));
+    // Sans le message « enregistré » du haut de page.
+    await page.locator('.alert').evaluateAll((alertes) => alertes.forEach((a) => a.remove()));
+    await capture(page, 'credits-messages', { clip: await auDessusDe(page, 'text=Derniers envois') });
+});
+
 /* ---------- Production ---------- */
 
 await scene(['production', 'planning-machines', 'mes-statistiques', 'ma-prime'], async () => {

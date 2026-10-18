@@ -102,7 +102,7 @@ final class InvitationsSondage implements EventSubscriberInterface
         if (null === $client || !self::peutRecevoir($client) || !$client->isRecevoirSms() || !$this->sms->estConfigure() || !$this->siteRegle() || null !== $invitation->getSmsEnvoyeLe()) {
             return false;
         }
-        $resultat = $this->sms->envoyerSms((string) $client->getTelephone(), self::message((string) $invitation->getCommande()?->getNumero(), $this->lien($invitation)));
+        $resultat = $this->sms->envoyerSms((string) $client->getTelephone(), self::message((string) $invitation->getCommande()?->getNumero(), $this->lien($invitation)), type: 'sondage');
         if (!($resultat['succes'] ?? false)) {
             $this->logger->warning('SMS d\'invitation au sondage non envoyé : {erreur}', ['erreur' => $resultat['erreur'] ?? '?']);
 

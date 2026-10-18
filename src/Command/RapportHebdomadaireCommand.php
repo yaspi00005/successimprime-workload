@@ -5,6 +5,7 @@ namespace App\Command;
 use App\Entity\RapportHebdomadaire;
 use App\Entity\User;
 use App\Security\AccesEnLigne;
+use App\Service\Messagerie\JournalEnvois;
 use App\Service\NotificationService;
 use App\Service\Statistiques\DroitsStatistiques;
 use App\Service\Statistiques\Export\ExportPdf;
@@ -214,12 +215,12 @@ final class RapportHebdomadaireCommand extends Command
                 'r' => $this->rapport->donnees($u, $droits, $semaine, $maintenant),
                 'semaine' => $semaine,
             ], $maintenant, 'envoi automatique');
-            $this->mailer->send((new Email())
+            $this->mailer->send(JournalEnvois::typer((new Email())
                 ->from($this->expediteur)
                 ->to($adresse)
                 ->subject(\sprintf('Rapport de la %s · Succès Imprim', mb_strtolower($semaine->titre())))
                 ->text(\sprintf("Bonjour,\n\nVotre rapport de la %s (%s) est joint à ce message et disponible dans l'application (Accueil › Rapport de la semaine).\n\nDocument interne, confidentiel.\n\nSuccès Imprim", mb_strtolower($semaine->titre()), $semaine->libelle()))
-                ->attach($pdf, \sprintf('rapport-semaine-%s.pdf', strtolower($semaine->code())), 'application/pdf'));
+                ->attach($pdf, \sprintf('rapport-semaine-%s.pdf', strtolower($semaine->code())), 'application/pdf'), 'rapport_semaine'));
 
             return true;
         } catch (\Throwable $e) {

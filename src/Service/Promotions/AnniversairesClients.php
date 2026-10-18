@@ -321,7 +321,7 @@ final class AnniversairesClients
 
             return AnniversaireClient::CANAL_WHATSAPP;
         }
-        $r = $this->sms->envoyerSms((string) $client->getTelephone(), $texte);
+        $r = $this->sms->envoyerSms((string) $client->getTelephone(), $texte, type: 'anniversaire');
         $a->marquerEnvoi(AnniversaireClient::CANAL_SMS, $r['succes'] ? $maintenant : null, $r['succes'] ? null : ($r['erreur'] ?? 'Erreur inconnue.'));
         $this->tracer($client, $r['succes'] ? CampagneDestinataire::STATUT_ENVOYE : CampagneDestinataire::STATUT_ECHEC, $r['succes'] ? null : $r['erreur'], $maintenant);
 
@@ -368,7 +368,7 @@ final class AnniversairesClients
                 // WhatsApp : le lien du rappel est sur la page Anniversaires.
                 continue;
             }
-            $r = $this->sms->envoyerSms((string) $client->getTelephone(), (string) $this->texte($a, true));
+            $r = $this->sms->envoyerSms((string) $client->getTelephone(), (string) $this->texte($a, true), type: 'anniversaire');
             $this->tracer($client, $r['succes'] ? CampagneDestinataire::STATUT_ENVOYE : CampagneDestinataire::STATUT_ECHEC, $r['succes'] ? null : $r['erreur'], $maintenant);
         }
 

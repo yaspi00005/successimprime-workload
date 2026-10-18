@@ -192,7 +192,7 @@ final class DemandesConception
         $this->em->flush();
         if (!$deja && !NotificationsClient::estDemo($client)) {
             foreach (null !== $this->suspensions ? $this->suspensions->sansSuspendus($payeurs) : $payeurs as $p) {
-                $this->sms->envoyerSms($p->getTelephone(), \sprintf('Succès Imprim : %s a préparé la demande de conception %s. À payer dans votre espace client.', $demandeur->getNomAffiche(), $demande->getNumero()));
+                $this->sms->envoyerSms($p->getTelephone(), \sprintf('Succès Imprim : %s a préparé la demande de conception %s. À payer dans votre espace client.', $demandeur->getNomAffiche(), $demande->getNumero()), type: 'conception');
             }
         }
 

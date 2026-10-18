@@ -74,7 +74,7 @@
 									{% elseif champ.type == 'heure' %}
 										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="time" value="{{ valeur }}">
 									{% elseif champ.type == 'date' %}
-										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="date" value="{{ valeur }}">
+										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="date" value="{{ valeur }}"{{ (champ.requis ?? false) ? ' required' }}>
 									{% elseif champ.type == 'dates' %}
 										<textarea id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" rows="3">{{ valeur }}</textarea>
 									{% else %}

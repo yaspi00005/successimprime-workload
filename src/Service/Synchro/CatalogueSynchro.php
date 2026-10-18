@@ -640,6 +640,14 @@ final class CatalogueSynchro
                 // Le pouce est donné après la réponse.
                 'remontees' => ['note' => null],
             ],
+            // Historique des envois du site en ligne (codes de connexion, notifications de l'espace client) :
+            // monte au local pour Clients › Crédits SMS et e-mail, en lecture seule. Jamais le texte du message.
+            'envoi_message' => [
+                'classe' => \App\Entity\EnvoiMessage::class, 'sens' => self::ASCENDANT, 'libelle' => 'Envoi de SMS ou d\'e-mail', 'titre' => ['canal', 'type'],
+                'champs' => ['canal', 'type', 'sujet', 'destinataire', 'statut', 'erreur', 'unites', 'envoyeLe', 'origine'],
+                'relations' => [], 'listes' => [],
+                'imposeAuLocal' => ['origine' => \App\Entity\EnvoiMessage::EN_LIGNE],
+            ],
         ];
     }
 

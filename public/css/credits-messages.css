@@ -1,0 +1,119 @@
+/*
+ * Clients › Crédits SMS et e-mail (docs/messagerie-marketing.md) : crédits,
+ * historique des envois. Sobre, sur le modèle de l'Assistant du site.
+ */
+.cm { display: flex; flex-direction: column; gap: 20px; }
+.cm h2 { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+.cm .card { padding: 18px 20px; margin: 0; height: auto; }
+
+.cm-sousnav { display: flex; flex-wrap: wrap; gap: 8px; }
+.cm-sousnav a { padding: 8px 15px; border-radius: 999px; background: #fff; color: #334155; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+.cm-sousnav a:hover { color: #0F4590; }
+.cm-sousnav a.actif { background: #0F4590; color: #fff; }
+
+.cm-deux { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+
+.cm-entete { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.cm-entete h2 { margin: 0; }
+.cm-entete small { display: block; color: #64748B; font-size: 12.5px; }
+.cm-entete .si-pastille { margin-left: auto; }
+.cm-icone { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; font-size: 18px; flex: none; }
+.cm-icone-sms { background: #FFF1DC; color: #C46A00; }
+.cm-icone-email { background: #E5EEFA; color: #0F4590; }
+
+.cm-alerte { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; margin: 0 0 14px; }
+.cm-alerte i { margin-top: 3px; }
+.cm-alerte-orange { background: #FFF7EA; color: #7A4300; border: 1px solid #F7D9A8; }
+.cm-alerte-rouge { background: #FDF0F1; color: #8F0A19; border: 1px solid #F5C2C8; overflow-wrap: anywhere; }
+
+.cm-chiffres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+.cm-chiffre, .cm-quota { background: #F8FAFC; border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.cm-chiffre strong { display: block; font-size: clamp(22px, 2.2vw, 30px); font-weight: 800; color: #0F172A; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.cm-chiffre span { display: block; margin-top: 4px; font-size: 13px; color: #64748B; }
+.cm-chiffre-alerte { background: #FDF0F1; }
+.cm-chiffre-alerte strong { color: #C40D22; }
+
+.cm-quotas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.cm-quota span { display: block; font-size: 12.5px; color: #64748B; }
+.cm-quota strong { display: block; font-size: 22px; font-weight: 800; color: #0F172A; font-variant-numeric: tabular-nums; }
+.cm-quota small { display: block; font-size: 12px; color: #64748B; }
+.cm-jauge { height: 6px; border-radius: 3px; background: #E2E8F0; margin: 6px 0 4px; overflow: hidden; }
+.cm-jauge i { display: block; height: 100%; background: #0F4590; }
+.cm-jauge-pleine i { background: #C40D22; }
+
+.cm-liste { list-style: none; margin: 0 0 4px; padding: 0; }
+.cm-liste li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 14px; }
+.cm-liste li + li { border-top: 1px solid #EEF2F7; }
+.cm-liste span { color: #64748B; flex: none; }
+.cm-liste b { text-align: right; font-weight: 600; color: #0F172A; font-variant-numeric: tabular-nums; }
+.cm-rouge { color: #C40D22 !important; }
+
+.cm-saisie { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #E2E8F0; }
+.cm-saisie > div { display: flex; flex-direction: column; gap: 4px; min-width: 150px; flex: 1 1 150px; }
+.cm-saisie label, .cm-filtres label { font-size: 12.5px; color: #475569; font-weight: 600; margin: 0; }
+/* Listes, dates et nombres à la même hauteur que les boutons. */
+.cm-saisie .form-control, .cm-filtres .form-control, .cm-filtres .form-select { height: 38px; min-height: 38px; padding-top: 6px; padding-bottom: 6px; font-size: 14px; border-radius: 8px; }
+.cm-saisie .btn, .cm-filtres-boutons .btn { height: 38px; display: inline-flex; align-items: center; }
+.cm-saisie .btn { flex: none; }
+
+.cm-titre-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.cm-lien { font-size: 13.5px; font-weight: 600; color: #0F4590; text-decoration: none; }
+
+.cm-table { margin: 0; }
+.cm-table thead th { font-size: 13px; color: #64748B; font-weight: 600; text-transform: none; letter-spacing: 0; background: #F8FAFC; border-bottom: 0; padding: 10px 8px; white-space: nowrap; }
+.cm-table td { vertical-align: middle; padding: 10px 8px; color: #0F172A; border-color: #EEF2F7; }
+.cm-table td small { display: block; color: #64748B; font-size: 12px; }
+.cm-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cm-c-dest { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cm-sujet { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-erreur { max-width: 340px; overflow-wrap: anywhere; color: #8F0A19 !important; }
+.cm-c-date { white-space: nowrap; }
+.cm-mobile { display: none; }
+
+.cm-filtres { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 12px; align-items: end; margin-bottom: 16px; }
+.cm-filtres > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cm-filtres-q { grid-column: span 4; }
+.cm-filtres-boutons { flex-direction: row !important; gap: 8px !important; grid-column: span 2; }
+
+.cm-pages { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 14px; font-size: 13.5px; color: #475569; }
+.cm-vide { color: #64748B; margin: 0; }
+.cm-note { font-size: 12.5px; color: #64748B; margin: 12px 0 0; }
+
+@media (max-width: 1199px) {
+  .cm-filtres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cm-filtres-q { grid-column: span 2; }
+  .cm-filtres-boutons { grid-column: span 1; }
+}
+@media (max-width: 991px) {
+  .cm-deux { grid-template-columns: 1fr; }
+}
+@media (max-width: 575px) {
+  .cm .card { padding: 14px; }
+  .cm-quotas { grid-template-columns: 1fr; }
+  .cm-quota { display: grid; grid-template-columns: 1fr auto; column-gap: 10px; align-items: center; }
+  .cm-quota strong { grid-row: span 2; grid-column: 2; font-size: 20px; }
+  .cm-quota .cm-jauge { grid-column: 1 / -1; }
+  .cm-filtres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cm-filtres-q, .cm-filtres-boutons { grid-column: 1 / -1; }
+  .cm-liste li { flex-direction: column; gap: 2px; }
+  .cm-liste b { text-align: left; }
+  /* Une carte par envoi : type et état, puis canal, destinataire et date, puis l'erreur. */
+  .cm-table-cartes thead { display: none; }
+  .cm-table-cartes, .cm-table-cartes tbody { display: block; width: 100%; }
+  .cm-table-cartes tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "type etat" "dest date" "erreur erreur"; gap: 3px 12px; padding: 12px 0; border-bottom: 1px solid #EEF2F7; }
+  .cm .cm-table-cartes > tbody > tr > td { display: block; padding: 0; border: 0; min-width: 0; }
+  .cm-table-cartes .cm-c-type { grid-area: type; font-weight: 600; }
+  .cm-table-cartes .cm-c-type small { font-weight: 400; }
+  .cm-table-cartes .cm-c-etat .si-pastille { grid-area: etat; justify-self: end; align-self: start; }
+  .cm-table-cartes .cm-c-etat .cm-erreur { grid-area: erreur; max-width: none; }
+  .cm-table-cartes .cm-c-dest { grid-area: dest; overflow: hidden; text-overflow: ellipsis; color: #475569; font-size: 13.5px; }
+  .cm-table-cartes .cm-c-date { grid-area: date; text-align: right; color: #64748B; font-size: 13px; }
+  .cm-table-cartes .cm-c-date small { display: inline; margin-left: 4px; font-size: 13px; }
+  .cm .cm-table-cartes > tbody > tr > .cm-c-canal, .cm .cm-table-cartes > tbody > tr > .cm-c-unites, .cm .cm-table-cartes > tbody > tr > .cm-c-depuis { display: none; }
+  .cm .cm-table-cartes > tbody > tr > .cm-c-etat { display: contents; }
+  .cm-table-cartes .cm-mobile { display: inline; }
+  .cm-sujet { max-width: none; white-space: normal; }
+}
+@media print {
+  .cm-sousnav, .cm-saisie, .cm-filtres, .cm-pages { display: none; }
+}

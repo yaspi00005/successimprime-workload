@@ -177,7 +177,7 @@ final class DemandesSite
             return false;
         }
         try {
-            $envoi = $this->sms->envoyerSms($demande->getTelephone(), self::texteAccuse($demande));
+            $envoi = $this->sms->envoyerSms($demande->getTelephone(), self::texteAccuse($demande), type: 'demande_site');
         } catch (\Throwable $e) {
             $this->logger->warning('Accusé de réception de la demande {numero} non envoyé : {erreur}', ['numero' => $demande->getNumero(), 'erreur' => $e->getMessage()]);
 

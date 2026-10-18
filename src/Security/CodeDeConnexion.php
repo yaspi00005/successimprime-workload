@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Service\Messagerie\JournalEnvois;
 use App\Service\OrangeSmsService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -116,7 +117,7 @@ final class CodeDeConnexion
             $erreur = null === $canal ? 'L\'e-mail n\'a pas pu partir.' : null;
         }
         if (null === $erreur) {
-            $resultat = $this->sms->envoyerSms($destination->telephone, \sprintf('Succès Imprim : votre %s est %s. Valable 5 minutes. Ne le donnez à personne.', self::nom($usage), $code));
+            $resultat = $this->sms->envoyerSms($destination->telephone, \sprintf('Succès Imprim : votre %s est %s. Valable 5 minutes. Ne le donnez à personne.', self::nom($usage), $code), type: self::typeEnvoi($usage));
             $envoye = (bool) ($resultat['succes'] ?? false);
             $erreur = $envoye ? null : ($resultat['erreur'] ?? 'Envoi impossible.');
         }
@@ -245,11 +246,11 @@ final class CodeDeConnexion
             if ('' === $expediteur->getName()) {
                 $expediteur = new Address($expediteur->getAddress(), 'Succès Imprim');
             }
-            $this->mailer->send((new Email())
+            $this->mailer->send(JournalEnvois::typer((new Email())
                 ->from($expediteur)
                 ->to($adresse)
                 ->subject(\sprintf('Votre %s Succès Imprim', self::nom($usage)))
-                ->text(self::texteEmail($code, $usage)));
+                ->text(self::texteEmail($code, $usage)), self::typeEnvoi($usage)));
 
             return true;
         } catch (\Throwable $e) {
@@ -275,6 +276,12 @@ final class CodeDeConnexion
             $code,
             $inconnu,
         );
+    }
+
+    /** Sorte de l'envoi dans l'historique (EnvoiMessage::TYPES) : le code du personnel est à part. */
+    private static function typeEnvoi(string $usage): string
+    {
+        return self::PERSONNEL === $usage ? 'code_securite' : 'code_connexion';
     }
 
     private static function nom(string $usage): string

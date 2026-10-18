@@ -57,6 +57,12 @@ final class TypesCorbeille
         'prix_historique',
         'consommation_encres',
         'journal_machine',
+        // Liens refaits à chaque enregistrement de leur fiche (nomenclature d'un produit, fournisseurs
+        // d'un article, destinataires d'une campagne, notes d'une réponse reçue par la synchronisation).
+        'produit_article_stock',
+        'article_fournisseur',
+        'campagne_destinataire',
+        'note_article_sondage',
     ];
 
     /** Remplacement à la restauration : null (vide) ou « aleatoire » (valeur neuve). */

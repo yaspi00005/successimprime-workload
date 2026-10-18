@@ -95,6 +95,15 @@ final class TypesCorbeilleTest extends TestCase
         self::assertFalse(TypesCorbeille::exclue('clients'));
     }
 
+    public function testLesLiensRefaitsALEnregistrementSontRattaches(): void
+    {
+        // Enregistrer un produit refait sa nomenclature : retirer un article n'ouvre pas d'entrée.
+        foreach (['produit_article_stock', 'article_fournisseur', 'campagne_destinataire', 'note_article_sondage'] as $table) {
+            self::assertTrue(TypesCorbeille::rattachee($table), $table);
+        }
+        self::assertFalse(TypesCorbeille::rattachee('produits'));
+    }
+
     public function testLibelle(): void
     {
         self::assertSame('Client « Awa Traoré »', TypesCorbeille::libelle('clients', ['prenom' => 'Awa', 'nom' => 'Traoré', 'code' => 'CLI-7'], '7'));

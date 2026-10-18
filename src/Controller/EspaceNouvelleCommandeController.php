@@ -113,7 +113,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
             }
         }
 
-        $choix = $request->request->all() + $request->query->all();
+        $choix = self::saisies($request->request->all() + $request->query->all());
         $config = $this->service->produit((int) ($choix['produit'] ?? 0));
 
         if (null === $config) {
@@ -189,7 +189,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
             return $this->json(['erreur' => NouvelleCommande::FERMEE], 403);
         }
         $donnees = json_decode(mb_substr($request->getContent(), 0, 4000), true, 4);
-        $donnees = \is_array($donnees) ? $donnees : [];
+        $donnees = self::saisies(\is_array($donnees) ? $donnees : []);
         $config = $this->service->produit((int) ($donnees['produit'] ?? 0));
         if (null === $config) {
             return $this->json(['erreur' => 'Choisissez un produit.'], 422);
@@ -214,7 +214,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
         }
         $f = $fichiers->trouver($client, $id) ?? throw $this->createNotFoundException();
         $donnees = json_decode(mb_substr($request->getContent(), 0, 1000), true, 3);
-        $donnees = \is_array($donnees) ? $donnees : [];
+        $donnees = self::saisies(\is_array($donnees) ? $donnees : []);
         [$largeur, $hauteur] = self::taille($donnees['largeur'] ?? null, $donnees['hauteur'] ?? null, (string) ($donnees['unite'] ?? 'cm'));
         if (null === $f->getCommandeDetail()) {
             $fichiers->recontroler($f, $largeur, $hauteur);
@@ -564,6 +564,31 @@ final class EspaceNouvelleCommandeController extends AbstractController
         $h = self::nombre($hauteur);
 
         return [null !== $l ? round($l * $facteur, 1) : null, null !== $h ? round($h * $facteur, 1) : null];
+    }
+
+    /**
+     * Saisies de la page ou de l'appel du navigateur : des textes, et des
+     * listes pour les finitions et les fichiers. Une valeur d'une autre
+     * forme (tableau à la place d'un texte) est écartée.
+     *
+     * @param array<array-key, mixed> $brut
+     *
+     * @return array<string, string|list<string>>
+     */
+    private static function saisies(array $brut): array
+    {
+        $saisies = [];
+        foreach ($brut as $cle => $valeur) {
+            if (\in_array($cle, ['finitions', 'fichiers'], true)) {
+                if (\is_array($valeur)) {
+                    $saisies[$cle] = array_values(array_map('strval', array_filter($valeur, 'is_scalar')));
+                }
+            } elseif (\is_scalar($valeur)) {
+                $saisies[(string) $cle] = (string) $valeur;
+            }
+        }
+
+        return $saisies;
     }
 
     /** Nombre saisi (« 85 », « 85,5 ») ou null. */

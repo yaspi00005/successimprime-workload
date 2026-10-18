@@ -63,6 +63,11 @@ final class RapportsMailControllerTest extends TestCase
         $entrees = array_values(array_filter(NavigationExtension::ONGLETS['accueil'] ?? [], static fn (array $o): bool => 'app_rapports_mail' === $o['route']));
         self::assertCount(1, $entrees);
         self::assertSame(DroitsRapport::DROIT, $entrees[0]['role']);
+        // Fil d'Ariane « Accueil › … », onglets d'Accueil et module actif dans le menu, sur chaque page.
+        foreach (['app_rapports_mail', 'app_rapports_mail_apercu', 'app_rapports_mail_pdf'] as $route) {
+            self::assertSame('accueil', (new NavigationExtension())->sectionPourRoute($route), $route);
+        }
+        self::assertSame(\count(NavigationExtension::ONGLETS['accueil']) - 1, (new NavigationExtension())->ongletActif('app_rapports_mail_apercu'));
         self::assertSame('Africa/Bamako', RapportsMailCommand::FUSEAU);
     }
 }

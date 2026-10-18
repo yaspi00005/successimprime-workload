@@ -261,6 +261,7 @@ final class NavigationExtension extends AbstractExtension
         'app_utilisateurs_' => 'reglages',
         'app_mes_statistiques' => 'accueil',
         'app_rapport_semaine' => 'accueil',
+        'app_rapports_mail' => 'accueil',
         'app_employes_' => 'equipe',
         'app_equipe_employes_' => 'equipe',
         'app_acces_' => 'equipe',

@@ -210,6 +210,10 @@ final class RecetteSiteSocial
 
             return;
         }
+        // Carte remise pour les deux (une personne a pu la fermer avant) : annulé avec la transaction.
+        $this->em->getConnection()->executeStatement('UPDATE compte_client SET soutien_masque_le = NULL WHERE id IN (?, ?)', [$lecture->getId(), $titulaire->getId()]);
+        $this->em->refresh($lecture);
+        $this->em->refresh($titulaire);
         $sessionLecture = $this->navigateur->session($lecture, 'espace', [AppareilsClient::SESSION_VERSION => $lecture->getVersionSession()]);
         $sessionTitulaire = $this->navigateur->session($titulaire, 'espace', [AppareilsClient::SESSION_VERSION => $titulaire->getVersionSession()]);
         $tableau = $this->routeur->generate('app_espace_accueil');

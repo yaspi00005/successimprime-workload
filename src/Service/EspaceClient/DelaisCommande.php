@@ -178,6 +178,10 @@ final class DelaisCommande
     /** Acompte demandé à ce client, en % : celui de sa fiche, sinon celui des Réglages. */
     public function pourcentageAcompte(Clients $client): int
     {
+        // Client dispensé d'acompte (fiche client, direction) : rien d'avance, partout.
+        if ($client->isSansAcompte()) {
+            return 0;
+        }
         $pourcentage = $client->getAcompte() ?? (int) ($this->parametres->valeur('paiements', 'acompte') ?? self::ACOMPTE_DEFAUT);
 
         return max(0, min(100, $pourcentage));

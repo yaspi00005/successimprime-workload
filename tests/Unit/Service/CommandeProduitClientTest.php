@@ -76,15 +76,26 @@ final class CommandeProduitClientTest extends TestCase
         $this->service->proposer(self::bache()->setUniteVente(ProduitClient::UNITE_PIECE), 20, CommandeProduitClient::SAISIE_M2);
     }
 
+    public function testLigneSansFichierLieNiBatPasseAuPrepresse(): void
+    {
+        $ligne = $this->service->creerLigne((new Commandes())->setTva(18), self::bache(), 20, CommandeProduitClient::SAISIE_M2);
+
+        self::assertTrue($ligne->isPrePresseNecessaire());
+        self::assertNull($ligne->getFichierLie());
+    }
+
     public function testLigneCreeeSansPaoAvecLesDeuxQuantites(): void
     {
         $commande = (new Commandes())->setTva(18);
-        $ligne = $this->service->creerLigne($commande, self::bache(), 20, CommandeProduitClient::SAISIE_M2);
+        // Fichier traité lié à la taille du produit (MP02) : impression directe.
+        $bache = self::bache()->lierFichier(['l' => 4000.0, 'h' => 1500.0, 'nom' => 'bache.pdf', 'empreinte' => str_repeat('a', 64), 'octets' => 10, 'le' => '2026-10-18 10:00']);
+        $ligne = $this->service->creerLigne($commande, $bache, 20, CommandeProduitClient::SAISIE_M2);
 
         self::assertSame(4, $ligne->getQuantite());
         self::assertSame(20.0, $ligne->getQuantiteDemandee());
         self::assertSame('m2', $ligne->getUniteDemandee());
         self::assertFalse($ligne->isPrePresseNecessaire());
+        self::assertSame('bache.pdf', $ligne->getFichierLie()['nom'] ?? null);
         self::assertEqualsWithDelta(116_000, $ligne->getTotalTtc(), 1);
         self::assertContains($ligne, $commande->getCommandesDetails());
         self::assertSame(116_000, $commande->getTotalTtc());

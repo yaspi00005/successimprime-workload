@@ -1234,8 +1234,10 @@
 
 				{% if peutEncaisser and not dejaConfirmee %}
 					<div class="si-acompte">
-						<div class="d-flex justify-content-between"><strong>Acompte {{ reglage('paiements', 'acompte') }} %</strong><strong class="js-acompte" data-pourcentage="{{ reglage('paiements', 'acompte') }}">0 F</strong></div>
-						<div class="si-choix-pilules mt-2">
+						<div class="d-flex justify-content-between"><strong>Acompte <span class="js-acompte-pourcentage">{{ reglage('paiements', 'acompte') }}</span> %</strong><strong class="js-acompte" data-pourcentage="{{ reglage('paiements', 'acompte') }}" data-reglage="{{ reglage('paiements', 'acompte') }}">0 F</strong></div>
+						{# Client dispensé d'acompte (fiche client) : rien à encaisser d'avance, la commande part en production. #}
+						<p class="text-success small mt-2 mb-0 js-sans-acompte" hidden><i class="fas fa-check" aria-hidden="true"></i> Client dispensé d'acompte : la commande part en production sans paiement.</p>
+						<div class="si-choix-pilules mt-2 js-acompte-choix">
 							<label class="si-pilule"><input type="radio" name="acompte_mode" value="orange_money"><span>Orange Money</span></label>
 							<label class="si-pilule"><input type="radio" name="acompte_mode" value="especes"><span>Espèces</span></label>
 							<label class="si-pilule"><input type="radio" name="acompte_mode" value="plus_tard" checked><span>Plus tard</span></label>

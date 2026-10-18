@@ -29,6 +29,20 @@
 			<div><small>Support</small><b>{{ ligne.support.nom ?? '—' }}</b></div>
 		</section>
 
+		{% set etatLie = etat_fichier_lie(ligne) %}
+		{% if etatLie %}
+			{# Impression directe depuis « Mes produits » (docs/mes-produits.md) : le fichier lié, revérifié avant l'impression. #}
+			<section class="card si-mf-bloc">
+				<h2>Fichier lié</h2>
+				<div class="si-mf-ligne"><span><i class="fas fa-paperclip me-1"></i>{{ ligne.fichierLie.nom }}</span><b class="{{ etatLie == 'identique' ? 'si-p-ok' : 'si-p-alerte' }}">{{ {identique: 'empreinte identique ✓', modifie: 'fichier modifié depuis le lien', introuvable: 'introuvable dans le dossier', hors_atelier: 'sur le serveur de l\'atelier'}[etatLie] }}</b></div>
+				{% if etatLie == 'identique' %}
+					<a href="{{ path('app_commande_fichier_lie', {id: ligne.id}) }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm mt-2"><i class="fas fa-file-pdf me-1"></i>Ouvrir le PDF</a>
+				{% elseif etatLie != 'hors_atelier' %}
+					<p class="small text-danger mb-0 mt-2">N'imprimez pas : prévenez le prépresse, qui revérifie le fichier et refait le lien.</p>
+				{% endif %}
+			</section>
+		{% endif %}
+
 		{% if peutAgir and o.machine and not o.estTermine and not o.estAnnule %}
 			<section class="card si-mf-bloc">
 				<h2>Gâche et incidents</h2>

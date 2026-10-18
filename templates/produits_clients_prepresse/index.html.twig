@@ -1,0 +1,47 @@
+{% extends 'base.html.twig' %}
+
+{# Prépresse › Produits des clients à préparer (maquette MP02) : la file, un client par ligne, le plus ancien d'abord. #}
+
+{% block title %}Produits clients à préparer{% endblock %}
+{% block stylesheets %}<link href="{{ asset('css/produits-clients-prepresse.css') }}" rel="stylesheet">{% endblock %}
+
+{% block body %}
+	<div class="si-pcl-tete">
+		<div>
+			<small class="fil"><a href="{{ path('app_controle_pre_presse_index') }}" class="si-lien-discret">Prépresse</a> › Produits clients à préparer</small>
+			<h2>Produits clients à préparer</h2>
+		</div>
+		{% if clients is not empty %}<a href="{{ path('app_produits_clients_prepresse_client', {publicId: (clients|first).client.publicId}) }}" class="btn btn-danger btn-sm">Commencer par le plus ancien ›</a>{% endif %}
+	</div>
+
+	{% if not racineLisible %}
+		<div class="alert alert-warning">
+			{% if racine == '' %}Le dossier racine des clients n'est pas réglé : les fichiers traités ne peuvent pas être listés.{% else %}Le dossier racine des clients (<code>{{ racine }}</code>) n'est pas lisible depuis ce serveur.{% endif %}
+			{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_reglages_parametres_panneau', {tuile: 'produits_clients'}) }}">Régler le dossier</a>{% else %}Demandez à la direction de le régler.{% endif %}
+		</div>
+	{% endif %}
+
+	<div class="si-pcl-carte">
+		{% if clients is empty %}
+			<p class="text-muted mb-0">Rien à préparer : tous les produits ajoutés par les clients ont leur fichier lié.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-pcl-file mb-0">
+					<thead><tr><th>Client</th><th>Produits à lier</th><th>Tailles commandées à valider</th><th>Depuis</th><th></th></tr></thead>
+					<tbody>
+						{% for c in clients %}
+							<tr>
+								<td><b>{{ c.client.nomComplet }}</b><br><small class="text-muted">{{ c.client.code }}</small></td>
+								<td>{% if c.produits > 0 %}<span class="si-pcl-badge prep">{{ c.produits }}</span>{% else %}—{% endif %}</td>
+								<td>{% if c.tailles > 0 %}<span class="si-pcl-badge prep">{{ c.tailles }}</span>{% else %}—{% endif %}</td>
+								<td>{{ c.depuis|date('d/m H:i') }}</td>
+								<td class="text-end"><a href="{{ path('app_produits_clients_prepresse_client', {publicId: c.client.publicId}) }}" class="btn btn-light btn-sm">Lier les fichiers ›</a></td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+		<p class="si-pcl-note mb-0">Les fichiers restent sur le serveur de l'atelier, dans le dossier de chaque client (son code, puis « Produits »). Le site ne reçoit que la référence du fichier lié : nom, empreinte et tailles validées.</p>
+	</div>
+{% endblock %}

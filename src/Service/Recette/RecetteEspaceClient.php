@@ -100,7 +100,7 @@ final class RecetteEspaceClient
     ];
 
     /** Pages où un prix est voulu pour qui voit les montants (valideur) : catalogue et prix du jour. */
-    public const PAGES_PRIX = ['app_espace_nouvelle_commande', 'app_espace_produits', 'app_espace_promotions', 'app_espace_conception', 'app_espace_conception_demande', 'app_espace_conception_informations', 'app_espace_conception_ia', 'app_espace_devis'];
+    public const PAGES_PRIX = ['app_espace_nouvelle_commande', 'app_espace_produits', 'app_espace_promotions', 'app_espace_conception', 'app_espace_conception_demande', 'app_espace_conception_informations', 'app_espace_conception_ia', 'app_espace_devis', 'app_espace_panier'];
 
     /** Pages qui ne sont que des montants (le PDF d'un devis) : refusées à qui ne voit pas les montants. */
     public const PAGES_MONTANTS = ['app_espace_devis_pdf'];
@@ -426,6 +426,9 @@ final class RecetteEspaceClient
             if (null !== ($fiches[$libelle]['produit'] ?? null)) {
                 $chemin = $this->routeur->generate('app_espace_produits_calcul', ['id' => $fiches[$libelle]['produit']]);
                 $appels['calcul de Mes produits'] = ['app_espace_produits_calcul', $chemin, $this->navigateur->postJson($chemin, ['quantite' => '10', 'saisie' => '', 'inferieur' => false], $sessions[$libelle], $entetes)];
+                // « Ajouter au panier » (MP04) rend le volet du panier : ni prix ni total.
+                $chemin = $this->routeur->generate('app_espace_produits_panier', ['id' => $fiches[$libelle]['produit']]);
+                $appels['ajout au panier de Mes produits'] = ['app_espace_produits_panier', $chemin, $this->navigateur->postJson($chemin, ['quantite' => '10', 'saisie' => '', 'inferieur' => false], $sessions[$libelle], $entetes)];
             }
             try {
                 $chemin = null !== $modele ? $this->routeur->generate('app_espace_atelier_prix', ['modele' => $modele->getPublicId()->toRfc4122(), 'quantite' => 30, 'faces' => 2]) : null;

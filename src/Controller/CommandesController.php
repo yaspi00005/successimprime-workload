@@ -519,9 +519,14 @@ final class CommandesController extends AbstractController
                  * avec le montant et le moyen déjà remplis.
                  */
                 $modeAcompte = $request->request->getString('acompte_mode');
+                // Client dispensé d'acompte (fiche client) : rien à encaisser d'avance.
+                $sansAcompte = true === $commande->getClients()?->isSansAcompte();
+                $pourcentageAcompte = $commande->getClients()?->getAcompte() ?? (int) $parametres->valeur('paiements', 'acompte');
 
                 if (
-                    $this->commandeEstValidee($commande)
+                    !$sansAcompte
+                    && $pourcentageAcompte > 0
+                    && $this->commandeEstValidee($commande)
                     && \in_array($modeAcompte, [Paiements::MODE_ORANGE_MONEY, Paiements::MODE_ESPECES], true)
                     && $this->isGranted('ROLE_PAIEMENT_ENCAISSER')
                     && $commande->getMontantApayer() > 0
@@ -530,7 +535,7 @@ final class CommandesController extends AbstractController
 
                     return $this->redirectToRoute('app_commandes_paiement', [
                         'id' => $commande->getId(),
-                        'montant' => (int) ceil($commande->getMontantApayer() * (int) $parametres->valeur('paiements', 'acompte') / 100),
+                        'montant' => (int) ceil($commande->getMontantApayer() * min(100, $pourcentageAcompte) / 100),
                         'mode' => $modeAcompte,
                     ]);
                 }

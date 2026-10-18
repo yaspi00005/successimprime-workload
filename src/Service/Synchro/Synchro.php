@@ -14,6 +14,7 @@ use App\Entity\DemandeDevis;
 use App\Entity\Devis;
 use App\Entity\ModificationClient;
 use App\Entity\Paiements;
+use App\Entity\ProduitClient;
 use App\Entity\ParametresPaiement;
 use App\Entity\MessageClient;
 use App\Entity\PropositionClient;
@@ -28,6 +29,8 @@ use App\Entity\User;
 use App\Repository\ParametresPaiementRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Service\Corbeille\CaptureCorbeille;
+use App\Service\CommandeProduitClient;
+use App\Service\ProduitsClient\Aiguillage;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\NotificationsClient;
 use App\Service\NotificationService;
@@ -75,6 +78,8 @@ final class Synchro
         #[AutowireServiceClosure(DemandesSite::class)] private readonly \Closure $demandesSite,
         /** @var \Closure(): ReglagesSaisie (paliers des frais de livraison, contrôle des commandes en ligne) */
         #[AutowireServiceClosure(ReglagesSaisie::class)] private readonly \Closure $reglagesSaisie,
+        /** @var \Closure(): Aiguillage (« Mes produits » : impression directe des lignes à fichier lié, maquette MP06) */
+        #[AutowireServiceClosure(Aiguillage::class)] private readonly \Closure $aiguillage,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $url,
         #[Autowire('%env(SYNC_CLE)%')] private readonly string $cle,
@@ -443,6 +448,10 @@ final class Synchro
                         $this->em->flush();
                         $this->notifications->notifierRoles(['ROLE_PAIEMENT_ENCAISSER', 'ROLE_ADMIN'], \sprintf('Paiement Orange Money reçu en ligne pour la commande %s (%s) : à valider après contrôle du compte Orange Money en ligne.', $entite->getCommande()?->getNumero() ?? '?', $entite->getReference()), 'app_paiements_show', ['id' => $entite->getId()]);
                         $resultat = [self::RESULTAT_OK, 'Paiement Orange Money du client : à valider', $titre];
+                        // Acompte du panier (maquette MP05) payé : la commande est confirmée et ses lignes aiguillées (MP06).
+                        if (null !== $entite->getCommande() && !$entite->getCommande()->isStatut() && ($this->aiguillage)()->lancerSiPrete($entite->getCommande())) {
+                            $resultat = [self::RESULTAT_OK, 'Acompte du panier reçu : commande confirmée et aiguillée (paiement à valider)', $titre];
+                        }
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof Paiements && $entite->estAvoirEnLigne()) {
                         // Avoir utilisé par le client depuis son espace : la validation retire le montant de son solde.
                         $this->em->flush();
@@ -454,6 +463,19 @@ final class Synchro
                         $this->em->flush();
                         $this->notifications->notifierRoles(['ROLE_PAIEMENT_ENCAISSER', 'ROLE_ADMIN'], \sprintf('Dépôt Orange Money reçu en ligne sur le compte de %s (%s) : à valider après contrôle du compte Orange Money en ligne.', $entite->getClient()?->getNomComplet() ?? 'un client', $entite->getReference()), 'app_clients_show', ['publicId' => $entite->getClient()?->getPublicId()]);
                         $resultat = [self::RESULTAT_OK, 'Dépôt sur le compte du client : à valider', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof ProduitClient) {
+                        // Produit ajouté par le client dans son espace (maquette MP01) : le prépresse prépare son fichier.
+                        $this->em->flush();
+                        $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('Nouveau produit de %s à préparer : %s (%s).', $entite->getClient()?->getNomComplet() ?? 'un client', $entite->getNom(), $entite->getType() ?? 'produit'), 'app_produits_clients_prepresse_client', ['publicId' => $entite->getClient()?->getPublicId()]);
+                        $resultat = [self::RESULTAT_OK, 'Produit ajouté par le client : fichier à préparer', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof CommandesDetails && null !== $entite->getProduitClient() && null !== $entite->getCommande()) {
+                        // Ligne du panier : la commande part en production dès que l'acompte est réglé (ou le client dispensé).
+                        $this->em->flush();
+                        $lancee = !$entite->getCommande()->isStatut() && ($this->aiguillage)()->lancerSiPrete($entite->getCommande());
+                        if (!$lancee && $entite->getCommande()->isStatut()) {
+                            ($this->aiguillage)()->lancer($entite->getCommande(), null);
+                        }
+                        $resultat = [self::RESULTAT_OK, $lancee ? 'Ligne de « Mes produits » : commande confirmée et aiguillée' : 'Ligne de « Mes produits »', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->estRefuseeParEntreprise() && !$entite->isStatut()) {
                         // Refusée chez le client avant même d'arriver : classée, l'atelier n'en entend pas parler.
                         $entite->setDeleted(true);
@@ -509,7 +531,10 @@ final class Synchro
 
     /**
      * Ligne créée en ligne : elle ne saute la PAO que si elle vient d'un
-     * produit de ce client dont le BAT est validé (« Mes produits »).
+     * produit de ce client (« Mes produits ») commandé à une taille validée
+     * avec un fichier lié, ou dont le BAT est validé. Tout est recalculé
+     * d'après le produit du local (CommandeProduitClient::aiguillerALaCommande) :
+     * ce que le site a écrit sur la ligne ne décide de rien.
      */
     public static function verifierLigneEnLigne(CommandesDetails $ligne): void
     {
@@ -522,9 +547,12 @@ final class Synchro
         if (null !== $produit && (null === $client || $produit->getClient()?->getId() !== $client->getId())) {
             $ligne->setProduitClient($produit = null);
         }
-        if (null === $produit?->getBatValide()) {
-            $ligne->setPrePresseNecessaire(true)->setBatValide(false);
+        if (null === $produit) {
+            $ligne->setPrePresseNecessaire(true)->setBatValide(false)->setFichierLie(null);
+
+            return;
         }
+        CommandeProduitClient::aiguillerALaCommande($ligne, $produit);
     }
 
     private static function clientDe(?object $entite): ?Clients
@@ -757,6 +785,13 @@ final class Synchro
                 // Refusée par l'entreprise avant toute confirmation : elle ne vient pas à l'atelier.
                 $entite->setDeleted(true);
             }
+        }
+        if ($entite instanceof ProduitClient && isset($remontees['image'])) {
+            // Nouvelle image du client (règle « Nouvelle image ») : lien suspendu, le produit repasse au prépresse.
+            if (ProduitClient::LIEN_LIE === $entite->getEtatLien()) {
+                $entite->setEtatLien(ProduitClient::LIEN_SUSPENDU);
+            }
+            $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('%s a remplacé l\'image de « %s » : lien suspendu, fichier à préparer de nouveau.', $entite->getClient()?->getNomComplet() ?? 'Le client', $entite->getNom()), 'app_produits_clients_prepresse_client', ['publicId' => $entite->getClient()?->getPublicId()]);
         }
         if ($entite instanceof Clients) {
             $libelles = ['recevoirSms' => 'Recevoir les SMS', 'consentementMarketingLe' => 'Accord pour les offres', 'email' => 'E-mail'];

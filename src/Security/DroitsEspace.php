@@ -37,6 +37,8 @@ final class DroitsEspace
         'app_espace_nouvelle_commande',
         'app_espace_nouvelle_commande_paiement',
         'app_espace_produits',
+        // Panier de « Mes produits » (docs/mes-produits.md) : il ne sert qu'à commander.
+        'app_espace_panier',
         'app_espace_devis',
         'app_espace_devis_pdf',
         'app_espace_payer',

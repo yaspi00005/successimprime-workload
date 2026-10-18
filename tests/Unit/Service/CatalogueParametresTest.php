@@ -12,7 +12,7 @@ final class CatalogueParametresTest extends TestCase
         $tuiles = CatalogueParametres::tuiles();
 
         self::assertCount(6, CatalogueParametres::FAMILLES);
-        self::assertCount(43, $tuiles);
+        self::assertCount(44, $tuiles);
 
         foreach ($tuiles as $cle => $tuile) {
             self::assertArrayHasKey($tuile['famille'], CatalogueParametres::FAMILLES, $cle);

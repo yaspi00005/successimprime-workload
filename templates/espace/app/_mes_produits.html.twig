@@ -1,0 +1,8 @@
+{# Visuel d'un produit de « Mes produits » (image du client, photo du catalogue ou initiales). #}
+{% macro visuel(f, classe) %}
+	{% set p = f.p %}
+	{% set photo = f.image ? null : site_photo_produit(p.nom) %}
+	<span class="mp-visuel{{ photo ? ' mp-photo' }} {{ classe|default('') }}">
+		{% if f.image %}<img src="{{ path(f.imageRoute, {id: f.image}) }}" alt="" loading="lazy">{% elseif photo %}<img src="{{ asset(photo.src) }}" alt="" loading="lazy">{% else %}<span>{{ p.nom|split(' ')|slice(0, 2)|map(m => m|slice(0, 1))|join|upper }}</span>{% endif %}
+	</span>
+{% endmacro %}

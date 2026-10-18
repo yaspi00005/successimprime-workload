@@ -6,6 +6,7 @@
 {% block body %}
 	<div class="side-app" data-prepresse-ids-initiaux="{{ details|filter(d => d.controlesPrePresse is empty)|map(d => d.id)|join(',') }}">
 		{% include 'demandes_conception/_bandeau.html.twig' %}
+		{% include 'produits_clients_prepresse/_bandeau.html.twig' %}
 		<div class="page-header">
 			<div>
 				<h1 class="page-title">Contrôle prépresse</h1>

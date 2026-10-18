@@ -60,6 +60,7 @@ final class EditionClient
         'delaiPaiement' => ['Délai de paiement', 'conditions'],
         'plafondCredit' => ['Plafond de crédit', 'conditions'],
         'acompte' => ['Acompte à la commande', 'conditions'],
+        'sansAcompte' => ['Dispensé d\'acompte', 'conditions'],
         'moyenPrefere' => ['Moyen préféré', 'conditions'],
     ];
 
@@ -114,6 +115,7 @@ final class EditionClient
             'delai' => $c->getDelaiPaiement(),
             'plafond' => $c->getPlafondCredit(),
             'acompte' => $c->getAcompte(),
+            'sansAcompte' => $c->isSansAcompte(),
             'moyen' => $c->getMoyenPrefere(),
             'origine' => $c->getOrigine(),
             'suivi' => $c->getSuiviPar()?->getId(),
@@ -215,7 +217,22 @@ final class EditionClient
             }
         }
         if ($a('acompte')) {
-            $c->setAcompte(null !== $texte('acompte') ? (int) $d['acompte'] : null);
+            $acompte = null !== $texte('acompte') ? (int) $d['acompte'] : null;
+            // Un acompte à 0 % revient à dispenser le client : même règle que la case.
+            if (0 === $acompte && !$direction && 0 !== $c->getAcompte()) {
+                $demandes[] = 'acompte de 0 %';
+            } else {
+                $c->setAcompte($acompte);
+            }
+        }
+        // Dispensé d'acompte (docs/clients.md) : la case se change par la direction ; sinon, demande à la direction.
+        if ($a('sansAcompte')) {
+            $sans = (bool) $d['sansAcompte'];
+            if ($sans !== $c->isSansAcompte() && !$direction) {
+                $demandes[] = $sans ? 'dispense d\'acompte' : 'fin de la dispense d\'acompte';
+            } else {
+                $c->setSansAcompte($sans);
+            }
         }
 
         // Contacts : vérifiés avant d'appliquer quoi que ce soit.
@@ -427,6 +444,7 @@ final class EditionClient
             'delaiPaiement' => $c->getDelaiPaiementLabel(),
             'plafondCredit' => null !== $c->getPlafondCredit() ? self::francs($c->getPlafondCredit()) : null,
             'acompte' => null !== $c->getAcompte() ? $c->getAcompte().' %' : null,
+            'sansAcompte' => $c->isSansAcompte() ? 'Oui' : 'Non',
             'moyenPrefere' => $c->getMoyenPrefereLabel(),
         ];
     }

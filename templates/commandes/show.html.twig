@@ -64,7 +64,7 @@
 		<div class="alert alert-secondary">
 			<strong>Refusée par le client</strong> ({{ commande.valideePar ?? 'valideur de l\'entreprise' }}){% if commande.motifRefusEntreprise %} : « {{ commande.motifRefusEntreprise }} »{% endif %}.
 		</div>
-	{% elseif commande.canal == 'en_ligne' and not commande.statut and not annulee %}
+	{% elseif commande.canal == 'en_ligne' and not commande.statut and not annulee and not depuis_mes_produits(commande) %}
 		<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
 			<div class="flex-grow-1"><strong>Commande passée par le client dans son espace.</strong> Le prix affiché est indicatif : vérifiez le prix et le fichier, puis confirmez-la. Elle ne part pas à l'atelier avant.{% if commande.codeSaisi and not commande.codePromo and not commande.motifCodePromo %} Le client a tapé le code promo <b>{{ commande.libelleCodePromo }}</b> : il est revérifié quand vous enregistrez.{% endif %}</div>
 			{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_edit', {id: commande.id}) }}" class="btn btn-sm btn-danger">Vérifier et confirmer</a>{% endif %}
@@ -131,6 +131,7 @@
 	</li>
 		</ul>
 	</div>
+	{% include 'commandes/_aiguillage.html.twig' %}
 	{# ---------- Suivi ---------- #}
 	<div class="card si-bloc">
 		<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -191,7 +192,7 @@
 									{% endif %}
 									{% if detail.machine %}<small class="d-block text-muted">{{ detail.machine.nom }}</small>{% endif %}</span>
 								</td>
-								<td data-libelle="BAT"><span class="si-pastille si-pastille-{{ pc.batValide ? 'vert' : 'orange' }}">{{ pc.batValide ? 'BAT réutilisé' : 'BAT à faire' }}</span></td>
+								<td data-libelle="BAT"><span class="si-pastille si-pastille-{{ detail.fichierLie or (pc.batValide and not detail.prePresseNecessaire) ? 'vert' : 'orange' }}">{{ detail.fichierLie ? 'Fichier lié' : (pc.batValide and not detail.prePresseNecessaire ? 'BAT réutilisé' : 'BAT à faire') }}</span></td>
 								<td data-libelle="Produit" class="text-end">{{ detail.quantiteProduite }}</td>
 								<td data-libelle="Livré" class="text-end">{{ detail.quantiteLivree }}</td>
 								<td data-libelle="Reste" class="text-end">{{ detail.quantiteRestanteLivraison }}</td>

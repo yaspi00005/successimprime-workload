@@ -290,6 +290,18 @@ final class CatalogueParametres
                 'note' => 'L\'outil de montage part de ces valeurs. Depuis un travail PAO, le bouton « Monter » charge le fichier, le format et la quantité, et range le PDF dans la commande.',
             ],
 
+            // « Mes produits » (docs/mes-produits.md, maquette MP02) : le dossier des clients sur le serveur de
+            // l'atelier, où le prépresse range les fichiers traités. ERP local seulement : le site n'en sait rien.
+            'produits_clients' => [
+                'famille' => 'atelier', 'libelle' => 'Dossier des clients', 'icone' => 'fa-folder-open',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PREPRESSE'], 'route' => 'app_produits_clients_prepresse_index',
+                'champs' => [
+                    ['cle' => 'dossier_racine', 'type' => 'texte', 'longueur' => 255, 'libelle' => 'Dossier racine des clients', 'aide' => 'Tel que le voit le serveur de l\'ERP, par exemple D:\\Clients ou /srv/clients. Un dossier par client, dont le nom commence par son code (« C-0231 Awa Diarra »), avec un sous-dossier « Produits ».', 'defaut' => ''],
+                ],
+                'motsCles' => ['Dossier local des clients · D:\\Clients', 'Fichiers traités des produits du client', 'Lier un fichier · empreinte SHA-256'],
+                'note' => 'Le prépresse choisit le fichier dans ce dossier pour chaque produit du client : l\'ERP calcule son empreinte et le contrôle. Le fichier reste sur le serveur de l\'atelier ; le site en ligne ne garde que son nom, son empreinte et les tailles validées. L\'opérateur imprime depuis un poste qui a accès à ce dossier.',
+            ],
+
             // ---------- Personnel ----------
             'utilisateurs' => [
                 'famille' => 'personnel', 'libelle' => 'Utilisateurs et rôles', 'icone' => 'fa-user-friends',

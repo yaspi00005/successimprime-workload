@@ -3,10 +3,11 @@
 namespace App\Controller;
 
 use App\Entity\CompteClient;
+use App\Entity\ProduitClient;
 use App\Repository\CompteClientRepository;
-use App\Service\EspaceClient\CompteEntreprise;
+use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\MesProduits;
-use App\Service\EspaceClient\NouvelleCommande;
+use App\Service\EspaceClient\Panier;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,9 +15,12 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Espace client, « Mes produits » (maquettes P01 à P03) : le client
- * recommande ses produits déjà validés en pièces, en m² ou par lot, sans
- * nouveau BAT. Chacun ne voit que les produits de sa fiche.
+ * Espace client, « Mes produits » (maquettes MP01, MP03, MP04, MP07) : le
+ * catalogue du client, indépendant des commandes. Il ajoute ses produits
+ * (image, nom, type, dimensions) sans rien commander ; l'atelier prépare
+ * le fichier une fois ; il choisit ensuite la taille et la quantité et
+ * met le produit au panier (EspacePanierController). Chacun ne voit que
+ * les produits de sa fiche ; un demandeur ne reçoit aucun prix.
  */
 #[Route('/espace/produits', name: 'app_espace_produits')]
 final class EspaceProduitsController extends AbstractController
@@ -24,20 +28,20 @@ final class EspaceProduitsController extends AbstractController
     public function __construct(
         private readonly CompteClientRepository $comptes,
         private readonly MesProduits $mesProduits,
-        private readonly CompteEntreprise $compteEntreprise,
+        private readonly Panier $panier,
     ) {
     }
 
     #[Route('', name: '', methods: ['GET'])]
-    public function liste(): Response
+    public function liste(Request $request): Response
     {
         $compte = $this->compte();
         $client = $compte->getClient();
         // Un demandeur ne reçoit aucun prix (CompteClient::montantsVisibles).
         $montants = $compte->montantsVisibles();
         $fiches = array_map(fn ($p): array => $this->mesProduits->fiche($p, $montants), $this->mesProduits->liste($client));
-        $categories = array_count_values(array_filter(array_map(static fn (array $f): ?string => $f['categorie'], $fiches)));
-        ksort($categories);
+        $familles = array_count_values(array_filter(array_map(static fn (array $f): ?string => $f['famille'], $fiches)));
+        ksort($familles);
 
         return $this->render('espace/app/produits.html.twig', [
             'onglet' => 'commandes',
@@ -45,14 +49,71 @@ final class EspaceProduitsController extends AbstractController
             'peutPayer' => $compte->peut(CompteClient::DROIT_PAYEUR),
             'peutValider' => $compte->peut(CompteClient::DROIT_VALIDEUR),
             'fiches' => $fiches,
-            'categories' => $categories,
-            'entreprise' => CompteClient::clientAPlusieursComptes($client),
-            'demandeValidation' => $this->compteEntreprise->demandeValidation($compte),
-            'max' => MesProduits::SELECTION_MAX,
+            'familles' => $familles,
+            'panier' => $this->panier->detail($compte, $montants),
+            'types' => array_keys(ProduitClient::TYPES),
+            'extensions' => FichiersClient::extensions(),
+            'morceau' => FichiersClient::MORCEAU,
+            'ajoutMax' => MesProduits::AJOUT_MAX,
+            // « Commander à nouveau » (RecommanderClient) : ouvre la feuille de ce produit.
+            'ouvrir' => ['produit' => $request->query->getString('produit'), 'quantite' => $request->query->getString('quantite'), 'saisie' => $request->query->getString('saisie')],
         ]);
     }
 
-    /** Conversion et prix pour la quantité saisie (même calcul qu'à la commande) ; sans prix pour un demandeur. */
+    /** MP01 : le client enregistre ses produits (une ligne chacun), sans commander. */
+    #[Route('/ajouter', name: '_ajouter', methods: ['POST'])]
+    public function ajouter(Request $request, FichiersClient $fichiers): Response
+    {
+        if (!$this->isCsrfTokenValid('espace', $request->request->getString('_token'))) {
+            throw $this->createAccessDeniedException('La page a expiré. Réessayez.');
+        }
+        $compte = $this->compte();
+        $client = $compte->getClient();
+        $lignes = [];
+        foreach (\array_slice($request->request->all('produits'), 0, MesProduits::AJOUT_MAX + 1) as $l) {
+            if (!\is_array($l)) {
+                continue;
+            }
+            $image = ctype_digit((string) ($l['image'] ?? '')) ? $fichiers->trouver($client, (int) $l['image']) : null;
+            $lignes[] = ['nom' => mb_substr((string) ($l['nom'] ?? ''), 0, 200), 'type' => (string) ($l['type'] ?? ''), 'dimensions' => mb_substr((string) ($l['dimensions'] ?? ''), 0, 60), 'image' => $image];
+        }
+        try {
+            $crees = $this->mesProduits->ajouterProduits($client, $lignes, new \DateTimeImmutable());
+            $this->addFlash('succes', \sprintf('%d produit%s enregistré%s. Notre atelier prépare le fichier d\'impression de chacun, une seule fois (en général sous 24 h ouvrées) : vous pourrez ensuite les commander quand vous voulez.', \count($crees), \count($crees) > 1 ? 's' : '', \count($crees) > 1 ? 's' : ''));
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_espace_produits');
+    }
+
+    /** Règle « Nouvelle image » : le lien est suspendu et le produit repasse au prépresse. */
+    #[Route('/{id}/image', name: '_image', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['POST'])]
+    public function image(string $id, Request $request, FichiersClient $fichiers): Response
+    {
+        if (!$this->isCsrfTokenValid('espace', $request->request->getString('_token'))) {
+            throw $this->createAccessDeniedException('La page a expiré. Réessayez.');
+        }
+        $compte = $this->compte();
+        $produit = $this->mesProduits->trouver($compte->getClient(), $id) ?? throw $this->createNotFoundException();
+        $image = $fichiers->trouver($compte->getClient(), $request->request->getInt('image'));
+        try {
+            if (null === $image) {
+                throw new \DomainException('Choisissez la nouvelle image.');
+            }
+            $etaitPret = $produit->estPret();
+            $this->mesProduits->remplacerImage($produit, $image, new \DateTimeImmutable());
+            $this->addFlash('succes', $etaitPret
+                ? \sprintf('Nouvelle image pour « %s ». L\'atelier refait le fichier d\'impression ; en attendant, le produit est « en préparation ».', $produit->getNom())
+                : \sprintf('Nouvelle image pour « %s ». L\'atelier en tiendra compte.', $produit->getNom()));
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_espace_produits');
+    }
+
+    /** Conversion et prix pour la taille et la quantité choisies (même calcul qu'à la commande) ; sans prix pour un demandeur. */
     #[Route('/{id}/calcul', name: '_calcul', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['POST'])]
     public function calcul(string $id, Request $request): JsonResponse
     {
@@ -61,51 +122,74 @@ final class EspaceProduitsController extends AbstractController
         }
         $compte = $this->compte();
         $produit = $this->mesProduits->trouver($compte->getClient(), $id) ?? throw $this->createNotFoundException();
-        $donnees = json_decode(mb_substr($request->getContent(), 0, 2000), true, 3);
-        $donnees = \is_array($donnees) ? $donnees : [];
+        $donnees = self::donnees($request);
         try {
-            $r = $this->mesProduits->calculer($produit, self::nombre($donnees['quantite'] ?? null), (string) ($donnees['saisie'] ?? ''), (bool) ($donnees['inferieur'] ?? false));
+            $r = $this->mesProduits->calculer($produit, self::nombre($donnees['quantite'] ?? null), (string) ($donnees['saisie'] ?? ''), (bool) ($donnees['inferieur'] ?? false), self::taille($donnees['taille'] ?? null));
 
             return $this->json(MesProduits::calculPourLaPage($r, $compte->montantsVisibles()));
-        } catch (\DomainException $e) {
+        } catch (\DomainException|\InvalidArgumentException $e) {
             return $this->json(['erreur' => $e->getMessage()], 422);
         }
     }
 
-    #[Route('/commander', name: '_commander', methods: ['POST'])]
-    public function commander(Request $request, NouvelleCommande $nouvelleCommande): Response
+    /** MP04 : « Ajouter au panier ». Rend le panier recalculé pour le volet de droite. */
+    #[Route('/{id}/panier', name: '_panier', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['POST'])]
+    public function ajouterAuPanier(string $id, Request $request): JsonResponse
     {
-        if (!$this->isCsrfTokenValid('espace', $request->request->getString('_token'))) {
-            throw $this->createAccessDeniedException('La page a expiré. Réessayez.');
+        if (!$this->isCsrfTokenValid('espace', (string) $request->headers->get('X-CSRF-TOKEN'))) {
+            return $this->json(['erreur' => 'La page a expiré. Rechargez-la.'], 403);
         }
         $compte = $this->compte();
-        $client = $compte->getClient();
+        $produit = $this->mesProduits->trouver($compte->getClient(), $id) ?? throw $this->createNotFoundException();
+        $donnees = self::donnees($request);
         try {
-            $selection = [];
-            foreach (\array_slice($request->request->all('lignes'), 0, MesProduits::SELECTION_MAX + 1) as $ligne) {
-                $produit = \is_array($ligne) ? $this->mesProduits->trouver($client, (string) ($ligne['produit'] ?? '')) : null;
-                if (null === $produit) {
-                    throw new \DomainException('Un produit de la sélection n\'est plus disponible. Rechargez la page.');
-                }
-                $selection[] = ['produit' => $produit, 'quantite' => self::nombre($ligne['quantite'] ?? null), 'saisie' => (string) ($ligne['saisie'] ?? ''), 'inferieur' => '1' === ($ligne['inferieur'] ?? '')];
-            }
-            $commande = $this->mesProduits->commander($client, $selection, new \DateTimeImmutable());
-            $this->compteEntreprise->preparerCommande($compte, $commande, $request->request->getString('bon_commande'), null);
-            $nouvelleCommande->enregistrer();
-            if ($commande->attendValidationEntreprise()) {
-                $this->compteEntreprise->prevenirValideurs($commande, $compte);
-                $this->addFlash('succes', \sprintf('Demande %s envoyée. Elle part à l\'atelier dès qu\'une personne qui valide pour votre entreprise l\'accepte.', $commande->getNumero()));
-            } else {
-                $sansPao = [] === array_filter($commande->getCommandesDetails()->toArray(), static fn ($l): bool => $l->isPrePresseNecessaire());
-                $this->addFlash('succes', \sprintf('Commande %s envoyée. %s', $commande->getNumero(), $sansPao ? 'Vos BAT sont déjà validés : l\'atelier confirme et lance l\'impression.' : 'L\'atelier confirme et vous prévient.'));
-            }
-
-            return $this->redirectToRoute('app_espace_commande', ['id' => (string) $commande->getPublicId()]);
-        } catch (\DomainException $e) {
-            $this->addFlash('error', $e->getMessage());
-
-            return $this->redirectToRoute('app_espace_produits');
+            $this->panier->ajouter($compte, $produit, self::nombre($donnees['quantite'] ?? null), (string) ($donnees['saisie'] ?? ''), (bool) ($donnees['inferieur'] ?? false), self::taille($donnees['taille'] ?? null));
+        } catch (\DomainException|\InvalidArgumentException $e) {
+            return $this->json(['erreur' => $e->getMessage()], 422);
         }
+
+        return $this->json(self::panierPourLaPage($this->panier->detail($compte, $compte->montantsVisibles()), $compte->montantsVisibles()));
+    }
+
+    /**
+     * Ce que le volet du panier montre (nom, taille, quantité, prix pour qui
+     * les voit, impression directe ou BAT).
+     *
+     * @param array{articles: list<array<string, mixed>>, total: int, directs: int, avecBat: int} $panier
+     *
+     * @return array<string, mixed>
+     */
+    public static function panierPourLaPage(array $panier, bool $montants): array
+    {
+        // Un demandeur ne reçoit aucune clé de montant (docs/espace-client.md).
+        $articles = array_map(static fn (array $a): array => [
+            'nom' => $a['fiche']['p']->getNom(),
+            'resume' => trim(($a['calcul']['taille']['libelle'] ?? '').' · '.$a['calcul']['resume'], ' ·'),
+            'direct' => (bool) $a['calcul']['direct'],
+            'image' => $a['fiche']['id'],
+        ] + ($montants ? ['montant' => $a['calcul']['montant'] ?? null] : []), $panier['articles']);
+
+        return ['nombre' => \count($panier['articles']), 'articles' => $articles] + ($montants ? ['total' => $panier['total']] : []);
+    }
+
+    /** @return array<string, mixed> */
+    private static function donnees(Request $request): array
+    {
+        $donnees = json_decode(mb_substr($request->getContent(), 0, 2000), true, 4);
+
+        return \is_array($donnees) ? $donnees : [];
+    }
+
+    /** {l, h} en mm, ou null (taille du produit). */
+    private static function taille(mixed $valeur): ?array
+    {
+        if (!\is_array($valeur)) {
+            return null;
+        }
+        $l = self::nombre($valeur['l'] ?? null);
+        $h = self::nombre($valeur['h'] ?? null);
+
+        return $l > 0 && $h > 0 ? Panier::tailleLue(['l' => $l, 'h' => $h]) : throw new \DomainException('Indiquez la largeur et la hauteur en mm.');
     }
 
     /** « 20 », « 4,5 » ; 0 si illisible. */

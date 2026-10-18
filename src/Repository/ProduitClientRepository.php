@@ -35,15 +35,17 @@ class ProduitClientRepository extends ServiceEntityRepository
 
         $existantes = $this->createQueryBuilder('p')
             ->select('p.reference')
-            ->where('p.reference LIKE :prefixe')
+            // Les produits créés en ligne par le client ont le préfixe W- (synchronisation) : même suite de numéros.
+            ->where('p.reference LIKE :prefixe OR p.reference LIKE :prefixeEnLigne')
             ->setParameter('prefixe', $prefixe.'%')
+            ->setParameter('prefixeEnLigne', 'W-'.$prefixe.'%')
             ->getQuery()
             ->getSingleColumnResult();
 
         $rang = 1;
 
         foreach ($existantes as $reference) {
-            $rang = max($rang, (int) substr($reference, \strlen($prefixe)) + 1);
+            $rang = max($rang, (int) substr(preg_replace('/^W-/', '', $reference), \strlen($prefixe)) + 1);
         }
 
         return $prefixe.str_pad((string) $rang, 2, '0', \STR_PAD_LEFT);

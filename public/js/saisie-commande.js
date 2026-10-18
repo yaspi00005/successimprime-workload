@@ -395,7 +395,8 @@
             });
             const acompte = page.querySelector('.js-acompte');
             if (acompte) {
-                acompte.textContent = montant(Math.ceil(aPayer * (Number(acompte.dataset.pourcentage) || 50) / 100)) + ' F';
+                const pourcentage = acompte.dataset.pourcentage === '' || acompte.dataset.pourcentage === undefined ? 50 : Number(acompte.dataset.pourcentage);
+                acompte.textContent = montant(Math.ceil(aPayer * pourcentage / 100)) + ' F';
             }
         }
 
@@ -481,6 +482,37 @@
             if (adresse && !adresse.value && d.adresse) {
                 adresse.value = d.adresse;
             }
+            acompteDuClient(d);
+        }
+
+        /* Acompte : celui de la fiche du client, sinon le réglage ; rien pour un client dispensé. */
+        function acompteDuClient(d) {
+            const acompte = page.querySelector('.js-acompte');
+            if (!acompte) {
+                return;
+            }
+            const sans = d && d.sansAcompte === '1';
+            const pourcentage = d && d.acompte !== undefined && d.acompte !== '' ? d.acompte : acompte.dataset.reglage;
+            acompte.dataset.pourcentage = sans ? '0' : pourcentage;
+            const libelle = page.querySelector('.js-acompte-pourcentage');
+            if (libelle) {
+                libelle.textContent = sans ? '0' : pourcentage;
+            }
+            const info = page.querySelector('.js-sans-acompte');
+            if (info) {
+                info.hidden = !sans;
+            }
+            const choixAcompte = page.querySelector('.js-acompte-choix');
+            if (choixAcompte) {
+                choixAcompte.hidden = sans;
+                if (sans) {
+                    const tard = choixAcompte.querySelector('input[value="plus_tard"]');
+                    if (tard) {
+                        tard.checked = true;
+                    }
+                }
+            }
+            rafraichir();
         }
 
         if (select) {

@@ -43,3 +43,7 @@ Fait :
 Reste :
 
 - Faire lire ces feuilles par le coût de revient (papier) et les compteurs de la machine, quand le coût à la feuille sera branché.
+
+## Voir aussi
+
+- Redimensionner une image client, ajouter un contour et générer le fichier final ou le BAT : `docs/prepresse-retouche.md` (bouton « Redimensionner » de la fiche prépresse).

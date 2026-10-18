@@ -32,6 +32,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Fiche client (ERP local) › « Envoyer l'accès à l'espace client » : message WhatsApp avec identifiant, code et lien ; première connexion avec ce code, mot de passe obligatoire et e-mail facultatif ; le même code ne sert pas deux fois.
 - [ ] Nouvelle commande avec fichier : elle arrive au local en brouillon « à confirmer » et ne peut pas être payée avant la confirmation.
 - [ ] BAT : poser des repères sur l'image, demander une modification ; au local, la prépresse reçoit le texte. Valider un autre BAT.
+- [ ] Retouche prépresse (docs/prepresse-retouche.md) : demo.seydou redimensionne une image client, ajoute un contour, génère le PDF (nouvelle version, original intact) puis l'envoie comme BAT ; une image trop petite bloque « Valider » tant qu'on n'a pas changé les réglages ou donné une raison, que le client lit sous le BAT. Un compte sans Prépresse reçoit « accès refusé » sur `/pre-presse/travail/…/retouche`.
 - [ ] Factures et paiement Orange Money : le paiement arrive au local « en attente », sans compte, et n'est jamais validé tout seul.
 - [ ] Réclamation avec photo : la photo n'est visible que du client et du personnel autorisé.
 - [ ] Mes produits : recommander un produit ; le prix vient de la fiche du produit, pas de la page.

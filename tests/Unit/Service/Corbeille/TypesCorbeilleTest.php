@@ -143,6 +143,8 @@ final class TypesCorbeilleTest extends TestCase
         self::assertSame('État', TypesCorbeille::nomColonne('etat'), 'majuscule accentuée');
         self::assertSame('Créé le', TypesCorbeille::nomColonne('created_at'), 'colonne technique en anglais');
         self::assertSame('Moyen préféré', TypesCorbeille::nomColonne('moyen_prefere'));
+        self::assertSame('Textile, Hôtellerie', TypesCorbeille::valeurLisible('["Textile","Hôtellerie"]'), 'liste rangée en JSON');
+        self::assertSame('[{"a":1}]', TypesCorbeille::valeurLisible('[{"a":1}]'), 'objets : laissés tels quels');
         self::assertSame('Client', TypesCorbeille::nomLien('client_id', 'clients'));
         self::assertSame('Compte du personnel', TypesCorbeille::nomLien('user_id', 'user'));
         self::assertSame('Créé par', TypesCorbeille::nomLien('cree_par_id', 'user'), 'deux liens vers le personnel, deux noms');

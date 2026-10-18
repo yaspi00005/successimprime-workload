@@ -335,6 +335,11 @@ final class TypesCorbeille
 
             return number_format($nombre, $decimales, ',', ' ');
         }
+        // Liste rangée en JSON (étiquettes d'un client) : « Textile, Hôtellerie » plutôt que ["Textile","Hôtellerie"].
+        if (str_starts_with($texte, '[') && \is_array($liste = json_decode($texte, true)) && array_is_list($liste)
+            && [] === array_filter($liste, static fn (mixed $v): bool => !\is_scalar($v))) {
+            return [] === $liste ? '—' : implode(', ', array_map('strval', $liste));
+        }
 
         return $texte;
     }

@@ -223,6 +223,10 @@ class DevisController extends AbstractController
 
             return $this->redirectToRoute('app_devis_show', ['id' => $devi->getId()]);
         }
+        if ([] === $devi->getCanauxEnvoi() && !$request->isMethod('POST')) {
+            // Brouillon d'avant le suivi des devis : mêmes moyens d'envoi qu'un nouveau devis.
+            $devi->setCanauxEnvoi([Devis::CANAL_ESPACE, Devis::CANAL_WHATSAPP]);
+        }
         $form = $this->createForm(DevisType::class, $devi);
         $form->handleRequest($request);
 

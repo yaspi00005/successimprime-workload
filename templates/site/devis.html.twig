@@ -58,7 +58,7 @@
 					</div>
 					<p class="si-aide" id="aide-taille"{% if fiche and not fiche.taille %} hidden{% endif %}>Une estimation de la taille suffit : nous la vérifions avec vous.</p>
 					{# Petites pièces au m² (autocollants, étiquettes) : quantité en pièces ou en m². #}
-					{{ include('partials/_pieces_m2.html.twig', {id: 'pieces-m2', largeur: '#champ-largeur', hauteur: '#champ-hauteur', quantite: '#champ-quantite', unite: saisie.unite_quantite ?? 'piece', m2: saisie.quantite_m2 ?? '', erreur: erreurs.quantite_m2 ?? null, masque: not (fiche and fiche.m2)}) }}
+					{{ include('partials/_pieces_m2.html.twig', {id: 'pieces-m2', largeur: '#champ-largeur', hauteur: '#champ-hauteur', quantite: '#champ-quantite', arrondi_mm: 1, unite: saisie.unite_quantite ?? 'piece', m2: saisie.quantite_m2 ?? '', erreur: erreurs.quantite_m2 ?? null, masque: not (fiche and fiche.m2)}) }}
 
 					<div class="si-champ si-finitions" id="bloc-finitions"{% if not fiche or not fiche.finitions %} hidden{% endif %}>
 						<span class="si-champ-libelle" id="libelle-finitions">Finitions</span>

@@ -8,6 +8,8 @@
 	- largeur, hauteur, quantite : sélecteurs CSS des champs de la page
 	  (ex. '#champ-largeur') ; la quantité reste le nombre de pièces ;
 	- unite_cote : 'cm' (défaut), 'mm' ou 'm' ;
+	- arrondi_mm : 1 quand le serveur garde les côtés au mm près
+	  (FormulaireDemande::centimetres), sinon au dixième de mm (défaut) ;
 	- unite : 'piece' (défaut) ou 'm2' ; m2 : surface déjà tapée ;
 	- nom_unite, nom_m2 : noms envoyés (défaut 'unite_quantite', 'quantite_m2') ;
 	- erreur : message à montrer sous la surface ;
@@ -21,7 +23,7 @@
 {% set nom_m2 = nom_m2 ?? 'quantite_m2' %}
 {% set erreur = erreur ?? null %}
 {{ site_styles('css/pieces-m2.css') }}
-<div class="si-pm2" id="{{ id }}" data-pieces-m2 data-espacement="{{ pieces_m2_espacement() }}" data-largeur="{{ largeur }}" data-hauteur="{{ hauteur }}" data-quantite="{{ quantite }}" data-unite-cote="{{ unite_cote ?? 'cm' }}"{% if masque ?? false %} hidden{% endif %}>
+<div class="si-pm2" id="{{ id }}" data-pieces-m2 data-espacement="{{ pieces_m2_espacement() }}" data-largeur="{{ largeur }}" data-hauteur="{{ hauteur }}" data-quantite="{{ quantite }}" data-unite-cote="{{ unite_cote ?? 'cm' }}" data-arrondi-mm="{{ (arrondi_mm ?? 0.1) >= 1 ? 1 : 0.1 }}"{% if masque ?? false %} hidden{% endif %}>
 	<fieldset class="si-pm2-unite">
 		<legend>Quantité en</legend>
 		<label class="si-pm2-choix"><input type="radio" name="{{ nom_unite }}" value="piece" data-pm2-unite{% if unite == 'piece' %} checked{% endif %}><span>pièces</span></label>

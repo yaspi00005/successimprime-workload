@@ -93,11 +93,16 @@
         return Number.isFinite(valeur) ? valeur : 0;
     }
 
-    /** Côté en mm, au dixième (comme le serveur). */
-    function enMm(valeur, unite) {
+    /**
+     * Côté en mm, arrondi comme le serveur : au dixième de mm par défaut,
+     * au mm près quand la page le demande (data-arrondi-mm="1" : la demande
+     * de devis du site garde la taille au millimètre).
+     */
+    function enMm(valeur, unite, pasMm) {
         const facteur = unite === 'mm' ? 1 : (unite === 'm' ? 1000 : 10);
+        const parMm = pasMm >= 1 ? 1 : 10;
 
-        return Math.round(valeur * facteur * 10) / 10;
+        return Math.round(valeur * facteur * parMm) / parMm;
     }
 
     /** Change la valeur d'un champ et prévient les autres scripts de la page. */
@@ -165,7 +170,8 @@
         }
 
         const unite = bloc.dataset.uniteCote || 'cm';
-        const c = calculer(enMm(lireNombre(champDe(bloc, 'largeur')), unite), enMm(lireNombre(champDe(bloc, 'hauteur')), unite), parseFloat(bloc.dataset.espacement || '1'));
+        const pas = parseFloat(bloc.dataset.arrondiMm || '0.1');
+        const c = calculer(enMm(lireNombre(champDe(bloc, 'largeur')), unite, pas), enMm(lireNombre(champDe(bloc, 'hauteur')), unite, pas), parseFloat(bloc.dataset.espacement || '1'));
 
         if (radioM2) {
             radioM2.disabled = Boolean(c && c.tropGrande);
@@ -336,7 +342,7 @@
             return null;
         }
 
-        const c = calculer(enMm(infos.largeur, 'm'), enMm(infos.longueur, 'm'), parseFloat(bloc.dataset.espacement || '1'));
+        const c = calculer(enMm(infos.largeur, 'm', 0.1), enMm(infos.longueur, 'm', 0.1), parseFloat(bloc.dataset.espacement || '1'));
         bloc.pm2Calcul = c;
         if (caseCochee) {
             caseCochee.disabled = figee || !c || c.tropGrande;

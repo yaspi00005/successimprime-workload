@@ -7,6 +7,7 @@ use App\Entity\AccesEspaceClient;
 use App\Entity\Clients;
 use App\Entity\CompteClient;
 use App\Entity\ModificationClient;
+use App\Entity\SynchroJournal;
 use App\Entity\User;
 use App\Repository\AccesEspaceClientRepository;
 use App\Service\Pointage\Pointages;
@@ -86,6 +87,8 @@ final class AccesEspace
             $acces = (new AccesEspaceClient())->setClient($client);
             $this->em->persist($acces);
         }
+        // La fiche part avec le code : une fiche ancienne (jamais envoyée au site) ne laisse pas le code en attente.
+        $this->em->persist(new SynchroJournal('client', $client->getPublicId()->toRfc4122(), SynchroJournal::MAJ));
         $code = $acces->nouveauCode($telephone, $maintenant, $par);
 
         // Qui a donné l'accès, à qui, quand : jamais le code.

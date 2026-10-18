@@ -5,6 +5,7 @@ namespace App\Tests\Unit\Service\EspaceClient;
 use App\Entity\AccesEspaceClient;
 use App\Entity\Clients;
 use App\Entity\ModificationClient;
+use App\Entity\SynchroJournal;
 use App\Entity\User;
 use App\Repository\AccesEspaceClientRepository;
 use App\Service\EspaceClient\AccesEspace;
@@ -46,6 +47,17 @@ final class AccesEspaceTest extends TestCase
     private static function fiche(string $code = 'CLI-000042', ?string $telephone = '76124212'): Clients
     {
         return (new Clients())->setCode($code)->setNom('Hôtel Niger')->setTelephone($telephone);
+    }
+
+    public function testLaFicheRepartAvecLeCode(): void
+    {
+        $fiche = self::fiche();
+        $this->service()->donner($fiche, new User(), new \DateTimeImmutable('2026-10-18 20:00'));
+
+        $journaux = array_values(array_filter($this->persistes, static fn (object $o): bool => $o instanceof SynchroJournal));
+        self::assertCount(1, $journaux, 'une fiche ancienne, jamais envoyée au site, part avec le code');
+        self::assertSame('client', $journaux[0]->getType());
+        self::assertSame($fiche->getPublicId()->toRfc4122(), $journaux[0]->getPublicId());
     }
 
     public function testLeMessageDonneLIdentifiantLeCodeLaDureeEtLeLien(): void

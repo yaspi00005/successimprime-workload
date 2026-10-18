@@ -599,7 +599,7 @@ final class RecetteAcces
     }
 
     /**
-     * Supprimer un client (aucun bouton à l'écran) : la Direction seulement.
+     * Supprimer un client (bouton de la fiche) : la Direction seulement.
      * L'envoi s'arrête à l'entrée du contrôleur : rien n'est supprimé.
      */
     private function verifierSuppressionClient(User $compte, BilanRecette $bilan): void
@@ -618,6 +618,19 @@ final class RecetteAcces
         $bilan->controler(\sprintf('%s : suppression d\'un client %s', $identifiant, $permis ? 'permise (Direction)' : 'refusée'), $atteint === $permis, $chemin.' → '.($atteint ? 'arrivé au contrôleur' : $reponse->etat()));
         if ($atteint && !$permis) {
             $bilan->constater(BilanRecette::FUITE, 'suppression_client', 'app_clients_delete', $chemin, $identifiant, 'suppression d\'un client acceptée sans être la Direction');
+        }
+
+        // Le bouton « Supprimer » de la fiche (Yaya, 18/10/2026) : la Direction seulement.
+        $publicId = (string) $this->em->find(Clients::class, (int) $client['id'])?->getPublicId();
+        if ($this->accorde('ROLE_CLIENT') && '' !== $publicId) {
+            $fiche = $this->navigateur->get($this->routeur->generate('app_clients_show', ['publicId' => $publicId]), $this->navigateur->session($compte));
+            if (200 === $fiche->statut) {
+                $bouton = str_contains($fiche->contenu, 'action="'.$chemin.'"');
+                $bilan->controler(\sprintf('%s : bouton « Supprimer » de la fiche client %s', $identifiant, $permis ? 'montré (Direction)' : 'caché'), $bouton === $permis || ($permis && str_contains($fiche->contenu, 'si-fh-suppression-impossible')), $chemin);
+                if ($bouton && !$permis) {
+                    $bilan->constater(BilanRecette::FUITE, 'suppression_client', 'app_clients_show', $chemin, $identifiant, 'bouton « Supprimer » d\'un client montré sans être la Direction');
+                }
+            }
         }
     }
 

@@ -76,7 +76,7 @@ final class CalculPointage
      * @param array<string, mixed>                           $regles
      * @param array{suivante?: bool, retard?: int, avant?: int} $jour
      *
-     * @return array{presence: ?int, retard: int, sup: int, statut: string, points: list<array{libelle: string, points: int}>, total: int, pause: int, bonusEnAttente: ?string, bareme: string, faites: ?int, dues: ?int, raison: string, horaire: string, journee: bool}
+     * @return array{presence: ?int, retard: int, sup: int, statut: string, points: list<array{libelle: string, points: int}>, total: int, pause: int, bonusEnAttente: ?string, bareme: string, faites: ?int, dues: ?int, raison: string, horaire: string, journee: bool, avance: int, debutPrevu: ?string}
      */
     public static function presence(\DateTimeImmutable $arrivee, ?\DateTimeImmutable $depart, array $regles, \DateTimeImmutable $maintenant, bool $heuresSupValidees = false, int $ajustement = 0, array $jour = []): array
     {
@@ -88,12 +88,16 @@ final class CalculPointage
         $enRetard = $retard > (int) $regles['tolerance_minutes'];
         /** @var array<string, mixed>|null $heures nouveau barème (tuile Points du pointage) */
         $heures = $regles['points'] ?? null;
+        // Sans heure fixe (livreurs, Yaya 18/10/2026) : ni retard ni départ anticipé.
+        $libre = $heures !== null && !empty($regles['libre']);
         // Retour après une sortie le même jour : le retard est celui de la première arrivée.
         $retour = $heures !== null && isset($jour['avant']);
-        if ($retour) {
+        if ($retour || $libre) {
             $retard = 0;
             $enRetard = false;
         }
+        // Arrivée avant l'heure de début (nouveau barème) : signalée, mais le temps en plus compte à partir du début.
+        $avance = $heures !== null && !$retour ? self::avance($arrivee, $prevue, $ouvre, $libre) : 0;
 
         $points = match (true) {
             $heures !== null, !$ouvre => [],
@@ -118,6 +122,9 @@ final class CalculPointage
             $brut = intdiv($depart->getTimestamp() - $arrivee->getTimestamp(), 60);
             $presence = max(0, $brut - $pause);
             $sup = $ouvre ? max(0, intdiv($depart->getTimestamp() - self::apres($arrivee, (string) $regles['fermeture'], $prevue)->getTimestamp(), 60)) : $presence;
+            if ($libre && $ouvre) {
+                $sup = 0;
+            }
 
             // Une seule ligne de bonus par journée, la plus haute.
             $bonus = match (true) {
@@ -164,7 +171,10 @@ final class CalculPointage
             'faites' => $faites,
             'dues' => $dues,
             'raison' => $raison,
-            'horaire' => $regles['ouverture'].' – '.$regles['fermeture'],
+            'horaire' => $libre ? 'Sans heure fixe' : $regles['ouverture'].' – '.$regles['fermeture'],
+            // Minutes d'avance sur l'heure de début (« arrivé avant 9 h »), 0 sinon.
+            'avance' => $avance,
+            'debutPrevu' => $libre ? null : (string) $regles['ouverture'],
             // Cette présence porte-t-elle les points de la journée (la dernière du jour) ?
             'journee' => $heures === null || !($jour['suivante'] ?? false),
         ];
@@ -224,11 +234,15 @@ final class CalculPointage
      * - heures dues faites (à l'heure, ou retard rattrapé en partant plus
      *   tard) : + points_heures_faites ;
      * - en retard et heures pas faites : − points_retard ;
-     * - à l'heure mais parti avant la fin : 0 ;
+     * - à l'heure mais parti avant la fin : − points_retard (Yaya, 18/10/2026) ;
      * - chaque heure entière au-delà des heures dues : + points_heure_en_plus ;
      * - longue journée (longue_heures ou plus, garde de 24 h) :
      *   points_longue pour la journée, à la place du reste ;
      * - départ non pointé : 0, la journée est à corriger par la RH.
+     * Les heures faites comptent à partir de l'heure de début : arriver
+     * avant ne donne pas de temps en plus (la raison le signale). Sans
+     * heure fixe (« libre ») : pas d'heures dues, la journée pointée vaut
+     * + points_heures_faites, pas d'heures en plus (longue journée gardée).
      * La tolérance de retard sert aussi de marge sur les heures dues. Un
      * jour de repos n'a pas d'heures dues : seules les heures en plus
      * comptent. Avec valider_en_plus, les points des heures en plus et de
@@ -246,8 +260,9 @@ final class CalculPointage
         $pauseDebut = self::apres($arrivee, (string) $regles['pause_debut'], $prevue);
         $pauseFin = self::apres($arrivee, (string) $regles['pause_fin'], $prevue);
         $deduire = (bool) $p['pause_deduite'];
+        $libre = !empty($regles['libre']);
         $finPrevue = self::apres($arrivee, (string) $regles['fermeture'], $prevue);
-        $dues = $ouvre ? max(0, self::minutes($prevue, $finPrevue) - ($deduire ? self::chevauchement($prevue, $finPrevue, $pauseDebut, $pauseFin) : 0)) : 0;
+        $dues = $ouvre && !$libre ? max(0, self::minutes($prevue, $finPrevue) - ($deduire ? self::chevauchement($prevue, $finPrevue, $pauseDebut, $pauseFin) : 0)) : 0;
         $enRetard = $retard > 0 ? 'Retard de '.self::duree($retard) : null;
 
         if ($depart === null) {
@@ -256,7 +271,10 @@ final class CalculPointage
                 : ($enRetard !== null ? $enRetard.', en cours' : 'En cours').' : les points sont comptés au départ.'];
         }
 
-        $propres = max(0, self::minutes($arrivee, $depart) - ($deduire ? self::chevauchement($arrivee, $depart, $pauseDebut, $pauseFin) : 0));
+        // Le temps compte à partir de l'heure de début (Yaya, 18/10/2026).
+        $avance = $avant === 0 ? self::avance($arrivee, $prevue, $ouvre, $libre) : 0;
+        $compteDe = $avance > 0 ? $prevue : $arrivee;
+        $propres = $depart > $compteDe ? max(0, self::minutes($compteDe, $depart) - ($deduire ? self::chevauchement($compteDe, $depart, $pauseDebut, $pauseFin) : 0)) : 0;
         if ($suivante) {
             return ['points' => [], 'enAttente' => null, 'faites' => $propres, 'dues' => $dues, 'raison' => 'Sortie à '.self::heure($depart->format('H:i')).', puis retour : les heures de la journée s\'additionnent et les points se comptent au dernier départ.'];
         }
@@ -265,6 +283,10 @@ final class CalculPointage
 
         [$base, $phrase] = match (true) {
             !$ouvre => [null, 'Jour de repos travaillé'],
+            $libre => [
+                ['libelle' => 'Journée pointée, sans heure fixe', 'points' => (int) $p['points_heures_faites']],
+                'Sans heure fixe : journée pointée ('.self::duree($faites).')',
+            ],
             $faites >= $dues - (int) $regles['tolerance_minutes'] => [
                 ['libelle' => $enRetard !== null ? $enRetard.' rattrapé, heures faites' : 'Heures faites', 'points' => (int) $p['points_heures_faites']],
                 ($enRetard !== null ? $enRetard.' rattrapé : heures faites ' : 'À l\'heure, heures faites ').$sur,
@@ -274,12 +296,15 @@ final class CalculPointage
                 $enRetard.' et heures pas faites '.$sur,
             ],
             default => [
-                ['libelle' => 'Parti avant la fin, heures pas faites', 'points' => 0],
+                ['libelle' => 'Parti avant la fin, heures pas faites', 'points' => -(int) $p['points_retard']],
                 'À l\'heure mais parti avant la fin '.$sur,
             ],
         };
+        if ($avance > 0) {
+            $phrase = 'Arrivé à '.self::heure($arrivee->format('H:i')).', avant '.self::heure($prevue->format('H:i')).' : le temps compte à partir de '.self::heure($prevue->format('H:i')).'. '.$phrase;
+        }
 
-        $enPlus = intdiv(max(0, $faites - $dues), 60);
+        $enPlus = $libre && $ouvre ? 0 : intdiv(max(0, $faites - $dues), 60);
         $longue = $faites >= (int) $p['longue_heures'] * 60;
         // Une journée juste sous la longue journée ne rapporte jamais plus
         // qu'elle : les heures en plus s'arrêtent au total d'une longue
@@ -392,6 +417,21 @@ final class CalculPointage
         }
 
         return (int) $m[1].' h'.($m[2] !== '00' ? ' '.$m[2] : '');
+    }
+
+    /**
+     * Minutes d'arrivée avant l'heure de début (0 sans avance, un jour de
+     * repos ou sans heure fixe). Au-delà de 12 h, ce n'est pas une avance
+     * mais une arrivée hors horaire (poste de nuit pris tard) : 0.
+     */
+    private static function avance(\DateTimeImmutable $arrivee, \DateTimeImmutable $prevue, bool $ouvre, bool $libre): int
+    {
+        if (!$ouvre || $libre || $arrivee >= $prevue) {
+            return 0;
+        }
+        $minutes = self::minutes($arrivee, $prevue);
+
+        return $minutes <= 12 * 60 ? $minutes : 0;
     }
 
     private static function a(\DateTimeImmutable $jour, string $heure): \DateTimeImmutable

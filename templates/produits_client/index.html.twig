@@ -35,7 +35,7 @@
 						<span class="si-vignette si-fond-{{ ['bleu', 'magenta', 'orange', 'canard'][produit.id % 4] }}"></span>
 						<span class="flex-grow-1 min-w-0">
 							<strong class="d-block">{{ produit.nom }}</strong>
-							<small class="d-block text-muted">{{ produit.reference }}{% set f = p.format(produit)|trim %}{% if f %} · {{ f }}{% endif %}{% if produit.support %} · {{ produit.support|texte_interne }}{% endif %}{% for finition in produit.finitions %} · {{ finition.nom }}{% endfor %}</small>
+							<small class="d-block text-muted">{{ produit.reference }}{% set f = p.format(produit)|trim %}{% if f %} · {{ f }}{% endif %}{% if produit.support %} · {{ produit.support|texte_interne }}{% endif %}{% for finition in produit.finitions %} · {{ finition|texte_interne }}{% endfor %}</small>
 							<span class="d-flex flex-wrap gap-1 mt-1">
 								<span class="si-pastille si-pastille-{{ produit.uniteVente == 'm2' ? 'orange' : 'bleu' }}">{{ {'piece': "à l'unité", 'm2': 'au m²', 'piece_ou_m2': 'm² ou pièces', 'lot': 'par lot'}[produit.uniteVente] }}</span>
 								{% if produit.batValide %}<span class="si-pastille si-pastille-vert">BAT figé</span>{% else %}<span class="si-pastille si-pastille-gris">Sans BAT</span>{% endif %}
@@ -142,7 +142,7 @@
 						<div class="si-choix mb-2">
 							{% for finition in finitions %}
 								<input type="checkbox" class="btn-check" name="finitions[]" id="pcFinition{{ finition.id }}" value="{{ finition.id }}" {{ choisi and finition in choisi.finitions ? 'checked' }}>
-								<label class="btn btn-sm btn-outline-primary" for="pcFinition{{ finition.id }}">{{ finition.nom }}</label>
+								<label class="btn btn-sm btn-outline-primary" for="pcFinition{{ finition.id }}">{{ finition|texte_interne }}</label>
 							{% endfor %}
 						</div>
 					{% endif %}

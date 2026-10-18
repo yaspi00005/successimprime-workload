@@ -4,10 +4,11 @@ namespace App\Service\Rapports;
 
 /**
  * Quand part chaque rapport (docs/rapports-mail.md), règles pures :
- *  - du jour : le jour même, à l'heure des Réglages (20 h), seulement les
- *    jours d'ouverture de l'atelier si la case est cochée ; une heure
- *    avant midi (7 h) l'envoie le lendemain matin, pour la veille
- *    (journée finie), et non pour une journée à peine commencée ;
+ *  - du jour : à l'heure des Réglages (minuit par défaut, Yaya
+ *    18/10/2026), seulement pour les jours d'ouverture de l'atelier si la
+ *    case est cochée ; une heure avant midi (0 h, 7 h) l'envoie le
+ *    lendemain pour la veille (journée finie), une heure du soir (20 h)
+ *    le jour même pour la journée en cours ;
  *  - de la semaine : la semaine suivante, le jour et à l'heure des
  *    Réglages (lundi 7 h), pour la semaine passée ;
  *  - du mois : le mois suivant, le jour du mois et à l'heure des Réglages

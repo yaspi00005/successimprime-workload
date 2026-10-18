@@ -1,4 +1,4 @@
-# Nom commercial des produits
+# Nom commercial des produits, formats et finitions
 
 Demande de Yaya le 16/10/2026 : « Au niveau des produits, pour la désignation, le nom est un peu technique. Je préfère qu'on ajoute un nom commercial, un nom qui est connu de tous. Par exemple vinyle adhésif, d'où on dit autocollant. On garde vinyle adhésif, mais on met un autre champ avec plutôt le nom commercial autocollant. Au moment de l'affichage, on affiche les deux. À la recherche, on pourra trouver les vinyles, on pourra trouver autocollants. »
 
@@ -15,19 +15,20 @@ Demande de Yaya le 16/10/2026 : « Au niveau des produits, pour la désignation,
 | Produits (Bâche imprimée, Vinyle adhésif…) | C'est ce que le client choisit sur le site, dans l'espace client, et ce qui figure sur les devis, commandes et factures. |
 | Supports et matières (Micro-perforé, Akylux…) | Le client les choisit avec le produit (« Vitrophanie » pour micro-perforé). |
 | Types d'impression (Solvant grand format, DTF…) | Choisis avec le produit ; « Impression extérieure » parle plus que « solvant ». |
+| Formats (A5, Carte 85 × 55, Sur mesure…) | Réponse de Yaya du 18/10/2026 : « Carte de visite » pour « Carte 85 × 55 ». |
+| Finitions (œillets, ourlet, pelliculage…) | Réponse de Yaya du 18/10/2026 : « Trous d'accroche » pour « Œillets tous les 50 cm ». |
 | Articles de stock vendus tels quels (case « vendable ») | Ils sont vendus au comptoir et figurent sur les devis et factures. Ils restent à l'ERP local : sur le site en ligne (espace client), une ligne de vente d'article montre sa désignation seule, l'article n'y étant pas envoyé. |
 
 Pas de nom commercial pour :
 
-- les **formats** (A5, 85 × 55, Sur mesure) et les **finitions** (œillets, ourlet, pelliculage) : leurs noms sont déjà ceux de tous les jours ;
 - les **configurations** du site (produit · support · format) : elles se composent des noms de leur produit et de leur support, qui portent déjà le leur ;
 - les **produits du client** (« Mes produits ») : leur nom est déjà celui du client (« Bâche façade Awa Mode ») ; l'espace client montre en dessous les deux noms du produit du catalogue ;
 - les **catégories** (Grand format, Textile) : ce sont déjà des noms de rayon.
 
 ## Où le saisir
 
-- **Paramètres › Produits et options › Noms commerciaux** (`/produits/noms-commerciaux`, direction seulement, comme le reste du catalogue) : une page pour tout le catalogue, en quatre rubriques (produits, supports et matières, types d'impression, articles vendus). Une ligne par élément : la désignation, le champ « Nom commercial » et « Vu par le client » (l'aperçu, mis à jour pendant la saisie). Une case « Chercher » filtre la page sans tenir compte des accents ; un compteur dit combien de noms sont remplis par rubrique. Seuls les noms modifiés sont envoyés ; un nom vidé est retiré. Quitter la page avec des changements non enregistrés demande une confirmation.
-- Les listes des produits, des supports et des types d'impression ont un bouton « Noms commerciaux » qui ouvre la rubrique ; la fenêtre « Nouveau produit » / « Modifier » rappelle où le saisir.
+- **Paramètres › Produits et options › Noms commerciaux** (`/produits/noms-commerciaux`, direction seulement, comme le reste du catalogue) : une page pour tout le catalogue, en six rubriques (produits, supports et matières, types d'impression, formats, finitions, articles vendus). Une ligne par élément : la désignation, le champ « Nom commercial » et « Vu par le client » (l'aperçu, mis à jour pendant la saisie). Une case « Chercher » filtre la page sans tenir compte des accents ; un compteur dit combien de noms sont remplis par rubrique. Seuls les noms modifiés sont envoyés ; un nom vidé est retiré. Quitter la page avec des changements non enregistrés demande une confirmation.
+- Les listes des produits, des supports, des types d'impression, des formats et des finitions ont un bouton « Noms commerciaux » qui ouvre la rubrique ; la fenêtre « Nouveau produit » / « Modifier » rappelle où le saisir.
 - **Fiche article** (Stock › Articles › Modifier, et l'ancien formulaire des articles) : champ « Nom commercial » sous la désignation.
 - **Import** (docs/import-donnees.md) : colonne facultative « Nom commercial » (aussi reconnue sous « nom usuel », « appellation », « nom courant », « nom connu ») pour les articles du catalogue et les articles de stock. Pour un produit déjà au catalogue, un nom commercial donné remplace l'ancien (une case vide le garde) ; l'annulation de l'import le remet.
 - Sur le site en ligne, la page existe aussi pour la direction, mais les noms y sont remplacés à la synchronisation : un bandeau le dit. Ils se saisissent à la boutique.
@@ -48,6 +49,12 @@ Sans nom commercial, ou quand il redit la désignation (« Bâche » pour « bac
 **Lignes des documents** : la désignation enregistrée sur la ligne reste la référence (elle ne change pas quand le catalogue change). Le nom commercial du produit vendu (ou de l'article pour une vente d'article) s'affiche devant au moment de l'affichage. Une désignation qui contient déjà le nom commercial (« Autocollants vitrine », saisie à la main ou commande en ligne) est montrée seule ; « Vinyle adhésif (Autocollant) » devient « Autocollant · Vinyle adhésif ». Dans le formulaire du devis, choisir un produit écrit sa désignation technique seule dans la ligne.
 
 Conséquence : un document déjà émis, réimprimé après un changement de nom commercial, montre le nouveau nom commercial ; sa désignation, ses quantités et ses prix ne changent pas.
+
+### Formats et finitions (18/10/2026)
+
+- **ERP** : listes des formats et des finitions (le nom commercial sous la désignation, case de recherche sur les deux noms), badges des listes des produits, supports, types d'impression et configurations, grille tarifaire, Mes produits des clients, production (fiche, étiquette), livraisons ; listes « Format » et cases des finitions de la saisie des devis et des commandes (« Carte 85 × 55 (Carte de visite) », la recherche de la liste trouve l'un ou l'autre).
+- **Client** : le format dans le nom d'une configuration (« Cartes de visite · Carte de visite (Carte 85 × 55) ») sur le site (calculateur, demande de devis, cartes de « Nos produits ») et dans l'espace client (nouvelle commande : titre et sous-titre des matières, finitions proposées) ; finitions des lignes de commande de l'espace client ; relevé des impayés (PDF).
+- Ce qui ne change pas : la désignation enregistrée sur la ligne (la finition garde son nom technique), les écrans de détail d'un devis ou d'une commande de l'ERP (repris par un autre chantier : la ligne y garde le nom technique de la finition).
 
 ## Recherche
 
@@ -71,11 +78,11 @@ Les recherches faites par la base (API, articles, stock, livraisons, production)
 
 ## Synchronisation
 
-Le nom commercial des produits, des supports et des types d'impression part vers le site avec eux (champ `nomCommercial` de la liste blanche, `CatalogueSynchro`), dans le même sens : le local est maître, le site reçoit et remplace. Les articles de stock ne partent pas. Après le déploiement, pour envoyer les noms déjà saisis : `php bin/console app:synchro --initialiser=type_impression`, puis `support` et `produit`, sur le local.
+Le nom commercial des produits, des supports, des types d'impression, des formats et des finitions part vers le site avec eux (champ `nomCommercial` de la liste blanche, `CatalogueSynchro`), dans le même sens : le local est maître, le site reçoit et remplace. Les articles de stock ne partent pas. Après le déploiement, pour envoyer les noms déjà saisis : `php bin/console app:synchro --initialiser=type_impression`, puis `support`, `format`, `finition` et `produit`, sur le local.
 
 ## Données de démonstration
 
-`app:demo` charge quelques paires : Bâche imprimée → Banderole, Vinyle adhésif → Autocollant, Micro-perforé vitrine → Vitrophanie, Panneau Akylux → Panneau publicitaire, T-shirt personnalisé DTF → T-shirt imprimé ; supports Micro-perforé → Vitrophanie, Bâche 440 g roll-up → Toile de roll-up ; types Solvant grand format → Impression extérieure, Éco-solvant intérieur → Impression intérieure, DTF textile → Impression sur textile ; articles vinyle, micro-perforé et structure roll-up.
+`app:demo` charge quelques paires : Bâche imprimée → Banderole, Vinyle adhésif → Autocollant, Micro-perforé vitrine → Vitrophanie, Panneau Akylux → Panneau publicitaire, T-shirt personnalisé DTF → T-shirt imprimé ; supports Micro-perforé → Vitrophanie, Bâche 440 g roll-up → Toile de roll-up ; types Solvant grand format → Impression extérieure, Éco-solvant intérieur → Impression intérieure, DTF textile → Impression sur textile ; articles vinyle, micro-perforé et structure roll-up ; format Carte 85 × 55 → Carte de visite ; finitions Œillets tous les 50 cm → Trous d'accroche, Lamination → Plastification, Découpe à la forme → Découpe contour.
 
 ## Écran « Nouvelle commande » de l'espace client
 
@@ -89,7 +96,7 @@ Pour d'autres écrans : `NomCommercial::configuration($configuration)` rend `['n
 
 ## Dans le code
 
-- Migration `Version20261018143100` : colonne `nom_commercial` (VARCHAR 120, NULL) dans `produits`, `supports`, `types_impression` et `articles`.
+- Migration `Version20261018143100` : colonne `nom_commercial` (VARCHAR 120, NULL) dans `produits`, `supports`, `types_impression` et `articles` ; `Version20261018175000` l'ajoute à `format` et `finition`.
 - Interface `App\Entity\AUnNomCommercial` (`getNomCommercial`, `setNomCommercial`, `getNomTechnique`) et trait `NomCommercialTrait`.
 - `App\Service\Catalogue\NomCommercial` : nettoyage, affichage client et ERP, lignes de documents, configurations, clé de recherche (minuscules, sans accents, ni ponctuation, ni pluriel) ; tout est statique et testé sans base.
 - Filtres Twig (`App\Twig\NomCommercialExtension`) : `nom_client`, `nom_interne`, `texte_client`, `texte_interne`, `ligne_client`, `ligne_interne`, `texte_ligne`, `texte_ligne_interne`, `titre_ligne_client`, `configuration_client` ; fonction `cle_recherche`. Classes CSS : `nc-nom`, `nc-technique` (client), `nc-commercial` (ERP).

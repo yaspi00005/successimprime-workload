@@ -128,6 +128,14 @@ final class NomCommercialTest extends TestCase
         // Sans nom commercial ni type : le même libellé qu'avant (ProduitConfiguration::__toString).
         self::assertSame((string) $rollup->setSupport((new Supports())->setNom('Bâche 440 g roll-up')), NomCommercial::texteConfigurationInterne($rollup));
         self::assertSame('—', NomCommercial::texteConfigurationInterne(null));
+
+        // Format avec un nom commercial (Yaya, 18/10/2026) : « Carte de visite » pour 85 × 55.
+        $cartes = (new ProduitConfiguration())
+            ->setProduit((new Produits())->setNom('Cartes de visite'))
+            ->setFormat((new Format())->setNom('85 × 55')->setNomCommercial('Format carte'));
+        self::assertSame('Cartes de visite · Format carte (85 × 55)', NomCommercial::texteConfiguration($cartes));
+        self::assertStringEndsWith('— 85 × 55 (Format carte)', NomCommercial::texteConfigurationInterne($cartes));
+        self::assertTrue(NomCommercial::correspond('format carte', NomCommercial::texteConfigurationInterne($cartes)));
     }
 
     public function testRechercheSansAccentsNiMajuscules(): void

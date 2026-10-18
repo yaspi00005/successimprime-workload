@@ -10,11 +10,12 @@ use Symfony\Component\Security\Core\Role\RoleHierarchyInterface;
 /**
  * Qui reçoit les rapports par e-mail (docs/rapports-mail.md).
  *
- * Tant que la direction n'a rien choisi : les comptes actifs de la
- * Direction qui ont une adresse e-mail (fiche employé). Une fois la liste
- * enregistrée (Accueil › Rapports par e-mail) : ces comptes-là. Dans les
- * deux cas, un compte désactivé ou sans le droit « Chiffre d'affaires
- * global » ne reçoit rien, même s'il a été choisi avant de perdre ce droit.
+ * Réponse de Yaya du 18/10/2026 : la direction seulement. Tant que la
+ * direction n'a rien choisi : les comptes actifs de la Direction qui ont
+ * une adresse e-mail (fiche employé). Une fois la liste enregistrée
+ * (Accueil › Rapports par e-mail) : ceux de ces comptes cochés. Un compte
+ * désactivé, hors de la Direction ou sans le droit « Chiffre d'affaires
+ * global » ne reçoit rien, même s'il a été choisi avant.
  */
 final class DestinatairesRapports
 {
@@ -57,14 +58,24 @@ final class DestinatairesRapports
      */
     public static function retenu(int $id, array $roles, bool $droit, bool $aUneAdresse, ?array $choisis): bool
     {
-        if (!$droit) {
+        if (!$droit || !self::direction($roles)) {
             return false;
         }
         if (null !== $choisis) {
             return \in_array($id, $choisis, true);
         }
 
-        return $aUneAdresse && \in_array('ROLE_ADMIN', $roles, true);
+        return $aUneAdresse;
+    }
+
+    /**
+     * Les rapports par e-mail vont à la direction seulement (Yaya, 18/10/2026).
+     *
+     * @param list<string> $roles
+     */
+    public static function direction(array $roles): bool
+    {
+        return \in_array('ROLE_ADMIN', $roles, true);
     }
 
     public function recoit(User $u): bool
@@ -96,7 +107,8 @@ final class DestinatairesRapports
                 'utilisateur' => $u,
                 'nom' => Objectifs::nomAgent($u),
                 'profil' => (string) ($u->getProfil()?->getNom() ?? ''),
-                'droit' => $droits['rapport'],
+                // Seule la Direction peut être cochée (Yaya, 18/10/2026).
+                'droit' => $droits['rapport'] && self::direction($roles),
                 'adresse' => $adresse,
                 'version' => DroitsRapport::version($droits),
                 'choisi' => self::retenu((int) $u->getId(), $roles, $droits['rapport'], null !== $adresse, $choisis),
@@ -120,7 +132,8 @@ final class DestinatairesRapports
     {
         $permis = [];
         foreach ($this->comptesActifs() as $u) {
-            if (\in_array((int) $u->getId(), $ids, true) && DroitsRapport::depuisRoles($this->roles($u))['rapport']) {
+            $roles = $this->roles($u);
+            if (\in_array((int) $u->getId(), $ids, true) && self::direction($roles) && DroitsRapport::depuisRoles($roles)['rapport']) {
                 $permis[] = (int) $u->getId();
             }
         }

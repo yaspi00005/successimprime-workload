@@ -37,16 +37,16 @@ final class ReglagesRapportsMailTest extends TestCase
         foreach (PeriodeRapport::TYPES as $type => $titre) {
             self::assertTrue($r->actif($type), $titre);
         }
-        self::assertSame('20:00', $r->heure(PeriodeRapport::JOUR));
+        self::assertSame('00:00', $r->heure(PeriodeRapport::JOUR), 'minuit : la journée qui vient de finir (Yaya, 18/10/2026)');
         self::assertSame('07:00', $r->heure(PeriodeRapport::SEMAINE));
         self::assertSame('07:00', $r->heure(PeriodeRapport::MOIS));
         self::assertSame(1, $r->jourSemaine());
         self::assertSame(1, $r->jourMois());
         self::assertTrue($r->pieceJointe());
-        self::assertNull($r->adresseErp());
+        self::assertSame('http://192.168.10.65', $r->adresseErp(), 'adresse de l\'atelier (Yaya, 18/10/2026)');
         // Tant que la direction n'a rien choisi : null (la direction reçoit).
         self::assertNull($r->destinatairesChoisis());
-        self::assertSame('Chaque jour d’ouverture à 20 h, pour la journée', $r->libelle(PeriodeRapport::JOUR));
+        self::assertSame('Chaque jour d’ouverture, à minuit pour la journée qui vient de finir', $r->libelle(PeriodeRapport::JOUR));
         self::assertSame('Chaque lundi à 7 h, pour la semaine passée', $r->libelle(PeriodeRapport::SEMAINE));
         self::assertSame('Le 1er du mois à 7 h, pour le mois passé', $r->libelle(PeriodeRapport::MOIS));
     }

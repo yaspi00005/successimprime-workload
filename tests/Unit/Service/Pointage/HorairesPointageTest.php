@@ -50,6 +50,9 @@ final class HorairesPointageTest extends TestCase
         self::assertSame(HoraireType::ACCUEIL, HoraireType::parDefaut('CDI', 'ROLE_CAISSE_COMMANDE'));
         self::assertSame(HoraireType::ATELIER, HoraireType::parDefaut('', 'ROLE_GRAPHISTE'));
         self::assertSame(HoraireType::ATELIER, HoraireType::parDefaut(null, null));
+        // Livreurs : sans heure fixe, d'après le poste ou le rôle.
+        self::assertSame(HoraireType::LIBRE, HoraireType::parDefaut('Livreur', null));
+        self::assertSame(HoraireType::LIBRE, HoraireType::parDefaut('CDI', 'ROLE_LIVREUR'));
     }
 
     public function testLaFicheRemplaceLePoste(): void
@@ -104,7 +107,17 @@ final class HorairesPointageTest extends TestCase
         self::assertSame(['19:00', '07:00', '09:00'], [$nuit['ouverture'], $nuit['fermeture'], $nuit['alerte_depart']]);
         self::assertSame('1,2,3,4,5,6,7', $nuit['jours']);
         self::assertSame('Horaires propres', Pointages::horaireDe($gardien, self::HEURES)['libelle']);
-        self::assertSame('Atelier et autres', Pointages::horaireDe(self::employe('Livreur'), self::HEURES)['libelle']);
+        self::assertSame('Atelier et autres', Pointages::horaireDe(self::employe('Machiniste'), self::HEURES)['libelle']);
+
+        // Livreur : sans heure fixe par défaut (Yaya, 18/10/2026), même avec des heures propres.
+        $livreur = self::employe('Livreur');
+        self::assertSame('Sans heure fixe', Pointages::horaireDe($livreur, self::HEURES)['libelle']);
+        $livreur->getEmploye()->setHoraires('08:00', '16:00', null);
+        $libre = Pointages::reglesDe($livreur, self::REGLES, new \DateTimeImmutable('2026-10-19 09:00'));
+        self::assertTrue($libre['libre']);
+        // Un livreur programmé sur un horaire type le suit.
+        $livreur->getEmploye()->setHoraireType(HoraireType::ATELIER);
+        self::assertSame('Horaires propres', Pointages::horaireDe($livreur, self::HEURES)['libelle']);
 
         // Les réglages de la tuile changent l'horaire type.
         $huit = Pointages::reglesDe($caisse, ['heures' => ['accueil_debut' => '08:00'] + self::HEURES] + self::REGLES, new \DateTimeImmutable('2026-10-19 09:00'));
@@ -128,7 +141,7 @@ final class HorairesPointageTest extends TestCase
         $pointages = (new \ReflectionClass(Pointages::class))->newInstanceWithoutConstructor();
         $calculs = $pointages->calculs($liste, $regles, new \DateTimeImmutable('2026-10-21 12:00'));
 
-        self::assertSame([0, -15, 10, 0], array_column($calculs, 'total'));
+        self::assertSame([0, -15, 10, -15], array_column($calculs, 'total'), 'le 20/10, parti à 13 h : −15');
         self::assertSame([false, true, true, true], array_column($calculs, 'journee'));
         self::assertSame([240, 500, 540, 240], array_column($calculs, 'faites'));
     }

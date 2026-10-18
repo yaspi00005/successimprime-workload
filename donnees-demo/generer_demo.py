@@ -254,6 +254,9 @@ NOMS_COMMERCIAUX = {
     'supports': {'Micro-perforé': 'Vitrophanie', 'Bâche 440 g roll-up': 'Toile de roll-up'},
     'produits': {'D-BACHE': 'Banderole', 'D-VINYLE': 'Autocollant', 'D-MICRO': 'Vitrophanie', 'D-AKYLUX': 'Panneau publicitaire', 'D-TSHIRT': 'T-shirt imprimé'},
     'articles': {'D-MAT-003': 'Rouleau d\'autocollant', 'D-MAT-004': 'Rouleau de vitrophanie', 'D-FIN-001': 'Pied de roll-up'},
+    # Formats et finitions (Yaya, 18/10/2026).
+    'format': {'Carte 85 × 55': 'Carte de visite'},
+    'finition': {'Œillets tous les 50 cm': 'Trous d\'accroche', 'Lamination': 'Plastification', 'Découpe à la forme': 'Découpe contour'},
 }
 CATEGORIES = {}
 for k, (nom, desc) in enumerate([('Grand format', 'Bâches, vinyles, panneaux'), ('Impression numérique', 'Flyers, cartes, affiches, brochures'),
@@ -273,12 +276,12 @@ for k, nom in enumerate(['Bâche 510 g frontlit', 'Bâche 440 g roll-up', 'Vinyl
 FORMATS = {}
 for k, (nom, l, h, u) in enumerate([('A5', 14.8, 21, 'cm'), ('A4', 21, 29.7, 'cm'), ('A3', 29.7, 42, 'cm'), ('Carte 85 × 55', 8.5, 5.5, 'cm'),
                                      ('Roll-up 85 × 200', 85, 200, 'cm'), ('Kakémono 80 × 180', 80, 180, 'cm'), ('Sur mesure', 0, 0, 'cm'), ('Taille unique', 0, 0, 'cm')]):
-    FORMATS[nom] = add('format', {'nom': nom, 'largeur': l, 'hauteur': h, 'unite': u, 'description': '', 'publie': 1, 'ordre': k + 1, 'public_id': uid()})
+    FORMATS[nom] = add('format', {'nom': nom, 'largeur': l, 'hauteur': h, 'unite': u, 'description': '', 'publie': 1, 'ordre': k + 1, 'public_id': uid(), 'nom_commercial': NOMS_COMMERCIAUX['format'].get(nom)})
 
 FINITIONS = {}
 for k, (nom, cout) in enumerate([('Œillets tous les 50 cm', 150), ('Ourlet', 300), ('Fourreau', 500), ('Lamination', 1500), ('Pelliculage mat', 40),
                                   ('Découpe à la forme', 25), ('Pliage', 15)]):
-    FINITIONS[nom] = add('finition', {'nom': nom, 'publie': 1, 'ordre': k + 1, 'description': '', 'public_id': uid(), 'cout_unitaire': cout})
+    FINITIONS[nom] = add('finition', {'nom': nom, 'publie': 1, 'ordre': k + 1, 'description': '', 'public_id': uid(), 'cout_unitaire': cout, 'nom_commercial': NOMS_COMMERCIAUX['finition'].get(nom)})
 
 MACHINES = {}
 for k, (nom, marque, modele, typ, larg, tetes, mode, prix, vit, cout_h, encre, ip) in enumerate([

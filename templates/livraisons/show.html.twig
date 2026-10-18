@@ -648,7 +648,7 @@
 						</small>
 
 						{% if detail.format %}
-							{{ detail.format.nom }}
+							{{ detail.format|texte_interne }}
 						{% else %}
 							—
 						{% endif %}
@@ -785,7 +785,7 @@
 											{% if finition.configurationFinition %}
 
 												{% if finition.configurationFinition.finition %}
-													{{ finition.configurationFinition.finition.nom }}
+													{{ finition.configurationFinition.finition|texte_interne }}
 												{% else %}
 													Finition
 												{% endif %}

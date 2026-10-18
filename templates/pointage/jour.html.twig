@@ -49,7 +49,7 @@
 							<td data-libelle="Employé"><a href="{{ path('app_pointage_employe', {id: l.utilisateur.id, mois: jour|date('Y-m'), pointage: p ? p.id : null}) }}">{{ l.nom }}</a></td>
 							{% if p %}
 								<td data-libelle="Photo arrivée">{% include 'pointage/_photo.html.twig' with {pointage: p, photo: p.photoArrivee, sens: 'arrivee'} %}</td>
-								<td data-libelle="Arrivée"><b>{{ p.arriveeLe|date('H:i') }}</b></td>
+								<td data-libelle="Arrivée"><b>{{ p.arriveeLe|date('H:i') }}</b>{% if l.calcul.avance|default(0) > 0 %} <small class="si-pg-avant" title="Arrivé avant l'heure de début : le temps compte à partir de {{ l.calcul.debutPrevu|heure_pointage }}">avant {{ l.calcul.debutPrevu|heure_pointage }}</small>{% endif %}</td>
 								<td data-libelle="Photo départ">{% include 'pointage/_photo.html.twig' with {pointage: p, photo: p.photoDepart, sens: 'depart'} %}</td>
 								<td data-libelle="Départ"><b>{{ p.departLe ? p.departLe|date(p.departLe|date('Y-m-d') != p.arriveeLe|date('Y-m-d') ? 'd/m H:i' : 'H:i') : '—' }}</b></td>
 								<td data-libelle="Heures">{% if not p.departLe %}{{ l.calcul.statut == 'depart_non_pointe' ? 'à régulariser' : 'en cours' }}{% elseif l.calcul.dues is not null %}{{ l.calcul.faites|duree_pointage }} / {{ l.calcul.dues > 0 ? l.calcul.dues|duree_pointage : 'repos' }}{% else %}{{ l.calcul.presence|duree_pointage }}{% endif %}</td>

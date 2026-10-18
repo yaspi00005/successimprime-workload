@@ -34,6 +34,11 @@
 				Supprimer
 			</button>
 
+			<a href="{{ path('app_produits_noms_commerciaux') }}#nc-formats" class="btn btn-outline-primary" title="Le nom que tout le monde connaît, à côté de la désignation">
+				<i class="fa fa-tags mr-1" aria-hidden="true"></i>
+				Noms commerciaux
+			</a>
+
 
 		</div>
 	</div>
@@ -47,7 +52,7 @@
 		<!-- COL-END -->
 		<div class="col-lg-8 col-xl-12">
 			<div class="input-group mb-5">
-				<input type="text" class="form-control" placeholder="Rechercher un format…">
+				<input type="search" id="formatRecherche" class="form-control" placeholder="Rechercher un format (nom ou nom commercial)…" aria-label="Rechercher un format" data-recherche-liste="#formatListe" autocomplete="off">
 				<div class="input-group-append ">
 					<button type="button" class="btn btn-primary-light">
 						<i class="fa fa-search" aria-hidden="true"></i>
@@ -83,11 +88,11 @@
 								</tr>
 							</thead>
 
-							<tbody>
+							<tbody id="formatListe">
 
 								{% for format in formats %}
 
-									<tr id="format-row-{{ format.id }}">
+									<tr id="format-row-{{ format.id }}" data-recherche="{{ cle_recherche(format.nom, format.nomCommercial) }}">
 
 										<td class="text-center align-middle">
 											{{ format.ordre }}
@@ -95,6 +100,7 @@
 
 										<td class="align-middle">
 											<strong>{{ format.nom }}</strong>
+											{% if format.nomCommercial %}<small class="d-block text-muted">{{ format.nomCommercial }}</small>{% endif %}
 										</td>
 
 										<td class="align-middle text-nowrap">
@@ -452,6 +458,7 @@
 {% block javascripts %}
 	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 	<script src="../assets/js/traitement _format.js"></script>
+	<script src="{{ asset('js/recherche-catalogue.js') }}"></script>
 	<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>
 
 {% endblock %}

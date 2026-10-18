@@ -54,6 +54,7 @@ final class SocieteCourante
         StockEntrees::class => ['getArticle'],
         StockSorties::class => ['getArticle'],
         DotationAmortissement::class => ['getImmobilisation'],
+        \App\Entity\EcritureDiverse::class => ['getPaiement', 'getCommande'],
     ];
 
     public function __construct(

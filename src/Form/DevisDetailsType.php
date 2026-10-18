@@ -226,7 +226,8 @@ class DevisDetailsType extends AbstractType
 
             ->add('format', EntityType::class, [
                 'class' => Format::class,
-                'choice_label' => 'nom',
+                // Nom commercial entre parenthèses (Yaya, 18/10/2026) : la recherche trouve l'un ou l'autre.
+                'choice_label' => static fn (Format $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Format',
                 'placeholder' => 'Sélectionnez un format',
                 'required' => false,
@@ -628,9 +629,8 @@ class DevisDetailsType extends AbstractType
                 'choice_label' => function (
                     ProduitConfigurationFinition $configurationFinition
                 ): string {
-                    $nom = $configurationFinition
-                        ->getFinition()
-                        ?->getNom() ?? 'Finition';
+                    $finition = $configurationFinition->getFinition();
+                    $nom = null !== $finition ? NomCommercial::texteInterne($finition->getNomCommercial(), $finition->getNom()) : 'Finition';
 
                     $prix = $configurationFinition->getPrix();
 
@@ -1231,9 +1231,8 @@ class DevisDetailsType extends AbstractType
                 'choice_label' => function (
                     ProduitConfigurationFinition $configurationFinition
                 ): string {
-                    $nom = $configurationFinition
-                        ->getFinition()
-                        ?->getNom() ?? 'Finition';
+                    $finition = $configurationFinition->getFinition();
+                    $nom = null !== $finition ? NomCommercial::texteInterne($finition->getNomCommercial(), $finition->getNom()) : 'Finition';
 
                     return sprintf(
                         '%s — %s FCFA',

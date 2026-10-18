@@ -120,6 +120,10 @@ statistiques et les indicateurs commerciaux. « Trésorerie et soldes » n'y
 est plus (migration `Version20261015090000`, pour les bases existantes
 comme pour une nouvelle installation).
 
+Réponse de Yaya du 18/10/2026 : le rôle caisse a aussi d'office « Rendre
+l'argent du compte d'un client » (migration `Version20261018175000`). La
+Direction peut le retirer à une personne sur sa fiche.
+
 Dans la matrice, la case Finances du rôle caisse affiche donc
 « Modifier* » : il a la saisie et les virements, pas la lecture des
 soldes. La Direction donne la trésorerie à une personne précise sur sa

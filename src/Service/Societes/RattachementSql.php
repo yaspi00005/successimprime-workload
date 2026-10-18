@@ -52,6 +52,8 @@ final class RattachementSql
             'UPDATE stock_entrees s JOIN articles a ON a.id = s.article_id SET s.societe_id = a.societe_id WHERE '.$depuis('s'),
             'UPDATE stock_sorties s JOIN articles a ON a.id = s.article_id SET s.societe_id = a.societe_id WHERE '.$depuis('s'),
             'UPDATE dotation_amortissement d JOIN immobilisation i ON i.id = d.immobilisation_id SET d.societe_id = i.societe_id WHERE '.$depuis('d'),
+            // Une opération diverse de reprise suit son paiement.
+            'UPDATE ecriture_diverse e JOIN paiements p ON p.id = e.paiement_id SET e.societe_id = p.societe_id WHERE '.$depuis('e'),
         ];
     }
 }

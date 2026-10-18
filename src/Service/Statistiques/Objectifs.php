@@ -557,7 +557,7 @@ final class Objectifs
             ->getArrayResult());
     }
 
-    /** Paiements validés (hors paiement par le solde du client) ÷ CA facturé, en %. */
+    /** Paiements validés (paiement avec le solde du client compris) ÷ CA facturé, en %. */
     public function tauxEncaissement(\DateTimeImmutable $debut, \DateTimeImmutable $fin): float
     {
         $facture = $this->ca('global', $debut, $fin, null)[0];
@@ -568,6 +568,12 @@ final class Objectifs
         return round($this->encaisse($debut, $fin) * 100 / $facture, 1);
     }
 
+    /**
+     * Encaissé des objectifs : paiements validés de la période. Un paiement
+     * avec le solde du client compte au mois où il est enregistré (réponse
+     * de Yaya du 18/10/2026) ; le dépôt sur le compte, lui, n'est pas un
+     * encaissement d'une vente.
+     */
     public function encaisse(\DateTimeImmutable $debut, \DateTimeImmutable $fin, ?User $encaissePar = null): int
     {
         $qb = $this->em->createQueryBuilder()
@@ -577,10 +583,8 @@ final class Objectifs
             ->leftJoin('p.commande', 'pc')
             ->andWhere('pc.id IS NULL OR pc.soldeOuverture = false')
             ->andWhere('p.statut = :valide')
-            ->andWhere('p.mode != :solde')
             ->andWhere('p.date >= :debut AND p.date < :fin')
             ->setParameter('valide', Paiements::STATUT_VALIDE)
-            ->setParameter('solde', Paiements::MODE_SOLDE_CLIENT)
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin);
         if (null !== $encaissePar) {

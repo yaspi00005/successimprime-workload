@@ -230,12 +230,13 @@ final class CatalogueSynchro
             'finition' => [
                 'classe' => Finition::class, 'sens' => self::DESCENDANT, 'libelle' => 'Finition', 'titre' => ['nom'],
                 // coutUnitaire est un coût de revient : il reste au local.
-                'champs' => ['nom', 'description', 'publie', 'ordre'],
+                // nomCommercial : aussi pour les finitions et les formats (Yaya, 18/10/2026).
+                'champs' => ['nom', 'description', 'publie', 'ordre', 'nomCommercial'],
                 'relations' => [], 'listes' => ['typesImpressions' => 'type_impression'],
             ],
             'format' => [
                 'classe' => Format::class, 'sens' => self::DESCENDANT, 'libelle' => 'Format', 'titre' => ['nom'],
-                'champs' => ['nom', 'largeur', 'hauteur', 'unite', 'description', 'publie', 'ordre'],
+                'champs' => ['nom', 'largeur', 'hauteur', 'unite', 'description', 'publie', 'ordre', 'nomCommercial'],
                 'relations' => [], 'listes' => ['typesImpressions' => 'type_impression'],
             ],
             'support' => [

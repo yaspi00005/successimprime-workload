@@ -187,11 +187,15 @@ final class PreparationDemandeTest extends TestCase
         self::assertSame(24000, $ligne->getTotalTtc(), '3 m² × 8 000, comme le visiteur l\'a compté');
         self::assertStringContainsString('(3,00 m² demandés)', $demande->getResume());
 
-        // En pièces : calcul au m² habituel, 1 083 × 0,0025 = 2,7075 m².
+        // En pièces aussi (réponse de Yaya du 18/10, Q11) : 1 083 ÷ 361 = 3 m², pas 1 083 × 0,0025 = 2,7075 m².
         $enPieces = $this->demande($bache)->setTaille(5, 5)->setQuantite(1083);
         $ligne = PreparationDemande::construire($enPieces, null, $this->le, null, 1.0)['devis']?->getDevisDetails()->first();
-        self::assertNull($ligne?->getEspacementPiecesM2());
-        self::assertSame(21660, $ligne?->getTotalTtc());
+        self::assertSame(1.0, $ligne?->getEspacementPiecesM2());
+        self::assertSame(24000, $ligne?->getTotalTtc());
+
+        // Bâche de 3 × 1 m : plus grande que 1 m, calcul habituel.
+        $grande = PreparationDemande::construire($this->demande($bache), null, $this->le, null, 1.0)['devis']?->getDevisDetails()->first();
+        self::assertNull($grande?->getEspacementPiecesM2());
     }
 
     private function demande(ProduitConfiguration $config): DemandeDevis

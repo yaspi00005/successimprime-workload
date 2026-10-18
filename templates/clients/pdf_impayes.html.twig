@@ -249,7 +249,7 @@
 							{% if detail.largeur is defined and detail.longueur is defined and detail.largeur and detail.longueur %}
 								{% set dimensionsDetail = detail.largeur ~ ' × ' ~ detail.longueur ~ ' cm' %}
 							{% elseif detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.format %}
-								{% set dimensionsDetail = detail.produitConfiguration.format.nom %}
+								{% set dimensionsDetail = detail.produitConfiguration.format|texte_client %}
 							{% endif %}
 
 							{% set montantPayeDetail = ligne.totalTtc > 0 ? (ligne.totalPaye * detail.totalTtc / ligne.totalTtc)|round : 0 %}

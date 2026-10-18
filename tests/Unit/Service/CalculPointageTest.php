@@ -167,9 +167,9 @@ final class CalculPointageTest extends TestCase
         self::assertSame(480, $accueil['dues']);
         self::assertSame(10, $accueil['total']);
 
-        // Même journée 9 h – 17 h pour l'atelier : à l'heure mais parti avant la fin, 0.
+        // Même journée 9 h – 17 h pour l'atelier : à l'heure mais parti avant la fin, −15 (Yaya, 18/10/2026).
         $tot = self::jour('2026-10-16 09:00', '2026-10-16 17:00', self::v2());
-        self::assertSame(0, $tot['total']);
+        self::assertSame(-15, $tot['total']);
         self::assertSame('Parti avant la fin, heures pas faites', $tot['points'][0]['libelle']);
         self::assertStringStartsWith('À l\'heure mais parti avant la fin (8 h 00 sur 9 h 00)', $tot['raison']);
     }
@@ -196,8 +196,8 @@ final class CalculPointageTest extends TestCase
         self::assertSame(0, $r['retard']);
         self::assertSame(10, $r['total']);
 
-        // Parti 11 min avant la fin : au-delà de la marge, 0.
-        self::assertSame(0, self::jour('2026-10-16 09:00', '2026-10-16 17:49', self::v2())['total']);
+        // Parti 11 min avant la fin : au-delà de la marge, −15.
+        self::assertSame(-15, self::jour('2026-10-16 09:00', '2026-10-16 17:49', self::v2())['total']);
     }
 
     public function testHeuresEnPlusParHeureEntiere(): void
@@ -260,8 +260,43 @@ final class CalculPointageTest extends TestCase
         // Gardien 19 h – 7 h (horaires propres) : 12 h dues, la pause de midi ne le concerne pas.
         $r = self::jour('2026-10-12 18:55', '2026-10-13 07:05', ['alerte_depart' => '09:00'] + self::v2('19:00', '07:00'), maintenant: '2026-10-13 08:00');
         self::assertSame(720, $r['dues']);
-        self::assertSame(730, $r['faites']);
+        self::assertSame(725, $r['faites'], 'compté à partir de 19 h');
+        self::assertSame(5, $r['avance']);
         self::assertSame(10, $r['total']);
+    }
+
+    public function testArriveeAvantLeDebutSignaleeSansTempsEnPlus(): void
+    {
+        // 7 h – 18 h (atelier 9 h – 18 h) : le temps compte à partir de 9 h, pas d'heures en plus.
+        $r = self::jour('2026-10-16 07:00', '2026-10-16 18:00', self::v2(), true);
+        self::assertSame(540, $r['faites']);
+        self::assertSame(120, $r['avance']);
+        self::assertSame('09:00', $r['debutPrevu']);
+        self::assertSame(10, $r['total']);
+        self::assertStringStartsWith('Arrivé à 7 h, avant 9 h : le temps compte à partir de 9 h. À l\'heure, heures faites', $r['raison']);
+
+        // 8 h – 17 h : arrivé tôt mais parti avant la fin, −15.
+        self::assertSame(-15, self::jour('2026-10-16 08:00', '2026-10-16 17:00', self::v2())['total']);
+
+        // À l'heure pile : pas de mention.
+        self::assertSame(0, self::jour('2026-10-16 09:00', '2026-10-16 18:00', self::v2())['avance']);
+    }
+
+    public function testSansHeureFixe(): void
+    {
+        // Livreur : ni retard ni départ anticipé, la journée pointée vaut +10, pas d'heures en plus.
+        $regles = ['libre' => true] + self::v2();
+        $tard = self::jour('2026-10-16 11:20', '2026-10-16 15:00', $regles, true);
+        self::assertSame(0, $tard['retard']);
+        self::assertSame(0, $tard['dues']);
+        self::assertSame(10, $tard['total']);
+        self::assertSame('Sans heure fixe', $tard['horaire']);
+        self::assertSame(0, $tard['avance']);
+
+        $long = self::jour('2026-10-16 07:00', '2026-10-16 21:00', $regles, true);
+        self::assertSame(10, $long['total'], 'pas d\'heures en plus sans heure fixe');
+        self::assertSame(0, $long['avance']);
+        self::assertSame(0, $long['sup']);
     }
 
     public function testPauseRetireeDesHeures(): void
@@ -379,13 +414,13 @@ final class CalculPointageTest extends TestCase
         self::assertSame(-15, $soir['total']);
         self::assertSame('Retard de 40 min et heures pas faites (8 h 20 sur 9 h 00, présences du jour additionnées).', $soir['raison']);
 
-        // Partie de 11 h à 15 h : seule l'heure de pause dehors compte, 6 h sur 9 h, à l'heure : 0.
+        // Partie de 11 h à 15 h : seule l'heure de pause dehors compte, 6 h sur 9 h, à l'heure mais parti avant la fin : −15.
         [, $longue] = self::journee([['2026-10-16 09:00', '2026-10-16 11:00'], ['2026-10-16 15:00', '2026-10-16 18:00']], self::v2());
-        self::assertSame([360, 0], [$longue['faites'], $longue['total']]);
+        self::assertSame([360, -15], [$longue['faites'], $longue['total']]);
 
         // Heures en plus et longue journée sur le total du jour.
-        [, , $nuit] = self::journee([['2026-10-16 08:00', '2026-10-16 13:00'], ['2026-10-16 13:30', '2026-10-16 20:00'], ['2026-10-16 20:30', '2026-10-17 04:30']], self::v2());
-        self::assertSame(1200, $nuit['faites'], '5 h + 30 min de pause + 6 h 30 + 8 h = 20 h');
+        [, , $nuit] = self::journee([['2026-10-16 09:00', '2026-10-16 13:00'], ['2026-10-16 13:30', '2026-10-16 20:00'], ['2026-10-16 20:30', '2026-10-17 05:30']], self::v2());
+        self::assertSame(1200, $nuit['faites'], '4 h + 30 min de pause + 6 h 30 + 9 h = 20 h');
         self::assertSame(50, $nuit['total'], '20 h dans la journée : longue journée');
     }
 
@@ -428,14 +463,14 @@ final class CalculPointageTest extends TestCase
      */
     public static function exemplesDeLaDoc(): iterable
     {
-        yield 'à l\'heure' => ['09:00-18:00', '2026-10-16 08:55', '2026-10-16 18:05', 'Heures faites', 550, 540, 10];
+        yield 'à l\'heure' => ['09:00-18:00', '2026-10-16 08:55', '2026-10-16 18:05', 'Heures faites', 545, 540, 10];
         yield 'retard rattrapé' => ['09:00-18:00', '2026-10-16 09:40', '2026-10-16 18:45', 'Retard de 40 min rattrapé', 545, 540, 10];
         yield 'retard pas rattrapé' => ['09:00-18:00', '2026-10-16 09:40', '2026-10-16 18:00', 'heures pas faites', 500, 540, -15];
-        yield 'parti avant la fin' => ['09:00-18:00', '2026-10-16 08:58', '2026-10-16 16:00', 'Parti avant la fin', 422, 540, 0];
+        yield 'parti avant la fin' => ['09:00-18:00', '2026-10-16 08:58', '2026-10-16 16:00', 'Parti avant la fin', 420, 540, -15];
         yield '59 min en plus' => ['09:00-18:00', '2026-10-16 09:00', '2026-10-16 18:59', 'Heures faites', 599, 540, 10];
         yield 'accueil, 2 h en plus' => ['09:00-17:00', '2026-10-16 09:00', '2026-10-16 19:30', '2 h en plus', 630, 480, 20];
         yield 'après minuit' => ['09:00-18:00', '2026-10-16 09:00', '2026-10-17 02:30', '8 h en plus', 1050, 540, 50];
-        yield 'garde de 24 h' => ['09:00-18:00', '2026-10-16 08:00', '2026-10-17 08:00', 'Longue journée', 1440, 540, 50];
+        yield 'garde de 24 h' => ['09:00-18:00', '2026-10-16 08:00', '2026-10-17 08:00', 'Longue journée', 1380, 540, 50];
         yield 'gardien de nuit' => ['19:00-07:00', '2026-10-16 19:00', '2026-10-17 07:05', 'Heures faites', 725, 720, 10];
         yield 'dimanche de repos' => ['09:00-18:00', '2026-10-18 09:00', '2026-10-18 13:30', '4 h en plus', 270, 0, 20];
         yield 'départ non pointé' => ['09:00-18:00', '2026-10-16 09:00', null, '', 0, null, 0];

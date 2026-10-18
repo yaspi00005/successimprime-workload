@@ -6,6 +6,8 @@ use App\Entity\Corbeille as EntreeCorbeille;
 use App\Entity\JournalActivite;
 use App\Entity\User;
 use App\Service\Parametres\Parametres;
+use App\Service\NotificationService;
+use App\Service\Statistiques\Objectifs;
 use App\Service\Synchro\JournalSynchro;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -39,6 +41,7 @@ final class Corbeille
         private readonly CaptureCorbeille $capture,
         private readonly LoggerInterface $logger,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
+        private readonly ?NotificationService $notifications = null,
     ) {
     }
 
@@ -212,7 +215,11 @@ final class Corbeille
         return \sprintf('%s est de retour%s.', $racine->getLibelle(), $autres > 0 ? \sprintf(', avec %d élément%s lié%s', $autres, $autres > 1 ? 's' : '', $autres > 1 ? 's' : '') : '');
     }
 
-    /** Supprime l'entrée pour de bon, avec les fichiers qui n'appartenaient qu'à elle. */
+    /**
+     * Supprime l'entrée pour de bon, avec les fichiers qui n'appartenaient
+     * qu'à elle. Fait par une personne (pas par la purge des 30 jours) : la
+     * direction est prévenue (Yaya, 18/10/2026), sauf la personne elle-même.
+     */
     public function supprimerDefinitivement(EntreeCorbeille $racine, ?User $par): void
     {
         $lignes = $this->lignes($racine);
@@ -222,6 +229,16 @@ final class Corbeille
         try {
             $connexion->executeStatement('DELETE FROM corbeille WHERE groupe = ?', [$racine->getGroupe()]);
             $this->journaliser($racine, JournalActivite::ACTION_PURGE, $par, \count($lignes));
+            if (null !== $par && null !== $this->notifications) {
+                $autres = \count($lignes) - 1;
+                $this->notifications->notifierRoles(
+                    ['ROLE_ADMIN'],
+                    \sprintf('Corbeille : %s supprimé pour de bon par %s%s.', $racine->getLibelle(), Objectifs::nomAgent($par), $autres > 0 ? \sprintf(' (avec %d élément%s lié%s)', $autres, $autres > 1 ? 's' : '', $autres > 1 ? 's' : '') : ''),
+                    'app_corbeille_index',
+                    [],
+                    $par,
+                );
+            }
             $this->em->flush();
             $connexion->commit();
         } catch (\Throwable $e) {

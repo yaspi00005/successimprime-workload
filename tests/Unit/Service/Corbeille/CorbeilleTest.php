@@ -12,6 +12,7 @@ use App\Entity\SynchroJournal;
 use App\Entity\User;
 use App\Service\Corbeille\CaptureCorbeille;
 use App\Service\Corbeille\Corbeille;
+use App\Service\NotificationService;
 use App\Service\Synchro\JournalSynchro;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Types\Type;
@@ -149,6 +150,37 @@ final class CorbeilleTest extends TestCase
         self::assertSame(1, $resume['elements']);
 
         self::assertSame(0, $this->corbeille->purger(new \DateTimeImmutable('2026-10-18 02:30:00')), 'rien de plus le lendemain');
+    }
+
+    public function testLaDirectionEstPreveneQuandQuelquUnVideUneEntree(): void
+    {
+        $this->supprimerUnFerie();
+        $moussa = (new User())->setUsername('moussa');
+        (new \ReflectionProperty(User::class, 'id'))->setValue($moussa, 7);
+
+        $notifications = $this->createMock(NotificationService::class);
+        $notifications->expects(self::once())->method('notifierRoles')->with(
+            ['ROLE_ADMIN'],
+            'Corbeille : Jour férié « Fête de l\'indépendance » supprimé pour de bon par moussa.',
+            'app_corbeille_index',
+            [],
+            $moussa,
+        );
+        $parametres = $this->parametres;
+        $corbeille = new Corbeille($this->em, static fn (): object => $parametres, new JournalSynchro(false), new CaptureCorbeille($this->createStub(Security::class), new NullLogger(), $this->projet), new NullLogger(), $this->projet, $notifications);
+        $corbeille->supprimerDefinitivement($corbeille->entrees([], null)[0]['entree'], $moussa);
+        self::assertSame(0, $this->compter('corbeille'));
+    }
+
+    public function testLaPurgeDeLaNuitNePrevientPersonne(): void
+    {
+        $this->supprimerUnFerie();
+        $this->em->getConnection()->executeStatement('UPDATE corbeille SET supprime_le = ?', ['2026-09-01 08:00:00']);
+        $notifications = $this->createMock(NotificationService::class);
+        $notifications->expects(self::never())->method('notifierRoles');
+        $parametres = $this->parametres;
+        $corbeille = new Corbeille($this->em, static fn (): object => $parametres, new JournalSynchro(false), new CaptureCorbeille($this->createStub(Security::class), new NullLogger(), $this->projet), new NullLogger(), $this->projet, $notifications);
+        self::assertSame(1, $corbeille->purger(new \DateTimeImmutable('2026-10-18 02:30:00')));
     }
 
     public function testLaPurgeRetireLeFichierQuiNAppartenaitQuAElle(): void

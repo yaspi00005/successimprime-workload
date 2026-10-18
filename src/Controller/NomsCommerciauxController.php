@@ -4,6 +4,8 @@ namespace App\Controller;
 
 use App\Entity\Articles;
 use App\Entity\AUnNomCommercial;
+use App\Entity\Finition;
+use App\Entity\Format;
 use App\Entity\Produits;
 use App\Entity\Supports;
 use App\Entity\TypesImpression;
@@ -33,6 +35,9 @@ final class NomsCommerciauxController extends AbstractController
         'produits' => ['classe' => Produits::class, 'titre' => 'Produits', 'aide' => 'Ce que le client commande : sur le site, dans l\'espace client, sur les devis et les factures.'],
         'supports' => ['classe' => Supports::class, 'titre' => 'Supports et matières', 'aide' => 'La matière imprimée, choisie avec le produit.'],
         'types' => ['classe' => TypesImpression::class, 'titre' => 'Types d\'impression', 'aide' => 'La façon d\'imprimer, choisie avec le produit.'],
+        // Yaya, 18/10/2026 : aussi les formats et les finitions.
+        'formats' => ['classe' => Format::class, 'titre' => 'Formats', 'aide' => 'La taille choisie avec le produit (« Carte de visite » pour 85 × 55).'],
+        'finitions' => ['classe' => Finition::class, 'titre' => 'Finitions', 'aide' => 'Ce qu\'on ajoute après l\'impression (« Trous pour accrocher » pour œillets).'],
         'articles' => ['classe' => Articles::class, 'titre' => 'Articles vendus', 'aide' => 'Articles de stock vendus tels quels (case « vendable » de la fiche article). Ils restent à l\'ERP local.'],
     ];
 
@@ -107,6 +112,8 @@ final class NomsCommerciauxController extends AbstractController
             'produits' => $this->em->getRepository(Produits::class)->findBy([], ['ordre' => 'ASC', 'nom' => 'ASC']),
             'supports' => $this->em->getRepository(Supports::class)->findBy([], ['ordre' => 'ASC', 'nom' => 'ASC']),
             'types' => $this->em->getRepository(TypesImpression::class)->findBy([], ['ordre' => 'ASC', 'nom' => 'ASC']),
+            'formats' => $this->em->getRepository(Format::class)->findBy([], ['ordre' => 'ASC', 'nom' => 'ASC']),
+            'finitions' => $this->em->getRepository(Finition::class)->findBy([], ['nom' => 'ASC']),
             'articles' => $this->em->getRepository(Articles::class)->findBy(['vendable' => true], ['designation' => 'ASC']),
             default => [],
         };

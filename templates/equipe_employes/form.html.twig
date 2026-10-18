@@ -78,8 +78,19 @@
 							{% for k, l in constant('App\\Entity\\Employes::PAIEMENTS') %}<option value="{{ k }}"{{ saisie.paiement == k ? ' selected' }}>{{ l }}</option>{% endfor %}
 						</select>
 					</label>
+					{# Horaire programmé par agent (Yaya, 18/10/2026) : l'horaire type de son poste ou de son rôle par défaut. #}
+					{% set libelles_horaires = {} %}
+					{% for k, t in horaires_types %}{% set libelles_horaires = libelles_horaires|merge({(k): t.debut ? t.libelle ~ ' (' ~ t.debut|heure_pointage ~ ' – ' ~ t.fin|heure_pointage ~ ')' : t.libelle ~ ' : ni retard ni départ anticipé'}) %}{% endfor %}
+					<label class="si-em-champ">
+						<span>Horaire de l'agent <small class="si-em-aide">pointage et points</small></span>
+						<select name="horaire_type" class="form-select" data-si-horaire-agent>
+							<option value="">D'après le poste ou le rôle : {{ libelles_horaires[horaire_auto] }}</option>
+							{% for k, t in horaires_types %}<option value="{{ k }}"{{ saisie.horaire_type == k ? ' selected' }}>{{ libelles_horaires[k] }}</option>{% endfor %}
+						</select>
+						<small class="si-em-aide">Livreurs : « Sans heure fixe ». Des heures propres ci-dessous passent avant l'horaire type.</small>
+					</label>
 					<div class="si-em-champ si-em-horaires{{ erreurs.horaires is defined ? ' si-em-erreur' }}">
-						<span>Horaires <small class="si-em-aide">vides : ceux de l'atelier</small></span>
+						<span>Heures propres <small class="si-em-aide">vides : celles de l'horaire de l'agent</small></span>
 						<span class="si-em-double">
 							<input type="time" name="debut_heure" value="{{ saisie.debut_heure }}" class="form-control" aria-label="Heure d'arrivée">
 							<input type="time" name="fin_heure" value="{{ saisie.fin_heure }}" class="form-control" aria-label="Heure de départ">
@@ -91,15 +102,6 @@
 						</span>
 						{% if erreurs.horaires is defined %}<small>{{ erreurs.horaires }}</small>{% endif %}
 					</div>
-					<label class="si-em-champ">
-						<span>Horaire des points <small class="si-em-aide">pointage</small></span>
-						<select name="horaire_type" class="form-select">
-							{% set auto = horaires_types[horaire_auto] %}
-							<option value="">D'après le poste : {{ auto.libelle }} ({{ auto.debut|heure_pointage }} – {{ auto.fin|heure_pointage }})</option>
-							{% for k, t in horaires_types %}<option value="{{ k }}"{{ saisie.horaire_type == k ? ' selected' }}>{{ t.libelle }} ({{ t.debut|heure_pointage }} – {{ t.fin|heure_pointage }})</option>{% endfor %}
-						</select>
-						<small class="si-em-aide">Des horaires propres ci-dessus passent avant.</small>
-					</label>
 					<label class="si-em-champ">
 						<span>Responsable</span>
 						<select name="responsable" class="form-select">

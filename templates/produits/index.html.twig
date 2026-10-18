@@ -251,7 +251,7 @@
 									<td class="align-middle">
 										{% for format in produit.formats %}
 											<span class="badge badge-secondary mb-1">
-												{{ format.nom }}
+												{{ format|texte_interne }}
 											</span>
 										{% else %}
 											<span class="text-muted">Aucun</span>
@@ -261,7 +261,7 @@
 									<td class="align-middle">
 										{% for finition in produit.finitions %}
 											<span class="badge badge-warning mb-1">
-												{{ finition.nom }}
+												{{ finition|texte_interne }}
 											</span>
 										{% else %}
 											<span class="text-muted">Aucune</span>
@@ -864,7 +864,7 @@
 					<label class="selectgroup-item">
 						<input type="checkbox" value="{{ format.id }}" class="selectgroup-input {{ prefix }}-format">
 						<span class="selectgroup-button">
-							{{ format.nom }}
+							{{ format|texte_interne }}
 						</span>
 					</label>
 				{% endfor %}
@@ -879,7 +879,7 @@
 					<label class="selectgroup-item">
 						<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input {{ prefix }}-finition">
 						<span class="selectgroup-button">
-							{{ finition.nom }}
+							{{ finition|texte_interne }}
 						</span>
 					</label>
 				{% endfor %}

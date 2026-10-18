@@ -706,6 +706,7 @@ final class RapportPeriodique
 
         $presences = [];
         $retards = [];
+        $avances = [];
         foreach ($this->depotPointages->entre($p->debut, $fin) as $pointage) {
             $u = (int) $pointage->getUtilisateur()->getId();
             $jour = $pointage->getArriveeLe()->format('Y-m-d');
@@ -715,6 +716,10 @@ final class RapportPeriodique
                 $retards[$u] ??= ['jours' => 0, 'minutes' => 0];
                 ++$retards[$u]['jours'];
                 $retards[$u]['minutes'] += (int) $calcul['retard'];
+            }
+            // Arrivé avant l'heure de début : mention seulement (le temps compte à partir du début).
+            if (($calcul['avance'] ?? 0) > 0) {
+                $avances[$u][$jour] = true;
             }
         }
         $justifiees = $this->joursJustifies($p->debut, $fin);
@@ -748,9 +753,10 @@ final class RapportPeriodique
                 isset($justifiees[$id][$cle]) ? ++$justifies : ++$absences;
             }
             $absNonJustifiees += $absences;
-            if ($absences > 0 || $justifies > 0 || isset($retards[$id])) {
+            if ($absences > 0 || $justifies > 0 || isset($retards[$id]) || isset($avances[$id])) {
                 $lignes[] = [
                     'nom' => Pointages::nom($u),
+                    'avant_debut' => \count($avances[$id] ?? []),
                     'retards' => $retards[$id]['jours'] ?? 0,
                     'minutes' => $retards[$id]['minutes'] ?? 0,
                     'absences' => $absences,
@@ -765,6 +771,7 @@ final class RapportPeriodique
             'presents' => $presentsDernierJour,
             'attendus' => $attendusDernierJour,
             'retards' => array_sum(array_column($lignes, 'retards')),
+            'avant_debut' => array_sum(array_column($lignes, 'avant_debut')),
             'absences_non_justifiees' => $absNonJustifiees,
             'lignes' => $lignes,
         ];

@@ -137,12 +137,12 @@ final class NouvelleCommandePiecesM2Test extends TestCase
 
         $payeur = PageNouvelleCommande::recapitulatif($commande, $ligne, $vinyle, true, 48);
         self::assertSame(['libelle' => 'Surface', 'valeur' => '2,5 m² × 6 500 F'], $payeur['lignes'][0]);
-        self::assertSame(['libelle' => 'Pièces au m²', 'valeur' => '361 (19 × 19, espacement 1 mm)'], $payeur['lignes'][1]);
+        self::assertSame(['libelle' => 'Pièces au m²', 'valeur' => '361 (19 × 19)'], $payeur['lignes'][1]);
         self::assertSame('2,5 m²', $payeur['quantite']);
         self::assertSame(16250, $payeur['total']);
 
         $demandeur = PageNouvelleCommande::recapitulatif($commande, $ligne, $vinyle, false, 48);
-        self::assertSame(['Surface' => '2,5 m²', 'Pièces au m²' => '361 (19 × 19, espacement 1 mm)', 'Délai' => 'standard 48 h', 'Retrait en boutique' => 'gratuit'], array_column($demandeur['lignes'], 'valeur', 'libelle'));
+        self::assertSame(['Surface' => '2,5 m²', 'Pièces au m²' => '361 (19 × 19)', 'Délai' => 'standard 48 h', 'Retrait en boutique' => 'gratuit'], array_column($demandeur['lignes'], 'valeur', 'libelle'));
         self::assertArrayNotHasKey('total', $demandeur);
         self::assertDoesNotMatchRegularExpression('/\d\s?F\b/u', json_encode($demandeur, \JSON_UNESCAPED_UNICODE) ?: '');
     }

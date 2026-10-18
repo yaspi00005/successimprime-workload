@@ -6,7 +6,6 @@ use App\Controller\SiteController;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\ProduitConfiguration;
-use App\Service\PiecesParMetreCarre;
 use App\Service\Site\CatalogueSite;
 
 /**
@@ -170,8 +169,8 @@ final class PageNouvelleCommande
             $lignes[] = ['libelle' => 'Surface', 'valeur' => self::nombre($surface).' m²'.($montants ? ' × '.self::f((int) $ligne->getPrixUnitaire()).' F' : '')];
             $pieces = $ligne->getPiecesAuM2();
             if (null !== $pieces) {
-                // Un nombre de pièces, pas un montant : montré à tous ceux qui commandent.
-                $lignes[] = ['libelle' => 'Pièces au m²', 'valeur' => \sprintf('%s (%d × %d, espacement %s mm)', self::f($pieces['parM2']), $pieces['colonnes'], $pieces['rangees'], PiecesParMetreCarre::nombre($pieces['espacement']))];
+                // Un nombre de pièces, pas un montant : montré à tous ceux qui commandent (l'espacement est dit sous la quantité).
+                $lignes[] = ['libelle' => 'Pièces au m²', 'valeur' => \sprintf('%s (%d × %d)', self::f($pieces['parM2']), $pieces['colonnes'], $pieces['rangees'])];
             }
         } elseif ('metre' === $mode && $taille) {
             $lignes[] = ['libelle' => 'Longueur', 'valeur' => self::nombre((float) $ligne->getLongueur() * $quantite).' m'.($montants ? ' × '.self::f((int) $ligne->getPrixUnitaire()).' F' : '')];

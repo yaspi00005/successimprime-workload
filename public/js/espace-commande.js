@@ -230,11 +230,16 @@
 		libelleEnvoyer();
 	}
 
-	/* Surface tapée refusée par le serveur (moins d'une pièce, minimum...) : dite sous le champ. */
+	/*
+	 * Surface tapée refusée par le serveur (minimum du produit, trop de
+	 * pièces...) : dite sous le champ. Sans pièce comptée (surface vide,
+	 * moins d'une pièce), la phrase de pieces-m2.js le dit déjà.
+	 */
 	function erreurM2(message) {
 		const zone = $('[data-pm2-zone-m2]');
 		const champ = $('[data-pm2-m2]');
 		if (!zone || !champ) return;
+		if (form.elements.quantite && form.elements.quantite.value === '') message = '';
 		let p = document.getElementById('pm2-erreur');
 		if (!message) {
 			if (p) p.remove();

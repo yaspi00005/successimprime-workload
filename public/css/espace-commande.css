@@ -98,6 +98,14 @@ html:not(.co-js) [data-co-aller], html:not(.co-js) .co-barre { display: none !im
 .co-format { border: 1px solid var(--trait); background: #fff; border-radius: 999px; padding: .32rem .8rem; font: inherit; font-size: .82rem; font-weight: 700; color: var(--encre); cursor: pointer; }
 .co-format.actif { background: var(--bleu); border-color: var(--bleu); color: #fff; }
 .co-format:focus-visible { outline: 2px solid var(--bleu); outline-offset: 2px; }
+/* Pièces au m² (partials/_pieces_m2.html.twig, css/pieces-m2.css) : aux couleurs de l'espace. */
+.co-options .si-pm2 { margin: .8rem 0 .2rem; border-color: var(--trait); background: var(--fond); }
+.co-options .si-pm2-m2 label { display: block; margin-bottom: .3rem; font-size: .82rem; font-weight: 700; color: var(--encre); }
+.co-options .si-pm2-m2 input { width: 100%; border: 1.5px solid var(--trait); border-radius: 12px; padding: .7rem .9rem; font: inherit; color: var(--bleu); font-weight: 600; background: #fff; }
+.co-options .si-pm2-m2 input:focus { outline: 2px solid var(--bleu-clair); border-color: var(--bleu); }
+.co-options .si-pm2-m2 input[aria-invalid="true"] { border-color: var(--rouge); }
+.co-options .si-pm2-resultat { font-size: .85rem; color: var(--encre); }
+.co-options .si-pm2-calculee { cursor: default; }
 
 .co-sous-titre { margin: 1.1rem 0 .5rem; font-size: .9rem; font-weight: 800; }
 .co-sous-titre.co-premier { margin-top: 0; }

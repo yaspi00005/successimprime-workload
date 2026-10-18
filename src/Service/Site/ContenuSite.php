@@ -403,6 +403,9 @@ final class ContenuSite
         if (($longueur = mb_strlen((string) $membre->getMotGerant())) > MembreEquipe::MOT_MAX) {
             $erreurs[] = \sprintf('Le mot du gérant fait %d caractères : %d au plus, pour rester court.', $longueur, MembreEquipe::MOT_MAX);
         }
+        if (null !== $montant = $membre->montantEcrit()) {
+            $erreurs[] = \sprintf('Pas de prix ni de montant sur la page « Qui sommes-nous ? » : retirez « %s ».', $montant);
+        }
     }
 
     /**

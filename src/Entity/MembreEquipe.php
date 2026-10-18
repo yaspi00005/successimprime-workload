@@ -38,6 +38,14 @@ class MembreEquipe
     /** « Le mot du gérant » : court, quelques phrases. */
     public const MOT_MAX = 900;
 
+    /**
+     * Un montant suivi de sa monnaie : « 5 000 F », « 25 000 FCFA »,
+     * « 10.000 francs », « 5000 fr », « 15 € ». Le nombre finit par un
+     * chiffre : un pourcentage, une année (« depuis 2015 ») ou une initiale
+     * après une virgule (« en 2010, F. Traoré ») n'en sont pas.
+     */
+    private const MONTANT = '/\d(?:[\d \x{00A0}\x{202F}.,]*\d)?[ \x{00A0}\x{202F}]?(?:f\s?cfa|xof|francs?|frs?|euros?|€|f)(?![\p{L}\p{N}])/iu';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -298,6 +306,22 @@ class MembreEquipe
         }
 
         return $regles;
+    }
+
+    /**
+     * Le premier montant écrit dans le nom, le poste ou le mot (« 5 000 F »),
+     * ou null : ces textes paraissent sur le site public, jamais avec un
+     * prix ni un montant (ContenuSite le refuse).
+     */
+    public function montantEcrit(): ?string
+    {
+        foreach ([$this->nom, $this->poste, (string) $this->motGerant] as $texte) {
+            if (preg_match(self::MONTANT, $texte, $trouve)) {
+                return trim($trouve[0]);
+            }
+        }
+
+        return null;
     }
 
     /**

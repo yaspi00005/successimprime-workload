@@ -209,6 +209,28 @@ final class EquipeSiteTest extends TestCase
         self::assertTrue($gerant->isAussiDansEquipe());
     }
 
+    public function testPasDeMontantDansLeMotNiLePoste(): void
+    {
+        $contenu = $this->contenu();
+        $maintenant = new \DateTimeImmutable('2026-10-18 09:00');
+        $champs = ['nom' => 'Kadiatou T.', 'poste' => 'Gérante', 'publie' => '1', 'accordPersonne' => '1', 'gerant' => '1'];
+
+        foreach (['Banderoles à partir de 5 000 F le mètre.', "Bienvenue.\nFlyers dès 25 000 FCFA.", 'Un roll-up pour 45.000 F CFA !', 'Cartes à 10 000 francs.', 'Moins de 15 €.', 'Le mètre à 5000 fr seulement.', 'Dès 2 500F.'] as $mot) {
+            $gerant = $contenu->nouveau('equipe', null, true);
+            $retour = $contenu->enregistrer($gerant, $champs + ['motGerant' => $mot], [], $maintenant);
+            self::assertCount(1, $retour['erreurs'], $mot);
+            self::assertStringContainsString('Pas de prix ni de montant', $retour['erreurs'][0], $mot);
+        }
+        $retour = $contenu->enregistrer(new MembreEquipe(), ['nom' => 'Awa', 'poste' => 'Caisse, 2 000 F de fond', 'accordPersonne' => '1'], [], $maintenant);
+        self::assertStringContainsString('retirez « 2 000 F »', implode(' ', $retour['erreurs']), 'le poste aussi');
+
+        // Une année, un pourcentage, des formats ou un numéro ne sont pas des montants.
+        $gerant = $contenu->nouveau('equipe', null, true);
+        $retour = $contenu->enregistrer($gerant, $champs + ['motGerant' => "Depuis 2015, Fatou et l'équipe impriment 7j/7 : 100 % des BAT validés, 2 formats A3 et A4, au +223 70 00 00 00. EquipeDemo : 3 fois merci.\nEn 2010, F. Traoré ouvrait l'atelier avec 2 fruitiers devant la porte."], [], $maintenant);
+        self::assertSame([], $retour['erreurs']);
+        self::assertNull((new MembreEquipe())->setMotGerant(EquipeDemo::MOT)->montantEcrit());
+    }
+
     public function testNomEtPosteObligatoires(): void
     {
         $retour = $this->contenu()->enregistrer(new MembreEquipe(), ['nom' => ' ', 'poste' => '', 'accordPersonne' => '1'], [], new \DateTimeImmutable());

@@ -6,6 +6,7 @@ use App\Controller\SiteController;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\ProduitConfiguration;
+use App\Service\Catalogue\NomCommercial;
 use App\Service\Site\CatalogueSite;
 
 /**
@@ -55,12 +56,16 @@ final class PageNouvelleCommande
             if (null !== $categorie && !\in_array($categorie->getId(), $categories[$nomCategorie]['ids'], true)) {
                 $categories[$nomCategorie]['ids'][] = (int) $categorie->getId();
             }
-            $nom = CatalogueSite::nomAffiche((string) $produit?->getNom());
+            // Le nom commercial d'abord, la désignation à côté (docs/noms-commerciaux.md).
+            $noms = NomCommercial::clientDe($produit);
+            $nom = CatalogueSite::nomAffiche($noms['nom']);
+            $technique = null === $noms['technique'] ? null : CatalogueSite::nomAffiche($noms['technique']);
             $produits[] = [
                 'config' => (int) $depart->getId(),
                 'nom' => $nom,
+                'technique' => $technique,
                 'categorie' => $categories[$nomCategorie]['id'],
-                'illustration' => CatalogueSite::illustration($nom, $categories[$nomCategorie]['famille']),
+                'illustration' => CatalogueSite::illustration(trim($nom.' '.$technique), $categories[$nomCategorie]['famille']),
                 'prix' => $montants ? self::prixDepart($depart, $b2b) : null,
                 'info' => self::infoSansPrix($depart),
                 'matieres' => \count($liste),
@@ -268,9 +273,9 @@ final class PageNouvelleCommande
     {
         $support = trim((string) $c->getSupport()?->getNom());
         $format = $c->getFormat()?->getNom();
-        $nom = CatalogueSite::nomAffiche((string) $c->getProduit()?->getNom());
+        $nom = CatalogueSite::nomAffiche(NomCommercial::clientDe($c->getProduit())['nom']);
         if ('' !== $support) {
-            return CatalogueSite::nomAffiche($support);
+            return CatalogueSite::nomAffiche(NomCommercial::texteClient($c->getSupport()?->getNomCommercial(), $support));
         }
 
         return null !== $format && !\in_array(mb_strtolower($format), ['sur mesure', 'taille unique'], true) ? $nom.' · '.$format : $nom;

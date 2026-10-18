@@ -79,11 +79,13 @@ Le nom commercial des produits, des supports et des types d'impression part vers
 
 ## Écran « Nouvelle commande » de l'espace client
 
-Cet écran est refait sur une autre branche ; il n'est pas touché ici. Pour y afficher et chercher les deux noms :
+Branché le 18/10/2026 (`PageNouvelleCommande`) :
 
-- `NomCommercial::configuration($configuration)` rend `['nom' => 'Autocollant · Vinyle adhésif blanc · Sur mesure', 'technique' => 'Vinyle adhésif', 'texte' => 'Autocollant (Vinyle adhésif) · …']` ; en Twig, `configuration|configuration_client` donne le HTML (nom commercial, désignation en petit) ;
-- `produit|nom_client`, `support|nom_client` pour un élément seul, `NomCommercial::clientDe($element)` en PHP ;
-- pour une recherche dans la page : `data-recherche="{{ cle_recherche(produit.nom, produit.nomCommercial, support.nom, support.nomCommercial) }}"`, comparé à la même clé calculée en JavaScript (fonction `cle` de `public/js/recherche-catalogue.js`) ; côté serveur, `NomCommercial::correspond($texte, $nom1, $nom2…)`.
+- étape 1, cartes des produits : le nom commercial en gras, la désignation dessous en plus petit (« Banderole » puis « Bâche imprimée ») ; le dessin du produit est choisi d'après les deux noms ;
+- étape 2, liste des matières et récapitulatif « Votre commande » : le support sous son nom commercial, la désignation entre parenthèses (« Vitrophanie (Micro-perforé) ») ; sans nom commercial, la désignation seule ;
+- la ligne de la commande garde la désignation technique (`GrilleTarifaire::libelle`), comme au comptoir.
+
+Pour d'autres écrans : `NomCommercial::configuration($configuration)` rend `['nom' => 'Autocollant · Vinyle adhésif blanc · Sur mesure', 'technique' => 'Vinyle adhésif', 'texte' => 'Autocollant (Vinyle adhésif) · …']` ; en Twig, `configuration|configuration_client` donne le HTML (nom commercial, désignation en petit) ; `produit|nom_client`, `support|nom_client` pour un élément seul, `NomCommercial::clientDe($element)` en PHP ; pour une recherche dans la page, `data-recherche="{{ cle_recherche(produit.nom, produit.nomCommercial, support.nom, support.nomCommercial) }}"`, comparé à la même clé calculée en JavaScript (fonction `cle` de `public/js/recherche-catalogue.js`) ; côté serveur, `NomCommercial::correspond($texte, $nom1, $nom2…)`.
 
 ## Dans le code
 

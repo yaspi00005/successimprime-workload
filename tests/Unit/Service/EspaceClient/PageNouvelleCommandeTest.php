@@ -34,6 +34,21 @@ final class PageNouvelleCommandeTest extends TestCase
         self::assertSame('sur mesure, au m²', $sansPrix['info']);
     }
 
+    public function testNomCommercialDAbordLaDesignationACote(): void
+    {
+        [$b440, $b510, $micro] = $this->matieres();
+        $b440->getProduit()?->setNomCommercial('Banderole');
+        $micro->getSupport()?->setNomCommercial('Vitrophanie');
+
+        $carte = PageNouvelleCommande::catalogue([$b440, $b510, $micro], false, true)['produits'][0];
+        self::assertSame(['Banderole', 'Bâche imprimée'], [$carte['nom'], $carte['technique']]);
+        self::assertSame(['Bâche 440 g', 'Bâche 510 g', 'Vitrophanie (Micro-perforé)'], array_column(PageNouvelleCommande::matieres([$b440, $b510, $micro], false, true), 'titre'));
+
+        // Sans nom commercial : la désignation seule.
+        [$seule] = $this->matieres();
+        self::assertNull(PageNouvelleCommande::catalogue([$seule], false, true)['produits'][0]['technique']);
+    }
+
     public function testMatieresAvecSupplementSeulementPourQuiVoitLesMontants(): void
     {
         [$b440, $b510, $micro] = $this->matieres();

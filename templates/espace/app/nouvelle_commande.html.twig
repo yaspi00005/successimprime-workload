@@ -94,7 +94,7 @@
 						<li data-co-categorie="{{ p.categorie }}"{{ choisie and choisie.id != p.categorie ? ' hidden' }}>
 							<a class="co-produit" href="{{ path('app_espace_nouvelle_commande', {produit: p.config}) }}">
 								<span class="co-produit-dessin"><svg aria-hidden="true" focusable="false"><use href="#si-dessin-{{ p.illustration }}"/></svg></span>
-								<span class="co-produit-texte"><b>{{ p.nom }}</b><small>{{ p.prix ?? p.info }}</small></span>
+								<span class="co-produit-texte"><b>{{ p.nom }}</b>{% if p.technique %}<small class="co-produit-technique">{{ p.technique }}</small>{% endif %}<small>{{ p.prix ?? p.info }}</small></span>
 							</a>
 						</li>
 					{% endfor %}

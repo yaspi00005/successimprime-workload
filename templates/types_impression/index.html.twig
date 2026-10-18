@@ -173,7 +173,7 @@
 												{% for finition in typeImpression.finitions %}
 
 													<span class="badge badge-info mb-1" title="{{ finition.description ?: finition.nom }}">
-														{{ finition.nom }}
+														{{ finition|texte_interne }}
 													</span>
 
 												{% endfor %}
@@ -317,7 +317,7 @@
 										<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input type-impression-edit-finition">
 
 										<span class="selectgroup-button">
-											{{ finition.nom }}
+											{{ finition|texte_interne }}
 										</span>
 									</label>
 								{% else %}
@@ -397,7 +397,7 @@
 										<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input type-impression-create-finition">
 
 										<span class="selectgroup-button">
-											{{ finition.nom }}
+											{{ finition|texte_interne }}
 										</span>
 									</label>
 								{% else %}

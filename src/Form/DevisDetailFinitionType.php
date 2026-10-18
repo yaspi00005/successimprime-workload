@@ -25,7 +25,7 @@ class DevisDetailFinitionType extends AbstractType
         $builder
             ->add('finition', EntityType::class, [
                 'class' => Finition::class,
-                'choice_label' => 'nom',
+                'choice_label' => static fn (Finition $e): string => \App\Service\Catalogue\NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Finition',
                 'placeholder' => 'Sélectionnez une finition',
                 'required' => true,
@@ -82,8 +82,9 @@ class DevisDetailFinitionType extends AbstractType
     'choice_label' => static function (
         ProduitConfigurationFinition $regle
     ): string {
-        return $regle->getFinition()?->getNom()
-            ?? 'Finition';
+        $f = $regle->getFinition();
+
+        return null !== $f ? \App\Service\Catalogue\NomCommercial::texteInterne($f->getNomCommercial(), $f->getNom()) : 'Finition';
     },
     'label' => false,
     'placeholder' => false,

@@ -225,7 +225,8 @@ final class NomCommercial
             $parties[] = $support;
         }
         if (null !== $config->getFormat()) {
-            $parties[] = ['nom' => (string) $config->getFormat()->getNom(), 'technique' => null];
+            // Le format a aussi son nom commercial (Yaya, 18/10/2026) : « Carte de visite (85 × 55) ».
+            $parties[] = self::clientDe($config->getFormat());
         }
         foreach ($parties as $i => $p) {
             if ('' === $p['nom'] && 0 < $i) {
@@ -270,7 +271,7 @@ final class NomCommercial
             $partie($config->getProduit(), 'Produit'),
             $partie($config->getTypeImpression(), 'Type d’impression'),
             $partie($config->getSupport(), 'Support'),
-            $config->getFormat()?->getNom() ?? 'Format',
+            $partie($config->getFormat(), 'Format'),
         );
     }
 

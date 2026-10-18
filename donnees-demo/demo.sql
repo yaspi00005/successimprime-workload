@@ -185,24 +185,24 @@ INSERT INTO `supports` (`id`, `nom`, `description`, `publie`, `ordre`, `public_i
 (900009, 'Polo piqué', '', 1, 9, UNHEX('62186f4b14224bef9e3842616a01977b'), NULL),
 (900010, 'Casquette 6 panneaux', '', 1, 10, UNHEX('2cb8cefc5814453fafec42754e0e8896'), NULL);
 -- format : 8
-INSERT INTO `format` (`id`, `nom`, `largeur`, `hauteur`, `unite`, `description`, `publie`, `ordre`, `public_id`) VALUES
-(900001, 'A5', 14.8, 21, 'cm', '', 1, 1, UNHEX('ffce69737f624f26b6c3266043710baf')),
-(900002, 'A4', 21, 29.7, 'cm', '', 1, 2, UNHEX('49a4c2226a6d440290a3727dc7be5613')),
-(900003, 'A3', 29.7, 42, 'cm', '', 1, 3, UNHEX('84f3255153664ce2ad4d666177bb3654')),
-(900004, 'Carte 85 × 55', 8.5, 5.5, 'cm', '', 1, 4, UNHEX('86f9fa211ebf4debb1d02f517b67cfa6')),
-(900005, 'Roll-up 85 × 200', 85, 200, 'cm', '', 1, 5, UNHEX('4619e5dbcbf5414c8652ab69cbee23b0')),
-(900006, 'Kakémono 80 × 180', 80, 180, 'cm', '', 1, 6, UNHEX('36de6548d90e413a98357aebd0ef5c36')),
-(900007, 'Sur mesure', 0, 0, 'cm', '', 1, 7, UNHEX('17d6af8ff42348be814182233b38c237')),
-(900008, 'Taille unique', 0, 0, 'cm', '', 1, 8, UNHEX('5497db67a54b4b83b440cabee0ed4a62'));
+INSERT INTO `format` (`id`, `nom`, `largeur`, `hauteur`, `unite`, `description`, `publie`, `ordre`, `public_id`, `nom_commercial`) VALUES
+(900001, 'A5', 14.8, 21, 'cm', '', 1, 1, UNHEX('ffce69737f624f26b6c3266043710baf'), NULL),
+(900002, 'A4', 21, 29.7, 'cm', '', 1, 2, UNHEX('49a4c2226a6d440290a3727dc7be5613'), NULL),
+(900003, 'A3', 29.7, 42, 'cm', '', 1, 3, UNHEX('84f3255153664ce2ad4d666177bb3654'), NULL),
+(900004, 'Carte 85 × 55', 8.5, 5.5, 'cm', '', 1, 4, UNHEX('86f9fa211ebf4debb1d02f517b67cfa6'), 'Carte de visite'),
+(900005, 'Roll-up 85 × 200', 85, 200, 'cm', '', 1, 5, UNHEX('4619e5dbcbf5414c8652ab69cbee23b0'), NULL),
+(900006, 'Kakémono 80 × 180', 80, 180, 'cm', '', 1, 6, UNHEX('36de6548d90e413a98357aebd0ef5c36'), NULL),
+(900007, 'Sur mesure', 0, 0, 'cm', '', 1, 7, UNHEX('17d6af8ff42348be814182233b38c237'), NULL),
+(900008, 'Taille unique', 0, 0, 'cm', '', 1, 8, UNHEX('5497db67a54b4b83b440cabee0ed4a62'), NULL);
 -- finition : 7
-INSERT INTO `finition` (`id`, `nom`, `publie`, `ordre`, `description`, `public_id`, `cout_unitaire`) VALUES
-(900001, 'Œillets tous les 50 cm', 1, 1, '', UNHEX('d563d56dc887417c8b890fec6872d96b'), 150),
-(900002, 'Ourlet', 1, 2, '', UNHEX('2eb52387ab9f443098ae93fbd978673a'), 300),
-(900003, 'Fourreau', 1, 3, '', UNHEX('d8b6dd5b5a1947d086f594cff6111cf2'), 500),
-(900004, 'Lamination', 1, 4, '', UNHEX('afe987c18fdf46149a091fd628215db0'), 1500),
-(900005, 'Pelliculage mat', 1, 5, '', UNHEX('376f536489d340788ab39a0792845dae'), 40),
-(900006, 'Découpe à la forme', 1, 6, '', UNHEX('47cd07f7b74c490a9eebba4e1c14df92'), 25),
-(900007, 'Pliage', 1, 7, '', UNHEX('bb20e1d5916b4b378051ac7c8e48e488'), 15);
+INSERT INTO `finition` (`id`, `nom`, `publie`, `ordre`, `description`, `public_id`, `cout_unitaire`, `nom_commercial`) VALUES
+(900001, 'Œillets tous les 50 cm', 1, 1, '', UNHEX('d563d56dc887417c8b890fec6872d96b'), 150, 'Trous d''accroche'),
+(900002, 'Ourlet', 1, 2, '', UNHEX('2eb52387ab9f443098ae93fbd978673a'), 300, NULL),
+(900003, 'Fourreau', 1, 3, '', UNHEX('d8b6dd5b5a1947d086f594cff6111cf2'), 500, NULL),
+(900004, 'Lamination', 1, 4, '', UNHEX('afe987c18fdf46149a091fd628215db0'), 1500, 'Plastification'),
+(900005, 'Pelliculage mat', 1, 5, '', UNHEX('376f536489d340788ab39a0792845dae'), 40, NULL),
+(900006, 'Découpe à la forme', 1, 6, '', UNHEX('47cd07f7b74c490a9eebba4e1c14df92'), 25, 'Découpe contour'),
+(900007, 'Pliage', 1, 7, '', UNHEX('bb20e1d5916b4b378051ac7c8e48e488'), 15, NULL);
 -- machines : 8
 INSERT INTO `machines` (`id`, `nom`, `marque`, `modeles`, `numero_serie`, `type_machine`, `largeur_impression`, `nb_tetes`, `date_achat`, `date_mise_service`, `compteur_m2`, `compteur_heures`, `compteur_feuilles`, `etat`, `numero_machine`, `adresse_ip`, `mode_facturation`, `prix_achat`, `duree_amortissement_mois`, `revenu_avant_suivi`, `date_debut_suivi`, `vitesse_m2_heure`, `cout_horaire`, `cout_encre_m2`, `plan_preventif`, `marge_montage_mm`, `formats_montage`, `capacite_usage`, `valeur_residuelle`, `unite_usage`, `compteur_unites`, `releve_compteurs`, `cout_page_couleur`, `cout_page_noir`) VALUES
 (900001, 'Solvant 3,20 m', 'Infiniti', 'FY-3208', 'SN-D324851', 'Solvant grand format', '3.20', 8, (CURDATE() - INTERVAL 1283 DAY), (CURDATE() - INTERVAL 575 DAY), 9241.2, 7610, 0, 'actif', 'D-M1', '10.90.0.11', 'metre_carre', 18000000, 60, 0, (CURDATE() - INTERVAL 365 DAY), 45, 6000, 650, '[{"tache": "Nettoyage des têtes", "frequence": "jour"}, {"tache": "Graissage des rails", "frequence": "mois"}]', 5.0, NULL, 60000.0, 1800000, NULL, 0, NULL, NULL, NULL),

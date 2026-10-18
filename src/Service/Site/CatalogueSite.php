@@ -263,7 +263,10 @@ final class CatalogueSite
     {
         $texte = self::nomAffiche(trim((string) $p->getDescription()));
         if ('' === $texte && null !== $c) {
-            $texte = implode(' · ', array_filter([$c->getSupport()?->getNom(), $c->getFormat()?->getNom()]));
+            $texte = implode(' · ', array_filter([
+                null !== $c->getSupport() ? NomCommercial::texteClient($c->getSupport()->getNomCommercial(), $c->getSupport()->getNom()) : null,
+                null !== $c->getFormat() ? NomCommercial::texteClient($c->getFormat()->getNomCommercial(), $c->getFormat()->getNom()) : null,
+            ]));
         }
 
         return mb_strimwidth($texte, 0, 90, '…');

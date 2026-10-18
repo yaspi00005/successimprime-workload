@@ -129,7 +129,7 @@ final class NouvelleCommande
         $finitions = [];
         foreach ($c->getConfigurationFinitions() as $cf) {
             if ($cf->isActive() && null !== $cf->getId()) {
-                $finitions[] = ['id' => $cf->getId(), 'nom' => (string) $cf->getFinition()?->getNom(), 'obligatoire' => $cf->isObligatoire(), 'parDefaut' => $cf->isSelectionneeParDefaut() || $cf->isObligatoire()];
+                $finitions[] = ['id' => $cf->getId(), 'nom' => \App\Service\Catalogue\NomCommercial::texteClient($cf->getFinition()?->getNomCommercial(), $cf->getFinition()?->getNom()), 'obligatoire' => $cf->isObligatoire(), 'parDefaut' => $cf->isSelectionneeParDefaut() || $cf->isObligatoire()];
             }
         }
 
@@ -238,7 +238,7 @@ final class NouvelleCommande
                 continue;
             }
             if (!$cf->accepteQuantite($quantite)) {
-                throw new \DomainException(\sprintf('%s : pas possible pour %d exemplaire%s.', $cf->getFinition()?->getNom(), $quantite, $quantite > 1 ? 's' : ''));
+                throw new \DomainException(\sprintf('%s : pas possible pour %d exemplaire%s.', \App\Service\Catalogue\NomCommercial::texteClient($cf->getFinition()?->getNomCommercial(), $cf->getFinition()?->getNom()), $quantite, $quantite > 1 ? 's' : ''));
             }
             $ligne->addFinition((new CommandeDetailFinition())
                 ->setConfigurationFinition($cf)

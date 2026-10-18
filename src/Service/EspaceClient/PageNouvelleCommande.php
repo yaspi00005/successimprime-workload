@@ -123,7 +123,8 @@ final class PageNouvelleCommande
                 $gratuite = !$cf->isPayante() || $cf->getPrix() <= 0;
                 $finitions[] = [
                     'id' => (int) $cf->getId(),
-                    'nom' => (string) $cf->getFinition()?->getNom(),
+                    // Nom commercial de la finition d'abord (Yaya, 18/10/2026).
+                    'nom' => NomCommercial::texteClient($cf->getFinition()?->getNomCommercial(), $cf->getFinition()?->getNom()),
                     'obligatoire' => $cf->isObligatoire(),
                     'parDefaut' => $cf->isSelectionneeParDefaut() || $cf->isObligatoire(),
                     'detail' => $gratuite ? 'inclus' : ($montants ? '+'.self::f($cf->getPrix()).' F'.self::parUnite($cf->getModeCalcul(), true) : 'en option'),
@@ -272,13 +273,13 @@ final class PageNouvelleCommande
     private static function titreMatiere(ProduitConfiguration $c): string
     {
         $support = trim((string) $c->getSupport()?->getNom());
-        $format = $c->getFormat()?->getNom();
+        $format = null !== $c->getFormat() ? NomCommercial::texteClient($c->getFormat()->getNomCommercial(), $c->getFormat()->getNom()) : null;
         $nom = CatalogueSite::nomAffiche(NomCommercial::clientDe($c->getProduit())['nom']);
         if ('' !== $support) {
             return CatalogueSite::nomAffiche(NomCommercial::texteClient($c->getSupport()?->getNomCommercial(), $support));
         }
 
-        return null !== $format && !\in_array(mb_strtolower($format), ['sur mesure', 'taille unique'], true) ? $nom.' · '.$format : $nom;
+        return null !== $format && !\in_array(mb_strtolower((string) $c->getFormat()?->getNom()), ['sur mesure', 'taille unique'], true) ? $nom.' · '.$format : $nom;
     }
 
     private static function sousTitreMatiere(ProduitConfiguration $c): ?string
@@ -287,7 +288,7 @@ final class PageNouvelleCommande
         if ('' !== $description) {
             return mb_strimwidth($description, 0, 70, '…');
         }
-        $format = $c->getFormat()?->getNom();
+        $format = null !== $c->getFormat() ? NomCommercial::texteClient($c->getFormat()->getNomCommercial(), $c->getFormat()->getNom()) : null;
 
         return null !== $format && '' !== trim($format) ? $format : null;
     }

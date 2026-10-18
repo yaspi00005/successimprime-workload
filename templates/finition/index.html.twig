@@ -29,6 +29,11 @@
 				Dépublier
 			</button>
 
+			<a href="{{ path('app_produits_noms_commerciaux') }}#nc-finitions" class="btn btn-outline-primary order-last" title="Le nom que tout le monde connaît, à côté de la désignation">
+				<i class="fa fa-tags mr-1" aria-hidden="true"></i>
+				Noms commerciaux
+			</a>
+
 			<button type="button" id="finitionMassDeleteButton" class="btn btn-danger" {{ confirmer_suppression('les finitions cochées') }}>
 				<i class="fa fa-trash mr-1"></i>
 				Supprimer
@@ -47,7 +52,7 @@
 		<!-- COL-END -->
 		<div class="col-lg-8 col-xl-12">
 			<div class="input-group mb-5">
-				<input type="text" class="form-control" placeholder="Rechercher une finition…">
+				<input type="search" id="finitionRecherche" class="form-control" placeholder="Rechercher une finition (nom ou nom commercial)…" aria-label="Rechercher une finition" data-recherche-liste="#finitionSortableBody" autocomplete="off">
 				<div class="input-group-append ">
 					<button type="button" class="btn btn-primary-light">
 						<i class="fa fa-search" aria-hidden="true"></i>
@@ -95,7 +100,7 @@
 
 								{% for finition in finitions %}
 
-									<tr id="finition-row-{{ finition.id }}" class="finition-sortable-row" data-id="{{ finition.id }}">
+									<tr id="finition-row-{{ finition.id }}" class="finition-sortable-row" data-id="{{ finition.id }}" data-recherche="{{ cle_recherche(finition.nom, finition.nomCommercial) }}">
 
 										<td class="text-center align-middle">
 											<i class="fa fa-arrows-alt finition-drag-handle" style="cursor: move;" title="Déplacer"></i>
@@ -113,6 +118,7 @@
 
 										<td class="align-middle">
 											<strong>{{ finition.nom }}</strong>
+											{% if finition.nomCommercial %}<small class="d-block text-muted">{{ finition.nomCommercial }}</small>{% endif %}
 										</td>
 
 										<td class="align-middle">
@@ -392,6 +398,7 @@
 	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 	<script src="{{ asset('js/jeton-json.js') }}" data-jeton="{{ csrf_token('update_finition') }}" data-fin="/update/ajax"></script>
 	<script src="../assets/js/traitement_parametrage.js"></script>
+	<script src="{{ asset('js/recherche-catalogue.js') }}"></script>
 	<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>
 
 {% endblock %}

@@ -74,6 +74,8 @@
 											{{ e.code }}{{ e.categorieProduit ? ' · ' ~ e.categorieProduit.nom }}{{ not e.publie ? ' · non publié' }}{{ not e.actif ? ' · désactivé' }}
 										{%- elseif cle == 'articles' -%}
 											{{ e.reference }}{{ e.famille ? ' · ' ~ e.famille.nom }}{{ not e.actif ? ' · désactivé' }}
+										{%- elseif cle == 'formats' -%}
+											{{ e.largeur|number_format(0, ',', ' ') }} × {{ e.hauteur|number_format(0, ',', ' ') }} {{ e.unite }}{{ not e.publie ? ' · non publié' }}
 										{%- else -%}
 											{{ e.publie ? 'publié' : 'non publié' }}
 										{%- endif -%}

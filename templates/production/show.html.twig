@@ -212,7 +212,7 @@
 												×
 												{{ detail.longueur }}
 											{% elseif detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.format %}
-												{{ detail.produitConfiguration.format.nom }}
+												{{ detail.produitConfiguration.format|texte_interne }}
 												{% else %}—
 											{% endif %}
 										</div>
@@ -304,7 +304,7 @@
 												<tbody>
 													{% for finitionDetail in detail.finitions %}
 														<tr>
-															<td class="font-weight-bold">{{ finitionDetail.configurationFinition and finitionDetail.configurationFinition.finition ? finitionDetail.configurationFinition.finition.nom : 'Finition' }}</td>
+															<td class="font-weight-bold">{{ finitionDetail.configurationFinition and finitionDetail.configurationFinition.finition ? finitionDetail.configurationFinition.finition|texte_interne : 'Finition' }}</td>
 															<td>{{ finitionDetail.modeCalcul|default('—')|replace({'_': ' '})|capitalize }}</td>
 															<td>{{ finitionDetail.quantite|default('—') }}</td>
 															<td>{{ finitionDetail.configurationFinition ? finitionDetail.configurationFinition.description|default('—') : '—' }}</td>

@@ -35,9 +35,13 @@ final class JournalEnvoisTest extends TestCase
         self::assertStringContainsString('@gmail.com', $nettoye);
         self::assertStringContainsString('… F', $nettoye);
 
-        // Les codes d'erreur courts et les mots restent lisibles.
+        // Montant rendu par un modèle de message, sans « F » : retiré aussi.
+        self::assertSame('Rappel : reste … à payer sur … (commande du 13/10/2026)', JournalEnvois::nettoyer('Rappel : reste 25 000 à payer sur 1 250 000 (commande du 13/10/2026)'));
+
+        // Les codes d'erreur courts, les numéros de commande, les dates et les mots restent lisibles.
         self::assertSame('Réponse Orange inattendue (HTTP 401).', JournalEnvois::nettoyer('Réponse Orange inattendue (HTTP 401).'));
         self::assertSame('Votre commande CMD-2026-0042 est prête', JournalEnvois::nettoyer('Votre commande CMD-2026-0042 est prête'));
+        self::assertSame('Rapport de la semaine 42 · Succès Imprim', JournalEnvois::nettoyer('Rapport de la semaine 42 · Succès Imprim'));
     }
 
     public function testTyperPoseUnSeulEntete(): void

@@ -185,6 +185,15 @@ final class CatalogueGuide
                     ['nom' => 'import', 'legende' => 'Réglages › Système › Import des données.'],
                 ],
             ],
+            [
+                'cle' => 'credits-messages', 'groupe' => 'direction', 'titre' => 'Crédits SMS et e-mail',
+                'but' => 'Savoir combien de SMS il reste, jusqu\'à quand, et ce qui est parti.',
+                // L'image s'arrête avant « Derniers envois » : pas de numéro ni d'adresse.
+                'droits' => ['ROLE_CREDITS_MESSAGES'], 'route' => 'app_credits_messages_index', 'ecrans' => ['app_credits_messages_'],
+                'captures' => [
+                    ['nom' => 'credits-messages', 'legende' => 'Clients › Crédits SMS et e-mail.'],
+                ],
+            ],
 
             // ---------- Caisse et commercial ----------
             [

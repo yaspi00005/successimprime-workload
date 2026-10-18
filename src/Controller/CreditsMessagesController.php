@@ -22,8 +22,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * face aux limites de l'hébergeur, historique des envois.
  *
  * Direction et droit « Crédits SMS et e-mail ». Le destinataire complet
- * (numéro, adresse) et la recherche sur lui demandent en plus le droit
- * Clients ; les prix des packs, le droit « Trésorerie et soldes ».
+ * (numéro, adresse), l'objet des e-mails (un modèle peut y mettre le nom
+ * du client) et la recherche demandent en plus le droit Clients ; les prix
+ * des packs, le droit « Trésorerie et soldes ».
  */
 #[Route('/communications/credits', name: 'app_credits_messages_')]
 #[IsGranted('ROLE_CREDITS_MESSAGES')]
@@ -157,10 +158,10 @@ final class CreditsMessagesController extends AbstractController
                 $e->getEnvoyeLe()->format('d/m/Y H:i'),
                 $e->getLibelleCanal(),
                 $e->getLibelleType(),
-                (string) $e->getSujet(),
-                $complet ? $e->getDestinataireLisible() : $e->getDestinataireMasque(),
+                $complet ? self::cellule((string) $e->getSujet()) : '',
+                self::destinataireCsv($complet ? $e->getDestinataireLisible() : $e->getDestinataireMasque()),
                 $e->getLibelleStatut(),
-                (string) $e->getErreur(),
+                self::cellule((string) $e->getErreur()),
                 $e->getUnites(),
                 $e->getLibelleOrigine(),
             ], ';', '"', '');
@@ -175,8 +176,24 @@ final class CreditsMessagesController extends AbstractController
     }
 
     /**
+     * Tableur : « +223 76… » serait lu comme une formule ; l'indicatif
+     * s'écrit « 00223 ».
+     */
+    public static function destinataireCsv(string $destinataire): string
+    {
+        return str_starts_with($destinataire, '+') ? '00'.substr($destinataire, 1) : self::cellule($destinataire);
+    }
+
+    /** Un texte qui commence par = + - @ ne doit jamais devenir une formule dans le tableur. */
+    public static function cellule(string $texte): string
+    {
+        return '' !== $texte && \in_array($texte[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$texte : $texte;
+    }
+
+    /**
      * Filtres lus dans l'adresse ; une valeur inconnue est ignorée. La
-     * recherche porte sur le destinataire seulement avec le droit Clients.
+     * recherche (destinataire et objet) demande le droit Clients : sans
+     * lui, ni l'un ni l'autre n'est affiché, et ne doit se deviner.
      *
      * @return array{canal: string, statut: string, type: string, origine: string, du: ?\DateTimeImmutable, au: ?\DateTimeImmutable, q: string, parDestinataire: bool}
      */
@@ -201,7 +218,7 @@ final class CreditsMessagesController extends AbstractController
             'origine' => $choix('origine', EnvoiMessage::ORIGINES),
             'du' => $date('du'),
             'au' => $date('au'),
-            'q' => mb_substr(trim((string) $request->query->get('q', '')), 0, 80),
+            'q' => $this->isGranted('ROLE_CLIENT') ? mb_substr(trim((string) $request->query->get('q', '')), 0, 80) : '',
             'parDestinataire' => $this->isGranted('ROLE_CLIENT'),
         ];
     }
@@ -224,7 +241,11 @@ final class CreditsMessagesController extends AbstractController
         ], static fn (string $v): bool => '' !== $v);
     }
 
-    /** @return array{voirDestinataire: bool, voirPrix: bool, peutRegler: bool} */
+    /**
+     * voirDestinataire : numéro, adresse et objet en entier (droit Clients).
+     *
+     * @return array{voirDestinataire: bool, voirPrix: bool, peutRegler: bool}
+     */
     private function droitsDeLaPage(): array
     {
         return [

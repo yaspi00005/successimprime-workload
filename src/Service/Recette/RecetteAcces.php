@@ -103,6 +103,8 @@ final class RecetteAcces
     /** Envois d'essai de la recette des crédits SMS et e-mail (annulés à la fin). */
     private const ESSAI_NUMERO = '22376009988';
     private const ESSAI_ADRESSE = 'recette.credits@exemple.ml';
+    /** Objet d'e-mail d'essai : un modèle peut y mettre le nom du client, caché sans le droit Clients. */
+    private const ESSAI_OBJET = 'Rappel pour Témoin Recette';
 
     private ?UsernamePasswordToken $jeton = null;
 
@@ -577,7 +579,7 @@ final class RecetteAcces
 
     /**
      * Crédits SMS et e-mail (docs/messagerie-marketing.md) : l'historique
-     * des envois et son export ne montrent le numéro et l'adresse complets
+     * des envois et son export ne montrent le numéro, l'adresse et l'objet
      * qu'avec le droit Clients ; sans le droit « Crédits SMS et e-mail »,
      * l'écran, l'historique et l'export sont refusés, adresse tapée ou non.
      * Deux envois d'essai et le droit prêté restent dans la transaction de
@@ -592,14 +594,14 @@ final class RecetteAcces
         }
         $le = new \DateTimeImmutable();
         $this->em->persist(EnvoiMessage::nouveau(EnvoiMessage::SMS, 'relance_retrait', self::ESSAI_NUMERO, EnvoiMessage::ENVOYE, null, 1, null, $le));
-        $this->em->persist(EnvoiMessage::nouveau(EnvoiMessage::EMAIL, 'code_connexion', self::ESSAI_ADRESSE, EnvoiMessage::ECHEC, 'Boîte pleine', 0, 'Votre code de connexion', $le));
+        $this->em->persist(EnvoiMessage::nouveau(EnvoiMessage::EMAIL, 'code_connexion', self::ESSAI_ADRESSE, EnvoiMessage::ECHEC, 'Boîte pleine', 0, self::ESSAI_OBJET, $le));
         $this->em->flush();
         $pages = [
             'app_credits_messages_index' => $this->routeur->generate('app_credits_messages_index'),
             'app_credits_messages_envois' => $this->routeur->generate('app_credits_messages_envois'),
             'app_credits_messages_export' => $this->routeur->generate('app_credits_messages_export'),
         ];
-        $complet = ['76 00 99 88', '76009988', 'recette.credits'];
+        $complet = ['76 00 99 88', '76009988', 'recette.credits', 'Témoin Recette'];
 
         // Sans le droit : tout refusé.
         foreach ($comptes as $compte) {
@@ -647,7 +649,7 @@ final class RecetteAcces
 
     /**
      * @param array<string, string> $pages
-     * @param list<string>          $complet formes complètes du numéro et de l'adresse d'essai
+     * @param list<string>          $complet formes complètes du numéro, de l'adresse et de l'objet d'essai
      */
     private function verifierMasquageCredits(User $compte, array $pages, array $complet, bool $masque, BilanRecette $bilan): void
     {
@@ -655,7 +657,7 @@ final class RecetteAcces
         $this->jeton = new UsernamePasswordToken($compte, 'main', $compte->getRoles());
         $session = $this->navigateur->session($compte);
         $constats = [];
-        foreach (['app_credits_messages_envois', 'app_credits_messages_export'] as $route) {
+        foreach (['app_credits_messages_index', 'app_credits_messages_envois', 'app_credits_messages_export'] as $route) {
             $reponse = $this->navigateur->get($pages[$route], $session);
             $texte = $reponse->estHtml() ? $reponse->texte() : $reponse->contenu;
             if (Reponse::OUVERT !== $reponse->etat()) {
@@ -666,16 +668,18 @@ final class RecetteAcces
             $vus = array_values(array_filter($complet, static fn (string $f): bool => str_contains($texte, $f)));
             if ($masque && [] !== $vus) {
                 $constats[] = $pages[$route].' montre '.implode(', ', $vus);
-                $bilan->constater(BilanRecette::FUITE, 'destinataire', $route, $pages[$route], $identifiant, 'numéro ou adresse complets sans le droit Clients : '.implode(', ', $vus));
+                $bilan->constater(BilanRecette::FUITE, 'destinataire', $route, $pages[$route], $identifiant, 'numéro, adresse ou objet en entier sans le droit Clients : '.implode(', ', $vus));
             }
             if ($masque && !str_contains($texte, '•• •• 99 88')) {
                 $constats[] = $pages[$route].' sans le numéro masqué de l\'essai';
             }
-            if (!$masque && !str_contains($texte, '+223 76 00 99 88')) {
-                $constats[] = $pages[$route].' sans le numéro complet de l\'essai';
+            // Écran « +223 76 00 99 88 », export « 00223 76 00 99 88 » (pas de formule dans le tableur).
+            $manquent = array_diff(['76 00 99 88', 'recette.credits', 'Témoin Recette'], $vus);
+            if (!$masque && [] !== $manquent) {
+                $constats[] = $pages[$route].' sans '.implode(', ', $manquent);
             }
         }
-        $bilan->controler(\sprintf('%s : historique des envois %s', $identifiant, $masque ? 'masqué (droit Crédits sans le droit Clients)' : 'complet (droit Clients)'), [] === $constats, [] === $constats ? 'écran et export CSV vérifiés' : implode(' ; ', $constats));
+        $bilan->controler(\sprintf('%s : historique des envois %s', $identifiant, $masque ? 'masqué (droit Crédits sans le droit Clients)' : 'complet (droit Clients)'), [] === $constats, [] === $constats ? 'derniers envois, historique et export CSV vérifiés' : implode(' ; ', $constats));
     }
 
     /**

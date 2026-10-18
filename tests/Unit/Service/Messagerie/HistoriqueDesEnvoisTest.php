@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit\Service\Messagerie;
 
+use App\Controller\CreditsMessagesController;
 use App\Entity\EnvoiMessage;
 use App\EventSubscriber\JournalEmailsSubscriber;
 use App\Service\Messagerie\JournalEnvois;
@@ -143,6 +144,17 @@ final class HistoriqueDesEnvoisTest extends TestCase
         self::assertSame(['rappel_paiement', 'autre'], array_column($this->lignes->getArrayCopy(), 'type'));
         self::assertSame('Rappel : … F à régler', $this->lignes[0]['sujet'], 'jamais de montant dans l\'objet gardé');
         self::assertStringNotContainsString('awa@', (string) $this->lignes[1]['erreur']);
+    }
+
+    public function testExportSansFormuleDansLeTableur(): void
+    {
+        self::assertSame('00223 76 00 00 99', CreditsMessagesController::destinataireCsv('+223 76 00 00 99'));
+        self::assertSame('00223 •• •• 00 99', CreditsMessagesController::destinataireCsv('+223 •• •• 00 99'));
+        self::assertSame('a•••@gmail.com', CreditsMessagesController::destinataireCsv('a•••@gmail.com'));
+        self::assertSame("'=SOMME(A1:A9)", CreditsMessagesController::cellule('=SOMME(A1:A9)'));
+        self::assertSame("'-1 SMS", CreditsMessagesController::cellule('-1 SMS'));
+        self::assertSame('Boîte pleine', CreditsMessagesController::cellule('Boîte pleine'));
+        self::assertSame('', CreditsMessagesController::cellule(''));
     }
 
     public function testDestinataireMasqueOuLisible(): void

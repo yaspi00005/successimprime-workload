@@ -51,6 +51,9 @@
 .cm-saisie { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #E2E8F0; }
 .cm-saisie > div { display: flex; flex-direction: column; gap: 4px; min-width: 150px; flex: 1 1 150px; }
 .cm-saisie label, .cm-filtres label { font-size: 12.5px; color: #475569; font-weight: 600; margin: 0; }
+/* Listes, dates et nombres à la même hauteur que les boutons. */
+.cm-saisie .form-control, .cm-filtres .form-control, .cm-filtres .form-select { height: 38px; min-height: 38px; padding-top: 6px; padding-bottom: 6px; font-size: 14px; border-radius: 8px; }
+.cm-saisie .btn, .cm-filtres-boutons .btn { height: 38px; display: inline-flex; align-items: center; }
 .cm-saisie .btn { flex: none; }
 
 .cm-titre-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
@@ -61,10 +64,11 @@
 .cm-table td { vertical-align: middle; padding: 10px 8px; color: #0F172A; border-color: #EEF2F7; }
 .cm-table td small { display: block; color: #64748B; font-size: 12px; }
 .cm-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.cm-destinataire { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cm-c-dest { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .cm-sujet { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cm-erreur { max-width: 340px; overflow-wrap: anywhere; color: #8F0A19 !important; }
-.cm-date { white-space: nowrap; }
+.cm-c-date { white-space: nowrap; }
+.cm-mobile { display: none; }
 
 .cm-filtres { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 12px; align-items: end; margin-bottom: 16px; }
 .cm-filtres > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -93,7 +97,22 @@
   .cm-filtres-q, .cm-filtres-boutons { grid-column: 1 / -1; }
   .cm-liste li { flex-direction: column; gap: 2px; }
   .cm-liste b { text-align: left; }
-  .cm-sujet, .cm-erreur { max-width: 200px; }
+  /* Une carte par envoi : type et état, puis canal, destinataire et date, puis l'erreur. */
+  .cm-table-cartes thead { display: none; }
+  .cm-table-cartes, .cm-table-cartes tbody { display: block; width: 100%; }
+  .cm-table-cartes tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "type etat" "dest date" "erreur erreur"; gap: 3px 12px; padding: 12px 0; border-bottom: 1px solid #EEF2F7; }
+  .cm .cm-table-cartes > tbody > tr > td { display: block; padding: 0; border: 0; min-width: 0; }
+  .cm-table-cartes .cm-c-type { grid-area: type; font-weight: 600; }
+  .cm-table-cartes .cm-c-type small { font-weight: 400; }
+  .cm-table-cartes .cm-c-etat .si-pastille { grid-area: etat; justify-self: end; align-self: start; }
+  .cm-table-cartes .cm-c-etat .cm-erreur { grid-area: erreur; max-width: none; }
+  .cm-table-cartes .cm-c-dest { grid-area: dest; overflow: hidden; text-overflow: ellipsis; color: #475569; font-size: 13.5px; }
+  .cm-table-cartes .cm-c-date { grid-area: date; text-align: right; color: #64748B; font-size: 13px; }
+  .cm-table-cartes .cm-c-date small { display: inline; margin-left: 4px; font-size: 13px; }
+  .cm .cm-table-cartes > tbody > tr > .cm-c-canal, .cm .cm-table-cartes > tbody > tr > .cm-c-unites, .cm .cm-table-cartes > tbody > tr > .cm-c-depuis { display: none; }
+  .cm .cm-table-cartes > tbody > tr > .cm-c-etat { display: contents; }
+  .cm-table-cartes .cm-mobile { display: inline; }
+  .cm-sujet { max-width: none; white-space: normal; }
 }
 @media print {
   .cm-sousnav, .cm-saisie, .cm-filtres, .cm-pages { display: none; }

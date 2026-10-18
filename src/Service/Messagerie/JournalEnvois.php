@@ -120,7 +120,9 @@ final class JournalEnvois
 
     /**
      * Erreur ou objet d'e-mail sans donnée à cacher : adresses et numéros
-     * masqués, montants remplacés par « … F ».
+     * masqués, montants remplacés par « … F » (ou « … » pour un nombre
+     * écrit avec des espaces de milliers, comme le rend un modèle de
+     * message : « Reste {reste} à payer »).
      */
     public static function nettoyer(string $texte): string
     {
@@ -128,6 +130,8 @@ final class JournalEnvois
         $texte = (string) preg_replace('/\d[\d \x{00A0}\x{202F}.,]*[ \x{00A0}\x{202F}]?(?:F CFA|FCFA|XOF|F)(?![\p{L}\p{N}])/u', '… F', $texte);
         // Numéro de téléphone : 8 chiffres ou plus, avec ou sans « + », espaces, « tel: ».
         $texte = (string) preg_replace_callback('/(?<![\p{L}\p{N}])\+?\d(?:[ .\x{00A0}]?\d){7,14}(?![\p{N}])/u', static fn (array $m): string => EnvoiMessage::masquer(EnvoiMessage::SMS, $m[0]), $texte);
+        // Montant sans « F » : « 25 000 », « 1 250 000 » (pas un numéro de commande ni une date).
+        $texte = (string) preg_replace('/(?<![\p{L}\p{N}\/-])\d{1,3}(?:[ \x{00A0}\x{202F}]\d{3})+(?![\p{N}])/u', '…', $texte);
 
         return trim((string) preg_replace('/\s+/u', ' ', $texte));
     }

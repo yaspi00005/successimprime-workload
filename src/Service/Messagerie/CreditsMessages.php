@@ -46,10 +46,9 @@ final class CreditsMessages
         $reglage = $this->reglages();
 
         $saisi = null;
-        $saisiLe = null;
         $consommes = 0;
-        if ('' !== (string) $reglage['sms_saisi_le']) {
-            $saisiLe = new \DateTimeImmutable((string) $reglage['sms_saisi_le']);
+        $saisiLe = self::date((string) $reglage['sms_saisi_le'], 'Y-m-d H:i:s');
+        if (null !== $saisiLe) {
             $saisi = (int) $reglage['sms_solde_manuel'];
             $consommes = $this->envois->unitesDepuis(EnvoiMessage::SMS, $saisiLe);
         }
@@ -70,7 +69,7 @@ final class CreditsMessages
             return ['source' => 'orange', 'unites' => $resume['unites'], 'expiration' => $resume['expiration'], 'luLe' => $orange['luLe'], 'contrats' => $orange['contrats'], 'achats' => $orange['achats']] + $etat;
         }
         if (null !== $saisi) {
-            $expiration = '' !== (string) $reglage['sms_expiration_manuelle'] ? new \DateTimeImmutable((string) $reglage['sms_expiration_manuelle'].' 23:59:59') : null;
+            $expiration = self::finDuJour((string) $reglage['sms_expiration_manuelle']);
 
             return ['source' => 'manuel', 'unites' => max(0, $saisi - $consommes), 'expiration' => $expiration, 'luLe' => $saisiLe] + $etat;
         }
@@ -102,7 +101,7 @@ final class CreditsMessages
         return [
             'configure' => '' !== trim($this->expediteur) && '' !== trim($this->mailerDsn) && !str_starts_with(trim($this->mailerDsn), 'null://'),
             'hebergeur' => trim((string) $reglage['email_hebergeur']),
-            'expiration' => '' !== (string) $reglage['email_expiration'] ? new \DateTimeImmutable((string) $reglage['email_expiration'].' 23:59:59') : null,
+            'expiration' => self::finDuJour((string) $reglage['email_expiration']),
             'compte' => $compte,
             'quotas' => $quotas,
             'restants' => self::restants($quotas, $compte),
@@ -171,6 +170,19 @@ final class CreditsMessages
         }
 
         return $valeurs;
+    }
+
+    /** « 2026-11-30 » rangé par la tuile : valable jusqu'à 23 h 59 ce jour-là. Vide ou illisible : pas de date. */
+    private static function finDuJour(string $jour): ?\DateTimeImmutable
+    {
+        return self::date($jour.' 23:59:59', 'Y-m-d H:i:s');
+    }
+
+    private static function date(string $texte, string $format): ?\DateTimeImmutable
+    {
+        $date = \DateTimeImmutable::createFromFormat('!'.$format, trim($texte));
+
+        return false !== $date && $date->format($format) === trim($texte) ? $date : null;
     }
 
     private static function nombre(int $n): string

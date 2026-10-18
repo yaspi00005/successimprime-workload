@@ -1,0 +1,20 @@
+{# Fiche du guide « credits-messages » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu « Clients », puis « Crédits SMS et e-mail ».</li>
+	<li>À gauche, « SMS » : les « SMS disponibles » et la « fin du pack ». Avec les clés Orange, « Actualiser » (en haut) relit le solde chez Orange.</li>
+	<li>Sans les clés Orange, recopiez le solde et la fin du pack lus sur le portail Orange, puis touchez « Enregistrer le solde ».</li>
+	<li>À droite, « E-mail » : les e-mails partis dans l'heure, le jour et le mois, face aux limites de l'hébergeur. Notez la fin de l'abonnement et touchez « Enregistrer la date ».</li>
+	<li>« Historique des envois » : chaque SMS et chaque e-mail, avec son état. Filtrez par canal, type, état ou dates ; « Export CSV » sort la liste.</li>
+	<li>« Seuils et limites » : le seuil d'alerte, le délai avant la fin et les limites de l'hébergeur (par exemple LWS).</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>La cloche prévient une fois quand il reste moins de SMS que le seuil (100 au départ), ou quand le pack SMS ou l'abonnement e-mail finit dans moins de 15 jours.</li>
+	<li>Le texte des messages n'est jamais gardé : ni code de connexion, ni lien.</li>
+	<li>Sans le droit Clients, les numéros et les adresses sont masqués, et l'objet des e-mails est caché.</li>
+	<li>« Non envoyé » : les clés Orange ou la messagerie e-mail ne sont pas réglées, rien n'est parti.</li>
+</ul>
+{% endblock %}

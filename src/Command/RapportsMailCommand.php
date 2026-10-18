@@ -30,6 +30,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(name: 'app:rapports-mail', description: 'Envoie les rapports du jour, de la semaine et du mois par e-mail, une fois par période.')]
 final class RapportsMailCommand extends Command
 {
+    public const FUSEAU = 'Africa/Bamako';
+
     public function __construct(
         private readonly EnvoiRapports $envois,
         private readonly DestinatairesRapports $destinataires,
@@ -51,6 +53,9 @@ final class RapportsMailCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        // L'heure de l'atelier, comme les pages (public/index.php) : le php.ini
+        // de XAMPP règle souvent Europe/Berlin, ce qui décalerait le rapport.
+        date_default_timezone_set(self::FUSEAU);
         $maintenant = new \DateTimeImmutable();
 
         if ($this->acces->estEnLigne()) {

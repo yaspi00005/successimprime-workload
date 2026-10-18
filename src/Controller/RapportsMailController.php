@@ -82,7 +82,6 @@ final class RapportsMailController extends AbstractController
             'piece_jointe' => $this->reglages->pieceJointe(),
             'adresse_erp' => $this->reglages->adresseErp(),
             'choisis' => null !== $this->reglages->destinatairesChoisis(),
-            'destinataires' => $liste,
             'candidats' => $direction ? $this->destinataires->candidats() : [],
             'moi' => [
                 'recoit' => [] !== array_filter($liste, static fn (array $d): bool => $d['utilisateur']->getId() === $moi->getId()),
@@ -156,6 +155,11 @@ final class RapportsMailController extends AbstractController
         $adresse = DestinatairesRapports::adresse($moi);
         if (null === $adresse) {
             $this->addFlash('danger', 'Votre fiche employé n’a pas d’adresse e-mail valable : rien n’est parti.');
+
+            return $retour;
+        }
+        if ($this->envois->essaisRecents($moi, $maintenant) >= EnvoiRapports::ESSAIS_PAR_HEURE) {
+            $this->addFlash('warning', \sprintf('Déjà %d essais dans l’heure : réessayez un peu plus tard.', EnvoiRapports::ESSAIS_PAR_HEURE));
 
             return $retour;
         }

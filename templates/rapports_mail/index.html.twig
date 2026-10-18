@@ -69,25 +69,32 @@
 						</p>
 						<form method="post" action="{{ path('app_rapports_mail_destinataires') }}">
 							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+							{% set permis = candidats|filter(c => c.droit) %}
+							{% set exclus = candidats|filter(c => not c.droit) %}
 							<ul class="si-rm-candidats">
-								{% for c in candidats %}
+								{% for c in permis %}
 									{% set id = 'rm-c-' ~ c.utilisateur.id %}
-									<li class="{{ c.droit ? '' : 'si-rm-sans-droit' }}">
-										<input class="form-check-input" type="checkbox" name="destinataires[]" value="{{ c.utilisateur.id }}" id="{{ id }}" {{ c.choisi ? 'checked' }} {{ c.droit ? '' : 'disabled' }}>
+									<li>
+										<input class="form-check-input" type="checkbox" name="destinataires[]" value="{{ c.utilisateur.id }}" id="{{ id }}" {{ c.choisi ? 'checked' }}>
 										<label for="{{ id }}">
 											<strong>{{ c.nom }}</strong>{% if c.profil %} <span class="si-rm-profil">{{ c.profil }}</span>{% endif %}
 											<span class="si-rm-detail">
-												{% if not c.droit %}
-													Pas le droit « Chiffre d’affaires global » : ne peut pas recevoir les rapports.
-												{% else %}
-													{% if c.adresse %}{{ c.adresse }}{% else %}<span class="text-danger">pas d’adresse e-mail sur sa fiche</span>{% endif %}
-													· {{ c.version }}
-												{% endif %}
+												{% if c.adresse %}{{ c.adresse }}{% else %}<span class="text-danger">pas d’adresse e-mail sur sa fiche</span>{% endif %}
+												· {{ c.version }}
 											</span>
 										</label>
 									</li>
+								{% else %}
+									<li class="si-rm-sans-droit">Aucun compte actif n’a le droit « Chiffre d’affaires global ».</li>
 								{% endfor %}
 							</ul>
+							{% if exclus is not empty %}
+								<details class="si-rm-exclus">
+									<summary>{{ exclus|length }} compte{{ exclus|length > 1 ? 's' }} sans le droit « Chiffre d’affaires global » : ne peu{{ exclus|length > 1 ? 'vent' : 't' }} pas recevoir les rapports</summary>
+									<p>{% for c in exclus %}{{ c.nom }}{% if c.profil %} ({{ c.profil }}){% endif %}{{ not loop.last ? ' · ' }}{% endfor %}</p>
+									<p class="si-rm-aide mb-0">Le droit se donne dans <a href="{{ path('app_utilisateurs_index') }}">Réglages › Utilisateurs et droits</a>.</p>
+								</details>
+							{% endif %}
 							<div class="si-rm-actions">
 								<button class="btn btn-primary btn-sm" name="mode" value="choisis"><i class="fas fa-check me-1"></i>Enregistrer les destinataires cochés</button>
 								{% if choisis %}<button class="btn btn-outline-secondary btn-sm" name="mode" value="defaut">Revenir à la direction</button>{% endif %}

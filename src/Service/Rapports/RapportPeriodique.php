@@ -152,7 +152,8 @@ final class RapportPeriodique
 
         $v = $r['ventes'] ?? null;
         if (($droits['ventes'] ?? false) && null !== $v) {
-            if (null !== $v['objectif'] && $v['objectif'] > 0 && $v['facture'] < $v['objectif'] * 0.9) {
+            // Période pas finie (aperçu du jour même) : son objectif n'est pas encore jugé.
+            if (!($r['en_cours'] ?? false) && null !== $v['objectif'] && $v['objectif'] > 0 && $v['facture'] < $v['objectif'] * 0.9) {
                 $alertes[] = ['niveau' => 'warning', 'texte' => \sprintf('CA facturé à %d %% de l’objectif de la période', (int) round($v['facture'] * 100 / $v['objectif']))];
             }
             if (null !== $v['mois'] && \in_array($v['mois']['etat'], ['en_retard', 'manque'], true) && null !== $v['mois']['part_projetee']) {
@@ -199,6 +200,35 @@ final class RapportPeriodique
     }
 
     /**
+     * Les parties calculées pour ces droits et ce rapport. Règle pure, pour
+     * être testée : une partie à faux n'est ni calculée ni envoyée.
+     *  - noms_clients : noms dans les nouveaux clients, les réclamations et
+     *    les plus gros restes à payer ;
+     *  - marge : rapport du mois seulement (un taux sur un jour ne dit rien).
+     *
+     * @param array<string, bool> $droits DroitsRapport
+     *
+     * @return array{activite: bool, ventes: bool, encaissements: bool, creances: bool, tresorerie: bool, marge: bool, equipe: bool, stock: bool, noms_clients: bool}
+     */
+    public static function parties(array $droits, string $type): array
+    {
+        $rapport = (bool) ($droits['rapport'] ?? false);
+        $a = static fn (string $droit): bool => $rapport && (bool) ($droits[$droit] ?? false);
+
+        return [
+            'activite' => $rapport,
+            'ventes' => $a('ventes'),
+            'encaissements' => $a('paiements'),
+            'creances' => $a('paiements'),
+            'tresorerie' => $a('tresorerie'),
+            'marge' => $a('marges') && PeriodeRapport::MOIS === $type,
+            'equipe' => $a('rh'),
+            'stock' => $a('stock'),
+            'noms_clients' => $a('clients'),
+        ];
+    }
+
+    /**
      * Écart en % avec la période de comparaison, null sans base.
      */
     public static function ecart(float|int|null $valeur, float|int|null $avant): ?int
@@ -223,6 +253,7 @@ final class RapportPeriodique
         $arret = min($p->fin, $maintenant);
         $objectifs = $this->objectifsDuMois($p);
         $mois = PeriodeRapport::contenant(PeriodeRapport::MOIS, $p->dernierJour());
+        $parties = self::parties($droits, $p->type);
 
         $r = [
             'periode' => $p,
@@ -230,7 +261,8 @@ final class RapportPeriodique
             'arrete_le' => $arret,
             'en_cours' => !$p->terminee($maintenant),
             'droits' => $droits,
-            'activite' => $this->activite($droits, $p, $c, $objectifs, $maintenant),
+            'parties' => $parties,
+            'activite' => $this->activite($parties['noms_clients'], $p, $c, $objectifs, $maintenant),
             'ventes' => null,
             'encaissements' => null,
             'creances' => null,
@@ -240,7 +272,7 @@ final class RapportPeriodique
             'stock' => null,
         ];
 
-        if ($droits['ventes']) {
+        if ($parties['ventes']) {
             $facture = (int) ($this->objectifs->realises('ca', 'global', $p->debut, $p->fin)[0] ?? 0);
             $objectif = $objectifs['ca:global:0'];
             $r['ventes'] = [
@@ -254,12 +286,14 @@ final class RapportPeriodique
             ];
         }
 
-        if ($droits['paiements']) {
+        if ($parties['encaissements']) {
             $r['encaissements'] = $this->encaissements($p, $c, $objectifs);
-            $r['creances'] = $this->creancesClients($droits['clients'], $maintenant);
+        }
+        if ($parties['creances']) {
+            $r['creances'] = $this->creancesClients($parties['noms_clients'], $maintenant);
         }
 
-        if ($droits['tresorerie']) {
+        if ($parties['tresorerie']) {
             $comptes = $this->vue->comptes();
             $r['tresorerie'] = [
                 'comptes' => array_map(static fn (array $c): array => ['nom' => $c['nom'], 'type' => $c['type'], 'solde' => $c['solde']], $comptes),
@@ -269,15 +303,15 @@ final class RapportPeriodique
             ];
         }
 
-        if ($droits['marges'] && PeriodeRapport::MOIS === $p->type) {
+        if ($parties['marge']) {
             $r['marge'] = ['taux' => $this->rentabilite->tauxDuMois($p->debut, $p->fin), 'avant' => $this->rentabilite->tauxDuMois($c->debut, $c->fin)];
         }
 
-        if ($droits['rh']) {
+        if ($parties['equipe']) {
             $r['equipe'] = $this->equipe($p, $maintenant);
         }
 
-        if ($droits['stock']) {
+        if ($parties['stock']) {
             $r['stock'] = $this->tableauDeBord->articlesSousSeuil();
         }
 
@@ -285,12 +319,11 @@ final class RapportPeriodique
     }
 
     /**
-     * @param array<string, bool>      $droits
-     * @param array<string, ?int>      $objectifs
+     * @param array<string, ?int> $objectifs
      *
      * @return array<string, mixed>
      */
-    private function activite(array $droits, PeriodeRapport $p, PeriodeRapport $c, array $objectifs, \DateTimeImmutable $maintenant): array
+    private function activite(bool $nomsClients, PeriodeRapport $p, PeriodeRapport $c, array $objectifs, \DateTimeImmutable $maintenant): array
     {
         $realise = fn (string $indicateur, PeriodeRapport $periode): float => (float) ($this->objectifs->realises($indicateur, 'global', $periode->debut, $periode->fin)[0] ?? 0);
         $devis = $this->devis($p);
@@ -305,10 +338,10 @@ final class RapportPeriodique
             ],
             'devis' => $devis + ['emis_avant' => $this->devis($c)['emis'], 'a_relancer' => $this->devisARelancer($maintenant)],
             'surface' => ['valeur' => round($realise('surface', $p), 1), 'avant' => round($realise('surface', $c), 1), 'objectif' => $objectifs['surface:global:0']],
-            'clients' => $this->nouveauxClients($p, $c, $objectifs['nouveaux_clients:global:0'], $droits['clients']),
+            'clients' => $this->nouveauxClients($p, $c, $objectifs['nouveaux_clients:global:0'], $nomsClients),
             'livraisons' => $this->livraisons($p),
             'bat' => $this->bat($p, $maintenant),
-            'reclamations' => $this->reclamations($p, $droits['clients'], $maintenant),
+            'reclamations' => $this->reclamations($p, $nomsClients, $maintenant),
             'en_retard' => $this->commandesEnRetard($maintenant),
         ];
     }

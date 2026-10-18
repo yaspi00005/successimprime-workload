@@ -31,6 +31,9 @@ final class EnvoiRapports
     /** Attente avant de reprendre un envoi en échec, ou de juger interrompu un envoi resté « en cours ». */
     public const ATTENTE_REPRISE = '+30 minutes';
 
+    /** « M'envoyer un test » : au plus autant d'essais par personne et par heure. */
+    public const ESSAIS_PAR_HEURE = 5;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly DestinatairesRapports $destinataires,
@@ -128,6 +131,22 @@ final class EnvoiRapports
         $this->expedier($envoi, $p, [0], $maintenant, true);
 
         return $envoi;
+    }
+
+    /** Essais demandés par cette personne dans la dernière heure. */
+    public function essaisRecents(User $u, \DateTimeImmutable $maintenant): int
+    {
+        return (int) $this->em->createQueryBuilder()
+            ->select('COUNT(e.id)')
+            ->from(EnvoiRapport::class, 'e')
+            ->andWhere('e.declencheur = :essai')
+            ->andWhere('e.demandePar = :u')
+            ->andWhere('e.demarreLe > :depuis')
+            ->setParameter('essai', EnvoiRapport::ESSAI)
+            ->setParameter('u', $u)
+            ->setParameter('depuis', $maintenant->modify('-1 hour'))
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     /**

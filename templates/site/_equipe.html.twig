@@ -1,0 +1,30 @@
+{#
+	« Notre équipe » de la page « Qui sommes-nous ? » : une carte par
+	personne visible ET qui a accepté de paraître (MembreEquipeRepository::
+	visibles), dans l'ordre choisi. Photo ronde (portrait carré réencodé,
+	chargé quand il approche de l'écran), ou ses initiales dans un rond aux
+	couleurs du site ; nom et poste. Rien d'autre sur la personne.
+	Variables : membres (liste non vide), intro (blocs Markdown de la
+	section « équipe » de la page, facultatif).
+#}
+<section class="sc-equipe-membres" id="notre-equipe" aria-labelledby="sc-equipe-titre">
+	<h2 id="sc-equipe-titre" class="sc-titre-section">Notre équipe</h2>
+	{% if intro ?? null %}<div class="sc-prose sc-equipe-intro">{{ site_blocs(intro) }}</div>{% endif %}
+	<ul class="sc-membres">
+		{% for m in membres %}
+			{% set petite = site_image(m.photo, 'petite') %}
+			{% set grande = petite ? site_image(m.photo, 'grande') : null %}
+			<li class="sc-membre sc-teinte-{{ loop.index0 % 4 }}">
+				{% if petite %}
+					<img class="sc-membre-photo" src="{{ asset(petite.chemin) }}"
+						{%- if grande and grande.largeur > petite.largeur %} srcset="{{ asset(petite.chemin) }} {{ petite.largeur }}w, {{ asset(grande.chemin) }} {{ grande.largeur }}w" sizes="(max-width: 559px) 104px, 120px"{% endif %}
+						width="{{ petite.largeur }}" height="{{ petite.hauteur }}" alt="{{ m.texteAlternatif }}" loading="lazy" decoding="async">
+				{% else %}
+					<span class="sc-membre-photo sc-membre-initiales" aria-hidden="true">{{ m.initiales }}</span>
+				{% endif %}
+				<h3 class="sc-membre-nom">{{ m.nom }}</h3>
+				{% if m.poste %}<p class="sc-membre-poste">{{ m.poste }}</p>{% endif %}
+			</li>
+		{% endfor %}
+	</ul>
+</section>

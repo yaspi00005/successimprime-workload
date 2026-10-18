@@ -6,6 +6,7 @@ use App\Entity\ArticleConseil;
 use App\Entity\AvisClient;
 use App\Entity\CategorieProduit;
 use App\Entity\PageSite;
+use App\Entity\MembreEquipe;
 use App\Entity\Partenaire;
 use App\Entity\Realisation;
 use PHPUnit\Framework\TestCase;
@@ -43,6 +44,107 @@ final class ContenuSiteTest extends TestCase
         self::assertTrue($partenaire->estVisible());
         self::assertSame([], $partenaire->reglesDePublication());
         self::assertFalse($partenaire->setVisible(false)->estVisible());
+    }
+
+    public function testUnePersonneDeLEquipeNeSeMontreQuAvecSonAccord(): void
+    {
+        $membre = (new MembreEquipe())->setNom('  Awa   Traoré ')->setPoste(' Graphiste  PAO ')->setVisible(true);
+        self::assertSame(['Awa Traoré', 'Graphiste PAO'], [$membre->getNom(), $membre->getPoste()]);
+        self::assertFalse($membre->estVisible(), 'visible coché, mais sans accord');
+        self::assertNotSame([], $membre->reglesDePublication());
+        // La synchronisation ne fait descendre ni le nom ni le poste sans accord.
+        self::assertSame('', MembreEquipe::textePublic('Awa Traoré', $membre));
+        self::assertSame('', MembreEquipe::textePublic('Graphiste PAO', $membre));
+
+        $membre->setAccordPersonne(true);
+        self::assertTrue($membre->estVisible());
+        self::assertSame([], $membre->reglesDePublication());
+        self::assertSame('Awa Traoré', MembreEquipe::textePublic('Awa Traoré', $membre));
+        self::assertFalse((clone $membre)->setVisible(false)->estVisible(), 'masquée : départ, congé…');
+        self::assertFalse((clone $membre)->setNom('  ')->estVisible(), 'sans nom');
+
+        self::assertSame('Photo de Awa Traoré, Graphiste PAO', $membre->getTexteAlternatif());
+        self::assertSame('Photo de Awa Traoré', (clone $membre)->setPoste('')->getTexteAlternatif());
+        self::assertSame(MembreEquipe::NOM_MAX, mb_strlen($membre->setNom(str_repeat('é', 90))->getNom()));
+        self::assertSame(999, $membre->setOrdre(5000)->getOrdre());
+        self::assertSame(0, $membre->setOrdre(-3)->getOrdre());
+    }
+
+    public function testLeMotDuGerantNeParaitQuAvecSaPhotoSonTexteEtSonAccord(): void
+    {
+        $gerant = (new MembreEquipe())->setNom('Kadiatou T.')->setPoste('Gérante')->setVisible(true)->setAccordPersonne(true)->setGerant(true);
+        self::assertTrue($gerant->estVisible());
+        self::assertFalse($gerant->estMotVisible(), 'ni texte ni photo');
+        self::assertSame(['le texte', 'la photo'], $gerant->manquesDuMot());
+
+        $gerant->setMotGerant("  Bienvenue   chez nous.\r\n\r\n\r\n\r\nUn BAT avant chaque impression.  \r\n");
+        self::assertSame("Bienvenue chez nous.\n\nUn BAT avant chaque impression.", $gerant->getMotGerant(), 'espaces et lignes vides en trop retirés');
+        self::assertSame(['Bienvenue chez nous.', 'Un BAT avant chaque impression.'], $gerant->getParagraphesMot());
+        self::assertFalse($gerant->estMotVisible(), 'caché tant que la photo manque');
+        self::assertSame(['la photo'], $gerant->manquesDuMot());
+
+        $gerant->setPhoto(self::portrait());
+        self::assertTrue($gerant->estMotVisible());
+        self::assertSame([], $gerant->manquesDuMot());
+        self::assertFalse((clone $gerant)->setAccordPersonne(false)->estMotVisible(), 'sans accord');
+        self::assertSame(['son accord'], (clone $gerant)->setAccordPersonne(false)->manquesDuMot());
+        self::assertFalse((clone $gerant)->setVisible(false)->estMotVisible(), 'masqué');
+        self::assertFalse((clone $gerant)->setGerant(false)->estMotVisible(), 'plus gérant');
+        self::assertSame([], (clone $gerant)->setGerant(false)->manquesDuMot());
+        self::assertFalse((clone $gerant)->setMotGerant(" \n ")->estMotVisible(), 'texte vide');
+        self::assertNull((clone $gerant)->setMotGerant(" \n ")->getMotGerant());
+
+        // Synchronisation : le mot ne descend qu'avec l'accord, et seulement pour le gérant.
+        self::assertSame('Bienvenue', MembreEquipe::motPublic('Bienvenue', $gerant));
+        self::assertNull(MembreEquipe::motPublic('Bienvenue', (clone $gerant)->setAccordPersonne(false)));
+        self::assertNull(MembreEquipe::motPublic('Bienvenue', (clone $gerant)->setGerant(false)));
+
+        self::assertSame('Le mot de la gérante', $gerant->getTitreMot());
+        self::assertSame('Le mot du gérant', (clone $gerant)->setPoste('Gérant')->getTitreMot());
+        self::assertSame('Le mot du gérant', (clone $gerant)->setPoste('Fondateur et gérant')->getTitreMot());
+        self::assertSame('Le mot de la gérante', (clone $gerant)->setPoste('Fondatrice et GÉRANTE')->getTitreMot());
+    }
+
+    public function testLeGerantNEstPasMontreDeuxFoisSaufChoix(): void
+    {
+        $photo = self::portrait();
+        $gerant = (new MembreEquipe())->setNom('Kadiatou T.')->setPoste('Gérante')->setVisible(true)->setAccordPersonne(true)->setGerant(true)->setMotGerant('Bienvenue.')->setPhoto($photo);
+        $awa = (new MembreEquipe())->setNom('Awa')->setPoste('Graphiste PAO')->setVisible(true)->setAccordPersonne(true);
+        $visibles = [$gerant, $awa];
+
+        self::assertSame($gerant, \App\Repository\MembreEquipeRepository::gerantDe($visibles));
+        self::assertSame([$awa], \App\Repository\MembreEquipeRepository::grille($visibles, $gerant), 'une seule fois, avec son mot');
+        $gerant->setAussiDansEquipe(true);
+        self::assertSame([$gerant, $awa], \App\Repository\MembreEquipeRepository::grille($visibles, $gerant), 'aussi dans l\'équipe, au choix de l\'atelier');
+
+        // Mot incomplet : pas de mot, mais la personne reste dans la grille.
+        $gerant->setAussiDansEquipe(false)->setPhoto(null);
+        self::assertNull(\App\Repository\MembreEquipeRepository::gerantDe($visibles));
+        self::assertSame([$gerant, $awa], \App\Repository\MembreEquipeRepository::grille($visibles, null));
+    }
+
+    /** Petit portrait PNG (GD) : une vraie image, comme après l'envoi. */
+    private static function portrait(): \App\Entity\ImageSite
+    {
+        if (!\function_exists('imagepng')) {
+            self::markTestSkipped('GD sans PNG');
+        }
+        $gd = imagecreatetruecolor(4, 4);
+        ob_start();
+        imagepng($gd);
+
+        return \App\Entity\ImageSite::depuis((string) ob_get_clean(), 'image/png', 4, 4, \App\Entity\ImageSite::USAGE_PORTRAIT);
+    }
+
+    public function testInitialesSansPhoto(): void
+    {
+        $initiales = static fn (string $nom): string => (new MembreEquipe())->setNom($nom)->getInitiales();
+        self::assertSame('AT', $initiales('Awa Traoré'));
+        self::assertSame('SK', $initiales('Seydou K.'));
+        self::assertSame('M', $initiales('Moussa'));
+        self::assertSame('ÉD', $initiales('élise dembélé'));
+        self::assertSame('AM', $initiales('Aïssata-Maïmouna Diallo'));
+        self::assertSame('', $initiales('  '));
     }
 
     public function testLeLienDUnPartenaireEstUneAdresseWeb(): void

@@ -14,9 +14,11 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  * la base.
  *
  * À l'envoi : JPG, PNG ou WebP lu par GD, remis droit, réduit à 1200 px
- * (logo : 600 px), réencodé sans ses métadonnées (EXIF, position GPS) en
- * WebP, ou en PNG si GD ne sait pas écrire le WebP, 300 Ko au plus.
- * L'original reste hors de public/ (var/uploads/site/originaux).
+ * (logo : 600 px ; portrait de l'équipe : recadré en carré de 480 px),
+ * réencodé sans ses métadonnées (EXIF, position GPS) en WebP, ou en PNG si
+ * GD ne sait pas écrire le WebP, 300 Ko au plus. L'original reste hors de
+ * public/ (var/uploads/site/originaux), sauf pour un portrait : la photo
+ * d'une personne n'est gardée que réencodée, sans ses métadonnées.
  *
  * Les fichiers publics (public/uploads/site, une grande et une petite
  * taille) sont refaits à partir de l'image en base, réencodés, dès qu'ils
@@ -36,7 +38,12 @@ final class ImagesSite
     public const LARGEURS = [
         ImageSite::USAGE_PHOTO => ['grande' => 1200, 'petite' => 480],
         ImageSite::USAGE_LOGO => ['grande' => 600, 'petite' => 240],
+        // Rond de 104 à 120 px sur la page : 240 px pour un écran ×2, 480 px au-delà.
+        ImageSite::USAGE_PORTRAIT => ['grande' => 480, 'petite' => 240],
     ];
+
+    /** Recadrage d'un portrait plus haut que large : part du haut retirée (le visage est plutôt en haut). */
+    public const PORTRAIT_HAUT = 0.25;
 
     public function __construct(
         #[Autowire('%kernel.project_dir%/public/uploads/site')] private readonly string $dossierPublic,
@@ -61,24 +68,31 @@ final class ImagesSite
         }
         $octets = (string) file_get_contents($fichier->getPathname());
         try {
-            [$sortie, $type, $largeur, $hauteur] = self::preparer($octets, self::LARGEURS[$usage]['grande'] ?? 1200);
+            [$sortie, $type, $largeur, $hauteur] = self::preparer($octets, self::LARGEURS[$usage]['grande'] ?? 1200, ImageSite::USAGE_PORTRAIT === $usage);
         } catch (\DomainException $e) {
             throw new \DomainException(\sprintf('« %s » : %s', $nom, $e->getMessage()), 0, $e);
         }
         $image = ImageSite::depuis($sortie, $type, $largeur, $hauteur, $usage);
-        $this->garderOriginal($image, $octets);
+        if (!$image->estPortrait()) {
+            // La photo d'une personne n'est pas gardée telle qu'envoyée (EXIF, position GPS du téléphone).
+            $this->garderOriginal($image, $octets);
+        }
 
         return $image;
     }
 
     /**
-     * Lit l'image, la remet droite, la réduit et la réencode.
+     * Lit l'image, la remet droite, la réduit et la réencode. Avec $carre,
+     * elle est d'abord recadrée en carré (portrait de l'équipe).
+     *
+     * Le réencodage par GD n'écrit que les pixels : les métadonnées de
+     * l'appareil (EXIF, position GPS, profil, commentaires) ne passent pas.
      *
      * @return array{0: string, 1: string, 2: int, 3: int} octets, type, largeur, hauteur
      *
      * @throws \DomainException
      */
-    public static function preparer(string $octets, int $largeurMax): array
+    public static function preparer(string $octets, int $largeurMax, bool $carre = false): array
     {
         $infos = '' !== $octets ? @getimagesizefromstring($octets) : false;
         if (false === $infos || !\in_array($infos[2], [\IMAGETYPE_JPEG, \IMAGETYPE_PNG, \IMAGETYPE_WEBP], true)) {
@@ -105,6 +119,9 @@ final class ImagesSite
             if (0 !== $angle) {
                 $source = imagerotate($source, $angle, 0) ?: $source;
             }
+        }
+        if ($carre) {
+            $source = self::carre($source);
         }
         $image = self::redimensionner($source, $largeurMax);
         [$sortie, $type] = self::encoder($image);
@@ -190,7 +207,7 @@ final class ImagesSite
      */
     public static function dimensions(ImageSite $image, string $taille): array
     {
-        $cible = self::LARGEURS[$image->estLogo() ? ImageSite::USAGE_LOGO : ImageSite::USAGE_PHOTO][$taille] ?? 1200;
+        $cible = (self::LARGEURS[$image->getUsage()] ?? self::LARGEURS[ImageSite::USAGE_PHOTO])[$taille] ?? 1200;
         $largeur = max(1, min($cible, $image->getLargeur()));
         $hauteur = max(1, (int) round($image->getHauteur() * $largeur / max(1, $image->getLargeur())));
 
@@ -269,6 +286,28 @@ final class ImagesSite
             return; // l'original n'est qu'une copie de sécurité
         }
         @file_put_contents($this->dossierOriginaux.'/'.$image->getPublicId()->toRfc4122().'.'.$extension, $octets);
+    }
+
+    /**
+     * Carré pris au milieu de la largeur ; dans une image plus haute que
+     * large, plutôt vers le haut (PORTRAIT_HAUT), là où est le visage.
+     */
+    public static function carre(\GdImage $source): \GdImage
+    {
+        $largeur = imagesx($source);
+        $hauteur = imagesy($source);
+        $cote = min($largeur, $hauteur);
+        if ($largeur === $hauteur) {
+            return $source;
+        }
+        $x = (int) round(($largeur - $cote) / 2);
+        $y = (int) round(($hauteur - $cote) * self::PORTRAIT_HAUT);
+        $cible = imagecreatetruecolor($cote, $cote);
+        imagealphablending($cible, false);
+        imagesavealpha($cible, true);
+        imagecopy($cible, $source, 0, 0, $x, $y, $cote, $cote);
+
+        return $cible;
     }
 
     private static function redimensionner(\GdImage $source, int $largeurMax): \GdImage

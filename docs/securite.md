@@ -136,7 +136,7 @@ Les droits sont dans `App\Security\FichiersPrivesVoter` : les mêmes que la page
 
 Deux dossiers seulement restent sous `public/uploads`, publics par nature :
 
-- `site` : photos du site vitrine, réalisations, logos des partenaires. Elles sont faites pour être vues de tous sur le site public.
+- `site` : photos du site vitrine, réalisations, logos des partenaires, photos de l'équipe (seulement avec l'accord de la personne, supprimées quand il est retiré). Elles sont faites pour être vues de tous sur le site public.
 - `tv` : affiches, photos et vidéos de l'écran TV de la boutique. **Décision : ils restent publics.** Ce sont des médias choisis pour être montrés à tous les clients dans la boutique ; l'écran ne montre jamais de montant ni de nom de client. La page de l'écran s'ouvre déjà sans compte, avec son lien secret (`/ecran-accueil/{jeton}`). Vérifier les droits à chaque image ne cacherait rien que la boutique ne montre déjà, et faire passer les vidéos par PHP occuperait le serveur pour rien. Ne jamais y déposer un document privé.
 
 Pour ces deux dossiers, deux règles :

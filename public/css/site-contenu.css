@@ -115,6 +115,30 @@
 .sc-equipe h3 { font-size: 14.5px; margin: 0; }
 .sc-equipe li p { margin: 0; font-size: 12.5px; color: var(--texte-doux); }
 
+/* « Notre équipe » (à propos) : une carte par personne, photo ronde ou initiales aux couleurs du site. */
+.sc-equipe-membres { margin-top: 34px; scroll-margin-top: 90px; }
+.sc-equipe-intro { color: var(--texte-doux); margin: -4px 0 16px; max-width: 46em; }
+.sc-membres { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin: 0; padding: 0; }
+.sc-membre { flex: 0 1 calc((100% - 14px) / 2); min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 18px 10px 16px; background: linear-gradient(180deg, var(--teinte-pale) 0, var(--teinte-pale) 54px, #fff 54px); border: 1px solid var(--bordure); border-radius: 16px; box-shadow: var(--ombre); }
+.sc-membre-photo { display: block; width: 104px; height: 104px; border-radius: 50%; object-fit: cover; background: var(--teinte-pale); box-shadow: 0 0 0 4px #fff, 0 0 0 6px var(--teinte); margin: 2px 0 14px; }
+.sc-membre-initiales { display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .22), transparent 60%), var(--teinte); color: #fff; font-size: 36px; font-weight: 800; letter-spacing: 1px; line-height: 1; }
+.sc-membre-nom { font-size: 16.5px; margin: 0 0 2px; color: var(--noir); overflow-wrap: anywhere; }
+.sc-membre-poste { margin: 0; font-size: 14px; color: var(--texte-doux); line-height: 1.35; overflow-wrap: anywhere; }
+
+/* « Le mot du gérant » (à propos), avant l'équipe : photo ronde, mot entre guillemets, signature. */
+.sc-mot-gerant { margin-top: 34px; scroll-margin-top: 90px; }
+.sc-mot-gerant-corps { position: relative; display: grid; justify-items: center; gap: 16px; margin: 0; padding: 24px 18px 22px; background: linear-gradient(180deg, var(--bleu-pale) 0, var(--bleu-pale) 96px, #fff 96px); border: 1px solid var(--bordure); border-radius: 18px; box-shadow: var(--ombre); overflow: hidden; }
+.sc-mot-gerant-corps::after { content: ""; position: absolute; right: 0; bottom: 0; width: 120px; height: 6px; background: linear-gradient(90deg, var(--bleu-clair) 0 33%, var(--orange) 33% 66%, var(--jaune) 66%); }
+.sc-mot-gerant-photo img, .sc-mot-gerant-initiales { display: block; width: 152px; height: 152px; border-radius: 50%; object-fit: cover; background: var(--bleu-pale); box-shadow: 0 0 0 5px #fff, 0 0 0 8px var(--bleu); }
+.sc-mot-gerant-initiales { display: flex; align-items: center; justify-content: center; background: var(--bleu); color: #fff; font-size: 52px; font-weight: 800; letter-spacing: 1px; }
+.sc-mot-gerant-texte { position: relative; justify-self: stretch; margin: 0; padding: 22px 0 0; font-size: 16.5px; line-height: 1.65; color: var(--texte); }
+.sc-mot-gerant-texte::before { content: "\201C"; position: absolute; left: -4px; top: -18px; font: 800 64px/1 Georgia, "Times New Roman", serif; color: var(--rouge); }
+.sc-mot-gerant-texte p { margin: 0 0 .8em; overflow-wrap: anywhere; }
+.sc-mot-gerant-texte p:last-child { margin-bottom: 0; }
+.sc-mot-gerant-signature { justify-self: stretch; display: flex; flex-direction: column; gap: 2px; padding-left: 14px; border-left: 4px solid var(--rouge); }
+.sc-mot-gerant-signature strong { font-size: 17px; color: var(--noir); overflow-wrap: anywhere; }
+.sc-mot-gerant-signature span { font-size: 14px; color: var(--texte-doux); overflow-wrap: anywhere; }
+
 /* « Venez nous voir » (à propos) : photo de la boutique et adresse. */
 .sc-boutique { display: grid; gap: 16px 28px; align-items: center; margin-top: 34px; }
 .sc-boutique-photo { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; background: var(--fond-doux); }
@@ -269,6 +293,7 @@
   .sc-format-1 { aspect-ratio: 4 / 5; }
   .sc-format-2 { aspect-ratio: 4 / 3; }
   .sc-filtres { flex: 1 1 auto; }
+  .sc-membre { flex-basis: calc((100% - 28px) / 3); }
 }
 
 @media (min-width: 760px) {
@@ -303,6 +328,19 @@
   .sc-article-cadre { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
   .sc-article-aside { position: sticky; top: 96px; }
   .sc-avis ul { grid-template-columns: repeat(3, 1fr); }
+  .sc-membres { gap: 18px; }
+  .sc-mot-gerant-corps { grid-template-columns: 216px minmax(0, 1fr); grid-template-areas: "photo texte" "photo signature"; justify-items: start; align-items: start; gap: 18px 40px; padding: 34px 40px 32px; background: linear-gradient(90deg, var(--bleu-pale) 0, var(--bleu-pale) 148px, #fff 148px); }
+  .sc-mot-gerant-photo { grid-area: photo; align-self: center; }
+  .sc-mot-gerant-photo img, .sc-mot-gerant-initiales { width: 216px; height: 216px; }
+  .sc-mot-gerant-initiales { font-size: 72px; }
+  .sc-mot-gerant-texte { grid-area: texte; padding-top: 26px; font-size: 17.5px; max-width: 46em; }
+  .sc-mot-gerant-signature { grid-area: signature; }
+  .sc-membre { flex-basis: calc((100% - 54px) / 4); max-width: 230px; padding: 22px 12px 18px; background: linear-gradient(180deg, var(--teinte-pale) 0, var(--teinte-pale) 62px, #fff 62px); }
+  .sc-membre-photo { width: 120px; height: 120px; }
+}
+
+@media (min-width: 1100px) {
+  .sc-membre { flex-basis: calc((100% - 90px) / 6); }
 }
 
 @media (prefers-reduced-motion: reduce) {

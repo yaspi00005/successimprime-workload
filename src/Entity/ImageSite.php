@@ -7,7 +7,8 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Image du site vitrine (réalisation, conseil, page, logo de partenaire).
+ * Image du site vitrine (réalisation, conseil, page, logo de partenaire,
+ * portrait d'une personne de l'équipe).
  *
  * Réencodée à l'envoi (ImagesSite::preparer) : 1200 px au plus, sans les
  * données EXIF, en WebP (PNG si le serveur ne sait pas écrire le WebP),
@@ -32,6 +33,9 @@ class ImageSite
 
     public const USAGE_PHOTO = 'photo';
     public const USAGE_LOGO = 'logo';
+    /** Photo d'une personne de l'équipe : carrée, sans original gardé (ImagesSite). */
+    public const USAGE_PORTRAIT = 'portrait';
+    public const USAGES = [self::USAGE_PHOTO, self::USAGE_LOGO, self::USAGE_PORTRAIT];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -82,7 +86,7 @@ class ImageSite
         $image->largeur = $largeur;
         $image->hauteur = $hauteur;
         $image->empreinte = hash('sha256', $octets);
-        $image->usage = self::USAGE_LOGO === $usage ? self::USAGE_LOGO : self::USAGE_PHOTO;
+        $image->usage = \in_array($usage, self::USAGES, true) ? $usage : self::USAGE_PHOTO;
         $image->verifier();
 
         return $image;
@@ -169,6 +173,11 @@ class ImageSite
     public function estLogo(): bool
     {
         return self::USAGE_LOGO === $this->usage;
+    }
+
+    public function estPortrait(): bool
+    {
+        return self::USAGE_PORTRAIT === $this->usage;
     }
 
     public function getTexteAlternatif(): ?string

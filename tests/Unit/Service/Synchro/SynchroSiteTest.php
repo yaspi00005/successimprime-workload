@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 /** Contenu du site vitrine : saisi au local, descendu champ par champ, sans rien de privé. */
 final class SynchroSiteTest extends TestCase
 {
-    private const TYPES = ['site_image', 'site_page', 'site_realisation', 'site_avis', 'site_article', 'site_partenaire', 'site_reglage'];
+    private const TYPES = ['site_image', 'site_page', 'site_realisation', 'site_avis', 'site_article', 'site_partenaire', 'site_equipe', 'site_reglage'];
 
     public function testDescendSeulement(): void
     {
@@ -36,6 +36,7 @@ final class SynchroSiteTest extends TestCase
             'site_avis' => ['nomAffiche', 'texte', 'note', 'source', 'dateAvis', 'accordClient', 'publie'],
             'site_article' => ['titre', 'slug', 'rubrique', 'resume', 'corps', 'publieLe', 'publie', 'modifieLe'],
             'site_partenaire' => ['nom', 'lien', 'ordre', 'visible', 'accordObtenu'],
+            'site_equipe' => ['nom', 'poste', 'ordre', 'visible', 'accordPersonne', 'gerant', 'motGerant', 'aussiDansEquipe'],
             'site_reglage' => ['cle', 'valeurs'],
         ];
         foreach ($attendus as $type => $champs) {
@@ -68,7 +69,7 @@ final class SynchroSiteTest extends TestCase
         $ordre = array_keys(CatalogueSynchro::types());
         $image = array_search('site_image', $ordre, true);
         self::assertSame(array_search('entreprise', $ordre, true) + 1, $image, 'juste après l\'entreprise');
-        foreach (['site_page', 'site_realisation', 'site_article', 'site_partenaire'] as $type) {
+        foreach (['site_page', 'site_realisation', 'site_article', 'site_partenaire', 'site_equipe'] as $type) {
             self::assertGreaterThan($image, array_search($type, $ordre, true), $type);
         }
     }

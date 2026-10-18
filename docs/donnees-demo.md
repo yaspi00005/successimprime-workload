@@ -42,6 +42,7 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - `DC-D002` : flyer en cours chez Seydou, acompte validé ;
   - `DC-D003` : cartes de visite terminées, acompte et solde payés ;
   - `DC-D004` : affiche de DEMO-0002 faite par l'IA, impression commandée « à confirmer » avec la finalisation ; DEMO-0002 a un relevé de crédit IA (pack de 3 images payé, 2 utilisées, solde 1 000 F).
+- Le site vitrine, « Notre équipe » de la page « Qui sommes-nous ? » (`App\Service\Site\EquipeDemo`, docs/site-vitrine.md) : six personnes fictives (900001 à 900006) avec leur poste, aux avatars dessinés par le programme (jamais la photo d'une vraie personne), dont deux avec leurs initiales, et « Bakary C. » : « Visible » coché mais sans accord, il ne doit apparaître nulle part sur le site. « Kadiatou T. » est la gérante : son mot (fictif, sans montant) paraît avant « Notre équipe », et elle n'est pas répétée dans la grille. Les textes des pages ne font pas partie de la démonstration : `app:site:contenu-initial` les crée.
 - Le reste : planning et entretien (avec des rappels WhatsApp envoyés et à envoyer), charges récurrentes, clôtures de caisse, rapprochements bancaires, campagnes, actions de caisse, messagerie et notifications.
 
 ## Espace client de démonstration

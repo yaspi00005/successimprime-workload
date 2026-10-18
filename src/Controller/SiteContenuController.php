@@ -24,7 +24,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 /**
  * Contenu du site vitrine (Réglages › Site vitrine) : pages, réalisations,
  * avis clients, conseils, partenaires, annonces (bandes du site et de
- * l'espace client), chiffres et référencement (docs/referencement.md).
+ * l'espace client), équipe (« Qui sommes-nous ? »), chiffres et
+ * référencement (docs/referencement.md).
  *
  * Se modifie sur l'ERP local seulement, puis descend au site avec la
  * synchronisation : en ligne, l'écran est fermé.
@@ -35,7 +36,7 @@ final class SiteContenuController extends AbstractController
 {
     private const ONGLETS = [...ContenuSite::TYPES, 'chiffres' => ['libelle' => 'Chiffres'], 'referencement' => ['libelle' => 'Référencement']];
 
-    private const TYPES = 'pages|realisations|avis|conseils|partenaires|annonces';
+    private const TYPES = 'pages|realisations|avis|conseils|partenaires|annonces|equipe';
 
     public function __construct(
         private readonly ContenuSite $contenu,
@@ -127,7 +128,7 @@ final class SiteContenuController extends AbstractController
             return $ferme;
         }
         try {
-            $objet = $this->contenu->nouveau($type, $request->query->get('page'));
+            $objet = $this->contenu->nouveau($type, $request->query->get('page'), 'equipe' === $type && $request->query->getBoolean('gerant'));
         } catch (\InvalidArgumentException $e) {
             $this->addFlash('warning', $e->getMessage());
 

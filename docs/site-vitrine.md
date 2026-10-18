@@ -180,7 +180,7 @@ Rien n'est confirmé ni envoyé au client sans geste de l'équipe : le devis bro
 
 ## Contenu du site (pages 04 à 09 et 12)
 
-Réalisations, équipements, guide des fichiers, à propos, engagements, FAQ, conseils et annonces : le texte se saisit dans **Réglages › Site vitrine**, sur l'ERP local seulement, et descend au site par la synchronisation (voir docs/synchronisation.md). En ligne, l'écran est fermé (« Le contenu du site se modifie à l'atelier »).
+Réalisations, équipements, guide des fichiers, à propos, engagements, FAQ, conseils, annonces et équipe : le texte se saisit dans **Réglages › Site vitrine**, sur l'ERP local seulement, et descend au site par la synchronisation (voir docs/synchronisation.md). En ligne, l'écran est fermé (« Le contenu du site se modifie à l'atelier »).
 
 ### Accès
 
@@ -196,6 +196,7 @@ Droit fin **Site vitrine** (`ROLE_SITE_VITRINE`), donné à la Direction ; il se
 | Conseils | Titre, adresse (créée depuis le titre, unique), rubrique, résumé, texte, image, date de publication | Un conseil daté dans le futur n'apparaît qu'à sa date. Chaque conseil entre dans /sitemap.xml. |
 | Partenaires | Nom, logo, lien (http ou https seulement), ordre | Sans « accord obtenu », le partenaire reste masqué. Bande de logos sur l'accueil et « À propos ». |
 | Annonces | Texte (200 caractères, une ligne), lien facultatif (page du site ou adresse web) et son texte, style (information, promotion, alerte), où la montrer (site public, espace client, les deux), premier et dernier jour, ordre | Montrée seulement « Active » et dans sa période (dates comprises ; sans date : tout de suite et sans fin). Voir « Bandes d'annonces » ci-dessous. |
+| Équipe | Nom affiché, poste, photo, ordre ; pour le gérant : « Gérant », son mot, « aussi dans l'équipe » | Montrée seulement « Visible » **et** avec « La personne a accepté que sa photo et son nom paraissent sur le site ». Sans cet accord, pas de photo gardée. Le mot du gérant ne paraît qu'avec sa photo et son texte. Voir « Notre équipe » et « Le mot du gérant » ci-dessous. |
 | Chiffres | Afficher ou non, règle des « projets réalisés », seuil | Voir docs/site-public.md. Un chiffre nul ou sous le seuil n'est pas montré. |
 | Référencement | Codes Google Search Console et Bing, lien de la fiche Google, pages des réseaux sociaux | Valeur refusée (mauvais domaine, code illisible) : l'ancienne reste. Voir docs/referencement.md. |
 
@@ -213,6 +214,36 @@ Demande de Yaya du 15/10/2026 : une phrase courte en haut du site public, de l'e
 - Le lien n'accepte qu'une page du site (« /nos-produits ») ou une adresse http(s) ; une adresse web s'ouvre dans un nouvel onglet. Pas de montant de client dans une annonce : elle est lue par tout le monde.
 - Les pages du site restent 5 minutes en cache dans le navigateur : une annonce peut mettre ce temps à paraître ou à partir après la synchronisation.
 
+### Notre équipe
+
+Demande de Yaya du 16/10/2026 : « Ajouter l'équipe au site vitrine », « avec les photos et nom et poste ». Onglet **Équipe** de Réglages › Site vitrine (même droit `ROLE_SITE_VITRINE`, à l'ERP local seulement), une fiche par personne :
+
+- **Nom affiché** (60 caractères) : comme la personne le souhaite ; un prénom, ou prénom et initiale, suffit. **Poste** (80 caractères) : « Graphiste PAO », « Accueil et caisse »… Les deux sont obligatoires. **Ordre** : les plus petits numéros d'abord.
+- **Photo** (facultative) : JPG, PNG ou WebP, recadrée en carré (au milieu de la largeur ; dans une photo en hauteur, plutôt vers le haut, là où est le visage), réduite à 480 px et réencodée (WebP, ou PNG), donc **sans EXIF ni position GPS**. Contrairement aux autres images du site, **l'original n'est pas gardé**. Sans photo, le site montre les initiales de la personne dans un rond aux couleurs du site.
+- **« La personne a accepté que sa photo et son nom paraissent sur le site »** : obligatoire pour la montrer. Sans cette case, une photo envoyée est refusée (« cochez d'abord… », rien n'est enregistré) ; décocher la case retire la photo déjà enregistrée ; « Visible » coché est enregistré décoché, avec le message de ce qui manque.
+- **Visible** : décocher pour masquer quelqu'un sans supprimer sa fiche (départ, congé).
+- Rien d'autre n'est demandé ni montré, et la fiche **n'est liée à aucune fiche du personnel** : ni téléphone, ni e-mail, ni salaire, ni compte. Changer le personnel ne change rien ici, et inversement.
+
+**Sur le site**, page « Qui sommes-nous ? » (`templates/site/_equipe.html.twig`) : dès qu'une personne est visible avec son accord, la section « Notre équipe » (ancre `#notre-equipe`) s'affiche en pleine largeur sous le premier bloc et **remplace les cartes Direction, Atelier, PAO** de la section « équipe » du texte de la page (le paragraphe de cette section, s'il y en a un, passe sous le titre). Sans personne affichée, la page reste comme avant.
+- Une carte par personne : photo ronde (ou initiales), nom, poste. 2 cartes par ligne sur un téléphone, 3 sur une tablette, 4 puis 6 sur un ordinateur, centrées.
+- Photos de 240 px (480 px pour les écrans les plus fins), chargées quand elles approchent de l'écran, largeur et hauteur écrites, texte pour les malvoyants « Photo de Awa, Graphiste PAO ».
+- Les photos de l'équipe n'entrent ni dans le plan du site ni dans les données pour Google.
+
+**Synchronisation** (type `site_equipe`, docs/synchronisation.md) : nom, poste, photo, ordre, visible, accord. Sans accord, le nom et le poste partent vides. Masquer une personne ou retirer son accord la retire du site à la synchronisation suivante ; retirer l'accord supprime aussi sa photo, de chaque côté. Supprimer sa fiche la supprime en ligne avec sa photo. Comme le reste, la page peut rester 5 minutes dans le cache du navigateur.
+
+**Démonstration** (`app:demo`, docs/donnees-demo.md) : six personnes fictives aux avatars dessinés par le programme (`App\Service\Site\EquipeDemo`, jamais la photo d'une vraie personne), dont deux sans photo (initiales) et « Bakary C. », « Visible » coché mais sans accord, qui ne doit apparaître nulle part. « Kadiatou T. » est la gérante (son mot, ci-dessous). La recette des accès en ligne le vérifie (docs/recette-par-role.md).
+
+### Le mot du gérant
+
+Demande de Yaya du 17/10/2026 : « Ajouter le mot du gérant avec sa photo, ensuite l'équipe ». Le gérant est **une personne de l'onglet Équipe**, cochée « Gérant » : sa photo, son nom, son poste et son accord sont ceux de sa fiche, avec les mêmes règles (photo carrée réencodée, sans EXIF ni position GPS, original non gardé ; rien sans son accord). Rien n'est saisi deux fois.
+
+- **Saisie** : bouton « Rédiger le mot du gérant » en haut de l'onglet Équipe (nouvelle fiche déjà cochée « Gérant »), ou, si le gérant est déjà dans la liste, case « Cette personne est le gérant (ou la gérante) » de sa fiche. Encart « Le mot du gérant » de la fiche : la case, **son mot** (900 caractères au plus, sans mise en forme, une ligne = un paragraphe ; plus long, rien n'est enregistré) et « Le montrer aussi dans « Notre équipe » » (décoché par défaut). **Pas de prix ni de montant** : un nombre suivi de « F », « FCFA », « francs », « fr » ou « € » dans le mot, le nom ou le poste est refusé, rien n'est enregistré, et le message cite le passage à retirer (une année, un pourcentage ou un numéro de téléphone passent).
+- **Un seul gérant** : cocher la case sur une fiche la décoche sur l'autre (son mot reste enregistré mais ne paraît plus), avec un message.
+- **Caché tant que ce n'est pas rempli** : le mot ne paraît que si la personne est gérant, visible, avec son accord, **avec une photo et un texte**. L'encart en haut de l'onglet Équipe et la fiche disent ce qui manque (« il manque la photo et son accord »).
+- **Sur le site** (`templates/site/_mot_gerant.html.twig`, ancre `#mot-du-gerant`) : juste **avant « Notre équipe »**, sous le premier bloc de « Qui sommes-nous ? » ; titre « Le mot du gérant » (« Le mot de la gérante » quand le poste dit « Gérante »), photo ronde (216 px sur un ordinateur, 152 px sur un téléphone, chargée quand elle approche de l'écran, « Photo de Kadiatou T., Gérante » pour les malvoyants), le texte entre guillemets, signé du nom et du poste.
+- **Pas deux fois** : quand son mot paraît, le gérant n'est pas répété dans la grille « Notre équipe », sauf si « aussi dans l'équipe » est coché. Tant que son mot est caché (texte ou photo manquant), il reste dans la grille comme les autres.
+- **Synchronisation** : avec la fiche (type `site_equipe`) ; le mot ne part qu'avec l'accord de la personne et si elle est gérant, sinon vide.
+
 ### Texte des pages
 
 Markdown simplifié (`App\Service\Site\MarkdownSite`), aide sous chaque champ : « ## » section, « ### » carte (ou question de la FAQ), listes « - », étapes « 1. », encadré « > », **gras**, *italique*, [lien](https://…). Une ligne « Œillets · Ourlets · Découpe » donne une rangée de pastilles ; dans une carte, une première ligne en italique (*Grand format*) devient son étiquette. Tout le texte est échappé : un HTML tapé s'affiche tel quel. Seuls les liens http, https, du site, mailto: et tel: sont gardés. L'icône d'une carte est choisie d'après les mots de son titre (`IconesSite`).
@@ -226,7 +257,7 @@ Sans page « Demander un devis » ni « Contact », les boutons « Demander un d
 
 ### Images
 
-Une image envoyée (JPG, PNG ou WebP, 15 Mo au plus) est lue par GD, remise droite, réduite, **réencodée** en WebP (en PNG si GD ne sait pas écrire le WebP), donc sans EXIF ni position GPS, et ramenée à **300 Ko au plus**. C'est cette version qui est en base et qui descend au site ; elle est revérifiée à l'arrivée (type, taille, empreinte). L'original reste au local dans `var/uploads/site/originaux` (hors de public/). Les fichiers servis (`public/uploads/site/`, ignoré par git) sont refaits depuis la base de chaque côté, en deux largeurs, avec largeur et hauteur dans la page et chargement différé.
+Une image envoyée (JPG, PNG ou WebP, 15 Mo au plus) est lue par GD, remise droite, réduite, **réencodée** en WebP (en PNG si GD ne sait pas écrire le WebP), donc sans EXIF ni position GPS, et ramenée à **300 Ko au plus**. C'est cette version qui est en base et qui descend au site ; elle est revérifiée à l'arrivée (type, taille, empreinte). L'original reste au local dans `var/uploads/site/originaux` (hors de public/), sauf pour la photo d'une personne de l'équipe : recadrée en carré de 480 px, elle n'est gardée que réencodée (usage « portrait »). Les fichiers servis (`public/uploads/site/`, ignoré par git) sont refaits depuis la base de chaque côté, en deux largeurs, avec largeur et hauteur dans la page et chargement différé.
 
 **Sur le serveur, GD doit avoir WebP et JPEG.** Le conteneur de développement n'a que le PNG : les images y sont en PNG et un JPG est refusé avec un message clair.
 
@@ -237,7 +268,7 @@ Une image envoyée (JPG, PNG ou WebP, 15 Mo au plus) est lue par GD, remise droi
 Textes écrits sans information de l'atelier, **à relire et remplacer par Yaya** :
 - **Nos équipements** : les trois machines (grand format, roll-up et adhésifs, textile DTF) et leurs points forts, à remplacer par le vrai parc (nom, largeur, usages) ; la liste des finitions, dont « Pose sur site ».
 - **Préparer son fichier** : chiffres repris des maquettes, à confirmer par la PAO : 100 à 150 dpi en grand format, 300 dpi en petit format, fonds perdus 3 mm, marge de 5 cm sur une bâche, CMJN et noir riche ; les tailles des gabarits (roll-up 85 × 200 cm, carte 85 × 55 mm, flyer A5, Door Shape 80 × 180 cm, banderole). Aucun gabarit n'a encore de fichier : ajouter le lien quand le PDF est en ligne.
-- **Qui sommes-nous ?** : le paragraphe de présentation (clients cités par type : commerçants, entreprises, ONG, institutions), les trois valeurs et les rôles de l'équipe (Direction, Atelier, PAO). Pas de nom de personne ni d'année de création : à ajouter si Yaya le souhaite.
+- **Qui sommes-nous ?** : le paragraphe de présentation (clients cités par type : commerçants, entreprises, ONG, institutions), les trois valeurs et les rôles de l'équipe (Direction, Atelier, PAO). Pas d'année de création. Les personnes, avec photo, nom et poste, se saisissent dans l'onglet Équipe (« Notre équipe » ci-dessus) : elles remplacent alors les trois rôles.
 - **Nos engagements** : « Prix sans surprise », « Délai annoncé » et les étapes de commande (dont « Paiement de l'acompte » et « Contrôle qualité ») sont à valider ; seuls le BAT, la réimpression si le défaut vient de l'atelier et le paiement Orange Money étaient déjà affirmés.
 - **Questions fréquentes** : toutes les réponses, en particulier l'acompte, la quantité minimale, la livraison à Bamako, la pose sur devis et l'entretien d'une bâche.
 - **Conseils (démo)** : cinq articles d'exemple (bâche, fichier, DTF ou sérigraphie, roll-up, micro-perforé), à relire ou supprimer.
@@ -248,6 +279,7 @@ Aucun chiffre d'activité, aucune note ni aucun nom de client n'a été inventé
 
 - `src/Controller/SiteContenuController.php` (admin), `src/Controller/SitePagesController.php` (pages publiques), `src/Service/Site/` (`ContenuSite`, `MarkdownSite`, `ImagesSite`, `ChiffresSite`, `IconesSite`, `PlanConseils`, `ContenuInitial`), `src/Twig/SiteContenuExtension.php`.
 - Annonces : `src/Entity/Annonce.php`, `src/Repository/AnnonceRepository.php`, `src/Twig/AnnoncesExtension.php` (`site_annonces()`), `templates/site/_annonces.html.twig`.
+- Équipe et mot du gérant : `src/Entity/MembreEquipe.php` (table `site_equipe`, migrations `Version20261016123412` et `Version20261018090000`), `src/Repository/MembreEquipeRepository.php` (`visibles()`, `gerantDe()`, `grille()`), `templates/site/_equipe.html.twig`, `templates/site/_mot_gerant.html.twig`, `src/Service/Site/EquipeDemo.php` (démonstration), tests `tests/Unit/Service/Site/EquipeSiteTest.php`.
 - `templates/site_contenu/` (admin), `templates/site/` (`realisations`, `equipements`, `guide`, `a_propos`, `engagements`, `faq`, `conseils`, `conseil`, `_chiffres`, `_partenaires`, `_avis`), `public/css/site-contenu.css`, `public/css/reglages-site.css`.
 - Chaque page est servie par `SiteController::cache()` (5 minutes dans le navigateur).
 

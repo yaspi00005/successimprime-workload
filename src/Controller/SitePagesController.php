@@ -7,6 +7,7 @@ use App\Entity\PageSite;
 use App\Entity\Realisation;
 use App\Repository\ArticleConseilRepository;
 use App\Repository\AvisClientRepository;
+use App\Repository\MembreEquipeRepository;
 use App\Repository\PageSiteRepository;
 use App\Repository\RealisationRepository;
 use App\Service\Site\AvantApres;
@@ -74,10 +75,22 @@ final class SitePagesController extends AbstractController
         return $this->page('guide-fichiers', 'site/guide.html.twig', $request);
     }
 
+    /**
+     * Qui sommes-nous ? : avec « Notre équipe » quand au moins une personne
+     * est visible et a donné son accord (MembreEquipeRepository::visibles).
+     */
     #[Route('/a-propos', name: 'app_site_a_propos', methods: ['GET'])]
-    public function aPropos(Request $request, AvisClientRepository $avis): Response
+    public function aPropos(Request $request, AvisClientRepository $avis, MembreEquipeRepository $equipe): Response
     {
-        return $this->page('a-propos', 'site/a_propos.html.twig', $request, ['avis' => $avis->visibles()]);
+        // Le mot du gérant d'abord, puis l'équipe, sans montrer le gérant deux fois (sauf choix de l'atelier).
+        $visibles = $equipe->visibles();
+        $gerant = MembreEquipeRepository::gerantDe($visibles);
+
+        return $this->page('a-propos', 'site/a_propos.html.twig', $request, [
+            'avis' => $avis->visibles(),
+            'gerant' => $gerant,
+            'membres' => MembreEquipeRepository::grille($visibles, $gerant),
+        ]);
     }
 
     #[Route('/nos-engagements', name: 'app_site_engagements', methods: ['GET'])]

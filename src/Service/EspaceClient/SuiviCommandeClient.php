@@ -46,7 +46,10 @@ final class SuiviCommandeClient
             if ($ligne->isPrePresseNecessaire() || null !== $ctl) {
                 $publics = null !== $ctl ? ($this->espace->conception($ctl)?->getEvenements() ?? []) : [];
                 $controle = array_values(array_filter($publics, static fn (array $e): bool => 'controle' === $e['type']))[0] ?? null;
-                $fichiers[] = ['statut' => $ctl?->getStatut(), 'fait' => $ctl?->isFichierControle() ?? false, 'le' => $ctl?->getControleLe() ?? self::date($controle['le'] ?? null), 'par' => $controle['par'] ?? null];
+                // Un BAT déjà envoyé suppose le fichier vu, même sans contrôle daté (création par le
+                // graphiste sans fichier du client, contrôle d'avant la synchronisation de controleLe).
+                $montre = null !== $ctl && $this->batMontre($ctl);
+                $fichiers[] = ['statut' => $ctl?->getStatut(), 'fait' => ($ctl?->isFichierControle() ?? false) || $montre, 'le' => $ctl?->getControleLe() ?? self::date($controle['le'] ?? null), 'par' => $controle['par'] ?? null];
             }
             if (null !== $ctl && $this->batMontre($ctl)) {
                 $cartes[] = $this->carteBat($ctl);
@@ -266,12 +269,15 @@ final class SuiviCommandeClient
         if (\in_array(ControlePrePresse::STATUT_REJETE, $statuts, true)) {
             return ['cle' => 'fichier', 'libelle' => 'Fichier à revoir', 'etat' => 'en_cours', 'detail' => 'l\'atelier vous contacte'];
         }
-        $faits = array_filter($fichiers, static fn (array $f): bool => $f['fait'] && null !== $f['le']);
+        $faits = array_filter($fichiers, static fn (array $f): bool => $f['fait']);
         if (\count($faits) === \count($fichiers)) {
-            usort($faits, static fn (array $a, array $b): int => $a['le'] <=> $b['le']);
-            $dernier = $faits[\count($faits) - 1];
+            // La date et le prénom du dernier contrôle daté ; sans date, l'étape est faite sans détail.
+            $dates = array_values(array_filter($faits, static fn (array $f): bool => null !== $f['le']));
+            usort($dates, static fn (array $a, array $b): int => $a['le'] <=> $b['le']);
+            $dernier = [] !== $dates ? $dates[\count($dates) - 1] : null;
 
-            return ['cle' => 'fichier', 'libelle' => 'Fichier contrôlé', 'etat' => 'faite', 'detail' => self::joindre([null !== $dernier['par'] ? 'par '.$dernier['par'] : null, $quand($dernier['le'])]), 'court' => $quand($dernier['le'])];
+            return ['cle' => 'fichier', 'libelle' => 'Fichier contrôlé', 'etat' => 'faite', 'detail' => null !== $dernier ? self::joindre([null !== $dernier['par'] ? 'par '.$dernier['par'] : null, $quand($dernier['le'])]) : null]
+                + (null !== $dernier ? ['court' => $quand($dernier['le'])] : []);
         }
 
         return ['cle' => 'fichier', 'libelle' => 'Fichier contrôlé', 'etat' => $confirmee ? 'en_cours' : 'a_venir', 'detail' => $confirmee ? 'l\'atelier vérifie votre fichier' : null];

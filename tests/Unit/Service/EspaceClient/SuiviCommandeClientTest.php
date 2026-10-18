@@ -152,6 +152,18 @@ final class SuiviCommandeClientTest extends TestCase
         self::assertSame('l\'atelier vérifie votre fichier', $etapes['fichier']['detail']);
     }
 
+    public function testBatEnvoyeSansControleDateLeFichierEstFait(): void
+    {
+        // Création du graphiste sans fichier du client : pas de contrôle daté, mais le BAT est parti.
+        $fichier = ['statut' => ControlePrePresse::STATUT_EN_ATTENTE_BAT, 'fait' => true, 'le' => null, 'par' => null];
+        $etapes = self::parCle(SuiviCommandeClient::etapes(self::commande(), self::productionAuBat(), [$fichier], [self::batEnAttente()], null, false, false, self::a('11:30')));
+
+        self::assertSame('faite', $etapes['fichier']['etat'], 'pas « l\'atelier vérifie votre fichier » quand le BAT attend le client');
+        self::assertNull($etapes['fichier']['detail']);
+        self::assertArrayNotHasKey('court', $etapes['fichier']);
+        self::assertSame('action', $etapes['bat']['etat']);
+    }
+
     public function testCorrectionDemandee(): void
     {
         $bat = ['etat' => 'correction', 'version' => 1, 'envoyeLe' => self::a('11:05'), 'correctionLe' => self::a('11:20'), 'valideLe' => null];

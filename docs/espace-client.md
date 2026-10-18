@@ -1,6 +1,6 @@
 # Espace client connecté (maquettes 13 à 19)
 
-Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connexion » plus bas), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts, de marges ni de noms d'employés : du personnel, le client ne voit que le prénom et le métier (« Seydou (graphiste PAO) », `Employes::getNomPublic`), jamais le nom de famille ni le téléphone.
+Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connexion » plus bas), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts ni de marges. Du personnel, le client voit dans le suivi d'une commande, le BAT et les messages le prénom et le métier seulement (« Seydou (graphiste PAO) », `Employes::getNomPublic`), jamais le nom de famille, le téléphone ni la photo ; seule la carte « Votre conseiller(ère) » porte le prénom et le nom du commercial qui suit le client (champ `conseiller`, maquette EC01), avec le numéro de la boutique.
 
 ## État (13/10/2026)
 
@@ -315,7 +315,7 @@ Captures : `/mnt/project-files/captures/factures-paiements/`.
 |---|---|---|
 | Commande reçue | date de la commande | « 15/10 · 10:20 », « à confirmer par l'atelier » pour une commande en ligne pas encore confirmée |
 | Acompte payé / Commande payée | paiements validés, Orange Money en validation | montant, heure, moyen, référence du paiement ; **pour qui paie seulement** |
-| Fichier contrôlé | contrôle prépresse (`ControlePrePresse::isFichierControle`, date `controleLe`) et prénom de qui l'a contrôlé | « par Seydou (graphiste PAO) · 10:40 » ; « l'atelier vérifie votre fichier » pendant le contrôle ; « Fichier à revoir » si rejeté |
+| Fichier contrôlé | contrôle prépresse (`ControlePrePresse::isFichierControle`, date `controleLe`) et prénom de qui l'a contrôlé | « par Seydou (graphiste PAO) · 10:40 » ; « l'atelier vérifie votre fichier » pendant le contrôle ; « Fichier à revoir » si rejeté ; fait sans heure quand un BAT est déjà parti sans contrôle daté (création du graphiste sans fichier du client) |
 | BAT à valider | BAT envoyés (suivi de conception) | « envoyé à 11:05 · en attente de vous » (« … de votre entreprise » pour la lecture seule), « Correction du BAT », « BAT validé » |
 | En impression | `SuiviCommandeService::etapesClient` (débuts et fins de production des lignes) | « après validation du BAT », « lancée à … », « En finition », « Imprimée » |
 | Prête | idem | date de fin, ou « prévue samedi 17/10 » (date de livraison de la commande) |

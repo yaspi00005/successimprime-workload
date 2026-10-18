@@ -93,6 +93,8 @@ final class EspaceClientTest extends TestCase
         self::assertNull(EspaceClient::verificationsCochees($ligne, []));
         self::assertNull(EspaceClient::verificationsCochees($ligne, 'orthographe'), 'pas une liste');
         self::assertNull(EspaceClient::verificationsCochees($ligne, null));
+        self::assertNull(EspaceClient::verificationsCochees($ligne, [['orthographe'], ['coordonnees'], ['couleurs'], ['taille']]), 'des listes au lieu des textes');
+        self::assertNotNull(EspaceClient::verificationsCochees($ligne, [...$tout, ['x']]), 'une liste en plus est ignorée');
     }
 
     public function testCorrectionAuDelaDesGratuitesSansMontant(): void

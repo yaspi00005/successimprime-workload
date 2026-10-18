@@ -7,6 +7,7 @@ use App\Entity\CommandesDetails;
 use App\Entity\User;
 use App\Service\ProduitsClient\Aiguillage;
 use App\Service\ProduitsClient\LiensFichiers;
+use App\Service\Stock\ReservationsCommande;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -34,7 +35,7 @@ final class AiguillageCommandeController extends AbstractController
     /** Confirme la commande (si besoin) et applique l'aiguillage : file d'impression ou prépresse. */
     #[Route('/commandes/{id}/aiguillage/lancer', name: 'app_commandes_aiguillage_lancer', requirements: ['id' => '\d+'], methods: ['POST'])]
     #[IsGranted('ROLE_COMMANDE')]
-    public function lancer(#[MapEntity(id: 'id')] Commandes $commande, Request $request): Response
+    public function lancer(#[MapEntity(id: 'id')] Commandes $commande, Request $request, ReservationsCommande $reservations): Response
     {
         if (!$this->isCsrfTokenValid('aiguillage-'.$commande->getId(), $request->request->getString('_token'))) {
             throw $this->createAccessDeniedException('La page a expiré. Rechargez-la.');
@@ -51,6 +52,11 @@ final class AiguillageCommandeController extends AbstractController
             $this->em->flush();
             $etat = $this->aiguillage->pourCommande($commande);
             $this->addFlash('success', \sprintf('%s%d ligne%s dans la file d\'impression%s.', $confirmee ? 'Commande confirmée. ' : '', $crees, $crees > 1 ? 's' : '', $etat['prepresse'] > 0 ? \sprintf(', %d au prépresse', $etat['prepresse']) : ''));
+            // Stock réservé à l'enregistrement (ReservationsCommandeListener) : un manque ne bloque pas.
+            $manquants = $reservations->manquants($commande);
+            if ([] !== $manquants) {
+                $this->addFlash('warning', 'Stock insuffisant, commande lancée quand même : '.implode(' ; ', $manquants).'.');
+            }
         }
 
         return $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId()]);

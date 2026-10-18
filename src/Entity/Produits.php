@@ -597,6 +597,22 @@ public function setGestionStock(
     return $this;
 }
 
+/**
+ * Vrai si une commande de ce produit réserve puis sort du stock : au
+ * moins un article lié (nomenclature active, ou « article associé au
+ * stock »), comme StockService::calculerBesoinsDetail().
+ */
+public function debiteLeStock(): bool
+{
+    foreach ($this->articlesStock as $liaison) {
+        if ($liaison->isActif() && null !== $liaison->getArticle() && (float) $liaison->getCoefficient() > 0) {
+            return true;
+        }
+    }
+
+    return null !== $this->articleStock;
+}
+
 public function getArticleStock(): ?Articles
 {
     return $this->articleStock;

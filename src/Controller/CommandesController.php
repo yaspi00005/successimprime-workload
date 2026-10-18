@@ -28,7 +28,7 @@ use App\Entity\CommandesDetails;
 use App\Service\Corbeille\Corbeille;
 use App\Service\MontantFinitionSaisie;
 use App\Service\NotificationService;
-use App\Service\StockService;
+use App\Service\Stock\ReservationsCommande;
 use App\Service\CalculateurCoutRevient;
 use App\Service\SuiviCommandeService;
 use App\Service\Commandes\FicheCommande;
@@ -245,7 +245,7 @@ final class CommandesController extends AbstractController
         Request $request,
         EntityManagerInterface $entityManager,
         CommandeDetailFichierRepository $fichierRepository,
-        StockService $stockService,
+        ReservationsCommande $reservationsCommande,
         CommandesRepository $commandesRepository,
         NotificationService $notificationService,
         Parametres $parametres,
@@ -492,28 +492,13 @@ final class CommandesController extends AbstractController
                 );
 
                 /*
-             * ====================================================
-             * RÉSERVATION DU STOCK
-             * ====================================================
-             *
-             * Aucune réservation pour un brouillon.
-             */
-                if (
-                    $this->commandeEstValidee(
-                        $commande
-                    )
-                ) {
-                    $stockService
-                        ->reserverPourCommande(
-                            $commande
-                        );
-                }
-
-                /*
-             * Commande + détails + réservations
-             * sont enregistrés ensemble.
+             * Commande + détails enregistrés ensemble. Le stock
+             * est réservé au même moment, si la commande est
+             * validée (ReservationsCommandeListener) : jamais pour
+             * un brouillon, et sans bloquer la commande s'il manque.
              */
                 $entityManager->flush();
+                $this->avertirStockManquant($reservationsCommande, $commande);
 
                 /*
              * ====================================================
@@ -636,7 +621,7 @@ final class CommandesController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_commandes_show', methods: ['GET'])]
-    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient, PromotionsSaisie $promotionsSaisie, EntityManagerInterface $entityManager, SuiviCommercial $suiviCommercial, FicheCommande $ficheCommande): Response
+    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient, PromotionsSaisie $promotionsSaisie, EntityManagerInterface $entityManager, SuiviCommercial $suiviCommercial, FicheCommande $ficheCommande, ReservationsCommande $reservationsCommande): Response
     {
         if ($commande->estSoldeOuverture()) {
             // Ce que le client devait au démarrage (docs/import-donnees.md) : un montant, pas une vente.
@@ -707,6 +692,17 @@ final class CommandesController extends AbstractController
             'marge' => $voirCouts ? $marge + ['taux' => CalculateurCoutRevient::tauxMarge($marge['ht'], $marge['cout'])] : null,
             // Revendeur au prix B2B : promotions qu'une exception permettrait, ligne par ligne.
             'promotionsB2b' => $promotionsSaisie->possibilitesB2b($commande, new \DateTimeImmutable()),
+            // Stock réservé et déjà sorti (le stock est réservé aux administrateurs).
+            'stock' => $this->isGranted('ROLE_ADMIN') ? [
+                'articles' => $reservationsCommande->resume($commande),
+                'sansNomenclature' => array_values(array_filter(
+                    $commande->getCommandesDetails()->toArray(),
+                    static fn (CommandesDetails $l): bool => CommandesDetails::TYPE_PRODUIT === $l->getTypeLigne()
+                        && CommandesDetails::PRODUCTION_ANNULEE !== $l->getStatutProduction()
+                        && null !== $l->getProduit()
+                        && !$l->getProduit()->debiteLeStock()
+                )),
+            ] : null,
         ]);
     }
 
@@ -720,7 +716,7 @@ final class CommandesController extends AbstractController
         Commandes $commande,
         EntityManagerInterface $entityManager,
         CommandeDetailFichierRepository $fichierRepository,
-        StockService $stockService,
+        ReservationsCommande $reservationsCommande,
         PromotionsSaisie $promotionsSaisie
     ): Response {
         if ($commande->estSoldeOuverture()) {
@@ -999,14 +995,10 @@ final class CommandesController extends AbstractController
                             $commande
                         );
 
-
                     /*
-                 * Réservation du stock.
+                 * Le stock est réservé à l'enregistrement
+                 * (ReservationsCommandeListener).
                  */
-                    $stockService
-                        ->reserverPourCommande(
-                            $commande
-                        );
                 }
 
 
@@ -1021,23 +1013,11 @@ final class CommandesController extends AbstractController
                 ) {
 
                     /*
-                 * Tant que le circuit n'a pas commencé,
-                 * les réservations peuvent être recalculées.
-                 */
-                    if (!$circuitDejaCommence) {
-
-                        $stockService
-                            ->reserverPourCommande(
-                                $commande
-                            );
-                    }
-
-                    /*
-                 * Si le circuit a déjà commencé :
-                 *
-                 * - pas de preparerCircuitCommande()
-                 * - pas de recréation des réservations
-                 * - pas de réinitialisation des statuts
+                 * Les réservations des lignes dont le stock n'a pas
+                 * encore commencé à sortir suivent les quantités
+                 * (ReservationsCommandeListener). Si le circuit a
+                 * déjà commencé : pas de preparerCircuitCommande(),
+                 * pas de réinitialisation des statuts.
                  */
                 }
 
@@ -1059,14 +1039,10 @@ final class CommandesController extends AbstractController
                         );
                     }
 
-
                     /*
-                 * Libération des réservations.
+                 * Les réservations sont libérées à l'enregistrement
+                 * (ReservationsCommandeListener).
                  */
-                    $stockService
-                        ->libererReservationsCommande(
-                            $commande
-                        );
                 }
 
 
@@ -1096,6 +1072,7 @@ final class CommandesController extends AbstractController
                     'success',
                     'La commande a été modifiée avec succès.'
                 );
+                $this->avertirStockManquant($reservationsCommande, $commande);
 
 
                 return $this->redirectToRoute(
@@ -1194,7 +1171,7 @@ final class CommandesController extends AbstractController
      * les régularisations éventuelles restent manuelles.
      */
     #[Route('/{id}/annuler', name: 'app_commandes_annuler', methods: ['POST'])]
-    public function annuler(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
+    public function annuler(Request $request, Commandes $commande, EntityManagerInterface $entityManager, ReservationsCommande $reservationsCommande): Response
     {
         if ($commande->estSoldeOuverture()) {
             throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
@@ -1269,8 +1246,13 @@ final class CommandesController extends AbstractController
 
         $message = sprintf('La commande %s a été annulée.', $commande->getNumero() ?? ('#' . $commande->getId()));
 
-        if ($stockDejaConsomme) {
-            $message .= ' Attention : du stock avait déjà été consommé pour cette commande et n’a pas été recrédité automatiquement.';
+        // Les réservations sont libérées à l'enregistrement (ReservationsCommandeListener) ;
+        // ce qui est déjà sorti du stock reste sorti : la matière est consommée.
+        $sorties = array_filter($reservationsCommande->resume($commande), static fn (array $l): bool => $l['sorti'] > 0);
+        if ($stockDejaConsomme || [] !== $sorties) {
+            $message .= ' Attention : du stock avait déjà été consommé pour cette commande et n’a pas été recrédité automatiquement'
+                .([] !== $sorties ? ' ('.implode(', ', array_map(static fn (array $l): string => $l['article']->getDesignation().' : '.rtrim(rtrim(number_format($l['sorti'], 3, ',', ' '), '0'), ','), $sorties)).')' : '')
+                .'. Les réservations restantes ont été libérées.';
         }
 
         $this->addFlash('success', $message);
@@ -1293,7 +1275,7 @@ final class CommandesController extends AbstractController
      */
     #[Route('/{id}/restaurer', name: 'app_commandes_restaurer', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function restaurer(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
+    public function restaurer(Request $request, Commandes $commande, EntityManagerInterface $entityManager, ReservationsCommande $reservationsCommande): Response
     {
         if ($commande->estSoldeOuverture()) {
             throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
@@ -1367,6 +1349,7 @@ final class CommandesController extends AbstractController
         }
 
         $this->addFlash('success', $message);
+        $this->avertirStockManquant($reservationsCommande, $commande);
 
         return $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId()], Response::HTTP_SEE_OTHER);
     }
@@ -3345,6 +3328,21 @@ final class CommandesController extends AbstractController
         return $commande->isStatut();
     }
 
+    /**
+     * La commande est enregistrée même s'il manque du stock : on le dit
+     * à l'agent, les responsables reçoivent aussi une notification.
+     */
+    private function avertirStockManquant(ReservationsCommande $reservations, Commandes $commande): void
+    {
+        if (!$this->commandeEstValidee($commande)) {
+            return;
+        }
+        $manquants = $reservations->manquants($commande);
+        if ([] !== $manquants) {
+            $this->addFlash('warning', 'Stock insuffisant, commande enregistrée quand même : '.implode(' ; ', $manquants).'.');
+        }
+    }
+
 
     private function preparerCircuitCommande(
         Commandes $commande
@@ -3363,9 +3361,6 @@ final class CommandesController extends AbstractController
          * selon son circuit.
          */
             $detail->preparerApresValidationCommande();
-            dump([
-                'apres' => $detail->getStatutProduction(),
-            ]);
         }
     }
     private function commandeACommenceSonCircuit(

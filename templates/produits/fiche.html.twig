@@ -164,9 +164,16 @@
 						{% for l in produit.articlesStock|filter(l => l.actif and l.article) %}
 							<li><span>Matière consommée</span><span>{{ l.article.designation }} · {{ l.coefficient|number_format(2, ',', '')|trim('0', 'right')|trim(',', 'right') }} {{ l.article.uniteCourte }} {{ modes_nomenclature[l.modeCalcul] ?? l.modeCalcul }}</span></li>
 						{% else %}
-							<li><span class="si-pd-gris">Aucune matière liée au stock</span><span></span></li>
+							{% if produit.articleStock %}
+								<li><span>Article de stock</span><span>{{ produit.articleStock.designation }} · 1 {{ produit.articleStock.uniteCourte }} par unité vendue</span></li>
+							{% else %}
+								<li><span class="si-pd-gris">Aucune matière liée au stock</span><span></span></li>
+							{% endif %}
 						{% endfor %}
 					</ul>
+					{% if produit.id and not produit.debiteLeStock %}
+						<p class="si-pd-alerte mb-0">Aucun article de stock lié : le stock ne sera pas débité quand ce produit est commandé. La commande reste possible ; si ce produit consomme une matière, liez-la dans « Matières consommées (nomenclature) ».</p>
+					{% endif %}
 
 					{% if modifiable %}
 						<details class="si-pd-pliable mt-3"{{ nouveau ? ' open' }}>

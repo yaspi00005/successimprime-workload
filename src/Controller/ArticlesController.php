@@ -58,7 +58,8 @@ final class ArticlesController extends AbstractController
             $qb
                 ->andWhere(
                     'LOWER(a.reference) LIKE LOWER(:q)
-                    OR LOWER(a.designation) LIKE LOWER(:q)'
+                    OR LOWER(a.designation) LIKE LOWER(:q)
+                    OR LOWER(a.nomCommercial) LIKE LOWER(:q)'
                 )
                 ->setParameter(
                     'q',

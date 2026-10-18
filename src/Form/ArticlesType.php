@@ -56,6 +56,22 @@ final class ArticlesType extends AbstractType
                 ]
             )
 
+            // Nom que tout le monde connaît (docs/noms-commerciaux.md).
+            ->add(
+                'nomCommercial',
+                TextType::class,
+                [
+                    'label' => 'Nom commercial',
+                    'required' => false,
+                    'help' => 'Facultatif : vu par le client avant la désignation, trouvé par la recherche.',
+                    'attr' => [
+                        'class' => 'form-control',
+                        'maxlength' => 120,
+                        'placeholder' => 'Ex. Autocollant',
+                    ],
+                ]
+            )
+
             ->add(
                 'categorie',
                 TextType::class,

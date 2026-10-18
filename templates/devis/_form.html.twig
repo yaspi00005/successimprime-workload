@@ -2631,13 +2631,18 @@ if (data.element && data.element.disabled) {
 return null;
 }
 
-const terme = (params.term || '').trim().toUpperCase();
+// Sans accents, majuscules ni pluriel : « autocollants » trouve « Vinyle adhésif (Autocollant) » (docs/noms-commerciaux.md).
+const sansAccents = function (t) {
+return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/([A-Z]{3})[SX](?=[^A-Z0-9]|$)/g, '$1');
+};
+
+const terme = sansAccents((params.term || '').trim());
 
 if (terme === '') {
 return data;
 }
 
-const texte = (data.text || '').toUpperCase();
+const texte = sansAccents(data.text);
 
 return texte.indexOf(terme) > -1 ? data : null;
 }

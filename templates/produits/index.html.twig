@@ -38,6 +38,11 @@
 					Supprimer
 				</button>
 
+				<a href="{{ path('app_produits_noms_commerciaux') }}" class="btn btn-outline-primary" title="Le nom que tout le monde connaît, à côté de la désignation">
+					<i class="fa fa-tags mr-1" aria-hidden="true"></i>
+					Noms commerciaux
+				</a>
+
 			</div>
 
 		</div>
@@ -73,7 +78,7 @@
 								</span>
 							</div>
 
-							<input type="text" id="produitRecherche" class="form-control" placeholder="Code, nom, catégorie, support, format, finition..." autocomplete="off">
+							<input type="text" id="produitRecherche" class="form-control" placeholder="Code, nom, nom commercial, catégorie, support, format, finition..." autocomplete="off">
 
 							<div class="input-group-append">
 
@@ -196,7 +201,7 @@
 
 							{% for produit in produits %}
 
-								<tr id="produit-row-{{ produit.id }}" class="produit-sortable-row" data-id="{{ produit.id }}" data-code="{{ produit.code|lower|e('html_attr') }}" data-nom="{{ produit.nom|lower|e('html_attr') }}" data-categorie="{{ produit.categorieProduit ? produit.categorieProduit.nom|lower|e('html_attr') : '' }}" data-publie="{{ produit.publie ? '1' : '0' }}" data-actif="{{ produit.actif ? '1' : '0' }}">
+								<tr id="produit-row-{{ produit.id }}" class="produit-sortable-row" data-id="{{ produit.id }}" data-code="{{ produit.code|lower|e('html_attr') }}" data-nom="{{ (produit.nom ~ ' ' ~ produit.nomCommercial)|trim|lower|e('html_attr') }} {{ cle_recherche(produit.nom, produit.nomCommercial)|e('html_attr') }}" data-categorie="{{ produit.categorieProduit ? produit.categorieProduit.nom|lower|e('html_attr') : '' }}" data-publie="{{ produit.publie ? '1' : '0' }}" data-actif="{{ produit.actif ? '1' : '0' }}">
 
 									<td class="text-center align-middle">
 										<i class="fa fa-arrows-alt produit-drag-handle" style="cursor: move;"></i>
@@ -210,8 +215,8 @@
 										<strong>{{ produit.code }}</strong>
 									</td>
 
-									<td class="align-middle">
-										{{ produit.nom }}
+									<td class="align-middle" data-filtre-valeur="{{ produit|texte_interne }}">
+										{{ produit|nom_interne }}
 									</td>
 
 									<td class="align-middle">
@@ -226,7 +231,7 @@
 									<td class="align-middle">
 										{% for type in produit.typesImpressions %}
 											<span class="badge badge-primary mb-1">
-												{{ type.nom }}
+												{{ type|texte_interne }}
 											</span>
 										{% else %}
 											<span class="text-muted">Aucun</span>
@@ -236,7 +241,7 @@
 									<td class="align-middle">
 										{% for support in produit.supports %}
 											<span class="badge badge-info mb-1">
-												{{ support.nom }}
+												{{ support|texte_interne }}
 											</span>
 										{% else %}
 											<span class="text-muted">Aucun</span>
@@ -379,6 +384,8 @@
 								<label>Nom</label>
 
 								<input type="text" id="produitCreateNom" class="form-control">
+
+								<small class="form-text text-muted">Désignation technique. Le nom que tout le monde connaît (autocollant pour vinyle adhésif…) se saisit dans <a href="{{ path('app_produits_noms_commerciaux') }}">Noms commerciaux</a>.</small>
 							</div>
 
 							<div class="col-md-4 form-group">
@@ -558,6 +565,8 @@
 							<div class="col-md-4 form-group">
 								<label>Nom</label>
 								<input type="text" id="produitEditNom" class="form-control">
+
+								<small class="form-text text-muted">Désignation technique. Le nom que tout le monde connaît (autocollant pour vinyle adhésif…) se saisit dans <a href="{{ path('app_produits_noms_commerciaux') }}">Noms commerciaux</a>.</small>
 							</div>
 
 							<div class="col-md-4 form-group">

@@ -23,7 +23,7 @@ use App\State\ArticleStockProvider;
             openapi: new DocOperation(summary: 'Liste des articles du stock'),
             security: "is_granted('ROLE_ADMIN')",
             parameters: [
-                'q' => new QueryParameter(description: 'Référence ou désignation'),
+                'q' => new QueryParameter(description: 'Référence, désignation ou nom commercial'),
                 'alerte' => new QueryParameter(description: '1 : seulement les articles sous le seuil d\'alerte'),
             ],
         ),
@@ -38,6 +38,8 @@ final class ArticleStock
         public readonly int $id,
         public readonly ?string $reference,
         public readonly ?string $designation,
+        /** Nom connu de tous de l'article vendu, ou null. */
+        public readonly ?string $nomCommercial,
         public readonly ?string $famille,
         public readonly string $unite,
         public readonly float $stock,

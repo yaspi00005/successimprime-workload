@@ -115,7 +115,7 @@ final class CatalogueParametres
             'produits' => [
                 'famille' => 'ventes', 'libelle' => 'Produits et options', 'icone' => 'fa-sliders-h',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_produits_index', 'champs' => [],
-                'motsCles' => ['Options dynamiques par produit', 'Finitions · formats · supports', 'Types d\'impression'],
+                'motsCles' => ['Options dynamiques par produit', 'Finitions · formats · supports', 'Types d\'impression', 'Noms commerciaux (autocollant, banderole…)'],
             ],
             'paiements' => [
                 'famille' => 'ventes', 'libelle' => 'Paiements', 'icone' => 'fa-credit-card',

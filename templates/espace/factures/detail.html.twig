@@ -96,7 +96,7 @@
 							<tbody>
 								{% for l in commande.commandesDetails %}
 									<tr>
-										<td>{{ l.designation|default(l|espace_titre_ligne) }}</td>
+										<td>{{ l.designation ? l|ligne_client : l|espace_titre_ligne }}</td>
 										<td class="num">{{ l.quantite|default(1) }}</td>
 										<td class="num">{{ l.prixUnitaire|default(0) > 0 ? l.prixUnitaire|number_format(0, ',', ' ') : '—' }}</td>
 										<td class="num">{{ (l.totalTtc|default(l.totalHt|default(0)))|number_format(0, ',', ' ') }}</td>

@@ -35,6 +35,11 @@
 				Supprimer
 			</button>
 
+			<a href="{{ path('app_produits_noms_commerciaux') }}#nc-types" class="btn btn-outline-primary" title="Le nom que tout le monde connaît, à côté de la désignation">
+				<i class="fa fa-tags mr-1" aria-hidden="true"></i>
+				Noms commerciaux
+			</a>
+
 
 		</div>
 	</div>
@@ -48,7 +53,7 @@
 		<!-- COL-END -->
 		<div class="col-lg-8 col-xl-12">
 			<div class="input-group mb-5">
-				<input type="text" class="form-control" placeholder="Rechercher un type d’impression…">
+				<input type="search" id="typeImpressionRecherche" class="form-control" placeholder="Rechercher un type d’impression (nom ou nom commercial)…" aria-label="Rechercher un type d’impression" data-recherche-liste="#typeImpressionSortableBody" autocomplete="off">
 				<div class="input-group-append ">
 					<button type="button" class="btn btn-primary-light">
 						<i class="fa fa-search" aria-hidden="true"></i>
@@ -111,7 +116,7 @@
 								{% for typeImpression in typesImpressions %}
 
 									<tr
-										id="type-impression-row-{{ typeImpression.id }}" class="type-impression-sortable-row" data-id="{{ typeImpression.id }}">
+										id="type-impression-row-{{ typeImpression.id }}" class="type-impression-sortable-row" data-id="{{ typeImpression.id }}" data-recherche="{{ cle_recherche(typeImpression.nom, typeImpression.nomCommercial) }}">
 
 										{# Poignée de déplacement #}
 										<td class="text-center align-middle">
@@ -139,6 +144,7 @@
 											<strong>
 												{{ typeImpression.nom }}
 											</strong>
+											{% if typeImpression.nomCommercial %}<small class="d-block text-muted">{{ typeImpression.nomCommercial }}</small>{% endif %}
 
 										</td>
 
@@ -436,6 +442,7 @@
 	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 	<script src="{{ asset('js/jeton-json.js') }}" data-jeton="{{ csrf_token('update_type_impression') }}" data-fin="/update/ajax"></script>
 	<script src="../assets/js/traitement_types_impression.js"></script>
+	<script src="{{ asset('js/recherche-catalogue.js') }}"></script>
 	<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>
 
 {% endblock %}

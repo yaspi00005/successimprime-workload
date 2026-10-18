@@ -60,6 +60,33 @@ final class CatalogueSiteTest extends TestCase
         self::assertSame('textile', $univers[1]['famille']);
     }
 
+    public function testNomCommercialSurLaCarteEtDansLaRecherche(): void
+    {
+        $grand = $this->categorie(1, 'Grand format');
+        $vinyle = $this->produit(1, 'Vinyle adhésif (démo)', $grand)->setNomCommercial('Autocollant');
+        $bache = $this->produit(2, 'Bâche imprimée', $grand);
+        $micro = $this->produit(3, 'Micro-perforé vitrine', $this->categorie(2, 'Vitrine'))->setNomCommercial('Vitrophanie');
+
+        $univers = CatalogueSite::regrouper([$vinyle, $bache, $micro], []);
+        // Le nom commercial d'abord, la désignation (sans « démo ») à côté ; rien à côté sans nom commercial.
+        self::assertSame(['Autocollant', 'Bâche imprimée'], array_column($univers[0]['produits'], 'nom'));
+        self::assertSame(['Vinyle adhésif', null], array_column($univers[0]['produits'], 'technique'));
+        self::assertSame('vinyle', $univers[0]['produits'][0]['illustration']);
+
+        // ?q= : l'un ou l'autre nom, l'univers, sans accents ni majuscules.
+        $noms = static fn (array $u): array => array_merge(...array_map(static fn (array $x): array => array_column($x['produits'], 'nom'), $u));
+        self::assertSame(['Autocollant'], $noms(CatalogueSite::rechercher($univers, 'autocollant')));
+        self::assertSame(['Autocollant'], $noms(CatalogueSite::rechercher($univers, 'ADHESIF')));
+        self::assertSame(['Vitrophanie'], $noms(CatalogueSite::rechercher($univers, 'micro perfore')));
+        self::assertSame(['Autocollant', 'Bâche imprimée'], $noms(CatalogueSite::rechercher($univers, 'grand format')));
+        self::assertSame([], CatalogueSite::rechercher($univers, 'casquette'));
+        self::assertSame($univers, CatalogueSite::rechercher($univers, '  '));
+
+        // Calculateur et assistant : « Autocollant (Vinyle adhésif) · … ».
+        $config = $this->config(11, $vinyle, 6500, 'metre_carre')->setSupport((new Supports())->setNom('Vinyle blanc'));
+        self::assertSame('Autocollant (Vinyle adhésif) · Vinyle blanc', CatalogueSite::libelle($config));
+    }
+
     public function testUniversChoisiParUnDesIdentifiants(): void
     {
         $univers = [['ids' => [1, 9]], ['ids' => [2]]];

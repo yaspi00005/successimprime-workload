@@ -2,6 +2,7 @@
 
 namespace App\Service\Recette;
 
+use App\Controller\NomsCommerciauxController;
 use App\Controller\TourneeController;
 use App\Entity\BonLivraison;
 use App\Entity\BulletinPaie;
@@ -234,6 +235,7 @@ final class RecetteAcces
                 $suivi && $suivi($compte->getUserIdentifier());
                 $this->verifierCompte($compte, $pages, $bilan);
                 $this->verifierObjetsDesAutres($compte, $bilan);
+                $this->verifierNomsCommerciaux($compte, $bilan);
             }
             $suivi && $suivi('lecture seule');
             try {
@@ -440,6 +442,32 @@ final class RecetteAcces
             if (!$ok) {
                 $bilan->constater(Reponse::ERREUR === $etat ? BilanRecette::ERREUR : BilanRecette::FUITE, 'objet_autrui', $route, $chemin, $identifiant, $libelle.' : la page répond « '.$etat.' »');
             }
+        }
+    }
+
+    /**
+     * Noms commerciaux du catalogue (docs/noms-commerciaux.md) : l'envoi du
+     * formulaire, avec un jeton valide posé dans la session, est refusé à
+     * qui n'est pas de la direction. La direction l'envoie sans aucun nom :
+     * rien ne change, et la recette annule de toute façon ses écritures.
+     */
+    private function verifierNomsCommerciaux(User $compte, BilanRecette $bilan): void
+    {
+        $route = 'app_produits_noms_commerciaux_enregistrer';
+        if (null === $this->routeur->getRouteCollection()->get($route)) {
+            return;
+        }
+        $identifiant = $compte->getUserIdentifier();
+        $jeton = 'recette-'.bin2hex(random_bytes(8));
+        $session = $this->navigateur->session($compte, 'main', ['_csrf/'.NomsCommerciauxController::JETON => $jeton]);
+        $chemin = $this->routeur->generate($route);
+        $etat = $this->navigateur->post($chemin, ['_token' => $jeton], $session)->etat();
+        $direction = $this->accorde('ROLE_ADMIN');
+        $ok = $direction ? Reponse::REDIRIGE === $etat : \in_array($etat, [Reponse::REFUSE, Reponse::INTROUVABLE, Reponse::CONNEXION], true);
+        $libelle = $direction ? 'noms commerciaux enregistrés par la direction' : 'noms commerciaux refusés hors de la direction';
+        $bilan->controler(\sprintf('%s : %s', $identifiant, $libelle), $ok, $chemin.' → '.$etat);
+        if (!$ok) {
+            $bilan->constater(Reponse::ERREUR === $etat || $direction ? BilanRecette::ERREUR : BilanRecette::FUITE, 'envoi_refuse', $route, $chemin, $identifiant, $libelle.' : l\'envoi répond « '.$etat.' »');
         }
     }
 

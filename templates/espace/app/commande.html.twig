@@ -62,7 +62,7 @@
 	<div class="ec-carte">
 		{% for l in lignes %}
 			<div{% if not loop.first %} style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--trait)"{% endif %}>
-				<b style="font-size:1.1rem">{{ l|espace_titre_ligne }}</b>
+				<b style="font-size:1.1rem">{{ l|titre_ligne_client }}</b>
 				{% set options = [l.support ? l.support.nom : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
 				{% if options is not empty %}<div class="ec-petit">{{ options|join(' · ') }}</div>{% endif %}
 				{% if l.demandeClient %}<div class="ec-petit">Votre demande : « {{ l.demandeClient }} »</div>{% endif %}

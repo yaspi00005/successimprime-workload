@@ -4,9 +4,9 @@ namespace App\Controller;
 
 use App\Entity\DemandeDevis;
 use App\Entity\ProduitConfiguration;
+use App\Service\Catalogue\NomCommercial;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\NouvelleCommande;
-use App\Service\GrilleTarifaire;
 use App\Service\Site\ContactSite;
 use App\Service\Site\DemandesSite;
 use App\Service\Site\FormulaireDemande;
@@ -217,7 +217,8 @@ final class SiteDemandeController extends AbstractController
         $groupes = [];
         foreach ($produits as $p) {
             $groupe = self::sansDemo((string) ($p->getProduit()?->getCategorieProduit()?->getNom() ?? 'Autres produits')) ?: 'Autres produits';
-            $groupes[$groupe][] = ['id' => (int) $p->getId(), 'nom' => self::sansDemo(GrilleTarifaire::libelle($p))];
+            // Nom commercial d'abord, désignation entre parenthèses (docs/noms-commerciaux.md).
+            $groupes[$groupe][] = ['id' => (int) $p->getId(), 'nom' => self::sansDemo(NomCommercial::texteConfiguration($p))];
         }
 
         return array_map(static fn (string $nom, array $liste): array => ['nom' => $nom, 'produits' => $liste], array_keys($groupes), array_values($groupes));

@@ -90,7 +90,7 @@
 						<div>
 
 							<h3 class="card-title mb-1">
-								{{ detail.designation }}
+								{{ detail|ligne_interne('') }}
 							</h3>
 
 							<small class="text-muted">
@@ -581,7 +581,7 @@
 						</small>
 
 						<strong>
-							{{ detail.designation }}
+							{{ detail|ligne_interne('') }}
 						</strong>
 
 					</div>

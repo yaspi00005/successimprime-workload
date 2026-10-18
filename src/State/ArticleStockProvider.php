@@ -34,7 +34,7 @@ final class ArticleStockProvider extends LectureApi implements ProviderInterface
             ->where('a.actif = true')
             ->orderBy('a.designation', 'ASC')->addOrderBy('a.id', 'ASC');
         if (null !== $q = self::texte($filtres, 'q')) {
-            $requete->andWhere('a.reference LIKE :q OR a.designation LIKE :q')->setParameter('q', self::like($q));
+            $requete->andWhere('a.reference LIKE :q OR a.designation LIKE :q OR a.nomCommercial LIKE :q')->setParameter('q', self::like($q));
         }
         if (self::oui($filtres, 'alerte')) {
             $requete->andWhere('a.stockMin > 0')->andWhere('a.stock <= a.stockMin');
@@ -52,6 +52,7 @@ final class ArticleStockProvider extends LectureApi implements ProviderInterface
             (int) $entite->getId(),
             $entite->getReference(),
             $entite->getDesignation(),
+            $entite->getNomCommercial(),
             $entite->getFamille()?->getNom(),
             $entite->getUniteCourte(),
             $entite->getStock(),

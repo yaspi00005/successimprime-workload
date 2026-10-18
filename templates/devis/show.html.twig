@@ -299,18 +299,8 @@
 
 												<h5 class="mb-0 mr-2">
 
-													{{
-                                                        detail.designation
-                                                        |default(
-                                                            produit.nom
-                                                            |default(
-                                                                article.designation
-                                                                |default(
-                                                                    'Travail non renseigné'
-                                                                )
-                                                            )
-                                                        )
-                                                    }}
+													{# Désignation d'abord, nom commercial en petit (docs/noms-commerciaux.md). #}
+													{{ detail|ligne_interne('Travail non renseigné') }}
 
 												</h5>
 
@@ -390,13 +380,7 @@
 													</small>
 
 													<strong>
-														{{
-                                                            article.designation
-                                                            |default(
-                                                                detail.designation
-                                                                |default('—')
-                                                            )
-                                                        }}
+														{{ article ? article|nom_interne : detail.designation|default('—') }}
 													</strong>
 
 												</div>

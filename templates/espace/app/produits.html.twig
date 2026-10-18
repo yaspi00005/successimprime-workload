@@ -5,6 +5,9 @@
 	pièces, en m² ou par lot. Le prix et la conversion viennent du serveur
 	(MesProduits::calculer) ; la sélection est commandée en une fois. Un
 	demandeur (coque.montants faux) reçoit les quantités sans aucun prix.
+	Recherche : le nom du produit, sa référence ou les deux noms (commercial
+	et technique) du produit et du support du catalogue, sans accents
+	(docs/noms-commerciaux.md).
 #}
 
 {% block title %}Mes produits{% endblock %}
@@ -24,6 +27,12 @@
 			<a class="ec-bouton-contour" href="{{ path('app_espace_nouvelle_commande') }}">+ Nouveau produit</a>
 		</div>
 
+		<div class="ec-pc-recherche" role="search">
+			<label class="ec-sr" for="mes-produits-recherche">Chercher un produit</label>
+			<input type="search" class="ec-saisie" id="mes-produits-recherche" placeholder="Chercher : autocollant, vinyle, référence…" autocomplete="off" enterkeyhint="search">
+			<p class="ec-petit" id="mes-produits-aucun" role="status" hidden>Aucun de vos produits ne correspond.</p>
+		</div>
+
 		{% if categories|length > 1 %}
 			<div class="ec-filtres" role="group" aria-label="Filtrer">
 				<a href="#" class="actif" data-filtre="">Tous ({{ fiches|length }})</a>
@@ -35,7 +44,7 @@
 			<ul class="ec-pc-grille" id="produits">
 				{% for f in fiches %}
 					{% set p = f.p %}
-					<li class="ec-pc" data-id="{{ f.id }}" data-categorie="{{ f.categorie }}">
+					<li class="ec-pc" data-id="{{ f.id }}" data-categorie="{{ f.categorie }}" data-recherche="{{ cle_recherche(p.nom, p.reference, p.produit ? p.produit.nom, p.produit ? p.produit.nomCommercial, p.support ? p.support.nom, p.support ? p.support.nomCommercial, f.categorie) }}">
 						<button type="button" class="ec-pc-ouvrir" aria-label="Choisir la quantité de {{ p.nom }}">
 							<span class="ec-pc-visuel teinte-{{ loop.index0 % 6 }}">
 								{% if f.image %}<img src="{{ path('app_espace_bat_fichier', {id: f.image}) }}" alt="" loading="lazy">{% else %}<span>{{ p.nom|split(' ')|slice(0, 2)|map(m => m|slice(0, 1))|join|upper }}</span>{% endif %}
@@ -43,6 +52,7 @@
 							<span class="ec-pc-texte">
 								<span class="ec-pc-ref">{{ p.reference }} <em>{{ f.badge }}</em></span>
 								<b>{{ p.nom }}</b>
+								{% if p.produit %}<span class="ec-petit">{{ p.produit|nom_client }}</span>{% endif %}
 								{% if f.format %}<span class="ec-petit">{{ f.format }}</span>{% endif %}
 								{% if f.prix or f.batLe %}<span class="ec-pc-prix">{{ f.prix }}{% if f.batLe %}<small>{{ f.prix ? ' · ' }}✓ BAT validé {{ f.batLe|date('d/m') }}</small>{% endif %}</span>{% endif %}
 							</span>
@@ -376,11 +386,30 @@
 		document.querySelectorAll('.ec-pc-ouvrir').forEach(function (b) {
 			b.addEventListener('click', function () { ouvrir(b.closest('.ec-pc').dataset.id); });
 		});
+		// Filtre par catégorie et recherche (nom commercial ou technique, sans accents : docs/noms-commerciaux.md).
+		let filtreCategorie = '';
+		const recherche = $('mes-produits-recherche');
+		function cle(t) {
+			return String(t || '').toLowerCase().replace(/œ/g, 'oe').replace(/æ/g, 'ae').replace(/²/g, '2')
+				.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+				.replace(/([a-z]{3})[sx](?=\s|$)/g, '$1'); // au singulier, comme NomCommercial::cle
+		}
+		function filtrer() {
+			const mot = cle(recherche.value);
+			let visibles = 0;
+			document.querySelectorAll('.ec-pc').forEach(function (li) {
+				li.hidden = (filtreCategorie !== '' && li.dataset.categorie !== filtreCategorie) || (mot !== '' && li.dataset.recherche.indexOf(mot) === -1);
+				visibles += li.hidden ? 0 : 1;
+			});
+			$('mes-produits-aucun').hidden = visibles > 0;
+		}
+		recherche.addEventListener('input', filtrer);
 		document.querySelectorAll('.ec-filtres a').forEach(function (a) {
 			a.addEventListener('click', function (e) {
 				e.preventDefault();
 				document.querySelectorAll('.ec-filtres a').forEach(function (x) { x.classList.toggle('actif', x === a); });
-				document.querySelectorAll('.ec-pc').forEach(function (li) { li.hidden = a.dataset.filtre !== '' && li.dataset.categorie !== a.dataset.filtre; });
+				filtreCategorie = a.dataset.filtre;
+				filtrer();
 			});
 		});
 		$('barre').addEventListener('click', function () { $('selection').requestSubmit(); });

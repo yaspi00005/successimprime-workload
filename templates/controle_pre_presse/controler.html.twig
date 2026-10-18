@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% set titre_travail = detail.designation|default(detail.produit.nom|default('Travail')) %}
+{% set titre_travail = detail|texte_ligne_interne('Travail') %}
 {% set largeur_cm = detail.largeur ? (detail.largeur * 100)|round(1) : null %}
 {% set hauteur_cm = detail.longueur ? (detail.longueur * 100)|round(1) : null %}
 {% set dernier = detail.dernierControlePrePresse %}

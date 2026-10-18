@@ -35,6 +35,7 @@ use Symfony\Component\Form\FormError;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Entity\Articles;
 use App\Repository\ArticlesRepository;
+use App\Service\Catalogue\NomCommercial;
 
 
 class DevisDetailsType extends AbstractType
@@ -79,7 +80,7 @@ class DevisDetailsType extends AbstractType
                     return sprintf(
                         '%s — %s',
                         $article->getReference(),
-                        $article->getDesignation()
+                        NomCommercial::texteInterne($article->getNomCommercial(), $article->getDesignation())
                     );
                 },
 
@@ -131,7 +132,8 @@ class DevisDetailsType extends AbstractType
 
             ->add('produit', EntityType::class, [
                 'class' => Produits::class,
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (Produits $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Produit',
                 'placeholder' => 'Sélectionnez un produit',
                 'required' => false,
@@ -191,7 +193,8 @@ class DevisDetailsType extends AbstractType
 
             ->add('typeImpression', EntityType::class, [
                 'class' => TypesImpression::class,
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (TypesImpression $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Type d’impression',
                // 'placeholder' => 'Sélectionnez un type d’impression',
                 'required' => false,
@@ -204,7 +207,8 @@ class DevisDetailsType extends AbstractType
 
             ->add('support', EntityType::class, [
                 'class' => Supports::class,
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (Supports $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Support',
                 'placeholder' => 'Sélectionnez un support',
                 'required' => false,

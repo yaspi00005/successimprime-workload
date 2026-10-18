@@ -7,6 +7,7 @@ use App\Entity\Articles;
 use App\Entity\FamilleArticle;
 use App\Entity\Fournisseurs;
 use App\Entity\ImportDonnees;
+use App\Service\Catalogue\NomCommercial;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -70,6 +71,8 @@ final class ImportArticles implements TypeImport
         return [
             ['cle' => 'designation', 'libelle' => 'Désignation', 'alias' => ['nom', 'article', 'libelle', 'produit'], 'obligatoire' => true,
                 'exemples' => ['Bâche 510 g laize 3,20 m', 'Encre solvant cyan'], 'aide' => 'Le nom de l\'article.'],
+            ['cle' => 'nomCommercial', 'libelle' => 'Nom commercial', 'alias' => ['nom usuel', 'appellation', 'nom courant', 'nom connu'], 'obligatoire' => false,
+                'exemples' => ['', 'Cartouche d\'encre cyan'], 'aide' => 'Pour un article vendu tel quel : le nom que tout le monde connaît, montré au client avant la désignation. Vide : aucun.'],
             ['cle' => 'famille', 'libelle' => 'Famille', 'alias' => ['categorie', 'groupe', 'rayon'], 'obligatoire' => false,
                 'exemples' => ['Supports', 'Encres'], 'aide' => 'Une famille du stock, par son nom ou son préfixe. Vide : sans famille.'],
             ['cle' => 'unite', 'libelle' => 'Unité', 'alias' => ['unite de stock', 'u'], 'obligatoire' => false,
@@ -94,6 +97,7 @@ final class ImportArticles implements TypeImport
         return [
             'Une ligne par article. Seule la désignation est obligatoire.',
             'Un article qui existe déjà (même référence, sinon même désignation) est écarté : rien n\'est écrasé.',
+            'Nom commercial : le nom que tout le monde connaît (« Autocollant » pour « Vinyle adhésif »), pour les articles vendus tels quels. La recherche trouve l\'un ou l\'autre.',
             'Le stock de départ ne s\'importe pas : comptez-le avec l\'inventaire, qui le valorise au prix d\'achat.',
             'Les familles et les fournisseurs ne sont pas créés par l\'import : créez-les d\'abord.',
         ];
@@ -239,7 +243,7 @@ final class ImportArticles implements TypeImport
                 $fournisseur['nom'] ?? null,
             ]));
             $ligne->donnees = [
-                'designation' => $designation, 'reference' => $reference, 'famille' => $famille?->getId(), 'unite' => $unite,
+                'designation' => $designation, 'nomCommercial' => NomCommercial::nettoyer($ligne->valeur('nomCommercial')), 'reference' => $reference, 'famille' => $famille?->getId(), 'unite' => $unite,
                 'prixVente' => $prixVente, 'prixAchat' => $prixAchat, 'stockMin' => $stockMin, 'vendable' => $vendable,
                 'fournisseur' => $fournisseur['id'] ?? null,
             ];
@@ -258,6 +262,7 @@ final class ImportArticles implements TypeImport
             $article = (new Articles())
                 ->setReference($d['reference'])
                 ->setDesignation($d['designation'])
+                ->setNomCommercial($d['nomCommercial'] ?? null)
                 ->setFamille(null !== $d['famille'] ? $this->em->getReference(FamilleArticle::class, $d['famille']) : null)
                 ->setUnite($d['unite'])
                 ->setPrixVente($d['prixVente'])

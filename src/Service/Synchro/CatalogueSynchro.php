@@ -198,7 +198,7 @@ final class CatalogueSynchro
             ],
             'type_impression' => [
                 'classe' => TypesImpression::class, 'sens' => self::DESCENDANT, 'libelle' => 'Type d\'impression', 'titre' => ['nom'],
-                'champs' => ['nom', 'description', 'publie', 'ordre'],
+                'champs' => ['nom', 'description', 'publie', 'ordre', 'nomCommercial'],
                 'relations' => [], 'listes' => [],
             ],
             'finition' => [
@@ -214,12 +214,13 @@ final class CatalogueSynchro
             ],
             'support' => [
                 'classe' => Supports::class, 'sens' => self::DESCENDANT, 'libelle' => 'Support', 'titre' => ['nom'],
-                'champs' => ['nom', 'description', 'publie', 'ordre'],
+                'champs' => ['nom', 'description', 'publie', 'ordre', 'nomCommercial'],
                 'relations' => [], 'listes' => ['typesImpressions' => 'type_impression', 'formats' => 'format', 'finitions' => 'finition'],
             ],
             'produit' => [
                 'classe' => Produits::class, 'sens' => self::DESCENDANT, 'libelle' => 'Produit', 'titre' => ['nom'],
-                'champs' => ['nom', 'description', 'publie', 'ordre', 'code', 'prixBase', 'prixB2B', 'personnalisable', 'actif', 'modeCalcul'],
+                // nomCommercial : « Autocollant » pour « Vinyle adhésif » (docs/noms-commerciaux.md), montré et cherché en ligne.
+                'champs' => ['nom', 'description', 'publie', 'ordre', 'code', 'prixBase', 'prixB2B', 'personnalisable', 'actif', 'modeCalcul', 'nomCommercial'],
                 'relations' => ['categorieProduit' => 'categorie'],
                 'listes' => ['typesImpressions' => 'type_impression', 'supports' => 'support', 'formats' => 'format', 'finitions' => 'finition'],
             ],

@@ -7,6 +7,8 @@ use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Entity\DemandeDevis;
+use App\Entity\ProduitConfiguration;
+use App\Entity\Produits;
 use App\Service\Assistant\ContexteAssistant;
 use App\Service\Assistant\OutilsAssistant;
 use App\Service\Assistant\ReglagesAssistant;
@@ -195,6 +197,19 @@ final class OutilsAssistantTest extends TestCase
             self::assertTrue($r->erreur, $outil);
             self::assertSame(['erreur' => 'Outil inconnu.'], $r->donnees);
         }
+    }
+
+    public function testCatalogueTrouveParLeNomCommercialOuTechnique(): void
+    {
+        // docs/noms-commerciaux.md : « autocollant » trouve « Vinyle adhésif », et l'inverse.
+        $vinyle = (new ProduitConfiguration())->setProduit((new Produits())->setNom('Vinyle adhésif')->setNomCommercial('Autocollant'));
+        $bache = (new ProduitConfiguration())->setProduit((new Produits())->setNom('Bâche imprimée')->setNomCommercial('Banderole'));
+        $configurations = [$vinyle, $bache];
+
+        self::assertSame([$vinyle], OutilsAssistant::chercher($configurations, 'des autocollants'));
+        self::assertSame([$vinyle], OutilsAssistant::chercher($configurations, 'vinyle adhesif'));
+        self::assertSame([$bache], OutilsAssistant::chercher($configurations, 'banderoles'));
+        self::assertSame([$bache], OutilsAssistant::chercher($configurations, 'bache'));
     }
 
     public function testDefinitionsStrictes(): void

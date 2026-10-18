@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\NomCommercialTrait;
 use App\Repository\ProduitsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -10,9 +11,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProduitsRepository::class)]
-class Produits
+class Produits implements AUnNomCommercial
 {
     use PublicIdTrait;
+    use NomCommercialTrait;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -165,6 +167,11 @@ private Collection $articlesStock;
         $this->commandesDetails = new ArrayCollection();
         $this->configurations = new ArrayCollection();
         $this->articlesStock = new ArrayCollection();
+    }
+
+    public function getNomTechnique(): string
+    {
+        return (string) $this->nom;
     }
 
     public function getId(): ?int

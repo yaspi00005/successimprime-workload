@@ -1,0 +1,102 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Noms commerciaux (docs/noms-commerciaux.md) : une ligne par élément du
+	catalogue, la désignation technique et le nom que tout le monde connaît.
+	Le script de la page filtre la liste, compte les changements et n'envoie
+	que les noms modifiés ; sans lui, tout le formulaire part et seuls les
+	noms changés sont enregistrés.
+#}
+
+{% block title %}Noms commerciaux{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/noms-commerciaux.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_produits_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-sliders-h me-1" aria-hidden="true"></i>Produits et options</a>
+	</li>
+{% endblock %}
+
+{% block breadcrumb %}
+	<ol class="breadcrumb si-nc-ariane">
+		<li class="breadcrumb-item"><a href="{{ path('app_reglages_parametres_index') }}">Paramètres</a></li>
+		<li class="breadcrumb-item"><a href="{{ path('app_produits_index') }}">Produits</a></li>
+		<li class="breadcrumb-item active" aria-current="page">Noms commerciaux</li>
+	</ol>
+{% endblock %}
+
+{% block body %}
+	<div class="si-nc-intro">
+		<i class="fas fa-tags" aria-hidden="true"></i>
+		<div>
+			<p><b>La désignation reste la même</b> (« Vinyle adhésif ») ; le nom commercial est celui que tout le monde connaît (« Autocollant »).</p>
+			<p>Le client voit d'abord le nom commercial, la désignation à côté en plus petit : site, espace client, devis, commandes et factures. Dans l'ERP, la désignation reste en premier. La recherche trouve l'un ou l'autre, avec ou sans accents. Laissez vide s'il n'y a pas d'autre nom.</p>
+			{% if site_en_ligne() %}<p><b>Ici, sur le site en ligne :</b> les noms viennent de l'ERP local et y sont remplacés à la synchronisation. Saisissez-les plutôt à la boutique.</p>{% endif %}
+		</div>
+	</div>
+
+	<form method="post" action="{{ path('app_produits_noms_commerciaux_enregistrer') }}" class="si-nc" id="si-nc" novalidate>
+		<input type="hidden" name="_token" value="{{ csrf_token(constant('App\\Controller\\NomsCommerciauxController::JETON')) }}">
+
+		<div class="card si-nc-outils">
+			<label class="visually-hidden" for="si-nc-recherche">Chercher un nom</label>
+			<input type="search" id="si-nc-recherche" class="form-control" placeholder="Chercher : vinyle, autocollant, bâche…" autocomplete="off">
+			<nav class="si-nc-sommaire" aria-label="Rubriques">
+				{% for cle, r in rubriques %}
+					<a href="#nc-{{ cle }}">{{ r.titre }} <span class="si-nc-compte" data-compte="{{ cle }}">{{ r.remplis }}/{{ r.elements|length }}</span></a>
+				{% endfor %}
+			</nav>
+		</div>
+
+		{% for cle, r in rubriques %}
+			<section class="card si-bloc si-nc-rubrique" id="nc-{{ cle }}" data-rubrique="{{ cle }}" aria-labelledby="nc-titre-{{ cle }}">
+				<div class="si-bloc-tete">
+					<h4 id="nc-titre-{{ cle }}">{{ r.titre }}</h4>
+					<span class="si-nc-aide">{{ r.aide }}</span>
+				</div>
+				{% if r.elements is empty %}
+					<p class="text-muted mb-0">Aucun élément dans cette rubrique.</p>
+				{% else %}
+					<div class="si-nc-tete" aria-hidden="true"><span>Désignation</span><span>Nom commercial</span><span>Vu par le client</span></div>
+					<ul class="si-nc-liste">
+						{% for e in r.elements %}
+							{% set technique = e.nomTechnique %}
+							{% set champ = 'nc-' ~ cle ~ '-' ~ e.id %}
+							<li class="si-nc-ligne" data-recherche="{{ cle_recherche(technique, e.nomCommercial, cle == 'produits' ? e.code : (cle == 'articles' ? e.reference : null)) }}">
+								<label class="si-nc-designation" for="{{ champ }}">
+									<b>{{ technique }}</b>
+									<small>
+										{%- if cle == 'produits' -%}
+											{{ e.code }}{{ e.categorieProduit ? ' · ' ~ e.categorieProduit.nom }}{{ not e.publie ? ' · non publié' }}{{ not e.actif ? ' · désactivé' }}
+										{%- elseif cle == 'articles' -%}
+											{{ e.reference }}{{ e.famille ? ' · ' ~ e.famille.nom }}{{ not e.actif ? ' · désactivé' }}
+										{%- else -%}
+											{{ e.publie ? 'publié' : 'non publié' }}
+										{%- endif -%}
+									</small>
+								</label>
+								<input type="text" id="{{ champ }}" name="noms[{{ cle }}][{{ e.id }}]" value="{{ e.nomCommercial }}" data-initial="{{ e.nomCommercial }}" data-technique="{{ technique }}" maxlength="{{ longueur }}" class="form-control form-control-sm" placeholder="Aucun" autocomplete="off">
+								<span class="si-nc-apercu" aria-live="polite">{{ e|nom_client }}</span>
+							</li>
+						{% endfor %}
+					</ul>
+					<p class="si-nc-vide text-muted mb-0" hidden>Rien ne correspond dans cette rubrique.</p>
+				{% endif %}
+			</section>
+		{% endfor %}
+
+		<div class="si-nc-barre">
+			<span class="si-nc-etat" id="si-nc-etat" aria-live="polite">Modifiez un nom puis enregistrez.</span>
+			<button type="submit" class="btn btn-primary"><i class="fas fa-check me-1" aria-hidden="true"></i>Enregistrer</button>
+		</div>
+	</form>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/noms-commerciaux.js') }}" defer></script>
+{% endblock %}

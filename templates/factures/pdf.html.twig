@@ -44,6 +44,7 @@
 		.lignes td { padding: 6px 7px; border-bottom: 1px solid #e5e7eb; }
 		.lignes tr.paire td { background: #f8fafc; }
 		.designation { font-weight: bold; color: #111827; }
+		.designation .nc-technique { font-weight: normal; font-size: 0.85em; color: #6B7280; }
 		.detail { font-size: 7.2px; color: #6b7280; }
 
 		.totaux td { padding: 4px 7px; border-bottom: 1px solid #eef0f4; }
@@ -150,7 +151,7 @@
 					<tr class="{{ loop.index is even ? 'paire' }}">
 						<td class="centre muted">{{ loop.index }}</td>
 						<td>
-							<div class="designation">{{ detail.designation|default('Prestation') }}</div>
+							<div class="designation">{{ detail|ligne_client }}</div>
 							{% if detail.observation|default('') %}<div class="detail">{{ detail.observation }}</div>{% endif %}
 						</td>
 						<td class="centre">

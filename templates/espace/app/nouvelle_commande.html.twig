@@ -32,10 +32,10 @@
 		<div class="ec-carte">
 			<p style="margin-top:0"><b>La commande en ligne est fermée pour le moment.</b></p>
 			<p class="ec-petit">Vos commandes en cours continuent : suivez-les dans « Mes commandes ». Pour une nouvelle commande, demandez un devis, écrivez à l'atelier ou passez en boutique.</p>
-			<div class="ec-boutons">
-				<a class="ec-bouton" href="{{ path('app_site_devis') }}">Demander un devis</a>
+			<p style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.9rem 0 0">
+				<a class="ec-bouton-blanc" href="{{ path('app_site_devis') }}">Demander un devis</a>
 				<a class="ec-bouton-blanc" href="{{ path('app_espace_messages') }}">Écrire à l'atelier</a>
-			</div>
+			</p>
 		</div>
 	{% else %}
 		{{ block('commande_ouverte') }}

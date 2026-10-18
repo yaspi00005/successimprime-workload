@@ -111,7 +111,7 @@ Photos du local envoyées par Yaya le 17/10/2026 (appareil DJI, 4 000 × 2 256),
 
 | Photo (nom du fichier) | Page et endroit |
 |---|---|
-| Façade au balcon rond (`facade-local-succes-imprim-bamako`, `PhotosSite::FACADE`) | Accueil, bandeau « Venez nous voir » sous l'accroche ; « Qui sommes-nous ? », bloc « Venez nous voir » ; Contact, galerie « Notre local » ; fiche de l'imprimerie pour Google |
+| Façade au balcon rond (`facade-local-succes-imprim-bamako`, `PhotosSite::FACADE`) | Accueil, bandeau « Venez nous voir » sous l'accroche ; « Qui sommes-nous ? », à côté du mot du gérant (sinon bloc « Venez nous voir ») ; Contact, galerie « Notre local » ; fiche de l'imprimerie pour Google |
 | Allée pavée vers l'entrée (`allee-entree-succes-imprim`, `PhotosSite::ALLEE`) | Contact, en grand au-dessus de la carte ; galerie « Notre local » |
 | Jardin et entrée (`jardin-entree-succes-imprim`) | Contact, galerie « Notre local » seulement |
 
@@ -121,7 +121,7 @@ Photos du local envoyées par Yaya le 17/10/2026 (appareil DJI, 4 000 × 2 256),
 
 **Contact** : l'allée en grand au-dessus de la carte, avec sa légende (première photo de la page : chargée tout de suite, sans chargement différé) ; sous le formulaire et les coordonnées, la galerie « Notre local » (`templates/site/_notre_local.html.twig`, `site_photos_local()`) : trois vignettes légendées ; chacune ouvre la photo en grand dans une fenêtre `<dialog>` comme la visionneuse des réalisations (Échap, clic à côté ou « × » la ferment ; sans JavaScript, le lien `#local-…` l'affiche quand même). Les grandes photos ne se chargent qu'à l'ouverture. Aucune bibliothèque ajoutée.
 
-**Qui sommes-nous ?** : le bloc « Venez nous voir » montre la vraie façade (le visuel de l'enseigne si son fichier manque). La place de la photo à côté du mot du gérant se décide avec la page Équipe.
+**Qui sommes-nous ?** : quand « Le mot du gérant » s'affiche, la vraie façade est à côté (légende « Notre boutique à Bamako » ; côte à côte dès 1 100 px, l'une sous l'autre en dessous) et le bloc « Venez nous voir » prend la photo de l'allée. Sans mot du gérant, le bloc « Venez nous voir » montre la façade. Le visuel de l'enseigne ne revient que si les fichiers manquent.
 
 **Google** : la fiche de l'imprimerie (LocalBusiness, accueil, contact, à propos) donne la vraie façade en 16:9, 4:3 et 1:1 (`ReferencementExtension::IMAGES_FICHE`, recadrages 4:3 et 1:1 dans `public/images/site/fiche/`), Google choisissant la proportion qui lui convient ; l'image de partage reste le visuel de l'enseigne. Le plan du site (/sitemap.xml) cite la façade sur l'accueil et les trois photos sur Contact (`PlanPhotosLocal`). Ces photos sont aussi à mettre sur la fiche Google de la boutique (Google Business Profile), où elles comptent le plus.
 

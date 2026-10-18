@@ -21,8 +21,9 @@
 {% set entreprise = site_entreprise() %}
 {% set photo = site_image(page.image) %}
 {% set photo_atelier = photo ? null : site_photo('atelier-impression-grand-format') %}
-{# « Venez nous voir » : la vraie façade (photos du local du 17/10/2026) ; si son fichier manque, le visuel de l'enseigne. #}
-{% set photo_boutique = site_photo(constant('App\\Service\\Site\\PhotosSite::FACADE')) ?? site_photo('enseigne-succes-imprim-bamako') %}
+{# « Venez nous voir » : la vraie façade (photos du local du 17/10/2026), ou l'allée quand la façade est déjà à côté du mot du gérant ; si les fichiers manquent, le visuel de l'enseigne. #}
+{% set photo_boutique = (gerant ?? null) ? null : site_photo(constant('App\\Service\\Site\\PhotosSite::FACADE')) %}
+{% set photo_boutique = photo_boutique ?? site_photo(constant('App\\Service\\Site\\PhotosSite::ALLEE')) ?? site_photo('enseigne-succes-imprim-bamako') %}
 {% set image_partage = photo %}
 {% set donnees_entreprise = true %}
 {% set equipe = contenu.sections|filter(s => 'équipe' in s.titre|lower or 'equipe' in s.titre|lower)|first %}
@@ -97,8 +98,16 @@
 		</div>
 
 		{% if gerant %}
-			<div class="si-cadre">
+			{# La vraie façade à côté du mot du gérant (proposition acceptée par Yaya le 18/10/2026) ; « Venez nous voir » prend alors l'allée. #}
+			{% set facade = site_photo(constant('App\\Service\\Site\\PhotosSite::FACADE')) %}
+			<div class="si-cadre{% if facade %} sc-gerant-et-local{% endif %}">
 				{{ include('site/_mot_gerant.html.twig', {gerant: gerant}) }}
+				{% if facade %}
+					<figure class="sc-gerant-local">
+						{{ include('site/_photo.html.twig', {photo: facade, sizes: '(max-width: 1099px) calc(100vw - 32px), 400px', classe: 'sc-gerant-local-photo', telephone: 800}) }}
+						<figcaption>Notre boutique à Bamako</figcaption>
+					</figure>
+				{% endif %}
 			</div>
 		{% endif %}
 

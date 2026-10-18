@@ -121,7 +121,8 @@
 				});
 			});
 			document.querySelectorAll('.sc-visionneuse').forEach(function (fenetre) {
-				fenetre.querySelector('[data-fermer]').addEventListener('click', function (e) { e.preventDefault(); fenetre.close(); });
+				// Ouverte par l'adresse (#realisation-…, lien partagé) et non par un clic : le lien « × » la referme.
+				fenetre.querySelector('[data-fermer]').addEventListener('click', function (e) { if (fenetre.open) { e.preventDefault(); fenetre.close(); } });
 				fenetre.addEventListener('click', function (e) { if (e.target === fenetre) { fenetre.close(); } });
 			});
 		})();

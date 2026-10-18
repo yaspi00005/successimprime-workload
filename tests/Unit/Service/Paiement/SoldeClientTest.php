@@ -279,6 +279,35 @@ final class SoldeClientTest extends TestCase
         self::assertSame(0, $depot->getClient()->getSoldeCredit());
     }
 
+    /**
+     * « À valider » traite plusieurs opérations d'affilée : un refus annule
+     * sa transaction sans fermer l'EntityManager (wrapInTransaction le
+     * ferme), sinon l'opération suivante tombe sur « The EntityManager is
+     * closed ».
+     */
+    public function testUnRefusNeFermePasLEntityManager(): void
+    {
+        $connexion = $this->createMock(Connection::class);
+        $connexion->expects(self::once())->method('beginTransaction');
+        $connexion->expects(self::never())->method('commit');
+        $connexion->expects(self::once())->method('rollBack');
+        $connexion->method('isTransactionActive')->willReturn(true);
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->method('getConnection')->willReturn($connexion);
+        $em->expects(self::never())->method('wrapInTransaction');
+        $em->expects(self::never())->method('close');
+        $em->method('getRepository')->willReturn($this->createStub(EntityRepository::class));
+        $client = $this->client(5000);
+
+        try {
+            (new SoldeClient($em, $this->createStub(MouvementTresorerieService::class)))
+                ->rembourser($client, 6000, $this->compte(CompteTresorerie::TYPE_CAISSE), 'Le client reprend son argent', $this->direction());
+            self::fail('plus que le solde : refus attendu');
+        } catch (\DomainException) {
+            self::assertSame(5000, $client->getSoldeCredit());
+        }
+    }
+
     /* ---------- Outils ---------- */
 
     private function service(): SoldeClient

@@ -140,7 +140,7 @@ final class SoldeClient
         }
         $recu = sprintf('R-%06d', (int) $paiement->getId());
 
-        return $this->em->wrapInTransaction(function () use ($paiement, $monnaie, $par, $client, $compte, $recu): MouvementSoldeClient {
+        return $this->enTransaction(function () use ($paiement, $monnaie, $par, $client, $compte, $recu): MouvementSoldeClient {
             $mouvement = $this->entree($compte, $monnaie, Paiements::MODE_ESPECES, $recu, sprintf('Monnaie gardée — %s', $client->getNomComplet()), sprintf('Monnaie laissée par le client sur son compte (paiement %s de la commande %s).', $recu, $paiement->getCommande()?->getNumero()), $par);
             $ligne = $this->crediter($client, MouvementSoldeClient::MONNAIE, $monnaie, $par, Paiements::MODE_ESPECES, $recu)
                 ->setPaiement($paiement)
@@ -196,7 +196,7 @@ final class SoldeClient
         }
         $frais = Paiements::MODE_ESPECES === $mode ? 0 : max(0, $frais);
 
-        return $this->em->wrapInTransaction(function () use ($client, $montant, $mode, $compte, $referenceExterne, $frais, $par, $note): MouvementSoldeClient {
+        return $this->enTransaction(function () use ($client, $montant, $mode, $compte, $referenceExterne, $frais, $par, $note): MouvementSoldeClient {
             $reference = trim((string) $referenceExterne) ?: null;
             $mouvement = $this->entree($compte, $montant, $mode, $reference, sprintf('Dépôt sur le compte client — %s', $client->getNomComplet()), 'Argent déposé par le client sur son compte, sans rien payer.', $par);
             if ($frais > 0) {
@@ -235,7 +235,7 @@ final class SoldeClient
             throw new \DomainException('L\'argent se rend depuis une caisse, Orange Money ou Wave.');
         }
 
-        return $this->em->wrapInTransaction(function () use ($client, $montant, $compte, $motif, $par): MouvementSoldeClient {
+        return $this->enTransaction(function () use ($client, $montant, $compte, $motif, $par): MouvementSoldeClient {
             $this->verrouiller($client);
             if ($montant > $this->disponiblePour($client)) {
                 throw new \DomainException(sprintf('Le client n\'a que %s disponibles sur son compte.', Valeurs::francs($this->disponiblePour($client))));
@@ -286,7 +286,7 @@ final class SoldeClient
             throw new \DomainException('Cette commande est annulée : aucun paiement ne peut plus y être enregistré.');
         }
 
-        return $this->em->wrapInTransaction(function () use ($commande, $client, $montant, $par): Paiements {
+        return $this->enTransaction(function () use ($commande, $client, $montant, $par): Paiements {
             $this->verrouiller($client);
             $disponible = $this->disponiblePour($client);
             $reste = $commande->getResteAPayer();
@@ -339,7 +339,7 @@ final class SoldeClient
             throw new \LogicException('Ce paiement n’utilise pas le solde du client.');
         }
 
-        $this->em->wrapInTransaction(function () use ($paiement, $par): void {
+        $this->enTransaction(function () use ($paiement, $par): void {
             if (null !== $paiement->getId()) {
                 $this->em->lock($paiement, LockMode::PESSIMISTIC_WRITE);
                 $this->em->refresh($paiement);
@@ -374,7 +374,7 @@ final class SoldeClient
      */
     public function annulerUtilisation(Paiements $paiement, string $motif, User $par): void
     {
-        $this->em->wrapInTransaction(function () use ($paiement, $motif, $par): void {
+        $this->enTransaction(function () use ($paiement, $motif, $par): void {
             if (null !== $paiement->getId()) {
                 $this->em->lock($paiement, LockMode::PESSIMISTIC_WRITE);
                 $this->em->refresh($paiement);
@@ -403,7 +403,7 @@ final class SoldeClient
      */
     public function validerDepot(DepotSoldeClient $depot, User $par): MouvementSoldeClient
     {
-        return $this->em->wrapInTransaction(function () use ($depot, $par): MouvementSoldeClient {
+        return $this->enTransaction(function () use ($depot, $par): MouvementSoldeClient {
             if (null !== $depot->getId()) {
                 $this->em->lock($depot, LockMode::PESSIMISTIC_WRITE);
                 $this->em->refresh($depot);
@@ -432,7 +432,7 @@ final class SoldeClient
             throw new \InvalidArgumentException('Le motif du refus est obligatoire.');
         }
         // Verrouillé et relu comme à la validation : deux caisses ne traitent pas le même dépôt.
-        $this->em->wrapInTransaction(function () use ($depot, $motif, $par): void {
+        $this->enTransaction(function () use ($depot, $motif, $par): void {
             if (null !== $depot->getId()) {
                 $this->em->lock($depot, LockMode::PESSIMISTIC_WRITE);
                 $this->em->refresh($depot);
@@ -472,6 +472,38 @@ final class SoldeClient
         $this->em->persist(new ModificationClient($client, 'Solde client', 'conditions', Valeurs::francs($avant), sprintf('%s (%s%s)', Valeurs::francs($client->getSoldeCredit()), mb_strtolower(MouvementSoldeClient::TYPES[$type]), null !== $reference ? ', '.$reference : ''), new \DateTimeImmutable(), $par));
 
         return $ligne;
+    }
+
+    /**
+     * Le travail dans une transaction, enregistré à la fin. Un refus (solde
+     * insuffisant, dépôt déjà traité…) annule la transaction sans fermer
+     * l'EntityManager, contrairement à wrapInTransaction : « À valider »
+     * traite plusieurs opérations d'affilée, et la suivante doit passer.
+     * Les refus sont levés avant toute écriture.
+     *
+     * @template T
+     *
+     * @param callable(): T $travail
+     *
+     * @return T
+     */
+    private function enTransaction(callable $travail): mixed
+    {
+        $connexion = $this->em->getConnection();
+        $connexion->beginTransaction();
+        try {
+            $resultat = $travail();
+            $this->em->flush();
+            $connexion->commit();
+
+            return $resultat;
+        } catch (\Throwable $e) {
+            if ($connexion->isTransactionActive()) {
+                $connexion->rollBack();
+            }
+
+            throw $e;
+        }
     }
 
     /** Fiche du client verrouillée et relue : deux caisses ne prennent pas le même solde. */

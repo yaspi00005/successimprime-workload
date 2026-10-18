@@ -8,7 +8,9 @@ use App\Repository\EntrepriseRepository;
 use App\Security\AccesEnLigne;
 use App\Service\NotificationService;
 use App\Service\Site\AdresseSite;
+use App\Service\Site\PhotosSite;
 use App\Service\Site\PlanDuSite;
+use App\Service\Site\PlanPhotosLocal;
 use App\Service\Site\SourcePlanSite;
 use App\Tests\Unit\Security\FabriqueCodes;
 use Doctrine\ORM\EntityManagerInterface;
@@ -98,6 +100,20 @@ final class PlanDuSiteTest extends TestCase
         self::assertSame('0.5', $conseil['priorite']);
         self::assertSame('1.0', $pages[0]['priorite']);
         self::assertSame('0.8', $pages[1]['priorite']);
+    }
+
+    public function testVraiesPhotosDuLocalSurLAccueilEtLeContact(): void
+    {
+        $pages = $this->plan([new PlanPhotosLocal(new PhotosSite(__DIR__.'/../../../../public'))])->pages();
+        $images = array_column($pages, 'images', 'url');
+        self::assertSame(['https://succesimprim.com/images/site/photos/facade-local-succes-imprim-bamako-1200.webp'], $images['https://succesimprim.com/']);
+        self::assertSame([
+            'https://succesimprim.com/images/site/photos/facade-local-succes-imprim-bamako-1200.webp',
+            'https://succesimprim.com/images/site/photos/allee-entree-succes-imprim-1200.webp',
+            'https://succesimprim.com/images/site/photos/jardin-entree-succes-imprim-1200.webp',
+        ], $images['https://succesimprim.com/contact']);
+        // Les photos s'ajoutent aux pages déjà au plan, sans en créer.
+        self::assertCount(\count($this->plan([])->pages()), $pages);
     }
 
     public function testDateConnueSeulementEtAccueilALaDateLaPlusRecente(): void

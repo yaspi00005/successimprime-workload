@@ -67,13 +67,13 @@ Montants d'un client, noms de clients sans accord, coûts, marges, prix B2B. Pas
 
 ## Photos du site
 
-Dix photos envoyées par Yaya le 15/10/2026 « pour le site » (originaux dans /mnt/project-files/uploads/hearth/, décrits dans /mnt/project-files/.notes/inputs.md). Ce sont des **visuels de présentation générés par intelligence artificielle pour la marque**, pas des photos de travaux livrés ni de clients : elles n'entrent ni dans Réalisations ni parmi les partenaires, et aucun texte ne les présente comme un travail fait pour un client.
+Dix photos envoyées par Yaya le 15/10/2026 « pour le site » (originaux dans /mnt/project-files/uploads/hearth/, décrits dans /mnt/project-files/.notes/inputs.md). Ce sont des **visuels de présentation générés par intelligence artificielle pour la marque**, pas des photos de travaux livrés ni de clients : elles n'entrent ni dans Réalisations ni parmi les partenaires, et aucun texte ne les présente comme un travail fait pour un client. S'y ajoutent trois **vraies photos du local** (17/10/2026), décrites plus bas.
 
 ### Où elles sont
 
 | Photo (nom du fichier) | Page et endroit |
 |---|---|
-| Façade et enseigne (`enseigne-succes-imprim-bamako`) | Accueil, en haut à côté de « Nous imprimons vos succès ! » ; « Qui sommes-nous ? », bloc « Venez nous voir » (adresse, téléphone, lien vers Contact) ; image de partage (Facebook, WhatsApp) et image de la fiche de l'imprimerie pour Google |
+| Façade et enseigne (`enseigne-succes-imprim-bamako`) | Accueil, en haut à côté de « Nous imprimons vos succès ! » ; image de partage (Facebook, WhatsApp). Sur « Qui sommes-nous ? », seulement si la vraie façade manque (voir « Vraies photos du local ») |
 | Bannière aux couleurs, sans logo (`banniere-grand-format-couleurs`) | Accueil, carte « Grand format » |
 | Dépliants et BAT sur le téléphone, recadrés (`depliants-imprimes-succes-imprim`) | Accueil, carte « Impression numérique » (petit format) |
 | T-shirts DTF (`t-shirts-dtf-succes-imprim`) | Accueil, carte « Textile » (si aucune carte ne la montre : bande Studio textile) ; « Nos équipements », carte textile |
@@ -102,8 +102,30 @@ Choix automatiques (`App\Service\Site\PhotosSite`) :
 
 - **Le plus simple : une image choisie dans Réglages › Site vitrine** (champ image de la page). Elle passe toujours avant la photo livrée et devient l'image de partage de la page. Aujourd'hui, seule « Qui sommes-nous ? » affiche l'image de la page à côté du texte ; « Nos équipements » la montre en tête.
 - **Un autre fichier, sous le même nom** : refaire chaque largeur de la liste, aux mêmes proportions, sans métadonnée, par exemple avec `cwebp` (libwebp) : `cwebp -q 64 -resize 800 0 -metadata none nouvelle.png -o enseigne-succes-imprim-bamako-800.webp`, et de même pour les autres largeurs (qualité 70 en 320 px, 68 en 480, 64 en 800, 60 en 1 200, 58 en 1 600). Lancer ensuite le test `PhotosSiteTest`. Les navigateurs gardent une image 30 jours (`public/.htaccess`) : pour un changement immédiat, prendre un nouveau nom et le changer dans `PhotosSite`.
-- **Changer d'endroit** : les noms sont dans `SiteController` (accueil : `PHOTO_ACCROCHE`, `PHOTO_PROJET`, `PHOTO_ATELIER`), dans `PhotosSite::FAMILLES` et `MOTS`, et dans les gabarits `a_propos`, `engagements` et `produits`.
-- **Si la vraie boutique ou l'atelier ne ressemble pas aux visuels**, remplacer d'abord la façade (accueil, « Qui sommes-nous ? », partage) et l'atelier par de vraies photos.
+- **Changer d'endroit** : les noms sont dans `SiteController` (accueil : `PHOTO_ACCROCHE`, `PHOTO_PROJET`, `PHOTO_ATELIER`), dans `PhotosSite::FAMILLES` et `MOTS`, dans `PhotosSite::FACADE`, `ALLEE` et `LOCAL` (vraies photos du local), et dans les gabarits `a_propos`, `engagements` et `produits`.
+- **Si la vraie boutique ou l'atelier ne ressemble pas aux visuels**, remplacer d'abord la façade (accueil, « Qui sommes-nous ? », partage) et l'atelier par de vraies photos. Depuis le 18/10/2026, la vraie façade est sur l'accueil (« Venez nous voir »), sur « Qui sommes-nous ? » et dans la fiche pour Google ; le visuel de l'enseigne reste en haut de l'accueil et en image de partage, au choix de Yaya.
+
+### Vraies photos du local (17/10/2026)
+
+Photos du local envoyées par Yaya le 17/10/2026 (appareil DJI, 4 000 × 2 256), choisies avec lui le 18/10 : la façade au balcon rond, l'allée pavée qui mène à l'entrée, le jardin et l'entrée. Les trois autres photos (reflet du soleil) et la vidéo (1 s) ne sont pas utilisées. Les originaux ne sont ni dans le dépôt ni en ligne.
+
+| Photo (nom du fichier) | Page et endroit |
+|---|---|
+| Façade au balcon rond (`facade-local-succes-imprim-bamako`, `PhotosSite::FACADE`) | Accueil, bandeau « Venez nous voir » sous l'accroche ; « Qui sommes-nous ? », bloc « Venez nous voir » ; Contact, galerie « Notre local » ; fiche de l'imprimerie pour Google |
+| Allée pavée vers l'entrée (`allee-entree-succes-imprim`, `PhotosSite::ALLEE`) | Contact, en grand au-dessus de la carte ; galerie « Notre local » |
+| Jardin et entrée (`jardin-entree-succes-imprim`) | Contact, galerie « Notre local » seulement |
+
+**Préparation** (une fois, hors du dépôt) : chaque personne floutée (tête très floue sur une zone large, corps flou moyen : personne n'est reconnaissable, même à la taille réelle), comme les plaques et l'arrière des motos ; ombres éclaircies doucement ; recadrage 16:9 (la façade sans le guidon de moto du premier plan) ; seuls les pixels sont gardés, **sans EXIF ni position GPS** (les originaux DJI en ont) ; WebP simple en 320, 480, 800 et 1 200 px (11 à 127 Ko). Sur la façade, le visage du modèle de l'affiche en vitrine est aussi flouté. Pour refaire une photo : flouter d'abord, puis mêmes noms, mêmes largeurs, mêmes proportions, et lancer `PhotosSiteTest`.
+
+**Accueil, « Venez nous voir »** (`templates/site/_venez_nous_voir.html.twig`, bloc autonome inclus sous l'accroche) : la façade, « Boutique Succès Imprim » et l'adresse de l'entreprise (Réglages › Entreprises), les horaires du réglage Horaires avec « Ouvert maintenant… » ou « Fermé, ouvre… », un bouton « Itinéraire » et un bouton « WhatsApp » (premier message « je voudrais passer à la boutique »). L'itinéraire suit le réglage de la position (« Carte de la boutique ») ; s'il est vide, une recherche Google Maps sur le nom et l'adresse (`ContactSite::itineraire`). Données : `site_visite()` (`App\Twig\SiteVisiteExtension`). Le bloc écrit sa petite feuille (`public/css/site-local.css`) ; photo en chargement différé.
+
+**Contact** : l'allée en grand au-dessus de la carte, avec sa légende (première photo de la page : chargée tout de suite, sans chargement différé) ; sous le formulaire et les coordonnées, la galerie « Notre local » (`templates/site/_notre_local.html.twig`, `site_photos_local()`) : trois vignettes légendées ; chacune ouvre la photo en grand dans une fenêtre `<dialog>` comme la visionneuse des réalisations (Échap, clic à côté ou « × » la ferment ; sans JavaScript, le lien `#local-…` l'affiche quand même). Les grandes photos ne se chargent qu'à l'ouverture. Aucune bibliothèque ajoutée.
+
+**Qui sommes-nous ?** : le bloc « Venez nous voir » montre la vraie façade (le visuel de l'enseigne si son fichier manque). La place de la photo à côté du mot du gérant se décide avec la page Équipe.
+
+**Google** : la fiche de l'imprimerie (LocalBusiness, accueil, contact, à propos) donne la vraie façade en 16:9, 4:3 et 1:1 (`ReferencementExtension::IMAGES_FICHE`, recadrages 4:3 et 1:1 dans `public/images/site/fiche/`), Google choisissant la proportion qui lui convient ; l'image de partage reste le visuel de l'enseigne. Le plan du site (/sitemap.xml) cite la façade sur l'accueil et les trois photos sur Contact (`PlanPhotosLocal`). Ces photos sont aussi à mettre sur la fiche Google de la boutique (Google Business Profile), où elles comptent le plus.
+
+**Poids** (mesure du 18/10/2026, téléphone 390 px, page parcourue jusqu'en bas) : la façade ajoute 24 Ko à l'accueil (écran ×1 ; 54 Ko en ×2), chargée après le texte et la photo du haut ; sur Contact, l'allée pèse 29 Ko (69 Ko en ×2) et les trois vignettes 41 Ko en tout. Les grandes photos de la visionneuse (800 ou 1 200 px) ne viennent qu'à l'ouverture.
 
 ### Poids (mesure du 15/10/2026)
 
@@ -151,7 +173,7 @@ Code : `SiteSuiviController`, `SiteDemandeController`, `App\Service\Site\{SuiviS
 
 **Contact** (`app_site_contact`, /contact)
 - Adresse, téléphone et e-mail de l'entreprise, horaires du réglage « Horaires » avec « Ouvert maintenant » ou « Fermé, ouvre lundi à 8 h », bouton WhatsApp.
-- Carte (ou plan dessiné) et bouton « Itinéraire » : voir « Carte de la boutique » plus bas.
+- La photo de l'allée en grand, puis la carte (ou plan dessiné) et le bouton « Itinéraire » : voir « Carte de la boutique » plus bas. En bas de page, la galerie « Notre local » (« Photos du site », « Vraies photos du local »).
 - Court message : nom, téléphone malien, e-mail facultatif, objet (devis, suivi d'une commande, conseil sur un fichier, autre ; `?objet=commande` le présélectionne), message de 2 000 caractères au plus.
 
 **Demander un devis** (`app_site_devis`, /demander-un-devis), sans compte

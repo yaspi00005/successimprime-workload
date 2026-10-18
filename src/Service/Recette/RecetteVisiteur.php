@@ -22,8 +22,8 @@ use Symfony\Component\Routing\RouterInterface;
  * jamais au prix B2B, aucun nom de client sans son accord ni montant
  * d'un client sur les pages publiques, aucune personne de l'équipe
  * masquée ou sans son accord sur « Qui sommes-nous ? », les en-têtes de
- * sécurité et la mesure d'audience Google (pages publiques du site en
- * ligne seulement).
+ * sécurité, la mesure d'audience Google (pages publiques du site en ligne
+ * seulement) et les vraies photos du local (accueil, contact).
  */
 final class RecetteVisiteur
 {
@@ -49,6 +49,7 @@ final class RecetteVisiteur
             $this->referencement($bilan, $enLigne);
             $this->entetesSecurite($bilan);
             $this->mesureAudience($bilan, $enLigne);
+            $this->photosDuLocal($bilan, $enLigne);
             if ($enLigne) {
                 $this->ecransDuLivreurFermes($bilan);
                 $this->suivi($bilan);
@@ -142,6 +143,29 @@ final class RecetteVisiteur
             }
         }
         $bilan->controler('Visiteur : pas de mesure d\'audience dans l\'espace client, aux connexions ni sur une adresse à code', [] === $fuites, [] === $fuites ? \count($privees).' pages lues' : 'sur '.implode(', ', $fuites));
+    }
+
+    /**
+     * Vraies photos du local (docs/site-vitrine.md) : « Venez nous voir » sur
+     * l'accueil (façade, Itinéraire), l'allée et la galerie « Notre local »
+     * sur Contact, la vraie façade dans la fiche pour Google ; aucun montant
+     * dans le bandeau. Sur l'ERP local, l'aperçu /site.
+     */
+    private function photosDuLocal(BilanRecette $bilan, bool $enLigne): void
+    {
+        $accueil = $this->navigateur->get($enLigne ? '/' : $this->routeur->generate('app_site_accueil'));
+        $debut = strpos($accueil->contenu, '<section class="si-visite"');
+        $bande = false === $debut ? '' : substr($accueil->contenu, $debut, (strpos($accueil->contenu, '</section>', $debut) ?: $debut) - $debut);
+        $montants = ContenuSensible::montants(ContenuSensible::texteVisible($bande));
+        $ok = 200 === $accueil->statut && str_contains($bande, 'facade-local-succes-imprim-bamako-') && 1 === preg_match('#<a href="https://[^"]+"[^>]*>(?:(?!</a>).)*Itinéraire#su', $bande) && [] === $montants;
+        $bilan->controler('Visiteur : l\'accueil montre « Venez nous voir » (vraie façade, Itinéraire), sans montant', $ok, \sprintf('%d, bandeau %s, %d montant(s)', $accueil->statut, '' === $bande ? 'absent' : 'présent', \count($montants)));
+
+        $contact = $this->navigateur->get($this->routeur->generate('app_site_contact'));
+        $vignettes = substr_count($contact->contenu, 'class="si-local-vignette"');
+        $fenetres = substr_count($contact->contenu, 'class="si-local-visionneuse"');
+        $ok = 200 === $contact->statut && str_contains($contact->contenu, 'class="si-local-entete"') && str_contains($contact->contenu, 'allee-entree-succes-imprim-') && 3 === $vignettes && 3 === $fenetres;
+        $bilan->controler('Visiteur : /contact montre l\'allée et la galerie « Notre local » (3 photos, visionneuse)', $ok, \sprintf('%d, %d vignette(s), %d visionneuse(s)', $contact->statut, $vignettes, $fenetres));
+        $bilan->controler('Visiteur : la fiche de l\'imprimerie pour Google montre la vraie façade (16:9, 4:3, 1:1)', str_contains($contact->contenu, 'images/site/fiche/facade-local-succes-imprim-bamako-1x1.webp'), str_contains($contact->contenu, '"LocalBusiness"') ? 'fiche lue' : 'fiche absente');
     }
 
     /**

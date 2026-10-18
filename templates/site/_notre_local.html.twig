@@ -1,0 +1,53 @@
+{#
+	Page Contact : petite galerie « Notre local » (vraies photos du
+	17/10/2026, PhotosSite::LOCAL : façade, allée, jardin et entrée,
+	personnes et plaques floutées). Une vignette ouvre la photo en grand
+	dans une fenêtre <dialog>, comme la visionneuse des réalisations ;
+	sans JavaScript, le lien #local-… l'affiche quand même (:target). Les
+	grandes photos ne se chargent qu'à l'ouverture. Styles :
+	css/site-local.css, écrite par la page.
+#}
+{% set galerie = site_photos_local() %}
+{% if galerie %}
+	<section class="si-local" aria-labelledby="si-local-titre">
+		<div class="si-cadre">
+			<h2 id="si-local-titre">Notre local</h2>
+			<p class="si-local-intro">Le bâtiment au balcon rond, entouré d'un jardin et de palmiers. Ouvrez une photo pour la voir en grand.</p>
+			<ul class="si-local-galerie">
+				{% for p in galerie %}
+					<li>
+						<a href="#local-{{ p.nom }}" class="si-local-vignette" data-ouvrir="local-{{ p.nom }}" aria-haspopup="dialog">
+							<span class="si-local-cadre">{{ include('site/_photo.html.twig', {photo: p, sizes: '(max-width: 520px) calc((100vw - 48px) / 3), (max-width: 1180px) calc((100vw - 60px) / 3), 372px'}) }}</span>
+							<span class="si-local-legende">{{ p.legende ?? p.alt }}</span>
+						</a>
+					</li>
+				{% endfor %}
+			</ul>
+			{% for p in galerie %}
+				<dialog id="local-{{ p.nom }}" class="si-local-visionneuse" aria-label="{{ p.legende ?? p.alt }}">
+					<a href="#si-local-titre" class="si-local-fermer" data-fermer aria-label="Fermer"><span aria-hidden="true">×</span></a>
+					{{ include('site/_photo.html.twig', {photo: p, sizes: 'min(1000px, calc(100vw - 24px))'}) }}
+					<p>{{ p.legende ?? p.alt }}</p>
+				</dialog>
+			{% endfor %}
+		</div>
+	</section>
+	<script>
+		(function () {
+			if (typeof HTMLDialogElement !== 'function') { return; }
+			document.querySelectorAll('.si-local [data-ouvrir]').forEach(function (lien) {
+				lien.addEventListener('click', function (e) {
+					var fenetre = document.getElementById(lien.getAttribute('data-ouvrir'));
+					if (!fenetre) { return; }
+					e.preventDefault();
+					fenetre.showModal();
+				});
+			});
+			document.querySelectorAll('.si-local-visionneuse').forEach(function (fenetre) {
+				// Ouverte par l'adresse (#local-…, lien partagé) et non par un clic : le lien « × » la referme.
+				fenetre.querySelector('[data-fermer]').addEventListener('click', function (e) { if (fenetre.open) { e.preventDefault(); fenetre.close(); } });
+				fenetre.addEventListener('click', function (e) { if (e.target === fenetre) { fenetre.close(); } });
+			});
+		})();
+	</script>
+{% endif %}

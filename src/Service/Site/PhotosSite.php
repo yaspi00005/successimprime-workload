@@ -5,13 +5,14 @@ namespace App\Service\Site;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Photos livrées avec le site vitrine (envoyées par Yaya le 15/10/2026,
- * docs/site-vitrine.md, « Photos du site »).
- *
- * Ce sont des visuels de présentation de la marque : ils illustrent
- * l'accueil, les équipements, les engagements… mais ne sont jamais
- * montrés comme une réalisation ni comme un client (ni dans
- * Réalisations, ni parmi les partenaires).
+ * Photos livrées avec le site vitrine (docs/site-vitrine.md, « Photos du
+ * site ») :
+ * - les visuels de présentation de la marque envoyés par Yaya le
+ *   15/10/2026 : ils illustrent l'accueil, les équipements, les
+ *   engagements… mais ne sont jamais montrés comme une réalisation ni
+ *   comme un client (ni dans Réalisations, ni parmi les partenaires) ;
+ * - les vraies photos du local envoyées le 17/10/2026 (LOCAL) : façade,
+ *   allée, jardin et entrée, visages et plaques floutés.
  *
  * Fichiers : public/images/site/photos/<nom>-<largeur>.webp, réencodés
  * sans métadonnée, en plusieurs largeurs (le navigateur prend la plus
@@ -27,8 +28,9 @@ final class PhotosSite
     /**
      * Nom => largeurs livrées (320 pour les vignettes des univers sur
      * téléphone), proportions (largeur et hauteur du plus grand fichier),
-     * texte alternatif (vide : photo décorative) et cadrage quand la photo
-     * est recadrée (haut, bas ; sinon le centre).
+     * texte alternatif (vide : photo décorative), cadrage quand la photo
+     * est recadrée (haut, bas ; sinon le centre) et légende courte (galerie
+     * « Notre local »).
      */
     public const PHOTOS = [
         'enseigne-succes-imprim-bamako' => ['largeurs' => [480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Façade d\'une boutique Succès Imprim, sa grande enseigne « Nous imprimons vos succès !! » et des passants dans une rue de Bamako au coucher du soleil'],
@@ -42,7 +44,20 @@ final class PhotosSite
         'fourgon-publicitaire-succes-imprim' => ['largeurs' => [320, 480, 800], 'largeur' => 800, 'hauteur' => 450, 'alt' => 'Fourgon habillé aux couleurs de Succès Imprim, bleu, rouge et jaune, avec le logo sur le côté'],
         'livraison-moto-bamako' => ['largeurs' => [480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Un livreur à moto, gilet Succès Imprim, transporte un carton et un tube au logo dans une rue de Bamako au coucher du soleil'],
         'rubans-encre-couleurs' => ['largeurs' => [800, 1200, 1600], 'largeur' => 1600, 'hauteur' => 900, 'alt' => ''],
+        // Vraies photos du local (17/10/2026) : personnes et plaques floutées, ombres éclaircies.
+        'facade-local-succes-imprim-bamako' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Façade de la boutique Succès Imprim à Bamako : maison bleu-gris au balcon rond, l\'entrée sous le balcon, entre palmiers et jardin', 'legende' => 'La façade et son balcon rond'],
+        'allee-entree-succes-imprim' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Allée pavée qui mène à l\'entrée de la boutique Succès Imprim, sous le balcon rond, entre les palmiers et le jardin', 'legende' => 'L\'allée qui mène à l\'entrée'],
+        'jardin-entree-succes-imprim' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Jardin devant l\'entrée de la boutique Succès Imprim : terrasse carrelée sous le balcon, palmiers ; les personnes devant la porte sont floutées', 'legende' => 'Le jardin et l\'entrée'],
     ];
+
+    /** Vraies photos du local, dans l'ordre de la galerie « Notre local » (page Contact). */
+    public const LOCAL = ['facade-local-succes-imprim-bamako', 'allee-entree-succes-imprim', 'jardin-entree-succes-imprim'];
+
+    /** Photo de la façade : bandeau « Venez nous voir » de l'accueil et de « Qui sommes-nous ? », fiche de l'imprimerie pour Google. */
+    public const FACADE = 'facade-local-succes-imprim-bamako';
+
+    /** Photo de l'allée : en grand au-dessus de la carte de la page Contact. */
+    public const ALLEE = 'allee-entree-succes-imprim';
 
     /** Univers de l'accueil (SiteController::FAMILLES) => photos possibles, dans l'ordre de préférence. */
     public const FAMILLES = [
@@ -75,7 +90,7 @@ final class PhotosSite
      * Photo prête pour la page, ou null si elle n'est pas connue ou si son
      * fichier manque.
      *
-     * @return array{nom: string, src: string, fichiers: list<array{chemin: string, largeur: int}>, largeur: int, hauteur: int, alt: string, cadrage: ?string}|null
+     * @return array{nom: string, src: string, fichiers: list<array{chemin: string, largeur: int}>, largeur: int, hauteur: int, alt: string, cadrage: ?string, legende: ?string}|null
      */
     public function photo(?string $nom): ?array
     {
@@ -110,7 +125,19 @@ final class PhotosSite
             'hauteur' => $definition['hauteur'],
             'alt' => $definition['alt'],
             'cadrage' => $definition['cadrage'] ?? null,
+            'legende' => $definition['legende'] ?? null,
         ];
+    }
+
+    /**
+     * Galerie « Notre local » : les vraies photos dont les fichiers sont
+     * présents, dans l'ordre de LOCAL.
+     *
+     * @return list<array{nom: string, src: string, fichiers: list<array{chemin: string, largeur: int}>, largeur: int, hauteur: int, alt: string, cadrage: ?string, legende: ?string}>
+     */
+    public function local(): array
+    {
+        return array_values(array_filter(array_map($this->photo(...), self::LOCAL)));
     }
 
     /**

@@ -32,6 +32,26 @@ final class PhotosSiteTest extends TestCase
         self::assertNull(self::photos()->photo(null));
     }
 
+    public function testVraiesPhotosDuLocal(): void
+    {
+        $photos = self::photos();
+        self::assertSame(PhotosSite::LOCAL, array_column($photos->local(), 'nom'), 'galerie « Notre local » dans l\'ordre');
+        self::assertContains(PhotosSite::FACADE, PhotosSite::LOCAL);
+        self::assertContains(PhotosSite::ALLEE, PhotosSite::LOCAL);
+        foreach ($photos->local() as $photo) {
+            self::assertSame([320, 480, 800, 1200], array_column($photo['fichiers'], 'largeur'), $photo['nom']);
+            self::assertSame([1200, 675], [$photo['largeur'], $photo['hauteur']], $photo['nom']);
+            self::assertStringContainsString('Succès Imprim', $photo['alt'], 'texte alternatif qui décrit la scène');
+            self::assertNotEmpty($photo['legende']);
+            // Petites largeurs légères pour la 3G : vignette et téléphone.
+            self::assertLessThan(40 * 1024, filesize(self::PUBLIC.'/'.PhotosSite::chemin($photo['nom'], 480)), $photo['nom']);
+            self::assertLessThan(80 * 1024, filesize(self::PUBLIC.'/'.PhotosSite::chemin($photo['nom'], 800)), $photo['nom']);
+        }
+        self::assertStringContainsString('floutées', $photos->photo('jardin-entree-succes-imprim')['alt'] ?? '', 'les personnes à la porte sont floutées');
+        // Les visuels de 15/10 n'ont pas de légende.
+        self::assertNull($photos->photo('enseigne-succes-imprim-bamako')['legende'] ?? null);
+    }
+
     public function testFichierAbsentPhotoIgnoree(): void
     {
         $dossier = sys_get_temp_dir().'/photos-site-'.bin2hex(random_bytes(4));
@@ -44,6 +64,7 @@ final class PhotosSiteTest extends TestCase
             self::assertSame('images/site/photos/livraison-moto-bamako-480.webp', $livraison['src'] ?? null);
             self::assertNull($photos->photo('enseigne-succes-imprim-bamako'), 'aucun fichier : pas de photo');
             self::assertSame([null], $photos->pourFamilles(['textile']), 'la carte garde son icône');
+            self::assertSame([], $photos->local(), 'sans fichier, pas de galerie « Notre local »');
         } finally {
             array_map('unlink', glob($dossier.'/'.PhotosSite::DOSSIER.'/*') ?: []);
             rmdir($dossier.'/'.PhotosSite::DOSSIER);
@@ -125,6 +146,23 @@ final class PhotosSiteTest extends TestCase
 
         // Photo du haut de l'accueil sur téléphone (800 px au plus) : moins de 80 Ko.
         self::assertLessThan(80 * 1024, filesize(self::PUBLIC.'/'.PhotosSite::chemin(SiteController::PHOTO_ACCROCHE, 800)));
+    }
+
+    public function testImagesDeLaFicheGoogle(): void
+    {
+        $tailles = [];
+        foreach (ReferencementExtension::IMAGES_FICHE as $chemin) {
+            $fichier = self::PUBLIC.'/'.$chemin;
+            self::assertFileExists($fichier);
+            self::assertLessThanOrEqual(200 * 1024, filesize($fichier), $chemin);
+            self::assertSame('WEBPVP8 ', (string) file_get_contents($fichier, false, null, 8, 8), 'WebP simple, sans métadonnée : '.$chemin);
+            $taille = getimagesize($fichier);
+            self::assertNotFalse($taille);
+            $tailles[] = [$taille[0], $taille[1]];
+        }
+        // 16:9, 4:3 et 1:1, au moins 50 000 pixels chacune (recommandation de Google).
+        self::assertSame([[1200, 675], [1200, 900], [1200, 1200]], $tailles);
+        self::assertSame(PhotosSite::chemin(PhotosSite::FACADE, 1200), ReferencementExtension::IMAGES_FICHE[0], 'la vraie façade');
     }
 
     public function testImageDePartage(): void

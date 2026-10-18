@@ -38,6 +38,33 @@ final class ContactSite
     }
 
     /**
+     * Lien « Itinéraire » toujours disponible (bandeau « Venez nous voir »
+     * de l'accueil) : celui du réglage (position de la boutique), sinon une
+     * recherche Google Maps sur le nom et l'adresse de la boutique.
+     */
+    public function itineraire(string $nom, ?string $adresse): string
+    {
+        return self::itineraireDe((string) $this->parametres->valeur('site_contact', 'lien_plan'), $nom, $adresse);
+    }
+
+    /** Le lien du réglage tel que la page Contact le retient (lien()), sinon la recherche sur l'adresse. */
+    public static function itineraireDe(string $saisi, string $nom, ?string $adresse): string
+    {
+        return self::lien($saisi) ?? self::recherche($nom, $adresse);
+    }
+
+    /** Recherche Google Maps « Succès Imprim Bamako, Sotuba ACI » (Bamako ajouté si l'adresse ne le dit pas). */
+    public static function recherche(string $nom, ?string $adresse): string
+    {
+        $adresse = trim((string) preg_replace('/\s+/u', ' ', (string) $adresse));
+        if (!str_contains(mb_strtolower($adresse), 'bamako')) {
+            $adresse = ('' === $adresse ? '' : $adresse.', ').'Bamako, Mali';
+        }
+
+        return 'https://www.google.com/maps/search/?api=1&query='.rawurlencode(trim($nom.' '.$adresse));
+    }
+
+    /**
      * Repère de la boutique pour la carte de la page Contact (coordonnées
      * saisies ou lues dans un lien long, DonneesStructurees::position),
      * seulement s'il y a aussi un lien d'itinéraire ; sinon null (plan

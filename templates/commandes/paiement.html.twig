@@ -145,7 +145,7 @@
 
 				<div class="card-body">
 
-					{% if commande.clients is defined and commande.clients and commande.clients.soldeCredit > 0 and montantRestant > 0 %}
+					{% if commande.clients is defined and commande.clients and soldeDisponible|default(0) > 0 and montantRestant > 0 %}
 
 						<div class="alert alert-info">
 
@@ -153,14 +153,14 @@
 
 							Ce client a un solde client de
 							<strong>{{ commande.clients.soldeCredit|number_format(0, ',', ' ') }} FCFA</strong>
-							(monnaie gardée, dépôts). Il peut payer tout ou partie de cette commande avec.
+							(monnaie gardée, dépôts){% if soldeDisponible < commande.clients.soldeCredit %}, dont {{ soldeDisponible|number_format(0, ',', ' ') }} FCFA disponibles (le reste est déjà engagé en ligne){% endif %}. Il peut payer tout ou partie de cette commande avec.
 
 							<form method="post" action="{{ path('app_commandes_utiliser_solde_client', { id: commande.id }) }}" class="mt-2 mb-0 d-flex flex-wrap align-items-center" style="gap: 6px;">
 
 								<input type="hidden" name="_token" value="{{ csrf_token('utiliser_solde_client_' ~ commande.id) }}">
 
 								<label class="mb-0" for="solde-a-utiliser">Montant</label>
-								<input type="text" inputmode="numeric" autocomplete="off" id="solde-a-utiliser" name="montant" class="form-control form-control-sm" style="max-width: 130px;" value="{{ min(commande.clients.soldeCredit, montantRestant) }}">
+								<input type="text" inputmode="numeric" autocomplete="off" id="solde-a-utiliser" name="montant" class="form-control form-control-sm" style="max-width: 130px;" value="{{ min(soldeDisponible, montantRestant) }}">
 
 								<button type="submit" class="btn btn-info btn-sm">
 									Payer avec le solde

@@ -637,9 +637,9 @@ final class EspaceClient
     /**
      * « Mon compte en un coup d'œil » (maquette EC01), pour qui paie :
      * solde dû et part échue, plafond de crédit utilisé, commandes de
-     * l'année. Les points fidélité viennent de FideliteExtension.
+     * l'année, Mon solde. Les points fidélité viennent de FideliteExtension.
      *
-     * @return array{solde: float, echu: int, plafond: ?int, utilise: ?int, annee: int, commandesAnnee: int, montantAnnee: int, enValidation: int}
+     * @return array{solde: float, echu: int, plafond: ?int, utilise: ?int, annee: int, commandesAnnee: int, montantAnnee: int, enValidation: int, avoir: int}
      */
     public function apercuCompte(Clients $client, \DateTimeImmutable $maintenant): array
     {
@@ -667,6 +667,8 @@ final class EspaceClient
             'commandesAnnee' => \count($commandesAnnee),
             'montantAnnee' => array_sum(array_map(static fn (Commandes $c): int => $c->getTotalTtc(), $commandesAnnee)),
             'enValidation' => $solde['enValidation'],
+            // Mon solde : l'argent laissé à la boutique (monnaie gardée, dépôts), tenu au local.
+            'avoir' => max(0, $client->getSoldeCredit()),
         ];
     }
 

@@ -1,7 +1,8 @@
 {#
 	Mon compte en un coup d'œil (maquettes EC01 et EC05), pour qui paie :
 	solde dû et part échue, plafond de crédit (entreprise), commandes de
-	l'année, points fidélité (hors grille revendeur).
+	l'année, Mon solde (argent laissé à la boutique), points fidélité (hors
+	grille revendeur).
 #}
 {% if apercu %}
 	{% set fi = droits.fidelite ? fidelite_espace(client) : null %}
@@ -24,6 +25,12 @@
 					{% endif %}
 				</div>
 			{% endif %}
+			{# Mon solde (docs/espace-client.md) : l'argent laissé à la boutique, monnaie gardée et dépôts. #}
+			<a class="ec-tuile" href="{{ path('app_espace_solde') }}">
+				<small>Mon solde</small>
+				<b class="{{ apercu.avoir > 0 ? 'vert' }}">{{ apercu.avoir|number_format(0, ',', ' ') }} F</b>
+				<small class="ec-bureau">monnaie gardée, dépôts</small>
+			</a>
 			<a class="ec-tuile ec-bureau" href="{{ path('app_espace_commandes') }}">
 				<small>Commandes {{ apercu.annee }}</small>
 				<b>{{ apercu.commandesAnnee }}</b>

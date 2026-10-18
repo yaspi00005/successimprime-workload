@@ -3152,6 +3152,10 @@ final class CommandesController extends AbstractController
 
                 'parametresPaiement' =>
                 $parametresPaiement,
+
+                // Solde du client utilisable ici : moins l'avoir déjà engagé en ligne (compte du client).
+                'soldeDisponible' =>
+                null !== $commande->getClients() && !$accesEnLigne->estEnLigne() ? $soldeClient->disponiblePour($commande->getClients()) : 0,
             ]
         );
     }

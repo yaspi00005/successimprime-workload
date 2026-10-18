@@ -614,6 +614,24 @@ final class RecetteEspaceClient
                 $bilan->constater(BilanRecette::FUITE, 'valideur', 'app_espace_devis_accepter', $chemin, $libelle, 'devis accepté sans le droit valideur');
             }
         }
+        // Mon solde : un dépôt Orange Money seulement par qui paie ; sinon refusé, et aucun dépôt créé.
+        if (null !== $this->routeur->getRouteCollection()->get('app_espace_solde_deposer')) {
+            $chemin = $this->routeur->generate('app_espace_solde_deposer');
+            foreach (['valideur', 'demandeur', 'lecture'] as $libelle) {
+                if (!isset($comptes[$libelle], $sessions[$libelle])) {
+                    continue;
+                }
+                $jeton = $this->jeton($sessions[$libelle]) ?? $this->jeton($sessions['titulaire'] ?? $sessions[$libelle]);
+                $avant = (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM depot_solde_client');
+                $reponse = $this->navigateur->post($chemin, ['_token' => (string) $jeton, 'montant' => '5000', 'total' => '5100'], $sessions[$libelle]);
+                $crees = (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM depot_solde_client') - $avant;
+                $ok = Reponse::REFUSE === $reponse->etat() && 0 === $crees;
+                $bilan->controler('Espace client : '.$libelle.' (sans le droit payeur) dépose sur Mon solde', $ok, $chemin.' → '.$reponse->etat().($crees > 0 ? ', dépôt créé' : ''));
+                if (!$ok) {
+                    $bilan->constater(BilanRecette::FUITE, 'payeur', 'app_espace_solde_deposer', $chemin, $libelle, 'dépôt sur Mon solde lancé sans le droit payeur ('.$reponse->etat().')');
+                }
+            }
+        }
         foreach (['valideur', 'payeur'] as $libelle) {
             $commande = $fiches[$libelle]['commande_a_valider'] ?? null;
             if (!isset($comptes[$libelle], $sessions[$libelle]) || null === $commande || 'valideur' === $libelle) {

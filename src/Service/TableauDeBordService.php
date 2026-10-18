@@ -508,9 +508,12 @@ final class TableauDeBordService
     }
 
     /**
+     * Les cinq articles de stock les plus bas sous leur seuil (aussi pour
+     * les rapports par e-mail).
+     *
      * @return list<array{designation: string, reste: float, unite: string}>
      */
-    private function articlesSousSeuil(): array
+    public function articlesSousSeuil(): array
     {
         $resultats = $this->entityManager->createQueryBuilder()
             ->select('a.designation AS designation', 'a.unite AS unite', 'a.stockMin AS seuil')

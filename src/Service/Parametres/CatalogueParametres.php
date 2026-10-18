@@ -3,6 +3,7 @@
 namespace App\Service\Parametres;
 
 use App\Service\ActionsCaisse\HeuresTravail;
+use App\Service\Rapports\ReglagesRapportsMail;
 use App\Service\SuiviMetiers\Bareme;
 
 /**
@@ -104,6 +105,29 @@ final class CatalogueParametres
                 ],
                 'motsCles' => ['Objectifs du mois · CA, commandes, m²', 'Objectif par agent, catégorie, machine', 'Rapport de la semaine · lundi 8 h', 'Destinataires du rapport'],
                 'note' => 'Les objectifs se fixent mois par mois sur Statistiques › Objectifs (bouton ci-dessous). Sans objectif du mois, le CA reprend l\'objectif de la tuile Finances et budgets.',
+            ],
+            // Rapports du jour, de la semaine et du mois par e-mail (docs/rapports-mail.md). Les
+            // destinataires se choisissent sur la page de la tuile (champs « ecran »). ERP local.
+            ReglagesRapportsMail::TUILE => [
+                'famille' => 'entreprise', 'libelle' => 'Rapports par e-mail', 'icone' => 'fa-envelope-open-text',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_rapports_mail',
+                'champs' => [
+                    ['cle' => 'jour_actif', 'type' => 'interrupteur', 'libelle' => 'Rapport du jour', 'aide' => 'Activité et argent de la journée, le soir même', 'defaut' => true],
+                    ['cle' => 'jour_heure', 'type' => 'heure', 'libelle' => 'Heure du rapport du jour', 'defaut' => '20:00'],
+                    ['cle' => 'jour_ouvres', 'type' => 'interrupteur', 'libelle' => 'Seulement les jours d\'ouverture', 'aide' => 'Jours travaillés et jours fériés de la tuile Horaires', 'defaut' => true],
+                    ['cle' => 'semaine_actif', 'type' => 'interrupteur', 'libelle' => 'Rapport de la semaine', 'aide' => 'La semaine passée, du lundi au dimanche', 'defaut' => true],
+                    ['cle' => 'semaine_jour', 'type' => 'choix', 'libelle' => 'Rapport de la semaine envoyé le', 'options' => ['lundi' => 'lundi', 'mardi' => 'mardi', 'mercredi' => 'mercredi', 'jeudi' => 'jeudi', 'vendredi' => 'vendredi', 'samedi' => 'samedi', 'dimanche' => 'dimanche'], 'defaut' => 'lundi'],
+                    ['cle' => 'semaine_heure', 'type' => 'heure', 'libelle' => 'Heure du rapport de la semaine', 'defaut' => '07:00'],
+                    ['cle' => 'mois_actif', 'type' => 'interrupteur', 'libelle' => 'Rapport du mois', 'aide' => 'Le mois passé, comparé au mois d\'avant et aux objectifs', 'defaut' => true],
+                    ['cle' => 'mois_jour', 'type' => 'nombre', 'libelle' => 'Rapport du mois envoyé le', 'suffixe' => 'du mois', 'min' => 1, 'max' => 28, 'defaut' => 1],
+                    ['cle' => 'mois_heure', 'type' => 'heure', 'libelle' => 'Heure du rapport du mois', 'defaut' => '07:00'],
+                    ['cle' => 'pdf', 'type' => 'interrupteur', 'libelle' => 'PDF joint', 'aide' => 'La même version en PDF, pour l\'archiver ou l\'imprimer', 'defaut' => true],
+                    ['cle' => 'adresse_erp', 'type' => 'texte', 'longueur' => 200, 'libelle' => 'Adresse de l\'ERP dans l\'atelier', 'aide' => 'Pour le bouton « Ouvrir dans l\'ERP » de l\'e-mail, par exemple http://192.168.1.10/successImprim/public. Vide : pas de bouton dans les envois automatiques.', 'defaut' => ''],
+                    ['cle' => 'destinataires_choisis', 'type' => 'interrupteur', 'libelle' => 'Destinataires choisis', 'aide' => 'Non : la direction (comptes avec une adresse e-mail)', 'defaut' => false, 'ecran' => true],
+                    ['cle' => 'destinataires', 'type' => 'texte', 'longueur' => 2000, 'libelle' => 'Destinataires (numéros des comptes)', 'defaut' => '', 'ecran' => true],
+                ],
+                'motsCles' => ['Rapport du jour · 20 h', 'Rapport de la semaine · lundi 7 h', 'Rapport du mois · le 1er à 7 h', 'Destinataires des rapports · administration', 'Envoi par e-mail · PDF joint'],
+                'note' => 'Destinataires, aperçu, essai et historique des envois : bouton ci-dessous. Chacun reçoit sa version, selon ses droits. Rien ne part tant que l\'envoi d\'e-mails n\'est pas réglé sur l\'ERP (MAILER_DSN).',
             ],
 
             // ---------- Ventes ----------

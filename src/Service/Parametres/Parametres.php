@@ -160,6 +160,11 @@ final class Parametres
             'taxes' => 'TVA '.$v['taux_tva'].' % · '.($v['tva_par_defaut'] ? 'par défaut' : 'au choix par facture'),
             'finances' => 'objectif '.number_format((int) $v['objectif_ca'], 0, ',', ' ').' F · approbation au-delà de '.number_format((int) $v['seuil_approbation'], 0, ',', ' ').' F',
             'statistiques' => $v['rapport_actif'] ? 'rapport le '.$v['rapport_jour'].' à '.self::heure($v['rapport_heure']) : 'rapport de la semaine désactivé',
+            'rapports_mail' => implode(' · ', array_filter([
+                $v['jour_actif'] ? 'jour à '.self::heure((string) $v['jour_heure']) : null,
+                $v['semaine_actif'] ? $v['semaine_jour'].' à '.self::heure((string) $v['semaine_heure']) : null,
+                $v['mois_actif'] ? 'le '.(1 === (int) $v['mois_jour'] ? '1er' : (int) $v['mois_jour']).' à '.self::heure((string) $v['mois_heure']) : null,
+            ])) ?: 'aucun rapport',
             'grille' => self::nb($compter(ProduitConfiguration::class), 'configuration').' · '.self::nb($compter(Produits::class), 'produit'),
             'produits' => self::nb($compter(Produits::class), 'produit').' · '.self::nb($compter(Finition::class), 'finition'),
             'paiements' => (implode(', ', array_map(static fn (string $m): string => Paiements::MODES_LABELS[$m], $this->modesPaiementActifs())) ?: 'aucun mode actif').$this->etatFraisOrangeMoney(),

@@ -39,7 +39,7 @@ L'employé est reconnu par **son compte** dans l'application. La photo est une p
 
 ## Calcul des points
 
-Barème de Yaya (16/10/2026). Il remplace l'ancien barème de ponctualité à partir de la **date de début** (Paramètres › Points du pointage) : la migration la pose au jour où elle passe. Les journées d'avant gardent l'ancien barème (plus bas), pour que les mois passés ne changent pas sans qu'on le décide. Vider la date applique le nouveau calcul à toutes les journées.
+Barème de Yaya (16/10/2026). Il remplace l'ancien barème de ponctualité à partir de la **date de début** (Paramètres › Points du pointage) : la migration la pose au jour où elle passe. Les journées d'avant gardent l'ancien barème (plus bas), pour que les mois passés ne changent pas sans qu'on le décide. Pour l'appliquer aussi à des mois passés, il suffit de choisir une date plus ancienne (le changement va au journal).
 
 **Deux horaires types**, chacun avec ses heures dues :
 

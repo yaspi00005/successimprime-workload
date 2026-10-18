@@ -52,7 +52,7 @@
 								<td data-libelle="Arrivée"><b>{{ p.arriveeLe|date('H:i') }}</b></td>
 								<td data-libelle="Photo départ">{% include 'pointage/_photo.html.twig' with {pointage: p, photo: p.photoDepart, sens: 'depart'} %}</td>
 								<td data-libelle="Départ"><b>{{ p.departLe ? p.departLe|date(p.departLe|date('Y-m-d') != p.arriveeLe|date('Y-m-d') ? 'd/m H:i' : 'H:i') : '—' }}</b></td>
-								<td data-libelle="Heures">{% if not p.departLe %}en cours{% elseif l.calcul.dues is not null %}{{ l.calcul.faites|duree_pointage }} / {{ l.calcul.dues > 0 ? l.calcul.dues|duree_pointage : 'repos' }}{% else %}{{ l.calcul.presence|duree_pointage }}{% endif %}</td>
+								<td data-libelle="Heures">{% if not p.departLe %}{{ l.calcul.statut == 'depart_non_pointe' ? 'à régulariser' : 'en cours' }}{% elseif l.calcul.dues is not null %}{{ l.calcul.faites|duree_pointage }} / {{ l.calcul.dues > 0 ? l.calcul.dues|duree_pointage : 'repos' }}{% else %}{{ l.calcul.presence|duree_pointage }}{% endif %}</td>
 								<td data-libelle="Retard">{{ l.calcul.retard > 0 ? l.calcul.retard|duree_pointage : '—' }}</td>
 								<td data-libelle="Statut"><span class="si-pg-statut si-pg-{{ l.calcul.statut }}">{{ statuts[l.calcul.statut] }}{% if l.calcul.statut == 'heures_sup' %} {{ l.calcul.sup|duree_pointage }}{% endif %}</span>{% if p.corrige %} <span class="si-pg-corrige" title="{{ p.motifCorrection }}">corrigé</span>{% endif %}</td>
 								<td data-libelle="Points" title="{{ l.calcul.raison }}"><b class="{{ l.calcul.total < 0 ? 'si-p-alerte' : (l.calcul.total > 0 ? 'si-p-ok') }}">{{ l.calcul.total > 0 ? '+' }}{{ l.calcul.total }}</b>{% if l.calcul.bonusEnAttente %} <i class="fas fa-hourglass-half si-pg-attente" title="{{ l.calcul.bonusEnAttente }}"></i>{% endif %}</td>

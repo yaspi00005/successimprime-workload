@@ -121,7 +121,7 @@
 					<form method="post" action="{{ path('app_pointage_ajuster', {id: p.id}) }}">
 						<header><h2>Ajuster les points</h2><button type="button" class="btn-close" data-si-fermer aria-label="Fermer"></button></header>
 						<input type="hidden" name="_token" value="{{ token }}">
-						<p class="si-dialogue-meta">Remplace l'ajustement actuel ({{ p.ajustementPoints }}). Ex. +20 pour annuler un oubli justifié.</p>
+						<p class="si-dialogue-meta">Remplace l'ajustement actuel ({{ p.ajustementPoints }}). Ex. +10 pour compter une journée justifiée, −5 pour retirer une heure en plus. Un départ oublié se corrige plutôt avec « Corriger un pointage ».</p>
 						<div class="si-dialogue-grille">
 							<label>Points<input type="number" name="points" class="form-control" min="-500" max="500" value="{{ p.ajustementPoints }}" required></label>
 							<label class="si-plein">Motif (vu par l'employé)<input type="text" name="motif" class="form-control" maxlength="255" required value="{{ p.motifAjustement }}"></label>

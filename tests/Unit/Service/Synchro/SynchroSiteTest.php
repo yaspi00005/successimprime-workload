@@ -36,7 +36,7 @@ final class SynchroSiteTest extends TestCase
             'site_avis' => ['nomAffiche', 'texte', 'note', 'source', 'dateAvis', 'accordClient', 'publie'],
             'site_article' => ['titre', 'slug', 'rubrique', 'resume', 'corps', 'publieLe', 'publie', 'modifieLe'],
             'site_partenaire' => ['nom', 'lien', 'ordre', 'visible', 'accordObtenu'],
-            'site_equipe' => ['nom', 'poste', 'ordre', 'visible', 'accordPersonne'],
+            'site_equipe' => ['nom', 'poste', 'ordre', 'visible', 'accordPersonne', 'gerant', 'motGerant', 'aussiDansEquipe'],
             'site_reglage' => ['cle', 'valeurs'],
         ];
         foreach ($attendus as $type => $champs) {

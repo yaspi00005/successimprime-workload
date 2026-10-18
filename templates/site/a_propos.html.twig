@@ -8,6 +8,9 @@
 	son accord (variable membres), « Notre équipe » (site/_equipe) prend la
 	place des cartes de la section équipe (Direction, Atelier, PAO), en
 	pleine largeur sous le premier bloc. Sans personne, rien ne change.
+	Juste avant, « Le mot du gérant » (site/_mot_gerant, variable gerant),
+	quand sa photo et son texte sont remplis ; le gérant n'est alors pas
+	répété dans la grille, sauf si l'atelier l'a choisi.
 	L'entreprise
 	affichée vient de Réglages › Entreprises. Sans image choisie dans
 	Réglages › Site vitrine, la photo de l'atelier livrée avec le site
@@ -25,6 +28,7 @@
 {% set premiere = contenu.sections|filter(s => s != equipe)|first %}
 {% set autres = contenu.sections|filter(s => s != equipe and s != premiere) %}
 {% set membres = membres ?? [] %}
+{% set gerant = gerant ?? null %}
 
 {% block title %}{{ page.titre|site_titre }}{% endblock %}
 {% block description %}{{ (page.description ?? page.accroche ?? 'Succès Imprim, imprimerie à Bamako : impression grand format, textile DTF et finition dans notre atelier.')|site_description }}{% endblock %}
@@ -90,6 +94,12 @@
 				{% endif %}
 			</div>
 		</div>
+
+		{% if gerant %}
+			<div class="si-cadre">
+				{{ include('site/_mot_gerant.html.twig', {gerant: gerant}) }}
+			</div>
+		{% endif %}
 
 		{% if membres is not empty %}
 			<div class="si-cadre">

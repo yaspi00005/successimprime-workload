@@ -128,7 +128,7 @@ final class SiteContenuController extends AbstractController
             return $ferme;
         }
         try {
-            $objet = $this->contenu->nouveau($type, $request->query->get('page'));
+            $objet = $this->contenu->nouveau($type, $request->query->get('page'), 'equipe' === $type && $request->query->getBoolean('gerant'));
         } catch (\InvalidArgumentException $e) {
             $this->addFlash('warning', $e->getMessage());
 

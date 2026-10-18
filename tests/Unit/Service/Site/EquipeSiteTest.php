@@ -8,6 +8,7 @@ use App\Service\Site\ContenuSite;
 use App\Service\Site\EquipeDemo;
 use App\Service\Site\ImagesSite;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -62,12 +63,16 @@ final class EquipeSiteTest extends TestCase
         return new UploadedFile($this->dossier.'/'.$nom, $nom, 'image/png', null, true);
     }
 
-    private function contenu(): ContenuSite
+    /** @param list<MembreEquipe> $gerants gérants déjà enregistrés */
+    private function contenu(array $gerants = []): ContenuSite
     {
         $em = $this->createStub(EntityManagerInterface::class);
         $em->method('remove')->willReturnCallback(function (object $objet): void {
             $this->retires[] = $objet;
         });
+        $depot = $this->createStub(EntityRepository::class);
+        $depot->method('findBy')->willReturn($gerants);
+        $em->method('getRepository')->willReturn($depot);
 
         return new ContenuSite($em, new ImagesSite($this->dossier.'/public', $this->dossier.'/originaux'));
     }
@@ -151,6 +156,59 @@ final class EquipeSiteTest extends TestCase
         self::assertStringContainsString('sa photo n\'est pas gardée', implode(' ', $retour['avertissements']));
     }
 
+    public function testLeMotDuGerant(): void
+    {
+        $maintenant = new \DateTimeImmutable('2026-10-17 15:40');
+        $ancien = (new MembreEquipe())->setNom('Moussa')->setPoste('Gérant')->setGerant(true)->setMotGerant('Ancien mot.');
+        $contenu = $this->contenu([$ancien]);
+
+        // « Rédiger le mot du gérant » : la fiche arrive cochée « Gérant ».
+        $gerant = $contenu->nouveau('equipe', null, true);
+        self::assertInstanceOf(MembreEquipe::class, $gerant);
+        self::assertTrue($gerant->isGerant());
+        self::assertFalse($contenu->nouveau('equipe')->isGerant());
+
+        // Trop long : refusé, rien n'est enregistré.
+        $champs = ['nom' => 'Kadiatou T.', 'poste' => 'Gérante', 'publie' => '1', 'accordPersonne' => '1', 'gerant' => '1'];
+        $retour = $contenu->enregistrer($gerant, $champs + ['motGerant' => str_repeat('a', MembreEquipe::MOT_MAX + 1)], [], $maintenant);
+        self::assertCount(1, $retour['erreurs']);
+        self::assertStringContainsString('900 au plus', $retour['erreurs'][0]);
+
+        // Texte sans photo : enregistré, visible dans l'équipe, mais le mot reste caché.
+        $retour = $contenu->enregistrer($gerant, $champs + ['motGerant' => "Bienvenue chez Succès Imprim.\r\nUn BAT avant chaque impression."], [], $maintenant);
+        self::assertSame([], $retour['erreurs']);
+        self::assertTrue($gerant->estVisible());
+        self::assertFalse($gerant->estMotVisible());
+        self::assertContains('Le mot du gérant reste caché sur le site : il manque la photo.', $retour['avertissements']);
+        // Un seul gérant : l'ancien est décoché, son mot gardé.
+        self::assertFalse($ancien->isGerant());
+        self::assertSame('Ancien mot.', $ancien->getMotGerant());
+        self::assertContains('Moussa n\'est plus indiqué comme gérant : un seul mot du gérant paraît sur le site.', $retour['avertissements']);
+
+        // Avec la photo (mêmes règles que l'équipe : carrée, sans métadonnées) : le mot paraît.
+        $retour = $contenu->enregistrer($gerant, $champs + ['motGerant' => $gerant->getMotGerant()], ['photo' => $this->photo()], $maintenant);
+        self::assertSame([], $retour['erreurs']);
+        self::assertTrue($gerant->estMotVisible());
+        self::assertStringNotContainsString('secret-du-telephone', (string) $gerant->getPhoto()?->getOctets());
+        self::assertSame(['Bienvenue chez Succès Imprim.', 'Un BAT avant chaque impression.'], $gerant->getParagraphesMot());
+        self::assertFalse($gerant->isAussiDansEquipe());
+
+        // Accord retiré : photo retirée, mot caché (et parti vide au site).
+        $photo = $gerant->getPhoto();
+        $retour = $contenu->enregistrer($gerant, ['nom' => 'Kadiatou T.', 'poste' => 'Gérante', 'publie' => '1', 'gerant' => '1', 'motGerant' => 'Bienvenue.'], [], $maintenant);
+        self::assertContains($photo, $this->retires);
+        self::assertFalse($gerant->estMotVisible());
+        self::assertNull(MembreEquipe::motPublic($gerant->getMotGerant(), $gerant));
+
+        // Décocher « Gérant » : plus de mot sur le site, ni d'avertissement à son sujet.
+        $retour = $contenu->enregistrer($gerant, $champs + ['motGerant' => 'Bienvenue.'], [], $maintenant);
+        self::assertContains('Le mot du gérant reste caché sur le site : il manque la photo.', $retour['avertissements']);
+        $retour = $contenu->enregistrer($gerant, ['nom' => 'Kadiatou T.', 'poste' => 'Gérante', 'publie' => '1', 'accordPersonne' => '1', 'motGerant' => 'Bienvenue.', 'aussiDansEquipe' => '1'], [], $maintenant);
+        self::assertSame(['erreurs' => [], 'avertissements' => []], $retour);
+        self::assertFalse($gerant->isGerant());
+        self::assertTrue($gerant->isAussiDansEquipe());
+    }
+
     public function testNomEtPosteObligatoires(): void
     {
         $retour = $this->contenu()->enregistrer(new MembreEquipe(), ['nom' => ' ', 'poste' => '', 'accordPersonne' => '1'], [], new \DateTimeImmutable());
@@ -171,6 +229,13 @@ final class EquipeSiteTest extends TestCase
             self::assertNotSame('', trim($p['poste']), $p['nom']);
             self::assertLessThanOrEqual(MembreEquipe::NOM_MAX, mb_strlen($p['nom']));
         }
+        $gerants = array_values(array_filter($personnes, static fn (array $p): bool => isset($p['mot'])));
+        self::assertCount(1, $gerants, 'une gérante, avec son mot');
+        self::assertTrue($gerants[0]['accord'] && $gerants[0]['visible'] && null !== $gerants[0]['avatar'], 'son mot paraît : photo, accord, visible');
+        self::assertLessThanOrEqual(MembreEquipe::MOT_MAX, mb_strlen(EquipeDemo::MOT));
+        self::assertDoesNotMatchRegularExpression('/\d|FCFA|CFA|€/u', EquipeDemo::MOT, 'aucun montant');
+        self::assertSame('Le mot de la gérante', (new MembreEquipe())->setPoste($gerants[0]['poste'])->getTitreMot());
+
         self::assertSame(900001, EquipeDemo::PREMIER_ID);
         foreach (EquipeDemo::PURGE as $sql) {
             self::assertStringContainsString('>= 900000', $sql, 'la purge ne touche que la démonstration');

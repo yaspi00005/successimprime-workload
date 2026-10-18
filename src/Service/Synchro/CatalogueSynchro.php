@@ -180,13 +180,14 @@ final class CatalogueSynchro
                 'relations' => ['logo' => 'site_image'], 'listes' => [],
             ],
             // « Notre équipe » (page « Qui sommes-nous ? ») : nom affiché, poste, photo, ordre, visible,
-            // accord. Sans l'accord de la personne, son nom et son poste partent vides, et elle n'a
-            // pas de photo (ContenuSite). Rien d'autre sur elle : elle n'est liée à aucune fiche du personnel.
+            // accord, et pour le gérant son mot (« Le mot du gérant »). Sans l'accord de la personne, son
+            // nom, son poste et son mot partent vides, et elle n'a pas de photo (ContenuSite). Rien d'autre
+            // sur elle : elle n'est liée à aucune fiche du personnel.
             'site_equipe' => [
                 'classe' => \App\Entity\MembreEquipe::class, 'sens' => self::DESCENDANT, 'libelle' => 'Personne de l\'équipe', 'titre' => ['nom'],
-                'champs' => ['nom', 'poste', 'ordre', 'visible', 'accordPersonne'],
+                'champs' => ['nom', 'poste', 'ordre', 'visible', 'accordPersonne', 'gerant', 'motGerant', 'aussiDansEquipe'],
                 'relations' => ['photo' => 'site_image'], 'listes' => [],
-                'filtres' => ['nom' => [\App\Entity\MembreEquipe::class, 'textePublic'], 'poste' => [\App\Entity\MembreEquipe::class, 'textePublic']],
+                'filtres' => ['nom' => [\App\Entity\MembreEquipe::class, 'textePublic'], 'poste' => [\App\Entity\MembreEquipe::class, 'textePublic'], 'motGerant' => [\App\Entity\MembreEquipe::class, 'motPublic']],
             ],
             // Règle de calcul des chiffres du site (ChiffresSite).
             'site_reglage' => [

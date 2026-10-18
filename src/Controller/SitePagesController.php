@@ -82,7 +82,15 @@ final class SitePagesController extends AbstractController
     #[Route('/a-propos', name: 'app_site_a_propos', methods: ['GET'])]
     public function aPropos(Request $request, AvisClientRepository $avis, MembreEquipeRepository $equipe): Response
     {
-        return $this->page('a-propos', 'site/a_propos.html.twig', $request, ['avis' => $avis->visibles(), 'membres' => $equipe->visibles()]);
+        // Le mot du gérant d'abord, puis l'équipe, sans montrer le gérant deux fois (sauf choix de l'atelier).
+        $visibles = $equipe->visibles();
+        $gerant = MembreEquipeRepository::gerantDe($visibles);
+
+        return $this->page('a-propos', 'site/a_propos.html.twig', $request, [
+            'avis' => $avis->visibles(),
+            'gerant' => $gerant,
+            'membres' => MembreEquipeRepository::grille($visibles, $gerant),
+        ]);
     }
 
     #[Route('/nos-engagements', name: 'app_site_engagements', methods: ['GET'])]

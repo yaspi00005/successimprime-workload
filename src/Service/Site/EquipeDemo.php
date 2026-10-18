@@ -12,7 +12,8 @@ use Symfony\Component\Uid\Uuid;
  * identifiants à partir de 900001. Les photos sont des avatars dessinés
  * ici (aucune photo d'une vraie personne) ; deux personnes n'ont pas de
  * photo (initiales) et la dernière n'a pas donné son accord : « Visible »
- * est coché, mais elle reste hors du site.
+ * est coché, mais elle reste hors du site. La première est la gérante :
+ * son mot paraît avant l'équipe, et elle n'est pas répétée dans la grille.
  *
  * Écrit par la connexion de app:demo, dans sa transaction, sans passer
  * par la file de synchronisation (comme le reste de la démonstration).
@@ -35,12 +36,13 @@ final class EquipeDemo
      * « coiffure » : foulard, courte, lunettes (cheveux courts et lunettes)
      * ou rasee.
      *
-     * @return list<array{nom: string, poste: string, avatar: ?array{teinte: string, peau: list<int>, coiffure: string}, visible: bool, accord: bool}>
+     * @return list<array{nom: string, poste: string, avatar: ?array{teinte: string, peau: list<int>, coiffure: string}, visible: bool, accord: bool, mot?: string}>
      */
     public static function personnes(): array
     {
         return [
-            ['nom' => 'Kadiatou T.', 'poste' => 'Direction', 'avatar' => ['teinte' => 'bleu', 'peau' => [122, 78, 48], 'coiffure' => 'foulard'], 'visible' => true, 'accord' => true],
+            // La gérante : son mot (fictif, sans montant) paraît avant « Notre équipe ».
+            ['nom' => 'Kadiatou T.', 'poste' => 'Gérante', 'avatar' => ['teinte' => 'bleu', 'peau' => [122, 78, 48], 'coiffure' => 'foulard'], 'visible' => true, 'accord' => true, 'mot' => self::MOT],
             ['nom' => 'Seydou K.', 'poste' => 'Graphiste PAO', 'avatar' => ['teinte' => 'rouge', 'peau' => [94, 60, 38], 'coiffure' => 'lunettes'], 'visible' => true, 'accord' => true],
             ['nom' => 'Aïssata D.', 'poste' => 'Graphiste PAO', 'avatar' => null, 'visible' => true, 'accord' => true],
             ['nom' => 'Oumar G.', 'poste' => 'Opérateur grand format', 'avatar' => ['teinte' => 'orange', 'peau' => [108, 70, 44], 'coiffure' => 'rasee'], 'visible' => true, 'accord' => true],
@@ -49,6 +51,9 @@ final class EquipeDemo
             ['nom' => 'Bakary C.', 'poste' => 'Livraison', 'avatar' => null, 'visible' => true, 'accord' => false],
         ];
     }
+
+    /** Mot de la gérante de démonstration. */
+    public const MOT = "Bienvenue chez Succès Imprim. Depuis notre atelier de Bamako, nous imprimons chaque jour les banderoles, enseignes, roll-up et textiles de commerçants, d'entreprises et d'associations.\nNotre engagement est simple : un BAT validé avant chaque impression, des délais annoncés et tenus, et une équipe qui vous répond, à la boutique comme sur WhatsApp.\nPassez nous voir : nous serons heureux de préparer votre prochain projet avec vous.";
 
     /** Instructions de la purge (aussi jouées avant chaque chargement). */
     public const PURGE = [
@@ -62,7 +67,7 @@ final class EquipeDemo
         $maintenant ??= new \DateTimeImmutable();
         $id = self::PREMIER_ID;
         foreach (self::personnes() as $rang => $personne) {
-            $membre = (new MembreEquipe())->setNom($personne['nom'])->setPoste($personne['poste']);
+            $membre = (new MembreEquipe())->setNom($personne['nom'])->setPoste($personne['poste'])->setMotGerant($personne['mot'] ?? null);
             $photo = null;
             // Pas de photo sans accord (ContenuSite) : la démonstration suit la même règle.
             if (null !== $personne['avatar'] && $personne['accord']) {
@@ -90,6 +95,9 @@ final class EquipeDemo
                 'ordre' => ($rang + 1) * 10,
                 'visible' => (int) $personne['visible'],
                 'accord_personne' => (int) $personne['accord'],
+                'gerant' => (int) isset($personne['mot']),
+                'mot_gerant' => $membre->getMotGerant(),
+                'aussi_dans_equipe' => 0,
                 'public_id' => Uuid::v7()->toBinary(),
                 'photo_id' => $photo,
             ]);

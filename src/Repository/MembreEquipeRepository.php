@@ -31,6 +31,38 @@ class MembreEquipeRepository extends ServiceEntityRepository
     }
 
     /**
+     * Le gérant dont le mot paraît en haut de « Qui sommes-nous ? », parmi
+     * les personnes montrées (le premier dans l'ordre, s'il y en avait
+     * deux par erreur).
+     *
+     * @param list<MembreEquipe> $visibles
+     */
+    public static function gerantDe(array $visibles): ?MembreEquipe
+    {
+        foreach ($visibles as $membre) {
+            if ($membre->estMotVisible()) {
+                return $membre;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * La grille « Notre équipe » : le gérant n'y paraît pas une seconde
+     * fois quand son mot est déjà montré, sauf si « aussi dans l'équipe »
+     * est coché.
+     *
+     * @param list<MembreEquipe> $visibles
+     *
+     * @return list<MembreEquipe>
+     */
+    public static function grille(array $visibles, ?MembreEquipe $gerant): array
+    {
+        return array_values(array_filter($visibles, static fn (MembreEquipe $m): bool => $m !== $gerant || $gerant->isAussiDansEquipe()));
+    }
+
+    /**
      * @return list<MembreEquipe>
      */
     public function dansLOrdre(): array

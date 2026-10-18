@@ -196,7 +196,7 @@ Droit fin **Site vitrine** (`ROLE_SITE_VITRINE`), donné à la Direction ; il se
 | Conseils | Titre, adresse (créée depuis le titre, unique), rubrique, résumé, texte, image, date de publication | Un conseil daté dans le futur n'apparaît qu'à sa date. Chaque conseil entre dans /sitemap.xml. |
 | Partenaires | Nom, logo, lien (http ou https seulement), ordre | Sans « accord obtenu », le partenaire reste masqué. Bande de logos sur l'accueil et « À propos ». |
 | Annonces | Texte (200 caractères, une ligne), lien facultatif (page du site ou adresse web) et son texte, style (information, promotion, alerte), où la montrer (site public, espace client, les deux), premier et dernier jour, ordre | Montrée seulement « Active » et dans sa période (dates comprises ; sans date : tout de suite et sans fin). Voir « Bandes d'annonces » ci-dessous. |
-| Équipe | Nom affiché, poste, photo, ordre | Montrée seulement « Visible » **et** avec « La personne a accepté que sa photo et son nom paraissent sur le site ». Sans cet accord, pas de photo gardée. Voir « Notre équipe » ci-dessous. |
+| Équipe | Nom affiché, poste, photo, ordre ; pour le gérant : « Gérant », son mot, « aussi dans l'équipe » | Montrée seulement « Visible » **et** avec « La personne a accepté que sa photo et son nom paraissent sur le site ». Sans cet accord, pas de photo gardée. Le mot du gérant ne paraît qu'avec sa photo et son texte. Voir « Notre équipe » et « Le mot du gérant » ci-dessous. |
 | Chiffres | Afficher ou non, règle des « projets réalisés », seuil | Voir docs/site-public.md. Un chiffre nul ou sous le seuil n'est pas montré. |
 | Référencement | Codes Google Search Console et Bing, lien de la fiche Google, pages des réseaux sociaux | Valeur refusée (mauvais domaine, code illisible) : l'ancienne reste. Voir docs/referencement.md. |
 
@@ -231,7 +231,18 @@ Demande de Yaya du 16/10/2026 : « Ajouter l'équipe au site vitrine », « avec
 
 **Synchronisation** (type `site_equipe`, docs/synchronisation.md) : nom, poste, photo, ordre, visible, accord. Sans accord, le nom et le poste partent vides. Masquer une personne ou retirer son accord la retire du site à la synchronisation suivante ; retirer l'accord supprime aussi sa photo, de chaque côté. Supprimer sa fiche la supprime en ligne avec sa photo. Comme le reste, la page peut rester 5 minutes dans le cache du navigateur.
 
-**Démonstration** (`app:demo`, docs/donnees-demo.md) : six personnes fictives aux avatars dessinés par le programme (`App\Service\Site\EquipeDemo`, jamais la photo d'une vraie personne), dont deux sans photo (initiales) et « Bakary C. », « Visible » coché mais sans accord, qui ne doit apparaître nulle part. La recette des accès en ligne le vérifie (docs/recette-par-role.md).
+**Démonstration** (`app:demo`, docs/donnees-demo.md) : six personnes fictives aux avatars dessinés par le programme (`App\Service\Site\EquipeDemo`, jamais la photo d'une vraie personne), dont deux sans photo (initiales) et « Bakary C. », « Visible » coché mais sans accord, qui ne doit apparaître nulle part. « Kadiatou T. » est la gérante (son mot, ci-dessous). La recette des accès en ligne le vérifie (docs/recette-par-role.md).
+
+### Le mot du gérant
+
+Demande de Yaya du 17/10/2026 : « Ajouter le mot du gérant avec sa photo, ensuite l'équipe ». Le gérant est **une personne de l'onglet Équipe**, cochée « Gérant » : sa photo, son nom, son poste et son accord sont ceux de sa fiche, avec les mêmes règles (photo carrée réencodée, sans EXIF ni position GPS, original non gardé ; rien sans son accord). Rien n'est saisi deux fois.
+
+- **Saisie** : bouton « Rédiger le mot du gérant » en haut de l'onglet Équipe (nouvelle fiche déjà cochée « Gérant »), ou, si le gérant est déjà dans la liste, case « Cette personne est le gérant (ou la gérante) » de sa fiche. Encart « Le mot du gérant » de la fiche : la case, **son mot** (900 caractères au plus, sans mise en forme, une ligne = un paragraphe ; pas de prix ni de montant ; plus long, rien n'est enregistré) et « Le montrer aussi dans « Notre équipe » » (décoché par défaut).
+- **Un seul gérant** : cocher la case sur une fiche la décoche sur l'autre (son mot reste enregistré mais ne paraît plus), avec un message.
+- **Caché tant que ce n'est pas rempli** : le mot ne paraît que si la personne est gérant, visible, avec son accord, **avec une photo et un texte**. L'encart en haut de l'onglet Équipe et la fiche disent ce qui manque (« il manque la photo et son accord »).
+- **Sur le site** (`templates/site/_mot_gerant.html.twig`, ancre `#mot-du-gerant`) : juste **avant « Notre équipe »**, sous le premier bloc de « Qui sommes-nous ? » ; titre « Le mot du gérant » (« Le mot de la gérante » quand le poste dit « Gérante »), photo ronde (216 px sur un ordinateur, 152 px sur un téléphone, chargée quand elle approche de l'écran, « Photo de Kadiatou T., Gérante » pour les malvoyants), le texte entre guillemets, signé du nom et du poste.
+- **Pas deux fois** : quand son mot paraît, le gérant n'est pas répété dans la grille « Notre équipe », sauf si « aussi dans l'équipe » est coché. Tant que son mot est caché (texte ou photo manquant), il reste dans la grille comme les autres.
+- **Synchronisation** : avec la fiche (type `site_equipe`) ; le mot ne part qu'avec l'accord de la personne et si elle est gérant, sinon vide.
 
 ### Texte des pages
 
@@ -268,7 +279,7 @@ Aucun chiffre d'activité, aucune note ni aucun nom de client n'a été inventé
 
 - `src/Controller/SiteContenuController.php` (admin), `src/Controller/SitePagesController.php` (pages publiques), `src/Service/Site/` (`ContenuSite`, `MarkdownSite`, `ImagesSite`, `ChiffresSite`, `IconesSite`, `PlanConseils`, `ContenuInitial`), `src/Twig/SiteContenuExtension.php`.
 - Annonces : `src/Entity/Annonce.php`, `src/Repository/AnnonceRepository.php`, `src/Twig/AnnoncesExtension.php` (`site_annonces()`), `templates/site/_annonces.html.twig`.
-- Équipe : `src/Entity/MembreEquipe.php` (table `site_equipe`, migration `Version20261016123412`), `src/Repository/MembreEquipeRepository.php` (`visibles()`), `templates/site/_equipe.html.twig`, `src/Service/Site/EquipeDemo.php` (démonstration), tests `tests/Unit/Service/Site/EquipeSiteTest.php`.
+- Équipe et mot du gérant : `src/Entity/MembreEquipe.php` (table `site_equipe`, migrations `Version20261016123412` et `Version20261018090000`), `src/Repository/MembreEquipeRepository.php` (`visibles()`, `gerantDe()`, `grille()`), `templates/site/_equipe.html.twig`, `templates/site/_mot_gerant.html.twig`, `src/Service/Site/EquipeDemo.php` (démonstration), tests `tests/Unit/Service/Site/EquipeSiteTest.php`.
 - `templates/site_contenu/` (admin), `templates/site/` (`realisations`, `equipements`, `guide`, `a_propos`, `engagements`, `faq`, `conseils`, `conseil`, `_chiffres`, `_partenaires`, `_avis`), `public/css/site-contenu.css`, `public/css/reglages-site.css`.
 - Chaque page est servie par `SiteController::cache()` (5 minutes dans le navigateur).
 

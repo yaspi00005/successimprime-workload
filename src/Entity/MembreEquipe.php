@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Entity\Trait\PublicIdTrait;
 use App\Repository\MembreEquipeRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -17,7 +18,14 @@ use Doctrine\ORM\Mapping as ORM;
  * personne a accepté que sa photo et son nom paraissent sur le site.
  *
  * Sans cet accord, le nom et le poste descendent vides au site
- * (nomPublic) et aucune photo n'est gardée (ContenuSite).
+ * (textePublic) et aucune photo n'est gardée (ContenuSite).
+ *
+ * Le gérant (demande de Yaya du 17/10/2026 : « le mot du gérant avec sa
+ * photo, ensuite l'équipe ») est l'une de ces personnes, cochée
+ * « Gérant » : son mot paraît en haut de la page, avant « Notre équipe »,
+ * avec sa photo, son nom et son poste, seulement quand la photo et le
+ * texte sont là (estMotVisible). Il n'est pas montré une seconde fois
+ * dans « Notre équipe », sauf si « aussi dans l'équipe » est coché.
  */
 #[ORM\Entity(repositoryClass: MembreEquipeRepository::class)]
 #[ORM\Table(name: 'site_equipe')]
@@ -27,6 +35,8 @@ class MembreEquipe
 
     public const NOM_MAX = 60;
     public const POSTE_MAX = 80;
+    /** « Le mot du gérant » : court, quelques phrases. */
+    public const MOT_MAX = 900;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -54,6 +64,18 @@ class MembreEquipe
     /** « La personne a accepté que sa photo et son nom paraissent sur le site. » */
     #[ORM\Column]
     private bool $accordPersonne = false;
+
+    /** Le gérant (ou la gérante) : un seul à la fois (ContenuSite). */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $gerant = false;
+
+    /** « Le mot du gérant », sans mise en forme : un paragraphe par ligne. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $motGerant = null;
+
+    /** Le gérant paraît aussi dans « Notre équipe » ; sinon, une seule fois, avec son mot. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $aussiDansEquipe = false;
 
     public function __construct()
     {
@@ -137,10 +159,106 @@ class MembreEquipe
         return $this;
     }
 
+    public function isGerant(): bool
+    {
+        return $this->gerant;
+    }
+
+    public function setGerant(bool $gerant): static
+    {
+        $this->gerant = $gerant;
+
+        return $this;
+    }
+
+    public function getMotGerant(): ?string
+    {
+        return $this->motGerant;
+    }
+
+    /**
+     * Fins de ligne unifiées, espaces superflus et lignes vides en trop
+     * retirés ; le texte trop long est refusé par ContenuSite, pas coupé.
+     */
+    public function setMotGerant(?string $mot): static
+    {
+        $lignes = array_map(static fn (string $l): string => trim((string) preg_replace('/[ \t\x{00A0}]+/u', ' ', $l)), explode("\n", str_replace(["\r\n", "\r"], "\n", (string) $mot)));
+        $mot = trim((string) preg_replace("/\n{3,}/", "\n\n", implode("\n", $lignes)));
+        $this->motGerant = '' === $mot ? null : $mot;
+
+        return $this;
+    }
+
+    /**
+     * Paragraphes du mot, pour la page : une ligne (ou un bloc séparé par
+     * une ligne vide) donne un paragraphe.
+     *
+     * @return list<string>
+     */
+    public function getParagraphesMot(): array
+    {
+        return array_values(array_filter(array_map('trim', explode("\n", (string) $this->motGerant)), static fn (string $p): bool => '' !== $p));
+    }
+
+    /** « Le mot de la gérante » quand le poste le dit, sinon « Le mot du gérant ». */
+    public function getTitreMot(): string
+    {
+        return preg_match('/\bg[ée]rante\b/iu', $this->poste) ? 'Le mot de la gérante' : 'Le mot du gérant';
+    }
+
+    public function isAussiDansEquipe(): bool
+    {
+        return $this->aussiDansEquipe;
+    }
+
+    public function setAussiDansEquipe(bool $aussi): static
+    {
+        $this->aussiDansEquipe = $aussi;
+
+        return $this;
+    }
+
     /** Montrée sur le site : visible, avec son accord, et un nom. */
     public function estVisible(): bool
     {
         return $this->visible && $this->accordPersonne && '' !== $this->nom;
+    }
+
+    /**
+     * « Le mot du gérant » paraît : le gérant est montré (visible, accord,
+     * nom) et sa photo et son texte sont remplis.
+     */
+    public function estMotVisible(): bool
+    {
+        return $this->gerant && $this->estVisible() && null !== $this->photo && null !== $this->motGerant;
+    }
+
+    /**
+     * Ce qui manque encore au mot du gérant pour paraître (écran de
+     * l'atelier), dans l'ordre où le remplir.
+     *
+     * @return list<string>
+     */
+    public function manquesDuMot(): array
+    {
+        if (!$this->gerant) {
+            return [];
+        }
+        $manques = [];
+        if (null === $this->motGerant) {
+            $manques[] = 'le texte';
+        }
+        if (null === $this->photo) {
+            $manques[] = 'la photo';
+        }
+        if (!$this->accordPersonne) {
+            $manques[] = 'son accord';
+        }
+        if (!$this->visible) {
+            $manques[] = 'la case « Visible »';
+        }
+
+        return $manques;
     }
 
     /**
@@ -189,5 +307,14 @@ class MembreEquipe
     public static function textePublic(?string $texte, self $membre): string
     {
         return $membre->isAccordPersonne() ? (string) $texte : '';
+    }
+
+    /**
+     * Filtre du mot : il ne part qu'avec l'accord de la personne, et
+     * seulement si elle est le gérant.
+     */
+    public static function motPublic(?string $mot, self $membre): ?string
+    {
+        return $membre->isAccordPersonne() && $membre->isGerant() ? $mot : null;
     }
 }

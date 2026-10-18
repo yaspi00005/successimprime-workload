@@ -344,7 +344,7 @@ final class CatalogueSynchroTest extends TestCase
         $equipe = CatalogueSynchro::types()['site_equipe'];
         self::assertSame(\App\Entity\MembreEquipe::class, $equipe['classe']);
         self::assertSame(CatalogueSynchro::DESCENDANT, $equipe['sens'], 'saisie à l\'atelier seulement');
-        self::assertSame(['nom', 'poste', 'ordre', 'visible', 'accordPersonne'], $equipe['champs'], 'ni téléphone, ni e-mail, ni salaire, ni compte');
+        self::assertSame(['nom', 'poste', 'ordre', 'visible', 'accordPersonne', 'gerant', 'motGerant', 'aussiDansEquipe'], $equipe['champs'], 'ni téléphone, ni e-mail, ni salaire, ni compte');
         self::assertSame(['photo' => 'site_image'], $equipe['relations'], 'aucun lien vers le personnel ou un utilisateur');
         self::assertTrue(CatalogueSynchro::envoye('site_equipe', false));
         self::assertFalse(CatalogueSynchro::envoye('site_equipe', true));
@@ -355,7 +355,7 @@ final class CatalogueSynchroTest extends TestCase
         self::assertLessThan(array_search('site_equipe', $ordre, true), array_search('site_image', $ordre, true));
 
         // Masquer la personne, retirer son accord ou changer sa photo la renvoie au site.
-        foreach (['visible', 'accordPersonne', 'photo', 'nom', 'poste', 'ordre'] as $champ) {
+        foreach (['visible', 'accordPersonne', 'photo', 'nom', 'poste', 'ordre', 'gerant', 'motGerant', 'aussiDansEquipe'] as $champ) {
             self::assertContains($champ, CatalogueSynchro::champsSuivis('site_equipe'), $champ);
         }
 
@@ -367,6 +367,12 @@ final class CatalogueSynchroTest extends TestCase
         $membre->setAccordPersonne(true);
         self::assertSame('Awa', ($equipe['filtres']['nom'])('Awa', $membre));
         self::assertSame('Graphiste PAO', ($equipe['filtres']['poste'])('Graphiste PAO', $membre));
+
+        // Le mot du gérant : seulement pour le gérant, et avec son accord.
+        self::assertNull(($equipe['filtres']['motGerant'])('Bienvenue.', $membre), 'pas gérant');
+        $membre->setGerant(true);
+        self::assertSame('Bienvenue.', ($equipe['filtres']['motGerant'])('Bienvenue.', $membre));
+        self::assertNull(($equipe['filtres']['motGerant'])('Bienvenue.', $membre->setAccordPersonne(false)), 'sans accord');
     }
 
     public function testLaSuspensionDeLEspaceClientDescendSansSonMotif(): void

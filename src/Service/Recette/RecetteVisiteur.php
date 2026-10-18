@@ -7,6 +7,7 @@ use App\Entity\Commandes;
 use App\Entity\MembreEquipe;
 use App\Entity\PageSite;
 use App\Entity\ProduitConfiguration;
+use App\Repository\MembreEquipeRepository;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\Site\Calculateur;
 use App\Service\Site\ContenuInitial;
@@ -269,6 +270,12 @@ final class RecetteVisiteur
      * masqué avec accord. Les personnes cachées déjà en base (la personne
      * sans accord de la démonstration) sont cherchées aussi. Sans page
      * publiée, la page est publiée le temps du contrôle.
+     *
+     * « Le mot du gérant » aussi : deux gérants témoins, l'un sans accord,
+     * l'autre sans photo ; ni leur mot ni (sans accord) leur nom ne
+     * paraissent. Le gérant montré (la gérante de la démonstration) doit
+     * avoir son mot sur la page, et ne pas être répété dans la grille sauf
+     * « aussi dans l'équipe ».
      */
     private function equipe(BilanRecette $bilan): void
     {
@@ -279,7 +286,12 @@ final class RecetteVisiteur
         $temoin = static fn (string $nom, bool $visible, bool $accord): MembreEquipe => (new MembreEquipe())
             ->setNom($nom.' '.$marque)->setPoste('Témoin de recette')->setOrdre(999)->setVisible($visible)->setAccordPersonne($accord);
         $montre = $temoin('Témoin Montré', true, true);
-        $caches = [$temoin('Témoin SansAccord', true, false), $temoin('Témoin Masqué', false, true)];
+        $caches = [
+            $temoin('Témoin SansAccord', true, false),
+            $temoin('Témoin Masqué', false, true),
+            $temoin('Témoin GérantSansAccord', true, false)->setGerant(true)->setMotGerant('Mot témoin sans accord '.$marque),
+            $temoin('Témoin GérantSansPhoto', true, true)->setGerant(true)->setMotGerant('Mot témoin sans photo '.$marque),
+        ];
         $page = $this->em->getRepository(PageSite::class)->findOneBy(['slug' => 'a-propos']);
         if (null === $page) {
             $texte = ContenuInitial::pages()['a-propos'];
@@ -292,18 +304,33 @@ final class RecetteVisiteur
         }
         $this->em->flush();
         $noms = [];
+        $mots = [];
         foreach ($this->em->getRepository(MembreEquipe::class)->findAll() as $m) {
             if (!$m->estVisible() && '' !== $m->getNom()) {
                 $noms[] = $m->getNom();
             }
+            if (!$m->estMotVisible() && [] !== $m->getParagraphesMot()) {
+                $mots[] = $m->getParagraphesMot()[0];
+            }
         }
+        $gerant = MembreEquipeRepository::gerantDe($this->em->getRepository(MembreEquipe::class)->visibles());
 
         $chemin = $this->routeur->generate('app_site_a_propos');
         $reponse = $this->navigateur->get($chemin);
         $html = html_entity_decode($reponse->contenu, \ENT_QUOTES | \ENT_HTML5, 'UTF-8');
         // La section « Notre équipe » seule : un même prénom ailleurs (un avis) n'est pas une fuite.
         $section = preg_match('#<section[^>]*id="notre-equipe".*?</section>#su', $html, $m) ? mb_strtolower($m[0]) : '';
+        $sectionMot = preg_match('#<section[^>]*id="mot-du-gerant".*?</section>#su', $html, $m) ? mb_strtolower($m[0]) : '';
         $fuites = 0;
+        foreach (array_unique($mots) as $mot) {
+            if (str_contains(mb_strtolower($html), mb_strtolower($mot))) {
+                ++$fuites;
+                $bilan->constater(BilanRecette::FUITE, 'mot_gerant_cache', 'app_site_a_propos', $chemin, 'visiteur', 'mot du gérant montré alors qu\'il est sans accord, sans photo, sans texte ou masqué : « '.mb_substr($mot, 0, 40).'… »');
+            }
+        }
+        // Le gérant montré : son mot paraît, et une seule fois sur la page sauf choix de l'atelier.
+        $motVu = null === $gerant || str_contains($sectionMot, mb_strtolower($gerant->getParagraphesMot()[0]));
+        $doublon = null !== $gerant && !$gerant->isAussiDansEquipe() && str_contains($section, mb_strtolower($gerant->getNom()));
         foreach (array_unique($noms) as $nom) {
             $cherche = mb_strtolower($nom);
             if (str_contains($section, $cherche) || str_contains(mb_strtolower($html), 'photo de '.$cherche)) {
@@ -313,9 +340,13 @@ final class RecetteVisiteur
         }
         $temoinVu = str_contains($section, mb_strtolower($montre->getNom()));
         $bilan->controler(
-            'Visiteur : « Qui sommes-nous ? » ne montre de l\'équipe que les personnes visibles avec leur accord',
-            200 === $reponse->statut && $temoinVu && 0 === $fuites,
-            \sprintf('%d, témoin visible %s, %d personne(s) cachée(s) cherchée(s), %d montrée(s)', $reponse->statut, $temoinVu ? 'montré' : 'absent', \count(array_unique($noms)), $fuites),
+            'Visiteur : « Qui sommes-nous ? » ne montre de l\'équipe (et du mot du gérant) que les personnes visibles avec leur accord',
+            200 === $reponse->statut && $temoinVu && $motVu && !$doublon && 0 === $fuites,
+            \sprintf(
+                '%d, témoin visible %s, %d personne(s) et %d mot(s) cachés cherchés, %d montré(s) ; mot du gérant %s%s',
+                $reponse->statut, $temoinVu ? 'montré' : 'absent', \count(array_unique($noms)), \count(array_unique($mots)), $fuites,
+                null === $gerant ? 'absent (aucun gérant complet)' : ($motVu ? 'montré' : 'manquant'), $doublon ? ', gérant répété dans la grille' : '',
+            ),
         );
     }
 

@@ -24,7 +24,8 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
  * un partenaire sans « accord obtenu », une personne de l'équipe qui n'a
  * pas accepté de paraître restent hors du site, même si la case « publié »
  * (« Visible ») est cochée. Sans cet accord, la photo d'une personne n'est
- * même pas gardée.
+ * même pas gardée. Le mot du gérant suit les règles de sa fiche (photo,
+ * accord) : il n'y a qu'un gérant à la fois.
  */
 final class ContenuSite
 {
@@ -98,16 +99,22 @@ final class ContenuSite
 
     /**
      * Objet vide pour la fiche « nouveau ». Une page ne se crée qu'une
-     * fois, et seulement parmi celles que le site sait afficher.
+     * fois, et seulement parmi celles que le site sait afficher. Avec
+     * $gerant, la nouvelle personne de l'équipe est d'avance le gérant
+     * (bouton « Rédiger le mot du gérant »).
      *
      * @throws \InvalidArgumentException
      */
-    public function nouveau(string $type, ?string $slugPage = null): object
+    public function nouveau(string $type, ?string $slugPage = null, bool $gerant = false): object
     {
         if ('pages' !== $type) {
             $classe = self::TYPES[$type]['classe'];
+            $objet = new $classe();
+            if ($objet instanceof MembreEquipe) {
+                $objet->setGerant($gerant);
+            }
 
-            return new $classe();
+            return $objet;
         }
         $slugPage = (string) $slugPage;
         if (!isset(PageSite::PAGES[$slugPage]) || null !== $this->em->getRepository(PageSite::class)->findOneBy(['slug' => $slugPage])) {
@@ -178,6 +185,12 @@ final class ContenuSite
         $objet instanceof Partenaire || $objet instanceof MembreEquipe ? $objet->setVisible($publier) : $objet->setPublie($publier);
         if ($objet instanceof PageSite || $objet instanceof ArticleConseil || $objet instanceof Annonce) {
             $objet->noterModification($maintenant);
+        }
+        if ($objet instanceof MembreEquipe) {
+            $avertissements = [...$avertissements, ...$this->unSeulGerant($objet)];
+            if ([] !== $manques = $objet->manquesDuMot()) {
+                $avertissements[] = 'Le mot du gérant reste caché sur le site : il manque '.self::enumerer($manques).'.';
+            }
         }
 
         foreach ($nouvelles as $image) {
@@ -377,13 +390,53 @@ final class ContenuSite
         $membre->setNom(self::texte($donnees, 'nom'))
             ->setPoste(self::texte($donnees, 'poste'))
             ->setOrdre((int) ($donnees['ordre'] ?? 0))
-            ->setAccordPersonne(!empty($donnees['accordPersonne']));
+            ->setAccordPersonne(!empty($donnees['accordPersonne']))
+            ->setGerant(!empty($donnees['gerant']))
+            ->setMotGerant(\is_scalar($donnees['motGerant'] ?? null) ? (string) $donnees['motGerant'] : '')
+            ->setAussiDansEquipe(!empty($donnees['aussiDansEquipe']));
         if ('' === $membre->getNom()) {
             $erreurs[] = 'Le nom à afficher est obligatoire (un prénom suffit).';
         }
         if ('' === $membre->getPoste()) {
             $erreurs[] = 'Le poste est obligatoire (« Graphiste PAO », « Accueil et caisse »…).';
         }
+        if (($longueur = mb_strlen((string) $membre->getMotGerant())) > MembreEquipe::MOT_MAX) {
+            $erreurs[] = \sprintf('Le mot du gérant fait %d caractères : %d au plus, pour rester court.', $longueur, MembreEquipe::MOT_MAX);
+        }
+    }
+
+    /**
+     * Un seul gérant : cocher « Gérant » sur une personne le décoche sur
+     * les autres (leur mot reste enregistré, mais ne paraît plus).
+     *
+     * @return list<string> avertissements
+     */
+    private function unSeulGerant(MembreEquipe $gerant): array
+    {
+        if (!$gerant->isGerant()) {
+            return [];
+        }
+        $avertissements = [];
+        foreach ($this->em->getRepository(MembreEquipe::class)->findBy(['gerant' => true]) as $autre) {
+            if ($autre !== $gerant) {
+                $autre->setGerant(false);
+                $avertissements[] = \sprintf('%s n\'est plus indiqué comme gérant : un seul mot du gérant paraît sur le site.', $autre->getNom());
+            }
+        }
+
+        return $avertissements;
+    }
+
+    /**
+     * « le texte, la photo et son accord ».
+     *
+     * @param list<string> $elements
+     */
+    private static function enumerer(array $elements): string
+    {
+        $dernier = array_pop($elements);
+
+        return [] === $elements ? (string) $dernier : implode(', ', $elements).' et '.$dernier;
     }
 
     /**

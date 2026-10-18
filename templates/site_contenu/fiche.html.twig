@@ -18,7 +18,7 @@
 	{% elseif type == 'annonces' and objet.estVisible(maintenant) and objet.pourCible('site') %}
 		{% set apercu = path('app_site_accueil') %}
 	{% elseif type == 'equipe' and objet.estVisible %}
-		{% set apercu = path('app_site_a_propos') ~ '#notre-equipe' %}
+		{% set apercu = path('app_site_a_propos') ~ (objet.estMotVisible ? '#mot-du-gerant' : '#notre-equipe') %}
 	{% endif %}
 {% endif %}
 
@@ -249,7 +249,7 @@
 								<div class="col-md-6">
 									<label class="si-libelle-champ" for="champ-poste">Poste</label>
 									<input type="text" name="poste" id="champ-poste" value="{{ objet.poste }}" maxlength="{{ constant('App\\Entity\\MembreEquipe::POSTE_MAX') }}" class="form-control" list="postes-equipe" placeholder="Graphiste PAO" required>
-									<datalist id="postes-equipe"><option value="Direction"><option value="Accueil et caisse"><option value="Graphiste PAO"><option value="Opérateur grand format"><option value="Finition et pose"><option value="Livraison"></datalist>
+									<datalist id="postes-equipe"><option value="Gérant"><option value="Gérante"><option value="Direction"><option value="Accueil et caisse"><option value="Graphiste PAO"><option value="Opérateur grand format"><option value="Finition et pose"><option value="Livraison"></datalist>
 								</div>
 							</div>
 							<div class="row g-3 mt-0">
@@ -278,6 +278,25 @@
 							</div>
 						{% endif %}
 					</section>
+
+					{% if type == 'equipe' %}
+						{% set motMax = constant('App\\Entity\\MembreEquipe::MOT_MAX') %}
+						<section class="card si-bloc si-sv-encadre si-sv-mot" id="mot-du-gerant">
+							<h2 class="si-sv-sous-titre">Le mot du gérant</h2>
+							{{ _self.interrupteur('gerant', objet.gerant, 'Cette personne est le gérant (ou la gérante)', 'Son mot paraît en haut de « Qui sommes-nous ? », avant « Notre équipe », avec sa photo, son nom et son poste. Un seul gérant : le cocher ici le décoche sur une autre fiche.') }}
+							<label class="si-libelle-champ mt-3" for="champ-mot">Son mot</label>
+							<textarea name="motGerant" id="champ-mot" rows="6" maxlength="{{ motMax }}" class="form-control" data-compteur="{{ motMax }}" aria-describedby="aide-mot" placeholder="Bienvenue chez Succès Imprim. Depuis notre atelier de Bamako…">{{ objet.motGerant }}</textarea>
+							<div id="aide-mot" class="form-text">Quelques phrases, sans mise en forme : chaque ligne devient un paragraphe. Pas de prix ni de montant. Le mot reste caché tant que le texte et la photo ne sont pas remplis, et sans l'accord de la personne.</div>
+							<div class="mt-3">
+								{{ _self.interrupteur('aussiDansEquipe', objet.aussiDansEquipe, 'Le montrer aussi dans « Notre équipe »', 'Décoché : il ne paraît qu\'une fois, avec son mot. Coché : aussi dans la grille de l\'équipe.') }}
+							</div>
+							{% if objet.estMotVisible %}
+								<p class="si-sv-aide mt-3 mb-0">Sur le site (après la prochaine synchronisation pour une modification).</p>
+							{% elseif objet.gerant and objet.manquesDuMot %}
+								<p class="si-sv-aide mt-3 mb-0">Encore caché sur le site : il manque {{ objet.manquesDuMot|join(', ', ' et ') }}.</p>
+							{% endif %}
+						</section>
+					{% endif %}
 
 					{% if type == 'realisations' %}
 						<section class="card si-bloc si-sv-encadre">

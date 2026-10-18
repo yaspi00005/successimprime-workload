@@ -252,6 +252,35 @@
 
 				{% elseif onglet == 'equipe' %}
 					<p class="si-sv-aide">Section « Notre équipe » de la page « Qui sommes-nous ? » : photo, nom et poste. Une personne n'apparaît que si « Visible » est coché <strong>et</strong> qu'elle a accepté que sa photo et son nom paraissent sur le site. Tant que personne n'est affiché, la page garde ses cartes Direction, Atelier, PAO.</p>
+					{# Le mot du gérant : la personne cochée « Gérant », avant l'équipe sur la page. #}
+					{% set gerant = elements|filter(m => m.gerant)|first %}
+					<div class="si-sv-gerant {{ gerant and gerant.estMotVisible ? 'si-sv-gerant-ok' }}">
+						{% if gerant %}
+							{% set fichier = site_image(gerant.photo, 'petite') %}
+							{% if fichier %}
+								<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="" class="si-sv-vignette si-sv-vignette-rond" loading="lazy">
+							{% else %}
+								<span class="si-sv-vignette si-sv-vignette-rond si-sv-initiales" aria-hidden="true">{{ gerant.initiales }}</span>
+							{% endif %}
+							<div class="si-sv-gerant-texte">
+								<strong>{{ gerant.titreMot }}</strong> · {{ gerant.nom }}{{ gerant.poste ? ', ' ~ gerant.poste }}
+								{% if gerant.estMotVisible %}
+									<small class="d-block">{{ _self.etat(true, 'Sur le site') }} en haut de « Qui sommes-nous ? », avant l'équipe ; {{ gerant.aussiDansEquipe ? 'montré aussi dans « Notre équipe »' : 'pas répété dans « Notre équipe »' }}.</small>
+									<q class="si-sv-gerant-extrait">{{ gerant.motGerant|length > 160 ? gerant.motGerant|slice(0, 160)|trim ~ '…' : gerant.motGerant }}</q>
+								{% else %}
+									<small class="d-block">{{ _self.etat(false, '', 'Caché') }} il manque {{ gerant.manquesDuMot|join(', ', ' et ') }}.</small>
+								{% endif %}
+							</div>
+							<a href="{{ path('app_site_contenu_fiche', {type: 'equipe', id: gerant.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a>
+						{% else %}
+							<span class="si-sv-gerant-icone" aria-hidden="true"><i class="fas fa-quote-left"></i></span>
+							<div class="si-sv-gerant-texte">
+								<strong>Le mot du gérant</strong>
+								<small class="d-block">Quelques phrases du gérant, avec sa photo, son nom et son poste, en haut de « Qui sommes-nous ? », avant l'équipe. Caché tant que la photo et le texte ne sont pas remplis, et sans son accord. Déjà dans la liste ? Ouvrez sa fiche et cochez « Gérant ».</small>
+							</div>
+							<a href="{{ path('app_site_contenu_nouveau', {type: 'equipe', gerant: 1}) }}" class="btn btn-sm btn-outline-primary">Rédiger le mot du gérant</a>
+						{% endif %}
+					</div>
 					{% if elements is empty %}
 						<p class="si-sv-vide">Personne pour le moment. Demandez d'abord à chacun s'il accepte de paraître sur le site, avec quelle photo et sous quel nom (un prénom suffit).</p>
 					{% else %}
@@ -271,7 +300,7 @@
 													<span class="si-sv-vignette si-sv-vignette-rond si-sv-initiales" aria-hidden="true">{{ m.initiales }}</span>
 												{% endif %}
 											</td>
-											<td><strong>{{ m.nom }}</strong><small class="d-block text-muted">{{ m.poste }}{{ m.photo ? '' : ' · sans photo' }}</small></td>
+											<td><strong>{{ m.nom }}</strong>{% if m.gerant %} <span class="si-pastille si-pastille-bleu">{{ 'gérante' in m.poste|lower ? 'Gérante' : 'Gérant' }}</span>{% endif %}<small class="d-block text-muted">{{ m.poste }}{{ m.photo ? '' : ' · sans photo' }}</small></td>
 											<td class="si-masque-mobile">{{ m.ordre }}</td>
 											<td><span class="si-pastille {{ m.accordPersonne ? 'si-pastille-vert' : 'si-pastille-orange' }}">{{ m.accordPersonne ? 'Donné' : 'À obtenir' }}</span></td>
 											<td>{{ _self.etat(m.estVisible, 'Visible', 'Masquée') }}</td>

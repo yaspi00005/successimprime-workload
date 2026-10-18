@@ -151,7 +151,7 @@ final class RecetteVisiteur
         $debut = strpos($accueil->contenu, '<section class="si-visite"');
         $bande = false === $debut ? '' : substr($accueil->contenu, $debut, (strpos($accueil->contenu, '</section>', $debut) ?: $debut) - $debut);
         $montants = ContenuSensible::montants(ContenuSensible::texteVisible($bande));
-        $ok = 200 === $accueil->statut && str_contains($bande, 'facade-local-succes-imprim-bamako-') && str_contains($bande, 'Itinéraire') && 1 === preg_match('#href="https://(www\.google\.com/maps/|maps\.app\.goo\.gl/)#', $bande) && [] === $montants;
+        $ok = 200 === $accueil->statut && str_contains($bande, 'facade-local-succes-imprim-bamako-') && 1 === preg_match('#<a href="https://[^"]+"[^>]*>(?:(?!</a>).)*Itinéraire#su', $bande) && [] === $montants;
         $bilan->controler('Visiteur : l\'accueil montre « Venez nous voir » (vraie façade, Itinéraire), sans montant', $ok, \sprintf('%d, bandeau %s, %d montant(s)', $accueil->statut, '' === $bande ? 'absent' : 'présent', \count($montants)));
 
         $contact = $this->navigateur->get($this->routeur->generate('app_site_contact'));

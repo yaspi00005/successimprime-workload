@@ -342,7 +342,7 @@ final class ImportProduits implements TypeImport
         foreach ($majs as $id => $d) {
             $p = $this->em->find(Produits::class, $id);
             if (null !== $p && (self::entier($p->getPrixBase()) !== $d['apres']['prixBase'] || self::entier($p->getPrixB2B()) !== $d['apres']['prixB2B']
-                || (\array_key_exists('nomCommercial', $d['apres']) && $p->getNomCommercial() !== $d['apres']['nomCommercial']))) {
+                || (self::nomCommercialChange($d) && $p->getNomCommercial() !== $d['apres']['nomCommercial']))) {
                 $changes[] = (string) $p->getNom();
             }
         }
@@ -368,7 +368,8 @@ final class ImportProduits implements TypeImport
                 continue;
             }
             $p->setPrixB2B(null)->setPrixBase((float) $d['avant']['prixBase'])->setPrixB2B(null !== $d['avant']['prixB2B'] ? (float) $d['avant']['prixB2B'] : null);
-            if (\array_key_exists('nomCommercial', $d['avant'])) {
+            // Le nom commercial seulement si l'import l'a changé : une case vide l'avait gardé.
+            if (self::nomCommercialChange($d)) {
                 $p->setNomCommercial($d['avant']['nomCommercial']);
             }
             foreach (['prixBase', 'prixB2B'] as $champ) {
@@ -386,6 +387,18 @@ final class ImportProduits implements TypeImport
             }
         }
         $this->em->flush();
+    }
+
+    /**
+     * L'import a-t-il changé le nom commercial de ce produit ? Une case vide
+     * le gardait : son annulation ne le remet pas, et un nom changé depuis
+     * (page Noms commerciaux) ne bloque pas l'annulation des prix.
+     *
+     * @param array{avant: array<string, int|string|null>, apres: array<string, int|string|null>} $d
+     */
+    private static function nomCommercialChange(array $d): bool
+    {
+        return \array_key_exists('nomCommercial', $d['avant']) && $d['avant']['nomCommercial'] !== ($d['apres']['nomCommercial'] ?? null);
     }
 
     private static function entier(float|int|null $v): ?int

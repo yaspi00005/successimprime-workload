@@ -99,6 +99,7 @@
 .rt-puces { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .rt-puces button { border: 1px solid var(--rt-ligne); background: var(--rt-doux); border-radius: 999px; font-size: 11px; font-weight: 700; padding: 4px 10px; color: var(--rt-encre); }
 .rt-puces button[aria-pressed="true"] { background: var(--rt-encre); border-color: var(--rt-encre); color: #fff; }
+.rt-note-echelle { font-size: 12px; margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--rt-doux); color: var(--rt-encre); }
 .rt-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .rt-modes button { border: 1.5px solid var(--rt-ligne); background: #fff; border-radius: 12px; padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .rt-modes button strong { font-size: 13px; }

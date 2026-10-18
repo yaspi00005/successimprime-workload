@@ -69,6 +69,9 @@ final class RetoucheImageController extends AbstractController
         if (null !== $choisi && null !== $source) {
             $l = $largeurMm ?? round($source['largeur'] / 300 * 25.4, 1);
             $h = $hauteurMm ?? round($source['hauteur'] / 300 * 25.4, 1);
+            // Fichier livré à l'échelle (1/10 pour un grand format) : sa taille physique fois l'échelle donne la commande.
+            $recu = G::tailleRecue($source['largeur'], $source['hauteur'], $source['dpi']);
+            $echelle = G::echelleDetectee($recu['largeurMm'], $recu['hauteurMm'], $largeurMm, $hauteurMm);
             $client = $commande->getClients();
             $config = [
                 'source' => [
@@ -97,6 +100,7 @@ final class RetoucheImageController extends AbstractController
                     'dpiSortie' => G::dpiSortieConseille($l, $h),
                 ],
                 'formats' => $this->formatsRapides($largeurMm, $hauteurMm),
+                'recu' => $recu + ['echelle' => $echelle, 'echelles' => G::ECHELLES],
                 'seuils' => [
                     'petitFormatMaxMm' => G::PETIT_FORMAT_MAX_MM,
                     'dpiMinGrand' => G::DPI_MIN_GRAND_FORMAT,

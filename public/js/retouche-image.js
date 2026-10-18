@@ -88,6 +88,31 @@
 		if (!E.dpiModifie) { E.dpi = dpiConseille(); }
 	}
 
+	/* Fichier livré à l'échelle (1/10 pour un grand format) : taille reçue × échelle. */
+	const R = C.recu;
+	const cmTexte = (l, h) => `${mm(l / 10)} × ${mm(h / 10)} cm`;
+	function echelleActive() {
+		return [1, ...R.echelles].find((k) => Math.abs(R.largeurMm * k - E.l) <= Math.max(1, E.l * 0.005) && Math.abs(R.hauteurMm * k - E.h) <= Math.max(1, E.h * 0.005)) || null;
+	}
+	function majEchelle() {
+		const active = echelleActive();
+		$$('[data-rt-echelles] button', racine).forEach((b) => b.setAttribute('aria-pressed', +b.dataset.k === active ? 'true' : 'false'));
+		const note = $('[data-rt-echelle-note]');
+		const textes = [];
+		if (R.echelle && E.l === C.defaut.largeurMm && E.h === C.defaut.hauteurMm) {
+			textes.push(`Fichier reçu au 1/${R.echelle} : agrandi ×${R.echelle} au format commandé (${cmTexte(E.l, E.h)}).`);
+		}
+		if (active && active > 1) {
+			const dpi = dpiEffectif(placement());
+			const mini = grandFormat() ? S.dpiMinGrand : S.dpiMinPetit;
+			if (dpi < mini) {
+				textes.push(`À taille réelle, l'image ne donne que ${dpi} dpi. Un fichier au 1/${active} doit être fait à ${active} fois la résolution : ${mini * active} dpi pour ${mini} dpi à l'impression. Pour un fichier vectoriel (PDF, AI, EPS), passer par l'outil de montage, qui agrandit sans perte.`);
+			}
+		}
+		note.textContent = textes.join(' ');
+		note.hidden = textes.length === 0;
+	}
+
 	function controles() {
 		const p = placement();
 		const dpi = dpiEffectif(p);
@@ -473,6 +498,7 @@
 
 		// Formats rapides.
 		$$('[data-rt-formats] button', racine).forEach((b) => b.setAttribute('aria-pressed', Math.abs(+b.dataset.l - E.l) < 0.5 && Math.abs(+b.dataset.h - E.h) < 0.5 ? 'true' : 'false'));
+		majEchelle();
 
 		const p = placement();
 		const dpi = dpiEffectif(p);
@@ -694,6 +720,7 @@
 		if (groupe && groupe.matches('[data-rt-type-contour]')) { E.contour.type = b.dataset.valeur; E.contour.actif = true; return rendre(); }
 		if (groupe && groupe.matches('[data-rt-format]')) { E.format = b.dataset.valeur; if (E.nomModifie) { E.nom = E.nom.replace(/\.(pdf|png|jpe?g)$/i, '') + '.' + (E.format === 'jpeg' ? 'jpg' : E.format); } return rendre(); }
 		if (groupe && groupe.matches('[data-rt-formats]')) { E.l = +b.dataset.l; E.h = +b.dataset.h; suivreDpi(); return rendre(); }
+		if (groupe && groupe.matches('[data-rt-echelles]')) { E.l = Math.round(R.largeurMm * +b.dataset.k * 10) / 10; E.h = Math.round(R.hauteurMm * +b.dataset.k * 10) / 10; suivreDpi(); return rendre(); }
 		if (b.matches('[data-rt-onglet]')) { E.onglet = b.dataset.rtOnglet; return rendre(); }
 		if (b.matches('[data-rt-cadenas]')) { E.proportions = !E.proportions; return rendre(); }
 		if (b.closest('[data-rt-couleurs]') && b.dataset.couleur) { E.contour.couleur = b.dataset.couleur; return rendre(); }
@@ -814,6 +841,8 @@
 	 * Démarrage
 	 * ------------------------------------------------------------------ */
 	$('[data-rt-formats]').innerHTML = C.formats.map((f) => `<button type="button" data-l="${f.largeurMm}" data-h="${f.hauteurMm}" aria-pressed="false">${echapper(f.libelle)}</button>`).join('');
+	$('[data-rt-recu]').textContent = `Taille du fichier : ${cmTexte(R.largeurMm, R.hauteurMm)} ` + (R.declare ? `à ${R.dpi} dpi.` : `(pas de résolution dans le fichier : lue à ${R.dpi} dpi).`) + ' Agrandir selon l\'échelle du fichier :';
+	$('[data-rt-echelles]').innerHTML = [1, ...R.echelles.slice().reverse()].map((k) => `<button type="button" data-k="${k}" aria-pressed="false" title="${cmTexte(R.largeurMm * k, R.hauteurMm * k)}">${k === 1 ? 'Taille réelle' : `1/${k} → ×${k}`}</button>`).join('');
 	window.addEventListener('resize', () => rendre());
 
 	(async function charger() {

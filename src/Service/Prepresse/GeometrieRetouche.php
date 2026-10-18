@@ -83,6 +83,52 @@ final class GeometrieRetouche
         ];
     }
 
+    /** Échelles de livraison reconnues : un grand format arrive souvent au 1/10, parfois au 1/5, 1/4 ou 1/2. */
+    public const ECHELLES = [10, 5, 4, 2];
+    /** Écart toléré entre le fichier agrandi et la taille commandée pour reconnaître une échelle. */
+    public const ECHELLE_TOLEREE = 0.04;
+    /** Résolution supposée d'une image qui n'en déclare pas (celle des logiciels de dessin par défaut). */
+    public const DPI_SANS_DECLARATION = 72;
+
+    /**
+     * Taille physique du fichier reçu (pixels ÷ résolution déclarée), en mm.
+     *
+     * @return array{largeurMm: float, hauteurMm: float, dpi: int, declare: bool}
+     */
+    public static function tailleRecue(int $largeurPx, int $hauteurPx, ?int $dpi): array
+    {
+        $declare = null !== $dpi && $dpi > 0;
+        $d = $declare ? $dpi : self::DPI_SANS_DECLARATION;
+
+        return [
+            'largeurMm' => round($largeurPx / $d * 25.4, 1),
+            'hauteurMm' => round($hauteurPx / $d * 25.4, 1),
+            'dpi' => $d,
+            'declare' => $declare,
+        ];
+    }
+
+    /**
+     * Échelle du fichier reçu par rapport à la taille commandée (10 pour
+     * un fichier au 1/10 : 12 × 20 cm reçu pour 120 × 200 cm commandé),
+     * dans un sens ou tourné. null si aucune échelle connue ne colle.
+     */
+    public static function echelleDetectee(float $recuL, float $recuH, ?float $commandeL, ?float $commandeH): ?int
+    {
+        if ($recuL <= 0 || $recuH <= 0 || null === $commandeL || null === $commandeH || $commandeL <= 0 || $commandeH <= 0) {
+            return null;
+        }
+        $proche = static fn (float $a, float $b): bool => abs($a - $b) <= $b * self::ECHELLE_TOLEREE;
+        foreach (self::ECHELLES as $k) {
+            if (($proche($recuL * $k, $commandeL) && $proche($recuH * $k, $commandeH))
+                || ($proche($recuL * $k, $commandeH) && $proche($recuH * $k, $commandeL))) {
+                return $k;
+            }
+        }
+
+        return null;
+    }
+
     public static function px(float $mm, int $dpi): int
     {
         return max(1, (int) round($mm / 25.4 * $dpi));

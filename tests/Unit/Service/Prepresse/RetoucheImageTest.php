@@ -149,4 +149,24 @@ final class RetoucheImageTest extends TestCase
 
         return [($c >> 16) & 0xFF, ($c >> 8) & 0xFF, $c & 0xFF];
     }
+
+    public function testFichierAuDixiemeReconnu(): void
+    {
+        // 12 × 20 cm à 300 dpi reçu pour une bâche de 120 × 200 cm.
+        $recu = G::tailleRecue(1417, 2362, 300);
+        self::assertSame(120.0, $recu['largeurMm']);
+        self::assertSame(200.0, $recu['hauteurMm']);
+        self::assertSame(10, G::echelleDetectee($recu['largeurMm'], $recu['hauteurMm'], 1200.0, 2000.0));
+        self::assertSame(10, G::echelleDetectee($recu['largeurMm'], $recu['hauteurMm'], 2000.0, 1200.0), 'tourné');
+        self::assertSame(4, G::echelleDetectee(300.0, 500.0, 1200.0, 2000.0));
+        self::assertNull(G::echelleDetectee(150.0, 200.0, 1200.0, 2000.0), 'proportions différentes');
+        self::assertNull(G::echelleDetectee(120.0, 200.0, null, null), 'pas de taille commandée');
+    }
+
+    public function testSansResolutionDeclareeLueA72Dpi(): void
+    {
+        $recu = G::tailleRecue(720, 720, null);
+        self::assertFalse($recu['declare']);
+        self::assertSame(254.0, $recu['largeurMm']);
+    }
 }

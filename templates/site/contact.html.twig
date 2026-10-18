@@ -70,9 +70,9 @@
 
 			<div class="si-contact-infos">
 				{% if photo_allee %}
-					{# L'allée en grand au-dessus de la carte (photos du local du 17/10/2026). #}
+					{# L'allée en grand au-dessus de la carte (photos du local du 17/10/2026) : première photo de la page, chargée tout de suite. #}
 					<figure class="si-local-entete">
-						{{ include('site/_photo.html.twig', {photo: photo_allee, sizes: '(max-width: 960px) calc(100vw - 32px), (max-width: 1180px) calc(52vw - 30px), 590px'}) }}
+						{{ include('site/_photo.html.twig', {photo: photo_allee, sizes: '(max-width: 960px) calc(100vw - 32px), (max-width: 1180px) calc(52vw - 30px), 590px', immediate: true}) }}
 						<figcaption>L'allée qui mène à notre entrée, sous le balcon rond.</figcaption>
 					</figure>
 				{% endif %}

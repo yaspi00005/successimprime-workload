@@ -1,6 +1,6 @@
 # Modifier un devis ou une commande enregistré
 
-Ce que fait l'enregistrement d'un devis ou d'une commande depuis la saisie du comptoir (`/devis/{id}/edit`, `/commandes/{id}/edit`).
+Ce que fait l'enregistrement d'un devis ou d'une commande depuis la saisie du comptoir (`/devis/{id}/edit`, `/commandes/{id}/edit`), et le calcul des pièces au m² des lignes au m².
 
 ## Enregistrer sans rien changer ne change rien
 
@@ -39,6 +39,38 @@ Toutes les erreurs s'affichent en haut du formulaire, celles des lignes comprise
 
 > Ligne 2 « Bâche imprimée » : la largeur et la longueur sont obligatoires pour un calcul au mètre carré.
 
+## Pièces au m² (petites pièces)
+
+Demande de Yaya du 16/10/2026 : pour les autocollants, étiquettes et autres petites pièces vendues au m², savoir combien de pièces tiennent sur 1 m × 1 m en comptant 1 mm d'espacement en largeur et en hauteur, et pouvoir donner la quantité en pièces ou en m², au comptoir comme en ligne.
+
+**Le calcul**
+- Sur une rangée de 1 000 mm, n pièces de L mm prennent n × L + (n − 1) × e (e : l'espacement). Donc n = plancher((1 000 + e) ÷ (L + e)) en largeur, pareil en hauteur, et pièces au m² = colonnes × rangées.
+- La pièce tournée d'un quart de tour est essayée aussi, la meilleure est gardée (à égalité, le sens saisi).
+- Une pièce plus grande que 1 m d'un côté donne 0 (« pièce plus grande que 1 m ») : la ligne reste au calcul au m² habituel.
+- Exemples, espacement 1 mm : 5 × 5 cm → 19 × 19 = 361 pièces au m² ; carte 8,5 × 5,5 cm → 11 × 17 = 187 (autant dans l'autre sens) ; 100 × 100 cm → 1 ; 100,1 × 1 cm → 0.
+- Quantité en pièces : surface facturée = pièces ÷ pièces au m², arrondie au centième de m² supérieur (1 000 autocollants de 5 × 5 cm : 2,78 m², contre 2,50 m² au calcul habituel).
+- Quantité en m² : pièces = plancher(m² × pièces au m²) (2,5 m² de 5 × 5 cm : 902 pièces, facturées 2,50 m²).
+
+**Le réglage** : Réglages › Paramètres › Ventes › « Pièces au m² » (Direction) : espacement en mm, de 0 à 20, au dixième, 1 mm par défaut. Il descend sur le site (liste blanche `pieces_m2`). Le changer ne touche pas une ligne déjà en pièces au m² : elle garde l'espacement avec lequel elle a été chiffrée.
+
+**Au comptoir** (saisie d'un devis ou d'une commande)
+- Sous une ligne produit au m² dont la largeur et la longueur sont saisies, l'encadré « Pièces au m² » dit combien de pièces tiennent sur 1 m² : « 361 pièces au m² (19 × 19, espacement 1 mm) ».
+- Case décochée (par défaut) : rien ne change, calcul habituel (surface d'une pièce × quantité). L'encadré dit seulement ce que la case facturerait : « Calcul habituel : 2,50 m². Cochez pour facturer 2,78 m², espacement et chutes compris. »
+- Case cochée : la ligne est facturée sur la surface en pièces au m², et l'on choisit « Quantité saisie en pièces » ou « en m² ». En m², on tape la surface voulue : la quantité (pièces) est calculée et ne se tape plus ; changer la taille refait les pièces depuis la même surface. Les deux valeurs s'affichent en direct (« 2,50 m² = 902 pièces, facturées 2,50 m² »), et le récapitulatif de la ligne dit « Surface facturée … m² (pièces au m²) ».
+- La quantité de la ligne reste toujours le nombre de pièces : production, livraison et finitions comptées par pièce ne changent pas. Seul le nombre de m² facturés change : prix au m² × surface facturée, et une remise par m² suit la même surface.
+- Le serveur refait tout à l'enregistrement : de la page, il ne reprend que la case (champ caché `piecesAuM2`, « 1 » ou « 0 » ; absent, rien ne change). L'espacement vient de la ligne si elle l'avait déjà, sinon du réglage. La case n'est retenue que pour une ligne produit au m² dont la pièce tient sur 1 m ; une ligne passée à un autre mode de calcul revient au calcul habituel.
+- Fiche du devis, fiche de la commande : « 361 pièces au m² (19 × 19, espacement 1 mm) · 2,78 m² facturés ». PDF du devis et de la facture : « 2,78 m² · 361 pièces au m² ». Jamais de montant dans ces mentions.
+- Devis accepté → commande : la ligne garde son mode de calcul et son espacement. Correction au passage : avant, une ligne au m² devenait « unité » dans la commande et se recalculait prix × quantité au premier enregistrement.
+- Total d'origine conservé : cocher ou décocher la case change le calcul, la ligne est recalculée ; réenregistrée sans rien changer, elle garde son total.
+- Statistiques (m² imprimés), planning des machines et fidélité au m² comptent la surface facturée de la ligne.
+
+**En ligne** : demande de devis sans compte, voir [docs/site-vitrine.md](site-vitrine.md), « Demander un devis » ; Nouvelle commande de l'espace client, voir [docs/espace-client.md](espace-client.md), section « Quantité en pièces ou en m² ».
+
+**À ne pas confondre** avec la quantité de « Mes produits » (`ConversionQuantite`, docs/mes-produits.md) : elle passe des m² aux pièces avec la surface de la pièce seule, sans espacement, et ne change pas.
+
+Dans le code : `PiecesParMetreCarre` (calcul et réglage, testé sans base), `PiecesAuM2Trait` (colonne `espacement_pieces_m2` de `commandes_details` et `devis_details`, migration `Version20261018161500`), `ChampPiecesAuM2` (case des formulaires), `PiecesM2Extension` (`pieces_m2_espacement()`, `pieces_m2_ligne()`), gabarits `partials/_pieces_m2_ligne.html.twig` (comptoir) et `partials/_pieces_m2.html.twig` (site, espace client), `public/js/pieces-m2.js` (même calcul dans la page, sans prix), `public/css/pieces-m2.css`.
+
 ## À trancher
 
 - Finition au m² : le serveur compte prix × quantité, l'aperçu du devis compte prix × quantité × surface, et une commande en ligne prix × surface × exemplaires. Le serveur fait foi à l'enregistrement.
+- Pièces au m² : la case se coche ligne par ligne, jamais d'office. La cocher d'office sous une certaine taille de pièce ? (Au-dessus, ce serait faux : une pièce de 100 × 70 cm tient une fois au m² et serait facturée 1 m² au lieu de 0,70.)

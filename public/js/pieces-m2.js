@@ -279,9 +279,10 @@
             champM2.addEventListener('input', function () {
                 const c = bloc.pm2Calcul;
                 const n = c && !c.tropGrande ? pieces(lireNombre(champM2), c.parM2) : 0;
-                if (n >= 1) {
+                if (n >= 1 && quantite && quantite.value !== String(n)) {
                     ecrire(quantite, n);
                 } else {
+                    // Même nombre de pièces (ou aucune) : la phrase se refait quand même.
                     recalculer();
                 }
             });

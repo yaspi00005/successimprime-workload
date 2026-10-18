@@ -605,7 +605,8 @@ public function controler(
                     'message' => sprintf(
                         "Bonjour, le BAT (version %d) de votre %s, commande %s, est prêt chez Succès Imprim. Merci de nous dire s'il est bon à imprimer ou ce qu'il faut corriger. Suivi : %s",
                         $version,
-                        TableauProduction::titre($detail),
+                        // Message au client : le nom commercial d'abord (docs/noms-commerciaux.md).
+                        TableauProduction::titreClient($detail),
                         $commande->getNumero(),
                         $this->generateUrl('app_espace_suivre', ['numero' => $commande->getNumero()], \Symfony\Component\Routing\Generator\UrlGeneratorInterface::ABSOLUTE_URL),
                     ),

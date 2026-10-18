@@ -4,6 +4,7 @@ namespace App\Tests\Unit\Service;
 
 use App\Entity\CommandesDetails;
 use App\Entity\ControlePrePresse;
+use App\Entity\Produits;
 use App\Service\TableauProduction;
 use PHPUnit\Framework\TestCase;
 
@@ -35,5 +36,16 @@ final class TableauProductionTest extends TestCase
         self::assertNull(TableauProduction::retard(new \DateTimeImmutable('2026-10-11'), $maintenant), 'Une date sans heure court jusqu\'au soir.');
         self::assertSame('4 h', TableauProduction::retard(new \DateTimeImmutable('2026-10-11 12:00'), $maintenant));
         self::assertSame('1 j', TableauProduction::retard(new \DateTimeImmutable('2026-10-09'), $maintenant), 'Due le 9 au soir, 40 h plus tard.');
+    }
+
+    public function testTitreDUneLignePourLeClient(): void
+    {
+        // Message « BAT prêt » au client : le nom commercial d'abord (docs/noms-commerciaux.md) ; l'ERP garde la désignation.
+        $ligne = (new CommandesDetails())->setDesignation('Vinyle adhésif')->setQuantite(3)
+            ->setProduit((new Produits())->setNom('Vinyle adhésif')->setNomCommercial('Autocollant'));
+        self::assertSame('Autocollant · Vinyle adhésif × 3', TableauProduction::titreClient($ligne));
+        self::assertSame('Vinyle adhésif × 3', TableauProduction::titre($ligne));
+        self::assertSame('Pose vitrine × 1', TableauProduction::titreClient((new CommandesDetails())->setDesignation('Pose vitrine')->setQuantite(1)));
+        self::assertSame('Travail × 2', TableauProduction::titreClient((new CommandesDetails())->setQuantite(2)));
     }
 }

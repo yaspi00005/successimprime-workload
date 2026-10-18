@@ -51,12 +51,13 @@ final class InterrupteursEnLigneTest extends TestCase
         (new NouvelleCommande($this->em(NouvelleCommande::EN_ATTENTE_MAX), null, static fn (): Parametres => self::parametres([])))->verifierEnAttente(new Clients());
     }
 
-    public function testPaiementEnLigneCoupeParDefaut(): void
+    public function testPaiementEnLigneOuvertParDefautQuandLesClesSontPosees(): void
     {
-        // Clés posées, interrupteur jamais enregistré : fermé (défaut de la tuile).
+        // Clés posées, interrupteur jamais enregistré : ouvert (défaut de la
+        // tuile), comme avant que l'interrupteur soit appliqué.
         self::assertTrue($this->orangeMoney([])->estConfigure());
-        self::assertFalse($this->orangeMoney([])->estOuvert());
-        self::assertTrue($this->orangeMoney(['paiement_en_ligne' => true])->estOuvert());
+        self::assertTrue($this->orangeMoney([])->estOuvert());
+        self::assertFalse($this->orangeMoney(['paiement_en_ligne' => false])->estOuvert());
     }
 
     public function testSansClesLePaiementResteFermeMemeAllume(): void

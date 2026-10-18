@@ -1,0 +1,13 @@
+{#
+	Lecteur d'une note vocale dans un fil (docs/messagerie-clients.md) : durée enregistrée affichée
+	(un WebM de Chrome n'annonce pas toujours la sienne au lecteur). Variables : element (MessageClient
+	ou NoteConversation), url (route qui vérifie les droits).
+#}
+<div class="nv-lecteur">
+	{% if note_vocale_presente(element) %}
+		<audio controls preload="metadata" src="{{ url }}" aria-label="Note vocale de {{ element.vocaleDureeTexte }}"></audio>
+		<span class="nv-duree" title="Durée de la note vocale">🎤 {{ element.vocaleDureeTexte }}</span>
+	{% else %}
+		<span class="nv-attente">🎤 Note vocale · {{ element.vocaleDureeTexte }} · en cours de réception</span>
+	{% endif %}
+</div>

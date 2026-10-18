@@ -63,6 +63,8 @@ final class DroitsEspace
         'app_espace_utilisateur',
         'app_espace_messages',
         'app_espace_message',
+        // Écoute d'une note vocale de la messagerie (docs/messagerie-clients.md) : Messages lui est fermé.
+        'app_espace_message_vocale_ecouter',
         // Atelier 3D (docs/atelier-3d.md) : il ne sert qu'à commander.
         'app_espace_atelier',
         'app_espace_atelier_prix',

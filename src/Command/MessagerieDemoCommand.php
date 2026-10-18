@@ -9,7 +9,9 @@ use App\Entity\ControlePrePresse;
 use App\Entity\ConversationClient;
 use App\Entity\Devis;
 use App\Entity\User;
+use App\Entity\MessageClient;
 use App\Service\Messagerie\Conversations;
+use App\Service\Messagerie\NotesVocales;
 use App\Service\Messagerie\ReglesReponse;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,7 +30,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * retard et une note interne ; un devis répondu en retard ; une demande
  * clôturée et notée ; une clôture proposée ; une question de paiement non
  * assignée ; pour Amadou Sow, une question sans réponse et une ancienne
- * demande clôturée. Les messages passent par le vrai service : délais,
+ * demande clôturée ; des notes vocales (client, réponse et note interne
+ * sur les t-shirts, une d'Amadou Sow). Les messages passent par le vrai service : délais,
  * retards et points retirés sont ceux que l'application calcule.
  */
 #[AsCommand(name: 'app:messagerie:demo', description: 'Conversations fictives des clients de démonstration, ou les enlève avec --purger.')]
@@ -48,6 +51,8 @@ final class MessagerieDemoCommand extends Command
         private readonly Connection $connexion,
         private readonly Conversations $conversations,
         private readonly ReglesReponse $regles,
+        private readonly NotesVocales $notesVocales,
+        #[Autowire('%kernel.project_dir%')] private readonly string $projet,
         #[Autowire('%kernel.environment%')] private readonly string $environnement,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
     ) {
@@ -66,6 +71,10 @@ final class MessagerieDemoCommand extends Command
             $io->error('Démonstration refusée en production et sur le site en ligne.');
 
             return Command::FAILURE;
+        }
+        // Fichiers des notes vocales de la démonstration, avant leurs lignes.
+        foreach ($this->connexion->fetchFirstColumn("SELECT n.vocale_nom FROM note_conversation n JOIN conversation_client c ON c.id = n.conversation_id JOIN clients cl ON cl.id = c.client_id WHERE n.vocale_nom IS NOT NULL AND (cl.code LIKE 'DEMO-%' OR cl.id >= 900000) UNION SELECT m.vocale_nom FROM message_client m JOIN clients cl ON cl.id = m.client_id WHERE m.vocale_nom IS NOT NULL AND (cl.code LIKE 'DEMO-%' OR cl.id >= 900000)") as $nom) {
+            $this->notesVocales->retirer(['nom' => (string) $nom]);
         }
         foreach (self::PURGE as $sql) {
             $this->connexion->executeStatement($sql);
@@ -104,8 +113,18 @@ final class MessagerieDemoCommand extends Command
             $this->conversations->ecrireClient($oumar, $c, 'C\'est parfait, je viens de valider le BAT dans l\'espace. Merci !', $lendemain->setTime(10, 50));
             $this->conversations->repondre($c, $mariam, 'Merci ! L\'impression est lancée, livraison prévue vendredi matin.', null, null, $lendemain->setTime(11, 2));
             $c->setLuClientLe($lendemain->setTime(11, 30));
+            // Notes vocales (docs/messagerie-clients.md) : le client explique sa demande à voix haute, puis l'écrit ;
+            // la caisse en garde une pour l'équipe. Le dernier message reste la relance écrite.
+            $vocale = $this->vocale();
+            if (null !== $vocale) {
+                $this->conversations->ecrireClient($oumar, $c, MessageClient::libelleVocale($vocale['duree']), $this->ilYA(97), $vocale);
+            }
             $this->conversations->ecrireClient($oumar, $c, 'Bonjour, est-ce qu\'on peut ajouter 5 t-shirts taille XL ? Deux nouveaux serveurs arrivent lundi.', $this->ilYA(95));
             $this->conversations->noteInterne($c, $aminata, '@Mariam le client relance pour les 5 XL : il reste du stock en XL blanc, je peux préparer l\'ajout si tu veux.', $this->ilYA(12));
+            $vocale = $this->vocale();
+            if (null !== $vocale) {
+                $this->conversations->noteInterne($c, $aminata, MessageClient::libelleVocale($vocale['duree']), $this->ilYA(10), $vocale);
+            }
             ++$n;
         }
 
@@ -164,6 +183,10 @@ final class MessagerieDemoCommand extends Command
             $c = $this->conversations->ouvrir($sow, $recente, null, null, null, 'Bonjour, je peux passer récupérer mon t-shirt demain matin ?', $j);
             $this->conversations->repondre($c, $mariam, 'Bonjour, oui sans problème : il est prêt, l\'accueil ouvre à 8 h.', null, null, $j->setTime(9, 14));
             $c->setLuClientLe($j->setTime(9, 30));
+            $vocale = $this->vocale();
+            if (null !== $vocale) {
+                $this->conversations->repondre($c, $mariam, MessageClient::libelleVocale($vocale['duree']), null, null, $j->setTime(9, 16), $vocale);
+            }
 
             $this->conversations->ouvrir($sow, null, null, 'Mugs personnalisés', ConversationClient::SUJET_AUTRE, 'Bonsoir, vous faites aussi les mugs avec photo ? Il m\'en faudrait 10 pour un anniversaire.', $this->ilYA(41));
             $n += 3;
@@ -186,6 +209,19 @@ final class MessagerieDemoCommand extends Command
         }
 
         return $t;
+    }
+
+    /**
+     * Une note vocale de démonstration (donnees-demo/note-vocale-demo.ogg),
+     * rangée comme un vrai envoi.
+     *
+     * @return array{nom: string, type: string, taille: int, duree: int, empreinte: string}|null
+     */
+    private function vocale(): ?array
+    {
+        $contenu = @file_get_contents($this->projet.'/donnees-demo/note-vocale-demo.ogg');
+
+        return false === $contenu ? null : $this->notesVocales->ranger($contenu);
     }
 
     private function user(int $id): User

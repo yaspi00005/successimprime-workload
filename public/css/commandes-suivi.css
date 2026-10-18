@@ -262,3 +262,6 @@ a.si-cs-carte:hover { border-color: #DCE5F3; color: inherit; }
 @media print {
 	.si-cs-actions, .si-cs-retour, .si-cs-conversation { display: none !important; }
 }
+/* Notes vocales de la commande (docs/messagerie-clients.md). */
+.si-cs-conversation .si-cs-vocale { margin-top: .35rem; }
+.si-cs-conversation .si-cs-vocale small { display: block; color: #8A97AB; font-size: .7rem; }

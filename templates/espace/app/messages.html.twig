@@ -9,7 +9,7 @@
 #}
 {% block title %}Messages{% endblock %}
 {% block page_classe %} ms-page{{ (active and not auto) or nouvelle ? ' ms-avec-fil' }}{% endblock %}
-{% block styles %}<link href="{{ asset('css/messagerie-espace.css') }}" rel="stylesheet">{% endblock %}
+{% block styles %}<link href="{{ asset('css/messagerie-espace.css') }}" rel="stylesheet"><link href="{{ asset('css/note-vocale.css') }}" rel="stylesheet">{% endblock %}
 {% block entete %}
 	{% if (active and not auto) or (nouvelle and liste is not empty) %}
 		<a class="ec-retour" href="{{ path('app_espace_messages', cloturees ? {onglet: 'cloturees'} : {}) }}"><span class="fl">‹</span>{{ active ? active|conversation_titre : 'Nouvelle demande' }}</a>
@@ -159,7 +159,8 @@
 									{{ agent.disque(s, 'moyen') }}
 									<div>
 										<p class="ms-bulle-tete"><b>{{ s.nom }}</b>{% if s.metier %} <span class="ms-role t{{ s.teinte ?? 'b' }}">{{ s.metier }}</span>{% endif %} <span class="ms-heure">{{ m.creeLe|date('H:i') }}{% if m.delaiMinutes is not null %} · répondu en {{ m.delaiMinutes|duree_messagerie }}{% endif %}{% if e.lu %} · Lu <span aria-label="lu">✓✓</span>{% endif %}</span></p>
-										<div class="ms-texte">{{ e.texte|nl2br }}</div>
+										{% if e.texte != '' %}<div class="ms-texte">{{ e.texte|nl2br }}</div>{% endif %}
+										{% if m.aUneNoteVocale %}{% include 'messages_clients/_lecteur_vocal.html.twig' with {element: m, url: path('app_espace_message_vocale_ecouter', {id: c.publicId, message: m.publicId})} only %}{% endif %}
 										{% if m.bat %}
 											<a class="ms-piece" href="{{ path('app_espace_bat', {id: m.bat.id}) }}"><span class="ms-piece-image" aria-hidden="true">BAT</span><span><b>BAT · {{ m.commande ? m.commande.numero }}</b><small>{{ m.bat.batValide ? 'validé' : 'à voir et valider' }}</small></span></a>
 										{% endif %}
@@ -172,7 +173,8 @@
 								<div class="ms-bulle client"{{ loop.last ? ' id="dernier"' }}>
 									<div>
 										<p class="ms-bulle-tete"><b>{{ m.auteur == coque.personne or m.auteur is null ? 'Vous' : m.auteur }}</b> <span class="ms-heure">{{ m.creeLe|date('H:i') }}{% if e.lu %} · Lu <span aria-label="lu">✓✓</span>{% endif %}</span></p>
-										<div class="ms-texte">{{ e.texte|nl2br }}</div>
+										{% if e.texte != '' %}<div class="ms-texte">{{ e.texte|nl2br }}</div>{% endif %}
+										{% if m.aUneNoteVocale %}{% include 'messages_clients/_lecteur_vocal.html.twig' with {element: m, url: path('app_espace_message_vocale_ecouter', {id: c.publicId, message: m.publicId})} only %}{% endif %}
 									</div>
 									<span class="ec-avatar ms-moi" aria-hidden="true">{{ m.auteur == coque.personne or m.auteur is null ? coque.initiales : m.auteur|split(' ')|slice(0, 2)|map(w => w|first|upper)|join('') }}</span>
 								</div>
@@ -219,6 +221,8 @@
 					<form class="ms-ecrire" method="post" action="{{ path('app_espace_message_ecrire', {id: c.publicId}) }}" id="{{ c.clotureEnAttente ? 'ecrire-form' : 'ecrire' }}">
 						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 						<a class="ms-trombone" href="{{ path('app_espace_fichiers') }}" title="Envoyer un fichier (Fichiers et BAT)" aria-label="Envoyer un fichier"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5 12.4 20a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg></a>
+						{# Note vocale (docs/messagerie-clients.md) : 3 min au plus, réécoutée avant l'envoi. #}
+						<div class="nv-flottant ms-vocale">{% include 'messages_clients/_note_vocale.html.twig' with {url: path('app_espace_message_vocale', {id: c.publicId}), jeton: csrf_token('espace'), classe: 'ms-vocale-bouton', libelle: 'Note vocale'} only %}</div>
 						<label for="ms-ecrire" class="ms-cache">Votre message</label>
 						<textarea id="ms-ecrire" name="texte" maxlength="{{ max }}" required rows="1" placeholder="Écrire un message…"></textarea>
 						<button type="submit" class="ec-bouton bleu ms-envoyer" aria-label="Envoyer"><span class="ec-bureau">Envoyer</span><span class="ec-telephone">➤</span></button>
@@ -236,6 +240,7 @@
 {% endblock %}
 
 {% block scripts %}
+	<script src="{{ asset('js/note-vocale.js') }}" defer></script>
 	<script>
 		// Le fil s'ouvre sur le dernier message ; la saisie grandit avec le texte.
 		(function () {

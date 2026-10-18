@@ -36,6 +36,7 @@
 	{{ parent() }}
 	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
 	<link href="{{ asset('css/commandes-suivi.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/note-vocale.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block body %}
@@ -422,7 +423,7 @@
 			{% if client and peutMessages %}
 				{% set conv = fiche.conversation %}
 				{% set ouvrable = conv and is_granted('MESSAGERIE_VOIR', conv.conversation) %}
-				<div class="card si-cs-bloc si-cs-conversation">
+				<div class="card si-cs-bloc si-cs-conversation" id="conversation">
 					<div class="si-cs-bloc-tete">
 						<h4>Conversation</h4>
 						{% if conv and conv.enRetard %}<span class="si-cs-chrono rouge">En retard · attend depuis {{ conv.attenteMinutes|duree_messagerie }}</span>
@@ -448,6 +449,25 @@
 					{% elseif (not conv or conv.conversation.estCloturee) and not site_en_ligne() %}
 						<form method="post" action="{{ path('app_messages_clients_demarrer', {type: 'commande', id: commande.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('messages-clients') }}"><button class="btn btn-link p-0 si-cs-lien-fort">{{ conv ? 'Nouvelle conversation sur ' ~ commande.numero : 'Écrire au client' }} →</button></form>
 					{% endif %}
+					{# Notes vocales de la commande (docs/messagerie-clients.md) : écoute selon les droits de la conversation. #}
+					{% if ouvrable %}
+						{% set vocales = notes_vocales(conv.conversation, 3) %}
+						{% if vocales is not empty %}
+							<div class="si-cs-vocales">
+								<small class="text-muted d-block mt-2">Notes vocales</small>
+								{% for v in vocales %}
+									{% set el = v.element %}
+									<div class="si-cs-vocale">
+										<small>{{ v.genre == 'note' ? '🔒 Note interne · ' ~ (el.auteur ? (el.auteur.employe ? el.auteur.employe.nomComplet : el.auteur.username) : 'équipe') : (el.estDeLAtelier ? (el.auteur ?? 'Succès Imprim') : (el.auteur ?: client.nomComplet)) }} · {{ v.le|date('d/m H:i') }}</small>
+										{% include 'messages_clients/_lecteur_vocal.html.twig' with {element: el, url: path('app_messages_clients_vocale_ecouter', {publicId: conv.conversation.publicId, genre: v.genre, id: el.id})} only %}
+									</div>
+								{% endfor %}
+							</div>
+						{% endif %}
+					{% endif %}
+					{% if not site_en_ligne() and (ouvrable or not conv or conv.conversation.estCloturee) and is_granted('ROLE_COMMANDE') %}
+						<div class="mt-2">{% include 'messages_clients/_note_vocale.html.twig' with {url: path('app_messages_clients_vocale_commande', {id: commande.id}), jeton: csrf_token('messages-clients'), choix: true, interne: true} only %}</div>
+					{% endif %}
 				</div>
 			{% endif %}
 
@@ -466,4 +486,8 @@
 			{% if lienWhatsapp and not envoyerBat %}<a href="{{ lienWhatsapp }}" class="btn btn-success" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>{% endif %}
 		</div>
 	{% endif %}
+{% endblock %}
+
+{% block javascripts %}
+	<script src="{{ asset('js/note-vocale.js') }}" defer></script>
 {% endblock %}

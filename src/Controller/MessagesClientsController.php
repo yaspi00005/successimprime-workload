@@ -8,6 +8,7 @@ use App\Entity\ConversationClient;
 use App\Entity\Devis;
 use App\Entity\Factures;
 use App\Entity\MessageClient;
+use App\Entity\NoteConversation;
 use App\Entity\PropositionClient;
 use App\Entity\User;
 use App\Repository\UserRepository;
@@ -19,11 +20,13 @@ use App\Service\Http\Entree;
 use App\Service\Messagerie\Conversations;
 use App\Service\Messagerie\DelaisReponse;
 use App\Service\Messagerie\FilConversation;
+use App\Service\Messagerie\NotesVocales;
 use App\Service\Messagerie\ReglesReponse;
 use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -146,6 +149,63 @@ final class MessagesClientsController extends AbstractController
         }
 
         return $this->retour($c, $request);
+    }
+
+    /**
+     * « Note vocale » dans la conversation (docs/messagerie-clients.md) :
+     * envoyée au client comme une réponse (chronomètre arrêté, il est
+     * prévenu), ou note interne pour l'équipe (mode « note »). Réponse en
+     * JSON pour l'enregistreur de la page.
+     */
+    #[Route('/messages/{publicId}/vocale', name: 'vocale', requirements: ['publicId' => self::UUID], methods: ['POST'])]
+    public function vocale(string $publicId, Request $request, NotesVocales $notesVocales): JsonResponse
+    {
+        $c = $this->conversationAEcrire($publicId, $request);
+
+        return $this->joindreVocale($c, $request, $notesVocales);
+    }
+
+    /**
+     * « Note vocale » depuis la fiche d'une commande (DT02) : dans la
+     * conversation de la commande, ouverte au besoin comme « Écrire au
+     * client ».
+     */
+    #[Route('/messages/vocale/commande/{id}', name: 'vocale_commande', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[IsGranted(MessagerieVoter::BOITE)]
+    public function vocaleCommande(int $id, Request $request, NotesVocales $notesVocales): JsonResponse
+    {
+        $this->jeton($request);
+        if ($this->enLigne) {
+            throw $this->createAccessDeniedException('Les réponses partent de l\'ERP de l\'imprimerie.');
+        }
+        $commande = $this->em->find(Commandes::class, $id) ?? throw $this->createNotFoundException();
+        $this->denyAccessUnlessGranted('ROLE_COMMANDE');
+        try {
+            $c = $this->conversations->demarrer($commande, $this->moi(), new \DateTimeImmutable());
+        } catch (\DomainException $e) {
+            return new JsonResponse(['erreur' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        if (!$this->isGranted(MessagerieVoter::VOIR, $c)) {
+            return new JsonResponse(['erreur' => \sprintf('La conversation de %s est suivie par %s.', $commande->getNumero(), Conversations::nom($c->getAssigneA()))], Response::HTTP_FORBIDDEN);
+        }
+
+        return $this->joindreVocale($c, $request, $notesVocales, $this->generateUrl('app_commandes_show', ['id' => $commande->getId(), '_fragment' => 'conversation']));
+    }
+
+    /**
+     * Écoute d'une note vocale de la conversation : mêmes droits que la
+     * conversation (MESSAGERIE_VOIR), et la note doit en faire partie.
+     */
+    #[Route('/messages/{publicId}/vocale/{genre}/{id}', name: 'vocale_ecouter', requirements: ['publicId' => self::UUID, 'genre' => 'message|note', 'id' => '\d+'], methods: ['GET'])]
+    public function ecouterVocale(string $publicId, string $genre, int $id, NotesVocales $notesVocales): Response
+    {
+        $c = $this->conversation($publicId);
+        $element = $this->em->find('note' === $genre ? NoteConversation::class : MessageClient::class, $id);
+        if (null === $element || !NotesVocales::appartient($element, $c) || null === $notesVocales->chemin($element)) {
+            throw $this->createNotFoundException();
+        }
+
+        return $notesVocales->reponse($element);
     }
 
     /** « Clôturer la demande » : proposée au client, qui confirme (« Oui, c'est résolu »). */
@@ -446,6 +506,29 @@ final class MessagesClientsController extends AbstractController
         }
 
         return [$debut, $debut->modify('+7 days'), $semaines];
+    }
+
+    private function joindreVocale(ConversationClient $c, Request $request, NotesVocales $notesVocales, ?string $retour = null): JsonResponse
+    {
+        $interne = 'note' === $request->request->getString('mode');
+        $vocale = null;
+        try {
+            $vocale = $notesVocales->enregistrer($request->files->get('audio'));
+            $libelle = MessageClient::libelleVocale($vocale['duree']);
+            if ($interne) {
+                $this->conversations->noteInterne($c, $this->moi(), $libelle, new \DateTimeImmutable(), $vocale);
+                $this->addFlash('success', 'Note vocale interne ajoutée : le client ne l\'entend pas.');
+            } else {
+                $this->conversations->repondre($c, $this->moi(), $libelle, null, null, new \DateTimeImmutable(), $vocale);
+                $this->addFlash('success', \sprintf('Note vocale envoyée : %s l\'écoute dans son espace et en est prévenu.', $c->getClient()?->getNomComplet()));
+            }
+        } catch (\DomainException $e) {
+            $notesVocales->retirer($vocale);
+
+            return new JsonResponse(['erreur' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return new JsonResponse(['ok' => true, 'url' => $retour ?? $this->generateUrl('app_messages_clients_voir', ['publicId' => (string) $c->getPublicId(), 'onglet' => $request->request->getString('onglet') ?: null, '_fragment' => 'dernier'])]);
     }
 
     private function retour(ConversationClient $c, Request $request): Response

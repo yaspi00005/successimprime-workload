@@ -1,0 +1,36 @@
+/* Notes vocales de la messagerie (docs/messagerie-clients.md) : enregistreur et lecteur, côté imprimerie et espace client. */
+.nv { position: relative; }
+.nv .nv-ouvrir { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 0; border-radius: 8px; background: #E5EEFA; color: #0F4590; font-size: .78rem; font-weight: 700; cursor: pointer; line-height: 1.6; }
+.nv .nv-ouvrir svg, .nv .nv-micro svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.nv .nv-ouvrir[aria-expanded="true"] { background: #0F4590; color: #fff; }
+.nv .nv-panneau { margin-top: 8px; padding: 12px; border: 1px solid #D5DEEB; border-radius: 12px; background: #fff; color: #1F2937; box-shadow: 0 8px 24px rgba(15, 69, 144, .12); }
+.nv-flottant .nv .nv-panneau { position: absolute; z-index: 20; bottom: calc(100% + 6px); left: 0; width: min(380px, calc(100vw - 32px)); margin: 0; }
+.nv .nv-etat { margin: 0 0 10px; font-size: .82rem; color: #4B5563; }
+.nv .nv-etat.nv-erreur { color: #B91C1C; font-weight: 600; }
+.nv .nv-enregistreur { display: flex; align-items: center; gap: 12px; }
+.nv .nv-micro { display: grid; place-items: center; width: 56px; height: 56px; border: 0; border-radius: 50%; background: #DC2626; color: #fff; cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.nv .nv-micro svg { width: 26px; height: 26px; }
+.nv .nv-micro:focus-visible, .nv .nv-ouvrir:focus-visible { outline: 3px solid #93C5FD; outline-offset: 2px; }
+.nv .nv-micro[hidden] { display: none; }
+.nv-en-cours .nv-micro { animation: nv-pulse 1.2s ease-in-out infinite; }
+@keyframes nv-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, .5); } 50% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } }
+@media (prefers-reduced-motion: reduce) { .nv-en-cours .nv-micro { animation: none; outline: 3px solid #FCA5A5; } }
+.nv .nv-chrono { font-variant-numeric: tabular-nums; font-weight: 700; color: #374151; }
+.nv-en-cours .nv-chrono { color: #B91C1C; }
+.nv .nv-ecoute { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.nv .nv-ecoute[hidden] { display: none; }
+.nv .nv-ecoute audio, .nv-lecteur audio { flex: 1; min-width: 0; max-width: 300px; height: 40px; }
+.nv .nv-duree, .nv-lecteur .nv-duree { flex: none; font-size: .78rem; font-weight: 700; color: #4B5563; font-variant-numeric: tabular-nums; }
+.nv .nv-mode { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 0; padding: 0; border: 0; font-size: .82rem; }
+.nv .nv-mode label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.nv .nv-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.nv .nv-actions button { min-height: 36px; padding: 6px 14px; border: 1px solid #D5DEEB; border-radius: 10px; background: #fff; color: #1F2937; font-size: .82rem; font-weight: 700; cursor: pointer; }
+.nv .nv-actions .nv-envoyer { border-color: #0F4590; background: #0F4590; color: #fff; }
+.nv .nv-actions .nv-envoyer:disabled { opacity: .6; cursor: wait; }
+.nv .nv-actions button[hidden] { display: none; }
+.nv-lecteur { display: flex; align-items: center; gap: 8px; margin: 4px 0; max-width: 100%; }
+.nv-lecteur .nv-attente { font-size: .8rem; color: #6B7280; font-style: italic; }
+@media (max-width: 575.98px) {
+	.nv-flottant .nv .nv-panneau { position: fixed; left: 16px; right: 16px; bottom: auto; top: 30vh; width: auto; }
+	.nv .nv-ecoute audio, .nv-lecteur audio { max-width: none; }
+}

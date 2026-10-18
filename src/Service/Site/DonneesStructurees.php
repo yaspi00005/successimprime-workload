@@ -163,6 +163,8 @@ final class DonneesStructurees
                     'itemOffered' => self::sansVide([
                         '@type' => 'Service',
                         'name' => $produit['nom'],
+                        // La désignation technique quand le nom commercial passe devant (docs/noms-commerciaux.md).
+                        'alternateName' => self::texte($produit['technique'] ?? null),
                         'description' => self::texte($produit['description'] ?? null),
                         'category' => self::texte($u['nom']),
                         'provider' => ['@id' => self::id($base, 'imprimerie')],

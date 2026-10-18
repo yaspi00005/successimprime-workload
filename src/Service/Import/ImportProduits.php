@@ -6,6 +6,7 @@ use App\Entity\CategorieProduit;
 use App\Entity\ImportDonnees;
 use App\Entity\PrixHistorique;
 use App\Entity\Produits;
+use App\Service\Catalogue\NomCommercial;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -19,8 +20,10 @@ use Doctrine\ORM\EntityManagerInterface;
  * comme tout produit.
  *
  * Un produit déjà au catalogue (même code, sinon même nom) n'est jamais
- * recréé ; seuls ses prix peuvent changer, et chaque changement est tracé
- * dans l'historique des prix.
+ * recréé ; seuls ses prix et son nom commercial peuvent changer, et chaque
+ * changement de prix est tracé dans l'historique des prix. Le nom
+ * commercial (docs/noms-commerciaux.md) n'est changé que s'il est donné :
+ * une case vide garde celui du catalogue.
  */
 final class ImportProduits implements TypeImport
 {
@@ -88,6 +91,8 @@ final class ImportProduits implements TypeImport
         return [
             ['cle' => 'nom', 'libelle' => 'Nom', 'alias' => ['produit', 'article', 'designation', 'libelle', 'nom du produit'], 'obligatoire' => true,
                 'exemples' => ['Flyers A5 quadri', 'Bâche publicitaire'], 'aide' => 'Nom unique au catalogue : un nom déjà pris désigne le produit existant.'],
+            ['cle' => 'nomCommercial', 'libelle' => 'Nom commercial', 'alias' => ['nom usuel', 'appellation', 'nom courant', 'nom connu'], 'obligatoire' => false,
+                'exemples' => ['Prospectus', 'Banderole'], 'aide' => 'Le nom que tout le monde connaît, montré au client avant le nom. Vide : celui du catalogue ne change pas.'],
             ['cle' => 'categorie', 'libelle' => 'Catégorie', 'alias' => ['famille', 'rayon', 'categorie produit', 'gamme'], 'obligatoire' => true,
                 'exemples' => ['Impression numérique', 'Grand format'], 'aide' => 'Une catégorie qui n\'existe pas est créée, non publiée sur le site.'],
             ['cle' => 'unite', 'libelle' => 'Unité', 'alias' => ['unite de vente', 'mode de calcul', 'par'], 'obligatoire' => true,
@@ -107,7 +112,8 @@ final class ImportProduits implements TypeImport
     {
         return [
             'Une ligne par produit. Les colonnes Nom, Catégorie, Unité et Prix public sont obligatoires.',
-            'Un produit déjà au catalogue (même code, sinon même nom) n\'est pas recréé : seuls ses prix sont mis à jour, et l\'historique des prix garde l\'ancien.',
+            'Un produit déjà au catalogue (même code, sinon même nom) n\'est pas recréé : seuls ses prix et son nom commercial sont mis à jour, et l\'historique des prix garde l\'ancien.',
+            'Nom commercial : le nom que tout le monde connaît (« Autocollant » pour « Vinyle adhésif »). Le client le voit d\'abord, le nom à côté ; la recherche trouve l\'un ou l\'autre.',
             'Les produits créés sont en vente au comptoir mais ne sont pas publiés sur le site : complétez leurs types d\'impression, supports et formats, puis publiez-les depuis le catalogue.',
             'Pas de prix de revient ici : il se calcule depuis les articles de stock et les configurations.',
         ];
@@ -140,7 +146,7 @@ final class ImportProduits implements TypeImport
     {
         $parCode = [];
         $parNom = [];
-        foreach ($this->em->createQuery('SELECT p.id, p.code, p.nom, p.prixBase, p.prixB2B, p.modeCalcul, IDENTITY(p.categorieProduit) AS categorie FROM '.Produits::class.' p')->getArrayResult() as $p) {
+        foreach ($this->em->createQuery('SELECT p.id, p.code, p.nom, p.nomCommercial, p.prixBase, p.prixB2B, p.modeCalcul, IDENTITY(p.categorieProduit) AS categorie FROM '.Produits::class.' p')->getArrayResult() as $p) {
             $parCode[mb_strtoupper((string) $p['code'])] = $p;
             $parNom[Valeurs::cle((string) $p['nom'])] = $p;
         }
@@ -193,12 +199,13 @@ final class ImportProduits implements TypeImport
             }
             $code = null !== Valeurs::texte($ligne->valeur('code')) ? mb_strtoupper(Valeurs::texte($ligne->valeur('code'), 50) ?? '') : null;
             $cleNom = Valeurs::cle($nom);
+            $nomCommercial = NomCommercial::nettoyer($ligne->valeur('nomCommercial'));
 
-            // Déjà au catalogue : seuls les prix changent.
+            // Déjà au catalogue : seuls les prix et le nom commercial changent.
             $existant = (null !== $code ? ($parCode[$code] ?? null) : null) ?? ($parNom[$cleNom] ?? null);
             if (null !== $existant) {
-                $avant = ['prixBase' => self::entier($existant['prixBase']), 'prixB2B' => self::entier($existant['prixB2B'])];
-                $apres = ['prixBase' => $prix, 'prixB2B' => $prixB2B ?? $avant['prixB2B']];
+                $avant = ['prixBase' => self::entier($existant['prixBase']), 'prixB2B' => self::entier($existant['prixB2B']), 'nomCommercial' => $existant['nomCommercial']];
+                $apres = ['prixBase' => $prix, 'prixB2B' => $prixB2B ?? $avant['prixB2B'], 'nomCommercial' => $nomCommercial ?? $avant['nomCommercial']];
                 if (null !== $apres['prixB2B'] && $apres['prixB2B'] > $prix) {
                     $ligne->erreur(sprintf('Le prix revendeur actuel (%s) dépasse le nouveau prix public : donnez aussi le prix revendeur.', Valeurs::francs($apres['prixB2B'])));
                     continue;
@@ -213,7 +220,7 @@ final class ImportProduits implements TypeImport
                     $ligne->avertir(sprintf('Unité différente au catalogue (%s) : non modifiée.', self::UNITES_LIBELLES[$existant['modeCalcul']] ?? $existant['modeCalcul']));
                 }
                 if ($avant === $apres) {
-                    $ligne->ignorer(sprintf('Déjà au catalogue (%s), mêmes prix.', $existant['code']));
+                    $ligne->ignorer(sprintf('Déjà au catalogue (%s), mêmes prix%s.', $existant['code'], null !== $nomCommercial ? ' et même nom commercial' : ''));
                     continue;
                 }
                 $changes = [];
@@ -221,6 +228,9 @@ final class ImportProduits implements TypeImport
                     if ($avant[$champ] !== $apres[$champ]) {
                         $changes[] = sprintf('%s %s → %s', $libelle, null !== $avant[$champ] ? Valeurs::francs($avant[$champ]) : '—', null !== $apres[$champ] ? Valeurs::francs($apres[$champ]) : '—');
                     }
+                }
+                if ($avant['nomCommercial'] !== $apres['nomCommercial']) {
+                    $changes[] = sprintf('nom commercial %s → %s', $avant['nomCommercial'] ?? '—', $apres['nomCommercial']);
                 }
                 $ligne->statut = LigneImport::MAJ;
                 $ligne->detail = $existant['code'].' · '.implode(' ; ', $changes);
@@ -254,9 +264,9 @@ final class ImportProduits implements TypeImport
                 $ligne->avertir(sprintf('Catégorie « %s » créée (non publiée sur le site).', $nomCategorie));
             }
             $ligne->statut = LigneImport::CREER;
-            $ligne->detail = sprintf('%s · %s · %s par %s%s', $code, $categorie['nom'] ?? $nouvellesCategories[$cleCategorie], Valeurs::francs($prix), self::UNITES_LIBELLES[$mode], null !== $prixB2B ? ' · revendeur '.Valeurs::francs($prixB2B) : '');
+            $ligne->detail = sprintf('%s%s · %s · %s par %s%s', $code, null !== $nomCommercial ? ' · « '.$nomCommercial.' »' : '', $categorie['nom'] ?? $nouvellesCategories[$cleCategorie], Valeurs::francs($prix), self::UNITES_LIBELLES[$mode], null !== $prixB2B ? ' · revendeur '.Valeurs::francs($prixB2B) : '');
             $ligne->donnees = [
-                'nom' => $nom, 'code' => $code, 'categorie' => $categorie['id'] ?? null, 'nouvelleCategorie' => null === $categorie ? $nouvellesCategories[$cleCategorie] : null,
+                'nom' => $nom, 'nomCommercial' => $nomCommercial, 'code' => $code, 'categorie' => $categorie['id'] ?? null, 'nouvelleCategorie' => null === $categorie ? $nouvellesCategories[$cleCategorie] : null,
                 'mode' => $mode, 'prix' => $prix, 'prixB2B' => $prixB2B, 'description' => Valeurs::texte($ligne->valeur('description'), 1000) ?? $nom,
             ];
         }
@@ -285,7 +295,7 @@ final class ImportProduits implements TypeImport
                 }
                 $ordre += 10;
                 $produit = (new Produits())
-                    ->setNom($d['nom'])->setCode($d['code'])->setDescription($d['description'])
+                    ->setNom($d['nom'])->setNomCommercial($d['nomCommercial'] ?? null)->setCode($d['code'])->setDescription($d['description'])
                     ->setCategorieProduit($categorie)->setModeCalcul($d['mode'])
                     ->setPrixBase((float) $d['prix'])->setPrixB2B(null !== $d['prixB2B'] ? (float) $d['prixB2B'] : null)
                     ->setPublie(false)->setActif(true)->setPersonnalisable(true)->setOrdre($ordre);
@@ -298,6 +308,9 @@ final class ImportProduits implements TypeImport
                 }
                 // Le prix revendeur ne peut pas dépasser le prix public : on l'ôte d'abord.
                 $produit->setPrixB2B(null)->setPrixBase((float) $d['apres']['prixBase'])->setPrixB2B(null !== $d['apres']['prixB2B'] ? (float) $d['apres']['prixB2B'] : null);
+                if (($d['avant']['nomCommercial'] ?? null) !== ($d['apres']['nomCommercial'] ?? null)) {
+                    $produit->setNomCommercial($d['apres']['nomCommercial']);
+                }
                 foreach (['prixBase', 'prixB2B'] as $champ) {
                     if ($d['avant'][$champ] !== $d['apres'][$champ]) {
                         $this->em->persist(new PrixHistorique('produit', (int) $produit->getId(), (string) $produit->getNom(), $champ, self::texte($d['avant'][$champ]), self::texte($d['apres'][$champ]), $contexte->par));
@@ -328,12 +341,13 @@ final class ImportProduits implements TypeImport
         $changes = [];
         foreach ($majs as $id => $d) {
             $p = $this->em->find(Produits::class, $id);
-            if (null !== $p && (self::entier($p->getPrixBase()) !== $d['apres']['prixBase'] || self::entier($p->getPrixB2B()) !== $d['apres']['prixB2B'])) {
+            if (null !== $p && (self::entier($p->getPrixBase()) !== $d['apres']['prixBase'] || self::entier($p->getPrixB2B()) !== $d['apres']['prixB2B']
+                || (self::nomCommercialChange($d) && $p->getNomCommercial() !== $d['apres']['nomCommercial']))) {
                 $changes[] = (string) $p->getNom();
             }
         }
         if ([] !== $changes) {
-            $blocages[] = sprintf('Les prix de %s ont changé depuis l\'import.', implode(', ', \array_slice($changes, 0, 5)).(\count($changes) > 5 ? '…' : ''));
+            $blocages[] = sprintf('Les prix ou le nom commercial de %s ont changé depuis l\'import.', implode(', ', \array_slice($changes, 0, 5)).(\count($changes) > 5 ? '…' : ''));
         }
 
         return $blocages;
@@ -354,6 +368,10 @@ final class ImportProduits implements TypeImport
                 continue;
             }
             $p->setPrixB2B(null)->setPrixBase((float) $d['avant']['prixBase'])->setPrixB2B(null !== $d['avant']['prixB2B'] ? (float) $d['avant']['prixB2B'] : null);
+            // Le nom commercial seulement si l'import l'a changé : une case vide l'avait gardé.
+            if (self::nomCommercialChange($d)) {
+                $p->setNomCommercial($d['avant']['nomCommercial']);
+            }
             foreach (['prixBase', 'prixB2B'] as $champ) {
                 if ($d['avant'][$champ] !== $d['apres'][$champ]) {
                     $this->em->persist(new PrixHistorique('produit', $id, (string) $p->getNom(), $champ, self::texte($d['apres'][$champ]), self::texte($d['avant'][$champ]), $contexte->par));
@@ -371,6 +389,18 @@ final class ImportProduits implements TypeImport
         $this->em->flush();
     }
 
+    /**
+     * L'import a-t-il changé le nom commercial de ce produit ? Une case vide
+     * le gardait : son annulation ne le remet pas, et un nom changé depuis
+     * (page Noms commerciaux) ne bloque pas l'annulation des prix.
+     *
+     * @param array{avant: array<string, int|string|null>, apres: array<string, int|string|null>} $d
+     */
+    private static function nomCommercialChange(array $d): bool
+    {
+        return \array_key_exists('nomCommercial', $d['avant']) && $d['avant']['nomCommercial'] !== ($d['apres']['nomCommercial'] ?? null);
+    }
+
     private static function entier(float|int|null $v): ?int
     {
         return null !== $v ? (int) round($v) : null;
@@ -382,7 +412,7 @@ final class ImportProduits implements TypeImport
     }
 
     /**
-     * @return array{0: list<int>, 1: array<int, array{avant: array<string, ?int>, apres: array<string, ?int>}>, 2: list<int>}
+     * @return array{0: list<int>, 1: array<int, array{avant: array<string, int|string|null>, apres: array<string, int|string|null>}>, 2: list<int>}
      */
     private static function fiches(ImportDonnees $import): array
     {

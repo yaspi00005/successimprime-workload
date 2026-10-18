@@ -31,11 +31,16 @@ final class SiteProduitsController extends AbstractController
     public function produits(Request $request): Response
     {
         $univers = $this->catalogue->univers();
-        $choisi = CatalogueSite::universChoisi($univers, Calculateur::lire($request->query->all())['categorie']);
+        // Recherche par nom commercial ou désignation (docs/noms-commerciaux.md).
+        $recherche = mb_substr(trim((string) $request->query->get('q', '')), 0, 80);
+        $trouves = CatalogueSite::rechercher($univers, $recherche);
+        $choisi = '' === $recherche ? CatalogueSite::universChoisi($univers, Calculateur::lire($request->query->all())['categorie']) : null;
 
         return $this->site->cache($this->render('site/produits.html.twig', [
             'univers' => $univers,
             'choisi' => $choisi,
+            'recherche' => $recherche,
+            'trouves' => $trouves,
         ]), $request);
     }
 

@@ -10,6 +10,7 @@ use App\Entity\CompteClient;
 use App\Entity\Devis;
 use App\Entity\DevisDetails;
 use App\Entity\Factures;
+use App\Entity\Produits;
 use App\Service\EspaceClient\EspaceClient;
 use PHPUnit\Framework\TestCase;
 
@@ -71,6 +72,24 @@ final class RechercheEspaceTest extends TestCase
         self::assertCount(1, EspaceClient::resultatsRecherche($admin, 'kakemono', $this->sources)['commandes']);
         self::assertCount(1, EspaceClient::resultatsRecherche($admin, '85 x 200', $this->sources)['commandes']);
         self::assertSame(['commandes' => [], 'devis' => [], 'fichiers' => [], 'factures' => []], EspaceClient::resultatsRecherche($admin, 'r', $this->sources));
+    }
+
+    public function testParLeNomCommercialOuTechniqueDuProduit(): void
+    {
+        $admin = self::compte($this->client, [CompteClient::DROIT_ADMINISTRATEUR]);
+        $vinyle = (new Produits())->setNom('Vinyle adhésif')->setNomCommercial('Autocollant');
+        $commande = self::commande($this->client, 'CMD-D00800', 'Vitrine boutique 2 m');
+        $commande->getCommandesDetails()->first()->setProduit($vinyle);
+        $devis = self::devis($this->client, 'DV-D00120', 'Logo portière');
+        $devis->getDevisDetails()->first()->setProduit($vinyle);
+        $sources = ['commandes' => [$commande], 'devis' => [$devis]];
+
+        foreach (['autocollant', 'AUTOCOLLANTS', 'vinyle', 'adhesif'] as $mot) {
+            $r = EspaceClient::resultatsRecherche($admin, $mot, $sources);
+            self::assertCount(1, $r['commandes'], $mot);
+            self::assertCount(1, $r['devis'], $mot);
+        }
+        self::assertSame([], EspaceClient::resultatsRecherche($admin, 'banderole', $sources)['commandes']);
     }
 
     private static function commande(Clients $client, string $numero, string $designation): Commandes

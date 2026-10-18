@@ -32,6 +32,11 @@
 				Supprimer
 			</button>
 
+			<a href="{{ path('app_produits_noms_commerciaux') }}#nc-supports" class="btn btn-outline-primary" title="Le nom que tout le monde connaît, à côté de la désignation">
+				<i class="fa fa-tags mr-1" aria-hidden="true"></i>
+				Noms commerciaux
+			</a>
+
 		</div>
 	</div>
 	</div>
@@ -44,7 +49,7 @@
 		<!-- COL-END -->
 		<div class="col-lg-8 col-xl-12">
 			<div class="input-group mb-5">
-				<input type="text" class="form-control" placeholder="Rechercher un support…">
+				<input type="search" id="supportRecherche" class="form-control" placeholder="Rechercher un support (nom ou nom commercial)…" aria-label="Rechercher un support" data-recherche-liste="#supportSortableBody" autocomplete="off">
 				<div class="input-group-append ">
 					<button type="button" class="btn btn-primary-light">
 						<i class="fa fa-search" aria-hidden="true"></i>
@@ -102,7 +107,7 @@
 
 								{% for support in supports %}
 
-									<tr id="support-row-{{ support.id }}" class="support-sortable-row" data-id="{{ support.id }}">
+									<tr id="support-row-{{ support.id }}" class="support-sortable-row" data-id="{{ support.id }}" data-recherche="{{ cle_recherche(support.nom, support.nomCommercial) }}">
 
 										<td class="text-center align-middle">
 											<i class="fa fa-arrows-alt support-drag-handle" style="cursor: move;" title="Déplacer"></i>
@@ -118,6 +123,7 @@
 
 										<td class="align-middle">
 											<strong>{{ support.nom }}</strong>
+											{% if support.nomCommercial %}<small class="d-block text-muted">{{ support.nomCommercial }}</small>{% endif %}
 										</td>
 
 										<td class="align-middle">
@@ -430,4 +436,5 @@
 <!-- ROW CLOSED -->{% endblock %}{% block javascripts %}
 <script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 <script src="../assets/js/traitement_supports.js"></script>
+<script src="{{ asset('js/recherche-catalogue.js') }}"></script>
 <script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>{% endblock %}

@@ -17,7 +17,7 @@
 		<section class="card si-ac-bloc">
 			<header class="si-rc-tete">
 				<div>
-					<h2>{{ c.designation }}</h2>
+					<h2>{{ c|ligne_interne(c.designation) }}</h2>
 					<p class="si-pg-note">{{ c.numero }} · validée dans l'atelier 3D le {{ c.creeLe|date('d/m/Y à H:i') }}{{ c.auteur ? ' par ' ~ c.auteur }}</p>
 				</div>
 				<span class="si-pastille si-pastille-bleu">{{ c.client ? 'Client' : 'Visiteur' }}</span>

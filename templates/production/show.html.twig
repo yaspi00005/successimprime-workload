@@ -191,7 +191,7 @@
 										<small class="text-muted">Produit / désignation</small>
 										<div class="font-weight-bold">
 											{% if detail.designation is defined and detail.designation %}
-												{{ detail.designation }}
+												{{ detail|ligne_interne }}
 											{% elseif detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.produit %}
 												{{ detail.produitConfiguration.produit.nom }}
 												{% else %}Non renseigné

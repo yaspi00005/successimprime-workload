@@ -6,6 +6,7 @@ use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
 use App\Repository\ProduitConfigurationRepository;
+use App\Service\Catalogue\NomCommercial;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -75,8 +76,9 @@ final class CommandeCatalogueController extends AbstractController
                 'id' =>
                     $configuration->getId(),
 
+                // Avec les noms commerciaux : la liste « Configuration » de la saisie les cherche aussi (docs/noms-commerciaux.md).
                 'libelle' =>
-                    (string) $configuration,
+                    NomCommercial::texteConfigurationInterne($configuration),
 
                 /*
                  * Prix PUBLIC.

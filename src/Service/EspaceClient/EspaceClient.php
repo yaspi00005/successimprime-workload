@@ -15,6 +15,7 @@ use App\Entity\Factures;
 use App\Entity\MessageClient;
 use App\Entity\ReclamationClient;
 use App\Repository\EntrepriseRepository;
+use App\Service\Catalogue\NomCommercial;
 use App\Service\Conception\DemandesConception;
 use App\Service\FichiersPrives;
 use App\Service\NotificationService;
@@ -203,15 +204,23 @@ final class EspaceClient
         return \count($lignes) > 1 ? \sprintf('%s + %d autre%s', $titre, \count($lignes) - 1, \count($lignes) > 2 ? 's' : '') : $titre;
     }
 
+    /** « Autocollant · Vinyle adhésif 100 × 50 × 2 » : nom commercial d'abord (docs/noms-commerciaux.md). */
     public static function titreLigne(CommandesDetails $l): string
     {
-        $nom = trim((string) ($l->getDesignation() ?: $l->getProduit()?->getNom())) ?: 'Travail';
+        $nom = trim(NomCommercial::texteLigne($l->getDesignation(), NomCommercial::elementDeLigne($l))) ?: 'Travail';
+
+        return $nom.self::mesuresLigne($l, $nom);
+    }
+
+    /** Ce qui suit le nom d'une ligne : « 100 × 50 × 2 » (la taille seulement si le nom ne la porte pas). */
+    public static function mesuresLigne(CommandesDetails $l, string $nom): string
+    {
         $largeur = (float) $l->getLargeur();
         $longueur = (float) $l->getLongueur();
         // La désignation porte parfois déjà la taille : « Bâche (400 x 150 cm) ».
         $taille = $largeur > 0 && $longueur > 0 && !preg_match('/\d\s*[x×]\s*\d/u', $nom) ? ' '.self::nombre($largeur).' × '.self::nombre($longueur) : '';
 
-        return $nom.$taille.' × '.self::nombre((float) $l->getQuantite());
+        return $taille.' × '.self::nombre((float) $l->getQuantite());
     }
 
     private static function nombre(float $n): string
@@ -613,7 +622,10 @@ final class EspaceClient
         foreach ($this->devis($client) as $d) {
             if (null !== $d->getDateDevis()) {
                 $ligne = $d->getDevisDetails()->first();
-                $fil[] = self::evenement('devis', 'Nouveau devis', trim(\sprintf('%s%s', $d->getNumero(), false !== $ligne && '' !== trim((string) $ligne->getDesignation()) ? ' · '.trim((string) $ligne->getDesignation()) : '')), $d->getDateDevis(), ['app_espace_devis', ['d' => $d->getId()]], $d->getNumero(), [
+                // « Autocollant · Vinyle adhésif · DV-… » comme les autres événements : le numéro
+                // reste collé au prix qui suit (docs/noms-commerciaux.md, recette des accès).
+                $nom = false !== $ligne && '' !== trim((string) $ligne->getDesignation()) ? NomCommercial::texteLigne($ligne->getDesignation(), NomCommercial::elementDeLigne($ligne)) : '';
+                $fil[] = self::evenement('devis', 'Nouveau devis', trim(('' !== $nom ? $nom.' · ' : '').$d->getNumero()), $d->getDateDevis(), ['app_espace_devis', ['d' => $d->getId()]], $d->getNumero(), [
                     'montant' => $d->getTotalTtc(),
                     'cible' => ['devis' => $d->getId(), 'statut' => $d->getStatut()],
                 ]);
@@ -821,16 +833,17 @@ final class EspaceClient
             return $resultats;
         }
         $aLui = static fn (?Clients $c): bool => null !== $c && $c === $client;
-        $trouve = static fn (?string ...$champs): bool => [] !== array_filter($champs, static fn (?string $c): bool => null !== $c && str_contains(self::sansAccents($c), self::sansAccents($texte)));
+        // Sans accents ; les noms aussi sans ponctuation ni pluriel (« autocollants » : docs/noms-commerciaux.md).
+        $trouve = static fn (?string ...$champs): bool => [] !== array_filter($champs, static fn (?string $c): bool => null !== $c && (str_contains(self::sansAccents($c), self::sansAccents($texte)) || NomCommercial::correspond($texte, $c)));
         foreach ($sources['commandes'] ?? [] as $c) {
-            $designations = array_map(static fn (CommandesDetails $l): ?string => $l->getDesignation(), $c->getCommandesDetails()->toArray());
+            $designations = self::nomsLignes($c->getCommandesDetails()->toArray());
             if ($aLui($c->getClients()) && $trouve($c->getNumero(), $c->getBonCommande(), ...$designations)) {
                 $resultats['commandes'][] = $c;
             }
         }
         if (!$compte->estLectureSeule()) {
             foreach ($sources['devis'] ?? [] as $d) {
-                $designations = array_map(static fn ($l): ?string => $l->getDesignation(), $d->getDevisDetails()->toArray());
+                $designations = self::nomsLignes($d->getDevisDetails()->toArray());
                 if ($aLui($d->getClients()) && $trouve($d->getNumero(), ...$designations)) {
                     $resultats['devis'][] = $d;
                 }
@@ -850,6 +863,25 @@ final class EspaceClient
         }
 
         return array_map(static fn (array $l): array => \array_slice($l, 0, 20), $resultats);
+    }
+
+    /**
+     * Ce que la recherche lit d'une ligne : sa désignation et les deux noms
+     * de ce qu'elle vend (« autocollant » trouve une ligne « Vinyle adhésif »).
+     *
+     * @param list<object> $lignes
+     *
+     * @return list<?string>
+     */
+    private static function nomsLignes(array $lignes): array
+    {
+        $noms = [];
+        foreach ($lignes as $l) {
+            $element = NomCommercial::elementDeLigne($l);
+            array_push($noms, $l->getDesignation(), $element?->getNomTechnique(), $element?->getNomCommercial());
+        }
+
+        return $noms;
     }
 
     private static function sansAccents(string $texte): string

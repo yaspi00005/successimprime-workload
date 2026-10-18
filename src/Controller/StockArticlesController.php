@@ -10,6 +10,7 @@ use App\Repository\ArticlesRepository;
 use App\Repository\FamilleArticleRepository;
 use App\Repository\FournisseursRepository;
 use App\Repository\MachinesRepository;
+use App\Service\Catalogue\NomCommercial;
 use App\Service\CatalogueStock;
 use App\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -57,7 +58,8 @@ final class StockArticlesController extends AbstractController
         $lignes = array_values(array_filter($toutes, static function (array $ligne) use ($filtre, $recherche): bool {
             $article = $ligne['article'];
 
-            if ($recherche !== '' && !str_contains(mb_strtolower($article->getReference().' '.$article->getDesignation()), mb_strtolower($recherche))) {
+            // Code, désignation ou nom commercial, sans tenir compte des accents (docs/noms-commerciaux.md).
+            if ($recherche !== '' && !NomCommercial::correspond($recherche, $article->getReference(), $article->getDesignation(), $article->getNomCommercial())) {
                 return false;
             }
 
@@ -89,13 +91,14 @@ final class StockArticlesController extends AbstractController
             $sortie = fopen('php://output', 'wb');
             // BOM pour qu'Excel lise les accents.
             fwrite($sortie, "\xEF\xBB\xBF");
-            fputcsv($sortie, ['Code', 'Article', 'Famille', 'Unité', 'En stock', 'Réservé', 'Disponible', 'Seuil', 'Maximum', 'Coût moyen', 'Valeur', 'Fournisseur', 'Emplacement', 'État'], ';', '"', '');
+            fputcsv($sortie, ['Code', 'Article', 'Nom commercial', 'Famille', 'Unité', 'En stock', 'Réservé', 'Disponible', 'Seuil', 'Maximum', 'Coût moyen', 'Valeur', 'Fournisseur', 'Emplacement', 'État'], ';', '"', '');
 
             foreach ($lignes as $ligne) {
                 $article = $ligne['article'];
                 fputcsv($sortie, [
                     $article->getReference(),
                     $article->getDesignation(),
+                    $article->getNomCommercial(),
                     $article->getFamille()?->getNom(),
                     $article->getUniteCourte(),
                     self::nombreExcel($ligne['physique']),
@@ -312,6 +315,7 @@ final class StockArticlesController extends AbstractController
             $article
                 ->setReference($reference)
                 ->setDesignation($designation !== '' ? $designation : (string) $article->getDesignation())
+                ->setNomCommercial((string) $donnees->get('nom_commercial'))
                 ->setFamille($famille)
                 ->setUnite(\array_key_exists((string) $donnees->get('unite'), Articles::UNITES_COURTES) ? (string) $donnees->get('unite') : 'unite')
                 ->setUniteAchat($donnees->get('unite_achat'))

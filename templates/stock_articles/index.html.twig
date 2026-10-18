@@ -80,7 +80,7 @@
 			<a href="{{ path('app_stock_articles_export') }}" class="btn btn-outline-secondary btn-sm si-masque-mobile">Export Excel</a>
 			<form method="get" class="si-recherche-liste">
 				<input type="hidden" name="filtre" value="{{ filtre }}">
-				<input type="search" name="q" value="{{ recherche }}" class="form-control form-control-sm" placeholder="Code ou article…" aria-label="Rechercher un article">
+				<input type="search" name="q" value="{{ recherche }}" class="form-control form-control-sm" placeholder="Code, article ou nom commercial…" aria-label="Rechercher un article">
 			</form>
 			</div>
 		</div>
@@ -114,6 +114,7 @@
 								</td>
 								<td>
 									<a href="{{ fiche }}" class="fw-semibold text-body d-block">{{ article.designation }}</a>
+									{% if article.nomCommercial %}<small class="d-block text-muted">{{ article.nomCommercial }}</small>{% endif %}
 									<small class="text-muted">
 										{{ article.famille.nom ?? 'Sans famille' }}
 										{% if article.uniteAchat and article.facteurConversion != 1 and ligne.physique > 0 %}

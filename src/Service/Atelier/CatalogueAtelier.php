@@ -8,6 +8,7 @@ use App\Entity\CompteClient;
 use App\Entity\ModeleAtelier;
 use App\Entity\ProduitArticleStock;
 use App\Entity\ProduitConfiguration;
+use App\Service\Catalogue\NomCommercial;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\Promotions\CalculPromotion;
 use App\Service\Promotions\ContexteLigne;
@@ -107,10 +108,14 @@ final class CatalogueAtelier
     public function fiche(ModeleAtelier $m): array
     {
         $c = $m->getConfiguration();
+        $produit = $c?->getProduit();
 
         return [
             'id' => $m->getPublicId()->toRfc4122(),
-            'nom' => (string) $c?->getProduit()?->getNom(),
+            // Le nom commercial d'abord, la désignation entre parenthèses (docs/noms-commerciaux.md).
+            'nom' => NomCommercial::texteClient($produit?->getNomCommercial(), $produit?->getNom()),
+            // Le nom seul, pour la ligne de la maquette.
+            'nomCourt' => NomCommercial::client($produit?->getNomCommercial(), $produit?->getNom())['nom'],
             'forme' => $m->getForme(),
             'libelleForme' => $m->getLibelleForme(),
             'couleurs' => $m->getCouleurs(),

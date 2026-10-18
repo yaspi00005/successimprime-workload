@@ -38,7 +38,7 @@
 								<span class="si-cr-vignette"><img src="{{ path('app_creations_atelier_fichier', {id: c.id, quoi: 'rendu-devant'}) }}" alt="" width="56" height="56" loading="lazy"></span>
 								<span class="si-rc-num">{{ c.numero }}<small>{{ c.creeLe|date('d/m H:i') }}</small></span>
 								<span class="si-rc-texte">
-									<b>{{ c.designation }}</b>
+									<b>{{ c|ligne_interne(c.designation) }}</b>
 									<small>{{ c.client ? c.client.nomComplet ~ ' · ' ~ c.client.code : 'Visiteur : ' ~ c.auteur }} · {{ c.resumeTailles }} · {{ c.facesMarquees|map(f => c.libelleEmplacement(f))|join(' + ') }}</small>
 								</span>
 								{% if c.commande %}

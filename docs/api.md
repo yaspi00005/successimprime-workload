@@ -13,17 +13,17 @@ partir du code, elle est donc toujours à jour.
 
 | Adresse | Contenu | Droit demandé |
 |---|---|---|
-| `GET /api/v1/produits` | Produits actifs et prix publics (et B2B) | tout le personnel |
+| `GET /api/v1/produits` | Produits actifs, nom commercial et prix publics (et B2B) | tout le personnel |
 | `GET /api/v1/clients` | Fiche client : nom, type, téléphone, e-mail, ville | Clients (ROLE_CLIENT) |
 | `GET /api/v1/commandes` | Commande, client, lignes, total TTC, avancement | Commandes (ROLE_COMMANDE) |
 | `GET /api/v1/factures` | Factures et proformas émises ou annulées | Factures (ROLE_FACTURE) |
-| `GET /api/v1/stock` | Articles du stock, quantités, seuil d'alerte | administrateur |
+| `GET /api/v1/stock` | Articles du stock, nom commercial, quantités, seuil d'alerte | administrateur |
 
 Chaque liste a sa fiche : `/api/v1/commandes/{id}`, etc.
 
 Filtres utiles :
 
-- `q` : recherche (nom, numéro, téléphone selon la ressource) ;
+- `q` : recherche (nom, numéro, téléphone selon la ressource ; pour les produits et le stock, la désignation ou le nom commercial, sans tenir compte des accents) ;
 - `depuis=AAAA-MM-JJ` (commandes, factures), `modifieDepuis=AAAA-MM-JJ` (clients) ;
 - `client=<id>` (commandes, factures) ;
 - `aConfirmer=1` : commandes passées en ligne pas encore confirmées ;

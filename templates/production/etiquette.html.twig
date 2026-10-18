@@ -278,7 +278,7 @@
 						<span class="field-label">Produit / désignation</span>
 						<span class="field-value">
 							{% if detail and detail.designation is defined and detail.designation %}
-								{{ detail.designation }}
+								{{ detail|ligne_interne }}
 							{% elseif configuration and configuration.produit %}
 								{{ configuration.produit.nom }}{% else %}Non renseigné
 							{% endif %}

@@ -31,7 +31,7 @@
 							<span class="si-lv-heure">{{ v.le|date('H:i') }}</span>
 							<div class="si-lv-qui">
 								<b>{% if v.etat == 'livree' %}<a class="stretched-link si-tr-lien" href="{{ path('app_livraisons_tournee_terminee', {id: b.id}) }}">{% endif %}{{ cli ? cli.nomComplet : (b.nomReceptionnaire ?? b.numero) }}{% if v.etat == 'livree' %}</a>{% endif %}</b>
-								<small>{{ b.numero }} · {{ b.lignes|map(l => l.designation ~ ' × ' ~ (v.etat == 'livree' ? l.quantiteLivree : l.quantiteCommandee))|join(' · ') }}</small>
+								<small>{{ b.numero }} · {{ b.lignes|map(l => l|texte_ligne_interne('') ~ ' × ' ~ (v.etat == 'livree' ? l.quantiteLivree : l.quantiteCommandee))|join(' · ') }}</small>
 								{% if v.etat == 'livree' %}
 									<small>Reçu par {{ b.receptionnaireSuivi ?? '—' }}{% if b.estPartielle %} · remise partielle{% endif %}</small>
 								{% else %}

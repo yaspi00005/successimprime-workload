@@ -32,7 +32,7 @@
 		{% if b.nomReceptionnaire and (not cli or b.nomReceptionnaire != cli.nomComplet) %}<li><i class="far fa-user" aria-hidden="true"></i><span>Pour {{ b.nomReceptionnaire }}</span></li>{% endif %}
 		{% if tel %}<li><i class="fas fa-phone" aria-hidden="true"></i><a href="tel:{{ tel|replace({' ': ''}) }}">{{ tel }}</a></li>{% endif %}
 		{% if adresse or carte %}<li><i class="fas fa-location-dot" aria-hidden="true"></i><span>{{ adresse ?: 'Position de la fiche client' }}{% if carte %} · <a href="{{ carte }}" target="_blank" rel="noopener">Voir sur la carte</a>{% endif %}</span></li>{% endif %}
-		<li><i class="fas fa-box" aria-hidden="true"></i><span>{{ b.lignes|map(l => l.designation ~ ' × ' ~ l.quantiteCommandee)|join(' · ') }}</span></li>
+		<li><i class="fas fa-box" aria-hidden="true"></i><span>{{ b.lignes|map(l => l|texte_ligne_interne('') ~ ' × ' ~ l.quantiteCommandee)|join(' · ') }}</span></li>
 		{% if b.observation %}<li><i class="far fa-comment" aria-hidden="true"></i><span>{{ b.observation }}</span></li>{% endif %}
 		{# Montant à encaisser : sa propre livraison, encore à remettre (ou le bureau qui a le droit Paiements) ; rien après un échec, le colis revient. #}
 		{% if etat not in ['livree', 'echec'] and b.commande.resteAPayer > 0 and (aMoi or is_granted('ROLE_PAIEMENT_VOIR')) %}

@@ -24,7 +24,7 @@ use App\State\ProduitProvider;
             openapi: new DocOperation(summary: 'Liste des produits'),
             security: "is_granted('ROLE_USER')",
             parameters: [
-                'q' => new QueryParameter(description: 'Nom du produit ou de la catégorie'),
+                'q' => new QueryParameter(description: 'Désignation, nom commercial, code du produit ou catégorie'),
                 'publie' => new QueryParameter(description: '1 : seulement les produits montrés sur le site'),
             ],
         ),
@@ -41,6 +41,8 @@ final class Produit
         #[ApiProperty(identifier: true)]
         public readonly int $id,
         public readonly string $nom,
+        /** Nom connu de tous (« Autocollant » pour « Vinyle adhésif »), ou null. */
+        public readonly ?string $nomCommercial,
         public readonly ?string $code,
         public readonly ?string $categorie,
         /** Montré sur le site public et dans l'espace client. */

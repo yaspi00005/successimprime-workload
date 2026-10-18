@@ -216,7 +216,7 @@
 					<div class="si-ligne-commande">
 						<span class="si-vignette si-fond-{{ couleur }}"></span>
 						<div class="flex-grow-1 min-w-0">
-							<strong>{{ detail.designation|default(detail.produit ? detail.produit.nom : 'Travail') }} × {{ detail.quantite }}</strong>
+							<strong>{{ detail|ligne_interne('Travail') }} × {{ detail.quantite }}</strong>
 							{% set caracteristiques = [] %}
 							{% if detail.largeur and detail.longueur %}{% set caracteristiques = caracteristiques|merge([(detail.largeur * 100)|round(1) ~ ' × ' ~ (detail.longueur * 100)|round(1) ~ ' cm']) %}{% endif %}
 							{# Petites pièces facturées au m² (docs/saisie-devis-commandes.md). #}

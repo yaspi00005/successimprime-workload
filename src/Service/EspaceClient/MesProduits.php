@@ -6,6 +6,7 @@ use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\ProduitClient;
+use App\Service\Catalogue\NomCommercial;
 use App\Service\CommandeProduitClient;
 use App\Service\Synchro\Synchro;
 use Doctrine\ORM\EntityManagerInterface;
@@ -223,7 +224,8 @@ final class MesProduits
             $morceaux[] = \sprintf('Laize %s m · longueur libre', self::n((float) $p->getLargeur()));
         }
         if (null !== $p->getSupport()?->getNom()) {
-            $morceaux[] = $p->getSupport()->getNom();
+            // Nom commercial d'abord, désignation entre parenthèses (docs/noms-commerciaux.md).
+            $morceaux[] = NomCommercial::texteClient($p->getSupport()->getNomCommercial(), $p->getSupport()->getNom());
         }
         if (ProduitClient::UNITE_LOT === $p->getUniteVente() && null !== $p->getTailleLot()) {
             $morceaux[] = 'par '.self::f($p->getTailleLot());

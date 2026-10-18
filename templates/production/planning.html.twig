@@ -107,7 +107,7 @@
 				<ul>
 					{% for ordre in sans_creneau %}
 						<li>
-							<strong>{{ ordre.commandeDetail ? ordre.commandeDetail.designation|default(ordre.numero) : ordre.numero }}</strong>
+							<strong>{{ ordre.commandeDetail ? ordre.commandeDetail|texte_ligne_interne(ordre.numero) : ordre.numero }}</strong>
 							<span>{{ ordre.machine ? ordre.machine.nom : 'Machine à choisir' }}</span>
 						</li>
 					{% endfor %}

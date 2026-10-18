@@ -85,8 +85,8 @@
 						<dd>
 							{% for l in lignes %}
 								<div class="cs-produit">
-									{{ l|espace_titre_ligne }}
-									{% set options = [l.support ? l.support.nom : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
+									{{ l|titre_ligne_client }}
+									{% set options = [l.support ? l.support|texte_client : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
 									{% if options is not empty %}<small>{{ options|join(' · ') }}</small>{% endif %}
 									{% if l.demandeClient %}<small>Votre demande : « {{ l.demandeClient }} »</small>{% endif %}
 									{% set mesFichiers = l.fichiers|filter(f => f.actif and f.origine == 'client') %}

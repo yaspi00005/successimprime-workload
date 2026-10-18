@@ -29,6 +29,16 @@ final class CatalogueSynchroTest extends TestCase
         }
     }
 
+    public function testLeNomCommercialPartAuSiteEnLigne(): void
+    {
+        // docs/noms-commerciaux.md : produits, supports et types d'impression ; les articles restent au local.
+        $types = CatalogueSynchro::types();
+        foreach (['produit', 'support', 'type_impression'] as $type) {
+            self::assertContains('nomCommercial', $types[$type]['champs'], $type);
+        }
+        self::assertArrayNotHasKey('article', $types);
+    }
+
     public function testLesDocumentsGardentLeursSecretsAuLocal(): void
     {
         $types = CatalogueSynchro::types();

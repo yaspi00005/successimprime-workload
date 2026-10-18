@@ -90,7 +90,7 @@
 						<div>
 
 							<h3 class="card-title mb-1">
-								{{ detail.designation }}
+								{{ detail|ligne_interne('') }}
 							</h3>
 
 							<small class="text-muted">
@@ -581,7 +581,7 @@
 						</small>
 
 						<strong>
-							{{ detail.designation }}
+							{{ detail|ligne_interne('') }}
 						</strong>
 
 					</div>
@@ -594,7 +594,7 @@
 						</small>
 
 						{% if produit %}
-							{{ produit.nom }}
+							{{ produit|nom_interne }}
 						{% else %}
 							—
 						{% endif %}
@@ -620,7 +620,7 @@
 						</small>
 
 						{% if detail.typeImpression %}
-							{{ detail.typeImpression.nom }}
+							{{ detail.typeImpression|nom_interne }}
 						{% else %}
 							—
 						{% endif %}
@@ -635,7 +635,7 @@
 						</small>
 
 						{% if detail.support %}
-							{{ detail.support.nom }}
+							{{ detail.support|nom_interne }}
 						{% else %}
 							—
 						{% endif %}

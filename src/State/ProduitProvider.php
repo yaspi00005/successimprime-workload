@@ -35,7 +35,8 @@ final class ProduitProvider extends LectureApi implements ProviderInterface
             ->where('p.actif = true')
             ->orderBy('p.nom', 'ASC')->addOrderBy('p.id', 'ASC');
         if (null !== $q = self::texte($filtres, 'q')) {
-            $requete->andWhere('p.nom LIKE :q OR p.code LIKE :q OR cat.nom LIKE :q')->setParameter('q', self::like($q));
+            // Désignation ou nom commercial, sans tenir compte des accents (interclassement general_ci).
+            $requete->andWhere('p.nom LIKE :q OR p.nomCommercial LIKE :q OR p.code LIKE :q OR cat.nom LIKE :q')->setParameter('q', self::like($q));
         }
         if (self::oui($filtres, 'publie')) {
             $requete->andWhere('p.publie = true');
@@ -65,6 +66,7 @@ final class ProduitProvider extends LectureApi implements ProviderInterface
         return new Produit(
             (int) $entite->getId(),
             (string) $entite->getNom(),
+            $entite->getNomCommercial(),
             $entite->getCode(),
             $entite->getCategorieProduit()?->getNom(),
             $entite->isPublie(),

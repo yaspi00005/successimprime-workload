@@ -25,6 +25,11 @@
 							<label class="si-libelle-champ" for="reference">Code</label>
 							<input type="text" name="reference" id="reference" value="{{ v.reference }}" class="form-control form-control-sm" maxlength="100" placeholder="Automatique">
 						</div>
+						<div class="col-12">
+							<label class="si-libelle-champ" for="nom_commercial">Nom commercial <span class="text-muted fw-normal">(facultatif)</span></label>
+							<input type="text" name="nom_commercial" id="nom_commercial" value="{{ v.nomCommercial }}" class="form-control form-control-sm" maxlength="120" placeholder="Le nom que tout le monde connaît : rouleau d'autocollant" aria-describedby="nom_commercial_aide">
+							<small id="nom_commercial_aide" class="text-muted">Vu par le client avant la désignation quand l'article est vendu ; la recherche trouve l'un ou l'autre.</small>
+						</div>
 						<div class="col-md-6">
 							<label class="si-libelle-champ" for="famille">Famille</label>
 							<select name="famille" id="famille" class="form-select form-select-sm">

@@ -248,6 +248,13 @@ def mouvement(typ, categorie, montant, libelle, d, h, m, source=None, dest=None,
 
 
 # ------------------------------------------------------------------- catalogue
+# Noms commerciaux (docs/noms-commerciaux.md) : le nom que tout le monde connaît, à côté de la désignation technique.
+NOMS_COMMERCIAUX = {
+    'types_impression': {'Solvant grand format': 'Impression extérieure', 'Éco-solvant intérieur': 'Impression intérieure', 'DTF textile': 'Impression sur textile'},
+    'supports': {'Micro-perforé': 'Vitrophanie', 'Bâche 440 g roll-up': 'Toile de roll-up'},
+    'produits': {'D-BACHE': 'Banderole', 'D-VINYLE': 'Autocollant', 'D-MICRO': 'Vitrophanie', 'D-AKYLUX': 'Panneau publicitaire', 'D-TSHIRT': 'T-shirt imprimé'},
+    'articles': {'D-MAT-003': 'Rouleau d\'autocollant', 'D-MAT-004': 'Rouleau de vitrophanie', 'D-FIN-001': 'Pied de roll-up'},
+}
 CATEGORIES = {}
 for k, (nom, desc) in enumerate([('Grand format', 'Bâches, vinyles, panneaux'), ('Impression numérique', 'Flyers, cartes, affiches, brochures'),
                                   ('Textile', 'T-shirts, polos, casquettes'), ('Signalétique', 'Roll-up, kakémonos, enseignes')]):
@@ -256,12 +263,12 @@ for k, (nom, desc) in enumerate([('Grand format', 'Bâches, vinyles, panneaux'),
 TYPES = {}
 for k, (nom, desc) in enumerate([('Solvant grand format', 'Extérieur, encres solvant'), ('DTF textile', 'Transfert sur textile'),
                                   ('Laser couleur', 'Petit format, feuilles SRA3'), ('Éco-solvant intérieur', 'Intérieur, haute définition')]):
-    TYPES[nom] = add('types_impression', {'nom': nom, 'description': desc, 'publie': 1, 'ordre': k + 1, 'public_id': uid()})
+    TYPES[nom] = add('types_impression', {'nom': nom, 'description': desc, 'publie': 1, 'ordre': k + 1, 'public_id': uid(), 'nom_commercial': NOMS_COMMERCIAUX['types_impression'].get(nom)})
 
 SUPPORTS = {}
 for k, nom in enumerate(['Bâche 510 g frontlit', 'Bâche 440 g roll-up', 'Vinyle adhésif blanc', 'Micro-perforé', 'Akylux 3 mm', 'Papier couché 135 g',
                          'Papier couché 350 g', 'T-shirt coton', 'Polo piqué', 'Casquette 6 panneaux']):
-    SUPPORTS[nom] = add('supports', {'nom': nom, 'description': '', 'publie': 1, 'ordre': k + 1, 'public_id': uid()})
+    SUPPORTS[nom] = add('supports', {'nom': nom, 'description': '', 'publie': 1, 'ordre': k + 1, 'public_id': uid(), 'nom_commercial': NOMS_COMMERCIAUX['supports'].get(nom)})
 
 FORMATS = {}
 for k, (nom, l, h, u) in enumerate([('A5', 14.8, 21, 'cm'), ('A4', 21, 29.7, 'cm'), ('A3', 29.7, 42, 'cm'), ('Carte 85 × 55', 8.5, 5.5, 'cm'),
@@ -321,7 +328,8 @@ for ref, des, fam, unite, pa, pv, fourn, smin, machine in [
                          'description': None, 'actif': 1, 'vendable': 1 if pv else 0, 'consommable_production': 1, 'fournisseur_id': fourn,
                          'unite_achat': 'rouleau' if unite == 'm2' else unite, 'quantite_par_unite_achat': 50.0 if unite == 'm2' else 1.0, 'longueur_unite_achat': None, 'laize': None,
                          'unite_vente': unite, 'stock_max': smin * 6, 'emplacement': R.choice(['Magasin A', 'Magasin B', 'Atelier']), 'cout_moyen': pa,
-                         'famille_id': S(f"(SELECT f.id FROM famille_article f WHERE f.nom = '{fam}' LIMIT 1)"), 'machine_id': MACHINES.get(machine)})
+                         'famille_id': S(f"(SELECT f.id FROM famille_article f WHERE f.nom = '{fam}' LIMIT 1)"), 'machine_id': MACHINES.get(machine),
+                         'nom_commercial': NOMS_COMMERCIAUX['articles'].get(ref)})
     ARTICLES[ref] = a
     ARTICLE_INFO[a] = {'pa': pa, 'fourn': fourn, 'unite': unite, 'stock': 0.0, 'smin': smin}
     add('article_fournisseur', {'prix_achat': pa, 'delai_jours': R.choice([2, 5, 10, 21]), 'principal': 1, 'reference_fournisseur': f'REF-{R.randint(1000, 9999)}', 'article_id': a, 'fournisseur_id': fourn})
@@ -349,7 +357,7 @@ P = {}
 for k, (code, nom, cat, mode, prix, b2b, typ, sup, fmt, machine, fins, art, cout) in enumerate(PRODUITS):
     pid = add('produits', {'nom': nom + ' (démo)', 'description': f'{nom} — produit de démonstration', 'publie': 1, 'ordre': k + 1, 'code': code, 'prix_base': float(prix),
                            'prix_b2_b': float(b2b), 'personnalisable': 1, 'actif': 1, 'mode_calcul': mode, 'gestion_stock': 0, 'categorie_produit_id': CATEGORIES[cat],
-                           'article_stock_id': ARTICLES[art], 'public_id': uid()})
+                           'article_stock_id': ARTICLES[art], 'public_id': uid(), 'nom_commercial': NOMS_COMMERCIAUX['produits'].get(code)})
     conf = add('produit_configuration', {'active': 1, 'ordre': 1, 'description': None, 'prix_base': prix, 'mode_calcul': mode, 'mode_dimension': 'mesure' if fmt == 'Sur mesure' else 'format',
                                           'largeur_defaut': None, 'longueur_defaut': None, 'quantite_minimale': 1, 'quantite_maximale': None, 'prix_b2_b': b2b,
                                           'produit_id': pid, 'type_impression_id': TYPES[typ], 'support_id': SUPPORTS[sup], 'format_id': FORMATS[fmt], 'public_id': uid()})

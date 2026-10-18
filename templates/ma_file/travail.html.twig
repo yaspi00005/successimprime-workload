@@ -11,7 +11,7 @@
 	{% set prevue = o.finPrevueLe ?? o.dateLimite %}
 	<div class="si-mf si-mf-travail">
 		<section class="card si-mf-bloc" {% if o.statut == 'en_cours' %}data-si-chrono="{{ p.secondes }}"{% endif %}>
-			<small>{{ ligne ? ligne.designation ~ ' × ' ~ (o.quantite ?? ligne.quantite) : o.numero }}{{ ligne and ligne.commande.clients ? ' · ' ~ ligne.commande.clients.nomComplet }}</small>
+			<small>{{ ligne ? ligne|texte_ligne_interne('Travail') ~ ' × ' ~ (o.quantite ?? ligne.quantite) : o.numero }}{{ ligne and ligne.commande.clients ? ' · ' ~ ligne.commande.clients.nomComplet }}</small>
 			<div class="si-mf-chrono"><strong data-si-chrono-texte>{{ '%02d:%02d:%02d'|format(p.secondes // 3600, (p.secondes // 60) % 60, p.secondes % 60) }}</strong>{% if o.demarreLe %}<small>depuis<br>{{ o.demarreLe|date('H:i') }}</small>{% endif %}</div>
 			{% if p.m2 %}
 				{% set fait = o.estTermine ? p.m2 : (p.fait ?? 0) %}

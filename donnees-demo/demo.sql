@@ -167,23 +167,23 @@ INSERT INTO `categorie_produit` (`id`, `nom`, `description`, `publie`, `ordre`, 
 (900003, 'Textile (démo)', 'T-shirts, polos, casquettes', 1, 3, UNHEX('975cef7a27654f91abb53283ce107503')),
 (900004, 'Signalétique (démo)', 'Roll-up, kakémonos, enseignes', 1, 4, UNHEX('9f93693f6f0047c4b4fd02f6850567c2'));
 -- types_impression : 4
-INSERT INTO `types_impression` (`id`, `nom`, `description`, `publie`, `ordre`, `public_id`) VALUES
-(900001, 'Solvant grand format', 'Extérieur, encres solvant', 1, 1, UNHEX('3bbb492b99244b8bb5750c2b561f8bfe')),
-(900002, 'DTF textile', 'Transfert sur textile', 1, 2, UNHEX('8c1f638711cb4ea7b5fc684aadb21095')),
-(900003, 'Laser couleur', 'Petit format, feuilles SRA3', 1, 3, UNHEX('a5b0e526320b43f888be3b07662f286b')),
-(900004, 'Éco-solvant intérieur', 'Intérieur, haute définition', 1, 4, UNHEX('a5f274190b944014ac6193ccebe48123'));
+INSERT INTO `types_impression` (`id`, `nom`, `description`, `publie`, `ordre`, `public_id`, `nom_commercial`) VALUES
+(900001, 'Solvant grand format', 'Extérieur, encres solvant', 1, 1, UNHEX('3bbb492b99244b8bb5750c2b561f8bfe'), 'Impression extérieure'),
+(900002, 'DTF textile', 'Transfert sur textile', 1, 2, UNHEX('8c1f638711cb4ea7b5fc684aadb21095'), 'Impression sur textile'),
+(900003, 'Laser couleur', 'Petit format, feuilles SRA3', 1, 3, UNHEX('a5b0e526320b43f888be3b07662f286b'), NULL),
+(900004, 'Éco-solvant intérieur', 'Intérieur, haute définition', 1, 4, UNHEX('a5f274190b944014ac6193ccebe48123'), 'Impression intérieure');
 -- supports : 10
-INSERT INTO `supports` (`id`, `nom`, `description`, `publie`, `ordre`, `public_id`) VALUES
-(900001, 'Bâche 510 g frontlit', '', 1, 1, UNHEX('0c56037fd6c749cbae532f038b75d02a')),
-(900002, 'Bâche 440 g roll-up', '', 1, 2, UNHEX('a40eecb5c134479b9e3b7dd373aa881e')),
-(900003, 'Vinyle adhésif blanc', '', 1, 3, UNHEX('adbafed0b600460cbbdcfd55304374b3')),
-(900004, 'Micro-perforé', '', 1, 4, UNHEX('a5497863210f4de3853d82cbe0b89bcb')),
-(900005, 'Akylux 3 mm', '', 1, 5, UNHEX('e1f66c3ac9104f89b7fe43eb87a9ec13')),
-(900006, 'Papier couché 135 g', '', 1, 6, UNHEX('2341bbbef4e24a68a50588a5845074a1')),
-(900007, 'Papier couché 350 g', '', 1, 7, UNHEX('2f9e09c9d8284123a945e7bb290f5d0f')),
-(900008, 'T-shirt coton', '', 1, 8, UNHEX('887367376ce4448f85d6ac4263d52b10')),
-(900009, 'Polo piqué', '', 1, 9, UNHEX('62186f4b14224bef9e3842616a01977b')),
-(900010, 'Casquette 6 panneaux', '', 1, 10, UNHEX('2cb8cefc5814453fafec42754e0e8896'));
+INSERT INTO `supports` (`id`, `nom`, `description`, `publie`, `ordre`, `public_id`, `nom_commercial`) VALUES
+(900001, 'Bâche 510 g frontlit', '', 1, 1, UNHEX('0c56037fd6c749cbae532f038b75d02a'), NULL),
+(900002, 'Bâche 440 g roll-up', '', 1, 2, UNHEX('a40eecb5c134479b9e3b7dd373aa881e'), 'Toile de roll-up'),
+(900003, 'Vinyle adhésif blanc', '', 1, 3, UNHEX('adbafed0b600460cbbdcfd55304374b3'), NULL),
+(900004, 'Micro-perforé', '', 1, 4, UNHEX('a5497863210f4de3853d82cbe0b89bcb'), 'Vitrophanie'),
+(900005, 'Akylux 3 mm', '', 1, 5, UNHEX('e1f66c3ac9104f89b7fe43eb87a9ec13'), NULL),
+(900006, 'Papier couché 135 g', '', 1, 6, UNHEX('2341bbbef4e24a68a50588a5845074a1'), NULL),
+(900007, 'Papier couché 350 g', '', 1, 7, UNHEX('2f9e09c9d8284123a945e7bb290f5d0f'), NULL),
+(900008, 'T-shirt coton', '', 1, 8, UNHEX('887367376ce4448f85d6ac4263d52b10'), NULL),
+(900009, 'Polo piqué', '', 1, 9, UNHEX('62186f4b14224bef9e3842616a01977b'), NULL),
+(900010, 'Casquette 6 panneaux', '', 1, 10, UNHEX('2cb8cefc5814453fafec42754e0e8896'), NULL);
 -- format : 8
 INSERT INTO `format` (`id`, `nom`, `largeur`, `hauteur`, `unite`, `description`, `publie`, `ordre`, `public_id`) VALUES
 (900001, 'A5', 14.8, 21, 'cm', '', 1, 1, UNHEX('ffce69737f624f26b6c3266043710baf')),
@@ -221,26 +221,26 @@ INSERT INTO `fournisseurs` (`id`, `nom`, `telephone`, `email`, `adresse`, `actif
 (900004, 'Textiles du Mandé (démo)', 60857447, NULL, 'Marché Rose, Bamako', 1),
 (900005, 'Papeterie Niger (démo)', 60941290, NULL, 'Bamako Coura', 1);
 -- articles : 19
-INSERT INTO `articles` (`id`, `reference`, `designation`, `categorie`, `unite`, `stock`, `stock_min`, `prix_achat`, `prix_vente`, `description`, `actif`, `vendable`, `consommable_production`, `fournisseur_id`, `unite_achat`, `quantite_par_unite_achat`, `longueur_unite_achat`, `laize`, `unite_vente`, `stock_max`, `emplacement`, `cout_moyen`, `famille_id`, `machine_id`) VALUES
-(900001, 'D-MAT-001', 'Bâche 510 g frontlit · laize 3,20 m', 'Supports', 'm2', 600.0, 300, 650, NULL, NULL, 1, 0, 1, 900001, 'rouleau', 50.0, NULL, NULL, 'm2', 1800, 'Magasin A', 650, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL),
-(900002, 'D-MAT-002', 'Bâche 440 g · laize 1,60 m', 'Supports', 'm2', 300.0, 150, 550, NULL, NULL, 1, 0, 1, 900001, 'rouleau', 50.0, NULL, NULL, 'm2', 900, 'Magasin B', 550, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL),
-(900003, 'D-MAT-003', 'Vinyle blanc brillant · 1,52 m', 'Supports', 'm2', 1555.26, 100, 1400, NULL, NULL, 1, 0, 1, 900002, 'rouleau', 50.0, NULL, NULL, 'm2', 600, 'Magasin B', 1400, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL),
-(900004, 'D-MAT-004', 'Micro-perforé · 1,37 m', 'Supports', 'm2', 2345.89, 40, 2600, NULL, NULL, 1, 0, 1, 900002, 'rouleau', 50.0, NULL, NULL, 'm2', 240, 'Magasin A', 2600, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL),
-(900005, 'D-MAT-005', 'Plaque Akylux 3 mm', 'Supports', 'm2', 601.88, 20, 5200, NULL, NULL, 1, 0, 1, 900002, 'rouleau', 50.0, NULL, NULL, 'm2', 120, 'Atelier', 5200, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL),
-(900006, 'D-ENC-001', 'Encre solvant cyan', 'Encres', 'litre', 1.8, 4, 28000, NULL, NULL, 1, 0, 1, 900003, 'litre', 1.0, NULL, NULL, 'litre', 24, 'Atelier', 28000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Encres' LIMIT 1), 900001),
-(900007, 'D-ENC-002', 'Encre solvant magenta', 'Encres', 'litre', 25.0, 4, 28000, NULL, NULL, 1, 0, 1, 900003, 'litre', 1.0, NULL, NULL, 'litre', 24, 'Atelier', 28000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Encres' LIMIT 1), 900001),
-(900008, 'D-ENC-003', 'Encre solvant jaune', 'Encres', 'litre', 20.0, 4, 28000, NULL, NULL, 1, 0, 1, 900003, 'litre', 1.0, NULL, NULL, 'litre', 24, 'Magasin B', 28000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Encres' LIMIT 1), 900001),
-(900009, 'D-ENC-004', 'Encre solvant noir', 'Encres', 'litre', 25.0, 4, 26000, NULL, NULL, 1, 0, 1, 900003, 'litre', 1.0, NULL, NULL, 'litre', 24, 'Atelier', 26000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Encres' LIMIT 1), 900001),
-(900010, 'D-DTF-001', 'Film DTF · 60 cm', 'DTF', 'metre', 200.0, 50, 1800, NULL, NULL, 1, 0, 1, 900003, 'metre', 1.0, NULL, NULL, 'metre', 300, 'Atelier', 1800, (SELECT f.id FROM famille_article f WHERE f.nom = 'DTF' LIMIT 1), 900003),
-(900011, 'D-DTF-002', 'Poudre DTF 1 kg', 'DTF', 'kg', 15.0, 3, 9500, NULL, NULL, 1, 0, 1, 900003, 'kg', 1.0, NULL, NULL, 'kg', 18, 'Magasin A', 9500, (SELECT f.id FROM famille_article f WHERE f.nom = 'DTF' LIMIT 1), 900003),
-(900012, 'D-TEX-001', 'T-shirt coton blanc', 'Textile', 'unite', 120.0, 100, 1600, 2500, NULL, 1, 1, 1, 900004, 'unite', 1.0, NULL, NULL, 'unite', 600, 'Atelier', 1600, (SELECT f.id FROM famille_article f WHERE f.nom = 'Textile' LIMIT 1), NULL),
-(900013, 'D-TEX-002', 'Polo piqué', 'Textile', 'unite', 550.0, 40, 3500, 5500, NULL, 1, 1, 1, 900004, 'unite', 1.0, NULL, NULL, 'unite', 240, 'Magasin B', 3500, (SELECT f.id FROM famille_article f WHERE f.nom = 'Textile' LIMIT 1), NULL),
-(900014, 'D-TEX-003', 'Casquette 6 panneaux', 'Textile', 'unite', 260.0, 50, 1200, 2000, NULL, 1, 1, 1, 900004, 'unite', 1.0, NULL, NULL, 'unite', 300, 'Magasin A', 1200, (SELECT f.id FROM famille_article f WHERE f.nom = 'Textile' LIMIT 1), NULL),
-(900015, 'D-FIN-001', 'Structure roll-up 85 × 200', 'Finition', 'unite', 134.0, 10, 18000, 25000, NULL, 1, 1, 1, 900002, 'unite', 1.0, NULL, NULL, 'unite', 60, 'Atelier', 18000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Finition' LIMIT 1), NULL),
-(900016, 'D-FIN-002', 'Œillets laiton (boîte de 500)', 'Finition', 'boite', 6.0, 3, 6000, NULL, NULL, 1, 0, 1, 900001, 'boite', 1.0, NULL, NULL, 'boite', 18, 'Atelier', 6000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Finition' LIMIT 1), NULL),
-(900017, 'D-PAP-001', 'Papier couché 350 g · SRA3', 'Papier', 'feuille', 5600.0, 1000, 95, NULL, NULL, 1, 0, 1, 900005, 'feuille', 1.0, NULL, NULL, 'feuille', 6000, 'Magasin A', 95, (SELECT f.id FROM famille_article f WHERE f.nom = 'Papier' LIMIT 1), NULL),
-(900018, 'D-PAP-002', 'Papier couché 135 g · SRA3', 'Papier', 'feuille', 4000.0, 2000, 45, NULL, NULL, 1, 0, 1, 900005, 'feuille', 1.0, NULL, NULL, 'feuille', 12000, 'Atelier', 45, (SELECT f.id FROM famille_article f WHERE f.nom = 'Papier' LIMIT 1), NULL),
-(900019, 'D-PAP-003', 'Toner couleur C3070 (jeu)', 'Papier', 'unite', 2.2, 1, 185000, NULL, NULL, 1, 0, 1, 900005, 'unite', 1.0, NULL, NULL, 'unite', 6, 'Atelier', 185000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Papier' LIMIT 1), 900004);
+INSERT INTO `articles` (`id`, `reference`, `designation`, `categorie`, `unite`, `stock`, `stock_min`, `prix_achat`, `prix_vente`, `description`, `actif`, `vendable`, `consommable_production`, `fournisseur_id`, `unite_achat`, `quantite_par_unite_achat`, `longueur_unite_achat`, `laize`, `unite_vente`, `stock_max`, `emplacement`, `cout_moyen`, `famille_id`, `machine_id`, `nom_commercial`) VALUES
+(900001, 'D-MAT-001', 'Bâche 510 g frontlit · laize 3,20 m', 'Supports', 'm2', 600.0, 300, 650, NULL, NULL, 1, 0, 1, 900001, 'rouleau', 50.0, NULL, NULL, 'm2', 1800, 'Magasin A', 650, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL, NULL),
+(900002, 'D-MAT-002', 'Bâche 440 g · laize 1,60 m', 'Supports', 'm2', 300.0, 150, 550, NULL, NULL, 1, 0, 1, 900001, 'rouleau', 50.0, NULL, NULL, 'm2', 900, 'Magasin B', 550, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL, NULL),
+(900003, 'D-MAT-003', 'Vinyle blanc brillant · 1,52 m', 'Supports', 'm2', 1555.26, 100, 1400, NULL, NULL, 1, 0, 1, 900002, 'rouleau', 50.0, NULL, NULL, 'm2', 600, 'Magasin B', 1400, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL, 'Rouleau d''autocollant'),
+(900004, 'D-MAT-004', 'Micro-perforé · 1,37 m', 'Supports', 'm2', 2345.89, 40, 2600, NULL, NULL, 1, 0, 1, 900002, 'rouleau', 50.0, NULL, NULL, 'm2', 240, 'Magasin A', 2600, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL, 'Rouleau de vitrophanie'),
+(900005, 'D-MAT-005', 'Plaque Akylux 3 mm', 'Supports', 'm2', 601.88, 20, 5200, NULL, NULL, 1, 0, 1, 900002, 'rouleau', 50.0, NULL, NULL, 'm2', 120, 'Atelier', 5200, (SELECT f.id FROM famille_article f WHERE f.nom = 'Supports' LIMIT 1), NULL, NULL),
+(900006, 'D-ENC-001', 'Encre solvant cyan', 'Encres', 'litre', 1.8, 4, 28000, NULL, NULL, 1, 0, 1, 900003, 'litre', 1.0, NULL, NULL, 'litre', 24, 'Atelier', 28000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Encres' LIMIT 1), 900001, NULL),
+(900007, 'D-ENC-002', 'Encre solvant magenta', 'Encres', 'litre', 25.0, 4, 28000, NULL, NULL, 1, 0, 1, 900003, 'litre', 1.0, NULL, NULL, 'litre', 24, 'Atelier', 28000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Encres' LIMIT 1), 900001, NULL),
+(900008, 'D-ENC-003', 'Encre solvant jaune', 'Encres', 'litre', 20.0, 4, 28000, NULL, NULL, 1, 0, 1, 900003, 'litre', 1.0, NULL, NULL, 'litre', 24, 'Magasin B', 28000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Encres' LIMIT 1), 900001, NULL),
+(900009, 'D-ENC-004', 'Encre solvant noir', 'Encres', 'litre', 25.0, 4, 26000, NULL, NULL, 1, 0, 1, 900003, 'litre', 1.0, NULL, NULL, 'litre', 24, 'Atelier', 26000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Encres' LIMIT 1), 900001, NULL),
+(900010, 'D-DTF-001', 'Film DTF · 60 cm', 'DTF', 'metre', 200.0, 50, 1800, NULL, NULL, 1, 0, 1, 900003, 'metre', 1.0, NULL, NULL, 'metre', 300, 'Atelier', 1800, (SELECT f.id FROM famille_article f WHERE f.nom = 'DTF' LIMIT 1), 900003, NULL),
+(900011, 'D-DTF-002', 'Poudre DTF 1 kg', 'DTF', 'kg', 15.0, 3, 9500, NULL, NULL, 1, 0, 1, 900003, 'kg', 1.0, NULL, NULL, 'kg', 18, 'Magasin A', 9500, (SELECT f.id FROM famille_article f WHERE f.nom = 'DTF' LIMIT 1), 900003, NULL),
+(900012, 'D-TEX-001', 'T-shirt coton blanc', 'Textile', 'unite', 120.0, 100, 1600, 2500, NULL, 1, 1, 1, 900004, 'unite', 1.0, NULL, NULL, 'unite', 600, 'Atelier', 1600, (SELECT f.id FROM famille_article f WHERE f.nom = 'Textile' LIMIT 1), NULL, NULL),
+(900013, 'D-TEX-002', 'Polo piqué', 'Textile', 'unite', 550.0, 40, 3500, 5500, NULL, 1, 1, 1, 900004, 'unite', 1.0, NULL, NULL, 'unite', 240, 'Magasin B', 3500, (SELECT f.id FROM famille_article f WHERE f.nom = 'Textile' LIMIT 1), NULL, NULL),
+(900014, 'D-TEX-003', 'Casquette 6 panneaux', 'Textile', 'unite', 260.0, 50, 1200, 2000, NULL, 1, 1, 1, 900004, 'unite', 1.0, NULL, NULL, 'unite', 300, 'Magasin A', 1200, (SELECT f.id FROM famille_article f WHERE f.nom = 'Textile' LIMIT 1), NULL, NULL),
+(900015, 'D-FIN-001', 'Structure roll-up 85 × 200', 'Finition', 'unite', 134.0, 10, 18000, 25000, NULL, 1, 1, 1, 900002, 'unite', 1.0, NULL, NULL, 'unite', 60, 'Atelier', 18000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Finition' LIMIT 1), NULL, 'Pied de roll-up'),
+(900016, 'D-FIN-002', 'Œillets laiton (boîte de 500)', 'Finition', 'boite', 6.0, 3, 6000, NULL, NULL, 1, 0, 1, 900001, 'boite', 1.0, NULL, NULL, 'boite', 18, 'Atelier', 6000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Finition' LIMIT 1), NULL, NULL),
+(900017, 'D-PAP-001', 'Papier couché 350 g · SRA3', 'Papier', 'feuille', 5600.0, 1000, 95, NULL, NULL, 1, 0, 1, 900005, 'feuille', 1.0, NULL, NULL, 'feuille', 6000, 'Magasin A', 95, (SELECT f.id FROM famille_article f WHERE f.nom = 'Papier' LIMIT 1), NULL, NULL),
+(900018, 'D-PAP-002', 'Papier couché 135 g · SRA3', 'Papier', 'feuille', 4000.0, 2000, 45, NULL, NULL, 1, 0, 1, 900005, 'feuille', 1.0, NULL, NULL, 'feuille', 12000, 'Atelier', 45, (SELECT f.id FROM famille_article f WHERE f.nom = 'Papier' LIMIT 1), NULL, NULL),
+(900019, 'D-PAP-003', 'Toner couleur C3070 (jeu)', 'Papier', 'unite', 2.2, 1, 185000, NULL, NULL, 1, 0, 1, 900005, 'unite', 1.0, NULL, NULL, 'unite', 6, 'Atelier', 185000, (SELECT f.id FROM famille_article f WHERE f.nom = 'Papier' LIMIT 1), 900004, NULL);
 -- article_fournisseur : 28
 INSERT INTO `article_fournisseur` (`id`, `prix_achat`, `delai_jours`, `principal`, `reference_fournisseur`, `article_id`, `fournisseur_id`) VALUES
 (900001, 650, 2, 1, 'REF-9300', 900001, 900001),
@@ -272,20 +272,20 @@ INSERT INTO `article_fournisseur` (`id`, `prix_achat`, `delai_jours`, `principal
 (900027, 50, 14, 0, NULL, 900018, 900003),
 (900028, 185000, 5, 1, 'REF-8709', 900019, 900005);
 -- produits : 13
-INSERT INTO `produits` (`id`, `nom`, `description`, `publie`, `ordre`, `code`, `prix_base`, `prix_b2_b`, `personnalisable`, `actif`, `mode_calcul`, `gestion_stock`, `categorie_produit_id`, `article_stock_id`, `public_id`) VALUES
-(900001, 'Bâche imprimée (démo)', 'Bâche imprimée — produit de démonstration', 1, 1, 'D-BACHE', 3500.0, 3000.0, 1, 1, 'metre_carre', 0, 900001, 900001, UNHEX('269de5d1dcb34d7d8234efddaddc5401')),
-(900002, 'Vinyle adhésif (démo)', 'Vinyle adhésif — produit de démonstration', 1, 2, 'D-VINYLE', 6500.0, 5500.0, 1, 1, 'metre_carre', 0, 900001, 900003, UNHEX('5c2472e5f9e64abfb50f9e6c6629bc24')),
-(900003, 'Micro-perforé vitrine (démo)', 'Micro-perforé vitrine — produit de démonstration', 1, 3, 'D-MICRO', 9000.0, 8000.0, 1, 1, 'metre_carre', 0, 900001, 900004, UNHEX('dc78752d57fb4eeb869855d2d43cc531')),
-(900004, 'Panneau Akylux (démo)', 'Panneau Akylux — produit de démonstration', 1, 4, 'D-AKYLUX', 15000.0, 13000.0, 1, 1, 'metre_carre', 0, 900004, 900005, UNHEX('cfba5e788c7d4cd4b522aa7fa3132dd6')),
-(900005, 'Roll-up 85 × 200 cm (démo)', 'Roll-up 85 × 200 cm — produit de démonstration', 1, 5, 'D-ROLLUP', 45000.0, 40000.0, 1, 1, 'unite', 0, 900004, 900015, UNHEX('2885f868301a4d128febec7094a0df05')),
-(900006, 'Kakémono 80 × 180 cm (démo)', 'Kakémono 80 × 180 cm — produit de démonstration', 1, 6, 'D-KAKEMONO', 30000.0, 27000.0, 1, 1, 'unite', 0, 900004, 900002, UNHEX('5abc12f8f35041ce815c1d5ce4cfed0e')),
-(900007, 'Flyers A5 (démo)', 'Flyers A5 — produit de démonstration', 1, 7, 'D-FLYER', 75.0, 60.0, 1, 1, 'unite', 0, 900002, 900018, UNHEX('099a0307cb9d4149a8881c56b3cd1e1c')),
-(900008, 'Cartes de visite (démo)', 'Cartes de visite — produit de démonstration', 1, 8, 'D-CARTE', 50.0, 40.0, 1, 1, 'unite', 0, 900002, 900017, UNHEX('43d803afbb234be28bf6237b5f6f6b2c')),
-(900009, 'Affiches A3 (démo)', 'Affiches A3 — produit de démonstration', 1, 9, 'D-AFFICHE', 750.0, 650.0, 1, 1, 'unite', 0, 900002, 900018, UNHEX('888debe904b24ee4a74c3167ffb218ea')),
-(900010, 'Brochure A4 8 pages (démo)', 'Brochure A4 8 pages — produit de démonstration', 1, 10, 'D-BROCHURE', 1800.0, 1500.0, 1, 1, 'unite', 0, 900002, 900018, UNHEX('0b6dba449297461b8e8494fb951765da')),
-(900011, 'T-shirt personnalisé DTF (démo)', 'T-shirt personnalisé DTF — produit de démonstration', 1, 11, 'D-TSHIRT', 5000.0, 4200.0, 1, 1, 'unite', 0, 900003, 900012, UNHEX('cfe24ae2843f4185b8993660f6908f31')),
-(900012, 'Polo personnalisé (démo)', 'Polo personnalisé — produit de démonstration', 1, 12, 'D-POLO', 9000.0, 8000.0, 1, 1, 'unite', 0, 900003, 900013, UNHEX('24530e4c15e54c129adc2207823e3122')),
-(900013, 'Casquette personnalisée (démo)', 'Casquette personnalisée — produit de démonstration', 1, 13, 'D-CASQUETTE', 3500.0, 3000.0, 1, 1, 'unite', 0, 900003, 900014, UNHEX('bcc1a9360aa54cd08f77abb942edffa9'));
+INSERT INTO `produits` (`id`, `nom`, `description`, `publie`, `ordre`, `code`, `prix_base`, `prix_b2_b`, `personnalisable`, `actif`, `mode_calcul`, `gestion_stock`, `categorie_produit_id`, `article_stock_id`, `public_id`, `nom_commercial`) VALUES
+(900001, 'Bâche imprimée (démo)', 'Bâche imprimée — produit de démonstration', 1, 1, 'D-BACHE', 3500.0, 3000.0, 1, 1, 'metre_carre', 0, 900001, 900001, UNHEX('269de5d1dcb34d7d8234efddaddc5401'), 'Banderole'),
+(900002, 'Vinyle adhésif (démo)', 'Vinyle adhésif — produit de démonstration', 1, 2, 'D-VINYLE', 6500.0, 5500.0, 1, 1, 'metre_carre', 0, 900001, 900003, UNHEX('5c2472e5f9e64abfb50f9e6c6629bc24'), 'Autocollant'),
+(900003, 'Micro-perforé vitrine (démo)', 'Micro-perforé vitrine — produit de démonstration', 1, 3, 'D-MICRO', 9000.0, 8000.0, 1, 1, 'metre_carre', 0, 900001, 900004, UNHEX('dc78752d57fb4eeb869855d2d43cc531'), 'Vitrophanie'),
+(900004, 'Panneau Akylux (démo)', 'Panneau Akylux — produit de démonstration', 1, 4, 'D-AKYLUX', 15000.0, 13000.0, 1, 1, 'metre_carre', 0, 900004, 900005, UNHEX('cfba5e788c7d4cd4b522aa7fa3132dd6'), 'Panneau publicitaire'),
+(900005, 'Roll-up 85 × 200 cm (démo)', 'Roll-up 85 × 200 cm — produit de démonstration', 1, 5, 'D-ROLLUP', 45000.0, 40000.0, 1, 1, 'unite', 0, 900004, 900015, UNHEX('2885f868301a4d128febec7094a0df05'), NULL),
+(900006, 'Kakémono 80 × 180 cm (démo)', 'Kakémono 80 × 180 cm — produit de démonstration', 1, 6, 'D-KAKEMONO', 30000.0, 27000.0, 1, 1, 'unite', 0, 900004, 900002, UNHEX('5abc12f8f35041ce815c1d5ce4cfed0e'), NULL),
+(900007, 'Flyers A5 (démo)', 'Flyers A5 — produit de démonstration', 1, 7, 'D-FLYER', 75.0, 60.0, 1, 1, 'unite', 0, 900002, 900018, UNHEX('099a0307cb9d4149a8881c56b3cd1e1c'), NULL),
+(900008, 'Cartes de visite (démo)', 'Cartes de visite — produit de démonstration', 1, 8, 'D-CARTE', 50.0, 40.0, 1, 1, 'unite', 0, 900002, 900017, UNHEX('43d803afbb234be28bf6237b5f6f6b2c'), NULL),
+(900009, 'Affiches A3 (démo)', 'Affiches A3 — produit de démonstration', 1, 9, 'D-AFFICHE', 750.0, 650.0, 1, 1, 'unite', 0, 900002, 900018, UNHEX('888debe904b24ee4a74c3167ffb218ea'), NULL),
+(900010, 'Brochure A4 8 pages (démo)', 'Brochure A4 8 pages — produit de démonstration', 1, 10, 'D-BROCHURE', 1800.0, 1500.0, 1, 1, 'unite', 0, 900002, 900018, UNHEX('0b6dba449297461b8e8494fb951765da'), NULL),
+(900011, 'T-shirt personnalisé DTF (démo)', 'T-shirt personnalisé DTF — produit de démonstration', 1, 11, 'D-TSHIRT', 5000.0, 4200.0, 1, 1, 'unite', 0, 900003, 900012, UNHEX('cfe24ae2843f4185b8993660f6908f31'), 'T-shirt imprimé'),
+(900012, 'Polo personnalisé (démo)', 'Polo personnalisé — produit de démonstration', 1, 12, 'D-POLO', 9000.0, 8000.0, 1, 1, 'unite', 0, 900003, 900013, UNHEX('24530e4c15e54c129adc2207823e3122'), NULL),
+(900013, 'Casquette personnalisée (démo)', 'Casquette personnalisée — produit de démonstration', 1, 13, 'D-CASQUETTE', 3500.0, 3000.0, 1, 1, 'unite', 0, 900003, 900014, UNHEX('bcc1a9360aa54cd08f77abb942edffa9'), NULL);
 -- produit_configuration : 13
 INSERT INTO `produit_configuration` (`id`, `active`, `ordre`, `description`, `prix_base`, `mode_calcul`, `mode_dimension`, `largeur_defaut`, `longueur_defaut`, `quantite_minimale`, `quantite_maximale`, `prix_b2_b`, `produit_id`, `type_impression_id`, `support_id`, `format_id`, `public_id`) VALUES
 (900001, 1, 1, NULL, 3500, 'metre_carre', 'mesure', NULL, NULL, 1, NULL, 3000, 900001, 900001, 900001, 900007, UNHEX('df2986b2e7f24366bec4f31ced5eeb81')),

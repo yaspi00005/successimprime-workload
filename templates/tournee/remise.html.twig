@@ -18,8 +18,8 @@
 				{% set prevu = l.quantiteLivree > 0 ? min(l.quantiteLivree, max) : max %}
 				<label class="si-tr-ligne">
 					<input type="checkbox" class="form-check-input" data-ligne="{{ l.id }}"{{ prevu > 0 ? ' checked' }}>
-					<span>{{ l.designation }}</span>
-					<span class="si-tr-qte"><input type="number" name="quantites[{{ l.id }}]" min="0" max="{{ max }}" value="{{ prevu }}" class="form-control form-control-sm" aria-label="Quantité remise de {{ l.designation }}"> / {{ max }}</span>
+					<span>{{ l|ligne_interne('') }}</span>
+					<span class="si-tr-qte"><input type="number" name="quantites[{{ l.id }}]" min="0" max="{{ max }}" value="{{ prevu }}" class="form-control form-control-sm" aria-label="Quantité remise de {{ l|texte_ligne_interne('') }}"> / {{ max }}</span>
 				</label>
 			{% endfor %}
 			<p class="si-pg-note mb-0">Remise partielle : baissez la quantité ou décochez l'article, le reste sera livré plus tard.</p>

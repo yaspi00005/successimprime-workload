@@ -431,7 +431,7 @@
         ) ~ ' ' ~
         (
             ordre.commandeDetail
-                ? ordre.commandeDetail.designation|default('')
+                ? ordre.commandeDetail|texte_ligne_interne('')
                 : ''
         ) ~ ' ' ~
         (
@@ -477,7 +477,7 @@
 									</td>
 
 									<td>
-										{{ ordre.commandeDetail.designation|default('—') }}
+										{{ ordre.commandeDetail|ligne_interne('—') }}
 									</td>
 
 									<td>

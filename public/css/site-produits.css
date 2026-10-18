@@ -137,3 +137,13 @@
   .si-calc { grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr); gap: 36px; align-items: start; }
   .si-calc-resultat { position: sticky; top: 90px; padding: 24px 26px; }
 }
+
+/* Nom commercial et recherche (docs/noms-commerciaux.md) */
+.si-produit h2 .si-produit-technique { font-size: 13px; font-weight: 600; color: var(--texte-doux); }
+.si-produits-recherche { margin: 0 0 14px; }
+.si-produits-recherche-titre { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 700; color: var(--texte); }
+.si-produits-recherche-ligne { display: flex; gap: 8px; max-width: 520px; }
+.si-produits-recherche input { flex: 1 1 auto; min-width: 0; min-height: 46px; padding: 10px 14px; border: 1px solid #C9D1DE; border-radius: 10px; background: #fff; color: var(--texte); font: inherit; font-size: 16px; }
+.si-produits-recherche input:focus { outline: 2px solid var(--bleu-clair); outline-offset: 0; border-color: var(--bleu-clair); }
+.si-produits-recherche .si-bouton { flex: 0 0 auto; min-height: 46px; font-family: inherit; }
+.si-produits-resultat { margin: 0 0 14px; color: var(--texte-doux); font-size: 15px; }

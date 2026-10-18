@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\NomCommercialTrait;
 use App\Repository\SupportsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -10,9 +11,10 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SupportsRepository::class)]
-class Supports
+class Supports implements AUnNomCommercial
 {
     use PublicIdTrait;
+    use NomCommercialTrait;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -132,6 +134,11 @@ private Collection $finitions;
         $this->formats = new ArrayCollection();
         $this->finitions = new ArrayCollection();
         $this->commandesDetails = new ArrayCollection();
+    }
+
+    public function getNomTechnique(): string
+    {
+        return (string) $this->nom;
     }
 
     public function getId(): ?int

@@ -100,10 +100,7 @@
 
 										<td>
 											<strong>
-												{{ detail.designation|default(
-                                            detail.produit.nom
-                                            |default('Travail sans désignation')
-                                        ) }}
+												{{ detail|ligne_interne('Travail sans désignation') }}
 											</strong>
 
 											<small class="d-block text-muted">

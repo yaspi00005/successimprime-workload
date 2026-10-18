@@ -175,6 +175,8 @@
 				border-radius: 4px;
 			}
 
+			/* Nom commercial d'abord, désignation technique à côté (docs/noms-commerciaux.md). */
+			.nc-technique { font-weight: normal; font-size: 0.85em; color: #6B7280; }
 		</style>
 
 	</head>
@@ -254,7 +256,7 @@
 
 							<tr class="ligne-detail">
 								<td colspan="2">
-									{{ detail.produit ? detail.produit.nom : detail.designation|default('Article') }}
+									{{ detail|ligne_client('Article') }}
 									{% if dimensionsDetail %}
 										({{ dimensionsDetail }})
 									{% endif %}

@@ -285,7 +285,7 @@ final class TableauConception
 
         return [
             'telephone' => $telephone,
-            'texte' => \sprintf("Bonjour, le BAT (version %d) de votre %s, commande %s, est prêt chez Succès Imprim. Merci de nous dire s'il est bon à imprimer ou ce qu'il faut corriger.", $c->getVersions(), TableauProduction::titre($detail), $commande->getNumero()),
+            'texte' => \sprintf("Bonjour, le BAT (version %d) de votre %s, commande %s, est prêt chez Succès Imprim. Merci de nous dire s'il est bon à imprimer ou ce qu'il faut corriger.", $c->getVersions(), TableauProduction::titreClient($detail), $commande->getNumero()),
         ];
     }
 }

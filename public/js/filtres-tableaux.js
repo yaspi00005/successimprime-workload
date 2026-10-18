@@ -58,6 +58,10 @@
         return String(texte == null ? '' : texte).replace(/[\s  ]+/g, ' ').trim();
     }
 
+    function sansAccents(texte) {
+        return String(texte).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
     function comparerTextes(a, b) {
         return collateur ? collateur.compare(a, b) : (a < b ? -1 : (a > b ? 1 : 0));
     }
@@ -979,8 +983,9 @@
         };
 
         var dessiner = function () {
-            var mot = normaliser(recherche.value).toLowerCase();
-            affichees = mot === '' ? valeurs : valeurs.filter(function (v) { return v.toLowerCase().indexOf(mot) >= 0; });
+            // Sans accents ni majuscules : « adhesif » trouve « Vinyle adhésif (Autocollant) » (docs/noms-commerciaux.md).
+            var mot = sansAccents(normaliser(recherche.value));
+            affichees = mot === '' ? valeurs : valeurs.filter(function (v) { return sansAccents(v).indexOf(mot) >= 0; });
             liste.innerHTML = '';
             if (!affichees.length) {
                 liste.appendChild(element('p', 'si-ft-aucune', 'Aucune valeur ne correspond.'));

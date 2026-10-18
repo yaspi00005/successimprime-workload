@@ -13,6 +13,7 @@ use App\Entity\Supports;
 use App\Entity\TypesImpression;
 use App\Entity\Articles;
 use App\Repository\ProduitConfigurationRepository;
+use App\Service\Catalogue\NomCommercial;
 use App\Service\PiecesParMetreCarre;
 use Doctrine\ORM\EntityRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
@@ -99,7 +100,8 @@ class CommandesDetailsType extends AbstractType
                         ->orderBy('p.ordre', 'ASC')
                         ->addOrderBy('p.nom', 'ASC');
                 },
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (Produits $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Produit',
                 'placeholder' => 'Sélectionnez un produit',
                 'required' => false,
@@ -113,6 +115,8 @@ class CommandesDetailsType extends AbstractType
 
             ->add('produitConfiguration', EntityType::class, [
                 'class' => ProduitConfiguration::class,
+                // Désignations et noms commerciaux : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (ProduitConfiguration $c): string => NomCommercial::texteConfigurationInterne($c),
                 'choice_attr' => static function (
                     ProduitConfiguration $configuration
                 ): array {
@@ -159,7 +163,8 @@ class CommandesDetailsType extends AbstractType
 
             ->add('typeImpression', EntityType::class, [
                 'class' => TypesImpression::class,
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (TypesImpression $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Type d’impression',
               //  'placeholder' => 'Sélectionnez un type d’impression',
                 'required' => false,
@@ -172,7 +177,8 @@ class CommandesDetailsType extends AbstractType
 
             ->add('support', EntityType::class, [
                 'class' => Supports::class,
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (Supports $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Support',
                 'placeholder' => 'Sélectionnez un support',
                 'required' => false,
@@ -515,7 +521,7 @@ class CommandesDetailsType extends AbstractType
         return sprintf(
             '%s — %s',
             $article->getReference(),
-            $article->getDesignation()
+            NomCommercial::texteInterne($article->getNomCommercial(), $article->getDesignation())
         );
     },
 

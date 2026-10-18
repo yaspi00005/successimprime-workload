@@ -8,6 +8,7 @@ use App\Entity\CommandesDetails;
 use App\Entity\ControlePrePresse;
 use App\Entity\Machines;
 use App\Entity\OrdreProduction;
+use App\Service\Catalogue\NomCommercial;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -203,6 +204,18 @@ final class TableauProduction
     public static function titre(CommandesDetails $ligne): string
     {
         $nom = trim((string) ($ligne->getDesignation() ?: $ligne->getProduit()?->getNom())) ?: 'Travail';
+
+        return $nom.' × '.number_format($ligne->getQuantite(), 0, ',', ' ');
+    }
+
+    /**
+     * Titre d'une ligne pour un message au client (BAT prêt) : le nom
+     * commercial d'abord, la désignation ensuite (« Autocollant · Vinyle
+     * adhésif × 3 », docs/noms-commerciaux.md).
+     */
+    public static function titreClient(CommandesDetails $ligne): string
+    {
+        $nom = trim(NomCommercial::texteLigne($ligne->getDesignation(), NomCommercial::elementDeLigne($ligne))) ?: 'Travail';
 
         return $nom.' × '.number_format($ligne->getQuantite(), 0, ',', ' ');
     }

@@ -1321,12 +1321,7 @@
 
 													<strong>
 
-														{{
-                                                            detail.designation
-                                                            |default(
-                                                                'Article / prestation'
-                                                            )
-                                                        }}
+														{{ detail|ligne_interne('Article / prestation') }}
 
 													</strong>
 

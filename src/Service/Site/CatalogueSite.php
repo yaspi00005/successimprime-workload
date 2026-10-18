@@ -5,8 +5,8 @@ namespace App\Service\Site;
 use App\Controller\SiteController;
 use App\Entity\ProduitConfiguration;
 use App\Entity\Produits;
+use App\Service\Catalogue\NomCommercial;
 use App\Service\EspaceClient\NouvelleCommande;
-use App\Service\GrilleTarifaire;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -123,11 +123,14 @@ final class CatalogueSite
             }
             $configs = $parProduit[$p->getId()] ?? [];
             $depart = self::prixDepart($configs);
+            // Le nom commercial d'abord, la désignation à côté (docs/noms-commerciaux.md).
+            $noms = NomCommercial::client($p->getNomCommercial(), $nom);
             $univers[$nomCategorie]['produits'][] = [
                 'id' => $p->getId(),
-                'nom' => $nom,
+                'nom' => $noms['nom'],
+                'technique' => $noms['technique'],
                 'description' => self::description($p, $depart['configuration'] ?? $configs[0] ?? null),
-                'illustration' => self::illustration($nom, $univers[$nomCategorie]['famille']),
+                'illustration' => self::illustration($nom.' '.$noms['nom'], $univers[$nomCategorie]['famille']),
                 'categorie' => $nomCategorie,
                 'configuration' => $depart ? $depart['configuration']->getId() : null,
                 'prix' => null === $depart ? null : ['montant' => $depart['montant'], 'unite' => $depart['unite'], 'minimum' => $depart['minimum']],
@@ -216,13 +219,43 @@ final class CatalogueSite
     /** Nom montré au public : sans la marque « (démo) » des données de démonstration. */
     public static function nomAffiche(string $nom): string
     {
-        return trim(preg_replace('/\s+/u', ' ', str_replace('(démo)', '', $nom)) ?? $nom);
+        return trim(preg_replace('/\s+/u', ' ', (string) preg_replace('/\s*\(démo\)/u', '', $nom)) ?? $nom);
     }
 
-    /** Libellé d'une configuration : produit · support · format. */
+    /**
+     * Libellé d'une configuration : produit · support · format, chaque
+     * partie sous son nom commercial suivi de sa désignation
+     * (« Autocollant (Vinyle adhésif) · Vinyle blanc · Sur mesure »).
+     */
     public static function libelle(ProduitConfiguration $c): string
     {
-        return self::nomAffiche(GrilleTarifaire::libelle($c));
+        return self::nomAffiche(NomCommercial::texteConfiguration($c));
+    }
+
+    /**
+     * Recherche de la page Nos produits (?q=) : les produits dont le nom
+     * commercial, la désignation ou l'univers contient le texte, sans
+     * tenir compte des accents ni des majuscules (« autocollant » trouve
+     * « Vinyle adhésif »). Les univers sans produit trouvé disparaissent.
+     *
+     * @param list<array{nom: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}> $univers
+     *
+     * @return list<array{nom: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}>
+     */
+    public static function rechercher(array $univers, ?string $recherche): array
+    {
+        if ('' === NomCommercial::cle($recherche)) {
+            return $univers;
+        }
+        $trouves = [];
+        foreach ($univers as $u) {
+            $u['produits'] = array_values(array_filter($u['produits'], static fn (array $p): bool => NomCommercial::correspond($recherche, $p['nom'], $p['technique'] ?? null, $u['nom'])));
+            if ([] !== $u['produits']) {
+                $trouves[] = $u;
+            }
+        }
+
+        return $trouves;
     }
 
     /** Phrase courte de la carte : la description du produit, sinon son support et son format. */

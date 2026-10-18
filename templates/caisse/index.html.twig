@@ -71,7 +71,7 @@
 										<a href="{{ path('app_caisse_index', {client: client.id, commande: c.id}) }}" {{ choisie ? 'aria-current="true"' }}>{{ ligne.facture ?: c.libelle }}</a>
 									</td>
 									<td>
-										{% set objet = c.commandesDetails|map(d => d.designation ?: (d.produit ? d.produit.nom : ''))|filter(t => t)|join(', ') %}
+										{% set objet = c.commandesDetails|map(d => d|texte_ligne_interne(''))|filter(t => t)|join(', ') %}
 										{{ objet|length > 70 ? objet|slice(0, 69) ~ '…' : (objet ?: 'Commande') }}
 										<small class="d-block text-muted">{{ c.numero }}{% if ligne.paye > 0 %} · déjà versé {{ ligne.paye|number_format(0, ',', ' ') }} F{% endif %}</small>
 									</td>

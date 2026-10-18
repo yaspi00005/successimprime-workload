@@ -176,7 +176,9 @@ final class LivraisonController extends AbstractController
                 ->andWhere(
                     $qb->expr()->orX(
                         'LOWER(detail.designation) LIKE LOWER(:recherche)',
-                        'LOWER(produit.nom) LIKE LOWER(:recherche)'
+                        'LOWER(produit.nom) LIKE LOWER(:recherche)',
+                        // Nom commercial aussi (docs/noms-commerciaux.md).
+                        'LOWER(produit.nomCommercial) LIKE LOWER(:recherche)'
                     )
                 )
                 ->setParameter(

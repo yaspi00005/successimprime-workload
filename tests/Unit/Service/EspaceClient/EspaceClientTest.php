@@ -4,6 +4,7 @@ namespace App\Tests\Unit\Service\EspaceClient;
 
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
+use App\Entity\Produits;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\SuiviCommandeService;
 use PHPUnit\Framework\TestCase;
@@ -25,6 +26,18 @@ final class EspaceClientTest extends TestCase
     public function testTitreSansRepeterLaTailleDejaDansLaDesignation(): void
     {
         self::assertSame('Bâche (400 x 150 cm) × 2', EspaceClient::titreLigne($this->ligne('Bâche (400 x 150 cm)', '4', '1.5', 2)));
+    }
+
+    public function testTitreAvecLeNomCommercialDAbord(): void
+    {
+        $vinyle = (new Produits())->setNom('Vinyle adhésif')->setNomCommercial('Autocollant');
+
+        self::assertSame('Autocollant · Vinyle adhésif 100 × 50 × 3', EspaceClient::titreLigne($this->ligne('Vinyle adhésif', '100', '50', 3)->setProduit($vinyle)));
+        // La désignation porte déjà le nom commercial : pas de redite.
+        self::assertSame('Autocollants vitrine × 3', EspaceClient::titreLigne($this->ligne('Autocollants vitrine', null, null, 3)->setProduit($vinyle)));
+        // Sans désignation : les deux noms du produit.
+        self::assertSame('Autocollant · Vinyle adhésif × 1', EspaceClient::titreLigne((new CommandesDetails())->setProduit($vinyle)));
+        self::assertSame('Travail × 1', EspaceClient::titreLigne(new CommandesDetails()));
     }
 
     public function testTitreDeCommandeAvecPlusieursLignes(): void

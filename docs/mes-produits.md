@@ -52,6 +52,7 @@ Changer le visuel ou la taille crée un nouveau produit, qui exige un nouveau BA
 Espace client › Commandes › onglet **Mes produits** (ou la carte « Recommander mes produits »), adresse `/espace/produits`.
 
 - Le client ne voit que les produits actifs de sa fiche, avec leur référence, leur format et leur prix négocié. Un filtre par catégorie apparaît quand il y en a plusieurs.
+- Sous le nom de chaque produit : le produit du catalogue, nom commercial d'abord et désignation à côté (« Autocollant Vinyle adhésif ») ; le support suit la même règle. Une case « Chercher » filtre les produits par leur nom, leur référence, les deux noms du produit et du support ou la catégorie, sans tenir compte des accents (docs/noms-commerciaux.md). « Enregistrer comme produit du client » (ERP) propose le nom commercial du produit comme nom.
 - En touchant un produit, une feuille s'ouvre : en pièces ou en m² selon le produit, raccourcis de quantité, et « Ce que nous imprimerons » (4 pièces = 24 m², 4,4 m linéaires, 1 000 ex.). Pour un format fixe saisi en m², il choisit entre le nombre au-dessus (recommandé) et celui au-dessous.
 - Le calcul vient du serveur (même service qu'à la commande) ; le navigateur n'envoie que le produit, la quantité et la façon de saisir. Le prix est toujours celui de la fiche.
 - La sélection (12 produits au plus, chacun une fois) devient **une commande « à confirmer »** par l'atelier, comme toute commande passée en ligne : elle ne peut pas être payée avant la confirmation. Un client a au plus 10 commandes en ligne en attente.

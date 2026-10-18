@@ -47,6 +47,10 @@
 				<dl class="si-fiche-champs">
 					<dt>Code · famille</dt>
 					<dd><strong>{{ article.reference }}</strong> · {{ article.famille.nom ?? 'Sans famille' }}</dd>
+					{% if article.nomCommercial %}
+						<dt>Nom commercial</dt>
+						<dd>{{ article.nomCommercial }}</dd>
+					{% endif %}
 					<dt>Emplacement</dt>
 					<dd>{{ article.emplacement ?? '—' }}</dd>
 					<dt>Machine compatible</dt>

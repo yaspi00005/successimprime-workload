@@ -57,16 +57,16 @@ Aucun accord pour les messages promotionnels n'est enregistré à l'import.
 
 ### Articles du catalogue
 
-Nom, catégorie, unité (pièce, m², mètre, forfait, heure, feuille, exemplaire, point, face), prix public, prix revendeur (facultatif), code (facultatif, sinon tiré du nom : « BACHE-MICROPERFOREE »), description.
+Nom, nom commercial (facultatif : « Banderole » pour « Bâche imprimée », docs/noms-commerciaux.md ; aussi reconnu sous « nom usuel » ou « appellation »), catégorie, unité (pièce, m², mètre, forfait, heure, feuille, exemplaire, point, face), prix public, prix revendeur (facultatif), code (facultatif, sinon tiré du nom : « BACHE-MICROPERFOREE »), description.
 
 - Une catégorie inconnue est créée, **non publiée**.
 - Les produits créés sont actifs (vendables au comptoir) mais **non publiés** sur le site : il leur manque types d'impression, supports et formats, à compléter avant de les publier.
-- Un produit déjà au catalogue (même code, sinon même nom) n'est pas recréé : **seuls ses prix** sont mis à jour, et l'historique des prix garde l'ancien (`PrixHistorique`).
+- Un produit déjà au catalogue (même code, sinon même nom) n'est pas recréé : **seuls ses prix et son nom commercial** sont mis à jour, et l'historique des prix garde l'ancien prix (`PrixHistorique`). Une case « Nom commercial » vide garde celui du catalogue ; l'annulation de l'import remet l'ancien.
 - Pas de coût de revient ici : il se calcule depuis le stock et les configurations.
 
 ### Articles de stock
 
-Désignation, famille, unité, référence (sinon préfixe de la famille + numéro : « ENC-001 »), prix de vente, prix d'achat (droit Coûts et marges), seuil minimum, fournisseur, vendable.
+Désignation, nom commercial (facultatif, pour un article vendu tel quel), famille, unité, référence (sinon préfixe de la famille + numéro : « ENC-001 »), prix de vente, prix d'achat (droit Coûts et marges), seuil minimum, fournisseur, vendable.
 
 - La famille doit exister (erreur sinon) ; un fournisseur inconnu donne un avertissement et l'article est créé sans fournisseur. Le fournisseur connu devient le fournisseur principal, avec le prix d'achat.
 - Un article déjà là (même référence, sinon même désignation) est écarté : rien n'est écrasé.

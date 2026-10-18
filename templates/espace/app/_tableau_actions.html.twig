@@ -43,7 +43,8 @@
 			<div class="ec-action dev">
 				<div>
 					<b>{{ devisAAccepter|length > 1 ? devisAAccepter|length ~ ' devis en attente' : 'Devis en attente' }}</b>
-					<small>{{ d.numero }}{{ ligne and ligne.designation ? ' · ' ~ ligne.designation }} · {{ d.totalTtc|number_format(0, ',', ' ') }} F</small>
+					{# Nom de la ligne d'abord : le numéro du devis reste collé à son prix (recette des accès). #}
+					<small>{{ ligne and ligne.designation ? ligne|texte_ligne ~ ' · ' }}{{ d.numero }} · {{ d.totalTtc|number_format(0, ',', ' ') }} F</small>
 				</div>
 				{% if devisAAccepter|length == 1 %}
 					<form method="post" action="{{ path('app_espace_devis_accepter', {id: d.id}) }}" onsubmit="return confirm('Accepter le devis {{ d.numero|e('js') }} ({{ d.totalTtc|number_format(0, ',', ' ') }} F) ?')">

@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\SocieteTrait;
+use App\Entity\Trait\NomCommercialTrait;
 use App\Repository\ArticlesRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -15,9 +16,10 @@ use Doctrine\ORM\Mapping as ORM;
     name: 'uniq_article_reference',
     columns: ['reference']
 )]
-class Articles implements AppartientASociete
+class Articles implements AppartientASociete, AUnNomCommercial
 {
     use SocieteTrait;
+    use NomCommercialTrait;
 
     /*
      * Libellés courts des unités de stock, pour les tableaux.
@@ -231,6 +233,11 @@ private Collection $produitsStock;
         
     }
 
+
+    public function getNomTechnique(): string
+    {
+        return (string) $this->designation;
+    }
 
     public function getId(): ?int
     {

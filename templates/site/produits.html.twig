@@ -4,6 +4,9 @@
 	et un lien vers le calculateur, le produit déjà choisi, et sa photo
 	(PhotosProduits) ou son dessin. En bas, « Un autre support ? » avec la
 	photo du fourgon habillé (PhotosSite).
+	Recherche ?q= : le nom commercial ou la désignation, sans tenir compte
+	des accents (docs/noms-commerciaux.md) ; chaque carte montre le nom
+	commercial, la désignation à côté en plus petit.
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -13,13 +16,13 @@
 {% set univers_choisi = choisi is not null ? univers[choisi] : null %}
 {% set photo_sur_mesure = site_photo('fourgon-publicitaire-succes-imprim') %}
 
-{% block title %}{{ univers_choisi ? (univers_choisi.nom ~ ' · Nos produits')|site_titre : 'Nos produits et prix d\'impression à Bamako · Succès Imprim' }}{% endblock %}
+{% block title %}{{ recherche ? ('« ' ~ recherche ~ ' » · Nos produits')|site_titre : (univers_choisi ? (univers_choisi.nom ~ ' · Nos produits')|site_titre : 'Nos produits et prix d\'impression à Bamako · Succès Imprim') }}{% endblock %}
 {% block description %}Bâches, banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite, autocollants : nos produits et leur prix de départ en FCFA, à Bamako.{% endblock %}
 
 {% block entete %}
 	{{ site_styles('css/site-produits.css') }}
 	{# Prix de départ publics, les mêmes que sur la page (adresse canonique : tous les produits). #}
-	{% if univers_choisi is null %}{{ site_donnees_catalogue(univers) }}{% endif %}
+	{% if univers_choisi is null and not recherche %}{{ site_donnees_catalogue(univers) }}{% endif %}
 {% endblock %}
 
 {% block contenu %}
@@ -34,25 +37,44 @@
 					{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Demander un devis</a>{% endif %}
 				</div>
 			{% else %}
+				<form class="si-produits-recherche" role="search" method="get" action="{{ path('app_site_produits') }}">
+					<label class="si-produits-recherche-titre" for="si-produits-q">Chercher un produit</label>
+					<div class="si-produits-recherche-ligne">
+						<input type="search" id="si-produits-q" name="q" value="{{ recherche }}" maxlength="80" placeholder="Autocollant, bâche, t-shirt…" autocomplete="off" enterkeyhint="search">
+						<button type="submit" class="si-bouton si-bouton-bleu">Chercher</button>
+					</div>
+				</form>
+
 				{% if univers|length > 1 %}
 					<nav class="si-filtres" aria-label="Filtrer par univers">
-						<a href="{{ path('app_site_produits') }}" class="si-filtre{{ choisi is null ? ' actif' }}"{% if choisi is null %} aria-current="page"{% endif %}>Tous</a>
+						<a href="{{ path('app_site_produits') }}" class="si-filtre{{ choisi is null and not recherche ? ' actif' }}"{% if choisi is null and not recherche %} aria-current="page"{% endif %}>Tous</a>
 						{% for u in univers %}
 							<a href="{{ path('app_site_produits', {categorie: u.ids|first}) }}" class="si-filtre{{ choisi is same as(loop.index0) ? ' actif' }}"{% if choisi is same as(loop.index0) %} aria-current="page"{% endif %}>{{ u.nom }}</a>
 						{% endfor %}
 					</nav>
 				{% endif %}
 
+				{% if recherche %}
+					<p class="si-produits-resultat" role="status">
+						{%- set nombre = trouves|reduce((n, u) => n + u.produits|length, 0) -%}
+						{%- if nombre == 0 -%}
+							Aucun produit ne correspond à « {{ recherche }} ». <a href="{{ path('app_site_produits') }}">Voir tous les produits</a>{{ devis ? ' ou décrivez-nous votre projet' }}.
+						{%- else -%}
+							{{ nombre }} produit{{ nombre > 1 ? 's' }} pour « {{ recherche }} » · <a href="{{ path('app_site_produits') }}">Tous les produits</a>
+						{%- endif -%}
+					</p>
+				{% endif %}
+
 				{# Les dessins ne sont écrits dans la page que si un produit montré n'a pas de photo. #}
-				{% set sans_photo = (univers_choisi ? [univers_choisi] : univers)|filter(u => u.produits|filter(p => not site_photo_produit(p.nom))|length > 0)|length > 0 %}
+				{% set sans_photo = (recherche ? trouves : (univers_choisi ? [univers_choisi] : univers))|filter(u => u.produits|filter(p => not site_photo_produit(p.nom ~ ' ' ~ p.technique))|length > 0)|length > 0 %}
 				{% if sans_photo %}{{ include('site/_illustrations_produits.svg.twig') }}{% endif %}
 				<ul class="si-produits-grille">
-					{% for u in univers_choisi ? [univers_choisi] : univers %}
+					{% for u in recherche ? trouves : (univers_choisi ? [univers_choisi] : univers) %}
 						{% for p in u.produits %}
 							{% set calcul = p.configuration ? site_lien('app_site_calculateur', {produit: p.configuration}) : null %}
 							{% set lien = calcul ?? devis %}
-							{# Photo du produit d'après son nom (PhotosProduits), sinon son dessin. Les premières cartes ne sont pas différées. #}
-							{% set photo = site_photo_produit(p.nom) %}
+							{# Photo du produit d'après son nom commercial ou sa désignation (PhotosProduits), sinon son dessin. Les premières cartes ne sont pas différées. #}
+							{% set photo = site_photo_produit(p.nom ~ ' ' ~ p.technique) %}
 							<li class="si-produit si-famille-{{ u.famille }}" data-incline>
 								{% if photo %}
 									{{ include('site/_photo.html.twig', {photo: photo, sizes: '(max-width: 559px) 124px, 168px', classe: 'si-produit-photo', immediate: loop.parent.loop.first and loop.index <= 4}) }}
@@ -60,7 +82,7 @@
 									<svg class="si-produit-dessin" aria-hidden="true" focusable="false"><use href="#si-dessin-{{ p.illustration }}"/></svg>
 								{% endif %}
 								<div class="si-produit-corps">
-									<h2>{{ p.nom }}</h2>
+									<h2>{{ p.nom }}{% if p.technique %} <small class="si-produit-technique">{{ p.technique }}</small>{% endif %}</h2>
 									{% if p.description %}<p class="si-produit-texte">{{ p.description }}</p>{% endif %}
 									<p class="si-produit-prix">
 										{% if p.prix %}

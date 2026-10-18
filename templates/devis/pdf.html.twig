@@ -229,6 +229,13 @@
 				font-weight: bold;
 			}
 
+			/* Nom commercial d'abord, désignation technique à côté (docs/noms-commerciaux.md). */
+			.designation .nc-technique {
+				font-weight: normal;
+				font-size: 7px;
+				color: #637083;
+			}
+
 			.description {
 				margin-top: 3px;
 
@@ -865,10 +872,7 @@
 
 							<div class="designation">
 
-								{{
-                            detail.designation
-                            |default('Prestation')
-                        }}
+								{{ detail|ligne_client }}
 
 							</div>
 

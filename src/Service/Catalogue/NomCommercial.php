@@ -132,11 +132,28 @@ final class NomCommercial
             return self::clientDe($element);
         }
         $commercial = self::nettoyer($element?->getNomCommercial());
-        if (null === $commercial || str_contains(' '.self::cle($designation).' ', ' '.self::cle($commercial).' ')) {
+        if (null === $commercial) {
+            return ['nom' => $designation, 'technique' => null];
+        }
+        // Désignation reprise de la liste de l'ERP : « Vinyle adhésif (Autocollant) ».
+        $sansCommercial = self::sansParentheses($designation, $commercial);
+        if ('' !== $sansCommercial && $sansCommercial !== $designation) {
+            return ['nom' => $commercial, 'technique' => $sansCommercial];
+        }
+        if (str_contains(' '.self::cle($designation).' ', ' '.self::cle($commercial).' ')) {
             return ['nom' => $designation, 'technique' => null];
         }
 
         return ['nom' => $commercial, 'technique' => $designation];
+    }
+
+    /** La désignation sans la parenthèse qui redit le nom commercial : « Vinyle adhésif (Autocollant) » → « Vinyle adhésif ». */
+    private static function sansParentheses(string $designation, string $commercial): string
+    {
+        $cle = self::cle($commercial);
+        $reste = (string) preg_replace_callback('/\s*\(([^()]*)\)/u', static fn (array $m): string => self::cle($m[1]) === $cle ? '' : $m[0], $designation);
+
+        return trim((string) preg_replace('/\s+/u', ' ', $reste));
     }
 
     /** Ligne en texte : « Autocollant · Vinyle adhésif (100 x 50 cm) ». */

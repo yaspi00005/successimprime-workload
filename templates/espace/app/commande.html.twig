@@ -63,7 +63,7 @@
 		{% for l in lignes %}
 			<div{% if not loop.first %} style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--trait)"{% endif %}>
 				<b style="font-size:1.1rem">{{ l|titre_ligne_client }}</b>
-				{% set options = [l.support ? l.support.nom : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
+				{% set options = [l.support ? l.support|texte_client : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
 				{% if options is not empty %}<div class="ec-petit">{{ options|join(' · ') }}</div>{% endif %}
 				{% if l.demandeClient %}<div class="ec-petit">Votre demande : « {{ l.demandeClient }} »</div>{% endif %}
 				{% set mesFichiers = l.fichiers|filter(f => f.actif and f.origine == 'client') %}

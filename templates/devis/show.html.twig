@@ -421,10 +421,7 @@
 													</small>
 
 													<strong>
-														{{
-                                                            produit.nom
-                                                            |default('—')
-                                                        }}
+														{{ produit ? produit|nom_interne : '—' }}
 													</strong>
 
 												</div>
@@ -437,13 +434,8 @@
 													</small>
 
 													<strong>
-														{{
-                                                            detail.typeImpression.nom
-                                                            |default(
-                                                                configuration.typeImpression.nom
-                                                                |default('—')
-                                                            )
-                                                        }}
+														{% set type_ligne = detail.typeImpression ?? (configuration ? configuration.typeImpression : null) %}
+														{{ type_ligne ? type_ligne|nom_interne : '—' }}
 													</strong>
 
 												</div>
@@ -456,13 +448,8 @@
 													</small>
 
 													<strong>
-														{{
-                                                            detail.support.nom
-                                                            |default(
-                                                                configuration.support.nom
-                                                                |default('—')
-                                                            )
-                                                        }}
+														{% set support_ligne = detail.support ?? (configuration ? configuration.support : null) %}
+														{{ support_ligne ? support_ligne|nom_interne : '—' }}
 													</strong>
 
 												</div>

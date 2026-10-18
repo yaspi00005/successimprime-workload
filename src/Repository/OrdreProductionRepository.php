@@ -179,6 +179,8 @@ public function rechercherOrdresTermines(
                     'LOWER(op.numero) LIKE LOWER(:recherche)',
                     'LOWER(cd.designation) LIKE LOWER(:recherche)',
                     'LOWER(produit.nom) LIKE LOWER(:recherche)',
+                    // Nom commercial aussi (docs/noms-commerciaux.md).
+                    'LOWER(produit.nomCommercial) LIKE LOWER(:recherche)',
                     'LOWER(machine.nom) LIKE LOWER(:recherche)'
                 )
             )

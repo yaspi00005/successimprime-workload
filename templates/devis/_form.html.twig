@@ -2752,7 +2752,8 @@ console.log('Produit changé :', produit.value);
 
 const optionProduit = produit.options[produit.selectedIndex];
 
-const nomProduit = optionProduit && produit.value ? optionProduit.textContent.trim() : '';
+// Le nom technique seul : le nom commercial s'affiche à côté sur les documents (docs/noms-commerciaux.md).
+const nomProduit = optionProduit && produit.value ? (optionProduit.dataset.designation || optionProduit.textContent.trim()) : '';
 
 definirValeurChamp(detail, 'designation', nomProduit, false);
 

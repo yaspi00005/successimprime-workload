@@ -541,7 +541,7 @@ final class EspaceClient
         foreach ($this->devis($client) as $d) {
             if (null !== $d->getDateDevis()) {
                 $ligne = $d->getDevisDetails()->first();
-                $fil[] = self::evenement('devis', 'Nouveau devis', trim(\sprintf('%s%s', $d->getNumero(), false !== $ligne && '' !== trim((string) $ligne->getDesignation()) ? ' · '.trim((string) $ligne->getDesignation()) : '')), $d->getDateDevis(), ['app_espace_devis', ['d' => $d->getId()]], $d->getNumero(), [
+                $fil[] = self::evenement('devis', 'Nouveau devis', trim(\sprintf('%s%s', $d->getNumero(), false !== $ligne && '' !== trim((string) $ligne->getDesignation()) ? ' · '.NomCommercial::texteLigne($ligne->getDesignation(), NomCommercial::elementDeLigne($ligne)) : '')), $d->getDateDevis(), ['app_espace_devis', ['d' => $d->getId()]], $d->getNumero(), [
                     'montant' => $d->getTotalTtc(),
                     'cible' => ['devis' => $d->getId(), 'statut' => $d->getStatut()],
                 ]);

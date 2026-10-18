@@ -126,6 +126,8 @@ Code : `SiteProduitsController`, `App\Service\Site\CatalogueSite` et `App\Servic
 **Nos produits** (`app_site_produits`, /nos-produits)
 - Catégories publiées, avec leurs produits publiés et actifs. Une catégorie et sa copie de démonstration « (démo) » ne font qu'un filtre, comme sur l'accueil ; `?categorie=<id>` filtre sans JavaScript.
 - Prix de départ : la configuration la moins chère au prix normal, avec son unité (le m², l'unité...). Un produit sans configuration chiffrable affiche « Prix sur devis ».
+- Chaque carte montre le nom commercial du produit d'abord, sa désignation à côté en plus petit (docs/noms-commerciaux.md) ; sans nom commercial, la désignation seule.
+- Recherche « Chercher un produit » (`?q=`, 80 caractères, sans JavaScript) : les produits dont le nom commercial, la désignation ou l'univers contient le texte, sans tenir compte des accents, des majuscules ni du pluriel (« autocollants » trouve « Vinyle adhésif »). Le nombre de résultats s'affiche, avec un lien vers tous les produits.
 - Pas de photo de produit en base : chaque carte a un dessin SVG choisi d'après le nom du produit (`CatalogueSite::ILLUSTRATIONS`), sinon d'après sa famille. En bas de page, l'encadré « Un autre support, une autre taille ? » porte la photo du fourgon habillé (« Photos du site »).
 
 **Calculateur** (`app_site_calculateur`, /calculateur)

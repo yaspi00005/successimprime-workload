@@ -53,7 +53,7 @@
 								{% for f in finitions %}
 									<tr>
 										<td data-libelle="Finition"><strong>{{ f.finition.nom }}</strong>{% if f.obligatoire %} <small>obligatoire</small>{% endif %}</td>
-										<td data-libelle="Produit">{{ f.produitConfiguration.produit.nom }}{% if f.produitConfiguration.support %} · {{ f.produitConfiguration.support.nom }}{% endif %}</td>
+										<td data-libelle="Produit">{{ f.produitConfiguration.produit|nom_interne }}{% if f.produitConfiguration.support %} · {{ f.produitConfiguration.support|texte_interne }}{% endif %}</td>
 										<td data-libelle="Calcul">{{ unites[f.modeCalcul]|default(f.modeCalcul) }}</td>
 										<td class="text-end" data-libelle="Prix">
 											<input type="text" inputmode="numeric" name="finitions[{{ f.id }}][prix]" value="{{ f.prix }}" class="form-control form-control-sm si-grille-prix" aria-label="Prix {{ f.finition.nom }}" {{ not modifiable ? 'readonly' }}>
@@ -109,8 +109,8 @@
 									{% set unite = unites[c.modeCalcul]|default(c.modeCalcul) %}
 									<tr class="{{ not c.active ? 'si-grille-inactif' }}">
 										<td data-libelle="Article">
-											<strong>{{ c.produit.nom }}</strong>
-											<small>{{ [c.support ? c.support.nom, c.format ? c.format.nom, c.typeImpression ? c.typeImpression.nom]|filter(v => v)|join(' · ') }}</small>
+											<strong>{{ c.produit|nom_interne }}</strong>
+											<small>{{ [c.support ? c.support|texte_interne, c.format ? c.format.nom, c.typeImpression ? c.typeImpression|texte_interne]|filter(v => v)|join(' · ') }}</small>
 										</td>
 										<td data-libelle="Unité">/ {{ unite }}</td>
 										<td class="text-end" data-libelle="Prix public">

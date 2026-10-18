@@ -134,6 +134,8 @@ class DevisDetailsType extends AbstractType
                 'class' => Produits::class,
                 // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
                 'choice_label' => static fn (Produits $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
+                // La désignation de la ligne reste le nom technique seul (le nom commercial s'affiche à côté).
+                'choice_attr' => static fn (Produits $e): array => ['data-designation' => (string) $e->getNom()],
                 'label' => 'Produit',
                 'placeholder' => 'Sélectionnez un produit',
                 'required' => false,

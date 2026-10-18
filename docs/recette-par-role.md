@@ -47,6 +47,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Finances F01 à F07 : vue d'ensemble, encaissements, dépenses et budgets, fournisseurs, trésorerie à 90 jours, rentabilité, finances du jour sur téléphone.
 - [ ] « À valider » : un paiement saisi en ligne se valide seulement au local, avec un compte choisi.
 - [ ] Réglages : chaque tuile s'ouvre ; une valeur changée est gardée.
+- [ ] Paramètres › Produits et options › Noms commerciaux : donner « Autocollant » au vinyle adhésif ; la liste des produits montre « Vinyle adhésif Autocollant » ; la saisie d'un devis trouve « autocollant » ; le devis PDF montre « Autocollant » puis « Vinyle adhésif » en plus petit. Après la synchronisation, « autocollant » trouve le produit dans « Nos produits » du site. La page est refusée aux autres rôles (docs/noms-commerciaux.md).
 - [ ] Rôles et menus : passer un module en « Voir » pour un rôle ; une personne de ce rôle voit l'écran mais toute modification est refusée.
 - [ ] Statistiques : objectifs du mois, export Excel et PDF, rapport de la semaine.
 - [ ] Contenu du site : publier une réalisation ; elle apparaît en ligne après la synchronisation. Un nom de client n'apparaît qu'avec l'accord coché.

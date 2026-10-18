@@ -12,6 +12,7 @@ use App\Entity\Produits;
 use App\Entity\Supports;
 use App\Repository\ProduitClientRepository;
 use App\Service\CalculateurCoutRevient;
+use App\Service\Catalogue\NomCommercial;
 use App\Service\CommandeProduitClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -108,7 +109,8 @@ final class ProduitsClientController extends AbstractController
         $produit = (new ProduitClient())
             ->setClient($client)
             ->setReference($this->produitsClient->prochaineReference($client))
-            ->setNom($ligne->getProduit()?->getNom() ?? (string) $ligne->getDesignation())
+            // Le nom que le client connaît : le nom commercial du produit s'il en a un (docs/noms-commerciaux.md).
+            ->setNom(null !== $ligne->getProduit() ? NomCommercial::clientDe($ligne->getProduit())['nom'] : (string) $ligne->getDesignation())
             ->setProduit($ligne->getProduit())
             ->setSupport($ligne->getSupport())
             ->setMachine($ligne->getMachine())

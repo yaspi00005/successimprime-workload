@@ -67,6 +67,11 @@ final class NomCommercialTest extends TestCase
         // Une désignation qui porte déjà le nom commercial (commande en ligne, saisie à la main) reste seule.
         self::assertSame(['nom' => 'Autocollants vitrine', 'technique' => null], NomCommercial::ligne('Autocollants vitrine', $vinyle));
         self::assertSame(['nom' => 'Autocollant vitrine 2 m', 'technique' => null], NomCommercial::ligne('Autocollant vitrine 2 m', $vinyle));
+        // Désignation reprise de la liste de l'ERP (« Vinyle adhésif (Autocollant) ») : le nom commercial repasse devant.
+        self::assertSame(['nom' => 'Autocollant', 'technique' => 'Vinyle adhésif'], NomCommercial::ligne('Vinyle adhésif (Autocollant)', $vinyle));
+        self::assertSame(['nom' => 'Autocollant', 'technique' => 'Vinyle adhésif (100 x 50 cm)'], NomCommercial::ligne('Vinyle adhésif (autocollant) (100 x 50 cm)', $vinyle));
+        // Une parenthèse qui ne redit pas le nom commercial reste à sa place.
+        self::assertSame(['nom' => 'Autocollant', 'technique' => 'Vinyle adhésif (vitrine)'], NomCommercial::ligne('Vinyle adhésif (vitrine)', $vinyle));
         // Sans désignation : les noms du produit.
         self::assertSame(['nom' => 'Autocollant', 'technique' => 'Vinyle adhésif'], NomCommercial::ligne('', $vinyle));
         // Sans produit ni nom commercial : la désignation.

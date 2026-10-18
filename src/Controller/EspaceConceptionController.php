@@ -162,7 +162,7 @@ final class EspaceConceptionController extends AbstractController
             'styles' => DemandeConception::STYLES,
             'etapes' => DemandesConception::etapes(null !== $demande->getChoix() ? 3 : 2),
             'tarif' => $this->tarif($demande, $client->getId()),
-            'omActif' => $this->orangeMoney->estConfigure(),
+            'omActif' => $this->orangeMoney->estOuvert(),
             'marchand' => $espace->marchandOrangeMoney(),
             'payeurs' => DroitsConception::peutPayer($compte) ? [] : array_map(static fn (CompteClient $c): string => $c->getNomAffiche(), $this->demandes->payeurs($client)),
             'extensions' => FichiersClient::extensions(),
@@ -249,7 +249,7 @@ final class EspaceConceptionController extends AbstractController
         $demande = $this->trouver($compte, $id);
         $acompte = TarifConception::acompte($demande->getForfait(), $demande->getAcomptePourcent());
         try {
-            if ($acompte > 0 && $this->orangeMoney->estConfigure()) {
+            if ($acompte > 0 && $this->orangeMoney->estOuvert()) {
                 throw new \DomainException('Payez l\'acompte par Orange Money pour envoyer la demande.');
             }
             $this->demandes->envoyerSansPaiementEnLigne($demande, $compte, new \DateTimeImmutable());
@@ -430,7 +430,7 @@ final class EspaceConceptionController extends AbstractController
             'packs' => array_map(fn (int $n): array => ['images' => $n, 'prix' => TarifConception::prixPack($n, $prix), 'om' => $this->orangeMoney->frais(TarifConception::prixPack($n, $prix))], $this->reglages->packs()),
             'releve' => $this->credits->releve($client),
             'enAttente' => $this->credits->enAttente($client),
-            'omActif' => $this->orangeMoney->estConfigure(),
+            'omActif' => $this->orangeMoney->estOuvert(),
             'marchand' => $espace->marchandOrangeMoney(),
             'demande' => $demande,
             'iaDisponible' => $this->reglages->iaDisponible(),
@@ -455,7 +455,7 @@ final class EspaceConceptionController extends AbstractController
             if ($montant <= 0) {
                 throw new \DomainException('Ce pack n\'est pas à vendre.');
             }
-            if ($this->orangeMoney->estConfigure()) {
+            if ($this->orangeMoney->estOuvert()) {
                 if (OrangeMoney::totalChange($request->request->getString('total'), $this->orangeMoney->frais($montant))) {
                     throw new \DomainException('Le montant a changé : vérifiez le récapitulatif avant de payer.');
                 }

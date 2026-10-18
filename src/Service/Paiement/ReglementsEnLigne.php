@@ -66,8 +66,8 @@ final class ReglementsEnLigne
      */
     public function demarrer(CompteClient $compte, array $elements, array $plan, \DateTimeImmutable $maintenant): array
     {
-        if ($plan['om'] > 0 && !$this->orangeMoney->estConfigure()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert : payez en boutique, ou utilisez votre avoir seul.');
+        if ($plan['om'] > 0 && !$this->orangeMoney->estOuvert()) {
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique, ou utilisez votre avoir seul.');
         }
         $client = $compte->getClient();
         $reference = $plan['om'] > 0 ? OrangeMoney::nouvelOrderId($maintenant) : \sprintf('AV%s%s', $maintenant->format('ymdHis'), strtoupper(bin2hex(random_bytes(3))));

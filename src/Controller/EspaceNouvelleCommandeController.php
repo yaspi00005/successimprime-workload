@@ -69,6 +69,27 @@ final class EspaceNouvelleCommandeController extends AbstractController
         $client = $compte->getClient();
         $b2b = $client->isB2B();
         $montants = $compte->montantsVisibles();
+        $produitsEnregistres = $mesProduits->liste($client);
+        $commun = [
+            'onglet' => 'commandes',
+            'moi' => $client,
+            'peutPayer' => $compte->peut(CompteClient::DROIT_PAYEUR),
+            'peutValider' => $compte->peut(CompteClient::DROIT_VALIDEUR),
+            'montants' => $montants,
+            'demandeValidation' => $this->compteEntreprise->demandeValidation($compte),
+            'mesProduits' => \array_slice($produitsEnregistres, 0, 2),
+            'nombreMesProduits' => \count($produitsEnregistres),
+        ];
+
+        if (!$this->service->estOuverte()) {
+            // Réglages › Espace client › Commande en ligne coupé : la page l'explique, rien ne s'enregistre.
+            if ($request->isMethod('POST')) {
+                $this->jeton($request);
+                $this->addFlash('error', NouvelleCommande::FERMEE);
+            }
+
+            return $this->render('espace/app/nouvelle_commande.html.twig', $commun + ['etape' => 1, 'fermee' => true]);
+        }
         $configs = $this->service->produits();
 
         if ($request->isMethod('POST')) {
@@ -94,16 +115,6 @@ final class EspaceNouvelleCommandeController extends AbstractController
 
         $choix = $request->request->all() + $request->query->all();
         $config = $this->service->produit((int) ($choix['produit'] ?? 0));
-        $commun = [
-            'onglet' => 'commandes',
-            'moi' => $client,
-            'peutPayer' => $compte->peut(CompteClient::DROIT_PAYEUR),
-            'peutValider' => $compte->peut(CompteClient::DROIT_VALIDEUR),
-            'montants' => $montants,
-            'demandeValidation' => $this->compteEntreprise->demandeValidation($compte),
-            'mesProduits' => \array_slice($mesProduits->liste($client), 0, 2),
-            'nombreMesProduits' => \count($mesProduits->liste($client)),
-        ];
 
         if (null === $config) {
             // Étape 1 (maquette CO01) : le catalogue et « Commander à nouveau ».
@@ -157,7 +168,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
             'contact' => trim(explode(' ', trim((string) $compte->getNomAffiche()))[0].' · '.self::telephone((string) $compte->getTelephone()), ' ·'),
             'fraisLivraison' => $this->reglagesSaisie->fraisEnLigne(),
             // Paiement à la commande : le payeur, quand Orange Money est ouvert en ligne.
-            'omActif' => $compte->peut(CompteClient::DROIT_PAYEUR) && $this->orangeMoney->estConfigure(),
+            'omActif' => $compte->peut(CompteClient::DROIT_PAYEUR) && $this->orangeMoney->estOuvert(),
             'telephoneOm' => $compte->getTelephone(),
             'champCodePromo' => !$b2b,
             'devis' => ['produit' => $config->getId()],
@@ -174,6 +185,9 @@ final class EspaceNouvelleCommandeController extends AbstractController
     {
         $this->jetonEntete($request);
         $compte = $this->compte();
+        if (!$this->service->estOuverte()) {
+            return $this->json(['erreur' => NouvelleCommande::FERMEE], 403);
+        }
         $donnees = json_decode(mb_substr($request->getContent(), 0, 4000), true, 4);
         $donnees = \is_array($donnees) ? $donnees : [];
         $config = $this->service->produit((int) ($donnees['produit'] ?? 0));
@@ -195,6 +209,9 @@ final class EspaceNouvelleCommandeController extends AbstractController
     {
         $this->jetonEntete($request);
         $client = $this->compte()->getClient();
+        if (!$this->service->estOuverte()) {
+            return $this->json(['erreur' => NouvelleCommande::FERMEE], 403);
+        }
         $f = $fichiers->trouver($client, $id) ?? throw $this->createNotFoundException();
         $donnees = json_decode(mb_substr($request->getContent(), 0, 1000), true, 3);
         $donnees = \is_array($donnees) ? $donnees : [];
@@ -298,7 +315,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
             'element' => $element,
             'aPayer' => null !== $tout ? $tout->montant : 0,
             'frais' => $plan['frais'],
-            'omActif' => $this->orangeMoney->estConfigure(),
+            'omActif' => $this->orangeMoney->estOuvert(),
             'marchand' => $espace->marchandOrangeMoney(),
         ]);
     }
@@ -320,6 +337,8 @@ final class EspaceNouvelleCommandeController extends AbstractController
         if ($r->has('etapes') && !$r->getBoolean('conditions')) {
             throw new \DomainException('Cochez « J\'accepte les conditions de vente » pour envoyer la commande.');
         }
+        // Commande en ligne coupée, trop de commandes en attente : refusé avant de copier un fichier.
+        $this->service->verifierEnAttente($client);
         [$largeur, $hauteur] = self::taille($r->get('largeur'), $r->get('hauteur'), $r->getString('unite_taille', 'cm'));
         $mode = $r->getString('fichier_mode', 'fichier');
 
@@ -424,7 +443,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
         $commande = NouvelleCommande::assembler($ligne, $options, $reglages['delaiExpress']);
         $payeur = $compte->peut(CompteClient::DROIT_PAYEUR);
         $sortie['recap'] = PageNouvelleCommande::recapitulatif($commande, $ligne, $config, $montants, $heures, $payeur ? $this->delais->pourcentageAcompte($client) : null);
-        if ($payeur && $montants && $this->orangeMoney->estConfigure()) {
+        if ($payeur && $montants && $this->orangeMoney->estOuvert()) {
             // Frais Orange Money en plus de chaque somme payée (fonds de soutien, retrait) : annoncés avant de payer.
             $acompte = $sortie['recap']['acompte']['maintenant'] ?? null;
             $sortie['orangeMoney'] = [
@@ -474,7 +493,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
     /** Le payeur peut-il régler cette commande en ligne tout de suite ? */
     private function peutPayerEnLigne(CompteClient $compte, Commandes $commande): bool
     {
-        return $compte->peut(CompteClient::DROIT_PAYEUR) && $this->orangeMoney->estConfigure() && PaiementALaCommande::payable($commande, $compte) && OrangeMoney::aPayer($commande) > 0;
+        return $compte->peut(CompteClient::DROIT_PAYEUR) && $this->orangeMoney->estOuvert() && PaiementALaCommande::payable($commande, $compte) && OrangeMoney::aPayer($commande) > 0;
     }
 
     /** Ligne d'une commande de ce client (« Refaire »), ou null. */

@@ -125,6 +125,10 @@ Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, clo
 
 **Entreprises.** Le valideur et le payeur voient les prix. Un demandeur (et toute personne dont la commande doit être validée) voit les quantités, les délais et les créneaux, aucun montant (ni dans la page ni dans les réponses JSON) ; son étape 4 s'appelle « Livraison », sans paiement, et le bouton « Envoyer la demande ». Le valideur est prévenu sans montant. Un client B2B voit les prix de la grille revendeur, sans code promo.
 
+**Interrupteurs (revue du 18/10/2026).** Réglages › Espace client, appliqués par le serveur et descendus au site :
+- **Commande en ligne** (allumé au départ) : coupé, la page Nouvelle commande dit « La commande en ligne est fermée pour le moment » (devis, message à l'atelier), l'envoi du formulaire, l'estimation et le contrôle du fichier sont refusés. Le refus est dans `NouvelleCommande::verifierEnAttente`, par où passent toutes les commandes de l'espace : Mes produits, Atelier 3D et impression d'une conception aussi. Les commandes déjà passées continuent.
+- **Paiement Orange Money en ligne** (coupé au départ) : `OrangeMoney::estOuvert()` = clés posées dans `.env.local` **et** interrupteur allumé. Coupé, l'étape 4 ne propose pas Orange Money (« Vous payez en boutique »), les pages de paiement (à la commande, Factures et paiements, commande confirmée, conception, crédit IA) montrent le numéro marchand au lieu du bouton, et tout nouveau paiement est refusé par le serveur. Un paiement déjà ouvert chez Orange se vérifie toujours. **Au déploiement, allumer cet interrupteur** pour garder le paiement Orange Money de l'espace.
+
 **Réglages.** Réglages › Espace client : délai standard (48 h), express proposé (oui), délai express (24 h), majoration express (30 %), heure limite (16:00). Réglages › Livraison et objet : « Frais de livraison en ligne » (0 ou un des paliers, contrôlé à l'enregistrement). Tous descendent au site (`CatalogueSynchro::REGLAGES_PUBLICS`), avec les jours fériés.
 
 **Captures** : `/mnt/project-files/captures/commande-en-ligne/`.

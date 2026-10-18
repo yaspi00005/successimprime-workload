@@ -112,7 +112,7 @@ final class EspaceFacturesController extends AbstractController
             'clesAPayer' => $cles,
             'maintenant' => $maintenant,
             'moyens' => $this->moyens(),
-            'omActif' => $orangeMoney->estConfigure(),
+            'omActif' => $orangeMoney->estOuvert(),
         ]);
     }
 
@@ -207,7 +207,7 @@ final class EspaceFacturesController extends AbstractController
             'erreur' => $erreur,
             'minimum' => min(RepartitionPaiement::MINIMUM_PARTIEL, $plan['omMax']),
             'parametres' => $orangeMoney->parametres(),
-            'omActif' => $orangeMoney->estConfigure(),
+            'omActif' => $orangeMoney->estOuvert(),
             'marchand' => $this->espace->marchandOrangeMoney(),
         ]);
     }

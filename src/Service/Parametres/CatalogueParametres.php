@@ -347,8 +347,9 @@ final class CatalogueParametres
                     // Suivi de commande (docs/espace-client.md) : au-delà, la demande part avec « peut être facturée ».
                     ['cle' => 'corrections_bat_gratuites', 'type' => 'nombre', 'libelle' => 'Corrections de BAT gratuites', 'aide' => 'Par BAT. Au-delà, le client peut encore demander une correction : la page le prévient qu\'elle peut être facturée, l\'atelier fixe le prix.', 'suffixe' => 'corrections', 'min' => 0, 'max' => 10, 'defaut' => 2],
                     ['cle' => 'code_sms', 'type' => 'interrupteur', 'libelle' => 'Code de première connexion et de mot de passe oublié', 'aide' => 'Par e-mail, ou par SMS sans adresse. Coupé, le client demande son accès à la boutique ; la création de compte vérifie toujours par code.', 'defaut' => true],
-                    ['cle' => 'commande_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Commande en ligne', 'defaut' => true],
-                    ['cle' => 'paiement_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Paiement Orange Money en ligne', 'defaut' => false],
+                    // Appliqués par le serveur (NouvelleCommande::estOuverte, OrangeMoney::estOuvert).
+                    ['cle' => 'commande_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Commande en ligne', 'aide' => 'Coupé : l\'espace client n\'enregistre plus de commande (nouvelle commande, Mes produits, Atelier 3D, impression d\'une conception) et l\'explique au client. Les commandes déjà passées continuent.', 'defaut' => true],
+                    ['cle' => 'paiement_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Paiement Orange Money en ligne', 'aide' => 'Coupé : l\'espace ne propose pas Orange Money, le client paie en boutique (ou au numéro marchand). Allumé : il faut aussi les clés d\'Orange sur le serveur en ligne.', 'defaut' => false],
                     // Délais de la commande en ligne (docs/espace-client.md, « Nouvelle commande ») : comptés en jours ouvrés
                     // (tuile Horaires) à partir de la validation du BAT.
                     ['cle' => 'delai_standard', 'type' => 'nombre', 'libelle' => 'Délai standard', 'aide' => 'Après validation du BAT. Compté en jours ouvrés (24 h = 1 jour).', 'suffixe' => 'h', 'min' => 1, 'max' => 720, 'defaut' => DelaisCommande::STANDARD_DEFAUT],
@@ -358,7 +359,7 @@ final class CatalogueParametres
                     ['cle' => 'heure_limite', 'type' => 'heure', 'libelle' => 'BAT validé avant', 'aide' => 'Le délai part le jour même ; après, le jour ouvré suivant.', 'defaut' => DelaisCommande::HEURE_LIMITE_DEFAUT],
                 ],
                 'motsCles' => ['Connexion par code e-mail ou SMS', 'Mot de passe oublié', 'Commande en ligne du client', 'Paiement Orange Money en ligne', 'Délai standard · express 24 h', 'WhatsApp · mot de passe', 'Corrections de BAT gratuites'],
-                'note' => 'La connexion par code est appliquée. La commande et le paiement en ligne le seront avec l\'espace client complet (jalon J5).',
+                'note' => 'Tout est appliqué par le serveur. Commande en ligne coupée : la page Nouvelle commande l\'explique et rien ne s\'enregistre. Paiement Orange Money en ligne coupé (réglage de départ) : aucun paiement Orange Money depuis l\'espace, ni à la commande, ni dans Factures et paiements, ni pour la conception.',
             ],
             // Programme de points (docs/fidelite.md), règles de Yaya du 13/10/2026.
             'fidelite' => [

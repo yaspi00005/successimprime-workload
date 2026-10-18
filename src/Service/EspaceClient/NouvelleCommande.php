@@ -10,8 +10,10 @@ use App\Entity\CommandesDetails;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Service\GrilleTarifaire;
+use App\Service\Parametres\Parametres;
 use App\Service\Promotions\PromotionsSaisie;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
 /**
  * Commande passée par le client dans son espace (maquettes CO01 à CO04) :
@@ -29,11 +31,27 @@ final class NouvelleCommande
     /** Taille saisie par le client, en cm. */
     public const COTE_MAX_CM = 5000;
 
+    /** Interrupteur « Commande en ligne » coupé (Réglages › Espace client). */
+    public const FERMEE = 'La commande en ligne est fermée pour le moment : demandez un devis, écrivez-nous ou passez en boutique.';
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         /** Code promo tapé par le client (docs/promotions.md) ; absent dans les tests qui n'en ont pas besoin. */
         private readonly ?PromotionsSaisie $promotionsSaisie = null,
+        /** @var (\Closure(): Parametres)|null interrupteur « Commande en ligne » ; absent des tests : ouverte */
+        #[AutowireServiceClosure(Parametres::class)] private readonly ?\Closure $reglages = null,
     ) {
+    }
+
+    /**
+     * Interrupteur « Commande en ligne » de Réglages › Espace client
+     * (allumé par défaut). Coupé, l'espace n'enregistre plus aucune
+     * commande : nouvelle commande, Mes produits, Atelier 3D, impression
+     * d'une conception passent toutes par verifierEnAttente.
+     */
+    public function estOuverte(): bool
+    {
+        return null === $this->reglages || (bool) ($this->reglages)()->valeur('espace_client', 'commande_en_ligne');
     }
 
     /**
@@ -322,12 +340,16 @@ final class NouvelleCommande
     }
 
     /**
-     * Pas plus de EN_ATTENTE_MAX commandes en ligne non confirmées par client.
+     * Commande en ligne ouverte (estOuverte), et pas plus de EN_ATTENTE_MAX
+     * commandes en ligne non confirmées par client.
      *
      * @throws \DomainException
      */
     public function verifierEnAttente(Clients $client): void
     {
+        if (!$this->estOuverte()) {
+            throw new \DomainException(self::FERMEE);
+        }
         $enAttente = $this->em->getRepository(Commandes::class)->count(['clients' => $client, 'statut' => false, 'deleted' => false, 'canal' => Commandes::CANAL_EN_LIGNE]);
         if ($enAttente >= self::EN_ATTENTE_MAX) {
             throw new \DomainException('Vous avez déjà plusieurs commandes en attente de confirmation. L\'atelier vous recontacte.');

@@ -23,6 +23,26 @@
 {% endblock %}
 
 {% block contenu %}
+	{% if fermee|default(false) %}
+		{# Réglages › Espace client › Commande en ligne coupé : rien ne s'enregistre (EspaceNouvelleCommandeController::nouvelle). #}
+		<div class="co-tete">
+			<h1>Nouvelle commande</h1>
+			<a class="ec-bouton-blanc ec-bureau" href="{{ path('app_espace_commandes') }}">Mes commandes</a>
+		</div>
+		<div class="ec-carte">
+			<p style="margin-top:0"><b>La commande en ligne est fermée pour le moment.</b></p>
+			<p class="ec-petit">Vos commandes en cours continuent : suivez-les dans « Mes commandes ». Pour une nouvelle commande, demandez un devis, écrivez à l'atelier ou passez en boutique.</p>
+			<div class="ec-boutons">
+				<a class="ec-bouton" href="{{ path('app_site_devis') }}">Demander un devis</a>
+				<a class="ec-bouton-blanc" href="{{ path('app_espace_messages') }}">Écrire à l'atelier</a>
+			</div>
+		</div>
+	{% else %}
+		{{ block('commande_ouverte') }}
+	{% endif %}
+{% endblock %}
+
+{% block commande_ouverte %}
 	{# Qui ne paie pas ici (demandeur, demande à faire valider) : « Livraison » seulement. #}
 	{% set etape4 = peutPayer and montants and not demandeValidation ? 'Livraison et paiement' : 'Livraison' %}
 	{% set libellesEtapes = {1: 'Produit', 2: 'Options', 3: 'Fichier', 4: etape4} %}
@@ -412,8 +432,9 @@
 								<p class="ec-petit co-frais-om" data-co-frais-om></p>
 								<div class="co-secret" role="note">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</div>
 							{% else %}
+								{# Paiement Orange Money en ligne fermé (clés absentes ou Réglages › Espace client) : rien à payer ici. #}
 								<input type="hidden" name="paiement" value="boutique">
-								<p class="ec-petit" style="margin:0">Vous payez une fois la commande confirmée par l'atelier : en boutique, ou par Orange Money depuis votre espace (Factures et paiements).</p>
+								<p class="ec-petit" style="margin:0">Vous payez en boutique, une fois la commande confirmée par l'atelier.</p>
 							{% endif %}
 						</div>
 					{% endif %}

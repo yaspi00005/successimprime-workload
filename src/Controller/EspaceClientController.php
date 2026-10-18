@@ -542,7 +542,7 @@ final class EspaceClientController extends AbstractController
             'commande' => $commande,
             'titre' => EspaceClient::titre($commande),
             'compte' => $compte,
-            'omActif' => $orangeMoney->estConfigure(),
+            'omActif' => $orangeMoney->estOuvert(),
             'aPayer' => OrangeMoney::aPayer($commande),
             'frais' => $orangeMoney->frais(OrangeMoney::aPayer($commande)),
             'enValidation' => OrangeMoney::enValidation($commande),

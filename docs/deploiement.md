@@ -98,7 +98,7 @@ Fichier `/srv/successimprim/.env.local` (droits 600, propriétaire `succes`). Le
 | DATABASE_URL | mysql://succes:<mot de passe>@127.0.0.1:3306/succesimprim?serverVersion=10.11-MariaDB&charset=utf8mb4 |
 | SYNC_CLE | la clé de `app:synchro --nouvelle-cle`, la même que sur l'ERP local |
 | ORANGE_SMS_CLIENT_ID, ORANGE_SMS_CLIENT_SECRET, ORANGE_SMS_SENDER_ADDRESS, ORANGE_SMS_SENDER_NAME | compte SMS Orange : sans lui, les clients et les employés sans adresse e-mail ne reçoivent pas leur code de connexion en ligne. L'expéditeur est celui du contrat, `tel:+2230000` au Mali, pas un numéro de téléphone ; les numéros maliens à 8 chiffres reçoivent +223 tout seuls |
-| ORANGE_MONEY_CLIENT_ID, ORANGE_MONEY_CLIENT_SECRET, ORANGE_MONEY_MERCHANT_KEY, ORANGE_MONEY_API, ORANGE_MONEY_DEVISE | paiement en ligne (docs/espace-client.md) |
+| ORANGE_MONEY_CLIENT_ID, ORANGE_MONEY_CLIENT_SECRET, ORANGE_MONEY_MERCHANT_KEY, ORANGE_MONEY_API, ORANGE_MONEY_DEVISE | paiement en ligne (docs/espace-client.md). Il faut aussi allumer Réglages › Espace client › « Paiement Orange Money en ligne » à l'ERP local (coupé au départ) : sans lui, l'espace ne propose pas Orange Money |
 | VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT | notifications sur le téléphone des clients (`app:push:cles`) |
 | MAILER_DSN, MAILER_FROM_ADDRESS | envoi des e-mails, dont les codes de connexion des clients et du personnel. Sans l'une des deux, ces codes partent par SMS. Voir « Boîte e-mail LWS » plus bas |
 | SAUVEGARDE_DIR | dossier des sauvegardes du serveur |

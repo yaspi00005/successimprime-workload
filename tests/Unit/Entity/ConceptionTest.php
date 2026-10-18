@@ -2,8 +2,10 @@
 
 namespace App\Tests\Unit\Entity;
 
+use App\Entity\CommandeDetailFichier;
 use App\Entity\Conception;
 use App\Entity\ControlePrePresse;
+use App\Entity\Employes;
 use App\Entity\User;
 use App\Service\SuiviMetiers\Bareme;
 use PHPUnit\Framework\TestCase;
@@ -107,5 +109,77 @@ final class ConceptionTest extends TestCase
         self::assertSame($reperes, array_values(array_filter(array_column($publics, 'reperes')))[0]);
         $c->retour(Conception::RETOUR_CLIENT, 'Changer la couleur', self::a('11:20'));
         self::assertNull($c->derniersReperes());
+    }
+
+    private static function employe(string $prenom, string $fonction): User
+    {
+        return (new User())->setEmploye((new Employes())->setPrenom($prenom)->setNom('Diarra')->setFonction($fonction));
+    }
+
+    /** Ce que la synchronisation lit : les événements bruts, la date en texte. */
+    private static function bruts(Conception $c): array
+    {
+        return array_map(static fn (array $e): array => ['le' => $e['le']->format(\DATE_ATOM)] + $e, $c->getEvenements());
+    }
+
+    public function testValidationGardeLesPointsVerifiesParLeClient(): void
+    {
+        $c = $this->conception();
+        $c->demarrer(new User(), self::a('09:00'));
+        $c->envoyerBat(self::a('10:00'));
+        $c->valider(new Bareme(), self::a('10:30'), 'par le client', ['L\'orthographe des textes', str_repeat('a', 200), ...array_fill(0, 12, 'x')]);
+
+        $valide = $c->getEvenements()[array_key_last($c->getEvenements())];
+        self::assertSame('valide', $valide['type']);
+        self::assertCount(10, $valide['verifications'], '10 points au plus');
+        self::assertSame('L\'orthographe des textes', $valide['verifications'][0]);
+        self::assertSame(120, mb_strlen($valide['verifications'][1]));
+    }
+
+    public function testCorrectionsDemandeesParLeClientSeulement(): void
+    {
+        $c = $this->conception();
+        $c->demarrer(new User(), self::a('09:00'));
+        $c->envoyerBat(self::a('10:00'));
+        $c->retour(Conception::RETOUR_CLIENT, 'Logo plus grand', self::a('10:20'));
+        $c->envoyerBat(self::a('10:40'));
+        $c->retour(Conception::RETOUR_ERREUR, 'faute du graphiste', self::a('10:50'));
+        $c->envoyerBat(self::a('11:00'));
+        $c->retour(Conception::RETOUR_CLIENT, '', self::a('11:10'), [['i' => 0, 'x' => 0.5, 'y' => 0.5, 't' => 'Plus foncé']]);
+
+        self::assertSame(2, $c->correctionsDemandees(), 'une erreur du graphiste n\'use pas les corrections gratuites du client');
+    }
+
+    public function testHistoriquePublicAvecPrenomEtMetierSeulement(): void
+    {
+        $ctl = (new ControlePrePresse())->addFichier(new CommandeDetailFichier());
+        $c = new Conception($ctl, self::a('08:40'), self::a('12:00'));
+        $c->regler('moyen', null, null);
+        $ctl->commencerControle(self::employe('Awa', 'Contrôleuse prépresse'));
+        (new \ReflectionProperty(ControlePrePresse::class, 'controleLe'))->setValue($ctl, self::a('08:50')); // commencerControle date de maintenant
+        $c->demarrer(self::employe('Seydou', 'Graphiste PAO'), self::a('09:00'));
+        $c->envoyerBat(self::a('11:05'));
+
+        // Contrôle commencé, pas fini : pas encore « Fichier contrôlé ».
+        $publics = Conception::evenementsPublics(self::bruts($c), $c);
+        self::assertSame(['bat'], array_column($publics, 'type'));
+        self::assertSame('Seydou (graphiste PAO)', $publics[0]['par']);
+
+        $ctl->setStatut(ControlePrePresse::STATUT_EN_ATTENTE_BAT);
+        $c->valider(new Bareme(), self::a('11:40'), 'par le client', ['La taille : 3 m × 1 m']);
+        $publics = Conception::evenementsPublics(self::bruts($c), $c);
+
+        self::assertSame(['controle', 'bat', 'valide'], array_column($publics, 'type'), 'le contrôle d\'abord, puis dans l\'ordre du temps');
+        self::assertSame('Awa (contrôleuse prépresse)', $publics[0]['par']);
+        self::assertSame(['La taille : 3 m × 1 m'], $publics[2]['verifications']);
+        self::assertNull($publics[2]['detail']);
+        $texte = json_encode($publics, \JSON_UNESCAPED_UNICODE);
+        self::assertStringNotContainsString('Diarra', $texte, 'jamais le nom de famille');
+        self::assertStringNotContainsString('chronomètre', $texte, 'rien de la vie interne de l\'atelier');
+
+        // Le site refiltre ce qu'il a reçu pour comparer : même résultat, même sans graphiste ni contrôleur chez lui.
+        $enLigne = new Conception((new ControlePrePresse())->setStatut(ControlePrePresse::STATUT_EN_ATTENTE_BAT), self::a('08:40'), null);
+        self::assertSame($publics, Conception::evenementsPublics($publics, $enLigne));
+        self::assertSame($publics, Conception::evenementsPublics($publics, $c));
     }
 }

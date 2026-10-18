@@ -334,14 +334,91 @@ final class EspaceClient
     }
 
     /**
+     * Ce que le client coche avant de valider un BAT (maquette CO05) :
+     * tout doit être coché, vérifié aussi par le serveur. Les libellés
+     * cochés restent avec la validation (frise du BAT).
+     *
+     * @return array<string, string> clé => libellé
+     */
+    public static function verificationsBat(?CommandesDetails $ligne): array
+    {
+        $taille = null !== $ligne ? self::taille($ligne) : null;
+
+        return [
+            'orthographe' => 'L\'orthographe des textes',
+            'coordonnees' => 'Les numéros de téléphone et les adresses',
+            'couleurs' => 'Les couleurs et le logo',
+            'taille' => null !== $taille ? 'La taille : '.$taille : 'La taille et le format',
+        ];
+    }
+
+    /**
+     * Les points cochés, dans l'ordre de la liste, ou null s'il en manque un.
+     *
+     * @return list<string>|null libellés cochés
+     */
+    public static function verificationsCochees(?CommandesDetails $ligne, mixed $cochees): ?array
+    {
+        $cochees = \is_array($cochees) ? array_map('strval', $cochees) : [];
+        $attendues = self::verificationsBat($ligne);
+
+        return [] === array_diff(array_keys($attendues), $cochees) ? array_values($attendues) : null;
+    }
+
+    /**
+     * Taille d'une ligne pour le client : « 3 m × 1 m », « 20 × 10 cm »
+     * (largeur et longueur sont en mètres), ou null sans taille.
+     */
+    public static function taille(CommandesDetails $l): ?string
+    {
+        $largeur = (float) $l->getLargeur();
+        $longueur = (float) $l->getLongueur();
+        if ($largeur <= 0 || $longueur <= 0) {
+            return null;
+        }
+        if ($largeur >= 1 && $longueur >= 1) {
+            return self::nombre($largeur).' m × '.self::nombre($longueur).' m';
+        }
+
+        return self::nombre(round($largeur * 100, 1)).' × '.self::nombre(round($longueur * 100, 1)).' cm';
+    }
+
+    /**
+     * Corrections du BAT demandées par le client, et combien restent
+     * gratuites (Réglages › Espace client, 2 par défaut). Au-delà, la
+     * demande reste possible : elle peut être facturée (aucun prix calculé ici).
+     *
+     * @return array{faites: int, gratuites: int, restantes: int}
+     */
+    public function correctionsBat(ControlePrePresse $ctl): array
+    {
+        $gratuites = max(0, (int) ($this->parametres->valeur('espace_client', 'corrections_bat_gratuites') ?? 2));
+        $faites = $this->conception($ctl)?->correctionsDemandees() ?? 0;
+
+        return ['faites' => $faites, 'gratuites' => $gratuites, 'restantes' => max(0, $gratuites - $faites)];
+    }
+
+    /** « au-delà des 2 corrections gratuites : peut être facturée ». */
+    public static function auDelaDesGratuites(int $gratuites): string
+    {
+        return match (true) {
+            $gratuites <= 0 => 'correction qui peut être facturée',
+            1 === $gratuites => 'au-delà de la correction gratuite : peut être facturée',
+            default => \sprintf('au-delà des %d corrections gratuites : peut être facturée', $gratuites),
+        };
+    }
+
+    /**
      * Le client valide le BAT : il est noté validé, la prépresse finit la
      * validation des fichiers et l'envoi en production.
+     *
+     * @param list<string> $verifications points cochés par le client avant de valider
      */
-    public function validerBat(ControlePrePresse $ctl, string $nom, \DateTimeImmutable $maintenant): void
+    public function validerBat(ControlePrePresse $ctl, string $nom, \DateTimeImmutable $maintenant, array $verifications = []): void
     {
         $ctl->setBatNecessaire(true)->setBatValide(true)->setCorrectionNecessaire(false)->setStatut(ControlePrePresse::STATUT_EN_COURS);
-        $this->conception($ctl)?->valider($this->parametres->bareme(), $maintenant, 'par le client dans son espace · '.$nom);
-        $this->journal->noterAction($this->em, self::ACTION_BAT_VALIDE, $ctl, ['nom' => $nom, 'le' => $maintenant->format(\DATE_ATOM)]);
+        $this->conception($ctl)?->valider($this->parametres->bareme(), $maintenant, 'par le client dans son espace · '.$nom, $verifications);
+        $this->journal->noterAction($this->em, self::ACTION_BAT_VALIDE, $ctl, ['nom' => $nom, 'le' => $maintenant->format(\DATE_ATOM), 'verifications' => $verifications]);
         $this->em->flush();
         $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('BAT validé par le client : %s, commande %s.', TableauProduction::titre($ctl->getCommandeDetail()), $ctl->getCommandeDetail()->getCommande()->getNumero()), 'app_controle_pre_presse_controler', ['id' => $ctl->getId()]);
         $this->em->flush();
@@ -352,6 +429,8 @@ final class EspaceClient
      */
     public function modifierBat(ControlePrePresse $ctl, string $texte, \DateTimeImmutable $maintenant, array $reperes = []): void
     {
+        // Compté avant d'ajouter celle-ci : la prépresse sait si elle peut être facturée.
+        $corrections = $this->correctionsBat($ctl);
         $ctl->setCorrectionNecessaire(true)->setStatut(ControlePrePresse::STATUT_CORRECTION_REQUISE);
         $this->conception($ctl)?->retour(Conception::RETOUR_CLIENT, $texte, $maintenant, $reperes);
         $this->journal->noterAction($this->em, self::ACTION_BAT_MODIFIE, $ctl, ['texte' => $texte, 'le' => $maintenant->format(\DATE_ATOM), 'reperes' => $reperes]);
@@ -359,6 +438,7 @@ final class EspaceClient
         $resume = implode(' ; ', array_filter([
             '' !== trim($texte) ? '« '.mb_substr(trim($texte), 0, 120).' »' : null,
             match (\count($reperes)) { 0 => null, 1 => '1 repère sur le BAT', default => \count($reperes).' repères sur le BAT' },
+            0 === $corrections['restantes'] ? self::auDelaDesGratuites($corrections['gratuites']) : null,
         ]));
         $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('Modification demandée par le client sur %s (commande %s) : %s', TableauProduction::titre($ctl->getCommandeDetail()), $ctl->getCommandeDetail()->getCommande()->getNumero(), $resume), 'app_controle_pre_presse_controler', ['id' => $ctl->getId()]);
         $this->em->flush();

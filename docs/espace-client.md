@@ -1,15 +1,15 @@
 # Espace client connecté (maquettes 13 à 19)
 
-Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connexion » plus bas), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts, de marges ni de noms d'employés.
+Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connexion » plus bas), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts, de marges ni de noms d'employés : du personnel, le client ne voit que le prénom et le métier (« Seydou (graphiste PAO) », `Employes::getNomPublic`), jamais le nom de famille ni le téléphone.
 
 ## État (13/10/2026)
 
 Construit, téléphone d'abord (onglets en bas), menu à gauche sur ordinateur :
 
 - **Accueil (13)** : bandeau des BAT à valider, commandes en cours avec la frise Reçue › BAT › Impression › Finition › Prête, reste à payer avec le bouton Orange Money, devis à accepter, commandes récentes.
-- **Mes commandes et suivi (15)** : liste avec état et avancement ; détail avec la frise datée (commande reçue, BAT validé par vous, impression, finition, prête à retirer ou à livrer, retirée ou livrée), livreur en route, montant (avec la ligne « Remise − N F » s'il y a une remise globale, déjà déduite) et reste à payer, lien WhatsApp vers l'atelier (téléphone de la première entité).
+- **Mes commandes et suivi (15, refait le 16/10/2026 sur les maquettes CO05 et CO06)** : liste avec état et avancement ; page d'une commande avec « Où en est ma commande ? » étape par étape, le résumé (montant avec la ligne « Remise − N F » s'il y a une remise globale, déjà déduite, payé et reste pour qui paie), le BAT à valider et les messages de la commande, lien WhatsApp vers l'atelier (téléphone de la première entité). Voir « Suivi de la commande et BAT » plus bas.
 - **Mes devis (14, à droite)** : filtres Tous, À accepter, Acceptés ; « Accepter » passe le devis envoyé en accepté et prévient le droit Devis ; PDF par le lien public signé.
-- **Fichiers et BAT (16, à droite)** : BAT à valider et précédents ; page du BAT avec l'aperçu (image ou PDF) de la dernière version préparée par l'atelier, la frise des versions et des demandes du client. « Valider le BAT » note le BAT validé (horodaté, frise de conception, points du graphiste) et remet le contrôle à la prépresse pour la validation des fichiers et l'envoi en production ; « Demander une modification » repasse le contrôle en correction avec le texte du client. Sur un BAT en image, le client touche l'image pour poser des repères numérotés (10 au plus), chacun avec ce qu'il faut changer ; le graphiste les voit sur l'aperçu de son poste (R03) et dans le fil des échanges, et la version suivante les affiche au client avec « corrigé en version N » (maquette 16). Sur un PDF, la demande reste en texte. La prépresse est prévenue dans les deux cas.
+- **Fichiers et BAT (16, à droite)** : BAT à valider et précédents ; page du BAT avec l'aperçu (image ou PDF) de la dernière version préparée par l'atelier, la frise des versions et des demandes du client. « Valider le BAT » note le BAT validé (horodaté, frise de conception, points du graphiste) et remet le contrôle à la prépresse pour la validation des fichiers et l'envoi en production ; « Demander une modification » repasse le contrôle en correction avec le texte du client. Sur un BAT en image, le client touche l'image pour poser des repères numérotés (10 au plus), chacun avec ce qu'il faut changer ; le graphiste les voit sur l'aperçu de son poste (R03) et dans le fil des échanges, et la version suivante les affiche au client avec « corrigé en version N » (maquette 16). Sur un PDF, la demande reste en texte. La prépresse est prévenue dans les deux cas. Depuis le 16/10/2026, la page du BAT montre la même carte que la page de la commande (points à vérifier avant de valider, corrections gratuites) : voir « Suivi de la commande et BAT ».
 - **Factures et paiements (17, refait le 16/10/2026 sur les maquettes FP01 à FP05)** : ce qui est à payer, plusieurs factures et acomptes payés en une fois par Orange Money avec l'avoir déduit, détail d'une facture, reçus, relevé de compte en PDF. Voir « Factures et paiements » plus bas. Tant que les clés Orange Money ne sont pas posées, la page donne le numéro marchand (tuile Entités) et les références ; le paiement est validé par la caisse.
 - **Mon compte et notifications (19)** : coordonnées (modifiées par le bureau), réglage SMS, mot de passe, déconnexion ; fil des notifications reconstruit à partir des commandes (BAT prêt, paiement reçu, impression lancée, commande prête, livreur en route, livrée).
 - **Fidélité (18, à droite, construit le 14/10/2026)** : `/espace/fidelite`, entrée Fidélité du menu, pour un client hors grille revendeur (`typeClient` autre que B2B) et une personne qui paie. Solde en points et en francs, progression vers chaque seuil, points qui expirent bientôt, promo de réveil, rappel du ×2 payé le jour même, historique (type, points, date, commande ; ni agent ni motif). Lecture seule : c'est l'atelier qui utilise les points sur une commande. Un client à la grille revendeur (B2B) n'a pas l'entrée : le programme ne s'applique pas à cette grille de prix. Détails dans `docs/fidelite.md`.
@@ -100,7 +100,10 @@ Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, clo
 
 - Texte seulement (1 000 caractères), une commande en sujet si on veut, 10 messages par heure et par personne (`espace_message_compte` dans `rate_limiter.yaml`).
 - Le message monte au local, où le droit Clients (`ROLE_CLIENT`) est prévenu. L'équipe répond depuis **Clients › Messages**, avec une pastille sur le menu Clients pour les messages non traités.
-- La réponse redescend et prévient le client (« Réponse de l'atelier », sans montant). Le traitement et l'employé qui a répondu restent au local.
+- La réponse redescend et prévient le client (« Réponse de l'atelier », sans montant). Elle est signée du prénom et du métier de qui a répondu (« Seydou (graphiste PAO) »), « Succès Imprim » pour un compte sans fiche employé ; le traitement et le compte de l'employé restent au local.
+- **Qui répond (demande de Yaya du 16/10/2026, maquette attendue : présentation par défaut).** Chaque réponse de l'atelier porte, côté client (page Messages et « Messages de la commande »), un petit disque à l'initiale du prénom et « Seydou · graphiste PAO » (`MessageClient::getSignature`, `templates/espace/app/_agent.html.twig`). Le disque garde une teinte fixe par prénom ; « SI » en bleu de la marque pour « Succès Imprim » et les anciennes réponses. Côté client, jamais de photo ni de nom de famille : la fiche employé n'a pas encore d'accord « photo visible des clients », la photo reste donc réservée à l'équipe. Tout est tiré de l'auteur enregistré à la réponse, le seul qui redescend en ligne. Les messages du client ne changent pas.
+- Dans **Clients › Messages** (ERP), chaque réponse montre la photo de l'employé qui a répondu (fiche employé, route privée `app_photo_employe`, personnel seulement) ou ses initiales sur un disque de couleur, et son prénom ; au survol, ce que le client voit (« Le client voit : Seydou · graphiste PAO »). Sur le site en ligne, en lecture seule, l'employé n'est pas connu : le disque et le prénom de la signature.
+- Un message qui porte une commande s'affiche aussi sur la page de cette commande (« Messages de la commande »), et l'équipe voit la commande à côté de chaque message dans Clients › Messages.
 
 **Données de démonstration** : voir « Espace client de démonstration » dans `docs/donnees-demo.md`.
 
@@ -301,6 +304,39 @@ Reste à faire :
 **Notifications.** Aucune notification ni aucun SMS ne porte de montant ni de clé. Le paiement validé est annoncé par la chaîne existante (« Paiement reçu pour la commande … »), aux payeurs seulement.
 
 Captures : `/mnt/project-files/captures/factures-paiements/`.
+
+## Suivi de la commande et BAT (CO05, CO06, construit le 16/10/2026)
+
+`/espace/commandes/{id}` (`EspaceClientController::commande`, `templates/espace/app/commande.html.twig`). Sur ordinateur : « Où en est ma commande ? » et le résumé à gauche, le BAT et les messages de la commande à droite, « Facture et reçus » et « Message » en haut. Sur téléphone : le BAT qui attend une réponse en premier (Valider, Corriger), puis le suivi, le résumé et les messages. Styles et script chargés par cette page seulement (`public/css/espace-suivi.css`, `public/js/espace-bat.js`).
+
+**Où en est ma commande ?** `src/Service/EspaceClient/SuiviCommandeClient.php`. Chaque étape vient des données ; une étape sans donnée reste « à venir », rien n'est deviné.
+
+| Étape | Source | Ce que voit le client |
+|---|---|---|
+| Commande reçue | date de la commande | « 15/10 · 10:20 », « à confirmer par l'atelier » pour une commande en ligne pas encore confirmée |
+| Acompte payé / Commande payée | paiements validés, Orange Money en validation | montant, heure, moyen, référence du paiement ; **pour qui paie seulement** |
+| Fichier contrôlé | contrôle prépresse (`ControlePrePresse::isFichierControle`, date `controleLe`) et prénom de qui l'a contrôlé | « par Seydou (graphiste PAO) · 10:40 » ; « l'atelier vérifie votre fichier » pendant le contrôle ; « Fichier à revoir » si rejeté |
+| BAT à valider | BAT envoyés (suivi de conception) | « envoyé à 11:05 · en attente de vous » (« … de votre entreprise » pour la lecture seule), « Correction du BAT », « BAT validé » |
+| En impression | `SuiviCommandeService::etapesClient` (débuts et fins de production des lignes) | « après validation du BAT », « lancée à … », « En finition », « Imprimée » |
+| Prête | idem | date de fin, ou « prévue samedi 17/10 » (date de livraison de la commande) |
+| Livrée / Retirée | bon de livraison | « En route » (heure de départ, créneau), « Livraison reportée » après un échec (sans la raison ni le livreur), date de remise ; « reste 11 500 F à payer au livreur » pour qui paie |
+
+Une commande déjà imprimée dont l'atelier n'a enregistré ni contrôle ni BAT n'affiche pas ces deux étapes. Sur téléphone, le détail est raccourci (montant seul, heure seule, « en attente »). Une demande d'entreprise pas encore validée (ou refusée) n'a pas de suivi : elle n'est pas à l'atelier.
+
+**Montants.** Total (et remise) : pour qui voit les montants (`coque.montants` : particulier, payeur, valideur). Acompte, payé, reste à payer, paiements Orange Money, « reste à payer au livreur » : pour qui paie (`peutPayer`). Rien pour un demandeur ni pour la lecture seule. « Facture et reçus » (qui paie) ouvre la facture de la commande (`app_espace_facture_detail`, maquette FP02), sinon « Factures et paiements ».
+
+**Carte du BAT** (`templates/espace/app/_bat_carte.html.twig`, aussi sur `/espace/bat/{id}`) : « BAT n°1 · à valider », envoyé par qui et quand, l'image (ou le PDF) avec sa taille, son support, ses finitions et sa quantité, « Validez vite pour garder la livraison prévue samedi 17/10 » quand l'atelier a une date.
+
+- **Avant de valider, vérifiez** : l'orthographe, les numéros de téléphone et les adresses, les couleurs et le logo, la taille (« La taille : 3 m × 1 m »). « Valider le BAT et lancer l'impression » ne s'active qu'une fois tout coché ; **le serveur le vérifie aussi** (`EspaceClient::verificationsCochees`) et refuse sinon. Les points cochés restent avec la validation (événement « BAT validé » du suivi de conception, remonté au local par la synchronisation) et s'affichent sous le BAT validé.
+- **Qui valide** : la règle existante, tout le monde sauf un compte Lecture · suivi (il voit le BAT et « une personne de votre entreprise le valide »). La validation est notée au nom de la personne (`CompteClient::getNomAffiche`).
+- **Demander une correction · 2 gratuites** : repères sur l'image et texte, comme avant. Les corrections gratuites se règlent dans **Réglages › Espace client › Corrections de BAT gratuites** (2 par défaut, par BAT ; réglage public, il descend au site). Au-delà, la demande reste possible : la page prévient qu'elle peut être facturée et la notification de la prépresse le dit ; aucun prix n'est calculé.
+- **Historique du BAT** : fichier contrôlé, versions envoyées (prénom et métier du graphiste), demandes du client, validation et points vérifiés. Rien de la vie interne de l'atelier (chronomètre, erreurs, retard).
+
+**Messages de la commande** : le fil Messages filtré sur la commande (`MessagesClient::fil($client, $commande)`), avec le champ pour écrire (il revient sur la page de la commande). Pas pour un compte Lecture · suivi. L'atelier répond depuis Clients › Messages, la commande choisie d'office.
+
+**Pas encore là** (à brancher avec la nouvelle commande en ligne) : « 48 h après validation » et « Validez avant 16 h » demandent le délai de production et l'heure limite de la commande ; la page dit en attendant « après validation du BAT » et « Validez vite pour garder la livraison prévue … ».
+
+Captures : `/mnt/project-files/captures/suivi-bat/`.
 
 ## Atelier 3D et « Mes créations » (construit le 14/10/2026)
 

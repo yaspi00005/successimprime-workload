@@ -70,7 +70,8 @@ final class Serialiseur
             foreach ($enfant['champs'] as $champ) {
                 $v = $meta->getFieldValue($e, $champ);
                 if (isset($enfant['filtres'][$champ]) && $v !== null) {
-                    $v = ($enfant['filtres'][$champ])($v);
+                    // Comme pour le parent : le filtre reçoit aussi la donnée (prénoms de l'historique d'un BAT).
+                    $v = ($enfant['filtres'][$champ])($v, $e);
                 }
                 $ligne['champs'][$champ] = $v === null ? null : Type::getType($meta->getTypeOfField($champ))->convertToDatabaseValue($v, $plateforme);
             }

@@ -48,7 +48,7 @@ final class ParametresController extends AbstractController
         ]);
     }
 
-    #[Route('/{tuile}', name: 'panneau', methods: ['GET'], requirements: ['tuile' => '[a-z_]+'])]
+    #[Route('/{tuile}', name: 'panneau', methods: ['GET'], requirements: ['tuile' => '[a-z0-9_]+'])]
     public function panneau(string $tuile, Request $request): Response
     {
         $this->autoriser($tuile);
@@ -60,7 +60,7 @@ final class ParametresController extends AbstractController
         ]);
     }
 
-    #[Route('/{tuile}', name: 'enregistrer', methods: ['POST'], requirements: ['tuile' => '[a-z_]+'])]
+    #[Route('/{tuile}', name: 'enregistrer', methods: ['POST'], requirements: ['tuile' => '[a-z0-9_]+'])]
     public function enregistrer(string $tuile, Request $request): Response
     {
         $this->autoriser($tuile);
@@ -88,7 +88,7 @@ final class ParametresController extends AbstractController
         return $this->redirectToRoute('app_reglages_parametres_index');
     }
 
-    #[Route('/{tuile}/valider', name: 'valider', methods: ['POST'], requirements: ['tuile' => '[a-z_]+'])]
+    #[Route('/{tuile}/valider', name: 'valider', methods: ['POST'], requirements: ['tuile' => '[a-z0-9_]+'])]
     public function valider(string $tuile, Request $request): Response
     {
         $this->autoriser($tuile);
@@ -103,7 +103,7 @@ final class ParametresController extends AbstractController
         return $this->redirectToRoute('app_reglages_parametres_index');
     }
 
-    #[Route('/{tuile}/refuser', name: 'refuser', methods: ['POST'], requirements: ['tuile' => '[a-z_]+'])]
+    #[Route('/{tuile}/refuser', name: 'refuser', methods: ['POST'], requirements: ['tuile' => '[a-z0-9_]+'])]
     public function refuser(string $tuile, Request $request): Response
     {
         $this->autoriser($tuile);

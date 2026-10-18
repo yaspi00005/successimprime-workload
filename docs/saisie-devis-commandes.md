@@ -35,7 +35,7 @@ Dans le code : `TotalFigeTrait` (colonne `total_fige` de `commandes_details` et 
 
 ## Nom commercial du produit
 
-Les listes de produits, de supports, de types d'impression et d'articles montrent la désignation suivie du nom commercial (« Vinyle adhésif (Autocollant) ») ; leur recherche trouve l'un ou l'autre, sans tenir compte des accents, des majuscules ni du pluriel. Choisir un produit écrit sa désignation technique seule dans la ligne : le nom commercial s'ajoute devant à l'affichage pour le client (devis et facture PDF, espace client), docs/noms-commerciaux.md.
+Les listes de produits, de configurations, de supports, de types d'impression et d'articles montrent la désignation suivie du nom commercial (« Vinyle adhésif (Autocollant) ») ; leur recherche trouve l'un ou l'autre, sans tenir compte des accents, des majuscules ni du pluriel. Choisir un produit écrit sa désignation technique seule dans la ligne : le nom commercial s'ajoute devant à l'affichage pour le client (devis et facture PDF, espace client), docs/noms-commerciaux.md.
 
 ## Les erreurs
 

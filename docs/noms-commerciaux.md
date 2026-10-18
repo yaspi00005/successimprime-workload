@@ -15,7 +15,7 @@ Demande de Yaya le 16/10/2026 : « Au niveau des produits, pour la désignation,
 | Produits (Bâche imprimée, Vinyle adhésif…) | C'est ce que le client choisit sur le site, dans l'espace client, et ce qui figure sur les devis, commandes et factures. |
 | Supports et matières (Micro-perforé, Akylux…) | Le client les choisit avec le produit (« Vitrophanie » pour micro-perforé). |
 | Types d'impression (Solvant grand format, DTF…) | Choisis avec le produit ; « Impression extérieure » parle plus que « solvant ». |
-| Articles de stock vendus tels quels (case « vendable ») | Ils sont vendus au comptoir et figurent sur les devis et factures. Ils restent à l'ERP local. |
+| Articles de stock vendus tels quels (case « vendable ») | Ils sont vendus au comptoir et figurent sur les devis et factures. Ils restent à l'ERP local : sur le site en ligne (espace client), une ligne de vente d'article montre sa désignation seule, l'article n'y étant pas envoyé. |
 
 Pas de nom commercial pour :
 
@@ -40,9 +40,10 @@ Sans nom commercial, ou quand il redit la désignation (« Bâche » pour « bac
 
 - Site vitrine : cartes de « Nos produits » (et `alternateName` dans les données structurées), liste du calculateur et de la demande de devis (« Autocollant (Vinyle adhésif) · Vinyle adhésif blanc · Sur mesure » : une liste déroulante n'a qu'un texte).
 - Espace client : commandes (titre des lignes, support), devis, factures, tableau de bord, fil d'activité, BAT, recherche, Mes produits.
+- Atelier 3D (site et espace client) : nom de l'article (« T-shirt imprimé (T-shirt personnalisé DTF) »), le nom commercial seul sur la maquette.
 - Documents : devis PDF, facture PDF, bon de livraison imprimé, relevés du client (commandes, impayés).
 
-**Côté ERP** : la désignation d'abord, le nom commercial en petit gris à côté : listes des produits, supports, types d'impression, configurations, grille tarifaire, articles et stock ; lignes des devis, commandes, factures, bons de livraison, livraisons, production, prépresse, file de travail et tournées ; listes de choix de la saisie (« Vinyle adhésif (Autocollant) »).
+**Côté ERP** : la désignation d'abord, le nom commercial en petit gris à côté : listes des produits, supports, types d'impression, configurations, grille tarifaire, articles et stock ; lignes des devis, commandes, factures, bons de livraison, livraisons, production (liste, aperçu, planning des machines, étiquette), prépresse, file de travail, caisse et écrans du livreur (tournée, remise, mes livraisons, suivi) ; listes de choix de la saisie (« Vinyle adhésif (Autocollant) »), y compris la liste « Configuration » (« Vinyle adhésif (Autocollant) — Solvant grand format (Impression extérieure) — Vinyle adhésif blanc — Sur mesure »).
 
 **Lignes des documents** : la désignation enregistrée sur la ligne reste la référence (elle ne change pas quand le catalogue change). Le nom commercial du produit vendu (ou de l'article pour une vente d'article) s'affiche devant au moment de l'affichage. Une désignation qui contient déjà le nom commercial (« Autocollants vitrine », saisie à la main ou commande en ligne) est montrée seule ; « Vinyle adhésif (Autocollant) » devient « Autocollant · Vinyle adhésif ». Dans le formulaire du devis, choisir un produit écrit sa désignation technique seule dans la ligne.
 
@@ -54,7 +55,7 @@ Les deux noms sont cherchés, sans tenir compte des accents ni des majuscules : 
 
 | Où | Comment |
 |---|---|
-| Saisie des devis et des commandes : listes des produits, supports, types d'impression et articles | Libellé « Vinyle adhésif (Autocollant) » ; la recherche de la liste ignore accents, majuscules et pluriel. |
+| Saisie des devis et des commandes : listes des produits, configurations, supports, types d'impression et articles | Libellé « Vinyle adhésif (Autocollant) » ; la recherche de la liste ignore accents, majuscules et pluriel. |
 | Liste des produits (case de recherche et filtre de la colonne Nom) | Les deux noms. |
 | Supports, types d'impression | Case de recherche de la liste (elle ne faisait rien jusqu'ici). |
 | Articles, Stock › Articles, état du stock | Code, désignation ou nom commercial ; l'export Excel du stock a une colonne « Nom commercial ». |

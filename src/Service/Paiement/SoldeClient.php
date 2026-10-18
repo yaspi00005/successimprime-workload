@@ -52,6 +52,13 @@ final class SoldeClient
      */
     public const TYPES_COMPTES = [CompteTresorerie::TYPE_CAISSE, CompteTresorerie::TYPE_ORANGE_MONEY, CompteTresorerie::TYPE_WAVE];
 
+    /**
+     * Plus grand montant que gardent les colonnes de la base (entier) : au
+     * delà, c'est une faute de frappe (un chiffre de trop), refusée avec un
+     * message plutôt qu'une erreur de la base. Ce n'est pas un plafond voulu.
+     */
+    public const MONTANT_MAXIMUM = 2147483647;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly MouvementTresorerieService $tresorerie,
@@ -171,6 +178,20 @@ final class SoldeClient
         if (null !== $paiement->getCompteTresorerie() && CompteTresorerie::TYPE_CAISSE !== $paiement->getCompteTresorerie()->getType()) {
             throw new \DomainException('La monnaie ne se garde que dans une caisse.');
         }
+        self::verifierChiffres($monnaie, (int) $paiement->getCommande()?->getClients()?->getSoldeCredit());
+    }
+
+    /**
+     * Un montant (ou le solde qu'il donne) trop grand pour la base : un
+     * chiffre de trop au clavier.
+     *
+     * @throws \DomainException
+     */
+    private static function verifierChiffres(int $montant, int $soldeAvant): void
+    {
+        if ($montant > self::MONTANT_MAXIMUM || $soldeAvant + $montant > self::MONTANT_MAXIMUM) {
+            throw new \DomainException('Montant trop grand : vérifiez le nombre de chiffres.');
+        }
     }
 
     /**
@@ -185,6 +206,7 @@ final class SoldeClient
         if ($montant <= 0) {
             throw new \DomainException('Le montant du dépôt doit être supérieur à zéro.');
         }
+        self::verifierChiffres($montant, $client->getSoldeCredit());
         if (!isset(MouvementSoldeClient::MODES[$mode])) {
             throw new \DomainException('Un dépôt se fait en espèces, par Orange Money ou par Wave.');
         }

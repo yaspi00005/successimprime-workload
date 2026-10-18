@@ -58,6 +58,7 @@ final class SoldeClientTest extends TestCase
             'Orange Money' => [$this->paiementEspeces()->setMode(Paiements::MODE_ORANGE_MONEY), 2500],
             'sans client' => [(new Paiements())->setMode(Paiements::MODE_ESPECES)->setMontant(7500)->setCommande(new Commandes()), 2500],
             'compte en banque' => [$this->paiementEspeces()->setCompteTresorerie($this->compte(CompteTresorerie::TYPE_BANQUE)), 2500],
+            'un chiffre de trop (plus que la base ne garde)' => [$this->paiementEspeces(), 99999999999],
         ] as $cas => [$paiement, $monnaie]) {
             try {
                 SoldeClient::verifierMonnaie($paiement, $monnaie);
@@ -128,6 +129,7 @@ final class SoldeClientTest extends TestCase
             'Orange Money sans référence' => fn () => $this->service()->deposer($client, 1000, Paiements::MODE_ORANGE_MONEY, $this->compte(CompteTresorerie::TYPE_ORANGE_MONEY), ' ', 0, $this->caissiere()),
             'compte des paiements en ligne' => fn () => $this->service()->deposer($client, 1000, Paiements::MODE_ORANGE_MONEY, $this->compte(CompteTresorerie::TYPE_ORANGE_MONEY)->setOrangeMoneyEnLigne(true), 'MP1', 0, $this->caissiere()),
             'chèque' => fn () => $this->service()->deposer($client, 1000, Paiements::MODE_CHEQUE, $this->compte(CompteTresorerie::TYPE_BANQUE), 'CH1', 0, $this->caissiere()),
+            'un chiffre de trop' => fn () => $this->service()->deposer($client, 99999999999, Paiements::MODE_ESPECES, $this->compte(CompteTresorerie::TYPE_CAISSE), null, 0, $this->caissiere()),
         ];
         foreach ($cas as $libelle => $appel) {
             try {

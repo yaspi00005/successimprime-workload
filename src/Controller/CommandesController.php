@@ -14,6 +14,7 @@ use App\Form\PaiementsType;
 use App\Repository\CommandesRepository;
 use App\Repository\ClientsRepository;
 use App\Repository\CommandeDetailFichierRepository;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -2202,7 +2203,7 @@ final class CommandesController extends AbstractController
          * moyen pré-remplis, jamais au-delà du reste à payer.
          */
         if ($request->isMethod('GET') && $request->query->has('montant')) {
-            $paiement->setMontant(min(max(0, $request->query->getInt('montant')), $resteAPayer));
+            $paiement->setMontant(min(max(0, Entree::entier($request->query, 'montant')), $resteAPayer));
 
             $mode = $request->query->getString('mode');
             if (\in_array($mode, [Paiements::MODE_ORANGE_MONEY, Paiements::MODE_ESPECES], true)) {

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\ImportDonnees;
 use App\Entity\User;
+use App\Service\Http\Entree;
 use App\Service\Import\ContexteImport;
 use App\Service\Import\Imports;
 use App\Service\Import\LecteurTableur;
@@ -135,7 +136,7 @@ final class ImportController extends AbstractController
             $lignes = array_values(array_filter($lignes, static fn (LigneImport $l): bool => [] !== $l->avertissements));
         }
         $pages = max(1, (int) ceil(\count($lignes) / self::PAR_PAGE));
-        $page = min($pages, max(1, $request->query->getInt('page', 1)));
+        $page = min($pages, max(1, Entree::entier($request->query, 'page', 1)));
 
         return $this->render('import/apercu.html.twig', [
             'apercu' => $apercu,

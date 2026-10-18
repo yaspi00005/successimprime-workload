@@ -22,6 +22,7 @@ use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\RecommanderClient;
 use App\Service\EspaceClient\SuiviCommandeClient;
 use App\Service\EspaceClient\SuiviSansCompte;
+use App\Service\Http\Entree;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
 use App\Security\CodeDeConnexion;
@@ -335,7 +336,7 @@ final class EspaceClientController extends AbstractController
         $this->jetonEntete($request);
         $f = $fichiers->trouverEnvoi($this->compte()->getClient(), $jeton) ?? throw $this->createNotFoundException();
         try {
-            $etat = $fichiers->ajouter($f, $request->query->getInt('position', -1), $request->getContent(), self::nombre($request->query->get('largeur')), self::nombre($request->query->get('hauteur')));
+            $etat = $fichiers->ajouter($f, Entree::entier($request->query, 'position', -1), $request->getContent(), self::nombre($request->query->get('largeur')), self::nombre($request->query->get('hauteur')));
         } catch (\DomainException $e) {
             return $this->json(['erreur' => $e->getMessage()], 422);
         }

@@ -11,6 +11,7 @@ use App\Repository\CampagneRepository;
 use App\Repository\ClientsRepository;
 use App\Repository\ModeleMessageRepository;
 use App\Service\CampagneService;
+use App\Service\Http\Entree;
 use App\Service\ResultatsCampagnes;
 use App\Service\SegmentsClients;
 use App\Service\WhatsAppService;
@@ -166,7 +167,7 @@ final class CampagneController extends AbstractController
             }
 
             $nom = trim($request->getPayload()->getString('nom'));
-            $modeleId = $request->getPayload()->getInt('modele');
+            $modeleId = Entree::entier($request->getPayload(), 'modele');
             $clientIds = array_map('intval', $request->getPayload()->all('clients'));
             $senderName = trim($request->getPayload()->getString('senderName'));
 

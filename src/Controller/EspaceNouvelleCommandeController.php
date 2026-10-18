@@ -24,6 +24,7 @@ use App\Service\EspaceClient\OptionsCommande;
 use App\Service\EspaceClient\PageNouvelleCommande;
 use App\Service\EspaceClient\PaiementALaCommande;
 use App\Service\EspaceClient\RecommanderClient;
+use App\Service\Http\Entree;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Paiement\ReglementsEnLigne;
 use App\Service\Parametres\ReglagesSaisie;
@@ -126,7 +127,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
         if (null === $config) {
             // Étape 1 (maquette CO01) : le catalogue et « Commander à nouveau ».
             $catalogue = PageNouvelleCommande::catalogue($configs, $b2b, $montants);
-            $categorie = $request->query->getInt('categorie');
+            $categorie = Entree::entier($request->query, 'categorie');
 
             return $this->render('espace/app/nouvelle_commande.html.twig', $commun + [
                 'etape' => 1,
@@ -340,7 +341,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
     {
         $client = $compte->getClient();
         $r = $request->request;
-        $config = $this->service->produit($r->getInt('produit'));
+        $config = $this->service->produit(Entree::entier($r, 'produit'));
         if (null === $config) {
             throw new \DomainException('Choisissez un produit.');
         }
@@ -376,7 +377,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
                 }
             }
         } elseif ('creation' === $mode) {
-            $image = $imagesIa->trouver($client, $r->getInt('creation'));
+            $image = $imagesIa->trouver($client, Entree::entier($r, 'creation'));
             if (null === $image) {
                 throw new \DomainException('Choisissez une de vos créations, ou envoyez votre fichier.');
             }
@@ -397,7 +398,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
             $notes[] = \sprintf('Refaite à l\'identique de la commande %s : même fichier%s.', $refaire->getCommande()?->getNumero(), [] === $choisis ? ' (à reprendre de cette commande)' : '');
         }
 
-        $options = $this->options($compte, $r->getString('delai'), 'livraison' === $r->getString('reception'), $r->getInt('adresse'), $r->getString('adresse_texte'), $r->getString('contact'), $r->getString('creneau'), true);
+        $options = $this->options($compte, $r->getString('delai'), 'livraison' === $r->getString('reception'), Entree::entier($r, 'adresse'), $r->getString('adresse_texte'), $r->getString('contact'), $r->getString('creneau'), true);
 
         // Code promo (docs/promotions.md) : les codes refusés sont comptés par compte et par connexion.
         $codePromo = mb_substr(trim($r->getString('code_promo')), 0, 40);

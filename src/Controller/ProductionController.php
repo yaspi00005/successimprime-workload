@@ -8,6 +8,7 @@ use App\Repository\MachinesRepository;
 use App\Entity\Machines;
 use App\Repository\OrdreProductionRepository;
 use App\Repository\TypesImpressionRepository;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -40,7 +41,7 @@ final class ProductionController extends AbstractController
      * Récupération du filtre depuis l’URL :
      * /production?typeImpression=2
      */
-        $typeImpressionId = $request->query->getInt(
+        $typeImpressionId = Entree::entier($request->query, 
             'typeImpression'
         );
 
@@ -899,14 +900,14 @@ public function terminer(
          */
         $quantiteProduite = max(
             0,
-            $request->request->getInt(
+            Entree::entier($request->request, 
                 'quantite_produite'
             )
         );
 
         $quantiteRebut = max(
             0,
-            $request->request->getInt(
+            Entree::entier($request->request, 
                 'quantite_rebut'
             )
         );
@@ -1118,7 +1119,7 @@ public function terminer(
                 );
             }
 
-            $articleId = $request->request->getInt('article_id');
+            $articleId = Entree::entier($request->request, 'article_id');
             $article = $articlesRepository->find($articleId);
 
             if (!$article instanceof Articles) {
@@ -1127,7 +1128,7 @@ public function terminer(
                 );
             }
 
-            $quantite = $request->request->getInt('quantite');
+            $quantite = Entree::entier($request->request, 'quantite');
 
             $stockService->enregistrerConsommableManuel(
                 $detail,
@@ -1221,7 +1222,7 @@ public function terminer(
         Request $request,
         MachinesRepository $machinesRepository
     ): mixed {
-        $machineId = $request->request->getInt('machine_id');
+        $machineId = Entree::entier($request->request, 'machine_id');
 
         if ($machineId < 1) {
             return null;
@@ -1368,11 +1369,11 @@ public function terminer(
             (string) $request->query->get('q', '')
         );
 
-        $machineId = $request->query->getInt(
+        $machineId = Entree::entier($request->query, 
             'machine'
         );
 
-        $operateurId = $request->query->getInt(
+        $operateurId = Entree::entier($request->query, 
             'operateur'
         );
 

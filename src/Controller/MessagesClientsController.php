@@ -15,6 +15,7 @@ use App\Security\MessagerieVoter;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\PropositionsClient;
 use App\Service\Fidelite\Fidelite;
+use App\Service\Http\Entree;
 use App\Service\Messagerie\Conversations;
 use App\Service\Messagerie\DelaisReponse;
 use App\Service\Messagerie\FilConversation;
@@ -130,8 +131,8 @@ final class MessagesClientsController extends AbstractController
     public function repondre(string $publicId, Request $request): Response
     {
         $c = $this->conversationAEcrire($publicId, $request);
-        $bat = $request->request->getInt('bat') > 0 ? $this->em->find(ControlePrePresse::class, $request->request->getInt('bat')) : null;
-        $facture = $request->request->getInt('facture') > 0 ? $this->em->find(Factures::class, $request->request->getInt('facture')) : null;
+        $bat = Entree::entier($request->request, 'bat') > 0 ? $this->em->find(ControlePrePresse::class, Entree::entier($request->request, 'bat')) : null;
+        $facture = Entree::entier($request->request, 'facture') > 0 ? $this->em->find(Factures::class, Entree::entier($request->request, 'facture')) : null;
         try {
             if ('note' === $request->request->getString('mode')) {
                 $this->conversations->noteInterne($c, $this->moi(), $request->request->getString('texte'), new \DateTimeImmutable());
@@ -162,7 +163,7 @@ final class MessagesClientsController extends AbstractController
     public function transferer(string $publicId, Request $request, UserRepository $utilisateurs): Response
     {
         $c = $this->conversationAEcrire($publicId, $request);
-        $vers = $utilisateurs->find($request->request->getInt('vers'));
+        $vers = $utilisateurs->find(Entree::entier($request->request, 'vers'));
         if (!$vers instanceof User || !$vers->isActif() || ([] === array_intersect(MessagerieVoter::ROLES_BOITE, $vers->getRoles()) && !\in_array('ROLE_ADMIN', $vers->getRoles(), true))) {
             $this->addFlash('error', 'Choisissez un collègue qui répond aux clients.');
         } else {
@@ -190,7 +191,7 @@ final class MessagesClientsController extends AbstractController
     public function ajouter(string $publicId, Request $request, UserRepository $utilisateurs): Response
     {
         $c = $this->conversationAEcrire($publicId, $request);
-        $qui = $utilisateurs->find($request->request->getInt('qui'));
+        $qui = $utilisateurs->find(Entree::entier($request->request, 'qui'));
         if (!$qui instanceof User || !$qui->isActif() || ([] === array_intersect(MessagerieVoter::ROLES_BOITE, $qui->getRoles()) && !\in_array('ROLE_ADMIN', $qui->getRoles(), true))) {
             $this->addFlash('error', 'Choisissez un collègue qui peut écrire aux clients.');
         } else {
@@ -317,7 +318,7 @@ final class MessagesClientsController extends AbstractController
             $this->jeton($request);
             $valeurs = [];
             foreach (['premiere_minutes', 'suivantes_minutes', 'tresoriere', 'escalade_minutes', 'penalite_points', 'cloture_auto_heures', 'reouverture_jours'] as $cle) {
-                $valeurs[$cle] = (string) $request->request->getInt($cle);
+                $valeurs[$cle] = (string) Entree::entier($request->request, $cle);
             }
             $resultat = $parametres->enregistrer(ReglesReponse::TUILE, $valeurs, $this->moi());
             $this->addFlash('success', match ($resultat) {

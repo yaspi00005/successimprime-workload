@@ -15,6 +15,7 @@ use App\Repository\ParametresPaiementRepository;
 use App\Security\AccesEnLigne;
 use App\Service\Caisse;
 use App\Service\DocumentsEntreprise;
+use App\Service\Http\Entree;
 use App\Service\NotificationService;
 use App\Service\Paiement\SoldeClient;
 use App\Service\Parametres\Parametres;
@@ -56,13 +57,13 @@ final class CaisseController extends AbstractController
     {
         $utilisateur = $this->utilisateur();
         $maintenant = new \DateTimeImmutable();
-        $client = $clients->find($request->query->getInt('client')) ?? null;
+        $client = $clients->find(Entree::entier($request->query, 'client')) ?? null;
         $impayees = $client instanceof Clients ? $this->caisse->commandesImpayees($client) : [];
 
         $commande = null;
         $reste = 0;
         foreach ($impayees as $ligne) {
-            if ($ligne['commande']->getId() === $request->query->getInt('commande') || (null === $commande && 1 === \count($impayees))) {
+            if ($ligne['commande']->getId() === Entree::entier($request->query, 'commande') || (null === $commande && 1 === \count($impayees))) {
                 $commande = $ligne['commande'];
                 $reste = $ligne['reste'];
             }
@@ -84,8 +85,8 @@ final class CaisseController extends AbstractController
         $taux = $parametresPaiement->recuperer();
 
         $recu = null;
-        if ($request->query->getInt('recu') > 0) {
-            $recu = $this->recuAutorise($em->getRepository(Paiements::class)->find($request->query->getInt('recu')));
+        if (Entree::entier($request->query, 'recu') > 0) {
+            $recu = $this->recuAutorise($em->getRepository(Paiements::class)->find(Entree::entier($request->query, 'recu')));
         }
 
         // Compte du client (docs/finances.md) : son solde, payer avec, déposer ; le reçu d'un dépôt fait ici.
@@ -100,8 +101,8 @@ final class CaisseController extends AbstractController
             $compteClient['engage'] = max(0, $compteClient['solde'] - $compteClient['disponible']);
         }
         $recuSolde = null;
-        if ($request->query->getInt('recu_solde') > 0) {
-            $ligne = $em->getRepository(MouvementSoldeClient::class)->find($request->query->getInt('recu_solde'));
+        if (Entree::entier($request->query, 'recu_solde') > 0) {
+            $ligne = $em->getRepository(MouvementSoldeClient::class)->find(Entree::entier($request->query, 'recu_solde'));
             $recuSolde = null !== $ligne && ($this->isGranted('ROLE_PAIEMENT_VOIR') || $ligne->getPar() === $utilisateur) ? $ligne : null;
         }
 
@@ -170,7 +171,7 @@ final class CaisseController extends AbstractController
         $comptes = array_map(static fn ($choix): CompteTresorerie => $choix->data, array_values($formulaire->get('compteTresorerie')->createView()->vars['choices']));
         $caisse = null;
         foreach ($this->caisse->caisseDuJour($comptes, new \DateTimeImmutable()) as $ligne) {
-            if ($ligne['compte']->getId() === $request->request->getInt('compte')) {
+            if ($ligne['compte']->getId() === Entree::entier($request->request, 'compte')) {
                 $caisse = $ligne;
             }
         }

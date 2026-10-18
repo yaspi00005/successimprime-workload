@@ -10,6 +10,7 @@ use App\Entity\MessageClient;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\Http\Entree;
 use App\Service\Messagerie\Conversations;
 use App\Service\Messagerie\FilConversation;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -133,7 +134,7 @@ final class EspaceMessagesController extends AbstractController
         $compte = $this->ecrivain($request);
         $c = $this->conversations->duClientParId($compte->getClient(), $id) ?? throw $this->createNotFoundException();
         try {
-            $this->conversations->noter($compte, $c, $request->request->getInt('etoiles'), new \DateTimeImmutable());
+            $this->conversations->noter($compte, $c, Entree::entier($request->request, 'etoiles'), new \DateTimeImmutable());
             $this->addFlash('succes', 'Merci pour votre avis.');
         } catch (\DomainException $e) {
             $this->addFlash('error', $e->getMessage());

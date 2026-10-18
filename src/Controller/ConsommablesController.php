@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Articles;
 use App\Entity\StockSorties;
 use App\Repository\ArticlesRepository;
+use App\Service\Http\Entree;
 use App\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -47,7 +48,7 @@ final class ConsommablesController extends AbstractController
         $this->verifierJeton($request, 'consommables_ajouter');
 
         try {
-            $articleId = $request->request->getInt('article_id');
+            $articleId = Entree::entier($request->request, 'article_id');
             $article = $articlesRepository->find($articleId);
 
             if (!$article instanceof Articles) {

@@ -6,6 +6,7 @@ use App\Entity\LigneReleveOrangeMoney;
 use App\Entity\Paiements;
 use App\Entity\User;
 use App\Service\Finances\Encaissements;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -56,7 +57,7 @@ final class EncaissementsController extends AbstractController
         // Transaction ouverte à droite : celle demandée, sinon celle qui a la meilleure piste.
         $choisie = null;
         $meilleur = -1;
-        $id = $request->query->getInt('ligne');
+        $id = Entree::entier($request->query, 'ligne');
         foreach ($aAssocier as $ligne) {
             $score = $pistes[(int) $ligne->getId()][0]['score'] ?? 0;
             if ($ligne->getId() === $id || (0 === $id && $score > $meilleur)) {
@@ -71,8 +72,8 @@ final class EncaissementsController extends AbstractController
 
         // Juste après une association : le reçu à envoyer (lien wa.me).
         $recu = null;
-        if ($request->query->getInt('recu') > 0) {
-            $paiement = $this->em->find(Paiements::class, $request->query->getInt('recu'));
+        if (Entree::entier($request->query, 'recu') > 0) {
+            $paiement = $this->em->find(Paiements::class, Entree::entier($request->query, 'recu'));
             $ligne = null === $paiement ? null : $this->em->getRepository(LigneReleveOrangeMoney::class)->findOneBy(['paiement' => $paiement]);
             if (null !== $paiement && null !== $ligne) {
                 $recu = ['paiement' => $paiement, 'ligne' => $ligne, 'lien' => Encaissements::lienRecu($paiement, $ligne)];
@@ -153,7 +154,7 @@ final class EncaissementsController extends AbstractController
         if ('autre' === $choix) {
             $choix = (string) $request->request->get('autre');
         }
-        $score = $request->request->has('score_'.$choix) ? max(0, min(99, $request->request->getInt('score_'.$choix))) : null;
+        $score = $request->request->has('score_'.$choix) ? max(0, min(99, Entree::entier($request->request, 'score_'.$choix))) : null;
 
         try {
             $paiement = $this->encaissements->associer($ligne, $choix, $score, $this->utilisateur(), new \DateTimeImmutable());

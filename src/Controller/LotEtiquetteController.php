@@ -11,6 +11,7 @@ use App\Security\FichierEnvoye;
 use App\Security\FichiersPrivesVoter;
 use App\Service\FichiersPrives;
 use App\Service\GenerateurEtiquetteService;
+use App\Service\Http\Entree;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -89,7 +90,7 @@ final class LotEtiquetteController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        $quantite = $request->request->getInt('quantite');
+        $quantite = Entree::entier($request->request, 'quantite');
 
         $prefixe = (string) $request->request->get(
             'prefixe',

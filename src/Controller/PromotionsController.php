@@ -14,6 +14,7 @@ use App\Entity\JournalActivite;
 use App\Entity\Produits;
 use App\Entity\Promotion;
 use App\Entity\User;
+use App\Service\Http\Entree;
 use App\Service\Promotions\CalculCodePromo;
 use App\Service\Promotions\CalculPromotion;
 use App\Service\Promotions\CodesPromo;
@@ -385,14 +386,14 @@ final class PromotionsController extends AbstractController
     {
         $type = $request->request->getString('type');
         $ligne = 'devis' === $type
-            ? $this->em->find(DevisDetails::class, $request->request->getInt('ligne'))
-            : $this->em->find(CommandesDetails::class, $request->request->getInt('ligne'));
+            ? $this->em->find(DevisDetails::class, Entree::entier($request->request, 'ligne'))
+            : $this->em->find(CommandesDetails::class, Entree::entier($request->request, 'ligne'));
         if (null === $ligne) {
             throw $this->createNotFoundException();
         }
         $this->denyAccessUnlessGranted($ligne instanceof DevisDetails ? 'ROLE_DEVIS' : 'ROLE_COMMANDE');
         $document = $ligne instanceof DevisDetails ? $ligne->getDevis() : $ligne->getCommande();
-        $promotion = $this->em->find(Promotion::class, $request->request->getInt('promotion'));
+        $promotion = $this->em->find(Promotion::class, Entree::entier($request->request, 'promotion'));
 
         if ($this->isCsrfTokenValid('exception-demande-'.$ligne->getId(), $request->request->getString('_token'))) {
             try {

@@ -12,6 +12,7 @@ use App\Repository\RoleUtilisateurRepository;
 use App\Repository\UserRepository;
 use App\Security\Droits;
 use App\Security\ModulesRoles;
+use App\Service\Http\Entree;
 use App\Twig\NavigationExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -102,7 +103,7 @@ final class UtilisateursController extends AbstractController
                 throw $this->createAccessDeniedException('Jeton invalide.');
             }
 
-            $profil = $this->roles->find($request->getPayload()->getInt('profil'));
+            $profil = $this->roles->find(Entree::entier($request->getPayload(), 'profil'));
 
             if (!$profil instanceof RoleUtilisateur) {
                 $this->addFlash('danger', 'Choisissez un rôle de base.');
@@ -165,7 +166,7 @@ final class UtilisateursController extends AbstractController
             $nouveauNom = trim($request->getPayload()->getString('nouveau_nom'));
 
             if ('' !== $nouveauNom) {
-                return $this->creerRole($nouveauNom, $this->roles->find($request->getPayload()->getInt('copier')), $roles, 'menus' === $request->getPayload()->getString('retour'));
+                return $this->creerRole($nouveauNom, $this->roles->find(Entree::entier($request->getPayload(), 'copier')), $roles, 'menus' === $request->getPayload()->getString('retour'));
             }
 
             $coches = $request->getPayload()->all('droits');
@@ -207,7 +208,7 @@ final class UtilisateursController extends AbstractController
         $roles = $this->roles->dansLOrdre();
         $choisi = null;
         foreach ($roles as $role) {
-            if ($role->getId() === $request->query->getInt('role')) {
+            if ($role->getId() === Entree::entier($request->query, 'role')) {
                 $choisi = $role;
             }
         }
@@ -342,7 +343,7 @@ final class UtilisateursController extends AbstractController
                 'nom' => trim($donnees->getString('nom')),
                 'telephone' => trim($donnees->getString('telephone')),
                 'email' => trim($donnees->getString('email')),
-                'profil' => $donnees->getInt('profil'),
+                'profil' => Entree::entier($donnees, 'profil'),
                 'changerMotDePasse' => $donnees->has('changer_mot_de_passe'),
             ];
 
@@ -442,7 +443,7 @@ final class UtilisateursController extends AbstractController
             $motif = $request->getPayload()->getString('motif');
             $precision = trim($request->getPayload()->getString('precision'));
             $motif = trim((\in_array($motif, self::MOTIFS, true) ? $motif : 'Autre') . ('' !== $precision ? ' : ' . $precision : ''));
-            $repreneur = $this->users->find($request->getPayload()->getInt('repreneur'));
+            $repreneur = $this->users->find(Entree::entier($request->getPayload(), 'repreneur'));
             $aTransferer = \count($devis) + \count($commandes);
 
             if ($aTransferer > 0 && !\in_array($repreneur, $collegues, true)) {

@@ -5,6 +5,7 @@ namespace App\Controller\Finances;
 use App\Entity\Commandes;
 use App\Service\Finances\Periode;
 use App\Service\Finances\Rentabilite;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,7 +32,7 @@ final class RentabiliteController extends AbstractController
         $commandes = $rentabilite->commandesDuMois($debut, $fin);
         // La commande détaillée : celle demandée, sinon la plus grosse du mois.
         $commande = null;
-        $id = $request->query->getInt('commande');
+        $id = Entree::entier($request->query, 'commande');
         if ($id > 0) {
             $commande = $em->find(Commandes::class, $id);
             if (null === $commande || $commande->isDeleted()) {

@@ -6,6 +6,7 @@ use App\Entity\ModeleAtelier;
 use App\Entity\ProduitConfiguration;
 use App\Service\Atelier\CatalogueAtelier;
 use App\Service\EspaceClient\NouvelleCommande;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -68,7 +69,7 @@ final class ModelesAtelierController extends AbstractController
     {
         $this->verifier($request);
         $r = $request->request;
-        $config = $this->em->find(ProduitConfiguration::class, $r->getInt('configuration'));
+        $config = $this->em->find(ProduitConfiguration::class, Entree::entier($r, 'configuration'));
         if (!$config instanceof ProduitConfiguration) {
             $this->addFlash('error', 'Choisissez le produit du catalogue.');
 
@@ -92,7 +93,7 @@ final class ModelesAtelierController extends AbstractController
             ->setZoneLargeurCm($centimetres('zone_largeur', $modele->getZoneLargeurCm()))
             ->setZoneHauteurCm($centimetres('zone_hauteur', $modele->getZoneHauteurCm()))
             ->setActif($r->getBoolean('actif'))
-            ->setOrdre(max(0, min(999, $r->getInt('ordre'))));
+            ->setOrdre(max(0, min(999, Entree::entier($r, 'ordre'))));
         $this->em->persist($modele);
         $this->em->flush();
         $this->addFlash('success', \sprintf('Article « %s » enregistré. Il descend sur le site à la prochaine synchronisation.', $config->getProduit()?->getNom()));

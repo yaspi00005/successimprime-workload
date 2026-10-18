@@ -8,6 +8,7 @@ use App\Repository\CompteClientRepository;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\Panier;
+use App\Service\Http\Entree;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -96,7 +97,7 @@ final class EspaceProduitsController extends AbstractController
         }
         $compte = $this->compte();
         $produit = $this->mesProduits->trouver($compte->getClient(), $id) ?? throw $this->createNotFoundException();
-        $image = $fichiers->trouver($compte->getClient(), $request->request->getInt('image'));
+        $image = $fichiers->trouver($compte->getClient(), Entree::entier($request->request, 'image'));
         try {
             if (null === $image) {
                 throw new \DomainException('Choisissez la nouvelle image.');

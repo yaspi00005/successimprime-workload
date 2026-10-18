@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\EnvoiRapport;
 use App\Entity\User;
+use App\Service\Http\Entree;
 use App\Service\Parametres\Parametres;
 use App\Service\Rapports\CourrielRapport;
 use App\Service\Rapports\DestinatairesRapports;
@@ -252,7 +253,7 @@ final class RapportsMailController extends AbstractController
     private function personneVue(Request $request): User
     {
         $moi = $this->utilisateur();
-        $id = $request->query->getInt('pour');
+        $id = Entree::entier($request->query, 'pour');
         if ($id <= 0 || $id === $moi->getId() || !$this->isGranted('ROLE_ADMIN')) {
             return $moi;
         }

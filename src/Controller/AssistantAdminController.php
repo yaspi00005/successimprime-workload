@@ -9,6 +9,7 @@ use App\Repository\AssistantMessageRepository;
 use App\Security\AccesEnLigne;
 use App\Service\Assistant\AnalyseAssistant;
 use App\Service\Assistant\ReglagesAssistant;
+use App\Service\Http\Entree;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -130,7 +131,7 @@ final class AssistantAdminController extends AbstractController
 
     private static function periode(Request $request): int
     {
-        $periode = $request->query->getInt('periode', 30);
+        $periode = Entree::entier($request->query, 'periode', 30);
 
         return isset(self::PERIODES[$periode]) ? $periode : 30;
     }

@@ -9,6 +9,7 @@ use App\Entity\Format;
 use App\Entity\MessageClient;
 use App\Entity\User;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\Http\Entree;
 use App\Service\Prepresse\GenerateurRetouche;
 use App\Service\Prepresse\GeometrieRetouche as G;
 use App\Service\Prepresse\PdfImage;
@@ -52,7 +53,7 @@ final class RetoucheImageController extends AbstractController
 
         $images = $this->images($detail);
         $choisi = null;
-        $idDemande = $request->query->getInt('fichier');
+        $idDemande = Entree::entier($request->query, 'fichier');
         foreach ($images as $f) {
             if ($f->getId() === $idDemande) {
                 $choisi = $f;

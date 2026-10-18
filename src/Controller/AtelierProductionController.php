@@ -14,6 +14,7 @@ use App\Security\Droits;
 use App\Service\Atelier\ActionsOrdre;
 use App\Service\Atelier\AtelierProduction;
 use App\Service\Atelier\AvancementOrdre;
+use App\Service\Http\Entree;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -135,7 +136,7 @@ final class AtelierProductionController extends AbstractController
             $this->addFlash('success', 'File réordonnée : retards d\'abord, puis date promise, même matière groupée, travaux bloqués en bas.');
         } else {
             $choisi = array_values(array_filter(array_map('intval', (array) $request->request->all('ordres')), static fn (int $i): bool => \in_array($i, $ids, true)));
-            $deplacer = $request->request->getInt('deplacer');
+            $deplacer = Entree::entier($request->request, 'deplacer');
             $sens = (string) $request->request->get('sens');
             if ($deplacer > 0 && \in_array($sens, ['haut', 'bas'], true)) {
                 $choisi = $ids;
@@ -223,9 +224,9 @@ final class AtelierProductionController extends AbstractController
     {
         $this->verifierJeton($request);
         $this->exigerChef();
-        $ordre = $this->em->getRepository(OrdreProduction::class)->find($request->request->getInt('ordre'));
+        $ordre = $this->em->getRepository(OrdreProduction::class)->find(Entree::entier($request->request, 'ordre'));
         $jour = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->request->get('jour'));
-        $machine = $request->request->getInt('machine') > 0 ? $this->machinesRepository->find($request->request->getInt('machine')) : null;
+        $machine = Entree::entier($request->request, 'machine') > 0 ? $this->machinesRepository->find(Entree::entier($request->request, 'machine')) : null;
         $semaine = $jour ? $jour->modify('monday this week')->format('Y-m-d') : null;
         if (!$ordre instanceof OrdreProduction || !$ordre->estADemarrer() || false === $jour) {
             $this->addFlash('error', 'Seul un travail pas encore commencé se déplace.');
@@ -280,7 +281,7 @@ final class AtelierProductionController extends AbstractController
     public function signaler(Request $request, NotificationService $notifications): Response
     {
         $this->verifierJeton($request);
-        $machine = $this->machinesRepository->find($request->request->getInt('machine'));
+        $machine = $this->machinesRepository->find(Entree::entier($request->request, 'machine'));
         $titre = trim((string) $request->request->get('titre'));
         if (!$machine instanceof Machines || !$this->peutAgir($machine, $request)) {
             throw $this->createAccessDeniedException('Signalez un incident sur une de vos machines.');
@@ -294,7 +295,7 @@ final class AtelierProductionController extends AbstractController
         $incident = (new IncidentMachine($machine, $titre, $arret, new \DateTimeImmutable(), $this->moi()))
             ->setDetail((string) $request->request->get('detail'))
             ->setSuite((string) $request->request->get('suite'));
-        $ordre = $request->request->getInt('ordre') > 0 ? $this->em->getRepository(OrdreProduction::class)->find($request->request->getInt('ordre')) : null;
+        $ordre = Entree::entier($request->request, 'ordre') > 0 ? $this->em->getRepository(OrdreProduction::class)->find(Entree::entier($request->request, 'ordre')) : null;
         if ($ordre instanceof OrdreProduction && $ordre->getMachine() === $machine) {
             $incident->setOrdre($ordre);
         }
@@ -351,13 +352,13 @@ final class AtelierProductionController extends AbstractController
     {
         $this->verifierJeton($request);
         $this->exigerChef();
-        $machine = $this->machinesRepository->find($request->request->getInt('machine'));
+        $machine = $this->machinesRepository->find(Entree::entier($request->request, 'machine'));
         $tache = trim((string) $request->request->get('tache'));
         $frequence = (string) $request->request->get('frequence');
         if (!$machine instanceof Machines || '' === $tache || !isset(EntretienMachine::FREQUENCES[$frequence])) {
             $this->addFlash('error', 'Choisissez la machine, la tâche et la fréquence.');
         } else {
-            $this->em->persist(new EntretienMachine($machine, $tache, $frequence, max(1, $request->request->getInt('intervalle', 1))));
+            $this->em->persist(new EntretienMachine($machine, $tache, $frequence, max(1, Entree::entier($request->request, 'intervalle', 1))));
             $this->em->flush();
             $this->addFlash('success', 'Entretien « '.$tache.' » ajouté pour '.$machine->getNom().'.');
         }
@@ -419,7 +420,7 @@ final class AtelierProductionController extends AbstractController
     {
         $maintenant = new \DateTimeImmutable();
         $machines = $this->machines();
-        $id = $request->query->getInt('machine');
+        $id = Entree::entier($request->query, 'machine');
         $machine = null;
         foreach ($machines as $m) {
             if ($m->getId() === $id) {
@@ -477,8 +478,8 @@ final class AtelierProductionController extends AbstractController
         $suivante = $this->atelier->etapeSuivante($ordre, $maintenant);
         if ($request->isMethod('POST')) {
             $this->verifierJeton($request);
-            $imprime = $request->request->getInt('imprime');
-            $gache = $request->request->getInt('gache');
+            $imprime = Entree::entier($request->request, 'imprime');
+            $gache = Entree::entier($request->request, 'gache');
             try {
                 $actions->terminer($ordre, $this->moi(), $imprime, $gache, (string) $request->request->get('motif') ?: null, (string) $request->request->get('observation'));
                 if (null !== $suivante) {

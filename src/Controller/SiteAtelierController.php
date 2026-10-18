@@ -7,6 +7,7 @@ use App\Service\Atelier\CatalogueAtelier;
 use App\Service\Atelier\CreationsAtelier;
 use App\Service\Atelier\ImagesAtelier;
 use App\Service\Atelier\TarifAtelier;
+use App\Service\Http\Entree;
 use App\Service\Site\FormulaireDemande;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -71,7 +72,7 @@ final class SiteAtelierController extends AbstractController
         if (null === $modele) {
             return $this->json(['erreur' => 'Article indisponible.'], 404);
         }
-        $estimation = $this->catalogue->estimer($modele, $request->query->getInt('quantite'), $request->query->getInt('faces', 1), null, true, new \DateTimeImmutable('today'));
+        $estimation = $this->catalogue->estimer($modele, Entree::entier($request->query, 'quantite'), Entree::entier($request->query, 'faces', 1), null, true, new \DateTimeImmutable('today'));
         $reponse = $this->json($estimation);
         $reponse->setPrivate();
         $reponse->headers->addCacheControlDirective('no-store');

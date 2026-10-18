@@ -18,6 +18,7 @@ use App\Service\ControleCreditClientService;
 use App\Service\BonusPlafondClientService;
 use App\Service\AnalyseFichierImpression;
 use App\Service\FichiersPrives;
+use App\Service\Http\Entree;
 use App\Service\TableauProduction;
 use App\Service\SuiviMetiers\TableauConception;
 use App\Controller\UtilisateursController;
@@ -1138,7 +1139,7 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
     ));
     usort($versions, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => [$a->getCreeLe(), $a->getId()] <=> [$b->getCreeLe(), $b->getId()]);
 
-    $choisi = $request->query->getInt('fichier');
+    $choisi = Entree::entier($request->query, 'fichier');
     $affiche = null;
     foreach ($versions as $fichier) {
         if ($choisi === 0 || $fichier->getId() === $choisi) {
@@ -1236,7 +1237,7 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
             );
         }
 
-        $fichierSourceId = $request->request->getInt('fichierSource');
+        $fichierSourceId = Entree::entier($request->request, 'fichierSource');
 
         $fichierSource = null;
 

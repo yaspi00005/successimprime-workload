@@ -12,6 +12,7 @@ use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\EspaceClient\OptionsCommande;
 use App\Service\EspaceClient\PaiementALaCommande;
 use App\Service\EspaceClient\Panier;
+use App\Service\Http\Entree;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\ReglagesSaisie;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -140,7 +141,7 @@ final class EspacePanierController extends AbstractController
         if ('livraison' !== $request->request->getString('reception')) {
             return new OptionsCommande(Commandes::DELAI_STANDARD, 0, false, 0, null, null, $pret);
         }
-        $enregistree = $request->request->getInt('adresse') > 0 ? $this->compteEntreprise->adresse($compte->getClient(), $request->request->getInt('adresse')) : null;
+        $enregistree = Entree::entier($request->request, 'adresse') > 0 ? $this->compteEntreprise->adresse($compte->getClient(), Entree::entier($request->request, 'adresse')) : null;
         $adresse = null !== $enregistree ? $enregistree->texte() : trim(mb_substr($request->request->getString('adresse_texte'), 0, 200));
         if ('' === $adresse) {
             throw new \DomainException('Indiquez l\'adresse de livraison à Bamako.');

@@ -6,6 +6,7 @@ use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Security\AccesEnLigne;
 use App\Service\Finances\Periode;
+use App\Service\Http\Entree;
 use App\Service\MesStatistiques;
 use App\Service\Statistiques\Export\ExportExcel;
 use App\Service\Statistiques\Export\ExportPdf;
@@ -60,8 +61,8 @@ final class MesStatistiquesController extends AbstractController
     {
         $agent = $this->getUser();
 
-        if ($request->query->getInt('utilisateur') > 0 && $this->isGranted('ROLE_ADMIN')) {
-            $agent = $this->users->find($request->query->getInt('utilisateur')) ?? throw $this->createNotFoundException();
+        if (Entree::entier($request->query, 'utilisateur') > 0 && $this->isGranted('ROLE_ADMIN')) {
+            $agent = $this->users->find(Entree::entier($request->query, 'utilisateur')) ?? throw $this->createNotFoundException();
         }
 
         if (!$agent instanceof User) {

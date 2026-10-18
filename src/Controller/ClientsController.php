@@ -7,6 +7,7 @@ use App\Entity\Clients;
 use App\Form\ClientsType;
 use App\Service\FicheClient360;
 use App\Repository\ClientsRepository;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
@@ -912,7 +913,7 @@ final class ClientsController extends AbstractController
                 ));
             }
             $compte['en_ligne'] = $accesEnLigne->estEnLigne();
-            $recu = $request->query->getInt('recu_solde');
+            $recu = Entree::entier($request->query, 'recu_solde');
             $compte['recu'] = $recu > 0 ? array_values(array_filter($compte['releve'], static fn ($l): bool => $l->getId() === $recu))[0] ?? null : null;
         }
         $kpi = $donnees['kpi'];
@@ -1748,15 +1749,15 @@ final class ClientsController extends AbstractController
     ): JsonResponse {
         $draw = max(
             0,
-            $request->query->getInt('draw')
+            Entree::entier($request->query, 'draw')
         );
 
         $start = max(
             0,
-            $request->query->getInt('start')
+            Entree::entier($request->query, 'start')
         );
 
-        $length = $request->query->getInt('length', 10);
+        $length = Entree::entier($request->query, 'length', 10);
 
         if (!in_array($length, [10, 25, 50, 100], true)) {
             $length = 10;

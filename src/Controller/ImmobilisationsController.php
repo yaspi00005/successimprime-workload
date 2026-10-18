@@ -10,6 +10,7 @@ use App\Repository\ImmobilisationRepository;
 use App\Repository\MachinesRepository;
 use App\Repository\ReleveCompteurRepository;
 use App\Service\DocumentsEntreprise;
+use App\Service\Http\Entree;
 use App\Service\Immobilisations\CalculAmortissement;
 use App\Service\Immobilisations\Patrimoine;
 use App\Service\Immobilisations\UsageMachines;
@@ -244,7 +245,7 @@ final class ImmobilisationsController extends AbstractController
     #[IsGranted('ROLE_COMPTABILITE')]
     public function nouveau(Request $request): Response
     {
-        $machine = $request->query->getInt('machine') > 0 ? $this->machines->find($request->query->getInt('machine')) : null;
+        $machine = Entree::entier($request->query, 'machine') > 0 ? $this->machines->find(Entree::entier($request->query, 'machine')) : null;
         $bien = new Immobilisation($this->biens->prochainCode(), (string) ($machine?->getNom() ?? ''), null !== $machine ? 'machine' : (string) $request->query->get('categorie', 'informatique'));
         if (null !== $machine) {
             $bien->setMachine($machine)->setLieu('Atelier');
@@ -478,10 +479,10 @@ final class ImmobilisationsController extends AbstractController
                 ->setFournisseur((string) $r->get('fournisseur'))
                 ->setNumeroSerie((string) $r->get('numero_serie'))
                 ->setNote((string) $r->get('note'))
-                ->setConfieA($r->getInt('confie_a') > 0 ? $this->em->getRepository(User::class)->find($r->getInt('confie_a')) : null)
+                ->setConfieA(Entree::entier($r, 'confie_a') > 0 ? $this->em->getRepository(User::class)->find(Entree::entier($r, 'confie_a')) : null)
                 ->touche(new \DateTimeImmutable());
             if ('machine' === $bien->getCategorie()) {
-                $machine = $r->getInt('machine') > 0 ? $this->machines->find($r->getInt('machine')) : null;
+                $machine = Entree::entier($r, 'machine') > 0 ? $this->machines->find(Entree::entier($r, 'machine')) : null;
                 $autre = null !== $machine ? $this->biens->findOneBy(['machine' => $machine]) : null;
                 if (null !== $autre && $autre !== $bien) {
                     $erreurs[] = $machine->getNom().' est déjà au registre ('.$autre->getCode().').';

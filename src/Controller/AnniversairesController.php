@@ -8,6 +8,7 @@ use App\Entity\Clients;
 use App\Entity\ModeleAnniversaire;
 use App\Entity\Produits;
 use App\Entity\User;
+use App\Service\Http\Entree;
 use App\Service\Promotions\AnniversairesClients;
 use App\Service\Promotions\CalculAnniversaire;
 use App\Service\Promotions\Promotions;
@@ -42,7 +43,7 @@ final class AnniversairesController extends AbstractController
     public function index(Request $request): Response
     {
         $reglages = $this->promotions->reglages();
-        $jours = max(1, min(90, $request->query->getInt('jours', $reglages['anniversaire_delai_jours'])));
+        $jours = max(1, min(90, Entree::entier($request->query, 'jours', $reglages['anniversaire_delai_jours'])));
         $aujourdhui = new \DateTimeImmutable('today');
         $voirCa = $this->droits()['ventes'];
         // Les jours de rattrapage d'abord : un anniversaire passé pas encore validé peut encore l'être.
@@ -79,11 +80,11 @@ final class AnniversairesController extends AbstractController
         $f = $request->request;
         if ($this->isCsrfTokenValid('anniversaires', $f->getString('_token'))) {
             try {
-                $client = $this->em->find(Clients::class, $f->getInt('client')) ?? throw new \DomainException('Client introuvable.');
+                $client = $this->em->find(Clients::class, Entree::entier($f, 'client')) ?? throw new \DomainException('Client introuvable.');
                 $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $f->getString('date')) ?: throw new \DomainException('Date illisible.');
-                $modele = $f->getInt('modele') > 0 ? $this->em->find(ModeleAnniversaire::class, $f->getInt('modele')) : null;
+                $modele = Entree::entier($f, 'modele') > 0 ? $this->em->find(ModeleAnniversaire::class, Entree::entier($f, 'modele')) : null;
                 $decision = 'exclure' === $f->getString('decision') ? AnniversaireClient::EXCLU : AnniversaireClient::VALIDE;
-                $this->anniversaires->decider($client, max(1, $f->getInt('annees')), $date, $decision, $modele, $this->agent(), new \DateTimeImmutable());
+                $this->anniversaires->decider($client, max(1, Entree::entier($f, 'annees')), $date, $decision, $modele, $this->agent(), new \DateTimeImmutable());
                 $this->addFlash('success', AnniversaireClient::EXCLU === $decision
                     ? \sprintf('%s : anniversaire exclu, ni promotion ni SMS.', $client->getNomComplet())
                     : \sprintf('%s : anniversaire validé%s.', $client->getNomComplet(), null !== $modele ? ' avec « '.$modele->getNom().' »' : ''));
@@ -92,13 +93,13 @@ final class AnniversairesController extends AbstractController
             }
         }
 
-        return $this->redirectToRoute('app_anniversaires_index', ['jours' => $f->getInt('jours') ?: null], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute('app_anniversaires_index', ['jours' => Entree::entier($f, 'jours') ?: null], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/tout-valider', name: 'app_anniversaires_tout_valider', methods: ['POST'])]
     public function toutValider(Request $request): Response
     {
-        $jours = max(1, min(90, $request->request->getInt('jours', 21)));
+        $jours = max(1, min(90, Entree::entier($request->request, 'jours', 21)));
         if ($this->isCsrfTokenValid('anniversaires', $request->request->getString('_token'))) {
             try {
                 $aujourdhui = new \DateTimeImmutable('today');
@@ -160,13 +161,13 @@ final class AnniversairesController extends AbstractController
             }
             $f = $request->request;
             $avant = $nouveau ? null : ['annees' => $modele->getAnnees(), 'nom' => $modele->getNom(), 'avantage' => $modele->getLibelleAvantage(), 'articles' => $modele->getLibelleArticles(), 'validite' => $modele->getValiditeJours(), 'texte' => $modele->getTexteSms(), 'actif' => $modele->isActif()];
-            $modele->setAnnees($f->getInt('annees'))
+            $modele->setAnnees(Entree::entier($f, 'annees'))
                 ->setNom($f->getString('nom'))
                 ->remplacerProduits($this->em->getRepository(Produits::class)->findBy(['id' => array_map('intval', $f->all('produits'))]))
-                ->setCategorie($f->getInt('categorie') > 0 ? $this->em->find(CategorieProduit::class, $f->getInt('categorie')) : null)
+                ->setCategorie(Entree::entier($f, 'categorie') > 0 ? $this->em->find(CategorieProduit::class, Entree::entier($f, 'categorie')) : null)
                 ->setAvantage($f->getString('avantage'))
                 ->setValeur((float) str_replace([',', ' ', "\u{202f}", "\u{a0}"], ['.', '', '', ''], $f->getString('valeur')))
-                ->setValiditeJours($f->getInt('validite', 30))
+                ->setValiditeJours(Entree::entier($f, 'validite', 30))
                 ->setTexteSms($f->getString('texte'))
                 ->setActif($f->getBoolean('actif'));
 

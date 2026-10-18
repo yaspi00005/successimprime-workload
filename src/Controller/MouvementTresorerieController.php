@@ -9,6 +9,7 @@ use App\Form\MouvementTresorerieType;
 use App\Repository\CompteTresorerieRepository;
 use App\Repository\MouvementTresorerieRepository;
 use App\Repository\UserRepository;
+use App\Service\Http\Entree;
 use App\Service\MouvementTresorerieService;
 use App\Service\Paiement\ComptesOrangeMoney;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -885,7 +886,7 @@ foreach ($comptes as $compte) {
          * Orange Money), seulement s'il est permis pour ce type.
          */
         $sourceDemandee =
-            $request->query->getInt(
+            Entree::entier($request->query, 
                 'source'
             );
 

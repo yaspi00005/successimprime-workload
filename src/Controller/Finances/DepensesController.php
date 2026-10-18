@@ -11,6 +11,7 @@ use App\Service\Finances\Budgets;
 use App\Service\Finances\Depenses;
 use App\Service\Finances\Periode;
 use App\Service\Finances\ReglagesFinances;
+use App\Service\Http\Entree;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -204,7 +205,7 @@ final class DepensesController extends AbstractController
     public function payer(Depense $depense, Request $request): Response
     {
         $this->verifierJeton($request, 'payer-depense-'.$depense->getId());
-        $id = $request->request->getInt('compte');
+        $id = Entree::entier($request->request, 'compte');
         $compte = array_values(array_filter(
             $this->comptes->trouverDisponiblesPour($this->utilisateur(), $this->isGranted('ROLE_ADMIN')),
             static fn (CompteTresorerie $c): bool => $c->getId() === $id,

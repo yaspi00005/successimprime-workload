@@ -10,6 +10,7 @@ use App\Repository\UserRepository;
 use App\Security\FichierEnvoye;
 use App\Security\FichiersPrivesVoter;
 use App\Service\ChatService;
+use App\Service\Http\Entree;
 use App\Service\PiecesJointesChat;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -51,7 +52,7 @@ final class ChatController extends AbstractController
                 return $this->redirectToRoute('app_chat_nouvelle');
             }
 
-            $destinataireId = $request->request->getInt('destinataire');
+            $destinataireId = Entree::entier($request->request, 'destinataire');
             $destinataire = $userRepository->find($destinataireId);
 
             if (!$destinataire instanceof User || !$destinataire->isActif() || $destinataire === $utilisateur) {
@@ -116,7 +117,7 @@ final class ChatController extends AbstractController
         $utilisateur = $this->utilisateurConnecte();
         $this->verifierAcces($conversation, $utilisateur);
 
-        $depuisId = $request->query->getInt('depuis');
+        $depuisId = Entree::entier($request->query, 'depuis');
 
         $nouveaux = array_values(array_filter(
             $conversation->getMessages()->toArray(),

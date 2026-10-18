@@ -12,6 +12,7 @@ use App\Repository\CompteTresorerieRepository;
 use App\Repository\ParametresPaiementRepository;
 use App\Security\AccesEnLigne;
 use App\Service\DocumentsEntreprise;
+use App\Service\Http\Entree;
 use App\Service\NotificationService;
 use App\Service\Paiement\FraisOrangeMoney;
 use App\Service\Paiement\SoldeClient;
@@ -53,7 +54,7 @@ final class SoldeClientController extends AbstractController
         $par = $this->utilisateur();
         $montant = self::francs($request->request->getString('montant'));
         $mode = $request->request->getString('mode', Paiements::MODE_ESPECES);
-        $compte = $this->compteAutorise($comptes, $request->request->getInt('compte'));
+        $compte = $this->compteAutorise($comptes, Entree::entier($request->request, 'compte'));
         $frais = \in_array($mode, FraisOrangeMoney::MODES, true) && $request->request->getBoolean('frais')
             ? FraisOrangeMoney::calculer($montant, $parametres->recuperer())->frais()
             : 0;
@@ -91,7 +92,7 @@ final class SoldeClientController extends AbstractController
         }
         $par = $this->utilisateur();
         $montant = self::francs($request->request->getString('montant'));
-        $compte = $this->compteAutorise($comptes, $request->request->getInt('compte'));
+        $compte = $this->compteAutorise($comptes, Entree::entier($request->request, 'compte'));
 
         try {
             if (null === $compte) {

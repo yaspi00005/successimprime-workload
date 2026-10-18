@@ -19,6 +19,7 @@ use App\Service\Conception\ReglagesConception;
 use App\Service\Conception\TarifConception;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FichiersClient;
+use App\Service\Http\Entree;
 use App\Service\Paiement\OrangeMoney;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -75,7 +76,7 @@ final class EspaceConceptionController extends AbstractController
     {
         $this->jeton($request);
         $compte = $this->preparateur();
-        $support = $this->demandes->support($request->request->getInt('support')) ?? throw $this->createNotFoundException();
+        $support = $this->demandes->support(Entree::entier($request->request, 'support')) ?? throw $this->createNotFoundException();
         $demande = '' !== $request->request->getString('demande') ? $this->demandes->trouver($compte->getClient(), $request->request->getString('demande')) : null;
         try {
             if (null !== $demande && DroitsConception::peutModifier($compte, $demande)) {
@@ -299,7 +300,7 @@ final class EspaceConceptionController extends AbstractController
         $liste = $images->images($demande);
         $choisie = null;
         foreach ($liste as $i) {
-            if ($i->getId() === $request->query->getInt('image')) {
+            if ($i->getId() === Entree::entier($request->query, 'image')) {
                 $choisie = $i;
             }
         }
@@ -360,7 +361,7 @@ final class EspaceConceptionController extends AbstractController
         $this->jeton($request);
         $compte = $this->preparateur();
         $demande = $this->trouver($compte, $id);
-        $image = $images->trouver($compte->getClient(), $request->request->getInt('image'));
+        $image = $images->trouver($compte->getClient(), Entree::entier($request->request, 'image'));
         try {
             if (null === $image || $image->getDemande() !== $demande) {
                 throw new \DomainException('Choisissez une image.');
@@ -444,7 +445,7 @@ final class EspaceConceptionController extends AbstractController
         $this->jeton($request);
         $compte = $this->payeur();
         $client = $compte->getClient();
-        $images = $request->request->getInt('images');
+        $images = Entree::entier($request->request, 'images');
         $demande = '' !== $request->request->getString('demande') ? $this->demandes->trouver($client, $request->request->getString('demande')) : null;
         $retour = array_filter(['demande' => null !== $demande ? (string) $demande->getPublicId() : null]);
         try {

@@ -14,6 +14,7 @@ use App\Security\RetourInterne;
 use App\Service\Fidelite\CalculFidelite;
 use App\Service\Fidelite\Fidelite;
 use App\Service\Fidelite\ReveilClients;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -55,7 +56,7 @@ final class FideliteController extends AbstractController
         $onglet = isset(self::ONGLETS[$onglet]) ? $onglet : 'articles';
         $maintenant = new \DateTimeImmutable();
         $reglagesReveil = $this->reveil->reglages();
-        $jours = max(1, $request->query->getInt('jours', $reglagesReveil['jours']));
+        $jours = max(1, Entree::entier($request->query, 'jours', $reglagesReveil['jours']));
 
         $donnees = [
             'onglet' => $onglet,
@@ -99,7 +100,7 @@ final class FideliteController extends AbstractController
     public function nouvelleRegle(Request $request): Response
     {
         $regle = new RegleFidelite();
-        $produit = $request->query->getInt('produit') > 0 ? $this->em->find(Produits::class, $request->query->getInt('produit')) : null;
+        $produit = Entree::entier($request->query, 'produit') > 0 ? $this->em->find(Produits::class, Entree::entier($request->query, 'produit')) : null;
         $regle->setProduit($produit)->setDebut(new \DateTimeImmutable('today'))->setValeurPoint($this->fidelite->reglages()->valeurPoint);
         if (null !== $produit && 'metre_carre' === $produit->getModeCalcul()) {
             $regle->setValeur($this->fidelite->reglages()->pointsParM2)->setSeuil($this->fidelite->reglages()->seuilM2);
@@ -138,7 +139,7 @@ final class FideliteController extends AbstractController
             }
             $avant = $nouvelle ? null : $regle->instantane();
             $f = $request->request;
-            $produit = $f->getInt('produit') > 0 ? $this->em->find(Produits::class, $f->getInt('produit')) : null;
+            $produit = Entree::entier($f, 'produit') > 0 ? $this->em->find(Produits::class, Entree::entier($f, 'produit')) : null;
             $debut = \DateTimeImmutable::createFromFormat('!Y-m-d', $f->getString('debut')) ?: null;
             $fin = '' === $f->getString('fin') ? null : (\DateTimeImmutable::createFromFormat('!Y-m-d', $f->getString('fin')) ?: false);
             $valeur = (float) str_replace([',', ' '], ['.', ''], $f->getString('valeur'));
@@ -164,7 +165,7 @@ final class FideliteController extends AbstractController
                 ->setActif($f->getBoolean('actif'))
                 ->setMode($f->getString('mode'))
                 ->setValeur($valeur)
-                ->setValeurPoint(max(1, $f->getInt('valeur_point', 1)))
+                ->setValeurPoint(max(1, Entree::entier($f, 'valeur_point', 1)))
                 ->setSeuil($seuil)
                 ->setPortee($f->getString('portee'))
                 ->setNote($f->getString('note'));
@@ -257,7 +258,7 @@ final class FideliteController extends AbstractController
     {
         if ($this->isCsrfTokenValid('fidelite-reveil', $request->request->getString('_token'))) {
             try {
-                $duree = $request->request->getBoolean('aujourdhui') ? 0 : $request->request->getInt('duree', $this->reveil->reglages()['duree']);
+                $duree = $request->request->getBoolean('aujourdhui') ? 0 : Entree::entier($request->request, 'duree', $this->reveil->reglages()['duree']);
                 $taux = (float) str_replace(',', '.', $request->request->getString('taux'));
                 $promo = $this->reveil->offrir($client, $taux, $duree, $this->agent(), new \DateTimeImmutable());
                 $this->addFlash('success', \sprintf('Promo de réveil offerte à %s : −%s %% %s.', $client->getNomComplet(), rtrim(rtrim(number_format($promo->getTaux(), 2, ',', ''), '0'), ','), $promo->estDuJourSeulement() ? 'aujourd\'hui seulement' : 'jusqu\'au '.$promo->getFin()->format('d/m')));

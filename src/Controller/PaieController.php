@@ -7,6 +7,7 @@ use App\Entity\User;
 use App\Repository\BulletinPaieRepository;
 use App\Repository\CompteTresorerieRepository;
 use App\Service\EspaceEmploye\Paie;
+use App\Service\Http\Entree;
 use App\Service\Primes\Primes;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -103,7 +104,7 @@ final class PaieController extends AbstractController
             'rouvrir' => $bulletin->rouvrir(),
         };
         if ($erreur === null && $action === 'retirer') {
-            $bulletin->retirerLigne($request->request->getInt('index', -1));
+            $bulletin->retirerLigne(Entree::entier($request->request, 'index', -1));
         }
         if ($erreur === null && $action === 'base') {
             $bulletin->setSalaireBase(max(0, $montant('salaire')));

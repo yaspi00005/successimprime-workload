@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\ProduitConfiguration;
 use App\Entity\SupportConception;
 use App\Service\EspaceClient\NouvelleCommande;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -76,13 +77,13 @@ final class SupportsConceptionController extends AbstractController
             ->setFormat(mb_substr(trim($r->getString('format')), 0, 60))
             ->setLargeurCm($centimetres('largeur'))
             ->setHauteurCm($centimetres('hauteur'))
-            ->setForfait(max(0, min(10_000_000, $r->getInt('forfait'))))
-            ->setAcomptePourcent(max(0, min(100, $r->getInt('acompte'))))
-            ->setDelaiBatHeures(max(1, min(720, $r->getInt('delai') ?: 24)))
-            ->setCorrectionsIncluses(max(0, min(20, $r->getInt('corrections'))))
+            ->setForfait(max(0, min(10_000_000, Entree::entier($r, 'forfait'))))
+            ->setAcomptePourcent(max(0, min(100, Entree::entier($r, 'acompte'))))
+            ->setDelaiBatHeures(max(1, min(720, Entree::entier($r, 'delai') ?: 24)))
+            ->setCorrectionsIncluses(max(0, min(20, Entree::entier($r, 'corrections'))))
             ->setCouleur(preg_match('/^#[0-9A-Fa-f]{6}$/', $r->getString('couleur')) ? strtoupper($r->getString('couleur')) : '#9CA3AF')
             ->setActif($r->getBoolean('actif'))
-            ->setOrdre(max(0, min(999, $r->getInt('ordre'))));
+            ->setOrdre(max(0, min(999, Entree::entier($r, 'ordre'))));
         $choisis = array_map('intval', $r->all('produits'));
         foreach ($support->getConfigurations()->toArray() as $c) {
             if (!\in_array($c->getId(), $choisis, true)) {

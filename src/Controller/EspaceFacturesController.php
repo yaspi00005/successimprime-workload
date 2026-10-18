@@ -15,6 +15,7 @@ use App\Service\EspaceClient\CoqueEspace;
 use App\Service\EspaceClient\ElementAPayer;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FacturesClient;
+use App\Service\Http\Entree;
 use App\Service\Paiement\AvoirClient;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Paiement\ReglementsEnLigne;
@@ -68,7 +69,7 @@ final class EspaceFacturesController extends AbstractController
         // Lien d'une notification (rappel d'échéance) : la facture, si c'est bien une des siennes.
         if ($request->query->has('f')) {
             foreach ($this->factures->factures($client) as $f) {
-                if ($f->getId() === $request->query->getInt('f')) {
+                if ($f->getId() === Entree::entier($request->query, 'f')) {
                     return $this->redirectToRoute('app_espace_facture_detail', ['id' => (string) $f->getPublicId()]);
                 }
             }
@@ -86,7 +87,7 @@ final class EspaceFacturesController extends AbstractController
         $annees = array_unique([$anneeCourante, ...array_map(static fn (Factures $f): int => (int) $f->getDateFacture()?->format('Y'), $toutes), ...array_map(static fn (Paiements $p): int => (int) $p->getDate()?->format('Y'), $paiements)]);
         rsort($annees);
         $annees = array_values(array_filter($annees));
-        $annee = \in_array($request->query->getInt('annee'), $annees, true) ? $request->query->getInt('annee') : $anneeCourante;
+        $annee = \in_array(Entree::entier($request->query, 'annee'), $annees, true) ? Entree::entier($request->query, 'annee') : $anneeCourante;
         $dansLAnnee = static fn (?\DateTimeInterface $d): bool => null !== $d && (int) $d->format('Y') === $annee;
         $facturesAnnee = array_values(array_filter($toutes, static fn (Factures $f): bool => $dansLAnnee($f->getDateFacture())));
         $paiementsAnnee = array_values(array_filter($paiements, static fn (Paiements $p): bool => $dansLAnnee($p->getDate())));

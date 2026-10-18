@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Machines;
+use App\Service\Http\Entree;
 use App\Service\Montage;
 use App\Entity\Maintenance;
 use App\Service\ParcMachines;
@@ -52,7 +53,7 @@ final class MachinesController extends AbstractController
         if (!$this->isCsrfTokenValid('machine-intervention', (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
         }
-        $machine = $machinesRepository->find($request->request->getInt('machine'));
+        $machine = $machinesRepository->find(Entree::entier($request->request, 'machine'));
         $date = \DateTime::createFromFormat('Y-m-d\TH:i', (string) $request->request->get('date'));
         $type = (string) $request->request->get('type');
         $description = mb_substr(trim((string) $request->request->get('description')), 0, 255);

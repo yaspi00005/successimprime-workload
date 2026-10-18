@@ -8,6 +8,7 @@ use App\Repository\AppareilAutoriseRepository;
 use App\Repository\UserRepository;
 use App\Security\AccesEnLigne;
 use App\Service\DocumentsEntreprise;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -67,7 +68,7 @@ final class AppareilsController extends AbstractController
         if (!$this->isCsrfTokenValid('appareil-inviter', (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
         }
-        $utilisateur = $utilisateurs->find($request->request->getInt('utilisateur'));
+        $utilisateur = $utilisateurs->find(Entree::entier($request->request, 'utilisateur'));
         $role = (string) $request->request->get('role');
         $nom = mb_substr(trim((string) $request->request->get('nom')), 0, 100);
         $auteur = $this->getUser();

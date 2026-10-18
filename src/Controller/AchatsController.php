@@ -10,6 +10,7 @@ use App\Entity\StockEntrees;
 use App\Form\AchatType;
 use App\Repository\AchatsRepository;
 use App\Repository\FournisseursRepository;
+use App\Service\Http\Entree;
 use App\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -45,7 +46,7 @@ final class AchatsController extends AbstractController
     ): Response {
         $achat = new Achats();
 
-        $fournisseurId = $request->query->getInt('fournisseur');
+        $fournisseurId = Entree::entier($request->query, 'fournisseur');
 
         if ($fournisseurId > 0) {
             $fournisseur = $fournisseursRepository->find($fournisseurId);

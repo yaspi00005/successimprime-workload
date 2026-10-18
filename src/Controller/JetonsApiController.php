@@ -7,6 +7,7 @@ use App\Entity\User;
 use App\Repository\JetonApiRepository;
 use App\Repository\UserRepository;
 use App\Security\AccesEnLigne;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -53,9 +54,9 @@ final class JetonsApiController extends AbstractController
         if (!$this->isCsrfTokenValid('jeton-api-creer', (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
         }
-        $utilisateur = $utilisateurs->find($request->request->getInt('utilisateur'));
+        $utilisateur = $utilisateurs->find(Entree::entier($request->request, 'utilisateur'));
         $nom = trim((string) $request->request->get('nom'));
-        $jours = $request->request->getInt('duree', 90);
+        $jours = Entree::entier($request->request, 'duree', 90);
         $auteur = $this->getUser();
 
         if ($this->acces->estEnLigne()) {

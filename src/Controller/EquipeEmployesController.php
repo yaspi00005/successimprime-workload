@@ -16,6 +16,7 @@ use App\Security\Droits;
 use App\Service\EspaceEmploye\EspaceEmploye;
 use App\Service\EspaceEmploye\Paie;
 use App\Service\Equipe\AccesApplication;
+use App\Service\Http\Entree;
 use App\Service\Pointage\HoraireType;
 use App\Service\Pointage\Pointages;
 use Doctrine\ORM\EntityManagerInterface;
@@ -296,10 +297,10 @@ final class EquipeEmployesController extends AbstractController
                 $saisie[$champ] = trim($d->getString($champ));
             }
             $saisie['jours'] = array_map('intval', $d->all('jours'));
-            $saisie['responsable'] = $d->getInt('responsable');
+            $saisie['responsable'] = Entree::entier($d, 'responsable');
             if ($admin) {
                 $saisie['acces'] = $d->has('acces');
-                $saisie['profil'] = $d->getInt('profil');
+                $saisie['profil'] = Entree::entier($d, 'profil');
             }
 
             $date = static fn (string $v): ?\DateTimeImmutable => '' === $v ? null : (\DateTimeImmutable::createFromFormat('!Y-m-d', $v) ?: null);

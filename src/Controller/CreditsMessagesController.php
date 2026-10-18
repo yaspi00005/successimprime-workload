@@ -6,6 +6,7 @@ use App\Entity\EnvoiMessage;
 use App\Entity\User;
 use App\Repository\EnvoiMessageRepository;
 use App\Security\AccesEnLigne;
+use App\Service\Http\Entree;
 use App\Service\Messagerie\AlertesMessages;
 use App\Service\Messagerie\CreditsMessages;
 use App\Service\Parametres\CatalogueParametres;
@@ -127,7 +128,7 @@ final class CreditsMessagesController extends AbstractController
     public function envois(Request $request): Response
     {
         $filtres = $this->filtres($request);
-        $page = max(1, $request->query->getInt('page', 1));
+        $page = max(1, Entree::entier($request->query, 'page', 1));
         $resultat = $this->envois->rechercher($filtres, $page, self::PAR_PAGE);
 
         return $this->render('credits_messages/envois.html.twig', [

@@ -6,6 +6,7 @@ use App\Entity\BonLivraison;
 use App\Entity\User;
 use App\Repository\CompteTresorerieRepository;
 use App\Security\LivreurVoter;
+use App\Service\Http\Entree;
 use App\Service\Livraisons\SuiviLivraisons;
 use App\Service\Livraisons\Tournee;
 use App\Service\NotificationService;
@@ -112,7 +113,7 @@ final class TourneeController extends AbstractController
     {
         $this->denyAccessUnlessGranted(LivreurVoter::LIVREUR);
         $moi = $this->moi();
-        $jours = 90 === $request->query->getInt('jours') ? 90 : 30;
+        $jours = 90 === Entree::entier($request->query, 'jours') ? 90 : 30;
         $depuis = (new \DateTimeImmutable('today'))->modify(\sprintf('-%d days', $jours - 1));
         $vues = SuiviLivraisons::vuesDuLivreur($this->suivi->duLivreur($moi, $depuis), $moi);
         $parJour = [];
@@ -147,7 +148,7 @@ final class TourneeController extends AbstractController
         $livreurs = $this->tournee->livreurs();
         $livreur = null;
         foreach ($livreurs as $l) {
-            if ($l->getId() === $request->query->getInt('livreur')) {
+            if ($l->getId() === Entree::entier($request->query, 'livreur')) {
                 $livreur = $l;
             }
         }

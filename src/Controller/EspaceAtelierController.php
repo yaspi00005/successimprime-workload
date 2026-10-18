@@ -10,6 +10,7 @@ use App\Service\Atelier\CreationsAtelier;
 use App\Service\Atelier\ImagesAtelier;
 use App\Service\Atelier\TarifAtelier;
 use App\Service\EspaceClient\CompteEntreprise;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -87,7 +88,7 @@ final class EspaceAtelierController extends AbstractController
             return $this->json(['erreur' => 'Article indisponible.'], 404);
         }
 
-        return $this->json($this->catalogue->estimer($modele, $request->query->getInt('quantite'), $request->query->getInt('faces', 1), $compte->getClient(), CatalogueAtelier::montantsVisibles($compte), new \DateTimeImmutable('today')));
+        return $this->json($this->catalogue->estimer($modele, Entree::entier($request->query, 'quantite'), Entree::entier($request->query, 'faces', 1), $compte->getClient(), CatalogueAtelier::montantsVisibles($compte), new \DateTimeImmutable('today')));
     }
 
     #[Route('/atelier-3d/image', name: 'atelier_image', methods: ['POST'])]
@@ -118,7 +119,7 @@ final class EspaceAtelierController extends AbstractController
             $creation = $this->creations->commander($compte, $lu, SiteAtelierController::rendus($request), $request->request->getString('note'), $request->getSession(), new \DateTimeImmutable());
             $commande = $creation->getCommande() ?? throw new \DomainException('Commande non enregistrée.');
             $client = $compte->getClient();
-            $adresse = $request->request->getInt('adresse') > 0 ? $this->compteEntreprise->adresse($client, $request->request->getInt('adresse')) : null;
+            $adresse = Entree::entier($request->request, 'adresse') > 0 ? $this->compteEntreprise->adresse($client, Entree::entier($request->request, 'adresse')) : null;
             $this->compteEntreprise->preparerCommande($compte, $commande, $request->request->getString('bon_commande'), $adresse);
         } catch (\DomainException $e) {
             return $this->json(['erreur' => $e->getMessage()], 422);

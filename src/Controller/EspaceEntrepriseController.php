@@ -7,6 +7,7 @@ use App\Entity\CompteClient;
 use App\Repository\CompteClientRepository;
 use App\Service\EspaceClient\CompteEntreprise;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\Http\Entree;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,14 +35,14 @@ final class EspaceEntrepriseController extends AbstractController
         $compte = $this->compte();
         $client = $compte->getClient();
         $gere = $compte->peut(CompteClient::DROIT_ADMINISTRATEUR);
-        $modifiee = $request->query->getInt('modifier') > 0 ? $this->entreprise->adresse($client, $request->query->getInt('modifier')) : null;
+        $modifiee = Entree::entier($request->query, 'modifier') > 0 ? $this->entreprise->adresse($client, Entree::entier($request->query, 'modifier')) : null;
 
         if ($request->isMethod('POST')) {
             $this->jeton($request);
             if (!$gere) {
                 throw $this->createAccessDeniedException();
             }
-            $id = $request->request->getInt('id');
+            $id = Entree::entier($request->request, 'id');
             $adresse = $id > 0 ? ($this->entreprise->adresse($client, $id) ?? throw $this->createNotFoundException()) : null;
             try {
                 $this->entreprise->enregistrerAdresse($client, $adresse, [

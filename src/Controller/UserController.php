@@ -7,6 +7,7 @@ use App\Repository\EmployesRepository;
 use App\Repository\RoleUtilisateurRepository;
 use App\Repository\UserRepository;
 
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -162,11 +163,7 @@ final class UserController extends AbstractController
 
 
         $employeId =
-            $request
-                ->request
-                ->getInt(
-                    'employeId'
-                );
+            Entree::entier($request->request, 'employeId');
 
 
         $roles =

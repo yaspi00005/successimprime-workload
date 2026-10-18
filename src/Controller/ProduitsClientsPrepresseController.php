@@ -7,6 +7,7 @@ use App\Entity\ProduitClient;
 use App\Entity\User;
 use App\Repository\ProduitClientRepository;
 use App\Security\FichierEnvoye;
+use App\Service\Http\Entree;
 use App\Service\ProduitsClient\DossierClient;
 use App\Service\ProduitsClient\FilePrepresseProduits;
 use App\Service\ProduitsClient\LiensFichiers;
@@ -96,7 +97,7 @@ final class ProduitsClientsPrepresseController extends AbstractController
     public function controle(#[MapEntity(mapping: ['publicId' => 'publicId'])] Clients $client, Request $request): JsonResponse
     {
         $this->jeton($request, $client);
-        $produit = $this->produit($client, $request->request->getInt('produit'));
+        $produit = $this->produit($client, Entree::entier($request->request, 'produit'));
         [$l, $h] = self::taille($request);
         try {
             $prep = $this->liens->preparer($produit, $request->request->getString('nom'), $l, $h);
@@ -117,7 +118,7 @@ final class ProduitsClientsPrepresseController extends AbstractController
     public function lier(#[MapEntity(mapping: ['publicId' => 'publicId'])] Clients $client, Request $request): Response
     {
         $this->jeton($request, $client);
-        $produit = $this->produit($client, $request->request->getInt('produit'));
+        $produit = $this->produit($client, Entree::entier($request->request, 'produit'));
         [$l, $h] = self::taille($request);
         try {
             $utilisateur = $this->getUser();
@@ -136,7 +137,7 @@ final class ProduitsClientsPrepresseController extends AbstractController
     public function delier(#[MapEntity(mapping: ['publicId' => 'publicId'])] Clients $client, Request $request): Response
     {
         $this->jeton($request, $client);
-        $produit = $this->produit($client, $request->request->getInt('produit'));
+        $produit = $this->produit($client, Entree::entier($request->request, 'produit'));
         [$l, $h] = self::taille($request);
         if (null !== $l && null !== $h) {
             $produit->delierTaille($l, $h);

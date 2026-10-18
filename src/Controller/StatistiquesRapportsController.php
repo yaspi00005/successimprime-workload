@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Security\AccesEnLigne;
+use App\Service\Http\Entree;
 use App\Service\Statistiques\Export\ExportExcel;
 use App\Service\Statistiques\Export\ExportPdf;
 use App\Service\Statistiques\Export\ExportsStatistiques;
@@ -56,7 +57,7 @@ final class StatistiquesRapportsController extends AbstractController
      */
     private function donnees(Request $request): array
     {
-        $mois = $request->query->getInt('periode', 12);
+        $mois = Entree::entier($request->query, 'periode', 12);
         if (!isset(StatistiquesRapports::PERIODES[$mois])) {
             $mois = 12;
         }

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Machines;
 use App\Repository\MachinesRepository;
+use App\Service\Http\Entree;
 use App\Service\TableauProduction;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -28,7 +29,7 @@ final class ProductionKanbanController extends AbstractController
     #[Route('/atelier/production', name: 'app_atelier_production', methods: ['GET'])]
     public function index(Request $request, TableauProduction $tableau, MachinesRepository $machines): Response
     {
-        $machine = $request->query->getInt('machine') ?: null;
+        $machine = Entree::entier($request->query, 'machine') ?: null;
         $recherche = mb_substr(trim((string) $request->query->get('q', '')), 0, 100);
 
         return $this->render('production/kanban.html.twig', $tableau->donnees(new \DateTimeImmutable(), $machine, $recherche) + [

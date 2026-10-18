@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Service\Http\Entree;
 use App\Service\VentesService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,7 +24,7 @@ final class VentesController extends AbstractController
         $onglet = $this->onglet($request, $onglets);
         $nombres = $ventesService->nombresParOnglet($maintenant);
         $pages = max(1, (int) ceil($nombres[$onglet] / VentesService::PAR_PAGE));
-        $page = min($pages, max(1, $request->query->getInt('page', 1)));
+        $page = min($pages, max(1, Entree::entier($request->query, 'page', 1)));
 
         return $this->render('ventes/index.html.twig', [
             'indicateurs' => $ventesService->indicateurs($maintenant),

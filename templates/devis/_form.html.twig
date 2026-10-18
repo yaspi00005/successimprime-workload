@@ -911,7 +911,7 @@
 						<div class="detail-devis">
 							<div class="si-bloc-tete">
 								<h4 class="detail-title">Ligne {{ loop.index }}</h4>
-								<button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail"><i class="fas fa-trash-alt me-1"></i>Retirer</button>
+								<button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail" data-confirmer="Retirer cette ligne ?" data-confirmer-detail="Elle quitte la saisie ; rien n'est enregistré avant « Enregistrer »." data-confirmer-bouton="Retirer" data-confirmer-danger><i class="fas fa-trash-alt me-1"></i>Retirer</button>
 							</div>
 							{{ _self.champs_detail(detail) }}
 						</div>
@@ -2967,7 +2967,7 @@ wrapper.className = 'detail-devis';
 wrapper.innerHTML = `
             <div class="si-bloc-tete">
                 <h4 class="detail-title">Nouvelle ligne</h4>
-                <button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail"><i class="fas fa-trash-alt me-1"></i>Retirer</button>
+                <button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail" data-confirmer="Retirer cette ligne ?" data-confirmer-detail="Elle quitte la saisie ; rien n'est enregistré avant « Enregistrer »." data-confirmer-bouton="Retirer" data-confirmer-danger><i class="fas fa-trash-alt me-1"></i>Retirer</button>
             </div>
             ${html}
         `;

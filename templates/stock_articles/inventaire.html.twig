@@ -10,7 +10,7 @@
 {% endblock %}
 
 {% block body %}
-	<form method="post" class="card si-bloc si-inventaire" id="form-inventaire">
+	<form method="post" class="card si-bloc si-inventaire" id="form-inventaire" data-confirmer="Ajuster le stock ?" data-confirmer-detail="Aucune quantité saisie." data-confirmer-bouton="Ajuster le stock">
 		<input type="hidden" name="_token" value="{{ csrf_token('inventaire-stock') }}">
 		<p class="text-muted">Saisissez ce que vous comptez, rayon par rayon. Laissez vide ce qui n'a pas été compté : seules les quantités saisies ajustent le stock (motif « Comptage »).</p>
 		<div class="table-responsive">
@@ -69,11 +69,10 @@
 					cellule.className = 'text-end text-nowrap si-masque-mobile js-ecart fw-semibold ' + (ecart < 0 ? 'text-danger' : ecart > 0 ? 'text-success' : '');
 				});
 				formulaire.querySelector('.js-resume').textContent = saisis === 0 ? 'Aucune quantité saisie.' : `${saisis} article${saisis > 1 ? 's' : ''} compté${saisis > 1 ? 's' : ''}, ${ecarts} écart${ecarts > 1 ? 's' : ''}.`;
+				// Repris par la fenêtre de confirmation (data-confirmer, public/js/confirmation.js).
+				formulaire.dataset.confirmerDetail = formulaire.querySelector('.js-resume').textContent;
 			};
 			formulaire.addEventListener('input', majResume);
-			formulaire.addEventListener('submit', (e) => {
-				if (!window.confirm(formulaire.querySelector('.js-resume').textContent + ' Ajuster le stock ?')) e.preventDefault();
-			});
 		})();
 	</script>
 {% endblock %}

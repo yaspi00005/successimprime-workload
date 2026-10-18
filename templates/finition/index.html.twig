@@ -29,7 +29,7 @@
 				Dépublier
 			</button>
 
-			<button type="button" id="finitionMassDeleteButton" class="btn btn-danger">
+			<button type="button" id="finitionMassDeleteButton" class="btn btn-danger" {{ confirmer_suppression('les finitions cochées') }}>
 				<i class="fa fa-trash mr-1"></i>
 				Supprimer
 			</button>
@@ -174,7 +174,7 @@
 													{% endif %}
 												</button>
 
-												<button type="button" class="btn btn-sm btn-danger-light btn-delete-finition" data-url="{{ path( 'app_finition_delete_ajax', {id: finition.id} ) }}" data-token="{{ csrf_token( 'delete_finition_' ~ finition.id ) }}" data-nom="{{ finition.nom }}" title="Supprimer">
+												<button type="button" class="btn btn-sm btn-danger-light btn-delete-finition" {{ confirmer_suppression('la finition « ' ~ finition.nom ~ ' »') }} data-url="{{ path( 'app_finition_delete_ajax', {id: finition.id} ) }}" data-token="{{ csrf_token( 'delete_finition_' ~ finition.id ) }}" data-nom="{{ finition.nom }}" title="Supprimer">
 													<i class="fa fa-trash"></i>
 												</button>
 

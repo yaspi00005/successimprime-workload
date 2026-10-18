@@ -4,6 +4,7 @@ namespace App\Service\Synchro;
 
 use App\Entity\BonLivraison;
 use App\Entity\Clients;
+use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\ControlePrePresse;
@@ -25,6 +26,7 @@ use App\Entity\SynchroRecu;
 use App\Entity\User;
 use App\Repository\ParametresPaiementRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Service\Corbeille\CaptureCorbeille;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\NotificationsClient;
 use App\Service\NotificationService;
@@ -72,6 +74,8 @@ final class Synchro
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $url,
         #[Autowire('%env(SYNC_CLE)%')] private readonly string $cle,
+        // Fichier retiré par le client en ligne : dans la corbeille du local aussi (docs/corbeille.md).
+        private readonly ?CaptureCorbeille $corbeille = null,
     ) {
     }
 
@@ -699,6 +703,10 @@ final class Synchro
     /** @param array<string, array{0: ?string, 1: ?string}> $remontees */
     private function apresRemontee(object $entite, array $remontees): void
     {
+        if ($entite instanceof CommandeDetailFichier && '0' === ($remontees['actif'][1] ?? null)) {
+            // Le client l'a retiré de « Mes fichiers » : récupérable au local pendant la durée de la corbeille.
+            $this->corbeille?->masquer($this->em, $entite, 'actif', true, null, 'Espace client (en ligne)');
+        }
         if ($entite instanceof Devis && Devis::STATUT_ACCEPTE === ($remontees['statut'][1] ?? null)) {
             $this->notifications->notifierRoles(['ROLE_DEVIS'], \sprintf('Devis %s accepté par le client dans son espace : à transformer en commande.', $entite->getNumero()), 'app_devis_show', ['id' => $entite->getId()]);
         }

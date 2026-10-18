@@ -12,7 +12,7 @@
 					<td>{{ l.libelle }}</td>
 					<td class="text-end text-nowrap">{{ l.montant > 0 ? '+ ' : '− ' }}{{ l.montant|abs|number_format(0, ',', ' ') }} F</td>
 					{% if retirer ?? false %}
-						<td class="text-end"><form method="post" action="{{ path('app_paie_agir', {id: b.id, action: 'retirer'}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="index" value="{{ loop.index0 }}"><button class="btn btn-link btn-sm p-0 text-danger" title="Retirer la ligne" aria-label="Retirer {{ l.libelle }}"><i class="fas fa-times"></i></button></form></td>
+						<td class="text-end"><form method="post" action="{{ path('app_paie_agir', {id: b.id, action: 'retirer'}) }}" data-confirmer="Retirer la ligne « {{ l.libelle }} » du bulletin ?" data-confirmer-bouton="Retirer" data-confirmer-danger><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="index" value="{{ loop.index0 }}"><button class="btn btn-link btn-sm p-0 text-danger" title="Retirer la ligne" aria-label="Retirer {{ l.libelle }}"><i class="fas fa-times"></i></button></form></td>
 					{% endif %}
 				</tr>
 			{% endfor %}

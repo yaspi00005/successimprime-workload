@@ -177,8 +177,11 @@
                 form.dataset[CONFIRME] = '1';
             }
             el.click();
-            // Si le clic rejoué n'est pas passé par ici (élément retiré), on nettoie.
+            // Clic rejoué sans envoi (élément retiré, champ obligatoire vide) : la prochaine fois, on redemande.
             delete el.dataset[CONFIRME];
+            if (form) {
+                delete form.dataset[CONFIRME];
+            }
         });
     }, true);
 
@@ -202,6 +205,8 @@
             form.dataset[CONFIRME] = '1';
             if (typeof form.requestSubmit === 'function') {
                 form.requestSubmit(envoyeur && envoyeur.form === form ? envoyeur : undefined);
+                // Envoi refusé par le navigateur (champ obligatoire vide) : la prochaine fois, on redemande.
+                delete form.dataset[CONFIRME];
             } else {
                 // Vieux navigateur : le bouton choisi est recopié avant l'envoi.
                 if (envoyeur && envoyeur.name) {

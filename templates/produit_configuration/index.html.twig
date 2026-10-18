@@ -33,7 +33,7 @@
 					Dépublier
 				</button>
 
-				<button type="button" id="configurationMassDeleteButton" class="btn btn-danger configuration-mass-action" disabled>
+				<button type="button" id="configurationMassDeleteButton" class="btn btn-danger configuration-mass-action" {{ confirmer_suppression('les configurations cochées') }} disabled>
 					<i class="fa fa-trash mr-1"></i>
 					Supprimer
 				</button>
@@ -265,7 +265,7 @@
 										</button>
 
 										{# Suppression #}
-										<button type="button" class="btn btn-sm btn-danger-light btn-delete-configuration" data-url="{{ path( 'app_produit_configuration_delete_ajax', { id: configuration.id } ) }}" data-token="{{ csrf_token( 'delete_produit_configuration_' ~ configuration.id ) }}" data-nom="{{ ( configuration.produit.nom ~ ' / ' ~ configuration.support.nom ~ ' / ' ~ (configuration.format.nom ?? 'Sur mesure') )|e('html_attr') }}" title="Supprimer">
+										<button type="button" class="btn btn-sm btn-danger-light btn-delete-configuration" {{ confirmer_suppression('la configuration « ' ~ configuration.produit.nom ~ ' / ' ~ configuration.support.nom ~ ' / ' ~ (configuration.format.nom ?? 'Sur mesure') ~ ' »') }} data-url="{{ path( 'app_produit_configuration_delete_ajax', { id: configuration.id } ) }}" data-token="{{ csrf_token( 'delete_produit_configuration_' ~ configuration.id ) }}" data-nom="{{ ( configuration.produit.nom ~ ' / ' ~ configuration.support.nom ~ ' / ' ~ (configuration.format.nom ?? 'Sur mesure') )|e('html_attr') }}" title="Supprimer">
 											<i class="fa fa-trash"></i>
 										</button>
 

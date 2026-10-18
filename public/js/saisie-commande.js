@@ -187,7 +187,8 @@
 
             if (event.target.closest('.js-retirer-ligne')) {
                 const bouton = detail && detail.querySelector('.supprimer-detail');
-                if (bouton && window.confirm('Retirer cette ligne ?')) {
+                // Le bouton « Retirer » de la ligne porte data-confirmer : la question est posée par public/js/confirmation.js.
+                if (bouton) {
                     bouton.click();
                 }
 

@@ -44,7 +44,7 @@ final class CaptureCorbeille
     /** @var list<list<list<array<string, mixed>>>> */
     private array $pile = [];
 
-    /** @var array<int, array{entite: object, table: string, cle: array<string, mixed>, champ: string, valeur: mixed, donnees: array<string, mixed>, libelle: ?string}> */
+    /** @var array<int, array{entite: object, table: string, cle: array<string, mixed>, champ: string, valeur: mixed, donnees: array<string, mixed>, libelle: ?string, par: ?string}> */
     private array $masquages = [];
 
     /** @var array<string, true>|null */
@@ -61,9 +61,11 @@ final class CaptureCorbeille
 
     /**
      * Suppression douce : $champ prendra une autre valeur au prochain
-     * enregistrement ; la restauration lui rendra $valeurRestauree.
+     * enregistrement ; la restauration lui rendra $valeurRestauree. $par :
+     * qui a supprimé, quand ce n'est pas la personne connectée (geste du
+     * client reçu par la synchronisation).
      */
-    public function masquer(EntityManagerInterface $em, object $entite, string $champ, mixed $valeurRestauree, ?string $libelle = null): void
+    public function masquer(EntityManagerInterface $em, object $entite, string $champ, mixed $valeurRestauree, ?string $libelle = null, ?string $par = null): void
     {
         try {
             $meta = $em->getClassMetadata($entite::class);
@@ -80,7 +82,7 @@ final class CaptureCorbeille
             if (false === $donnees) {
                 return;
             }
-            $this->masquages[spl_object_id($entite)] = ['entite' => $entite, 'table' => $table, 'cle' => $cle, 'champ' => $champ, 'valeur' => $valeurRestauree, 'donnees' => $donnees, 'libelle' => $libelle];
+            $this->masquages[spl_object_id($entite)] = ['entite' => $entite, 'table' => $table, 'cle' => $cle, 'champ' => $champ, 'valeur' => $valeurRestauree, 'donnees' => $donnees, 'libelle' => $libelle, 'par' => $par];
         } catch (\Throwable $e) {
             $this->logger->error('Corbeille : copie impossible avant la suppression.', ['exception' => $e]);
         }
@@ -145,7 +147,7 @@ final class CaptureCorbeille
                 }
             }
             foreach ($masquages as $m) {
-                $this->ecrire($em, Uuid::v7()->toRfc4122(), 0, true, $m['table'], $m['cle'], $m['donnees'], [], Corbeille::MODE_MASQUE, [$m['champ'] => $m['valeur']], $le, $parId, $parNom, $m['libelle']);
+                $this->ecrire($em, Uuid::v7()->toRfc4122(), 0, true, $m['table'], $m['cle'], $m['donnees'], [], Corbeille::MODE_MASQUE, [$m['champ'] => $m['valeur']], $le, null === $m['par'] ? $parId : null, $m['par'] ?? $parNom, $m['libelle']);
             }
         } catch (\Throwable $e) {
             $this->logger->error('Corbeille : copie impossible après la suppression.', ['exception' => $e]);

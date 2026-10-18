@@ -129,7 +129,7 @@
 										<button class="btn btn-sm si-btn-discret" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Plus d'actions">⋯</button>
 										<ul class="dropdown-menu dropdown-menu-end">
 											<li><a class="dropdown-item" href="{{ fiche }}">Modifier les droits</a></li>
-											<li><button type="button" class="dropdown-item js-mdp" data-url="{{ path('app_user_reset_password', {id: utilisateur.id}) }}" data-token="{{ csrf_token('reset_password_' ~ utilisateur.id) }}" data-nom="{{ nom }}">Réinitialiser le mot de passe</button></li>
+											<li><button type="button" class="dropdown-item js-mdp" data-url="{{ path('app_user_reset_password', {id: utilisateur.id}) }}" data-token="{{ csrf_token('reset_password_' ~ utilisateur.id) }}" data-nom="{{ nom }}" data-confirmer="Réinitialiser le mot de passe de {{ nom }} ?" data-confirmer-detail="Un mot de passe temporaire s'affichera ; il devra le changer à sa prochaine connexion." data-confirmer-bouton="Réinitialiser">Réinitialiser le mot de passe</button></li>
 											<li><a class="dropdown-item" href="{{ fiche }}#journal">Voir son journal</a></li>
 										</ul>
 									</div>
@@ -179,7 +179,7 @@
 
 		document.querySelectorAll('.js-mdp').forEach(function (bouton) {
 			bouton.addEventListener('click', async function () {
-				if (!window.confirm('Réinitialiser le mot de passe de ' + bouton.dataset.nom + ' ?')) { return; }
+				// Confirmé avant (data-confirmer, public/js/confirmation.js).
 				try {
 					const json = await envoyer(bouton.dataset.url, {_token: bouton.dataset.token});
 					window.prompt('Mot de passe temporaire de ' + json.username + ' (à changer à la connexion) :', json.temporaryPassword);

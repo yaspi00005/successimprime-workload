@@ -325,7 +325,7 @@ public function edit(
             $this->addFlash(
                 'success',
                 sprintf(
-                    'Le devis %s a été supprimé Il reste %s dans la corbeille.',
+                    'Le devis %s a été supprimé. Il reste %s dans la corbeille.',
                     $devi->getNumero(),
                     $corbeille->dureeTexte()
                 )

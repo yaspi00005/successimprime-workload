@@ -16,9 +16,11 @@ use Doctrine\DBAL\Connection;
  *    le rebrancher à la restauration.
  *
  * Les lignes liées entre elles forment un groupe : une entrée de la
- * corbeille. Sa racine est la fiche dont les autres dépendent. Un groupe
+ * corbeille. Sa racine est la ligne dont les autres dépendent. Un groupe
  * fait seulement d'éléments rattachés (une finition retirée en modifiant
  * un devis) n'est pas gardé : c'est une modification, pas une suppression.
+ * Une ligne de commande retirée avec ses fichiers ou son contrôle de BAT
+ * est gardée, sous le nom de la ligne.
  *
  * Les tables exclues (TypesCorbeille::EXCLUES) ne sont jamais copiées.
  */
@@ -177,21 +179,28 @@ final class Instantane
 
         $groupes = [];
         foreach ($composantes as $membres) {
+            // Racine : la ligne dont les autres dépendent, de préférence une fiche ; le groupe n'est
+            // gardé que s'il contient au moins une fiche (pas seulement des éléments rattachés).
             $racine = null;
+            $sommet = null;
+            $fiche = null;
             foreach ($membres as $cle) {
                 $table = $lignes[$cle]['table'];
-                if (TypesCorbeille::rattachee($table, isset($this->tablesEntites[$table]))) {
-                    continue;
+                $rattachee = TypesCorbeille::rattachee($table, isset($this->tablesEntites[$table]));
+                if (!$rattachee) {
+                    $fiche ??= $cle;
                 }
                 if ([] === $parents[$cle]) {
-                    $racine = $cle;
-                    break;
+                    $sommet ??= $cle;
+                    if (!$rattachee) {
+                        $racine ??= $cle;
+                    }
                 }
-                $racine ??= $cle;
             }
-            if (null === $racine) {
+            if (null === $fiche) {
                 continue;
             }
+            $racine ??= $sommet ?? $fiche;
             $groupe = [];
             foreach ($this->ordonner($membres, $parents) as $cle) {
                 $groupe[] = [

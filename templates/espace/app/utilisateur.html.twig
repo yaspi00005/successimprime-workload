@@ -32,7 +32,7 @@
 	</form>
 
 	{% if personne %}
-		<form method="post" action="{{ path('app_espace_utilisateur_retirer', {id: personne.id}) }}" data-confirmer="Retirer l'accès de {{ personne.nomAffiche }} ?">
+		<form method="post" action="{{ path('app_espace_utilisateur_retirer', {id: personne.id}) }}" {{ confirmer_suppression('l\'accès de ' ~ personne.nomAffiche, {verbe: 'Retirer', detail: 'Cette personne ne pourra plus se connecter à l\'espace de l\'entreprise.', client: true}) }}>
 			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 			<button type="submit" class="ec-bouton clair">Retirer l'accès</button>
 		</form>

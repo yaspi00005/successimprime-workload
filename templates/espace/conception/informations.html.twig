@@ -194,7 +194,7 @@
 	<form method="post" action="{{ path('app_espace_conception_commencer') }}" id="dc-support" hidden><input type="hidden" name="_token" value="{{ csrf_token('espace') }}"><input type="hidden" name="demande" value="{{ demande.publicId }}"></form>
 	<form method="post" action="{{ path('app_espace_conception_envoyer', {id: demande.publicId}) }}" id="dc-envoyer" hidden><input type="hidden" name="_token" value="{{ csrf_token('espace') }}"></form>
 	<form method="post" action="{{ path('app_espace_conception_demander_paiement', {id: demande.publicId}) }}" id="dc-demander" hidden><input type="hidden" name="_token" value="{{ csrf_token('espace') }}"></form>
-	<form method="post" action="{{ path('app_espace_conception_supprimer', {id: demande.publicId}) }}" id="dc-supprimer" hidden data-confirmer="Supprimer ce brouillon ?"><input type="hidden" name="_token" value="{{ csrf_token('espace') }}"></form>
+	<form method="post" action="{{ path('app_espace_conception_supprimer', {id: demande.publicId}) }}" id="dc-supprimer" hidden {{ confirmer_suppression('ce brouillon', {client: true}) }}><input type="hidden" name="_token" value="{{ csrf_token('espace') }}"></form>
 
 	{% if conceptionPeutPayer and tarif.acompte > 0 and omActif %}
 		{# Maquette DC03 : le paiement se confirme sur la page sécurisée d'Orange Money (WebPay). #}
@@ -310,7 +310,7 @@
 			f.addEventListener('submit', async function (e) {
 				if (f.dataset.envoye) return;
 				e.preventDefault();
-				if (f.dataset.confirmer && !confirm(f.dataset.confirmer)) return;
+				// « Supprimer ce brouillon » a déjà été confirmé (data-confirmer, public/js/confirmation.js).
 				if (f.id !== 'dc-supprimer' && f.id !== 'dc-support' && !(await enregistrer())) { erreur.textContent = 'Corrigez les informations avant de continuer.'; return; }
 				f.dataset.envoye = '1';
 				// Le bouton cliqué (support choisi) part avec le formulaire.

@@ -72,7 +72,7 @@
 							</form>
 						{% endif %}
 						{% if not utilisee %}
-							<form method="post" action="{{ path('app_promotions_supprimer', {id: promotion.id}) }}" data-confirmer="Supprimer cette promotion ?">
+							<form method="post" action="{{ path('app_promotions_supprimer', {id: promotion.id}) }}" {{ confirmer_suppression('la promotion « ' ~ promotion.nom ~ ' »') }}>
 								<input type="hidden" name="_token" value="{{ csrf_token('promotion-' ~ promotion.id) }}">
 								<button class="btn btn-sm btn-link text-danger">Supprimer</button>
 							</form>

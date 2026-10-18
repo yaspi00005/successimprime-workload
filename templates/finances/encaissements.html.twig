@@ -200,7 +200,7 @@
 						{% if droits.admin %}
 							<details class="si-fin-autre">
 								<summary>Ce n’est pas un paiement client</summary>
-								<form method="post" action="{{ path('app_finances_encaissements_ignorer', {id: choisie.id}) }}" class="si-fin-ignorer">
+								<form method="post" action="{{ path('app_finances_encaissements_ignorer', {id: choisie.id}) }}" class="si-fin-ignorer" data-confirmer="Écarter l'opération Orange Money {{ choisie.reference }} ?" data-confirmer-detail="Elle ne sera plus proposée comme paiement d'un client." data-confirmer-bouton="Écarter">
 									<input type="hidden" name="_token" value="{{ csrf_token('ignorer-om-' ~ choisie.id) }}">
 									<input type="text" name="motif" class="form-control form-control-sm" placeholder="Motif : apport, remboursement…" maxlength="255" required aria-label="Motif">
 									<button type="submit" class="btn btn-light btn-sm">Écarter</button>

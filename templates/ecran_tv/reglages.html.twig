@@ -147,7 +147,7 @@
 						<button type="button" class="btn btn-sm si-btn-discret" data-monter aria-label="Monter">↑</button>
 						<button type="button" class="btn btn-sm si-btn-discret" data-descendre aria-label="Descendre">↓</button>
 					</span>
-					<button type="button" class="btn btn-sm si-btn-discret text-danger" data-supprimer>Supprimer la scène</button>
+					<button type="button" class="btn btn-sm si-btn-discret text-danger" data-supprimer data-confirmer="Supprimer cette scène ?" data-confirmer-detail="Elle quitte l'écran TV à l'enregistrement des réglages." data-confirmer-bouton="Supprimer" data-confirmer-danger>Supprimer la scène</button>
 				</div>
 			</div>
 		</div>
@@ -419,7 +419,7 @@
 								<button type="submit" name="sens" value="haut" class="btn btn-sm si-btn-discret" {{ loop.first ? 'disabled' }} aria-label="Monter">↑</button>
 								<button type="submit" name="sens" value="bas" class="btn btn-sm si-btn-discret" {{ loop.last ? 'disabled' }} aria-label="Descendre">↓</button>
 							</form>
-							<form method="post" action="{{ path('app_ecran_tv_supprimer_media') }}" data-confirmer="Retirer ce média de l'écran TV ?">
+							<form method="post" action="{{ path('app_ecran_tv_supprimer_media') }}" {{ confirmer_suppression('ce média de l\'écran TV', {verbe: 'Retirer', detail: 'Le fichier est effacé du serveur.', corbeille: false}) }}>
 								<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
 								<input type="hidden" name="fichier" value="{{ media.fichier }}">
 								<button type="submit" class="btn btn-sm si-btn-discret text-danger">Retirer</button>
@@ -465,7 +465,8 @@
 				details.hidden = !details.hidden;
 				scene.querySelector('[data-ouvrir]').setAttribute('aria-expanded', String(!details.hidden));
 			} else if (e.target.closest('[data-supprimer]')) {
-				if (confirm('Supprimer cette scène ?')) { scene.remove(); majBoucle(); }
+				// Déjà confirmé (data-confirmer, public/js/confirmation.js).
+				scene.remove(); majBoucle();
 			} else if (e.target.closest('[data-monter]') && scene.previousElementSibling) {
 				liste.insertBefore(scene, scene.previousElementSibling);
 			} else if (e.target.closest('[data-descendre]') && scene.nextElementSibling) {

@@ -10,6 +10,7 @@ use App\Service\Synchro\JournalSynchro;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
 /**
  * Corbeille de 30 jours (docs/corbeille.md) : liste, détail, restauration
@@ -32,7 +33,8 @@ final class Corbeille
 
     public function __construct(
         private readonly EntityManagerInterface $em,
-        private readonly Parametres $parametres,
+        /** @var \Closure(): Parametres (différé : la fenêtre de confirmation de chaque page lit seulement la durée) */
+        #[AutowireServiceClosure(Parametres::class)] private readonly \Closure $parametres,
         private readonly JournalSynchro $journalSynchro,
         private readonly CaptureCorbeille $capture,
         private readonly LoggerInterface $logger,
@@ -43,7 +45,7 @@ final class Corbeille
     /** Jours pendant lesquels une fiche supprimée reste dans la corbeille (Réglages › Paramètres). */
     public function duree(): int
     {
-        $valeur = $this->parametres->valeur('corbeille', 'duree');
+        $valeur = ($this->parametres)()->valeur('corbeille', 'duree');
 
         return max(1, min(365, is_numeric($valeur) ? (int) $valeur : self::DUREE_PAR_DEFAUT));
     }

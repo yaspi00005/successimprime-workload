@@ -1086,7 +1086,7 @@ final class CommandesController extends AbstractController
             $this->addFlash(
                 'success',
                 sprintf(
-                    'La commande %s a été supprimée Il reste %s dans la corbeille.',
+                    'La commande %s a été supprimée. Elle reste %s dans la corbeille.',
                     $commande->getNumero(),
                     $corbeille->dureeTexte()
                 )

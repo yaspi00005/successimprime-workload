@@ -66,7 +66,7 @@ final class ConfirmationExtension extends AbstractExtension
         $duree = $this->corbeille->dureeTexte();
 
         return true === ($options['client'] ?? false)
-            ? \sprintf('En cas d\'erreur, Succès Imprim peut tout récupérer pendant %s.', $duree)
+            ? \sprintf('En cas d\'erreur, appelez Succès Imprim : c\'est récupérable pendant %s.', $duree)
             : \sprintf('Il restera %s dans la corbeille.', $duree);
     }
 }

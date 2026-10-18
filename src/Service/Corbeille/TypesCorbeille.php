@@ -66,7 +66,8 @@ final class TypesCorbeille
         'transaction_orange_money' => ['pay_token' => 'aleatoire', 'notif_empreinte' => 'aleatoire'],
         'point_pointage' => ['secret' => 'aleatoire'],
         'devis' => ['token_authenticite' => null],
-        'factures' => ['token_authenticite' => null],
+        'factures' => ['token_authenticite' => null, 'code_suivi' => null],
+        'etiquette' => ['token' => 'aleatoire'],
         'sondage' => ['jeton' => 'aleatoire'],
         'invitation_sondage' => ['jeton' => 'aleatoire'],
         'conversations' => ['jeton' => 'aleatoire'],
@@ -91,7 +92,7 @@ final class TypesCorbeille
         'compte_client' => ['Accès à l\'espace client', ['nom', 'telephone'], 'ROLE_CLIENT'],
         'sondage' => ['Sondage', ['titre'], 'ROLE_CLIENT'],
         'reclamation_client' => ['Réclamation de client', ['numero', 'objet'], 'ROLE_CLIENT'],
-        'message_client' => ['Message de client', ['sujet'], 'ROLE_CLIENT'],
+        'message_client' => ['Message de client', ['texte'], 'ROLE_CLIENT'],
         'devis' => ['Devis', ['numero'], 'ROLE_DEVIS'],
         'commandes' => ['Commande', ['numero'], 'ROLE_COMMANDE'],
         'commande_detail_fichier' => ['Fichier du client', ['nom_original'], 'ROLE_COMMANDE'],
@@ -102,7 +103,7 @@ final class TypesCorbeille
         'promotion' => ['Promotion', ['nom'], 'ROLE_PROMOTIONS'],
         'promotion_anniversaire_modele' => ['Modèle d\'anniversaire', ['nom'], 'ROLE_PROMOTIONS'],
         'decaissement_recurrent' => ['Charge récurrente', ['libelle'], 'ROLE_TRESORERIE_VOIR'],
-        'depense' => ['Dépense', ['libelle', 'numero'], 'ROLE_TRESORERIE_VOIR'],
+        'depense' => ['Dépense', ['objet', 'beneficiaire'], 'ROLE_TRESORERIE_VOIR'],
         'mouvement_tresorerie' => ['Mouvement de trésorerie', ['libelle', 'reference'], 'ROLE_TRESORERIE_VOIR'],
         'site_page' => ['Page du site', ['titre'], 'ROLE_SITE_VITRINE'],
         'site_article' => ['Conseil du site', ['titre'], 'ROLE_SITE_VITRINE'],
@@ -131,7 +132,10 @@ final class TypesCorbeille
         'user' => ['Compte du personnel', ['username'], self::DIRECTION],
         'devis_details' => ['Ligne de devis', ['designation'], 'ROLE_DEVIS'],
         'commandes_details' => ['Ligne de commande', ['designation'], 'ROLE_COMMANDE'],
-        'mouvement_fidelite' => ['Points de fidélité', ['libelle'], self::DIRECTION],
+        'mouvement_fidelite' => ['Points de fidélité', ['motif', 'type'], self::DIRECTION],
+        'commande_detail_finition' => ['Finition d\'une ligne de commande', ['nom_finition'], 'ROLE_COMMANDE'],
+        'devis_detail_finition' => ['Finition d\'une ligne de devis', ['nom_finition'], 'ROLE_DEVIS'],
+        'controle_pre_presse' => ['Contrôle du BAT', ['statut'], 'ROLE_PREPRESSE'],
     ];
 
     /**
@@ -149,13 +153,15 @@ final class TypesCorbeille
     /**
      * Suppression qui n'a rien à garder : un fichier envoyé pendant la
      * saisie d'une commande puis retiré avant de l'enregistrer (il n'était
-     * rattaché à rien).
+     * dans aucune ligne, et ses octets sont déjà effacés). Les fichiers
+     * « Mes fichiers » du client ne sont jamais effacés ainsi : ils sont
+     * cachés (Corbeille::masquer).
      *
      * @param array<string, mixed> $racine colonnes de la fiche supprimée
      */
     public static function ignoree(string $table, array $racine): bool
     {
-        return 'commande_detail_fichier' === $table && null === ($racine['commande_detail_id'] ?? null) && null === ($racine['client_id'] ?? null);
+        return 'commande_detail_fichier' === $table && null === ($racine['commande_detail_id'] ?? null);
     }
 
     public static function exclue(string $table): bool

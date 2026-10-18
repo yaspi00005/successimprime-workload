@@ -22,7 +22,7 @@
 			{% for p in fc.paiements %}
 				<div class="si-paiement">
 					<div><strong>{{ p.montant|number_format(0, ',', ' ') }} F en points</strong><small class="d-block text-muted">{{ p.date|date('d/m H:i') }}{{ p.encaissePar ? ' · ' ~ p.encaissePar.userIdentifier }}</small></div>
-					<form method="post" action="{{ path('app_fidelite_retirer', {id: commande.id, paiement: p.id}) }}" data-confirmer="Retirer ces points de la commande ? Ils sont rendus au client.">
+					<form method="post" action="{{ path('app_fidelite_retirer', {id: commande.id, paiement: p.id}) }}" data-confirmer="Retirer ces points de la commande ?" data-confirmer-detail="Ils sont rendus au client." data-confirmer-bouton="Retirer" data-confirmer-danger>
 						<input type="hidden" name="_token" value="{{ jeton }}">
 						<button class="btn btn-sm btn-light">Retirer</button>
 					</form>

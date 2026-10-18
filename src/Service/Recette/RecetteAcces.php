@@ -80,6 +80,9 @@ final class RecetteAcces
         'app_reclamation_' => [[], 'ses propres demandes de remboursement (celles des autres : trésorerie ou caisse)'],
         'app_livraisons_tournee' => [['ROLE_LIVRAISON'], 'reste à encaisser à la livraison, sur ses propres livraisons (le bureau : avec le droit Paiements)'],
         'app_livraisons_remise' => [['ROLE_LIVRAISON'], 'reste à encaisser à la remise de sa propre livraison'],
+        'app_finances_encaissements' => [['ROLE_PAIEMENT_ENCAISSER', 'ROLE_PAIEMENT_VOIR'], 'paiements reçus et relevé Orange Money, le travail de la caisse : le moyen nommé est celui du paiement, aucun solde de compte'],
+        'app_clients_detail' => [['ROLE_PAIEMENT_VOIR'], 'paiements du client avec leur moyen (chèque, banque) : aucun solde de compte de trésorerie'],
+        'app_clients_soldes' => [['ROLE_SOLDE_CLIENT_REMBOURSER', 'ROLE_PAIEMENT_VOIR'], 'versements et remboursements des comptes clients, rendus par la caisse (réponse de Yaya du 18/10, Q2)'],
     ];
 
     /**

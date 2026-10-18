@@ -176,6 +176,18 @@ final class CatalogueSynchroTest extends TestCase
         self::assertArrayHasKey('evenements', $conception['filtres']);
     }
 
+    public function testSuiviDeLaCommandeEnLigne(): void
+    {
+        // « Fichier contrôlé » : la date descend, pas qui (son prénom passe par l'historique public du BAT).
+        $controle = CatalogueSynchro::types()['controle'];
+        self::assertContains('controleLe', $controle['champs']);
+        self::assertNotContains('controlePar', $controle['champs']);
+        self::assertSame([\App\Entity\Conception::class, 'evenementsPublics'], $controle['enfants']['conception']['filtres']['evenements']);
+        // Corrections de BAT gratuites : le site prévient le client au-delà.
+        self::assertSame(2, CatalogueSynchro::reglagesPublics('espace_client', [])['corrections_bat_gratuites'] ?? null);
+        self::assertSame(0, CatalogueSynchro::reglagesPublics('espace_client', ['corrections_bat_gratuites' => 0])['corrections_bat_gratuites'] ?? null);
+    }
+
     public function testNumeroDuSite(): void
     {
         self::assertTrue(JournalSynchro::aPrefixer('CMD-00012'));

@@ -1,0 +1,125 @@
+{#
+	Carte d'un BAT (maquette CO05 à droite, CO06 en haut sur téléphone), sur
+	la page de la commande et sur la page du BAT. b : SuiviCommandeClient::carteBat.
+	« Valider » ne s'active qu'une fois chaque point de « Avant de valider,
+	vérifiez » coché (le serveur le vérifie aussi) ; « Demander une
+	correction » ouvre les repères sur l'image et le texte. Un compte
+	Lecture · suivi voit le BAT sans bouton. contexte : 'commande' ou 'bat'.
+#}
+{% macro quand(d) %}{{ d|date('Y-m-d') == 'now'|date('Y-m-d') ? 'à ' ~ d|date('H:i') : 'le ' ~ d|date('d/m') ~ ' à ' ~ d|date('H:i') }}{% endmacro %}
+{% import _self as outils %}
+{% set ctl = b.controle %}
+{% set lecture = app.user.estLectureSeule() %}
+{% set attente = b.etat == 'attente' %}
+{% set agir = attente and not lecture %}
+{% set etatTexte = {attente: 'à valider', correction: 'correction demandée', valide: 'validé', preparation: 'en préparation'}[b.etat] %}
+{% set gratuites = b.corrections.restantes %}
+<section class="ec-carte cs-bat cs-bat-{{ b.etat }}" id="bat-{{ ctl.id }}" data-bat aria-labelledby="bat-titre-{{ ctl.id }}">
+	<header class="cs-bat-tete">
+		<div class="cs-bat-titre">
+			<h2 id="bat-titre-{{ ctl.id }}">BAT n°{{ b.version }} · {{ etatTexte }}</h2>
+			{% if b.envoyeLe and b.etat != 'preparation' %}<span class="ec-petit">envoyé{{ b.par ? ' par ' ~ b.par }} {{ outils.quand(b.envoyeLe) }}</span>{% endif %}
+		</div>
+		{% if agir %}<span class="cs-pilule-action ec-telephone">Action requise</span>{% endif %}
+		{% if agir and b.prevue %}<p class="cs-bat-delai">Validez vite pour garder {{ b.prevue.livrer ? 'la livraison prévue' : 'le retrait prévu' }} {{ b.prevue.jour }}</p>{% endif %}
+	</header>
+	<p class="cs-bat-ligne">{{ b.titre }}</p>
+
+	<form method="post" action="{{ path('app_espace_bat', {id: ctl.id}) }}" class="cs-bat-form">
+		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+		{% if contexte == 'commande' %}<input type="hidden" name="retour" value="commande">{% endif %}
+		<div class="cs-bat-corps">
+			<div>
+				{% for f in b.fichiers %}
+					<div class="cs-bat-visuel">
+						{% if f.typeMime starts with 'image/' %}
+							{% set rang = b.rangs[f.id] ?? 0 %}
+							<div class="ec-bat-image" data-rang="{{ rang }}">
+								<img src="{{ path('app_espace_bat_fichier', {id: f.id}) }}" alt="BAT n°{{ b.version }} · {{ b.titre }}">
+								{% if b.reperes and b.etat != 'valide' %}
+									{% for r in b.reperes.reperes %}{% if r.i == rang %}<span class="ec-repere ancien" style="left:{{ r.x * 100 }}%;top:{{ r.y * 100 }}%" title="{{ r.t }}">{{ loop.index }}</span>{% endif %}{% endfor %}
+								{% endif %}
+							</div>
+						{% elseif f.typeMime == 'application/pdf' %}
+							<iframe src="{{ path('app_espace_bat_fichier', {id: f.id}) }}" title="BAT n°{{ b.version }} · {{ b.titre }}"></iframe>
+						{% endif %}
+						<div class="cs-bat-fichier"><span>{{ f.nomOriginal }}</span><a class="ec-lien" href="{{ path('app_espace_bat_fichier', {id: f.id, telecharger: 1}) }}">Télécharger</a></div>
+					</div>
+				{% else %}
+					<p class="cs-bat-vide">Le fichier du BAT n'est pas encore en ligne. L'atelier vous l'envoie aussi par WhatsApp.</p>
+				{% endfor %}
+				{% if b.note %}<p class="cs-bat-note">{{ b.note }}</p>{% endif %}
+			</div>
+
+			{% if agir %}
+				<fieldset class="cs-verif">
+					<legend>Avant de valider, vérifiez :</legend>
+					{% for cle, libelle in b.verifications %}
+						<label><input type="checkbox" name="verifications[]" value="{{ cle }}" required data-verif> {{ libelle }}</label>
+					{% endfor %}
+					<p class="cs-verif-note">Après validation, l'impression part telle quelle.</p>
+				</fieldset>
+			{% endif %}
+		</div>
+
+		{% if b.reperes and b.etat != 'valide' %}
+			<ul class="ec-reperes cs-reperes-precedents">
+				{% for r in b.reperes.reperes %}
+					<li><span class="ec-num">{{ loop.index }}</span><span>« {{ r.t }} » <span class="ec-petit">· {{ b.reperes.corrigeeEn ? 'corrigé en version ' ~ b.reperes.corrigeeEn : 'en cours de correction' }}</span></span></li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+
+		{% if agir %}
+			<div class="cs-bat-actions">
+				<button type="submit" class="ec-bouton vert" name="action" value="valider" data-valider>✓ <span class="ec-bureau">Valider le BAT et lancer l'impression</span><span class="ec-telephone">Valider</span></button>
+				<details class="cs-corriger">
+					<summary class="ec-bouton clair"><span class="ec-bureau">Demander une correction · {{ gratuites > 0 ? gratuites ~ ' gratuite' ~ (gratuites > 1 ? 's') : 'peut être facturée' }}</span><span class="ec-telephone">Corriger</span></summary>
+					<div class="cs-corriger-panneau">
+						{% if gratuites == 0 %}
+							<p class="cs-payante">{{ b.corrections.gratuites > 0 ? 'Vous avez utilisé ' ~ (b.corrections.gratuites > 1 ? 'les ' ~ b.corrections.gratuites ~ ' corrections gratuites' : 'la correction gratuite') ~ '.' : '' }} Cette correction peut être facturée : l'atelier vous dira le prix avant de la faire.</p>
+						{% endif %}
+						{% if b.rangs is not empty %}
+							<p class="ec-astuce">Touchez l'image du BAT à l'endroit à changer : un repère numéroté s'y pose, écrivez ce qu'il faut faire.</p>
+							<ol class="ec-reperes ec-saisie" data-reperes-saisie aria-live="polite"></ol>
+							<input type="hidden" name="reperes" value="[]" data-reperes>
+						{% endif %}
+						<label for="texte-{{ ctl.id }}" class="ec-petit">{{ b.rangs is not empty ? 'Autre chose à préciser ?' : 'Que faut-il corriger ?' }}</label>
+						<textarea id="texte-{{ ctl.id }}" name="texte" class="ec-champ" maxlength="500" placeholder="Ex. : agrandir le logo de 20 %, corriger le numéro de téléphone"></textarea>
+						<button type="submit" class="ec-bouton bleu" name="action" value="modifier" formnovalidate style="margin-top:.6rem">Envoyer la demande</button>
+					</div>
+				</details>
+			</div>
+			<p class="cs-gratuites ec-telephone">{{ gratuites > 0 ? gratuites ~ ' correction' ~ (gratuites > 1 ? 's') ~ ' gratuite' ~ (gratuites > 1 ? 's') : 'Une nouvelle correction peut être facturée' }}</p>
+			<p class="ec-petit cs-horodate">Votre accord est horodaté et archivé.</p>
+		{% endif %}
+	</form>
+
+	{% if attente and lecture %}
+		{# Compte « Lecture · suivi » : il voit le BAT, une autre personne du compte le valide. #}
+		<div class="ec-note cs-bat-etat">BAT en attente : une personne de votre entreprise le valide ou demande une correction.</div>
+	{% elseif b.etat == 'correction' %}
+		<div class="ec-note cs-bat-etat">{{ b.correctionLe ? 'Correction demandée ' ~ outils.quand(b.correctionLe) ~ '. ' }}L'atelier prépare la version {{ b.version + 1 }} : vous êtes prévenu dès qu'elle est prête.</div>
+	{% elseif b.etat == 'valide' %}
+		<div class="ec-flash ec-flash-ok cs-bat-etat">BAT validé{{ b.valideLe ? ' ' ~ outils.quand(b.valideLe) }}. L'atelier imprime ce fichier tel quel.</div>
+		{% if b.verifiees is not empty %}<p class="cs-verifiees">Vous aviez vérifié : {{ b.verifiees|join(' · ') }}.</p>{% endif %}
+	{% elseif b.etat == 'preparation' %}
+		<div class="ec-note cs-bat-etat">L'atelier prépare le BAT. Vous serez prévenu dès qu'il est prêt.</div>
+	{% endif %}
+
+	{% if b.historique is not empty %}
+		<details class="cs-histo">
+			<summary>Historique du BAT</summary>
+			<ul>
+				{% for e in b.historique %}
+					<li>
+						<b>{{ e.titre }}</b> <small>{{ e.par ?? false ? '· par ' ~ e.par }}{{ e.le ? ' · ' ~ e.le|date('d/m · H:i') }}</small>
+						{% if e.detail %}<div class="ec-petit">« {{ e.detail }} »</div>{% endif %}
+						{% for t in e.reperes ?? [] %}<div class="ec-petit">{{ loop.index }}. {{ t }}</div>{% endfor %}
+						{% if (e.verifications ?? []) is not empty %}<div class="ec-petit">Vérifié : {{ e.verifications|join(' · ') }}</div>{% endif %}
+					</li>
+				{% endfor %}
+			</ul>
+		</details>
+	{% endif %}
+</section>

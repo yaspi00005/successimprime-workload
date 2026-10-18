@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{# Conversation avec un client (Clients › Messages) : son fil, la réponse de l'atelier, « Classer ». #}
+{# Conversation avec un client (Clients › Messages) : son fil, la réponse de l'atelier (photo ou initiales et prénom de qui a répondu), « Classer ». #}
 {% block title %}Messages · {{ client.nomComplet }}{% endblock %}
 
 {% block header_actions %}
@@ -8,13 +8,25 @@
 {% endblock %}
 
 {% block body %}
+	{% import 'equipe_employes/_macros.html.twig' as em %}
 	<div class="si-rc">
 		<section class="card si-ac-bloc">
 			<h2>Conversation</h2>
 			<div class="si-mc-fil">
 				{% for m in fil %}
 					<div class="si-mc-bulle {{ m.estDeLAtelier ? 'si-mc-atelier' : 'si-mc-client' }}">
-						<small>{{ m.estDeLAtelier ? 'Succès Imprim' ~ (m.ecritPar ? ' · ' ~ (m.ecritPar.employe ? m.ecritPar.employe.prenom : m.ecritPar.username)) : (m.auteur ?? client.nomComplet) }} · {{ m.creeLe|date('d/m/Y H:i') }}{% if m.commande %} · commande <a href="{{ path('app_commandes_show', {id: m.commande.id}) }}">{{ m.commande.numero }}</a>{% endif %}</small>
+						{% set suite %} · {{ m.creeLe|date('d/m/Y H:i') }}{% if m.commande %} · commande <a href="{{ path('app_commandes_show', {id: m.commande.id}) }}">{{ m.commande.numero }}</a>{% endif %}{% endset %}
+						{% if m.estDeLAtelier %}
+							{# L'employé qui a répondu (au local) : sa photo ou ses initiales, son prénom ; le client voit l'auteur enregistré, sans photo. #}
+							{% set employe = m.ecritPar ? m.ecritPar.employe : null %}
+							{% set s = m.signature %}
+							<small class="si-mc-tete" title="Le client voit : {{ s.nom }}{{ s.metier ? ' · ' ~ s.metier }}">
+								{% if employe %}{{ em.avatar(employe, 'si-mc-avatar') }}<b>{{ employe.prenom }}</b>{% else %}<span class="si-em-avatar si-mc-avatar" style="background: {{ s.teinte is null ? '#0F4590' : em.couleur(s.teinte) }}">{{ s.initiales }}</span><b>{{ s.nom }}</b>{{ m.ecritPar ? ' (' ~ m.ecritPar.username ~ ')' }}{% endif %}
+								<span>{{ suite }}</span>
+							</small>
+						{% else %}
+							<small>{{ m.auteur ?? client.nomComplet }}{{ suite }}</small>
+						{% endif %}
 						<p>{{ m.texte|nl2br }}</p>
 					</div>
 				{% else %}

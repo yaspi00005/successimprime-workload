@@ -73,4 +73,32 @@ final class EspaceClientTest extends TestCase
         self::assertSame([], EspaceClient::reperes($brut, 0), 'BAT en PDF : pas de repère');
         self::assertCount(EspaceClient::REPERES_MAX, EspaceClient::reperes(array_fill(0, 30, ['i' => 0, 'x' => 0.1, 'y' => 0.1, 't' => 'x']), 1));
     }
+
+    public function testPointsAVerifierAvantDeValiderLeBat(): void
+    {
+        self::assertSame('La taille : 20 × 10 cm', EspaceClient::verificationsBat($this->ligne('Plaques', '0.20', '0.10', 40))['taille']);
+        self::assertSame('La taille : 3 m × 1 m', EspaceClient::verificationsBat($this->ligne('Bâche', '3', '1', 2))['taille']);
+        self::assertSame('La taille : 85 × 200 cm', EspaceClient::verificationsBat($this->ligne('Roll-up', '0.85', '2', 1))['taille']);
+        self::assertSame('La taille et le format', EspaceClient::verificationsBat($this->ligne('Cartes', null, null, 500))['taille']);
+        self::assertSame(['orthographe', 'coordonnees', 'couleurs', 'taille'], array_keys(EspaceClient::verificationsBat(null)));
+    }
+
+    public function testValiderDemandeChaquePointCoche(): void
+    {
+        $ligne = $this->ligne('Bâche', '3', '1', 2);
+        $tout = ['taille', 'couleurs', 'orthographe', 'coordonnees', 'autre chose'];
+
+        self::assertSame(['L\'orthographe des textes', 'Les numéros de téléphone et les adresses', 'Les couleurs et le logo', 'La taille : 3 m × 1 m'], EspaceClient::verificationsCochees($ligne, $tout));
+        self::assertNull(EspaceClient::verificationsCochees($ligne, ['orthographe', 'coordonnees', 'couleurs']), 'un point manque');
+        self::assertNull(EspaceClient::verificationsCochees($ligne, []));
+        self::assertNull(EspaceClient::verificationsCochees($ligne, 'orthographe'), 'pas une liste');
+        self::assertNull(EspaceClient::verificationsCochees($ligne, null));
+    }
+
+    public function testCorrectionAuDelaDesGratuitesSansMontant(): void
+    {
+        self::assertSame('au-delà des 2 corrections gratuites : peut être facturée', EspaceClient::auDelaDesGratuites(2));
+        self::assertSame('au-delà de la correction gratuite : peut être facturée', EspaceClient::auDelaDesGratuites(1));
+        self::assertSame('correction qui peut être facturée', EspaceClient::auDelaDesGratuites(0));
+    }
 }

@@ -239,9 +239,13 @@ class Conception
     }
 
     /**
-     * BAT validé : calcule les points avec le barème.
+     * BAT validé : calcule les points avec le barème. Les points que le
+     * client a cochés avant de valider (« Avant de valider, vérifiez »)
+     * restent avec la validation, pour mémoire.
+     *
+     * @param list<string> $verifications
      */
-    public function valider(Bareme $bareme, \DateTimeImmutable $le, ?string $detail = null): void
+    public function valider(Bareme $bareme, \DateTimeImmutable $le, ?string $detail = null, array $verifications = []): void
     {
         $this->arreter($le);
         if ($this->valideLe !== null) {
@@ -252,6 +256,15 @@ class Conception
         $this->points = $bareme->points($this->faits, $this->difficulte);
         $this->pointsPossibles = $bareme->possibles(['g_bat_a_temps' => 1, 'g_sans_erreur' => 1], $this->difficulte);
         $this->noter($le, 'valide', 'BAT validé', $detail);
+        if ($verifications !== []) {
+            $this->evenements[array_key_last($this->evenements)]['verifications'] = array_values(array_map(static fn (string $v): string => mb_substr($v, 0, 120), \array_slice($verifications, 0, 10)));
+        }
+    }
+
+    /** Demandes de correction du client sur ce BAT (repères ou texte), pour les corrections gratuites. */
+    public function correctionsDemandees(): int
+    {
+        return \count(array_filter($this->evenements, static fn (array $e): bool => 'retour' === ($e['type'] ?? null)));
     }
 
     public function noterMontage(\DateTimeImmutable $le, ?string $detail): void
@@ -311,23 +324,41 @@ class Conception
     }
 
     /**
-     * Ce que le client peut voir de l'historique (site en ligne) : BAT
-     * envoyés, ses propres demandes et la validation, sans les détails
-     * internes (retard, nom du graphiste, erreurs).
+     * Ce que le client peut voir de l'historique (site en ligne) : fichier
+     * contrôlé, BAT envoyés, ses propres demandes et la validation, sans
+     * les détails internes (retard, chronomètre, erreurs). De l'employé, le
+     * client ne voit que le prénom et le métier (« Seydou (graphiste PAO) »,
+     * Employes::getNomPublic) : qui a contrôlé le fichier, qui a envoyé le BAT.
      *
      * @param list<array{le: string, type: string, titre: string, detail: ?string}> $evenements
+     * @param self|null                                                              $conception le suivi, pour les prénoms (synchronisation)
      *
-     * @return list<array{le: string, type: string, titre: string, detail: ?string}>
+     * @return list<array{le: string, type: string, titre: string, detail: ?string, par?: string, reperes?: list<array<string, mixed>>, verifications?: list<string>}>
      */
-    public static function evenementsPublics(array $evenements): array
+    public static function evenementsPublics(array $evenements, ?self $conception = null): array
     {
+        $graphiste = $conception?->getGraphiste()?->getEmploye()?->getNomPublic();
         $publics = [];
+        // Déjà publics (le site refiltre ce qu'il a reçu pour comparer) : gardés tels quels.
+        $dejaControle = [] !== array_filter($evenements, static fn (array $e): bool => 'controle' === ($e['type'] ?? null));
+        $controle = $conception?->getControle();
+        if (!$dejaControle && true === $controle?->isFichierControle()) {
+            $publics[] = ['le' => $controle->getControleLe()->format(\DATE_ATOM), 'type' => 'controle', 'titre' => 'Fichier contrôlé', 'detail' => null]
+                + (null !== ($par = $controle->getControlePar()?->getEmploye()?->getNomPublic()) ? ['par' => $par] : []);
+        }
         foreach ($evenements as $e) {
-            if (\in_array($e['type'] ?? null, ['bat', 'retour', 'valide'], true)) {
+            if ('controle' === ($e['type'] ?? null)) {
+                $publics[] = ['le' => $e['le'], 'type' => 'controle', 'titre' => $e['titre'], 'detail' => null] + (\is_string($e['par'] ?? null) ? ['par' => $e['par']] : []);
+            } elseif (\in_array($e['type'] ?? null, ['bat', 'retour', 'valide'], true)) {
+                $par = 'bat' === $e['type'] ? ($graphiste ?? (\is_string($e['par'] ?? null) ? $e['par'] : null)) : null;
                 $publics[] = ['le' => $e['le'], 'type' => $e['type'], 'titre' => $e['titre'], 'detail' => 'retour' === $e['type'] ? $e['detail'] : null]
-                    + ('retour' === $e['type'] && [] !== ($e['reperes'] ?? []) ? ['reperes' => $e['reperes']] : []);
+                    + (null !== $par ? ['par' => $par] : [])
+                    + ('retour' === $e['type'] && [] !== ($e['reperes'] ?? []) ? ['reperes' => $e['reperes']] : [])
+                    + ('valide' === $e['type'] && [] !== ($e['verifications'] ?? []) ? ['verifications' => $e['verifications']] : []);
             }
         }
+        // Dans l'ordre du temps : le contrôle du fichier vient avant le premier BAT.
+        usort($publics, static fn (array $a, array $b): int => strtotime((string) $a['le']) <=> strtotime((string) $b['le']));
 
         return $publics;
     }

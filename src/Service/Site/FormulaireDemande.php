@@ -189,7 +189,9 @@ final class FormulaireDemande
         }
 
         $m2 = round((float) $saisi, 2);
-        $calcul = PiecesParMetreCarre::calculer($largeurCm * 10, $hauteurCm * 10, PiecesParMetreCarre::espacementValide($espacementMm));
+        // Côtés au dixième de mm, comme la ligne les garde (mètres à 4 décimales) et comme la
+        // page les compte : les pièces comptées ici sont celles que la ligne facturera.
+        $calcul = PiecesParMetreCarre::calculer(round($largeurCm * 10, 1), round($hauteurCm * 10, 1), PiecesParMetreCarre::espacementValide($espacementMm));
         if ($calcul['tropGrande']) {
             return ['erreur' => 'Pièce plus grande que 1 m : indiquez la quantité en pièces.'];
         }

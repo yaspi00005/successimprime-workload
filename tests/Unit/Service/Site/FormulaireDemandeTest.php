@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit\Service\Site;
 
+use App\Entity\CommandesDetails;
 use App\Entity\DemandeDevis;
 use App\Entity\Finition;
 use App\Entity\ProduitConfiguration;
@@ -200,6 +201,16 @@ final class FormulaireDemandeTest extends TestCase
         $r = FormulaireDemande::valider('devis', ['quantite_m2' => '3', 'largeur' => ''] + $saisie, [$bache]);
         self::assertArrayHasKey('largeur', $r['erreurs']);
         self::assertArrayNotHasKey('quantite_m2', $r['erreurs']);
+    }
+
+    public function testPiecesCompteesCommeLaLigneLesFacturera(): void
+    {
+        // 5,168 cm : la ligne garde 0,0517 m (51,7 mm), soit 18 colonnes et non 19 (51,68 mm).
+        $ligne = (new CommandesDetails())->setTypeLigne('produit')->setModeCalcul('metre_carre')
+            ->setLargeur(5.168 / 100)->setLongueur(0.05)->setQuantite(1)->setEspacementPiecesM2(1);
+        self::assertSame(342, $ligne->getPiecesAuM2()['parM2']);
+
+        self::assertSame(['pieces' => 342, 'm2' => 1.0], FormulaireDemande::quantiteDepuisM2('1', 5.168, 5.0, 1.0));
     }
 
     public function testQuantiteEnMetresCarresSeulementPourUnProduitAuMetreCarreALaMesure(): void

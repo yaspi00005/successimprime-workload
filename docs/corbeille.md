@@ -121,7 +121,7 @@ Sur téléphone, la liste passe en fiches : le titre, la date de suppression et 
   - une autre fiche a pris son numéro.
 - **Supprimer définitivement**, après confirmation, retire l'entrée et ses fichiers.
 
-Une fiche suivie par la synchronisation et restaurée sur l'ERP est notée pour le prochain envoi au site (`JournalSynchro::noterRestauration`) : le site la retrouve.
+Une fiche suivie par la synchronisation et restaurée sur l'ERP est notée pour le prochain envoi au site (`JournalSynchro::noterRestauration`) : le site la retrouve. Les fiches rebranchées le sont aussi (une page retrouve son image, une ligne sa promotion) : en ligne, elles avaient perdu ce lien.
 
 ### Qui y a accès
 

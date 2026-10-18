@@ -3,9 +3,12 @@
 namespace App\Tests\Unit\Service\Corbeille;
 
 use App\Entity\Corbeille as EntreeCorbeille;
+use App\Entity\ImageSite;
 use App\Entity\JourFerie;
 use App\Entity\JournalActivite;
 use App\Entity\ModeleMessage;
+use App\Entity\PageSite;
+use App\Entity\SynchroJournal;
 use App\Entity\User;
 use App\Service\Corbeille\CaptureCorbeille;
 use App\Service\Corbeille\Corbeille;
@@ -250,6 +253,32 @@ final class CorbeilleTest extends TestCase
         self::assertSame('Modèle « Relance » est de retour.', $this->corbeille->restaurer($entree, null));
         $this->em->clear();
         self::assertTrue($this->em->find(ModeleMessage::class, $modele->getId())?->isActif());
+    }
+
+    public function testUneFicheRebrancheeRepartAussiVersLeSite(): void
+    {
+        // La page perd son image avec la suppression, de ce côté comme en ligne : restaurer l'image la lui rend des deux côtés.
+        (new SchemaTool($this->em))->createSchema(array_map($this->em->getClassMetadata(...), [ImageSite::class, PageSite::class, SynchroJournal::class]));
+        $c = $this->em->getConnection();
+        $c->executeStatement('PRAGMA foreign_keys = ON');
+        $image = ImageSite::depuis((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), 'image/png', 1, 1);
+        $page = (new PageSite('a-propos'))->setTitre('À propos')->setImage($image);
+        $this->em->persist($image);
+        $this->em->persist($page);
+        $this->em->flush();
+        [$idPage, $publicPage] = [$page->getId(), $page->getPublicId()->toRfc4122()];
+        $this->em->remove($image);
+        $this->em->flush();
+        $this->em->clear();
+        $c->executeStatement('DELETE FROM synchro_journal');
+        self::assertNull($c->fetchOne('SELECT image_id FROM site_page WHERE id = ?', [$idPage]));
+
+        $this->corbeille->restaurer($this->corbeille->entrees([], null)[0]['entree'], null);
+
+        self::assertNotNull($c->fetchOne('SELECT image_id FROM site_page WHERE id = ?', [$idPage]), 'rebranchée ici');
+        $notees = $c->fetchAllKeyValue('SELECT public_id, type FROM synchro_journal');
+        self::assertSame('site_page', $notees[$publicPage] ?? null, 'et notée pour le site');
+        self::assertContains('site_image', $notees);
     }
 
     private function supprimerUnFerie(string $jour = '2026-09-22', string $libelle = 'Fête de l\'indépendance'): int

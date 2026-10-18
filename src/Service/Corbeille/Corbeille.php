@@ -191,7 +191,7 @@ final class Corbeille
         try {
             $restauration->inserer($decodees);
             $restauration->rebrancher($liens);
-            $this->apresRestauration($decodees, $racine, $par, \count($lignes));
+            $this->apresRestauration([...$decodees, ...$liens], $racine, $par, \count($lignes));
             $connexion->executeStatement('DELETE FROM corbeille WHERE groupe = ?', [$racine->getGroupe()]);
             $connexion->commit();
         } catch (\Throwable $e) {
@@ -439,18 +439,21 @@ final class Corbeille
 
     /**
      * Synchronisation et journal, dans la transaction de la restauration.
+     * Les fiches rebranchées (un paiement retrouve sa facture, une page son
+     * image) repartent aussi : de l'autre côté, elles ont perdu ce lien.
      *
-     * @param list<array{table: string, cle: array<string, mixed>, donnees: array<string, mixed>, libelle: string}> $decodees
+     * @param list<array{table: string, cle: array<string, mixed>, ...}> $lignes lignes remises et fiches rebranchées
      */
-    private function apresRestauration(array $decodees, EntreeCorbeille $racine, ?User $par, int $nombre): void
+    private function apresRestauration(array $lignes, EntreeCorbeille $racine, ?User $par, int $nombre): void
     {
         $entites = [];
-        foreach ($decodees as $ligne) {
-            $classe = $this->classeDe($ligne['table']);
-            if (null === $classe || 1 !== \count($ligne['cle'])) {
+        foreach ($lignes as $ligne) {
+            $classe = $this->classeDe((string) ($ligne['table'] ?? ''));
+            $cle = (array) ($ligne['cle'] ?? []);
+            if (null === $classe || 1 !== \count($cle)) {
                 continue;
             }
-            $entite = $this->em->find($classe, reset($ligne['cle']));
+            $entite = $this->em->find($classe, reset($cle));
             if (null !== $entite) {
                 $entites[] = $entite;
             }

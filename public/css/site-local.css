@@ -21,7 +21,7 @@
 .si-visite-etat.si-visite-ouvert { color: #126B34; }
 .si-visite-etat.si-visite-ouvert::before { background: #1FA855; }
 .si-visite-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
-.si-visite-actions .si-bouton svg { width: 20px; height: 20px; fill: currentColor; }
+.si-visite-actions .si-bouton svg { flex: 0 0 auto; width: 20px; height: 20px; fill: currentColor; }
 .si-site a.si-visite-wa, .si-visite-wa { background: #15843F; color: #fff; }
 .si-visite-wa:hover { background: #106A32; }
 
@@ -59,7 +59,7 @@
   .si-visite { padding-top: 24px; }
   .si-visite-carte { grid-template-columns: 1fr; gap: 16px; padding: 12px 12px 18px; }
   .si-visite-texte { padding: 0 4px; }
-  .si-visite-actions .si-bouton { flex: 1 1 140px; }
+  .si-visite-actions .si-bouton { flex: 1 1 140px; padding-left: 16px; padding-right: 16px; }
 }
 @media (max-width: 520px) {
   .si-local-galerie { gap: 8px; }

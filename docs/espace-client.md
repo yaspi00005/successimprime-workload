@@ -315,7 +315,7 @@ Captures : `/mnt/project-files/captures/factures-paiements/`.
 |---|---|---|
 | Commande reçue | date de la commande | « 15/10 · 10:20 », « à confirmer par l'atelier » pour une commande en ligne pas encore confirmée |
 | Acompte payé / Commande payée | paiements validés, Orange Money en validation | montant, heure, moyen, référence du paiement ; **pour qui paie seulement** |
-| Fichier contrôlé | contrôle prépresse (`ControlePrePresse::isFichierControle`, date `controleLe`) et prénom de qui l'a contrôlé | « par Seydou (graphiste PAO) · 10:40 » ; « l'atelier vérifie votre fichier » pendant le contrôle ; « Fichier à revoir » si rejeté |
+| Fichier contrôlé | contrôle prépresse (`ControlePrePresse::isFichierControle`, date `controleLe`) et prénom de qui l'a contrôlé | « par Seydou (graphiste PAO) · 10:40 » ; « l'atelier vérifie votre fichier » pendant le contrôle ; « Fichier à revoir » si rejeté ; fait sans heure quand un BAT est déjà parti sans contrôle daté (création du graphiste sans fichier du client) |
 | BAT à valider | BAT envoyés (suivi de conception) | « envoyé à 11:05 · en attente de vous » (« … de votre entreprise » pour la lecture seule), « Correction du BAT », « BAT validé » |
 | En impression | `SuiviCommandeService::etapesClient` (débuts et fins de production des lignes) | « après validation du BAT », « lancée à … », « En finition », « Imprimée » |
 | Prête | idem | date de fin, ou « prévue samedi 17/10 » (date de livraison de la commande) |

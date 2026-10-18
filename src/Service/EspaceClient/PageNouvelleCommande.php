@@ -329,9 +329,9 @@ final class PageNouvelleCommande
         return str_replace('.', ',', (string) round($n, 2));
     }
 
-    /** Côté en mètres : « 3 », « 1,5 » */
+    /** Côté en mètres, au mm près : « 3 », « 1,5 », « 0,055 » (étiquette de 5,5 cm) */
     private static function m(float $metres): string
     {
-        return str_replace('.', ',', (string) round($metres, 2));
+        return str_replace('.', ',', (string) round($metres, 3));
     }
 }

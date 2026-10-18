@@ -360,8 +360,10 @@
 			});
 		}
 		const t = $('[data-co-apercu-texte]', zone);
-		const metres = function (v) { return String(Math.round(v * 100) / 100).replace('.', ','); };
-		t.textContent = metres(l) + ' m × ' + metres(h) + ' m' + (nombreOeillets ? ', ' + nombreOeillets + ' œillets par pièce' : '') + '. Votre fichier devra faire ' + f(l * 100) + ' × ' + f(h * 100) + ' cm.';
+		// Au mm près : une étiquette de 5,5 × 3,5 cm n'est pas annoncée en 6 × 4 cm.
+		const metres = function (v) { return String(Math.round(v * 1000) / 1000).replace('.', ','); };
+		const centimetres = function (v) { return String(Math.round(v * 1000) / 10).replace('.', ','); };
+		t.textContent = metres(l) + ' m × ' + metres(h) + ' m' + (nombreOeillets ? ', ' + nombreOeillets + ' œillets par pièce' : '') + '. Votre fichier devra faire ' + centimetres(l) + ' × ' + centimetres(h) + ' cm.';
 		const vignette = document.querySelector('.co-vignette');
 		if (vignette) vignette.style.aspectRatio = String(Math.max(.3, Math.min(6, l / h)));
 	}

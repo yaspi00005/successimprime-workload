@@ -147,6 +147,17 @@ final class NouvelleCommandePiecesM2Test extends TestCase
         self::assertDoesNotMatchRegularExpression('/\d\s?F\b/u', json_encode($demandeur, \JSON_UNESCAPED_UNICODE) ?: '');
     }
 
+    public function testLeRecapitulatifGardeLaTailleAuMm(): void
+    {
+        // Étiquettes de 5,5 × 3,5 cm : 17 × 27 = 459 au m² ; « 0,06 × 0,04 m » annonçait une autre taille.
+        $vinyle = $this->vinyle();
+        $ligne = NouvelleCommande::enPiecesAuM2(NouvelleCommande::construireLigne($vinyle, 1147, 5.5, 3.5, [], false), 2.5, 1.0, false);
+        $recap = PageNouvelleCommande::recapitulatif(NouvelleCommande::assembler($ligne), $ligne, $vinyle, false, 48);
+
+        self::assertStringEndsWith(' · 0,055 × 0,035 m', $recap['titre']);
+        self::assertSame(['libelle' => 'Pièces au m²', 'valeur' => '459 (17 × 27)'], $recap['lignes'][1]);
+    }
+
     public function testLaPageSaitQuelleMatiereSeCompteEnM2(): void
     {
         $vinyle = $this->vinyle();

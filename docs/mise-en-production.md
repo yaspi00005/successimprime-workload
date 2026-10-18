@@ -97,6 +97,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 
 - [ ] Import des données de démarrage : clients, articles, stock, soldes d'ouverture, avec l'aperçu avant de confirmer ([docs/import-donnees.md](import-donnees.md)).
 - [ ] Comptes du personnel : la direction donne un accès à chaque employé, avec son rôle ([docs/formation.md, « Après la formation »](formation.md#après-la-formation)), ou `php bin/console app:creer-utilisateur <identifiant> --role=…`.
+- [ ] **Une seule fois, sur l'ERP de la boutique** (réponse de Yaya du 18/10/2026) : passer au journal les paiements avec le solde du client faits avant le 18/10 (ancien bouton), pour que le compte 4191 égale le total de Caisse › Soldes clients. D'abord `php bin/console app:solde-client:aligner-4191 --dry-run` (liste des paiements, rien n'est écrit), puis sans `--dry-run`. La commande passe une opération diverse (4191 au débit, 411 au crédit, pièces `OD-SC-…`) datée du jour ; relancée, elle ne repasse rien. Si elle signale un écart restant, il ne vient pas de ces paiements : le montrer au cabinet comptable ([docs/finances.md, « Compte du client »](finances.md)).
 
 ### 4. Synchronisation
 

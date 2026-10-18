@@ -10,8 +10,11 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: FinitionRepository::class)]
-class Finition
+class Finition implements AUnNomCommercial
 {
+    // Nom commercial (Yaya, 18/10/2026, docs/noms-commerciaux.md).
+    use \App\Entity\Trait\NomCommercialTrait;
+
     use PublicIdTrait;
 
     #[ORM\Id]
@@ -175,5 +178,10 @@ public function removeSupport(Supports $supports): static
         $this->coutUnitaire = $coutUnitaire;
 
         return $this;
+    }
+
+    public function getNomTechnique(): string
+    {
+        return (string) $this->nom;
     }
 }

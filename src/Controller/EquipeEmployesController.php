@@ -410,7 +410,8 @@ final class EquipeEmployesController extends AbstractController
             'responsables' => array_filter($this->users->findBy(['actif' => true], ['username' => 'ASC']), static fn (User $u): bool => $u->getEmploye() !== null),
             'admin' => $admin,
             // Horaire du calcul des points : ceux de la tuile, et celui que donne le poste.
-            'horaires_types' => array_combine(array_keys(HoraireType::LIBELLES), Pointages::horairesTypes($this->pointages->regles())),
+            'horaires_types' => array_combine(array_keys(HoraireType::LIBELLES), Pointages::horairesTypes($this->pointages->regles()))
+                + [HoraireType::LIBRE => ['libelle' => HoraireType::CHOIX[HoraireType::LIBRE], 'debut' => null, 'fin' => null, 'dues' => 0]],
             'horaire_auto' => HoraireType::parDefaut($employe->getFonction(), $utilisateur?->getProfil()?->getCode()),
         ], new Response(status: [] === $erreurs ? 200 : 422));
     }

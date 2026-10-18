@@ -29,7 +29,7 @@ final class RegleRattachementTest extends TestCase
         'CompteTresorerie' => 'compte_tresorerie', 'MouvementTresorerie' => 'mouvement_tresorerie', 'DecaissementRecurrent' => 'decaissement_recurrent',
         'RapprochementBancaire' => 'rapprochement_bancaire', 'ClotureCaisse' => 'cloture_caisse', 'Depense' => 'depense', 'Articles' => 'articles',
         'StockEntrees' => 'stock_entrees', 'StockSorties' => 'stock_sorties', 'Achats' => 'achats', 'Immobilisation' => 'immobilisation',
-        'DotationAmortissement' => 'dotation_amortissement', 'Entreprise' => 'entreprise',
+        'DotationAmortissement' => 'dotation_amortissement', 'Entreprise' => 'entreprise', 'EcritureDiverse' => 'ecriture_diverse',
     ];
 
     /** Une entité qui reçoit le trait sans règle choisie fait échouer ce test. */

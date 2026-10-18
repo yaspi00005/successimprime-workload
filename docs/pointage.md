@@ -48,15 +48,23 @@ Barème de Yaya (16/10/2026). Il remplace l'ancien barème de ponctualité à pa
 | Accueil et caisse | 9 h – 17 h | 8 h |
 | Atelier et autres | 9 h – 18 h | 9 h |
 
-Chaque employé suit l'horaire de son poste : « Accueil et caisse » quand le poste parle de caisse, d'accueil, de secrétariat ou d'assistance (ou, sans poste, quand son rôle est la caisse), « Atelier et autres » sinon. La fiche employé (Équipe › Employés › Modifier, « Horaire des points ») permet de choisir l'autre. Des **horaires propres** (gardien de nuit 19 h – 7 h, mi-temps…) passent avant l'horaire type : ses heures dues sont alors de la fin moins le début, même après minuit.
+**Horaire programmé par agent** (Yaya, 18/10/2026). Chaque employé a son horaire, réglé sur sa fiche (Équipe › Employés › Modifier, « Horaire de l'agent » et « Heures propres ») :
+- par défaut, celui de son poste ou de son rôle : « Accueil et caisse » quand le poste parle de caisse, d'accueil, de secrétariat ou d'assistance (ou, sans poste, quand son rôle est la caisse), **« Sans heure fixe »** quand le poste parle de livreur, coursier ou chauffeur (ou, sans poste, quand son rôle est Livreur), « Atelier et autres » sinon ;
+- on peut choisir un autre horaire type, ou « Sans heure fixe » ;
+- des **heures propres** (gardien de nuit 19 h – 7 h, mi-temps, 8 h – 16 h…) passent avant l'horaire type : ses heures dues sont alors de la fin moins le début, même après minuit.
 
-**Points d'une journée** (heures faites = du pointage d'arrivée au pointage de départ) :
+**Sans heure fixe** (livreurs) : ni retard, ni départ avant la fin, ni heures dues. Une journée pointée (arrivée et départ) rapporte + 10 ; pas d'heures en plus, mais une journée de 20 h ou plus reste une longue journée (50).
+
+**Arrivée avant l'heure de début** (Yaya, 18/10/2026) : les heures faites comptent **à partir de l'heure de début** (9 h). Arriver à 7 h ne donne pas de temps en plus ; c'est seulement signalé par la mention « avant 9 h » à côté de l'heure d'arrivée (Mon pointage, pointages du jour, fiche du mois, détail d'une journée) et dans la raison des points, et compté dans la fiche du mois (« Arrivé avant l'heure : 3 fois ») et dans la partie Équipe des rapports par e-mail.
+
+**Points d'une journée** (heures faites = du pointage d'arrivée, ou de l'heure de début si l'arrivée est plus tôt, au pointage de départ) :
 
 | Situation | Points |
 |---|---|
 | Heures dues faites, à l'heure ou en rattrapant un retard en partant plus tard | + 10 |
 | En retard et heures dues pas faites | − 15 |
-| À l'heure mais parti avant la fin, heures pas faites | 0 |
+| À l'heure mais parti avant la fin, heures pas faites | − 15 (Yaya, 18/10/2026, comme un retard) |
+| Sans heure fixe (livreurs), journée pointée | + 10 |
 | Chaque **heure entière** au-delà des heures dues | + 5 par heure, sans que la journée dépasse 50 |
 | Journée (ou garde) de 20 h ou plus | 50, **à la place** du reste |
 | Départ non pointé | 0, la journée reste à régulariser par la RH |
@@ -77,15 +85,17 @@ Toutes les valeurs (heures des deux horaires, + 10, − 15, + 5, 20 h, 50, pause
 
 | Employé et horaire | Arrivée – départ | Heures faites / dues | Points | Pourquoi |
 |---|---|---|---|---|
-| Atelier 9 h – 18 h | 8 h 55 – 18 h 05 | 9 h 10 / 9 h | + 10 | à l'heure, heures faites |
+| Atelier 9 h – 18 h | 8 h 55 – 18 h 05 | 9 h 05 / 9 h | + 10 | à l'heure, heures faites (mention « avant 9 h ») |
+| Atelier | 7 h 00 – 18 h 00 | 9 h 00 / 9 h | + 10 | compté à partir de 9 h : pas d'heures en plus (mention « avant 9 h ») |
 | Atelier | 9 h 40 – 18 h 45 | 9 h 05 / 9 h | + 10 | retard de 40 min rattrapé |
 | Atelier | 9 h 40 – 18 h 00 | 8 h 20 / 9 h | − 15 | retard et heures pas faites |
-| Atelier | 8 h 58 – 16 h 00 | 7 h 02 / 9 h | 0 | à l'heure mais parti avant la fin |
+| Atelier | 8 h 58 – 16 h 00 | 7 h 00 / 9 h | − 15 | à l'heure mais parti avant la fin |
 | Atelier | 9 h 00 – 18 h 59 | 9 h 59 / 9 h | + 10 | 59 min en plus : pas une heure entière |
 | Accueil 9 h – 17 h | 9 h 00 – 19 h 30 | 10 h 30 / 8 h | + 20 | + 10, et 2 h en plus (+ 10) une fois validées |
 | Atelier | 9 h 00 – 2 h 30 le lendemain | 17 h 30 / 9 h | + 50 | + 10, et 8 h en plus (+ 40) une fois validées |
-| Atelier, garde | 8 h 00 – 8 h 00 le lendemain | 24 h / 9 h | 50 | longue journée, à la place du + 10 et des heures en plus |
+| Atelier, garde | 8 h 00 – 8 h 00 le lendemain | 23 h / 9 h | 50 | longue journée (comptée à partir de 9 h), à la place du + 10 et des heures en plus |
 | Gardien, horaires propres 19 h – 7 h | 19 h 00 – 7 h 05 | 12 h 05 / 12 h | + 10 | poste de nuit, heures faites |
+| Livreur, sans heure fixe | 11 h 20 – 15 h 00 | 3 h 40 / — | + 10 | ni retard ni départ anticipé |
 | Atelier, dimanche (repos) | 9 h 00 – 13 h 30 | 4 h 30 / repos | + 20 | 4 h en plus une fois validées |
 | Atelier | 9 h 00 – (pas de départ) | — | 0 | départ non pointé, à régulariser |
 | Atelier, sortie à midi | 9 h 40 – 13 h 00, puis 14 h 00 – 18 h 00 | 8 h 20 / 9 h | − 15 | une journée : retard de 40 min du matin, pas rattrapé le soir |

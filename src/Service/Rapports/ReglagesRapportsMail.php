@@ -33,7 +33,7 @@ final class ReglagesRapportsMail
     {
         $heure = (string) $this->parametres->valeur(self::TUILE, $type.'_heure');
 
-        return preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $heure) ? $heure : (PeriodeRapport::JOUR === $type ? '20:00' : '07:00');
+        return preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $heure) ? $heure : (PeriodeRapport::JOUR === $type ? '00:00' : '07:00');
     }
 
     /** 1 (lundi) à 7, jour d'envoi du rapport de la semaine. */
@@ -124,9 +124,12 @@ final class ReglagesRapportsMail
         $ouvres = (bool) $this->parametres->valeur(self::TUILE, 'jour_ouvres');
 
         return match ($type) {
-            PeriodeRapport::JOUR => Planification::lendemain($this->heure($type))
+            // Minuit (défaut, Yaya 18/10/2026) : la journée qui vient de finir.
+            PeriodeRapport::JOUR => '00:00' === $this->heure($type)
+                ? ($ouvres ? 'Chaque jour d’ouverture' : 'Chaque jour').', à minuit pour la journée qui vient de finir'
+                : (Planification::lendemain($this->heure($type))
                 ? ($ouvres ? 'Le lendemain de chaque jour d’ouverture' : 'Chaque jour').' à '.$heure.', pour la veille'
-                : ($ouvres ? 'Chaque jour d’ouverture' : 'Chaque jour').' à '.$heure.', pour la journée',
+                : ($ouvres ? 'Chaque jour d’ouverture' : 'Chaque jour').' à '.$heure.', pour la journée'),
             PeriodeRapport::SEMAINE => 'Chaque '.PeriodeRapport::JOURS[$this->jourSemaine()].' à '.$heure.', pour la semaine passée',
             default => 'Le '.(1 === $this->jourMois() ? '1er' : $this->jourMois()).' du mois à '.$heure.', pour le mois passé',
         };

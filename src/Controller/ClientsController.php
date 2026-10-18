@@ -227,12 +227,18 @@ final class ClientsController extends AbstractController
             ], Response::HTTP_NOT_FOUND);
         }
 
+        $gardes = 0;
         foreach ($clients as $client) {
             if ($action === 'bloquer') {
                 $client->setStatut(false);
             } elseif ($action === 'debloquer') {
                 $client->setStatut(true);
             } elseif ($action === 'supprimer') {
+                // Un client avec des commandes ou des devis reste (on le bloque à la place).
+                if (self::empecheSuppression($client, $entityManager) !== null) {
+                    ++$gardes;
+                    continue;
+                }
                 $entityManager->remove($client);
             }
         }
@@ -248,10 +254,38 @@ final class ClientsController extends AbstractController
             'Les clients sélectionnés ont été supprimés.',
         ];
 
+        if ($gardes > 0) {
+            $messages['supprimer'] = \sprintf('Clients supprimés (30 jours dans la corbeille), sauf %d qui %s des commandes, des devis ou des produits à son nom : bloquez-les à la place.', $gardes, $gardes > 1 ? 'ont' : 'a');
+        }
+
         return $this->json([
             'success' => true,
             'message' => $messages[$action],
         ]);
+    }
+
+    /**
+     * Pourquoi ce client ne peut pas être supprimé (ses commandes, devis ou
+     * produits à son nom le retiennent), ou null s'il peut l'être.
+     */
+    public static function empecheSuppression(Clients $client, EntityManagerInterface $em): ?string
+    {
+        if ($client->getId() === null) {
+            return null;
+        }
+        $db = $em->getConnection();
+        $id = $client->getId();
+        $parties = array_filter([
+            (int) $db->fetchOne('SELECT COUNT(*) FROM commandes WHERE clients_id = ?', [$id]) > 0 ? 'des commandes' : null,
+            (int) $db->fetchOne('SELECT COUNT(*) FROM devis WHERE clients_id = ?', [$id]) > 0 ? 'des devis' : null,
+            (int) $db->fetchOne('SELECT COUNT(*) FROM produit_client WHERE client_id = ?', [$id]) > 0 ? 'des produits à son nom' : null,
+        ]);
+        if ($parties === []) {
+            return null;
+        }
+        $liste = \count($parties) > 1 ? implode(', ', \array_slice($parties, 0, -1)).' et '.end($parties) : reset($parties);
+
+        return \sprintf('Ce client a %s (même supprimés) : sa fiche ne peut pas être supprimée. Bloquez-le à la place.', $liste);
     }
 
     #[Route(
@@ -860,7 +894,8 @@ final class ClientsController extends AbstractController
         Request $request,
         \App\Service\Paiement\SoldeClient $soldeClient,
         CompteTresorerieRepository $compteTresorerieRepository,
-        \App\Security\AccesEnLigne $accesEnLigne
+        \App\Security\AccesEnLigne $accesEnLigne,
+        EntityManagerInterface $entityManager
     ): Response {
         $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
         $donnees = $fiche->donnees($client, new \DateTimeImmutable(), $voirPaiements);
@@ -893,6 +928,8 @@ final class ClientsController extends AbstractController
         $empechement = $accesEspace->empechement($client);
 
         return $this->render('clients/fiche_360.html.twig', $donnees + [
+            // Bouton « Supprimer » (Direction) : ce qui l'empêche, s'il y a lieu.
+            'suppression_impossible' => $this->isGranted('ROLE_ADMIN') ? self::empecheSuppression($client, $entityManager) : null,
             'client' => $client,
             'contacts' => $edition->contacts($client),
             'statut' => $statut,
@@ -1613,9 +1650,9 @@ final class ClientsController extends AbstractController
     }
 
     /**
-     * Supprimer un client : aucun bouton à l'écran ; réservé à la Direction,
-     * avec un jeton propre aux clients (« delete » + id servait à toutes les
-     * fiches). La fiche part 30 jours dans la corbeille (docs/corbeille.md).
+     * Supprimer un client : bouton « Supprimer » confirmé de la fiche
+     * (Yaya, 18/10/2026), réservé à la Direction, avec un jeton propre aux
+     * clients. La fiche part 30 jours dans la corbeille (docs/corbeille.md).
      */
     #[Route(
         '/{id}',
@@ -1633,8 +1670,15 @@ final class ClientsController extends AbstractController
             'supprimer-client-' . $client->getId(),
             $request->getPayload()->getString('_token')
         )) {
+            if (($motif = self::empecheSuppression($client, $entityManager)) !== null) {
+                $this->addFlash('warning', $motif);
+
+                return $this->redirectToRoute('app_clients_show', ['publicId' => $client->getPublicId()], Response::HTTP_SEE_OTHER);
+            }
+            $nom = $client->getNomComplet();
             $entityManager->remove($client);
             $entityManager->flush();
+            $this->addFlash('success', \sprintf('Client %s supprimé : il reste 30 jours dans la corbeille.', $nom));
         }
 
         return $this->redirectToRoute(

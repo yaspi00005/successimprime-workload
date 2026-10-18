@@ -11,8 +11,11 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: FormatRepository::class)]
 #[ORM\Table(name: 'format')]
-class Format
+class Format implements AUnNomCommercial
 {
+    // Nom commercial (Yaya, 18/10/2026, docs/noms-commerciaux.md).
+    use \App\Entity\Trait\NomCommercialTrait;
+
     use PublicIdTrait;
 
     #[ORM\Id]
@@ -283,5 +286,10 @@ public function removeSupport(Supports $support): static
             $this->hauteur ?? 0,
             $this->unite
         );
+    }
+
+    public function getNomTechnique(): string
+    {
+        return (string) $this->nom;
     }
 }

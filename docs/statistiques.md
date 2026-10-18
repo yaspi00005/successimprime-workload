@@ -26,7 +26,7 @@ Fixés par la Direction pour chaque mois (de 12 mois en arrière à 3 mois en av
 | Commandes | entreprise, agent | commandes du mois ni supprimées ni entièrement annulées |
 | m² imprimés | entreprise, machine | lignes terminées en production dans le mois (surface × quantité), machines facturées au m² |
 | Nouveaux clients | entreprise | première commande dans le mois |
-| Taux d'encaissement | entreprise | paiements validés du mois (hors solde client) ÷ CA facturé du mois |
+| Taux d'encaissement | entreprise | paiements validés du mois, paiement avec le solde du client compris (au mois où il est enregistré, Yaya 18/10/2026) ÷ CA facturé du mois |
 
 Sans objectif fixé : le CA de l'entreprise reprend l'objectif de la tuile Finances et budgets, chaque agent l'objectif de ventes de sa fiche, le taux d'encaissement vise 80 %. Une case vide garde la valeur par défaut ; 0 retire l'objectif. « Reprendre ceux du mois précédent » copie les objectifs saisis le mois d'avant.
 

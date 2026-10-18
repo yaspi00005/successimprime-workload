@@ -32,7 +32,7 @@
 							{% set k = c.calcul %}
 							<tr class="si-pg-avec-raison {{ detail and detail.pointage.id == p.id ? 'si-pg-choisi' }}" data-si-pointage="{{ p.id }}">
 								<td><a href="{{ path('app_pointage_employe', {id: utilisateur.id, mois: mois|date('Y-m'), pointage: p.id}) }}">{{ j.jour|date_fr('EEE d')|capitalize }}</a></td>
-								<td class="{{ k.retard > 0 ? 'si-p-alerte' }}">{{ p.arriveeLe|date('H:i') }}</td>
+								<td class="{{ k.retard > 0 ? 'si-p-alerte' }}">{{ p.arriveeLe|date('H:i') }}{% if k.avance|default(0) > 0 %} <small class="si-pg-avant" title="Arrivé avant l'heure de début : le temps compte à partir de {{ k.debutPrevu|heure_pointage }}">avant {{ k.debutPrevu|heure_pointage }}</small>{% endif %}</td>
 								<td>{{ p.departLe ? p.departLe|date(p.departLe|date('Y-m-d') != p.arriveeLe|date('Y-m-d') ? 'd/m H:i' : 'H:i') : '—' }}</td>
 								<td>{% if not p.departLe %}{{ statuts[k.statut] }}{% elseif k.dues is not null %}{{ k.faites|duree_pointage }} / {{ k.dues > 0 ? k.dues|duree_pointage : 'repos' }}{% else %}{{ k.presence|duree_pointage }}{% endif %}</td>
 								<td class="{{ k.total < 0 ? 'si-p-alerte' : (k.total > 0 ? 'si-p-ok') }}"><b>{{ k.total > 0 ? '+' }}{{ k.total }}</b>{% if k.bonusEnAttente %} <i class="fas fa-hourglass-half si-pg-attente" title="{{ k.bonusEnAttente }}"></i>{% endif %}</td>
@@ -53,12 +53,13 @@
 			<p class="si-pg-totaux">
 				Présent <b>{{ fiche.presents }} / {{ fiche.ouvres }} j</b>
 				· Retards <b>{{ fiche.retards }}</b>
+				{% if fiche.avance > 0 %}· Arrivé avant l'heure <b>{{ fiche.avance }} fois</b>{% endif %}
 				{% if fiche.nouveau > 0 %}· Heures faites <b>{{ fiche.faites|duree_pointage }}</b> sur <b>{{ fiche.dues|duree_pointage }}</b>{% endif %}
 				· Présence (pause déduite) <b>{{ fiche.minutes|duree_pointage }}</b>
 				· Points du mois <b>{{ fiche.points > 0 ? '+' }}{{ fiche.points }}</b>{% if fiche.aValider > 0 %} ({{ fiche.aValider }} à valider){% endif %}
 				· Ponctualité <b>{{ fiche.note is null ? '—' : fiche.note ~ ' / 100' }}</b>
 			</p>
-			<p class="si-pg-note">Horaire : <b>{{ fiche.horaire.libelle }}</b>, {{ fiche.horaire.debut|heure_pointage }} – {{ fiche.horaire.fin|heure_pointage }} ({{ fiche.horaire.dues|duree_pointage }} dues par jour){% if utilisateur.employe and not fiche.horaire.propre %} · <a href="{{ path('app_equipe_employes_modifier', {id: utilisateur.employe.id}) }}">changer sur sa fiche</a>{% endif %}.</p>
+			<p class="si-pg-note">Horaire : <b>{{ fiche.horaire.libelle }}</b>{% if fiche.horaire.libre %} (ni retard ni départ anticipé){% else %}, {{ fiche.horaire.debut|heure_pointage }} – {{ fiche.horaire.fin|heure_pointage }} ({{ fiche.horaire.dues|duree_pointage }} dues par jour){% endif %}{% if utilisateur.employe and not fiche.horaire.propre %} · <a href="{{ path('app_equipe_employes_modifier', {id: utilisateur.employe.id}) }}">changer sur sa fiche</a>{% endif %}.</p>
 		</section>
 
 		<section class="card si-pg-detail">
@@ -81,9 +82,9 @@
 					<div><dt>Téléphone</dt><dd>{{ p.appareilArrivee ? p.appareilArrivee.nom ~ (p.appareilArrivee.etat == 'autorise' ? ' · enregistré ✓' : ' · non validé') : '—' }}</dd></div>
 					<div><dt>Position</dt><dd>{% if p.positionArrivee %}{{ p.positionArrivee.distance is not null ? 'à ' ~ p.positionArrivee.distance ~ ' m du point' : 'notée (point sans coordonnées)' }}{% else %}non transmise{% endif %}</dd></div>
 					<div><dt>Heure</dt><dd>horloge du serveur (non modifiable)</dd></div>
-					<div><dt>Statut</dt><dd><span class="si-pg-statut si-pg-{{ c.statut }}">{{ statuts[c.statut] }}</span>{% if c.retard > 0 %} · retard {{ c.retard|duree_pointage }}{% endif %}{% if c.sup > 0 %} · {{ c.sup|duree_pointage }} après la fin{% endif %}</dd></div>
+					<div><dt>Statut</dt><dd><span class="si-pg-statut si-pg-{{ c.statut }}">{{ statuts[c.statut] }}</span>{% if c.retard > 0 %} · retard {{ c.retard|duree_pointage }}{% endif %}{% if c.avance|default(0) > 0 %} · arrivé {{ c.avance|duree_pointage }} avant {{ c.debutPrevu|heure_pointage }}{% endif %}{% if c.sup > 0 %} · {{ c.sup|duree_pointage }} après la fin{% endif %}</dd></div>
 					{% if c.dues is not null %}
-						<div><dt>Horaire du jour</dt><dd>{{ c.horaire|split(' – ')|map(x => x|heure_pointage)|join(' – ') }}</dd></div>
+						<div><dt>Horaire du jour</dt><dd>{{ c.debutPrevu is null ? c.horaire : c.horaire|split(' – ')|map(x => x|heure_pointage)|join(' – ') }}</dd></div>
 						<div><dt>Heures faites / dues</dt><dd>{{ c.faites is null ? '—' : c.faites|duree_pointage }} / {{ c.dues > 0 ? c.dues|duree_pointage : 'jour de repos' }}</dd></div>
 					{% endif %}
 				</dl>

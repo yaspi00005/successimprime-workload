@@ -166,6 +166,7 @@
 					{% if q.attendus > 0 %}{{ m.ligne(p.type == 'jour' ? 'Présents' : 'Présents le ' ~ (r.en_cours ? r.arrete_le : p.dernierJour)|date('d/m'), q.presents ~ ' / ' ~ q.attendus) }}{% endif %}
 					{{ m.ligne('Retards', m.v(q.retards), q.retards > 0 ? '#c2410c' : null) }}
 					{{ m.ligne('Absences non justifiées', m.v(q.absences_non_justifiees), q.absences_non_justifiees > 0 ? '#b91c1c' : null) }}
+					{% if q.avant_debut|default(0) > 0 %}{{ m.ligne('Arrivées avant l\'heure de début', m.v(q.avant_debut)) }}{% endif %}
 				</table>
 				{% if q.lignes is not empty %}
 					<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 6px; border-collapse: collapse; font-size: 13px;">
@@ -177,6 +178,7 @@
 										l.retards > 0 ? l.retards ~ ' retard' ~ (l.retards > 1 ? 's') ~ ' (' ~ l.minutes ~ ' min)' : null,
 										l.absences > 0 ? l.absences ~ ' absence' ~ (l.absences > 1 ? 's') : null,
 										l.justifiees > 0 ? l.justifiees ~ ' justifiée' ~ (l.justifiees > 1 ? 's') : null,
+										l.avant_debut|default(0) > 0 ? 'arrivé' ~ (l.avant_debut > 1 ? ' ' ~ l.avant_debut ~ ' fois' : '') ~ ' avant l\'heure' : null,
 									]|filter(x => x is not null)|join(' · ') }}
 								</td>
 							</tr>

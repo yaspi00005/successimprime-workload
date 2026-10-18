@@ -100,6 +100,15 @@
 				<a href="{{ path('app_clients_journal', {publicId: client.publicId}) }}" class="btn btn-light btn-sm"><i class="fas fa-history me-1"></i>Journal des modifications</a>
 				<a href="{{ path('app_clients_detail', {publicId: client.publicId}) }}" class="btn btn-light btn-sm">Fiche détaillée</a>
 				<a href="{{ path('app_clients_modifier', {publicId: client.publicId}) }}" class="btn btn-outline-primary btn-sm">Modifier</a>
+				{# Supprimer le client : la Direction seulement, 30 jours dans la corbeille (Yaya, 18/10/2026). #}
+				{% if is_granted('ROLE_ADMIN') and suppression_impossible %}
+					<p class="si-fh-suppression-impossible"><i class="fas fa-info-circle me-1"></i>{{ suppression_impossible }}</p>
+				{% elseif is_granted('ROLE_ADMIN') %}
+					<form method="post" action="{{ path('app_clients_delete', {id: client.id}) }}" class="si-fh-supprimer" {{ confirmer_suppression('le client ' ~ nom, {detail: 'Ses commandes, devis et factures restent ; la fiche ne s\'affiche plus dans les listes.'}) }}>
+						<input type="hidden" name="_token" value="{{ csrf_token('supprimer-client-' ~ client.id) }}">
+						<button type="submit" class="btn btn-outline-danger btn-sm"><i class="far fa-trash-alt me-1"></i>Supprimer</button>
+					</form>
+				{% endif %}
 			</div>
 			</details>
 			{% set dernierAcces = acces_espace.dernier %}

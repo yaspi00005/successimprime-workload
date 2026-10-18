@@ -77,17 +77,23 @@ final class Pointages
      *
      * @param array<string, mixed> $heures valeurs de la tuile Points du pointage
      *
-     * @return array{libelle: string, debut: string, fin: string, propre: bool}
+     * « Sans heure fixe » (livreurs) passe avant tout : les heures de
+     * l'atelier ne servent alors qu'à la pause et à l'alerte de départ.
+     *
+     * @return array{libelle: string, debut: string, fin: string, propre: bool, libre: bool}
      */
     public static function horaireDe(User $utilisateur, array $heures): array
     {
         $e = $utilisateur->getEmploye();
-        if ($e !== null && $e->getHeureDebut() !== null && $e->getHeureFin() !== null) {
-            return ['libelle' => 'Horaires propres', 'debut' => $e->getHeureDebut(), 'fin' => $e->getHeureFin(), 'propre' => true];
-        }
         $type = $e !== null ? HoraireType::de($e) : HoraireType::ATELIER;
+        if ($type === HoraireType::LIBRE) {
+            return ['libelle' => HoraireType::CHOIX[HoraireType::LIBRE], 'debut' => (string) $heures['atelier_debut'], 'fin' => (string) $heures['atelier_fin'], 'propre' => false, 'libre' => true];
+        }
+        if ($e !== null && $e->getHeureDebut() !== null && $e->getHeureFin() !== null) {
+            return ['libelle' => 'Horaires propres', 'debut' => $e->getHeureDebut(), 'fin' => $e->getHeureFin(), 'propre' => true, 'libre' => false];
+        }
 
-        return ['libelle' => HoraireType::LIBELLES[$type], 'debut' => (string) $heures[$type.'_debut'], 'fin' => (string) $heures[$type.'_fin'], 'propre' => false];
+        return ['libelle' => HoraireType::LIBELLES[$type], 'debut' => (string) $heures[$type.'_debut'], 'fin' => (string) $heures[$type.'_fin'], 'propre' => false, 'libre' => false];
     }
 
     /**
@@ -110,13 +116,14 @@ final class Pointages
             $regles['ouverture'] = $horaire['debut'];
             $regles['fermeture'] = $horaire['fin'];
             $regles['points'] = $heures;
+            $regles['libre'] = $horaire['libre'];
         }
 
         $e = $utilisateur->getEmploye();
         if ($e === null) {
             return $regles;
         }
-        if ($e->getHeureDebut() !== null) {
+        if ($e->getHeureDebut() !== null && empty($regles['libre'])) {
             $regles['ouverture'] = $e->getHeureDebut();
             if ($e->getHeureFin() !== null) {
                 $regles['fermeture'] = $e->getHeureFin();
@@ -312,7 +319,7 @@ final class Pointages
      * Pour les journées du nouveau barème : heures faites et dues, et
      * l'horaire de la personne.
      *
-     * @return array{jours: list<array<string, mixed>>, presents: int, ouvres: int, retards: int, minutes: int, sup: int, points: int, faites: int, dues: int, aValider: int, nouveau: int, joursNote: int, note: ?int, horaire: array{libelle: string, debut: string, fin: string, propre: bool, dues: int}, debutNouveau: ?\DateTimeImmutable}
+     * @return array{jours: list<array<string, mixed>>, presents: int, ouvres: int, retards: int, minutes: int, sup: int, points: int, faites: int, dues: int, aValider: int, nouveau: int, joursNote: int, avance: int, note: ?int, horaire: array{libelle: string, debut: string, fin: string, propre: bool, libre: bool, dues: int}, debutNouveau: ?\DateTimeImmutable}
      */
     public function mois(User $utilisateur, \DateTimeImmutable $mois, \DateTimeImmutable $maintenant): array
     {
@@ -328,7 +335,7 @@ final class Pointages
 
         $ouvresSemaine = CalculPointage::joursOuvres((string) self::reglesDe($utilisateur, $regles)['jours']);
         $jours = [];
-        $totaux = ['presents' => 0, 'ouvres' => 0, 'retards' => 0, 'minutes' => 0, 'sup' => 0, 'points' => 0, 'faites' => 0, 'dues' => 0, 'aValider' => 0, 'nouveau' => 0, 'joursNote' => 0];
+        $totaux = ['presents' => 0, 'ouvres' => 0, 'retards' => 0, 'minutes' => 0, 'sup' => 0, 'points' => 0, 'faites' => 0, 'dues' => 0, 'aValider' => 0, 'nouveau' => 0, 'joursNote' => 0, 'avance' => 0];
         for ($j = $debut; $j < $fin && $j <= $maintenant; $j = $j->modify('+1 day')) {
             $ouvre = \in_array((int) $j->format('N'), $ouvresSemaine, true);
             $calculs = $parJour[$j->format('Y-m-d')] ?? [];
@@ -350,6 +357,8 @@ final class Pointages
                 $totaux['sup'] += $c['calcul']['sup'];
                 $totaux['points'] += $c['calcul']['total'];
                 $totaux['aValider'] += $c['calcul']['bonusEnAttente'] !== null ? 1 : 0;
+                // Jours arrivés avant l'heure de début (mention, sans temps en plus).
+                $totaux['avance'] += ($c['calcul']['avance'] ?? 0) > 0 ? 1 : 0;
                 if ($c['calcul']['bareme'] === 'heures') {
                     ++$totaux['nouveau'];
                     // Heures de la journée : sur la présence qui porte ses points, la journée en cours à part.
@@ -370,7 +379,7 @@ final class Pointages
 
         return ['jours' => $jours] + $totaux + [
             'note' => CalculPointage::note($totaux['points'], $totaux['joursNote'], $pointsJournee),
-            'horaire' => $horaire + ['dues' => self::minutesDues($horaire['debut'], $horaire['fin'], $regles)],
+            'horaire' => $horaire + ['dues' => $horaire['libre'] ? 0 : self::minutesDues($horaire['debut'], $horaire['fin'], $regles)],
             'debutNouveau' => $debutNouveau ?: null,
         ];
     }

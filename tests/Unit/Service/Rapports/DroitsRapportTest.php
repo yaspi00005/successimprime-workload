@@ -86,8 +86,9 @@ final class DroitsRapportTest extends TestCase
         self::assertTrue(DestinatairesRapports::retenu(1, $direction, true, true, null));
         self::assertFalse(DestinatairesRapports::retenu(1, $direction, true, false, null));
         self::assertFalse(DestinatairesRapports::retenu(2, $caisse, true, true, null));
-        // Liste choisie : seulement les comptes cochés.
-        self::assertTrue(DestinatairesRapports::retenu(2, $caisse, true, true, [2, 5]));
+        // Liste choisie : seulement les comptes cochés, et de la direction (Yaya, 18/10/2026).
+        self::assertTrue(DestinatairesRapports::retenu(1, $direction, true, true, [1, 5]));
+        self::assertFalse(DestinatairesRapports::retenu(2, $caisse, true, true, [2, 5]), 'hors de la direction, même coché');
         self::assertFalse(DestinatairesRapports::retenu(1, $direction, true, true, [2, 5]));
         self::assertFalse(DestinatairesRapports::retenu(1, $direction, true, true, []));
         // Coché puis privé du droit : ne reçoit plus rien.

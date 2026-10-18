@@ -65,7 +65,7 @@
 						<div class="si-bloc-tete"><h4>Destinataires</h4></div>
 						<p class="si-rm-aide">
 							{% if choisis %}Seuls les comptes cochés reçoivent les rapports.{% else %}Pas encore de choix : la direction reçoit les rapports (comptes avec une adresse e-mail).{% endif %}
-							Chacun reçoit sa version, selon ses droits. Il faut le droit « Chiffre d’affaires global » ; l’adresse est celle de la fiche employé.
+							Les rapports vont à la direction seulement ; l’adresse est celle de la fiche employé.
 						</p>
 						<form method="post" action="{{ path('app_rapports_mail_destinataires') }}">
 							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
@@ -85,14 +85,14 @@
 										</label>
 									</li>
 								{% else %}
-									<li class="si-rm-sans-droit">Aucun compte actif n’a le droit « Chiffre d’affaires global ».</li>
+									<li class="si-rm-sans-droit">Aucun compte actif de la direction.</li>
 								{% endfor %}
 							</ul>
 							{% if exclus is not empty %}
 								<details class="si-rm-exclus">
-									<summary>{{ exclus|length }} compte{{ exclus|length > 1 ? 's' }} sans le droit « Chiffre d’affaires global » : ne peu{{ exclus|length > 1 ? 'vent' : 't' }} pas recevoir les rapports</summary>
+									<summary>{{ exclus|length }} compte{{ exclus|length > 1 ? 's' }} hors de la direction : ne peu{{ exclus|length > 1 ? 'vent' : 't' }} pas recevoir les rapports</summary>
 									<p>{% for c in exclus %}{{ c.nom }}{% if c.profil %} ({{ c.profil }}){% endif %}{{ not loop.last ? ' · ' }}{% endfor %}</p>
-									<p class="si-rm-aide mb-0">Le droit se donne dans <a href="{{ path('app_utilisateurs_index') }}">Réglages › Utilisateurs et droits</a>.</p>
+									<p class="si-rm-aide mb-0">Les rapports par e-mail vont à la direction seulement. Chacun peut voir l’aperçu de sa version ici, selon ses droits.</p>
 								</details>
 							{% endif %}
 							<div class="si-rm-actions">

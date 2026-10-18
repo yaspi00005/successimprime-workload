@@ -88,7 +88,7 @@ MARGE
 {% if r.equipe is not null %}
 ÉQUIPE
 - Retards : {{ r.equipe.retards }}, absences non justifiées : {{ r.equipe.absences_non_justifiees }}
-{% for l in r.equipe.lignes|slice(0, 8) %}  · {{ l.nom }} : {{ l.retards }} retard{{ l.retards > 1 ? 's' }}, {{ l.absences }} absence{{ l.absences > 1 ? 's' }}{% if l.justifiees > 0 %}, {{ l.justifiees }} justifiée{{ l.justifiees > 1 ? 's' }}{% endif %}
+{% for l in r.equipe.lignes|slice(0, 8) %}  · {{ l.nom }} : {{ l.retards }} retard{{ l.retards > 1 ? 's' }}, {{ l.absences }} absence{{ l.absences > 1 ? 's' }}{% if l.justifiees > 0 %}, {{ l.justifiees }} justifiée{{ l.justifiees > 1 ? 's' }}{% endif %}{% if l.avant_debut|default(0) > 0 %}, arrivé {{ l.avant_debut }} fois avant l'heure{% endif %}
 
 {% endfor %}
 

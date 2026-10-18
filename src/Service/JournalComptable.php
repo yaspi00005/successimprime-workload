@@ -6,6 +6,7 @@ use App\Entity\Achats;
 use App\Entity\Commandes;
 use App\Entity\CompteTresorerie;
 use App\Entity\DotationAmortissement;
+use App\Entity\EcritureDiverse;
 use App\Entity\Factures;
 use App\Entity\MouvementSoldeClient;
 use App\Entity\MouvementTresorerie;
@@ -17,7 +18,8 @@ use Doctrine\ORM\EntityManagerInterface;
  * opérations validées (factures émises, mouvements de trésorerie
  * validés, achats reçus, dotations aux amortissements passées, soldes
  * d'ouverture importés). Rien n'est saisi ici : corriger une écriture,
- * c'est corriger l'opération d'origine.
+ * c'est corriger l'opération d'origine. Seules exceptions, les opérations
+ * diverses de reprise passées par une commande (EcritureDiverse).
  *
  * Les numéros de comptes suivent le plan SYSCOHADA révisé ; leur choix
  * fin (sous-comptes) reste à valider avec le cabinet comptable.
@@ -148,6 +150,9 @@ final class JournalComptable
             array_push($journaux['achats'], ...self::ecrituresAchat($achat));
         }
         array_push($journaux['od'], ...self::ecrituresDotations($this->dotations($debut, $fin)));
+        foreach ($this->ecrituresDiverses($debut, $fin) as $e) {
+            $journaux['od'][] = self::ligne($e->getDate(), $e->getPiece(), $e->getCompte(), $e->getTiers(), $e->getLibelle(), $e->getDebit(), $e->getCredit(), '411' === $e->getCompte() ? self::lettrage($e->getCommande()) : null);
+        }
         foreach ($this->soldesOuverture($debut, $fin) as $solde) {
             array_push($journaux['an'], ...self::ecrituresSoldeOuverture($solde));
         }
@@ -487,6 +492,21 @@ final class JournalComptable
             ->setParameter('types', [MouvementSoldeClient::UTILISATION, MouvementSoldeClient::RETOUR])
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<EcritureDiverse> */
+    private function ecrituresDiverses(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('e', 'commande')
+            ->from(EcritureDiverse::class, 'e')
+            ->leftJoin('e.commande', 'commande')
+            ->andWhere('e.date BETWEEN :debut AND :fin')
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->orderBy('e.id', 'ASC')
             ->getQuery()
             ->getResult();
     }

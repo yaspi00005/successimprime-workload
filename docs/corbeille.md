@@ -152,6 +152,8 @@ Les devis et les commandes supprimés restent cachés en base après la purge, c
 
 Chaque restauration (action « restauration ») et chaque suppression définitive (action « purge ») est notée dans le journal d'activité. L'entrée garde le libellé, le nombre d'éléments, la date de la suppression et la personne qui a fait le geste. Pour la purge de la nuit, cette personne est la tâche automatique.
 
+**La direction est prévenue** (réponse de Yaya du 18/10/2026) quand quelqu'un vide une entrée pour de bon depuis l'écran : une notification « Corbeille : … supprimé pour de bon par … » arrive à chaque compte de la Direction (sauf la personne qui l'a fait), avec un lien vers la corbeille. La purge automatique des entrées de plus de 30 jours ne notifie personne (elle reste au journal).
+
 ### Sur le site en ligne
 
 Ce que les clients retirent de leur espace part dans la corbeille du site en ligne :
@@ -189,3 +191,11 @@ Un fichier retiré par le client et reçu par la synchronisation est aussi cach�
   - `tests/Unit/Service/Corbeille/` : copie, exclusions, secrets, restauration avec ou sans fiche liée, purge et fichiers, journal, listes ;
   - `tests/Unit/Security/CorbeilleVoterTest.php` ;
   - `tests/Unit/Twig/ConfirmationSuppressionsTest.php`.
+
+## Supprimer un client (réponse de Yaya du 18/10/2026)
+
+Sur la fiche d'un client (colonne de gauche, sous « Modifier »), la **Direction** a un bouton rouge « Supprimer ». La fenêtre de confirmation demande « Supprimer le client … ? » et rappelle qu'il restera 30 jours dans la corbeille ; la fiche y part avec ses adresses, contacts et relevé de compte, et la Direction peut la restaurer depuis Réglages › Corbeille.
+
+- Les autres comptes ne voient pas le bouton, et le serveur refuse leur demande (route `app_clients_delete`, `ROLE_ADMIN`, jeton `supprimer-client-<id>`).
+- Un client qui a des commandes, des devis (même supprimés) ou des produits à son nom ne peut pas être supprimé : la fiche l'explique à la place du bouton, et la suppression en masse le garde. On le **bloque** à la place (liste des clients, « Bloquer »).
+

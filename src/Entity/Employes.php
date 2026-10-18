@@ -264,8 +264,9 @@ public function setUser(?User $user): static
     private ?string $joursTravail = null;
 
     /**
-     * Horaire type du calcul des points (HoraireType : accueil, atelier).
-     * Vide : celui du poste. Des horaires propres passent avant.
+     * Horaire type du calcul des points (HoraireType : accueil, atelier,
+     * libre = sans heure fixe). Vide : celui du poste ou du rôle. Des
+     * horaires propres passent avant, sauf « sans heure fixe ».
      */
     #[ORM\Column(length: 10, nullable: true)]
     private ?string $horaireType = null;
@@ -291,7 +292,7 @@ public function setUser(?User $user): static
     public function getHeureFin(): ?string { return $this->heureFin; }
     public function getJoursTravail(): ?string { return $this->joursTravail; }
     public function getHoraireType(): ?string { return $this->horaireType; }
-    public function setHoraireType(?string $type): static { $this->horaireType = isset(HoraireType::LIBELLES[(string) $type]) ? $type : null; return $this; }
+    public function setHoraireType(?string $type): static { $this->horaireType = isset(HoraireType::CHOIX[(string) $type]) ? $type : null; return $this; }
 
     /** @param list<int>|null $jours */
     public function setHoraires(?string $debut, ?string $fin, ?array $jours): static

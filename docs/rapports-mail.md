@@ -6,11 +6,11 @@ Construit le 18/10/2026 sur l'ERP local, à la demande de Yaya (16/10) : « Il f
 
 | Rapport | Part (par défaut) | Période | Comparé à |
 |---|---|---|---|
-| Du jour | chaque jour d'ouverture à 20 h | la journée (0 h – 24 h) | le même jour de la semaine d'avant (un samedi avec le samedi d'avant) |
+| Du jour | à minuit (0 h), après chaque jour d'ouverture | la journée qui vient de finir (0 h – 24 h) | le même jour de la semaine d'avant (un samedi avec le samedi d'avant) |
 | De la semaine | chaque lundi à 7 h | la semaine passée, du lundi au dimanche (semaine ISO) | la semaine d'avant |
 | Du mois | le 1er à 7 h | le mois passé | le mois d'avant |
 
-Une heure du rapport du jour avant midi (par exemple 7 h) l'envoie le lendemain matin pour la veille, journée finie (le dimanche matin pour le samedi) ; à partir de midi, il part le jour même pour la journée en cours, chiffres arrêtés à l'heure d'envoi.
+Réponse de Yaya du 18/10/2026 : le rapport du jour part **à minuit** (00:00), pour la journée qui vient de finir (le samedi à minuit, c'est-à-dire dimanche 0 h, pour le samedi). Toute heure avant midi (0 h, 7 h) l'envoie ainsi le lendemain pour la veille, journée finie ; une heure à partir de midi (20 h) l'enverrait le jour même pour la journée en cours, chiffres arrêtés à l'heure d'envoi. La migration `Version20261018175000` passe à minuit une installation restée sur 20 h (une autre heure choisie à la main est gardée).
 
 Les jours et heures se changent dans Réglages › Paramètres › tuile **Rapports par e-mail** (Direction) : chaque rapport oui ou non, l'heure, le jour de la semaine, le jour du mois (1 à 28), « seulement les jours d'ouverture » pour le rapport du jour (jours travaillés et jours fériés de la tuile Horaires), le PDF joint, et l'adresse de l'ERP dans l'atelier (pour le bouton « Ouvrir dans l'ERP »).
 
@@ -37,8 +37,10 @@ Le sujet ne contient aucun montant (« Rapport du jour · samedi 17 octobre 2026
 
 ## Destinataires
 
+Réponse de Yaya du 18/10/2026 : **la direction seulement**.
+
 - Tant que la Direction n'a rien choisi : les comptes actifs de la **Direction** qui ont une adresse e-mail sur leur fiche employé.
-- Accueil › **Rapports par e-mail** › Destinataires (Direction seulement) : cocher les comptes qui reçoivent les rapports. Seuls les comptes actifs qui ont le droit « Chiffre d'affaires global » se cochent ; les autres sont repliés sous la liste. Le serveur refuse un compte sans ce droit même si on force le formulaire. « Revenir à la direction » remet le choix par défaut. Le changement est gardé dans le journal des Réglages.
+- Accueil › **Rapports par e-mail** › Destinataires (Direction seulement) : cocher, parmi les comptes de la Direction, ceux qui reçoivent les rapports. Les autres comptes (comptable, caisse…) sont repliés sous la liste et ne se cochent pas ; le serveur refuse un compte hors de la Direction même si on force le formulaire, et un compte coché avant le 18/10 qui n'est pas de la Direction ne reçoit plus rien. Ces comptes gardent l'aperçu de leur propre version, selon leurs droits. « Revenir à la direction » remet le choix par défaut. Le changement est gardé dans le journal des Réglages.
 - Au moment de chaque envoi, le droit et l'adresse sont relus : un compte désactivé ou qui a perdu le droit ne reçoit plus rien, même s'il est coché.
 - L'adresse est celle de la fiche employé. Un destinataire coché sans adresse apparaît « Sans adresse e-mail » dans l'historique.
 
@@ -91,7 +93,7 @@ Après avoir réglé la boîte : `php bin/console cache:clear`, puis « M'envoye
 
 ## Le lien vers l'ERP
 
-Le bouton « Ouvrir dans l'ERP » mène à l'aperçu de la période, à l'adresse réglée dans la tuile (par exemple `http://192.168.1.10/successImprim/public`). Il ne fonctionne que sur le réseau de l'atelier : le pied de l'e-mail le dit. Sans adresse réglée, les envois automatiques n'ont pas de bouton (un essai prend l'adresse d'où il a été demandé).
+Le bouton « Ouvrir dans l'ERP » mène à l'aperçu de la période, à l'adresse réglée dans la tuile : par défaut `http://192.168.10.65`, l'adresse de l'ERP dans l'atelier (réponse de Yaya du 18/10/2026), modifiable dans la tuile si l'ERP change de place ou s'ouvre dans un sous-dossier. Il ne fonctionne que sur le réseau de l'atelier : le pied de l'e-mail le dit. Sans adresse réglée, les envois automatiques n'ont pas de bouton (un essai prend l'adresse d'où il a été demandé).
 
 ## Rapport de la semaine (notification)
 

@@ -218,6 +218,8 @@
 	{% block vendor_javascripts %}{% endblock %}
 	<script src="{{ asset('theme/js/custom.min.js') }}"></script>
 	<script src="{{ asset('theme/js/dlabnav-init.js') }}"></script>
+	{# Fenêtre de confirmation des suppressions et actions sensibles (data-confirmer, docs/corbeille.md). #}
+	<script src="{{ asset('js/confirmation.js') }}" data-css="{{ asset('css/confirmation.css') }}"></script>
 	{# admin.js charge les filtres des tableaux seulement sur les pages qui ont une liste (docs/filtres-tableaux.md). #}
 	<script src="{{ asset('js/admin.js') }}" data-filtres-js="{{ asset('js/filtres-tableaux.js') }}" data-filtres-css="{{ asset('css/filtres-tableaux.css') }}" data-filtres-compte="{{ app.user ? app.user.id }}"></script>
 	{% block javascripts %}{% endblock %}

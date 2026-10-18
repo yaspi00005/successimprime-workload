@@ -153,7 +153,7 @@
 		</aside>
 	</form>
 	{% if not nouvelle %}
-		<form method="post" action="{{ path('app_planning_echeance_arreter', {id: e.id}) }}" class="si-pl-arreter" onsubmit="return confirm('Arrêter cette échéance ? Ses tâches futures non commencées seront retirées.');">
+		<form method="post" action="{{ path('app_planning_echeance_arreter', {id: e.id}) }}" class="si-pl-arreter" data-confirmer="Arrêter cette échéance ? Ses tâches futures non commencées seront retirées.">
 			<input type="hidden" name="_token" value="{{ token }}">
 			<button class="btn btn-outline-danger btn-sm">Arrêter l'échéance</button>
 		</form>

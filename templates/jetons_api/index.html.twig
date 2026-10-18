@@ -43,7 +43,7 @@
 										<td><span class="si-pastille {{ etats[etat][1] }}">{{ etats[etat][0] }}</span></td>
 										<td class="text-end">
 											{% if etat != 'revoque' %}
-												<form method="post" action="{{ path('app_jetons_api_revoquer', {id: jeton.id}) }}" class="d-inline" onsubmit="return confirm('Révoquer « {{ jeton.nom|e('js') }} » ? L\'outil qui l\'utilise n\'aura plus accès.');">
+												<form method="post" action="{{ path('app_jetons_api_revoquer', {id: jeton.id}) }}" class="d-inline" data-confirmer="Révoquer « {{ jeton.nom }} » ? L'outil qui l'utilise n'aura plus accès.">
 													<input type="hidden" name="_token" value="{{ csrf_token('jeton-api-' ~ jeton.id) }}">
 													<button class="btn btn-sm si-btn-discret">Révoquer</button>
 												</form>

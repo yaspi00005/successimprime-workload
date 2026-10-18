@@ -229,9 +229,7 @@
 
 							{% if commande %}
 
-								<form method="post" action="{{ path( 'app_bons_livraison_creer_commande', { id: commande.id } ) }}" onsubmit="return confirm(
-																																								                            'Créer un bon de livraison pour cette commande ?'
-																																								                        );">
+								<form method="post" action="{{ path( 'app_bons_livraison_creer_commande', { id: commande.id } ) }}" data-confirmer="Créer un bon de livraison pour cette commande ?">
 
 									<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_creer_commande_' ~ commande.id ) }}">
 

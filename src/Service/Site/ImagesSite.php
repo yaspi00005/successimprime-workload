@@ -219,9 +219,17 @@ final class ImagesSite
         $this->nettoyer($image);
     }
 
+    /**
+     * Image supprimée : ses tailles publiques partent tout de suite ;
+     * l'original (hors de public/) reste jusqu'à la suppression définitive
+     * de la corbeille (docs/corbeille.md), qui le retire.
+     */
     public function apresSuppression(ImageSite $image): void
     {
-        $this->nettoyer($image, true);
+        $prefixe = $image->getPublicId()->toRfc4122().'-';
+        foreach (glob($this->dossierPublic.'/'.$prefixe.'*') ?: [] as $chemin) {
+            @unlink($chemin);
+        }
     }
 
     private function nomFichier(ImageSite $image, int $largeur): string

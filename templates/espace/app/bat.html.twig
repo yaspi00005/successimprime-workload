@@ -48,7 +48,7 @@
 		<form method="post">
 			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 			<div class="ec-boutons">
-				<button class="ec-bouton vert" name="action" value="valider" onclick="return confirm('Valider ce BAT ? L\'impression se fera tel quel.')">✓ Valider le BAT</button>
+				<button class="ec-bouton vert" name="action" value="valider" data-confirmer="Valider ce BAT ? L'impression se fera tel quel.">✓ Valider le BAT</button>
 				<details class="ec-modif">
 					<summary class="ec-bouton clair">Demander une modification</summary>
 					{% if rangs is not empty %}

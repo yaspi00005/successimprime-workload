@@ -65,7 +65,7 @@
 										<td><span class="si-pastille {{ etats[appareil.etat][1] }}">{{ etats[appareil.etat][0] }}</span></td>
 										<td class="text-end">
 											{% if appareil.etat == 'autorise' %}
-												<form method="post" action="{{ path('app_appareils_revoquer', {id: appareil.id}) }}" class="d-inline" onsubmit="return confirm('Révoquer « {{ appareil.nom|e('js') }} » ? Sa session en ligne s\'arrête tout de suite.');">
+												<form method="post" action="{{ path('app_appareils_revoquer', {id: appareil.id}) }}" class="d-inline" data-confirmer="Révoquer « {{ appareil.nom }} » ? Sa session en ligne s'arrête tout de suite.">
 													<input type="hidden" name="_token" value="{{ csrf_token('appareil-' ~ appareil.id) }}">
 													<button class="btn btn-sm si-btn-discret">Révoquer</button>
 												</form>

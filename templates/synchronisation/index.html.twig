@@ -71,7 +71,7 @@
 								<strong>{{ b.type }}</strong> · {{ b.creeLe|date('d/m H:i') }}
 								<div class="si-sy-message">{{ b.erreur }}</div>
 							</div>
-							<form method="post" action="{{ path('app_synchronisation_ecarter', {id: b.id}) }}" onsubmit="return confirm('Écarter cet élément ? Il ne sera plus envoyé.');">
+							<form method="post" action="{{ path('app_synchronisation_ecarter', {id: b.id}) }}" data-confirmer="Écarter cet élément ? Il ne sera plus envoyé.">
 								<input type="hidden" name="_token" value="{{ csrf_token('ecarter' ~ b.id) }}">
 								<button class="btn btn-outline-danger btn-xs">Écarter</button>
 							</form>

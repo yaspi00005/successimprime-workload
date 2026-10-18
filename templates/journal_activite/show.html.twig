@@ -36,6 +36,10 @@
 						<span class="badge badge-success ml-2">Création</span>
 					{% elseif journal.action == 'suppression' %}
 						<span class="badge badge-danger ml-2">Suppression</span>
+					{% elseif journal.action == 'restauration' %}
+						<span class="badge badge-success ml-2">Restauration</span>
+					{% elseif journal.action == 'purge' %}
+						<span class="badge badge-danger ml-2">Supprimé définitivement</span>
 					{% else %}
 						<span class="badge badge-warning ml-2">Modification</span>
 					{% endif %}

@@ -71,7 +71,7 @@
 			<ul class="ec-liste" style="margin-top:.5rem">
 				{% for item in mesFichiers|filter(i => not i.fichier.commandeDetail) %}
 					<li class="ec-ligne"><span>{{ item.fichier.nomOriginal }}</span>
-						<form method="post" action="{{ path('app_espace_fichier_retirer', {id: item.fichier.id}) }}" onsubmit="return confirm('Retirer ce fichier ?')">
+						<form method="post" action="{{ path('app_espace_fichier_retirer', {id: item.fichier.id}) }}" data-confirmer="Retirer ce fichier ?">
 							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}"><button class="ec-bouton-petit" style="background:var(--fond);color:var(--encre)">Retirer</button>
 						</form>
 					</li>

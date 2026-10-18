@@ -374,7 +374,7 @@
 		</div>
 	</form>
 
-	<form method="post" id="form-nouveau-lien" action="{{ path('app_ecran_tv_nouveau_lien') }}" onsubmit="return confirm('L\'écran actuel perdra l\'accès jusqu\'à ce que vous ouvriez le nouveau lien. Continuer ?');">
+	<form method="post" id="form-nouveau-lien" action="{{ path('app_ecran_tv_nouveau_lien') }}" data-confirmer="L'écran actuel perdra l'accès jusqu'à ce que vous ouvriez le nouveau lien. Continuer ?">
 		<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-lien') }}">
 	</form>
 
@@ -419,7 +419,7 @@
 								<button type="submit" name="sens" value="haut" class="btn btn-sm si-btn-discret" {{ loop.first ? 'disabled' }} aria-label="Monter">↑</button>
 								<button type="submit" name="sens" value="bas" class="btn btn-sm si-btn-discret" {{ loop.last ? 'disabled' }} aria-label="Descendre">↓</button>
 							</form>
-							<form method="post" action="{{ path('app_ecran_tv_supprimer_media') }}" onsubmit="return confirm('Retirer ce média de l\'écran TV ?');">
+							<form method="post" action="{{ path('app_ecran_tv_supprimer_media') }}" data-confirmer="Retirer ce média de l'écran TV ?">
 								<input type="hidden" name="_token" value="{{ csrf_token('ecran-tv-medias') }}">
 								<input type="hidden" name="fichier" value="{{ media.fichier }}">
 								<button type="submit" class="btn btn-sm si-btn-discret text-danger">Retirer</button>

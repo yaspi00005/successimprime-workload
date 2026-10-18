@@ -367,7 +367,7 @@
 		</form>
 
 		{% if not nouveau and type != 'pages' %}
-			<form method="post" action="{{ path('app_site_contenu_supprimer', {type: type, id: objet.id}) }}" class="si-sv-supprimer" onsubmit="return confirm('Supprimer définitivement ? Le site le retire à la prochaine synchronisation.');">
+			<form method="post" action="{{ path('app_site_contenu_supprimer', {type: type, id: objet.id}) }}" class="si-sv-supprimer" data-confirmer="Supprimer définitivement ? Le site le retire à la prochaine synchronisation.">
 				<input type="hidden" name="_token" value="{{ csrf_token('site-contenu-supprimer-' ~ type ~ '-' ~ objet.id) }}">
 				<button type="submit" class="btn btn-sm btn-outline-danger"><i class="far fa-trash-alt me-1"></i>Supprimer</button>
 			</form>

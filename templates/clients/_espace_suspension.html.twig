@@ -30,7 +30,7 @@
 				<small>Le {{ a.suspenduLe|date('d/m/Y à H:i') }}{{ a.suspenduPar ? ' par ' ~ a.suspenduPar|nom_pointage }} : {{ a.motif }}</small>
 			</div>
 			{% if modifiable %}
-				<form method="post" action="{{ path('app_clients_espace_retablir', {publicId: client.publicId, suspension: a.id}) }}" onsubmit="return confirm('Rétablir l\'accès à l\'espace client ?');">
+				<form method="post" action="{{ path('app_clients_espace_retablir', {publicId: client.publicId, suspension: a.id}) }}" data-confirmer="Rétablir l'accès à l'espace client ?">
 					<input type="hidden" name="_token" value="{{ csrf_token('espace-retablir-' ~ a.id) }}">
 					<button type="submit" class="btn btn-sm btn-outline-success">Rétablir</button>
 				</form>

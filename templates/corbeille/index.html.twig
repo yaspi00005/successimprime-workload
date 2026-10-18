@@ -1,0 +1,104 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Corbeille (docs/corbeille.md) : ce qui a été supprimé, gardé 30 jours
+	(Réglages › Paramètres › Corbeille) avant la suppression définitive. La liste ne montre que les fiches
+	des droits de la personne (CorbeilleVoter) ; les montants n'y figurent pas.
+#}
+
+{% block title %}Corbeille{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/corbeille.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_ADMIN') %}
+		<li class="nav-item si-masque-mobile"><a href="{{ path('app_reglages_parametres_index', {tuile: 'corbeille'}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-sliders-h me-1"></i>Durée</a></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="card si-bloc si-cb">
+		<p class="si-cb-intro">Ce qui est supprimé reste ici <b>{{ duree }} jour{{ duree > 1 ? 's' }}</b>, puis part pour de bon. Ouvrez un élément pour voir ce qui reviendra avec lui et le restaurer.</p>
+
+		<form method="get" class="si-cb-filtres" role="search" aria-label="Filtrer la corbeille">
+			<label class="si-cb-champ">
+				<span>Type</span>
+				<select name="type" class="form-select form-select-sm">
+					<option value="">Tous les types</option>
+					{% for table, libelle in choix.types %}
+						<option value="{{ table }}" {{ filtres.type == table ? 'selected' }}>{{ libelle }}</option>
+					{% endfor %}
+				</select>
+			</label>
+			<label class="si-cb-champ">
+				<span>Supprimé du</span>
+				<input type="date" name="du" value="{{ filtres.du }}" class="form-control form-control-sm">
+			</label>
+			<label class="si-cb-champ">
+				<span>au</span>
+				<input type="date" name="au" value="{{ filtres.au }}" class="form-control form-control-sm">
+			</label>
+			<label class="si-cb-champ">
+				<span>Par</span>
+				<select name="par" class="form-select form-select-sm">
+					<option value="">Tout le monde</option>
+					{% for nom in choix.par %}
+						<option value="{{ nom }}" {{ filtres.par == nom ? 'selected' }}>{{ nom }}</option>
+					{% endfor %}
+				</select>
+			</label>
+			<div class="si-cb-boutons">
+				<button type="submit" class="btn btn-primary btn-sm">Filtrer</button>
+				{% if filtre %}<a href="{{ path('app_corbeille_index') }}" class="btn btn-light btn-sm">Effacer</a>{% endif %}
+			</div>
+		</form>
+
+		{% if entrees is empty %}
+			<div class="si-cb-vide">
+				<i class="fas fa-trash-restore" aria-hidden="true"></i>
+				<p class="mb-0">{{ filtre ? 'Rien dans la corbeille pour ces filtres.' : 'La corbeille est vide.' }}</p>
+			</div>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0 si-cb-table">
+					<thead>
+						<tr>
+							<th>Élément</th>
+							<th>Supprimé le</th>
+							<th class="si-masque-mobile">Par</th>
+							<th class="si-masque-mobile">Avec</th>
+							<th>Part pour de bon</th>
+							<th class="text-end" data-sans-filtre><span class="visually-hidden">Ouvrir</span></th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for e in entrees %}
+							{% set entree = e.entree %}
+							{% set jours = ((e.expire|date('U') - aujourdhui|date('U')) / 86400)|round(0, 'floor') %}
+							<tr data-lien="{{ path('app_corbeille_voir', {id: entree.id}) }}">
+								<td>
+									<a href="{{ path('app_corbeille_voir', {id: entree.id}) }}" class="si-cb-libelle">{{ entree.libelle }}</a>
+									<small class="d-block text-muted">{{ entree.type }}{{ entree.estMasque ? ' · caché, toujours en place' }}</small>
+								</td>
+								<td class="text-nowrap" data-filtre-valeur="{{ entree.supprimeLe|date('d/m/Y H:i') }}">{{ entree.supprimeLe|date('d/m/Y') }} <small class="text-muted">{{ entree.supprimeLe|date('H:i') }}</small></td>
+								<td class="si-masque-mobile">{{ entree.supprimeParNom ?? 'Tâche automatique' }}</td>
+								<td class="si-masque-mobile" data-filtre-valeur="{{ e.elements }}">{{ e.elements > 0 ? e.elements ~ ' élément' ~ (e.elements > 1 ? 's') ~ ' lié' ~ (e.elements > 1 ? 's') : '—' }}</td>
+								<td class="text-nowrap" data-filtre-valeur="{{ e.expire|date('d/m/Y') }}">
+									{{ e.expire|date('d/m/Y') }}
+									<small class="d-block {{ jours <= 3 ? 'si-cb-bientot' : 'text-muted' }}">{{ jours <= 0 ? 'cette nuit' : (jours == 1 ? 'demain' : 'dans ' ~ jours ~ ' jours') }}</small>
+								</td>
+								<td class="text-end"><a href="{{ path('app_corbeille_voir', {id: entree.id}) }}" class="btn btn-light btn-sm" aria-label="Ouvrir {{ entree.libelle }}"><i class="fas fa-chevron-right" aria-hidden="true"></i></a></td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			{% if entrees|length >= limite %}
+				<p class="text-muted small mt-2 mb-0">Les {{ limite }} suppressions les plus récentes. Filtrez pour retrouver les plus anciennes.</p>
+			{% endif %}
+		{% endif %}
+	</div>
+{% endblock %}

@@ -11,7 +11,7 @@
 				{{ p.auteur ?? 'Le client' }}, le {{ p.creeLe|date('d/m/Y à H:i') }} :
 				{% for champ, v in p.champs %}{{ constant('App\\Entity\\PropositionClient::CHAMPS')[champ][0] ?? champ }} « {{ v.avant ?? '—' }} » → « {{ v.apres ?? '—' }} »{{ not loop.last ? ' ; ' }}{% endfor %}
 			</span>
-			<form method="post" action="{{ path('app_messages_clients_proposition', {id: p.id, decision: 'appliquer'}) }}" onsubmit="return confirm('Appliquer ce changement à la fiche ?')">
+			<form method="post" action="{{ path('app_messages_clients_proposition', {id: p.id, decision: 'appliquer'}) }}" data-confirmer="Appliquer ce changement à la fiche ?">
 				<input type="hidden" name="_token" value="{{ csrf_token('messages-clients') }}">
 				<button class="btn btn-success btn-sm">Appliquer</button>
 			</form>

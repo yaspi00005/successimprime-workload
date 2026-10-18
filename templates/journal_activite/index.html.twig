@@ -42,6 +42,8 @@
 							<option value="modification" {{ filtres.action == 'modification' ? 'selected' : '' }}>Modification</option>
 							<option value="suppression" {{ filtres.action == 'suppression' ? 'selected' : '' }}>Suppression</option>
 							<option value="doublon_bloque" {{ filtres.action == 'doublon_bloque' ? 'selected' : '' }}>Doublon bloqué</option>
+							<option value="restauration" {{ filtres.action == 'restauration' ? 'selected' : '' }}>Restauration (corbeille)</option>
+							<option value="purge" {{ filtres.action == 'purge' ? 'selected' : '' }}>Supprimé définitivement (corbeille)</option>
 						</select>
 					</div>
 
@@ -115,6 +117,10 @@
 										<span class="badge badge-danger">Suppression</span>
 									{% elseif journal.action == 'doublon_bloque' %}
 										<span class="badge badge-info">Doublon bloqué</span>
+									{% elseif journal.action == 'restauration' %}
+										<span class="badge badge-success">Restauration</span>
+									{% elseif journal.action == 'purge' %}
+										<span class="badge badge-danger">Supprimé définitivement</span>
 									{% else %}
 										<span class="badge badge-warning">Modification</span>
 									{% endif %}

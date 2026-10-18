@@ -112,6 +112,8 @@
 			document.dispatchEvent(new CustomEvent('si-invitation'));
 		});
 	</script>
+	{# Fenêtre de confirmation des suppressions (data-confirmer, docs/corbeille.md). #}
+	<script src="{{ asset('js/confirmation.js') }}" data-css="{{ asset('css/confirmation.css') }}"></script>
 	<script src="{{ asset('js/espace-coque.js') }}" defer></script>
 	{% if coque %}{% include 'assistant/_widget.html.twig' with {contexte: 'espace'} %}{% endif %}
 	{% block scripts %}{% endblock %}

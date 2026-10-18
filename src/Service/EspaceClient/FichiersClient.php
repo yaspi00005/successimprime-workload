@@ -5,6 +5,7 @@ namespace App\Service\EspaceClient;
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
 use App\Service\AnalyseFichierImpression;
+use App\Service\Corbeille\CaptureCorbeille;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -58,6 +59,7 @@ final class FichiersClient
         private readonly EntityManagerInterface $em,
         private readonly AnalyseFichierImpression $analyse,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
+        private readonly CaptureCorbeille $corbeille,
     ) {
     }
 
@@ -207,11 +209,10 @@ final class FichiersClient
         if (null !== $fichier->getCommandeDetail()) {
             throw new \DomainException('Ce fichier est dans une commande : l\'atelier le garde.');
         }
+        // Corbeille (docs/corbeille.md) : le fichier reste sur le disque jusqu'à la suppression définitive.
+        $this->corbeille->masquer($this->em, $fichier, 'actif', true);
         $fichier->setActif(false);
         $this->em->flush();
-        if (null !== ($chemin = $this->chemin($fichier))) {
-            @unlink($chemin);
-        }
     }
 
     public function chemin(CommandeDetailFichier $fichier): ?string

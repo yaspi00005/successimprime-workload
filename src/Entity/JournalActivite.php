@@ -19,6 +19,9 @@ class JournalActivite
     public const ACTION_MODIFICATION = 'modification';
     public const ACTION_SUPPRESSION = 'suppression';
     public const ACTION_DOUBLON_BLOQUE = 'doublon_bloque';
+    /** Corbeille (docs/corbeille.md) : fiche remise en place, ou supprimée pour de bon. */
+    public const ACTION_RESTAURATION = 'restauration';
+    public const ACTION_PURGE = 'purge';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

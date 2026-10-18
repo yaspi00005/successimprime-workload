@@ -445,6 +445,15 @@ final class CatalogueParametres
                 ],
                 'motsCles' => ['Sauvegarde de nuit', 'Base de données', 'Second disque', 'Restauration'],
             ],
+            // Corbeille (docs/corbeille.md) : la même durée vaut sur le site en ligne (CatalogueSynchro::REGLAGES_PUBLICS).
+            'corbeille' => [
+                'famille' => 'systeme', 'libelle' => 'Corbeille', 'icone' => 'fa-trash-restore',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_corbeille_index',
+                'champs' => [
+                    ['cle' => 'duree', 'type' => 'nombre', 'libelle' => 'Garder les fiches supprimées pendant', 'aide' => 'Puis elles sont supprimées pour de bon, avec leurs fichiers', 'suffixe' => 'jours', 'min' => 1, 'max' => 365, 'defaut' => 30],
+                ],
+                'motsCles' => ['Fiches supprimées', 'Restaurer une suppression', 'Suppression définitive', 'Annuler une erreur'],
+            ],
             'taches' => [
                 'famille' => 'systeme', 'libelle' => 'Tâches récurrentes', 'icone' => 'fa-calendar-alt',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_decaissement_recurrent_index', 'champs' => [],

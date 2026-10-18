@@ -59,7 +59,7 @@
 					<div class="si-bloc-tete"><h4>Annuler l'import</h4></div>
 					{% if blocages is empty %}
 						<p class="small text-muted">Rien de ce qu'il a enregistré n'a encore servi : l'annulation défait tout{{ soldes ? ', y compris les à-nouveaux en comptabilité' : '' }}. Le journal garde la trace de l'import.</p>
-						<form method="post" action="{{ path('app_import_annuler', {id: import.id}) }}" onsubmit="return confirm('Annuler l\'import n° {{ import.id }} ? Tout ce qu\'il a enregistré sera défait.');">
+						<form method="post" action="{{ path('app_import_annuler', {id: import.id}) }}" data-confirmer="Annuler l'import n° {{ import.id }} ? Tout ce qu'il a enregistré sera défait.">
 							<input type="hidden" name="_token" value="{{ csrf_token('import-annuler-' ~ import.id) }}">
 							<button class="btn btn-outline-danger btn-sm w-100"><i class="fas fa-undo me-1"></i>Annuler l'import</button>
 						</form>

@@ -1,0 +1,152 @@
+/*
+ * Corbeille (templates/corbeille, docs/corbeille.md).
+ */
+.si-cb-intro {
+  margin: 0 0 1rem;
+  color: #4A5468;
+  font-size: 0.9rem;
+}
+
+.si-cb-filtres {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.8rem;
+  margin-bottom: 1rem;
+}
+.si-cb-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  min-width: 9rem;
+}
+.si-cb-champ span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #5B6478;
+}
+.si-cb-boutons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.si-cb-vide {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: #6B7385;
+}
+.si-cb-vide i {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-size: 2rem;
+  color: #B8C2D6;
+}
+
+.si-cb-libelle {
+  font-weight: 600;
+  color: #12213A;
+  overflow-wrap: anywhere;
+}
+.si-cb-bientot {
+  color: #B45309;
+  font-weight: 600;
+}
+
+/* Détail */
+.si-cb-tete {
+  margin-bottom: 1.25rem;
+}
+.si-cb-type {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5B6478;
+}
+.si-cb-titre {
+  margin: 0 0 0.4rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #12213A;
+  overflow-wrap: anywhere;
+}
+.si-cb-quand {
+  margin: 0;
+  color: #4A5468;
+  font-size: 0.9rem;
+}
+.si-cb-note {
+  margin: 0.75rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: #EEF3FB;
+  color: #0F4590;
+  font-size: 0.85rem;
+}
+.si-cb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.si-cb-actions form {
+  margin: 0;
+}
+
+.si-cb-champs {
+  display: grid;
+  grid-template-columns: minmax(8rem, 35%) 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  font-size: 0.88rem;
+}
+.si-cb-champs dt {
+  font-weight: 600;
+  color: #5B6478;
+}
+.si-cb-champs dd {
+  margin: 0;
+  color: #12213A;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.si-cb-elements {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.si-cb-elements li {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #EDF0F5;
+  font-size: 0.9rem;
+}
+.si-cb-elements li:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 575.98px) {
+  .si-cb-champ {
+    flex: 1 1 calc(50% - 0.4rem);
+    min-width: 0;
+  }
+  .si-cb-boutons {
+    flex: 1 1 100%;
+  }
+  .si-cb-boutons .btn {
+    flex: 1;
+  }
+  .si-cb-actions form,
+  .si-cb-actions .btn {
+    width: 100%;
+  }
+  .si-cb-champs {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .si-cb-champs dd {
+    margin-bottom: 0.5rem;
+  }
+}

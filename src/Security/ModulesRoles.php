@@ -100,6 +100,14 @@ final class ModulesRoles
                 'detail' => 'pages, réalisations, avis, conseils, partenaires',
                 'droits' => ['ROLE_SITE_VITRINE'],
             ],
+            // Corbeille (docs/corbeille.md) : sur l'ERP local ; chacun n'y voit que les fiches de ses autres droits.
+            'corbeille' => [
+                'libelle' => 'Corbeille',
+                'detail' => 'fiches supprimées : restaurer, supprimer pour de bon',
+                'droits' => [Droits::CORBEILLE],
+                'lecture' => Droits::LECTURE_CORBEILLE,
+                'prefixes' => ['app_corbeille_'],
+            ],
             'reglages' => [
                 'libelle' => 'Réglages',
                 'detail' => 'utilisateurs, prix, sécurité',

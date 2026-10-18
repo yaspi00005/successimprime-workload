@@ -128,6 +128,8 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Sécurité', 'route' => 'app_appareils_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_appareils_', 'app_jetons_api_', 'app_sauvegardes_', 'app_synchronisation_']],
             ['libelle' => 'Écran TV', 'route' => 'app_ecran_tv_reglages', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_ecran_tv_']],
             ['libelle' => 'Site vitrine', 'route' => 'app_site_contenu_index', 'role' => 'ROLE_SITE_VITRINE', 'prefixes' => ['app_site_contenu_']],
+            // Corbeille (docs/corbeille.md) : la Direction et le droit « Corbeille », sur l'ERP local (CorbeilleVoter).
+            ['libelle' => 'Corbeille', 'route' => 'app_corbeille_index', 'role' => 'CORBEILLE', 'prefixes' => ['app_corbeille_']],
         ],
     ];
 
@@ -271,6 +273,7 @@ final class NavigationExtension extends AbstractExtension
         'app_site_contenu_' => 'reglages',
         'app_appareils_' => 'reglages',
         'app_sauvegardes_' => 'reglages',
+        'app_corbeille_' => 'reglages',
         'app_synchronisation_' => 'reglages',
         'app_entreprises_' => 'reglages',
         'app_reglages_parametres_' => 'reglages',

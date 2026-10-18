@@ -151,7 +151,7 @@
 								{% if not en_ligne %}
 									<td class="text-end">
 										{% if e != 'expire' %}
-											<form method="post" action="{{ path('app_promotions_code_basculer', {id: c.id}) }}"{% if c.active %} onsubmit="return confirm('Désactiver ce code ? Il ne servira plus ; les devis et commandes qui le portent le gardent.');"{% endif %}>
+											<form method="post" action="{{ path('app_promotions_code_basculer', {id: c.id}) }}"{% if c.active %} data-confirmer="Désactiver ce code ? Il ne servira plus ; les devis et commandes qui le portent le gardent."{% endif %}>
 												<input type="hidden" name="_token" value="{{ jeton }}">
 												<button class="btn btn-link btn-sm p-0 {{ c.active ? 'text-danger' }}">{{ c.active ? 'Désactiver' : 'Réactiver' }}</button>
 											</form>

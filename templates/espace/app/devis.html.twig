@@ -21,7 +21,7 @@
 				{% if d.statut == 'envoye' and not (peutValider ?? true) %}
 					<span class="ec-petit">À accepter par un valideur</span>
 				{% elseif d.statut == 'envoye' %}
-					<form method="post" action="{{ path('app_espace_devis_accepter', {id: d.id}) }}" onsubmit="return confirm('Accepter le devis {{ d.numero }} ({{ d.totalTtc|number_format(0, ',', ' ') }} F) ?')">
+					<form method="post" action="{{ path('app_espace_devis_accepter', {id: d.id}) }}" data-confirmer="Accepter le devis {{ d.numero }}{% if coque.montants %} ({{ d.totalTtc|number_format(0, ',', ' ') }} F){% endif %} ?" data-confirmer-bouton="Accepter">
 						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 						<button class="ec-bouton-petit">Accepter</button>
 					</form>

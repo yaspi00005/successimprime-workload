@@ -13,7 +13,7 @@
 			{% if gere %}
 				<div class="ec-ligne" style="margin-top:.6rem;justify-content:flex-start;gap:1rem">
 					<a class="ec-lien" href="{{ path('app_espace_adresses', {modifier: a.id}) }}#formulaire">Modifier</a>
-					<form method="post" action="{{ path('app_espace_adresse_supprimer', {id: a.id}) }}" onsubmit="return confirm('Retirer l\'adresse « {{ a.libelle|e('js') }} » ?')">
+					<form method="post" action="{{ path('app_espace_adresse_supprimer', {id: a.id}) }}" data-confirmer="Retirer l'adresse « {{ a.libelle }} » ?">
 						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 						<button type="submit" class="ec-lien" style="background:none;border:0;padding:0;color:var(--rouge);cursor:pointer">Retirer</button>
 					</form>

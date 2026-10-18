@@ -1,6 +1,6 @@
-# Clients (maquettes K01 à K06)
+# Clients (maquettes K01 à K06, fiche FC01 à FC04)
 
-Maquettes : `maquettes/clients/K01` à `K06` dans les fichiers du projet.
+Maquettes : `maquettes/clients/K01` à `K06`, puis `maquettes/fiche-client-3d/` (FC01 à FC04, 18/10/2026) pour la fiche, dans les fichiers du projet.
 
 ## Écrans
 
@@ -9,7 +9,7 @@ Maquettes : `maquettes/clients/K01` à `K06` dans les fichiers du projet.
 | K01 | Liste et recherche | `app_clients_index` (`/clients?vue=liste`) |
 | K06 | Vue cartes | `app_clients_index` (`/clients?vue=cartes`, gardée en cookie) |
 | K02 | Nouveau client, modifier | `app_clients_nouveau`, `app_clients_modifier` |
-| K03 | Fiche et historique d'activité | `app_clients_show` |
+| FC01 à FC04 | Fiche client (remplace K03 et l'ancienne fiche détaillée) | `app_clients_show` (`/clients/fiche/{publicId}`) |
 | K04 | Journal des modifications | `app_clients_journal` (export CSV avec `format=csv`) |
 | K05 | Ajout terrain (mobile) | `app_clients_nouveau?mode=terrain` (bouton « Nouveau » sur téléphone) |
 
@@ -50,7 +50,7 @@ Toutes les saisies passent par `src/Service/Clients/EditionClient.php`.
   - « Nouveau » : aucune commande.
   - « Actif » : une commande dans les 60 derniers jours.
   - « Inactif » : sinon.
-- **Historique (K03)** : il regroupe dans un même fil les éléments suivants, filtrables par catégorie :
+- **Historique (K03, onglet Historique de FC04)** : il regroupe dans un même fil les éléments suivants, filtrables par catégorie :
   - devis et commandes ;
   - paiements ;
   - relances, notes et actions faites ;
@@ -66,9 +66,49 @@ Toutes les saisies passent par `src/Service/Clients/EditionClient.php`.
 - **Suspendre l'accès à l'espace client** (bloc « Accès à l'espace client » de la fiche, droit Clients, ERP local) : tout le compte ou une personne (son numéro), avec un motif gardé à l'atelier ; « Rétablir » rend l'accès. Chaque geste est au journal de la fiche ; rien n'est effacé. Sans rapport avec le statut « Bloqué ». Voir docs/espace-client.md, « Suspendre l'accès à l'espace client ».
 - **Plusieurs interlocuteurs** : une entreprise a souvent deux ou trois personnes qui commandent. Le devis note « À l'attention de », la commande « Commandé par » (liste proposée : contacts de la fiche et noms déjà notés) ; la fiche les montre sous le numéro, dans les onglets Commandes (« par X ») et Devis (« pour X »). Voir docs/espace-client.md, « Plusieurs interlocuteurs pour une entreprise ».
 
+## Fiche client (FC01 à FC04)
+
+Une seule page, `templates/clients/fiche.html.twig`, nourrie par `src/Service/Clients/FicheClient.php` ; les calculs (panier moyen, plafond utilisé, CA par mois, délai de paiement, activité, satisfaction) sont dans `src/Service/Clients/CalculsFicheClient.php`, testés dans `tests/Unit/Service/Clients/CalculsFicheClientTest.php`. L'ancienne fiche détaillée (`app_clients_detail`) renvoie vers l'onglet « Factures et paiements ».
+
+**En-tête** : nom, pastilles (type, VIP si l'étiquette « VIP » est posée, secteur, Revendeur, espace client, statut), code, client depuis, lieu, NIF, responsable. Boutons « Message », « + Devis », « + Commande » (la nouvelle commande s'ouvre avec le client déjà choisi). Le menu « ⋯ » garde Appeler, WhatsApp, Modifier, Journal et Supprimer (Direction, seulement sans commande ni devis).
+
+**Onglets** (l'adresse garde l'onglet : `#commandes`, `#factures`… ; `#compte` et `#fidelite` restent valables) :
+
+| Onglet | Maquette | Contenu |
+|---|---|---|
+| Aperçu | FC01 | Chiffres clés (CA de l'année, panier moyen, solde dû, devis en attente, dernière commande), commandes en cours avec leur étape, CA par mois, contacts, conditions commerciales, coordonnées, plafond de crédit, notes internes, fidélité, accès à l'espace client |
+| Commandes | | Toutes les commandes, avec l'étape et ce qui est payé |
+| Devis | | Tous les devis non supprimés, statut et validité |
+| Factures et paiements | FC02 | Solde, échu, payé dans l'année, délai moyen ; sous-onglets Échéancier, Paiements, Documents émis, Relances, Compte du client ; relevé de compte et impayés en PDF ; relances automatiques prévues, derniers paiements, règle de blocage |
+| Produits | FC03 | « Mes produits » du client (ProduitClient) : caractéristiques, fichier lié, prix, nombre de commandes ; « Commander pour lui » ; dossier sur le serveur et charte du client |
+| Fichiers | | Fichiers du dossier client et BAT |
+| Messages | | Conversations (une par sujet), selon le droit Messagerie de chaque conversation |
+| Historique | FC04 | Fil filtrable (commandes, paiements, messages, appels et notes, fichiers et BAT, modifications), « + Noter un appel », activité sur 12 mois, satisfaction (sondages), délais de réponse |
+
+**Conditions commerciales** : délai de paiement, acompte (ou « dispensé d'acompte »), grille de prix et remise, plafond de crédit, envoi des factures. Le plafond et la remise étaient déjà sur la fiche ; deux champs ont été ajoutés (migration `Version20261018171810`) et se règlent dans « Modifier » :
+- **Factures envoyées par** (`facturesCanaux`) : WhatsApp, e-mail, papier, plusieurs possibles. Le destinataire est le contact « Factures » de la fiche, sinon le contact principal.
+- **Charte du client** (`charteCouleurs`, `charteTexte`) : jusqu'à 6 couleurs (#RRGGBB) et une consigne, montrées dans l'onglet Produits pour le prépresse.
+
+Ces champs restent dans l'ERP local : ils ne partent pas vers le site.
+
+**Plafond de crédit** : jauge de ce que le client doit sur son plafond (orange dès 60 %, rouge dès 90 % ou au-delà du plafond). La règle de blocage montrée est celle appliquée à la production (`ControleCreditClientService`) : une commande ne part pas en production si ce qui reste dû sur les commandes précédentes dépasse le plafond. Boutons « Relancer » (droit Factures, ouvre les créances du client) et « Encaisser » (droit Encaisser, ouvre la caisse sur le client).
+
+**Notes internes** : notes de l'équipe (`NoteClient`), sous l'observation épinglée de la fiche. Jamais montrées au client, ni dans l'espace client, ni envoyées au site.
+
+**Commander pour lui** (onglet Produits, droit Commandes) : choisir la quantité (et la taille pour un produit au m²) crée une commande au comptoir « à confirmer », au nom du client, avec la ligne du produit (même calcul que « Mes produits » dans l'espace client). La commande s'ouvre ensuite pour être vérifiée et confirmée. Route `app_clients_produit_commander`.
+
+**Droits sur la fiche** : tout le monde avec le droit Clients voit la fiche ; ce qui suit ne s'affiche qu'avec le droit voulu, sans trou dans la page :
+- CA, panier moyen et barres du CA par mois : `ROLE_STATS_VENTES` (sinon le nombre de commandes de l'année) ;
+- solde, échu, plafond, échéancier, paiements, relances, colonne « Payé », paiements et relances de l'historique, lignes du journal touchant au solde, au plafond ou au bonus : `ROLE_PAIEMENT_VOIR` (sinon l'onglet « Factures et paiements » ne montre que les documents émis) ;
+- compte du client : `ROLE_PAIEMENT_VOIR` et `ROLE_PAIEMENT_ENCAISSER` ;
+- liens vers commandes, devis, factures : droits de ces modules ; « Réglages » des relances et « Supprimer » : Direction.
+
+**Démo** : `app:fiche-client:demo` (lancée par `app:demo`) complète Salon Espoir (DEMO-0002) : VIP, factures par WhatsApp et e-mail à la comptable (contact « Factures »), charte, trois notes internes. Avec `demo.seydou` (graphiste, sans Paiements ni Stats) la même fiche s'affiche sans aucun montant de paiement ni CA.
+
 ## Reste à faire
 
 - La recherche dans les noms et les numéros des contacts : aujourd'hui, elle ne porte que sur la fiche.
-- La note de satisfaction (KPI de K03), qui viendra avec les sondages (J5).
 - Les modifications faites en ligne qui attendent leur validation sur l'ERP local : elles dépendent de la synchronisation (J4).
+- L'acompte qui dépend du montant de la commande (« 50 % au-delà de 500 000 F » de FC01) : un seul pourcentage par client aujourd'hui.
+- Les avoirs (FC02) : l'application n'en émet pas encore ; le sous-onglet montre les documents émis (devis, factures, reçus).
 - Un écran pour accepter ou refuser les demandes à la direction. Pour l'instant, la direction modifie la fiche depuis la notification.

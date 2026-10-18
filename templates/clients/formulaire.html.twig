@@ -156,6 +156,17 @@
 						<span class="form-check-label"><b>Dispensé d'acompte</b> · ce client valide ses commandes sans rien payer d'avance (panier, commande en ligne, devis accepté, comptoir) : la commande part directement en production.</span>
 					</label>
 				</div>
+				{# Envoi des factures (fiche client, FC01) : la personne est le contact « Factures », sinon le principal. #}
+				<fieldset class="si-cf-champ si-cf-canaux">
+					<span>Factures envoyées par</span>
+					<input type="hidden" name="c[facturesCanaux][]" value="">
+					<div>
+						{% for k, l in constant('App\\Entity\\Clients::CANAUX_FACTURES') %}
+							<label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="c[facturesCanaux][]" value="{{ k }}"{{ k in v.facturesCanaux|default([]) ? ' checked' }}> <span class="form-check-label">{{ l|capitalize }}</span></label>
+						{% endfor %}
+					</div>
+					<small class="text-muted">À la personne dont le rôle est « Factures » dans les contacts (sinon le contact principal).</small>
+				</fieldset>
 				<p class="si-cf-aide">Grille Revendeur (B2B) : seulement pour les gens du métier de l'impression, démarchés, qui connaissent les prix. Une entreprise, une ONG ou une administration reste au prix Standard et garde fidélité et promotions.</p>
 				<p class="si-cf-aide" data-avis-direction>
 					{% if direction %}Vous pouvez fixer toute remise et tout plafond, et dispenser d'acompte.{% else %}Une remise au-delà de 10 %, un plafond au-delà de 500 000 F ou la dispense d'acompte (ou un acompte à 0 %) demandent la validation de la direction : la demande lui est envoyée et la fiche garde sa valeur actuelle en attendant.{% endif %}
@@ -196,6 +207,11 @@
 					<span>Note interne</span>
 					<textarea name="c[observation]" rows="3" class="form-control" placeholder="Visible par l'équipe seulement">{{ v.observation|default('') }}</textarea>
 				</label>
+				{# Charte du client (fiche client, onglet Produits) : pour le prépresse, jamais envoyée au site. #}
+				<div class="si-cf-ligne">
+					{{ m.champ('charteCouleurs', 'Couleurs de la charte', v.charteCouleurs|default(''), {placeholder: '#0F2A5C #C9A447 #FFFFFF', maxlength: 60}) }}
+					{{ m.champ('charteTexte', 'Logo, police, Pantone', v.charteTexte|default(''), {placeholder: 'logo-client.ai · police Montserrat · Pantone 2767 C', maxlength: 255}) }}
+				</div>
 				{% if v.besoin|default('') %}
 					<label class="si-cf-champ">
 						<span>Besoin noté</span>

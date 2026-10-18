@@ -1,0 +1,772 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Fiche client (maquettes FC01 à FC04 du 18/10/2026, docs/clients.md).
+	Onglets : Aperçu, Commandes, Devis, Factures et paiements, Produits,
+	Fichiers, Messages, Historique. Données : App\Service\Clients\FicheClient.
+	Droits : solde, paiements, plafond utilisé et relances avec « Paiements »
+	(voir_paiements) ; chiffre d'affaires et panier moyen avec « Statistiques
+	de ventes » (voir_ca) ; compte du client avec Paiements ou Encaissements
+	(compte). Les notes internes ne vont jamais au client ni au site en ligne.
+#}
+
+{% set nom = client.nomComplet %}
+{% set initiales = nom|split(' ')|filter(m => m)|slice(0, 2)|map(m => m|first|upper)|join('') %}
+{% set lecture = module_en_lecture(app.request.attributes.get('_route')) %}
+{% set voir_fidelite = is_granted('ROLE_COMMANDE') and not client.isB2B %}
+{% set mois_courts = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'] %}
+{% set mois_longs = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'] %}
+
+{% macro f(n) %}{{ n|number_format(0, ',', ' ') }} F{% endmacro %}
+{% macro pastille(texte, couleur) %}<span class="fc-pastille fc-p-{{ couleur|default('gris') }}">{{ texte }}</span>{% endmacro %}
+{% macro initiales(nom) %}{{ nom|split(' ')|filter(m => m)|slice(0, 2)|map(m => m|first|upper)|join('') }}{% endmacro %}
+
+{% block title %}{{ nom }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/fiche-client.css') }}" rel="stylesheet">
+	{% if compte %}<link href="{{ asset('css/compte-client.css') }}" rel="stylesheet">{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% import _self as m %}
+	{# « Envoyer l'accès à l'espace client » : caché en « Voir » (et refusé par LectureSeuleSubscriber). #}
+	{% set accesEspacePossible = acces_espace.possible and not lecture %}
+	{% if invitation and accesEspacePossible %}
+		<div class="si-cf-doublon si-fh-invitation">
+			<b><i class="fab fa-whatsapp me-1"></i>Espace client</b>
+			<span>Envoyez au client son accès sur WhatsApp : son identifiant, un code valable 48 h et le lien de la première connexion.</span>
+			<form method="post" action="{{ path('app_clients_acces_espace', {publicId: client.publicId}) }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('acces-espace-' ~ client.id) }}">
+				<button type="submit" class="btn btn-success btn-sm">Envoyer l'accès</button>
+			</form>
+		</div>
+	{% endif %}
+	{% include 'clients/_proposition_client.html.twig' %}
+
+	<div class="fc">
+		{# ---------- En-tête : identité, responsable, actions ---------- #}
+		<header class="fc-tete">
+			<a href="{{ path('app_clients_index') }}" class="fc-retour" aria-label="Retour à la liste des clients"><i class="fas fa-chevron-left"></i></a>
+			<div class="fc-avatar" aria-hidden="true" style="background: {{ ['#0F4590', '#E8590C', '#0E7C66', '#15A34A', '#6B7280', '#DB2777', '#2563EB', '#7C2D12', '#DC2626'][client.id % 9] }}">{{ initiales ?: '?' }}</div>
+			<div class="fc-identite">
+				<h1>{{ nom }}</h1>
+				<p class="fc-badges">
+					<span class="fc-pastille fc-p-bleu">{{ client.typeCompteLabel }}</span>
+					{% for e in client.etiquettes %}
+						{% if e|lower == 'vip' %}<span class="fc-pastille fc-p-or">★ VIP</span>{% elseif e != client.secteur %}<span class="fc-pastille fc-p-gris">{{ e }}</span>{% endif %}
+					{% endfor %}
+					{% if client.secteur %}<span class="fc-pastille fc-p-gris">{{ client.secteur }}</span>{% endif %}
+					{% if client.isB2B %}<span class="fc-pastille fc-p-violet">Revendeur</span>{% endif %}
+					{% if acces_espace.connectes > 0 %}<span class="fc-pastille fc-p-vert">Espace client actif</span>{% elseif acces_espace.comptes > 0 %}<span class="fc-pastille fc-p-gris">Espace client créé</span>{% endif %}
+					<span class="fc-pastille {{ {actif: 'fc-p-vert', relance: 'fc-p-orange', inactif: 'fc-p-gris', nouveau: 'fc-p-bleu', bloque: 'fc-p-rouge'}[statut] }}">{{ constant('App\\Service\\Clients\\ListeClients::STATUTS')[statut] }}</span>
+				</p>
+				{% set lieu = [client.quartier, client.commune, client.ville]|filter(v => v)|join(', ') %}
+				<p class="fc-sous">
+					{{ client.code }}{% if client.createdAt %} · client depuis {{ mois_longs[client.createdAt|date('n') - 1] }} {{ client.createdAt|date('Y') }}{% endif %}{% if lieu %} · {{ lieu }}{% endif %}{% if client.nif %} · NIF {{ client.nif }}{% endif %}
+				</p>
+			</div>
+			<div class="fc-tete-droite">
+				{% if client.suiviPar %}
+					<span class="fc-responsable"><small>Responsable</small><span class="fc-mini-avatar" aria-hidden="true">{{ m.initiales(client.suiviPar|nom_pointage) }}</span><b>{{ client.suiviPar|nom_pointage }}</b></span>
+				{% endif %}
+				<div class="fc-actions">
+					<a href="#messages" class="btn fc-btn btn-sm" data-onglet="messages"><i class="far fa-comment me-1"></i>Message</a>
+					{% if is_granted('ROLE_DEVIS') %}<a href="{{ path('app_devis_new', {client: client.id}) }}" class="btn fc-btn btn-sm"><i class="fas fa-plus me-1"></i>Devis</a>{% endif %}
+					{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_new', {client: client.id}) }}" class="btn btn-danger btn-sm"><i class="fas fa-plus me-1"></i>Commande</a>{% endif %}
+					<details class="fc-menu">
+						<summary class="btn fc-btn btn-sm" aria-label="Plus d'actions"><i class="fas fa-ellipsis-h"></i></summary>
+						<div class="fc-menu-liste">
+							{% if client.telephone %}<a href="tel:+223{{ client.telephone|slice(-8) }}"><i class="fas fa-phone"></i>Appeler</a>{% endif %}
+							{% if whatsapp %}<a href="https://wa.me/{{ whatsapp }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i>WhatsApp</a>{% endif %}
+							<a href="{{ path('app_clients_modifier', {publicId: client.publicId}) }}"><i class="fas fa-pen"></i>Modifier la fiche</a>
+							<a href="{{ path('app_clients_journal', {publicId: client.publicId}) }}"><i class="fas fa-history"></i>Journal des modifications</a>
+							{# Supprimer le client : la Direction seulement, 30 jours dans la corbeille (Yaya, 18/10/2026). #}
+							{% if is_granted('ROLE_ADMIN') and suppression_impossible %}
+								<p class="si-fh-suppression-impossible"><i class="fas fa-info-circle me-1"></i>{{ suppression_impossible }}</p>
+							{% elseif is_granted('ROLE_ADMIN') %}
+								<form method="post" action="{{ path('app_clients_delete', {id: client.id}) }}" {{ confirmer_suppression('le client ' ~ nom, {detail: 'Ses commandes, devis et factures restent ; la fiche ne s\'affiche plus dans les listes.'}) }}>
+									<input type="hidden" name="_token" value="{{ csrf_token('supprimer-client-' ~ client.id) }}">
+									<button type="submit" class="fc-danger"><i class="far fa-trash-alt"></i>Supprimer le client</button>
+								</form>
+							{% endif %}
+						</div>
+					</details>
+				</div>
+			</div>
+		</header>
+
+		{# ---------- Onglets ---------- #}
+		{% set onglets = {
+			apercu: 'Aperçu',
+			commandes: 'Commandes · ' ~ (commandes|length + soldes_ouverture|length),
+			devis: 'Devis · ' ~ devis|length,
+			factures: 'Factures et paiements',
+			produits: 'Produits · ' ~ produits.liste|length,
+			fichiers: 'Fichiers',
+			messages: 'Messages' ~ (conversations is not empty ? ' · ' ~ conversations|length : ''),
+			historique: 'Historique'
+		} %}
+		<nav class="fc-onglets" role="tablist" aria-label="Fiche client">
+			{% for cle, libelle in onglets %}
+				<button type="button" role="tab" id="tab-{{ cle }}" aria-controls="panneau-{{ cle }}" aria-selected="{{ loop.first ? 'true' : 'false' }}"{{ loop.first ? '' : ' tabindex="-1"' }}>{{ libelle }}</button>
+			{% endfor %}
+		</nav>
+
+		{# ===================== APERÇU (FC01) ===================== #}
+		<section role="tabpanel" id="panneau-apercu" aria-labelledby="tab-apercu" class="fc-panneau">
+			<div class="fc-kpis">
+				{% if voir_ca %}
+					<article class="fc-carte fc-kpi">
+						<small>Chiffre d'affaires {{ kpi.annee }}</small>
+						<strong>{{ m.f(kpi.ca) }}</strong>
+						<span>{{ kpi.commandes_annee }} commande{{ kpi.commandes_annee > 1 ? 's' }}</span>
+					</article>
+					<article class="fc-carte fc-kpi">
+						<small>Panier moyen {{ kpi.annee }}</small>
+						<strong class="fc-t-vert">{{ kpi.commandes_annee > 0 ? m.f(kpi.panier_moyen) : '—' }}</strong>
+						<span>{% if kpi.panier_evolution is not null %}{{ kpi.panier_evolution >= 0 ? '+' : '' }}{{ kpi.panier_evolution }} % sur {{ kpi.annee - 1 }}{% else %}{{ kpi.commandes }} commande{{ kpi.commandes > 1 ? 's' }} en tout{% endif %}</span>
+					</article>
+				{% else %}
+					<article class="fc-carte fc-kpi">
+						<small>Commandes {{ kpi.annee }}</small>
+						<strong>{{ kpi.commandes_annee }}</strong>
+						<span>{{ kpi.commandes }} en tout</span>
+					</article>
+				{% endif %}
+				{% if voir_paiements %}
+					<article class="fc-carte fc-kpi">
+						<small>Solde à payer</small>
+						<strong class="{{ kpi.solde_du > 0 ? 'fc-t-rouge' : 'fc-t-vert' }}">{{ m.f(kpi.solde_du) }}</strong>
+						<span>{% if kpi.echu > 0 %}dont {{ m.f(kpi.echu) }} échus{% elseif kpi.solde_du == 0 %}à jour{% else %}rien d'échu{% endif %}</span>
+					</article>
+				{% endif %}
+				<article class="fc-carte fc-kpi">
+					<small>Devis en attente</small>
+					<strong>{{ kpi.devis_attente_nombre > 0 ? m.f(kpi.devis_attente) : '—' }}</strong>
+					<span>{{ kpi.devis_attente_nombre }} devis</span>
+				</article>
+				<article class="fc-carte fc-kpi">
+					<small>Dernière commande</small>
+					<strong>{{ kpi.derniere ? (kpi.derniere_jours|default(0) <= 0 ? 'aujourd’hui' : (kpi.derniere_jours == 1 ? 'hier' : 'il y a ' ~ kpi.derniere_jours ~ ' jours')) : '—' }}</strong>
+					<span>{% if kpi.derniere %}{{ kpi.derniere.numero }}{{ kpi.derniere.dateCommande ? ' · ' ~ kpi.derniere.dateCommande|date('d/m') }}{% else %}aucune commande{% endif %}</span>
+				</article>
+			</div>
+
+			<div class="fc-grille-apercu">
+				<div class="fc-col">
+					<section class="fc-carte">
+						<div class="fc-carte-tete"><h2>En cours</h2><a href="#commandes" data-onglet="commandes">Tout voir</a></div>
+						{% if en_cours is empty %}
+							<p class="fc-vide">Rien en cours : aucune commande ouverte ni devis en attente.</p>
+						{% else %}
+							<ul class="fc-encours">
+								{% for l in en_cours %}
+									{% set libelle = (l.statut == 'Acompte attendu' and not voir_paiements) ? 'En attente' : l.statut %}
+									<li>
+										{% if l.type == 'commande' and is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_show', {id: l.objet.id}) }}" class="fc-num">{{ l.numero }}</a>{% elseif l.type == 'devis' and is_granted('ROLE_DEVIS') %}<a href="{{ path('app_devis_show', {id: l.objet.id}) }}" class="fc-num">{{ l.numero }}</a>{% else %}<b class="fc-num">{{ l.numero }}</b>{% endif %}
+										<span class="fc-encours-titre">{{ l.titre }}</span>
+										<span class="fc-montant">{{ m.f(l.montant) }}</span>
+										{{ m.pastille(libelle, libelle == 'En attente' ? 'gris' : l.couleur) }}
+										<time>{{ l.date ? l.date|date('d/m') }}</time>
+									</li>
+								{% endfor %}
+							</ul>
+						{% endif %}
+					</section>
+
+					{% if voir_ca %}
+						{% set max_mois = max(ca_mois|merge([1])) %}
+						{% set mois_actuel = maintenant|date('n') %}
+						<section class="fc-carte">
+							<div class="fc-carte-tete"><h2>Chiffre d'affaires par mois · {{ kpi.annee }}</h2></div>
+							<div class="fc-barres" role="img" aria-label="Chiffre d'affaires par mois en {{ kpi.annee }}">
+								{% for i, v in ca_mois %}
+									<div class="fc-barre{{ i == mois_actuel ? ' fc-barre-actuelle' }}{{ i > mois_actuel ? ' fc-barre-future' }}" title="{{ mois_longs[i - 1]|capitalize }} : {{ v|number_format(0, ',', ' ') }} F">
+										<span style="height: {{ v > 0 ? max(4, (v * 100 / max_mois)|round) : 0 }}%"></span>
+										<small>{{ mois_courts[i - 1] }}</small>
+									</div>
+								{% endfor %}
+							</div>
+							<p class="fc-legende">{{ mois_longs[mois_actuel - 1]|capitalize }} en cours : {{ m.f(ca_mois[mois_actuel]) }}</p>
+						</section>
+					{% endif %}
+				</div>
+
+				<div class="fc-col">
+					<section class="fc-carte">
+						<div class="fc-carte-tete"><h2>Contacts</h2>{% if not lecture %}<a href="{{ path('app_clients_modifier', {publicId: client.publicId}) }}#contacts">+ Ajouter</a>{% endif %}</div>
+						{% if contacts is empty %}
+							<p class="fc-vide">{% if client.telephone %}<a href="tel:+223{{ client.telephone|slice(-8) }}">{{ client.telephone }}</a>{% if client.telephone2 %} · {{ client.telephone2 }}{% endif %}{% else %}Aucun contact.{% endif %}</p>
+						{% else %}
+							<ul class="fc-contacts">
+								{% for k in contacts %}
+									<li>
+										<span class="fc-mini-avatar fc-mini-grand" aria-hidden="true">{{ m.initiales(k.nom) }}</span>
+										<div>
+											<b>{{ k.nom }}</b>{% if k.role == 'principal' %} {{ m.pastille('Principal', 'bleu') }}{% endif %}
+											<small>{{ [k.fonction, k.role not in ['principal', 'autre'] ? (k.role == 'factures' ? 'reçoit les factures' : 'valide les BAT')]|filter(v => v)|join(' · ') }}</small>
+											{% if k.telephone %}<small><a href="tel:+223{{ k.telephone }}">+223 {{ k.telephoneAffiche }}</a></small>{% endif %}
+										</div>
+										{% if k.telephone and k.whatsapp %}<a href="https://wa.me/223{{ k.telephone }}" target="_blank" rel="noopener" class="fc-icone-lien" aria-label="WhatsApp à {{ k.nom }}"><i class="fab fa-whatsapp"></i></a>{% endif %}
+									</li>
+								{% endfor %}
+							</ul>
+						{% endif %}
+					</section>
+
+					<section class="fc-carte">
+						<div class="fc-carte-tete"><h2>Conditions commerciales</h2>{% if not lecture %}<a href="{{ path('app_clients_modifier', {publicId: client.publicId}) }}">Modifier</a>{% endif %}</div>
+						<dl class="fc-conditions">
+							<dt>Paiement</dt><dd>{{ client.delaiPaiementLabel ?: '—' }}{{ client.moyenPrefereLabel ? ' · ' ~ client.moyenPrefereLabel }}</dd>
+							<dt>Acompte</dt><dd>{{ client.sansAcompte ? 'dispensé d\'acompte' : (client.acompte is not null ? client.acompte ~ ' % à la commande' : 'selon le réglage de l\'atelier') }}</dd>
+							{% if voir_paiements %}<dt>Plafond de crédit</dt><dd>{{ client.plafondCredit ? m.f(client.plafondCredit) : 'aucun' }}</dd>{% endif %}
+							<dt>Tarif</dt><dd>grille {{ constant('App\\Service\\Clients\\EditionClient::GRILLES')[client.typeClient]|default(client.typeClient) }}{% if client.remiseHabituelle %} (−{{ client.remiseHabituelle|number_format(client.remiseHabituelle == client.remiseHabituelle|round ? 0 : 1, ',') }} %){% endif %}</dd>
+							<dt>Factures envoyées à</dt><dd>{{ contact_factures ? contact_factures.nom : '—' }}{{ client.facturesCanauxLabel ? ' · ' ~ client.facturesCanauxLabel }}</dd>
+						</dl>
+					</section>
+
+					<section class="fc-carte">
+						<div class="fc-carte-tete"><h2>Coordonnées</h2></div>
+						<dl class="fc-conditions">
+							{% if client.email %}<dt>E-mail</dt><dd><a href="mailto:{{ client.email }}">{{ client.email }}</a></dd>{% endif %}
+							{% set adresse = [client.quartier, client.commune, client.adresse, client.ville]|filter(v => v)|join(', ') %}
+							<dt>Adresse</dt><dd>{{ adresse ?: '—' }}{% if client.repere %} · repère : {{ client.repere }}{% endif %}{% if client.latitude and client.longitude %} · <a href="https://www.google.com/maps?q={{ client.latitude }},{{ client.longitude }}" target="_blank" rel="noopener">carte</a>{% endif %}</dd>
+							{% if client.nif or client.rccm %}<dt>Identifiants</dt><dd>{{ [client.nif ? 'NIF ' ~ client.nif, client.rccm ? 'RCCM ' ~ client.rccm]|filter(v => v)|join(' · ') }}</dd>{% endif %}
+							{% if client.origineLabel %}<dt>Origine</dt><dd>{{ client.origineLabel }}</dd>{% endif %}
+						</dl>
+					</section>
+				</div>
+
+				<div class="fc-col">
+					{% if voir_paiements and plafond.plafond > 0 %}
+						<section class="fc-carte fc-plafond fc-plafond-{{ plafond.niveau }}">
+							<p class="fc-plafond-titre">{% if plafond.niveau != 'ok' %}<i class="fas fa-exclamation-triangle me-1"></i>{% endif %}{{ plafond.depassement > 0 ? 'Plafond dépassé' : 'Plafond utilisé à ' ~ plafond.pourcentage ~ ' %' }}</p>
+							<span class="fc-jauge" role="img" aria-label="{{ plafond.pourcentage }} % du plafond utilisé"><span style="width: {{ plafond.jauge }}%"></span></span>
+							<p class="fc-plafond-detail">
+								{{ m.f(plafond.encours) }} sur {{ m.f(plafond.plafond) }}{% if kpi.plus_ancienne_echue %} · {{ kpi.plus_ancienne_echue.document }} échue depuis {{ kpi.plus_ancienne_echue.jours }} jour{{ kpi.plus_ancienne_echue.jours > 1 ? 's' }}{% endif %}
+							</p>
+							<div class="fc-plafond-actions">
+								{% if is_granted('ROLE_FACTURE') %}<a href="{{ path('app_creances_index', {q: nom}) }}" class="btn fc-btn btn-sm">Relancer</a>{% endif %}
+								{% if is_granted('ROLE_PAIEMENT_ENCAISSER') %}<a href="{{ path('app_caisse_index', {client: client.id}) }}" class="btn fc-btn btn-sm">Encaisser</a>{% endif %}
+							</div>
+						</section>
+					{% endif %}
+
+					<section class="fc-carte" id="notes-internes">
+						<div class="fc-carte-tete"><h2>Notes internes</h2>{% if not lecture %}<button type="button" class="fc-lien" data-basculer="fc-note-apercu">+ Note</button>{% endif %}</div>
+						{% if not lecture %}
+							<form method="post" action="{{ path('app_clients_note', {publicId: client.publicId}) }}" class="fc-note-form" id="fc-note-apercu" hidden>
+								<input type="hidden" name="_token" value="{{ csrf_token('note-client') }}">
+								<input type="hidden" name="type" value="note">
+								<input type="hidden" name="retour" value="apercu">
+								<textarea name="texte" class="form-control form-control-sm" rows="2" maxlength="2000" placeholder="Ce que l'équipe doit savoir sur ce client…" aria-label="Note interne" required></textarea>
+								<div class="fc-note-bas">
+									<label title="Rappel"><i class="far fa-clock me-1"></i><input type="date" name="rappel" min="{{ 'now'|date('Y-m-d') }}" aria-label="Date de rappel"></label>
+									<button type="submit" class="btn btn-primary btn-sm">Ajouter</button>
+								</div>
+							</form>
+						{% endif %}
+						<ul class="fc-notes">
+							{% if client.observation %}
+								<li class="fc-note-epinglee"><i class="fas fa-thumbtack" aria-hidden="true"></i><div><p>{{ client.observation }}</p><small>note de la fiche</small></div></li>
+							{% endif %}
+							{% for n in notes %}
+								<li><span class="fc-mini-avatar" aria-hidden="true">{{ n.auteur ? m.initiales(n.auteur|nom_pointage) : '?' }}</span><div><p>{{ n.texte }}</p><small>{{ n.auteur ? n.auteur|nom_pointage ~ ' · ' }}{{ n.le|date('d/m') }}{% if n.rappelLe %} · rappel le {{ n.rappelLe|date('d/m') }}{% endif %}</small></div></li>
+							{% endfor %}
+							{% if notes is empty and not client.observation %}<li class="fc-vide">Aucune note. Elles restent à l'atelier : le client ne les voit jamais.</li>{% endif %}
+						</ul>
+					</section>
+
+					{% if voir_fidelite %}
+						{% set fi = fidelite_client(client) %}
+						<section class="fc-carte fc-fidelite">
+							<div class="fc-carte-tete"><h2>Fidélité</h2><a href="#fidelite" data-ouvrir="fidelite">Relevé</a></div>
+							{% if fi.exclu %}
+								<p class="fc-vide">Client au prix Revendeur : hors programme de fidélité.</p>
+							{% else %}
+								<p><strong>{{ fi.resume.disponible|number_format(0, ',', ' ') }} pts</strong> <small>points = {{ m.f(fi.resume.disponibleF) }} à utiliser sur une commande</small></p>
+							{% endif %}
+						</section>
+					{% endif %}
+
+					{% set dernierAcces = acces_espace.dernier %}
+					<section class="fc-carte fc-espace">
+						{% if accesEspacePossible or dernierAcces %}
+							<div class="si-fh-espace">
+								<h3>Espace client</h3>
+								{% if dernierAcces %}
+									<p>Dernier accès envoyé le {{ dernierAcces.creeLe|date('d/m/Y à H:i') }}{{ dernierAcces.creePar ? ' par ' ~ dernierAcces.creePar|nom_pointage }}, {{ dernierAcces.expireLe < acces_espace.maintenant ? 'expiré le' : 'valable jusqu\'au' }} {{ dernierAcces.expireLe|date('d/m/Y à H:i') }}.</p>
+								{% else %}
+									<p>Le client se connecte avec son numéro. Envoyez-lui un code d'accès sur WhatsApp pour sa première connexion, ou s'il a oublié son mot de passe.</p>
+								{% endif %}
+								{% if accesEspacePossible %}
+									<form method="post" action="{{ path('app_clients_acces_espace', {publicId: client.publicId}) }}">
+										<input type="hidden" name="_token" value="{{ csrf_token('acces-espace-' ~ client.id) }}">
+										<button type="submit" class="btn btn-outline-success btn-sm"><i class="fab fa-whatsapp me-1"></i>Envoyer l'accès à l'espace client</button>
+									</form>
+								{% elseif acces_espace.empechement and dernierAcces %}
+									<p class="mb-0">{{ acces_espace.empechement }}</p>
+								{% endif %}
+							</div>
+						{% elseif acces_espace.empechement == constant('App\\Service\\EspaceClient\\AccesEspace::SANS_NUMERO') %}
+							<div class="si-fh-espace"><h3>Espace client</h3><p class="mb-0">{{ acces_espace.empechement }}</p></div>
+						{% endif %}
+						{% include 'clients/_espace_suspension.html.twig' %}
+					</section>
+				</div>
+			</div>
+
+			{% if voir_fidelite %}
+				<details class="fc-carte fc-details" id="fidelite">
+					<summary>Fidélité : solde, paliers et relevé des points</summary>
+					{% include 'fidelite/_fiche_client.html.twig' %}
+				</details>
+			{% endif %}
+		</section>
+
+		{# ===================== COMMANDES ===================== #}
+		<section role="tabpanel" id="panneau-commandes" aria-labelledby="tab-commandes" class="fc-panneau" hidden>
+			<div class="fc-carte">
+				{% if commandes is empty and soldes_ouverture is empty %}
+					<p class="fc-vide">Aucune commande.{% if is_granted('ROLE_COMMANDE') %} <a href="{{ path('app_commandes_new', {client: client.id}) }}">Créer la première</a>{% endif %}</p>
+				{% else %}
+					<table class="fc-table">
+						<thead><tr><th>Commande</th><th>Date</th><th>Travaux</th><th>Étape</th><th>Pour le</th><th class="text-end">Montant</th>{% if voir_paiements %}<th class="text-end">Payé</th>{% endif %}</tr></thead>
+						<tbody>
+							{# Solde repris à l'import : une dette, montrée seulement avec le droit Paiements. #}
+							{% for c in voir_paiements ? soldes_ouverture : [] %}
+								<tr>
+									<td data-label="Commande"><a href="{{ path('app_commandes_show', {id: c.id}) }}">Solde d'ouverture</a></td>
+									<td data-label="Date">{{ c.dateCommande ? c.dateCommande|date('d/m/Y') }}</td>
+									<td data-label="Travaux">Repris à l'import</td>
+									<td data-label="Étape">{{ m.pastille('Import', 'gris') }}</td>
+									<td data-label="Pour le">—</td>
+									<td data-label="Montant" class="text-end">{{ m.f(c.totalTtc) }}</td>
+									<td data-label="Payé" class="text-end">{{ m.f(c.totalPaye) }}</td>
+								</tr>
+							{% endfor %}
+							{% for c in commandes %}
+								{% set s = suivi[c.id]|default(null) %}
+								{% set libelle = s ? ((s.etape == 'acompte' and not voir_paiements) ? 'En attente' : s.libelle) : '' %}
+								<tr>
+									<td data-label="Commande">{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_show', {id: c.id}) }}">{{ c.numero }}</a>{% else %}<b>{{ c.numero }}</b>{% endif %}{% if c.demandeePar %}<small class="d-block">par {{ c.demandeePar }}</small>{% endif %}</td>
+									<td data-label="Date">{{ c.dateCommande ? c.dateCommande|date('d/m/Y') }}</td>
+									<td data-label="Travaux">{{ s ? s.produit ~ (s.autres > 0 ? ' + ' ~ s.autres) : '' }}</td>
+									<td data-label="Étape">{{ s ? m.pastille(libelle, libelle == 'En attente' ? 'gris' : s.couleur) }}</td>
+									<td data-label="Pour le">{{ c.dateLivraison ? c.dateLivraison|date('d/m') : '—' }}</td>
+									<td data-label="Montant" class="text-end">{{ m.f(c.totalTtc) }}</td>
+									{% if voir_paiements %}<td data-label="Payé" class="text-end">{{ m.f(c.totalPaye) }}</td>{% endif %}
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endif %}
+			</div>
+		</section>
+
+		{# ===================== DEVIS ===================== #}
+		<section role="tabpanel" id="panneau-devis" aria-labelledby="tab-devis" class="fc-panneau" hidden>
+			<div class="fc-carte">
+				{% if devis is empty %}
+					<p class="fc-vide">Aucun devis.{% if is_granted('ROLE_DEVIS') %} <a href="{{ path('app_devis_new', {client: client.id}) }}">Faire un devis</a>{% endif %}</p>
+				{% else %}
+					<table class="fc-table">
+						<thead><tr><th>Devis</th><th>Date</th><th>Objet</th><th>Statut</th><th class="text-end">Montant</th></tr></thead>
+						<tbody>
+							{% for d in devis %}
+								<tr>
+									<td data-label="Devis">{% if is_granted('ROLE_DEVIS') %}<a href="{{ path('app_devis_show', {id: d.id}) }}">{{ d.numero ?: '#' ~ d.id }}</a>{% else %}<b>{{ d.numero ?: '#' ~ d.id }}</b>{% endif %}{% if d.interlocuteur %}<small class="d-block">pour {{ d.interlocuteur }}</small>{% endif %}</td>
+									<td data-label="Date">{{ d.dateDevis ? d.dateDevis|date('d/m/Y') }}</td>
+									{% set lignes_devis = d.objet ? [] : d.devisDetails %}{% set premiere = lignes_devis|first %}
+									<td data-label="Objet" class="fc-objet" title="{{ d.objet }}">{{ d.objet ?: (premiere ? (premiere.designation ?: (premiere.produit ? premiere.produit.nom : 'Devis')) ~ (lignes_devis|length > 1 ? ' + ' ~ (lignes_devis|length - 1)) : '—') }}</td>
+									<td data-label="Statut">{{ m.pastille(constant('App\\Service\\Clients\\FicheClient::STATUTS_DEVIS')[d.statut]|default(d.statut), constant('App\\Service\\Clients\\FicheClient::COULEURS_DEVIS')[d.statut]|default('gris')) }}</td>
+									<td data-label="Montant" class="text-end">{{ m.f(d.totalTtc) }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endif %}
+			</div>
+		</section>
+
+		{# ===================== FACTURES ET PAIEMENTS (FC02) ===================== #}
+		<section role="tabpanel" id="panneau-factures" aria-labelledby="tab-factures" class="fc-panneau" hidden>
+			{% if voir_paiements %}
+				{% set ouvertes = echeancier|filter(l => l.reste > 0) %}
+				<div class="fc-kpis fc-kpis-4">
+					<article class="fc-carte fc-kpi"><small>Solde à payer</small><strong class="{{ kpi.solde_du > 0 ? 'fc-t-rouge' : 'fc-t-vert' }}">{{ m.f(kpi.solde_du) }}</strong><span>{{ kpi.ouvertes }} document{{ kpi.ouvertes > 1 ? 's' }} ouvert{{ kpi.ouvertes > 1 ? 's' }}</span></article>
+					<article class="fc-carte fc-kpi"><small>Échu</small><strong class="{{ kpi.echu > 0 ? 'fc-t-rouge' : '' }}">{{ m.f(kpi.echu) }}</strong><span>{% if kpi.plus_ancienne_echue %}{{ kpi.plus_ancienne_echue.document }} · {{ kpi.plus_ancienne_echue.jours }} jour{{ kpi.plus_ancienne_echue.jours > 1 ? 's' }}{% else %}rien en retard{% endif %}</span></article>
+					<article class="fc-carte fc-kpi"><small>Payé en {{ kpi.annee }}</small><strong>{{ m.f(finances.paye_annee) }}</strong><span>{{ finances.paiements_annee }} paiement{{ finances.paiements_annee > 1 ? 's' }}</span></article>
+					<article class="fc-carte fc-kpi"><small>Délai de paiement moyen</small><strong class="{{ finances.delai_moyen is not null and finances.jours_accordes is not null and finances.delai_moyen > finances.jours_accordes ? 'fc-t-orange' }}">{{ finances.delai_moyen is not null ? finances.delai_moyen ~ ' jour' ~ (finances.delai_moyen > 1 ? 's') : '—' }}</strong><span>conditions : {{ finances.jours_accordes is not null ? (finances.jours_accordes == 0 ? 'comptant' : finances.jours_accordes ~ ' jours') : 'non notées' }}</span></article>
+				</div>
+			{% endif %}
+
+			<div class="fc-grille-finances{{ voir_paiements ? '' : ' fc-seule' }}">
+				<div class="fc-carte">
+					<div class="fc-sous-tete">
+						<div class="fc-sous-onglets" role="tablist" aria-label="Factures et paiements">
+							{% set sous = voir_paiements ? {echeancier: 'Factures', paiements: 'Paiements · ' ~ finances.paiements|length, documents: 'Documents émis · ' ~ factures|length, relances: 'Relances · ' ~ finances.relances|filter(r => not r.prevue)|length} : {documents: 'Documents émis · ' ~ factures|length} %}
+							{% if compte %}{% set sous = sous|merge({compte: 'Compte du client'}) %}{% endif %}
+							{% for cle, libelle in sous %}
+								<button type="button" role="tab" id="sous-{{ cle }}" aria-controls="panneau-{{ cle }}" aria-selected="{{ loop.first ? 'true' : 'false' }}"{{ loop.first ? '' : ' tabindex="-1"' }}>{{ libelle }}</button>
+							{% endfor %}
+						</div>
+						{% if voir_paiements %}
+							<span class="fc-sous-actions">
+								<a href="{{ path('app_clients_pdf_commandes', {publicId: client.publicId}) }}" target="_blank" class="btn fc-btn btn-sm"><i class="fas fa-download me-1"></i>Relevé de compte</a>
+								{% if kpi.solde_du > 0 %}<a href="{{ path('app_clients_pdf_impayes', {publicId: client.publicId}) }}" target="_blank" class="btn fc-btn btn-sm">Impayés (PDF)</a>{% endif %}
+							</span>
+						{% endif %}
+					</div>
+
+					{% if voir_paiements %}
+						<div role="tabpanel" id="panneau-echeancier" aria-labelledby="sous-echeancier" data-sans-filtres>
+							{% if echeancier is empty %}<p class="fc-vide">Aucune facture ni commande à payer.</p>{% else %}
+								<table class="fc-table">
+									<thead><tr><th>Facture</th><th>Date</th><th>Objet</th><th class="text-end">Montant</th><th class="text-end">Payé</th><th class="text-end">Reste</th><th>Échéance</th><th>Statut</th></tr></thead>
+									<tbody>
+										{% for l in echeancier %}
+											<tr>
+												<td data-label="Facture">{% if l.facture and is_granted('ROLE_FACTURE') %}<a href="{{ path('app_factures_show', {id: l.facture.id}) }}"><b>{{ l.document }}</b></a>{% elseif is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_show', {id: l.commande.id}) }}"><b>{{ l.document }}</b></a>{% else %}<b>{{ l.document }}</b>{% endif %}</td>
+												<td data-label="Date">{{ l.date ? l.date|date('d/m') }}</td>
+												<td data-label="Objet" class="fc-objet" title="{{ l.objet }}">{{ l.objet }}</td>
+												<td data-label="Montant" class="text-end">{{ m.f(l.montant) }}</td>
+												<td data-label="Payé" class="text-end">{{ m.f(l.paye) }}</td>
+												<td data-label="Reste" class="text-end"><b>{{ l.reste > 0 ? m.f(l.reste) : '—' }}</b></td>
+												<td data-label="Échéance" class="{{ l.reste > 0 and l.jours > 0 ? 'fc-t-rouge fw-semibold' }}">{{ l.echeance ? l.echeance|date('d/m') : '—' }}</td>
+												<td data-label="Statut">{{ m.pastille(l.statut.libelle, {payee: 'vert', partielle: 'orange', a_echoir: 'bleu', echue: 'rouge', retard: 'rouge'}[l.statut.cle]|default('gris')) }}</td>
+											</tr>
+										{% endfor %}
+									</tbody>
+								</table>
+								{% if ouvertes|length > 1 %}<p class="fc-legende">Reste : {{ ouvertes|map(l => l.reste|number_format(0, ',', ' '))|join(' + ') }} = {{ m.f(ouvertes|reduce((t, l) => t + l.reste, 0)) }}</p>{% endif %}
+							{% endif %}
+						</div>
+
+						<div role="tabpanel" id="panneau-paiements" aria-labelledby="sous-paiements" hidden>
+							{% if finances.paiements is empty %}<p class="fc-vide">Aucun paiement.</p>{% else %}
+								<table class="fc-table">
+									<thead><tr><th>Date</th><th>Moyen</th><th>Pour</th><th>Encaissé par</th><th>État</th><th class="text-end">Montant</th></tr></thead>
+									<tbody>
+										{% for p in finances.paiements %}
+											<tr>
+												<td data-label="Date">{{ p.date ? p.date|date('d/m/Y') }}</td>
+												<td data-label="Moyen">{{ p.modeLabel }}{% if p.reference %}<small class="d-block">{{ p.reference }}</small>{% endif %}</td>
+												<td data-label="Pour">{{ p.commande ? p.commande.libelle }}</td>
+												<td data-label="Encaissé par">{{ p.encaissePar ? p.encaissePar|nom_pointage : '—' }}</td>
+												<td data-label="État">{{ m.pastille(p.statutLabel, p.estValide ? 'vert' : (p.estEnAttente ? 'orange' : 'gris')) }}</td>
+												<td data-label="Montant" class="text-end">{% if p.id %}<a href="{{ path('app_paiements_show', {id: p.id}) }}">{{ m.f(p.montant) }}</a>{% else %}{{ m.f(p.montant) }}{% endif %}</td>
+											</tr>
+										{% endfor %}
+									</tbody>
+								</table>
+							{% endif %}
+						</div>
+					{% endif %}
+
+					<div role="tabpanel" id="panneau-documents" aria-labelledby="sous-documents"{{ voir_paiements ? ' hidden' }}>
+						{% if factures is empty %}<p class="fc-vide">Aucune facture ni proforma.</p>{% else %}
+							<table class="fc-table">
+								<thead><tr><th>Document</th><th>Date</th><th>Type</th><th class="text-end">Montant</th>{% if voir_paiements %}<th class="text-end">Reste</th>{% endif %}</tr></thead>
+								<tbody>
+									{% for fa in factures %}
+										<tr>
+											<td data-label="Document">{% if is_granted('ROLE_FACTURE') %}<a href="{{ path('app_factures_show', {id: fa.id}) }}">{{ fa.numero ?: '#' ~ fa.id }}</a>{% else %}{{ fa.numero ?: '#' ~ fa.id }}{% endif %}{% if fa.estAnnulee %} {{ m.pastille('Annulée', 'rouge') }}{% endif %}</td>
+											<td data-label="Date">{{ fa.dateFacture ? fa.dateFacture|date('d/m/Y') }}</td>
+											<td data-label="Type">{{ fa.typeDocumentLabel }}</td>
+											<td data-label="Montant" class="text-end">{{ m.f(fa.totalTtc) }}</td>
+											{% if voir_paiements %}<td data-label="Reste" class="text-end">{{ fa.estProforma ? '—' : m.f(fa.resteAPayer) }}</td>{% endif %}
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						{% endif %}
+						{% if not voir_paiements %}<p class="fc-legende"><i class="fas fa-lock me-1"></i>Le solde, les paiements et les relances demandent le droit « Paiements ».</p>{% endif %}
+					</div>
+
+					{% if voir_paiements %}
+						<div role="tabpanel" id="panneau-relances" aria-labelledby="sous-relances" hidden>
+							{% set faites = finances.relances|filter(r => not r.prevue) %}
+							{% if faites is empty %}<p class="fc-vide">Aucune relance envoyée.</p>{% else %}
+								<ul class="fc-relances">
+									{% for r in faites %}
+										<li><time>{{ r.date|date('d/m/Y') }}</time><span>{{ r.automatique ? 'Rappel automatique' : 'Relance' }} {{ r.numero }} · {{ r.canal }}{{ r.par ? ' · ' ~ r.par }}</span></li>
+									{% endfor %}
+								</ul>
+							{% endif %}
+						</div>
+					{% endif %}
+
+					{% if compte %}
+						<div role="tabpanel" id="panneau-compte" aria-labelledby="sous-compte"{{ (voir_paiements or factures is not empty) ? ' hidden' }}>
+							{% include 'clients/_compte.html.twig' %}
+						</div>
+					{% endif %}
+				</div>
+
+				{% if voir_paiements %}
+					<aside class="fc-col">
+						<section class="fc-carte">
+							<div class="fc-carte-tete"><h2>Relances automatiques</h2>{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_regle_rappel_paiement_index') }}">Réglages</a>{% endif %}</div>
+							{% set dernieres = finances.relances|slice(0, 5) %}
+							{% if dernieres is empty %}<p class="fc-vide">Aucune relance, ni envoyée ni prévue.</p>{% else %}
+								<ul class="fc-relances">
+									{% for r in dernieres %}
+										<li><time>{{ r.date|date('d/m') }}</time><span>{{ r.automatique ? (r.prevue ? 'Rappel prévu' : 'Rappel') : 'Relance' }} {{ r.numero }} · {{ r.canal }}</span>{{ m.pastille(r.prevue ? 'Prévue' : 'Envoyée', r.prevue ? 'gris' : 'bleu') }}</li>
+									{% endfor %}
+								</ul>
+							{% endif %}
+						</section>
+						<section class="fc-carte">
+							<div class="fc-carte-tete"><h2>Derniers paiements</h2></div>
+							{% set derniers = finances.paiements|filter(p => p.estValide)|slice(0, 4) %}
+							{% if derniers is empty %}<p class="fc-vide">Aucun paiement reçu.</p>{% else %}
+								<ul class="fc-relances">
+									{% for p in derniers %}
+										<li><time>{{ p.date ? p.date|date('d/m') }}</time><span>{{ p.modeLabel }}<small class="d-block">{{ p.commande ? p.commande.libelle }}</small></span><b>{{ m.f(p.montant) }}</b></li>
+									{% endfor %}
+								</ul>
+							{% endif %}
+						</section>
+						<section class="fc-carte fc-regle">
+							<h2>Règle de blocage</h2>
+							{% if client.plafondCredit %}
+								<p>Au-delà de {{ m.f(client.plafondCredit) }} d'encours sur ses commandes précédentes, la production d'une nouvelle commande est bloquée, sauf bonus de plafond accordé par la direction.</p>
+								<p class="{{ plafond.depassement > 0 ? 'fc-t-rouge' : 'fc-t-vert' }} fw-semibold mb-0">{{ plafond.depassement > 0 ? 'Bloqué en ce moment : ' ~ m.f(plafond.depassement) ~ ' au-dessus du plafond.' : 'Pas bloqué : encore ' ~ m.f(plafond.disponible) ~ ' de crédit.' }}</p>
+							{% else %}
+								<p class="mb-0">Pas de plafond de crédit : chaque commande se règle selon l'acompte demandé.</p>
+							{% endif %}
+						</section>
+					</aside>
+				{% endif %}
+			</div>
+		</section>
+
+		{# ===================== PRODUITS (FC03) ===================== #}
+		<section role="tabpanel" id="panneau-produits" aria-labelledby="tab-produits" class="fc-panneau" hidden>
+			<div class="fc-produits-tete">
+				<p><b>Produits enregistrés du client</b> <small>visibles dans son espace « Mes produits » · commandables en 2 clics</small></p>
+				{% if is_granted('ROLE_COMMANDE') and not lecture %}<a href="{{ path('app_clients_produits', {publicId: client.publicId, produit: 'nouveau'}) }}" class="btn btn-danger btn-sm"><i class="fas fa-plus me-1"></i>Ajouter un produit pour le client</a>{% endif %}
+			</div>
+			<div class="fc-carte">
+				{% if produits.liste is empty %}
+					<p class="fc-vide">Aucun produit enregistré. Le client peut en ajouter depuis son espace, ou l'atelier depuis une ligne livrée.</p>
+				{% else %}
+					<table class="fc-table fc-table-produits" data-sans-filtres>
+						<thead><tr><th>Produit</th><th>Caractéristiques</th><th>Fichier traité lié</th><th>Statut</th><th>Commandé</th><th></th></tr></thead>
+						<tbody>
+							{% for p in produits.liste %}
+								{% set image = p.image ?? p.fichier %}
+								{% set lies = p.fichiersLies %}
+								{% set nb = produits.commandes[p.id]|default(0) %}
+								<tr>
+									<td data-label="Produit">
+										<span class="fc-produit">
+											<span class="fc-vignette">{% if image and (image.typeMime starts with 'image/') %}<img src="{{ path('app_fichier_visualiser', {id: image.id}) }}" alt="" loading="lazy">{% else %}{{ p.nom|slice(0, 2)|upper }}{% endif %}</span>
+											<span><b>{{ p.nom }}</b><small class="d-block">{{ p.reference }}</small></span>
+										</span>
+									</td>
+									<td data-label="Caractéristiques">{{ [p.type ? constant('App\\Entity\\ProduitClient::TYPES')[p.type]|default(p.type), produit_client_format(p)]|filter(v => v)|join(' · ') ?: '—' }}</td>
+									<td data-label="Fichier lié">
+										{% if p.etatLien == 'lie' and lies is not empty %}
+											<span class="fc-fichier"><i class="fas fa-paperclip"></i>{{ (lies|last).nom }}</span>{% if lies|length > 1 %}<small class="d-block">+ {{ lies|length - 1 }} autre{{ lies|length > 2 ? 's' }} taille{{ lies|length > 2 ? 's' }}</small>{% endif %}
+										{% elseif p.estPret %}
+											<span class="fc-fichier"><i class="fas fa-check"></i>BAT validé</span>
+										{% elseif p.origine != 'client' %}
+											<span class="fc-legende">fichier repris à chaque commande</span>
+										{% elseif is_granted('ROLE_PREPRESSE') %}
+											<a href="{{ path('app_produits_clients_prepresse_client', {publicId: client.publicId, produit: p.id}) }}" class="fc-t-orange">à lier par le prépresse</a>
+										{% else %}
+											<span class="fc-t-orange">à lier par le prépresse</span>
+										{% endif %}
+									</td>
+									<td data-label="Statut">
+										{% if p.etatLien == 'suspendu' %}{{ m.pastille('Nouvelle image · à relier', 'orange') }}
+										{% elseif p.estPret %}{{ m.pastille('✓ Prêt à imprimer', 'vert') }}
+										{% elseif p.origine == 'client' %}{{ m.pastille('⏳ Fichier en préparation', 'orange') }}
+										{% else %}{{ m.pastille('BAT à chaque commande', 'gris') }}{% endif %}
+									</td>
+									<td data-label="Commandé">{{ nb > 0 ? nb ~ ' fois' : 'jamais' }}</td>
+									<td class="fc-cellule-action">
+										{% if is_granted('ROLE_COMMANDE') and not lecture and produit_client_commandable(p) %}
+											<details class="fc-commander">
+												<summary>Commander pour lui</summary>
+												<form method="post" action="{{ path('app_clients_produit_commander', {publicId: client.publicId, id: p.id}) }}">
+													<input type="hidden" name="_token" value="{{ csrf_token('commander-produit-' ~ p.id) }}">
+													<label>Quantité<input type="number" name="quantite" min="1" step="1" value="{{ max(1, p.quantiteMinimum) }}" class="form-control form-control-sm" required></label>
+													{% set tailles = p.taillesValidees %}
+													{% if tailles|length > 0 %}
+														<label>Taille<select name="taille" class="form-select form-select-sm">{% for t in tailles %}<option value="{{ t.l }}x{{ t.h }}">{{ t.l|number_format(0, ',', ' ') }} × {{ t.h|number_format(0, ',', ' ') }} mm · prête</option>{% endfor %}</select></label>
+													{% endif %}
+													<button type="submit" class="btn btn-primary btn-sm">Créer la commande</button>
+													<small>La commande part « à confirmer » : vous la vérifiez avant de la lancer.</small>
+												</form>
+											</details>
+										{% elseif is_granted('ROLE_COMMANDE') %}
+											<a href="{{ path('app_clients_produits', {publicId: client.publicId, produit: p.id}) }}">Ouvrir</a>
+										{% endif %}
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endif %}
+			</div>
+
+			<div class="fc-grille-2">
+				<section class="fc-carte">
+					<h2 class="fc-h2">Dossier du client sur le serveur</h2>
+					<p class="fc-chemin"><code>{{ dossier.chemin ?? dossier.attendu }}</code></p>
+					{% if dossier.chemin %}
+						<p class="fc-dossiers">
+							<span><i class="fas fa-folder"></i><b>Produits</b> {{ dossier.lies }} fichier{{ dossier.lies > 1 ? 's' }} lié{{ dossier.lies > 1 ? 's' }}</span>
+							<span><i class="fas fa-folder"></i>{{ dossier.fichiers }} fichier{{ dossier.fichiers > 1 ? 's' }} dans le dossier</span>
+							{% for sd in dossier.sous_dossiers|slice(0, 3) %}<span><i class="fas fa-folder"></i><b>{{ sd }}</b></span>{% endfor %}
+							<span><i class="fas fa-folder"></i><b>BAT</b> {{ dossier.bat }} envoyé{{ dossier.bat > 1 ? 's' }}</span>
+						</p>
+					{% else %}
+						<p class="fc-legende">{{ dossier.regle ? 'Dossier pas encore créé sur le serveur : créez-le avec ce nom (il commence par le code du client).' : 'Le dossier des clients n\'est pas réglé (Paramètres › Atelier › Dossier des clients).' }} {{ dossier.lies }} fichier{{ dossier.lies > 1 ? 's' }} lié{{ dossier.lies > 1 ? 's' }} · {{ dossier.bat }} BAT envoyé{{ dossier.bat > 1 ? 's' }}.</p>
+					{% endif %}
+				</section>
+				<section class="fc-carte">
+					<div class="fc-carte-tete"><h2>Charte du client</h2>{% if not lecture %}<a href="{{ path('app_clients_modifier', {publicId: client.publicId}) }}">Modifier</a>{% endif %}</div>
+					{% if client.charteCouleurs is empty and not client.charteTexte %}
+						<p class="fc-vide">Aucune charte notée (couleurs, logo, police).</p>
+					{% else %}
+						<p class="fc-charte">
+							{% for c in client.charteCouleurs %}<span class="fc-couleur" style="background: {{ c }}" title="{{ c }}"></span>{% endfor %}
+							<span>{{ client.charteTexte }}</span>
+						</p>
+					{% endif %}
+				</section>
+			</div>
+		</section>
+
+		{# ===================== FICHIERS ===================== #}
+		<section role="tabpanel" id="panneau-fichiers" aria-labelledby="tab-fichiers" class="fc-panneau" hidden>
+			<div class="fc-carte">
+				{% if fichiers is empty %}<p class="fc-vide">Aucun fichier reçu pour ce client.</p>{% else %}
+					<ul class="fc-fichiers">
+						{% for fi in fichiers %}
+							<li>
+								<span class="fc-icone fc-i-fichiers"><i class="fas {{ fi.fichierSource ? 'fa-pen-ruler' : 'fa-file-image' }}"></i></span>
+								<div>
+									<a href="{{ path('app_fichier_visualiser', {id: fi.id}) }}" target="_blank" rel="noopener">{{ fi.nomOriginal ?: 'Fichier ' ~ fi.id }}</a>
+									<small>{{ fi.termineLe|date('d/m/Y') }} · {{ fi.commandeDetail.commande.numero }}{% if fi.fichierSource %} · version corrigée{% endif %}</small>
+								</div>
+								<span class="fc-taille">{{ fi.taille ? (fi.taille / 1048576)|number_format(1, ',', ' ') ~ ' Mo' : '' }}</span>
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</div>
+		</section>
+
+		{# ===================== MESSAGES ===================== #}
+		<section role="tabpanel" id="panneau-messages" aria-labelledby="tab-messages" class="fc-panneau" hidden>
+			<div class="fc-carte">
+				{% set visibles = conversations|filter(c => is_granted('MESSAGERIE_VOIR', c.conversation)) %}
+				{% if conversations is empty %}
+					<p class="fc-vide">Aucune conversation avec ce client. Une conversation s'ouvre depuis une commande ou un devis (bouton « Écrire au client »), ou quand le client écrit depuis son espace.</p>
+				{% else %}
+					<ul class="fc-conversations">
+						{% for c in visibles %}
+							{% set cv = c.conversation %}
+							<li>
+								<span class="fc-icone fc-i-messages"><i class="far fa-comments"></i></span>
+								<div>
+									<a href="{{ path('app_messages_clients_voir', {publicId: cv.publicId}) }}"><b>{{ cv|conversation_titre }}</b></a>
+									{% if c.dernier %}<p>{{ c.dernier.deLAtelier ? 'Vous' : c.dernier.auteur }} : « {{ c.dernier.texte|raccourcir(140) }} »</p>{% endif %}
+								</div>
+								<span class="fc-conv-droite">{{ m.pastille(cv.estCloturee ? 'Clôturée' : (cv.estEnAttente ? 'Réponse attendue' : 'Ouverte'), cv.estCloturee ? 'gris' : (cv.estEnAttente ? 'orange' : 'vert')) }}<time>{{ cv.dernierMessageLe ? cv.dernierMessageLe|date('d/m H:i') }}</time></span>
+							</li>
+						{% endfor %}
+					</ul>
+					{% if visibles|length < conversations|length %}<p class="fc-legende">{{ conversations|length - visibles|length }} autre{{ conversations|length - visibles|length > 1 ? 's' }} conversation{{ conversations|length - visibles|length > 1 ? 's' }}, suivie{{ conversations|length - visibles|length > 1 ? 's' }} par un collègue.</p>{% endif %}
+				{% endif %}
+			</div>
+		</section>
+
+		{# ===================== HISTORIQUE (FC04) ===================== #}
+		<section role="tabpanel" id="panneau-historique" aria-labelledby="tab-historique" class="fc-panneau" hidden>
+			<div class="fc-grille-histo">
+				<div class="fc-carte" id="historique">
+					<div class="fc-histo-tete">
+						<nav class="fc-filtres" aria-label="Filtrer l'historique">
+							<button type="button" class="active" data-filtre="">Tout</button>
+							{% for k, l in constant('App\\Service\\Clients\\FicheClient::CATEGORIES') %}
+								{% if k != 'paiements' or voir_paiements %}<button type="button" data-filtre="{{ k }}">{{ l }}</button>{% endif %}
+							{% endfor %}
+						</nav>
+						{% if not lecture %}<button type="button" class="btn fc-btn btn-sm" data-basculer="fc-note-histo">+ Noter un appel</button>{% endif %}
+					</div>
+					{% if not lecture %}
+						<form method="post" action="{{ path('app_clients_note', {publicId: client.publicId}) }}" class="fc-note-form fc-note-ligne" id="fc-note-histo" hidden>
+							<input type="hidden" name="_token" value="{{ csrf_token('note-client') }}">
+							<input name="texte" class="form-control form-control-sm" maxlength="2000" placeholder="Compte rendu d'appel, visite ou note…" aria-label="Note" required>
+							<select name="type" class="form-select form-select-sm" aria-label="Type">
+								{% for k, l in constant('App\\Entity\\NoteClient::TYPES') %}<option value="{{ k }}"{{ k == 'appel' ? ' selected' }}>{{ k == 'appel' ? 'Appel' : l }}</option>{% endfor %}
+							</select>
+							<label title="Rappel"><i class="far fa-clock"></i><input type="date" name="rappel" min="{{ 'now'|date('Y-m-d') }}" aria-label="Date de rappel"></label>
+							<button type="submit" class="btn btn-primary btn-sm">Ajouter</button>
+						</form>
+					{% endif %}
+					<ul class="fc-ligne-temps">
+						{% for e in historique %}
+							<li data-categorie="{{ e.categorie }}"{{ loop.index > 25 ? ' data-plus hidden' }}>
+								<span class="fc-icone fc-i-{{ e.categorie }}"><i class="fas {{ e.icone }}"></i></span>
+								<div>
+									{% if e.lien and is_granted(e.lien.droit) %}<a href="{{ path(e.lien.route, e.lien.parametres) }}">{{ e.titre }}</a>{% else %}<b>{{ e.titre }}</b>{% endif %}
+									{% if e.montant is not null and (not e.paiement or voir_paiements) %}<span class="fc-montant-histo">· {{ m.f(e.montant) }}</span>{% endif %}
+									<small>{{ e.qui ? e.qui ~ ' · ' }}{{ e.date|date(e.date|date('Y') == maintenant|date('Y') ? 'd/m H:i' : 'd/m/Y') }}{{ e.detail ? ' · ' ~ e.detail }}</small>
+								</div>
+							</li>
+						{% else %}
+							<li class="fc-vide">Rien encore avec ce client.</li>
+						{% endfor %}
+					</ul>
+					<p class="fc-vide fc-histo-vide" hidden>Rien dans cette catégorie.</p>
+					{% if historique|length > 25 %}<button type="button" class="btn btn-link btn-sm" data-voir-tout>Voir les {{ historique|length }} événements depuis {{ (historique|last).date|date('m/Y') }}</button>{% endif %}
+					<p class="fc-legende"><a href="{{ path('app_clients_journal', {publicId: client.publicId}) }}"><i class="fas fa-history me-1"></i>Journal complet des modifications de la fiche</a></p>
+				</div>
+
+				<aside class="fc-col">
+					{% set max_act = max(activite|merge([1])) %}
+					<section class="fc-carte">
+						<h2 class="fc-h2">Activité sur 12 mois</h2>
+						<div class="fc-activite" role="img" aria-label="{{ activite|reduce((t, n) => t + n, 0) }} commandes, paiements et messages sur 12 mois">
+							{% for n in activite %}<span class="fc-a{{ calcul_intensite(n, max_act) }}" title="{{ n }}"></span>{% endfor %}
+						</div>
+						<p class="fc-legende">commandes{{ voir_paiements ? ', paiements' }} et messages par semaine</p>
+					</section>
+					<section class="fc-carte">
+						<h2 class="fc-h2">Satisfaction</h2>
+						{% if satisfaction.moyenne is null %}
+							<p class="fc-vide">Pas encore d'avis : le sondage part après la livraison.</p>
+						{% else %}
+							<p class="fc-etoiles"><span aria-hidden="true">{% for i in 1..5 %}<i class="{{ i <= satisfaction.moyenne|round ? 'fas' : 'far' }} fa-star"></i>{% endfor %}</span> <b>{{ satisfaction.moyenne|number_format(1, ',') }}</b> <small>· {{ satisfaction.avis }} avis après livraison</small></p>
+							{% if satisfaction.dernier %}<p class="fc-legende">Dernier avis : « {{ satisfaction.dernier|raccourcir(120) }} »</p>{% endif %}
+						{% endif %}
+					</section>
+					<section class="fc-carte">
+						<h2 class="fc-h2">Délais de réponse à ce client</h2>
+						<dl class="fc-conditions">
+							<dt>1re réponse médiane</dt><dd>{{ reponses.mediane is not null ? reponses.mediane|duree_messagerie : '—' }}</dd>
+							<dt>Retards ce mois</dt><dd>{{ reponses.retards|length }}{% if reponses.retards is not empty %} · {{ reponses.retards|map(r => (r.qui ?? '?') ~ ' (' ~ (r.minutes|duree_messagerie) ~ ')')|join(', ') }}{% endif %}</dd>
+						</dl>
+					</section>
+				</aside>
+			</div>
+		</section>
+
+		{% if compte %}{% include 'clients/_compte_modales.html.twig' %}{% endif %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	{% if compte %}<script src="{{ asset('js/compte-client.js') }}" defer></script>{% endif %}
+	<script src="{{ asset('js/fiche-client.js') }}" defer></script>
+{% endblock %}

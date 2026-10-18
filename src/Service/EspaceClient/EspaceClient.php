@@ -541,7 +541,10 @@ final class EspaceClient
         foreach ($this->devis($client) as $d) {
             if (null !== $d->getDateDevis()) {
                 $ligne = $d->getDevisDetails()->first();
-                $fil[] = self::evenement('devis', 'Nouveau devis', trim(\sprintf('%s%s', $d->getNumero(), false !== $ligne && '' !== trim((string) $ligne->getDesignation()) ? ' · '.NomCommercial::texteLigne($ligne->getDesignation(), NomCommercial::elementDeLigne($ligne)) : '')), $d->getDateDevis(), ['app_espace_devis', ['d' => $d->getId()]], $d->getNumero(), [
+                // « Autocollant · Vinyle adhésif · DV-… » comme les autres événements : le numéro
+                // reste collé au prix qui suit (docs/noms-commerciaux.md, recette des accès).
+                $nom = false !== $ligne && '' !== trim((string) $ligne->getDesignation()) ? NomCommercial::texteLigne($ligne->getDesignation(), NomCommercial::elementDeLigne($ligne)) : '';
+                $fil[] = self::evenement('devis', 'Nouveau devis', trim(('' !== $nom ? $nom.' · ' : '').$d->getNumero()), $d->getDateDevis(), ['app_espace_devis', ['d' => $d->getId()]], $d->getNumero(), [
                     'montant' => $d->getTotalTtc(),
                     'cible' => ['devis' => $d->getId(), 'statut' => $d->getStatut()],
                 ]);

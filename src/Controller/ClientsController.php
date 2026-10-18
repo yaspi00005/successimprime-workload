@@ -961,8 +961,7 @@ final class ClientsController extends AbstractController
         ])]
         Clients $client,
         CommandesRepository $commandesRepository,
-        DevisRepository $devisRepository,
-        CompteTresorerieRepository $compteTresorerieRepository
+        DevisRepository $devisRepository
     ): Response {
         /*
      * Puis tu gardes ici tout le reste
@@ -1286,33 +1285,6 @@ final class ClientsController extends AbstractController
 
         /*
      * ============================================================
-     * COMPTES DE TRÉSORERIE (pour "Ajouter au solde")
-     * ============================================================
-     *
-     * L'argent gardé (monnaie non rendue) doit être crédité sur un
-     * compte réel : on ne propose que les comptes que l'utilisateur
-     * connecté a le droit d'utiliser (même règle que le formulaire
-     * de paiement).
-     * ============================================================
-     */
-
-        $comptesTresorerie = [];
-
-        $utilisateurConnecte = $this->getUser();
-
-        if (
-            $utilisateurConnecte instanceof User
-            && $this->isGranted('ROLE_PAIEMENT_ENCAISSER')
-        ) {
-            $comptesTresorerie = $compteTresorerieRepository->trouverDisponiblesPour(
-                $utilisateurConnecte,
-                $this->isGranted('ROLE_ADMIN')
-            );
-        }
-
-
-        /*
-     * ============================================================
      * ENVOI AU TWIG
      * ============================================================
      */
@@ -1322,9 +1294,6 @@ final class ClientsController extends AbstractController
             [
                 'client' =>
                 $client,
-
-                'comptesTresorerie' =>
-                $comptesTresorerie,
 
                 'commandes' =>
                 $commandesAvecPaiements,

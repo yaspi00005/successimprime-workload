@@ -2,7 +2,7 @@
 
 Les règles ont été fixées par Yaya le 13/10/2026 : pas de paliers, pas de parrainage. La programmation par article a été ajoutée le même jour.
 
-Le calcul se fait sur l'ERP de la boutique. Le site en ligne reçoit le résumé et le relevé par la synchronisation ; il n'y recalcule rien et refuse les actions.
+Le calcul se fait sur l'ERP de l'imprimerie. Le site en ligne reçoit le résumé et le relevé par la synchronisation ; il n'y recalcule rien et refuse les actions.
 
 ## Les règles
 
@@ -77,7 +77,7 @@ Il y a une exception : une règle **désactivée** l'emporte sur tout.
 
 Chaque création, modification ou suppression de règle est inscrite au journal (**Clients › Fidélité › Journal**). L'entrée note qui, quand, et l'ancienne et la nouvelle valeur de chaque champ changé.
 
-## Côté boutique
+## Côté imprimerie
 
 | Où | Qui | Quoi |
 |---|---|---|
@@ -90,7 +90,7 @@ Les droits sont vérifiés par `FideliteController`, pas seulement par les gabar
 
 ### Utiliser des points
 
-Seule la boutique peut le faire, jamais le client lui-même. La commande doit être confirmée, non annulée, et avoir un reste à payer.
+Seule l'imprimerie peut le faire, jamais le client lui-même. La commande doit être confirmée, non annulée, et avoir un reste à payer.
 
 Les points utilisés deviennent un **paiement « Points fidélité »**, validé tout de suite et plafonné au reste à payer. On l'enregistre comme un paiement et non comme une remise, car dans l'ERP seuls les paiements réduisent ce qui reste dû. La remise de commande ne le fait pas.
 
@@ -145,7 +145,7 @@ C'est une version minimale. **Clients › Fidélité › Clients dormeurs** list
 
 La direction offre une promo : un pourcentage (1 à 50 %), valable N jours ou aujourd'hui seulement. Elle est inscrite au journal.
 
-Le client la voit dans son espace (rubrique Fidélité). À la boutique, le bloc Fidélité de sa commande propose « Appliquer ». La remise est ajoutée à chaque article (prix unitaire × taux, comme une remise saisie à la main), puis les totaux sont recalculés. C'est refusé si la commande est déjà facturée. La promo est alors marquée utilisée.
+Le client la voit dans son espace (rubrique Fidélité). À l'imprimerie, le bloc Fidélité de sa commande propose « Appliquer ». La remise est ajoutée à chaque article (prix unitaire × taux, comme une remise saisie à la main), puis les totaux sont recalculés. C'est refusé si la commande est déjà facturée. La promo est alors marquée utilisée.
 
 Un lien WhatsApp (wa.me) ouvre un message prêt, sans montant ni taux, et jamais pour une fiche de démonstration (code `DEMO-`). Rien n'est envoyé automatiquement.
 
@@ -171,7 +171,7 @@ Le programme commence au déploiement. Les paiements validés avant ne rapporten
 
 ## Démonstration
 
-`--demo` rejoue l'année de démonstration pour les clients de démonstration `DEMO-` et `CL-DEMO` hors grille revendeur, puis ajoute une seule fois des gestes de la boutique :
+`--demo` rejoue l'année de démonstration pour les clients de démonstration `DEMO-` et `CL-DEMO` hors grille revendeur, puis ajoute une seule fois des gestes de l'imprimerie :
 
 - trois règles d'article sur les produits « (démo) » : roll-up à 500 points par pièce dès le 3e, cartes de visite désactivées, vinyle à 150 points par m² avec un point à 2 F ;
 - des valeurs propres pour un gros client ;

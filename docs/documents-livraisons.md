@@ -38,7 +38,7 @@ Le montant en lettres est calculé par un petit service testé, en français, sa
 - **Carte :** Leaflet avec OpenStreetMap, gratuit et sans clé. Les adresses des clients utilisent les coordonnées prévues dans `docs/geolocalisation.md`.
 - **Position du livreur :** elle vient de son téléphone, tant que la page de tournée est ouverte. Une page web ne peut pas suivre le téléphone en arrière-plan. La carte affiche donc « position il y a N min ». Une vraie application mobile ne sera nécessaire que si ce suivi ne suffit pas.
 - **Heure d'arrivée estimée :** distance à vol d'oiseau et vitesse moyenne réglable (moto en ville). C'est une estimation simple, sans service payant.
-- **Encaissement par le livreur :** il reste provisoire jusqu'à sa validation à la caisse, à la boutique. Le livreur remet l'argent ou la preuve Orange Money, et le caissier valide. Avant validation, rien n'entre dans la trésorerie.
+- **Encaissement par le livreur :** il reste provisoire jusqu'à sa validation à la caisse, à l'imprimerie. Le livreur remet l'argent ou la preuve Orange Money, et le caissier valide. Avant validation, rien n'entre dans la trésorerie.
 - **Photos et signature :** elles sont jointes au bon de livraison. Elles sont visibles par l'admin et le client, pas sur un lien public.
 
 ### Droits
@@ -52,10 +52,10 @@ Fait (L02, L03) :
 - Le bon de livraison porte la tournée : livreur, jour, créneau, ordre. Le bureau (droit Commandes ou admin) les règle sur « Tournée et remise » (`/livraisons/bl/{id}`), ouvert depuis le bon.
 - **Ma tournée** (`/livraisons/tournee`, mobile) : les livraisons du jour du livreur, la carte avec les arrêts numérotés (positions des fiches clients), les boutons Chargée, Je pars, Je suis arrivé, Itinéraire, Appeler, Remise. Un livreur arrive sur cette page à la connexion. Le bureau peut voir la tournée de chaque livreur.
 - **Remise** : quantités remises, au plus le reste à livrer de la commande (remise partielle possible ; un article décoché sort du bon et revient « prêt à livrer »), position GPS du téléphone, photos, signature au doigt (obligatoire), encaissement Orange Money, espèces ou crédit client. Photos et signature sont rangées dans `var/uploads/livraisons`, hors du dossier public, visibles par le livreur de la livraison et le bureau.
-- **Encaissement** : provisoire sur le bon. À la boutique, une personne qui a le droit Encaissements choisit le compte et valide : le paiement est créé et validé, il entre en trésorerie. Avant, rien n'y entre.
+- **Encaissement** : provisoire sur le bon. À l'imprimerie, une personne qui a le droit Encaissements choisit le compte et valide : le paiement est créé et validé, il entre en trésorerie. Avant, rien n'y entre.
 - Le détail (L02) montre les étapes avec leurs heures, le contenu commandé, livré et le reste, les preuves, l'encaissement et la planification.
 
-Fait (L01) : **Planning des livraisons** (`/livraisons/planning`, bureau) : livraisons du jour, livrées et à l'heure (avant la fin du créneau), montant à encaisser et déjà encaissé (droit Paiements), partielles et reportées (bons validés d'un jour passé non livrés). Carte de toutes les tournées depuis la boutique (premier lieu de pointage placé sur la carte), liste par livreur avec l'état et l'encaissement de chaque arrêt. « Réordonner la tournée » range les arrêts restants au plus proche, à vol d'oiseau. « Prévenir les clients » ouvre un message WhatsApp prêt par client (envoi groupé avec l'API WhatsApp).
+Fait (L01) : **Planning des livraisons** (`/livraisons/planning`, bureau) : livraisons du jour, livrées et à l'heure (avant la fin du créneau), montant à encaisser et déjà encaissé (droit Paiements), partielles et reportées (bons validés d'un jour passé non livrés). Carte de toutes les tournées depuis l'imprimerie (premier lieu de pointage placé sur la carte), liste par livreur avec l'état et l'encaissement de chaque arrêt. « Réordonner la tournée » range les arrêts restants au plus proche, à vol d'oiseau. « Prévenir les clients » ouvre un message WhatsApp prêt par client (envoi groupé avec l'API WhatsApp).
 
 ### Écrans du livreur et suivi des livraisons (15/10/2026)
 
@@ -65,9 +65,9 @@ Décision de Yaya : « Pour le rôle livreur, il faut dédier des vues pour eux,
 
 - Son menu : **Ma tournée** et **Mes livraisons**, plus « Mon espace » (pointage, absences, prime, bulletins). Sur le téléphone, la barre du bas montre Tournée, Livraisons, Pointage et Moi. Il n'a ni la recherche, ni la messagerie, ni « Aller à… », ni ses statistiques.
 - Toute autre page lui répond « accès refusé », même tapée à la main : tableau de bord (il arrive sur sa tournée), clients, commandes, statistiques, recherche, messagerie, planning, liste générale des livraisons, « À retirer », suivi des livraisons. La règle est dans `LivreurSeulSubscriber`, avant le contrôleur. Les pages ouvertes à tout le personnel pour lui-même restent : Mon espace, pointage, mot de passe, guide de son rôle, ses notifications.
-- Ses notifications : seulement celles qui mènent à une page qu'il peut ouvrir. Il ne reçoit plus « Production terminée » ni les autres alertes de la boutique.
+- Ses notifications : seulement celles qui mènent à une page qu'il peut ouvrir. Il ne reçoit plus « Production terminée » ni les autres alertes de l'imprimerie.
 - **Ma tournée** (téléphone d'abord) : les livraisons du jour dans l'ordre de la tournée. Pour chacune : le client, le téléphone à toucher pour appeler, l'adresse et « Voir sur la carte », les articles, et le reste à encaisser s'il y en a un (sur ses propres livraisons seulement). Puis l'étape suivante (Chargée, Je pars, Je suis arrivé), **Livrée** (la remise : nom de la personne qui reçoit, obligatoire, signature, photos, encaissement) ou **Échec** avec la raison.
-- **Échec** : la raison se choisit dans une liste (client absent, client injoignable, adresse introuvable, client refuse la livraison, paiement pas prêt, autre avec une précision). On garde la date et l'heure, le livreur et la raison. Les étapes du passage sont effacées : le colis revient à la boutique. Le bureau (droit Commandes) et la Direction reçoivent une notification « à replanifier », sans montant. La livraison redevient « à livrer » quand le bureau lui donne un jour, quand le livreur touche « Réessayer » (le client a rappelé), ou à la remise. Le dernier échec reste dans l'historique.
+- **Échec** : la raison se choisit dans une liste (client absent, client injoignable, adresse introuvable, client refuse la livraison, paiement pas prêt, autre avec une précision). On garde la date et l'heure, le livreur et la raison. Les étapes du passage sont effacées : le colis revient à l'imprimerie. Le bureau (droit Commandes) et la Direction reçoivent une notification « à replanifier », sans montant. La livraison redevient « à livrer » quand le bureau lui donne un jour, quand le livreur touche « Réessayer » (le client a rappelé), ou à la remise. Le dernier échec reste dans l'historique.
 - **Mes livraisons** (`/livraisons/mes-livraisons`) : ses livraisons des 30 derniers jours (ou 90), jour par jour : remises (heure, articles, reçue par) et échecs (raison). Aucun montant. Une remise s'ouvre sur son détail.
 
 **Le suivi pour le bureau.** Direction, caisse (droit Commandes) et prépresse (droit Prépresse), sans droit nouveau :
@@ -93,14 +93,14 @@ Demande de Yaya : des boutons pour les frais de livraison au lieu de taper le mo
 
 **Contrôles du serveur.**
 - Seuls 0 et les paliers sont acceptés (le formulaire refuse un autre montant avec « Frais de livraison non permis »). Un montant enregistré avant un changement de réglage reste permis sur ce document.
-- Retrait boutique : les frais sont remis à 0.
+- Retrait à l'imprimerie : les frais sont remis à 0.
 - Les totaux du devis et de la commande sont refaits par le serveur depuis les lignes et les frais (`recalculerTotaux`), jamais repris du navigateur.
 
 **Montants.** Les frais sont sans TVA et compris dans le total HT et le total TTC. Ils comptent donc dans le reste à payer, le solde du client et les statistiques. C'est toujours une ligne « Livraison » visible (devis, commande, proforma, facture), jamais un prix de ligne gonflé. Aucun montant dans les notifications ni les SMS.
 
 **Suivi.** Devis → commande → facture : les frais et l'objet sont copiés. Sur la facture, la copie est figée avec les montants.
 
-**Commande passée en ligne.** Le client qui choisit « Livraison à Bamako » (nouvelle commande, étape 4) voit les **frais de livraison en ligne** : un réglage de la tuile « Livraison et objet », 0 (offerte) ou un des paliers, 2 000 F par défaut, refusé à l'enregistrement s'il n'est ni l'un ni l'autre. Ils sont dans le total de la commande et arrivent au local avec elle. Un montant qui ne serait plus un palier du local à l'arrivée (paliers changés entre-temps) est retiré des frais et des totaux (`Synchro::verifierFraisEnLigne`). La boutique peut toujours les changer dans le formulaire avant de confirmer le brouillon. Dans l'espace client, la ligne « Frais de livraison » montre :
+**Commande passée en ligne.** Le client qui choisit « Livraison à Bamako » (nouvelle commande, étape 4) voit les **frais de livraison en ligne** : un réglage de la tuile « Livraison et objet », 0 (offerte) ou un des paliers, 2 000 F par défaut, refusé à l'enregistrement s'il n'est ni l'un ni l'autre. Ils sont dans le total de la commande et arrivent au local avec elle. Un montant qui ne serait plus un palier du local à l'arrivée (paliers changés entre-temps) est retiré des frais et des totaux (`Synchro::verifierFraisEnLigne`). L'imprimerie peut toujours les changer dans le formulaire avant de confirmer le brouillon. Dans l'espace client, la ligne « Frais de livraison » montre :
 - le montant, si le compte voit les montants (comme le total : payeur et valideur) ;
 - « comprise » sinon (demandeur) ;
 - « fixés par l'atelier à la confirmation » tant que la commande est à confirmer.

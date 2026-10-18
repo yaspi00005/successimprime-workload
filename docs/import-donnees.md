@@ -1,6 +1,6 @@
 # Import des données de démarrage (jalon J7)
 
-Pour démarrer l'ERP avec les données de l'ancien fichier : clients, articles du catalogue, articles de stock et soldes d'ouverture (ce que les clients devaient, l'argent des comptes, ce que la boutique devait à ses fournisseurs).
+Pour démarrer l'ERP avec les données de l'ancien fichier : clients, articles du catalogue, articles de stock et soldes d'ouverture (ce que les clients devaient, l'argent des comptes, ce que l'imprimerie devait à ses fournisseurs).
 
 Écran : Réglages › Sécurité et système › **Import des données** (`/reglages/systeme/import`). **ERP local seulement** : les adresses de l'import renvoient 404 sur le site en ligne (`ImportHorsLigneSubscriber`, avant le pare-feu). Les fiches importées partent ensuite vers le site par la synchronisation ordinaire.
 
@@ -94,7 +94,7 @@ Le choix : la représentation **la moins invasive** qui garde chaque écran just
 | Un client devait de l'argent | une **commande marquée solde d'ouverture** (`commandes.solde_ouverture = 1`) : numéro `SO-<code client>`, montant = total TTC, **sans lignes, sans facture, sans TVA, sans travail** (`etat = 0`), date = jour d'ouverture, échéance = date de livraison (jour d'ouverture si vide) | fiche client (solde dû, ligne « Solde d'ouverture · Repris à l'import », historique), créances (avec son échéance et son ancienneté), caisse et page de paiement (« Solde d'ouverture »), relevé et PDF des impayés, espace client du payeur ; sa page (`/commandes/{id}`) montre le montant, les règlements et l'import d'origine |
 | Un client avait versé une avance | son **solde client** (`clients.solde_credit`) augmente, noté au journal de la fiche et au relevé de son compte (« Solde d'ouverture », docs/finances.md, « Compte du client ») | fiche client, onglet « Compte » ; il se consomme comme tout solde client (paiement « solde client ») |
 | Argent d'un compte de trésorerie | le **solde initial** du compte (et son solde actuel), comme s'il avait été saisi à sa création | journal du compte, caisse du jour, trésorerie, prévision |
-| La boutique devait à un fournisseur | une **dépense « à payer »**, catégorie matières, approuvée, marquée solde d'ouverture, avec l'échéance | échéancier et prévision de trésorerie, fiche de la dépense (« Solde d'ouverture » à la place du reçu) ; elle se paie comme une autre (décaissement, compte 401) |
+| L'imprimerie devait à un fournisseur | une **dépense « à payer »**, catégorie matières, approuvée, marquée solde d'ouverture, avec l'échéance | échéancier et prévision de trésorerie, fiche de la dépense (« Solde d'ouverture » à la place du reçu) ; elle se paie comme une autre (décaissement, compte 401) |
 
 Chaque solde a aussi sa ligne `solde_ouverture` (type, montant, jour d'ouverture, tiers, échéance, note, import, et le lien vers la commande, le compte ou la dépense), qui fait le **journal des à-nouveaux** (« AN ») de la comptabilité :
 
@@ -188,4 +188,4 @@ Cas limite : si un client créé par l'import a ouvert entre-temps un compte de 
 2. **Relances automatiques** : les soldes d'ouverture n'en reçoivent pas (le client ne les connaît peut-être pas sous cette forme). Faut-il les relancer comme les autres créances après un délai ?
 3. **Homonymes** : un client au même nom qu'une fiche existante, avec un autre téléphone, est écarté comme doublon probable. Faut-il plutôt le créer avec un avertissement ?
 4. **Accord marketing** : aucun accord n'est repris. L'ancien fichier en contient-il un fiable à importer ?
-5. **Extension zip** : le serveur de la boutique doit l'avoir pour lire les `.xlsx` (sinon, CSV seulement).
+5. **Extension zip** : le serveur de l'imprimerie doit l'avoir pour lire les `.xlsx` (sinon, CSV seulement).

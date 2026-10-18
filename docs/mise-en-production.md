@@ -2,7 +2,7 @@
 
 Le déroulé, dans l'ordre, pour les deux machines :
 
-- **ERP local** : l'ordinateur de la boutique (Windows, XAMPP dans `C:\xamppok`). Sa base existe déjà, avec les données de la boutique : elle est **basculée** vers la nouvelle version.
+- **ERP local** : l'ordinateur de l'imprimerie (Windows, XAMPP dans `C:\xamppok`). Sa base existe déjà, avec les données de l'imprimerie : elle est **basculée** vers la nouvelle version.
 - **Site en ligne** : le serveur loué ([docs/deploiement.md](deploiement.md)). Sa base est neuve : elle est **créée**, puis remplie par la synchronisation.
 
 Chaque étape renvoie à la page qui l'explique. Cocher au fur et à mesure.
@@ -12,7 +12,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 **Trois règles pour tout le déroulé**
 
 1. Les clés et les mots de passe (fichiers `.env.local`) ne s'envoient **jamais** : ni message, ni e-mail, ni WhatsApp, ni capture d'écran. Yaya les tape lui-même sur chaque machine.
-2. La sauvegarde complète de la base reste à la boutique. Le seul fichier de base qu'on nous envoie est `structure-….sql` (la structure, sans aucune donnée).
+2. La sauvegarde complète de la base reste à l'imprimerie. Le seul fichier de base qu'on nous envoie est `structure-….sql` (la structure, sans aucune donnée).
 3. Les deux machines ont toujours la même version du code.
 
 ## J-7 : préparer
@@ -20,7 +20,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 ### Copie de la structure de la base
 
 - [ ] Sur l'ordinateur de l'ERP, MySQL démarré dans le panneau XAMPP, copier `scripts\windows\avant_bascule.bat` de la nouvelle version sur le Bureau et le lancer d'un double-clic. Il ne modifie rien :
-  - il fait une **sauvegarde complète** dans `C:\xamppok\sauvegardes-bascule` (à garder à la boutique) ;
+  - il fait une **sauvegarde complète** dans `C:\xamppok\sauvegardes-bascule` (à garder à l'imprimerie) ;
   - il met sur le **Bureau** la copie de la **structure seule** : `structure-<base>-<date>.sql`.
 - [ ] Nous envoyer **seulement** le fichier `structure-….sql`, et le nom de la base affiché (« Base de l'ERP : … »).
 - [ ] Nous la rejouons sur une base d'essai avec `app:bascule:verifier` ([docs/migration-de-base.md](migration-de-base.md)) et la bascule complète. Nous renvoyons la liste des points à vérifier sur la vraie base et, s'il y en a, les décisions à prendre ensemble (lignes qui pointent vers une commande absente, colonne en trop remplie…). Avec la structure du 15/10/2026, la bascule fait aussi des **conversions de données** : les remises des lignes de commande et de devis passent du pourcentage aux F par unité, et les articles non vendables deviennent vendables ([« Conversions de données »](migration-de-base.md#conversions-de-données)).
@@ -35,13 +35,13 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
   php bin/console app:bascule:verifier
   ```
 
-  La vérification ne modifie pas la base de la boutique (elle crée une base provisoire `<base>_ref_bascule` et la supprime). Nous envoyer le rapport `var\bascule\verification-….txt` : il ne contient que des noms de tables et des nombres. Si « Bloquants » n'est pas à 0, on en parle avant le jour J. Dans « Conversions de données à faire », la ligne de chaque remise donne l'essai du calcul sur les vraies lignes : attendu « 0 au-delà ». Ce dossier servira le jour J.
+  La vérification ne modifie pas la base de l'imprimerie (elle crée une base provisoire `<base>_ref_bascule` et la supprime). Nous envoyer le rapport `var\bascule\verification-….txt` : il ne contient que des noms de tables et des nombres. Si « Bloquants » n'est pas à 0, on en parle avant le jour J. Dans « Conversions de données à faire », la ligne de chaque remise donne l'essai du calcul sur les vraies lignes : attendu « 0 au-delà ». Ce dossier servira le jour J.
 
 ### Clés
 
 - [ ] Rassembler les clés des comptes extérieurs (Orange SMS et Orange Money, Meta WhatsApp, boîte e-mail, Anthropic). La liste du site en ligne est dans [docs/deploiement.md, « Installation »](deploiement.md#installation). Sur l'ERP local, garder celles de l'ancien `.env.local` qui servent encore, et y mettre aussi la boîte e-mail (`MAILER_DSN`, `MAILER_FROM_ADDRESS`) pour les rapports par e-mail.
 - [ ] Générer la clé de synchronisation, une seule fois, sur le site en ligne : `php bin/console app:synchro --nouvelle-cle` ([docs/synchronisation.md, « Mise en route »](synchronisation.md#mise-en-route), étape 1). Elle ira dans le `.env.local` des deux machines.
-- [ ] Prévoir où ranger la clé de la copie hors site, générée le jour J sur l'ERP local ([docs/sauvegardes.md, « Copie chiffrée hors de la boutique »](sauvegardes.md#copie-chiffrée-hors-de-la-boutique)) : gestionnaire de mots de passe ou papier au coffre, hors de la boutique.
+- [ ] Prévoir où ranger la clé de la copie hors site, générée le jour J sur l'ERP local ([docs/sauvegardes.md, « Copie chiffrée hors de l'imprimerie »](sauvegardes.md#copie-chiffrée-hors-de-limprimerie)) : gestionnaire de mots de passe ou papier au coffre, hors de l'imprimerie.
 
 ### Site en ligne, données et personnes
 
@@ -57,7 +57,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 - [ ] ERP local : dans `C:\xamppok\htdocs\successImprim\backups`, le fichier le plus récent est d'aujourd'hui et n'est pas vide. Sinon l'ancienne sauvegarde automatique ne marche pas : nous le dire.
 - [ ] ERP local : lancer `avant_bascule.bat`, puis copier la sauvegarde complète (`C:\xamppok\sauvegardes-bascule\…_complete_….sql`) sur le second disque ou une clé USB.
 - [ ] Site en ligne : une sauvegarde existe (`php bin/console app:sauvegarde --liste`, [docs/sauvegardes.md](sauvegardes.md)).
-- [ ] Dans l'ancien ERP, choisir **3 commandes et 1 devis qui ont une remise** sur une ligne (si possible une ligne au m² et une grosse quantité de flyers ou de cartes). Noter sur papier, pour chacun : le numéro, le total de chaque ligne remisée, le total HT, le total TTC et le reste à payer. Ces notes restent à la boutique.
+- [ ] Dans l'ancien ERP, choisir **3 commandes et 1 devis qui ont une remise** sur une ligne (si possible une ligne au m² et une grosse quantité de flyers ou de cartes). Noter sur papier, pour chacun : le numéro, le total de chaque ligne remisée, le total HT, le total TTC et le reste à payer. Ces notes restent à l'imprimerie.
 - [ ] Le soir, après la dernière saisie : **gel**. Plus personne ne saisit dans l'ancien ERP.
 
 ## Jour J
@@ -89,7 +89,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 ### 2. ERP local : sauvegardes et tâches planifiées
 
 - [ ] Dans `.env.local` : `SAUVEGARDE_COPIE_DIR` (le second disque). Lancer une fois, en administrateur, `scripts\windows\installer_taches_planifiees.bat` : il remplace l'ancienne tâche « toutes les 6 h ». Puis `php bin/console app:sauvegarde` et `php bin/console app:sauvegarde --liste` ([docs/sauvegardes.md](sauvegardes.md)).
-- [ ] Copie hors site : générer la clé et la ranger ([docs/sauvegardes.md, « Copie chiffrée hors de la boutique »](sauvegardes.md#copie-chiffrée-hors-de-la-boutique), étapes 1 à 3).
+- [ ] Copie hors site : générer la clé et la ranger ([docs/sauvegardes.md, « Copie chiffrée hors de l'imprimerie »](sauvegardes.md#copie-chiffrée-hors-de-limprimerie), étapes 1 à 3).
 - [ ] La direction relit les règles de Communications › Rappels de paiement (des commandes anciennes non soldées recevraient un rappel), puis lancer une fois, en administrateur : `installer_tache_rappels_paiement.bat`, `installer_tache_campagnes.bat`, `installer_tache_decaissements_recurrents.bat`, `installer_tache_corbeille.bat` (dossier `scripts\windows` ; la corbeille : [docs/corbeille.md](corbeille.md)).
 - [ ] Rapports par e-mail ([docs/rapports-mail.md](rapports-mail.md)) : `MAILER_DSN` et `MAILER_FROM_ADDRESS` dans le `.env.local` de l'ERP local (la même boîte que le site en ligne), puis `php bin/console cache:clear`. Lancer une fois, en administrateur, `scripts\windows\installer_tache_rapports_mail.bat` (toutes les 15 minutes). Puis `php bin/console app:rapports-mail --dry-run` (destinataires et version de chacun) et, sur Accueil › Rapports par e-mail, « M'envoyer un test ».
 
@@ -97,13 +97,13 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 
 - [ ] Import des données de démarrage : clients, articles, stock, soldes d'ouverture, avec l'aperçu avant de confirmer ([docs/import-donnees.md](import-donnees.md)).
 - [ ] Comptes du personnel : la direction donne un accès à chaque employé, avec son rôle ([docs/formation.md, « Après la formation »](formation.md#après-la-formation)), ou `php bin/console app:creer-utilisateur <identifiant> --role=…`.
-- [ ] **Une seule fois, sur l'ERP de la boutique** (réponse de Yaya du 18/10/2026) : passer au journal les paiements avec le solde du client faits avant le 18/10 (ancien bouton), pour que le compte 4191 égale le total de Caisse › Soldes clients. D'abord `php bin/console app:solde-client:aligner-4191 --dry-run` (liste des paiements, rien n'est écrit), puis sans `--dry-run`. La commande passe une opération diverse (4191 au débit, 411 au crédit, pièces `OD-SC-…`) datée du jour ; relancée, elle ne repasse rien. Si elle signale un écart restant, il ne vient pas de ces paiements : le montrer au cabinet comptable ([docs/finances.md, « Compte du client »](finances.md)).
+- [ ] **Une seule fois, sur l'ERP de l'imprimerie** (réponse de Yaya du 18/10/2026) : passer au journal les paiements avec le solde du client faits avant le 18/10 (ancien bouton), pour que le compte 4191 égale le total de Caisse › Soldes clients. D'abord `php bin/console app:solde-client:aligner-4191 --dry-run` (liste des paiements, rien n'est écrit), puis sans `--dry-run`. La commande passe une opération diverse (4191 au débit, 411 au crédit, pièces `OD-SC-…`) datée du jour ; relancée, elle ne repasse rien. Si elle signale un écart restant, il ne vient pas de ces paiements : le montrer au cabinet comptable ([docs/finances.md, « Compte du client »](finances.md)).
 
 ### 4. Synchronisation
 
 - [ ] `.env.local` des deux machines : [docs/synchronisation.md, « Mise en route »](synchronisation.md#mise-en-route), étapes 2 et 3 (la même `SYNC_CLE` des deux côtés).
 - [ ] `php bin/console app:verifier-installation` sur les deux machines.
-- [ ] Le site en ligne qui a servi aux essais peut garder des données de démonstration envoyées par une machine de test : avant d'ouvrir, repartir d'une base en ligne vide (nouvelle base dans le panneau, `DATABASE_URL` du serveur vers elle, puis `php bin/console doctrine:migrations:migrate -n` sur le serveur), que la ligne suivante remplit depuis l'ERP de la boutique.
+- [ ] Le site en ligne qui a servi aux essais peut garder des données de démonstration envoyées par une machine de test : avant d'ouvrir, repartir d'une base en ligne vide (nouvelle base dans le panneau, `DATABASE_URL` du serveur vers elle, puis `php bin/console doctrine:migrations:migrate -n` sur le serveur), que la ligne suivante remplit depuis l'ERP de l'imprimerie.
 - [ ] Sur l'ERP local, une seule fois : `php bin/console app:synchro --initialiser`. Si l'ERP s'est déjà synchronisé avec une ancienne base du site (essais), lancer à la place `php bin/console app:synchro --nouveau-site` : la nouvelle base recommence ses événements à 1, et l'ancien curseur de réception les sauterait tous. L'option remet ce curseur à zéro puis renvoie tout, comme `--initialiser`.
 - [ ] Tâche planifiée de la synchronisation (« Mise en route », étape 5) : `scripts\windows\installer_tache_synchro.bat` en administrateur. L'écran Réglages › Sécurité › Synchronisation montre une synchronisation réussie.
 

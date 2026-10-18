@@ -23,10 +23,10 @@ L'employé est reconnu par **son compte** dans l'application. La photo est une p
 - **Arrivée et départ automatiques** : un pointage ouvre la présence (arrivée), le suivant la ferme (départ), même après minuit. L'employé n'a rien à choisir.
 - **Anti-doublon** : deux pointages à moins de 2 minutes d'écart n'en font qu'un.
 - **Heure fiable** : l'heure enregistrée est celle du serveur, jamais celle du téléphone.
-- **Wi-Fi de l'atelier** (option) : le serveur vérifie que le pointage vient du réseau de l'atelier ou de la boutique (adresse IP de la connexion). Si l'application tourne sur un serveur local, le pointage marche même sans Internet.
+- **Wi-Fi de l'atelier** (option) : le serveur vérifie que le pointage vient du réseau de l'atelier ou de l'accueil (adresse IP de la connexion). Si l'application tourne sur un serveur local, le pointage marche même sans Internet.
 - **Téléphone enregistré** (option) : chaque employé pointe depuis un appareil validé par la RH. Un nouvel appareil doit être validé avant de pouvoir pointer.
 - **Zone GPS** (option) : le pointage est refusé à plus de 100 m du point de pointage.
-- **QR renouvelable** : chaque point de pointage (PT-01 Atelier, PT-02 Boutique) a un code secret. « Renouveler » rend l'ancien code inutilisable, par exemple si une photo du QR circule. Le QR n'est accepté que s'il vient de Succès Imprim.
+- **QR renouvelable** : chaque point de pointage (PT-01 Atelier, PT-02 Accueil) a un code secret. « Renouveler » rend l'ancien code inutilisable, par exemple si une photo du QR circule. Le QR n'est accepté que s'il vient de Succès Imprim.
 - **Pause déduite** : 13 h – 14 h par défaut, retirée du temps de présence (07:52 – 18:06 = 10 h 14, moins 1 h = 9 h 14).
 - **Départ non pointé** : alerte à la RH à 20 h. La journée reste « à régulariser » jusqu'à une correction.
 - **Correction** : toute correction manuelle exige un motif et reste visible dans l'historique (qui, quand, avant, après). L'employé voit le motif sous la journée corrigée, dans « Mon pointage ».

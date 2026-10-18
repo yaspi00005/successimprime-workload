@@ -141,8 +141,8 @@ Ce que la caisse garde sans ce droit :
   monde) ;
 - Caisse › « Virement » (et « Aller à… › Nouveau › Virement entre
   comptes ») : le formulaire de saisie des mouvements (entrée, sortie,
-  virement), par exemple verser la caisse du jour sur le compte de la
-  boutique. Les comptes y sont proposés par leur nom, sans aucun solde, et
+  virement), par exemple verser la caisse du jour sur le compte de l'imprimerie.
+  Les comptes y sont proposés par leur nom, sans aucun solde, et
   l'enregistrement ramène à la caisse avec un message (montant, comptes,
   référence). Les règles des comptes ne changent pas, et les listes ne
   proposent que les comptes que l'enregistrement acceptera pour le type

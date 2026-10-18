@@ -31,7 +31,7 @@ Pas de nom commercial pour :
 - Les listes des produits, des supports, des types d'impression, des formats et des finitions ont un bouton « Noms commerciaux » qui ouvre la rubrique ; la fenêtre « Nouveau produit » / « Modifier » rappelle où le saisir.
 - **Fiche article** (Stock › Articles › Modifier, et l'ancien formulaire des articles) : champ « Nom commercial » sous la désignation.
 - **Import** (docs/import-donnees.md) : colonne facultative « Nom commercial » (aussi reconnue sous « nom usuel », « appellation », « nom courant », « nom connu ») pour les articles du catalogue et les articles de stock. Pour un produit déjà au catalogue, un nom commercial donné remplace l'ancien (une case vide le garde) ; l'annulation de l'import le remet.
-- Sur le site en ligne, la page existe aussi pour la direction, mais les noms y sont remplacés à la synchronisation : un bandeau le dit. Ils se saisissent à la boutique.
+- Sur le site en ligne, la page existe aussi pour la direction, mais les noms y sont remplacés à la synchronisation : un bandeau le dit. Ils se saisissent à l'imprimerie.
 
 ## Affichage
 

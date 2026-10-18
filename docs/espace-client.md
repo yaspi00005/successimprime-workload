@@ -1,6 +1,6 @@
 # Espace client connecté (maquettes 13 à 19)
 
-Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connexion » plus bas), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts ni de marges. Du personnel, le client voit dans le suivi d'une commande, le BAT et les messages le prénom et le métier seulement (« Seydou (graphiste PAO) », `Employes::getNomPublic`), jamais le nom de famille, le téléphone ni la photo ; seule la carte « Votre conseiller(ère) » porte le prénom et le nom du commercial qui suit le client (champ `conseiller`, maquette EC01), avec le numéro de la boutique.
+Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connexion » plus bas), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts ni de marges. Du personnel, le client voit dans le suivi d'une commande, le BAT et les messages le prénom et le métier seulement (« Seydou (graphiste PAO) », `Employes::getNomPublic`), jamais le nom de famille, le téléphone ni la photo ; seule la carte « Votre conseiller(ère) » porte le prénom et le nom du commercial qui suit le client (champ `conseiller`, maquette EC01), avec le numéro de l'imprimerie.
 
 ## État (13/10/2026)
 
@@ -26,12 +26,12 @@ Construit, téléphone d'abord (onglets en bas), menu à gauche sur ordinateur :
 
 Le client se connecte avec **son numéro et son mot de passe**. La première fois, ou s'il a oublié son mot de passe, il passe par un code. Deux chemins, qui finissent au même endroit :
 
-| | Code par e-mail ou SMS (le client seul) | Code d'accès de la boutique (WhatsApp) |
+| | Code par e-mail ou SMS (le client seul) | Code d'accès de l'imprimerie (WhatsApp) |
 |---|---|---|
 | Où | « Recevoir un code » sur `/espace/connexion`, ou « Créer mon compte » | `/espace/premiere-connexion`, lien du message WhatsApp |
 | Le code | 6 chiffres, 5 minutes, 5 essais | 8 caractères (sans 0, O, 1, I ni L), 48 heures, une seule fois |
 | Envoyé | par le site, à l'e-mail du compte ou de la fiche, sinon par SMS | par l'équipe, depuis la fiche client (ERP local) |
-| Ensuite | mot de passe obligatoire s'il n'y en a pas (proposé sinon), e-mail proposé à qui n'en a pas | mot de passe obligatoire ; e-mail proposé, facultatif (décision de Yaya du 15/10 : sans e-mail, un mot de passe oublié passe par la boutique ou par SMS) |
+| Ensuite | mot de passe obligatoire s'il n'y en a pas (proposé sinon), e-mail proposé à qui n'en a pas | mot de passe obligatoire ; e-mail proposé, facultatif (décision de Yaya du 15/10 : sans e-mail, un mot de passe oublié passe par l'imprimerie ou par SMS) |
 
 **Code par e-mail ou SMS** (`CodeDeConnexion`, `EspaceClientComptes`) :
 
@@ -41,16 +41,16 @@ Le client se connecte avec **son numéro et son mot de passe**. La première foi
 - Le message donne le code, sa durée et l'avertissement de ne le donner à personne. Jamais de montant ni de lien qui connecte. Les fiches `DEMO-` ne reçoivent rien.
 - Limites (`rate_limiter.yaml`) : 3 codes par numéro et par adresse e-mail en 15 minutes, 10 par adresse IP en une heure, quel que soit le moyen. Hors production seulement, un code qui n'a pas pu partir s'affiche à l'écran.
 - Sans e-mail réglé sur le site (`MAILER_DSN`, `MAILER_FROM_ADDRESS`, voir `docs/deploiement.md`), les codes partent par SMS. Un e-mail refusé par le serveur d'envoi passe aussi au SMS.
-- Paramètres › Espace client › « Code de première connexion et de mot de passe oublié » coupe ce chemin ; le code d'accès de la boutique reste possible.
+- Paramètres › Espace client › « Code de première connexion et de mot de passe oublié » coupe ce chemin ; le code d'accès de l'imprimerie reste possible.
 
-**Code d'accès de la boutique** (`AccesEspace`, `AccesEspaceClient`) :
+**Code d'accès de l'imprimerie** (`AccesEspace`, `AccesEspaceClient`) :
 
 - Fiche client (ERP local) › **« Envoyer l'accès à l'espace client »**, pour le droit Clients (`ROLE_CLIENT`). Caché et refusé en « Voir », absent pour une fiche `DEMO-`, et il faut un numéro malien sur la fiche. À la création d'une fiche, la case « Inviter à l'espace client par WhatsApp » met le même bouton en haut de la fiche.
 - La page qui suit montre le message et « Ouvrir WhatsApp » (lien wa.me vers le numéro de la fiche) : l'identifiant (le numéro), le code, sa validité et le lien de la page « Première connexion », numéro rempli. Le lien prend l'adresse du site `SYNC_URL` ; **jamais le code dans un lien**. Le code ne s'affiche qu'une fois (page non gardée par le navigateur).
 - Seule l'empreinte est gardée (sha256 du numéro et du code). Elle descend sur le site avec l'échéance (synchronisation `acces_espace`). Un nouvel accès remplace le précédent, qui ne sert plus. Le journal de la fiche note qui a envoyé l'accès et quand, jamais le code ; la fiche montre le dernier envoi et son échéance.
-- Il sert aussi au **mot de passe oublié passé par la boutique** : un compte qui a déjà un mot de passe doit en choisir un nouveau.
+- Il sert aussi au **mot de passe oublié passé par l'imprimerie** : un compte qui a déjà un mot de passe doit en choisir un nouveau.
 - Entreprise : l'accès va au numéro de la fiche (la personne principale). Elle invite les autres depuis Mon compte.
-- Chaque essai compte dans les mêmes limites que les codes (3 par numéro en 15 minutes, 10 par adresse IP en une heure). Faux, expiré, déjà servi ou remplacé : un seul message. Refusé aussi si le numéro de la fiche a changé depuis, ou si ce numéro a déjà un compte fermé ou sur une autre fiche : à régler par la boutique.
+- Chaque essai compte dans les mêmes limites que les codes (3 par numéro en 15 minutes, 10 par adresse IP en une heure). Faux, expiré, déjà servi ou remplacé : un seul message. Refusé aussi si le numéro de la fiche a changé depuis, ou si ce numéro a déjà un compte fermé ou sur une autre fiche : à régler par l'imprimerie.
 - Pour savoir pourquoi un code est refusé, sur le serveur en ligne : `php bin/console app:espace:diagnostic-acces <numéro> [<code>]` (lecture seule ; rien n'est changé, ni code ni empreinte affichés). Elle dit si la fiche et le code sont arrivés, si le code correspond, s'il est expiré ou déjà servi, si la fiche est de démonstration, si le numéro diffère ou a déjà un compte ailleurs. Après trop d'essais : attendre 15 minutes, ou `php bin/console cache:pool:clear cache.rate_limiter`.
 
 **Sécuriser mon compte** (`/espace/securiser`) :
@@ -65,7 +65,7 @@ Le personnel de l'administration en ligne reçoit son code de sécurité de la m
 
 Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, cloche, conseiller), `FilNotifications.php`, `PreferencesNotifications.php`, `NotificationsClient.php`, `MonCompte.php`, `AppareilsClient.php`, `MessagesClient.php`, `PropositionsClient.php`, `RecommanderClient.php`, `src/Security/DroitsEspace.php`, `src/EventSubscriber/EspaceClientSubscriber.php`. Migration `Version20261014142129`. Captures : `/mnt/project-files/captures/espace-client/ec-*.png`.
 
-**Coque (EC01, EC05).** Sur ordinateur : menu à gauche, barre du haut (recherche, « + Nouvelle commande », cloche, personne et fonction), carte « Votre conseiller(ère) » (nom ; WhatsApp et appel vers le numéro de la boutique, jamais celui de l'employé). Sur téléphone : en-tête (entreprise, « Bonjour Prénom », cloche) et cinq onglets (Accueil, Commandes, Fichiers, Factures, Compte). Le bas de chaque page laisse la hauteur des onglets, la zone du geste de l'iPhone et une marge (`--ec-bas-libre` dans `espace-app.css`) : au bout du défilement, les totaux et la dernière carte restent au-dessus des onglets.
+**Coque (EC01, EC05).** Sur ordinateur : menu à gauche, barre du haut (recherche, « + Nouvelle commande », cloche, personne et fonction), carte « Votre conseiller(ère) » (nom ; WhatsApp et appel vers le numéro de l'imprimerie, jamais celui de l'employé). Sur téléphone : en-tête (entreprise, « Bonjour Prénom », cloche) et cinq onglets (Accueil, Commandes, Fichiers, Factures, Compte). Le bas de chaque page laisse la hauteur des onglets, la zone du geste de l'iPhone et une marge (`--ec-bas-libre` dans `espace-app.css`) : au bout du défilement, les totaux et la dernière carte restent au-dessus des onglets.
 
 - Pastilles : rouge pour les notifications non lues ; jaune pour les devis à accepter (valideur), les BAT en attente et les commandes à régler (payeur).
 - Le menu est la liste `CoqueEspace::MENU` : une entrée = une ligne (route, libellé, icône, pages qui l'allument, qui la voit, onglet du téléphone). Factures et paiements : payeur seulement. Fidélité : payeur d'un client hors grille revendeur. Nouvelle commande, Mes produits, Mes devis, Messages : pas pour un compte Lecture · suivi.
@@ -120,21 +120,21 @@ Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, clo
 
 **1. Produit (CO01).** Puces des catégories, une carte par produit publié (sa configuration la moins chère : « dès 3 500 F / m² », prix revendeur pour un client B2B ; un demandeur voit « sur mesure, au m² »). À droite : « Commander à nouveau » (dernières lignes ; « Refaire » ouvre l'étape 4 avec le même produit, la même taille et le **même fichier**, copié depuis l'ancienne commande, `FichiersClient::reprendre`), « Mes produits enregistrés », « Besoin spécial ? » (demande de devis). Bandeau « Pas encore de visuel ? » vers la demande de conception.
 
-**2. Options (CO02).** Largeur et hauteur en mètres (formats courants 2 × 1, 3 × 1, 4 × 2, 5 × 3), quantité (en pièces, ou en m² pour une matière au m² : voir « Quantité en pièces ou en m² » plus bas) ; **matière** = les configurations du même produit (support, description, supplément au m² par rapport à la moins chère, `PageNouvelleCommande::matieres`) ; finitions de la matière choisie (« inclus », « +300 F/m² », obligatoires cochées) ; délai **Standard** (48 h) ou **Express** (24 h, +30 %). Aperçu à l'échelle avec les œillets (finition dont le nom contient « œillets », espacement lu dans le nom, 50 cm sinon). « Votre commande » à droite : surface × prix, finitions, délai, total, acompte, et « Prête le samedi 17/10 si le BAT est validé avant 16 h aujourd'hui » (`DelaisCommande` : le délai part le jour même avant l'heure limite et si la boutique est ouverte, sinon le jour ouvré suivant, puis un jour ouvré par tranche de 24 h ; jours et fériés de Réglages › Horaires).
+**2. Options (CO02).** Largeur et hauteur en mètres (formats courants 2 × 1, 3 × 1, 4 × 2, 5 × 3), quantité (en pièces, ou en m² pour une matière au m² : voir « Quantité en pièces ou en m² » plus bas) ; **matière** = les configurations du même produit (support, description, supplément au m² par rapport à la moins chère, `PageNouvelleCommande::matieres`) ; finitions de la matière choisie (« inclus », « +300 F/m² », obligatoires cochées) ; délai **Standard** (48 h) ou **Express** (24 h, +30 %). Aperçu à l'échelle avec les œillets (finition dont le nom contient « œillets », espacement lu dans le nom, 50 cm sinon). « Votre commande » à droite : surface × prix, finitions, délai, total, acompte, et « Prête le samedi 17/10 si le BAT est validé avant 16 h aujourd'hui » (`DelaisCommande` : le délai part le jour même avant l'heure limite et si l'imprimerie est ouverte, sinon le jour ouvré suivant, puis un jour ouvré par tranche de 24 h ; jours et fériés de Réglages › Horaires).
 
-**Express.** Une ligne libre « Express 24 h (+30 %) » s'ajoute à la commande (pourcentage du prix des produits, avant code promo), sans production ni PAO : visible sur la commande et la facture, jamais un prix de ligne gonflé. La commande garde `delaiProduction` (`standard` ou `express`). Si la boutique change le prix en confirmant, elle ajuste cette ligne elle-même.
+**Express.** Une ligne libre « Express 24 h (+30 %) » s'ajoute à la commande (pourcentage du prix des produits, avant code promo), sans production ni PAO : visible sur la commande et la facture, jamais un prix de ligne gonflé. La commande garde `delaiProduction` (`standard` ou `express`). Si l'imprimerie change le prix en confirmant, elle ajuste cette ligne elle-même.
 
 **3. Fichier (CO03).** « J'ai mon fichier » (envoi par morceaux, déjà existant, ou un fichier déjà envoyé), « Une de mes créations » (images IA prêtes du client) ou « Pas de fichier » (note pour l'atelier : visuel à concevoir). Le fichier est contrôlé à la taille commandée (`/espace/commandes/nouvelle/controle/{id}`, seulement un fichier du client) : dimensions, résolution, couleurs, polices, fonds perdus, type, et **texte près du bord** (`BordsFichier` : JPEG et PNG, détails à moins de 4 cm du bord d'une bâche, 2 cm d'une affiche, 4 mm d'une carte ; un indice, jamais un refus : « le graphiste les décalera, sans frais »). « Après la commande » explique le BAT.
 
-**4. Livraison et paiement (CO04).** Retrait en boutique (0 F) ou **Livraison à Bamako** : frais du réglage « Frais de livraison en ligne » (un des paliers, 2 000 F par défaut, 0 = offerte ; la boutique peut les changer en confirmant), adresse (enregistrée ou autre), contact, **créneau** (matin ou après-midi des trois premiers jours ouvrés à partir du jour où elle est prête ; seul un créneau proposé est accepté). La date du créneau devient la date de livraison, le libellé est gardé (`creneauLivraison`). Paiement, pour qui paie (particulier, payeur d'une entreprise) : **Acompte** (pourcentage de la fiche du client, sinon Réglages › Paiements, 50 % ; arrondi au franc supérieur), **Tout payer maintenant**, ou **Espèces en boutique** ; frais Orange Money annoncés ; « Ne donnez jamais votre code secret » ; case des conditions de vente obligatoire ; bouton « Payer 12 400 F et commander ».
+**4. Livraison et paiement (CO04).** Retrait à l'imprimerie (0 F) ou **Livraison à Bamako** : frais du réglage « Frais de livraison en ligne » (un des paliers, 2 000 F par défaut, 0 = offerte ; l'imprimerie peut les changer en confirmant), adresse (enregistrée ou autre), contact, **créneau** (matin ou après-midi des trois premiers jours ouvrés à partir du jour où elle est prête ; seul un créneau proposé est accepté). La date du créneau devient la date de livraison, le libellé est gardé (`creneauLivraison`). Paiement, pour qui paie (particulier, payeur d'une entreprise) : **Acompte** (pourcentage de la fiche du client, sinon Réglages › Paiements, 50 % ; arrondi au franc supérieur), **Tout payer maintenant**, ou **Espèces au comptoir** ; frais Orange Money annoncés ; « Ne donnez jamais votre code secret » ; case des conditions de vente obligatoire ; bouton « Payer 12 400 F et commander ».
 
-**Paiement à la commande** (`/espace/commandes/nouvelle/{id}/paiement`, payeur seulement). La commande est **d'abord enregistrée** « à confirmer », puis le récapitulatif Orange Money (même présentation que FP03 : montant, fonds de soutien, frais de retrait, total) part par **le même règlement que « Factures et paiements »** (`ReglementsEnLigne`, `PaiementALaCommande`) : retour sur « Paiement reçu », paiement « en attente » à la caisse, jamais validé tout seul. Seule la commande en ligne de ce client, encore à confirmer, ni en attente ni refusée par son valideur, se paie ainsi, et jamais plus que son reste. Annulé chez Orange : retour sur ce récapitulatif. La production attend toujours la confirmation de la boutique et le BAT ; si la boutique change le prix, l'espace montre le nouveau reste. La commande confirmée se paie ensuite dans « Factures et paiements ». La page de la commande propose « Payer maintenant ? » tant que rien n'a été payé (`_commande_brouillon_paiement.html.twig`).
+**Paiement à la commande** (`/espace/commandes/nouvelle/{id}/paiement`, payeur seulement). La commande est **d'abord enregistrée** « à confirmer », puis le récapitulatif Orange Money (même présentation que FP03 : montant, fonds de soutien, frais de retrait, total) part par **le même règlement que « Factures et paiements »** (`ReglementsEnLigne`, `PaiementALaCommande`) : retour sur « Paiement reçu », paiement « en attente » à la caisse, jamais validé tout seul. Seule la commande en ligne de ce client, encore à confirmer, ni en attente ni refusée par son valideur, se paie ainsi, et jamais plus que son reste. Annulé chez Orange : retour sur ce récapitulatif. La production attend toujours la confirmation de l'imprimerie et le BAT ; si l'imprimerie change le prix, l'espace montre le nouveau reste. La commande confirmée se paie ensuite dans « Factures et paiements ». La page de la commande propose « Payer maintenant ? » tant que rien n'a été payé (`_commande_brouillon_paiement.html.twig`).
 
 **Entreprises.** Le valideur et le payeur voient les prix. Un demandeur (et toute personne dont la commande doit être validée) voit les quantités, les délais et les créneaux, aucun montant (ni dans la page ni dans les réponses JSON) ; son étape 4 s'appelle « Livraison », sans paiement, et le bouton « Envoyer la demande ». Le valideur est prévenu sans montant. Un client B2B voit les prix de la grille revendeur, sans code promo.
 
 **Interrupteurs (revue du 18/10/2026).** Réglages › Espace client, appliqués par le serveur et descendus au site :
 - **Commande en ligne** (allumé au départ) : coupé, la page Nouvelle commande dit « La commande en ligne est fermée pour le moment » (devis, message à l'atelier), l'envoi du formulaire, l'estimation et le contrôle du fichier sont refusés. Le refus est dans `NouvelleCommande::verifierEnAttente`, par où passent toutes les commandes de l'espace : Mes produits, Atelier 3D et impression d'une conception aussi. Les commandes déjà passées continuent.
-- **Paiement Orange Money en ligne** (allumé au départ) : `OrangeMoney::estOuvert()` = clés posées dans `.env.local` **et** interrupteur allumé. Coupé, l'étape 4 ne propose pas Orange Money (« Vous payez en boutique »), les pages de paiement (à la commande, Factures et paiements, commande confirmée, conception, crédit IA) montrent le numéro marchand au lieu du bouton, et tout nouveau paiement est refusé par le serveur. Un paiement déjà ouvert chez Orange se vérifie toujours. Tant que l'interrupteur n'était pas appliqué, Orange Money marchait dès que les clés étaient posées : il est donc allumé par défaut, et la migration `Version20261018110000` rallume un interrupteur resté coupé dans un réglage déjà enregistré, pour que le paiement de l'espace continue après la mise à jour. Le couper ensuite ferme vraiment le paiement en ligne.
+- **Paiement Orange Money en ligne** (allumé au départ) : `OrangeMoney::estOuvert()` = clés posées dans `.env.local` **et** interrupteur allumé. Coupé, l'étape 4 ne propose pas Orange Money (« Vous payez à l'imprimerie »), les pages de paiement (à la commande, Factures et paiements, commande confirmée, conception, crédit IA) montrent le numéro marchand au lieu du bouton, et tout nouveau paiement est refusé par le serveur. Un paiement déjà ouvert chez Orange se vérifie toujours. Tant que l'interrupteur n'était pas appliqué, Orange Money marchait dès que les clés étaient posées : il est donc allumé par défaut, et la migration `Version20261018110000` rallume un interrupteur resté coupé dans un réglage déjà enregistré, pour que le paiement de l'espace continue après la mise à jour. Le couper ensuite ferme vraiment le paiement en ligne.
 
 **Réglages.** Réglages › Espace client : délai standard (48 h), express proposé (oui), délai express (24 h), majoration express (30 %), heure limite (16:00). Réglages › Livraison et objet : « Frais de livraison en ligne » (0 ou un des paliers, contrôlé à l'enregistrement). Tous descendent au site (`CatalogueSynchro::REGLAGES_PUBLICS`), avec les jours fériés.
 
@@ -163,7 +163,7 @@ Une fiche entreprise ou B2B peut avoir plusieurs personnes, chacune avec son num
 **Qui voit les montants** (une seule règle, `CompteClient::montantsVisibles()`, lue par les gabarits via `coque.montants`, par les appels JSON et par l'atelier 3D) : un particulier voit tout ; dans une entreprise, le payeur et le valideur voient les prix (total d'une commande, devis et son PDF, « Recommander rapidement », Mes produits, Nouvelle commande, tarifs de la conception), le payeur seul le solde, les factures, le reste à payer et le crédit. Un demandeur et la lecture seule ne reçoivent aucun montant, ni dans la page ni dans les réponses JSON : ils voient les quantités et « prix confirmé par votre valideur ». La recette des accès (`app:recette:acces`) le contrôle.
 
 - **Mon compte** : profil de la personne (son nom, son rôle), coordonnées de l'entreprise, ligne « Adresses de livraison », carte « Utilisateurs du compte » avec « + Ajouter ». La personne ajoutée reçoit un SMS et se connecte avec son propre numéro. 20 personnes au plus ; il reste toujours au moins un administrateur ; on ne change pas ses propres droits ; le compte principal ne se retire pas en ligne.
-- **Adresses de livraison** : nom court, adresse, repère, personne à appeler ; une adresse par défaut, présélectionnée en commandant (« Livrer : Siège » ou « Retrait en boutique »).
+- **Adresses de livraison** : nom court, adresse, repère, personne à appeler ; une adresse par défaut, présélectionnée en commandant (« Livrer : Siège » ou « Retrait à l'imprimerie »).
 - **Nouvelle commande** : choix de l'adresse, n° de bon de commande (imprimé sur la facture). Pour un demandeur, le bouton devient « Envoyer la demande » et les valideurs reçoivent un SMS sans montant.
 - **Validation** : l'accueil du valideur montre « N demandes à valider » ; la page de la commande propose « Valider et envoyer à l'atelier » ou « Refuser » avec un motif lu par le demandeur. Sans aucun valideur actif, la demande part directement.
 - **Synchronisation** : la demande monte au local sans prévenir l'atelier. La décision du valideur remonte (`validationEntreprise`, `valideePar`, `motifRefusEntreprise`) : validée, le droit Commande est prévenu comme pour toute commande en ligne ; refusée, le local la classe (supprimée) et le site la garde visible au client avec son motif. Au local, la fiche commande affiche « demandée en ligne par X » et le bon de commande.
@@ -176,10 +176,10 @@ Demande de Yaya : « Un compte pour une entreprise peut avoir plusieurs interloc
 
 **Ce qui existait** : chaque personne a son propre numéro, son mot de passe et ses droits (tableau ci-dessus) ; une commande en ligne note qui l'a demandée (`Commandes::demandeePar`, « en ligne par X ») et qui l'a validée. Vérifié de bout en bout le 15/10/2026 sur Salon Espoir : Mariam (demandeur) envoie une demande sans voir de prix, Awa (valideur) la voit « demandée par Mariam Dembélé » et la valide, Ibrahim (payeur) commande aussi avec son propre numéro ; au local, la commande montre « en ligne par Mariam Dembélé, validée par Awa Coulibaly » et son bon de commande.
 
-**Ajouté pour la boutique** (une commande ou un devis saisi au comptoir pour une entreprise) :
+**Ajouté pour l'imprimerie** (une commande ou un devis saisi au comptoir pour une entreprise) :
 
 - Devis : champ **« À l'attention de »** (`Devis::interlocuteur`, 80 caractères) ; commande : champ **« Commandé par »** (le même `demandeePar` que les commandes en ligne). Dans la carte du client de la saisie, avec une liste proposée : les contacts de la fiche (fonction, contact principal) puis les noms déjà notés sur ses devis et commandes, dont les personnes qui commandent en ligne (`/saisie/interlocuteurs/{id}`, droits Devis, Commande ou Clients ; des noms seulement, ni numéro ni montant). Le champ reste libre.
-- Un devis transformé en commande donne son interlocuteur au « Commandé par » de la commande. Une commande passée en ligne garde le nom de la personne connectée : le champ n'est pas modifiable à la boutique.
+- Un devis transformé en commande donne son interlocuteur au « Commandé par » de la commande. Une commande passée en ligne garde le nom de la personne connectée : le champ n'est pas modifiable à l'imprimerie.
 - Affiché sur le devis (« À l'attention de »), la commande (« commandée par X »), la fiche client (onglets Commandes et Devis, sous le numéro) ; imprimé sur le PDF du devis (cadre client) et de la facture (« Commandé par », sous le bon de commande). Une facture déjà émise garde son PDF.
 - Le devis le fait descendre au site (synchronisation, champ `interlocuteur`).
 
@@ -187,15 +187,15 @@ Demande de Yaya : « Un compte pour une entreprise peut avoir plusieurs interloc
 
 Demande de Yaya : « on a la possibilité de bloquer l'espace client d'un utilisateur ». Code : `src/Service/EspaceClient/SuspensionsEspace.php`, `src/Entity/SuspensionEspace.php`, `src/Controller/EspaceSuspensionController.php`, `templates/clients/_espace_suspension.html.twig`.
 
-- **Où** : fiche client (ERP local), bloc « Accès à l'espace client », pour le droit Clients (`ROLE_CLIENT`). Caché et refusé en « Voir » (LectureSeuleSubscriber) ; en ligne, le bloc montre les suspensions sans bouton (« se suspend et se rétablit depuis l'ERP de la boutique »).
-- **Qui** : tout le compte (chaque personne de l'entreprise), ou une personne, reconnue à son numéro de connexion : le numéro de la fiche, un contact de la fiche qui a un numéro, ou un autre numéro tapé (une personne ajoutée en ligne par l'entreprise, que la boutique ne voit pas dans sa liste).
+- **Où** : fiche client (ERP local), bloc « Accès à l'espace client », pour le droit Clients (`ROLE_CLIENT`). Caché et refusé en « Voir » (LectureSeuleSubscriber) ; en ligne, le bloc montre les suspensions sans bouton (« se suspend et se rétablit depuis l'ERP de l'imprimerie »).
+- **Qui** : tout le compte (chaque personne de l'entreprise), ou une personne, reconnue à son numéro de connexion : le numéro de la fiche, un contact de la fiche qui a un numéro, ou un autre numéro tapé (une personne ajoutée en ligne par l'entreprise, que l'imprimerie ne voit pas dans sa liste).
 - **Motif obligatoire**, gardé à l'atelier : le client lit seulement « Votre accès à l'espace client est suspendu. Contactez Succès Imprim. ».
 - **Journal** : chaque suspension et chaque rétablissement est noté au journal de la fiche (catégorie Contacts : qui, quand, pourquoi). La suspension levée reste dans la base (« Rétablir » ne l'efface pas) et les trois dernières se lisent sous le bloc.
 - **Rien n'est effacé** : commandes, factures, fichiers et compte restent ; « Rétablir » rend l'accès tel qu'il était (mot de passe compris).
 - **Sur le site** (après la synchronisation, type `suspension_espace` : seuls la fiche, le numéro, le début et la levée descendent ; ni le motif, ni le nom, ni l'employé) :
   - la connexion est refusée avec le message, **seulement après le bon mot de passe ou le bon code** (avec un mauvais mot de passe, rien ne dit que l'accès est suspendu) ; « rester connecté » aussi (`EspaceClientChecker`) ;
   - une session ouverte se ferme à la page suivante, avec le message (`EspaceClientSubscriber`) ;
-  - « Recevoir un code » ne part pas : même réponse qu'un numéro inconnu (`EspaceClientComptes`) ; la boutique ne peut pas envoyer de code d'accès au numéro suspendu ;
+  - « Recevoir un code » ne part pas : même réponse qu'un numéro inconnu (`EspaceClientComptes`) ; l'imprimerie ne peut pas envoyer de code d'accès au numéro suspendu ;
   - ni notification (application, SMS, e-mail), ni SMS d'invitation, de demande à valider ou de conception à payer (`NotificationsClient`, `CompteEntreprise`, `DemandesConception`). Les autres personnes de l'entreprise continuent normalement.
 - Le statut « Bloqué » de la fiche (conditions commerciales) est une autre chose : il ne coupe pas l'espace client.
 - La recette des accès vérifie qu'une session tombe dès la suspension et que les autres personnes entrent toujours.
@@ -301,7 +301,7 @@ Reste à faire :
 **Vue d'ensemble (FP01).**
 
 - Tuiles : Total à payer (dont échu, et ce qui se réglera à la livraison), Payé dans l'année (paiements validés), Prochaine échéance, Avoir disponible. Sur téléphone, seule la tuile du total reste.
-- « À payer » : factures non soldées, commandes livrées ou prêtes sans facture, acomptes des commandes en préparation (pourcentage du client, sinon l'acompte par défaut des Réglages), solde d'ouverture. Ordre : la plus ancienne échéance d'abord. Ce qui attend la validation de la boutique n'est plus redemandé.
+- « À payer » : factures non soldées, commandes livrées ou prêtes sans facture, acomptes des commandes en préparation (pourcentage du client, sinon l'acompte par défaut des Réglages), solde d'ouverture. Ordre : la plus ancienne échéance d'abord. Ce qui attend la validation de l'imprimerie n'est plus redemandé.
 - Les cases cochées font la barre « N sélectionnés · total (− avoir) · Payer X par Orange Money ».
 - Onglets Factures, Paiements, Avoirs, Reçus (année au choix).
 - À droite : Moyens de paiement, Bon à savoir, « Une question sur une facture ? ». « Contester » ouvre une réclamation pré-remplie ; « Message » ouvre la messagerie avec la référence de la facture.
@@ -322,16 +322,16 @@ Reste à faire :
 
 **Avoir.**
 
-- L'avoir est le solde créditeur du client (`soldeCredit`), en lecture seule en ligne : l'argent qu'il a laissé à la boutique (monnaie gardée, dépôts), détaillé dans « Mon solde » (section suivante). La tuile « Avoir disponible » y mène.
+- L'avoir est le solde créditeur du client (`soldeCredit`), en lecture seule en ligne : l'argent qu'il a laissé à l'imprimerie (monnaie gardée, dépôts), détaillé dans « Mon solde » (section suivante). La tuile « Avoir disponible » y mène.
 - L'utiliser crée un paiement « solde client » en attente (`AV <règlement>`), validé par la caisse dans Finances › À valider (`PaiementService::validerAvoir`). Le solde ne baisse qu'à la validation.
-- En attendant, l'avoir est montré « réservé » ou « en validation » et n'est pas promis deux fois : 30 minutes pour un règlement encore chez Orange, puis tant que le paiement attend la boutique.
+- En attendant, l'avoir est montré « réservé » ou « en validation » et n'est pas promis deux fois : 30 minutes pour un règlement encore chez Orange, puis tant que le paiement attend l'imprimerie.
 - Payé par l'avoir seul, le règlement est reçu tout de suite, sans Orange.
 
 **Paiement reçu (FP04, FP05).**
 
 - États honnêtes, ligne par ligne : « en cours chez Orange Money », « reçu · en validation », « soldée », « non payé ». Le titre dit « X F payés » pour la part Orange Money, « Avoir utilisé » pour un avoir seul.
 - Au retour d'Orange, l'état est relu chez Orange ; la page s'actualise toute seule pendant 2 minutes.
-- Le vrai numéro de reçu (« R-000123 », celui de la caisse) n'apparaît qu'une fois la boutique passée, avec son bouton PDF.
+- Le vrai numéro de reçu (« R-000123 », celui de la caisse) n'apparaît qu'une fois l'imprimerie passée, avec son bouton PDF.
 - « Et maintenant » vient des données : BAT à valider, prochaine échéance avec le prochain rappel, commande prête.
 - « Partager sur WhatsApp » ouvre wa.me avec un texte sans montant ni lien privé.
 
@@ -350,7 +350,7 @@ Reste à faire :
 **Moyens de paiement.**
 
 - Orange Money (ici, ou le numéro marchand tant que les clés ne sont pas posées), espèces au comptoir, virement au-delà du seuil des Réglages.
-- Les coordonnées bancaires sont un réglage, Réglages › Paiements › « Coordonnées bancaires pour les virements », réservé à la direction (ROLE_ADMIN, ou ROLE_PARAMETRES donné par elle). Il part au site avec les réglages publics. Vide, la page dit « coordonnées à demander en boutique ».
+- Les coordonnées bancaires sont un réglage, Réglages › Paiements › « Coordonnées bancaires pour les virements », réservé à la direction (ROLE_ADMIN, ou ROLE_PARAMETRES donné par elle). Il part au site avec les réglages publics. Vide, la page dit « coordonnées à demander à l'imprimerie ».
 
 **Notifications.** Aucune notification ni aucun SMS ne porte de montant ni de clé. Le paiement validé est annoncé par la chaîne existante (« Paiement reçu pour la commande … »), aux payeurs seulement.
 
@@ -393,7 +393,7 @@ Captures : `/mnt/project-files/captures/suivi-bat/`, `/mnt/project-files/capture
 
 ## Mon solde (construit le 18/10/2026)
 
-Demande de Yaya du 16/10/2026 : le client voit dans son espace l'argent laissé à la boutique (monnaie non rendue, dépôts) et peut déposer sur son compte sans rien payer. Règles et comptabilité : docs/finances.md, « Compte du client ».
+Demande de Yaya du 16/10/2026 : le client voit dans son espace l'argent laissé à l'imprimerie (monnaie non rendue, dépôts) et peut déposer sur son compte sans rien payer. Règles et comptabilité : docs/finances.md, « Compte du client ».
 
 | Adresse | Page |
 | --- | --- |
@@ -405,17 +405,17 @@ Demande de Yaya du 16/10/2026 : le client voit dans son espace l'argent laissé 
 
 **Ce que montre la page.**
 
-- Le solde de son compte à la boutique, « dont X déjà utilisés, en attente de validation · Y disponible » quand un avoir attend la caisse, et « Payer une facture avec mon solde » (vers « Factures et paiements ») s'il reste du disponible.
-- Le relevé tenu par la boutique : opération (« Monnaie gardée », « Dépôt en espèces », « Dépôt Orange Money », « Paiement avec le solde », « Argent rendu »…), date, référence, montant, solde après. Ni l'employé, ni la note interne, ni le motif ne descendent.
-- Ses dépôts en ligne et leur état : « Parti chez Orange Money », « Reçu, en attente de validation », « Ajouté au solde », « Refusé par la boutique ».
-- À droite : comment laisser sa monnaie à la caisse, déposer à la boutique (numéro marchand), récupérer son argent.
+- Le solde de son compte à l'imprimerie, « dont X déjà utilisés, en attente de validation · Y disponible » quand un avoir attend la caisse, et « Payer une facture avec mon solde » (vers « Factures et paiements ») s'il reste du disponible.
+- Le relevé tenu par l'imprimerie : opération (« Monnaie gardée », « Dépôt en espèces », « Dépôt Orange Money », « Paiement avec le solde », « Argent rendu »…), date, référence, montant, solde après. Ni l'employé, ni la note interne, ni le motif ne descendent.
+- Ses dépôts en ligne et leur état : « Parti chez Orange Money », « Reçu, en attente de validation », « Ajouté au solde », « Refusé par l'imprimerie ».
+- À droite : comment laisser sa monnaie à la caisse, déposer à l'imprimerie (numéro marchand), récupérer son argent.
 
 **Déposer par Orange Money.**
 
 - Montant de 500 F à 2 000 000 F (`OrangeMoney::DEPOT_MINIMUM` et `DEPOT_MAXIMUM`). « Voir les frais » montre ce qui va au solde, le fonds de soutien et le frais de retrait (Réglages › Paiements), et le total débité par Orange : les frais s'ajoutent et **ne vont pas au solde**.
 - Au clic, le serveur recalcule ; si le total a changé, le client revoit le récapitulatif. Même limite que les paiements (`espace_paiement_compte`).
 - Orange confirme : le dépôt passe « reçu » (table `depot_solde_client`, transaction `transaction_orange_money` d'objet « dépôt ») et rien d'autre ne se crée : ni paiement, ni solde. Il monte au local, où la caisse le valide après avoir vu l'argent sur le compte « Orange Money en ligne » ; le solde monte alors, jamais avant. **Jamais validé tout seul.** Échoué ou expiré chez Orange : « non abouti », il ne monte pas.
-- Tant que les clés Orange Money ne sont pas posées, un encart invite à déposer à la boutique.
+- Tant que les clés Orange Money ne sont pas posées, un encart invite à déposer à l'imprimerie.
 
 **Notifications.** L'arrivée d'un dépôt en ligne prévient l'équipe au local, sans montant. Les messages de la page au retour d'Orange ne citent pas de montant.
 

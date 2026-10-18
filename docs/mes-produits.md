@@ -76,13 +76,13 @@ Le contrôle n'affirme le CMJN ou la découpe que s'il les trouve dans le fichie
 `/espace/panier`. Le panier est gardé dans la session de la personne (il disparaît à la déconnexion).
 
 - Chaque ligne : quantité − / +, prix, retrait. Pastille verte « Fichier prêt · va directement en impression » ou orange « Nouvelle taille · l'atelier adapte le fichier ».
-- Réception : retrait en boutique (gratuit) ou livraison à Bamako (frais du réglage, adresse, contact, créneau). Bon de commande pour un compte entreprise.
+- Réception : retrait à l'imprimerie (gratuit) ou livraison à Bamako (frais du réglage, adresse, contact, créneau). Bon de commande pour un compte entreprise.
 - Récapitulatif : total, acompte (pourcentage du client ou du réglage), date « Prêt le ».
 - Le bouton dépend de la personne :
   - payeur, Orange Money ouvert : **« Valider et payer X F »** → récapitulatif Orange Money puis la page d'Orange ;
   - client **dispensé d'acompte** : **« Valider la commande »** (vert), la commande part en production ;
   - demandeur d'un compte entreprise : **« Envoyer la demande »**, sans aucun prix ;
-  - sinon « Valider la commande » : l'acompte se règle en boutique ou dans « Factures et paiements ».
+  - sinon « Valider la commande » : l'acompte se règle à l'imprimerie ou dans « Factures et paiements ».
 - « Après validation » dit combien de produits partent directement en impression et combien attendent un BAT.
 
 Droits : un demandeur ou une lecture seule ne voit aucun prix (page, volet, appels de calcul) ; l'acompte ne se montre qu'à qui paie ; la lecture seule ne peut rien envoyer.
@@ -102,7 +102,7 @@ Fiche commande › bloc **Aiguillage automatique des lignes** (dès qu'une ligne
 Quand l'aiguillage s'applique :
 
 - **automatiquement**, à la réception au local d'une commande du panier, dès que l'acompte est couvert (paiement Orange Money reçu) ou que le client en est dispensé (`Aiguillage::lancerSiPrete`) ;
-- **à la main**, avec « Confirmer et lancer » sur la fiche commande (rôle Commandes) : utile pour un acompte payé en boutique, et en démonstration (une seule base, pas de synchronisation).
+- **à la main**, avec « Confirmer et lancer » sur la fiche commande (rôle Commandes) : utile pour un acompte payé à l'imprimerie, et en démonstration (une seule base, pas de synchronisation).
 
 Lancer crée un **ordre de production transmis** pour chaque ligne directe, avec un contrôle prépresse « envoyé en production » qui reprend le contrôle fait au lien (pas de BAT). Les autres lignes de Mes produits repassent au prépresse. Le prépresse et la production sont prévenus.
 

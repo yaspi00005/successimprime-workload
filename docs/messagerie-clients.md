@@ -25,7 +25,7 @@ Une seule messagerie entre les clients et l'atelier. Elle remplace l'ancien fil 
 - **Saisie** : réponses rapides (texte modifiable avant l'envoi), bouton « Note interne », BAT et facture de la commande à joindre.
 - **Actions** : Je la prends (non assignée), Modifier la commande, Transférer (le collègue devient responsable), + Collègue (le client voit l'événement), Clôturer la demande (proposée au client).
 - **Colonne de droite** : fiche du client (type de compte, téléphone, nombre de commandes, points de fidélité), commande ou devis lié (étape, montant, payé, facture, agent), délai de réponse.
-- Sur le site en ligne, ces pages se lisent seulement : on répond depuis l'ERP de la boutique.
+- Sur le site en ligne, ces pages se lisent seulement : on répond depuis l'ERP de l'imprimerie.
 
 **Qui voit quoi** (`src/Security/MessagerieVoter.php`) : la Direction voit tout. Les autres : celles qui leur sont assignées, celles où un collègue les a ajoutés, celles des commandes et devis dont ils sont l'agent, et les non assignées de leur rôle (caisse et commercial ; paiement et facture pour qui encaisse, facture, ou la trésorière). La PAO ne voit que celles où on l'a ajoutée.
 
@@ -46,7 +46,7 @@ Chaque réponse en retard imputée retire les points de la règle (5 par défaut
 
 ## Tâche planifiée
 
-`php bin/console app:messagerie:delais`, sur l'ERP de la boutique, lancée avec la synchronisation chaque minute (`scripts/windows/synchro.bat`) : range les anciens messages dans leur conversation, prévient la Direction d'une demande qui attend au-delà de l'escalade, clôture les demandes restées sans réponse du client. Sous Linux : `* * * * * php bin/console app:messagerie:delais`.
+`php bin/console app:messagerie:delais`, sur l'ERP de l'imprimerie, lancée avec la synchronisation chaque minute (`scripts/windows/synchro.bat`) : range les anciens messages dans leur conversation, prévient la Direction d'une demande qui attend au-delà de l'escalade, clôture les demandes restées sans réponse du client. Sous Linux : `* * * * * php bin/console app:messagerie:delais`.
 
 ## Synchronisation
 

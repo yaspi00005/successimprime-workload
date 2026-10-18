@@ -63,7 +63,7 @@ sudo apt install nginx mariadb-server git unzip certbot python3-certbot-nginx fa
   php8.4-curl php8.4-xml php8.4-opcache
 ```
 
-L'ERP local (poste de la boutique) a besoin des mêmes extensions ; **zip** sert aussi à lire les classeurs `.xlsx` de l'import des données (docs/import-donnees.md) : sans elle, l'import n'accepte que le CSV. `app:verifier-installation` le signale.
+L'ERP local (poste de l'imprimerie) a besoin des mêmes extensions ; **zip** sert aussi à lire les classeurs `.xlsx` de l'import des données (docs/import-donnees.md) : sans elle, l'import n'accepte que le CSV. `app:verifier-installation` le signale.
 
 PHP 8.4 n'est pas dans Ubuntu 24.04 de base : ajouter d'abord le dépôt `ppa:ondrej/php`. GD doit savoir lire et écrire le JPEG et le WebP (c'est le cas du paquet `php8.4-gd`) ; sans cela, les images du site sont plus lourdes et les photos JPEG sont refusées.
 

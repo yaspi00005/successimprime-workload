@@ -47,7 +47,7 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
 - Les comptes clients (`docs/finances.md`, « Compte du client »), créés juste après par `app:solde-client:demo` en passant par le vrai service (relevé, trésorerie « avance client », journal de la fiche), au local seulement : sur le site en ligne, la commande ne crée rien, le relevé et les dépôts arrivent par la synchronisation (créés des deux côtés, ils seraient en double) :
   - Coumba Bagayoko (`DEMO-0122`) : monnaie gardée à la caisse (2 500 F), dépôt en espèces (20 000 F), 10 000 F d'une commande payés avec le solde ; il reste une commande à encaisser pour essayer « Payer avec le solde » et « Garder la monnaie » ;
   - Amadou Sow (`DEMO-0195`, le particulier de l'espace) : dépôt en espèces (15 000 F) et un dépôt Orange Money fait en ligne (5 000 F), reçu, à valider ;
-  - Salon Espoir (`DEMO-0002`) : dépôt Orange Money à la boutique (50 000 F), 10 000 F rendus par `demo.kadiatou`, et un dépôt en ligne du payeur Ibrahim Touré (25 000 F), reçu, à valider.
+  - Salon Espoir (`DEMO-0002`) : dépôt Orange Money à l'imprimerie (50 000 F), 10 000 F rendus par `demo.kadiatou`, et un dépôt en ligne du payeur Ibrahim Touré (25 000 F), reçu, à valider.
 - L'atelier de production (`docs/atelier-production.md`), par `app:atelier:demo` (lancée par `app:demo`, local seulement) :
   - poste machiniste (`app:poste-machiniste:demo`, `docs/poste-machiniste.md`) : huit commandes `CMD-PM…` dans la file de `demo.oumar`, une par étape (à vérifier, prêt à démarrer, en cours, à étiqueter, prêt pour livraison, retourné au prépresse avec un dessin), avec deux fichiers dessinés (bâche, kakémono) ;
   - `demo.ibrahim` devient chef d'atelier (droit « Chef d'atelier » ajouté sur sa fiche) ; `demo.oumar` est affecté aux deux solvants, Ibrahim aux autres machines ;
@@ -66,7 +66,7 @@ Salon Espoir (`DEMO-0002`, entreprise à la grille revendeur), une personne par 
 |---|---|---|---|
 | Oumar Guindo, Gérant (titulaire) | 60 69 78 04 | gère le compte, valideur, payeur | tout : utilisateurs, « Qui reçoit quoi », proposition de raison sociale ou NIF |
 | Awa Coulibaly, Intendante | 60 44 51 01 | valideur | devis à accepter, BAT ; ni factures ni montants dus |
-| Ibrahim Touré, Comptabilité | 60 44 51 02 | payeur | factures, solde, « Payer », plafond de crédit, « Mon solde » (compte à la boutique, dépôt Orange Money) |
+| Ibrahim Touré, Comptabilité | 60 44 51 02 | payeur | factures, solde, « Payer », plafond de crédit, « Mon solde » (compte à l'imprimerie, dépôt Orange Money) |
 | Mariam Dembélé, Assistante | 60 44 51 03 | demandeur (aucun droit) | sa commande attend un valideur |
 | Réception, Accueil | 60 44 51 04 | Lecture · suivi | commandes, livraisons, fichiers ; rien qui écrive |
 

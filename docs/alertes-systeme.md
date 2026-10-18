@@ -10,7 +10,7 @@ Quand quelque chose casse sur le site public, l'espace client ou l'ERP, une **al
 |---|---|---|
 | Erreur du site (500) | une page du site public, de l'espace client ou de l'admin plante (statut 500 ou plus, hors accès refusé et connexion) | `AlertesExceptionSubscriber` (titre « Erreur 500 · espace client · route · classe ») |
 | Paiement Orange Money | paiement non ouvert, rappel d'Orange refusé (jeton faux), argent reçu sans commande : tout avertissement ou erreur du journal qui commence par « Orange Money » | `AlertesMonologHandler` |
-| Synchronisation | **en ligne** : l'ERP de la boutique ne s'est pas manifesté depuis 30 minutes ; **au local** : la synchronisation est en panne (même règle que l'alerte de l'écran Synchronisation, `Synchro::alerte`) | `VerificationsSysteme` (app:alertes) |
+| Synchronisation | **en ligne** : l'ERP de l'imprimerie ne s'est pas manifesté depuis 30 minutes ; **au local** : la synchronisation est en panne (même règle que l'alerte de l'écran Synchronisation, `Synchro::alerte`) | `VerificationsSysteme` (app:alertes) |
 | Envoi d'e-mail ou de SMS | un e-mail n'est pas parti (Mailer), « SMS Orange » en erreur au journal | `AlertesEnvoiEmailSubscriber`, `AlertesMonologHandler` |
 | Sauvegarde | au local : dernière sauvegarde ratée, aucune sauvegarde, sauvegarde en retard, copie sur le second disque en échec (docs/sauvegardes.md) | `VerificationsSysteme` |
 | Espace disque | moins de place libre que le seuil réglé (2 Go par défaut) sur le disque du site ou des sauvegardes ; critique sous le quart du seuil | `VerificationsSysteme` |
@@ -49,9 +49,9 @@ Les e-mails passent par l'historique des envois (type « Alerte système (person
 
 Les deux installations ont chacune leur base, leurs personnes et leurs réglages.
 
-- Une alerte née **en ligne** est envoyée **par e-mail directement depuis le serveur en ligne** (à ses comptes Direction et « Alertes système », aux adresses en plus et à `ALERTES_EMAIL`), sans attendre la boutique. Elle **monte aussi au local** par la synchronisation (type `alerte_systeme`, sens ascendant, docs/synchronisation.md) : elle y arrive « ouverte » et « à prévenir », la cloche et le téléphone sonnent, mais **l'e-mail n'est pas renvoyé**. Le compteur et la dernière fois remontent ensuite ; un compteur qui monte sur une alerte résolue au local la rouvre.
+- Une alerte née **en ligne** est envoyée **par e-mail directement depuis le serveur en ligne** (à ses comptes Direction et « Alertes système », aux adresses en plus et à `ALERTES_EMAIL`), sans attendre l'imprimerie. Elle **monte aussi au local** par la synchronisation (type `alerte_systeme`, sens ascendant, docs/synchronisation.md) : elle y arrive « ouverte » et « à prévenir », la cloche et le téléphone sonnent, mais **l'e-mail n'est pas renvoyé**. Le compteur et la dernière fois remontent ensuite ; un compteur qui monte sur une alerte résolue au local la rouvre.
 - La prise en charge et la résolution restent de chaque côté (rien ne redescend).
-- Si la base en ligne est elle-même hors service, l'alerte ne peut pas être écrite : elle reste dans le journal du serveur (`var/log/prod.log`). Si c'est la boutique qui ne se manifeste plus, c'est le serveur en ligne qui prévient (« La boutique ne se synchronise plus avec le site »).
+- Si la base en ligne est elle-même hors service, l'alerte ne peut pas être écrite : elle reste dans le journal du serveur (`var/log/prod.log`). Si c'est l'imprimerie qui ne se manifeste plus, c'est le serveur en ligne qui prévient (« L'imprimerie ne se synchronise plus avec le site »).
 
 ## Écran Réglages › Alertes système
 

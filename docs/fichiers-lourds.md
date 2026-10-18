@@ -1,6 +1,6 @@
 # Fichiers lourds : envoi, récupération en local, reprise de l'ancien dossier
 
-Demande de Yaya du 10/10/2026. Les fichiers d'impression sont souvent lourds (PDF de bâche, TIFF, PSD de plusieurs centaines de Mo). L'application va sur un VPS, alors que l'impression se fait sur les PC de la boutique. Il faut que :
+Demande de Yaya du 10/10/2026. Les fichiers d'impression sont souvent lourds (PDF de bâche, TIFF, PSD de plusieurs centaines de Mo). L'application va sur un VPS, alors que l'impression se fait sur les PC de l'imprimerie. Il faut que :
 - les fichiers arrivent sur le serveur sans bloquer personne ;
 - ils redescendent tout seuls sur le PC du prépresse ;
 - les clients puissent aussi en envoyer.
@@ -11,14 +11,14 @@ Demande de Yaya du 10/10/2026. Les fichiers d'impression sont souvent lourds (PD
 - **« Dossier partagé » sur le serveur** (`var/uploads/dossier_partage`). On y dépose `123_nom.pdf`, où 123 est la référence du travail, et le bouton Importer rattache le fichier au travail sans le recopier.
 - **Nettoyage automatique** des fichiers de production après la durée de conservation (`FICHIER_PRODUCTION_RETENTION_MONTHS`).
 
-Une fois l'application sur le VPS, le dossier partagé n'est plus sur un PC de la boutique. Il faut donc un moyen de faire passer les fichiers entre la boutique et le serveur.
+Une fois l'application sur le VPS, le dossier partagé n'est plus sur un PC de l'imprimerie. Il faut donc un moyen de faire passer les fichiers entre l'imprimerie et le serveur.
 
 ## Trois façons de faire entrer un fichier
 
 | Par où | Pour qui | Comment |
 |---|---|---|
 | **Navigateur** | Agents, et les clients dans l'espace client (J5) | L'envoi par morceaux existant, avec la limite portée à 2 Go. L'envoi continue en arrière-plan pendant qu'on remplit la commande, avec une barre de progression sur la ligne. |
-| **Lien** | Client qui envoie un WeTransfer, Google Drive, Dropbox ou OneDrive (par WhatsApp ou e-mail) | On colle le lien sur la ligne de commande. **C'est le serveur qui télécharge**, pas la connexion de la boutique. La ligne affiche « Téléchargement… », puis le fichier. Si le lien a expiré, la ligne le signale. |
+| **Lien** | Client qui envoie un WeTransfer, Google Drive, Dropbox ou OneDrive (par WhatsApp ou e-mail) | On colle le lien sur la ligne de commande. **C'est le serveur qui télécharge**, pas la connexion de l'imprimerie. La ligne affiche « Téléchargement… », puis le fichier. Si le lien a expiré, la ligne le signale. |
 | **Dossier de dépôt sur le PC** | Fichiers apportés sur clé USB, ou reçus autrement | Un dossier « Dépôt Succès Imprim » sur le PC est envoyé au serveur en arrière-plan. Le nommage reste `123_nom.pdf`, et l'import se fait tout seul chaque minute, sans bouton. |
 
 Sécurité des liens :

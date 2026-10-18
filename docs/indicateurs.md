@@ -39,7 +39,7 @@ Référence fournie par Yaya le 10/10/2026. Pour chaque indicateur : ce qu'il me
 | Devis à relancer | Devis envoyés sans réponse depuis 3 jours | ≥ 1 |
 | Devis expirés ou perdus | Avec le motif de perte | — |
 | CA par agent | Factures rattachées à chaque agent | — |
-| CA par source | Boutique, site, WhatsApp, recommandation | — |
+| CA par source | Imprimerie (comptoir), site, WhatsApp, recommandation | — |
 | CA par famille de produits | Grand format, DTF, petit format, signalétique | — |
 | Remises accordées | Montant et % du CA, par agent | > 5 % du CA |
 | Commandes du site en attente de prise en charge | Créées en ligne, pas encore importées en local | Plus de 2 h |
@@ -194,7 +194,7 @@ Les modifications restent en brouillon. « Aperçu plein écran » montre le bro
 | Événement (Réglages › Écran TV) | Annonce | Compté comme nouveau quand |
 |---|---|---|
 | Commande passée en ligne | « Nouvelle commande en ligne disponible » | elle arrive à confirmer (comme la pastille de Ventes), validée par l'entreprise du client s'il le faut |
-| Commande saisie à la boutique | « Nouvelle commande disponible » | elle est créée (commandes depuis la veille) |
+| Commande saisie à l'imprimerie | « Nouvelle commande disponible » | elle est créée (commandes depuis la veille) |
 | Demande de devis du site | « Nouvelle demande de devis » | elle arrive, pas encore traitée |
 | Message de la page Contact | « Nouveau message du site » | il arrive, pas encore traité |
 | Demande de conception | « Nouvelle demande de conception » | elle est reçue, pas encore prise en charge |

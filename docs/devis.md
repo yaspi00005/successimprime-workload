@@ -1,6 +1,6 @@
 # Devis : faire, envoyer, relancer, transformer
 
-Ce que fait l'application avec un devis, du brouillon à la commande, côté boutique et côté client. Maquettes GC03 (liste), GC04 (saisie), DT03 (fiche), DT01 et DT04 (espace client).
+Ce que fait l'application avec un devis, du brouillon à la commande, côté imprimerie et côté client. Maquettes GC03 (liste), GC04 (saisie), DT03 (fiche), DT01 et DT04 (espace client).
 
 ## Le chemin d'un devis
 
@@ -12,14 +12,14 @@ Ce que fait l'application avec un devis, du brouillon à la commande, côté bou
    La validité (7, 15, 30 ou 60 jours) part du jour de l'envoi.
 3. **Vu** : le client a ouvert le devis, dans son espace ou par le lien du message (`/d/…`). Deux ouvertures à moins de 30 minutes comptent pour une. Les ouvertures faites par une personne de l'atelier connectée ne comptent pas.
 4. **Réponse du client**, dans son espace :
-   - **Accepter** : la commande est créée tout de suite, au prix du devis, sans ressaisie. C'est une commande en ligne « à confirmer » par la boutique, comme une commande passée dans l'espace. Puis la personne qui paie part au paiement de l'acompte par Orange Money. Sinon, l'acompte attend la personne qui paie pour l'entreprise.
-   - **Demander une modification** : son texte est noté sur le devis et arrive dans les messages. La boutique fait une nouvelle version.
+   - **Accepter** : la commande est créée tout de suite, au prix du devis, sans ressaisie. C'est une commande en ligne « à confirmer » par l'imprimerie, comme une commande passée dans l'espace. Puis la personne qui paie part au paiement de l'acompte par Orange Money. Sinon, l'acompte attend la personne qui paie pour l'entreprise.
+   - **Demander une modification** : son texte est noté sur le devis et arrive dans les messages. L'imprimerie fait une nouvelle version.
    - **Refuser** : avec un motif (le prix, le délai, fait ailleurs, projet abandonné, autre) et une précision facultative.
 5. **Expiré** : la validité est passée sans réponse. La tâche planifiée le marque (voir plus bas). Le client peut demander une nouvelle version.
 6. **Accepté → commande** : le devis montre la commande (« Voir CMD »).
 
-À la boutique, un client qui répond par téléphone ou au comptoir :
-- **Convertir en commande** (fiche du devis) : le devis passe « accepté » (« noté à la boutique ») puis devient la commande.
+À l'imprimerie, un client qui répond par téléphone ou au comptoir :
+- **Convertir en commande** (fiche du devis) : le devis passe « accepté » (« noté à l'imprimerie ») puis devient la commande.
 - **Le client a refusé** (fiche, sous « Suivi ») : le refus est noté avec son motif.
 
 ## Versions
@@ -48,7 +48,7 @@ Tâche planifiée de l'**ERP local**, chaque heure :
 
 ## Ce que chacun voit
 
-Boutique :
+Imprimerie (ERP) :
 - Liste, saisie et fiche : droit « Devis ».
 - **Rentabilité** (coût estimé, marge, taux, alerte sous 25 %) : seulement avec le droit « Marges et coûts ». Le client ne la voit jamais : elle n'est pas dans le PDF, ni dans les versions, ni dans la synchronisation.
 - Solde impayé du client sur la fiche : le montant avec le droit « Paiements », sinon le nombre de commandes pas encore payées.
@@ -86,7 +86,7 @@ Les relances restent au local. Voir docs/synchronisation.md.
   - `RentabiliteDevis` ;
   - `ListeDevis` ;
   - `PdfDevis`.
-- Contrôleurs : `DevisController` (boutique), `EspaceDevisController` (espace client), `DevisLienController` (`/d/…`).
+- Contrôleurs : `DevisController` (imprimerie), `EspaceDevisController` (espace client), `DevisLienController` (`/d/…`).
 - Commandes : `app:devis:relances`, `app:devis:demo` (lancée par `app:demo`).
 - Gabarits : `devis/index`, `devis/_form`, `devis/show`, `espace/app/devis`, `espace/app/devis_detail`.
 - Styles et scripts : `public/css/devis.css`, `public/css/espace-devis.css`, `public/js/saisie-devis.js`.

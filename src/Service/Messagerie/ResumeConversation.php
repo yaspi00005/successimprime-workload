@@ -65,7 +65,7 @@ final class ResumeConversation
             'enRetard' => null !== $chrono && $chrono['retard'] > 0,
             'messages' => \count($this->conversations->messages($c)),
             'urlAdmin' => $this->urls->generate('app_messages_clients_voir', ['publicId' => (string) $c->getPublicId()]),
-            'urlClient' => $this->urls->generate('app_espace_message', ['id' => (string) $c->getPublicId()]),
+            'urlClient' => null !== $dernier ? $this->urls->generate('app_espace_message', ['id' => (string) $c->getPublicId()]) : $this->urlClient($document),
         ];
     }
 
@@ -77,7 +77,7 @@ final class ResumeConversation
     public function urlClient(Commandes|Devis $document): string
     {
         $c = $this->conversations->pourDocument($document);
-        if (null !== $c) {
+        if (null !== $c && $this->conversations->visibleParLeClient($c)) {
             return $this->urls->generate('app_espace_message', ['id' => (string) $c->getPublicId()]);
         }
 

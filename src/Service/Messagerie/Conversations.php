@@ -90,14 +90,37 @@ final class Conversations
                 ->setParameter('q', '%'.addcslashes($recherche, '%_').'%')->setParameter('evenement', MessageClient::EVENEMENT);
         }
 
-        return $qb->getQuery()->getResult();
+        $liste = $qb->getQuery()->getResult();
+
+        return self::visiblesParLeClient($liste, $this->derniers($liste));
+    }
+
+    /**
+     * Une conversation ouverte par l'atelier (Conversations::demarrer) reste cachée au client tant qu'elle n'a
+     * aucun message visible (hors événements « X a ajouté Y ») : ni dans sa liste, ni dans ses compteurs.
+     *
+     * @param list<ConversationClient>         $conversations
+     * @param array<int, MessageClient>        $derniers      Conversations::derniers()
+     *
+     * @return list<ConversationClient>
+     */
+    public static function visiblesParLeClient(array $conversations, array $derniers): array
+    {
+        return array_values(array_filter($conversations, static fn (ConversationClient $c): bool => isset($derniers[$c->getId()])));
+    }
+
+    /** Le client voit-il cette conversation (au moins un message hors événements) ? */
+    public function visibleParLeClient(ConversationClient $c): bool
+    {
+        return null !== $c->getId() && [] !== self::visiblesParLeClient([$c], $this->derniers([$c]));
     }
 
     /** @return array{ouvertes: int, cloturees: int} */
     public function compter(Clients $client): array
     {
-        $lignes = $this->em->createQuery('SELECT c.statut, COUNT(c.id) AS n FROM '.ConversationClient::class.' c WHERE c.client = :client GROUP BY c.statut')
-            ->setParameter('client', $client)->getArrayResult();
+        $lignes = $this->em->createQuery('SELECT c.statut, COUNT(c.id) AS n FROM '.ConversationClient::class.' c WHERE c.client = :client'
+            .' AND EXISTS (SELECT m.id FROM '.MessageClient::class.' m WHERE m.conversation = c AND m.sens != :e) GROUP BY c.statut')
+            ->setParameter('client', $client)->setParameter('e', MessageClient::EVENEMENT)->getArrayResult();
         $n = array_column($lignes, 'n', 'statut');
 
         return ['ouvertes' => (int) ($n[ConversationClient::OUVERTE] ?? 0), 'cloturees' => (int) ($n[ConversationClient::CLOTUREE] ?? 0)];
@@ -110,7 +133,7 @@ final class Conversations
         }
         $c = $this->em->getRepository(ConversationClient::class)->findOneBy(['publicId' => $publicId]);
 
-        return $c instanceof ConversationClient && $c->getClient() === $client ? $c : null;
+        return $c instanceof ConversationClient && $c->getClient() === $client && $this->visibleParLeClient($c) ? $c : null;
     }
 
     public function parId(string $publicId): ?ConversationClient

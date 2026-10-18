@@ -57,6 +57,22 @@ final class MessagerieTest extends TestCase
         self::assertFalse(Conversations::imputable($direction));
     }
 
+    public function testConversationSansMessageCacheeAuClient(): void
+    {
+        $client = new Clients();
+        $le = new \DateTimeImmutable('2026-10-18 10:00');
+        $vide = ConversationClient::nouvelle($client, new Commandes(), null, null, ConversationClient::SUJET_COMMANDE, $le);
+        $active = ConversationClient::nouvelle($client, null, null, 'Mugs', ConversationClient::SUJET_AUTRE, $le);
+        (new \ReflectionProperty(ConversationClient::class, 'id'))->setValue($vide, 41);
+        (new \ReflectionProperty(ConversationClient::class, 'id'))->setValue($active, 42);
+        // Conversations::derniers() ignore déjà les événements « X a ajouté Y » : la conversation ouverte par
+        // l'atelier sans message n'y figure pas, elle reste hors de la liste, des onglets et de la pastille.
+        $derniers = [42 => MessageClient::nouveau($client, MessageClient::CLIENT, 'Vous faites les mugs ?', 'Awa', null, $le)];
+
+        self::assertSame([$active], Conversations::visiblesParLeClient([$vide, $active], $derniers));
+        self::assertSame([], Conversations::visiblesParLeClient([$vide], []));
+    }
+
     public function testRetardEtPenalite(): void
     {
         $responsable = new User();

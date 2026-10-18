@@ -254,8 +254,8 @@ final class CommandesController extends AbstractController
         $commande = new Commandes();
 
         // « + Commande » de la fiche client (docs/clients.md) : le client est déjà choisi.
-        if ($request->isMethod('GET') && $request->query->getInt('client') > 0) {
-            $commande->setClients($entityManager->find(\App\Entity\Clients::class, $request->query->getInt('client')));
+        if ($request->isMethod('GET') && Entree::entier($request->query, 'client') > 0) {
+            $commande->setClients($entityManager->find(\App\Entity\Clients::class, Entree::entier($request->query, 'client')));
         }
 
         $form = $this->createForm(

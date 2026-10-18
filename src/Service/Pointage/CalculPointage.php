@@ -256,6 +256,27 @@ final class CalculPointage
     }
 
     /**
+     * La journée compte-t-elle dans les « jours travaillés » de la note ?
+     * Ancien barème : toute journée pointée. Nouveau calcul : un jour
+     * travaillé dont une présence est finie (ou sans départ pointé) ; un
+     * jour de repos travaillé n'abaisse pas la note (ses points en plus
+     * s'ajoutent), la journée en cours non plus.
+     *
+     * @param list<array{bareme: string, statut: string}> $calculs les présences du jour
+     */
+    public static function compteDansLaNote(bool $ouvre, array $calculs): bool
+    {
+        if ($calculs === []) {
+            return false;
+        }
+        if ($calculs[0]['bareme'] !== 'heures') {
+            return true;
+        }
+
+        return $ouvre && array_filter($calculs, static fn (array $c): bool => $c['statut'] !== self::STATUT_EN_COURS) !== [];
+    }
+
+    /**
      * Jours ouvrés d'une plage (« lun-sam » → 1 à 6).
      *
      * @return list<int>

@@ -64,7 +64,7 @@ Chaque employé suit l'horaire de son poste : « Accueil et caisse » quand le p
 
 - **Marge** : la tolérance de retard (10 min, Paramètres › Pointage) sert aussi de marge sur les heures. Arriver à 9 h 10 n'est pas un retard ; 8 h 51 faites sur 9 h dues comptent comme faites.
 - **Pause** : par défaut, la pause est comptée dans les heures (9 h – 18 h = 9 h dues). L'interrupteur « Retirer la pause des heures » la retire des heures dues et des heures faites.
-- **Heures en plus** : les points des heures en plus et de la longue journée ne sont acquis qu'une fois les heures validées par la RH (bouton « Valider les heures sup. » du détail d'un pointage), pour qu'un départ oublié ne rapporte rien. L'interrupteur « Valider les heures en plus » permet de s'en passer.
+- **Heures en plus** : les points des heures en plus et de la longue journée ne sont acquis qu'une fois les heures validées par la RH (bouton « Valider les heures sup. » du détail d'un pointage), pour qu'un départ oublié ne rapporte rien. L'interrupteur « Heures en plus validées par la RH » permet de s'en passer.
 - **Jour de repos travaillé** : pas d'heures dues, donc ni + 10 ni − 15 ; chaque heure entière compte en plus (+ 5), ou 50 à partir de 20 h.
 - **Départ non pointé** : la journée ne rapporte rien et reste une anomalie (« Départ non pointé ») ; la RH corrige le départ avec un motif, et les points se calculent alors.
 - **Ajustement** : l'ajustement par l'admin avec motif (plus bas) s'ajoute toujours au calcul.
@@ -91,7 +91,7 @@ Où le voir :
 - **L'employé** : Mon espace › Ponctualité, page « Mon pointage » (`/mon-espace/pointage`) : chaque jour avec l'arrivée, le départ, les heures faites et dues, les points et la raison en clair, le total du mois et « Comment sont comptés les points ». Il ne voit que ses propres journées. L'écran de confirmation du départ (Q03) donne aussi les heures et les points du jour.
 - **La RH** (droit « Administrateur RH ») : colonne « Points » des pointages du jour (Q04), et fiche du mois (Q05) avec la raison sous chaque jour, le détail d'une journée et le total du mois.
 
-**Note de ponctualité sur 100** pour l'évaluation (N02) : points du mois ÷ (10 × jours travaillés) × 100, plafonnée à 100 et jamais sous 0 (10 = les points « heures faites »). 22 jours avec les heures faites : 220 ÷ 220 = **100** ; 21 jours faits et un retard non rattrapé : (210 − 15) ÷ 220 = **89**.
+**Note de ponctualité sur 100** pour l'évaluation (N02) : points du mois ÷ (10 × jours travaillés) × 100, plafonnée à 100 et jamais sous 0 (10 = les points « heures faites »). Les jours travaillés sont les jours de travail pointés, départ non pointé compris ; un jour de repos travaillé ne compte pas (ses points en plus s'ajoutent) et la journée en cours non plus, pour que la note ne baisse pas pendant la journée. 22 jours avec les heures faites : 220 ÷ 220 = **100** ; 21 jours faits et un retard non rattrapé : (210 − 15) ÷ 220 = **89**.
 
 ## Ancien barème (journées avant la date de début)
 
@@ -150,7 +150,7 @@ Construit : étapes 1 et 2, téléphone enregistré, zone GPS, suppression des p
 
 Calcul des points (18/10/2026) : nouveau barème par heures faites, horaire type par employé, page « Mon pointage » de l'employé et colonne « Points » côté RH (section « Calcul des points »). Le calcul est dans `src/Service/Pointage/CalculPointage.php` (`pointsHeures`), testé dans `tests/Unit/Service/CalculPointageTest.php`.
 
-Reste : tablette partagée, contrôle Wi-Fi, branchement des points sur les primes et la paie.
+Reste : tablette partagée, contrôle Wi-Fi, branchement des heures sur la paie. La note de ponctualité alimente déjà l'évaluation des primes (critère « Ponctualité et présence »).
 
 Sur le serveur, ajouter au cron (toutes les heures) :
 

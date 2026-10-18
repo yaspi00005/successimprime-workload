@@ -310,7 +310,7 @@ final class Pointages
      * Pour les journées du nouveau barème : heures faites et dues, et
      * l'horaire de la personne.
      *
-     * @return array{jours: list<array<string, mixed>>, presents: int, ouvres: int, retards: int, minutes: int, sup: int, points: int, faites: int, dues: int, aValider: int, nouveau: int, note: ?int, horaire: array{libelle: string, debut: string, fin: string, propre: bool, dues: int}, debutNouveau: ?\DateTimeImmutable}
+     * @return array{jours: list<array<string, mixed>>, presents: int, ouvres: int, retards: int, minutes: int, sup: int, points: int, faites: int, dues: int, aValider: int, nouveau: int, joursNote: int, note: ?int, horaire: array{libelle: string, debut: string, fin: string, propre: bool, dues: int}, debutNouveau: ?\DateTimeImmutable}
      */
     public function mois(User $utilisateur, \DateTimeImmutable $mois, \DateTimeImmutable $maintenant): array
     {
@@ -324,7 +324,7 @@ final class Pointages
 
         $ouvresSemaine = CalculPointage::joursOuvres((string) self::reglesDe($utilisateur, $regles)['jours']);
         $jours = [];
-        $totaux = ['presents' => 0, 'ouvres' => 0, 'retards' => 0, 'minutes' => 0, 'sup' => 0, 'points' => 0, 'faites' => 0, 'dues' => 0, 'aValider' => 0, 'nouveau' => 0];
+        $totaux = ['presents' => 0, 'ouvres' => 0, 'retards' => 0, 'minutes' => 0, 'sup' => 0, 'points' => 0, 'faites' => 0, 'dues' => 0, 'aValider' => 0, 'nouveau' => 0, 'joursNote' => 0];
         for ($j = $debut; $j < $fin && $j <= $maintenant; $j = $j->modify('+1 day')) {
             $ouvre = \in_array((int) $j->format('N'), $ouvresSemaine, true);
             $presences = $parJour[$j->format('Y-m-d')] ?? [];
@@ -337,6 +337,9 @@ final class Pointages
             $calculs = array_map(fn (Pointage $p): array => ['pointage' => $p, 'calcul' => $this->calcul($p, $regles, $maintenant)], $presences);
             if ($calculs !== []) {
                 ++$totaux['presents'];
+            }
+            if (CalculPointage::compteDansLaNote($ouvre, array_column($calculs, 'calcul'))) {
+                ++$totaux['joursNote'];
             }
             foreach ($calculs as $c) {
                 $totaux['retards'] += $c['calcul']['retard'] > 0 ? 1 : 0;
@@ -360,7 +363,7 @@ final class Pointages
         $horaire = self::horaireDe($utilisateur, $regles['heures']);
 
         return ['jours' => $jours] + $totaux + [
-            'note' => CalculPointage::note($totaux['points'], $totaux['presents'], $pointsJournee),
+            'note' => CalculPointage::note($totaux['points'], $totaux['joursNote'], $pointsJournee),
             'horaire' => $horaire + ['dues' => self::minutesDues($horaire['debut'], $horaire['fin'], $regles)],
             'debutNouveau' => $debutNouveau ?: null,
         ];

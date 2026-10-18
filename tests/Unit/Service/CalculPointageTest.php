@@ -313,6 +313,25 @@ final class CalculPointageTest extends TestCase
         self::assertSame(-15, $huit['total']);
     }
 
+    public function testJoursComptesDansLaNote(): void
+    {
+        $fini = self::jour('2026-10-16 09:00', '2026-10-16 18:00', self::v2());
+        $enCours = self::jour('2026-10-16 09:00', null, self::v2(), maintenant: '2026-10-16 12:00');
+        $oubli = self::jour('2026-10-16 09:00', null, self::v2(), maintenant: '2026-10-16 21:00');
+        $ancien = C::presence(self::t('2026-10-10 08:00'), null, self::REGLES, self::t('2026-10-10 12:00'));
+
+        self::assertTrue(C::compteDansLaNote(true, [$fini]));
+        self::assertTrue(C::compteDansLaNote(true, [$oubli]), 'départ non pointé : la journée compte, sans points');
+        self::assertFalse(C::compteDansLaNote(true, [$enCours]), 'la journée en cours n\'abaisse pas la note');
+        self::assertFalse(C::compteDansLaNote(false, [$fini]), 'jour de repos travaillé : ses points s\'ajoutent seulement');
+        self::assertFalse(C::compteDansLaNote(true, []));
+        self::assertTrue(C::compteDansLaNote(false, [$ancien]), 'ancien barème : toute journée pointée, comme avant');
+
+        // 21 journées faites (+10) et une journée à −15 : (210 − 15) ÷ 220 = 89 ; un dimanche de 3 h en plus (+15) remonte à 95.
+        self::assertSame(89, C::note(195, 22));
+        self::assertSame(95, C::note(210, 22));
+    }
+
     public function testAncienBaremeSansLaTuile(): void
     {
         $r = C::presence(self::t('2026-10-10 08:18'), self::t('2026-10-10 18:02'), self::REGLES, self::t('2026-10-10 19:00'));

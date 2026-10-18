@@ -152,7 +152,7 @@ Règles :
 
 **Comptabilité.**
 
-- L'argent qui entre (monnaie gardée, dépôt, dépôt en ligne validé) ou sort (argent rendu) passe en trésorerie dans la catégorie « Avance client (argent laissé sur son compte) » : au journal, le compte de trésorerie contre **4191 Clients, avances et acomptes reçus**, avec le nom du client. Ni vente ni charge : hors chiffre d'affaires, statistiques, budgets et dépenses du mois ; compté dans la caisse du jour et les soldes des comptes. Cette catégorie ne se choisit pas à la main.
+- L'argent qui entre (monnaie gardée, dépôt, dépôt en ligne validé) ou sort (argent rendu) passe en trésorerie dans la catégorie « Avance client (argent laissé sur son compte) » : au journal, le compte de trésorerie contre **4191 Clients, avances et acomptes reçus**, avec le nom du client. Ni vente ni charge : hors chiffre d'affaires, résultat, budgets et « Dépenses du mois » de la trésorerie ; compté dans la caisse du jour, les soldes des comptes et les entrées et sorties d'argent de la trésorerie (c'est de l'argent réellement reçu ou rendu). Cette catégorie ne se choisit pas à la main. Un paiement avec le solde n'est pas un nouvel encaissement (l'argent est entré au dépôt) : comme avant, il ne compte pas dans « Encaissements » ni dans l'encaissé des objectifs.
 - Payer avec le solde : opération diverse (pièce SC-000123), 4191 au débit, 411 au crédit lettré avec la facture de la commande ; l'annulation passe l'écriture inverse.
 - Une avance d'un client reprise en solde d'ouverture va maintenant en 4191 (au lieu de 411) et écrit une ligne « Solde d'ouverture » au relevé.
 - À tout moment, le solde de 4191 est égal au total des soldes clients (vérifié sur la démonstration : 77 000 F des deux côtés après les essais).
@@ -184,3 +184,4 @@ Captures : `/mnt/project-files/captures/compte-client/`.
 13. Compte du client : faut-il un plafond au solde d'un client (dépôt maximum), comme les 2 000 000 F d'un dépôt en ligne ?
 14. Compte du client : un dépôt refusé après l'arrivée de l'argent est rendu comment (Orange Money, espèces) ? Aujourd'hui, la boutique le règle avec le client hors de l'application.
 15. Compte du client : le rôle « Caisse et commercial » doit-il pouvoir rendre l'argent, ou cela reste-t-il à la direction ?
+16. Compte du client : une commande payée avec le solde (dépôt fait un autre mois) doit-elle compter dans l'encaissé des objectifs du mois où elle est payée ? Aujourd'hui, ni le dépôt ni ce paiement n'y comptent.

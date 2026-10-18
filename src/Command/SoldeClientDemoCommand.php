@@ -32,10 +32,12 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *    rendu en partie par la direction, et un dépôt en ligne fait par son
  *    payeur, à valider.
  *
- * Lancée par app:demo juste après le chargement (sur la base d'essai du
- * site aussi, comme la démonstration elle-même). Relancée : rien de plus si
- * ces comptes ont déjà un relevé. app:demo --purger enlève tout. Refusé en
- * production.
+ * Lancée par app:demo juste après le chargement. Relancée : rien de plus
+ * si ces comptes ont déjà un relevé. app:demo --purger enlève tout. Refusé
+ * en production. Sur le site en ligne, rien n'est créé : le relevé et les
+ * dépôts y arrivent par la synchronisation (créés des deux côtés, ils
+ * seraient en double sur « Mon solde » et la référence d'un dépôt se
+ * heurterait à sa copie).
  */
 #[AsCommand(name: 'app:solde-client:demo', description: 'Comptes clients fictifs (monnaie gardée, dépôts, argent rendu, dépôts en ligne à valider) sur les clients DEMO-.')]
 final class SoldeClientDemoCommand extends Command
@@ -48,6 +50,7 @@ final class SoldeClientDemoCommand extends Command
         private readonly SoldeClient $soldes,
         private readonly ParametresPaiementRepository $parametres,
         #[Autowire('%kernel.environment%')] private readonly string $environnement,
+        #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne = false,
     ) {
         parent::__construct();
     }
@@ -59,6 +62,11 @@ final class SoldeClientDemoCommand extends Command
             $io->error('Pas de comptes clients fictifs en production.');
 
             return Command::FAILURE;
+        }
+        if ($this->enLigne) {
+            $io->note('Site en ligne : les comptes clients de démonstration arrivent par la synchronisation depuis l\'ERP local.');
+
+            return Command::SUCCESS;
         }
         $clients = [];
         foreach (self::CLIENTS as $code) {

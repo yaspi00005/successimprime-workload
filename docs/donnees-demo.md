@@ -42,7 +42,7 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - `DC-D002` : flyer en cours chez Seydou, acompte validé ;
   - `DC-D003` : cartes de visite terminées, acompte et solde payés ;
   - `DC-D004` : affiche de DEMO-0002 faite par l'IA, impression commandée « à confirmer » avec la finalisation ; DEMO-0002 a un relevé de crédit IA (pack de 3 images payé, 2 utilisées, solde 1 000 F).
-- Les comptes clients (`docs/finances.md`, « Compte du client »), créés juste après par `app:solde-client:demo` en passant par le vrai service (relevé, trésorerie « avance client », journal de la fiche) :
+- Les comptes clients (`docs/finances.md`, « Compte du client »), créés juste après par `app:solde-client:demo` en passant par le vrai service (relevé, trésorerie « avance client », journal de la fiche), au local seulement : sur le site en ligne, la commande ne crée rien, le relevé et les dépôts arrivent par la synchronisation (créés des deux côtés, ils seraient en double) :
   - Coumba Bagayoko (`DEMO-0122`) : monnaie gardée à la caisse (2 500 F), dépôt en espèces (20 000 F), 10 000 F d'une commande payés avec le solde ; il reste une commande à encaisser pour essayer « Payer avec le solde » et « Garder la monnaie » ;
   - Amadou Sow (`DEMO-0195`, le particulier de l'espace) : dépôt en espèces (15 000 F) et un dépôt Orange Money fait en ligne (5 000 F), reçu, à valider ;
   - Salon Espoir (`DEMO-0002`) : dépôt Orange Money à la boutique (50 000 F), 10 000 F rendus par `demo.kadiatou`, et un dépôt en ligne du payeur Ibrahim Touré (25 000 F), reçu, à valider.

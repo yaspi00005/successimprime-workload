@@ -242,9 +242,17 @@ final class CalculPointageTest extends TestCase
         self::assertSame([['libelle' => 'Longue journée de 24 h 00', 'points' => 50]], $garde['points']);
         self::assertSame('À l\'heure, heures faites (24 h 00 sur 9 h 00) ; longue journée de 24 h 00 : 50 points pour la journée.', $garde['raison']);
 
-        // Pile 20 h : longue journée ; 19 h 59 : heures en plus.
+        // Pile 20 h : longue journée ; 19 h 59 : heures en plus, plafonnées
+        // au total d'une longue journée (jamais plus que 20 h).
         self::assertSame(50, self::jour('2026-10-16 09:00', '2026-10-17 05:00', self::v2(), true)['total']);
-        self::assertSame(60, self::jour('2026-10-16 09:00', '2026-10-17 04:59', self::v2(), true)['total'], '+10 et 10 h en plus × 5');
+        $presque = self::jour('2026-10-16 09:00', '2026-10-17 04:59', self::v2(), true);
+        self::assertSame(50, $presque['total'], '+10 et 10 h en plus plafonnées à +40');
+        self::assertSame([['libelle' => 'Heures faites', 'points' => 10], ['libelle' => '10 h en plus (plafond de la journée)', 'points' => 40]], $presque['points']);
+
+        // À 10 points l'heure en plus, 10 h donneraient +100 : la journée
+        // reste à 50.
+        $plafond = self::jour('2026-10-16 09:00', '2026-10-17 04:59', self::v2(points: ['points_heure_en_plus' => 10]), true);
+        self::assertSame(50, $plafond['total']);
     }
 
     public function testPosteDeNuitAvecLeNouveauBareme(): void

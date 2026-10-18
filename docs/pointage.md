@@ -57,13 +57,14 @@ Chaque employé suit l'horaire de son poste : « Accueil et caisse » quand le p
 | Heures dues faites, à l'heure ou en rattrapant un retard en partant plus tard | + 10 |
 | En retard et heures dues pas faites | − 15 |
 | À l'heure mais parti avant la fin, heures pas faites | 0 |
-| Chaque **heure entière** au-delà des heures dues | + 5 par heure |
+| Chaque **heure entière** au-delà des heures dues | + 5 par heure, sans que la journée dépasse 50 |
 | Journée (ou garde) de 20 h ou plus | 50, **à la place** du reste |
 | Départ non pointé | 0, la journée reste à régulariser par la RH |
 | Congé, absence validée, jour férié | 0, et la journée ne compte pas |
 
 - **Marge** : la tolérance de retard (10 min, Paramètres › Pointage) sert aussi de marge sur les heures. Arriver à 9 h 10 n'est pas un retard ; 8 h 51 faites sur 9 h dues comptent comme faites.
 - **Pause** : par défaut, la pause est comptée dans les heures (9 h – 18 h = 9 h dues). L'interrupteur « Retirer la pause des heures » la retire des heures dues et des heures faites.
+- **Plafond** : une journée juste sous 20 h ne rapporte jamais plus qu'une garde. 9 h 00 – 4 h 59 le lendemain (19 h 59) donne + 10 et 10 h en plus plafonnées à + 40, soit 50 comme une garde de 20 h.
 - **Heures en plus** : les points des heures en plus et de la longue journée ne sont acquis qu'une fois les heures validées par la RH (bouton « Valider les heures sup. » du détail d'un pointage), pour qu'un départ oublié ne rapporte rien. L'interrupteur « Heures en plus validées par la RH » permet de s'en passer.
 - **Jour de repos travaillé** : pas d'heures dues, donc ni + 10 ni − 15 ; chaque heure entière compte en plus (+ 5), ou 50 à partir de 20 h.
 - **Départ non pointé** : la journée ne rapporte rien et reste une anomalie (« Départ non pointé ») ; la RH corrige le départ avec un motif, et les points se calculent alors.

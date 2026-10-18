@@ -281,9 +281,14 @@ final class CalculPointage
 
         $enPlus = intdiv(max(0, $faites - $dues), 60);
         $longue = $faites >= (int) $p['longue_heures'] * 60;
+        // Une journée juste sous la longue journée ne rapporte jamais plus
+        // qu'elle : les heures en plus s'arrêtent au total d'une longue
+        // journée (sinon 19 h 59 donnerait 60 et 20 h, 50).
+        $plafond = (int) $p['points_longue'] > 0 ? max(0, (int) $p['points_longue'] - (int) ($base['points'] ?? 0)) : \PHP_INT_MAX;
+        $pointsEnPlus = min($enPlus * (int) $p['points_heure_en_plus'], $plafond);
         $bonus = match (true) {
             $longue => ['libelle' => 'Longue journée de '.self::duree($faites), 'points' => (int) $p['points_longue']],
-            $enPlus > 0 && (int) $p['points_heure_en_plus'] > 0 => ['libelle' => $enPlus.' h en plus', 'points' => $enPlus * (int) $p['points_heure_en_plus']],
+            $pointsEnPlus > 0 => ['libelle' => $enPlus.' h en plus'.($pointsEnPlus < $enPlus * (int) $p['points_heure_en_plus'] ? ' (plafond de la journée)' : ''), 'points' => $pointsEnPlus],
             default => null,
         };
         $acquis = $bonus === null || $heuresValidees || !$p['valider_en_plus'];

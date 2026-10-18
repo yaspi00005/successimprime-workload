@@ -85,7 +85,11 @@
 			['Reste à encaisser (aujourd’hui)', m.v(cr.total, 'f')],
 			['Échues (' ~ cr.nb_echues ~ ' document(s))', m.v(cr.echues, 'f')],
 			['Échues depuis plus de 60 jours', m.v(cr.plus_60, 'f')],
-		]|merge((cr.debiteurs ?? [])|map(d => [d.nom, m.v(d.reste, 'f')]))) }}
+		]) }}
+		{% if cr.debiteurs is not null and cr.debiteurs is not empty %}
+			<p class="note">Plus gros restes à payer :</p>
+			{{ x.lignes(cr.debiteurs|map(d => [d.nom, m.v(d.reste, 'f')])) }}
+		{% endif %}
 	{% endif %}
 
 	{% if r.tresorerie is not null %}
@@ -106,10 +110,10 @@
 	{% if r.equipe is not null %}
 		{% set q = r.equipe %}
 		<h2>Équipe</h2>
-		{{ x.lignes([
+		{{ x.lignes((q.attendus > 0 ? [[p.type == 'jour' ? 'Présents' : 'Présents le ' ~ (r.en_cours ? r.arrete_le : p.dernierJour)|date('d/m'), q.presents ~ ' / ' ~ q.attendus]] : [])|merge([
 			['Retards', q.retards],
 			['Absences non justifiées', q.absences_non_justifiees],
-		]|merge(q.lignes|map(l => [l.nom, l.retards ~ ' retard(s), ' ~ l.minutes ~ ' min · ' ~ l.absences ~ ' absence(s)' ~ (l.justifiees > 0 ? ' · ' ~ l.justifiees ~ ' justifiée(s)' : '')]))) }}
+		]|merge(q.lignes|map(l => [l.nom, l.retards ~ ' retard(s), ' ~ l.minutes ~ ' min · ' ~ l.absences ~ ' absence(s)' ~ (l.justifiees > 0 ? ' · ' ~ l.justifiees ~ ' justifiée(s)' : '')])))) }}
 	{% endif %}
 
 	{% if r.stock is not null %}

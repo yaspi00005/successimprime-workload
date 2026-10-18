@@ -213,6 +213,10 @@ final class RapportsMailController extends AbstractController
         $this->verifierJeton($request);
         if ($envoi->isEssai() || [] === $envoi->aReprendre()) {
             $this->addFlash('info', 'Aucun destinataire à reprendre pour cet envoi.');
+        } elseif (EnvoiRapport::EN_COURS === $envoi->getStatut()) {
+            // La tâche planifiée envoie peut-être en ce moment : pas de second e-mail aux mêmes personnes.
+            // Un envoi interrompu est repris tout seul par la tâche, 30 minutes après.
+            $this->addFlash('warning', 'Cet envoi est encore en cours : rien n’est renvoyé. Un envoi interrompu est repris tout seul par la tâche planifiée.');
         } elseif (!$this->reglages->courrielConfigure()) {
             $this->addFlash('danger', 'L’envoi d’e-mails n’est pas réglé sur cette machine : rien n’est parti.');
         } else {

@@ -92,3 +92,7 @@
 .si-rm-exclus { margin: 0 0 14px; font-size: 13px; color: #5B6575; }
 .si-rm-exclus summary { cursor: pointer; font-weight: 600; color: #475569; }
 .si-rm-exclus p { margin: 6px 0 0; overflow-wrap: anywhere; }
+
+@media (prefers-reduced-motion: reduce) {
+	.si-rm-historique summary::before { transition: none; }
+}

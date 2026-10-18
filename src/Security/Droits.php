@@ -29,6 +29,9 @@ final class Droits
     /** Corbeille (docs/corbeille.md) : voir, restaurer et supprimer pour de bon les fiches supprimées. */
     public const CORBEILLE = 'ROLE_CORBEILLE';
 
+    /** Alertes système (docs/alertes-systeme.md) : recevoir, prendre en charge et résoudre les pannes. */
+    public const ALERTES_SYSTEME = 'ROLE_ALERTES_SYSTEME';
+
     /**
      * @return array<string, array{libelle: string, detail: string, groupe: string}>
      */
@@ -56,6 +59,8 @@ final class Droits
             'ROLE_PROMOTIONS' => ['libelle' => 'Promotions', 'detail' => 'créer, suspendre, accepter les exceptions B2B, anniversaires', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_ASSISTANT' => ['libelle' => 'Assistant du site', 'detail' => 'conversations des clients avec l\'assistant, analyse, réglages', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_CREDITS_MESSAGES' => ['libelle' => 'Crédits SMS et e-mail', 'detail' => 'solde et fin du pack SMS, limites e-mail, historique des envois (numéros masqués sans le droit Clients)', 'groupe' => self::GROUPE_FONCTIONS],
+            // Alertes système (docs/alertes-systeme.md) : le technicien, en plus de la Direction.
+            self::ALERTES_SYSTEME => ['libelle' => 'Alertes système', 'detail' => 'pannes du site, de l\'espace client et de l\'ERP : recevoir les alertes, les prendre en charge, les résoudre', 'groupe' => self::GROUPE_FONCTIONS],
             self::CORBEILLE => ['libelle' => 'Corbeille', 'detail' => 'restaurer ou supprimer pour de bon ce qui a été supprimé (seulement les fiches de ses autres droits)', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_STATS_PERSO' => ['libelle' => 'Ses propres statistiques', 'detail' => 'ventes et encaissements de la personne', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_STATS_VENTES' => ['libelle' => 'Indicateurs commerciaux', 'detail' => 'devis envoyés, taux de transformation, panier moyen', 'groupe' => self::GROUPE_CHIFFRES],

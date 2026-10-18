@@ -140,6 +140,13 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Restauration d'une sauvegarde sur une machine d'essai (docs/sauvegardes.md).
 - [ ] L'API refuse un jeton inconnu et répond « introuvable » en ligne (docs/api.md).
 
+## Alertes système et réseaux sociaux (18/10/2026)
+
+- [ ] Réglages › Alertes système : ouvert à demo.kadiatou (Direction) ; refusé aux autres tant que le droit « Alertes système » n'est pas ajouté sur leur fiche ; avec le droit, la liste et le détail s'ouvrent, les réglages restent refusés (docs/alertes-systeme.md).
+- [ ] « Envoyer une alerte d'essai » : l'alerte part dans la cloche et par e-mail (si la messagerie est réglée), « Je prends » puis « Résoudre » avec une note.
+- [ ] L'e-mail ne contient que la référence, le titre et le lien : aucun détail technique, mot de passe ni donnée de client.
+- [ ] Réglages › Site vitrine › Référencement et réseaux : un lien Facebook et un numéro WhatsApp saisis paraissent dans le pied de page, sur la page Contact et dans l'espace client, en nouvel onglet ; un champ vide ne montre rien.
+
 ## Vérification automatique des accès
 
 Avant de cocher cette liste, et avant chaque mise en production, une commande ouvre chaque page avec chaque compte de démonstration et compare ce qu'elle obtient aux droits. Elle se lance sur une base d'essai qui a la démonstration (`app:demo`), jamais en production (elle refuse). Elle n'enregistre rien : les pages sont demandées dans une transaction annulée à la fin, sans aucun envoi de SMS, d'e-mail ni de notification.

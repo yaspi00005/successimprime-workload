@@ -187,9 +187,12 @@ sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 @reboot   sleep 60 && cd /srv/successimprim && php bin/console app:sauvegarde --auto -q >> var/log/sauvegarde.log 2>&1
 */15 * * * * cd /srv/successimprim && php bin/console app:espace:notifications -q >> var/log/espace-notifications.log 2>&1
 30 3 * * * cd /srv/successimprim && php bin/console app:corbeille:purger -q >> var/log/corbeille.log 2>&1
+*/5 * * * * cd /srv/successimprim && php bin/console app:alertes -q >> var/log/alertes.log 2>&1
 ```
 
 `app:espace:notifications` envoie à 7 h les SMS des clients mis de côté pendant les heures calmes (21 h – 7 h) et les rappels d'échéance des factures (docs/espace-client.md). `app:corbeille:purger` supprime pour de bon, après la sauvegarde de la nuit, ce que les clients ont retiré de leur espace il y a plus de 30 jours ; `app:corbeille:restaurer` le remet en place s'ils appellent (docs/corbeille.md).
+
+`app:alertes` vérifie l'arrivée de la synchronisation, l'espace disque et la file de messages, puis envoie les alertes système en attente par e-mail et dans l'application (docs/alertes-systeme.md). Mettre dans `.env.local` du serveur `MAILER_DSN`, `MAILER_FROM_ADDRESS` et, au besoin, `ALERTES_EMAIL` (une ou plusieurs adresses, séparées par des virgules, qui reçoivent toutes les alertes en plus de la direction) : sans messagerie, les alertes restent visibles dans Réglages › Alertes système et dans la cloche. La même tâche tourne sur l'ERP local (Windows : `scripts\windows\installer_tache_alertes.bat`).
 
 Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trésorerie, rapport de la semaine, crédits SMS et e-mail, rapports par e-mail) tournent sur l'ERP local.
 

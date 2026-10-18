@@ -1,0 +1,13 @@
+{{ sujet }}
+{% for l in lignes %}
+{% set a = l.alerte %}
+{{ a.reference }} · {{ a.libelleGravite }} · {{ a.libelleType }}
+{{ a.titre }}
+{{ a.occurrences > 1 ? a.occurrences ~ ' fois, du ' ~ a.premiereLe|date('d/m/Y H:i') ~ ' au ' ~ a.derniereLe|date('d/m/Y H:i') : 'Le ' ~ a.premiereLe|date('d/m/Y à H:i') }} · {{ a.libelleOrigine }}
+Prendre en charge : {{ l.lien }}
+
+{% endfor %}
+Toutes les alertes : {{ liste }}
+
+Envoyé par le {{ serveur }}. Le détail technique se lit sur l'écran (connexion demandée) : ce message ne contient ni mot de passe ni donnée de client.
+Une même panne ne fait qu'une alerte, dont le compteur monte ; au plus un e-mail par sorte toutes les {{ delai }} minutes.

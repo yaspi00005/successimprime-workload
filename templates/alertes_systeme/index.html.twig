@@ -1,0 +1,100 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Réglages › Alertes système (docs/alertes-systeme.md) : ce qui a cassé
+	(site, espace client, ERP), regroupé (une panne = une alerte et son
+	compteur), qui s'en occupe, ce qui est résolu. Direction et droit
+	« Alertes système ».
+#}
+
+{% block title %}Alertes système{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/alertes-systeme.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_ADMIN') %}
+		<li class="nav-item"><a href="{{ path('app_alertes_systeme_reglages') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-sliders-h me-1" aria-hidden="true"></i><span class="si-masque-mobile">Qui reçoit quoi</span><span class="d-md-none">Réglages</span></a></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-as">
+		<div class="si-as-compteurs" role="list">
+			<a href="{{ path('app_alertes_systeme_index') }}" class="si-as-compteur si-as-compteur-ouverte{{ compte.ouverte > 0 ? ' si-as-actif' }}" role="listitem">
+				<b>{{ compte.ouverte }}</b><span>ouverte{{ compte.ouverte > 1 ? 's' }}</span>
+			</a>
+			<a href="{{ path('app_alertes_systeme_index') }}" class="si-as-compteur si-as-compteur-prise" role="listitem">
+				<b>{{ compte.prise }}</b><span>prise{{ compte.prise > 1 ? 's' }} en charge</span>
+			</a>
+			<a href="{{ path('app_alertes_systeme_index', {vue: 'resolues'}) }}" class="si-as-compteur si-as-compteur-resolue" role="listitem">
+				<b>{{ compte.resolue }}</b><span>résolue{{ compte.resolue > 1 ? 's' }} <small>(90 jours)</small></span>
+			</a>
+		</div>
+
+		<div class="card si-bloc">
+			<form method="get" class="si-as-filtres" aria-label="Filtrer les alertes">
+				<nav class="si-as-vues" aria-label="Vue">
+					{% for cle, libelle in vues %}
+						<a href="{{ path('app_alertes_systeme_index', {vue: cle, type: type}) }}" class="{{ cle == vue ? 'actif' }}"{{ cle == vue ? ' aria-current="page"' }}>{{ libelle }}</a>
+					{% endfor %}
+				</nav>
+				<input type="hidden" name="vue" value="{{ vue }}">
+				<label class="si-as-type">
+					<span class="visually-hidden">Sorte d'alerte</span>
+					<select name="type" class="form-control form-control-sm" onchange="this.form.submit()">
+						<option value="">Toutes les sortes</option>
+						{% for cle, t in constant('App\\Entity\\AlerteSysteme::TYPES') %}
+							<option value="{{ cle }}" {{ cle == type ? 'selected' }}>{{ t.libelle }}</option>
+						{% endfor %}
+					</select>
+				</label>
+				<noscript><button type="submit" class="btn btn-light btn-sm">Filtrer</button></noscript>
+			</form>
+
+			{% if alertes is empty %}
+				<div class="si-as-vide">
+					<i class="fas fa-check-circle" aria-hidden="true"></i>
+					<p class="mb-0">{{ vue == 'en_cours' ? 'Aucune alerte en cours : tout fonctionne.' : 'Aucune alerte pour ce filtre.' }}</p>
+				</div>
+			{% else %}
+				<ul class="si-as-liste">
+					{% for a in alertes %}
+						<li class="si-as-ligne{{ a.estCritique and not a.estResolue ? ' si-as-critique' }}{{ a.estResolue ? ' si-as-finie' }}">
+							<span class="si-as-point" aria-hidden="true"></span>
+							<div class="si-as-texte">
+								<a href="{{ path('app_alertes_systeme_voir', {id: a.id}) }}" class="si-as-titre">{{ a.titre }}</a>
+								<span class="si-as-meta">
+									<b>{{ a.reference }}</b> · {{ a.libelleType }} · {{ a.libelleOrigine }}
+									· {{ a.occurrences > 1 ? a.occurrences ~ ' fois, dernière ' : '' }}{{ a.derniereLe|temps_ecoule }}
+								</span>
+							</div>
+							<div class="si-as-etat">
+								{% include 'alertes_systeme/_etat.html.twig' with {alerte: a} only %}
+								{% if a.etat == 'prise' and a.prisePar %}<small>{{ a.prisePar.employe ? a.prisePar.employe.nomComplet : a.prisePar.userIdentifier }}</small>{% endif %}
+								{% if a.estResolue and a.resolueLe %}<small>{{ a.resolueLe|date('d/m H:i') }}</small>{% endif %}
+							</div>
+							<div class="si-as-geste">
+								{% if a.etat == 'ouverte' %}
+									<form method="post" action="{{ path('app_alertes_systeme_prendre', {id: a.id}) }}">
+										<input type="hidden" name="_token" value="{{ csrf_token('alerte-systeme-prendre-' ~ a.id) }}">
+										<input type="hidden" name="vue" value="{{ vue }}">
+										<button type="submit" class="btn btn-primary btn-sm">Je prends</button>
+									</form>
+								{% else %}
+									<a href="{{ path('app_alertes_systeme_voir', {id: a.id}) }}" class="btn btn-light btn-sm" aria-label="Ouvrir {{ a.reference }}"><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+								{% endif %}
+							</div>
+						</li>
+					{% endfor %}
+				</ul>
+				{% if alertes|length >= limite %}
+					<p class="text-muted small mt-2 mb-0">Les {{ limite }} alertes les plus récentes.</p>
+				{% endif %}
+			{% endif %}
+		</div>
+		<p class="si-as-aide">Une même panne ne fait qu'une alerte : son compteur monte tant qu'elle n'est pas résolue. Les alertes de synchronisation, de sauvegarde, de disque et de file de messages se résolvent toutes seules quand tout redevient normal (vérifié toutes les 5 minutes).</p>
+	</div>
+{% endblock %}

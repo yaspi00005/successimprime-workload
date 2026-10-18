@@ -132,6 +132,7 @@ security:
             - ROLE_ASSISTANT
             - ROLE_CREDITS_MESSAGES
             - ROLE_CORBEILLE
+            - ROLE_ALERTES_SYSTEME
             
 
 

@@ -20,14 +20,18 @@ use Symfony\Component\Routing\Attribute\Route;
  */
 final class SiteSocialController extends AbstractController
 {
+    public function __construct(private readonly SiteController $site)
+    {
+    }
+
     #[Route('/nos-actions-sociales', name: ActionsSociales::ROUTE, methods: ['GET'])]
-    public function actionsSociales(Request $request, ActionsSociales $partie, ActionSocialeRepository $actions, SiteController $site): Response
+    public function actionsSociales(Request $request, ActionsSociales $partie, ActionSocialeRepository $actions): Response
     {
         if (!$partie->visibles()) {
             throw $this->createNotFoundException();
         }
 
-        return $site->cache($this->render('site/actions_sociales.html.twig', [
+        return $this->site->cache($this->render('site/actions_sociales.html.twig', [
             'actions' => $actions->visibles(),
         ]), $request);
     }

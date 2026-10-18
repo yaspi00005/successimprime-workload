@@ -43,7 +43,9 @@
 					</nav>
 				{% endif %}
 
-				{{ include('site/_illustrations_produits.svg.twig') }}
+				{# Les dessins ne sont écrits dans la page que si un produit montré n'a pas de photo. #}
+				{% set sans_photo = (univers_choisi ? [univers_choisi] : univers)|filter(u => u.produits|filter(p => not site_photo_produit(p.nom))|length > 0)|length > 0 %}
+				{% if sans_photo %}{{ include('site/_illustrations_produits.svg.twig') }}{% endif %}
 				<ul class="si-produits-grille">
 					{% for u in univers_choisi ? [univers_choisi] : univers %}
 						{% for p in u.produits %}

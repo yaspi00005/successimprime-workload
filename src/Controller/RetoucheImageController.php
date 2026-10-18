@@ -10,6 +10,7 @@ use App\Entity\MessageClient;
 use App\Entity\User;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\Http\Entree;
+use App\Service\Prepresse\ConversionPdf;
 use App\Service\Prepresse\GenerateurRetouche;
 use App\Service\Prepresse\GeometrieRetouche as G;
 use App\Service\Prepresse\PdfImage;
@@ -17,6 +18,7 @@ use App\Service\SuiviMetiers\TableauConception;
 use App\Service\TableauProduction;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -124,7 +126,36 @@ final class RetoucheImageController extends AbstractController
             ];
         }
 
+        $pdfs = $this->pdfs($detail);
+        $pdfDemande = Entree::entier($request->query, 'pdf');
+
         return $this->render('controle_pre_presse/retouche.html.twig', [
+            'pdfs' => $pdfs,
+            'conversion' => [] === $pdfs ? null : [
+                'pdfs' => array_map(fn (CommandeDetailFichier $f): array => [
+                    'id' => $f->getId(),
+                    'nom' => $f->getNomOriginal(),
+                    'version' => $f->getVersion(),
+                    'client' => CommandeDetailFichier::ORIGINE_CLIENT === $f->getOrigine(),
+                    'url' => $this->generateUrl('app_controle_pre_presse_telecharger_fichier', ['id' => $f->getId()]),
+                ], $pdfs),
+                'ouvrir' => \in_array($pdfDemande, array_map(static fn (CommandeDetailFichier $f): ?int => $f->getId(), $pdfs), true) ? $pdfDemande : null,
+                'commande' => ['numero' => $commande->getNumero(), 'largeurMm' => $largeurMm, 'hauteurMm' => $hauteurMm],
+                'seuils' => [
+                    'petitFormatMaxMm' => G::PETIT_FORMAT_MAX_MM,
+                    'echelles' => G::ECHELLES,
+                    'echelleToleree' => G::ECHELLE_TOLEREE,
+                    'coteMaxPx' => ConversionPdf::COTE_MAX_PX,
+                    'pixelsMax' => ConversionPdf::PIXELS_MAX,
+                    'dpiMin' => ConversionPdf::DPI_MIN,
+                    'dpiMax' => ConversionPdf::DPI_MAX,
+                    'tailleMax' => (int) min(ConversionPdf::TAILLE_MAX, UploadedFile::getMaxFilesize()),
+                ],
+                'urls' => [
+                    'convertir' => $this->generateUrl('app_controle_pre_presse_retouche_convertir_pdf', ['id' => $detail->getId()]),
+                ],
+                'jeton' => $this->container->get('security.csrf.token_manager')->getToken(self::CSRF)->getValue(),
+            ],
             'detail' => $detail,
             'commande' => $commande,
             'fichier' => $choisi,
@@ -294,6 +325,89 @@ final class RetoucheImageController extends AbstractController
     }
 
     /**
+     * Conversion d'un PDF de la ligne en image (docs/prepresse-retouche.md) :
+     * la page est rendue dans le navigateur (pdf.js) ; ici, l'image reçue est
+     * vérifiée puis rangée en nouvelle version, reliée au PDF, qui n'est
+     * jamais modifié. L'outil de retouche s'ouvre ensuite sur l'image.
+     */
+    #[Route('/convertir-pdf', name: 'convertir_pdf', methods: ['POST'])]
+    public function convertirPdf(CommandesDetails $detail, Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_PREPRESSE');
+        if (!$this->isCsrfTokenValid(self::CSRF, (string) $request->request->get('_token'))) {
+            return $this->json(['message' => 'La page a expiré : rechargez-la.'], Response::HTTP_FORBIDDEN);
+        }
+        $moi = $this->getUser();
+        \assert($moi instanceof User);
+        $commande = $detail->getCommande() ?? throw $this->createNotFoundException();
+
+        $pdf = null;
+        foreach ($this->pdfs($detail) as $f) {
+            if ($f->getId() === (int) $request->request->get('pdf')) {
+                $pdf = $f;
+            }
+        }
+        if (null === $pdf) {
+            return $this->json(['message' => 'PDF d\'origine introuvable sur ce travail.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $image = $request->files->get('image');
+        if (!$image instanceof UploadedFile) {
+            return $this->json(['message' => 'Aucune image reçue : l\'envoi est peut-être trop lourd pour ce serveur. Baissez la résolution ou choisissez JPEG.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        if (!$image->isValid()) {
+            return $this->json(['message' => \in_array($image->getError(), [\UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE], true)
+                ? \sprintf('Image trop lourde pour ce serveur (%d Mo au plus) : baissez la résolution ou choisissez JPEG.', intdiv((int) UploadedFile::getMaxFilesize(), 1048576))
+                : 'L\'image n\'est pas arrivée entière : réessayez.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        try {
+            $info = ConversionPdf::verifierImage($image->getPathname(), (int) $image->getSize());
+        } catch (\DomainException $e) {
+            return $this->json(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $reglages = ConversionPdf::reglages($request->request->all());
+        $version = $this->prochaineVersion($detail);
+        $nom = self::nomFichier((string) $request->request->get('nom'), $info['extension'])
+            ?? ConversionPdf::nomParDefaut((string) $pdf->getNomOriginal(), $reglages['page'], $reglages['pages'], $reglages['dpi'], $info['extension']);
+        $dossier = $this->getParameter('kernel.project_dir').'/var/uploads/commandes';
+        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            return $this->json(['message' => 'Dossier des fichiers des commandes introuvable sur le serveur.'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+        $nomStockage = 'conversion-'.$detail->getId().'-'.bin2hex(random_bytes(12)).'.'.$info['extension'];
+        $taille = (int) $image->getSize();
+        $image->move($dossier, $nomStockage);
+        $cible = $dossier.'/'.$nomStockage;
+
+        $fichier = (new CommandeDetailFichier())
+            ->setCommandeDetail($detail)
+            ->setFichierSource($pdf)
+            ->setJetonUpload(bin2hex(random_bytes(32)))
+            ->setNomOriginal($nom)
+            ->setNomStockage($nomStockage)
+            ->setTypeMime($info['type'])
+            ->setTaille($taille)
+            ->setEmpreinte((string) hash_file('sha256', $cible))
+            ->setOrigine(CommandeDetailFichier::ORIGINE_INTERNE)
+            ->setEtat(CommandeDetailFichier::ETAT_TRAITE)
+            ->setVersion($version)
+            ->setFace($pdf->getFace())
+            ->setDesignation(ConversionPdf::DESIGNATION)
+            ->setObservation(ConversionPdf::observation((string) $pdf->getNomOriginal(), $reglages, $info['largeur'], $info['hauteur'], $info['extension']))
+            ->setAjoutePar($moi)
+            ->marquerUploadTermine();
+        $detail->addFichier($fichier);
+        $this->em->persist($fichier);
+        $this->em->flush();
+
+        return $this->json([
+            'message' => \sprintf('%s rangé dans %s (version %d). Le PDF reste intact.', $nom, $commande->getNumero(), $version),
+            'fichier' => ['id' => $fichier->getId(), 'nom' => $nom, 'version' => $version],
+            'retouche' => $this->generateUrl('app_controle_pre_presse_retouche_outil', ['id' => $detail->getId(), 'fichier' => $fichier->getId()]),
+        ]);
+    }
+
+    /**
      * « Demander un fichier plus grand au client » (maquette PP04) : un
      * message dans la conversation de la commande, côté espace client.
      */
@@ -359,6 +473,23 @@ final class RetoucheImageController extends AbstractController
         usort($images, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => [$b->getVersion(), $b->getId()] <=> [$a->getVersion(), $a->getId()]);
 
         return $images;
+    }
+
+    /**
+     * PDF de la ligne (fichiers du client et versions), qu'on peut convertir
+     * en image, du plus récent au plus ancien.
+     *
+     * @return list<CommandeDetailFichier>
+     */
+    private function pdfs(CommandesDetails $detail): array
+    {
+        $pdfs = array_values(array_filter(
+            $detail->getFichiers()->toArray(),
+            static fn (CommandeDetailFichier $f): bool => $f->isActif() && $f->estUploadTermine() && 'application/pdf' === $f->getTypeMime(),
+        ));
+        usort($pdfs, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => [$b->getVersion(), $b->getId()] <=> [$a->getVersion(), $a->getId()]);
+
+        return $pdfs;
     }
 
     /** @return list<array{fichier: CommandeDetailFichier, ligne: CommandesDetails}> */

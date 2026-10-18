@@ -6,6 +6,8 @@
 {% set dernier = detail.dernierControlePrePresse %}
 {# Outil de retouche (docs/prepresse-retouche.md) : seulement s'il y a une image JPG, PNG, WebP ou GIF. #}
 {% set image_retouchable = detail.fichiers|filter(f => f.actif and f.typeMime in ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])|length > 0 %}
+{# Un PDF se convertit en image dans l'outil de retouche (pdf.js), pas en lecture seule. #}
+{% set pdf_convertible = not module_en_lecture('app_controle_pre_presse_retouche_convertir_pdf') %}
 {% set statuts_controle = {
 	'a_controler': ['À contrôler', 'secondary'],
 	'en_cours': ['En cours', 'info'],
@@ -191,6 +193,7 @@
 							</span>
 						</label>
 						{% if fichier.typeMime in ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] and fichier.estUploadTermine %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id, fichier: fichier.id}) }}" class="btn btn-light btn-sm" title="Redimensionner, contour, fichier final"><i class="fas fa-crop-alt"></i><span class="visually-hidden">Retoucher</span></a>{% endif %}
+						{% if pdf_convertible and fichier.typeMime == 'application/pdf' and fichier.estUploadTermine and fichier.actif %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id, pdf: fichier.id}) }}" class="btn btn-light btn-sm" title="Convertir en image (PNG ou JPEG), puis retoucher"><i class="fas fa-image"></i><span class="visually-hidden">Convertir en image</span></a>{% endif %}
 						<a href="{{ path('app_controle_pre_presse_controler', {id: detail.id, fichier: fichier.id}) }}" class="btn btn-light btn-sm">Voir</a>
 					</li>
 				{% endfor %}

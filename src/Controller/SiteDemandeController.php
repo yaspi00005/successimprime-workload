@@ -7,6 +7,7 @@ use App\Entity\ProduitConfiguration;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\GrilleTarifaire;
+use App\Service\PiecesParMetreCarre;
 use App\Service\Site\ContactSite;
 use App\Service\Site\DemandesSite;
 use App\Service\Site\FormulaireDemande;
@@ -38,6 +39,7 @@ final class SiteDemandeController extends AbstractController
         private readonly ContactSite $contact,
         #[Autowire('%kernel.secret%')] private readonly string $secret,
         #[Autowire(service: 'limiter.site_demande_ip')] private readonly RateLimiterFactoryInterface $limite,
+        private readonly PiecesParMetreCarre $piecesM2,
     ) {
     }
 
@@ -140,7 +142,7 @@ final class SiteDemandeController extends AbstractController
             return $vue(['_' => $erreur], $saisie);
         }
 
-        ['valeurs' => $valeurs, 'erreurs' => $erreurs] = FormulaireDemande::valider($nature, $donnees, $produits);
+        ['valeurs' => $valeurs, 'erreurs' => $erreurs] = FormulaireDemande::valider($nature, $donnees, $produits, $this->piecesM2->espacement());
         $fichier = DemandeDevis::NATURE_DEVIS === $nature ? $request->files->get('fichier') : null;
         $fichier = $fichier instanceof UploadedFile ? $fichier : null;
         if (null !== $fichier) {
@@ -201,6 +203,9 @@ final class SiteDemandeController extends AbstractController
             'largeur' => $texte('largeur', 12),
             'hauteur' => $texte('hauteur', 12),
             'quantite' => $texte('quantite', 12),
+            // Quantité en pièces ou en m² (pièces au m²).
+            'unite_quantite' => FormulaireDemande::UNITE_M2 === ($donnees['unite_quantite'] ?? null) ? FormulaireDemande::UNITE_M2 : 'piece',
+            'quantite_m2' => $texte('quantite_m2', 12),
             'finitions' => array_values(array_map('intval', array_filter($finitions, static fn ($v): bool => \is_scalar($v) && ctype_digit((string) $v)))),
         ];
     }
@@ -225,11 +230,12 @@ final class SiteDemandeController extends AbstractController
 
     /**
      * Ce que le script de la page doit savoir de chaque produit : taille
-     * demandée, quantité minimum, finitions. Aucun prix.
+     * demandée, quantité minimum, quantité possible en m² (pièces au m²),
+     * finitions. Aucun prix.
      *
      * @param list<ProduitConfiguration> $produits
      *
-     * @return array<int, array{taille: bool, largeur: ?float, hauteur: ?float, min: int, finitions: list<array{id: int, nom: string, obligatoire: bool, parDefaut: bool}>}>
+     * @return array<int, array{taille: bool, largeur: ?float, hauteur: ?float, min: int, m2: bool, finitions: list<array{id: int, nom: string, obligatoire: bool, parDefaut: bool}>}>
      */
     public static function fiches(array $produits): array
     {
@@ -241,6 +247,7 @@ final class SiteDemandeController extends AbstractController
                 'largeur' => $f['largeur'],
                 'hauteur' => $f['hauteur'],
                 'min' => $f['min'],
+                'm2' => FormulaireDemande::piecesAuM2Possible($p),
                 'finitions' => array_map(static fn (array $fi): array => ['id' => $fi['id'], 'nom' => self::sansDemo($fi['nom']), 'obligatoire' => $fi['obligatoire'], 'parDefaut' => $fi['parDefaut']], $f['finitions']),
             ];
         }

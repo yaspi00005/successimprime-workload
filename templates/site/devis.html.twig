@@ -57,6 +57,8 @@
 						{{ include('site/_champ.html.twig', {nom: 'quantite', libelle: 'Quantité', valeur: saisie.quantite, type: 'number', attributs: 'min="1" max="100000" step="1" inputmode="numeric"', exemple: fiche ? fiche.min : '1'}) }}
 					</div>
 					<p class="si-aide" id="aide-taille"{% if fiche and not fiche.taille %} hidden{% endif %}>Une estimation de la taille suffit : nous la vérifions avec vous.</p>
+					{# Petites pièces au m² (autocollants, étiquettes) : quantité en pièces ou en m². #}
+					{{ include('partials/_pieces_m2.html.twig', {id: 'pieces-m2', largeur: '#champ-largeur', hauteur: '#champ-hauteur', quantite: '#champ-quantite', unite: saisie.unite_quantite ?? 'piece', m2: saisie.quantite_m2 ?? '', erreur: erreurs.quantite_m2 ?? null, masque: not (fiche and fiche.m2)}) }}
 
 					<div class="si-champ si-finitions" id="bloc-finitions"{% if not fiche or not fiche.finitions %} hidden{% endif %}>
 						<span class="si-champ-libelle" id="libelle-finitions">Finitions</span>
@@ -140,6 +142,7 @@
 		var largeur = document.getElementById('champ-largeur');
 		var hauteur = document.getElementById('champ-hauteur');
 		var facultatif = document.getElementById('message-facultatif');
+		var piecesM2 = document.getElementById('pieces-m2');
 
 		function appliquer(premiere) {
 			var f = fiches[produit.value] || null;
@@ -153,6 +156,9 @@
 				if (f.hauteur) { hauteur.placeholder = Math.round(f.hauteur); }
 			}
 			facultatif.textContent = f ? '(facultatif)' : '(décrivez votre projet)';
+			// Pièces au m² : seulement pour un produit au m² dont on donne la taille.
+			piecesM2.hidden = !(f && f.m2);
+			if (window.SiPiecesM2) { window.SiPiecesM2.rafraichir(piecesM2); }
 			if (premiere) { return; }
 			var cochees = {};
 			liste.querySelectorAll('input:checked').forEach(function (c) { cochees[c.value] = true; });

@@ -141,6 +141,8 @@
                 total: total,
                 fichiers: fichiers,
                 surface: largeur * longueur / 10000 * quantite,
+                // Pièces au m² (pieces-m2.js) : la surface facturée, espacement compris.
+                surfacePieces: Number((detail.querySelector('.js-pm2-ligne:not([hidden])') || {dataset: {}}).dataset.surfaceFacturee || 0),
                 // Promotion de la ligne, posée par promotions-saisie.js.
                 promotion: (detail.querySelector('.js-promo-ligne') || {dataset: {}}).dataset.etiquette || '',
             };
@@ -217,7 +219,9 @@
             const resume = active.querySelector('.js-resume-ligne');
             if (resume) {
                 const morceaux = [];
-                if (infos.surface > 0) {
+                if (infos.surfacePieces > 0) {
+                    morceaux.push('Surface facturée ' + decimal.format(infos.surfacePieces) + ' m² (pièces au m²)');
+                } else if (infos.surface > 0) {
                     morceaux.push('Surface ' + decimal.format(infos.surface) + ' m²');
                 }
                 morceaux.push('prix de la ligne <strong>' + montant(infos.total) + ' F</strong>');

@@ -111,6 +111,8 @@ final class CatalogueSynchro
         'conception' => ['ia_active', 'prix_image', 'finalisation', 'packs', 'plafond_jour', 'limite_heure'],
         // Atelier 3D : les paliers et la seconde face servent au prix calculé en ligne (docs/atelier-3d.md).
         'atelier_3d' => ['palier1_quantite', 'palier1_remise', 'palier2_quantite', 'palier2_remise', 'face_en_plus', 'paliers_b2b'],
+        // Pièces au m² : le site compte les pièces avec le même espacement (docs/saisie-devis-commandes.md).
+        'pieces_m2' => ['espacement_mm'],
         // L'assistant tourne en ligne : tous ses réglages y servent (docs/assistant-client.md).
         'assistant' => ['actif', 'message_accueil', 'limite_jour', 'whatsapp', 'delais', 'modele', 'effort', 'taux_usd', 'prix_entree', 'prix_sortie', 'prix_cache_lecture', 'prix_cache_ecriture'],
     ];
@@ -335,6 +337,8 @@ final class CatalogueSynchro
                     // Promotion de la ligne (docs/promotions.md) : son libellé et sa remise, déjà dans les totaux ;
                     // la part du code promo de la commande, aussi.
                     'libellePromotion', 'remisePromotion', 'montantPromotion', 'remiseCodePromo',
+                    // Pièces au m² : l'espacement retenu, qui fait la surface facturée (docs/saisie-devis-commandes.md).
+                    'espacementPiecesM2',
                 ],
                 // produitClient : ligne commandée depuis « Mes produits » (le produit du client vient après les BAT).
                 'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format', 'produitClient' => 'produit_client'],
@@ -399,6 +403,7 @@ final class CatalogueSynchro
                     'profilCouleurs', 'resolution', 'grammage', 'epaisseur', 'rectoVerso', 'nombreFaces', 'laminage', 'oeillets', 'decoupe', 'pliage',
                     'emballage', 'typeLigne', 'modeSaisie', 'batValide', 'etat', 'modeCalcul',
                     'libellePromotion', 'remisePromotion', 'montantPromotion', 'remiseCodePromo',
+                    'espacementPiecesM2',
                 ],
                 'relations' => ['devis' => 'devis', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
@@ -553,7 +558,8 @@ final class CatalogueSynchro
             ],
             'demande_devis' => [
                 'classe' => DemandeDevis::class, 'sens' => self::ASCENDANT, 'libelle' => 'Demande du site', 'titre' => ['numero'],
-                'champs' => ['numero', 'nature', 'nom', 'telephone', 'email', 'objet', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'message', 'creeLe', 'accuseEnvoyeLe'],
+                // quantiteM2 : surface donnée par le visiteur qui a compté en m² (pièces au m²).
+                'champs' => ['numero', 'nature', 'nom', 'telephone', 'email', 'objet', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'quantiteM2', 'message', 'creeLe', 'accuseEnvoyeLe'],
                 // Un produit retiré du catalogue entre-temps ne bloque pas la demande : la désignation reste.
                 'relations' => ['configuration' => 'configuration', 'fichier' => 'fichier', 'creation' => 'atelier_creation'],
                 'facultatives' => ['configuration'],

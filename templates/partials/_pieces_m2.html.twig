@@ -1,0 +1,37 @@
+{#
+	Pièces au m² (docs/saisie-devis-commandes.md) : la quantité en pièces ou
+	en m², et combien de pièces tiennent sur 1 m² (espacement du réglage).
+	Le calcul se fait dans la page (public/js/pieces-m2.js) ; le serveur le
+	refait à l'envoi (PiecesParMetreCarre). Aucun prix.
+
+	Variables :
+	- largeur, hauteur, quantite : sélecteurs CSS des champs de la page
+	  (ex. '#champ-largeur') ; la quantité reste le nombre de pièces ;
+	- unite_cote : 'cm' (défaut), 'mm' ou 'm' ;
+	- unite : 'piece' (défaut) ou 'm2' ; m2 : surface déjà tapée ;
+	- nom_unite, nom_m2 : noms envoyés (défaut 'unite_quantite', 'quantite_m2') ;
+	- erreur : message à montrer sous la surface ;
+	- masque : vrai pour cacher le bloc (produit qui n'est pas au m²) ; la
+	  page qui le montre ou le cache appelle SiPiecesM2.rafraichir(bloc) ;
+	- id : préfixe des identifiants (défaut 'pm2').
+#}
+{% set id = id ?? 'pm2' %}
+{% set unite = (unite ?? 'piece') == 'm2' ? 'm2' : 'piece' %}
+{% set nom_unite = nom_unite ?? 'unite_quantite' %}
+{% set nom_m2 = nom_m2 ?? 'quantite_m2' %}
+{% set erreur = erreur ?? null %}
+{{ site_styles('css/pieces-m2.css') }}
+<div class="si-pm2" id="{{ id }}" data-pieces-m2 data-espacement="{{ pieces_m2_espacement() }}" data-largeur="{{ largeur }}" data-hauteur="{{ hauteur }}" data-quantite="{{ quantite }}" data-unite-cote="{{ unite_cote ?? 'cm' }}"{% if masque ?? false %} hidden{% endif %}>
+	<fieldset class="si-pm2-unite">
+		<legend>Quantité en</legend>
+		<label class="si-pm2-choix"><input type="radio" name="{{ nom_unite }}" value="piece" data-pm2-unite{% if unite == 'piece' %} checked{% endif %}><span>pièces</span></label>
+		<label class="si-pm2-choix"><input type="radio" name="{{ nom_unite }}" value="m2" data-pm2-unite{% if unite == 'm2' %} checked{% endif %}><span>m²</span></label>
+	</fieldset>
+	<div class="si-champ si-pm2-m2" data-pm2-zone-m2{% if unite != 'm2' %} hidden{% endif %}>
+		<label for="{{ id }}-m2">Surface voulue (m²)</label>
+		<input type="text" id="{{ id }}-m2" name="{{ nom_m2 }}" value="{{ m2 ?? '' }}" inputmode="decimal" maxlength="8" autocomplete="off" placeholder="2,5" data-pm2-m2{% if erreur %} aria-invalid="true" aria-describedby="{{ id }}-erreur"{% endif %}>
+		{% if erreur %}<p class="si-pm2-erreur" id="{{ id }}-erreur">{{ erreur }}</p>{% endif %}
+	</div>
+	<p class="si-pm2-resultat" data-pm2-resultat aria-live="polite">Pièces qui tiennent sur 1 m², espacement de {{ pieces_m2_espacement()|replace({'.': ','}) }} mm compris.</p>
+</div>
+<script src="{{ asset('js/pieces-m2.js') }}" defer></script>

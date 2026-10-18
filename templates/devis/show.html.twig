@@ -713,6 +713,22 @@
 													{% endif %}
 
 
+													{# Petites pièces facturées au m² (docs/saisie-devis-commandes.md). #}
+													{% if pieces_m2_ligne(detail) %}
+
+														<div class="col-md-6 mb-3">
+
+															<small class="text-muted d-block">
+																Pièces au m²
+															</small>
+
+															<strong>{{ pieces_m2_ligne(detail) }}</strong>
+
+														</div>
+
+													{% endif %}
+
+
 													{% if
                                                         detail.nombreFaces
                                                         |default(1) > 1

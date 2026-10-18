@@ -6,6 +6,7 @@ use App\Entity\CompteClient;
 use App\Entity\DemandeDevis;
 use App\Entity\ProduitConfiguration;
 use App\Service\EspaceClient\NouvelleCommande;
+use App\Service\PiecesParMetreCarre;
 
 /**
  * Formulaires sans compte du site (maquette 11) : contrôle de la saisie,
@@ -25,6 +26,10 @@ final class FormulaireDemande
     public const PIEGE = 'site_web';
 
     public const QUANTITE_MAX = 100000;
+
+    /** Quantité donnée en m² (pièces au m²) : unité choisie et surface au plus. */
+    public const UNITE_M2 = 'm2';
+    public const SURFACE_MAX_M2 = 10000;
 
     /** Jeton « heure d'affichage » signé, posé dans le formulaire. */
     public static function jetonDelai(int $maintenant, string $secret): string
@@ -59,9 +64,11 @@ final class FormulaireDemande
      * @param array<string, mixed>       $saisie
      * @param list<ProduitConfiguration> $produits catalogue publié (NouvelleCommande::produits())
      *
-     * @return array{valeurs: array{nom: string, telephone: ?string, email: ?string, objet: ?string, produit: ?ProduitConfiguration, largeur: ?float, hauteur: ?float, quantite: ?int, finitions: list<int>, message: ?string}, erreurs: array<string, string>}
+     * @param float                      $espacementPiecesM2 espacement des pièces au m² (réglage), pour une quantité donnée en m²
+     *
+     * @return array{valeurs: array{nom: string, telephone: ?string, email: ?string, objet: ?string, produit: ?ProduitConfiguration, largeur: ?float, hauteur: ?float, quantite: ?int, quantiteM2: ?float, finitions: list<int>, message: ?string}, erreurs: array<string, string>}
      */
-    public static function valider(string $nature, array $saisie, array $produits): array
+    public static function valider(string $nature, array $saisie, array $produits, float $espacementPiecesM2 = PiecesParMetreCarre::ESPACEMENT_DEFAUT): array
     {
         $erreurs = [];
         $texte = static fn (string $cle): string => trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/u', '', (string) ($saisie[$cle] ?? '')));
@@ -90,7 +97,7 @@ final class FormulaireDemande
 
         $valeurs = [
             'nom' => $nom, 'telephone' => $telephone, 'email' => '' === $email ? null : $email, 'objet' => null,
-            'produit' => null, 'largeur' => null, 'hauteur' => null, 'quantite' => null, 'finitions' => [],
+            'produit' => null, 'largeur' => null, 'hauteur' => null, 'quantite' => null, 'quantiteM2' => null, 'finitions' => [],
             'message' => '' === $message ? null : $message,
         ];
 
@@ -111,8 +118,13 @@ final class FormulaireDemande
         }
         $valeurs['produit'] = $produit;
 
+        // Quantité en m² (pièces au m²) : les pièces sont comptées plus bas, une fois la taille lue.
+        $enM2 = null !== $produit && self::piecesAuM2Possible($produit) && self::UNITE_M2 === $texte('unite_quantite');
+
         $quantite = $texte('quantite');
-        if ('' === $quantite) {
+        if ($enM2) {
+            // Le nombre de pièces vient de la surface (ce que la page a pu calculer est ignoré).
+        } elseif ('' === $quantite) {
             $valeurs['quantite'] = null !== $produit ? max(1, $produit->getQuantiteMinimale()) : null;
         } elseif (!ctype_digit($quantite) || (int) $quantite < 1 || (int) $quantite > self::QUANTITE_MAX) {
             $erreurs['quantite'] = 'Quantité entre 1 et 100 000.';
@@ -132,6 +144,16 @@ final class FormulaireDemande
                 $valeurs[$cote] = $cm;
             }
             $valeurs['finitions'] = self::finitions($produit, $saisie['finitions'] ?? []);
+
+            if ($enM2) {
+                $resultat = self::quantiteDepuisM2($texte('quantite_m2'), $valeurs['largeur'], $valeurs['hauteur'], $espacementPiecesM2, max(1, $produit->getQuantiteMinimale()));
+                if (isset($resultat['erreur'])) {
+                    $erreurs['quantite_m2'] = $resultat['erreur'];
+                } elseif (isset($resultat['pieces'])) {
+                    $valeurs['quantite'] = $resultat['pieces'];
+                    $valeurs['quantiteM2'] = $resultat['m2'];
+                }
+            }
         }
 
         if (null === $produit && '' === $id && mb_strlen($message) < 5 && !isset($erreurs['message'])) {
@@ -139,6 +161,50 @@ final class FormulaireDemande
         }
 
         return ['valeurs' => $valeurs, 'erreurs' => $erreurs];
+    }
+
+    /**
+     * Le visiteur peut donner sa quantité en m² (pièces au m²) : produit au
+     * m² dont il donne la taille.
+     */
+    public static function piecesAuM2Possible(ProduitConfiguration $produit): bool
+    {
+        return 'metre_carre' === $produit->getModeCalcul() && NouvelleCommande::demandeTaille($produit);
+    }
+
+    /**
+     * Pièces pour la surface tapée (« 2,5 » m²) sur des pièces de largeur ×
+     * hauteur cm. Rien quand la taille est fausse (son erreur est déjà dite).
+     *
+     * @return array{pieces?: int, m2?: float, erreur?: string}
+     */
+    public static function quantiteDepuisM2(string $saisi, ?float $largeurCm, ?float $hauteurCm, float $espacementMm, int $minimum = 1): array
+    {
+        $saisi = str_replace([' ', "\u{a0}", "\u{202f}", ','], ['', '', '', '.'], trim($saisi));
+        if (!is_numeric($saisi) || (float) $saisi < 0.01 || (float) $saisi > self::SURFACE_MAX_M2) {
+            return ['erreur' => 'Surface en m², entre 0,01 et 10 000.'];
+        }
+        if (null === $largeurCm || null === $hauteurCm) {
+            return [];
+        }
+
+        $m2 = round((float) $saisi, 2);
+        $calcul = PiecesParMetreCarre::calculer($largeurCm * 10, $hauteurCm * 10, PiecesParMetreCarre::espacementValide($espacementMm));
+        if ($calcul['tropGrande']) {
+            return ['erreur' => 'Pièce plus grande que 1 m : indiquez la quantité en pièces.'];
+        }
+        $pieces = PiecesParMetreCarre::pieces($m2, $calcul['parM2']);
+        if ($pieces < 1) {
+            return ['erreur' => 'Moins d\'une pièce sur cette surface : augmentez-la.'];
+        }
+        if ($pieces > self::QUANTITE_MAX) {
+            return ['erreur' => 'Cela fait plus de 100 000 pièces : réduisez la surface.'];
+        }
+        if ($pieces < $minimum) {
+            return ['erreur' => \sprintf('Cela fait %d pièce%s ; minimum pour ce produit : %d.', $pieces, $pieces > 1 ? 's' : '', $minimum)];
+        }
+
+        return ['pieces' => $pieces, 'm2' => $m2];
     }
 
     /**

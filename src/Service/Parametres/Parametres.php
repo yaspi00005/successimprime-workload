@@ -29,6 +29,7 @@ use App\Service\SuiviMetiers\Bareme;
 use App\Service\CatalogueStock;
 use App\Service\EcranTv;
 use App\Service\NumerotationFactures;
+use App\Service\PiecesParMetreCarre;
 use App\Service\Paiement\FraisOrangeMoney;
 use App\Service\ProgrammeEcranTv;
 use App\Service\Synchro\Synchro;
@@ -164,6 +165,7 @@ final class Parametres
             'produits' => self::nb($compter(Produits::class), 'produit').' · '.self::nb($compter(Finition::class), 'finition'),
             'paiements' => (implode(', ', array_map(static fn (string $m): string => Paiements::MODES_LABELS[$m], $this->modesPaiementActifs())) ?: 'aucun mode actif').$this->etatFraisOrangeMoney(),
             'relances' => $v['delai_heures'].' h de travail · +'.$v['points_a_temps'].' / −'.$v['points_retard'],
+            PiecesParMetreCarre::TUILE => self::etatPiecesM2($v[PiecesParMetreCarre::CLE_ESPACEMENT]),
             'machines' => self::nb($compter(Machines::class), 'machine').' · amortissement '.($v['amortissement'] === 'usage' ? 'à l\'usage' : 'linéaire'),
             'stock' => $this->etatStock($badge),
             'montage' => $v['formats'].' · marge '.$v['marge_mm'].' mm',
@@ -352,6 +354,14 @@ final class Parametres
         }
 
         return $lignes;
+    }
+
+    /** « espacement 1 mm · 5 × 5 cm : 361 pièces au m² » */
+    private static function etatPiecesM2(mixed $espacement): string
+    {
+        $e = PiecesParMetreCarre::espacementValide($espacement);
+
+        return 'espacement '.PiecesParMetreCarre::nombre($e).' mm · 5 × 5 cm : '.PiecesParMetreCarre::calculer(50, 50, $e)['parM2'].' pièces au m²';
     }
 
     /**

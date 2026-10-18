@@ -1,0 +1,34 @@
+{#
+	Case « Pièces au m² » d'une ligne de devis ou de commande
+	(docs/saisie-devis-commandes.md). Montrée par public/js/pieces-m2.js
+	(SiPiecesM2.ligne, appelé par le calcul de la ligne) pour une ligne
+	produit au m² ; le champ caché piecesAuM2 (« 1 » / « 0 ») est le seul
+	envoyé : la case, le choix pièces / m² et la surface tapée n'ont pas
+	de nom. Le serveur refait le calcul (PiecesAuM2Trait).
+
+	Variables : detail (formulaire de la ligne). La page charge une fois
+	public/js/pieces-m2.js et public/css/pieces-m2.css.
+#}
+{% set ligne = detail.vars.data %}
+<div class="si-pm2-ligne js-pm2-ligne" data-espacement="{{ ligne and ligne.espacementPiecesM2 is not null ? ligne.espacementPiecesM2 : pieces_m2_espacement() }}" hidden>
+	{{ form_widget(detail.piecesAuM2) }}
+	<div class="si-pm2-ligne-tete">
+		<label class="si-pm2-ligne-case" for="{{ detail.vars.id }}_pm2">
+			<input type="checkbox" class="js-pm2-case" id="{{ detail.vars.id }}_pm2">
+			Pièces au m²
+		</label>
+		<span class="si-pm2-ligne-info js-pm2-info"></span>
+	</div>
+	<div class="si-pm2-ligne-saisie js-pm2-saisie" hidden>
+		<span class="si-pm2-ligne-libelle">Quantité saisie</span>
+		<div class="btn-group btn-group-sm" role="group" aria-label="Quantité saisie en pièces ou en m²">
+			<button type="button" class="btn btn-outline-primary js-pm2-unite active" data-unite="piece" aria-pressed="true">en pièces</button>
+			<button type="button" class="btn btn-outline-primary js-pm2-unite" data-unite="m2" aria-pressed="false">en m²</button>
+		</div>
+		<label class="si-pm2-ligne-m2 js-pm2-zone-m2" hidden>
+			<input type="text" inputmode="decimal" class="form-control form-control-sm js-pm2-m2" aria-label="Surface voulue en m²" placeholder="2,5" autocomplete="off">
+			<span>m²</span>
+		</label>
+	</div>
+	<p class="si-pm2-ligne-resultat js-pm2-resultat" aria-live="polite"></p>
+</div>

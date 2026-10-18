@@ -7,6 +7,7 @@ use App\Entity\Commandes;
 use App\Entity\ProduitConfiguration;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\Site\Calculateur;
+use App\Service\Site\FormulaireDemande;
 use App\Service\Site\ReferencementSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\RouterInterface;
@@ -47,6 +48,7 @@ final class RecetteVisiteur
                 $this->ecransDuLivreurFermes($bilan);
                 $this->suivi($bilan);
                 $this->calculateur($bilan);
+                $this->piecesAuM2($bilan);
                 $this->pagesPubliques($bilan);
             }
         } finally {
@@ -211,6 +213,38 @@ final class RecetteVisiteur
             }
         }
         $bilan->controler('Visiteur : le calculateur donne le prix du comptoir, jamais le prix B2B', $essais > 0 && $justes === $essais, \sprintf('%d estimation(s) où les deux prix diffèrent, %d au prix comptoir', $essais, $justes));
+    }
+
+    /**
+     * Demande de devis d'un produit au m² (pièces au m², docs/saisie-devis-commandes.md) :
+     * le bloc « Quantité en pièces / m² » est montré, avec l'espacement du réglage,
+     * et la page ne donne toujours aucun prix (ni dans le texte, ni dans les fiches).
+     */
+    private function piecesAuM2(BilanRecette $bilan): void
+    {
+        $produit = null;
+        foreach ($this->em->getRepository(ProduitConfiguration::class)->findBy(['modeCalcul' => 'metre_carre', 'active' => true], ['id' => 'ASC'], 20) as $c) {
+            if (FormulaireDemande::piecesAuM2Possible($c)) {
+                $produit = $c;
+                break;
+            }
+        }
+        if (null === $produit) {
+            $bilan->controler('Visiteur : demande de devis en pièces au m²', true, 'aucun produit au m² : rien à vérifier');
+
+            return;
+        }
+
+        $chemin = $this->routeur->generate('app_site_devis', ['produit' => $produit->getId(), 'largeur' => '5', 'hauteur' => '5', 'quantite' => '1000']);
+        $reponse = $this->navigateur->get($chemin);
+        $bloc = preg_match('#<div class="si-pm2" id="pieces-m2"([^>]*)>#', $reponse->contenu, $m) ? $m[1] : null;
+        $fiches = preg_match('#<script type="application/json" id="fiches-produits">(.*?)</script>#s', $reponse->contenu, $f) ? $f[1] : '';
+        $montants = ContenuSensible::montants($reponse->texte());
+        $bilan->controler(
+            'Visiteur : demande de devis d\'un produit au m², quantité en pièces ou en m², sans prix',
+            200 === $reponse->statut && null !== $bloc && !str_contains($bloc, ' hidden') && str_contains($bloc, 'data-espacement=') && [] === $montants && !preg_match('/"prix/i', $fiches),
+            \sprintf('%d, bloc %s, %d montant(s)', $reponse->statut, null === $bloc ? 'absent' : (str_contains($bloc, ' hidden') ? 'caché' : 'montré'), \count($montants)),
+        );
     }
 
     /**

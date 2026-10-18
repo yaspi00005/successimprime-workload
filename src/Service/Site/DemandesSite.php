@@ -17,6 +17,7 @@ use App\Service\EspaceClient\NotificationsClient;
 use App\Service\GrilleTarifaire;
 use App\Service\NotificationService;
 use App\Service\OrangeSmsService;
+use App\Service\PiecesParMetreCarre;
 use App\Service\Synchro\CatalogueSynchro;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -53,6 +54,7 @@ final class DemandesSite
         #[Autowire(service: 'limiter.site_accuse_telephone')] private readonly RateLimiterFactoryInterface $limiteAccuse,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
+        private readonly ?PiecesParMetreCarre $piecesM2 = null,
     ) {
     }
 
@@ -111,7 +113,8 @@ final class DemandesSite
         if (null !== $produit) {
             $demande->setConfiguration($produit)->setDesignation(GrilleTarifaire::libelle($produit))
                 ->setTaille($valeurs['largeur'] ?? null, $valeurs['hauteur'] ?? null)
-                ->setQuantite($valeurs['quantite'] ?? null);
+                ->setQuantite($valeurs['quantite'] ?? null)
+                ->setQuantiteM2($valeurs['quantiteM2'] ?? null);
             // Les finitions partent par leur finition du catalogue (même identifiant public des deux côtés).
             foreach ($produit->getConfigurationFinitions() as $cf) {
                 if (\in_array($cf->getId(), $valeurs['finitions'] ?? [], true) && $cf->getFinition() instanceof Finition) {
@@ -218,7 +221,7 @@ final class DemandesSite
             return 'Déjà préparée';
         }
         $le = new \DateTimeImmutable();
-        $r = PreparationDemande::construire($demande, $this->comptes->clientDuTelephone($demande->getTelephone()), $le, $this->tarifAtelier->reglages());
+        $r = PreparationDemande::construire($demande, $this->comptes->clientDuTelephone($demande->getTelephone()), $le, $this->tarifAtelier->reglages(), $this->piecesM2?->espacement());
         $aEnvoyer = [];
 
         if ($r['nouveauClient']) {

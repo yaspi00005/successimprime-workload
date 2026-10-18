@@ -161,6 +161,61 @@ final class FormulaireDemandeTest extends TestCase
         self::assertNull(FormulaireDemande::centimetres('1e3'.'x'));
     }
 
+    public function testQuantiteDonneeEnMetresCarres(): void
+    {
+        [$bache] = $this->bache();
+        $saisie = ['nom' => 'Awa', 'telephone' => '76123456', 'produit' => '7', 'largeur' => '5', 'hauteur' => '5', 'unite_quantite' => 'm2'];
+
+        // 3 m² d'autocollants de 5 × 5 cm, espacement 1 mm : 361 au m², 1 083 pièces ; la quantité envoyée par la page est ignorée.
+        ['valeurs' => $v, 'erreurs' => $erreurs] = FormulaireDemande::valider('devis', $saisie + ['quantite_m2' => '3', 'quantite' => '99999'], [$bache]);
+        self::assertSame([], $erreurs);
+        self::assertSame(1083, $v['quantite']);
+        self::assertSame(3.0, $v['quantiteM2']);
+
+        // Avec l'espacement du réglage (3 mm : 324 au m²) et une virgule.
+        self::assertSame(810, FormulaireDemande::valider('devis', $saisie + ['quantite_m2' => '2,5'], [$bache], 3.0)['valeurs']['quantite']);
+
+        // En pièces (choix par défaut) : la surface tapée ne compte pas.
+        $enPieces = FormulaireDemande::valider('devis', ['unite_quantite' => 'piece', 'quantite' => '1000', 'quantite_m2' => '3'] + $saisie, [$bache])['valeurs'];
+        self::assertSame([1000, null], [$enPieces['quantite'], $enPieces['quantiteM2']]);
+    }
+
+    public function testSurfaceEnMetresCarresControlee(): void
+    {
+        [$bache] = $this->bache();
+        $saisie = ['nom' => 'Awa', 'telephone' => '76123456', 'produit' => '7', 'largeur' => '5', 'hauteur' => '5', 'unite_quantite' => 'm2'];
+        $erreur = static fn (array $plus): ?string => FormulaireDemande::valider('devis', $plus + $saisie, [$bache])['erreurs']['quantite_m2'] ?? null;
+
+        self::assertSame('Surface en m², entre 0,01 et 10 000.', $erreur(['quantite_m2' => '']));
+        self::assertSame('Surface en m², entre 0,01 et 10 000.', $erreur(['quantite_m2' => 'beaucoup']));
+        self::assertSame('Surface en m², entre 0,01 et 10 000.', $erreur(['quantite_m2' => '20000']));
+        self::assertSame('Moins d\'une pièce sur cette surface : augmentez-la.', $erreur(['quantite_m2' => '0,01', 'largeur' => '50', 'hauteur' => '50']));
+        self::assertSame('Pièce plus grande que 1 m : indiquez la quantité en pièces.', $erreur(['quantite_m2' => '5', 'largeur' => '120']));
+        self::assertSame('Cela fait plus de 100 000 pièces : réduisez la surface.', $erreur(['quantite_m2' => '500', 'largeur' => '1', 'hauteur' => '1']));
+
+        $bache->setQuantiteMinimale(500);
+        self::assertSame('Cela fait 361 pièces ; minimum pour ce produit : 500.', $erreur(['quantite_m2' => '1']));
+
+        // Taille fausse : son erreur suffit.
+        $r = FormulaireDemande::valider('devis', ['quantite_m2' => '3', 'largeur' => ''] + $saisie, [$bache]);
+        self::assertArrayHasKey('largeur', $r['erreurs']);
+        self::assertArrayNotHasKey('quantite_m2', $r['erreurs']);
+    }
+
+    public function testQuantiteEnMetresCarresSeulementPourUnProduitAuMetreCarreALaMesure(): void
+    {
+        [$bache] = $this->bache();
+        self::assertTrue(FormulaireDemande::piecesAuM2Possible($bache));
+
+        $flyers = (new ProduitConfiguration())->setProduit((new Produits())->setNom('Flyers'))->setModeCalcul('unite')->setPrixBase(50);
+        (new \ReflectionProperty($flyers, 'id'))->setValue($flyers, 8);
+        self::assertFalse(FormulaireDemande::piecesAuM2Possible($flyers));
+
+        // Unité « m² » envoyée pour des flyers : ignorée, la quantité en pièces compte.
+        $v = FormulaireDemande::valider('devis', ['nom' => 'Awa', 'telephone' => '76123456', 'produit' => '8', 'quantite' => '500', 'unite_quantite' => 'm2', 'quantite_m2' => '3'], [$flyers])['valeurs'];
+        self::assertSame([500, null], [$v['quantite'], $v['quantiteM2']]);
+    }
+
     /** @return array{ProduitConfiguration, ProduitConfigurationFinition, ProduitConfigurationFinition} */
     private function bache(): array
     {

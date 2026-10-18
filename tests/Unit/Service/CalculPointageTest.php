@@ -332,6 +332,78 @@ final class CalculPointageTest extends TestCase
         self::assertSame(95, C::note(210, 22));
     }
 
+    /**
+     * Présences d'une journée (sortie à midi puis retour), heures validées.
+     *
+     * @param list<array{0: string, 1: ?string}> $presences
+     * @param array<string, mixed>               $regles
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function journee(array $presences, array $regles, string $maintenant = '2026-10-17 23:00'): array
+    {
+        return C::journee(array_map(static fn (array $p): array => ['arrivee' => self::t($p[0]), 'depart' => $p[1] !== null ? self::t($p[1]) : null, 'valide' => true], $presences), $regles, self::t($maintenant));
+    }
+
+    public function testSortieAMidiPuisRetourUneSeuleJournee(): void
+    {
+        // Atelier : 9 h – 13 h, sortie pour la pause, 14 h – 18 h. La pause compte dans les heures : 9 h faites, +10.
+        [$matin, $apres] = self::journee([['2026-10-16 09:00', '2026-10-16 13:00'], ['2026-10-16 14:00', '2026-10-16 18:00']], self::v2());
+        self::assertSame(0, $matin['total']);
+        self::assertFalse($matin['journee']);
+        self::assertSame(240, $matin['faites']);
+        self::assertSame('Sortie à 13 h, puis retour : les heures de la journée s\'additionnent et les points se comptent au dernier départ.', $matin['raison']);
+        self::assertSame(0, $apres['retard'], 'le retour n\'est pas un retard');
+        self::assertSame(C::STATUT_COMPLET, $apres['statut']);
+        self::assertTrue($apres['journee']);
+        self::assertSame(540, $apres['faites']);
+        self::assertSame(10, $apres['total']);
+        self::assertSame('À l\'heure, heures faites (9 h 00 sur 9 h 00, présences du jour additionnées).', $apres['raison']);
+
+        // Pause retirée des heures : 8 h dues, 4 h + 4 h faites.
+        [, $retiree] = self::journee([['2026-10-16 09:00', '2026-10-16 13:00'], ['2026-10-16 14:00', '2026-10-16 18:00']], self::v2(points: ['pause_deduite' => true]));
+        self::assertSame([480, 480, 10], [$retiree['faites'], $retiree['dues'], $retiree['total']]);
+
+        // Retard de 40 min le matin, pas rattrapé le soir : −15 une seule fois, sur la journée.
+        [$tard, $soir] = self::journee([['2026-10-16 09:40', '2026-10-16 13:00'], ['2026-10-16 14:00', '2026-10-16 18:00']], self::v2());
+        self::assertSame(40, $tard['retard']);
+        self::assertSame(0, $tard['total']);
+        self::assertSame(-15, $soir['total']);
+        self::assertSame('Retard de 40 min et heures pas faites (8 h 20 sur 9 h 00, présences du jour additionnées).', $soir['raison']);
+
+        // Partie de 11 h à 15 h : seule l'heure de pause dehors compte, 6 h sur 9 h, à l'heure : 0.
+        [, $longue] = self::journee([['2026-10-16 09:00', '2026-10-16 11:00'], ['2026-10-16 15:00', '2026-10-16 18:00']], self::v2());
+        self::assertSame([360, 0], [$longue['faites'], $longue['total']]);
+
+        // Heures en plus et longue journée sur le total du jour.
+        [, , $nuit] = self::journee([['2026-10-16 08:00', '2026-10-16 13:00'], ['2026-10-16 13:30', '2026-10-16 20:00'], ['2026-10-16 20:30', '2026-10-17 04:30']], self::v2());
+        self::assertSame(1200, $nuit['faites'], '5 h + 30 min de pause + 6 h 30 + 8 h = 20 h');
+        self::assertSame(50, $nuit['total'], '20 h dans la journée : longue journée');
+    }
+
+    public function testRetourEnCoursEtNote(): void
+    {
+        // Revenu à 14 h, encore là à 15 h : rien n'est compté, la journée n'abaisse pas la note.
+        $jour = self::journee([['2026-10-16 09:00', '2026-10-16 13:00'], ['2026-10-16 14:00', null]], self::v2(), '2026-10-16 15:00');
+        self::assertSame([0, 0], array_column($jour, 'total'));
+        self::assertSame(C::STATUT_EN_COURS, $jour[1]['statut']);
+        self::assertFalse(C::compteDansLaNote(true, $jour));
+
+        // Pas revenu : la présence du matin porte la journée (parti avant la fin), la journée compte.
+        $seul = self::journee([['2026-10-16 09:00', '2026-10-16 13:00']], self::v2());
+        self::assertTrue($seul[0]['journee']);
+        self::assertTrue(C::compteDansLaNote(true, $seul));
+    }
+
+    public function testAncienBaremePresenceParPresence(): void
+    {
+        // Avant la date de début, chaque présence garde son calcul : le retour à 14 h est un retard.
+        [$matin, $apres] = self::journee([['2026-10-10 08:00', '2026-10-10 13:00'], ['2026-10-10 14:00', '2026-10-10 18:00']], self::REGLES);
+        self::assertSame(10, $matin['total']);
+        self::assertSame(-10, $apres['total']);
+        self::assertTrue($matin['journee']);
+    }
+
     public function testAncienBaremeSansLaTuile(): void
     {
         $r = C::presence(self::t('2026-10-10 08:18'), self::t('2026-10-10 18:02'), self::REGLES, self::t('2026-10-10 19:00'));

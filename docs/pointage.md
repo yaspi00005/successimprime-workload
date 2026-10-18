@@ -67,6 +67,7 @@ Chaque employé suit l'horaire de son poste : « Accueil et caisse » quand le p
 - **Heures en plus** : les points des heures en plus et de la longue journée ne sont acquis qu'une fois les heures validées par la RH (bouton « Valider les heures sup. » du détail d'un pointage), pour qu'un départ oublié ne rapporte rien. L'interrupteur « Heures en plus validées par la RH » permet de s'en passer.
 - **Jour de repos travaillé** : pas d'heures dues, donc ni + 10 ni − 15 ; chaque heure entière compte en plus (+ 5), ou 50 à partir de 20 h.
 - **Départ non pointé** : la journée ne rapporte rien et reste une anomalie (« Départ non pointé ») ; la RH corrige le départ avec un motif, et les points se calculent alors.
+- **Sortie puis retour le même jour** (départ pointé à midi, puis nouvelle arrivée) : c'est toujours une seule journée. Les heures des présences s'additionnent, le retard est celui de la première arrivée, et les points de la journée se comptent au dernier départ (la présence du matin affiche 0, « les points se comptent au dernier départ »). Quand la pause compte dans les heures, le temps passé dehors pendant la pause compte aussi : 9 h – 13 h puis 14 h – 18 h font 9 h, + 10.
 - **Ajustement** : l'ajustement par l'admin avec motif (plus bas) s'ajoute toujours au calcul.
 
 Toutes les valeurs (heures des deux horaires, + 10, − 15, + 5, 20 h, 50, pause, validation, date de début) se règlent dans **Paramètres › Points du pointage** (droit « Administrateur RH » ou admin). Les points ne sont pas enregistrés : ils se recalculent à l'affichage, donc un changement de réglage vaut pour toutes les journées depuis la date de début. Une évaluation de prime déjà validée garde ses notes.
@@ -86,6 +87,7 @@ Toutes les valeurs (heures des deux horaires, + 10, − 15, + 5, 20 h, 50, pause
 | Gardien, horaires propres 19 h – 7 h | 19 h 00 – 7 h 05 | 12 h 05 / 12 h | + 10 | poste de nuit, heures faites |
 | Atelier, dimanche (repos) | 9 h 00 – 13 h 30 | 4 h 30 / repos | + 20 | 4 h en plus une fois validées |
 | Atelier | 9 h 00 – (pas de départ) | — | 0 | départ non pointé, à régulariser |
+| Atelier, sortie à midi | 9 h 40 – 13 h 00, puis 14 h 00 – 18 h 00 | 8 h 20 / 9 h | − 15 | une journée : retard de 40 min du matin, pas rattrapé le soir |
 
 Où le voir :
 - **L'employé** : Mon espace › Ponctualité, page « Mon pointage » (`/mon-espace/pointage`) : chaque jour avec l'arrivée, le départ, les heures faites et dues, les points et la raison en clair, le total du mois et « Comment sont comptés les points ». Il ne voit que ses propres journées. L'écran de confirmation du départ (Q03) donne aussi les heures et les points du jour.

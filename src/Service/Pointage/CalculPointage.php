@@ -67,11 +67,18 @@ final class CalculPointage
     /**
      * Calcul d'une présence.
      *
-     * @param array<string, mixed> $regles
+     * $jour (nouveau barème, posé par journee) : la présence fait partie
+     * d'une journée de plusieurs présences ; « suivante » : une autre
+     * présence suit le même jour ; « retard » et « avant » (présences
+     * d'après une sortie) : retard de la première arrivée, minutes déjà
+     * faites dans la journée.
      *
-     * @return array{presence: ?int, retard: int, sup: int, statut: string, points: list<array{libelle: string, points: int}>, total: int, pause: int, bonusEnAttente: ?string, bareme: string, faites: ?int, dues: ?int, raison: string, horaire: string}
+     * @param array<string, mixed>                           $regles
+     * @param array{suivante?: bool, retard?: int, avant?: int} $jour
+     *
+     * @return array{presence: ?int, retard: int, sup: int, statut: string, points: list<array{libelle: string, points: int}>, total: int, pause: int, bonusEnAttente: ?string, bareme: string, faites: ?int, dues: ?int, raison: string, horaire: string, journee: bool}
      */
-    public static function presence(\DateTimeImmutable $arrivee, ?\DateTimeImmutable $depart, array $regles, \DateTimeImmutable $maintenant, bool $heuresSupValidees = false, int $ajustement = 0): array
+    public static function presence(\DateTimeImmutable $arrivee, ?\DateTimeImmutable $depart, array $regles, \DateTimeImmutable $maintenant, bool $heuresSupValidees = false, int $ajustement = 0, array $jour = []): array
     {
         // Jour de repos (Paramètres › Horaires) : ni retard ni ponctualité,
         // tout le temps passé compte en heures sup.
@@ -81,6 +88,12 @@ final class CalculPointage
         $enRetard = $retard > (int) $regles['tolerance_minutes'];
         /** @var array<string, mixed>|null $heures nouveau barème (tuile Points du pointage) */
         $heures = $regles['points'] ?? null;
+        // Retour après une sortie le même jour : le retard est celui de la première arrivée.
+        $retour = $heures !== null && isset($jour['avant']);
+        if ($retour) {
+            $retard = 0;
+            $enRetard = false;
+        }
 
         $points = match (true) {
             $heures !== null, !$ouvre => [],
@@ -127,7 +140,8 @@ final class CalculPointage
         $faites = null;
         $dues = null;
         if ($heures !== null) {
-            $journee = self::pointsHeures($arrivee, $depart, $regles, $heures, $prevue, $ouvre, $enRetard ? $retard : 0, $statut, $heuresSupValidees);
+            $retardJour = $retour ? (int) ($jour['retard'] ?? 0) : ($enRetard ? $retard : 0);
+            $journee = self::pointsHeures($arrivee, $depart, $regles, $heures, $prevue, $ouvre, $retardJour, $statut, $heuresSupValidees, (int) ($jour['avant'] ?? 0), $jour['suivante'] ?? false);
             ['points' => $points, 'enAttente' => $bonusEnAttente, 'faites' => $faites, 'dues' => $dues, 'raison' => $raison] = $journee;
         } else {
             $raison = implode(' · ', array_column($points, 'libelle')) ?: self::STATUTS[$statut];
@@ -151,7 +165,57 @@ final class CalculPointage
             'dues' => $dues,
             'raison' => $raison,
             'horaire' => $regles['ouverture'].' – '.$regles['fermeture'],
+            // Cette présence porte-t-elle les points de la journée (la dernière du jour) ?
+            'journee' => $heures === null || !($jour['suivante'] ?? false),
         ];
+    }
+
+    /**
+     * Présences d'une même personne le même jour (jour de l'arrivée), dans
+     * l'ordre. Nouveau barème : les points sont ceux de la journée. Quand
+     * la personne sort puis revient (départ pointé à midi, puis nouvelle
+     * arrivée), les heures des présences s'additionnent, le retard est
+     * celui de la première arrivée et les points se comptent sur la
+     * dernière présence. Si la pause compte dans les heures, le temps
+     * dehors pendant la pause compte aussi. Ancien barème : chaque
+     * présence pour elle-même, comme avant.
+     *
+     * @param list<array{arrivee: \DateTimeImmutable, depart: ?\DateTimeImmutable, valide?: bool, ajustement?: int}> $presences
+     * @param array<string, mixed>                                                                             $regles
+     *
+     * @return list<array<string, mixed>> le calcul de chaque présence (presence), dans le même ordre
+     */
+    public static function journee(array $presences, array $regles, \DateTimeImmutable $maintenant): array
+    {
+        $presences = array_values($presences);
+        $nombre = \count($presences);
+        if (!isset($regles['points']) || $nombre < 2) {
+            return array_map(static fn (array $p): array => self::presence($p['arrivee'], $p['depart'], $regles, $maintenant, $p['valide'] ?? false, $p['ajustement'] ?? 0), $presences);
+        }
+
+        $premiere = $presences[0]['arrivee'];
+        $prevue = self::a($premiere, (string) $regles['ouverture']);
+        $pauseDebut = self::apres($premiere, (string) $regles['pause_debut'], $prevue);
+        $pauseFin = self::apres($premiere, (string) $regles['pause_fin'], $prevue);
+        $pauseComptee = !$regles['points']['pause_deduite'];
+
+        $calculs = [];
+        $avant = 0;
+        foreach ($presences as $i => $p) {
+            $jour = ['suivante' => $i < $nombre - 1];
+            if ($i > 0) {
+                $sortie = $presences[$i - 1]['depart'];
+                if ($pauseComptee && $sortie !== null) {
+                    $avant += self::chevauchement($sortie, $p['arrivee'], $pauseDebut, $pauseFin);
+                }
+                $jour += ['retard' => $calculs[0]['retard'], 'avant' => $avant];
+            }
+            $calcul = self::presence($p['arrivee'], $p['depart'], $regles, $maintenant, $p['valide'] ?? false, $p['ajustement'] ?? 0, $jour);
+            $avant += (int) $calcul['faites'];
+            $calculs[] = $calcul;
+        }
+
+        return $calculs;
     }
 
     /**
@@ -169,13 +233,15 @@ final class CalculPointage
      * jour de repos n'a pas d'heures dues : seules les heures en plus
      * comptent. Avec valider_en_plus, les points des heures en plus et de
      * la longue journée attendent la validation des heures par la RH.
+     * Journée de plusieurs présences (journee) : $avant minutes déjà
+     * faites ; avec $suivante, une autre présence suit et porte les points.
      *
      * @param array<string, mixed> $regles
      * @param array<string, mixed> $p      valeurs de la tuile Points du pointage
      *
      * @return array{points: list<array{libelle: string, points: int}>, enAttente: ?string, faites: ?int, dues: int, raison: string}
      */
-    public static function pointsHeures(\DateTimeImmutable $arrivee, ?\DateTimeImmutable $depart, array $regles, array $p, \DateTimeImmutable $prevue, bool $ouvre, int $retard, string $statut, bool $heuresValidees): array
+    public static function pointsHeures(\DateTimeImmutable $arrivee, ?\DateTimeImmutable $depart, array $regles, array $p, \DateTimeImmutable $prevue, bool $ouvre, int $retard, string $statut, bool $heuresValidees, int $avant = 0, bool $suivante = false): array
     {
         $pauseDebut = self::apres($arrivee, (string) $regles['pause_debut'], $prevue);
         $pauseFin = self::apres($arrivee, (string) $regles['pause_fin'], $prevue);
@@ -190,8 +256,12 @@ final class CalculPointage
                 : ($enRetard !== null ? $enRetard.', en cours' : 'En cours').' : les points sont comptés au départ.'];
         }
 
-        $faites = max(0, self::minutes($arrivee, $depart) - ($deduire ? self::chevauchement($arrivee, $depart, $pauseDebut, $pauseFin) : 0));
-        $sur = '('.self::duree($faites).' sur '.self::duree($dues).')';
+        $propres = max(0, self::minutes($arrivee, $depart) - ($deduire ? self::chevauchement($arrivee, $depart, $pauseDebut, $pauseFin) : 0));
+        if ($suivante) {
+            return ['points' => [], 'enAttente' => null, 'faites' => $propres, 'dues' => $dues, 'raison' => 'Sortie à '.self::heure($depart->format('H:i')).', puis retour : les heures de la journée s\'additionnent et les points se comptent au dernier départ.'];
+        }
+        $faites = $avant + $propres;
+        $sur = '('.self::duree($faites).' sur '.self::duree($dues).($avant > 0 ? ', présences du jour additionnées' : '').')';
 
         [$base, $phrase] = match (true) {
             !$ouvre => [null, 'Jour de repos travaillé'],
@@ -258,11 +328,11 @@ final class CalculPointage
     /**
      * La journée compte-t-elle dans les « jours travaillés » de la note ?
      * Ancien barème : toute journée pointée. Nouveau calcul : un jour
-     * travaillé dont une présence est finie (ou sans départ pointé) ; un
-     * jour de repos travaillé n'abaisse pas la note (ses points en plus
-     * s'ajoutent), la journée en cours non plus.
+     * travaillé dont la dernière présence est finie (ou sans départ
+     * pointé) ; un jour de repos travaillé n'abaisse pas la note (ses
+     * points en plus s'ajoutent), la journée en cours non plus.
      *
-     * @param list<array{bareme: string, statut: string}> $calculs les présences du jour
+     * @param list<array{bareme: string, statut: string}> $calculs les présences du jour, dans l'ordre
      */
     public static function compteDansLaNote(bool $ouvre, array $calculs): bool
     {
@@ -273,7 +343,8 @@ final class CalculPointage
             return true;
         }
 
-        return $ouvre && array_filter($calculs, static fn (array $c): bool => $c['statut'] !== self::STATUT_EN_COURS) !== [];
+        // La dernière présence porte les points de la journée (journee).
+        return $ouvre && $calculs[array_key_last($calculs)]['statut'] !== self::STATUT_EN_COURS;
     }
 
     /**

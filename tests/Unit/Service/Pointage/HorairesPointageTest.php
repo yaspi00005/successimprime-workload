@@ -3,6 +3,7 @@
 namespace App\Tests\Unit\Service\Pointage;
 
 use App\Entity\Employes;
+use App\Entity\Pointage;
 use App\Entity\RoleUtilisateur;
 use App\Entity\User;
 use App\Service\Pointage\HoraireType;
@@ -108,5 +109,27 @@ final class HorairesPointageTest extends TestCase
         // Les réglages de la tuile changent l'horaire type.
         $huit = Pointages::reglesDe($caisse, ['heures' => ['accueil_debut' => '08:00'] + self::HEURES] + self::REGLES, new \DateTimeImmutable('2026-10-19 09:00'));
         self::assertSame('08:00', $huit['ouverture']);
+    }
+
+    public function testCalculsRegroupentLesPresencesDuMemeJour(): void
+    {
+        $regles = ['tolerance_minutes' => 10, 'pause_debut' => '13:00', 'pause_fin' => '14:00', 'points_heure' => 10, 'points_retard' => 10, 'points_soiree' => 30, 'points_nuit' => 100, 'points_oubli' => 20] + self::REGLES;
+        $p = static fn (User $u, string $arrivee, string $depart): Pointage => (new Pointage($u, new \DateTimeImmutable($arrivee)))->partir(new \DateTimeImmutable($depart), null, null, null, null);
+        $awa = self::employe('Graphiste');
+        $ali = self::employe('Machiniste');
+
+        // Deux personnes mêlées, sortie à midi d'Awa le 19/10, journée seule le 20/10 : même ordre en sortie.
+        $liste = [
+            $p($awa, '2026-10-19 09:00', '2026-10-19 13:00'),
+            $p($ali, '2026-10-19 09:40', '2026-10-19 18:00'),
+            $p($awa, '2026-10-19 14:00', '2026-10-19 18:00'),
+            $p($awa, '2026-10-20 09:00', '2026-10-20 13:00'),
+        ];
+        $pointages = (new \ReflectionClass(Pointages::class))->newInstanceWithoutConstructor();
+        $calculs = $pointages->calculs($liste, $regles, new \DateTimeImmutable('2026-10-21 12:00'));
+
+        self::assertSame([0, -15, 10, 0], array_column($calculs, 'total'));
+        self::assertSame([false, true, true, true], array_column($calculs, 'journee'));
+        self::assertSame([240, 500, 540, 240], array_column($calculs, 'faites'));
     }
 }

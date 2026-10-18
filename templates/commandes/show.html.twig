@@ -231,6 +231,8 @@
 								{% for fichier in detail.fichiers %}
 									<a href="{{ path('app_fichier_visualiser', {id: fichier.id}) }}" class="si-pastille si-pastille-gris" target="_blank" title="{{ fichier.nomOriginal }}"><i class="fas fa-paperclip"></i></a>
 								{% endfor %}
+								{# Retouche prépresse d'une image (docs/prepresse-retouche.md). #}
+								{% if is_granted('ROLE_PREPRESSE') and detail.fichiers|filter(f => f.actif and f.typeMime in ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])|length > 0 %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id}) }}" class="si-pastille si-pastille-bleu" title="Redimensionner l'image, contour, fichier final"><i class="fas fa-crop-alt"></i> Redimensionner</a>{% endif %}
 							</div>
 							{{ include('promotions/_ligne.html.twig', {detail: detail, possibles: promotionsB2b[detail.id] ?? [], type: 'commande', peutDemander: peutModifier and not annulee}) }}
 						</div>

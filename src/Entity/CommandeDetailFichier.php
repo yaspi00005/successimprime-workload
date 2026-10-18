@@ -161,6 +161,22 @@ class CommandeDetailFichier
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $montage = null;
 
+    /**
+     * Réglages d'une retouche prépresse (redimensionnement, contour, sortie,
+     * contrôles), docs/prepresse-retouche.md. Reste au local.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $retouche = null;
+
+    /**
+     * Remarque de l'atelier montrée au client avec le BAT : la raison d'une
+     * validation malgré une alerte (image trop petite, déformation).
+     */
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $remarqueBat = null;
+
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $ajoutePar = null;
@@ -709,6 +725,32 @@ class CommandeDetailFichier
     public function setEmpreinte(?string $empreinte): static
     {
         $this->empreinte = $empreinte;
+
+        return $this;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getRetouche(): ?array
+    {
+        return $this->retouche;
+    }
+
+    /** @param array<string, mixed>|null $retouche */
+    public function setRetouche(?array $retouche): static
+    {
+        $this->retouche = $retouche;
+
+        return $this;
+    }
+
+    public function getRemarqueBat(): ?string
+    {
+        return $this->remarqueBat;
+    }
+
+    public function setRemarqueBat(?string $remarqueBat): static
+    {
+        $this->remarqueBat = null !== $remarqueBat && '' !== trim($remarqueBat) ? mb_substr(trim($remarqueBat), 0, 500) : null;
 
         return $this;
     }

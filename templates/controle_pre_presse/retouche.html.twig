@@ -1,0 +1,279 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Retouche d'une image client (maquettes PP01 à PP05, docs/prepresse-retouche.md).
+	Réglages à droite, aperçu en direct à gauche (public/js/retouche-image.js),
+	puis l'étape « Valider et générer » : le fichier final est refait par le
+	serveur à partir de l'original, qui n'est jamais modifié.
+#}
+{% set titre_travail = detail|texte_ligne_interne('Travail') %}
+{% set lecture = module_en_lecture('app_controle_pre_presse_retouche_generer') %}
+
+{% block title %}{{ commande.numero }} · {{ commande.clients ? commande.clients.nomComplet : 'Client' }} · {{ titre_travail }}{% endblock %}
+{% block page_title %}<span data-rt-titre>Redimensionner l'image</span>{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/retouche-image.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% macro actions(config, autres, fichier, detail, lecture, suffixe) %}
+	{% if config %}
+		<button type="button" class="btn btn-light btn-sm si-btn-entete rt-btn" data-rt-action="modifier" hidden>‹ Modifier les paramètres</button>
+		<button type="button" class="btn btn-light btn-sm si-btn-entete rt-btn" data-rt-action="reinitialiser"><i class="fas fa-undo me-1"></i>Réinitialiser</button>
+		<button type="button" class="btn btn-light btn-sm si-btn-entete rt-btn" data-rt-action="adapter" hidden>Passer en « adapter »</button>
+	{% endif %}
+	<details class="rt-autres">
+		<summary class="btn btn-light btn-sm si-btn-entete rt-btn">Ouvrir un autre fichier</summary>
+		<div class="rt-autres-liste">
+			{% for a in autres %}
+				<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: a.ligne.id, fichier: a.fichier.id}) }}" class="{{ fichier and a.fichier.id == fichier.id ? 'actif' }}">
+					<strong>{{ a.fichier.nomOriginal }}</strong>
+					<small>V{{ a.fichier.version }} · {{ a.ligne|texte_ligne_interne('Travail') }}{{ a.fichier.origine == 'client' ? ' · original client' }}</small>
+				</a>
+			{% else %}
+				<p>Aucune image JPG ou PNG dans cette commande.</p>
+			{% endfor %}
+			<a href="{{ path('app_controle_pre_presse_controler', {id: detail.id}) }}" class="rt-autres-retour">Fiche prépresse du travail</a>
+		</div>
+	</details>
+	{% if config and not lecture %}
+		<button type="button" class="btn btn-danger btn-sm si-btn-entete rt-btn rt-valider" data-rt-action="valider">Valider le résultat ›</button>
+	{% endif %}
+{% endmacro %}
+
+{% block header_actions %}
+	<li class="nav-item rt-entete">{{ _self.actions(config, autres, fichier, detail, lecture, '') }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="rt" data-rt {% if config %}data-config="{{ config|json_encode|e('html_attr') }}"{% endif %}>
+	<div class="rt-barre">{{ _self.actions(config, autres, fichier, detail, lecture, '-barre') }}</div>
+
+	{% if not fichier %}
+		<section class="rt-vide">
+			<i class="fas fa-image"></i>
+			<h2>Aucune image à retoucher sur ce travail</h2>
+			<p>L'outil prend les images JPG, PNG, WebP ou GIF. Un PDF se prépare dans le logiciel du graphiste ou dans l'outil de montage.</p>
+			<a class="btn btn-primary btn-sm" href="{{ path('app_controle_pre_presse_controler', {id: detail.id}) }}">Retour à la fiche prépresse</a>
+		</section>
+	{% elseif not source %}
+		<section class="rt-vide">
+			<i class="fas fa-exclamation-triangle"></i>
+			<h2>{{ fichier.nomOriginal }} n'est pas lisible sur ce serveur</h2>
+			<p>Le fichier n'est peut-être pas encore descendu (fichiers lourds), ou il est abîmé. Téléchargez-le depuis la fiche prépresse pour le vérifier.</p>
+			<a class="btn btn-primary btn-sm" href="{{ path('app_controle_pre_presse_controler', {id: detail.id}) }}">Retour à la fiche prépresse</a>
+		</section>
+	{% else %}
+		{% set ext = {'image/jpeg': 'JPG', 'image/png': 'PNG', 'image/webp': 'WEBP', 'image/gif': 'GIF'}[source.type] %}
+		<header class="rt-fichier">
+			<span class="rt-ext rt-ext-{{ ext|lower }}">{{ ext }}</span>
+			<div class="rt-fichier-texte">
+				<strong>{{ fichier.nomOriginal }}</strong>
+				<small>
+					{{ fichier.origine == 'client' ? 'fichier client' : 'version ' ~ fichier.version }}
+					· {{ source.largeur|number_format(0, ',', ' ') }} × {{ source.hauteur|number_format(0, ',', ' ') }} px
+					· {{ source.dpi ? source.dpi ~ ' dpi déclarés' : 'dpi non déclarés' }}
+					· {{ source.transparence ? 'fond transparent (canal alpha)' : (source.cmjn ? 'CMJN' : 'RVB') }}
+					{% if fichier.taille %}· {{ (fichier.taille / 1048576)|number_format(1, ',', ' ') }} Mo{% endif %}
+				</small>
+			</div>
+			<span class="rt-pastille rt-vert">{{ source.transparence ? 'Transparence détectée · original conservé' : 'Original conservé, jamais modifié' }}</span>
+		</header>
+
+		<div class="rt-grille" data-rt-etape="reglages">
+			{# ---------- Aperçus ---------- #}
+			<section class="rt-apercus" aria-label="Aperçu">
+				<figure class="rt-panneau" data-rt-panneau="original">
+					<figcaption><strong data-rt-legende-original>Original</strong><span data-rt-info-original></span></figcaption>
+					<div class="rt-toile"><canvas data-rt-canvas="original" aria-label="Image d'origine"></canvas></div>
+				</figure>
+				<figure class="rt-panneau" data-rt-panneau="resultat">
+					<figcaption><strong data-rt-legende-resultat>Résultat</strong><span data-rt-info-resultat></span></figcaption>
+					<div class="rt-toile">
+						<canvas data-rt-canvas="resultat" aria-label="Aperçu du résultat"></canvas>
+						<div class="rt-loupe" data-rt-loupe hidden><canvas data-rt-canvas="loupe"></canvas><span data-rt-loupe-texte></span></div>
+						<div class="rt-chargement" data-rt-chargement>Chargement de l'image…</div>
+					</div>
+					<p class="rt-note-apercu" data-rt-note hidden></p>
+				</figure>
+			</section>
+
+			{# ---------- Réglages (PP01 à PP04) ---------- #}
+			<aside class="rt-panneau-reglages" data-rt-reglages>
+				<div class="rt-onglets" role="tablist">
+					<button type="button" role="tab" aria-selected="true" data-rt-onglet="format">Format</button>
+					<button type="button" role="tab" aria-selected="false" data-rt-onglet="contour">Contour</button>
+					<button type="button" role="tab" aria-selected="false" data-rt-onglet="controles">Contrôles <span class="rt-compte" data-rt-compte hidden></span></button>
+				</div>
+
+				<div class="rt-volet" data-rt-volet="format">
+					<p class="rt-sous">L'aperçu se met à jour en direct.</p>
+					<h3>Dimensions finales</h3>
+					<div class="rt-seg" data-rt-unite>
+						<button type="button" data-valeur="mm" aria-pressed="true">mm</button>
+						<button type="button" data-valeur="cm" aria-pressed="false">cm</button>
+						<button type="button" data-valeur="px" aria-pressed="false">px</button>
+					</div>
+					<div class="rt-dimensions">
+						<label>Largeur<span class="rt-champ"><input type="number" min="0" step="any" inputmode="decimal" data-rt-champ="largeur"><em data-rt-unite-texte>mm</em></span></label>
+						<button type="button" class="rt-cadenas" data-rt-cadenas aria-pressed="true" title="Conserver les proportions"><i class="fas fa-lock"></i></button>
+						<label>Hauteur<span class="rt-champ"><input type="number" min="0" step="any" inputmode="decimal" data-rt-champ="hauteur"><em data-rt-unite-texte>mm</em></span></label>
+					</div>
+					<label class="rt-interrupteur"><input type="checkbox" data-rt-champ="proportions" checked><span></span>Conserver les proportions<small>par défaut</small></label>
+					<div class="rt-puces" data-rt-formats></div>
+
+					<h3>Mode d'ajustement</h3>
+					<div class="rt-modes" data-rt-modes>
+						<button type="button" data-valeur="adapter" aria-pressed="false"><i class="rt-ico rt-ico-adapter"></i><strong>Adapter</strong><small>image entière, marges</small></button>
+						<button type="button" data-valeur="recadrer" aria-pressed="true"><i class="rt-ico rt-ico-recadrer"></i><strong>Recadrer</strong><small>remplit, coupe le surplus</small></button>
+						<button type="button" data-valeur="etirer" aria-pressed="false"><i class="rt-ico rt-ico-etirer"></i><strong>Étirer</strong><small>déforme volontairement</small></button>
+					</div>
+					<div class="rt-fond" data-rt-fond hidden>
+						<span>Couleur des marges</span>
+						<button type="button" class="rt-pastille-couleur" data-couleur="#FFFFFF" style="--c:#FFFFFF" title="Blanc"></button>
+						{% if source.transparence %}<button type="button" class="rt-pastille-couleur rt-damier" data-couleur="transparent" title="Transparent (PNG, PDF)"></button>{% endif %}
+						<label class="rt-couleur-libre" title="Autre couleur"><input type="color" value="#FFFFFF" data-rt-champ="fond"></label>
+					</div>
+
+					<h3>Résolution pour l'impression</h3>
+					<div class="rt-dpi" data-rt-dpi>
+						<strong><span data-rt-dpi-valeur>—</span><small>dpi</small></strong>
+						<p data-rt-dpi-texte></p>
+					</div>
+					<div class="rt-sortie">
+						<label>Sortie à<span class="rt-champ"><input type="number" min="30" max="1200" step="1" data-rt-champ="dpi"><em>dpi</em></span></label>
+						<label>Taille sortie<span class="rt-champ rt-lecture"><output data-rt-taille-sortie>—</output><em>px</em></span></label>
+					</div>
+					<p class="rt-aide" data-rt-aide-sortie></p>
+
+					<h3>Fond perdu</h3>
+					<label class="rt-interrupteur"><input type="checkbox" data-rt-champ="fondPerdu"><span></span>Ajouter {{ 5 }} mm autour</label>
+				</div>
+
+				<div class="rt-volet" data-rt-volet="contour" hidden>
+					<label class="rt-interrupteur rt-actif"><input type="checkbox" data-rt-champ="contour"><span></span><strong>Contour</strong><small data-rt-contour-etat>désactivé</small></label>
+					<div data-rt-contour-reglages>
+						<h3>Type de contour</h3>
+						<div class="rt-seg" data-rt-type-contour>
+							<button type="button" data-valeur="rectangle" aria-pressed="true">Rectangle intérieur</button>
+							<button type="button" data-valeur="forme" aria-pressed="false">Forme (détourage)</button>
+						</div>
+						<p class="rt-aide" data-rt-type-aide>Trait qui suit les 4 bords de l'image, à l'intérieur.</p>
+
+						<div data-rt-forme hidden>
+							<h3>Source de la forme</h3>
+							<label class="rt-radio"><input type="radio" name="rt-source" value="alpha" data-rt-source {{ source.transparence ? 'checked' }}><span><strong>Transparence du fichier</strong><small>{{ source.transparence ? 'canal alpha trouvé · recommandé' : 'aucune transparence dans ce fichier' }}</small></span></label>
+							<label class="rt-radio"><input type="radio" name="rt-source" value="auto" data-rt-source {{ not source.transparence ? 'checked' }}><span><strong>Détourage automatique</strong><small>pour un JPG sur fond uni · à vérifier</small></span></label>
+						</div>
+
+						<h3>Couleur</h3>
+						<div class="rt-couleurs" data-rt-couleurs>
+							{% for c in [['#000000', 'noir'], ['#FFFFFF', 'blanc'], ['#0F4590', 'bleu'], ['#DE1028', 'rouge'], ['#FDC82A', 'jaune']] %}
+								<button type="button" class="rt-pastille-couleur" data-couleur="{{ c[0] }}" data-nom="{{ c[1] }}" style="--c:{{ c[0] }}" title="{{ c[1]|capitalize }}"></button>
+							{% endfor %}
+							<label class="rt-champ rt-hex"><input type="text" maxlength="7" spellcheck="false" data-rt-champ="couleur" aria-label="Couleur en hexadécimal"><em data-rt-couleur-nom>noir</em></label>
+						</div>
+						<p class="rt-aide">Noir par défaut. Le fichier reste en RVB : au RIP, demandez un noir 100 % (K 100) pour un trait net.</p>
+
+						<h3>Épaisseur</h3>
+						<div class="rt-epaisseur">
+							<input type="range" min="0.5" max="10" step="0.1" data-rt-champ="epaisseurCurseur" aria-label="Épaisseur du contour">
+							<span class="rt-champ"><input type="number" min="0.1" max="50" step="0.1" data-rt-champ="epaisseur"><em>mm</em></span>
+						</div>
+						<p class="rt-aide rt-aide-ligne"><span>0,5 mm</span><span data-rt-epaisseur-px></span><span>10 mm</span></p>
+
+						<div data-rt-position>
+							<h3>Position</h3>
+							<div class="rt-sortie">
+								<label>Placement<span class="rt-champ rt-lecture"><output>À l'intérieur</output><em>fixe</em></span></label>
+								<label>Retrait du bord<span class="rt-champ"><input type="number" min="0" max="500" step="0.5" data-rt-champ="retrait"><em>mm</em></span></label>
+							</div>
+							<p class="rt-aide">Le trait part du bord du format fini et va vers l'intérieur : rien n'est ajouté à l'extérieur. Avec un retrait, le cadre se décale vers le centre (ex. 5 mm pour éviter la coupe).</p>
+						</div>
+
+						<div class="rt-encadre" data-rt-forme-impossible hidden>
+							<strong>Si le détourage n'est pas possible</strong>
+							<p data-rt-forme-message>Image sans transparence et fond chargé : l'outil le signale et propose le rectangle intérieur. Le graphiste peut aussi détourer dans son logiciel et réimporter un PNG.</p>
+							<button type="button" class="btn btn-light btn-sm" data-rt-action="rectangle" hidden>Utiliser le rectangle intérieur</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="rt-volet" data-rt-volet="controles" hidden>
+					<p class="rt-sous" data-rt-controles-resume></p>
+					<div data-rt-controles></div>
+					<div class="rt-que-faire" data-rt-que-faire hidden>
+						<h3>Que faire ?</h3>
+						<ol>
+							<li data-rt-solution="demander" hidden>
+								<button type="button" data-rt-action="demander"><strong>Demander un fichier plus grand au client</strong><small>message automatique dans la conversation de la commande</small></button>
+							</li>
+							<li data-rt-solution="adapter" hidden>
+								<button type="button" data-rt-action="adapter"><strong>Passer en « adapter »</strong><small>image non déformée, avec bandes de couleur</small></button>
+							</li>
+							<li data-rt-solution="forcer">
+								<button type="button" data-rt-action="forcer"><strong>Valider quand même</strong><small>raison obligatoire, visible sur le BAT</small></button>
+								<div class="rt-raison" data-rt-raison hidden>
+									<label for="rt-raison">Raison (montrée au client avec le BAT)</label>
+									<textarea id="rt-raison" rows="3" maxlength="300" data-rt-champ="raison" placeholder="Ex. : le client n'a pas d'autre fichier et accepte un rendu moins net."></textarea>
+								</div>
+							</li>
+						</ol>
+					</div>
+				</div>
+			</aside>
+
+			{# ---------- Valider et générer (PP05) ---------- #}
+			<section class="rt-verifs" data-rt-verifs hidden>
+				<h3>Vérifications</h3>
+				<ul class="rt-liste-verifs" data-rt-liste-verifs></ul>
+				<h3>Dossier prépresse · {{ commande.numero }}</h3>
+				<ul class="rt-dossier">
+					{% for d in dossier %}
+						<li><span><strong>{{ d.fichier.nomOriginal }}</strong><small>{{ d.detail }}</small></span><em class="{{ d.badge == 'Original' ? 'rt-badge-original' }}">{{ d.badge }}</em></li>
+					{% endfor %}
+					<li class="rt-dossier-nouveau" data-rt-dossier-nouveau><span><strong data-rt-dossier-nom></strong><small data-rt-dossier-etat>à générer</small></span><em>v{{ config.version }}</em></li>
+				</ul>
+			</section>
+			<aside class="rt-final" data-rt-final hidden>
+				<h3 class="rt-titre-carte">Fichier final</h3>
+				<h3>Format de sortie</h3>
+				<div class="rt-seg" data-rt-format>
+					<button type="button" data-valeur="pdf" aria-pressed="true">PDF</button>
+					<button type="button" data-valeur="png" aria-pressed="false">PNG</button>
+					<button type="button" data-valeur="jpeg" aria-pressed="false">JPEG</button>
+				</div>
+				<p class="rt-aide" data-rt-format-aide></p>
+				<h3>Nom du fichier</h3>
+				<input type="text" class="form-control form-control-sm" maxlength="190" data-rt-champ="nom" aria-label="Nom du fichier">
+				<h3>Récapitulatif</h3>
+				<dl class="rt-recap" data-rt-recap></dl>
+				{% if not lecture %}
+					<button type="button" class="btn btn-primary rt-generer" data-rt-action="generer">Générer et associer à {{ commande.numero }}</button>
+					<button type="button" class="btn btn-outline-primary rt-generer" data-rt-action="bat">Générer puis envoyer comme BAT n°{{ config.bat }}</button>
+				{% endif %}
+				<p class="rt-aide rt-centre">La version suivante ne remplace jamais l'original.</p>
+				<div class="rt-resultat" data-rt-resultat hidden></div>
+			</aside>
+		</div>
+
+		<dialog class="rt-dialogue" data-rt-dialogue>
+			<form method="dialog">
+				<h2>Demander un fichier plus grand</h2>
+				<p class="rt-aide">Envoyé dans la conversation de la commande {{ commande.numero }} (Messages de l'espace client){{ config.commande.client ? '' : ' : cette commande n\'a pas de client' }}.</p>
+				<textarea rows="6" maxlength="1000" data-rt-champ="message"></textarea>
+				<p class="rt-erreur" data-rt-dialogue-erreur hidden></p>
+				<div class="rt-dialogue-actions">
+					<button type="submit" value="annuler" class="btn btn-light btn-sm">Annuler</button>
+					<button type="button" class="btn btn-primary btn-sm" data-rt-action="envoyer-message" {{ config.commande.client and not lecture ? '' : 'disabled' }}>Envoyer au client</button>
+				</div>
+			</form>
+		</dialog>
+		<div class="rt-toast" data-rt-toast role="status" hidden></div>
+	{% endif %}
+</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script src="{{ asset('js/retouche-image.js') }}" defer></script>
+{% endblock %}

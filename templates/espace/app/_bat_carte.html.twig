@@ -49,6 +49,8 @@
 					<p class="cs-bat-vide">Le fichier du BAT n'est pas encore en ligne. L'atelier vous l'envoie aussi par WhatsApp.</p>
 				{% endfor %}
 				{% if b.note %}<p class="cs-bat-note">{{ b.note }}</p>{% endif %}
+				{# Retouche validée malgré une alerte : la raison de l'atelier (docs/prepresse-retouche.md). #}
+				{% for f in b.fichiers|filter(f => f.remarqueBat) %}<p class="cs-bat-note"><strong>Remarque de l'atelier :</strong> {{ f.remarqueBat }}</p>{% endfor %}
 			</div>
 
 			{% if agir %}

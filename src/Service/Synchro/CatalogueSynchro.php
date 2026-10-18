@@ -381,6 +381,8 @@ final class CatalogueSynchro
                 'champs' => [
                     'nomOriginal', 'nomStockage', 'typeMime', 'taille', 'statut', 'origine', 'etat', 'actif', 'version', 'face', 'designation',
                     'creeLe', 'termineLe', 'morceauxRecus', 'nombreMorceaux', 'logo', 'analyse', 'empreinte',
+                    // Raison d'une retouche validée malgré une alerte, montrée au client avec le BAT (docs/prepresse-retouche.md).
+                    'remarqueBat',
                 ],
                 'relations' => ['commandeDetail' => 'commande_ligne', 'client' => 'client'], 'listes' => [],
                 // Le jeton d'envoi ne part pas : la copie en reçoit un neuf.

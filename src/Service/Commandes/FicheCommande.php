@@ -11,9 +11,9 @@ use App\Entity\ContactClient;
 use App\Entity\ControlePrePresse;
 use App\Entity\Devis;
 use App\Entity\Factures;
-use App\Entity\MessageClient;
 use App\Entity\OrdreProduction;
 use App\Service\Caisse;
+use App\Service\Messagerie\ResumeConversation;
 use App\Service\TableauProduction;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -21,7 +21,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * Fiche d'une commande côté admin (maquette DT02, 18/10/2026) : devis
  * d'origine, fichiers et BAT, étapes de production avec la personne et
  * la durée, carte du client (contact, solde impayé), dernier message de
- * la commande et événements du BAT pour l'historique. Lecture seule ;
+ * la commande (ResumeConversation) et événements du BAT pour l'historique. Lecture seule ;
  * les actions restent sur leurs écrans (prépresse, caisse, messages).
  */
 final class FicheCommande
@@ -29,6 +29,7 @@ final class FicheCommande
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly Caisse $caisse,
+        private readonly ResumeConversation $conversations,
     ) {
     }
 
@@ -64,7 +65,8 @@ final class FicheCommande
             'production' => $this->production($commande, $lignes, $controles, $conceptions, $ordres, $bl, $plusieurs, $maintenant),
             'contact' => $this->contact($commande),
             'solde' => $voirPaiements ? $this->solde($commande, $maintenant) : null,
-            'conversation' => $this->conversation($commande, $maintenant),
+            // Conversation de la commande (docs/messagerie-clients.md) : montants masqués sans le droit de voir les paiements.
+            'conversation' => $this->conversations->pour($commande, !$voirPaiements, $maintenant),
         ];
     }
 
@@ -324,39 +326,6 @@ final class FicheCommande
         }
 
         return ['montant' => $montant, 'commandes' => \count($impayees), 'echue' => $echue];
-    }
-
-    /**
-     * Dernier message de la commande et le temps de réponse de l'atelier
-     * au dernier message du client (« Répondu en 12 min », « Sans réponse
-     * depuis 3 h »). La messagerie par commande viendra le compléter.
-     *
-     * @return array{dernier: ?MessageClient, nombre: int, chrono: ?array{libelle: string, couleur: string}}
-     */
-    private function conversation(Commandes $commande, \DateTimeImmutable $maintenant): array
-    {
-        /** @var list<MessageClient> $messages */
-        $messages = $this->em->getRepository(MessageClient::class)->findBy(['commande' => $commande], ['creeLe' => 'ASC', 'id' => 'ASC']);
-        $dernierClient = null;
-        $reponse = null;
-        foreach ($messages as $m) {
-            if (MessageClient::CLIENT === $m->getSens()) {
-                $dernierClient = $m;
-                $reponse = null;
-            } elseif (null !== $dernierClient && null === $reponse) {
-                $reponse = $m;
-            }
-        }
-        $chrono = null;
-        if (null !== $dernierClient && null !== $reponse) {
-            $secondes = max(0, $reponse->getCreeLe()->getTimestamp() - $dernierClient->getCreeLe()->getTimestamp());
-            $chrono = ['libelle' => 'Répondu en '.self::duree(max(60, $secondes)), 'couleur' => $secondes <= 3600 ? 'vert' : 'orange'];
-        } elseif (null !== $dernierClient) {
-            $secondes = max(0, $maintenant->getTimestamp() - $dernierClient->getCreeLe()->getTimestamp());
-            $chrono = ['libelle' => 'Sans réponse depuis '.self::duree(max(60, $secondes)), 'couleur' => $secondes <= 3600 ? 'orange' : 'rouge'];
-        }
-
-        return ['dernier' => [] !== $messages ? $messages[\count($messages) - 1] : null, 'nombre' => \count($messages), 'chrono' => $chrono];
     }
 
     /**

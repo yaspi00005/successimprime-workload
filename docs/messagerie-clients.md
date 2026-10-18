@@ -29,6 +29,8 @@ Une seule messagerie entre les clients et l'atelier. Elle remplace l'ancien fil 
 
 **Qui voit quoi** (`src/Security/MessagerieVoter.php`) : la Direction voit tout. Les autres : celles qui leur sont assignées, celles où un collègue les a ajoutés, celles des commandes et devis dont ils sont l'agent, et les non assignées de leur rôle (caisse et commercial ; paiement et facture pour qui encaisse, facture, ou la trésorière). La PAO ne voit que celles où on l'a ajoutée.
 
+**Depuis une commande ou un devis** : la fiche commande (DT02) montre la carte « Conversation » (dernier message, délai, responsable, montants masqués sans le droit des paiements) ; « Message client » ou « Écrire au client » ouvre la conversation de la commande, créée au besoin et assignée à qui l'ouvre (`app_messages_clients_demarrer`). Le message saisi à l'envoi d'un devis et la demande de modification du client vont dans la conversation du devis.
+
 ## Règles de réponse et supervision (Direction)
 
 Menu Clients : **Supervision des messages**, **Toutes les conversations**, **Règles de réponse** (Direction seulement).

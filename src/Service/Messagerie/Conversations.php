@@ -447,6 +447,41 @@ final class Conversations
     }
 
     /**
+     * L'atelier ouvre la conversation d'une commande ou d'un devis (DT02,
+     * DT03, « Écrire au client ») : l'ouverte si elle existe, sinon une
+     * nouvelle (liée à la précédente), assignée à qui l'ouvre s'il est
+     * imputable, sinon à l'agent du document. Pas de message : le premier
+     * part avec « Envoyer », sans chronomètre (le client n'attend rien).
+     *
+     * @throws \DomainException
+     */
+    public function demarrer(Commandes|Devis $document, User $par, \DateTimeImmutable $maintenant): ConversationClient
+    {
+        if ($this->enLigne) {
+            throw new \DomainException('Les réponses partent de l\'ERP de la boutique.');
+        }
+        $existante = $this->pourDocument($document);
+        if (null !== $existante && $existante->estOuverte()) {
+            return $existante;
+        }
+        $client = $document->getClients() ?? throw new \DomainException('Document sans client.');
+        $commande = $document instanceof Commandes ? $document : null;
+        $devis = $document instanceof Devis ? $document : null;
+        $c = ConversationClient::nouvelle($client, $commande, $devis, null, ConversationClient::SUJET_COMMANDE, $maintenant)->setPrecedente($existante);
+        $tresoriere = $this->regles->tresoriere();
+        $agent = $document->getAgents();
+        $c->setAssigneA(self::imputable($par, $tresoriere) ? $par : (null !== $agent && self::imputable($agent, $tresoriere) ? $agent : null));
+        if ($c->getAssigneA() !== $par) {
+            $c->ajouterParticipant($par);
+        }
+        $c->setDernierMessageLe($maintenant)->setLuAtelierLe($maintenant);
+        $this->em->persist($c);
+        $this->em->flush();
+
+        return $c;
+    }
+
+    /**
      * Note interne : invisible du client, sans effet sur le chronomètre.
      * « @Kadiatou » prévient la personne nommée (prénom ou identifiant).
      *

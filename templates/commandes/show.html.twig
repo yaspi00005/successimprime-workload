@@ -14,7 +14,8 @@
 {% set peutFacturer = is_granted('ROLE_FACTURE') or estAdmin %}
 {% set peutVoirPaiements = is_granted('ROLE_PAIEMENT_VOIR') or estAdmin %}
 {% set peutPrepresse = is_granted('ROLE_PREPRESSE') or estAdmin %}
-{% set peutMessages = is_granted('ROLE_CLIENT') %}
+{# Messages des clients (docs/messagerie-clients.md) : la boîte Clients › Messages. #}
+{% set peutMessages = is_granted('MESSAGERIE') %}
 {% set statutTravaux = commande.statutTravaux %}
 {% set annulee = statutTravaux == 'annulee' %}
 {% set verrouillee = lignes|filter(l => l.detail.statutProduction in ['en_production', 'terminee', 'prete_livraison', 'en_livraison', 'livree'])|length > 0 %}
@@ -109,7 +110,12 @@
 		<div class="si-cs-actions">
 			<button type="button" class="btn si-cs-btn-blanc si-masque-mobile" onclick="window.print()"><i class="fas fa-print me-1"></i>Bon de travail</button>
 			{% if client and peutMessages %}
-				<a href="{{ path('app_messages_clients_voir', {publicId: client.publicId}) }}" class="btn si-cs-btn-blanc">Message client</a>
+				{% set convTete = fiche.conversation %}
+				{% if convTete and is_granted('MESSAGERIE_VOIR', convTete.conversation) %}
+					<a href="{{ convTete.urlAdmin }}" class="btn si-cs-btn-blanc">Message client</a>
+				{% elseif (not convTete or convTete.conversation.estCloturee) and not site_en_ligne() %}
+					<form method="post" action="{{ path('app_messages_clients_demarrer', {type: 'commande', id: commande.id}) }}" class="d-inline"><input type="hidden" name="_token" value="{{ csrf_token('messages-clients') }}"><button class="btn si-cs-btn-blanc">Message client</button></form>
+				{% endif %}
 			{% elseif lienWhatsapp %}
 				<a href="{{ lienWhatsapp }}" class="btn si-cs-btn-blanc" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Message client</a>
 			{% endif %}
@@ -410,26 +416,36 @@
 				</div>
 			{% endif %}
 
-			{# ---------- Conversation (messagerie par commande à venir) ---------- #}
+			{# ---------- Conversation de la commande (maquette DT02, docs/messagerie-clients.md) ---------- #}
 			{% if client and peutMessages %}
 				{% set conv = fiche.conversation %}
+				{% set ouvrable = conv and is_granted('MESSAGERIE_VOIR', conv.conversation) %}
 				<div class="card si-cs-bloc si-cs-conversation">
 					<div class="si-cs-bloc-tete">
 						<h4>Conversation</h4>
-						{% if conv.chrono %}<span class="si-cs-chrono {{ conv.chrono.couleur }}">{{ conv.chrono.libelle }}</span>{% endif %}
+						{% if conv and conv.enRetard %}<span class="si-cs-chrono rouge">En retard · attend depuis {{ conv.attenteMinutes|duree_messagerie }}</span>
+						{% elseif conv and conv.enAttente %}<span class="si-cs-chrono orange">Réponse attendue · {{ conv.attenteMinutes|duree_messagerie }}</span>
+						{% elseif conv and conv.delaiTexte %}<span class="si-cs-chrono vert">{{ conv.delaiTexte }}</span>
+						{% elseif conv and conv.conversation.estCloturee %}<span class="si-cs-chrono vert">Clôturée{{ conv.conversation.avis ? ' · ' ~ conv.conversation.avis ~ ' ★' }}</span>{% endif %}
 					</div>
-					{% if conv.dernier %}
+					{% if conv and conv.dernier %}
+						{% set d = conv.dernier %}
 						<div class="si-cs-message">
-							<span class="si-cs-disque" aria-hidden="true">{{ conv.dernier.sens == 'client' ? suivi.client.initiales : 'SI' }}</span>
+							{% if d.photo %}<img src="{{ d.photo }}" alt="" class="si-cs-disque" style="object-fit: cover">{% else %}<span class="si-cs-disque" aria-hidden="true"{{ d.deLAtelier ? ' style="background: #0F4590"' }}>{{ d.deLAtelier ? d.initiales : suivi.client.initiales }}</span>{% endif %}
 							<div class="min-w-0">
-								<small>{{ conv.dernier.sens == 'client' ? (conv.dernier.auteur ?: client.nomComplet) : (conv.dernier.auteur ?: 'Atelier') }} · {{ conv.dernier.creeLe|date('d/m H:i') }}</small>
-								{{ conv.dernier.texte|length > 140 ? conv.dernier.texte|slice(0, 139) ~ '…' : conv.dernier.texte }}
+								<small>{{ d.deLAtelier ? d.auteur : (d.auteur ?: client.nomComplet) }} · {{ d.le|date('d/m H:i') }} · {{ conv.messages }} message{{ conv.messages > 1 ? 's' }}</small>
+								{{ d.texte|length > 140 ? d.texte|slice(0, 139) ~ '…' : d.texte }}
 							</div>
 						</div>
+						{% if conv.conversation.assigneA %}<small class="text-muted d-block mt-1">Responsable : {{ conv.conversation.assigneA.employe ? conv.conversation.assigneA.employe.nomComplet : conv.conversation.assigneA.username }}</small>{% endif %}
 					{% else %}
 						<p class="text-muted small mb-0">Aucun message sur cette commande.</p>
 					{% endif %}
-					<a href="{{ path('app_messages_clients_voir', {publicId: client.publicId}) }}" class="si-cs-lien-fort">{{ conv.dernier ? 'Ouvrir la conversation ' ~ commande.numero : 'Écrire au client' }} →</a>
+					{% if ouvrable %}
+						<a href="{{ conv.urlAdmin }}" class="si-cs-lien-fort">Ouvrir la conversation {{ commande.numero }} →</a>
+					{% elseif (not conv or conv.conversation.estCloturee) and not site_en_ligne() %}
+						<form method="post" action="{{ path('app_messages_clients_demarrer', {type: 'commande', id: commande.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('messages-clients') }}"><button class="btn btn-link p-0 si-cs-lien-fort">{{ conv ? 'Nouvelle conversation sur ' ~ commande.numero : 'Écrire au client' }} →</button></form>
+					{% endif %}
 				</div>
 			{% endif %}
 

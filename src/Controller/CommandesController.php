@@ -30,6 +30,9 @@ use App\Service\NotificationService;
 use App\Service\StockService;
 use App\Service\CalculateurCoutRevient;
 use App\Service\SuiviCommandeService;
+use App\Service\Commandes\FicheCommande;
+use App\Service\Commandes\SuiviCommercial;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Repository\FacturesRepository;
 use App\Repository\ParametresPaiementRepository;
 use App\Service\Parametres\Parametres;
@@ -55,6 +58,8 @@ final class CommandesController extends AbstractController
         'montant_max',
         'affichage',
         'tri',
+        'etape',
+        'pour',
     ];
 
     private const FILTRES_COMMANDES_PAR_DEFAUT = [
@@ -69,17 +74,114 @@ final class CommandesController extends AbstractController
         'montant_max' => '',
         'affichage' => 'actives',
         'tri' => 'recent',
+        'etape' => '',
+        'pour' => '',
     ];
 
+    /**
+     * Liste des commandes (maquette GC01) et tableau par étape (GC02) :
+     * même adresse, bascule « Liste / Tableau » retenue pour la session.
+     */
     #[Route('/', name: 'app_commandes_index', methods: ['GET'])]
     public function index(
         Request $request,
         CommandesRepository $commandesRepository,
-        ClientsRepository $clientsRepository
+        ClientsRepository $clientsRepository,
+        SuiviCommercial $suiviCommercial
     ): Response {
         $session = $request->getSession();
+        $filtres = $this->filtresCommandes($request);
+
+        $vue = (string) $request->query->get('vue', (string) $session->get('commandes_vue', 'liste'));
+        $vue = \in_array($vue, ['liste', 'tableau'], true) ? $vue : 'liste';
+        $session->set('commandes_vue', $vue);
+
+        $maintenant = new \DateTimeImmutable();
+        $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
 
         /*
+         * Sans filtre, le repository affiche uniquement les commandes
+         * dont le paiement est en attente OU les travaux sont en cours.
+         */
+        $lignes = $suiviCommercial->lignes($commandesRepository->rechercherPourIndex($filtres), $maintenant);
+        $lignes = SuiviCommercial::filtrerPour($lignes, $filtres['pour'], $maintenant);
+        $compteurs = SuiviCommercial::compteurs($lignes);
+
+        // Les cartes du haut portent toujours sur les commandes actives, quels que soient les filtres.
+        $parDefaut = array_diff_key(self::FILTRES_COMMANDES_PAR_DEFAUT, ['etape' => 1, 'pour' => 1]);
+        $actives = array_diff_key($filtres, ['etape' => 1, 'pour' => 1]) == $parDefaut && '' === $filtres['pour']
+            ? $lignes
+            : $suiviCommercial->lignes($commandesRepository->rechercherPourIndex(self::FILTRES_COMMANDES_PAR_DEFAUT), $maintenant);
+
+        return $this->render('commandes/index.html.twig', [
+            'lignes' => SuiviCommercial::filtrerEtape($lignes, 'tableau' === $vue ? '' : $filtres['etape']),
+            'colonnes' => 'tableau' === $vue ? SuiviCommercial::colonnes($lignes) : [],
+            'compteurs' => $compteurs,
+            'cartes' => SuiviCommercial::cartes($actives, $maintenant, $voirPaiements),
+            'etapes' => SuiviCommercial::ETAPES,
+            'choixPour' => SuiviCommercial::POUR,
+            'vue' => $vue,
+            'clients' => $clientsRepository->findBy([], [
+                'nom' => 'ASC',
+            ]),
+            'filtres' => $filtres,
+        ]);
+    }
+
+    /**
+     * Les commandes de la liste, avec les mêmes filtres, en CSV (Excel).
+     * Payé et reste seulement avec le droit de voir les paiements.
+     */
+    #[Route('/export', name: 'app_commandes_export', methods: ['GET'], priority: 10)]
+    public function export(
+        Request $request,
+        CommandesRepository $commandesRepository,
+        SuiviCommercial $suiviCommercial
+    ): StreamedResponse {
+        $filtres = $this->filtresCommandes($request);
+        $maintenant = new \DateTimeImmutable();
+        $lignes = $suiviCommercial->lignes($commandesRepository->rechercherPourIndex($filtres), $maintenant);
+        $lignes = SuiviCommercial::filtrerEtape(SuiviCommercial::filtrerPour($lignes, $filtres['pour'], $maintenant), $filtres['etape']);
+        $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
+
+        $reponse = new StreamedResponse(static function () use ($lignes, $voirPaiements): void {
+            $sortie = fopen('php://output', 'wb');
+            // BOM pour qu'Excel lise les accents.
+            fwrite($sortie, "\xEF\xBB\xBF");
+            fputcsv($sortie, array_merge(
+                ['N°', 'Date', 'Client', 'Produit', 'Montant TTC'],
+                $voirPaiements ? ['Payé', 'Reste à payer', 'Payé %'] : [],
+                ['Étape', 'Pour le', 'En retard', 'Responsable', 'État']
+            ), ';', '"', '');
+            foreach ($lignes as $l) {
+                $commande = $l['commande'];
+                fputcsv($sortie, array_merge(
+                    [
+                        $commande->getNumero(),
+                        $commande->getDateCommande()?->format('d/m/Y'),
+                        $l['client']['nom'],
+                        $l['produit'].($l['autres'] > 0 ? \sprintf(' (+%d)', $l['autres']) : ''),
+                        $l['total'],
+                    ],
+                    $voirPaiements ? [$l['paye'], $l['reste'], $l['partPayee']] : [],
+                    [
+                        SuiviCommercial::ETAPES[$l['etape']]['libelle'],
+                        $l['pourLe']?->format('d/m/Y'),
+                        $l['enRetard'] ? 'oui' : 'non',
+                        $l['responsable']['complet'] ?? '',
+                        $l['etat'],
+                    ]
+                ), ';', '"', '');
+            }
+            fclose($sortie);
+        });
+        $reponse->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $reponse->headers->set('Content-Disposition', \sprintf('attachment; filename="commandes-%s.csv"', $maintenant->format('Y-m-d')));
+
+        return $reponse;
+    }
+
+    /**
      * ============================================================
      * RECHERCHE GARDÉE EN SESSION
      * ============================================================
@@ -88,7 +190,13 @@ final class CommandesController extends AbstractController
      * (bouton "Réinitialiser", ?reset=1), on retrouve les derniers
      * filtres appliqués même en revenant sur la liste sans
      * paramètre d'URL (ex. via le menu).
+     *
+     * @return array<string, string>
      */
+    private function filtresCommandes(Request $request): array
+    {
+        $session = $request->getSession();
+
         if ($request->query->getBoolean('reset')) {
             $session->remove('commandes_filtres');
         }
@@ -104,80 +212,27 @@ final class CommandesController extends AbstractController
         }
 
         if ($requeteContientUnFiltre) {
-            $filtres = [
-                'q' => trim((string) $request->query->get('q', '')),
-                'client' => (string) $request->query->get('client', ''),
-                'statut' => (string) $request->query->get('statut', ''),
-                'etat' => (string) $request->query->get('etat', ''),
-                'paiement' => (string) $request->query->get('paiement', ''),
-                'date_debut' => (string) $request->query->get('date_debut', ''),
-                'date_fin' => (string) $request->query->get('date_fin', ''),
-                'montant_min' => (string) $request->query->get('montant_min', ''),
-                'montant_max' => (string) $request->query->get('montant_max', ''),
-                'affichage' => (string) $request->query->get(
-                    'affichage',
-                    'actives'
-                ),
-                'tri' => (string) $request->query->get('tri', 'recent'),
-            ];
+            $filtres = [];
+            foreach (self::FILTRES_COMMANDES_PAR_DEFAUT as $cle => $defaut) {
+                $filtres[$cle] = trim((string) $request->query->get($cle, $defaut));
+            }
 
             $session->set('commandes_filtres', $filtres);
         } else {
-            $filtres = $session->get(
-                'commandes_filtres',
-                self::FILTRES_COMMANDES_PAR_DEFAUT
-            );
+            $filtres = (array) $session->get('commandes_filtres', []) + self::FILTRES_COMMANDES_PAR_DEFAUT;
         }
 
-        /*
-         * Sans filtre, le repository affiche uniquement les commandes
-         * dont le paiement est en attente OU les travaux sont en cours.
-         */
-        $commandes = $commandesRepository->rechercherPourIndex($filtres);
-
-        $totalPaye = 0;
-        $totalReste = 0;
-        $totalCommandes = 0;
-
-        foreach ($commandes as $commande) {
-            /*
-         * Une commande entièrement annulée ne doit pas fausser les
-         * totaux affichés en haut de la liste (même règle que sur
-         * la fiche client).
-         */
-            if ($commande->getStatutTravaux() === 'annulee') {
-                continue;
-            }
-
-            $total = (int) ($commande->getTotalTtc() ?? 0);
-
-            $paye = 0;
-
-            foreach ($commande->getPaiements() as $paiement) {
-                $paye += (int) $paiement->getMontant();
-            }
-
-            $reste = max(
-                0,
-                $total - $paye
-            );
-
-            $totalCommandes += $total;
-            $totalPaye += $paye;
-            $totalReste += $reste;
+        $filtres = array_map('strval', array_intersect_key($filtres, self::FILTRES_COMMANDES_PAR_DEFAUT));
+        if (!isset(SuiviCommercial::ETAPES[$filtres['etape']]) && 'retard' !== $filtres['etape']) {
+            $filtres['etape'] = '';
+        }
+        if (!isset(SuiviCommercial::POUR[$filtres['pour']])) {
+            $filtres['pour'] = '';
         }
 
-        return $this->render('commandes/index.html.twig', [
-            'commandes' => $commandes,
-            'clients' => $clientsRepository->findBy([], [
-                'nom' => 'ASC',
-            ]),
-            'filtres' => $filtres,
-            'totalCommandes' => $totalCommandes,
-            'totalPaye' => $totalPaye,
-            'totalReste' => $totalReste,
-        ]);
+        return $filtres;
     }
+
 
 
     #[Route(
@@ -570,7 +625,7 @@ final class CommandesController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_commandes_show', methods: ['GET'])]
-    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient, PromotionsSaisie $promotionsSaisie, EntityManagerInterface $entityManager): Response
+    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient, PromotionsSaisie $promotionsSaisie, EntityManagerInterface $entityManager, SuiviCommercial $suiviCommercial, FicheCommande $ficheCommande): Response
     {
         if ($commande->estSoldeOuverture()) {
             // Ce que le client devait au démarrage (docs/import-donnees.md) : un montant, pas une vente.
@@ -613,12 +668,30 @@ final class CommandesController extends AbstractController
             static fn (Factures $facture): bool => Factures::ETAT_ANNULEE !== $facture->getEtat()
         ));
 
+        // Maquette DT02 : étape commerciale, fichiers et BAT, production, client, conversation.
+        $maintenant = new \DateTimeImmutable();
+        $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
+        $suivi = $suiviCommercial->pourCommande($commande, $maintenant);
+        $fiche = $ficheCommande->donnees($commande, $maintenant, $voirPaiements);
+        $historique = array_merge($suiviCommandeService->historique($commande, $voirPaiements), $fiche['evenementsBat']);
+        usort($historique, static fn (array $a, array $b): int => $b['date'] <=> $a['date']);
+        if (null !== $fiche['devis']) {
+            foreach ($historique as &$evenement) {
+                if (str_starts_with($evenement['texte'], 'Commande créée')) {
+                    $evenement['texte'] = 'Commande créée depuis '.$fiche['devis']->getNumero().substr($evenement['texte'], \strlen('Commande créée'));
+                }
+            }
+            unset($evenement);
+        }
+
         return $this->render('commandes/show.html.twig', [
             'commande' => $commande,
-            'etapes' => $suiviCommandeService->etapes($commande),
+            'etapes' => $suiviCommandeService->etapes($commande, SuiviCommercial::ACOMPTE === $suivi['etape']),
+            'suivi' => $suivi,
+            'fiche' => $fiche,
             'lignes' => $lignes,
             'paiementsValides' => $suiviCommandeService->paiementsValides($commande),
-            'historique' => \array_slice($suiviCommandeService->historique($commande, $this->isGranted('ROLE_PAIEMENT_VOIR')), 0, 8),
+            'historique' => \array_slice($historique, 0, 10),
             'facture' => end($factures) ?: null,
             'marge' => $voirCouts ? $marge + ['taux' => CalculateurCoutRevient::tauxMarge($marge['ht'], $marge['cout'])] : null,
             // Revendeur au prix B2B : promotions qu'une exception permettrait, ligne par ligne.

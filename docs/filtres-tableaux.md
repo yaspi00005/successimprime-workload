@@ -18,7 +18,7 @@ Les colonnes d'actions (boutons), de cases à cocher, sans titre ou sans texte (
 
 | Liste | Où agit le filtre | Pourquoi |
 |---|---|---|
-| Commandes (`/commandes/`) | les lignes affichées | la liste n'est pas coupée en pages : toutes les commandes trouvées par la « Recherche avancée » de gauche sont dans le tableau (les commandes actives par défaut) |
+| Commandes (`/commandes/`) | les lignes affichées | la liste n'est pas coupée en pages : toutes les commandes trouvées (étape choisie et panneau « Recherche ») sont dans le tableau (les commandes actives par défaut), docs/suivi-commandes.md |
 | Devis (`/devis/`) | les lignes affichées | idem, tous les devis trouvés sont dans le tableau |
 | Factures (`/factures/`) | les lignes affichées | toutes les factures sont dans le tableau ; la recherche de la page reste et se combine aux filtres |
 | Paiements (`/paiements`) | **le serveur**, tous les paiements | la liste ne montre que les 100 derniers : un filtre sur ces 100 lignes aurait menti |

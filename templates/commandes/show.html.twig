@@ -1,8 +1,10 @@
 {% extends 'base.html.twig' %}
 
 {#
-	Fiche d'une commande (maquette C02) : suivi en 7 etapes, lignes et
-	production, paiements et historique. Donnees : SuiviCommandeService.
+	Fiche d'une commande côté admin (maquette DT02, 18/10/2026) : étapes,
+	lignes (et devis d'origine), fichiers et BAT, production, historique,
+	client, paiements et conversation. Données : SuiviCommandeService,
+	SuiviCommercial (étape, retard) et FicheCommande.
 #}
 
 {% set client = commande.clients %}
@@ -11,6 +13,8 @@
 {% set peutEncaisser = is_granted('ROLE_PAIEMENT_ENCAISSER') or estAdmin %}
 {% set peutFacturer = is_granted('ROLE_FACTURE') or estAdmin %}
 {% set peutVoirPaiements = is_granted('ROLE_PAIEMENT_VOIR') or estAdmin %}
+{% set peutPrepresse = is_granted('ROLE_PREPRESSE') or estAdmin %}
+{% set peutMessages = is_granted('ROLE_CLIENT') %}
 {% set statutTravaux = commande.statutTravaux %}
 {% set annulee = statutTravaux == 'annulee' %}
 {% set verrouillee = lignes|filter(l => l.detail.statutProduction in ['en_production', 'terminee', 'prete_livraison', 'en_livraison', 'livree'])|length > 0 %}
@@ -19,7 +23,9 @@
 {% set reste = max(totalTtc - totalPaye, 0) %}
 {% set telephone = client and client.telephone ? client.telephone|replace({' ': '', '-': '', '.': '', '+': ''}) : null %}
 {% if telephone and telephone|length == 8 %}{% set telephone = '223' ~ telephone %}{% endif %}
-{% set couleursTags = ['bleu', 'magenta', 'orange', 'canard'] %}
+{% set jours = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'] %}
+{% set lienWhatsapp = telephone ? 'https://wa.me/' ~ telephone ~ '?text=' ~ ('Bonjour, votre commande ' ~ commande.numero ~ ' chez Succès Imprim : ')|url_encode : null %}
+{% set envoyerBat = peutPrepresse and fiche.ligneBat and not annulee %}
 
 {% block title %}Commande {{ commande.numero }}{% endblock %}
 
@@ -28,6 +34,7 @@
 {% block stylesheets %}
 	{{ parent() }}
 	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/commandes-suivi.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block body %}
@@ -75,89 +82,86 @@
 		<div class="alert alert-warning py-2"><i class="fas fa-ticket-alt me-1"></i><strong>Code promo {{ commande.libelleCodePromo }} non retenu.</strong> {{ commande.motifCodePromo }} La commande est restée sans cet avantage.</div>
 	{% endif %}
 
-	<div class="si-titre-fiche">
-		<div class="min-w-0">
-			<h2>{{ commande.numero }}</h2>
-			<small class="text-muted">{{ client ? client.nomComplet : 'Client comptoir' }}{% if commande.dateLivraison %} · {{ commande.recupereParClient ? 'retrait' : 'livraison' }} {{ ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'][commande.dateLivraison|date('w')] }} {{ commande.dateLivraison|date('d/m') }}{% endif %}</small>
-			{% if commande.objet %}<small class="d-block text-muted">Objet : {{ commande.objet }}</small>{% endif %}
-			{% if commande.delaiProduction %}<small class="d-block text-muted">Choix du client en ligne : délai {{ commande.estExpress ? 'express' : 'standard' }} · {{ commande.estALivrer ? 'livraison à Bamako' ~ (commande.creneauLivraison ? ', ' ~ commande.creneauLivraison : '') ~ (commande.adresseLivraison ? ' · ' ~ (commande.adresseLivraison|length > 90 ? commande.adresseLivraison|slice(0, 89) ~ '…' : commande.adresseLivraison) : '') : 'retrait en boutique' }}</small>{% endif %}
-		</div>
-		<ul class="si-actions-fiche">
-	<li class="nav-item si-masque-mobile">
-		<button type="button" class="btn btn-light btn-sm si-btn-entete" onclick="window.print()"><i class="fas fa-print me-1"></i>Fiche de travail</button>
-	</li>
-	{% if facture and peutFacturer %}
-		<li class="nav-item si-masque-mobile">
-			<a href="{{ path('app_factures_pdf', {id: facture.id}) }}" class="btn btn-light btn-sm si-btn-entete" target="_blank"><i class="fas fa-file-pdf me-1"></i>Facture PDF</a>
-		</li>
-	{% elseif peutFacturer and not annulee %}
-		<li class="nav-item si-masque-mobile">
-			<a href="{{ path('app_factures_nouveau', {id: commande.id}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-file-invoice me-1"></i>Facturer</a>
-		</li>
-	{% endif %}
-	{% if telephone %}
-		<li class="nav-item si-masque-mobile">
-			<a href="https://wa.me/{{ telephone }}?text={{ ('Bonjour, votre commande ' ~ commande.numero ~ ' chez Succès Imprim : ')|url_encode }}" class="btn btn-success btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>WhatsApp client</a>
-		</li>
-	{% endif %}
-	{% if peutEncaisser and reste > 0 and not annulee %}
-		<li class="nav-item si-masque-mobile">
-			<a href="{{ path('app_commandes_paiement', {id: commande.id}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-cash-register me-1"></i>Encaisser</a>
-		</li>
-	{% endif %}
-	<li class="nav-item dropdown">
-		<button type="button" class="btn btn-light btn-sm si-btn-entete" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Autres actions"><i class="fas fa-ellipsis-h"></i></button>
-		<div class="dropdown-menu dropdown-menu-end">
-			{% if peutModifier and not annulee and (not verrouillee or estAdmin) %}
-				<a class="dropdown-item" href="{{ path('app_commandes_edit', {id: commande.id}) }}"><i class="fas fa-pen me-2"></i>Modifier</a>
-			{% endif %}
-			{% if is_granted('ROLE_PREPRESSE') or estAdmin %}
-				<a class="dropdown-item" href="{{ path('app_controle_pre_presse_index') }}"><i class="fas fa-check-double me-2"></i>Contrôle prépresse</a>
-			{% endif %}
-			<button type="button" class="dropdown-item d-md-none" onclick="window.print()"><i class="fas fa-print me-2"></i>Fiche de travail</button>
-			{% if peutModifier and not annulee and (not verrouillee or estAdmin) %}
-				<form method="post" action="{{ path('app_commandes_annuler', {id: commande.id}) }}" data-confirmer="Annuler la commande {{ commande.numero }} ? Un administrateur pourra la restaurer ensuite.">
-					<input type="hidden" name="_token" value="{{ csrf_token('annuler-commande-' ~ commande.id) }}">
-					<button type="submit" class="dropdown-item text-danger"><i class="fas fa-times-circle me-2"></i>Annuler la commande</button>
-				</form>
-			{% endif %}
-			{% if annulee and estAdmin %}
-				<form method="post" action="{{ path('app_commandes_restaurer', {id: commande.id}) }}" data-confirmer="Restaurer la commande {{ commande.numero }} ? Chaque ligne retrouvera son statut d'avant l'annulation.">
-					<input type="hidden" name="_token" value="{{ csrf_token('restaurer-commande-' ~ commande.id) }}">
-					<button type="submit" class="dropdown-item"><i class="fas fa-undo me-2"></i>Restaurer la commande</button>
-				</form>
-			{% endif %}
-		</div>
-	</li>
-		</ul>
-	</div>
-	{# ---------- Suivi ---------- #}
-	<div class="card si-bloc">
-		<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-			<div class="d-flex flex-wrap align-items-center gap-2">
-				{% set enCours = etapes|filter(e => e.etat == 'en_cours')|first %}
-				<span class="si-pastille si-pastille-{{ annulee ? 'gris' : (enCours ? 'bleu' : 'vert') }}">{{ annulee ? 'Annulée' : (enCours ? enCours.libelle : 'Livrée') }}</span>
-				<small class="text-muted">
-					Créée le {{ commande.dateCommande ? commande.dateCommande|date('d/m à H:i') : '—' }}
+	{# ---------- En-tête : numéro, produit, étape, échéance, actions ---------- #}
+	<div class="si-cs-fiche-tete-page">
+		<div class="si-cs-titre">
+			<a href="{{ path('app_commandes_index') }}" class="si-cs-retour" aria-label="Retour aux commandes"><i class="fas fa-chevron-left"></i></a>
+			<div class="min-w-0">
+				<small>Commandes › {{ commande.numero }}</small>
+				<h1>
+					<span>{{ commande.numero }} · {{ suivi.produit }}{% if suivi.autres %} <small class="d-inline text-muted">+{{ suivi.autres }}</small>{% endif %}</span>
+					<span class="si-cs-etape si-cs-etape-{{ suivi.couleur }}">{{ suivi.libelle }}</span>
+					{% if commande.dateLivraison %}
+						<span class="si-cs-pour{{ suivi.enRetard ? ' retard' }}">{{ suivi.retrait ? 'retrait' : 'pour' }} le {{ jours[commande.dateLivraison|date('w')] }} {{ commande.dateLivraison|date('d/m') }}</span>
+					{% endif %}
+				</h1>
+				<small>
+					{{ client ? client.nomComplet : 'Client comptoir' }}
+					· créée le {{ commande.dateCommande ? commande.dateCommande|date('d/m à H:i') : '—' }}
 					{% if commande.agents %} par {{ commande.agents.employe ? commande.agents.employe.prenom : commande.agents.username }}{% elseif commande.demandeePar %} en ligne par {{ commande.demandeePar }}{% if commande.valideePar and commande.validationEntreprise == 'validee' and commande.valideePar != commande.demandeePar %}, validée par {{ commande.valideePar }}{% endif %}{% endif %}
 					{% if commande.agents and commande.demandeePar %} · commandée par <strong class="text-body">{{ commande.demandeePar }}</strong>{% endif %}
 					{% if commande.bonCommande %} · bon de commande {{ commande.bonCommande }}{% endif %}
 				</small>
+				{% if commande.objet %}<small>Objet : {{ commande.objet }}</small>{% endif %}
+				{% if commande.delaiProduction %}<small>Choix du client en ligne : délai {{ commande.estExpress ? 'express' : 'standard' }} · {{ commande.estALivrer ? 'livraison à Bamako' ~ (commande.creneauLivraison ? ', ' ~ commande.creneauLivraison : '') ~ (commande.adresseLivraison ? ' · ' ~ (commande.adresseLivraison|length > 90 ? commande.adresseLivraison|slice(0, 89) ~ '…' : commande.adresseLivraison) : '') : 'retrait en boutique' }}</small>{% endif %}
 			</div>
-			{% if commande.dateLivraison %}
-				<small class="text-muted">
-					{{ commande.recupereParClient ? 'Retrait prévu' : 'Livraison prévue' }}
-					<strong class="{{ commande.dateLivraison < date() and statutTravaux != 'livree' ? 'text-danger' : 'text-body' }}">{{ ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'][commande.dateLivraison|date('w')] }} {{ commande.dateLivraison|date('d/m') }}</strong>
-				</small>
-			{% endif %}
 		</div>
-		<ol class="si-etapes">
+		<div class="si-cs-actions">
+			<button type="button" class="btn si-cs-btn-blanc si-masque-mobile" onclick="window.print()"><i class="fas fa-print me-1"></i>Bon de travail</button>
+			{% if client and peutMessages %}
+				<a href="{{ path('app_messages_clients_voir', {publicId: client.publicId}) }}" class="btn si-cs-btn-blanc">Message client</a>
+			{% elseif lienWhatsapp %}
+				<a href="{{ lienWhatsapp }}" class="btn si-cs-btn-blanc" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Message client</a>
+			{% endif %}
+			{% if peutEncaisser and reste > 0 and not annulee %}
+				<a href="{{ path('app_commandes_paiement', {id: commande.id}) }}" class="btn {{ envoyerBat ? 'si-cs-btn-blanc' : 'btn-danger' }}">Encaisser</a>
+			{% endif %}
+			{% if envoyerBat %}
+				<a href="{{ path('app_controle_pre_presse_controler', {id: fiche.ligneBat.id}) }}" class="btn btn-danger">Envoyer le BAT</a>
+			{% endif %}
+			<div class="dropdown">
+				<button type="button" class="btn si-cs-btn-blanc" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Autres actions"><i class="fas fa-ellipsis-h"></i></button>
+				<div class="dropdown-menu dropdown-menu-end">
+					{% if peutModifier and not annulee and (not verrouillee or estAdmin) %}
+						<a class="dropdown-item" href="{{ path('app_commandes_edit', {id: commande.id}) }}"><i class="fas fa-pen me-2"></i>Modifier</a>
+					{% endif %}
+					{% if facture and peutFacturer %}
+						<a class="dropdown-item" href="{{ path('app_factures_pdf', {id: facture.id}) }}" target="_blank"><i class="fas fa-file-pdf me-2"></i>Facture PDF</a>
+					{% elseif peutFacturer and not annulee %}
+						<a class="dropdown-item" href="{{ path('app_factures_nouveau', {id: commande.id}) }}"><i class="fas fa-file-invoice me-2"></i>Facturer</a>
+					{% endif %}
+					{% if lienWhatsapp %}
+						<a class="dropdown-item" href="{{ lienWhatsapp }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-2"></i>WhatsApp client</a>
+					{% endif %}
+					{% if peutPrepresse %}
+						<a class="dropdown-item" href="{{ path('app_controle_pre_presse_index') }}"><i class="fas fa-check-double me-2"></i>Contrôle prépresse</a>
+					{% endif %}
+					<button type="button" class="dropdown-item d-md-none" onclick="window.print()"><i class="fas fa-print me-2"></i>Bon de travail</button>
+					{% if peutModifier and not annulee and (not verrouillee or estAdmin) %}
+						<form method="post" action="{{ path('app_commandes_annuler', {id: commande.id}) }}" data-confirmer="Annuler la commande {{ commande.numero }} ? Un administrateur pourra la restaurer ensuite.">
+							<input type="hidden" name="_token" value="{{ csrf_token('annuler-commande-' ~ commande.id) }}">
+							<button type="submit" class="dropdown-item text-danger"><i class="fas fa-times-circle me-2"></i>Annuler la commande</button>
+						</form>
+					{% endif %}
+					{% if annulee and estAdmin %}
+						<form method="post" action="{{ path('app_commandes_restaurer', {id: commande.id}) }}" data-confirmer="Restaurer la commande {{ commande.numero }} ? Chaque ligne retrouvera son statut d'avant l'annulation.">
+							<input type="hidden" name="_token" value="{{ csrf_token('restaurer-commande-' ~ commande.id) }}">
+							<button type="submit" class="dropdown-item"><i class="fas fa-undo me-2"></i>Restaurer la commande</button>
+						</form>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{# ---------- Frise des étapes ---------- #}
+	<div class="card si-cs-carte-frise">
+		<ol class="si-cs-frise" aria-label="Étapes de la commande">
 			{% for etape in etapes %}
-				<li class="si-etape si-etape-{{ etape.etat }}{{ loop.index0 in [2, 5] ? ' si-etape-secondaire' : '' }}">
-					<span class="si-etape-rond">{% if etape.etat == 'faite' %}<i class="fas fa-check"></i>{% else %}{{ loop.index }}{% endif %}</span>
-					<span class="si-etape-libelle">{{ etape.libelle }}</span>
-					<span class="si-etape-court">{{ ['Confirmée', 'Acompte', 'PAO', 'BAT', 'Impr.', 'Finition', 'Livrée'][loop.index0] }}</span>
-					<small>{{ etape.detail|default(etape.etat == 'faite' ? '' : '—') }}</small>
+				<li class="{{ annulee ? 'a_venir' : etape.etat }}" {% if etape.etat == 'en_cours' and not annulee %}aria-current="step"{% endif %}>
+					<span class="rond" aria-hidden="true"></span>
+					<span>{{ etape.libelle }}</span>
+					{% if etape.detail and etape.etat != 'a_venir' or etape.libelle == 'Prête' and etape.detail %}<small>{{ etape.detail }}</small>{% endif %}
 				</li>
 			{% endfor %}
 		</ol>
@@ -205,97 +209,93 @@
 	{% endif %}
 
 	<div class="row">
-		{# ---------- Lignes et production ---------- #}
-		<div class="col-xl-8">
-			<div class="card si-bloc">
-				<div class="si-bloc-tete"><h4>Lignes et production</h4></div>
-				{% for ligne in lignes %}
-					{% set detail = ligne.detail %}
-					{% set type = detail.typeImpression %}
-					{% set couleur = type ? couleursTags[type.id % 4] : 'gris' %}
-					<div class="si-ligne-commande">
-						<span class="si-vignette si-fond-{{ couleur }}"></span>
-						<div class="flex-grow-1 min-w-0">
-							<strong>{{ detail|ligne_interne('Travail') }} × {{ detail.quantite }}</strong>
-							{% set caracteristiques = [] %}
-							{% if detail.largeur and detail.longueur %}{% set caracteristiques = caracteristiques|merge([(detail.largeur * 100)|round(1) ~ ' × ' ~ (detail.longueur * 100)|round(1) ~ ' cm']) %}{% endif %}
-							{# Petites pièces facturées au m² (docs/saisie-devis-commandes.md). #}
-							{% if pieces_m2_ligne(detail) %}{% set caracteristiques = caracteristiques|merge([pieces_m2_ligne(detail)]) %}{% endif %}
-							{% for finition in detail.finitions %}{% set caracteristiques = caracteristiques|merge([finition.nomFinition]) %}{% endfor %}
-							{% if caracteristiques %}<small class="d-block text-muted">{{ caracteristiques|join(' · ') }}</small>{% endif %}
-							{% if detail.demandeClient %}<small class="d-block"><i class="fas fa-comment me-1 text-muted"></i>Le client : « {{ detail.demandeClient }} »</small>{% endif %}
-							<div class="d-flex flex-wrap gap-1 mt-1">
-								<span class="si-pastille si-pastille-{{ ligne.etape in ['prete', 'sans_production', 'en_livraison', 'livree'] ? 'vert' : (ligne.etape == 'annulee' ? 'gris' : 'bleu') }}">{{ ligne.libelle }}</span>
-								{% if detail.machine %}<span class="si-pastille si-pastille-gris">{{ detail.machine.nom }}</span>{% elseif type %}<span class="si-pastille si-pastille-gris">{{ type.nom }}</span>{% endif %}
-								{% if ligne.bat %}<span class="si-pastille si-pastille-{{ ligne.bat starts with 'BAT validé' ? 'vert' : 'orange' }}">{{ ligne.bat }}</span>{% endif %}
-								{% for fichier in detail.fichiers %}
-									<a href="{{ path('app_fichier_visualiser', {id: fichier.id}) }}" class="si-pastille si-pastille-gris" target="_blank" title="{{ fichier.nomOriginal }}"><i class="fas fa-paperclip"></i></a>
-								{% endfor %}
-								{# Retouche prépresse d'une image (docs/prepresse-retouche.md). #}
-								{% if is_granted('ROLE_PREPRESSE') and detail.fichiers|filter(f => f.actif and f.typeMime in ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])|length > 0 %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id}) }}" class="si-pastille si-pastille-bleu" title="Redimensionner l'image, contour, fichier final"><i class="fas fa-crop-alt"></i> Redimensionner</a>{% endif %}
-							</div>
-							{{ include('promotions/_ligne.html.twig', {detail: detail, possibles: promotionsB2b[detail.id] ?? [], type: 'commande', peutDemander: peutModifier and not annulee}) }}
-						</div>
-						<div class="text-end text-nowrap">
-							<strong>{{ detail.totalTtc|number_format(0, ',', ' ') }} F</strong>
-							{% if detail.totalFige %}<small class="d-block text-muted" title="Ligne d'avant la nouvelle version : son total enregistré reste tant que la quantité, le prix, la remise, les dimensions et les finitions ne changent pas.">Total d'origine conservé</small>{% endif %}
-							{% if ligne.cout %}
-								<small class="d-block text-muted" {% if ligne.cout.manquants %}title="Coût incomplet : {{ ligne.cout.manquants|join(', ') }}"{% endif %}>
-									Coût {{ ligne.cout.montant|number_format(0, ',', ' ') }} F{% if ligne.cout.manquants %} <i class="fas fa-exclamation-triangle text-warning"></i>{% endif %}
-									{% if ligne.cout.marge is not null %}· <span class="{{ ligne.cout.marge < 35 ? 'text-danger' : 'text-success' }} fw-semibold">marge {{ ligne.cout.marge|number_format(0, ',', ' ') }} %</span>{% endif %}
-								</small>
-							{% endif %}
-							{% if detail.productionDebuteePar %}<small class="d-block text-muted">Opérateur : {{ detail.productionDebuteePar.employe ? detail.productionDebuteePar.employe.prenom : detail.productionDebuteePar.username }}</small>{% endif %}
-							{% if client and not detail.produitClient and detail.statutProduction in ['livree', 'en_livraison', 'terminee', 'prete_livraison'] and is_granted('ROLE_COMMANDE') %}
-								<form method="post" action="{{ path('app_clients_produits_depuis_ligne', {publicId: client.publicId, id: detail.id}) }}" data-confirmer="Enregistrer « {{ detail.designation|default('ce travail') }} » comme produit du client ? Il pourra le recommander sans nouveau BAT.">
-									<input type="hidden" name="_token" value="{{ csrf_token('produit-client-ligne-' ~ detail.id) }}">
-									<button type="submit" class="btn btn-link btn-sm p-0 si-lien-discret d-block">Enregistrer comme produit du client</button>
-								</form>
-							{% endif %}
-							{% if (is_granted('ROLE_LIVRAISON') or estAdmin) and detail.statutProduction not in ['livree', 'annulee'] %}
-								<form method="post" action="{{ path('app_livraisons_livrer_directement', {id: detail.id}) }}" data-confirmer="Marquer « {{ detail.designation|default('ce travail') }} » comme livré, sans passer par le prépresse ni la production ? Le stock réservé sera sorti.">
-									<input type="hidden" name="_token" value="{{ csrf_token('livraison_direct_' ~ detail.id) }}">
-									<button type="submit" class="btn btn-link btn-sm p-0 si-lien-discret">Marquer livré</button>
-								</form>
-							{% endif %}
-						</div>
-					</div>
-				{% else %}
-					<p class="text-muted mb-0">Aucune ligne.</p>
-				{% endfor %}
+		<div class="col-xl-5">
+			{# ---------- Lignes ---------- #}
+			<div class="card si-cs-bloc">
+				<h4>Lignes</h4>
+				<table class="si-cs-lignes" data-sans-filtres>
+					<thead>
+						<tr><th scope="col">Désignation</th><th scope="col" class="si-cs-qte">Qté</th><th scope="col" class="text-end">Total</th></tr>
+					</thead>
+					<tbody>
+						{% for ligne in lignes %}
+							{% set detail = ligne.detail %}
+							<tr>
+								<td>
+									<strong>{{ detail|ligne_interne('Travail') }}</strong>
+									{% set caracteristiques = [] %}
+									{% if detail.largeur and detail.longueur %}{% set caracteristiques = caracteristiques|merge([(detail.largeur * 100)|round(1) ~ ' × ' ~ (detail.longueur * 100)|round(1) ~ ' cm']) %}{% endif %}
+									{# Petites pièces facturées au m² (docs/saisie-devis-commandes.md). #}
+									{% if pieces_m2_ligne(detail) %}{% set caracteristiques = caracteristiques|merge([pieces_m2_ligne(detail)]) %}{% endif %}
+									{% for finition in detail.finitions %}{% set caracteristiques = caracteristiques|merge([finition.nomFinition]) %}{% endfor %}
+									{% if detail.machine %}{% set caracteristiques = caracteristiques|merge([detail.machine.nom]) %}{% elseif detail.typeImpression %}{% set caracteristiques = caracteristiques|merge([detail.typeImpression.nom]) %}{% endif %}
+									{% if caracteristiques %}<small>{{ caracteristiques|join(' · ') }}</small>{% endif %}
+									{% if ligne.etape == 'annulee' %}<small class="text-danger">Ligne annulée</small>{% endif %}
+									{% if detail.demandeClient %}<small><i class="fas fa-comment me-1"></i>Le client : « {{ detail.demandeClient }} »</small>{% endif %}
+									{% if detail.totalFige %}<small title="Ligne d'avant la nouvelle version : son total enregistré reste tant que la quantité, le prix, la remise, les dimensions et les finitions ne changent pas.">Total d'origine conservé</small>{% endif %}
+									{% if ligne.cout %}
+										<small {% if ligne.cout.manquants %}title="Coût incomplet : {{ ligne.cout.manquants|join(', ') }}"{% endif %}>
+											Coût {{ ligne.cout.montant|number_format(0, ',', ' ') }} F{% if ligne.cout.manquants %} <i class="fas fa-exclamation-triangle text-warning"></i>{% endif %}
+											{% if ligne.cout.marge is not null %}· <span class="{{ ligne.cout.marge < 35 ? 'text-danger' : 'text-success' }} fw-semibold">marge {{ ligne.cout.marge|number_format(0, ',', ' ') }} %</span>{% endif %}
+										</small>
+									{% endif %}
+									{{ include('promotions/_ligne.html.twig', {detail: detail, possibles: promotionsB2b[detail.id] ?? [], type: 'commande', peutDemander: peutModifier and not annulee}) }}
+									<div class="si-cs-liens-ligne">
+										{% for fichier in detail.fichiers|filter(f => f.origine == 'client' and f.actif)|slice(0, 3) %}
+											<a href="{{ path('app_fichier_visualiser', {id: fichier.id}) }}" target="_blank" title="{{ fichier.nomOriginal }}"><i class="fas fa-paperclip"></i></a>
+										{% endfor %}
+										{# Retouche prépresse d'une image (docs/prepresse-retouche.md). #}
+										{% if is_granted('ROLE_PREPRESSE') and detail.fichiers|filter(f => f.actif and f.typeMime in ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])|length > 0 %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id}) }}" title="Redimensionner l'image, contour, fichier final"><i class="fas fa-crop-alt"></i> Redimensionner</a>{% endif %}
+										{% if client and not detail.produitClient and detail.statutProduction in ['livree', 'en_livraison', 'terminee', 'prete_livraison'] and is_granted('ROLE_COMMANDE') %}
+											<form method="post" action="{{ path('app_clients_produits_depuis_ligne', {publicId: client.publicId, id: detail.id}) }}" data-confirmer="Enregistrer « {{ detail.designation|default('ce travail') }} » comme produit du client ? Il pourra le recommander sans nouveau BAT.">
+												<input type="hidden" name="_token" value="{{ csrf_token('produit-client-ligne-' ~ detail.id) }}">
+												<button type="submit" class="btn btn-link">Enregistrer comme produit du client</button>
+											</form>
+										{% endif %}
+										{% if (is_granted('ROLE_LIVRAISON') or estAdmin) and detail.statutProduction not in ['livree', 'annulee'] %}
+											<form method="post" action="{{ path('app_livraisons_livrer_directement', {id: detail.id}) }}" data-confirmer="Marquer « {{ detail.designation|default('ce travail') }} » comme livré, sans passer par le prépresse ni la production ? Le stock réservé sera sorti.">
+												<input type="hidden" name="_token" value="{{ csrf_token('livraison_direct_' ~ detail.id) }}">
+												<button type="submit" class="btn btn-link">Marquer livré</button>
+											</form>
+										{% endif %}
+									</div>
+								</td>
+								<td class="si-cs-qte">{{ detail.quantite }}</td>
+								<td class="si-cs-total">{{ detail.totalTtc|number_format(0, ',', ' ') }} F</td>
+							</tr>
+						{% else %}
+							<tr><td colspan="3" class="text-muted">Aucune ligne.</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
 				{% if commande.codePromo %}
-					<div class="d-flex justify-content-between align-items-start gap-2 pt-3 small si-cp-recap">
-						<span class="text-muted"><i class="fas fa-ticket-alt me-1"></i>Code promo <b class="si-cp-code">{{ commande.libelleCodePromo }}</b>{{ commande.codePromo.promotion ? ' · ' ~ commande.codePromo.promotion.nom }}</span>
-						{% if commande.remiseCodePromo > 0 %}<span class="text-end text-nowrap">−{{ commande.remiseCodePromoTtc|number_format(0, ',', ' ') }} F<small class="d-block text-muted">déjà déduit</small></span>{% endif %}
+					<div class="si-cs-lignes-pied">
+						<span><i class="fas fa-ticket-alt me-1"></i>Code promo <b class="si-cp-code">{{ commande.libelleCodePromo }}</b>{{ commande.codePromo.promotion ? ' · ' ~ commande.codePromo.promotion.nom }}</span>
+						{% if commande.remiseCodePromo > 0 %}<span>−{{ commande.remiseCodePromoTtc|number_format(0, ',', ' ') }} F (déjà déduit)</span>{% endif %}
 					</div>
 				{% endif %}
-				{# Frais de livraison (palier choisi à la saisie), déjà dans le total. #}
 				{% if commande.fraisLivraison > 0 %}
-					<div class="d-flex justify-content-between align-items-center pt-3 small">
-						<span class="text-muted"><i class="fas fa-truck me-1"></i>Livraison</span>
-						<span class="text-nowrap fw-semibold">{{ commande.fraisLivraison|number_format(0, ',', ' ') }} F</span>
-					</div>
+					<div class="si-cs-lignes-pied"><span><i class="fas fa-truck me-1"></i>Livraison</span><span>{{ commande.fraisLivraison|number_format(0, ',', ' ') }} F</span></div>
 				{% endif %}
-				{# Remise globale : déduite du sous-total HT, déjà dans le total TTC (TotauxDocument). #}
 				{% if commande.remiseGlobale > 0 %}
-					<div class="d-flex justify-content-between align-items-center pt-3 small">
-						<span class="text-muted"><i class="fas fa-percent me-1"></i>Remise globale</span>
-						<span class="text-nowrap fw-semibold">−{{ commande.remiseGlobale|number_format(0, ',', ' ') }} F</span>
-					</div>
+					<div class="si-cs-lignes-pied"><span><i class="fas fa-percent me-1"></i>Remise globale</span><span>−{{ commande.remiseGlobale|number_format(0, ',', ' ') }} F</span></div>
 				{% endif %}
-				<div class="d-flex justify-content-between align-items-center pt-3">
-					<span class="text-muted">Total TTC</span>
-					<strong class="fs-4">{{ totalTtc|number_format(0, ',', ' ') }} F</strong>
+				<div class="si-cs-lignes-pied">
+					<span>
+						{% if fiche.devis %}
+							Venant du devis {% if is_granted('ROLE_DEVIS') %}<a href="{{ path('app_devis_show', {id: fiche.devis.id}) }}">{{ fiche.devis.numero }}</a>{% else %}{{ fiche.devis.numero }}{% endif %} accepté le {{ commande.dateCommande ? commande.dateCommande|date('d/m') : '—' }}
+						{% else %}
+							Total TTC
+						{% endif %}
+					</span>
+					<b>{{ totalTtc|number_format(0, ',', ' ') }} F</b>
 				</div>
 				{% if commande.montantTva > 0 %}
-					<div class="d-flex justify-content-between align-items-center small">
-						<span class="text-muted">dont TVA</span>
-						<span class="text-nowrap">{{ commande.montantTva|number_format(0, ',', ' ') }} F</span>
-					</div>
+					<div class="si-cs-lignes-pied pt-0"><span>dont TVA</span><span>{{ commande.montantTva|number_format(0, ',', ' ') }} F</span></div>
 				{% endif %}
 				{% if marge and marge.taux is not null %}
-					<div class="d-flex justify-content-between align-items-center small">
-						<span class="text-muted">Marge brute{% if marge.incomplet %} <span class="text-warning" title="Des coûts manquent : voir Réglages, Coûts de revient">(coût incomplet)</span>{% endif %}</span>
+					<div class="si-cs-lignes-pied pt-1">
+						<span>Marge brute{% if marge.incomplet %} <span class="text-warning" title="Des coûts manquent : voir Réglages, Coûts de revient">(coût incomplet)</span>{% endif %}</span>
 						<span class="{{ marge.taux < 35 ? 'text-danger' : 'text-success' }} fw-semibold">{{ (marge.ht - marge.cout)|number_format(0, ',', ' ') }} F · {{ marge.taux|number_format(0, ',', ' ') }} %</span>
 					</div>
 				{% endif %}
@@ -303,48 +303,134 @@
 					<p class="text-muted small mb-0 mt-2"><i class="fas fa-comment-alt me-1"></i>{{ commande.observation }}</p>
 				{% endif %}
 			</div>
-			{% if (telephone or (peutEncaisser and reste > 0)) and not annulee %}
-				<div class="si-actions-mobile d-md-none">
-					{% if telephone %}<a href="https://wa.me/{{ telephone }}?text={{ ('Bonjour, votre commande ' ~ commande.numero ~ ' chez Succès Imprim : ')|url_encode }}" class="btn btn-success" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>{% endif %}
-					{% if peutEncaisser and reste > 0 %}<a href="{{ path('app_commandes_paiement', {id: commande.id}) }}" class="btn btn-danger"><i class="fas fa-cash-register me-1"></i>Encaisser</a>{% endif %}
-				</div>
-			{% endif %}
+
+			{# ---------- Fichiers et BAT ---------- #}
+			<div class="card si-cs-bloc">
+				<h4>Fichiers et BAT</h4>
+				{% for f in fiche.fichiers %}
+					<div class="si-cs-fichier">
+						<span class="si-cs-vignette{{ f.type == 'bat' ? ' bat' }}" aria-hidden="true"></span>
+						<div>
+							<b>{% if f.fichier %}<a href="{{ path('app_fichier_visualiser', {id: f.fichier.id}) }}" target="_blank">{{ f.nom }}</a>{% else %}{{ f.nom }}{% endif %}</b>
+							<small>{{ f.detail }}</small>
+						</div>
+						{% if f.statut %}<span class="si-cs-etape si-cs-etape-{{ f.statut.couleur }}">{{ f.statut.libelle }}</span>{% endif %}
+					</div>
+				{% else %}
+					<p class="text-muted small mb-0">Aucun fichier ni BAT pour l'instant.</p>
+				{% endfor %}
+				{% if fiche.lignePrepresse and peutPrepresse %}
+					<a href="{{ path('app_controle_pre_presse_controler', {id: fiche.lignePrepresse.id}) }}" class="si-cs-lien-fort">Ouvrir dans l'outil prépresse →</a>
+				{% endif %}
+			</div>
 		</div>
 
 		<div class="col-xl-4">
-			{% if peutVoirPaiements %}
-			{# ---------- Paiements ---------- #}
-			<div class="card si-bloc">
-				<div class="si-bloc-tete"><h4>Paiements</h4></div>
-				{% for paiement in commande.paiements|filter(p => not p.estAnnule) %}
-					<div class="si-paiement">
+			{# ---------- Production ---------- #}
+			<div class="card si-cs-bloc">
+				<h4>Production</h4>
+				{% for etape in fiche.production %}
+					<div class="si-cs-etape-prod">
+						{% if etape.personne %}
+							<span class="si-cs-disque si-initiales-{{ etape.personne.teinte }}" title="{{ etape.personne.complet }}" aria-hidden="true">{{ etape.personne.initiales }}</span>
+						{% else %}
+							<span class="si-cs-disque personne-vide" aria-hidden="true"><i class="fas fa-user"></i></span>
+						{% endif %}
 						<div>
-							<strong>{{ constant('App\\Entity\\Paiements::MODES_LABELS')[paiement.mode]|default(paiement.mode) }}</strong>
-							<small class="d-block text-muted">{{ paiement.date ? paiement.date|date('d/m H:i') }}</small>
+							<b>{{ etape.titre }}</b>
+							<small>{{ etape.personne ? etape.personne.complet ~ ' · ' }}{{ etape.detail }}</small>
 						</div>
-						<div class="text-end">
-							<strong>{{ paiement.montant|number_format(0, ',', ' ') }}</strong>
-							{% if paiement.montantTotalEncaisse > paiement.montant %}<small class="d-block text-muted" title="Fonds de soutien {{ paiement.montantFondsSoutien|number_format(0, ',', ' ') }} F, frais de retrait {{ paiement.montantFraisRetrait|number_format(0, ',', ' ') }} F : payés par le client en plus, hors commande">+ {{ (paiement.montantTotalEncaisse - paiement.montant)|number_format(0, ',', ' ') }} de frais</small>{% endif %}
-							<span class="d-block si-pastille si-pastille-{{ paiement.estValide ? 'vert' : (paiement.estRejete ? 'rouge' : 'orange') }}">{{ paiement.estValide ? 'Validé' : (paiement.estRejete ? 'Rejeté' : 'À valider') }}</span>
-						</div>
+						<span class="si-cs-etat-prod {{ etape.etat }}" title="{{ {faite: 'Fait', en_cours: 'En cours', a_venir: 'À venir'}[etape.etat] }}"></span>
 					</div>
+				{% else %}
+					<p class="text-muted small mb-0">Rien à produire pour cette commande.</p>
 				{% endfor %}
-				{% if reste > 0 and not annulee %}
-					<div class="si-paiement">
-						<div>
-							<strong>Reste à payer</strong>
-							{% if commande.dateLivraison %}<small class="d-block text-muted">à la livraison, {{ commande.dateLivraison|date('d/m') }}</small>{% endif %}
-						</div>
-						<div class="text-end">
-							<strong>{{ reste|number_format(0, ',', ' ') }}</strong>
-							<span class="d-block si-pastille si-pastille-orange">À encaisser</span>
+			</div>
+
+			{# ---------- Historique ---------- #}
+			<div class="card si-cs-bloc">
+				<h4>Historique</h4>
+				<div class="si-cs-historique">
+					{% for evenement in historique %}
+						<small>{{ evenement.date|date('d/m H:i') }}</small>
+						<span>{{ evenement.texte }}</span>
+					{% else %}
+						<span class="text-muted small">Rien pour l'instant.</span>
+					{% endfor %}
+				</div>
+			</div>
+		</div>
+
+		<div class="col-xl-3">
+			{# ---------- Client ---------- #}
+			{% if client %}
+				<div class="card si-cs-bloc">
+					<div class="si-cs-client-carte">
+						<span class="si-cs-pastille si-cs-teinte-{{ suivi.client.teinte }}" aria-hidden="true">{{ suivi.client.initiales }}</span>
+						<div class="min-w-0">
+							<b>{% if is_granted('ROLE_CLIENT') %}<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}" class="text-body">{{ client.nomComplet }}</a>{% else %}{{ client.nomComplet }}{% endif %}</b>
+							<small>{{ client.isOrganisation ? 'Client entreprise' : 'Particulier' }}{% if client.isB2B %} · revendeur{% endif %}</small>
 						</div>
 					</div>
-				{% endif %}
-				{% set part = totalTtc > 0 ? (totalPaye * 100 / totalTtc)|round : 0 %}
-				<div class="si-jauge-piste mt-3"><span class="si-fond-vert" style="width: {{ min(part, 100) }}%"></span></div>
-				<small class="text-muted">{{ part }} % payé{% if reste > 0 %} · reste {{ reste|number_format(0, ',', ' ') }} F{% endif %}</small>
-			</div>
+					{% if fiche.contact %}
+						<div class="si-cs-contact">
+							<span class="si-cs-disque" aria-hidden="true">{{ fiche.contact.initiales }}</span>
+							<span>{{ fiche.contact.nom }}{% if fiche.contact.telephone %} · {{ fiche.contact.telephone }}{% endif %}</span>
+						</div>
+					{% endif %}
+					{% if fiche.solde %}
+						<div class="si-cs-alerte-solde">
+							<b>Solde impayé {{ fiche.solde.montant|number_format(0, ',', ' ') }} F</b>
+							{% if fiche.solde.echue %} dont {{ fiche.solde.echue }} échue{% else %} sur {{ fiche.solde.commandes }} commande{{ fiche.solde.commandes > 1 ? 's' }}{% endif %}
+						</div>
+					{% endif %}
+				</div>
+			{% endif %}
+
+			{# ---------- Paiements ---------- #}
+			{% if peutVoirPaiements %}
+				<div class="card si-cs-bloc">
+					<h4>Paiements</h4>
+					<div class="si-cs-paiements">
+						<div><span>Total</span><b>{{ totalTtc|number_format(0, ',', ' ') }} F</b></div>
+						{% set cumul = 0 %}
+						{% for paiement in commande.paiements|filter(p => not p.estAnnule)|sort((a, b) => a.date <=> b.date) %}
+							{% set libelle = loop.first and paiement.montant < totalTtc ? 'Acompte' : (cumul + paiement.montant >= totalTtc ? 'Solde' : 'Paiement') %}
+							{% set cumul = cumul + (paiement.estValide ? paiement.montant : 0) %}
+							<div>
+								<span>{{ libelle }} · {{ paiement.date ? paiement.date|date('d/m') }} · {{ constant('App\\Entity\\Paiements::MODES_LABELS')[paiement.mode]|default(paiement.mode) }}{% if not paiement.estValide %}<span class="si-pastille si-pastille-{{ paiement.estRejete ? 'rouge' : 'orange' }}">{{ paiement.estRejete ? 'Rejeté' : 'À valider' }}</span>{% endif %}</span>
+								<b>{{ paiement.montant|number_format(0, ',', ' ') }} F</b>
+							</div>
+						{% endfor %}
+						<div class="si-cs-reste{{ reste <= 0 ? ' solde' }}">
+							<span>{{ reste > 0 ? 'Reste à payer' : 'Soldée' }}</span>
+							<b>{{ reste|number_format(0, ',', ' ') }} F</b>
+						</div>
+					</div>
+				</div>
+			{% endif %}
+
+			{# ---------- Conversation (messagerie par commande à venir) ---------- #}
+			{% if client and peutMessages %}
+				{% set conv = fiche.conversation %}
+				<div class="card si-cs-bloc si-cs-conversation">
+					<div class="si-cs-bloc-tete">
+						<h4>Conversation</h4>
+						{% if conv.chrono %}<span class="si-cs-chrono {{ conv.chrono.couleur }}">{{ conv.chrono.libelle }}</span>{% endif %}
+					</div>
+					{% if conv.dernier %}
+						<div class="si-cs-message">
+							<span class="si-cs-disque" aria-hidden="true">{{ conv.dernier.sens == 'client' ? suivi.client.initiales : 'SI' }}</span>
+							<div class="min-w-0">
+								<small>{{ conv.dernier.sens == 'client' ? (conv.dernier.auteur ?: client.nomComplet) : (conv.dernier.auteur ?: 'Atelier') }} · {{ conv.dernier.creeLe|date('d/m H:i') }}</small>
+								{{ conv.dernier.texte|length > 140 ? conv.dernier.texte|slice(0, 139) ~ '…' : conv.dernier.texte }}
+							</div>
+						</div>
+					{% else %}
+						<p class="text-muted small mb-0">Aucun message sur cette commande.</p>
+					{% endif %}
+					<a href="{{ path('app_messages_clients_voir', {publicId: client.publicId}) }}" class="si-cs-lien-fort">{{ conv.dernier ? 'Ouvrir la conversation ' ~ commande.numero : 'Écrire au client' }} →</a>
+				</div>
 			{% endif %}
 
 			{# ---------- Livraison : livrée ou pas, quand, par qui, reçue par qui (docs/documents-livraisons.md) ---------- #}
@@ -352,29 +438,14 @@
 
 			{# ---------- Fidélité (docs/fidelite.md) ---------- #}
 			{% include 'fidelite/_commande.html.twig' %}
-
-			{# ---------- Client ---------- #}
-			{% if client %}
-				<div class="card si-bloc">
-					<div class="si-bloc-tete">
-						<h4>Client</h4>
-						{% if is_granted('ROLE_CLIENT') %}<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}">Fiche</a>{% endif %}
-					</div>
-					<strong>{{ client.nomComplet }}</strong>
-					{% if client.telephone %}<small class="d-block text-muted">{{ client.telephone }}</small>{% endif %}
-				</div>
-			{% endif %}
-
-			{# ---------- Historique ---------- #}
-			<div class="card si-bloc">
-				<div class="si-bloc-tete"><h4>Historique</h4></div>
-				{% for evenement in historique %}
-					<div class="si-historique">
-						<small class="text-muted">{{ evenement.date|date(evenement.date|date('Y-m-d') == 'now'|date('Y-m-d') ? 'H:i' : 'd/m') }}</small>
-						<span>{{ evenement.texte }}</span>
-					</div>
-				{% endfor %}
-			</div>
 		</div>
 	</div>
+
+	{% if (lienWhatsapp or (peutEncaisser and reste > 0) or envoyerBat) and not annulee %}
+		<div class="si-actions-mobile d-md-none">
+			{% if envoyerBat %}<a href="{{ path('app_controle_pre_presse_controler', {id: fiche.ligneBat.id}) }}" class="btn btn-danger">Envoyer le BAT</a>{% endif %}
+			{% if peutEncaisser and reste > 0 %}<a href="{{ path('app_commandes_paiement', {id: commande.id}) }}" class="btn {{ envoyerBat ? 'btn-light' : 'btn-danger' }}"><i class="fas fa-cash-register me-1"></i>Encaisser</a>{% endif %}
+			{% if lienWhatsapp and not envoyerBat %}<a href="{{ lienWhatsapp }}" class="btn btn-success" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>{% endif %}
+		</div>
+	{% endif %}
 {% endblock %}

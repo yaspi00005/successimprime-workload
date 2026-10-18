@@ -142,3 +142,12 @@ details.cs-corriger[open] summary { display: none; }
 
 .cs-fin { display: grid; gap: .6rem; margin-bottom: .85rem; }
 .cs-fin .ec-lien { text-align: center; }
+
+/* Téléphone (maquette DT04) : étape en tête du résumé, acompte payé en vert, dû en rouge, lien vers la conversation. */
+.cs-statut-telephone { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; margin: 0 0 .7rem; font-size: .86rem; color: var(--gris); }
+.cs-statut-pastille { display: inline-block; padding: .2rem .6rem; border-radius: .5rem; background: #E5EEFA; color: #0F4590; font-weight: 800; font-size: .82rem; }
+.cs-statut-pastille.action { background: #FFF1DC; color: #C46A00; }
+.cs-lignes .cs-paye dd { color: #178444; }
+.cs-lignes .cs-reste.du dd { color: #C40D22; }
+.cs-lien-conversation { display: flex; justify-content: space-between; align-items: center; margin-top: .8rem; padding: .75rem .9rem; border-radius: .8rem; background: #F4F6FA; color: inherit; font-weight: 700; text-decoration: none; }
+.cs-lien-conversation span { color: var(--bleu); font-size: 1.2rem; line-height: 1; }

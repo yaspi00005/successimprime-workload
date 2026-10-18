@@ -95,6 +95,8 @@ final class CommandesRepository extends ServiceEntityRepository
                     [
                         CommandesDetails::PRODUCTION_LIVREE,
                         CommandesDetails::PRODUCTION_ANNULEE,
+                        // Une ligne sans production (conception, frais) ne garde pas une commande payée et livrée dans la liste.
+                        CommandesDetails::PRODUCTION_NON_REQUISE,
                     ]
                 );
         }

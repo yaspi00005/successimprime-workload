@@ -26,44 +26,52 @@ final class SuiviCommandeService
     ];
 
     /**
-     * Les 7 etapes de la maquette, chacune 'faite', 'en_cours' ou 'a_venir'.
+     * Les 7 étapes de la fiche admin (maquette DT02) : créée, acompte,
+     * fichier / BAT, impression, finition, prête, livrée ; chacune
+     * 'faite', 'en_cours' ou 'a_venir'. Avec $acompteAttendu (la production
+     * attend l'acompte, SuiviCommercial), l'acompte devient l'étape en cours.
      *
      * @return list<array{libelle: string, detail: ?string, etat: string}>
      */
-    public function etapes(Commandes $commande): array
+    public function etapes(Commandes $commande, bool $acompteAttendu = false): array
     {
         $lignes = $this->lignesActives($commande);
-        $rangs = array_map(fn (CommandesDetails $ligne): int => self::RANG_LIGNE[$this->etapeLigne($ligne)], $lignes);
+        $etapesLignes = array_map(fn (CommandesDetails $ligne): string => $this->etapeLigne($ligne), $lignes);
+        // Une ligne sans production (conception, frais) ne retient pas la commande.
+        $avecProduction = array_filter($etapesLignes, static fn (string $e): bool => 'sans_production' !== $e);
+        $rangs = array_map(static fn (string $e): int => self::RANG_LIGNE[$e], [] !== $avecProduction ? $avecProduction : $etapesLignes);
         $rangMin = [] === $rangs ? 0 : min($rangs);
 
         $avecBat = array_values(array_filter($lignes, static fn (CommandesDetails $ligne): bool => $ligne->isPrePresseNecessaire()));
         $batValides = \count(array_filter($avecBat, fn (CommandesDetails $ligne): bool => $this->batValide($ligne)));
         $premierPaiement = $this->paiementsValides($commande)[0] ?? null;
+        $retrait = !$commande->estALivrer();
+        $prevue = $commande->getDateLivraison();
 
         // Une commande passée en ligne reste « à confirmer » tant que l'atelier
         // n'a pas vérifié le prix et le fichier (statut faux).
         $confirmee = $commande->isStatut();
         $faites = [
             $confirmee,
-            null !== $premierPaiement,
-            [] !== $lignes && $rangMin >= 1,
+            null !== $premierPaiement && !$acompteAttendu,
             [] !== $lignes && $batValides === \count($avecBat) && $rangMin >= 2,
             [] !== $lignes && $rangMin >= 3,
+            [] !== $lignes && $rangMin >= 4,
             [] !== $lignes && $rangMin >= 4,
             [] !== $lignes && $rangMin >= 6,
         ];
 
         $etapes = [
-            ['libelle' => 'Confirmée', 'detail' => $confirmee ? $commande->getDateCommande()?->format('d/m') : 'à confirmer'],
-            ['libelle' => 'Acompte payé', 'detail' => $premierPaiement?->getDate()?->format('d/m')],
-            ['libelle' => 'PAO', 'detail' => null],
-            ['libelle' => 'BAT validés', 'detail' => [] === $avecBat ? 'sans BAT' : sprintf('%d / %d', $batValides, \count($avecBat))],
+            ['libelle' => 'Créée', 'detail' => $confirmee ? $commande->getDateCommande()?->format('d/m') : 'à confirmer'],
+            ['libelle' => 'Acompte', 'detail' => $acompteAttendu ? 'attendu' : $premierPaiement?->getDate()?->format('d/m')],
+            ['libelle' => 'Fichier / BAT', 'detail' => [] === $avecBat ? 'sans BAT' : sprintf('%d / %d', $batValides, \count($avecBat))],
             ['libelle' => 'Impression', 'detail' => null],
             ['libelle' => 'Finition', 'detail' => null],
-            ['libelle' => 'Livrée', 'detail' => null],
+            ['libelle' => 'Prête', 'detail' => $rangMin < 4 && null !== $prevue ? 'pour le '.$prevue->format('d/m') : null],
+            ['libelle' => $retrait ? 'Retirée' : 'Livrée', 'detail' => 5 === $rangMin ? 'en route' : null],
         ];
 
-        return self::marquerEtapes($etapes, $faites);
+        return self::marquerEtapes($etapes, $faites, $acompteAttendu);
     }
 
     /**
@@ -128,19 +136,20 @@ final class SuiviCommandeService
 
     /**
      * L'etape « en cours » est la premiere non faite ; celles d'avant sont
-     * faites meme si une etape facultative (l'acompte) manque.
+     * faites meme si une etape facultative (l'acompte) manque, sauf si
+     * l'acompte bloque la production.
      *
      * @param list<array{libelle: string, detail: ?string}> $etapes
      * @param list<bool>                                     $faites
      *
      * @return list<array{libelle: string, detail: ?string, etat: string}>
      */
-    public static function marquerEtapes(array $etapes, array $faites): array
+    public static function marquerEtapes(array $etapes, array $faites, bool $acompteBloquant = false): array
     {
         $courante = null;
 
         foreach ($faites as $rang => $faite) {
-            if (!$faite && 1 !== $rang) {
+            if (!$faite && (1 !== $rang || $acompteBloquant)) {
                 $courante = $rang;
 
                 break;

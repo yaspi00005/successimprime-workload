@@ -79,6 +79,14 @@
 			{% endif %}
 
 			<section class="ec-carte cs-resume" aria-label="Résumé de la commande">
+				{# Sur le téléphone (maquette DT04) : l'étape en cours et la date prévue, en tête du résumé. #}
+				{% set enCours = suivi.etapes|default([])|filter(e => e.etat in ['en_cours', 'action'])|first %}
+				{% if enCours and not carte.aValiderEntreprise and not carte.refuseeEntreprise %}
+					<p class="cs-statut-telephone ec-telephone">
+						<span class="cs-statut-pastille{{ enCours.etat == 'action' ? ' action' }}">{{ enCours.libelle }}</span>
+						{% if c.dateLivraison and not carte.terminee %}<span>{{ c.estALivrer ? 'livraison' : 'retrait' }} {{ c.dateLivraison|date_fr('EEEE dd/MM') }}</span>{% endif %}
+					</p>
+				{% endif %}
 				<dl class="cs-lignes">
 					<div>
 						<dt>Produit{{ lignes|length > 1 ? 's' }}</dt>
@@ -129,8 +137,9 @@
 						{% endif %}
 						{# Payé et reste : pour qui paie seulement (particulier, payeur d'une entreprise). #}
 						{% if peutPayer and not carte.refuseeEntreprise and c.isStatut %}
-							<div>
-								<dt>Payé</dt>
+							{# « Acompte payé » tant que la commande n'est pas soldée (maquette DT04). #}
+							<div class="{{ c.totalPaye > 0 ? 'cs-paye' }}">
+								<dt>{{ c.totalPaye > 0 and c.resteAPayer > 0 ? 'Acompte payé' : 'Payé' }}</dt>
 								<dd>{{ c.totalPaye|number_format(0, ',', ' ') }} F</dd>
 							</div>
 							{% if c|espace_en_validation > 0 %}
@@ -145,8 +154,8 @@
 									</dd>
 								</div>
 							{% endfor %}
-							<div class="cs-reste">
-								<dt>Reste à payer</dt>
+							<div class="cs-reste{{ c.resteAPayer > 0 ? ' du' }}">
+								<dt>{{ c.resteAPayer > 0 and not carte.terminee and not carte.annulee ? (c.estALivrer ? 'À la livraison' : 'Au retrait') : 'Reste à payer' }}</dt>
 								<dd>{{ c.resteAPayer|number_format(0, ',', ' ') }} F</dd>
 							</div>
 						{% endif %}
@@ -165,6 +174,9 @@
 				{% include 'espace/app/_commande_brouillon_paiement.html.twig' ignore missing %}
 				{% if not lecture and peutPayer and c|espace_a_payer > 0 and not carte.aConfirmer %}
 					<div class="ec-boutons"><a class="ec-bouton orange" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer avec Orange Money</a></div>
+				{% endif %}
+				{% if not lecture %}
+					<a class="cs-lien-conversation ec-telephone" href="#messages">Conversation de la commande <span aria-hidden="true">›</span></a>
 				{% endif %}
 				{% if peutPayer and c.isStatut %}
 					<div class="cs-resume-liens ec-telephone"><a class="ec-lien" href="{{ facture ? path('app_espace_facture_detail', {id: facture.publicId}) : path('app_espace_factures') }}">Facture et reçus</a></div>

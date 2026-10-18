@@ -9,6 +9,7 @@ use App\Entity\ModeleMessage;
 use App\Entity\User;
 use App\Repository\CampagneDestinataireRepository;
 use App\Repository\CampagneRepository;
+use App\Service\Messagerie\JournalEnvois;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -241,7 +242,7 @@ class CampagneService
             return ['succes' => false, 'erreur' => 'Le client n’a pas de numéro de téléphone.'];
         }
 
-        return $this->orangeSmsService->envoyerSms($telephone, $message, $senderName);
+        return $this->orangeSmsService->envoyerSms($telephone, $message, $senderName, 'campagne');
     }
 
     /**
@@ -293,7 +294,7 @@ class CampagneService
                 ->subject($sujet ?? 'Information')
                 ->text($message);
 
-            $this->mailer->send($courriel);
+            $this->mailer->send(JournalEnvois::typer($courriel, 'campagne'));
 
             return ['succes' => true, 'erreur' => null];
         } catch (\Throwable $exception) {

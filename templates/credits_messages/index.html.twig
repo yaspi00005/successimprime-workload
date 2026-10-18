@@ -1,0 +1,244 @@
+{#
+	Clients › Crédits SMS et e-mail : SMS disponibles et fin du pack (lus
+	chez Orange, ou saisis à la main sans les clés), envois e-mail face aux
+	limites de l'hébergeur, achats de packs, derniers envois.
+#}
+{% extends 'credits_messages/_base.html.twig' %}
+{% import 'credits_messages/_base.html.twig' as m %}
+
+{% block title %}Crédits SMS et e-mail{% endblock %}
+{% block sous_ecran %}credits{% endblock %}
+
+{% block header_actions %}
+	{% if sms.configure %}
+		<li class="nav-item">
+			<form method="post" action="{{ path('app_credits_messages_actualiser') }}" class="cm-actualiser">
+				<input type="hidden" name="_token" value="{{ csrf_token('credits_messages') }}">
+				<button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-sync-alt me-1" aria-hidden="true"></i>Actualiser</button>
+			</form>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block contenu %}
+	{% set jeton = csrf_token('credits_messages') %}
+	{% set bas = sms.unites is not null and sms.unites < seuils.seuil_sms %}
+	<div class="cm-deux">
+		{# ---------- SMS ---------- #}
+		<section class="card cm-carte" aria-labelledby="cm-titre-sms">
+			<header class="cm-entete">
+				<span class="cm-icone cm-icone-sms" aria-hidden="true"><i class="fas fa-sms"></i></span>
+				<div>
+					<h2 id="cm-titre-sms">SMS</h2>
+					<small>Orange SMS · contrat du Mali</small>
+				</div>
+				{% if sms.source == 'orange' %}
+					<span class="si-pastille si-pastille-bleu">Lu chez Orange</span>
+				{% elseif sms.source == 'manuel' %}
+					<span class="si-pastille si-pastille-orange">Saisi à la main</span>
+				{% endif %}
+			</header>
+
+			{% if not sms.configure %}
+				<p class="cm-alerte cm-alerte-orange"><i class="fas fa-key" aria-hidden="true"></i><span><b>Clés Orange SMS non configurées.</b> Aucun SMS ne part. Saisissez le solde et la fin du pack lus sur le portail Orange : les SMS partis depuis la saisie en sont retirés.</span></p>
+			{% endif %}
+			{% if sms.erreur %}
+				<p class="cm-alerte cm-alerte-rouge"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i><span><b>Lecture chez Orange impossible.</b> {{ sms.erreur }}{% if sms.luLe %} Chiffres lus le {{ sms.luLe|date('d/m/Y à H:i') }}.{% endif %}</span></p>
+			{% endif %}
+
+			<div class="cm-chiffres">
+				<div class="cm-chiffre{{ bas ? ' cm-chiffre-alerte' }}">
+					<strong>{{ sms.unites is null ? '—' : sms.unites|number_format(0, ',', ' ') }}</strong>
+					<span>SMS disponibles{{ sms.source == 'manuel' ? ' (estimation)' }}</span>
+				</div>
+				<div class="cm-chiffre{{ sms.expiration and sms.expiration < maintenant|date_modify('+' ~ seuils.alerte_jours ~ ' days') ? ' cm-chiffre-alerte' }}">
+					<strong>{{ sms.expiration ? sms.expiration|date('d/m/Y') : '—' }}</strong>
+					<span>
+						{%- if not sms.expiration -%}
+							fin du pack inconnue
+						{%- elseif sms.expiration < maintenant -%}
+							pack expiré
+						{%- else -%}
+							{% set jours = ((sms.expiration|date('U') - maintenant|date('U')) / 86400)|round(0, 'floor') %}
+							fin du pack · {{ jours < 1 ? 'aujourd\'hui' : 'dans ' ~ jours ~ ' jour' ~ (jours > 1 ? 's') }}
+						{%- endif -%}
+					</span>
+				</div>
+			</div>
+
+			<ul class="cm-liste">
+				<li>
+					<span>Solde</span>
+					<b>
+						{%- if sms.source == 'orange' -%}
+							lu chez Orange le {{ sms.luLe|date('d/m/Y à H:i') }}
+						{%- elseif sms.source == 'manuel' -%}
+							{{ sms.saisi|number_format(0, ',', ' ') }} saisis le {{ sms.saisiLe|date('d/m/Y à H:i') }}, {{ sms.consommesDepuis|number_format(0, ',', ' ') }} partis depuis
+						{%- else -%}
+							pas encore connu
+						{%- endif -%}
+					</b>
+				</li>
+				<li><span>Envoyés aujourd'hui</span><b>{{ sms.aujourdhui|number_format(0, ',', ' ') }}</b></li>
+				<li><span>Envoyés ce mois</span><b>{{ sms.mois|number_format(0, ',', ' ') }} message{{ sms.mois > 1 ? 's' }} · {{ sms.unitesMois|number_format(0, ',', ' ') }} SMS comptés</b></li>
+				<li>
+					<span>Échecs aujourd'hui</span>
+					<b>{% if sms.echecsJour > 0 %}<a href="{{ path('app_credits_messages_envois', {canal: 'sms', statut: 'echec', du: maintenant|date('Y-m-d')}) }}">{{ sms.echecsJour }}</a>{% else %}0{% endif %}</b>
+				</li>
+				<li><span>Alerte</span><b>sous {{ seuils.seuil_sms|number_format(0, ',', ' ') }} SMS · {{ seuils.alerte_jours }} jours avant la fin</b></li>
+			</ul>
+
+			{% if sms.contrats|length > 1 %}
+				<div class="table-responsive">
+					<table class="table cm-table" data-sans-filtres>
+						<thead><tr><th>Contrat</th><th class="num">SMS</th><th>Fin</th><th>État</th></tr></thead>
+						<tbody>
+							{% for c in sms.contrats %}
+								<tr>
+									<td>{{ c.offre ?: 'SMS' }} <small>{{ c.pays }}</small></td>
+									<td class="num">{{ c.unites is null ? '—' : c.unites|number_format(0, ',', ' ') }}</td>
+									<td>{{ c.expiration ? c.expiration|date('d/m/Y') : '—' }}</td>
+									<td>{{ c.actif ? 'actif' : 'expiré' }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% endif %}
+
+			{% if not sms.configure %}
+				<form method="post" action="{{ path('app_credits_messages_saisie') }}" class="cm-saisie">
+					<input type="hidden" name="_token" value="{{ jeton }}">
+					<input type="hidden" name="quoi" value="sms">
+					<div>
+						<label for="cm-solde">SMS restants</label>
+						<input id="cm-solde" name="sms_solde_manuel" type="number" inputmode="numeric" min="0" max="100000000" step="1" class="form-control form-control-sm" value="{{ sms.saisi ?? '' }}" required>
+					</div>
+					<div>
+						<label for="cm-fin-sms">Fin du pack</label>
+						<input id="cm-fin-sms" name="sms_expiration_manuelle" type="date" class="form-control form-control-sm" value="{{ sms.source == 'manuel' and sms.expiration ? sms.expiration|date('Y-m-d') }}">
+					</div>
+					<button type="submit" class="btn btn-sm btn-success">Enregistrer le solde</button>
+				</form>
+			{% endif %}
+		</section>
+
+		{# ---------- E-mail ---------- #}
+		<section class="card cm-carte" aria-labelledby="cm-titre-email">
+			<header class="cm-entete">
+				<span class="cm-icone cm-icone-email" aria-hidden="true"><i class="fas fa-envelope"></i></span>
+				<div>
+					<h2 id="cm-titre-email">E-mail</h2>
+					<small>{{ email.hebergeur ?: 'Hébergeur non renseigné' }}</small>
+				</div>
+				{% if email.configure %}
+					<span class="si-pastille si-pastille-vert">Messagerie réglée</span>
+				{% endif %}
+			</header>
+
+			{% if not email.configure %}
+				<p class="cm-alerte cm-alerte-orange"><i class="fas fa-plug" aria-hidden="true"></i><span><b>Messagerie e-mail non réglée sur ce serveur.</b> Aucun e-mail ne part (MAILER_DSN et MAILER_FROM_ADDRESS dans .env.local).</span></p>
+			{% endif %}
+
+			<div class="cm-quotas">
+				{% for periode, libelle in {heure: 'Dernière heure', jour: 'Aujourd\'hui', mois: 'Ce mois'} %}
+					{% set quota = email.quotas[periode] %}
+					{% set compte = email.compte[periode] %}
+					{% set part = quota > 0 ? min(100, compte * 100 / quota) : 0 %}
+					<div class="cm-quota{{ quota > 0 and part >= 90 ? ' cm-chiffre-alerte' }}">
+						<span>{{ libelle }}</span>
+						<strong>{{ compte|number_format(0, ',', ' ') }}</strong>
+						{% if quota > 0 %}
+							<div class="cm-jauge{{ part >= 90 ? ' cm-jauge-pleine' }}" role="img" aria-label="{{ compte }} e-mails sur {{ quota }} permis"><i style="width: {{ part|round }}%"></i></div>
+							<small>sur {{ quota|number_format(0, ',', ' ') }} · reste {{ email.restants[periode]|number_format(0, ',', ' ') }}</small>
+						{% else %}
+							<small>limite non renseignée</small>
+						{% endif %}
+					</div>
+				{% endfor %}
+			</div>
+
+			<ul class="cm-liste">
+				<li>
+					<span>Abonnement</span>
+					<b class="{{ email.expiration and email.expiration < maintenant|date_modify('+' ~ seuils.alerte_jours ~ ' days') ? 'cm-rouge' }}">
+						{%- if not email.expiration -%}
+							fin non renseignée
+						{%- elseif email.expiration < maintenant -%}
+							expiré le {{ email.expiration|date('d/m/Y') }}
+						{%- else -%}
+							jusqu'au {{ email.expiration|date('d/m/Y') }}
+						{%- endif -%}
+					</b>
+				</li>
+				<li>
+					<span>Échecs aujourd'hui</span>
+					<b>{% if email.echecsJour > 0 %}<a href="{{ path('app_credits_messages_envois', {canal: 'email', statut: 'echec', du: maintenant|date('Y-m-d')}) }}">{{ email.echecsJour }}</a>{% else %}0{% endif %}</b>
+				</li>
+			</ul>
+
+			<form method="post" action="{{ path('app_credits_messages_saisie') }}" class="cm-saisie">
+				<input type="hidden" name="_token" value="{{ jeton }}">
+				<input type="hidden" name="quoi" value="email">
+				<div>
+					<label for="cm-fin-email">Fin de l'abonnement e-mail</label>
+					<input id="cm-fin-email" name="email_expiration" type="date" class="form-control form-control-sm" value="{{ email.expiration ? email.expiration|date('Y-m-d') }}">
+				</div>
+				<button type="submit" class="btn btn-sm btn-success">Enregistrer la date</button>
+			</form>
+		</section>
+	</div>
+
+	{% if sms.achats is not empty %}
+		<section class="card cm-carte" aria-labelledby="cm-titre-achats">
+			<h2 id="cm-titre-achats">Achats de packs SMS</h2>
+			<div class="table-responsive">
+				<table class="table cm-table">
+					<thead>
+						<tr><th>Date</th><th>Pack</th><th class="num">SMS ajoutés</th><th>Nouvelle fin</th>{% if voirPrix %}<th class="num">Prix</th>{% endif %}</tr>
+					</thead>
+					<tbody>
+						{% for a in sms.achats %}
+							<tr>
+								<td>{{ a.le ? a.le|date('d/m/Y H:i') : '—' }}</td>
+								{# La description d'Orange cite le prix : montrée seulement avec le droit Trésorerie et soldes. #}
+								<td>{{ voirPrix and a.pack ? a.pack : (a.unites is not null ? 'Pack de ' ~ a.unites|number_format(0, ',', ' ') ~ ' SMS' : 'Pack SMS') }}</td>
+								<td class="num">{{ a.unites is null ? '—' : a.unites|number_format(0, ',', ' ') }}</td>
+								<td>{{ a.expiration ? a.expiration|date('d/m/Y') : '—' }}</td>
+								{% if voirPrix %}<td class="num">{{ a.prix is null ? '—' : a.prix|number_format(0, ',', ' ') ~ ' ' ~ (a.devise in ['XOF', ''] ? 'F' : a.devise) }}</td>{% endif %}
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</section>
+	{% endif %}
+
+	<section class="card cm-carte" aria-labelledby="cm-titre-derniers">
+		<div class="cm-titre-ligne">
+			<h2 id="cm-titre-derniers">Derniers envois</h2>
+			<a href="{{ path('app_credits_messages_envois') }}" class="cm-lien">Tout l'historique <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+		</div>
+		{% if derniers is empty %}
+			<p class="cm-vide">Aucun SMS ni e-mail envoyé pour l'instant.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table cm-table" data-sans-filtres>
+					<thead><tr><th>Date</th><th>Canal</th><th>Type</th><th>Destinataire</th><th>État</th></tr></thead>
+					<tbody>
+						{% for e in derniers %}
+							<tr>
+								<td>{{ e.envoyeLe|date('d/m H:i') }}</td>
+								<td>{{ e.libelleCanal }}</td>
+								<td>{{ e.libelleType }}{% if e.sujet %}<small>{{ e.sujet }}</small>{% endif %}</td>
+								<td class="cm-destinataire">{{ m.destinataire(e, voirDestinataire) }}</td>
+								<td>{{ m.statut(e) }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+		<p class="cm-note">Le texte des messages n'est jamais gardé (ni code, ni lien). {{ voirDestinataire ? 'Numéros et adresses en entier : vous avez le droit Clients.' : 'Numéros et adresses masqués : le droit Clients les montre en entier.' }}{% if not enLigne %} Les envois du site en ligne (codes de connexion, notifications de l'espace client) arrivent par la synchronisation.{% endif %}</p>
+	</section>
+{% endblock %}

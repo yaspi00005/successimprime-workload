@@ -176,6 +176,7 @@ final class Parametres
             'espace_client' => $v['code_sms'] ? 'mot de passe, code par e-mail ou SMS' : 'mot de passe seulement',
             'fidelite' => $v['actif'] ? str_replace('.', ',', (string) $v['points_m2']).' pts/m² dès '.str_replace('.', ',', (string) $v['seuil_m2']).' m² · '.str_replace('.', ',', (string) $v['taux_autre']).' % · ×'.$v['multiplicateur_jour'].' le jour même' : 'arrêté',
             'messages' => self::nb($compter(ModeleMessage::class), 'modèle'),
+            'credits_messages' => 'alerte sous '.number_format((int) $v['seuil_sms'], 0, ',', ' ').' SMS · '.((int) $v['email_quota_jour'] > 0 ? number_format((int) $v['email_quota_jour'], 0, ',', ' ').' e-mails par jour' : 'limites e-mail non renseignées'),
             'ecran_tv' => 'playlist de '.ProgrammeEcranTv::dureeBoucle($this->ecranTv->programme()['scenes']).' s',
             'site_contact' => '' !== trim((string) $v['lien_plan']) ? 'plan et bouton Itinéraire affichés' : 'plan pas encore donné',
             'assistant' => $v['actif'] ? 'actif · plafond '.number_format((int) $v['limite_jour'], 0, ',', ' ').' F par jour' : 'arrêté',

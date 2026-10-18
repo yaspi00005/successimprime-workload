@@ -1,0 +1,40 @@
+{#
+	Clients › Crédits SMS et e-mail (docs/messagerie-marketing.md). Chaque
+	écran remplit « contenu » ; « sous_ecran » allume le bon bouton.
+	Direction et droit « Crédits SMS et e-mail » seulement.
+#}
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/credits-messages.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="cm">
+		<nav class="cm-sousnav" aria-label="Crédits SMS et e-mail">
+			{% set liens = {
+				credits: {libelle: 'Crédits', route: 'app_credits_messages_index', parametres: {}},
+				envois: {libelle: 'Historique des envois', route: 'app_credits_messages_envois', parametres: {}},
+			} %}
+			{% if peutRegler %}
+				{% set liens = liens|merge({reglages: {libelle: 'Seuils et limites', route: 'app_reglages_parametres_index', parametres: {tuile: 'credits_messages'}}}) %}
+			{% endif %}
+			{% for cle, lien in liens %}
+				<a href="{{ path(lien.route, lien.parametres) }}" class="{{ cle == block('sous_ecran') ? 'actif' }}" {% if cle == block('sous_ecran') %}aria-current="page"{% endif %}>{{ lien.libelle }}</a>
+			{% endfor %}
+		</nav>
+		{% block contenu %}{% endblock %}
+	</div>
+{% endblock %}
+
+{% block sous_ecran %}{% endblock %}
+
+{# Destinataire : complet avec le droit Clients, masqué sinon. #}
+{% macro destinataire(e, complet) %}{{ complet ? e.destinataireLisible : e.destinataireMasque }}{% endmacro %}
+
+{# Pastille de l'état d'un envoi. #}
+{% macro statut(e) %}
+	{% set couleur = {envoye: 'vert', echec: 'rouge', non_envoye: 'orange'}[e.statut] ?? 'bleu' %}
+	<span class="si-pastille si-pastille-{{ couleur }}">{{ e.libelleStatut }}</span>
+{% endmacro %}

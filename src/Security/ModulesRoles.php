@@ -100,6 +100,12 @@ final class ModulesRoles
                 'detail' => 'pages, réalisations, avis, conseils, partenaires',
                 'droits' => ['ROLE_SITE_VITRINE'],
             ],
+            // Crédits SMS et e-mail (docs/messagerie-marketing.md) : solde, fin du pack, historique des envois.
+            'messagerie' => [
+                'libelle' => 'Crédits SMS et e-mail',
+                'detail' => 'solde SMS, limites e-mail, historique des envois',
+                'droits' => ['ROLE_CREDITS_MESSAGES'],
+            ],
             'reglages' => [
                 'libelle' => 'Réglages',
                 'detail' => 'utilisateurs, prix, sécurité',

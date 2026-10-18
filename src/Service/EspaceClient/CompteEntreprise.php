@@ -93,7 +93,7 @@ final class CompteEntreprise
             'Succès Imprim : %s vous a ajouté au compte %s. Sur notre espace client, « Recevoir un code » avec ce numéro, puis choisissez votre mot de passe.',
             $par->getNomAffiche(),
             $client->getRaisonSociale() ?: $client->getNomComplet(),
-        ));
+        ), type: 'compte_entreprise');
 
         return $compte;
     }
@@ -312,7 +312,7 @@ final class CompteEntreprise
                 'Succès Imprim : %s demande la commande %s. À valider dans votre espace client.',
                 $demandeur->getNomAffiche(),
                 $commande->getNumero(),
-            ));
+            ), type: 'compte_entreprise');
         }
     }
 

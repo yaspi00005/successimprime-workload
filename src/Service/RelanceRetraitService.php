@@ -11,6 +11,7 @@ use App\Entity\RelanceRetrait;
 use App\Entity\User;
 use App\Repository\RegleRappelPaiementRepository;
 use App\Repository\RelanceRetraitRepository;
+use App\Service\Messagerie\JournalEnvois;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mailer\MailerInterface;
@@ -135,7 +136,7 @@ final class RelanceRetraitService
             return ['succes' => false, 'erreur' => 'Le client n\'a pas de numéro de téléphone.'];
         }
 
-        $resultat = $this->sms->envoyerSms($telephone, $message);
+        $resultat = $this->sms->envoyerSms($telephone, $message, type: 'relance_retrait');
 
         if ($resultat['succes']) {
             $this->noter($commande, RelanceRetrait::CANAL_SMS, $par);
@@ -217,7 +218,7 @@ final class RelanceRetraitService
         try {
             $envoi = match ($modele->getCanal()) {
                 ModeleMessage::CANAL_SMS => trim((string) $client->getTelephone()) !== ''
-                    ? $this->sms->envoyerSms((string) $client->getTelephone(), $modele->rendreContenu($variables))
+                    ? $this->sms->envoyerSms((string) $client->getTelephone(), $modele->rendreContenu($variables), type: 'relance_retrait')
                     : ['succes' => false, 'erreur' => 'Le client n\'a pas de numéro de téléphone.'],
                 ModeleMessage::CANAL_EMAIL => $this->envoyerEmail($client->getEmail(), $modele->rendreSujet($variables) ?? 'Votre commande est prête', $modele->rendreContenu($variables)),
                 // L'envoi WhatsApp automatique arrive avec l'API Meta (J5) ; d'ici là, relance à la main.
@@ -252,7 +253,7 @@ final class RelanceRetraitService
             return ['succes' => false, 'erreur' => 'Le client n\'a pas d\'adresse e-mail.'];
         }
 
-        $this->mailer->send((new Email())->from($this->emailExpediteur)->to($email)->subject($sujet)->text($message));
+        $this->mailer->send(JournalEnvois::typer((new Email())->from($this->emailExpediteur)->to($email)->subject($sujet)->text($message), 'relance_retrait'));
 
         return ['succes' => true, 'erreur' => null];
     }

@@ -9,6 +9,7 @@ use App\Entity\RegleRappelPaiement;
 use App\Repository\CommandesRepository;
 use App\Repository\RappelPaiementEnvoyeRepository;
 use App\Repository\RegleRappelPaiementRepository;
+use App\Service\Messagerie\JournalEnvois;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -227,7 +228,7 @@ class RappelPaiementService
             return ['succes' => false, 'erreur' => 'Le client n’a pas de numéro de téléphone.'];
         }
 
-        return $this->orangeSmsService->envoyerSms($telephone, $message);
+        return $this->orangeSmsService->envoyerSms($telephone, $message, type: 'rappel_paiement');
     }
 
     /**
@@ -279,7 +280,7 @@ class RappelPaiementService
                 ->subject($sujet ?? 'Rappel de paiement')
                 ->text($message);
 
-            $this->mailer->send($courriel);
+            $this->mailer->send(JournalEnvois::typer($courriel, 'rappel_paiement'));
 
             return ['succes' => true, 'erreur' => null];
         } catch (\Throwable $exception) {

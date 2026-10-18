@@ -1,0 +1,109 @@
+{#
+	Clients › Crédits SMS et e-mail › Historique des envois : un message
+	tenté par ligne, sans son texte. Filtres dans l'adresse (toute la liste),
+	pages de 50, export CSV avec les mêmes filtres et le même masquage.
+#}
+{% extends 'credits_messages/_base.html.twig' %}
+{% import 'credits_messages/_base.html.twig' as m %}
+
+{% block title %}Historique des envois{% endblock %}
+{% block sous_ecran %}envois{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_credits_messages_export', parametres) }}" class="btn btn-sm btn-light cm-export"><i class="fas fa-file-csv me-1" aria-hidden="true"></i>Export CSV</a>
+	</li>
+{% endblock %}
+
+{% block contenu %}
+	<section class="card cm-carte">
+		<form method="get" action="{{ path('app_credits_messages_envois') }}" class="cm-filtres" role="search">
+			<div>
+				<label for="cm-f-canal">Canal</label>
+				<select id="cm-f-canal" name="canal" class="form-select form-select-sm">
+					<option value="">Tous</option>
+					{% for cle, libelle in constant('App\\Entity\\EnvoiMessage::CANAUX') %}
+						<option value="{{ cle }}" {{ filtres.canal == cle ? 'selected' }}>{{ libelle }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div>
+				<label for="cm-f-type">Type</label>
+				<select id="cm-f-type" name="type" class="form-select form-select-sm">
+					<option value="">Tous</option>
+					{% for cle, libelle in constant('App\\Entity\\EnvoiMessage::TYPES') %}
+						<option value="{{ cle }}" {{ filtres.type == cle ? 'selected' }}>{{ libelle }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div>
+				<label for="cm-f-statut">État</label>
+				<select id="cm-f-statut" name="statut" class="form-select form-select-sm">
+					<option value="">Tous</option>
+					{% for cle, libelle in constant('App\\Entity\\EnvoiMessage::STATUTS') %}
+						<option value="{{ cle }}" {{ filtres.statut == cle ? 'selected' }}>{{ libelle }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div>
+				<label for="cm-f-origine">Envoyé depuis</label>
+				<select id="cm-f-origine" name="origine" class="form-select form-select-sm">
+					<option value="">Partout</option>
+					{% for cle, libelle in constant('App\\Entity\\EnvoiMessage::ORIGINES') %}
+						<option value="{{ cle }}" {{ filtres.origine == cle ? 'selected' }}>{{ libelle }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div>
+				<label for="cm-f-du">Du</label>
+				<input id="cm-f-du" type="date" name="du" value="{{ filtres.du ? filtres.du|date('Y-m-d') }}" class="form-control form-control-sm">
+			</div>
+			<div>
+				<label for="cm-f-au">Au</label>
+				<input id="cm-f-au" type="date" name="au" value="{{ filtres.au ? filtres.au|date('Y-m-d') }}" class="form-control form-control-sm">
+			</div>
+			<div class="cm-filtres-q">
+				<label for="cm-f-q">{{ voirDestinataire ? 'Numéro, adresse ou objet' : 'Objet de l\'e-mail' }}</label>
+				<input id="cm-f-q" type="search" name="q" value="{{ filtres.q }}" class="form-control form-control-sm" maxlength="80" placeholder="{{ voirDestinataire ? '76 00 00 99, nom@…, objet' : 'Mot de l\'objet' }}">
+			</div>
+			<div class="cm-filtres-boutons">
+				<button type="submit" class="btn btn-sm btn-primary">Filtrer</button>
+				{% if parametres is not empty %}<a href="{{ path('app_credits_messages_envois') }}" class="btn btn-sm btn-light">Effacer</a>{% endif %}
+			</div>
+		</form>
+
+		<h2>Envois <span class="si-pg-compte">{{ total|number_format(0, ',', ' ') }}</span></h2>
+		{% if lignes is empty %}
+			<p class="cm-vide">Aucun envoi{{ parametres is not empty ? ' avec ces filtres' }}.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table cm-table" data-sans-filtres>
+					<thead>
+						<tr><th>Date</th><th>Canal</th><th>Type</th><th>Destinataire</th><th>État</th><th class="num">Unités</th><th class="si-masque-mobile">Depuis</th></tr>
+					</thead>
+					<tbody>
+						{% for e in lignes %}
+							<tr>
+								<td class="cm-date">{{ e.envoyeLe|date('d/m/Y') }}<small>{{ e.envoyeLe|date('H:i') }}</small></td>
+								<td>{{ e.libelleCanal }}</td>
+								<td>{{ e.libelleType }}{% if e.sujet %}<small class="cm-sujet">{{ e.sujet }}</small>{% endif %}</td>
+								<td class="cm-destinataire">{{ m.destinataire(e, voirDestinataire) }}</td>
+								<td>{{ m.statut(e) }}{% if e.erreur %}<small class="cm-erreur">{{ e.erreur }}</small>{% endif %}</td>
+								<td class="num">{{ e.unites }}</td>
+								<td class="si-masque-mobile">{{ e.libelleOrigine }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			{% if pages > 1 %}
+				<nav class="cm-pages" aria-label="Pages">
+					{% if page > 1 %}<a href="{{ path('app_credits_messages_envois', parametres|merge({page: page - 1})) }}" class="btn btn-sm btn-light" rel="prev">‹ Précédente</a>{% endif %}
+					<span>Page {{ page }} sur {{ pages }}</span>
+					{% if page < pages %}<a href="{{ path('app_credits_messages_envois', parametres|merge({page: page + 1})) }}" class="btn btn-sm btn-light" rel="next">Suivante ›</a>{% endif %}
+				</nav>
+			{% endif %}
+		{% endif %}
+		<p class="cm-note">« Unités » : SMS comptés (un message de plus de 160 caractères, ou 70 avec certains caractères spéciaux, en compte plusieurs) ; 1 par e-mail parti. « Non envoyé » : clés Orange ou messagerie e-mail absentes, rien n'est parti. Le texte des messages n'est jamais gardé.</p>
+	</section>
+{% endblock %}

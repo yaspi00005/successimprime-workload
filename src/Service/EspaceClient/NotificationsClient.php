@@ -7,6 +7,7 @@ use App\Entity\Clients;
 use App\Entity\CompteClient;
 use App\Entity\NotificationClientDifferee;
 use App\Entity\NotificationClientEnvoyee;
+use App\Service\Messagerie\JournalEnvois;
 use App\Service\OrangeSmsService;
 use App\Service\Push\WebPush;
 use Doctrine\ORM\EntityManagerInterface;
@@ -299,7 +300,7 @@ final class NotificationsClient implements EventSubscriberInterface
         $numeros = array_unique(array_filter(array_map(static fn (CompteClient $c): string => trim($c->getTelephone()), $comptes)));
         $parti = false;
         foreach ($numeros as $numero) {
-            $parti = (bool) ($this->sms->envoyerSms($numero, 'Succès Imprim : '.$message.' Détails dans votre espace client.')['succes'] ?? false) || $parti;
+            $parti = (bool) ($this->sms->envoyerSms($numero, 'Succès Imprim : '.$message.' Détails dans votre espace client.', type: 'notification_client')['succes'] ?? false) || $parti;
         }
 
         return $parti;
@@ -312,8 +313,8 @@ final class NotificationsClient implements EventSubscriberInterface
             return false;
         }
         try {
-            $this->mailer->send((new Email())->from($this->expediteur)->to($email)->subject($titre.' · Succès Imprim')
-                ->text(\sprintf("Bonjour,\n\n%s\n\nVotre espace client : %s\n\nSuccès Imprim", $message, $lien)));
+            $this->mailer->send(JournalEnvois::typer((new Email())->from($this->expediteur)->to($email)->subject($titre.' · Succès Imprim')
+                ->text(\sprintf("Bonjour,\n\n%s\n\nVotre espace client : %s\n\nSuccès Imprim", $message, $lien)), 'notification_client'));
 
             return true;
         } catch (\Throwable $e) {

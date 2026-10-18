@@ -375,6 +375,26 @@ final class CatalogueParametres
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_modele_message_index', 'champs' => [],
                 'motsCles' => ['Modèles de messages', 'Campagnes WhatsApp et SMS'],
             ],
+            // Crédits SMS et e-mail (docs/messagerie-marketing.md), demande de Yaya du 16/10/2026.
+            // Les champs « ecran » se saisissent sur Clients › Crédits SMS et e-mail.
+            'credits_messages' => [
+                'famille' => 'clients', 'libelle' => 'Crédits SMS et e-mail', 'icone' => 'fa-sms',
+                'roles' => ['ROLE_ADMIN', 'ROLE_CREDITS_MESSAGES'], 'route' => 'app_credits_messages_index',
+                'champs' => [
+                    ['cle' => 'seuil_sms', 'type' => 'nombre', 'libelle' => 'Prévenir quand il reste moins de', 'aide' => 'Notification à la direction, une fois, quand le solde passe sous ce nombre', 'suffixe' => 'SMS', 'min' => 0, 'max' => 1000000, 'defaut' => 100],
+                    ['cle' => 'alerte_jours', 'type' => 'nombre', 'libelle' => 'Prévenir avant l\'expiration', 'aide' => 'Pack SMS et abonnement de la messagerie e-mail', 'suffixe' => 'jours', 'min' => 1, 'max' => 90, 'defaut' => 15],
+                    ['cle' => 'email_hebergeur', 'type' => 'texte', 'libelle' => 'Hébergeur de la messagerie e-mail', 'aide' => 'Par exemple LWS : là où se voient l\'abonnement et les limites d\'envoi', 'longueur' => 60, 'defaut' => ''],
+                    ['cle' => 'email_quota_heure', 'type' => 'nombre', 'libelle' => 'E-mails permis par heure', 'aide' => 'Limite de l\'hébergeur. 0 : pas de limite connue', 'suffixe' => 'e-mails', 'min' => 0, 'max' => 10000000, 'defaut' => 0],
+                    ['cle' => 'email_quota_jour', 'type' => 'nombre', 'libelle' => 'E-mails permis par jour', 'aide' => '0 : pas de limite connue', 'suffixe' => 'e-mails', 'min' => 0, 'max' => 10000000, 'defaut' => 0],
+                    ['cle' => 'email_quota_mois', 'type' => 'nombre', 'libelle' => 'E-mails permis par mois', 'aide' => '0 : pas de limite connue', 'suffixe' => 'e-mails', 'min' => 0, 'max' => 100000000, 'defaut' => 0],
+                    ['cle' => 'email_expiration', 'type' => 'date', 'libelle' => 'Abonnement e-mail : fin', 'defaut' => '', 'ecran' => true],
+                    ['cle' => 'sms_solde_manuel', 'type' => 'nombre', 'libelle' => 'SMS restants (saisis à la main)', 'suffixe' => 'SMS', 'min' => 0, 'max' => 100000000, 'defaut' => 0, 'ecran' => true],
+                    ['cle' => 'sms_expiration_manuelle', 'type' => 'date', 'libelle' => 'Pack SMS : fin (saisie à la main)', 'defaut' => '', 'ecran' => true],
+                    ['cle' => 'sms_saisi_le', 'type' => 'texte', 'libelle' => 'Solde SMS saisi le', 'defaut' => '', 'ecran' => true],
+                ],
+                'motsCles' => ['SMS disponibles · date d\'expiration du pack', 'Orange SMS · solde et achats de packs', 'Historique des envois SMS et e-mail', 'Limites d\'envoi de l\'hébergeur · LWS', 'Alerte crédit SMS bas'],
+                'note' => 'Le solde SMS est lu chez Orange quand les clés sont posées ; sans les clés, il se saisit à la main sur la page complète, avec la fin de l\'abonnement e-mail.',
+            ],
             'ecran_tv' => [
                 'famille' => 'clients', 'libelle' => 'Écran TV de l\'accueil', 'icone' => 'fa-tv',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_ecran_tv_reglages', 'champs' => [],
@@ -537,6 +557,24 @@ final class CatalogueParametres
                     $valeurs[$cle] = implode(', ', array_map(static fn (string $d): string => implode('/', array_reverse(explode('-', $d))), $dates));
                     break;
 
+                case 'date':
+                    // Vide : pas de date. Rangée AAAA-MM-JJ (champ date du navigateur ou JJ/MM/AAAA tapé).
+                    $texte = trim((string) $brut);
+                    $date = null;
+                    foreach (['Y-m-d', 'd/m/Y'] as $format) {
+                        $lue = \DateTimeImmutable::createFromFormat('!'.$format, $texte);
+                        // Pas de 31/02 ramené au 3 mars : la date relue doit être celle tapée.
+                        if (false !== $lue && $lue->format($format) === $texte) {
+                            $date = $lue;
+                        }
+                    }
+                    if ('' !== $texte && (null === $date || (int) $date->format('Y') < 2000 || (int) $date->format('Y') > 2100)) {
+                        $erreurs[$cle] = 'Date attendue (JJ/MM/AAAA).';
+                        break;
+                    }
+                    $valeurs[$cle] = null === $date ? '' : $date->format('Y-m-d');
+                    break;
+
                 case 'choix':
                     if (!\is_string($brut) || !\array_key_exists($brut, $champ['options'])) {
                         $erreurs[$cle] = 'Choix inconnu.';
@@ -604,6 +642,7 @@ final class CatalogueParametres
             'choix' => (string) ($champ['options'][$valeur] ?? $valeur),
             'nombre' => trim(number_format((float) $valeur, ($champ['decimales'] ?? 0) > 0 && floor((float) $valeur) != $valeur ? (int) $champ['decimales'] : 0, ',', ' ').' '.($champ['suffixe'] ?? '')),
             'heure' => str_replace(':', ' h ', (string) $valeur),
+            'date' => '' === (string) $valeur ? 'aucune' : implode('/', array_reverse(explode('-', (string) $valeur))),
             default => (string) $valeur,
         };
     }

@@ -129,6 +129,7 @@ security:
             - ROLE_PROMOTIONS
             - ROLE_COMPTABILITE
             - ROLE_ASSISTANT
+            - ROLE_CREDITS_MESSAGES
             
 
 

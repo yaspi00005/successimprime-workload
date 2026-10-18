@@ -421,8 +421,15 @@ final class SoldeClient
         if ('' === trim($motif)) {
             throw new \InvalidArgumentException('Le motif du refus est obligatoire.');
         }
-        $depot->rejeter($motif, $par, new \DateTimeImmutable());
-        $this->em->flush();
+        // Verrouillé et relu comme à la validation : deux caisses ne traitent pas le même dépôt.
+        $this->em->wrapInTransaction(function () use ($depot, $motif, $par): void {
+            if (null !== $depot->getId()) {
+                $this->em->lock($depot, LockMode::PESSIMISTIC_WRITE);
+                $this->em->refresh($depot);
+            }
+            $depot->rejeter($motif, $par, new \DateTimeImmutable());
+            $this->em->flush();
+        });
     }
 
     /* ---------- Écritures ---------- */

@@ -281,12 +281,15 @@ final class TableauTresorerie
     private function depensesDuMois(\DateTimeImmutable $maintenant): array
     {
         // Les frais débités par Orange au retrait ne sont pas une dépense : ils sortent ce que les clients ont payé en plus.
+        // L'argent rendu à un client depuis son compte (avance client) non plus : c'était le sien.
         $lignes = MouvementTresorerie::exclureHorsActivite($this->em->createQueryBuilder()
             ->select('m.categorie', 'SUM(m.montant) AS total')
             ->from(MouvementTresorerie::class, 'm')
             ->andWhere('m.statut = :valide')
             ->andWhere('m.type = :sortie')
+            ->andWhere('m.categorie != :avance')
             ->andWhere('m.dateOperation >= :debut')
+            ->setParameter('avance', MouvementTresorerie::CATEGORIE_AVANCE_CLIENT)
             ->setParameter('valide', MouvementTresorerie::STATUT_VALIDE)
             ->setParameter('sortie', MouvementTresorerie::TYPE_DECAISSEMENT)
             ->setParameter('debut', $maintenant->modify('first day of this month')->setTime(0, 0)))

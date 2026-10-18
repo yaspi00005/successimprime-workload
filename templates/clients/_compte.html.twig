@@ -10,6 +10,8 @@
 {% set gerer = is_granted('ROLE_PAIEMENT_ENCAISSER') and not compte.en_ligne and not module_en_lecture('app_caisse_solde_depot') %}
 {% set rendre = gerer and is_granted('ROLE_SOLDE_CLIENT_REMBOURSER') and compte.disponible > 0 %}
 {% set retour = retour_compte|default('fiche') %}
+{# Les reçus s'impriment depuis la caisse : liens pour qui encaisse. #}
+{% set recus = is_granted('ROLE_PAIEMENT_ENCAISSER') %}
 
 <div class="si-cc">
 	<div class="si-cc-tete">
@@ -83,9 +85,9 @@
 							{{ l.libelle }}
 							{% if l.reference %}
 								<small class="d-block text-muted">
-									{% if l.type in ['depot', 'remboursement'] and (l.reference starts with 'D-' or l.reference starts with 'RB-') %}
+									{% if recus and l.type in ['depot', 'remboursement'] and (l.reference starts with 'D-' or l.reference starts with 'RB-') %}
 										<a href="{{ path('app_caisse_solde_recu', {id: l.id}) }}" target="_blank" rel="noopener">{{ l.reference }}</a>
-									{% elseif l.type == 'monnaie' and l.paiement %}
+									{% elseif recus and l.type == 'monnaie' and l.paiement %}
 										<a href="{{ path('app_caisse_recu', {id: l.paiement.id}) }}" target="_blank" rel="noopener">{{ l.reference }}</a>
 									{% elseif l.commande %}
 										<a href="{{ path('app_commandes_show', {id: l.commande.id}) }}">{{ l.reference }}</a>

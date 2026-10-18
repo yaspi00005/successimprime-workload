@@ -136,6 +136,8 @@ final class DemoCommand extends Command
             // Dotations aux amortissements et évaluations de primes des derniers mois.
             // Conversations avec les clients (délais et retards comptent dans les primes qui suivent).
             $this->lancer('app:messagerie:demo', [], $output);
+            // Fiche client de Salon Espoir : conditions, charte, contact « Factures », notes internes (docs/clients.md).
+            $this->lancer('app:fiche-client:demo', [], $output);
             $this->lancer('app:immobilisations:dotations', ['--demo' => true], $output);
             $this->lancer('app:primes', ['--demo' => true], $output);
             $io->text('Connexion possible avec demo.kadiatou (direction), demo.aminata (caisse), demo.seydou (graphiste), demo.oumar (machine), demo.bakary (livreur) ou demo.awa (entretien), mot de passe demo1234.');

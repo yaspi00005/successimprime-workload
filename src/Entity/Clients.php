@@ -286,6 +286,77 @@ class Clients
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $besoin = null;
 
+    /** Canaux d'envoi des factures (fiche client FC01, « Factures envoyées à »). */
+    public const CANAUX_FACTURES = ['whatsapp' => 'WhatsApp', 'email' => 'e-mail', 'papier' => 'papier'];
+
+    /**
+     * Comment le client reçoit ses factures (clés de CANAUX_FACTURES). La
+     * personne est le contact « Factures » de la fiche (sinon le principal).
+     * Reste au local, comme les autres réglages internes de la fiche.
+     *
+     * @var list<string>
+     */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $facturesCanaux = [];
+
+    /**
+     * Charte du client (fiche client FC03) : couleurs (#RRGGBB) et une ligne
+     * libre (logo, police, Pantone). Pour le prépresse ; reste au local.
+     *
+     * @var list<string>
+     */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $charteCouleurs = [];
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $charteTexte = null;
+
+    /** @return list<string> */
+    public function getFacturesCanaux(): array { return $this->facturesCanaux; }
+    /** @param iterable<string> $canaux */
+    public function setFacturesCanaux(iterable $canaux): static
+    {
+        // Toujours dans l'ordre de CANAUX_FACTURES (« WhatsApp + e-mail »).
+        $choisis = \is_array($canaux) ? $canaux : iterator_to_array($canaux, false);
+        $this->facturesCanaux = array_values(array_filter(array_keys(self::CANAUX_FACTURES), static fn (string $c): bool => \in_array($c, $choisis, true)));
+
+        return $this;
+    }
+    /** « WhatsApp + e-mail » */
+    public function getFacturesCanauxLabel(): ?string
+    {
+        return [] === $this->facturesCanaux ? null : implode(' + ', array_map(static fn (string $c): string => self::CANAUX_FACTURES[$c], $this->facturesCanaux));
+    }
+
+    /** @return list<string> */
+    public function getCharteCouleurs(): array { return $this->charteCouleurs; }
+    /**
+     * Garde les couleurs #RGB ou #RRGGBB (6 au plus), en majuscules.
+     *
+     * @param iterable<string> $couleurs
+     */
+    public function setCharteCouleurs(iterable $couleurs): static
+    {
+        $liste = [];
+        foreach ($couleurs as $c) {
+            $c = strtoupper(trim((string) $c));
+            if ('' !== $c && '#' !== $c[0]) {
+                $c = '#'.$c;
+            }
+            if (preg_match('/^#[0-9A-F]{3}$/', $c)) {
+                $c = '#'.$c[1].$c[1].$c[2].$c[2].$c[3].$c[3];
+            }
+            if (preg_match('/^#[0-9A-F]{6}$/', $c) && !\in_array($c, $liste, true)) {
+                $liste[] = $c;
+            }
+        }
+        $this->charteCouleurs = \array_slice($liste, 0, 6);
+
+        return $this;
+    }
+    public function getCharteTexte(): ?string { return $this->charteTexte; }
+    public function setCharteTexte(?string $v): static { $this->charteTexte = self::texteCourt($v, 255); return $this; }
+
     public function getSuiviPar(): ?User { return $this->suiviPar; }
     public function setSuiviPar(?User $u): static
     {

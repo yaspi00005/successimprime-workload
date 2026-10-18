@@ -65,6 +65,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Mot du gérant (même onglet, « Rédiger le mot du gérant ») : caché tant que la photo ou le texte manque ; rempli, il paraît avant « Notre équipe », et le gérant n'est pas répété dans la grille sauf « Le montrer aussi dans « Notre équipe » » ; cocher « Gérant » sur une autre fiche le décoche sur la première.
 - [ ] Annonces (Réglages › Site vitrine › Annonces) : une annonce active pour le site public apparaît au-dessus de l'en-tête après la synchronisation ; programmée, elle n'apparaît qu'à son premier jour ; inactive ou terminée, plus du tout.
 - [ ] Fiche client › Accès à l'espace client : suspendre une personne avec un motif, puis tout le compte ; le journal de la fiche note qui, quand et pourquoi ; « Rétablir » ; en « Voir », aucun bouton.
+- [ ] Fiche client (maquettes FC01 à FC04, docs/clients.md), Salon Espoir : les huit onglets s'ouvrent et l'adresse garde l'onglet (`#factures`, `#compte`, `#fidelite`) ; plafond de crédit et jauge, notes internes (ajouter une note depuis l'aperçu), « Commander pour lui » dans Produits crée une commande à confirmer ; « + Commande » ouvre la commande avec le client déjà choisi ; sur téléphone, les tableaux passent en cartes.
 - [ ] Devis « À l'attention de » et commande « Commandé par » : la liste propose les contacts de la fiche ; le nom est imprimé sur le PDF du devis et sur la facture, et se lit sous le numéro dans la fiche client.
 - [ ] Fidélité : régler un article (activé, points, seuil, dates), ajuster les points d'un client avec un motif ; l'action est inscrite au journal.
 - [ ] Crédits SMS et e-mail (Clients) : sans les clés Orange, saisir le solde et la fin du pack, puis la fin de l'abonnement e-mail ; un SMS ou un e-mail envoyé apparaît dans « Historique des envois » sans son texte ; « Export CSV » ; sous le seuil ou à moins de 15 jours de la fin, une seule notification.
@@ -92,6 +93,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Démarrer, mettre en pause, envoyer le BAT ; le client le voit dans son espace.
 - [ ] Outil de montage : poser plusieurs fichiers sur une feuille.
 - [ ] Ne voit pas : finances, montants des commandes, réglages, salaires, ni l'onglet « Compte » d'une fiche client.
+- [ ] Fiche client de Salon Espoir : aucun CA, panier moyen, solde, plafond, paiement ni relance ; « Factures et paiements » ne montre que les documents émis ; l'historique n'a pas le filtre « Paiements ».
 
 ## Opérateur production (demo.oumar)
 

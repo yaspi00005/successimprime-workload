@@ -128,7 +128,41 @@ final class ClientsFicheController extends AbstractController
         }
         $this->addFlash('success', null !== $note->getRappelLe() ? 'Note ajoutée, rappel le '.$note->getRappelLe()->format('d/m').'.' : 'Note ajoutée.');
 
-        return $this->redirectToRoute('app_clients_show', ['publicId' => $client->getPublicId(), '_fragment' => 'historique']);
+        // « + Note » de l'aperçu revient sur l'aperçu ; « Noter un appel » de l'historique, sur l'historique.
+        return $this->redirectToRoute('app_clients_show', ['publicId' => $client->getPublicId(), '_fragment' => 'apercu' === $request->request->get('retour') ? 'apercu' : 'historique']);
+    }
+
+    /**
+     * « Commander pour lui » (onglet Produits, maquette FC03) : une commande
+     * à confirmer au comptoir, avec le produit enregistré du client.
+     */
+    #[Route('/fiche/{publicId}/produits/{id}/commander', name: 'app_clients_produit_commander', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[IsGranted('ROLE_COMMANDE')]
+    public function commanderProduit(Request $request, string $publicId, int $id, \App\Service\Clients\CommandePourClient $service): Response
+    {
+        $client = $this->client($publicId);
+        if (!$this->isCsrfTokenValid('commander-produit-'.$id, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Formulaire expiré, rechargez la page.');
+        }
+        $produit = $this->em->find(\App\Entity\ProduitClient::class, $id);
+        if (null === $produit || $produit->getClient() !== $client) {
+            throw $this->createNotFoundException('Produit introuvable.');
+        }
+        $taille = null;
+        if (preg_match('/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/', (string) $request->request->get('taille'), $m)) {
+            $taille = ['l' => (float) $m[1], 'h' => (float) $m[2]];
+        }
+        $quantite = (float) str_replace([' ', ','], ['', '.'], (string) $request->request->get('quantite'));
+        try {
+            $commande = $service->commander($client, $produit, $quantite, $taille, $this->getUser() instanceof User ? $this->getUser() : null, new \DateTimeImmutable());
+        } catch (\DomainException $e) {
+            $this->addFlash('danger', $e->getMessage());
+
+            return $this->redirectToRoute('app_clients_show', ['publicId' => $client->getPublicId(), '_fragment' => 'produits']);
+        }
+        $this->addFlash('success', \sprintf('Commande %s créée pour %s (%s). Vérifiez-la puis confirmez-la.', $commande->getNumero(), $client->getNomComplet(), $produit->getNom()));
+
+        return $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId()]);
     }
 
     #[Route('/fiche/{publicId}/journal', name: 'app_clients_journal', methods: ['GET'])]

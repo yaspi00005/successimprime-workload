@@ -5,7 +5,7 @@ namespace App\Controller;
 use App\Service\Clients\ListeClients;
 use App\Entity\Clients;
 use App\Form\ClientsType;
-use App\Service\FicheClient360;
+use App\Service\Clients\FicheClient;
 use App\Repository\ClientsRepository;
 use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
@@ -877,7 +877,11 @@ final class ClientsController extends AbstractController
     }
 
     /**
-     * Fiche client 360° (maquette 33).
+     * Fiche client (maquettes FC01 à FC04, docs/clients.md) : onglets
+     * Aperçu, Commandes, Devis, Factures et paiements, Produits, Fichiers,
+     * Messages et Historique. Le solde, les paiements et le compte du
+     * client suivent les droits Paiements / Encaissements ; le chiffre
+     * d'affaires et le panier moyen, le droit des statistiques de ventes.
      */
     #[Route(
         '/fiche/{publicId}',
@@ -889,8 +893,7 @@ final class ClientsController extends AbstractController
             'publicId' => 'publicId',
         ])]
         Clients $client,
-        FicheClient360 $fiche,
-        \App\Service\Clients\EditionClient $edition,
+        FicheClient $fiche,
         \App\Service\EspaceClient\AccesEspace $accesEspace,
         Request $request,
         \App\Service\Paiement\SoldeClient $soldeClient,
@@ -899,8 +902,9 @@ final class ClientsController extends AbstractController
         EntityManagerInterface $entityManager
     ): Response {
         $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
-        $donnees = $fiche->donnees($client, new \DateTimeImmutable(), $voirPaiements);
-        // Onglet « Compte » (monnaie gardée, dépôts, docs/finances.md) : qui voit ou encaisse les paiements.
+        $maintenant = new \DateTimeImmutable();
+        $donnees = $fiche->donnees($client, $maintenant, $voirPaiements);
+        // Compte du client (monnaie gardée, dépôts, docs/finances.md) : qui voit ou encaisse les paiements.
         $compte = null;
         if ($voirPaiements || $this->isGranted('ROLE_PAIEMENT_ENCAISSER')) {
             $compte = $soldeClient->etat($client);
@@ -927,27 +931,29 @@ final class ClientsController extends AbstractController
         $whatsapp = $client->getTelephone() ? UtilisateursController::numeroWhatsApp($client->getTelephone()) : null;
         // Espace client : la boutique envoie elle-même le code d'accès sur WhatsApp (accesEspace()).
         $empechement = $accesEspace->empechement($client);
+        $comptesEspace = $entityManager->getRepository(\App\Entity\CompteClient::class)->findBy(['client' => $client, 'actif' => true]);
 
-        return $this->render('clients/fiche_360.html.twig', $donnees + [
+        return $this->render('clients/fiche.html.twig', $donnees + [
             // Bouton « Supprimer » (Direction) : ce qui l'empêche, s'il y a lieu.
             'suppression_impossible' => $this->isGranted('ROLE_ADMIN') ? self::empecheSuppression($client, $entityManager) : null,
             'client' => $client,
-            'contacts' => $edition->contacts($client),
             'statut' => $statut,
             'invitation' => null === $empechement && $request->query->getBoolean('inviter'),
             'acces_espace' => [
                 'possible' => null === $empechement,
                 'empechement' => $empechement,
                 'dernier' => $accesEspace->dernier($client),
-                'maintenant' => new \DateTimeImmutable(),
+                'maintenant' => $maintenant,
+                'comptes' => \count($comptesEspace),
+                'connectes' => \count(array_filter($comptesEspace, static fn (\App\Entity\CompteClient $k): bool => null !== $k->getDerniereConnexion())),
             ],
             'voir_paiements' => $voirPaiements,
             'compte' => $compte,
             'voir_ca' => $this->isGranted('ROLE_STATS_VENTES'),
             'whatsapp' => $whatsapp,
+            'maintenant' => $maintenant,
         ]);
     }
-
     /**
      * « Envoyer l'accès à l'espace client » (fiche client) : nouveau code
      * d'accès (l'ancien ne sert plus), puis le message à ouvrir dans
@@ -994,408 +1000,19 @@ final class ClientsController extends AbstractController
     }
 
     /**
-     * Fiche détaillée : toutes les commandes et paiements, solde client.
+     * Ancienne « fiche détaillée » : remplacée par l'onglet « Factures et
+     * paiements » de la fiche (maquette FC02). L'adresse reste pour les
+     * liens déjà enregistrés.
      */
     #[Route(
         '/fiche/{publicId}/detail',
         name: 'app_clients_detail',
         methods: ['GET']
     )]
-    public function show(
-        #[MapEntity(mapping: [
-            'publicId' => 'publicId',
-        ])]
-        Clients $client,
-        CommandesRepository $commandesRepository,
-        DevisRepository $devisRepository
-    ): Response {
-        /*
-     * Puis tu gardes ici tout le reste
-     * de notre méthode show :
-     *
-     * commandes
-     * devis
-     * paiements
-     * statistiques
-     * crédit
-     */
-        /*
-     * ============================================================
-     * COMMANDES DU CLIENT
-     * ============================================================
-     */
-
-        $commandes =
-            $commandesRepository->findBy(
-                [
-                    'clients' => $client,
-                    'deleted' => false,
-                ],
-                [
-                    'dateCommande' => 'DESC',
-                ]
-            );
-
-
-        /*
-     * ============================================================
-     * DEVIS DU CLIENT
-     * ============================================================
-     */
-
-        $devis =
-            $devisRepository->findBy(
-                [
-                    'clients' => $client,
-                    'deleted' => false,
-                ],
-                [
-                    'dateDevis' => 'DESC',
-                ]
-            );
-
-
-        /*
-     * ============================================================
-     * STATISTIQUES
-     * ============================================================
-     */
-
-        $totalCommandes = 0;
-
-        $totalPaye = 0;
-
-        $resteAPayer = 0;
-
-        $nombreCommandes = 0;
-
-        $nombreDevis = count($devis);
-
-        $nombrePaiements = 0;
-
-
-        /*
-     * Tous les paiements du client.
-     */
-        $paiements = [];
-
-
-        /*
-     * Données détaillées par commande.
-     */
-        $commandesAvecPaiements = [];
-
-
-        foreach ($commandes as $commande) {
-
-            /*
-         * Une commande entièrement annulée ne doit pas fausser les
-         * statistiques du client (même calcul que ClientsController::
-         * pdfImpayes(), qui exclut déjà les commandes annulées).
-         */
-            if ($commande->getStatutTravaux() === 'annulee') {
-                continue;
-            }
-
-            ++$nombreCommandes;
-
-            $montantCommande =
-                (int) $commande->getTotalTtc();
-
-
-            $totalCommandes +=
-                $montantCommande;
-
-
-            /*
-         * ========================================================
-         * PAIEMENTS VALIDÉS DE CETTE COMMANDE
-         * ========================================================
-         *
-         * IMPORTANT :
-         * on ne compte PAS :
-         *
-         * - paiement annulé ;
-         * - paiement rejeté ;
-         * - paiement encore en attente.
-         * ========================================================
-         */
-
-            $totalPayeCommande = 0;
-
-            $paiementsCommande = [];
-
-
-            foreach (
-                $commande->getPaiements()
-                as $paiement
-            ) {
-                /*
-             * On ajoute le paiement dans l'historique,
-             * quel que soit son statut.
-             */
-                $paiements[] =
-                    $paiement;
-
-                $paiementsCommande[] =
-                    $paiement;
-
-
-                if (
-                    $paiement->getStatut()
-                    !==
-                    Paiements::STATUT_VALIDE
-                ) {
-                    continue;
-                }
-
-
-                $montantPaiement =
-                    (int) $paiement->getMontant();
-
-
-                $totalPayeCommande +=
-                    $montantPaiement;
-
-                $totalPaye +=
-                    $montantPaiement;
-
-                ++$nombrePaiements;
-            }
-
-
-            /*
-         * Reste réellement dû sur la commande.
-         */
-            $resteCommande =
-                max(
-                    0,
-                    $montantCommande
-                        -
-                        $totalPayeCommande
-                );
-
-
-            $resteAPayer +=
-                $resteCommande;
-
-
-            /*
-         * Statut calculé dynamiquement.
-         */
-            if ($totalPayeCommande <= 0) {
-                $statutPaiement =
-                    'impayee';
-            } elseif (
-                $totalPayeCommande
-                <
-                $montantCommande
-            ) {
-                $statutPaiement =
-                    'partielle';
-            } else {
-                $statutPaiement =
-                    'payee';
-            }
-
-
-            $commandesAvecPaiements[] = [
-                'commande' =>
-                $commande,
-
-                'totalTtc' =>
-                $montantCommande,
-
-                'totalPaye' =>
-                $totalPayeCommande,
-
-                'resteAPayer' =>
-                $resteCommande,
-
-                'statutPaiement' =>
-                $statutPaiement,
-
-                'paiements' =>
-                $paiementsCommande,
-            ];
-        }
-
-
-        /*
-     * ============================================================
-     * TRI DES PAIEMENTS
-     * ============================================================
-     *
-     * Plus récent en premier.
-     * ============================================================
-     */
-
-        usort(
-            $paiements,
-            static function (
-                Paiements $a,
-                Paiements $b
-            ): int {
-                $dateA =
-                    $a->getDate()
-                    ?->getTimestamp()
-                    ?? 0;
-
-                $dateB =
-                    $b->getDate()
-                    ?->getTimestamp()
-                    ?? 0;
-
-                return $dateB <=> $dateA;
-            }
-        );
-
-
-        /*
-     * ============================================================
-     * CRÉDIT CLIENT
-     * ============================================================
-     */
-
-        $plafondCredit =
-            max(
-                0,
-                (int) $client->getPlafondCredit()
-            );
-
-
-        /*
-     * L'encours représente ce que le client
-     * doit encore à l'entreprise.
-     */
-        $encours =
-            $resteAPayer;
-
-
-        /*
-     * Crédit encore disponible.
-     */
-        $creditDisponible =
-            max(
-                0,
-                $plafondCredit
-                    -
-                    $encours
-            );
-
-
-        /*
-     * Montant éventuel de dépassement.
-     */
-        $depassementCredit =
-            max(
-                0,
-                $encours
-                    -
-                    $plafondCredit
-            );
-
-
-        /*
-     * Pourcentage d'utilisation.
-     */
-        $pourcentageCredit =
-            $plafondCredit > 0
-            ? min(
-                100,
-                (int) round(
-                    (
-                        $encours
-                        /
-                        $plafondCredit
-                    )
-                        * 100
-                )
-            )
-            : 0;
-
-
-        /*
-     * ============================================================
-     * DEVIS : STATISTIQUES
-     * ============================================================
-     */
-
-        $totalDevis = 0;
-
-        foreach ($devis as $unDevis) {
-            $totalDevis +=
-                (int) $unDevis->getTotalTtc();
-        }
-
-
-        /*
-     * ============================================================
-     * ENVOI AU TWIG
-     * ============================================================
-     */
-
-        return $this->render(
-            'clients/show.html.twig',
-            [
-                'client' =>
-                $client,
-
-                'commandes' =>
-                $commandesAvecPaiements,
-
-                'devis' =>
-                $devis,
-
-                'paiements' =>
-                $paiements,
-
-                'statistiques' => [
-                    'nombreCommandes' =>
-                    $nombreCommandes,
-
-                    'nombreDevis' =>
-                    $nombreDevis,
-
-                    'nombrePaiements' =>
-                    $nombrePaiements,
-
-                    'totalCommandes' =>
-                    $totalCommandes,
-
-                    'totalDevis' =>
-                    $totalDevis,
-
-                    'totalPaye' =>
-                    $totalPaye,
-
-                    'resteAPayer' =>
-                    $resteAPayer,
-
-                    'encours' =>
-                    $encours,
-                ],
-
-                'credit' => [
-                    'plafond' =>
-                    $plafondCredit,
-
-                    'encours' =>
-                    $encours,
-
-                    'disponible' =>
-                    $creditDisponible,
-
-                    'depassement' =>
-                    $depassementCredit,
-
-                    'pourcentage' =>
-                    $pourcentageCredit,
-                ],
-            ]
-        );
+    public function show(string $publicId): Response
+    {
+        return $this->redirect($this->generateUrl('app_clients_show', ['publicId' => $publicId]).'#factures', Response::HTTP_MOVED_PERMANENTLY);
     }
-
     #[Route(
         '/fiche/{publicId}/impayes.pdf',
         name: 'app_clients_pdf_impayes',

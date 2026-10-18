@@ -62,6 +62,8 @@ final class EditionClient
         'acompte' => ['Acompte à la commande', 'conditions'],
         'sansAcompte' => ['Dispensé d\'acompte', 'conditions'],
         'moyenPrefere' => ['Moyen préféré', 'conditions'],
+        'facturesCanaux' => ['Envoi des factures', 'conditions'],
+        'charte' => ['Charte du client', 'identite'],
     ];
 
     public function __construct(
@@ -117,6 +119,9 @@ final class EditionClient
             'acompte' => $c->getAcompte(),
             'sansAcompte' => $c->isSansAcompte(),
             'moyen' => $c->getMoyenPrefere(),
+            'facturesCanaux' => $c->getFacturesCanaux(),
+            'charteCouleurs' => implode(' ', $c->getCharteCouleurs()),
+            'charteTexte' => $c->getCharteTexte(),
             'origine' => $c->getOrigine(),
             'suivi' => $c->getSuiviPar()?->getId(),
             'marketing' => $c->isAccepteMarketing(),
@@ -224,6 +229,16 @@ final class EditionClient
             } else {
                 $c->setAcompte($acompte);
             }
+        }
+        // Envoi des factures et charte (fiche client FC01, FC03) : sans seuil de la direction.
+        if ($a('facturesCanaux')) {
+            $c->setFacturesCanaux(array_map('strval', (array) $d['facturesCanaux']));
+        }
+        if ($a('charteCouleurs')) {
+            $c->setCharteCouleurs(preg_split('/[\s,;]+/', (string) $d['charteCouleurs'], -1, \PREG_SPLIT_NO_EMPTY) ?: []);
+        }
+        if ($a('charteTexte')) {
+            $c->setCharteTexte($texte('charteTexte'));
         }
         // Dispensé d'acompte (docs/clients.md) : la case se change par la direction ; sinon, demande à la direction.
         if ($a('sansAcompte')) {
@@ -446,6 +461,8 @@ final class EditionClient
             'acompte' => null !== $c->getAcompte() ? $c->getAcompte().' %' : null,
             'sansAcompte' => $c->isSansAcompte() ? 'Oui' : 'Non',
             'moyenPrefere' => $c->getMoyenPrefereLabel(),
+            'facturesCanaux' => $c->getFacturesCanauxLabel(),
+            'charte' => [] !== $c->getCharteCouleurs() || null !== $c->getCharteTexte() ? trim(implode(' ', $c->getCharteCouleurs()).' '.($c->getCharteTexte() ?? '')) : null,
         ];
     }
 

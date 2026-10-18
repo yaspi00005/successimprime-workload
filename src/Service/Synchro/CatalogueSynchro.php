@@ -100,8 +100,8 @@ final class CatalogueSynchro
      * les autres champs et les autres tuiles ne quittent jamais le local.
      */
     public const REGLAGES_PUBLICS = [
-        // Délais et majoration express : la nouvelle commande en ligne les montre et les applique.
-        'espace_client' => ['code_sms', 'commande_en_ligne', 'paiement_en_ligne', 'delai_standard', 'express', 'delai_express', 'majoration_express', 'heure_limite'],
+        // Délais et majoration express : la nouvelle commande en ligne les montre et les applique ; corrections de BAT gratuites : suivi du BAT.
+        'espace_client' => ['code_sms', 'commande_en_ligne', 'paiement_en_ligne', 'delai_standard', 'express', 'delai_express', 'majoration_express', 'heure_limite', 'corrections_bat_gratuites'],
         // Taux des frais Orange Money (tenus dans ParametresPaiement) : le paiement de l'espace client les applique.
         // Moyens acceptés, acompte par défaut, seuil et coordonnées du virement : « Factures et paiements » et choix « Acompte » de la commande en ligne.
         'paiements' => ['orange_money', 'tauxFondsSoutien', 'tauxFraisRetrait', 'especes', 'virement', 'virement_seuil', 'acompte', 'virement_coordonnees'],
@@ -368,11 +368,12 @@ final class CatalogueSynchro
             'controle' => [
                 'classe' => ControlePrePresse::class, 'sens' => self::DESCENDANT, 'libelle' => 'BAT', 'titre' => ['statut'],
                 // Seul l'état du BAT part : les contrôles, anomalies et noms de l'atelier restent au local.
-                'champs' => ['statut', 'batNecessaire', 'batValide', 'correctionNecessaire', 'creeLe', 'valideLe'],
+                // controleLe : « Fichier contrôlé » dans le suivi de la commande (docs/espace-client.md).
+                'champs' => ['statut', 'batNecessaire', 'batValide', 'correctionNecessaire', 'creeLe', 'controleLe', 'valideLe'],
                 'relations' => ['commandeDetail' => 'commande_ligne'], 'listes' => ['fichiers' => 'fichier'],
                 'enfants' => ['conception' => [
                     'classe' => Conception::class, 'parent' => 'controle',
-                    // Ni graphiste, ni temps, ni erreurs, ni points.
+                    // Ni temps, ni erreurs, ni points ; du graphiste, seuls le prénom et le métier, dans l'historique public.
                     'champs' => ['creeLe', 'versions', 'premierBatLe', 'dernierBatLe', 'valideLe', 'evenements'],
                     'relations' => [],
                     'filtres' => ['evenements' => [Conception::class, 'evenementsPublics']],

@@ -583,7 +583,9 @@ final class Synchro
             return [self::RESULTAT_CONFLIT, 'Le BAT n\'attendait plus le client au local : état du local gardé', $titre];
         }
         if ($action === EspaceClient::ACTION_BAT_VALIDE) {
-            ($this->espaceClient)()->validerBat($controle, mb_substr((string) ($donnees['nom'] ?? 'client'), 0, 80), $le);
+            // Les points cochés par le client avant de valider (texte seulement), gardés avec la validation.
+            $verifications = array_values(array_filter(\is_array($donnees['verifications'] ?? null) ? $donnees['verifications'] : [], 'is_string'));
+            ($this->espaceClient)()->validerBat($controle, mb_substr((string) ($donnees['nom'] ?? 'client'), 0, 80), $le, $verifications);
             $message = 'BAT validé par le client en ligne';
         } else {
             $espace = ($this->espaceClient)();

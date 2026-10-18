@@ -344,6 +344,8 @@ final class CatalogueParametres
                 'famille' => 'clients', 'libelle' => 'Espace client', 'icone' => 'fa-globe-africa',
                 'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => null,
                 'champs' => [
+                    // Suivi de commande (docs/espace-client.md) : au-delà, la demande part avec « peut être facturée ».
+                    ['cle' => 'corrections_bat_gratuites', 'type' => 'nombre', 'libelle' => 'Corrections de BAT gratuites', 'aide' => 'Par BAT. Au-delà, le client peut encore demander une correction : la page le prévient qu\'elle peut être facturée, l\'atelier fixe le prix.', 'suffixe' => 'corrections', 'min' => 0, 'max' => 10, 'defaut' => 2],
                     ['cle' => 'code_sms', 'type' => 'interrupteur', 'libelle' => 'Code de première connexion et de mot de passe oublié', 'aide' => 'Par e-mail, ou par SMS sans adresse. Coupé, le client demande son accès à la boutique ; la création de compte vérifie toujours par code.', 'defaut' => true],
                     ['cle' => 'commande_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Commande en ligne', 'defaut' => true],
                     ['cle' => 'paiement_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Paiement Orange Money en ligne', 'defaut' => false],
@@ -355,7 +357,7 @@ final class CatalogueParametres
                     ['cle' => 'majoration_express', 'type' => 'nombre', 'libelle' => 'Majoration express', 'aide' => 'Ajoutée en ligne « Express » sur la commande, sur le prix des produits.', 'suffixe' => '%', 'min' => 0, 'max' => 200, 'defaut' => DelaisCommande::MAJORATION_DEFAUT],
                     ['cle' => 'heure_limite', 'type' => 'heure', 'libelle' => 'BAT validé avant', 'aide' => 'Le délai part le jour même ; après, le jour ouvré suivant.', 'defaut' => DelaisCommande::HEURE_LIMITE_DEFAUT],
                 ],
-                'motsCles' => ['Connexion par code e-mail ou SMS', 'Mot de passe oublié', 'Commande en ligne du client', 'Paiement Orange Money en ligne', 'Délai standard · express 24 h', 'WhatsApp · mot de passe'],
+                'motsCles' => ['Connexion par code e-mail ou SMS', 'Mot de passe oublié', 'Commande en ligne du client', 'Paiement Orange Money en ligne', 'Délai standard · express 24 h', 'WhatsApp · mot de passe', 'Corrections de BAT gratuites'],
                 'note' => 'La connexion par code est appliquée. La commande et le paiement en ligne le seront avec l\'espace client complet (jalon J5).',
             ],
             // Programme de points (docs/fidelite.md), règles de Yaya du 13/10/2026.

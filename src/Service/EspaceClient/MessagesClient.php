@@ -14,7 +14,8 @@ use Doctrine\ORM\EntityManagerInterface;
  * modèle des réclamations : le client écrit dans son espace en ligne, le
  * message monte au local par la synchronisation ; l'équipe (droit Clients)
  * répond depuis Clients › Messages, la réponse redescend et le client en
- * est prévenu (NotificationsClient, sans montant). Texte seulement.
+ * est prévenu (NotificationsClient, sans montant). Texte seulement. Un
+ * message peut porter une commande : la page de la commande montre ce fil.
  */
 final class MessagesClient
 {
@@ -26,13 +27,16 @@ final class MessagesClient
     }
 
     /**
-     * Le fil du client, le plus ancien d'abord.
+     * Le fil du client, le plus ancien d'abord ; avec une commande, les
+     * seuls messages de cette commande (« Messages de la commande »).
      *
      * @return list<MessageClient>
      */
-    public function fil(Clients $client): array
+    public function fil(Clients $client, ?Commandes $commande = null): array
     {
-        return array_reverse($this->em->getRepository(MessageClient::class)->findBy(['client' => $client], ['creeLe' => 'DESC', 'id' => 'DESC'], self::FIL_MAX));
+        $critere = ['client' => $client] + (null !== $commande ? ['commande' => $commande] : []);
+
+        return array_reverse($this->em->getRepository(MessageClient::class)->findBy($critere, ['creeLe' => 'DESC', 'id' => 'DESC'], self::FIL_MAX));
     }
 
     /**
@@ -57,7 +61,9 @@ final class MessagesClient
      */
     public function repondre(Clients $client, string $texte, User $par, ?Commandes $commande, \DateTimeImmutable $maintenant): MessageClient
     {
-        $message = MessageClient::nouveau($client, MessageClient::ATELIER, self::verifier($texte), 'Succès Imprim', $commande, $maintenant);
+        // Le client voit le prénom et le métier de qui répond (« Seydou (graphiste PAO) »), jamais plus.
+        $auteur = $par->getEmploye()?->getNomPublic() ?? MessageClient::NOM_ATELIER;
+        $message = MessageClient::nouveau($client, MessageClient::ATELIER, self::verifier($texte), $auteur, $commande, $maintenant);
         $message->setEcritPar($par);
         $this->em->persist($message);
         $this->marquerTraites($client, $maintenant);

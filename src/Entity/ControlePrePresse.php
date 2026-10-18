@@ -467,6 +467,18 @@ private bool $prePresseNecessaire = true;
         return $this->batValide;
     }
 
+    /**
+     * Le fichier du client a été contrôlé : le contrôle est terminé (BAT
+     * envoyé, correction, validé, rejeté…), pas seulement commencé
+     * (« en cours » avant le BAT). controleLe : début du contrôle. Sert au
+     * suivi de la commande dans l'espace client (« Fichier contrôlé »).
+     */
+    public function isFichierControle(): bool
+    {
+        return null !== $this->controleLe
+            && (!\in_array($this->statut, [self::STATUT_A_CONTROLER, self::STATUT_EN_COURS], true) || $this->batValide);
+    }
+
     public function setBatValide(bool $valeur): static
     {
         if ($valeur && !$this->batNecessaire) {

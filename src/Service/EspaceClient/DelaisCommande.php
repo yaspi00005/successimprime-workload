@@ -39,7 +39,7 @@ final class DelaisCommande
     /**
      * Réglages en vigueur.
      *
-     * @return array{standard: int, express: bool, delaiExpress: int, majoration: int, limite: string}
+     * @return array{standard: int, express: bool, delaiExpress: int, majoration: int, limite: string, corrections: int}
      */
     public function reglages(): array
     {
@@ -52,6 +52,8 @@ final class DelaisCommande
             'delaiExpress' => max(1, (int) $v('delai_express', self::EXPRESS_DEFAUT)),
             'majoration' => max(0, (int) $v('majoration_express', self::MAJORATION_DEFAUT)),
             'limite' => 1 === preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $limite) ? $limite : self::HEURE_LIMITE_DEFAUT,
+            // Corrections de BAT gratuites (même réglage que le suivi du BAT, EspaceClient::correctionsBat).
+            'corrections' => max(0, (int) $v('corrections_bat_gratuites', 2)),
         ];
     }
 

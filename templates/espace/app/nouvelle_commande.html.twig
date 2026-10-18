@@ -326,7 +326,7 @@
 					<div class="co-bas">
 						<div class="ec-carte co-apres">
 							<b>Après la commande</b>
-							<span class="ec-petit">Un graphiste vérifie le fichier et vous envoie un <b>BAT</b> (bon à tirer). Rien n'est imprimé avant votre validation. 2 corrections gratuites.</span>
+							<span class="ec-petit">Un graphiste vérifie le fichier et vous envoie un <b>BAT</b> (bon à tirer). Rien n'est imprimé avant votre validation.{% if reglages.corrections > 0 %} {{ reglages.corrections }} correction{{ reglages.corrections > 1 ? 's gratuites' : ' gratuite' }}.{% endif %}</span>
 						</div>
 						<div class="co-boutons">
 							<button type="button" class="ec-bouton-blanc" data-co-aller="2">‹ Retour</button>

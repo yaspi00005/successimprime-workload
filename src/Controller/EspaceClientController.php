@@ -6,6 +6,7 @@ use App\Entity\CommandesDetails;
 use App\Entity\CompteClient;
 use App\Entity\Devis;
 use App\Entity\Factures;
+use App\Entity\MessageClient;
 use App\Entity\TransactionOrangeMoney;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
@@ -14,10 +15,13 @@ use App\Service\EspaceClient\AppareilsClient;
 use App\Service\EspaceClient\CoqueEspace;
 use App\Service\EspaceClient\MonCompte;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\EspaceClient\FacturesClient;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\FilNotifications;
+use App\Service\EspaceClient\MessagesClient;
 use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\RecommanderClient;
+use App\Service\EspaceClient\SuiviCommandeClient;
 use App\Service\EspaceClient\SuiviSansCompte;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
@@ -260,8 +264,14 @@ final class EspaceClientController extends AbstractController
         ]);
     }
 
+    /**
+     * Page d'une commande (maquettes CO05 et CO06) : « Où en est ma
+     * commande ? » étape par étape, le BAT à valider avec ses points à
+     * vérifier, le résumé (montants selon les droits) et les messages de
+     * la commande. Le BAT se valide sur la route app_espace_bat.
+     */
     #[Route('/commandes/{id}', name: 'commande', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET'])]
-    public function commande(string $id, EspaceClient $espace): Response
+    public function commande(string $id, EspaceClient $espace, SuiviCommandeClient $suivi, MessagesClient $messages, FacturesClient $factures): Response
     {
         $compte = $this->compte();
         $client = $compte->getClient();
@@ -271,9 +281,15 @@ final class EspaceClientController extends AbstractController
             'onglet' => 'commandes',
             'carte' => $espace->carte($commande),
             'peutValider' => $commande->attendValidationEntreprise() && $compte->peut(CompteClient::DROIT_VALIDEUR) && CompteClient::clientAPlusieursComptes($client),
-            'lignes' => array_values(array_filter($commande->getCommandesDetails()->toArray(), static fn (CommandesDetails $l): bool => CommandesDetails::PRODUCTION_ANNULEE !== $l->getStatutProduction())),
-            'livraison' => $espace->livraison($commande),
-            'bats' => array_values(array_filter($espace->bats($client, true), static fn ($ctl): bool => $ctl->getCommandeDetail()->getCommande() === $commande)),
+            // Les lignes du client : pas une ligne annulée, ni une ligne libre sans production (supplément, frais).
+            'lignes' => array_values(array_filter($commande->getCommandesDetails()->toArray(), static fn (CommandesDetails $l): bool => CommandesDetails::PRODUCTION_ANNULEE !== $l->getStatutProduction()
+                && !(CommandesDetails::TYPE_LIBRE === $l->getTypeLigne() && CommandesDetails::PRODUCTION_NON_REQUISE === $l->getStatutProduction()))),
+            'suivi' => $suivi->suivi($commande, $compte, new \DateTimeImmutable()),
+            // Messages de la commande : comme la page Messages, pas pour un compte Lecture · suivi.
+            'messages' => $compte->estLectureSeule() ? [] : $messages->fil($client, $commande),
+            'maxMessage' => MessageClient::TEXTE_MAX,
+            // « Facture et reçus » : la facture de la commande (maquette FP02), pour qui voit les factures.
+            'facture' => EspaceFacturesController::peutVoirLesFactures($compte) ? ($factures->facturesParCommande($client)[$commande->getId()] ?? null) : null,
             'whatsapp' => $this->whatsapp(\sprintf('Bonjour, je vous écris au sujet de ma commande %s.', $commande->getNumero())),
         ]);
     }
@@ -416,12 +432,24 @@ final class EspaceClientController extends AbstractController
         return $this->redirectToRoute('app_espace_fichiers');
     }
 
+    /**
+     * Un BAT (maquette CO05, carte de droite) : la même carte que sur la
+     * page de la commande. Valider demande d'avoir coché chaque point de
+     * « Avant de valider, vérifiez » (vérifié ici aussi) ; les points cochés
+     * restent avec la validation. Tout le monde sauf un compte Lecture ·
+     * suivi valide ou demande une correction (DroitsEspace refuse ses envois).
+     */
     #[Route('/bat/{id}', name: 'bat', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    public function bat(int $id, Request $request, EspaceClient $espace): Response
+    public function bat(int $id, Request $request, EspaceClient $espace, SuiviCommandeClient $suivi): Response
     {
         $compte = $this->compte();
         $controle = $espace->bat($compte->getClient(), $id) ?? throw $this->createNotFoundException();
         $attente = \App\Entity\ControlePrePresse::STATUT_EN_ATTENTE_BAT === $controle->getStatut();
+        $commande = $controle->getCommandeDetail()->getCommande();
+        // Envoyé depuis la page de la commande : on y revient, sur la carte du BAT.
+        $retour = 'commande' === $request->request->get('retour')
+            ? $this->redirect($this->generateUrl('app_espace_commande', ['id' => (string) $commande->getPublicId()]).'#bat-'.$controle->getId())
+            : null;
         if ($request->isMethod('POST')) {
             $this->jeton($request);
             $texte = trim((string) $request->request->get('texte'));
@@ -429,33 +457,34 @@ final class EspaceClientController extends AbstractController
             if (!$attente) {
                 $this->addFlash('error', 'Ce BAT n\'attend plus votre réponse.');
             } elseif ('valider' === $request->request->get('action')) {
-                $espace->validerBat($controle, $this->nom($compte), new \DateTimeImmutable());
-                $this->addFlash('succes', 'BAT validé, merci. Votre accord est enregistré avec la date et l\'heure ; l\'atelier lance l\'impression.');
+                $verifications = EspaceClient::verificationsCochees($controle->getCommandeDetail(), $request->request->all()['verifications'] ?? []);
+                if (null === $verifications) {
+                    $this->addFlash('error', 'Cochez chaque point de « Avant de valider, vérifiez » : après validation, l\'impression part telle quelle.');
+                } else {
+                    // La personne qui valide (Awa d'une entreprise), pas seulement le titulaire de la fiche.
+                    $espace->validerBat($controle, $compte->getNomAffiche(), new \DateTimeImmutable(), $verifications);
+                    $this->addFlash('succes', 'BAT validé, merci. Votre accord est enregistré avec la date et l\'heure ; l\'atelier lance l\'impression.');
 
-                return $this->redirectToRoute('app_espace_commande', ['id' => (string) $controle->getCommandeDetail()->getCommande()->getPublicId()]);
+                    return $this->redirect($this->generateUrl('app_espace_commande', ['id' => (string) $commande->getPublicId()]).'#bat-'.$controle->getId());
+                }
             } elseif ('' === $texte && [] === $reperes) {
-                $this->addFlash('error', 'Dites-nous ce qu\'il faut modifier, ou touchez l\'image à l\'endroit à changer.');
+                $this->addFlash('error', 'Dites-nous ce qu\'il faut corriger, ou touchez l\'image à l\'endroit à changer.');
             } else {
+                $payante = 0 === $espace->correctionsBat($controle)['restantes'];
                 $espace->modifierBat($controle, $texte, new \DateTimeImmutable(), $reperes);
-                $this->addFlash('succes', 'Demande envoyée à l\'atelier. Vous recevrez une nouvelle version du BAT.');
+                $this->addFlash('succes', 'Demande envoyée à l\'atelier. Vous recevrez une nouvelle version du BAT.'.($payante ? ' Cette correction peut être facturée : l\'atelier vous le dira avant.' : ''));
 
-                return $this->redirectToRoute('app_espace_fichiers');
+                return $retour ?? $this->redirectToRoute('app_espace_fichiers');
+            }
+            if (null !== $retour) {
+                return $retour;
             }
         }
-        $conception = $espace->conception($controle);
 
         return $this->vue('espace/app/bat.html.twig', [
             'onglet' => 'fichiers',
-            'controle' => $controle,
-            'ligne' => $controle->getCommandeDetail(),
-            'titre' => EspaceClient::titreLigne($controle->getCommandeDetail()),
-            'fichiers' => $espace->fichiersBat($controle),
-            'conception' => $conception,
-            'frise' => self::frise($conception),
-            'attente' => $attente,
-            // Rang de chaque image du BAT : les repères s'y rapportent.
-            'rangs' => array_flip(array_map(static fn ($f): int => (int) $f->getId(), $espace->imagesBat($controle))),
-            'reperes' => $conception?->derniersReperes(),
+            'b' => $suivi->carteBat($controle),
+            'commande' => $commande,
         ]);
     }
 
@@ -725,27 +754,6 @@ final class EspaceClientController extends AbstractController
         throw new \LogicException('Interceptée par le pare-feu de l\'espace client.');
     }
 
-    /**
-     * Frise du BAT montrée au client : versions envoyées, ses demandes (ses
-     * propres mots), validation. Rien de la vie interne de l'atelier.
-     *
-     * @return list<array{le: \DateTimeImmutable, titre: string, detail: ?string, reperes?: list<string>}>
-     */
-    private static function frise(?\App\Entity\Conception $c): array
-    {
-        $frise = [];
-        foreach ($c?->getEvenements() ?? [] as $e) {
-            $frise[] = match ($e['type']) {
-                'bat' => ['le' => $e['le'], 'titre' => $e['titre'], 'detail' => null],
-                'retour' => ['le' => $e['le'], 'titre' => 'Votre demande de modification', 'detail' => preg_match('/« (.+?) »/u', (string) $e['detail'], $m) ? $m[1] : null, 'reperes' => array_column($e['reperes'] ?? [], 't')],
-                'valide' => ['le' => $e['le'], 'titre' => 'BAT validé', 'detail' => null],
-                default => null,
-            };
-        }
-
-        return array_reverse(array_values(array_filter($frise)));
-    }
-
     /** @param array<string, mixed> $parametres */
     private function vue(string $gabarit, array $parametres): Response
     {
@@ -790,13 +798,6 @@ final class EspaceClientController extends AbstractController
         $texte = str_replace([' ', ','], ['', '.'], trim((string) $valeur));
 
         return is_numeric($texte) && (float) $texte > 0 ? (float) $texte : null;
-    }
-
-    private function nom(CompteClient $compte): string
-    {
-        $c = $compte->getClient();
-
-        return trim(($c->getPrenom() ?? '').' '.($c->getNom() ?? '')) ?: (string) $c->getRaisonSociale();
     }
 
     /** Lien WhatsApp vers l'atelier (numéro de la tuile Entreprise), ou null. */

@@ -1,0 +1,7 @@
+{#
+	Qui répond pour l'atelier dans les messages de l'espace client : un
+	disque à l'initiale du prénom, d'une teinte fixe pour ce prénom ; le
+	bleu de la marque et « SI » pour Succès Imprim. Jamais de photo ni de
+	nom de famille côté client (MessageClient::signatureDe).
+#}
+{% macro disque(s) %}<span class="ec-avatar ec-agent{{ s.teinte is not null ? ' t' ~ s.teinte }}" aria-hidden="true">{{ s.initiales }}</span>{% endmacro %}

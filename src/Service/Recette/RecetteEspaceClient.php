@@ -7,6 +7,7 @@ use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
 use App\Entity\CompteClient;
+use App\Entity\ControlePrePresse;
 use App\Entity\CreationAtelier;
 use App\Entity\DemandeConception;
 use App\Entity\Devis;
@@ -43,6 +44,8 @@ use Symfony\Component\Uid\AbstractUid;
  *    rien du tout pour un demandeur ni un compte en lecture seule, ni dans
  *    les pages, ni dans leurs données JSON, ni dans les appels de prix ;
  *    accepter un devis seulement pour un valideur ;
+ *  - valider un BAT demande chaque point de « Avant de valider, vérifiez »
+ *    (vérifié par le serveur) ; un compte en lecture seule ne valide pas ;
  *  - les fiches d'un autre client (commande, facture, fichier, BAT, photo
  *    de réclamation, conception, notification, utilisateur, adresse…)
  *    demandées par leur numéro dans l'adresse ou glissées dans un envoi
@@ -146,6 +149,8 @@ final class RecetteEspaceClient
             }
             $suivi && $suivi('espace client : droits du compte entreprise');
             $this->verifierDroitsEntreprise($comptes, $sessions, $fiches, $bilan);
+            $suivi && $suivi('espace client : validation d\'un BAT');
+            $this->verifierBat($comptes, $sessions, $fiches, $bilan);
             $suivi && $suivi('espace client : appels de prix sans montant');
             $this->verifierAppelsSansMontant($comptes, $sessions, $fiches, $bilan);
             $suivi && $suivi('espace client : accès suspendu par la boutique');
@@ -253,6 +258,7 @@ final class RecetteEspaceClient
         $envoye = array_values(array_filter($devis, static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut()));
         $factures = $this->espace->factures($client);
         $bats = $this->espace->bats($client);
+        $batsEnAttente = $this->espace->bats($client, true);
         $fichiersBat = [] === $bats ? [] : $this->espace->fichiersBat($bats[0]);
         $notifications = $this->fil->pour($compte, new \DateTimeImmutable());
         $aValider = array_values(array_filter($commandes, static fn (Commandes $c): bool => $c->attendValidationEntreprise()));
@@ -268,6 +274,7 @@ final class RecetteEspaceClient
             'reglement' => $this->premiere(ReglementEnLigne::class, $client, '1 = 1', 'reference'),
             'fichier' => $this->premiere(CommandeDetailFichier::class, $client, 'e.actif = true'),
             'bat' => [] === $bats ? null : $bats[0]->getId(),
+            'bat_attente' => [] === $batsEnAttente ? null : $batsEnAttente[0]->getId(),
             'bat_fichier' => [] === $fichiersBat ? null : $fichiersBat[0]->getId(),
             'conception' => $this->premiere(DemandeConception::class, $client, '1 = 1', 'publicId'),
             'image' => $this->premiere(ImageIa::class, $client),
@@ -652,6 +659,44 @@ final class RecetteEspaceClient
                 }
             }
             $bilan->controler('Espace client : envois d\'un compte Lecture · suivi', $refus === $essais, \sprintf('%d sur %d conformes', $refus, $essais));
+        }
+    }
+
+    /**
+     * BAT à valider (maquette CO05) : valider sans avoir coché chaque point
+     * de « Avant de valider, vérifiez » est refusé par le serveur (le
+     * bouton grisé ne suffit pas) ; un compte Lecture · suivi ne valide pas,
+     * même tout coché. Le BAT doit attendre toujours le client. Tout est
+     * annulé à la fin de la recette (transaction).
+     *
+     * @param array<string, CompteClient>                     $comptes
+     * @param array<string, MockArraySessionStorage>          $sessions
+     * @param array<string, array<string, string|int|null>>   $fiches
+     */
+    private function verifierBat(array $comptes, array $sessions, array $fiches, BilanRecette $bilan): void
+    {
+        $tout = array_keys(EspaceClient::verificationsBat(null));
+        $essais = [
+            // Le BAT en attente du compte entreprise de démonstration (Salon Espoir, CMD-D00768).
+            'titulaire' => [\array_slice($tout, 0, 3), 'valide un BAT sans cocher chaque point de « Avant de valider, vérifiez »'],
+            'valideur' => [[], 'valide un BAT sans rien cocher'],
+            'lecture' => [$tout, '(lecture seule) valide un BAT, tout coché'],
+        ];
+        foreach ($essais as $libelle => [$cochees, $quoi]) {
+            $bat = $fiches[$libelle]['bat_attente'] ?? null;
+            if (!isset($comptes[$libelle], $sessions[$libelle]) || null === $bat) {
+                $bilan->controler('Espace client : '.$libelle.' '.$quoi, false, 'pas de BAT en attente à essayer');
+                continue;
+            }
+            $jeton = $this->jeton($sessions[$libelle]) ?? $this->jeton($sessions['titulaire'] ?? $sessions[$libelle]);
+            $chemin = $this->routeur->generate('app_espace_bat', ['id' => $bat]);
+            $reponse = $this->navigateur->post($chemin, ['_token' => (string) $jeton, 'action' => 'valider', 'verifications' => $cochees, 'retour' => 'commande'], $sessions[$libelle]);
+            $this->em->clear();
+            $ok = ControlePrePresse::STATUT_EN_ATTENTE_BAT === $this->em->find(ControlePrePresse::class, $bat)?->getStatut();
+            $bilan->controler('Espace client : '.$libelle.' '.$quoi, $ok, $chemin.' → '.$reponse->etat());
+            if (!$ok) {
+                $bilan->constater(BilanRecette::FUITE, 'bat', 'app_espace_bat', $chemin, $libelle, 'BAT validé : '.$quoi);
+            }
         }
     }
 

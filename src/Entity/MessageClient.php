@@ -25,6 +25,12 @@ class MessageClient
     /** Longueur d'un message. */
     public const TEXTE_MAX = 1000;
 
+    /** Signature d'une réponse de l'atelier quand l'employé n'a pas de prénom (et des anciennes réponses). */
+    public const NOM_ATELIER = 'Succès Imprim';
+
+    /** Nombre de teintes du disque à l'initiale (classes t0 à t8 de l'espace client, palette de l'équipe). */
+    public const TEINTES = 9;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -42,7 +48,7 @@ class MessageClient
     #[ORM\Column(length: 10)]
     private string $sens = self::CLIENT;
 
-    /** Personne du compte qui l'a écrit ; « Succès Imprim » pour l'atelier. */
+    /** Personne du compte qui l'a écrit ; pour l'atelier, le prénom et le métier de l'employé ou « Succès Imprim ». */
     #[ORM\Column(length: 80, nullable: true)]
     private ?string $auteur = null;
 
@@ -98,6 +104,52 @@ class MessageClient
         $this->ecritPar = $u;
 
         return $this;
+    }
+
+    /**
+     * Qui a écrit pour l'atelier, tel que le client le voit : le prénom, le
+     * métier (« Seydou · graphiste PAO ») et un disque à l'initiale du
+     * prénom. Tiré du seul auteur enregistré à la réponse (prénom et métier,
+     * jamais le nom de famille), qui redescend en ligne. Pas de photo : la
+     * fiche employé n'a pas d'accord pour montrer la photo aux clients.
+     * Null pour un message du client.
+     *
+     * @return array{nom: string, metier: ?string, initiales: string, teinte: ?int}|null
+     */
+    public function getSignature(): ?array
+    {
+        return $this->estDeLAtelier() ? self::signatureDe($this->auteur) : null;
+    }
+
+    /**
+     * « Seydou (graphiste PAO) » donne Seydou, graphiste PAO, « S » et une
+     * teinte fixe pour ce prénom ; rien ou « Succès Imprim » donne la
+     * signature de la boutique (« SI », teinte null : le bleu de la marque).
+     *
+     * @return array{nom: string, metier: ?string, initiales: string, teinte: ?int}
+     */
+    public static function signatureDe(?string $auteur): array
+    {
+        $auteur = trim((string) preg_replace('/\s+/u', ' ', (string) $auteur));
+        if ('' === $auteur || mb_strtolower($auteur) === mb_strtolower(self::NOM_ATELIER)) {
+            return ['nom' => self::NOM_ATELIER, 'metier' => null, 'initiales' => 'SI', 'teinte' => null];
+        }
+        $metier = null;
+        $nom = $auteur;
+        // La parenthèse fermante peut manquer : l'auteur est coupé à 80 caractères.
+        if (1 === preg_match('/^(.+?)\s*\((.+?)\)?$/u', $auteur, $m)) {
+            $nom = trim($m[1]);
+            $metier = trim($m[2]);
+        }
+        // Prénom composé (« Mame Diarra », « Jean-Marc ») : deux initiales au plus, du prénom seulement.
+        $initiales = '';
+        foreach (preg_split('/[\s\-]+/u', $nom, -1, \PREG_SPLIT_NO_EMPTY) ?: [] as $mot) {
+            if (1 === preg_match('/^\p{L}/u', $mot) && mb_strlen($initiales) < 2) {
+                $initiales .= mb_strtoupper(mb_substr($mot, 0, 1));
+            }
+        }
+
+        return ['nom' => $nom, 'metier' => $metier, 'initiales' => '' !== $initiales ? $initiales : '?', 'teinte' => crc32(mb_strtolower($nom)) % self::TEINTES];
     }
 
     public function getId(): ?int { return $this->id; }

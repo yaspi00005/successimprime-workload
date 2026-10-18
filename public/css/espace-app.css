@@ -656,6 +656,13 @@ a.ec-carte.ec-pc-entree { display: flex; align-items: center; gap: .85rem; }
 .ec-bulle.client { align-self: flex-end; background: var(--bleu); color: #fff; border-bottom-right-radius: 4px; }
 .ec-bulle.client .ec-bulle-tete, .ec-bulle.client .ec-bulle-tete a { color: rgba(255,255,255,.8); }
 .ec-bulle.atelier { align-self: flex-start; background: var(--fond); border-bottom-left-radius: 4px; }
+/* Qui répond pour l'atelier : disque à l'initiale du prénom (jamais de photo côté client), teinte fixe par prénom. */
+.ec-agent-tete { display: flex; align-items: center; gap: .45rem; margin-bottom: .1rem; }
+.ec-agent-tete b { color: var(--encre); }
+.ec-avatar.ec-agent { width: 1.6rem; height: 1.6rem; font-size: .66rem; font-weight: 800; line-height: 1; }
+.ec-agent.t0 { background: #B91C1C; } .ec-agent.t1 { background: #C2410C; } .ec-agent.t2 { background: #BE185D; }
+.ec-agent.t3 { background: #1F2937; } .ec-agent.t4 { background: #A16207; } .ec-agent.t5 { background: #0E7C66; }
+.ec-agent.t6 { background: #7C2D12; } .ec-agent.t7 { background: #4B5563; } .ec-agent.t8 { background: #6D28D9; }
 
 /* ---------- Recherche ---------- */
 .ec-recherche-page { display: flex; gap: .6rem; align-items: center; }

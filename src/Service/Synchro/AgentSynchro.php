@@ -103,6 +103,20 @@ final class AgentSynchro
                     // Les autres fichiers et les fiches passent quand même ; celui-ci sera redemandé plus tard.
                     $this->synchro->noterEchange(SynchroEchange::VERS_LOCAL, 'fichier', \sprintf('%d fichier%s de client introuvable%s sur le site', \count($recus['absents']), \count($recus['absents']) > 1 ? 's' : '', \count($recus['absents']) > 1 ? 's' : ''), SynchroEchange::ERREUR, mb_substr(implode(', ', $recus['absents']), 0, 900));
                 }
+                // Notes vocales de la messagerie : celles de l'atelier au client partent, celles des clients arrivent.
+                $vocales = $this->fichiers->envoyerVocales(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets']));
+                $vocalesRecues = $this->fichiers->recupererVocales(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets'] - $vocales['octets']));
+                if ($vocales['envoyes'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, 'message_client', \sprintf('%d note%s vocale%s', $vocales['envoyes'], $vocales['envoyes'] > 1 ? 's' : '', $vocales['envoyes'] > 1 ? 's' : ''), SynchroEchange::OK);
+                }
+                if ($vocalesRecues['recus'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_LOCAL, 'message_client', \sprintf('%d note%s vocale%s de client', $vocalesRecues['recus'], $vocalesRecues['recus'] > 1 ? 's' : '', $vocalesRecues['recus'] > 1 ? 's' : ''), SynchroEchange::OK);
+                }
+                if ($vocalesRecues['absents'] !== []) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_LOCAL, 'message_client', \sprintf('%d note%s vocale%s de client introuvable%s ou refusée%s', \count($vocalesRecues['absents']), ...array_fill(0, 4, \count($vocalesRecues['absents']) > 1 ? 's' : '')), SynchroEchange::ERREUR, mb_substr(implode(', ', $vocalesRecues['absents']), 0, 900));
+                }
+                $bilan['octets'] += $vocales['octets'];
+                $recus['octets'] += $vocalesRecues['octets'];
                 // Puis la copie chiffrée des sauvegardes, avec ce qui reste du budget du cycle.
                 foreach ($this->horsSite->envoyer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets']), $maintenant) as $copie) {
                     $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, null, \sprintf('Sauvegarde %s chiffrée, %s (%s Mo)', $copie['nom'], $copie['partie'] === 'base' ? 'base' : 'fichiers', number_format($copie['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);

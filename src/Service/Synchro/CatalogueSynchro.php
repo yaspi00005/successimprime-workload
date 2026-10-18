@@ -566,7 +566,8 @@ final class CatalogueSynchro
             ],
             // Messages entre le client et l'atelier (Messages de l'espace client, maquette EC01) : le client
             // écrit en ligne, l'atelier répond au local et la réponse redescend. Texte seulement. Le
-            // traitement par l'équipe (traiteLe) et l'employé qui a répondu restent au local.
+            // traitement par l'équipe (traiteLe) et l'employé qui a répondu restent au local. Une note vocale
+            // peut y être jointe (le fichier suit à part) ; les notes vocales internes restent au local.
             // Qui répond aux clients (docs/messagerie-clients.md) : nom, métier et une vignette de sa photo
             // (96 px), pour la signature des réponses dans l'espace client. Le compte de l'employé reste au local.
             'agent_messagerie' => [
@@ -601,7 +602,9 @@ final class CatalogueSynchro
                 'classe' => MessageClient::class, 'sens' => self::DEUX, 'libelle' => 'Message du client', 'titre' => ['auteur'],
                 // delaiMinutes : « répondu en 12 min », affiché au client. La cible, le retard, la pénalité
                 // et la personne à qui il est imputé restent au local.
-                'champs' => ['sens', 'auteur', 'texte', 'creeLe', 'delaiMinutes'],
+                // Note vocale jointe (docs/messagerie-clients.md) : nom de stockage, type, taille, durée et
+                // empreinte ; le fichier suit (FichiersSynchro), revérifié à l'arrivée au local.
+                'champs' => ['sens', 'auteur', 'texte', 'creeLe', 'delaiMinutes', 'vocaleNom', 'vocaleType', 'vocaleTaille', 'vocaleDuree', 'vocaleEmpreinte'],
                 'relations' => [
                     'client' => 'client', 'commande' => 'commande', 'conversation' => 'conversation_client',
                     'agent' => 'agent_messagerie', 'bat' => 'controle', 'facture' => 'facture',

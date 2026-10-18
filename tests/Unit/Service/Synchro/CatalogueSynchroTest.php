@@ -394,7 +394,9 @@ final class CatalogueSynchroTest extends TestCase
 
         // Messages client ⇄ atelier : le texte et « répondu en 12 min », sans qui a traité, ni la cible, le retard,
         // la pénalité et la personne imputée ; l'agent seulement par sa signature (nom, métier, vignette).
-        self::assertSame(['sens', 'auteur', 'texte', 'creeLe', 'delaiMinutes'], $types['message_client']['champs']);
+        // Une note vocale jointe : sa fiche (nom de stockage, type, taille, durée, empreinte), le fichier suit à part.
+        self::assertSame(['sens', 'auteur', 'texte', 'creeLe', 'delaiMinutes', 'vocaleNom', 'vocaleType', 'vocaleTaille', 'vocaleDuree', 'vocaleEmpreinte'], $types['message_client']['champs']);
+        self::assertArrayNotHasKey('note_conversation', $types, 'les notes internes, vocales comprises, ne quittent jamais le local');
         self::assertSame(['client' => 'client', 'commande' => 'commande', 'conversation' => 'conversation_client', 'agent' => 'agent_messagerie', 'bat' => 'controle', 'facture' => 'facture'], $types['message_client']['relations']);
         self::assertSame(\App\Entity\MessageClient::CLIENT, $types['message_client']['imposeAuLocal']['sens'], 'un message écrit en ligne est toujours du client');
         self::assertNull($types['message_client']['imposeAuLocal']['delaiMinutes']);

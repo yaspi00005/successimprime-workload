@@ -67,6 +67,8 @@
             ? 'Aucun changement pour l\'instant.'
             : (changes === 1 ? '1 nom à enregistrer.' : changes + ' noms à enregistrer.');
         etat.classList.toggle('si-nc-a-enregistrer', changes > 0);
+        // La barre « Enregistrer » flotte en bas de l'écran dès qu'un nom a changé.
+        formulaire.classList.toggle('si-nc-modifie', changes > 0);
         formulaire.querySelectorAll('[data-rubrique]').forEach(function (rubrique) {
             var siens = Array.prototype.slice.call(rubrique.querySelectorAll('input[name^="noms["]'));
             var compte = formulaire.querySelector('[data-compte="' + rubrique.dataset.rubrique + '"]');
@@ -92,6 +94,10 @@
             var vide = rubrique.querySelector('.si-nc-vide');
             if (vide) {
                 vide.hidden = visibles > 0;
+            }
+            var tete = rubrique.querySelector('.si-nc-tete');
+            if (tete) {
+                tete.hidden = visibles === 0;
             }
         });
     }

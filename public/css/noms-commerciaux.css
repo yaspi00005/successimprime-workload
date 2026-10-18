@@ -20,11 +20,13 @@
 .si-nc-intro p { margin: 0; }
 .si-nc-intro p + p { margin-top: 0.35rem; }
 
-.si-nc-outils {
+.si-nc .si-nc-outils {
+  /* Plus précis que .card du thème (chargé après), qui est en colonne. */
   position: sticky;
   top: 0.5rem;
   z-index: 3;
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 0.6rem 1rem;
   align-items: center;
@@ -60,7 +62,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.si-nc-rubrique {
+.si-nc .si-nc-rubrique {
   padding: 1rem 1.1rem;
   margin-bottom: 1rem;
   scroll-margin-top: 6rem;
@@ -101,7 +103,8 @@
   border-bottom: 1px solid #EEF1F5;
 }
 .si-nc-ligne:last-child { border-bottom: 0; }
-.si-nc-ligne[hidden] { display: none; }
+.si-nc-ligne[hidden],
+.si-nc-tete[hidden] { display: none; }
 .si-nc-designation {
   margin: 0;
   min-width: 0;
@@ -139,6 +142,22 @@
   background: rgba(243, 245, 250, 0.96);
   border-top: 1px solid #E3E7ED;
 }
+/*
+ * Un nom changé : la barre flotte en bas de l'écran (la position collante
+ * ne prend pas dans la mise en page du thème, qui coupe le débordement).
+ */
+.si-nc.si-nc-modifie { padding-bottom: 5.5rem; }
+.si-nc.si-nc-modifie .si-nc-barre {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 1030;
+  margin: 0;
+  border: 1px solid #D5E3F8;
+  border-radius: 1rem;
+  background: #FFFFFF;
+  box-shadow: 0 0.5rem 1.5rem rgba(15, 69, 144, 0.18);
+}
 .si-nc-etat {
   color: #5B6575;
   font-size: 0.9rem;
@@ -162,7 +181,7 @@
     content: "Client : ";
     color: #5B6575;
   }
-  .si-nc-outils {
+  .si-nc .si-nc-outils {
     position: static;
   }
   .si-nc-outils input[type="search"] {
@@ -171,6 +190,11 @@
   .si-nc-barre {
     bottom: 3.75rem; /* au-dessus de la barre du bas des téléphones */
     justify-content: space-between;
+  }
+  .si-nc.si-nc-modifie .si-nc-barre {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
   }
 }
 

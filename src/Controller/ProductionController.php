@@ -1243,8 +1243,7 @@ public function terminer(
 public function annuler(
     OrdreProduction $ordre,
     Request $request,
-    EntityManagerInterface $em,
-    StockService $stockService
+    EntityManagerInterface $em
 ): Response {
     $this->utilisateurConnecte();
 
@@ -1333,16 +1332,11 @@ public function annuler(
             ->getOneOrNullResult();
 
         /*
-         * ========================================================
-         * LIBÉRATION DES RÉSERVATIONS
-         * ========================================================
+         * Les réservations restent : la ligne de commande est
+         * toujours à produire (un nouvel ordre la reprendra). Elles
+         * ne sont libérées que si la ligne ou la commande est
+         * annulée (ReservationsCommandeListener).
          */
-        if ($sortieExistante === null) {
-            $stockService
-                ->libererReservationsDetail(
-                    $detail
-                );
-        }
 
         /*
          * ========================================================
@@ -1357,14 +1351,13 @@ public function annuler(
          * Une seule sauvegarde :
          *
          * - ordre annulé
-         * - réservations libérées si nécessaire
          */
         $em->flush();
 
         if ($sortieExistante === null) {
             $this->addFlash(
                 'success',
-                'L’ordre de production a été annulé et les réservations de stock ont été libérées.'
+                'L’ordre de production a été annulé. La ligne reste à produire : son stock reste réservé.'
             );
         } else {
             $this->addFlash(

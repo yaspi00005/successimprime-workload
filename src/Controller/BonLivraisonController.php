@@ -696,10 +696,9 @@ final class BonLivraisonController extends AbstractController
          * IMPORTANT :
          *
          * Les produits passés par la production ont déjà
-         * consommé leur stock dans ProductionController::terminer().
-         *
-         * On ne déduit donc ici QUE les lignes qui ne nécessitent
-         * aucune production.
+         * consommé leur stock à la fin de la production
+         * (ActionsOrdre::terminer) : on ne déduit donc ici que les
+         * lignes qui ne nécessitent aucune production.
          */
             foreach (
                 $bon->getLignes()
@@ -729,7 +728,8 @@ final class BonLivraisonController extends AbstractController
 
                 /*
              * Ligne provenant d'une production :
-             * aucune deuxième sortie de stock.
+             * aucune deuxième sortie de stock (consommerPourDetail
+             * l'ignore aussi dès qu'une sortie de production existe).
              */
                 if (
                     $detail->isProductionNecessaire()

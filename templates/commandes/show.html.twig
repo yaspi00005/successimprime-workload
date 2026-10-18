@@ -356,6 +356,29 @@
 				{% endfor %}
 			</div>
 
+			{# ---------- Stock (docs/stock-et-options.md) ---------- #}
+			{% if stock and (stock.articles or stock.sansNomenclature) %}
+				<div class="card si-cs-bloc">
+					<h4>Stock</h4>
+					{% for a in stock.articles %}
+						<div class="d-flex justify-content-between small py-1">
+							<span>{{ a.article.designation }}</span>
+							<span class="text-end">
+								{% if a.reserve > 0 %}réservé {{ a.reserve|number_format(3, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} {{ a.article.uniteCourte }}{% endif %}
+								{% if a.reserve > 0 and a.sorti > 0 %} · {% endif %}
+								{% if a.sorti > 0 %}sorti {{ a.sorti|number_format(3, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} {{ a.article.uniteCourte }}{% endif %}
+							</span>
+						</div>
+					{% endfor %}
+					{% if commande.statutTravaux == 'annulee' and stock.articles|filter(a => a.sorti > 0)|length > 0 %}
+						<p class="small text-muted mb-0 mt-1">Commande annulée : le stock déjà sorti n'est pas remis automatiquement (la matière est consommée).</p>
+					{% endif %}
+					{% for l in stock.sansNomenclature %}
+						<p class="small text-muted mb-0 mt-1">« {{ l.designation }} » : aucun article de stock lié, le stock ne sera pas débité.</p>
+					{% endfor %}
+				</div>
+			{% endif %}
+
 			{# ---------- Historique ---------- #}
 			<div class="card si-cs-bloc">
 				<h4>Historique</h4>

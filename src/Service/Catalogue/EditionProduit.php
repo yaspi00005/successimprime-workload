@@ -255,7 +255,7 @@ final class EditionProduit
         foreach ($voulues as [$article, $coefficient, $mode]) {
             $p->addArticlesStock((new ProduitArticleStock())->setArticle($article)->setCoefficient($coefficient)->setModeCalcul($mode));
         }
-        $p->setGestionStock(!$p->getArticlesStock()->isEmpty());
+        $p->setGestionStock(!$p->getArticlesStock()->isEmpty() || null !== $p->getArticleStock());
     }
 
     /**

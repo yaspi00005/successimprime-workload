@@ -70,6 +70,7 @@ final class RecetteEspaceClient
         // Paiement à la commande (nouvelle commande, étape 4) : une commande en ligne encore « à confirmer ».
         'app_espace_nouvelle_commande_paiement' => 'commande',
         'app_espace_devis_pdf' => 'devis',
+        'app_espace_devis_detail' => 'devis',
         'app_espace_facture_pdf' => 'facture',
         // Factures et paiements : détail d'une facture, reçu d'un paiement validé, retour d'Orange Money.
         'app_espace_facture_detail' => 'facture_uuid',
@@ -100,7 +101,7 @@ final class RecetteEspaceClient
     ];
 
     /** Pages où un prix est voulu pour qui voit les montants (valideur) : catalogue et prix du jour. */
-    public const PAGES_PRIX = ['app_espace_nouvelle_commande', 'app_espace_produits', 'app_espace_promotions', 'app_espace_conception', 'app_espace_conception_demande', 'app_espace_conception_informations', 'app_espace_conception_ia', 'app_espace_devis'];
+    public const PAGES_PRIX = ['app_espace_nouvelle_commande', 'app_espace_produits', 'app_espace_promotions', 'app_espace_conception', 'app_espace_conception_demande', 'app_espace_conception_informations', 'app_espace_conception_ia', 'app_espace_devis', 'app_espace_devis_detail'];
 
     /** Pages qui ne sont que des montants (le PDF d'un devis) : refusées à qui ne voit pas les montants. */
     public const PAGES_MONTANTS = ['app_espace_devis_pdf'];
@@ -265,7 +266,7 @@ final class RecetteEspaceClient
             }
         }
         $devis = $this->espace->devis($client);
-        $envoye = array_values(array_filter($devis, static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut()));
+        $envoye = array_values(array_filter($devis, static fn (Devis $d): bool => $d->estEnAttente()));
         $factures = $this->espace->factures($client);
         $bats = $this->espace->bats($client);
         $batsEnAttente = $this->espace->bats($client, true);
@@ -565,7 +566,8 @@ final class RecetteEspaceClient
         $bilan->controler('Espace client : envoi témoin de '.$a.' (tout marquer comme lu)', Reponse::REDIRIGE === $temoin->etat(), $temoin->etat());
 
         $envois = [
-            ['app_espace_devis_accepter', 'devis_envoye', [], 'accepter le devis', fn (int|string $v): bool => Devis::STATUT_ENVOYE === $this->em->find(Devis::class, $v)?->getStatut()],
+            ['app_espace_devis_accepter', 'devis_envoye', [], 'accepter le devis', fn (int|string $v): bool => (bool) $this->em->find(Devis::class, $v)?->estEnAttente()],
+            ['app_espace_devis_refuser', 'devis_envoye', ['motif' => 'prix'], 'refuser le devis', fn (int|string $v): bool => (bool) $this->em->find(Devis::class, $v)?->estEnAttente()],
             ['app_espace_fichier_retirer', 'fichier', [], 'retirer le fichier', fn (int|string $v): bool => (bool) $this->em->find(CommandeDetailFichier::class, $v)?->isActif()],
             ['app_espace_commande_valider', 'commande_a_valider', [], 'valider la demande', null],
             ['app_espace_commande_refuser', 'commande_a_valider', ['motif' => 'Recette'], 'refuser la demande', null],
@@ -694,7 +696,7 @@ final class RecetteEspaceClient
             $chemin = $this->routeur->generate('app_espace_devis_accepter', ['id' => $devis]);
             $reponse = $this->navigateur->post($chemin, ['_token' => (string) $jeton], $sessions[$libelle]);
             $this->em->clear();
-            $ok = \in_array($reponse->etat(), [Reponse::REFUSE, Reponse::INTROUVABLE], true) && Devis::STATUT_ENVOYE === $this->em->find(Devis::class, $devis)?->getStatut();
+            $ok = \in_array($reponse->etat(), [Reponse::REFUSE, Reponse::INTROUVABLE], true) && (bool) $this->em->find(Devis::class, $devis)?->estEnAttente();
             $bilan->controler('Espace client : '.$libelle.' (sans le droit valideur) accepte un devis', $ok, $chemin.' → '.$reponse->etat());
             if (!$ok) {
                 $bilan->constater(BilanRecette::FUITE, 'valideur', 'app_espace_devis_accepter', $chemin, $libelle, 'devis accepté sans le droit valideur');
@@ -1026,7 +1028,8 @@ final class RecetteEspaceClient
     /** Montant d'un devis (« Nouveau devis DV-… · 31 000 F », « Devis … ») : voulu pour le valideur. */
     public static function montantDeDevis(string $contexte): bool
     {
-        return 1 === preg_match('/\bdevis\b|\bDV-/iu', $contexte);
+        // DV- : devis de démonstration ; DEV- : numérotation réelle (DevisController::new).
+        return 1 === preg_match('/\bdevis\b|\bDV-|\bDEV-/iu', $contexte);
     }
 
     private static function masquer(string $telephone): string

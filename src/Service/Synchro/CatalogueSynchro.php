@@ -420,10 +420,32 @@ final class CatalogueSynchro
                     'codeSaisi', 'remiseCodePromo', 'fraisLivraison', 'objet',
                     // Personne du client à qui le devis s'adresse (« À l'attention de »).
                     'interlocuteur',
+                    // Suivi du devis (docs/devis.md) : versions, validité, conditions, envoi, ouvertures, réponse.
+                    // Les relances WhatsApp restent au local (elles partent d'ici).
+                    'version', 'versions', 'validiteJours', 'dateValidite', 'delaiRealisation', 'acomptePourcentage',
+                    'conditionSolde', 'conditionFichier', 'conditionGarantie', 'canauxEnvoi', 'envoyeLe', 'envoyePar',
+                    'nombreVues', 'premiereVueLe', 'derniereVueLe', 'vuPar', 'reponseLe', 'reponduPar', 'motifRefus',
+                    'demandeModification', 'demandeModificationLe',
                 ],
                 'relations' => ['clients' => 'client', 'commande' => 'commande', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
-                // Le jeton du lien PDF peut naître en ligne (le client ouvre son devis) : il est gardé.
-                'remontees' => ['statut' => [Devis::STATUT_ENVOYE => [Devis::STATUT_ACCEPTE]], 'tokenAuthenticite' => ['' => ['*']]],
+                /*
+                 * Décisions du client prises en ligne : il ouvre le devis (vu, nombre
+                 * d'ouvertures), l'accepte (la commande créée en ligne remonte avec
+                 * lui), le refuse avec un motif ou demande une modification. Le jeton
+                 * du lien PDF peut naître en ligne : il est gardé.
+                 */
+                'remontees' => [
+                    'statut' => [
+                        Devis::STATUT_ENVOYE => [Devis::STATUT_VU, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_CONVERTI],
+                        Devis::STATUT_VU => [Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_CONVERTI],
+                        Devis::STATUT_ACCEPTE => [Devis::STATUT_CONVERTI],
+                    ],
+                    'tokenAuthenticite' => ['' => ['*']],
+                    'nombreVues' => null, 'premiereVueLe' => ['' => ['*']], 'derniereVueLe' => null, 'vuPar' => ['' => ['*']],
+                    'reponseLe' => null, 'reponduPar' => null, 'motifRefus' => ['' => ['*']],
+                    'demandeModification' => null, 'demandeModificationLe' => null,
+                    'commande' => ['' => ['*']],
+                ],
             ],
             'devis_ligne' => [
                 'classe' => DevisDetails::class, 'sens' => self::DESCENDANT, 'libelle' => 'Ligne de devis', 'titre' => ['designation'],

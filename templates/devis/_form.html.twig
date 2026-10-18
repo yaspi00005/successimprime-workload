@@ -1032,7 +1032,7 @@
 					<dt>Code promo</dt>
 					<dd>{{ form_widget(form.codePromo, {attr: {class: 'form-control form-control-sm si-remise js-code-promo', maxlength: 30, autocomplete: 'off', placeholder: 'Facultatif'}}) }}</dd>
 					<dt>Acompte demandé</dt>
-					<dd><span class="js-acompte" data-pourcentage="{{ devis.acomptePourcentage }}">0 F</span></dd>
+					<dd><span class="js-acompte-taux">{{ devis.acomptePourcentage }}</span> % · <span class="js-acompte" data-pourcentage="{{ devis.acomptePourcentage }}">0 F</span></dd>
 				</dl>
 				<small class="si-dv-total-note">Taxes selon votre régime (Réglages › Taxes)</small>
 			</div>

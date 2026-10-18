@@ -327,7 +327,7 @@ final class SuiviDevis
 
         $prevue = self::relancePrevue($devis);
         if (null !== $prevue) {
-            $e[] = ['le' => $prevue, 'texte' => $prevue <= $maintenant ? 'Relance automatique à faire' : 'Relance automatique prévue', 'futur' => true];
+            $e[] = ['le' => $prevue, 'texte' => $prevue <= $maintenant ? 'Relance à faire' : 'Relance automatique prévue', 'futur' => true];
         }
         if (null !== $devis->getDateValidite() && ($devis->estEnAttente() || Devis::STATUT_EXPIRE === $devis->getStatut())) {
             $e[] = ['le' => $devis->getDateValidite(), 'texte' => Devis::STATUT_EXPIRE === $devis->getStatut() ? 'Expiré' : 'Expiration', 'futur' => Devis::STATUT_EXPIRE !== $devis->getStatut()];

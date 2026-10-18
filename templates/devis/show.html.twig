@@ -144,7 +144,7 @@
 							{% if devis.remise > 0 %}<dt>Remise</dt><dd>− {{ devis.remise|number_format(0, ',', ' ') }} F</dd>{% endif %}
 							{% if devis.tva > 0 %}<dt>TVA</dt><dd>{{ devis.tva|number_format(0, ',', ' ') }} F</dd>{% endif %}
 							<dt class="si-dv-total-ligne">Total</dt><dd class="si-dv-total-ligne">{{ devis.totalTtc|number_format(0, ',', ' ') }} F</dd>
-							{% if devis.acomptePourcentage > 0 %}<dt>Acompte {{ devis.acomptePourcentage }} %</dt><dd>{{ devis.montantAcompte|number_format(0, ',', ' ') }} F</dd>{% endif %}
+							{% if devis.acomptePourcentage > 0 %}<dt>Acompte demandé</dt><dd>{{ devis.acomptePourcentage }} % · {{ devis.montantAcompte|number_format(0, ',', ' ') }} F</dd>{% endif %}
 							{% if devis.delaiRealisation %}<dt>Délai</dt><dd>{{ devis.delaiRealisation }}</dd>{% endif %}
 						</dl>
 					</div>

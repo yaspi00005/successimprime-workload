@@ -73,6 +73,10 @@
             }
             const pourcentage = Number(choixAcompte.value) || 0;
             acompte.dataset.pourcentage = String(pourcentage);
+            const taux = page.querySelector('.js-acompte-taux');
+            if (taux) {
+                taux.textContent = String(pourcentage);
+            }
             if (pourcentage === 0) {
                 acompte.textContent = '0 F';
             }

@@ -8,6 +8,7 @@ use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Entity\CreationAtelier;
+use App\Entity\DepotSoldeClient;
 use App\Entity\DemandeConception;
 use App\Entity\Devis;
 use App\Entity\Factures;
@@ -65,6 +66,8 @@ final class RecetteEspaceClient
         'app_espace_facture_detail' => 'facture_uuid',
         'app_espace_facture_recu' => 'paiement',
         'app_espace_payer_recu' => 'reglement',
+        // Mon solde : retour d'Orange Money après un dépôt.
+        'app_espace_solde_retour' => 'depot',
         'app_espace_fichier' => 'fichier',
         'app_espace_bat' => 'bat',
         'app_espace_bat_fichier' => 'bat_fichier',
@@ -83,6 +86,7 @@ final class RecetteEspaceClient
     public const PAGES_PAYEUR = [
         'app_espace_factures', 'app_espace_facture_pdf', 'app_espace_payer', 'app_espace_conception_credit',
         'app_espace_facture_detail', 'app_espace_facture_recu', 'app_espace_facture_releve', 'app_espace_payer_selection', 'app_espace_payer_recu',
+        'app_espace_solde', 'app_espace_solde_retour',
     ];
 
     /** Pages où un prix est voulu pour qui voit les montants (valideur) : catalogue et prix du jour. */
@@ -263,6 +267,7 @@ final class RecetteEspaceClient
             'facture_uuid' => [] === $factures ? null : self::uuid($factures[0]->getPublicId()),
             'paiement' => $this->paiementValide($client),
             'reglement' => $this->premiere(ReglementEnLigne::class, $client, '1 = 1', 'reference'),
+            'depot' => $this->premiere(DepotSoldeClient::class, $client, '1 = 1', 'reference'),
             'fichier' => $this->premiere(CommandeDetailFichier::class, $client, 'e.actif = true'),
             'bat' => [] === $bats ? null : $bats[0]->getId(),
             'bat_fichier' => [] === $fichiersBat ? null : $fichiersBat[0]->getId(),
@@ -446,7 +451,7 @@ final class RecetteEspaceClient
             $parametres = ['id' => $valeur];
             if ('notification' === $sorte) {
                 $parametres = ['cle' => $valeur];
-            } elseif ('reglement' === $sorte) {
+            } elseif ('reglement' === $sorte || 'depot' === $sorte) {
                 $parametres = ['reference' => $valeur];
             } elseif ('image' === $sorte) {
                 $parametres['taille'] = 'v';

@@ -72,6 +72,14 @@
 			<div><dt>Total commande</dt><dd>{{ commande.totalTtc|number_format(0, ',', ' ') }} F</dd></div>
 			<div><dt>Reste à payer</dt><dd>{{ reste|number_format(0, ',', ' ') }} F</dd></div>
 		</dl>
+		{# Compte du client à la boutique (docs/finances.md) : monnaie laissée au lieu d'être rendue. #}
+		{% if monnaie|default(null) %}
+			<hr>
+			<dl>
+				<div><dt>Monnaie gardée sur votre compte</dt><dd>{{ monnaie.montant|number_format(0, ',', ' ') }} F</dd></div>
+				<div class="paye"><dt>Solde de votre compte</dt><dd>{{ monnaie.soldeApres|number_format(0, ',', ' ') }} F</dd></div>
+			</dl>
+		{% endif %}
 		{% if not paiement.estValide %}
 			<div class="attente">Paiement enregistré, en attente de confirmation ({{ paiement.statutLabel|lower }}).</div>
 		{% endif %}

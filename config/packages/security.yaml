@@ -110,6 +110,7 @@ security:
             - ROLE_TRESORERIE_SAISIR
             - ROLE_TRESORERIE_TRANSFERER
             - ROLE_JOURNAL_CAISSE
+            - ROLE_SOLDE_CLIENT_REMBOURSER
 
             - ROLE_PREPRESSE
             - ROLE_PRODUCTION_VOIR

@@ -30,7 +30,7 @@
 			<b class="{{ aPayer.total > 0 ? 'rouge' : 'vert' }}">{{ aPayer.total|francs }}</b>
 			<span>
 				{%- if aPayer.echu > 0 %}dont {{ aPayer.echu|francs }} échus{% elseif aPayer.total > 0 %}rien d'échu{% else %}tout est réglé, merci{% endif -%}
-				<span class="ec-telephone">{{ avoir.disponible > 0 ? ' · avoir ' ~ avoir.disponible|francs }}</span>
+				<span class="ec-telephone">{{ avoir.disponible > 0 ? ' · avoir ' ~ avoir.disponible|francs }} · <a href="{{ path('app_espace_solde') }}">Mon solde</a></span>
 			</span>
 			{% if aPayer.plusTard > 0 %}<span>+ {{ aPayer.plusTard|francs }} à régler à la livraison ou sur facture</span>{% endif %}
 		</div>
@@ -57,6 +57,7 @@
 				{%- elseif avoir.disponible > 0 %}utilisable sur un paiement
 				{%- else %}aucun avoir pour l'instant{% endif -%}
 			</span>
+			<a class="ef-tuile-lien" href="{{ path('app_espace_solde') }}">Mon solde et dépôts ›</a>
 		</div>
 	</section>
 
@@ -195,9 +196,10 @@
 
 				<div class="ef-panneau" data-ef-panneau="avoirs"{{ onglet != 'avoirs' ? ' hidden' }}>
 					<p class="ef-texte-doux">
-						Votre avoir, c'est ce que la boutique vous doit (monnaie non rendue, trop-perçu) : <b>{{ avoir.solde|francs }}</b> sur votre compte.
+						Votre avoir, c'est l'argent que vous avez laissé à la boutique (monnaie gardée, dépôts) : <b>{{ avoir.solde|francs }}</b> sur votre compte.
 						{% if avoir.enValidation + avoir.reserve > 0 %}Dont {{ (avoir.enValidation + avoir.reserve)|francs }} déjà utilisés, en attente de validation par la boutique.{% endif %}
 						Vous l'utilisez en payant ici : la boutique le valide, puis il disparaît de votre solde.
+						<a href="{{ path('app_espace_solde') }}">Relevé et dépôt : Mon solde</a>
 					</p>
 					<table class="ef-table">
 						<thead><tr><th>Date</th><th>Pour</th><th class="num">Montant</th><th>Statut</th></tr></thead>

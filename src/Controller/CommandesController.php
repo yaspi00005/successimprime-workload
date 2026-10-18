@@ -35,6 +35,7 @@ use App\Service\Parametres\Parametres;
 use App\Service\Promotions\PromotionsSaisie;
 use App\Service\Paiement\ComptesOrangeMoney;
 use App\Service\Paiement\FraisOrangeMoney;
+use App\Service\Paiement\SoldeClient;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
@@ -1970,7 +1971,8 @@ final class CommandesController extends AbstractController
         FacturesRepository $facturesRepository,
         ParametresPaiementRepository $parametresPaiementRepository,
         NotificationService $notificationService,
-        AccesEnLigne $accesEnLigne
+        AccesEnLigne $accesEnLigne,
+        SoldeClient $soldeClient
     ): Response {
         /*
      * ============================================================
@@ -2273,6 +2275,16 @@ final class CommandesController extends AbstractController
                             'Le numéro du chèque est obligatoire.'
                         )
                     );
+            } elseif (
+                null !== ($erreurMonnaie = $this->erreurMonnaie($request, $paiement, $montant, $accesEnLigne))
+            ) {
+                /*
+                 * « Garder la monnaie sur le compte du client » (caisse) :
+                 * espèces seulement, le client a remis plus que le montant.
+                 */
+                $form
+                    ->get('montant')
+                    ->addError(new FormError($erreurMonnaie));
             } else {
                 /*
              * ====================================================
@@ -3022,7 +3034,29 @@ final class CommandesController extends AbstractController
              * ====================================================
              */
 
-                $entityManager->flush();
+                /*
+                 * Monnaie gardée : le paiement et la monnaie sur le compte
+                 * du client s'enregistrent ensemble, ou pas du tout.
+                 */
+                $monnaie = $this->monnaieAGarder($request, $montant);
+                if ($monnaie > 0) {
+                    try {
+                        $entityManager->wrapInTransaction(function () use ($entityManager, $soldeClient, $paiement, $monnaie, $user): void {
+                            $entityManager->flush();
+                            $soldeClient->garderMonnaie($paiement, $monnaie, $user);
+                        });
+                    } catch (\DomainException|\LogicException|\InvalidArgumentException $exception) {
+                        $this->addFlash('error', 'Rien n’a été enregistré : '.$exception->getMessage());
+
+                        return $this->retourCaisse($request, $commande) ?? $this->redirectToRoute('app_commandes_paiement', ['id' => $commande->getId()]);
+                    }
+                    $this->addFlash('success', sprintf(
+                        'Monnaie de %s F gardée sur le compte du client (rien à lui rendre).',
+                        number_format($monnaie, 0, ',', ' ')
+                    ));
+                } else {
+                    $entityManager->flush();
+                }
 
 
                 /*
@@ -3128,10 +3162,10 @@ final class CommandesController extends AbstractController
      * SOLDE CLIENT
      * ================================================================
      *
-     * Déduit tout ou partie du solde du client (monnaie non rendue,
-     * alimentée manuellement par la caissière) du reste à payer de
-     * cette commande. Aucun compte de trésorerie n'est crédité :
-     * l'argent est déjà entré en caisse lors d'un paiement antérieur.
+     * Paie tout ou partie du reste de cette commande avec le solde du
+     * compte du client (monnaie gardée, dépôts : docs/finances.md,
+     * « Compte du client »). Aucun compte de trésorerie n'est crédité :
+     * l'argent est déjà à la boutique. Sans montant, le plus possible.
      * ================================================================
      */
     #[Route(
@@ -3143,9 +3177,10 @@ final class CommandesController extends AbstractController
     public function utiliserSoldeClient(
         Commandes $commande,
         Request $request,
+        SoldeClient $soldeClient,
         EntityManagerInterface $entityManager,
-        FacturesRepository $facturesRepository,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        AccesEnLigne $accesEnLigne
     ): Response {
         $user = $this->getUser();
 
@@ -3155,140 +3190,58 @@ final class CommandesController extends AbstractController
             );
         }
 
+        $retour = fn (): Response => $this->retourCaisse($request, $commande) ?? $this->redirectToRoute('app_commandes_paiement', [
+            'id' => $commande->getId(),
+        ]);
+
         if (!$this->isCsrfTokenValid(
             'utiliser_solde_client_' . $commande->getId(),
             $request->request->get('_token')
         )) {
             $this->addFlash('error', 'Jeton de sécurité invalide.');
 
-            return $this->redirectToRoute('app_commandes_paiement', [
-                'id' => $commande->getId(),
-            ]);
+            return $retour();
         }
 
-        if ($commande->getStatutTravaux() === 'annulee') {
-            $this->addFlash(
-                'error',
-                'Cette commande est annulée : aucun paiement ne peut plus y être enregistré.'
-            );
+        // Le solde est tenu au local : en ligne, il ne se dépense qu'avec un paiement « AV » à valider.
+        if ($accesEnLigne->estEnLigne()) {
+            $this->addFlash('warning', 'Le solde du client s’utilise à la boutique.');
 
-            return $this->redirectToRoute('app_commandes_show', [
-                'id' => $commande->getId(),
-            ]);
+            return $retour();
         }
 
         $client = $commande->getClients();
-        $soldeClient = (int) ($client?->getSoldeCredit() ?? 0);
+        $saisi = trim((string) $request->request->get('montant'));
+        $montant = '' === $saisi
+            ? min(null !== $client ? $soldeClient->disponiblePour($client) : 0, $commande->getResteAPayer())
+            : (int) preg_replace('/\D/', '', $saisi);
 
-        if ($client === null || $soldeClient <= 0) {
-            $this->addFlash(
-                'warning',
-                'Ce client ne dispose d’aucun solde à utiliser.'
-            );
+        try {
+            $paiement = $soldeClient->utiliser($commande, $montant, $user);
+        } catch (\DomainException|\LogicException $exception) {
+            $this->addFlash('warning', $exception->getMessage());
 
-            return $this->redirectToRoute('app_commandes_paiement', [
-                'id' => $commande->getId(),
-            ]);
+            return $retour();
         }
-
-        $totalCommande = (int) ($commande->getTotalTtc() ?? 0);
-
-        $totalPaye = 0;
-
-        foreach ($commande->getPaiements() as $paiementExistant) {
-            if (!$paiementExistant->estValide()) {
-                continue;
-            }
-
-            $totalPaye += (int) ($paiementExistant->getMontant() ?? 0);
-        }
-
-        $resteAPayer = max(0, $totalCommande - $totalPaye);
-
-        if ($resteAPayer <= 0) {
-            $this->addFlash(
-                'warning',
-                'Cette commande est déjà entièrement payée.'
-            );
-
-            return $this->redirectToRoute('app_commandes_show', [
-                'id' => $commande->getId(),
-            ]);
-        }
-
-        $montantAUtiliser = min($soldeClient, $resteAPayer);
-
-        $paiement = new Paiements();
-        $paiement->setCommande($commande);
-        $paiement->setEncaissePar($user);
-        $paiement->setDate(new \DateTimeImmutable());
-        $paiement->setMode(Paiements::MODE_SOLDE_CLIENT);
-        $paiement->setMontant($montantAUtiliser);
-        $paiement->setObservation(
-            'Déduit automatiquement du solde du client (monnaie non rendue lors d’un précédent paiement).'
-        );
-        $paiement->validerPar($user);
-
-        $commande->addPaiement($paiement);
-
-        $client->setSoldeCredit($soldeClient - $montantAUtiliser);
-
-        $nouveauTotalPaye = $totalPaye + $montantAUtiliser;
-        $nouveauReste = max(0, $totalCommande - $nouveauTotalPaye);
-
-        $commande->setTotalPaye($nouveauTotalPaye);
-        $commande->setResteAPayer($nouveauReste);
-
-        if ($nouveauReste <= 0 && $totalCommande > 0) {
-            $commande->setStatutPaiement(Commandes::PAIEMENT_PAYE);
-        } elseif ($nouveauTotalPaye > 0) {
-            $commande->setStatutPaiement(Commandes::PAIEMENT_PARTIEL);
-        } else {
-            $commande->setStatutPaiement(Commandes::PAIEMENT_IMPAYE);
-        }
-
-        $facture = $facturesRepository->findOneBy([
-            'commande' => $commande,
-            'comptabilisee' => true,
-        ]);
-
-        if ($facture !== null) {
-            $facture->synchroniserPaiementsDepuisCommande();
-
-            if ($paiement->getFacture() === null) {
-                $paiement->setFacture($facture);
-            }
-
-            $entityManager->persist($facture);
-        }
-
-        $entityManager->persist($paiement);
-        $entityManager->persist($commande);
-        $entityManager->persist($client);
 
         $notificationService->notifierRoles(
             ['ROLE_ADMIN', 'ROLE_TRESORERIE_VOIR'],
-            sprintf(
-                'Solde client de %s FCFA déduit sur la commande %s.',
-                number_format($montantAUtiliser, 0, ',', ' '),
-                $commande->getNumero()
-            ),
+            sprintf('Solde client utilisé pour payer la commande %s.', $commande->getNumero()),
             'app_commandes_show',
             ['id' => $commande->getId()],
             $user
         );
-
         $entityManager->flush();
 
         $this->addFlash(
             'success',
             sprintf(
-                'Solde client de %s FCFA appliqué au paiement de cette commande.',
-                number_format($montantAUtiliser, 0, ',', ' ')
+                '%s du solde du client appliqués au paiement de cette commande.',
+                number_format($montant, 0, ',', ' ') . ' F'
             )
         );
 
-        return $this->redirectToRoute('app_commandes_show', [
+        return $this->retourCaisse($request, $commande, $paiement) ?? $this->redirectToRoute('app_commandes_show', [
             'id' => $commande->getId(),
         ]);
     }
@@ -3490,6 +3443,41 @@ final class CommandesController extends AbstractController
             'sha256',
             serialize($donnees)
         );
+    }
+
+    /**
+     * Monnaie à garder sur le compte du client (case « Garder la monnaie
+     * sur le compte du client » de la caisse) : montant remis moins montant
+     * payé, 0 si la case n'est pas cochée.
+     */
+    private function monnaieAGarder(Request $request, int $montant): int
+    {
+        if (!$request->request->getBoolean('garder_monnaie')) {
+            return 0;
+        }
+
+        return SoldeClient::monnaie((int) preg_replace('/\D/', '', (string) $request->request->get('montant_remis')), $montant);
+    }
+
+    /** Ce qui empêche de garder la monnaie demandée, ou null. */
+    private function erreurMonnaie(Request $request, Paiements $paiement, int $montant, AccesEnLigne $accesEnLigne): ?string
+    {
+        if (!$request->request->getBoolean('garder_monnaie')) {
+            return null;
+        }
+        if ($accesEnLigne->estEnLigne()) {
+            return 'La monnaie se garde à la caisse de la boutique, pas en ligne.';
+        }
+        if (!$this->isGranted('ROLE_PAIEMENT_ENCAISSER')) {
+            return 'Vous ne pouvez pas garder de monnaie.';
+        }
+        try {
+            SoldeClient::verifierMonnaie($paiement, $this->monnaieAGarder($request, $montant));
+        } catch (\DomainException $exception) {
+            return $exception->getMessage();
+        }
+
+        return null;
     }
 
     /**

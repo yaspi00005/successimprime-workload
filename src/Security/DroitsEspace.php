@@ -46,6 +46,9 @@ final class DroitsEspace
         'app_espace_facture_releve',
         'app_espace_payer_selection',
         'app_espace_payer_recu',
+        // Mon solde (docs/espace-client.md) : dépôt Orange Money et retour d'Orange.
+        'app_espace_solde',
+        'app_espace_solde_retour',
         'app_espace_fidelite',
         'app_espace_reclamation_nouvelle',
         'app_espace_avis_commande',

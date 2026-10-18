@@ -4,11 +4,13 @@ namespace App\Service;
 
 use App\Entity\CompteTresorerie;
 use App\Entity\Depense;
+use App\Entity\DepotSoldeClient;
 use App\Entity\Factures;
 use App\Entity\MouvementTresorerie;
 use App\Entity\Paiements;
 use App\Entity\User;
 use App\Service\Paiement\ComptesOrangeMoney;
+use App\Service\Paiement\SoldeClient;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -34,6 +36,7 @@ final class OperationsAValider
         private readonly MouvementTresorerieService $mouvements,
         private readonly NotificationService $notifications,
         private readonly ?ComptesOrangeMoney $comptesOrangeMoney = null,
+        private readonly ?SoldeClient $soldeClient = null,
     ) {
     }
 
@@ -43,7 +46,7 @@ final class OperationsAValider
      * « compte_impose » : payé en ligne avec l'API Orange Money, le compte
      * « Orange Money en ligne » est imposé (la liste ne le propose que lui).
      *
-     * @return list<array{cle: string, date: ?\DateTimeImmutable, type: string, objet: string, detail: ?string, montant: int, frais: int, controles: list<array{libelle: string, etat: string}>, justificatif: bool, auteur: ?string, lien: array{route: string, id: int}, comptes: ?array<int, string>, compte_impose: bool}>
+     * @return list<array{cle: string, date: ?\DateTimeImmutable, type: string, objet: string, detail: ?string, montant: int, frais: int, controles: list<array{libelle: string, etat: string}>, justificatif: bool, auteur: ?string, lien: array{route: string, id: int, parametres?: array<string, string>}, comptes: ?array<int, string>, compte_impose: bool}>
      */
     public function enAttente(\DateTimeImmutable $maintenant): array
     {
@@ -150,6 +153,30 @@ final class OperationsAValider
             ];
         }
 
+        // Dépôts Orange Money faits depuis l'espace client sur le compte du client : ils vont à son solde.
+        if (null !== $this->soldeClient) {
+            $enLigne = null;
+            foreach ($this->soldeClient->depotsEnAttente() as $depot) {
+                $enLigne ??= $this->comptesOrangeMoney?->trouverCompteEnLigne();
+                $client = $depot->getClient();
+                $lignes[] = [
+                    'cle' => 'depot-'.$depot->getId(),
+                    'date' => $depot->getRecuLe() ?? $depot->getCreeLe(),
+                    'type' => 'Dépôt sur le compte client',
+                    'objet' => (string) $client?->getNomComplet(),
+                    'detail' => 'OM '.($depot->getTxnid() ?? $depot->getReference()),
+                    'montant' => $depot->getMontant(),
+                    'frais' => $depot->getFondsSoutien() + $depot->getFraisRetrait(),
+                    'controles' => [['libelle' => 'Va au solde du client', 'etat' => self::OK], ...self::controleDelai($depot->getRecuLe() ?? $depot->getCreeLe(), $maintenant)],
+                    'justificatif' => false,
+                    'auteur' => $depot->getAuteur() ?? 'Client, en ligne',
+                    'lien' => ['route' => 'app_clients_show', 'id' => (int) $client?->getId(), 'parametres' => ['publicId' => (string) $client?->getPublicId(), '_fragment' => 'compte']],
+                    'comptes' => [(int) $enLigne?->getId() => $enLigne?->getNom() ?? ComptesOrangeMoney::NOM_EN_LIGNE],
+                    'compte_impose' => true,
+                ];
+            }
+        }
+
         usort($lignes, static fn (array $a, array $b): int => $a['date'] <=> $b['date']);
 
         return $lignes;
@@ -223,16 +250,27 @@ final class OperationsAValider
 
     /**
      * Valide ou rejette une opération désignée par sa clé
-     * (« paiement-12 », « mouvement-5 »). $compteId : le compte choisi pour
+     * (« paiement-12 », « mouvement-5 », « depot-3 »). $compteId : le compte choisi pour
      * un paiement saisi en ligne, qui n'en a pas.
      */
     public function traiter(string $cle, bool $valider, string $motif, User $responsable, ?int $compteId = null): void
     {
-        if (!preg_match('/^(paiement|mouvement)-(\d+)$/', $cle, $m)) {
+        if (!preg_match('/^(paiement|mouvement|depot)-(\d+)$/', $cle, $m)) {
             throw new \InvalidArgumentException('Opération inconnue.');
         }
         if (!$valider && '' === trim($motif)) {
             throw new \InvalidArgumentException('Le motif du rejet est obligatoire.');
+        }
+
+        if ('depot' === $m[1]) {
+            // Dépôt sur le compte du client : son solde monte à la validation, jamais avant.
+            $depot = $this->em->find(DepotSoldeClient::class, (int) $m[2]) ?? throw new \InvalidArgumentException('Dépôt introuvable.');
+            if (null === $this->soldeClient) {
+                throw new \LogicException('Compte du client indisponible.');
+            }
+            $valider ? $this->soldeClient->validerDepot($depot, $responsable) : $this->soldeClient->rejeterDepot($depot, $motif, $responsable);
+
+            return;
         }
 
         if ('paiement' === $m[1]) {

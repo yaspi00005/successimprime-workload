@@ -39,6 +39,8 @@ final class Droits
             'ROLE_TRESORERIE_SAISIR' => ['libelle' => 'Dépenses et recettes', 'detail' => 'saisir en trésorerie', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_TRESORERIE_TRANSFERER' => ['libelle' => 'Virements entre comptes', 'detail' => 'caisse, banque, Orange Money', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_JOURNAL_CAISSE' => ['libelle' => 'Clôture de caisse', 'detail' => 'journal de caisse', 'groupe' => self::GROUPE_FONCTIONS],
+            // Compte du client (docs/finances.md) : rendre l'argent qu'il a laissé (monnaie, dépôts). Direction par défaut.
+            'ROLE_SOLDE_CLIENT_REMBOURSER' => ['libelle' => 'Rendre l\'argent du compte d\'un client', 'detail' => 'monnaie gardée, dépôts : sortie de caisse', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PREPRESSE' => ['libelle' => 'Prépresse', 'detail' => 'contrôle des fichiers, BAT', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PRODUCTION_VOIR' => ['libelle' => 'Production', 'detail' => 'voir le planning', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PRODUCTION_GERER' => ['libelle' => 'Statuts de production', 'detail' => 'démarrer, terminer une tâche', 'groupe' => self::GROUPE_FONCTIONS],

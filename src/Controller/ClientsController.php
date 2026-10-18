@@ -17,12 +17,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Paiements;
 use App\Entity\User;
-use App\Entity\JournalActivite;
 use App\Repository\CommandesRepository;
 use App\Repository\DevisRepository;
 use App\Repository\CompteTresorerieRepository;
-use App\Entity\MouvementTresorerie;
-use App\Service\MouvementTresorerieService;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Dompdf\Dompdf;
@@ -63,8 +60,9 @@ final class ClientsController extends AbstractController
      * SOLDES CLIENTS
      * ============================================================
      *
-     * Liste des clients chez qui de l'argent est resté (monnaie non
-     * rendue) : répond à "chez qui la monnaie est-elle restée ?".
+     * Clients chez qui de l'argent est resté (monnaie gardée, dépôts :
+     * docs/finances.md, « Compte du client ») : répond à « chez qui
+     * l'argent est-il resté ? ». Filtres et export pour la caisse.
      * ============================================================
      */
     #[Route(
@@ -73,20 +71,84 @@ final class ClientsController extends AbstractController
         methods: ['GET']
     )]
     #[IsGranted('ROLE_PAIEMENT_ENCAISSER')]
-    public function soldes(ClientsRepository $clientsRepository): Response
+    public function soldes(Request $request, ClientsRepository $clientsRepository, \App\Service\Paiement\SoldeClient $soldeClient, EntityManagerInterface $em): Response
     {
-        $clients = $clientsRepository->trouverAvecSoldeCredit();
-
-        $total = 0;
-
-        foreach ($clients as $client) {
-            $total += $client->getSoldeCredit();
-        }
+        $filtres = self::filtresSoldes($request);
+        $clients = $clientsRepository->trouverAvecSoldeCredit($filtres['q'], $filtres['minimum'], $filtres['type']);
 
         return $this->render('clients/soldes.html.twig', [
             'clients' => $clients,
-            'total' => $total,
+            'total' => array_sum(array_map(static fn (Clients $c): int => $c->getSoldeCredit(), $clients)),
+            'derniers' => self::derniersMouvements($em, $clients),
+            'depots' => $soldeClient->depotsEnAttente(),
+            'filtres' => $filtres,
         ]);
+    }
+
+    /** Même liste en CSV (tableur), avec les mêmes filtres. */
+    #[Route(
+        '/soldes/export',
+        name: 'app_clients_soldes_export',
+        methods: ['GET']
+    )]
+    #[IsGranted('ROLE_PAIEMENT_ENCAISSER')]
+    public function exporterSoldes(Request $request, ClientsRepository $clientsRepository, EntityManagerInterface $em): Response
+    {
+        // Toute la liste d'un coup : avec le droit « Paiements » seulement.
+        $this->denyAccessUnlessGranted('ROLE_PAIEMENT_VOIR');
+        $filtres = self::filtresSoldes($request);
+        $clients = $clientsRepository->trouverAvecSoldeCredit($filtres['q'], $filtres['minimum'], $filtres['type']);
+        $derniers = self::derniersMouvements($em, $clients);
+
+        $reponse = new \Symfony\Component\HttpFoundation\StreamedResponse(static function () use ($clients, $derniers): void {
+            $sortie = fopen('php://output', 'w');
+            fwrite($sortie, "\xEF\xBB\xBF");
+            fputcsv($sortie, ['Code', 'Client', 'Type de compte', 'Téléphone', 'Solde client (F)', 'Dernier mouvement'], ';', '"', '');
+            foreach ($clients as $c) {
+                fputcsv($sortie, [
+                    $c->getCode(), $c->getNomComplet(), Clients::TYPES_COMPTE_LABELS[$c->getTypeCompte()] ?? $c->getTypeCompte(), $c->getTelephone() ?? '',
+                    $c->getSoldeCredit(), isset($derniers[(int) $c->getId()]) ? $derniers[(int) $c->getId()]->format('d/m/Y') : '',
+                ], ';', '"', '');
+            }
+            fclose($sortie);
+        });
+        $reponse->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $reponse->headers->set('Content-Disposition', 'attachment; filename="soldes-clients-'.(new \DateTimeImmutable())->format('Y-m-d').'.csv"');
+
+        return $reponse;
+    }
+
+    /** @return array{q: string, minimum: int, type: string} */
+    private static function filtresSoldes(Request $request): array
+    {
+        $type = $request->query->getString('type');
+
+        return [
+            'q' => mb_substr(trim($request->query->getString('q')), 0, 80),
+            'minimum' => max(0, (int) preg_replace('/\D/', '', $request->query->getString('minimum'))),
+            'type' => \in_array($type, Clients::TYPES_COMPTE, true) ? $type : '',
+        ];
+    }
+
+    /**
+     * Date du dernier mouvement du compte de chaque client.
+     *
+     * @param list<Clients> $clients
+     *
+     * @return array<int, \DateTimeImmutable>
+     */
+    private static function derniersMouvements(EntityManagerInterface $em, array $clients): array
+    {
+        if ([] === $clients) {
+            return [];
+        }
+        $dates = [];
+        foreach ($em->createQuery('SELECT IDENTITY(m.client) AS client, MAX(m.creeLe) AS le FROM '.\App\Entity\MouvementSoldeClient::class.' m WHERE m.client IN (:clients) GROUP BY m.client')
+            ->setParameter('clients', $clients)->getArrayResult() as $ligne) {
+            $dates[(int) $ligne['client']] = new \DateTimeImmutable((string) $ligne['le']);
+        }
+
+        return $dates;
     }
 
     /*
@@ -725,6 +787,12 @@ final class ClientsController extends AbstractController
         ]);
     }
 
+    /**
+     * Ancien « Ajouter au solde » de la fiche détaillée : un dépôt sur le
+     * compte du client (SoldeClient::deposer), dans le mode du compte
+     * choisi. Les dépôts se font désormais depuis l'onglet « Compte » de la
+     * fiche client.
+     */
     #[Route(
         '/{id}/solde/ajouter',
         name: 'app_clients_solde_ajouter',
@@ -735,11 +803,11 @@ final class ClientsController extends AbstractController
     public function ajouterSolde(
         Clients $client,
         Request $request,
-        EntityManagerInterface $entityManager,
         CompteTresorerieRepository $compteTresorerieRepository,
-        MouvementTresorerieService $mouvementTresorerieService
+        \App\Service\Paiement\SoldeClient $soldeClient
     ): Response {
         $user = $this->getUser();
+        $fiche = $this->redirect($this->generateUrl('app_clients_show', ['publicId' => $client->getPublicId()->toRfc4122()]).'#compte');
 
         if (!$user instanceof User) {
             throw $this->createAccessDeniedException(
@@ -753,167 +821,40 @@ final class ClientsController extends AbstractController
         )) {
             $this->addFlash('error', 'Jeton de sécurité invalide.');
 
-            return $this->redirectToRoute('app_clients_show', [
-                'publicId' => $client->getPublicId()->toRfc4122(),
-            ]);
+            return $fiche;
         }
 
-        $montant = (int) preg_replace(
-            '/[^\d]/',
-            '',
-            (string) $request->request->get('montant')
-        );
-
-        if ($montant <= 0) {
-            $this->addFlash(
-                'warning',
-                'Le montant doit être supérieur à zéro.'
-            );
-
-            return $this->redirectToRoute('app_clients_show', [
-                'publicId' => $client->getPublicId()->toRfc4122(),
-            ]);
-        }
-
-        /*
-         * ============================================================
-         * COMPTE DE TRÉSORERIE
-         * ============================================================
-         *
-         * L'argent gardé (monnaie non rendue) est physiquement dans
-         * un compte précis (caisse, Orange Money, Wave...) : ce
-         * compte doit être crédité, sinon son solde enregistré ne
-         * correspondra plus jamais à l'argent réellement présent.
-         * ============================================================
-         */
+        $montant = (int) preg_replace('/[^\d]/', '', (string) $request->request->get('montant'));
         $compteId = (int) $request->request->get('compteTresorerie');
-
-        $compte = $compteId > 0
-            ? $compteTresorerieRepository->find($compteId)
-            : null;
-
+        $compte = null;
+        foreach ($compteTresorerieRepository->trouverDisponiblesPour($user, $this->isGranted('ROLE_ADMIN')) as $autorise) {
+            if ($autorise->getId() === $compteId) {
+                $compte = $autorise;
+            }
+        }
         if ($compte === null) {
-            $this->addFlash(
-                'warning',
-                'Veuillez sélectionner le compte de trésorerie où se trouve cet argent.'
-            );
+            $this->addFlash('warning', 'Veuillez sélectionner le compte de trésorerie où se trouve cet argent.');
 
-            return $this->redirectToRoute('app_clients_show', [
-                'publicId' => $client->getPublicId()->toRfc4122(),
-            ]);
+            return $fiche;
         }
 
-        $comptesAutorises = $compteTresorerieRepository->trouverDisponiblesPour(
-            $user,
-            $this->isGranted('ROLE_ADMIN')
-        );
-
-        if (!in_array($compte, $comptesAutorises, true)) {
-            $this->addFlash(
-                'error',
-                'Vous n’êtes pas autorisé à utiliser ce compte de trésorerie.'
-            );
-
-            return $this->redirectToRoute('app_clients_show', [
-                'publicId' => $client->getPublicId()->toRfc4122(),
-            ]);
-        }
-
-        $soldeAvant = $client->getSoldeCredit();
-
-        $client->setSoldeCredit($soldeAvant + $montant);
-
-        $entityManager->persist($client);
-
-        /*
-         * ============================================================
-         * TRACE
-         * ============================================================
-         *
-         * En plus du mouvement de trésorerie ci-dessous (qui prouve
-         * l'entrée d'argent sur le compte), le journal d'activité
-         * garde une trace lisible depuis la fiche du client.
-         * ============================================================
-         */
-        $journal = new JournalActivite();
-        $journal
-            ->setEntite('Clients')
-            ->setEntiteId($client->getId())
-            ->setAction(JournalActivite::ACTION_MODIFICATION)
-            ->setDonneesAvant([
-                'soldeCredit' => $soldeAvant,
-            ])
-            ->setDonneesApres([
-                'soldeCredit' => $client->getSoldeCredit(),
-                'montantAjoute' => $montant,
-                'compteTresorerieId' => $compte->getId(),
-            ])
-            ->setUtilisateur($user);
-
-        $entityManager->persist($journal);
-
-        /*
-         * ============================================================
-         * MOUVEMENT DE TRÉSORERIE
-         * ============================================================
-         *
-         * Catégorie "ajustement" (neutre) : cet argent est déjà
-         * arrivé avec un paiement antérieur, ce n'est pas une
-         * nouvelle vente -- seul le compte doit refléter l'argent
-         * physiquement présent, sans gonfler le chiffre d'affaires.
-         * ============================================================
-         */
-        $mouvement = new MouvementTresorerie();
-        $mouvement->setType(MouvementTresorerie::TYPE_ENCAISSEMENT);
-        $mouvement->setCategorie(MouvementTresorerie::CATEGORIE_AJUSTEMENT);
-        $mouvement->setCompteDestination($compte);
-        $mouvement->setMontant($montant);
-        $mouvement->setModePaiement(Paiements::MODE_ESPECES);
-        $mouvement->setLibelle(
-            sprintf('Monnaie non rendue — %s', $client->getNomComplet())
-        );
-        $mouvement->setDescription(
-            sprintf(
-                'Ajout de %s FCFA au solde du client %s (monnaie non rendue lors d’un paiement).',
-                number_format($montant, 0, ',', ' '),
-                $client->getNomComplet()
-            )
-        );
-        $mouvement->setAgent($user);
+        $mode = match ($compte->getType()) {
+            \App\Entity\CompteTresorerie::TYPE_ORANGE_MONEY => Paiements::MODE_ORANGE_MONEY,
+            \App\Entity\CompteTresorerie::TYPE_WAVE => Paiements::MODE_WAVE,
+            default => Paiements::MODE_ESPECES,
+        };
 
         try {
-            $mouvementTresorerieService->enregistrer($mouvement);
-        } catch (\InvalidArgumentException | \LogicException $exception) {
+            $ligne = $soldeClient->deposer($client, $montant, $mode, $compte, $request->request->getString('reference'), 0, $user);
+        } catch (\DomainException|\LogicException|\InvalidArgumentException $exception) {
             $this->addFlash('error', $exception->getMessage());
 
-            return $this->redirectToRoute('app_clients_show', [
-                'publicId' => $client->getPublicId()->toRfc4122(),
-            ]);
+            return $fiche;
         }
 
-        if ($mouvement->isEnAttente()) {
-            $this->addFlash(
-                'warning',
-                sprintf(
-                    'Solde du client mis à jour : +%s FCFA. Le compte "%s" étant une banque, le crédit reste en attente de validation.',
-                    number_format($montant, 0, ',', ' '),
-                    $compte->getNom()
-                )
-            );
-        } else {
-            $this->addFlash(
-                'success',
-                sprintf(
-                    'Solde du client mis à jour : +%s FCFA (crédité sur %s).',
-                    number_format($montant, 0, ',', ' '),
-                    $compte->getNom()
-                )
-            );
-        }
+        $this->addFlash('success', sprintf('Dépôt de %s FCFA ajouté au solde du client (reçu %s).', number_format($montant, 0, ',', ' '), $ligne->getReference()));
 
-        return $this->redirectToRoute('app_clients_show', [
-            'publicId' => $client->getPublicId()->toRfc4122(),
-        ]);
+        return $fiche;
     }
 
     /**
@@ -978,10 +919,29 @@ final class ClientsController extends AbstractController
         FicheClient360 $fiche,
         \App\Service\Clients\EditionClient $edition,
         \App\Service\EspaceClient\AccesEspace $accesEspace,
-        Request $request
+        Request $request,
+        \App\Service\Paiement\SoldeClient $soldeClient,
+        CompteTresorerieRepository $compteTresorerieRepository,
+        \App\Security\AccesEnLigne $accesEnLigne
     ): Response {
         $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
         $donnees = $fiche->donnees($client, new \DateTimeImmutable(), $voirPaiements);
+        // Onglet « Compte » (monnaie gardée, dépôts, docs/finances.md) : qui voit ou encaisse les paiements.
+        $compte = null;
+        if ($voirPaiements || $this->isGranted('ROLE_PAIEMENT_ENCAISSER')) {
+            $compte = $soldeClient->etat($client);
+            $compte['comptes'] = [];
+            $utilisateur = $this->getUser();
+            if ($utilisateur instanceof User && $this->isGranted('ROLE_PAIEMENT_ENCAISSER')) {
+                $compte['comptes'] = array_values(array_filter(
+                    $compteTresorerieRepository->trouverDisponiblesPour($utilisateur, $this->isGranted('ROLE_ADMIN')),
+                    static fn (\App\Entity\CompteTresorerie $c): bool => !$c->isOrangeMoneyEnLigne() && \in_array($c->getType(), [\App\Entity\CompteTresorerie::TYPE_CAISSE, \App\Entity\CompteTresorerie::TYPE_ORANGE_MONEY, \App\Entity\CompteTresorerie::TYPE_WAVE], true),
+                ));
+            }
+            $compte['en_ligne'] = $accesEnLigne->estEnLigne();
+            $recu = $request->query->getInt('recu_solde');
+            $compte['recu'] = $recu > 0 ? array_values(array_filter($compte['releve'], static fn ($l): bool => $l->getId() === $recu))[0] ?? null : null;
+        }
         $kpi = $donnees['kpi'];
         $statut = match (true) {
             !$client->isStatut() => 'bloque',
@@ -1006,6 +966,7 @@ final class ClientsController extends AbstractController
                 'maintenant' => new \DateTimeImmutable(),
             ],
             'voir_paiements' => $voirPaiements,
+            'compte' => $compte,
             'voir_ca' => $this->isGranted('ROLE_STATS_VENTES'),
             'whatsapp' => $whatsapp,
         ]);

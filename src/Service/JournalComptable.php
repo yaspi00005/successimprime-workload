@@ -7,6 +7,7 @@ use App\Entity\Commandes;
 use App\Entity\CompteTresorerie;
 use App\Entity\DotationAmortissement;
 use App\Entity\Factures;
+use App\Entity\MouvementSoldeClient;
 use App\Entity\MouvementTresorerie;
 use App\Entity\SoldeOuverture;
 use Doctrine\ORM\EntityManagerInterface;
@@ -60,6 +61,7 @@ final class JournalComptable
         '2845' => 'Amortissements du matériel de transport',
         '401' => 'Fournisseurs',
         '411' => 'Clients',
+        '4191' => 'Clients, avances et acomptes reçus',
         '4431' => 'TVA facturée sur ventes',
         '4452' => 'TVA récupérable sur achats',
         '471' => 'Compte d’attente',
@@ -110,6 +112,12 @@ final class JournalComptable
          * « Apport, compte de fusion », qui ne conviennent pas.
          */
         MouvementTresorerie::CATEGORIE_FRAIS_ORANGE => '4712',
+        /*
+         * Argent laissé par un client sur son compte (monnaie gardée,
+         * dépôt) ou rendu : une avance du client, qu'il utilisera pour
+         * payer (docs/finances.md, « Compte du client »).
+         */
+        MouvementTresorerie::CATEGORIE_AVANCE_CLIENT => '4191',
     ];
 
     public function __construct(private readonly EntityManagerInterface $em)
@@ -127,9 +135,14 @@ final class JournalComptable
         foreach ($this->factures($debut, $fin) as $facture) {
             array_push($journaux['ventes'], ...self::ecrituresFacture($facture));
         }
-        foreach ($this->mouvements($debut, $fin) as $mouvement) {
-            [$journal, $lignes] = self::ecrituresMouvement($mouvement);
+        $mouvements = $this->mouvements($debut, $fin);
+        $clientsDesAvances = $this->clientsDesAvances($mouvements);
+        foreach ($mouvements as $mouvement) {
+            [$journal, $lignes] = self::ecrituresMouvement($mouvement, $clientsDesAvances[(int) $mouvement->getId()] ?? null);
             array_push($journaux[$journal], ...$lignes);
+        }
+        foreach ($this->utilisationsDeSolde($debut, $fin) as $ligne) {
+            array_push($journaux['od'], ...self::ecrituresSoldeClient($ligne));
         }
         foreach ($this->achats($debut, $fin) as $achat) {
             array_push($journaux['achats'], ...self::ecrituresAchat($achat));
@@ -201,11 +214,12 @@ final class JournalComptable
     /**
      * Mouvement validé : le compte de trésorerie contre le client (si
      * c'est un paiement), le compte de charge ou de produit, ou l'autre
-     * compte de trésorerie pour un transfert.
+     * compte de trésorerie pour un transfert. $tiers : le client d'une
+     * avance (argent laissé sur son compte ou rendu).
      *
      * @return array{0: string, 1: list<array<string, mixed>>}
      */
-    public static function ecrituresMouvement(MouvementTresorerie $mouvement): array
+    public static function ecrituresMouvement(MouvementTresorerie $mouvement, ?string $tiers = null): array
     {
         $date = \DateTimeImmutable::createFromInterface($mouvement->getDateOperation() ?? new \DateTimeImmutable());
         $piece = $mouvement->getReference();
@@ -231,7 +245,7 @@ final class JournalComptable
             $lettrage = self::lettrage($commande);
         } else {
             $contrepartie = self::COMPTE_CATEGORIE[$mouvement->getCategorie()] ?? ($encaissement ? '758' : '658');
-            $tiers = null;
+            $tiers = MouvementTresorerie::CATEGORIE_AVANCE_CLIENT === $mouvement->getCategorie() ? $tiers : null;
             $lettrage = null;
         }
         $journal = MouvementTresorerie::CATEGORIE_AJUSTEMENT === $mouvement->getCategorie() ? 'od' : self::journalDe($tresorerie);
@@ -239,6 +253,35 @@ final class JournalComptable
         $ligneContrepartie = self::ligne($date, $piece, $contrepartie, $tiers, $libelle, $encaissement ? 0 : $montant, $encaissement ? $montant : 0, $lettrage);
 
         return [$journal, $encaissement ? [$ligneTresorerie, $ligneContrepartie] : [$ligneContrepartie, $ligneTresorerie]];
+    }
+
+    /**
+     * Paiement d'une commande avec le solde du client (opération diverse) :
+     * l'avance (4191) au débit, la créance du client (411) au crédit,
+     * lettrée avec sa facture. Paiement annulé : l'inverse. Les entrées et
+     * sorties d'argent du compte passent, elles, par la trésorerie.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function ecrituresSoldeClient(MouvementSoldeClient $ligne): array
+    {
+        $montant = abs($ligne->getMontant());
+        if (0 === $montant || !\in_array($ligne->getType(), [MouvementSoldeClient::UTILISATION, MouvementSoldeClient::RETOUR], true)) {
+            return [];
+        }
+        $date = $ligne->getCreeLe();
+        $piece = sprintf('SC-%06d', (int) $ligne->getId());
+        $commande = $ligne->getCommande();
+        $tiers = $ligne->getClient()?->getNomComplet();
+        $libelle = ($ligne->getMontant() < 0 ? 'Payé avec le solde · ' : 'Paiement par le solde annulé · ').($commande?->getNumero() ?? $tiers);
+        $avance = ['4191', $tiers, null];
+        $client = ['411', $tiers, self::lettrage($commande)];
+        [$debit, $credit] = $ligne->getMontant() < 0 ? [$avance, $client] : [$client, $avance];
+
+        return [
+            self::ligne($date, $piece, $debit[0], $debit[1], $libelle, $montant, 0, $debit[2]),
+            self::ligne($date, $piece, $credit[0], $credit[1], $libelle, 0, $montant, $credit[2]),
+        ];
     }
 
     /**
@@ -298,7 +341,7 @@ final class JournalComptable
      * les capitaux propres au bilan d'ouverture.
      *
      * - client qui doit : 411 au débit (lettré avec ses règlements) ;
-     * - avance d'un client : 411 au crédit ;
+     * - avance d'un client : 4191 au crédit (compte du client) ;
      * - compte de trésorerie : 571, 521, 5213 ou 5214 au débit ;
      * - dette fournisseur : 401 au crédit (soldé au paiement de la dépense).
      *
@@ -317,7 +360,7 @@ final class JournalComptable
 
         [$debit, $credit] = match ($solde->getType()) {
             SoldeOuverture::CLIENT => [['411', $tiers, self::lettrage($solde->getCommande())], ['471', null, null]],
-            SoldeOuverture::AVANCE_CLIENT => [['471', null, null], ['411', $tiers, null]],
+            SoldeOuverture::AVANCE_CLIENT => [['471', null, null], ['4191', $tiers, null]],
             SoldeOuverture::COMPTE => [[self::compteTresorerie($solde->getCompte()), $tiers, null], ['471', null, null]],
             default => [['471', null, null], ['401', $tiers, null]],
         };
@@ -403,6 +446,45 @@ final class JournalComptable
             ->andWhere('m.statut = :valide')
             ->andWhere('m.dateOperation BETWEEN :debut AND :fin')
             ->setParameter('valide', MouvementTresorerie::STATUT_VALIDE)
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Client de chaque mouvement d'avance (monnaie gardée, dépôt, argent
+     * rendu), lu sur le relevé de son compte.
+     *
+     * @param list<MouvementTresorerie> $mouvements
+     *
+     * @return array<int, string> mouvement => nom du client
+     */
+    private function clientsDesAvances(array $mouvements): array
+    {
+        $avances = array_values(array_filter($mouvements, static fn (MouvementTresorerie $m): bool => MouvementTresorerie::CATEGORIE_AVANCE_CLIENT === $m->getCategorie()));
+        if ([] === $avances) {
+            return [];
+        }
+        $noms = [];
+        foreach ($this->em->getRepository(MouvementSoldeClient::class)->findBy(['mouvementTresorerie' => $avances]) as $ligne) {
+            $noms[(int) $ligne->getMouvementTresorerie()?->getId()] = (string) $ligne->getClient()?->getNomComplet();
+        }
+
+        return $noms;
+    }
+
+    /** @return list<MouvementSoldeClient> */
+    private function utilisationsDeSolde(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('ligne', 'client', 'commande')
+            ->from(MouvementSoldeClient::class, 'ligne')
+            ->innerJoin('ligne.client', 'client')
+            ->leftJoin('ligne.commande', 'commande')
+            ->andWhere('ligne.type IN (:types)')
+            ->andWhere('ligne.creeLe BETWEEN :debut AND :fin')
+            ->setParameter('types', [MouvementSoldeClient::UTILISATION, MouvementSoldeClient::RETOUR])
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
             ->getQuery()

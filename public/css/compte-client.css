@@ -1,0 +1,53 @@
+/* Compte du client à la boutique (docs/finances.md) : onglet de la fiche, caisse, liste des soldes. */
+.si-cc-tete { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; justify-content: space-between; margin: 6px 0 12px; }
+.si-cc-solde { background: linear-gradient(135deg, #F8FAFD, #DCE4F0); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px; max-width: 460px; }
+.si-cc-solde > span { font-size: 12.5px; color: #475569; font-weight: 600; }
+.si-cc-solde strong { font-size: 30px; line-height: 1.1; color: #0F4590; font-weight: 800; }
+.si-cc-solde small { font-size: 12.5px; color: #475569; }
+.si-cc-alerte { color: #B45309 !important; font-weight: 600; margin-top: 4px; }
+.si-cc-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-cc-titre { font-size: 14px; font-weight: 700; margin: 14px 0 6px; }
+.si-cc-aide { font-size: 12.5px; color: #64748B; margin: 0 0 8px; }
+.si-cc-recu { margin: 0 0 10px; }
+.si-cc-releve td { font-size: 13px; vertical-align: top; }
+.si-cc-plus { color: #15803D; }
+.si-cc-moins { color: #B91C1C; }
+.si-cc-depots { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.si-cc-depots li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border: 1px solid #FDE68A; background: #FFFBEB; border-radius: 12px; }
+.si-cc-depots li > div { flex: 1 1 220px; min-width: 0; }
+.si-cc-depots strong { display: block; font-size: 16px; color: #0F172A; }
+.si-cc-depots small { color: #64748B; overflow-wrap: anywhere; }
+.si-cc-depots form { margin: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.si-cc-refus summary { list-style: none; }
+.si-cc-refus summary::-webkit-details-marker { display: none; }
+.si-cc-refus[open] summary { display: none; }
+.si-cc-modes { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-cc-modes label { border: 1.5px solid #E2E8F0; border-radius: 10px; padding: 8px 12px; cursor: pointer; font-weight: 600; }
+.si-cc-modes label:has(input:checked) { border-color: #16A34A; background: #EAF6EE; color: #15803D; }
+.si-cc-case { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }
+.si-cc-case .form-check-input { margin-top: 2px; flex: none; }
+[data-si-cc-reference][hidden], [data-si-cc-frais][hidden], [data-si-cc-monnaie][hidden] { display: none !important; }
+
+/* Caisse : solde du client, payer avec le solde, monnaie gardée. */
+.si-caisse-compte { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; background: #F1F5FB; }
+.si-caisse-compte > div { flex: 1 1 180px; }
+.si-caisse-compte strong { color: #0F4590; font-size: 18px; }
+.si-caisse-compte small { display: block; color: #64748B; }
+.si-caisse-compte form { margin: 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.si-caisse-compte input[name="montant"] { width: 120px; }
+.si-caisse-monnaie { margin-top: 14px; padding: 12px 14px; border-radius: 12px; border: 1px dashed #CBD5E1; display: grid; gap: 8px; }
+.si-caisse-monnaie .row { align-items: end; }
+.si-caisse-monnaie [data-si-cc-rendu] { font-weight: 700; color: #0F172A; }
+
+/* Caisse › Soldes clients. */
+.si-cs-carte { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; }
+.si-cs-filtres { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
+.si-cs-filtres > div { flex: 1 1 160px; max-width: 280px; }
+.si-cs-total { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 12px; color: #475569; }
+.si-cs-total strong { color: #0F4590; }
+@media (max-width: 575px) {
+  .si-cs-carte { padding: 14px; }
+  .si-cc-solde { max-width: none; }
+  .si-cc-actions .btn { flex: 1 1 auto; }
+  .si-cs-filtres > div { max-width: none; }
+}

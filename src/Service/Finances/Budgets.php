@@ -42,13 +42,15 @@ final class Budgets
     /**
      * Sorties d'argent qui ne sont pas des charges du mois. Les frais
      * Orange Money débités au retrait sortent ce que les clients ont payé
-     * en plus : ni dépense ni budget.
+     * en plus : ni dépense ni budget. L'argent rendu à un client sur son
+     * compte (avance client) non plus.
      */
     public const HORS_DEPENSES = [
         MouvementTresorerie::CATEGORIE_TRANSFERT_INTERNE,
         MouvementTresorerie::CATEGORIE_AJUSTEMENT,
         MouvementTresorerie::CATEGORIE_REMBOURSEMENT_CREDIT,
         MouvementTresorerie::CATEGORIE_FRAIS_ORANGE,
+        MouvementTresorerie::CATEGORIE_AVANCE_CLIENT,
     ];
 
     public function __construct(private readonly EntityManagerInterface $em)

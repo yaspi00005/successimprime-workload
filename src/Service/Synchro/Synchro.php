@@ -2,6 +2,7 @@
 
 namespace App\Service\Synchro;
 
+use App\Entity\DepotSoldeClient;
 use App\Entity\BonLivraison;
 use App\Entity\Clients;
 use App\Entity\Commandes;
@@ -440,6 +441,12 @@ final class Synchro
                         $this->em->flush();
                         $this->notifications->notifierRoles(['ROLE_PAIEMENT_ENCAISSER', 'ROLE_ADMIN'], \sprintf('Avoir utilisé en ligne pour la commande %s (%s) : à valider, le solde du client baisse à la validation.', $entite->getCommande()?->getNumero() ?? '?', $entite->getReference()), 'app_paiements_show', ['id' => $entite->getId()]);
                         $resultat = [self::RESULTAT_OK, 'Avoir utilisé par le client : à valider', $titre];
+                    } elseif (!$this->enLigne && $existante === null && $entite instanceof DepotSoldeClient) {
+                        // Dépôt Orange Money fait depuis « Mon solde » : la caisse valide après contrôle du compte
+                        // « Orange Money en ligne ». Le solde du client ne monte qu'à la validation. Pas de montant ici.
+                        $this->em->flush();
+                        $this->notifications->notifierRoles(['ROLE_PAIEMENT_ENCAISSER', 'ROLE_ADMIN'], \sprintf('Dépôt Orange Money reçu en ligne sur le compte de %s (%s) : à valider après contrôle du compte Orange Money en ligne.', $entite->getClient()?->getNomComplet() ?? 'un client', $entite->getReference()), 'app_clients_show', ['publicId' => $entite->getClient()?->getPublicId()]);
+                        $resultat = [self::RESULTAT_OK, 'Dépôt sur le compte du client : à valider', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof Commandes && $entite->estRefuseeParEntreprise() && !$entite->isStatut()) {
                         // Refusée chez le client avant même d'arriver : classée, l'atelier n'en entend pas parler.
                         $entite->setDeleted(true);

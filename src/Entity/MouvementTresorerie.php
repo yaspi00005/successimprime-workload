@@ -162,6 +162,16 @@ class MouvementTresorerie implements AppartientASociete
     public const CATEGORIE_FRAIS_ORANGE =
         'frais_orange';
 
+    /*
+     * Argent laissé par un client sur son compte à la boutique
+     * (monnaie gardée, dépôt) et rendu plus tard : une avance du
+     * client (compte 4191), ni vente ni produit. Il entre bien dans
+     * la caisse : compté dans les encaissements, jamais dans le
+     * chiffre d'affaires. docs/finances.md, « Compte du client ».
+     */
+    public const CATEGORIE_AVANCE_CLIENT =
+        'avance_client';
+
 
     public const CATEGORIES = [
         self::CATEGORIE_VENTE,
@@ -179,6 +189,7 @@ class MouvementTresorerie implements AppartientASociete
         self::CATEGORIE_FRAIS_BANCAIRE,
         self::CATEGORIE_REMBOURSEMENT_CREDIT,
         self::CATEGORIE_FRAIS_ORANGE,
+        self::CATEGORIE_AVANCE_CLIENT,
     ];
 
 
@@ -189,6 +200,7 @@ class MouvementTresorerie implements AppartientASociete
         self::CATEGORIE_TRANSFERT_INTERNE,
         self::CATEGORIE_AJUSTEMENT,
         self::CATEGORIE_FRAIS_ORANGE,
+        self::CATEGORIE_AVANCE_CLIENT,
     ];
 
 
@@ -248,6 +260,9 @@ class MouvementTresorerie implements AppartientASociete
 
         self::CATEGORIE_FRAIS_ORANGE =>
             'Frais Orange Money à prélever',
+
+        self::CATEGORIE_AVANCE_CLIENT =>
+            'Avance client (argent laissé sur son compte)',
     ];
 
 
@@ -1104,7 +1119,9 @@ class MouvementTresorerie implements AppartientASociete
     /*
      * Les frais Orange Money à prélever ne se choisissent pas à la
      * main : l'application les pose à la réception d'un paiement et à
-     * la sortie d'argent d'un compte Orange Money.
+     * la sortie d'argent d'un compte Orange Money. Les avances des
+     * clients non plus : elles passent par le compte du client (fiche
+     * client, caisse), qui tient son solde.
      */
     public static function getCategoriesPourFormulaire(): array
     {
@@ -1113,6 +1130,7 @@ class MouvementTresorerie implements AppartientASociete
                 self::CATEGORIES_LABELS,
                 [
                     self::CATEGORIE_FRAIS_ORANGE => true,
+                    self::CATEGORIE_AVANCE_CLIENT => true,
                 ]
             )
         );

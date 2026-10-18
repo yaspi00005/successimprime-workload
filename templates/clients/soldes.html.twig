@@ -1,126 +1,104 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}
-	Soldes clients
+{#
+	Caisse › Soldes clients (docs/finances.md, « Compte du client ») : chez
+	qui de l'argent est resté (monnaie gardée, dépôts), avec les dépôts faits
+	depuis l'espace client qui attendent la caisse. Avec « Encaissements » ;
+	l'export, avec « Paiements » en plus.
+#}
+
+{% block title %}Soldes clients{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/compte-client.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_PAIEMENT_VOIR') %}
+		<li class="nav-item">
+			<a href="{{ path('app_clients_soldes_export', filtres|filter(v => v)) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-file-csv me-1"></i>Exporter</a>
+		</li>
+	{% endif %}
 {% endblock %}
 
 {% block body %}
+	{% if depots is not empty %}
+		<section class="card si-cs-carte mb-3">
+			<h2 class="si-cc-titre mt-0">Dépôts Orange Money de l'espace client, à valider</h2>
+			<p class="si-cc-aide">Ouvrez le compte du client pour valider après avoir vu l'argent sur le compte « Orange Money en ligne ».</p>
+			<ul class="si-cc-depots">
+				{% for d in depots %}
+					<li>
+						<div>
+							<strong>{{ d.client.nomComplet }}</strong>
+							<small>{{ d.recuLe ? d.recuLe|date('d/m/Y H:i') }} · {{ d.montant|number_format(0, ',', ' ') }} · {{ d.txnid ?: d.reference }}</small>
+						</div>
+						<a class="btn btn-primary btn-sm" href="{{ path('app_clients_show', {publicId: d.client.publicId}) }}#compte">Ouvrir le compte</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</section>
+	{% endif %}
 
-	<div class="side-app">
-
-		<div class="page-header">
-
+	<section class="card si-cs-carte">
+		<form method="get" class="si-cs-filtres" role="search">
 			<div>
-
-				<h1 class="page-title">
-					Soldes clients
-				</h1>
-
-				<ol class="breadcrumb">
-
-					<li class="breadcrumb-item">
-						<a href="{{ path('app_clients_index') }}">
-							Clients
-						</a>
-					</li>
-
-					<li class="breadcrumb-item active">
-						Soldes
-					</li>
-
-				</ol>
-
+				<label class="form-label" for="soldes-q">Client</label>
+				<input class="form-control" id="soldes-q" name="q" value="{{ filtres.q }}" placeholder="Nom, code ou téléphone">
 			</div>
-
-		</div>
-
-
-		{% include "alert.html.twig" %}
-
-
-		<div class="card">
-
-			<div class="card-header d-flex justify-content-between align-items-center">
-
-				<h3 class="card-title mb-0">
-					Clients chez qui de l'argent est resté (monnaie non rendue)
-				</h3>
-
-				<div class="text-muted small">
-					{{ clients|length }} client{{ clients|length > 1 ? 's' : '' }} — total :
-					<strong>{{ total|number_format(0, ',', ' ') }} FCFA</strong>
-				</div>
-
+			<div>
+				<label class="form-label" for="soldes-minimum">Solde d'au moins (F)</label>
+				<input class="form-control" id="soldes-minimum" name="minimum" inputmode="numeric" value="{{ filtres.minimum ?: '' }}">
 			</div>
+			<div>
+				<label class="form-label" for="soldes-type">Type de compte</label>
+				<select class="form-select" id="soldes-type" name="type">
+					<option value="">Tous</option>
+					{% for valeur, libelle in constant('App\\Entity\\Clients::TYPES_COMPTE_LABELS') %}
+						<option value="{{ valeur }}" {{ filtres.type == valeur ? 'selected' }}>{{ libelle }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<button class="btn btn-primary">Filtrer</button>
+			{% if filtres|filter(v => v) is not empty %}<a class="btn btn-link" href="{{ path('app_clients_soldes') }}">Tout voir</a>{% endif %}
+		</form>
 
-			<div class="table-responsive">
+		<p class="si-cs-total">
+			<span>{{ clients|length }} client{{ clients|length > 1 ? 's' }}</span>
+			<span>Total des soldes clients : <strong>{{ total|number_format(0, ',', ' ') }} F</strong></span>
+		</p>
 
-				<table class="table table-bordered table-hover mb-0">
-
-					<thead>
-
+		<div class="table-responsive">
+			<table class="table si-fiche-table">
+				<thead>
+					<tr>
+						<th>Client</th>
+						<th class="si-masque-mobile">Type</th>
+						<th class="si-masque-mobile">Téléphone</th>
+						<th class="si-masque-mobile">Dernier mouvement</th>
+						<th class="text-end">Solde (F)</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for client in clients %}
 						<tr>
-							<th>Code</th>
-							<th>Client</th>
-							<th>Téléphone</th>
-							<th class="text-right">Solde</th>
-							<th class="text-center">Actions</th>
+							<td>
+								<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}#compte">{{ client.nomComplet }}</a>
+								<small class="d-block text-muted">{{ client.code }}</small>
+							</td>
+							<td class="si-masque-mobile">{{ client.typeCompteLabel }}</td>
+							<td class="si-masque-mobile">{{ client.telephone|default('—') }}</td>
+							<td class="si-masque-mobile">{{ derniers[client.id] is defined ? derniers[client.id]|date('d/m/Y') : '—' }}</td>
+							<td class="text-end text-nowrap fw-semibold">{{ client.soldeCredit|number_format(0, ',', ' ') }}</td>
 						</tr>
-
-					</thead>
-
-					<tbody>
-
-						{% for client in clients %}
-
-							<tr>
-
-								<td class="align-middle">
-									{{ client.code }}
-								</td>
-
-								<td class="align-middle">
-									<a href="{{ path('app_clients_show', { publicId: client.publicId }) }}">
-										{{ client.nomComplet }}
-									</a>
-								</td>
-
-								<td class="align-middle">
-									{{ client.telephone|default('—') }}
-								</td>
-
-								<td class="align-middle text-right">
-									<strong class="text-money-positive">
-										{{ client.soldeCredit|number_format(0, ',', ' ') }} FCFA
-									</strong>
-								</td>
-
-								<td class="align-middle text-center">
-									<a href="{{ path('app_clients_show', { publicId: client.publicId }) }}" class="btn btn-sm btn-primary-light" title="Voir la fiche">
-										<i class="fa fa-eye"></i>
-									</a>
-								</td>
-
-							</tr>
-
-						{% else %}
-
-							<tr>
-								<td colspan="5" class="text-center text-muted py-5">
-									Aucun client n'a de solde en ce moment.
-								</td>
-							</tr>
-
-						{% endfor %}
-
-					</tbody>
-
-				</table>
-
-			</div>
-
+					{% else %}
+						<tr>
+							<td colspan="5" class="text-center text-muted py-5">{{ filtres|filter(v => v) is empty ? 'Aucun client n’a laissé d’argent à la boutique.' : 'Aucun client ne correspond à ces filtres.' }}</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
 		</div>
-
-	</div>
-
+	</section>
 {% endblock %}

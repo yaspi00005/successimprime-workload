@@ -151,16 +151,19 @@
 
 							<i class="fa fa-info-circle mr-1"></i>
 
-							Ce client dispose d'un solde de
+							Ce client a un solde client de
 							<strong>{{ commande.clients.soldeCredit|number_format(0, ',', ' ') }} FCFA</strong>
-							(monnaie non rendue lors d'un précédent paiement).
+							(monnaie gardée, dépôts). Il peut payer tout ou partie de cette commande avec.
 
-							<form method="post" action="{{ path('app_commandes_utiliser_solde_client', { id: commande.id }) }}" class="mt-2 mb-0">
+							<form method="post" action="{{ path('app_commandes_utiliser_solde_client', { id: commande.id }) }}" class="mt-2 mb-0 d-flex flex-wrap align-items-center" style="gap: 6px;">
 
 								<input type="hidden" name="_token" value="{{ csrf_token('utiliser_solde_client_' ~ commande.id) }}">
 
+								<label class="mb-0" for="solde-a-utiliser">Montant</label>
+								<input type="text" inputmode="numeric" autocomplete="off" id="solde-a-utiliser" name="montant" class="form-control form-control-sm" style="max-width: 130px;" value="{{ min(commande.clients.soldeCredit, montantRestant) }}">
+
 								<button type="submit" class="btn btn-info btn-sm">
-									Utiliser {{ min(commande.clients.soldeCredit, montantRestant)|number_format(0, ',', ' ') }} FCFA de ce solde
+									Payer avec le solde
 								</button>
 
 							</form>

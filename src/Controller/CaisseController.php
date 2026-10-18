@@ -6,6 +6,7 @@ use App\Entity\Clients;
 use App\Entity\ClotureCaisse;
 use App\Entity\CompteTresorerie;
 use App\Entity\Factures;
+use App\Entity\MouvementSoldeClient;
 use App\Entity\Paiements;
 use App\Entity\User;
 use App\Form\PaiementsType;
@@ -15,6 +16,7 @@ use App\Security\AccesEnLigne;
 use App\Service\Caisse;
 use App\Service\DocumentsEntreprise;
 use App\Service\NotificationService;
+use App\Service\Paiement\SoldeClient;
 use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -50,7 +52,7 @@ final class CaisseController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request, ClientsRepository $clients, EntityManagerInterface $em, AccesEnLigne $acces, Parametres $parametres, ParametresPaiementRepository $parametresPaiement): Response
+    public function index(Request $request, ClientsRepository $clients, EntityManagerInterface $em, AccesEnLigne $acces, Parametres $parametres, ParametresPaiementRepository $parametresPaiement, SoldeClient $soldeClient): Response
     {
         $utilisateur = $this->utilisateur();
         $maintenant = new \DateTimeImmutable();
@@ -86,6 +88,23 @@ final class CaisseController extends AbstractController
             $recu = $this->recuAutorise($em->getRepository(Paiements::class)->find($request->query->getInt('recu')));
         }
 
+        // Compte du client (docs/finances.md) : son solde, payer avec, déposer ; le reçu d'un dépôt fait ici.
+        $compteClient = null;
+        if ($client instanceof Clients) {
+            $compteClient = [
+                'solde' => $client->getSoldeCredit(),
+                'disponible' => $soldeClient->disponiblePour($client),
+                'en_ligne' => $acces->estEnLigne(),
+                'comptes' => array_values(array_filter($comptes, static fn (CompteTresorerie $c): bool => !$c->isOrangeMoneyEnLigne() && \in_array($c->getType(), [CompteTresorerie::TYPE_CAISSE, CompteTresorerie::TYPE_ORANGE_MONEY, CompteTresorerie::TYPE_WAVE], true))),
+            ];
+            $compteClient['engage'] = max(0, $compteClient['solde'] - $compteClient['disponible']);
+        }
+        $recuSolde = null;
+        if ($request->query->getInt('recu_solde') > 0) {
+            $ligne = $em->getRepository(MouvementSoldeClient::class)->find($request->query->getInt('recu_solde'));
+            $recuSolde = null !== $ligne && ($this->isGranted('ROLE_PAIEMENT_VOIR') || $ligne->getPar() === $utilisateur) ? $ligne : null;
+        }
+
         return $this->render('caisse/index.html.twig', [
             'en_ligne' => $acces->estEnLigne(),
             'clients_avec_solde' => $this->caisse->clientsAvecSolde(),
@@ -98,6 +117,8 @@ final class CaisseController extends AbstractController
             'caisses' => $this->caisse->caisseDuJour($comptes, $maintenant),
             'encaissements' => $this->caisse->encaissementsDuJour($maintenant, $this->isGranted('ROLE_PAIEMENT_VOIR') ? null : $utilisateur),
             'recu' => $recu,
+            'compte_client' => $compteClient,
+            'recu_solde' => $recuSolde,
             'modes' => array_intersect_key(self::LIBELLES_MODES, array_flip($parametres->modesPaiementActifs())),
             'virement_seuil' => (int) $parametres->valeur('paiements', 'virement_seuil'),
             'recu_envoi' => $recu ? self::envoiRecu($recu, (string) $parametres->valeur('paiements', 'recu')) : null,
@@ -107,7 +128,7 @@ final class CaisseController extends AbstractController
 
     /** Reçu à imprimer (ticket 80 mm), sans données internes. */
     #[Route('/recu/{id}', name: 'recu', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function recu(Paiements $paiement, DocumentsEntreprise $documents): Response
+    public function recu(Paiements $paiement, DocumentsEntreprise $documents, EntityManagerInterface $em): Response
     {
         $paiement = $this->recuAutorise($paiement) ?? throw $this->createAccessDeniedException();
         $commande = $paiement->getCommande();
@@ -132,6 +153,8 @@ final class CaisseController extends AbstractController
             'paiement' => $paiement,
             'commande' => $commande,
             'reste' => max(0, (int) $commande?->getTotalTtc() - $paye),
+            // « Monnaie gardée sur votre compte » : le client n'a pas repris sa monnaie.
+            'monnaie' => $em->getRepository(MouvementSoldeClient::class)->findOneBy(['paiement' => $paiement, 'type' => MouvementSoldeClient::MONNAIE]),
         ]);
     }
 

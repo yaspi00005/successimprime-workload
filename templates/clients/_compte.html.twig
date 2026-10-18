@@ -1,0 +1,108 @@
+{#
+	Onglet « Compte » de la fiche client (docs/finances.md, « Compte du
+	client ») : l'argent que le client a laissé à la boutique (monnaie
+	gardée, dépôts) et son relevé. Visible avec « Paiements » ou
+	« Encaissements » (ClientsController::fiche360) ; dépôt et dépôts en
+	ligne : qui encaisse ; argent rendu : droit « Rendre l'argent du compte
+	d'un client ». Rien ne se change en ligne ni en « Voir ». Les fenêtres
+	Dépôt et Rendre l'argent (_compte_modales) sont hors de l'onglet.
+#}
+{% set gerer = is_granted('ROLE_PAIEMENT_ENCAISSER') and not compte.en_ligne and not module_en_lecture('app_caisse_solde_depot') %}
+{% set rendre = gerer and is_granted('ROLE_SOLDE_CLIENT_REMBOURSER') and compte.disponible > 0 %}
+{% set retour = retour_compte|default('fiche') %}
+
+<div class="si-cc">
+	<div class="si-cc-tete">
+		<div class="si-cc-solde">
+			<span>Solde client</span>
+			<strong>{{ compte.solde|number_format(0, ',', ' ') }} F</strong>
+			<small>Argent laissé à la boutique (monnaie gardée, dépôts). Il paie ses prochaines commandes, ou lui est rendu.</small>
+			{% if compte.engage > 0 %}
+				<small class="si-cc-alerte">Déjà engagé en ligne, à valider : {{ compte.engage|number_format(0, ',', ' ') }} F · disponible : {{ compte.disponible|number_format(0, ',', ' ') }} F</small>
+			{% endif %}
+		</div>
+		{% if gerer %}
+			<div class="si-cc-actions">
+				<button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modale-depot"><i class="fas fa-plus me-1"></i>Dépôt</button>
+				{% if rendre %}
+					<button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#modale-rendre"><i class="fas fa-hand-holding-usd me-1"></i>Rendre l'argent</button>
+				{% endif %}
+			</div>
+		{% endif %}
+	</div>
+
+	{% if compte.recu %}
+		<p class="si-cc-recu">
+			<a href="{{ path('app_caisse_solde_recu', {id: compte.recu.id}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ compte.recu.reference }}</a>
+		</p>
+	{% endif %}
+
+	{% if compte.depots is not empty %}
+		<h5 class="si-cc-titre">Dépôts faits depuis l'espace client, à valider</h5>
+		<p class="si-cc-aide">Validez après avoir vu l'argent arriver sur le compte « Orange Money en ligne ». Les frais payés en plus ne vont pas au solde.</p>
+		<ul class="si-cc-depots">
+			{% for d in compte.depots %}
+				<li>
+					<div>
+						<strong>{{ d.montant|number_format(0, ',', ' ') }}</strong>
+						<small>{{ d.recuLe ? d.recuLe|date('d/m/Y H:i') }} · {{ d.auteur ?: 'le client' }} · {{ d.txnid ?: d.reference }}{% if d.fondsSoutien + d.fraisRetrait > 0 %} · frais en plus {{ (d.fondsSoutien + d.fraisRetrait)|number_format(0, ',', ' ') }}{% endif %}</small>
+					</div>
+					{% if gerer %}
+						<form method="post" action="{{ path('app_caisse_solde_depot_valider', {id: d.id}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('solde-depot-en-ligne-' ~ d.id) }}">
+							<input type="hidden" name="retour" value="{{ retour }}">
+							<button class="btn btn-success btn-sm">Valider</button>
+						</form>
+						<details class="si-cc-refus">
+							<summary class="btn btn-light btn-sm">Refuser</summary>
+							<form method="post" action="{{ path('app_caisse_solde_depot_rejeter', {id: d.id}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('solde-depot-en-ligne-' ~ d.id) }}">
+								<input type="hidden" name="retour" value="{{ retour }}">
+								<label class="visually-hidden" for="motif-depot-{{ d.id }}">Motif du refus</label>
+								<input class="form-control form-control-sm" id="motif-depot-{{ d.id }}" name="motif" placeholder="Motif (argent pas reçu…)" required maxlength="255">
+								<button class="btn btn-danger btn-sm">Refuser le dépôt</button>
+							</form>
+						</details>
+					{% endif %}
+				</li>
+			{% endfor %}
+		</ul>
+	{% endif %}
+
+	<h5 class="si-cc-titre">Relevé</h5>
+	{% if compte.releve is empty %}
+		<p class="si-fiche-vide">Aucun mouvement : le client n'a rien laissé à la boutique.</p>
+	{% else %}
+		<div class="table-responsive"><table class="table si-fiche-table si-cc-releve">
+			<thead><tr><th>Date</th><th>Opération</th><th class="si-masque-mobile">Par</th><th class="text-end">Montant (F)</th><th class="text-end si-masque-mobile">Solde après</th></tr></thead>
+			<tbody>
+				{% for l in compte.releve %}
+					<tr>
+						<td class="text-nowrap">{{ l.creeLe|date('d/m/Y') }}<small class="d-block text-muted">{{ l.creeLe|date('H:i') }}</small></td>
+						<td>
+							{{ l.libelle }}
+							{% if l.reference %}
+								<small class="d-block text-muted">
+									{% if l.type in ['depot', 'remboursement'] and (l.reference starts with 'D-' or l.reference starts with 'RB-') %}
+										<a href="{{ path('app_caisse_solde_recu', {id: l.id}) }}" target="_blank" rel="noopener">{{ l.reference }}</a>
+									{% elseif l.type == 'monnaie' and l.paiement %}
+										<a href="{{ path('app_caisse_recu', {id: l.paiement.id}) }}" target="_blank" rel="noopener">{{ l.reference }}</a>
+									{% elseif l.commande %}
+										<a href="{{ path('app_commandes_show', {id: l.commande.id}) }}">{{ l.reference }}</a>
+									{% else %}
+										{{ l.reference }}
+									{% endif %}
+								</small>
+							{% endif %}
+							{% if l.motif %}<small class="d-block text-muted">{{ l.motif }}</small>{% endif %}
+						</td>
+						<td class="si-masque-mobile">{{ l.parNom ?: '—' }}</td>
+						<td class="text-end text-nowrap fw-semibold {{ l.montant >= 0 ? 'si-cc-plus' : 'si-cc-moins' }}">{{ l.montant > 0 ? '+' : '−' }}{{ (l.montant|abs)|number_format(0, ',', ' ') }}</td>
+						<td class="text-end text-nowrap si-masque-mobile">{{ l.soldeApres|number_format(0, ',', ' ') }}</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table></div>
+	{% endif %}
+</div>
+

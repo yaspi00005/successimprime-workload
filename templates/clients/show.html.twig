@@ -684,7 +684,7 @@
 
 					<i class="fa fa-coins mr-2"></i>
 
-					Solde du client (monnaie non rendue)
+					Solde client (monnaie gardée, dépôts)
 
 				</h3>
 
@@ -721,47 +721,15 @@
 					</div>
 
 
-					{% if is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+					<div class="col-md-8 text-md-right">
 
-						<div class="col-md-8">
+						{# Dépôts, monnaie gardée, argent rendu et relevé : onglet « Compte » de la fiche (docs/finances.md). #}
+						<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}#compte" class="btn btn-primary">
+							<i class="fa fa-wallet mr-1"></i>
+							Compte du client : dépôt et relevé
+						</a>
 
-							<form method="post" action="{{ path('app_clients_solde_ajouter', { id: client.id }) }}" class="form-inline justify-content-md-end">
-
-								<input type="hidden" name="_token" value="{{ csrf_token('ajouter_solde_client_' ~ client.id) }}">
-
-								<label class="mr-2 mb-0" for="solde-client-montant">
-									Ajouter au solde
-								</label>
-
-								<input type="text" inputmode="numeric" autocomplete="off" id="solde-client-montant" name="montant" class="form-control mr-2" style="max-width: 130px;" placeholder="Ex. 500" required>
-
-								<label class="mr-2 mb-0" for="solde-client-compte">
-									sur
-								</label>
-
-								<select id="solde-client-compte" name="compteTresorerie" class="form-control custom-select mr-2" style="max-width: 220px;" required>
-
-									<option value="">Compte...</option>
-
-									{% for compte in comptesTresorerie %}
-										<option value="{{ compte.id }}">{{ compte.nom }}</option>
-									{% endfor %}
-
-								</select>
-
-								<button type="submit" class="btn btn-primary">
-									Ajouter
-								</button>
-
-							</form>
-
-							<small class="form-text text-muted text-md-right d-block">
-								Sélectionnez le compte où se trouve physiquement cet argent (ex. votre caisse). Ce solde sera aussi proposé automatiquement au prochain paiement de ce client.
-							</small>
-
-						</div>
-
-					{% endif %}
+					</div>
 
 				</div>
 

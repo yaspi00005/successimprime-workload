@@ -6,7 +6,6 @@ namespace DoctrineMigrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * Compte du client à la boutique (docs/finances.md, « Compte du client ») :
@@ -41,14 +40,11 @@ final class Version20261018140000 extends AbstractMigration
         $this->addSql('ALTER TABLE transaction_orange_money ADD CONSTRAINT FK_E73FAA078510D4DE FOREIGN KEY (depot_id) REFERENCES depot_solde_client (id) ON DELETE CASCADE');
         $this->addSql('CREATE INDEX IDX_E73FAA078510D4DE ON transaction_orange_money (depot_id)');
 
-        // Solde déjà sur la fiche : première ligne du relevé.
-        $maintenant = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        foreach ($this->connection->fetchAllAssociative('SELECT id, solde_credit FROM clients WHERE solde_credit > 0 ORDER BY id') as $client) {
-            $this->addSql(
-                "INSERT INTO mouvement_solde_client (public_id, client_id, type, montant, solde_apres, par_nom, cree_le) VALUES (UNHEX(?), ?, 'reprise', ?, ?, 'migration', ?)",
-                [bin2hex(Uuid::v7()->toBinary()), (int) $client['id'], (int) $client['solde_credit'], (int) $client['solde_credit'], $maintenant],
-            );
-        }
+        // Solde déjà sur la fiche : première ligne du relevé. La migration passe aussi sur le site en
+        // ligne, dont les fiches ont le même solde : l'identifiant public est tiré de celui du client
+        // (comme les entreprises et les sociétés), si bien que la ligne est la même des deux côtés et
+        // qu'une initialisation (app:synchro --initialiser) la met à jour au lieu de la doubler.
+        $this->addSql("INSERT INTO mouvement_solde_client (public_id, client_id, type, montant, solde_apres, par_nom, cree_le) SELECT UNHEX(MD5(CONCAT('solde-reprise:', HEX(public_id)))), id, 'reprise', solde_credit, solde_credit, 'migration', NOW() FROM clients WHERE solde_credit > 0 ORDER BY id");
 
         // Monnaie ajoutée à la main sur une fiche avant le relevé : c'était déjà une avance du client.
         $this->addSql("UPDATE mouvement_tresorerie SET categorie = 'avance_client' WHERE categorie = 'ajustement' AND libelle LIKE 'Monnaie non rendue — %'");

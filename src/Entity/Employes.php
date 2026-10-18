@@ -361,8 +361,8 @@ public function setUser(?User $user): static
             return null;
         }
         $fonction = trim((string) preg_replace('/\s+/u', ' ', (string) $fonction));
-        // « Graphiste PAO » devient « graphiste PAO » : seule la première lettre change.
-        $fonction = '' !== $fonction ? mb_strtolower(mb_substr($fonction, 0, 1)).mb_substr($fonction, 1) : '';
+        // « Graphiste PAO » devient « graphiste PAO » : seule la première lettre change ; un sigle en tête (« DG », « RH ») reste tel quel.
+        $fonction = '' !== $fonction && 1 !== preg_match('/^\p{Lu}{2,}(?!\p{Ll})/u', $fonction) ? mb_strtolower(mb_substr($fonction, 0, 1)).mb_substr($fonction, 1) : $fonction;
 
         return mb_substr('' !== $fonction ? \sprintf('%s (%s)', $prenom, $fonction) : $prenom, 0, 80);
     }

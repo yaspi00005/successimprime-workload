@@ -21,6 +21,9 @@ final class SuiviClientEntitesTest extends TestCase
         self::assertSame('Seydou (graphiste PAO)', $seydou->getNomPublic());
         self::assertSame('Awa', Employes::nomPublic('  Awa ', null), 'sans métier : le prénom');
         self::assertSame('Fanta (accueil)', Employes::nomPublic("Fanta\n", '  Accueil '));
+        self::assertSame('Moussa (DG adjoint)', Employes::nomPublic('Moussa', 'DG adjoint'), 'un sigle en tête reste en capitales');
+        self::assertSame('Fanta (RH)', Employes::nomPublic('Fanta', 'RH'));
+        self::assertSame('Awa (école)', Employes::nomPublic('Awa', 'École'));
         self::assertNull(Employes::nomPublic(null, 'Graphiste'), 'sans prénom : rien, jamais le nom de famille');
         self::assertNull(Employes::nomPublic('  ', 'Graphiste'));
         self::assertSame(80, mb_strlen((string) Employes::nomPublic(str_repeat('a', 60), str_repeat('b', 60))));

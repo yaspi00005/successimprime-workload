@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Terminer un travail (maquette AT05, deuxième écran) : quantités demandée,
+	imprimée et gâche, motif de la gâche, étape suivante de la commande,
+	« Valider ». La gâche est notée sur l'ordre et au journal de la machine.
+#}
+
+{% set demande = o.quantite ?? (ligne ? ligne.quantite : 0) %}
+{% set numero = ligne and ligne.commande ? ligne.commande.numero : o.numero %}
+{% block title %}Terminer {{ numero }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/atelier-production.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+<form method="post" class="si-ap si-ap-op">
+	<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+	<a href="{{ path('app_atelier_operateur', {machine: o.machine ? o.machine.id : null}) }}" class="si-ap-gris"><i class="fas fa-chevron-left me-1" aria-hidden="true"></i>Mon travail</a>
+
+	{% if not o.estEnCours %}
+		<div class="alert alert-warning mb-0">Ce travail n'est pas en cours{{ o.estEnPause ? ' : reprenez-le avant de le terminer' }}.</div>
+	{% endif %}
+
+	<section class="si-ap-carte">
+		<p class="si-ap-titre-section">Quantités</p>
+		<b>{{ ligne ? ligne.designation|default(ligne.produit ? ligne.produit.nom : 'Travail') : 'Travail' }}</b>
+		<div class="si-ap-quantites mt-2">
+			<label>Demandé<b>{{ demande }}</b></label>
+			<label for="imprime">Imprimé<input type="number" id="imprime" name="imprime" min="1" inputmode="numeric" required value="{{ demande }}"></label>
+			<label for="gache" class="si-ap-gache">Gâche<input type="number" id="gache" name="gache" min="0" inputmode="numeric" value="0"></label>
+		</div>
+		<p class="si-ap-gris si-ap-petit mt-2 mb-0">Imprimé = tout ce qui est sorti de la machine, gâche comprise. Il faut au moins {{ demande }} bonnes pièces.</p>
+	</section>
+
+	<section class="si-ap-carte">
+		<p class="si-ap-titre-section">Motif de la gâche</p>
+		<div class="si-ap-puces" role="radiogroup" aria-label="Motif de la gâche">
+			{% for cle, libelle in motifs %}
+				<input type="radio" name="motif" id="motif-{{ cle }}" value="{{ cle }}" {{ loop.first ? 'checked' }}><label for="motif-{{ cle }}">{{ libelle }}</label>
+			{% endfor %}
+		</div>
+		<label class="si-ap-petit mt-2 mb-0 w-100">Remarque (facultatif)<input type="text" name="observation" maxlength="200" class="form-control" placeholder="premier tirage trop clair"></label>
+	</section>
+
+	<section class="si-ap-carte si-ap-etape">
+		{% if suivante %}
+			<div><b>Étape suivante</b><small>{{ suivante.attente|default('la commande continue') }}</small></div>
+			<div class="text-end"><b>{{ suivante.machine.nom }}</b>{% if suivante.debut %}<small>{{ suivante.debut|date('d/m') == maintenant|date('d/m') ? suivante.debut|date('H:i') : suivante.debut|date('d/m H:i') }}</small>{% endif %}</div>
+		{% else %}
+			<div><b>Étape suivante</b><small>plus de machine : prêt pour la finition, le retrait ou la livraison</small></div>
+		{% endif %}
+	</section>
+
+	<button type="submit" class="btn btn-success si-ap-gros" {{ not o.estEnCours ? 'disabled' }}>Valider{{ suivante ? ' · envoyer sur ' ~ suivante.machine.nom : ' · terminer' }}</button>
+</form>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		// La gâche suit l'imprimé : imprimé − demandé, tant qu'on ne l'a pas changée à la main.
+		(function () {
+			var imprime = document.getElementById('imprime'), gache = document.getElementById('gache'), touchee = false, demande = {{ demande|json_encode }};
+			if (!imprime || !gache) { return; }
+			gache.addEventListener('input', function () { touchee = true; });
+			imprime.addEventListener('input', function () { if (!touchee) { gache.value = Math.max(0, (parseInt(imprime.value, 10) || 0) - demande); } });
+		})();
+	</script>
+{% endblock %}

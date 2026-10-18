@@ -365,8 +365,8 @@ final class Formation
                     [
                         'titre' => 'Lire la charge des machines',
                         'compte' => 'demo.oumar',
-                        'consigne' => ['Onglet « Planning machines ».'],
-                        'attendu' => 'L\'employé dit quelle machine est la plus occupée aujourd\'hui.',
+                        'consigne' => ['Menu « Atelier », onglet « Planning ».'],
+                        'attendu' => 'L\'employé dit quelle machine est la plus occupée cette semaine.',
                     ],
                     [
                         'titre' => 'Démarrer et mettre en pause',

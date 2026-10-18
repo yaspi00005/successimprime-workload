@@ -1,0 +1,216 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Atelier › Files d'attente (maquette AT02, docs/atelier-production.md) :
+	l'ordre de passage d'une machine, la matière, la surface, le temps, la
+	date promise, les retards et les travaux bloqués. Le chef d'atelier
+	change l'ordre (glisser une ligne, ou les flèches sur téléphone) ou
+	laisse l'ordre automatique, et affecte les opérateurs. Aucun montant.
+#}
+
+{% block title %}{{ machine ? machine.nom : 'Files d\'attente' }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/atelier-production.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if chef and machine and file is not empty %}
+		<li class="nav-item">
+			<form method="post" action="{{ path('app_atelier_files_ordre', {id: machine.id}) }}" class="m-0">
+				<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+				<button type="submit" name="automatique" value="1" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-sort-amount-down me-1" aria-hidden="true"></i><span class="si-masque-mobile">Réordonner automatiquement</span><span class="d-md-none">Réordonner</span></button>
+			</form>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+<div class="si-ap">
+	<nav class="si-ap-onglets" aria-label="Machines">
+		{% for o in onglets %}
+			<a href="{{ path('app_atelier_files', {id: o.machine.id}) }}" class="{{ machine and o.machine.id == machine.id ? 'actif' }}" {{ machine and o.machine.id == machine.id ? 'aria-current="page"' }}>{{ o.machine.nom }} · {{ o.nombre }}{% if o.panne %} <i class="fas fa-exclamation-triangle" aria-label="en panne"></i>{% endif %}</a>
+		{% endfor %}
+	</nav>
+
+	{% if machine is null %}
+		<div class="si-ap-carte si-ap-vide"><i class="fas fa-print" aria-hidden="true"></i>Aucune machine ne vous est affectée. Le chef d'atelier vous affecte vos machines ici.</div>
+	{% else %}
+	<div class="si-ap-deux">
+		<div class="si-ap-carte">
+			{% if panne %}
+				<div class="alert alert-danger py-2 mb-2"><i class="fas fa-exclamation-triangle me-1" aria-hidden="true"></i><strong>{{ machine.nom }} est en panne</strong> depuis le {{ panne.signaleLe|date('d/m') }} : {{ panne.titre }}{{ panne.suite ? ' · ' ~ panne.suite }}. Les travaux ci-dessous attendent la réparation (<a href="{{ path('app_atelier_maintenance') }}">Maintenance</a>).</div>
+			{% endif %}
+			{% if file is empty %}
+				<div class="si-ap-vide"><i class="far fa-check-circle" aria-hidden="true"></i>Aucun travail en attente sur cette machine.</div>
+			{% else %}
+				<form method="post" action="{{ path('app_atelier_files_ordre', {id: machine.id}) }}" id="form-ordre" class="m-0">
+					<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+					<table class="si-ap-file">
+						<thead>
+							<tr>
+								<th scope="col"><span class="visually-hidden">Ordre</span></th>
+								<th scope="col">Commande</th>
+								<th scope="col">Travail</th>
+								<th scope="col">Matière</th>
+								<th scope="col">Surface</th>
+								<th scope="col">Temps</th>
+								<th scope="col">Promis</th>
+								<th scope="col">Statut</th>
+							</tr>
+						</thead>
+						<tbody id="file-lignes">
+							{% for t in file %}
+								<tr class="si-ap-l-{{ t.statut }}" {% if chef and not t.enCours %}draggable="true"{% endif %} data-id="{{ t.id }}">
+									<td class="si-ap-poignee">
+										<input type="hidden" name="ordres[]" value="{{ t.id }}">
+										{% if chef and not t.enCours %}<i class="fas fa-grip-vertical" aria-hidden="true" title="Glisser pour changer l'ordre"></i>{% endif %}
+									</td>
+									<td><b>{{ t.numero }}</b><small>{{ t.client|default('') }}</small></td>
+									<td>{{ t.travail }}<small>{{ t.note }}</small></td>
+									<td>{{ t.matiere|default('—') }}</td>
+									<td>{{ t.surface ? t.surface|number_format(1, ',', ' ') ~ ' m²' : '—' }}</td>
+									<td>{{ t.statut == 'bloque' ? '—' : (t.enCours ? 'reste ' ~ t.avancement.restantes ~ ' min' : t.minutes ~ ' min') }}</td>
+									<td class="{{ t.retardMinutes > 0 and t.statut != 'bloque' ? 'si-ap-promis-retard' }}">{{ t.promis ? t.promis|date('d/m') : '—' }}</td>
+									<td><span class="si-ap-pastille si-ap-e-{{ t.statut }}">{{ {en_cours: 'En cours', pause: 'En pause', retard: 'En retard', a_suivre: 'À suivre', bloque: 'Bloqué'}[t.statut] }}</span>
+										{% if t.statut not in ['bloque'] %}<small>{{ t.enCours ? 'fin' : 'passage' }} {{ t.enCours ? t.fin|date('H:i') : (t.debut|date('d/m') == maintenant|date('d/m') ? t.debut|date('H:i') : t.debut|date('d/m H:i')) }}</small>{% endif %}
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</form>
+
+				{# Téléphone : une carte par travail, flèches pour le chef. #}
+				<div class="si-ap-cartes-file">
+					{% for t in file %}
+						<div class="si-ap-carte-file si-ap-l-{{ t.statut }}">
+							<div class="si-ap-carte-file-tete">
+								<b>{{ loop.index }}. {{ t.numero }}</b>
+								<span class="si-ap-pastille si-ap-e-{{ t.statut }}">{{ {en_cours: 'En cours', pause: 'En pause', retard: 'En retard', a_suivre: 'À suivre', bloque: 'Bloqué'}[t.statut] }}</span>
+							</div>
+							<div>{{ t.travail }}</div>
+							<small>{{ t.client|default('') }}{{ t.client ? ' · ' }}{{ t.matiere|default('matière ?') }}{{ t.surface ? ' · ' ~ t.surface|number_format(1, ',', ' ') ~ ' m²' }}{{ t.statut != 'bloque' ? ' · ' ~ t.minutes ~ ' min' }}</small><br>
+							<small class="{{ t.retardMinutes > 0 and t.statut != 'bloque' ? 'si-ap-promis-retard' }}">Promis {{ t.promis ? t.promis|date('d/m') : '—' }}{% if t.statut != 'bloque' %} · {{ t.enCours ? 'fin ' ~ t.fin|date('H:i') : 'passage ' ~ (t.debut|date('d/m') == maintenant|date('d/m') ? t.debut|date('H:i') : t.debut|date('d/m H:i')) }}{% else %} · {{ t.note }}{% endif %}</small>
+							{% if chef and not t.enCours %}
+								<form method="post" action="{{ path('app_atelier_files_ordre', {id: machine.id}) }}" class="si-ap-fleches mt-1">
+									<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+									<input type="hidden" name="deplacer" value="{{ t.id }}">
+									<button type="submit" name="sens" value="haut" aria-label="Monter {{ t.numero }}"><i class="fas fa-arrow-up" aria-hidden="true"></i></button>
+									<button type="submit" name="sens" value="bas" aria-label="Descendre {{ t.numero }}"><i class="fas fa-arrow-down" aria-hidden="true"></i></button>
+								</form>
+							{% endif %}
+						</div>
+					{% endfor %}
+				</div>
+
+				<div class="si-ap-totaux">
+					<span>Total : <b>{{ totaux.surface|number_format(1, ',', ' ') }} m² · {{ (totaux.minutes // 60) }} h {{ '%02d'|format(totaux.minutes % 60) }}</b></span>
+					<span>Fin estimée : <b>{{ totaux.fin ? (totaux.fin|date('d/m') == maintenant|date('d/m') ? totaux.fin|date('H:i') : totaux.fin|date('d/m H:i')) : '—' }}</b></span>
+					<span>Changements de rouleau : <b>{{ totaux.rouleaux }}</b></span>
+					{% if totaux.bloques > 0 %}<span>Bloqués : <b>{{ totaux.bloques }}</b></span>{% endif %}
+				</div>
+			{% endif %}
+		</div>
+
+		<aside class="si-ap-cote">
+			<div class="si-ap-carte">
+				{% if operateur %}
+					<div class="si-ap-operateur">
+						<span class="si-ap-avatar" aria-hidden="true">{{ operateur.prenom|first|upper }}</span>
+						<div>
+							<b>{{ operateur.nom }}</b><br>
+							<span class="si-ap-pastille si-ap-e-ok">Opérateur machine</span>
+							<div class="si-ap-gris si-ap-petit">{{ operateur.pointe ? 'pointé à ' ~ operateur.pointe|date('H:i') : 'pas encore pointé aujourd\'hui' }} · {{ operateur.machines }} machine{{ operateur.machines > 1 ? 's' }}</div>
+						</div>
+					</div>
+				{% else %}
+					<p class="si-ap-gris mb-0">Aucun opérateur affecté à cette machine.</p>
+				{% endif %}
+				{% if chef %}
+					<details class="mt-2">
+						<summary class="si-ap-petit" style="color: var(--ap-bleu); font-weight: 600; cursor: pointer;">Affecter les opérateurs</summary>
+						<form method="post" action="{{ path('app_atelier_operateurs', {id: machine.id}) }}" class="si-ap-formulaire">
+							<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+							{% set affectes = atelierMachine ? atelierMachine.operateurs|map(u => u.id) : [] %}
+							{% for u in personnel %}
+								<label class="form-check m-0"><input type="checkbox" class="form-check-input" name="operateurs[]" value="{{ u.id }}" {{ u.id in affectes ? 'checked' }}> <span class="form-check-label">{{ u.employe ? u.employe.nomComplet : u.userIdentifier }}</span></label>
+							{% else %}
+								<p class="si-ap-gris si-ap-petit mb-0">Personne n'a le droit « Statuts de production ».</p>
+							{% endfor %}
+							<button type="submit" class="btn btn-primary btn-sm">Enregistrer</button>
+						</form>
+					</details>
+				{% endif %}
+			</div>
+
+			<div class="si-ap-carte">
+				<h2>Consommables</h2>
+				{% if consommables is empty %}
+					<p class="si-ap-gris si-ap-petit mb-0">Aucune matière ni encre suivie pour cette machine.</p>
+				{% else %}
+					<ul class="si-ap-conso">
+						{% for c in consommables %}
+							<li><span>{{ c.libelle }}</span><b class="si-ap-{{ c.etat }}">{{ c.valeur }}</b></li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+				{% if peutAgir %}
+					<details class="mt-2">
+						<summary class="si-ap-petit" style="color: var(--ap-bleu); font-weight: 600; cursor: pointer;">Saisir les niveaux d'encre</summary>
+						{% include 'atelier_production/_form_encre.html.twig' with {retour: path('app_atelier_files', {id: machine.id})} %}
+					</details>
+				{% endif %}
+				{% if atelierMachine and atelierMachine.niveauxEncreLe %}
+					<p class="si-ap-gris si-ap-petit mt-2 mb-0">Encre saisie le {{ atelierMachine.niveauxEncreLe|date('d/m à H:i') }}{{ atelierMachine.niveauxEncrePar ? ' par ' ~ (atelierMachine.niveauxEncrePar.employe ? atelierMachine.niveauxEncrePar.employe.prenom : atelierMachine.niveauxEncrePar.userIdentifier) }}.</p>
+				{% endif %}
+			</div>
+
+			<div class="si-ap-carte">
+				<h2>Ordre automatique</h2>
+				<ol class="si-ap-regles">
+					<li>Le travail en cours reste en tête</li>
+					<li>Retards d'abord</li>
+					<li>Puis date promise</li>
+					<li>Même matière groupée (moins de changements de rouleau)</li>
+					<li>Les travaux bloqués restent en bas</li>
+				</ol>
+				{% if chef %}<p class="si-ap-gris si-ap-petit mt-2 mb-0">Glissez une ligne pour changer l'ordre ; « Réordonner automatiquement » revient à ces règles. Un nouveau travail se place selon ces règles après ceux que vous avez rangés.</p>{% endif %}
+			</div>
+		</aside>
+	</div>
+	{% endif %}
+</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	{% if chef %}
+	<script>
+		// Glisser-déposer des lignes de la file (chef d'atelier) : l'ordre est enregistré au lâcher.
+		(function () {
+			var corps = document.getElementById('file-lignes');
+			if (!corps) { return; }
+			var tenue = null;
+			corps.addEventListener('dragstart', function (e) {
+				tenue = e.target.closest('tr[draggable="true"]');
+				if (tenue) { tenue.classList.add('si-ap-glisse'); e.dataTransfer.effectAllowed = 'move'; }
+			});
+			corps.addEventListener('dragover', function (e) {
+				var cible = e.target.closest('tr');
+				if (!tenue || !cible || cible === tenue || !cible.hasAttribute('draggable')) { return; }
+				e.preventDefault();
+				var r = cible.getBoundingClientRect();
+				corps.insertBefore(tenue, (e.clientY - r.top) > r.height / 2 ? cible.nextSibling : cible);
+			});
+			corps.addEventListener('dragend', function () {
+				if (!tenue) { return; }
+				tenue.classList.remove('si-ap-glisse');
+				tenue = null;
+				document.getElementById('form-ordre').submit();
+			});
+		})();
+	</script>
+	{% endif %}
+{% endblock %}

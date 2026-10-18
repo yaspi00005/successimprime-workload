@@ -1,15 +1,17 @@
 {# Fiche du guide « planning-machines » (CatalogueGuide). Texte tel que l'écran le dit. #}
 {% block etapes %}
 <ol>
-	<li>Menu « Production », onglet « Planning machines ».</li>
-	<li>Une ligne par machine, avec les heures de la journée.</li>
-	<li>« Occupation » donne la charge de la machine.</li>
-	<li>« Hier » et « Demain » changent de jour. L'atelier est ouvert de 8 h à 19 h.</li>
+	<li>Menu « Atelier », onglet « Planning ».</li>
+	<li>Une ligne par machine, une colonne par jour, du lundi au samedi.</li>
+	<li>La colonne « Charge » donne l'occupation de la machine sur la semaine ; au-delà de 85 %, elle passe en rouge.</li>
+	<li>« Semaine précédente » et « Semaine suivante » changent de semaine. L'atelier est ouvert de 8 h à 19 h.</li>
+	<li>Le chef d'atelier glisse un bloc pour déplacer un travail (sur téléphone : « Déplacer »).</li>
 </ol>
 {% endblock %}
 
 {% block savoir %}
 <ul>
-	<li>Les travaux placés sur une machine apparaissent dans sa file (fiche suivante).</li>
+	<li>Gris : terminé ; rayé : entretien ; rouge : en retard ou en panne.</li>
+	<li>Si un travail déplacé dépasse la date promise, la caisse est prévenue pour avertir le client.</li>
 </ul>
 {% endblock %}

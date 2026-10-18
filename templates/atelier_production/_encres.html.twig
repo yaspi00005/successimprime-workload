@@ -1,0 +1,9 @@
+{# Niveaux d'encre saisis à la main (aucune donnée ne vient des machines). #}
+{% if encres is not empty %}
+	{% set noms = {C: 'cyan', M: 'magenta', J: 'jaune', N: 'noir', B: 'blanc'} %}
+	<span class="si-ap-encres" role="img" aria-label="Encre : {% for code, pct in encres %}{{ noms[code]|default(code) }} {{ pct }} %{{ not loop.last ? ', ' }}{% endfor %}">
+		{% for code, pct in encres %}
+			<i class="si-ap-encre-{{ code }}{{ pct < 25 ? ' si-ap-bas' }}" title="{{ noms[code]|default(code)|capitalize }} {{ pct }} %"><b style="height: {{ max(4, pct) }}%"></b></i>
+		{% endfor %}
+	</span>
+{% endif %}

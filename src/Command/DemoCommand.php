@@ -51,6 +51,11 @@ final class DemoCommand extends Command
         // Compte du client (app:solde-client:demo) : relevé et dépôts en ligne des clients fictifs (après les transactions Orange Money).
         "DELETE m FROM mouvement_solde_client m JOIN clients c ON c.id = m.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
         "DELETE d FROM depot_solde_client d JOIN clients c ON c.id = d.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        // Atelier de production (app:atelier:demo) : réglages, incidents et entretien des machines fictives.
+        'DELETE o FROM atelier_machine_operateur o JOIN atelier_machine a ON a.id = o.atelier_machine_id WHERE a.machine_id >= 900000',
+        'DELETE FROM atelier_machine WHERE machine_id >= 900000',
+        'DELETE FROM incident_machine WHERE machine_id >= 900000',
+        'DELETE FROM entretien_machine WHERE machine_id >= 900000',
     ];
 
     public function __construct(
@@ -126,6 +131,8 @@ final class DemoCommand extends Command
             $this->lancer('app:solde-client:demo', [], $output);
             // Suivi des devis : envoi, validité, conditions, versions, ouvertures, refus et relances (docs/devis.md).
             $this->lancer('app:devis:demo', [], $output);
+            // Atelier de production : une journée en cours sur les machines (docs/atelier-production.md).
+            $this->lancer('app:atelier:demo', [], $output);
             // Dotations aux amortissements et évaluations de primes des derniers mois.
             // Conversations avec les clients (délais et retards comptent dans les primes qui suivent).
             $this->lancer('app:messagerie:demo', [], $output);

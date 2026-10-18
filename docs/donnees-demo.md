@@ -47,6 +47,11 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - Coumba Bagayoko (`DEMO-0122`) : monnaie gardée à la caisse (2 500 F), dépôt en espèces (20 000 F), 10 000 F d'une commande payés avec le solde ; il reste une commande à encaisser pour essayer « Payer avec le solde » et « Garder la monnaie » ;
   - Amadou Sow (`DEMO-0195`, le particulier de l'espace) : dépôt en espèces (15 000 F) et un dépôt Orange Money fait en ligne (5 000 F), reçu, à valider ;
   - Salon Espoir (`DEMO-0002`) : dépôt Orange Money à la boutique (50 000 F), 10 000 F rendus par `demo.kadiatou`, et un dépôt en ligne du payeur Ibrahim Touré (25 000 F), reçu, à valider.
+- L'atelier de production (`docs/atelier-production.md`), par `app:atelier:demo` (lancée par `app:demo`, local seulement) :
+  - `demo.ibrahim` devient chef d'atelier (droit « Chef d'atelier » ajouté sur sa fiche) ; `demo.oumar` est affecté aux deux solvants, Ibrahim aux autres machines ;
+  - des travaux du jour : terminés, en cours, un en pause, d'autres en file, un en retard, un bloqué au contrôle prépresse ; un travail du solvant 1,80 m continue sur le traceur ;
+  - la sublimation en panne (incident en réparation, devis visible seulement avec le droit coûts et marges), une tête du solvant 3,20 m sous surveillance, l'encre noire de ce solvant à 22 % ;
+  - 7 tâches d'entretien préventif, deux arrêts du mois et la gâche de la semaine au journal des machines.
 - Le reste : planning et entretien (avec des rappels WhatsApp envoyés et à envoyer), charges récurrentes, clôtures de caisse, rapprochements bancaires, campagnes, actions de caisse, messagerie et notifications.
 
 ## Espace client de démonstration

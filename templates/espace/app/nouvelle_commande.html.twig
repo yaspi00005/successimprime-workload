@@ -1,247 +1,542 @@
 {% extends 'espace/app/_app.html.twig' %}
 
+{#
+	Nouvelle commande en quatre étapes (maquettes CO01 à CO04, téléphone
+	CO06) : 1. Produit (catalogue, « Commander à nouveau »), 2. Options,
+	3. Fichier, 4. Livraison et paiement. Les étapes 2 à 4 sont un seul
+	formulaire : le navigateur en montre une à la fois (espace-commande.js),
+	sans lui elles se suivent sur la page. Prix, délais et créneaux viennent
+	du serveur (EspaceNouvelleCommandeController::estimation). Sans
+	« montants » (demandeur d'une entreprise), aucun prix n'est écrit ici.
+#}
+
 {% block title %}Nouvelle commande{% endblock %}
-{% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Nouvelle commande</a>{% endblock %}
+{% block page_classe %} ec-page-large co-page{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-commande.css') }}" rel="stylesheet">{% endblock %}
 
-{% block contenu %}
-	{% if produits is empty %}
-		<div class="ec-carte ec-vide">La commande en ligne arrive bientôt. En attendant, demandez un devis par WhatsApp ou en boutique.</div>
+{% block entete %}
+	{% if etape == 1 %}
+		<a class="ec-retour ec-telephone" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Nouvelle commande</a>
 	{% else %}
-		{% set choisi = choix.produit|default(produits|first.id) %}
-		{% if atelier|default(false) %}
-			<a class="ec-carte ec-atelier-entree" href="{{ path('app_espace_atelier') }}">
-				<b>T-shirt, polo ou casquette à personnaliser ?</b>
-				<span class="ec-petit">Composez-le en 3D dans l'atelier : couleur, logo, texte devant et dos, quantités par taille. ›</span>
-			</a>
-		{% endif %}
-		<form method="post" id="commande">
-			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-
-			<div class="ec-carte">
-				<span class="ec-etiquette">Produit</span>
-				<div class="ec-puces">
-					{% for p in produits %}
-						<label class="ec-puce" title="{{ p.nom }}"><input type="radio" name="produit" value="{{ p.id }}"{{ p.id == choisi ? ' checked' }}><span>{{ p.court }}</span></label>
-					{% endfor %}
-				</div>
-				<div class="ec-petit" id="detail-produit" style="margin-top:.6rem"></div>
-			</div>
-
-			<div class="ec-carte">
-				<div class="ec-deux" id="taille">
-					<div><label class="ec-etiquette" for="largeur">Largeur (cm)</label><input class="ec-saisie" id="largeur" name="largeur" inputmode="decimal" value="{{ choix.largeur|default('') }}" autocomplete="off"></div>
-					<div><label class="ec-etiquette" for="hauteur">Hauteur (cm)</label><input class="ec-saisie" id="hauteur" name="hauteur" inputmode="decimal" value="{{ choix.hauteur|default('') }}" autocomplete="off"></div>
-				</div>
-				<div id="bloc-finitions" style="margin-bottom:.9rem">
-					<span class="ec-etiquette">Finitions</span>
-					<div class="ec-puces" id="finitions"></div>
-				</div>
-				<label class="ec-etiquette" for="quantite">Quantité</label>
-				<div class="ec-quantite">
-					<button type="button" data-pas="-1" aria-label="Moins">−</button>
-					<input id="quantite" name="quantite" inputmode="numeric" value="{{ choix.quantite|default(1) }}">
-					<button type="button" data-pas="1" aria-label="Plus">+</button>
-				</div>
-			</div>
-
-			<div class="ec-carte">
-				<span class="ec-etiquette">Votre fichier</span>
-				<div id="choix-fichiers">
-					{% for f in mesFichiers|slice(0, 6) %}
-						<label class="ec-choix-fichier"><input type="checkbox" name="fichiers[]" value="{{ f.id }}"{{ f.id in choix.fichiers|default([]) ? ' checked' }}><span><b>{{ f.nomOriginal }}</b><span class="ec-petit"> · envoyé le {{ f.creeLe|date('d/m') }}</span></span></label>
-					{% endfor %}
-				</div>
-				<label class="ec-depot" style="margin:.6rem 0 0;padding:.9rem">
-					<input type="file" id="envoi" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}">
-					<b style="font-size:.95rem">+ Ajouter un fichier</b>
-					<span class="ec-petit">PDF, AI, PSD, JPG, PNG · jusqu'à 500 Mo · contrôlé à la taille commandée</span>
-					<div class="ec-progres" hidden><span></span></div>
-				</label>
-				<div class="ec-petit" id="envoi-etat" role="status" aria-live="polite" style="margin-top:.4rem"></div>
-				<p class="ec-petit" style="margin:.5rem 0 0">Pas encore de fichier ? Commandez quand même : l'atelier vous le demandera, ou le créera pour vous.</p>
-			</div>
-
-			{% if entreprise or adresses is not empty %}
-				<div class="ec-carte">
-					{% if adresses is not empty %}
-						{% set defaut = (adresses|filter(a => a.parDefaut)|first).id|default('') %}
-						<label class="ec-etiquette" for="adresse">Livraison</label>
-						<select class="ec-saisie" id="adresse" name="adresse" style="margin-bottom:.9rem">
-							<option value="">Retrait en boutique</option>
-							{% for a in adresses %}
-								<option value="{{ a.id }}"{{ (choix.adresse ?? defaut) == a.id ? ' selected' }}>Livrer : {{ a.libelle }} · {{ a.adresse }}</option>
-							{% endfor %}
-						</select>
-					{% endif %}
-					{% if entreprise %}
-						<label class="ec-etiquette" for="bon_commande">N° de bon de commande (facultatif)</label>
-						<input class="ec-saisie" id="bon_commande" name="bon_commande" maxlength="60" value="{{ choix.bon_commande|default('') }}" autocomplete="off">
-						<p class="ec-petit" style="margin:.4rem 0 0">Il figurera sur la facture.</p>
-					{% endif %}
-					{% if demandeValidation %}
-						<p class="ec-petit" style="margin:.6rem 0 0">Votre demande sera validée par une personne de votre entreprise avant de partir à l'atelier.</p>
-					{% endif %}
-				</div>
-			{% endif %}
-
-			<div class="ec-carte">
-				<label class="ec-etiquette" for="note">Précisions pour l'atelier (facultatif)</label>
-				<textarea class="ec-champ" id="note" name="note" maxlength="1000" placeholder="Ex. : couleurs du logo, date souhaitée, livraison">{{ choix.note|default('') }}</textarea>
-			</div>
-
-			{# Code promo (docs/promotions.md) : vérifié à l'envoi, puis par la boutique à la confirmation. Pas pour un revendeur au prix B2B. #}
-			{% if champCodePromo|default(false) %}
-			<div class="ec-carte">
-				<label class="ec-etiquette" for="code_promo">Code promo (facultatif)</label>
-				<input class="ec-saisie" id="code_promo" name="code_promo" maxlength="30" value="{{ choix.code_promo|default('') }}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex. : SI-7K4P-2Q" style="text-transform:uppercase;letter-spacing:.04em">
-				<div class="ec-petit" style="margin-top:.35rem">Un code par commande. L'avantage se voit sur la commande et l'atelier le confirme avec le prix.</div>
-			</div>
-			{% endif %}
-
-			{# Un demandeur ne voit aucun montant (CompteClient::montantsVisibles) : l'estimation ne lui renvoie que les contrôles. #}
-			<div class="ec-total">
-				{% if coque.montants %}
-					<div><span class="ec-petit">Total TTC indicatif</span><div class="ec-gros" id="total">—</div></div>
-				{% else %}
-					<div><span class="ec-petit">Prix</span><div class="ec-total-sans-prix">confirmé par votre valideur</div></div>
-				{% endif %}
-				<button class="ec-bouton" id="commander">{{ demandeValidation ? 'Envoyer la demande' : 'Commander' }}</button>
-			</div>
-			<p class="ec-petit" id="erreur" role="alert" style="color:var(--rouge);text-align:center"></p>
-			<p class="ec-petit" style="text-align:center">{{ coque.montants ? 'Prix indicatif : l\'atelier le confirme avec votre fichier avant de lancer l\'impression.' : 'Votre valideur voit le prix et accepte la demande ; l\'atelier confirme ensuite le prix et votre fichier.' }}</p>
-		</form>
-		<script type="application/json" id="produits">{{ produits|json_encode|raw }}</script>
+		<a class="ec-retour ec-telephone" href="{{ path('app_espace_nouvelle_commande') }}" data-co-retour><span class="fl">‹</span><span data-co-titre-tel>{{ nomProduit }} · options</span></a>
 	{% endif %}
 {% endblock %}
 
+{% block contenu %}
+	{% if fermee|default(false) %}
+		{# Réglages › Espace client › Commande en ligne coupé : rien ne s'enregistre (EspaceNouvelleCommandeController::nouvelle). #}
+		<div class="co-tete">
+			<h1>Nouvelle commande</h1>
+			<a class="ec-bouton-blanc ec-bureau" href="{{ path('app_espace_commandes') }}">Mes commandes</a>
+		</div>
+		<div class="ec-carte">
+			<p style="margin-top:0"><b>La commande en ligne est fermée pour le moment.</b></p>
+			<p class="ec-petit">Vos commandes en cours continuent : suivez-les dans « Mes commandes ». Pour une nouvelle commande, demandez un devis, écrivez à l'atelier ou passez en boutique.</p>
+			<p style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.9rem 0 0">
+				<a class="ec-bouton-blanc" href="{{ path('app_site_devis') }}">Demander un devis</a>
+				<a class="ec-bouton-blanc" href="{{ path('app_espace_messages') }}">Écrire à l'atelier</a>
+			</p>
+		</div>
+	{% else %}
+		{{ block('commande_ouverte') }}
+	{% endif %}
+{% endblock %}
+
+{% block commande_ouverte %}
+	{# Qui ne paie pas ici (demandeur, demande à faire valider) : « Livraison » seulement. #}
+	{% set etape4 = peutPayer and montants and not demandeValidation ? 'Livraison et paiement' : 'Livraison' %}
+	{% set libellesEtapes = {1: 'Produit', 2: 'Options', 3: 'Fichier', 4: etape4} %}
+	<div class="co-tete">
+		<h1>Nouvelle commande{% if etape > 1 %} · {{ nomProduit }}{% endif %}</h1>
+		<a class="ec-bouton-blanc ec-bureau" href="{{ path('app_espace_commandes') }}">Mes commandes</a>
+	</div>
+
+	<nav class="co-etapes" aria-label="Étapes de la commande">
+		<ol>
+			{% for n, libelle in libellesEtapes %}
+				<li class="co-etape{{ n < etape ? ' faite' }}{{ n == etape ? ' active' }}" data-co-onglet="{{ n }}"{{ n == etape ? ' aria-current="step"' }}>
+					{% if n == 1 and etape > 1 %}
+						<a href="{{ path('app_espace_nouvelle_commande') }}"><span class="co-coche" aria-hidden="true">✓</span> {{ libelle }}</a>
+					{% elseif n > 1 and etape > 1 %}
+						<button type="button" data-co-aller="{{ n }}"><span class="co-coche" aria-hidden="true">✓</span><span class="co-num">{{ n }}.</span> {{ libelle }}</button>
+					{% else %}
+						<span><span class="co-num">{{ n }}.</span> {{ libelle }}</span>
+					{% endif %}
+				</li>
+			{% endfor %}
+		</ol>
+	</nav>
+
+	{% if etape == 1 %}
+		{{ block('etape_produit') }}
+	{% else %}
+		{{ block('etapes_commande') }}
+	{% endif %}
+{% endblock %}
+
+{# ---------- Étape 1 : produit (maquette CO01) ---------- #}
+{% block etape_produit %}
+	{% if catalogue.produits is empty %}
+		<div class="ec-carte ec-vide">La commande en ligne arrive bientôt. En attendant, demandez un devis par WhatsApp ou en boutique.</div>
+	{% else %}
+		{% set choisie = catalogue.categories|filter(c => categorie in c.ids)|first %}
+		<div class="co-grille">
+			<div class="co-principal">
+				<div class="co-filtres" data-co-filtres>
+					<a href="{{ path('app_espace_nouvelle_commande') }}" class="co-filtre{{ not choisie ? ' actif' }}" data-co-filtre=""{{ not choisie ? ' aria-current="true"' }}>Tout</a>
+					{% for c in catalogue.categories %}
+						<a href="{{ path('app_espace_nouvelle_commande', {categorie: c.id}) }}" class="co-filtre{{ choisie and choisie.id == c.id ? ' actif' }}" data-co-filtre="{{ c.id }}"{{ choisie and choisie.id == c.id ? ' aria-current="true"' }}>{{ c.nom }}</a>
+					{% endfor %}
+				</div>
+
+				<ul class="co-produits">
+					{% for p in catalogue.produits %}
+						<li data-co-categorie="{{ p.categorie }}"{{ choisie and choisie.id != p.categorie ? ' hidden' }}>
+							<a class="co-produit" href="{{ path('app_espace_nouvelle_commande', {produit: p.config}) }}">
+								<span class="co-produit-dessin"><svg aria-hidden="true" focusable="false"><use href="#si-dessin-{{ p.illustration }}"/></svg></span>
+								<span class="co-produit-texte"><b>{{ p.nom }}</b><small>{{ p.prix ?? p.info }}</small></span>
+							</a>
+						</li>
+					{% endfor %}
+				</ul>
+
+				{% if atelier %}
+					<a class="ec-carte co-bandeau co-bandeau-bleu" href="{{ path('app_espace_atelier') }}">
+						<span class="co-bandeau-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.5 3 4 5 2 9.5l3 1.8 1-1.3V21h12V10l1 1.3 3-1.8L20 5l-4.5-2c-.6 1.6-1.9 2.6-3.5 2.6S9.1 4.6 8.5 3z"/></svg></span>
+						<span><b>T-shirt, polo ou casquette à personnaliser ?</b><small>Composez-le en 3D dans l'atelier : couleur, logo, texte devant et dos, quantités par taille.</small></span>
+						<span class="ec-bouton-blanc">Ouvrir l'atelier</span>
+					</a>
+				{% endif %}
+
+				<div class="ec-carte co-bandeau co-bandeau-jaune">
+					<span class="co-bandeau-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18zM2 2l7.6 7.6M13 11a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/></svg></span>
+					<span><b>Pas encore de visuel ?</b><small>Un graphiste le crée pour vous, ou l'intelligence artificielle génère une image. Il passe ensuite directement en commande.</small></span>
+					<a class="ec-bouton-blanc" href="{{ path('app_espace_conception') }}">Demande de conception</a>
+				</div>
+			</div>
+
+			<aside class="co-cote">
+				{% if recommander is not empty %}
+					<section class="ec-carte co-refaire" aria-labelledby="co-refaire-titre">
+						<h2 id="co-refaire-titre">Commander à nouveau</h2>
+						<p class="ec-petit">même produit, même fichier, en 1 clic</p>
+						<ul>
+							{% for r in recommander %}
+								{% set lien = r.lien[0] == 'app_espace_nouvelle_commande' ? path(r.lien[0], r.lien[1]|merge({refaire: r.ligne, etape: 4})) : path(r.lien[0], r.lien[1]) %}
+								<li>
+									<div><b>{{ r.titre }}</b><small>{{ r.numero }}{% if r.prix is not null %} · {{ r.prix|number_format(0, ',', ' ') }} F aujourd'hui{% endif %}</small></div>
+									<a href="{{ lien }}" class="co-lien-refaire"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg>Refaire</a>
+								</li>
+							{% endfor %}
+						</ul>
+					</section>
+				{% endif %}
+				{% if nombreMesProduits > 0 %}
+					<section class="ec-carte co-cote-carte">
+						<h2>Mes produits enregistrés</h2>
+						<p class="ec-petit">{% for p in mesProduits %}{{ p.nom ?? p.reference }}{{ not loop.last ? ', ' }}{% endfor %}{{ nombreMesProduits > mesProduits|length ? '…' }} · fichier validé, sans nouveau BAT</p>
+						<a class="co-lien" href="{{ path('app_espace_produits') }}">Voir mes produits →</a>
+					</section>
+				{% endif %}
+				<section class="ec-carte co-cote-carte">
+					<h2>Besoin spécial ?</h2>
+					<p class="ec-petit">Grande quantité, pose, format hors catalogue : demandez un devis, l'atelier vous répond vite.</p>
+					<a class="co-lien" href="{{ path('app_site_devis') }}">Demander un devis →</a>
+				</section>
+			</aside>
+		</div>
+		{{ include('site/_illustrations_produits.svg.twig') }}
+	{% endif %}
+{% endblock %}
+
+{# ---------- Étapes 2 à 4 (maquettes CO02 à CO04) ---------- #}
+{% block etapes_commande %}
+	{% set recap = estimation.recap ?? null %}
+	{% set matiere = matieres|filter(m => m.id == config.id)|first %}
+	{% set enMetres = matiere.taille %}
+	{% set largeurM = estimation.largeur ? (estimation.largeur / 100) : (matiere.largeur ? matiere.largeur / 100 : 1) %}
+	{% set hauteurM = estimation.hauteur ? (estimation.hauteur / 100) : (matiere.hauteur ? matiere.hauteur / 100 : 1) %}
+	{% set finitionsChoisies = choix.finitions is defined ? choix.finitions|map(f => f ~ '') : matiere.finitions|filter(f => f.parDefaut)|map(f => f.id ~ '') %}
+	{% set delaiChoisi = choix.delai|default('standard') == 'express' and reglages.express ? 'express' : 'standard' %}
+	{% set reception = choix.reception|default('retrait') == 'livraison' ? 'livraison' : 'retrait' %}
+	{% set acompte = recap.acompte ?? null %}
+	{% set paiementChoisi = choix.paiement|default(acompte ? 'acompte' : 'tout') %}
+
+	<form method="post" class="co-form" id="co-form" data-etape="{{ etape }}" novalidate>
+		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+		<input type="hidden" name="etapes" value="1">
+		<input type="hidden" name="unite_taille" value="m">
+		{% if refaire %}<input type="hidden" name="refaire" value="{{ refaire.publicId }}">{% endif %}
+
+		<div class="co-grille">
+			<div class="co-principal">
+
+				{# ----- 2. Options ----- #}
+				<section class="co-panneau" data-co-panneau="2" aria-labelledby="co-t2">
+					<h2 class="co-titre-panneau" id="co-t2">2. Options</h2>
+					<div class="ec-carte co-options">
+						<div class="co-dimensions{{ not enMetres ? ' sans-taille' }}">
+							<div data-co-taille{{ not enMetres ? ' hidden' }}>
+								<label class="ec-etiquette" for="co-largeur">Largeur</label>
+								<div class="co-unite"><input class="ec-saisie" id="co-largeur" name="largeur" inputmode="decimal" autocomplete="off" value="{{ largeurM|number_format(2, ',', '') }}"><span>m</span></div>
+							</div>
+							<div data-co-taille{{ not enMetres ? ' hidden' }}>
+								<label class="ec-etiquette" for="co-hauteur">Hauteur</label>
+								<div class="co-unite"><input class="ec-saisie" id="co-hauteur" name="hauteur" inputmode="decimal" autocomplete="off" value="{{ hauteurM|number_format(2, ',', '') }}"><span>m</span></div>
+							</div>
+							<div>
+								<label class="ec-etiquette" for="co-quantite">Quantité</label>
+								<input class="ec-saisie" id="co-quantite" name="quantite" inputmode="numeric" autocomplete="off" value="{{ choix.quantite|default(matiere.min) }}">
+							</div>
+						</div>
+						<div class="co-formats" data-co-taille{{ not enMetres ? ' hidden' }}>
+							{% for f in formats %}
+								<button type="button" class="co-format{{ largeurM == f[0] and hauteurM == f[1] ? ' actif' }}" data-co-format="{{ f[0] }}x{{ f[1] }}">{{ f[0] }} × {{ f[1] }} m</button>
+							{% endfor %}
+							<span class="ec-petit">formats courants · en mètres</span>
+						</div>
+
+						{% if matieres|length > 1 or matiere.titre != nomProduit %}
+							<h3 class="co-sous-titre">Matière</h3>
+							<div class="co-cartes co-cartes-3" role="radiogroup" aria-label="Matière">
+								{% for m in matieres %}
+									<label class="co-option">
+										<input type="radio" name="produit" value="{{ m.id }}"{{ m.id == config.id ? ' checked' }}>
+										<span>
+											<b>{{ m.titre }}</b>
+											<small>{{ [m.sousTitre, m.supplement]|filter(x => x)|join(' · ') ?: (m.id == config.id or not montants ? 'courant' : '') }}</small>
+										</span>
+									</label>
+								{% endfor %}
+							</div>
+						{% else %}
+							<input type="hidden" name="produit" value="{{ config.id }}">
+						{% endif %}
+
+						{% for m in matieres %}
+							{% if m.finitions is not empty %}
+								<div class="co-finitions" data-co-finitions="{{ m.id }}"{{ m.id != config.id ? ' hidden' }}>
+									<h3 class="co-sous-titre">Finitions</h3>
+									<div class="co-cartes co-cartes-3">
+										{% for f in m.finitions %}
+											<label class="co-option">
+												<input type="checkbox" name="finitions[]" value="{{ f.id }}" data-co-oeillets="{{ f.oeillets ? f.nom : '' }}"{{ f.obligatoire or (m.id == config.id and (f.id ~ '') in finitionsChoisies) or (m.id != config.id and f.parDefaut) ? ' checked' }}{{ f.obligatoire ? ' data-co-obligatoire' }}{{ m.id != config.id ? ' disabled' }}>
+												<span><b>{{ f.nom }}</b><small>{{ f.obligatoire ? 'toujours compris · ' }}{{ f.detail }}</small></span>
+											</label>
+										{% endfor %}
+									</div>
+								</div>
+							{% endif %}
+						{% endfor %}
+
+						<h3 class="co-sous-titre">Délai</h3>
+						<div class="co-cartes co-cartes-2" role="radiogroup" aria-label="Délai">
+							<label class="co-option">
+								<input type="radio" name="delai" value="standard"{{ delaiChoisi == 'standard' ? ' checked' }}>
+								<span><b>Standard · {{ reglages.standard }} h</b><small>après validation du BAT</small></span>
+							</label>
+							{% if reglages.express %}
+								<label class="co-option">
+									<input type="radio" name="delai" value="express"{{ delaiChoisi == 'express' ? ' checked' }}>
+									<span><b>Express · {{ reglages.delaiExpress }} h</b><small>{{ reglages.majoration > 0 ? '+' ~ reglages.majoration ~ ' % · ' }}après validation du BAT</small></span>
+								</label>
+							{% endif %}
+						</div>
+					</div>
+
+					<div class="co-bas">
+						<div class="ec-carte co-apercu" data-co-apercu{{ not enMetres ? ' hidden' }}>
+							<svg class="co-apercu-dessin" viewBox="0 0 300 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Aperçu à l'échelle"><rect x="1" y="1" width="298" height="98" rx="3"/></svg>
+							<p><b>Aperçu à l'échelle</b> · <span data-co-apercu-texte>{{ largeurM|number_format(2, ',', '')|replace({',00': ''}) }} m × {{ hauteurM|number_format(2, ',', '')|replace({',00': ''}) }} m.</span></p>
+						</div>
+						<div class="co-boutons">
+							<a class="ec-bouton-blanc" href="{{ path('app_espace_nouvelle_commande') }}">‹ Retour</a>
+							<button type="button" class="co-continuer" data-co-aller="3">Continuer · fichier ›</button>
+						</div>
+					</div>
+				</section>
+
+				{# ----- 3. Fichier ----- #}
+				<section class="co-panneau" data-co-panneau="3" aria-labelledby="co-t3">
+					<h2 class="co-titre-panneau" id="co-t3">3. Fichier</h2>
+					{% set modeFichier = choix.fichier_mode|default('fichier') %}
+					<div class="co-cartes co-cartes-3" role="radiogroup" aria-label="Votre fichier">
+						<label class="co-option">
+							<input type="radio" name="fichier_mode" value="fichier"{{ modeFichier == 'fichier' ? ' checked' }}>
+							<span><b>J'ai mon fichier</b><small>PDF, JPG, PNG, AI · 500 Mo max</small></span>
+						</label>
+						<label class="co-option">
+							<input type="radio" name="fichier_mode" value="creation"{{ modeFichier == 'creation' ? ' checked' }}{{ creations is empty ? ' disabled' }}>
+							<span><b>Une de mes créations</b><small>{{ creations is empty ? 'aucune pour l\'instant' : creations|length ~ ' visuel' ~ (creations|length > 1 ? 's') ~ ' disponible' ~ (creations|length > 1 ? 's') }}</small></span>
+						</label>
+						<label class="co-option">
+							<input type="radio" name="fichier_mode" value="aucun"{{ modeFichier == 'aucun' ? ' checked' }}>
+							<span><b>Pas de fichier</b><small>demande de conception</small></span>
+						</label>
+					</div>
+
+					<div class="ec-carte co-fichier" data-co-mode="fichier">
+						<div class="co-fichier-grille">
+							<div class="co-fichier-gauche">
+								{% if refaire %}
+									<div class="co-repris">
+										<b>Même fichier que la commande {{ refaire.commande.numero }}</b>
+										<span class="ec-petit">Il est repris automatiquement. Envoyez-en un autre seulement pour le changer.</span>
+									</div>
+								{% endif %}
+								<div class="co-vue" data-co-vue hidden>
+									<div class="ec-petit co-vue-nom" data-co-vue-nom></div>
+									<div class="co-vue-cadre" data-co-vue-cadre><img alt="" data-co-vue-image hidden><span class="co-vue-icone" data-co-vue-icone>PDF</span><span class="co-securite" aria-hidden="true"></span></div>
+									<div class="ec-petit co-vue-legende"><span class="co-pointilles" aria-hidden="true"></span> zone de sécurité <span data-co-zone-oeillets>(œillets)</span> · <label class="co-remplacer">Remplacer le fichier<input type="file" data-co-envoi accept="{{ extensions|map(e => '.' ~ e)|join(',') }}"></label></div>
+								</div>
+								<label class="ec-depot co-depot" data-co-depot>
+									<input type="file" data-co-envoi accept="{{ extensions|map(e => '.' ~ e)|join(',') }}">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+									<b>Déposez votre fichier ou choisissez-le</b>
+									<span class="ec-petit">PDF, AI, EPS, PSD, JPG, PNG ou TIFF · contrôlé à la taille commandée</span>
+									<div class="ec-progres" hidden><span></span></div>
+								</label>
+								<div class="ec-petit co-envoi-etat" data-co-envoi-etat role="status" aria-live="polite"></div>
+								{% if mesFichiers is not empty %}
+									<details class="co-recents"{{ choix.fichiers is defined and choix.fichiers is not empty ? ' open' }}>
+										<summary>Ou un fichier déjà envoyé</summary>
+										{% for f in mesFichiers %}
+											<label class="ec-choix-fichier"><input type="checkbox" name="fichiers[]" value="{{ f.id }}"{{ f.id ~ '' in choix.fichiers|default([]) ? ' checked' }}><span><b>{{ f.nomOriginal }}</b><span class="ec-petit"> · envoyé le {{ f.creeLe|date('d/m') }}</span></span></label>
+										{% endfor %}
+									</details>
+								{% endif %}
+								<div data-co-fichiers-envoyes></div>
+							</div>
+							<div class="co-controle">
+								<h3>Contrôle automatique <small>en quelques secondes</small></h3>
+								<ul class="co-controles" data-co-controles aria-live="polite">
+									<li class="co-controle-vide">Envoyez votre fichier : dimensions, résolution, couleurs et texte près du bord sont contrôlés à la taille commandée.</li>
+								</ul>
+							</div>
+						</div>
+					</div>
+
+					<div class="ec-carte" data-co-mode="creation"{{ modeFichier != 'creation' ? ' hidden' }}>
+						{% if creations is empty %}
+							<p class="ec-petit">Aucune création pour l'instant. Une demande de conception vous en prépare.</p>
+						{% else %}
+							<div class="co-creations" role="radiogroup" aria-label="Mes créations">
+								{% for i in creations %}
+									<label class="co-creation">
+										<input type="radio" name="creation" value="{{ i.id }}"{{ (choix.creation|default(creations|first.id)) == i.id ? ' checked' }}>
+										<img src="{{ path('app_espace_conception_image', {id: i.id, taille: 'v'}) }}" alt="Visuel {{ i.numero }} de la demande {{ i.demande.numero }}" loading="lazy">
+										<small>{{ i.demande.titreSupport }} · n° {{ i.numero }}</small>
+									</label>
+								{% endfor %}
+							</div>
+							<p class="ec-petit">Le visuel choisi part avec la commande ; le graphiste le prépare à la taille commandée.</p>
+						{% endif %}
+					</div>
+
+					<div class="ec-carte" data-co-mode="aucun"{{ modeFichier != 'aucun' ? ' hidden' }}>
+						<p style="margin-top:0"><b>Pas encore de visuel ?</b> Envoyez la commande sans fichier : l'atelier vous appelle pour le créer. Vous pouvez aussi faire d'abord une demande de conception (graphiste ou intelligence artificielle).</p>
+						<a class="ec-bouton-blanc" href="{{ path('app_espace_conception') }}">Faire une demande de conception</a>
+					</div>
+
+					<div class="ec-carte">
+						<label class="ec-etiquette" for="co-note">Précisions pour le graphiste (facultatif)</label>
+						<textarea class="ec-champ" id="co-note" name="note" maxlength="1000" placeholder="Ex. : couleurs du logo, texte à corriger, date souhaitée">{{ choix.note|default('') }}</textarea>
+					</div>
+
+					<div class="co-bas">
+						<div class="ec-carte co-apres">
+							<b>Après la commande</b>
+							<span class="ec-petit">Un graphiste vérifie le fichier et vous envoie un <b>BAT</b> (bon à tirer). Rien n'est imprimé avant votre validation.{% if reglages.corrections > 0 %} {{ reglages.corrections }} correction{{ reglages.corrections > 1 ? 's gratuites' : ' gratuite' }}.{% endif %}</span>
+						</div>
+						<div class="co-boutons">
+							<button type="button" class="ec-bouton-blanc" data-co-aller="2">‹ Retour</button>
+							<button type="button" class="co-continuer" data-co-aller="4">Continuer ›</button>
+						</div>
+					</div>
+				</section>
+
+				{# ----- 4. Livraison et paiement ----- #}
+				<section class="co-panneau" data-co-panneau="4" aria-labelledby="co-t4">
+					<h2 class="co-titre-panneau" id="co-t4">4. {{ etape4 }}</h2>
+					<div class="ec-carte">
+						<h3 class="co-sous-titre co-premier">Réception</h3>
+						<div class="co-cartes co-cartes-2" role="radiogroup" aria-label="Réception">
+							<label class="co-option">
+								<input type="radio" name="reception" value="retrait"{{ reception == 'retrait' ? ' checked' }}>
+								<span><b>Retrait en boutique</b>{% if montants %}<em>0 F</em>{% endif %}<small>Succès Imprim, Bamako · gratuit</small></span>
+							</label>
+							<label class="co-option">
+								<input type="radio" name="reception" value="livraison"{{ reception == 'livraison' ? ' checked' }}>
+								<span><b>Livraison à Bamako</b>{% if montants %}<em>{{ fraisLivraison > 0 ? fraisLivraison|number_format(0, ',', ' ') ~ ' F' : 'offerte' }}</em>{% endif %}<small>par notre livreur, le jour où elle est prête</small></span>
+							</label>
+						</div>
+						<div class="co-livraison" data-co-livraison{{ reception != 'livraison' ? ' hidden' }}>
+							<div class="co-champ-adresse">
+								<label class="ec-etiquette" for="co-adresse">Adresse</label>
+								{% if adresses is not empty %}
+									{% set defaut = (adresses|filter(a => a.parDefaut)|first).id|default(adresses|first.id) %}
+									<select class="ec-saisie" id="co-adresse" name="adresse" data-co-adresse>
+										{% for a in adresses %}
+											<option value="{{ a.id }}"{{ (choix.adresse|default(defaut)) == a.id ? ' selected' }}>{{ a.libelle }} · {{ a.adresse }}</option>
+										{% endfor %}
+										<option value="0"{{ choix.adresse is defined and choix.adresse == '0' ? ' selected' }}>Autre adresse…</option>
+									</select>
+									<input class="ec-saisie co-autre-adresse" name="adresse_texte" maxlength="200" placeholder="Quartier, rue, repère" aria-label="Autre adresse" value="{{ choix.adresse_texte|default('') }}" data-co-adresse-texte{{ not (choix.adresse is defined and choix.adresse == '0') ? ' hidden' }}>
+								{% else %}
+									<input class="ec-saisie" id="co-adresse" name="adresse_texte" maxlength="200" placeholder="Quartier, rue, repère (ex. Kalaban Coura, près du marché)" value="{{ choix.adresse_texte|default('') }}" data-co-adresse-texte>
+								{% endif %}
+							</div>
+							<div>
+								<label class="ec-etiquette" for="co-contact">Contact sur place</label>
+								<input class="ec-saisie" id="co-contact" name="contact" maxlength="80" value="{{ choix.contact|default(contact) }}">
+							</div>
+							<div>
+								<label class="ec-etiquette" for="co-creneau">Créneau</label>
+								<select class="ec-saisie" id="co-creneau" name="creneau" data-co-creneau>
+									{% for c in estimation.creneaux %}
+										<option value="{{ c.valeur }}"{{ choix.creneau|default('') == c.valeur ? ' selected' }}>{{ c.libelle }}</option>
+									{% endfor %}
+								</select>
+							</div>
+						</div>
+						{% if entreprise %}
+							<label class="ec-etiquette co-espace" for="co-bon">N° de bon de commande (facultatif)</label>
+							<input class="ec-saisie" id="co-bon" name="bon_commande" maxlength="60" value="{{ choix.bon_commande|default('') }}" autocomplete="off">
+						{% endif %}
+						{% if demandeValidation %}
+							<p class="ec-note co-espace">Votre demande sera validée par une personne de votre entreprise avant de partir à l'atelier. Elle voit le prix ; vous, non.</p>
+						{% endif %}
+					</div>
+
+					{% if peutPayer and montants and not demandeValidation %}
+						<div class="ec-carte co-paiement">
+							<h3 class="co-sous-titre co-premier">Paiement</h3>
+							{% if omActif %}
+								<div class="co-cartes co-cartes-2" role="radiogroup" aria-label="Paiement">
+									{% if acompte %}
+										<label class="co-option">
+											<input type="radio" name="paiement" value="acompte"{{ paiementChoisi == 'acompte' ? ' checked' }}>
+											<span><b>Acompte {{ acompte.pourcentage }} %</b><em data-co-acompte>{{ acompte.maintenant|number_format(0, ',', ' ') }} F</em><small data-co-reste-quand>le reste {{ reception == 'livraison' ? 'à la livraison' : 'au retrait' }}</small></span>
+										</label>
+									{% endif %}
+									<label class="co-option">
+										<input type="radio" name="paiement" value="tout"{{ paiementChoisi == 'tout' or (paiementChoisi == 'acompte' and not acompte) ? ' checked' }}>
+										<span><b>Tout payer maintenant</b><em data-co-tout>{{ recap ? recap.totalTexte : '' }}</em><small>aucun reste à payer</small></span>
+									</label>
+								</div>
+								<div class="co-om">
+									<span class="co-om-logo" aria-hidden="true">OM</span>
+									<div><b>Orange Money · +223 {{ telephoneOm|slice(3)|split('', 2)|join(' ') }}</b><small>vous confirmez avec votre code secret sur votre téléphone</small></div>
+									<label class="co-especes"><input type="radio" name="paiement" value="boutique"{{ paiementChoisi == 'boutique' ? ' checked' }}> Espèces en boutique</label>
+								</div>
+								<p class="ec-petit co-frais-om" data-co-frais-om></p>
+								<div class="co-secret" role="note">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</div>
+							{% else %}
+								{# Paiement Orange Money en ligne fermé (clés absentes ou Réglages › Espace client) : rien à payer ici. #}
+								<input type="hidden" name="paiement" value="boutique">
+								<p class="ec-petit" style="margin:0">Vous payez en boutique, une fois la commande confirmée par l'atelier.</p>
+							{% endif %}
+						</div>
+					{% endif %}
+
+					{% if champCodePromo %}
+						<details class="ec-carte co-code"{{ choix.code_promo|default('') != '' ? ' open' }}>
+							<summary>Un code promo ?</summary>
+							<label class="ec-etiquette" for="co-code-promo">Code promo</label>
+							<input class="ec-saisie" id="co-code-promo" name="code_promo" maxlength="30" value="{{ choix.code_promo|default('') }}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex. : SI-7K4P-2Q">
+							<p class="ec-petit">Un code par commande. L'avantage se voit sur la commande et l'atelier le confirme avec le prix.</p>
+						</details>
+					{% endif %}
+
+					<div class="co-bas co-bas-final">
+						<label class="co-conditions"><input type="checkbox" name="conditions" value="1" required{{ choix.conditions is defined ? ' checked' }}> <span>J'accepte les conditions de vente : production lancée après validation du BAT, acompte non remboursable une fois l'impression faite.</span></label>
+						<div class="co-boutons">
+							<button type="button" class="ec-bouton-blanc" data-co-aller="3">‹ Retour</button>
+							{% if peutPayer and montants and omActif and not demandeValidation %}
+								<button type="submit" class="co-envoyer orange" data-co-envoyer data-co-libelle-payer>Payer et commander</button>
+							{% else %}
+								<button type="submit" class="co-envoyer" data-co-envoyer>{{ demandeValidation ? 'Envoyer la demande' : 'Commander' }}</button>
+							{% endif %}
+						</div>
+					</div>
+				</section>
+			</div>
+
+			<aside class="co-cote">
+				<section class="ec-carte co-resume" aria-labelledby="co-resume-titre">
+					<h2 id="co-resume-titre">Votre commande</h2>
+					<div class="co-resume-tete">
+						<span class="co-vignette" aria-hidden="true"></span>
+						<div><b data-co-r="titre">{{ recap.titre ?? nomProduit }}</b><small data-co-r="sousTitre">{{ recap.sousTitre ?? '' }}</small></div>
+					</div>
+					<dl class="co-resume-lignes" data-co-r="lignes">
+						{% for l in recap.lignes ?? [] %}
+							<div{{ l.reception is defined ? ' data-co-reception' }}><dt>{{ l.libelle }}</dt><dd>{{ l.valeur }}</dd></div>
+						{% endfor %}
+					</dl>
+					{% if montants %}
+						<div class="co-resume-total"><span>Total</span><b data-co-r="total">{{ recap.totalTexte ?? '—' }}</b></div>
+						<p class="ec-petit">Prix calculé pour ce format, confirmé par l'atelier avec votre fichier.{% if peutPayer and acompte %} Acompte de {{ acompte.pourcentage }} % pour lancer la production.{% endif %}</p>
+					{% else %}
+						<p class="ec-petit co-sans-prix">Le prix est vu et accepté par la personne qui valide pour votre entreprise ; l'atelier confirme ensuite le prix et votre fichier.</p>
+					{% endif %}
+					<p class="co-pret"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9h16M8 2v4M16 2v4"/></svg><span>Prête le <b data-co-r="pret">{{ estimation.pret.jour }}</b> si le BAT est validé avant {{ estimation.pret.limite }} <span data-co-r="quand">{{ estimation.pret.quand }}</span></span></p>
+					<p class="co-erreur" role="alert" data-co-r="erreur">{{ estimation.erreur|default('')|replace({' en cm': ''}) }}</p>
+				</section>
+				{% if peutPayer and montants and acompte and not demandeValidation %}
+					<section class="ec-carte co-acompte" data-co-seulement="4" aria-label="Paiement en deux fois">
+						<div><span>Acompte maintenant</span><b data-co-r="acompteMaintenant">{{ acompte.maintenant|number_format(0, ',', ' ') }} F</b></div>
+						<div><span data-co-r="ensuiteQuand">{{ reception == 'livraison' ? 'À la livraison' : 'Au retrait' }}</span><b data-co-r="acompteEnsuite">{{ acompte.ensuite|number_format(0, ',', ' ') }} F</b></div>
+					</section>
+				{% endif %}
+			</aside>
+		</div>
+
+		{# Téléphone (maquette CO06) : prix et bouton toujours sous le pouce. #}
+		<div class="co-barre" data-co-barre>
+			<div>
+				<small data-co-r="barreInfo">{{ montants ? (recap ? recap.quantite ~ ' · ' : '') : nomProduit ~ ' · ' }}prête {{ estimation.pret.jour }}</small>
+				<b data-co-r="barreTotal">{{ montants ? (recap.totalTexte ?? '—') : (recap ? recap.quantite : '—') }}</b>
+			</div>
+			<button type="button" data-co-suivant>Continuer ›</button>
+		</div>
+	</form>
+
+	{# Données de la page : ni prix ni montant pour qui ne les voit pas. #}
+	<script type="application/json" id="co-donnees">{{ {
+		estimer: path('app_espace_estimer'),
+		controle: path('app_espace_nouvelle_commande_controle', {id: 0}),
+		envoi: path('app_espace_fichier_envoi'),
+		fichier: path('app_espace_fichier', {id: 0}),
+		jeton: csrf_token('espace'),
+		voitMontants: montants,
+		paiementEnLigne: peutPayer and montants and omActif and not demandeValidation,
+		etape: etape,
+		nomProduit: nomProduit,
+		nomEtape4: etape4|lower,
+		matieres: matieres|map(m => {id: m.id, titre: m.titre, taille: m.taille, min: m.min, finitions: m.finitions|map(f => {id: f.id, oeillets: f.oeillets, nom: f.nom})}),
+	}|json_encode|raw }}</script>
+{% endblock %}
+
 {% block scripts %}
-	<script src="{{ asset('js/espace-envoi.js') }}"></script>
-	<script>
-	(function () {
-		const form = document.getElementById('commande');
-		if (!form) return;
-		const produits = JSON.parse(document.getElementById('produits').textContent);
-		const jeton = {{ csrf_token('espace')|json_encode|raw }};
-		const finitionsChoisies = {{ choix.finitions|default([])|json_encode|raw }}.map(String);
-		const total = document.getElementById('total');
-		const erreur = document.getElementById('erreur');
-		const quantite = document.getElementById('quantite');
-		const largeur = document.getElementById('largeur');
-		const hauteur = document.getElementById('hauteur');
-		const fr = new Intl.NumberFormat('fr-FR');
-		let produitAvant = null;
-		let minuteur = null;
-
-		function produit() {
-			const coche = form.querySelector('input[name=produit]:checked');
-			return produits.find(function (p) { return coche && String(p.id) === coche.value; });
-		}
-
-		function afficherProduit() {
-			const p = produit();
-			if (!p || p === produitAvant) return;
-			const premier = produitAvant === null;
-			produitAvant = p;
-			document.getElementById('taille').hidden = !p.taille;
-			document.getElementById('detail-produit').textContent = p.nom + (p.min > 1 ? ' · minimum ' + p.min : '');
-			if (!premier) {
-				largeur.value = p.largeur ? Math.round(p.largeur) : '';
-				hauteur.value = p.hauteur ? Math.round(p.hauteur) : '';
-				if (+quantite.value < p.min) quantite.value = p.min;
-			}
-			const zone = document.getElementById('finitions');
-			zone.textContent = '';
-			p.finitions.forEach(function (f) {
-				const label = document.createElement('label');
-				label.className = 'ec-puce';
-				const input = document.createElement('input');
-				input.type = 'checkbox';
-				input.name = 'finitions[]';
-				input.value = f.id;
-				input.checked = f.obligatoire || (premier && finitionsChoisies.length ? finitionsChoisies.indexOf(String(f.id)) >= 0 : f.parDefaut);
-				input.disabled = f.obligatoire;
-				const texte = document.createElement('span');
-				texte.textContent = f.nom + (f.obligatoire ? ' (inclus)' : '');
-				label.append(input, texte);
-				zone.append(label);
+	{% if etape > 1 %}
+		<script src="{{ asset('js/espace-envoi.js') }}"></script>
+		<script src="{{ asset('js/espace-commande.js') }}"></script>
+	{% else %}
+		<script>
+		// Étape 1 : les catégories filtrent sans recharger (les liens restent pour qui n'a pas de script).
+		(function () {
+			var zone = document.querySelector('[data-co-filtres]');
+			if (!zone) return;
+			zone.addEventListener('click', function (e) {
+				var a = e.target.closest('[data-co-filtre]');
+				if (!a) return;
+				e.preventDefault();
+				zone.querySelectorAll('[data-co-filtre]').forEach(function (x) { x.classList.toggle('actif', x === a); x.toggleAttribute('aria-current', x === a); });
+				document.querySelectorAll('[data-co-categorie]').forEach(function (li) { li.hidden = a.dataset.coFiltre !== '' && li.dataset.coCategorie !== a.dataset.coFiltre; });
+				history.replaceState(null, '', a.href);
 			});
-			document.getElementById('bloc-finitions').hidden = p.finitions.length === 0;
-		}
-
-		function finitions() {
-			return Array.from(form.querySelectorAll('input[name="finitions[]"]:checked')).map(function (i) { return +i.value; });
-		}
-
-		async function estimer() {
-			const p = produit();
-			if (!p) return;
-			try {
-				const r = await fetch({{ path('app_espace_estimer')|json_encode|raw }}, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': jeton, 'Accept': 'application/json' },
-					body: JSON.stringify({ produit: p.id, quantite: +quantite.value || 1, largeur: largeur.value, hauteur: hauteur.value, finitions: finitions() }),
-					credentials: 'same-origin',
-				});
-				const d = await r.json();
-				if (total) total.textContent = d.erreur || !d.montants ? '—' : fr.format(d.total) + ' F';
-				erreur.textContent = d.erreur || '';
-				document.getElementById('commander').disabled = !!d.erreur;
-			} catch (e) {
-				if (total) total.textContent = '—';
-			}
-		}
-
-		function changer() {
-			afficherProduit();
-			clearTimeout(minuteur);
-			minuteur = setTimeout(estimer, 250);
-		}
-
-		form.addEventListener('input', changer);
-		form.addEventListener('change', changer);
-		form.querySelectorAll('.ec-quantite button').forEach(function (b) {
-			b.addEventListener('click', function () {
-				const p = produit();
-				quantite.value = Math.max(p ? p.min : 1, (+quantite.value || 1) + (+b.dataset.pas));
-				changer();
-			});
-		});
-		form.addEventListener('submit', function () { document.getElementById('commander').disabled = true; });
-
-		document.getElementById('envoi').addEventListener('change', async function () {
-			const f = this.files[0];
-			if (!f) return;
-			const etat = document.getElementById('envoi-etat');
-			const barre = form.querySelector('.ec-progres');
-			barre.hidden = false;
-			etat.textContent = 'Envoi de ' + f.name + '…';
-			try {
-				const recu = await EspaceEnvoi.envoyer(f, {
-					debut: {{ path('app_espace_fichier_envoi')|json_encode|raw }}, jeton: jeton,
-					largeur: produit() && produit().taille ? largeur.value : '', hauteur: produit() && produit().taille ? hauteur.value : '',
-					progres: function (p) { barre.firstElementChild.style.width = p + '%'; },
-				});
-				const ligne = document.createElement('label');
-				ligne.className = 'ec-choix-fichier';
-				const coche = document.createElement('input');
-				coche.type = 'checkbox'; coche.name = 'fichiers[]'; coche.value = recu.id; coche.checked = true;
-				const texte = document.createElement('span');
-				const nom = document.createElement('b'); nom.textContent = recu.nom;
-				const pastille = document.createElement('span'); pastille.className = 'ec-pastille ' + recu.controle.etat; pastille.textContent = recu.controle.libelle; pastille.style.marginLeft = '.4rem';
-				const detail = document.createElement('div'); detail.className = 'ec-petit'; detail.textContent = 'Contrôle auto : ' + recu.controle.texte;
-				texte.append(nom, pastille, detail);
-				ligne.append(coche, texte);
-				document.getElementById('choix-fichiers').prepend(ligne);
-				etat.textContent = '';
-				barre.hidden = true;
-			} catch (e) {
-				etat.textContent = f.name + ' : ' + e.message;
-			}
-			this.value = '';
-		});
-
-		afficherProduit();
-		estimer();
-	})();
-	</script>
+		})();
+		</script>
+	{% endif %}
 {% endblock %}

@@ -40,6 +40,9 @@ class Commandes implements AppartientASociete
     public const VALIDATION_ACCEPTEE = 'validee';
     public const VALIDATION_REFUSEE = 'refusee';
 
+    public const DELAI_STANDARD = 'standard';
+    public const DELAI_EXPRESS = 'express';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -179,6 +182,19 @@ class Commandes implements AppartientASociete
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $adresseLivraison = null;
+
+    /*
+     * Délai demandé par le client en ligne (docs/espace-client.md,
+     * « Nouvelle commande ») : standard ou express. null pour une commande
+     * saisie au comptoir. La majoration express est une ligne libre de la
+     * commande, jamais un prix de ligne gonflé.
+     */
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $delaiProduction = null;
+
+    /** Créneau de livraison choisi en ligne, en clair (« Lun. 19/10, matin »). */
+    #[ORM\Column(length: 60, nullable: true)]
+    private ?string $creneauLivraison = null;
 
     /** Numéro du bon de commande du client (entreprise). */
     #[ORM\Column(length: 60, nullable: true)]
@@ -811,6 +827,36 @@ class Commandes implements AppartientASociete
     {
         $adresse = null === $adresse ? null : trim($adresse);
         $this->adresseLivraison = '' === $adresse ? null : $adresse;
+
+        return $this;
+    }
+
+    public function getDelaiProduction(): ?string
+    {
+        return $this->delaiProduction;
+    }
+
+    public function setDelaiProduction(?string $delai): static
+    {
+        $this->delaiProduction = \in_array($delai, [self::DELAI_STANDARD, self::DELAI_EXPRESS], true) ? $delai : null;
+
+        return $this;
+    }
+
+    public function estExpress(): bool
+    {
+        return self::DELAI_EXPRESS === $this->delaiProduction;
+    }
+
+    public function getCreneauLivraison(): ?string
+    {
+        return $this->creneauLivraison;
+    }
+
+    public function setCreneauLivraison(?string $creneau): static
+    {
+        $creneau = null !== $creneau ? mb_substr(trim($creneau), 0, 60) : null;
+        $this->creneauLivraison = '' === $creneau ? null : $creneau;
 
         return $this;
     }

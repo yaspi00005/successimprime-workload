@@ -3,6 +3,7 @@
 namespace App\Service\Parametres;
 
 use App\Service\ActionsCaisse\HeuresTravail;
+use App\Service\EspaceClient\DelaisCommande;
 use App\Service\SuiviMetiers\Bareme;
 
 /**
@@ -139,16 +140,19 @@ final class CatalogueParametres
                 'motsCles' => ['Orange Money · numéro marchand et frais', 'Fonds de soutien · frais de retrait', 'Espèces · virement · acompte', 'Reçu de paiement WhatsApp'],
             ],
             // Saisie des devis et commandes (docs/documents-livraisons.md) : boutons des frais de
-            // livraison et objets suggérés. Ne part pas sur le site : le client ne choisit pas les frais.
+            // livraison et objets suggérés. Les paliers et les frais de la commande en ligne partent
+            // sur le site (CatalogueSynchro::REGLAGES_PUBLICS) ; les objets restent au local.
             ReglagesSaisie::TUILE => [
                 'famille' => 'ventes', 'libelle' => 'Livraison et objet', 'icone' => 'fa-truck',
                 'roles' => ['ROLE_ADMIN'], 'route' => null,
                 'champs' => [
                     ['cle' => 'paliers_livraison', 'type' => 'texte', 'format' => 'montants', 'libelle' => 'Frais de livraison proposés', 'aide' => 'Montants en F séparés par des virgules, du plus petit au plus grand : le plus grand est le maximum. Vide : pas de frais de livraison.', 'suffixe' => 'F', 'defaut' => ReglagesSaisie::PALIERS_DEFAUT],
+                    // Un des paliers ci-dessus, ou 0 : contrôlé avec eux (lireSaisie, 'palierDe').
+                    ['cle' => 'livraison_en_ligne', 'type' => 'nombre', 'libelle' => 'Frais de livraison en ligne', 'aide' => 'Proposés au client qui commande dans son espace (« Livraison à Bamako »). Un des paliers ci-dessus, ou 0 : livraison offerte. La boutique peut les changer en confirmant la commande.', 'suffixe' => 'F', 'min' => 0, 'max' => ReglagesSaisie::PALIER_MAX, 'palierDe' => 'paliers_livraison', 'defaut' => ReglagesSaisie::FRAIS_EN_LIGNE_DEFAUT],
                     ['cle' => 'objets', 'type' => 'texte', 'longueur' => 500, 'libelle' => 'Objets suggérés', 'aide' => 'Séparés par des virgules. L\'objet reste libre à la saisie (150 caractères).', 'defaut' => ReglagesSaisie::OBJETS_DEFAUT],
                 ],
-                'motsCles' => ['Frais de livraison · 1 000, 1 500, 2 000, 2 500 F', 'Objet de la commande · impressions, prestations informatiques', 'Devis, commande, facture'],
-                'note' => 'Frais : montants en F séparés par des virgules ; le plus grand est le maximum, vide = pas de frais. À la saisie d\'un devis ou d\'une commande livrée, l\'agent choisit « Sans frais » ou un palier : une ligne « Livraison » paraît sur le devis, la commande et la facture. Objets : séparés par des virgules, simples suggestions. Les conditions de paiement (bloc « NB » des factures) se règlent par entreprise, tuile Entités et en-têtes.',
+                'motsCles' => ['Frais de livraison · 1 000, 1 500, 2 000, 2 500 F', 'Frais de livraison de la commande en ligne', 'Objet de la commande · impressions, prestations informatiques', 'Devis, commande, facture'],
+                'note' => 'Frais : montants en F séparés par des virgules ; le plus grand est le maximum, vide = pas de frais. À la saisie d\'un devis ou d\'une commande livrée, l\'agent choisit « Sans frais » ou un palier : une ligne « Livraison » paraît sur le devis, la commande et la facture. Commande en ligne : le client qui choisit « Livraison à Bamako » voit les frais de livraison en ligne (un palier, ou 0) ; la boutique peut les changer en confirmant. Objets : séparés par des virgules, simples suggestions. Les conditions de paiement (bloc « NB » des factures) se règlent par entreprise, tuile Entités et en-têtes.',
             ],
             // Demande de conception dans l'espace client (docs/demande-conception.md). Le coût
             // d'une image chez le fournisseur reste au local (CatalogueSynchro::REGLAGES_PUBLICS).
@@ -343,11 +347,19 @@ final class CatalogueParametres
                     // Suivi de commande (docs/espace-client.md) : au-delà, la demande part avec « peut être facturée ».
                     ['cle' => 'corrections_bat_gratuites', 'type' => 'nombre', 'libelle' => 'Corrections de BAT gratuites', 'aide' => 'Par BAT. Au-delà, le client peut encore demander une correction : la page le prévient qu\'elle peut être facturée, l\'atelier fixe le prix.', 'suffixe' => 'corrections', 'min' => 0, 'max' => 10, 'defaut' => 2],
                     ['cle' => 'code_sms', 'type' => 'interrupteur', 'libelle' => 'Code de première connexion et de mot de passe oublié', 'aide' => 'Par e-mail, ou par SMS sans adresse. Coupé, le client demande son accès à la boutique ; la création de compte vérifie toujours par code.', 'defaut' => true],
-                    ['cle' => 'commande_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Commande en ligne', 'defaut' => true],
-                    ['cle' => 'paiement_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Paiement Orange Money en ligne', 'defaut' => false],
+                    // Appliqués par le serveur (NouvelleCommande::estOuverte, OrangeMoney::estOuvert).
+                    ['cle' => 'commande_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Commande en ligne', 'aide' => 'Coupé : l\'espace client n\'enregistre plus de commande (nouvelle commande, Mes produits, Atelier 3D, impression d\'une conception) et l\'explique au client. Les commandes déjà passées continuent.', 'defaut' => true],
+                    ['cle' => 'paiement_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Paiement Orange Money en ligne', 'aide' => 'Coupé : l\'espace ne propose pas Orange Money, le client paie en boutique (ou au numéro marchand). Allumé : il faut aussi les clés d\'Orange sur le serveur en ligne.', 'defaut' => false],
+                    // Délais de la commande en ligne (docs/espace-client.md, « Nouvelle commande ») : comptés en jours ouvrés
+                    // (tuile Horaires) à partir de la validation du BAT.
+                    ['cle' => 'delai_standard', 'type' => 'nombre', 'libelle' => 'Délai standard', 'aide' => 'Après validation du BAT. Compté en jours ouvrés (24 h = 1 jour).', 'suffixe' => 'h', 'min' => 1, 'max' => 720, 'defaut' => DelaisCommande::STANDARD_DEFAUT],
+                    ['cle' => 'express', 'type' => 'interrupteur', 'libelle' => 'Délai express proposé', 'defaut' => true],
+                    ['cle' => 'delai_express', 'type' => 'nombre', 'libelle' => 'Délai express', 'aide' => 'Après validation du BAT.', 'suffixe' => 'h', 'min' => 1, 'max' => 720, 'defaut' => DelaisCommande::EXPRESS_DEFAUT],
+                    ['cle' => 'majoration_express', 'type' => 'nombre', 'libelle' => 'Majoration express', 'aide' => 'Ajoutée en ligne « Express » sur la commande, sur le prix des produits.', 'suffixe' => '%', 'min' => 0, 'max' => 200, 'defaut' => DelaisCommande::MAJORATION_DEFAUT],
+                    ['cle' => 'heure_limite', 'type' => 'heure', 'libelle' => 'BAT validé avant', 'aide' => 'Le délai part le jour même ; après, le jour ouvré suivant.', 'defaut' => DelaisCommande::HEURE_LIMITE_DEFAUT],
                 ],
-                'motsCles' => ['Connexion par code e-mail ou SMS', 'Mot de passe oublié', 'Commande en ligne du client', 'Paiement Orange Money en ligne', 'WhatsApp · mot de passe', 'Corrections de BAT gratuites'],
-                'note' => 'La connexion par code est appliquée. La commande et le paiement en ligne le seront avec l\'espace client complet (jalon J5).',
+                'motsCles' => ['Connexion par code e-mail ou SMS', 'Mot de passe oublié', 'Commande en ligne du client', 'Paiement Orange Money en ligne', 'Délai standard · express 24 h', 'WhatsApp · mot de passe', 'Corrections de BAT gratuites'],
+                'note' => 'Tout est appliqué par le serveur. Commande en ligne coupée : la page Nouvelle commande l\'explique et rien ne s\'enregistre. Paiement Orange Money en ligne coupé (réglage de départ) : aucun paiement Orange Money depuis l\'espace, ni à la commande, ni dans Factures et paiements, ni pour la conception.',
             ],
             // Programme de points (docs/fidelite.md), règles de Yaya du 13/10/2026.
             'fidelite' => [
@@ -564,6 +576,20 @@ final class CatalogueParametres
                         $texte = ReglagesSaisie::ecrirePaliers($paliers);
                     }
                     $valeurs[$cle] = $texte;
+            }
+        }
+
+        // Montant à choisir parmi une liste de paliers saisie dans la même tuile (frais de livraison en ligne) : 0 ou un palier.
+        foreach ($champs as $champ) {
+            $cle = $champ['cle'];
+            $liste = $champ['palierDe'] ?? null;
+            if (null === $liste || !\is_int($valeurs[$cle] ?? null) || !\array_key_exists($liste, $valeurs)) {
+                continue;
+            }
+            $paliers = ReglagesSaisie::lirePaliers((string) $valeurs[$liste]) ?? [];
+            if (!ReglagesSaisie::fraisPermis($valeurs[$cle], $paliers)) {
+                $erreurs[$cle] = [] === $paliers ? 'Sans palier, seulement 0.' : \sprintf('0 ou un des paliers : %s.', implode(', ', array_map(ReglagesSaisie::montant(...), $paliers)));
+                unset($valeurs[$cle]);
             }
         }
 

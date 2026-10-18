@@ -79,13 +79,35 @@ final class ReglagesSaisieTest extends TestCase
     {
         $champs = CatalogueParametres::tuiles()[ReglagesSaisie::TUILE]['champs'];
 
-        $lecture = CatalogueParametres::lireSaisie($champs, ['paliers_livraison' => '2 000 ; 1000 F, 1500', 'objets' => 'Impressions, Pose']);
+        $lecture = CatalogueParametres::lireSaisie($champs, ['paliers_livraison' => '2 000 ; 1000 F, 1500', 'livraison_en_ligne' => '2 000', 'objets' => 'Impressions, Pose']);
         self::assertSame([], $lecture['erreurs']);
         self::assertSame('1000, 1500, 2000', $lecture['valeurs']['paliers_livraison']);
+        self::assertSame(2000, $lecture['valeurs']['livraison_en_ligne']);
         self::assertSame('Impressions, Pose', $lecture['valeurs']['objets']);
 
-        $refus = CatalogueParametres::lireSaisie($champs, ['paliers_livraison' => '1000, gratuit', 'objets' => str_repeat('a', 501)]);
+        $refus = CatalogueParametres::lireSaisie($champs, ['paliers_livraison' => '1000, gratuit', 'livraison_en_ligne' => '0', 'objets' => str_repeat('a', 501)]);
         self::assertSame(['paliers_livraison', 'objets'], array_keys($refus['erreurs']));
         self::assertSame('500 caractères au plus.', $refus['erreurs']['objets']);
+    }
+
+    public function testFraisDeLivraisonEnLigneParmiLesPaliers(): void
+    {
+        $champs = CatalogueParametres::tuiles()[ReglagesSaisie::TUILE]['champs'];
+
+        // Ni 0 ni un palier : refusé avec la liste, la valeur n'est pas gardée.
+        $refus = CatalogueParametres::lireSaisie($champs, ['paliers_livraison' => '1000, 2000', 'livraison_en_ligne' => '1800', 'objets' => '']);
+        self::assertSame(['livraison_en_ligne'], array_keys($refus['erreurs']));
+        self::assertStringStartsWith('0 ou un des paliers : 1', $refus['erreurs']['livraison_en_ligne']);
+        self::assertArrayNotHasKey('livraison_en_ligne', $refus['valeurs']);
+        // Sans palier : seulement 0 (livraison offerte).
+        self::assertSame('Sans palier, seulement 0.', CatalogueParametres::lireSaisie($champs, ['paliers_livraison' => '', 'livraison_en_ligne' => '1000', 'objets' => ''])['erreurs']['livraison_en_ligne']);
+        self::assertSame(0, CatalogueParametres::lireSaisie($champs, ['paliers_livraison' => '', 'livraison_en_ligne' => '0', 'objets' => ''])['valeurs']['livraison_en_ligne']);
+
+        // Le site propose le réglage s'il est permis ; sinon le palier le plus proche (le plus petit à égalité).
+        self::assertSame(2000, ReglagesSaisie::fraisEnLigneParmi(2000, [1000, 1500, 2000]));
+        self::assertSame(0, ReglagesSaisie::fraisEnLigneParmi(0, [1000, 1500]));
+        self::assertSame(1500, ReglagesSaisie::fraisEnLigneParmi(1700, [1000, 1500, 2500]));
+        self::assertSame(1000, ReglagesSaisie::fraisEnLigneParmi(1500, [1000, 2000]));
+        self::assertSame(0, ReglagesSaisie::fraisEnLigneParmi(2000, []), 'sans palier : pas de frais');
     }
 }

@@ -62,6 +62,8 @@ final class RecetteEspaceClient
         'app_espace_commande' => 'commande',
         'app_espace_avis_commande' => 'commande',
         'app_espace_payer' => 'commande',
+        // Paiement à la commande (nouvelle commande, étape 4) : une commande en ligne encore « à confirmer ».
+        'app_espace_nouvelle_commande_paiement' => 'commande',
         'app_espace_devis_pdf' => 'devis',
         'app_espace_facture_pdf' => 'facture',
         // Factures et paiements : détail d'une facture, reçu d'un paiement validé, retour d'Orange Money.
@@ -86,6 +88,7 @@ final class RecetteEspaceClient
     public const PAGES_PAYEUR = [
         'app_espace_factures', 'app_espace_facture_pdf', 'app_espace_payer', 'app_espace_conception_credit',
         'app_espace_facture_detail', 'app_espace_facture_recu', 'app_espace_facture_releve', 'app_espace_payer_selection', 'app_espace_payer_recu',
+        'app_espace_nouvelle_commande_paiement',
     ];
 
     /** Pages où un prix est voulu pour qui voit les montants (valideur) : catalogue et prix du jour. */
@@ -501,6 +504,7 @@ final class RecetteEspaceClient
             ['app_espace_conception_supprimer', 'conception', [], 'supprimer la demande de conception', null],
             ['app_espace_bat', 'bat', ['action' => 'valider'], 'valider le BAT', null],
             ['app_espace_payer_orange_money', 'commande', [], 'payer la commande', null],
+            ['app_espace_nouvelle_commande_paiement', 'commande', [], 'payer à la commande la commande', null],
         ];
         foreach ($envois as [$route, $sorte, $donnees, $libelle, $intacte]) {
             $valeur = $fichesB[$sorte] ?? null;
@@ -529,6 +533,16 @@ final class RecetteEspaceClient
             $bilan->controler(\sprintf('Espace client : %s met le fichier de %s dans sa commande', $a, $b), $ok);
             if (!$ok) {
                 $bilan->constater(BilanRecette::FUITE, 'autre_client_envoi', 'app_espace_nouvelle_commande', '/espace/commandes/nouvelle', $a, 'le fichier d\'un autre client a été mis dans sa commande');
+            }
+            // Contrôle automatique (nouvelle commande, étape 3) du fichier d'un autre client : introuvable.
+            if (null !== $this->routeur->getRouteCollection()->get('app_espace_nouvelle_commande_controle')) {
+                $chemin = $this->routeur->generate('app_espace_nouvelle_commande_controle', ['id' => $fichierB]);
+                $reponse = $this->navigateur->postJson($chemin, ['largeur' => '1', 'hauteur' => '1', 'unite' => 'm'], $session, ['X-CSRF-TOKEN' => $jeton]);
+                $ok = \in_array($reponse->etat(), [Reponse::INTROUVABLE, Reponse::REFUSE], true);
+                $bilan->controler(\sprintf('Espace client : %s fait contrôler le fichier de %s', $a, $b), $ok, $chemin.' → '.$reponse->etat());
+                if (!$ok) {
+                    $bilan->constater(BilanRecette::FUITE, 'autre_client_envoi', 'app_espace_nouvelle_commande_controle', $chemin, $a, \sprintf('contrôle du fichier d\'un autre client (%s) : la page répond « %s »', $b, $reponse->etat()));
+                }
             }
         }
         if (null !== $commandeB) {

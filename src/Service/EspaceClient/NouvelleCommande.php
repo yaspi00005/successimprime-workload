@@ -10,15 +10,18 @@ use App\Entity\CommandesDetails;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Service\GrilleTarifaire;
+use App\Service\Parametres\Parametres;
 use App\Service\Promotions\PromotionsSaisie;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
 /**
- * Commande passée par le client dans son espace (maquette 14) : produit
- * du catalogue publié, taille, finitions, quantité. Le prix indicatif
- * vient des mêmes prix que la saisie au comptoir ; la commande arrive en
- * brouillon « à confirmer » : l'atelier vérifie le prix et le fichier,
- * puis la confirme.
+ * Commande passée par le client dans son espace (maquettes CO01 à CO04) :
+ * produit du catalogue publié, taille, matière, finitions, quantité, délai
+ * (standard ou express) et réception (retrait ou livraison). Le prix vient
+ * des mêmes prix que la saisie au comptoir, calculé ici ; la commande
+ * arrive en brouillon « à confirmer » : l'atelier vérifie le prix et le
+ * fichier, puis la confirme.
  */
 final class NouvelleCommande
 {
@@ -28,11 +31,27 @@ final class NouvelleCommande
     /** Taille saisie par le client, en cm. */
     public const COTE_MAX_CM = 5000;
 
+    /** Interrupteur « Commande en ligne » coupé (Réglages › Espace client). */
+    public const FERMEE = 'La commande en ligne est fermée pour le moment : demandez un devis, écrivez-nous ou passez en boutique.';
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         /** Code promo tapé par le client (docs/promotions.md) ; absent dans les tests qui n'en ont pas besoin. */
         private readonly ?PromotionsSaisie $promotionsSaisie = null,
+        /** @var (\Closure(): Parametres)|null interrupteur « Commande en ligne » ; absent des tests : ouverte */
+        #[AutowireServiceClosure(Parametres::class)] private readonly ?\Closure $reglages = null,
     ) {
+    }
+
+    /**
+     * Interrupteur « Commande en ligne » de Réglages › Espace client
+     * (allumé par défaut). Coupé, l'espace n'enregistre plus aucune
+     * commande : nouvelle commande, Mes produits, Atelier 3D, impression
+     * d'une conception passent toutes par verifierEnAttente.
+     */
+    public function estOuverte(): bool
+    {
+        return null === $this->reglages || (bool) ($this->reglages)()->valeur('espace_client', 'commande_en_ligne');
     }
 
     /**
@@ -187,21 +206,78 @@ final class NouvelleCommande
     }
 
     /**
-     * Prix indicatif, sans rien enregistrer.
+     * Ligne « Express » : la majoration du délai express, en % du prix des
+     * produits. Une ligne libre de la commande, visible sur les documents,
+     * sans rien à fabriquer ni à contrôler (jamais un prix de ligne gonflé).
+     */
+    public static function ligneExpress(int $montantProduits, int $pourcentage, int $heures): CommandesDetails
+    {
+        $ligne = (new CommandesDetails())
+            ->setTypeLigne(CommandesDetails::TYPE_LIBRE)
+            ->setDesignation(\sprintf('Express %d h (+%d %%)', $heures, $pourcentage))
+            ->setModeCalcul('forfait')
+            ->setQuantite(1)
+            ->setPrixUnitaire((int) round(max(0, $montantProduits) * max(0, $pourcentage) / 100))
+            ->setTva(0)
+            ->setPrePresseNecessaire(false)
+            ->setProductionNecessaire(false);
+
+        return $ligne->calculerTotaux();
+    }
+
+    /**
+     * Commande en ligne non enregistrée : la ligne du produit, la ligne
+     * express si demandée, la réception et les totaux (frais de livraison
+     * compris). Sert à l'estimation comme à l'enregistrement.
+     */
+    public static function assembler(CommandesDetails $ligne, ?OptionsCommande $options = null, int $heuresExpress = 24): Commandes
+    {
+        $commande = (new Commandes())
+            ->setCanal(Commandes::CANAL_EN_LIGNE)
+            ->setStatut(false) // à confirmer par l'atelier
+            ->setEtat(true);
+        $commande->addCommandesDetail($ligne);
+        if (null !== $options) {
+            $commande->setDelaiProduction($options->delai);
+            if ($options->estExpress() && $options->majorationExpress > 0) {
+                $commande->addCommandesDetail(self::ligneExpress($ligne->getTotalTtc(), $options->majorationExpress, $heuresExpress));
+            }
+            $commande->setModeLivraison($options->livraison ? Commandes::LIVRAISON_DOMICILE : Commandes::LIVRAISON_RETRAIT)
+                ->setFraisLivraison($options->livraison ? $options->fraisLivraison : 0)
+                ->setAdresseLivraison($options->livraison ? $options->adresse : null)
+                ->setCreneauLivraison($options->livraison ? $options->creneau : null)
+                ->setDateLivraison($options->dateLivraison);
+        }
+
+        return $commande->recalculerTotaux();
+    }
+
+    /**
+     * Prix, sans rien enregistrer : la ligne du produit, puis l'express et
+     * la livraison quand ils sont choisis.
      *
      * @param list<int> $finitions
      *
      * @return array{total: int, detail: list<array{libelle: string, montant: int}>}
      */
-    public static function estimer(ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, bool $b2b): array
+    public static function estimer(ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, bool $b2b, ?OptionsCommande $options = null, int $heuresExpress = 24): array
     {
         $ligne = self::construireLigne($config, $quantite, $largeurCm, $hauteurCm, $finitions, $b2b);
+        $commande = self::assembler($ligne, $options, $heuresExpress);
         $detail = [['libelle' => 'Impression', 'montant' => $ligne->calculerMontantImpression()]];
         foreach ($ligne->getFinitions() as $f) {
             $detail[] = ['libelle' => (string) $f->getNomFinition(), 'montant' => (int) $f->getMontant()];
         }
+        foreach ($commande->getCommandesDetails() as $l) {
+            if ($l !== $ligne) {
+                $detail[] = ['libelle' => (string) $l->getDesignation(), 'montant' => $l->getTotalTtc()];
+            }
+        }
+        if ($commande->getFraisLivraison() > 0) {
+            $detail[] = ['libelle' => 'Livraison', 'montant' => $commande->getFraisLivraison()];
+        }
 
-        return ['total' => $ligne->getTotalTtc(), 'detail' => $detail];
+        return ['total' => $commande->getTotalTtc(), 'detail' => $detail];
     }
 
     /**
@@ -227,11 +303,12 @@ final class NouvelleCommande
      * @param list<CommandeDetailFichier> $fichiers  fichiers du client, déjà vérifiés
      * @param \Closure(CommandesDetails): void|null $ajuster prix propre à la page (Atelier 3D : seconde face, palier), recalculé ici
      * @param string|null $codePromo code promo tapé : vérifié avant d'enregistrer (PromotionsSaisie::appliquerCodeEnLigne)
+     * @param OptionsCommande|null $options délai, réception et créneau (nouvelle commande en quatre étapes)
      *
      * @throws \DomainException
      * @throws \App\Service\Promotions\CodePromoRefuse code promo refusé : rien n'est enregistré
      */
-    public function commander(Clients $client, ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, array $fichiers, ?string $note, \DateTimeImmutable $maintenant, ?\Closure $ajuster = null, ?string $codePromo = null): Commandes
+    public function commander(Clients $client, ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, array $fichiers, ?string $note, \DateTimeImmutable $maintenant, ?\Closure $ajuster = null, ?string $codePromo = null, ?OptionsCommande $options = null, int $heuresExpress = 24): Commandes
     {
         $this->verifierEnAttente($client);
 
@@ -241,14 +318,9 @@ final class NouvelleCommande
             $ajuster($ligne);
         }
 
-        $commande = (new Commandes())
+        $commande = self::assembler($ligne, $options, $heuresExpress)
             ->setClients($client)
-            ->setDateCommande($maintenant)
-            ->setCanal(Commandes::CANAL_EN_LIGNE)
-            ->setStatut(false) // à confirmer par l'atelier
-            ->setEtat(true);
-        $commande->addCommandesDetail($ligne);
-        $commande->recalculerTotaux();
+            ->setDateCommande($maintenant);
         if (null !== $this->promotionsSaisie && null !== $codePromo && '' !== trim($codePromo)) {
             $this->promotionsSaisie->appliquerCodeEnLigne($commande, $codePromo, $maintenant);
         }
@@ -268,12 +340,16 @@ final class NouvelleCommande
     }
 
     /**
-     * Pas plus de EN_ATTENTE_MAX commandes en ligne non confirmées par client.
+     * Commande en ligne ouverte (estOuverte), et pas plus de EN_ATTENTE_MAX
+     * commandes en ligne non confirmées par client.
      *
      * @throws \DomainException
      */
     public function verifierEnAttente(Clients $client): void
     {
+        if (!$this->estOuverte()) {
+            throw new \DomainException(self::FERMEE);
+        }
         $enAttente = $this->em->getRepository(Commandes::class)->count(['clients' => $client, 'statut' => false, 'deleted' => false, 'canal' => Commandes::CANAL_EN_LIGNE]);
         if ($enAttente >= self::EN_ATTENTE_MAX) {
             throw new \DomainException('Vous avez déjà plusieurs commandes en attente de confirmation. L\'atelier vous recontacte.');

@@ -80,6 +80,7 @@
 			<h2>{{ commande.numero }}</h2>
 			<small class="text-muted">{{ client ? client.nomComplet : 'Client comptoir' }}{% if commande.dateLivraison %} · {{ commande.recupereParClient ? 'retrait' : 'livraison' }} {{ ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'][commande.dateLivraison|date('w')] }} {{ commande.dateLivraison|date('d/m') }}{% endif %}</small>
 			{% if commande.objet %}<small class="d-block text-muted">Objet : {{ commande.objet }}</small>{% endif %}
+			{% if commande.delaiProduction %}<small class="d-block text-muted">Choix du client en ligne : délai {{ commande.estExpress ? 'express' : 'standard' }} · {{ commande.estALivrer ? 'livraison à Bamako' ~ (commande.creneauLivraison ? ', ' ~ commande.creneauLivraison : '') ~ (commande.adresseLivraison ? ' · ' ~ (commande.adresseLivraison|length > 90 ? commande.adresseLivraison|slice(0, 89) ~ '…' : commande.adresseLivraison) : '') : 'retrait en boutique' }}</small>{% endif %}
 		</div>
 		<ul class="si-actions-fiche">
 	<li class="nav-item si-masque-mobile">

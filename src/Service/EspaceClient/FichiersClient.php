@@ -171,6 +171,49 @@ final class FichiersClient
         }
     }
 
+    /**
+     * « Refaire » une commande (Nouvelle commande, « Commander à nouveau ») :
+     * le fichier que le client avait envoyé pour cette ligne devient un
+     * nouveau fichier à lui, pour la nouvelle commande (même octets, lien
+     * dur sinon copie). null si ce n'est pas son fichier ou si les octets
+     * ne sont pas ici (l'atelier le reprend d'après la note).
+     */
+    public function reprendre(CommandeDetailFichier $source, Clients $client): ?CommandeDetailFichier
+    {
+        $chemin = $this->chemin($source);
+        if (null === $chemin || $source->getClient()?->getId() !== $client->getId() || !$source->isActif()
+            || CommandeDetailFichier::ORIGINE_CLIENT !== $source->getOrigine() || $source->isLogo() || !$source->estUploadTermine()) {
+            return null;
+        }
+        $extension = strtolower(pathinfo((string) $source->getNomStockage(), \PATHINFO_EXTENSION));
+        if (!isset(self::TYPES[$extension])) {
+            return null;
+        }
+        $jeton = bin2hex(random_bytes(32));
+        $cible = $this->dossier().'/'.$jeton.'.'.$extension;
+        if (!@link($chemin, $cible) && !@copy($chemin, $cible)) {
+            return null;
+        }
+        $fichier = (new CommandeDetailFichier())
+            ->setJetonUpload($jeton)
+            ->setNomOriginal((string) $source->getNomOriginal())
+            ->setNomStockage($jeton.'.'.$extension)
+            ->setTypeMime($source->getTypeMime())
+            ->setTaille($source->getTaille())
+            ->setNombreMorceaux(max(1, (int) ceil((int) $source->getTaille() / self::MORCEAU)))
+            ->setMorceauxRecus(max(1, (int) ceil((int) $source->getTaille() / self::MORCEAU)))
+            ->setOrigine(CommandeDetailFichier::ORIGINE_CLIENT)
+            ->setClient($client)
+            ->setLogo(false)
+            ->setFichierSource($source)
+            ->setEmpreinte($source->getEmpreinte())
+            ->setAnalyse($source->getAnalyse())
+            ->marquerUploadTermine();
+        $this->em->persist($fichier);
+
+        return $fichier;
+    }
+
     /** @return list<CommandeDetailFichier> les fichiers du client, les plus récents d'abord */
     public function liste(Clients $client, bool $logos = false, int $nombre = 60): array
     {

@@ -27,7 +27,10 @@ final class RecommanderClient
      * Un article qui ne se commande plus en ligne est passé. Sans $montants
      * (demandeur, CompteClient::montantsVisibles), le prix reste null.
      *
-     * @return list<array{titre: string, derniere: \DateTimeInterface, prix: ?int, lien: array{0: string, 1: array<string, mixed>}}>
+     * numero et ligne : la commande d'origine et sa ligne (« Refaire » de la
+     * nouvelle commande, qui reprend aussi le fichier).
+     *
+     * @return list<array{titre: string, derniere: \DateTimeInterface, prix: ?int, lien: array{0: string, 1: array<string, mixed>}, numero: ?string, ligne: string}>
      */
     public function articles(Clients $client, int $nombre = 3, bool $montants = true): array
     {
@@ -50,7 +53,7 @@ final class RecommanderClient
                     continue;
                 }
                 $vus[$article['cle']] = true;
-                $liste[] = ['titre' => EspaceClient::titreLigne($l), 'derniere' => $c->getDateCommande() ?? new \DateTimeImmutable(), 'prix' => $montants ? $article['prix'] : null, 'lien' => $article['lien']];
+                $liste[] = ['titre' => EspaceClient::titreLigne($l), 'derniere' => $c->getDateCommande() ?? new \DateTimeImmutable(), 'prix' => $montants ? $article['prix'] : null, 'lien' => $article['lien'], 'numero' => $c->getNumero(), 'ligne' => (string) $l->getPublicId()];
                 if (\count($liste) >= $nombre) {
                     return $liste;
                 }

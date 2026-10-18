@@ -14,6 +14,9 @@ final class ReglagesSaisie
     public const TUILE = 'saisie';
 
     public const PALIERS_DEFAUT = '1000, 1500, 2000, 2500';
+
+    /** Frais de livraison proposés au client qui commande en ligne (un palier, ou 0). */
+    public const FRAIS_EN_LIGNE_DEFAUT = 2000;
     public const OBJETS_DEFAUT = 'Impressions, Prestations informatiques, Conception graphique, Signalétique, Textile personnalisé';
 
     /** Garde-fous de la saisie des paliers. */
@@ -35,6 +38,30 @@ final class ReglagesSaisie
     {
         return self::lirePaliers((string) ($this->parametres->valeur(self::TUILE, 'paliers_livraison') ?? self::PALIERS_DEFAUT))
             ?? self::lirePaliers(self::PALIERS_DEFAUT) ?? [];
+    }
+
+    /**
+     * Frais de « Livraison à Bamako » de la commande en ligne : le réglage
+     * s'il est 0 ou un palier ; sinon (paliers changés depuis) le palier le
+     * plus proche, et 0 sans palier.
+     */
+    public function fraisEnLigne(): int
+    {
+        return self::fraisEnLigneParmi((int) ($this->parametres->valeur(self::TUILE, 'livraison_en_ligne') ?? self::FRAIS_EN_LIGNE_DEFAUT), $this->paliers());
+    }
+
+    /** @param list<int> $paliers */
+    public static function fraisEnLigneParmi(int $reglage, array $paliers): int
+    {
+        if ([] === $paliers) {
+            return 0;
+        }
+        if (self::fraisPermis($reglage, $paliers)) {
+            return $reglage;
+        }
+        usort($paliers, static fn (int $a, int $b): int => [abs($a - $reglage), $a] <=> [abs($b - $reglage), $b]);
+
+        return $paliers[0];
     }
 
     /** @return list<string> */

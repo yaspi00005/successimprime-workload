@@ -12,9 +12,11 @@ use App\Entity\ReglementEnLigne;
 use App\Entity\TransactionOrangeMoney;
 use App\Repository\ParametresPaiementRepository;
 use App\Service\Conception\CommandesConception;
+use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -33,7 +35,8 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * crédit IA (docs/demande-conception.md) : la commande est alors créée à
  * la réception de l'argent, par CommandesConception. Et un règlement de
  * plusieurs factures et acomptes (ReglementsEnLigne) : un paiement par
- * commande à la réception de l'argent, par PaiementsDuReglement.
+ * commande à la réception de l'argent, par PaiementsDuReglement ; le même
+ * règlement sert à l'acompte payé à la commande (PaiementALaCommande).
  *
  * Chaque paiement porte le fonds de soutien et le frais de retrait
  * (FraisOrangeMoney, taux de Réglages › Paiements, 1 % et 1 % tant que le
@@ -64,6 +67,8 @@ final class OrangeMoney
         private readonly ?ParametresPaiementRepository $parametresPaiement = null,
         #[Autowire('%kernel.project_dir%/var/orange-money/refus.json')] private readonly ?string $fichierRefus = null,
         private readonly ?PaiementsDuReglement $reglements = null,
+        /** @var (\Closure(): Parametres)|null interrupteur « Paiement Orange Money en ligne » (Réglages › Espace client) ; absent des tests : ouvert */
+        #[AutowireServiceClosure(Parametres::class)] private readonly ?\Closure $reglages = null,
     ) {
     }
 
@@ -79,9 +84,22 @@ final class OrangeMoney
         return FraisOrangeMoney::calculer($montant, $this->parametres());
     }
 
+    /** Clés de l'API posées dans .env.local. */
     public function estConfigure(): bool
     {
         return '' !== $this->clientId && '' !== $this->clientSecret && '' !== $this->merchantKey && str_starts_with($this->api, 'https://');
+    }
+
+    /**
+     * Paiement Orange Money ouvert dans l'espace client : clés posées et
+     * interrupteur « Paiement Orange Money en ligne » de Réglages › Espace
+     * client allumé (coupé par défaut). Fermé, l'espace ne propose pas
+     * Orange Money et tout nouveau paiement est refusé ; un paiement déjà
+     * ouvert chez Orange se vérifie toujours (verifier).
+     */
+    public function estOuvert(): bool
+    {
+        return $this->estConfigure() && (null === $this->reglages || (bool) ($this->reglages)()->valeur('espace_client', 'paiement_en_ligne'));
     }
 
     /**
@@ -135,8 +153,8 @@ final class OrangeMoney
      */
     public function demarrer(Commandes $commande, CompteClient $compte, \DateTimeImmutable $maintenant): TransactionOrangeMoney
     {
-        if (!$this->estConfigure()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert.');
+        if (!$this->estOuvert()) {
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique.');
         }
         $montant = self::aPayer($commande);
         if (!$commande->isStatut() || $montant <= 0) {
@@ -168,8 +186,8 @@ final class OrangeMoney
      */
     public function demarrerAcompte(DemandeConception $demande, CompteClient $compte, int $montant, \DateTimeImmutable $maintenant): TransactionOrangeMoney
     {
-        if (!$this->estConfigure()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert.');
+        if (!$this->estOuvert()) {
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique.');
         }
         if ($montant <= 0 || !$demande->estOuverte()) {
             throw new \DomainException('Rien à payer en ligne pour cette demande.');
@@ -198,8 +216,8 @@ final class OrangeMoney
      */
     public function demarrerCredit(Clients $client, CompteClient $compte, int $images, int $montant, \DateTimeImmutable $maintenant, ?string $demande = null): TransactionOrangeMoney
     {
-        if (!$this->estConfigure()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert.');
+        if (!$this->estOuvert()) {
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique.');
         }
         if ($montant <= 0 || $images <= 0) {
             throw new \DomainException('Choisissez un pack de crédit.');
@@ -231,18 +249,23 @@ final class OrangeMoney
      */
     public function demarrerReglement(ReglementEnLigne $reglement, CompteClient $compte, \DateTimeImmutable $maintenant): TransactionOrangeMoney
     {
-        if (!$this->estConfigure()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert.');
+        if (!$this->estOuvert()) {
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique.');
         }
         if ($reglement->getMontantOm() <= 0 || !$reglement->estEnCours()) {
             throw new \DomainException('Rien à payer par Orange Money.');
         }
         $transaction = TransactionOrangeMoney::pourReglement($reglement, $compte, $maintenant);
+        // Payé à la commande (commande en ligne encore « à confirmer ») : annulé, le client revient à son récapitulatif.
+        $parts = $reglement->getParts();
+        $brouillon = 1 === \count($parts) && !$parts[0]->getCommande()->isStatut() ? $parts[0]->getCommande() : null;
 
         return $this->ouvrirChezOrange(
             $transaction,
             $this->urls->generate('app_espace_payer_recu', ['reference' => $reglement->getReference()], UrlGeneratorInterface::ABSOLUTE_URL),
-            $this->urls->generate('app_espace_factures', ['annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
+            null !== $brouillon
+                ? $this->urls->generate('app_espace_nouvelle_commande_paiement', ['id' => (string) $brouillon->getPublicId(), 'annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL)
+                : $this->urls->generate('app_espace_factures', ['annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
         );
     }
 

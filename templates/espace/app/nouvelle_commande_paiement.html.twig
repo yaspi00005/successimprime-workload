@@ -1,0 +1,102 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Paiement à la commande (étape 4 de la nouvelle commande, maquette
+	CO04) : acompte ou tout, avec les frais Orange Money, calculés par le
+	serveur. Le même règlement que « Factures et paiements » (récapitulatif
+	FP03, même présentation ; retour sur « Paiement reçu »). La commande est
+	déjà envoyée (« à confirmer ») ; le paiement arrive « en attente » à la
+	caisse, jamais validé tout seul. Seul le payeur arrive ici
+	(EspaceNouvelleCommandeController::paiement).
+#}
+
+{% block title %}Paiement de la commande{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-factures.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_commande', {id: commande.publicId}) }}"><span class="fl">‹</span>Paiement</a>{% endblock %}
+
+{% block contenu %}
+	{% set resteApres = commande.totalTtc - frais.montant %}
+	<div class="ef-titre ec-bureau">
+		<h1>Paiement de la commande</h1>
+		<a class="ec-bouton-blanc" href="{{ path('app_espace_commande', {id: commande.publicId}) }}">Voir ma commande</a>
+	</div>
+	{% if app.request.query.getBoolean('envoyee') %}
+		<div class="ec-flash ec-flash-ok" role="status">Commande {{ commande.numero }} envoyée à l'atelier. Il confirme le prix et votre fichier ; la production démarre après sa confirmation et votre BAT.</div>
+	{% else %}
+		<p class="ec-petit" style="margin:0 0 .8rem">Commande {{ commande.numero }}, à confirmer par l'atelier : la production démarre après sa confirmation et votre BAT.</p>
+	{% endif %}
+
+	<div class="ef-page-om">
+		<div class="ef-om">
+			<div class="ef-om-tete">
+				<span class="ef-om-logo" aria-hidden="true">OM</span>
+				<div>
+					<b>Payer par Orange Money</b>
+					<small>Succès Imprim · page sécurisée d'Orange Money</small>
+				</div>
+			</div>
+			<div class="ef-om-corps">
+				<ul class="ef-om-lignes">
+					<li><span>{{ titre }} · {{ element.estAcompte ? 'acompte ' ~ pourcentage ~ ' % ' : 'commande ' }}{{ commande.numero }}</span><b>{{ element.montant|francs }}</b></li>
+				</ul>
+
+				<div class="ef-om-a-payer"><span>À payer maintenant</span><b>{{ element.montant|francs }}</b></div>
+
+				{% if acompteDisponible %}
+					{# Liens : sans JavaScript, le choix recharge la page avec le bon montant. #}
+					<div class="ef-om-modes" role="group" aria-label="Montant">
+						<a class="ef-om-mode{{ part == 'acompte' ? ' choisi' }}" href="{{ path('app_espace_nouvelle_commande_paiement', {id: commande.publicId, part: 'acompte'}) }}"{{ part == 'acompte' ? ' aria-current="true"' }} style="color:inherit;text-decoration:none"><b>Acompte {{ pourcentage }} %</b><small>le reste {{ commande.estALivrer ? 'à la livraison' : 'au retrait' }}</small></a>
+						<a class="ef-om-mode{{ part == 'tout' ? ' choisi' }}" href="{{ path('app_espace_nouvelle_commande_paiement', {id: commande.publicId, part: 'tout'}) }}"{{ part == 'tout' ? ' aria-current="true"' }} style="color:inherit;text-decoration:none"><b>Tout payer</b><small>{{ aPayer|francs }}</small></a>
+					</div>
+				{% endif %}
+
+				<dl class="ef-om-frais">
+					<div><dt>Montant{{ resteApres > 0 ? ' payé maintenant' }}</dt><dd>{{ frais.montant|francs }}</dd></div>
+					{% if frais.tauxFondsSoutien > 0 %}<div><dt>Fonds de soutien ({{ frais.tauxFondsSoutien|frais_taux }})</dt><dd>{{ frais.fondsSoutien|francs }}</dd></div>{% endif %}
+					{% if frais.tauxFraisRetrait > 0 %}<div><dt>Frais de retrait Orange Money ({{ frais.tauxFraisRetrait|frais_taux }})</dt><dd>{{ frais.fraisRetrait|francs }}</dd></div>{% endif %}
+					<div class="total"><dt>Débité par Orange Money</dt><dd>{{ frais.total|francs }}</dd></div>
+				</dl>
+				{% if frais.frais > 0 %}<p class="ec-petit" style="margin:.3rem 0 0">Le fonds de soutien (de l'État) et le frais de retrait d'Orange Money s'ajoutent au montant : ils ne changent ni le prix de votre commande ni votre facture.</p>{% endif %}
+				<p class="ec-petit" style="margin:.4rem 0 0">
+					{%- if resteApres > 0 %}Il restera <b>{{ resteApres|francs }}</b> à payer {{ commande.estALivrer ? 'à la livraison' : 'au retrait' }}. {% endif -%}
+					Si l'atelier change le prix en confirmant, votre espace montre le nouveau reste à payer{{ resteApres > 0 ? '' : ', ou ce qui vous revient' }}.
+				</p>
+
+				<p class="ef-om-numero"><span class="ec-petit">Numéro Orange Money</span><span>vous le saisissez sur la page Orange Money</span></p>
+				<ol class="ef-om-etapes">
+					<li>Vous passez sur la page sécurisée d'Orange Money (lien valable {{ constant('App\\Entity\\TransactionOrangeMoney::VALIDITE_MINUTES') }} minutes).</li>
+					<li class="cle">Vous confirmez sur la page Orange Money avec votre code secret.</li>
+					<li>Vous revenez ici : paiement reçu, puis validé par la boutique ; le reçu arrive dans « Factures et paiements ».</li>
+				</ol>
+				<p class="ef-om-alerte">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</p>
+
+				{% if not omActif %}
+					<div class="ec-note" style="margin-bottom:.8rem">
+						Le paiement Orange Money depuis l'espace n'est pas ouvert pour le moment.
+						{% if marchand %}Envoyez {{ frais.total|francs }} au numéro marchand <b>{{ marchand }}</b> en indiquant la commande <b>{{ commande.numero }}</b>, ou payez en boutique.{% else %}Payez en boutique.{% endif %}
+					</div>
+				{% endif %}
+
+				<form method="post" action="{{ path('app_espace_nouvelle_commande_paiement', {id: commande.publicId}) }}" id="om-payer">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+					<input type="hidden" name="part" value="{{ part }}">
+					{# Seulement pour revoir le récapitulatif si le total a changé : le serveur recalcule ce qu'il envoie à Orange. #}
+					<input type="hidden" name="total" value="{{ frais.total }}">
+					<div class="ef-boutons ef-om-boutons">
+						<a class="ec-bouton-blanc" href="{{ path('app_espace_commande', {id: commande.publicId}) }}">Payer plus tard</a>
+						<button type="submit" class="ef-bouton-om" id="om-continuer"{{ not omActif ? ' disabled' }}>Continuer vers Orange Money · {{ frais.total|francs }}</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	(function () {
+		var form = document.getElementById('om-payer');
+		if (form) form.addEventListener('submit', function () { document.getElementById('om-continuer').disabled = true; });
+	})();
+	</script>
+{% endblock %}

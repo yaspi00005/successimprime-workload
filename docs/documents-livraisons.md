@@ -100,7 +100,7 @@ Demande de Yaya : des boutons pour les frais de livraison au lieu de taper le mo
 
 **Suivi.** Devis → commande → facture : les frais et l'objet sont copiés. Sur la facture, la copie est figée avec les montants.
 
-**Commande passée en ligne.** Le client ne choisit pas les frais. La commande arrive au local sans frais (`imposeAuLocal` de `CatalogueSynchro`). La boutique les choisit dans le formulaire avant de confirmer le brouillon. Dans l'espace client, la ligne « Frais de livraison » montre :
+**Commande passée en ligne.** Le client qui choisit « Livraison à Bamako » (nouvelle commande, étape 4) voit les **frais de livraison en ligne** : un réglage de la tuile « Livraison et objet », 0 (offerte) ou un des paliers, 2 000 F par défaut, refusé à l'enregistrement s'il n'est ni l'un ni l'autre. Ils sont dans le total de la commande et arrivent au local avec elle. Un montant qui ne serait plus un palier du local à l'arrivée (paliers changés entre-temps) est retiré des frais et des totaux (`Synchro::verifierFraisEnLigne`). La boutique peut toujours les changer dans le formulaire avant de confirmer le brouillon. Dans l'espace client, la ligne « Frais de livraison » montre :
 - le montant, si le compte voit les montants (comme le total : payeur et valideur) ;
 - « comprise » sinon (demandeur) ;
 - « fixés par l'atelier à la confirmation » tant que la commande est à confirmer.

@@ -356,11 +356,11 @@ final class CatalogueGuide
                 ],
             ],
             [
-                'cle' => 'ma-file', 'groupe' => 'production', 'titre' => 'Ma file machine : démarrer, terminer, pointer la gâche',
-                'but' => 'Sur le poste de la machine, faire avancer ses travaux.',
+                'cle' => 'ma-file', 'groupe' => 'production', 'titre' => 'Poste machiniste : vérifier, estimer, imprimer, étiqueter',
+                'but' => 'Faire avancer ses travaux du fichier à vérifier jusqu\'au colis prêt pour la livraison.',
                 'droits' => ['ROLE_PRODUCTION_VOIR', 'ROLE_PRODUCTION_GERER'], 'route' => 'app_ma_file_index', 'ecrans' => ['app_ma_file_', 'app_production_'],
                 'captures' => [
-                    ['nom' => 'ma-file', 'legende' => 'Le poste de la machine : la file du jour.'],
+                    ['nom' => 'ma-file', 'legende' => 'La file en colonnes, du fichier à vérifier au colis prêt.'],
                     ['nom' => 'ma-file-travail', 'legende' => 'Un travail en cours sur la machine.'],
                 ],
             ],

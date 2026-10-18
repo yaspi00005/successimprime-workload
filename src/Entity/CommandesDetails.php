@@ -2239,8 +2239,11 @@ public function validerModeCommande(
      *
      * 2. vente directe :
      *    aucune production ni étiquette de production obligatoire.
+     *
+     * $colisEtiquetes : le machiniste a imprimé les étiquettes des colis
+     * (poste machiniste, OP05), qui tiennent lieu d'étiquette de production.
      */
-    public function marquerPreteLivraison(): static
+    public function marquerPreteLivraison(bool $colisEtiquetes = false): static
     {
         /*
      * ========================================================
@@ -2283,7 +2286,7 @@ public function validerModeCommande(
         /*
      * Pour une fabrication, l'étiquette reste obligatoire.
      */
-        if ($this->etiquettes->isEmpty()) {
+        if ($this->etiquettes->isEmpty() && !$colisEtiquetes) {
             throw new \LogicException(
                 'Une étiquette doit être associée à ce détail.'
             );

@@ -1,0 +1,154 @@
+{% extends 'base.html.twig' %}
+
+{% set c = carte %}
+{% block title %}{{ c.numero }} · vérifier le fichier{% endblock %}
+{% block page_title %}Poste machiniste{% endblock %}
+
+{% block stylesheets %}<link href="{{ asset('css/poste-machiniste.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_ma_file_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-columns"></i><span class="si-masque-mobile ms-1">Ma file</span></a></li>
+{% endblock %}
+
+{% block body %}
+	{% set etatLie = etat_fichier_lie(ligne) %}
+	{% set observation = ligne.observation|default('')|trim %}
+	{% set qte = o.quantite ?? ligne.quantite %}
+	<div class="si-pm">
+		<header class="si-pm-tete-ligne">
+			<div>
+				<span class="si-pm-fil"><a href="{{ path('app_ma_file_index') }}">Ma file</a> › {{ c.numero }}</span>
+				<h1>{{ c.numero }}<span class="si-pm-bureau-inline"> · {{ c.client ?? 'Client de passage' }} · vérifier le fichier</span></h1>
+				<p class="si-pm-mobile-sous"><span class="si-pm-etiquette si-pm-orange">{{ retour ? 'Au prépresse' : 'À vérifier' }}</span> {{ c.client }}{% if c.promis %} · promis {{ c.promis|date('d/m') }}{% endif %}</p>
+			</div>
+			<div class="si-pm-tete-actions si-pm-bureau">
+				{% if fichier %}
+					<a href="{{ path('app_controle_pre_presse_telecharger_fichier', {id: fichier.id}) }}" class="btn btn-light si-btn-entete"><i class="fas fa-download me-1"></i>Ouvrir le fichier</a>
+				{% elseif etatLie == 'identique' %}
+					<a href="{{ path('app_commande_fichier_lie', {id: ligne.id}) }}" target="_blank" rel="noopener" class="btn btn-light si-btn-entete"><i class="fas fa-download me-1"></i>Ouvrir le PDF</a>
+				{% endif %}
+				{% if peutAgir and not retour %}
+					<a href="#retour" class="btn si-pm-btn-rose" data-si-pm-ouvrir><i class="fas fa-undo me-1"></i>Retourner au prépresse</a>
+					<button form="si-pm-conforme" class="btn si-pm-btn-rouge"><i class="fas fa-check me-1"></i>Fichier conforme</button>
+				{% endif %}
+			</div>
+		</header>
+
+		{% if retour %}
+			<div class="si-pm-alerte"><b>Au prépresse depuis {{ retour.creeLe|date('H:i') }}</b>{% if retour.destinataire %} ({{ retour.destinataire|nom_pointage }}){% endif %} : {{ retour.libelleMotifs|lower }}{{ retour.commentaire ? ' — « ' ~ retour.commentaire ~ ' »' }}. Le travail revient ici dès que le fichier corrigé est renvoyé en production ; vous serez prévenu.</div>
+		{% elseif dernierRetour and not dernierRetour.estOuvert %}
+			<div class="si-pm-alerte info">Fichier corrigé par le prépresse ({{ dernierRetour.libelleMotifs|lower }}) : vérifiez à nouveau avant d'imprimer.</div>
+		{% endif %}
+		{% if etatLie and etatLie not in ['identique', 'hors_atelier'] %}
+			<div class="si-pm-alerte"><b>Fichier lié {{ etatLie == 'modifie' ? 'modifié depuis le lien' : 'introuvable' }}</b> : n'imprimez pas, retournez-le au prépresse.</div>
+		{% endif %}
+
+		<div class="si-pm-grille">
+			<div class="si-pm-pile">
+				<section class="si-pm-apercu">
+					<div class="si-pm-apercu-haut">
+						<b>{{ fichier ? fichier.nomOriginal : (ligne.fichierLie.nom ?? 'Aucun fichier') }}</b>
+						<span>{% if valideur %}· validé par {{ valideur|nom_pointage|split(' ')|first }}{% if controle and controle.envoyeProductionLe %} le {{ controle.envoyeProductionLe|date('d/m') }}{% endif %}{% endif %}{% if batValide %} · BAT accepté par le client{% endif %}</span>
+						<span class="si-pm-badges"><span class="si-pm-badge">Zone de sécurité</span>{% for f in ligne.finitions %}{% if 'illet' in f.nomFinition|lower %}<span class="si-pm-badge">Œillets</span>{% endif %}{% endfor %}<span class="si-pm-badge gris">Taille réelle {{ (ligne.largeur ?? 0) > 0 ? '' : 'inconnue' }}</span></span>
+					</div>
+					<div class="si-pm-scene">
+						{% include 'ma_file/_apercu.html.twig' with {hauteurMax: 300, annoter: false, annotation: retour ? retour.annotation : []} %}
+					</div>
+					<p class="si-pm-apercu-pied">pointillé orange : zone de sécurité {{ zone }} cm{{ ligne.finitions|length ? ' (' ~ ligne.finitions|map(f => f.nomFinition|lower)|join(' et ') ~ ')' }}</p>
+				</section>
+
+				<div class="si-pm-tuiles">
+					{% set mm = (ligne.largeur ?? 0) > 0 ? ((ligne.largeur * 1000)|number_format(0, ',', ' ') ~ ' × ' ~ (ligne.longueur * 1000)|number_format(0, ',', ' ') ~ ' mm') : null %}
+					{% set trouve = analyse|filter(a => 'atio' in a.libelle or 'Format' in a.libelle)|first %}
+					<div class="si-pm-tuile"><small>Dimensions {{ trouve ? 'du fichier' : 'commandées' }}</small><b>{{ trouve ? trouve.valeur : (mm ?? '—') }}</b><span class="{{ trouve ? 'si-pm-' ~ (trouve.etat == 'ok' ? 'ok' : (trouve.etat == 'erreur' ? 'erreur' : 'attention')) : 'si-pm-ok' }}">{{ trouve ? (trouve.etat == 'ok' ? '= commandé ✓' : 'à vérifier') : (mm ? '= commande' : '') }}</span></div>
+					{% set reso = analyse|filter(a => 'solution' in a.libelle)|first %}
+					<div class="si-pm-tuile"><small>Résolution</small><b>{{ reso ? reso.valeur : 'à vérifier dans le logiciel' }}</b>{% if reso %}<span class="si-pm-{{ reso.etat == 'ok' ? 'ok' : (reso.etat == 'erreur' ? 'erreur' : 'attention') }}">{{ reso.etat == 'ok' ? 'OK pour ce format ✓' : 'à surveiller' }}</span>{% endif %}</div>
+					{% set coul = analyse|filter(a => 'olorim' in a.libelle)|first %}
+					<div class="si-pm-tuile"><small>Couleurs</small><b>{{ coul ? coul.valeur : (ligne.typeImpression.nom ?? 'profil atelier') }}</b>{% if coul %}<span class="si-pm-{{ coul.etat == 'ok' ? 'ok' : 'attention' }}">{{ coul.etat == 'ok' ? '✓' : 'à vérifier' }}</span>{% endif %}</div>
+					<div class="si-pm-tuile"><small>Quantité</small><b>{{ qte|number_format(0, ',', ' ') }} identique{{ qte > 1 ? 's' }}</b>{% if c.m2 %}<span class="si-pm-ok">{{ c.m2|number_format(c.m2 == c.m2|round ? 0 : 1, ',', ' ') }} m² au total</span>{% endif %}</div>
+				</div>
+			</div>
+
+			<aside class="si-pm-panneau">
+				<div class="si-pm-client-tete">
+					<span class="si-pm-initiales" style="--c: {{ c.couleur }}">{{ c.initiales }}</span>
+					<div><b>{{ c.client ?? 'Client de passage' }}</b><small>{% if c.promis %}promis {{ c.promis|date_fr('EEE d/MM') }} · {% endif %}{{ ligne.commande.estALivrer ? 'livraison' ~ (ligne.commande.adresseLivraison ? ' ' ~ (ligne.commande.adresseLivraison|length > 28 ? ligne.commande.adresseLivraison|slice(0, 27) ~ '…' : ligne.commande.adresseLivraison) : '') : 'retrait à la boutique' }}</small></div>
+				</div>
+				<dl class="si-pm-lignes">
+					<div><dt>Produit</dt><dd>{{ ligne.support.nom ?? ligne.produit.nom ?? ligne.designation }}</dd></div>
+					<div><dt>Taille</dt><dd>{{ c.taille ?? '—' }} · {{ qte }} exemplaire{{ qte > 1 ? 's' }}</dd></div>
+					<div><dt>Machine prévue</dt><dd>{{ o.machine.nom ?? 'à choisir' }}</dd></div>
+				</dl>
+				{% if ligne.finitions|length %}
+					<div class="si-pm-section"><h3>Finitions</h3><div class="si-pm-finitions">{% for f in ligne.finitions %}<span>{{ f.nomFinition }}</span>{% endfor %}</div></div>
+				{% endif %}
+				{% if observation or (controle and controle.observation) or o.instructions %}
+					<div class="si-pm-section"><h3>Observations</h3>
+						{% if observation %}<p class="si-pm-obs"><span class="si-pm-initiales" style="--c: {{ c.couleur }}">{{ c.initiales }}</span><span><b>Client :</b> {{ observation }}</span></p>{% endif %}
+						{% if controle and controle.observation and controle.observation != observation %}<p class="si-pm-obs"><span class="si-pm-avatar">{{ graphiste ? (graphiste|nom_pointage|slice(0, 1)) : 'P' }}</span><span><b>Prépresse :</b> {{ controle.observation }}</span></p>{% endif %}
+					</div>
+				{% endif %}
+				<form method="post" action="{{ path('app_ma_file_conforme', {id: o.id}) }}" id="si-pm-conforme" class="si-pm-section">
+					<h3>Contrôle avant impression</h3>
+					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+					<ul class="si-pm-coches">
+						{% for cle, ctl in controles %}
+							{% if cle != 'observation' or observation %}
+								<li><label><input type="checkbox" name="controle[{{ cle }}]" value="1"{{ coches[cle]|default(false) ? ' checked' }}{{ not peutAgir or retour ? ' disabled' }}>
+									<span>{{ cle == 'observation' ? 'Consigne du client à surveiller' : ctl.libelle }}
+										<small>{% if cle == 'dimensions' %}{{ mm ?? 'dimensions de la commande' }}{% elseif cle == 'securite' %}rien à moins de {{ zone }} cm du bord{% elseif cle == 'resolution' %}{{ reso ? reso.valeur : 'au moins 72 dpi pour une bâche vue de loin' }}{% elseif cle == 'matiere' %}{{ ligne.support.nom ?? 'support' }}{{ o.machine and o.machine.largeurImpression ? ' · laize ' ~ (o.machine.largeurImpression + 0)|number_format(2, ',') ~ ' m' }}{% else %}imprimer une bande test si besoin{% endif %}</small></span></label></li>
+							{% endif %}
+						{% endfor %}
+					</ul>
+				</form>
+			</aside>
+		</div>
+
+		{% if peutAgir and not retour %}
+			<div class="si-pm-mobile-actions">
+				<a href="#retour" class="btn si-pm-btn-rose" data-si-pm-ouvrir><i class="fas fa-undo me-1"></i>Prépresse</a>
+				<button form="si-pm-conforme" class="btn si-pm-btn-vert"><i class="fas fa-check me-1"></i>Conforme</button>
+			</div>
+
+			{# OP04 : retourner au prépresse #}
+			<div class="si-pm-fenetre{{ app.request.query.get('retour') ? ' ouverte' }}" id="retour" role="dialog" aria-modal="true" aria-labelledby="si-pm-retour-titre">
+				<div class="si-pm-fenetre-boite">
+					<div class="si-pm-dessin">
+						<p>Entourez le problème sur le fichier</p>
+						<div class="si-pm-dessin-zone">
+							{% include 'ma_file/_apercu.html.twig' with {hauteurMax: 300, annoter: true, annotation: []} %}
+						</div>
+						<div class="si-pm-outils" role="toolbar" aria-label="Outils d'annotation">
+							<button type="button" class="actif" data-outil="cercle">✏ Entourer</button>
+							<button type="button" data-outil="fleche">→ Flèche</button>
+							<button type="button" data-outil="texte">T Texte</button>
+							<button type="button" data-annuler title="Annuler le dernier trait" aria-label="Annuler le dernier trait">↺</button>
+						</div>
+					</div>
+					<form method="post" action="{{ path('app_ma_file_retour', {id: o.id}) }}" class="si-pm-fenetre-form" data-si-pm-retour>
+						<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+						<input type="hidden" name="annotation" value="[]">
+						<div><h2 id="si-pm-retour-titre">Retourner au prépresse</h2><small class="text-muted">{{ c.numero }} · {{ c.client }} · {{ c.titre }}{{ c.taille ? ' · ' ~ c.taille }}</small></div>
+						<h3>Motif</h3>
+						<div class="si-pm-motifs">
+							{% for cle, libelle in motifs %}<label><input type="checkbox" name="motifs[]" value="{{ cle }}"><span>{{ libelle }}</span></label>{% endfor %}
+						</div>
+						<h3>Commentaire</h3>
+						<textarea name="commentaire" rows="4" class="form-control" maxlength="2000" placeholder="Ce qui ne va pas et ce qu'il faut corriger"></textarea>
+						<div class="si-pm-envoye">
+							<span class="si-pm-avatar">{{ graphiste ? graphiste|nom_pointage|slice(0, 1) : 'P' }}</span>
+							<div><b>Envoyé à {{ graphiste ? graphiste|nom_pointage : 'la prépresse' }}</b><small>{{ graphiste ? 'graphiste qui a préparé le fichier' : 'personne n\'est noté sur ce fichier' }}</small></div>
+							{% if c.promis and c.promis <= maintenant|date_modify('+2 days') %}<span class="si-pm-urgent">Urgent · promis {{ c.promis|date('d/m') }}</span>{% endif %}
+						</div>
+						<p class="si-pm-note">Le travail sort de votre file et passe en « Retourné au prépresse ». Le temps d'attente est compté au prépresse, pas à vous. Vous êtes prévenu dès que le fichier corrigé revient.</p>
+						<div class="si-pm-fenetre-actions">
+							<a href="#" class="btn btn-light si-btn-entete" data-si-pm-fermer>Annuler</a>
+							<button class="btn si-pm-btn-rouge"><i class="fas fa-undo me-1"></i>Retourner au prépresse</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		{% endif %}
+	</div>
+	<script src="{{ asset('js/poste-machiniste.js') }}" defer></script>
+{% endblock %}

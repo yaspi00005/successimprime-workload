@@ -1,0 +1,92 @@
+{% extends 'base.html.twig' %}
+
+{# OP05 : suivi de production, étiquettes des colis avec QR, puis « Prêt pour livraison ». #}
+{% block title %}{{ livraison.numero }} · étiquettes et livraison{% endblock %}
+{% block page_title %}Poste machiniste{% endblock %}
+
+{% block stylesheets %}<link href="{{ asset('css/poste-machiniste.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_ma_file_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-columns"></i><span class="si-masque-mobile ms-1">Ma file</span></a></li>
+{% endblock %}
+
+{% block body %}
+	{% set imprimees = o.etiquettesImprimeesLe is not null %}
+	<div class="si-pm">
+		<header class="si-pm-tete-ligne">
+			<div>
+				<span class="si-pm-fil"><a href="{{ path('app_ma_file_index') }}">Ma file</a> › {{ livraison.numero }}</span>
+				<h1>{{ livraison.numero }} · {{ o.estPretLivraison ? 'prêt pour livraison' : 'terminé' }}<span class="si-pm-bureau-inline"> · étiquettes et livraison</span></h1>
+				<p class="si-pm-mobile-sous">{{ livraison.client }} · {{ livraison.contenu }}</p>
+			</div>
+		</header>
+
+		<div class="si-pm-grille-3">
+			<section class="si-pm-panneau">
+				<h2>Suivi de production</h2>
+				<ol class="si-pm-suivi">
+					{% for e in suivi %}
+						<li class="{{ e.fait ? '' : 'a-faire' }}">
+							<i aria-hidden="true">{% if e.fait %}<span class="fas fa-check"></span>{% endif %}</i>
+							<span><b>{{ e.libelle }}</b><small>{{ e.le ? e.le|date(e.le|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}{{ e.le and e.detail ? ' · ' }}{{ e.detail }}</small></span>
+						</li>
+					{% endfor %}
+				</ol>
+				<p class="si-pm-bilan"><b>{{ livraison.conformes ?? 0 }} bon{{ (livraison.conformes ?? 0) > 1 ? 's' }} · {{ livraison.rebut ?? 0 }} en gâche</b>{{ livraison.observation }}</p>
+			</section>
+
+			<section class="si-pm-planche">
+				<small>Aperçu des étiquettes · 100 × 70 mm</small>
+				<div class="si-pm-planche-etiquettes">
+					{% for n in 1..colis %}
+						{% include 'ma_file/_etiquette.html.twig' with {n: n, total: colis} %}
+					{% endfor %}
+				</div>
+			</section>
+
+			<div class="si-pm-pile">
+				<section class="si-pm-panneau">
+					<h2>Étiquettes</h2>
+					{% if peutAgir and not o.estPretLivraison %}
+						<form method="post" action="{{ path('app_ma_file_etiquettes_imprimer', {id: o.id}) }}" target="_blank" data-si-pm-imprimer>
+							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+							<div class="si-pm-champs">
+								<label>Nombre de colis<input type="number" name="colis" min="1" max="99" value="{{ colis }}" class="form-control" data-si-pm-colis></label>
+								<label>Format<span class="si-pm-champ-unite"><input class="form-control" value="100 × 70" readonly aria-readonly="true"><span>mm</span></span></label>
+							</div>
+							<p class="si-pm-note mt-2 mb-2">Imprimante : celle de l'ordinateur (format 100 × 70 mm).</p>
+							<button class="btn si-pm-btn-nuit w-100"><i class="fas fa-print me-1"></i>{{ imprimees ? 'Réimprimer' : 'Imprimer' }} {{ colis }} étiquette{{ colis > 1 ? 's' }}</button>
+						</form>
+					{% else %}
+						<p class="si-pm-note">{{ o.nombreColis ?? colis }} colis{{ imprimees ? ' · imprimées le ' ~ o.etiquettesImprimeesLe|date('d/m à H:i') }}.</p>
+					{% endif %}
+					<p class="si-pm-note mt-2 mb-0">Le QR ouvre la commande pour le livreur et confirme la remise au client.</p>
+				</section>
+
+				<section class="si-pm-panneau">
+					<h2>Livraison</h2>
+					<dl class="si-pm-lignes">
+						<div><dt>Mode</dt><dd>{{ livraison.aLivrer ? 'livraison' : 'retrait à la boutique' }}{% if livraison.date %} · {{ ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'][livraison.date|date('w')] ~ ' ' ~ livraison.date|date('d/m') }}{{ livraison.creneau ? ' ' ~ livraison.creneau }}{% endif %}</dd></div>
+						{% if livraison.aLivrer %}<div><dt>Livreur</dt><dd>{{ livraison.livreur ?? 'à choisir par le bureau' }}</dd></div>{% endif %}
+						{% if livraison.reste is not null %}
+							<div><dt>Reste à encaisser</dt><dd>{{ livraison.reste|number_format(0, ',', ' ') }} F</dd></div>
+						{% else %}
+							<div><dt>Paiement</dt><dd>{{ livraison.resteAEncaisser ? 'à encaisser à la remise' : 'réglé' }}</dd></div>
+						{% endif %}
+					</dl>
+				</section>
+
+				{% if o.estPretLivraison %}
+					<p class="si-pm-alerte info"><i class="fas fa-check me-1"></i>Prêt pour livraison depuis {{ o.pretLivraisonLe|date('d/m H:i') }}.</p>
+				{% elseif peutAgir %}
+					<form method="post" action="{{ path('app_ma_file_pret', {id: o.id}) }}" class="si-pm-gros">
+						<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+						<button class="btn si-pm-btn-bleu"{{ not imprimees ? ' disabled' }}><i class="fas fa-check"></i>Prêt pour livraison</button>
+					</form>
+					<p class="si-pm-note text-center">{{ not imprimees ? 'Imprimez d\'abord les étiquettes. ' }}{{ livraison.aLivrer ? (livraison.livreur ? livraison.livreur ~ ' et le client sont prévenus' : 'Le bureau et le client sont prévenus') : 'Le client voit « Prête à retirer »' }} · la commande passe « Prête ».</p>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+	<script src="{{ asset('js/poste-machiniste.js') }}" defer></script>
+{% endblock %}

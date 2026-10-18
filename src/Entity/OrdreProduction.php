@@ -194,6 +194,48 @@ class OrdreProduction
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $pauseDebuteLe = null;
 
+    /*
+     * Poste machiniste (maquettes OP01 à OP06, docs/poste-machiniste.md) :
+     * le fichier vérifié avant l'impression, l'estimation par étape, les
+     * étiquettes des colis et le passage « Prêt pour livraison ».
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $fichierVerifieLe = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'fichier_verifie_par_id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $fichierVerifiePar = null;
+
+    /**
+     * Contrôle avant impression coché par le machiniste : clé => vrai/faux.
+     *
+     * @var array<string, bool>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $controleMachiniste = null;
+
+    /**
+     * Temps estimé par le machiniste, étape par étape :
+     * {etapes: [{cle, libelle, propose, estime}], raison, machine}.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $estimation = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $nombreColis = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $etiquettesImprimeesLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $pretLivraisonLe = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'pret_livraison_par_id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $pretLivraisonPar = null;
+
     public function __construct()
     {
         $this->fichiers = new ArrayCollection();
@@ -757,6 +799,138 @@ class OrdreProduction
 
         $this->observationFin = $this->nettoyerTexte($motif);
         $this->statut = self::STATUT_ANNULE;
+
+        return $this;
+    }
+
+    public function getFichierVerifieLe(): ?\DateTimeImmutable
+    {
+        return $this->fichierVerifieLe;
+    }
+
+    public function getFichierVerifiePar(): ?User
+    {
+        return $this->fichierVerifiePar;
+    }
+
+    public function estFichierVerifie(): bool
+    {
+        return $this->fichierVerifieLe !== null;
+    }
+
+    /** @return array<string, bool> */
+    public function getControleMachiniste(): array
+    {
+        return $this->controleMachiniste ?? [];
+    }
+
+    /**
+     * Le machiniste déclare le fichier conforme (OP02).
+     *
+     * @param array<string, bool> $controles
+     */
+    public function verifierFichier(User $par, array $controles, ?\DateTimeImmutable $le = null): static
+    {
+        if (!$this->estADemarrer()) {
+            throw new \LogicException('Le fichier se vérifie avant le démarrage.');
+        }
+        $this->fichierVerifieLe = $le ?? new \DateTimeImmutable();
+        $this->fichierVerifiePar = $par;
+        $this->controleMachiniste = $controles;
+
+        return $this;
+    }
+
+    /** Retour au prépresse (OP04) : le fichier corrigé sera vérifié à nouveau. */
+    public function annulerVerification(): static
+    {
+        $this->fichierVerifieLe = null;
+        $this->fichierVerifiePar = null;
+        $this->controleMachiniste = null;
+
+        return $this;
+    }
+
+    /** @return array<string, mixed> */
+    public function getEstimation(): array
+    {
+        return $this->estimation ?? [];
+    }
+
+    /**
+     * Temps estimé par le machiniste (OP03). La durée totale et le début
+     * prévu alimentent planifier(), lus aussi par l'atelier (files, planning).
+     *
+     * @param list<array{cle: string, libelle: string, propose: ?int, estime: int}> $etapes
+     */
+    public function estimer(array $etapes, ?string $raison, \DateTimeImmutable $debutPrevu, ?Machines $machine): static
+    {
+        if ($this->estTermine() || $this->estAnnule()) {
+            throw new \LogicException('Un travail terminé ou annulé ne s\'estime plus.');
+        }
+        $total = array_sum(array_map(static fn (array $e): int => max(0, (int) $e['estime']), $etapes));
+        if ($total < 1) {
+            throw new \InvalidArgumentException('Indiquez le temps d\'au moins une étape.');
+        }
+        $raison = $this->nettoyerTexte($raison);
+        $this->estimation = ['etapes' => array_values($etapes), 'raison' => $raison, 'propose' => array_sum(array_map(static fn (array $e): int => (int) ($e['propose'] ?? 0), $etapes))];
+        if ($machine !== null) {
+            $this->machine = $machine;
+        }
+
+        return $this->planifier($this->estEnCours() || $this->estEnPause() ? ($this->demarreLe ?? $debutPrevu) : $debutPrevu, $total);
+    }
+
+    public function getNombreColis(): ?int
+    {
+        return $this->nombreColis;
+    }
+
+    public function getEtiquettesImprimeesLe(): ?\DateTimeImmutable
+    {
+        return $this->etiquettesImprimeesLe;
+    }
+
+    /** Étiquettes des colis imprimées (OP05). */
+    public function etiqueterColis(int $nombreColis, ?\DateTimeImmutable $le = null): static
+    {
+        if (!$this->estTermine()) {
+            throw new \LogicException('Les étiquettes s\'impriment une fois le travail terminé.');
+        }
+        if ($nombreColis < 1 || $nombreColis > 99) {
+            throw new \InvalidArgumentException('Le nombre de colis va de 1 à 99.');
+        }
+        $this->nombreColis = $nombreColis;
+        $this->etiquettesImprimeesLe = $le ?? new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function getPretLivraisonLe(): ?\DateTimeImmutable
+    {
+        return $this->pretLivraisonLe;
+    }
+
+    public function getPretLivraisonPar(): ?User
+    {
+        return $this->pretLivraisonPar;
+    }
+
+    public function estPretLivraison(): bool
+    {
+        return $this->pretLivraisonLe !== null;
+    }
+
+    public function marquerPretLivraison(User $par, ?\DateTimeImmutable $le = null): static
+    {
+        if (!$this->estTermine()) {
+            throw new \LogicException('Le travail doit être terminé.');
+        }
+        if ($this->etiquettesImprimeesLe === null) {
+            throw new \LogicException('Imprimez d\'abord les étiquettes des colis.');
+        }
+        $this->pretLivraisonLe = $le ?? new \DateTimeImmutable();
+        $this->pretLivraisonPar = $par;
 
         return $this;
     }

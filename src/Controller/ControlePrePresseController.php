@@ -17,6 +17,7 @@ use App\Security\FichiersPrivesVoter;
 use App\Service\ControleCreditClientService;
 use App\Service\BonusPlafondClientService;
 use App\Service\AnalyseFichierImpression;
+use App\Service\Atelier\PosteMachiniste;
 use App\Service\FichiersPrives;
 use App\Service\Http\Entree;
 use App\Service\TableauProduction;
@@ -135,7 +136,8 @@ public function controler(
     ControleCreditClientService $controleCreditClientService,
     BonusPlafondClientService $bonusPlafondClientService,
     AnalyseFichierImpression $analyseFichier,
-    TableauConception $tableauConception
+    TableauConception $tableauConception,
+    PosteMachiniste $posteMachiniste
 ): Response {
     /*
      * ============================================================
@@ -961,6 +963,14 @@ public function controler(
                             'Le prépresse est validé. L’ordre %s existe déjà en production.',
                             $ordre->getNumero()
                         );
+
+                    // Retour du machiniste (poste machiniste, OP04) : le fichier corrigé repart dans sa file.
+                    if ($posteMachiniste->fichierCorrige($ordre, $controle, new \DateTimeImmutable())) {
+                        $message = sprintf(
+                            'Fichier corrigé renvoyé à la production : l’ordre %s revient « À vérifier » dans la file du machiniste, qui est prévenu.',
+                            $ordre->getNumero()
+                        );
+                    }
                 }
 
             } elseif (

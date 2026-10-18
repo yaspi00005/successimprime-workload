@@ -49,6 +49,7 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - Amadou Sow (`DEMO-0195`, le particulier de l'espace) : dépôt en espèces (15 000 F) et un dépôt Orange Money fait en ligne (5 000 F), reçu, à valider ;
   - Salon Espoir (`DEMO-0002`) : dépôt Orange Money à la boutique (50 000 F), 10 000 F rendus par `demo.kadiatou`, et un dépôt en ligne du payeur Ibrahim Touré (25 000 F), reçu, à valider.
 - L'atelier de production (`docs/atelier-production.md`), par `app:atelier:demo` (lancée par `app:demo`, local seulement) :
+  - poste machiniste (`app:poste-machiniste:demo`, `docs/poste-machiniste.md`) : huit commandes `CMD-PM…` dans la file de `demo.oumar`, une par étape (à vérifier, prêt à démarrer, en cours, à étiqueter, prêt pour livraison, retourné au prépresse avec un dessin), avec deux fichiers dessinés (bâche, kakémono) ;
   - `demo.ibrahim` devient chef d'atelier (droit « Chef d'atelier » ajouté sur sa fiche) ; `demo.oumar` est affecté aux deux solvants, Ibrahim aux autres machines ;
   - des travaux du jour : terminés, en cours, un en pause, d'autres en file, un en retard, un bloqué au contrôle prépresse ; un travail du solvant 1,80 m continue sur le traceur ;
   - la sublimation en panne (incident en réparation, devis visible seulement avec le droit coûts et marges), une tête du solvant 3,20 m sous surveillance, l'encre noire de ce solvant à 22 % ;

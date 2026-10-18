@@ -21,7 +21,7 @@ use Endroid\QrCode\RoundBlockSizeMode;
 use Endroid\QrCode\Writer\PngWriter;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use App\Service\StockService;
-use App\Service\NotificationService;
+use App\Service\Atelier\ActionsOrdre;
 use App\Entity\Articles;
 use App\Entity\StockSorties;
 use App\Repository\ArticlesRepository;
@@ -671,7 +671,7 @@ final class ProductionController extends AbstractController
         OrdreProduction $ordre,
         Request $request,
         MachinesRepository $machinesRepository,
-        EntityManagerInterface $em
+        ActionsOrdre $actions
     ): Response {
         $utilisateur = $this->utilisateurConnecte();
 
@@ -681,54 +681,13 @@ final class ProductionController extends AbstractController
         );
 
         try {
-            if (!$ordre->estADemarrer()) {
-                throw new \LogicException(
-                    'Seul un ordre en attente peut être démarré.'
-                );
-            }
-
-            $detail = $ordre->getCommandeDetail();
-
-            if ($detail === null) {
-                throw new \LogicException(
-                    'Aucun détail de commande n’est associé à cet ordre.'
-                );
-            }
-
-            /*
-         * Le BAT est contrôlé AVANT toute modification
-         * de l'ordre de production.
-         */
-
-
             $machine = $this->recupererMachine(
                 $request,
                 $machinesRepository
             );
 
-            /*
-         * 1. Démarrage du détail de commande.
-         *
-         * C'est ici que son statutProduction passe
-         * réellement à en_cours.
-         */
-            $detail->demarrerProduction(
-                $utilisateur,
-                $machine
-            );
-
-            /*
-         * 2. Démarrage de l'ordre de production.
-         */
-            $ordre->demarrer(
-                $utilisateur,
-                $machine
-            );
-
-            /*
-         * Une seule sauvegarde pour les deux objets.
-         */
-            $em->flush();
+            // Ligne de commande et ordre démarrés ensemble (ActionsOrdre, le même chemin que l'atelier et le poste machiniste).
+            $actions->demarrer($ordre, $utilisateur, $machine);
             $this->addFlash(
                 'success',
                 sprintf(
@@ -853,9 +812,7 @@ final class ProductionController extends AbstractController
 public function terminer(
     OrdreProduction $ordre,
     Request $request,
-    EntityManagerInterface $em,
-    StockService $stockService,
-    NotificationService $notificationService
+    ActionsOrdre $actions
 ): Response {
     $utilisateur = $this->utilisateurConnecte();
 
@@ -865,186 +822,16 @@ public function terminer(
     );
 
     try {
-        /*
-         * ========================================================
-         * CONTRÔLE DE L'ÉTAT
-         * ========================================================
-         */
-        if (!$ordre->estEnCours()) {
-            throw new \LogicException(
-                'La production doit être en cours avant d’être terminée.'
-            );
-        }
-
-        $detail = $ordre->getCommandeDetail();
-
-        if ($detail === null) {
-            throw new \LogicException(
-                'Aucun détail de commande n’est associé à cet ordre.'
-            );
-        }
-
-        /*
-         * Le détail doit déjà avoir été démarré.
-         */
-        if (!$detail->estEnProduction()) {
-            throw new \LogicException(
-                'Le détail de commande n’est pas synchronisé avec l’ordre de production.'
-            );
-        }
-
-        /*
-         * ========================================================
-         * QUANTITÉS RÉELLES
-         * ========================================================
-         */
-        $quantiteProduite = max(
-            0,
-            Entree::entier($request->request, 
-                'quantite_produite'
-            )
-        );
-
-        $quantiteRebut = max(
-            0,
-            Entree::entier($request->request, 
-                'quantite_rebut'
-            )
-        );
-
-        $quantiteTraitee =
-            $quantiteProduite
-            + $quantiteRebut;
-
-        if ($quantiteTraitee <= 0) {
-            throw new \InvalidArgumentException(
-                'La quantité produite ou rebut doit être supérieure à zéro.'
-            );
-        }
-
-        $observation = trim(
-            (string) $request->request->get(
-                'observation'
-            )
-        );
-
-        /*
-         * ========================================================
-         * SORTIE PHYSIQUE DU STOCK
-         * ========================================================
-         *
-         * IMPORTANT :
-         *
-         * On consomme selon la quantité réellement traitée :
-         *
-         * conforme + rebut.
-         *
-         * Exemple :
-         * commande = 100
-         * conforme = 95
-         * rebut = 5
-         *
-         * consommation matière = 100
-         */
-        $referenceStock = sprintf(
-            'PROD-%06d',
-            $ordre->getId()
-        );
-
-        $stockService->consommerPourDetail(
-            $detail,
-            StockSorties::ORIGINE_PRODUCTION,
-            $referenceStock,
-            (float) $quantiteTraitee
-        );
-
-        /*
-         * ========================================================
-         * TERMINAISON DU DÉTAIL
-         * ========================================================
-         */
-        $detail->terminerProduction(
+        // Quantités réelles, sortie de stock, compteur machine et notification (ActionsOrdre, le même chemin que l'atelier et le poste machiniste).
+        $actions->terminer(
+            $ordre,
             $utilisateur,
-            $quantiteProduite,
-            $quantiteRebut,
-            $observation
+            Entree::entier($request->request, 'quantite_produite'),
+            Entree::entier($request->request, 'quantite_rebut'),
+            null,
+            (string) $request->request->get('observation')
         );
 
-        /*
-         * ========================================================
-         * TERMINAISON DE L'ORDRE
-         * ========================================================
-         */
-        $ordre->terminer(
-            $utilisateur,
-            $quantiteProduite,
-            $quantiteRebut,
-            $observation
-        );
-
-        /*
-         * ========================================================
-         * COMPTEUR D'USURE MACHINE
-         * ========================================================
-         *
-         * Maintenance et amortissement à l'usage : alimente compteurM2,
-         * compteurFeuilles ou le compteur de pièces (cartes,
-         * transferts) selon l'unité de la machine. Sans dimensions
-         * (article en stock, saisie libre), seules les pièces comptent.
-         */
-        $machineUtilisee = $ordre->getMachine();
-
-        if ($machineUtilisee instanceof Machines) {
-            $largeurDetail = (float) ($detail->getLargeur() ?? 0);
-            $longueurDetail = (float) ($detail->getLongueur() ?? 0);
-
-            // Sans dimensions sur la ligne, celles du format (flyer A5, carte…), comme UsageMachines.
-            $surfacePiece = $largeurDetail > 0 && $longueurDetail > 0 ? $largeurDetail * $longueurDetail : ($detail->getFormat()?->surfaceM2() ?? 0.0);
-            $machineUtilisee->enregistrerUsage($surfacePiece * $quantiteTraitee, (float) $quantiteTraitee);
-        }
-
-        /*
-         * ========================================================
-         * NOTIFICATION
-         * ========================================================
-         *
-         * Prévient la livraison et le commercial que la production
-         * est terminée pour cette commande.
-         */
-        $commande = $detail->getCommande();
-
-        if ($commande !== null) {
-            $notificationService->notifierRoles(
-                ['ROLE_LIVRAISON', 'ROLE_COMMERCIAL'],
-                sprintf(
-                    'Production terminée pour la commande %s : prête pour la suite.',
-                    $commande->getNumero() ?? ('#' . $commande->getId())
-                ),
-                'app_commandes_show',
-                ['id' => $commande->getId()]
-            );
-        }
-
-        /*
-         * ========================================================
-         * SAUVEGARDE ATOMIQUE
-         * ========================================================
-         *
-         * Ce flush enregistre ensemble :
-         *
-         * - la sortie StockSorties ;
-         * - la consommation de StockReservation ;
-         * - le détail terminé ;
-         * - l'ordre terminé ;
-         * - la notification de fin de production.
-         */
-        $em->flush();
-
-        /*
-         * ========================================================
-         * MESSAGE
-         * ========================================================
-         */
         $message = sprintf(
             'Production terminée : %d conforme(s), %d rebut(s).',
             $ordre->getQuantiteConforme(),

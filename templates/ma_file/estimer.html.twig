@@ -1,0 +1,126 @@
+{% extends 'base.html.twig' %}
+
+{% set c = carte %}
+{% block title %}{{ c.numero }} · machine et temps estimé{% endblock %}
+{% block page_title %}Poste machiniste{% endblock %}
+
+{% block stylesheets %}<link href="{{ asset('css/poste-machiniste.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_ma_file_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-columns"></i><span class="si-masque-mobile ms-1">Ma file</span></a></li>
+{% endblock %}
+
+{% block body %}
+	{% set libreMaintenant = libreA is null or libreA <= maintenant|date_modify('+5 minutes') %}
+	{% set totalPropose = etapes|reduce((s, e) => s + (e.propose ?? 0), 0) %}
+	{% set totalEstime = etapes|reduce((s, e) => s + (deja[e.cle] ?? e.propose ?? 0), 0) %}
+	{% set fin = debut|date_modify('+' ~ totalEstime ~ ' minutes') %}
+	{% set dansLesTemps = promis ? (fin|date('YmdHi') <= (promis|date('Hi') == '0000' ? promis|date('Ymd') ~ '2359' : promis|date('YmdHi'))) : null %}
+	<form method="post" action="{{ path('app_ma_file_estimer_enregistrer', {id: o.id}) }}" class="si-pm" data-si-pm-estimer data-debut="{{ debut|date('U') }}">
+		<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+		<input type="hidden" name="machine" value="{{ selection.id ?? '' }}">
+		<header class="si-pm-tete-ligne">
+			<div>
+				<span class="si-pm-fil"><a href="{{ path('app_ma_file_index') }}">Ma file</a> › {{ c.numero }}</span>
+				<h1>{{ c.numero }}<span class="si-pm-bureau-inline"> · choisir la machine et estimer le temps</span></h1>
+				<p class="si-pm-mobile-sous">{{ c.client }} · {{ c.titre }}</p>
+			</div>
+			<div class="si-pm-tete-actions">
+				{% if o.estADemarrer %}<a href="{{ path('app_ma_file_verifier', {id: o.id}) }}" class="btn btn-light si-btn-entete">‹ Retour au fichier</a>{% else %}<a href="{{ path('app_ma_file_travail', {id: o.id}) }}" class="btn btn-light si-btn-entete">‹ Retour au travail</a>{% endif %}
+				{% if peutAgir and selection %}
+					{% if o.estADemarrer and libreMaintenant and peutDemarrer %}
+						<button name="action" value="demarrer" class="btn si-pm-btn-rouge"><i class="fas fa-play me-1"></i>Démarrer à {{ debut|date('H:i') }}</button>
+					{% else %}
+						<button name="action" value="enregistrer" class="btn si-pm-btn-rouge"><i class="fas fa-check me-1"></i>{{ o.estADemarrer ? 'Prévoir à ' ~ debut|date('H:i') : 'Enregistrer l\'estimation' }}</button>
+					{% endif %}
+				{% endif %}
+			</div>
+		</header>
+
+		<div class="si-pm-grille-2">
+			<div class="si-pm-pile">
+				<section class="si-pm-panneau">
+					<h2>Machine</h2>
+					<div class="si-pm-machines">
+						{% for m in choix %}
+							{% set choisie = selection and selection.id == m.id %}
+							{% if m.possible %}
+								<a href="{{ path('app_ma_file_estimer', {id: o.id, machine: m.id}) }}" class="si-pm-machine{{ choisie ? ' choisie' }}" aria-current="{{ choisie ? 'true' : 'false' }}">
+							{% else %}
+								<div class="si-pm-machine impossible">
+							{% endif %}
+								<span class="rond" aria-hidden="true"></span>
+								<span><b>{{ m.nom }}</b><small>{{ m.largeur ? 'largeur ' ~ m.largeur|number_format(2, ',') ~ ' m' : 'laize inconnue' }}{{ m.tetes ? ' · ' ~ m.tetes ~ ' tête' ~ (m.tetes > 1 ? 's') }}{{ m.vitesse ? ' · ' ~ m.vitesse|number_format(0, ',') ~ ' m²/h' }}</small></span>
+								<span class="droite">
+									{% if not m.possible %}<span class="si-pm-erreur">{{ m.raison }}</span><small class="si-pm-erreur">impossible</small>
+									{% else %}{{ m.libreA ? 'libre à ' ~ m.libreA|date(m.libreA|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') : 'libre maintenant' }}{% if m.recommandee %}<small class="si-pm-ok">recommandée</small>{% endif %}{% endif %}
+								</span>
+							{{ m.possible ? '</a>' : '</div>' }}
+						{% else %}
+							<p class="si-pm-vide">Aucune machine en service pour ce procédé.</p>
+						{% endfor %}
+					</div>
+				</section>
+
+				<section class="si-pm-panneau">
+					<h2>Matière et réglages</h2>
+					<dl class="si-pm-lignes">
+						<div><dt>Rouleau</dt><dd>{{ ligne.support.nom ?? '—' }}{{ selection and selection.largeur ? ' · laize ' ~ selection.largeur|number_format(2, ',') ~ ' m' }}</dd></div>
+						{% if rouleau %}<div><dt>Consommation prévue</dt><dd>{{ rouleau.texte }}</dd></div>{% endif %}
+						<div><dt>Profil</dt><dd>{{ ligne.typeImpression.nom ?? '—' }}</dd></div>
+						{% if rouleau %}<div><dt>Sens</dt><dd>{{ rouleau.sens }}</dd></div>{% endif %}
+					</dl>
+				</section>
+
+				<section class="si-pm-panneau">
+					<h2>Vos estimations récentes</h2>
+					{% if recentes.lignes is empty %}
+						<p class="si-pm-vide">Pas encore d'estimation terminée ce mois-ci.</p>
+					{% else %}
+						<table class="si-pm-recentes">
+							{% for r in recentes.lignes %}
+								<tr><td><b>{{ r.numero }}</b></td><td>{{ r.titre }}</td><td>estimé {{ r.estime|temps_estime }}</td><td>réel {{ r.reel is null ? '—' : r.reel|temps_estime }}</td></tr>
+							{% endfor %}
+						</table>
+						{% if recentes.ecartMois is not null %}<p class="si-pm-note mt-2">Écart moyen ce mois : {{ recentes.ecartMois|number_format(0) }} %</p>{% endif %}
+					{% endif %}
+				</section>
+			</div>
+
+			<div class="si-pm-pile">
+				<section class="si-pm-panneau">
+					<div class="d-flex justify-content-between align-items-baseline"><h2>Temps estimé par vous</h2><small class="si-pm-lien-bleu">proposition de l'outil</small></div>
+					<table class="si-pm-temps">
+						<thead><tr><th>Étape</th><th class="num">Proposé</th><th class="num">Votre estimation</th></tr></thead>
+						<tbody>
+							{% for e in etapes %}
+								{% set v = deja[e.cle] ?? e.propose %}
+								<tr>
+									<td>{{ e.libelle }}</td>
+									<td class="num">{{ e.propose is null ? '—' : e.propose|temps_estime }}</td>
+									<td class="num"><input name="estime[{{ e.cle }}]" value="{{ v is null ? '' : v|temps_estime }}" inputmode="text" aria-label="Votre estimation : {{ e.libelle }}" placeholder="ex. 1 h 30" data-si-pm-etape{{ not peutAgir ? ' disabled' }}></td>
+								</tr>
+							{% endfor %}
+						</tbody>
+						<tfoot><tr><td>Total</td><td class="num">{{ totalPropose|temps_estime }}</td><td class="num" data-si-pm-total>{{ totalEstime|temps_estime }}</td></tr></tfoot>
+					</table>
+					<label class="si-pm-raison">Raison de l'écart (facultatif) : <input name="raison" value="{{ raison }}" maxlength="200" placeholder="« rouge à surveiller, bande test avant »"{{ not peutAgir ? ' disabled' }}></label>
+				</section>
+
+				<section class="si-pm-debut">
+					<span>{{ o.demarreLe ? 'Démarré' : 'Début' }}</span>
+					<b class="text-end">{{ debut|date('H:i') }}{% if libreA and not o.demarreLe %} · machine libre à {{ libreA|date('H:i') }}{% endif %}</b>
+					<span>Prêt pour livraison vers</span>
+					<strong data-si-pm-fin>{{ fin|date(fin|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}</strong>
+					<span style="grid-column: 1 / -1">{% if promis %}promis le {{ promis|date('d/m') }} : <span data-si-pm-delai data-promis="{{ (promis|date('Hi') == '0000' ? promis|date_modify('+23 hours 59 minutes') : promis)|date('U') }}">{{ dansLesTemps ? '✓ dans les temps' : '⚠ en retard sur la date promise' }}</span> · {% endif %}le client voit « en production »</span>
+				</section>
+
+				<p class="si-pm-panneau si-pm-note" style="font-size: 12px"><b>Pourquoi vous estimez :</b> c'est vous qui connaissez la machine. L'outil compare ensuite votre estimation au temps réel, pour mieux proposer la prochaine fois. Ce n'est pas une sanction.</p>
+				{% if peutAgir and o.estADemarrer and libreMaintenant and not peutDemarrer %}
+					<p class="si-pm-alerte">Pour démarrer depuis ce téléphone, pointez votre arrivée à l'atelier (ou utilisez le poste de la machine). L'estimation s'enregistre quand même.</p>
+				{% endif %}
+			</div>
+		</div>
+	</form>
+	<script src="{{ asset('js/poste-machiniste.js') }}" defer></script>
+{% endblock %}

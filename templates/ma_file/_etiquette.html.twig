@@ -1,0 +1,17 @@
+{# Une étiquette de colis 100 × 70 mm (OP05). Variables : o, livraison, qr, n, total, maintenant. #}
+<article class="si-pm-etq" aria-label="Étiquette colis {{ n }} sur {{ total }}">
+	<div class="si-pm-etq-haut"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim"><b>COLIS {{ n }} / {{ total }}</b></div>
+	<div class="si-pm-etq-corps">
+		<small>{{ livraison.aLivrer ? 'Livrer à' : 'À retirer par' }}</small>
+		<strong>{{ livraison.client ?? '—' }}</strong>
+		{% if livraison.adresse %}<div>{{ livraison.adresse }}</div>{% endif %}
+		{% if livraison.telephone %}<div>{{ livraison.telephone }}</div>{% endif %}
+		<small>Contenu</small>
+		<div><b>{{ livraison.contenu ?? '—' }}</b>{% if livraison.finitions %}<br>{{ livraison.finitions }}{% endif %}</div>
+	</div>
+	<div class="si-pm-etq-qr"><img src="{{ qr }}" alt="QR du colis">{{ livraison.numero }}</div>
+	<div class="si-pm-etq-pied">
+		<span>Préparé{{ livraison.preparePar ? ' par ' ~ livraison.preparePar }} · {{ (o.etiquettesImprimeesLe ?? maintenant)|date('d/m H:i') }}</span>
+		<b>{% if livraison.date %}{{ livraison.date|date('d/m') }}{{ livraison.creneau ? ' · ' ~ livraison.creneau }}{% else %}{{ livraison.aLivrer ? 'à planifier' : 'retrait' }}{% endif %}</b>
+	</div>
+</article>

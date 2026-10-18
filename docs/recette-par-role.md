@@ -99,7 +99,10 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Opérateur production (demo.oumar)
 
-- [ ] Ma file machine : démarrer puis terminer un travail ; sur le tableau de production, la carte avance d'elle-même à la colonne suivante (on ne la déplace pas à la main).
+- [ ] Ma file machine (poste machiniste, `docs/poste-machiniste.md`) : ouvrir CMD-PM0178, cocher le contrôle, « Fichier conforme » ; choisir la machine, corriger une étape du temps estimé (le total et l'heure de fin bougent), démarrer ; Terminé ; imprimer 2 étiquettes (100 × 70 mm, QR) ; « Prêt pour livraison ». Sur le tableau de production, la carte avance d'elle-même.
+- [ ] Retourner au prépresse : entourer le problème sur l'aperçu, choisir un motif ; le travail passe dans le bandeau rouge ; demo.seydou le reçoit, renvoie le fichier en production, le travail revient « À vérifier ».
+- [ ] Sur téléphone : la file en une colonne, « Prépresse » et « Conforme » en bas de la vérification, les gros boutons du travail en cours.
+- [ ] Ne voit aucun montant sur le poste machiniste (étiquettes : « à encaisser à la remise », sans somme).
 - [ ] Atelier › Mon travail (téléphone) : le travail en cours de sa machine, Pause, Terminer (imprimé, gâche, motif), Signaler un problème, niveaux d'encre.
 - [ ] Atelier › Vue en direct : ne voit que ses machines (solvants) ; Planning de la semaine et Files d'attente en consultation (pas de glisser-déposer).
 - [ ] Pointage par QR et photo à l'arrivée et au départ.

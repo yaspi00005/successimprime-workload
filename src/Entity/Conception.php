@@ -272,6 +272,12 @@ class Conception
         $this->noter($le, 'montage', 'Montage d\'impression enregistré', $detail);
     }
 
+    /** Retour du machiniste au prépresse (OP04) : noté dans la frise, sans point. */
+    public function retourMachiniste(\DateTimeImmutable $le, ?string $detail): void
+    {
+        $this->noter($le, 'retour_machiniste', 'Retour du machiniste', $detail);
+    }
+
     public function envoyeEnProduction(\DateTimeImmutable $le, ?string $detail): void
     {
         $this->noter($le, 'production', 'Envoyé en production', $detail);

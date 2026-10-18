@@ -1,0 +1,44 @@
+{# Aperçu du fichier avec cotes, zone de sécurité et œillets (OP02, OP04, OP06).
+   Variables : ligne, fichier, typeApercu, zone (cm), hauteurMax (px), annoter (bool). #}
+{% set l = (ligne.largeur ?? 0) + 0 %}
+{% set h = (ligne.longueur ?? 0) + 0 %}
+{% set ratio = l > 0 and h > 0 ? l / h : 1.414 %}
+{% set hauteurMax = hauteurMax|default(320) %}
+{% set oeillets = false %}
+{% for f in ligne.finitions %}{% if 'illet' in f.nomFinition|lower %}{% set oeillets = true %}{% endif %}{% endfor %}
+<div class="si-pm-cotes" style="width: min(100%, {{ (hauteurMax * ratio)|round }}px)">
+	{% if l > 0 %}<div class="si-pm-cote-l"><span>{{ (l * 1000)|number_format(0, ',', ' ') }} mm</span></div>{% endif %}
+	{% if h > 0 %}<div class="si-pm-cote-h"><span>{{ (h * 1000)|number_format(0, ',', ' ') }} mm</span></div>{% endif %}
+	<div class="si-pm-feuille{{ annoter|default(false) ? ' si-pm-dessin-feuille' }}" style="aspect-ratio: {{ ratio|round(4) }}" {% if annoter|default(false) %}data-si-pm-dessin{% endif %}>
+		{% if fichier and typeApercu == 'image' %}
+			<img src="{{ path('app_controle_pre_presse_visualiser_fichier', {id: fichier.id}) }}" alt="Aperçu de {{ fichier.nomOriginal }}">
+		{% elseif fichier and typeApercu == 'pdf' and not annoter|default(false) %}
+			<object data="{{ path('app_controle_pre_presse_visualiser_fichier', {id: fichier.id}) }}#toolbar=0&view=Fit" type="application/pdf" aria-label="Aperçu PDF"></object>
+		{% else %}
+			<div class="si-pm-feuille-vide"><i class="far fa-file-image"></i>{{ fichier ? 'Aperçu impossible ici : ouvrez « ' ~ fichier.nomOriginal ~ ' » dans le logiciel.' : (etatLie|default(null) ? 'Fichier lié : ouvrez le PDF.' : 'Aucun fichier transmis.') }}</div>
+		{% endif %}
+		{% if l > 0 and h > 0 %}
+			{% set zl = (zone / (l * 100) * 100)|round(2) %}
+			{% set zh = (zone / (h * 100) * 100)|round(2) %}
+			<span class="si-pm-securite" style="left: {{ zl }}%; right: {{ zl }}%; top: {{ zh }}%; bottom: {{ zh }}%"></span>
+			{% if oeillets %}
+				{% set nl = max(2, (l / 0.5)|round(0, 'floor') + 1) %}
+				{% set nh = max(2, (h / 0.5)|round(0, 'floor') + 1) %}
+				<span class="si-pm-oeillets">
+					{% for i in 0..(nl - 1) %}{% set x = (2 + i * 96 / (nl - 1))|round(2) %}<i style="left: {{ x }}%; top: 2.5%"></i><i style="left: {{ x }}%; top: 97.5%"></i>{% endfor %}
+					{% if nh > 2 %}{% for i in 1..(nh - 2) %}{% set y = (2.5 + i * 95 / (nh - 1))|round(2) %}<i style="left: 1.5%; top: {{ y }}%"></i><i style="left: 98.5%; top: {{ y }}%"></i>{% endfor %}{% endif %}
+				</span>
+			{% endif %}
+		{% endif %}
+		{% if annotation|default([]) is not empty %}
+			<svg viewBox="0 0 100 100" preserveAspectRatio="none" class="si-pm-annotation" aria-hidden="true">
+				{% for f in annotation %}
+					{% if f.type == 'cercle' %}<ellipse cx="{{ (f.x1 + f.x2) * 50 }}" cy="{{ (f.y1 + f.y2) * 50 }}" rx="{{ ((f.x2 - f.x1) * 50)|abs }}" ry="{{ ((f.y2 - f.y1) * 50)|abs }}" fill="none" stroke="#DE1028" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
+					{% elseif f.type == 'fleche' %}<line x1="{{ f.x1 * 100 }}" y1="{{ f.y1 * 100 }}" x2="{{ f.x2 * 100 }}" y2="{{ f.y2 * 100 }}" stroke="#DE1028" stroke-width="2" vector-effect="non-scaling-stroke"/>
+					{% endif %}
+				{% endfor %}
+			</svg>
+			{% for f in annotation|filter(f => f.type == 'texte') %}<span class="si-pm-annot-texte" style="left: {{ f.x1 * 100 }}%; top: {{ f.y1 * 100 }}%">{{ f.texte }}</span>{% endfor %}
+		{% endif %}
+	</div>
+</div>

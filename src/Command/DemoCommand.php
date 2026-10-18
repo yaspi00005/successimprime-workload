@@ -96,7 +96,7 @@ final class DemoCommand extends Command
         $n = 0;
         try {
             $this->connexion->beginTransaction();
-            foreach ([...MessagerieDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
+            foreach ([...MessagerieDemoCommand::PURGE, ...PosteMachinisteDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
             }
@@ -139,6 +139,8 @@ final class DemoCommand extends Command
             // Dotations aux amortissements et évaluations de primes des derniers mois.
             // Conversations avec les clients (délais et retards comptent dans les primes qui suivent).
             $this->lancer('app:messagerie:demo', [], $output);
+            // Poste machiniste : huit travaux de demo.oumar, du fichier à vérifier au colis prêt (docs/poste-machiniste.md).
+            $this->lancer('app:poste-machiniste:demo', [], $output);
             // Fiche client de Salon Espoir : conditions, charte, contact « Factures », notes internes (docs/clients.md).
             $this->lancer('app:fiche-client:demo', [], $output);
             $this->lancer('app:immobilisations:dotations', ['--demo' => true], $output);

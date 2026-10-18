@@ -30,14 +30,16 @@ final class ActionsOrdre
     ) {
     }
 
-    public function demarrer(OrdreProduction $ordre, User $operateur): void
+    /** $machine : celle choisie au démarrage (poste de production, poste machiniste), sinon celle de l'ordre. */
+    public function demarrer(OrdreProduction $ordre, User $operateur, ?Machines $machine = null): void
     {
+        $machine ??= $ordre->getMachine();
         if (!$ordre->estADemarrer()) {
             throw new \LogicException('Seul un travail en attente peut être démarré.');
         }
         $detail = $ordre->getCommandeDetail() ?? throw new \LogicException('Aucune ligne de commande n\'est liée à ce travail.');
-        $detail->demarrerProduction($operateur, $ordre->getMachine());
-        $ordre->demarrer($operateur, $ordre->getMachine());
+        $detail->demarrerProduction($operateur, $machine);
+        $ordre->demarrer($operateur, $machine);
         $this->em->flush();
     }
 

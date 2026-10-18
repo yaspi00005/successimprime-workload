@@ -29,7 +29,7 @@
 				Dépublier
 			</button>
 
-			<button type="button" id="finitionMassDeleteButton" class="btn btn-danger">
+			<button type="button" id="finitionMassDeleteButton" class="btn btn-danger" {{ confirmer_suppression('les formats cochés') }}>
 				<i class="fa fa-trash mr-1"></i>
 				Supprimer
 			</button>
@@ -163,7 +163,7 @@
 													{% endif %}
 												</button>
 
-												<button type="button" class="btn btn-sm btn-danger-light btn-delete-format" data-url="{{ path( 'app_format_delete_ajax', {id: format.id} ) }}" data-token="{{ csrf_token( 'delete_format_' ~ format.id ) }}" data-nom="{{ format.nom }}" title="Supprimer">
+												<button type="button" class="btn btn-sm btn-danger-light btn-delete-format" {{ confirmer_suppression('le format « ' ~ format.nom ~ ' »') }} data-url="{{ path( 'app_format_delete_ajax', {id: format.id} ) }}" data-token="{{ csrf_token( 'delete_format_' ~ format.id ) }}" data-nom="{{ format.nom }}" title="Supprimer">
 													<i class="fa fa-trash"></i>
 												</button>
 

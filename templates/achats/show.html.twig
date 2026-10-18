@@ -42,7 +42,7 @@
 						Modifier
 					</a>
 
-					<form method="post" action="{{ path('app_achat_recevoir', {id: achat.id}) }}" class="d-inline" onsubmit="return confirm('Confirmer la réception ? Le stock des articles sera mis à jour.');">
+					<form method="post" action="{{ path('app_achat_recevoir', {id: achat.id}) }}" class="d-inline" data-confirmer="Confirmer la réception ? Le stock des articles sera mis à jour.">
 						<input type="hidden" name="_token" value="{{ csrf_token('recevoir_achat' ~ achat.id) }}">
 						<button type="submit" class="btn btn-success-light">
 							<i class="fa fa-check mr-1"></i>
@@ -50,7 +50,7 @@
 						</button>
 					</form>
 
-					<form method="post" action="{{ path('app_achat_annuler', {id: achat.id}) }}" class="d-inline" onsubmit="return confirm('Annuler cette demande d’achat ?');">
+					<form method="post" action="{{ path('app_achat_annuler', {id: achat.id}) }}" class="d-inline" data-confirmer="Annuler cette demande d’achat ?">
 						<input type="hidden" name="_token" value="{{ csrf_token('annuler_achat' ~ achat.id) }}">
 						<button type="submit" class="btn btn-danger-light">
 							<i class="fa fa-ban mr-1"></i>

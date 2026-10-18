@@ -4,7 +4,7 @@
 
 {% block header_actions %}
 	<li class="nav-item">
-		<button type="button" class="btn btn-light btn-sm si-btn-entete js-mdp" data-url="{{ path('app_user_reset_password', {id: utilisateur.id}) }}" data-token="{{ csrf_token('reset_password_' ~ utilisateur.id) }}" data-nom="{{ nom }}">Réinitialiser le mot de passe</button>
+		<button type="button" class="btn btn-light btn-sm si-btn-entete js-mdp" data-url="{{ path('app_user_reset_password', {id: utilisateur.id}) }}" data-token="{{ csrf_token('reset_password_' ~ utilisateur.id) }}" data-nom="{{ nom }}" data-confirmer="Réinitialiser le mot de passe de {{ nom }} ?" data-confirmer-detail="Un mot de passe temporaire s'affichera ; il devra le changer à sa prochaine connexion." data-confirmer-bouton="Réinitialiser">Réinitialiser le mot de passe</button>
 	</li>
 	{% if utilisateur != app.user %}
 		<li class="nav-item">
@@ -167,7 +167,7 @@
 
 			document.querySelectorAll('.js-mdp').forEach(function (bouton) {
 				bouton.addEventListener('click', async function () {
-					if (!window.confirm('Réinitialiser le mot de passe de ' + bouton.dataset.nom + ' ?')) { return; }
+					// Confirmé avant (data-confirmer, public/js/confirmation.js).
 					try {
 						const json = await envoyer(bouton.dataset.url, {_token: bouton.dataset.token});
 						window.prompt('Mot de passe temporaire de ' + json.username + ' (à changer à la connexion) :', json.temporaryPassword);

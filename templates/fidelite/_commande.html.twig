@@ -22,7 +22,7 @@
 			{% for p in fc.paiements %}
 				<div class="si-paiement">
 					<div><strong>{{ p.montant|number_format(0, ',', ' ') }} F en points</strong><small class="d-block text-muted">{{ p.date|date('d/m H:i') }}{{ p.encaissePar ? ' · ' ~ p.encaissePar.userIdentifier }}</small></div>
-					<form method="post" action="{{ path('app_fidelite_retirer', {id: commande.id, paiement: p.id}) }}" onsubmit="return confirm('Retirer ces points de la commande ? Ils sont rendus au client.');">
+					<form method="post" action="{{ path('app_fidelite_retirer', {id: commande.id, paiement: p.id}) }}" data-confirmer="Retirer ces points de la commande ?" data-confirmer-detail="Ils sont rendus au client." data-confirmer-bouton="Retirer" data-confirmer-danger>
 						<input type="hidden" name="_token" value="{{ jeton }}">
 						<button class="btn btn-sm btn-light">Retirer</button>
 					</form>
@@ -64,7 +64,7 @@
 					<i class="fas fa-gift"></i>
 					<span><b>Promo de réveil −{{ f.nombre(fc.promo.taux) }} %</b> {{ fc.promo.estDuJourSeulement ? "aujourd'hui seulement" : "jusqu'au " ~ fc.promo.fin|date('d/m') }}</span>
 					{% if not fc.annulee and not fc.facturee %}
-						<form method="post" action="{{ path('app_fidelite_reveil_appliquer', {id: commande.id}) }}" onsubmit="return confirm('Appliquer la remise de {{ f.nombre(fc.promo.taux) }} % sur les articles de cette commande ?');">
+						<form method="post" action="{{ path('app_fidelite_reveil_appliquer', {id: commande.id}) }}" data-confirmer="Appliquer la remise de {{ f.nombre(fc.promo.taux) }} % sur les articles de cette commande ?">
 							<input type="hidden" name="_token" value="{{ jeton }}">
 							<button class="btn btn-sm btn-danger">Appliquer</button>
 						</form>

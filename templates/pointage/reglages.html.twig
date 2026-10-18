@@ -23,11 +23,11 @@
 					</div>
 					<div class="si-pg-point-actions">
 						<a href="{{ path('app_pointage_affiche', {id: p.id}) }}" target="_blank" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-print me-1"></i>Imprimer</a>
-						<form method="post" action="{{ path('app_pointage_point_renouveler', {id: p.id}) }}" onsubmit="return confirm('L\'ancienne affiche de {{ p.code }} ne marchera plus. Continuer ?')">
+						<form method="post" action="{{ path('app_pointage_point_renouveler', {id: p.id}) }}" data-confirmer="L'ancienne affiche de {{ p.code }} ne marchera plus. Continuer ?" data-confirmer-bouton="Renouveler">
 							<input type="hidden" name="_token" value="{{ token }}">
 							<button class="btn btn-light btn-sm si-btn-entete">Renouveler</button>
 						</form>
-						<form method="post" action="{{ path('app_pointage_tablette', {id: p.id}) }}" onsubmit="return confirm('{{ p.tablette ? 'La tablette actuelle de ' ~ p.code ~ ' sera débranchée. ' }}Brancher l\'appareil que vous tenez comme tablette de l\'entrée ?')">
+						<form method="post" action="{{ path('app_pointage_tablette', {id: p.id}) }}" data-confirmer="{{ p.tablette ? 'La tablette actuelle de ' ~ p.code ~ ' sera débranchée. ' }}Brancher l'appareil que vous tenez comme tablette de l'entrée ?" data-confirmer-bouton="Brancher">
 							<input type="hidden" name="_token" value="{{ token }}">
 							<button class="btn btn-light btn-sm si-btn-entete" title="À faire sur la tablette elle-même"><i class="fas fa-tablet-alt me-1"></i>Brancher cette tablette</button>
 						</form>
@@ -117,7 +117,7 @@
 					{% for a in autorises %}
 						<div class="si-pg-appareil">
 							<div><b>{{ a.utilisateur|nom_pointage }}</b><span>{{ a.nom }}</span></div>
-							<form method="post" action="{{ path('app_pointage_appareil_decider', {id: a.id}) }}" onsubmit="return confirm('Retirer ce téléphone ?')">
+							<form method="post" action="{{ path('app_pointage_appareil_decider', {id: a.id}) }}" data-confirmer="Retirer le téléphone « {{ a.nom }} » de {{ a.utilisateur|nom_pointage }} ? Il ne pourra plus pointer." data-confirmer-bouton="Retirer" data-confirmer-danger>
 								<input type="hidden" name="_token" value="{{ token }}">
 								<button name="decision" value="refuser" class="btn btn-outline-danger btn-sm">Retirer</button>
 							</form>

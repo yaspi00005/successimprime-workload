@@ -86,7 +86,7 @@
 					<button class="btn {{ t.estFaite ? 'btn-light si-btn-entete' : 'btn-success' }} w-100 si-tr-valider">{{ t.estFaite ? 'Remettre à faire' : 'Marquer comme fait' }}</button>
 				</form>
 				{% if is_granted('ROLE_ADMIN') and not t.estFaite %}
-					<form method="post" action="{{ path('app_planning_tache_agir', {id: t.id, action: 'annuler'}) }}" onsubmit="return confirm('Annuler cette occurrence ? Les autres dates restent.');">
+					<form method="post" action="{{ path('app_planning_tache_agir', {id: t.id, action: 'annuler'}) }}" data-confirmer="Annuler cette occurrence ? Les autres dates restent.">
 						<input type="hidden" name="_token" value="{{ token }}">
 						<button class="btn btn-link btn-sm text-danger w-100">Annuler cette date seulement</button>
 					</form>

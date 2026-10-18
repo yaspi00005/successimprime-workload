@@ -1118,7 +1118,7 @@
 
 						{% if not facture.estAnnulee %}
 
-							<button type="button" class="btn btn-outline-danger btn-block" id="btn-annuler-facture">
+							<button type="submit" form="form-annuler-facture" class="btn btn-outline-danger btn-block" id="btn-annuler-facture">
 
 								<i class="fa fa-ban mr-1"></i>
 
@@ -1127,7 +1127,7 @@
 							</button>
 
 
-							<form id="form-annuler-facture" method="post" action="{{ path( 'app_factures_annuler', { id: facture.id } ) }}" class="d-none">
+							<form id="form-annuler-facture" method="post" action="{{ path( 'app_factures_annuler', { id: facture.id } ) }}" class="d-none" data-confirmer="Annuler le document {{ facture.numero }} ?" data-confirmer-detail="Il passera à l’état annulé." data-confirmer-bouton="Annuler le document" data-confirmer-danger>
 
 								<input type="hidden" name="_token" value="{{ csrf_token( 'annuler-facture-' ~ facture.id ) }}">
 
@@ -2262,55 +2262,7 @@ formActualiser.submit();
 }
 
 
-const button = document.getElementById('btn-annuler-facture');
-
-const form = document.getElementById('form-annuler-facture');
-
-
-if (! button || ! form) {
-return;
-}
-
-
-button.addEventListener('click', function () { /*
-                         * SweetAlert2.
-                         */
-if (typeof Swal !== 'undefined') {
-
-Swal.fire({
-icon: 'warning',
-
-title: 'Annuler ce document ?',
-
-text: 'Cette opération changera l’état du document en annulé.',
-
-showCancelButton: true,
-
-confirmButtonText: 'Oui, annuler',
-
-cancelButtonText: 'Fermer',
-
-confirmButtonColor: '#d33'
-}).then(function (result) {
-
-if (result.isConfirmed) {
-form.submit();
-}
-
-});
-
-return;
-}
-
-
-/*
-                         * Fallback.
-                         */
-if (confirm('Voulez-vous vraiment annuler ce document ?')) {
-form.submit();
-}
-
-});
+// Annuler le document : data-confirmer sur le formulaire (public/js/confirmation.js).
 
 });
 

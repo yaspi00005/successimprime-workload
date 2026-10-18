@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Devis;
 use App\Entity\DevisDetails;
 use App\Entity\User;
+use App\Service\Corbeille\Corbeille;
 use App\Service\MontantFinitionSaisie;
 use App\Service\DevisCommandeConverter;
 use App\Entity\DevisDetailFinition;
@@ -306,7 +307,7 @@ public function edit(
 
     #[Route('/{id}', name: 'delete', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function delete(Request $request, Devis $devi, EntityManagerInterface $entityManager): Response
+    public function delete(Request $request, Devis $devi, EntityManagerInterface $entityManager, Corbeille $corbeille): Response
     {
         /*
          * Suppression douce (Devis::$deleted), pour les mêmes
@@ -316,14 +317,17 @@ public function edit(
          * même correctif pour exclure les devis supprimés.
          */
         if ($this->isCsrfTokenValid('delete' . $devi->getId(), $request->getPayload()->getString('_token'))) {
+            // Corbeille (docs/corbeille.md) : récupérable pendant la durée réglée.
+            $corbeille->masquer($devi, 'deleted', false);
             $devi->setDeleted(true);
             $entityManager->flush();
 
             $this->addFlash(
                 'success',
                 sprintf(
-                    'Le devis %s a été supprimé.',
-                    $devi->getNumero()
+                    'Le devis %s a été supprimé. Il reste %s dans la corbeille.',
+                    $devi->getNumero(),
+                    $corbeille->dureeTexte()
                 )
             );
         }

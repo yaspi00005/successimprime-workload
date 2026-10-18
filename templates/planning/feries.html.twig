@@ -26,7 +26,7 @@
 					<ul class="si-tr-heures">
 						{% for f in mobiles %}
 							<li><span>{{ f.jour|date_fr('EEEE d MMMM yyyy')|capitalize }}</span><span><b>{{ f.libelle }}</b>
-								<form method="post" class="d-inline"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="supprimer" value="{{ f.id }}"><button class="btn btn-link btn-sm text-danger p-0 ms-2" aria-label="Retirer {{ f.libelle }}">Retirer</button></form>
+								<form method="post" class="d-inline" {{ confirmer_suppression('la fête « ' ~ f.libelle ~ ' » du ' ~ f.jour|date('d/m/Y'), {verbe: 'Retirer', detail: 'Les tâches futures suivront les nouvelles dates.'}) }}><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="supprimer" value="{{ f.id }}"><button class="btn btn-link btn-sm text-danger p-0 ms-2" aria-label="Retirer {{ f.libelle }}">Retirer</button></form>
 							</span></li>
 						{% endfor %}
 					</ul>

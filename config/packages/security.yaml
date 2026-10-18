@@ -131,6 +131,7 @@ security:
             - ROLE_COMPTABILITE
             - ROLE_ASSISTANT
             - ROLE_CREDITS_MESSAGES
+            - ROLE_CORBEILLE
             
 
 

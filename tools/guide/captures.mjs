@@ -380,6 +380,13 @@ await scene(['credits-messages'], async () => {
     await capture(page, 'credits-messages', { clip: await auDessusDe(page, 'text=Derniers envois') });
 });
 
+// La corbeille (docs/corbeille.md) : ce que la démonstration ou le parcours ont supprimé.
+await scene(['corbeille'], async () => {
+    const page = await session('demo.kadiatou');
+    await aller(page, '/corbeille');
+    await capture(page, 'corbeille');
+});
+
 /* ---------- Production ---------- */
 
 await scene(['production', 'planning-machines', 'mes-statistiques', 'ma-prime'], async () => {

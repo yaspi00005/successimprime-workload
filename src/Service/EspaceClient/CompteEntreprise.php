@@ -7,6 +7,7 @@ use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Repository\CompteClientRepository;
+use App\Service\Corbeille\CaptureCorbeille;
 use App\Service\OrangeSmsService;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -28,6 +29,8 @@ final class CompteEntreprise
         private readonly OrangeSmsService $sms,
         // Accès suspendu par la boutique : pas de SMS (SuspensionsEspace).
         private readonly ?SuspensionsEspace $suspensions = null,
+        // Corbeille (docs/corbeille.md) : adresse ou accès retiré, récupérable 30 jours.
+        private readonly ?CaptureCorbeille $corbeille = null,
     ) {
     }
 
@@ -128,6 +131,7 @@ final class CompteEntreprise
             throw new \DomainException('Le compte principal de l\'entreprise ne peut pas être retiré ici. Écrivez-nous.');
         }
         $this->garderUnAdministrateur($compte);
+        $this->corbeille?->masquer($this->em, $compte, 'actif', true);
         $compte->setActif(false);
         $this->em->flush();
     }
@@ -281,6 +285,7 @@ final class CompteEntreprise
 
     public function supprimerAdresse(AdresseLivraison $adresse): void
     {
+        $this->corbeille?->masquer($this->em, $adresse, 'actif', true);
         $adresse->setActif(false);
         $this->em->flush();
     }

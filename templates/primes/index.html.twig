@@ -17,7 +17,7 @@
 			<a href="{{ path('app_primes_export', {mois: mois|date('Y-m')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-download me-1"></i>Export paie</a>
 		</li>
 		<li class="nav-item">
-			<form method="post" action="{{ path('app_primes_valider_primes') }}" onsubmit="return confirm('Valider les primes de {{ p.mois(mois) }} ? Elles passent en sommes dues sur les bulletins de paie en brouillon ; rien n\'est versé automatiquement.');">
+			<form method="post" action="{{ path('app_primes_valider_primes') }}" data-confirmer="Valider les primes de {{ p.mois(mois) }} ? Elles passent en sommes dues sur les bulletins de paie en brouillon ; rien n'est versé automatiquement.">
 				<input type="hidden" name="_token" value="{{ csrf_token('valider-primes') }}">
 				<input type="hidden" name="mois" value="{{ mois|date('Y-m') }}">
 				<button class="btn btn-success btn-sm si-btn-entete" {{ aValiderPrimes == 0 ? 'disabled' }} title="{{ aValiderPrimes == 0 ? (termine ? 'Aucune évaluation validée en attente de prime.' : 'Le mois n’est pas terminé.') : aValiderPrimes ~ ' prime(s) à valider' }}">Valider les primes</button>

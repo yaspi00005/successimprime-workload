@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% macro bouton(u, action, libelle, confirmation) %}
-	<form method="post" action="{{ path('app_acces_agir', {id: u.id, action: action}) }}"{% if confirmation %} onsubmit="return confirm('{{ confirmation|e('js') }}')"{% endif %}>
+	<form method="post" action="{{ path('app_acces_agir', {id: u.id, action: action}) }}"{% if confirmation %} data-confirmer="{{ confirmation }}"{% endif %}>
 		<input type="hidden" name="_token" value="{{ csrf_token('acces-' ~ u.id) }}">
 		<button class="si-em-lien">{{ libelle }}</button>
 	</form>

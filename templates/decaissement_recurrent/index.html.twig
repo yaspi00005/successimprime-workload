@@ -146,7 +146,7 @@
 													</button>
 												</form>
 
-												<form method="post" action="{{ path('app_decaissement_recurrent_delete', {id: charge.id}) }}" class="d-inline js-confirm-form" data-message="Supprimer définitivement cette charge récurrente ?">
+												<form method="post" action="{{ path('app_decaissement_recurrent_delete', {id: charge.id}) }}" class="d-inline" {{ confirmer_suppression('la charge récurrente « ' ~ charge.libelle ~ ' »') }}>
 													<input type="hidden" name="_token" value="{{ csrf_token('delete' ~ charge.id) }}">
 													<button type="submit" class="btn btn-sm btn-danger-light" title="Supprimer">
 														<i class="fa fa-trash"></i>

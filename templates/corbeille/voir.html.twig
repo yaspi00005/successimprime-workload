@@ -1,0 +1,92 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Une entrée de la corbeille (docs/corbeille.md) : la fiche supprimée, ce
+	qui reviendra avec elle, Restaurer et Supprimer définitivement. En mode
+	« Voir », les deux boutons sont cachés (et refusés par le serveur).
+#}
+
+{% block title %}{{ entree.libelle }} · Corbeille{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/corbeille.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_corbeille_index') }}" class="btn btn-outline-primary btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Corbeille</a></li>
+{% endblock %}
+
+{% block body %}
+	{% set lecture = module_en_lecture(app.request.attributes.get('_route')) %}
+	<div class="si-cb-voir">
+		<div class="card si-bloc si-cb-tete">
+			<p class="si-cb-type">{{ entree.type }}</p>
+			<h2 class="si-cb-titre">{{ entree.libelle }}</h2>
+			<p class="si-cb-quand">
+				Supprimé le {{ entree.supprimeLe|date('d/m/Y à H:i') }} par {{ entree.supprimeParNom ?? 'une tâche automatique' }}.
+				Part pour de bon le <b>{{ expire|date('d/m/Y') }}</b>.
+			</p>
+			{% if entree.estMasque %}
+				<p class="si-cb-note"><i class="fas fa-eye-slash me-1" aria-hidden="true"></i>Cette fiche est toujours en place, seulement cachée : la restaurer la fait réapparaître telle quelle.</p>
+			{% endif %}
+
+			{% if not lecture %}
+				<div class="si-cb-actions">
+					<form method="post" action="{{ path('app_corbeille_restaurer', {id: entree.id}) }}" data-confirmer="Restaurer {{ entree.libelle }} ?" data-confirmer-detail="{{ detail.elements is empty and detail.caches == 0 ? 'La fiche revient telle qu\'elle était au moment de la suppression.' : 'La fiche revient avec les éléments listés, tels qu\'ils étaient au moment de la suppression.' }}" data-confirmer-bouton="Restaurer">
+						<input type="hidden" name="_token" value="{{ csrf_token('corbeille-restaurer-' ~ entree.id) }}">
+						<button type="submit" class="btn btn-primary"><i class="fas fa-undo me-1" aria-hidden="true"></i>Restaurer</button>
+					</form>
+					<form method="post" action="{{ path('app_corbeille_supprimer', {id: entree.id}) }}" {{ confirmer_suppression(entree.libelle, {verbe: 'Supprimer définitivement', corbeille: false, detail: detail.fichiers > 0 ? 'Ses fichiers sont effacés aussi.' : ''}) }}>
+						<input type="hidden" name="_token" value="{{ csrf_token('corbeille-supprimer-' ~ entree.id) }}">
+						<button type="submit" class="btn btn-outline-danger"><i class="fas fa-trash me-1" aria-hidden="true"></i>Supprimer définitivement</button>
+					</form>
+				</div>
+			{% endif %}
+		</div>
+
+		<div class="row">
+			<div class="col-lg-7">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>La fiche</h4></div>
+					{% if detail.champs is empty %}
+						<p class="text-muted mb-0">Aucun détail à montrer.</p>
+					{% else %}
+						<dl class="si-cb-champs">
+							{% for c in detail.champs %}
+								<dt>{{ c.libelle }}</dt>
+								<dd>{{ c.valeur }}</dd>
+							{% endfor %}
+						</dl>
+					{% endif %}
+				</div>
+			</div>
+			<div class="col-lg-5">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Revient avec elle</h4></div>
+					{% if detail.elements is empty and detail.caches == 0 and detail.liens == 0 and detail.fichiers == 0 %}
+						<p class="text-muted mb-0">Rien d'autre : seulement la fiche.</p>
+					{% else %}
+						<ul class="si-cb-elements">
+							{% for el in detail.elements %}
+								<li>
+									<b>{{ el.nombre }} × {{ el.type|lower }}</b>
+									<small class="d-block text-muted">{{ el.libelles|join(' · ') }}{{ el.nombre > el.libelles|length ? ' …' }}</small>
+								</li>
+							{% endfor %}
+							{% if detail.caches > 0 %}
+								<li><b>{{ detail.caches }} autre{{ detail.caches > 1 ? 's' }} élément{{ detail.caches > 1 ? 's' }}</b><small class="d-block text-muted">que vos droits ne montrent pas ; ils reviennent aussi.</small></li>
+							{% endif %}
+							{% if detail.liens > 0 %}
+								<li><b>{{ detail.liens }} fiche{{ detail.liens > 1 ? 's' }} restée{{ detail.liens > 1 ? 's' }} en place</b><small class="d-block text-muted">pointai{{ detail.liens > 1 ? 'ent' : 't' }} vers elle : le lien est remis s'il est encore vide.</small></li>
+							{% endif %}
+							{% if detail.fichiers > 0 %}
+								<li><b>{{ detail.fichiers }} fichier{{ detail.fichiers > 1 ? 's' }}</b><small class="d-block text-muted">gardé{{ detail.fichiers > 1 ? 's' }} sur le serveur jusqu'à la suppression définitive.</small></li>
+							{% endif %}
+						</ul>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

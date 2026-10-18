@@ -60,11 +60,7 @@
                     and devis.commande is null
                 %}
 
-					<form method="post" action="{{ path( 'app_devis_convertir_commande', { id: devis.id } ) }}" class="d-inline mr-2 mb-1" onsubmit="
-																																																																																											                            return confirm(
-																																																																																											                                'Valider ce devis et créer définitivement la commande ?'
-																																																																																											                            );
-																																																																																											                        ">
+					<form method="post" action="{{ path( 'app_devis_convertir_commande', { id: devis.id } ) }}" class="d-inline mr-2 mb-1" data-confirmer="Valider ce devis et créer définitivement la commande ?">
 
 						<input type="hidden" name="_token" value="{{ csrf_token( 'convertir-devis-' ~ devis.id ) }}">
 
@@ -115,7 +111,7 @@
 
 				{% if is_granted('ROLE_ADMIN') %}
 
-					<form method="post" action="{{ path( 'app_devis_delete', { id: devis.id } ) }}" class="js-confirm-form d-inline" data-message="Supprimer définitivement le devis {{ devis.numero }} ? Cette action est irréversible.">
+					<form method="post" action="{{ path( 'app_devis_delete', { id: devis.id } ) }}" class="d-inline" {{ confirmer_suppression('le devis ' ~ devis.numero) }}>
 
 						<input type="hidden" name="_token" value="{{ csrf_token( 'delete' ~ devis.id ) }}">
 

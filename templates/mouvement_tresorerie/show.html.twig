@@ -362,9 +362,7 @@
 																																                            Vous pouvez le valider ou l’annuler.
 							</div>
 
-							<form method="post" action="{{ path( 'app_mouvement_tresorerie_validate', {id: mouvement.id} ) }}" class="d-inline-block mr-2" onsubmit="return confirm(
-																																				                                'Confirmer la validation de ce mouvement ?'
-																																				                            );">
+							<form method="post" action="{{ path( 'app_mouvement_tresorerie_validate', {id: mouvement.id} ) }}" class="d-inline-block mr-2" data-confirmer="Confirmer la validation de ce mouvement ?">
 								<input type="hidden" name="_token" value="{{ csrf_token( 'validate-mouvement-' ~ mouvement.id ) }}">
 
 								<button type="submit" class="btn btn-success">
@@ -375,9 +373,7 @@
 
 							<hr>
 
-							<form method="post" action="{{ path( 'app_mouvement_tresorerie_cancel', {id: mouvement.id} ) }}" onsubmit="return confirm(
-																																				                                'Confirmer l’annulation de ce mouvement ?'
-																																				                            );">
+							<form method="post" action="{{ path( 'app_mouvement_tresorerie_cancel', {id: mouvement.id} ) }}" data-confirmer="Confirmer l’annulation de ce mouvement ?">
 								<input type="hidden" name="_token" value="{{ csrf_token( 'cancel-mouvement-' ~ mouvement.id ) }}">
 
 								<div class="form-group">
@@ -424,9 +420,7 @@
 																																	                            puis ressaisissez le mouvement correct.
 							</div>
 
-							<form method="post" action="{{ path( 'app_mouvement_tresorerie_cancel', {id: mouvement.id} ) }}" onsubmit="return confirm(
-																																				                                'Confirmer l’annulation de ce mouvement déjà validé ? Les soldes seront corrigés.'
-																																				                            );">
+							<form method="post" action="{{ path( 'app_mouvement_tresorerie_cancel', {id: mouvement.id} ) }}" data-confirmer="Confirmer l’annulation de ce mouvement déjà validé ? Les soldes seront corrigés.">
 								<input type="hidden" name="_token" value="{{ csrf_token( 'cancel-mouvement-' ~ mouvement.id ) }}">
 
 								<div class="form-group">

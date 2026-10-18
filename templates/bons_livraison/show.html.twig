@@ -287,9 +287,7 @@
 
 						{% if bon.estBrouillon %}
 
-							<form method="post" action="{{ path( 'app_bons_livraison_valider', { id: bon.id } ) }}" class="mb-2" onsubmit="return confirm(
-																																																															                                'Valider ce bon de livraison ?'
-																																																															                            );">
+							<form method="post" action="{{ path( 'app_bons_livraison_valider', { id: bon.id } ) }}" class="mb-2" data-confirmer="Valider ce bon de livraison ?">
 
 								<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_valider_' ~ bon.id ) }}">
 
@@ -305,9 +303,7 @@
 
 						{% if bon.estValide %}
 
-							<form method="post" action="{{ path( 'app_bons_livraison_livrer', { id: bon.id } ) }}" class="mb-2" onsubmit="return confirm(
-																																																															                                'Confirmer que la marchandise a été livrée ?'
-																																																															                            );">
+							<form method="post" action="{{ path( 'app_bons_livraison_livrer', { id: bon.id } ) }}" class="mb-2" data-confirmer="Confirmer que la marchandise a été livrée ?">
 
 								<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_livrer_' ~ bon.id ) }}">
 
@@ -323,9 +319,7 @@
 
 						{% if bon.estBrouillon or bon.estValide %}
 
-							<form method="post" action="{{ path( 'app_bons_livraison_annuler', { id: bon.id } ) }}" onsubmit="return confirm(
-																																																															                                'Voulez-vous réellement annuler ce bon de livraison ?'
-																																																															                            );">
+							<form method="post" action="{{ path( 'app_bons_livraison_annuler', { id: bon.id } ) }}" data-confirmer="Voulez-vous réellement annuler ce bon de livraison ?">
 
 								<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_annuler_' ~ bon.id ) }}">
 

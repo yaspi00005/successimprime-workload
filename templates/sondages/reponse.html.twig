@@ -72,7 +72,7 @@
 							<div class="si-so-actions"><button class="btn btn-primary" type="submit">Noter la suite</button></div>
 						</form>
 						{% if r.client %}
-							<form method="post" action="{{ path('app_sondages_reclamation', {id: r.id}) }}" style="margin-top:12px" onsubmit="return confirm('Ouvrir une réclamation pour ce client ? Il la verra dans son espace.')">
+							<form method="post" action="{{ path('app_sondages_reclamation', {id: r.id}) }}" style="margin-top:12px" data-confirmer="Ouvrir une réclamation pour ce client ? Il la verra dans son espace.">
 								<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
 								<button class="btn btn-outline-danger btn-sm" type="submit"><i class="fas fa-exclamation-circle me-1"></i>Ouvrir une réclamation</button>
 							</form>

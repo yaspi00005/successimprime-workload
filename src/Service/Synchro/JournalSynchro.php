@@ -139,6 +139,27 @@ final class JournalSynchro
         $em->persist(new SynchroJournal($action, $entite->getPublicId()->toRfc4122(), SynchroJournal::ACTION, null, $donnees));
     }
 
+    /**
+     * Fiches remises depuis la corbeille (docs/corbeille.md), écrites sans
+     * Doctrine : elles repartent vers l'autre côté au prochain cycle. À
+     * appeler avant le flush.
+     *
+     * @param iterable<object> $entites
+     */
+    public function noterRestauration(EntityManagerInterface $em, iterable $entites): void
+    {
+        if (!$this->actif) {
+            return;
+        }
+        $aNoter = [];
+        foreach ($entites as $entite) {
+            $this->ajouter($aNoter, $entite, SynchroJournal::MAJ);
+        }
+        foreach ($aNoter as $journal) {
+            $em->persist($journal);
+        }
+    }
+
     public const PREFIXE = 'W-';
 
     public static function aPrefixer(mixed $valeur): bool

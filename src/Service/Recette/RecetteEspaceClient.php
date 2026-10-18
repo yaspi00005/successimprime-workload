@@ -867,7 +867,7 @@ final class RecetteEspaceClient
         $direction = $this->em->getRepository(User::class)->findOneBy(['username' => 'demo.kadiatou']);
         if (null !== $direction) {
             $session = $this->navigateur->session($direction);
-            foreach (['/', '/clients', '/finances'] as $chemin) {
+            foreach (['/', '/clients', '/finances', '/corbeille'] as $chemin) {
                 $etat = $this->navigateur->get($chemin, $session)->etat();
                 $bilan->controler('En ligne : direction connectée depuis un appareil non autorisé ouvre '.$chemin, \in_array($etat, [Reponse::CONNEXION, Reponse::REFUSE, Reponse::INTROUVABLE], true), $etat);
             }

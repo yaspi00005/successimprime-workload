@@ -101,7 +101,7 @@
 				</div>
 			</form>
 			{% if not nouvelle %}
-				<form method="post" action="{{ path('app_fidelite_regle_supprimer', {id: regle.id}) }}" class="mt-2" onsubmit="return confirm('Supprimer cette règle ? L\'article suivra de nouveau les valeurs générales.');">
+				<form method="post" action="{{ path('app_fidelite_regle_supprimer', {id: regle.id}) }}" class="mt-2" {{ confirmer_suppression('la règle de fidélité de « ' ~ regle.produit.nom ~ ' »', {detail: 'L\'article suivra de nouveau les valeurs générales.'}) }}>
 					<input type="hidden" name="_token" value="{{ csrf_token('regle-fidelite-' ~ regle.id) }}">
 					<button class="btn btn-link text-danger btn-sm p-0">Supprimer la règle</button>
 				</form>

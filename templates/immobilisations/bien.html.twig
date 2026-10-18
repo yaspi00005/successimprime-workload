@@ -82,7 +82,7 @@
 						<p>{{ constant('App\\Entity\\Immobilisation::SORTIES')[bien.sortieMotif] }} le {{ bien.sortieLe|date('d/m/Y') }}{% if bien.sortieMotif == 'vente' %} pour {{ m.f(bien.prixCession) }}{% endif %}.</p>
 						<p class="mb-0">{{ cession >= 0 ? 'Plus-value' : 'Moins-value' }} : <strong class="{{ cession >= 0 ? 'si-fin-vert' : 'si-fin-rouge' }}">{{ m.signe(cession) }}</strong> <span class="si-fin-gris small">(prix de cession − valeur nette au mois de sortie)</span></p>
 					{% else %}
-						<form method="post" action="{{ path('app_immobilisations_sortie', {id: bien.id}) }}" class="si-imm-form" onsubmit="return confirm('Sortir {{ bien.code }} du patrimoine ?')">
+						<form method="post" action="{{ path('app_immobilisations_sortie', {id: bien.id}) }}" class="si-imm-form" data-confirmer="Sortir {{ bien.code }} du patrimoine ?">
 							<input type="hidden" name="_token" value="{{ csrf_token('sortie-' ~ bien.id) }}">
 							<div><label for="motif">Motif</label><select class="form-select" id="motif" name="motif">{% for cle, libelle in constant('App\\Entity\\Immobilisation::SORTIES') %}<option value="{{ cle }}">{{ libelle }}</option>{% endfor %}</select></div>
 							<div><label for="date-sortie">Date</label><input class="form-control" type="date" id="date-sortie" name="date" value="{{ 'now'|date('Y-m-d') }}"></div>

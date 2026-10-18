@@ -119,6 +119,8 @@ final class CatalogueSynchro
         'atelier_3d' => ['palier1_quantite', 'palier1_remise', 'palier2_quantite', 'palier2_remise', 'face_en_plus', 'paliers_b2b'],
         // Pièces au m² : le site compte les pièces avec le même espacement (docs/saisie-devis-commandes.md).
         'pieces_m2' => ['espacement_mm'],
+        // Corbeille : le site en ligne garde les suppressions de l'espace client aussi longtemps que le local.
+        'corbeille' => ['duree'],
         // L'assistant tourne en ligne : tous ses réglages y servent (docs/assistant-client.md).
         'assistant' => ['actif', 'message_accueil', 'limite_jour', 'whatsapp', 'delais', 'modele', 'effort', 'taux_usd', 'prix_entree', 'prix_sortie', 'prix_cache_lecture', 'prix_cache_ecriture'],
     ];

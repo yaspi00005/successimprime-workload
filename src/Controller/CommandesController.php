@@ -24,6 +24,7 @@ use App\Entity\ProduitConfigurationFinition;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 use App\Entity\CommandesDetails;
+use App\Service\Corbeille\Corbeille;
 use App\Service\MontantFinitionSaisie;
 use App\Service\NotificationService;
 use App\Service\StockService;
@@ -1061,7 +1062,7 @@ final class CommandesController extends AbstractController
 
     #[Route('/{id}', name: 'app_commandes_delete', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function delete(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
+    public function delete(Request $request, Commandes $commande, EntityManagerInterface $entityManager, Corbeille $corbeille): Response
     {
         if ($commande->estSoldeOuverture()) {
             throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
@@ -1078,14 +1079,17 @@ final class CommandesController extends AbstractController
          * dans le même correctif pour l'exclure de la liste.
          */
         if ($this->isCsrfTokenValid('delete' . $commande->getId(), $request->getPayload()->getString('_token'))) {
+            // Corbeille (docs/corbeille.md) : récupérable pendant la durée réglée.
+            $corbeille->masquer($commande, 'deleted', false);
             $commande->setDeleted(true);
             $entityManager->flush();
 
             $this->addFlash(
                 'success',
                 sprintf(
-                    'La commande %s a été supprimée.',
-                    $commande->getNumero()
+                    'La commande %s a été supprimée. Elle reste %s dans la corbeille.',
+                    $commande->getNumero(),
+                    $corbeille->dureeTexte()
                 )
             );
         }

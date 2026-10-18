@@ -231,12 +231,12 @@
 
 						<div class="btn-group">
 
-							<button type="submit" name="tout" value="1" form="formLivrerMasse" class="btn btn-sm btn-success" onclick="return confirm('Tout a été livré ? La commande complète sera marquée comme livrée.');">
+							<button type="submit" name="tout" value="1" form="formLivrerMasse" class="btn btn-sm btn-success" data-confirmer="Tout a été livré ? La commande complète sera marquée comme livrée.">
 								<i class="fa fa-check-circle mr-1"></i>
 								Tout est livré
 							</button>
 
-							<button type="submit" form="formLivrerMasse" class="btn btn-sm btn-primary" onclick="return confirm('Marquer la sélection comme livrée ?');">
+							<button type="submit" form="formLivrerMasse" class="btn btn-sm btn-primary" data-confirmer="Marquer la sélection comme livrée ?">
 								<i class="fa fa-check-square-o mr-1"></i>
 								Marquer la sélection comme livrée
 							</button>
@@ -392,7 +392,7 @@
 
 				{% if lignes|filter(l => l.statutProduction == 'prete_livraison')|length > 0 %}
 
-					<form method="post" action="{{ path( 'app_bons_livraison_creer_commande', { id: commande.id } ) }}" onsubmit="return confirm('Créer un bon de livraison pour cette commande ?');">
+					<form method="post" action="{{ path( 'app_bons_livraison_creer_commande', { id: commande.id } ) }}" data-confirmer="Créer un bon de livraison pour cette commande ?">
 
 						<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_creer_commande_' ~ commande.id ) }}">
 

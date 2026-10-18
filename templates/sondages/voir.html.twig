@@ -20,18 +20,18 @@
 						<a class="btn btn-sm btn-outline-primary" href="{{ path('app_sondages_modifier', {id: sondage.id}) }}"><i class="fas fa-pen me-1"></i>Modifier</a>
 					{% endif %}
 					{% if sondage.estBrouillon %}
-						<form method="post" action="{{ path('app_sondages_ouvrir', {id: sondage.id}) }}" onsubmit="return confirm('{{ sondage.estLibre ? 'Lancer ce sondage ? Le lien et le QR code seront actifs.' : 'Lancer ce sondage ? Il sera proposé aux clients dans leur espace.' }}')">
+						<form method="post" action="{{ path('app_sondages_ouvrir', {id: sondage.id}) }}" data-confirmer="{{ sondage.estLibre ? 'Lancer ce sondage ? Le lien et le QR code seront actifs.' : 'Lancer ce sondage ? Il sera proposé aux clients dans leur espace.' }}" data-confirmer-bouton="Lancer">
 							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
 							<button class="btn btn-sm btn-danger" type="submit"><i class="fas fa-play me-1"></i>Lancer</button>
 						</form>
 					{% elseif sondage.estOuvert %}
-						<form method="post" action="{{ path('app_sondages_clore', {id: sondage.id}) }}" onsubmit="return confirm('Clore ce sondage ? Il n’acceptera plus de réponses.')">
+						<form method="post" action="{{ path('app_sondages_clore', {id: sondage.id}) }}" data-confirmer="Clore ce sondage ? Il n’acceptera plus de réponses." data-confirmer-bouton="Clore">
 							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
 							<button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fas fa-stop me-1"></i>Clore</button>
 						</form>
 					{% endif %}
 					{% if resultats.reponses == 0 %}
-						<form method="post" action="{{ path('app_sondages_supprimer', {id: sondage.id}) }}" onsubmit="return confirm('Supprimer ce sondage ?')">
+						<form method="post" action="{{ path('app_sondages_supprimer', {id: sondage.id}) }}" {{ confirmer_suppression('le sondage « ' ~ sondage.titre ~ ' »') }}>
 							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
 							<button class="btn btn-sm btn-outline-danger" type="submit" title="Supprimer"><i class="fas fa-trash"></i></button>
 						</form>

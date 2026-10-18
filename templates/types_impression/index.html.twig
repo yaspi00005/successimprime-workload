@@ -30,7 +30,7 @@
 				Dépublier
 			</button>
 
-			<button type="button" id="typeImpressionMassDeleteButton" class="btn btn-danger">
+			<button type="button" id="typeImpressionMassDeleteButton" class="btn btn-danger" {{ confirmer_suppression('les types d’impression cochés') }}>
 				<i class="fa fa-trash mr-1"></i>
 				Supprimer
 			</button>
@@ -234,7 +234,7 @@
 												</button>
 
 												{# Supprimer #}
-												<button type="button" class="btn btn-sm btn-danger-light btn-delete-type-impression" data-id="{{ typeImpression.id }}" data-url="{{ path( 'app_type_impression_delete_ajax', { id: typeImpression.id } ) }}" data-token="{{ csrf_token( 'delete_type_impression_' ~ typeImpression.id ) }}" data-nom="{{ typeImpression.nom }}" title="Supprimer">
+												<button type="button" class="btn btn-sm btn-danger-light btn-delete-type-impression" {{ confirmer_suppression('le type d’impression « ' ~ typeImpression.nom ~ ' »') }} data-id="{{ typeImpression.id }}" data-url="{{ path( 'app_type_impression_delete_ajax', { id: typeImpression.id } ) }}" data-token="{{ csrf_token( 'delete_type_impression_' ~ typeImpression.id ) }}" data-nom="{{ typeImpression.nom }}" title="Supprimer">
 													<i class="fa fa-trash"></i>
 												</button>
 

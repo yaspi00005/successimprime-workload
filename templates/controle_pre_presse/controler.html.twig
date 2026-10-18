@@ -335,10 +335,13 @@
 	{{ parent() }}
 	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 	<script>
-		// Sans accès au CDN (serveur local hors ligne), les boîtes du navigateur prennent le relais.
+		// Si SweetAlert manque, la fenêtre de confirmation de l'application prend le relais (public/js/confirmation.js).
 		if (typeof window.Swal === 'undefined') {
 			window.Swal = {fire: function (o) {
-				return Promise.resolve({isConfirmed: o.showCancelButton ? window.confirm(o.text) : (window.alert(o.text), true)});
+				if (o.showCancelButton && window.SiConfirmation) {
+					return window.SiConfirmation.demander({message: o.title || o.text, detail: o.title ? o.text : '', bouton: o.confirmButtonText}).then(function (ok) { return {isConfirmed: ok}; });
+				}
+				return Promise.resolve({isConfirmed: !o.showCancelButton && (window.alert(o.text), true)});
 			}};
 		}
 		document.addEventListener('DOMContentLoaded', function () {

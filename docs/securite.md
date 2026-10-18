@@ -100,6 +100,16 @@ Toute route qui modifie quelque chose vérifie un jeton CSRF, en plus du cookie 
 - Audit D6 : la modification d'une finition (`FinitionController::updateFinitionAjax`) et d'un type d'impression (`TypesImpressionController::updateAjax`) demande maintenant le jeton de sa route (`update_finition`, `update_type_impression`), lu par `App\Security\JetonJson` (en-tête, sinon `_token`). Sans jeton ou avec un mauvais : 403 en JSON, « Jeton de sécurité absent ou périmé : rechargez la page puis recommencez. », rien d'enregistré.
 - Les scripts de ces deux pages (`public/assets/js/traitement_parametrage.js`, `traitement_types_impression.js`) ne sont pas dans le dépôt (dossier ignoré par git). Pour qu'ils marchent sans les modifier, la page charge `public/js/jeton-json.js` avec son jeton : il ajoute l'en-tête `X-CSRF-TOKEN` aux requêtes POST de la page vers `…/update/ajax` (fetch et XMLHttpRequest, donc jQuery), sans toucher aux autres requêtes ni à un en-tête déjà posé.
 
+## Suppressions : confirmation et corbeille
+
+Chaque suppression demande une confirmation dans la page (`public/js/confirmation.js`, jamais la boîte du navigateur). Elle passe par un formulaire POST avec jeton, jamais par un lien. Ce qui est supprimé reste 30 jours dans la corbeille (docs/corbeille.md). Les règles côté sécurité :
+
+- la copie ne garde aucun secret : mots de passe, codes PIN, jetons de paiement, d'authenticité ou de suivi, secrets de pointage (`TypesCorbeille::SENSIBLES`). À la restauration, ils reviennent vides ou neufs ;
+- l'écran est sur l'ERP local seulement (en ligne : « introuvable »). Il s'ouvre à la Direction et au droit « Corbeille », et chacun n'y voit que les fiches de ses autres droits, même demandées par leur numéro (`CorbeilleVoter`). Les montants sont masqués hors Direction. Le mode « Voir » ne restaure ni ne supprime ;
+- la suppression définitive ne retire que des fichiers sous `var/`, à un chemin qui ne peut pas sortir de son dossier ;
+- restaurations et suppressions définitives sont notées dans le journal d'activité ;
+- `ConfirmationSuppressionsTest` fait échouer la suite si une suppression oublie la confirmation ou passe par un lien.
+
 ## Anciennes pages du thème
 
 Le thème avait laissé des pages en anglais (« Create new », « back to list », « Edit », « Delete ») pour les catégories, clients, finitions, formats, paiements, configurations de produit, produits, supports, types d'impression et utilisateurs (mise à jour du 15/10/2026) :
@@ -214,6 +224,7 @@ Attendu : les six en-têtes de la table, `Strict-Transport-Security` compris, et
 ## Règles pour le code nouveau
 
 - Une route qui modifie quelque chose : `POST`, jeton CSRF vérifié (en JSON : en-tête `X-CSRF-TOKEN`, `JetonJson::lire`), droits vérifiés dans le contrôleur.
+- Une suppression : confirmée dans la page (`confirmer_suppression()` ou `data-confirmer`, docs/corbeille.md). Une table technique nouvelle va dans `TypesCorbeille::EXCLUES`, une colonne secrète dans `TypesCorbeille::SENSIBLES`.
 - Une fiche demandée par son numéro : chercher **dans** les fiches du client ou du compte connecté (`…duClientParId`), jamais `find($id)` puis comparer.
 - Un fichier envoyé : sous `var/uploads` (`FichiersPrives`), servi par `FichierEnvoye::reponse()` après la vérification des droits, une photo réencodée. `public/uploads` seulement pour ce qui est fait pour être vu de tous (site, écran TV), avec `FichierEnvoye`.
 - Un code ou un numéro tapé sans compte : une limite dans `rate_limiter.yaml`.

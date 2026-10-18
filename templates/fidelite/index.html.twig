@@ -116,7 +116,7 @@
 									</td>
 									<td class="text-end text-nowrap">
 										{% if d.promo and not en_ligne %}
-											<form method="post" action="{{ path('app_fidelite_reveil_annuler', {id: d.promo.id}) }}" class="d-inline">
+											<form method="post" action="{{ path('app_fidelite_reveil_annuler', {id: d.promo.id}) }}" class="d-inline" data-confirmer="Retirer la promo de réveil de {{ d.client.nomComplet }} ?" data-confirmer-detail="Le client ne pourra plus l'utiliser." data-confirmer-bouton="Retirer" data-confirmer-danger>
 												<input type="hidden" name="_token" value="{{ csrf_token('fidelite-reveil') }}">
 												<input type="hidden" name="retour" value="{{ app.request.requestUri }}">
 												<button class="btn btn-sm btn-light" title="Retirer la promo">Retirer</button>

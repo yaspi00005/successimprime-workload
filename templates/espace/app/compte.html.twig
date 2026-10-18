@@ -124,7 +124,7 @@
 				<li class="ec-ligne"><span class="ec-petit">Dernière connexion</span><b>{% if compte.derniereConnexion %}{{ compte.derniereConnexion|date('Y-m-d') == 'now'|date('Y-m-d') ? 'aujourd\'hui ' ~ compte.derniereConnexion|date('H:i') : 'le ' ~ compte.derniereConnexion|date('d/m/Y à H:i') }}{% else %}—{% endif %}</b></li>
 			</ul>
 			<div class="ec-securite-actions">
-				<form method="post" action="{{ path('app_espace_appareils_deconnecter') }}" onsubmit="return confirm('Déconnecter tous les autres appareils ? Cet appareil reste connecté.')">
+				<form method="post" action="{{ path('app_espace_appareils_deconnecter') }}" data-confirmer="Déconnecter tous les autres appareils ? Cet appareil reste connecté.">
 					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 					<button type="submit" class="ec-bouton-blanc">Déconnecter les autres appareils</button>
 				</form>

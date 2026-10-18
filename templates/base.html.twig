@@ -74,7 +74,7 @@
 					<div class="collapse navbar-collapse justify-content-between">
 						<div class="header-left si-titre-page">
 							{% if sectionCourante and routeCourante != 'app_home' %}
-								<div class="si-fil-ariane">{{ libelle_section_admin(sectionCourante) }} <span>›</span> {{ block('title')|striptags|trim }}</div>
+								<div class="si-fil-ariane">{{ libelle_section_admin(sectionCourante) }} <span>›</span> {# Le titre est déjà échappé à son rendu : sans |raw, « l'an » s'afficherait « l&#039;an ». #}{{ block('title')|striptags|trim|raw }}</div>
 							{% endif %}
 							<div class="dashboard_bar">{% block page_title %}{{ block('title') }}{% endblock %}</div>
 						</div>
@@ -218,6 +218,8 @@
 	{% block vendor_javascripts %}{% endblock %}
 	<script src="{{ asset('theme/js/custom.min.js') }}"></script>
 	<script src="{{ asset('theme/js/dlabnav-init.js') }}"></script>
+	{# Fenêtre de confirmation des suppressions et actions sensibles (data-confirmer, docs/corbeille.md). #}
+	<script src="{{ asset('js/confirmation.js') }}" data-css="{{ asset('css/confirmation.css') }}"></script>
 	{# admin.js charge les filtres des tableaux seulement sur les pages qui ont une liste (docs/filtres-tableaux.md). #}
 	<script src="{{ asset('js/admin.js') }}" data-filtres-js="{{ asset('js/filtres-tableaux.js') }}" data-filtres-css="{{ asset('css/filtres-tableaux.css') }}" data-filtres-compte="{{ app.user ? app.user.id }}"></script>
 	{% block javascripts %}{% endblock %}

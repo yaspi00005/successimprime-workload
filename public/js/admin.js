@@ -49,13 +49,7 @@ document.addEventListener('click', function (evenement) {
     }
 });
 
-// Formulaires sensibles (annuler, restaurer, livrer...) : confirmation avant envoi.
-document.addEventListener('submit', function (evenement) {
-    var formulaire = evenement.target.closest('form[data-confirmer]');
-    if (formulaire && !window.confirm(formulaire.dataset.confirmer)) {
-        evenement.preventDefault();
-    }
-});
+// Formulaires et boutons sensibles (data-confirmer) : public/js/confirmation.js, chargé avant ce fichier.
 
 // ---------- Menu selon le role (maquettes R01 a R03) ----------
 

@@ -24,6 +24,10 @@ final class Droits
     public const LECTURE_VENTES = 'ROLE_LECTURE_VENTES';
     public const LECTURE_CLIENTS = 'ROLE_LECTURE_CLIENTS';
     public const LECTURE_PAO = 'ROLE_LECTURE_PAO';
+    public const LECTURE_CORBEILLE = 'ROLE_LECTURE_CORBEILLE';
+
+    /** Corbeille (docs/corbeille.md) : voir, restaurer et supprimer pour de bon les fiches supprimées. */
+    public const CORBEILLE = 'ROLE_CORBEILLE';
 
     /**
      * @return array<string, array{libelle: string, detail: string, groupe: string}>
@@ -52,6 +56,7 @@ final class Droits
             'ROLE_PROMOTIONS' => ['libelle' => 'Promotions', 'detail' => 'créer, suspendre, accepter les exceptions B2B, anniversaires', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_ASSISTANT' => ['libelle' => 'Assistant du site', 'detail' => 'conversations des clients avec l\'assistant, analyse, réglages', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_CREDITS_MESSAGES' => ['libelle' => 'Crédits SMS et e-mail', 'detail' => 'solde et fin du pack SMS, limites e-mail, historique des envois (numéros masqués sans le droit Clients)', 'groupe' => self::GROUPE_FONCTIONS],
+            self::CORBEILLE => ['libelle' => 'Corbeille', 'detail' => 'restaurer ou supprimer pour de bon ce qui a été supprimé (seulement les fiches de ses autres droits)', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_STATS_PERSO' => ['libelle' => 'Ses propres statistiques', 'detail' => 'ventes et encaissements de la personne', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_STATS_VENTES' => ['libelle' => 'Indicateurs commerciaux', 'detail' => 'devis envoyés, taux de transformation, panier moyen', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_STATS_GLOBAL' => ['libelle' => 'Chiffre d\'affaires global', 'detail' => 'chiffres de l\'accueil, écrans Statistiques', 'groupe' => self::GROUPE_CHIFFRES],
@@ -62,6 +67,7 @@ final class Droits
             self::LECTURE_VENTES => ['libelle' => 'Ventes et caisse en lecture seule', 'detail' => 'voir les devis, commandes et factures sans les modifier', 'groupe' => self::GROUPE_LECTURE],
             self::LECTURE_CLIENTS => ['libelle' => 'Clients en lecture seule', 'detail' => 'voir les fiches sans les modifier', 'groupe' => self::GROUPE_LECTURE],
             self::LECTURE_PAO => ['libelle' => 'Montage PAO en lecture seule', 'detail' => 'voir les fichiers et BAT sans les modifier', 'groupe' => self::GROUPE_LECTURE],
+            self::LECTURE_CORBEILLE => ['libelle' => 'Corbeille en lecture seule', 'detail' => 'voir ce qui a été supprimé sans le restaurer ni le supprimer pour de bon', 'groupe' => self::GROUPE_LECTURE],
         ];
     }
 

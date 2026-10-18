@@ -20,7 +20,7 @@
 	</li>
 	{% if fiche and not fiche.fige %}
 		<li class="nav-item">
-			<form method="post" action="{{ path('app_primes_valider', {id: agent.id}) }}" onsubmit="return confirm('Valider l’évaluation {{ p.de_mois(mois) }} de {{ nom|e('js') }} ? Les critères seront figés ; un changement demandera un recalcul avec motif.');">
+			<form method="post" action="{{ path('app_primes_valider', {id: agent.id}) }}" data-confirmer="Valider l’évaluation {{ p.de_mois(mois) }} de {{ nom }} ? Les critères seront figés ; un changement demandera un recalcul avec motif.">
 				<input type="hidden" name="_token" value="{{ jeton }}">
 				<input type="hidden" name="mois" value="{{ mois|date('Y-m') }}">
 				<button class="btn btn-success btn-sm si-btn-entete" {{ not termine ? 'disabled' }} title="{{ not termine ? 'Le mois n’est pas terminé : l’évaluation se valide à partir du 1er du mois suivant.' }}">Valider l'évaluation</button>

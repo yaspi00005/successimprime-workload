@@ -85,14 +85,16 @@ passer à l'état suivant :
 - **Modifier** : tous les droits du module ;
 - **Voir** : la personne consulte sans rien changer. Pour l'atelier et les
   finances, c'est le droit de lecture qui existait déjà (planning, soldes).
-  Pour les ventes, les clients et le montage PAO, c'est une restriction
-  « lecture seule » : tout envoi de formulaire et tout écran de création ou
+  Pour les ventes, les clients, le montage PAO et la corbeille, c'est une
+  restriction « lecture seule » : tout envoi de formulaire et tout écran de création ou
   de modification du module répond « accès refusé », et un bandeau le dit
   en haut de la page ;
 - **—** : le module disparaît du menu de ce rôle.
 
 Le stock et les achats (prix d'achat) et les réglages restent à la
-Direction ; « Mon espace » est ouvert à tout le personnel. L'équipe et la
+Direction ; la corbeille aussi par défaut, et le module « Corbeille »
+permet de la confier à un rôle, qui n'y voit que les fiches de ses autres
+droits (docs/corbeille.md) ; « Mon espace » est ouvert à tout le personnel. L'équipe et la
 paie n'ont pas de « Voir » : les salaires restent à l'équipe RH et à la
 personne concernée.
 
@@ -159,6 +161,7 @@ des échéances et les tâches fiscales ou de paie qui ne la concernent pas.
 - Pastilles : `App\Service\PastillesMenu`.
 - Matrice : `App\Security\ModulesRoles` ; lecture seule :
   `App\EventSubscriber\LectureSeuleSubscriber` (droits
-  `ROLE_LECTURE_VENTES`, `ROLE_LECTURE_CLIENTS`, `ROLE_LECTURE_PAO`).
+  `ROLE_LECTURE_VENTES`, `ROLE_LECTURE_CLIENTS`, `ROLE_LECTURE_PAO`,
+  `ROLE_LECTURE_CORBEILLE`).
 - Forme du menu : colonne `role_utilisateur.menu` (`volets`, `court`,
   `replie`).

@@ -92,7 +92,7 @@
 				</div>
 			</form>
 			{% if not nouveau %}
-				<form method="post" action="{{ path('app_anniversaires_modele_supprimer', {id: modele.id}) }}" class="mt-2" onsubmit="return confirm('Supprimer ce modèle ? Les promotions déjà créées restent.');">
+				<form method="post" action="{{ path('app_anniversaires_modele_supprimer', {id: modele.id}) }}" class="mt-2" {{ confirmer_suppression('le modèle « ' ~ modele.nom ~ ' »', {detail: 'Les promotions déjà créées restent.'}) }}>
 					<input type="hidden" name="_token" value="{{ csrf_token('modele-anniversaire-' ~ modele.id) }}">
 					<button class="btn btn-link text-danger btn-sm p-0">Supprimer le modèle</button>
 				</form>

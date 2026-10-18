@@ -194,6 +194,14 @@ final class CatalogueGuide
                     ['nom' => 'credits-messages', 'legende' => 'Clients › Crédits SMS et e-mail.'],
                 ],
             ],
+            [
+                'cle' => 'corbeille', 'groupe' => 'direction', 'titre' => 'Retrouver une fiche supprimée',
+                'but' => 'Restaurer ce qui a été supprimé par erreur, tant que c\'est dans la corbeille.',
+                'droits' => ['ROLE_CORBEILLE'], 'route' => 'app_corbeille_index', 'ecrans' => ['app_corbeille_'],
+                'captures' => [
+                    ['nom' => 'corbeille', 'legende' => 'Réglages › Corbeille : ce qui a été supprimé, et quand cela part pour de bon.'],
+                ],
+            ],
 
             // ---------- Caisse et commercial ----------
             [

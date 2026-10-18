@@ -28,7 +28,7 @@
 				Dépublier
 			</button>
 
-			<button type="button" id="supportMassDeleteButton" class="btn btn-danger">
+			<button type="button" id="supportMassDeleteButton" class="btn btn-danger" {{ confirmer_suppression('les supports cochés') }}>
 				Supprimer
 			</button>
 
@@ -191,7 +191,7 @@
 													{% endif %}
 												</button>
 
-												<button type="button" class="btn btn-sm btn-danger-light btn-delete-support" data-url="{{ path( 'app_support_delete_ajax', {id: support.id} ) }}" data-token="{{ csrf_token( 'delete_support_' ~ support.id ) }}" data-nom="{{ support.nom }}">
+												<button type="button" class="btn btn-sm btn-danger-light btn-delete-support" {{ confirmer_suppression('le support « ' ~ support.nom ~ ' »') }} data-url="{{ path( 'app_support_delete_ajax', {id: support.id} ) }}" data-token="{{ csrf_token( 'delete_support_' ~ support.id ) }}" data-nom="{{ support.nom }}">
 													<i class="fa fa-trash"></i>
 												</button>
 

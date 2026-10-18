@@ -359,7 +359,8 @@ final class EspaceClient
      */
     public static function verificationsCochees(?CommandesDetails $ligne, mixed $cochees): ?array
     {
-        $cochees = \is_array($cochees) ? array_map('strval', $cochees) : [];
+        // Seulement des textes : une liste glissée dans l'envoi (verifications[x][]) ne compte pas.
+        $cochees = \is_array($cochees) ? array_map('strval', array_filter($cochees, 'is_scalar')) : [];
         $attendues = self::verificationsBat($ligne);
 
         return [] === array_diff(array_keys($attendues), $cochees) ? array_values($attendues) : null;

@@ -37,9 +37,10 @@
 					{% set p = f.p %}
 					<li class="ec-pc" data-id="{{ f.id }}" data-categorie="{{ f.categorie }}">
 						<button type="button" class="ec-pc-ouvrir" aria-label="Choisir la quantité de {{ p.nom }}">
-							<span class="ec-pc-visuel teinte-{{ loop.index0 % 6 }}">
-								{% set photo = f.image ? null : site_photo_produit(p.nom) %}
-								{% if f.image %}<img src="{{ path('app_espace_bat_fichier', {id: f.image}) }}" alt="" loading="lazy">{% elseif photo %}<img src="{{ asset(photo.src) }}" width="64" height="64" alt="" loading="lazy">{% else %}<span>{{ p.nom|split(' ')|slice(0, 2)|map(m => m|slice(0, 1))|join|upper }}</span>{% endif %}
+							{# Sans BAT à montrer : la photo de la sorte de produit (PhotosProduits), entière sur fond blanc, sinon les initiales. #}
+							{% set photo = f.image ? null : site_photo_produit(p.nom) %}
+							<span class="ec-pc-visuel teinte-{{ loop.index0 % 6 }}"{% if photo %} style="position:relative;background:#fff"{% endif %}>
+								{% if f.image %}<img src="{{ path('app_espace_bat_fichier', {id: f.image}) }}" alt="" loading="lazy">{% elseif photo %}<img src="{{ asset(photo.src) }}" width="240" height="240" alt="" loading="lazy" style="position:absolute;inset:0;object-fit:contain">{% else %}<span>{{ p.nom|split(' ')|slice(0, 2)|map(m => m|slice(0, 1))|join|upper }}</span>{% endif %}
 							</span>
 							<span class="ec-pc-texte">
 								<span class="ec-pc-ref">{{ p.reference }} <em>{{ f.badge }}</em></span>

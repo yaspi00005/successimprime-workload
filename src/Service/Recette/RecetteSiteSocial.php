@@ -13,6 +13,7 @@ use App\Service\Site\SoutienSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\Security\Core\Role\RoleHierarchyInterface;
 
 /**
  * « Nos actions sociales » et « Nous soutenir » (docs/site-vitrine.md,
@@ -24,7 +25,10 @@ use Symfony\Component\Routing\RouterInterface;
  *  - le lien de l'avis Google s'ouvre dans un nouvel onglet (noopener), le
  *    QR code est fait par le site ; lien vidé : tout disparaît ;
  *  - espace client (en ligne) : la carte du tableau de bord se ferme pour
- *    une personne seulement, y compris un compte « Lecture · suivi ».
+ *    une personne seulement, y compris un compte « Lecture · suivi » ;
+ *  - ERP local : les onglets « Actions sociales » et « Nous soutenir » de
+ *    Réglages › Site vitrine ne s'ouvrent qu'avec le droit Site vitrine,
+ *    et leur enregistrement est refusé aux autres.
  *
  * Tout se passe dans la transaction annulée du NavigateurInterne ; les
  * fichiers publics de la photo d'essai sont retirés à la fin.
@@ -42,6 +46,8 @@ final class RecetteSiteSocial
         private readonly ImagesSite $images,
         private readonly SoutienSite $soutien,
         private readonly RecetteEspaceClient $espace,
+        private readonly RecetteAcces $personnel,
+        private readonly RoleHierarchyInterface $hierarchie,
     ) {
     }
 
@@ -53,6 +59,8 @@ final class RecetteSiteSocial
             $this->actionsSociales($bilan, $enLigne, $image);
             if ($enLigne) {
                 $this->espaceClient($bilan);
+            } else {
+                $this->administration($bilan);
             }
             // En dernier : le lien vidé reste vidé jusqu'à la fin de la transaction.
             $this->soutien($bilan);
@@ -111,6 +119,48 @@ final class RecetteSiteSocial
         if ([] !== $fuites) {
             $bilan->constater(BilanRecette::FUITE, 'action_sociale', ActionsSociales::ROUTE, $page, 'visiteur', 'action non publiée ou incomplète montrée : '.implode(', ', $fuites));
         }
+    }
+
+    /**
+     * Réglages › Site vitrine › Actions sociales et Nous soutenir : ouverts
+     * avec le droit Site vitrine, refusés sans (adresse tapée à la main
+     * comprise) ; l'enregistrement du lien refusé sans le droit ne change
+     * rien.
+     */
+    private function administration(BilanRecette $bilan): void
+    {
+        $pages = [
+            $this->routeur->generate('app_site_contenu_index', ['onglet' => 'actions']),
+            $this->routeur->generate('app_site_contenu_index', ['onglet' => 'soutien']),
+            $this->routeur->generate('app_site_contenu_nouveau', ['type' => 'actions']),
+        ];
+        $enregistrer = $this->routeur->generate('app_site_contenu_soutien');
+        $lien = $this->soutien->reglages()['lien'];
+        $ecarts = [];
+        $comptes = 0;
+        foreach ($this->personnel->comptes() as $compte) {
+            ++$comptes;
+            $permis = \in_array('ROLE_SITE_VITRINE', $this->hierarchie->getReachableRoleNames($compte->getRoles()), true);
+            $session = $this->navigateur->session($compte);
+            foreach ($pages as $page) {
+                $etat = $this->navigateur->get($page, $session)->etat();
+                if ($permis ? Reponse::OUVERT !== $etat : !\in_array($etat, [Reponse::REFUSE, Reponse::CONNEXION], true)) {
+                    $ecarts[] = $compte->getUserIdentifier().' '.$page.' '.$etat;
+                    if (!$permis && Reponse::OUVERT === $etat) {
+                        $bilan->constater(BilanRecette::FUITE, 'sans_droit', 'app_site_contenu_index', $page, $compte->getUserIdentifier(), 'réglages du site vitrine ouverts sans le droit Site vitrine');
+                    }
+                }
+            }
+            if (!$permis) {
+                $etat = $this->navigateur->post($enregistrer, ['lien' => 'https://g.page/r/recette/review', '_token' => 'faux'], $session)->etat();
+                $this->soutien->reset();
+                if (!\in_array($etat, [Reponse::REFUSE, Reponse::CONNEXION], true) || $lien !== $this->soutien->reglages()['lien']) {
+                    $ecarts[] = $compte->getUserIdentifier().' enregistrement '.$etat;
+                    $bilan->constater(BilanRecette::FUITE, 'sans_droit', 'app_site_contenu_soutien', $enregistrer, $compte->getUserIdentifier(), 'lien « Nous soutenir » enregistrable sans le droit Site vitrine');
+                }
+            }
+        }
+        $bilan->controler('Personnel : « Actions sociales » et « Nous soutenir » réservés au droit Site vitrine', 0 < $comptes && [] === $ecarts, [] === $ecarts ? $comptes.' compte(s) essayé(s)' : implode(' ; ', \array_slice($ecarts, 0, 6)));
     }
 
     private function soutien(BilanRecette $bilan): void

@@ -339,6 +339,22 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame('site_annonce', CatalogueSynchro::typeDe(new \App\Entity\Annonce()));
     }
 
+    public function testLesActionsSocialesDescendentAuSite(): void
+    {
+        $action = CatalogueSynchro::types()['site_action_sociale'];
+        self::assertSame(\App\Entity\ActionSociale::class, $action['classe']);
+        self::assertSame(CatalogueSynchro::DESCENDANT, $action['sens'], 'saisies à l\'atelier seulement');
+        self::assertSame(['titre', 'dateAction', 'lieu', 'texte', 'publie', 'ordre', 'modifieLe'], $action['champs']);
+        self::assertSame(['images' => 'site_image'], $action['listes'], 'les photos suivent comme celles des réalisations');
+        self::assertTrue(CatalogueSynchro::envoye('site_action_sociale', false));
+        self::assertFalse(CatalogueSynchro::envoye('site_action_sociale', true));
+        self::assertFalse(CatalogueSynchro::accepte('site_action_sociale', false));
+        self::assertSame('site_action_sociale', CatalogueSynchro::typeDe(new \App\Entity\ActionSociale()));
+        // Le lien « Nous soutenir » descend avec les réglages du site ; la carte fermée reste au site.
+        self::assertSame('site_reglage', CatalogueSynchro::typeDe(new \App\Entity\ReglageSite(\App\Service\Site\SoutienSite::CLE_REGLAGE)));
+        self::assertNull(CatalogueSynchro::typeDe(new \App\Entity\CompteClient()));
+    }
+
     public function testLaSuspensionDeLEspaceClientDescendSansSonMotif(): void
     {
         $suspension = CatalogueSynchro::types()['suspension_espace'];

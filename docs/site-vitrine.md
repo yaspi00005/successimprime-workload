@@ -19,6 +19,8 @@ Jalon J6. Le site public de Succès Imprim, servi par la même application que l
 | Suivre ma commande | 10 | /suivre-ma-commande |
 | Contact, demande de devis | 11 | /contact, /demander-un-devis |
 | Conseils | 12 | /conseils |
+| Nos actions sociales | demande du 16/10/2026 | /nos-actions-sociales (introuvable tant qu'aucune action n'est montrée, voir plus bas) |
+| QR code « Nous soutenir » | demande du 17/10/2026 | /nous-soutenir/qr-code.svg (introuvable sans lien ou sans QR) |
 
 Ces adresses sont publiques (`config/packages/security.yaml`). Une page pas encore construite n'apparaît ni dans le menu ni dans le pied de page : `site_lien()` renvoie null tant que sa route n'existe pas.
 
@@ -51,7 +53,7 @@ Le pied de page affiche « Succès Imprim est un nom commercial de Madial Group 
 Règles complètes pour une nouvelle page : **docs/referencement.md**.
 
 - Adresse du site : champ « Site » de l'entité Succès Imprim (Réglages › Entités et en-têtes). Adresses canoniques, plan du site, robots.txt et images de partage l'utilisent, jamais l'adresse de l'ERP local.
-- /sitemap.xml (serveur en ligne seulement) : l'accueil, les pages du menu et du pied de page qui existent, la demande de devis, les pages de contenu publiées, les conseils, avec la date de dernière modification quand elle est connue et les photos (réalisations, conseils). Une page à contenu variable s'y ajoute en écrivant un service qui implémente `App\Service\Site\SourcePlanSite`.
+- /sitemap.xml (serveur en ligne seulement) : l'accueil, les pages du menu et du pied de page qui existent, la demande de devis, les pages de contenu publiées, les conseils, « Nos actions sociales » quand une action est montrée (sans ses photos), avec la date de dernière modification quand elle est connue et les photos (réalisations, conseils). Une page à contenu variable s'y ajoute en écrivant un service qui implémente `App\Service\Site\SourcePlanSite`.
 - /robots.txt : en ligne, tout est permis sauf l'espace client, la connexion, l'API, l'administration et les liens privés ; sur l'ERP local, tout est interdit. En-tête `X-Robots-Tag: noindex` sur tout l'ERP local et, en ligne, sur tout ce qui n'est pas une page publique du site (`ReferencementSubscriber`).
 - Chaque page a son titre (60 caractères au plus), sa description, un seul `<h1>`, son adresse canonique sans paramètres et ses balises de partage (Open Graph, Twitter) avec une image 1 200 × 630. Données structurées : fiche de l'imprimerie (accueil, contact, à propos), fil d'Ariane, produits avec leur prix de départ, questions fréquentes, conseils.
 - Réglages › Site vitrine › Référencement : codes de vérification Google Search Console et Bing, fiche Google, réseaux sociaux, et la liste de ce qui manque encore pour Google.
@@ -85,7 +87,7 @@ Dix photos envoyées par Yaya le 15/10/2026 « pour le site » (originaux dans /
 | Livreur à moto (`livraison-moto-bamako`) | « Nos engagements », à côté de la précédente |
 | Fourgon habillé (`fourgon-publicitaire-succes-imprim`) | « Nos produits », encadré « Un autre support, une autre taille ? » |
 
-Une photo ne revient jamais deux fois dans une page. Les cartes produit gardent leurs dessins (une photo par produit se répéterait), comme les réalisations sans photo, le guide, la FAQ et les conseils.
+Une photo ne revient jamais deux fois dans une page. Les cartes produit ont leur propre photo depuis le 18/10/2026 (« Photos des produits » plus bas) ; les réalisations sans photo, le guide, la FAQ et les conseils gardent leurs dessins.
 
 Choix automatiques (`App\Service\Site\PhotosSite`) :
 - **Cartes de l'accueil** : d'après la famille de l'univers (`PhotosSite::FAMILLES` : grand format, petit format, textile, signalétique). Un univers sans photo libre garde son icône.
@@ -119,6 +121,30 @@ Site en ligne en production (APP_ENV=prod, HTML compressé), téléphone 390 px,
 
 Accueil avant les photos : environ 60 Ko. Ces chiffres comptent la feuille `site-contenu.css` non compressée par le serveur d'essai (24 Ko, environ 5 Ko compressée chez LWS). Le texte s'affiche toujours au premier aller-retour : premier affichage de l'accueil en 0,8 s en « Fast 3G » et en 2,2 s en « 3G lente » (le minimum, 2 s d'attente par requête, comme avant les photos) ; la photo du haut arrive ensuite (2,0 s en Fast 3G, 7,2 s en 3G lente) sans retarder la lecture.
 
+### Photos des produits (envoyées le 16/10/2026)
+
+Douze visuels envoyés par Yaya le 16/10/2026 (« images des produits sur le site à remplacer », décrits dans /mnt/project-files/.notes/inputs.md). Ce sont des **maquettes de présentation sur fond blanc**, aux logos Succès Imprim ou Madial Group (« MDG », la société de Yaya), pas des travaux de clients. Les PNG envoyés ne sont pas dans le dépôt : seules les versions WebP le sont.
+
+| Photo (`public/images/site/produits/`) | Produits qui la prennent (mots du nom) | Produit de la démonstration |
+|---|---|---|
+| `vitrine-micro-perforee` | micro-perforé, vitrophanie | Micro-perforé vitrine |
+| `kakemono` | kakémono | Kakémono 80 × 180 cm |
+| `roll-up` | roll-up | Roll-up 85 × 200 cm |
+| `panneau-akylux` | Akylux, panneau, Forex, Dibond | Panneau Akylux |
+| `casquette` | casquette | Casquette personnalisée |
+| `polo` | polo | Polo personnalisé |
+| `t-shirt` | t-shirt, tee-shirt, DTF | T-shirt personnalisé DTF |
+| `brochure` | brochure, catalogue, livret, magazine, dépliant | Brochure A4 8 pages |
+| `affiches` | affiche, poster | Affiches A3 |
+| `cartes-de-visite` | carte(s) de visite | Cartes de visite |
+| `flyers` | flyer, prospectus, tract | Flyers A5 |
+| `vinyle-adhesif` | vinyle, adhésif, autocollant, sticker | Vinyle adhésif |
+
+- **Choix** : `App\Service\Site\PhotosProduits` lit le nom du produit (mot pris en début de mot) et prend la première photo de la liste dont un mot y est : la vitrine micro-perforée passe avant le rouleau de vinyle, le kakémono avant le roll-up. Un produit sans mot reconnu garde son dessin : dans la démonstration, **« Bâche imprimée » n'a pas de photo** (ni X-banner, Door Shape ou banderole s'ils sont créés). Un nouveau produit prend la photo dès que son nom contient un des mots.
+- **Où** : cartes de « Nos produits » (photo à la place du dessin, sur fond blanc ; les dessins ne sont écrits dans la page que si un produit montré n'a pas de photo) et vignettes de « Mes produits » dans l'espace client quand le produit n'a pas encore de BAT à montrer. Les cartes des univers de l'accueil gardent leurs photos de scène (« Où elles sont » plus haut).
+- **Fichiers** : carrés, en 240, 360 et 480 px, WebP simple sans aucune métadonnée, 2 à 32 Ko chacun. Dans la page : `srcset` et `sizes` (`site/_photo.html.twig`), largeur et hauteur écrites, chargement différé sauf les quatre premières cartes. Texte alternatif en français qui décrit la maquette (`PhotosProduits::PHOTOS`).
+- **Remplacer** : refaire les trois largeurs sous le même nom (par exemple `cwebp -q 80 -resize 480 480 -metadata none nouvelle.png -o flyers-480.webp`, de même en 360 et 240), puis lancer `PhotosProduitsTest` (largeurs, carré, poids, aucune métadonnée).
+
 ## Produits et calculateur (maquettes 02 et 03)
 
 Code : `SiteProduitsController`, `App\Service\Site\CatalogueSite` et `App\Service\Site\Calculateur`, gabarits `site/produits.html.twig` et `site/calculateur.html.twig`, feuille `public/css/site-produits.css`.
@@ -126,7 +152,7 @@ Code : `SiteProduitsController`, `App\Service\Site\CatalogueSite` et `App\Servic
 **Nos produits** (`app_site_produits`, /nos-produits)
 - Catégories publiées, avec leurs produits publiés et actifs. Une catégorie et sa copie de démonstration « (démo) » ne font qu'un filtre, comme sur l'accueil ; `?categorie=<id>` filtre sans JavaScript.
 - Prix de départ : la configuration la moins chère au prix normal, avec son unité (le m², l'unité...). Un produit sans configuration chiffrable affiche « Prix sur devis ».
-- Pas de photo de produit en base : chaque carte a un dessin SVG choisi d'après le nom du produit (`CatalogueSite::ILLUSTRATIONS`), sinon d'après sa famille. En bas de page, l'encadré « Un autre support, une autre taille ? » porte la photo du fourgon habillé (« Photos du site »).
+- Photo du produit d'après son nom (« Photos des produits » plus haut) ; sans photo, un dessin SVG choisi d'après le nom du produit (`CatalogueSite::ILLUSTRATIONS`), sinon d'après sa famille. En bas de page, l'encadré « Un autre support, une autre taille ? » porte la photo du fourgon habillé (« Photos du site »).
 
 **Calculateur** (`app_site_calculateur`, /calculateur)
 - Paramètres : `produit` (identifiant de la configuration, comme dans l'espace client), `categorie`, `largeur` et `hauteur` en cm, `quantite`, `finitions[]`.
@@ -198,6 +224,8 @@ Droit fin **Site vitrine** (`ROLE_SITE_VITRINE`), donné à la Direction ; il se
 | Annonces | Texte (200 caractères, une ligne), lien facultatif (page du site ou adresse web) et son texte, style (information, promotion, alerte), où la montrer (site public, espace client, les deux), premier et dernier jour, ordre | Montrée seulement « Active » et dans sa période (dates comprises ; sans date : tout de suite et sans fin). Voir « Bandes d'annonces » ci-dessous. |
 | Chiffres | Afficher ou non, règle des « projets réalisés », seuil | Voir docs/site-public.md. Un chiffre nul ou sous le seuil n'est pas montré. |
 | Référencement | Codes Google Search Console et Bing, lien de la fiche Google, pages des réseaux sociaux | Valeur refusée (mauvais domaine, code illisible) : l'ancienne reste. Voir docs/referencement.md. |
+| Actions sociales | Titre, date, lieu (facultatif), texte, 1 à 10 photos, ordre | Montrée seulement publiée, avec son texte et au moins une photo. Voir « Nos actions sociales » plus bas. |
+| Nous soutenir | Lien « Laisser un avis » de la fiche Google, QR code oui ou non | Lien refusé (pas https, pas Google) : l'ancien reste. Vide : « Nous soutenir » disparaît partout. Voir plus bas. |
 
 Une case « publié » cochée alors qu'une règle manque : la fiche est enregistrée **sans être publiée**, avec le message de ce qui manque.
 
@@ -250,6 +278,28 @@ Aucun chiffre d'activité, aucune note ni aucun nom de client n'a été inventé
 - Annonces : `src/Entity/Annonce.php`, `src/Repository/AnnonceRepository.php`, `src/Twig/AnnoncesExtension.php` (`site_annonces()`), `templates/site/_annonces.html.twig`.
 - `templates/site_contenu/` (admin), `templates/site/` (`realisations`, `equipements`, `guide`, `a_propos`, `engagements`, `faq`, `conseils`, `conseil`, `_chiffres`, `_partenaires`, `_avis`), `public/css/site-contenu.css`, `public/css/reglages-site.css`.
 - Chaque page est servie par `SiteController::cache()` (5 minutes dans le navigateur).
+
+## Nos actions sociales
+
+Demande de Yaya du 16/10/2026 : « Sur le site vitrine, il faut prévoir nos actions sociales. […] Pour un premier temps, ça ne sera pas visible. Mais dès qu'on renseigne les images, les textes, que cette partie soit visible sur notre site. »
+
+- **Saisie** : Réglages › Site vitrine › onglet **Actions sociales** (droit Site vitrine, ERP local seulement), « Nouvelle action » : titre, date, lieu facultatif, texte (Markdown simplifié, comme les pages), ordre (0 en premier ; à égalité, la plus récente), photos, case « Publié sur le site ». L'action descend au site par la synchronisation (type `site_action_sociale`, ses photos avec le type `site_image`).
+- **Invisible tant qu'elle est vide** : tant qu'aucune action n'est publiée avec un texte et au moins une photo, `/nos-actions-sociales` répond 404, et il n'y a ni lien dans le pied de page, ni bloc sur l'accueil, ni place dans `/sitemap.xml`, ni données structurées. Dès la première action montrée, la page, le bloc de l'accueil (les trois premières actions) et le lien « Nos actions sociales » du pied de page apparaissent seuls, à la synchronisation suivante (les pages restent 5 minutes dans le cache du navigateur). Le menu principal garde ses sept entrées. Une action cochée « publiée » sans texte ou sans photo est enregistrée **sans être publiée**, avec ce qui manque ; la liste la marque « Incomplète ».
+- **Photos** (10 au plus par action, la première est la photo principale) : JPG, PNG ou WebP de 15 Mo au plus, lues par GD, réduites à 1 200 px et **réencodées** : ni EXIF, ni position GPS, ni nom d'appareil. Contrairement aux autres images du site, **l'original envoyé n'est pas gardé** (`ImagesSite::oublierOriginal`) : ce sont souvent des personnes, des enfants. Description, ordre et retrait de chaque photo dans la fiche.
+- **Accord** : la fiche et la liste rappellent qu'une personne reconnaissable ne paraît qu'avec son accord, un enfant avec celui de ses parents (sinon une photo de dos, de loin ou floutée), et jamais un nom d'enfant dans le texte.
+- **Sur le site** : page « Nos actions sociales » (photos, date, lieu, texte), image de partage du site et non la photo d'une action ; dans le plan du site, la page seule, sans ses photos (pas poussées vers la recherche d'images).
+- Code : `App\Entity\ActionSociale`, `ActionSocialeRepository`, `App\Service\Site\ActionsSociales` (partie visible ou non, plan du site), `SiteSocialController`, `App\Twig\SiteSocialExtension` (`site_actions_sociales()`), gabarits `site/actions_sociales`, `site/_accueil_social`, `site_contenu/_onglet_actions`, `_fiche_action`, `_fiche_action_photos`, feuille `public/css/site-social.css` (écrite dans la page seulement quand un bloc est montré). Migration `Version20261018104500`.
+
+## Nous soutenir (avis Google)
+
+Demande de Yaya du 17/10/2026 : « une partie sur le site et espace client pour nous soutenir https://g.page/r/Cb0JM2s-39CFECE/review ».
+
+- **Réglage** : Réglages › Site vitrine › onglet **Nous soutenir** : le lien « Laisser un avis » (par défaut celui envoyé par Yaya) et « Montrer le QR code ». Seul un lien https d'un domaine Google est accepté (g.page, google.com, goo.gl, g.co) ; un lien refusé garde l'ancien. Lien vide : plus rien nulle part. Rangé dans le réglage du site `soutien`, il descend avec les autres réglages du site (type `site_reglage`).
+- **Site public** : bloc « Nous soutenir » en bas de l'accueil (texte, bouton « Laisser un avis Google », QR code sur ordinateur), lien « Nous soutenir » dans le pied de page de chaque page, et rappel en bas de « Nos actions sociales ». Chaque lien s'ouvre dans un nouvel onglet (`target="_blank" rel="noopener"`).
+- **Espace client** : carte « Nous soutenir » sur le tableau de bord (QR code sur ordinateur) ; « × » la ferme **pour cette personne seulement** et pour toujours (`compte_client.soutien_masque_le`, en ligne, rien ne monte au local ; permis aussi à un compte « Lecture · suivi ») ; sans JavaScript, le formulaire recharge la page. Invitation sur chaque commande livrée ou retirée. Ni montant ni donnée du client.
+- **QR code** : fait par le site avec la bibliothèque des QR des factures (endroid/qr-code), en SVG, à `/nous-soutenir/qr-code.svg` ; aucun appel extérieur. Son adresse change avec le lien (`?v=`), le navigateur le garde un jour. L'onglet du réglage le montre, à imprimer pour le comptoir.
+- **Pas de suivi** : aucun script de mesure ni compteur de clics sur ces liens. Même texte pour tous, quelle que soit la note donnée à l'atelier : Google interdit de ne solliciter que les clients contents.
+- Code : `App\Service\Site\SoutienSite`, `SiteSocialController::qrCode`, `EspaceSoutienController` (`app_espace_soutien_masquer`), `SiteSocialExtension` (`site_soutien()`, `espace_soutien()`, `espace_soutien_commande()`), gabarits `site/_accueil_social`, `site_contenu/_onglet_soutien`, `espace/app/_tableau_soutien`, `espace/app/_soutien_commande`, script `public/js/espace-soutien.js`.
 
 ## Carte de la boutique (page Contact)
 

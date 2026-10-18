@@ -5,7 +5,7 @@ namespace App\Service\Site;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Photos des produits (envoyées par Yaya le 18/10/2026, docs/site-vitrine.md,
+ * Photos des produits (envoyées par Yaya le 16/10/2026, docs/site-vitrine.md,
  * « Photos des produits ») : une par sorte de produit, choisie d'après le
  * nom du produit, sur la page « Nos produits » et dans « Commander » de
  * l'espace client quand le produit n'a pas encore de BAT à montrer.

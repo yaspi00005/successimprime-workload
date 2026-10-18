@@ -79,7 +79,7 @@ final class TypesCorbeille
      * Colonnes de montant, de coût ou de salaire : masquées dans le détail
      * pour qui n'est pas la Direction.
      */
-    public const MONTANTS = '/(montant|prix|total|solde|cout|marge|salaire|plafond|remise|acompte|tarif|valeur|credit|debit|frais|reste|paye|budget|chiffre|capital|amortissement)/i';
+    public const MONTANTS = '/(montant|prix|total|solde|cout|marge|salaire|plafond|remise|acompte|tarif|valeur|credit|debit|frais|reste|paye|budget|chiffre|capital|amortissement|forfait|minimum_commande|surfacturation)/i';
 
     /**
      * @var array<string, array{0: string, 1: list<string>, 2: string}> table => [type, colonnes du titre, droit]

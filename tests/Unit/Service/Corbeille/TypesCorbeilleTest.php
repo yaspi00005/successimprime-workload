@@ -155,7 +155,7 @@ final class TypesCorbeilleTest extends TestCase
 
     public function testMontants(): void
     {
-        foreach (['montant_ttc', 'prix_unitaire', 'total_ht', 'salaire_base', 'reste_a_payer'] as $colonne) {
+        foreach (['montant_ttc', 'prix_unitaire', 'total_ht', 'salaire_base', 'reste_a_payer', 'forfait', 'minimum_commande', 'taux_surfacturation'] as $colonne) {
             self::assertTrue(TypesCorbeille::estMontant($colonne), $colonne);
         }
         self::assertFalse(TypesCorbeille::estMontant('designation'));

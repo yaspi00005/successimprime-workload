@@ -33,7 +33,8 @@
 					</div>
 					<div class="ec-cr-texte">
 						<span class="ec-petit">{{ c.numero }} · {{ c.creeLe|date('d/m/Y') }}{{ c.auteur ? ' · ' ~ c.auteur }}</span>
-						<b>{{ c.designation }}</b>
+						{# Nom commercial du produit d'abord, la désignation en petit (docs/noms-commerciaux.md). #}
+						<b>{{ c|ligne_client('Article de l\'Atelier 3D') }}</b>
 						<span class="ec-petit">{{ c.resumeTailles }}</span>
 						<ul class="ec-cr-marquage">
 							{% for l in c.resumeMarquage %}<li>{{ l }}</li>{% endfor %}

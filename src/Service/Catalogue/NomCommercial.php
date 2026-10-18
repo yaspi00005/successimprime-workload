@@ -167,7 +167,8 @@ final class NomCommercial
     /**
      * Élément du catalogue vendu par une ligne (devis, commande, bon de
      * livraison) : l'article de stock pour une vente d'article, sinon le
-     * produit ; rien pour une saisie libre.
+     * produit ; rien pour une saisie libre. Une création de l'Atelier 3D
+     * donne le produit de sa configuration.
      */
     public static function elementDeLigne(object $ligne): ?AUnNomCommercial
     {
@@ -188,8 +189,14 @@ final class NomCommercial
         if ($produit instanceof AUnNomCommercial) {
             return $produit;
         }
+        $article = method_exists($ligne, 'getArticle') ? $ligne->getArticle() : null;
+        if ($article instanceof AUnNomCommercial) {
+            return $article;
+        }
+        // Création de l'Atelier 3D (« Mes créations ») : le produit de sa configuration.
+        $configuration = method_exists($ligne, 'getConfiguration') ? $ligne->getConfiguration() : null;
 
-        return method_exists($ligne, 'getArticle') ? $ligne->getArticle() : null;
+        return $configuration instanceof ProduitConfiguration ? $configuration->getProduit() : null;
     }
 
     /**

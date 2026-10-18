@@ -5,6 +5,7 @@ namespace App\Tests\Unit\Service\Catalogue;
 use App\Entity\Articles;
 use App\Entity\BonLivraisonLigne;
 use App\Entity\CommandesDetails;
+use App\Entity\CreationAtelier;
 use App\Entity\DevisDetails;
 use App\Entity\Format;
 use App\Entity\ProduitConfiguration;
@@ -90,6 +91,12 @@ final class NomCommercialTest extends TestCase
         $bl = (new BonLivraisonLigne())->setCommandeDetail((new CommandesDetails())->setProduit($produit));
         self::assertSame($produit, NomCommercial::elementDeLigne($bl));
         self::assertNull(NomCommercial::elementDeLigne(new BonLivraisonLigne()));
+        // Création de l'Atelier 3D (« Mes créations ») : le produit de sa configuration.
+        $tshirt = (new Produits())->setNom('T-shirt personnalisé DTF')->setNomCommercial('T-shirt imprimé');
+        $creation = (new CreationAtelier())->setDesignation('T-shirt personnalisé DTF · Blanc')->setConfiguration((new ProduitConfiguration())->setProduit($tshirt));
+        self::assertSame($tshirt, NomCommercial::elementDeLigne($creation));
+        self::assertSame('T-shirt imprimé · T-shirt personnalisé DTF · Blanc', NomCommercial::texteLigne($creation->getDesignation(), $tshirt));
+        self::assertNull(NomCommercial::elementDeLigne(new CreationAtelier()));
     }
 
     public function testConfigurationDuCatalogue(): void

@@ -52,7 +52,7 @@ final class CoqueEspace implements ResetInterface
         ['cle' => 'creations', 'route' => 'app_espace_creations', 'libelle' => 'Mes créations', 'icone' => 'M8.5 3 4 5 2 9.5l3 1.8 1-1.3V21h12V10l1 1.3 3-1.8L20 5l-4.5-2c-.6 1.6-1.9 2.6-3.5 2.6S9.1 4.6 8.5 3z',
             'pages' => ['app_espace_creation', 'app_espace_atelier'], 'visible' => self::VISIBLE_ECRIT, 'onglet' => 'commandes'],
         ['cle' => 'produits', 'route' => 'app_espace_produits', 'libelle' => 'Mes produits', 'icone' => 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z',
-            'pages' => ['app_espace_produits'], 'visible' => self::VISIBLE_ECRIT, 'onglet' => 'commandes'],
+            'pages' => ['app_espace_produits', 'app_espace_panier'], 'visible' => self::VISIBLE_ECRIT, 'onglet' => 'commandes'],
         ['cle' => 'devis', 'route' => 'app_espace_devis', 'libelle' => 'Mes devis', 'icone' => 'M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm8 1.5V8h4.5M8 13h8M8 17h5',
             'pages' => ['app_espace_devis'], 'visible' => self::VISIBLE_ECRIT, 'onglet' => 'commandes'],
         ['cle' => 'commandes', 'route' => 'app_espace_commandes', 'libelle' => 'Mes commandes', 'icone' => 'M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9zM7.5 7.5h.01',

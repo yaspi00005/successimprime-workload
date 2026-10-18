@@ -180,6 +180,17 @@ final class ProduitsClientController extends AbstractController
             ->setArrondiSuperieurImpose('superieur' === $saisie->getString('arrondi'))
             ->setActif($saisie->getBoolean('actif'));
 
+        // Prix par quantité (MP04) : lignes vides ignorées.
+        $paliers = [];
+        foreach ($saisie->all('paliers') as $palier) {
+            $q = \is_array($palier) ? self::nombre((string) ($palier['q'] ?? '')) : null;
+            $prix = \is_array($palier) ? self::nombre((string) ($palier['prix'] ?? '')) : null;
+            if (null !== $q && null !== $prix) {
+                $paliers[] = ['q' => (int) $q, 'prix' => (int) $prix];
+            }
+        }
+        $produit->setPaliers($paliers);
+
         $choisies = array_map('intval', $saisie->all('finitions'));
 
         foreach ($produit->getFinitions()->toArray() as $finition) {

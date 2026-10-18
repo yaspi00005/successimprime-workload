@@ -26,11 +26,18 @@ Toutes les saisies passent par `src/Service/Clients/EditionClient.php`.
 - **Seuils de la direction** : les demandes suivantes ne sont pas appliquées si elles viennent de quelqu'un sans `ROLE_ADMIN` :
   - une remise au-delà de 10 % ;
   - un plafond au-delà de 500 000 F ;
-  - le passage en grille Revendeur (B2B).
+  - le passage en grille Revendeur (B2B) ;
+  - la dispense d'acompte, ou un acompte à 0 % (et la fin de la dispense).
 
   La grille Revendeur est réservée aux gens du métier de l'impression, démarchés et qui connaissent les prix (précision de Yaya, 14/10/2026). Une entreprise, une ONG ou une administration paie le prix normal (B2C) tant qu'elle n'est pas dans ce cas ; elle garde alors la fidélité et les promotions.
 
   La fiche garde sa valeur. La direction reçoit une notification, et le journal note une ligne « Demande à valider ».
+- **Dispensé d'acompte** (case du bloc « Conditions commerciales », 18/10/2026) : certains clients ne paient rien d'avance. Cochée par la direction (`ROLE_ADMIN`) ; pour les autres, le changement part en demande à la direction. Partout où un acompte est proposé, il vaut alors 0 % (`DelaisCommande::pourcentageAcompte`) :
+  - panier de « Mes produits » : pas d'acompte, bouton « Valider la commande », la commande est lancée dès son arrivée au local (docs/mes-produits.md) ;
+  - nouvelle commande en ligne : paiement « Payer plus tard (sans acompte) » choisi par défaut ;
+  - « Factures et paiements » de l'espace client : aucun acompte à payer ;
+  - comptoir : la caisse ne s'ouvre pas sur un acompte après la saisie, et l'écran de saisie l'annonce.
+  La fiche affiche « dispensé d'acompte » dans ses conditions.
 - **Journal** : chaque changement est enregistré dans `modification_client`, avec l'ancienne valeur, la nouvelle, l'auteur, l'heure et l'écran d'origine. La provenance vaut ERP local, Admin en ligne, Espace client ou Synchronisation. Rien ne s'efface.
 - **Montants selon les droits** :
   - le CA 12 mois demande `ROLE_STATS_VENTES` ;

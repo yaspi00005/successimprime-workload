@@ -38,7 +38,9 @@
 							<small class="d-block text-muted">{{ produit.reference }}{% set f = p.format(produit)|trim %}{% if f %} · {{ f }}{% endif %}{% if produit.support %} · {{ produit.support|texte_interne }}{% endif %}{% for finition in produit.finitions %} · {{ finition|texte_interne }}{% endfor %}</small>
 							<span class="d-flex flex-wrap gap-1 mt-1">
 								<span class="si-pastille si-pastille-{{ produit.uniteVente == 'm2' ? 'orange' : 'bleu' }}">{{ {'piece': "à l'unité", 'm2': 'au m²', 'piece_ou_m2': 'm² ou pièces', 'lot': 'par lot'}[produit.uniteVente] }}</span>
-								{% if produit.batValide %}<span class="si-pastille si-pastille-vert">BAT figé</span>{% else %}<span class="si-pastille si-pastille-gris">Sans BAT</span>{% endif %}
+								{% if produit.etatLien == 'suspendu' %}<span class="si-pastille si-pastille-orange">Nouvelle image · au prépresse</span>{% elseif produit.fichiersLies is not empty %}<span class="si-pastille si-pastille-vert">Fichier lié</span>{% elseif produit.batValide %}<span class="si-pastille si-pastille-vert">BAT figé</span>{% elseif produit.origine == 'client' %}<span class="si-pastille si-pastille-orange">Fichier à préparer</span>{% else %}<span class="si-pastille si-pastille-gris">Sans BAT</span>{% endif %}
+								{% if produit.origine == 'client' %}<span class="si-pastille si-pastille-gris">ajouté par le client</span>{% endif %}
+								{% if produit.prixUnitaire <= 0 and produit.paliers is empty %}<span class="si-pastille si-pastille-orange">prix à fixer</span>{% endif %}
 								<span class="si-pastille si-pastille-gris">commandé {{ nombresCommandes[produit.id]|default(0) }} fois</span>
 							</span>
 						</span>
@@ -110,6 +112,21 @@
 							<label class="form-label small" for="pcPrix">Prix négocié TTC (F par unité de vente)</label>
 							<input id="pcPrix" name="prixUnitaire" inputmode="numeric" class="form-control form-control-sm" value="{{ choisi ? choisi.prixUnitaire }}" required>
 						</div>
+						<div class="col-12">
+							<label class="form-label small d-block mb-1">Prix par quantité (F TTC la pièce, facultatif)</label>
+							<small class="d-block text-muted mb-1">Le client voit ces paliers dans « Mes produits ». Sans palier, le prix négocié s'applique à toute quantité.</small>
+							{% set paliers = choisi ? choisi.paliers : [] %}
+							<div class="row g-1">
+								{% for i in 0..3 %}
+									<div class="col-sm-6">
+										<div class="input-group input-group-sm">
+											<input name="paliers[{{ i }}][q]" inputmode="numeric" class="form-control" placeholder="dès … pcs" aria-label="Palier {{ i + 1 }} : dès combien de pièces" value="{{ paliers[i].q ?? '' }}">
+											<input name="paliers[{{ i }}][prix]" inputmode="numeric" class="form-control" placeholder="F / pce" aria-label="Palier {{ i + 1 }} : prix de la pièce" value="{{ paliers[i].prix ?? '' }}">
+										</div>
+									</div>
+								{% endfor %}
+							</div>
+						</div>
 						<div class="col-sm-6">
 							<label class="form-label small" for="pcArrondi">Arrondi si saisie en m²</label>
 							<select id="pcArrondi" name="arrondi" class="form-select form-select-sm">
@@ -151,7 +168,18 @@
 						<label class="form-check-label small" for="pcActif">Visible dans l'espace du client</label>
 					</div>
 
-					{% if choisi %}
+					{% if choisi and (choisi.origine == 'client' or choisi.fichiersLies is not empty) %}
+						<div class="si-encart {{ choisi.estPret ? 'si-fond-vert-clair' : 'si-fond-bleu-clair' }} mb-2">
+							<strong>Fichier traité lié (dossier de l'atelier)</strong>
+							<small class="d-block text-muted">
+								{% if choisi.etatLien == 'suspendu' %}Le client a remplacé l'image : lien suspendu, à refaire au prépresse.
+								{% elseif choisi.fichiersLies is empty %}Pas encore lié : le prépresse prépare le fichier.
+								{% else %}{% for f in choisi.fichiersLies %}{{ f.nom }} ({{ choisi.libelleTaille(f.l, f.h, choisi.rond) }}, lié le {{ f.le|date('d/m') }}){{ not loop.last ? ' · ' }}{% endfor %}{% endif %}
+								{% if is_granted('ROLE_PREPRESSE') %} · <a href="{{ path('app_produits_clients_prepresse_client', {publicId: client.publicId, produit: choisi.id}) }}" class="si-lien-discret">Lier les fichiers</a>{% endif %}
+							</small>
+						</div>
+					{% endif %}
+					{% if choisi and choisi.origine != 'client' %}
 						<div class="si-encart si-fond-vert-clair">
 							<strong>Fichier et BAT figés</strong>
 							<small class="d-block text-muted">
@@ -160,6 +188,8 @@
 								{% if choisi.batValide %} · réutilisé sans PAO{% else %} · un BAT sera demandé à la première commande{% endif %}
 							</small>
 						</div>
+					{% endif %}
+					{% if choisi %}
 						{% if cout and is_granted('ROLE_COUT_MARGE') %}
 							<div class="si-encart si-fond-bleu-clair">
 								<strong>Coût de revient</strong>
@@ -170,7 +200,7 @@
 								</small>
 							</div>
 						{% endif %}
-						<small class="d-block text-muted mb-2">Changer le visuel ou la taille : créez un nouveau produit, il demandera un nouveau BAT.</small>
+						{% if choisi.origine != 'client' %}<small class="d-block text-muted mb-2">Changer le visuel ou la taille : créez un nouveau produit, il demandera un nouveau BAT.</small>{% endif %}
 					{% endif %}
 					<button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Enregistrer</button>
 				</form>

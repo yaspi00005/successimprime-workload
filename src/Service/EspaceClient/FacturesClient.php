@@ -44,7 +44,7 @@ final class FacturesClient
     public function aPayer(Clients $client, \DateTimeImmutable $maintenant): array
     {
         $commandes = array_values(array_filter($this->espace->commandes($client, 300, true), self::payable(...)));
-        $elements = self::elementsDe($commandes, $this->facturesParCommande($client), $this->acompteDefaut(), $client->getAcompte(), $maintenant);
+        $elements = self::elementsDe($commandes, $this->facturesParCommande($client), $this->acompteDefaut(), $client->isSansAcompte() ? 0 : $client->getAcompte(), $maintenant); // dispensé d'acompte : 0 %
         $total = array_sum(array_map(static fn (ElementAPayer $e): int => $e->montant, $elements));
 
         return [

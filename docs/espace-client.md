@@ -139,6 +139,14 @@ Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, clo
 
 **Captures** : `/mnt/project-files/captures/commande-en-ligne/`.
 
+## Mes produits et panier (MP01 à MP07, construit le 18/10/2026)
+
+Voir docs/mes-produits.md. Le client ajoute ses produits (image, nom, type, dimensions), l'atelier lie le fichier d'impression, puis il commande par un panier (`/espace/panier`, gardé dans la session). Droits :
+
+- un demandeur et la lecture seule ne voient aucun prix (cartes, fenêtre de commande, volet et page du panier, réponses JSON du calcul et de l'ajout) ; le demandeur « Envoie la demande » à son valideur ;
+- l'acompte ne se montre qu'à qui paie ; un client dispensé d'acompte valide sans payer ;
+- la lecture seule ne peut ni ajouter de produit, ni remplir, ni valider le panier (`DroitsEspace::PAGES_ECRITURE`).
+
 ## Comptes entreprise (19, construit le 13/10/2026)
 
 Une fiche entreprise ou B2B peut avoir plusieurs personnes, chacune avec son numéro et ses droits (`CompteClient.droits`). Un particulier n'a qu'un compte et fait tout. Code : `src/Service/EspaceClient/CompteEntreprise.php`, `src/Controller/EspaceEntrepriseController.php`.

@@ -257,6 +257,14 @@ class Clients
     #[ORM\Column(nullable: true)]
     private ?int $acompte = null;
 
+    /**
+     * Client dispensé d'acompte (case de la fiche, réservée à la direction) :
+     * il valide ses commandes sans rien payer d'avance, partout où un
+     * acompte est demandé (panier, commande en ligne, devis, comptoir).
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $sansAcompte = false;
+
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $moyenPrefere = null;
 
@@ -300,6 +308,8 @@ class Clients
     public function setRemiseHabituelle(?float $v): static { $this->remiseHabituelle = $v !== null && $v > 0 ? min(100.0, round($v, 2)) : null; return $this; }
     public function getAcompte(): ?int { return $this->acompte; }
     public function setAcompte(?int $v): static { $this->acompte = $v !== null && $v >= 0 ? min(100, $v) : null; return $this; }
+    public function isSansAcompte(): bool { return $this->sansAcompte; }
+    public function setSansAcompte(bool $v): static { $this->sansAcompte = $v; return $this; }
     public function getMoyenPrefere(): ?string { return $this->moyenPrefere; }
     public function setMoyenPrefere(?string $v): static { $this->moyenPrefere = $v !== null && isset(self::MOYENS_PAIEMENT[$v]) ? $v : null; return $this; }
     public function getMoyenPrefereLabel(): ?string { return $this->moyenPrefere !== null ? self::MOYENS_PAIEMENT[$this->moyenPrefere] : null; }

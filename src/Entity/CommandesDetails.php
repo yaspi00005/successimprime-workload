@@ -63,6 +63,16 @@ class CommandesDetails
     #[ORM\Column(length: 10, nullable: true)]
     private ?string $uniteDemandee = null;
 
+    /*
+     * Fichier lie du produit du client retenu a la commande (MP05/MP06) :
+     * nom, empreinte SHA-256, taille validee (mm) et date du lien. Seulement
+     * la reference : le fichier reste sur le serveur de l'atelier. Le local
+     * la compare a son produit et au fichier du dossier avant l'impression
+     * (App\Service\ProduitsClient\Aiguillage).
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $fichierLie = null;
+
     #[ORM\Column(length: 20, options: ['default' => 'automatique'])]
     #[Assert\Choice(
         choices: ['automatique', 'manuel', 'libre'],
@@ -714,6 +724,19 @@ class CommandesDetails
     public function setProduitClient(?ProduitClient $produitClient): static
     {
         $this->produitClient = $produitClient;
+
+        return $this;
+    }
+
+    /** @return array{nom: string, empreinte: string, l: float, h: float, le: ?string}|null */
+    public function getFichierLie(): ?array
+    {
+        return $this->fichierLie;
+    }
+
+    public function setFichierLie(?array $fichierLie): static
+    {
+        $this->fichierLie = $fichierLie;
 
         return $this;
     }

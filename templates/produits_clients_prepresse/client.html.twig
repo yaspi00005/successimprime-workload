@@ -1,0 +1,262 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Prépresse › Produits des clients (maquette MP02, docs/mes-produits.md) :
+	chaque produit ajouté par le client est lié à son fichier traité du
+	dossier de l'atelier. Le serveur liste le dossier, contrôle le fichier et
+	garde son empreinte ; le navigateur ne lit jamais de chemin local.
+#}
+
+{% block title %}Produits clients · {{ client.nomComplet }}{% endblock %}
+{% block page_title %}Produits clients à préparer{% endblock %}
+{% block stylesheets %}<link href="{{ asset('css/produits-clients-prepresse.css') }}" rel="stylesheet">{% endblock %}
+
+{% macro badgeFichier(f) %}
+	{%- set ext = f.extension|default(f.nom|split('.')|last|lower) -%}
+	<span class="si-pcl-pdf{{ f.dossier|default(false) ? ' dossier' : (ext != 'pdf' ? ' autre') }}" aria-hidden="true">{{ f.dossier|default(false) ? '' : ext|slice(0, 4) }}</span>
+{%- endmacro %}
+{% import _self as m %}
+
+{% block body %}
+	{% set jeton = csrf_token('produits-clients-prepresse-' ~ client.id) %}
+	<div class="si-pcl-tete">
+		<div>
+			<small class="fil"><a href="{{ path('app_controle_pre_presse_index') }}" class="si-lien-discret">Prépresse</a> › <a href="{{ path('app_produits_clients_prepresse_index') }}" class="si-lien-discret">Produits clients à préparer</a></small>
+			<h2>{{ client.nomComplet }} · {{ client.code }}
+				{% if nouveaux > 0 %}<span class="si-pcl-nouveaux">{{ nouveaux }} nouveau{{ nouveaux > 1 ? 'x' }} produit{{ nouveaux > 1 ? 's' }}</span>{% endif %}
+			</h2>
+		</div>
+		<div class="d-flex gap-2">
+			{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_clients_produits', {publicId: client.publicId}) }}" class="btn btn-outline-primary btn-sm">Prix et réglages</a>{% endif %}
+			{% if suivant %}<a href="{{ path('app_produits_clients_prepresse_client', {publicId: suivant.publicId}) }}" class="btn btn-light btn-sm">Client suivant ›</a>{% endif %}
+		</div>
+	</div>
+
+	<div class="si-pcl-mise">
+		<div class="si-pcl-carte">
+			{% if produits is empty %}
+				<p class="text-muted mb-0">Ce client n'a pas de produit à préparer.</p>
+			{% else %}
+				<div class="si-pcl-entetes"><span>Image client</span><span>Produit</span><span>Fichier traité associé</span><span>Statut</span></div>
+				{% for p in produits %}
+					{% set image = p.image ?? p.fichier %}
+					{% set etats = etatsLiens[p.id]|default({}) %}
+					{% set commandees = tailles[p.id]|default([]) %}
+					{% set suspendu = p.etatLien == 'suspendu' %}
+					<form method="post" action="{{ path('app_produits_clients_prepresse_lier', {publicId: client.publicId}) }}" class="si-pcl-ligne{{ choisi and choisi.id == p.id ? ' choisi' }}" data-produit="{{ p.id }}" data-nom="{{ p.nom }}">
+						<input type="hidden" name="_token" value="{{ jeton }}">
+						<input type="hidden" name="produit" value="{{ p.id }}">
+						<input type="hidden" name="nom" value="" data-nom-fichier>
+						<span class="si-pcl-image">{% if image %}<img src="{{ path('app_fichier_visualiser', {id: image.id}) }}" alt="Image envoyée par le client" loading="lazy">{% else %}{{ p.nom|slice(0, 2)|upper }}{% endif %}</span>
+						<span class="si-pcl-produit">
+							<b>{{ p.nom }}</b>
+							<small>{{ [p.type, p.largeurMm ? p.libelleTaille(p.largeurMm, p.hauteurMm, p.rond)]|filter(v => v)|join(' · ') }}</small>
+							<span class="si-pcl-ref d-block">{{ p.reference }}{% if image %} · <a href="{{ path('app_fichier_visualiser', {id: image.id}) }}" target="_blank" rel="noopener" class="si-lien-discret">voir l'image</a>{% endif %}</span>
+							{% if commandees is not empty %}
+								<span class="si-pcl-commandees d-block">Commandé en
+									{% for t in commandees %}<button type="button" data-taille="{{ t.l }}x{{ t.h }}" title="Commande {{ t.ligne.commande.numero }}">{{ p.libelleTaille(t.l, t.h, p.rond) }}</button>{% endfor %}
+								</span>
+							{% endif %}
+						</span>
+						<div class="si-pcl-fichiers">
+							{% if not suspendu %}
+								{% for f in p.fichiersLies %}
+									{% set etat = etats[f.nom ~ '|' ~ f.l ~ 'x' ~ f.h]|default('identique') %}
+									<div class="si-pcl-fichier{{ etat != 'identique' ? ' alerte' }}">
+										{{ m.badgeFichier(f) }}
+										<span>
+											<b title="{{ f.nom }}">{{ f.nom }}</b>
+											<small>{{ p.libelleTaille(f.l, f.h, p.rond) }} · lié le {{ f.le|date('d/m') }} ·
+												{% if etat == 'modifie' %}<b class="d-inline text-danger">fichier modifié depuis le lien</b>{% elseif etat == 'introuvable' %}<b class="d-inline text-danger">introuvable dans le dossier</b>{% else %}empreinte enregistrée{% endif %}
+											</small>
+										</span>
+										<button type="submit" class="si-pcl-mini" form="delier-{{ p.id }}-{{ loop.index }}" title="Retirer cette taille validée">retirer</button>
+									</div>
+								{% endfor %}
+							{% endif %}
+							<div class="si-pcl-depot" data-depot tabindex="0">{{ p.fichiersLies is not empty and not suspendu ? 'glisser un fichier pour une autre taille' : 'glisser un fichier du dossier ici' }}</div>
+							<div class="si-pcl-fichier depose" data-depose hidden>
+								<span class="si-pcl-pdf" data-depose-ext>pdf</span>
+								<span><b data-depose-nom></b><small data-depose-etat>déposé à l'instant · à vérifier</small></span>
+							</div>
+							<label class="si-pcl-tailles-form" data-option{{ p.fichiersLies is not empty and not suspendu ? ' hidden' }}>Taille validée
+								<input name="l" inputmode="decimal" value="{{ p.largeurMm ? p.largeurMm|number_format(1, ',', '')|replace({',0': ''}) }}" aria-label="Largeur en mm" data-l> ×
+								<input name="h" inputmode="decimal" value="{{ p.hauteurMm ? p.hauteurMm|number_format(1, ',', '')|replace({',0': ''}) }}" aria-label="Hauteur en mm" data-h> mm
+							</label>
+						</div>
+						<div class="si-pcl-statut">
+							{% if suspendu %}
+								<span class="si-pcl-badge susp">Nouvelle image</span>
+							{% elseif p.estPret %}
+								<span class="si-pcl-badge pret">✓ Lié · prêt</span>
+							{% else %}
+								<span class="si-pcl-badge prep">À préparer</span>
+							{% endif %}
+							{% if p.prixUnitaire <= 0 and p.paliers is empty %}<span class="si-pcl-badge prix" title="Sans prix, le client ne peut pas le commander">Prix à fixer</span>{% endif %}
+							<button type="submit" class="si-pcl-valider" data-valider data-option disabled{{ p.fichiersLies is not empty and not suspendu ? ' hidden' }}>✓ Valider le lien</button>
+						</div>
+					</form>
+					{% for f in p.fichiersLies %}
+						<form method="post" action="{{ path('app_produits_clients_prepresse_delier', {publicId: client.publicId}) }}" id="delier-{{ p.id }}-{{ loop.index }}" hidden data-confirmer="Retirer la taille validée {{ p.libelleTaille(f.l, f.h, p.rond) }} de « {{ p.nom }} » ?" data-confirmer-detail="La prochaine commande à cette taille repassera au prépresse." data-confirmer-bouton="Retirer">
+							<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="produit" value="{{ p.id }}"><input type="hidden" name="l" value="{{ f.l }}"><input type="hidden" name="h" value="{{ f.h }}">
+						</form>
+					{% endfor %}
+				{% endfor %}
+				<p class="si-pcl-note mb-0">Une fois lié, le produit passe « Prêt à imprimer » dans l'espace client. Toute commande à une taille validée part directement en impression avec ce fichier ; une autre taille repasse ici. Si le fichier change dans le dossier, une alerte s'affiche avant l'impression.</p>
+			{% endif %}
+		</div>
+
+		<div class="si-pcl-cote">
+			<div class="si-pcl-dossier">
+				<div class="si-pcl-dossier-tete">
+					<small>Dossier local (serveur de l'atelier)</small>
+					<code>{{ dossier ?? cheminAttendu }}</code>
+				</div>
+				{% if racine == '' %}
+					<p class="p-3 mb-0 small">Le dossier racine des clients n'est pas réglé. {% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_reglages_parametres_panneau', {tuile: 'produits_clients'}) }}">Paramètres › Dossier des clients</a>{% else %}Demandez à la direction de le régler dans les paramètres.{% endif %}</p>
+				{% elseif dossier is null %}
+					<p class="p-3 mb-0 small">Aucun dossier pour ce client. Créez sur le serveur un dossier qui commence par son code (<b>{{ client.code }}</b>), avec un sous-dossier « Produits » pour les fichiers traités.</p>
+				{% elseif fichiers is empty %}
+					<p class="p-3 mb-0 small">Le dossier est vide. Enregistrez-y le fichier traité, puis rechargez la page.</p>
+				{% else %}
+					{% set lies = {} %}
+					{% for p in produits %}{% for f in p.fichiersLies %}{% set lies = lies|merge({(f.nom): p.nom}) %}{% endfor %}{% endfor %}
+					<ul class="si-pcl-liste" id="dossier">
+						{% for f in fichiers %}
+							<li{{ f.liable ? ' draggable=true' }} data-fichier="{{ f.liable ? f.nom }}" tabindex="{{ f.liable ? 0 : -1 }}">
+								{{ m.badgeFichier(f) }}
+								<span><b>{{ f.nom }}</b><small>{{ f.resume }}{% if not f.dossier %} · {{ f.modifie|date('d/m H:i') }}{% endif %}{% if lies[f.nom] is defined %} · <span class="lie">lié à « {{ lies[f.nom] }} »</span>{% endif %}</small></span>
+								{% if f.liable %}<a href="{{ path('app_produits_clients_prepresse_fichier', {publicId: client.publicId, nom: f.nom}) }}" target="_blank" rel="noopener" class="poignee" title="Ouvrir" aria-label="Ouvrir {{ f.nom }}">⠿</a>{% endif %}
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</div>
+
+			<div class="si-pcl-carte si-pcl-controle" id="controle" aria-live="polite">
+				{% set dernier = choisi ? (choisi.fichiersLies|last) : null %}
+				<h3>Contrôle du lien{{ choisi ? ' · ' ~ choisi.nom }}</h3>
+				{% if dernier and dernier.controles is defined and choisi.etatLien != 'suspendu' %}
+					<ul>
+						{% for c in dernier.controles %}<li><span class="si-pcl-point {{ c.etat }}">{{ c.etat == 'ok' ? '✓' : (c.etat == 'erreur' ? '×' : '!') }}</span><span>{{ c.libelle }}</span><b>{{ c.valeur }}</b></li>{% endfor %}
+						<li><span class="si-pcl-point ok">✓</span><span>Tailles validées pour commande directe</span><b>{{ choisi.taillesValidees|map(t => choisi.libelleTaille(t.l, t.h, choisi.rond))|join(', ') }}</b></li>
+					</ul>
+				{% else %}
+					<p class="small text-muted mb-0">Glissez un fichier du dossier sur un produit (ou cliquez un produit puis un fichier) : ses dimensions, ses couleurs et sa découpe sont contrôlées ici avant de valider le lien.</p>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+
+	<script type="application/json" id="fichiers-dossier">{{ fichiers|filter(f => f.liable)|map(f => {nom: f.nom, octets: f.octets})|json_encode|raw }}</script>
+{% endblock %}
+
+{% block javascripts %}
+	<script>
+	(function () {
+		var jeton = {{ csrf_token('produits-clients-prepresse-' ~ client.id)|json_encode|raw }};
+		var urlControle = {{ path('app_produits_clients_prepresse_controle', {publicId: client.publicId})|json_encode|raw }};
+		var fichiers = JSON.parse(document.getElementById('fichiers-dossier').textContent || '[]');
+		var lignes = Array.prototype.slice.call(document.querySelectorAll('[data-produit]'));
+		var panneau = document.getElementById('controle');
+		var choisie = document.querySelector('.si-pcl-ligne.choisi') || lignes[0];
+		var signe = { ok: '✓', erreur: '×' };
+
+		function choisir(ligne) {
+			lignes.forEach(function (l) { l.classList.toggle('choisi', l === ligne); });
+			choisie = ligne;
+		}
+		function texte(el, t) { el.textContent = t; return el; }
+		function afficher(ligne, r) {
+			panneau.innerHTML = '';
+			var h = texte(document.createElement('h3'), 'Contrôle du lien · ' + ligne.dataset.nom);
+			panneau.appendChild(h);
+			if (r.erreur) { panneau.appendChild(texte(document.createElement('p'), r.erreur)).className = 'small text-danger mb-0'; return; }
+			var ul = document.createElement('ul');
+			r.controles.concat(r.taille ? [{ libelle: 'Taille validée pour commande directe', valeur: r.taille, etat: 'ok' }] : []).forEach(function (c) {
+				var li = document.createElement('li');
+				var p = texte(document.createElement('span'), signe[c.etat] || '!');
+				p.className = 'si-pcl-point ' + c.etat;
+				li.appendChild(p);
+				li.appendChild(texte(document.createElement('span'), c.libelle));
+				li.appendChild(texte(document.createElement('b'), c.valeur));
+				ul.appendChild(li);
+			});
+			panneau.appendChild(ul);
+		}
+		function controler(ligne) {
+			var nom = ligne.querySelector('[data-nom-fichier]').value;
+			if (!nom) { return; }
+			var corps = new FormData();
+			corps.append('_token', jeton);
+			corps.append('produit', ligne.dataset.produit);
+			corps.append('nom', nom);
+			corps.append('l', ligne.querySelector('[data-l]').value);
+			corps.append('h', ligne.querySelector('[data-h]').value);
+			fetch(urlControle, { method: 'POST', body: corps, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+				.then(function (r) { return r.json(); })
+				.then(function (r) {
+					afficher(ligne, r);
+					var etat = ligne.querySelector('[data-depose-etat]');
+					etat.textContent = r.erreur ? r.erreur : (r.etat === 'ok' ? 'contrôle conforme' : (r.etat === 'erreur' ? 'à corriger avant de lier' : 'déposé à l\'instant · à vérifier'));
+					ligne.querySelector('[data-valider]').disabled = !!r.erreur || !ligne.querySelector('[data-l]').value || !ligne.querySelector('[data-h]').value;
+				})
+				.catch(function () { afficher(ligne, { erreur: 'Contrôle impossible. Rechargez la page.' }); });
+		}
+		function deposer(ligne, nom) {
+			choisir(ligne);
+			ligne.querySelector('[data-nom-fichier]').value = nom;
+			var d = ligne.querySelector('[data-depose]');
+			d.hidden = false;
+			ligne.querySelector('[data-depose-nom]').textContent = nom;
+			ligne.querySelector('[data-depose-ext]').textContent = (nom.split('.').pop() || '').slice(0, 4);
+			ligne.querySelector('[data-depot]').hidden = true;
+			ligne.querySelectorAll('[data-option]').forEach(function (o) { o.hidden = false; });
+			controler(ligne);
+		}
+
+		lignes.forEach(function (ligne) {
+			ligne.addEventListener('click', function (e) { if (!e.target.closest('button, input, a')) { choisir(ligne); } });
+			var depot = ligne.querySelector('[data-depot]');
+			['dragenter', 'dragover'].forEach(function (t) { ligne.addEventListener(t, function (e) { e.preventDefault(); depot.classList.add('survol'); }); });
+			ligne.addEventListener('dragleave', function (e) { if (!ligne.contains(e.relatedTarget)) { depot.classList.remove('survol'); } });
+			ligne.addEventListener('drop', function (e) {
+				e.preventDefault();
+				depot.classList.remove('survol');
+				var nom = e.dataTransfer.getData('text/x-fichier-dossier');
+				// Glissé depuis l'explorateur Windows : le navigateur ne donne pas le chemin, seulement le nom
+				// et la taille ; on retrouve le fichier du dossier du client qui a les deux.
+				if (!nom && e.dataTransfer.files.length) {
+					var f = e.dataTransfer.files[0];
+					var trouve = fichiers.filter(function (x) { return x.nom === f.name && x.octets === f.size; })[0];
+					if (!trouve) { afficher(ligne, { erreur: '« ' + f.name + ' » n\'est pas dans le dossier du client (ou il a été modifié depuis). Enregistrez-le d\'abord dans le dossier « Produits » du client sur le serveur, puis rechargez la page.' }); return; }
+					nom = trouve.nom;
+				}
+				if (nom) { deposer(ligne, nom); }
+			});
+			['change', 'input'].forEach(function (t) {
+				ligne.querySelector('[data-l]').addEventListener(t, function () { controler(ligne); });
+				ligne.querySelector('[data-h]').addEventListener(t, function () { controler(ligne); });
+			});
+			ligne.querySelectorAll('[data-taille]').forEach(function (b) {
+				b.addEventListener('click', function () {
+					var t = b.dataset.taille.split('x');
+					ligne.querySelector('[data-l]').value = t[0];
+					ligne.querySelector('[data-h]').value = t[1];
+					choisir(ligne);
+					controler(ligne);
+				});
+			});
+			ligne.addEventListener('submit', function (e) { if (!ligne.querySelector('[data-nom-fichier]').value) { e.preventDefault(); } });
+		});
+		document.querySelectorAll('#dossier [data-fichier]').forEach(function (li) {
+			if (!li.dataset.fichier) { return; }
+			li.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/x-fichier-dossier', li.dataset.fichier); e.dataTransfer.effectAllowed = 'link'; });
+			// Au clavier ou au toucher : le fichier va au produit choisi.
+			var associer = function (e) { if (e.target.closest('a')) { return; } if (choisie) { deposer(choisie, li.dataset.fichier); } };
+			li.addEventListener('click', associer);
+			li.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); associer(e); } });
+		});
+	})();
+	</script>
+{% endblock %}

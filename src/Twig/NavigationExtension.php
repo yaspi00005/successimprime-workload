@@ -97,7 +97,7 @@ final class NavigationExtension extends AbstractExtension
         'atelier' => [
             ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
             ['libelle' => 'Planning machines', 'route' => 'app_atelier_planning', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_planning']],
-            ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_']],
+            ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_', 'app_produits_clients_prepresse_']],
             ['libelle' => 'Conception PAO', 'route' => 'app_conception_tableau', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_conception_']],
             ['libelle' => 'Demandes de conception', 'route' => 'app_demandes_conception_index', 'role' => ['ROLE_PREPRESSE', 'ROLE_COMMANDE'], 'prefixes' => ['app_demandes_conception_']],
             ['libelle' => 'Ma file machine', 'route' => 'app_ma_file_index', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_ma_file_']],

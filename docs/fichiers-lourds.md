@@ -38,6 +38,10 @@ Un dossier **« À imprimer »** sur le PC se remplit tout seul.
 
 Pour les autres postes, la page commande propose « Télécharger » sur chaque fichier et « Tout télécharger » (zip) par commande.
 
+## Dossier des clients et fichiers liés (« Mes produits », 18/10/2026)
+
+Pour « Mes produits », le fichier traité d'un produit n'est **pas envoyé** : il reste dans le dossier du client sur le serveur de l'atelier (réglage Paramètres › Atelier › Dossier des clients : un dossier par client, nommé par son code, avec un sous-dossier « Produits »). Le navigateur ne peut pas lire un chemin du disque ; c'est l'ERP local qui liste ce dossier, contrôle le fichier (dimensions, CMJN, découpe, seulement quand il les trouve) et calcule son empreinte SHA-256. Le site en ligne ne reçoit que la référence. Avant chaque impression, l'empreinte est recalculée : si le fichier a changé ou bougé, une alerte bloque l'ouverture. Voir docs/mes-produits.md.
+
 ## Droits
 
 - Un fichier client n'est visible que par les personnes qui ont accès à la commande : son agent, le prépresse et la production (voir les droits U01–U06).

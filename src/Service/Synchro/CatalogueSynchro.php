@@ -282,6 +282,8 @@ final class CatalogueSynchro
                     'latitude', 'longitude', 'repere', 'nif', 'rccm', 'typeClient', 'typeCompte', 'plafondCredit', 'soldeCredit',
                     'createdAt', 'updatedAt', 'statut', 'recevoirSms', 'consentementMarketingLe', 'delaiPaiement', 'acompte',
                     'moyenPrefere', 'entiteFacturation', 'conseiller',
+                    // Client dispensé d'acompte (docs/clients.md) : le panier et la commande en ligne ne demandent rien d'avance.
+                    'sansAcompte',
                 ],
                 'relations' => [], 'listes' => [], 'numero' => 'code',
                 // E-mail donné par le titulaire dans son espace : pris seulement si la fiche du local n'en a pas.
@@ -372,6 +374,8 @@ final class CatalogueSynchro
                     'libellePromotion', 'remisePromotion', 'montantPromotion', 'remiseCodePromo',
                     // Pièces au m² : l'espacement retenu, qui fait la surface facturée (docs/saisie-devis-commandes.md).
                     'espacementPiecesM2',
+                    // Fichier lié retenu à la commande depuis le panier (référence seulement, revérifiée au local).
+                    'fichierLie',
                 ],
                 // produitClient : ligne commandée depuis « Mes produits » (le produit du client vient après les BAT).
                 'relations' => ['commande' => 'commande', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format', 'produitClient' => 'produit_client'],
@@ -411,13 +415,28 @@ final class CatalogueSynchro
                     'filtres' => ['evenements' => [Conception::class, 'evenementsPublics']],
                 ]],
             ],
-            // « Mes produits » (docs/mes-produits.md) : produits déjà validés que le client recommande en ligne.
-            // Machine, coût de revient et ligne d'origine restent au local.
+            // « Mes produits » (docs/mes-produits.md) : produits du client, créés par l'atelier ou par le client
+            // dans son espace (maquette MP01 : ces créations remontent au local, qui en devient maître). Machine,
+            // coût de revient et ligne d'origine restent au local ; des fichiers liés par le prépresse, seule la
+            // référence part (nom, empreinte, taille validée, date : ProduitClient::fichiersLiesPublics), jamais le fichier.
             'produit_client' => [
-                'classe' => ProduitClient::class, 'sens' => self::DESCENDANT, 'libelle' => 'Produit du client', 'titre' => ['reference', 'nom'],
-                'champs' => ['reference', 'nom', 'largeur', 'hauteur', 'uniteVente', 'prixUnitaire', 'quantiteMinimum', 'tailleLot', 'posesParFeuille', 'arrondiSuperieurImpose', 'actif', 'creeLe'],
-                'relations' => ['client' => 'client', 'produit' => 'produit', 'support' => 'support', 'fichier' => 'fichier', 'batValide' => 'controle'],
-                'listes' => ['finitions' => 'finition'],
+                'classe' => ProduitClient::class, 'sens' => self::DEUX, 'libelle' => 'Produit du client', 'titre' => ['reference', 'nom'],
+                'champs' => [
+                    'reference', 'nom', 'largeur', 'hauteur', 'uniteVente', 'prixUnitaire', 'quantiteMinimum', 'tailleLot', 'posesParFeuille', 'arrondiSuperieurImpose', 'actif', 'creeLe',
+                    'origine', 'type', 'rond', 'imageRemplaceeLe', 'etatLien', 'fichiersLies', 'paliers',
+                ],
+                'relations' => ['client' => 'client', 'produit' => 'produit', 'support' => 'support', 'fichier' => 'fichier', 'batValide' => 'controle', 'image' => 'fichier'],
+                'facultatives' => ['image'],
+                'listes' => ['finitions' => 'finition'], 'numero' => 'reference',
+                'filtres' => ['fichiersLies' => [ProduitClient::class, 'fichiersLiesPublics']],
+                // Un produit créé en ligne n'arrive jamais « prêt » ni avec un prix : seul le local lie un fichier et fixe le prix.
+                'imposeAuLocal' => ['etatLien' => ProduitClient::LIEN_A_PREPARER, 'fichiersLies' => null, 'paliers' => null, 'prixUnitaire' => 0, 'origine' => ProduitClient::ORIGINE_CLIENT, 'fichier' => null, 'batValide' => null],
+                // Le client remplace l'image (règle « Nouvelle image ») : le lien est suspendu, le produit repasse au prépresse.
+                'remontees' => [
+                    'image' => null,
+                    'imageRemplaceeLe' => null,
+                    'etatLien' => [ProduitClient::LIEN_LIE => [ProduitClient::LIEN_SUSPENDU]],
+                ],
             ],
             'devis' => [
                 'classe' => Devis::class, 'sens' => self::DESCENDANT, 'libelle' => 'Devis', 'titre' => ['numero'],

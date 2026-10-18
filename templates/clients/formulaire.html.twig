@@ -148,9 +148,17 @@
 						</select>
 					</label>
 				</div>
+				{# Dispensé d'acompte (docs/clients.md) : la direction coche ; pour les autres, le changement part en demande. #}
+				<div class="si-cf-ligne">
+					<label class="form-check si-cf-case" style="grid-column:1/-1;margin:2px 0 8px">
+						<input type="hidden" name="c[sansAcompte]" value="0">
+						<input class="form-check-input" type="checkbox" name="c[sansAcompte]" value="1"{{ v.sansAcompte|default(false) ? ' checked' }}>
+						<span class="form-check-label"><b>Dispensé d'acompte</b> · ce client valide ses commandes sans rien payer d'avance (panier, commande en ligne, devis accepté, comptoir) : la commande part directement en production.</span>
+					</label>
+				</div>
 				<p class="si-cf-aide">Grille Revendeur (B2B) : seulement pour les gens du métier de l'impression, démarchés, qui connaissent les prix. Une entreprise, une ONG ou une administration reste au prix Standard et garde fidélité et promotions.</p>
 				<p class="si-cf-aide" data-avis-direction>
-					{% if direction %}Vous pouvez fixer toute remise et tout plafond.{% else %}Une remise au-delà de 10 % ou un plafond au-delà de 500 000 F demande la validation de la direction : la demande lui est envoyée et la fiche garde sa valeur actuelle en attendant.{% endif %}
+					{% if direction %}Vous pouvez fixer toute remise et tout plafond, et dispenser d'acompte.{% else %}Une remise au-delà de 10 %, un plafond au-delà de 500 000 F ou la dispense d'acompte (ou un acompte à 0 %) demandent la validation de la direction : la demande lui est envoyée et la fiche garde sa valeur actuelle en attendant.{% endif %}
 				</p>
 			</section>
 

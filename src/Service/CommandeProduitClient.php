@@ -9,7 +9,10 @@ use App\Entity\ProduitClient;
 /**
  * Transforme la quantite demandee sur un produit du client en ligne de
  * commande a produire (docs/mes-produits.md). Le prix vient de la fiche
- * du produit ; la ligne part en production sans PAO, le BAT etant fige.
+ * du produit (palier atteint pour les pieces). A une taille validee, la
+ * ligne garde la reference du fichier lie et saute le prepresse ; a une
+ * autre taille (« Autre taille », MP04), elle passe au prepresse avec un
+ * BAT, au prix rapporte a la surface.
  */
 final class CommandeProduitClient
 {
@@ -31,7 +34,7 @@ final class CommandeProduitClient
      *     alternative: ?array{pieces: int, surface: float, montant: int}
      * }
      */
-    public function proposer(ProduitClient $produit, float $quantite, string $saisie, bool $arrondiInferieur = false): array
+    public function proposer(ProduitClient $produit, float $quantite, string $saisie, bool $arrondiInferieur = false, ?array $taille = null): array
     {
         if ($quantite <= 0) {
             throw new \InvalidArgumentException('La quantité doit être positive.');
@@ -40,6 +43,16 @@ final class CommandeProduitClient
         $largeur = $produit->getLargeur() ?? 0.0;
         $hauteur = $produit->getHauteur() ?? 0.0;
         $prix = $produit->getPrixUnitaire();
+        $facteur = 1.0;
+        if (null !== $taille && self::SAISIE_PIECES === $saisie && ProduitClient::UNITE_LOT !== $produit->getUniteVente()) {
+            [$lMm, $hMm] = self::taille($taille);
+            // Autre taille : prix rapporté à la surface du format du produit (jamais moins cher).
+            if ($largeur > 0 && $hauteur > 0 && !$produit->estTailleValidee($lMm, $hMm)) {
+                $facteur = max(1.0, ($lMm * $hMm) / ($largeur * 1000 * $hauteur * 1000));
+            }
+            $largeur = $lMm / 1000;
+            $hauteur = $hMm / 1000;
+        }
 
         if (ProduitClient::UNITE_LOT === $produit->getUniteVente()) {
             $lots = ConversionQuantite::parLots((int) ceil($quantite), $produit->getTailleLot() ?? 1, $produit->getPosesParFeuille() ?? 1);
@@ -93,14 +106,18 @@ final class CommandeProduitClient
         }
 
         $pieces = (int) ceil($quantite);
-        $surface = $produit->estFormatFixe() ? ConversionQuantite::surfacePieces($pieces, $largeur, $hauteur) : 0.0;
+        $formatFixe = $largeur > 0 && $hauteur > 0;
+        $surface = $formatFixe ? ConversionQuantite::surfacePieces($pieces, $largeur, $hauteur) : 0.0;
+        // Prix par quantité (MP04) : le palier atteint ; arrondi au franc, multiple de 5 pour une autre taille.
+        $unitaire = $produit->prixPour($pieces) * $facteur;
+        $unitaire = $facteur > 1.0 ? (int) (ceil($unitaire / 5) * 5) : (int) round($unitaire);
 
         return $this->verifierMinimum($produit, $pieces, [
             'pieces' => $pieces,
             'longueur' => null,
             'surface' => $surface,
-            'montant' => $pieces * $prix,
-            'production' => $produit->estFormatFixe() ? self::libellePieces($pieces, $largeur, $hauteur, $surface) : sprintf('%d pièce%s', $pieces, $pieces > 1 ? 's' : ''),
+            'montant' => $pieces * $unitaire,
+            'production' => $formatFixe ? self::libellePieces($pieces, $largeur, $hauteur, $surface) : sprintf('%d pièce%s', $pieces, $pieces > 1 ? 's' : ''),
             'alternative' => null,
         ]);
     }
@@ -108,9 +125,9 @@ final class CommandeProduitClient
     /**
      * Cree la ligne de commande correspondante, prete pour la production.
      */
-    public function creerLigne(Commandes $commande, ProduitClient $produit, float $quantite, string $saisie, bool $arrondiInferieur = false): CommandesDetails
+    public function creerLigne(Commandes $commande, ProduitClient $produit, float $quantite, string $saisie, bool $arrondiInferieur = false, ?array $taille = null): CommandesDetails
     {
-        $proposition = $this->proposer($produit, $quantite, $saisie, $arrondiInferieur);
+        $proposition = $this->proposer($produit, $quantite, $saisie, $arrondiInferieur, $taille);
         $tva = max(0, $commande->getTva());
 
         $ligne = (new CommandesDetails())
@@ -122,9 +139,7 @@ final class CommandeProduitClient
             ->setMachine($produit->getMachine())
             ->setDesignation($produit->getNom())
             ->setDemande($quantite, $saisie)
-            ->setTva($tva)
-            ->setBatValide(null !== $produit->getBatValide())
-            ->setPrePresseNecessaire(false);
+            ->setTva($tva);
 
         if (null !== $proposition['longueur']) {
             // Rouleau : une piece de la longueur calculee, facturee au forfait
@@ -137,20 +152,59 @@ final class CommandeProduitClient
                 ->setSurface($proposition['surface'])
                 ->setPrixUnitaire($proposition['montant'] / (1 + $tva / 100));
         } else {
+            [$lM, $hM] = null !== $taille && self::SAISIE_PIECES === $saisie ? array_map(static fn (float $mm): float => $mm / 1000, self::taille($taille)) : [$produit->getLargeur(), $produit->getHauteur()];
             $ligne
                 ->setModeCalcul('unite')
                 ->setQuantite($proposition['pieces'])
-                ->setLargeur($produit->getLargeur())
-                ->setLongueur($produit->getHauteur())
-                ->setSurface($produit->estFormatFixe() ? $produit->getLargeur() * $produit->getHauteur() : null)
+                ->setLargeur($lM)
+                ->setLongueur($hM)
+                ->setSurface(null !== $lM && null !== $hM ? $lM * $hM : null)
                 ->setPrixUnitaire($proposition['montant'] / $proposition['pieces'] / (1 + $tva / 100));
         }
 
+        self::aiguillerALaCommande($ligne, $produit);
         $ligne->calculerTotaux();
         $commande->addCommandesDetail($ligne);
         $commande->recalculerTotaux();
 
         return $ligne;
+    }
+
+    /**
+     * À la commande (MP05) : une ligne à une taille validée garde la
+     * référence du fichier lié et saute le prépresse ; un produit enregistré
+     * par l'atelier avec un BAT validé, à son format, aussi ; sinon la ligne
+     * passe au prépresse, avec un BAT au client. Le local revérifie tout à
+     * la réception (Synchro::verifierLigneEnLigne) et avant l'impression.
+     */
+    public static function aiguillerALaCommande(CommandesDetails $ligne, ProduitClient $produit): void
+    {
+        $l = null !== $ligne->getLargeur() ? round((float) $ligne->getLargeur() * 1000, 1) : null;
+        $h = null !== $ligne->getLongueur() ? round((float) $ligne->getLongueur() * 1000, 1) : null;
+        $lien = null !== $l && null !== $h ? $produit->fichierPourTaille($l, $h) : null;
+        if (null !== $lien) {
+            $ligne->setFichierLie(['nom' => (string) $lien['nom'], 'empreinte' => (string) $lien['empreinte'], 'l' => (float) $lien['l'], 'h' => (float) $lien['h'], 'le' => $lien['le'] ?? null])
+                ->setPrePresseNecessaire(false)->setBatValide(true);
+
+            return;
+        }
+        $ligne->setFichierLie(null);
+        // Sans format (textile, lots) : le BAT validé suffit, comme avant.
+        $direct = null !== $produit->getBatValide() && ProduitClient::LIEN_SUSPENDU !== $produit->getEtatLien()
+            && (null === $l || null === $h || !$produit->estFormatFixe() || $produit->estTailleValidee($l, $h));
+        $ligne->setPrePresseNecessaire(!$direct)->setBatValide($direct);
+    }
+
+    /** @return array{0: float, 1: float} largeur et hauteur en mm */
+    public static function taille(array $taille): array
+    {
+        $l = (float) ($taille['l'] ?? $taille[0] ?? 0);
+        $h = (float) ($taille['h'] ?? $taille[1] ?? 0);
+        if ($l <= 0 || $h <= 0 || $l > 10000 || $h > 10000) {
+            throw new \InvalidArgumentException('Indiquez une taille valable (en mm).');
+        }
+
+        return [round($l, 1), round($h, 1)];
     }
 
     /**

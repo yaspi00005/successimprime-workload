@@ -110,6 +110,9 @@ class CommandesType extends AbstractType
                     'data-compte' => $client->getTypeCompteLabel(),
                     'data-telephone' => (string) $client->getTelephone(),
                     'data-adresse' => trim(implode(', ', array_filter([$client->getAdresse(), $client->getVille()]))),
+                    // Acompte de la fiche (%, vide = réglage) ; « 1 » si le client est dispensé d'acompte.
+                    'data-acompte' => null !== $client->getAcompte() ? (string) $client->getAcompte() : '',
+                    'data-sans-acompte' => $client->isSansAcompte() ? '1' : '0',
                 ];
 
                 if ($this->security->isGranted('ROLE_PAIEMENT_VOIR')) {

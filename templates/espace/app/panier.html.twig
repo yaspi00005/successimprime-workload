@@ -1,0 +1,181 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Panier de « Mes produits » (maquettes MP05 et MP07, docs/mes-produits.md) :
+	les produits choisis, la réception, le récapitulatif et l'acompte. Validé,
+	le panier devient la commande (EspacePanierController::valider). Les lignes
+	dont le fichier est déjà lié partent directement en impression ; une
+	nouvelle taille passe au prépresse avec un BAT. Un demandeur
+	(coque.montants faux) ne voit aucun prix ; l'acompte ne se montre qu'à qui
+	paie ; un client dispensé d'acompte valide sans payer.
+#}
+
+{% block title %}Mon panier{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ asset('css/mes-produits.css') }}">{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_produits') }}"><span class="fl">‹</span>Panier{{ detail.articles is not empty ? ' · ' ~ detail.articles|length }}</a>{% endblock %}
+
+{% block contenu %}
+	{% import 'espace/app/_mes_produits.html.twig' as m %}
+	{% set montants = coque.montants %}
+	{% set articles = detail.articles %}
+	{% set nb = articles|length %}
+	<div class="mp-tete ec-bureau">
+		<h1>Mon panier</h1>
+		<a class="mp-btn-blanc" href="{{ path('app_espace_produits') }}">‹ Continuer mes achats</a>
+	</div>
+
+	{% if nb == 0 %}
+		<div class="ec-carte ec-vide">
+			<p>Votre panier est vide.</p>
+			<p><a href="{{ path('app_espace_produits') }}">Choisir dans Mes produits</a></p>
+		</div>
+	{% else %}
+		<form method="post" action="{{ path('app_espace_panier_valider') }}" id="valider"></form>
+		<div class="mp-panier-page">
+			<div class="mp-panier">
+				{% for a in articles %}
+					{% set c = a.calcul %}
+					<div class="mp-panier-ligne">
+						{{ m.visuel(a.fiche) }}
+						<span class="mp-article-texte">
+							<b>{{ a.fiche.p.nom }}</b>
+							<small>{{ [c.taille.libelle ?? (a.fiche.taille ?: null), a.nouvelleTaille ? '(nouvelle taille)', c.resume]|filter(v => v)|join(' · ') }}</small>
+							{% if c.direct %}
+								<span class="mp-pastille vert">✓ Fichier prêt · va directement en impression</span>
+							{% elseif a.nouvelleTaille %}
+								<span class="mp-pastille orange">Nouvelle taille · l'atelier adapte le fichier</span>
+							{% else %}
+								<span class="mp-pastille orange">BAT envoyé avant l'impression</span>
+							{% endif %}
+						</span>
+						<div class="mp-panier-actions">
+							<form method="post" action="{{ path('app_espace_panier_quantite', {rang: a.rang}) }}" class="mp-qte" data-qte data-pas="{{ c.saisie|default('piece') == 'piece' ? (a.article.quantite >= 200 ? 50 : 10) : 1 }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+								<button type="button" data-moins aria-label="Diminuer la quantité">−</button>
+								<input name="quantite" inputmode="decimal" value="{{ a.article.quantite|number_format(c.saisie|default('piece') == 'piece' ? 0 : 1, ',', '') }}" aria-label="Quantité de {{ a.fiche.p.nom }}">
+								<button type="button" data-plus aria-label="Augmenter la quantité">+</button>
+							</form>
+							{% if montants %}<span class="mp-panier-prix">{{ c.montant|number_format(0, ',', ' ') }} F</span>{% endif %}
+							<form method="post" action="{{ path('app_espace_panier_retirer', {rang: a.rang}) }}" data-confirmer="Retirer « {{ a.fiche.p.nom }} » du panier ?" data-confirmer-detail="Le produit reste dans Mes produits." data-confirmer-bouton="Retirer">
+								<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+								<button class="mp-poubelle" aria-label="Retirer {{ a.fiche.p.nom }} du panier" title="Retirer">
+									<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+								</button>
+							</form>
+						</div>
+					</div>
+				{% endfor %}
+
+				<div class="ec-carte mp-reception-bloc">
+					<h2 class="mp-titre-bloc">Réception</h2>
+					<div class="mp-reception">
+						<label class="mp-option"><input type="radio" name="reception" value="retrait" form="valider" checked data-reception>Retrait en boutique <small>gratuit</small></label>
+						<label class="mp-option"><input type="radio" name="reception" value="livraison" form="valider" data-reception>Livraison à Bamako {% if montants %}<small>{{ fraisLivraison|number_format(0, ',', ' ') }} F</small>{% endif %}</label>
+					</div>
+					<div class="mp-livraison" data-livraison hidden>
+						<label class="ec-etiquette" for="mp-adresse">Adresse</label>
+						{% if adresses is not empty %}
+							{% set defaut = (adresses|filter(a => a.parDefaut)|first).id|default(adresses|first.id) %}
+							<select class="ec-saisie" id="mp-adresse" name="adresse" form="valider" data-adresse>
+								{% for ad in adresses %}<option value="{{ ad.id }}"{{ ad.id == defaut ? ' selected' }}>{{ ad.libelle }} · {{ ad.adresse }}</option>{% endfor %}
+								<option value="0">Autre adresse…</option>
+							</select>
+							<input class="ec-saisie" name="adresse_texte" form="valider" maxlength="200" placeholder="Quartier, rue, repère" aria-label="Autre adresse" data-adresse-texte hidden>
+						{% else %}
+							<input class="ec-saisie" id="mp-adresse" name="adresse_texte" form="valider" maxlength="200" placeholder="Quartier, rue, repère (ex. Kalaban Coura, près du marché)">
+						{% endif %}
+						<label class="ec-etiquette" for="mp-contact">Contact sur place</label>
+						<input class="ec-saisie" id="mp-contact" name="contact" form="valider" maxlength="80" value="{{ moi.telephone|default('') }}">
+						<label class="ec-etiquette" for="mp-creneau">Créneau</label>
+						<select class="ec-saisie" id="mp-creneau" name="creneau" form="valider">
+							{% for cr in creneaux %}<option value="{{ cr.valeur }}">{{ cr.libelle }}</option>{% endfor %}
+						</select>
+					</div>
+					{% if entreprise %}
+						<label class="ec-etiquette" for="mp-bon">N° de bon de commande (facultatif)</label>
+						<input class="ec-saisie" id="mp-bon" name="bon_commande" form="valider" maxlength="60" autocomplete="off">
+					{% endif %}
+				</div>
+			</div>
+
+			<div class="mp-colonne-recap">
+				<div class="ec-carte mp-recap">
+					<h2 class="mp-titre-bloc">Récapitulatif</h2>
+					<dl>
+						<dt>{{ nb }} produit{{ nb > 1 ? 's' }}</dt><dd>{% if montants %}{{ detail.total|number_format(0, ',', ' ') }} F{% endif %}</dd>
+						<dt data-recap-reception>Retrait en boutique</dt><dd>{% if montants %}<span data-recap-frais>0</span> F{% endif %}</dd>
+						<hr>
+						{% if montants %}<dt class="mp-grand">Total</dt><dd class="mp-grand" data-recap-total>{{ detail.total|number_format(0, ',', ' ') }} F</dd>{% endif %}
+						{% if acompte %}<dt>Acompte {{ acompte.pourcentage }} % maintenant</dt><dd data-recap-acompte>{{ acompte.montant|number_format(0, ',', ' ') }} F</dd>{% endif %}
+						{% if sansAcompte and not demandeValidation %}<dt>Acompte</dt><dd>aucun</dd>{% endif %}
+						<dt>Prêt le</dt><dd>{{ pret }}</dd>
+					</dl>
+					{% if demandeValidation %}
+						<button class="ec-bouton bleu ec-bureau" form="valider">Envoyer la demande</button>
+						<p class="mp-om">Une personne qui valide pour votre entreprise l'accepte, puis la commande part à l'atelier.</p>
+					{% elseif sansAcompte %}
+						<button class="ec-bouton vert ec-bureau" form="valider">Valider la commande</button>
+						<p class="mp-om">Vous êtes dispensé d'acompte : la commande part en production dès sa validation.</p>
+					{% elseif acompte and omActif %}
+						<button class="ec-bouton orange ec-bureau" form="valider">Valider et payer <span data-recap-bouton>{{ acompte.montant|number_format(0, ',', ' ') }}</span> F</button>
+						<p class="mp-om">Orange Money · le panier devient la commande</p>
+					{% else %}
+						<button class="ec-bouton orange ec-bureau" form="valider">Valider la commande</button>
+						<p class="mp-om">{{ peutPayer ? 'L\'acompte se règle en boutique ou dans « Factures et paiements » ; la production démarre à sa réception.' : 'La personne qui paie pour votre entreprise règle l\'acompte ; la production démarre à sa réception.' }}</p>
+					{% endif %}
+				</div>
+
+				<div class="ec-carte mp-apres">
+					<h2 class="mp-titre-bloc">Après validation</h2>
+					<ul>
+						{% if detail.directs > 0 %}<li><span><b>{{ detail.directs }} produit{{ detail.directs > 1 ? 's' }}</b> · fichier{{ detail.directs > 1 ? 's' }} déjà lié{{ detail.directs > 1 ? 's' }} : impression directe, pas de BAT à attendre</span></li>{% endif %}
+						{% if detail.avecBat > 0 %}<li class="orange"><span><b>{{ detail.avecBat }} produit{{ detail.avecBat > 1 ? 's' }}</b> · l'atelier prépare le fichier : un BAT vous est envoyé avant l'impression</span></li>{% endif %}
+					</ul>
+				</div>
+			</div>
+		</div>
+		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}" form="valider">
+		{# Téléphone (MP07) : total et bouton toujours visibles au-dessus de la barre du bas. #}
+		<div class="mp-barre-valider ec-telephone">
+			{% if montants %}<span><small>{{ acompte ? 'Acompte ' ~ acompte.pourcentage ~ ' %' : 'Total' }}</small><b data-barre-montant>{{ (acompte ? acompte.montant : detail.total)|number_format(0, ',', ' ') }} F</b></span>{% endif %}
+			<button class="ec-bouton {{ demandeValidation ? 'bleu' : (sansAcompte ? 'vert' : 'orange') }}" form="valider">{{ demandeValidation ? 'Envoyer la demande' : (sansAcompte ? 'Valider la commande' : (acompte and omActif ? 'Valider · payer' : 'Valider la commande')) }}</button>
+		</div>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	(function () {
+		var fr = new Intl.NumberFormat('fr-FR');
+		var f = function (n) { return fr.format(n).replace(/ | /g, ' '); };
+		document.querySelectorAll('[data-qte]').forEach(function (form) {
+			var champ = form.querySelector('input[name=quantite]');
+			var pas = Number(form.dataset.pas) || 1;
+			var lire = function () { return Number(String(champ.value).replace(/\s/g, '').replace(',', '.')) || 0; };
+			form.querySelector('[data-moins]').addEventListener('click', function () { var v = lire() - pas; if (v > 0) { champ.value = v; form.submit(); } });
+			form.querySelector('[data-plus]').addEventListener('click', function () { champ.value = lire() + pas; form.submit(); });
+			champ.addEventListener('change', function () { form.submit(); });
+		});
+		var base = {{ detail.total|default(0) }}, frais = {{ coque.montants ? fraisLivraison : 0 }}, pourcentage = {{ acompte ? acompte.pourcentage : 0 }};
+		var livraison = document.querySelector('[data-livraison]');
+		document.querySelectorAll('[data-reception]').forEach(function (r) {
+			r.addEventListener('change', function () {
+				var liv = r.value === 'livraison' && r.checked;
+				if (livraison) { livraison.hidden = !liv; }
+				var t = document.querySelector('[data-recap-reception]');
+				if (t) { t.textContent = liv ? 'Livraison à Bamako' : 'Retrait en boutique'; }
+				var fr2 = liv ? frais : 0, total = base + fr2, ac = Math.min(total, Math.ceil(total * pourcentage / 100));
+				var poser = function (sel, v) { var e = document.querySelector(sel); if (e) { e.textContent = v; } };
+				poser('[data-recap-frais]', f(fr2));
+				poser('[data-recap-total]', f(total) + ' F');
+				poser('[data-recap-acompte]', f(ac) + ' F');
+				poser('[data-recap-bouton]', f(ac));
+				poser('[data-barre-montant]', f(pourcentage > 0 ? ac : total) + ' F');
+			});
+		});
+		var choix = document.querySelector('[data-adresse]'), autre = document.querySelector('[data-adresse-texte]');
+		if (choix && autre) { choix.addEventListener('change', function () { autre.hidden = choix.value !== '0'; }); }
+	})();
+	</script>
+{% endblock %}

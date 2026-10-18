@@ -165,7 +165,8 @@
 	{% set delaiChoisi = choix.delai|default('standard') == 'express' and reglages.express ? 'express' : 'standard' %}
 	{% set reception = choix.reception|default('retrait') == 'livraison' ? 'livraison' : 'retrait' %}
 	{% set acompte = recap.acompte ?? null %}
-	{% set paiementChoisi = choix.paiement|default(acompte ? 'acompte' : 'tout') %}
+	{# Client dispensé d'acompte (fiche client) : « Payer plus tard » est proposé d'abord, la commande part sans paiement. #}
+	{% set paiementChoisi = choix.paiement|default(acompte ? 'acompte' : (moi.sansAcompte ? 'boutique' : 'tout')) %}
 
 	<form method="post" class="co-form" id="co-form" data-etape="{{ etape }}" novalidate>
 		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
@@ -434,7 +435,7 @@
 								<div class="co-om">
 									<span class="co-om-logo" aria-hidden="true">OM</span>
 									<div><b>Orange Money · +223 {{ telephoneOm|slice(3)|split('', 2)|join(' ') }}</b><small>vous confirmez avec votre code secret sur votre téléphone</small></div>
-									<label class="co-especes"><input type="radio" name="paiement" value="boutique"{{ paiementChoisi == 'boutique' ? ' checked' }}> Espèces en boutique</label>
+									<label class="co-especes"><input type="radio" name="paiement" value="boutique"{{ paiementChoisi == 'boutique' ? ' checked' }}> {{ moi.sansAcompte ? 'Payer plus tard (sans acompte)' : 'Espèces en boutique' }}</label>
 								</div>
 								<p class="ec-petit co-frais-om" data-co-frais-om></p>
 								<div class="co-secret" role="note">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</div>

@@ -5,6 +5,7 @@ namespace App\Tests\Unit\Service\Corbeille;
 use App\Entity\Corbeille as EntreeCorbeille;
 use App\Entity\JourFerie;
 use App\Entity\JournalActivite;
+use App\Entity\ModeleMessage;
 use App\Entity\User;
 use App\Service\Corbeille\CaptureCorbeille;
 use App\Service\Corbeille\Corbeille;
@@ -228,6 +229,27 @@ final class CorbeilleTest extends TestCase
         }
 
         self::assertSame(0, $this->compter('corbeille'));
+    }
+
+    public function testUneFicheCacheeDeuxFoisNOuvreQuUneEntree(): void
+    {
+        // Suppression douce (devis, commande, adresse) : le formulaire renvoyé une seconde fois ne double pas l'entrée.
+        (new SchemaTool($this->em))->createSchema([$this->em->getClassMetadata(ModeleMessage::class)]);
+        $modele = (new ModeleMessage())->setNom('Relance')->setContenu('Bonjour');
+        $this->em->persist($modele);
+        $this->em->flush();
+        foreach ([1, 2] as $fois) {
+            $this->corbeille->masquer($modele, 'actif', true, 'Modèle « Relance »');
+            $modele->setActif(false);
+            $this->em->flush();
+        }
+
+        self::assertSame(1, $this->compter('corbeille'));
+        $entree = $this->corbeille->entrees([], null)[0]['entree'];
+        self::assertTrue($entree->estMasque());
+        self::assertSame('Modèle « Relance » est de retour.', $this->corbeille->restaurer($entree, null));
+        $this->em->clear();
+        self::assertTrue($this->em->find(ModeleMessage::class, $modele->getId())?->isActif());
     }
 
     private function supprimerUnFerie(string $jour = '2026-09-22', string $libelle = 'Fête de l\'indépendance'): int

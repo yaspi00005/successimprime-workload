@@ -82,6 +82,12 @@ final class CaptureCorbeille
             if (false === $donnees) {
                 return;
             }
+            // Déjà cachée (formulaire envoyé deux fois, onglet resté ouvert) : la première entrée suffit.
+            $colonne = $meta->getColumnName($champ);
+            if (\array_key_exists($colonne, $donnees) && null !== $donnees[$colonne]
+                && (string) $donnees[$colonne] !== (string) (\is_bool($valeurRestauree) ? (int) $valeurRestauree : $valeurRestauree)) {
+                return;
+            }
             $this->masquages[spl_object_id($entite)] = ['entite' => $entite, 'table' => $table, 'cle' => $cle, 'champ' => $champ, 'valeur' => $valeurRestauree, 'donnees' => $donnees, 'libelle' => $libelle, 'par' => $par];
         } catch (\Throwable $e) {
             $this->logger->error('Corbeille : copie impossible avant la suppression.', ['exception' => $e]);

@@ -865,7 +865,7 @@ final class ClientsController extends AbstractController
             if ($utilisateur instanceof User && $this->isGranted('ROLE_PAIEMENT_ENCAISSER')) {
                 $compte['comptes'] = array_values(array_filter(
                     $compteTresorerieRepository->trouverDisponiblesPour($utilisateur, $this->isGranted('ROLE_ADMIN')),
-                    static fn (\App\Entity\CompteTresorerie $c): bool => !$c->isOrangeMoneyEnLigne() && \in_array($c->getType(), [\App\Entity\CompteTresorerie::TYPE_CAISSE, \App\Entity\CompteTresorerie::TYPE_ORANGE_MONEY, \App\Entity\CompteTresorerie::TYPE_WAVE], true),
+                    static fn (\App\Entity\CompteTresorerie $c): bool => !$c->isOrangeMoneyEnLigne() && \in_array($c->getType(), \App\Service\Paiement\SoldeClient::TYPES_COMPTES, true),
                 ));
             }
             $compte['en_ligne'] = $accesEnLigne->estEnLigne();

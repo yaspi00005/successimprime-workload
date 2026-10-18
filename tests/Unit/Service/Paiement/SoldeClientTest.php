@@ -157,6 +157,14 @@ final class SoldeClientTest extends TestCase
         } catch (\DomainException) {
             self::assertSame(5000, $client->getSoldeCredit());
         }
+        try {
+            // Le mouvement d'une banque attend la validation : le solde ne doit pas baisser avant.
+            $this->service()->rembourser($client, 1000, $this->compte(CompteTresorerie::TYPE_BANQUE), 'Virement au client', $this->direction());
+            self::fail('depuis la banque : refus attendu');
+        } catch (\DomainException) {
+            self::assertSame(5000, $client->getSoldeCredit());
+            self::assertSame([], $this->tresorerie);
+        }
 
         $ligne = $this->service()->rembourser($client, 5000, $caisse, 'Le client reprend son argent', $this->direction());
 

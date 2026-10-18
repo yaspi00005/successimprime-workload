@@ -45,6 +45,13 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final class SoldeClient
 {
+    /**
+     * Comptes où l'argent du compte client entre et d'où il sort : caisse,
+     * Orange Money, Wave. Pas la banque : son mouvement attendrait la
+     * validation alors que le solde du client bougerait tout de suite.
+     */
+    public const TYPES_COMPTES = [CompteTresorerie::TYPE_CAISSE, CompteTresorerie::TYPE_ORANGE_MONEY, CompteTresorerie::TYPE_WAVE];
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly MouvementTresorerieService $tresorerie,
@@ -223,6 +230,9 @@ final class SoldeClient
         }
         if ($compte->isOrangeMoneyEnLigne()) {
             throw new \DomainException('L\'argent ne se rend pas depuis le compte Orange Money en ligne.');
+        }
+        if (!\in_array($compte->getType(), self::TYPES_COMPTES, true)) {
+            throw new \DomainException('L\'argent se rend depuis une caisse, Orange Money ou Wave.');
         }
 
         return $this->em->wrapInTransaction(function () use ($client, $montant, $compte, $motif, $par): MouvementSoldeClient {

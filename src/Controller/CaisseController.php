@@ -95,7 +95,7 @@ final class CaisseController extends AbstractController
                 'solde' => $client->getSoldeCredit(),
                 'disponible' => $soldeClient->disponiblePour($client),
                 'en_ligne' => $acces->estEnLigne(),
-                'comptes' => array_values(array_filter($comptes, static fn (CompteTresorerie $c): bool => !$c->isOrangeMoneyEnLigne() && \in_array($c->getType(), [CompteTresorerie::TYPE_CAISSE, CompteTresorerie::TYPE_ORANGE_MONEY, CompteTresorerie::TYPE_WAVE], true))),
+                'comptes' => array_values(array_filter($comptes, static fn (CompteTresorerie $c): bool => !$c->isOrangeMoneyEnLigne() && \in_array($c->getType(), SoldeClient::TYPES_COMPTES, true))),
             ];
             $compteClient['engage'] = max(0, $compteClient['solde'] - $compteClient['disponible']);
         }

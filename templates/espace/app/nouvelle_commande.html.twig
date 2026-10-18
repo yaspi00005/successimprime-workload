@@ -16,14 +16,16 @@
 
 {% block entete %}
 	{% if etape == 1 %}
-		<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Nouvelle commande</a>
+		<a class="ec-retour ec-telephone" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Nouvelle commande</a>
 	{% else %}
-		<a class="ec-retour" href="{{ path('app_espace_nouvelle_commande') }}" data-co-retour><span class="fl">‹</span><span data-co-titre-tel>{{ nomProduit }} · options</span></a>
+		<a class="ec-retour ec-telephone" href="{{ path('app_espace_nouvelle_commande') }}" data-co-retour><span class="fl">‹</span><span data-co-titre-tel>{{ nomProduit }} · options</span></a>
 	{% endif %}
 {% endblock %}
 
 {% block contenu %}
-	{% set libellesEtapes = {1: 'Produit', 2: 'Options', 3: 'Fichier', 4: 'Livraison et paiement'} %}
+	{# Qui ne paie pas ici (demandeur, demande à faire valider) : « Livraison » seulement. #}
+	{% set etape4 = peutPayer and montants and not demandeValidation ? 'Livraison et paiement' : 'Livraison' %}
+	{% set libellesEtapes = {1: 'Produit', 2: 'Options', 3: 'Fichier', 4: etape4} %}
 	<div class="co-tete">
 		<h1>Nouvelle commande{% if etape > 1 %} · {{ nomProduit }}{% endif %}</h1>
 		<a class="ec-bouton-blanc ec-bureau" href="{{ path('app_espace_commandes') }}">Mes commandes</a>
@@ -335,7 +337,7 @@
 
 				{# ----- 4. Livraison et paiement ----- #}
 				<section class="co-panneau" data-co-panneau="4" aria-labelledby="co-t4">
-					<h2 class="co-titre-panneau" id="co-t4">4. Livraison et paiement</h2>
+					<h2 class="co-titre-panneau" id="co-t4">4. {{ etape4 }}</h2>
 					<div class="ec-carte">
 						<h3 class="co-sous-titre co-premier">Réception</h3>
 						<div class="co-cartes co-cartes-2" role="radiogroup" aria-label="Réception">
@@ -472,8 +474,8 @@
 		{# Téléphone (maquette CO06) : prix et bouton toujours sous le pouce. #}
 		<div class="co-barre" data-co-barre>
 			<div>
-				<small data-co-r="barreInfo">{{ recap ? recap.quantite ~ ' · ' : '' }}prête {{ estimation.pret.jour }}</small>
-				<b data-co-r="barreTotal">{{ montants ? (recap.totalTexte ?? '—') : nomProduit }}</b>
+				<small data-co-r="barreInfo">{{ montants ? (recap ? recap.quantite ~ ' · ' : '') : nomProduit ~ ' · ' }}prête {{ estimation.pret.jour }}</small>
+				<b data-co-r="barreTotal">{{ montants ? (recap.totalTexte ?? '—') : (recap ? recap.quantite : '—') }}</b>
 			</div>
 			<button type="button" data-co-suivant>Continuer ›</button>
 		</div>
@@ -490,6 +492,7 @@
 		paiementEnLigne: peutPayer and montants and omActif and not demandeValidation,
 		etape: etape,
 		nomProduit: nomProduit,
+		nomEtape4: etape4|lower,
 		matieres: matieres|map(m => {id: m.id, titre: m.titre, taille: m.taille, min: m.min, finitions: m.finitions|map(f => {id: f.id, oeillets: f.oeillets, nom: f.nom})}),
 	}|json_encode|raw }}</script>
 {% endblock %}

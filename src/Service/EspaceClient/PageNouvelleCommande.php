@@ -173,7 +173,8 @@ final class PageNouvelleCommande
             $lignes[] = ['libelle' => 'Quantité', 'valeur' => self::f($quantite).($montants ? ' × '.self::f((int) $ligne->getPrixUnitaire()).' F' : '')];
         }
         foreach ($ligne->getFinitions() as $f) {
-            $lignes[] = ['libelle' => (string) $f->getNomFinition(), 'valeur' => (int) $f->getMontant() <= 0 ? 'inclus' : ($montants ? self::f((int) $f->getMontant()).' F' : 'en option')];
+            // Sans montants (demandeur), une finition payante choisie est seulement « choisie ».
+            $lignes[] = ['libelle' => (string) $f->getNomFinition(), 'valeur' => (int) $f->getMontant() <= 0 ? 'inclus' : ($montants ? self::f((int) $f->getMontant()).' F' : 'choisie')];
         }
         $express = null;
         foreach ($commande->getCommandesDetails() as $l) {

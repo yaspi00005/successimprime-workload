@@ -13,7 +13,7 @@
 	if (!form || !source) return;
 	const D = JSON.parse(source.textContent);
 	const doux = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-	const NOMS = { 2: 'options', 3: 'fichier', 4: 'livraison et paiement' };
+	const NOMS = { 2: 'options', 3: 'fichier', 4: D.nomEtape4 || 'livraison et paiement' };
 	let etape = D.etape;
 	let derniere = null;
 	let numero = 0;
@@ -189,7 +189,9 @@
 					dl.append(div);
 				});
 			}
-			texte('barreInfo', r.quantite + ' · prête ' + (d.pret ? d.pret.jour : ''));
+			// Sans montants (demandeur) : la quantité en grand, le produit et la date en petit.
+			texte('barreInfo', (r.totalTexte ? r.quantite : D.nomProduit) + ' · prête ' + (d.pret ? d.pret.jour : ''));
+			if (!D.voitMontants) texte('barreTotal', r.quantite);
 			if (r.totalTexte) {
 				texte('total', r.totalTexte);
 				texte('barreTotal', r.totalTexte);

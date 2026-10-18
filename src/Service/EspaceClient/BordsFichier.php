@@ -56,14 +56,20 @@ final class BordsFichier
         $marge = self::marge($largeurCm, $hauteurCm);
         $risque = $oeillets ? 'risque avec les œillets' : 'risque à la coupe';
         $info = @getimagesize($chemin);
-        if (false === $info || !\in_array($info[2], [\IMAGETYPE_JPEG, \IMAGETYPE_PNG], true) || !\function_exists('imagecreatefromjpeg')) {
+        // GD sans JPEG (ou sans PNG) sur certains serveurs : le graphiste vérifie.
+        $lire = match ($info[2] ?? null) {
+            \IMAGETYPE_JPEG => 'imagecreatefromjpeg',
+            \IMAGETYPE_PNG => 'imagecreatefrompng',
+            default => null,
+        };
+        if (false === $info || null === $lire || !\function_exists($lire)) {
             return self::aVerifier(\sprintf('Le graphiste vérifie qu\'aucun texte n\'est à moins de %s cm du bord (%s).', self::cm($marge), $risque));
         }
         [$largeur, $hauteur] = [(int) $info[0], (int) $info[1]];
         if ($largeur * $hauteur > self::PIXELS_MAX || !self::memoireSuffisante($largeur * $hauteur)) {
             return self::aVerifier(\sprintf('Image très grande : le graphiste vérifie la zone de %s cm le long des bords.', self::cm($marge)));
         }
-        $image = \IMAGETYPE_JPEG === $info[2] ? @imagecreatefromjpeg($chemin) : @imagecreatefrompng($chemin);
+        $image = @$lire($chemin);
         if (false === $image) {
             return self::aVerifier('Image illisible : vérifiée par le graphiste.');
         }

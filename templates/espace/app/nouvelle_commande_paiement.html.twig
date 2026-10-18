@@ -20,7 +20,11 @@
 		<h1>Paiement de la commande</h1>
 		<a class="ec-bouton-blanc" href="{{ path('app_espace_commande', {id: commande.publicId}) }}">Voir ma commande</a>
 	</div>
-	<div class="ec-flash ec-flash-ok" role="status">Commande {{ commande.numero }} envoyée à l'atelier. Il confirme le prix et votre fichier ; la production démarre après sa confirmation et votre BAT.</div>
+	{% if app.request.query.getBoolean('envoyee') %}
+		<div class="ec-flash ec-flash-ok" role="status">Commande {{ commande.numero }} envoyée à l'atelier. Il confirme le prix et votre fichier ; la production démarre après sa confirmation et votre BAT.</div>
+	{% else %}
+		<p class="ec-petit" style="margin:0 0 .8rem">Commande {{ commande.numero }}, à confirmer par l'atelier : la production démarre après sa confirmation et votre BAT.</p>
+	{% endif %}
 
 	<div class="ef-page-om">
 		<div class="ef-om">

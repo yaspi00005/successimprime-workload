@@ -81,7 +81,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
                     $this->addFlash('succes', \sprintf('Demande %s envoyée. Elle part à l\'atelier dès qu\'une personne qui valide pour votre entreprise l\'accepte.', $commande->getNumero()));
                 } elseif (\in_array($paiement, ['acompte', 'tout'], true) && $this->peutPayerEnLigne($compte, $commande)) {
                     // Récapitulatif avec les frais Orange Money, puis la page d'Orange.
-                    return $this->redirectToRoute('app_espace_nouvelle_commande_paiement', ['id' => (string) $commande->getPublicId(), 'part' => $paiement]);
+                    return $this->redirectToRoute('app_espace_nouvelle_commande_paiement', ['id' => (string) $commande->getPublicId(), 'part' => $paiement, 'envoyee' => 1]);
                 } else {
                     $this->addFlash('succes', \sprintf('Commande %s envoyée. L\'atelier confirme le prix et votre fichier, puis vous prévient.%s', $commande->getNumero(), 'boutique' === $paiement ? ' Vous paierez en boutique.' : ''));
                 }
@@ -153,7 +153,8 @@ final class EspaceNouvelleCommandeController extends AbstractController
             'extensions' => FichiersClient::extensions(),
             'adresses' => $this->compteEntreprise->adresses($client),
             'entreprise' => CompteClient::clientAPlusieursComptes($client),
-            'contact' => trim($compte->getNomAffiche().' · +'.$compte->getTelephone()),
+            // « Oumar · +223 60 69 78 04 » (maquette CO04) : le livreur appelle cette personne.
+            'contact' => trim(explode(' ', trim((string) $compte->getNomAffiche()))[0].' · '.self::telephone((string) $compte->getTelephone()), ' ·'),
             'fraisLivraison' => $this->reglagesSaisie->fraisEnLigne(),
             // Paiement à la commande : le payeur, quand Orange Money est ouvert en ligne.
             'omActif' => $compte->peut(CompteClient::DROIT_PAYEUR) && $this->orangeMoney->estConfigure(),
@@ -552,6 +553,12 @@ final class EspaceNouvelleCommandeController extends AbstractController
         $texte = str_replace([' ', ','], ['', '.'], trim(\is_scalar($valeur) ? (string) $valeur : ''));
 
         return is_numeric($texte) && (float) $texte > 0 ? (float) $texte : null;
+    }
+
+    /** « 22360006212 » → « +223 60 00 62 12 » */
+    public static function telephone(string $numero): string
+    {
+        return 1 === preg_match('/^223(\d{8})$/', $numero, $m) ? '+223 '.implode(' ', str_split($m[1], 2)) : '+'.$numero;
     }
 
     private static function octets(int $octets): string

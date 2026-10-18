@@ -6,6 +6,7 @@ use App\Service\Sauvegarde\Sauvegardes;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Connection\StaticServerVersionProvider;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Exception\DriverException;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Schema\Comparator;
 use Doctrine\DBAL\Schema\ComparatorConfig;
@@ -326,13 +327,28 @@ final class Bascule
             }
         }
         $parTable = [];
-        foreach ($plateforme->getAlterSchemaSQL($this->comparer($this->schemaBoutique(), $reference)) as $sql) {
+        // Index retenu par une clé étrangère (erreur 1553) : retiré à la fin, quand le
+        // nouvel index ou la nouvelle clé est en place. Clé ou index déjà retiré (1091,
+        // instruction en double de Doctrine) : rien à faire. Le contrôle de l'étape 3
+        // vérifie de toute façon que la base finit identique à la référence.
+        $aLaFin = [];
+        foreach (array_values(array_unique(self::creerAvantDeRetirer($plateforme->getAlterSchemaSQL($this->comparer($this->schemaBoutique(), $reference))))) as $sql) {
             $liberer = [] !== $sansControle && preg_match('/ADD CONSTRAINT `?('.implode('|', array_map('preg_quote', $sansControle)).')`? FOREIGN KEY/i', $sql);
             if ($liberer) {
                 $this->connexion->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
             }
             try {
                 $this->connexion->executeStatement($sql);
+            } catch (DriverException $e) {
+                $retrait = (bool) preg_match('/^(?:DROP INDEX|ALTER TABLE \S+ DROP (?:FOREIGN KEY|INDEX))\s/i', $sql);
+                if ($retrait && 1553 === $e->getCode()) {
+                    $aLaFin[] = $sql;
+                    continue;
+                }
+                if (!$retrait || 1091 !== $e->getCode()) {
+                    throw $e;
+                }
+                continue;
             } finally {
                 if ($liberer) {
                     $this->connexion->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
@@ -342,6 +358,17 @@ final class Bascule
             if (preg_match('/^(?:CREATE TABLE|ALTER TABLE|CREATE (?:UNIQUE )?INDEX \S+ ON|DROP TABLE)\s+`?([A-Za-z0-9_]+)/i', $sql, $m)) {
                 $parTable[$m[1]] = ($parTable[$m[1]] ?? 0) + 1;
             }
+        }
+        foreach ($aLaFin as $sql) {
+            $this->connexion->executeStatement($sql);
+            ++$instructions;
+        }
+        // Avant MariaDB 10.5.2, Doctrine retire puis remet les clés étrangères qui
+        // s'appuient sur un index renommé, y compris une clé qu'il retire par ailleurs :
+        // une deuxième lecture retire ce qui reste en trop.
+        foreach ($plateforme->getAlterSchemaSQL($this->comparer($this->schemaBoutique(), $reference)) as $sql) {
+            $this->connexion->executeStatement($sql);
+            ++$instructions;
         }
         $note(\sprintf('%d instruction(s) appliquée(s) sur %d table(s).', $instructions, \count($parTable)));
 
@@ -377,6 +404,40 @@ final class Bascule
         $note('Historique des migrations remplacé par la migration de base.');
 
         return ['avant' => $avant, 'apres' => $apres, 'instructions' => $instructions, 'remises' => $remises];
+    }
+
+    /**
+     * Avant MariaDB 10.5.2 (XAMPP 8.2 : MariaDB 10.4), Doctrine renomme un index en
+     * « DROP INDEX ancien ON t » suivi de « CREATE INDEX nouveau ON t ». MariaDB refuse
+     * de retirer l'ancien s'il sert à une clé étrangère (erreur 1553) : le nouvel index
+     * est donc créé d'abord, puis l'ancien retiré.
+     *
+     * @param list<string> $instructions
+     *
+     * @return list<string>
+     */
+    public static function creerAvantDeRetirer(array $instructions): array
+    {
+        $resultat = [];
+        $n = \count($instructions);
+        for ($i = 0; $i < $n; ++$i) {
+            $sql = $instructions[$i];
+            $suivante = $instructions[$i + 1] ?? null;
+            if (
+                null !== $suivante
+                && preg_match('/^DROP INDEX \S+ ON (\S+)$/i', $sql, $retrait)
+                && preg_match('/^CREATE (?:UNIQUE )?INDEX \S+ ON (\S+) /i', $suivante, $creation)
+                && strtolower(trim($retrait[1], '`')) === strtolower(trim($creation[1], '`'))
+            ) {
+                $resultat[] = $suivante;
+                $resultat[] = $sql;
+                ++$i;
+                continue;
+            }
+            $resultat[] = $sql;
+        }
+
+        return $resultat;
     }
 
     /** Vide l'historique des anciennes migrations et note la migration de base comme faite. */

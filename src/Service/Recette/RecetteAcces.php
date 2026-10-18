@@ -124,6 +124,7 @@ final class RecetteAcces
         private readonly EntityManagerInterface $em,
         private readonly AccessDecisionManagerInterface $decisions,
         private readonly TokenStorageInterface $jetons,
+        private readonly RecetteRapportsMail $rapportsMail,
     ) {
     }
 
@@ -264,6 +265,12 @@ final class RecetteAcces
                 $this->verifierCreditsMessages($comptes, $bilan);
             } catch (\Throwable $e) {
                 $bilan->controler('Crédits SMS et e-mail : contrôle interrompu', false, $e::class.' : '.$e->getMessage());
+            }
+            $suivi && $suivi('rapports par e-mail');
+            try {
+                $this->rapportsMail->verifier($comptes, $bilan);
+            } catch (\Throwable $e) {
+                $bilan->controler('Rapports par e-mail : contrôle interrompu', false, $e::class.' : '.$e->getMessage());
             }
         } finally {
             $this->navigateur->terminer();

@@ -1,0 +1,67 @@
+{#
+	Petits morceaux des rapports par e-mail (docs/rapports-mail.md). Twig
+	de base seulement (pas de filtre de l'application) : les tests rendent
+	ces modèles sans le reste de l'application. Styles en ligne : c'est ce
+	que les messageries gardent.
+#}
+
+{# Un nombre : « 1 250 000 F », « 12,5 m² », « 42 % », « 7 ». #}
+{% macro v(x, format) -%}
+	{%- if x is null -%}—
+	{%- elseif format == 'f' -%}{{ x|number_format(0, ',', ' ') }} F
+	{%- elseif format == 'm2' -%}{{ x|number_format(1, ',', ' ') }} m²
+	{%- elseif format == 'pct' -%}{{ x|number_format(0, ',', ' ') }} %
+	{%- else -%}{{ x|number_format(0, ',', ' ') }}
+	{%- endif -%}
+{%- endmacro %}
+
+{# « ▲ +12 % vs samedi 10/10 » ; inverse : une baisse est une bonne nouvelle (dépenses). #}
+{% macro ecart(valeur, avant, libelle, format, inverse) -%}
+	{%- import _self as m -%}
+	{%- if avant is not null and avant > 0 -%}
+		{%- set pct = ((valeur - avant) * 100 / avant)|round -%}
+		{%- set bon = inverse ? pct <= 0 : pct >= 0 -%}
+		<span style="color: {{ pct == 0 ? '#4b5563' : (bon ? '#15803d' : '#b91c1c') }}; font-weight: bold;">{{ pct > 0 ? '▲ +' : (pct < 0 ? '▼ −' : '= ') }}{{ pct|abs }} %</span> <span style="color: #6b7280;">vs {{ libelle }}</span>
+	{%- else -%}
+		<span style="color: #6b7280;">{{ libelle }} : {{ m.v(avant ?? 0, format) }}</span>
+	{%- endif -%}
+{%- endmacro %}
+
+{# Une carte de chiffre, une moitié de ligne. #}
+{% macro kpi(libelle, valeur, ecart, sous) -%}
+	<td class="si-rm-kpi" width="50%" valign="top" style="width: 50%; padding: 4px; vertical-align: top;">
+		<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px;">
+			<div style="font-size: 12px; color: #6b7280; line-height: 1.3;">{{ libelle }}</div>
+			<div style="font-size: 20px; font-weight: bold; color: #111827; margin-top: 3px; line-height: 1.25;">{{ valeur }}</div>
+			{% if ecart is not empty %}<div style="font-size: 12px; margin-top: 3px; line-height: 1.35;">{{ ecart }}</div>{% endif %}
+			{% if sous is not empty %}<div style="font-size: 12px; color: #4b5563; margin-top: 2px; line-height: 1.35;">{{ sous }}</div>{% endif %}
+		</div>
+	</td>
+{%- endmacro %}
+
+{# Cartes deux par deux. #}
+{% macro grille(cartes) -%}
+	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+		{% for ligne in cartes|batch(2) %}
+			<tr>{% for c in ligne %}{{ c }}{% endfor %}{% if ligne|length == 1 %}<td class="si-rm-kpi" width="50%" style="width: 50%;"></td>{% endif %}</tr>
+		{% endfor %}
+	</table>
+{%- endmacro %}
+
+{# Titre de partie. #}
+{% macro titre(texte, couleur) -%}
+	<h2 style="font-size: 16px; line-height: 1.3; color: {{ couleur }}; margin: 22px 0 8px; padding: 0 0 5px; border-bottom: 2px solid {{ couleur }};">{{ texte }}</h2>
+{%- endmacro %}
+
+{# Une ligne libellé / valeur. #}
+{% macro ligne(libelle, valeur, couleur) -%}
+	<tr>
+		<td style="padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #374151;">{{ libelle }}</td>
+		<td align="right" style="padding: 6px 0 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 14px; font-weight: bold; color: {{ couleur|default('#111827') }}; white-space: nowrap; text-align: right;">{{ valeur }}</td>
+	</tr>
+{%- endmacro %}
+
+{# Barre d'avancement vers un objectif. #}
+{% macro jauge(part, couleur) -%}
+	<div style="height: 8px; background: #eef2f7; border-radius: 4px; margin: 6px 0 4px; overflow: hidden;"><div style="height: 8px; width: {{ min(100, max(0, part ?? 0)) }}%; background: {{ couleur }}; border-radius: 4px;"></div></div>
+{%- endmacro %}

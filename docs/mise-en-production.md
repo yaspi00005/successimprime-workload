@@ -39,7 +39,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 
 ### Clés
 
-- [ ] Rassembler les clés des comptes extérieurs (Orange SMS et Orange Money, Meta WhatsApp, boîte e-mail, Anthropic). La liste du site en ligne est dans [docs/deploiement.md, « Installation »](deploiement.md#installation). Sur l'ERP local, garder celles de l'ancien `.env.local` qui servent encore.
+- [ ] Rassembler les clés des comptes extérieurs (Orange SMS et Orange Money, Meta WhatsApp, boîte e-mail, Anthropic). La liste du site en ligne est dans [docs/deploiement.md, « Installation »](deploiement.md#installation). Sur l'ERP local, garder celles de l'ancien `.env.local` qui servent encore, et y mettre aussi la boîte e-mail (`MAILER_DSN`, `MAILER_FROM_ADDRESS`) pour les rapports par e-mail.
 - [ ] Générer la clé de synchronisation, une seule fois, sur le site en ligne : `php bin/console app:synchro --nouvelle-cle` ([docs/synchronisation.md, « Mise en route »](synchronisation.md#mise-en-route), étape 1). Elle ira dans le `.env.local` des deux machines.
 - [ ] Prévoir où ranger la clé de la copie hors site, générée le jour J sur l'ERP local ([docs/sauvegardes.md, « Copie chiffrée hors de la boutique »](sauvegardes.md#copie-chiffrée-hors-de-la-boutique)) : gestionnaire de mots de passe ou papier au coffre, hors de la boutique.
 
@@ -91,6 +91,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 - [ ] Dans `.env.local` : `SAUVEGARDE_COPIE_DIR` (le second disque). Lancer une fois, en administrateur, `scripts\windows\installer_taches_planifiees.bat` : il remplace l'ancienne tâche « toutes les 6 h ». Puis `php bin/console app:sauvegarde` et `php bin/console app:sauvegarde --liste` ([docs/sauvegardes.md](sauvegardes.md)).
 - [ ] Copie hors site : générer la clé et la ranger ([docs/sauvegardes.md, « Copie chiffrée hors de la boutique »](sauvegardes.md#copie-chiffrée-hors-de-la-boutique), étapes 1 à 3).
 - [ ] La direction relit les règles de Communications › Rappels de paiement (des commandes anciennes non soldées recevraient un rappel), puis lancer une fois, en administrateur : `installer_tache_rappels_paiement.bat`, `installer_tache_campagnes.bat`, `installer_tache_decaissements_recurrents.bat` (dossier `scripts\windows`).
+- [ ] Rapports par e-mail ([docs/rapports-mail.md](rapports-mail.md)) : `MAILER_DSN` et `MAILER_FROM_ADDRESS` dans le `.env.local` de l'ERP local (la même boîte que le site en ligne), puis `php bin/console cache:clear`. Lancer une fois, en administrateur, `scripts\windows\installer_tache_rapports_mail.bat` (toutes les 15 minutes). Puis `php bin/console app:rapports-mail --dry-run` (destinataires et version de chacun) et, sur Accueil › Rapports par e-mail, « M'envoyer un test ».
 
 ### 3. ERP local : données de démarrage et comptes
 

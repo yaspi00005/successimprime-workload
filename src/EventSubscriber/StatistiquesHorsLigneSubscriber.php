@@ -9,8 +9,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Objectifs du mois, exports Excel / PDF des statistiques et rapport de
- * la semaine : ERP local seulement (docs/statistiques.md). Les objectifs
+ * Objectifs du mois, exports Excel / PDF des statistiques, rapport de
+ * la semaine et rapports par e-mail : ERP local seulement
+ * (docs/statistiques.md, docs/rapports-mail.md). Les objectifs
  * et la trace des rapports ne partent pas vers le site, et un fichier de
  * chiffres ne sort pas d'un navigateur connecté depuis l'extérieur. Sur
  * le serveur en ligne, ces adresses n'existent pas.
@@ -18,7 +19,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 final class StatistiquesHorsLigneSubscriber implements EventSubscriberInterface
 {
     /** Routes (ou débuts de nom de route) fermées en ligne. */
-    public const ROUTES = ['app_statistiques_objectifs', 'app_rapport_semaine'];
+    public const ROUTES = ['app_statistiques_objectifs', 'app_rapport_semaine', 'app_rapports_mail'];
 
     public function __construct(private readonly AccesEnLigne $acces)
     {

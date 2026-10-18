@@ -1,0 +1,128 @@
+{% extends 'statistiques/export/_page_pdf.html.twig' %}
+
+{#
+	PDF joint au rapport par e-mail (docs/rapports-mail.md) : la même
+	version que l'e-mail (mêmes parties, mêmes droits), pour l'archiver ou
+	l'imprimer. Mise en page des PDF de statistiques.
+#}
+{% import 'rapports_mail/_macros.html.twig' as m %}
+
+{% macro ecart(valeur, avant, comp, inverse) -%}
+	{%- if avant is not null and avant > 0 -%}
+		{%- set pct = ((valeur - avant) * 100 / avant)|round -%}
+		{%- set bon = inverse ? pct <= 0 : pct >= 0 -%}
+		<span class="{{ pct == 0 ? '' : (bon ? 'vert' : 'rouge') }}">{{ pct >= 0 ? '+' : '−' }}{{ pct|abs }} %</span> vs {{ comp }}
+	{%- else -%}
+		{{ comp }} : {{ avant ?? 0 }}
+	{%- endif -%}
+{%- endmacro %}
+{% macro carte(libelle, valeur, sous) %}<div class="carte"><div class="lib">{{ libelle }}</div><div class="val">{{ valeur }}</div><div class="sous">{{ sous }}</div></div>{% endmacro %}
+{% macro cartes(liste) %}
+	<table class="cartes">
+		{% for ligne in liste|batch(4) %}
+			<tr>{% for c in ligne %}<td>{{ c }}</td>{% endfor %}{% if ligne|length < 4 %}{% for i in 1..(4 - ligne|length) %}<td></td>{% endfor %}{% endif %}</tr>
+		{% endfor %}
+	</table>
+{% endmacro %}
+{% macro lignes(liste) %}
+	<table class="donnees">
+		{% for l in liste %}<tr class="{{ loop.index is even ? 'paire' }}"><td>{{ l[0] }}</td><td class="droite">{{ l[1] }}</td></tr>{% endfor %}
+	</table>
+{% endmacro %}
+{% import _self as x %}
+
+{% block titre %}{{ p.titre }}{% endblock %}
+{% block periode %}{{ p.libelle|capitalize }}{% if r.en_cours %} (en cours, arrêté au {{ r.arrete_le|date('d/m/Y à H:i') }}){% endif %}{% endblock %}
+
+{% block contenu %}
+	{% set a = r.activite %}
+	{% set comp = p.libelleComparaison %}
+	<p class="note">Version de {{ prenom }}, selon ses droits : {{ contenu }}. Comparaison : {{ comp }}.</p>
+
+	<h2>À surveiller</h2>
+	{% for al in r.alertes %}<div class="alerte {{ al.niveau == 'danger' ? 'danger' }}">{{ al.texte }}</div>{% else %}<p class="vide">Rien d’anormal à signaler.</p>{% endfor %}
+
+	<h2>Activité</h2>
+	{{ x.cartes([
+		x.carte('Commandes', m.v(a.commandes.nombre), x.ecart(a.commandes.nombre, a.commandes.avant, comp)),
+		x.carte('Devis émis', m.v(a.devis.emis), a.devis.signes ~ ' signé(s) · ' ~ x.ecart(a.devis.emis, a.devis.emis_avant, comp)|striptags),
+		x.carte('m² imprimés', m.v(a.surface.valeur, 'm2'), x.ecart(a.surface.valeur, a.surface.avant, comp)),
+		x.carte('Nouveaux clients', m.v(a.clients.nombre), x.ecart(a.clients.nombre, a.clients.avant, comp)),
+		x.carte('Livraisons remises', m.v(a.livraisons.livrees), a.livraisons.echecs ~ ' échec(s)'),
+		x.carte('BAT validés', m.v(a.bat.valides), a.bat.en_attente ~ ' en attente du client'),
+		x.carte('Commandes en retard', m.v(a.en_retard), 'date promise dépassée'),
+		x.carte('Réclamations', m.v(a.reclamations.nouvelles), a.reclamations.ouvertes ~ ' ouverte(s)'),
+	]) }}
+	{% if a.clients.noms is not null and a.clients.noms is not empty %}<p class="note">Nouveaux clients : {{ a.clients.noms|join(', ') }}.</p>{% endif %}
+	{% if a.reclamations.liste is not null and a.reclamations.liste is not empty %}
+		<p class="note">Réclamations ouvertes : {% for rc in a.reclamations.liste %}{{ rc.numero }} · {{ rc.objet }}{% if rc.client %} · {{ rc.client }}{% endif %}{% if not loop.last %} ; {% endif %}{% endfor %}.</p>
+	{% endif %}
+
+	{% if r.ventes is not null %}
+		{% set v = r.ventes %}
+		<h2>Chiffre d’affaires</h2>
+		{{ x.cartes([
+			x.carte('CA facturé', m.v(v.facture, 'f'), x.ecart(v.facture, v.avant, comp)),
+			x.carte('Objectif de la période', m.v(v.objectif, 'f'), v.part is not null ? v.part ~ ' % atteint' : 'pas d’objectif'),
+		]|merge(v.mois is not null ? [x.carte('CA ' ~ v.de_mois ~ ' à ce jour', m.v(v.mois.realise, 'f'), v.mois.objectif is not null ? v.mois.part ~ ' % de ' ~ m.v(v.mois.objectif, 'f') : 'pas d’objectif')] : [])) }}
+	{% endif %}
+
+	{% if r.encaissements is not null %}
+		{% set e = r.encaissements %}
+		<h2>Encaissements</h2>
+		{{ x.cartes([
+			x.carte('Encaissé', m.v(e.total, 'f'), x.ecart(e.total, e.avant, comp)),
+			x.carte('Taux d’encaissement', e.taux is null ? '—' : m.v(e.taux, 'pct'), 'objectif ' ~ e.taux_objectif ~ ' %'),
+			x.carte('Paiements à valider', m.v(e.attente.nombre), m.v(e.attente.montant, 'f')),
+		]) }}
+		{{ x.lignes(e.modes|map(mo => [mo.libelle ~ ' (' ~ mo.nombre ~ ')', m.v(mo.montant, 'f')])) }}
+	{% endif %}
+
+	{% if r.creances is not null %}
+		{% set cr = r.creances %}
+		<h2>Créances clients</h2>
+		{{ x.lignes([
+			['Reste à encaisser (aujourd’hui)', m.v(cr.total, 'f')],
+			['Échues (' ~ cr.nb_echues ~ ' document(s))', m.v(cr.echues, 'f')],
+			['Échues depuis plus de 60 jours', m.v(cr.plus_60, 'f')],
+		]) }}
+		{% if cr.debiteurs is not null and cr.debiteurs is not empty %}
+			<p class="note">Plus gros restes à payer :</p>
+			{{ x.lignes(cr.debiteurs|map(d => [d.nom, m.v(d.reste, 'f')])) }}
+		{% endif %}
+	{% endif %}
+
+	{% if r.tresorerie is not null %}
+		{% set t = r.tresorerie %}
+		<h2>Dépenses et trésorerie</h2>
+		{{ x.cartes([
+			x.carte('Dépenses', m.v(t.depenses.total, 'f'), x.ecart(t.depenses.total, t.depenses.avant, comp, true)),
+			x.carte('Trésorerie disponible', m.v(t.total, 'f'), t.seuil > 0 ? 'seuil ' ~ m.v(t.seuil, 'f') : 'aujourd’hui'),
+		]|merge(t.depenses.budget is not null ? [x.carte('Budget du mois hors salaires', m.v(t.depenses.budget, 'f'), m.v(t.depenses.hors_salaires, 'f') ~ ' dépensés')] : [])) }}
+		{{ x.lignes(t.depenses.categories|map(cat => [cat.libelle, m.v(cat.montant, 'f')])|merge(t.comptes|map(cpt => ['Solde · ' ~ cpt.nom, m.v(cpt.solde, 'f')]))) }}
+	{% endif %}
+
+	{% if r.marge is not null %}
+		<h2>Marge</h2>
+		{{ x.lignes([['Taux de marge brute du mois', r.marge.taux is null ? '—' : r.marge.taux ~ ' %'], [comp, r.marge.avant is null ? '—' : r.marge.avant ~ ' %']]) }}
+	{% endif %}
+
+	{% if r.equipe is not null %}
+		{% set q = r.equipe %}
+		<h2>Équipe</h2>
+		{{ x.lignes((q.attendus > 0 ? [[p.type == 'jour' ? 'Présents' : 'Présents le ' ~ (r.en_cours ? r.arrete_le : p.dernierJour)|date('d/m'), q.presents ~ ' / ' ~ q.attendus]] : [])|merge([
+			['Retards', q.retards],
+			['Absences non justifiées', q.absences_non_justifiees],
+		]|merge(q.lignes|map(l => [l.nom, l.retards ~ ' retard(s), ' ~ l.minutes ~ ' min · ' ~ l.absences ~ ' absence(s)' ~ (l.justifiees > 0 ? ' · ' ~ l.justifiees ~ ' justifiée(s)' : '')])))) }}
+	{% endif %}
+
+	{% if r.stock is not null %}
+		<h2>Stock sous le seuil</h2>
+		{% if r.stock is empty %}<p class="vide">Aucun article sous son seuil.</p>{% else %}{{ x.lignes(r.stock|map(art => [art.designation, art.reste|number_format(1, ',', ' ') ~ ' ' ~ art.unite])) }}{% endif %}
+	{% endif %}
+
+	{% if r.taches.nombre > 0 %}
+		<h2>Tâches en retard ({{ r.taches.nombre }})</h2>
+		{{ x.lignes(r.taches.liste|map(tc => [tc.titre, 'prévue le ' ~ tc.prevue|date('d/m/Y')])) }}
+	{% endif %}
+{% endblock %}

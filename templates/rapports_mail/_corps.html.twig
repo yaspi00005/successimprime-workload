@@ -1,0 +1,225 @@
+{#
+	Corps du rapport par e-mail (docs/rapports-mail.md) : le même dans
+	l'e-mail et dans l'aperçu de l'écran. Une partie n'existe que si
+	RapportPeriodique l'a calculée (droits du destinataire) : r.ventes,
+	r.encaissements, r.tresorerie… valent null sans le droit.
+	Mise en page en tableaux, styles en ligne, 600 px au plus.
+#}
+{% import 'rapports_mail/_macros.html.twig' as m %}
+{% set c1 = marque.couleurs[0] ?? '#0F4590' %}
+{% set a = r.activite %}
+{% set comp = p.libelleComparaison %}
+{% set etats = {atteint: 'atteint', en_bonne_voie: 'en bonne voie', a_surveiller: 'à surveiller', en_retard: 'en retard', manque: 'manqué', a_venir: 'à venir', sans_objectif: 'sans objectif'} %}
+<table role="presentation" class="si-rm-carte" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; border-collapse: separate; font-family: Arial, Helvetica, sans-serif; color: #1f2937;">
+	<tr>
+		<td style="background: {{ c1 }}; padding: 18px 20px; color: #ffffff;">
+			<div style="font-size: 13px; line-height: 1.3; color: #ffffff; opacity: 0.85;">{{ marque.nom }}{% if essai %} · essai{% endif %}</div>
+			<div style="font-size: 22px; line-height: 1.25; font-weight: bold; color: #ffffff; margin-top: 2px;">{{ p.titre }}</div>
+			<div style="font-size: 15px; line-height: 1.35; color: #ffffff; margin-top: 2px;">{{ p.libelle|capitalize }}</div>
+		</td>
+	</tr>
+	<tr>
+		<td style="padding: 0; line-height: 0; font-size: 0;">
+			<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+				{% for couleur in marque.couleurs %}<td height="4" style="height: 4px; background: {{ couleur }}; font-size: 0; line-height: 0;">&nbsp;</td>{% endfor %}
+			</tr></table>
+		</td>
+	</tr>
+	<tr>
+		<td class="si-rm-contenu" style="padding: 18px 20px 6px; font-size: 14px; line-height: 1.5;">
+			<p style="margin: 0 0 8px; font-size: 15px;">Bonjour {{ prenom }},</p>
+			<p style="margin: 0 0 6px;">
+				{% if r.en_cours %}
+					Voici le {{ p.titre|lower }} ({{ p.libelle }}), <strong>période en cours</strong> : chiffres arrêtés au {{ r.arrete_le|date('d/m/Y à H:i') }}.
+				{% else %}
+					Voici le {{ p.titre|lower }} : {{ p.libelle }}, comparé {{ p.type == 'jour' ? 'au ' ~ comp ~ ' (même jour de la semaine d’avant)' : (p.type == 'semaine' ? 'à la ' ~ comp : 'à ' ~ comp) }}.
+				{% endif %}
+			</p>
+			<p style="margin: 0; font-size: 12px; color: #6b7280;">Votre version, selon vos droits : {{ contenu }}.</p>
+
+			{# ---------- À surveiller ---------- #}
+			{{ m.titre('À surveiller', c1) }}
+			{% if r.alertes is empty %}
+				<p style="margin: 0; padding: 8px 10px; background: #f0fdf4; border-left: 4px solid #16a34a; color: #166534;">Rien d’anormal à signaler.</p>
+			{% else %}
+				{% for al in r.alertes %}
+					<div style="margin: 0 0 5px; padding: 7px 10px; border-left: 4px solid {{ al.niveau == 'danger' ? '#dc2626' : '#f97316' }}; background: {{ al.niveau == 'danger' ? '#fef2f2' : '#fff7ed' }}; color: #1f2937;">{{ al.texte }}</div>
+				{% endfor %}
+			{% endif %}
+
+			{# ---------- Activité ---------- #}
+			{{ m.titre('Activité', c1) }}
+			{{ m.grille([
+				m.kpi('Commandes', m.v(a.commandes.nombre), m.ecart(a.commandes.nombre, a.commandes.avant, comp), a.commandes.objectif is not null ? 'objectif ' ~ m.v(a.commandes.objectif) : ''),
+				m.kpi('Devis émis', m.v(a.devis.emis), m.ecart(a.devis.emis, a.devis.emis_avant, comp), a.devis.signes ~ ' devis signé' ~ (a.devis.signes > 1 ? 's')),
+				m.kpi('m² imprimés', m.v(a.surface.valeur, 'm2'), m.ecart(a.surface.valeur, a.surface.avant, comp, 'm2'), a.surface.objectif is not null ? 'objectif ' ~ m.v(a.surface.objectif, 'm2') : ''),
+				m.kpi('Nouveaux clients', m.v(a.clients.nombre), m.ecart(a.clients.nombre, a.clients.avant, comp), a.clients.objectif is not null ? 'objectif ' ~ m.v(a.clients.objectif) : 'première commande'),
+				m.kpi('Livraisons remises', m.v(a.livraisons.livrees), '', a.livraisons.echecs > 0 ? a.livraisons.echecs ~ ' échec' ~ (a.livraisons.echecs > 1 ? 's') ~ ' de livraison' : 'aucun échec de livraison'),
+				m.kpi('BAT validés', m.v(a.bat.valides), '', a.bat.en_attente ~ ' en attente du client'),
+			]) }}
+			{% if a.clients.noms is not null and a.clients.noms is not empty %}
+				<p style="margin: 6px 0 0; font-size: 13px; color: #374151;"><strong>Nouveaux clients :</strong> {{ a.clients.noms|join(', ') }}{% if a.clients.nombre > a.clients.noms|length %} et {{ a.clients.nombre - a.clients.noms|length }} autre{{ a.clients.nombre - a.clients.noms|length > 1 ? 's' }}{% endif %}.</p>
+			{% endif %}
+			<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 8px; border-collapse: collapse;">
+				{% if a.commandes.mois is not null and a.commandes.mois.objectif is not null %}
+					{{ m.ligne('Commandes depuis le 1er (objectif du mois ' ~ m.v(a.commandes.mois.objectif) ~ ')', m.v(a.commandes.mois.realise) ~ ' · ' ~ a.commandes.mois.part ~ ' %') }}
+				{% endif %}
+				{{ m.ligne('Commandes en retard (date promise dépassée)', m.v(a.en_retard), a.en_retard > 0 ? '#b91c1c' : null) }}
+				{{ m.ligne('Devis envoyés à relancer', m.v(a.devis.a_relancer), a.devis.a_relancer > 0 ? '#c2410c' : null) }}
+				{{ m.ligne('Réclamations reçues', m.v(a.reclamations.nouvelles)) }}
+				{{ m.ligne('Réclamations ouvertes' ~ (a.reclamations.anciennes > 0 ? ' (dont ' ~ a.reclamations.anciennes ~ ' depuis plus de ' ~ constant('App\\Service\\Rapports\\RapportPeriodique::JOURS_RECLAMATION') ~ ' jours)' : ''), m.v(a.reclamations.ouvertes), a.reclamations.anciennes > 0 ? '#c2410c' : null) }}
+			</table>
+			{% if a.reclamations.liste is not null and a.reclamations.liste is not empty %}
+				<p style="margin: 6px 0 0; font-size: 13px; color: #374151;">
+					{% for rc in a.reclamations.liste %}{{ rc.numero }} · {{ rc.objet }}{% if rc.client %} · {{ rc.client }}{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}
+				</p>
+			{% endif %}
+
+			{# ---------- Ventes ---------- #}
+			{% if r.ventes is not null %}
+				{% set v = r.ventes %}
+				{{ m.titre('Chiffre d’affaires', c1) }}
+				{{ m.grille([
+					m.kpi('CA facturé', m.v(v.facture, 'f'), m.ecart(v.facture, v.avant, comp, 'f'), v.objectif is not null ? 'objectif ' ~ m.v(v.objectif, 'f') ~ ' (' ~ v.part ~ ' %)' : 'pas d’objectif fixé'),
+				]) }}
+				{% if v.mois is not null %}
+					<div style="margin-top: 8px; font-size: 13px; color: #374151;">
+						<strong>CA {{ v.de_mois }} à ce jour :</strong> {{ m.v(v.mois.realise, 'f') }}{% if v.mois.objectif is not null %} sur un objectif de {{ m.v(v.mois.objectif, 'f') }} · {{ etats[v.mois.etat] ?? v.mois.etat }}{% endif %}
+						{% if v.mois.objectif is not null %}
+							{{ m.jauge(v.mois.part, c1) }}
+							<span style="color: #6b7280;">{{ v.mois.part }} % de l’objectif · {{ v.mois.ecoule }} % du mois écoulé{% if v.mois.projection is not null and v.mois.ecoule < 100 %} · au rythme actuel : {{ m.v(v.mois.projection, 'f') }} ({{ v.mois.part_projetee }} %){% endif %}</span>
+						{% endif %}
+					</div>
+				{% endif %}
+			{% endif %}
+
+			{# ---------- Encaissements et créances ---------- #}
+			{% if r.encaissements is not null %}
+				{% set e = r.encaissements %}
+				{{ m.titre('Encaissements', c1) }}
+				{{ m.grille([
+					m.kpi('Encaissé', m.v(e.total, 'f'), m.ecart(e.total, e.avant, comp, 'f'), ''),
+					m.kpi('Taux d’encaissement', e.taux is null ? '—' : m.v(e.taux, 'pct'), '', e.taux is null ? 'aucune facture sur la période' : 'objectif ' ~ e.taux_objectif ~ ' %'),
+				]) }}
+				<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 8px; border-collapse: collapse;">
+					{% for mode in e.modes %}
+						{{ m.ligne(mode.libelle ~ ' (' ~ mode.nombre ~ ')', m.v(mode.montant, 'f')) }}
+					{% else %}
+						{{ m.ligne('Aucun paiement validé sur la période', '—') }}
+					{% endfor %}
+					{% if e.attente.nombre > 0 %}
+						{{ m.ligne('Paiements à valider (' ~ e.attente.nombre ~ ')', m.v(e.attente.montant, 'f'), '#c2410c') }}
+					{% endif %}
+				</table>
+			{% endif %}
+			{% if r.creances is not null %}
+				{% set cr = r.creances %}
+				{{ m.titre('Créances clients', c1) }}
+				<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+					{{ m.ligne('Reste à encaisser (aujourd’hui)', m.v(cr.total, 'f')) }}
+					{{ m.ligne('Échues (' ~ cr.nb_echues ~ ' document' ~ (cr.nb_echues > 1 ? 's') ~ ')', m.v(cr.echues, 'f'), cr.echues > 0 ? '#b91c1c' : null) }}
+					{{ m.ligne('Échues depuis plus de 60 jours', m.v(cr.plus_60, 'f'), cr.plus_60 > 0 ? '#b91c1c' : null) }}
+				</table>
+				{% if cr.debiteurs is not null and cr.debiteurs is not empty %}
+					<p style="margin: 8px 0 2px; font-size: 13px; color: #374151;"><strong>Plus gros restes à payer :</strong></p>
+					<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+						{% for d in cr.debiteurs %}{{ m.ligne(d.nom, m.v(d.reste, 'f')) }}{% endfor %}
+					</table>
+				{% endif %}
+			{% endif %}
+
+			{# ---------- Dépenses et trésorerie ---------- #}
+			{% if r.tresorerie is not null %}
+				{% set t = r.tresorerie %}
+				{% set d = t.depenses %}
+				{{ m.titre('Dépenses et trésorerie', c1) }}
+				{{ m.grille([
+					m.kpi('Dépenses', m.v(d.total, 'f'), m.ecart(d.total, d.avant, comp, 'f', true), d.budget is not null and d.budget > 0 ? 'hors salaires : ' ~ (d.hors_salaires * 100 / d.budget)|round ~ ' % du budget' : 'salaires compris'),
+					m.kpi('Trésorerie disponible', m.v(t.total, 'f'), '', t.seuil > 0 ? 'seuil d’alerte ' ~ m.v(t.seuil, 'f') : 'aujourd’hui'),
+				]) }}
+				{% if d.categories is not empty %}
+					<p style="margin: 8px 0 2px; font-size: 13px; color: #374151;"><strong>Dépenses par catégorie :</strong></p>
+					<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+						{% for cat in d.categories|slice(0, 6) %}{{ m.ligne(cat.libelle, m.v(cat.montant, 'f')) }}{% endfor %}
+					</table>
+				{% endif %}
+				<p style="margin: 8px 0 2px; font-size: 13px; color: #374151;"><strong>Soldes des comptes :</strong></p>
+				<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+					{% for cpt in t.comptes %}{{ m.ligne(cpt.nom, m.v(cpt.solde, 'f'), cpt.solde < 0 ? '#b91c1c' : null) }}{% else %}{{ m.ligne('Aucun compte', '—') }}{% endfor %}
+				</table>
+			{% endif %}
+
+			{# ---------- Marge (rapport du mois) ---------- #}
+			{% if r.marge is not null %}
+				{{ m.titre('Marge', c1) }}
+				<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+					{{ m.ligne('Taux de marge brute du mois', r.marge.taux is null ? '—' : r.marge.taux ~ ' %', r.marge.taux is not null and r.marge.taux < constant('App\\Service\\Rapports\\RapportPeriodique::MARGE_MINIMUM') ? '#c2410c' : null) }}
+					{{ m.ligne('Mois d’avant (' ~ comp ~ ')', r.marge.avant is null ? '—' : r.marge.avant ~ ' %') }}
+				</table>
+			{% endif %}
+
+			{# ---------- Équipe ---------- #}
+			{% if r.equipe is not null %}
+				{% set q = r.equipe %}
+				{{ m.titre('Équipe', c1) }}
+				<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+					{% if q.attendus > 0 %}{{ m.ligne(p.type == 'jour' ? 'Présents' : 'Présents le ' ~ (r.en_cours ? r.arrete_le : p.dernierJour)|date('d/m'), q.presents ~ ' / ' ~ q.attendus) }}{% endif %}
+					{{ m.ligne('Retards', m.v(q.retards), q.retards > 0 ? '#c2410c' : null) }}
+					{{ m.ligne('Absences non justifiées', m.v(q.absences_non_justifiees), q.absences_non_justifiees > 0 ? '#b91c1c' : null) }}
+				</table>
+				{% if q.lignes is not empty %}
+					<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 6px; border-collapse: collapse; font-size: 13px;">
+						{% for l in q.lignes|slice(0, 8) %}
+							<tr>
+								<td style="padding: 5px 0; border-bottom: 1px solid #f1f5f9; color: #374151;">{{ l.nom }}</td>
+								<td align="right" style="padding: 5px 0 5px 8px; border-bottom: 1px solid #f1f5f9; color: #4b5563; text-align: right;">
+									{{ [
+										l.retards > 0 ? l.retards ~ ' retard' ~ (l.retards > 1 ? 's') ~ ' (' ~ l.minutes ~ ' min)' : null,
+										l.absences > 0 ? l.absences ~ ' absence' ~ (l.absences > 1 ? 's') : null,
+										l.justifiees > 0 ? l.justifiees ~ ' justifiée' ~ (l.justifiees > 1 ? 's') : null,
+									]|filter(x => x is not null)|join(' · ') }}
+								</td>
+							</tr>
+						{% endfor %}
+					</table>
+				{% endif %}
+			{% endif %}
+
+			{# ---------- Stock ---------- #}
+			{% if r.stock is not null %}
+				{{ m.titre('Stock sous le seuil', c1) }}
+				{% if r.stock is empty %}
+					<p style="margin: 0; color: #166534;">Aucun article sous son seuil.</p>
+				{% else %}
+					<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+						{% for art in r.stock %}{{ m.ligne(art.designation, art.reste|number_format(art.reste == art.reste|round ? 0 : 1, ',', ' ') ~ ' ' ~ art.unite, '#c2410c') }}{% endfor %}
+					</table>
+				{% endif %}
+			{% endif %}
+
+			{# ---------- Ses tâches ---------- #}
+			{% if r.taches.nombre > 0 %}
+				{{ m.titre('Vos tâches en retard', c1) }}
+				<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+					{% for tc in r.taches.liste %}{{ m.ligne(tc.titre, 'prévue le ' ~ tc.prevue|date('d/m'), '#b91c1c') }}{% endfor %}
+				</table>
+				{% if r.taches.nombre > r.taches.liste|length %}<p style="margin: 4px 0 0; font-size: 12px; color: #6b7280;">Et {{ r.taches.nombre - r.taches.liste|length }} autre{{ r.taches.nombre - r.taches.liste|length > 1 ? 's' }} dans le planning.</p>{% endif %}
+			{% endif %}
+
+			{% if lien %}
+				<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 22px 0 4px;">
+					<tr><td style="background: {{ c1 }}; border-radius: 6px;"><a href="{{ lien }}" style="display: inline-block; padding: 11px 18px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px;">Ouvrir dans l’ERP</a></td></tr>
+				</table>
+				<p style="margin: 0; font-size: 12px; color: #6b7280;">Ce lien ne fonctionne que sur le réseau de l’atelier (ERP local).</p>
+			{% endif %}
+		</td>
+	</tr>
+	<tr>
+		<td style="padding: 14px 20px 18px; font-size: 12px; line-height: 1.5; color: #6b7280; border-top: 1px solid #e5e7eb;">
+			Document interne et confidentiel. Chiffres calculés le {{ genere_le|date('d/m/Y à H:i') }}, selon vos droits ({{ version|lower }}).<br>
+			{% if not lien %}Le rapport complet est dans l’ERP (Accueil › Rapports par e-mail), sur le réseau de l’atelier seulement.<br>{% endif %}
+			Pour ne plus recevoir ces rapports, demandez-le à la direction.<br>
+			{{ marque.nom }}
+		</td>
+	</tr>
+</table>

@@ -115,6 +115,7 @@ security:
             - ROLE_PREPRESSE
             - ROLE_PRODUCTION_VOIR
             - ROLE_PRODUCTION_GERER
+            - ROLE_ATELIER_CHEF
 
             - ROLE_LIVRAISON
             - ROLE_ENTRETIEN

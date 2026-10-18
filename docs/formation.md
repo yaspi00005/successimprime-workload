@@ -208,9 +208,9 @@ Résultat attendu : Le contrôle est enregistré, le BAT envoyé, le PDF du mont
    Résultat attendu : L'employé dit dans quelle colonne il est (son étape).
 
 2. **Lire la charge des machines** (`demo.oumar`)
-   - Onglet « Planning machines ».
+   - Menu « Atelier », onglet « Planning ».
 
-   Résultat attendu : L'employé dit quelle machine est la plus occupée aujourd'hui.
+   Résultat attendu : L'employé dit quelle machine est la plus occupée cette semaine.
 
 3. **Démarrer et mettre en pause** (`demo.oumar`)
    - Au poste de la machine : « Ma file machine ».

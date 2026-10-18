@@ -1,0 +1,121 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Atelier › Mon travail (maquette AT05, docs/atelier-production.md),
+	pensé pour le téléphone de l'opérateur : le travail en cours de sa
+	machine, ses fichiers, l'avancement et la fin estimée ; Pause,
+	Terminer, Signaler un problème. Les gestes sont permis à l'opérateur
+	affecté à la machine, au chef d'atelier et au poste de la machine.
+	Aucun montant.
+#}
+
+{% block title %}Mon travail{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/atelier-production.css') }}" rel="stylesheet">
+	<meta http-equiv="refresh" content="120">
+{% endblock %}
+
+{% block body %}
+{% set jeton = csrf_token('atelier-production') %}
+<div class="si-ap si-ap-op">
+	{% set prenom = app.user.employe ? app.user.employe.prenom : app.user.userIdentifier %}
+	<div class="si-ap-op-qui">
+		<span class="si-ap-avatar" aria-hidden="true">{{ prenom|first|upper }}</span>
+		<div>
+			<strong>{{ prenom }}{{ machine ? ' · ' ~ machine.nom }}</strong>
+			<span class="si-ap-gris">{{ restants }} travail{{ restants > 1 ? 'aux' }} restant{{ restants > 1 ? 's' }} aujourd'hui</span>
+		</div>
+	</div>
+
+	{% if machines|length > 1 %}
+		<nav class="si-ap-op-machines" aria-label="Mes machines">
+			{% for m in machines %}
+				<a href="{{ path('app_atelier_operateur', {machine: m.id}) }}" class="{{ machine and m.id == machine.id ? 'actif' }}">{{ m.nom }}</a>
+			{% endfor %}
+		</nav>
+	{% endif %}
+
+	{% if machine is null %}
+		<div class="si-ap-carte si-ap-vide"><i class="fas fa-print" aria-hidden="true"></i>Aucune machine ne vous est affectée. Demandez au chef d'atelier de vous l'affecter.</div>
+	{% else %}
+		{% set t = travail ?? suivant %}
+		{% if t is null %}
+			<div class="si-ap-carte si-ap-vide"><i class="far fa-check-circle" aria-hidden="true"></i>Rien à imprimer sur {{ machine.nom }} pour l'instant.</div>
+		{% else %}
+			{% set o = t.ordre %}
+			{% set ligne = o.commandeDetail %}
+			<section class="si-ap-carte si-ap-op-travail" aria-label="Travail {{ t.numero }}">
+				<h2><span>{{ t.numero }}{{ t.client ? ' · ' ~ t.client }}</span>
+					<span class="si-ap-pastille si-ap-e-{{ travail ? t.statut : 'a_suivre' }}">{{ travail ? (t.statut == 'pause' ? 'En pause' : 'En cours') : 'Suivant' }}</span>
+				</h2>
+				<div class="si-ap-op-lignes">
+					{{ t.travail }}
+					<span>{{ t.matiere|default('') }}{{ t.matiere and t.surface ? ' · ' }}{{ t.surface ? t.surface|number_format(1, ',', ' ') ~ ' m²' }}</span>
+					{% if o.instructions %}<span>{{ o.instructions }}</span>{% endif %}
+				</div>
+				{% if fichiers is not empty %}
+					<div class="si-ap-op-fichiers">
+						{% for f in fichiers %}<div><i class="fas fa-paperclip me-1" aria-hidden="true"></i>{{ f.nomOriginal }}</div>{% endfor %}
+					</div>
+				{% endif %}
+				{% if travail %}
+					<div class="si-ap-barre" role="progressbar" aria-valuenow="{{ t.avancement.pourcent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Avancement"><i style="width: {{ t.avancement.pourcent }}%"></i></div>
+					<div class="si-ap-barre-infos mt-1"><span>démarré {{ o.demarreLe|date('H:i') }}</span><span>fin ≈ {{ t.avancement.finEstimee ? t.avancement.finEstimee|date('H:i') : '—' }}</span></div>
+				{% else %}
+					<p class="si-ap-gris mb-0">Passage prévu {{ t.debut|date('d/m') == maintenant|date('d/m') ? 'à ' ~ t.debut|date('H:i') : 'le ' ~ t.debut|date('d/m à H:i') }} · environ {{ t.minutes }} min{{ t.promis ? ' · promis le ' ~ t.promis|date('d/m') }}</p>
+				{% endif %}
+			</section>
+
+			{% if peutAgir %}
+				<div class="si-ap-op-boutons">
+					{% if travail and t.statut == 'pause' %}
+						<form method="post" action="{{ path('app_atelier_operateur_agir', {id: o.id, action: 'reprendre'}) }}"><input type="hidden" name="_token" value="{{ jeton }}"><button type="submit" class="btn btn-light border"><i class="fas fa-play me-1" aria-hidden="true"></i>Reprendre</button></form>
+						<a class="btn btn-success disabled" aria-disabled="true"><i class="fas fa-check me-1" aria-hidden="true"></i>Terminer</a>
+					{% elseif travail %}
+						<form method="post" action="{{ path('app_atelier_operateur_agir', {id: o.id, action: 'pause'}) }}"><input type="hidden" name="_token" value="{{ jeton }}"><button type="submit" class="btn btn-light border"><i class="fas fa-pause me-1" aria-hidden="true"></i>Pause</button></form>
+						<a href="{{ path('app_atelier_operateur_terminer', {id: o.id}) }}" class="btn btn-success"><i class="fas fa-check me-1" aria-hidden="true"></i>Terminer</a>
+					{% else %}
+						<span></span>
+						<form method="post" action="{{ path('app_atelier_operateur_agir', {id: o.id, action: 'demarrer'}) }}"><input type="hidden" name="_token" value="{{ jeton }}"><button type="submit" class="btn btn-success"><i class="fas fa-play me-1" aria-hidden="true"></i>Démarrer</button></form>
+					{% endif %}
+				</div>
+				<details>
+					<summary class="si-ap-btn-probleme d-flex align-items-center justify-content-center"><i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>Signaler un problème</summary>
+					<form method="post" action="{{ path('app_atelier_incident_signaler') }}" class="si-ap-carte si-ap-formulaire mt-2">
+						<input type="hidden" name="_token" value="{{ jeton }}">
+						<input type="hidden" name="machine" value="{{ machine.id }}">
+						<input type="hidden" name="ordre" value="{{ o.id }}">
+						<input type="hidden" name="retour" value="{{ path('app_atelier_operateur', {machine: machine.id}) }}">
+						<label class="m-0">Ce qui se passe<input type="text" name="titre" maxlength="160" required class="form-control" placeholder="Bourrage, tête bouchée, plus de vinyle…"></label>
+						<label class="form-check m-0"><input type="checkbox" name="arret" value="1" class="form-check-input"> <span class="form-check-label">La machine est arrêtée</span></label>
+						<button type="submit" class="btn btn-danger">Prévenir le chef d'atelier</button>
+					</form>
+				</details>
+			{% else %}
+				<p class="si-ap-gris si-ap-petit mb-0">Consultation seulement : démarrer et terminer se font par l'opérateur affecté à {{ machine.nom }}, le chef d'atelier ou le poste de la machine.</p>
+			{% endif %}
+		{% endif %}
+
+		{% if peutAgir %}
+			<details class="si-ap-carte">
+				<summary class="si-ap-petit" style="color: var(--ap-bleu); font-weight: 600; cursor: pointer;">Niveaux d'encre de {{ machine.nom }}{% if atelierMachine and atelierMachine.niveauxEncreLe %} · saisis {{ atelierMachine.niveauxEncreLe|date('d/m H:i') }}{% endif %}</summary>
+				{% include 'atelier_production/_form_encre.html.twig' with {retour: path('app_atelier_operateur', {machine: machine.id})} %}
+			</details>
+		{% endif %}
+
+		{% if file|length > 1 %}
+			<section class="si-ap-carte">
+				<h2>Ensuite sur {{ machine.nom }}</h2>
+				<ul class="si-ap-conso">
+					{% for s in file|filter(s => not s.enCours)|slice(0, 5) %}
+						<li><span>{{ s.numero }} · {{ s.travail }}</span><b class="si-ap-{{ s.statut == 'bloque' ? 'bientot' : (s.retardMinutes > 0 ? 'bas' : 'ok') }}">{{ s.statut == 'bloque' ? 'bloqué' : (s.debut|date('d/m') == maintenant|date('d/m') ? s.debut|date('H:i') : s.debut|date('d/m')) }}</b></li>
+					{% endfor %}
+				</ul>
+			</section>
+		{% endif %}
+		<p class="si-ap-op-qr">Un autre travail : ouvrez la machine dans Files d'attente ; le chef d'atelier change l'ordre de passage.</p>
+	{% endif %}
+</div>
+{% endblock %}

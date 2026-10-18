@@ -1,0 +1,16 @@
+{# Saisie manuelle des niveaux d'encre (en %, vide = couleur non suivie). #}
+{% set niveaux = atelierMachine ? atelierMachine.niveauxEncre : {} %}
+{% set proposees = niveaux is not empty ? niveaux|keys : (machine.typeMachine|default('')|lower matches '/dtf/' ? ['C', 'M', 'J', 'N', 'B'] : ['C', 'M', 'J', 'N']) %}
+<form method="post" action="{{ path('app_atelier_encre', {id: machine.id}) }}" class="si-ap-formulaire">
+	<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+	<input type="hidden" name="retour" value="{{ retour }}">
+	<div class="si-ap-encre-form">
+		{% for code, libelle in encres %}
+			{% if code in proposees or code == 'B' %}
+				<label>{{ libelle }}<input type="number" class="form-control form-control-sm" name="encre[{{ code }}]" min="0" max="100" step="5" inputmode="numeric" value="{{ niveaux[code] ?? '' }}" placeholder="%"></label>
+			{% endif %}
+		{% endfor %}
+	</div>
+	<button type="submit" class="btn btn-primary btn-sm">Enregistrer les niveaux</button>
+	<p class="si-ap-gris si-ap-petit mb-0">À relever sur l'écran de la machine : aucune donnée ne vient automatiquement des machines.</p>
+</form>

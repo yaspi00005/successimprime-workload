@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<meta http-equiv="refresh" content="60">
+	<title>Atelier en direct · Succès Imprim</title>
+	<link href="{{ asset('vendor/poppins-v24/poppins.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/atelier-production.css') }}" rel="stylesheet">
+</head>
+{#
+	Mode TV de l'atelier (maquette AT01, « Afficher sur l'écran TV ») : les
+	machines, le numéro de commande et le travail, l'avancement et la fin
+	estimée. Jamais de nom de client ni de montant : l'écran est vu de
+	tous dans l'atelier.
+#}
+<body class="si-ap si-ap-tv">
+	<header class="si-ap-tv-tete">
+		<h1>Atelier en direct</h1>
+		<div class="si-ap-tv-heure">{{ maintenant|date('H:i') }}</div>
+	</header>
+	{% set k = indicateurs %}
+	<div class="si-ap-tv-kpis">
+		<div><span>Machines actives</span><b>{{ k.actives }} / {{ k.machines }}</b></div>
+		<div><span>Travaux du jour</span><b>{{ k.termines }} / {{ k.termines + k.restants }}</b></div>
+		<div><span>Imprimé aujourd'hui</span><b>{{ k.imprime|number_format(k.imprime < 100 ? 1 : 0, ',', ' ') }} m²</b></div>
+		<div><span>En retard</span><b>{{ k.retards }}</b></div>
+	</div>
+	<div class="si-ap-tv-grille">
+		{% for c in cartes %}
+			<section class="si-ap-tv-machine si-ap-e-{{ c.etat }}">
+				<strong>{{ c.machine.nom }}</strong>
+				{% if c.etat == 'panne' %}
+					<p>En panne</p>
+				{% elseif c.courant %}
+					<p>{{ c.courant.numero }} · {{ c.courant.travail }}</p>
+					<div class="si-ap-barre"><i style="width: {{ c.courant.avancement.pourcent }}%"></i></div>
+					<small>{{ c.courant.avancement.pourcent }} %{{ c.etat == 'pause' ? ' · en pause' }} · fin {{ c.courant.avancement.finEstimee ? c.courant.avancement.finEstimee|date('H:i') : '—' }}</small>
+				{% elseif c.maintenance %}
+					<p>Entretien en cours</p>
+				{% elseif c.prochain %}
+					<p>Prochain : {{ c.prochain.numero }}</p>
+					<small>démarrage {{ c.prochain.debut|date('d/m') == maintenant|date('d/m') ? c.prochain.debut|date('H:i') : c.prochain.debut|date('d/m H:i') }}</small>
+				{% else %}
+					<p>Libre</p>
+				{% endif %}
+			</section>
+		{% else %}
+			<p>Aucune machine.</p>
+		{% endfor %}
+	</div>
+	{% if retour %}<p class="mt-3"><a class="si-ap-tv-retour" href="{{ retour }}">← Revenir à la vue en direct</a></p>{% endif %}
+</body>
+</html>

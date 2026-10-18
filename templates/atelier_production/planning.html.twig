@@ -1,0 +1,142 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Atelier › Planning (maquette AT03, docs/atelier-production.md) : la
+	semaine du lundi au samedi, une ligne par machine, les travaux placés
+	selon la file (ou à la date où le chef les a mis), les entretiens et les
+	pannes, la charge de chaque machine. Le chef d'atelier glisse un bloc
+	pour déplacer un travail (sur téléphone : « Déplacer ») ; si la date
+	promise est dépassée, la caisse est prévenue pour avertir le client.
+#}
+
+{% set mois = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'] %}
+{% set noms_jours = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] %}
+{% set samedi = jours|last %}
+{% block title %}Semaine du {{ lundi|date('d/m') }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/atelier-production.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_atelier_planning', {semaine: lundi|date_modify('-7 days')|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-chevron-left me-1" aria-hidden="true"></i><span class="si-masque-mobile">Semaine précédente</span><span class="d-md-none">Préc.</span></a></li>
+	<li class="nav-item"><a href="{{ path('app_atelier_planning', {semaine: lundi|date_modify('+7 days')|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete"><span class="si-masque-mobile">Semaine suivante</span><span class="d-md-none">Suiv.</span><i class="fas fa-chevron-right ms-1" aria-hidden="true"></i></a></li>
+{% endblock %}
+
+{% macro bloc(b, ligne, chef, jours, machines, jourIndex) %}
+	{% set classe = 'si-ap-bloc si-ap-b-' ~ b.sorte ~ (b.couleur is defined and b.sorte == 'prevu' ? ' si-c-' ~ b.couleur : '') %}
+	{% set titre = b.libelle ~ (b.titre ? ' · ' ~ b.titre : '') ~ ' · ' ~ b.debut|date('H:i') ~ '–' ~ b.fin|date('H:i') ~ (b.promis is defined and b.promis ? ' · promis le ' ~ b.promis|date('d/m') : '') %}
+	<span class="{{ classe }}" title="{{ titre }}" {% if chef and b.mobile %}draggable="true" data-ordre="{{ b.ordre.id }}"{% endif %}>{{ b.libelle }}{% if b.titre and b.sorte in ['prevu', 'retard', 'en_cours'] and b.minutes >= 240 %} · {{ b.titre|split(' × ')|first }}{% endif %}</span>
+{% endmacro %}
+
+{% block body %}
+<div class="si-ap">
+	<div class="si-ap-carte">
+		{% if lignes is empty %}
+			<div class="si-ap-vide"><i class="far fa-calendar" aria-hidden="true"></i>Aucune machine à afficher.</div>
+		{% else %}
+		<div class="si-ap-planning">
+			<div class="si-ap-pl" role="table" aria-label="Planning de la semaine par machine">
+				<div class="si-ap-pl-tete" role="columnheader">MACHINE</div>
+				{% for j in jours %}
+					<div class="si-ap-pl-tete {{ maintenant and maintenant.jour == loop.index0 ? 'aujourdhui' }}" role="columnheader">{{ noms_jours[j|date('N')] }} {{ j|date('j') }}</div>
+				{% endfor %}
+				<div class="si-ap-pl-tete text-end" role="columnheader">CHARGE</div>
+				{% for l in lignes %}
+					<div class="si-ap-pl-machine" role="rowheader">{{ l.machine.nom }}{% if l.panne %}<small>en panne</small>{% endif %}</div>
+					{% for n, blocs in l.blocs %}
+						<div class="si-ap-pl-jour" role="cell" data-jour="{{ jours[n]|date('Y-m-d') }}" data-machine="{{ l.machine.id }}">
+							{% if maintenant and maintenant.jour == n %}<span class="si-ap-maintenant-trait" style="left: {{ maintenant.gauche }}%" aria-hidden="true"></span>{% endif %}
+							{% set compte = blocs|filter(b => b.sorte not in ['termine'])|length %}
+							{% if compte > 4 %}
+								{% for b in blocs|filter(b => b.sorte in ['panne', 'entretien', 'en_cours']) %}{{ _self.bloc(b, l, chef, jours, machines, n) }}{% endfor %}
+								<span class="si-ap-bloc si-c-bleu" title="{{ blocs|filter(b => b.sorte in ['prevu', 'retard'])|map(b => b.libelle)|join(', ') }}">{{ blocs|filter(b => b.sorte in ['prevu', 'retard'])|length }} travaux</span>
+							{% else %}
+								{% for b in blocs %}{{ _self.bloc(b, l, chef, jours, machines, n) }}{% endfor %}
+							{% endif %}
+						</div>
+					{% endfor %}
+					<div class="si-ap-pl-charge {{ l.charge >= 85 ? 'si-ap-haute' }}" role="cell">{{ l.charge }} %<span class="si-ap-barre"><i style="width: {{ l.charge }}%"></i></span></div>
+				{% endfor %}
+			</div>
+		</div>
+
+		{# Téléphone : une carte par machine, les travaux de chaque jour en liste. #}
+		<div class="si-ap-pl-mobile">
+			{% for l in lignes %}
+				<div class="si-ap-carte-file">
+					<div class="si-ap-carte-file-tete"><b>{{ l.machine.nom }}</b><span class="si-ap-pastille {{ l.charge >= 85 ? 'si-ap-e-retard' : 'si-ap-e-a_suivre' }}">{{ l.charge }} %</span></div>
+					{% if l.panne %}<small style="color: var(--ap-rouge); font-weight: 700">En panne</small>{% endif %}
+					{% for n, blocs in l.blocs %}
+						{% if blocs is not empty %}
+							<div class="mt-1"><small>{{ noms_jours[jours[n]|date('N')] }} {{ jours[n]|date('j') }}</small>
+								<div class="d-flex flex-wrap gap-1">
+									{% for b in blocs %}
+										{% if chef and b.mobile %}
+											<details class="si-ap-deplacer">
+												<summary>{{ _self.bloc(b, l, false, jours, machines, n) }}</summary>
+												<form method="post" action="{{ path('app_atelier_planning_deplacer') }}">
+													<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+													<input type="hidden" name="ordre" value="{{ b.ordre.id }}">
+													<label class="si-ap-petit m-0">Jour<select name="jour" class="form-select form-select-sm">{% for j in jours %}<option value="{{ j|date('Y-m-d') }}" {{ loop.index0 == n ? 'selected' }}>{{ noms_jours[j|date('N')] }} {{ j|date('d/m') }}</option>{% endfor %}</select></label>
+													<label class="si-ap-petit m-0">Machine<select name="machine" class="form-select form-select-sm">{% for m in machines %}<option value="{{ m.id }}" {{ m.id == l.machine.id ? 'selected' }}>{{ m.nom }}</option>{% endfor %}</select></label>
+													<button type="submit" class="btn btn-primary btn-sm">Déplacer {{ b.libelle }}</button>
+												</form>
+											</details>
+										{% else %}
+											{{ _self.bloc(b, l, false, jours, machines, n) }}
+										{% endif %}
+									{% endfor %}
+								</div>
+							</div>
+						{% endif %}
+					{% endfor %}
+				</div>
+			{% endfor %}
+		</div>
+		{% endif %}
+
+		<div class="si-ap-pl-pied">
+			<span><span class="si-ap-bloc si-ap-b-panne" style="padding: 0 5px">&nbsp;</span> maintenant</span>
+			{% if chef %}<span class="si-masque-mobile">Glisser un bloc pour déplacer un travail : si la date promise est dépassée, la caisse est prévenue pour avertir le client.</span>{% endif %}
+			<span>Gris : terminé · rayé : entretien · rouge : retard ou panne</span>
+			{% for a in alertes %}<span class="si-ap-alerte">{{ a }}</span>{% endfor %}
+		</div>
+	</div>
+	{% if chef %}
+		<form method="post" action="{{ path('app_atelier_planning_deplacer') }}" id="form-deplacer" class="d-none">
+			<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+			<input type="hidden" name="ordre"><input type="hidden" name="jour"><input type="hidden" name="machine">
+		</form>
+	{% endif %}
+</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	{% if chef %}
+	<script>
+		// Glisser un bloc vers un autre jour ou une autre machine (chef d'atelier).
+		(function () {
+			var form = document.getElementById('form-deplacer');
+			if (!form) { return; }
+			var ordre = null;
+			document.addEventListener('dragstart', function (e) {
+				var b = e.target.closest && e.target.closest('.si-ap-bloc[draggable="true"]');
+				if (b) { ordre = b.dataset.ordre; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', ordre); }
+			});
+			document.querySelectorAll('.si-ap-pl-jour').forEach(function (cell) {
+				cell.addEventListener('dragover', function (e) { if (ordre) { e.preventDefault(); cell.classList.add('si-ap-cible'); } });
+				cell.addEventListener('dragleave', function () { cell.classList.remove('si-ap-cible'); });
+				cell.addEventListener('drop', function (e) {
+					e.preventDefault();
+					if (!ordre) { return; }
+					form.ordre.value = ordre; form.jour.value = cell.dataset.jour; form.machine.value = cell.dataset.machine;
+					form.submit();
+				});
+			});
+		})();
+	</script>
+	{% endif %}
+{% endblock %}

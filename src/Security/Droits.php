@@ -29,6 +29,9 @@ final class Droits
     /** Corbeille (docs/corbeille.md) : voir, restaurer et supprimer pour de bon les fiches supprimées. */
     public const CORBEILLE = 'ROLE_CORBEILLE';
 
+    /** Atelier de production (docs/atelier-production.md) : voir et gérer toutes les machines. */
+    public const ATELIER_CHEF = 'ROLE_ATELIER_CHEF';
+
     /** Alertes système (docs/alertes-systeme.md) : recevoir, prendre en charge et résoudre les pannes. */
     public const ALERTES_SYSTEME = 'ROLE_ALERTES_SYSTEME';
 
@@ -51,6 +54,8 @@ final class Droits
             'ROLE_PREPRESSE' => ['libelle' => 'Prépresse', 'detail' => 'contrôle des fichiers, BAT', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PRODUCTION_VOIR' => ['libelle' => 'Production', 'detail' => 'voir le planning', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PRODUCTION_GERER' => ['libelle' => 'Statuts de production', 'detail' => 'démarrer, terminer une tâche', 'groupe' => self::GROUPE_FONCTIONS],
+            // Atelier de production (docs/atelier-production.md) : sans ce droit, un opérateur ne voit que les machines qui lui sont affectées.
+            self::ATELIER_CHEF => ['libelle' => 'Chef d\'atelier', 'detail' => 'toutes les machines : vue en direct, files, planning, maintenance, affectation des opérateurs', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_ACTIONS_GERER' => ['libelle' => 'Actions commerciales de l\'équipe', 'detail' => 'journal, contrôle au hasard, lignes manuelles', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_RH' => ['libelle' => 'Administrateur RH', 'detail' => 'pointages, photos de pointage, corrections', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_LIVRAISON' => ['libelle' => 'Livraisons', 'detail' => 'tournée, remise au client', 'groupe' => self::GROUPE_FONCTIONS],

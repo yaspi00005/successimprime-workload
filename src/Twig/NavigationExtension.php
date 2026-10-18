@@ -95,8 +95,13 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Assistant du site', 'route' => 'app_assistant_conversations', 'role' => 'ROLE_ASSISTANT', 'prefixes' => ['app_assistant_']],
         ],
         'atelier' => [
+            // Atelier de production (docs/atelier-production.md, AT01 à AT05) : le chef voit toutes les machines, l'opérateur les siennes.
+            ['libelle' => 'Vue en direct', 'route' => 'app_atelier_direct', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_direct', 'app_atelier_tv']],
+            ['libelle' => 'Files d\'attente', 'route' => 'app_atelier_files', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_files', 'app_atelier_operateurs', 'app_atelier_encre']],
+            ['libelle' => 'Planning', 'route' => 'app_atelier_planning', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_planning']],
+            ['libelle' => 'Maintenance', 'route' => 'app_atelier_maintenance', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_maintenance', 'app_atelier_incident_', 'app_atelier_entretien_', 'app_atelier_tetes']],
+            ['libelle' => 'Mon travail', 'route' => 'app_atelier_operateur', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_operateur']],
             ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
-            ['libelle' => 'Planning machines', 'route' => 'app_atelier_planning', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_planning']],
             ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_', 'app_produits_clients_prepresse_']],
             ['libelle' => 'Conception PAO', 'route' => 'app_conception_tableau', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_conception_']],
             ['libelle' => 'Demandes de conception', 'route' => 'app_demandes_conception_index', 'role' => ['ROLE_PREPRESSE', 'ROLE_COMMANDE'], 'prefixes' => ['app_demandes_conception_']],
@@ -165,6 +170,7 @@ final class NavigationExtension extends AbstractExtension
         'app_conception_tableau' => ['Mes travaux PAO', 'fas fa-pencil-ruler'],
         'app_atelier_production' => ['Production', 'fas fa-sliders-h'],
         'app_ma_file_index' => ['Ma file machine', 'fas fa-print'],
+        'app_atelier_operateur' => ['Mon travail', 'fas fa-play-circle'],
         'app_stock_articles_index' => ['Stock', 'fas fa-cube'],
         'app_entretien_index' => ['Entretien', 'fas fa-broom'],
     ];
@@ -197,6 +203,7 @@ final class NavigationExtension extends AbstractExtension
         'app_conception_tableau' => 'Travaux',
         'app_atelier_production' => 'Production',
         'app_ma_file_index' => 'Ma file',
+        'app_atelier_operateur' => 'Travail',
         'app_stock_articles_index' => 'Stock',
         'app_entretien_index' => 'Entretien',
     ];

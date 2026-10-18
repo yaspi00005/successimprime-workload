@@ -96,9 +96,18 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 ## Opérateur production (demo.oumar)
 
 - [ ] Ma file machine : démarrer puis terminer un travail ; sur le tableau de production, la carte avance d'elle-même à la colonne suivante (on ne la déplace pas à la main).
-- [ ] Planning des machines et m² du jour.
+- [ ] Atelier › Mon travail (téléphone) : le travail en cours de sa machine, Pause, Terminer (imprimé, gâche, motif), Signaler un problème, niveaux d'encre.
+- [ ] Atelier › Vue en direct : ne voit que ses machines (solvants) ; Planning de la semaine et Files d'attente en consultation (pas de glisser-déposer).
 - [ ] Pointage par QR et photo à l'arrivée et au départ.
 - [ ] Ne voit pas : montants, clients en détail, finances, réglages.
+
+## Chef d'atelier (demo.ibrahim)
+
+- [ ] Atelier › Vue en direct : les 8 machines, les indicateurs, les alertes, les terminés du jour ; « Afficher sur l'écran TV » ouvre la vue sans client ni montant.
+- [ ] Files d'attente : glisser une ligne, « Réordonner automatiquement », affecter les opérateurs, saisir les niveaux d'encre.
+- [ ] Planning : glisser un bloc vers un autre jour ou une autre machine ; si la date promise est dépassée, la caisse reçoit une notification.
+- [ ] Maintenance : mettre à jour la panne de la sublimation (le devis n'apparaît pas sans le droit coûts et marges), noter un entretien « Fait », ajouter une tâche.
+- [ ] En ligne : toutes les pages de l'atelier répondent 404.
 
 ## Livreur (demo.bakary)
 

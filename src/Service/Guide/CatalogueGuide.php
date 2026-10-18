@@ -349,7 +349,7 @@ final class CatalogueGuide
             ],
             [
                 'cle' => 'planning-machines', 'groupe' => 'production', 'titre' => 'Le planning des machines',
-                'but' => 'Voir ce que chaque machine doit imprimer et sa charge.',
+                'but' => 'Voir la semaine de chaque machine, sa charge, et déplacer un travail.',
                 'droits' => ['ROLE_PRODUCTION_VOIR'], 'route' => 'app_atelier_planning', 'consultation' => true,
                 'captures' => [
                     ['nom' => 'planning-machines', 'legende' => 'Atelier › Planning.'],

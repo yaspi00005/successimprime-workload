@@ -62,7 +62,7 @@ Demande de Yaya du 16/10/2026 : pour les autocollants, étiquettes et autres pet
 - Fiche du devis, fiche de la commande : « 361 pièces au m² (19 × 19, espacement 1 mm) · 2,78 m² facturés ». PDF du devis et de la facture : « 2,78 m² · 361 pièces au m² ». Jamais de montant dans ces mentions.
 - Devis accepté → commande : la ligne garde son mode de calcul et son espacement. Correction au passage : avant, une ligne au m² devenait « unité » dans la commande et se recalculait prix × quantité au premier enregistrement.
 - Total d'origine conservé : cocher ou décocher la case change le calcul, la ligne est recalculée ; réenregistrée sans rien changer, elle garde son total.
-- Statistiques (m² imprimés), planning des machines et fidélité au m² comptent la surface facturée de la ligne.
+- Ce qui lit la surface de la ligne (`getSurfaceTotale` : PDF, planning des machines, fidélité au m², statistiques par machine et rapports) compte la surface facturée. Les totaux de m² comptés directement en base (rapport de la semaine, objectifs, écran TV, parc des machines) gardent surface d'une pièce × quantité : l'écart est l'espacement.
 
 **En ligne** : demande de devis sans compte, voir [docs/site-vitrine.md](site-vitrine.md), « Demander un devis » ; Nouvelle commande de l'espace client, voir [docs/espace-client.md](espace-client.md), section « Quantité en pièces ou en m² ».
 

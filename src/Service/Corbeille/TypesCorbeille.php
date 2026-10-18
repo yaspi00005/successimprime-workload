@@ -244,6 +244,13 @@ final class TypesCorbeille
         'sms' => 'SMS', 'url' => 'URL', 'ia' => 'IA', 'bat' => 'BAT', 'pao' => 'PAO', 'b2b' => 'B2B', 'nb' => 'nombre de',
         'libelle' => 'libellé', 'defaut' => 'défaut', 'cout' => 'coût', 'role' => 'rôle', 'activite' => 'activité',
         'operateur' => 'opérateur', 'beneficiaire' => 'bénéficiaire', 'methode' => 'méthode', 'reperes' => 'repères', 'repere' => 'repère',
+        'detail' => 'détail', 'details' => 'détails', 'bareme' => 'barème', 'cloture' => 'clôture', 'fidelite' => 'fidélité',
+        'tresorerie' => 'trésorerie', 'conge' => 'congé', 'employe' => 'employé', 'employes' => 'employés', 'controle' => 'contrôle',
+        'pre' => 'pré', 'creation' => 'création', 'credit' => 'crédit', 'element' => 'élément', 'etiquette' => 'étiquette',
+        'evaluation' => 'évaluation', 'donnees' => 'données', 'releve' => 'relevé', 'modele' => 'modèle', 'parametres' => 'paramètres',
+        'reclamation' => 'réclamation', 'reclamations' => 'réclamations', 'reglage' => 'réglage', 'creance' => 'créance',
+        'realisation' => 'réalisation', 'entrees' => 'entrées', 'reveil' => 'réveil', 'depense' => 'dépense', 'depenses' => 'dépenses',
+        'whatsapp' => 'WhatsApp', 'orange' => 'Orange', 'money' => 'Money', 'precedent' => 'précédent', 'reservation' => 'réservation',
     ];
 
     /** « date_devis » : « Date devis » ; « numero » : « Numéro ». */

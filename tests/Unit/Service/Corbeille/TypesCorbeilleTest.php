@@ -136,6 +136,9 @@ final class TypesCorbeilleTest extends TestCase
         self::assertSame('Compte du personnel', TypesCorbeille::nomLien('user_id', 'user'));
         self::assertSame('Créé par', TypesCorbeille::nomLien('cree_par_id', 'user'), 'deux liens vers le personnel, deux noms');
         self::assertSame('Société', TypesCorbeille::type('societe'), 'table sans type : nommée d\'après elle, avec ses accents');
+        self::assertSame('Compte fidélité', TypesCorbeille::type('compte_fidelite'), 'élément d\'un client supprimé avec lui');
+        self::assertSame('Ligne relevé Orange Money', TypesCorbeille::type('ligne_releve_orange_money'));
+        self::assertSame('Contrôle pré presse fichier', TypesCorbeille::type('controle_pre_presse_fichier'));
         self::assertSame('DEV-2026-0042', TypesCorbeille::titre('devis', ['numero' => 'DEV-2026-0042']));
         self::assertNull(TypesCorbeille::titre('devis', ['numero' => ' ']));
 

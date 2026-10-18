@@ -21,6 +21,16 @@ final class SuiviDevisTest extends TestCase
         return $d;
     }
 
+    public function testClientDispenseDAcompteNaRienAPayerDAvance(): void
+    {
+        $d = (new Devis())->setAcomptePourcentage(50);
+        self::assertSame(50, $d->getAcomptePourcentage());
+
+        $d->setClients((new \App\Entity\Clients())->setSansAcompte(true));
+        self::assertSame(0, $d->getAcomptePourcentage());
+        self::assertSame(0, $d->getMontantAcompte());
+    }
+
     public function testEnvoyerNoteLaVersionEtLaValidite(): void
     {
         $d = $this->devisEnvoye();

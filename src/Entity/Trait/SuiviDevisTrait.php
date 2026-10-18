@@ -172,6 +172,11 @@ trait SuiviDevisTrait
 
     public function getAcomptePourcentage(): int
     {
+        // Client dispensé d'acompte (fiche client, direction) : rien d'avance, devis compris.
+        if (true === $this->getClients()?->isSansAcompte()) {
+            return 0;
+        }
+
         return $this->acomptePourcentage;
     }
 
@@ -187,7 +192,7 @@ trait SuiviDevisTrait
     {
         $total = max(0, $this->getTotalTtc());
 
-        return (int) min($total, ceil($total * $this->acomptePourcentage / 100));
+        return (int) min($total, ceil($total * $this->getAcomptePourcentage() / 100));
     }
 
     public function getConditionSolde(): ?string

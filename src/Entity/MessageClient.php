@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\NoteVocaleTrait;
 use App\Entity\Trait\PublicIdTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -24,6 +25,8 @@ use Doctrine\ORM\Mapping as ORM;
 class MessageClient
 {
     use PublicIdTrait;
+    /** Note vocale jointe (docs/messagerie-clients.md) : part au site avec le message, le fichier suit (FichiersSynchro). */
+    use NoteVocaleTrait;
 
     public const CLIENT = 'client';
     public const ATELIER = 'atelier';

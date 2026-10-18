@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\NoteVocaleTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -9,13 +10,17 @@ use Doctrine\ORM\Mapping as ORM;
  * Note interne dans une conversation avec un client (maquette MS03) :
  * invisible du client, jamais synchronisée (table absente de
  * CatalogueSynchro), elle n'arrête pas le chronomètre de réponse. Une
- * @mention (« @Kadiatou ») prévient le collègue nommé.
+ * @mention (« @Kadiatou ») prévient le collègue nommé. Elle peut être une
+ * note vocale (NoteVocaleTrait), elle aussi réservée à l'équipe.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'note_conversation')]
 #[ORM\Index(name: 'idx_note_conversation', columns: ['conversation_id', 'cree_le'])]
 class NoteConversation
 {
+    /** Note vocale interne : reste au local comme la note. */
+    use NoteVocaleTrait;
+
     public const TEXTE_MAX = 1000;
 
     #[ORM\Id]

@@ -27,6 +27,7 @@ use App\Service\EspaceClient\RecommanderClient;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Paiement\ReglementsEnLigne;
 use App\Service\Parametres\ReglagesSaisie;
+use App\Service\PiecesParMetreCarre;
 use App\Service\Promotions\CodePromoRefuse;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -59,6 +60,8 @@ final class EspaceNouvelleCommandeController extends AbstractController
         private readonly DelaisCommande $delais,
         private readonly ReglagesSaisie $reglagesSaisie,
         private readonly OrangeMoney $orangeMoney,
+        /** Espacement des pièces au m² (réglage Ventes › « Pièces au m² ») : quantité donnée en m². */
+        private readonly PiecesParMetreCarre $piecesM2,
     ) {
     }
 
@@ -143,6 +146,8 @@ final class EspaceNouvelleCommandeController extends AbstractController
             'largeur' => $choix['largeur'] ?? null,
             'hauteur' => $choix['hauteur'] ?? null,
             'unite' => $choix['unite_taille'] ?? 'cm',
+            'unite_quantite' => $choix['unite_quantite'] ?? null,
+            'quantite_m2' => $choix['quantite_m2'] ?? null,
             'finitions' => $choix['finitions'] ?? null,
             'delai' => $choix['delai'] ?? null,
             'reception' => $choix['reception'] ?? null,
@@ -340,6 +345,17 @@ final class EspaceNouvelleCommandeController extends AbstractController
         // Commande en ligne coupée, trop de commandes en attente : refusé avant de copier un fichier.
         $this->service->verifierEnAttente($client);
         [$largeur, $hauteur] = self::taille($r->get('largeur'), $r->get('hauteur'), $r->getString('unite_taille', 'cm'));
+        // Quantité en pièces ou en m² (pièces au m²) : contrôlée avant de copier un fichier.
+        $espacement = $this->piecesM2->espacement();
+        $saisie = NouvelleCommande::quantiteSaisie($config, max(1, $r->getInt('quantite', 1)), $r->getString('unite_quantite'), $r->getString('quantite_m2'), $largeur, $hauteur, $espacement);
+        if (null !== $saisie['erreur']) {
+            throw new \DomainException($saisie['erreur']);
+        }
+        $m2 = $saisie['m2'];
+        $b2b = $client->isB2B();
+        $ajuster = null === $m2 ? null : static function (CommandesDetails $ligne) use ($m2, $espacement, $b2b): void {
+            NouvelleCommande::enPiecesAuM2($ligne, $m2, $espacement, $b2b);
+        };
         $mode = $r->getString('fichier_mode', 'fichier');
 
         $choisis = [];
@@ -382,7 +398,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
         }
         $note = trim(implode("\n", array_filter([trim($r->getString('note')), ...$notes])));
         try {
-            $commande = $this->service->commander($client, $config, max(1, $r->getInt('quantite', 1)), $largeur, $hauteur, array_map('intval', $r->all('finitions')), $choisis, '' === $note ? null : mb_substr($note, 0, 1500), new \DateTimeImmutable(), null, $codePromo, $options, $this->delais->reglages()['delaiExpress']);
+            $commande = $this->service->commander($client, $config, $saisie['quantite'], $largeur, $hauteur, array_map('intval', $r->all('finitions')), $choisis, '' === $note ? null : mb_substr($note, 0, 1500), new \DateTimeImmutable(), $ajuster, $codePromo, $options, $this->delais->reglages()['delaiExpress']);
         } catch (CodePromoRefuse $e) {
             $essaisCode->noterRefus((int) $client->getId(), (string) $request->getClientIp());
             throw $e;
@@ -423,6 +439,9 @@ final class EspaceNouvelleCommandeController extends AbstractController
             }
         }
         $quantite = max(1, (int) ($donnees['quantite'] ?? 0) ?: max(1, $config->getQuantiteMinimale()));
+        // Quantité donnée en m² (pièces au m²) : les pièces viennent de la surface, comme à l'enregistrement.
+        $espacement = $this->piecesM2->espacement();
+        $saisie = NouvelleCommande::quantiteSaisie($config, $quantite, (string) ($donnees['unite_quantite'] ?? ''), (string) ($donnees['quantite_m2'] ?? ''), $largeur, $hauteur, $espacement);
         $options = $this->options($compte, (string) ($donnees['delai'] ?? ''), 'livraison' === ($donnees['reception'] ?? null), 0, '', '', '', false);
         $reglages = $this->delais->reglages();
         $heures = $options->estExpress() ? $reglages['delaiExpress'] : $reglages['standard'];
@@ -435,8 +454,15 @@ final class EspaceNouvelleCommandeController extends AbstractController
             'largeur' => $largeur,
             'hauteur' => $hauteur,
         ];
+        if (null !== $saisie['erreur']) {
+            // Montré dans « Votre commande » et sous la surface tapée.
+            return $sortie + ['erreur' => $saisie['erreur'], 'erreurM2' => $saisie['erreur']];
+        }
         try {
-            $ligne = NouvelleCommande::construireLigne($config, $quantite, $largeur, $hauteur, $finitions, $client->isB2B());
+            $ligne = NouvelleCommande::construireLigne($config, $saisie['quantite'], $largeur, $hauteur, $finitions, $client->isB2B());
+            if (null !== $saisie['m2']) {
+                NouvelleCommande::enPiecesAuM2($ligne, $saisie['m2'], $espacement, $client->isB2B());
+            }
         } catch (\DomainException $e) {
             return $sortie + ['erreur' => $e->getMessage()];
         }

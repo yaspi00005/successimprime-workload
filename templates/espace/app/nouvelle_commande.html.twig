@@ -189,6 +189,8 @@
 								<input class="ec-saisie" id="co-quantite" name="quantite" inputmode="numeric" autocomplete="off" value="{{ choix.quantite|default(matiere.min) }}">
 							</div>
 						</div>
+						{# Petites pièces au m² (autocollants, étiquettes) : quantité en pièces ou en m², sans aucun prix. Côtés en mètres, gardés au mm par le serveur. #}
+						{{ include('partials/_pieces_m2.html.twig', {id: 'pm2', largeur: '#co-largeur', hauteur: '#co-hauteur', quantite: '#co-quantite', unite_cote: 'm', arrondi_mm: 1, masque: not matiere.m2, unite: choix.unite_quantite ?? 'piece', m2: choix.quantite_m2 ?? '', erreur: estimation.erreurM2 ?? null}) }}
 						<div class="co-formats" data-co-taille{{ not enMetres ? ' hidden' }}>
 							{% for f in formats %}
 								<button type="button" class="co-format{{ largeurM == f[0] and hauteurM == f[1] ? ' actif' }}" data-co-format="{{ f[0] }}x{{ f[1] }}">{{ f[0] }} × {{ f[1] }} m</button>
@@ -514,7 +516,7 @@
 		etape: etape,
 		nomProduit: nomProduit,
 		nomEtape4: etape4|lower,
-		matieres: matieres|map(m => {id: m.id, titre: m.titre, taille: m.taille, min: m.min, finitions: m.finitions|map(f => {id: f.id, oeillets: f.oeillets, nom: f.nom})}),
+		matieres: matieres|map(m => {id: m.id, titre: m.titre, taille: m.taille, min: m.min, m2: m.m2, finitions: m.finitions|map(f => {id: f.id, oeillets: f.oeillets, nom: f.nom})}),
 	}|json_encode|raw }}</script>
 {% endblock %}
 

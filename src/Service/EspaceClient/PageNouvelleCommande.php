@@ -6,6 +6,7 @@ use App\Controller\SiteController;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\ProduitConfiguration;
+use App\Service\PiecesParMetreCarre;
 use App\Service\Site\CatalogueSite;
 
 /**
@@ -136,6 +137,7 @@ final class PageNouvelleCommande
                 'hauteur' => $fiche['hauteur'],
                 'min' => $fiche['min'],
                 'max' => $fiche['max'],
+                'm2' => $fiche['m2'],
                 'finitions' => $finitions,
             ];
         }
@@ -163,8 +165,14 @@ final class PageNouvelleCommande
         $lignes = [];
         $surface = null;
         if ('metre_carre' === $mode && $taille) {
-            $surface = (float) $ligne->getSurface() * $quantite;
+            // En pièces au m² (quantité donnée en m²) : la surface facturée, espacement et chutes compris.
+            $surface = $ligne->getSurfaceTotale();
             $lignes[] = ['libelle' => 'Surface', 'valeur' => self::nombre($surface).' m²'.($montants ? ' × '.self::f((int) $ligne->getPrixUnitaire()).' F' : '')];
+            $pieces = $ligne->getPiecesAuM2();
+            if (null !== $pieces) {
+                // Un nombre de pièces, pas un montant : montré à tous ceux qui commandent.
+                $lignes[] = ['libelle' => 'Pièces au m²', 'valeur' => \sprintf('%s (%d × %d, espacement %s mm)', self::f($pieces['parM2']), $pieces['colonnes'], $pieces['rangees'], PiecesParMetreCarre::nombre($pieces['espacement']))];
+            }
         } elseif ('metre' === $mode && $taille) {
             $lignes[] = ['libelle' => 'Longueur', 'valeur' => self::nombre((float) $ligne->getLongueur() * $quantite).' m'.($montants ? ' × '.self::f((int) $ligne->getPrixUnitaire()).' F' : '')];
         } elseif ('forfait' === $mode) {

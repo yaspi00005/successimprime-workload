@@ -9,7 +9,6 @@ use App\Entity\Factures;
 use App\Entity\TransactionOrangeMoney;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
-use App\Service\Atelier\CatalogueAtelier;
 use App\Service\EspaceClient\CompteEntreprise;
 use App\Service\EspaceClient\AppareilsClient;
 use App\Service\EspaceClient\CoqueEspace;
@@ -18,7 +17,6 @@ use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\FilNotifications;
 use App\Service\EspaceClient\MesProduits;
-use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\EspaceClient\RecommanderClient;
 use App\Service\EspaceClient\SuiviSansCompte;
 use App\Service\Paiement\OrangeMoney;
@@ -26,8 +24,6 @@ use App\Service\Parametres\Parametres;
 use App\Security\CodeDeConnexion;
 use App\Security\DestinationCode;
 use App\Security\EspaceClientComptes;
-use App\Security\EssaisCodePromo;
-use App\Service\Promotions\CodePromoRefuse;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -282,106 +278,7 @@ final class EspaceClientController extends AbstractController
         ]);
     }
 
-    /** Nouvelle commande (maquette 14) : produit, taille, finitions, quantité, fichier. */
-    #[Route('/commandes/nouvelle', name: 'nouvelle_commande', methods: ['GET', 'POST'])]
-    public function nouvelleCommande(Request $request, NouvelleCommande $service, FichiersClient $fichiers, CatalogueAtelier $atelier, EssaisCodePromo $essaisCode): Response
-    {
-        $compte = $this->compte();
-        $client = $compte->getClient();
-        $produits = NouvelleCommande::fiches($service->produits(), $client->isB2B());
-        $adresses = $this->compteEntreprise->adresses($client);
-
-        if ($request->isMethod('POST')) {
-            $this->jeton($request);
-            $config = $service->produit($request->request->getInt('produit'));
-            $choisis = [];
-            foreach ($request->request->all('fichiers') as $id) {
-                $f = $fichiers->trouver($client, (int) $id);
-                if (null !== $f && null === $f->getCommandeDetail() && !$f->isLogo()) {
-                    $choisis[] = $f;
-                }
-            }
-            try {
-                if (null === $config) {
-                    throw new \DomainException('Choisissez un produit.');
-                }
-                [$largeur, $hauteur] = [self::nombre($request->request->get('largeur')), self::nombre($request->request->get('hauteur'))];
-                // Code promo (docs/promotions.md) : les codes refusés sont comptés par compte et par connexion.
-                $codePromo = mb_substr(trim($request->request->getString('code_promo')), 0, 40);
-                if ('' !== $codePromo && $essaisCode->bloque((int) $client->getId(), (string) $request->getClientIp())) {
-                    throw new \DomainException('Trop de codes promo refusés : réessayez plus tard, ou passez la commande sans code.');
-                }
-                try {
-                    $commande = $service->commander($client, $config, $request->request->getInt('quantite', 1), $largeur, $hauteur, array_map('intval', $request->request->all('finitions')), $choisis, $request->request->getString('note'), new \DateTimeImmutable(), null, $codePromo);
-                } catch (CodePromoRefuse $e) {
-                    $essaisCode->noterRefus((int) $client->getId(), (string) $request->getClientIp());
-                    throw $e;
-                }
-                // Le fichier se contrôle à la taille commandée.
-                foreach ($choisis as $f) {
-                    $fichiers->recontroler($f, $largeur, $hauteur);
-                }
-                $adresse = $request->request->getInt('adresse') > 0 ? $this->compteEntreprise->adresse($client, $request->request->getInt('adresse')) : null;
-                $this->compteEntreprise->preparerCommande($compte, $commande, $request->request->getString('bon_commande'), $adresse);
-                $service->enregistrer();
-                if ($commande->attendValidationEntreprise()) {
-                    $this->compteEntreprise->prevenirValideurs($commande, $compte);
-                    $this->addFlash('succes', \sprintf('Demande %s envoyée. Elle part à l\'atelier dès qu\'une personne qui valide pour votre entreprise l\'accepte.', $commande->getNumero()));
-                } else {
-                    $this->addFlash('succes', \sprintf('Commande %s envoyée. L\'atelier confirme le prix et votre fichier, puis vous prévient.', $commande->getNumero()));
-                }
-
-                return $this->redirectToRoute('app_espace_commande', ['id' => (string) $commande->getPublicId()]);
-            } catch (\DomainException $e) {
-                $this->addFlash('error', $e->getMessage());
-            }
-        }
-
-        return $this->vue('espace/app/nouvelle_commande.html.twig', [
-            'onglet' => 'commandes',
-            'produits' => $produits,
-            // Textile à personnaliser : l'atelier 3D (docs/atelier-3d.md).
-            'atelier' => [] !== $atelier->modeles(),
-            'choix' => $request->request->all() + $request->query->all(),
-            'mesFichiers' => array_values(array_filter($fichiers->liste($client), static fn ($f): bool => null === $f->getCommandeDetail())),
-            'extensions' => FichiersClient::extensions(),
-            'morceau' => FichiersClient::MORCEAU,
-            'adresses' => $adresses,
-            'entreprise' => CompteClient::clientAPlusieursComptes($client),
-            'demandeValidation' => $this->compteEntreprise->demandeValidation($compte),
-            // Code promo : pas pour un revendeur au prix B2B (refusé aussi au serveur, docs/promotions.md).
-            'champCodePromo' => !$client->isB2B(),
-        ]);
-    }
-
-    /**
-     * Prix indicatif, recalculé à chaque changement (même calcul qu'à
-     * l'enregistrement). Un demandeur reçoit les mêmes contrôles (taille,
-     * quantité) mais aucun montant.
-     */
-    #[Route('/commandes/estimer', name: 'estimer', methods: ['POST'])]
-    public function estimer(Request $request, NouvelleCommande $service): JsonResponse
-    {
-        $this->jetonEntete($request);
-        $compte = $this->compte();
-        $donnees = $request->toArray();
-        $config = $service->produit((int) ($donnees['produit'] ?? 0));
-        if (null === $config) {
-            return $this->json(['erreur' => 'Choisissez un produit.'], 422);
-        }
-        try {
-            return $this->json(NouvelleCommande::estimationPourLaPage(NouvelleCommande::estimer(
-                $config,
-                max(1, (int) ($donnees['quantite'] ?? 1)),
-                self::nombre($donnees['largeur'] ?? null),
-                self::nombre($donnees['hauteur'] ?? null),
-                array_map('intval', (array) ($donnees['finitions'] ?? [])),
-                $compte->getClient()->isB2B(),
-            ), $compte->montantsVisibles()));
-        } catch (\DomainException $e) {
-            return $this->json(['erreur' => $e->getMessage()], 422);
-        }
-    }
+    // Nouvelle commande et estimation du prix : EspaceNouvelleCommandeController (maquettes CO01 à CO04).
 
     #[Route('/devis', name: 'devis', methods: ['GET'])]
     public function devis(Request $request, EspaceClient $espace): Response

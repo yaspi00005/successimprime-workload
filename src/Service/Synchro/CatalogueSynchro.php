@@ -100,12 +100,16 @@ final class CatalogueSynchro
      * les autres champs et les autres tuiles ne quittent jamais le local.
      */
     public const REGLAGES_PUBLICS = [
-        'espace_client' => ['code_sms', 'commande_en_ligne', 'paiement_en_ligne'],
+        // Délais et majoration express : la nouvelle commande en ligne les montre et les applique.
+        'espace_client' => ['code_sms', 'commande_en_ligne', 'paiement_en_ligne', 'delai_standard', 'express', 'delai_express', 'majoration_express', 'heure_limite'],
         // Taux des frais Orange Money (tenus dans ParametresPaiement) : le paiement de l'espace client les applique.
-        // Moyens acceptés, acompte par défaut, seuil et coordonnées du virement : « Factures et paiements ».
+        // Moyens acceptés, acompte par défaut, seuil et coordonnées du virement : « Factures et paiements » et choix « Acompte » de la commande en ligne.
         'paiements' => ['orange_money', 'tauxFondsSoutien', 'tauxFraisRetrait', 'especes', 'virement', 'virement_seuil', 'acompte', 'virement_coordonnees'],
         'taxes' => ['tva_par_defaut', 'taux_tva'],
-        'horaires' => ['jours', 'ouverture', 'fermeture'],
+        // Jours ouvrés et fériés : date « prête le… » et créneaux de livraison de la commande en ligne.
+        'horaires' => ['jours', 'ouverture', 'fermeture', 'feries'],
+        // Frais de « Livraison à Bamako » de la commande en ligne (un des paliers). Les objets restent au local.
+        'saisie' => ['paliers_livraison', 'livraison_en_ligne'],
         'site_contact' => ['lien_plan'],
         // Le coût d'une image chez le fournisseur (cout_image) reste au local.
         'conception' => ['ia_active', 'prix_image', 'finalisation', 'packs', 'plafond_jour', 'limite_heure'],
@@ -310,13 +314,16 @@ final class CatalogueSynchro
                     'codeSaisi', 'remiseCodePromo',
                     // Frais de livraison (déjà dans les totaux) et objet (docs/documents-livraisons.md).
                     'fraisLivraison', 'objet',
+                    // Commande en ligne (docs/espace-client.md) : délai demandé (standard, express) et créneau de livraison.
+                    'delaiProduction', 'creneauLivraison',
                 ],
                 // codePromo : le code retenu par la boutique, pour compter en ligne les utilisations du client.
                 'relations' => ['clients' => 'client', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 // Seul l'import du local crée un solde d'ouverture : une commande venue du site n'en est jamais un.
                 // Le code promo d'une commande passée en ligne n'est retenu que par la boutique, à la confirmation.
-                // Les frais de livraison d'une commande passée en ligne sont choisis par la boutique, à la confirmation.
-                'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null, 'fraisLivraison' => 0],
+                // Les frais de livraison d'une commande passée en ligne viennent du réglage « Frais de livraison en ligne » :
+                // contrôlés à l'arrivée (Synchro::verifierFraisEnLigne), la boutique peut les changer à la confirmation.
+                'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null],
                 // Décision du valideur de l'entreprise, prise en ligne.
                 'remontees' => [
                     'validationEntreprise' => [Commandes::VALIDATION_A_FAIRE => [Commandes::VALIDATION_ACCEPTEE, Commandes::VALIDATION_REFUSEE]],

@@ -69,12 +69,15 @@ final class CatalogueSynchroTest extends TestCase
             self::assertContains('objet', $types[$type]['champs'], $type);
             self::assertArrayNotHasKey('fraisLivraison', $types[$type]['remontees'] ?? [], $type.' : le site ne change pas les frais');
         }
-        // Le client ne choisit pas les frais : une commande passée en ligne arrive sans frais, la boutique les fixe.
-        self::assertSame(0, $types['commande']['imposeAuLocal']['fraisLivraison']);
+        // Commande en ligne : les frais de livraison en ligne (un palier ou 0) arrivent avec elle ; la boutique
+        // peut les changer en confirmant, et Synchro::verifierFraisEnLigne retire un montant hors paliers.
+        self::assertArrayNotHasKey('fraisLivraison', $types['commande']['imposeAuLocal']);
+        self::assertContains('delaiProduction', $types['commande']['champs']);
+        self::assertContains('creneauLivraison', $types['commande']['champs']);
         // Le bloc « NB » des factures descend avec l'entreprise.
         self::assertContains('conditionsPaiement', $types['entreprise']['champs']);
-        // Les paliers et les objets suggérés restent au local.
-        self::assertArrayNotHasKey(\App\Service\Parametres\ReglagesSaisie::TUILE, CatalogueSynchro::REGLAGES_PUBLICS);
+        // Les paliers et les frais en ligne descendent au site ; les objets suggérés restent au local.
+        self::assertSame(['paliers_livraison', 'livraison_en_ligne'], CatalogueSynchro::REGLAGES_PUBLICS[\App\Service\Parametres\ReglagesSaisie::TUILE]);
     }
 
     public function testUnPaiementSaisiEnLigneResteAValider(): void
@@ -248,8 +251,9 @@ final class CatalogueSynchroTest extends TestCase
         // Paiements : ce que « Factures et paiements » montre au client (moyens, seuil et coordonnées du virement, acompte).
         $paiements = CatalogueSynchro::reglagesPublics('paiements', ['orange_money' => false, 'acompte' => 30, 'virement_seuil' => 1, 'wave' => false, 'recu' => 'sms']);
         self::assertSame(['orange_money' => false, 'especes' => true, 'virement' => true, 'virement_seuil' => 1, 'virement_coordonnees' => '', 'acompte' => 30], $paiements);
+        // Horaires : les jours fériés aussi (date « prête le » et créneaux de la commande en ligne).
         $horaires = CatalogueSynchro::reglagesPublics('horaires', ['feries' => '01/01']);
-        self::assertSame(['jours' => 'lun-sam', 'ouverture' => '08:00', 'fermeture' => '18:00'], $horaires);
+        self::assertSame(['jours' => 'lun-sam', 'ouverture' => '08:00', 'fermeture' => '18:00', 'feries' => '01/01'], $horaires);
         self::assertSame([], CatalogueSynchro::reglagesPublics('paie', ['mode' => 'mensuel']));
     }
 

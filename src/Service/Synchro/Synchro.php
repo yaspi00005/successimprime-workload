@@ -29,6 +29,7 @@ use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\NotificationsClient;
 use App\Service\NotificationService;
 use App\Service\Parametres\CatalogueParametres;
+use App\Service\Parametres\ReglagesSaisie;
 use App\Service\Sondages\Sondages;
 use App\Service\Site\DemandesSite;
 use Doctrine\Persistence\ManagerRegistry;
@@ -69,6 +70,8 @@ final class Synchro
         #[AutowireServiceClosure(Sondages::class)] private readonly \Closure $sondages,
         /** @var \Closure(): DemandesSite */
         #[AutowireServiceClosure(DemandesSite::class)] private readonly \Closure $demandesSite,
+        /** @var \Closure(): ReglagesSaisie (paliers des frais de livraison, contrôle des commandes en ligne) */
+        #[AutowireServiceClosure(ReglagesSaisie::class)] private readonly \Closure $reglagesSaisie,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $url,
         #[Autowire('%env(SYNC_CLE)%')] private readonly string $cle,
@@ -445,10 +448,11 @@ final class Synchro
                         $entite->setDeleted(true);
                         $resultat = [self::RESULTAT_OK, 'Demande refusée par l\'entreprise du client', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof Commandes && Commandes::CANAL_EN_LIGNE === $entite->getCanal() && !$entite->isStatut()) {
+                        $fraisRetires = self::verifierFraisEnLigne($entite, ($this->reglagesSaisie)()->paliers());
                         $this->em->flush();
                         $validee = null !== $entite->getValideePar() ? ', validée par ' . $entite->getValideePar() : '';
                         $this->notifications->notifierRoles(['ROLE_COMMANDE'], \sprintf('Nouvelle commande en ligne %s%s : prix et fichier à vérifier, puis à confirmer.', $entite->getNumero(), $validee), 'app_commandes_show', ['id' => $entite->getId()]);
-                        $resultat = [self::RESULTAT_OK, 'Commande passée en ligne : à confirmer', $titre];
+                        $resultat = [self::RESULTAT_OK, 'Commande passée en ligne : à confirmer'.($fraisRetires ? ' (frais de livraison hors paliers remis à 0, à choisir à la confirmation)' : ''), $titre];
                     }
                 } else {
                     $resultat = [self::RESULTAT_IGNORE, 'Donnée supprimée avant l\'envoi', $titre];
@@ -464,6 +468,32 @@ final class Synchro
                 return $resultat;
             });
         });
+    }
+
+    /**
+     * Commande arrivée du site : ses frais de livraison viennent du réglage
+     * « Frais de livraison en ligne ». Seuls 0 et les paliers du local sont
+     * permis ; un autre montant est retiré des frais et des totaux (la
+     * boutique choisit à la confirmation). Rend vrai s'il a été retiré.
+     *
+     * @param list<int> $paliers
+     */
+    public static function verifierFraisEnLigne(Commandes $commande, array $paliers): bool
+    {
+        $frais = $commande->getFraisLivraison();
+        if (ReglagesSaisie::fraisPermis($frais, $paliers)) {
+            return false;
+        }
+        // Les lignes arrivent à part : les totaux reçus sont corrigés du seul montant des frais
+        // (pas de TVA sur les frais ; le total TTC est déjà net de la remise globale, TotauxDocument).
+        $commande->setFraisLivraison(0)
+            ->setTotalHt(max(0, $commande->getTotalHt() - $frais))
+            ->setTotalTtc(max(0, $commande->getTotalTtc() - $frais));
+        $commande->setMontantApayer($commande->getTotalTtc());
+        $commande->setResteAPayer(max(0, $commande->getTotalTtc() - $commande->getTotalPaye()));
+        $commande->actualiserStatutPaiement();
+
+        return true;
     }
 
     /**

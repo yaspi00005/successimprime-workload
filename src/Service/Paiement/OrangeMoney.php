@@ -33,7 +33,8 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * crédit IA (docs/demande-conception.md) : la commande est alors créée à
  * la réception de l'argent, par CommandesConception. Et un règlement de
  * plusieurs factures et acomptes (ReglementsEnLigne) : un paiement par
- * commande à la réception de l'argent, par PaiementsDuReglement.
+ * commande à la réception de l'argent, par PaiementsDuReglement ; le même
+ * règlement sert à l'acompte payé à la commande (PaiementALaCommande).
  *
  * Chaque paiement porte le fonds de soutien et le frais de retrait
  * (FraisOrangeMoney, taux de Réglages › Paiements, 1 % et 1 % tant que le
@@ -238,11 +239,16 @@ final class OrangeMoney
             throw new \DomainException('Rien à payer par Orange Money.');
         }
         $transaction = TransactionOrangeMoney::pourReglement($reglement, $compte, $maintenant);
+        // Payé à la commande (commande en ligne encore « à confirmer ») : annulé, le client revient à son récapitulatif.
+        $parts = $reglement->getParts();
+        $brouillon = 1 === \count($parts) && !$parts[0]->getCommande()->isStatut() ? $parts[0]->getCommande() : null;
 
         return $this->ouvrirChezOrange(
             $transaction,
             $this->urls->generate('app_espace_payer_recu', ['reference' => $reglement->getReference()], UrlGeneratorInterface::ABSOLUTE_URL),
-            $this->urls->generate('app_espace_factures', ['annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
+            null !== $brouillon
+                ? $this->urls->generate('app_espace_nouvelle_commande_paiement', ['id' => (string) $brouillon->getPublicId(), 'annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL)
+                : $this->urls->generate('app_espace_factures', ['annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
         );
     }
 

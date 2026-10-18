@@ -467,6 +467,8 @@ final class FacturesClient
             }
             $carte = $this->espace->carte($c);
             $texte = match (true) {
+                // Acompte payé à la commande (PaiementALaCommande) : la boutique n'a pas encore confirmé.
+                !$c->isStatut() => 'L\'atelier vérifie le prix et votre fichier, confirme la commande, puis vous envoie le BAT.',
                 $carte['batEnAttente'] => 'Votre BAT attend votre accord dans « Fichiers et BAT ».',
                 self::productionLancee($c) => 'Production lancée par l\'atelier.',
                 default => 'L\'atelier lance la production quand la boutique a validé votre acompte.',

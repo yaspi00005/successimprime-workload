@@ -33,6 +33,7 @@ final class DroitsEspace
     /** Pages qui ne servent qu'à commander, payer, accepter ou écrire : refusées, même à l'ouverture. */
     public const PAGES_ECRITURE = [
         'app_espace_nouvelle_commande',
+        'app_espace_nouvelle_commande_paiement',
         'app_espace_produits',
         'app_espace_devis',
         'app_espace_devis_pdf',

@@ -1,6 +1,6 @@
 # Espace client connecté (maquettes 13 à 19)
 
-Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connexion » plus bas), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts, de marges ni de noms d'employés : du personnel, le client ne voit que le prénom et le métier (« Seydou (graphiste PAO) », `Employes::getNomPublic`), jamais le nom de famille ni le téléphone.
+Le client se connecte avec son numéro et son mot de passe (CX01, voir « Connexion » plus bas), puis arrive dans son espace `/espace`. Il ne voit que sa propre fiche : chaque page passe par `src/Service/EspaceClient/EspaceClient.php`, qui filtre sur le client du compte connecté, et répond « introuvable » pour la commande, le BAT, le fichier, le devis ou la facture d'un autre client. Pas de coûts ni de marges. Du personnel, le client voit dans le suivi d'une commande, le BAT et les messages le prénom et le métier seulement (« Seydou (graphiste PAO) », `Employes::getNomPublic`), jamais le nom de famille, le téléphone ni la photo ; seule la carte « Votre conseiller(ère) » porte le prénom et le nom du commercial qui suit le client (champ `conseiller`, maquette EC01), avec le numéro de la boutique.
 
 ## État (13/10/2026)
 

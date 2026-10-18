@@ -373,7 +373,9 @@ Une commande déjà imprimée dont l'atelier n'a enregistré ni contrôle ni BAT
 
 **Pas encore là** (à brancher avec la nouvelle commande en ligne) : « 48 h après validation » et « Validez avant 16 h » demandent le délai de production et l'heure limite de la commande ; la page dit en attendant « après validation du BAT » et « Validez vite pour garder la livraison prévue … ».
 
-Captures : `/mnt/project-files/captures/suivi-bat/`.
+**Sur téléphone (maquette DT04, 18/10/2026)** : en tête du résumé, l'étape en cours et le jour prévu (« En impression · livraison mardi 20/10 ») ; pour qui paie, « Acompte payé » (en vert) tant que la commande n'est pas soldée, puis « À la livraison » ou « Au retrait » (en rouge) pour le reste, « Reste à payer » une fois livrée ; un lien « Conversation de la commande › » descend aux messages (pas pour la lecture seule). Les droits ne changent pas : un demandeur ou la lecture seule ne voient toujours aucun montant.
+
+Captures : `/mnt/project-files/captures/suivi-bat/`, `/mnt/project-files/captures/gestion-commandes/` (DT04).
 
 ## Mon solde (construit le 18/10/2026)
 

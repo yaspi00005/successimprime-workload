@@ -156,6 +156,11 @@
 	{% set enMetres = matiere.taille %}
 	{% set largeurM = estimation.largeur ? (estimation.largeur / 100) : (matiere.largeur ? matiere.largeur / 100 : 1) %}
 	{% set hauteurM = estimation.hauteur ? (estimation.hauteur / 100) : (matiere.hauteur ? matiere.hauteur / 100 : 1) %}
+	{# Côtés remis au mm près (le serveur les garde au mm) : une étiquette de 5,5 × 3,5 cm ne revient pas en 6 × 4 cm. #}
+	{% set largeurTexte = largeurM|number_format(3, ',', '') %}
+	{% set largeurTexte = largeurTexte|slice(-1) == '0' ? largeurTexte|slice(0, -1) : largeurTexte %}
+	{% set hauteurTexte = hauteurM|number_format(3, ',', '') %}
+	{% set hauteurTexte = hauteurTexte|slice(-1) == '0' ? hauteurTexte|slice(0, -1) : hauteurTexte %}
 	{% set finitionsChoisies = choix.finitions is defined ? choix.finitions|map(f => f ~ '') : matiere.finitions|filter(f => f.parDefaut)|map(f => f.id ~ '') %}
 	{% set delaiChoisi = choix.delai|default('standard') == 'express' and reglages.express ? 'express' : 'standard' %}
 	{% set reception = choix.reception|default('retrait') == 'livraison' ? 'livraison' : 'retrait' %}
@@ -178,17 +183,19 @@
 						<div class="co-dimensions{{ not enMetres ? ' sans-taille' }}">
 							<div data-co-taille{{ not enMetres ? ' hidden' }}>
 								<label class="ec-etiquette" for="co-largeur">Largeur</label>
-								<div class="co-unite"><input class="ec-saisie" id="co-largeur" name="largeur" inputmode="decimal" autocomplete="off" value="{{ largeurM|number_format(2, ',', '') }}"><span>m</span></div>
+								<div class="co-unite"><input class="ec-saisie" id="co-largeur" name="largeur" inputmode="decimal" autocomplete="off" value="{{ largeurTexte }}"><span>m</span></div>
 							</div>
 							<div data-co-taille{{ not enMetres ? ' hidden' }}>
 								<label class="ec-etiquette" for="co-hauteur">Hauteur</label>
-								<div class="co-unite"><input class="ec-saisie" id="co-hauteur" name="hauteur" inputmode="decimal" autocomplete="off" value="{{ hauteurM|number_format(2, ',', '') }}"><span>m</span></div>
+								<div class="co-unite"><input class="ec-saisie" id="co-hauteur" name="hauteur" inputmode="decimal" autocomplete="off" value="{{ hauteurTexte }}"><span>m</span></div>
 							</div>
 							<div>
 								<label class="ec-etiquette" for="co-quantite">Quantité</label>
 								<input class="ec-saisie" id="co-quantite" name="quantite" inputmode="numeric" autocomplete="off" value="{{ choix.quantite|default(matiere.min) }}">
 							</div>
 						</div>
+						{# Petites pièces au m² (autocollants, étiquettes) : quantité en pièces ou en m², sans aucun prix. Côtés en mètres, gardés au mm par le serveur. #}
+						{{ include('partials/_pieces_m2.html.twig', {id: 'pm2', largeur: '#co-largeur', hauteur: '#co-hauteur', quantite: '#co-quantite', unite_cote: 'm', arrondi_mm: 1, masque: not matiere.m2, unite: choix.unite_quantite ?? 'piece', m2: choix.quantite_m2 ?? '', erreur: estimation.erreurM2 ?? null}) }}
 						<div class="co-formats" data-co-taille{{ not enMetres ? ' hidden' }}>
 							{% for f in formats %}
 								<button type="button" class="co-format{{ largeurM == f[0] and hauteurM == f[1] ? ' actif' }}" data-co-format="{{ f[0] }}x{{ f[1] }}">{{ f[0] }} × {{ f[1] }} m</button>
@@ -247,7 +254,7 @@
 					<div class="co-bas">
 						<div class="ec-carte co-apercu" data-co-apercu{{ not enMetres ? ' hidden' }}>
 							<svg class="co-apercu-dessin" viewBox="0 0 300 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Aperçu à l'échelle"><rect x="1" y="1" width="298" height="98" rx="3"/></svg>
-							<p><b>Aperçu à l'échelle</b> · <span data-co-apercu-texte>{{ largeurM|number_format(2, ',', '')|replace({',00': ''}) }} m × {{ hauteurM|number_format(2, ',', '')|replace({',00': ''}) }} m.</span></p>
+							<p><b>Aperçu à l'échelle</b> · <span data-co-apercu-texte>{{ largeurTexte|replace({',00': ''}) }} m × {{ hauteurTexte|replace({',00': ''}) }} m.</span></p>
 						</div>
 						<div class="co-boutons">
 							<a class="ec-bouton-blanc" href="{{ path('app_espace_nouvelle_commande') }}">‹ Retour</a>
@@ -514,7 +521,7 @@
 		etape: etape,
 		nomProduit: nomProduit,
 		nomEtape4: etape4|lower,
-		matieres: matieres|map(m => {id: m.id, titre: m.titre, taille: m.taille, min: m.min, finitions: m.finitions|map(f => {id: f.id, oeillets: f.oeillets, nom: f.nom})}),
+		matieres: matieres|map(m => {id: m.id, titre: m.titre, taille: m.taille, min: m.min, m2: m.m2, finitions: m.finitions|map(f => {id: f.id, oeillets: f.oeillets, nom: f.nom})}),
 	}|json_encode|raw }}</script>
 {% endblock %}
 

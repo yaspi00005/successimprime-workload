@@ -137,6 +137,9 @@
 			largeur: form.elements.largeur ? form.elements.largeur.value : '',
 			hauteur: form.elements.hauteur ? form.elements.hauteur.value : '',
 			unite: 'm',
+			// Quantité en pièces ou en m² (pièces au m²) : en m², le serveur compte les pièces lui-même.
+			unite_quantite: coche('unite_quantite') || 'piece',
+			quantite_m2: form.elements.quantite_m2 ? form.elements.quantite_m2.value : '',
 			finitions: finitions(),
 			delai: coche('delai') || 'standard',
 			reception: coche('reception') || 'retrait',
@@ -206,6 +209,7 @@
 			texte('total', '—');
 			texte('barreTotal', '—');
 		}
+		erreurM2(d.erreurM2 || '');
 		const choix = $('[data-co-creneau]');
 		if (choix && d.creneaux) {
 			const avant = choix.value;
@@ -224,6 +228,34 @@
 			frais.textContent = om ? 'Frais Orange Money en plus (fonds de soutien et retrait) : vous payez ' + (om.acompte ? f(om.acompte) + ' F pour l\'acompte, ' : '') + f(om.tout) + ' F pour le tout. Détaillés avant de payer.' : '';
 		}
 		libelleEnvoyer();
+	}
+
+	/*
+	 * Surface tapée refusée par le serveur (minimum du produit, trop de
+	 * pièces...) : dite sous le champ. Sans pièce comptée (surface vide,
+	 * moins d'une pièce), la phrase de pieces-m2.js le dit déjà.
+	 */
+	function erreurM2(message) {
+		const zone = $('[data-pm2-zone-m2]');
+		const champ = $('[data-pm2-m2]');
+		if (!zone || !champ) return;
+		if (form.elements.quantite && form.elements.quantite.value === '') message = '';
+		let p = document.getElementById('pm2-erreur');
+		if (!message) {
+			if (p) p.remove();
+			champ.removeAttribute('aria-invalid');
+			champ.removeAttribute('aria-describedby');
+			return;
+		}
+		if (!p) {
+			p = document.createElement('p');
+			p.id = 'pm2-erreur';
+			p.className = 'si-pm2-erreur';
+			zone.append(p);
+		}
+		p.textContent = message;
+		champ.setAttribute('aria-invalid', 'true');
+		champ.setAttribute('aria-describedby', 'pm2-erreur');
 	}
 
 	function libelleEnvoyer() {
@@ -249,10 +281,25 @@
 			$$('input', bloc).forEach(function (i) { i.disabled = !actif; });
 		});
 		$$('[data-co-taille]').forEach(function (el) { el.hidden = !m.taille; });
+		majPiecesM2();
+		// Quantité tapée en pièces : au moins le minimum (en m², le serveur dit si la surface n'y suffit pas).
 		const q = form.elements.quantite;
-		if (q && (+q.value || 0) < m.min) q.value = m.min;
+		if (q && !q.readOnly && (+q.value || 0) < m.min) q.value = m.min;
 		majFormats();
 		apercu();
+	}
+
+	/*
+	 * Pièces au m² (partials/_pieces_m2.html.twig, pieces-m2.js) : le bloc
+	 * ne se montre que pour une matière au m² dont on donne la taille. En
+	 * m², il remplit la quantité (en lecture seule) et la signale par un
+	 * événement « input » : le prix se refait comme si elle était tapée.
+	 */
+	function majPiecesM2() {
+		const bloc = document.getElementById('pm2');
+		if (!bloc) return;
+		bloc.hidden = !matiere().m2;
+		if (window.SiPiecesM2) window.SiPiecesM2.rafraichir(bloc);
 	}
 
 	function majFormats() {
@@ -269,6 +316,7 @@
 			const t = b.dataset.coFormat.split('x');
 			form.elements.largeur.value = (+t[0]).toFixed(2).replace('.', ',');
 			form.elements.hauteur.value = (+t[1]).toFixed(2).replace('.', ',');
+			majPiecesM2();
 			changer();
 		});
 	});
@@ -312,8 +360,10 @@
 			});
 		}
 		const t = $('[data-co-apercu-texte]', zone);
-		const metres = function (v) { return String(Math.round(v * 100) / 100).replace('.', ','); };
-		t.textContent = metres(l) + ' m × ' + metres(h) + ' m' + (nombreOeillets ? ', ' + nombreOeillets + ' œillets par pièce' : '') + '. Votre fichier devra faire ' + f(l * 100) + ' × ' + f(h * 100) + ' cm.';
+		// Au mm près : une étiquette de 5,5 × 3,5 cm n'est pas annoncée en 6 × 4 cm.
+		const metres = function (v) { return String(Math.round(v * 1000) / 1000).replace('.', ','); };
+		const centimetres = function (v) { const c = Math.round(v * 1000) / 10; return c % 1 ? String(c).replace('.', ',') : f(c); };
+		t.textContent = metres(l) + ' m × ' + metres(h) + ' m' + (nombreOeillets ? ', ' + nombreOeillets + ' œillets par pièce' : '') + '. Votre fichier devra faire ' + centimetres(l) + ' × ' + centimetres(h) + ' cm.';
 		const vignette = document.querySelector('.co-vignette');
 		if (vignette) vignette.style.aspectRatio = String(Math.max(.3, Math.min(6, l / h)));
 	}
@@ -332,10 +382,10 @@
 		if (nom === 'paiement') libelleEnvoyer();
 		if (nom === 'adresse') majAdresse();
 		if (nom === 'fichiers[]' && e.target.checked) controler(+e.target.value, null);
-		if (['produit', 'quantite', 'largeur', 'hauteur', 'finitions[]', 'delai', 'reception'].indexOf(nom) >= 0) changer();
+		if (['produit', 'quantite', 'largeur', 'hauteur', 'unite_quantite', 'quantite_m2', 'finitions[]', 'delai', 'reception'].indexOf(nom) >= 0) changer();
 	});
 	form.addEventListener('input', function (e) {
-		if (['quantite', 'largeur', 'hauteur'].indexOf(e.target.name) >= 0) changer();
+		if (['quantite', 'largeur', 'hauteur', 'quantite_m2'].indexOf(e.target.name) >= 0) changer();
 	});
 
 	/* ---------- Étape 3 : fichier ---------- */

@@ -136,6 +136,7 @@ final class PageNouvelleCommande
                 'hauteur' => $fiche['hauteur'],
                 'min' => $fiche['min'],
                 'max' => $fiche['max'],
+                'm2' => $fiche['m2'],
                 'finitions' => $finitions,
             ];
         }
@@ -163,8 +164,14 @@ final class PageNouvelleCommande
         $lignes = [];
         $surface = null;
         if ('metre_carre' === $mode && $taille) {
-            $surface = (float) $ligne->getSurface() * $quantite;
+            // En pièces au m² (quantité donnée en m²) : la surface facturée, espacement et chutes compris.
+            $surface = $ligne->getSurfaceTotale();
             $lignes[] = ['libelle' => 'Surface', 'valeur' => self::nombre($surface).' m²'.($montants ? ' × '.self::f((int) $ligne->getPrixUnitaire()).' F' : '')];
+            $pieces = $ligne->getPiecesAuM2();
+            if (null !== $pieces) {
+                // Un nombre de pièces, pas un montant : montré à tous ceux qui commandent (l'espacement est dit sous la quantité).
+                $lignes[] = ['libelle' => 'Pièces au m²', 'valeur' => \sprintf('%s (%d × %d)', self::f($pieces['parM2']), $pieces['colonnes'], $pieces['rangees'])];
+            }
         } elseif ('metre' === $mode && $taille) {
             $lignes[] = ['libelle' => 'Longueur', 'valeur' => self::nombre((float) $ligne->getLongueur() * $quantite).' m'.($montants ? ' × '.self::f((int) $ligne->getPrixUnitaire()).' F' : '')];
         } elseif ('forfait' === $mode) {
@@ -322,9 +329,9 @@ final class PageNouvelleCommande
         return str_replace('.', ',', (string) round($n, 2));
     }
 
-    /** Côté en mètres : « 3 », « 1,5 » */
+    /** Côté en mètres, au mm près : « 3 », « 1,5 », « 0,055 » (étiquette de 5,5 cm) */
     private static function m(float $metres): string
     {
-        return str_replace('.', ',', (string) round($metres, 2));
+        return str_replace('.', ',', (string) round($metres, 3));
     }
 }

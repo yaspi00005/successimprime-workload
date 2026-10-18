@@ -12,6 +12,7 @@ use App\Entity\ProduitConfigurationFinition;
 use App\Service\GrilleTarifaire;
 use App\Service\Parametres\Parametres;
 use App\Service\Promotions\PromotionsSaisie;
+use App\Service\Site\FormulaireDemande;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
@@ -141,8 +142,51 @@ final class NouvelleCommande
             'hauteur' => null !== $c->getLongueurDefaut() ? (float) $c->getLongueurDefaut() * 100 : null,
             'min' => max(1, $c->getQuantiteMinimale()),
             'max' => $c->getQuantiteMaximale(),
+            // Quantité possible en m² (pièces au m²) : produit au m² dont le client donne la taille.
+            'm2' => FormulaireDemande::piecesAuM2Possible($c),
             'finitions' => $finitions,
         ];
+    }
+
+    /**
+     * Quantité de la commande d'après la page (pièces au m²,
+     * docs/espace-client.md). En pièces, rien ne change. En m², pour un
+     * produit au m² dont le client donne la taille, le nombre de pièces
+     * vient de la surface tapée (celui envoyé par la page ne compte pas) et
+     * « m2 » garde cette surface : la ligne sera facturée en pièces au m²
+     * (enPiecesAuM2). « erreur » : message à montrer sous la surface.
+     *
+     * @return array{quantite: int, m2: ?float, erreur: ?string}
+     */
+    public static function quantiteSaisie(ProduitConfiguration $config, int $quantite, string $unite, string $surface, ?float $largeurCm, ?float $hauteurCm, float $espacementMm): array
+    {
+        $saisie = ['quantite' => $quantite, 'm2' => null, 'erreur' => null];
+        if (FormulaireDemande::UNITE_M2 !== $unite || !FormulaireDemande::piecesAuM2Possible($config)) {
+            return $saisie;
+        }
+        // Taille du format quand le client n'en tape pas, comme construireLigne.
+        $largeurCm ??= null !== $config->getLargeurDefaut() ? (float) $config->getLargeurDefaut() * 100 : null;
+        $hauteurCm ??= null !== $config->getLongueurDefaut() ? (float) $config->getLongueurDefaut() * 100 : null;
+        if (null === $largeurCm || null === $hauteurCm || $largeurCm <= 0 || $hauteurCm <= 0) {
+            // Sans taille, construireLigne le dit (« Indiquez la largeur et la hauteur »).
+            return $saisie;
+        }
+        $r = FormulaireDemande::quantiteDepuisM2($surface, $largeurCm, $hauteurCm, $espacementMm, max(1, $config->getQuantiteMinimale()));
+        if (isset($r['erreur'])) {
+            return ['erreur' => $r['erreur']] + $saisie;
+        }
+
+        return isset($r['pieces'], $r['m2']) ? ['quantite' => $r['pieces'], 'm2' => $r['m2'], 'erreur' => null] : $saisie;
+    }
+
+    /**
+     * Quantité donnée en m² : la ligne est facturée en pièces au m²
+     * (espacement compris), comme le client l'a comptée, et garde la
+     * surface tapée. Même calcul pour l'estimation et pour la commande.
+     */
+    public static function enPiecesAuM2(CommandesDetails $ligne, float $m2, float $espacementMm, bool $b2b): CommandesDetails
+    {
+        return $ligne->choisirPiecesAuM2(true, $espacementMm)->setDemande($m2, 'm2')->calculerTotaux($b2b);
     }
 
     /**
@@ -256,13 +300,17 @@ final class NouvelleCommande
      * Prix, sans rien enregistrer : la ligne du produit, puis l'express et
      * la livraison quand ils sont choisis.
      *
-     * @param list<int> $finitions
+     * @param list<int>                             $finitions
+     * @param \Closure(CommandesDetails): void|null $ajuster   même ajustement que commander (pièces au m²)
      *
      * @return array{total: int, detail: list<array{libelle: string, montant: int}>}
      */
-    public static function estimer(ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, bool $b2b, ?OptionsCommande $options = null, int $heuresExpress = 24): array
+    public static function estimer(ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, bool $b2b, ?OptionsCommande $options = null, int $heuresExpress = 24, ?\Closure $ajuster = null): array
     {
         $ligne = self::construireLigne($config, $quantite, $largeurCm, $hauteurCm, $finitions, $b2b);
+        if (null !== $ajuster) {
+            $ajuster($ligne);
+        }
         $commande = self::assembler($ligne, $options, $heuresExpress);
         $detail = [['libelle' => 'Impression', 'montant' => $ligne->calculerMontantImpression()]];
         foreach ($ligne->getFinitions() as $f) {
@@ -301,7 +349,7 @@ final class NouvelleCommande
      *
      * @param list<int>                   $finitions
      * @param list<CommandeDetailFichier> $fichiers  fichiers du client, déjà vérifiés
-     * @param \Closure(CommandesDetails): void|null $ajuster prix propre à la page (Atelier 3D : seconde face, palier), recalculé ici
+     * @param \Closure(CommandesDetails): void|null $ajuster prix propre à la page (Atelier 3D : seconde face, palier ; quantité en m² : enPiecesAuM2), recalculé ici
      * @param string|null $codePromo code promo tapé : vérifié avant d'enregistrer (PromotionsSaisie::appliquerCodeEnLigne)
      * @param OptionsCommande|null $options délai, réception et créneau (nouvelle commande en quatre étapes)
      *

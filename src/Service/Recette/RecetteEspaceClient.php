@@ -27,6 +27,7 @@ use App\Service\EspaceClient\AppareilsClient;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FilNotifications;
 use App\Service\EspaceClient\NouvelleCommande;
+use App\Service\Site\FormulaireDemande;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
@@ -44,6 +45,9 @@ use Symfony\Component\Uid\AbstractUid;
  *    rien du tout pour un demandeur ni un compte en lecture seule, ni dans
  *    les pages, ni dans leurs données JSON, ni dans les appels de prix ;
  *    accepter un devis seulement pour un valideur ;
+ *  - quantité en m² de Nouvelle commande (pièces au m²) : l'encadré se
+ *    montre à qui commande, l'estimation en m² compte les pièces, sans
+ *    aucun montant pour un demandeur ;
  *  - valider un BAT demande chaque point de « Avant de valider, vérifiez »
  *    (vérifié par le serveur) ; un compte en lecture seule ne valide pas ;
  *  - les fiches d'un autre client (commande, facture, fichier, BAT, photo
@@ -153,6 +157,8 @@ final class RecetteEspaceClient
             $this->verifierBat($comptes, $sessions, $fiches, $bilan);
             $suivi && $suivi('espace client : appels de prix sans montant');
             $this->verifierAppelsSansMontant($comptes, $sessions, $fiches, $bilan);
+            $suivi && $suivi('espace client : quantité en m² de Nouvelle commande');
+            $this->verifierPiecesM2($comptes, $sessions, $bilan);
             $suivi && $suivi('espace client : accès suspendu par la boutique');
             $this->verifierSuspension($comptes, $bilan);
             $suivi && $suivi('admin et API en ligne');
@@ -434,6 +440,65 @@ final class RecetteEspaceClient
                 if (!$ok) {
                     $bilan->constater(Reponse::ERREUR === $reponse->etat() ? BilanRecette::ERREUR : BilanRecette::FUITE, 'montant', $route, $chemin, $libelle, [] !== $cles ? $quoi.' avec des montants : '.implode(', ', \array_slice($cles, 0, 5)) : (string) $reponse->erreur);
                 }
+            }
+        }
+    }
+
+    /**
+     * Pièces au m² (docs/espace-client.md, « Quantité en pièces ou en m² ») :
+     * l'étape Options d'un produit au m², ouverte en m² (2,5 m² de pièces de
+     * 5 × 5 cm), montre l'encadré « Quantité en pièces / m² » à chaque
+     * compte qui commande, et l'estimation en m² compte les pièces au m².
+     * Pour qui ne voit pas les montants (demandeur) : ni la page ni
+     * l'estimation n'ont un montant.
+     *
+     * @param array<string, CompteClient>            $comptes
+     * @param array<string, MockArraySessionStorage> $sessions
+     */
+    private function verifierPiecesM2(array $comptes, array $sessions, BilanRecette $bilan): void
+    {
+        $produit = null;
+        foreach ($this->nouvelleCommande->produits() as $c) {
+            if (FormulaireDemande::piecesAuM2Possible($c)) {
+                $produit = $c;
+                break;
+            }
+        }
+        if (null === $produit) {
+            $bilan->ignorees['app_espace_nouvelle_commande (pièces au m²)'] = 'aucun produit au m² dans le catalogue publié';
+
+            return;
+        }
+        foreach (['particulier', 'payeur', 'demandeur'] as $libelle) {
+            if (!isset($comptes[$libelle], $sessions[$libelle])) {
+                continue;
+            }
+            $compte = $comptes[$libelle];
+            $session = $sessions[$libelle];
+
+            $chemin = $this->routeur->generate('app_espace_nouvelle_commande', ['produit' => $produit->getId(), 'largeur' => 5, 'hauteur' => 5, 'unite_quantite' => FormulaireDemande::UNITE_M2, 'quantite_m2' => '2,5']);
+            $page = $this->navigateur->get($chemin, $session);
+            $encadre = preg_match('/<div\b[^>]*\bid="pm2"[^>]*>/', $page->contenu, $m) && str_contains($m[0], 'data-pieces-m2') && 1 !== preg_match('/\shidden(?:[\s=>]|$)/', $m[0]);
+            $ok = Reponse::OUVERT === $page->etat() && $encadre;
+            $bilan->controler(\sprintf('Espace client : %s, encadré des pièces au m² de Nouvelle commande', $libelle), $ok, $chemin.' → '.$page->etat().($encadre ? ', encadré montré' : ', encadré absent'));
+            if (Reponse::ERREUR === $page->etat()) {
+                $bilan->constater(BilanRecette::ERREUR, 'erreur', 'app_espace_nouvelle_commande', $chemin, $libelle, (string) $page->erreur);
+            } elseif (!$compte->montantsVisibles() && Reponse::OUVERT === $page->etat()) {
+                $this->verifierSansMontant($libelle, 'app_espace_nouvelle_commande', $chemin, $page, $bilan);
+            }
+
+            $jeton = (string) $this->jeton($session);
+            $chemin = $this->routeur->generate('app_espace_estimer');
+            $reponse = $this->navigateur->postJson($chemin, ['produit' => $produit->getId(), 'quantite' => 1, 'largeur' => 5, 'hauteur' => 5, 'unite' => 'cm', 'unite_quantite' => FormulaireDemande::UNITE_M2, 'quantite_m2' => '2,5'], $session, ['X-CSRF-TOKEN' => $jeton]);
+            $donnees = json_decode($reponse->contenu, true);
+            $lignes = \is_array($donnees) ? array_column((array) ($donnees['recap']['lignes'] ?? []), 'libelle') : [];
+            $cles = $compte->montantsVisibles() ? [] : self::clesArgent($donnees);
+            $ok = Reponse::OUVERT === $reponse->etat() && \in_array('Pièces au m²', $lignes, true) && [] === $cles;
+            $bilan->controler(\sprintf('Espace client : %s, estimation en m² de Nouvelle commande', $libelle), $ok, $chemin.' → '.$reponse->etat().(\in_array('Pièces au m²', $lignes, true) ? ', en pièces au m²' : ', pas en pièces au m²').([] !== $cles ? ' : '.implode(', ', \array_slice($cles, 0, 5)) : ''));
+            if (Reponse::ERREUR === $reponse->etat()) {
+                $bilan->constater(BilanRecette::ERREUR, 'erreur', 'app_espace_estimer', $chemin, $libelle, (string) $reponse->erreur);
+            } elseif ([] !== $cles) {
+                $bilan->constater(BilanRecette::FUITE, 'montant', 'app_espace_estimer', $chemin, $libelle, 'estimation en m² avec des montants : '.implode(', ', \array_slice($cles, 0, 5)));
             }
         }
     }

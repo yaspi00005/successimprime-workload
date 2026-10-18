@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}{{ form.vars.data.id ? 'Modifier le devis' : 'Nouveau devis' }}{% endblock %}
+{% block title %}Nouveau devis{% endblock %}
 
 {% block body %}
 	{{ include('devis/_form.html.twig') }}
@@ -13,4 +13,5 @@
 	<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>
 	<script src="{{ asset('js/saisie-commande.js') }}"></script>
 	<script src="{{ asset('js/cout-ligne.js') }}"></script>
+	<script src="{{ asset('js/saisie-devis.js') }}"></script>
 {% endblock %}

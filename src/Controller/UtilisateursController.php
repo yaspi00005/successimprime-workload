@@ -37,7 +37,7 @@ final class UtilisateursController extends AbstractController
     public const MOTIFS = ['Fin de contrat', 'Démission', 'Congé long', 'Suspension', 'Autre'];
 
     /** Devis encore a suivre par leur agent. */
-    private const DEVIS_OUVERTS = [Devis::STATUT_BROUILLON, Devis::STATUT_ENVOYE, Devis::STATUT_ACCEPTE];
+    private const DEVIS_OUVERTS = [Devis::STATUT_BROUILLON, Devis::STATUT_ENVOYE, Devis::STATUT_VU, Devis::STATUT_ACCEPTE];
 
     public function __construct(
         private readonly UserRepository $users,

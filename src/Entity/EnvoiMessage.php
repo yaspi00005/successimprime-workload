@@ -69,6 +69,7 @@ class EnvoiMessage
         'sondage' => 'Invitation à un sondage',
         'demande_site' => 'Accusé de demande du site',
         'conception' => 'Demande de conception',
+        'devis' => 'Devis envoyé au client',
         'rapport_semaine' => 'Rapport de la semaine',
         'autre' => 'Autre',
     ];

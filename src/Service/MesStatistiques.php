@@ -17,7 +17,7 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final class MesStatistiques
 {
-    public const DEVIS_EMIS = [Devis::STATUT_ENVOYE, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_EXPIRE, Devis::STATUT_CONVERTI];
+    public const DEVIS_EMIS = [Devis::STATUT_ENVOYE, Devis::STATUT_VU, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_EXPIRE, Devis::STATUT_CONVERTI];
     public const DEVIS_GAGNES = [Devis::STATUT_ACCEPTE, Devis::STATUT_CONVERTI];
 
     public function __construct(private readonly EntityManagerInterface $em)
@@ -197,10 +197,10 @@ final class MesStatistiques
             ->from(Devis::class, 'd')
             ->where('d.agents = :agent')
             ->andWhere('d.deleted = false')
-            ->andWhere('d.statut = :envoye')
+            ->andWhere('d.statut IN (:envoye)')
             ->andWhere('d.dateDevis <= :limite')
             ->setParameter('agent', $agent)
-            ->setParameter('envoye', Devis::STATUT_ENVOYE)
+            ->setParameter('envoye', Devis::STATUTS_EN_ATTENTE)
             ->setParameter('limite', $maintenant->setTime(23, 59, 59)->modify(sprintf('-%d days', VentesService::JOURS_AVANT_RELANCE)))
             ->getQuery()
             ->getSingleScalarResult();

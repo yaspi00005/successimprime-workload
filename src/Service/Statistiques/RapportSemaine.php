@@ -27,7 +27,7 @@ use Doctrine\ORM\EntityManagerInterface;
 final class RapportSemaine
 {
     /** Devis émis (envoyés au client, quelle que soit la suite). */
-    private const DEVIS_EMIS = [Devis::STATUT_ENVOYE, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_EXPIRE, Devis::STATUT_CONVERTI];
+    private const DEVIS_EMIS = [Devis::STATUT_ENVOYE, Devis::STATUT_VU, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_EXPIRE, Devis::STATUT_CONVERTI];
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -348,9 +348,9 @@ final class RapportSemaine
             ->select('COUNT(d.id)')
             ->from(Devis::class, 'd')
             ->andWhere('d.deleted = false')
-            ->andWhere('d.statut = :envoye')
+            ->andWhere('d.statut IN (:envoye)')
             ->andWhere('d.dateDevis <= :limite')
-            ->setParameter('envoye', Devis::STATUT_ENVOYE)
+            ->setParameter('envoye', Devis::STATUTS_EN_ATTENTE)
             ->setParameter('limite', $a->setTime(23, 59, 59)->modify(\sprintf('-%d days', VentesService::JOURS_AVANT_RELANCE)));
         if (null !== $agent) {
             $qb->andWhere('d.agents = :agent')->setParameter('agent', $agent);

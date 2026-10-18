@@ -264,7 +264,9 @@ final class EspaceNouvelleCommandeController extends AbstractController
         }
         $part = PaiementALaCommande::TOUT === ($request->request->getString('part') ?: $request->query->getString('part')) ? PaiementALaCommande::TOUT : PaiementALaCommande::ACOMPTE;
         $maintenant = new \DateTimeImmutable();
-        $pourcentage = $this->delais->pourcentageAcompte($compte->getClient());
+        // Commande née d'un devis accepté (docs/devis.md) : l'acompte écrit sur le devis.
+        $devis = $espace->devisDeLaCommande($commande);
+        $pourcentage = null !== $devis ? $devis->getAcomptePourcentage() : $this->delais->pourcentageAcompte($compte->getClient());
         $element = PaiementALaCommande::payable($commande, $compte) ? PaiementALaCommande::element($commande, $part, $pourcentage, $maintenant) : null;
         if (null === $element) {
             return $this->redirectToRoute('app_espace_commande', ['id' => $id]);

@@ -299,20 +299,64 @@ class DevisType extends AbstractType
                 'required' => false,
             ])
 
-            ->add('statut', ChoiceType::class, [
-                'label' => 'Statut',
-                'choices' => [
-                    'Brouillon' => Devis::STATUT_BROUILLON,
-                    'Envoyé' => Devis::STATUT_ENVOYE,
-                    'Accepté' => Devis::STATUT_ACCEPTE,
-                    'Refusé' => Devis::STATUT_REFUSE,
-                    'Expiré' => Devis::STATUT_EXPIRE,
-                    'Converti en commande' => Devis::STATUT_CONVERTI,
-                    'Annulé' => Devis::STATUT_ANNULE,
-                ],
-                'attr' => [
-                    'class' => 'form-control',
-                ],
+            /*
+             * Le statut ne se choisit plus dans le formulaire (maquette
+             * GC04) : « Enregistrer le brouillon », « Envoyer au client »,
+             * puis la réponse du client ou la fiche (docs/devis.md).
+             */
+
+            // En-tête et conditions du devis (maquette GC04), imprimés sur le PDF et montrés au client.
+            ->add('validiteJours', ChoiceType::class, [
+                'label' => 'Valable',
+                'choices' => array_combine(array_map(static fn (int $j): string => $j.' jours', Devis::VALIDITES), Devis::VALIDITES),
+                'attr' => ['class' => 'form-select js-validite'],
+            ])
+            ->add('delaiRealisation', TextType::class, [
+                'label' => 'Délai de réalisation',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 80, 'placeholder' => '5 jours ouvrés', 'list' => 'delais-suggeres'],
+                'constraints' => [new Length(max: 80)],
+            ])
+            ->add('acomptePourcentage', ChoiceType::class, [
+                'label' => 'Acompte',
+                'choices' => array_combine(array_map(static fn (int $p): string => 0 === $p ? 'Pas d\'acompte' : $p.' % à l\'acceptation', Devis::ACOMPTES), Devis::ACOMPTES),
+                'attr' => ['class' => 'form-select form-select-sm js-acompte-pourcentage'],
+            ])
+            ->add('conditionSolde', TextType::class, [
+                'label' => 'Solde',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 120, 'placeholder' => 'à la livraison'],
+                'constraints' => [new Length(max: 120)],
+            ])
+            ->add('conditionFichier', TextType::class, [
+                'label' => 'Fichier',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 120, 'placeholder' => 'fichier fourni par le client'],
+                'constraints' => [new Length(max: 120)],
+            ])
+            ->add('conditionGarantie', TextType::class, [
+                'label' => 'Garantie',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 120, 'placeholder' => 'facultatif, ex. 12 mois sur les LED'],
+                'constraints' => [new Length(max: 120)],
+            ])
+            ->add('canauxEnvoi', ChoiceType::class, [
+                'label' => 'Envoyer par',
+                'choices' => array_flip(Devis::CANAUX_LIBELLES),
+                'multiple' => true,
+                'expanded' => true,
+            ])
+            // Mot facultatif joint à l'envoi : il part dans les messages de l'espace client.
+            ->add('messageClient', TextareaType::class, [
+                'label' => 'Message au client',
+                'mapped' => false,
+                'required' => false,
+                'attr' => ['rows' => 2, 'maxlength' => 600, 'placeholder' => 'Facultatif : un mot avec le devis'],
+                'constraints' => [new Length(max: 600)],
             ])
 
             /*

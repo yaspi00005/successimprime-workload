@@ -39,6 +39,7 @@ final class DroitsEspace
         'app_espace_produits',
         'app_espace_devis',
         'app_espace_devis_pdf',
+        'app_espace_devis_detail',
         'app_espace_payer',
         'app_espace_payer_retour',
         'app_espace_factures',

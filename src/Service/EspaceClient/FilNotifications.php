@@ -277,8 +277,8 @@ final class FilNotifications
             'facture', 'echeance' => $this->actionsFacture($c, $url),
             // Le PDF porte les prix : un demandeur voit le devis dans la liste, sans montant.
             'devis' => array_values(array_filter([
-                ['libelle' => 'Voir le devis', 'court' => 'Voir', 'url' => $compte->montantsVisibles() ? $url('app_espace_devis_pdf', ['id' => $c['devis']]) : $url('app_espace_devis'), 'style' => 'dev'],
-                Devis::STATUT_ENVOYE === ($c['statut'] ?? null) && $compte->peut(CompteClient::DROIT_VALIDEUR)
+                ['libelle' => 'Voir le devis', 'court' => 'Voir', 'url' => $url('app_espace_devis_detail', ['id' => $c['devis']]), 'style' => 'dev'],
+                \in_array($c['statut'] ?? null, Devis::STATUTS_EN_ATTENTE, true) && $compte->peut(CompteClient::DROIT_VALIDEUR)
                     ? ['libelle' => 'Accepter', 'url' => $url('app_espace_devis_accepter', ['id' => $c['devis']]), 'style' => 'secondaire', 'post' => true]
                     : null,
             ])),

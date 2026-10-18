@@ -39,6 +39,7 @@ final class FicheClient360
     public const STATUTS_DEVIS = [
         Devis::STATUT_BROUILLON => 'Brouillon',
         Devis::STATUT_ENVOYE => 'Envoyé',
+        Devis::STATUT_VU => 'Vu',
         Devis::STATUT_ACCEPTE => 'Accepté',
         Devis::STATUT_REFUSE => 'Refusé',
         Devis::STATUT_EXPIRE => 'Expiré',
@@ -118,7 +119,7 @@ final class FicheClient360
                 'solde_du' => $soldeDu,
                 'echues' => $echues,
                 'panier_moyen' => [] === $actives ? 0 : intdiv(array_sum(array_map(static fn (Commandes $c): int => (int) $c->getTotalTtc(), $actives)), \count($actives)),
-                'devis_ouverts' => \count(array_filter($devis, static fn (Devis $d): bool => \in_array($d->getStatut(), [Devis::STATUT_BROUILLON, Devis::STATUT_ENVOYE], true))),
+                'devis_ouverts' => \count(array_filter($devis, static fn (Devis $d): bool => \in_array($d->getStatut(), [Devis::STATUT_BROUILLON, Devis::STATUT_ENVOYE, Devis::STATUT_VU], true))),
             ],
             'historique' => $this->historique($client, $commandes, $devis, $voirPaiements, $soldesOuverture),
             'commandes' => $commandes,

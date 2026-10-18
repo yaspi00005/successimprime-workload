@@ -240,7 +240,7 @@ final class EspaceClientController extends AbstractController
             'bats' => $droits['lecture'] ? [] : $espace->bats($client, true),
             'factureDue' => $factureDue,
             'solde' => $droits['payeur'] ? $espace->solde($client) : null,
-            'devisAAccepter' => $droits['valideur'] ? array_values(array_filter($espace->devis($client), static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())) : [],
+            'devisAAccepter' => $droits['valideur'] ? array_values(array_filter($espace->devis($client), static fn (Devis $d): bool => $d->estEnAttente())) : [],
             'aValider' => $aValider,
             'enCours' => $enCours,
             'activite' => \array_slice($fil->pour($compte, $maintenant), 0, 5),
@@ -259,7 +259,7 @@ final class EspaceClientController extends AbstractController
             'onglet' => 'commandes',
             'cartes' => array_map($espace->carte(...), $espace->commandes($client)),
             'aValider' => array_map($espace->carte(...), $this->compteEntreprise->aValider($compte)),
-            'devisAAccepter' => \count(array_filter($espace->devis($client), static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())),
+            'devisAAccepter' => \count(array_filter($espace->devis($client), static fn (Devis $d): bool => $d->estEnAttente())),
             'mesProduits' => \count($mesProduits->liste($client)),
         ]);
     }
@@ -296,60 +296,7 @@ final class EspaceClientController extends AbstractController
 
     // Nouvelle commande et estimation du prix : EspaceNouvelleCommandeController (maquettes CO01 à CO04).
 
-    #[Route('/devis', name: 'devis', methods: ['GET'])]
-    public function devis(Request $request, EspaceClient $espace): Response
-    {
-        $filtre = (string) $request->query->get('filtre', 'tous');
-        $liste = $espace->devis($this->compte()->getClient());
-        $liste = match ($filtre) {
-            'a_accepter' => array_values(array_filter($liste, static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())),
-            'acceptes' => array_values(array_filter($liste, static fn (Devis $d): bool => \in_array($d->getStatut(), [Devis::STATUT_ACCEPTE, Devis::STATUT_CONVERTI], true))),
-            default => $liste,
-        };
-
-        return $this->vue('espace/app/devis.html.twig', ['onglet' => 'commandes', 'liste' => $liste, 'filtre' => $filtre]);
-    }
-
-    #[Route('/devis/{id}/accepter', name: 'devis_accepter', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function accepterDevis(Devis $devis, Request $request, EspaceClient $espace): Response
-    {
-        $this->jeton($request);
-        $compte = $this->compte();
-        if ($devis->getClients()?->getId() !== $compte->getClient()->getId()) {
-            throw $this->createNotFoundException();
-        }
-        // Accepter un devis engage l'entreprise comme valider une commande.
-        if (!$compte->peut(CompteClient::DROIT_VALIDEUR)) {
-            throw $this->createAccessDeniedException();
-        }
-        if (Devis::STATUT_ENVOYE !== $devis->getStatut()) {
-            $this->addFlash('error', 'Ce devis ne peut plus être accepté.');
-        } else {
-            $espace->accepterDevis($devis);
-            $this->addFlash('succes', \sprintf('Devis %s accepté. Nous préparons votre commande et revenons vers vous.', $devis->getNumero()));
-        }
-
-        return $this->redirectToRoute('app_espace_devis');
-    }
-
-    #[Route('/devis/{id}/pdf', name: 'devis_pdf', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function devisPdf(Devis $devis, EspaceClient $espace): Response
-    {
-        $compte = $this->compte();
-        if ($devis->getClients()?->getId() !== $compte->getClient()->getId() || !\in_array($devis->getStatut(), EspaceClient::DEVIS_VISIBLES, true)) {
-            throw $this->createNotFoundException();
-        }
-        // Le PDF porte les prix : pas pour un demandeur (son valideur le voit).
-        if (!$compte->montantsVisibles()) {
-            throw $this->createAccessDeniedException('Le prix des devis est vu par les personnes qui valident ou paient pour l\'entreprise.');
-        }
-        if (null === $devis->getTokenAuthenticite()) {
-            $devis->genererTokenAuthenticite();
-            $espace->flush();
-        }
-
-        return $this->redirectToRoute('app_devis_pdf_public', ['id' => $devis->getId(), 'token' => $devis->getTokenAuthenticite()]);
-    }
+    // Mes devis, le devis et la réponse du client : EspaceDevisController (maquettes DT01, DT04).
 
     #[Route('/fichiers', name: 'fichiers', methods: ['GET'])]
     public function fichiers(EspaceClient $espace, FichiersClient $fichiers): Response

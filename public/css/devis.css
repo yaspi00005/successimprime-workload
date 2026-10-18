@@ -1,0 +1,672 @@
+/*
+ * Devis côté boutique (docs/devis.md) : liste (maquette GC03), saisie
+ * (GC04) et fiche (DT03). Chargé après admin.css.
+ */
+
+.si-dv {
+  --dv-encre: #12213A;
+  --dv-doux: #64748B;
+  --dv-ligne: #E6EAF2;
+  --dv-bleu: #0F4590;
+  --dv-brouillon: #94A3B8;
+  --dv-envoye: #1D4ED8;
+  --dv-vu: #7C3AED;
+  --dv-accepte: #16A34A;
+  --dv-refuse: #DC2626;
+  --dv-expire: #EA580C;
+  color: var(--dv-encre);
+}
+
+/* ---------- Indicateurs ---------- */
+
+.si-dv-kpis {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.si-dv-kpi {
+  padding: 16px 18px;
+  margin: 0;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: var(--si-carte-ombre);
+}
+
+.si-dv-kpi h2 {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--dv-doux);
+  margin: 0 0 6px;
+}
+
+.si-dv-kpi strong {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.si-dv-kpi > span {
+  font-size: 0.78rem;
+  color: var(--dv-doux);
+}
+
+.si-dv-orange { color: var(--dv-expire); }
+
+.si-dv-kpi-tete {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.si-dv-mois { display: flex; gap: 4px; }
+
+.si-dv-mois a {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #F1F4F9;
+  color: var(--dv-encre);
+  font-size: 0.7rem;
+}
+
+.si-dv-barre {
+  display: flex;
+  height: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  gap: 2px;
+  margin: 8px 0 10px;
+  background: #F1F4F9;
+}
+
+.si-dv-barre span { display: block; min-width: 6px; }
+
+.si-dv-legende {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 0.74rem;
+  color: var(--dv-doux);
+}
+
+.si-dv-legende i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 4px;
+}
+
+.si-dv-s-brouillon { background: var(--dv-brouillon); }
+.si-dv-s-envoye { background: var(--dv-envoye); }
+.si-dv-s-vu { background: var(--dv-vu); }
+.si-dv-s-accepte { background: var(--dv-accepte); }
+.si-dv-s-refuse { background: var(--dv-refuse); }
+.si-dv-s-expire { background: var(--dv-expire); }
+.si-dv-s-vide { background: #E2E8F0; }
+
+/* ---------- Puces et recherche ---------- */
+
+.si-dv-outils {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.si-dv-puces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.si-dv-puces a {
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--dv-encre);
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(15, 69, 144, 0.08);
+  white-space: nowrap;
+}
+
+.si-dv-puces a.est-active {
+  background: var(--dv-encre);
+  color: #fff;
+}
+
+.si-dv-recherche {
+  position: relative;
+  flex: 0 1 280px;
+}
+
+.si-dv-recherche i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--dv-doux);
+  font-size: 0.8rem;
+}
+
+.si-dv-recherche input {
+  width: 100%;
+  border: 1px solid var(--dv-ligne);
+  border-radius: 999px;
+  padding: 7px 14px 7px 32px;
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+.si-dv-note {
+  font-size: 0.82rem;
+  color: var(--dv-doux);
+  margin: 0 0 10px;
+}
+
+/* ---------- Tableau ---------- */
+
+.si-dv-liste {
+  border: 0;
+  border-radius: 16px;
+  box-shadow: var(--si-carte-ombre);
+  padding: 6px 8px;
+}
+
+.si-dv-vide {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--dv-doux);
+  margin: 0;
+}
+
+.si-dv-table { margin: 0; }
+
+.si-dv-table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--dv-doux);
+  border-top: 0 !important;
+  border-bottom: 1px solid var(--dv-ligne) !important;
+  padding: 10px 12px !important;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.si-dv-table td {
+  padding: 13px 12px !important;
+  vertical-align: middle;
+  border-color: var(--dv-ligne) !important;
+  font-size: 0.86rem;
+}
+
+.si-dv-numero a {
+  font-weight: 800;
+  color: var(--dv-encre);
+  white-space: nowrap;
+}
+
+.si-dv-client { white-space: nowrap; }
+
+.si-dv-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  margin-right: 8px;
+  vertical-align: middle;
+  flex: 0 0 26px;
+}
+
+.si-dv-a0 { background: #0F766E; }
+.si-dv-a1 { background: #1E40AF; }
+.si-dv-a2 { background: #DB2777; }
+.si-dv-a3 { background: #CA8A04; }
+.si-dv-a4 { background: #EA580C; }
+.si-dv-a5 { background: #7C3AED; }
+
+.si-dv-montant {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.si-dv-statut {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.si-dv-st-brouillon { background: #F1F5F9; color: #475569; }
+.si-dv-st-envoye { background: #DBEAFE; color: #1D4ED8; }
+.si-dv-st-vu { background: #EDE9FE; color: #6D28D9; }
+.si-dv-st-accepte, .si-dv-st-converti { background: #DCFCE7; color: #15803D; }
+.si-dv-st-refuse { background: #FEE2E2; color: #B91C1C; }
+.si-dv-st-expire { background: #FFEDD5; color: #C2410C; }
+.si-dv-st-annule { background: #F1F5F9; color: #64748B; }
+
+.si-dv-suivi { color: var(--dv-doux); font-size: 0.82rem !important; }
+.si-dv-ton-orange { color: var(--dv-expire); }
+.si-dv-ton-rouge { color: #B91C1C; }
+.si-dv-ton-vert { color: #15803D; }
+
+.si-dv-par { white-space: nowrap; }
+
+.si-dv-action { text-align: right; white-space: nowrap; }
+
+.si-dv-action a,
+.si-dv-action button {
+  font-weight: 800;
+  color: var(--dv-bleu);
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.si-dv-action form { display: inline; margin: 0; }
+
+@media (max-width: 1199.98px) {
+  .si-dv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .si-dv-kpi-barre { grid-column: 1 / -1; }
+}
+
+/* Téléphone : chaque devis en carte. */
+@media (max-width: 767.98px) {
+  .si-dv-kpis { gap: 10px; }
+  .si-dv-kpi { padding: 12px 14px; }
+  .si-dv-kpi strong { font-size: 1.35rem; }
+  .si-dv-kpis > .si-dv-kpi:last-child { grid-column: 1 / -1; }
+  .si-dv-outils { flex-direction: column; align-items: stretch; }
+  .si-dv-recherche { flex-basis: auto; }
+  .si-dv-puces { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; margin: 0 -4px; padding-left: 4px; }
+  .si-dv-liste { background: transparent; box-shadow: none; padding: 0; }
+  .si-dv-table thead { display: none; }
+  .si-dv-table, .si-dv-table tbody { display: block; }
+  .si-dv-table tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 10px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--si-carte-ombre);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .si-dv-table td { display: block; padding: 0 !important; border: 0 !important; }
+  .si-dv-table td.si-dv-numero { grid-column: 1; }
+  .si-dv-table td.si-dv-montant { grid-column: 2; grid-row: 1; text-align: right; }
+  .si-dv-table td.si-dv-client { grid-column: 1 / -1; white-space: normal; }
+  .si-dv-table td.si-dv-objet { grid-column: 1 / -1; color: var(--dv-doux); font-size: 0.8rem; }
+  .si-dv-table td[data-label="Statut"] { grid-column: 1; }
+  .si-dv-table td.si-dv-suivi { grid-column: 1 / -1; }
+  .si-dv-table td.si-dv-par { grid-column: 1; color: var(--dv-doux); font-size: 0.78rem; }
+  .si-dv-table td.si-dv-action { grid-column: 2; grid-row: 4; align-self: center; }
+}
+
+/* ---------- Saisie (GC04) ---------- */
+
+.si-dv-bandeau { border-radius: 12px; font-size: 0.86rem; }
+
+.si-dv-entete {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+  gap: 12px 16px;
+  align-items: start;
+}
+
+.si-dv-entete .si-interlocuteur { margin-top: 0 !important; }
+.si-dv-entete .form-label,
+.si-dv-entete label { font-size: 0.78rem; color: var(--dv-doux); font-weight: 600; }
+.si-dv-entete-objet { grid-column: 1 / -1; }
+.si-dv-entete .js-validite-date { display: block; margin-top: 3px; font-size: 0.74rem; }
+.si-dv-entete .si-client-carte { margin: 0; }
+
+.si-dv-ajouts { gap: 8px; }
+.si-dv-ajouts-mobile { display: flex; gap: 8px; margin-top: 8px; }
+.si-dv-ajouts-mobile .btn { flex: 1; }
+
+.si-dv-calc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #F4F7FC;
+  font-size: 0.8rem;
+  color: var(--dv-doux);
+}
+
+.si-dv-calc label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 8px;
+  background: #fff;
+  border: 1px solid var(--dv-ligne);
+  border-radius: 8px;
+  color: var(--dv-encre);
+}
+
+.si-dv-calc input,
+.si-dv-calc select {
+  border: 0;
+  background: transparent;
+  font-size: 0.8rem;
+  padding: 0;
+  outline: none;
+}
+
+.si-dv-calc input { width: 58px; }
+.si-dv-calc select { max-width: 200px; }
+
+.si-dv-calc-prix {
+  margin-left: auto;
+  font-weight: 800;
+  color: var(--dv-bleu);
+}
+
+.si-dv-bas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.si-dv-bas > .card { margin-bottom: 0; }
+
+.si-dv-condition {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--dv-ligne);
+}
+
+.si-dv-condition:last-of-type { border-bottom: 0; }
+.si-dv-condition label { margin: 0; font-size: 0.82rem; color: var(--dv-doux); flex: 0 0 70px; }
+
+.si-dv-condition-valeur {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  text-align: right;
+}
+
+.si-dv-condition-valeur .form-control { text-align: right; border-color: transparent; background: transparent; font-weight: 700; }
+.si-dv-condition-valeur .form-control:focus { border-color: var(--dv-ligne); background: #fff; }
+.si-dv-condition-valeur select { max-width: 190px; font-weight: 700; }
+.si-dv-condition-valeur strong { white-space: nowrap; font-size: 0.84rem; }
+
+.si-dv-canal {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  margin: 0;
+  border-bottom: 1px solid var(--dv-ligne);
+  cursor: pointer;
+}
+
+.si-dv-canal .form-check-input { margin: 3px 0 0; flex: 0 0 auto; }
+.si-dv-canal strong { display: block; font-size: 0.86rem; }
+.si-dv-canal small { display: block; color: var(--dv-doux); font-size: 0.76rem; }
+
+/* Total du devis : carte sombre. */
+.si-dv-total {
+  background: #12213A !important;
+  color: #fff;
+  border: 0;
+}
+
+.si-dv-total > small { color: #A9B6CC; font-size: 0.78rem; }
+
+.si-dv-total-montant {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 2px 0 10px;
+  color: #fff;
+}
+
+.si-dv-total .si-recap { margin-bottom: 4px; }
+.si-dv-total .si-recap dt,
+.si-dv-total .si-recap dd { color: #D5DDEA; border-color: rgba(255, 255, 255, 0.12) !important; }
+.si-dv-total .si-recap dd { color: #fff; font-weight: 700; }
+.si-dv-total .si-remise { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); color: #fff; }
+.si-dv-total .si-remise::placeholder { color: #A9B6CC; }
+.si-dv-total-note { color: #A9B6CC; font-size: 0.72rem; }
+
+.si-dv-rentabilite h4,
+.si-dv-apres h4 { display: flex; justify-content: space-between; align-items: center; }
+
+.si-dv-interne {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.si-dv-rentabilite dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 10px;
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+}
+
+.si-dv-rentabilite dt { font-weight: 400; color: var(--dv-doux); }
+.si-dv-rentabilite dd { margin: 0; font-weight: 800; text-align: right; }
+
+.si-dv-alerte {
+  background: #FEE2E2;
+  color: #B91C1C;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.si-dv-petit { font-size: 0.74rem; color: var(--dv-doux); margin: 0 0 4px; }
+.si-dv-apres p { font-size: 0.82rem; color: var(--dv-doux); margin: 0; line-height: 1.5; }
+
+.si-dv-boutons-mobile { display: grid; gap: 8px; margin-top: 8px; }
+.si-dv-boutons-mobile .btn { padding: 0.8rem; font-weight: 800; border-radius: 0.9rem; }
+
+@media (max-width: 1199.98px) {
+  .si-dv-entete { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767.98px) {
+  .si-dv-entete { grid-template-columns: 1fr; }
+  .si-dv-bas { grid-template-columns: 1fr; gap: 10px; }
+  .si-dv-calc-prix { margin-left: 0; flex-basis: 100%; }
+  /* Étape 3 : conditions et canaux (colonne de gauche), puis le total. */
+  .si-saisie.si-saisie-devis[data-etape="recap"] .si-saisie-gauche { display: block !important; }
+  .si-saisie-devis[data-etape="recap"] .si-saisie-gauche > :not(.si-dv-recap-mobile) { display: none !important; }
+  .si-saisie-devis[data-etape="lignes"] .si-dv-recap-mobile,
+  .si-saisie-devis[data-etape="ligne"] .si-dv-recap-mobile { display: none !important; }
+  .si-saisie-devis[data-etape="recap"] .si-dv-recap-mobile { margin-bottom: 10px; }
+}
+
+.si-dv-condition-valeur .form-control::placeholder { font-weight: 400; color: #A0AEC0; }
+.si-dv-calc select { max-width: 260px; }
+
+/* ---------- Fiche (DT03) ---------- */
+
+.si-dv-fiche-tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 14px;
+}
+
+.si-dv-fiche-tete h1 { font-size: 1.35rem; font-weight: 800; margin: 0; color: var(--dv-encre); }
+.si-dv-fiche-sous { font-size: 0.82rem; color: var(--dv-doux); }
+
+.si-dv-retour {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--si-carte-ombre);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dv-encre);
+}
+
+.si-dv-actions-mobile { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.si-dv-actions-mobile form { margin: 0; }
+.si-dv-actions-mobile .btn { font-weight: 700; border-radius: 0.8rem; padding: 0.65rem; }
+.si-dv-actions-mobile > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+.si-dv-fiche-grille {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+.si-dv-carte {
+  border: 0;
+  border-radius: 16px;
+  box-shadow: var(--si-carte-ombre);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.si-dv-carte h2,
+.si-dv-carte h4 { font-size: 0.95rem; font-weight: 800; margin: 0 0 10px; color: var(--dv-encre); }
+
+.si-dv-table-lignes { margin: 0; }
+.si-dv-table-lignes th { font-size: 0.75rem; font-weight: 600; color: var(--dv-doux); border-top: 0 !important; padding: 8px 10px !important; }
+.si-dv-table-lignes td { font-size: 0.86rem; padding: 11px 10px !important; vertical-align: top; border-color: var(--dv-ligne) !important; }
+
+.si-dv-totaux { display: flex; justify-content: flex-end; padding-top: 8px; }
+.si-dv-totaux dl { display: grid; grid-template-columns: auto auto; gap: 6px 40px; margin: 0; min-width: 260px; font-size: 0.86rem; }
+.si-dv-totaux dt { font-weight: 400; color: var(--dv-doux); }
+.si-dv-totaux dd { margin: 0; text-align: right; font-weight: 800; }
+.si-dv-totaux .si-dv-total-ligne { color: var(--dv-encre); font-size: 0.95rem; }
+
+.si-dv-conditions-texte { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--dv-ligne); font-size: 0.8rem; color: var(--dv-doux); }
+.si-dv-conditions-texte b { color: var(--dv-encre); }
+
+.si-dv-fiche-bas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+
+.si-dv-versions ul,
+.si-dv-suivi-fiche ul { list-style: none; padding: 0; margin: 0; }
+
+.si-dv-versions li {
+  display: grid;
+  grid-template-columns: 82px 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--dv-ligne);
+}
+
+.si-dv-versions li:last-child { border-bottom: 0; }
+.si-dv-v { font-weight: 800; font-size: 0.82rem; white-space: nowrap; }
+.si-dv-versions b { display: block; font-size: 0.88rem; }
+.si-dv-versions small { display: block; color: var(--dv-doux); font-size: 0.76rem; }
+
+.si-dv-actuelle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.si-dv-suivi-fiche li {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--dv-ligne);
+  font-size: 0.82rem;
+}
+
+.si-dv-suivi-fiche li:last-child { border-bottom: 0; }
+.si-dv-suivi-fiche time { color: var(--dv-doux); white-space: nowrap; }
+.si-dv-suivi-fiche li.est-futur { color: var(--dv-doux); }
+
+.si-dv-client-tete { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.si-dv-client-tete a,
+.si-dv-client-tete b { color: var(--dv-encre); font-weight: 800; }
+.si-dv-client-tete small { display: block; color: var(--dv-doux); font-size: 0.76rem; }
+.si-dv-avatar-grand { width: 38px; height: 38px; flex-basis: 38px; border-radius: 10px; font-size: 0.8rem; margin-right: 0; }
+.si-dv-contact { font-size: 0.82rem; margin: 0 0 6px; color: var(--dv-encre); }
+.si-dv-contact i { color: var(--dv-doux); width: 14px; }
+.si-dv-client-carte .si-dv-alerte { margin-top: 8px; font-weight: 400; }
+
+.si-dv-fonction {
+  display: inline-block !important;
+  margin-top: 3px;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: #FEE2E2;
+  color: #B91C1C !important;
+  font-weight: 700;
+  font-size: 0.7rem !important;
+}
+
+.si-dv-liens { display: flex; flex-direction: column; gap: 8px; font-size: 0.84rem; }
+.si-dv-liens a,
+.si-dv-liens button { color: var(--dv-bleu); font-weight: 600; background: none; border: 0; padding: 0; text-align: left; }
+.si-dv-liens form { margin: 0; }
+.si-dv-liens button { color: #B91C1C; }
+
+@media (max-width: 1199.98px) {
+  .si-dv-fiche-grille { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 767.98px) {
+  .si-dv-fiche-bas { grid-template-columns: 1fr; gap: 0; }
+  .si-dv-fiche-tete h1 { font-size: 1.1rem; flex-basis: calc(100% - 44px); }
+  .si-dv-carte { padding: 14px; margin-bottom: 12px; }
+  .si-dv-table-lignes thead { display: none; }
+  .si-dv-table-lignes, .si-dv-table-lignes tbody { display: block; }
+  .si-dv-table-lignes tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--dv-ligne); }
+  .si-dv-table-lignes td { display: block; padding: 0 !important; border: 0 !important; text-align: left !important; }
+  .si-dv-table-lignes td[data-label="Désignation"] { grid-column: 1 / -1; }
+  .si-dv-table-lignes td[data-label="Qté"]::before { content: "Qté "; color: var(--dv-doux); }
+  .si-dv-table-lignes td[data-label="Prix unitaire"] { display: none; }
+  .si-dv-table-lignes td.si-dv-montant { text-align: right !important; }
+  .si-dv-totaux dl { min-width: 0; width: 100%; }
+}
+
+.si-dv-table-lignes thead th,
+.si-dv-table thead th { font-size: 0.75rem !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 600 !important; color: var(--dv-doux) !important; }

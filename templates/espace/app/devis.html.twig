@@ -1,5 +1,11 @@
 {% extends 'espace/app/_app.html.twig' %}
 
+{#
+	« Mes devis » (docs/devis.md) : chaque devis mène à sa page (DT01),
+	où il se lit, s'accepte, se refuse ou se fait modifier. Le prix pour
+	qui voit les montants (coque.montants).
+#}
+
 {% block title %}Mes devis{% endblock %}
 {% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Mes devis</a>{% endblock %}
 
@@ -9,26 +15,19 @@
 			<a href="{{ path('app_espace_devis', {filtre: k}) }}" class="{{ filtre == k ? 'actif' }}">{{ l }}</a>
 		{% endfor %}
 	</nav>
-	{% set etats = {envoye: ['Envoyé', 'ambre'], accepte: ['Accepté', 'vert'], converti: ['Accepté', 'vert'], refuse: ['Refusé', 'gris'], expire: ['Expiré', 'gris']} %}
+	{% set etats = {envoye: ['À accepter', 'ambre'], vu: ['À accepter', 'ambre'], accepte: ['Accepté', 'vert'], converti: ['Accepté', 'vert'], refuse: ['Refusé', 'gris'], expire: ['Expiré', 'gris']} %}
 	{% for d in liste %}
 		{% set lignes = d.devisDetails|filter(l => true) %}
-		<div class="ec-carte">
-			<div class="ec-ligne"><span class="ec-petit">{{ d.numero }}{{ d.dateDevis ? ' · ' ~ d.dateDevis|date('d/m/Y') }}</span><span class="ec-pastille {{ etats[d.statut][1] }}">{{ etats[d.statut][0] }}</span></div>
-			<div style="font-weight:800;margin:.3rem 0">{% for l in lignes|slice(0, 2) %}{{ l|ligne_client('Travail') }}{% if l.largeur > 0 and l.longueur > 0 %} {{ l.largeur + 0 }} × {{ l.longueur + 0 }}{% endif %} × {{ l.quantite + 0 }}{{ not loop.last ? ', ' }}{% endfor %}{% if lignes|length > 2 %} + {{ lignes|length - 2 }}{% endif %}</div>
+		{% set etat = etats[d.statut]|default(['', 'gris']) %}
+		<a class="ec-carte" href="{{ path('app_espace_devis_detail', {id: d.id}) }}" style="display:block;color:inherit">
+			<div class="ec-ligne"><span class="ec-petit">{{ d.numero }}{{ d.version > 1 ? ' · v' ~ d.version }}{{ d.envoyeLe ? ' · ' ~ d.envoyeLe|date('d/m/Y') : (d.dateDevis ? ' · ' ~ d.dateDevis|date('d/m/Y')) }}</span><span class="ec-pastille {{ etat[1] }}">{{ etat[0] }}</span></div>
+			<div style="font-weight:800;margin:.3rem 0">{{ d.objet ?: '' }}{% if not d.objet %}{% for l in lignes|slice(0, 2) %}{{ l|ligne_client('Travail') }}{{ not loop.last ? ', ' }}{% endfor %}{% if lignes|length > 2 %} + {{ lignes|length - 2 }}{% endif %}{% endif %}</div>
 			<div class="ec-ligne">
-				{# Le prix des devis : CompteClient::montantsVisibles (valideur ou payeur). #}
-				{% if coque.montants %}<span class="ec-montant" style="font-size:1.15rem">{{ d.totalTtc|number_format(0, ',', ' ') }} F</span>{% elseif d.statut != 'envoye' %}<span class="ec-petit">Prix confirmé par votre valideur</span>{% endif %}
-				{% if d.statut == 'envoye' and not (peutValider ?? true) %}
-					<span class="ec-petit">À accepter par un valideur</span>
-				{% elseif d.statut == 'envoye' %}
-					<form method="post" action="{{ path('app_espace_devis_accepter', {id: d.id}) }}" data-confirmer="Accepter le devis {{ d.numero }}{% if coque.montants %} ({{ d.totalTtc|number_format(0, ',', ' ') }} F){% endif %} ?" data-confirmer-bouton="Accepter">
-						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-						<button class="ec-bouton-petit">Accepter</button>
-					</form>
-				{% endif %}
+				{% if coque.montants %}<span class="ec-montant" style="font-size:1.15rem">{{ d.totalTtc|number_format(0, ',', ' ') }} F</span>{% else %}<span class="ec-petit">Prix vu par votre valideur</span>{% endif %}
+				{% if d.estEnAttente and d.dateValidite %}<span class="ec-petit">valable jusqu'au {{ d.dateValidite|date('d/m') }}</span>{% elseif d.commande %}<span class="ec-petit">commande {{ d.commande.numero }}</span>{% endif %}
 			</div>
-			{% if coque.montants %}<div style="text-align:right;margin-top:.4rem"><a class="ec-lien" href="{{ path('app_espace_devis_pdf', {id: d.id}) }}" target="_blank">PDF ↓</a></div>{% endif %}
-		</div>
+			{% if d.estEnAttente %}<div style="text-align:right;margin-top:.4rem"><span class="ec-lien">{{ (peutValider ?? true) ? 'Voir et répondre ›' : 'Voir le devis ›' }}</span></div>{% endif %}
+		</a>
 	{% else %}
 		<div class="ec-carte ec-vide">Aucun devis ici.</div>
 	{% endfor %}

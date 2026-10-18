@@ -32,6 +32,7 @@ final class SynchroCommand extends Command
     {
         $this
             ->addOption('initialiser', null, InputOption::VALUE_OPTIONAL, 'Met en file tout ce qui part vers le site : catalogue, clients, devis, commandes, factures, paiements (premier chargement). Avec un type (ex. --initialiser=configuration) : ce type seulement', false)
+            ->addOption('nouveau-site', null, InputOption::VALUE_NONE, 'Le site repart d\'une base vide : remet à zéro le curseur de réception et renvoie tout (comme --initialiser)')
             ->addOption('boucle', null, InputOption::VALUE_NONE, 'Tourne sans s\'arrêter, un cycle toutes les 30 s')
             ->addOption('nouvelle-cle', null, InputOption::VALUE_NONE, 'Affiche une clé SYNC_CLE à copier dans .env.local des deux machines')
             ->addOption('empreinte', null, InputOption::VALUE_NONE, 'Affiche l\'empreinte de SYNC_CLE et l\'heure de cette machine, à comparer avec l\'autre machine (la clé ne s\'affiche pas)');
@@ -58,6 +59,13 @@ final class SynchroCommand extends Command
             $io->error('Cette commande tourne sur l\'ERP local : c\'est lui qui appelle le site.');
 
             return Command::FAILURE;
+        }
+        if ($input->getOption('nouveau-site')) {
+            // Base du site recréée : ses événements repartent de 1, l'ancien curseur les sauterait tous.
+            $this->synchro->noterEtat(AgentSynchro::ETAT_CURSEUR, '0');
+            $this->synchro->noterEtat(AgentSynchro::ETAT_SCHEMA, null);
+            $io->note('Curseur de réception remis à zéro : le site est traité comme neuf.');
+            $input->setOption('initialiser', null);
         }
         if (false !== ($type = $input->getOption('initialiser'))) {
             $io->success($this->synchro->initialiser($type ?: null).' données mises en file pour le site.');

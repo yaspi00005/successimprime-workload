@@ -289,7 +289,7 @@ final class EntreprisesController extends AbstractController
                 // Objet et frais de livraison (sans TVA, compris dans le total HT).
                 'objet' => 'Impressions', 'fraisLivraison' => 2000,
             ],
-            'commande' => ['id' => 144, 'numero' => 'CM-0144', 'bonCommande' => null, 'commandesDetails' => $lignes],
+            'commande' => ['id' => 144, 'numero' => 'CM-0144', 'bonCommande' => null, 'demandeePar' => null, 'commandesDetails' => $lignes],
             'client' => ['raisonSociale' => 'Hôtel Niger (exemple)', 'adresse' => 'Bamako, Mali', 'telephone' => '+223 XX XX XX XX'],
             'urlSuivi' => $url,
             'qrSuivi' => $entreprise->isQrSuivi() ? DocumentsEntreprise::qr($url) : null,

@@ -43,6 +43,7 @@
 .si-cs-carte { height: auto; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); padding: 20px; }
 .si-cs-filtres { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
 .si-cs-filtres > div { flex: 1 1 160px; max-width: 280px; }
+.si-cs-filtres .form-control, .si-cs-filtres .form-select, .si-cs-filtres .btn { height: 46px; }
 .si-cs-total { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 12px; color: #475569; }
 .si-cs-total strong { color: #0F4590; }
 @media (max-width: 575px) {

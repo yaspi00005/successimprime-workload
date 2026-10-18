@@ -39,6 +39,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Bandes d'annonces : une annonce « Espace client » s'affiche en haut des pages connectées, pas sur le site public ; « × » la ferme pour la visite.
 - [ ] Fidélité : solde, progression vers le seuil, historique, sans nom d'agent ni motif interne.
 - [ ] Les notifications (BAT prêt, commande prête, livreur en route, livrée) arrivent sans montant.
+- [ ] « Mon solde » (particulier, titulaire, payeur) : solde, relevé de la boutique sans nom d'employé, dépôts en ligne et leur état ; « Voir les frais » montre le dépôt, les frais en plus et le total ; le dépôt arrive au local « reçu », jamais validé tout seul. Le valideur et le demandeur reçoivent « accès refusé », la lecture seule revient à l'accueil ; aucun n'a la tuile « Mon solde ».
 
 ## Direction (demo.kadiatou)
 
@@ -46,6 +47,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Parcours complet : devis, acceptation, commande, BAT, production, livraison, facture, paiement validé.
 - [ ] Finances F01 à F07 : vue d'ensemble, encaissements, dépenses et budgets, fournisseurs, trésorerie à 90 jours, rentabilité, finances du jour sur téléphone.
 - [ ] « À valider » : un paiement saisi en ligne se valide seulement au local, avec un compte choisi.
+- [ ] Compte du client (fiche › « Compte ») : dépôt (reçu D-…), « Rendre l'argent » avec motif et confirmation (reçu RB-…), jamais plus que le disponible ; un dépôt en ligne se valide ou se refuse ; Finances › Comptabilité › Balance : le compte 4191 égale le total de « Soldes clients ».
 - [ ] Réglages : chaque tuile s'ouvre ; une valeur changée est gardée.
 - [ ] Rôles et menus : passer un module en « Voir » pour un rôle ; une personne de ce rôle voit l'écran mais toute modification est refusée.
 - [ ] Statistiques : objectifs du mois, export Excel et PDF, rapport de la semaine.
@@ -61,6 +63,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Menu court : Ma journée, Caisse, Mes actions, Clients, Devis et commandes, Encaissements.
 - [ ] Actions de caisse : une facture échue, un devis sans réponse depuis 48 h puis à J+7, une commande prête ; le lien WhatsApp ouvre un message sans montant pour le devis.
 - [ ] Encaisser un paiement sur une commande ; il apparaît dans la caisse du jour. La liste des comptes ne montre aucun solde.
+- [ ] Caisse, client `DEMO-0122` : « Payer avec le solde » une partie, puis encaisser le reste en espèces avec un « Montant remis » plus grand et « Garder la monnaie sur le compte du client » ; le reçu dit « Monnaie gardée sur votre compte ». « Dépôt » donne le reçu « Dépôt sur votre compte ». Pas de bouton « Rendre l'argent » sans ce droit.
 - [ ] Finances › Dépenses (aussi par « Aller à… › Nouveau › Dépense ») : saisir une dépense avec son reçu ; seules ses propres dépenses sont listées, sans budget.
 - [ ] Caisse › « Virement » : verser la caisse sur le compte de la banque ; la banque n'est pas proposée comme compte source ; aucun solde dans le formulaire ni dans le message, retour à la caisse.
 - [ ] Clôturer la caisse : le théorique de sa caisse est affiché, l'écart est signalé à la direction.
@@ -74,7 +77,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Menu replié en icônes ; le poste PAO s'ouvre avec ses travaux, l'aperçu et le chronomètre.
 - [ ] Démarrer, mettre en pause, envoyer le BAT ; le client le voit dans son espace.
 - [ ] Outil de montage : poser plusieurs fichiers sur une feuille.
-- [ ] Ne voit pas : finances, montants des commandes, réglages, salaires.
+- [ ] Ne voit pas : finances, montants des commandes, réglages, salaires, ni l'onglet « Compte » d'une fiche client.
 
 ## Opérateur production (demo.oumar)
 
@@ -133,7 +136,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 Avant de cocher cette liste, et avant chaque mise en production, une commande ouvre chaque page avec chaque compte de démonstration et compare ce qu'elle obtient aux droits. Elle se lance sur une base d'essai qui a la démonstration (`app:demo`), jamais en production (elle refuse). Elle n'enregistre rien : les pages sont demandées dans une transaction annulée à la fin, sans aucun envoi de SMS, d'e-mail ni de notification.
 
-- **ERP local** : `php bin/console app:recette:acces` (un seul compte : `--compte=demo.oumar`). Chaque compte `demo.*` demande chaque page de l'admin ; la commande signale une page ouverte sans son droit, une entrée du menu qui répond « accès refusé », une erreur 500, des montants (marges, salaires, paiements, chiffre d'affaires) ou des photos de pointage montrés sans le droit, la fiche d'une autre personne (bulletin, justificatif, photo de pointage, preuve de livraison, échec noté sur la livraison d'un autre livreur, livraisons d'un autre dans « Mes livraisons »), et un module en « Voir » qui accepte un envoi. Pour le livreur seul, toute page ouverte hors de sa tournée, de ses livraisons et de son espace est une fuite, et l'accueil doit le renvoyer sur sa tournée.
-- **Site en ligne** (`APP_EN_LIGNE=1`, après une synchronisation depuis l'ERP d'essai) : la même commande essaie l'espace client avec un particulier, un client B2B et chaque personne d'un compte entreprise (titulaire, valideur, payeur, demandeur, lecture), les fiches et les envois d'un autre client, aucun montant pour un demandeur ou la lecture seule (pages, données JSON des pages et appels de prix compris), la session d'une personne suspendue par la boutique (fermée à la page suivante, les autres personnes de l'entreprise entrent toujours), l'admin sans appareil autorisé, l'API, les pages publiques, `robots.txt`, `sitemap.xml`, le suivi de commande et le calculateur.
+- **ERP local** : `php bin/console app:recette:acces` (un seul compte : `--compte=demo.oumar`). Chaque compte `demo.*` demande chaque page de l'admin ; la commande signale une page ouverte sans son droit, une entrée du menu qui répond « accès refusé », une erreur 500, des montants (marges, salaires, paiements, chiffre d'affaires) ou des photos de pointage montrés sans le droit, la fiche d'une autre personne (bulletin, justificatif, photo de pointage, preuve de livraison, échec noté sur la livraison d'un autre livreur, livraisons d'un autre dans « Mes livraisons »), et un module en « Voir » qui accepte un envoi. Compte du client : l'onglet « Compte » d'une fiche n'est montré qu'avec Paiements ou Encaissements, un dépôt n'atteint le serveur qu'avec Encaissements et « Rendre l'argent » qu'avec en plus le droit de le faire. Pour le livreur seul, toute page ouverte hors de sa tournée, de ses livraisons et de son espace est une fuite, et l'accueil doit le renvoyer sur sa tournée.
+- **Site en ligne** (`APP_EN_LIGNE=1`, après une synchronisation depuis l'ERP d'essai) : la même commande essaie l'espace client avec un particulier, un client B2B et chaque personne d'un compte entreprise (titulaire, valideur, payeur, demandeur, lecture), les fiches et les envois d'un autre client, « Mon solde » réservé à qui paie (un dépôt lancé par le valideur, le demandeur ou la lecture est refusé et ne crée rien), aucun montant pour un demandeur ou la lecture seule (pages, données JSON des pages et appels de prix compris), la session d'une personne suspendue par la boutique (fermée à la page suivante, les autres personnes de l'entreprise entrent toujours), l'admin sans appareil autorisé, l'API, les pages publiques, `robots.txt`, `sitemap.xml`, le suivi de commande et le calculateur.
 
 Le bilan est écrit dans `var/recette/` (`acces-local-….md` et la matrice compte × page `…-matrice.csv` : O ouverte, R refusée, C connexion, > redirigée, I introuvable, E erreur). La commande se termine en échec s'il reste une fuite, une erreur ou un contrôle raté ; les pages « à examiner » sont à relire. Un écart voulu (page ouverte à tout le personnel, montant de ses propres ventes) s'ajoute avec sa raison dans `RecetteAcces::ECARTS_VOULUS` ou `MONTANTS_VOULUS` (`src/Service/Recette/`). Pour aller vite sur une grande base : `APP_DEBUG=0`.

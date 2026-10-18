@@ -25,7 +25,7 @@
 			<div class="si-cc-actions">
 				<button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modale-depot"><i class="fas fa-plus me-1"></i>Dépôt</button>
 				{% if rendre %}
-					<button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#modale-rendre"><i class="fas fa-hand-holding-usd me-1"></i>Rendre l'argent</button>
+					<button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modale-rendre"><i class="fas fa-hand-holding-usd me-1"></i>Rendre l'argent</button>
 				{% endif %}
 			</div>
 		{% endif %}
@@ -44,8 +44,8 @@
 			{% for d in compte.depots %}
 				<li>
 					<div>
-						<strong>{{ d.montant|number_format(0, ',', ' ') }}</strong>
-						<small>{{ d.recuLe ? d.recuLe|date('d/m/Y H:i') }} · {{ d.auteur ?: 'le client' }} · {{ d.txnid ?: d.reference }}{% if d.fondsSoutien + d.fraisRetrait > 0 %} · frais en plus {{ (d.fondsSoutien + d.fraisRetrait)|number_format(0, ',', ' ') }}{% endif %}</small>
+						<strong>{{ d.montant|number_format(0, ',', ' ') }} F</strong>
+						<small>{{ d.recuLe ? d.recuLe|date('d/m/Y H:i') }} · {{ d.auteur ?: 'le client' }} · {{ d.txnid ?: d.reference }}{% if d.fondsSoutien + d.fraisRetrait > 0 %} · frais en plus {{ (d.fondsSoutien + d.fraisRetrait)|number_format(0, ',', ' ') }} F{% endif %}</small>
 					</div>
 					{% if gerer %}
 						<form method="post" action="{{ path('app_caisse_solde_depot_valider', {id: d.id}) }}">
@@ -54,7 +54,7 @@
 							<button class="btn btn-success btn-sm">Valider</button>
 						</form>
 						<details class="si-cc-refus">
-							<summary class="btn btn-light btn-sm">Refuser</summary>
+							<summary class="btn btn-outline-danger btn-sm">Refuser</summary>
 							<form method="post" action="{{ path('app_caisse_solde_depot_rejeter', {id: d.id}) }}">
 								<input type="hidden" name="_token" value="{{ csrf_token('solde-depot-en-ligne-' ~ d.id) }}">
 								<input type="hidden" name="retour" value="{{ retour }}">

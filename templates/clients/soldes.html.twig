@@ -32,7 +32,7 @@
 					<li>
 						<div>
 							<strong>{{ d.client.nomComplet }}</strong>
-							<small>{{ d.recuLe ? d.recuLe|date('d/m/Y H:i') }} · {{ d.montant|number_format(0, ',', ' ') }} · {{ d.txnid ?: d.reference }}</small>
+							<small>{{ d.recuLe ? d.recuLe|date('d/m/Y H:i') }} · {{ d.montant|number_format(0, ',', ' ') }} F · {{ d.txnid ?: d.reference }}</small>
 						</div>
 						<a class="btn btn-primary btn-sm" href="{{ path('app_clients_show', {publicId: d.client.publicId}) }}#compte">Ouvrir le compte</a>
 					</li>

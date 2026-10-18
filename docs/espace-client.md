@@ -268,7 +268,7 @@ Reste à faire :
 
 **Avoir.**
 
-- L'avoir est le solde créditeur du client (`soldeCredit`), en lecture seule en ligne.
+- L'avoir est le solde créditeur du client (`soldeCredit`), en lecture seule en ligne : l'argent qu'il a laissé à la boutique (monnaie gardée, dépôts), détaillé dans « Mon solde » (section suivante). La tuile « Avoir disponible » y mène.
 - L'utiliser crée un paiement « solde client » en attente (`AV <règlement>`), validé par la caisse dans Finances › À valider (`PaiementService::validerAvoir`). Le solde ne baisse qu'à la validation.
 - En attendant, l'avoir est montré « réservé » ou « en validation » et n'est pas promis deux fois : 30 minutes pour un règlement encore chez Orange, puis tant que le paiement attend la boutique.
 - Payé par l'avoir seul, le règlement est reçu tout de suite, sans Orange.
@@ -301,6 +301,36 @@ Reste à faire :
 **Notifications.** Aucune notification ni aucun SMS ne porte de montant ni de clé. Le paiement validé est annoncé par la chaîne existante (« Paiement reçu pour la commande … »), aux payeurs seulement.
 
 Captures : `/mnt/project-files/captures/factures-paiements/`.
+
+## Mon solde (construit le 18/10/2026)
+
+Demande de Yaya du 16/10/2026 : le client voit dans son espace l'argent laissé à la boutique (monnaie non rendue, dépôts) et peut déposer sur son compte sans rien payer. Règles et comptabilité : docs/finances.md, « Compte du client ».
+
+| Adresse | Page |
+| --- | --- |
+| `GET /espace/solde` | Solde, dépôt Orange Money (`?montant=` montre les frais), dépôts en ligne, relevé |
+| `POST /espace/solde/deposer` | Lance le dépôt chez Orange (jeton CSRF, limite par compte, total recalculé) |
+| `GET /espace/solde/depot/{référence}` | Retour d'Orange : l'état est relu, puis retour à la page |
+
+**Qui y entre.** Comme « Factures et paiements » : un particulier, le titulaire d'une entreprise, un compte « payeur » (`EspaceFacturesController::peutVoirLesFactures`). Le valideur et le demandeur reçoivent « accès refusé », même en tapant l'adresse ; le compte « Lecture · suivi » est renvoyé à l'accueil (`DroitsEspace::PAGES_ECRITURE`). Le menu garde « Factures et paiements » allumé sur cette page. Le tableau de bord du payeur a une tuile « Mon solde » (montant), absente pour les autres.
+
+**Ce que montre la page.**
+
+- Le solde de son compte à la boutique, « dont X déjà utilisés, en attente de validation · Y disponible » quand un avoir attend la caisse, et « Payer une facture avec mon solde » (vers « Factures et paiements ») s'il reste du disponible.
+- Le relevé tenu par la boutique : opération (« Monnaie gardée », « Dépôt en espèces », « Dépôt Orange Money », « Paiement avec le solde », « Argent rendu »…), date, référence, montant, solde après. Ni l'employé, ni la note interne, ni le motif ne descendent.
+- Ses dépôts en ligne et leur état : « Parti chez Orange Money », « Reçu, en attente de validation », « Ajouté au solde », « Refusé par la boutique ».
+- À droite : comment laisser sa monnaie à la caisse, déposer à la boutique (numéro marchand), récupérer son argent.
+
+**Déposer par Orange Money.**
+
+- Montant de 500 F à 2 000 000 F (`OrangeMoney::DEPOT_MINIMUM` et `DEPOT_MAXIMUM`). « Voir les frais » montre ce qui va au solde, le fonds de soutien et le frais de retrait (Réglages › Paiements), et le total débité par Orange : les frais s'ajoutent et **ne vont pas au solde**.
+- Au clic, le serveur recalcule ; si le total a changé, le client revoit le récapitulatif. Même limite que les paiements (`espace_paiement_compte`).
+- Orange confirme : le dépôt passe « reçu » (table `depot_solde_client`, transaction `transaction_orange_money` d'objet « dépôt ») et rien d'autre ne se crée : ni paiement, ni solde. Il monte au local, où la caisse le valide après avoir vu l'argent sur le compte « Orange Money en ligne » ; le solde monte alors, jamais avant. **Jamais validé tout seul.** Échoué ou expiré chez Orange : « non abouti », il ne monte pas.
+- Tant que les clés Orange Money ne sont pas posées, un encart invite à déposer à la boutique.
+
+**Notifications.** L'arrivée d'un dépôt en ligne prévient l'équipe au local, sans montant. Les messages de la page au retour d'Orange ne citent pas de montant.
+
+Captures : `/mnt/project-files/captures/compte-client/` (espace-mon-solde-*, espace-deposer-*, espace-accueil-payeur-*).
 
 ## Atelier 3D et « Mes créations » (construit le 14/10/2026)
 

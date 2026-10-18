@@ -42,6 +42,10 @@ La commande refuse de tourner en production. Le fichier `donnees-demo/demo.sql` 
   - `DC-D002` : flyer en cours chez Seydou, acompte validé ;
   - `DC-D003` : cartes de visite terminées, acompte et solde payés ;
   - `DC-D004` : affiche de DEMO-0002 faite par l'IA, impression commandée « à confirmer » avec la finalisation ; DEMO-0002 a un relevé de crédit IA (pack de 3 images payé, 2 utilisées, solde 1 000 F).
+- Les comptes clients (`docs/finances.md`, « Compte du client »), créés juste après par `app:solde-client:demo` en passant par le vrai service (relevé, trésorerie « avance client », journal de la fiche) :
+  - Coumba Bagayoko (`DEMO-0122`) : monnaie gardée à la caisse (2 500 F), dépôt en espèces (20 000 F), 10 000 F d'une commande payés avec le solde ; il reste une commande à encaisser pour essayer « Payer avec le solde » et « Garder la monnaie » ;
+  - Amadou Sow (`DEMO-0195`, le particulier de l'espace) : dépôt en espèces (15 000 F) et un dépôt Orange Money fait en ligne (5 000 F), reçu, à valider ;
+  - Salon Espoir (`DEMO-0002`) : dépôt Orange Money à la boutique (50 000 F), 10 000 F rendus par `demo.kadiatou`, et un dépôt en ligne du payeur Ibrahim Touré (25 000 F), reçu, à valider.
 - Le reste : planning et entretien (avec des rappels WhatsApp envoyés et à envoyer), charges récurrentes, clôtures de caisse, rapprochements bancaires, campagnes, actions de caisse, messagerie et notifications.
 
 ## Espace client de démonstration
@@ -54,7 +58,7 @@ Salon Espoir (`DEMO-0002`, entreprise à la grille revendeur), une personne par 
 |---|---|---|---|
 | Oumar Guindo, Gérant (titulaire) | 60 69 78 04 | gère le compte, valideur, payeur | tout : utilisateurs, « Qui reçoit quoi », proposition de raison sociale ou NIF |
 | Awa Coulibaly, Intendante | 60 44 51 01 | valideur | devis à accepter, BAT ; ni factures ni montants dus |
-| Ibrahim Touré, Comptabilité | 60 44 51 02 | payeur | factures, solde, « Payer », plafond de crédit |
+| Ibrahim Touré, Comptabilité | 60 44 51 02 | payeur | factures, solde, « Payer », plafond de crédit, « Mon solde » (compte à la boutique, dépôt Orange Money) |
 | Mariam Dembélé, Assistante | 60 44 51 03 | demandeur (aucun droit) | sa commande attend un valideur |
 | Réception, Accueil | 60 44 51 04 | Lecture · suivi | commandes, livraisons, fichiers ; rien qui écrive |
 
@@ -76,6 +80,7 @@ Le générateur affiche les deux comptes principaux à la fin (« Espace client 
   - les tables techniques de Doctrine et de Messenger.
 - Sociétés (`docs/societes.md`) : les lignes de démo arrivent avec la société par défaut. Juste après, `app:demo` applique la règle de la migration à ses seules lignes : les devis, factures, commandes et paiements de DREPA passent à la société DREPA.
 - Les photos (pointage, entretien, livraisons) et l'image IA de `DC-D004` ne sont que des noms de fichiers : les images n'existent pas.
+- Comptes clients : la purge enlève le relevé et les dépôts en ligne des clients fictifs. Relancée sur des comptes qui ont déjà un relevé, `app:solde-client:demo` ne fait rien.
 - Demandes de conception : la purge enlève aussi les éléments, images IA, transactions Orange Money, crédits et relevés de crédit IA des clients fictifs.
 - Promotions : leur identifiant n'est pas réservé, elles sont repérées par leur note (« Démo : … ») ; la purge les enlève avec les exceptions, les anniversaires et les promotions d'anniversaire des clients fictifs. Les modèles d'anniversaire restent (ce sont des réglages). Pour garder les totaux, factures et paiements des lignes passées, leur prix unitaire est relevé du montant de la promotion : réenregistrer une de ces anciennes commandes sans rien changer garde ce prix et le total ; choisir un autre produit pour la ligne reprend le prix du catalogue, moins la promotion (jugée au jour de la commande).
 

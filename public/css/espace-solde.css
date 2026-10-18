@@ -31,5 +31,6 @@
   .es-solde > b { font-size: 1.7rem; }
   .es-montant > div .ec-bouton-blanc { flex: 1 1 100%; justify-content: center; }
   #deposer .ef-boutons { flex-direction: column-reverse; align-items: stretch; }
+  #deposer .ef-boutons .ec-bouton-blanc { justify-content: center; }
   #deposer .ef-bouton-om { width: 100%; }
 }

@@ -55,7 +55,7 @@
 				<select class="form-select" id="caisse-client" name="client" onchange="this.form.submit()">
 					<option value="">Choisir un client qui doit encore payer…</option>
 					{% for ligne in clients_avec_solde %}
-						<option value="{{ ligne.client.id }}" {{ client and client.id == ligne.client.id ? 'selected' }}>{{ ligne.client.nomComplet }} · solde {{ ligne.solde|number_format(0, ',', ' ') }} F</option>
+						<option value="{{ ligne.client.id }}" {{ client and client.id == ligne.client.id ? 'selected' }}>{{ ligne.client.nomComplet }} · reste dû {{ ligne.solde|number_format(0, ',', ' ') }} F</option>
 					{% endfor %}
 					{% if client and clients_avec_solde|filter(l => l.client.id == client.id) is empty %}
 						<option value="{{ client.id }}" selected>{{ client.nomComplet }} · rien à payer</option>
@@ -82,7 +82,7 @@
 						</form>
 					{% endif %}
 					{% if modifiable %}
-						<button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modale-depot"><i class="fas fa-plus me-1"></i>Dépôt</button>
+						<button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modale-depot"><i class="fas fa-plus me-1"></i>Dépôt</button>
 					{% endif %}
 					{% if is_granted('ROLE_CLIENT') %}
 						<a class="btn btn-link btn-sm" href="{{ path('app_clients_show', {publicId: client.publicId}) }}#compte">Relevé</a>

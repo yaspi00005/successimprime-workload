@@ -372,7 +372,7 @@ details.ec-modif[open] summary { display: none; }
 .ec-a-valider { border: 1.5px solid #F5C77A; }
 
 /* Réclamations (maquette 18) */
-.ec-rc-titre { font-weight: 800; font-size: 1.1rem; color: var(--bleu, #0F4590); margin: .3rem 0; }
+.ec-rc-titre { font-weight: 800; font-size: 1.1rem; color: var(--bleu); margin: .3rem 0; }
 .ec-rc-photos { display: flex; gap: .6rem; margin: .6rem 0; }
 .ec-rc-photos img { width: 84px; height: 84px; object-fit: cover; border-radius: 12px; display: block; }
 .ec-rc-reponse { background: #EEF3FB; border-radius: 14px; padding: .75rem .9rem; color: #0F4590; margin-top: .5rem; }
@@ -794,3 +794,21 @@ body.ec-inviter-ouvert .ec-page { padding-bottom: calc(var(--ec-inviter-h, 16rem
 .ec-pc-recherche .ec-saisie { max-width: 28rem; }
 .ec-pc-recherche p { margin: .4rem 0 0; }
 .ec-pc[hidden] { display: none; }
+
+/* Réseaux sociaux de la boutique (site/_reseaux.html.twig) : bas du menu sur ordinateur, bas de page sur téléphone. */
+.si-reseaux { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; }
+.si-reseaux-titre { margin: 0; color: var(--gris); font-size: .74rem; width: 100%; }
+.si-reseaux ul { display: flex; flex-wrap: wrap; gap: .4rem; list-style: none; margin: 0; padding: 0; }
+.si-reseau { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--fond); color: var(--bleu); }
+.si-reseau:hover, .si-reseau:focus-visible { background: var(--bleu); color: #fff; }
+.si-reseau svg { width: 18px; height: 18px; fill: currentColor; }
+.ec-menu-bas .si-reseaux { padding: 0 .8rem; }
+.ec-pied-reseaux { margin: 1.5rem 0 0; padding: 1rem 0; border-top: 1px solid var(--trait); }
+.ec-pied-reseaux .si-reseaux-titre { text-align: center; }
+.ec-pied-reseaux .si-reseaux ul { justify-content: center; width: 100%; }
+.ec-pied-reseaux .si-reseau { width: 44px; height: 44px; background: #fff; }
+@media (min-width: 900px) { .ec-pied-reseaux { display: none; } }
+.ec-menu-bas .si-reseaux { gap: .25rem .4rem; }
+.ec-menu-bas .si-reseaux ul { gap: .3rem; flex-wrap: nowrap; }
+.ec-menu-bas .si-reseau { width: 32px; height: 32px; }
+.ec-menu-bas .si-reseau svg { width: 15px; height: 15px; }

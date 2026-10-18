@@ -169,3 +169,11 @@ des échéances et les tâches fiscales ou de paie qui ne la concernent pas.
   `ROLE_LECTURE_CORBEILLE`).
 - Forme du menu : colonne `role_utilisateur.menu` (`volets`, `court`,
   `replie`).
+
+## Réglages › Alertes système
+
+Entrée « Alertes système » du menu Réglages (18/10/2026, docs/alertes-systeme.md) :
+Direction, et toute personne à qui la Direction donne le droit détaillé
+« Alertes système » (`ROLE_ALERTES_SYSTEME`, pensé pour le technicien) sur
+sa fiche. Aucun rôle ne l'a par défaut en dehors de la Direction. Les
+réglages des alertes (qui reçoit quoi, délai) restent à la Direction.

@@ -37,7 +37,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_SITE_VITRINE')]
 final class SiteContenuController extends AbstractController
 {
-    private const ONGLETS = [...ContenuSite::TYPES, 'chiffres' => ['libelle' => 'Chiffres'], 'referencement' => ['libelle' => 'Référencement'], 'soutien' => ['libelle' => 'Nous soutenir']];
+    private const ONGLETS = [...ContenuSite::TYPES, 'chiffres' => ['libelle' => 'Chiffres'], 'referencement' => ['libelle' => 'Référencement et réseaux'], 'soutien' => ['libelle' => 'Nous soutenir']];
 
     private const TYPES = 'pages|realisations|avis|conseils|partenaires|annonces|equipe|actions';
 

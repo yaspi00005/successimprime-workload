@@ -133,6 +133,8 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Utilisateurs et droits', 'route' => 'app_utilisateurs_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_utilisateurs_', 'app_user_', 'app_journal_activite_']],
             ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
             ['libelle' => 'Sécurité', 'route' => 'app_appareils_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_appareils_', 'app_jetons_api_', 'app_sauvegardes_', 'app_synchronisation_']],
+            // Alertes système (docs/alertes-systeme.md) : la Direction et le droit « Alertes système » (technicien).
+            ['libelle' => 'Alertes système', 'route' => 'app_alertes_systeme_index', 'role' => 'ROLE_ALERTES_SYSTEME', 'prefixes' => ['app_alertes_systeme_']],
             ['libelle' => 'Écran TV', 'route' => 'app_ecran_tv_reglages', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_ecran_tv_']],
             ['libelle' => 'Site vitrine', 'route' => 'app_site_contenu_index', 'role' => 'ROLE_SITE_VITRINE', 'prefixes' => ['app_site_contenu_']],
             // Corbeille (docs/corbeille.md) : la Direction et le droit « Corbeille », sur l'ERP local (CorbeilleVoter).

@@ -736,6 +736,17 @@ final class CatalogueSynchro
                 'relations' => [], 'listes' => [],
                 'imposeAuLocal' => ['origine' => \App\Entity\EnvoiMessage::EN_LIGNE],
             ],
+            // Alertes système nées en ligne (docs/alertes-systeme.md) : montent au local, où elles arrivent ouvertes
+            // dans la cloche du personnel (l'e-mail est parti du site). Le compteur et la dernière date remontent ;
+            // un compteur qui monte sur une alerte résolue au local la rouvre (AlerteSysteme::rouvrirSiRevenue).
+            // Qui la prend en charge et la résolution restent de chaque côté.
+            'alerte_systeme' => [
+                'classe' => \App\Entity\AlerteSysteme::class, 'sens' => self::ASCENDANT, 'libelle' => 'Alerte système', 'titre' => ['reference', 'titre'],
+                'champs' => ['reference', 'type', 'gravite', 'titre', 'detail', 'empreinte', 'origine', 'occurrences', 'premiereLe', 'derniereLe', 'emailEnvoyeLe'],
+                'relations' => [], 'listes' => [],
+                'imposeAuLocal' => ['origine' => \App\Entity\AlerteSysteme::EN_LIGNE, 'etat' => \App\Entity\AlerteSysteme::OUVERTE, 'aPrevenir' => true],
+                'remontees' => ['occurrences' => null, 'derniereLe' => null, 'detail' => null, 'emailEnvoyeLe' => null],
+            ],
         ];
     }
 

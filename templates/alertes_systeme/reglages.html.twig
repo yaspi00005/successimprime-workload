@@ -1,0 +1,97 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Réglages des alertes système (docs/alertes-systeme.md) : pour chaque
+	sorte, e-mail, application (cloche et téléphone) et qui la reçoit ;
+	délai entre deux e-mails d'une même sorte, seuil d'espace disque,
+	adresses en plus. Direction seulement.
+#}
+
+{% block title %}Réglages des alertes système{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/alertes-systeme.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_alertes_systeme_index') }}" class="btn btn-outline-primary btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Alertes</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-as si-as-reglages">
+		{% if not messagerie %}
+			<div class="alert alert-warning">La messagerie e-mail n'est pas réglée sur {{ en_ligne ? 'le serveur en ligne' : 'cet ordinateur' }} (<code>MAILER_DSN</code> et <code>MAILER_FROM_ADDRESS</code> dans <code>.env.local</code>, docs/deploiement.md) : les alertes arrivent seulement dans l'application.</div>
+		{% endif %}
+		{% if sans_email is not empty %}
+			<div class="alert alert-info">Sans adresse e-mail sur leur fiche employé, ces personnes reçoivent les alertes seulement dans l'application : {{ sans_email|map(u => u.employe ? u.employe.nomComplet : u.userIdentifier)|join(', ') }}.</div>
+		{% endif %}
+
+		<form method="post" action="{{ path('app_alertes_systeme_reglages') }}">
+			<input type="hidden" name="_token" value="{{ csrf_token('alertes-systeme-reglages') }}">
+
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Envoi</h4></div>
+				<div class="row g-3">
+					<div class="col-md-4">
+						<label class="si-libelle-champ" for="as-delai">Délai entre deux e-mails d'une même sorte</label>
+						<div class="input-group input-group-sm">
+							<input type="number" id="as-delai" name="delai" min="{{ constant('App\\Service\\Alertes\\ReglagesAlertes::DELAI_MIN') }}" max="{{ constant('App\\Service\\Alertes\\ReglagesAlertes::DELAI_MAX') }}" value="{{ r.delai }}" class="form-control" required>
+							<span class="input-group-text">minutes</span>
+						</div>
+						<div class="form-text">Ce qui arrive pendant le délai part ensemble au suivant. 15 minutes par défaut.</div>
+					</div>
+					<div class="col-md-4">
+						<label class="si-libelle-champ" for="as-disque">Alerte quand le disque a moins de</label>
+						<div class="input-group input-group-sm">
+							<input type="number" id="as-disque" name="seuil_disque" min="0.1" max="1000" step="0.1" value="{{ r.seuil_disque }}" class="form-control" required>
+							<span class="input-group-text">Go libres</span>
+						</div>
+					</div>
+					<div class="col-md-4">
+						<label class="si-libelle-champ" for="as-autres">Autres adresses e-mail</label>
+						<textarea id="as-autres" name="autres" rows="2" class="form-control form-control-sm" placeholder="technicien@exemple.ml" aria-describedby="aide-as-autres">{{ r.autres|join("\n") }}</textarea>
+						<div id="aide-as-autres" class="form-text">Une par ligne, 10 au plus : un prestataire sans compte, une boîte commune. Elles reçoivent toutes les sortes envoyées par e-mail.</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Qui reçoit quoi</h4><span class="si-bloc-note">sans personne cochée : toute la direction et le droit « Alertes système »</span></div>
+				<div class="si-as-types">
+					{% for cle, t in constant('App\\Entity\\AlerteSysteme::TYPES') %}
+						{% set reglage = r.types[cle] %}
+						<div class="si-as-type-ligne" role="group" aria-labelledby="as-type-{{ cle }}">
+							<p class="si-as-type-nom" id="as-type-{{ cle }}">{{ t.libelle }}<small>{{ t.aide }}</small></p>
+							<div class="si-as-canaux">
+								<label class="si-as-case"><input type="checkbox" name="types[{{ cle }}][email]" value="1" {{ reglage.email ? 'checked' }}> E-mail</label>
+								<label class="si-as-case"><input type="checkbox" name="types[{{ cle }}][app]" value="1" {{ reglage.app ? 'checked' }}> Application</label>
+							</div>
+							<div class="si-as-personnes">
+								{% for u in possibles %}
+									<label class="si-as-case si-as-personne"><input type="checkbox" name="types[{{ cle }}][destinataires][]" value="{{ u.id }}" {{ u.id in reglage.destinataires ? 'checked' }}> {{ u.employe ? u.employe.nomComplet : u.userIdentifier }}</label>
+								{% else %}
+									<span class="text-muted">Personne n'a le droit « Alertes système ».</span>
+								{% endfor %}
+							</div>
+						</div>
+					{% endfor %}
+				</div>
+				<p class="form-text mb-0">Application : la cloche, et le téléphone de la personne si elle y a activé les notifications. Pour donner les alertes à un technicien : Réglages › Utilisateurs et droits, droit « Alertes système ». {% if not en_ligne %}La synchronisation garde aussi sa propre alerte dans la cloche des administrateurs (docs/synchronisation.md) : l'application est donc décochée par défaut pour cette sorte.{% endif %}</p>
+			</div>
+
+			<div class="si-as-pied">
+				<button type="submit" class="btn btn-primary">Enregistrer</button>
+			</div>
+		</form>
+
+		<div class="card si-bloc mt-3">
+			<div class="si-bloc-tete"><h4>Essayer</h4></div>
+			<p>Crée une alerte d'essai et l'envoie à ses destinataires, par e-mail et dans l'application, pour vérifier que tout arrive.</p>
+			<form method="post" action="{{ path('app_alertes_systeme_essai') }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('alertes-systeme-essai') }}">
+				<button type="submit" class="btn btn-outline-primary"><i class="far fa-paper-plane me-1" aria-hidden="true"></i>Envoyer une alerte d'essai</button>
+			</form>
+		</div>
+	</div>
+{% endblock %}

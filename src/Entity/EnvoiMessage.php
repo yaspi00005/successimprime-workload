@@ -71,6 +71,7 @@ class EnvoiMessage
         'conception' => 'Demande de conception',
         'devis' => 'Devis envoyé au client',
         'rapport_semaine' => 'Rapport de la semaine',
+        'alerte_systeme' => 'Alerte système (personnel)',
         'autre' => 'Autre',
     ];
 
@@ -80,7 +81,7 @@ class EnvoiMessage
      * adresse ou son numéro en entier, et la recherche dessus, sont pour la
      * direction seulement (le droit Clients ne suffit pas).
      */
-    public const TYPES_PERSONNEL = ['code_securite', 'rapport_semaine'];
+    public const TYPES_PERSONNEL = ['code_securite', 'rapport_semaine', 'alerte_systeme'];
 
     public const LONGUEUR_SUJET = 190;
     public const LONGUEUR_ERREUR = 255;

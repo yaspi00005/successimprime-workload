@@ -189,7 +189,28 @@ body.si-site { margin: 0; font-family: var(--police); font-size: 16px; line-heig
 .si-pied a { color: #fff; text-decoration: none; }
 .si-pied a:hover { text-decoration: underline; }
 .si-pied-adresse { grid-column: 1 / -1; margin: 6px 0 0; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .12); font-style: normal; }
-.si-pied-reseaux { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 0; padding: 0; }
+.si-pied-reseaux { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
+.si-pied-fiche { font-size: 14px; }
+
+/* Réseaux sociaux de la boutique (site/_reseaux.html.twig, docs/referencement.md) */
+.si-reseaux { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.si-reseaux-titre { margin: 0; font-weight: 600; }
+.si-reseaux ul { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.si-reseau { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; height: 44px; border-radius: 50%; transition: background-color .15s, color .15s, transform .15s; }
+.si-reseau svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+.si-pied .si-reseau { background: rgba(255, 255, 255, .1); color: #fff; }
+.si-pied .si-reseau:hover { background: #fff; color: var(--noir); text-decoration: none; transform: translateY(-1px); }
+.si-reseaux-contact { margin-top: 14px; }
+.si-reseaux-contact .si-reseaux-titre { width: 100%; }
+.si-reseaux-contact .si-reseau { border-radius: 999px; padding: 0 14px 0 12px; background: #fff; color: var(--texte, #1C2433); border: 1px solid #DCE2EC; font-size: 14px; font-weight: 600; text-decoration: none; }
+.si-reseaux-contact .si-reseau:hover { border-color: currentColor; }
+.si-reseaux-contact .si-reseau-facebook svg { color: #1877F2; }
+.si-reseaux-contact .si-reseau-instagram svg { color: #C13584; }
+.si-reseaux-contact .si-reseau-tiktok svg { color: #111; }
+.si-reseaux-contact .si-reseau-whatsapp svg { color: #1FA855; }
+.si-reseaux-contact .si-reseau-linkedin svg { color: #0A66C2; }
+.si-reseaux-contact .si-reseau-youtube svg { color: #E62117; }
+.si-reseaux-contact .si-reseau-x svg { color: #111; }
 @media (max-width: 720px) {
   .si-pied-cadre { grid-template-columns: 1fr; }
   .si-pied-liens { justify-content: flex-start; }

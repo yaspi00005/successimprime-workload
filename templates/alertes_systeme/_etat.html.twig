@@ -1,0 +1,3 @@
+{# Pastille de l'état d'une alerte système (paramètre : alerte). #}
+{% set couleur = {ouverte: alerte.estCritique ? 'rouge' : 'orange', prise: 'bleu', resolue: 'vert'}[alerte.etat] ?? 'gris' %}
+<span class="si-pastille si-pastille-{{ couleur }}">{{ alerte.libelleEtat }}</span>

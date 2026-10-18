@@ -14,7 +14,8 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /**
  * Code à 6 chiffres gardé en session (seulement son empreinte) : valable
- * 5 minutes, 5 essais, renvoi après 60 secondes. Il part par e-mail quand
+ * 5 minutes, 5 essais, renvoi après 60 secondes. Après un renvoi, les
+ * codes d'avant restent bons jusqu'à leur propre expiration. Il part par e-mail quand
  * la personne a une adresse et que l'e-mail est réglé sur le serveur
  * (MAILER_DSN, MAILER_FROM_ADDRESS), sinon par SMS ; si l'e-mail échoue,
  * le SMS prend le relais. Chaque envoi compte dans les limites par
@@ -92,6 +93,11 @@ final class CodeDeConnexion
         $code = str_pad((string) random_int(0, 999999), 6, '0', \STR_PAD_LEFT);
         $session->set($cle, [
             'empreinte' => $this->empreinte($code),
+            // Le code d'avant reste bon jusqu'à son expiration : deux demandes rapprochées
+            // (double appui, « Renvoyer ») et un SMS arrivé en retard ne le rendent pas faux.
+            // Seulement vers la même personne : un code envoyé à un autre numéro n'ouvre jamais celui-ci.
+            'cible' => $cible = hash('sha256', $usage.'|'.$destination->telephone.'|'.$destination->email),
+            'precedents' => self::precedentsValables($session->get($cle), $cible),
             'expire' => time() + self::VALIDITE_SECONDES,
             'essais' => 0,
             'envoye' => time(),
@@ -184,7 +190,18 @@ final class CodeDeConnexion
         if ($etat['essais'] >= self::ESSAIS_MAX) {
             return 'trop_essais';
         }
-        if (hash_equals($etat['empreinte'], $this->empreinte(preg_replace('/\D/', '', $saisi) ?? ''))) {
+        $empreinte = $this->empreinte(preg_replace('/\D/', '', $saisi) ?? '');
+        $bons = [$etat['empreinte']];
+        foreach ((array) ($etat['precedents'] ?? []) as $precedent) {
+            if (\is_array($precedent) && ($precedent['expire'] ?? 0) >= time()) {
+                $bons[] = (string) ($precedent['empreinte'] ?? '');
+            }
+        }
+        $juste = false;
+        foreach ($bons as $bon) {
+            $juste = hash_equals($bon, $empreinte) || $juste;
+        }
+        if ($juste) {
             $session->remove($cle);
 
             return 'ok';
@@ -193,6 +210,26 @@ final class CodeDeConnexion
         $session->set($cle, $etat);
 
         return $etat['essais'] >= self::ESSAIS_MAX ? 'trop_essais' : 'faux';
+    }
+
+    /**
+     * Codes encore valables de l'envoi précédent (le dernier et ceux qu'il gardait), 3 au plus.
+     *
+     * @return list<array{empreinte: string, expire: int}>
+     */
+    private static function precedentsValables(mixed $etat, string $cible): array
+    {
+        if (!\is_array($etat) || !isset($etat['empreinte'], $etat['expire']) || ($etat['cible'] ?? null) !== $cible) {
+            return [];
+        }
+        $liste = [['empreinte' => (string) $etat['empreinte'], 'expire' => (int) $etat['expire']]];
+        foreach ((array) ($etat['precedents'] ?? []) as $p) {
+            if (\is_array($p) && isset($p['empreinte'], $p['expire'])) {
+                $liste[] = ['empreinte' => (string) $p['empreinte'], 'expire' => (int) $p['expire']];
+            }
+        }
+
+        return \array_slice(array_values(array_filter($liste, static fn (array $p): bool => $p['expire'] >= time())), 0, 3);
     }
 
     public static function messageErreur(string $resultat): string

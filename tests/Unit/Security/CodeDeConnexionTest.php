@@ -201,4 +201,32 @@ final class CodeDeConnexionTest extends TestCase
         self::assertNull(DestinationCode::emailValable('yaya@'));
         self::assertSame('yaya@gmail.com', DestinationCode::emailValable(' Yaya@Gmail.com'));
     }
+
+    public function testLeCodeDAvantResteBonApresUnRenvoiVersLaMemePersonne(): void
+    {
+        $fabrique = new FabriqueCodes();
+        $codes = $fabrique->codes();
+        $session = self::session();
+        $vers = DestinationCode::vers('76124212', 'yaya@gmail.com');
+
+        $codes->envoyer($session, self::CLE, $vers, CodeDeConnexion::ESPACE, '10.0.0.1');
+        $premier = self::codeDe($fabrique);
+        $codes->envoyer($session, self::CLE, $vers, CodeDeConnexion::ESPACE, '10.0.0.1');
+
+        self::assertSame('ok', $codes->verifier($session, self::CLE, $premier), 'premier SMS arrivé en retard');
+    }
+
+    public function testUnCodeEnvoyeAUnAutreNumeroNOuvrePasCeluiCi(): void
+    {
+        $fabrique = new FabriqueCodes();
+        $codes = $fabrique->codes();
+        $session = self::session();
+
+        $codes->envoyer($session, self::CLE, DestinationCode::vers('76124212', 'yaya@gmail.com'), CodeDeConnexion::ESPACE, '10.0.0.1');
+        $autre = self::codeDe($fabrique);
+        $codes->envoyer($session, self::CLE, DestinationCode::vers('77781583', 'hamadoun@gmail.com'), CodeDeConnexion::ESPACE, '10.0.0.1');
+
+        self::assertSame('faux', $codes->verifier($session, self::CLE, $autre));
+        self::assertSame('ok', $codes->verifier($session, self::CLE, self::codeDe($fabrique)));
+    }
 }

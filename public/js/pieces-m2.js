@@ -207,7 +207,7 @@
             const n = pieces(m2, c.parM2);
             ecrire(quantite, n >= 1 ? n : '');
             dire(n >= 1
-                ? m2Texte(m2) + ' = ' + nombrePieces(n) + ' · ' + libelle(c)
+                ? m2Texte(m2) + ' = ' + nombrePieces(n) + ', facturées ' + m2Texte(surface(n, c.parM2)) + ' · ' + libelle(c)
                 : 'Moins d\'une pièce sur ' + m2Texte(m2) + ' : augmentez la surface.');
 
             return;
@@ -215,7 +215,7 @@
 
         const q = Math.floor(lireNombre(quantite));
         dire(q >= 1
-            ? nombrePieces(q) + ' = ' + m2Texte(surface(q, c.parM2)) + ' · ' + libelle(c)
+            ? nombrePieces(q) + ' = ' + m2Texte(surface(q, c.parM2)) + ' facturés · ' + libelle(c)
             : libelle(c).charAt(0).toUpperCase() + libelle(c).slice(1) + '.');
     }
 
@@ -240,6 +240,19 @@
 
     /* ---------- Ligne de devis ou de commande (ERP) ---------- */
 
+    /**
+     * Unité choisie sur la ligne : « piece », « m2 », ou '' (aucun bouton :
+     * calcul au m² habituel). Une ligne déjà en pièces au m² s'ouvre « en pièces ».
+     */
+    function uniteLigne(bloc) {
+        const choix = bloc.querySelector('.js-pm2-choix');
+        if (!choix || choix.value !== '1') {
+            return '';
+        }
+
+        return bloc.dataset.unite === 'm2' ? 'm2' : 'piece';
+    }
+
     function brancherLigne(bloc, detail) {
         if (bloc.dataset.pm2Branche === '1') {
             return;
@@ -247,7 +260,6 @@
         bloc.dataset.pm2Branche = '1';
 
         const choix = bloc.querySelector('.js-pm2-choix');
-        const caseCochee = bloc.querySelector('.js-pm2-case');
         const quantite = detail.querySelector('[data-detail-field="quantite"]');
         const recalculer = function () {
             // Le calcul du formulaire écoute la quantité : il rappelle SiPiecesM2.ligne().
@@ -256,22 +268,16 @@
             }
         };
 
-        if (caseCochee && choix) {
-            caseCochee.checked = choix.value === '1';
-            caseCochee.addEventListener('change', function () {
-                choix.value = caseCochee.checked ? '1' : '0';
-                if (!caseCochee.checked) {
-                    bloc.dataset.unite = 'piece';
-                }
-                recalculer();
-            });
-        }
-
+        // Deux boutons, aucun choisi d'office ; un second clic sur le bouton choisi revient au calcul habituel.
         bloc.querySelectorAll('.js-pm2-unite').forEach(function (bouton) {
             bouton.addEventListener('click', function () {
-                bloc.dataset.unite = bouton.dataset.unite;
+                const deja = uniteLigne(bloc) === bouton.dataset.unite;
+                if (choix) {
+                    choix.value = deja ? '0' : '1';
+                }
+                bloc.dataset.unite = deja ? '' : bouton.dataset.unite;
                 recalculer();
-                if (bouton.dataset.unite === 'm2') {
+                if (!deja && bouton.dataset.unite === 'm2') {
                     const champM2 = bloc.querySelector('.js-pm2-m2');
                     if (champM2) {
                         champM2.focus();
@@ -308,9 +314,8 @@
         brancherLigne(bloc, detail);
 
         const choix = bloc.querySelector('.js-pm2-choix');
-        const caseCochee = bloc.querySelector('.js-pm2-case');
+        const boutons = bloc.querySelectorAll('.js-pm2-unite');
         const info = bloc.querySelector('.js-pm2-info');
-        const saisie = bloc.querySelector('.js-pm2-saisie');
         const zoneM2 = bloc.querySelector('.js-pm2-zone-m2');
         const champM2 = bloc.querySelector('.js-pm2-m2');
         const resultat = bloc.querySelector('.js-pm2-resultat');
@@ -320,35 +325,40 @@
                 element.textContent = texte;
             }
         };
-        const enPieces = function (actif) {
-            if (saisie) {
-                saisie.hidden = !actif;
+        const montrer = function (unite) {
+            boutons.forEach(function (bouton) {
+                const actif = bouton.dataset.unite === unite;
+                bouton.classList.toggle('active', actif);
+                bouton.setAttribute('aria-pressed', actif ? 'true' : 'false');
+            });
+            if (zoneM2) {
+                zoneM2.hidden = unite !== 'm2';
             }
-            verrouiller(quantite, actif && bloc.dataset.unite === 'm2');
+            verrouiller(quantite, unite === 'm2');
         };
 
         delete bloc.dataset.surfaceFacturee;
         const applicable = infos.typeLigne === 'produit' && infos.mode === 'metre_carre';
         // Ligne d'une commande verrouillée (production commencée) : on montre, on ne change rien.
         const figee = detail.matches('[data-detail-verrouille="1"]') || Boolean(detail.querySelector('[data-detail-verrouille="1"]'));
-        bloc.querySelectorAll('.js-pm2-unite, .js-pm2-m2').forEach(function (el) {
-            el.disabled = figee;
-        });
         bloc.hidden = !applicable;
         bloc.pm2Calcul = null;
         if (!applicable) {
-            enPieces(false);
+            montrer('');
 
             return null;
         }
 
         const c = calculer(enMm(infos.largeur, 'm', 0.1), enMm(infos.longueur, 'm', 0.1), parseFloat(bloc.dataset.espacement || '1'));
         bloc.pm2Calcul = c;
-        if (caseCochee) {
-            caseCochee.disabled = figee || !c || c.tropGrande;
+        boutons.forEach(function (bouton) {
+            bouton.disabled = figee || !c || c.tropGrande;
+        });
+        if (champM2) {
+            champM2.disabled = figee;
         }
         if (!c || c.tropGrande) {
-            enPieces(false);
+            montrer('');
             ecrireTexte(info, c ? 'Pièce plus grande que 1 m : calcul au m² habituel.' : 'Indiquez la largeur et la longueur pour compter les pièces au m².');
             ecrireTexte(resultat, '');
 
@@ -358,27 +368,17 @@
         ecrireTexte(info, libelle(c));
         const q = Math.max(1, Math.floor(infos.quantite || 1));
         const facturee = surface(q, c.parM2);
+        const unite = uniteLigne(bloc);
+        montrer(unite);
 
-        if (!choix || choix.value !== '1') {
-            enPieces(false);
+        if (unite === '') {
             const habituelle = Math.round(infos.largeur * infos.longueur * q * 100) / 100;
-            ecrireTexte(resultat, facturee > habituelle
-                ? 'Calcul habituel : ' + m2Texte(habituelle) + '. Cochez pour facturer ' + m2Texte(facturee) + ', espacement et chutes compris.'
-                : '');
+            ecrireTexte(resultat, 'Calcul au m² habituel : ' + m2Texte(habituelle) + '.'
+                + (facturee > habituelle ? ' En pièces au m² : ' + m2Texte(facturee) + ', espacement et chutes compris.' : ''));
 
             return null;
         }
 
-        const unite = bloc.dataset.unite === 'm2' ? 'm2' : 'piece';
-        bloc.querySelectorAll('.js-pm2-unite').forEach(function (bouton) {
-            const actif = bouton.dataset.unite === unite;
-            bouton.classList.toggle('active', actif);
-            bouton.setAttribute('aria-pressed', actif ? 'true' : 'false');
-        });
-        if (zoneM2) {
-            zoneM2.hidden = unite !== 'm2';
-        }
-        enPieces(true);
         // Lue par le récapitulatif de la ligne (saisie-commande.js).
         bloc.dataset.surfaceFacturee = String(facturee);
 
@@ -401,6 +401,9 @@
 
                 return facturee;
             }
+            ecrireTexte(resultat, 'Tapez la surface voulue : les pièces et le prix suivent.');
+
+            return facturee;
         }
 
         ecrireTexte(resultat, nombrePieces(q) + ' = ' + m2Texte(facturee) + ' facturés.');

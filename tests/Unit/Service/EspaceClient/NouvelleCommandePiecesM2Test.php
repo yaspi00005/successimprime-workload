@@ -29,22 +29,23 @@ final class NouvelleCommandePiecesM2Test extends TestCase
         // Autocollants de 5 × 5 cm, espacement 1 mm : 19 × 19 = 361 au m² ; 2,5 m² = 902 pièces.
         $saisie = NouvelleCommande::quantiteSaisie($this->vinyle(), 5, 'm2', '2,5', 5, 5, 1.0);
 
-        self::assertSame(['quantite' => 902, 'm2' => 2.5, 'erreur' => null], $saisie);
+        self::assertSame(['quantite' => 902, 'm2' => 2.5, 'erreur' => null, 'piecesM2' => true], $saisie);
         // Le nombre envoyé par la page ne compte pas.
         self::assertSame(902, NouvelleCommande::quantiteSaisie($this->vinyle(), 99999, 'm2', '2,5', 5, 5, 1.0)['quantite']);
         // L'espacement du réglage compte : 2 mm, 19 × 19 encore (1 002 / 52), 3 mm : 18 × 18.
         self::assertSame(810, NouvelleCommande::quantiteSaisie($this->vinyle(), 5, 'm2', '2,5', 5, 5, 3.0)['quantite']);
     }
 
-    public function testEnPiecesRienNeChange(): void
+    public function testEnPiecesLaQuantiteResteEtLaLigneEstEnPiecesAuM2(): void
     {
-        self::assertSame(['quantite' => 500, 'm2' => null, 'erreur' => null], NouvelleCommande::quantiteSaisie($this->vinyle(), 500, 'piece', '2,5', 5, 5, 1.0));
-        self::assertSame(['quantite' => 500, 'm2' => null, 'erreur' => null], NouvelleCommande::quantiteSaisie($this->vinyle(), 500, '', '', 5, 5, 1.0));
+        // Réponse de Yaya du 18/10 (Q11) : en ligne, une quantité en pièces est aussi facturée en pièces au m².
+        self::assertSame(['quantite' => 500, 'm2' => null, 'erreur' => null, 'piecesM2' => true], NouvelleCommande::quantiteSaisie($this->vinyle(), 500, 'piece', '2,5', 5, 5, 1.0));
+        self::assertSame(['quantite' => 500, 'm2' => null, 'erreur' => null, 'piecesM2' => true], NouvelleCommande::quantiteSaisie($this->vinyle(), 500, '', '', 5, 5, 1.0));
 
         // Produit qui n'est pas au m² (cartes à l'unité) : « m2 » envoyé quand même, ignoré.
         $cartes = (new ProduitConfiguration())->setProduit((new Produits())->setNom('Cartes de visite'))
             ->setModeDimension('aucune')->setModeCalcul('unite')->setPrixBase(50);
-        self::assertSame(['quantite' => 500, 'm2' => null, 'erreur' => null], NouvelleCommande::quantiteSaisie($cartes, 500, 'm2', '2,5', null, null, 1.0));
+        self::assertSame(['quantite' => 500, 'm2' => null, 'erreur' => null, 'piecesM2' => false], NouvelleCommande::quantiteSaisie($cartes, 500, 'm2', '2,5', null, null, 1.0));
     }
 
     public function testSurfaceRefusee(): void
@@ -66,7 +67,7 @@ final class NouvelleCommandePiecesM2Test extends TestCase
     public function testSansTailleLaLigneLeDit(): void
     {
         $saisie = NouvelleCommande::quantiteSaisie($this->vinyle(), 3, 'm2', '2,5', null, null, 1.0);
-        self::assertSame(['quantite' => 3, 'm2' => null, 'erreur' => null], $saisie);
+        self::assertSame(['quantite' => 3, 'm2' => null, 'erreur' => null, 'piecesM2' => true], $saisie);
 
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('Indiquez la largeur et la hauteur');
@@ -78,7 +79,7 @@ final class NouvelleCommandePiecesM2Test extends TestCase
         // Étiquettes au format imposé de 10 × 5 cm : 9 × 19 = 171 au m² (1 001 / 101 et 1 001 / 51).
         $etiquettes = $this->vinyle()->setModeDimension('format')->setLargeurDefaut('0.10')->setLongueurDefaut('0.05');
 
-        self::assertSame(['quantite' => 171, 'm2' => 1.0, 'erreur' => null], NouvelleCommande::quantiteSaisie($etiquettes, 1, 'm2', '1', null, null, 1.0));
+        self::assertSame(['quantite' => 171, 'm2' => 1.0, 'erreur' => null, 'piecesM2' => true], NouvelleCommande::quantiteSaisie($etiquettes, 1, 'm2', '1', null, null, 1.0));
     }
 
     public function testLigneFactureeEnPiecesAuM2(): void
@@ -187,5 +188,15 @@ final class NouvelleCommandePiecesM2Test extends TestCase
         $em->method('wrapInTransaction')->willReturnCallback(static fn (callable $f): mixed => $f($em));
 
         return new NouvelleCommande($em);
+    }
+
+    public function testQuantiteEnPiecesFactureeEnPiecesAuM2(): void
+    {
+        // 500 pièces de 5 × 5 cm, 361 au m² (espacement 1 mm) : 500 ÷ 361 = 1,39 m² facturés, pas 1,25 m².
+        $ligne = NouvelleCommande::enPiecesAuM2(NouvelleCommande::construireLigne($this->vinyle(), 500, 5, 5, [], false), null, 1.0, false);
+
+        self::assertTrue($ligne->isEnPiecesAuM2());
+        self::assertSame(1.39, $ligne->getPiecesAuM2()['surface']);
+        self::assertNull($ligne->getUniteDemandee());
     }
 }

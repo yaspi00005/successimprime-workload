@@ -259,7 +259,7 @@ final class CatalogueParametres
                     ['cle' => PiecesParMetreCarre::CLE_ESPACEMENT, 'type' => 'nombre', 'libelle' => 'Espacement entre les pièces, en largeur et en hauteur', 'aide' => 'Compté entre deux pièces voisines sur 1 m × 1 m. Une ligne déjà enregistrée garde son espacement.', 'suffixe' => 'mm', 'min' => 0, 'max' => (int) PiecesParMetreCarre::ESPACEMENT_MAX, 'decimales' => 1, 'defaut' => PiecesParMetreCarre::ESPACEMENT_DEFAUT],
                 ],
                 'motsCles' => ['Autocollants, étiquettes · pièces au m²', 'Espacement 1 mm en X et en Y', 'Quantité en pièces ou en m²'],
-                'note' => 'Sur une ligne au m², la case « Pièces au m² » compte les pièces qui tiennent sur 1 m × 1 m avec cet espacement (la pièce tournée est essayée aussi) et facture pièces ÷ pièces au m², au centième de m² supérieur. Une pièce plus grande que 1 m reste au calcul au m² habituel.',
+                'note' => 'Sur une ligne au m², les boutons « Quantité en pièces / m² » (aucun choisi d’office au comptoir ; toujours en ligne) comptent les pièces qui tiennent sur 1 m × 1 m avec cet espacement (la pièce tournée est essayée aussi) et facture pièces ÷ pièces au m², au centième de m² supérieur. Une pièce plus grande que 1 m reste au calcul au m² habituel.',
             ],
 
             // ---------- Atelier ----------

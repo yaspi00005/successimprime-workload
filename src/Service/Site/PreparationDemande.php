@@ -25,7 +25,7 @@ final class PreparationDemande
 {
     /**
      * @param array{paliers: list<array{quantite: int, pourcentage: float}>, face_en_plus: int, paliers_b2b: bool}|null $tarifAtelier réglages de l'Atelier 3D (TarifAtelier::reglages)
-     * @param float|null $espacementPiecesM2 espacement des pièces au m² (réglage du local), pour une quantité donnée en m²
+     * @param float|null $espacementPiecesM2 espacement des pièces au m² (réglage du local), pour un produit au m² dont le visiteur donne la taille
      *
      * @return array{client: ?Clients, nouveauClient: bool, prospect: ?Prospect, devis: ?Devis, aChiffrer: ?string}
      */
@@ -53,8 +53,9 @@ final class PreparationDemande
         if (null !== $demande->getConfiguration()) {
             try {
                 $ligne = self::ligneDevis($demande->getConfiguration(), (int) ($demande->getQuantite() ?? 1), $demande->getLargeurCm(), $demande->getHauteurCm(), self::finitionsChoisies($demande));
-                if (null !== $demande->getQuantiteM2() && null !== $espacementPiecesM2) {
-                    // Quantité donnée en m² : la ligne est facturée en pièces au m², comme le visiteur l'a comptée.
+                if (null !== $espacementPiecesM2 && FormulaireDemande::piecesAuM2Possible($demande->getConfiguration())) {
+                    // En ligne, quantité en pièces ou en m² : la ligne est facturée en pièces au m², espacement
+                    // compris (réponse de Yaya du 18/10). Une pièce plus grande que 1 m reste au calcul habituel.
                     $ligne->choisirPiecesAuM2(true, $espacementPiecesM2)->calculerTotaux(false);
                 }
                 $creation = $demande->getCreation();

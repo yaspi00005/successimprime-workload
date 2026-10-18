@@ -4,6 +4,8 @@ namespace App\Service\EspaceClient;
 
 use App\Entity\Clients;
 use App\Entity\CommandesDetails;
+use App\Service\PiecesParMetreCarre;
+use App\Service\Site\FormulaireDemande;
 
 /**
  * « Recommander rapidement » (tableau de bord, maquette EC01) : les
@@ -17,6 +19,7 @@ final class RecommanderClient
         private readonly EspaceClient $espace,
         private readonly NouvelleCommande $nouvelleCommande,
         private readonly MesProduits $mesProduits,
+        private readonly ?PiecesParMetreCarre $piecesM2 = null,
     ) {
     }
 
@@ -101,12 +104,29 @@ final class RecommanderClient
         }
         sort($finitions);
         $quantite = max(1, $l->getQuantite());
-        $prix = NouvelleCommande::estimer($config, $quantite, $largeur, $hauteur, $finitions, $client->isB2B())['total'];
+        // Produit au m² dont le client donne la taille : facturé en pièces au m², comme la commande en ligne.
+        // Une ligne passée en m² se refait en m² (réponse de Yaya du 18/10, Q13) : la page compte les pièces.
+        $piecesM2 = FormulaireDemande::piecesAuM2Possible($config);
+        $m2 = $piecesM2 && 'm2' === $l->getUniteDemandee() && null !== $l->getQuantiteDemandee() ? $l->getQuantiteDemandee() : null;
+        $espacement = $this->piecesM2?->espacement() ?? PiecesParMetreCarre::ESPACEMENT_DEFAUT;
+        $b2b = $client->isB2B();
+        $ajuster = $piecesM2 ? static function (CommandesDetails $ligne) use ($m2, $espacement, $b2b): void {
+            NouvelleCommande::enPiecesAuM2($ligne, $m2, $espacement, $b2b);
+        } : null;
+        $prix = NouvelleCommande::estimer($config, $quantite, $largeur, $hauteur, $finitions, $b2b, null, 24, $ajuster)['total'];
 
         return [
-            'cle' => 'cf'.$config->getId().'|'.$quantite.'|'.$largeur.'|'.$hauteur.'|'.implode(',', $finitions),
+            'cle' => 'cf'.$config->getId().'|'.$quantite.'|'.$largeur.'|'.$hauteur.'|'.implode(',', $finitions).'|'.$m2,
             'prix' => $prix,
-            'lien' => ['app_espace_nouvelle_commande', array_filter(['produit' => $config->getId(), 'quantite' => $quantite, 'largeur' => null !== $largeur ? self::nombreSaisi($largeur) : null, 'hauteur' => null !== $hauteur ? self::nombreSaisi($hauteur) : null, 'finitions' => $finitions], static fn ($v): bool => null !== $v && [] !== $v)],
+            'lien' => ['app_espace_nouvelle_commande', array_filter([
+                'produit' => $config->getId(),
+                'quantite' => $quantite,
+                'largeur' => null !== $largeur ? self::nombreSaisi($largeur) : null,
+                'hauteur' => null !== $hauteur ? self::nombreSaisi($hauteur) : null,
+                'finitions' => $finitions,
+                'unite_quantite' => null !== $m2 ? FormulaireDemande::UNITE_M2 : null,
+                'quantite_m2' => null !== $m2 ? self::nombreSaisi($m2) : null,
+            ], static fn ($v): bool => null !== $v && [] !== $v)],
         ];
     }
 

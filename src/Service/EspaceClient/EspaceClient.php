@@ -220,7 +220,10 @@ final class EspaceClient
         // La désignation porte parfois déjà la taille : « Bâche (400 x 150 cm) ».
         $taille = $largeur > 0 && $longueur > 0 && !preg_match('/\d\s*[x×]\s*\d/u', $nom) ? ' '.self::nombre($largeur).' × '.self::nombre($longueur) : '';
 
-        return $taille.' × '.self::nombre((float) $l->getQuantite());
+        // Quantité donnée en m² (pièces au m²) : la surface demandée, que « Refaire » reprend.
+        $m2 = 'm2' === $l->getUniteDemandee() && null !== $l->getQuantiteDemandee() ? ' ('.number_format($l->getQuantiteDemandee(), 2, ',', ' ').' m²)' : '';
+
+        return $taille.' × '.self::nombre((float) $l->getQuantite()).$m2;
     }
 
     private static function nombre(float $n): string

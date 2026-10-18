@@ -218,7 +218,7 @@ Code : `SiteSuiviController`, `SiteDemandeController`, `App\Service\Site\{SuiviS
 **Au local** : la demande monte par la synchronisation (type `demande_devis`, sens ascendant). Le site ne la montre plus : aucune liste des demandes en ligne. À la réception, `DemandesSite::preparer` :
 - demande de devis d'un numéro connu : rattachée à ce client, devis brouillon à son nom ;
 - d'un numéro inconnu : un prospect source « Site » (montant estimé, relance le jour même) et une fiche client minimale (origine « site », à compléter) car un devis exige un client ;
-- devis brouillon au tarif public (même calcul que le calculateur), avec la demande du visiteur en observation ; un produit hors bornes reste « à chiffrer » ; quantité donnée en m² : la ligne est en pièces au m² avec l'espacement du réglage du local (en pièces : calcul au m² habituel, la case reste à cocher par l'équipe) ;
+- devis brouillon au tarif public (même calcul que le calculateur), avec la demande du visiteur en observation ; un produit hors bornes reste « à chiffrer » ; produit au m² dont le visiteur donne la taille : la ligne est en pièces au m² avec l'espacement du réglage du local, que la quantité soit en pièces ou en m² (réponse de Yaya du 18/10 ; une pièce plus grande que 1 m reste au calcul habituel) ;
 - demande venue de l'Atelier 3D : même devis brouillon, au prix public de l'atelier (seconde face, palier de quantité) avec la désignation de la création ; ses vues et images sont dans Ventes › Créations Studio textile (docs/atelier-3d.md) ;
 - un message est rattaché au client connu ; un message « demande de devis » d'un inconnu devient un prospect ;
 - les personnes qui ont le droit Devis (et les administrateurs) sont prévenues.

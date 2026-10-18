@@ -150,18 +150,20 @@ final class NouvelleCommande
 
     /**
      * Quantité de la commande d'après la page (pièces au m²,
-     * docs/espace-client.md). En pièces, rien ne change. En m², pour un
-     * produit au m² dont le client donne la taille, le nombre de pièces
-     * vient de la surface tapée (celui envoyé par la page ne compte pas) et
-     * « m2 » garde cette surface : la ligne sera facturée en pièces au m²
-     * (enPiecesAuM2). « erreur » : message à montrer sous la surface.
+     * docs/espace-client.md). Pour un produit au m² dont le client donne la
+     * taille, la ligne est facturée en pièces au m² (« piecesM2 », réponse
+     * de Yaya du 18/10), que la quantité soit en pièces ou en m². En m², le
+     * nombre de pièces vient de la surface tapée (celui envoyé par la page
+     * ne compte pas) et « m2 » garde cette surface. « erreur » : message à
+     * montrer sous la surface.
      *
-     * @return array{quantite: int, m2: ?float, erreur: ?string}
+     * @return array{quantite: int, m2: ?float, erreur: ?string, piecesM2: bool}
      */
     public static function quantiteSaisie(ProduitConfiguration $config, int $quantite, string $unite, string $surface, ?float $largeurCm, ?float $hauteurCm, float $espacementMm): array
     {
-        $saisie = ['quantite' => $quantite, 'm2' => null, 'erreur' => null];
-        if (FormulaireDemande::UNITE_M2 !== $unite || !FormulaireDemande::piecesAuM2Possible($config)) {
+        $possible = FormulaireDemande::piecesAuM2Possible($config);
+        $saisie = ['quantite' => $quantite, 'm2' => null, 'erreur' => null, 'piecesM2' => $possible];
+        if (FormulaireDemande::UNITE_M2 !== $unite || !$possible) {
             return $saisie;
         }
         // Taille du format quand le client n'en tape pas, comme construireLigne.
@@ -176,17 +178,23 @@ final class NouvelleCommande
             return ['erreur' => $r['erreur']] + $saisie;
         }
 
-        return isset($r['pieces'], $r['m2']) ? ['quantite' => $r['pieces'], 'm2' => $r['m2'], 'erreur' => null] : $saisie;
+        return isset($r['pieces'], $r['m2']) ? ['quantite' => $r['pieces'], 'm2' => $r['m2']] + $saisie : $saisie;
     }
 
     /**
-     * Quantité donnée en m² : la ligne est facturée en pièces au m²
-     * (espacement compris), comme le client l'a comptée, et garde la
-     * surface tapée. Même calcul pour l'estimation et pour la commande.
+     * Ligne facturée en pièces au m² (espacement compris), comme le client
+     * l'a comptée ; une quantité donnée en m² garde la surface tapée (pour
+     * « Refaire » en m²). Une pièce plus grande que 1 m reste au calcul
+     * habituel. Même calcul pour l'estimation et pour la commande.
      */
-    public static function enPiecesAuM2(CommandesDetails $ligne, float $m2, float $espacementMm, bool $b2b): CommandesDetails
+    public static function enPiecesAuM2(CommandesDetails $ligne, ?float $m2, float $espacementMm, bool $b2b): CommandesDetails
     {
-        return $ligne->choisirPiecesAuM2(true, $espacementMm)->setDemande($m2, 'm2')->calculerTotaux($b2b);
+        $ligne->choisirPiecesAuM2(true, $espacementMm);
+        if (null !== $m2) {
+            $ligne->setDemande($m2, 'm2');
+        }
+
+        return $ligne->calculerTotaux($b2b);
     }
 
     /**

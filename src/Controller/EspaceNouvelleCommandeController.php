@@ -355,7 +355,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
         }
         $m2 = $saisie['m2'];
         $b2b = $client->isB2B();
-        $ajuster = null === $m2 ? null : static function (CommandesDetails $ligne) use ($m2, $espacement, $b2b): void {
+        $ajuster = !$saisie['piecesM2'] ? null : static function (CommandesDetails $ligne) use ($m2, $espacement, $b2b): void {
             NouvelleCommande::enPiecesAuM2($ligne, $m2, $espacement, $b2b);
         };
         $mode = $r->getString('fichier_mode', 'fichier');
@@ -462,7 +462,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
         }
         try {
             $ligne = NouvelleCommande::construireLigne($config, $saisie['quantite'], $largeur, $hauteur, $finitions, $client->isB2B());
-            if (null !== $saisie['m2']) {
+            if ($saisie['piecesM2']) {
                 NouvelleCommande::enPiecesAuM2($ligne, $saisie['m2'], $espacement, $client->isB2B());
             }
         } catch (\DomainException $e) {

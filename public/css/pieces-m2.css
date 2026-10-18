@@ -20,13 +20,11 @@
 
 /* Ligne de devis ou de commande de l'ERP (templates/partials/_pieces_m2_ligne.html.twig). */
 .si-pm2-ligne { margin: 4px 0 10px; padding: 10px 12px; border: 1px dashed #C9D1DE; border-radius: 10px; background: #F7F9FC; }
-.si-pm2-ligne-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
-.si-pm2-ligne-case { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; cursor: pointer; }
-.si-pm2-ligne-case input { width: 18px; height: 18px; margin: 0; }
-.si-pm2-ligne-case input:disabled { cursor: not-allowed; }
+.si-pm2-ligne-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.si-pm2-bascule .btn { min-width: 64px; font-weight: 600; }
+.si-pm2-bascule .btn:disabled { cursor: not-allowed; }
 .si-pm2-ligne-info { font-size: 13px; color: #5B6474; }
-.si-pm2-ligne-saisie { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
-.si-pm2-ligne-libelle { font-size: 13px; color: #5B6474; }
+.si-pm2-ligne-libelle { font-size: 13px; font-weight: 600; color: #5B6474; }
 .si-pm2-ligne-m2 { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; }
 .si-pm2-ligne-m2[hidden] { display: none; }
 .si-pm2-ligne-m2 input { width: 110px; }

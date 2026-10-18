@@ -151,10 +151,41 @@ final class HistoriqueDesEnvoisTest extends TestCase
         self::assertSame('00223 76 00 00 99', CreditsMessagesController::destinataireCsv('+223 76 00 00 99'));
         self::assertSame('00223 •• •• 00 99', CreditsMessagesController::destinataireCsv('+223 •• •• 00 99'));
         self::assertSame('a•••@gmail.com', CreditsMessagesController::destinataireCsv('a•••@gmail.com'));
+        self::assertSame("'+awa@gmail.com", CreditsMessagesController::destinataireCsv('+awa@gmail.com'), 'une adresse n\'est pas un numéro');
         self::assertSame("'=SOMME(A1:A9)", CreditsMessagesController::cellule('=SOMME(A1:A9)'));
         self::assertSame("'-1 SMS", CreditsMessagesController::cellule('-1 SMS'));
         self::assertSame('Boîte pleine', CreditsMessagesController::cellule('Boîte pleine'));
         self::assertSame('', CreditsMessagesController::cellule(''));
+    }
+
+    public function testLePersonnelResteMasqueSansLaDirection(): void
+    {
+        $client = EnvoiMessage::nouveau(EnvoiMessage::SMS, 'code_connexion', '22376000099', EnvoiMessage::ENVOYE, null, 1, null, new \DateTimeImmutable());
+        $personnel = EnvoiMessage::nouveau(EnvoiMessage::EMAIL, 'code_securite', 'directrice@gmail.com', EnvoiMessage::ENVOYE, null, 1, null, new \DateTimeImmutable());
+        $rapport = EnvoiMessage::nouveau(EnvoiMessage::EMAIL, 'rapport_semaine', 'gerant@gmail.com', EnvoiMessage::ENVOYE, null, 1, null, new \DateTimeImmutable());
+
+        self::assertFalse($client->estPourLePersonnel());
+        self::assertTrue($personnel->estPourLePersonnel());
+        self::assertTrue($rapport->estPourLePersonnel());
+        // Droit Clients sans être la direction : le client en entier, le personnel masqué.
+        self::assertSame('+223 76 00 00 99', $client->destinataireVisible(true, false));
+        self::assertSame('d•••@gmail.com', $personnel->destinataireVisible(true, false));
+        self::assertSame('g•••@gmail.com', $rapport->destinataireVisible(true, false));
+        // Direction : tout ; sans le droit Clients : rien.
+        self::assertSame('directrice@gmail.com', $personnel->destinataireVisible(true, true));
+        self::assertSame('+223 •• •• 00 99', $client->destinataireVisible(false, false));
+    }
+
+    public function testCodeDeSecuriteDuPersonnelAPart(): void
+    {
+        $codes = new \ReflectionMethod(\App\Security\CodeDeConnexion::class, 'typeEnvoi');
+
+        self::assertSame('code_securite', $codes->invoke(null, \App\Security\CodeDeConnexion::PERSONNEL));
+        self::assertSame('code_connexion', $codes->invoke(null, \App\Security\CodeDeConnexion::ESPACE));
+        self::assertArrayHasKey('code_securite', EnvoiMessage::TYPES);
+        foreach (EnvoiMessage::TYPES_PERSONNEL as $type) {
+            self::assertArrayHasKey($type, EnvoiMessage::TYPES);
+        }
     }
 
     public function testDestinataireMasqueOuLisible(): void

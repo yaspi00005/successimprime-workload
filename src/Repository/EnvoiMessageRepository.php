@@ -47,7 +47,7 @@ class EnvoiMessageRepository extends ServiceEntityRepository
     /**
      * Une page de l'historique, les plus récents d'abord.
      *
-     * @param array{canal?: string, statut?: string, type?: string, origine?: string, du?: ?\DateTimeImmutable, au?: ?\DateTimeImmutable, q?: string, parDestinataire?: bool} $filtres
+     * @param array{canal?: string, statut?: string, type?: string, origine?: string, du?: ?\DateTimeImmutable, au?: ?\DateTimeImmutable, q?: string, parDestinataire?: bool, personnel?: bool} $filtres
      *
      * @return array{lignes: list<EnvoiMessage>, total: int}
      */
@@ -66,7 +66,7 @@ class EnvoiMessageRepository extends ServiceEntityRepository
     /**
      * Pour l'export : au plus $max lignes, les plus récentes d'abord.
      *
-     * @param array{canal?: string, statut?: string, type?: string, origine?: string, du?: ?\DateTimeImmutable, au?: ?\DateTimeImmutable, q?: string, parDestinataire?: bool} $filtres
+     * @param array{canal?: string, statut?: string, type?: string, origine?: string, du?: ?\DateTimeImmutable, au?: ?\DateTimeImmutable, q?: string, parDestinataire?: bool, personnel?: bool} $filtres
      *
      * @return iterable<EnvoiMessage>
      */
@@ -79,7 +79,7 @@ class EnvoiMessageRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param array{canal?: string, statut?: string, type?: string, origine?: string, du?: ?\DateTimeImmutable, au?: ?\DateTimeImmutable, q?: string, parDestinataire?: bool} $filtres
+     * @param array{canal?: string, statut?: string, type?: string, origine?: string, du?: ?\DateTimeImmutable, au?: ?\DateTimeImmutable, q?: string, parDestinataire?: bool, personnel?: bool} $filtres
      */
     private function filtrer(array $filtres): QueryBuilder
     {
@@ -95,15 +95,21 @@ class EnvoiMessageRepository extends ServiceEntityRepository
         if (null !== ($filtres['au'] ?? null)) {
             $qb->andWhere('e.envoyeLe < :au')->setParameter('au', $filtres['au']->modify('+1 day'));
         }
-        // Recherche dans l'objet, et dans le destinataire (chiffres ou adresse) seulement si le contrôleur le permet (droit Clients).
+        // Recherche dans l'objet, et dans le destinataire (chiffres ou adresse) seulement si le contrôleur le permet (droit Clients) ;
+        // celui d'un message au personnel, seulement pour la direction (sinon on devinerait ses connexions).
         $q = trim((string) ($filtres['q'] ?? ''));
         if ('' !== $q) {
             $chiffres = preg_replace('/\D+/', '', $q) ?? '';
             $parDestinataire = (bool) ($filtres['parDestinataire'] ?? false);
-            $or = $parDestinataire ? $qb->expr()->orX('e.destinataire LIKE :q', 'e.sujet LIKE :q') : $qb->expr()->orX('e.sujet LIKE :q');
+            $personnel = (bool) ($filtres['personnel'] ?? false);
+            $dans = static fn (string $condition): string => $personnel ? $condition : '('.$condition.' AND e.type NOT IN (:typesPersonnel))';
+            $or = $parDestinataire ? $qb->expr()->orX($dans('e.destinataire LIKE :q'), 'e.sujet LIKE :q') : $qb->expr()->orX('e.sujet LIKE :q');
             if ($parDestinataire && \strlen($chiffres) >= 4) {
-                $or->add('e.destinataire LIKE :chiffres');
+                $or->add($dans('e.destinataire LIKE :chiffres'));
                 $qb->setParameter('chiffres', '%'.$chiffres.'%');
+            }
+            if ($parDestinataire && !$personnel) {
+                $qb->setParameter('typesPersonnel', EnvoiMessage::TYPES_PERSONNEL);
             }
             $qb->andWhere($or)->setParameter('q', '%'.addcslashes(mb_strtolower($q), '%_').'%');
         }

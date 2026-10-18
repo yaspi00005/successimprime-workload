@@ -30,8 +30,8 @@
 
 {% block sous_ecran %}{% endblock %}
 
-{# Destinataire : complet avec le droit Clients, masqué sinon. #}
-{% macro destinataire(e, complet) %}{{ complet ? e.destinataireLisible : e.destinataireMasque }}{% endmacro %}
+{# Destinataire : complet avec le droit Clients (message au personnel : direction seulement), masqué sinon. #}
+{% macro destinataire(e, complet, personnel) %}{{ e.destinataireVisible(complet, personnel) }}{% endmacro %}
 
 {# Pastille de l'état d'un envoi. #}
 {% macro statut(e) %}

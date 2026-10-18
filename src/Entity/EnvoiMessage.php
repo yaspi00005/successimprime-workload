@@ -59,6 +59,7 @@ class EnvoiMessage
     /** Sorte de message : ce que l'application envoyait, sans le texte. */
     public const TYPES = [
         'code_connexion' => 'Code de connexion',
+        'code_securite' => 'Code de sécurité (personnel)',
         'notification_client' => 'Notification au client',
         'compte_entreprise' => 'Compte entreprise',
         'rappel_paiement' => 'Rappel de paiement',
@@ -71,6 +72,14 @@ class EnvoiMessage
         'rapport_semaine' => 'Rapport de la semaine',
         'autre' => 'Autre',
     ];
+
+    /**
+     * Messages au personnel (code de sécurité de l'administration en ligne,
+     * rapport de la semaine) : leur destinataire n'est pas un client. Son
+     * adresse ou son numéro en entier, et la recherche dessus, sont pour la
+     * direction seulement (le droit Clients ne suffit pas).
+     */
+    public const TYPES_PERSONNEL = ['code_securite', 'rapport_semaine'];
 
     public const LONGUEUR_SUJET = 190;
     public const LONGUEUR_ERREUR = 255;
@@ -159,6 +168,18 @@ class EnvoiMessage
         }
 
         return '+'.$this->destinataire;
+    }
+
+    public function estPourLePersonnel(): bool { return \in_array($this->type, self::TYPES_PERSONNEL, true); }
+
+    /**
+     * Destinataire tel que cette personne peut le voir : en entier avec le
+     * droit Clients (et pour un message au personnel, seulement la direction),
+     * masqué sinon.
+     */
+    public function destinataireVisible(bool $voirClients, bool $voirPersonnel): string
+    {
+        return ($this->estPourLePersonnel() ? $voirPersonnel : $voirClients) ? $this->getDestinataireLisible() : $this->getDestinataireMasque();
     }
 
     public function getStatut(): string { return $this->statut; }

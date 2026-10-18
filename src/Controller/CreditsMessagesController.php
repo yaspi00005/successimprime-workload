@@ -146,6 +146,7 @@ final class CreditsMessagesController extends AbstractController
     {
         $filtres = $this->filtres($request);
         $complet = $this->isGranted('ROLE_CLIENT');
+        $personnel = $this->isGranted('ROLE_ADMIN');
         $lignes = $this->envois->pourExport($filtres, self::EXPORT_MAX);
 
         // En mémoire (20 000 lignes au plus, quelques Mo) : la recette des accès relit le fichier.
@@ -159,7 +160,7 @@ final class CreditsMessagesController extends AbstractController
                 $e->getLibelleCanal(),
                 $e->getLibelleType(),
                 $complet ? self::cellule((string) $e->getSujet()) : '',
-                self::destinataireCsv($complet ? $e->getDestinataireLisible() : $e->getDestinataireMasque()),
+                self::destinataireCsv($e->destinataireVisible($complet, $personnel)),
                 $e->getLibelleStatut(),
                 self::cellule((string) $e->getErreur()),
                 $e->getUnites(),
@@ -177,11 +178,12 @@ final class CreditsMessagesController extends AbstractController
 
     /**
      * Tableur : « +223 76… » serait lu comme une formule ; l'indicatif
-     * s'écrit « 00223 ».
+     * s'écrit « 00223 ». Une adresse qui commence par « + » reste telle
+     * quelle, protégée comme le reste.
      */
     public static function destinataireCsv(string $destinataire): string
     {
-        return str_starts_with($destinataire, '+') ? '00'.substr($destinataire, 1) : self::cellule($destinataire);
+        return 1 === preg_match('/^\+[\d •]+$/u', $destinataire) ? '00'.substr($destinataire, 1) : self::cellule($destinataire);
     }
 
     /** Un texte qui commence par = + - @ ne doit jamais devenir une formule dans le tableur. */
@@ -193,9 +195,11 @@ final class CreditsMessagesController extends AbstractController
     /**
      * Filtres lus dans l'adresse ; une valeur inconnue est ignorée. La
      * recherche (destinataire et objet) demande le droit Clients : sans
-     * lui, ni l'un ni l'autre n'est affiché, et ne doit se deviner.
+     * lui, ni l'un ni l'autre n'est affiché, et ne doit se deviner. De
+     * même, le destinataire d'un message au personnel ne se cherche qu'avec
+     * la direction.
      *
-     * @return array{canal: string, statut: string, type: string, origine: string, du: ?\DateTimeImmutable, au: ?\DateTimeImmutable, q: string, parDestinataire: bool}
+     * @return array{canal: string, statut: string, type: string, origine: string, du: ?\DateTimeImmutable, au: ?\DateTimeImmutable, q: string, parDestinataire: bool, personnel: bool}
      */
     private function filtres(Request $request): array
     {
@@ -220,11 +224,12 @@ final class CreditsMessagesController extends AbstractController
             'au' => $date('au'),
             'q' => $this->isGranted('ROLE_CLIENT') ? mb_substr(trim((string) $request->query->get('q', '')), 0, 80) : '',
             'parDestinataire' => $this->isGranted('ROLE_CLIENT'),
+            'personnel' => $this->isGranted('ROLE_ADMIN'),
         ];
     }
 
     /**
-     * @param array{canal: string, statut: string, type: string, origine: string, du: ?\DateTimeImmutable, au: ?\DateTimeImmutable, q: string, parDestinataire: bool} $filtres
+     * @param array{canal: string, statut: string, type: string, origine: string, du: ?\DateTimeImmutable, au: ?\DateTimeImmutable, q: string, parDestinataire: bool, personnel: bool} $filtres
      *
      * @return array<string, string>
      */
@@ -242,14 +247,16 @@ final class CreditsMessagesController extends AbstractController
     }
 
     /**
-     * voirDestinataire : numéro, adresse et objet en entier (droit Clients).
+     * voirDestinataire : numéro, adresse et objet en entier (droit Clients) ;
+     * voirPersonnel : ceux d'un message au personnel (direction seulement).
      *
-     * @return array{voirDestinataire: bool, voirPrix: bool, peutRegler: bool}
+     * @return array{voirDestinataire: bool, voirPersonnel: bool, voirPrix: bool, peutRegler: bool}
      */
     private function droitsDeLaPage(): array
     {
         return [
             'voirDestinataire' => $this->isGranted('ROLE_CLIENT'),
+            'voirPersonnel' => $this->isGranted('ROLE_ADMIN'),
             'voirPrix' => $this->isGranted('ROLE_TRESORERIE_VOIR'),
             'peutRegler' => $this->parametres->peutVoir(CreditsMessages::TUILE),
         ];

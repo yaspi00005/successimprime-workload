@@ -91,7 +91,7 @@
 								<td class="cm-c-date">{{ e.envoyeLe|date('d/m/Y') }}<small>{{ e.envoyeLe|date('H:i') }}</small></td>
 								<td class="cm-c-canal">{{ e.libelleCanal }}</td>
 								<td class="cm-c-type">{{ e.libelleType }}{% if e.sujet and voirDestinataire %}<small class="cm-sujet">{{ e.sujet }}</small>{% endif %}</td>
-								<td class="cm-c-dest"><span class="cm-mobile">{{ e.libelleCanal }} · </span>{{ m.destinataire(e, voirDestinataire) }}</td>
+								<td class="cm-c-dest"><span class="cm-mobile">{{ e.libelleCanal }} · </span>{{ m.destinataire(e, voirDestinataire, voirPersonnel) }}</td>
 								<td class="cm-c-etat">{{ m.statut(e) }}{% if e.erreur %}<small class="cm-erreur">{{ e.erreur }}</small>{% endif %}</td>
 								<td class="num cm-c-unites">{{ e.unites }}</td>
 								<td class="cm-c-depuis">{{ e.libelleOrigine }}</td>

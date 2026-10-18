@@ -112,7 +112,8 @@
 					<input type="hidden" name="quoi" value="sms">
 					<div>
 						<label for="cm-solde">SMS restants</label>
-						<input id="cm-solde" name="sms_solde_manuel" type="number" inputmode="numeric" min="0" max="100000000" step="1" class="form-control form-control-sm" value="{{ sms.saisi ?? '' }}" required>
+						{# Le solde estimé (saisie moins les SMS partis depuis) : changer seulement la date ne rend pas les SMS déjà partis. #}
+						<input id="cm-solde" name="sms_solde_manuel" type="number" inputmode="numeric" min="0" max="100000000" step="1" class="form-control form-control-sm" value="{{ sms.source == 'manuel' ? sms.unites : '' }}" required>
 					</div>
 					<div>
 						<label for="cm-fin-sms">Fin du pack</label>
@@ -231,7 +232,7 @@
 								<td class="cm-c-date">{{ e.envoyeLe|date('d/m H:i') }}</td>
 								<td class="cm-c-canal">{{ e.libelleCanal }}</td>
 								<td class="cm-c-type">{{ e.libelleType }}{% if e.sujet and voirDestinataire %}<small class="cm-sujet">{{ e.sujet }}</small>{% endif %}</td>
-								<td class="cm-c-dest"><span class="cm-mobile">{{ e.libelleCanal }} · </span>{{ m.destinataire(e, voirDestinataire) }}</td>
+								<td class="cm-c-dest"><span class="cm-mobile">{{ e.libelleCanal }} · </span>{{ m.destinataire(e, voirDestinataire, voirPersonnel) }}</td>
 								<td class="cm-c-etat">{{ m.statut(e) }}</td>
 							</tr>
 						{% endfor %}
@@ -239,7 +240,7 @@
 				</table>
 			</div>
 		{% endif %}
-		<p class="cm-note">Le texte des messages n'est jamais gardé (ni code, ni lien). {{ voirDestinataire ? 'Numéros, adresses et objets en entier : vous avez le droit Clients.' : 'Numéros et adresses masqués, objets des e-mails cachés : le droit Clients les montre.' }}
+		<p class="cm-note">Le texte des messages n'est jamais gardé (ni code, ni lien). {{ voirDestinataire ? 'Numéros, adresses et objets en entier : vous avez le droit Clients.' : 'Numéros et adresses masqués, objets des e-mails cachés : le droit Clients les montre.' }}{{ voirDestinataire and not voirPersonnel ? ' Ceux du personnel (code de sécurité, rapport de la semaine) restent masqués : la direction seule les voit.' }}
 			{%- if enLigne %} Ici, seulement les envois partis du site en ligne : l'historique complet, les limites e-mail et les alertes sont sur l'ERP de la boutique.
 			{%- else %} Les envois du site en ligne (codes de connexion, notifications de l'espace client) arrivent par la synchronisation.{% endif %}</p>
 	</section>

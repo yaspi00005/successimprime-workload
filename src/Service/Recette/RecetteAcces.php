@@ -105,6 +105,8 @@ final class RecetteAcces
     private const ESSAI_ADRESSE = 'recette.credits@exemple.ml';
     /** Objet d'e-mail d'essai : un modèle peut y mettre le nom du client, caché sans le droit Clients. */
     private const ESSAI_OBJET = 'Rappel pour Témoin Recette';
+    /** Destinataire d'un code de sécurité du personnel : en entier pour la direction seulement. */
+    private const ESSAI_PERSONNEL = 'recette.personnel@exemple.ml';
 
     private ?UsernamePasswordToken $jeton = null;
 
@@ -580,10 +582,12 @@ final class RecetteAcces
     /**
      * Crédits SMS et e-mail (docs/messagerie-marketing.md) : l'historique
      * des envois et son export ne montrent le numéro, l'adresse et l'objet
-     * qu'avec le droit Clients ; sans le droit « Crédits SMS et e-mail »,
-     * l'écran, l'historique et l'export sont refusés, adresse tapée ou non.
-     * Deux envois d'essai et le droit prêté restent dans la transaction de
-     * la recette : annulés à la fin.
+     * qu'avec le droit Clients, et le destinataire d'un message au personnel
+     * (code de sécurité de l'administration en ligne) qu'à la direction ;
+     * sans le droit « Crédits SMS et e-mail », l'écran, l'historique et
+     * l'export sont refusés, adresse tapée ou non. Trois envois d'essai et
+     * les droits prêtés restent dans la transaction de la recette : annulés
+     * à la fin.
      *
      * @param list<User> $comptes
      */
@@ -595,13 +599,15 @@ final class RecetteAcces
         $le = new \DateTimeImmutable();
         $this->em->persist(EnvoiMessage::nouveau(EnvoiMessage::SMS, 'relance_retrait', self::ESSAI_NUMERO, EnvoiMessage::ENVOYE, null, 1, null, $le));
         $this->em->persist(EnvoiMessage::nouveau(EnvoiMessage::EMAIL, 'code_connexion', self::ESSAI_ADRESSE, EnvoiMessage::ECHEC, 'Boîte pleine', 0, self::ESSAI_OBJET, $le));
+        $this->em->persist(EnvoiMessage::nouveau(EnvoiMessage::EMAIL, 'code_securite', self::ESSAI_PERSONNEL, EnvoiMessage::ENVOYE, null, 1, 'Votre code de sécurité Succès Imprim', $le));
         $this->em->flush();
         $pages = [
             'app_credits_messages_index' => $this->routeur->generate('app_credits_messages_index'),
             'app_credits_messages_envois' => $this->routeur->generate('app_credits_messages_envois'),
             'app_credits_messages_export' => $this->routeur->generate('app_credits_messages_export'),
         ];
-        $complet = ['76 00 99 88', '76009988', 'recette.credits', 'Témoin Recette'];
+        // Recherche du destinataire d'un message au personnel : trouvée par la direction seulement.
+        $recherche = $this->routeur->generate('app_credits_messages_envois', ['q' => 'recette.personnel']);
 
         // Sans le droit : tout refusé.
         foreach ($comptes as $compte) {
@@ -621,43 +627,59 @@ final class RecetteAcces
             $bilan->controler(\sprintf('%s : crédits SMS et e-mail refusés sans le droit', $compte->getUserIdentifier()), [] === $ouvertes, [] === $ouvertes ? 'écran, historique et export refusés' : implode(' ; ', $ouvertes));
         }
 
-        // Avec le droit seul (sans le droit Clients) : numéros et adresses masqués, à l'écran et dans l'export.
-        $masque = null;
-        foreach ($comptes as $c) {
-            if (!\in_array(User::ROLE_ADMIN, $c->getRoles(), true) && !\in_array('ROLE_CLIENT', $c->getRoles(), true) && !LivreurSeul::est($c->getRoles())) {
-                $masque = $c;
-                break;
+        $client = ['76 00 99 88', '76009988', 'recette.credits', 'Témoin Recette'];
+        $profils = [
+            // Avec le droit seul (sans le droit Clients) : numéros et adresses masqués, à l'écran et dans l'export.
+            'masqué (droit Crédits sans le droit Clients)' => [
+                static fn (array $r): bool => !\in_array(User::ROLE_ADMIN, $r, true) && !\in_array('ROLE_CLIENT', $r, true) && !LivreurSeul::est($r),
+                // Sans le droit Clients, la recherche n'est pas proposée (et ignorée) : rien à essayer.
+                [...$client, 'recette.personnel'], ['•• •• 99 88'], null,
+            ],
+            // Droit Clients sans être la direction : les clients en entier, le personnel masqué (et introuvable par la recherche).
+            'clients en entier, personnel masqué (droit Clients, pas la direction)' => [
+                static fn (array $r): bool => !\in_array(User::ROLE_ADMIN, $r, true) && \in_array('ROLE_CLIENT', $r, true) && !LivreurSeul::est($r),
+                ['recette.personnel'], ['76 00 99 88', 'recette.credits'], false,
+            ],
+            // La direction : tout en entier, et la recherche trouve le message au personnel.
+            'complet (direction)' => [
+                static fn (array $r): bool => \in_array(User::ROLE_ADMIN, $r, true),
+                [], ['76 00 99 88', 'recette.credits', 'Témoin Recette', 'recette.personnel'], true,
+            ],
+        ];
+        foreach ($profils as $libelle => [$convient, $interdits, $attendus, $trouve]) {
+            $compte = null;
+            foreach ($comptes as $c) {
+                if ($convient($c->getRoles())) {
+                    $compte = $c;
+                    break;
+                }
             }
-        }
-        if (null === $masque) {
-            $bilan->controler('Crédits SMS et e-mail : aucun compte sans le droit Clients pour vérifier le masquage', false);
-        } else {
-            $masque = $this->em->getRepository(User::class)->find($masque->getId()) ?? $masque;
-            $masque->definirDroits([...$masque->getDroitsEffectifs(), 'ROLE_CREDITS_MESSAGES']);
-            $this->em->flush();
-            $this->verifierMasquageCredits($masque, $pages, $complet, true, $bilan);
-        }
-
-        // La direction (droit Clients) : le numéro complet est bien là (le contrôle précédent a vu les lignes d'essai).
-        foreach ($comptes as $c) {
-            if (\in_array(User::ROLE_ADMIN, $c->getRoles(), true)) {
-                $this->verifierMasquageCredits($c, $pages, $complet, false, $bilan);
-                break;
+            if (null === $compte) {
+                $bilan->controler('Crédits SMS et e-mail : aucun compte pour vérifier l\'historique '.$libelle, false);
+                continue;
             }
+            if (!\in_array(User::ROLE_ADMIN, $compte->getRoles(), true)) {
+                $compte = $this->em->getRepository(User::class)->find($compte->getId()) ?? $compte;
+                $compte->definirDroits([...$compte->getDroitsEffectifs(), 'ROLE_CREDITS_MESSAGES']);
+                $this->em->flush();
+            }
+            $this->verifierMasquageCredits($compte, $pages + ['recherche' => $recherche], $interdits, $attendus, $trouve, $libelle, $bilan);
         }
     }
 
     /**
      * @param array<string, string> $pages
-     * @param list<string>          $complet formes complètes du numéro, de l'adresse et de l'objet d'essai
+     * @param list<string>          $interdits formes complètes qui ne doivent pas paraître (fuite)
+     * @param list<string>          $attendus  ce qui doit paraître sur chaque page
+     * @param bool|null             $trouve    la recherche du destinataire du personnel doit-elle le trouver ? (null : pas de recherche)
      */
-    private function verifierMasquageCredits(User $compte, array $pages, array $complet, bool $masque, BilanRecette $bilan): void
+    private function verifierMasquageCredits(User $compte, array $pages, array $interdits, array $attendus, ?bool $trouve, string $libelle, BilanRecette $bilan): void
     {
         $identifiant = $compte->getUserIdentifier();
         $this->jeton = new UsernamePasswordToken($compte, 'main', $compte->getRoles());
         $session = $this->navigateur->session($compte);
         $constats = [];
-        foreach (['app_credits_messages_index', 'app_credits_messages_envois', 'app_credits_messages_export'] as $route) {
+        foreach (null === $trouve ? ['app_credits_messages_index', 'app_credits_messages_envois', 'app_credits_messages_export'] : ['app_credits_messages_index', 'app_credits_messages_envois', 'app_credits_messages_export', 'recherche'] as $route) {
             $reponse = $this->navigateur->get($pages[$route], $session);
             $texte = $reponse->estHtml() ? $reponse->texte() : $reponse->contenu;
             if (Reponse::OUVERT !== $reponse->etat()) {
@@ -665,21 +687,28 @@ final class RecetteAcces
                 $bilan->constater(Reponse::ERREUR === $reponse->etat() ? BilanRecette::ERREUR : BilanRecette::A_EXAMINER, 'menu_refuse', $route, $pages[$route], $identifiant, 'droit « Crédits SMS et e-mail » donné mais la page répond « '.$reponse->etat().' »');
                 continue;
             }
-            $vus = array_values(array_filter($complet, static fn (string $f): bool => str_contains($texte, $f)));
-            if ($masque && [] !== $vus) {
+            $vus = array_values(array_filter($interdits, static fn (string $f): bool => str_contains($texte, $f)));
+            if ([] !== $vus) {
                 $constats[] = $pages[$route].' montre '.implode(', ', $vus);
-                $bilan->constater(BilanRecette::FUITE, 'destinataire', $route, $pages[$route], $identifiant, 'numéro, adresse ou objet en entier sans le droit Clients : '.implode(', ', $vus));
+                $bilan->constater(BilanRecette::FUITE, 'destinataire', $route, $pages[$route], $identifiant, 'numéro, adresse ou objet en entier sans le droit : '.implode(', ', $vus));
             }
-            if ($masque && !str_contains($texte, '•• •• 99 88')) {
-                $constats[] = $pages[$route].' sans le numéro masqué de l\'essai';
+            if ('recherche' === $route) {
+                // Sans la direction, la recherche ne doit pas trouver le message au personnel (ses connexions se devineraient).
+                if ($trouve !== !str_contains($texte, 'Aucun envoi avec ces filtres')) {
+                    $constats[] = $pages[$route].($trouve ? ' ne trouve pas' : ' trouve').' le message au personnel';
+                    if (!$trouve) {
+                        $bilan->constater(BilanRecette::FUITE, 'destinataire', 'app_credits_messages_envois', $pages[$route], $identifiant, 'la recherche trouve le destinataire d\'un message au personnel sans être la direction');
+                    }
+                }
+                continue;
             }
             // Écran « +223 76 00 99 88 », export « 00223 76 00 99 88 » (pas de formule dans le tableur).
-            $manquent = array_diff(['76 00 99 88', 'recette.credits', 'Témoin Recette'], $vus);
-            if (!$masque && [] !== $manquent) {
+            $manquent = array_values(array_filter($attendus, static fn (string $f): bool => !str_contains($texte, $f)));
+            if ([] !== $manquent) {
                 $constats[] = $pages[$route].' sans '.implode(', ', $manquent);
             }
         }
-        $bilan->controler(\sprintf('%s : historique des envois %s', $identifiant, $masque ? 'masqué (droit Crédits sans le droit Clients)' : 'complet (droit Clients)'), [] === $constats, [] === $constats ? 'derniers envois, historique et export CSV vérifiés' : implode(' ; ', $constats));
+        $bilan->controler(\sprintf('%s : historique des envois %s', $identifiant, $libelle), [] === $constats, [] === $constats ? 'derniers envois, historique, recherche et export CSV vérifiés' : implode(' ; ', $constats));
     }
 
     /**

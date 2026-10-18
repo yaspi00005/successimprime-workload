@@ -102,7 +102,7 @@ L'écran, l'aperçu, le PDF et l'essai n'existent que sur l'ERP local : en ligne
 ## Vérification
 
 - Tests : `tests/Unit/Service/Rapports` (bornes des périodes, heure d'envoi et rattrapage, une seule fois par période, parties selon les droits, modèles HTML et texte sans montant ni nom sans le droit, erreurs sans secret) et `tests/Unit/Controller/RapportsMailControllerTest.php`.
-- Recette des accès (`app:recette:acces`, docs/recette-par-role.md) : seule la Direction choisit les destinataires et renvoie un rapport ; sans le droit, pas d'essai ; hors Direction, l'aperçu ne montre jamais la version d'un autre ; un compte qui n'a que le droit du rapport ne voit ni montant, ni nom de client, ni partie réservée.
+- Recette des accès (`app:recette:acces`, docs/recette-par-role.md) : seule la Direction choisit les destinataires et renvoie un rapport ; sans le droit, pas d'essai ; hors Direction, l'aperçu ne montre jamais la version d'un autre ; l'aperçu du mois de chaque compte qui a le droit a exactement les parties que ses droits ouvrent ; un compte qui n'a que le droit du rapport ne voit ni montant, ni nom de client, ni partie réservée.
 
 ## Limites connues
 

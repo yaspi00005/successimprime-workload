@@ -8,8 +8,11 @@ use App\Entity\EnvoiRapport;
 use App\Entity\User;
 use App\Service\Rapports\DestinatairesRapports;
 use App\Service\Rapports\DroitsRapport;
+use App\Service\Rapports\PeriodeRapport;
+use App\Service\Rapports\RapportPeriodique;
 use App\Service\Statistiques\Objectifs;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Routing\RouterInterface;
 
 /**
@@ -19,6 +22,8 @@ use Symfony\Component\Routing\RouterInterface;
  *    même avec un jeton de formulaire valide ;
  *  - sans le droit « Chiffre d'affaires global », pas d'essai envoyé ;
  *  - hors Direction, « ?pour= » ne montre jamais la version d'un autre ;
+ *  - pour chaque compte qui reçoit les rapports, son aperçu du mois a
+ *    exactement les parties que ses droits ouvrent (RapportPeriodique::parties) ;
  *  - un compte avec le seul droit du rapport (droits retirés le temps de
  *    la recette) ne voit dans son e-mail ni montant, ni nom de client,
  *    ni les parties d'argent, de l'équipe ou du stock.
@@ -31,6 +36,22 @@ final class RecetteRapportsMail
 
     /** Titres des parties réservées à d'autres droits, dans le corps de l'e-mail. */
     private const PARTIES_FERMEES = ['Chiffre d’affaires', 'Encaissements', 'Créances clients', 'Dépenses et trésorerie', 'Marge', 'Équipe', 'Stock sous le seuil', 'Plus gros restes à payer', 'Nouveaux clients :'];
+
+    /**
+     * Titres de chaque partie dans le corps de l'e-mail (_corps.html.twig).
+     * Les noms des clients dépendent des données : seulement leur absence
+     * est vérifiée.
+     */
+    private const TITRES = [
+        'ventes' => ['Chiffre d’affaires'],
+        'encaissements' => ['Encaissements'],
+        'creances' => ['Créances clients'],
+        'tresorerie' => ['Dépenses et trésorerie'],
+        'marge' => ['Taux de marge brute du mois'],
+        'equipe' => ['Équipe'],
+        'stock' => ['Stock sous le seuil'],
+        'noms_clients' => ['Plus gros restes à payer', 'Nouveaux clients :'],
+    ];
 
     public function __construct(
         private readonly NavigateurInterne $navigateur,
@@ -102,6 +123,42 @@ final class RecetteRapportsMail
             if (!$ok && Reponse::OUVERT === $reponse->etat()) {
                 $bilan->constater(BilanRecette::FUITE, 'rapports_mail', 'app_rapports_mail_apercu', $chemin, $identifiant, 'version du rapport d\'une autre personne');
             }
+        }
+
+        if ($droit) {
+            $this->verifierParties($compte, $session, $bilan);
+        }
+    }
+
+    /**
+     * Son aperçu du mois (exactement l'e-mail qu'il reçoit) a les parties
+     * que ses droits ouvrent, et aucune autre.
+     */
+    private function verifierParties(User $compte, MockArraySessionStorage $session, BilanRecette $bilan): void
+    {
+        $identifiant = $compte->getUserIdentifier();
+        $parties = RapportPeriodique::parties($this->destinataires->droits($compte), PeriodeRapport::MOIS);
+        $chemin = $this->routeur->generate('app_rapports_mail_apercu', ['type' => 'mois']);
+        $reponse = $this->navigateur->get($chemin, $session);
+        $corps = self::corpsDuCourriel($reponse->contenu);
+
+        $enTrop = [];
+        $manquantes = [];
+        foreach (self::TITRES as $partie => $titres) {
+            $vus = array_values(array_filter($titres, static fn (string $t): bool => str_contains($corps, $t)));
+            if (!$parties[$partie] && [] !== $vus) {
+                $enTrop[] = implode(', ', $vus);
+            } elseif ($parties[$partie] && 'noms_clients' !== $partie && [] === $vus) {
+                $manquantes[] = $titres[0];
+            }
+        }
+        $ok = Reponse::OUVERT === $reponse->etat() && '' !== $corps && [] === $enTrop && [] === $manquantes;
+        $bilan->controler(\sprintf('%s : le rapport par e-mail a les parties de ses droits (%s)', $identifiant, DroitsRapport::version($this->destinataires->droits($compte))), $ok, $chemin.' → '.$reponse->etat()
+            .([] !== $enTrop ? ' ; en trop : '.implode(' ; ', $enTrop) : '')
+            .([] !== $manquantes ? ' ; manquantes : '.implode(', ', $manquantes) : '')
+            .('' === $corps ? ' ; corps de l\'e-mail introuvable' : ''));
+        if ([] !== $enTrop && Reponse::OUVERT === $reponse->etat()) {
+            $bilan->constater(BilanRecette::FUITE, 'rapports_mail', 'app_rapports_mail_apercu', $chemin, $identifiant, 'rapport par e-mail : partie sans le droit qui va avec ('.implode(' ; ', $enTrop).')');
         }
     }
 

@@ -1,6 +1,6 @@
 {#
 	Contact (maquette 11) : message court (nom, téléphone, objet, message),
-	WhatsApp, l'allée en photo, adresse, horaires (tuile Horaires) et plan
+	WhatsApp, réseaux sociaux, l'allée en photo, adresse, horaires (tuile Horaires) et plan
 	seulement quand le lien du plan est réglé (tuile « Site : page
 	Contact »), puis la galerie « Notre local » (vraies photos du local).
 	Avec la position de la boutique, une vraie carte remplace le plan
@@ -66,6 +66,8 @@
 					{% endif %}
 				</div>
 				<p class="si-note">Votre nom et votre numéro servent seulement à vous répondre.</p>
+				{# Réseaux sociaux réglés (Réglages › Site vitrine › Référencement et réseaux). #}
+				{{ include('site/_reseaux.html.twig', {variante: 'contact', titre: 'Retrouvez-nous aussi sur'}) }}
 			</form>
 
 			<div class="si-contact-infos">

@@ -175,10 +175,7 @@ final class ReferencementExtension extends AbstractExtension
     public function donneesEntreprise(): string
     {
         $entreprise = $this->site->entreprise();
-        $memeQue = array_column($this->referencement->reseaux(), 'url');
-        if ('' !== $fiche = $this->referencement->reglages()['fiche_google']) {
-            $memeQue[] = $fiche;
-        }
+        $memeQue = $this->referencement->memeQue();
 
         return SiteContenuExtension::jsonLd(DonneesStructurees::entreprise(
             $this->adresse->base(),

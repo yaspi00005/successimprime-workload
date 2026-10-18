@@ -102,13 +102,13 @@
 				{% if entreprise and entreprise.email %} · <a href="mailto:{{ entreprise.email }}">{{ entreprise.email }}</a>{% endif %}
 				{% if entreprise and entreprise.siteWeb %} · {{ entreprise.siteWeb }}{% endif %}
 			</address>
-			{% set reseaux = site_reseaux() %}
+			{# Réseaux sociaux en icônes (vides : pas affichés), puis la fiche Google. #}
 			{% set fiche_google = site_fiche_google() %}
-			{% if reseaux or fiche_google %}
-				<ul class="si-pied-reseaux" aria-label="Succès Imprim ailleurs sur Internet">
-					{% for reseau in reseaux %}<li><a href="{{ reseau.url }}" rel="noopener me" target="_blank">{{ reseau.libelle }}</a></li>{% endfor %}
-					{% if fiche_google %}<li><a href="{{ fiche_google }}" rel="noopener" target="_blank">Fiche Google</a></li>{% endif %}
-				</ul>
+			{% if site_reseaux() or fiche_google %}
+				<div class="si-pied-reseaux">
+					{{ include('site/_reseaux.html.twig', {variante: 'pied', titre: 'Suivez-nous'}) }}
+					{% if fiche_google %}<a href="{{ fiche_google }}" class="si-pied-fiche" rel="noopener" target="_blank">Fiche Google</a>{% endif %}
+				</div>
 			{% endif %}
 		</div>
 	</footer>

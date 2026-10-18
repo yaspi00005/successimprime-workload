@@ -21,13 +21,21 @@ final class ReferencementSite
 {
     public const CLE_REGLAGE = 'referencement';
 
-    /** Réseaux sociaux : clé => libellé et domaines acceptés. */
+    /**
+     * Réseaux sociaux (demande de Yaya du 18/10/2026, « le lien des réseaux
+     * sociaux sur le site ») : clé => libellé, domaines acceptés et
+     * « profil » (page de la boutique, reprise dans le « sameAs » des
+     * données structurées ; un lien WhatsApp ouvre une discussion, ce n'est
+     * pas une page). Dans l'ordre d'affichage. Champ vide : pas affiché.
+     */
     public const RESEAUX = [
-        'facebook' => ['libelle' => 'Facebook', 'domaines' => ['facebook.com', 'fb.com', 'fb.me']],
-        'instagram' => ['libelle' => 'Instagram', 'domaines' => ['instagram.com']],
-        'tiktok' => ['libelle' => 'TikTok', 'domaines' => ['tiktok.com']],
-        'linkedin' => ['libelle' => 'LinkedIn', 'domaines' => ['linkedin.com']],
-        'youtube' => ['libelle' => 'YouTube', 'domaines' => ['youtube.com', 'youtu.be']],
+        'facebook' => ['libelle' => 'Facebook', 'domaines' => ['facebook.com', 'fb.com', 'fb.me'], 'profil' => true],
+        'instagram' => ['libelle' => 'Instagram', 'domaines' => ['instagram.com'], 'profil' => true],
+        'tiktok' => ['libelle' => 'TikTok', 'domaines' => ['tiktok.com'], 'profil' => true],
+        'whatsapp' => ['libelle' => 'WhatsApp', 'domaines' => ['wa.me', 'whatsapp.com'], 'profil' => false],
+        'linkedin' => ['libelle' => 'LinkedIn', 'domaines' => ['linkedin.com'], 'profil' => true],
+        'youtube' => ['libelle' => 'YouTube', 'domaines' => ['youtube.com', 'youtu.be'], 'profil' => true],
+        'x' => ['libelle' => 'X (Twitter)', 'domaines' => ['x.com', 'twitter.com'], 'profil' => true],
     ];
 
     /** Lien de la fiche Google : domaines de Google seulement. */
@@ -43,7 +51,7 @@ final class ReferencementSite
      */
     public const MESURE_GOOGLE = 'G-634VEQPP69';
 
-    public const DEFAUTS = ['google' => '', 'bing' => '', 'mesure' => self::MESURE_GOOGLE, 'fiche_google' => self::FICHE_GOOGLE, 'facebook' => '', 'instagram' => '', 'tiktok' => '', 'linkedin' => '', 'youtube' => ''];
+    public const DEFAUTS = ['google' => '', 'bing' => '', 'mesure' => self::MESURE_GOOGLE, 'fiche_google' => self::FICHE_GOOGLE, 'facebook' => '', 'instagram' => '', 'tiktok' => '', 'whatsapp' => '', 'linkedin' => '', 'youtube' => '', 'x' => ''];
 
     /** @var array<string, string>|null */
     private ?array $reglages = null;
@@ -80,6 +88,28 @@ final class ReferencementSite
         }
 
         return $liens;
+    }
+
+    /**
+     * Pages de la boutique pour le « sameAs » des données structurées :
+     * les réseaux réglés sauf WhatsApp (une discussion, pas une page), puis
+     * la fiche Google.
+     *
+     * @return list<string>
+     */
+    public function memeQue(): array
+    {
+        $pages = [];
+        foreach ($this->reseaux() as $cle => $reseau) {
+            if (self::RESEAUX[$cle]['profil']) {
+                $pages[] = $reseau['url'];
+            }
+        }
+        if ('' !== $fiche = $this->reglages()['fiche_google']) {
+            $pages[] = $fiche;
+        }
+
+        return $pages;
     }
 
     /**
@@ -160,9 +190,11 @@ final class ReferencementSite
             if ('' === $texte($cle)) {
                 continue;
             }
-            $lien = self::lien($texte($cle), $reseau['domaines']);
+            $lien = 'whatsapp' === $cle ? self::lienWhatsApp($texte($cle)) : self::lien($texte($cle), $reseau['domaines']);
             if (null === $lien) {
-                $erreurs[$cle] = 'Lien '.$reseau['libelle'].' non reconnu : collez l\'adresse complète de la page (https://…'.$reseau['domaines'][0].'/…).';
+                $erreurs[$cle] = 'whatsapp' === $cle
+                    ? 'Lien WhatsApp non reconnu : collez un lien https://wa.me/223…, le lien d\'une chaîne ou d\'un groupe (https://whatsapp.com/channel/…), ou seulement le numéro.'
+                    : 'Lien '.$reseau['libelle'].' non reconnu : collez l\'adresse complète de la page (https://…'.$reseau['domaines'][0].'/…).';
             } else {
                 $valeurs[$cle] = $lien;
             }
@@ -180,7 +212,7 @@ final class ReferencementSite
         'position' => 'Position GPS de la boutique : Réglages › Paramètres › « Site : page Contact », saisir « latitude, longitude » (un lien court maps.app.goo.gl ne la donne pas).',
         'plan' => 'Lien du plan (bouton Itinéraire de la page Contact) : Réglages › Paramètres › « Site : page Contact ».',
         'fiche_google' => 'Lien de la fiche Google (Google Business Profile) : ci-dessus.',
-        'reseaux' => 'Pages Facebook, Instagram ou TikTok : ci-dessus.',
+        'reseaux' => 'Pages Facebook, Instagram ou TikTok : ci-dessus, « Réseaux sociaux ».',
         'google' => 'Code de vérification Google Search Console : ci-dessus, puis déclarer le plan du site dans Search Console.',
     ];
 
@@ -238,6 +270,29 @@ final class ReferencementSite
         $saisie = strtoupper($saisie);
 
         return preg_match('/^G-[A-Z0-9]{4,20}$/', $saisie) ? $saisie : null;
+    }
+
+    /**
+     * Lien WhatsApp : un lien wa.me ou whatsapp.com (chaîne, groupe), ou
+     * seulement un numéro (8 chiffres du Mali, ou avec l'indicatif), changé
+     * en https://wa.me/<numéro>.
+     */
+    public static function lienWhatsApp(string $saisie): ?string
+    {
+        $saisie = trim($saisie);
+        if (preg_match('/^\+?[\d\s.\-()]{8,22}$/', $saisie)) {
+            $chiffres = preg_replace('/\D/', '', $saisie);
+            if (str_starts_with($chiffres, '00')) {
+                $chiffres = substr($chiffres, 2);
+            }
+            if (8 === \strlen($chiffres)) {
+                $chiffres = '223'.$chiffres;
+            }
+
+            return preg_match('/^[1-9]\d{9,14}$/', $chiffres) ? 'https://wa.me/'.$chiffres : null;
+        }
+
+        return self::lien($saisie, self::RESEAUX['whatsapp']['domaines']);
     }
 
     /**

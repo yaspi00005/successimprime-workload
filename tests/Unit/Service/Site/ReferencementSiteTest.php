@@ -112,4 +112,29 @@ final class ReferencementSiteTest extends TestCase
         ], $manques);
         self::assertSame([], ReferencementSite::manques(array_fill_keys(array_keys(ReferencementSite::MANQUES), true)));
     }
+
+    public function testWhatsAppNumeroOuLien(): void
+    {
+        self::assertSame('https://wa.me/22370000000', ReferencementSite::lienWhatsApp('70 00 00 00'));
+        self::assertSame('https://wa.me/22370000000', ReferencementSite::lienWhatsApp('+223 70 00 00 00'));
+        self::assertSame('https://wa.me/22370000000', ReferencementSite::lienWhatsApp('00223 70-00-00-00'));
+        self::assertSame('https://wa.me/22370000000', ReferencementSite::lienWhatsApp('https://wa.me/22370000000'));
+        self::assertSame('https://whatsapp.com/channel/0029VaExemple', ReferencementSite::lienWhatsApp('https://whatsapp.com/channel/0029VaExemple'));
+        self::assertSame('https://chat.whatsapp.com/AbCdEf', ReferencementSite::lienWhatsApp('chat.whatsapp.com/AbCdEf'));
+        foreach (['1234', 'https://evil.example.org/wa.me', 'http://wa.me/22370000000', 'javascript:alert(1)'] as $refuse) {
+            self::assertNull(ReferencementSite::lienWhatsApp($refuse), $refuse);
+        }
+        $lu = ReferencementSite::lire(['whatsapp' => '70 00 00 00', 'x' => 'https://x.com/exemple', 'youtube' => 'https://x.com/exemple']);
+        self::assertSame('https://wa.me/22370000000', $lu['valeurs']['whatsapp']);
+        self::assertSame('https://x.com/exemple', $lu['valeurs']['x']);
+        self::assertSame(['youtube'], array_keys($lu['erreurs']));
+    }
+
+    public function testWhatsAppHorsDuSameAs(): void
+    {
+        foreach (ReferencementSite::RESEAUX as $cle => $reseau) {
+            self::assertSame('whatsapp' !== $cle, $reseau['profil'], $cle);
+            self::assertArrayHasKey($cle, ReferencementSite::DEFAUTS);
+        }
+    }
 }

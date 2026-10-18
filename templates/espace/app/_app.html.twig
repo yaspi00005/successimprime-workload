@@ -64,6 +64,8 @@
 						</span>
 					</div>
 				{% endif %}
+				{# Réseaux sociaux de la boutique (Réglages › Site vitrine › Référencement et réseaux). #}
+				{{ include('site/_reseaux.html.twig', {variante: 'espace', titre: 'Suivez-nous'}) }}
 				<a href="{{ path('app_espace_deconnexion') }}" class="ec-menu-sortie">Se déconnecter</a>
 			</div>
 		</nav>
@@ -101,6 +103,10 @@
 			{% for message in app.flashes('error') %}<div class="ec-flash ec-flash-erreur" role="alert">{{ message }}</div>{% endfor %}
 			{% block contenu %}{% endblock %}
 		</main>
+		{# Téléphone : le menu de gauche n'est pas là, les réseaux passent en bas de page. #}
+		{% if coque and site_reseaux() %}
+			<footer class="ec-pied-reseaux">{{ include('site/_reseaux.html.twig', {variante: 'espace', titre: 'Suivez Succès Imprim'}) }}</footer>
+		{% endif %}
 	</div>
 	<script>
 		if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js', {scope: '/espace'}).catch(function () {}); }

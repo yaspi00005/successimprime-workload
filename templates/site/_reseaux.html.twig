@@ -1,0 +1,30 @@
+{#
+	Liens des réseaux sociaux de la boutique (Réglages › Site vitrine ›
+	Référencement et réseaux, docs/referencement.md) : icône, nouvel onglet,
+	rel="noopener". Un réseau sans lien n'est pas montré ; aucun lien, rien.
+	Paramètres : variante (pied, contact, espace), titre (facultatif).
+#}
+{% set reseaux = site_reseaux() %}
+{% if reseaux %}
+	{% set icones = {
+		facebook: {vue: '0 0 24 24', d: 'M13.4 21.5v-8h2.7l.4-3.2h-3.1V8.3c0-.9.3-1.6 1.6-1.6h1.7V3.9a22 22 0 0 0-2.4-.1c-2.4 0-4.1 1.5-4.1 4.2v2.3H7.5v3.2h2.7v8Z'},
+		instagram: {vue: '0 0 24 24', d: 'M7.2 2.2h9.6a5 5 0 0 1 5 5v9.6a5 5 0 0 1-5 5H7.2a5 5 0 0 1-5-5V7.2a5 5 0 0 1 5-5Zm0 1.9a3.1 3.1 0 0 0-3.1 3.1v9.6a3.1 3.1 0 0 0 3.1 3.1h9.6a3.1 3.1 0 0 0 3.1-3.1V7.2a3.1 3.1 0 0 0-3.1-3.1Zm4.8 3.4a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 1.9a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2Zm5.2-3.6a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Z'},
+		tiktok: {vue: '0 0 24 24', d: 'M16.4 2.2h-3.3v13.2a2.8 2.8 0 1 1-2.8-2.8c.3 0 .6 0 .9.1V9.3a6.2 6.2 0 1 0 5.2 6.1V8.7a7.6 7.6 0 0 0 4.4 1.4V6.8a4.4 4.4 0 0 1-4.4-4.6Z'},
+		whatsapp: {vue: '0 0 32 32', d: 'M16 3.5A12.4 12.4 0 0 0 5.3 22.2L3.5 28.5l6.5-1.7A12.4 12.4 0 1 0 16 3.5Zm0 22.7a10.3 10.3 0 0 1-5.2-1.4l-.4-.2-3.9 1 1-3.8-.2-.4A10.3 10.3 0 1 1 16 26.2Zm5.7-7.7c-.3-.2-1.8-.9-2.1-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7 0a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6a1.1 1.1 0 0 0-.8.4 3.3 3.3 0 0 0-1 2.5 5.8 5.8 0 0 0 1.2 3.1 13.3 13.3 0 0 0 5.1 4.5c1.9.8 2.6.9 3.6.7a3 3 0 0 0 2-1.4 2.4 2.4 0 0 0 .2-1.4c-.1-.1-.3-.2-.6-.4Z'},
+		linkedin: {vue: '0 0 24 24', d: 'M5 3.3a2.3 2.3 0 1 1 0 4.6 2.3 2.3 0 0 1 0-4.6ZM3 9.4h4v11.9H3Zm6.4 0h3.8v1.6h.1c.5-1 1.8-2 3.8-2 4 0 4.8 2.6 4.8 6.1v6.2h-4v-5.5c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9v5.6h-4Z'},
+		youtube: {vue: '0 0 24 24', d: 'M22.6 7.2a2.8 2.8 0 0 0-2-2C18.9 4.7 12 4.7 12 4.7s-6.9 0-8.6.5a2.8 2.8 0 0 0-2 2A29 29 0 0 0 1 12a29 29 0 0 0 .4 4.8 2.8 2.8 0 0 0 2 2c1.7.5 8.6.5 8.6.5s6.9 0 8.6-.5a2.8 2.8 0 0 0 2-2A29 29 0 0 0 23 12a29 29 0 0 0-.4-4.8ZM9.8 15V9l5.4 3Z'},
+		x: {vue: '0 0 24 24', d: 'M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.2-8.3L2 3h6.4l4.4 5.8Zm-1.1 16.2h1.7L7.4 4.7H5.6Z'},
+	} %}
+	{% set variante = variante|default('pied') %}
+	<div class="si-reseaux si-reseaux-{{ variante }}">
+		{% if titre|default(false) %}<p class="si-reseaux-titre">{{ titre }}</p>{% endif %}
+		<ul aria-label="Succès Imprim sur les réseaux sociaux">
+			{% for cle, reseau in reseaux %}
+				<li><a href="{{ reseau.url }}" class="si-reseau si-reseau-{{ cle }}" target="_blank" rel="noopener{{ cle != 'whatsapp' ? ' me' }}" title="{{ reseau.libelle }}" aria-label="{{ reseau.libelle }} (s'ouvre dans un nouvel onglet)">
+					<svg viewBox="{{ icones[cle].vue }}" aria-hidden="true" fill-rule="evenodd"><path d="{{ icones[cle].d }}"/></svg>
+					{% if variante == 'contact' %}<span>{{ reseau.libelle }}</span>{% endif %}
+				</a></li>
+			{% endfor %}
+		</ul>
+	</div>
+{% endif %}

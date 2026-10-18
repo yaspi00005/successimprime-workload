@@ -101,6 +101,7 @@ final class TypesCorbeilleTest extends TestCase
         self::assertSame('Client « Imprim Sahel »', TypesCorbeille::libelle('clients', ['raison_sociale' => 'Imprim Sahel', 'nom' => 'Traoré'], '7'));
         self::assertSame('Devis « n° 42 »', TypesCorbeille::libelle('devis', ['numero' => '  '], '42'));
         self::assertSame('Table inconnue « Essai »', TypesCorbeille::libelle('table_inconnue', ['nom' => 'Essai'], '1'));
+        self::assertSame('Promotion client « n° 8 · 900070 »', TypesCorbeille::libelle('promotion_client', ['promotion_id' => 8, 'clients_id' => 900070], '{"promotion_id":8,"clients_id":900070}'), 'clé à plusieurs colonnes, sans JSON');
         self::assertSame('Promotion « '.str_repeat('é', 119).'… »', TypesCorbeille::libelle('promotion', ['nom' => str_repeat('é', 200)], '1'), 'titre coupé à 120 caractères');
     }
 
@@ -123,6 +124,27 @@ final class TypesCorbeilleTest extends TestCase
         self::assertTrue(TypesCorbeille::ignoree('commande_detail_fichier', ['commande_detail_id' => null, 'nom_stockage' => 'a.pdf']));
         self::assertFalse(TypesCorbeille::ignoree('commande_detail_fichier', ['commande_detail_id' => 40]));
         self::assertFalse(TypesCorbeille::ignoree('clients', []));
+    }
+
+    public function testChampsLisibles(): void
+    {
+        self::assertSame('Numéro', TypesCorbeille::nomColonne('numero'));
+        self::assertSame('Facturer à un tiers', TypesCorbeille::nomColonne('facturer_aun_tiers'));
+        self::assertSame('Total TTC', TypesCorbeille::nomColonne('total_ttc'));
+        self::assertSame('État', TypesCorbeille::nomColonne('etat'), 'majuscule accentuée');
+        self::assertSame('Société', TypesCorbeille::type('societe'), 'table sans type : nommée d\'après elle, avec ses accents');
+        self::assertSame('DEV-2026-0042', TypesCorbeille::titre('devis', ['numero' => 'DEV-2026-0042']));
+        self::assertNull(TypesCorbeille::titre('devis', ['numero' => ' ']));
+
+        self::assertSame('23/09/2026 à 11:44', TypesCorbeille::valeurLisible('2026-09-23 11:44:00'));
+        self::assertSame('23/09/2026', TypesCorbeille::valeurLisible('2026-09-23'));
+        self::assertSame('23/09/2026', TypesCorbeille::valeurLisible('2026-09-23 00:00:00'));
+        self::assertSame('oui', TypesCorbeille::valeurLisible('1', 'boolean'));
+        self::assertSame('non', TypesCorbeille::valeurLisible(0, 'boolean'));
+        self::assertSame('1', TypesCorbeille::valeurLisible('1', 'integer'), 'un nombre reste un nombre');
+        self::assertSame('500 000', TypesCorbeille::valeurLisible('500000.00', 'decimal', true));
+        self::assertSame('1 250,50', TypesCorbeille::valeurLisible('1250.5', 'decimal', true));
+        self::assertSame('DEV-2026-0042', TypesCorbeille::valeurLisible('DEV-2026-0042'));
     }
 
     public function testMontants(): void

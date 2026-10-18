@@ -177,7 +177,7 @@ final class TypesCorbeille
     /** Nature de l'élément, en français. */
     public static function type(string $table): string
     {
-        return self::TYPES[$table][0] ?? ucfirst(str_replace('_', ' ', $table));
+        return self::TYPES[$table][0] ?? self::nomColonne($table);
     }
 
     /** Droit qu'il faut, en plus de l'accès à la corbeille, pour voir l'élément. */
@@ -194,7 +194,24 @@ final class TypesCorbeille
      */
     public static function libelle(string $table, array $ligne, string $cle): string
     {
-        $titre = '';
+        $titre = self::titre($table, $ligne);
+        if (null === $titre) {
+            // Clé à plusieurs colonnes (table de liaison) : « n° 8 · 900070 » plutôt que du JSON.
+            $parties = str_starts_with($cle, '{') ? json_decode($cle, true) : null;
+            $titre = 'n° '.(\is_array($parties) ? implode(' · ', array_map(static fn (mixed $v): string => \is_scalar($v) ? (string) $v : '?', $parties)) : $cle);
+        }
+
+        return self::type($table).' « '.$titre.' »';
+    }
+
+    /**
+     * Le titre seul (« DEV-2026-0042 », « Awa Traoré »), coupé à 120
+     * caractères, ou null si aucune colonne du titre n'est remplie.
+     *
+     * @param array<string, mixed> $ligne
+     */
+    public static function titre(string $table, array $ligne): ?string
+    {
         foreach (self::TYPES[$table][1] ?? ['nom', 'libelle', 'titre', 'numero'] as $colonnes) {
             $morceaux = [];
             foreach (explode('+', $colonnes) as $colonne) {
@@ -205,13 +222,63 @@ final class TypesCorbeille
             }
             if ([] !== $morceaux) {
                 $titre = implode(' ', $morceaux);
-                break;
+
+                return mb_strlen($titre) > 120 ? mb_substr($titre, 0, 119).'…' : $titre;
             }
         }
-        $titre = '' === $titre ? 'n° '.$cle : $titre;
-        $titre = mb_strlen($titre) > 120 ? mb_substr($titre, 0, 119).'…' : $titre;
 
-        return self::type($table).' « '.$titre.' »';
+        return null;
+    }
+
+    /** Mots des noms de colonnes, avec leurs accents et leurs majuscules. */
+    private const MOTS = [
+        'a' => 'à', 'aun' => 'à un', 'apayer' => 'à payer', 'numero' => 'numéro', 'telephone' => 'téléphone', 'societe' => 'société',
+        'categorie' => 'catégorie', 'quantite' => 'quantité', 'designation' => 'désignation', 'unite' => 'unité',
+        'priorite' => 'priorité', 'reference' => 'référence', 'entree' => 'entrée', 'debut' => 'début', 'cree' => 'créé',
+        'creee' => 'créée', 'modifie' => 'modifié', 'modifiee' => 'modifiée', 'emetteur' => 'émetteur', 'etat' => 'état',
+        'delai' => 'délai', 'echeance' => 'échéance', 'recu' => 'reçu', 'prenom' => 'prénom', 'reglement' => 'règlement',
+        'regle' => 'règle', 'reponse' => 'réponse', 'periode' => 'période', 'duree' => 'durée', 'cle' => 'clé',
+        'genere' => 'généré', 'valide' => 'validé', 'validee' => 'validée', 'envoye' => 'envoyé', 'envoyee' => 'envoyée',
+        'annule' => 'annulé', 'annulee' => 'annulée', 'livre' => 'livré', 'livree' => 'livrée', 'tache' => 'tâche',
+        'evenement' => 'événement', 'electronique' => 'électronique', 'ttc' => 'TTC', 'ht' => 'HT', 'tva' => 'TVA',
+        'sms' => 'SMS', 'url' => 'URL', 'ia' => 'IA', 'bat' => 'BAT', 'pao' => 'PAO', 'b2b' => 'B2B', 'nb' => 'nombre de',
+    ];
+
+    /** « date_devis » : « Date devis » ; « numero » : « Numéro ». */
+    public static function nomColonne(string $colonne): string
+    {
+        $mots = array_map(static fn (string $m): string => self::MOTS[$m] ?? $m, explode('_', strtolower($colonne)));
+
+        $nom = trim(implode(' ', $mots));
+
+        return mb_strtoupper(mb_substr($nom, 0, 1)).mb_substr($nom, 1);
+    }
+
+    /**
+     * Valeur d'un champ, telle qu'on la lit : oui ou non, date en jj/mm/aaaa,
+     * montant avec ses milliers séparés (70 000).
+     *
+     * @param ?string $type type Doctrine de la colonne (boolean, datetime_immutable…), s'il est connu
+     */
+    public static function valeurLisible(mixed $valeur, ?string $type = null, bool $montant = false): string
+    {
+        if (\is_bool($valeur) || ('boolean' === $type && \in_array((string) $valeur, ['0', '1'], true))) {
+            return (bool) $valeur ? 'oui' : 'non';
+        }
+        $texte = \is_scalar($valeur) ? (string) $valeur : '';
+        if (1 === preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?)?$/', $texte, $m)) {
+            $date = $m[3].'/'.$m[2].'/'.$m[1];
+
+            return isset($m[4]) && '00:00' !== $m[4].':'.$m[5] ? $date.' à '.$m[4].':'.$m[5] : $date;
+        }
+        if ($montant && is_numeric($texte)) {
+            $nombre = (float) $texte;
+            $decimales = floor($nombre) === $nombre ? 0 : 2;
+
+            return number_format($nombre, $decimales, ',', ' ');
+        }
+
+        return $texte;
     }
 
     /**

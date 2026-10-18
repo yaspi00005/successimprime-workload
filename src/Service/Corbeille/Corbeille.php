@@ -276,20 +276,32 @@ final class Corbeille
         $references = [];
         foreach ($schema->referencesDe($racine->getTableNom()) as $fk) {
             if (1 === \count($fk['colonnes'])) {
-                $references[$fk['colonnes'][0]] = $fk['cible'];
+                $references[$fk['colonnes'][0]] = ['cible' => $fk['cible'], 'colonne' => $fk['colonnes'][0], 'colonneCible' => $fk['colonnesCible'][0]];
+            }
+        }
+        // Type Doctrine de chaque colonne (oui/non, dates), quand la table porte une entité.
+        $types = [];
+        if (null !== ($classe = $this->classeDe($racine->getTableNom()))) {
+            $meta = $this->em->getClassMetadata($classe);
+            foreach ($meta->getFieldNames() as $champ) {
+                $types[$meta->getColumnName($champ)] = (string) $meta->getTypeOfField($champ);
             }
         }
         $champs = [];
         foreach ($racine->getDonnees() as $colonne => $valeur) {
-            if ('id' === $colonne || 'public_id' === $colonne || \is_array($valeur) || null === $valeur || '' === $valeur) {
+            $colonne = (string) $colonne;
+            if (\in_array($colonne, ['id', 'public_id', 'deleted'], true) || \is_array($valeur) || null === $valeur || '' === $valeur) {
                 continue;
             }
-            $libelle = isset($references[$colonne]) ? TypesCorbeille::type($references[$colonne]) : ucfirst(str_replace('_', ' ', (string) $colonne));
-            if (!$direction && TypesCorbeille::estMontant((string) $colonne)) {
+            $reference = $references[$colonne] ?? null;
+            $libelle = null !== $reference ? TypesCorbeille::type($reference['cible']) : TypesCorbeille::nomColonne($colonne);
+            if (!$direction && TypesCorbeille::estMontant($colonne)) {
                 $champs[] = ['libelle' => $libelle, 'valeur' => 'masqué (montant réservé à la Direction)'];
                 continue;
             }
-            $texte = isset($references[$colonne]) ? 'n° '.$valeur : (string) $valeur;
+            $texte = null !== $reference
+                ? $this->ficheLiee($reference, $valeur, $peutVoirTable)
+                : TypesCorbeille::valeurLisible($valeur, $types[$colonne] ?? null, TypesCorbeille::estMontant($colonne));
             $champs[] = ['libelle' => $libelle, 'valeur' => mb_strlen($texte) > 300 ? mb_substr($texte, 0, 299).'…' : $texte];
         }
 
@@ -303,19 +315,91 @@ final class Corbeille
                 continue;
             }
             $liens += \count($ligne->getLiens() ?? []);
-            if (!$peutVoirTable($ligne->getTableNom())) {
+            // Table de liaison (client visé par une promotion, finition d'un produit) : le lien, nommé
+            // d'après la fiche de l'autre côté, qui reste en place ; visible avec le droit de cette fiche.
+            $autre = null === $this->classeDe($ligne->getTableNom()) ? $this->autreCote($ligne->getTableNom(), $racine->getTableNom()) : null;
+            if (!$peutVoirTable($autre['cible'] ?? $ligne->getTableNom())) {
                 ++$caches;
                 continue;
             }
-            $type = $ligne->getType();
+            $type = null === $autre ? $ligne->getType() : 'Lien vers une autre fiche';
             $elements[$type] ??= ['type' => $type, 'libelles' => [], 'nombre' => 0];
             ++$elements[$type]['nombre'];
             if (\count($elements[$type]['libelles']) < 5) {
-                $elements[$type]['libelles'][] = $ligne->getLibelle();
+                $elements[$type]['libelles'][] = null === $autre ? $ligne->getLibelle() : $this->libelleAutreCote($autre, $ligne);
             }
         }
 
         return ['champs' => $champs, 'elements' => array_values($elements), 'caches' => $caches, 'liens' => $liens, 'fichiers' => $fichiers];
+    }
+
+    /**
+     * Fiche vers laquelle pointe un champ : « Hôtel Lumière (n° 7) » si la
+     * personne a le droit de la voir, « n° 7 » sinon, et « n° 7, n'existe
+     * plus » quand elle a disparu (la restauration sera refusée).
+     *
+     * @param array{cible: string, colonne: string, colonneCible: string} $reference
+     * @param callable(string): bool                                       $peutVoirTable
+     */
+    private function ficheLiee(array $reference, mixed $valeur, callable $peutVoirTable): string
+    {
+        if (!\is_scalar($valeur)) {
+            return '';
+        }
+        $connexion = $this->em->getConnection();
+        $fiche = $connexion->fetchAssociative(
+            \sprintf('SELECT * FROM %s WHERE %s = ?', $connexion->quoteSingleIdentifier($reference['cible']), $connexion->quoteSingleIdentifier($reference['colonneCible'])),
+            [$valeur],
+        );
+        if (false === $fiche) {
+            return \sprintf('n° %s, n\'existe plus', $valeur);
+        }
+        if (!$peutVoirTable($reference['cible'])) {
+            return 'n° '.$valeur;
+        }
+        $titre = TypesCorbeille::titre($reference['cible'], $fiche);
+
+        return null === $titre ? 'n° '.$valeur : \sprintf('%s (n° %s)', $titre, $valeur);
+    }
+
+    /**
+     * Clé étrangère d'une table de liaison vers l'autre fiche (pas celle de
+     * l'entrée), ou null si elle n'en a pas.
+     *
+     * @return array{cible: string, colonne: string, colonneCible: string}|null
+     */
+    private function autreCote(string $table, string $tableRacine): ?array
+    {
+        foreach ($this->schema()->referencesDe($table) as $fk) {
+            if ($fk['cible'] !== $tableRacine && 1 === \count($fk['colonnes'])) {
+                return ['cible' => $fk['cible'], 'colonne' => $fk['colonnes'][0], 'colonneCible' => $fk['colonnesCible'][0]];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * « Client « Hôtel Lumière » » : la fiche de l'autre côté du lien, lue
+     * en base ; « client n° 7 » si elle n'y est plus.
+     *
+     * @param array{cible: string, colonne: string, colonneCible: string} $autre
+     */
+    private function libelleAutreCote(array $autre, EntreeCorbeille $ligne): string
+    {
+        $valeur = $ligne->getDonnees()[$autre['colonne']] ?? null;
+        if (!\is_scalar($valeur)) {
+            return $ligne->getLibelle();
+        }
+        $connexion = $this->em->getConnection();
+        $fiche = $connexion->fetchAssociative(
+            \sprintf('SELECT * FROM %s WHERE %s = ?', $connexion->quoteSingleIdentifier($autre['cible']), $connexion->quoteSingleIdentifier($autre['colonneCible'])),
+            [$valeur],
+        );
+
+        return false === $fiche
+            ? \sprintf('%s n° %s', TypesCorbeille::type($autre['cible']), $valeur)
+            : TypesCorbeille::libelle($autre['cible'], $fiche, (string) $valeur);
     }
 
     /**

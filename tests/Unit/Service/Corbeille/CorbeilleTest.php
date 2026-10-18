@@ -187,6 +187,32 @@ final class CorbeilleTest extends TestCase
         self::assertSame(Corbeille::DUREE_PAR_DEFAUT, $this->corbeille->duree());
     }
 
+    public function testUnLienEstNommeDApresLaFicheDeLAutreCote(): void
+    {
+        // Table de liaison sans entité, comme promotion_client : le lien part avec la fiche, l'autre côté reste.
+        $c = $this->em->getConnection();
+        $c->executeStatement('CREATE TABLE equipe_essai (id INTEGER PRIMARY KEY, nom VARCHAR(60))');
+        $c->executeStatement('CREATE TABLE ferie_equipe (jour_ferie_id INTEGER NOT NULL REFERENCES jour_ferie(id) ON DELETE CASCADE, equipe_id INTEGER NOT NULL REFERENCES equipe_essai(id), PRIMARY KEY (jour_ferie_id, equipe_id))');
+        $c->insert('equipe_essai', ['id' => 4, 'nom' => 'Atelier']);
+        $ferie = new JourFerie(new \DateTimeImmutable('2026-09-22'), 'Fête de l\'indépendance');
+        $this->em->persist($ferie);
+        $this->em->flush();
+        $c->insert('ferie_equipe', ['jour_ferie_id' => $ferie->getId(), 'equipe_id' => 4]);
+        $c->insert('ferie_equipe', ['jour_ferie_id' => $ferie->getId(), 'equipe_id' => 99]);
+        $this->em->remove($ferie);
+        $this->em->flush();
+        $entree = $this->corbeille->entrees([], null)[0]['entree'];
+
+        $detail = $this->corbeille->detail($entree, true, static fn (string $table): bool => true);
+
+        self::assertSame([['type' => 'Lien vers une autre fiche', 'libelles' => ['Equipe essai « Atelier »', 'Equipe essai n° 99'], 'nombre' => 2]], $detail['elements']);
+        self::assertSame(0, $detail['caches']);
+
+        $cache = $this->corbeille->detail($entree, false, static fn (string $table): bool => 'equipe_essai' !== $table);
+        self::assertSame([], $cache['elements'], 'sans le droit de l\'autre fiche, son nom n\'apparaît pas');
+        self::assertSame(2, $cache['caches']);
+    }
+
     public function testUneSuppressionQuiEchoueNeLaisseRienDansLaCorbeille(): void
     {
         $ferie = new JourFerie(new \DateTimeImmutable('2026-12-25'), 'Noël');

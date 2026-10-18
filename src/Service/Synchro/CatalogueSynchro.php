@@ -111,9 +111,9 @@ final class CatalogueSynchro
         'conception' => ['ia_active', 'prix_image', 'finalisation', 'packs', 'plafond_jour', 'limite_heure'],
         // Atelier 3D : les paliers et la seconde face servent au prix calculé en ligne (docs/atelier-3d.md).
         'atelier_3d' => ['palier1_quantite', 'palier1_remise', 'palier2_quantite', 'palier2_remise', 'face_en_plus', 'paliers_b2b'],
-        // L'assistant tourne en ligne : tous ses réglages y servent (docs/assistant-client.md).
         // Corbeille : le site en ligne garde les suppressions de l'espace client aussi longtemps que le local.
         'corbeille' => ['duree'],
+        // L'assistant tourne en ligne : tous ses réglages y servent (docs/assistant-client.md).
         'assistant' => ['actif', 'message_accueil', 'limite_jour', 'whatsapp', 'delais', 'modele', 'effort', 'taux_usd', 'prix_entree', 'prix_sortie', 'prix_cache_lecture', 'prix_cache_ecriture'],
     ];
 

@@ -26,7 +26,7 @@
 		<form method="get" class="si-cb-filtres" role="search" aria-label="Filtrer la corbeille">
 			<label class="si-cb-champ">
 				<span>Type</span>
-				<select name="type" class="form-select form-select-sm">
+				<select name="type" class="form-control">
 					<option value="">Tous les types</option>
 					{% for table, libelle in choix.types %}
 						<option value="{{ table }}" {{ filtres.type == table ? 'selected' }}>{{ libelle }}</option>
@@ -35,15 +35,15 @@
 			</label>
 			<label class="si-cb-champ">
 				<span>Supprimé du</span>
-				<input type="date" name="du" value="{{ filtres.du }}" class="form-control form-control-sm">
+				<input type="date" name="du" value="{{ filtres.du }}" class="form-control">
 			</label>
 			<label class="si-cb-champ">
 				<span>au</span>
-				<input type="date" name="au" value="{{ filtres.au }}" class="form-control form-control-sm">
+				<input type="date" name="au" value="{{ filtres.au }}" class="form-control">
 			</label>
 			<label class="si-cb-champ">
 				<span>Par</span>
-				<select name="par" class="form-select form-select-sm">
+				<select name="par" class="form-control">
 					<option value="">Tout le monde</option>
 					{% for nom in choix.par %}
 						<option value="{{ nom }}" {{ filtres.par == nom ? 'selected' }}>{{ nom }}</option>
@@ -51,8 +51,8 @@
 				</select>
 			</label>
 			<div class="si-cb-boutons">
-				<button type="submit" class="btn btn-primary btn-sm">Filtrer</button>
-				{% if filtre %}<a href="{{ path('app_corbeille_index') }}" class="btn btn-light btn-sm">Effacer</a>{% endif %}
+				<button type="submit" class="btn btn-primary">Filtrer</button>
+				{% if filtre %}<a href="{{ path('app_corbeille_index') }}" class="btn btn-light">Effacer</a>{% endif %}
 			</div>
 		</form>
 

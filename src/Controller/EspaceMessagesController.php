@@ -13,8 +13,10 @@ use App\Service\EspaceClient\EspaceClient;
 use App\Service\Http\Entree;
 use App\Service\Messagerie\Conversations;
 use App\Service\Messagerie\FilConversation;
+use App\Service\Messagerie\NotesVocales;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -94,6 +96,49 @@ final class EspaceMessagesController extends AbstractController
         }
 
         return $this->redirectToRoute('app_espace_message', ['id' => $id, '_fragment' => 'dernier']);
+    }
+
+    /**
+     * Note vocale du client dans sa conversation (docs/messagerie-clients.md) :
+     * même chemin qu'un message écrit (limite de 10 par heure, demande
+     * rouverte au besoin), avec le fichier vérifié. Réponse en JSON pour
+     * l'enregistreur de la page.
+     */
+    #[Route('/{id}/vocale', name: 'message_vocale', requirements: ['id' => self::UUID], methods: ['POST'])]
+    public function vocale(string $id, Request $request, NotesVocales $notesVocales, #[Autowire(service: 'limiter.espace_message_compte')] RateLimiterFactoryInterface $limite): JsonResponse
+    {
+        $compte = $this->ecrivain($request);
+        $c = $this->conversations->duClientParId($compte->getClient(), $id) ?? throw $this->createNotFoundException();
+        $vocale = null;
+        try {
+            $this->limiter($limite, $compte);
+            $vocale = $notesVocales->enregistrer($request->files->get('audio'));
+            $this->conversations->ecrireClient($compte, $c, MessageClient::libelleVocale($vocale['duree']), new \DateTimeImmutable(), $vocale);
+        } catch (\DomainException $e) {
+            $notesVocales->retirer($vocale);
+
+            return new JsonResponse(['erreur' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $this->addFlash('succes', 'Note vocale envoyée. L\'atelier l\'écoute et vous répond ici.');
+
+        return new JsonResponse(['ok' => true, 'url' => $this->generateUrl('app_espace_message', ['id' => $id, '_fragment' => 'dernier'])]);
+    }
+
+    /**
+     * Écoute d'une note vocale de sa conversation : jamais une note interne
+     * de l'équipe, jamais celle d'un autre client.
+     */
+    #[Route('/{id}/vocale/{message}', name: 'message_vocale_ecouter', requirements: ['id' => self::UUID, 'message' => self::UUID], methods: ['GET'])]
+    public function ecouterVocale(string $id, string $message, NotesVocales $notesVocales): Response
+    {
+        $compte = $this->compte();
+        $c = $this->conversations->duClientParId($compte->getClient(), $id) ?? throw $this->createNotFoundException();
+        $m = $this->conversations->messageParId($c, $message);
+        if (null === $m || !NotesVocales::clientPeutEcouter($compte, $c, $m) || null === $notesVocales->chemin($m)) {
+            throw $this->createNotFoundException();
+        }
+
+        return $notesVocales->reponse($m);
     }
 
     /** Clôture proposée par l'agent : « Oui, c'est résolu » ou « J'ai encore une question ». */

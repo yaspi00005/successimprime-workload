@@ -14,7 +14,7 @@ Toutes les réponses de l'application reçoivent les mêmes en-têtes, au local 
 | `X-Frame-Options` | `SAMEORIGIN` | pareil pour les vieux navigateurs |
 | `X-Content-Type-Options` | `nosniff` | le navigateur garde le type annoncé (une image reste une image) |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | un autre site ne voit pas l'adresse complète d'où vient le visiteur |
-| `Permissions-Policy` | caméra et position pour le site seulement ; micro, paiement, USB… fermés | pointage, photos et livraison en ont besoin, rien d'autre |
+| `Permissions-Policy` | caméra, micro et position pour le site seulement ; paiement, USB… fermés | pointage, photos, notes vocales de la messagerie et livraison en ont besoin, rien d'autre |
 | `Strict-Transport-Security` | `max-age=31536000` | seulement quand la page arrive en https : le navigateur n'essaie plus le site en http pendant un an |
 | `X-Powered-By` | retiré | la version de PHP n'a pas à être annoncée |
 

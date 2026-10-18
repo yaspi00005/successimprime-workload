@@ -4,8 +4,10 @@ namespace App\Service\Synchro;
 
 use App\Entity\CommandeDetailFichier;
 use App\Entity\ControlePrePresse;
+use App\Entity\MessageClient;
 use App\Entity\SynchroFichier;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\Messagerie\NotesVocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
@@ -18,6 +20,11 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
  * au local. Du site, le local rapatrie les fichiers que le client y a
  * envoyés (espace client). Par morceaux, repris là où ça s'est arrêté, et
  * vérifié par empreinte SHA-256 avant d'être rangé.
+ *
+ * Notes vocales de la messagerie (docs/messagerie-clients.md) : celles
+ * que l'atelier envoie au client partent au site, celles que le client
+ * enregistre en ligne arrivent au local (revérifiées à l'arrivée). Les
+ * notes vocales internes ne quittent jamais le local.
  */
 final class FichiersSynchro
 {
@@ -38,6 +45,7 @@ final class FichiersSynchro
         private readonly Serialiseur $serialiseur,
         private readonly EspaceClient $espaceClient,
         private readonly Synchro $synchro,
+        private readonly NotesVocales $notesVocales,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
     ) {
     }
@@ -76,55 +84,68 @@ final class FichiersSynchro
                 ++$bilan['manquants'];
                 continue;
             }
-            $id = $fichier->getPublicId()->toRfc4122();
-            $signature = filesize($chemin).':'.filemtime($chemin);
-            $suivi = $this->em->find(SynchroFichier::class, $id);
-            if ($suivi?->getSignature() === $signature) {
-                continue;
-            }
-            $empreinte = (string) hash_file('sha256', $chemin);
-            $taille = (int) filesize($chemin);
-            if ($taille === 0) {
-                continue;
-            }
-            if ($suivi?->getEmpreinte() === $empreinte) {
-                $suivi->noterEnvoi($signature, $empreinte); // seulement touché
-                $this->em->flush();
-                continue;
-            }
-
-            $entete = ['id' => $id, 'empreinte' => $empreinte, 'taille' => $taille];
-            $recu = (int) ($appeler('/api/synchro/fichier', $entete)['recu'] ?? 0);
-            $flux = fopen($chemin, 'rb');
-            if ($flux === false) {
-                ++$bilan['manquants'];
-                continue;
-            }
-            try {
-                while ($recu < $taille && $bilan['octets'] < $budget) {
-                    fseek($flux, $recu);
-                    $morceau = (string) fread($flux, self::MORCEAU);
-                    $reponse = $appeler('/api/synchro/fichier', $entete + ['position' => $recu, 'morceau' => base64_encode($morceau)]);
-                    $bilan['octets'] += \strlen($morceau);
-                    $suivant = (int) ($reponse['recu'] ?? 0);
-                    if ($suivant <= $recu && $suivant !== 0) {
-                        throw new \RuntimeException('Le site n\'avance plus sur '.$fichier->getNomOriginal());
-                    }
-                    $recu = $suivant;
-                }
-            } finally {
-                fclose($flux);
-            }
-            if ($recu >= $taille) {
-                $suivi ??= new SynchroFichier($id, $signature, $empreinte);
-                $suivi->noterEnvoi($signature, $empreinte);
-                $this->em->persist($suivi);
-                $this->em->flush();
-                ++$bilan['envoyes'];
-            }
+            $this->pousser($appeler, '/api/synchro/fichier', $fichier->getPublicId()->toRfc4122(), $chemin, (string) $fichier->getNomOriginal(), $budget, $bilan);
         }
 
         return $bilan;
+    }
+
+    /**
+     * Pousse un fichier vers le site s'il a changé depuis le dernier envoi
+     * (SynchroFichier), par morceaux, dans la limite du budget.
+     *
+     * @param callable(string, array<string, mixed>): array<string, mixed> $appeler
+     * @param array{envoyes: int, octets: int, manquants: int}           $bilan
+     */
+    private function pousser(callable $appeler, string $route, string $id, string $chemin, string $libelle, int $budget, array &$bilan): void
+    {
+        $signature = filesize($chemin).':'.filemtime($chemin);
+        $suivi = $this->em->find(SynchroFichier::class, $id);
+        if ($suivi?->getSignature() === $signature) {
+            return;
+        }
+        $empreinte = (string) hash_file('sha256', $chemin);
+        $taille = (int) filesize($chemin);
+        if ($taille === 0) {
+            return;
+        }
+        if ($suivi?->getEmpreinte() === $empreinte) {
+            $suivi->noterEnvoi($signature, $empreinte); // seulement touché
+            $this->em->flush();
+
+            return;
+        }
+
+        $entete = ['id' => $id, 'empreinte' => $empreinte, 'taille' => $taille];
+        $recu = (int) ($appeler($route, $entete)['recu'] ?? 0);
+        $flux = fopen($chemin, 'rb');
+        if ($flux === false) {
+            ++$bilan['manquants'];
+
+            return;
+        }
+        try {
+            while ($recu < $taille && $bilan['octets'] < $budget) {
+                fseek($flux, $recu);
+                $morceau = (string) fread($flux, self::MORCEAU);
+                $reponse = $appeler($route, $entete + ['position' => $recu, 'morceau' => base64_encode($morceau)]);
+                $bilan['octets'] += \strlen($morceau);
+                $suivant = (int) ($reponse['recu'] ?? 0);
+                if ($suivant <= $recu && $suivant !== 0) {
+                    throw new \RuntimeException('Le site n\'avance plus sur '.$libelle);
+                }
+                $recu = $suivant;
+            }
+        } finally {
+            fclose($flux);
+        }
+        if ($recu >= $taille) {
+            $suivi ??= new SynchroFichier($id, $signature, $empreinte);
+            $suivi->noterEnvoi($signature, $empreinte);
+            $this->em->persist($suivi);
+            $this->em->flush();
+            ++$bilan['envoyes'];
+        }
     }
 
     /** @return list<CommandeDetailFichier> fichiers envoyés par des clients en ligne, pas encore ici */
@@ -190,6 +211,129 @@ final class FichiersSynchro
             } catch (\RuntimeException|\InvalidArgumentException) {
                 if ($absentLe === null) {
                     $bilan['absents'][] = (string) $fichier->getNomOriginal();
+                }
+                $this->synchro->noterEtat($cleAbsent, $maintenant->format(\DATE_ATOM));
+                continue;
+            }
+            if ($etat['termine']) {
+                ++$bilan['recus'];
+                if ($absentLe !== null) {
+                    $this->synchro->noterEtat($cleAbsent, null);
+                }
+            }
+        }
+
+        return $bilan;
+    }
+
+    /* ---------- Notes vocales de la messagerie ---------- */
+
+    /** @return list<MessageClient> notes vocales de l'atelier au client, à tenir à jour sur le site */
+    public function vocalesAEnvoyer(): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('m')->from(MessageClient::class, 'm')
+            ->where('m.sens = :atelier')->setParameter('atelier', MessageClient::ATELIER)
+            ->andWhere('m.vocaleNom IS NOT NULL')
+            ->orderBy('m.id', 'DESC')
+            ->setMaxResults(500)
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * Envoie au site les notes vocales que l'atelier a envoyées au client
+     * (jamais les notes internes), dans la limite du budget du cycle.
+     *
+     * @param callable(string, array<string, mixed>): array<string, mixed> $appeler appel signé au site
+     *
+     * @return array{envoyes: int, octets: int, manquants: int}
+     */
+    public function envoyerVocales(callable $appeler, int $budget = self::BUDGET_CYCLE): array
+    {
+        $bilan = ['envoyes' => 0, 'octets' => 0, 'manquants' => 0];
+        foreach ($this->vocalesAEnvoyer() as $m) {
+            if ($bilan['octets'] >= $budget) {
+                break;
+            }
+            $chemin = $this->notesVocales->chemin($m);
+            if ($chemin === null) {
+                ++$bilan['manquants'];
+                continue;
+            }
+            $this->pousser($appeler, '/api/synchro/vocale', $m->getPublicId()->toRfc4122(), $chemin, 'la note vocale '.$m->getVocaleNom(), $budget, $bilan);
+        }
+
+        return $bilan;
+    }
+
+    /** @return list<MessageClient> notes vocales enregistrées par des clients en ligne, pas encore ici */
+    public function vocalesARecuperer(int $nombre = 200): array
+    {
+        $candidats = $this->em->createQueryBuilder()
+            ->select('m')->from(MessageClient::class, 'm')
+            ->where('m.sens = :client')->setParameter('client', MessageClient::CLIENT)
+            ->andWhere('m.vocaleNom IS NOT NULL')->andWhere('m.vocaleEmpreinte IS NOT NULL')
+            ->andWhere('m.creeLe > :depuis')->setParameter('depuis', new \DateTimeImmutable('-60 days'))
+            ->orderBy('m.id', 'ASC')
+            ->setMaxResults($nombre)
+            ->getQuery()->getResult();
+
+        return array_values(array_filter($candidats, fn (MessageClient $m): bool => preg_match(NotesVocales::NOM, (string) $m->getVocaleNom()) === 1 && $this->notesVocales->chemin($m) === null));
+    }
+
+    /**
+     * Rapatrie du site les notes vocales des clients, revérifiées à
+     * l'arrivée (type lu dans le contenu, taille, durée) : une note
+     * refusée est retirée et notée comme absente, redemandée plus tard.
+     *
+     * @param callable(string, array<string, mixed>): array<string, mixed> $appeler appel signé au site
+     *
+     * @return array{recus: int, octets: int, absents: list<string>}
+     */
+    public function recupererVocales(callable $appeler, int $budget = self::BUDGET_CYCLE, ?\DateTimeImmutable $maintenant = null): array
+    {
+        $maintenant ??= new \DateTimeImmutable();
+        $bilan = ['recus' => 0, 'octets' => 0, 'absents' => []];
+        $dossier = $this->notesVocales->dossier();
+        foreach ($this->vocalesARecuperer() as $m) {
+            if ($bilan['octets'] >= $budget) {
+                break;
+            }
+            $id = $m->getPublicId()->toRfc4122();
+            $cleAbsent = self::ETAT_ABSENT.$id;
+            $absentLe = $this->synchro->dateEtat($cleAbsent);
+            if ($absentLe !== null && $absentLe > $maintenant->modify('-'.self::REESSAI_ABSENT)) {
+                continue;
+            }
+            $nom = (string) $m->getVocaleNom();
+            $taille = (int) $m->getVocaleTaille();
+            try {
+                if ($taille <= 0 || $taille > NotesVocales::TAILLE_MAX) {
+                    throw new \InvalidArgumentException('Taille de note vocale refusée');
+                }
+                $etat = self::ecrire($dossier, $nom, (string) $m->getVocaleEmpreinte(), $taille, -1, null);
+                while (!$etat['termine'] && $bilan['octets'] < $budget) {
+                    $reponse = $appeler('/api/synchro/vocale-client', ['id' => $id, 'position' => $etat['recu']]);
+                    $morceau = base64_decode((string) ($reponse['morceau'] ?? ''), true);
+                    if ($morceau === false || $morceau === '') {
+                        throw new \RuntimeException('Le site ne donne pas la note vocale '.$nom);
+                    }
+                    $etat = self::ecrire($dossier, $nom, (string) $m->getVocaleEmpreinte(), $taille, $etat['recu'], $morceau);
+                    $bilan['octets'] += \strlen($morceau);
+                }
+                if ($etat['termine']) {
+                    try {
+                        NotesVocales::verifier((string) file_get_contents($dossier.'/'.$nom));
+                    } catch (\DomainException $e) {
+                        @unlink($dossier.'/'.$nom);
+                        throw new \InvalidArgumentException('Note vocale refusée à l\'arrivée : '.$e->getMessage());
+                    }
+                }
+            } catch (TransportExceptionInterface $e) {
+                throw $e; // liaison coupée : tout le cycle s'arrête
+            } catch (\RuntimeException|\InvalidArgumentException) {
+                if ($absentLe === null) {
+                    $bilan['absents'][] = 'note vocale de '.($m->getAuteur() ?? 'un client');
                 }
                 $this->synchro->noterEtat($cleAbsent, $maintenant->format(\DATE_ATOM));
                 continue;
@@ -308,6 +452,66 @@ final class FichiersSynchro
         $flux = fopen($chemin, 'rb');
         if ($flux === false) {
             throw new \InvalidArgumentException('Fichier illisible');
+        }
+        try {
+            fseek($flux, $position);
+            $morceau = (string) fread($flux, self::MORCEAU);
+        } finally {
+            fclose($flux);
+        }
+
+        return ['morceau' => base64_encode($morceau), 'taille' => (int) filesize($chemin)];
+    }
+    /**
+     * Côté site : reçoit un morceau d'une note vocale de l'atelier (ou,
+     * sans morceau, dit où reprendre). Le message doit être arrivé, venir
+     * de l'atelier et annoncer cette empreinte.
+     *
+     * @param array<string, mixed> $donnees id, empreinte, taille, position?, morceau? (base64)
+     *
+     * @return array{recu: int, termine: bool}
+     */
+    public function recevoirVocale(array $donnees): array
+    {
+        $m = $this->serialiseur->trouver('message_client', (string) ($donnees['id'] ?? ''));
+        if (!$m instanceof MessageClient || !$m->estDeLAtelier() || !$m->aUneNoteVocale()) {
+            throw new \InvalidArgumentException('Message de la note vocale pas encore reçu');
+        }
+        $nom = (string) $m->getVocaleNom();
+        $empreinte = strtolower((string) ($donnees['empreinte'] ?? ''));
+        $taille = (int) ($donnees['taille'] ?? -1);
+        if (!preg_match(NotesVocales::NOM, $nom) || $empreinte !== $m->getVocaleEmpreinte() || $taille !== $m->getVocaleTaille() || $taille > NotesVocales::TAILLE_MAX) {
+            throw new \InvalidArgumentException('Note vocale mal décrite');
+        }
+        $morceau = isset($donnees['morceau']) ? base64_decode((string) $donnees['morceau'], true) : null;
+        if ($morceau === false) {
+            throw new \InvalidArgumentException('Morceau invalide');
+        }
+
+        return self::ecrire($this->notesVocales->dossier(), $nom, $empreinte, $taille, (int) ($donnees['position'] ?? -1), $morceau);
+    }
+
+    /**
+     * Côté site : un morceau d'une note vocale enregistrée par un client.
+     *
+     * @param array<string, mixed> $donnees id, position
+     *
+     * @return array{morceau: string, taille: int}
+     */
+    public function lireVocale(array $donnees): array
+    {
+        $m = $this->serialiseur->trouver('message_client', (string) ($donnees['id'] ?? ''));
+        if (!$m instanceof MessageClient || !$m->estDuClient() || !$m->aUneNoteVocale()) {
+            throw new \InvalidArgumentException('Note vocale inconnue');
+        }
+        $chemin = $this->notesVocales->chemin($m);
+        $position = (int) ($donnees['position'] ?? -1);
+        if ($chemin === null || $position < 0 || $position >= (int) filesize($chemin)) {
+            throw new \InvalidArgumentException('Note vocale absente ou position invalide');
+        }
+        $flux = fopen($chemin, 'rb');
+        if ($flux === false) {
+            throw new \InvalidArgumentException('Note vocale illisible');
         }
         try {
             fseek($flux, $position);

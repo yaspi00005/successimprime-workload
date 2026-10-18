@@ -91,6 +91,8 @@ final class RecetteEspaceClient
         'app_espace_utilisateur' => 'utilisateur',
         // Vue rendue ou image d'une création de l'atelier 3D.
         'app_espace_creation_fichier' => 'creation',
+        // Note vocale de la messagerie (docs/messagerie-clients.md) : la conversation et le message.
+        'app_espace_message_vocale_ecouter' => 'vocale',
     ];
 
     /** Pages réservées à qui paie (factures, solde, paiement). */
@@ -274,6 +276,12 @@ final class RecetteEspaceClient
         $fichiersBat = [] === $bats ? [] : $this->espace->fichiersBat($bats[0]);
         $notifications = $this->fil->pour($compte, new \DateTimeImmutable());
         $aValider = array_values(array_filter($commandes, static fn (Commandes $c): bool => $c->attendValidationEntreprise()));
+        // Une note vocale de sa messagerie (docs/messagerie-clients.md) : conversation et message.
+        $vocale = $this->em->createQuery('SELECT c.publicId AS conversation, m.publicId AS message FROM '.MessageClient::class.' m JOIN m.conversation c WHERE m.client = :client AND c.client = :client AND m.vocaleNom IS NOT NULL ORDER BY m.id ASC')
+            ->setParameter('client', $client)->setMaxResults(1)->getOneOrNullResult();
+        if (null !== $vocale) {
+            $vocale = ['conversation' => self::uuid($vocale['conversation']), 'message' => self::uuid($vocale['message'])];
+        }
 
         return [
             'commande' => null === $confirmee ? null : self::uuid($confirmee->getPublicId()),
@@ -297,6 +305,8 @@ final class RecetteEspaceClient
             'adresse' => $this->premiere(AdresseLivraison::class, $client, 'e.actif = true'),
             'produit' => $this->premiere(ProduitClient::class, $client, '1 = 1', 'publicId'),
             'creation' => $this->premiere(CreationAtelier::class, $client, '1 = 1', 'publicId'),
+            'vocale' => $vocale['conversation'] ?? null,
+            'vocale_message' => $vocale['message'] ?? null,
         ];
     }
 
@@ -318,6 +328,7 @@ final class RecetteEspaceClient
                 $valeur = match ($variable) {
                     'taille' => 'v',
                     'quoi' => 'rendu-devant',
+                    'message' => $fiches['vocale_message'] ?? null,
                     default => $fiches[self::FICHES_DES_ROUTES[$nom] ?? ''] ?? null,
                 };
                 if (null === $valeur) {
@@ -537,6 +548,8 @@ final class RecetteEspaceClient
                 $parametres['taille'] = 'v';
             } elseif ('creation' === $sorte) {
                 $parametres['quoi'] = 'rendu-devant';
+            } elseif ('vocale' === $sorte) {
+                $parametres['message'] = $fichesB['vocale_message'] ?? '';
             }
             $chemin = $this->routeur->generate($route, $parametres);
             $reponse = $this->navigateur->get($chemin, $session);
@@ -581,6 +594,7 @@ final class RecetteEspaceClient
             ['app_espace_bat', 'bat', ['action' => 'valider'], 'valider le BAT', null],
             ['app_espace_payer_orange_money', 'commande', [], 'payer la commande', null],
             ['app_espace_nouvelle_commande_paiement', 'commande', [], 'payer à la commande la commande', null],
+            ['app_espace_message_vocale', 'vocale', [], 'envoyer une note vocale dans la conversation', null],
         ];
         foreach ($envois as [$route, $sorte, $donnees, $libelle, $intacte]) {
             $valeur = $fichesB[$sorte] ?? null;

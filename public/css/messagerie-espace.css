@@ -148,3 +148,12 @@ img.ec-agent-photo { object-fit: cover; background: #E7EEFA; }
   .ms-fin { padding: 1rem 0; }
   .ms-formulaire { padding: 1rem; background: #fff; border-radius: var(--rayon); }
 }
+
+/* Note vocale dans la saisie (docs/messagerie-clients.md) : le bouton à côté du trombone, l'enregistreur au-dessus. */
+.ms-vocale { flex: none; }
+.ms-vocale .nv .ms-vocale-bouton { height: 44px; padding: 0 .8rem; border-radius: 12px; background: var(--fond); color: var(--encre); font-size: .85rem; }
+@media (max-width: 767.98px) {
+  .ms-vocale .nv .ms-vocale-bouton { width: 44px; padding: 0; justify-content: center; }
+  .ms-vocale .nv .ms-vocale-bouton .nv-libelle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ms-vocale .nv .ms-vocale-bouton svg { width: 20px; height: 20px; }
+}

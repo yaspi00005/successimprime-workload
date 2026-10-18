@@ -15,6 +15,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * séparateurs de jour (« Jeudi 15 octobre · commande créée, acompte de
  * 11 500 F reçu »), bulles, événements (« BAT validé à 11:40 · impression
  * lancée », collègue ajouté) et, pour l'atelier seulement, notes internes.
+ * Une note vocale (message ou note interne) se lit avec un lecteur audio.
  * Les montants sont masqués pour qui ne les voit pas.
  */
 final class FilConversation
@@ -57,7 +58,8 @@ final class FilConversation
             }
             $elements[] = [
                 'type' => 'message', 'le' => $m->getCreeLe(), 'm' => $m,
-                'texte' => $montants ? $m->getTexte() : Conversations::sansMontants($m->getTexte()),
+                // Note vocale sans texte : le lecteur seul (le libellé « Note vocale · 0:42 » sert d'aperçu ailleurs).
+                'texte' => $m->texteEstLibelleVocale() ? '' : ($montants ? $m->getTexte() : Conversations::sansMontants($m->getTexte())),
                 'signature' => $m->getSignature(),
                 // « Lu ✓✓ » : réponse lue par le client, message du client lu par l'atelier.
                 'lu' => $m->estDeLAtelier() ? (null !== $c->getLuClientLe() && $c->getLuClientLe() >= $m->getCreeLe()) : (null !== $c->getLuAtelierLe() && $c->getLuAtelierLe() >= $m->getCreeLe()),
@@ -66,7 +68,7 @@ final class FilConversation
         foreach ($notes as $n) {
             // « @Kadiatou » surligné ; le reste du texte est échappé.
             $html = (string) preg_replace('/@([\p{L}][\p{L}\-.]*)/u', '<mark>@$1</mark>', htmlspecialchars($n->getTexte(), \ENT_QUOTES));
-            $elements[] = ['type' => 'note', 'le' => $n->getCreeLe(), 'note' => $n, 'html' => nl2br($html)];
+            $elements[] = ['type' => 'note', 'le' => $n->getCreeLe(), 'note' => $n, 'html' => $n->texteEstLibelleVocale() ? '' : nl2br($html)];
         }
         usort($elements, static fn (array $a, array $b): int => $a['le'] <=> $b['le']);
 

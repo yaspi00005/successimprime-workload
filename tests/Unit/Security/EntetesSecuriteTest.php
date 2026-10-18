@@ -107,7 +107,8 @@ final class EntetesSecuriteTest extends TestCase
             self::assertSame('nosniff', $entetes['X-Content-Type-Options']);
             self::assertSame('SAMEORIGIN', $entetes['X-Frame-Options']);
             self::assertSame('strict-origin-when-cross-origin', $entetes['Referrer-Policy']);
-            self::assertStringContainsString('microphone=()', $entetes['Permissions-Policy']);
+            self::assertStringContainsString('microphone=(self)', $entetes['Permissions-Policy']);
+            self::assertStringContainsString('payment=()', $entetes['Permissions-Policy']);
         }
     }
 

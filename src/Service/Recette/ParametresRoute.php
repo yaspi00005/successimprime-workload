@@ -9,7 +9,9 @@ use App\Entity\ConversationClient;
 use App\Entity\DemandeConception;
 use App\Entity\DemandeDevis;
 use App\Entity\JournalActivite;
+use App\Entity\MessageClient;
 use App\Entity\MouvementSoldeClient;
+use App\Entity\NoteConversation;
 use App\Entity\PageSite;
 use App\Service\Guide\CatalogueGuide;
 use App\Service\Parametres\CatalogueParametres;
@@ -84,6 +86,19 @@ final class ParametresRoute
                 ->orderBy('e.id', 'ASC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
 
             return null === $ligne ? 'aucun dépôt ni argent rendu sur un compte client' : [['id' => (int) $ligne['id']]];
+        }
+
+        // Note vocale de la messagerie (docs/messagerie-clients.md) : une note interne et un message de la démonstration.
+        if ('app_messages_clients_vocale_ecouter' === $nom) {
+            $jeux = [];
+            foreach (['note' => NoteConversation::class, 'message' => MessageClient::class] as $genre => $classe) {
+                $ligne = $this->em->createQuery('SELECT e.id, c.publicId FROM '.$classe.' e JOIN e.conversation c WHERE e.vocaleNom IS NOT NULL ORDER BY e.id ASC')->setMaxResults(1)->getOneOrNullResult();
+                if (null !== $ligne) {
+                    $jeux[] = ['publicId' => (string) $ligne['publicId'], 'genre' => $genre, 'id' => (int) $ligne['id']];
+                }
+            }
+
+            return [] === $jeux ? 'aucune note vocale dans les conversations' : $jeux;
         }
 
         $arguments = self::argumentsDuControleur($route);

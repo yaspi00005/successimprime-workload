@@ -94,8 +94,8 @@ final class EntetesSecurite
      */
     public const POLITIQUE_FICHIER = "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'; sandbox";
 
-    /** Fonctions du navigateur : caméra (pointage, photos) et position (livraison) pour le site seulement. */
-    public const PERMISSIONS = 'camera=(self), geolocation=(self), fullscreen=(self), microphone=(), payment=(), usb=(), serial=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), browsing-topics=()';
+    /** Fonctions du navigateur : caméra (pointage, photos), micro (notes vocales de la messagerie) et position (livraison) pour le site seulement. */
+    public const PERMISSIONS = 'camera=(self), geolocation=(self), fullscreen=(self), microphone=(self), payment=(), usb=(), serial=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), browsing-topics=()';
 
     public static function zone(string $route, bool $personnelConnecte): string
     {

@@ -6,7 +6,10 @@ use App\Entity\Commandes;
 use App\Entity\ConversationClient;
 use App\Entity\Devis;
 use App\Service\EspaceClient\EspaceClient;
+use App\Entity\MessageClient;
+use App\Entity\NoteConversation;
 use App\Service\Messagerie\Conversations;
+use App\Service\Messagerie\NotesVocales;
 use App\Service\Messagerie\ReglesReponse;
 use App\Service\Messagerie\ResumeConversation;
 use Twig\Attribute\AsTwigFilter;
@@ -19,8 +22,30 @@ use Twig\Attribute\AsTwigFunction;
  */
 final class MessagerieExtension
 {
-    public function __construct(private readonly ResumeConversation $resume)
+    public function __construct(
+        private readonly ResumeConversation $resume,
+        private readonly Conversations $conversations,
+        private readonly NotesVocales $notesVocales,
+    ) {
+    }
+
+    /** Le fichier de la note vocale est là (sinon : en cours de réception par la synchronisation). */
+    #[AsTwigFunction('note_vocale_presente')]
+    public function notePresente(MessageClient|NoteConversation $element): bool
     {
+        return null !== $this->notesVocales->chemin($element);
+    }
+
+    /**
+     * {% for v in notes_vocales(conversation) %} : dernières notes vocales
+     * (genre « message » ou « note » interne, element, le), pour l'atelier.
+     *
+     * @return list<array<string, mixed>>
+     */
+    #[AsTwigFunction('notes_vocales')]
+    public function notesVocales(ConversationClient $c, int $max = 5): array
+    {
+        return $this->conversations->notesVocales($c, $max);
     }
 
     /**

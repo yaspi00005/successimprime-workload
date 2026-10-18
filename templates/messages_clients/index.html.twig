@@ -5,6 +5,7 @@
 
 {% block stylesheets %}
 	<link href="{{ asset('css/messagerie-admin.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/note-vocale.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% macro av(s, classe) %}{% if s.photo ?? null %}<img src="{{ s.photo }}" alt="" class="mc-av {{ classe }}">{% else %}<span class="mc-av {{ classe }}" style="background: {{ s.teinte is null ? '#0F4590' : ['#DC2626', '#E8590C', '#DB2777', '#1F2937', '#2563EB', '#0E7C66', '#7C2D12', '#6B7280', '#0F4590'][s.teinte % 9] }}">{{ s.initiales }}</span>{% endif %}{% endmacro %}
@@ -123,7 +124,7 @@
 							<p class="mc-evenement {{ e.vert ? 'vert' }}">{{ e.texte }}</p>
 						{% elseif e.type == 'note' %}
 							{% set n = e.note %}
-							<div class="mc-note"><div class="mc-note-tete"><b>{{ mc.nomUser(n.auteur) }}</b><em>Note interne · le client ne la voit pas</em><span class="mc-heure">{{ n.creeLe|date('H:i') }}</span></div>{{ e.html|raw }}</div>
+							<div class="mc-note"><div class="mc-note-tete"><b>{{ mc.nomUser(n.auteur) }}</b><em>Note interne · le client ne la voit pas</em><span class="mc-heure">{{ n.creeLe|date('H:i') }}</span></div>{{ e.html|raw }}{% if n.aUneNoteVocale %}{% include 'messages_clients/_lecteur_vocal.html.twig' with {element: n, url: path('app_messages_clients_vocale_ecouter', {publicId: c.publicId, genre: 'note', id: n.id})} only %}{% endif %}</div>
 						{% else %}
 							{% set m = e.m %}
 							<div class="mc-bulle {{ m.estDeLAtelier ? 'atelier' }}"{{ loop.last ? ' id=dernier' }}>
@@ -134,7 +135,8 @@
 										<span class="mc-heure">{{ m.creeLe|date('H:i') }}</span>
 										{% if m.delaiMinutes is not null %}<span class="mc-heure {{ m.estEnRetard ? 'mc-retard-msg' }}">· répondu en {{ m.delaiMinutes|duree_messagerie }}{{ m.estEnRetard ? ' (retard ' ~ m.retardMinutes|duree_messagerie ~ (m.penalite ? ', −' ~ m.penalite ~ ' pts' : '') ~ ')' }}</span>{% endif %}
 									</p>
-									<div class="mc-texte">{{ e.texte|nl2br }}</div>
+									{% if e.texte != '' %}<div class="mc-texte">{{ e.texte|nl2br }}</div>{% endif %}
+									{% if m.aUneNoteVocale %}{% include 'messages_clients/_lecteur_vocal.html.twig' with {element: m, url: path('app_messages_clients_vocale_ecouter', {publicId: c.publicId, genre: 'message', id: m.id})} only %}{% endif %}
 									{% if m.bat %}<span class="mc-piece">📄 BAT · {{ m.bat.commandeDetail ? m.bat.commandeDetail.designation : 'fichier' }}</span>{% endif %}
 									{% if m.facture %}<span class="mc-piece">🧾 Facture {{ m.facture.numero }}</span>{% endif %}
 									{% if m.estDeLAtelier and e.lu %}<span class="mc-heure">Lu ✓✓</span>{% endif %}
@@ -157,6 +159,8 @@
 						<div class="mc-rapides">
 							{% for libelle, texte in reponsesRapides %}<button type="button" data-texte="{{ texte }}">{{ libelle }}</button>{% endfor %}
 							<button type="button" class="mc-mode" aria-pressed="false" id="mc-note">🔒 Note interne</button>
+							{# Note vocale (docs/messagerie-clients.md) : au client ou note interne, 3 min au plus. #}
+							<div class="nv-flottant">{% include 'messages_clients/_note_vocale.html.twig' with {url: path('app_messages_clients_vocale', {publicId: c.publicId}), jeton: csrf_token(jeton), choix: true, onglet: onglet} only %}</div>
 						</div>
 						<div class="mc-saisie">
 							<label for="mc-texte" class="visually-hidden">Votre réponse</label>
@@ -181,6 +185,7 @@
 								f.classList.toggle('note', n);
 								t.placeholder = n ? 'Note interne pour l\'équipe (@prénom pour prévenir un collègue)…' : 'Répondre à {{ client.nomComplet|e('js') }}…';
 								env.textContent = n ? 'Ajouter la note' : 'Envoyer';
+								const r = f.querySelector('input[name="nv-mode"][value="' + (n ? 'note' : 'reponse') + '"]'); if (r) { r.checked = true; }
 							});
 							const m = document.querySelector('.mc-messages'); if (m) { m.scrollTop = m.scrollHeight; }
 						})();
@@ -229,4 +234,8 @@
 			</aside>
 		{% endif %}
 	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script src="{{ asset('js/note-vocale.js') }}" defer></script>
 {% endblock %}

@@ -156,6 +156,37 @@ final class Conversations
         return array_reverse($this->em->getRepository(MessageClient::class)->findBy(['conversation' => $c], ['creeLe' => 'DESC', 'id' => 'DESC'], $max));
     }
 
+    /** Un message de cette conversation par son identifiant public (notes vocales). */
+    public function messageParId(ConversationClient $c, string $publicId): ?MessageClient
+    {
+        if (1 !== preg_match('/^[0-9a-f-]{36}$/', $publicId)) {
+            return null;
+        }
+        $m = $this->em->getRepository(MessageClient::class)->findOneBy(['publicId' => $publicId, 'conversation' => $c]);
+
+        return $m instanceof MessageClient ? $m : null;
+    }
+
+    /**
+     * Dernières notes vocales d'une conversation, la plus récente d'abord
+     * (fiche de la commande) : messages et notes internes, pour l'atelier.
+     *
+     * @return list<array{genre: string, element: MessageClient|NoteConversation, le: \DateTimeImmutable}>
+     */
+    public function notesVocales(ConversationClient $c, int $max = 5): array
+    {
+        $liste = [];
+        foreach ($this->em->createQuery('SELECT m FROM '.MessageClient::class.' m WHERE m.conversation = :c AND m.vocaleNom IS NOT NULL ORDER BY m.creeLe DESC')->setParameter('c', $c)->setMaxResults($max)->getResult() as $m) {
+            $liste[] = ['genre' => 'message', 'element' => $m, 'le' => $m->getCreeLe()];
+        }
+        foreach ($this->em->createQuery('SELECT n FROM '.NoteConversation::class.' n WHERE n.conversation = :c AND n.vocaleNom IS NOT NULL ORDER BY n.creeLe DESC')->setParameter('c', $c)->setMaxResults($max)->getResult() as $n) {
+            $liste[] = ['genre' => 'note', 'element' => $n, 'le' => $n->getCreeLe()];
+        }
+        usort($liste, static fn (array $a, array $b): int => $b['le'] <=> $a['le']);
+
+        return \array_slice($liste, 0, $max);
+    }
+
     /** @return list<NoteConversation> */
     public function notes(ConversationClient $c): array
     {
@@ -268,7 +299,10 @@ final class Conversations
      *
      * @throws \DomainException
      */
-    public function ecrireClient(CompteClient $compte, ConversationClient $c, string $texte, \DateTimeImmutable $maintenant): MessageClient
+    /**
+     * @param array{nom: string, type: string, taille: int, duree: int, empreinte: string}|null $vocale note vocale déjà vérifiée (NotesVocales)
+     */
+    public function ecrireClient(CompteClient $compte, ConversationClient $c, string $texte, \DateTimeImmutable $maintenant, ?array $vocale = null): MessageClient
     {
         if ($c->getClient() !== $compte->getClient()) {
             throw new \DomainException('Conversation introuvable.');
@@ -281,13 +315,17 @@ final class Conversations
             $c->rouvrir($maintenant);
         }
 
-        return $this->ecrireDans($compte, $c, $texte, $maintenant);
+        return $this->ecrireDans($compte, $c, $texte, $maintenant, $vocale);
     }
 
-    private function ecrireDans(CompteClient $compte, ConversationClient $c, string $texte, \DateTimeImmutable $maintenant): MessageClient
+    /** @param array{nom: string, type: string, taille: int, duree: int, empreinte: string}|null $vocale */
+    private function ecrireDans(CompteClient $compte, ConversationClient $c, string $texte, \DateTimeImmutable $maintenant, ?array $vocale = null): MessageClient
     {
         $m = MessageClient::nouveau($c->getClient(), MessageClient::CLIENT, $texte, $compte->getNomAffiche(), $c->getCommande(), $maintenant);
         $m->setConversation($c);
+        if (null !== $vocale) {
+            $m->joindreNoteVocale($vocale);
+        }
         // Le client a répondu : la clôture proposée n'a plus lieu d'être.
         $c->refuserCloture()->setDernierMessageLe($maintenant)->setLuClientLe($maintenant);
         $this->em->persist($m);
@@ -427,9 +465,11 @@ final class Conversations
      * réponse (« répondu en 4 min ») et un retard est imputé à la personne
      * responsable (−5 points par réponse en retard).
      *
+     * @param array{nom: string, type: string, taille: int, duree: int, empreinte: string}|null $vocale note vocale déjà vérifiée (NotesVocales)
+     *
      * @throws \DomainException
      */
-    public function repondre(ConversationClient $c, User $par, string $texte, ?ControlePrePresse $bat, ?Factures $facture, \DateTimeImmutable $maintenant): MessageClient
+    public function repondre(ConversationClient $c, User $par, string $texte, ?ControlePrePresse $bat, ?Factures $facture, \DateTimeImmutable $maintenant, ?array $vocale = null): MessageClient
     {
         if ($this->enLigne) {
             throw new \DomainException('Les réponses partent de l\'ERP de l\'imprimerie.');
@@ -444,6 +484,9 @@ final class Conversations
         $agent = $this->agents->pour($par, $maintenant);
         $m = MessageClient::nouveau($c->getClient(), MessageClient::ATELIER, $texte, $par->getEmploye()?->getNomPublic() ?? MessageClient::NOM_ATELIER, $c->getCommande(), $maintenant);
         $m->setConversation($c)->setAgent($agent)->setBat($bat)->setFacture($facture)->setEcritPar($par);
+        if (null !== $vocale) {
+            $m->joindreNoteVocale($vocale);
+        }
         $tresoriere = $this->regles->tresoriere();
         if (null === $c->getAssigneA() && self::imputable($par, $tresoriere)) {
             // Non assignée : la personne de caisse qui répond la prend.
@@ -508,9 +551,11 @@ final class Conversations
      * Note interne : invisible du client, sans effet sur le chronomètre.
      * « @Kadiatou » prévient la personne nommée (prénom ou identifiant).
      *
+     * @param array{nom: string, type: string, taille: int, duree: int, empreinte: string}|null $vocale note vocale déjà vérifiée (NotesVocales)
+     *
      * @throws \DomainException
      */
-    public function noteInterne(ConversationClient $c, User $par, string $texte, \DateTimeImmutable $maintenant): NoteConversation
+    public function noteInterne(ConversationClient $c, User $par, string $texte, \DateTimeImmutable $maintenant, ?array $vocale = null): NoteConversation
     {
         $texte = trim($texte);
         if ('' === $texte) {
@@ -518,6 +563,9 @@ final class Conversations
         }
         $mentionnes = $this->mentions($texte, $par);
         $note = new NoteConversation($c, $par, $texte, array_map(static fn (User $u): int => (int) $u->getId(), $mentionnes), $maintenant);
+        if (null !== $vocale) {
+            $note->joindreNoteVocale($vocale);
+        }
         $this->em->persist($note);
         foreach ($mentionnes as $u) {
             $this->notifications->notifierUtilisateur($u, \sprintf('%s vous cite dans la conversation %s : « %s »', self::nom($par), $c->getTitre(), mb_strimwidth($texte, 0, 100, '…')), 'app_messages_clients_voir', ['publicId' => (string) $c->getPublicId()]);

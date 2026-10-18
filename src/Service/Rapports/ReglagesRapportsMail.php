@@ -113,13 +113,20 @@ final class ReglagesRapportsMail
         return $this->planification($type)->prochain($type, $maintenant, $this->joursOuverts());
     }
 
-    /** « Chaque jour d'ouverture à 20 h », « Chaque lundi à 7 h », « Le 1er du mois à 7 h ». */
+    /**
+     * « Chaque jour d'ouverture à 20 h », « Le lendemain de chaque jour
+     * d'ouverture à 7 h, pour la veille », « Chaque lundi à 7 h », « Le 1er
+     * du mois à 7 h ».
+     */
     public function libelle(string $type): string
     {
         $heure = Planification::heureLisible($this->heure($type));
+        $ouvres = (bool) $this->parametres->valeur(self::TUILE, 'jour_ouvres');
 
         return match ($type) {
-            PeriodeRapport::JOUR => ($this->parametres->valeur(self::TUILE, 'jour_ouvres') ? 'Chaque jour d’ouverture' : 'Chaque jour').' à '.$heure.', pour la journée',
+            PeriodeRapport::JOUR => Planification::lendemain($this->heure($type))
+                ? ($ouvres ? 'Le lendemain de chaque jour d’ouverture' : 'Chaque jour').' à '.$heure.', pour la veille'
+                : ($ouvres ? 'Chaque jour d’ouverture' : 'Chaque jour').' à '.$heure.', pour la journée',
             PeriodeRapport::SEMAINE => 'Chaque '.PeriodeRapport::JOURS[$this->jourSemaine()].' à '.$heure.', pour la semaine passée',
             default => 'Le '.(1 === $this->jourMois() ? '1er' : $this->jourMois()).' du mois à '.$heure.', pour le mois passé',
         };

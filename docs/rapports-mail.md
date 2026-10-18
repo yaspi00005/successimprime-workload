@@ -10,6 +10,8 @@ Construit le 18/10/2026 sur l'ERP local, à la demande de Yaya (16/10) : « Il f
 | De la semaine | chaque lundi à 7 h | la semaine passée, du lundi au dimanche (semaine ISO) | la semaine d'avant |
 | Du mois | le 1er à 7 h | le mois passé | le mois d'avant |
 
+Une heure du rapport du jour avant midi (par exemple 7 h) l'envoie le lendemain matin pour la veille, journée finie (le dimanche matin pour le samedi) ; à partir de midi, il part le jour même pour la journée en cours, chiffres arrêtés à l'heure d'envoi.
+
 Les jours et heures se changent dans Réglages › Paramètres › tuile **Rapports par e-mail** (Direction) : chaque rapport oui ou non, l'heure, le jour de la semaine, le jour du mois (1 à 28), « seulement les jours d'ouverture » pour le rapport du jour (jours travaillés et jours fériés de la tuile Horaires), le PDF joint, et l'adresse de l'ERP dans l'atelier (pour le bouton « Ouvrir dans l'ERP »).
 
 ## Contenu

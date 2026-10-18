@@ -45,6 +45,25 @@ final class PlanificationTest extends TestCase
         self::assertSame('2026-10-17', $plan->aEnvoyer(PeriodeRapport::JOUR, self::d('2026-10-17 23:45'))?->code());
     }
 
+    public function testRapportDuJourLeMatinPourLaVeille(): void
+    {
+        $plan = new Planification('07:00');
+
+        // Réglé avant midi : le samedi part le dimanche à 7 h, journée finie, pas un samedi à peine commencé.
+        self::assertSame('2026-10-18 07:00', $plan->moment(PeriodeRapport::lire(PeriodeRapport::JOUR, '2026-10-17'))->format('Y-m-d H:i'));
+        self::assertSame('2026-10-16', $plan->aEnvoyer(PeriodeRapport::JOUR, self::d('2026-10-18 06:59'))?->code());
+        self::assertSame('2026-10-17', $plan->aEnvoyer(PeriodeRapport::JOUR, self::d('2026-10-18 07:00'))?->code());
+        // Le dimanche (fermé) n'a pas de rapport le lundi matin ; le samedi reste le dernier.
+        self::assertSame('2026-10-17', $plan->aEnvoyer(PeriodeRapport::JOUR, self::d('2026-10-19 07:15'), self::saufDimanche())?->code());
+        self::assertSame('2026-10-20 07:00', $plan->prochain(PeriodeRapport::JOUR, self::d('2026-10-19 07:15'), self::saufDimanche())->format('Y-m-d H:i'));
+        // Midi et après : le jour même.
+        self::assertSame('2026-10-17 12:00', (new Planification('12:00'))->moment(PeriodeRapport::lire(PeriodeRapport::JOUR, '2026-10-17'))->format('Y-m-d H:i'));
+        self::assertTrue(Planification::lendemain('00:30'));
+        self::assertTrue(Planification::lendemain('11:59'));
+        self::assertFalse(Planification::lendemain('12:00'));
+        self::assertFalse(Planification::lendemain('20:00'));
+    }
+
     public function testPasDeRapportDuJourUnJourDeFermeture(): void
     {
         $plan = new Planification('20:00');

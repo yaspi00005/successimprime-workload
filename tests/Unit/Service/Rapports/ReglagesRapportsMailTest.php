@@ -46,6 +46,7 @@ final class ReglagesRapportsMailTest extends TestCase
         self::assertNull($r->adresseErp());
         // Tant que la direction n'a rien choisi : null (la direction reçoit).
         self::assertNull($r->destinatairesChoisis());
+        self::assertSame('Chaque jour d’ouverture à 20 h, pour la journée', $r->libelle(PeriodeRapport::JOUR));
         self::assertSame('Chaque lundi à 7 h, pour la semaine passée', $r->libelle(PeriodeRapport::SEMAINE));
         self::assertSame('Le 1er du mois à 7 h, pour le mois passé', $r->libelle(PeriodeRapport::MOIS));
     }
@@ -62,10 +63,21 @@ final class ReglagesRapportsMailTest extends TestCase
         self::assertNull($r->aEnvoyer(PeriodeRapport::JOUR, new \DateTimeImmutable('2026-10-17 21:00')));
         self::assertSame('19:30', $r->heure(PeriodeRapport::JOUR));
         self::assertSame(3, $r->jourSemaine());
+        self::assertSame('Chaque jour d’ouverture à 19 h 30, pour la journée', $r->libelle(PeriodeRapport::JOUR));
         self::assertSame(5, $r->jourMois());
         self::assertSame([5, 12], $r->destinatairesChoisis());
         self::assertSame('http://192.168.1.10/successImprim/public', $r->adresseErp());
         self::assertSame('2026-10-21 07:00', $r->prochainEnvoi(PeriodeRapport::SEMAINE, new \DateTimeImmutable('2026-10-19 08:00'))->format('Y-m-d H:i'));
+    }
+
+    public function testRapportDuJourLeMatinPourLaVeille(): void
+    {
+        $r = self::reglages([ReglagesRapportsMail::TUILE => ['jour_heure' => '07:00']]);
+        self::assertSame('Le lendemain de chaque jour d’ouverture à 7 h, pour la veille', $r->libelle(PeriodeRapport::JOUR));
+
+        $r = self::reglages([ReglagesRapportsMail::TUILE => ['jour_heure' => '06:30', 'jour_ouvres' => false]]);
+        self::assertSame('Chaque jour à 6 h 30, pour la veille', $r->libelle(PeriodeRapport::JOUR));
+        self::assertSame('2026-10-17', $r->aEnvoyer(PeriodeRapport::JOUR, new \DateTimeImmutable('2026-10-18 06:45'))?->code());
     }
 
     public function testListeDesComptes(): void

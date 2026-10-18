@@ -113,7 +113,7 @@ final class CatalogueParametres
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_rapports_mail',
                 'champs' => [
                     ['cle' => 'jour_actif', 'type' => 'interrupteur', 'libelle' => 'Rapport du jour', 'aide' => 'Activité et argent de la journée, le soir même', 'defaut' => true],
-                    ['cle' => 'jour_heure', 'type' => 'heure', 'libelle' => 'Heure du rapport du jour', 'defaut' => '20:00'],
+                    ['cle' => 'jour_heure', 'type' => 'heure', 'libelle' => 'Heure du rapport du jour', 'aide' => 'Le soir : la journée même. Avant midi (7 h) : le lendemain matin, pour la veille', 'defaut' => '20:00'],
                     ['cle' => 'jour_ouvres', 'type' => 'interrupteur', 'libelle' => 'Seulement les jours d\'ouverture', 'aide' => 'Jours travaillés et jours fériés de la tuile Horaires', 'defaut' => true],
                     ['cle' => 'semaine_actif', 'type' => 'interrupteur', 'libelle' => 'Rapport de la semaine', 'aide' => 'La semaine passée, du lundi au dimanche', 'defaut' => true],
                     ['cle' => 'semaine_jour', 'type' => 'choix', 'libelle' => 'Rapport de la semaine envoyé le', 'options' => ['lundi' => 'lundi', 'mardi' => 'mardi', 'mercredi' => 'mercredi', 'jeudi' => 'jeudi', 'vendredi' => 'vendredi', 'samedi' => 'samedi', 'dimanche' => 'dimanche'], 'defaut' => 'lundi'],

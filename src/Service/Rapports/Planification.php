@@ -5,7 +5,9 @@ namespace App\Service\Rapports;
 /**
  * Quand part chaque rapport (docs/rapports-mail.md), règles pures :
  *  - du jour : le jour même, à l'heure des Réglages (20 h), seulement les
- *    jours d'ouverture de l'atelier si la case est cochée ;
+ *    jours d'ouverture de l'atelier si la case est cochée ; une heure
+ *    avant midi (7 h) l'envoie le lendemain matin, pour la veille
+ *    (journée finie), et non pour une journée à peine commencée ;
  *  - de la semaine : la semaine suivante, le jour et à l'heure des
  *    Réglages (lundi 7 h), pour la semaine passée ;
  *  - du mois : le mois suivant, le jour du mois et à l'heure des Réglages
@@ -29,6 +31,9 @@ final class Planification
         PeriodeRapport::MOIS => '+7 days',
     ];
 
+    /** Avant cette heure, le rapport du jour part le lendemain matin, pour la veille. */
+    public const MIDI = 12;
+
     /**
      * @param string    $heure       « 20:00 »
      * @param int       $jourSemaine 1 (lundi) à 7, pour le rapport de la semaine
@@ -47,7 +52,7 @@ final class Planification
         [$h, $m] = self::lireHeure($this->heure);
 
         return match ($p->type) {
-            PeriodeRapport::JOUR => $p->debut->setTime($h, $m),
+            PeriodeRapport::JOUR => (self::lendemain($this->heure) ? $p->fin : $p->debut)->setTime($h, $m),
             PeriodeRapport::SEMAINE => $p->fin->modify(\sprintf('+%d days', max(1, min(7, $this->jourSemaine)) - 1))->setTime($h, $m),
             default => $p->fin->modify(\sprintf('+%d days', max(1, min(28, $this->jourMois)) - 1))->setTime($h, $m),
         };
@@ -115,6 +120,16 @@ final class Planification
     private static function compte(PeriodeRapport $p, ?\Closure $ouvert): bool
     {
         return PeriodeRapport::JOUR !== $p->type || null === $ouvert || $ouvert($p->debut);
+    }
+
+    /**
+     * Le rapport du jour réglé avant midi (« 07:00 ») part le lendemain
+     * matin pour la veille ; réglé l'après-midi ou le soir (« 20:00 »), le
+     * jour même pour la journée en cours.
+     */
+    public static function lendemain(string $heure): bool
+    {
+        return self::lireHeure($heure)[0] < self::MIDI;
     }
 
     /**

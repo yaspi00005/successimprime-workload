@@ -5,7 +5,7 @@
 	{% set numero = paiement|numero_recu %}
 	<title>Reçu {{ numero ?? '' }} · {{ entreprise.nomAffiche }}</title>
 	{#
-		Reçu d'un paiement validé par la boutique, en PDF pour le client
+		Reçu d'un paiement validé par l'imprimerie, en PDF pour le client
 		(EspaceFacturesController::recuPdf) : en-tête de l'entreprise de la
 		facture, numéro de la caisse, montant, frais Orange Money payés en
 		plus, reste à payer. Le nom de la personne qui a encaissé n'y est pas.
@@ -56,7 +56,7 @@
 				<div class="numero">N° {{ numero ?? '—' }}</div>
 				<div class="coord">
 					Payé le {{ paiement.date ? paiement.date|date('d/m/Y') }}<br>
-					{% if paiement.dateValidation %}Validé par la boutique le {{ paiement.dateValidation|date('d/m/Y') }}{% endif %}
+					{% if paiement.dateValidation %}Validé par l'imprimerie le {{ paiement.dateValidation|date('d/m/Y') }}{% endif %}
 				</div>
 			</td>
 		</tr></table>
@@ -88,7 +88,7 @@
 		{% endif %}
 
 		<div class="pied">
-			Reçu émis par {{ entreprise.nomAffiche }} après validation du paiement par la boutique. Merci pour votre confiance.<br>
+			Reçu émis par {{ entreprise.nomAffiche }} après validation du paiement par l'imprimerie. Merci pour votre confiance.<br>
 			{{ entreprise.mentionsLegales }}
 		</div>
 	</div>

@@ -255,7 +255,7 @@ final class DemandesSite
         }
         $this->em->flush();
 
-        // Le site n'a pas pu l'envoyer (SMS réglé seulement ici) : la boutique accuse réception.
+        // Le site n'a pas pu l'envoyer (SMS réglé seulement ici) : l'imprimerie accuse réception.
         if ($demande->getCreeLe() > $le->modify(\sprintf('-%d hours', self::ACCUSE_HEURES))) {
             $this->accuser($demande, $le);
         }

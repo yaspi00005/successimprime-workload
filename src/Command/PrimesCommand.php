@@ -56,7 +56,7 @@ final class PrimesCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         if ($this->acces->estEnLigne()) {
-            $io->error('Les primes restent sur l\'ERP de la boutique : lancez la commande en local.');
+            $io->error('Les primes restent sur l\'ERP de l\'imprimerie : lancez la commande en local.');
 
             return Command::FAILURE;
         }

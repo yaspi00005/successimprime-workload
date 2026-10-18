@@ -49,7 +49,7 @@ final class Planning
         'compteurs' => ['titre' => 'Relevés des compteurs machines', 'categorie' => 'atelier', 'frequence' => 'mois', 'jourMois' => 1, 'etapes' => []],
         'caisse' => ['titre' => 'Clôture de caisse', 'categorie' => 'administratif', 'frequence' => 'jour', 'heure' => '19:00', 'etapes' => []],
         'entretien' => ['titre' => 'Atelier · sol, poussière des machines', 'categorie' => 'entretien', 'frequence' => 'jour', 'heure' => '07:30', 'heureFin' => '08:00', 'decalage' => Calendrier::GARDER, 'etapes' => ['Balayer et laver le sol', 'Dépoussiérer les machines', 'Vider les poubelles']],
-        'fermeture' => ['titre' => 'Fermeture · poubelles, sols, lumières', 'categorie' => 'entretien', 'frequence' => 'jour', 'heure' => '17:30', 'heureFin' => '18:00', 'decalage' => Calendrier::GARDER, 'fermeture' => true, 'etapes' => ['Vider les poubelles', 'Balayer la boutique', 'Balayer l\'atelier', 'Ranger les présentoirs', 'Éteindre les machines', 'Éteindre la climatisation', 'Éteindre les lumières', 'Fermer les fenêtres']],
+        'fermeture' => ['titre' => 'Fermeture · poubelles, sols, lumières', 'categorie' => 'entretien', 'frequence' => 'jour', 'heure' => '17:30', 'heureFin' => '18:00', 'decalage' => Calendrier::GARDER, 'fermeture' => true, 'etapes' => ['Vider les poubelles', 'Balayer l\'accueil', 'Balayer l\'atelier', 'Ranger les présentoirs', 'Éteindre les machines', 'Éteindre la climatisation', 'Éteindre les lumières', 'Fermer les fenêtres']],
         'tetes' => ['titre' => 'Nettoyage des têtes', 'categorie' => 'atelier', 'frequence' => 'jour', 'heure' => '08:00', 'etapes' => []],
     ];
 

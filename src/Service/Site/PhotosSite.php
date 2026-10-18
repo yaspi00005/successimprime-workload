@@ -33,7 +33,7 @@ final class PhotosSite
      * « Notre local »).
      */
     public const PHOTOS = [
-        'enseigne-succes-imprim-bamako' => ['largeurs' => [480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Façade d\'une boutique Succès Imprim, sa grande enseigne « Nous imprimons vos succès !! » et des passants dans une rue de Bamako au coucher du soleil'],
+        'enseigne-succes-imprim-bamako' => ['largeurs' => [480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Façade de l\'imprimerie Succès Imprim, sa grande enseigne « Nous imprimons vos succès !! » et des passants dans une rue de Bamako au coucher du soleil'],
         'atelier-impression-grand-format' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Un opérateur en polo bleu sort une bâche aux couleurs vives d\'une imprimante grand format, dans un atelier lumineux qui donne sur la ville'],
         'banniere-vinyle-succes-imprim' => ['largeurs' => [320, 480, 800], 'largeur' => 800, 'hauteur' => 600, 'alt' => 'Une imprimante grand format imprime une bannière en vinyle au logo Succès Imprim'],
         'banniere-grand-format-couleurs' => ['largeurs' => [320, 480, 800], 'largeur' => 800, 'hauteur' => 600, 'alt' => 'Une bannière aux vagues bleues, rouges et jaunes sort d\'une imprimante grand format'],
@@ -45,9 +45,9 @@ final class PhotosSite
         'livraison-moto-bamako' => ['largeurs' => [480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Un livreur à moto, gilet Succès Imprim, transporte un carton et un tube au logo dans une rue de Bamako au coucher du soleil'],
         'rubans-encre-couleurs' => ['largeurs' => [800, 1200, 1600], 'largeur' => 1600, 'hauteur' => 900, 'alt' => ''],
         // Vraies photos du local (17/10/2026) : personnes et plaques floutées, ombres éclaircies.
-        'facade-local-succes-imprim-bamako' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Façade de la boutique Succès Imprim à Bamako : maison bleu-gris au balcon rond, l\'entrée sous le balcon, entre palmiers et jardin', 'legende' => 'La façade et son balcon rond'],
-        'allee-entree-succes-imprim' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Allée pavée qui mène à l\'entrée de la boutique Succès Imprim, sous le balcon rond, entre les palmiers et le jardin', 'legende' => 'L\'allée qui mène à l\'entrée'],
-        'jardin-entree-succes-imprim' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Jardin devant l\'entrée de la boutique Succès Imprim : terrasse carrelée sous le balcon, palmiers ; les personnes devant la porte sont floutées', 'legende' => 'Le jardin et l\'entrée'],
+        'facade-local-succes-imprim-bamako' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Façade de l\'imprimerie Succès Imprim à Bamako : maison bleu-gris au balcon rond, l\'entrée sous le balcon, entre palmiers et jardin', 'legende' => 'La façade et son balcon rond'],
+        'allee-entree-succes-imprim' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Allée pavée qui mène à l\'entrée de l\'imprimerie Succès Imprim, sous le balcon rond, entre les palmiers et le jardin', 'legende' => 'L\'allée qui mène à l\'entrée'],
+        'jardin-entree-succes-imprim' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Jardin devant l\'entrée de l\'imprimerie Succès Imprim : terrasse carrelée sous le balcon, palmiers ; les personnes devant la porte sont floutées', 'legende' => 'Le jardin et l\'entrée'],
     ];
 
     /** Vraies photos du local, dans l'ordre de la galerie « Notre local » (page Contact). */

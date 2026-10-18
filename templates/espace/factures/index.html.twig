@@ -37,7 +37,7 @@
 		<div class="ef-tuile ec-bureau">
 			<small>Payé en {{ anneeCourante }}</small>
 			<b>{{ payeAnnee.montant|francs }}</b>
-			<span>{{ payeAnnee.nombre }} paiement{{ payeAnnee.nombre > 1 ? 's' }} validé{{ payeAnnee.nombre > 1 ? 's' }} par la boutique</span>
+			<span>{{ payeAnnee.nombre }} paiement{{ payeAnnee.nombre > 1 ? 's' }} validé{{ payeAnnee.nombre > 1 ? 's' }} par l'imprimerie</span>
 		</div>
 		<div class="ef-tuile ec-bureau">
 			<small>Prochaine échéance</small>
@@ -196,9 +196,9 @@
 
 				<div class="ef-panneau" data-ef-panneau="avoirs"{{ onglet != 'avoirs' ? ' hidden' }}>
 					<p class="ef-texte-doux">
-						Votre avoir, c'est l'argent que vous avez laissé à la boutique (monnaie gardée, dépôts) : <b>{{ avoir.solde|francs }}</b> sur votre compte.
-						{% if avoir.enValidation + avoir.reserve > 0 %}Dont {{ (avoir.enValidation + avoir.reserve)|francs }} déjà utilisés, en attente de validation par la boutique.{% endif %}
-						Vous l'utilisez en payant ici : la boutique le valide, puis il disparaît de votre solde.
+						Votre avoir, c'est l'argent que vous avez laissé à l'imprimerie (monnaie gardée, dépôts) : <b>{{ avoir.solde|francs }}</b> sur votre compte.
+						{% if avoir.enValidation + avoir.reserve > 0 %}Dont {{ (avoir.enValidation + avoir.reserve)|francs }} déjà utilisés, en attente de validation par l'imprimerie.{% endif %}
+						Vous l'utilisez en payant ici : l'imprimerie le valide, puis il disparaît de votre solde.
 						<a href="{{ path('app_espace_solde') }}">Relevé et dépôt : Mon solde</a>
 					</p>
 					<table class="ef-table">
@@ -232,7 +232,7 @@
 									<td class="actions"><a href="{{ path('app_espace_facture_recu', {id: p.publicId}) }}" target="_blank" rel="noopener">PDF</a></td>
 								</tr>
 							{% else %}
-								<tr><td colspan="5" class="ef-table-vide">Pas encore de reçu en {{ annee }} : il arrive ici quand la boutique valide un paiement.</td></tr>
+								<tr><td colspan="5" class="ef-table-vide">Pas encore de reçu en {{ annee }} : il arrive ici quand l'imprimerie valide un paiement.</td></tr>
 							{% endfor %}
 						</tbody>
 					</table>
@@ -247,7 +247,7 @@
 			<section class="ec-carte">
 				<h2>Bon à savoir</h2>
 				<p class="ef-texte-doux">Un <b>acompte</b> lance la production d'une commande. La <b>facture</b> est émise à la livraison ; le reste se paie avant l'échéance.</p>
-				<p class="ef-texte-doux">Un paiement Orange Money arrive ici « reçu, en cours de validation ». Quand la boutique l'a validé, son reçu est dans « Reçus ».</p>
+				<p class="ef-texte-doux">Un paiement Orange Money arrive ici « reçu, en cours de validation ». Quand l'imprimerie l'a validé, son reçu est dans « Reçus ».</p>
 			</section>
 			{% include 'espace/factures/_question.html.twig' with {facture: null} %}
 		</aside>

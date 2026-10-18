@@ -104,7 +104,7 @@
 					{% if commande.bonCommande %} · bon de commande {{ commande.bonCommande }}{% endif %}
 				</small>
 				{% if commande.objet %}<small>Objet : {{ commande.objet }}</small>{% endif %}
-				{% if commande.delaiProduction %}<small>Choix du client en ligne : délai {{ commande.estExpress ? 'express' : 'standard' }} · {{ commande.estALivrer ? 'livraison à Bamako' ~ (commande.creneauLivraison ? ', ' ~ commande.creneauLivraison : '') ~ (commande.adresseLivraison ? ' · ' ~ (commande.adresseLivraison|length > 90 ? commande.adresseLivraison|slice(0, 89) ~ '…' : commande.adresseLivraison) : '') : 'retrait en boutique' }}</small>{% endif %}
+				{% if commande.delaiProduction %}<small>Choix du client en ligne : délai {{ commande.estExpress ? 'express' : 'standard' }} · {{ commande.estALivrer ? 'livraison à Bamako' ~ (commande.creneauLivraison ? ', ' ~ commande.creneauLivraison : '') ~ (commande.adresseLivraison ? ' · ' ~ (commande.adresseLivraison|length > 90 ? commande.adresseLivraison|slice(0, 89) ~ '…' : commande.adresseLivraison) : '') : 'retrait à l\'imprimerie' }}</small>{% endif %}
 			</div>
 		</div>
 		<div class="si-cs-actions">

@@ -43,7 +43,7 @@ final class SondagesDemoCommand extends Command
         'Le tarif des bâches a augmenté, une remise pour les clients fidèles serait la bienvenue.',
         'Les couleurs étaient un peu plus ternes que sur le BAT.',
         'Très belle qualité d\'impression, papier épais. Continuez !',
-        'Accueil très chaleureux, merci à l\'équipe de la boutique.',
+        'Accueil très chaleureux, merci à l\'équipe de l\'imprimerie.',
         'Répondre plus vite sur WhatsApp, on attend parfois longtemps.',
         'Le livreur était en retard et n\'a pas appelé avant de venir.',
         'Proposer la livraison à Kati et à Koulikoro.',
@@ -229,7 +229,7 @@ final class SondagesDemoCommand extends Command
             ->setIntroduction('Merci de votre visite ! Votre avis sur la journée, en trente secondes.')
             ->setQuestions(Questions::normaliser([
                 ['type' => Questions::ETOILES, 'libelle' => 'Votre impression sur la journée', 'obligatoire' => true],
-                ['type' => Questions::CHOIX_UNIQUE, 'libelle' => 'Comment nous avez-vous connus ?', 'choix' => "Bouche-à-oreille\nFacebook\nPassage devant la boutique\nUn client nous a recommandés\nAutre"],
+                ['type' => Questions::CHOIX_UNIQUE, 'libelle' => 'Comment nous avez-vous connus ?', 'choix' => "Bouche-à-oreille\nFacebook\nPassage devant l'imprimerie\nUn client nous a recommandés\nAutre"],
                 ['type' => Questions::OUI_NON, 'libelle' => 'Souhaitez-vous recevoir nos offres par SMS ?'],
                 ['type' => Questions::TEXTE, 'libelle' => Questions::PROPOSITION],
             ]));

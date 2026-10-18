@@ -38,7 +38,7 @@ Dans le code : `src/Service/Commandes/SuiviCommercial.php` (testé dans `tests/U
 
 Bouton « Tableau » (le choix Liste / Tableau est retenu pour la session). Une colonne par étape : Acompte attendu, Fichier / BAT, En impression, Prête, En livraison (« À confirmer » en premier s'il y en a). Chaque carte : n°, date (en rouge si en retard, avec un trait rouge), client, produit, une ligne d'état, montant, responsable. Les cartes en retard d'abord, puis l'échéance la plus proche.
 
-La ligne d'état : « acompte 30 000 F attendu », « BAT n°2 sans réponse depuis 26 h » (en rouge au-delà de 24 h), « correction demandée par le client », « PAO en cours », « DTF XP600 · 40/60 faits », « prévue 19/10 08:00 », « à retirer en boutique », « livraison prévue 20/10 · matin », « départ 10:30 ».
+La ligne d'état : « acompte 30 000 F attendu », « BAT n°2 sans réponse depuis 26 h » (en rouge au-delà de 24 h), « correction demandée par le client », « PAO en cours », « DTF XP600 · 40/60 faits », « prévue 19/10 08:00 », « à retirer à l'imprimerie », « livraison prévue 20/10 · matin », « départ 10:30 ».
 
 Filtre : toutes les échéances, à livrer aujourd'hui, **à livrer cette semaine** (les 7 prochains jours, retards compris), en retard.
 

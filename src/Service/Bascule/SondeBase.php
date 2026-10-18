@@ -5,7 +5,7 @@ namespace App\Service\Bascule;
 use Doctrine\DBAL\Connection;
 
 /**
- * Lit dans la base de la boutique les nombres dont le classement a besoin
+ * Lit dans la base de l'imprimerie les nombres dont le classement a besoin
  * (lignes, valeurs remplies, doublons, lignes orphelines). Lecture seule ;
  * aucune valeur ne sort, seulement des comptes.
  */

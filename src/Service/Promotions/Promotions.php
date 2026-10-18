@@ -22,7 +22,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * promotions valables un jour donné, segments et utilisations d'un client,
  * enregistrement contrôlé et journal d'activité.
  *
- * Tout se gère sur l'ERP de la boutique. Le site en ligne reçoit les
+ * Tout se gère sur l'ERP de l'imprimerie. Le site en ligne reçoit les
  * promotions sans code ni note, pour l'espace client, et ne les modifie pas.
  */
 final class Promotions
@@ -45,7 +45,7 @@ final class Promotions
     public function surLaBoutique(): void
     {
         if ($this->enLigne) {
-            throw new \DomainException('Les promotions se gèrent sur l\'ERP de la boutique.');
+            throw new \DomainException('Les promotions se gèrent sur l\'ERP de l\'imprimerie.');
         }
     }
 

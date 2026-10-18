@@ -16,7 +16,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 /**
  * Alertes sonores de l'écran TV (demande de Yaya du 15/10/2026,
  * docs/indicateurs.md, section 12) : un carillon puis une voix
- * française annoncent ce qui vient d'arriver à la boutique
+ * française annoncent ce qui vient d'arriver à l'imprimerie
  * (« Nouvelle commande en ligne disponible », « Deux nouvelles demandes
  * de devis »…), réglé dans Réglages › Écran TV.
  *
@@ -25,7 +25,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * que les pastilles du menu (PastillesMenu). L'écran compare avec ce qu'il
  * a déjà vu (stockage du navigateur) et annonce les nouveaux. Jamais un
  * numéro, un nom ni un montant : la page de l'écran est publique et
- * l'annonce s'entend dans la boutique.
+ * l'annonce s'entend dans l'imprimerie.
  */
 final class AlertesEcranTv
 {
@@ -53,7 +53,7 @@ final class AlertesEcranTv
             'un' => 'Nouvelle commande en ligne disponible', 'plusieurs' => 'nouvelles commandes en ligne disponibles', 'defaut' => true,
         ],
         self::COMMANDE => [
-            'libelle' => 'Commande saisie à la boutique', 'aide' => 'nouvelle commande du jour',
+            'libelle' => 'Commande saisie à l\'imprimerie', 'aide' => 'nouvelle commande du jour',
             'un' => 'Nouvelle commande disponible', 'plusieurs' => 'nouvelles commandes disponibles', 'defaut' => true,
         ],
         self::DEMANDE_DEVIS => [
@@ -204,7 +204,7 @@ final class AlertesEcranTv
         $qb = match ($type) {
             // Passées dans l'espace client, à vérifier et confirmer (hors demandes qui attendent le valideur de l'entreprise).
             self::COMMANDE_EN_LIGNE => $this->requete(Commandes::class, 'c', 'c.canal = :canal AND c.statut = false AND c.deleted = false AND c.soldeOuverture = false AND (c.validationEntreprise IS NULL OR c.validationEntreprise = :validee)', ['canal' => Commandes::CANAL_EN_LIGNE, 'validee' => Commandes::VALIDATION_ACCEPTEE]),
-            // Saisies à la boutique depuis hier : une commande créée est nouvelle une fois.
+            // Saisies à l'imprimerie depuis hier : une commande créée est nouvelle une fois.
             self::COMMANDE => $this->requete(Commandes::class, 'c', 'c.canal <> :canal AND c.deleted = false AND c.soldeOuverture = false AND c.dateCommande >= :depuis', ['canal' => Commandes::CANAL_EN_LIGNE, 'depuis' => $maintenant->modify('-1 day')->setTime(0, 0)]),
             self::DEMANDE_DEVIS => $this->requete(DemandeDevis::class, 'd', 'd.nature = :nature AND d.traiteeLe IS NULL', ['nature' => DemandeDevis::NATURE_DEVIS]),
             self::MESSAGE_SITE => $this->requete(DemandeDevis::class, 'd', 'd.nature = :nature AND d.traiteeLe IS NULL', ['nature' => DemandeDevis::NATURE_CONTACT]),

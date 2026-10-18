@@ -22,7 +22,7 @@ final class SaisieTresorerieSansSoldeTest extends TestCase
     {
         $caissiere = new User();
         $comptes = [
-            $this->compte('Caisse boutique', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PARTAGEE),
+            $this->compte('Caisse imprimerie', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PARTAGEE),
             $this->compte('Orange Money marchand', CompteTresorerie::TYPE_ORANGE_MONEY, CompteTresorerie::PORTEE_PARTAGEE),
             $this->compte('Caisse Aminata', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PERSONNELLE, $caissiere),
             $this->compte('Caisse Moussa', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PERSONNELLE, new User()),
@@ -48,12 +48,12 @@ final class SaisieTresorerieSansSoldeTest extends TestCase
     public function testAvecLeDroitLesSoldesRestentCommeAvant(): void
     {
         $caissiere = new User();
-        $caisse = $this->compte('Caisse boutique', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PARTAGEE);
+        $caisse = $this->compte('Caisse imprimerie', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PARTAGEE);
         $banque = $this->compte('Banque BDM', CompteTresorerie::TYPE_BANQUE, CompteTresorerie::PORTEE_ADMIN);
         $collegue = $this->compte('Caisse Moussa', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PERSONNELLE, new User());
 
-        self::assertSame('Caisse boutique — Caisse — 1 234 567 FCFA', MouvementTresorerieType::libelleSource($caisse, true));
-        self::assertSame('Caisse boutique — 1 234 567 FCFA', MouvementTresorerieType::libelleDestination($caisse, false, true, $caissiere));
+        self::assertSame('Caisse imprimerie — Caisse — 1 234 567 FCFA', MouvementTresorerieType::libelleSource($caisse, true));
+        self::assertSame('Caisse imprimerie — 1 234 567 FCFA', MouvementTresorerieType::libelleDestination($caisse, false, true, $caissiere));
         // La banque et la caisse d'un collègue restent sans solde pour la caisse, même avec le droit.
         self::assertSame('Banque BDM — Compte bancaire', MouvementTresorerieType::libelleSource($banque, true));
         self::assertSame('Banque BDM — Banque', MouvementTresorerieType::libelleDestination($banque, false, true, $caissiere));
@@ -81,7 +81,7 @@ final class SaisieTresorerieSansSoldeTest extends TestCase
         $caissiere = new User();
         $sienne = $this->compte('Caisse Aminata', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PERSONNELLE, $caissiere);
         $collegue = $this->compte('Caisse Moussa', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PERSONNELLE, new User());
-        $boutique = $this->compte('Caisse boutique', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PARTAGEE);
+        $boutique = $this->compte('Caisse imprimerie', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PARTAGEE);
         $banque = $this->compte('Banque BDM', CompteTresorerie::TYPE_BANQUE, CompteTresorerie::PORTEE_ADMIN);
         $administration = $this->compte('Caisse Administration', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_ADMIN);
         [$enc, $dec, $vir] = [MouvementTresorerie::TYPE_ENCAISSEMENT, MouvementTresorerie::TYPE_DECAISSEMENT, MouvementTresorerie::TYPE_TRANSFERT];
@@ -128,21 +128,21 @@ final class SaisieTresorerieSansSoldeTest extends TestCase
 
     public function testConfirmationSansSolde(): void
     {
-        $caisse = $this->compte('Caisse boutique', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PARTAGEE);
+        $caisse = $this->compte('Caisse imprimerie', CompteTresorerie::TYPE_CAISSE, CompteTresorerie::PORTEE_PARTAGEE);
         $banque = $this->compte('Banque BDM', CompteTresorerie::TYPE_BANQUE, CompteTresorerie::PORTEE_ADMIN);
 
         $virement = (new MouvementTresorerie())->setType(MouvementTresorerie::TYPE_TRANSFERT)->setMontant(150000)
             ->setCompteSource($caisse)->setCompteDestination($banque)->setReference('MVT-TEST-1');
-        self::assertSame('Virement de 150 000 F de « Caisse boutique » vers « Banque BDM » enregistré (MVT-TEST-1).', MouvementTresorerieController::confirmationSansSolde($virement));
+        self::assertSame('Virement de 150 000 F de « Caisse imprimerie » vers « Banque BDM » enregistré (MVT-TEST-1).', MouvementTresorerieController::confirmationSansSolde($virement));
 
         $entree = (new MouvementTresorerie())->setType(MouvementTresorerie::TYPE_ENCAISSEMENT)->setMontant(5000)
             ->setCompteDestination($caisse)->setReference('MVT-TEST-2');
-        self::assertSame('Entrée de 5 000 F sur « Caisse boutique » enregistrée (MVT-TEST-2).', MouvementTresorerieController::confirmationSansSolde($entree));
+        self::assertSame('Entrée de 5 000 F sur « Caisse imprimerie » enregistrée (MVT-TEST-2).', MouvementTresorerieController::confirmationSansSolde($entree));
 
         $sortie = (new MouvementTresorerie())->setType(MouvementTresorerie::TYPE_DECAISSEMENT)->setMontant(2500)
             ->setCompteSource($caisse)->setReference('MVT-TEST-3');
         $message = MouvementTresorerieController::confirmationSansSolde($sortie);
-        self::assertSame('Sortie de 2 500 F de « Caisse boutique » enregistrée (MVT-TEST-3).', $message);
+        self::assertSame('Sortie de 2 500 F de « Caisse imprimerie » enregistrée (MVT-TEST-3).', $message);
         self::assertStringNotContainsString('234', $message);
     }
 

@@ -17,7 +17,7 @@ use Psr\Cache\CacheItemPoolInterface;
  */
 final class SoldeOrange
 {
-    /** Pays du contrat Orange de la boutique (code ISO à trois lettres). */
+    /** Pays du contrat Orange de l'imprimerie (code ISO à trois lettres). */
     public const PAYS = 'MLI';
 
     public const DUREE_CACHE = 3600;

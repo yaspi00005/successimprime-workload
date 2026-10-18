@@ -44,7 +44,7 @@ final class SauvegardeCommand extends Command
             $io->writeln('SAUVEGARDE_CLE_HORS_SITE='.Chiffrement::nouvelleCle());
             $io->warning([
                 'À mettre dans .env.local de l\'ERP local seulement, jamais sur le site ni dans le dépôt.',
-                'Gardez-en une copie hors de la boutique (gestionnaire de mots de passe, papier au coffre) : sans elle, la copie hors site est illisible.',
+                'Gardez-en une copie hors de l\'imprimerie (gestionnaire de mots de passe, papier au coffre) : sans elle, la copie hors site est illisible.',
             ]);
 
             return Command::SUCCESS;

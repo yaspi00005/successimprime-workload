@@ -609,7 +609,7 @@ final class PosteMachiniste
         $bon = $commande !== null ? $this->dernierBon($commande->getId()) : null;
         $adresse = $commande?->estALivrer()
             ? ($commande->getAdresseLivraison() ?? implode(', ', array_filter([$client?->getAdresse(), $client?->getQuartier(), $client?->getVille()])))
-            : 'Retrait à la boutique';
+            : 'Retrait à l\'imprimerie';
 
         return [
             'client' => $client?->getNomComplet(),

@@ -28,7 +28,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Promotions sur l'ERP de la boutique (docs/promotions.md).
+ * Promotions sur l'ERP de l'imprimerie (docs/promotions.md).
  *
  * - sans option (chaque matin) : anniversaires du jour (et des jours
  *   manqués), promotion du client et message sans montant, puis rappels
@@ -69,7 +69,7 @@ final class PromotionsCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         if ($this->promotions->estEnLigne()) {
-            $io->error('Les promotions se gèrent sur l\'ERP de la boutique : lancez la commande là-bas.');
+            $io->error('Les promotions se gèrent sur l\'ERP de l\'imprimerie : lancez la commande là-bas.');
 
             return Command::FAILURE;
         }
@@ -150,7 +150,7 @@ final class PromotionsCommand extends Command
         return Command::SUCCESS;
     }
 
-    /** Trois paliers d'anniversaire, seulement si la boutique n'en a encore aucun. */
+    /** Trois paliers d'anniversaire, seulement si l'imprimerie n'en a encore aucun. */
     private function modelesDemo(\DateTimeImmutable $maintenant): int
     {
         if ([] !== $this->anniversaires->modeles()) {

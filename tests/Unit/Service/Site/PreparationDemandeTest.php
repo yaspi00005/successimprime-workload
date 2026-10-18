@@ -202,7 +202,7 @@ final class PreparationDemandeTest extends TestCase
     {
         $d = DemandeDevis::nouvelle('devis', 'Moussa Traoré', '22376123456', $this->le)
             ->setConfiguration($config)->setDesignation('Bâche')->setTaille(300, 100)->setQuantite(2)
-            ->setMessage('Pour la boutique');
+            ->setMessage('Pour l\'imprimerie');
         $d->setNumero('W-DD-0001');
 
         return $d;

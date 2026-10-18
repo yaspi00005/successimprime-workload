@@ -123,7 +123,7 @@
 						{% elseif c.estALivrer and carte.aConfirmer %}
 							<div><dt>Frais de livraison</dt><dd><small>fixés par l'atelier à la confirmation</small></dd></div>
 						{% endif %}
-						{# Remise globale accordée par la boutique, déjà déduite du total ; le montant pour qui voit les montants (comme le total). #}
+						{# Remise globale accordée par l'imprimerie, déjà déduite du total ; le montant pour qui voit les montants (comme le total). #}
 						{% if c.remiseGlobale > 0 %}
 							<div><dt>Remise</dt><dd>{% if coque.montants %}−{{ c.remiseGlobale|number_format(0, ',', ' ') }} F{% else %}<small>appliquée</small>{% endif %}</dd></div>
 						{% endif %}
@@ -163,7 +163,7 @@
 					<div>
 						<dt>{{ c.estALivrer ? 'Livraison' : 'Retrait' }}</dt>
 						<dd>
-							{% if c.estALivrer %}{{ c.adresseLivraison ? c.adresseLivraison|split("\n")|first : 'adresse à confirmer' }}{% else %}en boutique{% endif %}{% if c.dateLivraison and not carte.terminee %} · {{ c.dateLivraison|date_fr('EEEE dd/MM') }}{% endif %}
+							{% if c.estALivrer %}{{ c.adresseLivraison ? c.adresseLivraison|split("\n")|first : 'adresse à confirmer' }}{% else %}à l'imprimerie{% endif %}{% if c.dateLivraison and not carte.terminee %} · {{ c.dateLivraison|date_fr('EEEE dd/MM') }}{% endif %}
 							{% if c.estALivrer and c.adresseLivraison and c.adresseLivraison|split("\n")|length > 1 %}<small>{{ c.adresseLivraison|split("\n")|slice(1)|join(' · ') }}</small>{% endif %}
 						</dd>
 					</div>

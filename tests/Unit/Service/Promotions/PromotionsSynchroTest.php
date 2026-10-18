@@ -66,7 +66,7 @@ final class PromotionsSynchroTest extends TestCase
             self::assertSame('code_promo', $t['relations']['codePromo']);
             self::assertContains('codePromo', $t['facultatives']);
         }
-        // Une commande passée en ligne arrive sans code retenu : seule la boutique le retient, en la confirmant.
+        // Une commande passée en ligne arrive sans code retenu : seule l'imprimerie le retient, en la confirmant.
         self::assertArrayHasKey('codePromo', CatalogueSynchro::types()['commande']['imposeAuLocal']);
         self::assertNull(CatalogueSynchro::types()['commande']['imposeAuLocal']['codePromo']);
         self::assertArrayNotHasKey('codePromo', CatalogueSynchro::types()['commande']['remontees'] ?? []);

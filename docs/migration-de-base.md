@@ -1,13 +1,13 @@
-# Migration de base et bascule de la base de la boutique (octobre 2026)
+# Migration de base et bascule de la base de l'imprimerie (octobre 2026)
 
-Les anciennes migrations ne permettaient plus de recréer la base : la boutique avait exécuté des migrations qui ne sont plus dans le dépôt. Elles sont remplacées par une migration unique, `Version20261010202721`, qui crée le schéma complet. Les migrations suivantes (identifiants publics, coût de revient, stock…) partent de ce schéma.
+Les anciennes migrations ne permettaient plus de recréer la base : l'imprimerie avait exécuté des migrations qui ne sont plus dans le dépôt. Elles sont remplacées par une migration unique, `Version20261010202721`, qui crée le schéma complet. Les migrations suivantes (identifiants publics, coût de revient, stock…) partent de ce schéma.
 
 - **Nouvelle base** (recette, CI, poste de développement, site en ligne) : `php bin/console doctrine:migrations:migrate -n` crée tout.
-- **Base de la boutique** (l'ERP local en service) : elle a déjà ses tables et ses données. On la met au niveau de la migration de base avec `app:bascule:verifier`, puis les migrations suivantes se lancent normalement. Le déroulé du jour est dans [docs/mise-en-production.md, « Jour J »](mise-en-production.md#jour-j).
+- **Base de l'imprimerie** (l'ERP local en service) : elle a déjà ses tables et ses données. On la met au niveau de la migration de base avec `app:bascule:verifier`, puis les migrations suivantes se lancent normalement. Le déroulé du jour est dans [docs/mise-en-production.md, « Jour J »](mise-en-production.md#jour-j).
 
 ## Pourquoi l'ancienne procédure ne marche pas
 
-Répétée le 15/10/2026 sur une copie de la base de la boutique du 01/08/2026, avec le code actuel :
+Répétée le 15/10/2026 sur une copie de la base de l'imprimerie du 01/08/2026, avec le code actuel :
 
 | Étape de l'ancienne procédure | Ce qui se passe |
 |---|---|
@@ -18,7 +18,7 @@ Répétée le 15/10/2026 sur une copie de la base de la boutique du 01/08/2026, 
 
 La base du 01/08 diffère de la migration de base bien au-delà de ce qui manque : 39 tables contre 68 attendues, 134 colonnes manquantes, 14 colonnes en trop (dont 10 dans `devis`) et 28 colonnes d'un autre type ou d'une autre taille (par exemple `factures.etat` entier → texte, `factures.numero` entier → texte, `articles.stock_min` texte → décimal, `paiements.mode` 100 → 30 caractères).
 
-L'historique de l'ancien dépôt ne dit pas non plus où en est la boutique : rejouées sur la copie du 01/08, les 8 migrations encore présentes à la fin de l'ancien dépôt échouent sur 2, et les 66 migrations passées par son historique échouent sur 17, dès la première. La base de la boutique est donc d'une version inconnue : seule la comparaison de sa structure dit ce qu'il faut faire.
+L'historique de l'ancien dépôt ne dit pas non plus où en est l'imprimerie : rejouées sur la copie du 01/08, les 8 migrations encore présentes à la fin de l'ancien dépôt échouent sur 2, et les 66 migrations passées par son historique échouent sur 17, dès la première. La base de l'imprimerie est donc d'une version inconnue : seule la comparaison de sa structure dit ce qu'il faut faire.
 
 Deux autres constats :
 
@@ -33,8 +33,8 @@ php bin/console app:bascule:verifier --corriger               # sauvegarde, corr
 php bin/console app:bascule:verifier --corriger --garder-orphelins
 ```
 
-1. **Référence** : la migration de base, et elle seule, est jouée dans une base provisoire (`<base>_ref_bascule`, même jeu de caractères que la base de la boutique), lue, puis supprimée.
-2. **Comparaison** : Doctrine compare la base de la boutique à cette référence. Chaque écart est classé d'après les données (nombres de lignes seulement), en trois niveaux.
+1. **Référence** : la migration de base, et elle seule, est jouée dans une base provisoire (`<base>_ref_bascule`, même jeu de caractères que la base de l'imprimerie), lue, puis supprimée.
+2. **Comparaison** : Doctrine compare la base de l'imprimerie à cette référence. Chaque écart est classé d'après les données (nombres de lignes seulement), en trois niveaux.
 3. **Conversions de données** : la structure dit aussi quelles anciennes mises à jour qui changeaient le *sens* des données manquent (remises en pourcentage…). Elles sont annoncées dans « Conversions de données à faire », avec des nombres de lignes, et rejouées par `--corriger` (voir plus bas).
 4. **Rapport** : à l'écran et dans `var/bascule/verification-AAAAMMJJ-HHMMSS.txt`. Il contient des noms de tables et de colonnes et des nombres, jamais une valeur d'une ligne : il peut nous être envoyé.
 
@@ -79,15 +79,15 @@ Ensuite : `php bin/console doctrine:migrations:migrate -n`, puis `php bin/consol
 
 Si une étape échoue après la sauvegarde, la commande affiche la ligne exacte pour la remettre : `php bin/console app:sauvegarde:restaurer <nom> --base`.
 
-**Version de MariaDB** : la commande compare la version réelle du serveur à `serverVersion` dans `DATABASE_URL`. S'ils ne correspondent pas, elle le dit, et `--corriger` refuse. À la boutique (XAMPP), l'export du 01/08 indique MariaDB 10.4.28 : `serverVersion=10.4.28-MariaDB`.
+**Version de MariaDB** : la commande compare la version réelle du serveur à `serverVersion` dans `DATABASE_URL`. S'ils ne correspondent pas, elle le dit, et `--corriger` refuse. À l'imprimerie (XAMPP), l'export du 01/08 indique MariaDB 10.4.28 : `serverVersion=10.4.28-MariaDB`.
 
-**Copie de la structure sans données** (fichier `structure-….sql` envoyé par la boutique, `scripts\windows\avant_bascule.bat`) : chargée dans une base d'essai vide, la vérification ne peut pas consulter les données. Elle ajoute alors la liste « Base sans aucune ligne » : chaque écart qui dépend des données, avec la question à vérifier sur la vraie base. C'est la liste à préparer avant le jour J.
+**Copie de la structure sans données** (fichier `structure-….sql` envoyé par l'imprimerie, `scripts\windows\avant_bascule.bat`) : chargée dans une base d'essai vide, la vérification ne peut pas consulter les données. Elle ajoute alors la liste « Base sans aucune ligne » : chaque écart qui dépend des données, avec la question à vérifier sur la vraie base. C'est la liste à préparer avant le jour J.
 
 **Base déjà basculée** (la migration de base est dans l'historique) : la commande le dit et ne fait rien. **Base vide** : la créer avec `doctrine:migrations:migrate`.
 
 ## Conversions de données
 
-La comparaison des schémas ne voit que des types. Or certaines anciennes mises à jour changeaient le **sens** des données déjà là : sans elles, la nouvelle version lirait mal ces données (une remise de 10 % lue comme 10 F). Audit de tout l'historique de l'ancien dépôt (toutes les branches, y compris les migrations supprimées ensuite, 67 versions de 66 fichiers), comparé à la structure de la boutique du 15/10/2026 :
+La comparaison des schémas ne voit que des types. Or certaines anciennes mises à jour changeaient le **sens** des données déjà là : sans elles, la nouvelle version lirait mal ces données (une remise de 10 % lue comme 10 F). Audit de tout l'historique de l'ancien dépôt (toutes les branches, y compris les migrations supprimées ensuite, 67 versions de 66 fichiers), comparé à la structure de l'imprimerie du 15/10/2026 :
 
 | Ancienne mise à jour | Ce qu'elle changeait dans les données | Structure du 15/10 | Ce que fait la bascule |
 |---|---|---|---|
@@ -159,7 +159,7 @@ La base est vidée puis remise exactement comme avant (y compris les tables cré
 
 ## Répétitions du 15/10/2026
 
-Sur la copie de la base de la boutique du 01/08/2026 (MariaDB 10.11, code de la branche), puis base supprimée. Comptes de lignes seulement.
+Sur la copie de la base de l'imprimerie du 01/08/2026 (MariaDB 10.11, code de la branche), puis base supprimée. Comptes de lignes seulement.
 
 | Essai | Vérification | `--corriger` | Après `migrate` |
 |---|---|---|---|
@@ -172,4 +172,4 @@ Sur la copie de la base de la boutique du 01/08/2026 (MariaDB 10.11, code de la 
 
 Dans tous les essais : clients 3, commandes 3, devis 0, factures 0, paiements 10, articles 0, avant comme après. Sur A, l'application démarre avec un compte administrateur d'essai : listes des clients (3), des commandes (3) et des paiements (10), fiches ouvertes, aucune erreur ; seules les pages des 6 paiements orphelins répondent par une erreur.
 
-Non vérifié ici : MariaDB 10.4 (celle de XAMPP à la boutique). Les 71 migrations n'utilisent aucune instruction réservée aux versions plus récentes (`RENAME INDEX`, `RENAME COLUMN`…). Le premier passage sur 10.4 est la vérification sans `--corriger` sur l'ordinateur de la boutique (J-7 de [docs/mise-en-production.md](mise-en-production.md)), qui ne modifie rien ; le mieux est de répéter aussi la bascule complète sur un XAMPP identique, avec la copie de la structure.
+Non vérifié ici : MariaDB 10.4 (celle de XAMPP à l'imprimerie). Les 71 migrations n'utilisent aucune instruction réservée aux versions plus récentes (`RENAME INDEX`, `RENAME COLUMN`…). Le premier passage sur 10.4 est la vérification sans `--corriger` sur l'ordinateur de l'imprimerie (J-7 de [docs/mise-en-production.md](mise-en-production.md)), qui ne modifie rien ; le mieux est de répéter aussi la bascule complète sur un XAMPP identique, avec la copie de la structure.

@@ -25,7 +25,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Compte du client à la boutique (docs/finances.md, « Compte du client ») :
+ * Compte du client à l'imprimerie (docs/finances.md, « Compte du client ») :
  * dépôt sans rien payer, argent rendu, dépôts Orange Money de l'espace
  * client à valider, et le reçu de chaque dépôt ou remboursement.
  *
@@ -183,7 +183,7 @@ final class SoldeClientController extends AbstractController
         if (!$this->acces->estEnLigne()) {
             return null;
         }
-        $this->addFlash('warning', 'Le compte du client se gère à la boutique, pas en ligne.');
+        $this->addFlash('warning', 'Le compte du client se gère à l\'imprimerie, pas en ligne.');
 
         return $this->retour($request, $client);
     }

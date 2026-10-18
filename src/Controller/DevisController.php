@@ -32,7 +32,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Form\FormInterface;
 
 /**
- * Devis côté boutique (docs/devis.md) : la liste (maquette GC03), la
+ * Devis côté imprimerie (docs/devis.md) : la liste (maquette GC03), la
  * saisie (GC04), la fiche (DT03), l'envoi au client, les versions, les
  * relances WhatsApp et la transformation en commande. La rentabilité
  * (coût, marge) n'est calculée et montrée qu'avec le droit « Marges et
@@ -320,14 +320,14 @@ class DevisController extends AbstractController
         return $this->redirectToRoute('app_devis_show', ['id' => $devi->getId()]);
     }
 
-    /** Refus dit à la boutique (au téléphone, au comptoir) : noté avec son motif. */
+    /** Refus dit à l'imprimerie (au téléphone, au comptoir) : noté avec son motif. */
     #[Route('/{id}/refuser', name: 'refuser', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function refuser(Devis $devi, Request $request, EntityManagerInterface $em): Response
     {
         $this->jeton($request, 'devis-'.$devi->getId());
         if ($devi->estEnAttente() || Devis::STATUT_EXPIRE === $devi->getStatut()) {
             $motif = $request->request->getString('motif');
-            SuiviDevis::refuser($devi, isset(Devis::MOTIFS_REFUS[$motif]) ? $motif : 'autre', $request->request->getString('precision'), (SuiviDevis::nomPublic($this->utilisateur()) ?? '').' (noté à la boutique)', new \DateTimeImmutable());
+            SuiviDevis::refuser($devi, isset(Devis::MOTIFS_REFUS[$motif]) ? $motif : 'autre', $request->request->getString('precision'), (SuiviDevis::nomPublic($this->utilisateur()) ?? '').' (noté à l\'imprimerie)', new \DateTimeImmutable());
             $em->flush();
             $this->addFlash('success', \sprintf('Devis %s noté refusé : %s.', $devi->getNumero(), $devi->getMotifRefus()));
         }
@@ -905,8 +905,8 @@ class DevisController extends AbstractController
         }
         try {
             if ($devis->estEnAttente()) {
-                // Acceptation dite à la boutique : notée avec qui l'a enregistrée.
-                SuiviDevis::accepter($devis, (SuiviDevis::nomPublic($this->utilisateur()) ?? '').' (noté à la boutique)', new \DateTimeImmutable());
+                // Acceptation dite à l'imprimerie : notée avec qui l'a enregistrée.
+                SuiviDevis::accepter($devis, (SuiviDevis::nomPublic($this->utilisateur()) ?? '').' (noté à l\'imprimerie)', new \DateTimeImmutable());
                 $em->flush();
             }
             $commande = $converter->convertir($devis);

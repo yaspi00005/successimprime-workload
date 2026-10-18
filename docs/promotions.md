@@ -4,7 +4,7 @@ Demande de Yaya le 10/10/2026. Aucune maquette dédiée pour l'instant ; ce docu
 
 ## En place (14/10/2026)
 
-Tout se gère sur l'ERP de la boutique. Le site en ligne reçoit les promotions pour l'espace client, mais ne les modifie pas.
+Tout se gère sur l'ERP de l'imprimerie. Le site en ligne reçoit les promotions pour l'espace client, mais ne les modifie pas.
 
 ### Écrans et droits
 
@@ -63,7 +63,7 @@ Tout se gère sur l'ERP de la boutique. Le site en ligne reçoit les promotions 
 
 ### Tâche planifiée
 
-Chaque matin, sur l'ERP de la boutique uniquement :
+Chaque matin, sur l'ERP de l'imprimerie uniquement :
 
 - Linux ou Mac : `15 8 * * * cd /chemin/du/projet && php bin/console app:promotions -q >> var/log/promotions.log 2>&1`.
 - Windows : une tâche planifiée quotidienne à 8 h 15 qui lance `php bin/console app:promotions -q`, par exemple `schtasks /Create /SC DAILY /ST 08:15 /TN "SuccesImprim promotions" /TR "cmd /c cd /d C:\chemin\du\projet && php bin\console app:promotions -q >> var\log\promotions.log 2>&1"`.
@@ -79,7 +79,7 @@ L'**Atelier 3D** (`docs/atelier-3d.md`) montre la promotion qui s'appliquerait �
 
 Demande de Yaya : « faut prevoir des code promo. qui peut etre apliqué sur commande , le code doit généré avec une limitation et expiration ».
 
-**Créer les codes** (fiche de la promotion › **Codes promo**, droit Promotions, ERP de la boutique seulement) :
+**Créer les codes** (fiche de la promotion › **Codes promo**, droit Promotions, ERP de l'imprimerie seulement) :
 
 - **Un code partagé** : le même pour tous (affiche, SMS, réseaux), tapé par l'équipe (4 à 20 lettres ou chiffres, par exemple `RENTREE25`) ou tiré au hasard. Limité à N utilisations en tout et à M par client (1 par défaut).
 - **Un lot de codes uniques** : de 1 à 500 codes d'un coup, chacun pour une seule utilisation. Forme `SI-7K4P-2Q` : 6 caractères tirés avec `random_int` dans un alphabet de 31 signes sans 0, O, 1, I ni L. Chaque code est unique dans la base (index unique, et vérifié contre les codes simples des promotions).
@@ -114,18 +114,18 @@ La « Remise » globale du document (`Commandes::remise`) n'a pas été reprise 
 - Le site vérifie avec ce que la synchronisation lui donne. Il ne garde **pas le code**, seulement son **empreinte** : HMAC-SHA256 du code avec la clé de synchronisation `SYNC_CLE` (la même des deux côtés, jamais en base). Une copie de la base du site ne permet donc pas de retrouver les codes, même ceux d'un lot de 6 caractères. Il a aussi les dates, les limites et les utilisations comptées au local (`utilisations`), auxquelles il ajoute les commandes en ligne pas encore confirmées qui ont tapé le même code. Sans clé de synchronisation, le local ne calcule pas d'empreinte et le code ne part pas au site (une empreinte sans clé se retrouverait trop facilement) ; la tâche du matin la pose une fois la clé réglée.
 - Refusé : la commande n'est pas envoyée et le client lit le message. **Les codes refusés sont comptés** (`EssaisCodePromo`) : au plus 8 par heure par compte et 30 par heure par connexion (`code_promo_client`, `code_promo_ip`), puis plus d'essai jusqu'à la fin de la fenêtre.
 - Valable : la commande part « à confirmer » avec le code tapé (`codeSaisi`) et l'avantage indicatif (promotion des articles visés, part de l'avantage sur la commande). Elle ne retient pas le code.
-- **À la confirmation** (l'atelier ouvre et enregistre la commande), la boutique revérifie : **le local fait foi**. Code toujours valable : il est retenu et l'avantage recalculé. Plus valable (la limite a été atteinte entre-temps, par exemple) : la commande s'enregistre quand même, sans l'avantage, et la fiche dit pourquoi (bandeau « Code promo … non retenu », `motifCodePromo`, qui reste au local).
+- **À la confirmation** (l'atelier ouvre et enregistre la commande), l'imprimerie revérifie : **le local fait foi**. Code toujours valable : il est retenu et l'avantage recalculé. Plus valable (la limite a été atteinte entre-temps, par exemple) : la commande s'enregistre quand même, sans l'avantage, et la fiche dit pourquoi (bandeau « Code promo … non retenu », `motifCodePromo`, qui reste au local).
 - Le client voit l'avantage dans sa commande s'il voit les montants (`CompteClient::montantsVisibles` : compte particulier, payeur ou valideur d'une entreprise). Un demandeur lit « à confirmer » ou « appliqué », sans montant. Un code non retenu s'affiche « non retenu », sans la raison interne. Aucune notification ni aucun SMS ne part avec un montant.
 
-**Synchronisation** : type `code_promo` (local → site) : empreinte, type, dates, limites, utilisations, actif, création, promotion. Restent au local : le code en clair, le lot, qui l'a créé ou désactivé. Sur les devis et commandes : `codeSaisi`, `remiseCodePromo` et le lien vers le code retenu (une commande créée en ligne arrive toujours sans code retenu, `imposeAuLocal` : seule la boutique le retient) ; sur les lignes, `remiseCodePromo` ; sur la promotion, l'avantage sur la commande et la marque « codes générés ». Les promotions et les codes partent avant les commandes et les devis. Après la mise à jour du local : `php bin/console app:synchro --initialiser=promotion` puis `--initialiser=code_promo`. Après un changement de `SYNC_CLE`, lancer `php bin/console app:promotions` (ou attendre le lendemain matin) : les empreintes sont refaites et repartent au site ; d'ici là, les codes tapés en ligne sont refusés.
+**Synchronisation** : type `code_promo` (local → site) : empreinte, type, dates, limites, utilisations, actif, création, promotion. Restent au local : le code en clair, le lot, qui l'a créé ou désactivé. Sur les devis et commandes : `codeSaisi`, `remiseCodePromo` et le lien vers le code retenu (une commande créée en ligne arrive toujours sans code retenu, `imposeAuLocal` : seule l'imprimerie le retient) ; sur les lignes, `remiseCodePromo` ; sur la promotion, l'avantage sur la commande et la marque « codes générés ». Les promotions et les codes partent avant les commandes et les devis. Après la mise à jour du local : `php bin/console app:synchro --initialiser=promotion` puis `--initialiser=code_promo`. Après un changement de `SYNC_CLE`, lancer `php bin/console app:promotions` (ou attendre le lendemain matin) : les empreintes sont refaites et repartent au site ; d'ici là, les codes tapés en ligne sont refusés.
 
 **Tâche du matin** (`app:promotions`) : recompte les utilisations des codes encore valables (une commande supprimée ou annulée rend la sienne) pour la liste et pour le site, et refait l'empreinte si la clé de synchronisation a changé.
 
 ### Reste à faire
 
-- **Codes promo** : pas d'exception B2B pour l'avantage sur la commande (un revendeur au prix B2B est toujours refusé) ; une commande restaurée après suppression (ou un devis rouvert après refus) reprend son code sans nouvelle vérification de la limite ; en ligne, la limite « Commandes par client » de la promotion ne compte que les commandes confirmées avec un de ses codes (la boutique revérifie tout à la confirmation) ; la commande de l'Atelier 3D n'a pas de champ code promo ; en ligne, l'avantage se voit après l'envoi (pas d'aperçu pendant la saisie).
+- **Codes promo** : pas d'exception B2B pour l'avantage sur la commande (un revendeur au prix B2B est toujours refusé) ; une commande restaurée après suppression (ou un devis rouvert après refus) reprend son code sans nouvelle vérification de la limite ; en ligne, la limite « Commandes par client » de la promotion ne compte que les commandes confirmées avec un de ses codes (l'imprimerie revérifie tout à la confirmation) ; la commande de l'Atelier 3D n'a pas de champ code promo ; en ligne, l'avantage se voit après l'envoi (pas d'aperçu pendant la saisie).
 - **Commande passée en ligne** : la promotion n'est pas posée à l'envoi par le client. Elle s'applique quand l'atelier ouvre et enregistre la commande pour en confirmer le prix.
-- **Nombre d'utilisations par client** : il se compte sur les commandes du local. Une commande passée en ligne et pas encore enregistrée à la boutique ne compte pas encore.
+- **Nombre d'utilisations par client** : il se compte sur les commandes du local. Une commande passée en ligne et pas encore enregistrée à l'imprimerie ne compte pas encore.
 - **Annonce par campagne** : pas de bouton « annoncer cette promotion » ; la campagne WhatsApp ou SMS se prépare à la main sur le même segment.
 - Propositions pas encore faites : le message plus personnel pour les gros clients (appel de la direction, cadeau à la livraison). L'anniversaire de la première commande n'a pas de fête à part : la date de départ la prend déjà quand elle est plus ancienne que la fiche.
 - Clients dormeurs : rien de nouveau, la promo de réveil existante (`docs/fidelite.md`) fait ce travail ; la promotion par segment « inactifs depuis 90 jours » le complète sans le dupliquer.

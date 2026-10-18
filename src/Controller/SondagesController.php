@@ -138,7 +138,7 @@ final class SondagesController extends AbstractController
         ]);
     }
 
-    /** Affiche à imprimer pour la boutique : titre et QR code du sondage libre. */
+    /** Affiche à imprimer pour l'imprimerie : titre et QR code du sondage libre. */
     #[Route('/{id}/affiche', name: 'affiche', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function affiche(Sondage $sondage): Response
     {

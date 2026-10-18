@@ -195,7 +195,7 @@ final class SuiviDevis
         return true;
     }
 
-    /** Refus du client (dans son espace) ou noté à la boutique (refus au téléphone). */
+    /** Refus du client (dans son espace) ou noté à l'imprimerie (refus au téléphone). */
     public static function refuser(Devis $devis, string $cle, ?string $precision, string $par, \DateTimeImmutable $maintenant): void
     {
         $libelle = Devis::MOTIFS_REFUS[$cle] ?? Devis::MOTIFS_REFUS['autre'];

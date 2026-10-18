@@ -22,7 +22,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Fidélité sur l'ERP de la boutique (docs/fidelite.md).
+ * Fidélité sur l'ERP de l'imprimerie (docs/fidelite.md).
  *
  * - sans option (chaque nuit) : écrit les points expirés, remet à jour le
  *   résumé envoyé au site et rattrape les paiements des 3 derniers jours ;
@@ -58,7 +58,7 @@ final class FideliteCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         if ($this->fidelite->estEnLigne()) {
-            $io->error('Le site en ligne reçoit le relevé par la synchronisation : lancez la commande sur l\'ERP de la boutique.');
+            $io->error('Le site en ligne reçoit le relevé par la synchronisation : lancez la commande sur l\'ERP de l\'imprimerie.');
 
             return Command::FAILURE;
         }
@@ -100,7 +100,7 @@ final class FideliteCommand extends Command
 
     /**
      * Rejoue l'année de démonstration pour les particuliers de démo, puis
-     * quelques gestes de la boutique : points offerts, points utilisés,
+     * quelques gestes de l'imprimerie : points offerts, points utilisés,
      * valeurs propres d'un gros client, promo de réveil. Rejouable : rien
      * n'est ajouté deux fois.
      */
@@ -156,7 +156,7 @@ final class FideliteCommand extends Command
         }
         $io->writeln(\sprintf('%d règles d\'article ajoutées, %d particuliers de démonstration, %d paiements rejoués.', $regles, \count($clients), $paiements));
 
-        // Gestes de la boutique, chacun une seule fois (repéré par son motif).
+        // Gestes de l'imprimerie, chacun une seule fois (repéré par son motif).
         $vitrine = $this->em->getRepository(Clients::class)->findOneBy(['code' => 'CL-DEMO1']);
         $ajustements = [
             [$vitrine, 800, 'Démo : reprise de l\'ancienne carte de fidélité', 350],
@@ -205,7 +205,7 @@ final class FideliteCommand extends Command
             $this->fidelite->actualiser($client, $maintenant);
         }
         $this->em->flush();
-        $io->success(\sprintf('Relevés de démonstration prêts (%d gestes de la boutique ajoutés).', $gestes));
+        $io->success(\sprintf('Relevés de démonstration prêts (%d gestes de l\'imprimerie ajoutés).', $gestes));
 
         return Command::SUCCESS;
     }

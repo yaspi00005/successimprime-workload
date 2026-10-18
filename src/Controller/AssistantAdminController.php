@@ -21,7 +21,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * des visiteurs et des clients avec l'assistant, et leur analyse.
  *
  * Ce sont des données personnelles : seulement avec le droit « Assistant
- * du site », et seulement sur l'ERP de la boutique, où elles arrivent par
+ * du site », et seulement sur l'ERP de l'imprimerie, où elles arrivent par
  * la synchronisation. En ligne, rien n'est listé.
  */
 #[Route('/assistant-ia', name: 'app_assistant_')]

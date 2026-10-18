@@ -3,9 +3,9 @@
 	WhatsApp, réseaux sociaux, l'allée en photo, adresse, horaires (tuile Horaires) et plan
 	seulement quand le lien du plan est réglé (tuile « Site : page
 	Contact »), puis la galerie « Notre local » (vraies photos du local).
-	Avec la position de la boutique, une vraie carte remplace le plan
+	Avec la position de l'imprimerie, une vraie carte remplace le plan
 	dessiné quand le bloc arrive à l'écran (docs/site-vitrine.md, « Carte
-	de la boutique »).
+	de l'imprimerie »).
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -81,8 +81,8 @@
 				{% if lienPlan %}
 					{# Plan dessiné : seul sans la position, sans JavaScript ou si la carte ne vient pas ; sinon sous la carte. #}
 					<div class="si-carte-boutique"
-						{%- if positionPlan %} data-carte-boutique data-lat="{{ positionPlan.latitude }}" data-lng="{{ positionPlan.longitude }}" data-nom="Boutique {{ entreprise.nomAffiche ?? 'Succès Imprim' }}" data-adresse="{{ (entreprise.adresse ?? null) ?: 'Bamako, Mali' }}" data-leaflet-css="{{ asset('vendor/leaflet/leaflet.css') }}" data-leaflet-js="{{ asset('vendor/leaflet/leaflet.js') }}" data-script="{{ asset('js/site-carte.js') }}"{% endif %}>
-					<a href="{{ lienPlan }}" class="si-plan" target="_blank" rel="noopener" aria-label="Voir l'itinéraire jusqu'à la boutique (s'ouvre dans une autre fenêtre)">
+						{%- if positionPlan %} data-carte-boutique data-lat="{{ positionPlan.latitude }}" data-lng="{{ positionPlan.longitude }}" data-nom="Imprimerie {{ entreprise.nomAffiche ?? 'Succès Imprim' }}" data-adresse="{{ (entreprise.adresse ?? null) ?: 'Bamako, Mali' }}" data-leaflet-css="{{ asset('vendor/leaflet/leaflet.css') }}" data-leaflet-js="{{ asset('vendor/leaflet/leaflet.js') }}" data-script="{{ asset('js/site-carte.js') }}"{% endif %}>
+					<a href="{{ lienPlan }}" class="si-plan" target="_blank" rel="noopener" aria-label="Voir l'itinéraire jusqu'à l'imprimerie (s'ouvre dans une autre fenêtre)">
 						<svg viewBox="0 0 560 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
 							<rect width="560" height="200" fill="#EEF2F8"/>
 							<g stroke="#D7DEEA" stroke-width="1.5">
@@ -110,7 +110,7 @@
 						<svg class="si-info-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
 						<div>
 							<h2>Adresse</h2>
-							<p>Boutique {{ entreprise.nomAffiche ?? 'Succès Imprim' }}<br>{{ (entreprise.adresse ?? null) ?: 'Bamako, Mali' }}</p>
+							<p>Imprimerie {{ entreprise.nomAffiche ?? 'Succès Imprim' }}<br>{{ (entreprise.adresse ?? null) ?: 'Bamako, Mali' }}</p>
 							{% if lienPlan %}<p><a href="{{ lienPlan }}" target="_blank" rel="noopener">Itinéraire</a></p>{% endif %}
 							{% if fiche_google %}<p><a href="{{ fiche_google }}" target="_blank" rel="noopener">Voir notre fiche Google (avis, photos)</a></p>{% endif %}
 						</div>
@@ -157,7 +157,7 @@
 
 {% block scripts %}
 	{% if positionPlan %}
-		{# Carte de la boutique : rien n'est téléchargé avant que le bloc soit à l'écran. #}
+		{# Carte de l'imprimerie : rien n'est téléchargé avant que le bloc soit à l'écran. #}
 		<script>
 			(function () {
 				var bloc = document.querySelector('[data-carte-boutique]');

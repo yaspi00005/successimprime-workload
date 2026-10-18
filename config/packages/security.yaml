@@ -196,8 +196,8 @@ security:
             roles: PUBLIC_ACCESS
         }
 
-        # Espace client : connexion, première connexion (code d'accès de la
-        # boutique), création de compte et suivi sans compte
+        # Espace client : connexion, première connexion (code d'accès de l'imprimerie),
+        # création de compte et suivi sans compte
         - {
             path: ^/espace/(connexion|premiere-connexion|code|creer-compte|suivre)$,
             roles: PUBLIC_ACCESS

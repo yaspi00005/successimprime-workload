@@ -35,7 +35,7 @@ final class NouvelleCommande
     public const COTE_MAX_CM = 5000;
 
     /** Interrupteur « Commande en ligne » coupé (Réglages › Espace client). */
-    public const FERMEE = 'La commande en ligne est fermée pour le moment : demandez un devis, écrivez-nous ou passez en boutique.';
+    public const FERMEE = 'La commande en ligne est fermée pour le moment : demandez un devis, écrivez-nous ou passez à l\'imprimerie.';
 
     public function __construct(
         private readonly EntityManagerInterface $em,

@@ -2198,7 +2198,7 @@ ht += nombreDepuisChamp(champDetail(detail, 'totalHt'));
 ttc += nombreDepuisChamp(champDetail(detail, 'totalTtc'));
 });
 
-// Frais de livraison choisis (rien en retrait boutique), sans TVA. Le serveur refait ces totaux.
+// Frais de livraison choisis (rien en retrait à l'imprimerie), sans TVA. Le serveur refait ces totaux.
 const modeLivraison = form.querySelector('.js-mode-livraison input:checked');
 const fraisLivraison = form.querySelector('.js-frais-livraison input:checked');
 if (fraisLivraison && modeLivraison && modeLivraison.value === 'livraison') {

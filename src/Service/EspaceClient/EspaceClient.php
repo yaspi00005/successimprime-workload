@@ -601,7 +601,7 @@ final class EspaceClient
             $carte = $this->carte($c);
             $prete = $carte['etapes'][4];
             if ('faite' === $prete['etat'] && null !== $prete['date'] && 'faite' !== $carte['etapes'][5]['etat']) {
-                $fil[] = self::evenement('prete', 'Commande prête', \sprintf('%s · %s', $c->getNumero(), $c->estALivrer() ? 'livraison à venir' : 'à retirer en boutique'), $prete['date'], $suivre, $c->getNumero(), ['cible' => ['commande' => $id]]);
+                $fil[] = self::evenement('prete', 'Commande prête', \sprintf('%s · %s', $c->getNumero(), $c->estALivrer() ? 'livraison à venir' : 'à retirer à l\'imprimerie'), $prete['date'], $suivre, $c->getNumero(), ['cible' => ['commande' => $id]]);
             }
             foreach ($this->em->getRepository(BonLivraison::class)->findBy(['commande' => $c]) as $bl) {
                 if (null !== ($e = self::evenementLivraison($bl, $c))) {
@@ -763,7 +763,7 @@ final class EspaceClient
             'commandesAnnee' => \count($commandesAnnee),
             'montantAnnee' => array_sum(array_map(static fn (Commandes $c): int => $c->getTotalTtc(), $commandesAnnee)),
             'enValidation' => $solde['enValidation'],
-            // Mon solde : l'argent laissé à la boutique (monnaie gardée, dépôts), tenu au local.
+            // Mon solde : l'argent laissé à l'imprimerie (monnaie gardée, dépôts), tenu au local.
             'avoir' => max(0, $client->getSoldeCredit()),
         ];
     }

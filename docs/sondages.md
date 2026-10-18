@@ -8,7 +8,7 @@ Demande de Yaya le 10/10/2026. Aucune maquette dédiée pour l'instant ; ce docu
 |---|---|---|
 | Global | Lancé par l'admin (ex. une fois par trimestre) | Tous les clients, ou un segment (actifs, inactifs, entreprises) |
 | Par commande ou par article | Envoyé automatiquement à la livraison, lien WhatsApp ou SMS, et proposé dans l'espace client | Le client de la commande, avec une note par ligne (article) et une note globale |
-| Libre | Créé à la demande, publié par un lien ou un QR code (boutique, réseaux sociaux) | N'importe qui, anonyme possible |
+| Libre | Créé à la demande, publié par un lien ou un QR code (affiche à l'imprimerie, réseaux sociaux) | N'importe qui, anonyme possible |
 
 ## Questions possibles
 

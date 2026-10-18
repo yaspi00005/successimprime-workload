@@ -11,7 +11,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * Accès d'un client à son espace (maquettes CX01 et CX04). Le client se
  * connecte avec son numéro de téléphone et son mot de passe. Un code reçu
  * par e-mail (par SMS sans adresse) sert à la première connexion et au
- * mot de passe oublié ; un code d'accès donné par la boutique sur
+ * mot de passe oublié ; un code d'accès donné par l'imprimerie sur
  * WhatsApp aussi. Il ne voit que ses propres données.
  *
  * Une entreprise (maquette 19) a plusieurs comptes sur la même fiche
@@ -354,7 +354,7 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
 
     /**
      * Le compte du numéro principal de la fiche : celui de la personne
-     * dont la boutique a le numéro et l'e-mail sur la fiche client.
+     * dont l'imprimerie a le numéro et l'e-mail sur la fiche client.
      */
     public function estTitulaire(): bool
     {

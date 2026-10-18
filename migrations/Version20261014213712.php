@@ -11,7 +11,7 @@ use Doctrine\Migrations\AbstractMigration;
  * Import des données de démarrage (docs/import-donnees.md) : journal des
  * imports, soldes d'ouverture, et la marque « solde d'ouverture » sur les
  * commandes (ce que le client devait au démarrage) et les dépenses (ce que
- * la boutique devait à un fournisseur). Rien de cela n'est une vente ni
+ * l'imprimerie devait à un fournisseur). Rien de cela n'est une vente ni
  * une dépense du mois.
  */
 final class Version20261014213712 extends AbstractMigration

@@ -24,10 +24,10 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
  * À chaque page de l'espace client connecté :
  *  - une session ouverte avant « Déconnecter les autres appareils » est
  *    fermée (version de session du compte) ;
- *  - une session ouverte par une personne dont la boutique a suspendu
+ *  - une session ouverte par une personne dont l'imprimerie a suspendu
  *    l'accès est fermée (SuspensionsEspace) ;
  *  - tant que le mot de passe n'est pas choisi (ou l'e-mail donné après un
- *    code d'accès de la boutique), seule « Sécuriser mon compte » s'ouvre ;
+ *    code d'accès de l'imprimerie), seule « Sécuriser mon compte » s'ouvre ;
  *  - un compte « Lecture · suivi » ne peut rien envoyer ni ouvrir de page
  *    qui écrit (DroitsEspace) ;
  *  - l'appareil est noté (Mon compte › Sécurité).
@@ -89,7 +89,7 @@ final class EspaceClientSubscriber implements EventSubscriberInterface
 
             return;
         }
-        // Accès suspendu par la boutique pendant que la session était ouverte : fermée tout de suite.
+        // Accès suspendu par l'imprimerie pendant que la session était ouverte : fermée tout de suite.
         if (null !== $this->suspensions && $this->suspensions->compteSuspendu($compte)) {
             $this->security->logout(false);
             $session = $requete->getSession();

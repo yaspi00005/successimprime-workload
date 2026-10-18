@@ -20,13 +20,13 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Espace client › Mon solde (docs/espace-client.md, « Mon solde ») :
- * l'argent que le client a laissé à la boutique (monnaie gardée, dépôts),
+ * l'argent que le client a laissé à l'imprimerie (monnaie gardée, dépôts),
  * son relevé, et un dépôt par Orange Money.
  *
  * Réservé à qui paie (particulier, ou payeur d'une entreprise), comme
  * « Factures et paiements ». Le solde et le relevé viennent du local en
  * lecture seule : le site ne les change jamais. Un dépôt en ligne arrive
- * « reçu, en attente » ; la boutique le valide après avoir vu l'argent, et
+ * « reçu, en attente » ; l'imprimerie le valide après avoir vu l'argent, et
  * c'est seulement alors que le solde monte. Les frais Orange Money sont
  * payés en plus et ne vont pas au solde.
  */
@@ -106,7 +106,7 @@ final class EspaceSoldeController extends AbstractController
             return $this->redirectToRoute('app_espace_solde', ['montant' => $montant], Response::HTTP_SEE_OTHER);
         }
         if (!$limite->create('compte-'.$compte->getId())->consume()->isAccepted()) {
-            $this->addFlash('error', 'Vous avez lancé beaucoup de paiements. Réessayez dans quelques minutes, ou déposez en boutique.');
+            $this->addFlash('error', 'Vous avez lancé beaucoup de paiements. Réessayez dans quelques minutes, ou déposez à l\'imprimerie.');
 
             return $this->redirectToRoute('app_espace_solde', [], Response::HTTP_SEE_OTHER);
         }
@@ -138,7 +138,7 @@ final class EspaceSoldeController extends AbstractController
         }
         // Pas de montant dans les messages : il est dans la liste des dépôts, juste en dessous.
         match ($depot->getStatut()) {
-            DepotSoldeClient::RECU => $this->addFlash('succes', 'Dépôt reçu par Orange Money. La boutique le vérifie, puis il s\'ajoute à votre solde.'),
+            DepotSoldeClient::RECU => $this->addFlash('succes', 'Dépôt reçu par Orange Money. L\'imprimerie le vérifie, puis il s\'ajoute à votre solde.'),
             DepotSoldeClient::VALIDE => $this->addFlash('succes', 'Dépôt ajouté à votre solde.'),
             DepotSoldeClient::ECHOUE => $this->addFlash('error', 'Le dépôt n\'a pas abouti chez Orange Money : rien n\'a été débité.'),
             default => $this->addFlash('succes', 'Dépôt en cours chez Orange Money : il apparaît ici dès qu\'Orange le confirme.'),

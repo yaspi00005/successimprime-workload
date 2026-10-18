@@ -20,12 +20,12 @@ use Psr\Log\NullLogger;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Bascule de la base de la boutique (ancienne version de l'application)
+ * Bascule de la base de l'imprimerie (ancienne version de l'application)
  * vers la migration de base, sans rien perdre (docs/migration-de-base.md).
  *
  * 1. Le schéma de référence est construit en jouant la seule migration de
  *    base dans une base provisoire, aussitôt supprimée.
- * 2. Doctrine compare la base de la boutique à cette référence ; chaque
+ * 2. Doctrine compare la base de l'imprimerie à cette référence ; chaque
  *    écart est classé d'après les données (Classement).
  * 3. La structure dit aussi quelles anciennes mises à jour de DONNÉES
  *    manquent (remises en pourcentage, articles non vendables… :
@@ -179,7 +179,7 @@ final class Bascule
             $jeu = $serveur->fetchAssociative('SELECT DEFAULT_CHARACTER_SET_NAME AS jeu, DEFAULT_COLLATION_NAME AS inter FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?', [$base])
                 ?: ['jeu' => 'utf8mb4', 'inter' => 'utf8mb4_unicode_ci'];
             $this->libererProvisoire($serveur, $provisoire);
-            // Même jeu de caractères que la base de la boutique : les tables créées sans précision le prennent.
+            // Même jeu de caractères que la base de l'imprimerie : les tables créées sans précision le prennent.
             $serveur->executeStatement(\sprintf('CREATE DATABASE `%s` CHARACTER SET %s COLLATE %s', $provisoire, $jeu['jeu'], $jeu['inter']));
             try {
                 $ref = DriverManager::getConnection(['dbname' => $provisoire] + $params);

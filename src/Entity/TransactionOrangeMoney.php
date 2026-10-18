@@ -15,7 +15,7 @@ use Doctrine\ORM\Mapping as ORM;
  * de plusieurs factures et acomptes (ReglementEnLigne, « Factures et
  * paiements ») : un paiement par commande à la réception de l'argent.
  *
- * Il fait aussi un dépôt sur le compte du client à la boutique (« Mon
+ * Il fait aussi un dépôt sur le compte du client à l'imprimerie (« Mon
  * solde », DepotSoldeClient) : aucun paiement n'est créé, le dépôt passe
  * « reçu » et la caisse le valide au local.
  *

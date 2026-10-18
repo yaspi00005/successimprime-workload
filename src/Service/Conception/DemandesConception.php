@@ -36,7 +36,7 @@ final class DemandesConception
         private readonly CompteEntreprise $compteEntreprise,
         private readonly NouvelleCommande $nouvelleCommande,
         private readonly OrangeSmsService $sms,
-        // Accès suspendu par la boutique : pas de SMS (SuspensionsEspace).
+        // Accès suspendu par l'imprimerie : pas de SMS (SuspensionsEspace).
         private readonly ?SuspensionsEspace $suspensions = null,
     ) {
     }

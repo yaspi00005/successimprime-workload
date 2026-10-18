@@ -55,7 +55,7 @@ final class ReglementsEnLigne
 
     /**
      * Lance le règlement : le lien de la page Orange Money, ou null s'il est
-     * payé par l'avoir seul (reçu tout de suite, en attente de la boutique).
+     * payé par l'avoir seul (reçu tout de suite, en attente de l'imprimerie).
      *
      * @param list<ElementAPayer>                                                                                            $elements
      * @param array{om: int, frais: FraisOrangeMoney, parts: array<string, array{om: int, avoir: int, fondsSoutien: int, fraisRetrait: int}>} $plan
@@ -67,7 +67,7 @@ final class ReglementsEnLigne
     public function demarrer(CompteClient $compte, array $elements, array $plan, \DateTimeImmutable $maintenant): array
     {
         if ($plan['om'] > 0 && !$this->orangeMoney->estOuvert()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique, ou utilisez votre avoir seul.');
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez à l\'imprimerie, ou utilisez votre avoir seul.');
         }
         $client = $compte->getClient();
         $reference = $plan['om'] > 0 ? OrangeMoney::nouvelOrderId($maintenant) : \sprintf('AV%s%s', $maintenant->format('ymdHis'), strtoupper(bin2hex(random_bytes(3))));

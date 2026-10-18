@@ -1,10 +1,10 @@
 /*
- * Carte de la boutique sur la page Contact (docs/site-vitrine.md,
- * « Carte de la boutique »).
+ * Carte de l'imprimerie sur la page Contact (docs/site-vitrine.md,
+ * « Carte de l'imprimerie »).
  *
  * Chargé par la page seulement quand le bloc arrive à l'écran : ajoute
  * Leaflet (public/vendor/leaflet), pose la carte (fonds OpenStreetMap) sur
- * le plan dessiné, avec le repère de la boutique. Le plan dessiné revient si
+ * le plan dessiné, avec le repère de l'imprimerie. Le plan dessiné revient si
  * Leaflet ou les fonds de carte ne se chargent pas (hors ligne, réseau
  * coupé). Pas de piège au défilement : la molette ne zoome qu'après un clic
  * sur la carte, et au téléphone un doigt fait défiler la page tant que la

@@ -14,7 +14,7 @@ Construit le 14/10/2026. Le périmètre validé est rappelé ci-dessous, puis ce
 ## Règles
 
 - Il n'invente jamais un prix, un délai ou un statut. Il ne donne que ce que l'application lui fournit au moment de la question. Sinon, il le dit et propose un agent.
-- **Passage à un humain** : à la demande du client, ou quand il n'est pas sûr. Le client reçoit un lien WhatsApp vers la boutique, avec le résumé de la conversation déjà écrit.
+- **Passage à un humain** : à la demande du client, ou quand il n'est pas sûr. Le client reçoit un lien WhatsApp vers l'imprimerie, avec le résumé de la conversation déjà écrit.
 - **Confidentialité** : il ne voit que les données du client connecté. Les données internes sont exclues :
   - coûts et marges ;
   - autres clients ;

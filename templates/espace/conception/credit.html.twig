@@ -21,7 +21,7 @@
 	</div>
 
 	{% for m in enAttente %}
-		<div class="ec-note">{{ m.libelle }} ({{ m.montant|francs_conception }}{% if m.commande %}, commande {{ m.commande.numero }}{% endif %}) : à régler {% if marchand %}au numéro marchand <b>{{ marchand }}</b> ou en boutique{% else %}en boutique, ou au numéro marchand Orange Money{% endif %}. Le crédit s'ajoute dès que la caisse valide le paiement.</div>
+		<div class="ec-note">{{ m.libelle }} ({{ m.montant|francs_conception }}{% if m.commande %}, commande {{ m.commande.numero }}{% endif %}) : à régler {% if marchand %}au numéro marchand <b>{{ marchand }}</b> ou à l'imprimerie{% else %}à l'imprimerie, ou au numéro marchand Orange Money{% endif %}. Le crédit s'ajoute dès que la caisse valide le paiement.</div>
 	{% endfor %}
 
 	{# Réservée à qui paie (contrôleur) : le solde est un montant de l'entreprise. #}
@@ -43,7 +43,7 @@
 				<p class="ec-petit" style="margin:.6rem 0 0">{% if defaut.om.frais > 0 %}Le fonds de soutien et le frais de retrait Orange Money s'ajoutent au prix du pack : vous voyez le total avant de partir chez Orange. {% endif %}Vous confirmez sur la page sécurisée d'Orange Money avec votre code secret : le crédit sert dès votre retour. Ne communiquez jamais votre code secret : Succès Imprim ne vous le demandera ni par téléphone ni par message.</p>
 			{% else %}
 				<button class="ec-bouton orange" type="submit" id="payer-pack" data-modele="Commander le pack · %s">Commander le pack · {{ defaut.prix|francs_conception }}</button>
-				<p class="ec-petit" style="margin:.6rem 0 0">{% if marchand %}Payez ensuite au numéro marchand Orange Money <b>{{ marchand }}</b> en indiquant le numéro de commande, ou en boutique{% else %}Payez ensuite en boutique, ou demandez le numéro marchand sur WhatsApp{% endif %} : le crédit s'ajoute dès que la caisse a validé le paiement.</p>
+				<p class="ec-petit" style="margin:.6rem 0 0">{% if marchand %}Payez ensuite au numéro marchand Orange Money <b>{{ marchand }}</b> en indiquant le numéro de commande, ou à l'imprimerie{% else %}Payez ensuite à l'imprimerie, ou demandez le numéro marchand sur WhatsApp{% endif %} : le crédit s'ajoute dès que la caisse a validé le paiement.</p>
 			{% endif %}
 		</form>
 	{% endif %}

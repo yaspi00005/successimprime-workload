@@ -58,7 +58,7 @@
 		<dl>
 			<div class="solde"><dt>Solde de votre compte</dt><dd>{{ ligne.soldeApres|number_format(0, ',', ' ') }} F</dd></div>
 		</dl>
-		<p class="coord centre">{{ depot ? 'Cet argent reste à votre disposition : il paiera vos prochaines commandes, ou vous sera rendu sur demande.' : 'Argent remis au client depuis son compte à la boutique.' }}</p>
+		<p class="coord centre">{{ depot ? 'Cet argent reste à votre disposition : il paiera vos prochaines commandes, ou vous sera rendu sur demande.' : 'Argent remis au client depuis son compte à l\'imprimerie.' }}</p>
 		{% if not depot %}
 			<div class="signature">Signature du client<div></div></div>
 		{% endif %}

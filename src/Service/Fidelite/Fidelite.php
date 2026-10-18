@@ -47,7 +47,7 @@ final class Fidelite
     public function surLaBoutique(): void
     {
         if ($this->enLigne) {
-            throw new \DomainException('La fidélité se gère sur l\'ERP de la boutique.');
+            throw new \DomainException('La fidélité se gère sur l\'ERP de l\'imprimerie.');
         }
     }
 

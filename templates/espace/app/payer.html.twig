@@ -73,7 +73,7 @@
 		{% else %}
 			<div class="ec-note">
 				Le paiement Orange Money depuis l'espace arrive très bientôt.
-				{% if marchand %}En attendant, envoyez {{ frais.total|number_format(0, ',', ' ') }} F au numéro marchand <b>{{ marchand }}</b> en indiquant la commande <b>{{ commande.numero }}</b> : le paiement est validé par la caisse et votre reçu arrive sur WhatsApp.{% else %}En attendant, payez en boutique ou demandez le numéro marchand sur WhatsApp.{% endif %}
+				{% if marchand %}En attendant, envoyez {{ frais.total|number_format(0, ',', ' ') }} F au numéro marchand <b>{{ marchand }}</b> en indiquant la commande <b>{{ commande.numero }}</b> : le paiement est validé par la caisse et votre reçu arrive sur WhatsApp.{% else %}En attendant, payez à l'imprimerie ou demandez le numéro marchand sur WhatsApp.{% endif %}
 			</div>
 			<div class="ec-recap-boutons">
 				<a class="ec-bouton clair" href="{{ retour }}">Annuler</a>

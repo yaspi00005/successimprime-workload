@@ -37,7 +37,7 @@ final class SauvegardeDechiffrerCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $source = (string) $input->getArgument('fichier');
         if (!Chiffrement::cleValable((string) $this->cle)) {
-            $io->error('SAUVEGARDE_CLE_HORS_SITE manque dans .env.local (la clé gardée hors de la boutique).');
+            $io->error('SAUVEGARDE_CLE_HORS_SITE manque dans .env.local (la clé gardée hors de l\'imprimerie).');
 
             return Command::FAILURE;
         }

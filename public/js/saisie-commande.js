@@ -339,7 +339,7 @@
 
         /*
          * Frais de livraison : le palier coché (bouton), sans TVA. Une
-         * commande en retrait boutique n'en a pas ; un devis n'a pas de
+         * commande en retrait à l'imprimerie n'en a pas ; un devis n'a pas de
          * mode de livraison, ses frais comptent dès qu'un palier est choisi.
          */
         function fraisLivraison() {

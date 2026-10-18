@@ -72,7 +72,7 @@
 			<aside class="si-pm-panneau">
 				<div class="si-pm-client-tete">
 					<span class="si-pm-initiales" style="--c: {{ c.couleur }}">{{ c.initiales }}</span>
-					<div><b>{{ c.client ?? 'Client de passage' }}</b><small>{% if c.promis %}promis {{ c.promis|date_fr('EEE d/MM') }} · {% endif %}{{ ligne.commande.estALivrer ? 'livraison' ~ (ligne.commande.adresseLivraison ? ' ' ~ (ligne.commande.adresseLivraison|length > 28 ? ligne.commande.adresseLivraison|slice(0, 27) ~ '…' : ligne.commande.adresseLivraison) : '') : 'retrait à la boutique' }}</small></div>
+					<div><b>{{ c.client ?? 'Client de passage' }}</b><small>{% if c.promis %}promis {{ c.promis|date_fr('EEE d/MM') }} · {% endif %}{{ ligne.commande.estALivrer ? 'livraison' ~ (ligne.commande.adresseLivraison ? ' ' ~ (ligne.commande.adresseLivraison|length > 28 ? ligne.commande.adresseLivraison|slice(0, 27) ~ '…' : ligne.commande.adresseLivraison) : '') : 'retrait à l\'imprimerie' }}</small></div>
 				</div>
 				<dl class="si-pm-lignes">
 					<div><dt>Produit</dt><dd>{{ ligne.support.nom ?? ligne.produit.nom ?? ligne.designation }}</dd></div>

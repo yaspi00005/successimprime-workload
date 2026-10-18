@@ -86,7 +86,7 @@ final class PropositionsClient
     private function verifier(PropositionClient $proposition): void
     {
         if ($this->enLigne) {
-            throw new \DomainException('Les demandes des clients se traitent depuis l\'ERP de la boutique.');
+            throw new \DomainException('Les demandes des clients se traitent depuis l\'ERP de l\'imprimerie.');
         }
         if (!$proposition->estEnAttente()) {
             throw new \DomainException('Cette demande a déjà été traitée.');

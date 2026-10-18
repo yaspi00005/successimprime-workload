@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Solde d'ouverture repris au démarrage (docs/import-donnees.md) : ce que
  * le client doit, l'avance qu'il a chez nous, l'argent d'un compte de
- * trésorerie, ce que la boutique doit à un fournisseur.
+ * trésorerie, ce que l'imprimerie doit à un fournisseur.
  *
  * Ce n'est jamais une vente ni une dépense du mois : la ligne dit où le
  * montant a été posé (commande « Solde d'ouverture » sans ligne ni
@@ -27,7 +27,7 @@ class SoldeOuverture
     public const AVANCE_CLIENT = 'avance_client';
     /** Argent d'un compte de trésorerie au démarrage. */
     public const COMPTE = 'compte';
-    /** La boutique doit ce montant au fournisseur. */
+    /** L'imprimerie doit ce montant au fournisseur. */
     public const FOURNISSEUR = 'fournisseur';
 
     public const TYPES = [

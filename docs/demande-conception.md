@@ -19,7 +19,7 @@ Le local et le site sont synchronisés : le client travaille en ligne, l'atelier
 3. **Graphiste ou IA** : panneau « Qui réalise la conception ? » avec les deux offres.
 4. **Paiement de l'acompte (DC03)** :
    - Le bouton « Payer l'acompte de 5 000 F par Orange Money » ouvre le rappel : référence, récapitulatif (acompte, fonds de soutien, frais de retrait, « Total payé avec Orange Money », 5 100 F avec les taux par défaut), étapes, code secret jamais demandé par l'atelier. « Continuer vers Orange Money » mène à la page sécurisée d'Orange Money (WebPay, comme les commandes).
-   - Sans clés Orange Money, « Envoyer à l'atelier » : la commande est créée et l'acompte se règle au numéro marchand ou en boutique.
+   - Sans clés Orange Money, « Envoyer à l'atelier » : la commande est créée et l'acompte se règle au numéro marchand ou à l'imprimerie.
 5. **IA (DC04, et « Proposition IA » de DC05 sur téléphone)** :
    - Résumé de la demande, consigne de 300 caractères au plus, « Générer une image · 1 000 F ».
    - Grande image avec zoom et « Voir sur le support ». Mes images (vignettes) et récapitulatif.

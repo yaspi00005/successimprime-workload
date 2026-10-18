@@ -404,7 +404,7 @@ class CompteTresorerie implements AppartientASociete
      * commandes, acomptes de conception, crédit IA). Un seul compte
      * le porte ; il est créé au premier paiement en ligne validé s'il
      * n'existe pas (ComptesOrangeMoney). Les numéros Orange Money de
-     * la boutique restent des comptes Orange Money ordinaires,
+     * l'imprimerie restent des comptes Orange Money ordinaires,
      * choisis à la caisse.
      * ============================================================
      */

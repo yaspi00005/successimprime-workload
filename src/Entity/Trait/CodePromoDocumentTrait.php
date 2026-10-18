@@ -10,9 +10,9 @@ use Doctrine\ORM\Mapping as ORM;
  * promo ») : un seul par document, posé par le serveur à l'enregistrement
  * (PromotionsSaisie), jamais repris du navigateur.
  *
- * - codePromo : le code retenu, qui compte une utilisation. Seule la
- *   boutique le pose : une commande passée en ligne arrive avec le code
- *   tapé (codeSaisi) et la boutique le revérifie en la confirmant.
+ * - codePromo : le code retenu, qui compte une utilisation. Seule l'imprimerie
+ *   le pose : une commande passée en ligne arrive avec le code
+ *   tapé (codeSaisi) et l'imprimerie le revérifie en la confirmant.
  * - remiseCodePromo : l'avantage sur la commande, hors TVA, réparti sur
  *   les lignes (PromotionLigneTrait::remiseCodePromo) et déjà dans les
  *   totaux. Les lignes et les factures le montrent : jamais de prix gonflé.

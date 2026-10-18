@@ -7,7 +7,7 @@ use App\Entity\Clients;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Code d'accès à l'espace client donné par la boutique sur WhatsApp :
+ * Code d'accès à l'espace client donné par l'imprimerie sur WhatsApp :
  * 8 caractères faciles à taper, 48 h, une seule fois, empreinte seulement.
  */
 final class AccesEspaceClientTest extends TestCase

@@ -159,7 +159,7 @@ final class ComptesOrangeMoneyTest extends TestCase
         self::assertSame([500, 100], array_map(static fn (MouvementTresorerie $m): int => $m->getMontant(), $prelevements));
         self::assertSame([MouvementTresorerie::CATEGORIE_FRAIS_ORANGE, MouvementTresorerie::CATEGORIE_FRAIS_BANCAIRE], array_map(static fn (MouvementTresorerie $m): string => $m->getCategorie(), $prelevements));
         self::assertSame(['MVT-1-FO', 'MVT-1-FC'], array_map(static fn (MouvementTresorerie $m): string => $m->getReference(), $prelevements));
-        self::assertTrue($prelevements[1]->estCharge(), 'payé par la boutique : une vraie charge');
+        self::assertTrue($prelevements[1]->estCharge(), 'payé par l\'imprimerie : une vraie charge');
         self::assertSame([], ComptesOrangeMoney::mouvementsPrelevement($sortie, 0, 500, null));
     }
 
@@ -181,7 +181,7 @@ final class ComptesOrangeMoneyTest extends TestCase
         $enLigne = (new Paiements())->setMode(Paiements::MODE_ORANGE_MONEY)->setReference('OM MP261015.1500.A1');
         self::assertTrue($enLigne->estOrangeMoneyEnLigne(), 'API de l\'espace client');
         self::assertFalse((clone $enLigne)->setEncaissePar(new User())->estOrangeMoneyEnLigne(), 'saisi à la caisse');
-        self::assertFalse((new Paiements())->setMode(Paiements::MODE_ORANGE_MONEY)->setReference('MP261015.1500.A1')->estOrangeMoneyEnLigne(), 'relevé, numéro de la boutique');
+        self::assertFalse((new Paiements())->setMode(Paiements::MODE_ORANGE_MONEY)->setReference('MP261015.1500.A1')->estOrangeMoneyEnLigne(), 'relevé, numéro de l\'imprimerie');
         self::assertFalse((new Paiements())->setMode(Paiements::MODE_WAVE)->setReference('OM 1')->estOrangeMoneyEnLigne());
     }
 

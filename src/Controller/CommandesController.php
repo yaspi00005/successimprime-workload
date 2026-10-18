@@ -3257,7 +3257,7 @@ final class CommandesController extends AbstractController
      * Paie tout ou partie du reste de cette commande avec le solde du
      * compte du client (monnaie gardée, dépôts : docs/finances.md,
      * « Compte du client »). Aucun compte de trésorerie n'est crédité :
-     * l'argent est déjà à la boutique. Sans montant, le plus possible.
+     * l'argent est déjà à l'imprimerie. Sans montant, le plus possible.
      * ================================================================
      */
     #[Route(
@@ -3297,7 +3297,7 @@ final class CommandesController extends AbstractController
 
         // Le solde est tenu au local : en ligne, il ne se dépense qu'avec un paiement « AV » à valider.
         if ($accesEnLigne->estEnLigne()) {
-            $this->addFlash('warning', 'Le solde du client s’utilise à la boutique.');
+            $this->addFlash('warning', 'Le solde du client s’utilise à l\'imprimerie.');
 
             return $retour();
         }
@@ -3558,7 +3558,7 @@ final class CommandesController extends AbstractController
             return null;
         }
         if ($accesEnLigne->estEnLigne()) {
-            return 'La monnaie se garde à la caisse de la boutique, pas en ligne.';
+            return 'La monnaie se garde à la caisse de l\'imprimerie, pas en ligne.';
         }
         if (!$this->isGranted('ROLE_PAIEMENT_ENCAISSER')) {
             return 'Vous ne pouvez pas garder de monnaie.';

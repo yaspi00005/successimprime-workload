@@ -40,7 +40,7 @@ final class CatalogueGuide
     public const GROUPES = [
         'premiers-pas' => ['libelle' => 'Premiers pas', 'icone' => 'fas fa-shoe-prints', 'texte' => 'Le parcours du premier jour : se connecter, le client, le devis, la commande, l\'encaissement, la facture.'],
         'direction' => ['libelle' => 'Direction', 'icone' => 'fas fa-chess-king', 'texte' => 'Suivre l\'activité, valider, gérer les accès et régler l\'application.', 'droit' => 'ROLE_ADMIN'],
-        'caisse' => ['libelle' => 'Caisse et commercial', 'icone' => 'fas fa-cash-register', 'texte' => 'Le quotidien de la boutique : ventes, caisse, dépenses, relances, clients.', 'droit' => 'ROLE_PAIEMENT_ENCAISSER'],
+        'caisse' => ['libelle' => 'Caisse et commercial', 'icone' => 'fas fa-cash-register', 'texte' => 'Le quotidien de l\'imprimerie : ventes, caisse, dépenses, relances, clients.', 'droit' => 'ROLE_PAIEMENT_ENCAISSER'],
         'graphiste' => ['libelle' => 'Graphiste PAO', 'icone' => 'fas fa-pencil-ruler', 'texte' => 'Fichiers des clients, BAT, montage, demandes de conception, créations.', 'droit' => 'ROLE_PREPRESSE'],
         'production' => ['libelle' => 'Opérateur production', 'icone' => 'fas fa-print', 'texte' => 'Les travaux de l\'atelier et la file de sa machine.', 'droit' => 'ROLE_PRODUCTION_GERER'],
         'livreur' => ['libelle' => 'Livreur', 'icone' => 'fas fa-route', 'texte' => 'La tournée du jour sur le téléphone.', 'droit' => 'ROLE_LIVRAISON'],
@@ -384,7 +384,7 @@ final class CatalogueGuide
             ],
             [
                 'cle' => 'a-retirer', 'groupe' => 'livreur', 'titre' => 'Commandes à retirer',
-                'but' => 'Relancer les clients dont la commande attend à la boutique.',
+                'but' => 'Relancer les clients dont la commande attend à l\'imprimerie.',
                 'droits' => ['ROLE_LIVRAISON'], 'route' => 'app_livraisons_a_retirer', 'ecrans' => ['app_livraisons_a_retirer'],
                 'captures' => [
                     ['nom' => 'a-retirer', 'legende' => 'Commandes à retirer.', 'mobile' => true],

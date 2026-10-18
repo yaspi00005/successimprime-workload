@@ -90,7 +90,7 @@ final class EspaceClientComptesTest extends TestCase
         return new EspaceClientComptes($repository, $em, $this->fabrique->codes(), $acces, $suspensions);
     }
 
-    /** Code d'accès donné par la boutique pour cette fiche ; rend le code en clair. */
+    /** Code d'accès donné par l'imprimerie pour cette fiche ; rend le code en clair. */
     private function donnerAcces(Clients $fiche, \DateTimeImmutable $le): string
     {
         $acces = (new AccesEspaceClient())->setClient($fiche);

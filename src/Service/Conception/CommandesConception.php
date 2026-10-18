@@ -70,7 +70,7 @@ final class CommandesConception
     /**
      * Sans paiement en ligne (clés Orange Money absentes, ou acompte à 0) :
      * la commande de conception est enregistrée et la demande part à
-     * l'atelier ; l'acompte se règle au numéro marchand ou en boutique.
+     * l'atelier ; l'acompte se règle au numéro marchand ou à l'imprimerie.
      */
     public function envoyerAuGraphiste(DemandeConception $demande, ?CompteClient $compte, \DateTimeImmutable $le): Commandes
     {

@@ -37,7 +37,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * Direction, la supervision des délais, toutes les conversations et les
  * règles de réponse.
  *
- * Les réponses partent de l'ERP de la boutique : sur le site en ligne, les
+ * Les réponses partent de l'ERP de l'imprimerie : sur le site en ligne, les
  * pages se lisent seulement.
  *
  * Aussi, depuis la fiche client : appliquer ou refuser un changement de
@@ -209,7 +209,7 @@ final class MessagesClientsController extends AbstractController
     {
         $this->jeton($request);
         if ($this->enLigne) {
-            throw $this->createAccessDeniedException('Les réponses partent de l\'ERP de la boutique.');
+            throw $this->createAccessDeniedException('Les réponses partent de l\'ERP de l\'imprimerie.');
         }
         $document = $this->em->find('commande' === $type ? Commandes::class : Devis::class, $id) ?? throw $this->createNotFoundException();
         $this->denyAccessUnlessGranted('commande' === $type ? 'ROLE_COMMANDE' : 'ROLE_DEVIS');
@@ -322,7 +322,7 @@ final class MessagesClientsController extends AbstractController
             }
             $resultat = $parametres->enregistrer(ReglesReponse::TUILE, $valeurs, $this->moi());
             $this->addFlash('success', match ($resultat) {
-                'propose' => 'Changement proposé : il s\'applique quand il est validé sur l\'ERP de la boutique.',
+                'propose' => 'Changement proposé : il s\'applique quand il est validé sur l\'ERP de l\'imprimerie.',
                 'inchange' => 'Rien n\'a changé.',
                 default => 'Règles de réponse enregistrées.',
             });
@@ -465,7 +465,7 @@ final class MessagesClientsController extends AbstractController
     {
         $this->jeton($request);
         if ($this->enLigne) {
-            throw $this->createAccessDeniedException('Les réponses partent de l\'ERP de la boutique.');
+            throw $this->createAccessDeniedException('Les réponses partent de l\'ERP de l\'imprimerie.');
         }
 
         return $this->conversation($publicId);

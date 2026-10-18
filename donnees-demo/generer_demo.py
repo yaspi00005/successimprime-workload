@@ -221,7 +221,7 @@ PRENOM = {U[k]: p for k, p, *_ in EQUIPE}
 NOM_COMPLET = {U[k]: f'{p} {n}' for k, p, n, *_ in EQUIPE}
 
 COMPTES = {}
-for code, nom, typ, portee, banque in [('D-CAISSE', 'Caisse boutique', 'caisse', 'partagee', None), ('D-OM', 'Orange Money marchand', 'orange_money', 'partagee', None),
+for code, nom, typ, portee, banque in [('D-CAISSE', 'Caisse imprimerie', 'caisse', 'partagee', None), ('D-OM', 'Orange Money marchand', 'orange_money', 'partagee', None),
                                        ('D-WAVE', 'Wave', 'wave', 'admin', None), ('D-BDM', 'Banque BDM', 'banque', 'admin', 'BDM-SA')]:
     COMPTES[typ] = add('compte_tresorerie', {'code': code, 'nom': nom, 'type': typ, 'portee': portee, 'nom_banque': banque,
                                               'numero_compte': f'ML0{R.randint(10, 99)} 0{R.randint(1000, 9999)} {R.randint(10000000, 99999999)}' if banque else None,
@@ -398,10 +398,10 @@ for code in ['D-BACHE', 'D-FLYER', 'D-TSHIRT', 'D-ROLLUP']:
 
 # Modèles de messages et règles de rappel.
 MODELES = {}
-for nom, canal, contenu in [('Relance facture (démo)', 'sms', 'Bonjour {{nom}}, la commande {{numeroCommande}} attend un reste à payer de {{reste}} F. Merci de passer à la boutique ou de payer par Orange Money.'),
+for nom, canal, contenu in [('Relance facture (démo)', 'sms', 'Bonjour {{nom}}, la commande {{numeroCommande}} attend un reste à payer de {{reste}} F. Merci de passer à l\'imprimerie ou de payer par Orange Money.'),
                             ('Promotion du mois (démo)', 'whatsapp', 'Bonjour {{nom}}, ce mois-ci -10 % sur les bâches et roll-up chez Succès Imprim !'),
                             ('Commande prête (démo)', 'sms', 'Bonjour {{nom}}, votre commande {{numeroCommande}} est prête. Nous vous attendons.'),
-                            ('Anniversaire client (démo)', 'sms', 'Joyeux anniversaire de la part de Succès Imprim ! Un cadeau vous attend à la boutique.')]:
+                            ('Anniversaire client (démo)', 'sms', 'Joyeux anniversaire de la part de Succès Imprim ! Un cadeau vous attend à l\'imprimerie.')]:
     MODELES[nom] = add('modele_message', {'nom': nom, 'canal': canal, 'sujet': None, 'contenu': contenu, 'actif': 1, 'date_creation': T(300)})
 REGLES = [add('regle_rappel_paiement', {'nom': 'Relance à 7 jours (démo)', 'delai_jours': 7, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement', 'public_id': uid_rappel()}),
           add('regle_rappel_paiement', {'nom': 'Relance à 30 jours (démo)', 'delai_jours': 30, 'actif': 1, 'date_creation': T(300), 'modele_message_id': MODELES['Relance facture (démo)'], 'type': 'paiement', 'public_id': uid_rappel()}),
@@ -1077,7 +1077,7 @@ for cle, uid_ in U.items():
     APPAREILS[uid_] = add('appareil_pointage', {'empreinte': hexa(64), 'nom': 'Safari · iPhone' if len(APPAREILS) % 4 == 1 else 'Chrome · Android', 'etat': 'autorise', 'cree_le': T(200, 8), 'decide_le': T(199, 9),
                                                  'utilisateur_id': uid_, 'decide_par_id': U['fanta']})
 add('appareil_pointage', {'empreinte': hexa(64), 'nom': 'Nouveau téléphone (Sékou)', 'etat': 'en_attente', 'cree_le': T(1, 8), 'decide_le': None, 'utilisateur_id': U['sekou'], 'decide_par_id': None})
-for nom, role, etat in [('Poste caisse boutique', 'encaissement', 'autorise'), ('PC direction', 'admin', 'autorise'), ('Tablette accueil', 'lecture', 'autorise'), ('PC inconnu', 'lecture', 'en_attente')]:
+for nom, role, etat in [('Poste caisse imprimerie', 'encaissement', 'autorise'), ('PC direction', 'admin', 'autorise'), ('Tablette accueil', 'lecture', 'autorise'), ('PC inconnu', 'lecture', 'en_attente')]:
     add('appareil_autorise', {'nom': nom, 'role_en_ligne': role, 'etat': etat, 'empreinte': hexa(64), 'cree_le': T(150), 'expire_le': None, 'autorise_le': T(149) if etat == 'autorise' else None,
                               'derniere_connexion': T(R.randint(0, 3), 8), 'ip': f'10.90.0.{R.randint(50, 90)}', 'navigateur': 'Chrome 129', 'identifiant_tente': None,
                               'utilisateur_id': U['aminata'] if role == 'encaissement' else U['kadiatou'], 'cree_par_id': U['kadiatou']})
@@ -1212,7 +1212,7 @@ for d in range(40, 0, -1):
                          'appareil_arrivee_id': None, 'appareil_depart_id': None})
 
 # --------------------------------------------- charges, transferts, banque
-for libelle, cat, montant, jour, freq, mois_an, compte in [('Loyer boutique et atelier', 'loyer', 450000, 5, 'mensuelle', None, 'banque'), ('Électricité EDM', 'electricite', 185000, 12, 'mensuelle', None, 'banque'),
+for libelle, cat, montant, jour, freq, mois_an, compte in [('Loyer des locaux', 'loyer', 450000, 5, 'mensuelle', None, 'banque'), ('Électricité EDM', 'electricite', 185000, 12, 'mensuelle', None, 'banque'),
                                                            ('Internet Orange Pro', 'autre_charge', 45000, 8, 'mensuelle', None, 'orange_money'), ('Gardiennage', 'autre_charge', 90000, 1, 'mensuelle', None, 'caisse'),
                                                            ('Eau SOMAGEP', 'autre_charge', 25000, 15, 'mensuelle', None, 'caisse'), ('Assurance multirisque', 'autre_charge', 650000, 10, 'annuelle', 1, 'banque')]:
     add('decaissement_recurrent', {'libelle': libelle, 'categorie': cat, 'montant': montant, 'frequence': freq, 'jour_du_mois': jour, 'mois_de_lannee': mois_an, 'actif': 1, 'date_debut': J(JOURS + 30),
@@ -1310,7 +1310,7 @@ ECHEANCES = [
     ('Nettoyage des têtes Solvant', 'atelier', 'jour', None, [1, 2, 3, 4, 5, 6], '08:00', '08:30', ['Purge', 'Test de buses', 'Nettoyage du capot'], None, 'oumar', False),
     ('Inventaire des supports', 'stock', 'semaine', None, [6], '16:00', None, ['Compter les rouleaux', 'Saisir les écarts'], None, 'ibrahim', False),
     ('Tournée commerciale', 'commercial', 'semaine', None, [2, 4], '10:00', None, ['Visiter 5 clients', 'Noter les besoins'], None, 'moussa', False),
-    ('Ménage de la boutique', 'entretien', 'jour', None, [1, 2, 3, 4, 5, 6], '07:30', '08:00', ['Balayer', 'Laver le sol', 'Vider les poubelles'], None, 'awa', False),
+    ('Ménage de l\'accueil', 'entretien', 'jour', None, [1, 2, 3, 4, 5, 6], '07:30', '08:00', ['Balayer', 'Laver le sol', 'Vider les poubelles'], None, 'awa', False),
     ('Nettoyage de l\'atelier', 'entretien', 'jour', None, [1, 2, 3, 4, 5, 6], '13:00', '13:45', ['Ramasser les chutes', 'Dépoussiérer les machines'], None, 'awa', False),
     ('Sanitaires', 'entretien', 'jour', None, [1, 2, 3, 4, 5, 6], '15:00', '15:30', ['Laver', 'Réapprovisionner savon et papier'], None, 'awa', False),
     ('Fermeture', 'entretien', 'jour', None, [1, 2, 3, 4, 5, 6], '18:30', '19:00', ['Éteindre les machines', 'Couper la climatisation', 'Fermer les fenêtres', 'Fermer le portail'], None, 'awa', True),
@@ -1473,32 +1473,32 @@ def immobilisation(designation, categorie, lieu, achat, valeur, residuelle, dure
 
 
 for row in list(ROWS['machines']):
-    immobilisation(row['nom'], 'machine', 'Boutique et accueil' if row['nom'].startswith('Copieur') else 'Atelier', row['date_achat'], row['prix_achat'], row['valeur_residuelle'] or 0, 5,
+    immobilisation(row['nom'], 'machine', 'Accueil et comptoir' if row['nom'].startswith('Copieur') else 'Atelier', row['date_achat'], row['prix_achat'], row['valeur_residuelle'] or 0, 5,
                    etat='revision' if row['nom'] == 'Solvant 1,80 m' else 'bon', etat_note='tête à changer' if row['nom'] == 'Solvant 1,80 m' else None,
                    controle=R_IMM.randint(20, 200), machine=row['id'])
 for designation, categorie, lieu, achat, valeur, residuelle, duree, quantite, etat, etat_note, fournisseur, confie, controle, sortie in [
         ('iMac 27" PAO', 'informatique', 'Atelier', 700, 1450000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', 'seydou', 120, None),
         ('PC PAO Dell OptiPlex', 'informatique', 'Atelier', 420, 950000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', 'aissata', 120, None),
-        ('PC de caisse HP', 'informatique', 'Boutique et accueil', 560, 450000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', None, 120, None),
-        ('Tablette caisse Samsung', 'informatique', 'Boutique et accueil', 260, 280000, 0, 3, 1, 'bon', None, 'Orange Boutique (démo)', 'aminata', 120, None),
+        ('PC de caisse HP', 'informatique', 'Accueil et comptoir', 560, 450000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', None, 120, None),
+        ('Tablette caisse Samsung', 'informatique', 'Accueil et comptoir', 260, 280000, 0, 3, 1, 'bon', None, 'Orange Boutique (démo)', 'aminata', 120, None),
         ('PC portable comptabilité', 'informatique', 'Bureau direction', 380, 520000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', 'fanta', 120, None),
         ('PC atelier (file d\'impression)', 'informatique', 'Atelier', 820, 380000, 0, 3, 1, 'abime', 'écran fendu', 'Bamako Informatique (démo)', 'oumar', 420, None),
         ('Serveur NAS sauvegardes', 'informatique', 'Bureau direction', 500, 650000, 0, 3, 1, 'bon', None, 'Bamako Informatique (démo)', None, 120, None),
-        ('Ancien PC de caisse', 'informatique', 'Boutique et accueil', 1500, 380000, 0, 3, 1, 'hors_service', None, None, None, 400, (75, 'vente', 40000)),
-        ('Chaises de bureau', 'chaise', 'Boutique et accueil', 640, 360000, 0, 5, 8, 'bon', None, 'Meubles du Sahel (démo)', None, 120, None),
+        ('Ancien PC de caisse', 'informatique', 'Accueil et comptoir', 1500, 380000, 0, 3, 1, 'hors_service', None, None, None, 400, (75, 'vente', 40000)),
+        ('Chaises de bureau', 'chaise', 'Accueil et comptoir', 640, 360000, 0, 5, 8, 'bon', None, 'Meubles du Sahel (démo)', None, 120, None),
         ('Chaises d\'atelier', 'chaise', 'Atelier', 900, 150000, 0, 5, 6, 'abime', '2 à regarnir', 'Meubles du Sahel (démo)', None, 450, None),
-        ('Comptoir d\'accueil', 'table', 'Boutique et accueil', 980, 650000, 0, 10, 1, 'bon', None, 'Menuiserie Kati (démo)', None, 120, None),
+        ('Comptoir d\'accueil', 'table', 'Accueil et comptoir', 980, 650000, 0, 10, 1, 'bon', None, 'Menuiserie Kati (démo)', None, 120, None),
         ('Table de découpe 3 m', 'table', 'Atelier', 1100, 420000, 0, 10, 1, 'bon', None, 'Menuiserie Kati (démo)', None, 450, None),
         ('Table de réunion', 'table', 'Bureau direction', 760, 380000, 0, 10, 1, 'bon', None, 'Meubles du Sahel (démo)', None, 120, None),
         ('Moto Yamaha Crypton', 'vehicule', 'Livraison', 520, 950000, 100000, 4, 1, 'bon', None, 'Yamaha Mali (démo)', 'bakary', 60, None),
         ('Moto Jakarta', 'vehicule', 'Livraison', 300, 750000, 80000, 4, 1, 'revision', 'vidange à faire', 'Moto Plus (démo)', 'sekou', 60, None),
         ('Tricycle de livraison', 'vehicule', 'Livraison', 150, 1800000, 200000, 4, 1, 'neuf', None, 'Moto Plus (démo)', None, 60, None),
-        ('Climatiseur boutique 2 CV', 'climatiseur', 'Boutique et accueil', 600, 425000, 0, 5, 1, 'bon', None, 'Froid du Mali (démo)', None, 120, None),
+        ('Climatiseur accueil 2 CV', 'climatiseur', 'Accueil et comptoir', 600, 425000, 0, 5, 1, 'bon', None, 'Froid du Mali (démo)', None, 120, None),
         ('Climatiseur atelier 2,5 CV', 'climatiseur', 'Atelier', 880, 525000, 0, 5, 1, 'revision', 'gaz à recharger', 'Froid du Mali (démo)', None, 120, None),
         ('Climatiseur bureau 1,5 CV', 'climatiseur', 'Bureau direction', 450, 380000, 0, 5, 1, 'bon', None, 'Froid du Mali (démo)', None, 120, None),
         ('Groupe électrogène 15 kVA', 'energie', 'Cour', 1200, 4200000, 400000, 5, 1, 'bon', None, 'Énergie Services (démo)', None, 90, None),
         ('Kit solaire et batteries', 'energie', 'Cour', 400, 2800000, 0, 5, 1, 'bon', None, 'Soleil du Sahel (démo)', None, 90, None),
-        ('Écran TV boutique 55"', 'audiovisuel', 'Boutique et accueil', 330, 350000, 0, 5, 1, 'bon', None, 'Orange Boutique (démo)', None, 120, None),
+        ('Écran TV accueil 55"', 'audiovisuel', 'Accueil et comptoir', 330, 350000, 0, 5, 1, 'bon', None, 'Orange Boutique (démo)', None, 120, None),
         ('Vidéoprojecteur', 'audiovisuel', 'Bureau direction', 700, 280000, 0, 5, 1, 'bon', None, 'Bamako Informatique (démo)', None, 420, None),
         ('Licences Adobe Creative Cloud (3 ans)', 'logiciel', 'Atelier', 270, 1100000, 0, 3, 1, 'bon', None, 'Adobe (démo)', None, None, None),
         ('Logiciel RIP Onyx', 'logiciel', 'Atelier', 650, 1500000, 0, 3, 1, 'bon', None, 'Dakar Signs (démo)', None, None, None)]:

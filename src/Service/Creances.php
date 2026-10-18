@@ -159,7 +159,7 @@ final class Creances
         $total = array_sum(array_column($dus, 'reste'));
 
         return sprintf(
-            "Bonjour %s,\nnous vous rappelons %s :\n%s%s\nVous pouvez payer en boutique, par Orange Money ou par virement. Merci de votre confiance.\nSuccès Imprim",
+            "Bonjour %s,\nnous vous rappelons %s :\n%s%s\nVous pouvez payer à l'imprimerie, par Orange Money ou par virement. Merci de votre confiance.\nSuccès Imprim",
             '' !== trim($client) ? trim($client) : 'cher client',
             \count($dus) > 1 ? 'les montants restant à régler' : 'le montant restant à régler',
             implode("\n", $lignes),

@@ -1,7 +1,7 @@
 {#
 	Clients › Assistant du site › Conversations : ce que les visiteurs et les
 	clients ont demandé, les avis (pouces), les passages à un conseiller.
-	Seulement sur l'ERP de la boutique, où elles arrivent par la synchronisation.
+	Seulement sur l'ERP de l'imprimerie, où elles arrivent par la synchronisation.
 #}
 {% extends 'assistant/_admin.html.twig' %}
 {% import 'assistant/_admin.html.twig' as m %}
@@ -19,7 +19,7 @@
 	<section class="card">
 		{% if enLigne %}
 			<h2>Conversations</h2>
-			<p class="as-ad-vide">Les conversations de l'assistant se lisent sur l'ERP de la boutique, où elles arrivent par la synchronisation.</p>
+			<p class="as-ad-vide">Les conversations de l'assistant se lisent sur l'ERP de l'imprimerie, où elles arrivent par la synchronisation.</p>
 		{% else %}
 			<h2>Conversations <span class="si-pg-compte">{{ lignes|length }}</span></h2>
 			<nav class="as-ad-filtres" aria-label="Où">

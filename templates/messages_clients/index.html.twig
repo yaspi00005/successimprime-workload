@@ -147,7 +147,7 @@
 				</div>
 
 				{% if enLigne %}
-					<p class="mc-ecrire small text-muted mb-0">Lecture seule sur le site en ligne : répondez depuis l'ERP de la boutique.</p>
+					<p class="mc-ecrire small text-muted mb-0">Lecture seule sur le site en ligne : répondez depuis l'ERP de l'imprimerie.</p>
 				{% elseif c.estCloturee %}
 					<p class="mc-ecrire small text-muted mb-0">Demande clôturée{{ c.clotureeLe ? ' le ' ~ c.clotureeLe|date('d/m/Y à H:i') }}{{ c.avis ? ' · avis du client : ' ~ c.avis ~ ' ★' }}. Le client peut la rouvrir pendant {{ regles.reouvertureJours }} jours ; ensuite il ouvre une nouvelle demande liée.</p>
 				{% else %}

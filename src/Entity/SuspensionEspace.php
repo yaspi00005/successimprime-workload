@@ -8,7 +8,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Accès à l'espace client suspendu par la boutique (demande de Yaya du
+ * Accès à l'espace client suspendu par l'imprimerie (demande de Yaya du
  * 15/10/2026), depuis la fiche client de l'ERP local : pour tout le compte
  * (chaque personne de l'entreprise) ou pour une seule personne, reconnue à
  * son numéro de connexion. Rien n'est effacé : la suspension se lève

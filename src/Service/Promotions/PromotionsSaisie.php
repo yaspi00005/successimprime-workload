@@ -45,7 +45,7 @@ final class PromotionsSaisie
      *
      * Le code promo tapé est vérifié ici (CodesPromo) : refusé, il bloque
      * l'enregistrement avec la raison. Seule exception : une commande passée
-     * en ligne qu'on confirme avec le code tapé par le client. La boutique
+     * en ligne qu'on confirme avec le code tapé par le client. L'imprimerie
      * tranche alors sans bloquer : la commande perd l'avantage et garde le
      * motif, que l'équipe lit sur la fiche.
      *
@@ -164,8 +164,8 @@ final class PromotionsSaisie
      * et utilisations venues du local, commandes en ligne pas encore
      * confirmées). Valable : la promotion du code s'applique aux lignes
      * qu'elle vise, son avantage sur la commande se répartit sur les autres,
-     * et la commande garde le code tapé. Elle ne retient pas le code : la
-     * boutique le revérifie en la confirmant (appliquerCommande).
+     * et la commande garde le code tapé. Elle ne retient pas le code : l'imprimerie
+     * le revérifie en la confirmant (appliquerCommande).
      *
      * @throws CodePromoRefuse
      */

@@ -38,7 +38,7 @@ final class CodeDeConnexion
     /** Usage du code : espace client ou administration en ligne (personnel). */
     public const ESPACE = 'espace';
     public const PERSONNEL = 'personnel';
-    /** Essais d'un code d'accès donné par la boutique sur WhatsApp (EspaceClientComptes::ouvrirParAcces). */
+    /** Essais d'un code d'accès donné par l'imprimerie sur WhatsApp (EspaceClientComptes::ouvrirParAcces). */
     public const ACCES = 'acces';
 
     public const TROP_DE_CODES = 'Trop de codes demandés. Réessayez dans quelques minutes.';

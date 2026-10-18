@@ -27,7 +27,7 @@ final class CompteEntreprise
         private readonly EntityManagerInterface $em,
         private readonly CompteClientRepository $comptes,
         private readonly OrangeSmsService $sms,
-        // Accès suspendu par la boutique : pas de SMS (SuspensionsEspace).
+        // Accès suspendu par l'imprimerie : pas de SMS (SuspensionsEspace).
         private readonly ?SuspensionsEspace $suspensions = null,
         // Corbeille (docs/corbeille.md) : adresse ou accès retiré, récupérable 30 jours.
         private readonly ?CaptureCorbeille $corbeille = null,

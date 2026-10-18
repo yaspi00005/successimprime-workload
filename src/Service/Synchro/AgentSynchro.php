@@ -11,7 +11,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * L'agent de l'ERP local (maquette 39). La boutique n'a pas d'adresse fixe :
+ * L'agent de l'ERP local (maquette 39). L'imprimerie n'a pas d'adresse fixe :
  * c'est toujours lui qui appelle le site, chaque minute.
  *
  * Un cycle : vérifier que le site répond, envoyer la file du local, puis

@@ -263,7 +263,7 @@ final class CreditsMessagesController extends AbstractController
         ];
     }
 
-    /** Alertes (cloche) : à l'ERP de la boutique, où est la direction. */
+    /** Alertes (cloche) : à l'ERP de l'imprimerie, où est la direction. */
     private function verifierAlertes(\DateTimeImmutable $maintenant): void
     {
         if (!$this->acces->estEnLigne()) {

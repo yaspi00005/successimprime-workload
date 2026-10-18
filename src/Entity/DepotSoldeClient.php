@@ -7,7 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * Dépôt Orange Money fait par le client depuis son espace (« Mon solde »)
- * pour le laisser sur son compte à la boutique (docs/espace-client.md).
+ * pour le laisser sur son compte à l'imprimerie (docs/espace-client.md).
  *
  * Créé en ligne au départ chez Orange (« initié »), « reçu » quand Orange
  * confirme : il monte alors au local, où la caisse le valide après avoir
@@ -36,7 +36,7 @@ class DepotSoldeClient
         self::INITIE => 'Parti chez Orange Money',
         self::RECU => 'Reçu, en attente de validation',
         self::VALIDE => 'Ajouté au solde',
-        self::REJETE => 'Refusé par la boutique',
+        self::REJETE => 'Refusé par l\'imprimerie',
         self::ECHOUE => 'Non abouti',
     ];
 
@@ -115,7 +115,7 @@ class DepotSoldeClient
         return $d;
     }
 
-    /** Orange a confirmé : à valider par la boutique. */
+    /** Orange a confirmé : à valider par l'imprimerie. */
     public function recevoir(?string $txnid, \DateTimeImmutable $le): void
     {
         if (self::INITIE === $this->statut) {

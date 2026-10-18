@@ -795,7 +795,7 @@ body.ec-inviter-ouvert .ec-page { padding-bottom: calc(var(--ec-inviter-h, 16rem
 .ec-pc-recherche p { margin: .4rem 0 0; }
 .ec-pc[hidden] { display: none; }
 
-/* Réseaux sociaux de la boutique (site/_reseaux.html.twig) : bas du menu sur ordinateur, bas de page sur téléphone. */
+/* Réseaux sociaux de l'imprimerie (site/_reseaux.html.twig) : bas du menu sur ordinateur, bas de page sur téléphone. */
 .si-reseaux { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; }
 .si-reseaux-titre { margin: 0; color: var(--gris); font-size: .74rem; width: 100%; }
 .si-reseaux ul { display: flex; flex-wrap: wrap; gap: .4rem; list-style: none; margin: 0; padding: 0; }

@@ -200,7 +200,7 @@ final class PageNouvelleCommande
         if ($commande->estALivrer()) {
             $lignes[] = ['libelle' => 'Livraison à Bamako', 'valeur' => $montants ? ($commande->getFraisLivraison() > 0 ? self::f($commande->getFraisLivraison()).' F' : 'offerte') : 'oui', 'reception' => true];
         } elseif (null !== $commande->getDelaiProduction()) {
-            $lignes[] = ['libelle' => 'Retrait en boutique', 'valeur' => 'gratuit', 'reception' => true];
+            $lignes[] = ['libelle' => 'Retrait à l\'imprimerie', 'valeur' => 'gratuit', 'reception' => true];
         }
 
         $recap = [

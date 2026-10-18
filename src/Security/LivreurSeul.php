@@ -14,8 +14,8 @@ use App\Entity\User;
  * livraisons et des retraits.
  *
  * Reste ouvert ce que tout le personnel a pour lui-même (Mon espace,
- * pointage, mot de passe, guide de son rôle) : rien sur l'activité de la
- * boutique. Dès qu'un autre droit est coché pour la personne (clients,
+ * pointage, mot de passe, guide de son rôle) : rien sur l'activité de l'imprimerie.
+ * Dès qu'un autre droit est coché pour la personne (clients,
  * entretien…), elle n'est plus « livreur seul » et retrouve les écrans
  * de ses droits.
  */

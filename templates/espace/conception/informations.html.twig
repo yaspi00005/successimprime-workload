@@ -155,7 +155,7 @@
 					{% else %}
 						<button class="ec-bouton" type="submit" form="dc-envoyer">Envoyer la demande au graphiste</button>
 						{% if tarif.acompte > 0 %}
-							<p class="ec-petit">La conception démarre dès réception de l'acompte de {{ tarif.acompte|francs_conception }} : {% if marchand %}Orange Money au numéro marchand <b>{{ marchand }}</b> en indiquant <b>{{ demande.numero }}</b>, ou en boutique{% else %}en boutique, ou demandez le numéro marchand sur WhatsApp{% endif %}. Le solde ({{ tarif.solde|francs_conception }}) se règle à la validation du BAT.</p>
+							<p class="ec-petit">La conception démarre dès réception de l'acompte de {{ tarif.acompte|francs_conception }} : {% if marchand %}Orange Money au numéro marchand <b>{{ marchand }}</b> en indiquant <b>{{ demande.numero }}</b>, ou à l'imprimerie{% else %}à l'imprimerie, ou demandez le numéro marchand sur WhatsApp{% endif %}. Le solde ({{ tarif.solde|francs_conception }}) se règle à la validation du BAT.</p>
 						{% endif %}
 					{% endif %}
 				{% elseif modifiable %}

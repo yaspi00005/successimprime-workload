@@ -3,7 +3,7 @@
 namespace App\Service\Bascule;
 
 /**
- * Classe les écarts entre la base de la boutique et la migration de base :
+ * Classe les écarts entre la base de l'imprimerie et la migration de base :
  * ajout sans risque, changement sans perte (vérifié sur les données) ou
  * bloquant. Une seule règle : la correction ne doit jamais perdre une
  * donnée ni inventer une valeur. Dans le doute, c'est bloquant.
@@ -11,7 +11,7 @@ namespace App\Service\Bascule;
 final class Classement
 {
     /**
-     * Valeurs données aux lignes existantes quand la base de la boutique n'a
+     * Valeurs données aux lignes existantes quand la base de l'imprimerie n'a
      * pas encore une colonne obligatoire sans valeur par défaut. Chacune est
      * le sens qu'avaient ces lignes avant que la colonne existe.
      */

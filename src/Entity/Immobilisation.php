@@ -55,7 +55,7 @@ class Immobilisation implements AppartientASociete
     public const SORTIES = ['vente' => 'Vente', 'rebut' => 'Mise au rebut', 'vol' => 'Vol ou perte'];
 
     /** Lieux proposés à la saisie (texte libre accepté). */
-    public const LIEUX = ['Atelier', 'Boutique et accueil', 'Bureau direction', 'Livraison', 'Cour'];
+    public const LIEUX = ['Atelier', 'Accueil et comptoir', 'Bureau direction', 'Livraison', 'Cour'];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

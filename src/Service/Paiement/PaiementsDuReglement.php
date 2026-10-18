@@ -44,7 +44,7 @@ final class PaiementsDuReglement
         $avecOm = array_values(array_filter($parts, static fn (ReglementEnLignePart $p): bool => $p->getMontantOm() > 0));
         $avecAvoir = array_values(array_filter($parts, static fn (ReglementEnLignePart $p): bool => $p->getAvoir() > 0));
 
-        // L'avoir a pu servir ailleurs entre-temps (la boutique l'a utilisé en caisse) : on ne le promet pas deux fois.
+        // L'avoir a pu servir ailleurs entre-temps (l'imprimerie l'a utilisé en caisse) : on ne le promet pas deux fois.
         $avoirOk = [] === $avecAvoir || $this->avoirs->disponible($reglement->getClient(), $maintenant, $reglement) >= $reglement->getAvoir();
         if (!$avoirOk) {
             $this->logger?->warning('Règlement en ligne {reference} : avoir plus disponible, seule la part Orange Money est enregistrée.', ['reference' => $reglement->getReference()]);
@@ -86,7 +86,7 @@ final class PaiementsDuReglement
                     ->setMode(Paiements::MODE_SOLDE_CLIENT)
                     ->setDate($maintenant)
                     ->setReference(mb_substr(self::reference('AV '.$reglement->getReference(), $n, \count($avecAvoir)), 0, 100))
-                    ->setObservation(\sprintf('Avoir de la boutique utilisé en ligne depuis l\'espace client%s (règlement %s) : à retirer du solde du client à la validation.', $auteur, $reglement->getReference()));
+                    ->setObservation(\sprintf('Avoir de l\'imprimerie utilisé en ligne depuis l\'espace client%s (règlement %s) : à retirer du solde du client à la validation.', $auteur, $reglement->getReference()));
                 $avoir->setFacture($part->getFacture());
                 $commande->addPaiement($avoir);
                 $this->em->persist($avoir);

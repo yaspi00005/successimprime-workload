@@ -173,7 +173,7 @@ class Commandes implements AppartientASociete
     private string $canal = self::CANAL_COMPTOIR;
 
     /*
-     * Choisi à la saisie (maquette C01) : retrait à la boutique ou
+     * Choisi à la saisie (maquette C01) : retrait à l'imprimerie ou
      * livraison chez le client. À ne pas confondre avec
      * $recupereParClient, qui note le retrait effectif.
      */

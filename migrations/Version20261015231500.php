@@ -13,7 +13,7 @@ use Doctrine\Migrations\AbstractMigration;
  * nouveau calcul ne redonne pas exactement le total enregistré garde ce
  * total tant que rien de ce qui le fait ne change (total_fige).
  *
- * Sur la base de la boutique, app:bascule:verifier --corriger ajoute déjà
+ * Sur la base de l'imprimerie, app:bascule:verifier --corriger ajoute déjà
  * la colonne (avec la même définition) pour y marquer ces lignes, avant
  * cette migration : elle n'est alors pas recréée.
  */

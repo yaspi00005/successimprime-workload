@@ -167,8 +167,8 @@
 							<div class="row g-3 mt-0">
 								<div class="col-md-7">
 									<label class="si-libelle-champ" for="champ-source">Reçu</label>
-									<input type="text" name="source" id="champ-source" value="{{ objet.source }}" maxlength="60" class="form-control" list="sources-avis" placeholder="En boutique">
-									<datalist id="sources-avis"><option value="En boutique"><option value="WhatsApp"><option value="Avis Google"><option value="Par téléphone"></datalist>
+									<input type="text" name="source" id="champ-source" value="{{ objet.source }}" maxlength="60" class="form-control" list="sources-avis" placeholder="À l'imprimerie">
+									<datalist id="sources-avis"><option value="À l'imprimerie"><option value="WhatsApp"><option value="Avis Google"><option value="Par téléphone"></datalist>
 								</div>
 								<div class="col-md-5">
 									<label class="si-libelle-champ" for="champ-date">Date</label>
@@ -201,7 +201,7 @@
 
 						{% elseif type == 'annonces' %}
 							<label class="si-libelle-champ" for="champ-texte">Texte de l'annonce</label>
-							<textarea name="texte" id="champ-texte" rows="2" maxlength="{{ constant('App\\Entity\\Annonce::TEXTE_MAX') }}" class="form-control" data-compteur="{{ constant('App\\Entity\\Annonce::TEXTE_MAX') }}" placeholder="Boutique fermée le samedi 1er novembre. Les commandes en ligne restent ouvertes." required>{{ objet.texte }}</textarea>
+							<textarea name="texte" id="champ-texte" rows="2" maxlength="{{ constant('App\\Entity\\Annonce::TEXTE_MAX') }}" class="form-control" data-compteur="{{ constant('App\\Entity\\Annonce::TEXTE_MAX') }}" placeholder="Imprimerie fermée le samedi 1er novembre. Les commandes en ligne restent ouvertes." required>{{ objet.texte }}</textarea>
 							<div class="form-text">Une phrase, sans montant de client. Elle tient sur une ligne sur ordinateur, deux sur téléphone.</div>
 							<div class="row g-3 mt-0">
 								<div class="col-md-8">

@@ -13,7 +13,7 @@ use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * « Nous soutenir » (demande de Yaya du 17/10/2026) : inviter les clients
- * à laisser un avis sur la fiche Google de la boutique, sur le site public
+ * à laisser un avis sur la fiche Google de l'imprimerie, sur le site public
  * (bloc de l'accueil, lien du pied de page) et dans l'espace client (carte
  * du tableau de bord, invitation sur une commande livrée ou retirée).
  *

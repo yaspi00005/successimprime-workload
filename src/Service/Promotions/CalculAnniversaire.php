@@ -16,7 +16,7 @@ final class CalculAnniversaire
     public const RATTRAPAGE_JOURS = 7;
 
     /** Rappel, sans montant ni pourcentage. */
-    public const TEXTE_RAPPEL = 'Succès Imprim : {prénom}, votre cadeau d\'anniversaire vous attend encore en boutique jusqu\'au {fin}. À bientôt !';
+    public const TEXTE_RAPPEL = 'Succès Imprim : {prénom}, votre cadeau d\'anniversaire vous attend encore à l\'imprimerie jusqu\'au {fin}. À bientôt !';
 
     /**
      * Création de la fiche, ou première commande si elle est plus ancienne
@@ -107,8 +107,8 @@ final class CalculAnniversaire
 
     /**
      * Le texte parle-t-il d'argent ? Les messages aux clients ne donnent
-     * jamais de montant ni de pourcentage : le cadeau se découvre en
-     * boutique ou dans l'espace client.
+     * jamais de montant ni de pourcentage : le cadeau se découvre à l'imprimerie
+     * ou dans l'espace client.
      */
     public static function contientMontant(string $texte): bool
     {

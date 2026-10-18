@@ -30,7 +30,7 @@ use Symfony\Component\Security\Http\Util\TargetPathTrait;
  * Connexion à l'espace client (maquette CX01) : numéro de téléphone et
  * mot de passe ; ou, pour la première connexion et le mot de passe
  * oublié, numéro et code reçu par e-mail (par SMS sans adresse) ; ou
- * numéro et code d'accès donné par la boutique sur WhatsApp (page
+ * numéro et code d'accès donné par l'imprimerie sur WhatsApp (page
  * « Première connexion »). Après un code, la personne passe par
  * « Sécuriser mon compte » (mot de passe, e-mail) avant d'entrer.
  */
@@ -79,7 +79,7 @@ final class EspaceClientAuthenticator extends AbstractAuthenticator implements A
         }
 
         if ('acces' === $request->request->get('mode')) {
-            // Code d'accès donné par la boutique sur WhatsApp (page « Première connexion »).
+            // Code d'accès donné par l'imprimerie sur WhatsApp (page « Première connexion »).
             $session->set(SecurityRequestAttributes::LAST_USERNAME, (string) $request->request->get('telephone'));
             $telephone = CompteClient::normaliserTelephone((string) $request->request->get('telephone'));
             if (null === $telephone) {

@@ -511,8 +511,8 @@ final class Synchro
     /**
      * Commande arrivée du site : ses frais de livraison viennent du réglage
      * « Frais de livraison en ligne ». Seuls 0 et les paliers du local sont
-     * permis ; un autre montant est retiré des frais et des totaux (la
-     * boutique choisit à la confirmation). Rend vrai s'il a été retiré.
+     * permis ; un autre montant est retiré des frais et des totaux (l'imprimerie
+     * choisit à la confirmation). Rend vrai s'il a été retiré.
      *
      * @param list<int> $paliers
      */

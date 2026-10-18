@@ -22,7 +22,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * compte sur le site (maquette 11), arrivés par la synchronisation, avec
  * le prospect ou le client et le devis brouillon préparés.
  *
- * Seulement sur l'ERP de la boutique, pour les personnes qui font les
+ * Seulement sur l'ERP de l'imprimerie, pour les personnes qui font les
  * devis : en ligne, rien n'est listé (les demandes y restent le temps de
  * monter au local).
  */

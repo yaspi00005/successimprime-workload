@@ -166,7 +166,7 @@ $builder->add(
                 /*
                  * Le compte « Orange Money en ligne » (API de l'espace
                  * client) ne reçoit jamais un paiement de la caisse : la
-                 * caisse choisit un numéro Orange Money de la boutique.
+                 * caisse choisit un numéro Orange Money de l'imprimerie.
                  */
                 $qb =
                     $repository

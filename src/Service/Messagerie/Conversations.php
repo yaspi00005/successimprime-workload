@@ -432,7 +432,7 @@ final class Conversations
     public function repondre(ConversationClient $c, User $par, string $texte, ?ControlePrePresse $bat, ?Factures $facture, \DateTimeImmutable $maintenant): MessageClient
     {
         if ($this->enLigne) {
-            throw new \DomainException('Les réponses partent de l\'ERP de la boutique.');
+            throw new \DomainException('Les réponses partent de l\'ERP de l\'imprimerie.');
         }
         $texte = MessagesClient::verifier($texte);
         if (null !== $bat && (null === $c->getCommande() || $bat->getCommandeDetail()?->getCommande() !== $c->getCommande())) {
@@ -481,7 +481,7 @@ final class Conversations
     public function demarrer(Commandes|Devis $document, User $par, \DateTimeImmutable $maintenant): ConversationClient
     {
         if ($this->enLigne) {
-            throw new \DomainException('Les réponses partent de l\'ERP de la boutique.');
+            throw new \DomainException('Les réponses partent de l\'ERP de l\'imprimerie.');
         }
         $existante = $this->pourDocument($document);
         if (null !== $existante && $existante->estOuverte()) {

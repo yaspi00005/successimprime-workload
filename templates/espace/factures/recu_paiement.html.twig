@@ -4,7 +4,7 @@
 	Paiement reçu (maquettes FP04 et FP05) : retour de la page Orange
 	Money, ou paiement par l'avoir. États honnêtes : « en cours chez Orange
 	Money » tant qu'Orange n'a pas confirmé, puis chaque élément « reçu · en
-	validation » jusqu'à la validation de la boutique ; le reçu (numéro de
+	validation » jusqu'à la validation de l'imprimerie ; le reçu (numéro de
 	la caisse) n'existe qu'après. « Et maintenant » vient des vraies données
 	(FacturesClient::etMaintenant). Le partage WhatsApp ne dit aucun montant.
 #}
@@ -74,7 +74,7 @@
 				</ul>
 
 				{% if recu and recus is empty %}
-					<p class="ef-recu-note">La boutique valide le paiement, puis le reçu arrive dans « Reçus ». Vous êtes prévenu dans l'espace.</p>
+					<p class="ef-recu-note">L'imprimerie valide le paiement, puis le reçu arrive dans « Reçus ». Vous êtes prévenu dans l'espace.</p>
 				{% endif %}
 
 				<div class="ef-recu-actions">
@@ -141,7 +141,7 @@
 							<a href="{{ path('app_espace_facture_recu', {id: p.publicId}) }}" target="_blank" rel="noopener" style="color:inherit;font-weight:800;white-space:nowrap">{{ p.montant|francs }} ↓</a>
 						</li>
 					{% else %}
-						<li class="ec-petit" style="display:block">Pas encore de reçu : il arrive quand la boutique valide un paiement.</li>
+						<li class="ec-petit" style="display:block">Pas encore de reçu : il arrive quand l'imprimerie valide un paiement.</li>
 					{% endfor %}
 				</ul>
 			</section>

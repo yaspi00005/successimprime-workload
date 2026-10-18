@@ -19,7 +19,7 @@ use Doctrine\ORM\Mapping as ORM;
  * Le code en clair reste au local. Le site en ligne n'en reçoit que
  * l'empreinte (HMAC-SHA256 avec la clé de synchronisation, CalculCodePromo),
  * ses dates, ses limites et son nombre d'utilisations, pour vérifier ce que
- * le client tape dans son espace ; la boutique revérifie à la confirmation.
+ * le client tape dans son espace ; l'imprimerie revérifie à la confirmation.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'code_promo')]

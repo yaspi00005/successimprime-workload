@@ -20,7 +20,7 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
  * Smart TV.
  *
  * Le programme s'enregistre en brouillon ; « Publier sur l'écran »
- * l'envoie à la boutique.
+ * l'envoie à l'imprimerie.
  */
 #[Route('/reglages/ecran-tv', name: 'app_ecran_tv_')]
 #[IsGranted('ROLE_ADMIN')]
@@ -169,7 +169,7 @@ final class EcranTvReglagesController extends AbstractController
     private function publier(): Response
     {
         $this->ecranTv->publier(new \DateTimeImmutable());
-        $this->addFlash('success', 'Programme publié : l\'écran de la boutique le prend dans la minute.');
+        $this->addFlash('success', 'Programme publié : l\'écran de l\'imprimerie le prend dans la minute.');
 
         return $this->redirectToRoute('app_ecran_tv_reglages');
     }

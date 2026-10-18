@@ -553,7 +553,7 @@ final class RecetteAcces
     }
 
     /**
-     * Compte du client à la boutique (docs/finances.md, « Compte du
+     * Compte du client à l'imprimerie (docs/finances.md, « Compte du
      * client ») : l'onglet « Compte » de la fiche (solde, relevé) seulement
      * avec Paiements ou Encaissements ; un dépôt avec Encaissements ;
      * l'argent rendu seulement avec « Rendre l'argent du compte d'un

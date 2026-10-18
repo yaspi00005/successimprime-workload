@@ -9,7 +9,7 @@ setlocal
 ::
 :: 1. Sauvegarde COMPLETE de la base (structure + donnees), dans
 ::    C:\xamppok\sauvegardes-bascule (hors du site web). Elle
-::    reste a la boutique : ne jamais l'envoyer.
+::    reste a l'imprimerie : ne jamais l'envoyer.
 :: 2. Copie de la STRUCTURE SEULE (aucune ligne, aucune donnee
 ::    client), sur le Bureau : c'est ce fichier qu'on envoie.
 ::
@@ -114,7 +114,7 @@ set "COMPLETE=%SAUVEGARDES%\%DB_NAME%_complete_%TS%.sql"
 set "STRUCTURE=%BUREAU%\structure-%DB_NAME%-%TS%.sql"
 
 :: ------------------------------------------------------------
-:: 1. Sauvegarde complete (reste a la boutique)
+:: 1. Sauvegarde complete (reste a l'imprimerie)
 :: ------------------------------------------------------------
 echo.
 echo 1/2 Sauvegarde complete en cours, patientez...

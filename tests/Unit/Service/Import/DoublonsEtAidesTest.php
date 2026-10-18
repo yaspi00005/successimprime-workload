@@ -116,11 +116,11 @@ final class DoublonsEtAidesTest extends TestCase
         $em = $this->createStub(EntityManagerInterface::class);
         $type = new ImportSoldesComptes($em, new References($em));
 
-        self::assertTrue(ModeleImport::estExemple($type, ['compte' => 'Caisse boutique', 'solde' => '185 000']));
+        self::assertTrue(ModeleImport::estExemple($type, ['compte' => 'Caisse imprimerie', 'solde' => '185 000']));
         self::assertTrue(ModeleImport::estExemple($type, ['compte' => 'bdm', 'solde' => '4 750 000']));
         // Une seule colonne pareille ne suffit pas.
-        self::assertFalse(ModeleImport::estExemple($type, ['compte' => 'Caisse boutique']));
-        self::assertFalse(ModeleImport::estExemple($type, ['compte' => 'Caisse boutique', 'solde' => '190 000']));
+        self::assertFalse(ModeleImport::estExemple($type, ['compte' => 'Caisse imprimerie']));
+        self::assertFalse(ModeleImport::estExemple($type, ['compte' => 'Caisse imprimerie', 'solde' => '190 000']));
         self::assertSame(['Compte *', 'Solde *'], array_map(ModeleImport::entete(...), ModeleImport::colonnes($type, static fn (string $r): bool => true)));
     }
 

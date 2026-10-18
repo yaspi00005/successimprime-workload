@@ -27,7 +27,7 @@ Une carte par machine, dans cet ordre : en production, en pause, en entretien, e
 
 Ces alertes sont celles de l'atelier : elles n'ont rien à voir avec les alertes système (`docs/alertes-systeme.md`).
 
-« Afficher sur l'écran TV » ouvre la vue de la télévision, protégée par le même jeton secret que l'écran d'accueil de la boutique : il suffit d'ouvrir l'adresse une fois sur la télévision.
+« Afficher sur l'écran TV » ouvre la vue de la télévision, protégée par le même jeton secret que l'écran d'accueil de l'imprimerie : il suffit d'ouvrir l'adresse une fois sur la télévision.
 
 ## Files d'attente (AT02)
 

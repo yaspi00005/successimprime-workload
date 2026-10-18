@@ -139,7 +139,7 @@
 .sc-mot-gerant-signature strong { font-size: 17px; color: var(--noir); overflow-wrap: anywhere; }
 .sc-mot-gerant-signature span { font-size: 14px; color: var(--texte-doux); overflow-wrap: anywhere; }
 
-/* « Venez nous voir » (à propos) : photo de la boutique et adresse. */
+/* « Venez nous voir » (à propos) : photo de l'imprimerie et adresse. */
 /* La vraie façade à côté du mot du gérant (« Qui sommes-nous ? »). */
 .sc-gerant-et-local { display: grid; gap: 18px; }
 .sc-gerant-local { margin: 0; align-self: end; }

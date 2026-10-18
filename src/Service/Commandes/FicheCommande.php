@@ -252,7 +252,7 @@ final class FicheCommande
             ];
         } else {
             $etapes[] = [
-                'titre' => 'Retrait en boutique',
+                'titre' => 'Retrait à l\'imprimerie',
                 'personne' => null,
                 'detail' => $livree ? 'retirée' : (null !== $commande->getDateLivraison() ? 'prévu le '.$commande->getDateLivraison()->format('d/m') : 'date à fixer'),
                 'etat' => $livree ? 'faite' : 'a_venir',

@@ -35,7 +35,7 @@
 	</div>
 
 	{% if statut == 'annulee' %}
-		<div class="ec-note">Cette demande a été annulée par l'atelier. Une question ? Écrivez-nous sur WhatsApp ou passez en boutique.</div>
+		<div class="ec-note">Cette demande a été annulée par l'atelier. Une question ? Écrivez-nous sur WhatsApp ou passez à l'imprimerie.</div>
 	{% endif %}
 
 	<div class="ec-carte">
@@ -54,7 +54,7 @@
 							{% if acompteStatut == 'valide' %}reçu, merci
 							{% elseif acompteStatut == 'a_valider' %}payé par Orange Money · en validation à la caisse
 							{% elseif acompteStatut == 'rejete' %}paiement non reçu par la caisse : contactez-nous
-							{% else %}à régler par Orange Money au numéro marchand ou en boutique, en indiquant {{ demande.numero }}{% endif %}
+							{% else %}à régler par Orange Money au numéro marchand ou à l'imprimerie, en indiquant {{ demande.numero }}{% endif %}
 							{# Frais Orange Money payés en plus de l'acompte : pour qui paie seulement. #}
 							{% set pa = demande.paiementAcompte %}
 							{% if conceptionPeutPayer and pa and acompteStatut in ['valide', 'a_valider'] and pa.montantTotalEncaisse > pa.montant %}

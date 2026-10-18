@@ -66,7 +66,7 @@
 				<section class="si-pm-panneau">
 					<h2>Livraison</h2>
 					<dl class="si-pm-lignes">
-						<div><dt>Mode</dt><dd>{{ livraison.aLivrer ? 'livraison' : 'retrait à la boutique' }}{% if livraison.date %} · {{ ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'][livraison.date|date('w')] ~ ' ' ~ livraison.date|date('d/m') }}{{ livraison.creneau ? ' ' ~ livraison.creneau }}{% endif %}</dd></div>
+						<div><dt>Mode</dt><dd>{{ livraison.aLivrer ? 'livraison' : 'retrait à l\'imprimerie' }}{% if livraison.date %} · {{ ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'][livraison.date|date('w')] ~ ' ' ~ livraison.date|date('d/m') }}{{ livraison.creneau ? ' ' ~ livraison.creneau }}{% endif %}</dd></div>
 						{% if livraison.aLivrer %}<div><dt>Livreur</dt><dd>{{ livraison.livreur ?? 'à choisir par le bureau' }}</dd></div>{% endif %}
 						{% if livraison.reste is not null %}
 							<div><dt>Reste à encaisser</dt><dd>{{ livraison.reste|number_format(0, ',', ' ') }} F</dd></div>

@@ -62,7 +62,7 @@ final class AlertesMonologHandler extends AbstractHandler
             [$type, $gravite] = $classement;
             $erreur = ($record->context['exception'] ?? null) instanceof \Throwable ? $record->context['exception'] : null;
             $message = self::interpoler($record->message, $record->context);
-            $contexte = ['Canal' => $record->channel, 'Niveau' => $record->level->getName(), 'Journal' => $message, 'Serveur' => $alertes->estEnLigne() ? 'site en ligne' : 'ERP de la boutique'];
+            $contexte = ['Canal' => $record->channel, 'Niveau' => $record->level->getName(), 'Journal' => $message, 'Serveur' => $alertes->estEnLigne() ? 'site en ligne' : 'ERP de l\'imprimerie'];
             if (isset($record->context['command']) && \is_scalar($record->context['command'])) {
                 $contexte['Commande'] = (string) $record->context['command'];
             }

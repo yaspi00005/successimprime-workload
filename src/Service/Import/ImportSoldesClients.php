@@ -21,7 +21,7 @@ use App\Entity\SoldeOuverture;
  *   d'affaires, des statistiques, de la fidélité, des promotions et des
  *   primes.
  * - Il avait une avance (montant négatif) : elle s'ajoute à son solde
- *   client (la monnaie gardée par la boutique), sans entrée d'argent, et
+ *   client (la monnaie gardée par l'imprimerie), sans entrée d'argent, et
  *   au relevé de son compte (« Solde d'ouverture »).
  */
 final class ImportSoldesClients extends ImportSoldes

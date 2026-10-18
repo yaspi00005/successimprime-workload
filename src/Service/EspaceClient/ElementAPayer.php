@@ -8,8 +8,8 @@ use App\Entity\Factures;
 /**
  * Une ligne de « À payer » (maquette FP01) : la facture d'une commande, son
  * acompte, son reste quand elle est prête, ou le solde d'ouverture. Le
- * montant demandé tient compte de ce qui attend déjà la validation de la
- * boutique ; il est recalculé par le serveur à chaque paiement.
+ * montant demandé tient compte de ce qui attend déjà la validation de
+ * l'imprimerie ; il est recalculé par le serveur à chaque paiement.
  */
 final class ElementAPayer
 {
@@ -73,7 +73,7 @@ final class ElementAPayer
         };
     }
 
-    /** Ce que la boutique a déjà validé sur la commande. */
+    /** Ce que l'imprimerie a déjà validé sur la commande. */
     public function dejaPaye(): int
     {
         return $this->commande->getTotalPaye();

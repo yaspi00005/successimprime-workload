@@ -6,11 +6,11 @@ Les mêmes plans s'impriment depuis l'application : « ? Aide » › « Fiches d
 
 ## Préparer la séance
 
-- **Jamais sur la base de la boutique.** La formation se fait sur une installation de formation (un poste ou un serveur de test, `APP_ENV=dev`, `APP_EN_LIGNE=0`), sans clés SMS, e-mail ni WhatsApp dans son `.env.local`. `app:demo` refuse de tourner en production.
+- **Jamais sur la base de l'imprimerie.** La formation se fait sur une installation de formation (un poste ou un serveur de test, `APP_ENV=dev`, `APP_EN_LIGNE=0`), sans clés SMS, e-mail ni WhatsApp dans son `.env.local`. `app:demo` refuse de tourner en production.
 - Remettre les exercices à zéro avant chaque séance : `php bin/console app:demo` (relançable : l'ancienne démo est d'abord enlevée, voir `docs/donnees-demo.md`). Par exemple la commande du site CMD-DC0005 redevient « à confirmer ».
 - Les comptes : `demo.aminata` (caisse), `demo.seydou` et `demo.aissata` (graphistes), `demo.oumar` (machines), `demo.bakary` (livreur), `demo.awa` (entretien), `demo.kadiatou` (direction). Mot de passe `demo1234`.
 - Imprimer pour la personne formée son guide : connecté avec son compte de démonstration, « ? Aide » › « Imprimer mon guide ». Le formateur imprime sa fiche dans « Fiches du formateur » (seulement les pages du rôle formé).
-- Le livreur, l'opérateur et l'agent d'entretien travaillent sur un téléphone : prévoir un téléphone sur le Wi-Fi de la boutique. Pour le pointage, la RH valide d'abord le téléphone : Équipe › Pointage › « Points et appareils », onglet « Téléphones à valider », « Autoriser ».
+- Le livreur, l'opérateur et l'agent d'entretien travaillent sur un téléphone : prévoir un téléphone sur le Wi-Fi de l'imprimerie. Pour le pointage, la RH valide d'abord le téléphone : Équipe › Pointage › « Points et appareils », onglet « Téléphones à valider », « Autoriser ».
 - Les numéros de téléphone saisis pendant les exercices sont fictifs (8 chiffres commençant par 60). Les clients DEMO- ne reçoivent jamais de SMS ni d'e-mail.
 
 ## Déroulé commun
@@ -68,7 +68,7 @@ Chaque personne suit aussi « Premiers pas » et « Mon espace » (pointage, abs
 
 5. **Encaisser un acompte** (`demo.aminata`)
    - Menu « Caisse » : le client, sa commande.
-   - 5 000 F, Espèces, compte « Caisse boutique ».
+   - 5 000 F, Espèces, compte « Caisse imprimerie ».
    - « Encaisser et imprimer le reçu ».
 
    Résultat attendu : Message « Paiement de 5 000 FCFA enregistré », reçu R-…, et « Encaissé » de la caisse du jour augmente de 5 000 F.
@@ -81,14 +81,14 @@ Chaque personne suit aussi « Premiers pas » et « Mon espace » (pointage, abs
 
 7. **Saisir une dépense** (`demo.aminata`)
    - « Aller à… » › « Nouveau › Dépense ».
-   - Photo d'un reçu, objet « Carburant moto livraison », Divers, 2 000 F, payé avec « Caisse boutique ».
+   - Photo d'un reçu, objet « Carburant moto livraison », Divers, 2 000 F, payé avec « Caisse imprimerie ».
    - « Enregistrer la dépense ».
 
    Résultat attendu : Message : le décaissement attend sa validation dans « À valider ». Le formateur (demo.kadiatou) la voit dans Finances › À valider.
 
 8. **Verser la caisse à la banque** (`demo.aminata`)
    - Caisse › « Virement ».
-   - 50 000 F, de « Caisse boutique » vers « Banque BDM », un libellé.
+   - 50 000 F, de « Caisse imprimerie » vers « Banque BDM », un libellé.
    - « Enregistrer le mouvement », « Oui, enregistrer ».
 
    Résultat attendu : Retour à la caisse avec « Virement de 50 000 F … enregistré ». Aucun solde n'est affiché.
@@ -272,7 +272,7 @@ Résultat attendu : Le travail est terminé, la gâche est notée, et l'employé
    - Sur l'arrêt « En route » : « Remise ».
    - Signature, Espèces, montant, « Valider la remise ».
 
-   Résultat attendu : La page de livraison terminée s'affiche ; à la boutique, la caisse voit l'encaissement à valider.
+   Résultat attendu : La page de livraison terminée s'affiche ; à l'imprimerie, la caisse voit l'encaissement à valider.
 
 4. **Relancer un client** (`demo.bakary`)
    - « À livrer ou retirer » : une commande prête depuis 2 jours ou plus.
@@ -291,7 +291,7 @@ Seul, sans le formateur et sans le guide ouvert.
 
 1. Seul : « Chargée », « Je pars », « Je suis arrivé ».
 2. « Remise » avec signature et encaissement en espèces.
-3. Retour à la boutique : la caisse valide l'argent.
+3. Retour à l'imprimerie : la caisse valide l'argent.
 
 Résultat attendu : Livraison terminée, encaissement validé par la caisse avec « Valider l'encaissement ».
 
@@ -311,7 +311,7 @@ Résultat attendu : Livraison terminée, encaissement validé par la caisse avec
 ### Exercices
 
 1. **Valider une tâche** (`demo.awa`)
-   - Ouvrez la tâche « Ménage de la boutique ».
+   - Ouvrez la tâche « Ménage de l'accueil ».
    - Cochez les étapes, « Prendre la photo et valider ».
 
    Résultat attendu : La tâche est « fait à … · photo » dans le planning, avec ses points.
@@ -382,7 +382,7 @@ Résultat attendu : La tâche est validée à l'heure, avec la photo.
 6. **Vérifier les sauvegardes** (`demo.kadiatou`)
    - Tuile « Sauvegardes ».
 
-   Résultat attendu : La personne lit la dernière sauvegarde réussie et sait dire s'il y a une copie hors de la boutique.
+   Résultat attendu : La personne lit la dernière sauvegarde réussie et sait dire s'il y a une copie hors de l'imprimerie.
 
 7. **Préparer l'import des clients** (`demo.kadiatou`)
    - Tuile « Import des données » › Clients › « Modèle ».
@@ -405,6 +405,6 @@ Le jalon est atteint quand une personne nouvelle, après sa demi-journée « Cai
 
 ## Après la formation
 
-- La Direction crée le vrai compte de la personne (fiche « Donner un accès à un employé ») sur l'ERP de la boutique, avec son rôle. Un droit en plus se coche sur sa fiche (par exemple « Encaissements » pour un graphiste).
+- La Direction crée le vrai compte de la personne (fiche « Donner un accès à un employé ») sur l'ERP de l'imprimerie, avec son rôle. Un droit en plus se coche sur sa fiche (par exemple « Encaissements » pour un graphiste).
 - La personne garde son guide imprimé ; l'aide de l'application (« ? Aide ») suit toujours la dernière version.
 - Le formateur remet la base de formation à zéro (`app:demo`) avant la séance suivante.

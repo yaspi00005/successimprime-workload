@@ -8,7 +8,7 @@ Une clé privée ne s'envoie jamais dans une conversation, un e-mail ou une capt
 
 ## Avant le premier `git pull` : mettre de côté les fichiers envoyés
 
-Le 15/10/2026, 25 fichiers envoyés enregistrés par erreur dans le dépôt (pièce jointe du chat, fichiers de pré-presse, étiquettes) en ont été retirés (constat D2 de l'audit) ; `public/uploads/` n'est plus suivi, sauf son `.htaccess` et le dossier de l'écran TV. Un `git pull` efface ces 25 fichiers de l'ordinateur qui le fait. Pour les garder, sur **chaque** installation (serveur en ligne, Mac, poste de la boutique), une seule fois, dans le dossier du projet :
+Le 15/10/2026, 25 fichiers envoyés enregistrés par erreur dans le dépôt (pièce jointe du chat, fichiers de pré-presse, étiquettes) en ont été retirés (constat D2 de l'audit) ; `public/uploads/` n'est plus suivi, sauf son `.htaccess` et le dossier de l'écran TV. Un `git pull` efface ces 25 fichiers de l'ordinateur qui le fait. Pour les garder, sur **chaque** installation (serveur en ligne, Mac, poste de l'imprimerie), une seule fois, dans le dossier du projet :
 
 ```
 cp -a public/uploads ~/uploads-avant-retrait
@@ -78,7 +78,7 @@ cd ~/successimprim 2>/dev/null || cd ~/public_html/succesimprim
 git fetch origin && echo "Dépôt privé, serveur : OK"
 ```
 
-## Les autres ordinateurs (Mac, poste de la boutique)
+## Les autres ordinateurs (Mac, poste de l'imprimerie)
 
 Sur un ordinateur où Git est installé avec son gestionnaire de connexion (Git pour Windows, GitHub Desktop, Git sur Mac avec Xcode récent), le premier `git pull` après le passage en privé ouvre une fenêtre de connexion GitHub : se connecter avec le compte `yaspi00005`. Si une erreur `Repository not found` ou `Authentication failed` apparaît à la place, faire les étapes 1 à 3 sur cet ordinateur avec un autre nom de clé (par exemple `Mac de Yaya` comme titre dans GitHub). Une clé ne sert que sur une seule machine.
 

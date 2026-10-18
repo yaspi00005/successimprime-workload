@@ -66,7 +66,7 @@ final class ReferencementSiteTest extends TestCase
     {
         self::assertSame('https://maps.app.goo.gl/S53cwaekd2L3FHP86', ReferencementSite::lire([])['valeurs']['fiche_google']);
         self::assertSame(ReferencementSite::FICHE_GOOGLE, ReferencementSite::lien(ReferencementSite::FICHE_GOOGLE, ReferencementSite::DOMAINES_FICHE_GOOGLE));
-        // Un lien saisi la remplace ; un lien refusé laisse celle de la boutique.
+        // Un lien saisi la remplace ; un lien refusé laisse celle de l'imprimerie.
         self::assertSame('https://g.page/autre-fiche', ReferencementSite::lire(['fiche_google' => 'https://g.page/autre-fiche'])['valeurs']['fiche_google']);
         $refuse = ReferencementSite::lire(['fiche_google' => 'https://evil.example.org/x']);
         self::assertSame(ReferencementSite::FICHE_GOOGLE, $refuse['valeurs']['fiche_google']);
@@ -88,7 +88,7 @@ final class ReferencementSiteTest extends TestCase
 
     public function testMesureDeLaBoutiqueParDefautEtCoupeeQuandOnVideLeChamp(): void
     {
-        // Jamais réglée (ou réglage enregistré avant la mesure) : l'identifiant de la boutique.
+        // Jamais réglée (ou réglage enregistré avant la mesure) : l'identifiant de l'imprimerie.
         self::assertSame('G-634VEQPP69', ReferencementSite::lire([])['valeurs']['mesure']);
         self::assertSame(ReferencementSite::MESURE_GOOGLE, ReferencementSite::lire(['google' => ''])['valeurs']['mesure']);
         // Champ vidé : coupée.

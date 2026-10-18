@@ -40,7 +40,7 @@
 	</section>
 
 	{% if en_ligne %}
-		<div class="alert alert-info py-2"><i class="fas fa-info-circle me-1"></i>Les codes se créent et s'impriment sur l'ERP de la boutique. Le site ne garde que leur empreinte, pour reconnaître ce que le client tape.</div>
+		<div class="alert alert-info py-2"><i class="fas fa-info-circle me-1"></i>Les codes se créent et s'impriment sur l'ERP de l'imprimerie. Le site ne garde que leur empreinte, pour reconnaître ce que le client tape.</div>
 	{% elseif not promotion.active %}
 		<div class="alert alert-warning py-2">Promotion suspendue : ses codes ne servent plus jusqu'à ce qu'elle reprenne.</div>
 	{% elseif not ouverte %}
@@ -172,7 +172,7 @@
 			<li>Un code se tape sur le devis ou la commande (champ « Code promo »), ou dans l'espace client en passant commande. Un seul code par commande.</li>
 			<li>Une utilisation, c'est un devis en cours ou une commande qui le porte. Une commande supprimée ou annulée, un devis refusé ou expiré, rendent la leur.</li>
 			<li>Vérifié à l'enregistrement : actif, pas expiré à la date du document, limites en tout et par client, client hors prix B2B, minimum de commande atteint.</li>
-			<li>Une commande passée en ligne garde le code tapé ; la boutique le revérifie en la confirmant. Si la limite a été atteinte entre-temps, la commande reste sans l'avantage et la fiche dit pourquoi.</li>
+			<li>Une commande passée en ligne garde le code tapé ; l'imprimerie le revérifie en la confirmant. Si la limite a été atteinte entre-temps, la commande reste sans l'avantage et la fiche dit pourquoi.</li>
 		</ul>
 	</section>
 {% endblock %}

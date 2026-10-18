@@ -222,7 +222,7 @@ final class ProgrammeEcranTv
     }
 
     /**
-     * « Réouverture demain à 8 h », « lundi à 8 h 30 »… null si la boutique n'ouvre jamais.
+     * « Réouverture demain à 8 h », « lundi à 8 h 30 »… null si l'imprimerie n'ouvre jamais.
      *
      * @param array<int, ?array{ouverture: string, fermeture: string}> $horaires
      */

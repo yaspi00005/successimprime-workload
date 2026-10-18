@@ -143,7 +143,7 @@ final class NouvelleCommandePiecesM2Test extends TestCase
         self::assertSame(16250, $payeur['total']);
 
         $demandeur = PageNouvelleCommande::recapitulatif($commande, $ligne, $vinyle, false, 48);
-        self::assertSame(['Surface' => '2,5 m²', 'Pièces au m²' => '361 (19 × 19)', 'Délai' => 'standard 48 h', 'Retrait en boutique' => 'gratuit'], array_column($demandeur['lignes'], 'valeur', 'libelle'));
+        self::assertSame(['Surface' => '2,5 m²', 'Pièces au m²' => '361 (19 × 19)', 'Délai' => 'standard 48 h', 'Retrait à l\'imprimerie' => 'gratuit'], array_column($demandeur['lignes'], 'valeur', 'libelle'));
         self::assertArrayNotHasKey('total', $demandeur);
         self::assertDoesNotMatchRegularExpression('/\d\s?F\b/u', json_encode($demandeur, \JSON_UNESCAPED_UNICODE) ?: '');
     }

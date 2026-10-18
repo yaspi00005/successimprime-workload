@@ -16,7 +16,7 @@ class Prospect
     public const SOURCES = [
         'site' => 'site',
         'whatsapp' => 'WhatsApp',
-        'boutique' => 'boutique',
+        'boutique' => 'à l\'imprimerie',
         'telephone' => 'téléphone',
         'recommandation' => 'recommandation',
         'autre' => 'autre',
@@ -25,7 +25,7 @@ class Prospect
     public const SOURCES_LIBELLES = [
         'site' => 'Site web',
         'whatsapp' => 'WhatsApp',
-        'boutique' => 'Boutique',
+        'boutique' => 'À l\'imprimerie',
         'telephone' => 'Téléphone',
         'recommandation' => 'Recommandation',
         'autre' => 'Autre',

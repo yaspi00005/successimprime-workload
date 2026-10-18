@@ -6,7 +6,7 @@ use App\Repository\PointPointageRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Point de pointage (PT-01 Atelier, PT-02 Boutique) : son QR imprimé
+ * Point de pointage (PT-01 Atelier, PT-02 Accueil) : son QR imprimé
  * porte un code secret. « Renouveler » change le secret et rend l'ancien
  * QR inutilisable.
  */

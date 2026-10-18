@@ -41,7 +41,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * - Le suivi ne montre un montant qu'avec le droit qui va avec
  *   (DroitsStatistiques) : CA et remises, marges.
  *
- * Les promotions se gèrent sur l'ERP de la boutique : le site en ligne
+ * Les promotions se gèrent sur l'ERP de l'imprimerie : le site en ligne
  * refuse ces écritures.
  */
 #[Route('/promotions')]

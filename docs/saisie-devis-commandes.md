@@ -26,7 +26,7 @@ Dans le code : `ModeConfigurationLigne` (le mode lu à l'envoi du formulaire), `
 
 ## Total d'origine conservé
 
-Après la bascule de la base de la boutique, une ligne dont la remise a été convertie (pourcentage → F par unité) et dont le nouveau calcul ne redonne pas exactement le total enregistré garde ce total (décision « Garder le total », [docs/migration-de-base.md](migration-de-base.md#garder-le-total)). La fiche et la saisie l'indiquent discrètement : « Total d'origine conservé ».
+Après la bascule de la base de l'imprimerie, une ligne dont la remise a été convertie (pourcentage → F par unité) et dont le nouveau calcul ne redonne pas exactement le total enregistré garde ce total (décision « Garder le total », [docs/migration-de-base.md](migration-de-base.md#garder-le-total)). La fiche et la saisie l'indiquent discrètement : « Total d'origine conservé ».
 
 - Enregistrer sans rien changer : le total enregistré reste, même si l'aperçu de la page affiche le nouveau calcul.
 - Changer la quantité, le prix, la remise (y compris celle d'une promotion ou d'un code promo), la TVA, le mode de calcul, les dimensions ou les finitions : la ligne est recalculée et redevient une ligne ordinaire.

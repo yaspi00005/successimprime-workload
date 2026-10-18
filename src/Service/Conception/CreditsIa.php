@@ -101,7 +101,7 @@ final class CreditsIa
         return $mouvement;
     }
 
-    /** Pack à payer au numéro marchand ou en boutique : compté une fois validé par la caisse. */
+    /** Pack à payer au numéro marchand ou à l'imprimerie : compté une fois validé par la caisse. */
     public function acheterEnAttente(Clients $client, ?string $auteur, int $images, int $montant, Commandes $commande, \DateTimeImmutable $le): MouvementCreditIa
     {
         $mouvement = MouvementCreditIa::nouveau($client, MouvementCreditIa::ACHAT, $montant, $images, self::libellePack($images).' · à régler', $auteur, null, $le, MouvementCreditIa::EN_ATTENTE)

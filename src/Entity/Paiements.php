@@ -600,9 +600,9 @@ class Paiements implements AppartientASociete
     /**
      * Payé par le client depuis l'espace client avec l'API Orange Money
      * (commande, acompte de conception, crédit IA) : référence « OM
-     * <transaction Orange> », personne de la boutique ne l'a encaissé.
+     * <transaction Orange> », personne de l'imprimerie ne l'a encaissé.
      * Il va toujours sur le compte « Orange Money en ligne », jamais sur
-     * un numéro Orange Money de la boutique.
+     * un numéro Orange Money de l'imprimerie.
      */
     public function estOrangeMoneyEnLigne(): bool
     {
@@ -612,9 +612,9 @@ class Paiements implements AppartientASociete
     }
 
     /**
-     * Avoir de la boutique (solde du client) utilisé par le client depuis
+     * Avoir de l'imprimerie (solde du client) utilisé par le client depuis
      * « Factures et paiements » : référence « AV <règlement> », personne de
-     * la boutique ne l'a saisi. Il attend la validation (PaiementService::
+     * l'imprimerie ne l'a saisi. Il attend la validation (PaiementService::
      * validerAvoir), qui retire le montant du solde du client.
      */
     public function estAvoirEnLigne(): bool
@@ -918,7 +918,7 @@ class Paiements implements AppartientASociete
     /**
      * Numéro du reçu de la caisse, envoyé au site une fois le paiement
      * validé au local (filtre de CatalogueSynchro) : celui que le site a
-     * déjà, sinon « R-<id du local> ». Rien tant que la boutique n'a pas
+     * déjà, sinon « R-<id du local> ». Rien tant que l'imprimerie n'a pas
      * validé.
      */
     public static function numeroRecuEnvoye(?string $numero, self $paiement): ?string

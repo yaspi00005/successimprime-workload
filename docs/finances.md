@@ -38,7 +38,7 @@ donne à une personne sur sa fiche (docs/menus-par-role.md). Sans ce droit :
 
 ## Soldes d'ouverture
 
-Les soldes de départ (ce que les clients devaient, l'argent des comptes, ce que la boutique devait aux fournisseurs) se reprennent par Réglages › Import des données (docs/import-donnees.md) :
+Les soldes de départ (ce que les clients devaient, l'argent des comptes, ce que l'imprimerie devait aux fournisseurs) se reprennent par Réglages › Import des données (docs/import-donnees.md) :
 
 - une **dette fournisseur** devient une dépense « à payer », catégorie matières, marquée « Solde d'ouverture » : elle est dans l'échéancier (F04) et la prévision (F05), se paie comme les autres, mais reste **hors budgets et hors dépenses du mois** (ce n'est pas une charge de la période) ;
 - le solde d'un **compte de trésorerie** devient son solde initial (compte sans aucune opération seulement) ;
@@ -82,7 +82,7 @@ Explications de Yaya du 15/10/2026.
 **Deux sortes de comptes Orange Money.**
 
 - **Le compte de l'API, « Orange Money en ligne »** : il reçoit les paiements faits depuis l'espace client (commandes, acomptes de conception, crédit IA). Il porte la marque « Reçoit les paiements Orange Money en ligne » sur sa fiche (Trésorerie › Comptes › Modifier, compte de type Orange Money). S'il n'existe pas, il est créé au premier paiement en ligne validé (code OM-EN-LIGNE, compte administration : la caisse ne le voit pas et n'en fait rien sortir). Un seul compte porte la marque : la mettre sur un autre compte Orange Money la retire au premier. Si ce compte est désactivé, la validation d'un paiement en ligne est refusée avec un message qui dit quoi faire.
-- **Les numéros de la boutique** (paiement à la caisse, transfert direct du client) : rien ne change, la caissière choisit le numéro comme avant. La caisse et le rapprochement du relevé ne proposent jamais le compte en ligne.
+- **Les numéros de l'imprimerie** (paiement à la caisse, transfert direct du client) : rien ne change, la caissière choisit le numéro comme avant. La caisse et le rapprochement du relevé ne proposent jamais le compte en ligne.
 
 Dans Finances › À valider, un paiement Orange Money venu de l'espace client affiche son compte, « Orange Money en ligne », verrouillé : il n'y a rien à choisir. Les autres paiements saisis en ligne (Wave, virement déclaré par le client) gardent le choix du compte, sans le compte en ligne.
 
@@ -126,14 +126,14 @@ Les frais restent sur le paiement : jamais dans le montant de la commande ni sur
 
 Demande de Yaya du 16/10/2026 : « Il faut tenir compte également des monnaies non rendues du client. Où le client peut faire le dépôt sur son compte sans être utilisé. Et ça sera visible dans l'espace client. Également dans la partie administration. »
 
-Le client a un compte à la boutique : l'argent qu'il y laisse (la monnaie qu'il ne reprend pas, un dépôt) paie ses prochaines commandes, ou lui est rendu. Le solde est celui qui existait déjà (`Clients.soldeCredit`, l'« avoir » de « Factures et paiements » en ligne) ; chaque mouvement écrit maintenant une ligne de relevé (`mouvement_solde_client`) : date, opération, montant, solde après, mode, référence, qui l'a fait, et au local seulement la note ou le motif. Le service `App\Service\Paiement\SoldeClient` est le seul à faire monter ou baisser ce solde (avec l'import des soldes d'ouverture) ; il verrouille la fiche du client avant chaque sortie, si bien que **le solde ne descend jamais sous zéro**, même avec deux caisses en même temps.
+Le client a un compte à l'imprimerie : l'argent qu'il y laisse (la monnaie qu'il ne reprend pas, un dépôt) paie ses prochaines commandes, ou lui est rendu. Le solde est celui qui existait déjà (`Clients.soldeCredit`, l'« avoir » de « Factures et paiements » en ligne) ; chaque mouvement écrit maintenant une ligne de relevé (`mouvement_solde_client`) : date, opération, montant, solde après, mode, référence, qui l'a fait, et au local seulement la note ou le motif. Le service `App\Service\Paiement\SoldeClient` est le seul à faire monter ou baisser ce solde (avec l'import des soldes d'ouverture) ; il verrouille la fiche du client avant chaque sortie, si bien que **le solde ne descend jamais sous zéro**, même avec deux caisses en même temps.
 
-**Disponible.** Ce que le client peut encore utiliser : son solde moins l'avoir déjà engagé en ligne et pas encore validé par la boutique (repris de `AvoirClient`). La caisse et la fiche affichent « dont X déjà engagés en ligne » quand il y en a.
+**Disponible.** Ce que le client peut encore utiliser : son solde moins l'avoir déjà engagé en ligne et pas encore validé par l'imprimerie (repris de `AvoirClient`). La caisse et la fiche affichent « dont X déjà engagés en ligne » quand il y en a.
 
 | Opération | Où | Droit | Reçu |
 | --- | --- | --- | --- |
 | Garder la monnaie | Caisse, paiement en espèces : « Montant remis par le client », puis la case « Garder la monnaie sur le compte du client » | Paiement (encaisser) | le reçu du paiement dit « Monnaie gardée sur votre compte : X F » et le solde |
-| Dépôt à la boutique | Fiche client › Compte › « Dépôt », ou bouton « Dépôt » de la caisse ; espèces, Orange Money ou Wave, compte qui reçoit, référence | Paiement (encaisser) | reçu « Dépôt sur votre compte » D-000123 |
+| Dépôt à l'imprimerie | Fiche client › Compte › « Dépôt », ou bouton « Dépôt » de la caisse ; espèces, Orange Money ou Wave, compte qui reçoit, référence | Paiement (encaisser) | reçu « Dépôt sur votre compte » D-000123 |
 | Payer avec le solde | Caisse, « Payer avec le solde » ; page de paiement d'une commande, mode « Solde client » | Paiement (encaisser) | reçu du paiement |
 | Utiliser l'avoir en ligne | Espace client, « Factures et paiements » : paiement « AV … » en attente, validé dans Finances › À valider | Direction (À valider) | reçu du paiement |
 | Dépôt Orange Money en ligne | Espace client, « Mon solde » ; arrive « reçu » au local, validé ou refusé sur la fiche › Compte ou dans Finances › À valider | Paiement (encaisser) sur la fiche ; Direction dans À valider | — |
@@ -143,7 +143,7 @@ Règles :
 
 - **Monnaie gardée** : le paiement reste celui de la commande ; la monnaie entre dans la même caisse (l'argent est dans le tiroir) comme « avance client ». Seulement en espèces, seulement si le client a remis plus que le montant payé ; le serveur refait le calcul.
 - **Dépôt** : aucun paiement ni facture. Orange Money ou Wave : les frais payés par le client en plus (case cochée d'office) entrent à part (« Frais Orange Money à prélever », ou « autre produit » pour Wave comme aujourd'hui) et **ne vont jamais au solde**. Le compte « Orange Money en ligne » n'est pas proposé.
-- **Payer avec le solde** : tout ou partie, jamais plus que le reste dû ni que le disponible. Le paiement « solde client » est validé tout de suite et ne touche aucun compte de trésorerie (l'argent est déjà à la boutique). L'annuler (« À valider » ou fiche du paiement) remet le montant sur le compte (ligne « Paiement par le solde annulé »).
+- **Payer avec le solde** : tout ou partie, jamais plus que le reste dû ni que le disponible. Le paiement « solde client » est validé tout de suite et ne touche aucun compte de trésorerie (l'argent est déjà à l'imprimerie). L'annuler (« À valider » ou fiche du paiement) remet le montant sur le compte (ligne « Paiement par le solde annulé »).
 - **Dépôt en ligne** : jamais validé tout seul. Orange confirme, le dépôt monte au local « reçu » ; une notification prévient la caisse (sans montant). La caisse vérifie l'arrivée de l'argent sur le compte « Orange Money en ligne », puis valide (le solde monte du montant, le compte en ligne reçoit le montant et les frais à part) ou refuse avec un motif (le motif reste au local ; l'argent se règle alors avec le client hors application).
 - **Rendre l'argent** : jamais plus que le disponible, seulement depuis une caisse, Orange Money ou Wave (jamais depuis le compte « Orange Money en ligne » ni la banque, dont la sortie attendrait la validation alors que le solde baisserait tout de suite). Sans le droit, le bouton n'apparaît pas et l'adresse répond « accès refusé ».
 - Un employé sans Paiements (voir) ni Paiement (encaisser) ne voit pas l'onglet « Compte » de la fiche. Le site en ligne ne modifie aucun compte : boutons absents, adresses refusées.
@@ -157,7 +157,7 @@ Règles :
 - Une avance d'un client reprise en solde d'ouverture va maintenant en 4191 (au lieu de 411) et écrit une ligne « Solde d'ouverture » au relevé.
 - Depuis la migration, chaque mouvement du compte passe au journal : le solde de 4191 suit le total des soldes clients (vérifié sur la démonstration : 77 000 F des deux côtés après les essais). Un paiement avec le solde fait avant le 18/10/2026 (ancien bouton « Utiliser … de ce solde ») n'était pas au journal : s'il y en a, l'écart entre 4191 et « Soldes clients » se corrige par une opération diverse.
 
-**Paiements avec le solde d'avant le 18/10** (réponse de Yaya du 18/10/2026). L'ancien bouton « avoir » baissait le solde sans écriture : ni le 4191 ni le 411 ne bougeaient. La commande `app:solde-client:aligner-4191` (à lancer une fois sur l'ERP de la boutique, voir docs/mise-en-production.md) passe pour chacun de ces paiements une opération diverse datée du jour où elle est lancée : 4191 au débit, 411 au crédit (lettrée avec la facture de la commande), pièce `OD-SC-<numéro du paiement>`, libellé « Reprise : payé avec le solde le … ». Ces lignes sont gardées dans la table `ecriture_diverse` et paraissent au journal OD, à la balance et au grand livre comme les autres. Relancée, la commande ne repasse rien ; `--dry-run` montre la liste sans rien écrire ; à la fin elle compare le 4191 et le total des soldes clients, et signale un écart qui viendrait d'ailleurs sans le corriger.
+**Paiements avec le solde d'avant le 18/10** (réponse de Yaya du 18/10/2026). L'ancien bouton « avoir » baissait le solde sans écriture : ni le 4191 ni le 411 ne bougeaient. La commande `app:solde-client:aligner-4191` (à lancer une fois sur l'ERP de l'imprimerie, voir docs/mise-en-production.md) passe pour chacun de ces paiements une opération diverse datée du jour où elle est lancée : 4191 au débit, 411 au crédit (lettrée avec la facture de la commande), pièce `OD-SC-<numéro du paiement>`, libellé « Reprise : payé avec le solde le … ». Ces lignes sont gardées dans la table `ecriture_diverse` et paraissent au journal OD, à la balance et au grand livre comme les autres. Relancée, la commande ne repasse rien ; `--dry-run` montre la liste sans rien écrire ; à la fin elle compare le 4191 et le total des soldes clients, et signale un écart qui viendrait d'ailleurs sans le corriger.
 
 **Reprise.** La migration `Version20261018140000` écrit pour chaque client qui avait déjà un solde une ligne « Solde déjà sur la fiche » (le relevé part de là) et reclasse en « avance client » les anciens mouvements « Monnaie non rendue — … ». Elle passe aussi sur le site en ligne : l'identifiant de cette ligne est tiré de celui du client, si bien qu'elle est la même des deux côtés (une initialisation la met à jour au lieu de la doubler).
 
@@ -180,10 +180,10 @@ Captures : `/mnt/project-files/captures/compte-client/`.
 7. Les demandes d'employés acceptées mais pas encore payées doivent-elles apparaître dans « À décider » ?
 8. ~~Frais Orange Money : produit, charge ou à reverser ?~~ Réponse du 15/10/2026 : ni produit ni charge, Orange les reprend quand l'argent sort du compte (section « Orange Money : deux sortes de comptes »).
 9. Les frais Wave suivent-ils la même règle qu'Orange Money (repris par Wave au retrait) ?
-10. Le relevé importé dans « Encaissements » est-il celui du compte de l'API ou d'un numéro de la boutique ?
+10. Le relevé importé dans « Encaissements » est-il celui du compte de l'API ou d'un numéro de l'imprimerie ?
 11. Faut-il reclasser les frais Orange Money d'avant le 15/10 (comptés en « autre produit ») ?
-12. Quand Orange débite plus que les frais payés par les clients, le surplus est-il bien une charge de la boutique (« Frais bancaires ») ?
+12. Quand Orange débite plus que les frais payés par les clients, le surplus est-il bien une charge de l'imprimerie (« Frais bancaires ») ?
 13. Compte du client : faut-il un plafond au solde d'un client (dépôt maximum), comme les 2 000 000 F d'un dépôt en ligne ?
-14. Compte du client : un dépôt refusé après l'arrivée de l'argent est rendu comment (Orange Money, espèces) ? Aujourd'hui, la boutique le règle avec le client hors de l'application.
+14. Compte du client : un dépôt refusé après l'arrivée de l'argent est rendu comment (Orange Money, espèces) ? Aujourd'hui, l'imprimerie le règle avec le client hors de l'application.
 15. ~~Compte du client : le rôle « Caisse et commercial » doit-il pouvoir rendre l'argent ?~~ Réponse du 18/10/2026 : oui, le droit est donné d'office au rôle Caisse (migration `Version20261018175000`) ; la Direction peut le retirer à une personne sur sa fiche.
 16. ~~Compte du client : une commande payée avec le solde compte-t-elle dans l'encaissé des objectifs ?~~ Réponse du 18/10/2026 : oui, au mois où le paiement est enregistré (`Objectifs::encaisse`). Le dépôt n'y compte pas.

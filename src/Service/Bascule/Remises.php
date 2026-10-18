@@ -3,8 +3,8 @@
 namespace App\Service\Bascule;
 
 /**
- * Calcul d'une ligne de commande ou de devis dans l'ancienne version de la
- * boutique (remise en pourcentage du brut) et dans la nouvelle (remise en F
+ * Calcul d'une ligne de commande ou de devis dans l'ancienne version de l'imprimerie
+ * (remise en pourcentage du brut) et dans la nouvelle (remise en F
  * par unité facturable, plafonnée au brut), et passage de l'une à l'autre
  * sans changer le total enregistré (docs/migration-de-base.md,
  * « Conversions de données »).

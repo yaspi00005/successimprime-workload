@@ -61,7 +61,7 @@ final class ConversionsDonnees
     }
 
     /**
-     * Conversions qui manquent à la base de la boutique, d'après sa structure
+     * Conversions qui manquent à la base de l'imprimerie, d'après sa structure
      * et ses lignes. $dejaFaites : cibles converties plus tôt dans la même
      * correction, à ne pas redétecter.
      *
@@ -123,7 +123,7 @@ final class ConversionsDonnees
      * Une conversion à faire est essayée en mémoire : si une ligne cohérente
      * ne retombait pas sur son total à 1 F par unité près, c'est bloquant.
      *
-     * @param array<string, mixed> $colonne la colonne remise de la boutique (LectureDiff::colonne)
+     * @param array<string, mixed> $colonne la colonne remise de l'imprimerie (LectureDiff::colonne)
      * @param list<LigneRemise>    $lignes  les lignes dont la remise n'est pas 0
      */
     public static function deciderRemise(string $table, array $colonne, array $lignes, bool $sansDonnees): ?Conversion

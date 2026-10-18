@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 /**
  * Connexion de l'espace client (CX01) hors mot de passe : le code de la
  * première connexion et du mot de passe oublié (par e-mail, par SMS sans
- * adresse), le code d'accès donné par la boutique sur WhatsApp,
+ * adresse), le code d'accès donné par l'imprimerie sur WhatsApp,
  * l'ouverture du compte une fois le code juste, et les étapes à finir
  * avant d'entrer (e-mail, mot de passe).
  */
@@ -23,7 +23,7 @@ final class EspaceClientComptes
 {
     public const SESSION_CODE = 'espace_code';
 
-    /** Comment la personne vient d'entrer : « code » (e-mail ou SMS) ou « acces » (code de la boutique). */
+    /** Comment la personne vient d'entrer : « code » (e-mail ou SMS) ou « acces » (code de l'imprimerie). */
     public const SESSION_A_FINIR = 'espace_a_finir';
     public const PAR_CODE = 'code';
     public const PAR_ACCES = 'acces';
@@ -53,7 +53,7 @@ final class EspaceClientComptes
      *  - une fiche client a ce numéro : l'e-mail de la fiche, sinon par SMS ;
      *  - « Créer un compte » pour un numéro inconnu : l'e-mail saisi, sinon par SMS ;
      *  - numéro inconnu sans création, compte fermé, ou accès suspendu par
-     *    la boutique : rien ne part (même réponse qu'un numéro inconnu).
+     *    l'imprimerie : rien ne part (même réponse qu'un numéro inconnu).
      *
      * L'e-mail tapé dans « Créer un compte » ne sert jamais pour un numéro
      * déjà connu : avec seulement le numéro de quelqu'un, on ne reçoit pas
@@ -140,7 +140,7 @@ final class EspaceClientComptes
     }
 
     /**
-     * Première connexion avec le code d'accès donné par la boutique sur
+     * Première connexion avec le code d'accès donné par l'imprimerie sur
      * WhatsApp : le compte du numéro (créé sur la fiche s'il n'existe pas),
      * et le code est consommé. null si le code est faux, expiré, déjà servi,
      * remplacé par un plus récent, ou si le numéro n'est plus celui de la
@@ -162,7 +162,7 @@ final class EspaceClientComptes
 
         $compte = $this->comptes->parTelephone($numero);
         if (null !== $compte && ($compte->getClient()?->getId() !== $client->getId() || !$compte->isActif())) {
-            // Numéro déjà rattaché à une autre fiche, ou compte fermé : c'est à la boutique de voir.
+            // Numéro déjà rattaché à une autre fiche, ou compte fermé : c'est à l'imprimerie de voir.
             return null;
         }
         if (!$this->acces->consommer($acces, $maintenant)) {
@@ -189,11 +189,11 @@ final class EspaceClientComptes
     /**
      * Ce qu'il reste à faire avant d'entrer (page « Sécuriser mon compte ») :
      *  - mot de passe : requis sans mot de passe et après un code d'accès
-     *    de la boutique (mot de passe oublié passé par la boutique) ;
+     *    de l'imprimerie (mot de passe oublié passé par l'imprimerie) ;
      *    proposé après un code par e-mail ou SMS (mot de passe oublié) ;
      *  - e-mail : proposé à qui n'en a pas encore quand il entre par un code
-     *    (de la boutique aussi) ou sans mot de passe, jamais obligatoire : un
-     *    client sans e-mail repasse par la boutique ou par SMS (Yaya, 15/10).
+     *    (de l'imprimerie aussi) ou sans mot de passe, jamais obligatoire : un
+     *    client sans e-mail repasse par l'imprimerie ou par SMS (Yaya, 15/10).
      *
      * @param ?string $par self::PAR_CODE, self::PAR_ACCES ou null (mot de passe, « rester connecté »)
      *

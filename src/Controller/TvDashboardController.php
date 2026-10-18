@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Écran TV de la boutique (démo de Yaya et maquette 42).
+ * Écran TV de l'imprimerie (démo de Yaya et maquette 42).
  *
  * La Smart TV ouvre un lien secret, sans compte utilisateur : voir
  * security.yaml, section PUBLIC. Le lien se change dans Réglages >

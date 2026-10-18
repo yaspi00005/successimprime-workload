@@ -22,7 +22,7 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
  * Outils que le modèle peut appeler (docs/assistant-client.md). Ils
  * tournent ici, sur le serveur : le modèle ne lit jamais la base.
  *
- * Le site a les outils publics (catalogue au tarif public, boutique,
+ * Le site a les outils publics (catalogue au tarif public, coordonnées de l'imprimerie,
  * pages, promotions de tout le monde, conseiller). L'espace client y
  * ajoute ceux du compte connecté : la fiche vient toujours de la session
  * (ContexteAssistant), et les montants ne sortent que pour qui paie.
@@ -98,7 +98,7 @@ final class OutilsAssistant
                 ],
             ],
             'infos_boutique' => [
-                'Coordonnées publiques de la boutique (adresse, téléphone, e-mail), horaires et ouverture en ce moment, formats de fichiers acceptés, délais à annoncer, moyens de suivre une commande.',
+                'Coordonnées publiques de l\'imprimerie (adresse, téléphone, e-mail), horaires et ouverture en ce moment, formats de fichiers acceptés, délais à annoncer, moyens de suivre une commande.',
                 [],
             ],
             'pages_du_site' => [
@@ -361,7 +361,7 @@ final class OutilsAssistant
             'envoi_fichiers' => $ctx->estEspace() ? 'Dans l\'espace client, avec la commande (500 Mo par fichier au plus).' : 'Avec une demande de devis du site (20 Mo au plus), ou dans l\'espace client après connexion.',
             'delais' => $this->reglages->delais(),
             'suivi_commande' => $ctx->estEspace() ? 'Dans l\'espace client, page Commandes.' : 'Page « Suivre ma commande » du site, ou espace client.',
-            'paiement' => 'À la boutique, ou par Orange Money depuis l\'espace client quand le paiement en ligne est ouvert.',
+            'paiement' => 'À l\'imprimerie, ou par Orange Money depuis l\'espace client quand le paiement en ligne est ouvert.',
         ], $actions);
     }
 
@@ -403,7 +403,7 @@ final class OutilsAssistant
         $texte = self::messageWhatsApp($resume, $ctx, $conversation?->getNumero());
         $lien = $this->reglages->lienWhatsApp($texte);
         if (null === $lien) {
-            throw new \DomainException('Pas de numéro WhatsApp réglé : donne le téléphone de la boutique (infos_boutique).');
+            throw new \DomainException('Pas de numéro WhatsApp réglé : donne le téléphone de l\'imprimerie (infos_boutique).');
         }
 
         return new ResultatOutil(

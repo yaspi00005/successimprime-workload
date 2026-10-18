@@ -51,6 +51,7 @@ Le client se connecte avec **son numéro et son mot de passe**. La première foi
 - Il sert aussi au **mot de passe oublié passé par la boutique** : un compte qui a déjà un mot de passe doit en choisir un nouveau.
 - Entreprise : l'accès va au numéro de la fiche (la personne principale). Elle invite les autres depuis Mon compte.
 - Chaque essai compte dans les mêmes limites que les codes (3 par numéro en 15 minutes, 10 par adresse IP en une heure). Faux, expiré, déjà servi ou remplacé : un seul message. Refusé aussi si le numéro de la fiche a changé depuis, ou si ce numéro a déjà un compte fermé ou sur une autre fiche : à régler par la boutique.
+- Pour savoir pourquoi un code est refusé, sur le serveur en ligne : `php bin/console app:espace:diagnostic-acces <numéro> [<code>]` (lecture seule ; rien n'est changé, ni code ni empreinte affichés). Elle dit si la fiche et le code sont arrivés, si le code correspond, s'il est expiré ou déjà servi, si la fiche est de démonstration, si le numéro diffère ou a déjà un compte ailleurs. Après trop d'essais : attendre 15 minutes, ou `php bin/console cache:pool:clear cache.rate_limiter`.
 
 **Sécuriser mon compte** (`/espace/securiser`) :
 

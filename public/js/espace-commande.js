@@ -362,7 +362,7 @@
 		const t = $('[data-co-apercu-texte]', zone);
 		// Au mm près : une étiquette de 5,5 × 3,5 cm n'est pas annoncée en 6 × 4 cm.
 		const metres = function (v) { return String(Math.round(v * 1000) / 1000).replace('.', ','); };
-		const centimetres = function (v) { return String(Math.round(v * 1000) / 10).replace('.', ','); };
+		const centimetres = function (v) { const c = Math.round(v * 1000) / 10; return c % 1 ? String(c).replace('.', ',') : f(c); };
 		t.textContent = metres(l) + ' m × ' + metres(h) + ' m' + (nombreOeillets ? ', ' + nombreOeillets + ' œillets par pièce' : '') + '. Votre fichier devra faire ' + centimetres(l) + ' × ' + centimetres(h) + ' cm.';
 		const vignette = document.querySelector('.co-vignette');
 		if (vignette) vignette.style.aspectRatio = String(Math.max(.3, Math.min(6, l / h)));

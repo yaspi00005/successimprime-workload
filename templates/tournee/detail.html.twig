@@ -46,7 +46,7 @@
 							<tbody>
 								{% for l in b.lignes %}
 									{% set livre = b.statut == 'livre' ? l.quantiteLivree : 0 %}
-									<tr><td>{{ l.designation }}</td><td class="text-end">{{ l.quantiteCommandee }}</td><td class="text-end">{{ b.statut == 'livre' ? livre : '—' }}</td><td class="text-end">{% if b.statut == 'livre' and l.quantiteCommandee > livre %}<span class="si-tr-badge si-tr-reste">{{ l.quantiteCommandee - livre }}</span>{% else %}{{ b.statut == 'livre' ? 0 : '—' }}{% endif %}</td></tr>
+									<tr><td>{{ l|ligne_interne('') }}</td><td class="text-end">{{ l.quantiteCommandee }}</td><td class="text-end">{{ b.statut == 'livre' ? livre : '—' }}</td><td class="text-end">{% if b.statut == 'livre' and l.quantiteCommandee > livre %}<span class="si-tr-badge si-tr-reste">{{ l.quantiteCommandee - livre }}</span>{% else %}{{ b.statut == 'livre' ? 0 : '—' }}{% endif %}</td></tr>
 								{% endfor %}
 							</tbody>
 						</table>

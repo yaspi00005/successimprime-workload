@@ -119,7 +119,7 @@
 									ordre.numero ~ ' ' ~
 									(commande ? commande.numero|default('') : '') ~ ' ' ~
 									(client ? client.nomComplet|default(client.nom|default('')) : '') ~ ' ' ~
-									(detail ? detail.designation|default('') : '') ~ ' ' ~
+									(detail ? detail|texte_ligne_interne('') : '') ~ ' ' ~
 									(ordre.machine ? ordre.machine.nom : '') ~ ' ' ~
 									operateurTexte
 								)|lower %}
@@ -151,7 +151,7 @@
 									</td>
 
 									<td>
-										{{ detail ? detail.designation|default('—') : '—' }}
+										{{ detail ? detail|ligne_interne('—') : '—' }}
 									</td>
 
 									<td>

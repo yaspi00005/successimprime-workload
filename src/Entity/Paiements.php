@@ -71,7 +71,7 @@ class Paiements implements AppartientASociete
         self::MODE_VIREMENT => 'Virement bancaire',
         self::MODE_CHEQUE => 'Chèque',
         self::MODE_CARTE => 'Carte bancaire',
-        self::MODE_SOLDE_CLIENT => 'Solde client (monnaie)',
+        self::MODE_SOLDE_CLIENT => 'Solde client',
         self::MODE_POINTS_FIDELITE => 'Points fidélité',
     ];
 

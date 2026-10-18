@@ -95,7 +95,7 @@ final class SoldesOuvertureTest extends TestCase
     public static function ecritures(): iterable
     {
         yield 'créance client' => [SoldeOuverture::CLIENT, '411', '471'];
-        yield 'avance client' => [SoldeOuverture::AVANCE_CLIENT, '471', '411'];
+        yield 'avance client' => [SoldeOuverture::AVANCE_CLIENT, '471', '4191'];
         yield 'dette fournisseur' => [SoldeOuverture::FOURNISSEUR, '471', '401'];
     }
 

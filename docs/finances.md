@@ -11,6 +11,8 @@ Module Finances de l'ERP local, construit le 13/10/2026. Tout reste au local : r
 | F05 Prévision de trésorerie à 90 jours | `/finances/prevision` | Trésorerie (voir) |
 | F06 Rentabilité par commande, produit, machine | `/finances/rentabilite` | Coûts et marges |
 | F07 Finances du jour (téléphone) | `/finances/jour` | comme F01 |
+| Soldes clients : chez qui l'argent est resté, dépôts en ligne à valider | `/clients/soldes` (bouton « Soldes clients » de la caisse) | Paiement (encaisser) ; export CSV : Paiements (voir) |
+| Compte du client (relevé, dépôt, argent rendu) | fiche client › onglet « Compte », caisse | voir « Compte du client » plus bas |
 | Saisie d'un mouvement (entrée, sortie, virement) | `/gestion/tresorerie/mouvements/nouveau` | Trésorerie (saisir) ou Virements entre comptes ; sans Trésorerie (voir) : aucun solde, retour à la caisse |
 
 Le montant des salaires (échéancier F04, sorties prises en compte et repères de la courbe F05) n'apparaît qu'avec le droit RH : les autres voient « salaires (RH) » à la place. Les totaux et la courbe restent justes, car le montant y est compté.
@@ -118,7 +120,52 @@ Les frais restent sur le paiement : jamais dans le montant de la commande ni sur
 
 **Annulation d'un paiement validé** (inchangée) : dans « À valider » ou sur le paiement, l'annulation reprend du compte Orange Money le montant et les frais entrés avec le paiement (25 500 F dans l'exemple). Elle sert à corriger une erreur de saisie.
 
-**Remboursement d'un client** : c'est une dépense ordinaire, payée depuis la caisse ou la banque.
+**Remboursement d'un client** : l'argent laissé sur son compte (monnaie gardée, dépôts) se rend par « Rendre l'argent » (section « Compte du client ») ; un autre remboursement reste une dépense ordinaire, payée depuis la caisse ou la banque.
+
+## Compte du client : monnaie gardée et dépôts (construit le 18/10/2026)
+
+Demande de Yaya du 16/10/2026 : « Il faut tenir compte également des monnaies non rendues du client. Où le client peut faire le dépôt sur son compte sans être utilisé. Et ça sera visible dans l'espace client. Également dans la partie administration. »
+
+Le client a un compte à la boutique : l'argent qu'il y laisse (la monnaie qu'il ne reprend pas, un dépôt) paie ses prochaines commandes, ou lui est rendu. Le solde est celui qui existait déjà (`Clients.soldeCredit`, l'« avoir » de « Factures et paiements » en ligne) ; chaque mouvement écrit maintenant une ligne de relevé (`mouvement_solde_client`) : date, opération, montant, solde après, mode, référence, qui l'a fait, et au local seulement la note ou le motif. Le service `App\Service\Paiement\SoldeClient` est le seul à faire monter ou baisser ce solde (avec l'import des soldes d'ouverture) ; il verrouille la fiche du client avant chaque sortie, si bien que **le solde ne descend jamais sous zéro**, même avec deux caisses en même temps.
+
+**Disponible.** Ce que le client peut encore utiliser : son solde moins l'avoir déjà engagé en ligne et pas encore validé par la boutique (repris de `AvoirClient`). La caisse et la fiche affichent « dont X déjà engagés en ligne » quand il y en a.
+
+| Opération | Où | Droit | Reçu |
+| --- | --- | --- | --- |
+| Garder la monnaie | Caisse, paiement en espèces : « Montant remis par le client », puis la case « Garder la monnaie sur le compte du client » | Paiement (encaisser) | le reçu du paiement dit « Monnaie gardée sur votre compte : X F » et le solde |
+| Dépôt à la boutique | Fiche client › Compte › « Dépôt », ou bouton « Dépôt » de la caisse ; espèces, Orange Money ou Wave, compte qui reçoit, référence | Paiement (encaisser) | reçu « Dépôt sur votre compte » D-000123 |
+| Payer avec le solde | Caisse, « Payer avec le solde » ; page de paiement d'une commande, mode « Solde client » | Paiement (encaisser) | reçu du paiement |
+| Utiliser l'avoir en ligne | Espace client, « Factures et paiements » : paiement « AV … » en attente, validé dans Finances › À valider | Direction (À valider) | reçu du paiement |
+| Dépôt Orange Money en ligne | Espace client, « Mon solde » ; arrive « reçu » au local, validé ou refusé sur la fiche › Compte ou dans Finances › À valider | Paiement (encaisser) sur la fiche ; Direction dans À valider | — |
+| Rendre l'argent | Fiche client › Compte › « Rendre l'argent » : montant, compte d'où sort l'argent, motif obligatoire, case de confirmation | « Rendre l'argent du compte d'un client » (Direction par défaut) **et** Paiement (encaisser) | reçu « Argent rendu » RB-000123, à faire signer |
+
+Règles :
+
+- **Monnaie gardée** : le paiement reste celui de la commande ; la monnaie entre dans la même caisse (l'argent est dans le tiroir) comme « avance client ». Seulement en espèces, seulement si le client a remis plus que le montant payé ; le serveur refait le calcul.
+- **Dépôt** : aucun paiement ni facture. Orange Money ou Wave : les frais payés par le client en plus (case cochée d'office) entrent à part (« Frais Orange Money à prélever », ou « autre produit » pour Wave comme aujourd'hui) et **ne vont jamais au solde**. Le compte « Orange Money en ligne » n'est pas proposé.
+- **Payer avec le solde** : tout ou partie, jamais plus que le reste dû ni que le disponible. Le paiement « solde client » est validé tout de suite et ne touche aucun compte de trésorerie (l'argent est déjà à la boutique). L'annuler (« À valider » ou fiche du paiement) remet le montant sur le compte (ligne « Paiement par le solde annulé »).
+- **Dépôt en ligne** : jamais validé tout seul. Orange confirme, le dépôt monte au local « reçu » ; une notification prévient la caisse (sans montant). La caisse vérifie l'arrivée de l'argent sur le compte « Orange Money en ligne », puis valide (le solde monte du montant, le compte en ligne reçoit le montant et les frais à part) ou refuse avec un motif (le motif reste au local ; l'argent se règle alors avec le client hors application).
+- **Rendre l'argent** : jamais plus que le disponible, seulement depuis une caisse, Orange Money ou Wave (jamais depuis le compte « Orange Money en ligne » ni la banque, dont la sortie attendrait la validation alors que le solde baisserait tout de suite). Sans le droit, le bouton n'apparaît pas et l'adresse répond « accès refusé ».
+- Un employé sans Paiements (voir) ni Paiement (encaisser) ne voit pas l'onglet « Compte » de la fiche. Le site en ligne ne modifie aucun compte : boutons absents, adresses refusées.
+
+**Écrans.** Fiche client › onglet « Compte » : solde, disponible, boutons, dépôts en ligne à valider, relevé (100 dernières lignes). Caisse : le solde du client choisi, « Payer avec le solde », « Dépôt », lien vers le relevé. « Soldes clients » (bouton de la caisse) : dépôts en ligne à valider, clients avec un solde, filtres (nom, code ou téléphone ; solde d'au moins ; particulier ou entreprise), total, export CSV (Paiements (voir)). Finances › À valider : une ligne « Dépôt sur le compte client » par dépôt en ligne reçu, compte « Orange Money en ligne » imposé.
+
+**Comptabilité.**
+
+- L'argent qui entre (monnaie gardée, dépôt, dépôt en ligne validé) ou sort (argent rendu) passe en trésorerie dans la catégorie « Avance client (argent laissé sur son compte) » : au journal, le compte de trésorerie contre **4191 Clients, avances et acomptes reçus**, avec le nom du client. Ni vente ni charge : hors chiffre d'affaires, résultat, budgets et « Dépenses du mois » de la trésorerie ; compté dans la caisse du jour, les soldes des comptes et les entrées et sorties d'argent de la trésorerie (c'est de l'argent réellement reçu ou rendu). Cette catégorie ne se choisit pas à la main. Un paiement avec le solde n'est pas un nouvel encaissement (l'argent est entré au dépôt) : comme avant, il ne compte pas dans « Encaissements » ni dans l'encaissé des objectifs.
+- Payer avec le solde : opération diverse (pièce SC-000123), 4191 au débit, 411 au crédit lettré avec la facture de la commande ; l'annulation passe l'écriture inverse.
+- Une avance d'un client reprise en solde d'ouverture va maintenant en 4191 (au lieu de 411) et écrit une ligne « Solde d'ouverture » au relevé.
+- Depuis la migration, chaque mouvement du compte passe au journal : le solde de 4191 suit le total des soldes clients (vérifié sur la démonstration : 77 000 F des deux côtés après les essais). Un paiement avec le solde fait avant le 18/10/2026 (ancien bouton « Utiliser … de ce solde ») n'était pas au journal : s'il y en a, l'écart entre 4191 et « Soldes clients » se corrige par une opération diverse.
+
+**Reprise.** La migration `Version20261018140000` écrit pour chaque client qui avait déjà un solde une ligne « Solde déjà sur la fiche » (le relevé part de là) et reclasse en « avance client » les anciens mouvements « Monnaie non rendue — … ». Elle passe aussi sur le site en ligne : l'identifiant de cette ligne est tiré de celui du client, si bien qu'elle est la même des deux côtés (une initialisation la met à jour au lieu de la doubler).
+
+**Synchronisation** (docs/synchronisation.md). Le relevé descend en lecture seule (`solde_mouvement` : type, montant, solde après, mode, référence, date ; ni l'employé, ni la note, ni le paiement). Les dépôts en ligne (`solde_depot`) montent une fois reçus par Orange, arrivent toujours « reçu » au local, et la décision redescend (vérifié le 18/10/2026 entre les deux bases d'essai).
+
+**Ce qui a été repris de l'existant.** Le solde `soldeCredit` et son garde-fou à zéro ; le paiement mode « solde client » et sa validation (`PaiementService::validerAvoir`, désormais délégué au compte du client) ; l'avoir de « Factures et paiements » (`AvoirClient`, réservations et paiements « AV ») ; la transaction Orange Money et ses frais (`OrangeMoney`, `FraisOrangeMoney`, compte « Orange Money en ligne ») ; « À valider » ; `MouvementTresorerieService` ; le journal comptable ; la page « Soldes clients » qui existait déjà.
+
+**Démonstration** (`app:solde-client:demo`, lancée par `app:demo`) : Coumba Bagayoko (DEMO-0122) monnaie gardée, dépôt, une partie d'une commande payée avec le solde ; Amadou Sow (DEMO-0195, particulier de l'espace) dépôt en espèces et un dépôt Orange Money en ligne à valider ; Salon Espoir (DEMO-0002) dépôt Orange Money, argent rendu en partie, un dépôt en ligne du payeur à valider.
+
+Captures : `/mnt/project-files/captures/compte-client/`.
 
 ## Questions ouvertes (Yaya)
 
@@ -134,3 +181,7 @@ Les frais restent sur le paiement : jamais dans le montant de la commande ni sur
 10. Le relevé importé dans « Encaissements » est-il celui du compte de l'API ou d'un numéro de la boutique ?
 11. Faut-il reclasser les frais Orange Money d'avant le 15/10 (comptés en « autre produit ») ?
 12. Quand Orange débite plus que les frais payés par les clients, le surplus est-il bien une charge de la boutique (« Frais bancaires ») ?
+13. Compte du client : faut-il un plafond au solde d'un client (dépôt maximum), comme les 2 000 000 F d'un dépôt en ligne ?
+14. Compte du client : un dépôt refusé après l'arrivée de l'argent est rendu comment (Orange Money, espèces) ? Aujourd'hui, la boutique le règle avec le client hors de l'application.
+15. Compte du client : le rôle « Caisse et commercial » doit-il pouvoir rendre l'argent, ou cela reste-t-il à la direction ?
+16. Compte du client : une commande payée avec le solde (dépôt fait un autre mois) doit-elle compter dans l'encaissé des objectifs du mois où elle est payée ? Aujourd'hui, ni le dépôt ni ce paiement n'y comptent.

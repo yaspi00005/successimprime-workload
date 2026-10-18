@@ -8,6 +8,12 @@
 			<a href="{{ path('app_journal_caisse_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-book me-1"></i>Journal</a>
 		</li>
 	{% endif %}
+	{# Chez qui de l'argent est resté (monnaie gardée, dépôts) : docs/finances.md. #}
+	{% if is_granted('ROLE_CLIENT') %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_clients_soldes') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-wallet me-1"></i>Soldes clients</a>
+		</li>
+	{% endif %}
 	{# Verser la caisse à la banque, ou d'un compte à un autre : sans aucun solde affiché.
 	   Sur téléphone, l'icône seule laisse la place au titre « Caisse ». #}
 	{% if is_granted('ROLE_TRESORERIE_TRANSFERER') %}
@@ -28,6 +34,11 @@
 	{% if en_ligne %}
 		<p class="si-caisse-provisoire"><strong>Opération provisoire.</strong> Un encaissement saisi en ligne ne compte qu’après validation sur le serveur de l’atelier par le comptable ou l’admin.</p>
 	{% endif %}
+	{% if recu_solde %}
+		<p class="si-caisse-alerte">
+			<a href="{{ path('app_caisse_solde_recu', {id: recu_solde.id}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ recu_solde.reference }}</a>
+		</p>
+	{% endif %}
 	{% if recu %}
 		<p class="si-caisse-alerte">
 			<a href="{{ path('app_caisse_recu', {id: recu.id}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ 'R-' ~ '%06d'|format(recu.id) }}</a>
@@ -44,7 +55,7 @@
 				<select class="form-select" id="caisse-client" name="client" onchange="this.form.submit()">
 					<option value="">Choisir un client qui doit encore payer…</option>
 					{% for ligne in clients_avec_solde %}
-						<option value="{{ ligne.client.id }}" {{ client and client.id == ligne.client.id ? 'selected' }}>{{ ligne.client.nomComplet }} · solde {{ ligne.solde|number_format(0, ',', ' ') }} F</option>
+						<option value="{{ ligne.client.id }}" {{ client and client.id == ligne.client.id ? 'selected' }}>{{ ligne.client.nomComplet }} · reste dû {{ ligne.solde|number_format(0, ',', ' ') }} F</option>
 					{% endfor %}
 					{% if client and clients_avec_solde|filter(l => l.client.id == client.id) is empty %}
 						<option value="{{ client.id }}" selected>{{ client.nomComplet }} · rien à payer</option>
@@ -52,6 +63,32 @@
 				</select>
 				<noscript><button class="btn btn-light btn-sm mt-2">Afficher</button></noscript>
 			</form>
+
+			{# Compte du client (docs/finances.md) : son solde paie la commande choisie, tout ou partie. #}
+			{% if compte_client %}
+				{% set modifiable = not compte_client.en_ligne and not module_en_lecture('app_caisse_solde_depot') %}
+				<div class="si-caisse-compte">
+					<div>
+						<small>Solde client (monnaie gardée, dépôts)</small>
+						<strong>{{ compte_client.solde|number_format(0, ',', ' ') }} F</strong>
+						{% if compte_client.engage > 0 %}<small>dont {{ compte_client.engage|number_format(0, ',', ' ') }} déjà engagés en ligne</small>{% endif %}
+					</div>
+					{% if modifiable and commande and reste > 0 and compte_client.disponible > 0 %}
+						<form method="post" action="{{ path('app_commandes_utiliser_solde_client', {id: commande.id, retour: 'caisse'}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('utiliser_solde_client_' ~ commande.id) }}">
+							<label class="visually-hidden" for="caisse-solde-montant">Montant payé avec le solde client</label>
+							<input class="form-control form-control-sm" id="caisse-solde-montant" name="montant" inputmode="numeric" autocomplete="off" value="{{ min(compte_client.disponible, reste) }}">
+							<button class="btn btn-primary btn-sm">Payer avec le solde</button>
+						</form>
+					{% endif %}
+					{% if modifiable %}
+						<button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modale-depot"><i class="fas fa-plus me-1"></i>Dépôt</button>
+					{% endif %}
+					{% if is_granted('ROLE_CLIENT') %}
+						<a class="btn btn-link btn-sm" href="{{ path('app_clients_show', {publicId: client.publicId}) }}#compte">Relevé</a>
+					{% endif %}
+				</div>
+			{% endif %}
 
 			{% if client %}
 				{% if impayees is empty %}
@@ -147,6 +184,20 @@
 					{% do formulaire.fraisRetraitInclus.setRendered() %}
 					{% do formulaire.fondsSoutienInclus.setRendered() %}
 
+					{# Espèces : la monnaie à rendre, ou gardée sur le compte du client (l'argent reste dans la caisse). #}
+					{% if compte_client and not compte_client.en_ligne %}
+						<div class="si-caisse-monnaie" data-si-cc-monnaie>
+							<div class="row g-2">
+								<div class="col-sm-6">
+									<label class="form-label" for="caisse-remis">Montant remis par le client</label>
+									<input class="form-control" id="caisse-remis" name="montant_remis" inputmode="numeric" autocomplete="off">
+								</div>
+								<div class="col-sm-6"><span data-si-cc-rendu aria-live="polite"></span></div>
+							</div>
+							<label class="si-cc-case"><input type="checkbox" class="form-check-input" name="garder_monnaie" value="1"> Garder la monnaie sur le compte du client</label>
+						</div>
+					{% endif %}
+
 					<button type="submit" class="btn btn-success si-caisse-valider"><i class="fas fa-print me-2"></i>Encaisser et imprimer le reçu</button>
 					<p class="si-caisse-note">Les frais Wave ou carte se saisissent depuis <a href="{{ path('app_commandes_paiement', {id: commande.id}) }}">la page de paiement de la commande</a>.</p>
 				{{ form_end(formulaire) }}
@@ -192,6 +243,10 @@
 		</aside>
 	</div>
 
+	{% if compte_client %}
+		{% include 'clients/_compte_modales.html.twig' with {compte: compte_client, retour_compte: 'caisse'} %}
+	{% endif %}
+
 	{% if is_granted('ROLE_JOURNAL_CAISSE') and caisses is not empty %}
 		<div class="modal fade" id="modale-cloture" tabindex="-1" aria-labelledby="titre-cloture" aria-hidden="true">
 			<div class="modal-dialog">
@@ -230,8 +285,14 @@
 	{% endif %}
 {% endblock %}
 
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/compte-client.css') }}" rel="stylesheet">
+{% endblock %}
+
 {% block javascripts %}
 	{{ parent() }}
+	<script src="{{ asset('js/compte-client.js') }}" defer></script>
 	<script>
 		(function () {
 			var choisie = document.querySelector('.si-caisse-choisie');

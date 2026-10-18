@@ -1,0 +1,36 @@
+/* Espace client › Mon solde (templates/espace/solde/index.html.twig), avec espace-factures.css. */
+.es-solde { display: grid; gap: .25rem; }
+.es-solde > small { color: var(--gris); font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+.es-solde > b { font-size: 2rem; line-height: 1.15; font-weight: 900; color: var(--encre); }
+.es-solde > b.vert { color: var(--vert); }
+.es-solde > span { color: var(--ambre); font-size: .86rem; font-weight: 700; }
+.es-solde .ef-texte-doux { margin: .5rem 0 0; }
+.es-utiliser { justify-self: start; margin-top: .6rem; }
+
+.es-montant { display: grid; gap: .35rem; margin-bottom: .8rem; }
+.es-montant > div { display: flex; gap: .5rem; flex-wrap: wrap; }
+.es-montant input { flex: 1 1 12rem; min-width: 0; border: 1.5px solid var(--trait); border-radius: 12px; padding: .65rem .8rem; font: inherit; font-size: 1rem; font-weight: 700; }
+.es-montant input:focus { outline: none; border-color: var(--bleu); box-shadow: 0 0 0 3px var(--bleu-clair); }
+.es-montant input[aria-invalid="true"] { border-color: var(--rouge); }
+.es-note-frais { margin: .4rem 0 .6rem; }
+
+.es-lignes { list-style: none; margin: 0; padding: 0; }
+.es-lignes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .2rem .8rem; align-items: center; padding: .7rem 0; border-top: 1px solid var(--trait); }
+.es-lignes li:first-child { border-top: 0; padding-top: .2rem; }
+.es-lignes li > div { display: grid; gap: .1rem; min-width: 0; }
+.es-lignes li b { font-size: .92rem; overflow-wrap: anywhere; }
+.es-lignes li small { color: var(--gris); font-size: .8rem; overflow-wrap: anywhere; }
+.es-lignes .ec-pastille { justify-self: start; margin-top: .2rem; }
+.es-lignes .ef-vide { display: block; }
+.es-droite { text-align: right; justify-items: end; }
+.es-montant-ligne { white-space: nowrap; font-weight: 900; }
+.es-montant-ligne.plus { color: var(--vert); }
+.es-montant-ligne.moins { color: var(--encre); }
+
+@media (max-width: 899px) {
+  .es-solde > b { font-size: 1.7rem; }
+  .es-montant > div .ec-bouton-blanc { flex: 1 1 100%; justify-content: center; }
+  #deposer .ef-boutons { flex-direction: column-reverse; align-items: stretch; }
+  #deposer .ef-boutons .ec-bouton-blanc { justify-content: center; }
+  #deposer .ef-bouton-om { width: 100%; }
+}

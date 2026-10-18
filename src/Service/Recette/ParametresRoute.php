@@ -8,6 +8,7 @@ use App\Entity\Clients;
 use App\Entity\DemandeConception;
 use App\Entity\DemandeDevis;
 use App\Entity\JournalActivite;
+use App\Entity\MouvementSoldeClient;
 use App\Entity\PageSite;
 use App\Service\Guide\CatalogueGuide;
 use App\Service\Parametres\CatalogueParametres;
@@ -72,6 +73,15 @@ final class ParametresRoute
         }
         if ('app_aide_capture' === $nom) {
             return array_map(static fn (string $capture): array => ['nom' => $capture], array_keys(CatalogueGuide::captures()));
+        }
+
+        // Reçu du compte du client : seuls un dépôt et l'argent rendu en ont un.
+        if ('app_caisse_solde_recu' === $nom) {
+            $ligne = $this->em->createQueryBuilder()->select('e.id')->from(MouvementSoldeClient::class, 'e')
+                ->where('e.type IN (:types)')->setParameter('types', [MouvementSoldeClient::DEPOT, MouvementSoldeClient::REMBOURSEMENT])
+                ->orderBy('e.id', 'ASC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
+
+            return null === $ligne ? 'aucun dépôt ni argent rendu sur un compte client' : [['id' => (int) $ligne['id']]];
         }
 
         $arguments = self::argumentsDuControleur($route);

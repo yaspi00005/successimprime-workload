@@ -6,6 +6,7 @@ use App\Controller\NomsCommerciauxController;
 use App\Controller\TourneeController;
 use App\Entity\BonLivraison;
 use App\Entity\BulletinPaie;
+use App\Entity\Clients;
 use App\Entity\DemandeEmploye;
 use App\Entity\EnvoiMessage;
 use App\Entity\Pointage;
@@ -24,6 +25,7 @@ use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
+use Symfony\Component\Uid\AbstractUid;
 
 /**
  * Recette des accès du personnel (jalon J7, docs/recette-par-role.md) :
@@ -248,6 +250,7 @@ final class RecetteAcces
                 $this->verifierCompte($compte, $pages, $bilan);
                 $this->verifierObjetsDesAutres($compte, $bilan);
                 $this->verifierNomsCommerciaux($compte, $bilan);
+                $this->verifierCompteClient($compte, $bilan);
             }
             $suivi && $suivi('lecture seule');
             try {
@@ -527,6 +530,55 @@ final class RecetteAcces
         $bilan->controler(\sprintf('%s : %s', $identifiant, $libelle), $ok, $chemin.' → '.$etat);
         if (!$ok) {
             $bilan->constater(Reponse::ERREUR === $etat || $direction ? BilanRecette::ERREUR : BilanRecette::FUITE, 'envoi_refuse', $route, $chemin, $identifiant, $libelle.' : l\'envoi répond « '.$etat.' »');
+        }
+    }
+
+    /**
+     * Compte du client à la boutique (docs/finances.md, « Compte du
+     * client ») : l'onglet « Compte » de la fiche (solde, relevé) seulement
+     * avec Paiements ou Encaissements ; un dépôt avec Encaissements ;
+     * l'argent rendu seulement avec « Rendre l'argent du compte d'un
+     * client » en plus. Les envois sont arrêtés avant le contrôleur : rien
+     * n'est fait, seul le passage des droits est regardé.
+     */
+    private function verifierCompteClient(User $compte, BilanRecette $bilan): void
+    {
+        $client = $this->em->createQueryBuilder()->select('c.id', 'c.publicId')->from(Clients::class, 'c')
+            ->where('c.soldeCredit > 0')->andWhere('c.id >= :demo')->setParameter('demo', ParametresRoute::PREMIER_ID_DEMO)
+            ->orderBy('c.id', 'ASC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
+        if (null === $client || null === $this->routeur->getRouteCollection()->get('app_caisse_solde_rembourser')) {
+            return;
+        }
+        $identifiant = $compte->getUserIdentifier();
+        $session = $this->navigateur->session($compte);
+        $argent = $this->accorde('ROLE_PAIEMENT_VOIR') || $this->accorde('ROLE_PAIEMENT_ENCAISSER');
+
+        if ($this->accorde('ROLE_CLIENT')) {
+            $publicId = $client['publicId'] instanceof AbstractUid ? $client['publicId']->toRfc4122() : (string) $client['publicId'];
+            $chemin = $this->routeur->generate('app_clients_show', ['publicId' => $publicId]);
+            $reponse = $this->navigateur->get($chemin, $session);
+            if (Reponse::OUVERT === $reponse->etat()) {
+                $onglet = str_contains($reponse->contenu, 'id="panneau-compte"');
+                $bilan->controler(\sprintf('%s : onglet « Compte » de la fiche client %s', $identifiant, $argent ? 'visible (Paiements ou Encaissements)' : 'absent (ni Paiements ni Encaissements)'), $onglet === $argent, $chemin.' → '.($onglet ? 'onglet présent' : 'onglet absent'));
+                if ($onglet && !$argent) {
+                    $bilan->constater(BilanRecette::FUITE, 'compte_client', 'app_clients_show', $chemin, $identifiant, 'solde et relevé du compte du client sans le droit Paiements ni Encaissements');
+                }
+            }
+        }
+
+        $envois = [
+            ['app_caisse_solde_depot', ['ROLE_PAIEMENT_ENCAISSER'], 'dépôt sur le compte d\'un client'],
+            ['app_caisse_solde_rembourser', ['ROLE_PAIEMENT_ENCAISSER', 'ROLE_SOLDE_CLIENT_REMBOURSER'], 'argent rendu depuis le compte d\'un client'],
+        ];
+        foreach ($envois as [$route, $droits, $libelle]) {
+            $chemin = $this->routeur->generate($route, ['id' => (int) $client['id']]);
+            $permis = $this->tous($droits);
+            $reponse = $this->navigateur->post($chemin, [], $session, [], true);
+            $atteint = NavigateurInterne::CONTROLEUR_ATTEINT === $reponse->statut;
+            $bilan->controler(\sprintf('%s : %s %s', $identifiant, $libelle, $permis ? 'permis' : 'refusé'), $atteint === $permis, $chemin.' → '.($atteint ? 'arrivé au contrôleur' : $reponse->etat()));
+            if ($atteint && !$permis) {
+                $bilan->constater(BilanRecette::FUITE, 'compte_client', $route, $chemin, $identifiant, $libelle.' accepté sans le droit ('.implode(', ', $droits).')');
+            }
         }
     }
 

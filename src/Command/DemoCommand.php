@@ -48,6 +48,9 @@ final class DemoCommand extends Command
         "DELETE d FROM demande_conception d JOIN clients c ON c.id = d.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
         "DELETE m FROM mouvement_credit_ia m JOIN clients c ON c.id = m.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
         "DELETE k FROM credit_ia k JOIN clients c ON c.id = k.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        // Compte du client (app:solde-client:demo) : relevé et dépôts en ligne des clients fictifs (après les transactions Orange Money).
+        "DELETE m FROM mouvement_solde_client m JOIN clients c ON c.id = m.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
+        "DELETE d FROM depot_solde_client d JOIN clients c ON c.id = d.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
     ];
 
     public function __construct(
@@ -119,6 +122,8 @@ final class DemoCommand extends Command
             $this->lancer('app:fidelite', ['--demo' => true], $output);
             $this->lancer('app:promotions', ['--demo' => true], $output);
             $this->lancer('app:sondages:demo', [], $output);
+            // Comptes clients : monnaie gardée, dépôts, argent rendu, dépôts en ligne à valider.
+            $this->lancer('app:solde-client:demo', [], $output);
             // Dotations aux amortissements et évaluations de primes des derniers mois.
             $this->lancer('app:immobilisations:dotations', ['--demo' => true], $output);
             $this->lancer('app:primes', ['--demo' => true], $output);

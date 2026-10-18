@@ -44,6 +44,13 @@ final class NavigateurInterne
     /** Statut rendu à la place du contrôleur quand la requête est interceptée (rien n'est exécuté). */
     public const CONTROLEUR_ATTEINT = 299;
 
+    /**
+     * Priorité de l'interception sur kernel.controller_arguments : après les
+     * attributs du contrôleur (#[IsGranted]), que Symfony 8.1 traite dans
+     * ControllerAttributesListener à -10000.
+     */
+    public const PRIORITE_INTERCEPTION = -20000;
+
     private ?\Throwable $derniereErreur = null;
     private int $ecritures = 0;
     private bool $commence = false;
@@ -77,13 +84,15 @@ final class NavigateurInterne
         $this->evenements->addListener(KernelEvents::EXCEPTION, function (ExceptionEvent $e): void {
             $this->derniereErreur = $e->getThrowable();
         }, 1000);
-        // Après #[IsGranted] (20) : la requête a passé tous les contrôles, le contrôleur n'est pas joué.
+        // Après #[IsGranted] : la requête a passé tous les contrôles, le contrôleur n'est pas joué.
+        // Depuis Symfony 8.1, les attributs du contrôleur passent par ControllerAttributesListener à
+        // -10000 (avant : 20) ; plus tôt, un envoi sans le droit serait compté comme arrivé.
         $this->evenements->addListener(KernelEvents::CONTROLLER_ARGUMENTS, function (ControllerArgumentsEvent $e): void {
             if ($this->intercepter && $e->isMainRequest()) {
                 $e->setController(static fn (): Response => new Response('', self::CONTROLEUR_ATTEINT));
                 $e->setArguments([]);
             }
-        }, -1000);
+        }, self::PRIORITE_INTERCEPTION);
         // Une page ouverte en lecture ne devrait rien enregistrer : on compte ce qu'elle tente.
         $this->em->getEventManager()->addEventListener([Events::onFlush], $this);
         $this->base->beginTransaction();

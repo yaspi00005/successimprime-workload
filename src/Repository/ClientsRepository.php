@@ -17,19 +17,30 @@ class ClientsRepository extends ServiceEntityRepository
     }
 
     /**
-     * Clients ayant un solde créditeur (monnaie non rendue laissée
+     * Clients ayant un solde créditeur (monnaie gardée, dépôts laissés
      * chez nous), du plus important au plus faible -- pour savoir
-     * chez qui l'argent est resté.
+     * chez qui l'argent est resté. Filtres de Caisse › Soldes clients :
+     * nom, code ou téléphone, solde minimum, type de compte.
      *
      * @return Clients[]
      */
-    public function trouverAvecSoldeCredit(): array
+    public function trouverAvecSoldeCredit(string $recherche = '', int $minimum = 0, string $typeCompte = ''): array
     {
-        return $this->createQueryBuilder('c')
+        $qb = $this->createQueryBuilder('c')
             ->andWhere('c.soldeCredit > 0')
-            ->orderBy('c.soldeCredit', 'DESC')
-            ->getQuery()
-            ->getResult();
+            ->orderBy('c.soldeCredit', 'DESC');
+        if ('' !== trim($recherche)) {
+            $qb->andWhere('c.raisonSociale LIKE :q OR c.nom LIKE :q OR c.prenom LIKE :q OR c.code LIKE :q OR c.telephone LIKE :q')
+                ->setParameter('q', '%'.addcslashes(trim($recherche), '%_').'%');
+        }
+        if ($minimum > 0) {
+            $qb->andWhere('c.soldeCredit >= :minimum')->setParameter('minimum', $minimum);
+        }
+        if (\in_array($typeCompte, Clients::TYPES_COMPTE, true)) {
+            $qb->andWhere('c.typeCompte = :type')->setParameter('type', $typeCompte);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**

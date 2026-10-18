@@ -15,6 +15,10 @@ use Doctrine\ORM\Mapping as ORM;
  * de plusieurs factures et acomptes (ReglementEnLigne, « Factures et
  * paiements ») : un paiement par commande à la réception de l'argent.
  *
+ * Il fait aussi un dépôt sur le compte du client à la boutique (« Mon
+ * solde », DepotSoldeClient) : aucun paiement n'est créé, le dépôt passe
+ * « reçu » et la caisse le valide au local.
+ *
  * Le montant est la part de la commande ; le fonds de soutien et le frais
  * de retrait (FraisOrangeMoney) sont payés en plus : Orange reçoit le
  * total, et les frais passent sur le paiement créé.
@@ -33,6 +37,7 @@ class TransactionOrangeMoney
     public const OBJET_ACOMPTE_CONCEPTION = 'acompte_conception';
     public const OBJET_CREDIT_IA = 'credit_ia';
     public const OBJET_REGLEMENT = 'reglement';
+    public const OBJET_DEPOT = 'depot';
 
     /** Le lien de paiement d'Orange vaut 10 minutes. */
     public const VALIDITE_MINUTES = 10;
@@ -62,6 +67,11 @@ class TransactionOrangeMoney
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?ReglementEnLigne $reglement = null;
+
+    /** Dépôt sur le compte du client (« Mon solde »). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?DepotSoldeClient $depot = null;
 
     /** Pack de crédit IA : nombre d'images achetées. */
     #[ORM\Column(nullable: true)]
@@ -152,6 +162,17 @@ class TransactionOrangeMoney
         return $t->avecFrais($reglement->getFondsSoutien(), $reglement->getFraisRetrait());
     }
 
+    /** Dépôt sur le compte du client : le montant et les frais sont ceux du dépôt. */
+    public static function pourDepot(DepotSoldeClient $depot, ?CompteClient $compte, \DateTimeImmutable $creeLe): self
+    {
+        $t = new self(null, $compte, $depot->getMontant(), $depot->getReference(), $creeLe);
+        $t->objet = self::OBJET_DEPOT;
+        $t->depot = $depot;
+        $t->client = $depot->getClient();
+
+        return $t->avecFrais($depot->getFondsSoutien(), $depot->getFraisRetrait());
+    }
+
     /** Frais Orange Money du paiement, calculés par le serveur avant de partir chez Orange. */
     public function avecFrais(int $fondsSoutien, int $fraisRetrait): static
     {
@@ -200,6 +221,14 @@ class TransactionOrangeMoney
         $this->termineeLe = $le;
     }
 
+    /** Dépôt reçu : aucun paiement, le dépôt attend la validation de la caisse. */
+    public function reussirDepot(?string $txnid, \DateTimeImmutable $le): void
+    {
+        $this->statut = self::REUSSIE;
+        $this->txnid = null !== $txnid ? mb_substr($txnid, 0, 60) : null;
+        $this->termineeLe = $le;
+    }
+
     public function terminer(string $statut, \DateTimeImmutable $le): void
     {
         if (self::INITIEE === $this->statut && \in_array($statut, [self::ECHOUEE, self::EXPIREE], true)) {
@@ -213,6 +242,7 @@ class TransactionOrangeMoney
     public function getObjet(): string { return $this->objet; }
     public function getDemandeConception(): ?DemandeConception { return $this->demandeConception; }
     public function getReglement(): ?ReglementEnLigne { return $this->reglement; }
+    public function getDepot(): ?DepotSoldeClient { return $this->depot; }
     public function getClient(): ?Clients { return $this->client ?? $this->commande?->getClients(); }
     public function getPackImages(): ?int { return $this->packImages; }
     public function getCompte(): ?CompteClient { return $this->compte; }

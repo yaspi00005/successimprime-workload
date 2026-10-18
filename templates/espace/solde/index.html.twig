@@ -1,0 +1,139 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Mon solde (EspaceSoldeController), pour qui paie seulement : l'argent
+	laissé à la boutique (monnaie gardée, dépôts), son relevé tel que la
+	boutique le tient, et un dépôt par Orange Money. Le montant et les frais
+	viennent du serveur ; un dépôt en ligne s'ajoute au solde seulement
+	quand la boutique l'a validé.
+#}
+{% block title %}Mon solde{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}
+	<link href="{{ asset('css/espace-factures.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/espace-solde.css') }}" rel="stylesheet">
+{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_factures') }}"><span class="fl">‹</span>Mon solde</a>{% endblock %}
+
+{% block contenu %}
+	{% set engage = avoir.enValidation + avoir.reserve %}
+
+	<div class="ef-titre ec-bureau">
+		<h1>Mon solde</h1>
+		<a class="ec-bouton-blanc" href="{{ path('app_espace_factures') }}">Factures et paiements</a>
+	</div>
+
+	<div class="ef-grille">
+		<div class="ef-colonne">
+			<section class="ec-carte es-solde" aria-labelledby="es-solde-titre">
+				<small id="es-solde-titre">Solde de mon compte à la boutique</small>
+				<b class="{{ avoir.solde > 0 ? 'vert' }}">{{ avoir.solde|francs }}</b>
+				{% if engage > 0 %}
+					<span>dont {{ engage|francs }} déjà utilisés, en attente de validation · {{ avoir.disponible|francs }} disponible</span>
+				{% endif %}
+				<p class="ef-texte-doux">L'argent que vous avez laissé à la boutique : monnaie gardée à la caisse, dépôts. Il paie vos prochaines commandes, à la caisse ou ici dans « Factures et paiements », ou vous est rendu à la boutique sur demande.</p>
+				{% if avoir.disponible > 0 %}
+					<a class="ec-bouton es-utiliser" href="{{ path('app_espace_factures') }}#a-payer">Payer une facture avec mon solde</a>
+				{% endif %}
+			</section>
+
+			<section class="ec-carte ef-carte-large" id="deposer" aria-labelledby="es-deposer-titre">
+				<div class="ef-entete"><h2 id="es-deposer-titre">Déposer par Orange Money</h2><span class="ec-petit">il s'ajoute à votre solde une fois vérifié par la boutique</span></div>
+				{% if not omActif %}
+					<div class="ec-note">
+						Le dépôt Orange Money depuis l'espace arrive très bientôt. En attendant, déposez à la boutique, en espèces ou par Orange Money : un reçu vous est remis.
+					</div>
+				{% else %}
+					<form method="get" action="{{ path('app_espace_solde') }}#deposer" class="es-montant">
+						<label class="ec-petit" for="es-montant">Montant à mettre sur mon solde</label>
+						<div>
+							<input id="es-montant" name="montant" inputmode="numeric" autocomplete="off" maxlength="12" value="{{ montantSaisi is not null ? montantSaisi }}" placeholder="de {{ minimum|francs }} à {{ maximum|francs }}"{{ erreur ? ' aria-invalid="true" aria-describedby="es-montant-erreur"' }}>
+							<button type="submit" class="ec-bouton-blanc">Voir les frais</button>
+						</div>
+						{% if erreur %}<p class="ef-om-aide ef-om-refus" id="es-montant-erreur" role="alert">{{ erreur }}</p>{% endif %}
+					</form>
+
+					{% if frais %}
+						<dl class="ef-om-frais">
+							<div><dt>Va sur votre solde</dt><dd>{{ frais.montant|francs }}</dd></div>
+							{% if frais.tauxFondsSoutien > 0 %}<div><dt>Fonds de soutien ({{ frais.tauxFondsSoutien|frais_taux }})</dt><dd>{{ frais.fondsSoutien|francs }}</dd></div>{% endif %}
+							{% if frais.tauxFraisRetrait > 0 %}<div><dt>Frais de retrait Orange Money ({{ frais.tauxFraisRetrait|frais_taux }})</dt><dd>{{ frais.fraisRetrait|francs }}</dd></div>{% endif %}
+							<div class="total"><dt>Débité par Orange Money</dt><dd>{{ frais.total|francs }}</dd></div>
+						</dl>
+						{% if frais.frais > 0 %}<p class="ec-petit es-note-frais">Le fonds de soutien (de l'État) et le frais de retrait d'Orange Money s'ajoutent au montant : ils ne vont pas sur votre solde.</p>{% endif %}
+						<ol class="ef-om-etapes">
+							<li>Vous passez sur la page sécurisée d'Orange Money (lien valable {{ constant('App\\Entity\\TransactionOrangeMoney::VALIDITE_MINUTES') }} minutes).</li>
+							<li class="cle">Vous confirmez sur la page Orange Money avec votre code secret.</li>
+							<li>Vous revenez ici : dépôt reçu, puis vérifié par la boutique ; il s'ajoute alors à votre solde.</li>
+						</ol>
+						<p class="ef-om-alerte">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</p>
+						<form method="post" action="{{ path('app_espace_solde_deposer') }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+							<input type="hidden" name="montant" value="{{ frais.montant }}">
+							{# Seulement pour revoir le récapitulatif s'il a changé : le serveur recalcule tout. #}
+							<input type="hidden" name="total" value="{{ frais.total }}">
+							<div class="ef-boutons">
+								<a class="ec-bouton-blanc" href="{{ path('app_espace_solde') }}">Annuler</a>
+								<button type="submit" class="ef-bouton-om">Continuer vers Orange Money · {{ frais.total|francs }}</button>
+							</div>
+						</form>
+					{% endif %}
+				{% endif %}
+			</section>
+
+			{% if depots is not empty %}
+				<section class="ec-carte ef-carte-large" id="depots" aria-labelledby="es-depots-titre">
+					<div class="ef-entete"><h2 id="es-depots-titre">Mes dépôts en ligne</h2></div>
+					<ul class="es-lignes">
+						{% for d in depots %}
+							{% set couleur = {initie: 'bleu', recu: 'ambre', valide: 'vert', rejete: 'rouge'}[d.statut]|default('gris') %}
+							<li>
+								<div>
+									<b>Dépôt Orange Money</b>
+									<small>{{ d.creeLe|date('d/m/Y H:i') }} · réf. {{ d.reference }}</small>
+									<span class="ec-pastille {{ couleur }}">{{ d.statutLabel }}</span>
+								</div>
+								<b class="es-montant-ligne">{{ d.montant|francs }}</b>
+							</li>
+						{% endfor %}
+					</ul>
+					{% if depots|filter(d => d.statut == 'rejete') is not empty %}<p class="ec-petit es-note-frais">Un dépôt refusé n'a rien ajouté à votre solde : écrivez-nous ou passez à la boutique pour en parler.</p>{% endif %}
+				</section>
+			{% endif %}
+
+			<section class="ec-carte ef-carte-large" id="releve" aria-labelledby="es-releve-titre">
+				<div class="ef-entete"><h2 id="es-releve-titre">Relevé de mon solde</h2><span class="ec-petit">tenu par la boutique</span></div>
+				<ul class="es-lignes">
+					{% for l in releve %}
+						<li>
+							<div>
+								<b>{{ l.libelle }}</b>
+								<small>{{ l.creeLe|date('d/m/Y') }}{{ l.reference and l.type not in ['ouverture', 'reprise'] ? ' · réf. ' ~ l.reference }}</small>
+							</div>
+							<div class="es-droite">
+								<b class="es-montant-ligne {{ l.montant >= 0 ? 'plus' : 'moins' }}">{{ l.montant >= 0 ? '+ ' : '− ' }}{{ (l.montant|abs)|francs }}</b>
+								<small>solde {{ l.soldeApres|francs }}</small>
+							</div>
+						</li>
+					{% else %}
+						<li class="ef-vide">Aucun mouvement pour l'instant. À la caisse, vous pouvez laisser votre monnaie sur votre compte : elle apparaîtra ici.</li>
+					{% endfor %}
+				</ul>
+			</section>
+		</div>
+
+		<aside class="ef-colonne">
+			<section class="ec-carte">
+				<h2>À la boutique</h2>
+				<div class="ef-moyen"><span class="sigle esp" aria-hidden="true">F</span><div><b>Monnaie gardée</b><small>À la caisse, demandez de garder la monnaie sur votre compte plutôt que de la reprendre.</small></div></div>
+				<div class="ef-moyen"><span class="sigle om" aria-hidden="true">OM</span><div><b>Dépôt en espèces ou Orange Money</b><small>Un reçu vous est remis{{ marchand ? ' · numéro marchand ' ~ marchand }}.</small></div></div>
+				<div class="ef-moyen"><span class="sigle vir" aria-hidden="true">↩</span><div><b>Récupérer votre argent</b><small>Sur demande à la boutique, avec un reçu à signer.</small></div></div>
+			</section>
+			<section class="ec-carte">
+				<h2>Bon à savoir</h2>
+				<p class="ef-texte-doux">Votre solde ne baisse que lorsque vous l'utilisez pour payer, ou quand la boutique vous le rend.</p>
+				<p class="ef-texte-doux">Un dépôt en ligne apparaît « reçu, en attente de validation » : la boutique vérifie l'arrivée de l'argent puis l'ajoute à votre solde.</p>
+			</section>
+		</aside>
+	</div>
+{% endblock %}

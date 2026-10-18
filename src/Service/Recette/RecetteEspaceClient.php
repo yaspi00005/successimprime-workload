@@ -9,6 +9,7 @@ use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Entity\ControlePrePresse;
 use App\Entity\CreationAtelier;
+use App\Entity\DepotSoldeClient;
 use App\Entity\DemandeConception;
 use App\Entity\Devis;
 use App\Entity\Factures;
@@ -74,6 +75,8 @@ final class RecetteEspaceClient
         'app_espace_facture_detail' => 'facture_uuid',
         'app_espace_facture_recu' => 'paiement',
         'app_espace_payer_recu' => 'reglement',
+        // Mon solde : retour d'Orange Money après un dépôt.
+        'app_espace_solde_retour' => 'depot',
         'app_espace_fichier' => 'fichier',
         'app_espace_bat' => 'bat',
         'app_espace_bat_fichier' => 'bat_fichier',
@@ -93,6 +96,7 @@ final class RecetteEspaceClient
         'app_espace_factures', 'app_espace_facture_pdf', 'app_espace_payer', 'app_espace_conception_credit',
         'app_espace_facture_detail', 'app_espace_facture_recu', 'app_espace_facture_releve', 'app_espace_payer_selection', 'app_espace_payer_recu',
         'app_espace_nouvelle_commande_paiement',
+        'app_espace_solde', 'app_espace_solde_retour',
     ];
 
     /** Pages où un prix est voulu pour qui voit les montants (valideur) : catalogue et prix du jour. */
@@ -278,6 +282,7 @@ final class RecetteEspaceClient
             'facture_uuid' => [] === $factures ? null : self::uuid($factures[0]->getPublicId()),
             'paiement' => $this->paiementValide($client),
             'reglement' => $this->premiere(ReglementEnLigne::class, $client, '1 = 1', 'reference'),
+            'depot' => $this->premiere(DepotSoldeClient::class, $client, '1 = 1', 'reference'),
             'fichier' => $this->premiere(CommandeDetailFichier::class, $client, 'e.actif = true'),
             'bat' => [] === $bats ? null : $bats[0]->getId(),
             'bat_attente' => [] === $batsEnAttente ? null : $batsEnAttente[0]->getId(),
@@ -521,7 +526,7 @@ final class RecetteEspaceClient
             $parametres = ['id' => $valeur];
             if ('notification' === $sorte) {
                 $parametres = ['cle' => $valeur];
-            } elseif ('reglement' === $sorte) {
+            } elseif ('reglement' === $sorte || 'depot' === $sorte) {
                 $parametres = ['reference' => $valeur];
             } elseif ('image' === $sorte) {
                 $parametres['taille'] = 'v';
@@ -693,6 +698,24 @@ final class RecetteEspaceClient
             $bilan->controler('Espace client : '.$libelle.' (sans le droit valideur) accepte un devis', $ok, $chemin.' → '.$reponse->etat());
             if (!$ok) {
                 $bilan->constater(BilanRecette::FUITE, 'valideur', 'app_espace_devis_accepter', $chemin, $libelle, 'devis accepté sans le droit valideur');
+            }
+        }
+        // Mon solde : un dépôt Orange Money seulement par qui paie ; sinon refusé, et aucun dépôt créé.
+        if (null !== $this->routeur->getRouteCollection()->get('app_espace_solde_deposer')) {
+            $chemin = $this->routeur->generate('app_espace_solde_deposer');
+            foreach (['valideur', 'demandeur', 'lecture'] as $libelle) {
+                if (!isset($comptes[$libelle], $sessions[$libelle])) {
+                    continue;
+                }
+                $jeton = $this->jeton($sessions[$libelle]) ?? $this->jeton($sessions['titulaire'] ?? $sessions[$libelle]);
+                $avant = (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM depot_solde_client');
+                $reponse = $this->navigateur->post($chemin, ['_token' => (string) $jeton, 'montant' => '5000', 'total' => '5100'], $sessions[$libelle]);
+                $crees = (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM depot_solde_client') - $avant;
+                $ok = Reponse::REFUSE === $reponse->etat() && 0 === $crees;
+                $bilan->controler('Espace client : '.$libelle.' (sans le droit payeur) dépose sur Mon solde', $ok, $chemin.' → '.$reponse->etat().($crees > 0 ? ', dépôt créé' : ''));
+                if (!$ok) {
+                    $bilan->constater(BilanRecette::FUITE, 'payeur', 'app_espace_solde_deposer', $chemin, $libelle, 'dépôt sur Mon solde lancé sans le droit payeur ('.$reponse->etat().')');
+                }
             }
         }
         foreach (['valideur', 'payeur'] as $libelle) {

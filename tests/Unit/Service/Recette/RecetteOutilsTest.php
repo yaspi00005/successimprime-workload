@@ -5,6 +5,7 @@ namespace App\Tests\Unit\Service\Recette;
 use App\Service\Guide\CatalogueGuide;
 use App\Service\Recette\BilanRecette;
 use App\Service\Recette\DroitsRoute;
+use App\Service\Recette\NavigateurInterne;
 use App\Service\Recette\ParametresRoute;
 use App\Service\Recette\RapportRecette;
 use App\Service\Recette\RecetteAcces;
@@ -13,6 +14,8 @@ use App\Service\Recette\RecetteVisiteur;
 use App\Service\Recette\Reponse;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpKernel\EventListener\ControllerAttributesListener;
+use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Route;
 
 /** Règles de la recette des accès qui ne touchent ni la base ni le noyau. */
@@ -181,5 +184,16 @@ final class RecetteOutilsTest extends TestCase
         $parametres = new ParametresRoute($this->createStub(EntityManagerInterface::class));
         self::assertSame(\count(CatalogueGuide::fiches()), \count((array) $parametres->remplir('app_aide_fiche', new Route('/aide/{cle}'))));
         self::assertContains(['nom' => 'remise'], (array) $parametres->remplir('app_aide_capture', new Route('/aide/capture/{nom}.webp')));
+    }
+
+    /**
+     * Une page « arrivée au contrôleur » doit avoir passé #[IsGranted] : sinon un
+     * envoi refusé par l'attribut serait compté comme accepté (fausse fuite) ou un
+     * contrôle « refusé » passerait sans rien prouver.
+     */
+    public function testInterceptionApresLesAttributsDuControleur(): void
+    {
+        $evenements = ControllerAttributesListener::getSubscribedEvents()[KernelEvents::CONTROLLER_ARGUMENTS];
+        self::assertLessThan($evenements[1], NavigateurInterne::PRIORITE_INTERCEPTION);
     }
 }

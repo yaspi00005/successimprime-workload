@@ -6,6 +6,7 @@ use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\ImportDonnees;
 use App\Entity\ModificationClient;
+use App\Entity\MouvementSoldeClient;
 use App\Entity\Paiements;
 use App\Entity\SoldeOuverture;
 
@@ -20,7 +21,8 @@ use App\Entity\SoldeOuverture;
  *   d'affaires, des statistiques, de la fidélité, des promotions et des
  *   primes.
  * - Il avait une avance (montant négatif) : elle s'ajoute à son solde
- *   client (la monnaie gardée par la boutique), sans entrée d'argent.
+ *   client (la monnaie gardée par la boutique), sans entrée d'argent, et
+ *   au relevé de son compte (« Solde d'ouverture »).
  */
 final class ImportSoldesClients extends ImportSoldes
 {
@@ -166,6 +168,7 @@ final class ImportSoldesClients extends ImportSoldes
                 $avant = $client->getSoldeCredit();
                 $client->setSoldeCredit($avant - $montant);
                 $this->em->persist(new ModificationClient($client, 'Solde client', 'conditions', Valeurs::francs($avant), Valeurs::francs($client->getSoldeCredit()).' (solde d\'ouverture)', $contexte->maintenant, $contexte->par, 'import', $contexte->parNom));
+                $this->em->persist(MouvementSoldeClient::nouveau($client, MouvementSoldeClient::OUVERTURE, -$montant, $client->getSoldeCredit(), $contexte->par, $contexte->maintenant, $contexte->parNom)->setReference('Import n° '.$import->getId()));
             }
             $this->em->persist($solde);
             $enregistres[] = [$ligne, $solde];
@@ -221,6 +224,7 @@ final class ImportSoldesClients extends ImportSoldes
                 $avant = $client->getSoldeCredit();
                 $client->setSoldeCredit($avant - $s->getMontant());
                 $this->em->persist(new ModificationClient($client, 'Solde client', 'conditions', Valeurs::francs($avant), Valeurs::francs($client->getSoldeCredit()).' (import annulé)', $contexte->maintenant, $contexte->par, 'import', $contexte->parNom));
+                $this->em->persist(MouvementSoldeClient::nouveau($client, MouvementSoldeClient::OUVERTURE, $client->getSoldeCredit() - $avant, $client->getSoldeCredit(), $contexte->par, $contexte->maintenant, $contexte->parNom)->setReference('Import n° '.$import->getId().' annulé'));
             }
             $s->annuler($contexte->maintenant);
         }

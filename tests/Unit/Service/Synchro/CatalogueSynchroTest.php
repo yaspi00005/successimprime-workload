@@ -141,6 +141,52 @@ final class CatalogueSynchroTest extends TestCase
         }
     }
 
+    /**
+     * Compte du client (docs/finances.md) : le relevé descend en lecture
+     * seule, sans motif, employé, paiement ni mouvement de trésorerie ; un
+     * dépôt Orange Money de l'espace client ne monte qu'une fois reçu par
+     * Orange, toujours « à valider », et la décision de la boutique descend.
+     */
+    public function testCompteDuClient(): void
+    {
+        $types = CatalogueSynchro::types();
+        $releve = $types['solde_mouvement'];
+        self::assertSame(\App\Entity\MouvementSoldeClient::class, $releve['classe']);
+        self::assertSame(CatalogueSynchro::DESCENDANT, $releve['sens']);
+        self::assertSame(['type', 'montant', 'soldeApres', 'mode', 'reference', 'creeLe'], $releve['champs']);
+        self::assertSame(['client' => 'client', 'commande' => 'commande'], $releve['relations']);
+        foreach (['motif', 'par', 'parNom', 'paiement', 'mouvementTresorerie', 'depot'] as $interdit) {
+            self::assertNotContains($interdit, $releve['champs'], $interdit);
+            self::assertArrayNotHasKey($interdit, $releve['relations'], $interdit);
+        }
+        self::assertFalse(CatalogueSynchro::accepte('solde_mouvement', false), 'le site n\'écrit jamais le relevé');
+        self::assertContains('soldeCredit', $types['client']['champs'], 'le solde descend avec la fiche');
+
+        $depot = $types['solde_depot'];
+        self::assertSame(CatalogueSynchro::DEUX, $depot['sens']);
+        self::assertTrue(CatalogueSynchro::accepte('solde_depot', false));
+        foreach (['motifRejet', 'traitePar'] as $interdit) {
+            self::assertNotContains($interdit, $depot['champs'], $interdit);
+            self::assertArrayNotHasKey($interdit, $depot['relations'], $interdit);
+        }
+        self::assertSame(\App\Entity\DepotSoldeClient::RECU, $depot['imposeAuLocal']['statut'], 'arrivé du site : toujours à valider');
+        self::assertArrayHasKey('traiteLe', $depot['imposeAuLocal']);
+        $d = \App\Entity\DepotSoldeClient::nouveau(new Clients(), 5000, 50, 50, 'SI261018101000ABCDEF', 'Amadou Sow', new \DateTimeImmutable());
+        self::assertFalse(($depot['pret'])($d), 'pas avant la confirmation d\'Orange');
+        $d->recevoir('MP1', new \DateTimeImmutable());
+        self::assertTrue(($depot['pret'])($d));
+        self::assertSame('solde_depot', CatalogueSynchro::typeDe($d));
+
+        // Chargés après le client et la commande qu'ils référencent.
+        $ordre = array_keys($types);
+        self::assertGreaterThan(array_search('client', $ordre, true), array_search('solde_mouvement', $ordre, true));
+        self::assertGreaterThan(array_search('client', $ordre, true), array_search('solde_depot', $ordre, true));
+        // La transaction Orange Money du dépôt reste sur le site.
+        foreach ($types as $t) {
+            self::assertNotSame(\App\Entity\TransactionOrangeMoney::class, $t['classe']);
+        }
+    }
+
     public function testDecisionsDuClientEnLigne(): void
     {
         // Accepter un devis envoyé : repris au local. Le reste : conflit.

@@ -92,7 +92,7 @@ Le choix : la représentation **la moins invasive** qui garde chaque écran just
 | Solde | Ce qui est créé | Où on le voit |
 |---|---|---|
 | Un client devait de l'argent | une **commande marquée solde d'ouverture** (`commandes.solde_ouverture = 1`) : numéro `SO-<code client>`, montant = total TTC, **sans lignes, sans facture, sans TVA, sans travail** (`etat = 0`), date = jour d'ouverture, échéance = date de livraison (jour d'ouverture si vide) | fiche client (solde dû, ligne « Solde d'ouverture · Repris à l'import », historique), créances (avec son échéance et son ancienneté), caisse et page de paiement (« Solde d'ouverture »), relevé et PDF des impayés, espace client du payeur ; sa page (`/commandes/{id}`) montre le montant, les règlements et l'import d'origine |
-| Un client avait versé une avance | son **solde client** (`clients.solde_credit`) augmente, noté au journal de la fiche | fiche client ; il se consomme comme tout solde client (paiement « solde client ») |
+| Un client avait versé une avance | son **solde client** (`clients.solde_credit`) augmente, noté au journal de la fiche et au relevé de son compte (« Solde d'ouverture », docs/finances.md, « Compte du client ») | fiche client, onglet « Compte » ; il se consomme comme tout solde client (paiement « solde client ») |
 | Argent d'un compte de trésorerie | le **solde initial** du compte (et son solde actuel), comme s'il avait été saisi à sa création | journal du compte, caisse du jour, trésorerie, prévision |
 | La boutique devait à un fournisseur | une **dépense « à payer »**, catégorie matières, approuvée, marquée solde d'ouverture, avec l'échéance | échéancier et prévision de trésorerie, fiche de la dépense (« Solde d'ouverture » à la place du reçu) ; elle se paie comme une autre (décaissement, compte 401) |
 
@@ -101,7 +101,7 @@ Chaque solde a aussi sa ligne `solde_ouverture` (type, montant, jour d'ouverture
 | Solde | Débit | Crédit |
 |---|---|---|
 | Créance client | 411 client (lettrée avec ses règlements quand elle est soldée) | 471 |
-| Avance client | 471 | 411 client |
+| Avance client | 471 | 4191 client (avances reçues, comme le compte du client) |
 | Compte de trésorerie | 571 caisse, 521 banque, 5213 Orange Money, 5214 Wave | 471 |
 | Dette fournisseur | 471 | 401 fournisseur |
 

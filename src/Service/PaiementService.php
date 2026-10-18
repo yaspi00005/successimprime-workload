@@ -9,6 +9,7 @@ use App\Entity\Paiements;
 use App\Entity\User;
 use App\Service\Import\Valeurs;
 use App\Service\Paiement\ComptesOrangeMoney;
+use App\Service\Paiement\SoldeClient;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -18,6 +19,7 @@ final class PaiementService
         private readonly EntityManagerInterface $entityManager,
         private readonly MouvementTresorerieService $mouvementTresorerieService,
         private readonly ?ComptesOrangeMoney $comptesOrangeMoney = null,
+        private readonly ?SoldeClient $soldeClient = null,
     ) {
     }
 
@@ -160,11 +162,19 @@ final class PaiementService
      * déjà à la boutique), le solde du client baisse du montant, et la fiche
      * le note dans son journal. Refusé si le solde ne suffit plus ou si le
      * montant dépasse ce qui reste dû sur la commande.
+     *
+     * Le compte du client (SoldeClient) écrit aussi la ligne de son relevé.
      */
     public function validerAvoir(
         Paiements $paiement,
         User $utilisateur
     ): void {
+        if ($this->soldeClient !== null) {
+            $this->soldeClient->validerAvoir($paiement, $utilisateur);
+
+            return;
+        }
+
         if ($paiement->getMode() !== Paiements::MODE_SOLDE_CLIENT) {
             throw new \LogicException('Ce paiement n’utilise pas le solde du client.');
         }
@@ -254,6 +264,16 @@ final class PaiementService
             throw new \LogicException(
                 'Un paiement non enregistré ne peut pas être annulé.'
             );
+        }
+
+        /*
+         * Payé avec le solde du client : aucun compte de trésorerie,
+         * le montant revient à son compte (ligne « retour » du relevé).
+         */
+        if ($paiement->getMode() === Paiements::MODE_SOLDE_CLIENT && $this->soldeClient !== null) {
+            $this->soldeClient->annulerUtilisation($paiement, $motif, $utilisateur);
+
+            return;
         }
 
         $connexion = $this->entityManager->getConnection();

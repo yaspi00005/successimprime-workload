@@ -48,7 +48,7 @@
 										<td class="si-valider-case si-v-case"><input type="checkbox" class="form-check-input" name="operations[]" value="{{ op.cle }}" id="op-{{ op.cle }}" aria-label="Choisir {{ op.type }} {{ op.montant|number_format(0, ',', ' ') }} F"></td>
 										<td class="text-nowrap si-v-date"><label for="op-{{ op.cle }}">{{ op.date ? op.date|date('d/m') : '—' }}<small class="d-block">{{ op.date ? op.date|date('H:i') }}</small></label></td>
 										<td class="si-v-type">
-											<a href="{{ path(op.lien.route, {id: op.lien.id}) }}">{{ op.type }}</a>
+											<a href="{{ path(op.lien.route, op.lien.parametres|default({id: op.lien.id})) }}">{{ op.type }}</a>
 											{% if op.compte_impose|default(false) %}
 												{# Payé avec l’API Orange Money : toujours sur le compte « Orange Money en ligne ». #}
 												{% for nom in op.comptes %}

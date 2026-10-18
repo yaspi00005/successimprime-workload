@@ -275,3 +275,6 @@
   .ec-haut, .ec-menu, .ec-onglets, .ef-detail-actions, .ef-tout { display: none !important; }
   .ec-page { margin: 0; padding: 0; }
 }
+
+/* Lien de la tuile « Avoir disponible » vers Mon solde (espace-solde). */
+.ef-tuile .ef-tuile-lien { display: inline-block; margin-top: .35rem; font-size: .82rem; font-weight: 800; color: var(--bleu); }

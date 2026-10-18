@@ -14,6 +14,7 @@ use App\Entity\CommandeDetailFichier;
 use App\Entity\CompteFidelite;
 use App\Entity\Conception;
 use App\Entity\DemandeConception;
+use App\Entity\DepotSoldeClient;
 use App\Entity\CreationAtelier;
 use App\Entity\DemandeDevis;
 use App\Entity\ControlePrePresse;
@@ -31,6 +32,7 @@ use App\Entity\MessageClient;
 use App\Entity\ModeleAtelier;
 use App\Entity\MouvementCreditIa;
 use App\Entity\MouvementFidelite;
+use App\Entity\MouvementSoldeClient;
 use App\Entity\NoteArticleSondage;
 use App\Entity\ProduitClient;
 use App\Entity\PromoReveil;
@@ -457,6 +459,25 @@ final class CatalogueSynchro
                 'relations' => ['commande' => 'commande', 'facture' => 'facture', 'societe' => 'societe'], 'listes' => [],
                 'filtres' => ['numeroRecu' => [Paiements::class, 'numeroRecuEnvoye']],
                 'imposeAuLocal' => ['statut' => Paiements::STATUT_EN_ATTENTE, 'dateValidation' => null, 'dateAnnulation' => null, 'numeroRecu' => null],
+            ],
+            // Compte du client à la boutique (docs/finances.md, « Compte du client ») : le relevé de son solde
+            // (Clients::soldeCredit, qui descend avec la fiche), tenu au local, lu en ligne par le payeur (« Mon
+            // solde »). Le motif, l'employé, le paiement et le mouvement de trésorerie restent au local.
+            'solde_mouvement' => [
+                'classe' => MouvementSoldeClient::class, 'sens' => self::DESCENDANT, 'libelle' => 'Mouvement du solde client', 'titre' => ['type', 'montant'],
+                'champs' => ['type', 'montant', 'soldeApres', 'mode', 'reference', 'creeLe'],
+                'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'facultatives' => ['commande'],
+            ],
+            // Dépôt Orange Money fait par le client depuis « Mon solde » : il monte « reçu » une fois l'argent
+            // confirmé par Orange (jamais avant), la caisse le valide ou le refuse au local et la décision
+            // redescend. Le motif du refus et l'employé restent au local.
+            'solde_depot' => [
+                'classe' => DepotSoldeClient::class, 'sens' => self::DEUX, 'libelle' => 'Dépôt sur le compte client', 'titre' => ['reference'],
+                'champs' => ['auteur', 'montant', 'fondsSoutien', 'fraisRetrait', 'reference', 'txnid', 'statut', 'creeLe', 'recuLe', 'traiteLe'],
+                'relations' => ['client' => 'client'], 'listes' => [],
+                'pret' => static fn (DepotSoldeClient $d): bool => $d->estPret(),
+                // Arrivé du site : toujours à valider par la caisse.
+                'imposeAuLocal' => ['statut' => DepotSoldeClient::RECU, 'traiteLe' => null],
             ],
             // Rappels de paiement (docs/espace-client.md, « Factures et paiements ») : le client voit dans le détail
             // d'une facture les rappels envoyés et le prochain. D'une règle, seuls le délai, le type et l'état

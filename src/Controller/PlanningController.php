@@ -376,7 +376,7 @@ final class PlanningController extends AbstractController
             'direction' => $direction,
             'voitMontants' => $this->planning->voitMontants(),
             'comptes' => $this->planning->voitMontants() ? $this->em->getRepository(CompteTresorerie::class)->findBy(['actif' => true], ['id' => 'ASC']) : [],
-            'categoriesDepense' => array_filter(MouvementTresorerie::CATEGORIES_LABELS, static fn (string $k): bool => !\in_array($k, [MouvementTresorerie::CATEGORIE_VENTE, MouvementTresorerie::CATEGORIE_AUTRE_PRODUIT, MouvementTresorerie::CATEGORIE_TRANSFERT_INTERNE, MouvementTresorerie::CATEGORIE_AJUSTEMENT, MouvementTresorerie::CATEGORIE_FRAIS_ORANGE], true), \ARRAY_FILTER_USE_KEY),
+            'categoriesDepense' => array_filter(MouvementTresorerie::CATEGORIES_LABELS, static fn (string $k): bool => !\in_array($k, [MouvementTresorerie::CATEGORIE_VENTE, MouvementTresorerie::CATEGORIE_AUTRE_PRODUIT, MouvementTresorerie::CATEGORIE_TRANSFERT_INTERNE, MouvementTresorerie::CATEGORIE_AJUSTEMENT, MouvementTresorerie::CATEGORIE_FRAIS_ORANGE, MouvementTresorerie::CATEGORIE_AVANCE_CLIENT], true), \ARRAY_FILTER_USE_KEY),
             'jeton' => self::CSRF,
         ]);
     }

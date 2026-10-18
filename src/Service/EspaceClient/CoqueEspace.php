@@ -59,7 +59,7 @@ final class CoqueEspace implements ResetInterface
         ['cle' => 'fichiers', 'route' => 'app_espace_fichiers', 'libelle' => 'Fichiers et BAT', 'icone' => 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4',
             'pages' => ['app_espace_fichier', 'app_espace_bat'], 'visible' => self::VISIBLE_TOUS, 'onglet' => 'fichiers'],
         ['cle' => 'factures', 'route' => 'app_espace_factures', 'libelle' => 'Factures et paiements', 'icone' => 'M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 10h18M7 15h4',
-            'pages' => ['app_espace_facture', 'app_espace_payer'], 'visible' => self::VISIBLE_PAYEUR, 'onglet' => 'factures'],
+            'pages' => ['app_espace_facture', 'app_espace_payer', 'app_espace_solde'], 'visible' => self::VISIBLE_PAYEUR, 'onglet' => 'factures'],
         ['cle' => 'livraisons', 'route' => 'app_espace_livraisons', 'libelle' => 'Livraisons', 'icone' => 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9h16M8 2v4M16 2v4',
             'pages' => ['app_espace_livraisons'], 'visible' => self::VISIBLE_TOUS, 'onglet' => 'commandes'],
         ['cle' => 'messages', 'route' => 'app_espace_messages', 'libelle' => 'Messages', 'icone' => 'M4 5h16v11H9l-5 4z',

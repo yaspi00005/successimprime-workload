@@ -6,6 +6,7 @@ use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Entity\DemandeConception;
+use App\Entity\DepotSoldeClient;
 use App\Entity\Paiements;
 use App\Entity\ParametresPaiement;
 use App\Entity\ReglementEnLigne;
@@ -36,7 +37,9 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * la réception de l'argent, par CommandesConception. Et un règlement de
  * plusieurs factures et acomptes (ReglementsEnLigne) : un paiement par
  * commande à la réception de l'argent, par PaiementsDuReglement ; le même
- * règlement sert à l'acompte payé à la commande (PaiementALaCommande).
+ * règlement sert à l'acompte payé à la commande (PaiementALaCommande). Et un
+ * dépôt sur le compte du client (« Mon solde ») : le dépôt passe « reçu »,
+ * la caisse le valide au local (SoldeClient::validerDepot).
  *
  * Chaque paiement porte le fonds de soutien et le frais de retrait
  * (FraisOrangeMoney, taux de Réglages › Paiements, 1 % et 1 % tant que le
@@ -51,6 +54,10 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 final class OrangeMoney
 {
     private const OAUTH = 'https://api.orange.com/oauth/v3/token';
+
+    /** Bornes d'un dépôt sur le compte du client depuis l'espace client. */
+    public const DEPOT_MINIMUM = 500;
+    public const DEPOT_MAXIMUM = 2000000;
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -266,6 +273,38 @@ final class OrangeMoney
             null !== $brouillon
                 ? $this->urls->generate('app_espace_nouvelle_commande_paiement', ['id' => (string) $brouillon->getPublicId(), 'annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL)
                 : $this->urls->generate('app_espace_factures', ['annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
+        );
+    }
+
+    /**
+     * Dépôt sur le compte du client depuis « Mon solde » : le montant va
+     * au solde (une fois validé à la boutique), les frais sont payés en
+     * plus. Un lien encore valable pour le même montant est repris.
+     *
+     * @throws \DomainException message à montrer au client
+     */
+    public function demarrerDepot(Clients $client, CompteClient $compte, int $montant, \DateTimeImmutable $maintenant): TransactionOrangeMoney
+    {
+        if (!$this->estConfigure()) {
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert : déposez à la boutique.');
+        }
+        if ($montant < self::DEPOT_MINIMUM || $montant > self::DEPOT_MAXIMUM) {
+            throw new \DomainException(\sprintf('Un dépôt va de %s à %s F.', number_format(self::DEPOT_MINIMUM, 0, ',', ' '), number_format(self::DEPOT_MAXIMUM, 0, ',', ' ')));
+        }
+        $frais = $this->frais($montant);
+        foreach ($this->em->getRepository(TransactionOrangeMoney::class)->findBy(['client' => $client, 'objet' => TransactionOrangeMoney::OBJET_DEPOT, 'statut' => TransactionOrangeMoney::INITIEE], ['id' => 'DESC'], 1) as $ouverte) {
+            if (self::reprendre($ouverte, $frais, $maintenant)) {
+                return $ouverte;
+            }
+        }
+        $depot = DepotSoldeClient::nouveau($client, $montant, $frais->fondsSoutien, $frais->fraisRetrait, self::nouvelOrderId($maintenant), $compte->getNomAffiche(), $maintenant);
+        $this->em->persist($depot);
+        $transaction = TransactionOrangeMoney::pourDepot($depot, $compte, $maintenant);
+
+        return $this->ouvrirChezOrange(
+            $transaction,
+            $this->urls->generate('app_espace_solde_retour', ['reference' => $depot->getReference()], UrlGeneratorInterface::ABSOLUTE_URL),
+            $this->urls->generate('app_espace_solde', ['annule' => 1], UrlGeneratorInterface::ABSOLUTE_URL),
         );
     }
 
@@ -631,6 +670,19 @@ final class OrangeMoney
         }
         if (TransactionOrangeMoney::OBJET_REGLEMENT === $transaction->getObjet()) {
             $this->appliquerReglement($transaction, $statut, $txnid, $maintenant);
+
+            return;
+        }
+        if (TransactionOrangeMoney::OBJET_DEPOT === $transaction->getObjet()) {
+            // Dépôt sur le compte du client : « reçu », la caisse le valide au local (jamais ici).
+            if ('SUCCESS' === $statut) {
+                $transaction->getDepot()?->recevoir($txnid, $maintenant);
+                $transaction->reussirDepot($txnid, $maintenant);
+            } elseif ('FAILED' === $statut || 'EXPIRED' === $statut) {
+                $transaction->terminer('FAILED' === $statut ? TransactionOrangeMoney::ECHOUEE : TransactionOrangeMoney::EXPIREE, $maintenant);
+                $transaction->getDepot()?->echouer($maintenant);
+            }
+            $this->em->flush();
 
             return;
         }

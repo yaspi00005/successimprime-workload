@@ -7,6 +7,7 @@ use App\Entity\BonLivraison;
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
+use App\Entity\ConversationClient;
 use App\Entity\CommandesDetails;
 use App\Entity\ControlePrePresse;
 use App\Entity\DemandeConception;
@@ -30,6 +31,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use App\Service\Corbeille\CaptureCorbeille;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\NotificationsClient;
+use App\Service\Messagerie\Conversations;
 use App\Service\NotificationService;
 use App\Service\Parametres\CatalogueParametres;
 use App\Service\Parametres\ReglagesSaisie;
@@ -75,6 +77,8 @@ final class Synchro
         #[AutowireServiceClosure(DemandesSite::class)] private readonly \Closure $demandesSite,
         /** @var \Closure(): ReglagesSaisie (paliers des frais de livraison, contrôle des commandes en ligne) */
         #[AutowireServiceClosure(ReglagesSaisie::class)] private readonly \Closure $reglagesSaisie,
+        /** @var \Closure(): Conversations (messages des clients : conversation, responsable, chronomètre) */
+        #[AutowireServiceClosure(Conversations::class)] private readonly \Closure $conversations,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(SYNC_URL)%')] private readonly string $url,
         #[Autowire('%env(SYNC_CLE)%')] private readonly string $cle,
@@ -418,9 +422,10 @@ final class Synchro
                         $this->notifications->notifierRoles(['ROLE_CLIENT'], \sprintf('Réclamation %s de %s : %s', $entite->getNumero(), $entite->getClient()?->getNomComplet() ?? 'un client', $entite->getObjet()), 'app_reclamations_clients_voir', ['id' => $entite->getId()]);
                         $resultat = [self::RESULTAT_OK, 'Réclamation du client : à traiter', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof MessageClient) {
-                        // Message écrit dans l'espace client (Messages) : l'équipe répond depuis Clients › Messages.
+                        // Message écrit dans l'espace client (Messages) : sa conversation attend une réponse, le chronomètre
+                        // part de l'heure où le client a écrit et le responsable est prévenu (docs/messagerie-clients.md).
                         $this->em->flush();
-                        $this->notifications->notifierRoles(['ROLE_CLIENT'], \sprintf('Message de %s (%s) : « %s »', $entite->getAuteur() ?? 'un client', $entite->getClient()?->getNomComplet() ?? '?', mb_substr($entite->getTexte(), 0, 100)), 'app_messages_clients_voir', ['publicId' => $entite->getClient()?->getPublicId()]);
+                        ($this->conversations)()->recevoirDuClient($entite, new \DateTimeImmutable());
                         $resultat = [self::RESULTAT_OK, 'Message du client : à lire', $titre];
                     } elseif (!$this->enLigne && $existante === null && $entite instanceof PropositionClient) {
                         // Raison sociale ou NIF à changer : jamais appliqué tout seul, l'équipe décide sur la fiche.
@@ -766,6 +771,15 @@ final class Synchro
             } elseif (!$entite->isStatut()) {
                 // Refusée par l'entreprise avant toute confirmation : elle ne vient pas à l'atelier.
                 $entite->setDeleted(true);
+            }
+        }
+        if ($entite instanceof ConversationClient) {
+            // Décision du client sur sa demande : une note hors 1 à 5 est écartée ; clôturée, plus rien n'attend de réponse.
+            if (null !== $entite->getAvis() && ($entite->getAvis() < 1 || $entite->getAvis() > 5)) {
+                $this->em->getClassMetadata(ConversationClient::class)->setFieldValue($entite, 'avis', null);
+            }
+            if (ConversationClient::CLOTUREE === ($remontees['statut'][1] ?? null)) {
+                $entite->setAttenteDepuis(null);
             }
         }
         if ($entite instanceof Clients) {

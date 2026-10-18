@@ -27,6 +27,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Client (espace client en ligne)
 
+- [ ] Messages : une conversation par commande, nom, métier et initiales (ou photo) de l'agent, « répondu en X min » ; « Oui, c'est résolu » clôture, étoiles, « Rouvrir » 7 jours ; un demandeur (Mariam Dembélé) voit « … » à la place des montants ; un compte Lecture · suivi n'a pas Messages.
 - [ ] Connexion par numéro et mot de passe ; 5 essais faux bloquent 15 minutes.
 - [ ] « Recevoir un code » : par e-mail si la fiche a une adresse, sinon par SMS ; destination masquée ; puis choix du mot de passe obligatoire.
 - [ ] Fiche client (ERP local) › « Envoyer l'accès à l'espace client » : message WhatsApp avec identifiant, code et lien ; première connexion avec ce code, mot de passe obligatoire et e-mail facultatif ; le même code ne sert pas deux fois.
@@ -48,6 +49,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Direction (demo.kadiatou)
 
+- [ ] Clients › Supervision des messages : semaine, 1re réponse médiane, retards par personne (points retirés), « En retard en ce moment » › Relancer ; Règles de réponse enregistrées (30 min, 1 h, escalade 2 h, −5 pts, 72 h).
 - [ ] Tableau de bord : indicateurs du mois, production, encaissements du jour, alertes (sauvegarde, synchronisation, tâches en retard).
 - [ ] Parcours complet : devis, acceptation, commande, BAT, production, livraison, facture, paiement validé.
 - [ ] Finances F01 à F07 : vue d'ensemble, encaissements, dépenses et budgets, fournisseurs, trésorerie à 90 jours, rentabilité, finances du jour sur téléphone.
@@ -71,6 +73,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 ## Caisse et commercial (demo.aminata, puis demo.fanta)
 
 - [ ] Menu court : Ma journée, Caisse, Mes actions, Clients, Devis et commandes, Encaissements.
+- [ ] Clients › Messages (`docs/messagerie-clients.md`) : seulement ses conversations et les non assignées de son rôle ; « En retard » avec le bandeau rouge et la personne imputée ; une note interne `@Mariam` n'apparaît pas chez le client ; Supervision, Toutes les conversations et Règles de réponse refusées (Direction seulement).
 - [ ] Actions de caisse : une facture échue, un devis sans réponse depuis 48 h puis à J+7, une commande prête ; le lien WhatsApp ouvre un message sans montant pour le devis.
 - [ ] Devis (docs/devis.md) : la liste montre la barre du mois par statut, le taux d'acceptation, l'attente de réponse et « À relancer aujourd'hui » ; « Relancer » ouvre WhatsApp avec le message écrit, sans montant, et la relance s'inscrit dans le suivi. Nouveau devis avec une ligne du catalogue et une ligne libre, conditions, « Envoyer au client » : bandeau « Ouvrir WhatsApp ». « Nouvelle version » puis renvoi : la carte Versions montre les deux. demo.aminata et demo.moussa ne voient pas la carte « Rentabilité » (demo.kadiatou la voit, avec l'alerte sous 25 %).
 - [ ] Encaisser un paiement sur une commande ; il apparaît dans la caisse du jour. La liste des comptes ne montre aucun solde.

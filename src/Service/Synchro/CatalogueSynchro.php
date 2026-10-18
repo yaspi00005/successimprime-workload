@@ -28,6 +28,8 @@ use App\Entity\Paiements;
 use App\Entity\Finition;
 use App\Entity\Format;
 use App\Entity\InvitationSondage;
+use App\Entity\AgentMessagerie;
+use App\Entity\ConversationClient;
 use App\Entity\MessageClient;
 use App\Entity\ModeleAtelier;
 use App\Entity\MouvementCreditIa;
@@ -122,6 +124,8 @@ final class CatalogueSynchro
         // Corbeille : le site en ligne garde les suppressions de l'espace client aussi longtemps que le local.
         'corbeille' => ['duree'],
         // L'assistant tourne en ligne : tous ses réglages y servent (docs/assistant-client.md).
+        // Messages (docs/messagerie-clients.md) : « Réponse en général sous 30 min » et réouverture pendant 7 jours.
+        'messagerie' => ['premiere_minutes', 'reouverture_jours'],
         'assistant' => ['actif', 'message_accueil', 'limite_jour', 'whatsapp', 'delais', 'modele', 'effort', 'taux_usd', 'prix_entree', 'prix_sortie', 'prix_cache_lecture', 'prix_cache_ecriture'],
     ];
 
@@ -534,12 +538,48 @@ final class CatalogueSynchro
             // Messages entre le client et l'atelier (Messages de l'espace client, maquette EC01) : le client
             // écrit en ligne, l'atelier répond au local et la réponse redescend. Texte seulement. Le
             // traitement par l'équipe (traiteLe) et l'employé qui a répondu restent au local.
+            // Qui répond aux clients (docs/messagerie-clients.md) : nom, métier et une vignette de sa photo
+            // (96 px), pour la signature des réponses dans l'espace client. Le compte de l'employé reste au local.
+            'agent_messagerie' => [
+                'classe' => AgentMessagerie::class, 'sens' => self::DESCENDANT, 'libelle' => 'Agent de la messagerie', 'titre' => ['nom'],
+                'champs' => ['nom', 'metier', 'photo', 'majLe'],
+                'relations' => [], 'listes' => [],
+            ],
+            // Une conversation par commande, par devis ou « question générale » (maquettes MS01 à MS05) :
+            // le client l'ouvre, la clôture, la rouvre et la note en ligne ; l'atelier propose la clôture
+            // au local. Responsable, collègues ajoutés, chronomètre et notes internes restent au local.
+            'conversation_client' => [
+                'classe' => ConversationClient::class, 'sens' => self::DEUX, 'libelle' => 'Conversation avec le client', 'titre' => ['objet'],
+                'champs' => [
+                    'objet', 'sujet', 'statut', 'creeLe', 'dernierMessageLe', 'clotureProposeeLe', 'clotureProposeePar',
+                    'clotureeLe', 'clotureePar', 'rouverteLe', 'avis', 'avisLe', 'luClientLe', 'luAtelierLe',
+                ],
+                'relations' => ['client' => 'client', 'commande' => 'commande', 'devis' => 'devis', 'precedente' => 'conversation_client'],
+                'listes' => [], 'facultatives' => ['commande', 'devis', 'precedente'],
+                // Ouverte en ligne : jamais déjà clôturée, notée ni proposée à la clôture.
+                'imposeAuLocal' => [
+                    'statut' => ConversationClient::OUVERTE, 'clotureProposeeLe' => null, 'clotureProposeePar' => null,
+                    'clotureeLe' => null, 'clotureePar' => null, 'avis' => null, 'avisLe' => null, 'luAtelierLe' => null,
+                ],
+                // Décisions du client : « Oui, c'est résolu » / « J'ai encore une question », rouvrir, noter, lire.
+                'remontees' => [
+                    'statut' => [ConversationClient::OUVERTE => [ConversationClient::CLOTUREE], ConversationClient::CLOTUREE => [ConversationClient::OUVERTE]],
+                    'clotureProposeeLe' => null, 'clotureProposeePar' => null, 'clotureeLe' => null, 'clotureePar' => null,
+                    'rouverteLe' => null, 'avis' => null, 'avisLe' => null, 'luClientLe' => null, 'dernierMessageLe' => null,
+                ],
+            ],
             'message_client' => [
                 'classe' => MessageClient::class, 'sens' => self::DEUX, 'libelle' => 'Message du client', 'titre' => ['auteur'],
-                'champs' => ['sens', 'auteur', 'texte', 'creeLe'],
-                'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'facultatives' => ['commande'],
+                // delaiMinutes : « répondu en 12 min », affiché au client. La cible, le retard, la pénalité
+                // et la personne à qui il est imputé restent au local.
+                'champs' => ['sens', 'auteur', 'texte', 'creeLe', 'delaiMinutes'],
+                'relations' => [
+                    'client' => 'client', 'commande' => 'commande', 'conversation' => 'conversation_client',
+                    'agent' => 'agent_messagerie', 'bat' => 'controle', 'facture' => 'facture',
+                ],
+                'listes' => [], 'facultatives' => ['commande', 'conversation', 'agent', 'bat', 'facture'],
                 // Écrit en ligne : toujours un message du client, à traiter par l'équipe.
-                'imposeAuLocal' => ['sens' => MessageClient::CLIENT, 'traiteLe' => null],
+                'imposeAuLocal' => ['sens' => MessageClient::CLIENT, 'traiteLe' => null, 'delaiMinutes' => null, 'agent' => null, 'bat' => null, 'facture' => null],
             ],
             // Raison sociale ou NIF que la personne qui gère le compte demande de changer (Mon compte,
             // maquette EC04) : jamais appliqué en ligne ni à l'arrivée ; l'équipe l'applique ou le refuse

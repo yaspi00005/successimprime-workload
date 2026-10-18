@@ -6,6 +6,7 @@ use App\Entity\RoleUtilisateur;
 use App\Entity\User;
 use App\Security\LivreurSeul;
 use App\Security\LivreurVoter;
+use App\Security\MessagerieVoter;
 use App\Security\ModulesRoles;
 use App\Service\PastillesMenu;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -81,7 +82,11 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Fiches clients', 'route' => 'app_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_clients_', 'app_reclamation_']],
             ['libelle' => 'Prospects', 'route' => 'app_prospects_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_prospects_']],
             ['libelle' => 'Réclamations', 'route' => 'app_reclamations_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_reclamations_clients_']],
-            ['libelle' => 'Messages', 'route' => 'app_messages_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_messages_clients_']],
+            // Messages des clients (docs/messagerie-clients.md) : boîte de l'agent ; supervision, toutes les conversations et règles pour la Direction.
+            ['libelle' => 'Messages', 'route' => 'app_messages_clients_index', 'role' => MessagerieVoter::ROLES_BOITE, 'prefixes' => ['app_messages_clients_']],
+            ['libelle' => 'Supervision des messages', 'route' => 'app_messages_clients_supervision', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_messages_clients_supervision', 'app_messages_clients_relancer']],
+            ['libelle' => 'Toutes les conversations', 'route' => 'app_messages_clients_toutes', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_messages_clients_toutes']],
+            ['libelle' => 'Règles de réponse', 'route' => 'app_messages_clients_regles', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_messages_clients_regles']],
             ['libelle' => 'Sondages et avis', 'route' => 'app_sondages_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_sondages_']],
             ['libelle' => 'Campagnes WhatsApp et SMS', 'route' => 'app_campagne_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_campagne_', 'app_modele_message_', 'app_regle_rappel_paiement_']],
             ['libelle' => 'Crédits SMS et e-mail', 'route' => 'app_credits_messages_index', 'role' => 'ROLE_CREDITS_MESSAGES', 'prefixes' => ['app_credits_messages_']],
@@ -150,6 +155,7 @@ final class NavigationExtension extends AbstractExtension
         'app_caisse_index' => ['Caisse', 'fas fa-cash-register'],
         'app_actions_index' => ['Mes actions', 'far fa-bell'],
         'app_clients_index' => ['Clients', 'fas fa-user-friends'],
+        'app_messages_clients_index' => ['Messages', 'far fa-comment-dots'],
         'app_ventes_index' => ['Devis et commandes', 'far fa-file-alt'],
         'app_finances_encaissements' => ['Encaissements', 'far fa-credit-card'],
         'app_livraisons_suivi' => ['Suivi des livraisons', 'fas fa-truck'],
@@ -181,6 +187,7 @@ final class NavigationExtension extends AbstractExtension
         'app_caisse_index' => 'Caisse',
         'app_actions_index' => 'Actions',
         'app_clients_index' => 'Clients',
+        'app_messages_clients_index' => 'Messages',
         'app_ventes_index' => 'Ventes',
         'app_finances_encaissements' => 'Encaisser',
         'app_livraisons_suivi' => 'Suivi',

@@ -34,7 +34,7 @@
 			<p class="ec-petit">Vos commandes en cours continuent : suivez-les dans « Mes commandes ». Pour une nouvelle commande, demandez un devis, écrivez à l'atelier ou passez en boutique.</p>
 			<p style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.9rem 0 0">
 				<a class="ec-bouton-blanc" href="{{ path('app_site_devis') }}">Demander un devis</a>
-				<a class="ec-bouton-blanc" href="{{ path('app_espace_messages') }}">Écrire à l'atelier</a>
+				<a class="ec-bouton-blanc" href="{{ path('app_espace_messages', {nouvelle: 1}) }}">Écrire à l'atelier</a>
 			</p>
 		</div>
 	{% else %}

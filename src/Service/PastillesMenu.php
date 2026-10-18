@@ -7,7 +7,8 @@ use App\Entity\Commandes;
 use App\Entity\DemandeConception;
 use App\Entity\DemandeEmploye;
 use App\Entity\DemandeExceptionPromotion;
-use App\Entity\MessageClient;
+use App\Entity\ConversationClient;
+use App\Security\MessagerieVoter;
 use App\Entity\Paiements;
 use App\Entity\ReclamationClient;
 use App\Entity\ReponseSondage;
@@ -86,10 +87,14 @@ final class PastillesMenu implements ResetInterface
         if ($this->security->isGranted('ROLE_CLIENT')) {
             // Réclamations écrites par les clients, pas encore répondues.
             $compteurs['app_reclamations_clients_index'] = $this->compter(ReclamationClient::class, 'r', 'r.statut = :s', ['s' => ReclamationClient::OUVERTE]);
-            // Messages écrits par les clients dans leur espace, pas encore répondus ni classés.
-            $compteurs['app_messages_clients_index'] = $this->compter(MessageClient::class, 'm', 'm.sens = :sens AND m.traiteLe IS NULL', ['sens' => MessageClient::CLIENT]);
             // Notes de 1 ou 2 laissées dans un sondage : le client est à rappeler.
             $compteurs['app_sondages_index'] = $this->compter(ReponseSondage::class, 'r', 'r.alerte = :a', ['a' => ReponseSondage::ALERTE_A_RAPPELER]);
+        }
+        if ($this->security->isGranted(MessagerieVoter::BOITE)) {
+            // Conversations de clients qui attendent une réponse : les siennes et les non assignées (toutes pour la Direction).
+            $compteurs['app_messages_clients_index'] = $this->security->isGranted('ROLE_ADMIN')
+                ? $this->compter(ConversationClient::class, 'c', 'c.statut = :o AND c.attenteDepuis IS NOT NULL', ['o' => ConversationClient::OUVERTE])
+                : $this->compter(ConversationClient::class, 'c', 'c.statut = :o AND c.attenteDepuis IS NOT NULL AND (c.assigneA = :moi OR c.assigneA IS NULL)', ['o' => ConversationClient::OUVERTE, 'moi' => $utilisateur]);
         }
         if ($this->security->isGranted('ROLE_RH')) {
             $compteurs['app_demandes_index'] = $this->compter(DemandeEmploye::class, 'd', 'd.etat = :e', ['e' => DemandeEmploye::EN_ATTENTE]);

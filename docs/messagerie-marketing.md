@@ -11,7 +11,7 @@ Ce document complète `docs/assistant-client.md` (l'assistant IA) et `docs/promo
 | Maquette | Contenu |
 |---|---|
 | **CH01 Site** | Une bulle en bas à droite ouvre l'assistant. Il calcule un prix dans la conversation, suit une commande et aide à préparer un fichier. Ensuite, il passe la main à un conseiller, au besoin sur WhatsApp. |
-| **CH02 Espace client** | Les messages sont rattachés à une commande. Le client peut valider un BAT directement dans la conversation. |
+| **CH02 Espace client** | Les messages sont rattachés à une commande. Le client peut valider un BAT directement dans la conversation. Fait autrement le 18/10/2026 avec les maquettes MS01 à MS05 : une conversation par commande ou devis, voir `docs/messagerie-clients.md`. |
 | **CH03 Mobile** | Une bulle avec un court message d'accueil, puis l'assistant en plein écran. |
 | **CH04 Messagerie admin** | Une seule boîte pour le site, l'espace client, WhatsApp et le SMS. Filtres : Tous, À moi, Non assignés. Le conseiller voit qui traite chaque conversation et peut la reprendre (« Prendre la conversation »). À droite, ce que le visiteur a consulté et simulé. On peut créer un devis ou un prospect depuis la conversation, et utiliser des réponses types. |
 

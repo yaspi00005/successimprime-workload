@@ -14,6 +14,7 @@ use App\Entity\DemandeConception;
 use App\Entity\Devis;
 use App\Entity\Factures;
 use App\Entity\ImageIa;
+use App\Entity\ConversationClient;
 use App\Entity\MessageClient;
 use App\Entity\Paiements;
 use App\Entity\ProduitClient;
@@ -618,12 +619,12 @@ final class RecetteEspaceClient
             }
         }
         if (null !== $commandeB) {
-            $avant = $this->compter(MessageClient::class, $commandeB);
-            $this->navigateur->post($this->routeur->generate('app_espace_messages'), ['_token' => $jeton, 'texte' => 'Recette des accès', 'commande' => $commandeB], $session);
-            $ok = $this->compter(MessageClient::class, $commandeB) === $avant;
+            $avant = $this->compter(MessageClient::class, $commandeB) + $this->compter(ConversationClient::class, $commandeB);
+            $this->navigateur->post($this->routeur->generate('app_espace_message_nouvelle'), ['_token' => $jeton, 'texte' => 'Recette des accès', 'document' => 'c:'.$commandeB], $session);
+            $ok = $this->compter(MessageClient::class, $commandeB) + $this->compter(ConversationClient::class, $commandeB) === $avant;
             $bilan->controler(\sprintf('Espace client : %s écrit un message sur la commande de %s', $a, $b), $ok);
             if (!$ok) {
-                $bilan->constater(BilanRecette::FUITE, 'autre_client_envoi', 'app_espace_messages', '/espace/messages', $a, 'message rattaché à la commande d\'un autre client');
+                $bilan->constater(BilanRecette::FUITE, 'autre_client_envoi', 'app_espace_message_nouvelle', '/espace/messages/nouvelle', $a, 'message rattaché à la commande d\'un autre client');
             }
             $avant = $this->compter(ReclamationClient::class, $commandeB);
             $this->navigateur->post($this->routeur->generate('app_espace_reclamation_nouvelle'), ['_token' => $jeton, 'commande' => $commandeB, 'motif' => 'autre', 'objet' => 'Recette', 'description' => 'Recette des accès'], $session);
@@ -738,7 +739,7 @@ final class RecetteEspaceClient
             $jeton = $this->jeton($sessions['titulaire'] ?? $sessions['lecture']);
             $refus = 0;
             $essais = 0;
-            foreach (['app_espace_nouvelle_commande' => ['produit' => 1], 'app_espace_messages' => ['texte' => 'Recette'], 'app_espace_preferences' => []] as $route => $donnees) {
+            foreach (['app_espace_nouvelle_commande' => ['produit' => 1], 'app_espace_message_nouvelle' => ['texte' => 'Recette'], 'app_espace_preferences' => []] as $route => $donnees) {
                 $reponse = $this->navigateur->post($this->routeur->generate($route), ['_token' => (string) $jeton] + $donnees, $sessions['lecture']);
                 ++$essais;
                 $permis = DroitsEspace::permis($comptes['lecture'], 'POST', $route);

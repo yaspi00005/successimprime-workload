@@ -40,6 +40,8 @@ final class CalculPrime
         'ponctualite' => ['libelle' => 'Ponctualité et présence', 'court' => 'Ponctualité', 'source' => 'Pointage', 'unite' => '%', 'objectif' => 100],
         'productivite' => ['libelle' => 'Points du métier', 'court' => 'Points du métier', 'source' => 'Barème des points (suivi des métiers)', 'unite' => '%', 'objectif' => 100],
         'actions' => ['libelle' => 'Actions commerciales à l\'heure', 'court' => 'Actions à l\'heure', 'source' => 'Actions de caisse', 'unite' => '%', 'objectif' => 100],
+        // Messages des clients (docs/messagerie-clients.md) : 100 moins les points retirés par réponse en retard (règles de réponse).
+        'messages' => ['libelle' => 'Réponses aux messages des clients', 'court' => 'Réponses aux clients', 'source' => 'Délais de réponse (Clients › Messages)', 'unite' => 'réponse(s) en retard', 'objectif' => 0],
         'appreciation' => ['libelle' => 'Appréciation du responsable', 'court' => 'Appréciation', 'source' => 'Saisie manuelle', 'unite' => null, 'objectif' => null],
     ];
 
@@ -53,12 +55,13 @@ final class CalculPrime
      */
     public const BAREMES = [
         'caisse' => ['prime' => 50_000, 'criteres' => [
-            ['cle' => 'ventes', 'poids' => 30, 'objectif' => 3_000_000],
-            ['cle' => 'transformation', 'poids' => 15, 'objectif' => 60],
+            ['cle' => 'ventes', 'poids' => 25, 'objectif' => 3_000_000],
+            ['cle' => 'transformation', 'poids' => 10, 'objectif' => 60],
             ['cle' => 'satisfaction', 'poids' => 15, 'objectif' => 4.5],
             ['cle' => 'encaissement', 'poids' => 10, 'objectif' => 90],
             ['cle' => 'erreurs', 'poids' => 10, 'objectif' => 0],
             ['cle' => 'ponctualite', 'poids' => 10, 'objectif' => 100],
+            ['cle' => 'messages', 'poids' => 10, 'objectif' => 0],
             ['cle' => 'appreciation', 'poids' => 10, 'objectif' => null],
         ]],
         'graphiste' => ['prime' => 40_000, 'criteres' => [
@@ -83,7 +86,8 @@ final class CalculPrime
             ['cle' => 'encaissement', 'poids' => 30, 'objectif' => 90],
             ['cle' => 'erreurs', 'poids' => 20, 'objectif' => 0],
             ['cle' => 'ponctualite', 'poids' => 20, 'objectif' => 100],
-            ['cle' => 'appreciation', 'poids' => 30, 'objectif' => null],
+            ['cle' => 'messages', 'poids' => 10, 'objectif' => 0],
+            ['cle' => 'appreciation', 'poids' => 20, 'objectif' => null],
         ]],
         'entretien' => ['prime' => 20_000, 'criteres' => [
             ['cle' => 'productivite', 'poids' => 50, 'objectif' => 100],

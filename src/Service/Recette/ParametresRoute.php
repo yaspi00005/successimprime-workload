@@ -5,6 +5,7 @@ namespace App\Service\Recette;
 use App\Entity\AssistantConversation;
 use App\Entity\Campagne;
 use App\Entity\Clients;
+use App\Entity\ConversationClient;
 use App\Entity\DemandeConception;
 use App\Entity\DemandeDevis;
 use App\Entity\JournalActivite;
@@ -41,6 +42,7 @@ final class ParametresRoute
         'app_demandes_site_voir' => ['id' => DemandeDevis::class],
         'app_demandes_site_fichier' => ['id' => DemandeDevis::class],
         'app_journal_activite_show' => ['id' => JournalActivite::class],
+        'app_messages_clients_voir' => ['publicId' => ConversationClient::class],
         'app_site_contenu_fiche' => ['id' => PageSite::class],
     ];
 

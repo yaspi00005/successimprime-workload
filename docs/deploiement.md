@@ -186,9 +186,10 @@ sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 0 * * * * cd /srv/successimprim && php bin/console app:sauvegarde --auto -q >> var/log/sauvegarde.log 2>&1
 @reboot   sleep 60 && cd /srv/successimprim && php bin/console app:sauvegarde --auto -q >> var/log/sauvegarde.log 2>&1
 */15 * * * * cd /srv/successimprim && php bin/console app:espace:notifications -q >> var/log/espace-notifications.log 2>&1
+30 3 * * * cd /srv/successimprim && php bin/console app:corbeille:purger -q >> var/log/corbeille.log 2>&1
 ```
 
-`app:espace:notifications` envoie à 7 h les SMS des clients mis de côté pendant les heures calmes (21 h – 7 h) et les rappels d'échéance des factures (docs/espace-client.md).
+`app:espace:notifications` envoie à 7 h les SMS des clients mis de côté pendant les heures calmes (21 h – 7 h) et les rappels d'échéance des factures (docs/espace-client.md). `app:corbeille:purger` supprime pour de bon, après la sauvegarde de la nuit, ce que les clients ont retiré de leur espace il y a plus de 30 jours ; `app:corbeille:restaurer` le remet en place s'ils appellent (docs/corbeille.md).
 
 Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trésorerie, rapport de la semaine) tournent sur l'ERP local.
 

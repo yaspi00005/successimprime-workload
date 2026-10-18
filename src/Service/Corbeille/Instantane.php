@@ -138,10 +138,13 @@ final class Instantane
     {
         // Qui pointe vers qui, parmi les lignes copiées.
         $parents = [];
+        // Parents dont la ligne dépend en cascade (elle leur appartient : un fichier à sa ligne de commande).
+        $proprietaires = [];
         $chef = [];
         foreach (array_keys($lignes) as $cle) {
             $chef[$cle] = $cle;
             $parents[$cle] = [];
+            $proprietaires[$cle] = [];
         }
         $trouver = static function (string $c) use (&$chef): string {
             while ($chef[$c] !== $c) {
@@ -168,6 +171,9 @@ final class Instantane
                     continue;
                 }
                 $parents[$cle][] = $cible;
+                if ('CASCADE' === $fk['regle']) {
+                    $proprietaires[$cle][] = $cible;
+                }
                 $chef[$trouver($cle)] = $trouver($cible);
             }
         }
@@ -179,28 +185,29 @@ final class Instantane
 
         $groupes = [];
         foreach ($composantes as $membres) {
-            // Racine : la ligne dont les autres dépendent, de préférence une fiche ; le groupe n'est
-            // gardé que s'il contient au moins une fiche (pas seulement des éléments rattachés).
+            // Racine : la fiche (non rattachée) qui n'appartient à aucune autre ligne du groupe : le
+            // client avec ses adresses, la page du site avec ses images. À défaut, le sommet : la ligne
+            // de commande retirée avec les fichiers du client. Un groupe dont la racine est un élément
+            // rattaché sans fichier n'est pas gardé : c'est une modification (ligne retirée d'un devis,
+            // tâches refaites par le planning avec leurs rappels).
             $racine = null;
             $sommet = null;
-            $fiche = null;
+            $fichiers = false;
             foreach ($membres as $cle) {
                 $table = $lignes[$cle]['table'];
-                $rattachee = TypesCorbeille::rattachee($table, isset($this->tablesEntites[$table]));
-                if (!$rattachee) {
-                    $fiche ??= $cle;
-                }
                 if ([] === $parents[$cle]) {
                     $sommet ??= $cle;
-                    if (!$rattachee) {
-                        $racine ??= $cle;
-                    }
                 }
+                if (!TypesCorbeille::rattachee($table, isset($this->tablesEntites[$table])) && [] === $proprietaires[$cle]) {
+                    $racine ??= $cle;
+                }
+                $fichiers = $fichiers || [] !== TypesCorbeille::fichiers($table, $lignes[$cle]['donnees']);
             }
-            if (null === $fiche) {
+            $racine ??= $sommet ?? $membres[0];
+            $tableRacine = $lignes[$racine]['table'];
+            if (TypesCorbeille::rattachee($tableRacine, isset($this->tablesEntites[$tableRacine])) && !$fichiers) {
                 continue;
             }
-            $racine ??= $sommet ?? $fiche;
             $groupe = [];
             foreach ($this->ordonner($membres, $parents) as $cle) {
                 $groupe[] = [

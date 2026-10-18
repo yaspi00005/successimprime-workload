@@ -363,6 +363,13 @@ await scene(['tableau-de-bord', 'a-valider', 'utilisateurs', 'utilisateur-nouvea
     await capture(page, 'import');
 });
 
+// La corbeille (docs/corbeille.md) : ce que la démonstration ou le parcours ont supprimé.
+await scene(['corbeille'], async () => {
+    const page = await session('demo.kadiatou');
+    await aller(page, '/corbeille');
+    await capture(page, 'corbeille');
+});
+
 /* ---------- Production ---------- */
 
 await scene(['production', 'planning-machines', 'mes-statistiques', 'ma-prime'], async () => {

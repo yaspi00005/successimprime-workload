@@ -19,11 +19,13 @@ use Doctrine\DBAL\DriverManager;
  *            ├─ action_caisse      (SET NULL : reste en place, lien à rebrancher)
  *            └─ devis              (refus) ─ devis_details (CASCADE, rattaché)
  *   commandes_details ─ commande_detail_fichier (CASCADE)
+ *   tache ─ rappel_whatsapp (CASCADE, refaits par le planning)
+ *   site_page ─ site_image (SET NULL : la page utilise l'image)
  */
 final class BaseEssai
 {
     /** Tables qui portent une entité (promotion_client n'en a pas). */
-    public const ENTITES = ['clients', 'compte_client', 'adresse_livraison', 'promotion', 'notifications', 'action_caisse', 'devis', 'devis_details', 'commandes_details', 'commande_detail_fichier'];
+    public const ENTITES = ['clients', 'compte_client', 'adresse_livraison', 'promotion', 'notifications', 'action_caisse', 'devis', 'devis_details', 'commandes_details', 'commande_detail_fichier', 'tache', 'rappel_whatsapp', 'site_image', 'site_page'];
 
     public static function connexion(): Connection
     {
@@ -41,6 +43,10 @@ final class BaseEssai
             'CREATE TABLE devis_details (id INTEGER PRIMARY KEY, devis_id INTEGER NOT NULL REFERENCES devis(id) ON DELETE CASCADE, designation VARCHAR(255))',
             'CREATE TABLE commandes_details (id INTEGER PRIMARY KEY, designation VARCHAR(255))',
             'CREATE TABLE commande_detail_fichier (id INTEGER PRIMARY KEY, commande_detail_id INTEGER REFERENCES commandes_details(id) ON DELETE CASCADE, client_id INTEGER, nom_original VARCHAR(255), nom_stockage VARCHAR(255), actif BOOLEAN NOT NULL DEFAULT 1)',
+            'CREATE TABLE tache (id INTEGER PRIMARY KEY, titre VARCHAR(120))',
+            'CREATE TABLE rappel_whatsapp (id INTEGER PRIMARY KEY, tache_id INTEGER NOT NULL REFERENCES tache(id) ON DELETE CASCADE, cle VARCHAR(10))',
+            'CREATE TABLE site_image (id INTEGER PRIMARY KEY, public_id BLOB, texte_alternatif VARCHAR(255))',
+            'CREATE TABLE site_page (id INTEGER PRIMARY KEY, titre VARCHAR(120), image_id INTEGER REFERENCES site_image(id) ON DELETE SET NULL)',
         ] as $sql) {
             $c->executeStatement($sql);
         }

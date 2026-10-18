@@ -14,7 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * Corbeille (docs/corbeille.md) en ligne de commande, surtout pour le site
  * en ligne, qui n'a pas d'écran Corbeille : ce que les clients ont retiré
- * de leur espace (adresse, fichier, accès, brouillon) y reste le temps
+ * de leur espace (adresse, fichier, accès, brouillon de conception) y reste le temps
  * réglé. Sans numéro, la commande liste les dernières entrées ; avec un
  * numéro, elle remet l'entrée en place, avec les mêmes contrôles que
  * l'écran (rien n'est écrit s'il manque une fiche liée).

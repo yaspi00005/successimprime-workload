@@ -12,10 +12,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * Corbeille (docs/corbeille.md) : supprime pour de bon, avec leurs
  * fichiers, les entrées plus vieilles que la durée réglée (30 jours par
- * défaut). À lancer chaque nuit par le cron, sur l'ERP local et sur le
- * site en ligne :
+ * défaut). À lancer chaque nuit, après la sauvegarde de 02:00, sur l'ERP
+ * local (scripts\windows\installer_tache_corbeille.bat) et sur le site en
+ * ligne (crontab) :
  *
- *   30 2 * * * cd /srv/successimprim && php bin/console app:corbeille:purger -q >> var/log/corbeille.log 2>&1
+ *   30 3 * * * cd /srv/successimprim && php bin/console app:corbeille:purger -q >> var/log/corbeille.log 2>&1
  *
  * Chaque suppression définitive est notée dans le journal d'activité.
  */

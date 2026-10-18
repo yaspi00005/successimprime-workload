@@ -13,6 +13,7 @@ use App\EventSubscriber\LectureSeuleSubscriber;
 use App\Security\Droits;
 use App\Security\LivreurSeul;
 use App\Security\ModulesRoles;
+use App\Service\Corbeille\TypesCorbeille;
 use App\Service\Guide\CatalogueGuide;
 use App\Twig\NavigationExtension;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,6 +23,7 @@ use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Recette des accès du personnel (jalon J7, docs/recette-par-role.md) :
@@ -234,6 +236,12 @@ final class RecetteAcces
                 $suivi && $suivi($compte->getUserIdentifier());
                 $this->verifierCompte($compte, $pages, $bilan);
                 $this->verifierObjetsDesAutres($compte, $bilan);
+            }
+            $suivi && $suivi('corbeille');
+            try {
+                $this->verifierCorbeille($comptes, $bilan);
+            } catch (\Throwable $e) {
+                $bilan->controler('Corbeille : contrôle interrompu', false, $e::class.' : '.$e->getMessage());
             }
             $suivi && $suivi('lecture seule');
             try {
@@ -490,6 +498,128 @@ final class RecetteAcces
             $bilan->controler(\sprintf('%s : « Mes livraisons » sans celles des autres livreurs', $identifiant), $ok, $chemin.' → '.$reponse->etat().([] !== $vues ? ' ; montre '.implode(', ', \array_slice($vues, 0, 3)) : ''));
             if ([] !== $vues) {
                 $bilan->constater(BilanRecette::FUITE, 'objet_autrui', 'app_livraisons_mes_livraisons', $chemin, $identifiant, 'livraisons d\'autres livreurs dans « Mes livraisons » : '.implode(', ', \array_slice($vues, 0, 3)));
+            }
+        }
+    }
+
+    /**
+     * Corbeille (docs/corbeille.md) : l'écran ne s'ouvre qu'à la Direction et
+     * au droit « Corbeille » ; une entrée ne se voit, ne se restaure et ne se
+     * supprime qu'avec le droit de son genre de fiche (une adresse : Clients ;
+     * un jour férié : la Direction), même demandée par son numéro ; en mode
+     * « Voir », ni restaurer ni supprimer pour de bon. Deux entrées d'essai
+     * sont posées dans la transaction de la recette (annulée à la fin).
+     *
+     * @param list<User> $comptes
+     */
+    private function verifierCorbeille(array $comptes, BilanRecette $bilan): void
+    {
+        if (null === $this->routeur->getRouteCollection()->get('app_corbeille_index')) {
+            return;
+        }
+        $connexion = $this->em->getConnection();
+        $entrees = [];
+        foreach (['jour_ferie', 'adresse_livraison'] as $table) {
+            $libelle = TypesCorbeille::type($table).' « Recette de la corbeille »';
+            $connexion->insert('corbeille', [
+                'groupe' => Uuid::v7()->toRfc4122(), 'racine' => 1, 'ordre' => 0, 'table_nom' => $table, 'ligne_id' => '0',
+                'type' => TypesCorbeille::type($table), 'libelle' => $libelle, 'donnees' => '{"libelle":"Recette de la corbeille"}',
+                'mode' => 'ligne', 'supprime_le' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            ]);
+            $entrees[] = ['id' => (int) $connexion->lastInsertId(), 'libelle' => $libelle, 'droit' => TypesCorbeille::droit($table)];
+        }
+
+        foreach ($comptes as $compte) {
+            $this->essayerCorbeille($compte, $compte->getUserIdentifier(), $entrees, $bilan);
+        }
+
+        // Un compte caisse (sans la Direction) à qui l'on donne le droit « Corbeille », puis le mode « Voir ».
+        $caisse = null;
+        foreach ([...$comptes, ...$this->comptes()] as $c) {
+            if (!\in_array(User::ROLE_ADMIN, $c->getRoles(), true) && \in_array('ROLE_COMMANDE', $c->getRoles(), true)) {
+                $caisse = $this->em->getRepository(User::class)->find($c->getId()) ?? $c;
+                break;
+            }
+        }
+        if (null === $caisse) {
+            $bilan->controler('Corbeille : aucun compte caisse dans la démonstration', false);
+
+            return;
+        }
+        $avant = $caisse->getDroitsEffectifs();
+        // Chaque page remet à zéro le gestionnaire d'entités : la fiche est relue avant chaque changement.
+        $droits = function (array $droits) use ($caisse): User {
+            $compte = $this->em->getRepository(User::class)->find($caisse->getId()) ?? $caisse;
+            $compte->definirDroits($droits);
+            $this->em->flush();
+
+            return $compte;
+        };
+        try {
+            $compte = $droits([...$avant, Droits::CORBEILLE]);
+            $this->essayerCorbeille($compte, $compte->getUserIdentifier().' (avec le droit « Corbeille »)', $entrees, $bilan);
+
+            $compte = $droits([...$avant, Droits::CORBEILLE, Droits::LECTURE_CORBEILLE]);
+            $this->essayerCorbeille($compte, $compte->getUserIdentifier().' (corbeille en « Voir »)', $entrees, $bilan, true);
+        } finally {
+            $droits($avant);
+        }
+    }
+
+    /**
+     * @param list<array{id: int, libelle: string, droit: string}> $entrees
+     */
+    private function essayerCorbeille(User $compte, string $libelle, array $entrees, BilanRecette $bilan, bool $lecture = false): void
+    {
+        $roles = $compte->getRoles();
+        $this->jeton = new UsernamePasswordToken($compte, 'main', $roles);
+        // Jetons valides posés dans la session : un refus vient bien des droits.
+        $jeton = 'recette-'.bin2hex(random_bytes(8));
+        $valeurs = [];
+        foreach ($entrees as $e) {
+            $valeurs['_csrf/corbeille-restaurer-'.$e['id']] = $jeton;
+            $valeurs['_csrf/corbeille-supprimer-'.$e['id']] = $jeton;
+        }
+        $session = $this->navigateur->session($compte, 'main', $valeurs);
+        $refus = [Reponse::REFUSE, Reponse::INTROUVABLE, Reponse::CONNEXION];
+        $direction = $this->accorde(User::ROLE_ADMIN);
+        $corbeille = $direction || $this->accorde(Droits::CORBEILLE);
+
+        $index = $this->routeur->generate('app_corbeille_index');
+        $liste = $this->navigateur->get($index, $session);
+        $ok = $corbeille ? Reponse::OUVERT === $liste->etat() : \in_array($liste->etat(), $refus, true);
+        $bilan->controler(\sprintf('Corbeille : %s %s l\'écran', $libelle, $corbeille ? 'ouvre' : 'n\'ouvre pas'), $ok, $index.' → '.$liste->etat());
+        if (!$ok && Reponse::OUVERT === $liste->etat()) {
+            $bilan->constater(BilanRecette::FUITE, 'corbeille', 'app_corbeille_index', $index, $libelle, 'corbeille ouverte sans la Direction ni le droit « Corbeille »');
+        }
+
+        foreach ($entrees as $e) {
+            $permise = $corbeille && ($direction || $this->accorde($e['droit']));
+            if (Reponse::OUVERT === $liste->etat() && !$permise && str_contains($liste->texte(), $e['libelle'])) {
+                $bilan->constater(BilanRecette::FUITE, 'corbeille', 'app_corbeille_index', $index, $libelle, $e['libelle'].' montré dans la liste sans le droit '.$e['droit']);
+            }
+            $chemin = $this->routeur->generate('app_corbeille_voir', ['id' => $e['id']]);
+            $etat = $this->navigateur->get($chemin, $session)->etat();
+            $ok = $permise ? Reponse::OUVERT === $etat : \in_array($etat, $refus, true);
+            $bilan->controler(\sprintf('Corbeille : %s %s %s', $libelle, $permise ? 'ouvre' : 'n\'ouvre pas', $e['libelle']), $ok, $chemin.' → '.$etat);
+            if (!$ok && !$permise) {
+                $bilan->constater(Reponse::ERREUR === $etat ? BilanRecette::ERREUR : BilanRecette::FUITE, 'corbeille', 'app_corbeille_voir', $chemin, $libelle, $e['libelle'].' ouvert sans le droit '.$e['droit'].' : '.$etat);
+            }
+
+            // Restaurer, supprimer pour de bon : refusés sans le droit de la fiche, et en mode « Voir » avant le contrôleur.
+            if ($permise && !$lecture) {
+                continue;
+            }
+            foreach (['app_corbeille_restaurer', 'app_corbeille_supprimer'] as $route) {
+                $chemin = $this->routeur->generate($route, ['id' => $e['id']]);
+                $reponse = $this->navigateur->post($chemin, ['_token' => $jeton], $session, [], $lecture);
+                $toujours = false !== $this->em->getConnection()->fetchOne('SELECT 1 FROM corbeille WHERE id = ?', [$e['id']]);
+                $ok = \in_array($reponse->etat(), $refus, true) && NavigateurInterne::CONTROLEUR_ATTEINT !== $reponse->statut && $toujours;
+                $quoi = 'app_corbeille_restaurer' === $route ? 'restaure' : 'supprime pour de bon';
+                $bilan->controler(\sprintf('Corbeille : %s %s %s : refusé', $libelle, $quoi, $e['libelle']), $ok, $chemin.' → '.(NavigateurInterne::CONTROLEUR_ATTEINT === $reponse->statut ? 'contrôleur atteint' : $reponse->etat()).($toujours ? '' : ', entrée retirée'));
+                if (!$ok) {
+                    $bilan->constater(Reponse::ERREUR === $reponse->etat() ? BilanRecette::ERREUR : BilanRecette::FUITE, 'corbeille', $route, $chemin, $libelle, \sprintf('%s %s accepté%s', $quoi, $e['libelle'], $lecture ? ' en mode « Voir »' : ' sans le droit '.$e['droit']));
+                }
             }
         }
     }

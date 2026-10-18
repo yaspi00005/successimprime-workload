@@ -91,6 +91,40 @@ final class InstantaneTest extends TestCase
         self::assertTrue($groupes[0][0]['racine']);
     }
 
+    public function testDesTachesRefaitesParLePlanningNeSontPasGardees(): void
+    {
+        $c = BaseEssai::connexion();
+        $c->insert('tache', ['id' => 1, 'titre' => 'Tournée commerciale']);
+        $c->insert('rappel_whatsapp', ['id' => 2, 'tache_id' => 1, 'cle' => 'veille']);
+
+        self::assertSame([], BaseEssai::instantane($c)->capturer([['table' => 'tache', 'cle' => ['id' => 1]]]), 'une tâche et son rappel : éléments rattachés, sans fichier');
+    }
+
+    public function testLaPageDuSitePartAvecSesImagesSousSonNom(): void
+    {
+        $c = BaseEssai::connexion();
+        $c->insert('site_image', ['id' => 5, 'public_id' => hex2bin('0192aabbccdd7eff8011223344556600'), 'texte_alternatif' => 'Atelier']);
+        $c->insert('site_page', ['id' => 6, 'titre' => 'Nos machines', 'image_id' => 5]);
+
+        $groupes = BaseEssai::instantane($c)->capturer([['table' => 'site_image', 'cle' => ['id' => 5]], ['table' => 'site_page', 'cle' => ['id' => 6]]]);
+
+        self::assertCount(1, $groupes);
+        self::assertSame(['site_image', 'site_page'], array_map(static fn (array $l): string => $l['table'], $groupes[0]), 'l\'image revient d\'abord : la page pointe vers elle');
+        $racines = array_values(array_filter($groupes[0], static fn (array $l): bool => $l['racine']));
+        self::assertSame('site_page', $racines[0]['table'], 'la page, pas son image');
+    }
+
+    public function testUneImageRetireeDUnePageEstGardeePourSonFichier(): void
+    {
+        $c = BaseEssai::connexion();
+        $c->insert('site_image', ['id' => 5, 'public_id' => hex2bin('0192aabbccdd7eff8011223344556600'), 'texte_alternatif' => 'Atelier']);
+
+        $groupes = BaseEssai::instantane($c)->capturer([['table' => 'site_image', 'cle' => ['id' => 5]]]);
+
+        self::assertCount(1, $groupes, 'l\'original reste sur le disque jusqu\'à la purge, qui le retire');
+        self::assertTrue($groupes[0][0]['racine']);
+    }
+
     public function testUneTableTechniqueNEntreJamais(): void
     {
         $c = BaseEssai::connexion();

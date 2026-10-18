@@ -90,7 +90,7 @@ Les commandes `php bin/console …` se tapent dans une invite de commandes ouver
 
 - [ ] Dans `.env.local` : `SAUVEGARDE_COPIE_DIR` (le second disque). Lancer une fois, en administrateur, `scripts\windows\installer_taches_planifiees.bat` : il remplace l'ancienne tâche « toutes les 6 h ». Puis `php bin/console app:sauvegarde` et `php bin/console app:sauvegarde --liste` ([docs/sauvegardes.md](sauvegardes.md)).
 - [ ] Copie hors site : générer la clé et la ranger ([docs/sauvegardes.md, « Copie chiffrée hors de la boutique »](sauvegardes.md#copie-chiffrée-hors-de-la-boutique), étapes 1 à 3).
-- [ ] La direction relit les règles de Communications › Rappels de paiement (des commandes anciennes non soldées recevraient un rappel), puis lancer une fois, en administrateur : `installer_tache_rappels_paiement.bat`, `installer_tache_campagnes.bat`, `installer_tache_decaissements_recurrents.bat` (dossier `scripts\windows`).
+- [ ] La direction relit les règles de Communications › Rappels de paiement (des commandes anciennes non soldées recevraient un rappel), puis lancer une fois, en administrateur : `installer_tache_rappels_paiement.bat`, `installer_tache_campagnes.bat`, `installer_tache_decaissements_recurrents.bat`, `installer_tache_corbeille.bat` (dossier `scripts\windows` ; la corbeille : [docs/corbeille.md](corbeille.md)).
 
 ### 3. ERP local : données de démarrage et comptes
 

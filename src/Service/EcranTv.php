@@ -269,7 +269,7 @@ final class EcranTv
     }
 
     /**
-     * L'écran est passé : sert à la carte « Écran boutique » de l'admin.
+     * L'écran est passé : sert à la carte « Écran de l'accueil » de l'admin.
      */
     public function noterPassage(): void
     {

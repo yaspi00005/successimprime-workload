@@ -161,7 +161,7 @@ final class CatalogueParametres
                     ['cle' => 'carte', 'type' => 'interrupteur', 'libelle' => 'Carte bancaire', 'defaut' => true],
                     ['cle' => 'virement_seuil', 'type' => 'nombre', 'libelle' => 'Virement conseillé au-delà de', 'aide' => 'La caisse le rappelle pour un paiement en espèces plus élevé', 'suffixe' => 'F', 'min' => 0, 'max' => 100000000, 'defaut' => 500000],
                     // Montrées aux clients qui paient, dans « Factures et paiements » de l'espace client.
-                    ['cle' => 'virement_coordonnees', 'type' => 'texte', 'libelle' => 'Coordonnées bancaires pour les virements', 'aide' => 'Banque, titulaire et RIB, montrés dans l\'espace client aux personnes qui paient. Vide : « coordonnées à demander en boutique ».', 'defaut' => ''],
+                    ['cle' => 'virement_coordonnees', 'type' => 'texte', 'libelle' => 'Coordonnées bancaires pour les virements', 'aide' => 'Banque, titulaire et RIB, montrés dans l\'espace client aux personnes qui paient. Vide : « coordonnées à demander à l\'imprimerie ».', 'defaut' => ''],
                     ['cle' => 'acompte', 'type' => 'nombre', 'libelle' => 'Acompte par défaut', 'suffixe' => '%', 'min' => 0, 'max' => 100, 'defaut' => 50],
                     ['cle' => 'recu', 'type' => 'choix', 'libelle' => 'Reçu envoyé', 'options' => ['whatsapp' => 'WhatsApp', 'sms' => 'SMS', 'aucun' => 'Aucun'], 'defaut' => 'whatsapp'],
                     // Frais Orange Money payés par le client en plus du montant (espace client, caisse) ; tenus dans ParametresPaiement.
@@ -179,11 +179,11 @@ final class CatalogueParametres
                 'champs' => [
                     ['cle' => 'paliers_livraison', 'type' => 'texte', 'format' => 'montants', 'libelle' => 'Frais de livraison proposés', 'aide' => 'Montants en F séparés par des virgules, du plus petit au plus grand : le plus grand est le maximum. Vide : pas de frais de livraison.', 'suffixe' => 'F', 'defaut' => ReglagesSaisie::PALIERS_DEFAUT],
                     // Un des paliers ci-dessus, ou 0 : contrôlé avec eux (lireSaisie, 'palierDe').
-                    ['cle' => 'livraison_en_ligne', 'type' => 'nombre', 'libelle' => 'Frais de livraison en ligne', 'aide' => 'Proposés au client qui commande dans son espace (« Livraison à Bamako »). Un des paliers ci-dessus, ou 0 : livraison offerte. La boutique peut les changer en confirmant la commande.', 'suffixe' => 'F', 'min' => 0, 'max' => ReglagesSaisie::PALIER_MAX, 'palierDe' => 'paliers_livraison', 'defaut' => ReglagesSaisie::FRAIS_EN_LIGNE_DEFAUT],
+                    ['cle' => 'livraison_en_ligne', 'type' => 'nombre', 'libelle' => 'Frais de livraison en ligne', 'aide' => 'Proposés au client qui commande dans son espace (« Livraison à Bamako »). Un des paliers ci-dessus, ou 0 : livraison offerte. L\'imprimerie peut les changer en confirmant la commande.', 'suffixe' => 'F', 'min' => 0, 'max' => ReglagesSaisie::PALIER_MAX, 'palierDe' => 'paliers_livraison', 'defaut' => ReglagesSaisie::FRAIS_EN_LIGNE_DEFAUT],
                     ['cle' => 'objets', 'type' => 'texte', 'longueur' => 500, 'libelle' => 'Objets suggérés', 'aide' => 'Séparés par des virgules. L\'objet reste libre à la saisie (150 caractères).', 'defaut' => ReglagesSaisie::OBJETS_DEFAUT],
                 ],
                 'motsCles' => ['Frais de livraison · 1 000, 1 500, 2 000, 2 500 F', 'Frais de livraison de la commande en ligne', 'Objet de la commande · impressions, prestations informatiques', 'Devis, commande, facture'],
-                'note' => 'Frais : montants en F séparés par des virgules ; le plus grand est le maximum, vide = pas de frais. À la saisie d\'un devis ou d\'une commande livrée, l\'agent choisit « Sans frais » ou un palier : une ligne « Livraison » paraît sur le devis, la commande et la facture. Commande en ligne : le client qui choisit « Livraison à Bamako » voit les frais de livraison en ligne (un palier, ou 0) ; la boutique peut les changer en confirmant. Objets : séparés par des virgules, simples suggestions. Les conditions de paiement (bloc « NB » des factures) se règlent par entreprise, tuile Entités et en-têtes.',
+                'note' => 'Frais : montants en F séparés par des virgules ; le plus grand est le maximum, vide = pas de frais. À la saisie d\'un devis ou d\'une commande livrée, l\'agent choisit « Sans frais » ou un palier : une ligne « Livraison » paraît sur le devis, la commande et la facture. Commande en ligne : le client qui choisit « Livraison à Bamako » voit les frais de livraison en ligne (un palier, ou 0) ; l\'imprimerie peut les changer en confirmant. Objets : séparés par des virgules, simples suggestions. Les conditions de paiement (bloc « NB » des factures) se règlent par entreprise, tuile Entités et en-têtes.',
             ],
             // Demande de conception dans l'espace client (docs/demande-conception.md). Le coût
             // d'une image chez le fournisseur reste au local (CatalogueSynchro::REGLAGES_PUBLICS).
@@ -423,10 +423,10 @@ final class CatalogueParametres
                 'champs' => [
                     // Suivi de commande (docs/espace-client.md) : au-delà, la demande part avec « peut être facturée ».
                     ['cle' => 'corrections_bat_gratuites', 'type' => 'nombre', 'libelle' => 'Corrections de BAT gratuites', 'aide' => 'Par BAT. Au-delà, le client peut encore demander une correction : la page le prévient qu\'elle peut être facturée, l\'atelier fixe le prix.', 'suffixe' => 'corrections', 'min' => 0, 'max' => 10, 'defaut' => 2],
-                    ['cle' => 'code_sms', 'type' => 'interrupteur', 'libelle' => 'Code de première connexion et de mot de passe oublié', 'aide' => 'Par e-mail, ou par SMS sans adresse. Coupé, le client demande son accès à la boutique ; la création de compte vérifie toujours par code.', 'defaut' => true],
+                    ['cle' => 'code_sms', 'type' => 'interrupteur', 'libelle' => 'Code de première connexion et de mot de passe oublié', 'aide' => 'Par e-mail, ou par SMS sans adresse. Coupé, le client demande son accès à l\'imprimerie ; la création de compte vérifie toujours par code.', 'defaut' => true],
                     // Appliqués par le serveur (NouvelleCommande::estOuverte, OrangeMoney::estOuvert).
                     ['cle' => 'commande_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Commande en ligne', 'aide' => 'Coupé : l\'espace client n\'enregistre plus de commande (nouvelle commande, Mes produits, Atelier 3D, impression d\'une conception) et l\'explique au client. Les commandes déjà passées continuent.', 'defaut' => true],
-                    ['cle' => 'paiement_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Paiement Orange Money en ligne', 'aide' => 'Coupé : l\'espace ne propose pas Orange Money, le client paie en boutique (ou au numéro marchand). Allumé : il faut aussi les clés d\'Orange sur le serveur en ligne.', 'defaut' => true],
+                    ['cle' => 'paiement_en_ligne', 'type' => 'interrupteur', 'libelle' => 'Paiement Orange Money en ligne', 'aide' => 'Coupé : l\'espace ne propose pas Orange Money, le client paie à l\'imprimerie (ou au numéro marchand). Allumé : il faut aussi les clés d\'Orange sur le serveur en ligne.', 'defaut' => true],
                     // Délais de la commande en ligne (docs/espace-client.md, « Nouvelle commande ») : comptés en jours ouvrés
                     // (tuile Horaires) à partir de la validation du BAT.
                     ['cle' => 'delai_standard', 'type' => 'nombre', 'libelle' => 'Délai standard', 'aide' => 'Après validation du BAT. Compté en jours ouvrés (24 h = 1 jour).', 'suffixe' => 'h', 'min' => 1, 'max' => 720, 'defaut' => DelaisCommande::STANDARD_DEFAUT],
@@ -512,10 +512,10 @@ final class CatalogueParametres
                 'famille' => 'clients', 'libelle' => 'Site : page Contact', 'icone' => 'fa-map-marker-alt',
                 'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => 'app_site_contact',
                 'champs' => [
-                    // Repère de la fiche Google de la boutique (lien envoyé par Yaya le 15/10/2026).
-                    ['cle' => 'lien_plan', 'type' => 'texte', 'libelle' => 'Position de la boutique (carte et Itinéraire)', 'aide' => 'Coordonnées « latitude, longitude » pour la carte de la page Contact : dans Google Maps, appui long sur la boutique (téléphone) ou clic droit (ordinateur) affiche « 12.6517571, -7.9299376 » ; copiez ces deux nombres ici. Un lien court (https://maps.app.goo.gl/…) donne seulement le bouton Itinéraire, sans carte. Vide : ni carte ni bouton.', 'defaut' => '12.6517571, -7.9299376'],
+                    // Repère de la fiche Google de l'imprimerie (lien envoyé par Yaya le 15/10/2026).
+                    ['cle' => 'lien_plan', 'type' => 'texte', 'libelle' => 'Position de l\'imprimerie (carte et Itinéraire)', 'aide' => 'Coordonnées « latitude, longitude » pour la carte de la page Contact : dans Google Maps, appui long sur l\'imprimerie (téléphone) ou clic droit (ordinateur) affiche « 12.6517571, -7.9299376 » ; copiez ces deux nombres ici. Un lien court (https://maps.app.goo.gl/…) donne seulement le bouton Itinéraire, sans carte. Vide : ni carte ni bouton.', 'defaut' => '12.6517571, -7.9299376'],
                 ],
-                'motsCles' => ['Carte de la boutique · bouton Itinéraire', 'Lien Google Maps · coordonnées GPS', 'Contact du site vitrine'],
+                'motsCles' => ['Carte de l\'imprimerie · bouton Itinéraire', 'Lien Google Maps · coordonnées GPS', 'Contact du site vitrine'],
                 'note' => 'Les horaires de la page viennent de la tuile Horaires ; l\'adresse, le téléphone et l\'e-mail, de l\'entité Succès Imprim (Entités et en-têtes).',
             ],
             'site_vitrine' => [

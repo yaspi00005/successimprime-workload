@@ -24,7 +24,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Fidélité côté boutique (docs/fidelite.md).
+ * Fidélité côté imprimerie (docs/fidelite.md).
  *
  * - Direction (ROLE_ADMIN) : la fidélité par article, les clients
  *   dormeurs et leur promo de réveil, le journal ; sur la fiche client,
@@ -33,7 +33,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * - Qui gère les commandes (ROLE_COMMANDE) : utiliser les points d'un
  *   client sur sa commande, les retirer, appliquer sa promo de réveil.
  *
- * Tout se fait sur l'ERP de la boutique : le site en ligne reçoit le
+ * Tout se fait sur l'ERP de l'imprimerie : le site en ligne reçoit le
  * relevé par la synchronisation et refuse ces actions.
  */
 #[Route('/fidelite')]
@@ -321,7 +321,7 @@ final class FideliteController extends AbstractController
         if ($this->isCsrfTokenValid('fidelite-commande-'.$commande->getId(), $request->request->getString('_token'))) {
             try {
                 if ($this->fidelite->estEnLigne()) {
-                    throw new \DomainException('Les points se gèrent sur l\'ERP de la boutique.');
+                    throw new \DomainException('Les points se gèrent sur l\'ERP de l\'imprimerie.');
                 }
                 $this->fidelite->retirer($paiement, $this->agent(), new \DateTimeImmutable());
                 $this->addFlash('success', 'Points retirés de la commande : ils sont rendus au client.');
@@ -343,7 +343,7 @@ final class FideliteController extends AbstractController
         if ($this->isCsrfTokenValid('fidelite-commande-'.$commande->getId(), $request->request->getString('_token'))) {
             try {
                 if ($this->fidelite->estEnLigne()) {
-                    throw new \DomainException('La remise se fait sur l\'ERP de la boutique.');
+                    throw new \DomainException('La remise se fait sur l\'ERP de l\'imprimerie.');
                 }
                 $client = $commande->getClients() ?? throw new \DomainException('Commande sans client.');
                 $promo = $this->reveil->active($client, new \DateTimeImmutable()) ?? throw new \DomainException('Ce client n\'a pas de promo de réveil en cours.');

@@ -117,11 +117,11 @@
 		</tr></table>
 
 		{% if releve.enValidation > 0 %}
-			<div class="note">{{ releve.enValidation|number_format(0, ',', ' ') }} F payés en ligne attendent la validation de la boutique : ils entreront dans le solde une fois validés.</div>
+			<div class="note">{{ releve.enValidation|number_format(0, ',', ' ') }} F payés en ligne attendent la validation de l'imprimerie : ils entreront dans le solde une fois validés.</div>
 		{% endif %}
 
 		<div class="pied">
-			Débit : factures émises et soldes d'ouverture. Crédit : paiements validés par la boutique. Les frais Orange Money, payés en plus, n'y figurent pas.<br>
+			Débit : factures émises et soldes d'ouverture. Crédit : paiements validés par l'imprimerie. Les frais Orange Money, payés en plus, n'y figurent pas.<br>
 			{{ entreprise.mentionsLegales }}
 		</div>
 	</div>

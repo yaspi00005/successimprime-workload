@@ -18,7 +18,7 @@ class PaiementsRepository extends ServiceEntityRepository
     }
 
     /**
-     * Avoir du client déjà utilisé en ligne, que la boutique n'a pas encore
+     * Avoir du client déjà utilisé en ligne, que l'imprimerie n'a pas encore
      * validé (paiements « solde client » en attente, « Factures et
      * paiements »).
      */

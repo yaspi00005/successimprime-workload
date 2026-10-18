@@ -34,7 +34,7 @@ final class SuspensionsEspace implements ResetInterface
     /** Ce que lit la personne suspendue, et rien de plus (le motif reste à l'atelier). */
     public const MESSAGE = 'Votre accès à l\'espace client est suspendu. Contactez Succès Imprim.';
 
-    public const FERME_EN_LIGNE = 'L\'accès à l\'espace client se suspend et se rétablit depuis l\'ERP de la boutique.';
+    public const FERME_EN_LIGNE = 'L\'accès à l\'espace client se suspend et se rétablit depuis l\'ERP de l\'imprimerie.';
 
     public const MOTIF_MIN = 3;
 

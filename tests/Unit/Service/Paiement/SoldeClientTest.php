@@ -19,9 +19,9 @@ use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Compte du client à la boutique (docs/finances.md, « Compte du client ») :
+ * Compte du client à l'imprimerie (docs/finances.md, « Compte du client ») :
  * monnaie gardée, dépôt, paiement avec le solde, argent rendu, dépôt
- * Orange Money de l'espace client validé à la boutique. Chaque mouvement
+ * Orange Money de l'espace client validé à l'imprimerie. Chaque mouvement
  * écrit sa ligne de relevé ; l'argent entré ou sorti passe en trésorerie
  * « avance client » ; les frais Orange Money restent hors du solde ; le
  * solde ne descend jamais sous zéro.
@@ -204,7 +204,7 @@ final class SoldeClientTest extends TestCase
         $this->service()->utiliser($commande, 10000, $this->caissiere());
         self::assertSame(0, $commande->getResteAPayer());
         self::assertSame(5000, $client->getSoldeCredit());
-        self::assertSame([], $this->tresorerie, 'l\'argent est déjà à la boutique');
+        self::assertSame([], $this->tresorerie, 'l\'argent est déjà à l\'imprimerie');
         $lignes = $this->lignes();
         self::assertSame([-5000, -10000], array_map(static fn (MouvementSoldeClient $l): int => $l->getMontant(), $lignes));
         self::assertSame('Paiement de la commande CMD-000050-10-2026', $lignes[0]->getLibelle());

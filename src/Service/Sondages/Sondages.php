@@ -432,7 +432,7 @@ final class Sondages
     private function exigerLocal(): void
     {
         if ($this->enLigne) {
-            throw new \DomainException('Les sondages se gèrent sur l\'ERP de la boutique : le site en ligne reçoit les changements.');
+            throw new \DomainException('Les sondages se gèrent sur l\'ERP de l\'imprimerie : le site en ligne reçoit les changements.');
         }
     }
 

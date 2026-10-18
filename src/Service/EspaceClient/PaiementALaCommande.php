@@ -12,7 +12,7 @@ use App\Service\Paiement\OrangeMoney;
  * par le même règlement que « Factures et paiements » (ReglementsEnLigne,
  * un passage chez Orange Money, un paiement « en attente » par commande).
  * Rien n'est validé tout seul : la caisse valide le paiement au local, et la
- * production attend la confirmation de la boutique.
+ * production attend la confirmation de l'imprimerie.
  *
  * « Factures et paiements » ne propose que les commandes confirmées
  * (FacturesClient::payable) ; ici, seulement la commande en ligne que ce

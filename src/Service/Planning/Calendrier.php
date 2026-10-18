@@ -55,7 +55,7 @@ final class Calendrier
     /**
      * @param array<string, string> $fetesMobiles 'Y-m-d' => libellé
      * @param list<int>             $joursOuvres   jours des administrations (décalage), 1 = lundi … 7 = dimanche
-     * @param list<int>|null        $joursActivite jours d'ouverture de la boutique (tâches « chaque jour ») ; null = jours ouvrés
+     * @param list<int>|null        $joursActivite jours d'ouverture de l'imprimerie (tâches « chaque jour ») ; null = jours ouvrés
      */
     public function __construct(
         private readonly array $fetesMobiles = [],

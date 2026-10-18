@@ -19,20 +19,20 @@ use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Compte du client à la boutique (docs/finances.md, « Compte du client ») :
+ * Compte du client à l'imprimerie (docs/finances.md, « Compte du client ») :
  * le seul endroit qui fait monter ou baisser Clients::soldeCredit, en
  * écrivant chaque fois une ligne du relevé (MouvementSoldeClient).
  *
  * Ce qui entre :
  *  - la monnaie que le client laisse à la caisse (« Garder la monnaie sur
  *    le compte du client ») : l'argent reste dans la caisse ;
- *  - un dépôt à la boutique (espèces, Orange Money, Wave) ;
+ *  - un dépôt à l'imprimerie (espèces, Orange Money, Wave) ;
  *  - un dépôt Orange Money fait depuis l'espace client, une fois validé
  *    par la caisse (jamais tout seul) ;
  *  - un paiement par le solde annulé (l'argent revient au compte).
  * Ce qui sort :
  *  - le paiement d'une commande ou d'une facture avec le solde (à la
- *    caisse, ou en ligne validé à la boutique) ;
+ *    caisse, ou en ligne validé à l'imprimerie) ;
  *  - l'argent rendu au client (droit « Rendre l'argent d'un compte client »).
  *
  * L'argent entré ou sorti passe en trésorerie dans la catégorie « avance
@@ -77,7 +77,7 @@ final class SoldeClient
 
     /**
      * Ce que le client peut encore utiliser : son solde moins l'avoir
-     * qu'il a déjà engagé en ligne et que la boutique n'a pas validé.
+     * qu'il a déjà engagé en ligne et que l'imprimerie n'a pas validé.
      */
     public static function disponible(int $solde, int $avoirEnValidation): int
     {
@@ -113,7 +113,7 @@ final class SoldeClient
         return [
             'solde' => $client->getSoldeCredit(),
             'disponible' => $disponible,
-            // Avoir déjà utilisé en ligne, que la boutique n'a pas encore validé.
+            // Avoir déjà utilisé en ligne, que l'imprimerie n'a pas encore validé.
             'engage' => max(0, $client->getSoldeCredit() - $disponible),
             'releve' => $this->releve($client, $limite),
             'depots' => $this->depotsEnAttente($client),
@@ -195,7 +195,7 @@ final class SoldeClient
     }
 
     /**
-     * Dépôt à la boutique : le client laisse de l'argent sur son compte
+     * Dépôt à l'imprimerie : le client laisse de l'argent sur son compte
      * sans rien payer. Orange Money ou Wave : les frais payés par le
      * client en plus restent hors du solde (mouvement à part).
      *
@@ -351,7 +351,7 @@ final class SoldeClient
 
     /**
      * Avoir utilisé en ligne (« Factures et paiements », paiement « AV … »
-     * en attente) : la validation à la boutique retire le montant du solde.
+     * en attente) : la validation à l'imprimerie retire le montant du solde.
      * Refusé si le solde ne suffit plus ou si le montant dépasse ce qui
      * reste dû sur la commande.
      */

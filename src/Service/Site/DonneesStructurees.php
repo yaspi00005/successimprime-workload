@@ -38,7 +38,7 @@ final class DonneesStructurees
      * @param array{url: string, largeur?: int, hauteur?: int} $logo
      * @param array{jours?: mixed, ouverture?: mixed, fermeture?: mixed} $horaires
      * @param list<string> $memeQue pages des réseaux sociaux et fiche Google
-     * @param string|list<string>|null $image photo de la boutique (plusieurs proportions possibles), sinon le logo
+     * @param string|list<string>|null $image photo de l'imprimerie (plusieurs proportions possibles), sinon le logo
      *
      * @return array<string, mixed>
      */
@@ -238,7 +238,7 @@ final class DonneesStructurees
     }
 
     /**
-     * Position de la boutique, seulement si le réglage du plan la donne :
+     * Position de l'imprimerie, seulement si le réglage du plan la donne :
      * coordonnées « 12.6392, -8.0029 », ou lien Google Maps qui les
      * contient. Dans le lien long d'une fiche, le repère est la paire
      * « !3d12.6517571!4d-7.9299376 » ; « @12.6517571,-7.9325125 » n'est que

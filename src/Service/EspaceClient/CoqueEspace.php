@@ -265,7 +265,7 @@ final class CoqueEspace implements ResetInterface
     /**
      * Carte « Votre conseiller(ère) » : prénom et nom de la personne qui
      * suit le client (champ conseiller, seul renseignement synchronisé sur
-     * l'employé). WhatsApp et Appeler vont au numéro de la boutique, jamais
+     * l'employé). WhatsApp et Appeler vont au numéro de l'imprimerie, jamais
      * au téléphone personnel. Rien si personne ne suit le client.
      *
      * @return array{nom: string, initiales: string, whatsapp: ?string, appeler: ?string}|null

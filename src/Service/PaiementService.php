@@ -75,7 +75,7 @@ final class PaiementService
             /*
              * Payé avec l'API Orange Money depuis l'espace client : il va
              * toujours sur le compte « Orange Money en ligne », jamais sur
-             * un numéro de la boutique (docs/finances.md).
+             * un numéro de l'imprimerie (docs/finances.md).
              */
             if ($paiement->estOrangeMoneyEnLigne() && $this->comptesOrangeMoney !== null) {
                 $paiement->setCompteTresorerie(
@@ -159,7 +159,7 @@ final class PaiementService
     /**
      * Valide l'avoir (solde du client) qu'il a utilisé en ligne depuis
      * « Factures et paiements » : aucun compte de trésorerie (l'argent est
-     * déjà à la boutique), le solde du client baisse du montant, et la fiche
+     * déjà à l'imprimerie), le solde du client baisse du montant, et la fiche
      * le note dans son journal. Refusé si le solde ne suffit plus ou si le
      * montant dépasse ce qui reste dû sur la commande.
      *

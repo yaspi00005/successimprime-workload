@@ -45,7 +45,7 @@ final class DotationsCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         if ($this->acces->estEnLigne()) {
-            $io->error('Le patrimoine reste sur l\'ERP de la boutique : lancez la commande en local.');
+            $io->error('Le patrimoine reste sur l\'ERP de l\'imprimerie : lancez la commande en local.');
 
             return Command::FAILURE;
         }

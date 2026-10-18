@@ -3,7 +3,7 @@
 namespace App\Service\Sauvegarde;
 
 /**
- * Chiffrement des sauvegardes envoyées hors de la boutique (libsodium,
+ * Chiffrement des sauvegardes envoyées hors de l'imprimerie (libsodium,
  * XChaCha20-Poly1305 en flux) : un fichier modifié, tronqué ou ouvert avec
  * une autre clé est refusé. Lu et écrit par morceaux de 1 Mo, quelle que
  * soit la taille de l'archive.

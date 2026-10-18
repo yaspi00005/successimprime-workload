@@ -19,7 +19,7 @@
 	{% include 'espace/conception/_etapes.html.twig' %}
 
 	{% if supports is empty %}
-		<div class="ec-carte ec-vide">La demande de conception en ligne arrive bientôt. En attendant, écrivez-nous sur WhatsApp ou passez en boutique.</div>
+		<div class="ec-carte ec-vide">La demande de conception en ligne arrive bientôt. En attendant, écrivez-nous sur WhatsApp ou passez à l'imprimerie.</div>
 	{% else %}
 		{% set choisi = demande ? (demande.support.id ?? supports|first.id) : supports|first.id %}
 		<form method="post" action="{{ path('app_espace_conception_commencer') }}" class="dc-mise" id="dc-supports">

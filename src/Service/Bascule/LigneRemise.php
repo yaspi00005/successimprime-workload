@@ -4,7 +4,7 @@ namespace App\Service\Bascule;
 
 /**
  * Une ligne de commande ou de devis telle qu'elle est enregistrée dans la
- * base de la boutique : de quoi recalculer son total avec l'ancien calcul
+ * base de l'imprimerie : de quoi recalculer son total avec l'ancien calcul
  * (remise en pourcentage) et le nouveau (remise en F par unité). Reste en
  * mémoire pendant la bascule ; rien n'en sort dans un rapport.
  */

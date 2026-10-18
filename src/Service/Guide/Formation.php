@@ -113,7 +113,7 @@ final class Formation
                         'compte' => 'demo.aminata',
                         'consigne' => [
                             'Menu « Caisse » : le client, sa commande.',
-                            '5 000 F, Espèces, compte « Caisse boutique ».',
+                            '5 000 F, Espèces, compte « Caisse imprimerie ».',
                             '« Encaisser et imprimer le reçu ».',
                         ],
                         'attendu' => 'Message « Paiement de 5 000 FCFA enregistré », reçu R-…, et « Encaissé » de la caisse du jour augmente de 5 000 F.',
@@ -132,7 +132,7 @@ final class Formation
                         'compte' => 'demo.aminata',
                         'consigne' => [
                             '« Aller à… » › « Nouveau › Dépense ».',
-                            'Photo d\'un reçu, objet « Carburant moto livraison », Divers, 2 000 F, payé avec « Caisse boutique ».',
+                            'Photo d\'un reçu, objet « Carburant moto livraison », Divers, 2 000 F, payé avec « Caisse imprimerie ».',
                             '« Enregistrer la dépense ».',
                         ],
                         'attendu' => 'Message : le décaissement attend sa validation dans « À valider ». Le formateur (demo.kadiatou) la voit dans Finances › À valider.',
@@ -142,7 +142,7 @@ final class Formation
                         'compte' => 'demo.aminata',
                         'consigne' => [
                             'Caisse › « Virement ».',
-                            '50 000 F, de « Caisse boutique » vers « Banque BDM », un libellé.',
+                            '50 000 F, de « Caisse imprimerie » vers « Banque BDM », un libellé.',
                             '« Enregistrer le mouvement », « Oui, enregistrer ».',
                         ],
                         'attendu' => 'Retour à la caisse avec « Virement de 50 000 F … enregistré ». Aucun solde n\'est affiché.',
@@ -478,7 +478,7 @@ final class Formation
                             'Sur l\'arrêt « En route » : « Remise ».',
                             'Signature, Espèces, montant, « Valider la remise ».',
                         ],
-                        'attendu' => 'La page de livraison terminée s\'affiche ; à la boutique, la caisse voit l\'encaissement à valider.',
+                        'attendu' => 'La page de livraison terminée s\'affiche ; à l\'imprimerie, la caisse voit l\'encaissement à valider.',
                     ],
                     [
                         'titre' => 'Relancer un client',
@@ -501,7 +501,7 @@ final class Formation
                     'consigne' => [
                         'Seul : « Chargée », « Je pars », « Je suis arrivé ».',
                         '« Remise » avec signature et encaissement en espèces.',
-                        'Retour à la boutique : la caisse valide l\'argent.',
+                        'Retour à l\'imprimerie : la caisse valide l\'argent.',
                     ],
                     'attendu' => 'Livraison terminée, encaissement validé par la caisse avec « Valider l\'encaissement ».',
                 ],
@@ -542,7 +542,7 @@ final class Formation
                         'titre' => 'Valider une tâche',
                         'compte' => 'demo.awa',
                         'consigne' => [
-                            'Ouvrez la tâche « Ménage de la boutique ».',
+                            'Ouvrez la tâche « Ménage de l\'accueil ».',
                             'Cochez les étapes, « Prendre la photo et valider ».',
                         ],
                         'attendu' => 'La tâche est « fait à … · photo » dans le planning, avec ses points.',
@@ -661,7 +661,7 @@ final class Formation
                         'titre' => 'Vérifier les sauvegardes',
                         'compte' => 'demo.kadiatou',
                         'consigne' => ['Tuile « Sauvegardes ».'],
-                        'attendu' => 'La personne lit la dernière sauvegarde réussie et sait dire s\'il y a une copie hors de la boutique.',
+                        'attendu' => 'La personne lit la dernière sauvegarde réussie et sait dire s\'il y a une copie hors de l\'imprimerie.',
                     ],
                     [
                         'titre' => 'Préparer l\'import des clients',

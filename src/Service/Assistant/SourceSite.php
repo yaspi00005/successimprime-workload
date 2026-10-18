@@ -26,7 +26,7 @@ interface SourceSite
     public function estimation(ProduitConfiguration $configuration, array $valeurs): array;
 
     /**
-     * Coordonnées publiques de la boutique et horaires du jour.
+     * Coordonnées publiques de l'imprimerie et horaires du jour.
      *
      * @return array{nom: string, adresse: ?string, telephone: ?string, email: ?string, horaires: string, ouvert: string, plan: ?string}
      */

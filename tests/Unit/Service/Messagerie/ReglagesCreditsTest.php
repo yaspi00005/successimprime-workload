@@ -64,7 +64,7 @@ final class ReglagesCreditsTest extends TestCase
 
     /**
      * Les envois du site montent au local, en lecture seule : la direction
-     * voit tout l'historique sur l'ERP de la boutique. Rien ne redescend.
+     * voit tout l'historique sur l'ERP de l'imprimerie. Rien ne redescend.
      */
     public function testLesEnvoisDuSiteMontentAuLocal(): void
     {

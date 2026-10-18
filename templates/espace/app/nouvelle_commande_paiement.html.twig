@@ -66,14 +66,14 @@
 				<ol class="ef-om-etapes">
 					<li>Vous passez sur la page sécurisée d'Orange Money (lien valable {{ constant('App\\Entity\\TransactionOrangeMoney::VALIDITE_MINUTES') }} minutes).</li>
 					<li class="cle">Vous confirmez sur la page Orange Money avec votre code secret.</li>
-					<li>Vous revenez ici : paiement reçu, puis validé par la boutique ; le reçu arrive dans « Factures et paiements ».</li>
+					<li>Vous revenez ici : paiement reçu, puis validé par l'imprimerie ; le reçu arrive dans « Factures et paiements ».</li>
 				</ol>
 				<p class="ef-om-alerte">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</p>
 
 				{% if not omActif %}
 					<div class="ec-note" style="margin-bottom:.8rem">
 						Le paiement Orange Money depuis l'espace n'est pas ouvert pour le moment.
-						{% if marchand %}Envoyez {{ frais.total|francs }} au numéro marchand <b>{{ marchand }}</b> en indiquant la commande <b>{{ commande.numero }}</b>, ou payez en boutique.{% else %}Payez en boutique.{% endif %}
+						{% if marchand %}Envoyez {{ frais.total|francs }} au numéro marchand <b>{{ marchand }}</b> en indiquant la commande <b>{{ commande.numero }}</b>, ou payez à l'imprimerie.{% else %}Payez à l'imprimerie.{% endif %}
 					</div>
 				{% endif %}
 

@@ -3,8 +3,8 @@
 namespace App\Service\Bascule;
 
 /**
- * Ce que le classement des écarts a besoin de savoir sur les données de la
- * boutique. Seulement des nombres : jamais une valeur n'en sort.
+ * Ce que le classement des écarts a besoin de savoir sur les données de l'imprimerie.
+ * Seulement des nombres : jamais une valeur n'en sort.
  */
 interface SondeDonnees
 {

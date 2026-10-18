@@ -324,7 +324,7 @@ class Promotion
     public function setOrigine(string $origine): static { $this->origine = self::ORIGINE_ANNIVERSAIRE === $origine ? $origine : self::ORIGINE_MANUELLE; return $this; }
     public function estAnniversaire(): bool { return self::ORIGINE_ANNIVERSAIRE === $this->origine; }
 
-    /** Synchronisation : en ligne, une promotion à code reste éteinte (le code ne quitte pas la boutique). */
+    /** Synchronisation : en ligne, une promotion à code reste éteinte (le code ne quitte pas l'imprimerie). */
     public static function activeEnLigne(?bool $active, self $p): bool
     {
         return (bool) $active && null === $p->code;

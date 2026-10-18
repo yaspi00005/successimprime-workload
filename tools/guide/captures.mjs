@@ -8,7 +8,7 @@
  * avec les droits de la fiche).
  *
  * À lancer sur une base remplie par `php bin/console app:demo` (données de
- * démonstration seulement), jamais sur la base de la boutique : le
+ * démonstration seulement), jamais sur la base de l'imprimerie : le
  * parcours crée un client, un devis, une commande, un paiement, une
  * facture, et valide une remise de livraison.
  *
@@ -238,7 +238,7 @@ await scene(['client-nouveau', 'devis-saisie', 'devis-accepte', 'caisse-encaisse
     await page.evaluate(() => {
         const message = document.getElementById('message-acces');
         message.textContent = message.textContent.replace(/(Code d'accès : ).*/, '$1••• •••');
-        // Avertissement du poste de développement (adresse du site non réglée) : absent à la boutique.
+        // Avertissement du poste de développement (adresse du site non réglée) : absent à l'imprimerie.
         document.querySelectorAll('.si-acces-espace .alert-warning').forEach((e) => e.remove());
     });
     await capture(page, 'acces-espace');
@@ -321,7 +321,7 @@ await scene(['aide-index', 'commande-nouvelle', 'mes-actions', 'caisse-cloture',
     await aller(page, '/caisse');
     await suivre(page, page.getByRole('link', { name: 'Virement' }));
     await page.fill('[name="mouvement_tresorerie[montant]"]', '50000');
-    await page.selectOption('[name="mouvement_tresorerie[compteSource]"]', { label: 'Caisse boutique — Caisse' });
+    await page.selectOption('[name="mouvement_tresorerie[compteSource]"]', { label: 'Caisse imprimerie — Caisse' });
     await page.selectOption('[name="mouvement_tresorerie[compteDestination]"]', { label: 'Banque BDM — Banque' });
     await page.fill('[name="mouvement_tresorerie[libelle]"]', 'Versement de la caisse à la banque');
     await page.locator('[name="mouvement_tresorerie[compteSource]"]').scrollIntoViewIfNeeded();
@@ -445,7 +445,7 @@ await scene(['livraisons-planning', 'livraison-encaissement'], async () => {
         await aller(page, bon);
         const valider = page.getByRole('button', { name: 'Valider l\'encaissement' });
         if (await valider.count()) {
-            await page.locator('select[name="compte"]').selectOption({ label: 'Caisse boutique' });
+            await page.locator('select[name="compte"]').selectOption({ label: 'Caisse imprimerie' });
             await valider.scrollIntoViewIfNeeded();
             await capture(page, 'livraison-encaissement');
             await suivre(page, valider);

@@ -8,10 +8,10 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Code d'accès à l'espace client donné par la boutique (fiche client ›
+ * Code d'accès à l'espace client donné par l'imprimerie (fiche client ›
  * « Envoyer l'accès à l'espace client », par WhatsApp) : 8 caractères
  * faciles à taper, valable 48 heures, une seule fois. Il sert à la première
- * connexion, et de mot de passe oublié passé par la boutique.
+ * connexion, et de mot de passe oublié passé par l'imprimerie.
  *
  * Seule son empreinte est gardée (sha256 du numéro et du code) : le code
  * lui-même n'existe que dans le message WhatsApp. Une ligne par client :

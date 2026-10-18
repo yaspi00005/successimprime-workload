@@ -4,8 +4,8 @@ namespace App\Service\Bascule;
 
 /**
  * Une conversion de données : une ancienne mise à jour qui changeait le
- * sens des données existantes (pas seulement le schéma), que la base de la
- * boutique n'a pas reçue et que la bascule rejoue (docs/migration-de-base.md,
+ * sens des données existantes (pas seulement le schéma), que la base de l'imprimerie
+ * n'a pas reçue et que la bascule rejoue (docs/migration-de-base.md,
  * « Conversions de données »).
  *
  * - A_FAIRE : rejouée par --corriger, après la sauvegarde ;

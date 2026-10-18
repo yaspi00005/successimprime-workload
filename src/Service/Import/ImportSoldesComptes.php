@@ -44,7 +44,7 @@ final class ImportSoldesComptes extends ImportSoldes
     {
         return [
             ['cle' => 'compte', 'libelle' => 'Compte', 'alias' => ['code', 'nom du compte', 'code compte', 'tresorerie'], 'obligatoire' => true,
-                'exemples' => ['Caisse boutique', 'BDM'], 'aide' => 'Le code ou le nom d\'un compte de trésorerie déjà créé (Finances › Trésorerie).'],
+                'exemples' => ['Caisse imprimerie', 'BDM'], 'aide' => 'Le code ou le nom d\'un compte de trésorerie déjà créé (Finances › Trésorerie).'],
             ['cle' => 'solde', 'libelle' => 'Solde', 'alias' => ['montant', 'solde de depart', 'solde initial', 'disponible'], 'obligatoire' => true,
                 'exemples' => ['185 000', '4 750 000'], 'aide' => 'En francs, 0 ou plus : l\'argent compté ou le relevé du jour d\'ouverture.'],
         ];

@@ -71,7 +71,7 @@ final class NotificationsClientTest extends TestCase
         $service = $this->service([$this->compte($client)]);
         $fil = [
             self::evenement('impression', 'Impression lancée', 'Commande CMD-1', '2026-10-13 09:00', 'CMD-1'),
-            self::evenement('prete', 'Commande prête', 'CMD-2 · à retirer en boutique', '2026-10-12 08:00', 'CMD-2'),
+            self::evenement('prete', 'Commande prête', 'CMD-2 · à retirer à l\'imprimerie', '2026-10-12 08:00', 'CMD-2'),
         ];
 
         // L'événement de la veille (plus de 12 h) est ignoré ; l'impression ne coûte pas de SMS par défaut.
@@ -223,7 +223,7 @@ final class NotificationsClientTest extends TestCase
 
     public function testMessages(): void
     {
-        self::assertSame('Votre commande CMD-1 est prête à retirer en boutique.', NotificationsClient::message(['type' => 'prete', 'texte' => 'CMD-1 · à retirer en boutique', 'numero' => 'CMD-1']));
+        self::assertSame('Votre commande CMD-1 est prête à retirer à l\'imprimerie.', NotificationsClient::message(['type' => 'prete', 'texte' => 'CMD-1 · à retirer à l\'imprimerie', 'numero' => 'CMD-1']));
         self::assertSame('Votre commande CMD-1 est prête : la livraison arrive bientôt.', NotificationsClient::message(['type' => 'prete', 'texte' => 'CMD-1 · livraison à venir', 'numero' => 'CMD-1']));
         self::assertSame('Nous avons répondu à votre réclamation R-0002.', NotificationsClient::message(['type' => 'reclamation', 'texte' => 'R-0002 · Couleur', 'numero' => 'R-0002']));
         self::assertSame('L\'atelier a répondu à votre message.', NotificationsClient::message(['type' => 'message', 'texte' => 'Livraison jeudi, 120 000 F', 'numero' => null]));

@@ -389,7 +389,7 @@ final class SuiviCommercial
                 return [trim(($machine ? $machine.' · ' : '').'à imprimer'), false, $operateur];
             case self::PRETE:
                 if (!$commande->estALivrer()) {
-                    return ['à retirer en boutique', false, null];
+                    return ['à retirer à l\'imprimerie', false, null];
                 }
                 if (null !== $bl?->getPrevuLe()) {
                     return ['livraison prévue '.$bl->getPrevuLe()->format('d/m').($bl->getCreneau() ? ' · '.$bl->getCreneau() : ''), false, $bl->getLivreur()];

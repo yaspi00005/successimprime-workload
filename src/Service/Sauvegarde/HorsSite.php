@@ -7,7 +7,7 @@ use App\Service\Synchro\Synchro;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Copie chiffrée des sauvegardes hors de la boutique (docs/sauvegardes.md).
+ * Copie chiffrée des sauvegardes hors de l'imprimerie (docs/sauvegardes.md).
  *
  * L'agent de synchronisation l'envoie au site en ligne, par morceaux, après
  * l'avoir chiffrée au local : la base de chaque jour, et l'archive des

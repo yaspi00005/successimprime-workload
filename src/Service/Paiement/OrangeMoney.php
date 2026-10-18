@@ -133,7 +133,7 @@ final class OrangeMoney
         return $total;
     }
 
-    /** Avoir utilisé en ligne pour la commande (« Factures et paiements »), que la boutique n'a pas encore validé. */
+    /** Avoir utilisé en ligne pour la commande (« Factures et paiements »), que l'imprimerie n'a pas encore validé. */
     public static function avoirEnValidation(Commandes $commande): int
     {
         $total = 0;
@@ -161,7 +161,7 @@ final class OrangeMoney
     public function demarrer(Commandes $commande, CompteClient $compte, \DateTimeImmutable $maintenant): TransactionOrangeMoney
     {
         if (!$this->estOuvert()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique.');
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez à l\'imprimerie.');
         }
         $montant = self::aPayer($commande);
         if (!$commande->isStatut() || $montant <= 0) {
@@ -194,7 +194,7 @@ final class OrangeMoney
     public function demarrerAcompte(DemandeConception $demande, CompteClient $compte, int $montant, \DateTimeImmutable $maintenant): TransactionOrangeMoney
     {
         if (!$this->estOuvert()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique.');
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez à l\'imprimerie.');
         }
         if ($montant <= 0 || !$demande->estOuverte()) {
             throw new \DomainException('Rien à payer en ligne pour cette demande.');
@@ -224,7 +224,7 @@ final class OrangeMoney
     public function demarrerCredit(Clients $client, CompteClient $compte, int $images, int $montant, \DateTimeImmutable $maintenant, ?string $demande = null): TransactionOrangeMoney
     {
         if (!$this->estOuvert()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique.');
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez à l\'imprimerie.');
         }
         if ($montant <= 0 || $images <= 0) {
             throw new \DomainException('Choisissez un pack de crédit.');
@@ -257,7 +257,7 @@ final class OrangeMoney
     public function demarrerReglement(ReglementEnLigne $reglement, CompteClient $compte, \DateTimeImmutable $maintenant): TransactionOrangeMoney
     {
         if (!$this->estOuvert()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez en boutique.');
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas ouvert pour le moment : payez à l\'imprimerie.');
         }
         if ($reglement->getMontantOm() <= 0 || !$reglement->estEnCours()) {
             throw new \DomainException('Rien à payer par Orange Money.');
@@ -278,7 +278,7 @@ final class OrangeMoney
 
     /**
      * Dépôt sur le compte du client depuis « Mon solde » : le montant va
-     * au solde (une fois validé à la boutique), les frais sont payés en
+     * au solde (une fois validé à l'imprimerie), les frais sont payés en
      * plus. Un lien encore valable pour le même montant est repris.
      *
      * @throws \DomainException message à montrer au client
@@ -286,7 +286,7 @@ final class OrangeMoney
     public function demarrerDepot(Clients $client, CompteClient $compte, int $montant, \DateTimeImmutable $maintenant): TransactionOrangeMoney
     {
         if (!$this->estConfigure()) {
-            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert : déposez à la boutique.');
+            throw new \DomainException('Le paiement Orange Money en ligne n\'est pas encore ouvert : déposez à l\'imprimerie.');
         }
         if ($montant < self::DEPOT_MINIMUM || $montant > self::DEPOT_MAXIMUM) {
             throw new \DomainException(\sprintf('Un dépôt va de %s à %s F.', number_format(self::DEPOT_MINIMUM, 0, ',', ' '), number_format(self::DEPOT_MAXIMUM, 0, ',', ' ')));
@@ -354,7 +354,7 @@ final class OrangeMoney
             $raison = self::raisonRefus($reponse->getStatusCode(), $donnees, $lien, $this->api);
             $this->logger->error('Orange Money : paiement non ouvert, {raison}.', ['raison' => $raison]);
             $this->noterRefus($transaction->getOrderId(), $raison);
-            throw new \DomainException('Orange Money a refusé d\'ouvrir le paiement. Réessayez ou payez en boutique.');
+            throw new \DomainException('Orange Money a refusé d\'ouvrir le paiement. Réessayez ou payez à l\'imprimerie.');
         }
         $transaction->ouvrir((string) $donnees['pay_token'], (string) $donnees['notif_token'], $lien);
         $this->em->persist($transaction);

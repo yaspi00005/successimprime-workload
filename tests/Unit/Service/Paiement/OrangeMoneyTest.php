@@ -134,7 +134,7 @@ final class OrangeMoneyTest extends TestCase
             $this->service()->demarrer($this->commande(), new CompteClient(), new \DateTimeImmutable());
             self::fail('Un refus d\'Orange doit être signalé au client.');
         } catch (\DomainException $e) {
-            self::assertSame('Orange Money a refusé d\'ouvrir le paiement. Réessayez ou payez en boutique.', $e->getMessage());
+            self::assertSame('Orange Money a refusé d\'ouvrir le paiement. Réessayez ou payez à l\'imprimerie.', $e->getMessage());
         }
 
         $refus = $this->service()->derniersRefus();

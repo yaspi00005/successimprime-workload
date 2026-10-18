@@ -20,7 +20,7 @@ use Doctrine\ORM\Mapping as ORM;
 class ModeleAnniversaire
 {
     /** Texte proposé : sans montant ni pourcentage (règle des messages aux clients). */
-    public const TEXTE_PAR_DEFAUT = 'Succès Imprim : joyeux anniversaire {prénom} ! Cela fait {années} que vous nous faites confiance. Un cadeau vous attend en boutique jusqu\'au {fin}.';
+    public const TEXTE_PAR_DEFAUT = 'Succès Imprim : joyeux anniversaire {prénom} ! Cela fait {années} que vous nous faites confiance. Un cadeau vous attend à l\'imprimerie jusqu\'au {fin}.';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

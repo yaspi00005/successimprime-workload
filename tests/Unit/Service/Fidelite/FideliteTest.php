@@ -12,7 +12,7 @@ use App\Service\Synchro\CatalogueSynchro;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Relevé montré à la boutique et au client, résumé reçu par le site, et ce
+ * Relevé montré à l'imprimerie et au client, résumé reçu par le site, et ce
  * qui part en ligne (docs/fidelite.md).
  */
 final class FideliteTest extends TestCase

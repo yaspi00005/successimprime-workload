@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Commande passée en ligne avec « Livraison à Bamako » : les frais arrivent
  * au local s'ils sont 0 ou un des paliers ; un autre montant est retiré
- * (la boutique choisit en confirmant).
+ * (l'imprimerie choisit en confirmant).
  */
 final class FraisLivraisonEnLigneTest extends TestCase
 {

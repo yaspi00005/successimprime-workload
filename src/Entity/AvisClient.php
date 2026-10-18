@@ -8,7 +8,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Avis d'un client, recopié à la main (reçu en boutique, sur WhatsApp ou
+ * Avis d'un client, recopié à la main (reçu à l'imprimerie, sur WhatsApp ou
  * sur la fiche Google). Montré sur le site seulement avec l'accord du
  * client ; sans accord, ni le texte ni le nom ne quittent l'ERP local.
  */
@@ -35,7 +35,7 @@ class AvisClient
     #[ORM\Column(type: Types::SMALLINT)]
     private int $note = 5;
 
-    /** D'où vient l'avis : « En boutique », « WhatsApp », « Avis Google ». */
+    /** D'où vient l'avis : « À l'imprimerie », « WhatsApp », « Avis Google ». */
     #[ORM\Column(length: 60, nullable: true)]
     private ?string $source = null;
 

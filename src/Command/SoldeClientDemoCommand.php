@@ -27,8 +27,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *  - Coumba Bagayoko (DEMO-0122) : monnaie gardée à la caisse, dépôt en
  *    espèces, une partie d'une commande payée avec le solde ;
  *  - Amadou Sow (DEMO-0195, particulier de l'espace) : dépôt en espèces et
- *    un dépôt Orange Money fait en ligne, reçu, à valider à la boutique ;
- *  - Salon Espoir (DEMO-0002) : dépôt Orange Money à la boutique, argent
+ *    un dépôt Orange Money fait en ligne, reçu, à valider à l'imprimerie ;
+ *  - Salon Espoir (DEMO-0002) : dépôt Orange Money à l'imprimerie, argent
  *    rendu en partie par la direction, et un dépôt en ligne fait par son
  *    payeur, à valider.
  *
@@ -111,7 +111,7 @@ final class SoldeClientDemoCommand extends Command
             $this->soldes->deposer($amadou, 15000, Paiements::MODE_ESPECES, $caisse, null, 0, $caissiere);
             $this->depotEnLigne($amadou, 5000, 'Amadou Sow', 'SIDEMO000195', 'MP260001DEMO195');
 
-            // Salon Espoir : dépôt Orange Money à la boutique, une partie rendue, un dépôt en ligne du payeur.
+            // Salon Espoir : dépôt Orange Money à l'imprimerie, une partie rendue, un dépôt en ligne du payeur.
             $salon = $clients['DEMO-0002'];
             $this->soldes->deposer($salon, 50000, Paiements::MODE_ORANGE_MONEY, $orange, 'MP260001DEMO002', 0, $caissiere, 'Avance sur les commandes du trimestre.');
             $this->soldes->rembourser($salon, 10000, $caisse, 'Le gérant a repris une partie de l\'avance.', $direction);

@@ -1,6 +1,6 @@
 {#
 	Ventes › Demandes du site : demandes de devis et messages écrits sans
-	compte sur le site (maquette 11). Seulement sur l'ERP de la boutique.
+	compte sur le site (maquette 11). Seulement sur l'ERP de l'imprimerie.
 #}
 {% extends 'base.html.twig' %}
 
@@ -16,7 +16,7 @@
 	<section class="card si-ac-bloc">
 		{% if enLigne %}
 			<h2>Demandes du site</h2>
-			<p class="si-ac-vide">Les demandes de devis et les messages du site se lisent sur l'ERP de la boutique, où ils arrivent par la synchronisation avec leur devis brouillon.</p>
+			<p class="si-ac-vide">Les demandes de devis et les messages du site se lisent sur l'ERP de l'imprimerie, où ils arrivent par la synchronisation avec leur devis brouillon.</p>
 		{% else %}
 			<h2>{{ traitees ? 'Demandes traitées' : 'À traiter' }} <span class="si-pg-compte">{{ liste|length }}</span></h2>
 			{% if liste is empty %}

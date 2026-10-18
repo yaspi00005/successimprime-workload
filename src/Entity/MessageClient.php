@@ -211,7 +211,7 @@ class MessageClient
     /**
      * « Seydou (graphiste PAO) » donne Seydou, graphiste PAO, « S » et une
      * teinte fixe pour ce prénom ; rien ou « Succès Imprim » donne la
-     * signature de la boutique (« SI », teinte null : le bleu de la marque).
+     * signature de l'imprimerie (« SI », teinte null : le bleu de la marque).
      *
      * @return array{nom: string, metier: ?string, initiales: string, teinte: ?int}
      */

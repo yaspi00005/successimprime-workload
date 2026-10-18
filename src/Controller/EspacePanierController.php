@@ -128,7 +128,7 @@ final class EspacePanierController extends AbstractController
             // Récapitulatif avec les frais Orange Money, puis la page d'Orange : l'acompte lance la production.
             return $this->redirectToRoute('app_espace_nouvelle_commande_paiement', ['id' => (string) $commande->getPublicId(), 'part' => PaiementALaCommande::ACOMPTE, 'envoyee' => 1]);
         } else {
-            $this->addFlash('succes', \sprintf('Commande %s envoyée. Elle part en production dès que l\'acompte est réglé%s.%s', $commande->getNumero(), $compte->peut(CompteClient::DROIT_PAYEUR) ? ' (en boutique ou dans « Factures et paiements »)' : ' par la personne qui paie pour votre entreprise', $suite));
+            $this->addFlash('succes', \sprintf('Commande %s envoyée. Elle part en production dès que l\'acompte est réglé%s.%s', $commande->getNumero(), $compte->peut(CompteClient::DROIT_PAYEUR) ? ' (à l\'imprimerie ou dans « Factures et paiements »)' : ' par la personne qui paie pour votre entreprise', $suite));
         }
 
         return $this->redirectToRoute('app_espace_commande', ['id' => (string) $commande->getPublicId()]);

@@ -23,7 +23,7 @@ final class FormulaireDemandeTest extends TestCase
         ['valeurs' => $v, 'erreurs' => $erreurs] = FormulaireDemande::valider('devis', [
             'nom' => '  Moussa   Traoré ', 'telephone' => '76 12 34 56', 'email' => 'moussa@exemple.ml',
             'produit' => '7', 'largeur' => '300', 'hauteur' => '100,5', 'quantite' => '2',
-            'finitions' => [(string) $oeillets->getId(), '999', 'abc'], 'message' => 'Pour la boutique',
+            'finitions' => [(string) $oeillets->getId(), '999', 'abc'], 'message' => 'Pour l\'imprimerie',
         ], [$bache]);
 
         self::assertSame([], $erreurs);

@@ -95,7 +95,7 @@ final class CatalogueSynchroTest extends TestCase
             self::assertContains('objet', $types[$type]['champs'], $type);
             self::assertArrayNotHasKey('fraisLivraison', $types[$type]['remontees'] ?? [], $type.' : le site ne change pas les frais');
         }
-        // Commande en ligne : les frais de livraison en ligne (un palier ou 0) arrivent avec elle ; la boutique
+        // Commande en ligne : les frais de livraison en ligne (un palier ou 0) arrivent avec elle ; l'imprimerie
         // peut les changer en confirmant, et Synchro::verifierFraisEnLigne retire un montant hors paliers.
         self::assertArrayNotHasKey('fraisLivraison', $types['commande']['imposeAuLocal']);
         self::assertContains('delaiProduction', $types['commande']['champs']);
@@ -161,7 +161,7 @@ final class CatalogueSynchroTest extends TestCase
      * Compte du client (docs/finances.md) : le relevé descend en lecture
      * seule, sans motif, employé, paiement ni mouvement de trésorerie ; un
      * dépôt Orange Money de l'espace client ne monte qu'une fois reçu par
-     * Orange, toujours « à valider », et la décision de la boutique descend.
+     * Orange, toujours « à valider », et la décision de l'imprimerie descend.
      */
     public function testCompteDuClient(): void
     {
@@ -521,7 +521,7 @@ final class CatalogueSynchroTest extends TestCase
             self::assertNotContains($interdit, $suspension['champs'], $interdit);
             self::assertArrayNotHasKey($interdit, $suspension['relations'], $interdit);
         }
-        // Décidée à la boutique : le site ne renvoie rien.
+        // Décidée à l'imprimerie : le site ne renvoie rien.
         self::assertSame(CatalogueSynchro::DESCENDANT, $suspension['sens']);
         self::assertTrue(CatalogueSynchro::envoye('suspension_espace', false));
         self::assertFalse(CatalogueSynchro::envoye('suspension_espace', true));

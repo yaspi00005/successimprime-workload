@@ -16,8 +16,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * « Envoyer l'accès à l'espace client » (fiche client, ERP local) : la
- * boutique donne au client un code d'accès à 8 caractères, valable 48 h,
+ * « Envoyer l'accès à l'espace client » (fiche client, ERP local) : l'imprimerie
+ * donne au client un code d'accès à 8 caractères, valable 48 h,
  * qu'elle lui envoie elle-même sur WhatsApp avec son identifiant (son
  * numéro) et le lien de la page « Première connexion ». Le code n'est
  * jamais gardé ni écrit au journal : seule son empreinte descend sur le
@@ -32,7 +32,7 @@ final class AccesEspace
 
     public const SANS_NUMERO = 'Ajoutez d\'abord un numéro malien à 8 chiffres sur la fiche : c\'est l\'identifiant du client.';
 
-    /** Consigne de la page « Accès prêt » (boutique) : comme le message, l'adresse e-mail du client n'est pas obligatoire. */
+    /** Consigne de la page « Accès prêt » (ERP de l'imprimerie) : comme le message, l'adresse e-mail du client n'est pas obligatoire. */
     public const CONSIGNE_BOUTIQUE = 'Ne le donnez qu\'au client, sur son numéro. À sa première connexion, il choisit son mot de passe et ajoute son adresse e-mail s\'il en a une (ce n\'est pas obligatoire). Ensuite il se connecte avec son numéro et ce mot de passe.';
 
     public function __construct(
@@ -49,7 +49,7 @@ final class AccesEspace
     public function empechement(Clients $client): ?string
     {
         return match (true) {
-            $this->enLigne => 'L\'accès à l\'espace client se donne depuis l\'ERP de la boutique.',
+            $this->enLigne => 'L\'accès à l\'espace client se donne depuis l\'ERP de l\'imprimerie.',
             NotificationsClient::estDemo($client) => 'Fiche de démonstration : pas d\'accès à l\'espace client.',
             null === CompteClient::normaliserTelephone((string) $client->getTelephone()) => self::SANS_NUMERO,
             true === $this->suspensions?->numeroSuspendu($client, (string) $client->getTelephone()) => self::SUSPENDU,

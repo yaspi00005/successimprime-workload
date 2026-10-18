@@ -140,7 +140,7 @@ final class EspaceFacturesController extends AbstractController
         }
         $paye = $commande->getTotalPaye();
         // Le QR de vérification de la facture (/f/{code}), comme sur le PDF : seulement si la facture a déjà un code
-        // au bon format (le site ne crée pas de code : il viendrait en conflit avec celui de la boutique).
+        // au bon format (le site ne crée pas de code : il viendrait en conflit avec celui de l'imprimerie).
         $code = self::codeSuivi($facture);
         $urlSuivi = null !== $code && $entreprise->isQrSuivi() ? $this->generateUrl('app_facture_suivi', ['code' => $code], UrlGeneratorInterface::ABSOLUTE_URL) : null;
 
@@ -257,7 +257,7 @@ final class EspaceFacturesController extends AbstractController
             return $this->redirectToRoute('app_espace_payer_selection', $retour);
         }
         if (!$limite->create('compte-'.$compte->getId())->consume()->isAccepted()) {
-            $this->addFlash('error', 'Vous avez lancé beaucoup de paiements. Réessayez dans quelques minutes, ou payez en boutique.');
+            $this->addFlash('error', 'Vous avez lancé beaucoup de paiements. Réessayez dans quelques minutes, ou payez à l\'imprimerie.');
 
             return $this->redirectToRoute('app_espace_factures');
         }
@@ -277,7 +277,7 @@ final class EspaceFacturesController extends AbstractController
     /**
      * Paiement reçu (maquettes FP04, FP05) : retour de la page Orange Money
      * (l'état est relu chez Orange sans attendre sa notification), puis
-     * l'état de chaque élément tel que la boutique le valide.
+     * l'état de chaque élément tel que l'imprimerie le valide.
      */
     #[Route('/factures/paiement/{reference}', name: 'payer_recu', requirements: ['reference' => '[A-Z0-9]{8,40}'], methods: ['GET'])]
     public function recu(string $reference, OrangeMoney $orangeMoney, EntityManagerInterface $em, CoqueEspace $coque): Response
@@ -302,11 +302,11 @@ final class EspaceFacturesController extends AbstractController
             'aPayer' => $aPayer,
             'derniersRecus' => \array_slice($paiements, 0, 5),
             // Partage sur WhatsApp : jamais de montant dans le texte.
-            'partage' => 'https://wa.me/?text='.rawurlencode(\sprintf('Paiement Succès Imprim envoyé par Orange Money (référence %s). Le reçu arrive dans mon espace client une fois validé par la boutique.', $reglement->getReference())),
+            'partage' => 'https://wa.me/?text='.rawurlencode(\sprintf('Paiement Succès Imprim envoyé par Orange Money (référence %s). Le reçu arrive dans mon espace client une fois validé par l\'imprimerie.', $reglement->getReference())),
         ]);
     }
 
-    /** Reçu d'un paiement validé par la boutique, en PDF (numéro de la caisse). */
+    /** Reçu d'un paiement validé par l'imprimerie, en PDF (numéro de la caisse). */
     #[Route('/factures/recu/{id}', name: 'facture_recu', requirements: ['id' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'], methods: ['GET'])]
     public function recuPdf(string $id, DocumentsEntreprise $documents, EspaceFacturesExtension $vues): Response
     {
@@ -314,7 +314,7 @@ final class EspaceFacturesController extends AbstractController
         $client = $compte->getClient();
         $paiement = $this->factures->paiement($client, $id) ?? throw $this->createNotFoundException();
         if (!$paiement->estValide()) {
-            // Pas de reçu tant que la boutique n'a pas validé : il n'aurait pas de numéro.
+            // Pas de reçu tant que l'imprimerie n'a pas validé : il n'aurait pas de numéro.
             throw $this->createNotFoundException();
         }
         $commande = $paiement->getCommande();
@@ -438,7 +438,7 @@ final class EspaceFacturesController extends AbstractController
 
     /**
      * Moyens de paiement (panneau de la vue d'ensemble), d'après les
-     * réglages de la boutique.
+     * réglages de l'imprimerie.
      *
      * @return array{orangeMoney: bool, especes: bool, virement: bool, seuil: int, coordonnees: string, marchand: ?string}
      */

@@ -5,10 +5,10 @@ namespace App\Service\Site;
 use App\Service\Parametres\Parametres;
 
 /**
- * Page Contact du site (maquette 11) : horaires de la boutique (tuile
+ * Page Contact du site (maquette 11) : horaires de l'imprimerie (tuile
  * Horaires des Paramètres), ouvert ou fermé en ce moment, lien du plan et
  * repère de la carte (tuile « Site : page Contact », par défaut la position
- * de la boutique sur sa fiche Google).
+ * de l'imprimerie sur sa fiche Google).
  */
 final class ContactSite
 {
@@ -39,8 +39,8 @@ final class ContactSite
 
     /**
      * Lien « Itinéraire » toujours disponible (bandeau « Venez nous voir »
-     * de l'accueil) : celui du réglage (position de la boutique), sinon une
-     * recherche Google Maps sur le nom et l'adresse de la boutique.
+     * de l'accueil) : celui du réglage (position de l'imprimerie), sinon une
+     * recherche Google Maps sur le nom et l'adresse de l'imprimerie.
      */
     public function itineraire(string $nom, ?string $adresse): string
     {
@@ -65,7 +65,7 @@ final class ContactSite
     }
 
     /**
-     * Repère de la boutique pour la carte de la page Contact (coordonnées
+     * Repère de l'imprimerie pour la carte de la page Contact (coordonnées
      * saisies ou lues dans un lien long, DonneesStructurees::position),
      * seulement s'il y a aussi un lien d'itinéraire ; sinon null (plan
      * dessiné seul).
@@ -99,7 +99,7 @@ final class ContactSite
 
     /**
      * Ouvert en ce moment, sinon prochaine ouverture (jours fériés de
-     * l'atelier non comptés : la boutique peut ouvrir).
+     * l'atelier non comptés : l'imprimerie peut ouvrir).
      *
      * @return array{ouvert: bool, etat: string}
      */

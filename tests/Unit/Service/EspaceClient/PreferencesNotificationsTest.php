@@ -109,7 +109,7 @@ final class PreferencesNotificationsTest extends TestCase
         self::assertTrue(P::accordOffres(false, true, false, false));
         self::assertFalse(P::accordOffres(true, false, false, true));
         self::assertTrue(P::accordOffres(true, false, true, true));
-        // Sans changement, l'accord donné à la boutique reste.
+        // Sans changement, l'accord donné à l'imprimerie reste.
         self::assertTrue(P::accordOffres(false, false, false, true));
     }
 

@@ -126,7 +126,7 @@
 					{% endif %}
 
 				{% elseif onglet == 'avis' %}
-					<p class="si-sv-aide">Recopiez un avis reçu en boutique, sur WhatsApp ou sur la fiche Google. Il n'est montré qu'avec l'accord du client ; sans accord, ni son texte ni son nom ne quittent l'atelier.</p>
+					<p class="si-sv-aide">Recopiez un avis reçu à l'imprimerie, sur WhatsApp ou sur la fiche Google. Il n'est montré qu'avec l'accord du client ; sans accord, ni son texte ni son nom ne quittent l'atelier.</p>
 					{% if elements is empty %}
 						<p class="si-sv-vide">Aucun avis pour le moment.</p>
 					{% else %}
@@ -387,7 +387,7 @@
 								<div id="aide-ref-fiche" class="form-text">Sur la fiche, bouton « Partager » › copier le lien. Il apparaît sur la page Contact (« Voir notre fiche Google ») et dans les données pour Google.</div>
 
 								<h2 class="si-sv-sous-titre mt-4" id="reseaux-sociaux">Réseaux sociaux</h2>
-								<p class="form-text mt-0">Collez l'adresse de chaque page de la boutique. Un champ vide n'est pas affiché. Les pages réglées apparaissent en icônes dans le pied de page du site, sur la page Contact et dans l'espace client (bas du menu, bas de page sur téléphone), s'ouvrent dans un nouvel onglet, et sont reliées à la fiche de l'imprimerie pour Google (sauf WhatsApp).</p>
+								<p class="form-text mt-0">Collez l'adresse de chaque page de l'imprimerie. Un champ vide n'est pas affiché. Les pages réglées apparaissent en icônes dans le pied de page du site, sur la page Contact et dans l'espace client (bas du menu, bas de page sur téléphone), s'ouvrent dans un nouvel onglet, et sont reliées à la fiche de l'imprimerie pour Google (sauf WhatsApp).</p>
 								{% for cle, reseau in constant('App\\Service\\Site\\ReferencementSite::RESEAUX') %}
 									<label class="si-libelle-champ mt-3" for="ref-{{ cle }}">{{ cle == 'whatsapp' ? 'WhatsApp (numéro, lien wa.me ou chaîne)' : 'Page ' ~ reseau.libelle }}</label>
 									<input type="{{ cle == 'whatsapp' ? 'text' : 'url' }}" name="{{ cle }}" id="ref-{{ cle }}" value="{{ r[cle] }}" maxlength="500" class="form-control form-control-sm" placeholder="{{ cle == 'whatsapp' ? 'https://wa.me/223… ou +223 …' : 'https://www.' ~ reseau.domaines|first ~ '/…' }}"{% if r[cle] %} aria-describedby="voir-ref-{{ cle }}"{% endif %}>

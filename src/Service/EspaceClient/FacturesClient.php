@@ -55,7 +55,7 @@ final class FacturesClient
         ];
     }
 
-    /** Commande confirmée par la boutique, ni annulée ni en attente de l'entreprise du client. */
+    /** Commande confirmée par l'imprimerie, ni annulée ni en attente de l'entreprise du client. */
     public static function payable(Commandes $c): bool
     {
         return $c->isStatut() && !$c->isDeleted() && 'annulee' !== $c->getStatutTravaux()
@@ -70,7 +70,7 @@ final class FacturesClient
      *    client, sinon celui des réglages) ;
      *  - sans facture, une fois prête ou livrée : le reste ;
      *  - le solde d'ouverture : son reste.
-     * Ce qui attend déjà la validation de la boutique n'est plus demandé.
+     * Ce qui attend déjà la validation de l'imprimerie n'est plus demandé.
      *
      * @param iterable<Commandes>  $commandes
      * @param array<int, Factures> $factures facture émise de chaque commande, par id de commande
@@ -234,7 +234,7 @@ final class FacturesClient
     }
 
     /**
-     * Payé dans l'année : les paiements validés par la boutique seulement.
+     * Payé dans l'année : les paiements validés par l'imprimerie seulement.
      *
      * @param list<Paiements> $paiements
      *
@@ -263,7 +263,7 @@ final class FacturesClient
         return null;
     }
 
-    /** Ce qui attend la validation de la boutique sur la commande (Orange Money, avoir). */
+    /** Ce qui attend la validation de l'imprimerie sur la commande (Orange Money, avoir). */
     public static function enValidation(Commandes $c): int
     {
         return OrangeMoney::enValidation($c) + OrangeMoney::avoirEnValidation($c);
@@ -291,7 +291,7 @@ final class FacturesClient
     }
 
     /**
-     * Pastille d'un paiement : « reçu, en validation » tant que la boutique
+     * Pastille d'un paiement : « reçu, en validation » tant que l'imprimerie
      * ne l'a pas validé.
      *
      * @return array{libelle: string, couleur: string}
@@ -300,7 +300,7 @@ final class FacturesClient
     {
         return match ($p->getStatut()) {
             Paiements::STATUT_VALIDE => ['libelle' => 'Validé', 'couleur' => 'vert'],
-            Paiements::STATUT_REJETE => ['libelle' => 'Refusé par la boutique', 'couleur' => 'rouge'],
+            Paiements::STATUT_REJETE => ['libelle' => 'Refusé par l\'imprimerie', 'couleur' => 'rouge'],
             Paiements::STATUT_ANNULE => ['libelle' => 'Annulé', 'couleur' => 'gris'],
             default => ['libelle' => 'Reçu · en validation', 'couleur' => 'ambre'],
         };
@@ -311,7 +311,7 @@ final class FacturesClient
     {
         return match ($p->getMode()) {
             Paiements::MODE_ORANGE_MONEY => 'Orange Money',
-            Paiements::MODE_ESPECES => 'Espèces · boutique',
+            Paiements::MODE_ESPECES => 'Espèces · au comptoir',
             Paiements::MODE_SOLDE_CLIENT => 'Avoir',
             Paiements::MODE_POINTS_FIDELITE => 'Points fidélité',
             Paiements::MODE_VIREMENT => 'Virement',
@@ -323,7 +323,7 @@ final class FacturesClient
     }
 
     /**
-     * Rappels d'une commande : ceux envoyés par la boutique (règles de
+     * Rappels d'une commande : ceux envoyés par l'imprimerie (règles de
      * rappel, reçus du local) et ceux de l'échéance de sa facture dans
      * l'espace, puis le prochain si rien ne change.
      *
@@ -400,7 +400,7 @@ final class FacturesClient
 
     /**
      * État d'une part d'un règlement, pour la page « Paiement reçu » :
-     * « reçu, en validation » tant que la boutique n'a pas validé, puis
+     * « reçu, en validation » tant que l'imprimerie n'a pas validé, puis
      * « soldée » quand la commande n'a plus rien à payer.
      *
      * @return array{libelle: string, couleur: string}
@@ -415,7 +415,7 @@ final class FacturesClient
         }
         $paiements = array_filter([$part->getPaiementOm(), $part->getPaiementAvoir()]);
         if (array_filter($paiements, static fn (Paiements $x): bool => $x->estRejete()) !== []) {
-            return ['libelle' => 'refusé par la boutique', 'couleur' => 'rouge'];
+            return ['libelle' => 'refusé par l\'imprimerie', 'couleur' => 'rouge'];
         }
         if (array_filter($paiements, static fn (Paiements $x): bool => !$x->estValide()) !== []) {
             return ['libelle' => 'reçu · en validation', 'couleur' => 'ambre'];
@@ -439,7 +439,7 @@ final class FacturesClient
         return match (true) {
             $r->estEnCours() => ['libelle' => 'réservé', 'couleur' => 'gris'],
             [] === $paiements => ['libelle' => 'non utilisé', 'couleur' => 'gris'],
-            array_filter($paiements, static fn (Paiements $p): bool => $p->estRejete()) !== [] => ['libelle' => 'refusé par la boutique', 'couleur' => 'rouge'],
+            array_filter($paiements, static fn (Paiements $p): bool => $p->estRejete()) !== [] => ['libelle' => 'refusé par l\'imprimerie', 'couleur' => 'rouge'],
             array_filter($paiements, static fn (Paiements $p): bool => !$p->estValide()) !== [] => ['libelle' => 'en validation', 'couleur' => 'ambre'],
             default => ['libelle' => 'utilisé', 'couleur' => 'vert'],
         };
@@ -467,11 +467,11 @@ final class FacturesClient
             }
             $carte = $this->espace->carte($c);
             $texte = match (true) {
-                // Acompte payé à la commande (PaiementALaCommande) : la boutique n'a pas encore confirmé.
+                // Acompte payé à la commande (PaiementALaCommande) : l'imprimerie n'a pas encore confirmé.
                 !$c->isStatut() => 'L\'atelier vérifie le prix et votre fichier, confirme la commande, puis vous envoie le BAT.',
                 $carte['batEnAttente'] => 'Votre BAT attend votre accord dans « Fichiers et BAT ».',
                 self::productionLancee($c) => 'Production lancée par l\'atelier.',
-                default => 'L\'atelier lance la production quand la boutique a validé votre acompte.',
+                default => 'L\'atelier lance la production quand l\'imprimerie a validé votre acompte.',
             };
             $etapes[] = ['titre' => \sprintf('%s · %s', EspaceClient::titre($c), $c->getNumero()), 'texte' => $texte, 'lien' => ['app_espace_commande', ['id' => (string) $c->getPublicId()]]];
         }
@@ -502,7 +502,7 @@ final class FacturesClient
             }
             $etapes[] = $points > 0
                 ? ['titre' => 'Points fidélité', 'texte' => \sprintf('+%d points ajoutés pour ces commandes.', $points), 'lien' => ['app_espace_fidelite', []]]
-                : ['titre' => 'Points fidélité', 'texte' => 'Vos points sont ajoutés quand la boutique valide le paiement.', 'lien' => ['app_espace_fidelite', []]];
+                : ['titre' => 'Points fidélité', 'texte' => 'Vos points sont ajoutés quand l\'imprimerie valide le paiement.', 'lien' => ['app_espace_fidelite', []]];
         }
 
         return $etapes;

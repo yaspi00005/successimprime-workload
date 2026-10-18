@@ -47,7 +47,7 @@ class AlerteSysteme
     public const TYPES = [
         self::ERREUR_SERVEUR => ['libelle' => 'Erreur du site (500)', 'aide' => 'une page du site, de l\'espace client ou de l\'administration plante'],
         self::PAIEMENT => ['libelle' => 'Paiement Orange Money', 'aide' => 'paiement non ouvert, rappel d\'Orange invalide, argent reçu sans commande'],
-        self::SYNCHRO => ['libelle' => 'Synchronisation', 'aide' => 'pas de synchronisation réussie, ou la boutique ne s\'est pas manifestée'],
+        self::SYNCHRO => ['libelle' => 'Synchronisation', 'aide' => 'pas de synchronisation réussie, ou l\'imprimerie ne s\'est pas manifestée'],
         self::ENVOI => ['libelle' => 'Envoi d\'e-mail ou de SMS', 'aide' => 'un e-mail ou un SMS n\'est pas parti'],
         self::SAUVEGARDE => ['libelle' => 'Sauvegarde', 'aide' => 'sauvegarde ratée, trop ancienne, ou copie sur le second disque en échec'],
         self::DISQUE => ['libelle' => 'Espace disque', 'aide' => 'moins de place que le seuil réglé'],
@@ -71,7 +71,7 @@ class AlerteSysteme
     public const LOCAL = 'local';
     public const EN_LIGNE = 'en_ligne';
 
-    public const ORIGINES = [self::LOCAL => 'ERP de la boutique', self::EN_LIGNE => 'Site en ligne'];
+    public const ORIGINES = [self::LOCAL => 'ERP de l\'imprimerie', self::EN_LIGNE => 'Site en ligne'];
 
     public const LONGUEUR_TITRE = 190;
     public const LONGUEUR_DETAIL = 12000;

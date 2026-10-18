@@ -70,7 +70,7 @@
 				<div class="ec-carte mp-reception-bloc">
 					<h2 class="mp-titre-bloc">Réception</h2>
 					<div class="mp-reception">
-						<label class="mp-option"><input type="radio" name="reception" value="retrait" form="valider" checked data-reception>Retrait en boutique <small>gratuit</small></label>
+						<label class="mp-option"><input type="radio" name="reception" value="retrait" form="valider" checked data-reception>Retrait à l'imprimerie <small>gratuit</small></label>
 						<label class="mp-option"><input type="radio" name="reception" value="livraison" form="valider" data-reception>Livraison à Bamako {% if montants %}<small>{{ fraisLivraison|number_format(0, ',', ' ') }} F</small>{% endif %}</label>
 					</div>
 					<div class="mp-livraison" data-livraison hidden>
@@ -104,7 +104,7 @@
 					<h2 class="mp-titre-bloc">Récapitulatif</h2>
 					<dl>
 						<dt>{{ nb }} produit{{ nb > 1 ? 's' }}</dt><dd>{% if montants %}{{ detail.total|number_format(0, ',', ' ') }} F{% endif %}</dd>
-						<dt data-recap-reception>Retrait en boutique</dt><dd>{% if montants %}<span data-recap-frais>0</span> F{% endif %}</dd>
+						<dt data-recap-reception>Retrait à l'imprimerie</dt><dd>{% if montants %}<span data-recap-frais>0</span> F{% endif %}</dd>
 						<hr>
 						{% if montants %}<dt class="mp-grand">Total</dt><dd class="mp-grand" data-recap-total>{{ detail.total|number_format(0, ',', ' ') }} F</dd>{% endif %}
 						{% if acompte %}<dt>Acompte {{ acompte.pourcentage }} % maintenant</dt><dd data-recap-acompte>{{ acompte.montant|number_format(0, ',', ' ') }} F</dd>{% endif %}
@@ -122,7 +122,7 @@
 						<p class="mp-om">Orange Money · le panier devient la commande</p>
 					{% else %}
 						<button class="ec-bouton orange ec-bureau" form="valider">Valider la commande</button>
-						<p class="mp-om">{{ peutPayer ? 'L\'acompte se règle en boutique ou dans « Factures et paiements » ; la production démarre à sa réception.' : 'La personne qui paie pour votre entreprise règle l\'acompte ; la production démarre à sa réception.' }}</p>
+						<p class="mp-om">{{ peutPayer ? 'L\'acompte se règle à l\'imprimerie ou dans « Factures et paiements » ; la production démarre à sa réception.' : 'La personne qui paie pour votre entreprise règle l\'acompte ; la production démarre à sa réception.' }}</p>
 					{% endif %}
 				</div>
 
@@ -164,7 +164,7 @@
 				var liv = r.value === 'livraison' && r.checked;
 				if (livraison) { livraison.hidden = !liv; }
 				var t = document.querySelector('[data-recap-reception]');
-				if (t) { t.textContent = liv ? 'Livraison à Bamako' : 'Retrait en boutique'; }
+				if (t) { t.textContent = liv ? 'Livraison à Bamako' : 'Retrait à l\'imprimerie'; }
 				var fr2 = liv ? frais : 0, total = base + fr2, ac = Math.min(total, Math.ceil(total * pourcentage / 100));
 				var poser = function (sel, v) { var e = document.querySelector(sel); if (e) { e.textContent = v; } };
 				poser('[data-recap-frais]', f(fr2));

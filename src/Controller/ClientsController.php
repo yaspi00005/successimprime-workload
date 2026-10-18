@@ -929,7 +929,7 @@ final class ClientsController extends AbstractController
             default => 'inactif',
         };
         $whatsapp = $client->getTelephone() ? UtilisateursController::numeroWhatsApp($client->getTelephone()) : null;
-        // Espace client : la boutique envoie elle-même le code d'accès sur WhatsApp (accesEspace()).
+        // Espace client : l'imprimerie envoie elle-même le code d'accès sur WhatsApp (accesEspace()).
         $empechement = $accesEspace->empechement($client);
         $comptesEspace = $entityManager->getRepository(\App\Entity\CompteClient::class)->findBy(['client' => $client, 'actif' => true]);
 

@@ -71,7 +71,7 @@ final class ReglementEnLigneTest extends TestCase
         $frais = array_sum(array_map(static fn (ReglementEnLignePart $p): int => (int) $p->getPaiementOm()?->getMontantFondsSoutien() + (int) $p->getPaiementOm()?->getMontantFraisRetrait(), $reglement->getParts()));
         self::assertSame($reglement->getTotalOm() - $reglement->getMontantOm(), $frais);
         self::assertSame(62500, $commandes[0]->getTotalTtc(), 'le prix de la commande ne change pas');
-        // Plus rien n'est redemandé en ligne pour ces commandes, en attendant la boutique.
+        // Plus rien n'est redemandé en ligne pour ces commandes, en attendant l'imprimerie.
         self::assertSame([0, 0, 0], array_map(OrangeMoney::aPayer(...), $commandes));
         self::assertSame(5000, OrangeMoney::avoirEnValidation($commandes[0]));
     }
@@ -91,7 +91,7 @@ final class ReglementEnLigneTest extends TestCase
     public function testAvoirDejaUtiliseAilleursNEstPasPromisDeuxFois(): void
     {
         [$reglement, $commandes] = $this->reglement(avoir: 5000, solde: 5000);
-        // La boutique a utilisé 3 000 F de l'avoir en caisse entre-temps.
+        // L'imprimerie a utilisé 3 000 F de l'avoir en caisse entre-temps.
         $this->avoirEnValidation = 3000;
         $this->paiements()->creer($reglement, 'MP1', new \DateTimeImmutable(self::MAINTENANT));
 

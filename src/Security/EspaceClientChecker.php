@@ -11,7 +11,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Un compte client fermé ne peut plus se connecter. Un accès suspendu par
- * la boutique non plus (SuspensionsEspace) : vérifié une fois le mot de
+ * l'imprimerie non plus (SuspensionsEspace) : vérifié une fois le mot de
  * passe ou le code reconnu, pour que seule la personne elle-même lise
  * qu'elle est suspendue. Vaut aussi pour « rester connecté ».
  */

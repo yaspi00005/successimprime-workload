@@ -61,7 +61,7 @@ final class AlertesExceptionSubscriber implements EventSubscriberInterface
                 'Zone' => $zone,
                 'Page' => $requete->getMethod().' '.$chemin,
                 'Route' => $route,
-                'Serveur' => $this->alertes->estEnLigne() ? 'site en ligne' : 'ERP de la boutique',
+                'Serveur' => $this->alertes->estEnLigne() ? 'site en ligne' : 'ERP de l\'imprimerie',
                 'Navigateur' => mb_substr((string) $requete->headers->get('User-Agent', ''), 0, 160),
             ]),
             [$source::class, NettoyageAlerte::chemin($source->getFile(), $this->dossierProjet), (string) $source->getLine(), $route],

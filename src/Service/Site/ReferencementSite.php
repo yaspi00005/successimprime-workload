@@ -24,7 +24,7 @@ final class ReferencementSite
     /**
      * Réseaux sociaux (demande de Yaya du 18/10/2026, « le lien des réseaux
      * sociaux sur le site ») : clé => libellé, domaines acceptés et
-     * « profil » (page de la boutique, reprise dans le « sameAs » des
+     * « profil » (page de l'imprimerie, reprise dans le « sameAs » des
      * données structurées ; un lien WhatsApp ouvre une discussion, ce n'est
      * pas une page). Dans l'ordre d'affichage. Champ vide : pas affiché.
      */
@@ -41,11 +41,11 @@ final class ReferencementSite
     /** Lien de la fiche Google : domaines de Google seulement. */
     public const DOMAINES_FICHE_GOOGLE = ['google.com', 'google.ml', 'goo.gl', 'g.page', 'g.co'];
 
-    /** Fiche Google de la boutique : lien « Partager » envoyé par Yaya le 15/10/2026 (un lien saisi la remplace). */
+    /** Fiche Google de l'imprimerie : lien « Partager » envoyé par Yaya le 15/10/2026 (un lien saisi la remplace). */
     public const FICHE_GOOGLE = 'https://maps.app.goo.gl/S53cwaekd2L3FHP86';
 
     /**
-     * Identifiant de mesure Google Analytics de la boutique, envoyé par Yaya
+     * Identifiant de mesure Google Analytics de l'imprimerie, envoyé par Yaya
      * le 15/10/2026 avec la balise Google (gtag.js). Un identifiant saisi le
      * remplace ; un champ vidé coupe la mesure (MesureAudience).
      */
@@ -91,7 +91,7 @@ final class ReferencementSite
     }
 
     /**
-     * Pages de la boutique pour le « sameAs » des données structurées :
+     * Pages de l'imprimerie pour le « sameAs » des données structurées :
      * les réseaux réglés sauf WhatsApp (une discussion, pas une page), puis
      * la fiche Google.
      *
@@ -165,8 +165,8 @@ final class ReferencementSite
             }
         }
 
-        // Mesure d'audience : absente (réglage enregistré avant elle), celle de la
-        // boutique ; vidée exprès, coupée ; sinon l'identifiant saisi.
+        // Mesure d'audience : absente (réglage enregistré avant elle), celle de
+        // l'imprimerie ; vidée exprès, coupée ; sinon l'identifiant saisi.
         if (\array_key_exists('mesure', $saisie)) {
             if ('' === $texte('mesure')) {
                 $valeurs['mesure'] = '';
@@ -206,10 +206,10 @@ final class ReferencementSite
     /** Ce qui manque à la fiche de l'imprimerie pour Google : fait => où le régler. */
     public const MANQUES = [
         'site' => 'Adresse du site (succesimprim.com) : Réglages › Entités et en-têtes › Succès Imprim, champ « Site ».',
-        'adresse' => 'Adresse de la boutique : Réglages › Entités et en-têtes › Succès Imprim.',
+        'adresse' => 'Adresse de l\'imprimerie : Réglages › Entités et en-têtes › Succès Imprim.',
         'telephone' => 'Téléphone : Réglages › Entités et en-têtes › Succès Imprim.',
         'email' => 'E-mail de contact public : Réglages › Entités et en-têtes › Succès Imprim (sinon, Google n\'en affiche pas).',
-        'position' => 'Position GPS de la boutique : Réglages › Paramètres › « Site : page Contact », saisir « latitude, longitude » (un lien court maps.app.goo.gl ne la donne pas).',
+        'position' => 'Position GPS de l\'imprimerie : Réglages › Paramètres › « Site : page Contact », saisir « latitude, longitude » (un lien court maps.app.goo.gl ne la donne pas).',
         'plan' => 'Lien du plan (bouton Itinéraire de la page Contact) : Réglages › Paramètres › « Site : page Contact ».',
         'fiche_google' => 'Lien de la fiche Google (Google Business Profile) : ci-dessus.',
         'reseaux' => 'Pages Facebook, Instagram ou TikTok : ci-dessus, « Réseaux sociaux ».',

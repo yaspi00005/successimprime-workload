@@ -10,9 +10,9 @@ use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Avoir du client sur le site en ligne (« Factures et paiements ») : son
- * solde à la boutique (Clients::soldeCredit, monnaie non rendue, trop-perçu),
+ * solde à l'imprimerie (Clients::soldeCredit, monnaie non rendue, trop-perçu),
  * tenu au local et reçu en lecture seule. Le site ne le change jamais :
- * l'utiliser crée un paiement « solde client » en attente, que la boutique
+ * l'utiliser crée un paiement « solde client » en attente, que l'imprimerie
  * valide (le solde baisse alors au local et redescend) ou refuse.
  *
  * Disponible = solde − ce qui attend déjà la validation − ce que réserve

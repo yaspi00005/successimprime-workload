@@ -70,7 +70,7 @@ final class JournalComptableTest extends TestCase
      */
     public function testAvanceDuClientEnCaisse(): void
     {
-        $caisse = (new CompteTresorerie())->setType(CompteTresorerie::TYPE_CAISSE)->setNom('Caisse boutique');
+        $caisse = (new CompteTresorerie())->setType(CompteTresorerie::TYPE_CAISSE)->setNom('Caisse imprimerie');
         $entree = (new MouvementTresorerie())
             ->setType(MouvementTresorerie::TYPE_ENCAISSEMENT)
             ->setCategorie(MouvementTresorerie::CATEGORIE_AVANCE_CLIENT)

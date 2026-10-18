@@ -73,7 +73,7 @@ final class CalculAnniversaireTest extends TestCase
     public function testTexteDuSmsSansMontant(): void
     {
         $texte = CalculAnniversaire::texte(ModeleAnniversaire::TEXTE_PAR_DEFAUT, 'Awa', 'Traoré', 3, new \DateTimeImmutable('2026-11-19'));
-        self::assertSame('Succès Imprim : joyeux anniversaire Awa ! Cela fait 3 ans que vous nous faites confiance. Un cadeau vous attend en boutique jusqu\'au 19/11/2026.', $texte);
+        self::assertSame('Succès Imprim : joyeux anniversaire Awa ! Cela fait 3 ans que vous nous faites confiance. Un cadeau vous attend à l\'imprimerie jusqu\'au 19/11/2026.', $texte);
         self::assertStringContainsString('1 an que', CalculAnniversaire::texte('{prenom} : {annees} que', 'Awa', null, 1, new \DateTimeImmutable()));
         self::assertStringStartsWith('Traoré', CalculAnniversaire::texte('{prénom}', '', 'Traoré', 1, new \DateTimeImmutable()));
 

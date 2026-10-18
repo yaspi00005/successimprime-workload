@@ -4,7 +4,7 @@ namespace App\Service\Bascule;
 
 /**
  * Sonde du pire cas, pour une copie de la structure sans données (fichier
- * envoyé par la boutique avant la mise en production) : chaque table est
+ * envoyé par l'imprimerie avant la mise en production) : chaque table est
  * supposée remplie, avec des valeurs qui ne tiennent pas. Le classement
  * donne alors la liste de ce qui pourrait bloquer sur la vraie base.
  */

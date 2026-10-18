@@ -255,7 +255,7 @@ final class EspaceConceptionController extends AbstractController
             }
             $this->demandes->envoyerSansPaiementEnLigne($demande, $compte, new \DateTimeImmutable());
             $this->addFlash('succes', $acompte > 0
-                ? \sprintf('Demande %s envoyée. La conception démarre dès réception de l\'acompte (Orange Money au numéro marchand, ou en boutique).', $demande->getNumero())
+                ? \sprintf('Demande %s envoyée. La conception démarre dès réception de l\'acompte (Orange Money au numéro marchand, ou à l\'imprimerie).', $demande->getNumero())
                 : \sprintf('Demande %s envoyée à l\'atelier.', $demande->getNumero()));
         } catch (\DomainException $e) {
             $this->addFlash('error', $e->getMessage());
@@ -464,7 +464,7 @@ final class EspaceConceptionController extends AbstractController
                 return $this->redirect($this->orangeMoney->demarrerCredit($client, $compte, $images, $montant, new \DateTimeImmutable(), $retour['demande'] ?? null)->getLienPaiement());
             }
             $commande = $commandes->packEnAttente($client, $compte, $images, $montant, new \DateTimeImmutable());
-            $this->addFlash('succes', \sprintf('Pack de %d image%s commandé (%s). Payez-le par Orange Money au numéro marchand ou en boutique : le crédit s\'ajoute dès que la caisse a validé le paiement.', $images, $images > 1 ? 's' : '', $commande->getNumero()));
+            $this->addFlash('succes', \sprintf('Pack de %d image%s commandé (%s). Payez-le par Orange Money au numéro marchand ou à l\'imprimerie : le crédit s\'ajoute dès que la caisse a validé le paiement.', $images, $images > 1 ? 's' : '', $commande->getNumero()));
         } catch (\DomainException $e) {
             $this->addFlash('error', $e->getMessage());
         }

@@ -183,7 +183,7 @@ final class AnniversairesController extends AbstractController
             if ('' === $modele->getTexteSms()) {
                 $erreurs[] = 'Écrivez le texte du SMS.';
             } elseif (CalculAnniversaire::contientMontant($modele->getTexteSms())) {
-                $erreurs[] = 'Le SMS ne donne ni montant ni pourcentage : le client découvre son cadeau en boutique ou dans son espace.';
+                $erreurs[] = 'Le SMS ne donne ni montant ni pourcentage : le client découvre son cadeau à l\'imprimerie ou dans son espace.';
             }
             $autre = $this->em->getRepository(ModeleAnniversaire::class)->findOneBy(['annees' => $modele->getAnnees()]);
             if (null !== $autre && $autre !== $modele) {

@@ -72,7 +72,7 @@
 			<div><dt>Total commande</dt><dd>{{ commande.totalTtc|number_format(0, ',', ' ') }} F</dd></div>
 			<div><dt>Reste à payer</dt><dd>{{ reste|number_format(0, ',', ' ') }} F</dd></div>
 		</dl>
-		{# Compte du client à la boutique (docs/finances.md) : monnaie laissée au lieu d'être rendue. #}
+		{# Compte du client à l'imprimerie (docs/finances.md) : monnaie laissée au lieu d'être rendue. #}
 		{% if monnaie|default(null) %}
 			<hr>
 			<dl>

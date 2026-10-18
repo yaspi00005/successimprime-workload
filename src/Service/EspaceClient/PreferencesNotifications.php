@@ -105,7 +105,7 @@ final class PreferencesNotifications
             'factures' => [self::APP, self::WHATSAPP, self::EMAIL],
             'devis' => [self::APP, self::WHATSAPP, self::EMAIL],
             'messages' => [self::APP, self::WHATSAPP, ...$sms],
-            // Accord déjà donné à la boutique : il apparaît coché.
+            // Accord déjà donné à l'imprimerie : il apparaît coché.
             'offres' => $consentement ? [self::WHATSAPP, self::SMS] : [],
         ];
 
@@ -159,7 +159,7 @@ final class PreferencesNotifications
      * qu'une personne a enregistré ses réglages : cocher « Offres » donne
      * l'accord ; le décocher le retire, sauf si une autre personne du
      * compte les reçoit encore. Sans changement de sa part, l'accord reste
-     * tel quel (il a pu être donné à la boutique).
+     * tel quel (il a pu être donné à l'imprimerie).
      */
     public static function accordOffres(bool $avant, bool $apres, bool $autres, bool $accordActuel): bool
     {

@@ -14,8 +14,8 @@ use Doctrine\ORM\EntityManagerInterface;
  * explications de Yaya du 15/10/2026).
  *
  * Il y a deux sortes de comptes Orange Money : celui de l'API (« Orange
- * Money en ligne », paiements de l'espace client) et les numéros de la
- * boutique (caisse, transferts directs). Pour les deux, le client paie le
+ * Money en ligne », paiements de l'espace client) et les numéros de l'imprimerie
+ * (caisse, transferts directs). Pour les deux, le client paie le
  * fonds de soutien et le frais de retrait en plus du montant : ils
  * arrivent sur le compte avec le paiement, dans un mouvement à part
  * (CATEGORIE_FRAIS_ORANGE, compte de passage : ni produit ni charge), et
@@ -63,7 +63,7 @@ final class ComptesOrangeMoney
     /**
      * Compte qui reçoit les paiements Orange Money en ligne. S'il n'y en a
      * pas : un compte Orange Money déjà nommé « Orange Money en ligne » est
-     * marqué, sinon il est créé. Jamais un numéro de la boutique.
+     * marqué, sinon il est créé. Jamais un numéro de l'imprimerie.
      */
     public function compteEnLigne(): CompteTresorerie
     {

@@ -23,7 +23,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * comme le fait aujourd'hui un paiement avec le solde. Le compte 4191
  * rejoint ainsi le total de Caisse › Soldes clients.
  *
- * À lancer une fois sur l'ERP de la boutique (docs/mise-en-production.md).
+ * À lancer une fois sur l'ERP de l'imprimerie (docs/mise-en-production.md).
  * Relancée, elle ne repasse rien : un paiement déjà repris est sauté
  * (pièce OD-SC-<numéro du paiement>, unique). --dry-run montre ce qui
  * serait passé sans rien écrire.

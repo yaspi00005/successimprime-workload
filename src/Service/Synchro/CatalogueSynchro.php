@@ -299,7 +299,7 @@ final class CatalogueSynchro
                 'champs' => ['prix', 'finLe', 'statut'],
                 'relations' => ['client' => 'client', 'configuration' => 'configuration'], 'listes' => [],
             ],
-            // Code d'accès à l'espace client donné par la boutique sur WhatsApp (docs/espace-client.md) :
+            // Code d'accès à l'espace client donné par l'imprimerie sur WhatsApp (docs/espace-client.md) :
             // seulement son empreinte et son échéance. Qui l'a donné reste au local ; son utilisation reste en ligne.
             'acces_espace' => [
                 'classe' => \App\Entity\AccesEspaceClient::class, 'sens' => self::DESCENDANT, 'libelle' => 'Accès à l\'espace client', 'titre' => ['expireLe'],
@@ -308,7 +308,7 @@ final class CatalogueSynchro
                 // Un seul accès par client : recréé au local, il remplace celui du site.
                 'uniqueSur' => ['client'],
             ],
-            // Accès à l'espace client suspendu par la boutique (fiche client, docs/espace-client.md) : la fiche, le
+            // Accès à l'espace client suspendu par l'imprimerie (fiche client, docs/espace-client.md) : la fiche, le
             // numéro de la personne (vide : tout le compte), le début et la levée. Motif, nom et employés restent au local.
             'suspension_espace' => [
                 'classe' => \App\Entity\SuspensionEspace::class, 'sens' => self::DESCENDANT, 'libelle' => 'Suspension de l\'espace client', 'titre' => ['telephone', 'suspenduLe'],
@@ -357,12 +357,12 @@ final class CatalogueSynchro
                     // Commande en ligne (docs/espace-client.md) : délai demandé (standard, express) et créneau de livraison.
                     'delaiProduction', 'creneauLivraison',
                 ],
-                // codePromo : le code retenu par la boutique, pour compter en ligne les utilisations du client.
+                // codePromo : le code retenu par l'imprimerie, pour compter en ligne les utilisations du client.
                 'relations' => ['clients' => 'client', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 // Seul l'import du local crée un solde d'ouverture : une commande venue du site n'en est jamais un.
-                // Le code promo d'une commande passée en ligne n'est retenu que par la boutique, à la confirmation.
+                // Le code promo d'une commande passée en ligne n'est retenu que par l'imprimerie, à la confirmation.
                 // Les frais de livraison d'une commande passée en ligne viennent du réglage « Frais de livraison en ligne » :
-                // contrôlés à l'arrivée (Synchro::verifierFraisEnLigne), la boutique peut les changer à la confirmation.
+                // contrôlés à l'arrivée (Synchro::verifierFraisEnLigne), l'imprimerie peut les changer à la confirmation.
                 'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null],
                 // Décision du valideur de l'entreprise, prise en ligne.
                 'remontees' => [
@@ -520,7 +520,7 @@ final class CatalogueSynchro
                 'filtres' => ['numeroRecu' => [Paiements::class, 'numeroRecuEnvoye']],
                 'imposeAuLocal' => ['statut' => Paiements::STATUT_EN_ATTENTE, 'dateValidation' => null, 'dateAnnulation' => null, 'numeroRecu' => null],
             ],
-            // Compte du client à la boutique (docs/finances.md, « Compte du client ») : le relevé de son solde
+            // Compte du client à l'imprimerie (docs/finances.md, « Compte du client ») : le relevé de son solde
             // (Clients::soldeCredit, qui descend avec la fiche), tenu au local, lu en ligne par le payeur (« Mon
             // solde »). Le motif, l'employé, le paiement et le mouvement de trésorerie restent au local.
             'solde_mouvement' => [

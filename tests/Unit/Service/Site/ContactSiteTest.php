@@ -21,7 +21,7 @@ final class ContactSiteTest extends TestCase
 
     public function testRepereDeLaCarte(): void
     {
-        // Par défaut : le repère de la fiche Google de la boutique.
+        // Par défaut : le repère de la fiche Google de l'imprimerie.
         $defaut = (string) CatalogueParametres::champ('site_contact', 'lien_plan')['defaut'];
         self::assertSame(['latitude' => 12.6517571, 'longitude' => -7.9299376], ContactSite::repere($defaut));
         self::assertSame('https://www.google.com/maps/dir/?api=1&destination=12.6517571,-7.9299376', ContactSite::lien($defaut));
@@ -36,7 +36,7 @@ final class ContactSiteTest extends TestCase
 
     public function testItineraireToujoursDisponible(): void
     {
-        // Position réglée : l'itinéraire de Google Maps jusqu'à la boutique, comme la page Contact.
+        // Position réglée : l'itinéraire de Google Maps jusqu'à l'imprimerie, comme la page Contact.
         $defaut = (string) CatalogueParametres::champ('site_contact', 'lien_plan')['defaut'];
         self::assertSame('https://www.google.com/maps/dir/?api=1&destination=12.6517571,-7.9299376', ContactSite::itineraireDe($defaut, 'Succès Imprim', 'Bamako, Sotuba ACI'));
         self::assertSame('https://maps.app.goo.gl/S53cwaekd2L3FHP86', ContactSite::itineraireDe('https://maps.app.goo.gl/S53cwaekd2L3FHP86', 'Succès Imprim', null));

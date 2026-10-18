@@ -14,8 +14,8 @@ use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Réponse du client à un devis depuis son espace (maquettes DT01, DT04) :
- * accepter (la commande est créée sans ressaisie, « à confirmer » par la
- * boutique comme une commande en ligne, l'acompte se paie ensuite par
+ * accepter (la commande est créée sans ressaisie, « à confirmer » par l'imprimerie
+ * comme une commande en ligne, l'acompte se paie ensuite par
  * Orange Money), refuser avec un motif, demander une modification (le
  * texte part aussi dans la conversation du devis). Les droits (valideur) sont
  * vérifiés par le contrôleur.
@@ -48,7 +48,7 @@ final class AcceptationDevis
         } catch (\LogicException $e) {
             throw new \DomainException($e->getMessage());
         }
-        // Comme une commande passée en ligne : la boutique la confirme (prix déjà fixé par le devis).
+        // Comme une commande passée en ligne : l'imprimerie la confirme (prix déjà fixé par le devis).
         $commande->setCanal(Commandes::CANAL_EN_LIGNE)->setStatut(false)->setDemandeePar($devis->getInterlocuteur() ?? $compte->getNomAffiche());
         $this->em->flush();
 

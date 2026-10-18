@@ -17,7 +17,7 @@
 		<span class="ef-om-logo" aria-hidden="true">OM</span>
 		<div>
 			<b>{{ parOm ? 'Payer par Orange Money' : 'Payer avec mon avoir' }}</b>
-			<small>Succès Imprim · {{ parOm ? 'page sécurisée d\'Orange Money' : 'validé par la boutique' }}</small>
+			<small>Succès Imprim · {{ parOm ? 'page sécurisée d\'Orange Money' : 'validé par l\'imprimerie' }}</small>
 		</div>
 		{% if not pleinePage %}<button type="button" class="ef-fermer" data-ef-fermer aria-label="Fermer">×</button>{% endif %}
 	</div>
@@ -83,20 +83,20 @@
 			<ol class="ef-om-etapes">
 				<li>Vous passez sur la page sécurisée d'Orange Money (lien valable {{ constant('App\\Entity\\TransactionOrangeMoney::VALIDITE_MINUTES') }} minutes).</li>
 				<li class="cle">Vous confirmez sur la page Orange Money avec votre code secret.</li>
-				<li>Vous revenez ici : paiement reçu, puis validé par la boutique ; le reçu arrive dans « Reçus ».</li>
+				<li>Vous revenez ici : paiement reçu, puis validé par l'imprimerie ; le reçu arrive dans « Reçus ».</li>
 			</ol>
 			<p class="ef-om-alerte">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</p>
 		{% else %}
 			<ol class="ef-om-etapes">
 				<li class="cle">Votre avoir est mis de côté pour ces paiements.</li>
-				<li>La boutique le valide, puis il disparaît de votre solde ; le reçu arrive dans « Reçus ».</li>
+				<li>L'imprimerie le valide, puis il disparaît de votre solde ; le reçu arrive dans « Reçus ».</li>
 			</ol>
 		{% endif %}
 
 		{% if parOm and not omActif %}
 			<div class="ec-note" style="margin-bottom:.8rem">
 				Le paiement Orange Money depuis l'espace arrive très bientôt.
-				{% if marchand %}En attendant, envoyez le montant au numéro marchand <b>{{ marchand }}</b> en indiquant {{ elements|length > 1 ? 'les références' : 'la référence' }} <b>{{ elements|map(e => e.facture ? e.facture.numero : e.commande.numero)|join(', ') }}</b>, ou payez en boutique.{% else %}En attendant, payez en boutique.{% endif %}
+				{% if marchand %}En attendant, envoyez le montant au numéro marchand <b>{{ marchand }}</b> en indiquant {{ elements|length > 1 ? 'les références' : 'la référence' }} <b>{{ elements|map(e => e.facture ? e.facture.numero : e.commande.numero)|join(', ') }}</b>, ou payez à l'imprimerie.{% else %}En attendant, payez à l'imprimerie.{% endif %}
 			</div>
 		{% endif %}
 

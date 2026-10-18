@@ -165,7 +165,7 @@ final class RecetteEspaceClient
             $this->verifierAppelsSansMontant($comptes, $sessions, $fiches, $bilan);
             $suivi && $suivi('espace client : quantité en m² de Nouvelle commande');
             $this->verifierPiecesM2($comptes, $sessions, $bilan);
-            $suivi && $suivi('espace client : accès suspendu par la boutique');
+            $suivi && $suivi('espace client : accès suspendu par l\'imprimerie');
             $this->verifierSuspension($comptes, $bilan);
             $suivi && $suivi('admin et API en ligne');
             $this->verifierAdminEnLigne($bilan);
@@ -795,7 +795,7 @@ final class RecetteEspaceClient
     }
 
     /**
-     * Accès suspendu par la boutique (fiche client, SuspensionsEspace) : la
+     * Accès suspendu par l'imprimerie (fiche client, SuspensionsEspace) : la
      * session ouverte de la personne tombe à la page suivante, avec le
      * message ; les autres personnes de l'entreprise entrent toujours. La
      * suspension d'essai est retirée ensuite (et la transaction de la

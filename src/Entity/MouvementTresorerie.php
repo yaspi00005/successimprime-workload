@@ -163,7 +163,7 @@ class MouvementTresorerie implements AppartientASociete
         'frais_orange';
 
     /*
-     * Argent laissé par un client sur son compte à la boutique
+     * Argent laissé par un client sur son compte à l'imprimerie
      * (monnaie gardée, dépôt) et rendu plus tard : une avance du
      * client (compte 4191), ni vente ni produit. Il entre bien dans
      * la caisse : compté dans les encaissements, jamais dans le

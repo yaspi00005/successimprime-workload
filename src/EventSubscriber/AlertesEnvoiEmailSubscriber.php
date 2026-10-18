@@ -41,7 +41,7 @@ final class AlertesEnvoiEmailSubscriber implements EventSubscriberInterface
             implode("\n", [
                 'Erreur : '.$erreur::class,
                 'Message : '.NettoyageAlerte::texte($erreur->getMessage(), 1500),
-                'Serveur : '.($this->alertes->estEnLigne() ? 'site en ligne' : 'ERP de la boutique'),
+                'Serveur : '.($this->alertes->estEnLigne() ? 'site en ligne' : 'ERP de l\'imprimerie'),
                 'Voir aussi : Clients › Crédits SMS et e-mail › Historique des envois (lignes « Échec »).',
             ]),
             ['email', $erreur::class, NettoyageAlerte::forme($erreur->getMessage())],

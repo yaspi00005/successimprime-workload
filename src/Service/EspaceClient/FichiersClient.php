@@ -85,7 +85,7 @@ final class FichiersClient
             throw new \DomainException('Ce fichier est vide.');
         }
         if ($taille > ($logo ? self::TAILLE_MAX_LOGO : self::TAILLE_MAX)) {
-            throw new \DomainException($logo ? 'Un logo ne doit pas dépasser 20 Mo.' : 'Le fichier dépasse 500 Mo : déposez-le en boutique ou envoyez un lien.');
+            throw new \DomainException($logo ? 'Un logo ne doit pas dépasser 20 Mo.' : 'Le fichier dépasse 500 Mo : déposez-le à l\'imprimerie ou envoyez un lien.');
         }
         $this->oublierEnvoisAbandonnes($client, $maintenant);
         if (\count($this->em->getRepository(CommandeDetailFichier::class)->findBy(['client' => $client, 'statut' => CommandeDetailFichier::STATUT_EN_COURS])) >= self::EN_COURS_MAX) {

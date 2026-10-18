@@ -11,7 +11,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Messages des clients sur l'ERP de la boutique (docs/messagerie-clients.md),
+ * Messages des clients sur l'ERP de l'imprimerie (docs/messagerie-clients.md),
  * lancée avec la synchronisation (chaque minute) : range les anciens
  * messages dans leur conversation, prévient la Direction d'une demande
  * qui attend au-delà de l'escalade, clôture les demandes restées sans
@@ -31,7 +31,7 @@ final class MessagerieDelaisCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         if ($this->enLigne) {
-            $io->warning('À lancer sur l\'ERP de la boutique : le site en ligne ne mesure pas les délais.');
+            $io->warning('À lancer sur l\'ERP de l\'imprimerie : le site en ligne ne mesure pas les délais.');
 
             return Command::SUCCESS;
         }

@@ -8,7 +8,7 @@ use App\Entity\ImportDonnees;
 use App\Entity\SoldeOuverture;
 
 /**
- * Ce que la boutique devait à ses fournisseurs au démarrage
+ * Ce que l'imprimerie devait à ses fournisseurs au démarrage
  * (docs/import-donnees.md).
  *
  * Chaque dette devient une dépense « à payer », marquée solde
@@ -31,7 +31,7 @@ final class ImportSoldesFournisseurs extends ImportSoldes
 
     public function description(): string
     {
-        return 'Ce que la boutique devait à ses fournisseurs au démarrage : à payer, avec leur échéance.';
+        return 'Ce que l\'imprimerie devait à ses fournisseurs au démarrage : à payer, avec leur échéance.';
     }
 
     public function droits(): array
@@ -45,7 +45,7 @@ final class ImportSoldesFournisseurs extends ImportSoldes
             ['cle' => 'fournisseur', 'libelle' => 'Fournisseur', 'alias' => ['nom', 'beneficiaire', 'creancier', 'nom du fournisseur'], 'obligatoire' => true,
                 'exemples' => ['Sahel Supplies', 'Imprimerie du Centre'], 'aide' => 'Un fournisseur de la liste, par son nom. Sinon le nom est gardé comme bénéficiaire.'],
             ['cle' => 'montant', 'libelle' => 'Montant dû', 'alias' => ['montant', 'solde', 'reste a payer', 'dette', 'du'], 'obligatoire' => true,
-                'exemples' => ['850 000', '120 000'], 'aide' => 'En francs, ce que la boutique doit encore. Plus que 0.'],
+                'exemples' => ['850 000', '120 000'], 'aide' => 'En francs, ce que l\'imprimerie doit encore. Plus que 0.'],
             ['cle' => 'echeance', 'libelle' => 'Échéance', 'alias' => ['date limite', 'a payer le', 'date d echeance'], 'obligatoire' => false,
                 'exemples' => ['15/11/2026', ''], 'aide' => 'Jour où payer (jj/mm/aaaa). Vide : le jour d\'ouverture.'],
             ['cle' => 'objet', 'libelle' => 'Objet', 'alias' => ['note', 'detail', 'libelle', 'facture', 'reference'], 'obligatoire' => false,

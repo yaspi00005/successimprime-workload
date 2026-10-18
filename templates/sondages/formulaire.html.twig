@@ -13,13 +13,13 @@
 			<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
 			<p class="si-so-gris" style="margin:0">
 				{{ libre
-					? 'Un sondage libre se partage par un lien ou un QR code (boutique, réseaux sociaux) : n’importe qui peut répondre.'
+					? 'Un sondage libre se partage par un lien ou un QR code (affiche à l\'imprimerie, réseaux sociaux) : n’importe qui peut répondre.'
 					: 'Un sondage des clients est proposé dans l’espace client, à tous ou à un groupe de clients.' }}
 				{% if not sondage %}Il reste en brouillon jusqu’à ce que vous le lanciez.{% endif %}
 			</p>
 			<div>
 				<label class="form-label" for="titre">Titre</label>
-				<input id="titre" name="titre" class="form-control" maxlength="120" required value="{{ saisie.titre }}" placeholder="{{ libre ? 'Votre avis sur notre boutique' : 'Votre satisfaction ce trimestre' }}">
+				<input id="titre" name="titre" class="form-control" maxlength="120" required value="{{ saisie.titre }}" placeholder="{{ libre ? 'Votre avis sur notre imprimerie' : 'Votre satisfaction ce trimestre' }}">
 			</div>
 			<div>
 				<label class="form-label" for="introduction">Mot d’introduction <span class="si-so-gris">(facultatif)</span></label>

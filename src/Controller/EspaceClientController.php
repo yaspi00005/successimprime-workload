@@ -84,7 +84,7 @@ final class EspaceClientController extends AbstractController
     }
 
     /**
-     * Première connexion avec le code d'accès donné par la boutique sur
+     * Première connexion avec le code d'accès donné par l'imprimerie sur
      * WhatsApp : le lien du message remplit le numéro (jamais le code).
      * Le formulaire part vers app_espace_connexion (EspaceClientAuthenticator, mode « acces »).
      */
@@ -493,7 +493,7 @@ final class EspaceClientController extends AbstractController
             'frais' => $orangeMoney->frais(OrangeMoney::aPayer($commande)),
             'enValidation' => OrangeMoney::enValidation($commande),
             'marchand' => $espace->marchandOrangeMoney(),
-            // Jamais de montant dans un message WhatsApp : la commande suffit à la boutique.
+            // Jamais de montant dans un message WhatsApp : la commande suffit à l'imprimerie.
             'whatsapp' => $this->whatsapp(\sprintf('Bonjour, je souhaite payer ma commande %s.', $commande->getNumero())),
         ]);
     }
@@ -591,7 +591,7 @@ final class EspaceClientController extends AbstractController
 
     /**
      * Avant d'entrer après un code (première connexion, mot de passe
-     * oublié, code d'accès de la boutique) : le mot de passe, et l'e-mail
+     * oublié, code d'accès de l'imprimerie) : le mot de passe, et l'e-mail
      * où partiront les prochains codes. Seule page ouverte tant que c'est
      * obligatoire (EspaceClientSubscriber).
      */

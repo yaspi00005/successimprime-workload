@@ -195,7 +195,7 @@ class CommandesType extends AbstractType
             ->add('modeLivraison', ChoiceType::class, [
                 'label' => 'Livraison',
                 'choices' => [
-                    'Retrait boutique' => Commandes::LIVRAISON_RETRAIT,
+                    'Retrait à l\'imprimerie' => Commandes::LIVRAISON_RETRAIT,
                     'Livraison' => Commandes::LIVRAISON_DOMICILE,
                 ],
                 'expanded' => true,
@@ -214,7 +214,7 @@ class CommandesType extends AbstractType
             /*
              * Frais de livraison (docs/documents-livraisons.md) : « Sans
              * frais » ou un palier des Réglages, jamais un montant tapé.
-             * Un autre montant envoyé est refusé ; en retrait boutique, les
+             * Un autre montant envoyé est refusé ; en retrait à l'imprimerie, les
              * frais retombent à 0 (voir POST_SUBMIT ci-dessous).
              */
             ->add('fraisLivraison', ChoiceType::class, [
@@ -260,7 +260,7 @@ class CommandesType extends AbstractType
                 'empty_data' => null,
                 'attr' => ['maxlength' => 80],
             ])
-            // Passée en ligne : c'est la personne connectée, le nom ne se change pas à la boutique.
+            // Passée en ligne : c'est la personne connectée, le nom ne se change pas à l'imprimerie.
             ->addEventListener(FormEvents::PRE_SET_DATA, static function (FormEvent $event): void {
                 $commande = $event->getData();
                 if ($commande instanceof Commandes && $commande->isEnLigne() && null !== $commande->getDemandeePar()) {

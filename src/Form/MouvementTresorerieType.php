@@ -427,7 +427,7 @@ class MouvementTresorerieType extends AbstractType
          * L'argent ne peut sortir que de :
          *
          * 1. sa caisse personnelle
-         * 2. un compte partagé (caisse boutique, Orange
+         * 2. un compte partagé (caisse imprimerie, Orange
          *    Money, Wave)
          *
          * Jamais d'un compte administratif (la banque y

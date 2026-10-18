@@ -26,7 +26,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * En ligne, le code se reconnaît à son empreinte, et le compte part de
  * celui du local (synchronisé) plus les commandes en ligne pas encore
- * confirmées qui l'ont tapé. La boutique revérifie à la confirmation.
+ * confirmées qui l'ont tapé. L'imprimerie revérifie à la confirmation.
  */
 final class CodesPromo
 {
@@ -400,7 +400,7 @@ final class CodesPromo
      * par une ligne qui la porte, ou par un de ses codes (« Commandes par
      * client » de la promotion, pour tous ses codes ensemble). En ligne,
      * les lignes ne disent pas leur promotion : seuls les codes comptent, et
-     * la boutique revérifie à la confirmation.
+     * l'imprimerie revérifie à la confirmation.
      */
     private function commandesAvecLaPromotion(Promotion $promotion, Clients $client, ?int $sans): int
     {
@@ -456,7 +456,7 @@ final class CodesPromo
     }
 
     /**
-     * Commandes passées en ligne, pas encore confirmées par la boutique, qui
+     * Commandes passées en ligne, pas encore confirmées par l'imprimerie, qui
      * ont tapé ce code : en tout et pour ce client.
      *
      * @return array{0: int, 1: int}

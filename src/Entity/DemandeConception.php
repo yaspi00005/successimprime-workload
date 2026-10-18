@@ -384,7 +384,7 @@ class DemandeConception
     public function getPrisePar(): ?string { return $this->prisePar; }
     public function getTermineeLe(): ?\DateTimeImmutable { return $this->termineeLe; }
 
-    /** Partie à l'atelier : acompte reçu (ou à régler en boutique), ou impression du visuel IA commandée. */
+    /** Partie à l'atelier : acompte reçu (ou à régler à l'imprimerie), ou impression du visuel IA commandée. */
     public function envoyer(string $statut, \DateTimeImmutable $le): void
     {
         $this->statut = $statut;

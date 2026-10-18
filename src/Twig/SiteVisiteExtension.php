@@ -8,7 +8,7 @@ use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
 /**
- * Venir à la boutique (vraies photos du local, docs/site-vitrine.md) :
+ * Venir à l'imprimerie (vraies photos du local, docs/site-vitrine.md) :
  * bandeau « Venez nous voir » de l'accueil (adresse, horaires du réglage
  * Horaires, Itinéraire, WhatsApp) et galerie « Notre local » de la page
  * Contact. Rien de personnel : la page reste en cache comme les autres.
@@ -44,7 +44,7 @@ final class SiteVisiteExtension extends AbstractExtension
             'adresse' => $adresse,
             'horaires' => $this->contact->horaires(new \DateTimeImmutable()),
             'itineraire' => $this->contact->itineraire($nom, $adresse),
-            'whatsapp' => $this->site->whatsapp('Bonjour '.$nom.', je voudrais passer à la boutique : '),
+            'whatsapp' => $this->site->whatsapp('Bonjour '.$nom.', je voudrais passer à l\'imprimerie : '),
         ];
     }
 }

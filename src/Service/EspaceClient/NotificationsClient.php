@@ -60,7 +60,7 @@ final class NotificationsClient implements EventSubscriberInterface
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%env(MAILER_DSN)%')] private readonly string $mailerDsn,
         #[Autowire('%env(MAILER_FROM_ADDRESS)%')] private readonly string $expediteur,
-        // Accès suspendu par la boutique : ni notification, ni SMS, ni e-mail.
+        // Accès suspendu par l'imprimerie : ni notification, ni SMS, ni e-mail.
         private readonly ?SuspensionsEspace $suspensions = null,
     ) {
     }
@@ -226,7 +226,7 @@ final class NotificationsClient implements EventSubscriberInterface
         return match ($n['type']) {
             'bat' => \sprintf('Votre BAT pour la commande %s est prêt à valider.', $numero),
             'impression' => \sprintf('Votre commande %s est en impression.', $numero),
-            'prete' => \sprintf('Votre commande %s est prête%s', $numero, str_contains($n['texte'], 'livraison') ? ' : la livraison arrive bientôt.' : ' à retirer en boutique.'),
+            'prete' => \sprintf('Votre commande %s est prête%s', $numero, str_contains($n['texte'], 'livraison') ? ' : la livraison arrive bientôt.' : ' à retirer à l\'imprimerie.'),
             'livraison_prevue' => \sprintf('Livraison de votre commande %s prévue le %s.', $numero, null !== ($n['jour'] ?? null) ? $n['jour']->format('d/m') : 'prochainement'),
             'route' => \sprintf('Le livreur est en route avec votre commande %s.', $numero),
             'livree' => \sprintf('Votre commande %s a été livrée. Merci !', $numero),

@@ -130,7 +130,7 @@
 								{% endfor %}
 							{% endif %}
 							<div class="reste{{ reste <= 0 ? ' solde' }}"><dt>{{ reste > 0 ? 'Reste à payer' : 'Soldée' }}</dt><dd>{{ reste > 0 ? reste|francs : '✓' }}</dd></div>
-							{% if enValidation > 0 and reste > 0 %}<div class="attente"><dt>dont payé, en validation par la boutique</dt><dd>{{ enValidation|francs }}</dd></div>{% endif %}
+							{% if enValidation > 0 and reste > 0 %}<div class="attente"><dt>dont payé, en validation par l'imprimerie</dt><dd>{{ enValidation|francs }}</dd></div>{% endif %}
 						{% endif %}
 					</dl>
 

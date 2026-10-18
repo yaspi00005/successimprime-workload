@@ -31,7 +31,7 @@
 		</div>
 		<div class="ec-carte">
 			<p style="margin-top:0"><b>La commande en ligne est fermée pour le moment.</b></p>
-			<p class="ec-petit">Vos commandes en cours continuent : suivez-les dans « Mes commandes ». Pour une nouvelle commande, demandez un devis, écrivez à l'atelier ou passez en boutique.</p>
+			<p class="ec-petit">Vos commandes en cours continuent : suivez-les dans « Mes commandes ». Pour une nouvelle commande, demandez un devis, écrivez à l'atelier ou passez à l'imprimerie.</p>
 			<p style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.9rem 0 0">
 				<a class="ec-bouton-blanc" href="{{ path('app_site_devis') }}">Demander un devis</a>
 				<a class="ec-bouton-blanc" href="{{ path('app_espace_messages', {nouvelle: 1}) }}">Écrire à l'atelier</a>
@@ -77,7 +77,7 @@
 {# ---------- Étape 1 : produit (maquette CO01) ---------- #}
 {% block etape_produit %}
 	{% if catalogue.produits is empty %}
-		<div class="ec-carte ec-vide">La commande en ligne arrive bientôt. En attendant, demandez un devis par WhatsApp ou en boutique.</div>
+		<div class="ec-carte ec-vide">La commande en ligne arrive bientôt. En attendant, demandez un devis par WhatsApp ou à l'imprimerie.</div>
 	{% else %}
 		{% set choisie = catalogue.categories|filter(c => categorie in c.ids)|first %}
 		<div class="co-grille">
@@ -371,7 +371,7 @@
 						<div class="co-cartes co-cartes-2" role="radiogroup" aria-label="Réception">
 							<label class="co-option">
 								<input type="radio" name="reception" value="retrait"{{ reception == 'retrait' ? ' checked' }}>
-								<span><b>Retrait en boutique</b>{% if montants %}<em>0 F</em>{% endif %}<small>Succès Imprim, Bamako · gratuit</small></span>
+								<span><b>Retrait à l'imprimerie</b>{% if montants %}<em>0 F</em>{% endif %}<small>Succès Imprim, Bamako · gratuit</small></span>
 							</label>
 							<label class="co-option">
 								<input type="radio" name="reception" value="livraison"{{ reception == 'livraison' ? ' checked' }}>
@@ -435,14 +435,14 @@
 								<div class="co-om">
 									<span class="co-om-logo" aria-hidden="true">OM</span>
 									<div><b>Orange Money · +223 {{ telephoneOm|slice(3)|split('', 2)|join(' ') }}</b><small>vous confirmez avec votre code secret sur votre téléphone</small></div>
-									<label class="co-especes"><input type="radio" name="paiement" value="boutique"{{ paiementChoisi == 'boutique' ? ' checked' }}> {{ moi.sansAcompte ? 'Payer plus tard (sans acompte)' : 'Espèces en boutique' }}</label>
+									<label class="co-especes"><input type="radio" name="paiement" value="boutique"{{ paiementChoisi == 'boutique' ? ' checked' }}> {{ moi.sansAcompte ? 'Payer plus tard (sans acompte)' : 'Espèces au comptoir' }}</label>
 								</div>
 								<p class="ec-petit co-frais-om" data-co-frais-om></p>
 								<div class="co-secret" role="note">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</div>
 							{% else %}
 								{# Paiement Orange Money en ligne fermé (clés absentes ou Réglages › Espace client) : rien à payer ici. #}
 								<input type="hidden" name="paiement" value="boutique">
-								<p class="ec-petit" style="margin:0">Vous payez en boutique, une fois la commande confirmée par l'atelier.</p>
+								<p class="ec-petit" style="margin:0">Vous payez à l'imprimerie, une fois la commande confirmée par l'atelier.</p>
 							{% endif %}
 						</div>
 					{% endif %}

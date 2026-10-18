@@ -303,7 +303,7 @@
 				<div class="a3d-champ">
 					<label for="a3d-adresse">Livraison</label>
 					<select id="a3d-adresse" name="adresse">
-						<option value="">Retrait en boutique</option>
+						<option value="">Retrait à l'imprimerie</option>
 						{% for a in adresses %}<option value="{{ a.id }}"{{ defaut == a.id ? ' selected' }}>Livrer : {{ a.libelle }} · {{ a.adresse }}</option>{% endfor %}
 					</select>
 				</div>

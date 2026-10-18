@@ -11,7 +11,7 @@ use Doctrine\ORM\Mapping as ORM;
  * servent qu'aux reprises qui n'ont pas d'opération d'origine, comme les
  * paiements avec le solde du client faits avant le relevé du 18/10/2026
  * (commande app:solde-client:aligner-4191, docs/finances.md). Elles ne se
- * modifient pas à l'écran. Table locale (ERP de la boutique).
+ * modifient pas à l'écran. Table locale (ERP de l'imprimerie).
  */
 #[ORM\Entity]
 #[ORM\UniqueConstraint(name: 'uniq_ecriture_diverse_piece_compte', columns: ['piece', 'compte'])]

@@ -86,7 +86,7 @@ final class PrevisionTresorerieTest extends TestCase
         $echeances = [
             self::echeance('2026-10-10', 'Sahel Plast', 485000, 'fournisseur'),
             self::echeance('2026-10-23', 'Patente', 400000, 'fiscal'),
-            self::echeance('2026-10-30', 'Loyer boutique et atelier', 450000, 'charge'),
+            self::echeance('2026-10-30', 'Loyer des locaux', 450000, 'charge'),
             self::echeance('2026-11-01', 'Encres Pro', 168000, 'fournisseur'),
             self::echeance('2026-11-05', 'Salaires d\'octobre (net)', 2100000, 'salaires'),
             self::echeance('2026-11-20', 'Internet', 45000, 'charge'),
@@ -100,7 +100,7 @@ final class PrevisionTresorerieTest extends TestCase
         self::assertSame(['Fournisseurs 14/10', 'Salaires 05/11'], array_column(PrevisionTresorerie::reperes($echeances, $aujourdhui, 2, 100000), 'libelle'));
 
         self::assertSame('après les salaires', PrevisionTresorerie::cause($echeances, $aujourdhui, new \DateTimeImmutable('2026-11-06')));
-        self::assertSame('après « Loyer boutique et atelier »', PrevisionTresorerie::cause($echeances, $aujourdhui, new \DateTimeImmutable('2026-10-31')));
+        self::assertSame('après « Loyer des locaux »', PrevisionTresorerie::cause($echeances, $aujourdhui, new \DateTimeImmutable('2026-10-31')));
         self::assertSame('après les paiements fournisseurs', PrevisionTresorerie::cause($echeances, $aujourdhui, new \DateTimeImmutable('2026-10-14')));
         self::assertNull(PrevisionTresorerie::cause($echeances, $aujourdhui, $aujourdhui));
     }

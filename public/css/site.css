@@ -192,7 +192,7 @@ body.si-site { margin: 0; font-family: var(--police); font-size: 16px; line-heig
 .si-pied-reseaux { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
 .si-pied-fiche { font-size: 14px; }
 
-/* Réseaux sociaux de la boutique (site/_reseaux.html.twig, docs/referencement.md) */
+/* Réseaux sociaux de l'imprimerie (site/_reseaux.html.twig, docs/referencement.md) */
 .si-reseaux { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .si-reseaux-titre { margin: 0; font-weight: 600; }
 .si-reseaux ul { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; margin: 0; padding: 0; }

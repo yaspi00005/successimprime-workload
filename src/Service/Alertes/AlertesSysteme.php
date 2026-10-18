@@ -389,7 +389,7 @@ final class AlertesSysteme implements EventSubscriberInterface
             'libelle' => $libelle,
             'lignes' => $lignes,
             'liste' => $this->urls->generate(self::ROUTE_LISTE, [], UrlGeneratorInterface::ABSOLUTE_URL),
-            'serveur' => $this->enLigne ? 'site en ligne' : 'ERP de la boutique',
+            'serveur' => $this->enLigne ? 'site en ligne' : 'ERP de l\'imprimerie',
             'delai' => $this->reglages->delaiMinutes(),
         ];
         $email = (new Email())

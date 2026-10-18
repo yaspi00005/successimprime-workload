@@ -26,7 +26,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * télécharge l'image d'origine de chaque face.
  *
  * Pour les personnes qui font les devis ou les commandes (le graphiste PAO
- * a ces droits), seulement sur l'ERP de la boutique. Aucun prix ici.
+ * a ces droits), seulement sur l'ERP de l'imprimerie. Aucun prix ici.
  */
 #[Route('/ventes/creations-atelier', name: 'app_creations_atelier_')]
 #[IsGranted(new Expression('is_granted("ROLE_DEVIS") or is_granted("ROLE_COMMANDE")'))]

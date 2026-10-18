@@ -14,7 +14,7 @@ lance ces verifications sur chaque pull request.
 
 ## Images du guide utilisateur (`tools/guide/`)
 
-`tools/guide/captures.mjs` refait les images du guide (« ? Aide », `docs/guide-utilisateur.md`) avec Playwright, sur une base remplie par `php bin/console app:demo`, jamais sur la base de la boutique. Les images vont dans `ressources/guide/captures/` (WebP, hors de `public/`).
+`tools/guide/captures.mjs` refait les images du guide (« ? Aide », `docs/guide-utilisateur.md`) avec Playwright, sur une base remplie par `php bin/console app:demo`, jamais sur la base de l'imprimerie. Les images vont dans `ressources/guide/captures/` (WebP, hors de `public/`).
 
 ```bash
 APP_EN_LIGNE=0 SYMFONY_TRUSTED_PROXIES=127.0.0.1 php -S 127.0.0.1:8000 -t public &

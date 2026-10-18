@@ -1,6 +1,6 @@
 {#
 	Onglet « Compte » de la fiche client (docs/finances.md, « Compte du
-	client ») : l'argent que le client a laissé à la boutique (monnaie
+	client ») : l'argent que le client a laissé à l'imprimerie (monnaie
 	gardée, dépôts) et son relevé. Visible avec « Paiements » ou
 	« Encaissements » (ClientsController::fiche360) ; dépôt et dépôts en
 	ligne : qui encaisse ; argent rendu : droit « Rendre l'argent du compte
@@ -18,7 +18,7 @@
 		<div class="si-cc-solde">
 			<span>Solde client</span>
 			<strong>{{ compte.solde|number_format(0, ',', ' ') }} F</strong>
-			<small>Argent laissé à la boutique (monnaie gardée, dépôts). Il paie ses prochaines commandes, ou lui est rendu.</small>
+			<small>Argent laissé à l'imprimerie (monnaie gardée, dépôts). Il paie ses prochaines commandes, ou lui est rendu.</small>
 			{% if compte.engage > 0 %}
 				<small class="si-cc-alerte">Déjà engagé en ligne, à valider : {{ compte.engage|number_format(0, ',', ' ') }} F · disponible : {{ compte.disponible|number_format(0, ',', ' ') }} F</small>
 			{% endif %}
@@ -73,7 +73,7 @@
 
 	<h5 class="si-cc-titre">Relevé</h5>
 	{% if compte.releve is empty %}
-		<p class="si-fiche-vide">Aucun mouvement : le client n'a rien laissé à la boutique.</p>
+		<p class="si-fiche-vide">Aucun mouvement : le client n'a rien laissé à l'imprimerie.</p>
 	{% else %}
 		<div class="table-responsive"><table class="table si-fiche-table si-cc-releve">
 			<thead><tr><th>Date</th><th>Opération</th><th class="si-masque-mobile">Par</th><th class="text-end">Montant (F)</th><th class="text-end si-masque-mobile">Solde après</th></tr></thead>

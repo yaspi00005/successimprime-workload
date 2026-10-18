@@ -242,7 +242,7 @@
 			</div>
 		{% endif %}
 		<p class="cm-note">Le texte des messages n'est jamais gardé (ni code, ni lien). {{ voirDestinataire ? 'Numéros, adresses et objets en entier : vous avez le droit Clients.' : 'Numéros et adresses masqués, objets des e-mails cachés : le droit Clients les montre.' }}{{ voirDestinataire and not voirPersonnel ? ' Ceux du personnel (code de sécurité, rapport de la semaine) restent masqués : la direction seule les voit.' }}
-			{%- if enLigne %} Ici, seulement les envois partis du site en ligne : l'historique complet, les limites e-mail et les alertes sont sur l'ERP de la boutique.
+			{%- if enLigne %} Ici, seulement les envois partis du site en ligne : l'historique complet, les limites e-mail et les alertes sont sur l'ERP de l'imprimerie.
 			{%- else %} Les envois du site en ligne (codes de connexion, notifications de l'espace client) arrivent par la synchronisation.{% endif %}</p>
 	</section>
 {% endblock %}

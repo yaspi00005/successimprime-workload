@@ -23,7 +23,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 /**
  * Dépôt Orange Money fait depuis « Mon solde » (docs/espace-client.md) :
  * Orange confirme, le dépôt passe « reçu » et rien d'autre ne se crée (ni
- * paiement, ni solde) ; seule la boutique le valide ou le refuse. Les frais
+ * paiement, ni solde) ; seule l'imprimerie le valide ou le refuse. Les frais
  * sont payés en plus et restent hors du solde.
  */
 final class DepotSoldeClientTest extends TestCase
@@ -95,7 +95,7 @@ final class DepotSoldeClientTest extends TestCase
         self::assertSame(TransactionOrangeMoney::REUSSIE, $transaction->getStatut());
         self::assertNull($transaction->getPaiement(), 'aucun paiement');
         self::assertSame(DepotSoldeClient::RECU, $depot->getStatut());
-        self::assertSame(0, $depot->getClient()->getSoldeCredit(), 'le solde ne monte qu\'à la validation de la boutique');
+        self::assertSame(0, $depot->getClient()->getSoldeCredit(), 'le solde ne monte qu\'à la validation de l\'imprimerie');
         self::assertSame([], array_filter($this->persistes, static fn (object $o): bool => $o instanceof Paiements || $o instanceof MouvementSoldeClient));
     }
 

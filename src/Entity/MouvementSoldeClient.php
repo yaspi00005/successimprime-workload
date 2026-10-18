@@ -6,7 +6,7 @@ use App\Entity\Trait\PublicIdTrait;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Relevé du compte d'un client à la boutique (docs/finances.md, « Compte
+ * Relevé du compte d'un client à l'imprimerie (docs/finances.md, « Compte
  * du client ») : chaque entrée ou sortie de son solde (Clients::soldeCredit),
  * avec la date, le montant, le solde après, qui l'a fait et la référence
  * (reçu, commande, transaction Orange Money).
@@ -29,7 +29,7 @@ class MouvementSoldeClient
 
     /** Monnaie que le client a laissée à la caisse au lieu de la reprendre. */
     public const MONNAIE = 'monnaie';
-    /** Argent déposé pour plus tard (espèces ou Orange Money à la boutique, Orange Money depuis l'espace client). */
+    /** Argent déposé pour plus tard (espèces ou Orange Money à l'imprimerie, Orange Money depuis l'espace client). */
     public const DEPOT = 'depot';
     /** Solde utilisé pour payer une commande ou une facture. */
     public const UTILISATION = 'utilisation';
@@ -102,7 +102,7 @@ class MouvementSoldeClient
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?MouvementTresorerie $mouvementTresorerie = null;
 
-    /** Dépôt Orange Money fait depuis l'espace client, validé à la boutique. */
+    /** Dépôt Orange Money fait depuis l'espace client, validé à l'imprimerie. */
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?DepotSoldeClient $depot = null;

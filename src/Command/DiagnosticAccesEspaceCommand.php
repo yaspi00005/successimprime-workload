@@ -107,7 +107,7 @@ final class DiagnosticAccesEspaceCommand extends Command
                 $lignes[] = ['Compte en ligne', '✓ existe déjà sur cette fiche (le client peut aussi entrer avec son mot de passe)'];
             }
             if (true === $this->suspensions?->numeroSuspendu($client, $numero)) {
-                $lignes[] = ['Suspension', '✗ accès suspendu par la boutique'];
+                $lignes[] = ['Suspension', '✗ accès suspendu par l\'imprimerie'];
                 $probleme = true;
             }
             $probleme = $probleme || $demo || $telFiche !== $numero || null === $acces;

@@ -47,7 +47,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * l'atelier en brouillon « à confirmer ». Le payeur peut régler l'acompte
  * ou le tout par Orange Money dès l'envoi : le paiement reste « en
  * attente » jusqu'à la caisse et la production attend la confirmation de
- * la boutique. Un demandeur d'entreprise ne voit aucun montant et ne paie
+ * l'imprimerie. Un demandeur d'entreprise ne voit aucun montant et ne paie
  * pas : sa demande attend son valideur.
  */
 #[Route('/espace/commandes', name: 'app_espace_')]
@@ -111,7 +111,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
                     // Récapitulatif avec les frais Orange Money, puis la page d'Orange.
                     return $this->redirectToRoute('app_espace_nouvelle_commande_paiement', ['id' => (string) $commande->getPublicId(), 'part' => $paiement, 'envoyee' => 1]);
                 } else {
-                    $this->addFlash('succes', \sprintf('Commande %s envoyée. L\'atelier confirme le prix et votre fichier, puis vous prévient.%s', $commande->getNumero(), 'boutique' === $paiement ? ' Vous paierez en boutique.' : ''));
+                    $this->addFlash('succes', \sprintf('Commande %s envoyée. L\'atelier confirme le prix et votre fichier, puis vous prévient.%s', $commande->getNumero(), 'boutique' === $paiement ? ' Vous paierez à l\'imprimerie.' : ''));
                 }
 
                 return $this->redirectToRoute('app_espace_commande', ['id' => (string) $commande->getPublicId()]);
@@ -282,7 +282,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
             return $this->redirectToRoute('app_espace_nouvelle_commande_paiement', ['id' => $id, 'part' => $part]);
         }
         $part = $element->estAcompte() ? PaiementALaCommande::ACOMPTE : PaiementALaCommande::TOUT;
-        // Orange Money seul : l'avoir de la boutique se règle dans « Factures et paiements ».
+        // Orange Money seul : l'avoir de l'imprimerie se règle dans « Factures et paiements ».
         $plan = $reglements->plan($compte, [$element], false, null, $maintenant);
 
         if ($request->isMethod('POST')) {
@@ -293,7 +293,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
                 return $this->redirectToRoute('app_espace_nouvelle_commande_paiement', ['id' => $id, 'part' => $part]);
             }
             if (!$limite->create('compte-'.$compte->getId())->consume()->isAccepted()) {
-                $this->addFlash('error', 'Vous avez lancé beaucoup de paiements. Réessayez dans quelques minutes, ou payez en boutique.');
+                $this->addFlash('error', 'Vous avez lancé beaucoup de paiements. Réessayez dans quelques minutes, ou payez à l\'imprimerie.');
 
                 return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
             }

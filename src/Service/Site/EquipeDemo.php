@@ -53,7 +53,7 @@ final class EquipeDemo
     }
 
     /** Mot de la gérante de démonstration. */
-    public const MOT = "Bienvenue chez Succès Imprim. Depuis notre atelier de Bamako, nous imprimons chaque jour les banderoles, enseignes, roll-up et textiles de commerçants, d'entreprises et d'associations.\nNotre engagement est simple : un BAT validé avant chaque impression, des délais annoncés et tenus, et une équipe qui vous répond, à la boutique comme sur WhatsApp.\nPassez nous voir : nous serons heureux de préparer votre prochain projet avec vous.";
+    public const MOT = "Bienvenue chez Succès Imprim. Depuis notre atelier de Bamako, nous imprimons chaque jour les banderoles, enseignes, roll-up et textiles de commerçants, d'entreprises et d'associations.\nNotre engagement est simple : un BAT validé avant chaque impression, des délais annoncés et tenus, et une équipe qui vous répond, à l'imprimerie comme sur WhatsApp.\nPassez nous voir : nous serons heureux de préparer votre prochain projet avec vous.";
 
     /** Instructions de la purge (aussi jouées avant chaque chargement). */
     public const PURGE = [

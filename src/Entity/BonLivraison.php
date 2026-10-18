@@ -659,7 +659,7 @@ class BonLivraison
     /**
      * Le livreur n'a pas pu remettre : on note quand, qui et pourquoi. Les
      * étapes de ce passage (chargée, en route, arrivée) sont effacées : le
-     * colis revient à la boutique, et un nouveau passage les refera.
+     * colis revient à l'imprimerie, et un nouveau passage les refera.
      */
     public function echouer(User $livreur, string $motif, \DateTimeImmutable $le): void
     {

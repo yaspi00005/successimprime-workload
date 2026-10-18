@@ -3,7 +3,7 @@
 namespace App\Service\Bascule;
 
 /**
- * Une différence entre la base de la boutique et le schéma de la migration
+ * Une différence entre la base de l'imprimerie et le schéma de la migration
  * de base (docs/migration-de-base.md), décrite sans objet Doctrine pour
  * pouvoir être classée et testée simplement.
  *
@@ -28,7 +28,7 @@ final class Ecart
     public const DONNEES = 'donnees';
 
     /**
-     * @param array<string, mixed> $avant ce qu'il y a dans la base de la boutique
+     * @param array<string, mixed> $avant ce qu'il y a dans la base de l'imprimerie
      * @param array<string, mixed> $apres ce que la migration de base attend
      */
     public function __construct(

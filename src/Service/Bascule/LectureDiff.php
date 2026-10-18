@@ -13,7 +13,7 @@ use Doctrine\DBAL\Schema\Table;
 use Doctrine\DBAL\Types\Type;
 
 /**
- * Traduit la comparaison de Doctrine (base de la boutique → migration de
+ * Traduit la comparaison de Doctrine (base de l'imprimerie → migration de
  * base) en écarts simples, un par table, colonne, index ou lien.
  */
 final class LectureDiff

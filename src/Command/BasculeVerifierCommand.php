@@ -18,7 +18,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Bascule de la base de la boutique vers la nouvelle version
+ * Bascule de la base de l'imprimerie vers la nouvelle version
  * (docs/migration-de-base.md, docs/mise-en-production.md).
  *
  * Sans option : lecture seule. Compare la base au schéma de la migration
@@ -34,7 +34,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * les données, applique, revérifie, puis note la migration de base comme
  * faite. Il reste ensuite à lancer doctrine:migrations:migrate.
  */
-#[AsCommand(name: 'app:bascule:verifier', description: 'Compare la base de la boutique à la migration de base avant la bascule ; --corriger applique les écarts sans risque après une sauvegarde.')]
+#[AsCommand(name: 'app:bascule:verifier', description: 'Compare la base de l\'imprimerie à la migration de base avant la bascule ; --corriger applique les écarts sans risque après une sauvegarde.')]
 final class BasculeVerifierCommand extends Command
 {
     private const TITRES = [

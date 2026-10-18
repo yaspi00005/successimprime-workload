@@ -47,12 +47,12 @@ class EnvoiMessage
         self::NON_ENVOYE => 'Non envoyé',
     ];
 
-    /** Où le message est parti : l'ERP de la boutique ou le site en ligne. */
+    /** Où le message est parti : l'ERP de l'imprimerie ou le site en ligne. */
     public const LOCAL = 'local';
     public const EN_LIGNE = 'en_ligne';
 
     public const ORIGINES = [
-        self::LOCAL => 'ERP de la boutique',
+        self::LOCAL => 'ERP de l\'imprimerie',
         self::EN_LIGNE => 'Site en ligne',
     ];
 

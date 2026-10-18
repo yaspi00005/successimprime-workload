@@ -2,10 +2,10 @@
 
 {#
 	Mon solde (EspaceSoldeController), pour qui paie seulement : l'argent
-	laissé à la boutique (monnaie gardée, dépôts), son relevé tel que la
-	boutique le tient, et un dépôt par Orange Money. Le montant et les frais
+	laissé à l'imprimerie (monnaie gardée, dépôts), son relevé tel que l'imprimerie
+	le tient, et un dépôt par Orange Money. Le montant et les frais
 	viennent du serveur ; un dépôt en ligne s'ajoute au solde seulement
-	quand la boutique l'a validé.
+	quand l'imprimerie l'a validé.
 #}
 {% block title %}Mon solde{% endblock %}
 {% block page_classe %} ec-page-large{% endblock %}
@@ -26,22 +26,22 @@
 	<div class="ef-grille">
 		<div class="ef-colonne">
 			<section class="ec-carte es-solde" aria-labelledby="es-solde-titre">
-				<small id="es-solde-titre">Solde de mon compte à la boutique</small>
+				<small id="es-solde-titre">Solde de mon compte à l'imprimerie</small>
 				<b class="{{ avoir.solde > 0 ? 'vert' }}">{{ avoir.solde|francs }}</b>
 				{% if engage > 0 %}
 					<span>dont {{ engage|francs }} déjà utilisés, en attente de validation · {{ avoir.disponible|francs }} disponible</span>
 				{% endif %}
-				<p class="ef-texte-doux">L'argent que vous avez laissé à la boutique : monnaie gardée à la caisse, dépôts. Il paie vos prochaines commandes, à la caisse ou ici dans « Factures et paiements », ou vous est rendu à la boutique sur demande.</p>
+				<p class="ef-texte-doux">L'argent que vous avez laissé à l'imprimerie : monnaie gardée à la caisse, dépôts. Il paie vos prochaines commandes, à la caisse ou ici dans « Factures et paiements », ou vous est rendu à l'imprimerie sur demande.</p>
 				{% if avoir.disponible > 0 %}
 					<a class="ec-bouton es-utiliser" href="{{ path('app_espace_factures') }}#a-payer">Payer une facture avec mon solde</a>
 				{% endif %}
 			</section>
 
 			<section class="ec-carte ef-carte-large" id="deposer" aria-labelledby="es-deposer-titre">
-				<div class="ef-entete"><h2 id="es-deposer-titre">Déposer par Orange Money</h2><span class="ec-petit">il s'ajoute à votre solde une fois vérifié par la boutique</span></div>
+				<div class="ef-entete"><h2 id="es-deposer-titre">Déposer par Orange Money</h2><span class="ec-petit">il s'ajoute à votre solde une fois vérifié par l'imprimerie</span></div>
 				{% if not omActif %}
 					<div class="ec-note">
-						Le dépôt Orange Money depuis l'espace arrive très bientôt. En attendant, déposez à la boutique, en espèces ou par Orange Money : un reçu vous est remis.
+						Le dépôt Orange Money depuis l'espace arrive très bientôt. En attendant, déposez à l'imprimerie, en espèces ou par Orange Money : un reçu vous est remis.
 					</div>
 				{% else %}
 					<form method="get" action="{{ path('app_espace_solde') }}#deposer" class="es-montant">
@@ -64,7 +64,7 @@
 						<ol class="ef-om-etapes">
 							<li>Vous passez sur la page sécurisée d'Orange Money (lien valable {{ constant('App\\Entity\\TransactionOrangeMoney::VALIDITE_MINUTES') }} minutes).</li>
 							<li class="cle">Vous confirmez sur la page Orange Money avec votre code secret.</li>
-							<li>Vous revenez ici : dépôt reçu, puis vérifié par la boutique ; il s'ajoute alors à votre solde.</li>
+							<li>Vous revenez ici : dépôt reçu, puis vérifié par l'imprimerie ; il s'ajoute alors à votre solde.</li>
 						</ol>
 						<p class="ef-om-alerte">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</p>
 						<form method="post" action="{{ path('app_espace_solde_deposer') }}">
@@ -97,12 +97,12 @@
 							</li>
 						{% endfor %}
 					</ul>
-					{% if depots|filter(d => d.statut == 'rejete') is not empty %}<p class="ec-petit es-note-frais">Un dépôt refusé n'a rien ajouté à votre solde : écrivez-nous ou passez à la boutique pour en parler.</p>{% endif %}
+					{% if depots|filter(d => d.statut == 'rejete') is not empty %}<p class="ec-petit es-note-frais">Un dépôt refusé n'a rien ajouté à votre solde : écrivez-nous ou passez à l'imprimerie pour en parler.</p>{% endif %}
 				</section>
 			{% endif %}
 
 			<section class="ec-carte ef-carte-large" id="releve" aria-labelledby="es-releve-titre">
-				<div class="ef-entete"><h2 id="es-releve-titre">Relevé de mon solde</h2><span class="ec-petit">tenu par la boutique</span></div>
+				<div class="ef-entete"><h2 id="es-releve-titre">Relevé de mon solde</h2><span class="ec-petit">tenu par l'imprimerie</span></div>
 				<ul class="es-lignes">
 					{% for l in releve %}
 						<li>
@@ -124,15 +124,15 @@
 
 		<aside class="ef-colonne">
 			<section class="ec-carte">
-				<h2>À la boutique</h2>
+				<h2>À l'imprimerie</h2>
 				<div class="ef-moyen"><span class="sigle esp" aria-hidden="true">F</span><div><b>Monnaie gardée</b><small>À la caisse, demandez de garder la monnaie sur votre compte plutôt que de la reprendre.</small></div></div>
 				<div class="ef-moyen"><span class="sigle om" aria-hidden="true">OM</span><div><b>Dépôt en espèces ou Orange Money</b><small>Un reçu vous est remis{{ marchand ? ' · numéro marchand ' ~ marchand }}.</small></div></div>
-				<div class="ef-moyen"><span class="sigle vir" aria-hidden="true">↩</span><div><b>Récupérer votre argent</b><small>Sur demande à la boutique, avec un reçu à signer.</small></div></div>
+				<div class="ef-moyen"><span class="sigle vir" aria-hidden="true">↩</span><div><b>Récupérer votre argent</b><small>Sur demande à l'imprimerie, avec un reçu à signer.</small></div></div>
 			</section>
 			<section class="ec-carte">
 				<h2>Bon à savoir</h2>
-				<p class="ef-texte-doux">Votre solde ne baisse que lorsque vous l'utilisez pour payer, ou quand la boutique vous le rend.</p>
-				<p class="ef-texte-doux">Un dépôt en ligne apparaît « reçu, en attente de validation » : la boutique vérifie l'arrivée de l'argent puis l'ajoute à votre solde.</p>
+				<p class="ef-texte-doux">Votre solde ne baisse que lorsque vous l'utilisez pour payer, ou quand l'imprimerie vous le rend.</p>
+				<p class="ef-texte-doux">Un dépôt en ligne apparaît « reçu, en attente de validation » : l'imprimerie vérifie l'arrivée de l'argent puis l'ajoute à votre solde.</p>
 			</section>
 		</aside>
 	</div>

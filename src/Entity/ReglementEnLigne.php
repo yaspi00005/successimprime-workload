@@ -14,7 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
  * Chaque part (ReglementEnLignePart) est l'argent d'une commande : quand
  * Orange confirme, une part devient un paiement « en attente » de cette
  * commande, et l'avoir utilisé un paiement « solde client » en attente.
- * La boutique les valide au local (Finances › À valider), jamais
+ * L'imprimerie les valide au local (Finances › À valider), jamais
  * automatiquement.
  *
  * Les montants sont ceux calculés par le serveur au départ (FacturesClient,
@@ -66,7 +66,7 @@ class ReglementEnLigne
     #[ORM\Column]
     private int $fraisRetrait = 0;
 
-    /** Avoir de la boutique utilisé. */
+    /** Avoir de l'imprimerie utilisé. */
     #[ORM\Column]
     private int $avoir = 0;
 

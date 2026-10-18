@@ -67,7 +67,7 @@ final class MesureAudienceTest extends TestCase
         $faq = Request::create('https://succesimprim.com/faq');
         $faq->attributes->set('_route', 'app_site_faq');
 
-        self::assertSame('G-634VEQPP69', $this->mesure(true, null)->identifiant($faq), 'Jamais réglée : celle de la boutique.');
+        self::assertSame('G-634VEQPP69', $this->mesure(true, null)->identifiant($faq), 'Jamais réglée : celle de l\'imprimerie.');
         self::assertSame('G-AUTRE1234', $this->mesure(true, ['mesure' => 'G-AUTRE1234'])->identifiant($faq));
         self::assertNull($this->mesure(true, ['mesure' => ''])->identifiant($faq), 'Vidée : coupée.');
         self::assertNull($this->mesure(false, null)->identifiant($faq), 'ERP local.');

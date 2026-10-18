@@ -16,9 +16,9 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  *  - Synchronisation : au local, pas de synchronisation réussie depuis
  *    15 minutes (Synchro::alerte, la même règle que la cloche des
- *    administrateurs) ; en ligne, l'agent de la boutique ne s'est pas
+ *    administrateurs) ; en ligne, l'agent de l'imprimerie ne s'est pas
  *    manifesté depuis 30 minutes (coupure internet ou ordinateur éteint :
- *    l'e-mail part du serveur en ligne, il arrive même si la boutique est
+ *    l'e-mail part du serveur en ligne, il arrive même si l'imprimerie est
  *    coupée).
  *  - Sauvegarde (au local) : ratée, trop ancienne, copie sur le second
  *    disque en échec (Sauvegardes::alerte, comme le tableau de bord).
@@ -75,11 +75,11 @@ final class VerificationsSysteme
             $contact = $this->synchro->dateEtat(AgentSynchro::ETAT_CONTACT);
             $texte = self::silenceAgent($contact, $maintenant);
             if (null === $texte) {
-                $this->alertes->resoudreAutomatiquement(AlerteSysteme::SYNCHRO, ['agent'], 'La boutique se synchronise de nouveau.', $maintenant);
+                $this->alertes->resoudreAutomatiquement(AlerteSysteme::SYNCHRO, ['agent'], 'L\'imprimerie se synchronise de nouveau.', $maintenant);
 
                 return [];
             }
-            $this->alertes->signaler(AlerteSysteme::SYNCHRO, 'La boutique ne se synchronise plus avec le site', $texte."\nCauses fréquentes : coupure internet à la boutique, ordinateur éteint, tâche planifiée arrêtée. Voir Réglages › Sécurité › Synchronisation.", ['agent'], AlerteSysteme::CRITIQUE, $maintenant);
+            $this->alertes->signaler(AlerteSysteme::SYNCHRO, 'L\'imprimerie ne se synchronise plus avec le site', $texte."\nCauses fréquentes : coupure internet à l'imprimerie, ordinateur éteint, tâche planifiée arrêtée. Voir Réglages › Sécurité › Synchronisation.", ['agent'], AlerteSysteme::CRITIQUE, $maintenant);
 
             return [$texte];
         }
@@ -107,14 +107,14 @@ final class VerificationsSysteme
             return null;
         }
 
-        return \sprintf('Pas de nouvelles de l\'ERP de la boutique depuis %s (dernier passage le %s).', $minutes >= 120 ? intdiv($minutes, 60).' h' : $minutes.' min', $contact->format('d/m/Y à H:i'));
+        return \sprintf('Pas de nouvelles de l\'ERP de l\'imprimerie depuis %s (dernier passage le %s).', $minutes >= 120 ? intdiv($minutes, 60).' h' : $minutes.' min', $contact->format('d/m/Y à H:i'));
     }
 
     /** @return list<string> */
     private function sauvegarde(\DateTimeImmutable $maintenant): array
     {
         if ($this->synchro->estEnLigne()) {
-            return []; // les sauvegardes se font à la boutique (docs/sauvegardes.md)
+            return []; // les sauvegardes se font à l'imprimerie (docs/sauvegardes.md)
         }
         $texte = $this->sauvegardes->etat($maintenant)['alerte'];
         if (null === $texte) {

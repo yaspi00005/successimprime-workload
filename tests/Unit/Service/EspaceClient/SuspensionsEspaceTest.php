@@ -140,7 +140,7 @@ final class SuspensionsEspaceTest extends TestCase
             self::assertSame('Tout le compte est déjà suspendu.', $e->getMessage());
         }
 
-        // En ligne : l'écran est fermé, la boutique décide.
+        // En ligne : l'écran est fermé, l'imprimerie décide.
         $enLigne = $this->service(true);
         self::assertSame(SuspensionsEspace::FERME_EN_LIGNE, $enLigne->empechement());
         $this->expectException(\DomainException::class);

@@ -4296,7 +4296,7 @@ body.si-param-bloque { overflow: hidden; }
 .si-pg .si-pg-tableau thead th, .si-pg .si-pg-journal thead th { font-size: 12px; font-weight: 600; color: #64748B; text-transform: none; letter-spacing: 0; }
 .si-pg-journal td:first-child, .si-mp-jours td:first-child { white-space: nowrap; }
 .si-pg-avec-raison td { border-bottom: 0; }
-.si-pg-raison td { padding-top: 0; font-size: 12px; color: #64748B; }
+.si-pg-raison td, .si-pg-journal .si-pg-raison td { padding-top: 0; font-size: 12px; color: #64748B; white-space: normal; }
 .si-pg-attente { color: #2563EB; font-size: 12px; }
 .si-pg-pourquoi { font-size: 13px; margin: 0 0 6px; color: #334155; }
 .si-mp-retour { margin: 0 0 10px; font-size: 13px; }

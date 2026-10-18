@@ -155,7 +155,7 @@
 						</td>
 						<td class="centre">
 							{{ detail.quantite|default(1) }}
-							{% if detail.modeCalcul|default('') == 'metre_carre' %}<div class="detail">{{ detail.surfaceTotale|default(0)|number_format(2, ',', ' ') }} m²</div>{% endif %}
+							{% if detail.modeCalcul|default('') == 'metre_carre' %}<div class="detail">{{ detail.surfaceTotale|default(0)|number_format(2, ',', ' ') }} m²{% if pieces_m2_ligne(detail, true) %} · {{ pieces_m2_ligne(detail, true) }}{% endif %}</div>{% endif %}
 						</td>
 						<td class="droite">{{ detail.prixUnitaire|default(0) > 0 ? detail.prixUnitaire|number_format(0, ',', ' ') : '—' }}</td>
 						{% if avecRemise %}<td class="droite">{{ detail.montantRemise|default(0) > 0 ? '− ' ~ (detail.montantRemise)|number_format(0, ',', ' ') : '—' }}</td>{% endif %}

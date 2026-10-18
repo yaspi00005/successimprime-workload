@@ -184,7 +184,8 @@
 									{% if detail.modeCalcul == 'forfait' and detail.longueur %}
 										<strong>{{ detail.longueur|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} m</strong> sur laize {{ detail.largeur|number_format(2, ',', ' ') }} m
 									{% elseif detail.largeur and detail.longueur %}
-										<strong>{{ detail.quantite }} × {{ (detail.largeur * 100)|round(1) }} × {{ (detail.longueur * 100)|round(1) }} cm</strong> = {{ detail.surfaceTotale|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} m²
+										{# La surface des pièces elles-mêmes ; en pièces au m², la surface facturée (espacement compris) est dite à part. #}
+										<strong>{{ detail.quantite }} × {{ (detail.largeur * 100)|round(1) }} × {{ (detail.longueur * 100)|round(1) }} cm</strong> = {{ (detail.quantite * detail.largeur * detail.longueur)|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} m²{% if detail.enPiecesAuM2 %} <small class="d-block text-muted">{{ pieces_m2_ligne(detail) }}</small>{% endif %}
 									{% else %}
 										<strong>{{ detail.quantite }}</strong> pièce{{ detail.quantite > 1 ? 's' }}
 									{% endif %}
@@ -218,6 +219,8 @@
 							<strong>{{ detail.designation|default(detail.produit ? detail.produit.nom : 'Travail') }} × {{ detail.quantite }}</strong>
 							{% set caracteristiques = [] %}
 							{% if detail.largeur and detail.longueur %}{% set caracteristiques = caracteristiques|merge([(detail.largeur * 100)|round(1) ~ ' × ' ~ (detail.longueur * 100)|round(1) ~ ' cm']) %}{% endif %}
+							{# Petites pièces facturées au m² (docs/saisie-devis-commandes.md). #}
+							{% if pieces_m2_ligne(detail) %}{% set caracteristiques = caracteristiques|merge([pieces_m2_ligne(detail)]) %}{% endif %}
 							{% for finition in detail.finitions %}{% set caracteristiques = caracteristiques|merge([finition.nomFinition]) %}{% endfor %}
 							{% if caracteristiques %}<small class="d-block text-muted">{{ caracteristiques|join(' · ') }}</small>{% endif %}
 							{% if detail.demandeClient %}<small class="d-block"><i class="fas fa-comment me-1 text-muted"></i>Le client : « {{ detail.demandeClient }} »</small>{% endif %}

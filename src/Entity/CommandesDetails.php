@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Entity\Trait\PromotionLigneTrait;
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\PiecesAuM2Trait;
 use App\Entity\Trait\TotalFigeTrait;
 use App\Repository\CommandesDetailsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -21,6 +22,7 @@ class CommandesDetails
     use PublicIdTrait;
     use PromotionLigneTrait;
     use TotalFigeTrait;
+    use PiecesAuM2Trait;
 
     public const PRODUCTION_A_PRODUIRE = 'a_produire';
     public const PRODUCTION_EN_COURS = 'en_production';
@@ -678,8 +680,9 @@ class CommandesDetails
             'metre' => (float) ($this->longueur ?? 0)
                 * $this->quantite,
 
-            'metre_carre' => (float) ($this->surface ?? 0)
-                * $this->quantite,
+            // Petites pièces (PiecesAuM2Trait) : la surface facturée vient du nombre de pièces au m².
+            'metre_carre' => $this->surfacePiecesAuM2()
+                ?? (float) ($this->surface ?? 0) * $this->quantite,
 
             'face' => max(1, $this->nombreFaces)
                 * $this->quantite,
@@ -699,7 +702,8 @@ class CommandesDetails
      */
     public function getSurfaceTotale(): float
     {
-        return (float) ($this->surface ?? 0) * $this->quantite;
+        // En pièces au m² : la surface facturée (espacement et chutes compris).
+        return $this->surfacePiecesAuM2() ?? (float) ($this->surface ?? 0) * $this->quantite;
     }
 
     public function getProduitClient(): ?ProduitClient

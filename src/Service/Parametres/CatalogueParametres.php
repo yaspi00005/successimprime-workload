@@ -4,6 +4,7 @@ namespace App\Service\Parametres;
 
 use App\Service\ActionsCaisse\HeuresTravail;
 use App\Service\EspaceClient\DelaisCommande;
+use App\Service\PiecesParMetreCarre;
 use App\Service\SuiviMetiers\Bareme;
 
 /**
@@ -223,6 +224,18 @@ final class CatalogueParametres
                 ],
                 'motsCles' => ['Promotions par segment de clients', 'Code promo · exception B2B', 'Anniversaire du client · SMS le jour J'],
                 'note' => 'Les promotions se créent sur l\'écran Promotions (Ventes) ; les anniversaires et leurs modèles sur l\'écran Anniversaires (Clients).',
+            ],
+
+            // Pièces au m² (docs/saisie-devis-commandes.md) : petites pièces au m², à la saisie
+            // du comptoir et sur le site. L'espacement part sur le site (CatalogueSynchro::REGLAGES_PUBLICS).
+            PiecesParMetreCarre::TUILE => [
+                'famille' => 'ventes', 'libelle' => 'Pièces au m²', 'icone' => 'fa-th',
+                'roles' => ['ROLE_ADMIN'], 'route' => null,
+                'champs' => [
+                    ['cle' => PiecesParMetreCarre::CLE_ESPACEMENT, 'type' => 'nombre', 'libelle' => 'Espacement entre les pièces, en largeur et en hauteur', 'aide' => 'Compté entre deux pièces voisines sur 1 m × 1 m. Une ligne déjà enregistrée garde son espacement.', 'suffixe' => 'mm', 'min' => 0, 'max' => (int) PiecesParMetreCarre::ESPACEMENT_MAX, 'decimales' => 1, 'defaut' => PiecesParMetreCarre::ESPACEMENT_DEFAUT],
+                ],
+                'motsCles' => ['Autocollants, étiquettes · pièces au m²', 'Espacement 1 mm en X et en Y', 'Quantité en pièces ou en m²'],
+                'note' => 'Sur une ligne au m², la case « Pièces au m² » compte les pièces qui tiennent sur 1 m × 1 m avec cet espacement (la pièce tournée est essayée aussi) et facture pièces ÷ pièces au m², au centième de m² supérieur. Une pièce plus grande que 1 m reste au calcul au m² habituel.',
             ],
 
             // ---------- Atelier ----------

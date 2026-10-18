@@ -25,10 +25,11 @@ final class PreparationDemande
 {
     /**
      * @param array{paliers: list<array{quantite: int, pourcentage: float}>, face_en_plus: int, paliers_b2b: bool}|null $tarifAtelier réglages de l'Atelier 3D (TarifAtelier::reglages)
+     * @param float|null $espacementPiecesM2 espacement des pièces au m² (réglage du local), pour une quantité donnée en m²
      *
      * @return array{client: ?Clients, nouveauClient: bool, prospect: ?Prospect, devis: ?Devis, aChiffrer: ?string}
      */
-    public static function construire(DemandeDevis $demande, ?Clients $existant, \DateTimeImmutable $le, ?array $tarifAtelier = null): array
+    public static function construire(DemandeDevis $demande, ?Clients $existant, \DateTimeImmutable $le, ?array $tarifAtelier = null, ?float $espacementPiecesM2 = null): array
     {
         $resultat = ['client' => $existant, 'nouveauClient' => false, 'prospect' => null, 'devis' => null, 'aChiffrer' => null];
 
@@ -52,6 +53,10 @@ final class PreparationDemande
         if (null !== $demande->getConfiguration()) {
             try {
                 $ligne = self::ligneDevis($demande->getConfiguration(), (int) ($demande->getQuantite() ?? 1), $demande->getLargeurCm(), $demande->getHauteurCm(), self::finitionsChoisies($demande));
+                if (null !== $demande->getQuantiteM2() && null !== $espacementPiecesM2) {
+                    // Quantité donnée en m² : la ligne est facturée en pièces au m², comme le visiteur l'a comptée.
+                    $ligne->choisirPiecesAuM2(true, $espacementPiecesM2)->calculerTotaux(false);
+                }
                 $creation = $demande->getCreation();
                 if (null !== $creation && null !== $tarifAtelier) {
                     // Modèle de l'Atelier 3D : seconde face et palier de quantité, comme le visiteur les a vus (prix public).

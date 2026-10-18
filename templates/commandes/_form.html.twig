@@ -599,6 +599,9 @@
 
 			</div>
 
+			{# Petites pièces facturées au m² (docs/saisie-devis-commandes.md). #}
+			{{ include('partials/_pieces_m2_ligne.html.twig', {detail: detail}) }}
+
 			{#
 				Promotion de la ligne (docs/promotions.md) : affichée par
 				public/js/promotions-saisie.js, recalculée par le serveur à
@@ -1288,6 +1291,9 @@
 
 <link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
 <script src="{{ asset('js/promotions-saisie.js') }}"></script>
+{# Pièces au m² des lignes (docs/saisie-devis-commandes.md). #}
+{{ site_styles('css/pieces-m2.css') }}
+<script src="{{ asset('js/pieces-m2.js') }}"></script>
 
 
 {# Mise en page de la saisie : section « Saisie d'une commande » de public/css/admin.css. #}
@@ -2106,6 +2112,9 @@ const tva = Math.max(0, nombreDepuisChamp(champDetail(detail, 'tva')));
 
 const mode = String(champDetail(detail, 'modeCalcul') ?. value || 'unite');
 
+// Pièces au m² (public/js/pieces-m2.js) : surface facturée selon les pièces qui tiennent sur 1 m², ou null.
+const surfacePieces = window.SiPiecesM2 ? window.SiPiecesM2.ligne(detail, {mode: mode, typeLigne: valeurTypeLigne(detail), largeur: largeur, longueur: longueur, quantite: quantite}) : null;
+
 let montant = 0;
 let facteur = 0;
 
@@ -2121,7 +2130,7 @@ case 'metre': facteur = longueur * quantite; montant = prix * facteur;
 break;
 
 
-case 'metre_carre': facteur = surface * quantite; montant = prix * facteur;
+case 'metre_carre': facteur = surfacePieces !== null ? surfacePieces : surface * quantite; montant = prix * facteur;
 
 break;
 

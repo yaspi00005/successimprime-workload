@@ -93,7 +93,8 @@ final class DemandesSiteTest extends TestCase
 
         $fiche = SiteDemandeController::fiches([$bache])[900001];
         self::assertTrue($fiche['taille']);
-        self::assertSame(['taille', 'largeur', 'hauteur', 'min', 'finitions'], array_keys($fiche), 'aucun prix envoyé à la page');
+        self::assertSame(['taille', 'largeur', 'hauteur', 'min', 'm2', 'finitions'], array_keys($fiche), 'aucun prix envoyé à la page');
+        self::assertTrue($fiche['m2'], 'bâche à la mesure : quantité en pièces ou en m² (pièces au m²)');
     }
 
     private function fichier(string $nom, string $contenu): UploadedFile

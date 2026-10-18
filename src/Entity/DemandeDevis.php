@@ -82,6 +82,14 @@ class DemandeDevis
     #[ORM\Column(nullable: true)]
     private ?int $quantite = null;
 
+    /**
+     * Surface donnée par le visiteur quand il a indiqué sa quantité en m²
+     * (pièces au m², docs/saisie-devis-commandes.md) ; la quantité reste le
+     * nombre de pièces qui en découle.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 9, scale: 2, nullable: true)]
+    private ?string $quantiteM2 = null;
+
     /** @var Collection<int, Finition> */
     #[ORM\ManyToMany(targetEntity: Finition::class)]
     #[ORM\JoinTable(name: 'demande_devis_finition')]
@@ -283,6 +291,18 @@ class DemandeDevis
         return $this;
     }
 
+    public function getQuantiteM2(): ?float
+    {
+        return null === $this->quantiteM2 ? null : (float) $this->quantiteM2;
+    }
+
+    public function setQuantiteM2(?float $metresCarres): static
+    {
+        $this->quantiteM2 = null === $metresCarres ? null : number_format($metresCarres, 2, '.', '');
+
+        return $this;
+    }
+
     /** @return Collection<int, Finition> */
     public function getFinitions(): Collection
     {
@@ -424,6 +444,9 @@ class DemandeDevis
         }
         if (null !== $this->quantite) {
             $morceaux[] = '× '.$this->quantite;
+        }
+        if (null !== $this->quantiteM2) {
+            $morceaux[] = '('.number_format((float) $this->quantiteM2, 2, ',', ' ').' m² demandés)';
         }
 
         return trim(($this->designation ?? '').' '.implode(' ', $morceaux));

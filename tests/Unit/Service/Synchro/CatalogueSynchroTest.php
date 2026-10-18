@@ -269,6 +269,17 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame([], CatalogueSynchro::reglagesPublics('paie', ['mode' => 'mensuel']));
     }
 
+    public function testPiecesAuMetreCarreEnLigne(): void
+    {
+        // Le site compte les pièces avec l'espacement du local ; la ligne garde le sien ; la demande remonte sa surface.
+        self::assertSame(['espacement_mm' => 1.0], CatalogueSynchro::reglagesPublics('pieces_m2', []));
+        self::assertSame(['espacement_mm' => 2.5], CatalogueSynchro::reglagesPublics('pieces_m2', ['espacement_mm' => 2.5]));
+        $types = CatalogueSynchro::types();
+        self::assertContains('espacementPiecesM2', $types['commande_ligne']['champs']);
+        self::assertContains('espacementPiecesM2', $types['devis_ligne']['champs']);
+        self::assertContains('quantiteM2', $types['demande_devis']['champs']);
+    }
+
     public function testTauxDesFraisOrangeMoneyDescendent(): void
     {
         // Tenus dans ParametresPaiement : Synchro::noterReglages les ajoute aux valeurs de la tuile.

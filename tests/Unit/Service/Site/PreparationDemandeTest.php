@@ -173,6 +173,27 @@ final class PreparationDemandeTest extends TestCase
         self::assertStringContainsString('Studio textile W-CR-0001', (string) $r['devis']->getObservation());
     }
 
+    public function testQuantiteDonneeEnMetresCarresFactureeEnPiecesAuM2(): void
+    {
+        [$bache] = $this->bache();
+        // 3 m² d'autocollants de 5 × 5 cm : 1 083 pièces (361 au m², espacement 1 mm).
+        $demande = $this->demande($bache)->setTaille(5, 5)->setQuantite(1083)->setQuantiteM2(3);
+
+        $ligne = PreparationDemande::construire($demande, null, $this->le, null, 1.0)['devis']?->getDevisDetails()->first();
+
+        self::assertInstanceOf(DevisDetails::class, $ligne);
+        self::assertSame(1.0, $ligne->getEspacementPiecesM2());
+        self::assertSame(1083, $ligne->getQuantite());
+        self::assertSame(24000, $ligne->getTotalTtc(), '3 m² × 8 000, comme le visiteur l\'a compté');
+        self::assertStringContainsString('(3,00 m² demandés)', $demande->getResume());
+
+        // En pièces : calcul au m² habituel, 1 083 × 0,0025 = 2,7075 m².
+        $enPieces = $this->demande($bache)->setTaille(5, 5)->setQuantite(1083);
+        $ligne = PreparationDemande::construire($enPieces, null, $this->le, null, 1.0)['devis']?->getDevisDetails()->first();
+        self::assertNull($ligne?->getEspacementPiecesM2());
+        self::assertSame(21660, $ligne?->getTotalTtc());
+    }
+
     private function demande(ProduitConfiguration $config): DemandeDevis
     {
         $d = DemandeDevis::nouvelle('devis', 'Moussa Traoré', '22376123456', $this->le)

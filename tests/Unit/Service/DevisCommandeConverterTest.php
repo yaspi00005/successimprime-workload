@@ -93,4 +93,20 @@ final class DevisCommandeConverterTest extends TestCase
         self::assertTrue($copie->isTotalFige());
         self::assertSame(21875, $copie->calculerTotaux()->getTotalHt(), 'réenregistrée sans changement, la ligne de la commande garde le total du devis');
     }
+
+    public function testUneLigneEnPiecesAuM2GardeSonCalculDansLaCommande(): void
+    {
+        // 1 000 autocollants de 5 × 5 cm à 6 500 F le m², en pièces au m² : 2,78 m² facturés.
+        $ligne = (new DevisDetails())->setDesignation('Autocollants')->setModeCalcul('metre_carre')->setLargeur(0.05)->setLongueur(0.05)
+            ->setQuantite(1000)->setPrixUnitaire(6500)->setEspacementPiecesM2(1)->calculerTotaux();
+        $devis = (new Devis())->setStatut(Devis::STATUT_ACCEPTE);
+        $devis->addDevisDetail($ligne);
+
+        $copie = (new DevisCommandeConverter($this->em()))->convertir($devis)->getCommandesDetails()->first();
+
+        self::assertSame('metre_carre', $copie->getModeCalcul(), 'avant, la ligne au m² devenait « unité »');
+        self::assertSame(1.0, $copie->getEspacementPiecesM2());
+        self::assertSame(18070, $copie->getTotalHt());
+        self::assertSame(18070, $copie->calculerTotaux()->getTotalHt(), 'réenregistrée, la commande garde le total du devis');
+    }
 }

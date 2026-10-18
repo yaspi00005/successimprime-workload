@@ -64,6 +64,13 @@ final class DevisCommandeConverter
                     ->setSurface($devisDetail->getSurface())
                     ->setNombreFaces(
                         $devisDetail->getNombreFaces()
+                    )
+                    // Le mode de calcul suit (une ligne au m² restait « unité » et se recalculait
+                    // prix × quantité au premier enregistrement de la commande), avec l'espacement
+                    // des pièces au m² du devis accepté.
+                    ->setModeCalcul($devisDetail->getModeCalcul())
+                    ->setEspacementPiecesM2(
+                        $devisDetail->getEspacementPiecesM2()
                     );
 
                 /*

@@ -13,6 +13,7 @@ use App\Entity\Supports;
 use App\Entity\TypesImpression;
 use App\Entity\Articles;
 use App\Repository\ProduitConfigurationRepository;
+use App\Service\PiecesParMetreCarre;
 use Doctrine\ORM\EntityRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
@@ -40,7 +41,8 @@ class CommandesDetailsType extends AbstractType
 {
     public function __construct(
         private readonly ProduitConfigurationRepository $configurationRepository,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly ?PiecesParMetreCarre $piecesM2 = null,
     ) {}
 
     public function buildForm(
@@ -1020,6 +1022,9 @@ class CommandesDetailsType extends AbstractType
                 }
             }
         );
+        // Case « Pièces au m² » (docs/saisie-devis-commandes.md).
+        ChampPiecesAuM2::ajouter($builder, $this->piecesM2);
+
         /*
          * La commande n’apparaît que lorsque ce formulaire
          * est utilisé seul.

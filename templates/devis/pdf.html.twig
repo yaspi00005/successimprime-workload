@@ -905,7 +905,7 @@
                                 detail.surfaceTotale|default(0)
                                 |number_format(2, ',', ' ')
                             }}
-									m²)
+									m²{% if pieces_m2_ligne(detail, true) %} · {{ pieces_m2_ligne(detail, true) }}{% endif %})
 								</span>
 
 							{% endif %}

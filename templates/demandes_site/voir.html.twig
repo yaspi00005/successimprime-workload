@@ -39,7 +39,8 @@
 					{% endif %}
 					{% if d.quantite %}
 						<dt class="col-sm-3">Quantité</dt>
-						<dd class="col-sm-9">{{ d.quantite }}</dd>
+						{# Quantité donnée en m² : les pièces en découlent (pièces au m², docs/saisie-devis-commandes.md). #}
+						<dd class="col-sm-9">{{ d.quantite|number_format(0, ',', ' ') }}{% if d.quantiteM2 is not null %} pièces <small class="text-muted">(le visiteur a demandé {{ d.quantiteM2|number_format(2, ',', ' ') }} m² : devis en pièces au m²)</small>{% endif %}</dd>
 					{% endif %}
 					{% if d.finitions|length %}
 						<dt class="col-sm-3">Finitions</dt>

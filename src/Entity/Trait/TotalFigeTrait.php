@@ -85,7 +85,7 @@ trait TotalFigeTrait
      * Tout ce dont calculerTotaux() se sert, ramené à une forme stable
      * (« 1.5 » et « 1.5000 » sont la même largeur). Au m², une ligne
      * produit refait sa surface depuis la largeur et la longueur : ce sont
-     * elles qui comptent.
+     * elles qui comptent, avec l'espacement des pièces au m².
      */
     private function empreinteCalcul(): string
     {
@@ -94,8 +94,9 @@ trait TotalFigeTrait
             : number_format((float) $valeur, 4, '.', '');
 
         $dimensions = match ($this->modeCalcul) {
+            // Avec l'espacement des pièces au m² (PiecesAuM2Trait) : le choisir change le total.
             'metre_carre' => self::TYPE_PRODUIT === $this->typeLigne
-                ? [$nombre($this->largeur), $nombre($this->longueur)]
+                ? [$nombre($this->largeur), $nombre($this->longueur), $nombre($this->espacementPiecesM2)]
                 : [$nombre($this->surface)],
             'metre' => [$nombre($this->longueur)],
             'face' => [max(1, $this->nombreFaces)],

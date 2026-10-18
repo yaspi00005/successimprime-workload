@@ -108,6 +108,12 @@ On peut filtrer par type, par période (du, au) et par personne. La liste montre
 
 Le détail d'une entrée montre ses champs et ce qui reviendra avec elle (adresses, accès, lignes…). Les montants y sont masqués pour qui n'est pas la Direction.
 
+- Les champs se lisent comme ailleurs dans l'application : dates en jj/mm/aaaa, « oui » ou « non », montants avec leurs milliers séparés (70 000), noms de colonnes accentués (`TypesCorbeille::nomColonne`).
+- Une fiche liée est nommée, par exemple « ONG Eau pour Tous (n° 900009) », si la personne a le droit de la voir ; sinon seulement son numéro. Si elle a disparu, le détail le dit (« n° 7, n'existe plus ») : la restauration sera refusée.
+- Un lien d'une table de liaison (client visé par une promotion, produit d'une promotion) apparaît comme « lien vers une autre fiche », nommé d'après la fiche de l'autre côté, avec le même contrôle de droit.
+
+Sur téléphone, la liste passe en fiches : le titre, la date de suppression et le jour où l'entrée part pour de bon.
+
 - **Restaurer** remet tout en place **avec les mêmes numéros**, dans une seule transaction, fiches liées comprises, et rebranche les liens vidés (sauf s'ils ont changé depuis). La restauration est refusée, sans rien écrire, avec un message en français, dans ces cas :
   - la fiche à laquelle l'élément était rattaché n'existe plus (« Adresse de livraison « Boutique » ne peut pas revenir : client n° 7 auquel il était rattaché n'existe plus. ») ;
   - cette fiche est elle-même dans la corbeille (« Restaurez-le d'abord. ») ;

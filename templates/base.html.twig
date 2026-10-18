@@ -74,7 +74,7 @@
 					<div class="collapse navbar-collapse justify-content-between">
 						<div class="header-left si-titre-page">
 							{% if sectionCourante and routeCourante != 'app_home' %}
-								<div class="si-fil-ariane">{{ libelle_section_admin(sectionCourante) }} <span>›</span> {{ block('title')|striptags|trim }}</div>
+								<div class="si-fil-ariane">{{ libelle_section_admin(sectionCourante) }} <span>›</span> {# Le titre est déjà échappé à son rendu : sans |raw, « l'an » s'afficherait « l&#039;an ». #}{{ block('title')|striptags|trim|raw }}</div>
 							{% endif %}
 							<div class="dashboard_bar">{% block page_title %}{{ block('title') }}{% endblock %}</div>
 						</div>

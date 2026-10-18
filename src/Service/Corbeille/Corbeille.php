@@ -294,7 +294,7 @@ final class Corbeille
                 continue;
             }
             $reference = $references[$colonne] ?? null;
-            $libelle = null !== $reference ? TypesCorbeille::type($reference['cible']) : TypesCorbeille::nomColonne($colonne);
+            $libelle = null !== $reference ? TypesCorbeille::nomLien($colonne, $reference['cible']) : TypesCorbeille::nomColonne($colonne);
             if (!$direction && TypesCorbeille::estMontant($colonne)) {
                 $champs[] = ['libelle' => $libelle, 'valeur' => 'masqué (montant réservé à la Direction)'];
                 continue;

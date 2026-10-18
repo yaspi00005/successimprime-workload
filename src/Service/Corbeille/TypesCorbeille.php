@@ -242,6 +242,8 @@ final class TypesCorbeille
         'annule' => 'annulé', 'annulee' => 'annulée', 'livre' => 'livré', 'livree' => 'livrée', 'tache' => 'tâche',
         'evenement' => 'événement', 'electronique' => 'électronique', 'ttc' => 'TTC', 'ht' => 'HT', 'tva' => 'TVA',
         'sms' => 'SMS', 'url' => 'URL', 'ia' => 'IA', 'bat' => 'BAT', 'pao' => 'PAO', 'b2b' => 'B2B', 'nb' => 'nombre de',
+        'libelle' => 'libellé', 'defaut' => 'défaut', 'cout' => 'coût', 'role' => 'rôle', 'activite' => 'activité',
+        'operateur' => 'opérateur', 'beneficiaire' => 'bénéficiaire', 'methode' => 'méthode', 'reperes' => 'repères', 'repere' => 'repère',
     ];
 
     /** « date_devis » : « Date devis » ; « numero » : « Numéro ». */
@@ -252,6 +254,18 @@ final class TypesCorbeille
         $nom = trim(implode(' ', $mots));
 
         return mb_strtoupper(mb_substr($nom, 0, 1)).mb_substr($nom, 1);
+    }
+
+    /**
+     * Nom d'un champ qui pointe vers une autre fiche : « Client » pour
+     * client_id, « Créé par » pour cree_par_id (deux liens vers le
+     * personnel ne portent pas le même nom).
+     */
+    public static function nomLien(string $colonne, string $cible): string
+    {
+        $base = (string) preg_replace('/_id$/', '', $colonne);
+
+        return \in_array($cible, [$base, $base.'s', $base.'x'], true) ? self::type($cible) : self::nomColonne($base);
     }
 
     /**

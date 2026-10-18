@@ -2,6 +2,8 @@
 
 namespace App\Service\EspaceClient;
 
+use App\Service\Catalogue\PrixSpeciaux;
+
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\CommandeDetailFinition;
@@ -41,7 +43,18 @@ final class NouvelleCommande
         private readonly ?PromotionsSaisie $promotionsSaisie = null,
         /** @var (\Closure(): Parametres)|null interrupteur « Commande en ligne » ; absent des tests : ouverte */
         #[AutowireServiceClosure(Parametres::class)] private readonly ?\Closure $reglages = null,
+        /** Prix négociés par client (docs/produits.md) ; absent des tests : prix du catalogue. */
+        private readonly ?PrixSpeciaux $prixSpeciaux = null,
     ) {
+    }
+
+    /**
+     * Prix négocié du client pour cette configuration (docs/produits.md),
+     * posé en remise sur la ligne : le client le voit déjà appliqué.
+     */
+    public function appliquerPrixSpecial(CommandesDetails $ligne, Clients $client, \DateTimeInterface $jour): void
+    {
+        $this->prixSpeciaux?->appliquerALigne($ligne, $client, $jour);
     }
 
     /**
@@ -73,6 +86,8 @@ final class NouvelleCommande
             ->leftJoin('pc.configurationFinitions', 'cf')
             ->leftJoin('cf.finition', 'fi')
             ->where('pc.active = true')->andWhere('p.actif = true')->andWhere('p.publie = true')
+            // Masqué en ligne depuis sa fiche (docs/produits.md) : toujours vendu au comptoir.
+            ->andWhere('p.visibleEnLigne = true')
             ->andWhere('cat.id IS NULL OR cat.publie = true')
             ->andWhere('pc.prixBase > 0')
             ->orderBy('cat.ordre', 'ASC')->addOrderBy('p.ordre', 'ASC')->addOrderBy('p.nom', 'ASC')->addOrderBy('pc.ordre', 'ASC')
@@ -373,6 +388,7 @@ final class NouvelleCommande
         if (null !== $ajuster) {
             $ajuster($ligne);
         }
+        $this->appliquerPrixSpecial($ligne, $client, $maintenant);
 
         $commande = self::assembler($ligne, $options, $heuresExpress)
             ->setClients($client)

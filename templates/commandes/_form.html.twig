@@ -2991,7 +2991,12 @@ return;
 
 try {
 
-const url = construireUrl(configurationUrl, configuration.value);
+let url = construireUrl(configurationUrl, configuration.value);
+
+// Prix négocié du client choisi (docs/produits.md) : le serveur le renvoie dans prixSpecial.
+if (clientSelect && clientSelect.value) {
+url += (url.indexOf('?') === -1 ? '?' : '&') + 'client=' + encodeURIComponent(clientSelect.value);
+}
 console.log('[DEBUG] chargerConfiguration() : fetch vers', url);
 
 const response = await fetch(url);
@@ -3016,6 +3021,11 @@ definirValeur(detail, 'format', config.format);
 definirValeur(detail, 'prixUnitaire', config.prixBase || 0);
 
 definirValeur(detail, 'remise', clientEstB2B() ? Math.round((config.prixBase || 0) * (config.remiseB2B || 0) / 100) : 0);
+
+// Le prix négocié remplace la grille : remise = prix public − prix négocié, par unité.
+if (config.prixSpecial !== null && config.prixSpecial !== undefined) {
+definirValeur(detail, 'remise', Math.max(0, (config.prixBase || 0) - config.prixSpecial));
+}
 
 definirValeur(detail, 'modeCalcul', config.modeCalcul || 'unite');
 

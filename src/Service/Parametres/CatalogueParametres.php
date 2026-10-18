@@ -135,8 +135,14 @@ final class CatalogueParametres
             // ---------- Ventes ----------
             'grille' => [
                 'famille' => 'ventes', 'libelle' => 'Grille tarifaire', 'icone' => 'fa-tag',
-                'roles' => ['ROLE_ADMIN'], 'route' => 'app_grille_tarifaire_index', 'champs' => [],
-                'motsCles' => ['Prix au m² · prix par pièce', 'Prix négociés par client', 'Historique des prix'],
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_grille_tarifaire_index',
+                // Garde-fous des prix spéciaux (maquette PR03, docs/produits.md, App\Service\Catalogue\GardeFousPrix).
+                'champs' => [
+                    ['cle' => 'marge_cible_pct', 'type' => 'nombre', 'libelle' => 'Marge à viser', 'aide' => 'En dessous, le produit est « à revoir » dans Produits et services', 'suffixe' => '%', 'min' => 0, 'max' => 95, 'defaut' => 30],
+                    ['cle' => 'marge_min_pct', 'type' => 'nombre', 'libelle' => 'Marge minimale après remise', 'aide' => 'Un prix négocié plus bas attend l\'accord de la direction', 'suffixe' => '%', 'min' => 0, 'max' => 95, 'defaut' => 25],
+                    ['cle' => 'remise_max_pct', 'type' => 'nombre', 'libelle' => 'Remise maximale sans accord de la direction', 'aide' => 'Prix négocié comparé au prix de la grille du client', 'suffixe' => '%', 'min' => 0, 'max' => 90, 'defaut' => 10],
+                ],
+                'motsCles' => ['Prix au m² · prix par pièce', 'Prix négociés par client', 'Historique des prix', 'Garde-fous · marge minimale · remise maximale'],
             ],
             'produits' => [
                 'famille' => 'ventes', 'libelle' => 'Produits et options', 'icone' => 'fa-sliders-h',

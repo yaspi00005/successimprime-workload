@@ -51,7 +51,7 @@ Le chef d'atelier glisse un bloc vers un autre jour ou une autre machine (sur t�
 - **Entretien préventif** : une tâche par machine avec sa fréquence (chaque jour, chaque semaine, tous les N mois, toutes les N heures ou N m² imprimés), la dernière fois, et l'état OK, Bientôt (80 % du délai passé) ou À faire. « Fait » note l'entretien dans l'historique de la machine.
 - **Compteurs** : le compteur de chaque machine (pages, m², cartes, transferts) et l'âge des têtes ; « pose des têtes » enregistre un changement.
 
-Quand une machine est arrêtée, on peut demander de **masquer en ligne** ses produits. Cela ne marche que lorsque chaque produit du catalogue a sa machine (lot « produits ») ; sans cela, la case l'explique et rien n'est masqué. Les produits reviennent en ligne quand l'incident est résolu.
+Quand une machine est arrêtée, le chef d'atelier peut **masquer en ligne** ses produits (case cochée par défaut) : ceux dont c'est la machine (fiche produit, docs/produits.md) et qui n'ont pas de machine de secours en état passent « masqués en ligne » avec le motif « Machine en réparation ». Ils quittent le site, le calculateur et l'espace client, et se vendent toujours au comptoir. Ils reviennent en ligne quand l'incident est résolu, s'il n'y a plus d'autre arrêt ouvert sur la machine ; un produit masqué à la main pour un autre motif reste masqué.
 
 ## Mon travail (AT05)
 

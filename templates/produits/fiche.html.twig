@@ -1,0 +1,310 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Fiche produit (maquette PR02, docs/produits.md) : général, prix par
+	configuration, options, coût de revient (droit « Marges et coûts de
+	revient » seulement), production, simulateur et aperçu client.
+	Modifiable par la direction sur l'ERP de l'atelier (modifiable).
+#}
+
+{% import 'produits/_macros.html.twig' as pd %}
+
+{% block title %}{{ nouveau ? 'Nouveau produit' : produit.nom }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/produits.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if not nouveau %}
+		{% if modifiable %}
+			<li class="nav-item si-masque-mobile">
+				<form method="post" action="{{ path('app_produits_dupliquer', {id: produit.id}) }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('produit-dupliquer-' ~ produit.id) }}">
+					<button type="submit" class="btn btn-light btn-sm si-btn-entete">Dupliquer</button>
+				</form>
+			</li>
+			<li class="nav-item si-masque-mobile"><a href="{{ path('app_grille_tarifaire_historique') }}" class="btn btn-light btn-sm si-btn-entete">Historique des prix</a></li>
+		{% endif %}
+	{% endif %}
+	{% if modifiable %}
+		<li class="nav-item"><button type="submit" form="fiche-produit" class="btn btn-danger btn-sm si-btn-entete">Enregistrer</button></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% set ro = not modifiable %}
+	<p class="mb-2 small"><a href="{{ path('app_produits_index') }}" class="si-lien-discret">‹ Produits et services</a></p>
+
+	<form method="post" id="fiche-produit" action="{{ nouveau ? path('app_produits_nouveau') : path('app_produits_fiche', {id: produit.id}) }}">
+		<input type="hidden" name="_token" value="{{ csrf_token(nouveau ? 'produit-nouveau' : 'produit-' ~ produit.id) }}">
+
+		<div class="si-pd-fiche">
+			{# ---------- Colonne 1 : général, prix, options ---------- #}
+			<div>
+				<section class="si-pd-carte">
+					<div class="si-pd-carte-tete"><h3>Général</h3></div>
+					<div class="si-pd-general">
+						<div class="si-pd-visuel" aria-hidden="true"><span>{{ produit.categorieProduit ? produit.categorieProduit.nom|replace({' (démo)': ''}) : 'Produit' }}</span></div>
+						<div class="si-pd-champs">
+							<div class="large"><label for="pd-nom">Désignation</label><input id="pd-nom" name="nom" class="form-control form-control-sm" value="{{ produit.nom }}" required maxlength="255" {{ ro ? 'disabled' }}></div>
+							<div><label for="pd-nc">Nom commercial</label><input id="pd-nc" name="nom_commercial" class="form-control form-control-sm" value="{{ produit.nomCommercial }}" maxlength="120" placeholder="ex. Bâche" {{ ro ? 'disabled' }}></div>
+							<div><label for="pd-code">Code</label><input id="pd-code" name="code" class="form-control form-control-sm" value="{{ produit.code }}" required maxlength="50" {{ ro ? 'disabled' }}></div>
+							<div><label for="pd-cat">Catégorie</label>
+								<select id="pd-cat" name="categorie" class="form-select form-select-sm" required {{ ro ? 'disabled' }}>
+									<option value="">—</option>
+									{% for c in categories %}<option value="{{ c.id }}"{{ produit.categorieProduit and produit.categorieProduit.id == c.id ? ' selected' }}>{{ c.nom }}</option>{% endfor %}
+								</select>
+							</div>
+							<div><label for="pd-mode">Unité de vente</label>
+								<select id="pd-mode" name="mode_calcul" class="form-select form-select-sm" {{ ro ? 'disabled' }}>
+									{% for cle, libelle in modes %}<option value="{{ cle }}"{{ produit.modeCalcul == cle ? ' selected' }}>{{ libelle }}</option>{% endfor %}
+								</select>
+							</div>
+							<div><label for="pd-prix">Prix de base (F)</label><input id="pd-prix" name="prix_base" inputmode="numeric" class="form-control form-control-sm" value="{{ produit.prixBase is not null ? produit.prixBase|round }}" {{ ro ? 'disabled' }}></div>
+							<div><label for="pd-b2b">Prix revendeur (F)</label><input id="pd-b2b" name="prix_b2b" inputmode="numeric" class="form-control form-control-sm" value="{{ produit.prixB2B is not null ? produit.prixB2B|round }}" {{ ro ? 'disabled' }}></div>
+							<div><label for="pd-delai">Délai standard (h)</label><input id="pd-delai" name="delai" inputmode="numeric" class="form-control form-control-sm" value="{{ produit.delaiHeures }}" placeholder="{{ delais.standard }}" {{ ro ? 'disabled' }}></div>
+							<div class="large"><label for="pd-desc">Description</label><textarea id="pd-desc" name="description" rows="2" maxlength="1000" class="form-control form-control-sm" {{ ro ? 'disabled' }}>{{ produit.description }}</textarea></div>
+						</div>
+					</div>
+					<div class="si-pd-interrupteurs">
+						<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="pd-actif" name="actif" value="1"{{ produit.actif ? ' checked' }} {{ ro ? 'disabled' }}><label class="form-check-label" for="pd-actif">En vente (comptoir)</label></div>
+						<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="pd-en-ligne" name="en_ligne" value="1"{{ produit.visibleEnLigne ? ' checked' }} {{ ro ? 'disabled' }}><label class="form-check-label" for="pd-en-ligne">Site public et espace client</label></div>
+					</div>
+					{% if not produit.visibleEnLigne %}
+						<div class="mt-2"><label for="pd-motif" class="small text-muted mb-0">Pourquoi masqué en ligne</label><input id="pd-motif" name="motif" class="form-control form-control-sm" maxlength="160" value="{{ produit.motifHorsLigne }}" placeholder="ex. presse en réparation" {{ ro ? 'disabled' }}></div>
+					{% endif %}
+					{% if not nouveau and produit.actif and produit.visibleEnLigne and not produit.publie %}
+						<p class="si-pd-alerte">Ce produit n'est pas publié au catalogue : il n'est ni en ligne ni au comptoir automatique.</p>
+					{% endif %}
+				</section>
+
+				<section class="si-pd-carte">
+					<div class="si-pd-carte-tete"><h3>Prix par configuration</h3>{% if modifiable and not nouveau %}<a href="{{ path('app_produit_configuration_index') }}">+ Configuration</a>{% endif %}</div>
+					{% if configurations is empty %}
+						<p class="si-pd-note mt-0">Aucune configuration : {{ nouveau ? 'enregistrez le produit, puis ajoutez ses' : 'ajoutez les' }} configurations (support, format, prix) pour le vendre au comptoir et en ligne.</p>
+					{% else %}
+						<div class="table-responsive">
+							<table class="si-pd-mini" data-sans-filtres>
+								<thead><tr><th>Configuration</th><th class="si-pd-num">Prix</th><th class="si-pd-num">Revendeur</th>{% if avec_couts %}<th class="si-pd-num">Marge</th>{% endif %}</tr></thead>
+								<tbody>
+									{% for c in configurations %}
+										<tr{% if not c.configuration.active %} class="si-pd-gris"{% endif %}>
+											<td>{{ c.libelle }}<small class="d-block si-pd-gris">par {{ c.unite }}{{ c.configuration.quantiteMinimale > 1 ? ' · min. ' ~ c.configuration.quantiteMinimale }}{{ not c.configuration.active ? ' · désactivée' }}</small></td>
+											<td class="si-pd-num"><b>{{ pd.f(c.configuration.prixBase) }}</b></td>
+											<td class="si-pd-num">{{ pd.f(c.configuration.prixB2B) }}</td>
+											{% if avec_couts %}<td class="si-pd-num">{{ c.marge is null ? '—' : c.marge ~ ' %' }}{% if c.margeRevendeur is not null %}<small class="d-block si-pd-gris">rev. {{ c.margeRevendeur }} %</small>{% endif %}</td>{% endif %}
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+					<p class="si-pd-note">Grille « Revendeur » : prix revendeur pour {{ clients_revendeurs }} client{{ clients_revendeurs > 1 ? 's' }} B2B.{% if prix_speciaux > 0 %} {{ prix_speciaux }} prix négocié{{ prix_speciaux > 1 ? 's' }} : <a href="{{ path('app_produits_prix_speciaux_index') }}">voir</a>.{% endif %}</p>
+				</section>
+
+				<section class="si-pd-carte">
+					<div class="si-pd-carte-tete"><h3>Options</h3><a href="{{ path('app_produits_options_index') }}">Options partagées</a></div>
+					<ul class="si-pd-liste">
+						{% for o in options_produit %}
+							<li><span>{{ o.nom }}{% if o.obligatoire %} <small class="si-pd-gris">(toujours)</small>{% endif %}</span><span>{{ o.prix }}</span></li>
+						{% endfor %}
+						{% if delais.express %}<li><span>Express {{ delais.delaiExpress }} h</span><span>+{{ delais.majoration }} %</span></li>{% endif %}
+						{% if options_produit is empty and not delais.express %}<li><span class="si-pd-gris">Aucune option</span><span></span></li>{% endif %}
+					</ul>
+				</section>
+			</div>
+
+			{# ---------- Colonne 2 : coût, production, compatibilités ---------- #}
+			<div>
+				{% if avec_couts %}
+					<section class="si-pd-carte">
+						<div class="si-pd-carte-tete"><h3>Coût de revient au {{ unite }}</h3></div>
+						{% if cout.lignes is empty %}
+							<p class="si-pd-note mt-0">Coût inconnu : liez les matières du stock ci-dessous, choisissez la machine, ou saisissez un coût.</p>
+						{% else %}
+							<table class="si-pd-mini" data-sans-filtres>
+								<thead><tr><th>Élément</th><th>Source</th><th class="si-pd-num">Coût</th></tr></thead>
+								<tbody>
+									{% for l in cout.lignes %}<tr><td>{{ l.element }}</td><td class="si-pd-gris">{{ l.source }}</td><td class="si-pd-num">{{ pd.f(l.cout) }}</td></tr>{% endfor %}
+								</tbody>
+								<tfoot><tr><td colspan="2">Total</td><td class="si-pd-num">{{ pd.f(cout.total) }}</td></tr></tfoot>
+							</table>
+							{% if marge is not null %}
+								{% set niveau = marge < garde_fous.minimum ? 'faible' : (marge < garde_fous.cible ? 'moyenne' : '') %}
+								<div class="si-pd-bandeau {{ niveau }}"><strong>{{ marge }} %</strong> de marge au prix de base · {{ pd.f(prix - cout.total) }} par {{ unite }}</div>
+							{% endif %}
+						{% endif %}
+						{% for m in cout.manquants %}<p class="si-pd-alerte mb-0">Manque : {{ m }}.</p>{% endfor %}
+						<div class="mt-2"><label for="pd-cout" class="small text-muted mb-0">Coût saisi à la main (F par {{ unite }}), si rien ne se calcule</label><input id="pd-cout" name="cout_saisi" inputmode="numeric" class="form-control form-control-sm" value="{{ produit.coutRevientSaisi }}" {{ ro ? 'disabled' }}></div>
+						<p class="si-pd-note">Le coût se met à jour quand le prix d'achat d'une matière change dans le stock.</p>
+					</section>
+				{% endif %}
+
+				<section class="si-pd-carte">
+					<div class="si-pd-carte-tete"><h3>Production</h3></div>
+					<div class="si-pd-champs">
+						<div><label for="pd-machine">Machine</label>
+							<select id="pd-machine" name="machine" class="form-select form-select-sm" {{ ro ? 'disabled' }}>
+								<option value="">—</option>
+								{% for m in machines %}<option value="{{ m.id }}"{{ produit.machine and produit.machine.id == m.id ? ' selected' }}>{{ m.nom }}</option>{% endfor %}
+							</select>
+						</div>
+						<div><label for="pd-secours">Machine de secours</label>
+							<select id="pd-secours" name="machine_secours" class="form-select form-select-sm" {{ ro ? 'disabled' }}>
+								<option value="">—</option>
+								{% for m in machines %}<option value="{{ m.id }}"{{ produit.machineSecours and produit.machineSecours.id == m.id ? ' selected' }}>{{ m.nom }}</option>{% endfor %}
+							</select>
+						</div>
+					</div>
+					<ul class="si-pd-liste mt-2">
+						{% if produit.machine and produit.machine.vitesseM2Heure %}<li><span>Vitesse moyenne</span><span>{{ produit.machine.vitesseM2Heure|number_format(0, ',', ' ') }} m² / h</span></li>{% endif %}
+						{% if produit.machine and produit.machine.etat and produit.machine.etat != 'actif' %}<li><span>État de la machine</span><span>{{ produit.machine.etat }}</span></li>{% endif %}
+						{% for l in produit.articlesStock|filter(l => l.actif and l.article) %}
+							<li><span>Matière consommée</span><span>{{ l.article.designation }} · {{ l.coefficient|number_format(2, ',', '')|trim('0', 'right')|trim(',', 'right') }} {{ l.article.uniteCourte }} {{ modes_nomenclature[l.modeCalcul] ?? l.modeCalcul }}</span></li>
+						{% else %}
+							<li><span class="si-pd-gris">Aucune matière liée au stock</span><span></span></li>
+						{% endfor %}
+					</ul>
+
+					{% if modifiable %}
+						<details class="si-pd-pliable mt-3"{{ nouveau ? ' open' }}>
+							<summary>Matières consommées (nomenclature)</summary>
+							<input type="hidden" name="nomenclature_envoyee" value="1">
+							<p class="si-pd-note mt-1 mb-2">Quantité de chaque article du stock pour une unité vendue : elle sert au coût de revient et à la sortie de stock.</p>
+							{% set lignes = produit.articlesStock|filter(l => l.article)|merge([null, null]) %}
+							{% for l in lignes %}
+								<div class="si-pd-nomenclature">
+									<select name="nomenclature[{{ loop.index0 }}][article]" class="form-select form-select-sm" aria-label="Article">
+										<option value="">—</option>
+										{% for a in articles %}<option value="{{ a.id }}"{{ l and l.article.id == a.id ? ' selected' }}>{{ a.designation }}</option>{% endfor %}
+									</select>
+									<input name="nomenclature[{{ loop.index0 }}][coefficient]" class="form-control form-control-sm" value="{{ l ? l.coefficient|number_format(3, ',', '')|trim('0', 'right')|trim(',', 'right') : '1' }}" aria-label="Quantité">
+									<select name="nomenclature[{{ loop.index0 }}][mode]" class="form-select form-select-sm" aria-label="Mode">
+										{% for cle, libelle in modes_nomenclature %}<option value="{{ cle }}"{{ (l ? l.modeCalcul : (produit.modeCalcul == 'metre_carre' ? 'surface' : 'quantite')) == cle ? ' selected' }}>{{ libelle }}</option>{% endfor %}
+									</select>
+								</div>
+							{% endfor %}
+						</details>
+
+						<details class="si-pd-pliable mt-2"{{ nouveau ? ' open' }}>
+							<summary>Compatibilités (saisie du comptoir)</summary>
+							<input type="hidden" name="compatibilites" value="1">
+							{% for groupe in [{cle: 'types', titre: 'Types d\'impression', liste: types, choisis: produit.typesImpressions}, {cle: 'supports', titre: 'Supports', liste: supports, choisis: produit.supports}, {cle: 'formats', titre: 'Formats', liste: formats, choisis: produit.formats}, {cle: 'finitions', titre: 'Finitions', liste: finitions, choisis: produit.finitions}] %}
+								<p class="small fw-bold mb-0 mt-2">{{ groupe.titre }}</p>
+								{% set ids = groupe.choisis|map(e => e.id) %}
+								<div class="si-pd-coches">
+									{% for e in groupe.liste %}
+										<label class="form-check mb-0"><input type="checkbox" class="form-check-input" name="{{ groupe.cle }}[]" value="{{ e.id }}"{{ e.id in ids ? ' checked' }}> {{ e.nom }}</label>
+									{% endfor %}
+								</div>
+							{% endfor %}
+						</details>
+					{% endif %}
+				</section>
+			</div>
+
+			{# ---------- Colonne 3 : simulateur, aperçu, ventes ---------- #}
+			<div>
+				{% if simulation is not empty %}
+					<section class="si-pd-simulateur" id="pd-simulateur" data-simulation="{{ simulation|json_encode|e('html_attr') }}">
+						<h3>Simulateur</h3>
+						{% if simulation|length > 1 %}
+							<label for="sim-config">Configuration</label>
+							<select id="sim-config" class="mb-2">{% for s in simulation %}<option value="{{ loop.index0 }}">{{ s.libelle }}</option>{% endfor %}</select>
+						{% endif %}
+						<div class="si-pd-sim-grille">
+							<div data-sim-dim><label for="sim-l">Largeur (m)</label><input id="sim-l" inputmode="decimal" value="3"></div>
+							<div data-sim-dim><label for="sim-h">Hauteur (m)</label><input id="sim-h" inputmode="decimal" value="1"></div>
+							<div><label for="sim-q">Quantité</label><input id="sim-q" inputmode="numeric" value="2"></div>
+						</div>
+						<div class="si-pd-sim-res">
+							<div data-sim-dim><span>Surface</span><span id="sim-surface">—</span></div>
+							<div><span>Prix client</span><span class="prix" id="sim-prix">—</span></div>
+							{% if avec_couts %}
+								<div><span>Coût</span><span id="sim-cout">—</span></div>
+								<div><span>Marge</span><span id="sim-marge">—</span></div>
+							{% endif %}
+						</div>
+					</section>
+				{% endif %}
+
+				<section class="si-pd-carte">
+					<div class="si-pd-carte-tete"><h3>Ce que voit le client</h3></div>
+					<div class="si-pd-apercu">
+						<b>{{ noms_client.nom }}</b>
+						{% if produit.estEnLigne %}
+							<small>{% if prix %}dès {{ pd.f(prix) }} / {{ unite }}{% endif %}{{ prix ? ' · ' }}prête en {{ produit.delaiHeures ?: delais.standard }} h</small>
+							<span class="btn btn-primary btn-sm">Commander</span>
+						{% else %}
+							<small>Masqué en ligne{{ produit.motifHorsLigne ? ' : ' ~ produit.motifHorsLigne }}. Vendu au comptoir seulement.</small>
+						{% endif %}
+					</div>
+					<p class="si-pd-note">Le coût et la marge ne sont jamais visibles en ligne.</p>
+				</section>
+
+				{% if not nouveau %}
+					<section class="si-pd-carte">
+						<div class="si-pd-carte-tete"><h3>Ventes ce mois</h3></div>
+						<ul class="si-pd-liste">
+							<li><span>Quantité</span><span>{{ ventes.quantite|number_format(0, ',', ' ') }} {{ unite }}{{ mode != 'metre_carre' and ventes.quantite > 1 ? 's' }}</span></li>
+							{% if voir_ca %}<li><span>Chiffre d'affaires HT</span><span>{{ pd.f(ventes.ca) }}</span></li>{% endif %}
+							<li><span>Clients</span><span>{{ ventes.clients }}</span></li>
+						</ul>
+					</section>
+				{% endif %}
+			</div>
+		</div>
+
+		{% if modifiable %}
+			<p class="d-md-none"><button type="submit" class="btn btn-danger w-100">Enregistrer</button></p>
+		{% endif %}
+	</form>
+
+	{% if modifiable and not nouveau and produit.commandesDetails is empty %}
+		<form method="post" action="{{ path('app_produits_supprimer', {id: produit.id}) }}" class="mt-2" data-confirmer="Supprimer ce produit pour de bon ?" data-confirmer-detail="Il n'est dans aucune commande ; il quitte le catalogue." data-confirmer-bouton="Supprimer" data-confirmer-danger>
+			<input type="hidden" name="_token" value="{{ csrf_token('produit-supprimer-' ~ produit.id) }}">
+			<button type="submit" class="btn btn-link btn-sm text-danger p-0">Supprimer ce produit (jamais vendu)</button>
+		</form>
+	{% endif %}
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+	(function () {
+		const bloc = document.getElementById('pd-simulateur');
+		if (!bloc) { return; }
+		const donnees = JSON.parse(bloc.dataset.simulation || '[]');
+		const champ = (id) => document.getElementById(id);
+		const nombre = (v) => { const n = parseFloat(String(v || '').replace(',', '.')); return isFinite(n) && n > 0 ? n : 0; };
+		const francs = (n) => Math.round(n).toLocaleString('fr-FR').replace(/ | /g, ' ') + ' F';
+		let choisie = donnees[0];
+		function calculer() {
+			const surfacique = choisie.mode === 'metre_carre';
+			const lineaire = choisie.mode === 'metre';
+			bloc.querySelectorAll('[data-sim-dim]').forEach((e) => { e.hidden = !(surfacique || lineaire); });
+			const l = nombre(champ('sim-l').value), h = nombre(champ('sim-h').value), q = Math.max(1, Math.round(nombre(champ('sim-q').value)) || 1);
+			const unites = surfacique ? l * h * q : (lineaire ? h * q : q);
+			champ('sim-surface').textContent = (Math.round(unites * 100) / 100).toLocaleString('fr-FR') + (surfacique ? ' m²' : ' m');
+			const prix = choisie.mode === 'forfait' ? choisie.prix : unites * choisie.prix;
+			champ('sim-prix').textContent = francs(prix);
+			if (champ('sim-cout')) {
+				if (choisie.cout === null) { champ('sim-cout').textContent = '—'; champ('sim-marge').textContent = '—'; return; }
+				const cout = unites * choisie.cout;
+				champ('sim-cout').textContent = francs(cout);
+				champ('sim-marge').textContent = prix > 0 ? francs(prix - cout) + ' · ' + Math.round((prix - cout) / prix * 100) + ' %' : '—';
+			}
+		}
+		function choisir(i) {
+			choisie = donnees[i] || donnees[0];
+			if (choisie.largeur && choisie.hauteur) { champ('sim-l').value = choisie.largeur; champ('sim-h').value = choisie.hauteur; }
+			calculer();
+		}
+		bloc.addEventListener('input', (e) => { if (e.target.id === 'sim-config') { choisir(+e.target.value); } else { calculer(); } });
+		bloc.addEventListener('change', (e) => { if (e.target.id === 'sim-config') { choisir(+e.target.value); } });
+		choisir(0);
+	})();
+	</script>
+{% endblock %}

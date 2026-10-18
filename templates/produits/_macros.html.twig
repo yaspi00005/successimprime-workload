@@ -1,0 +1,23 @@
+{# Petites aides des écrans Produits (docs/produits.md). #}
+
+{% macro f(montant) %}{% if montant is null %}—{% else %}{{ montant|number_format(0, ',', ' ') }} F{% endif %}{% endmacro %}
+
+{% macro marge(taux, niveau) %}
+	{%- if taux is null -%}<span class="si-pd-gris" title="Coût inconnu : liez les matières ou saisissez un coût sur la fiche">—</span>
+	{%- else -%}<span class="si-pd-marge {{ niveau }}"><span class="si-pd-barre" aria-hidden="true"><i style="width: {{ max(4, min(100, taux)) }}%"></i></span>{{ taux }} %</span>{%- endif -%}
+{% endmacro %}
+
+{% macro pastille(produit) %}
+	{%- set teintes = ['#0F4590', '#2563EB', '#DC2626', '#EA580C', '#111827', '#0F766E', '#6B7280', '#DB2777', '#CA8A04', '#475569'] -%}
+	<span class="si-pd-pastille" style="--teinte: {{ teintes[(produit.id ?? 0) % 10] }}" aria-hidden="true">{{ (produit.nomCommercial ?: produit.nom)|default('?')|slice(0, 2)|upper }}</span>
+{%- endmacro %}
+
+{% macro initiales(nom) %}{% set mots = nom|split(' ')|filter(m => m != '') %}{{ (mots[0]|default('?')|slice(0, 1) ~ (mots[1] is defined ? mots[1]|slice(0, 1) : ''))|upper }}{% endmacro %}
+
+{% macro onglets(actif) %}
+	<nav class="si-pd-puces mb-3" aria-label="Produits">
+		<a href="{{ path('app_produits_index') }}" class="si-pd-puce{{ actif == 'catalogue' ? ' actif' }}">Produits et services</a>
+		<a href="{{ path('app_produits_prix_speciaux_index') }}" class="si-pd-puce{{ actif == 'prix' ? ' actif' }}">Prix spéciaux et promotions</a>
+		<a href="{{ path('app_produits_options_index') }}" class="si-pd-puce{{ actif == 'options' ? ' actif' }}">Options partagées</a>
+	</nav>
+{% endmacro %}

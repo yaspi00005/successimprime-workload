@@ -157,6 +157,43 @@ private ?Articles $articleStock = null;
 )]
 private Collection $articlesStock;
 
+    /*
+     * Fiche produit (maquettes PR01 et PR02 du 18/10/2026, docs/produits.md).
+     */
+
+    /** Délai standard de fabrication, en heures (48 h). Vide : délai de l'espace client. */
+    #[ORM\Column(nullable: true)]
+    private ?int $delaiHeures = null;
+
+    /** Machine qui fabrique le produit d'habitude. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Machines $machine = null;
+
+    /** Machine de secours quand la première est occupée ou arrêtée. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Machines $machineSecours = null;
+
+    /**
+     * Coût de revient d'une unité vendue, saisi à la main. Il ne sert que
+     * si le coût ne peut pas se calculer (service, pose, produit sans
+     * matière liée). Jamais envoyé au site en ligne (CatalogueSynchro).
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $coutRevientSaisi = null;
+
+    /**
+     * Visible en ligne : site public, calculateur, espace client. Décoché,
+     * le produit reste vendu au comptoir.
+     */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $visibleEnLigne = true;
+
+    /** Pourquoi le produit est masqué en ligne (« presse en réparation »). Reste à l'atelier. */
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $motifHorsLigne = null;
+
     public function __construct()
     {
         $this->initialiserPublicId();
@@ -604,4 +641,85 @@ public function removeArticlesStock(
     return $this;
 }
 
+    public function getDelaiHeures(): ?int
+    {
+        return $this->delaiHeures;
+    }
+
+    public function setDelaiHeures(?int $delaiHeures): static
+    {
+        $this->delaiHeures = null === $delaiHeures ? null : max(1, $delaiHeures);
+
+        return $this;
+    }
+
+    public function getMachine(): ?Machines
+    {
+        return $this->machine;
+    }
+
+    public function setMachine(?Machines $machine): static
+    {
+        $this->machine = $machine;
+
+        return $this;
+    }
+
+    public function getMachineSecours(): ?Machines
+    {
+        return $this->machineSecours;
+    }
+
+    public function setMachineSecours(?Machines $machineSecours): static
+    {
+        $this->machineSecours = $machineSecours;
+
+        return $this;
+    }
+
+    public function getCoutRevientSaisi(): ?int
+    {
+        return $this->coutRevientSaisi;
+    }
+
+    public function setCoutRevientSaisi(?int $cout): static
+    {
+        $this->coutRevientSaisi = null === $cout ? null : max(0, $cout);
+
+        return $this;
+    }
+
+    public function isVisibleEnLigne(): bool
+    {
+        return $this->visibleEnLigne;
+    }
+
+    public function setVisibleEnLigne(bool $visible): static
+    {
+        $this->visibleEnLigne = $visible;
+        if ($visible) {
+            $this->motifHorsLigne = null;
+        }
+
+        return $this;
+    }
+
+    public function getMotifHorsLigne(): ?string
+    {
+        return $this->motifHorsLigne;
+    }
+
+    public function setMotifHorsLigne(?string $motif): static
+    {
+        $motif = null === $motif ? '' : trim($motif);
+        $this->motifHorsLigne = '' === $motif ? null : mb_substr($motif, 0, 160);
+
+        return $this;
+    }
+
+    /** Vendu en ligne : actif, publié et visible en ligne. */
+    public function estEnLigne(): bool
+    {
+        return $this->actif && $this->publie && $this->visibleEnLigne;
+    }
 }

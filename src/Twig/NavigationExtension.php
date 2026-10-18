@@ -77,6 +77,9 @@ final class NavigationExtension extends AbstractExtension
             // Atelier 3D (docs/atelier-3d.md) : modèles validés par les clients, vues et images d'origine.
             ['libelle' => 'Créations Studio textile', 'route' => 'app_creations_atelier_index', 'role' => ['ROLE_DEVIS', 'ROLE_COMMANDE'], 'prefixes' => ['app_creations_atelier_']],
             ['libelle' => 'Promotions', 'route' => 'app_promotions_index', 'role' => ['ROLE_PROMOTIONS', 'ROLE_COMMANDE', 'ROLE_DEVIS'], 'prefixes' => ['app_promotions_']],
+            // Produits et services (docs/produits.md) : catalogue, fiche, options partagées ; prix spéciaux aussi pour le droit Promotions.
+            ['libelle' => 'Produits et services', 'route' => 'app_produits_index', 'role' => ['ROLE_ADMIN', 'ROLE_COMMANDE', 'ROLE_DEVIS'], 'prefixes' => ['app_produits_index', 'app_produits_export', 'app_produits_nouveau', 'app_produits_fiche', 'app_produits_dupliquer', 'app_produits_en_ligne', 'app_produits_supprimer', 'app_produits_options_']],
+            ['libelle' => 'Prix spéciaux', 'route' => 'app_produits_prix_speciaux_index', 'role' => ['ROLE_ADMIN', 'ROLE_COMMANDE', 'ROLE_DEVIS', 'ROLE_PROMOTIONS'], 'prefixes' => ['app_produits_prix_speciaux_']],
         ],
         'clients' => [
             ['libelle' => 'Fiches clients', 'route' => 'app_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_clients_', 'app_reclamation_']],
@@ -133,7 +136,7 @@ final class NavigationExtension extends AbstractExtension
         ],
         'reglages' => [
             ['libelle' => 'Paramètres', 'route' => 'app_reglages_parametres_index', 'role' => ['ROLE_ADMIN', 'ROLE_PARAMETRES', 'ROLE_RH', 'ROLE_COUT_MARGE', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'prefixes' => ['app_reglages_parametres_', 'app_bareme_']],
-            ['libelle' => 'Grille tarifaire', 'route' => 'app_grille_tarifaire_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_grille_tarifaire_', 'app_produits_', 'app_categorie_produit_', 'app_produit_configuration_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
+            ['libelle' => 'Grille tarifaire', 'route' => 'app_grille_tarifaire_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_grille_tarifaire_', 'app_produits_noms_commerciaux', 'app_categorie_produit_', 'app_produit_configuration_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
             ['libelle' => 'Coûts de revient', 'route' => 'app_couts_revient_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_couts_revient_']],
             ['libelle' => 'Utilisateurs et droits', 'route' => 'app_utilisateurs_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_utilisateurs_', 'app_user_', 'app_journal_activite_']],
             ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
@@ -270,7 +273,9 @@ final class NavigationExtension extends AbstractExtension
         'app_assistant_' => 'clients',
         'app_promotions_' => 'ventes',
         'app_categorie_produit_' => 'reglages',
-        'app_produits_' => 'reglages',
+        'app_produits_noms_commerciaux' => 'reglages',
+        'app_produits_clients_prepresse_' => 'atelier',
+        'app_produits_' => 'ventes',
         'app_grille_tarifaire_' => 'reglages',
         'app_couts_revient_' => 'reglages',
         'app_produit_configuration_' => 'reglages',

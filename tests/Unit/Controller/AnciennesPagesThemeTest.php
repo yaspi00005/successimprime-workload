@@ -6,7 +6,6 @@ use App\Controller\CategorieProduitController;
 use App\Controller\FinitionController;
 use App\Controller\FormatController;
 use App\Controller\ProduitConfigurationController;
-use App\Controller\ProduitsController;
 use App\Controller\SupportsController;
 use App\Controller\TypesImpressionController;
 use PHPUnit\Framework\TestCase;
@@ -88,11 +87,15 @@ final class AnciennesPagesThemeTest extends TestCase
         self::assertSame(303, $reponse->getStatusCode());
     }
 
-    /** Les scripts du thème (hors du dépôt) appellent encore ces routes. */
+    /**
+     * Les scripts du thème (hors du dépôt) appellent encore ces routes.
+     * Plus pour les produits : Ventes › Produits et services (docs/produits.md)
+     * n'utilise plus les scripts du thème.
+     */
     public function testLesRoutesDesScriptsDuThemeRestent(): void
     {
         $noms = [];
-        foreach ([FinitionController::class, FormatController::class, SupportsController::class, TypesImpressionController::class, CategorieProduitController::class, ProduitConfigurationController::class, ProduitsController::class] as $classe) {
+        foreach ([FinitionController::class, FormatController::class, SupportsController::class, TypesImpressionController::class, CategorieProduitController::class, ProduitConfigurationController::class] as $classe) {
             foreach ((new \ReflectionClass($classe))->getMethods() as $methode) {
                 foreach ($methode->getAttributes(Route::class) as $attribut) {
                     $noms[] = $attribut->newInstance()->name;
@@ -100,7 +103,7 @@ final class AnciennesPagesThemeTest extends TestCase
             }
         }
 
-        foreach (['finition', 'type_impression', 'support', 'categorie_produit', 'produit_configuration', 'produits'] as $prefixe) {
+        foreach (['finition', 'type_impression', 'support', 'categorie_produit', 'produit_configuration'] as $prefixe) {
             foreach (['index', 'create_ajax', 'get_ajax', 'update_ajax', 'delete_ajax', 'mass_action', 'reorder'] as $suffixe) {
                 self::assertContains('app_'.$prefixe.'_'.$suffixe, $noms);
             }

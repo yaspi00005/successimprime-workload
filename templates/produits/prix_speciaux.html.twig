@@ -1,0 +1,143 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Prix spéciaux et promotions (maquette PR03, docs/produits.md) : grilles,
+	prix négociés par client, promotions et garde-fous de marge. Les marges
+	ne sont dans la page qu'avec « Marges et coûts de revient » (avec_couts).
+#}
+
+{% import 'produits/_macros.html.twig' as pd %}
+
+{% block title %}Prix spéciaux et promotions{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/produits.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if peut_ajouter %}
+		<li class="nav-item"><a href="#ajout-prix" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Prix spécial</a></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{{ pd.onglets('prix') }}
+
+	<div class="si-pd-deux si-pd-deux-large">
+		<div>
+			<section class="si-pd-carte">
+				<div class="si-pd-carte-tete"><h3>Grilles tarifaires</h3>{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_grille_tarifaire_index') }}">Modifier les prix</a>{% endif %}</div>
+				<table class="si-pd-mini" data-sans-filtres>
+					<tbody>
+						{% for g in grilles %}
+							<tr><td><b>{{ g.nom }}</b></td><td class="si-pd-gris">{{ g.detail }}</td><td class="si-pd-num"><b>{{ g.remise is null ? '—' : '−' ~ g.remise ~ ' %' }}</b></td><td class="si-pd-num si-pd-gris">{{ g.clients }} client{{ g.clients > 1 ? 's' }}</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				<p class="si-pd-note">La grille d'un client se choisit sur sa fiche (Revendeur : gens du métier de l'impression). La remise Revendeur est la moyenne des prix revendeur des configurations.</p>
+			</section>
+
+			<section class="si-pd-carte" id="ajout-prix">
+				<div class="si-pd-carte-tete"><h3>Prix négociés par client</h3></div>
+				{% if peut_ajouter %}
+					<form method="post" action="{{ path('app_produits_prix_speciaux_ajouter') }}" class="si-pd-ajout">
+						<input type="hidden" name="_token" value="{{ csrf_token('prix-special-ajouter') }}">
+						<div><label for="ps-client">Client</label>
+							<select id="ps-client" name="client" class="form-select form-select-sm" required>
+								<option value="">—</option>
+								{% for c in clients %}<option value="{{ c.id }}">{{ c.nomComplet }}{{ c.typeClient == 'B2B' ? ' (revendeur)' }}</option>{% endfor %}
+							</select>
+						</div>
+						<div><label for="ps-config">Produit</label>
+							<select id="ps-config" name="configuration" class="form-select form-select-sm" required>
+								<option value="">—</option>
+								{% for c in configurations %}<option value="{{ c.id }}">{{ c.produit.nom }}{{ c.support ? ' · ' ~ c.support.nom }} ({{ pd.f(c.prixBase) }})</option>{% endfor %}
+							</select>
+						</div>
+						<div><label for="ps-prix">Prix (F)</label><input id="ps-prix" name="prix" inputmode="numeric" class="form-control form-control-sm" required></div>
+						<div><label for="ps-fin">Jusqu'au</label><input id="ps-fin" name="fin" type="date" class="form-control form-control-sm" min="{{ jour|date('Y-m-d') }}"></div>
+						<div><button type="submit" class="btn btn-primary btn-sm w-100">Ajouter</button></div>
+						<div class="large"><input name="note" class="form-control form-control-sm" maxlength="255" placeholder="Raison (accord du 12/10, volume annuel…)" aria-label="Raison"></div>
+					</form>
+				{% endif %}
+				{% if prix is empty %}
+					<p class="text-muted mb-0">Aucun prix négocié.</p>
+				{% else %}
+					<div class="table-responsive">
+						<table class="si-pd-mini si-pd-empile" data-sans-filtres>
+							<thead><tr><th>Client</th><th>Produit</th><th class="si-pd-num">Prix normal</th><th class="si-pd-num">Prix client</th><th>Jusqu'au</th><th></th></tr></thead>
+							<tbody>
+								{% for l in prix %}
+									{% set ps = l.prix %}
+									<tr{% if ps.statut in ['refuse', 'arrete'] or l.echu %} class="si-pd-gris"{% endif %}>
+										<td><span class="si-pd-avatar" aria-hidden="true">{{ pd.initiales(ps.client.nomComplet) }}</span>{{ ps.client.nomComplet }}</td>
+										<td>{{ ps.configuration.produit.nom }}{% if ps.configuration.support %}<small class="d-block si-pd-gris">{{ ps.configuration.support.nom }}</small>{% endif %}</td>
+										<td class="si-pd-num"><span class="si-pd-barre-prix">{{ pd.f(l.normal) }}{{ l.unite == 'm²' ? ' / m²' }}</span></td>
+										<td class="si-pd-num"><b>{{ pd.f(ps.prix) }}{{ l.unite == 'm²' ? ' / m²' }}</b><small class="d-block si-pd-gris">−{{ l.remise|number_format(l.remise == l.remise|round ? 0 : 1, ',') }} %{% if avec_couts and l.marge is not null %} · marge {{ l.marge }} %{% endif %}</small></td>
+										<td>{{ ps.finLe ? ps.finLe|date('d/m') : '—' }}
+											{% if ps.statut == 'attente' %}<span class="si-pd-etat orange">accord demandé</span>
+											{% elseif ps.statut != 'actif' %}<span class="si-pd-etat">{{ ps.statutLabel|lower }}</span>
+											{% elseif l.echu %}<span class="si-pd-etat">échu</span>{% endif %}
+										</td>
+										<td class="text-end text-nowrap si-pd-actions">
+											{% if ps.statut == 'attente' and peut_decider %}
+												<form method="post" action="{{ path('app_produits_prix_speciaux_decider', {id: ps.id}) }}" class="d-flex flex-column gap-1">
+													<input type="hidden" name="_token" value="{{ csrf_token('prix-special-' ~ ps.id) }}">
+													<button name="decision" value="accorder" class="btn btn-success btn-sm py-0">Accorder</button>
+													<button name="decision" value="refuser" class="btn btn-light btn-sm py-0">Refuser</button>
+												</form>
+											{% elseif ps.statut == 'actif' and not l.echu and peut_ajouter %}
+												<form method="post" action="{{ path('app_produits_prix_speciaux_arreter', {id: ps.id}) }}" class="d-inline">
+													<input type="hidden" name="_token" value="{{ csrf_token('prix-special-' ~ ps.id) }}">
+													<button class="btn btn-link btn-sm p-0" title="Le client repasse au prix de sa grille">Arrêter</button>
+												</form>
+											{% endif %}
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% endif %}
+				<p class="si-pd-note">Le prix négocié remplace la grille. Le client le voit déjà appliqué dans son espace, et le comptoir le pose en remise sur la ligne dès que le client est choisi.</p>
+			</section>
+		</div>
+
+		<div>
+			<section class="si-pd-carte">
+				<div class="si-pd-carte-tete"><h3>Promotions</h3>{% if is_granted('ROLE_PROMOTIONS') %}<a href="{{ path('app_promotions_nouvelle') }}">+ Promotion</a>{% else %}<a href="{{ path('app_promotions_index') }}">Toutes</a>{% endif %}</div>
+				{% for p in promotions %}
+					{% set etat = p.etat(jour) %}
+					<div class="si-pd-promo">
+						<div>
+							<a href="{{ path('app_promotions_voir', {id: p.id}) }}"><b>{{ p.nom }}</b></a>
+							<small>{{ p.libelleAvantage }} · {{ p.libelleArticles }}</small>
+							<small>{{ p.debut|date('d/m') }} → {{ p.fin|date('d/m') }} · {{ utilisations[p.id] }} utilisation{{ utilisations[p.id] > 1 ? 's' }}</small>
+						</div>
+						<div>{% if etat == 'en_cours' %}<span class="si-pd-etat vert">En cours</span>{% elseif etat == 'a_venir' %}<span class="si-pd-etat bleu">Programmée</span>{% else %}<span class="si-pd-etat">Suspendue</span>{% endif %}</div>
+					</div>
+				{% else %}
+					<p class="text-muted mb-0">Aucune promotion en cours ou à venir.</p>
+				{% endfor %}
+			</section>
+
+			<section class="si-pd-carte">
+				<div class="si-pd-carte-tete"><h3>Garde-fous</h3>{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_reglages_parametres_index', {tuile: 'grille'}) }}">Régler</a>{% endif %}</div>
+				<ul class="si-pd-liste">
+					<li><span>Marge minimale après remise</span><span>{{ garde_fous.minimum }} %</span></li>
+					<li><span>Remise maximale sans accord de la direction</span><span>{{ garde_fous.remise }} %</span></li>
+					<li><span>Cumul promotion + prix négocié</span><span>non</span></li>
+					<li><span>Marge à viser (catalogue)</span><span>{{ garde_fous.cible }} %</span></li>
+				</ul>
+				{% if avec_couts %}
+					{% for a in alertes|slice(0, 5) %}
+						<p class="si-pd-alerte mb-0">{{ a.libelle }} en grille {{ a.grille }} : marge {{ a.marge }} %, sous le minimum de {{ garde_fous.minimum }} %.</p>
+					{% endfor %}
+					{% if alertes|length > 5 %}<p class="si-pd-note">Et {{ alertes|length - 5 }} autre{{ alertes|length - 5 > 1 ? 's' }} : voir la marge dans Produits et services.</p>{% endif %}
+				{% endif %}
+				<p class="si-pd-note">Un prix négocié au-delà de la remise maximale, ou sous la marge minimale, attend l'accord de la direction avant de s'appliquer.</p>
+			</section>
+		</div>
+	</div>
+{% endblock %}

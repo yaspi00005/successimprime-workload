@@ -315,6 +315,14 @@ security:
         # PARAMÈTRES
         # ============================================================
 
+        # Ventes › Produits et services et Prix spéciaux (docs/produits.md) :
+        # ouverts aux ventes ; chaque contrôleur affine (écriture : Admin ;
+        # prix spéciaux : aussi Promotions ; coûts : ROLE_COUT_MARGE).
+        - {
+            path: '^/produits(/?$|/(export|nouveau|\d+|prix-speciaux|options)(/|$))',
+            roles: [ROLE_ADMIN, ROLE_COMMANDE, ROLE_DEVIS, ROLE_PROMOTIONS]
+        }
+
         # Types d'impression (/types/impression) et lots d'étiquettes
         # (/lot/etiquette) : la page de suivi d'une étiquette (QR code)
         # garde sa règle (tout compte connecté).

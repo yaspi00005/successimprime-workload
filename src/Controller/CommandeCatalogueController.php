@@ -2,11 +2,16 @@
 
 namespace App\Controller;
 
+use App\Service\Http\Entree;
+use App\Entity\Clients;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
 use App\Repository\ProduitConfigurationRepository;
 use App\Service\Catalogue\NomCommercial;
+use App\Service\Catalogue\PrixSpeciaux;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -499,8 +504,16 @@ final class CommandeCatalogueController extends AbstractController
         methods: ['GET']
     )]
     public function configuration(
-        ProduitConfiguration $configuration
+        ProduitConfiguration $configuration,
+        Request $request,
+        EntityManagerInterface $em,
+        PrixSpeciaux $prixSpeciaux
     ): JsonResponse {
+        // Prix négocié du client choisi (docs/produits.md) : le formulaire le pose en remise.
+        $clientId = Entree::entier($request->query, 'client');
+        $client = $clientId > 0 ? $em->find(Clients::class, $clientId) : null;
+        $prixSpecial = $prixSpeciaux->pour($client, $configuration, new \DateTimeImmutable('today'));
+
         if (!$configuration->isActive()) {
             return $this->json(
                 [
@@ -601,6 +614,9 @@ final class CommandeCatalogueController extends AbstractController
                 'prixB2BCalcule' =>
                     $configuration
                         ->getPrixB2BCalcule(),
+
+                // Prix négocié avec le client choisi, par unité ; null sans prix négocié.
+                'prixSpecial' => $prixSpecial?->getPrix(),
 
                 /*
                  * =================================================

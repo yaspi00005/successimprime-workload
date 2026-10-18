@@ -30,7 +30,7 @@ final class PagesCatalogueSansTexteDuThemeTest extends TestCase
         yield 'formats' => ['format/index.html.twig', 'Formats'];
         yield 'catégories' => ['categorie_produit/index.html.twig', 'Catégories de produits'];
         yield 'configurations' => ['produit_configuration/index.html.twig', 'Configurations des produits'];
-        yield 'produits' => ['produits/index.html.twig', 'Produits'];
+        yield 'produits' => ['produits/index.html.twig', 'Produits et services'];
         yield 'machines' => ['machines/index.html.twig', 'Machines'];
     }
 

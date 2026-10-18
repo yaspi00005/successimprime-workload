@@ -1053,6 +1053,10 @@ final class AtelierProduction
         if (!$meta->hasAssociation('machine') || !$meta->hasField('visibleEnLigne')) {
             return 0;
         }
+        // Un autre arrêt encore ouvert sur la machine : ses produits restent masqués.
+        if (!$masquer && [] !== array_filter($this->incidentsOuverts([$machine])[(int) $machine->getId()] ?? [], static fn (IncidentMachine $i): bool => $i->estArret())) {
+            return 0;
+        }
         $n = 0;
         foreach ($this->em->getRepository(\App\Entity\Produits::class)->findBy(['machine' => $machine]) as $produit) {
             if ($masquer) {

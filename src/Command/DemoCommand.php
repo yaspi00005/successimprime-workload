@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Service\Catalogue\ProduitsDemo;
 use App\Service\Site\EquipeDemo;
 use App\Service\Societes\RattachementSql;
 use Doctrine\DBAL\Connection;
@@ -95,7 +96,7 @@ final class DemoCommand extends Command
         $n = 0;
         try {
             $this->connexion->beginTransaction();
-            foreach ([...MessagerieDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
+            foreach ([...MessagerieDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
             }
@@ -106,6 +107,8 @@ final class DemoCommand extends Command
                 }
                 // « Notre équipe » de la page « Qui sommes-nous ? » : avatars dessinés, une personne sans accord.
                 EquipeDemo::charger($this->connexion);
+                // Produits (docs/produits.md) : délais, machines, un produit masqué en ligne, prix négociés.
+                ProduitsDemo::charger($this->connexion);
             }
             $this->connexion->commit();
         } catch (\Throwable $e) {

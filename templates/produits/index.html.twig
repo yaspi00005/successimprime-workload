@@ -1,898 +1,160 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}
-	Produits
+{#
+	Ventes › Produits et services (maquette PR01, docs/produits.md) : prix de
+	base, coût de revient, marge, délai, machine et visibilité en ligne.
+	Le coût et la marge ne sont dans la page qu'avec le droit « Marges et
+	coûts de revient » (avec_couts) : sans lui, ils ne sont pas calculés.
+#}
+
+{% import 'produits/_macros.html.twig' as pd %}
+
+{% block title %}Produits et services{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/produits.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile"><a href="{{ path('app_produits_export') }}" class="btn btn-light btn-sm si-btn-entete" title="Exporter la grille (CSV)"><i class="fas fa-download me-1"></i>Exporter</a></li>
+	{% if modifiable %}
+		<li class="nav-item"><a href="{{ path('app_produits_nouveau') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Nouveau produit</a></li>
+	{% endif %}
 {% endblock %}
 
 {% block body %}
+	{{ pd.onglets('catalogue') }}
 
-	<div class="side-app">
-		<div class="page-header">
-
-			<ol class="breadcrumb">
-				<li class="breadcrumb-item">
-					<a href="{{ path('app_reglages_parametres_index') }}">Paramètres</a>
-				</li>
-
-				<li class="breadcrumb-item active">
-					Produits
-				</li>
-			</ol>
-
-			<div>
-
-				<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#produitCreateModal">
-					<i class="fa fa-plus mr-1"></i>
-					Ajouter un produit
-				</button>
-
-				<button type="button" id="produitMassPublishButton" class="btn btn-success">
-					Publier
-				</button>
-
-				<button type="button" id="produitMassUnpublishButton" class="btn btn-warning">
-					Dépublier
-				</button>
-
-				<button type="button" id="produitMassDeleteButton" class="btn btn-danger" {{ confirmer_suppression('les produits cochés') }}>
-					Supprimer
-				</button>
-
-				<a href="{{ path('app_produits_noms_commerciaux') }}" class="btn btn-outline-primary" title="Le nom que tout le monde connaît, à côté de la désignation">
-					<i class="fa fa-tags mr-1" aria-hidden="true"></i>
-					Noms commerciaux
-				</a>
-
-			</div>
-
+	<div class="si-pd-kpis">
+		<div class="si-pd-kpi">
+			<span>Produits actifs</span>
+			<strong>{{ indicateurs.actifs }}</strong>
+			<small>dont {{ indicateurs.enLigne }} visible{{ indicateurs.enLigne > 1 ? 's' }} en ligne</small>
 		</div>
-
-		<input type="hidden" id="produitCreateUrl" value="{{ path('app_produits_create_ajax') }}">
-
-		<input type="hidden" id="produitCreateToken" value="{{ csrf_token('create_produit') }}">
-
-		<input type="hidden" id="produitMassActionUrl" value="{{ path('app_produits_mass_action') }}">
-
-		<input type="hidden" id="produitMassActionToken" value="{{ csrf_token('produits_mass_action') }}">
-
-		<input type="hidden" id="produitReorderUrl" value="{{ path('app_produits_reorder') }}">
-
-		<input type="hidden" id="produitReorderToken" value="{{ csrf_token('produits_reorder') }}">
-		<div class="card mb-3">
-
-			<div class="card-body py-3">
-
-				<div class="row align-items-end">
-
-					<div class="col-lg-5 col-md-6">
-
-						<label for="produitRecherche">
-							Rechercher un produit
-						</label>
-
-						<div class="input-group">
-
-							<div class="input-group-prepend">
-								<span class="input-group-text">
-									<i class="fa fa-search"></i>
-								</span>
-							</div>
-
-							<input type="text" id="produitRecherche" class="form-control" placeholder="Code, nom, nom commercial, catégorie, support, format, finition..." autocomplete="off">
-
-							<div class="input-group-append">
-
-								<button type="button" id="produitRechercheReset" class="btn btn-secondary" title="Effacer la recherche">
-									<i class="fa fa-times"></i>
-								</button>
-
-							</div>
-
-						</div>
-
-					</div>
-
-
-					<div class="col-lg-3 col-md-3">
-
-						<label for="produitFiltreStatut">
-							Publication
-						</label>
-
-						<select id="produitFiltreStatut" class="form-control">
-							<option value="">
-								Tous
-							</option>
-
-							<option value="publie">
-								Publiés
-							</option>
-
-							<option value="non_publie">
-								Non publiés
-							</option>
-
-						</select>
-
-					</div>
-
-
-					<div class="col-lg-2 col-md-3">
-
-						<label for="produitFiltreActif">
-							État
-						</label>
-
-						<select id="produitFiltreActif" class="form-control">
-							<option value="">
-								Tous
-							</option>
-
-							<option value="actif">
-								Actifs
-							</option>
-
-							<option value="inactif">
-								Désactivés
-							</option>
-
-						</select>
-
-					</div>
-
-
-					<div class="col-lg-2 col-md-12 mt-3 mt-lg-0">
-
-						<div class="border rounded p-2 text-center">
-
-							<small class="text-muted d-block">
-								Résultats
-							</small>
-
-							<strong id="produitRechercheCompteur">
-								{{ produits|length }}
-							</strong>
-
-						</div>
-
-					</div>
-
-				</div>
-
+		{% if avec_couts %}
+			<div class="si-pd-kpi">
+				<span>Marge moyenne</span>
+				<strong class="{{ indicateurs.marge is not null and indicateurs.marge >= garde_fous.cible ? 'bon' : 'alerte' }}">{{ indicateurs.marge is null ? '—' : indicateurs.marge ~ ' %' }}</strong>
+				<small>{{ indicateurs.ponderee ? 'pondérée par les ventes du mois' : 'moyenne simple (aucune vente ce mois)' }}</small>
 			</div>
-
+		{% endif %}
+		<div class="si-pd-kpi">
+			<span>Plus vendu ce mois</span>
+			{% if indicateurs.meilleur %}
+				{% set m = indicateurs.meilleur %}
+				<strong title="{{ m.produit.nom }}">{{ m.produit.nomCommercial ?: m.produit.nom }}</strong>
+				<small>{{ m.ventes.quantite|number_format(m.mode == 'metre_carre' ? 0 : 0, ',', ' ') }} {{ m.unite }}{{ m.mode != 'metre_carre' and m.ventes.quantite > 1 ? 's' }}{% if voir_ca %} · {{ pd.f(m.ventes.ca) }}{% endif %} · {{ m.ventes.clients }} client{{ m.ventes.clients > 1 ? 's' }}</small>
+			{% else %}
+				<strong>—</strong><small>aucune vente ce mois</small>
+			{% endif %}
 		</div>
-		<div class="card">
-
-			<div class="card-header">
-				<h3 class="card-title">
-					Liste des produits
-				</h3>
+		{% if avec_couts %}
+			<div class="si-pd-kpi">
+				<span>Marge sous {{ garde_fous.cible }} %</span>
+				<strong class="{{ indicateurs.aRevoir > 0 ? 'alerte' : 'bon' }}">{{ indicateurs.aRevoir }} produit{{ indicateurs.aRevoir > 1 ? 's' }}</strong>
+				<small>{{ indicateurs.aRevoir > 0 ? 'à revoir' : 'rien à revoir' }}</small>
 			</div>
+		{% else %}
+			<div class="si-pd-kpi">
+				<span>Masqués en ligne</span>
+				<strong>{{ masques|length }}</strong>
+				<small>toujours vendus au comptoir</small>
+			</div>
+		{% endif %}
+	</div>
 
-			<div class="card-body">
+	<div class="si-pd-filtres">
+		<nav class="si-pd-puces" aria-label="Familles">
+			<a href="{{ path('app_produits_index', {q: recherche ?: null}) }}" class="si-pd-puce{{ famille is null ? ' actif' }}">Tous · {{ total }}</a>
+			{% for f in familles %}
+				<a href="{{ path('app_produits_index', {famille: f.id, q: recherche ?: null}) }}" class="si-pd-puce{{ famille == f.id ? ' actif' }}">{{ f.nom|replace({' (démo)': ''}) }} · {{ f.nombre }}</a>
+			{% endfor %}
+		</nav>
+		<form method="get" class="si-pd-recherche" role="search">
+			{% if famille %}<input type="hidden" name="famille" value="{{ famille }}">{% endif %}
+			<i class="fas fa-search" aria-hidden="true"></i>
+			<input type="search" name="q" value="{{ recherche }}" placeholder="Rechercher un produit" aria-label="Rechercher un produit">
+		</form>
+	</div>
 
-				<div class="table-responsive">
-
-					<table class="table table-bordered mb-0">
-
-						<thead>
-							<tr>
-								<th class="text-center">Ordre</th>
-
-								<th class="text-center">
-									<input type="checkbox" id="produitCheckAll">
-								</th>
-
-								<th>Code</th>
-								<th>Nom</th>
-								<th>Catégorie</th>
-								<th>Prix de base</th>
-								<th>Types d’impression</th>
-								<th>Supports</th>
-								<th>Formats</th>
-								<th>Finitions</th>
-								<th class="text-center">Statut</th>
-								<th class="text-center">Actions</th>
+	<div class="si-pd-carte">
+		{% if lignes is empty %}
+			<p class="text-muted mb-0">Aucun produit{{ recherche ? ' pour « ' ~ recherche ~ ' »' }}.</p>
+		{% else %}
+			<div class="si-pd-tableau table-responsive">
+				<table class="si-pd-table">
+					<thead>
+						<tr>
+							<th>Produit</th>
+							<th>Catégorie</th>
+							<th>Unité</th>
+							<th class="si-pd-num">Prix de base</th>
+							{% if avec_couts %}
+								<th class="si-pd-num">Coût de revient</th>
+								<th>Marge</th>
+							{% endif %}
+							<th class="si-pd-num">Délai</th>
+							<th>Machine</th>
+							<th class="text-center">En ligne</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for l in lignes %}
+							{% set p = l.produit %}
+							<tr{% if not p.actif %} class="si-pd-gris"{% endif %}>
+								<td>
+									<a href="{{ path('app_produits_fiche', {id: p.id}) }}" class="si-pd-nom">{{ pd.pastille(p) }}<span>{{ p.nom }}{% if p.nomCommercial %}<small>{{ p.nomCommercial }}</small>{% endif %}{% if not p.actif %}<small>hors vente</small>{% endif %}</span></a>
+								</td>
+								<td>{{ p.categorieProduit ? p.categorieProduit.nom|replace({' (démo)': ''}) : '—' }}</td>
+								<td>{{ l.unite }}</td>
+								<td class="si-pd-num"><b>{{ pd.f(l.prix) }}</b>{% if l.configurations > 1 %}<small class="d-block si-pd-gris">dès · {{ l.configurations }} config.</small>{% endif %}</td>
+								{% if avec_couts %}
+									<td class="si-pd-num si-pd-gris">{{ pd.f(l.cout) }}{% if l.coutSource == 'saisi' %}<small class="d-block">saisi</small>{% endif %}</td>
+									<td>{{ pd.marge(l.marge, l.niveau) }}</td>
+								{% endif %}
+								<td class="si-pd-num">{{ l.delai ? l.delai ~ ' h' : '—' }}</td>
+								<td>{{ l.machine ?: '—' }}</td>
+								<td class="text-center">
+									{% if modifiable %}
+										<form method="post" action="{{ path('app_produits_en_ligne', {id: p.id}) }}" class="d-inline">
+											<input type="hidden" name="_token" value="{{ csrf_token('produit-en-ligne-' ~ p.id) }}">
+											<input type="hidden" name="retour" value="{{ app.request.requestUri }}">
+											<button type="submit" class="si-pd-bascule{{ l.enLigne ? ' oui' }}" title="{{ l.enLigne ? 'Visible en ligne : cliquer pour masquer' : 'Masqué en ligne : cliquer pour montrer' }}" aria-label="{{ p.nom }} : {{ l.enLigne ? 'visible' : 'masqué' }} en ligne"></button>
+										</form>
+									{% else %}
+										<span class="si-pd-bascule{{ l.enLigne ? ' oui' }}" role="img" aria-label="{{ l.enLigne ? 'Visible' : 'Masqué' }} en ligne"></span>
+									{% endif %}
+								</td>
 							</tr>
-						</thead>
-
-						<tbody id="produitSortableBody">
-
-							{% for produit in produits %}
-
-								<tr id="produit-row-{{ produit.id }}" class="produit-sortable-row" data-id="{{ produit.id }}" data-code="{{ produit.code|lower|e('html_attr') }}" data-nom="{{ (produit.nom ~ ' ' ~ produit.nomCommercial)|trim|lower|e('html_attr') }} {{ cle_recherche(produit.nom, produit.nomCommercial)|e('html_attr') }}" data-categorie="{{ produit.categorieProduit ? produit.categorieProduit.nom|lower|e('html_attr') : '' }}" data-publie="{{ produit.publie ? '1' : '0' }}" data-actif="{{ produit.actif ? '1' : '0' }}">
-
-									<td class="text-center align-middle">
-										<i class="fa fa-arrows-alt produit-drag-handle" style="cursor: move;"></i>
-									</td>
-
-									<td class="text-center align-middle">
-										<input type="checkbox" class="produit-row-check" value="{{ produit.id }}">
-									</td>
-
-									<td class="align-middle">
-										<strong>{{ produit.code }}</strong>
-									</td>
-
-									<td class="align-middle" data-filtre-valeur="{{ produit|texte_interne }}">
-										{{ produit|nom_interne }}
-									</td>
-
-									<td class="align-middle">
-										{{ produit.categorieProduit.nom }}
-									</td>
-
-									<td class="align-middle text-nowrap">
-										{{ produit.prixBase|number_format(0, ',', ' ') }}
-										FCFA
-									</td>
-
-									<td class="align-middle">
-										{% for type in produit.typesImpressions %}
-											<span class="badge badge-primary mb-1">
-												{{ type|texte_interne }}
-											</span>
-										{% else %}
-											<span class="text-muted">Aucun</span>
-										{% endfor %}
-									</td>
-
-									<td class="align-middle">
-										{% for support in produit.supports %}
-											<span class="badge badge-info mb-1">
-												{{ support|texte_interne }}
-											</span>
-										{% else %}
-											<span class="text-muted">Aucun</span>
-										{% endfor %}
-									</td>
-
-									<td class="align-middle">
-										{% for format in produit.formats %}
-											<span class="badge badge-secondary mb-1">
-												{{ format|texte_interne }}
-											</span>
-										{% else %}
-											<span class="text-muted">Aucun</span>
-										{% endfor %}
-									</td>
-
-									<td class="align-middle">
-										{% for finition in produit.finitions %}
-											<span class="badge badge-warning mb-1">
-												{{ finition|texte_interne }}
-											</span>
-										{% else %}
-											<span class="text-muted">Aucune</span>
-										{% endfor %}
-									</td>
-
-									<td class="text-center align-middle">
-
-										{% if produit.publie %}
-											<span class="badge badge-success">
-												Publié
-											</span>
-										{% else %}
-											<span class="badge badge-danger">
-												Non publié
-											</span>
-										{% endif %}
-
-										{% if not produit.actif %}
-											<span class="badge badge-dark">
-												Désactivé
-											</span>
-										{% endif %}
-
-									</td>
-
-									<td class="text-center align-middle">
-
-										<div class="btn-group">
-
-											<button type="button" class="btn btn-sm btn-primary-light btn-edit-produit" data-bs-toggle="modal" data-bs-target="#produitEditModal" data-get-url="{{ path( 'app_produits_get_ajax', {id: produit.id} ) }}" data-update-url="{{ path( 'app_produits_update_ajax', {id: produit.id} ) }}" data-update-token="{{ csrf_token( 'update_produit_' ~ produit.id ) }}">
-												<i class="fa fa-edit"></i>
-											</button>
-
-											<button type="button" class="btn btn-sm {{
-																																																																																																												produit.publie
-																																																																																																													? 'btn-warning-light'
-																																																																																																													: 'btn-success-light'
-																																																																																																											}} btn-toggle-produit" data-url="{{ path( 'app_produits_toggle_publication', {id: produit.id} ) }}" data-token="{{ csrf_token( 'toggle_produit_' ~ produit.id ) }}" data-nom="{{ produit.nom }}" data-publie="{{ produit.publie ? '1' : '0' }}">
-												<i class="fa {{
-																																																																																																																				produit.publie
-																																																																																																																					? 'fa-eye-slash'
-																																																																																																																					: 'fa-eye'
-																																																																																																																			}}"></i>
-											</button>
-
-											<button type="button" class="btn btn-sm {{
-																																																																																																												produit.actif
-																																																																																																													? 'btn-secondary-light'
-																																																																																																													: 'btn-success-light'
-																																																																																																											}} btn-toggle-status-produit" data-url="{{ path( 'app_produits_toggle_status', {id: produit.id} ) }}" data-token="{{ csrf_token( 'toggle_status_produit_' ~ produit.id ) }}" data-nom="{{ produit.nom }}" data-actif="{{ produit.actif ? '1' : '0' }}">
-												<i class="fa {{
-																																																																																																																				produit.actif
-																																																																																																																					? 'fa-ban'
-																																																																																																																					: 'fa-check'
-																																																																																																																			}}"></i>
-											</button>
-
-											<a href="{{ path('app_fidelite_regle_produit', {id: produit.id}) }}" class="btn btn-sm btn-warning-light" title="Fidélité de cet article"><i class="fa fa-award"></i></a>
-
-											<button type="button" class="btn btn-sm btn-danger-light btn-delete-produit" {{ confirmer_suppression('le produit « ' ~ produit.nom ~ ' »') }} data-url="{{ path( 'app_produits_delete_ajax', {id: produit.id} ) }}" data-token="{{ csrf_token( 'delete_produit_' ~ produit.id ) }}" data-nom="{{ produit.nom }}">
-												<i class="fa fa-trash"></i>
-											</button>
-
-										</div>
-
-									</td>
-
-								</tr>
-
-							{% else %}
-
-								<tr>
-									<td colspan="12" class="text-center">
-										Aucun produit trouvé
-									</td>
-								</tr>
-
-							{% endfor %}
-
-						</tbody>
-
-					</table>
-
-				</div>
-
+						{% endfor %}
+					</tbody>
+				</table>
 			</div>
 
-		</div>
-
-		{# MODAL AJOUT #}
-
-		<div class="modal fade" id="produitCreateModal" tabindex="-1" role="dialog" aria-hidden="true">
-
-			<div class="modal-dialog modal-xl" role="document">
-
-				<div class="modal-content">
-
-					<div class="modal-header">
-
-						<h5 class="modal-title">
-							Ajouter un produit
-						</h5>
-
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-
-					</div>
-
-					<div class="modal-body">
-
-						<div class="row">
-
-							<div class="col-md-4 form-group">
-								<label>Code</label>
-
-								<input type="text" id="produitCreateCode" class="form-control" placeholder="Exemple : CV001">
-							</div>
-
-							<div class="col-md-4 form-group">
-								<label>Nom</label>
-
-								<input type="text" id="produitCreateNom" class="form-control">
-
-								<small class="form-text text-muted">Désignation technique. Le nom que tout le monde connaît (autocollant pour vinyle adhésif…) se saisit dans <a href="{{ path('app_produits_noms_commerciaux') }}">Noms commerciaux</a>.</small>
-							</div>
-
-							<div class="col-md-4 form-group">
-								<label>Catégorie</label>
-
-								<select id="produitCreateCategorie" class="form-control">
-									<option value="">
-										Sélectionner
-									</option>
-
-									{% for categorie in categoriesProduits %}
-										<option value="{{ categorie.id }}">
-											{{ categorie.nom }}
-										</option>
-									{% endfor %}
-								</select>
-							</div>
-
+			<div class="si-pd-cartes">
+				{% for l in lignes %}
+					{% set p = l.produit %}
+					<div class="si-pd-ligne">
+						{{ pd.pastille(p) }}
+						<a href="{{ path('app_produits_fiche', {id: p.id}) }}" class="si-pd-nom"><span>{{ p.nom }}{% if p.nomCommercial %}<small>{{ p.nomCommercial }}</small>{% endif %}</span></a>
+						<span class="si-pd-bascule{{ l.enLigne ? ' oui' }}" role="img" aria-label="{{ l.enLigne ? 'Visible' : 'Masqué' }} en ligne"></span>
+						<div class="si-pd-ligne-infos">
+							<span><b>{{ pd.f(l.prix) }}</b> / {{ l.unite }}</span>
+							{% if avec_couts %}<span>coût {{ pd.f(l.cout) }}</span><span>{{ pd.marge(l.marge, l.niveau) }}</span>{% endif %}
+							<span>{{ l.delai ? l.delai ~ ' h' : 'délai —' }}</span>
+							{% if l.machine %}<span>{{ l.machine }}</span>{% endif %}
 						</div>
-
-						<div class="row">
-
-							<div class="col-md-6 form-group">
-								<label>Prix de base</label>
-
-								<input type="number" id="produitCreatePrixBase" class="form-control" min="0" value="0">
-							</div>
-
-							<div class="col-md-6 form-group">
-								<label>Description</label>
-
-								<textarea id="produitCreateDescription" class="form-control" rows="3"></textarea>
-							</div>
-
-						</div>
-
-						{{ _self.choixRelations(
-						typesImpressions,
-						supports,
-						formats,
-						finitions,
-						'create'
-					) }}
-
-						<div class="row">
-
-							<div class="col-md-4">
-								<label class="custom-switch">
-									<input type="checkbox" id="produitCreatePublie" class="custom-switch-input" checked>
-									<span class="custom-switch-indicator"></span>
-									<span class="custom-switch-description">
-										Publié
-									</span>
-								</label>
-							</div>
-							<div class="card border mt-3">
-
-								<div class="card-header">
-									<h5 class="card-title mb-0">
-										<i class="fa fa-cubes mr-2 text-primary"></i>
-										Gestion du stock
-									</h5>
-								</div>
-
-								<div class="card-body">
-
-									<label class="custom-switch mb-3">
-
-										<input type="checkbox" id="produitCreateGestionStock" class="custom-switch-input">
-
-										<span class="custom-switch-indicator"></span>
-
-										<span class="custom-switch-description">
-											Ce produit utilise des articles de stock
-										</span>
-
-									</label>
-
-									<div id="produitCreateStockZone" style="display:none;">
-
-										<div class="d-flex justify-content-between align-items-center mb-3">
-
-											<div>
-												<strong>Nomenclature de consommation</strong>
-
-												<div class="small text-muted">
-													Articles consommés automatiquement par ce produit.
-												</div>
-											</div>
-
-											<button type="button" id="produitCreateAddStock" class="btn btn-sm btn-success-light">
-												<i class="fa fa-plus mr-1"></i>
-												Ajouter un article
-											</button>
-
-										</div>
-
-										<div id="produitCreateStockLines"></div>
-
-									</div>
-
-								</div>
-
-							</div>
-							<div class="col-md-4">
-								<label class="custom-switch">
-									<input type="checkbox" id="produitCreateActif" class="custom-switch-input" checked>
-									<span class="custom-switch-indicator"></span>
-									<span class="custom-switch-description">
-										Actif
-									</span>
-								</label>
-							</div>
-
-							<div class="col-md-4">
-								<label class="custom-switch">
-									<input type="checkbox" id="produitCreatePersonnalisable" class="custom-switch-input" checked>
-									<span class="custom-switch-indicator"></span>
-									<span class="custom-switch-description">
-										Personnalisable
-									</span>
-								</label>
-							</div>
-
-						</div>
-
 					</div>
-
-					<div class="modal-footer">
-
-						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-							Annuler
-						</button>
-
-						<button type="button" id="produitCreateSaveButton" class="btn btn-primary">
-							Enregistrer
-						</button>
-
-					</div>
-
-				</div>
-
-			</div>
-
-		</div>
-
-		{# MODAL MODIFICATION #}
-
-		<div class="modal fade" id="produitEditModal" tabindex="-1" role="dialog" aria-hidden="true">
-
-			<div class="modal-dialog modal-xl" role="document">
-
-				<div class="modal-content">
-
-					<div class="modal-header">
-
-						<h5 class="modal-title">
-							Modifier le produit
-						</h5>
-
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-
-					</div>
-
-					<div class="modal-body">
-
-						<input type="hidden" id="produitEditUpdateUrl">
-						<input type="hidden" id="produitEditToken">
-
-						<div class="row">
-
-							<div class="col-md-4 form-group">
-								<label>Code</label>
-								<input type="text" id="produitEditCode" class="form-control">
-							</div>
-
-							<div class="col-md-4 form-group">
-								<label>Nom</label>
-								<input type="text" id="produitEditNom" class="form-control">
-
-								<small class="form-text text-muted">Désignation technique. Le nom que tout le monde connaît (autocollant pour vinyle adhésif…) se saisit dans <a href="{{ path('app_produits_noms_commerciaux') }}">Noms commerciaux</a>.</small>
-							</div>
-
-							<div class="col-md-4 form-group">
-								<label>Catégorie</label>
-
-								<select id="produitEditCategorie" class="form-control">
-									{% for categorie in categoriesProduits %}
-										<option value="{{ categorie.id }}">
-											{{ categorie.nom }}
-										</option>
-									{% endfor %}
-								</select>
-							</div>
-
-						</div>
-
-						<div class="row">
-
-							<div class="col-md-6 form-group">
-								<label>Prix de base</label>
-
-								<input type="number" id="produitEditPrixBase" class="form-control" min="0">
-							</div>
-
-							<div class="col-md-6 form-group">
-								<label>Description</label>
-
-								<textarea id="produitEditDescription" class="form-control" rows="3"></textarea>
-							</div>
-
-						</div>
-
-						{{ _self.choixRelations(
-						typesImpressions,
-						supports,
-						formats,
-						finitions,
-						'edit'
-					) }}
-
-						<div class="row">
-
-							<div class="col-md-4">
-								<label class="custom-switch">
-									<input type="checkbox" id="produitEditPublie" class="custom-switch-input">
-									<span class="custom-switch-indicator"></span>
-									<span class="custom-switch-description">
-										Publié
-									</span>
-								</label>
-							</div>
-							<div class="card border mt-3">
-
-								<div class="card-header">
-									<h5 class="card-title mb-0">
-										<i class="fa fa-cubes mr-2 text-primary"></i>
-										Gestion du stock
-									</h5>
-								</div>
-
-								<div class="card-body">
-
-									<label class="custom-switch mb-3">
-
-										<input type="checkbox" id="produitEditGestionStock" class="custom-switch-input">
-
-										<span class="custom-switch-indicator"></span>
-
-										<span class="custom-switch-description">
-											Ce produit utilise des articles de stock
-										</span>
-
-									</label>
-
-									<div id="produitEditStockZone" style="display:none;">
-
-										<div class="d-flex justify-content-between align-items-center mb-3">
-
-											<div>
-												<strong>Nomenclature de consommation</strong>
-
-												<div class="small text-muted">
-													Articles consommés automatiquement par ce produit.
-												</div>
-											</div>
-
-											<button type="button" id="produitEditAddStock" class="btn btn-sm btn-success-light">
-												<i class="fa fa-plus mr-1"></i>
-												Ajouter un article
-											</button>
-
-										</div>
-
-										<div id="produitEditStockLines"></div>
-
-									</div>
-
-								</div>
-
-							</div>
-							<div class="col-md-4">
-								<label class="custom-switch">
-									<input type="checkbox" id="produitEditActif" class="custom-switch-input">
-									<span class="custom-switch-indicator"></span>
-									<span class="custom-switch-description">
-										Actif
-									</span>
-								</label>
-							</div>
-
-							<div class="col-md-4">
-								<label class="custom-switch">
-									<input type="checkbox" id="produitEditPersonnalisable" class="custom-switch-input">
-									<span class="custom-switch-indicator"></span>
-									<span class="custom-switch-description">
-										Personnalisable
-									</span>
-								</label>
-							</div>
-
-						</div>
-
-					</div>
-
-					<div class="modal-footer">
-
-						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-							Annuler
-						</button>
-
-						<button type="button" id="produitEditSaveButton" class="btn btn-primary">
-							Enregistrer les modifications
-						</button>
-
-					</div>
-
-				</div>
-
-			</div>
-
-		</div>
-		<template id="produitStockLineTemplate">
-
-			<div class="produit-stock-line border rounded p-3 mb-3">
-
-				<div class="row align-items-end">
-
-					<div class="col-md-4 form-group">
-
-						<label>
-							Article de stock
-						</label>
-
-						<select class="form-control js-stock-article">
-
-							<option value="">
-								Sélectionner un article
-							</option>
-
-							{% for article in articles %}
-								<option value="{{ article.id }}">
-									{{ article.designation }}
-								</option>
-							{% endfor %}
-
-						</select>
-
-					</div>
-
-					<div class="col-md-2 form-group">
-
-						<label>
-							Coefficient
-						</label>
-
-						<input type="number" class="form-control js-stock-coefficient" min="0.001" step="0.001" value="1">
-
-					</div>
-
-					<div class="col-md-3 form-group">
-
-						<label>
-							Mode
-						</label>
-
-						<select class="form-control js-stock-mode">
-
-							<option value="quantite">
-								Par quantité
-							</option>
-
-							<option value="unite">
-								Par unité
-							</option>
-
-							<option value="surface">
-								Par surface
-							</option>
-
-							<option value="metre">
-								Par mètre
-							</option>
-
-							<option value="forfait">
-								Forfait
-							</option>
-
-						</select>
-
-					</div>
-
-					<div class="col-md-1 form-group">
-
-						<label>
-							Oblig.
-						</label>
-
-						<input type="checkbox" class="js-stock-obligatoire" checked>
-
-					</div>
-
-					<div class="col-md-1 form-group">
-
-						<label>
-							Actif
-						</label>
-
-						<input type="checkbox" class="js-stock-actif" checked>
-
-					</div>
-
-					<div class="col-md-1 form-group">
-
-						<button type="button" class="btn btn-danger-light btn-block js-stock-delete">
-							<i class="fa fa-trash"></i>
-						</button>
-
-					</div>
-
-				</div>
-
-			</div>
-
-		</template>
-	{% endblock %}
-
-	{% macro choixRelations(
-	typesImpressions,
-	supports,
-	formats,
-	finitions,
-	mode
-) %}
-
-		{% set prefix = mode == 'create'
-		? 'produit-create'
-		: 'produit-edit'
-	%}
-
-		<div class="form-group">
-			<label>Types d’impression</label>
-
-			<div class="selectgroup selectgroup-pills">
-				{% for type in typesImpressions %}
-					<label class="selectgroup-item">
-						<input type="checkbox" value="{{ type.id }}" class="selectgroup-input {{ prefix }}-type">
-						<span class="selectgroup-button">
-							{{ type.nom }}
-						</span>
-					</label>
 				{% endfor %}
 			</div>
-		</div>
+		{% endif %}
 
-		<div class="form-group">
-			<label>Supports compatibles</label>
+		{% for l in masques %}
+			<p class="si-pd-note"><b>{{ l.produit.nom }}</b> masqué en ligne{{ l.produit.motifHorsLigne ? ' : ' ~ l.produit.motifHorsLigne }}{{ l.produit.motifHorsLigne ? '' : ' ; toujours vendu au comptoir' }}.</p>
+		{% endfor %}
+	</div>
 
-			<div class="selectgroup selectgroup-pills">
-				{% for support in supports %}
-					<label class="selectgroup-item">
-						<input type="checkbox" value="{{ support.id }}" class="selectgroup-input {{ prefix }}-support">
-						<span class="selectgroup-button">
-							{{ support.nom }}
-						</span>
-					</label>
-				{% endfor %}
-			</div>
-		</div>
-
-		<div class="form-group">
-			<label>Formats compatibles</label>
-
-			<div class="selectgroup selectgroup-pills">
-				{% for format in formats %}
-					<label class="selectgroup-item">
-						<input type="checkbox" value="{{ format.id }}" class="selectgroup-input {{ prefix }}-format">
-						<span class="selectgroup-button">
-							{{ format|texte_interne }}
-						</span>
-					</label>
-				{% endfor %}
-			</div>
-		</div>
-
-		<div class="form-group">
-			<label>Finitions compatibles</label>
-
-			<div class="selectgroup selectgroup-pills">
-				{% for finition in finitions %}
-					<label class="selectgroup-item">
-						<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input {{ prefix }}-finition">
-						<span class="selectgroup-button">
-							{{ finition|texte_interne }}
-						</span>
-					</label>
-				{% endfor %}
-			</div>
-		</div>
-
-	{% endmacro %}
-
-	{% block javascripts %}
-		{{ parent() }}
-
-		<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
-		<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>
-
-		<script src="{{ asset('assets/js/traitement_produit.js') }}?v=2026072604"></script>
-	{% endblock %}
+	<p class="si-pd-note">Le prix de base est celui de la configuration la moins chère. Le coût de revient se calcule avec les matières du stock (coût moyen), l'encre et le temps de la machine de chaque produit ; il n'est jamais montré en ligne.{% if not avec_couts %} Le coût et la marge demandent le droit « Marges et coûts de revient ».{% endif %}</p>
+	<p class="d-md-none"><a href="{{ path('app_produits_export') }}" class="btn btn-light btn-sm"><i class="fas fa-download me-1"></i>Exporter la grille</a> <a href="{{ path('app_produits_options_index') }}" class="btn btn-light btn-sm">Options partagées</a></p>
+{% endblock %}

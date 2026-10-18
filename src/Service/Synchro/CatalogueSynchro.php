@@ -37,6 +37,7 @@ use App\Entity\MouvementFidelite;
 use App\Entity\MouvementSoldeClient;
 use App\Entity\NoteArticleSondage;
 use App\Entity\ProduitClient;
+use App\Entity\PrixSpecial;
 use App\Entity\PromoReveil;
 use App\Entity\Promotion;
 use App\Entity\CodePromo;
@@ -251,7 +252,9 @@ final class CatalogueSynchro
             'produit' => [
                 'classe' => Produits::class, 'sens' => self::DESCENDANT, 'libelle' => 'Produit', 'titre' => ['nom'],
                 // nomCommercial : « Autocollant » pour « Vinyle adhésif » (docs/noms-commerciaux.md), montré et cherché en ligne.
-                'champs' => ['nom', 'description', 'publie', 'ordre', 'code', 'prixBase', 'prixB2B', 'personnalisable', 'actif', 'modeCalcul', 'nomCommercial'],
+                // visibleEnLigne et delaiHeures (fiche produit, docs/produits.md) : le site masque le produit et montre son délai.
+                // Le coût saisi, les machines et le motif « masqué en ligne » restent au local.
+                'champs' => ['nom', 'description', 'publie', 'ordre', 'code', 'prixBase', 'prixB2B', 'personnalisable', 'actif', 'modeCalcul', 'nomCommercial', 'visibleEnLigne', 'delaiHeures'],
                 'relations' => ['categorieProduit' => 'categorie'],
                 'listes' => ['typesImpressions' => 'type_impression', 'supports' => 'support', 'formats' => 'format', 'finitions' => 'finition'],
             ],
@@ -288,6 +291,13 @@ final class CatalogueSynchro
                 'relations' => [], 'listes' => [], 'numero' => 'code',
                 // E-mail donné par le titulaire dans son espace : pris seulement si la fiche du local n'en a pas.
                 'remontees' => ['recevoirSms' => null, 'consentementMarketingLe' => null, 'email' => ['' => ['*']]],
+            ],
+            // Prix négociés par client (docs/produits.md) : l'espace client les applique. La note, qui l'a
+            // créé et qui l'a accordé restent au local ; un prix en attente ou refusé descend sans s'appliquer.
+            'prix_special' => [
+                'classe' => PrixSpecial::class, 'sens' => self::DESCENDANT, 'libelle' => 'Prix négocié', 'titre' => ['prix'],
+                'champs' => ['prix', 'finLe', 'statut'],
+                'relations' => ['client' => 'client', 'configuration' => 'configuration'], 'listes' => [],
             ],
             // Code d'accès à l'espace client donné par la boutique sur WhatsApp (docs/espace-client.md) :
             // seulement son empreinte et son échéance. Qui l'a donné reste au local ; son utilisation reste en ligne.

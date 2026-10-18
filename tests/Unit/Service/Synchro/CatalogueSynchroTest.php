@@ -39,6 +39,22 @@ final class CatalogueSynchroTest extends TestCase
         self::assertArrayNotHasKey('article', $types);
     }
 
+    public function testLePrixNegocieDescendSansSaRaison(): void
+    {
+        // docs/produits.md : le site applique le prix ; la raison, les auteurs et la décision restent au local.
+        $types = CatalogueSynchro::types();
+        self::assertSame(CatalogueSynchro::DESCENDANT, $types['prix_special']['sens']);
+        self::assertSame(['prix', 'finLe', 'statut'], $types['prix_special']['champs']);
+        self::assertSame(['client', 'configuration'], array_keys($types['prix_special']['relations']));
+        foreach (['visibleEnLigne', 'delaiHeures'] as $champ) {
+            self::assertContains($champ, $types['produit']['champs'], $champ);
+        }
+        foreach (['motifHorsLigne', 'coutRevientSaisi', 'machine', 'machineSecours'] as $champ) {
+            self::assertNotContains($champ, $types['produit']['champs'], $champ);
+            self::assertArrayNotHasKey($champ, $types['produit']['relations'], $champ);
+        }
+    }
+
     public function testLesDocumentsGardentLeursSecretsAuLocal(): void
     {
         $types = CatalogueSynchro::types();

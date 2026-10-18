@@ -81,7 +81,7 @@ final class CatalogueSite
             ->select('p', 'cat')
             ->from(Produits::class, 'p')
             ->innerJoin('p.categorieProduit', 'cat')
-            ->where('p.publie = true')->andWhere('p.actif = true')->andWhere('cat.publie = true')
+            ->where('p.publie = true')->andWhere('p.actif = true')->andWhere('p.visibleEnLigne = true')->andWhere('cat.publie = true')
             ->orderBy('cat.ordre', 'ASC')->addOrderBy('cat.nom', 'ASC')->addOrderBy('p.ordre', 'ASC')->addOrderBy('p.nom', 'ASC')
             ->getQuery()->getResult();
 

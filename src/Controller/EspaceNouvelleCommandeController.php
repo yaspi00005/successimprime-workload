@@ -472,6 +472,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
             if ($saisie['piecesM2']) {
                 NouvelleCommande::enPiecesAuM2($ligne, $saisie['m2'], $espacement, $client->isB2B());
             }
+            $this->service->appliquerPrixSpecial($ligne, $client, $maintenant);
         } catch (\DomainException $e) {
             return $sortie + ['erreur' => $e->getMessage()];
         }

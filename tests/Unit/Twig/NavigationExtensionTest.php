@@ -42,7 +42,7 @@ final class NavigationExtensionTest extends TestCase
         yield 'soldes clients avant clients' => ['app_clients_soldes', 'finances'];
         yield 'fiche client' => ['app_clients_show', 'clients'];
         yield 'campagne' => ['app_campagne_index', 'clients'];
-        yield 'produits' => ['app_produits_index', 'reglages'];
+        yield 'produits' => ['app_produits_index', 'ventes'];
         yield 'utilisateurs' => ['app_user_index', 'reglages'];
         yield 'rôles et menus' => ['app_utilisateurs_roles_menus', 'reglages'];
         yield 'employés dans Équipe' => ['app_employes_index', 'equipe'];

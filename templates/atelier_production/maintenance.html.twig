@@ -101,7 +101,7 @@
 					<label class="form-check m-0"><input type="checkbox" name="arret" value="1" class="form-check-input" checked> <span class="form-check-label">La machine est arrêtée (panne)</span></label>
 					{% if chef %}
 						{% if masquage %}
-							<label class="form-check m-0"><input type="checkbox" name="masquer" value="1" class="form-check-input"> <span class="form-check-label">Masquer en ligne les produits qui n'ont que cette machine</span></label>
+							<label class="form-check m-0"><input type="checkbox" name="masquer" value="1" class="form-check-input" checked> <span class="form-check-label">Masquer en ligne les produits qui n'ont que cette machine (sans machine de secours en état)</span></label>
 						{% else %}
 							<p class="si-ap-gris si-ap-petit mb-0">Masquer en ligne les produits de la machine : possible quand chaque produit du catalogue a sa machine (à venir).</p>
 						{% endif %}

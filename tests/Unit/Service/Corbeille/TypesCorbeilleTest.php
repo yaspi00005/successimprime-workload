@@ -132,6 +132,8 @@ final class TypesCorbeilleTest extends TestCase
         self::assertSame('Facturer à un tiers', TypesCorbeille::nomColonne('facturer_aun_tiers'));
         self::assertSame('Total TTC', TypesCorbeille::nomColonne('total_ttc'));
         self::assertSame('État', TypesCorbeille::nomColonne('etat'), 'majuscule accentuée');
+        self::assertSame('Créé le', TypesCorbeille::nomColonne('created_at'), 'colonne technique en anglais');
+        self::assertSame('Moyen préféré', TypesCorbeille::nomColonne('moyen_prefere'));
         self::assertSame('Client', TypesCorbeille::nomLien('client_id', 'clients'));
         self::assertSame('Compte du personnel', TypesCorbeille::nomLien('user_id', 'user'));
         self::assertSame('Créé par', TypesCorbeille::nomLien('cree_par_id', 'user'), 'deux liens vers le personnel, deux noms');

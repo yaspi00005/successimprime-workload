@@ -58,7 +58,7 @@ Salon Espoir (`DEMO-0002`, entreprise à la grille revendeur), une personne par 
 | Mariam Dembélé, Assistante | 60 44 51 03 | demandeur (aucun droit) | sa commande attend un valideur |
 | Réception, Accueil | 60 44 51 04 | Lecture · suivi | commandes, livraisons, fichiers ; rien qui écrive |
 
-Contenu de Salon Espoir : un BAT à valider (plaques de chambres), des t-shirts en impression avec leur livraison prévue, un roll-up en route, des kakémonos livrés, une facture à payer aujourd'hui, une facture échue, un devis envoyé la veille (bâche de façade), un échange de messages avec l'atelier, deux adresses de livraison et la conseillère qui suit le client.
+Contenu de Salon Espoir : un BAT à valider (plaques de chambres), des t-shirts en impression avec leur livraison prévue, un roll-up en route, des kakémonos livrés, une facture à payer aujourd'hui, une facture échue, un devis envoyé la veille (bâche de façade), un échange de messages avec l'atelier (la réponse signée « Mariam (commerciale) », prénom et métier comme dans l'application), deux adresses de livraison et la conseillère qui suit le client.
 
 Particulier : le client particulier qui a le plus de commandes (Amadou Sow, 60 00 62 12), avec la fidélité (les particuliers ne sont pas à la grille revendeur) et la page Mon compte sans les parties entreprise. 45 autres entreprises de la démonstration ont un compte titulaire sur le numéro de leur fiche, avec le même mot de passe.
 

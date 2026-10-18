@@ -1687,7 +1687,9 @@ add('adresse_livraison', {'libelle': 'Annexe · salle des fêtes', 'adresse': 'Q
                           'par_defaut': 0, 'actif': 1, 'client_id': EC['id']})
 add('message_client', {'sens': 'client', 'auteur': 'Awa Coulibaly', 'texte': 'Bonjour, pouvez-vous livrer les t-shirts avant jeudi ? Le personnel en a besoin pour la réception de samedi.',
                        'cree_le': T(1, 10, 5), 'traite_le': T(0, 8, 20), 'public_id': uid4(), 'client_id': EC['id'], 'commande_id': EC_TSHIRTS['id'], 'ecrit_par_id': None})
-add('message_client', {'sens': 'atelier', 'auteur': 'Succès Imprim', 'texte': 'Bonjour Awa, oui : livraison prévue après-demain entre 9 h et 10 h, à l\'entrée de service.',
+# Réponse signée comme dans l'application (Employes::getNomPublic) : prénom et métier, jamais le nom de famille.
+METIER = {U[k]: f[:1].lower() + f[1:] for k, _p, _n, f, *_ in EQUIPE}
+add('message_client', {'sens': 'atelier', 'auteur': f"{PRENOM[EC['suivi']]} ({METIER[EC['suivi']]})", 'texte': 'Bonjour Awa, oui : livraison prévue après-demain entre 9 h et 10 h, à l\'entrée de service.',
                        'cree_le': T(0, 8, 20), 'traite_le': None, 'public_id': uid4(), 'client_id': EC['id'], 'commande_id': EC_TSHIRTS['id'], 'ecrit_par_id': EC['suivi']})
 
 # Les personnes du compte en ligne (le titulaire existe peut-être déjà parmi les comptes tirés plus haut).

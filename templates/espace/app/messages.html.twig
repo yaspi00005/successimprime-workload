@@ -4,15 +4,24 @@
 	Messages avec l'atelier (maquette EC01) : texte seulement, rattaché si
 	besoin à une commande. Le message monte au local ; l'équipe répond
 	depuis Clients › Messages et la personne est prévenue de la réponse.
+	Une réponse de l'atelier porte le prénom et le métier de l'employé et
+	un disque à son initiale (_agent.html.twig), jamais sa photo.
 #}
 {% block title %}Messages{% endblock %}
 {% block entete %}<a class="ec-retour" href="{{ path('app_espace_compte') }}"><span class="fl">‹</span>Messages</a>{% endblock %}
 
 {% block contenu %}
+	{% import 'espace/app/_agent.html.twig' as agent %}
 	<div class="ec-carte ec-messages">
 		{% for m in fil %}
 			<div class="ec-bulle {{ m.estDeLAtelier ? 'atelier' : 'client' }}"{{ loop.last ? ' id="dernier"' }}>
-				<span class="ec-bulle-tete">{{ m.estDeLAtelier ? (m.auteur ?? 'Succès Imprim') : (m.auteur ?? 'Vous') }} · {{ m.creeLe|date('d/m à H:i') }}{% if m.commande %} · <a href="{{ path('app_espace_commande', {id: m.commande.publicId}) }}">commande {{ m.commande.numero }}</a>{% endif %}</span>
+				{% set lien %}{% if m.commande %} · <a href="{{ path('app_espace_commande', {id: m.commande.publicId}) }}">commande {{ m.commande.numero }}</a>{% endif %}{% endset %}
+				{% if m.estDeLAtelier %}
+					{% set s = m.signature %}
+					<span class="ec-bulle-tete ec-agent-tete">{{ agent.disque(s) }}<span><b>{{ s.nom }}</b>{{ s.metier ? ' · ' ~ s.metier }} · {{ m.creeLe|date('d/m à H:i') }}{{ lien }}</span></span>
+				{% else %}
+					<span class="ec-bulle-tete">{{ m.auteur ?? 'Vous' }} · {{ m.creeLe|date('d/m à H:i') }}{{ lien }}</span>
+				{% endif %}
 				<p>{{ m.texte|nl2br }}</p>
 			</div>
 		{% else %}

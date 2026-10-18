@@ -62,7 +62,7 @@ final class MessagesClient
     public function repondre(Clients $client, string $texte, User $par, ?Commandes $commande, \DateTimeImmutable $maintenant): MessageClient
     {
         // Le client voit le prénom et le métier de qui répond (« Seydou (graphiste PAO) »), jamais plus.
-        $auteur = $par->getEmploye()?->getNomPublic() ?? 'Succès Imprim';
+        $auteur = $par->getEmploye()?->getNomPublic() ?? MessageClient::NOM_ATELIER;
         $message = MessageClient::nouveau($client, MessageClient::ATELIER, self::verifier($texte), $auteur, $commande, $maintenant);
         $message->setEcritPar($par);
         $this->em->persist($message);

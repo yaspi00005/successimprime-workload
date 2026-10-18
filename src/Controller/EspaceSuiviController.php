@@ -74,6 +74,10 @@ final class EspaceSuiviController extends AbstractController
             }
             $saisie = ['texte' => mb_substr($request->request->getString('texte'), 0, MessageClient::TEXTE_MAX + 200), 'commande' => $request->request->getString('commande')];
             $commande = '' !== $saisie['commande'] ? $this->espace->commande($client, $saisie['commande']) : null;
+            // Écrit depuis « Messages de la commande » (page de la commande) : on y revient.
+            $retour = 'commande' === $request->request->get('retour') && null !== $commande
+                ? $this->generateUrl('app_espace_commande', ['id' => (string) $commande->getPublicId()]).'#messages'
+                : null;
             try {
                 if ('' !== $saisie['commande'] && null === $commande) {
                     throw new \DomainException('Choisissez une de vos commandes.');
@@ -84,9 +88,12 @@ final class EspaceSuiviController extends AbstractController
                 $messages->ecrire($compte, $saisie['texte'], $commande, new \DateTimeImmutable());
                 $this->addFlash('succes', 'Message envoyé. L\'atelier vous répond ici ; vous êtes prévenu de sa réponse.');
 
-                return $this->redirect($this->generateUrl('app_espace_messages').'#dernier');
+                return $this->redirect($retour ?? $this->generateUrl('app_espace_messages').'#dernier');
             } catch (\DomainException $e) {
                 $this->addFlash('error', $e->getMessage());
+                if (null !== $retour) {
+                    return $this->redirect($retour);
+                }
             }
         }
         $telephone = null;

@@ -1,39 +1,30 @@
 {% extends 'espace/app/_app.html.twig' %}
 
+{#
+	Page d'une commande (maquettes CO05 et CO06) : « Où en est ma
+	commande ? » étape par étape (SuiviCommandeClient, données réelles
+	seulement), le résumé, le BAT à valider avec ses points à vérifier
+	(_bat_carte.html.twig) et les messages de la commande. Montants :
+	le total pour qui voit les montants (coque.montants), le payé et le
+	reste pour qui paie (peutPayer) ; rien pour un demandeur ni la lecture.
+#}
 {% set c = carte.commande %}
+{% set lecture = app.user.estLectureSeule() %}
 {% block title %}Commande {{ c.numero }}{% endblock %}
-{% block styles %}<link href="{{ asset('css/avis.css') }}" rel="stylesheet">{% endblock %}
-{% block scripts %}
-	<script>
-	(function () {
-		// Commande prête : quelques confettis autour de l'étape, une seule fois par appareil, jamais si l'on réduit les animations.
-		var frise = document.querySelector('.ec-frise[data-fete]');
-		var etape = frise && frise.querySelector('[data-etape-prete]');
-		if (!etape || !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-		var cle = 'ec-fete-' + frise.getAttribute('data-fete');
-		try { if (localStorage.getItem(cle)) return; localStorage.setItem(cle, '1'); } catch (e) { return; }
-		var zone = document.createElement('span');
-		zone.className = 'ec-fete';
-		zone.setAttribute('aria-hidden', 'true');
-		var couleurs = ['#0F4590', '#DE1028', '#F5B800', '#E6007E', '#1F9D55'];
-		for (var i = 0; i < 18; i++) {
-			var b = document.createElement('i');
-			var angle = (i / 18) * Math.PI * 2 + Math.random() * 0.3;
-			var r = 38 + Math.random() * 34;
-			b.style.cssText = '--x:' + Math.round(Math.cos(angle) * r) + 'px;--y:' + Math.round(Math.sin(angle) * r - 12) + 'px;--r:' + Math.round(Math.random() * 360) + 'deg;background:' + couleurs[i % couleurs.length] + ';animation-delay:' + (0.9 + Math.random() * 0.15).toFixed(2) + 's';
-			zone.appendChild(b);
-		}
-		etape.classList.add('ec-frise-fete');
-		etape.appendChild(zone);
-		setTimeout(function () { zone.remove(); }, 2600);
-	}());
-	</script>
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}
+	<link href="{{ asset('css/avis.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/espace-suivi.css') }}" rel="stylesheet">
 {% endblock %}
-{% block entete %}<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Commande n° {{ c.numero }}</a>{% endblock %}
+{% block entete %}
+	<a class="ec-retour" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span><span><span class="ec-bureau">Commande </span>{{ c.numero }}</span></a>
+	<div class="cs-entete-actions ec-bureau">
+		{% if peutPayer and c.isStatut %}<a class="cs-bouton-entete" href="{{ facture ? path('app_espace_facture_detail', {id: facture.publicId}) : path('app_espace_factures') }}">Facture et reçus</a>{% endif %}
+		{% if not lecture %}<a class="cs-bouton-entete" href="#messages">Message</a>{% endif %}
+	</div>
+{% endblock %}
 
 {% block contenu %}
-	{# Compte « Lecture · suivi » : le suivi seulement, sans montant ni action. #}
-	{% set lecture = app.user.estLectureSeule() %}
 	{% if carte.refuseeEntreprise %}
 		<div class="ec-note">Demande refusée par {{ c.valideePar ?? 'votre entreprise' }}{% if c.motifRefusEntreprise %} : « {{ c.motifRefusEntreprise }} »{% endif %}. Elle ne part pas à l'atelier.</div>
 	{% elseif carte.aValiderEntreprise %}
@@ -58,110 +49,210 @@
 		{% endif %}
 	{% elseif carte.aConfirmer %}
 		<div class="ec-note">Commande reçue. L'atelier vérifie le prix et votre fichier, puis la confirme : vous êtes prévenu à ce moment-là.</div>
+	{% elseif carte.annulee %}
+		<div class="ec-note">Commande annulée.</div>
 	{% endif %}
-	<div class="ec-carte">
-		{% for l in lignes %}
-			<div{% if not loop.first %} style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--trait)"{% endif %}>
-				<b style="font-size:1.1rem">{{ l|espace_titre_ligne }}</b>
-				{% set options = [l.support ? l.support.nom : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
-				{% if options is not empty %}<div class="ec-petit">{{ options|join(' · ') }}</div>{% endif %}
-				{% if l.demandeClient %}<div class="ec-petit">Votre demande : « {{ l.demandeClient }} »</div>{% endif %}
-				{% set mesFichiers = l.fichiers|filter(f => f.actif and f.origine == 'client') %}
-				{% if mesFichiers is not empty %}<div class="ec-petit">Fichier{{ mesFichiers|length > 1 ? 's' }} : {{ mesFichiers|map(f => f.nomOriginal)|join(', ') }}</div>{% endif %}
-			</div>
-		{% endfor %}
-		<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem">
-			{% if not carte.terminee and c.dateLivraison %}<span class="ec-pastille ambre">{{ c.estALivrer ? 'Livraison' : 'Prête' }} le {{ c.dateLivraison|date('d/m') }}</span>{% endif %}
-			<span class="ec-pastille">{{ c.estALivrer ? 'Livraison' : 'Retrait boutique' }}</span>
+
+	<div class="cs-grille">
+		<div class="cs-gauche">
+			{# Une demande pas encore validée (ou refusée) par l'entreprise n'est pas à l'atelier : pas de suivi. #}
+			{% if not carte.aValiderEntreprise and not carte.refuseeEntreprise %}
+				<section class="ec-carte cs-suivi" aria-labelledby="suivi-titre">
+					<div class="cs-suivi-tete">
+						<h2 id="suivi-titre">Où en est ma commande ?</h2>
+						{% if suivi.actionRequise %}<span class="cs-pilule-action ec-bureau">Action requise</span>{% endif %}
+					</div>
+					{# Prête et pas encore remise : une petite fête, une fois par appareil (docs/atelier-3d.md, animations). #}
+					{% set prete = suivi.etapes|filter(e => e.cle == 'prete' and e.etat == 'faite')|length > 0 and suivi.etapes|filter(e => e.cle == 'livree' and e.etat == 'faite')|length == 0 %}
+					<ol class="cs-frise"{% if prete %} data-fete="{{ c.numero }}"{% endif %}>
+						{% for e in suivi.etapes %}
+							<li class="{{ e.etat }}" style="--i: {{ loop.index0 }}"{% if e.cle == 'prete' %} data-etape-prete{% endif %}{% if e.etat == 'action' %} aria-current="step"{% endif %}>
+								<b>{{ e.libelle }}</b>
+								{% if e.court is defined and e.court != e.detail %}
+									<small class="ec-bureau">{{ e.detail }}</small><small class="ec-telephone">{{ e.court }}</small>
+								{% elseif e.detail %}<small>{{ e.detail }}</small>{% endif %}
+							</li>
+						{% endfor %}
+					</ol>
+				</section>
+			{% endif %}
+
+			<section class="ec-carte cs-resume" aria-label="Résumé de la commande">
+				<dl class="cs-lignes">
+					<div>
+						<dt>Produit{{ lignes|length > 1 ? 's' }}</dt>
+						<dd>
+							{% for l in lignes %}
+								<div class="cs-produit">
+									{{ l|espace_titre_ligne }}
+									{% set options = [l.support ? l.support.nom : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
+									{% if options is not empty %}<small>{{ options|join(' · ') }}</small>{% endif %}
+									{% if l.demandeClient %}<small>Votre demande : « {{ l.demandeClient }} »</small>{% endif %}
+									{% set mesFichiers = l.fichiers|filter(f => f.actif and f.origine == 'client') %}
+									{% if mesFichiers is not empty %}<small>Fichier{{ mesFichiers|length > 1 ? 's' }} : {{ mesFichiers|map(f => f.nomOriginal)|join(', ') }}</small>{% endif %}
+								</div>
+							{% else %}
+								{{ c|espace_titre }}
+							{% endfor %}
+						</dd>
+					</div>
+					{% if not lecture %}
+						{# Code promo (docs/promotions.md) : le montant pour qui voit les montants ; un code non retenu, sans raison interne. #}
+						{% if c.codeSaisi or c.codePromo %}
+							{% set retenu = c.codePromo or c.remiseCodePromo > 0 or (carte.aConfirmer and not c.motifCodePromo) %}
+							<div>
+								<dt>Code promo {{ c.libelleCodePromo }}</dt>
+								<dd>{% if not retenu %}<small>non retenu</small>{% elseif coque.montants and c.remiseCodePromoTtc > 0 %}−{{ c.remiseCodePromoTtc|number_format(0, ',', ' ') }} F{{ carte.aConfirmer ? ' indicatif' }}{% else %}<small>{{ carte.aConfirmer ? 'à confirmer par l\'atelier' : 'appliqué' }}</small>{% endif %}</dd>
+							</div>
+						{% endif %}
+						{# Frais de livraison : choisis par l'atelier, compris dans le total ; le montant pour qui voit les montants. #}
+						{% if c.estALivrer and c.fraisLivraison > 0 %}
+							<div>
+								<dt>Frais de livraison</dt>
+								<dd>{% if coque.montants %}{{ c.fraisLivraison|number_format(0, ',', ' ') }} F{% else %}<small>compris</small>{% endif %}</dd>
+							</div>
+						{% elseif c.estALivrer and carte.aConfirmer %}
+							<div><dt>Frais de livraison</dt><dd><small>fixés par l'atelier à la confirmation</small></dd></div>
+						{% endif %}
+						{# Remise globale accordée par la boutique, déjà déduite du total ; le montant pour qui voit les montants (comme le total). #}
+						{% if c.remiseGlobale > 0 %}
+							<div><dt>Remise</dt><dd>{% if coque.montants %}−{{ c.remiseGlobale|number_format(0, ',', ' ') }} F{% else %}<small>appliquée</small>{% endif %}</dd></div>
+						{% endif %}
+						{% if coque.montants %}
+							<div>
+								<dt>Total{{ carte.aConfirmer ? ' indicatif' }}</dt>
+								<dd>{{ c.totalTtc|number_format(0, ',', ' ') }} F</dd>
+							</div>
+						{% else %}
+							<div><dt>Prix</dt><dd><small>confirmé par votre valideur</small></dd></div>
+						{% endif %}
+						{# Payé et reste : pour qui paie seulement (particulier, payeur d'une entreprise). #}
+						{% if peutPayer and not carte.refuseeEntreprise and c.isStatut %}
+							<div>
+								<dt>Payé</dt>
+								<dd>{{ c.totalPaye|number_format(0, ',', ' ') }} F</dd>
+							</div>
+							{% if c|espace_en_validation > 0 %}
+								<div><dt>Orange Money, en validation</dt><dd>{{ (c|espace_en_validation)|number_format(0, ',', ' ') }} F</dd></div>
+							{% endif %}
+							{# Frais Orange Money payés en plus (fonds de soutien, retrait) : sur le paiement, hors commande. #}
+							{% for p in c|espace_paiements_om %}
+								<div>
+									<dt>Orange Money · {{ p.date|date('d/m') }}{{ p.statut == 'en_attente' ? ' · en validation' }}</dt>
+									<dd>{{ p.montantTotalEncaisse|number_format(0, ',', ' ') }} F
+										<small><span class="ec-nowrap">{{ p.montant|number_format(0, ',', ' ') }} F</span> pour la commande{% if p.montantFondsSoutien > 0 %} + fonds de soutien <span class="ec-nowrap">{{ p.montantFondsSoutien|number_format(0, ',', ' ') }} F</span>{% endif %}{% if p.montantFraisRetrait > 0 %} + frais de retrait <span class="ec-nowrap">{{ p.montantFraisRetrait|number_format(0, ',', ' ') }} F</span>{% endif %}</small>
+									</dd>
+								</div>
+							{% endfor %}
+							<div class="cs-reste">
+								<dt>Reste à payer</dt>
+								<dd>{{ c.resteAPayer|number_format(0, ',', ' ') }} F</dd>
+							</div>
+						{% endif %}
+					{% endif %}
+					<div>
+						<dt>{{ c.estALivrer ? 'Livraison' : 'Retrait' }}</dt>
+						<dd>
+							{% if c.estALivrer %}{{ c.adresseLivraison ? c.adresseLivraison|split("\n")|first : 'adresse à confirmer' }}{% else %}en boutique{% endif %}{% if c.dateLivraison and not carte.terminee %} · {{ c.dateLivraison|date_fr('EEEE dd/MM') }}{% endif %}
+							{% if c.estALivrer and c.adresseLivraison and c.adresseLivraison|split("\n")|length > 1 %}<small>{{ c.adresseLivraison|split("\n")|slice(1)|join(' · ') }}</small>{% endif %}
+						</dd>
+					</div>
+					{% if c.bonCommande %}<div><dt>Bon de commande</dt><dd>{{ c.bonCommande }}</dd></div>{% endif %}
+					{% if c.objet %}<div><dt>Objet</dt><dd>{{ c.objet }}</dd></div>{% endif %}
+				</dl>
+				{# Paiement d'une commande passée en ligne et pas encore confirmée (branche commande-en-ligne). #}
+				{% include 'espace/app/_commande_brouillon_paiement.html.twig' ignore missing %}
+				{% if not lecture and peutPayer and c|espace_a_payer > 0 and not carte.aConfirmer %}
+					<div class="ec-boutons"><a class="ec-bouton orange" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer avec Orange Money</a></div>
+				{% endif %}
+				{% if peutPayer and c.isStatut %}
+					<div class="cs-resume-liens ec-telephone"><a class="ec-lien" href="{{ facture ? path('app_espace_facture_detail', {id: facture.publicId}) : path('app_espace_factures') }}">Facture et reçus</a></div>
+				{% endif %}
+			</section>
 		</div>
-		{% if c.estALivrer and c.adresseLivraison %}<div class="ec-petit" style="margin-top:.4rem">Livrer : {{ c.adresseLivraison|nl2br }}</div>{% endif %}
-		{% if c.objet %}<div class="ec-petit" style="margin-top:.4rem">Objet : {{ c.objet }}</div>{% endif %}
-	</div>
 
-	{% for ctl in bats %}
-		<a class="ec-alerte" href="{{ path('app_espace_bat', {id: ctl.id}) }}"><div><b>BAT à valider</b><small>{{ ctl.commandeDetail|espace_titre_ligne }}</small></div><span class="ec-bouton-blanc">Voir</span></a>
-	{% endfor %}
-
-	{# Une demande pas encore validée (ou refusée) par l'entreprise n'est pas à l'atelier : pas de frise. #}
-	{% if not carte.aValiderEntreprise and not carte.refuseeEntreprise %}
-	<div class="ec-carte">
-		{# Prête et pas encore remise : une petite fête, une fois par appareil (docs/atelier-3d.md, animations). #}
-		{% set prete = carte.etapes|filter(e => e.cle == 'prete' and e.etat == 'faite')|length > 0 and carte.etapes|filter(e => e.cle == 'livree' and e.etat == 'faite')|length == 0 %}
-		<ol class="ec-frise"{% if prete %} data-fete="{{ c.numero }}"{% endif %}>
-			{% for e in carte.etapes %}
-				<li class="{{ e.etat }}" style="--i: {{ loop.index0 }}"{% if e.cle == 'prete' %} data-etape-prete{% endif %}>
-					<b>{{ e.libelle }}</b>
-					<small>{% if e.etat == 'faite' and e.date %}{{ e.date|date_fr('EEE') }} {{ e.date|date('d/m H:i') }}{% elseif e.etat == 'en_cours' %}{{ e.detail ?? 'en cours' }}{% else %}{{ e.detail }}{% endif %}</small>
-					{% if e.cle == 'livree' and livraison and livraison.enRouteLe and not livraison.livreLe %}<small> · livreur parti à {{ livraison.enRouteLe|date('H:i') }}{{ livraison.creneau ? ', créneau ' ~ livraison.creneau }}</small>{% endif %}
-				</li>
+		<div class="cs-droite">
+			{% for b in suivi.bats %}
+				{% include 'espace/app/_bat_carte.html.twig' with {b: b, contexte: 'commande'} %}
 			{% endfor %}
-		</ol>
-	</div>
-	{% endif %}
 
-	{# Commande livrée : son avis (docs/sondages.md). #}
-	{% set avis = avis_commande(c) %}
-	{% if avis.reponse %}
-		<div class="ec-carte av-merci">
-			<span class="av-merci-icone" aria-hidden="true">★</span>
-			<div><b>Merci pour votre avis</b><div class="ec-petit">Donné le {{ avis.reponse.creeLe|date('d/m/Y') }}{{ avis.reponse.auteur ? ' par ' ~ avis.reponse.auteur }}{% if avis.reponse.noteGlobale %} · {% for i in 1..5 %}<span style="color:{{ i <= avis.reponse.noteGlobale ? '#F5A800' : '#D8DEE8' }}">★</span>{% endfor %}{% endif %}</div></div>
-		</div>
-	{% elseif avis.possible and not lecture %}
-		<a class="ec-carte av-merci" href="{{ path('app_espace_avis_commande', {id: c.publicId}) }}" style="color:inherit">
-			<span class="av-merci-icone" aria-hidden="true">★</span>
-			<div style="flex:1"><b>Votre avis sur cette commande ?</b><div class="ec-petit">Une minute : notez le travail, le délai et l'accueil.</div></div>
-			<span class="ec-bouton-petit">Noter</span>
-		</a>
-	{% endif %}
+			{# Messages de la commande : le fil client ↔ atelier de cette commande ; pas pour un compte Lecture · suivi (comme Messages). #}
+			{% if not lecture %}
+				<section class="ec-carte cs-messages" id="messages" aria-labelledby="messages-titre">
+					<h2 id="messages-titre">Messages de la commande</h2>
+					{% if messages is not empty %}
+						<div class="ec-messages">
+							{% for m in messages %}
+								{% set moi = not m.estDeLAtelier and m.auteur == coque.personne %}
+								<div class="ec-bulle {{ m.estDeLAtelier ? 'atelier' : 'client' }}"{{ loop.last ? ' id="dernier"' }}>
+									<span class="ec-bulle-tete">{{ moi ? 'Vous' : (m.auteur ?? (m.estDeLAtelier ? 'Succès Imprim' : 'Vous')) }} · {{ m.creeLe|date('Y-m-d') == 'now'|date('Y-m-d') ? m.creeLe|date('H:i') : m.creeLe|date('d/m · H:i') }}</span>
+									<p>{{ m.texte|nl2br }}</p>
+								</div>
+							{% endfor %}
+						</div>
+					{% else %}
+						<p class="cs-messages-vide">Une question sur cette commande ? Écrivez à l'atelier : la réponse arrive ici, et vous en êtes prévenu.</p>
+					{% endif %}
+					<form method="post" action="{{ path('app_espace_messages') }}" class="cs-ecrire">
+						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+						<input type="hidden" name="commande" value="{{ c.publicId }}">
+						<input type="hidden" name="retour" value="commande">
+						<label for="message-texte" class="ec-bureau" style="position:absolute;left:-9999px">Votre message</label>
+						<textarea class="ec-champ" id="message-texte" name="texte" maxlength="{{ maxMessage }}" required placeholder="Votre message à l'atelier…" aria-label="Votre message à l'atelier"></textarea>
+						<button type="submit" class="ec-bouton bleu">Envoyer</button>
+					</form>
+				</section>
+			{% endif %}
 
-	{% if not lecture %}
-	<div class="ec-carte">
-		{# Montants : CompteClient::montantsVisibles ; un demandeur voit la commande, son valideur en voit le prix. #}
-		{# Code promo (docs/promotions.md) : le montant pour qui voit les montants ; un code non retenu, sans raison interne. #}
-		{% if c.codeSaisi or c.codePromo %}
-			{% set retenu = c.codePromo or c.remiseCodePromo > 0 or (carte.aConfirmer and not c.motifCodePromo) %}
-			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Code promo {{ c.libelleCodePromo }}</span>
-				{% if not retenu %}<span class="ec-petit">non retenu</span>{% elseif coque.montants and c.remiseCodePromoTtc > 0 %}<span>−{{ c.remiseCodePromoTtc|number_format(0, ',', ' ') }} F{{ carte.aConfirmer ? ' indicatif' }}</span>{% else %}<span class="ec-petit">{{ carte.aConfirmer ? 'à confirmer par l\'atelier' : 'appliqué' }}</span>{% endif %}
-			</div>
-		{% endif %}
-		{# Frais de livraison : choisis par l'atelier quand il confirme la commande, compris dans le total ; le montant pour qui voit les montants (comme le total). #}
-		{% if c.estALivrer and c.fraisLivraison > 0 %}
-			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Frais de livraison</span>{% if coque.montants %}<span>{{ c.fraisLivraison|number_format(0, ',', ' ') }} F</span>{% else %}<span class="ec-petit">comprise</span>{% endif %}</div>
-		{% elseif c.estALivrer and carte.aConfirmer %}
-			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Frais de livraison</span><span class="ec-petit">fixés par l'atelier à la confirmation</span></div>
-		{% endif %}
-		{# Remise globale accordée par la boutique, déjà déduite du total ; le montant pour qui voit les montants (comme le total). #}
-		{% if c.remiseGlobale > 0 %}
-			<div class="ec-ligne" style="margin-bottom:.3rem"><span class="ec-petit">Remise</span>{% if coque.montants %}<span>−{{ c.remiseGlobale|number_format(0, ',', ' ') }} F</span>{% else %}<span class="ec-petit">appliquée</span>{% endif %}</div>
-		{% endif %}
-		{% if coque.montants %}
-			<div class="ec-ligne"><span>Total{{ carte.aConfirmer ? ' indicatif' }}</span><b>{{ c.totalTtc|number_format(0, ',', ' ') }} F</b></div>
-		{% else %}
-			<div class="ec-ligne"><span>Prix</span><span class="ec-petit">confirmé par votre valideur</span></div>
-		{% endif %}
-		{% if peutPayer and not carte.refuseeEntreprise %}<div class="ec-ligne" style="margin-top:.3rem"><span>Reste à payer</span><b class="{{ c.resteAPayer > 0 ? 'ec-montant' }}">{{ c.resteAPayer|number_format(0, ',', ' ') }} F</b></div>{% endif %}
-		{% if c.bonCommande %}<div class="ec-ligne" style="margin-top:.3rem"><span class="ec-petit">Bon de commande</span><span>{{ c.bonCommande }}</span></div>{% endif %}
-		{% if peutPayer and c|espace_en_validation > 0 %}<div class="ec-ligne" style="margin-top:.3rem"><span class="ec-petit">Payé par Orange Money, en validation</span><span>{{ (c|espace_en_validation)|number_format(0, ',', ' ') }} F</span></div>{% endif %}
-		{# Frais Orange Money payés en plus (fonds de soutien, retrait) : sur le paiement, hors commande. Pour qui paie seulement. #}
-		{% if peutPayer %}
-			{% for p in c|espace_paiements_om %}
-				<div class="ec-ligne" style="margin-top:.3rem;align-items:flex-start">
-					<span class="ec-petit">
-						Payé avec Orange Money le {{ p.date|date('d/m') }}{{ p.statut == 'en_attente' ? ' · en validation' }}<br>
-						<span class="ec-nowrap">{{ p.montant|number_format(0, ',', ' ') }} F</span> pour la commande{% if p.montantFondsSoutien > 0 %} + fonds de soutien <span class="ec-nowrap">{{ p.montantFondsSoutien|number_format(0, ',', ' ') }} F</span>{% endif %}{% if p.montantFraisRetrait > 0 %} + frais de retrait <span class="ec-nowrap">{{ p.montantFraisRetrait|number_format(0, ',', ' ') }} F</span>{% endif %}
-					</span>
-					<span class="ec-nowrap">{{ p.montantTotalEncaisse|number_format(0, ',', ' ') }} F</span>
+			{# Commande livrée : son avis (docs/sondages.md). #}
+			{% set avis = avis_commande(c) %}
+			{% if avis.reponse %}
+				<div class="ec-carte av-merci cs-fin">
+					<span class="av-merci-icone" aria-hidden="true">★</span>
+					<div><b>Merci pour votre avis</b><div class="ec-petit">Donné le {{ avis.reponse.creeLe|date('d/m/Y') }}{{ avis.reponse.auteur ? ' par ' ~ avis.reponse.auteur }}{% if avis.reponse.noteGlobale %} · {% for i in 1..5 %}<span style="color:{{ i <= avis.reponse.noteGlobale ? '#F5A800' : '#D8DEE8' }}">★</span>{% endfor %}{% endif %}</div></div>
 				</div>
-			{% endfor %}
-		{% endif %}
-		{% if c|espace_a_payer > 0 and not carte.aConfirmer and peutPayer %}<div class="ec-boutons"><a class="ec-bouton orange" href="{{ path('app_espace_payer', {id: c.publicId}) }}">Payer avec Orange Money</a></div>{% endif %}
-	</div>
-	{% endif %}
+			{% elseif avis.possible and not lecture %}
+				<a class="ec-carte av-merci cs-fin" href="{{ path('app_espace_avis_commande', {id: c.publicId}) }}" style="color:inherit">
+					<span class="av-merci-icone" aria-hidden="true">★</span>
+					<div style="flex:1"><b>Votre avis sur cette commande ?</b><div class="ec-petit">Une minute : notez le travail, le délai et l'accueil.</div></div>
+					<span class="ec-bouton-petit">Noter</span>
+				</a>
+			{% endif %}
 
-	{% if whatsapp or (c.isStatut and not lecture) %}
-		<div class="ec-boutons" id="recommander">
-			{% if whatsapp %}<a class="ec-bouton clair" href="{{ whatsapp }}" target="_blank" rel="noopener">Contacter l'atelier sur WhatsApp</a>{% endif %}
-			{% if c.isStatut and not lecture %}<a class="ec-lien" href="{{ path('app_espace_reclamation_nouvelle', {commande: c.publicId}) }}" style="display:block;text-align:center;margin-top:.7rem">Un problème avec cette commande ?</a>{% endif %}
+			{% if whatsapp or (c.isStatut and not lecture) %}
+				<div class="cs-fin" id="recommander">
+					{% if whatsapp %}<a class="ec-bouton clair" href="{{ whatsapp }}" target="_blank" rel="noopener">Contacter l'atelier sur WhatsApp</a>{% endif %}
+					{% if c.isStatut and not lecture %}<a class="ec-lien" href="{{ path('app_espace_reclamation_nouvelle', {commande: c.publicId}) }}">Un problème avec cette commande ?</a>{% endif %}
+				</div>
+			{% endif %}
 		</div>
-	{% endif %}
+	</div>
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('js/espace-bat.js') }}" defer></script>
+	<script>
+	(function () {
+		// Commande prête : quelques confettis autour de l'étape, une seule fois par appareil, jamais si l'on réduit les animations.
+		var frise = document.querySelector('.cs-frise[data-fete]');
+		var etape = frise && frise.querySelector('[data-etape-prete]');
+		if (!etape || !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		var cle = 'ec-fete-' + frise.getAttribute('data-fete');
+		try { if (localStorage.getItem(cle)) return; localStorage.setItem(cle, '1'); } catch (e) { return; }
+		var zone = document.createElement('span');
+		zone.className = 'ec-fete';
+		zone.setAttribute('aria-hidden', 'true');
+		var couleurs = ['#0F4590', '#DE1028', '#F5B800', '#E6007E', '#1F9D55'];
+		for (var i = 0; i < 18; i++) {
+			var b = document.createElement('i');
+			var angle = (i / 18) * Math.PI * 2 + Math.random() * 0.3;
+			var r = 38 + Math.random() * 34;
+			b.style.cssText = '--x:' + Math.round(Math.cos(angle) * r) + 'px;--y:' + Math.round(Math.sin(angle) * r - 12) + 'px;--r:' + Math.round(Math.random() * 360) + 'deg;background:' + couleurs[i % couleurs.length] + ';animation-delay:' + (0.9 + Math.random() * 0.15).toFixed(2) + 's';
+			zone.appendChild(b);
+		}
+		etape.classList.add('ec-frise-fete');
+		etape.appendChild(zone);
+		setTimeout(function () { zone.remove(); }, 2600);
+	}());
+	</script>
 {% endblock %}

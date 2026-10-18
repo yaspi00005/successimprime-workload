@@ -12,7 +12,7 @@
 	<div class="ec-carte ec-messages">
 		{% for m in fil %}
 			<div class="ec-bulle {{ m.estDeLAtelier ? 'atelier' : 'client' }}"{{ loop.last ? ' id="dernier"' }}>
-				<span class="ec-bulle-tete">{{ m.estDeLAtelier ? 'Succès Imprim' : (m.auteur ?? 'Vous') }} · {{ m.creeLe|date('d/m à H:i') }}{% if m.commande %} · <a href="{{ path('app_espace_commande', {id: m.commande.publicId}) }}">commande {{ m.commande.numero }}</a>{% endif %}</span>
+				<span class="ec-bulle-tete">{{ m.estDeLAtelier ? (m.auteur ?? 'Succès Imprim') : (m.auteur ?? 'Vous') }} · {{ m.creeLe|date('d/m à H:i') }}{% if m.commande %} · <a href="{{ path('app_espace_commande', {id: m.commande.publicId}) }}">commande {{ m.commande.numero }}</a>{% endif %}</span>
 				<p>{{ m.texte|nl2br }}</p>
 			</div>
 		{% else %}

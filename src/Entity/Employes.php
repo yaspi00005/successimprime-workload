@@ -343,4 +343,27 @@ public function setUser(?User $user): static
     {
         return trim(($this->prenom ?? '').' '.($this->nom ?? ''));
     }
+
+    /**
+     * Ce que le client voit de l'employé dans son espace (suivi d'une
+     * commande, BAT, messages) : le prénom et le métier, « Seydou
+     * (graphiste PAO) ». Jamais le nom de famille ni le téléphone.
+     */
+    public function getNomPublic(): ?string
+    {
+        return self::nomPublic($this->prenom, $this->fonction);
+    }
+
+    public static function nomPublic(?string $prenom, ?string $fonction): ?string
+    {
+        $prenom = trim((string) preg_replace('/\s+/u', ' ', (string) $prenom));
+        if ('' === $prenom) {
+            return null;
+        }
+        $fonction = trim((string) preg_replace('/\s+/u', ' ', (string) $fonction));
+        // « Graphiste PAO » devient « graphiste PAO » : seule la première lettre change.
+        $fonction = '' !== $fonction ? mb_strtolower(mb_substr($fonction, 0, 1)).mb_substr($fonction, 1) : '';
+
+        return mb_substr('' !== $fonction ? \sprintf('%s (%s)', $prenom, $fonction) : $prenom, 0, 80);
+    }
 }

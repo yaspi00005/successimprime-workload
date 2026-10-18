@@ -34,6 +34,21 @@ final class ContactSiteTest extends TestCase
         self::assertNull(ContactSite::repere('http://www.google.com/maps/@12.6517571,-7.9299376,17z'), 'pas de lien d\'itinéraire en http');
     }
 
+    public function testItineraireToujoursDisponible(): void
+    {
+        // Position réglée : l'itinéraire de Google Maps jusqu'à la boutique, comme la page Contact.
+        $defaut = (string) CatalogueParametres::champ('site_contact', 'lien_plan')['defaut'];
+        self::assertSame('https://www.google.com/maps/dir/?api=1&destination=12.6517571,-7.9299376', ContactSite::itineraireDe($defaut, 'Succès Imprim', 'Bamako, Sotuba ACI'));
+        self::assertSame('https://maps.app.goo.gl/S53cwaekd2L3FHP86', ContactSite::itineraireDe('https://maps.app.goo.gl/S53cwaekd2L3FHP86', 'Succès Imprim', null));
+
+        // Rien de réglé (ou un réglage refusé) : une recherche sur le nom et l'adresse.
+        self::assertSame('https://www.google.com/maps/search/?api=1&query=Succ%C3%A8s%20Imprim%20Bamako%2C%20Sotuba%20ACI', ContactSite::itineraireDe('', 'Succès Imprim', "Bamako,  Sotuba\nACI"));
+        self::assertSame(ContactSite::recherche('Succès Imprim', null), ContactSite::itineraireDe('javascript:alert(1)', 'Succès Imprim', null));
+        self::assertSame('https://www.google.com/maps/search/?api=1&query=Succ%C3%A8s%20Imprim%20Bamako%2C%20Mali', ContactSite::recherche('Succès Imprim', null));
+        self::assertSame('https://www.google.com/maps/search/?api=1&query=Succ%C3%A8s%20Imprim%20Sotuba%20ACI%2C%20Bamako%2C%20Mali', ContactSite::recherche('Succès Imprim', 'Sotuba ACI'), 'Bamako ajouté');
+        self::assertStringNotContainsString('<', ContactSite::recherche('Succès Imprim', '"><script>'), 'adresse encodée');
+    }
+
     public function testTexteDesHoraires(): void
     {
         self::assertSame("Lun – sam : 8\u{a0}h – 18\u{a0}h", ContactSite::texteHoraires('lun-sam', '08:00', '18:00'));

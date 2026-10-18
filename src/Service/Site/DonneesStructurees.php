@@ -38,12 +38,14 @@ final class DonneesStructurees
      * @param array{url: string, largeur?: int, hauteur?: int} $logo
      * @param array{jours?: mixed, ouverture?: mixed, fermeture?: mixed} $horaires
      * @param list<string> $memeQue pages des réseaux sociaux et fiche Google
+     * @param string|list<string>|null $image photo de la boutique (plusieurs proportions possibles), sinon le logo
      *
      * @return array<string, mixed>
      */
-    public static function entreprise(string $base, array $entreprise, array $logo, array $horaires = [], ?string $lienPlan = null, array $memeQue = [], ?string $image = null): array
+    public static function entreprise(string $base, array $entreprise, array $logo, array $horaires = [], ?string $lienPlan = null, array $memeQue = [], string|array|null $image = null): array
     {
         $telephone = self::texte($entreprise['telephone'] ?? null);
+        $images = array_values(array_filter((array) $image));
         $logoObjet = self::sansVide(['@type' => 'ImageObject', '@id' => self::id($base, 'logo'), 'url' => $logo['url'], 'width' => $logo['largeur'] ?? null, 'height' => $logo['hauteur'] ?? null]);
 
         $organisation = self::sansVide([
@@ -70,7 +72,11 @@ final class DonneesStructurees
             '@id' => self::id($base, 'imprimerie'),
             'name' => $entreprise['nom'],
             'url' => $base.'/',
-            'image' => $image ?? $logo['url'],
+            'image' => match (\count($images)) {
+                0 => $logo['url'],
+                1 => $images[0],
+                default => $images,
+            },
             'logo' => ['@id' => self::id($base, 'logo')],
             'telephone' => $telephone,
             'email' => self::texte($entreprise['email'] ?? null),

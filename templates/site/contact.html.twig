@@ -1,9 +1,11 @@
 {#
 	Contact (maquette 11) : message court (nom, téléphone, objet, message),
-	WhatsApp, adresse, horaires (tuile Horaires) et plan seulement quand le
-	lien du plan est réglé (tuile « Site : page Contact »). Avec la position
-	de la boutique, une vraie carte remplace le plan dessiné quand le bloc
-	arrive à l'écran (docs/site-vitrine.md, « Carte de la boutique »).
+	WhatsApp, l'allée en photo, adresse, horaires (tuile Horaires) et plan
+	seulement quand le lien du plan est réglé (tuile « Site : page
+	Contact »), puis la galerie « Notre local » (vraies photos du local).
+	Avec la position de la boutique, une vraie carte remplace le plan
+	dessiné quand le bloc arrive à l'écran (docs/site-vitrine.md, « Carte
+	de la boutique »).
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -12,12 +14,13 @@
 {% set wa = site_whatsapp() %}
 {% set fiche_google = site_fiche_google() %}
 {% set donnees_entreprise = true %}
+{% set photo_allee = site_photo(constant('App\\Service\\Site\\PhotosSite::ALLEE')) %}
 
 {% block title %}Contact et adresse de l'imprimerie à Bamako · Succès Imprim{% endblock %}
 {% block description %}Adresse, téléphone, WhatsApp et horaires de Succès Imprim à Bamako. Écrivez-nous pour un devis, une commande en cours ou un conseil sur un fichier.{% endblock %}
 
 {% block entete %}
-	{{ site_styles('css/site-formulaires.css') }}
+	{{ site_styles('css/site-formulaires.css', 'css/site-local.css') }}
 	{% if positionPlan %}{{ site_styles('css/site-carte.css') }}{% endif %}
 {% endblock %}
 
@@ -66,6 +69,13 @@
 			</form>
 
 			<div class="si-contact-infos">
+				{% if photo_allee %}
+					{# L'allée en grand au-dessus de la carte (photos du local du 17/10/2026). #}
+					<figure class="si-local-entete">
+						{{ include('site/_photo.html.twig', {photo: photo_allee, sizes: '(max-width: 960px) calc(100vw - 32px), (max-width: 1180px) calc(52vw - 30px), 590px'}) }}
+						<figcaption>L'allée qui mène à notre entrée, sous le balcon rond.</figcaption>
+					</figure>
+				{% endif %}
 				{% if lienPlan %}
 					{# Plan dessiné : seul sans la position, sans JavaScript ou si la carte ne vient pas ; sinon sous la carte. #}
 					<div class="si-carte-boutique"
@@ -138,6 +148,9 @@
 			</div>
 		</div>
 	</section>
+
+	{# Galerie « Notre local » : façade, allée, jardin et entrée (bloc autonome). #}
+	{{ include('site/_notre_local.html.twig') }}
 {% endblock %}
 
 {% block scripts %}

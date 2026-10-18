@@ -61,6 +61,17 @@ final class DonneesStructureesTest extends TestCase
         self::assertSame(self::BASE.'/logo.png', $commerce['image']);
     }
 
+    public function testImagesDeLaBoutiqueEnPlusieursProportions(): void
+    {
+        $commerce = static fn (string|array|null $image): mixed => DonneesStructurees::entreprise(self::BASE, ['nom' => 'Succès Imprim'], ['url' => self::BASE.'/logo.png'], image: $image)['@graph'][1]['image'];
+
+        $facade = [self::BASE.'/facade-16x9.webp', self::BASE.'/facade-4x3.webp', self::BASE.'/facade-1x1.webp'];
+        self::assertSame($facade, $commerce($facade), 'Google choisit la proportion qui lui va');
+        self::assertSame(self::BASE.'/facade-16x9.webp', $commerce([self::BASE.'/facade-16x9.webp']), 'une seule : une adresse simple');
+        self::assertSame(self::BASE.'/logo.png', $commerce([]), 'aucune : le logo');
+        self::assertSame(self::BASE.'/logo.png', $commerce(['']), 'adresse vide ignorée');
+    }
+
     public function testFilAriane(): void
     {
         $fil = DonneesStructurees::filAriane([

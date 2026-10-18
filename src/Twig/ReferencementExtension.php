@@ -36,13 +36,24 @@ final class ReferencementExtension extends AbstractExtension
     public const SUFFIXES_TITRE = [' · Succès Imprim, imprimerie à Bamako', ' · Succès Imprim'];
 
     /**
-     * Image de partage par défaut (réseaux sociaux, WhatsApp) et image de la
-     * fiche de l'imprimerie pour Google : la façade de la boutique, 1200 × 630
-     * (photo livrée avec le site, docs/site-vitrine.md). Si le fichier
-     * manque : le logo sur fond blanc.
+     * Image de partage par défaut (réseaux sociaux, WhatsApp) : le visuel de
+     * la façade et de l'enseigne, 1200 × 630 (photo livrée avec le site,
+     * docs/site-vitrine.md). Si le fichier manque : le logo sur fond blanc.
      */
     public const IMAGE_PARTAGE = ['chemin' => 'images/site/partage-enseigne-succes-imprim.jpg', 'largeur' => 1200, 'hauteur' => 630];
     public const IMAGE_PARTAGE_LOGO = ['chemin' => 'images/site/partage-succes-imprim.jpg', 'largeur' => 1200, 'hauteur' => 630];
+
+    /**
+     * Image de la fiche de l'imprimerie pour Google (LocalBusiness) : la
+     * vraie façade (photos du local du 17/10/2026), en 16:9, 4:3 et 1:1
+     * comme Google le recommande. Les fichiers absents sont ignorés ; sans
+     * aucun, l'image de partage.
+     */
+    public const IMAGES_FICHE = [
+        'images/site/photos/facade-local-succes-imprim-bamako-1200.webp',
+        'images/site/fiche/facade-local-succes-imprim-bamako-4x3.webp',
+        'images/site/fiche/facade-local-succes-imprim-bamako-1x1.webp',
+    ];
 
     /** Logo pour Google (au moins 112 px de côté). */
     public const LOGO = ['chemin' => 'images/logo-succes-imprim.png', 'largeur' => 640, 'hauteur' => 357];
@@ -186,8 +197,21 @@ final class ReferencementExtension extends AbstractExtension
             ],
             self::lienPlan((string) $this->parametres->valeur('site_contact', 'lien_plan')),
             $memeQue,
-            $this->adresse->url($this->imagePartage()['chemin']),
+            array_map($this->adresse->url(...), $this->imagesFiche()),
         ));
+    }
+
+    /**
+     * Images de la fiche de l'imprimerie pour Google : la vraie façade
+     * (IMAGES_FICHE), sinon l'image de partage.
+     *
+     * @return list<string> chemins dans public/
+     */
+    public function imagesFiche(): array
+    {
+        $images = array_values(array_filter(self::IMAGES_FICHE, fn (string $chemin): bool => is_file($this->dossierPublic.'/'.$chemin)));
+
+        return [] === $images ? [$this->imagePartage()['chemin']] : $images;
     }
 
     /**

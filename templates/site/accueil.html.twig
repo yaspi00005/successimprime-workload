@@ -1,7 +1,8 @@
 {#
 	Accueil du site vitrine (maquette 01) : accroche avec la photo de la
-	boutique, univers d'impression (catégories publiées, chacune avec sa
-	photo), engagements, bande « Un projet à imprimer ? ». Les photos sont
+	boutique, « Venez nous voir » (vraie façade, adresse, horaires),
+	univers d'impression (catégories publiées, chacune avec sa photo),
+	engagements, bande « Un projet à imprimer ? ». Les photos sont
 	livrées avec le site (PhotosSite, docs/site-vitrine.md). Les pages pas
 	encore construites n'ont pas de lien (site_lien renvoie null).
 #}
@@ -42,6 +43,9 @@
 			{% endif %}
 		</div>
 	</section>
+
+	{# Vraie façade, adresse, horaires, Itinéraire et WhatsApp (bloc autonome). #}
+	{{ include('site/_venez_nous_voir.html.twig') }}
 
 	{% if univers %}
 		<section class="si-univers" aria-label="Nos univers d'impression">

@@ -1,0 +1,67 @@
+/*
+ * Vraies photos du local (17/10/2026, docs/site-vitrine.md) : bandeau
+ * « Venez nous voir » de l'accueil, grande photo de l'allée et galerie
+ * « Notre local » de la page Contact, avec sa visionneuse (<dialog>).
+ * Écrite dans la page par site_styles() ; aucune animation si la
+ * personne a demandé de les réduire.
+ */
+
+/* Accueil : « Venez nous voir » */
+.si-visite { padding: 36px 0 8px; }
+.si-visite-carte { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 28px; align-items: center; padding: 18px; border: 1px solid var(--bordure); border-radius: 18px; background: var(--fond-doux); }
+.si-visite-photo { position: relative; margin: 0; line-height: 0; }
+.si-visite-photo img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; background: #DCE3EE; }
+.si-visite-sur { display: block; font-size: 13px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--rouge); margin-bottom: 4px; }
+.si-visite h2 { font-size: clamp(24px, 3vw, 32px); margin: 0 0 14px; }
+.si-visite-ligne { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 10px; color: var(--texte); }
+.si-visite-ligne svg { flex: 0 0 auto; width: 22px; height: 22px; margin-top: 1px; fill: var(--bleu); }
+.si-visite-ligne strong { display: block; color: var(--noir); }
+.si-visite-etat { display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 14px; font-weight: 700; color: var(--rouge-fonce); }
+.si-visite-etat::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--rouge); }
+.si-visite-etat.si-visite-ouvert { color: #126B34; }
+.si-visite-etat.si-visite-ouvert::before { background: #1FA855; }
+.si-visite-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+.si-visite-actions .si-bouton svg { width: 20px; height: 20px; fill: currentColor; }
+.si-site a.si-visite-wa, .si-visite-wa { background: #15843F; color: #fff; }
+.si-visite-wa:hover { background: #106A32; }
+
+/* Contact : l'allée en grand au-dessus de la carte */
+.si-local-entete { margin: 0; }
+.si-local-entete img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--rayon); background: #DCE3EE; }
+.si-local-entete figcaption { margin-top: 6px; font-size: 13px; color: var(--texte-doux); }
+
+/* Contact : galerie « Notre local » */
+.si-local { padding: 8px 0 44px; }
+.si-local h2 { font-size: clamp(22px, 2.6vw, 28px); margin: 0 0 4px; }
+.si-local-intro { margin: 0 0 16px; color: var(--texte-doux); }
+.si-local-galerie { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; list-style: none; margin: 0; padding: 0; }
+.si-local-vignette { display: block; color: var(--texte); text-decoration: none; }
+.si-site a.si-local-vignette { color: var(--texte); }
+.si-local-vignette span.si-local-cadre { display: block; overflow: hidden; border-radius: var(--rayon); line-height: 0; background: #DCE3EE; }
+.si-local-vignette img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.si-local-legende { display: block; margin-top: 6px; font-size: 14px; font-weight: 600; }
+.si-local-vignette:hover .si-local-legende { color: var(--bleu); }
+
+/* Visionneuse : <dialog> modale ; sans JavaScript, le lien #local-… l'affiche (:target). */
+.si-local-visionneuse { width: min(1000px, calc(100% - 24px)); max-height: calc(100% - 24px); padding: 0; border: 0; border-radius: 14px; background: var(--noir); color: #fff; box-shadow: 0 20px 60px rgba(0, 0, 0, .35); }
+.si-local-visionneuse::backdrop { background: rgba(10, 20, 40, .78); }
+.si-local-visionneuse:target { display: block; position: fixed; inset: 12px; margin: auto; z-index: 60; overflow: auto; }
+.si-local-visionneuse img { display: block; width: 100%; height: auto; max-height: calc(100vh - 110px); object-fit: contain; }
+.si-local-visionneuse p { margin: 0; padding: 10px 16px 14px; font-size: 15px; }
+.si-site .si-local-fermer { position: absolute; top: 10px; right: 10px; z-index: 2; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(255, 255, 255, .92); color: var(--noir); font-size: 28px; line-height: 1; text-decoration: none; box-shadow: var(--ombre); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .si-local-vignette img { transition: transform .3s ease; }
+  .si-local-vignette:hover img { transform: scale(1.03); }
+}
+
+@media (max-width: 860px) {
+  .si-visite { padding-top: 24px; }
+  .si-visite-carte { grid-template-columns: 1fr; gap: 16px; padding: 12px 12px 18px; }
+  .si-visite-texte { padding: 0 4px; }
+  .si-visite-actions .si-bouton { flex: 1 1 140px; }
+}
+@media (max-width: 520px) {
+  .si-local-galerie { gap: 8px; }
+  .si-local-legende { font-size: 12px; line-height: 1.3; }
+}

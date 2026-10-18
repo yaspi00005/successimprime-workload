@@ -73,7 +73,7 @@ final class CatalogueSite
      * Univers de la page Produits : catégories publiées avec leurs produits
      * publiés et actifs, chacun avec son prix de départ.
      *
-     * @return list<array{nom: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}>
+     * @return list<array{nom: string, cle: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}>
      */
     public function univers(): array
     {
@@ -96,7 +96,7 @@ final class CatalogueSite
      * @param list<Produits>             $produits
      * @param list<ProduitConfiguration> $configurations
      *
-     * @return list<array{nom: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}>
+     * @return list<array{nom: string, cle: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}>
      */
     public static function regrouper(array $produits, array $configurations): array
     {
@@ -116,7 +116,7 @@ final class CatalogueSite
             }
             $vus[mb_strtolower($nom)] = true;
             if (!isset($univers[$nomCategorie])) {
-                $univers[$nomCategorie] = ['nom' => $nomCategorie, 'ids' => [], 'famille' => SiteController::famille($nomCategorie, \count($univers)), 'produits' => []];
+                $univers[$nomCategorie] = ['nom' => $nomCategorie, 'cle' => self::cle($nomCategorie), 'ids' => [], 'famille' => SiteController::famille($nomCategorie, \count($univers)), 'produits' => []];
             }
             if (!\in_array($categorie->getId(), $univers[$nomCategorie]['ids'], true)) {
                 $univers[$nomCategorie]['ids'][] = $categorie->getId();
@@ -145,7 +145,7 @@ final class CatalogueSite
      *
      * @param list<ProduitConfiguration> $configurations
      *
-     * @return list<array{nom: string, ids: list<int>, options: list<array{id: int, nom: string}>}>
+     * @return list<array{nom: string, cle: string, ids: list<int>, options: list<array{id: int, nom: string}>}>
      */
     public static function groupes(array $configurations): array
     {
@@ -153,7 +153,7 @@ final class CatalogueSite
         foreach ($configurations as $c) {
             $categorie = $c->getProduit()?->getCategorieProduit();
             $nom = null === $categorie ? 'Autres produits' : self::nomAffiche((string) $categorie->getNom());
-            $groupes[$nom] ??= ['nom' => $nom, 'ids' => [], 'options' => []];
+            $groupes[$nom] ??= ['nom' => $nom, 'cle' => self::cle($nom), 'ids' => [], 'options' => []];
             if (null !== $categorie && !\in_array($categorie->getId(), $groupes[$nom]['ids'], true)) {
                 $groupes[$nom]['ids'][] = $categorie->getId();
             }
@@ -163,12 +163,43 @@ final class CatalogueSite
         return array_values($groupes);
     }
 
-    /** Rang de l'univers choisi par ?categorie= (un des identifiants regroupés), sinon null (tous). */
-    public static function universChoisi(array $univers, ?int $categorie): ?int
+    /**
+     * Clé d'adresse d'un univers (?categorie=grand-format) : son nom
+     * affiché en minuscules sans accents. Plusieurs catégories du même nom
+     * (démo) n'en font qu'une, comme sur la page.
+     */
+    public static function cle(string $nom): string
+    {
+        return MarkdownSite::ancre(self::nomAffiche($nom));
+    }
+
+    /**
+     * Rang de l'univers choisi par ?categorie= (sa clé), sinon null (tous).
+     *
+     * @param list<array{cle: string}> $univers
+     */
+    public static function universChoisi(array $univers, ?string $cle): ?int
     {
         foreach ($univers as $rang => $u) {
-            if (null !== $categorie && \in_array($categorie, $u['ids'], true)) {
+            if (null !== $cle && '' !== $cle && $cle === $u['cle']) {
                 return $rang;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Clé de l'univers (ou du groupe du calculateur) qui contient cette
+     * catégorie : ancienne adresse ?categorie=<identifiant>, redirigée.
+     *
+     * @param list<array{cle: string, ids: list<int>}> $univers
+     */
+    public static function cleDeCategorie(array $univers, int $categorie): ?string
+    {
+        foreach ($univers as $u) {
+            if (\in_array($categorie, $u['ids'], true)) {
+                return $u['cle'];
             }
         }
 
@@ -240,7 +271,7 @@ final class CatalogueSite
      *
      * @param list<array{nom: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}> $univers
      *
-     * @return list<array{nom: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}>
+     * @return list<array{nom: string, cle: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}>
      */
     public static function rechercher(array $univers, ?string $recherche): array
     {

@@ -13,6 +13,7 @@ use App\Repository\EntrepriseRepository;
 use App\Security\AccesEnLigne;
 use App\Service\NotificationService;
 use App\Service\Site\Calculateur;
+use App\Service\Site\JetonsSite;
 use App\Twig\SiteExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -71,13 +72,16 @@ final class CalculateurTest extends TestCase
 
     public function testLectureDeLaSaisie(): void
     {
-        $saisie = Calculateur::lire(['produit' => '7', 'categorie' => 'x', 'largeur' => '300', 'quantite' => '', 'finitions' => ['3', 'x', '3', '-4', '5']]);
+        $saisie = Calculateur::lire(['produit' => '7', 'categorie' => 'X', 'largeur' => '300', 'quantite' => '', 'finitions' => ['3', 'x', '3', '-4', '5']]);
 
         self::assertSame(['produit' => 7, 'categorie' => null, 'precedent' => null, 'largeur' => 300.0, 'hauteur' => null, 'quantite' => 0, 'finitions' => [3, 5]], $saisie);
         // Sans quantité : arrivée sur la page.
         self::assertNull(Calculateur::lire([])['quantite']);
         self::assertSame([], Calculateur::lire(['finitions' => 'abc'])['finitions']);
         self::assertCount(Calculateur::FINITIONS_MAX, Calculateur::lire(['finitions' => range(1, 100)])['finitions']);
+        // La catégorie est la clé d'un univers, jamais un identifiant.
+        self::assertSame('grand-format', Calculateur::lire(['categorie' => 'grand-format'])['categorie']);
+        self::assertNull(Calculateur::lire(['categorie' => ['grand-format']])['categorie']);
     }
 
     public function testConfigurationDemandeeSinonCelleDeLaCategorie(): void
@@ -85,11 +89,12 @@ final class CalculateurTest extends TestCase
         [$bache] = $this->bache();
         $cartes = $this->cartes();
         $configs = [$bache, $cartes];
-        $groupes = [['nom' => 'Grand format', 'ids' => [1, 9], 'options' => [['id' => 10]]], ['nom' => 'Petit format', 'ids' => [2], 'options' => [['id' => 20]]]];
+        $groupes = [['nom' => 'Grand format', 'cle' => 'grand-format', 'ids' => [1, 9], 'options' => [['id' => 10]]], ['nom' => 'Petit format', 'cle' => 'petit-format', 'ids' => [2], 'options' => [['id' => 20]]]];
 
-        self::assertSame($cartes, Calculateur::configuration($configs, $groupes, ['produit' => 20, 'categorie' => 1]));
-        self::assertSame($cartes, Calculateur::configuration($configs, $groupes, ['produit' => 999, 'categorie' => 2]));
-        self::assertSame($bache, Calculateur::configuration($configs, $groupes, ['produit' => null, 'categorie' => 9]));
+        self::assertSame($cartes, Calculateur::configuration($configs, $groupes, ['produit' => 20, 'categorie' => 'grand-format']));
+        self::assertSame($cartes, Calculateur::configuration($configs, $groupes, ['produit' => 999, 'categorie' => 'petit-format']));
+        self::assertSame($bache, Calculateur::configuration($configs, $groupes, ['produit' => null, 'categorie' => 'grand-format']));
+        self::assertSame($bache, Calculateur::configuration($configs, $groupes, ['produit' => null, 'categorie' => 'inconnu']));
         self::assertSame($bache, Calculateur::configuration($configs, $groupes, ['produit' => null, 'categorie' => null]));
         self::assertNull(Calculateur::configuration([], [], ['produit' => 1, 'categorie' => null]));
     }
@@ -161,8 +166,13 @@ final class CalculateurTest extends TestCase
         self::assertStringNotContainsStringIgnoringCase('cout', $json);
         self::assertStringNotContainsStringIgnoringCase('marge', $json);
 
-        self::assertSame('/espace/commandes/nouvelle?produit=10&largeur=300&hauteur=100&quantite=2&finitions%5B0%5D=1', $resultat['liens']['commander']);
-        self::assertStringStartsWith('/demander-un-devis?produit=10&largeur=300', (string) $resultat['liens']['devis']);
+        $j = new JetonsSite('secret-de-test');
+        self::assertSame('/espace/commandes/nouvelle?produit='.$j->encoder(JetonsSite::CONFIGURATION, 10).'&largeur=300&hauteur=100&quantite=2&finitions%5B0%5D='.$j->encoder(JetonsSite::FINITION, 1), $resultat['liens']['commander']);
+        // Le lien du site porte les jetons du produit et des finitions, jamais leurs identifiants.
+        $jetons = new JetonsSite('secret-de-test');
+        self::assertSame($jetons->encoder(JetonsSite::CONFIGURATION, 10), $resultat['produit']);
+        self::assertStringStartsWith('/demander-un-devis?produit='.$jetons->encoder(JetonsSite::CONFIGURATION, 10).'&largeur=300', (string) $resultat['liens']['devis']);
+        self::assertStringContainsString('finitions%5B0%5D='.$jetons->encoder(JetonsSite::FINITION, 1), (string) $resultat['liens']['devis']);
         self::assertStringContainsString(rawurlencode('Estimation du site'), (string) $resultat['liens']['whatsapp']);
     }
 
@@ -173,7 +183,7 @@ final class CalculateurTest extends TestCase
         self::assertSame(25000, $resultat['total']);
         self::assertSame('Quantité', $resultat['lignes'][0]['libelle']);
         self::assertNull($resultat['liens']['devis']);
-        self::assertSame('/espace/commandes/nouvelle?produit=20&quantite=500', $resultat['liens']['commander']);
+        self::assertSame('/espace/commandes/nouvelle?produit='.(new JetonsSite('secret-de-test'))->encoder(JetonsSite::CONFIGURATION, 20).'&quantite=500', $resultat['liens']['commander']);
     }
 
     public function testMachineNonPublieeCachee(): void
@@ -233,7 +243,7 @@ final class CalculateurTest extends TestCase
         $entreprises->method('parCode')->willReturn((new Entreprise())->setCode('mdg_success')->setTelephone('+223 70 38 69 12'));
         $entreprises->method('dansLOrdre')->willReturn([]);
 
-        return new Calculateur($urls, new SiteExtension($urls, $entreprises, $acces));
+        return new Calculateur($urls, new SiteExtension($urls, $entreprises, $acces, null, new JetonsSite('secret-de-test')));
     }
 
     /** @return array{ProduitConfiguration, ProduitConfigurationFinition, ProduitConfigurationFinition} */

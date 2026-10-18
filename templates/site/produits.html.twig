@@ -1,5 +1,5 @@
 {#
-	Nos produits (maquette 02) : filtre par univers (?categorie=, sans
+	Nos produits (maquette 02) : filtre par univers (?categorie=<clé>, sans
 	JavaScript), une carte par produit publié avec son prix de départ public
 	et un lien vers le calculateur, le produit déjà choisi, et sa photo
 	(PhotosProduits) ou son dessin. En bas, « Un autre support ? » avec la
@@ -49,7 +49,7 @@
 					<nav class="si-filtres" aria-label="Filtrer par univers">
 						<a href="{{ path('app_site_produits') }}" class="si-filtre{{ choisi is null and not recherche ? ' actif' }}"{% if choisi is null and not recherche %} aria-current="page"{% endif %}>Tous</a>
 						{% for u in univers %}
-							<a href="{{ path('app_site_produits', {categorie: u.ids|first}) }}" class="si-filtre{{ choisi is same as(loop.index0) ? ' actif' }}"{% if choisi is same as(loop.index0) %} aria-current="page"{% endif %}>{{ u.nom }}</a>
+							<a href="{{ path('app_site_produits', {categorie: u.cle}) }}" class="si-filtre{{ choisi is same as(loop.index0) ? ' actif' }}"{% if choisi is same as(loop.index0) %} aria-current="page"{% endif %}>{{ u.nom }}</a>
 						{% endfor %}
 					</nav>
 				{% endif %}

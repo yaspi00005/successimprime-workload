@@ -11,6 +11,7 @@ use App\Service\PiecesParMetreCarre;
 use App\Service\Site\ContactSite;
 use App\Service\Site\DemandesSite;
 use App\Service\Site\FormulaireDemande;
+use App\Service\Site\JetonsSite;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -27,6 +28,10 @@ use Symfony\Component\Routing\Attribute\Route;
  *
  * Contre les robots : jeton CSRF, champ piège, temps de saisie minimum,
  * limite par adresse IP et contrôle de chaque champ côté serveur.
+ *
+ * Le produit et les finitions passent par leur jeton (JetonsSite), dans
+ * l'adresse préremplie par le calculateur comme dans le formulaire ; une
+ * ancienne adresse ?produit=<identifiant> est redirigée (301).
  */
 final class SiteDemandeController extends AbstractController
 {
@@ -40,6 +45,7 @@ final class SiteDemandeController extends AbstractController
         #[Autowire('%kernel.secret%')] private readonly string $secret,
         #[Autowire(service: 'limiter.site_demande_ip')] private readonly RateLimiterFactoryInterface $limite,
         private readonly PiecesParMetreCarre $piecesM2,
+        private readonly JetonsSite $jetons,
     ) {
     }
 
@@ -64,17 +70,24 @@ final class SiteDemandeController extends AbstractController
     #[Route('/demander-un-devis', name: 'app_site_devis', methods: ['GET', 'POST'])]
     public function devis(Request $request): Response
     {
+        $requete = $request->query->all();
+        if ($request->isMethod('GET') && JetonsSite::contientIdentifiants($requete)) {
+            return $this->redirectToRoute('app_site_devis', $this->jetons->encoderParametres($requete), Response::HTTP_MOVED_PERMANENTLY);
+        }
         $produits = $this->catalogue->produits();
-        $prerempli = FormulaireDemande::preremplir($request->query->all(), $produits);
+        $prerempli = FormulaireDemande::preremplir($this->jetons->decoderParametres($requete), $produits);
         $saisie = ['nom' => '', 'telephone' => '', 'email' => '', 'message' => ''] + $prerempli;
         $traitement = $this->traiter(DemandeDevis::NATURE_DEVIS, $request, $produits, $saisie);
         if ($traitement instanceof Response) {
             return $traitement;
         }
 
+        // Ce que la page montre : jetons à la place des identifiants.
+        $traitement['saisie'] = $this->jetons->encoderParametres($traitement['saisie']);
+
         return $this->page('site/devis.html.twig', $traitement + [
-            'groupes' => self::groupes($produits),
-            'fiches' => self::fiches($produits),
+            'groupes' => array_map(fn (array $g): array => ['produits' => array_map(fn (array $p): array => ['id' => $this->jetons->encoder(JetonsSite::CONFIGURATION, $p['id'])] + $p, $g['produits'])] + $g, self::groupes($produits)),
+            'fiches' => $this->fichesPubliques(self::fiches($produits)),
             'calculateur' => $request->isMethod('GET') && '' !== $prerempli['produit'],
             'tailleMax' => DemandesSite::tailleMaxFichier(),
             'extensions' => FichiersClient::extensions(),
@@ -116,7 +129,12 @@ final class SiteDemandeController extends AbstractController
             return ['saisie' => $saisie, 'erreurs' => [], 'jeton' => FormulaireDemande::jetonDelai($maintenant, $this->secret)];
         }
 
-        $donnees = $request->request->all();
+        // Produit et finitions arrivent en jetons (les identifiants restent lus : un envoi n'est pas une adresse).
+        $donnees = $this->jetons->decoderParametres($request->request->all(), JetonsSite::PARAMETRES_PRODUIT, true);
+        if ('' !== trim((string) (\is_scalar($request->request->all()['produit'] ?? null) ? $request->request->all()['produit'] : '')) && !isset($donnees['produit'])) {
+            // Jeton refusé : « Choisissez un produit de la liste », pas « Autre projet ».
+            $donnees['produit'] = '0';
+        }
         $jeton = (string) $request->request->get('_t', '');
         // Le jeton reçu reste valable pour le renvoi (pas de nouvelle attente), sauf s'il est faux ou trop vieux.
         $jetonRenvoi = null === FormulaireDemande::verifierDelai($jeton, $maintenant + FormulaireDemande::DELAI_MIN_SECONDES, $this->secret)
@@ -254,6 +272,24 @@ final class SiteDemandeController extends AbstractController
         }
 
         return $fiches;
+    }
+
+    /**
+     * Fiches pour la page : rangées par jeton du produit, finitions par leur jeton.
+     *
+     * @param array<int, array<string, mixed>> $fiches self::fiches()
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function fichesPubliques(array $fiches): array
+    {
+        $publiques = [];
+        foreach ($fiches as $id => $f) {
+            $f['finitions'] = array_map(fn (array $fi): array => ['id' => $this->jetons->encoder(JetonsSite::FINITION, $fi['id'])] + $fi, $f['finitions']);
+            $publiques[$this->jetons->encoder(JetonsSite::CONFIGURATION, $id)] = $f;
+        }
+
+        return $publiques;
     }
 
     public static function sansDemo(string $nom): string

@@ -6,6 +6,7 @@ use App\Entity\CategorieProduit;
 use App\Repository\RealisationRepository;
 use App\Service\Atelier\CatalogueAtelier;
 use App\Service\Site\AvantApres;
+use App\Service\Site\CatalogueSite;
 use App\Service\Site\PhotosSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -55,6 +56,8 @@ final class SiteController extends AbstractController
             $univers[$nom] = [
                 'categorie' => $categorie,
                 'nom' => $nom,
+                // Clé d'adresse de l'univers (?categorie=grand-format), jamais l'identifiant.
+                'cle' => CatalogueSite::cle($nom),
                 'famille' => $famille,
                 'exemples' => trim((string) $categorie->getDescription()) ?: self::FAMILLES[$famille]['exemples'],
             ];

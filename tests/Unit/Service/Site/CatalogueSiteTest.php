@@ -87,14 +87,24 @@ final class CatalogueSiteTest extends TestCase
         self::assertSame('Autocollant (Vinyle adhésif) · Vinyle blanc', CatalogueSite::libelle($config));
     }
 
-    public function testUniversChoisiParUnDesIdentifiants(): void
+    public function testUniversChoisiParSaCle(): void
     {
-        $univers = [['ids' => [1, 9]], ['ids' => [2]]];
+        $univers = [['cle' => 'grand-format', 'ids' => [1, 9]], ['cle' => 'textile', 'ids' => [2]]];
 
-        self::assertSame(0, CatalogueSite::universChoisi($univers, 9));
-        self::assertSame(1, CatalogueSite::universChoisi($univers, 2));
-        self::assertNull(CatalogueSite::universChoisi($univers, 5));
+        self::assertSame(0, CatalogueSite::universChoisi($univers, 'grand-format'));
+        self::assertSame(1, CatalogueSite::universChoisi($univers, 'textile'));
+        self::assertNull(CatalogueSite::universChoisi($univers, 'vitrine'));
+        self::assertNull(CatalogueSite::universChoisi($univers, ''));
         self::assertNull(CatalogueSite::universChoisi($univers, null));
+        // Ancienne adresse ?categorie=9 : la clé de l'univers qui regroupe cette catégorie.
+        self::assertSame('grand-format', CatalogueSite::cleDeCategorie($univers, 9));
+        self::assertNull(CatalogueSite::cleDeCategorie($univers, 5));
+    }
+
+    public function testCleDUnivers(): void
+    {
+        self::assertSame('grand-format', CatalogueSite::cle('Grand format (démo)'));
+        self::assertSame('signaletique-vitrine', CatalogueSite::cle('Signalétique & vitrine'));
     }
 
     public function testGroupesDuCalculateur(): void
@@ -106,7 +116,7 @@ final class CatalogueSiteTest extends TestCase
             $this->config(12, $this->produit(2, 'Vinyle (démo)', $grandDemo), 6500, 'metre_carre'),
         ];
 
-        self::assertSame([['nom' => 'Grand format', 'ids' => [1, 9], 'options' => [['id' => 11, 'nom' => 'Bâche · Bâche 510 g'], ['id' => 12, 'nom' => 'Vinyle']]]], CatalogueSite::groupes($configs));
+        self::assertSame([['nom' => 'Grand format', 'cle' => 'grand-format', 'ids' => [1, 9], 'options' => [['id' => 11, 'nom' => 'Bâche · Bâche 510 g'], ['id' => 12, 'nom' => 'Vinyle']]]], CatalogueSite::groupes($configs));
     }
 
     /**

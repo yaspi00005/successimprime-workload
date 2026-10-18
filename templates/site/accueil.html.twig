@@ -51,7 +51,7 @@
 		<section class="si-univers" aria-label="Nos univers d'impression">
 			<div class="si-cadre si-univers-grille">
 				{% for u in univers %}
-					{% set lien = site_lien('app_site_calculateur', {categorie: u.categorie.id}) ?? site_lien('app_site_produits') %}
+					{% set lien = site_lien('app_site_calculateur', {categorie: u.cle}) ?? site_lien('app_site_produits') %}
 					<article class="si-univers-carte si-famille-{{ u.famille }}{{ u.photo ? ' si-univers-avec-photo' }}" data-revele>
 						{% if u.photo %}
 							{{ include('site/_photo.html.twig', {photo: u.photo, sizes: '(max-width: 520px) 104px, (max-width: 960px) calc(50vw - 25px), 274px', classe: 'si-univers-photo'}) }}

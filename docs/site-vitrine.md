@@ -172,14 +172,14 @@ Douze visuels envoyés par Yaya le 16/10/2026 (« images des produits sur le sit
 Code : `SiteProduitsController`, `App\Service\Site\CatalogueSite` et `App\Service\Site\Calculateur`, gabarits `site/produits.html.twig` et `site/calculateur.html.twig`, feuille `public/css/site-produits.css`.
 
 **Nos produits** (`app_site_produits`, /nos-produits)
-- Catégories publiées, avec leurs produits publiés et actifs. Une catégorie et sa copie de démonstration « (démo) » ne font qu'un filtre, comme sur l'accueil ; `?categorie=<id>` filtre sans JavaScript.
+- Catégories publiées, avec leurs produits publiés et actifs. Une catégorie et sa copie de démonstration « (démo) » ne font qu'un filtre, comme sur l'accueil ; `?categorie=<clé>` (ex. `?categorie=grand-format`, voir « Adresses des produits ») filtre sans JavaScript.
 - Prix de départ : la configuration la moins chère au prix normal, avec son unité (le m², l'unité...). Un produit sans configuration chiffrable affiche « Prix sur devis ».
 - Chaque carte montre le nom commercial du produit d'abord, sa désignation à côté en plus petit (docs/noms-commerciaux.md) ; sans nom commercial, la désignation seule.
 - Recherche « Chercher un produit » (`?q=`, 80 caractères, sans JavaScript) : les produits dont le nom commercial, la désignation ou l'univers contient le texte, sans tenir compte des accents, des majuscules ni du pluriel (« autocollants » trouve « Vinyle adhésif »). Le nombre de résultats s'affiche, avec un lien vers tous les produits.
 - Photo du produit d'après son nom commercial ou sa désignation (« Photos des produits » plus haut) ; sans photo, un dessin SVG choisi d'après le nom du produit (`CatalogueSite::ILLUSTRATIONS`), sinon d'après sa famille. En bas de page, l'encadré « Un autre support, une autre taille ? » porte la photo du fourgon habillé (« Photos du site »).
 
 **Calculateur** (`app_site_calculateur`, /calculateur)
-- Paramètres : `produit` (identifiant de la configuration, comme dans l'espace client), `categorie`, `largeur` et `hauteur` en cm, `quantite`, `finitions[]`.
+- Paramètres : `produit` (jeton de la configuration), `categorie` (clé de l'univers), `largeur` et `hauteur` en cm, `quantite`, `finitions[]` (jetons des finitions). Voir « Adresses des produits ».
 - Mêmes produits que la commande en ligne (`NouvelleCommande::produits`), même calcul (`NouvelleCommande::estimer(..., b2b: false)`).
 - Le formulaire part en GET et la page revient avec le prix : il marche sans JavaScript. Le script de la page demande le prix à /calculateur/estimation (`app_site_calculateur_estimation`, JSON) à chaque changement ; il ne calcule rien lui-même.
 - Bornes : côtés de 0,01 à 5 000 cm (au-delà, « demandez un devis »), quantité jusqu'à 100 000, 30 finitions au plus. Une taille ou une quantité illisible est refusée avec un message, sans lien « Commander ».
@@ -189,6 +189,30 @@ Code : `SiteProduitsController`, `App\Service\Site\CatalogueSite` et `App\Servic
 - Sur téléphone, le total reste en bas de l'écran pendant la saisie.
 
 Ces pages et le JSON n'ouvrent pas de session : `Cache-Control: public, max-age=300`.
+
+### Adresses des produits (demande du 18/10/2026)
+
+Aucune adresse publique du site ne montre un identifiant de la base (« faut crypter id (url) dans produit ») :
+
+| Lien | Avant | Maintenant |
+|---|---|---|
+| Filtre de Nos produits | /nos-produits?categorie=900003 | /nos-produits?categorie=textile |
+| Carte d'un univers (accueil) | /calculateur?categorie=900001 | /calculateur?categorie=grand-format |
+| « Calculer mon prix » | /calculateur?produit=900011 | /calculateur?produit=7qJnP1C3LvE |
+| Calculateur rempli | ?produit=900011&precedent=900011&finitions[]=900021 | ?produit=…&precedent=…&finitions[]=… (jetons) |
+| « Demander un devis » | /demander-un-devis?produit=900011&quantite=20 | /demander-un-devis?produit=7qJnP1C3LvE&quantite=20 |
+| « Commander » (vers l'espace client) | /espace/commandes/nouvelle?produit=900011 | /espace/commandes/nouvelle?produit=7qJnP1C3LvE |
+
+(Les jetons ci-dessus sont des exemples : ils dépendent de `APP_SECRET`.)
+
+- **Univers** : sa clé est son nom affiché, en minuscules, sans accents (`CatalogueSite::cle`). Lisible et bon pour le référencement.
+- **Produit (configuration) et finitions** : un jeton de 11 caractères (`App\Service\Site\JetonsSite`). Il est calculé, sans colonne en base : 4 octets de sceau (HMAC de l'identifiant) et l'identifiant masqué, avec une clé tirée de `APP_SECRET`. Toujours le même jeton pour le même produit ; impossible d'en deviner un autre ; un jeton modifié ou inventé est refusé (produit inconnu : 422 pour le JSON, « Choisissez un produit de la liste » pour le devis, premier produit pour le calculateur). Les jetons d'un produit n'ouvrent pas une finition, et inversement.
+- **Dans les gabarits** : `site_lien()` met tout seul en jetons `produit`, `precedent` et `finitions` des pages du site (`JetonsSite::PARAMETRES_PRODUIT`) ; `site_jeton('configuration', id)` ou `site_jeton('finition', id)` pour la valeur d'un champ. Les listes du calculateur et du devis, les cases des finitions et les fiches lues par leurs scripts portent des jetons. Le JSON de l'estimation donne `produit` en jeton.
+- **À l'entrée** : `SiteProduitsController` et `SiteDemandeController` décodent les jetons (`JetonsSite::decoderParametres`) avant la lecture habituelle. Le formulaire de devis envoyé (POST) accepte encore un identifiant en chiffres ; l'espace client (/espace/commandes/nouvelle) accepte le jeton du bouton « Commander » et ses propres liens en identifiants, inchangés.
+- **Anciennes adresses** : un lien en chiffres (`?produit=900011`, `?categorie=900003`, `finitions[]=900021`) est redirigé en **301** vers la même adresse avec jetons et clé : les liens déjà partagés et les moteurs suivent. Le JSON de l'estimation, lui, n'accepte que les jetons.
+- **Référencement** : l'adresse canonique reste le chemin sans paramètres (/nos-produits, /calculateur), le plan du site ne liste que ces chemins et les données structurées (catalogue) ne portent aucune adresse de produit : rien à changer de ce côté.
+- **Attention** : changer `APP_SECRET` change tous les jetons. Les anciens liens à jetons ouvrent alors la page sans produit choisi (pas d'erreur).
+- **Contrôle** : `app:recette:acces` en ligne vérifie qu'aucun lien ni champ de Nos produits, du calculateur et du devis ne porte un identifiant, que l'ancienne adresse est redirigée en 301 et qu'un jeton inventé n'ouvre rien.
 
 ## Suivi, contact et demande de devis (maquettes 10 et 11)
 

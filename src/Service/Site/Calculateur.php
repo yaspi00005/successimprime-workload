@@ -35,20 +35,21 @@ final class Calculateur
     }
 
     /**
-     * Saisie du visiteur (paramètres de l'adresse), nettoyée : un nombre
-     * illisible ou hors bornes devient null, les finitions une liste
-     * d'identifiants. Une quantité envoyée mais illisible vaut 0 (refusée
+     * Saisie du visiteur (paramètres de l'adresse, jetons déjà décodés par
+     * JetonsSite), nettoyée : un nombre illisible ou hors bornes devient
+     * null, les finitions une liste d'identifiants, la catégorie la clé
+     * d'un univers (CatalogueSite::cle). Une quantité envoyée mais illisible vaut 0 (refusée
      * au calcul) ; absente, c'est l'arrivée sur la page.
      *
      * @param array<string, mixed> $parametres
      *
-     * @return array{produit: ?int, categorie: ?int, precedent: ?int, largeur: ?float, hauteur: ?float, quantite: ?int, finitions: list<int>}
+     * @return array{produit: ?int, categorie: ?string, precedent: ?int, largeur: ?float, hauteur: ?float, quantite: ?int, finitions: list<int>}
      */
     public static function lire(array $parametres): array
     {
         return [
             'produit' => self::entier($parametres['produit'] ?? null),
-            'categorie' => self::entier($parametres['categorie'] ?? null),
+            'categorie' => self::cle($parametres['categorie'] ?? null),
             'precedent' => self::entier($parametres['precedent'] ?? null),
             'largeur' => self::cote($parametres['largeur'] ?? null),
             'hauteur' => self::cote($parametres['hauteur'] ?? null),
@@ -69,6 +70,12 @@ final class Calculateur
         $texte = str_replace([' ', "\u{A0}", "\u{202F}"], '', trim($valeur));
 
         return 1 === preg_match('/^\d{1,9}$/', $texte) ? (int) $texte : null;
+    }
+
+    /** Clé d'univers (« grand-format ») : minuscules, chiffres et tirets, sinon null. */
+    public static function cle(mixed $valeur): ?string
+    {
+        return \is_string($valeur) && 1 === preg_match('/^[a-z0-9][a-z0-9-]{0,79}$/', $valeur) ? $valeur : null;
     }
 
     /** Côté en cm : nombre positif à deux décimales au plus (virgule ou point), sinon null. */
@@ -101,11 +108,11 @@ final class Calculateur
 
     /**
      * Configuration à chiffrer : celle demandée (?produit=), sinon la
-     * première de la catégorie (?categorie=), sinon la première du catalogue.
+     * première de l'univers (?categorie=<clé>), sinon la première du catalogue.
      *
      * @param list<ProduitConfiguration>                                     $configurations
-     * @param list<array{ids: list<int>, options: list<array{id: int}>}>     $groupes        CatalogueSite::groupes()
-     * @param array{produit: ?int, categorie: ?int}                          $saisie
+     * @param list<array{cle: string, options: list<array{id: int}>}>        $groupes        CatalogueSite::groupes()
+     * @param array{produit: ?int, categorie: ?string}                       $saisie
      */
     public static function configuration(array $configurations, array $groupes, array $saisie): ?ProduitConfiguration
     {
@@ -117,7 +124,7 @@ final class Calculateur
             return $parId[$saisie['produit']];
         }
         foreach (null === $saisie['categorie'] ? [] : $groupes as $groupe) {
-            if (\in_array($saisie['categorie'], $groupe['ids'], true) && [] !== $groupe['options']) {
+            if ($saisie['categorie'] === $groupe['cle'] && [] !== $groupe['options']) {
                 return $parId[$groupe['options'][0]['id']] ?? null;
             }
         }
@@ -175,11 +182,14 @@ final class Calculateur
      *
      * @param array{produit: int, largeur: ?float, hauteur: ?float, quantite: int, finitions: list<int>} $valeurs
      *
-     * @return array{produit: int, nom: string, total: ?int, totalTexte: ?string, lignes: list<array{libelle: string, valeur: string}>, detail: list<array{libelle: string, montant: int, texte: string}>, erreur: ?string, liens: array{commander: ?string, devis: ?string, whatsapp: ?string}}
+     * « produit » est le jeton de la configuration (JetonsSite) : la
+     * réponse JSON est publique.
+     *
+     * @return array{produit: string, nom: string, total: ?int, totalTexte: ?string, lignes: list<array{libelle: string, valeur: string}>, detail: list<array{libelle: string, montant: int, texte: string}>, erreur: ?string, liens: array{commander: ?string, devis: ?string, whatsapp: ?string}}
      */
     public function resultat(ProduitConfiguration $c, array $valeurs): array
     {
-        $resultat = ['produit' => (int) $c->getId(), 'nom' => CatalogueSite::libelle($c), 'total' => null, 'totalTexte' => null, 'lignes' => [], 'detail' => [], 'erreur' => null];
+        $resultat = ['produit' => $this->site->jeton(JetonsSite::CONFIGURATION, $c->getId()), 'nom' => CatalogueSite::libelle($c), 'total' => null, 'totalTexte' => null, 'lignes' => [], 'detail' => [], 'erreur' => null];
         try {
             if ($valeurs['quantite'] < 1) {
                 throw new \DomainException('Indiquez une quantité.');
@@ -206,8 +216,8 @@ final class Calculateur
             'finitions' => $valeurs['finitions'] ?: null,
         ], static fn (mixed $v): bool => null !== $v);
         $resultat['liens'] = [
-            // L'espace client reprend ces paramètres (connexion d'abord si besoin) ; pas de commande sur une saisie refusée.
-            'commander' => null === $resultat['erreur'] ? $this->urls->generate('app_espace_nouvelle_commande', $parametres) : null,
+            // Les deux liens portent des jetons (SiteExtension::lien, ::jetons), jamais d'identifiant. L'espace client reprend ces paramètres (connexion d'abord si besoin) ; pas de commande sur une saisie refusée.
+            'commander' => null === $resultat['erreur'] ? $this->urls->generate('app_espace_nouvelle_commande', $this->site->jetons($parametres)) : null,
             'devis' => $this->site->lien('app_site_devis', $parametres),
             'whatsapp' => $this->site->whatsapp(self::message($resultat, $valeurs)),
         ];

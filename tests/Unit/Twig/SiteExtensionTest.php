@@ -11,6 +11,7 @@ use App\Service\NotificationService;
 use App\Twig\SiteExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
+use App\Service\Site\JetonsSite;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -44,6 +45,23 @@ final class SiteExtensionTest extends TestCase
 
         self::assertNull($site->lien('app_site_calculateur'));
         self::assertSame('/contact', $site->lien('app_site_contact'));
+    }
+
+    public function testLesLiensDuSitePortentDesJetonsJamaisDIdentifiant(): void
+    {
+        $routes = new RouteCollection();
+        $routes->add('app_site_devis', new Route('/demander-un-devis'));
+        $routes->add('app_espace_nouvelle_commande', new Route('/espace/commandes/nouvelle'));
+        $acces = new AccesEnLigne(true, $this->createStub(AppareilAutoriseRepository::class), $this->createStub(EntityManagerInterface::class), (new \App\Tests\Unit\Security\FabriqueCodes())->codes(), $this->createStub(NotificationService::class));
+        $jetons = new JetonsSite('secret-de-test');
+        $site = new SiteExtension(new UrlGenerator($routes, new RequestContext()), $this->createStub(EntrepriseRepository::class), $acces, null, $jetons);
+
+        $lien = (string) $site->lien('app_site_devis', ['produit' => 12, 'finitions' => [3], 'quantite' => 50]);
+        self::assertSame('/demander-un-devis?produit='.$jetons->encoder(JetonsSite::CONFIGURATION, 12).'&finitions%5B0%5D='.$jetons->encoder(JetonsSite::FINITION, 3).'&quantite=50', $lien);
+        self::assertSame($jetons->encoder(JetonsSite::FINITION, 3), $site->jeton(JetonsSite::FINITION, 3));
+        self::assertSame('', $site->jeton(JetonsSite::FINITION, null));
+        // Hors du site (espace client) : rien ne change.
+        self::assertSame('/espace/commandes/nouvelle?produit=12', $site->lien('app_espace_nouvelle_commande', ['produit' => 12]));
     }
 
     public function testLeMenuNeGardeQueLesPagesExistantes(): void

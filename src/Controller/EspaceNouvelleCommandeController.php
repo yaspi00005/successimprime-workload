@@ -28,6 +28,7 @@ use App\Service\Paiement\OrangeMoney;
 use App\Service\Paiement\ReglementsEnLigne;
 use App\Service\Parametres\ReglagesSaisie;
 use App\Service\PiecesParMetreCarre;
+use App\Service\Site\JetonsSite;
 use App\Service\Promotions\CodePromoRefuse;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -62,6 +63,8 @@ final class EspaceNouvelleCommandeController extends AbstractController
         private readonly OrangeMoney $orangeMoney,
         /** Espacement des pièces au m² (réglage Ventes › « Pièces au m² ») : quantité donnée en m². */
         private readonly PiecesParMetreCarre $piecesM2,
+        /** Le bouton « Commander » du calculateur du site envoie des jetons (docs/site-vitrine.md). */
+        private readonly JetonsSite $jetons,
     ) {
     }
 
@@ -116,7 +119,8 @@ final class EspaceNouvelleCommandeController extends AbstractController
             }
         }
 
-        $choix = self::saisies($request->request->all() + $request->query->all());
+        // Depuis le calculateur du site : produit et finitions en jetons ; les liens de l'espace gardent leurs identifiants.
+        $choix = self::saisies($request->request->all() + $this->jetons->decoderParametres($request->query->all(), JetonsSite::PARAMETRES_PRODUIT, true));
         $config = $this->service->produit((int) ($choix['produit'] ?? 0));
 
         if (null === $config) {

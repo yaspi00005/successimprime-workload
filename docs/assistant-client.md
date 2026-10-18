@@ -47,7 +47,7 @@ L'assistant ne lit jamais la base. Il appelle des fonctions de l'application (`A
 | `promotions_en_cours` | oui | oui | Site : promotions ouvertes à tous. Espace : celles de ce client |
 | `passer_a_un_agent` | oui | oui | Le bouton WhatsApp avec le résumé déjà écrit et le numéro de la conversation |
 | `mes_commandes` | non | oui | Commandes du client connecté (5 dernières ou par numéro) : étape, BAT à valider, livraison prévue ; montants si le compte paie |
-| `reste_a_payer` | non | oui | Reste à payer des commandes et factures à régler, avec « Payer la commande » (Orange Money) quand une seule commande reste à payer, sinon « Mes factures » ; refusé si le compte ne paie pas |
+| `reste_a_payer` | non | oui | Reste à payer des commandes et factures à régler, avec « Payer la commande » (Orange Money, seulement s'il est ouvert : clés posées et Réglages › Espace client › « Paiement Orange Money en ligne » allumé) quand une seule commande reste à payer, sinon « Mes factures » ; refusé si le compte ne paie pas |
 | `mes_produits` | non | oui | « Mes produits » du client : nom, format, date du BAT ; prix si le compte paie ; refusé à un compte en lecture |
 | `preparer_demande_devis` | non | oui | Enregistre la même demande de devis que le formulaire du site, au nom et au téléphone du compte connecté, après récapitulatif et accord ; 3 par heure et par compte au plus |
 

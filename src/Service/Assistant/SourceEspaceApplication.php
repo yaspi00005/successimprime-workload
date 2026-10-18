@@ -7,7 +7,7 @@ use App\Entity\Commandes;
 use App\Entity\DemandeDevis;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\MesProduits;
-use App\Service\Parametres\Parametres;
+use App\Service\Paiement\OrangeMoney;
 use App\Service\Site\DemandesSite;
 
 /** SourceEspace branchée sur les services de l'espace client. */
@@ -16,7 +16,7 @@ final class SourceEspaceApplication implements SourceEspace
     public function __construct(
         private readonly EspaceClient $espace,
         private readonly MesProduits $mesProduits,
-        private readonly Parametres $parametres,
+        private readonly OrangeMoney $orangeMoney,
         private readonly DemandesSite $demandes,
     ) {
     }
@@ -52,9 +52,10 @@ final class SourceEspaceApplication implements SourceEspace
         return $produits;
     }
 
+    /** Comme les pages de paiement : clés posées et interrupteur « Paiement Orange Money en ligne » allumé. */
     public function paiementEnLigne(): bool
     {
-        return (bool) $this->parametres->valeur('espace_client', 'paiement_en_ligne');
+        return $this->orangeMoney->estOuvert();
     }
 
     public function enregistrerDemande(array $valeurs, \DateTimeImmutable $le): DemandeDevis

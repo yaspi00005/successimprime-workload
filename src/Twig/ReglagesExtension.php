@@ -37,6 +37,8 @@ final class ReglagesExtension extends AbstractExtension
         return [
             // « 9 h 14 », « 18 min » (pointage).
             new TwigFilter('duree_pointage', CalculPointage::duree(...)),
+            // « 9 h », « 8 h 30 » (horaires du pointage).
+            new TwigFilter('heure_pointage', CalculPointage::heure(...)),
             new TwigFilter('nom_pointage', Pointages::nom(...)),
             // « samedi 10 octobre 2026 » (motif ICU simplifié, voir dateFr).
             new TwigFilter('date_fr', self::dateFr(...)),

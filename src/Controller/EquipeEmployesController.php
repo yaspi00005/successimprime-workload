@@ -16,6 +16,7 @@ use App\Security\Droits;
 use App\Service\EspaceEmploye\EspaceEmploye;
 use App\Service\EspaceEmploye\Paie;
 use App\Service\Equipe\AccesApplication;
+use App\Service\Pointage\HoraireType;
 use App\Service\Pointage\Pointages;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -278,6 +279,7 @@ final class EquipeEmployesController extends AbstractController
             'debut_heure' => $employe->getHeureDebut() ?? '',
             'fin_heure' => $employe->getHeureFin() ?? '',
             'jours' => $employe->listeJoursTravail() ?? [],
+            'horaire_type' => $employe->getHoraireType() ?? '',
             'responsable' => $employe->getResponsable()?->getId() ?? 0,
             'acces' => $employe->getId() === null ? true : $avecAcces,
             'profil' => $utilisateur?->getProfil()?->getId() ?? 0,
@@ -290,7 +292,7 @@ final class EquipeEmployesController extends AbstractController
                 throw $this->createAccessDeniedException('Jeton invalide.');
             }
             $d = $request->getPayload();
-            foreach (['prenom', 'nom', 'telephone', 'naissance', 'adresse', 'urgence', 'poste', 'contrat', 'debut', 'fin', 'remuneration', 'montant', 'paiement', 'debut_heure', 'fin_heure', 'identifiant'] as $champ) {
+            foreach (['prenom', 'nom', 'telephone', 'naissance', 'adresse', 'urgence', 'poste', 'contrat', 'debut', 'fin', 'remuneration', 'montant', 'paiement', 'debut_heure', 'fin_heure', 'horaire_type', 'identifiant'] as $champ) {
                 $saisie[$champ] = trim($d->getString($champ));
             }
             $saisie['jours'] = array_map('intval', $d->all('jours'));
@@ -340,7 +342,7 @@ final class EquipeEmployesController extends AbstractController
                     ->setFonction('' !== $saisie['poste'] ? $saisie['poste'] : Employes::CONTRATS[$saisie['contrat']])
                     ->setContrat($saisie['contrat'])->setFinPrevue($date($saisie['fin']))
                     ->setTypeRemuneration($saisie['remuneration'])->setModePaiement($saisie['paiement'] ?: null)
-                    ->setHoraires($saisie['debut_heure'] ?: null, $saisie['fin_heure'] ?: null, $saisie['jours'] ?: null)->setContactUrgence($saisie['urgence'])
+                    ->setHoraires($saisie['debut_heure'] ?: null, $saisie['fin_heure'] ?: null, $saisie['jours'] ?: null)->setHoraireType($saisie['horaire_type'] ?: null)->setContactUrgence($saisie['urgence'])
                     ->setResponsable($saisie['responsable'] > 0 ? $this->users->find($saisie['responsable']) : null);
                 $employe->setAdresses($saisie['adresse']);
                 if (($n = $date($saisie['naissance'])) !== null) {
@@ -407,6 +409,9 @@ final class EquipeEmployesController extends AbstractController
             'vues' => self::VUES,
             'responsables' => array_filter($this->users->findBy(['actif' => true], ['username' => 'ASC']), static fn (User $u): bool => $u->getEmploye() !== null),
             'admin' => $admin,
+            // Horaire du calcul des points : ceux de la tuile, et celui que donne le poste.
+            'horaires_types' => array_combine(array_keys(HoraireType::LIBELLES), Pointages::horairesTypes($this->pointages->regles())),
+            'horaire_auto' => HoraireType::parDefaut($employe->getFonction(), $utilisateur?->getProfil()?->getCode()),
         ], new Response(status: [] === $erreurs ? 200 : 422));
     }
 

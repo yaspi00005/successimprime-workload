@@ -389,7 +389,7 @@ final class CatalogueGuide
             [
                 'cle' => 'pointer', 'groupe' => 'mon-espace', 'titre' => 'Pointer à l\'arrivée et au départ',
                 'but' => 'Scanner l\'affiche de pointage et prendre la photo.',
-                'droits' => [self::PERSONNEL], 'route' => 'app_pointer_index', 'ecrans' => ['app_pointer_'],
+                'droits' => [self::PERSONNEL], 'route' => 'app_pointer_index', 'ecrans' => ['app_pointer_', 'app_mon_espace_pointage'],
                 'captures' => [
                     ['nom' => 'pointer', 'legende' => 'L\'écran Pointer sur le téléphone.', 'mobile' => true],
                     ['nom' => 'pointer-photo', 'legende' => 'Après le scan : la photo.', 'mobile' => true],

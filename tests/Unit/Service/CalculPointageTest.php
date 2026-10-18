@@ -3,6 +3,7 @@
 namespace App\Tests\Unit\Service;
 
 use App\Service\Pointage\CalculPointage as C;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class CalculPointageTest extends TestCase
@@ -122,6 +123,241 @@ final class CalculPointageTest extends TestCase
         // Encore en poste à 3 h du matin : pas d'alerte « départ non pointé ».
         $r = C::presence(self::t('2026-10-12 18:50'), null, $regles, self::t('2026-10-13 03:00'));
         self::assertSame(C::STATUT_EN_COURS, $r['statut']);
+    }
+
+    /** Nouveau barème « heures faites » (tuile Points du pointage, valeurs par défaut). */
+    private const POINTS = [
+        'accueil_debut' => '09:00', 'accueil_fin' => '17:00', 'atelier_debut' => '09:00', 'atelier_fin' => '18:00',
+        'points_heures_faites' => 10, 'points_retard' => 15, 'points_heure_en_plus' => 5, 'longue_heures' => 20, 'points_longue' => 50,
+        'pause_deduite' => false, 'valider_en_plus' => true, 'debut' => '2026-10-01',
+    ];
+
+    /**
+     * Règles d'une journée du nouveau barème : horaire atelier (9 h – 18 h)
+     * ou accueil (9 h – 17 h).
+     *
+     * @param array<string, mixed> $points
+     *
+     * @return array<string, mixed>
+     */
+    private static function v2(string $debut = '09:00', string $fin = '18:00', array $points = []): array
+    {
+        return ['ouverture' => $debut, 'fermeture' => $fin, 'jours' => 'lun-sam', 'points' => $points + self::POINTS] + self::REGLES;
+    }
+
+    /** @param array<string, mixed> $regles */
+    private static function jour(string $arrivee, ?string $depart, array $regles, bool $valide = false, string $maintenant = '2026-10-17 23:00', int $ajustement = 0): array
+    {
+        return C::presence(self::t($arrivee), $depart !== null ? self::t($depart) : null, $regles, self::t($maintenant), $valide, $ajustement);
+    }
+
+    public function testHeuresFaitesPileAtelierEtAccueil(): void
+    {
+        // Vendredi 16/10/2026, atelier 9 h – 18 h : 9 h dues, faites pile.
+        $atelier = self::jour('2026-10-16 09:00', '2026-10-16 18:00', self::v2());
+        self::assertSame('heures', $atelier['bareme']);
+        self::assertSame(540, $atelier['dues']);
+        self::assertSame(540, $atelier['faites']);
+        self::assertSame(10, $atelier['total']);
+        self::assertSame('À l\'heure, heures faites (9 h 00 sur 9 h 00).', $atelier['raison']);
+        self::assertNull($atelier['bonusEnAttente']);
+
+        // Accueil et caisse 9 h – 17 h : 8 h dues.
+        $accueil = self::jour('2026-10-16 09:00', '2026-10-16 17:00', self::v2('09:00', '17:00'));
+        self::assertSame(480, $accueil['dues']);
+        self::assertSame(10, $accueil['total']);
+
+        // Même journée 9 h – 17 h pour l'atelier : à l'heure mais parti avant la fin, 0.
+        $tot = self::jour('2026-10-16 09:00', '2026-10-16 17:00', self::v2());
+        self::assertSame(0, $tot['total']);
+        self::assertSame('Parti avant la fin, heures pas faites', $tot['points'][0]['libelle']);
+        self::assertStringStartsWith('À l\'heure mais parti avant la fin (8 h 00 sur 9 h 00)', $tot['raison']);
+    }
+
+    public function testRetardRattrapeOuPas(): void
+    {
+        // 30 min de retard, parti à 18 h 30 : les 9 h sont faites, +10.
+        $rattrape = self::jour('2026-10-16 09:30', '2026-10-16 18:30', self::v2());
+        self::assertSame(30, $rattrape['retard']);
+        self::assertSame(C::STATUT_RETARD, $rattrape['statut']);
+        self::assertSame(10, $rattrape['total']);
+        self::assertSame('Retard de 30 min rattrapé : heures faites (9 h 00 sur 9 h 00).', $rattrape['raison']);
+
+        // 30 min de retard, parti à 18 h : 8 h 30 sur 9 h, −15.
+        $pasFait = self::jour('2026-10-16 09:30', '2026-10-16 18:00', self::v2());
+        self::assertSame(-15, $pasFait['total']);
+        self::assertSame('Retard de 30 min et heures pas faites (8 h 30 sur 9 h 00).', $pasFait['raison']);
+    }
+
+    public function testToleranceSertDeMargeSurLesHeures(): void
+    {
+        // 8 min de retard (tolérance 10 min) et départ à 18 h : 8 h 52, compté fait.
+        $r = self::jour('2026-10-16 09:08', '2026-10-16 18:00', self::v2());
+        self::assertSame(0, $r['retard']);
+        self::assertSame(10, $r['total']);
+
+        // Parti 11 min avant la fin : au-delà de la marge, 0.
+        self::assertSame(0, self::jour('2026-10-16 09:00', '2026-10-16 17:49', self::v2())['total']);
+    }
+
+    public function testHeuresEnPlusParHeureEntiere(): void
+    {
+        // 59 min en plus : pas d'heure entière, pas de points en plus.
+        $r = self::jour('2026-10-16 09:00', '2026-10-16 18:59', self::v2());
+        self::assertSame(10, $r['total']);
+        self::assertNull($r['bonusEnAttente']);
+
+        // 2 h 10 en plus : +10 à valider par la RH, puis acquis.
+        $r = self::jour('2026-10-16 08:50', '2026-10-16 20:00', self::v2());
+        self::assertSame(10, $r['total']);
+        self::assertSame('2 h en plus (+10) à valider', $r['bonusEnAttente']);
+        self::assertStringContainsString('2 h en plus : +10 une fois les heures validées par la RH', $r['raison']);
+
+        $valide = self::jour('2026-10-16 08:50', '2026-10-16 20:00', self::v2(), true);
+        self::assertSame(20, $valide['total']);
+        self::assertSame(['Heures faites', '2 h en plus'], array_column($valide['points'], 'libelle'));
+
+        // Sans validation demandée (réglage), acquis tout de suite.
+        $direct = self::jour('2026-10-16 08:50', '2026-10-16 20:00', self::v2(points: ['valider_en_plus' => false]));
+        self::assertSame(20, $direct['total']);
+        self::assertNull($direct['bonusEnAttente']);
+    }
+
+    public function testDepartApresMinuit(): void
+    {
+        // 9 h → 1 h 30 le lendemain : 16 h 30 faites, 7 h entières en plus.
+        $r = self::jour('2026-10-16 09:00', '2026-10-17 01:30', self::v2(), true);
+        self::assertSame(990, $r['faites']);
+        self::assertSame(45, $r['total'], '+10 et 7 × 5');
+    }
+
+    public function testGardeDe24hEtLongueJournee(): void
+    {
+        $avant = self::jour('2026-10-16 09:00', '2026-10-17 09:00', self::v2());
+        self::assertSame(10, $avant['total'], 'heures faites acquises, la longue journée attend la validation');
+        self::assertSame('Longue journée de 24 h 00 : 50 points pour la journée (au lieu de 10) à valider', $avant['bonusEnAttente']);
+
+        $garde = self::jour('2026-10-16 09:00', '2026-10-17 09:00', self::v2(), true);
+        self::assertSame(50, $garde['total'], '50 remplace le calcul du jour');
+        self::assertSame([['libelle' => 'Longue journée de 24 h 00', 'points' => 50]], $garde['points']);
+        self::assertSame('À l\'heure, heures faites (24 h 00 sur 9 h 00) ; longue journée de 24 h 00 : 50 points pour la journée.', $garde['raison']);
+
+        // Pile 20 h : longue journée ; 19 h 59 : heures en plus.
+        self::assertSame(50, self::jour('2026-10-16 09:00', '2026-10-17 05:00', self::v2(), true)['total']);
+        self::assertSame(60, self::jour('2026-10-16 09:00', '2026-10-17 04:59', self::v2(), true)['total'], '+10 et 10 h en plus × 5');
+    }
+
+    public function testPosteDeNuitAvecLeNouveauBareme(): void
+    {
+        // Gardien 19 h – 7 h (horaires propres) : 12 h dues, la pause de midi ne le concerne pas.
+        $r = self::jour('2026-10-12 18:55', '2026-10-13 07:05', ['alerte_depart' => '09:00'] + self::v2('19:00', '07:00'), maintenant: '2026-10-13 08:00');
+        self::assertSame(720, $r['dues']);
+        self::assertSame(730, $r['faites']);
+        self::assertSame(10, $r['total']);
+    }
+
+    public function testPauseRetireeDesHeures(): void
+    {
+        $regles = self::v2(points: ['pause_deduite' => true]);
+        $r = self::jour('2026-10-16 09:00', '2026-10-16 18:00', $regles);
+        self::assertSame(480, $r['dues'], '9 h – 18 h moins la pause de 13 h à 14 h');
+        self::assertSame(480, $r['faites']);
+        self::assertSame(10, $r['total']);
+
+        // Arrivé après la pause : rien à retirer de ses heures.
+        $apres = self::jour('2026-10-16 14:00', '2026-10-16 22:00', $regles);
+        self::assertSame(480, $apres['faites']);
+    }
+
+    public function testDepartNonPointeSansPoints(): void
+    {
+        $enCours = self::jour('2026-10-16 09:20', null, self::v2(), maintenant: '2026-10-16 15:00');
+        self::assertSame(C::STATUT_EN_COURS, $enCours['statut']);
+        self::assertSame(0, $enCours['total']);
+        self::assertSame('Retard de 20 min, en cours : les points sont comptés au départ.', $enCours['raison']);
+
+        $oubli = self::jour('2026-10-16 09:00', null, self::v2(), maintenant: '2026-10-16 20:01');
+        self::assertSame(C::STATUT_NON_POINTE, $oubli['statut']);
+        self::assertSame(0, $oubli['total'], 'pas de −20 : la journée est à corriger');
+        self::assertStringStartsWith('Départ non pointé', $oubli['raison']);
+
+        // L'ajustement de la RH reste possible.
+        self::assertSame(10, self::jour('2026-10-16 09:00', null, self::v2(), maintenant: '2026-10-16 20:01', ajustement: 10)['total']);
+    }
+
+    public function testJourDeReposAvecLeNouveauBareme(): void
+    {
+        // Dimanche : pas d'heures dues, seules les heures en plus comptent.
+        $r = self::jour('2026-10-18 10:00', '2026-10-18 13:30', self::v2(), true);
+        self::assertSame(0, $r['dues']);
+        self::assertSame(15, $r['total'], '3 h × 5');
+        self::assertSame('Jour de repos travaillé ; 3 h en plus : +15.', $r['raison']);
+
+        $court = self::jour('2026-10-18 10:00', '2026-10-18 10:45', self::v2(), true);
+        self::assertSame(0, $court['total']);
+        self::assertSame('Jour de repos travaillé ; moins d\'une heure, pas de points.', $court['raison']);
+    }
+
+    public function testLesReglagesChangentLeCalcul(): void
+    {
+        $regles = self::v2(points: ['points_heures_faites' => 20, 'points_retard' => 5, 'points_heure_en_plus' => 10, 'longue_heures' => 16, 'points_longue' => 80]);
+
+        self::assertSame(20, self::jour('2026-10-16 09:00', '2026-10-16 18:00', $regles)['total']);
+        self::assertSame(-5, self::jour('2026-10-16 09:30', '2026-10-16 18:00', $regles)['total']);
+        self::assertSame(40, self::jour('2026-10-16 09:00', '2026-10-16 20:00', $regles, true)['total'], '+20 et 2 × 10');
+        self::assertSame(80, self::jour('2026-10-16 09:00', '2026-10-17 01:00', $regles, true)['total'], '16 h : longue journée');
+
+        // Horaire atelier avancé à 8 h : 9 h 00 devient un retard d'une heure.
+        $huit = self::jour('2026-10-16 09:00', '2026-10-16 18:00', self::v2('08:00', '18:00'));
+        self::assertSame(60, $huit['retard']);
+        self::assertSame(-15, $huit['total']);
+    }
+
+    public function testAncienBaremeSansLaTuile(): void
+    {
+        $r = C::presence(self::t('2026-10-10 08:18'), self::t('2026-10-10 18:02'), self::REGLES, self::t('2026-10-10 19:00'));
+        self::assertSame('ancien', $r['bareme']);
+        self::assertNull($r['dues']);
+        self::assertSame('Retard de 18 min', $r['raison']);
+    }
+
+    /**
+     * Le tableau d'exemples de docs/pointage.md, « Calcul des points »
+     * (heures validées par la RH).
+     *
+     * @return iterable<string, array{string, string, ?string, string, int, ?int, int}>
+     */
+    public static function exemplesDeLaDoc(): iterable
+    {
+        yield 'à l\'heure' => ['09:00-18:00', '2026-10-16 08:55', '2026-10-16 18:05', 'Heures faites', 550, 540, 10];
+        yield 'retard rattrapé' => ['09:00-18:00', '2026-10-16 09:40', '2026-10-16 18:45', 'Retard de 40 min rattrapé', 545, 540, 10];
+        yield 'retard pas rattrapé' => ['09:00-18:00', '2026-10-16 09:40', '2026-10-16 18:00', 'heures pas faites', 500, 540, -15];
+        yield 'parti avant la fin' => ['09:00-18:00', '2026-10-16 08:58', '2026-10-16 16:00', 'Parti avant la fin', 422, 540, 0];
+        yield '59 min en plus' => ['09:00-18:00', '2026-10-16 09:00', '2026-10-16 18:59', 'Heures faites', 599, 540, 10];
+        yield 'accueil, 2 h en plus' => ['09:00-17:00', '2026-10-16 09:00', '2026-10-16 19:30', '2 h en plus', 630, 480, 20];
+        yield 'après minuit' => ['09:00-18:00', '2026-10-16 09:00', '2026-10-17 02:30', '8 h en plus', 1050, 540, 50];
+        yield 'garde de 24 h' => ['09:00-18:00', '2026-10-16 08:00', '2026-10-17 08:00', 'Longue journée', 1440, 540, 50];
+        yield 'gardien de nuit' => ['19:00-07:00', '2026-10-16 19:00', '2026-10-17 07:05', 'Heures faites', 725, 720, 10];
+        yield 'dimanche de repos' => ['09:00-18:00', '2026-10-18 09:00', '2026-10-18 13:30', '4 h en plus', 270, 0, 20];
+        yield 'départ non pointé' => ['09:00-18:00', '2026-10-16 09:00', null, '', 0, null, 0];
+    }
+
+    #[DataProvider('exemplesDeLaDoc')]
+    public function testExemplesDeLaDocumentation(string $horaire, string $arrivee, ?string $depart, string $libelle, int $faites, ?int $dues, int $total): void
+    {
+        [$debut, $fin] = explode('-', $horaire);
+        $r = self::jour($arrivee, $depart, self::v2($debut, $fin), true, '2026-10-19 12:00');
+
+        self::assertSame($total, $r['total']);
+        if ($depart === null) {
+            self::assertSame(C::STATUT_NON_POINTE, $r['statut']);
+            self::assertNull($r['faites']);
+
+            return;
+        }
+        self::assertSame($faites, $r['faites']);
+        self::assertSame($dues, $r['dues']);
+        self::assertStringContainsString($libelle, implode(' · ', array_column($r['points'], 'libelle')));
     }
 
     public function testJoursPropresAUnEmploye(): void

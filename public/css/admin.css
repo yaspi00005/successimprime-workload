@@ -4292,6 +4292,29 @@ body.si-param-bloque { overflow: hidden; }
   .si-pg-regles { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* ---------- Points du pointage : Mon pointage, fiche du mois (docs/pointage.md, « Calcul des points ») ---------- */
+.si-pg .si-pg-tableau thead th, .si-pg .si-pg-journal thead th { font-size: 12px; font-weight: 600; color: #64748B; text-transform: none; letter-spacing: 0; }
+.si-pg-journal td:first-child, .si-mp-jours td:first-child { white-space: nowrap; }
+.si-pg-avec-raison td { border-bottom: 0; }
+.si-pg-raison td { padding-top: 0; font-size: 12px; color: #64748B; }
+.si-pg-attente { color: #2563EB; font-size: 12px; }
+.si-pg-pourquoi { font-size: 13px; margin: 0 0 6px; color: #334155; }
+.si-mp-retour { margin: 0 0 10px; font-size: 13px; }
+.si-pg-kpis strong.si-mp-horaire { font-size: 22px; }
+.si-pg-kpis strong.si-p-ok { color: #16A34A; }
+.si-pg-kpis strong.si-p-alerte { color: #DC2626; }
+.si-mp-jours h2, .si-mp-calcul h2 { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+.si-mp-raison { font-size: 13px; color: #334155; }
+.si-mp-ancien { display: inline-block; font-size: 11px; font-weight: 600; color: #64748B; background: #F1F5F9; border-radius: 999px; padding: 0 7px; }
+.si-mp-calcul { margin-top: 16px; }
+.si-mp-regles { list-style: none; padding: 0; margin: 0 0 6px; }
+.si-mp-regles li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #EEF2F7; font-size: 13px; }
+.si-mp-regles b { white-space: nowrap; }
+@media (max-width: 767.98px) {
+  .si-mp-jours td.si-mp-raison { grid-column: 1 / -1; }
+  .si-mp-jours td[data-libelle="Jour"] small { margin-left: 4px; }
+}
+
 /* ---------- Actions de caisse (maquettes AC01-AC04) ---------- */
 .si-ac-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
 .si-ac-kpis .card { padding: 16px 18px; margin: 0; height: auto; }

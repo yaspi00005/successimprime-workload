@@ -13,6 +13,8 @@
 <ul>
 	<li>La première fois, votre téléphone doit être validé par la RH. Avant, l'écran dit « Ce téléphone attend la validation de la RH ».</li>
 	<li>L'heure enregistrée est celle du serveur. La photo prouve que c'est vous ; il n'y a pas de reconnaissance faciale.</li>
-	<li>La ponctualité compte dans votre prime.</li>
+	<li>Chaque journée rapporte des points. Heures de votre poste faites (à l'heure, ou en rattrapant un retard en partant plus tard) : +{{ reglage('points_pointage', 'points_heures_faites') }}. En retard sans faire les heures : −{{ reglage('points_pointage', 'points_retard') }}. Chaque heure entière en plus : +{{ reglage('points_pointage', 'points_heure_en_plus') }}{{ reglage('points_pointage', 'valider_en_plus') ? ', une fois validée par la RH' }}. Une garde de {{ reglage('points_pointage', 'longue_heures') }} h ou plus : {{ reglage('points_pointage', 'points_longue') }} points pour la journée.</li>
+	<li>Sans départ pointé, la journée ne rapporte rien tant que la RH ne l'a pas corrigée : pointez toujours en partant.</li>
+	<li>« Mon espace » › « Ponctualité · mes points » montre chaque journée : arrivée, départ, heures faites, points et pourquoi. La ponctualité compte dans votre prime.</li>
 </ul>
 {% endblock %}

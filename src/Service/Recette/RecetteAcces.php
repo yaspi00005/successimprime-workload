@@ -355,7 +355,20 @@ final class RecetteAcces
                     $bilan->constater(BilanRecette::FUITE, 'photo_pointage', $p['route'], $p['chemin'], $identifiant, \sprintf('%d photo(s) de pointage d\'autres personnes sans le droit RH', $autres));
                 }
             }
+            // Heures et points d'une journée (Mon pointage) : seulement les siens.
+            $autres = $this->journeesDAutrui($reponse, $compte);
+            if ($autres > 0) {
+                $bilan->constater(BilanRecette::FUITE, 'pointage_autrui', $p['route'], $p['chemin'], $identifiant, \sprintf('%d journée(s) de pointage d\'autres personnes (heures, points) sans le droit RH', $autres));
+            }
         }
+    }
+
+    /** Journées de pointage d'autres personnes affichées dans la page. */
+    private function journeesDAutrui(Reponse $reponse, User $compte): int
+    {
+        $journees = ContenuSensible::journeesPointage($reponse->contenu);
+
+        return [] === $journees ? 0 : (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM pointage WHERE id IN ('.implode(',', $journees).') AND utilisateur_id <> ?', [$compte->getId()]);
     }
 
     /**
@@ -413,6 +426,7 @@ final class RecetteAcces
             $pointage = $this->autre(Pointage::class, 'utilisateur', $compte);
             if (null !== $pointage) {
                 $essais[] = ['app_pointer_voir_photo', ['id' => $pointage, 'sens' => 'arrivee'], 'photo de pointage d\'une autre personne'];
+                $this->verifierMonPointage($compte, $pointage, $bilan);
             }
         }
         if (!$this->accorde('ROLE_ADMIN') && !$this->accorde('ROLE_TRESORERIE_SAISIR') && !$this->accorde('ROLE_CAISSE_COMMANDE')) {
@@ -440,6 +454,33 @@ final class RecetteAcces
             if (!$ok) {
                 $bilan->constater(Reponse::ERREUR === $etat ? BilanRecette::ERREUR : BilanRecette::FUITE, 'objet_autrui', $route, $chemin, $identifiant, $libelle.' : la page répond « '.$etat.' »');
             }
+        }
+    }
+
+    /**
+     * Mon pointage (heures et points de chaque journée) ne montre que les
+     * journées de la personne connectée, même quand l'adresse désigne
+     * quelqu'un d'autre (utilisateur, id, mois de son pointage).
+     */
+    private function verifierMonPointage(User $compte, int $pointage, BilanRecette $bilan): void
+    {
+        if (null === $compte->getEmploye() || null === $this->routeur->getRouteCollection()->get('app_mon_espace_pointage')) {
+            return;
+        }
+        $identifiant = $compte->getUserIdentifier();
+        $autre = $this->em->getConnection()->fetchAssociative('SELECT utilisateur_id, DATE_FORMAT(arrivee_le, \'%Y-%m\') AS mois FROM pointage WHERE id = ?', [$pointage]);
+        if (false === $autre) {
+            return;
+        }
+        $chemin = $this->routeur->generate('app_mon_espace_pointage', ['mois' => $autre['mois'], 'utilisateur' => $autre['utilisateur_id'], 'id' => $autre['utilisateur_id']]);
+        $reponse = $this->navigateur->get($chemin, $this->navigateur->session($compte));
+        $autres = Reponse::OUVERT === $reponse->etat() ? $this->journeesDAutrui($reponse, $compte) : 0;
+        $ok = Reponse::OUVERT === $reponse->etat() && 0 === $autres;
+        $bilan->controler(\sprintf('%s : « Mon pointage » ne montre que ses propres journées, même avec l\'identifiant d\'un autre dans l\'adresse', $identifiant), $ok, $chemin.' → '.$reponse->etat().($autres > 0 ? ' ; '.$autres.' journée(s) d\'un autre' : ''));
+        if ($autres > 0) {
+            $bilan->constater(BilanRecette::FUITE, 'pointage_autrui', 'app_mon_espace_pointage', $chemin, $identifiant, $autres.' journée(s) de pointage d\'une autre personne dans « Mon pointage »');
+        } elseif (!$ok) {
+            $bilan->constater(Reponse::ERREUR === $reponse->etat() ? BilanRecette::ERREUR : BilanRecette::A_EXAMINER, 'mon_pointage', 'app_mon_espace_pointage', $chemin, $identifiant, '« Mon pointage » répond « '.$reponse->etat().' »');
         }
     }
 

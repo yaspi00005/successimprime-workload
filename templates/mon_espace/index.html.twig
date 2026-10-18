@@ -15,11 +15,11 @@
 				<strong>{{ p.presents }} / {{ p.ouvres }} j</strong>
 				<span class="si-p-neutre">{{ p.minutes > 0 ? p.minutes|duree_pointage ~ ' de présence' : 'pas encore de pointage' }}</span>
 			</article>
-			<article class="card">
-				<h2>Ponctualité</h2>
+			<a class="card text-reset text-decoration-none" href="{{ path('app_mon_espace_pointage') }}">
+				<h2>Ponctualité · mes points</h2>
 				<strong class="{{ p.note is null ? '' : (p.note >= 80 ? 'si-p-ok' : 'si-p-alerte') }}">{{ p.note is null ? '—' : p.note ~ ' / 100' }}</strong>
-				<span class="{{ p.retards > 0 ? 'si-p-alerte' : 'si-p-neutre' }}">{{ p.retards }} retard{{ p.retards > 1 ? 's' }} · {{ p.points }} pts</span>
-			</article>
+				<span class="{{ p.retards > 0 ? 'si-p-alerte' : 'si-p-neutre' }}">{{ p.retards }} retard{{ p.retards > 1 ? 's' }} · {{ p.points }} pts · le détail</span>
+			</a>
 			{% if actions %}
 				<article class="card">
 					<h2>Actions de caisse</h2>

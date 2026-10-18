@@ -12,7 +12,7 @@ final class CatalogueParametresTest extends TestCase
         $tuiles = CatalogueParametres::tuiles();
 
         self::assertCount(6, CatalogueParametres::FAMILLES);
-        self::assertCount(38, $tuiles);
+        self::assertCount(39, $tuiles);
 
         foreach ($tuiles as $cle => $tuile) {
             self::assertArrayHasKey($tuile['famille'], CatalogueParametres::FAMILLES, $cle);
@@ -94,6 +94,28 @@ final class CatalogueParametresTest extends TestCase
 
         $heures = CatalogueParametres::lireSaisie(CatalogueParametres::tuiles()['horaires']['champs'], ['jours' => 'lun-sam', 'ouverture' => '25:00', 'fermeture' => '18:00']);
         self::assertSame(['ouverture'], array_keys($heures['erreurs']));
+    }
+
+    public function testTuilePointsDuPointage(): void
+    {
+        $champs = CatalogueParametres::tuiles()['points_pointage']['champs'];
+        $valeurs = CatalogueParametres::avecDefauts($champs, ['debut' => '2026-10-18']);
+        self::assertSame(['09:00', '17:00', '09:00', '18:00'], [$valeurs['accueil_debut'], $valeurs['accueil_fin'], $valeurs['atelier_debut'], $valeurs['atelier_fin']]);
+        self::assertSame([10, 15, 5, 20, 50], [$valeurs['points_heures_faites'], $valeurs['points_retard'], $valeurs['points_heure_en_plus'], $valeurs['longue_heures'], $valeurs['points_longue']]);
+
+        // Date de début : JJ/MM/AAAA à l'écran, AAAA-MM-JJ en base, refusée si invalide.
+        $date = CatalogueParametres::champ('points_pointage', 'debut') ?? [];
+        self::assertSame('18/10/2026', CatalogueParametres::afficher($date, '2026-10-18'));
+        self::assertSame('2026-11-01', CatalogueParametres::lireSaisie([$date], ['debut' => '2026-11-01'])['valeurs']['debut']);
+        self::assertArrayHasKey('debut', CatalogueParametres::lireSaisie([$date], ['debut' => '2026-02-30'])['erreurs']);
+        self::assertArrayHasKey('debut', CatalogueParametres::lireSaisie([$date], ['debut' => ''])['erreurs']);
+
+        // L'ancien barème reste lu pour les journées d'avant, mais ne se modifie plus.
+        $panneau = array_column(CatalogueParametres::champsPanneau('pointage'), 'cle');
+        self::assertNotContains('points_heure', $panneau);
+        self::assertNotContains('points_oubli', $panneau);
+        self::assertContains('tolerance_minutes', $panneau);
+        self::assertSame(20, CatalogueParametres::avecDefauts(CatalogueParametres::tuiles()['pointage']['champs'], [])['points_oubli']);
     }
 
     public function testDifferencesNeGardeQueCeQuiChange(): void

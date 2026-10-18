@@ -268,13 +268,35 @@ final class CatalogueParametres
                     ['cle' => 'pause_fin', 'type' => 'heure', 'libelle' => 'Pause déduite jusqu\'à', 'defaut' => '14:00'],
                     ['cle' => 'alerte_depart', 'type' => 'heure', 'libelle' => 'Alerte départ non pointé', 'defaut' => '20:00'],
                     ['cle' => 'photos_jours', 'type' => 'nombre', 'libelle' => 'Photos conservées', 'suffixe' => 'jours', 'min' => 1, 'max' => 365, 'defaut' => 90],
-                    ['cle' => 'points_heure', 'type' => 'nombre', 'libelle' => 'Points à l\'heure', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 10],
-                    ['cle' => 'points_retard', 'type' => 'nombre', 'libelle' => 'Points retirés en retard', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 10],
-                    ['cle' => 'points_soiree', 'type' => 'nombre', 'libelle' => 'Bonus 1 h après la fin', 'suffixe' => 'pts', 'min' => 0, 'max' => 500, 'defaut' => 30],
-                    ['cle' => 'points_nuit', 'type' => 'nombre', 'libelle' => 'Bonus nuit au bureau', 'suffixe' => 'pts', 'min' => 0, 'max' => 1000, 'defaut' => 100],
-                    ['cle' => 'points_oubli', 'type' => 'nombre', 'libelle' => 'Points retirés si oubli', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 20],
+                    // Ancien barème (avant la date de début de la tuile « Points du pointage ») : figé.
+                    ['cle' => 'points_heure', 'type' => 'nombre', 'libelle' => 'Ancien barème · à l\'heure', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 10, 'fige' => true],
+                    ['cle' => 'points_retard', 'type' => 'nombre', 'libelle' => 'Ancien barème · retard', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 10, 'fige' => true],
+                    ['cle' => 'points_soiree', 'type' => 'nombre', 'libelle' => 'Ancien barème · 1 h après la fin', 'suffixe' => 'pts', 'min' => 0, 'max' => 500, 'defaut' => 30, 'fige' => true],
+                    ['cle' => 'points_nuit', 'type' => 'nombre', 'libelle' => 'Ancien barème · nuit au bureau', 'suffixe' => 'pts', 'min' => 0, 'max' => 1000, 'defaut' => 100, 'fige' => true],
+                    ['cle' => 'points_oubli', 'type' => 'nombre', 'libelle' => 'Ancien barème · oubli', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 20, 'fige' => true],
                 ],
-                'motsCles' => ['Pointage QR + photo', 'Retards · tolérance', 'Points de ponctualité', 'Affiche QR à imprimer'],
+                'motsCles' => ['Pointage QR + photo', 'Retards · tolérance', 'Affiche QR à imprimer'],
+                'note' => 'Les points de chaque journée se règlent dans la tuile « Points du pointage ».',
+            ],
+            'points_pointage' => [
+                'famille' => 'personnel', 'libelle' => 'Points du pointage', 'icone' => 'fa-user-clock',
+                'roles' => ['ROLE_ADMIN', 'ROLE_RH'], 'route' => 'app_pointage_jour',
+                'champs' => [
+                    ['cle' => 'accueil_debut', 'type' => 'heure', 'libelle' => 'Accueil et caisse · début', 'aide' => 'Assistantes, caissières', 'defaut' => '09:00'],
+                    ['cle' => 'accueil_fin', 'type' => 'heure', 'libelle' => 'Accueil et caisse · fin', 'defaut' => '17:00'],
+                    ['cle' => 'atelier_debut', 'type' => 'heure', 'libelle' => 'Atelier et autres · début', 'defaut' => '09:00'],
+                    ['cle' => 'atelier_fin', 'type' => 'heure', 'libelle' => 'Atelier et autres · fin', 'defaut' => '18:00'],
+                    ['cle' => 'points_heures_faites', 'type' => 'nombre', 'libelle' => 'Heures faites (à l\'heure ou retard rattrapé)', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 10],
+                    ['cle' => 'points_retard', 'type' => 'nombre', 'libelle' => 'Retirés : retard et heures pas faites', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 15],
+                    ['cle' => 'points_heure_en_plus', 'type' => 'nombre', 'libelle' => 'Chaque heure entière en plus', 'suffixe' => 'pts', 'min' => 0, 'max' => 100, 'defaut' => 5],
+                    ['cle' => 'longue_heures', 'type' => 'nombre', 'libelle' => 'Longue journée (garde) à partir de', 'suffixe' => 'h', 'min' => 12, 'max' => 26, 'defaut' => 20],
+                    ['cle' => 'points_longue', 'type' => 'nombre', 'libelle' => 'Points d\'une longue journée', 'suffixe' => 'pts', 'min' => 0, 'max' => 1000, 'defaut' => 50],
+                    ['cle' => 'pause_deduite', 'type' => 'interrupteur', 'libelle' => 'Retirer la pause des heures', 'aide' => 'Non : 9 h – 18 h font 9 h. Oui : 8 h (pause de la tuile Pointage).', 'defaut' => false],
+                    ['cle' => 'valider_en_plus', 'type' => 'interrupteur', 'libelle' => 'Heures en plus validées par la RH', 'aide' => 'Les points des heures en plus et des longues journées comptent après validation.', 'defaut' => true],
+                    ['cle' => 'debut', 'type' => 'date', 'libelle' => 'Nouveau calcul à partir du', 'aide' => 'Les journées d\'avant gardent l\'ancien barème', 'defaut' => null],
+                ],
+                'motsCles' => ['Points de ponctualité', 'Horaires accueil et caisse · atelier et autres', 'Heures faites · retard · heures en plus', 'Garde de 24 h · longue journée'],
+                'note' => 'Chaque employé a l\'horaire de son poste, modifiable sur sa fiche ; des horaires propres (gardien de nuit) passent avant. Une longue journée remplace le calcul du jour. La tolérance de retard (tuile Pointage) sert aussi de marge sur les heures dues. Exemples : docs/pointage.md, « Calcul des points ».',
             ],
             'horaires' => [
                 'famille' => 'personnel', 'libelle' => 'Horaires', 'icone' => 'fa-clock',
@@ -537,6 +559,15 @@ final class CatalogueParametres
                     $valeurs[$cle] = implode(', ', array_map(static fn (string $d): string => implode('/', array_reverse(explode('-', $d))), $dates));
                     break;
 
+                case 'date':
+                    $date = \DateTimeImmutable::createFromFormat('!Y-m-d', trim((string) $brut));
+                    if ($date === false || $date->format('Y-m-d') !== trim((string) $brut)) {
+                        $erreurs[$cle] = 'Date attendue (ex. 18/10/2026).';
+                        break;
+                    }
+                    $valeurs[$cle] = $date->format('Y-m-d');
+                    break;
+
                 case 'choix':
                     if (!\is_string($brut) || !\array_key_exists($brut, $champ['options'])) {
                         $erreurs[$cle] = 'Choix inconnu.';
@@ -604,19 +635,21 @@ final class CatalogueParametres
             'choix' => (string) ($champ['options'][$valeur] ?? $valeur),
             'nombre' => trim(number_format((float) $valeur, ($champ['decimales'] ?? 0) > 0 && floor((float) $valeur) != $valeur ? (int) $champ['decimales'] : 0, ',', ' ').' '.($champ['suffixe'] ?? '')),
             'heure' => str_replace(':', ' h ', (string) $valeur),
+            'date' => ($d = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $valeur)) ? $d->format('d/m/Y') : '',
             default => (string) $valeur,
         };
     }
 
     /**
      * Champs du panneau d'édition rapide : sans ceux modifiés dans l'écran
-     * dédié de la tuile (marqués « ecran »).
+     * dédié de la tuile (marqués « ecran ») ni ceux figés (« fige » :
+     * ancien barème, gardé pour recalculer les journées d'avant).
      *
      * @return list<array<string, mixed>>
      */
     public static function champsPanneau(string $tuile): array
     {
-        return array_values(array_filter(self::tuiles()[$tuile]['champs'] ?? [], static fn (array $c): bool => empty($c['ecran'])));
+        return array_values(array_filter(self::tuiles()[$tuile]['champs'] ?? [], static fn (array $c): bool => empty($c['ecran']) && empty($c['fige'])));
     }
 
     /**

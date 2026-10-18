@@ -9,6 +9,7 @@ use App\Entity\PointPointage;
 use App\Entity\User;
 use App\Repository\AppareilPointageRepository;
 use App\Repository\PointageRepository;
+use App\Service\Parametres\CatalogueParametres;
 use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -31,7 +32,8 @@ final class Pointages
     }
 
     /**
-     * Règles de calcul : Paramètres › Pointage et › Horaires.
+     * Règles de calcul : Paramètres › Pointage et › Horaires, plus le
+     * nouveau barème (Paramètres › Points du pointage) sous « heures ».
      *
      * @return array<string, mixed>
      */
@@ -44,21 +46,72 @@ final class Pointages
         foreach (['ouverture', 'fermeture', 'jours'] as $cle) {
             $regles[$cle] = $this->parametres->valeur('horaires', $cle);
         }
+        $regles['heures'] = [];
+        foreach (CatalogueParametres::tuiles()['points_pointage']['champs'] as $champ) {
+            $regles['heures'][$champ['cle']] = $this->parametres->valeur('points_pointage', $champ['cle']);
+        }
 
         return $regles;
     }
 
     /**
+     * Le nouveau barème s'applique-t-il à une journée ? Oui à partir de
+     * la date de début (Paramètres › Points du pointage) ; sans date,
+     * à toutes.
+     *
+     * @param array<string, mixed> $regles
+     */
+    public static function nouveauCalcul(array $regles, \DateTimeImmutable $jour): bool
+    {
+        if (!isset($regles['heures'])) {
+            return false;
+        }
+        $debut = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) ($regles['heures']['debut'] ?? ''));
+
+        return $debut === false || $jour >= $debut;
+    }
+
+    /**
+     * Horaire d'une personne pour le nouveau barème : ses horaires propres
+     * (fiche E02), sinon l'horaire type de sa fiche ou de son poste.
+     *
+     * @param array<string, mixed> $heures valeurs de la tuile Points du pointage
+     *
+     * @return array{libelle: string, debut: string, fin: string, propre: bool}
+     */
+    public static function horaireDe(User $utilisateur, array $heures): array
+    {
+        $e = $utilisateur->getEmploye();
+        if ($e !== null && $e->getHeureDebut() !== null && $e->getHeureFin() !== null) {
+            return ['libelle' => 'Horaires propres', 'debut' => $e->getHeureDebut(), 'fin' => $e->getHeureFin(), 'propre' => true];
+        }
+        $type = $e !== null ? HoraireType::de($e) : HoraireType::ATELIER;
+
+        return ['libelle' => HoraireType::LIBELLES[$type], 'debut' => (string) $heures[$type.'_debut'], 'fin' => (string) $heures[$type.'_fin'], 'propre' => false];
+    }
+
+    /**
      * Règles d'une personne : ses propres horaires (fiche employé, E02)
      * remplacent ceux de l'atelier. L'alerte « pas pointé le départ »
-     * vient 2 h après sa fin.
+     * vient 2 h après sa fin. Pour une journée du nouveau barème, son
+     * horaire type remplace aussi ceux de l'atelier, et « points » porte
+     * les valeurs du barème.
      *
      * @param array<string, mixed> $regles
      *
      * @return array<string, mixed>
      */
-    public static function reglesDe(User $utilisateur, array $regles): array
+    public static function reglesDe(User $utilisateur, array $regles, ?\DateTimeImmutable $jour = null): array
     {
+        $heures = $regles['heures'] ?? null;
+        unset($regles['heures']);
+        if ($heures !== null && $jour !== null && self::nouveauCalcul(['heures' => $heures], $jour)) {
+            $horaire = self::horaireDe($utilisateur, $heures);
+            $regles['ouverture'] = $horaire['debut'];
+            $regles['fermeture'] = $horaire['fin'];
+            $regles['points'] = $heures;
+        }
+
         $e = $utilisateur->getEmploye();
         if ($e === null) {
             return $regles;
@@ -254,8 +307,10 @@ final class Pointages
 
     /**
      * Fiche Q05 : journal du mois d'une personne, totaux, points et note.
+     * Pour les journées du nouveau barème : heures faites et dues, et
+     * l'horaire de la personne.
      *
-     * @return array{jours: list<array<string, mixed>>, presents: int, ouvres: int, retards: int, minutes: int, sup: int, points: int, note: ?int}
+     * @return array{jours: list<array<string, mixed>>, presents: int, ouvres: int, retards: int, minutes: int, sup: int, points: int, faites: int, dues: int, aValider: int, nouveau: int, note: ?int, horaire: array{libelle: string, debut: string, fin: string, propre: bool, dues: int}, debutNouveau: ?\DateTimeImmutable}
      */
     public function mois(User $utilisateur, \DateTimeImmutable $mois, \DateTimeImmutable $maintenant): array
     {
@@ -269,7 +324,7 @@ final class Pointages
 
         $ouvresSemaine = CalculPointage::joursOuvres((string) self::reglesDe($utilisateur, $regles)['jours']);
         $jours = [];
-        $totaux = ['presents' => 0, 'ouvres' => 0, 'retards' => 0, 'minutes' => 0, 'sup' => 0, 'points' => 0];
+        $totaux = ['presents' => 0, 'ouvres' => 0, 'retards' => 0, 'minutes' => 0, 'sup' => 0, 'points' => 0, 'faites' => 0, 'dues' => 0, 'aValider' => 0, 'nouveau' => 0];
         for ($j = $debut; $j < $fin && $j <= $maintenant; $j = $j->modify('+1 day')) {
             $ouvre = \in_array((int) $j->format('N'), $ouvresSemaine, true);
             $presences = $parJour[$j->format('Y-m-d')] ?? [];
@@ -288,11 +343,53 @@ final class Pointages
                 $totaux['minutes'] += (int) $c['calcul']['presence'];
                 $totaux['sup'] += $c['calcul']['sup'];
                 $totaux['points'] += $c['calcul']['total'];
+                $totaux['aValider'] += $c['calcul']['bonusEnAttente'] !== null ? 1 : 0;
+                if ($c['calcul']['bareme'] === 'heures') {
+                    ++$totaux['nouveau'];
+                    $totaux['faites'] += (int) $c['calcul']['faites'];
+                    $totaux['dues'] += (int) $c['calcul']['dues'];
+                }
             }
             $jours[] = ['jour' => $j, 'ouvre' => $ouvre, 'presences' => $calculs];
         }
 
-        return ['jours' => $jours] + $totaux + ['note' => CalculPointage::note($totaux['points'], $totaux['presents'], (int) $regles['points_heure'])];
+        // Note sur 100 : sur la base des points « heures faites » dès qu'une journée suit le nouveau barème.
+        $pointsJournee = $totaux['nouveau'] > 0 ? (int) $regles['heures']['points_heures_faites'] : (int) $regles['points_heure'];
+        $debutNouveau = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) ($regles['heures']['debut'] ?? ''));
+
+        $horaire = self::horaireDe($utilisateur, $regles['heures']);
+
+        return ['jours' => $jours] + $totaux + [
+            'note' => CalculPointage::note($totaux['points'], $totaux['presents'], $pointsJournee),
+            'horaire' => $horaire + ['dues' => self::minutesDues($horaire['debut'], $horaire['fin'], $regles)],
+            'debutNouveau' => $debutNouveau ?: null,
+        ];
+    }
+
+    /**
+     * Les deux horaires types avec leurs heures dues, pour les écrans qui
+     * expliquent le calcul.
+     *
+     * @param array<string, mixed> $regles
+     *
+     * @return list<array{libelle: string, debut: string, fin: string, dues: int}>
+     */
+    public static function horairesTypes(array $regles): array
+    {
+        return array_map(static fn (string $type): array => [
+            'libelle' => HoraireType::LIBELLES[$type],
+            'debut' => (string) $regles['heures'][$type.'_debut'],
+            'fin' => (string) $regles['heures'][$type.'_fin'],
+            'dues' => self::minutesDues((string) $regles['heures'][$type.'_debut'], (string) $regles['heures'][$type.'_fin'], $regles),
+        ], array_keys(HoraireType::LIBELLES));
+    }
+
+    /** @param array<string, mixed> $regles */
+    private static function minutesDues(string $debut, string $fin, array $regles): int
+    {
+        $pause = !empty($regles['heures']['pause_deduite']);
+
+        return HoraireType::minutesDues($debut, $fin, $pause ? (string) $regles['pause_debut'] : null, $pause ? (string) $regles['pause_fin'] : null);
     }
 
     /**
@@ -302,7 +399,7 @@ final class Pointages
      */
     public function calcul(Pointage $p, array $regles, \DateTimeImmutable $maintenant): array
     {
-        return CalculPointage::presence($p->getArriveeLe(), $p->getDepartLe(), self::reglesDe($p->getUtilisateur(), $regles), $maintenant, $p->isHeuresSupValidees(), $p->getAjustementPoints());
+        return CalculPointage::presence($p->getArriveeLe(), $p->getDepartLe(), self::reglesDe($p->getUtilisateur(), $regles, $p->getArriveeLe()), $maintenant, $p->isHeuresSupValidees(), $p->getAjustementPoints());
     }
 
     /**

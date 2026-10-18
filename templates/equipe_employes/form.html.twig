@@ -92,6 +92,15 @@
 						{% if erreurs.horaires is defined %}<small>{{ erreurs.horaires }}</small>{% endif %}
 					</div>
 					<label class="si-em-champ">
+						<span>Horaire des points <small class="si-em-aide">pointage</small></span>
+						<select name="horaire_type" class="form-select">
+							{% set auto = horaires_types[horaire_auto] %}
+							<option value="">D'après le poste : {{ auto.libelle }} ({{ auto.debut|heure_pointage }} – {{ auto.fin|heure_pointage }})</option>
+							{% for k, t in horaires_types %}<option value="{{ k }}"{{ saisie.horaire_type == k ? ' selected' }}>{{ t.libelle }} ({{ t.debut|heure_pointage }} – {{ t.fin|heure_pointage }})</option>{% endfor %}
+						</select>
+						<small class="si-em-aide">Des horaires propres ci-dessus passent avant.</small>
+					</label>
+					<label class="si-em-champ">
 						<span>Responsable</span>
 						<select name="responsable" class="form-select">
 							<option value="0">—</option>

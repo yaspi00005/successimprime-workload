@@ -170,6 +170,7 @@ final class Parametres
             'utilisateurs' => self::nb($compter(User::class, ['actif' => true]), 'compte').' · '.self::nb($compter(RoleUtilisateur::class), 'rôle'),
             'pointage' => ($v['photo'] ? 'QR + photo' : 'QR').' · tolérance '.$v['tolerance_minutes'].' min',
             'horaires' => str_replace('-', ' – ', $v['jours']).' · '.self::heure($v['ouverture']).' – '.self::heure($v['fermeture']),
+            'points_pointage' => 'accueil '.self::heure($v['accueil_debut']).' – '.self::heure($v['accueil_fin']).' · atelier '.self::heure($v['atelier_debut']).' – '.self::heure($v['atelier_fin']).' · +'.$v['points_heures_faites'].' / −'.$v['points_retard'],
             'bareme' => '1 point = '.number_format((int) $v['valeur_point'], 0, ',', ' ').' F · prime dès '.$v['seuil_prime'].' pts',
             'avantages' => 'frais médicaux '.$v['frais_medicaux'].' %',
             'paie' => 'paie le '.$v['jour_paie'].($v['inps'] || $v['its'] ? ' · '.implode(' et ', array_keys(array_filter(['INPS' => $v['inps'], 'ITS' => $v['its']]))) : ''),
@@ -629,12 +630,30 @@ final class Parametres
                 'libelle' => $a->getNom() ?: 'Appareil',
                 'valeur' => 'demandé par '.$a->getNomUtilisateur().' · à approuver',
             ], $this->em->getRepository(AppareilAutorise::class)->findBy(['etat' => AppareilAutorise::ETAT_EN_ATTENTE], ['id' => 'DESC'], 5)),
+            'points_pointage' => $this->detailsPointsPointage(),
             'relances' => array_map(static fn (RegleRappelPaiement $r): array => [
                 'libelle' => $r->getNom(),
                 'valeur' => ($r->isRetrait() ? 'commande prête non retirée' : 'paiement') . ' · tous les '.$r->getDelaiJours().' j',
             ], $this->em->getRepository(RegleRappelPaiement::class)->findBy(['actif' => true])),
             default => [],
         };
+    }
+
+    /**
+     * Date de début du nouveau calcul et ancien barème, gardé pour les
+     * journées d'avant (tuile Pointage, champs figés).
+     *
+     * @return list<array{libelle: string, valeur: string}>
+     */
+    private function detailsPointsPointage(): array
+    {
+        $debut = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $this->valeur('points_pointage', 'debut'));
+        $ancien = $this->valeursStockees('pointage');
+
+        return [
+            ['libelle' => 'Nouveau calcul', 'valeur' => $debut ? 'depuis le '.$debut->format('d/m/Y') : 'pour toutes les journées'],
+            ['libelle' => 'Avant', 'valeur' => \sprintf('ancien barème : +%d à l\'heure, −%d en retard, +%d soirée, +%d nuit, −%d oubli', $ancien['points_heure'], $ancien['points_retard'], $ancien['points_soiree'], $ancien['points_nuit'], $ancien['points_oubli'])],
+        ];
     }
 
     private static function nb(int $nombre, string $singulier, ?string $pluriel = null): string

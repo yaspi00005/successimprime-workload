@@ -60,6 +60,34 @@ final class MonEspaceController extends AbstractController
         ]);
     }
 
+    /**
+     * Mon pointage : chaque journée du mois (arrivée, départ, heures
+     * faites et dues, points et leur raison) et le total. Seulement les
+     * siennes : aucun identifiant dans l'adresse, tout part de la
+     * personne connectée.
+     */
+    #[Route('/pointage', name: 'pointage', methods: ['GET'])]
+    public function pointage(Request $request, Pointages $pointages): Response
+    {
+        $moi = $this->employe();
+        $maintenant = new \DateTimeImmutable();
+        $courant = $maintenant->modify('first day of this month')->setTime(0, 0);
+        $mois = \DateTimeImmutable::createFromFormat('!Y-m', (string) $request->query->get('mois')) ?: $courant;
+        if ($mois > $courant) {
+            $mois = $courant;
+        }
+        $regles = $pointages->regles();
+
+        return $this->render('mon_espace/pointage.html.twig', [
+            'nom' => Pointages::nom($moi),
+            'mois' => $mois,
+            'suivant' => $mois < $courant ? $mois->modify('+1 month') : null,
+            'fiche' => $pointages->mois($moi, $mois, $maintenant),
+            'regles' => $regles,
+            'horaires' => Pointages::horairesTypes($regles),
+        ]);
+    }
+
     #[Route('/demande/{type}', name: 'demande', requirements: ['type' => 'absence|conge|reclamation|frais_medicaux'], methods: ['GET', 'POST'])]
     public function demande(string $type, Request $request): Response
     {

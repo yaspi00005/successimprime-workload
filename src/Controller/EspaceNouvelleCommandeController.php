@@ -345,9 +345,11 @@ final class EspaceNouvelleCommandeController extends AbstractController
         // Commande en ligne coupée, trop de commandes en attente : refusé avant de copier un fichier.
         $this->service->verifierEnAttente($client);
         [$largeur, $hauteur] = self::taille($r->get('largeur'), $r->get('hauteur'), $r->getString('unite_taille', 'cm'));
-        // Quantité en pièces ou en m² (pièces au m²) : contrôlée avant de copier un fichier.
+        // Quantité lue comme l'estimation (vide : le minimum que « Votre commande » montrait), jamais
+        // une page d'erreur ; en m² (pièces au m²), elle vient de la surface. Contrôlée avant de copier un fichier.
+        $quantite = max(1, (int) $r->getString('quantite') ?: max(1, $config->getQuantiteMinimale()));
         $espacement = $this->piecesM2->espacement();
-        $saisie = NouvelleCommande::quantiteSaisie($config, max(1, $r->getInt('quantite', 1)), $r->getString('unite_quantite'), $r->getString('quantite_m2'), $largeur, $hauteur, $espacement);
+        $saisie = NouvelleCommande::quantiteSaisie($config, $quantite, $r->getString('unite_quantite'), $r->getString('quantite_m2'), $largeur, $hauteur, $espacement);
         if (null !== $saisie['erreur']) {
             throw new \DomainException($saisie['erreur']);
         }

@@ -1507,7 +1507,7 @@
       g.fillStyle = '#5D6782';
       g.font = '600 30px "Montserrat", "Segoe UI", Arial, sans-serif';
       const c2 = couleursDe(r);
-      let ligne = r.fiche.nom + ' · ' + (couleurDans(r.fiche, etat.couleur) || couleurDefaut(r.fiche)).nom;
+      let ligne = (r.fiche.nomCourt || r.fiche.nom) + ' · ' + (couleurDans(r.fiche, etat.couleur) || couleurDefaut(r.fiche)).nom;
       if (r.fiche.forme === 'casquette' && etat.visiere) ligne += ' · visière ' + etat.visiere;
       if (r.fiche.forme === 'polo' && c2.secondeChoisie) ligne += ' · bords ' + etat.bords;
       g.fillText(ligne, x, 146);

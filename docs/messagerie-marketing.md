@@ -70,7 +70,7 @@ Demande de Yaya du 16/10/2026 : « Il faut ajouter également une partie dans l'
 
 - **Avec les clés Orange** (`ORANGE_SMS_CLIENT_ID`, `ORANGE_SMS_CLIENT_SECRET` dans `.env.local`) : le solde est lu chez Orange avec le jeton déjà utilisé pour envoyer (`GET https://api.orange.com/sms/admin/v1/contracts` : unités restantes `availableUnits`, fin `expirationDate`, état `ACTIVE` ou `EXPIRED`, par pays ; on garde le Mali, `MLI`). Les achats de packs viennent de `GET /sms/admin/v1/purchaseorders` (date, pack, SMS ajoutés, nouvelle fin, prix). Format lu dans la documentation publique d'Orange (« SMS Africa and Middle East », Getting started, 5.1 et 5.2), pas encore essayé avec les vraies clés.
 - La lecture est gardée une heure : ouvrir la page ne rappelle pas Orange. « Actualiser » relit tout de suite (au plus une fois par minute). Une lecture ratée garde les derniers chiffres, avec l'heure de la dernière lecture réussie et l'erreur ; elle est retentée après 5 minutes. Ni le jeton ni les clés ne vont dans le journal ou à l'écran.
-- **Sans les clés** : l'écran dit « Clés Orange SMS non configurées » et propose de recopier le solde et la fin du pack lus sur le portail Orange (« Enregistrer le solde »). Les SMS partis ensuite en sont retirés : le chiffre affiché est une estimation.
+- **Sans les clés** : l'écran dit « Clés Orange SMS non configurées » et propose de recopier le solde et la fin du pack lus sur le portail Orange (« Enregistrer le solde »). Les SMS partis ensuite en sont retirés : le chiffre affiché est une estimation. La même saisie reste proposée quand les clés sont posées mais qu'Orange n'a encore jamais pu être lu (clés refusées, pas d'accès aux adresses d'administration).
 - Le nombre de SMS d'un message est compté comme chez l'opérateur : 160 caractères en un SMS (153 par partie au-delà) ; un seul caractère hors de l'alphabet GSM (ê, ç, ’, emoji) fait passer à 70 (67 par partie). Le solde lu chez Orange reste la référence.
 
 ### E-mail
@@ -103,7 +103,7 @@ Demande de Yaya du 16/10/2026 : « Il faut ajouter également une partie dans l'
 
 - `src/Controller/CreditsMessagesController.php`, `templates/credits_messages/`, `public/css/credits-messages.css`.
 - `src/Service/Messagerie/` : `CreditsMessages` (état SMS et e-mail, alertes), `SoldeOrange` (lecture Orange et cache), `JournalEnvois` (écriture de l'historique), `SegmentsSms`, `AlertesMessages` ; `src/EventSubscriber/JournalEmailsSubscriber.php` ; `src/Entity/EnvoiMessage.php` (migration `Version20261018093000`) ; `src/Command/CreditsMessagesCommand.php`.
-- Recette des accès : `RecetteAcces::verifierCreditsMessages` (refus sans le droit, masquage sans le droit Clients, à l'écran et dans l'export).
+- Recette des accès : `RecetteAcces::verifierCreditsMessages` (refus sans le droit, masquage sans le droit Clients, à l'écran et dans l'export ; destinataire d'un message au personnel masqué et introuvable par la recherche sans être la direction).
 
 ## Ordre proposé
 

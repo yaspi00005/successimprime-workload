@@ -43,7 +43,7 @@
 				<p class="cm-alerte cm-alerte-orange"><i class="fas fa-key" aria-hidden="true"></i><span><b>Clés Orange SMS non configurées.</b> Aucun SMS ne part. Saisissez le solde et la fin du pack lus sur le portail Orange : les SMS partis depuis la saisie en sont retirés.</span></p>
 			{% endif %}
 			{% if sms.erreur %}
-				<p class="cm-alerte cm-alerte-rouge"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i><span><b>Lecture chez Orange impossible.</b> {{ sms.erreur }}{% if sms.luLe %} Chiffres lus le {{ sms.luLe|date('d/m/Y à H:i') }}.{% endif %}</span></p>
+				<p class="cm-alerte cm-alerte-rouge"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i><span><b>Lecture chez Orange impossible.</b> {{ sms.erreur }}{% if sms.source == 'orange' and sms.luLe %} Chiffres lus le {{ sms.luLe|date('d/m/Y à H:i') }}.{% elseif sms.source != 'orange' %} En attendant, le solde lu sur le portail Orange peut se saisir plus bas.{% endif %}</span></p>
 			{% endif %}
 
 			<div class="cm-chiffres">
@@ -106,7 +106,8 @@
 				</div>
 			{% endif %}
 
-			{% if not sms.configure %}
+			{# Sans les clés, ou tant qu'Orange n'a jamais pu être lu (clés posées mais refusées) : la saisie à la main reste possible. #}
+			{% if sms.source != 'orange' %}
 				<form method="post" action="{{ path('app_credits_messages_saisie') }}" class="cm-saisie">
 					<input type="hidden" name="_token" value="{{ jeton }}">
 					<input type="hidden" name="quoi" value="sms">

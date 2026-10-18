@@ -112,7 +112,7 @@
 						<div class="si-dialogue-grille">
 							<label>Arrivée<input type="datetime-local" name="arrivee" class="form-control" value="{{ p.arriveeLe|date('Y-m-d\\TH:i') }}" required></label>
 							<label>Départ<input type="datetime-local" name="depart" class="form-control" value="{{ p.departLe ? p.departLe|date('Y-m-d\\TH:i') }}"></label>
-							<label class="si-plein">Motif (obligatoire)<input type="text" name="motif" class="form-control" maxlength="255" required placeholder="Ex. téléphone en panne, départ confirmé par le chef d'atelier"></label>
+							<label class="si-plein">Motif (obligatoire, vu par l'employé)<input type="text" name="motif" class="form-control" maxlength="255" required placeholder="Ex. téléphone en panne, départ confirmé par le chef d'atelier"></label>
 						</div>
 						<footer><button type="button" class="btn btn-light" data-si-fermer>Annuler</button><button type="submit" class="btn btn-primary">Corriger</button></footer>
 					</form>

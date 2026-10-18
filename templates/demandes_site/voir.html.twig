@@ -32,7 +32,7 @@
 				{% endif %}
 				{% if d.estDevis %}
 					<dt class="col-sm-3">Produit</dt>
-					<dd class="col-sm-9">{{ d.designation ?: 'Non choisi : voir le message' }}</dd>
+					<dd class="col-sm-9">{{ d.designation ? d|ligne_interne : 'Non choisi : voir le message' }}</dd>
 					{% if d.largeurCm and d.hauteurCm %}
 						<dt class="col-sm-3">Taille</dt>
 						<dd class="col-sm-9">{{ d.largeurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} × {{ d.hauteurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} cm</dd>

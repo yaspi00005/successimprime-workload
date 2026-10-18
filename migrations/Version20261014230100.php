@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Espace client : code d'accès donné par la boutique sur WhatsApp (fiche
+ * Espace client : code d'accès donné par l'imprimerie sur WhatsApp (fiche
  * client). Seule l'empreinte du code est gardée ; elle descend sur le
  * site avec son échéance (synchronisation « acces_espace »).
  */

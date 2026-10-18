@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Saisie de commande (maquette C01) : retrait à la boutique ou
+ * Saisie de commande (maquette C01) : retrait à l'imprimerie ou
  * livraison, et adresse de livraison.
  */
 final class Version20261011014428 extends AbstractMigration

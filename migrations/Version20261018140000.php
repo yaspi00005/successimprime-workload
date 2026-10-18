@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Compte du client à la boutique (docs/finances.md, « Compte du client ») :
+ * Compte du client à l'imprimerie (docs/finances.md, « Compte du client ») :
  * relevé des entrées et sorties du solde (monnaie gardée, dépôts, paiements
  * avec le solde, argent rendu) et dépôts Orange Money de l'espace client.
  *

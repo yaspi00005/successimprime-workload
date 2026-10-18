@@ -12,6 +12,7 @@ Construit le 14/10/2026 sur l'ERP local. Règle du propriétaire : « toute info
 | Trésorerie | `/statistiques/tresorerie` | « Chiffre d'affaires global » et « Trésorerie et soldes » |
 | Mes statistiques (maquette U05) | `/mes-statistiques` | « Ses propres statistiques » ; ses objectifs à lui seulement |
 | Rapport de la semaine | `/rapport-semaine` | « Chiffre d'affaires global » ou « Ses propres statistiques » |
+| Rapports par e-mail (jour, semaine, mois) | `/rapports-mail` | « Chiffre d'affaires global » ; destinataires et historique : Direction ([docs/rapports-mail.md](rapports-mail.md)) |
 
 Libellés des droits de l'écran Rôles et menus (R04). Ils sont réunis dans `App\Service\Statistiques\DroitsStatistiques` : global (ROLE_STATS_GLOBAL), ventes (ROLE_STATS_VENTES, ne vaut qu'avec le précédent), paiements (ROLE_PAIEMENT_VOIR), trésorerie (ROLE_TRESORERIE_VOIR), marges (ROLE_COUT_MARGE), perso (ROLE_STATS_PERSO), admin (ROLE_ADMIN).
 
@@ -57,7 +58,7 @@ Page Accueil › **Rapport de la semaine** (semaine dernière par défaut, semai
 Tâche `app:rapport-hebdomadaire`, à lancer **chaque heure** sur l'ERP local : elle n'envoie qu'au jour et à l'heure des Réglages, une seule fois par semaine (table `rapport_hebdomadaire`, une ligne par semaine posée avant l'envoi).
 
 - Notification dans l'application à chaque destinataire, avec le lien vers sa version. Le message ne contient aucun montant (« Rapport de la semaine 41 (du 5 au 11 octobre 2026) disponible »), la notification push non plus.
-- E-mail avec le PDF de sa version seulement si la case est cochée dans les Réglages **et** que l'envoi d'e-mails est configuré (`MAILER_DSN` autre que `null://`, `MAILER_FROM_ADDRESS` renseigné) et que l'employé a une adresse. Jamais de SMS ni de WhatsApp.
+- E-mail avec le PDF de sa version seulement si la case est cochée (désactivée par défaut : la Direction reçoit déjà le rapport de la semaine par e-mail, docs/rapports-mail.md) dans les Réglages **et** que l'envoi d'e-mails est configuré (`MAILER_DSN` autre que `null://`, `MAILER_FROM_ADDRESS` renseigné) et que l'employé a une adresse. Jamais de SMS ni de WhatsApp.
 - Destinataires : la Direction (comptes avec « Chiffre d'affaires global ») si « Envoyer à la direction » est coché ; les agents (« Ses propres statistiques ») si « Envoyer aux agents » est coché et qu'ils ont eu une activité ou ont un objectif.
 
 ```
@@ -96,4 +97,4 @@ Les objectifs, les exports et le rapport de la semaine n'existent que sur l'ERP 
 - Le taux d'encaissement compare les paiements de la période (factures anciennes comprises) au CA facturé de la période : il peut dépasser 100 %.
 - Vue d'ensemble de Finances et Finances du jour gardent l'objectif de CA de la tuile Finances et budgets ; à brancher sur l'objectif du mois.
 - Graphiques des anciens écrans (Agents, Commandes, Clients, Trésorerie) : Chart.js chargé depuis un CDN, vide sans internet.
-- Pas encore d'objectif par agent pour les m² ni de rapport mensuel.
+- Pas encore d'objectif par agent pour les m². Les rapports du jour, de la semaine et du mois par e-mail à l'administration sont décrits dans [docs/rapports-mail.md](rapports-mail.md).

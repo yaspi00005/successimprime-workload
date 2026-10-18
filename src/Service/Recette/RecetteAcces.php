@@ -112,6 +112,7 @@ final class RecetteAcces
         private readonly EntityManagerInterface $em,
         private readonly AccessDecisionManagerInterface $decisions,
         private readonly TokenStorageInterface $jetons,
+        private readonly RecetteRapportsMail $rapportsMail,
     ) {
     }
 
@@ -241,6 +242,12 @@ final class RecetteAcces
             } catch (\Throwable $e) {
                 // Le bilan des comptes reste écrit ; le contrôle est noté en échec.
                 $bilan->controler('Mode « Voir » : contrôle interrompu', false, $e::class.' : '.$e->getMessage());
+            }
+            $suivi && $suivi('rapports par e-mail');
+            try {
+                $this->rapportsMail->verifier($comptes, $bilan);
+            } catch (\Throwable $e) {
+                $bilan->controler('Rapports par e-mail : contrôle interrompu', false, $e::class.' : '.$e->getMessage());
             }
         } finally {
             $this->navigateur->terminer();

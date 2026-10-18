@@ -34,7 +34,7 @@ final class RapportsMailController extends AbstractController
 {
     use ExporterStatistiques;
 
-    private const CSRF = 'rapports_mail';
+    public const CSRF = 'rapports_mail';
 
     /** Périodes consultables en arrière dans l'aperçu (deux ans). */
     private const ANS_EN_ARRIERE = 2;

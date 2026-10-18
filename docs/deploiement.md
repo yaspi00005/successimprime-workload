@@ -190,7 +190,7 @@ sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 
 `app:espace:notifications` envoie à 7 h les SMS des clients mis de côté pendant les heures calmes (21 h – 7 h) et les rappels d'échéance des factures (docs/espace-client.md).
 
-Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trésorerie, rapport de la semaine) tournent sur l'ERP local.
+Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trésorerie, rapport de la semaine, rapports par e-mail) tournent sur l'ERP local.
 
 ## Brancher l'ERP local
 

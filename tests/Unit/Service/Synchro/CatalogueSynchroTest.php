@@ -189,10 +189,16 @@ final class CatalogueSynchroTest extends TestCase
 
     public function testDecisionsDuClientEnLigne(): void
     {
-        // Accepter un devis envoyé : repris au local. Le reste : conflit.
+        // Ouvrir, accepter (la commande créée en ligne remonte), refuser un devis envoyé : repris au local. Le reste : conflit.
         self::assertTrue(CatalogueSynchro::remonteePermise('devis', 'statut', 'envoye', 'accepte'));
+        self::assertTrue(CatalogueSynchro::remonteePermise('devis', 'statut', 'envoye', 'vu'));
+        self::assertTrue(CatalogueSynchro::remonteePermise('devis', 'statut', 'vu', 'converti'));
+        self::assertTrue(CatalogueSynchro::remonteePermise('devis', 'statut', 'vu', 'refuse'));
         self::assertFalse(CatalogueSynchro::remonteePermise('devis', 'statut', 'brouillon', 'accepte'));
-        self::assertFalse(CatalogueSynchro::remonteePermise('devis', 'statut', 'envoye', 'converti'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('devis', 'statut', 'vu', 'envoye'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('devis', 'statut', 'expire', 'accepte'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('devis', 'relances', '', '[]'));
+        self::assertTrue(CatalogueSynchro::remonteePermise('devis', 'nombreVues', '1', '2'));
         self::assertFalse(CatalogueSynchro::remonteePermise('devis', 'totalTtc', '1000', '1'));
         self::assertTrue(CatalogueSynchro::remonteePermise('client', 'recevoirSms', '1', '0'));
         self::assertFalse(CatalogueSynchro::remonteePermise('client', 'ville', 'Bamako', 'Kati'));

@@ -47,10 +47,8 @@
 					<small>{{ ligne and ligne.designation ? ligne|texte_ligne ~ ' · ' }}{{ d.numero }} · {{ d.totalTtc|number_format(0, ',', ' ') }} F</small>
 				</div>
 				{% if devisAAccepter|length == 1 %}
-					<form method="post" action="{{ path('app_espace_devis_accepter', {id: d.id}) }}" data-confirmer="Accepter le devis {{ d.numero }} ({{ d.totalTtc|number_format(0, ',', ' ') }} F) ?" data-confirmer-bouton="Accepter">
-						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-						<button type="submit" class="ec-mini dev"><span class="ec-bureau">Accepter le devis</span><span class="ec-telephone">Accepter</span></button>
-					</form>
+					{# Le devis s'ouvre d'abord (lignes, acompte, délai) : on l'accepte sur sa page (maquette DT01). #}
+					<a class="ec-mini dev" href="{{ path('app_espace_devis_detail', {id: d.id}) }}"><span class="ec-bureau">Voir et accepter</span><span class="ec-telephone">Voir</span></a>
 				{% else %}
 					<a class="ec-mini dev" href="{{ path('app_espace_devis', {filtre: 'a_accepter'}) }}">Voir les devis</a>
 				{% endif %}

@@ -124,6 +124,8 @@ final class DemoCommand extends Command
             $this->lancer('app:sondages:demo', [], $output);
             // Comptes clients : monnaie gardée, dépôts, argent rendu, dépôts en ligne à valider.
             $this->lancer('app:solde-client:demo', [], $output);
+            // Suivi des devis : envoi, validité, conditions, versions, ouvertures, refus et relances (docs/devis.md).
+            $this->lancer('app:devis:demo', [], $output);
             // Dotations aux amortissements et évaluations de primes des derniers mois.
             $this->lancer('app:immobilisations:dotations', ['--demo' => true], $output);
             $this->lancer('app:primes', ['--demo' => true], $output);

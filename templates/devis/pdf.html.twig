@@ -614,6 +614,10 @@
 
 						</div>
 
+						{# Version et validité (docs/devis.md). #}
+						{% if devis.version > 1 %}<div>Version : <strong>{{ devis.version }}</strong></div>{% endif %}
+						{% if devis.dateValidite %}<div>Valable jusqu'au : <strong>{{ devis.dateValidite|date('d/m/Y') }}</strong></div>{% endif %}
+
 					</div>
 
 				</td>
@@ -1052,6 +1056,18 @@
 
 					</div>
 
+
+					{# Conditions du devis (maquette GC04) : acompte, solde, fichier, garantie, délai. #}
+					{% if devis.acomptePourcentage > 0 or devis.conditionSolde or devis.conditionFichier or devis.conditionGarantie or devis.delaiRealisation %}
+						<div style="margin-top: 10px; padding: 7px; border: 1px solid #d5dce6;">
+							<strong>Conditions :</strong><br>
+							{% if devis.acomptePourcentage > 0 %}Acompte : {{ devis.acomptePourcentage }} % à l'acceptation, soit {{ devis.montantAcompte|number_format(0, ',', ' ') }} F CFA.<br>{% endif %}
+							{% if devis.conditionSolde %}Solde : {{ devis.conditionSolde }}.<br>{% endif %}
+							{% if devis.delaiRealisation %}Délai de réalisation : {{ devis.delaiRealisation }}.<br>{% endif %}
+							{% if devis.conditionFichier %}Fichier : {{ devis.conditionFichier }}.<br>{% endif %}
+							{% if devis.conditionGarantie %}Garantie : {{ devis.conditionGarantie }}.{% endif %}
+						</div>
+					{% endif %}
 
 					{% if devis.observation|default('') %}
 

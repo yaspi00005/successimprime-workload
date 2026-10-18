@@ -31,7 +31,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final class CodesPromo
 {
     /** Devis qui retiennent encore leur code (ni refusé, ni expiré, ni annulé, ni transformé). */
-    private const DEVIS_VIVANTS = [Devis::STATUT_BROUILLON, Devis::STATUT_ENVOYE, Devis::STATUT_ACCEPTE];
+    private const DEVIS_VIVANTS = [Devis::STATUT_BROUILLON, Devis::STATUT_ENVOYE, Devis::STATUT_VU, Devis::STATUT_ACCEPTE];
 
     public function __construct(
         private readonly EntityManagerInterface $em,

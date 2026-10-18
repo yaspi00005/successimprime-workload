@@ -43,7 +43,7 @@ final class EntetesSecurite
     private const ROUTES_PUBLIQUES = [
         'app_site_', 'app_espace_', 'app_avis_', 'app_assistant_public_', 'app_facture_suivi',
         'app_orange_money_', 'app_appareil_autoriser', 'app_login', 'app_verification',
-        'app_factures_pdf_public', 'app_devis_pdf_public',
+        'app_factures_pdf_public', 'app_devis_pdf_public', 'app_devis_lien',
     ];
 
     /** @var array<string, list<string>> */

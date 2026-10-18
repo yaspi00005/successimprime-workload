@@ -34,7 +34,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  */
 final class EspaceClient
 {
-    public const DEVIS_VISIBLES = [Devis::STATUT_ENVOYE, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_EXPIRE, Devis::STATUT_CONVERTI];
+    public const DEVIS_VISIBLES = [Devis::STATUT_ENVOYE, Devis::STATUT_VU, Devis::STATUT_ACCEPTE, Devis::STATUT_REFUSE, Devis::STATUT_EXPIRE, Devis::STATUT_CONVERTI];
 
     /** Gestes du client sur le site, rejoués au local (synchronisation). */
     public const ACTION_BAT_VALIDE = 'bat_valide';
@@ -498,12 +498,10 @@ final class EspaceClient
             ->orderBy('d.id', 'DESC')->setMaxResults(100)->getQuery()->getResult();
     }
 
-    public function accepterDevis(Devis $d): void
+    /** Le devis accepté dont la commande est née, ou null. */
+    public function devisDeLaCommande(Commandes $commande): ?Devis
     {
-        $d->setStatut(Devis::STATUT_ACCEPTE);
-        $this->em->flush();
-        $this->notifications->notifierRoles(['ROLE_DEVIS'], \sprintf('Devis %s accepté par le client dans son espace : à transformer en commande.', $d->getNumero()), 'app_devis_show', ['id' => $d->getId()]);
-        $this->em->flush();
+        return null === $commande->getId() ? null : $this->em->getRepository(Devis::class)->findOneBy(['commande' => $commande]);
     }
 
     /** @return list<Factures> */
@@ -628,7 +626,7 @@ final class EspaceClient
                 // « Autocollant · Vinyle adhésif · DV-… » comme les autres événements : le numéro
                 // reste collé au prix qui suit (docs/noms-commerciaux.md, recette des accès).
                 $nom = false !== $ligne && '' !== trim((string) $ligne->getDesignation()) ? NomCommercial::texteLigne($ligne->getDesignation(), NomCommercial::elementDeLigne($ligne)) : '';
-                $fil[] = self::evenement('devis', 'Nouveau devis', trim(('' !== $nom ? $nom.' · ' : '').$d->getNumero()), $d->getDateDevis(), ['app_espace_devis', ['d' => $d->getId()]], $d->getNumero(), [
+                $fil[] = self::evenement('devis', 'Nouveau devis', trim(('' !== $nom ? $nom.' · ' : '').$d->getNumero()), $d->getDateDevis(), ['app_espace_devis_detail', ['id' => $d->getId()]], $d->getNumero(), [
                     'montant' => $d->getTotalTtc(),
                     'cible' => ['devis' => $d->getId(), 'statut' => $d->getStatut()],
                 ]);

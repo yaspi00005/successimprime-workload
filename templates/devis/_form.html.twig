@@ -807,16 +807,19 @@
 }) }}
 
 {#
-	Saisie d'un devis (maquette 22), sur le modèle de la saisie de
-	commande : client et lignes à gauche, une ligne ouverte à la fois ;
-	à droite le coût de revient et la marge (droit « Marges et coûts »),
-	le récapitulatif et l'acompte. Sur téléphone, 3 étapes.
+	Saisie d'un devis (maquette GC04, docs/devis.md) : en-tête (client,
+	contact, validité, délai), lignes depuis le catalogue ou libres,
+	calculateur grand format, conditions et canaux d'envoi ; à droite le
+	total, la rentabilité « Interne » (droit « Marges et coûts », jamais
+	montrée au client) et ce qui se passe après l'envoi. Sur téléphone,
+	3 étapes (client et lignes, ligne, conditions et envoi).
 #}
 {% set devis = form.vars.data %}
 {% set estNouveau = devis.id is null %}
 {% set voirCouts = is_granted('ROLE_COUT_MARGE') %}
+{% set nouvelleVersion = not estNouveau and devis.statut != 'brouillon' %}
 
-<div class="si-saisie si-saisie-devis" data-etape="lignes" data-ligne=".detail-devis" data-travail=".js-devis-detail">
+<div class="si-saisie si-saisie-devis si-dv" data-etape="lignes" data-ligne=".detail-devis" data-travail=".js-devis-detail">
 
 	<div class="si-saisie-tete">
 		<div class="si-saisie-retour d-md-none">
@@ -827,13 +830,23 @@
 			</div>
 		</div>
 		<div class="si-saisie-boutons">
-			<a href="{{ estNouveau ? path('app_devis_index') : path('app_devis_show', {id: devis.id}) }}" class="btn btn-light btn-sm si-btn-entete">Annuler</a>
-			{% if not estNouveau %}
+			<a href="{{ estNouveau ? path('app_devis_index') : path('app_devis_show', {id: devis.id}) }}" class="btn btn-light btn-sm si-btn-entete d-none d-lg-inline-block">Annuler</a>
+			{% if estNouveau %}
+				<button type="submit" name="action" value="apercu" class="btn btn-light btn-sm si-btn-entete" formnovalidate>Aperçu PDF</button>
+			{% else %}
 				<a href="{{ path('app_devis_pdf', {id: devis.id}) }}" target="_blank" class="btn btn-light btn-sm si-btn-entete">Aperçu PDF</a>
 			{% endif %}
-			<button type="submit" class="btn btn-danger btn-sm si-btn-entete">{{ estNouveau ? 'Enregistrer le devis' : 'Enregistrer les modifications' }}</button>
+			<button type="submit" name="action" value="brouillon" class="btn btn-light btn-sm si-btn-entete">Enregistrer le brouillon</button>
+			<button type="submit" name="action" value="envoyer" class="btn btn-danger btn-sm si-btn-entete js-dv-envoyer">Envoyer au client</button>
 		</div>
 	</div>
+
+	{% if apercu|default(null) %}
+		<div class="alert alert-info si-dv-bandeau">Brouillon enregistré. <a href="{{ path('app_devis_pdf', {id: apercu}) }}" target="_blank" rel="noopener"><strong>Ouvrir l'aperçu PDF</strong></a></div>
+	{% endif %}
+	{% if nouvelleVersion %}
+		<div class="alert alert-warning si-dv-bandeau">Ce devis a déjà été envoyé (version {{ devis.version }}). Enregistrer prépare la <strong>version {{ devis.version + 1 }}</strong> : le client garde la version {{ devis.version }} jusqu'au nouvel envoi.</div>
+	{% endif %}
 
 	{% if not form.vars.valid %}
 		{# Toutes les erreurs, celles des lignes comprises : le volet de la ligne concernée peut être fermé. #}
@@ -849,52 +862,73 @@
 	<div class="si-saisie-grille">
 		<div class="si-saisie-gauche">
 
-			{# ---------- Client ---------- #}
-			<div class="card si-bloc si-saisie-client js-zone-client">
-				<div class="si-client-carte js-client-carte" hidden>
-					<span class="si-client-initiales js-client-initiales"></span>
-					<div class="min-w-0 flex-grow-1">
-						<small class="text-muted">Client</small>
-						<div class="si-client-nom"><strong class="js-client-nom"></strong> <span class="si-pastille si-pastille-bleu js-client-compte"></span> <span class="si-pastille si-pastille-gris js-client-tarif"></span></div>
-						<small class="text-muted js-client-contact"></small>
+			{# ---------- En-tête : client, contact, validité, délai ---------- #}
+			<div class="card si-bloc si-saisie-client si-dv-entete js-zone-client">
+				<div class="si-dv-entete-client">
+					<div class="si-client-carte js-client-carte" hidden>
+						<span class="si-client-initiales js-client-initiales"></span>
+						<div class="min-w-0 flex-grow-1">
+							<small class="text-muted">Client</small>
+							<div class="si-client-nom"><strong class="js-client-nom"></strong> <span class="si-pastille si-pastille-bleu js-client-compte"></span> <span class="si-pastille si-pastille-gris js-client-tarif"></span></div>
+							<small class="text-muted js-client-contact"></small>
+						</div>
+						<button type="button" class="btn btn-sm si-btn-secondaire js-client-changer">Changer</button>
 					</div>
-					<button type="button" class="btn btn-sm si-btn-secondaire js-client-changer">Changer</button>
+					<div class="js-client-choix">
+						{{ form_row(form.clients, {
+							label: 'Client',
+							attr: {
+								class: 'form-control js-select-search js-client-saisie',
+								'data-placeholder': 'Téléphone, prénom ou nom…'
+							}
+						}) }}
+					</div>
 				</div>
-				<div class="js-client-choix">
-					{{ form_row(form.clients, {
-						label: 'Client',
-						attr: {
-							class: 'form-control js-select-search js-client-saisie',
-							'data-placeholder': 'Téléphone, prénom ou nom…'
-						}
-					}) }}
+				<div class="si-dv-entete-contact">
+					{% include 'partials/_interlocuteur.html.twig' with {champ: form.interlocuteur, libelle: 'Contact'} %}
+				</div>
+				<div class="si-dv-entete-validite">
+					{{ form_label(form.validiteJours, 'Valable', {label_attr: {class: 'form-label mb-1'}}) }}
+					{{ form_widget(form.validiteJours, {attr: {class: 'form-select form-select-sm js-validite'}}) }}
+					<small class="text-muted js-validite-date" data-depuis="{{ (devis.envoyeLe and devis.statut != 'brouillon' and not nouvelleVersion ? devis.envoyeLe : 'now')|date('Y-m-d') }}"></small>
+				</div>
+				<div class="si-dv-entete-delai">
+					{{ form_label(form.delaiRealisation, 'Délai de réalisation', {label_attr: {class: 'form-label mb-1'}}) }}
+					{{ form_widget(form.delaiRealisation, {attr: {class: 'form-control form-control-sm'}}) }}
+					<datalist id="delais-suggeres">
+						{% for d in ['24 heures', '2 jours ouvrés', '3 jours ouvrés', '5 jours ouvrés', '7 jours ouvrés', '10 jours ouvrés', '15 jours ouvrés'] %}<option value="{{ d }}"></option>{% endfor %}
+					</datalist>
 				</div>
 				{# Objet du devis, imprimé sur le devis puis sur la facture (« Objet : … ») ; suggestions des Réglages. #}
-				<div class="mt-2">
-					{{ form_row(form.objet, {label: 'Objet (facultatif)'}) }}
+				<div class="si-dv-entete-objet">
+					{{ form_label(form.objet, 'Objet', {label_attr: {class: 'form-label mb-1'}}) }}
+					{{ form_widget(form.objet, {attr: {class: 'form-control form-control-sm', placeholder: 'Signalétique du hall, enseigne + pose… (facultatif)'}}) }}
 					<datalist id="objets-suggeres">
 						{% for objet in objets_suggeres() %}<option value="{{ objet }}"></option>{% endfor %}
 					</datalist>
 				</div>
-				{% include 'partials/_interlocuteur.html.twig' with {champ: form.interlocuteur, libelle: 'À l\'attention de'} %}
+				{{ form_errors(form.validiteJours) }}{{ form_errors(form.delaiRealisation) }}{{ form_errors(form.objet) }}
 			</div>
 
 			{# ---------- Lignes ---------- #}
 			<div class="card si-bloc si-saisie-lignes">
 				<div class="si-bloc-tete">
-					<h4>Lignes du devis <span class="text-muted d-md-none js-nombre-lignes"></span></h4>
-					<button type="button" id="add-detail" class="btn btn-link btn-sm si-lien-ajout d-none d-md-inline-block">+ Ajouter une ligne</button>
+					<h4>Lignes <span class="text-muted d-md-none js-nombre-lignes"></span></h4>
+					<div class="si-dv-ajouts d-none d-md-flex">
+						<button type="button" id="add-detail" class="btn btn-light btn-sm si-btn-entete">+ Depuis le catalogue</button>
+						<button type="button" class="btn btn-light btn-sm si-btn-entete js-ligne-libre">+ Ligne libre</button>
+					</div>
 				</div>
 				{{ form_errors(form.devisDetails) }}
 				<div class="table-responsive">
-					<table class="table si-table si-table-lignes align-middle mb-0">
+					<table class="table si-table si-table-lignes align-middle mb-0" data-sans-filtres>
 						<thead>
 							<tr>
 								<th class="si-col-vignette"></th>
-								<th>Produit et caractéristiques</th>
+								<th>Désignation</th>
 								<th>Mode d'impression</th>
 								<th class="text-end">Qté</th>
-								<th class="text-end">PU TTC</th>
+								<th class="text-end">Prix unitaire</th>
 								<th class="text-end">Total</th>
 								<th class="si-col-fichier"></th>
 								<th></th>
@@ -903,8 +937,21 @@
 						<tbody class="js-lignes-resume"></tbody>
 					</table>
 				</div>
-				<div id="aucun-detail" class="si-vide">Aucune ligne. Ajoutez le premier produit du devis.</div>
-				<button type="button" id="add-detail-bottom" class="btn si-btn-ajout-ligne d-md-none">+ Ajouter une ligne</button>
+				<div id="aucun-detail" class="si-vide">Aucune ligne. Ajoutez un produit du catalogue ou une ligne libre (pose, déplacement…).</div>
+				<div class="si-dv-ajouts-mobile d-md-none">
+					<button type="button" id="add-detail-bottom" class="btn si-btn-ajout-ligne">+ Catalogue</button>
+					<button type="button" class="btn si-btn-ajout-ligne js-ligne-libre">+ Ligne libre</button>
+				</div>
+
+				{# Calculateur grand format : prix au m² des configurations du catalogue (public/js/saisie-devis.js). #}
+				<div class="si-dv-calc js-dv-calc" hidden>
+					<span class="si-dv-calc-titre">Calculateur grand format :</span>
+					<label>Largeur <input type="number" class="js-calc-largeur" min="0" step="0.01" inputmode="decimal" placeholder="3,00"> m</label>
+					<label>Hauteur <input type="number" class="js-calc-hauteur" min="0" step="0.01" inputmode="decimal" placeholder="0,80"> m</label>
+					<label>Matière <select class="js-calc-matiere"></select></label>
+					<span class="si-dv-calc-prix js-calc-prix"></span>
+					<button type="button" class="btn btn-link btn-sm js-calc-ajouter" hidden>Ajouter la ligne</button>
+				</div>
 			</div>
 
 			{# ---------- Configuration de la ligne choisie ---------- #}
@@ -926,6 +973,44 @@
 				</div>
 			</div>
 
+			{# ---------- Conditions et envoi (étape 3 sur téléphone) ---------- #}
+			<div class="si-dv-bas si-dv-recap-mobile">
+				<div class="card si-bloc si-dv-conditions">
+					<h4>Conditions</h4>
+					<div class="si-dv-condition">
+						<label for="{{ form.acomptePourcentage.vars.id }}">Acompte</label>
+						<div class="si-dv-condition-valeur">
+							{{ form_widget(form.acomptePourcentage) }}
+							<strong class="js-acompte-texte"></strong>
+						</div>
+					</div>
+					{% for champ in [form.conditionSolde, form.conditionFichier, form.conditionGarantie] %}
+						<div class="si-dv-condition">
+							{{ form_label(champ) }}
+							<div class="si-dv-condition-valeur">{{ form_widget(champ, {attr: {class: 'form-control form-control-sm'}}) }}</div>
+						</div>
+						{{ form_errors(champ) }}
+					{% endfor %}
+				</div>
+
+				<div class="card si-bloc si-dv-canaux">
+					<h4>Envoyer par</h4>
+					{% set details = {
+						espace: 'le client accepte et paie l\'acompte en ligne',
+						whatsapp: 'lien du devis au <span class="js-canal-telephone">numéro du client</span>',
+						email: 'PDF en pièce jointe',
+					} %}
+					{% for choix in form.canauxEnvoi %}
+						<label class="si-dv-canal">
+							{{ form_widget(choix, {attr: {class: 'form-check-input'}}) }}
+							<span><strong>{{ {espace: 'Espace client', whatsapp: 'WhatsApp', email: 'E-mail'}[choix.vars.value]|default(choix.vars.label) }}</strong><small>{{ details[choix.vars.value]|default('')|raw }}</small></span>
+						</label>
+					{% endfor %}
+					{{ form_errors(form.canauxEnvoi) }}
+					{{ form_row(form.messageClient, {label: 'Message avec le devis', label_attr: {class: 'form-label mb-1 mt-2'}, attr: {class: 'form-control form-control-sm'}}) }}
+				</div>
+			</div>
+
 			<div class="si-barre-total d-md-none">
 				<div><small class="text-muted">Total TTC</small><strong class="js-total-affiche">0 F</strong></div>
 				<button type="button" class="btn btn-danger js-etape-suivante">Continuer <i class="fas fa-arrow-right ms-1"></i></button>
@@ -934,40 +1019,78 @@
 
 		<div class="si-saisie-droite">
 
-			{# ---------- Coût de revient et marge (maquette 22) ---------- #}
-			{% if voirCouts %}
-				<div class="card si-bloc si-cout-ligne js-cout-ligne" data-url="{{ path('app_saisie_cout_ligne') }}" data-token="{{ csrf_token('cout-ligne') }}">
-					<h4>Coût de revient et marge <small class="text-muted js-cout-titre"></small></h4>
-					<label class="form-label mb-1" for="cout-machine">Machine</label>
-					<select id="cout-machine" class="form-select form-select-sm js-cout-machine">
-						{% for machine in machines_pour_cout() %}
-							<option value="{{ machine.id }}" data-laize="{{ machine.laizeMetres }}">{{ machine.nom }}</option>
-						{% endfor %}
-					</select>
-					<table class="table si-table si-table-cout mb-2">
-						<tbody>
-							<tr><td>Support <small class="text-muted js-cout-surface"></small></td><td class="text-end js-cout-matieres">—</td></tr>
-							<tr><td>Encre</td><td class="text-end js-cout-encre">—</td></tr>
-							<tr><td>Temps machine</td><td class="text-end js-cout-machine-temps">—</td></tr>
-							<tr><td>Finitions</td><td class="text-end js-cout-finitions">—</td></tr>
-							<tr class="si-cout-total"><td>Coût total</td><td class="text-end js-cout-total">—</td></tr>
-						</tbody>
-					</table>
-					<div class="si-cout-prix">
-						<div><small class="text-muted">Prix de vente TTC</small><strong class="js-cout-prix">0 F</strong></div>
-						<div class="text-end"><small class="text-muted">Marge brute</small><strong class="js-cout-marge">—</strong></div>
-					</div>
-					<p class="si-cout-manquants js-cout-manquants" hidden></p>
+			{# ---------- Total du devis ---------- #}
+			<div class="card si-bloc si-saisie-recap si-dv-total">
+				<small>Total du devis</small>
+				<strong class="si-dv-total-montant js-total-affiche">0 F</strong>
+				<dl class="si-recap">
+					<dt class="js-recap-lignes">Sous-total HT</dt><dd class="js-recap-ht">0</dd>
+					<dt class="js-recap-tva-libelle">TVA</dt><dd class="js-recap-tva">0</dd>
+					<dt class="js-recap-livraison" hidden>Livraison</dt><dd class="js-recap-livraison js-recap-livraison-montant" hidden>0</dd>
+					<dt>Remise</dt>
+					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-saisie'}}) }}</dd>
+					<dt>Code promo</dt>
+					<dd>{{ form_widget(form.codePromo, {attr: {class: 'form-control form-control-sm si-remise js-code-promo', maxlength: 30, autocomplete: 'off', placeholder: 'Facultatif'}}) }}</dd>
+					<dt>Acompte demandé</dt>
+					<dd><span class="js-acompte-taux">{{ devis.acomptePourcentage }}</span> % · <span class="js-acompte" data-pourcentage="{{ devis.acomptePourcentage }}">0 F</span></dd>
+				</dl>
+				<small class="si-dv-total-note">Taxes selon votre régime (Réglages › Taxes)</small>
+			</div>
 
-					<h5 class="mt-3">Optimiseur de laize</h5>
-					<div class="si-laize js-laize"><small class="text-muted">Indiquez largeur, hauteur et quantité.</small></div>
-					<div class="si-laize-infos">
-						<span>Laize <strong class="js-laize-largeur">—</strong></span>
-						<span>Support <strong class="js-laize-metres">—</strong></span>
-						<span>Chute <strong class="js-laize-chute">—</strong></span>
-					</div>
+			{# ---------- Rentabilité (interne, droit « Marges et coûts ») ---------- #}
+			{% if voirCouts %}
+				<div class="card si-bloc si-dv-rentabilite js-dv-rentabilite" data-url="{{ path('app_devis_rentabilite') }}" data-token="{{ csrf_token('devis-rentabilite') }}" data-seuil="{{ seuilMarge|default(25) }}">
+					<h4>Rentabilité <span class="si-dv-interne">Interne</span></h4>
+					<dl>
+						<dt>Coût estimé</dt><dd class="js-rent-cout">—</dd>
+						<dt>Marge</dt><dd class="js-rent-marge">—</dd>
+						<dt>Taux de marge</dt><dd class="js-rent-taux">—</dd>
+					</dl>
+					<p class="si-dv-alerte js-rent-alerte" hidden>Marge sous {{ seuilMarge|default(25)|number_format(0) }} % : revoyez le prix ou la remise.</p>
+					<p class="si-dv-petit js-rent-manquants" hidden></p>
+					<p class="si-dv-petit">Jamais visible par le client. Alerte si la marge passe sous {{ seuilMarge|default(25)|number_format(0) }} %.</p>
+
+					<details class="si-plus-options">
+						<summary>Coût de la ligne ouverte · optimiseur de laize</summary>
+						<div class="si-cout-ligne js-cout-ligne" data-url="{{ path('app_saisie_cout_ligne') }}" data-token="{{ csrf_token('cout-ligne') }}">
+							<h5 class="mt-2">Ligne <small class="text-muted js-cout-titre"></small></h5>
+							<label class="form-label mb-1" for="cout-machine">Machine</label>
+							<select id="cout-machine" class="form-select form-select-sm js-cout-machine">
+								{% for machine in machines_pour_cout() %}
+									<option value="{{ machine.id }}" data-laize="{{ machine.laizeMetres }}">{{ machine.nom }}</option>
+								{% endfor %}
+							</select>
+							<table class="table si-table si-table-cout mb-2" data-sans-filtres>
+								<tbody>
+									<tr><td>Support <small class="text-muted js-cout-surface"></small></td><td class="text-end js-cout-matieres">—</td></tr>
+									<tr><td>Encre</td><td class="text-end js-cout-encre">—</td></tr>
+									<tr><td>Temps machine</td><td class="text-end js-cout-machine-temps">—</td></tr>
+									<tr><td>Finitions</td><td class="text-end js-cout-finitions">—</td></tr>
+									<tr class="si-cout-total"><td>Coût total</td><td class="text-end js-cout-total">—</td></tr>
+								</tbody>
+							</table>
+							<div class="si-cout-prix">
+								<div><small class="text-muted">Prix de vente TTC</small><strong class="js-cout-prix">0 F</strong></div>
+								<div class="text-end"><small class="text-muted">Marge brute</small><strong class="js-cout-marge">—</strong></div>
+							</div>
+							<p class="si-cout-manquants js-cout-manquants" hidden></p>
+							<h5 class="mt-3">Optimiseur de laize</h5>
+							<div class="si-laize js-laize"><small class="text-muted">Indiquez largeur, hauteur et quantité.</small></div>
+							<div class="si-laize-infos">
+								<span>Laize <strong class="js-laize-largeur">—</strong></span>
+								<span>Support <strong class="js-laize-metres">—</strong></span>
+								<span>Chute <strong class="js-laize-chute">—</strong></span>
+							</div>
+						</div>
+					</details>
 				</div>
 			{% endif %}
+
+			{# ---------- Après l'envoi ---------- #}
+			<div class="card si-bloc si-dv-apres">
+				<h4>Après l'envoi</h4>
+				<p>Relance WhatsApp automatique {{ joursRelance|default(3) }} jours après, si le devis n'est pas ouvert ou pas accepté. Une fois accepté, il devient la commande, sans ressaisie.</p>
+			</div>
 
 			{# ---------- Livraison : un des paliers des Réglages (Ventes › Livraison et objet), jamais un montant tapé. ---------- #}
 			<div class="card si-bloc si-saisie-livraison js-zone-frais-livraison">
@@ -979,34 +1102,13 @@
 				</div>
 				{{ form_errors(form.fraisLivraison) }}
 				<small class="text-muted d-block">Des frais choisis font une commande à livrer quand le devis est accepté.</small>
-			</div>
-
-			{# ---------- Récapitulatif ---------- #}
-			<div class="card si-bloc si-saisie-recap">
-				<h4>Récapitulatif</h4>
-				<dl class="si-recap">
-					<dt class="js-recap-lignes">Sous-total HT</dt><dd class="js-recap-ht">0</dd>
-					<dt class="js-recap-tva-libelle">TVA</dt><dd class="js-recap-tva">0</dd>
-					<dt class="js-recap-livraison" hidden>Livraison</dt><dd class="js-recap-livraison js-recap-livraison-montant" hidden>0</dd>
-					<dt>Remise</dt>
-					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-saisie'}}) }}</dd>
-					<dt>Code promo</dt>
-					<dd>{{ form_widget(form.codePromo, {attr: {class: 'form-control form-control-sm si-remise js-code-promo', maxlength: 30, autocomplete: 'off', placeholder: 'Facultatif'}}) }}</dd>
-				</dl>
-				<div class="si-recap-total"><span>Total TTC</span><strong class="js-total-affiche">0 F</strong></div>
-				<div class="si-acompte">
-					<div class="d-flex justify-content-between"><strong>Acompte demandé</strong><strong>50 % · <span class="js-acompte">0 F</span></strong></div>
-					<small class="text-muted d-block mt-1">Encaissé à la commande, quand le client accepte le devis.</small>
-				</div>
-
-				<div class="row g-2 mt-2">
-					<div class="col-5">{{ form_row(form.statut, {label: 'Statut', attr: {class: 'form-select form-select-sm'}}) }}</div>
-					<div class="col-4">{{ form_row(form.emetteur, {label: 'Émetteur', attr: {class: 'form-select form-select-sm'}}) }}</div>
-					<div class="col-3">{{ form_row(form.tva, {label: 'TVA %', attr: {class: 'form-control form-control-sm'}}) }}</div>
-				</div>
 
 				<details class="si-plus-options">
-					<summary>Facturer à un tiers, observation</summary>
+					<summary>Émetteur, TVA, facturer à un tiers, observation</summary>
+					<div class="row g-2 mt-1">
+						<div class="col-7">{{ form_row(form.emetteur, {label: 'Émetteur', attr: {class: 'form-select form-select-sm'}}) }}</div>
+						<div class="col-5">{{ form_row(form.tva, {label: 'TVA %', attr: {class: 'form-control form-control-sm'}}) }}</div>
+					</div>
 					<div class="form-check mb-2">
 						{{ form_widget(form.facturerAUnTiers, {attr: {class: 'form-check-input'}}) }}
 						<label class="form-check-label" for="{{ form.facturerAUnTiers.vars.id }}">Facturer à un tiers</label>
@@ -1019,8 +1121,11 @@
 					</div>
 					{{ form_row(form.observation, {label: 'Observation', attr: {rows: 3}}) }}
 				</details>
+			</div>
 
-				<button type="submit" class="btn btn-danger w-100 d-md-none">{{ estNouveau ? 'Enregistrer le devis' : 'Enregistrer les modifications' }}</button>
+			<div class="si-dv-boutons-mobile d-md-none">
+				<button type="submit" name="action" value="brouillon" class="btn btn-light">Enregistrer le brouillon</button>
+				<button type="submit" name="action" value="envoyer" class="btn btn-danger js-dv-envoyer">Envoyer au client</button>
 			</div>
 
 			{# Promotions des lignes : aperçu demandé au serveur pendant la saisie. #}
@@ -1056,6 +1161,7 @@
 {# Pièces au m² des lignes (docs/saisie-devis-commandes.md). #}
 {{ site_styles('css/pieces-m2.css') }}
 <script src="{{ asset('js/pieces-m2.js') }}"></script>
+<link href="{{ asset('css/devis.css') }}" rel="stylesheet">
 
 
 <style>

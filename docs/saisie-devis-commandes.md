@@ -2,6 +2,8 @@
 
 Ce que fait l'enregistrement d'un devis ou d'une commande depuis la saisie du comptoir (`/devis/{id}/edit`, `/commandes/{id}/edit`), et le calcul des pièces au m² des lignes au m².
 
+Pour un devis, l'écran de saisie (maquette GC04), les versions, l'envoi au client et les relances sont dans [docs/devis.md](devis.md). Le statut ne se choisit plus dans le formulaire : « Enregistrer le brouillon » garde un brouillon, « Envoyer au client » l'envoie. Modifier un devis déjà envoyé prépare sa version suivante ; un devis accepté ne se modifie plus.
+
 ## Enregistrer sans rien changer ne change rien
 
 Ouvrir une commande et cliquer sur « Enregistrer les modifications » sans rien toucher garde, ligne par ligne :

@@ -255,8 +255,8 @@ final class ListeClients
         }
         /** @var list<Devis> $devis */
         $devis = $this->em->createQueryBuilder()->select('d')->from(Devis::class, 'd')
-            ->where('d.clients IN (:cl)')->andWhere('d.statut = :envoye')
-            ->setParameter('cl', $clients)->setParameter('envoye', Devis::STATUT_ENVOYE)->orderBy('d.id', 'DESC')->getQuery()->getResult();
+            ->where('d.clients IN (:cl)')->andWhere('d.statut IN (:envoye)')
+            ->setParameter('cl', $clients)->setParameter('envoye', Devis::STATUTS_EN_ATTENTE)->orderBy('d.id', 'DESC')->getQuery()->getResult();
         $devisEnAttente = [];
         foreach ($devis as $d) {
             $devisEnAttente[$d->getClients()->getId()] ??= $d;

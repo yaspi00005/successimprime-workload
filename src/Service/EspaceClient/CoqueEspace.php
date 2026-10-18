@@ -126,7 +126,7 @@ final class CoqueEspace implements ResetInterface
         $nonLues = $this->fil->nonLues($compte, $maintenant);
         $pastilles = [
             'notifications' => ['nombre' => $nonLues, 'couleur' => 'rouge'],
-            'devis' => ['nombre' => $droits['valideur'] ? \count(array_filter($this->espace->devis($client), static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())) : 0, 'couleur' => 'jaune'],
+            'devis' => ['nombre' => $droits['valideur'] ? \count(array_filter($this->espace->devis($client), static fn (Devis $d): bool => $d->estEnAttente())) : 0, 'couleur' => 'jaune'],
             'fichiers' => ['nombre' => $droits['lecture'] ? 0 : \count($this->espace->bats($client, true)), 'couleur' => 'jaune'],
             'factures' => ['nombre' => $droits['payeur'] ? \count($this->espace->solde($client)['commandes']) : 0, 'couleur' => 'jaune'],
         ];

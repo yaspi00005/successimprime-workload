@@ -259,6 +259,12 @@ security:
             roles: PUBLIC_ACCESS
         }
 
+        # Lien du devis envoyé au client (WhatsApp, e-mail) : compte l'ouverture, puis l'espace client (docs/devis.md).
+        - {
+            path: '^/d/[a-f0-9]{32,64}(/pdf)?$',
+            roles: PUBLIC_ACCESS
+        }
+
 
         # API : la documentation ne contient aucune donnée ; le reste
         # demande un jeton, puis chaque ressource vérifie les droits fins.

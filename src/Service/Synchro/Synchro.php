@@ -746,8 +746,18 @@ final class Synchro
             // Le client l'a retiré de « Mes fichiers » : récupérable au local pendant la durée de la corbeille.
             $this->corbeille?->masquer($this->em, $entite, 'actif', true, null, 'Espace client (en ligne)');
         }
-        if ($entite instanceof Devis && Devis::STATUT_ACCEPTE === ($remontees['statut'][1] ?? null)) {
-            $this->notifications->notifierRoles(['ROLE_DEVIS'], \sprintf('Devis %s accepté par le client dans son espace : à transformer en commande.', $entite->getNumero()), 'app_devis_show', ['id' => $entite->getId()]);
+        if ($entite instanceof Devis) {
+            // Réponse du client dans son espace (docs/devis.md) ; une simple ouverture ne prévient personne.
+            $message = match (true) {
+                Devis::STATUT_ACCEPTE === ($remontees['statut'][1] ?? null) => 'Devis %s accepté par le client dans son espace : à transformer en commande.',
+                Devis::STATUT_CONVERTI === ($remontees['statut'][1] ?? null) => 'Devis %s accepté par le client dans son espace : sa commande est créée, à confirmer.',
+                Devis::STATUT_REFUSE === ($remontees['statut'][1] ?? null) => 'Devis %s refusé par le client : '.($entite->getMotifRefus() ?? 'sans motif').'.',
+                isset($remontees['demandeModificationLe']) && null !== $entite->getDemandeModificationLe() => 'Devis %s : le client demande une modification.',
+                default => null,
+            };
+            if (null !== $message) {
+                $this->notifications->notifierRoles(['ROLE_DEVIS'], \sprintf($message, $entite->getNumero()), 'app_devis_show', ['id' => $entite->getId()]);
+            }
         }
         if ($entite instanceof Commandes && isset($remontees['validationEntreprise'])) {
             if (Commandes::VALIDATION_ACCEPTEE === $remontees['validationEntreprise'][1]) {

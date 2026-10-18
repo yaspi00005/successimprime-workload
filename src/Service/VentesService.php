@@ -38,6 +38,7 @@ final class VentesService
 
     private const STATUTS_DEVIS_ACTIFS = [
         Devis::STATUT_ENVOYE,
+        Devis::STATUT_VU,
         Devis::STATUT_ACCEPTE,
         Devis::STATUT_REFUSE,
         Devis::STATUT_EXPIRE,
@@ -159,7 +160,7 @@ final class VentesService
      */
     public static function statutDevis(string $statut, ?\DateTimeInterface $date, \DateTimeImmutable $maintenant): array
     {
-        if (Devis::STATUT_ENVOYE === $statut) {
+        if (\in_array($statut, Devis::STATUTS_EN_ATTENTE, true)) {
             $jours = null === $date ? 0 : (int) $date->diff($maintenant->setTime(23, 59, 59))->days;
 
             return $jours >= self::JOURS_AVANT_RELANCE
@@ -370,9 +371,9 @@ final class VentesService
 
         return match ($onglet) {
             'a_relancer' => $requete
-                ->andWhere('d.statut = :envoye')
+                ->andWhere('d.statut IN (:envoye)')
                 ->andWhere('d.dateDevis <= :limite')
-                ->setParameter('envoye', Devis::STATUT_ENVOYE)
+                ->setParameter('envoye', Devis::STATUTS_EN_ATTENTE)
                 ->setParameter('limite', $maintenant->setTime(23, 59, 59)->modify(sprintf('-%d days', self::JOURS_AVANT_RELANCE))),
             // Un devis commande apparait deja sous sa commande.
             'tous' => $requete

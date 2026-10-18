@@ -175,9 +175,9 @@ final class ActionsCaisse
 
         if ($r['source_devis']) {
             $devis = $this->em->createQueryBuilder()->select('d')->from(Devis::class, 'd')
-                ->where('d.statut = :envoye AND d.deleted = false')
+                ->where('d.statut IN (:envoye) AND d.deleted = false')
                 ->andWhere('d.dateDevis <= :limite AND d.dateDevis >= :recul')
-                ->setParameter('envoye', Devis::STATUT_ENVOYE)
+                ->setParameter('envoye', Devis::STATUTS_EN_ATTENTE)
                 ->setParameter('limite', $maintenant->modify('-'.(int) $r['devis_heures'].' hours'))
                 ->setParameter('recul', $maintenant->modify('-30 days'))
                 ->getQuery()->getResult();
@@ -505,7 +505,7 @@ final class ActionsCaisse
 
         return match ($a->getCibleType()) {
             'facture' => ($f = $this->em->find(Factures::class, $id)) === null || $f->getStatutPaiement() === Factures::STATUT_PAYEE || $f->getEtat() === Factures::ETAT_ANNULEE,
-            'devis' => ($d = $this->em->find(Devis::class, $id)) === null || $d->getStatut() !== Devis::STATUT_ENVOYE,
+            'devis' => ($d = $this->em->find(Devis::class, $id)) === null || !$d->estEnAttente(),
             'commande' => $a->getType() === 'commande' && (($c = $this->em->find(Commandes::class, $id)) === null || $c->isRecupereParClient()),
             default => false,
         };

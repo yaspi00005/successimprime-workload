@@ -191,7 +191,13 @@ sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 
 `app:espace:notifications` envoie à 7 h les SMS des clients mis de côté pendant les heures calmes (21 h – 7 h) et les rappels d'échéance des factures (docs/espace-client.md). `app:corbeille:purger` supprime pour de bon, après la sauvegarde de la nuit, ce que les clients ont retiré de leur espace il y a plus de 30 jours ; `app:corbeille:restaurer` le remet en place s'ils appellent (docs/corbeille.md).
 
-Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trésorerie, rapport de la semaine, crédits SMS et e-mail, rapports par e-mail) tournent sur l'ERP local.
+Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trésorerie, rapport de la semaine, crédits SMS et e-mail, rapports par e-mail, expiration et relances des devis) tournent sur l'ERP local.
+
+Devis (docs/devis.md) : sur l'ERP local, `app:devis:relances` chaque heure. Sous Windows : `scripts\windows\installer_tache_devis_relances.bat`. Sous Linux ou Mac, `crontab -e` :
+
+```
+0 * * * * cd /chemin/du/projet && php bin/console app:devis:relances -q >> var/log/devis-relances.log 2>&1
+```
 
 Rapports du jour, de la semaine et du mois par e-mail ([docs/rapports-mail.md](rapports-mail.md)) : sur l'ERP local, `MAILER_DSN` et `MAILER_FROM_ADDRESS` (la même boîte que ci-dessus) dans son `.env.local`, et la tâche chaque quart d'heure. Sous Windows : `scripts\windows\installer_tache_rapports_mail.bat` ; sous Linux ou Mac, `crontab -e` :
 

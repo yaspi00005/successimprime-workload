@@ -19,6 +19,7 @@ use App\Repository\TacheRepository;
 use App\Service\ActionsCaisse\HeuresTravail;
 use App\Service\Creances;
 use App\Service\Finances\Budgets;
+use App\Service\Finances\Periode;
 use App\Service\Finances\ReglagesFinances;
 use App\Service\Finances\Rentabilite;
 use App\Service\Finances\VueEnsemble;
@@ -282,7 +283,8 @@ final class RapportPeriodique
                 'part' => null !== $objectif && $objectif > 0 ? (int) round($facture * 100 / $objectif) : null,
                 // Le mois en cours, arrêté à la fin de la période (rapports du jour et de la semaine).
                 'mois' => PeriodeRapport::MOIS === $p->type ? null : $this->avancementDuMois('ca', $mois, $arret),
-                'nom_mois' => $mois->libelle(),
+                // « CA d'octobre 2026 à ce jour ».
+                'de_mois' => Periode::deMois($mois->debut).' '.$mois->debut->format('Y'),
             ];
         }
 

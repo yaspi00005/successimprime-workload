@@ -29,7 +29,7 @@ Rien d’anormal à signaler.
 ACTIVITÉ
 - Commandes : {{ m.v(a.commandes.nombre) }}{{ t.pct(a.commandes.nombre, a.commandes.avant, comp) }}{% if a.commandes.objectif is not null %}, objectif {{ m.v(a.commandes.objectif) }}{% endif %}
 
-- Devis émis : {{ m.v(a.devis.emis) }}{{ t.pct(a.devis.emis, a.devis.emis_avant, comp) }}, dont {{ a.devis.signes }} signé{{ a.devis.signes > 1 ? 's' }}
+- Devis émis : {{ m.v(a.devis.emis) }}{{ t.pct(a.devis.emis, a.devis.emis_avant, comp) }} ; devis signés : {{ a.devis.signes }}
 - m² imprimés : {{ m.v(a.surface.valeur, 'm2') }}{{ t.pct(a.surface.valeur, a.surface.avant, comp) }}
 - Nouveaux clients : {{ a.clients.nombre }}{{ t.pct(a.clients.nombre, a.clients.avant, comp) }}{% if a.clients.noms is not null and a.clients.noms is not empty %} ({{ a.clients.noms|join(', ') }}){% endif %}
 
@@ -41,11 +41,12 @@ ACTIVITÉ
 {% if a.reclamations.liste is not null %}{% for rc in a.reclamations.liste %}  · {{ rc.numero }} · {{ rc.objet }}{% if rc.client %} · {{ rc.client }}{% endif %}
 
 {% endfor %}{% endif %}
+
 {% if r.ventes is not null %}
 CHIFFRE D’AFFAIRES
 - CA facturé : {{ m.v(r.ventes.facture, 'f') }}{{ t.pct(r.ventes.facture, r.ventes.avant, comp) }}{% if r.ventes.objectif is not null %}, objectif {{ m.v(r.ventes.objectif, 'f') }} ({{ r.ventes.part }} %){% endif %}
 
-{% if r.ventes.mois is not null %}- CA de {{ r.ventes.nom_mois }} à ce jour : {{ m.v(r.ventes.mois.realise, 'f') }}{% if r.ventes.mois.objectif is not null %} sur {{ m.v(r.ventes.mois.objectif, 'f') }} ({{ r.ventes.mois.part }} %){% endif %}
+{% if r.ventes.mois is not null %}- CA {{ r.ventes.de_mois }} à ce jour : {{ m.v(r.ventes.mois.realise, 'f') }}{% if r.ventes.mois.objectif is not null %} sur {{ m.v(r.ventes.mois.objectif, 'f') }} ({{ r.ventes.mois.part }} %){% endif %}
 
 {% endif %}
 

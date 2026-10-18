@@ -64,7 +64,7 @@
 		{{ x.cartes([
 			x.carte('CA facturé', m.v(v.facture, 'f'), x.ecart(v.facture, v.avant, comp)),
 			x.carte('Objectif de la période', m.v(v.objectif, 'f'), v.part is not null ? v.part ~ ' % atteint' : 'pas d’objectif'),
-		]|merge(v.mois is not null ? [x.carte('CA de ' ~ v.nom_mois ~ ' à ce jour', m.v(v.mois.realise, 'f'), v.mois.objectif is not null ? v.mois.part ~ ' % de ' ~ m.v(v.mois.objectif, 'f') : 'pas d’objectif')] : [])) }}
+		]|merge(v.mois is not null ? [x.carte('CA ' ~ v.de_mois ~ ' à ce jour', m.v(v.mois.realise, 'f'), v.mois.objectif is not null ? v.mois.part ~ ' % de ' ~ m.v(v.mois.objectif, 'f') : 'pas d’objectif')] : [])) }}
 	{% endif %}
 
 	{% if r.encaissements is not null %}

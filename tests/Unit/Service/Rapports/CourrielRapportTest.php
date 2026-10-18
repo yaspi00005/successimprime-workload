@@ -6,6 +6,7 @@ use App\Service\Rapports\CourrielRapport;
 use App\Service\Rapports\DroitsRapport;
 use App\Service\Rapports\PeriodeRapport;
 use App\Service\Rapports\RapportPeriodique;
+use App\Service\Statistiques\Objectifs;
 use PHPUnit\Framework\TestCase;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
@@ -52,7 +53,10 @@ final class CourrielRapportTest extends TestCase
                 'reclamations' => ['nouvelles' => 1, 'ouvertes' => 2, 'anciennes' => 1, 'liste' => $o['noms_clients'] ? [['numero' => 'R-12', 'objet' => 'Couleur pâle', 'client' => 'Clinique Koné']] : null],
                 'en_retard' => 3,
             ],
-            'ventes' => $o['ventes'] ? ['facture' => 1350000, 'avant' => 1200000, 'objectif' => 1500000, 'part' => 90, 'mois' => null, 'nom_mois' => 'octobre 2026'] : null,
+            'ventes' => $o['ventes'] ? [
+                'facture' => 1350000, 'avant' => 1200000, 'objectif' => 1500000, 'part' => 90, 'de_mois' => 'd’octobre 2026',
+                'mois' => PeriodeRapport::MOIS === $p->type ? null : Objectifs::avancement(4361125, 9000000, new \DateTimeImmutable('2026-10-01'), new \DateTimeImmutable('2026-11-01'), $p->fin),
+            ] : null,
             'encaissements' => $o['encaissements'] ? ['total' => 980000, 'avant' => 1000000, 'modes' => [['libelle' => 'Orange Money', 'montant' => 600000, 'nombre' => 7], ['libelle' => 'Espèces', 'montant' => 380000, 'nombre' => 9]], 'taux' => 72.6, 'taux_objectif' => 80, 'attente' => ['nombre' => 1, 'montant' => 25000]] : null,
             'creances' => $o['creances'] ? ['total' => 3400000, 'echues' => 1250000, 'nb_echues' => 4, 'plus_60' => 300000, 'debiteurs' => $o['noms_clients'] ? [['nom' => 'Institut Kayes', 'reste' => 900000]] : null] : null,
             'tresorerie' => $o['tresorerie'] ? ['comptes' => [['nom' => 'Banque BDM', 'type' => 'banque', 'solde' => 2900000]], 'total' => 2900000, 'seuil' => 2000000, 'depenses' => ['total' => 610000, 'avant' => 500000, 'categories' => [['libelle' => 'Loyer', 'montant' => 450000]], 'hors_salaires' => 450000, 'budget' => null]] : null,
@@ -139,6 +143,9 @@ final class CourrielRapportTest extends TestCase
 
         self::assertStringContainsString('href="http://192.168.1.10/successImprim/public/rapports-mail/apercu/jour?periode=2026-10-17"', $html);
         self::assertStringContainsString('Ce lien ne fonctionne que sur le réseau de l’atelier', $html);
+        // Rapport du jour : l'avancement du mois, avec sa jauge.
+        self::assertStringContainsString('CA d’octobre 2026 à ce jour', $html);
+        self::assertStringContainsString('48 % de l’objectif', $html);
 
         [$sansLien] = self::rendre(self::contexte(self::DIRECTION, $p));
         self::assertStringNotContainsString('Ouvrir dans l’ERP', $sansLien);

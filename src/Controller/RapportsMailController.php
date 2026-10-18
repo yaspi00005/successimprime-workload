@@ -78,7 +78,7 @@ final class RapportsMailController extends AbstractController
             'rapports' => $rapports,
             'configure' => $this->reglages->courrielConfigure(),
             'factice' => $this->reglages->transportFactice(),
-            'expediteur' => $this->reglages->expediteur()?->toString(),
+            'expediteur' => null === ($de = $this->reglages->expediteur()) ? null : $de->getName().' <'.$de->getAddress().'>',
             'piece_jointe' => $this->reglages->pieceJointe(),
             'adresse_erp' => $this->reglages->adresseErp(),
             'choisis' => null !== $this->reglages->destinatairesChoisis(),

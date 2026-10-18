@@ -84,7 +84,7 @@
 				]) }}
 				{% if v.mois is not null %}
 					<div style="margin-top: 8px; font-size: 13px; color: #374151;">
-						<strong>CA de {{ v.nom_mois }} à ce jour :</strong> {{ m.v(v.mois.realise, 'f') }}{% if v.mois.objectif is not null %} sur un objectif de {{ m.v(v.mois.objectif, 'f') }} · {{ etats[v.mois.etat] ?? v.mois.etat }}{% endif %}
+						<strong>CA {{ v.de_mois }} à ce jour :</strong> {{ m.v(v.mois.realise, 'f') }}{% if v.mois.objectif is not null %} sur un objectif de {{ m.v(v.mois.objectif, 'f') }} · {{ etats[v.mois.etat] ?? v.mois.etat }}{% endif %}
 						{% if v.mois.objectif is not null %}
 							{{ m.jauge(v.mois.part, c1) }}
 							<span style="color: #6b7280;">{{ v.mois.part }} % de l’objectif · {{ v.mois.ecoule }} % du mois écoulé{% if v.mois.projection is not null and v.mois.ecoule < 100 %} · au rythme actuel : {{ m.v(v.mois.projection, 'f') }} ({{ v.mois.part_projetee }} %){% endif %}</span>

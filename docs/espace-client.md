@@ -189,6 +189,16 @@ Demande de Yaya : « on a la possibilité de bloquer l'espace client d'un utilis
 
 Les annonces saisies dans Réglages › Site vitrine › Annonces avec la cible « Espace client » ou « les deux » s'affichent en haut du contenu de chaque page connectée. Règles et comportement : docs/site-vitrine.md, « Bandes d'annonces ».
 
+## Nous soutenir (avis Google, 18/10/2026)
+
+Demande de Yaya du 17/10/2026. Lien réglé dans Réglages › Site vitrine › Nous soutenir (docs/site-vitrine.md, « Nous soutenir »).
+
+- **Tableau de bord** : carte « Nous soutenir » (colonne de droite) avec « Laisser un avis Google » (nouvel onglet) et, sur ordinateur, le QR code à scanner avec le téléphone. « × » la ferme pour la personne connectée seulement, pour toujours (`CompteClient::soutienMasqueLe`, gardé sur le site, rien ne monte au local) ; les autres personnes de l'entreprise la gardent. Fermer est permis à un compte « Lecture · suivi » (`DroitsEspace::ENVOIS_LECTURE`), jeton CSRF exigé.
+- **Commande livrée ou retirée** : sous l'invitation à noter la commande, une carte « Nous soutenir » avec le bouton « Avis Google », pour tous, quelle que soit la note.
+- Ni montant, ni donnée du client, ni script de suivi. Lien vidé dans les réglages : carte et invitation disparaissent.
+
+**Photos des produits** : dans « Mes produits », un produit sans BAT à montrer prend la photo de sa sorte de produit (docs/site-vitrine.md, « Photos des produits »), sinon ses initiales.
+
 ## Réclamations (18 à gauche, construit le 13/10/2026)
 
 Le client signale un souci sur un travail depuis Mon compte › Réclamations, ou depuis une commande confirmée (« Un problème avec cette commande ? »). Code : `src/Service/EspaceClient/ReclamationsClients.php`, entités `ReclamationClient` et `ReclamationClientPhoto` (à ne pas confondre avec `Reclamation`, qui sert aux réclamations des employés).

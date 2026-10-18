@@ -89,9 +89,11 @@
 				</p>
 			</div>
 			{% set pied = site_pied() %}
-			{% if pied %}
+			{% set soutien_pied = site_soutien() %}
+			{% if pied or soutien_pied %}
 				<ul class="si-pied-liens">
 					{% for lien in pied %}<li><a href="{{ lien.url }}">{{ lien.libelle }}</a></li>{% endfor %}
+					{% if soutien_pied %}<li><a href="{{ soutien_pied.lien }}" target="_blank" rel="noopener">Nous soutenir</a></li>{% endif %}
 				</ul>
 			{% endif %}
 			<address class="si-pied-adresse">

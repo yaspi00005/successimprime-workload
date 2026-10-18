@@ -195,7 +195,13 @@ final class CatalogueSynchro
                 'relations' => ['photo' => 'site_image'], 'listes' => [],
                 'filtres' => ['nom' => [\App\Entity\MembreEquipe::class, 'textePublic'], 'poste' => [\App\Entity\MembreEquipe::class, 'textePublic'], 'motGerant' => [\App\Entity\MembreEquipe::class, 'motPublic']],
             ],
-            // Règle de calcul des chiffres du site (ChiffresSite).
+            // « Nos actions sociales » : le site ne montre que les actions publiées avec un texte et une photo.
+            'site_action_sociale' => [
+                'classe' => \App\Entity\ActionSociale::class, 'sens' => self::DESCENDANT, 'libelle' => 'Action sociale', 'titre' => ['titre'],
+                'champs' => ['titre', 'dateAction', 'lieu', 'texte', 'publie', 'ordre', 'modifieLe'],
+                'relations' => [], 'listes' => ['images' => 'site_image'],
+            ],
+            // Règle de calcul des chiffres du site (ChiffresSite), référencement, lien « Nous soutenir » (SoutienSite).
             'site_reglage' => [
                 'classe' => \App\Entity\ReglageSite::class, 'sens' => self::DESCENDANT, 'libelle' => 'Réglage du site', 'titre' => ['cle'],
                 'champs' => ['cle', 'valeurs'],

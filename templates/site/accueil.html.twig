@@ -138,6 +138,9 @@
 			{{ include('site/_partenaires.html.twig', {partenaires: partenaires}) }}
 		{% endif %}
 	{% endblock %}
+
+	{# « Nos actions sociales » et « Nous soutenir » : chacun absent tant qu'il n'a rien à montrer. #}
+	{{ include('site/_accueil_social.html.twig') }}
 {% endblock %}
 
 {% block scripts %}<script src="{{ asset('js/site-animations.js') }}" defer></script>{% endblock %}

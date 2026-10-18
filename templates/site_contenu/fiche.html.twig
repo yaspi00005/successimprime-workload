@@ -19,6 +19,8 @@
 		{% set apercu = path('app_site_accueil') %}
 	{% elseif type == 'equipe' and objet.estVisible %}
 		{% set apercu = path('app_site_a_propos') ~ (objet.estMotVisible ? '#mot-du-gerant' : '#notre-equipe') %}
+	{% elseif type == 'actions' and objet.estVisible %}
+		{% set apercu = path('app_site_actions_sociales') %}
 	{% endif %}
 {% endif %}
 
@@ -261,6 +263,8 @@
 									<p class="form-text mb-2">Les plus petits numéros d'abord. Rien d'autre sur la personne n'est demandé ni montré : ni téléphone, ni e-mail, ni lien vers sa fiche d'employé.</p>
 								</div>
 							</div>
+						{% elseif type == 'actions' %}
+							{{ include('site_contenu/_fiche_action.html.twig') }}
 
 						{% elseif type == 'partenaires' %}
 							<label class="si-libelle-champ" for="champ-nom">Nom</label>
@@ -328,6 +332,7 @@
 							{% endif %}
 						</section>
 					{% endif %}
+					{% if type == 'actions' %}{{ include('site_contenu/_fiche_action_photos.html.twig') }}{% endif %}
 				</div>
 
 				<div class="col-xl-4">
@@ -356,13 +361,13 @@
 							</div>
 						{% else %}
 						{{ _self.interrupteur('publie', type in ['partenaires', 'equipe'] ? objet.visible : objet.publie, type in ['partenaires', 'equipe'] ? 'Visible sur le site' : 'Publié sur le site',
-							type == 'conseils' ? 'À partir de la date de publication ci-dessous.' : (type == 'pages' ? 'Non publiée, la page n\'est pas montrée.' : (type == 'equipe' ? 'Décochez pour masquer la personne sans la supprimer (départ, congé…).' : null))) }}
+							type == 'conseils' ? 'À partir de la date de publication ci-dessous.' : (type == 'pages' ? 'Non publiée, la page n\'est pas montrée.' : (type == 'equipe' ? 'Décochez pour masquer la personne sans la supprimer (départ, congé…).' : (type == 'actions' ? 'Montrée quand elle a son texte et au moins une photo.' : null)))) }}
 						{% endif %}
 						{% if type == 'conseils' %}
 							<label class="si-libelle-champ mt-3" for="champ-publie-le">Date de publication</label>
 							<input type="date" name="publieLe" id="champ-publie-le" value="{{ objet.publieLe|date('Y-m-d') }}" class="form-control form-control-sm">
 						{% endif %}
-						{% if not nouveau and (type == 'pages' or type == 'conseils' or type == 'annonces') %}
+						{% if not nouveau and (type == 'pages' or type == 'conseils' or type == 'annonces' or type == 'actions') %}
 							<p class="si-sv-aide mt-3 mb-0">Modifié le {{ objet.modifieLe|date('d/m/Y à H:i') }}.</p>
 						{% endif %}
 					</section>

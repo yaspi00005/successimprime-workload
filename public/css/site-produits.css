@@ -26,6 +26,7 @@
 .si-produit[data-incline] { transition: border-color .15s, box-shadow .15s, transform .2s ease-out; }
 .si-produit:focus-within { outline: 3px solid var(--jaune); outline-offset: 2px; }
 .si-produit-dessin { display: block; width: 100%; height: 100%; min-height: 116px; }
+.si-produit-photo { display: block; width: 100%; height: 100%; min-height: 116px; object-fit: contain; background: #fff; }
 .si-produit-corps { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; }
 .si-produit h2 { margin: 0; font-size: 17px; }
 .si-produit-texte { display: -webkit-box; margin: 0; overflow: hidden; font-size: 14px; line-height: 1.4; color: var(--texte-doux); -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
@@ -38,7 +39,8 @@
 
 @media (min-width: 560px) {
   .si-produits-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-  .si-produit { grid-template-columns: 1fr; grid-template-rows: 116px auto; }
+  .si-produit { grid-template-columns: 1fr; grid-template-rows: 168px auto; }
+  .si-produit-photo { padding-top: 8px; }
   .si-produit-corps { padding: 14px 16px 16px; }
 }
 @media (min-width: 860px) { .si-produits-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

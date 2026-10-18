@@ -46,7 +46,7 @@ final class Droits
             'ROLE_RH' => ['libelle' => 'Administrateur RH', 'detail' => 'pointages, photos de pointage, corrections', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_LIVRAISON' => ['libelle' => 'Livraisons', 'detail' => 'tournée, remise au client', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_ENTRETIEN' => ['libelle' => 'Entretien des locaux', 'detail' => 'planning d\'entretien, validation par photo', 'groupe' => self::GROUPE_FONCTIONS],
-            'ROLE_SITE_VITRINE' => ['libelle' => 'Site vitrine', 'detail' => 'pages, réalisations, avis, conseils, partenaires, équipe et annonces du site', 'groupe' => self::GROUPE_FONCTIONS],
+            'ROLE_SITE_VITRINE' => ['libelle' => 'Site vitrine', 'detail' => 'pages, réalisations, avis, conseils, partenaires, équipe, annonces, actions sociales et « Nous soutenir » du site', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PROMOTIONS' => ['libelle' => 'Promotions', 'detail' => 'créer, suspendre, accepter les exceptions B2B, anniversaires', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_ASSISTANT' => ['libelle' => 'Assistant du site', 'detail' => 'conversations des clients avec l\'assistant, analyse, réglages', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_STATS_PERSO' => ['libelle' => 'Ses propres statistiques', 'detail' => 'ventes et encaissements de la personne', 'groupe' => self::GROUPE_CHIFFRES],

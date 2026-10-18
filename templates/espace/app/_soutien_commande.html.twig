@@ -1,0 +1,15 @@
+{#
+	Invitation « Nous soutenir » d'une commande livrée ou retirée
+	(docs/espace-client.md) : lien de l'avis Google dans un nouvel onglet,
+	quelle que soit la note donnée à l'atelier (un avis est demandé à
+	chacun, règles de Google). Variables : c (la commande), classe
+	(facultative, classe en plus sur la carte).
+#}
+{% set soutien = espace_soutien_commande(c) %}
+{% if soutien %}
+	<div class="ec-carte av-merci{{ classe is defined ? ' ' ~ classe }}" style="flex-wrap:wrap">
+		<span class="av-merci-icone" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M4 3h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9.4l-4.7 3.6A1 1 0 0 1 3 20.8V5a2 2 0 0 1 1-2Zm1 2v13.7l3.4-2.5A1 1 0 0 1 9 16h11V5H5Zm3 3h8v2H8V8Zm0 4h5v2H8v-2Z"/></svg></span>
+		<div style="flex:1 1 12rem;min-width:0"><b>Nous soutenir</b><div class="ec-petit">Votre avis sur Google aide d'autres personnes à trouver l'atelier.</div></div>
+		<a class="ec-bouton-petit" href="{{ soutien.lien }}" target="_blank" rel="noopener" aria-label="Laisser un avis Google">Avis Google</a>
+	</div>
+{% endif %}

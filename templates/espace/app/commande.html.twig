@@ -225,6 +225,7 @@
 					<span class="ec-bouton-petit">Noter</span>
 				</a>
 			{% endif %}
+			{{ include('espace/app/_soutien_commande.html.twig', {classe: 'cs-fin'}) }}
 
 			{% if whatsapp or (c.isStatut and not lecture) %}
 				<div class="cs-fin" id="recommander">

@@ -395,6 +395,10 @@ a.ec-carte.ec-pc-entree { display: flex; align-items: center; gap: .85rem; }
 .ec-pc-visuel.teinte-3 { background: linear-gradient(135deg, #FCE3E7, #F6C9D2); color: #C2185B; }
 .ec-pc-visuel.teinte-4 { background: linear-gradient(135deg, #1E5BB8, var(--bleu)); }
 .ec-pc-visuel.teinte-5 { background: linear-gradient(135deg, #3A3F4B, #12161F); }
+/* Photo de la sorte de produit (PhotosProduits), entière sur fond blanc ; la feuille de quantité reprend la classe de la carte. */
+.ec-pc-visuel.ec-pc-photo { position: relative; background: #fff; }
+.ec-pc-visuel.ec-pc-photo img { position: absolute; inset: 0; object-fit: contain; }
+.ec-feuille-tete .ec-pc-visuel.ec-pc-photo { flex: 0 0 64px; width: 64px; height: 64px; }
 .ec-pc-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
 .ec-pc-texte b { font-size: .98rem; line-height: 1.25; }
 .ec-pc-ref { color: var(--gris); font-size: .74rem; }

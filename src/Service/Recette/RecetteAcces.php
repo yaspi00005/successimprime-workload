@@ -210,6 +210,9 @@ final class RecetteAcces
             return false;
         }
         $chemin = $route->getPath();
+        if (preg_match('#^/(nos-actions-sociales|nous-soutenir)(/|$)#', $chemin)) {
+            return false; // site public (docs/site-vitrine.md) : vérifié avec le visiteur
+        }
 
         // Site public, espace client, liens publics signés : vérifiés à part (visiteur, client).
         return !preg_match('#^/(espace|api/|site|nos-produits|calculateur|atelier-3d|realisations|equipements|guide-fichiers|a-propos|nos-engagements|faq|suivre-ma-commande|contact|conseils|demander-un-devis|sitemap\.xml|robots\.txt|assistant/|avis/|acces/|tablette|f/|ecran-accueil|om/|appareil/autoriser)#', $chemin)

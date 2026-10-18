@@ -6,6 +6,7 @@ use App\Controller\UtilisateursController;
 use App\Entity\Entreprise;
 use App\Repository\EntrepriseRepository;
 use App\Security\AccesEnLigne;
+use App\Service\Site\ActionsSociales;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Extension\AbstractExtension;
@@ -40,6 +41,15 @@ final class SiteExtension extends AbstractExtension
         'app_site_conseils' => 'Conseils',
     ];
 
+    /**
+     * Pied de page : liens qui ne paraissent qu'avec leur contenu (« Nos
+     * actions sociales » dès la première action montrée, ActionsSociales).
+     * Hors de PIED : le plan du site ne les prend que par leur source.
+     */
+    public const PIED_SELON_CONTENU = [
+        ActionsSociales::ROUTE => 'Nos actions sociales',
+    ];
+
     /** Entreprise du site : celle qui porte le nom commercial (Succès Imprim). */
     public const CODE_ENTREPRISE = 'mdg_success';
 
@@ -50,6 +60,7 @@ final class SiteExtension extends AbstractExtension
         private readonly UrlGeneratorInterface $urls,
         private readonly EntrepriseRepository $entreprises,
         private readonly AccesEnLigne $acces,
+        private readonly ?ActionsSociales $actionsSociales = null,
     ) {
     }
 
@@ -58,7 +69,7 @@ final class SiteExtension extends AbstractExtension
         return [
             new TwigFunction('site_lien', $this->lien(...)),
             new TwigFunction('site_menu', fn (array $liens = self::MENU): array => $this->menu($liens)),
-            new TwigFunction('site_pied', fn (): array => $this->menu(self::PIED)),
+            new TwigFunction('site_pied', fn (): array => $this->menu(self::PIED + $this->piedSelonContenu())),
             new TwigFunction('site_entreprise', $this->entreprise(...)),
             new TwigFunction('site_whatsapp', $this->whatsapp(...)),
             new TwigFunction('site_en_ligne', $this->acces->estEnLigne(...)),
@@ -93,6 +104,12 @@ final class SiteExtension extends AbstractExtension
         }
 
         return $menu;
+    }
+
+    /** @return array<string, string> liens du pied de page dont le contenu est là */
+    private function piedSelonContenu(): array
+    {
+        return true === $this->actionsSociales?->visibles() ? self::PIED_SELON_CONTENU : [];
     }
 
     public function entreprise(): ?Entreprise

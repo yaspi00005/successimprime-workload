@@ -111,6 +111,8 @@ VOS TÂCHES EN RETARD ({{ r.taches.nombre }})
 {% endif %}
 --
 Document interne et confidentiel. Chiffres calculés le {{ genere_le|date('d/m/Y à H:i') }}, selon vos droits.
+{% if not lien %}Le rapport complet est dans l’ERP (Accueil › Rapports par e-mail), sur le réseau de l’atelier seulement.
+{% endif %}
 Pour ne plus recevoir ces rapports, demandez-le à la direction.
 {{ marque.nom }}
 {% endautoescape %}

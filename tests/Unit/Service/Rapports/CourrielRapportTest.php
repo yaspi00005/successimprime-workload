@@ -147,9 +147,14 @@ final class CourrielRapportTest extends TestCase
         self::assertStringContainsString('CA d’octobre 2026 à ce jour', $html);
         self::assertStringContainsString('48 % de l’objectif', $html);
 
-        [$sansLien] = self::rendre(self::contexte(self::DIRECTION, $p));
-        self::assertStringNotContainsString('Ouvrir dans l’ERP', $sansLien);
-        self::assertStringContainsString('sur le réseau de l’atelier seulement', $sansLien);
+        $texte = self::twig()->render(CourrielRapport::MODELE_TEXTE, self::contexte(self::DIRECTION, $p, 'http://192.168.1.10/successImprim/public/rapports-mail/apercu/jour?periode=2026-10-17'));
+        self::assertStringContainsString('Ouvrir dans l’ERP (réseau de l’atelier seulement) : http://192.168.1.10/', $texte);
+
+        // Sans adresse réglée : pas de bouton, mais le pied dit où trouver le rapport, dans les deux parties.
+        foreach (self::rendre(self::contexte(self::DIRECTION, $p)) as $sansLien) {
+            self::assertStringNotContainsString('Ouvrir dans l’ERP', $sansLien);
+            self::assertStringContainsString('sur le réseau de l’atelier seulement', $sansLien);
+        }
     }
 
     public function testLisibleSurTelephone(): void

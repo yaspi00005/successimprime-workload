@@ -192,6 +192,14 @@ sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 
 Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trésorerie, rapport de la semaine, rapports par e-mail) tournent sur l'ERP local.
 
+Rapports du jour, de la semaine et du mois par e-mail ([docs/rapports-mail.md](rapports-mail.md)) : sur l'ERP local, `MAILER_DSN` et `MAILER_FROM_ADDRESS` (la même boîte que ci-dessus) dans son `.env.local`, et la tâche chaque quart d'heure. Sous Windows : `scripts\windows\installer_tache_rapports_mail.bat` ; sous Linux ou Mac, `crontab -e` :
+
+```
+*/15 * * * * cd /chemin/du/projet && php bin/console app:rapports-mail -q >> var/log/rapports-mail.log 2>&1
+```
+
+Sur ce serveur en ligne, la commande refuse de tourner : ne pas l'ajouter ici.
+
 ## Brancher l'ERP local
 
 1. Sur l'ERP local, dans `.env.local` : `SYNC_URL=https://succesimprim.com` et la même `SYNC_CLE`.

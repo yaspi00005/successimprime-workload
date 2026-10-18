@@ -51,3 +51,39 @@ La migration convertit les configurations actuelles (`ProduitConfiguration` et s
 3. **R01 et R02** : options et règles, avec le moteur unique. Il faut l'avoir avant la saisie de commande C01 et le calculateur du site.
 4. **S05 et S06** : réception avec rouleaux numérotés, puis inventaire.
 5. **S07, S08 et S09** : réapprovisionnement, analyse et mobile magasinier.
+
+## Débit du stock par commande (18/10/2026)
+
+**Question : un produit commandé fait-il baisser le stock ?** Oui, s'il a au moins un article de stock lié. Voici comment.
+
+### Quel stock un produit consomme
+
+- La **nomenclature** de la fiche produit (« Matières consommées ») dit ce que consomme une unité vendue : par exemple 1 m² de bâche par m² imprimé, ou 1 support par kakémono.
+- À défaut, l'« article associé au stock » du produit compte pour 1 par unité vendue.
+- Une ligne d'**article** (revente) consomme son article.
+- Une ligne **libre** (frais, conception, supplément) ne touche jamais au stock.
+- La nomenclature suffit. L'ancienne case « gestion de stock » n'est plus une condition : des produits importés l'avaient décochée avec une nomenclature remplie, et leur stock n'était jamais débité.
+
+Un produit sans aucun article lié est signalé sur sa fiche : « Aucun article de stock lié : le stock ne sera pas débité ». La commande reste possible. La fiche commande (pour les administrateurs) le rappelle aussi, ligne par ligne.
+
+### Réserver, puis sortir
+
+1. **Commande validée : le stock est réservé.** Peu importe d'où vient la commande : comptoir, devis converti, espace client, Mes produits, commande passée pour un client, conception, synchronisation. Une commande est validée quand elle n'est plus en brouillon ni « à confirmer », comme au comptoir. Une commande en attente de validation par l'entreprise cliente ne réserve pas non plus. La réservation se fait à l'enregistrement, en un seul endroit (`ReservationsCommandeListener`, puis `ReservationsCommande`). Si la quantité change avant la production, la réservation suit.
+2. **Production terminée : la matière sort.** On sort la quantité réellement imprimée, gâche comprise. La réservation est consommée.
+3. **Livraison :** les lignes sans production (revente, ligne marquée « sans production ») sortent leur stock à ce moment-là. Une ligne déjà fabriquée ne sort rien une deuxième fois, que la livraison soit directe ou par bon.
+
+### Manque de stock
+
+Le manque ne bloque jamais l'imprimerie :
+- **À la commande :** la commande est enregistrée et la réservation est posée quand même. L'agent voit un avertissement (« Stock insuffisant, commande enregistrée quand même : Bâche : besoin 12, disponible 4, manque 8 »). Les administrateurs et les responsables de gestion reçoivent une notification pour réapprovisionner.
+- **En production ou à la livraison :** si le stock enregistré ne couvre pas la sortie (entrée oubliée, inventaire faux), la sortie est faite quand même et les mêmes personnes sont prévenues pour vérifier l'inventaire. Avant, la fin de production ou la livraison était refusée.
+
+### Annulation
+
+- Une commande annulée, repassée en brouillon ou mise à la corbeille **libère ses réservations**. Une ligne livrée libère ce qui restait réservé.
+- Ce qui est **déjà sorti du stock reste sorti** : la matière est consommée, rien n'est remis automatiquement. Le message d'annulation le dit, avec les quantités. La fiche commande garde le bloc « Stock » (réservé, sorti).
+- Une commande restaurée réserve de nouveau ce qui n'est pas encore sorti.
+
+### Sur le site en ligne
+
+Le site en ligne ne réserve rien : le stock est tenu au serveur de l'imprimerie. La commande y arrive par la synchronisation et réserve quand l'atelier la confirme.

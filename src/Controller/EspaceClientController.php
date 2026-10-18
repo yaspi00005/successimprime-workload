@@ -18,7 +18,6 @@ use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FacturesClient;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\FilNotifications;
-use App\Service\EspaceClient\MessagesClient;
 use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\RecommanderClient;
 use App\Service\EspaceClient\SuiviCommandeClient;
@@ -271,7 +270,7 @@ final class EspaceClientController extends AbstractController
      * la commande. Le BAT se valide sur la route app_espace_bat.
      */
     #[Route('/commandes/{id}', name: 'commande', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET'])]
-    public function commande(string $id, EspaceClient $espace, SuiviCommandeClient $suivi, MessagesClient $messages, FacturesClient $factures): Response
+    public function commande(string $id, EspaceClient $espace, SuiviCommandeClient $suivi, FacturesClient $factures): Response
     {
         $compte = $this->compte();
         $client = $compte->getClient();
@@ -286,7 +285,6 @@ final class EspaceClientController extends AbstractController
                 && !(CommandesDetails::TYPE_LIBRE === $l->getTypeLigne() && CommandesDetails::PRODUCTION_NON_REQUISE === $l->getStatutProduction()))),
             'suivi' => $suivi->suivi($commande, $compte, new \DateTimeImmutable()),
             // Messages de la commande : comme la page Messages, pas pour un compte Lecture · suivi.
-            'messages' => $compte->estLectureSeule() ? [] : $messages->fil($client, $commande),
             'maxMessage' => MessageClient::TEXTE_MAX,
             // « Facture et reçus » : la facture de la commande (maquette FP02), pour qui voit les factures.
             'facture' => EspaceFacturesController::peutVoirLesFactures($compte) ? ($factures->facturesParCommande($client)[$commande->getId()] ?? null) : null,

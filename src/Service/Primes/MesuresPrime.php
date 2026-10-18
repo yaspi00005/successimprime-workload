@@ -11,6 +11,7 @@ use App\Entity\Paiements;
 use App\Entity\ReponseSondage;
 use App\Entity\User;
 use App\Service\ActionsCaisse\ActionsCaisse;
+use App\Service\Messagerie\DelaisReponse;
 use App\Service\MesStatistiques;
 use App\Service\Pointage\Pointages;
 use App\Service\Statistiques\Objectifs;
@@ -22,7 +23,8 @@ use Doctrine\ORM\EntityManagerInterface;
  * Mesures du mois d'un agent pour chaque critère de prime, prises dans
  * l'ERP (N02 « calcul auto ») : factures et objectifs, devis, avis
  * clients, factures payées à l'échéance, écarts de caisse et
- * réimpressions, pointage, points du métier, actions de caisse.
+ * réimpressions, pointage, points du métier, actions de caisse, délais
+ * de réponse aux messages des clients.
  *
  * Une note null veut dire « pas de données ce mois-ci » : CalculPrime
  * répartit alors son poids sur les autres critères.
@@ -43,6 +45,7 @@ final class MesuresPrime
         private readonly Pointages $pointages,
         private readonly ActionsCaisse $actions,
         private readonly SuiviEquipes $suivi,
+        private readonly DelaisReponse $delais,
     ) {
     }
 
@@ -67,6 +70,7 @@ final class MesuresPrime
                 'ponctualite' => $this->ponctualite($agent, $debut, $maintenant),
                 'productivite' => $this->productivite($agent, $role, $debut, $maintenant),
                 'actions' => $this->actionsCaisse($agent, $debut, $fin),
+                'messages' => $this->messages($agent, $debut, $fin),
                 default => ['note' => null, 'mesure' => 'saisie du responsable'],
             };
         }
@@ -233,6 +237,17 @@ final class MesuresPrime
         }
 
         return ['note' => $bilan['pourcentage'], 'mesure' => sprintf('%d / %d à l\'heure', $bilan['aLHeure'], $bilan['lignes'])];
+    }
+
+    /** Réponses aux clients dont l'agent était responsable : 100 moins les points retirés pour retard (−5 par défaut). */
+    private function messages(User $agent, \DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    {
+        $bilan = $this->delais->bilan($agent, $debut, $fin);
+        if (null === $bilan['note']) {
+            return ['note' => null, 'mesure' => 'aucune réponse à un client'];
+        }
+
+        return ['note' => $bilan['note'], 'mesure' => sprintf('%d réponse(s), %d en retard (−%d pts)', $bilan['reponses'], $bilan['enRetard'], $bilan['penalite'])];
     }
 
     private static function f(int|float $montant): string

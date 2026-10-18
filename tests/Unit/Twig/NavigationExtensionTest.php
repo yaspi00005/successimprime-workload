@@ -146,10 +146,10 @@ final class NavigationExtensionTest extends TestCase
 
         // Un autre droit coché : il n'est plus livreur seul et retrouve ses écrans.
         $livreurClients = array_column($extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_LIVRAISON', 'ROLE_CLIENT'])['entrees'], 'route');
-        self::assertSame(['app_home', 'app_livraisons_tournee', 'app_livraisons_mes_livraisons', 'app_livraisons_a_retirer', 'app_clients_index'], $livreurClients);
+        self::assertSame(['app_home', 'app_livraisons_tournee', 'app_livraisons_mes_livraisons', 'app_livraisons_a_retirer', 'app_clients_index', 'app_messages_clients_index'], $livreurClients);
 
         $caisse = array_column($extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_CLIENT', 'ROLE_COMMANDE', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_PAIEMENT_VOIR'])['entrees'], 'route');
-        self::assertSame(['app_home', 'app_caisse_index', 'app_actions_index', 'app_clients_index', 'app_ventes_index', 'app_finances_encaissements', 'app_livraisons_suivi'], $caisse);
+        self::assertSame(['app_home', 'app_caisse_index', 'app_actions_index', 'app_clients_index', 'app_messages_clients_index', 'app_ventes_index', 'app_finances_encaissements', 'app_livraisons_suivi'], $caisse);
         self::assertNotContains('app_stock_articles_index', $caisse, 'stock réservé à la Direction');
         self::assertNotContains('app_livraisons_mes_livraisons', $caisse);
 

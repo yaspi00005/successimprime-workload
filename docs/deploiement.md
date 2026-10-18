@@ -206,7 +206,7 @@ Sur ce serveur en ligne, la commande refuse de tourner : ne pas l'ajouter ici.
 1. Sur l'ERP local, dans `.env.local` : `SYNC_URL=https://succesimprim.com` et la même `SYNC_CLE`.
 2. `php bin/console app:verifier-installation` sur l'ERP local.
 3. Premier chargement : `php bin/console app:synchro --initialiser`.
-4. Tâche planifiée de la synchronisation (docs/synchronisation.md, « Mise en route »).
+4. Tâche planifiée de la synchronisation (docs/synchronisation.md, « Mise en route »). Elle lance aussi `app:messagerie:delais` (délais de réponse aux clients, escalade, clôture automatique : `docs/messagerie-clients.md`).
 
 ## Comptes du personnel en ligne
 

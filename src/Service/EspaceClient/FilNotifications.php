@@ -282,7 +282,7 @@ final class FilNotifications
                     ? ['libelle' => 'Accepter', 'url' => $url('app_espace_devis_accepter', ['id' => $c['devis']]), 'style' => 'secondaire', 'post' => true]
                     : null,
             ])),
-            'message' => [['libelle' => 'Lire le message', 'url' => $url('app_espace_messages'), 'style' => 'bleu']],
+            'message' => [['libelle' => 'Lire le message', 'url' => 'app_espace_message' === ($n['lien'][0] ?? null) ? $url($n['lien'][0], $n['lien'][1]) : $url('app_espace_messages'), 'style' => 'bleu']],
             'reclamation' => [['libelle' => 'Voir la réponse', 'url' => $url('app_espace_reclamations'), 'style' => 'bleu']],
             'conception' => [['libelle' => 'Voir la demande', 'url' => $url($n['lien'][0], $n['lien'][1]), 'style' => 'bleu']],
             default => [],

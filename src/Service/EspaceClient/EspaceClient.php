@@ -18,6 +18,7 @@ use App\Repository\EntrepriseRepository;
 use App\Service\Catalogue\NomCommercial;
 use App\Service\Conception\DemandesConception;
 use App\Service\FichiersPrives;
+use App\Service\Messagerie\Conversations;
 use App\Service\NotificationService;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Parametres\Parametres;
@@ -632,7 +633,8 @@ final class EspaceClient
             }
         }
         foreach ($this->em->getRepository(MessageClient::class)->findBy(['client' => $client, 'sens' => MessageClient::ATELIER], ['id' => 'DESC'], 20) as $m) {
-            $fil[] = self::evenement('message', 'Réponse de l\'atelier', mb_strimwidth((string) preg_replace('/\s+/u', ' ', $m->getTexte()), 0, 110, '…'), $m->getCreeLe(), ['app_espace_messages', []], $m->getCommande()?->getNumero(), ['cible' => ['commande' => null !== $m->getCommande() ? (string) $m->getCommande()->getPublicId() : null]]);
+            // Notification sans montant, pour tous les comptes (le montant se lit dans la conversation, selon les droits).
+            $fil[] = self::evenement('message', 'Réponse de l\'atelier', mb_strimwidth(Conversations::sansMontants((string) preg_replace('/\s+/u', ' ', $m->getTexte())), 0, 110, '…'), $m->getCreeLe(), null !== $m->getConversation() ? ['app_espace_message', ['id' => (string) $m->getConversation()->getPublicId()]] : ['app_espace_messages', []], $m->getCommande()?->getNumero(), ['cible' => ['commande' => null !== $m->getCommande() ? (string) $m->getCommande()->getPublicId() : null]]);
         }
         foreach ($this->em->getRepository(ReclamationClient::class)->findBy(['client' => $client], ['id' => 'DESC'], 20) as $r) {
             if (null !== $r->getReponduLe()) {

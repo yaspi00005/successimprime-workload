@@ -17,5 +17,10 @@ set LOG_FILE=%PROJET%\var\log\synchro.log
 if not exist "%PROJET%\var\log" mkdir "%PROJET%\var\log"
 
 "%PHP%" "%PROJET%\bin\console" app:synchro --no-interaction >> "%LOG_FILE%" 2>&1
+set RESULTAT=%ERRORLEVEL%
 
-exit /b %ERRORLEVEL%
+:: Messages des clients (docs/messagerie-clients.md) : escalade a la
+:: Direction et cloture automatique, meme sans site en ligne.
+"%PHP%" "%PROJET%\bin\console" app:messagerie:delais --no-interaction >> "%LOG_FILE%" 2>&1
+
+exit /b %RESULTAT%

@@ -1,50 +1,248 @@
 {% extends 'espace/app/_app.html.twig' %}
 
 {#
-	Messages avec l'atelier (maquette EC01) : texte seulement, rattaché si
-	besoin à une commande. Le message monte au local ; l'équipe répond
-	depuis Clients › Messages et la personne est prévenue de la réponse.
-	Une réponse de l'atelier porte le prénom et le métier de l'employé et
-	un disque à son initiale (_agent.html.twig), jamais sa photo.
+	Messages (maquettes MS01, MS02, MS05) : une conversation par commande, par
+	devis, ou une question générale. Ordinateur : la liste à gauche (Ouvertes,
+	Clôturées, recherche), le fil à droite. Téléphone : la liste, puis le fil
+	en plein écran. Chaque réponse porte le nom, le métier et la photo (ou les
+	initiales) de l'agent. Montants masqués pour qui ne les voit pas.
 #}
 {% block title %}Messages{% endblock %}
-{% block entete %}<a class="ec-retour" href="{{ path('app_espace_compte') }}"><span class="fl">‹</span>Messages</a>{% endblock %}
+{% block page_classe %} ms-page{{ (active and not auto) or nouvelle ? ' ms-avec-fil' }}{% endblock %}
+{% block styles %}<link href="{{ asset('css/messagerie-espace.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}
+	{% if (active and not auto) or (nouvelle and liste is not empty) %}
+		<a class="ec-retour" href="{{ path('app_espace_messages', cloturees ? {onglet: 'cloturees'} : {}) }}"><span class="fl">‹</span>{{ active ? active|conversation_titre : 'Nouvelle demande' }}</a>
+	{% else %}
+		<a class="ec-retour" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Messages</a>
+	{% endif %}
+{% endblock %}
+
+{% macro vignette(c) %}{% set teintes = ['#2B5CA8', '#E5487F', '#F07B4F', '#2C9C8F', '#7C5CC4', '#D9A21B'] %}<span class="ms-vignette" style="--v: {{ teintes[(c.titre|length + (c.id ?? 0)) % 6] }}" aria-hidden="true"></span>{% endmacro %}
 
 {% block contenu %}
 	{% import 'espace/app/_agent.html.twig' as agent %}
-	<div class="ec-carte ec-messages">
-		{% for m in fil %}
-			<div class="ec-bulle {{ m.estDeLAtelier ? 'atelier' : 'client' }}"{{ loop.last ? ' id="dernier"' }}>
-				{% set lien %}{% if m.commande %} · <a href="{{ path('app_espace_commande', {id: m.commande.publicId}) }}">commande {{ m.commande.numero }}</a>{% endif %}{% endset %}
-				{% if m.estDeLAtelier %}
-					{% set s = m.signature %}
-					<span class="ec-bulle-tete ec-agent-tete">{{ agent.disque(s) }}<span><b>{{ s.nom }}</b>{{ s.metier ? ' · ' ~ s.metier }} · {{ m.creeLe|date('d/m à H:i') }}{{ lien }}</span></span>
+	{% import _self as ms %}
+	<h1 class="ms-titre ec-bureau">Messages</h1>
+	<div class="ms-grille">
+		{# ---------- Liste des conversations ---------- #}
+		<aside class="ms-liste" aria-label="Conversations">
+			<form class="ms-recherche" method="get" action="{{ path('app_espace_messages') }}" role="search">
+				{% if cloturees %}<input type="hidden" name="onglet" value="cloturees">{% endif %}
+				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15zM21 21l-5.2-5.2"/></svg>
+				<input type="search" name="q" value="{{ recherche }}" placeholder="Rechercher une conversation" aria-label="Rechercher une conversation" maxlength="60">
+			</form>
+			<nav class="ms-onglets" aria-label="Ouvertes ou clôturées">
+				<a href="{{ path('app_espace_messages', recherche ? {q: recherche} : {}) }}" class="{{ not cloturees ? 'actif' }}"{{ not cloturees ? ' aria-current="page"' }}>Ouvertes · {{ compteurs.ouvertes }}</a>
+				<a href="{{ path('app_espace_messages', {onglet: 'cloturees'} + (recherche ? {q: recherche} : {})) }}" class="{{ cloturees ? 'actif' }}"{{ cloturees ? ' aria-current="page"' }}>Clôturées · {{ compteurs.cloturees }}</a>
+			</nav>
+			<p class="ms-sur-titre">Une conversation par commande</p>
+			<ul class="ms-conversations">
+				{% for c in liste %}
+					{% set d = derniers[c.id] ?? null %}
+					{% set nonLu = d and d.estDeLAtelier and (c.luClientLe is null or c.luClientLe < d.creeLe) %}
+					<li>
+						<a href="{{ path('app_espace_message', {id: c.publicId}) }}" class="ms-conv{{ active and active.id == c.id ? ' actif' }}{{ nonLu ? ' non-lu' }}"{{ active and active.id == c.id ? ' aria-current="true"' }}>
+							{{ ms.vignette(c) }}
+							<span class="ms-conv-corps">
+								<span class="ms-conv-tete"><b>{{ c|conversation_titre }}</b><time>{{ (c.dernierMessageLe ?? c.creeLe)|date((c.dernierMessageLe ?? c.creeLe)|date('Ymd') == 'now'|date('Ymd') ? 'H:i' : 'd/m') }}</time></span>
+								{% if d %}
+									<span class="ms-conv-extrait">
+										{% if d.estDeLAtelier %}{{ agent.disque(d.signature, 'mini') }}{% else %}<span class="ec-avatar ms-mini-moi" aria-hidden="true">{{ (d.auteur ?? 'V')|slice(0, 1)|upper }}</span>{% endif %}
+										<span>{% set extrait = montants ? d.texte : d.texte|sans_montants %}{{ extrait|length > 70 ? extrait|slice(0, 70) ~ '…' : extrait }}</span>
+										{% if nonLu %}<span class="ec-compteur" aria-label="Nouvelle réponse">1</span>{% endif %}
+									</span>
+								{% endif %}
+								<span class="ms-conv-statut">
+									{% if c.estCloturee %}<span class="ec-pastille vert">Résolue</span>
+									{% elseif d and d.estDuClient %}<span class="ec-pastille ambre">Réponse attendue</span>
+									{% elseif c.clotureEnAttente %}<span class="ec-pastille vert">Clôture proposée</span>
+									{% elseif cartes[c.id] is defined %}{% include 'espace/app/_statut.html.twig' with {carte: cartes[c.id]} only %}
+									{% elseif c.devis %}<span class="ec-pastille gris">Devis</span>
+									{% else %}<span class="ec-pastille gris">Question</span>{% endif %}
+								</span>
+							</span>
+						</a>
+					</li>
 				{% else %}
-					<span class="ec-bulle-tete">{{ m.auteur ?? 'Vous' }} · {{ m.creeLe|date('d/m à H:i') }}{{ lien }}</span>
-				{% endif %}
-				<p>{{ m.texte|nl2br }}</p>
+					<li class="ms-vide">{{ recherche ? 'Aucune conversation ne correspond à « ' ~ recherche ~ ' ».' : (cloturees ? 'Aucune demande clôturée.' : 'Pas encore de conversation.') }}</li>
+				{% endfor %}
+			</ul>
+			{% if cloturees and compteurs.ouvertes > 0 %}<p class="ms-lien-onglet ec-telephone"><a href="{{ path('app_espace_messages') }}">Ouvertes · {{ compteurs.ouvertes }} conversation{{ compteurs.ouvertes > 1 ? 's' }}</a></p>{% endif %}
+			{% if not cloturees and compteurs.cloturees > 0 %}<p class="ms-lien-onglet ec-telephone"><a href="{{ path('app_espace_messages', {onglet: 'cloturees'}) }}">Clôturées · {{ compteurs.cloturees }} conversation{{ compteurs.cloturees > 1 ? 's' }}</a></p>{% endif %}
+			<div class="ms-nouvelle">
+				<a href="{{ path('app_espace_messages', {nouvelle: 1}) }}" class="ms-nouvelle-bouton">+ Nouvelle demande</a>
+				<small>choisissez la commande concernée, ou « question générale »</small>
 			</div>
-		{% else %}
-			<p class="ec-vide">Une question sur une commande, un fichier, une livraison ? Écrivez à l'atelier : la réponse arrive ici.</p>
-		{% endfor %}
-	</div>
+		</aside>
 
-	<form class="ec-carte" method="post" action="{{ path('app_espace_messages') }}">
-		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-		<h2>Écrire à l'atelier</h2>
-		{% if commandes is not empty %}
-			<label class="ec-etiquette" for="commande">Au sujet de (facultatif)</label>
-			<select class="ec-saisie" id="commande" name="commande" style="margin-bottom:.7rem">
-				<option value="">Aucune commande en particulier</option>
-				{% for c in commandes %}<option value="{{ c.publicId }}"{{ choisie == c.publicId ? ' selected' }}>{{ c.numero }} · {{ c|espace_titre }}</option>{% endfor %}
-			</select>
-		{% endif %}
-		<label class="ec-etiquette" for="texte">Votre message</label>
-		<textarea class="ec-champ" id="texte" name="texte" maxlength="{{ max }}" required placeholder="Bonjour, …">{{ saisie.texte }}</textarea>
-		<p class="ec-petit" style="margin:.3rem 0 .7rem">Texte seulement, {{ max }} caractères au plus. Pour un fichier, utilisez Fichiers et BAT.</p>
-		<button type="submit" class="ec-bouton bleu">Envoyer</button>
-		{% if whatsapp %}
-			<p class="ec-petit" style="margin:.8rem 0 0;text-align:center">Pressé ? <a href="{{ whatsapp }}" target="_blank" rel="noopener">WhatsApp</a> · <a href="{{ appeler }}">Appeler la boutique</a></p>
-		{% endif %}
-	</form>
+		{# ---------- Fil ou nouvelle demande ---------- #}
+		<section class="ms-fil" aria-label="{{ active ? 'Conversation ' ~ active|conversation_titre : 'Nouvelle demande' }}">
+			{% if nouvelle %}
+				<form class="ms-formulaire" method="post" action="{{ path('app_espace_message_nouvelle') }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+					<h2>Nouvelle demande</h2>
+					<p class="ec-petit">Une conversation par commande : l'équipe qui s'en occupe vous répond, avec tout l'historique au même endroit.</p>
+					<label class="ec-etiquette" for="ms-document">Au sujet de</label>
+					<select class="ec-saisie" id="ms-document" name="document">
+						<option value="">Question générale (sans commande)</option>
+						{% if commandes is not empty %}
+							<optgroup label="Mes commandes">
+								{% for c in commandes %}<option value="c:{{ c.publicId }}"{{ document == 'c:' ~ c.publicId ? ' selected' }}>{{ c.numero }} · {{ c|espace_titre }}</option>{% endfor %}
+							</optgroup>
+						{% endif %}
+						{% if devis is not empty %}
+							<optgroup label="Mes devis">
+								{% for d in devis %}<option value="d:{{ d.publicId }}"{{ document == 'd:' ~ d.publicId ? ' selected' }}>{{ d.numero }}</option>{% endfor %}
+							</optgroup>
+						{% endif %}
+					</select>
+					<label class="ec-etiquette" for="ms-objet">Objet <span class="ec-petit">(question générale)</span></label>
+					<input class="ec-saisie" id="ms-objet" name="objet" maxlength="120" placeholder="Ex. : Horaires, tarif d'une bâche, reçu…">
+					<label class="ec-etiquette" for="ms-sujet">C'est à propos de</label>
+					<select class="ec-saisie" id="ms-sujet" name="sujet">
+						<option value="">Je ne sais pas (l'atelier oriente)</option>
+						{% for cle, libelle in sujets %}<option value="{{ cle }}"{{ sujet == cle ? ' selected' }}>{{ libelle }}</option>{% endfor %}
+					</select>
+					<label class="ec-etiquette" for="ms-texte">Votre message</label>
+					<textarea class="ec-champ" id="ms-texte" name="texte" maxlength="{{ max }}" required placeholder="Bonjour, …">{{ texte }}</textarea>
+					<p class="ec-petit">{{ texteDelai }} Pour un fichier, utilisez <a href="{{ path('app_espace_fichiers') }}">Fichiers et BAT</a>.</p>
+					<div class="ms-actions">
+						<button type="submit" class="ec-bouton bleu">Envoyer</button>
+						{% if whatsapp %}<a class="ec-petit" href="{{ whatsapp }}" target="_blank" rel="noopener">Pressé ? WhatsApp</a>{% endif %}
+					</div>
+				</form>
+			{% elseif active %}
+				{% set c = active %}
+				<header class="ms-fil-tete">
+					{{ ms.vignette(c) }}
+					<div class="ms-fil-titre">
+						<h2>{{ c|conversation_titre }}
+							{% if c.estCloturee %}<span class="ec-pastille vert">✓ Résolue</span>
+							{% elseif carte %}{% include 'espace/app/_statut.html.twig' with {carte: carte} only %}
+							{% elseif c.devis %}<span class="ec-pastille gris">Devis</span>{% endif %}
+						</h2>
+						<small>
+							{% if c.estCloturee and c.clotureeLe %}Clôturée le {{ c.clotureeLe|date('d/m') }} à {{ c.clotureeLe|date('H:i') }}{{ c.clotureePar ? ' par ' ~ c.clotureePar }}
+							{% elseif c.commande %}Conversation de cette commande uniquement{% if montants and c.commande.totalTtc %} · {{ c.commande.totalTtc|number_format(0, ',', ' ') }} F{% endif %}
+							{% elseif c.devis %}Conversation de ce devis uniquement
+							{% else %}Question générale{% endif %}
+							{% if c.precedente %} · suite de <a href="{{ path('app_espace_message', {id: c.precedente.publicId}) }}">la demande du {{ c.precedente.creeLe|date('d/m') }}</a>{% endif %}
+						</small>
+					</div>
+					<div class="ms-fil-droite">
+						{% if agents is not empty %}
+							<span class="ms-equipe" title="{{ agents|map(a => a.nom ~ (a.metier ? ' (' ~ a.metier ~ ')' : ''))|join(', ') }}">{% for a in agents|slice(0, 4) %}{{ agent.disque(a.signature, 'moyen') }}{% endfor %}</span>
+						{% endif %}
+						{% if c.commande %}<a class="ec-bouton-blanc ms-voir" href="{{ path('app_espace_commande', {id: c.commande.publicId}) }}">Voir la commande</a>
+						{% elseif c.devis %}<a class="ec-bouton-blanc ms-voir" href="{{ path('app_espace_devis') }}">Voir le devis</a>{% endif %}
+					</div>
+				</header>
+
+				{# Téléphone (MS05) : l'état et l'équipe sous le titre. #}
+				<p class="ms-tel-tete ec-telephone">
+					{% if c.estCloturee %}<span class="ec-pastille vert">✓ Résolue</span>{% elseif carte %}{% include 'espace/app/_statut.html.twig' with {carte: carte} only %}{% elseif c.devis %}<span class="ec-pastille gris">Devis</span>{% endif %}
+					{% if agents is not empty %}<span class="ec-petit">avec</span>{% for a in agents|slice(0, 4) %}{{ agent.disque(a.signature, 'moyen') }}{% endfor %}{% endif %}
+					{% if c.commande %}<a class="ms-tel-voir" href="{{ path('app_espace_commande', {id: c.commande.publicId}) }}">Voir la commande</a>{% endif %}
+				</p>
+				<div class="ms-messages" id="fil">
+					{% for e in fil %}
+						{% if e.type == 'jour' %}
+							<p class="ms-jour"><span>{{ e.texte }}</span></p>
+						{% elseif e.type == 'evenement' %}
+							<p class="ms-evenement{{ e.vert ? ' vert' }}">{{ e.vert ? '✓ ' }}{{ e.texte }}</p>
+						{% elseif e.type == 'message' %}
+							{% set m = e.m %}
+							{% if m.estDeLAtelier %}
+								{% set s = e.signature %}
+								<div class="ms-bulle atelier"{{ loop.last ? ' id="dernier"' }}>
+									{{ agent.disque(s, 'moyen') }}
+									<div>
+										<p class="ms-bulle-tete"><b>{{ s.nom }}</b>{% if s.metier %} <span class="ms-role t{{ s.teinte ?? 'b' }}">{{ s.metier }}</span>{% endif %} <span class="ms-heure">{{ m.creeLe|date('H:i') }}{% if m.delaiMinutes is not null %} · répondu en {{ m.delaiMinutes|duree_messagerie }}{% endif %}{% if e.lu %} · Lu <span aria-label="lu">✓✓</span>{% endif %}</span></p>
+										<div class="ms-texte">{{ e.texte|nl2br }}</div>
+										{% if m.bat %}
+											<a class="ms-piece" href="{{ path('app_espace_bat', {id: m.bat.id}) }}"><span class="ms-piece-image" aria-hidden="true">BAT</span><span><b>BAT · {{ m.commande ? m.commande.numero }}</b><small>{{ m.bat.batValide ? 'validé' : 'à voir et valider' }}</small></span></a>
+										{% endif %}
+										{% if m.facture %}
+											{% if montants %}<a class="ms-piece" href="{{ path('app_espace_facture_detail', {id: m.facture.publicId}) }}">{% else %}<span class="ms-piece">{% endif %}<span class="ms-piece-image pdf" aria-hidden="true">PDF</span><span><b>{{ m.facture.numero }}.pdf</b><small>Facture{% if montants and m.facture.totalTtc %} · {{ m.facture.totalTtc|number_format(0, ',', ' ') }} F{% endif %}</small></span>{% if montants %}</a>{% else %}</span>{% endif %}
+										{% endif %}
+									</div>
+								</div>
+							{% else %}
+								<div class="ms-bulle client"{{ loop.last ? ' id="dernier"' }}>
+									<div>
+										<p class="ms-bulle-tete"><b>{{ m.auteur == coque.personne or m.auteur is null ? 'Vous' : m.auteur }}</b> <span class="ms-heure">{{ m.creeLe|date('H:i') }}{% if e.lu %} · Lu <span aria-label="lu">✓✓</span>{% endif %}</span></p>
+										<div class="ms-texte">{{ e.texte|nl2br }}</div>
+									</div>
+									<span class="ec-avatar ms-moi" aria-hidden="true">{{ m.auteur == coque.personne or m.auteur is null ? coque.initiales : m.auteur|split(' ')|slice(0, 2)|map(w => w|first|upper)|join('') }}</span>
+								</div>
+							{% endif %}
+						{% endif %}
+					{% endfor %}
+
+					{% if c.clotureEnAttente %}
+						<div class="ms-proposition" id="ecrire">
+							<p><b>{{ c.clotureProposeePar }}</b> propose de clôturer la demande · {{ c.clotureProposeeLe|date('H:i') }}</p>
+							<form method="post" action="{{ path('app_espace_message_cloture', {id: c.publicId}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+								<button name="reponse" value="oui" class="ms-bouton-vert">✓ Oui, c'est résolu</button>
+								<button name="reponse" value="non" class="ec-bouton-blanc">J'ai encore une question</button>
+							</form>
+						</div>
+					{% endif %}
+				</div>
+
+				{% if c.estCloturee %}
+					<footer class="ms-fin" id="fin">
+						<span class="ms-fin-icone" aria-hidden="true">✓</span>
+						<div class="ms-fin-texte">
+							<b>Demande résolue et clôturée</b>
+							<small>Lecture seule. {% if rouvrable %}Vous pouvez la rouvrir pendant {{ reouvertureJours }} jours ; après, une nouvelle demande sera liée à celle-ci.{% else %}Une nouvelle demande sera liée à celle-ci.{% endif %}</small>
+						</div>
+						<form class="ms-avis" method="post" action="{{ path('app_espace_message_avis', {id: c.publicId}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+							<small>Votre avis</small>
+							<span class="ms-etoiles">
+								{% for i in 1..5 %}<button name="etoiles" value="{{ i }}" class="{{ c.avis and i <= c.avis ? 'pleine' }}"{{ c.avis ? ' disabled' }} aria-label="{{ i }} étoile{{ i > 1 ? 's' }}">★</button>{% endfor %}
+							</span>
+						</form>
+						{% if rouvrable %}
+							<form method="post" action="{{ path('app_espace_message_rouvrir', {id: c.publicId}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+								<button class="ec-bouton-blanc">Rouvrir</button>
+							</form>
+						{% else %}
+							<a class="ec-bouton-blanc" href="{{ path('app_espace_messages', {nouvelle: 1, document: c.commande ? 'c:' ~ c.commande.publicId : (c.devis ? 'd:' ~ c.devis.publicId : '')}) }}">Nouvelle demande</a>
+						{% endif %}
+					</footer>
+				{% else %}
+					<form class="ms-ecrire" method="post" action="{{ path('app_espace_message_ecrire', {id: c.publicId}) }}" id="{{ c.clotureEnAttente ? 'ecrire-form' : 'ecrire' }}">
+						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+						<a class="ms-trombone" href="{{ path('app_espace_fichiers') }}" title="Envoyer un fichier (Fichiers et BAT)" aria-label="Envoyer un fichier"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5 12.4 20a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg></a>
+						<label for="ms-ecrire" class="ms-cache">Votre message</label>
+						<textarea id="ms-ecrire" name="texte" maxlength="{{ max }}" required rows="1" placeholder="Écrire un message…"></textarea>
+						<button type="submit" class="ec-bouton bleu ms-envoyer" aria-label="Envoyer"><span class="ec-bureau">Envoyer</span><span class="ec-telephone">➤</span></button>
+					</form>
+					<p class="ms-delai">{{ texteDelai }}{% if c.commande %} Ici, on ne parle que de la commande {{ c.commande.numero }}.{% elseif c.devis %} Ici, on ne parle que du devis {{ c.devis.numero }}.{% endif %}</p>
+				{% endif %}
+			{% else %}
+				<div class="ms-choisir">
+					<p><b>Choisissez une conversation</b></p>
+					<p class="ec-petit">Une question sur une commande, un fichier, une livraison ? « + Nouvelle demande ».</p>
+				</div>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}
+
+{% block scripts %}
+	<script>
+		// Le fil s'ouvre sur le dernier message ; la saisie grandit avec le texte.
+		(function () {
+			var fil = document.getElementById('fil');
+			if (fil) { fil.scrollTop = fil.scrollHeight; }
+			var t = document.getElementById('ms-ecrire');
+			if (t) { t.addEventListener('input', function () { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 160) + 'px'; }); }
+		})();
+	</script>
 {% endblock %}

@@ -370,11 +370,26 @@ final class CatalogueSynchroTest extends TestCase
         self::assertFalse(CatalogueSynchro::remonteePermise('client', 'email', 'contact@hotel-niger.ml', 'yaya@gmail.com'));
         self::assertFalse(CatalogueSynchro::remonteePermise('client', 'email', null, null));
 
-        // Messages client ⇄ atelier : le texte, sans qui a traité ni l'employé qui a répondu.
-        self::assertSame(['sens', 'auteur', 'texte', 'creeLe'], $types['message_client']['champs']);
-        self::assertSame(['client' => 'client', 'commande' => 'commande'], $types['message_client']['relations']);
+        // Messages client ⇄ atelier : le texte et « répondu en 12 min », sans qui a traité, ni la cible, le retard,
+        // la pénalité et la personne imputée ; l'agent seulement par sa signature (nom, métier, vignette).
+        self::assertSame(['sens', 'auteur', 'texte', 'creeLe', 'delaiMinutes'], $types['message_client']['champs']);
+        self::assertSame(['client' => 'client', 'commande' => 'commande', 'conversation' => 'conversation_client', 'agent' => 'agent_messagerie', 'bat' => 'controle', 'facture' => 'facture'], $types['message_client']['relations']);
         self::assertSame(\App\Entity\MessageClient::CLIENT, $types['message_client']['imposeAuLocal']['sens'], 'un message écrit en ligne est toujours du client');
+        self::assertNull($types['message_client']['imposeAuLocal']['delaiMinutes']);
         self::assertTrue(CatalogueSynchro::creationAcceptee('message_client', false));
+        foreach (['cibleMinutes', 'retardMinutes', 'penalite', 'imputeA', 'traiteLe', 'ecritPar'] as $local) {
+            self::assertNotContains($local, $types['message_client']['champs']);
+        }
+        self::assertSame(['nom', 'metier', 'photo', 'majLe'], $types['agent_messagerie']['champs']);
+        self::assertSame(CatalogueSynchro::DESCENDANT, $types['agent_messagerie']['sens']);
+        // Conversation : le client clôture, rouvre, note ; responsable, collègues, chronomètre et notes internes restent au local.
+        foreach (['assigneA', 'participants', 'attenteDepuis', 'premiereReponseLe', 'escaladeeLe', 'relanceeLe'] as $local) {
+            self::assertNotContains($local, $types['conversation_client']['champs']);
+        }
+        self::assertTrue(CatalogueSynchro::remonteePermise('conversation_client', 'statut', 'ouverte', 'cloturee'));
+        self::assertTrue(CatalogueSynchro::remonteePermise('conversation_client', 'avis', null, '5'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('conversation_client', 'objet', 'Question générale', 'Autre chose'));
+        self::assertSame('ouverte', $types['conversation_client']['imposeAuLocal']['statut']);
 
         // Changement de raison sociale ou NIF : arrive au local en attente, jamais appliqué tout seul.
         self::assertSame(\App\Entity\PropositionClient::EN_ATTENTE, $types['proposition_client']['imposeAuLocal']['statut']);

@@ -177,37 +177,32 @@
 				{% include 'espace/app/_bat_carte.html.twig' with {b: b, contexte: 'commande'} %}
 			{% endfor %}
 
-			{# Messages de la commande : le fil client ↔ atelier de cette commande ; pas pour un compte Lecture · suivi (comme Messages). #}
+			{# Conversation de la commande (maquette MS01) : son dernier message et le délai de réponse ; la conversation complète est dans Messages. Pas pour un compte Lecture · suivi (comme Messages). #}
 			{% if not lecture %}
+				{% set conv = conversation_resume(c, not coque.montants) %}
 				<section class="ec-carte cs-messages" id="messages" aria-labelledby="messages-titre">
-					<h2 id="messages-titre">Messages de la commande</h2>
-					{% if messages is not empty %}
+					<h2 id="messages-titre">Conversation de la commande</h2>
+					{% if conv and conv.dernier %}
 						<div class="ec-messages">
-							{% for m in messages %}
-								{% set moi = not m.estDeLAtelier and m.auteur == coque.personne %}
-								<div class="ec-bulle {{ m.estDeLAtelier ? 'atelier' : 'client' }}"{{ loop.last ? ' id="dernier"' }}>
-									{% set quand = m.creeLe|date('Y-m-d') == 'now'|date('Y-m-d') ? m.creeLe|date('H:i') : m.creeLe|date('d/m · H:i') %}
-									{% if m.estDeLAtelier %}
-										{% set s = m.signature %}
-										<span class="ec-bulle-tete ec-agent-tete">{{ agent.disque(s) }}<span>{{ s.nom }}{{ s.metier ? ' · ' ~ s.metier }} · {{ quand }}</span></span>
-									{% else %}
-										<span class="ec-bulle-tete">{{ moi ? 'Vous' : (m.auteur ?? 'Vous') }} · {{ quand }}</span>
-									{% endif %}
-									<p>{{ m.texte|nl2br }}</p>
-								</div>
-							{% endfor %}
+							<div class="ec-bulle {{ conv.dernier.deLAtelier ? 'atelier' : 'client' }}">
+								{% set quand = conv.dernier.le|date('Y-m-d') == 'now'|date('Y-m-d') ? conv.dernier.le|date('H:i') : conv.dernier.le|date('d/m · H:i') %}
+								<span class="ec-bulle-tete{{ conv.dernier.deLAtelier ? ' ec-agent-tete' }}">{% if conv.dernier.deLAtelier %}{{ agent.disque({photo: conv.dernier.photo, initiales: conv.dernier.initiales, teinte: null}) }}{% endif %}<span>{{ conv.dernier.auteur }} · {{ quand }}</span></span>
+								<p>{{ conv.dernier.texte|nl2br }}</p>
+							</div>
 						</div>
+						<p class="ec-petit">{{ conv.statut }}{{ conv.delaiTexte ? ' · ' ~ conv.delaiTexte }} · {{ conv.messages }} message{{ conv.messages > 1 ? 's' }}</p>
 					{% else %}
-						<p class="cs-messages-vide">Une question sur cette commande ? Écrivez à l'atelier : la réponse arrive ici, et vous en êtes prévenu.</p>
+						<p class="cs-messages-vide">Une question sur cette commande ? Écrivez à l'atelier : la réponse arrive dans Messages, et vous en êtes prévenu.</p>
 					{% endif %}
-					<form method="post" action="{{ path('app_espace_messages') }}" class="cs-ecrire">
-						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-						<input type="hidden" name="commande" value="{{ c.publicId }}">
-						<input type="hidden" name="retour" value="commande">
-						<label for="message-texte" class="ec-bureau" style="position:absolute;left:-9999px">Votre message</label>
-						<textarea class="ec-champ" id="message-texte" name="texte" maxlength="{{ maxMessage }}" required placeholder="Votre message à l'atelier…" aria-label="Votre message à l'atelier"></textarea>
-						<button type="submit" class="ec-bouton bleu">Envoyer</button>
-					</form>
+					{% if conv is null or conv.conversation.estOuverte %}
+						<form method="post" action="{{ path('app_espace_message_nouvelle') }}" class="cs-ecrire">
+							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+							<input type="hidden" name="document" value="c:{{ c.publicId }}">
+							<textarea class="ec-champ" id="message-texte" name="texte" maxlength="{{ maxMessage }}" required placeholder="Votre message à l'atelier…" aria-label="Votre message à l'atelier"></textarea>
+							<button type="submit" class="ec-bouton bleu">Envoyer</button>
+						</form>
+					{% endif %}
+					<a class="ec-bouton-blanc" href="{{ conversation_url_client(c) }}">{{ conv ? 'Ouvrir la conversation' : 'Nouvelle demande' }}</a>
 				</section>
 			{% endif %}
 

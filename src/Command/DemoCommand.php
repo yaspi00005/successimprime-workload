@@ -90,7 +90,7 @@ final class DemoCommand extends Command
         $n = 0;
         try {
             $this->connexion->beginTransaction();
-            foreach ([...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
+            foreach ([...MessagerieDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
             }
@@ -125,6 +125,8 @@ final class DemoCommand extends Command
             // Comptes clients : monnaie gardée, dépôts, argent rendu, dépôts en ligne à valider.
             $this->lancer('app:solde-client:demo', [], $output);
             // Dotations aux amortissements et évaluations de primes des derniers mois.
+            // Conversations avec les clients (délais et retards comptent dans les primes qui suivent).
+            $this->lancer('app:messagerie:demo', [], $output);
             $this->lancer('app:immobilisations:dotations', ['--demo' => true], $output);
             $this->lancer('app:primes', ['--demo' => true], $output);
             $io->text('Connexion possible avec demo.kadiatou (direction), demo.aminata (caisse), demo.seydou (graphiste), demo.oumar (machine), demo.bakary (livreur) ou demo.awa (entretien), mot de passe demo1234.');

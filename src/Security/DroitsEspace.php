@@ -59,6 +59,7 @@ final class DroitsEspace
         'app_espace_utilisateur_nouveau',
         'app_espace_utilisateur',
         'app_espace_messages',
+        'app_espace_message',
         // Atelier 3D (docs/atelier-3d.md) : il ne sert qu'à commander.
         'app_espace_atelier',
         'app_espace_atelier_prix',

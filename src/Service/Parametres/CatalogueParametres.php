@@ -468,6 +468,23 @@ final class CatalogueParametres
                 'motsCles' => ['SMS disponibles · date d\'expiration du pack', 'Orange SMS · solde et achats de packs', 'Historique des envois SMS et e-mail', 'Limites d\'envoi de l\'hébergeur · LWS', 'Alerte crédit SMS bas'],
                 'note' => 'Le solde SMS est lu chez Orange quand les clés sont posées ; sans les clés, il se saisit à la main sur la page complète, avec la fin de l\'abonnement e-mail.',
             ],
+            // Règles de réponse aux messages des clients (maquette MS04, docs/messagerie-clients.md).
+            // Le délai de 1re réponse et la durée de réouverture partent au site (texte « Réponse en général sous 30 min »).
+            'messagerie' => [
+                'famille' => 'clients', 'libelle' => 'Règles de réponse aux messages', 'icone' => 'fa-comments',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_messages_clients_regles',
+                'champs' => [
+                    ['cle' => 'premiere_minutes', 'type' => 'nombre', 'libelle' => '1re réponse', 'aide' => 'Minutes ouvrées après le premier message du client', 'suffixe' => 'min ouvrées', 'min' => 5, 'max' => 1440, 'defaut' => 30],
+                    ['cle' => 'suivantes_minutes', 'type' => 'nombre', 'libelle' => 'Réponses suivantes', 'suffixe' => 'min ouvrées', 'min' => 5, 'max' => 2880, 'defaut' => 60],
+                    ['cle' => 'tresoriere', 'type' => 'nombre', 'libelle' => 'Paiement, facture : trésorière (compte)', 'aide' => 'Numéro du compte choisi sur l\'écran Règles de réponse ; 0 : la caisse', 'min' => 0, 'max' => 99999999, 'defaut' => 0, 'ecran' => true],
+                    ['cle' => 'escalade_minutes', 'type' => 'nombre', 'libelle' => 'Escalade à la direction après', 'aide' => 'Attente du client en minutes ouvrées ; 0 : jamais', 'suffixe' => 'min ouvrées', 'min' => 0, 'max' => 2880, 'defaut' => 120],
+                    ['cle' => 'penalite_points', 'type' => 'nombre', 'libelle' => 'Pénalité par réponse en retard', 'aide' => 'Retirée de la note « Réponses aux messages » de la prime', 'suffixe' => 'pts', 'min' => 0, 'max' => 50, 'defaut' => 5],
+                    ['cle' => 'cloture_auto_heures', 'type' => 'nombre', 'libelle' => 'Clôture automatique sans réponse du client', 'aide' => '0 : jamais', 'suffixe' => 'h', 'min' => 0, 'max' => 720, 'defaut' => 72],
+                    ['cle' => 'reouverture_jours', 'type' => 'nombre', 'libelle' => 'Le client peut rouvrir pendant', 'suffixe' => 'jours', 'min' => 0, 'max' => 60, 'defaut' => 7],
+                ],
+                'motsCles' => ['Délai de réponse aux clients · 30 min', 'Retard imputé à l\'agent assigné', 'Clôture automatique des conversations', 'Pénalité de points par réponse en retard'],
+                'note' => 'Le chronomètre ne tourne que pendant les heures ouvrées (tuile Horaires, pause comprise) ; il s\'arrête à la première réponse envoyée, les notes internes ne comptent pas.',
+            ],
             'ecran_tv' => [
                 'famille' => 'clients', 'libelle' => 'Écran TV de l\'accueil', 'icone' => 'fa-tv',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_ecran_tv_reglages', 'champs' => [],

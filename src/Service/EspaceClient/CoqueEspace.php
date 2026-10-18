@@ -8,6 +8,7 @@ use App\Entity\CompteClient;
 use App\Entity\Devis;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
+use App\Service\Messagerie\Conversations;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\Service\ResetInterface;
@@ -101,6 +102,7 @@ final class CoqueEspace implements ResetInterface
         private readonly FilNotifications $fil,
         private readonly EntrepriseRepository $entreprises,
         private readonly RequestStack $requetes,
+        private readonly Conversations $conversations,
     ) {
     }
 
@@ -128,6 +130,8 @@ final class CoqueEspace implements ResetInterface
             'notifications' => ['nombre' => $nonLues, 'couleur' => 'rouge'],
             'devis' => ['nombre' => $droits['valideur'] ? \count(array_filter($this->espace->devis($client), static fn (Devis $d): bool => Devis::STATUT_ENVOYE === $d->getStatut())) : 0, 'couleur' => 'jaune'],
             'fichiers' => ['nombre' => $droits['lecture'] ? 0 : \count($this->espace->bats($client, true)), 'couleur' => 'jaune'],
+            // Conversations ouvertes avec une réponse de l'atelier pas encore lue (maquette MS01).
+            'messages' => ['nombre' => $droits['lecture'] ? 0 : $this->conversations->nonLuesClient($client), 'couleur' => 'rouge'],
             'factures' => ['nombre' => $droits['payeur'] ? \count($this->espace->solde($client)['commandes']) : 0, 'couleur' => 'jaune'],
         ];
         $entree = self::entreeDeLaRoute((string) $this->requetes->getMainRequest()?->attributes->get('_route'));

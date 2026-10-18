@@ -17,6 +17,11 @@ Module Finances de l'ERP local, construit le 13/10/2026. Tout reste au local : r
 
 Le montant des salaires (échéancier F04, sorties prises en compte et repères de la courbe F05) n'apparaît qu'avec le droit RH : les autres voient « salaires (RH) » à la place. Les totaux et la courbe restent justes, car le montant y est compté.
 
+## Qui voit les encaissements et les soldes dus (18/10/2026)
+
+- **Encaissements** (`/finances/encaissements`) : droit Paiements (caisse, Direction, comptable). Les graphistes PAO n'y ont plus accès : la migration `Version20261018220000` leur retire le droit Paiements ajouté sur leur fiche au passage aux droits par personne. Leur menu Finances montre « Factures et créances » à la place, et l'adresse les renvoie aux créances.
+- **Solde dû des clients** (liste et fiche client) : droit Paiements, donc la caisse, la Direction et le comptable (« Comptabilité et patrimoine » donne aussi le droit Paiements, `security.yaml`). Les autres rôles ne le voient pas.
+
 ## La caisse et la trésorerie
 
 Depuis le 15/10/2026, le rôle « Caisse et commercial » n'a plus

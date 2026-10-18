@@ -100,6 +100,8 @@ Chaque personne a un score sur 100 par mois. Sa prime est un pourcentage de la p
 
 ## Droits
 
+**Montants des primes (demande de Yaya du 18/10/2026)** : seuls la Direction et le droit RH voient les montants (prime cible, prime du mois, total de l'équipe). L'agent voit sur Ma prime et Mon espace le taux atteint (« 80 % de votre prime cible ») et l'état de chaque mois (validée, en attente, suspendue), jamais de montant. Un responsable d'équipe voit les scores et les taux de son équipe. Le bulletin de paie garde la ligne « Prime de performance ».
+
 « Toute info sensible doit tenir compte des droits et rôles. » Tout est vérifié côté serveur (attributs `#[IsGranted]`, `PrimesVoter`, filtrage des requêtes), pas seulement dans les menus.
 
 | Qui | Patrimoine et machines | Primes |

@@ -50,7 +50,7 @@ final class NavigationExtension extends AbstractExtension
      * qu'une fois construits. Le premier onglet autorise est la porte
      * d'entree de la section dans le menu.
      *
-     * @var array<string, list<array{libelle: string, route: string, parametres?: array<string, mixed>, role: string|list<string>|null, prefixes: list<string>}>>
+     * @var array<string, list<array{libelle: string, route: string, parametres?: array<string, mixed>, role: string|list<string>|null, sauf?: string, prefixes: list<string>}>>
      */
     public const ONGLETS = [
         'accueil' => [
@@ -115,7 +115,7 @@ final class NavigationExtension extends AbstractExtension
         ],
         'finances' => [
             ['libelle' => 'Vue d\'ensemble', 'route' => 'app_finances_vue_ensemble', 'role' => ['ROLE_TRESORERIE_VOIR', 'ROLE_STATS_GLOBAL', 'ROLE_PAIEMENT_VOIR', 'ROLE_COUT_MARGE'], 'prefixes' => ['app_finances_vue_ensemble', 'app_finances_du_jour']],
-            ['libelle' => 'Encaissements', 'route' => 'app_finances_encaissements', 'role' => ['ROLE_PAIEMENT_VOIR', 'ROLE_FACTURE'], 'prefixes' => ['app_finances_encaissements', 'app_paiements_', 'app_creances_', 'app_factures_']],
+            ['libelle' => 'Encaissements', 'route' => 'app_finances_encaissements', 'role' => 'ROLE_PAIEMENT_VOIR', 'prefixes' => ['app_finances_encaissements', 'app_paiements_', 'app_creances_', 'app_factures_']],
             ['libelle' => 'Caisse', 'route' => 'app_caisse_index', 'role' => 'ROLE_PAIEMENT_ENCAISSER', 'prefixes' => ['app_caisse_', 'app_journal_caisse_', 'app_clients_solde']],
             ['libelle' => 'À valider', 'route' => 'app_a_valider_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_a_valider_']],
             ['libelle' => 'Dépenses', 'route' => 'app_finances_depenses', 'role' => ['ROLE_TRESORERIE_VOIR', 'ROLE_TRESORERIE_SAISIR'], 'prefixes' => ['app_finances_depenses']],
@@ -124,6 +124,8 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Rentabilité', 'route' => 'app_finances_rentabilite', 'role' => 'ROLE_COUT_MARGE', 'prefixes' => ['app_finances_rentabilite']],
             ['libelle' => 'Comptabilité', 'route' => 'app_comptabilite_index', 'role' => 'ROLE_COMPTABILITE', 'prefixes' => ['app_comptabilite_']],
             ['libelle' => 'Immobilisations', 'route' => 'app_immobilisations_patrimoine', 'role' => 'ROLE_COMPTABILITE', 'prefixes' => ['app_immobilisations_']],
+            // Sans le droit Paiements (graphistes, demande de Yaya du 18/10/2026) : factures et créances, jamais les encaissements.
+            ['libelle' => 'Factures et créances', 'route' => 'app_creances_index', 'role' => 'ROLE_FACTURE', 'sauf' => 'ROLE_PAIEMENT_VOIR', 'prefixes' => ['app_creances_', 'app_factures_']],
         ],
         'equipe' => [
             ['libelle' => 'Employés', 'route' => 'app_equipe_employes_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_equipe_employes_', 'app_acces_', 'app_employes_']],
@@ -390,6 +392,13 @@ final class NavigationExtension extends AbstractExtension
                 $autorise = $autorise || (null !== $droits
                     ? (LivreurVoter::LIVREUR === $role ? LivreurVoter::livre($droits) : \in_array($role, $droits, true))
                     : null !== $this->autorisations && $this->autorisations->isGranted($role));
+            }
+
+            // « sauf » : l'onglet disparaît pour qui a ce droit (il a déjà l'onglet plus complet).
+            if ($autorise && isset($onglet['sauf'])) {
+                $autorise = !(null !== $droits
+                    ? \in_array($onglet['sauf'], $droits, true) || \in_array('ROLE_ADMIN', $droits, true)
+                    : null !== $this->autorisations && $this->autorisations->isGranted($onglet['sauf']));
             }
 
             if ($autorise && $livreurSeul && !\in_array($onglet['route'], LivreurSeul::MENU, true)) {

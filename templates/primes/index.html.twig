@@ -27,6 +27,8 @@
 {% endblock %}
 
 {% block body %}
+	{# Montants des primes : Direction et RH seulement (demande de Yaya du 18/10/2026) ; un responsable d'équipe voit les scores et les taux. #}
+	{% set voit_montants = is_granted('ROLE_RH') %}
 	<div class="si-fin si-pr">
 		<form method="get" class="si-pr-mois" aria-label="Mois">
 			<a class="btn btn-light btn-sm" href="{{ path('app_primes_index', {mois: mois|date_modify('-1 month')|date('Y-m')}) }}" aria-label="Mois précédent"><i class="fas fa-chevron-left"></i></a>
@@ -47,8 +49,13 @@
 			</article>
 			<article class="card si-fin-kpi">
 				<h2>Primes calculées</h2>
-				<strong>{{ p.f(primes) }}</strong>
-				<span class="si-fin-vert">sur {{ possibles|number_format(0, ',', ' ') }} F possibles</span>
+				{% if voit_montants %}
+					<strong>{{ p.f(primes) }}</strong>
+					<span class="si-fin-vert">sur {{ possibles|number_format(0, ',', ' ') }} F possibles</span>
+				{% else %}
+					<strong>{{ possibles > 0 ? (primes * 100 / possibles)|round : 0 }} %</strong>
+					<span class="si-fin-gris">des primes possibles (montants : Direction et RH)</span>
+				{% endif %}
 			</article>
 			<article class="card si-fin-kpi">
 				<h2>Évaluations à finaliser</h2>
@@ -111,10 +118,10 @@
 											{% endif %}
 										</div>
 									</td>
-									<td class="text-end si-masque-mobile">{{ p.f(r.primeCible, false) }}</td>
+									<td class="text-end si-masque-mobile">{{ voit_montants ? p.f(r.primeCible, false) : '—' }}</td>
 									<td class="text-end si-masque-mobile">{{ r.taux }} %</td>
 									<td class="text-end">
-										<b>{{ p.f(r.prime) }}</b>
+										<b>{{ voit_montants ? p.f(r.prime) : r.taux ~ ' %' }}</b>
 										{% if l.evaluation and l.evaluation.suspendue %}<small class="si-fin-rouge">prime suspendue</small>{% endif %}
 									</td>
 									<td>

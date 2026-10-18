@@ -34,6 +34,8 @@
 {% endblock %}
 
 {% block body %}
+	{# Montants des primes : Direction et RH seulement (demande de Yaya du 18/10/2026). #}
+	{% set voit_montants = is_granted('ROLE_RH') %}
 	<div class="si-fin si-pr">
 		<form method="get" class="si-pr-mois" aria-label="Mois">
 			<a class="btn btn-light btn-sm" href="{{ path('app_primes_index', {mois: mois|date('Y-m')}) }}"><i class="fas fa-arrow-left me-1"></i>Équipe</a>
@@ -141,9 +143,9 @@
 						<span class="si-pr-sous">/ 100 · palier {{ palier }}</span>
 						<span class="si-pr-jauge"><span style="width: {{ r.score ?? 0 }}%"></span></span>
 						<dl class="si-pr-lignes">
-							<div><dt>Prime cible</dt><dd>{{ p.f(r.primeCible) }}</dd></div>
+							{% if voit_montants %}<div><dt>Prime cible</dt><dd>{{ p.f(r.primeCible) }}</dd></div>{% endif %}
 							<div><dt>Taux appliqué</dt><dd>{{ r.taux }} %</dd></div>
-							<div class="si-pr-prime"><dt>Prime</dt><dd>{{ p.f(r.prime) }}</dd></div>
+							{% if voit_montants %}<div class="si-pr-prime"><dt>Prime</dt><dd>{{ p.f(r.prime) }}</dd></div>{% endif %}
 						</dl>
 						{% if e and e.suspendue %}
 							<p class="si-pr-alerte"><b>Prime suspendue</b>{{ e.motifSuspension ? ' : ' ~ e.motifSuspension }}</p>
@@ -153,7 +155,7 @@
 								Version {{ e.version }} validée le {{ e.valideeLe|date('d/m/Y') }}{{ e.valideePar ? ' par ' ~ e.valideePar|nom_pointage }}.
 								{% if e.primeEstValidee %}Prime validée par la direction le {{ e.primeValideeLe|date('d/m/Y') }}{{ e.bulletin ? ', reportée sur le bulletin de ' ~ p.mois(e.bulletin.mois) }}.{% else %}Prime en attente de validation par la direction.{% endif %}
 							{% elseif fiche.enVigueur %}
-								Nouvelle version {{ e.version }} en cours ({{ e.motif }}) ; la version {{ fiche.enVigueur.version }} reste en vigueur ({{ p.f(fiche.enVigueur.prime) }}) jusqu'à sa validation.
+								Nouvelle version {{ e.version }} en cours ({{ e.motif }}) ; la version {{ fiche.enVigueur.version }} reste en vigueur{{ voit_montants ? ' (' ~ fiche.enVigueur.prime|number_format(0, ',', ' ') ~ ' F)' }} jusqu'à sa validation.
 							{% elseif termine %}
 								Mois terminé : saisissez l'appréciation puis validez l'évaluation.
 							{% else %}
@@ -182,7 +184,7 @@
 							<ul class="si-pr-versions mb-3">
 								{% for v in fiche.versions %}
 									<li>
-										<strong>Version {{ v.version }}</strong> · score {{ v.score ?? '—' }} · {{ p.f(v.prime) }}
+										<strong>Version {{ v.version }}</strong> · score {{ v.score ?? '—' }}{% if voit_montants %} · {{ p.f(v.prime) }}{% endif %}
 										· <span class="si-fin-statut si-fin-statut-{{ v.statut == 'validee' ? 'vert' : (v.statut == 'remplacee' ? 'gris' : 'orange') }}">{{ v.statut == 'validee' ? 'en vigueur' : (v.statut == 'remplacee' ? 'remplacée' : 'brouillon') }}</span>
 										<small>{{ v.motif ? 'Motif : ' ~ v.motif ~ ' · ' }}créée le {{ v.creeLe|date('d/m/Y') }}{{ v.creePar ? ' par ' ~ v.creePar|nom_pointage }}{{ v.valideeLe ? ' · validée le ' ~ v.valideeLe|date('d/m/Y') }}</small>
 									</li>
@@ -195,7 +197,7 @@
 							<ul class="si-pr-versions">
 								{% for cle, v in historique %}
 									<li>
-										<a href="{{ path('app_primes_agent', {id: agent.id, mois: cle}) }}"><strong>{{ p.mois(v.mois)|capitalize }} {{ v.mois|date('Y') }}</strong></a> · score {{ v.score ?? '—' }} · {{ p.f(v.prime) }}
+										<a href="{{ path('app_primes_agent', {id: agent.id, mois: cle}) }}"><strong>{{ p.mois(v.mois)|capitalize }} {{ v.mois|date('Y') }}</strong></a> · score {{ v.score ?? '—' }}{% if voit_montants %} · {{ p.f(v.prime) }}{% endif %}
 										<small>version {{ v.version }} validée le {{ v.valideeLe|date('d/m/Y') }}{{ v.primeEstValidee ? ' · prime validée le ' ~ v.primeValideeLe|date('d/m/Y') : ' · prime en attente' }}{{ v.suspendue ? ' · prime suspendue' }}</small>
 									</li>
 								{% endfor %}

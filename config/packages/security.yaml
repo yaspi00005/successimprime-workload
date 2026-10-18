@@ -137,6 +137,11 @@ security:
             
 
 
+        # Le comptable voit les soldes dus et les paiements des clients,
+        # comme la caisse et la direction (demande de Yaya du 18/10/2026).
+        ROLE_COMPTABILITE:
+            - ROLE_PAIEMENT_VOIR
+
         # Les autres roles (caisse, graphiste, production, livreur et
         # ceux crees dans Reglages, Roles et droits) n'heritent de rien
         # ici : leurs droits sont en base (role_utilisateur), plus ou

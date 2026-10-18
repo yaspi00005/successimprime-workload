@@ -31,7 +31,7 @@
 				<a class="card text-reset text-decoration-none" href="{{ path('app_mon_espace_performance') }}">
 					<h2>Ma performance</h2>
 					<strong>{{ performance.resultat.score ?? '—' }}{{ performance.resultat.score is defined and performance.resultat.score is not null ? ' / 100' }}</strong>
-					<span class="si-p-neutre">{{ performance.resultat is defined ? 'prime estimée ' ~ performance.resultat.prime|number_format(0, ',', ' ') ~ ' F' : 'voir ma note et ma prime' }}</span>
+					<span class="si-p-neutre">{{ performance.resultat is defined ? 'prime estimée à ' ~ performance.resultat.taux ~ ' %' : 'voir ma note et ma prime' }}</span>
 				</a>
 			{% endif %}
 			<article class="card">

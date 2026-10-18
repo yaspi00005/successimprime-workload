@@ -212,4 +212,18 @@ final class NavigationExtensionTest extends TestCase
 
         return new NavigationExtension($autorisations, $security);
     }
+
+    public function testGraphisteSansEncaissements(): void
+    {
+        $extension = new NavigationExtension();
+        $libelles = static fn (array $droits): array => array_column($extension->ongletsAutorises('finances', $droits), 'libelle');
+
+        $graphiste = $libelles(['ROLE_DEVIS', 'ROLE_COMMANDE', 'ROLE_FACTURE', 'ROLE_PREPRESSE']);
+        self::assertNotContains('Encaissements', $graphiste);
+        self::assertContains('Factures et créances', $graphiste);
+
+        $caisse = $libelles(['ROLE_FACTURE', 'ROLE_PAIEMENT_VOIR', 'ROLE_PAIEMENT_ENCAISSER']);
+        self::assertContains('Encaissements', $caisse);
+        self::assertNotContains('Factures et créances', $caisse);
+    }
 }

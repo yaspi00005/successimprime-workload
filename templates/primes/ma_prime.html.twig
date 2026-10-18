@@ -22,9 +22,10 @@
 			{% set e = fiche.enVigueur %}
 			<section class="card" aria-label="Prime du mois">
 				<h2 class="si-fin-gris" style="font-size: 15px">Prime {{ fiche.enCours ? 'estimée ' }}{{ p.de_mois(fiche.mois) }}</h2>
-				<span class="si-pr-montant">{{ p.f(r.prime) }}</span>
+				{# Le montant de la prime n'est pas montré à l'agent (demande de Yaya du 18/10/2026) : seulement le taux atteint. #}
+				<span class="si-pr-montant">{{ r.taux }} %</span>
 				<p class="si-fin-note mt-1 mb-0">
-					{{ r.taux }} % de la prime cible ({{ r.primeCible|number_format(0, ',', ' ') }} F)
+					de votre prime cible
 					{%- if fiche.fige and e and e.primeEstValidee %} · validée par la direction le {{ e.primeValideeLe|date('j/n') }}
 					{%- elseif fiche.fige %} · évaluation validée, en attente de la direction
 					{%- else %} · estimation du jour, validée après la fin du mois{% endif %}
@@ -58,8 +59,8 @@
 				<ul class="si-pr-historique">
 					{% for v in historique %}
 						<li>
-							<span>{{ p.mois(v.mois)|capitalize }} · score {{ v.score ?? '—' }}{% if not v.primeEstValidee %} <small class="text-muted">· en attente</small>{% endif %}</span>
-							<b>{{ p.f(v.suspendue ? 0 : v.prime) }}</b>
+							<span>{{ p.mois(v.mois)|capitalize }} · score {{ v.score ?? '—' }}</span>
+							<b>{{ v.suspendue ? 'suspendue' : (v.primeEstValidee ? 'validée' : 'en attente') }}</b>
 						</li>
 					{% endfor %}
 				</ul>

@@ -32,7 +32,7 @@ use Symfony\Component\Routing\RouterInterface;
 final class RecetteRapportsMail
 {
     /** Droits retirés au compte d'essai : il ne garde que celui du rapport. */
-    private const RETIRES = ['ROLE_STATS_VENTES', 'ROLE_PAIEMENT_VOIR', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_TRESORERIE_VOIR', 'ROLE_COUT_MARGE', 'ROLE_CLIENT', 'ROLE_RH'];
+    private const RETIRES = ['ROLE_STATS_VENTES', 'ROLE_PAIEMENT_VOIR', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_TRESORERIE_VOIR', 'ROLE_COUT_MARGE', 'ROLE_CLIENT', 'ROLE_RH', 'ROLE_COMPTABILITE'];
 
     /** Titres des parties réservées à d'autres droits, dans le corps de l'e-mail. */
     private const PARTIES_FERMEES = ['Chiffre d’affaires', 'Encaissements', 'Créances clients', 'Dépenses et trésorerie', 'Marge', 'Équipe', 'Stock sous le seuil', 'Plus gros restes à payer', 'Nouveaux clients :'];

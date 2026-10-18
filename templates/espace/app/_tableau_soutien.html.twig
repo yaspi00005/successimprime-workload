@@ -1,0 +1,39 @@
+{#
+	Carte « Nous soutenir » du tableau de bord (docs/espace-client.md) :
+	lien de l'avis Google dans un nouvel onglet et, sur ordinateur, son QR
+	code à scanner avec le téléphone. « × » la ferme pour cette personne
+	seulement (CompteClient::soutienMasqueLe), y compris pour un compte
+	« Lecture · suivi » ; sans JavaScript, le formulaire recharge la page.
+	Même texte pour tous : un avis est demandé à chacun (règles de Google).
+	Ni montant ni donnée personnelle.
+#}
+{% set soutien = espace_soutien(compte) %}
+{% if soutien %}
+	<style>
+		.ec-soutien { position: relative; padding-right: 2.6rem; }
+		.ec-soutien h2 { margin: 0 0 .25rem; }
+		.ec-soutien-corps { display: flex; align-items: center; gap: 1rem; }
+		.ec-soutien-corps > div { flex: 1; min-width: 0; }
+		.ec-soutien .ec-petit { margin: 0 0 .75rem; }
+		.ec-soutien .ec-bouton { display: inline-block; width: auto; padding: .65rem 1.2rem; border-radius: 999px; }
+		.ec-soutien-qr { flex: none; width: 92px; height: 92px; border: 1px solid var(--trait); border-radius: 10px; background: #fff; }
+		.ec-soutien-fermer { position: absolute; top: .55rem; right: .55rem; margin: 0; }
+		.ec-soutien-fermer button { width: 2rem; height: 2rem; border: 0; border-radius: 50%; background: transparent; color: var(--gris); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+		.ec-soutien-fermer button:hover, .ec-soutien-fermer button:focus-visible { background: var(--fond); color: var(--encre); }
+	</style>
+	<section class="ec-carte ec-bloc ec-soutien" data-soutien-carte aria-labelledby="ec-soutien-titre">
+		<form class="ec-soutien-fermer" method="post" action="{{ path('app_espace_soutien_masquer') }}" data-soutien-fermer>
+			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+			<button type="submit" aria-label="Fermer « Nous soutenir »" title="Ne plus afficher">×</button>
+		</form>
+		<h2 id="ec-soutien-titre">Nous soutenir</h2>
+		<div class="ec-soutien-corps">
+			<div>
+				<p class="ec-petit">Partagez votre expérience avec Succès Imprim sur Google&nbsp;: votre avis aide d'autres personnes à trouver l'atelier.</p>
+				<a class="ec-bouton bleu" href="{{ soutien.lien }}" target="_blank" rel="noopener">Laisser un avis Google</a>
+			</div>
+			{% if soutien.qr %}<img class="ec-soutien-qr ec-bureau" src="{{ soutien.qr }}" width="92" height="92" alt="QR code du lien pour laisser un avis Google, à scanner avec le téléphone" loading="lazy">{% endif %}
+		</div>
+	</section>
+	<script src="{{ asset('js/espace-soutien.js') }}" defer></script>
+{% endif %}

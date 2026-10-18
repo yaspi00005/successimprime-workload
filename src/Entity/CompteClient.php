@@ -114,6 +114,10 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $notificationsLuesJusqua = null;
 
+    /** Carte « Nous soutenir » du tableau de bord fermée par la personne (SoutienSite) : elle ne revient plus. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $soutienMasqueLe = null;
+
     public function __construct()
     {
         $this->creeLe = new \DateTimeImmutable();
@@ -449,6 +453,18 @@ class CompteClient implements UserInterface, PasswordAuthenticatedUserInterface
     public function setNotificationsLuesJusqua(?\DateTimeImmutable $le): static
     {
         $this->notificationsLuesJusqua = $le;
+
+        return $this;
+    }
+
+    public function getSoutienMasqueLe(): ?\DateTimeImmutable
+    {
+        return $this->soutienMasqueLe;
+    }
+
+    public function masquerSoutien(\DateTimeImmutable $le): static
+    {
+        $this->soutienMasqueLe ??= $le;
 
         return $this;
     }

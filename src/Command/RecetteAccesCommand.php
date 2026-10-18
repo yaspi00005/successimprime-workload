@@ -7,6 +7,7 @@ use App\Service\Recette\BilanRecette;
 use App\Service\Recette\RapportRecette;
 use App\Service\Recette\RecetteAcces;
 use App\Service\Recette\RecetteEspaceClient;
+use App\Service\Recette\RecetteSiteSocial;
 use App\Service\Recette\RecetteVisiteur;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -38,6 +39,7 @@ final class RecetteAccesCommand extends Command
         private readonly RecetteAcces $personnel,
         private readonly RecetteEspaceClient $espace,
         private readonly RecetteVisiteur $visiteur,
+        private readonly RecetteSiteSocial $siteSocial,
         private readonly RapportRecette $rapport,
         private readonly AccesEnLigne $acces,
         #[Autowire('%kernel.environment%')] private readonly string $environnement,
@@ -86,6 +88,7 @@ final class RecetteAccesCommand extends Command
             $bilan = $this->personnel->verifier($comptes, $suivi);
         }
         $this->visiteur->verifier($bilan, $enLigne);
+        $this->siteSocial->verifier($bilan, $enLigne);
 
         $dossier = (string) $input->getOption('sortie');
         if (!str_starts_with($dossier, '/')) {

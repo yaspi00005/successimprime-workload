@@ -2,6 +2,7 @@
 
 namespace App\Service\Site;
 
+use App\Entity\ActionSociale;
 use App\Entity\Annonce;
 use App\Entity\ArticleConseil;
 use App\Entity\AvisClient;
@@ -34,6 +35,8 @@ final class ContenuSite
         'partenaires' => ['classe' => Partenaire::class, 'libelle' => 'Partenaires', 'un' => 'Partenaire', 'nouveau' => 'Nouveau partenaire', 'cree' => 'Partenaire créé.', 'supprime' => 'Partenaire supprimé.'],
         // Bandes en haut du site public et de l'espace client (demande de Yaya du 15/10/2026).
         'annonces' => ['classe' => Annonce::class, 'libelle' => 'Annonces', 'un' => 'Annonce', 'nouveau' => 'Nouvelle annonce', 'cree' => 'Annonce créée.', 'supprime' => 'Annonce supprimée.'],
+        // « Nos actions sociales » (demande de Yaya du 16/10/2026) : invisible tant qu'aucune n'est montrable.
+        'actions' => ['classe' => ActionSociale::class, 'libelle' => 'Actions sociales', 'un' => 'Action sociale', 'nouveau' => 'Nouvelle action', 'cree' => 'Action sociale créée.', 'supprime' => 'Action sociale supprimée.'],
     ];
 
     /** Photos d'une réalisation, au plus. */
@@ -142,6 +145,7 @@ final class ContenuSite
             $objet instanceof ArticleConseil => $this->lireConseil($objet, $donnees, $erreurs, $avertissements),
             $objet instanceof Partenaire => $this->lirePartenaire($objet, $donnees, $erreurs, $avertissements),
             $objet instanceof Annonce => $this->lireAnnonce($objet, $donnees, $erreurs, $avertissements),
+            $objet instanceof ActionSociale => $this->lireAction($objet, $donnees, $erreurs),
             default => throw new \InvalidArgumentException('Contenu du site inconnu.'),
         };
 
@@ -170,7 +174,7 @@ final class ContenuSite
             $publier = false;
         }
         $objet instanceof Partenaire ? $objet->setVisible($publier) : $objet->setPublie($publier);
-        if ($objet instanceof PageSite || $objet instanceof ArticleConseil || $objet instanceof Annonce) {
+        if ($objet instanceof PageSite || $objet instanceof ArticleConseil || $objet instanceof Annonce || $objet instanceof ActionSociale) {
             $objet->noterModification($maintenant);
         }
 
@@ -244,7 +248,7 @@ final class ContenuSite
     public static function imagesDe(object $objet): array
     {
         return array_values(array_filter(match (true) {
-            $objet instanceof Realisation => $objet->getImages()->toArray(),
+            $objet instanceof Realisation, $objet instanceof ActionSociale => $objet->getImages()->toArray(),
             $objet instanceof PageSite, $objet instanceof ArticleConseil => [$objet->getImage()],
             $objet instanceof Partenaire => [$objet->getLogo()],
             default => [],
@@ -404,6 +408,10 @@ final class ContenuSite
         $nouvelles = [];
         $retirees = [];
 
+        if ($objet instanceof ActionSociale) {
+            return $this->lirePhotosAction($objet, $donnees, $fichiers);
+        }
+
         if ($objet instanceof Realisation) {
             $reglages = \is_array($donnees['photos'] ?? null) ? $donnees['photos'] : [];
             foreach ($objet->getImages()->toArray() as $image) {
@@ -462,6 +470,86 @@ final class ContenuSite
         $image = $remplacee ?? $actuelle;
         $image?->setTexteAlternatif($logo ? $objet->getNom() : (isset($donnees['image_alt']) ? (string) $donnees['image_alt'] : $image->getTexteAlternatif()));
         $logo ? $objet->setLogo($image) : $objet->setImage($image);
+
+        return [$nouvelles, $retirees];
+    }
+
+    /**
+     * Action sociale : titre, date, lieu facultatif, texte, ordre. Les
+     * photos suivent (lirePhotosAction) ; la publication attend un texte
+     * et au moins une photo (ActionSociale::reglesDePublication).
+     *
+     * @param array<string, mixed> $donnees
+     * @param list<string>         $erreurs
+     */
+    private function lireAction(ActionSociale $action, array $donnees, array &$erreurs): void
+    {
+        $action->setTitre(self::texte($donnees, 'titre'))
+            ->setLieu(self::texte($donnees, 'lieu'))
+            ->setTexte(mb_substr(self::texte($donnees, 'texte'), 0, MarkdownSite::LONGUEUR_MAX))
+            ->setOrdre((int) ($donnees['ordre'] ?? 0));
+        if (null !== $date = self::date($donnees, 'dateAction', 'La date de l\'action', $erreurs)) {
+            $action->setDateAction($date);
+        }
+        if ('' === $action->getTitre()) {
+            $erreurs[] = 'Le titre est obligatoire.';
+        }
+    }
+
+    /**
+     * Photos d'une action sociale : description, ordre et retrait des
+     * photos en place, puis les photos envoyées (ActionSociale::PHOTOS_MAX
+     * au plus), réencodées sans EXIF ni position GPS. L'original envoyé
+     * n'est pas gardé : ce sont souvent des personnes, des enfants.
+     *
+     * @param array<string, mixed> $donnees
+     * @param array<string, mixed> $fichiers
+     *
+     * @return array{0: list<ImageSite>, 1: list<ImageSite>} nouvelles, retirées
+     *
+     * @throws \DomainException
+     */
+    private function lirePhotosAction(ActionSociale $action, array $donnees, array $fichiers): array
+    {
+        $nouvelles = [];
+        $retirees = [];
+        $reglages = \is_array($donnees['photos'] ?? null) ? $donnees['photos'] : [];
+        foreach ($action->getImages()->toArray() as $image) {
+            $reglage = \is_array($reglages[$image->getId()] ?? null) ? $reglages[$image->getId()] : [];
+            if (!empty($reglage['retirer'])) {
+                $action->retirerImage($image);
+                $retirees[] = $image;
+                continue;
+            }
+            if (isset($reglage['alt']) && \is_scalar($reglage['alt'])) {
+                $image->setTexteAlternatif((string) $reglage['alt']);
+            }
+            if (isset($reglage['ordre'])) {
+                $image->setOrdre(max(0, min(99, (int) $reglage['ordre'])));
+            }
+        }
+        $envois = array_values(array_filter((array) ($fichiers['images'] ?? []), static fn ($f): bool => $f instanceof UploadedFile && \UPLOAD_ERR_NO_FILE !== $f->getError()));
+        if ($action->getImages()->count() + \count($envois) > ActionSociale::PHOTOS_MAX) {
+            throw new \DomainException(\sprintf('Une action sociale a %d photos au plus : retirez-en avant d\'en ajouter.', ActionSociale::PHOTOS_MAX));
+        }
+        $ordre = 0;
+        foreach ($action->getImages() as $image) {
+            $ordre = max($ordre, $image->getOrdre() + 1);
+        }
+        foreach ($envois as $fichier) {
+            try {
+                $image = $this->images->depuisEnvoi($fichier, ImageSite::USAGE_PHOTO);
+            } catch (\DomainException $e) {
+                foreach ($nouvelles as $deja) {
+                    $this->images->nettoyer($deja, true);
+                }
+                throw $e;
+            }
+            $this->images->oublierOriginal($image);
+            $image->setOrdre($ordre++)->setTexteAlternatif($action->getTitre());
+            $action->ajouterImage($image);
+            $nouvelles[] = $image;
+        }
 
         return [$nouvelles, $retirees];
     }

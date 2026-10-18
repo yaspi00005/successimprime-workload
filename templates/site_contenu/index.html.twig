@@ -15,7 +15,7 @@
 	<li class="nav-item si-masque-mobile">
 		<a href="{{ path('app_site_accueil') }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener">Voir le site</a>
 	</li>
-	{% if not ferme and onglet in ['realisations', 'avis', 'conseils', 'partenaires', 'annonces'] %}
+	{% if not ferme and onglet in ['realisations', 'avis', 'conseils', 'partenaires', 'annonces', 'actions'] %}
 		<li class="nav-item">
 			<a href="{{ path('app_site_contenu_nouveau', {type: onglet}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>{{ onglets[onglet].nouveau }}</a>
 		</li>
@@ -55,7 +55,7 @@
 				{% for cle, o in onglets %}
 					<a href="{{ path('app_site_contenu_index', {onglet: cle}) }}" class="{{ cle == onglet ? 'active' }}" {{ cle == onglet ? 'aria-current="page"' }}>
 						{{- o.libelle -}}
-						{% if cle == onglet and cle not in ['pages', 'chiffres', 'referencement'] %} <small>{{ elements|length }}</small>{% endif %}
+						{% if cle == onglet and cle not in ['pages', 'chiffres', 'referencement', 'soutien'] %} <small>{{ elements|length }}</small>{% endif %}
 					</a>
 				{% endfor %}
 			</nav>
@@ -249,6 +249,12 @@
 							</table>
 						</div>
 					{% endif %}
+
+				{% elseif onglet == 'actions' %}
+					{{ include('site_contenu/_onglet_actions.html.twig') }}
+
+				{% elseif onglet == 'soutien' %}
+					{{ include('site_contenu/_onglet_soutien.html.twig') }}
 
 				{% elseif onglet == 'chiffres' %}
 					<div class="row g-4">

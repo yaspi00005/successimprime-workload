@@ -6,6 +6,7 @@ use App\Entity\Machines;
 use App\Entity\PageSite;
 use App\Security\AccesEnLigne;
 use App\Service\Parametres\Parametres;
+use App\Service\Site\ActionsSociales;
 use App\Service\Site\AdresseSite;
 use App\Service\Site\ChiffresSite;
 use App\Service\Site\ContactSite;
@@ -13,6 +14,7 @@ use App\Service\Site\ContenuSite;
 use App\Service\Site\DonneesStructurees;
 use App\Service\Site\ImagesSite;
 use App\Service\Site\ReferencementSite;
+use App\Service\Site\SoutienSite;
 use App\Twig\SiteExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -24,7 +26,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 /**
  * Contenu du site vitrine (Réglages › Site vitrine) : pages, réalisations,
  * avis clients, conseils, partenaires, annonces (bandes du site et de
- * l'espace client), chiffres et référencement (docs/referencement.md).
+ * l'espace client), actions sociales, chiffres, référencement
+ * (docs/referencement.md) et « Nous soutenir » (lien de l'avis Google).
  *
  * Se modifie sur l'ERP local seulement, puis descend au site avec la
  * synchronisation : en ligne, l'écran est fermé.
@@ -33,9 +36,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_SITE_VITRINE')]
 final class SiteContenuController extends AbstractController
 {
-    private const ONGLETS = [...ContenuSite::TYPES, 'chiffres' => ['libelle' => 'Chiffres'], 'referencement' => ['libelle' => 'Référencement']];
+    private const ONGLETS = [...ContenuSite::TYPES, 'chiffres' => ['libelle' => 'Chiffres'], 'referencement' => ['libelle' => 'Référencement'], 'soutien' => ['libelle' => 'Nous soutenir']];
 
-    private const TYPES = 'pages|realisations|avis|conseils|partenaires|annonces';
+    private const TYPES = 'pages|realisations|avis|conseils|partenaires|annonces|actions';
 
     public function __construct(
         private readonly ContenuSite $contenu,
@@ -46,7 +49,7 @@ final class SiteContenuController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request, AdresseSite $adresse, SiteExtension $site, Parametres $parametres): Response
+    public function index(Request $request, AdresseSite $adresse, SiteExtension $site, Parametres $parametres, SoutienSite $soutien, ActionsSociales $actionsSociales): Response
     {
         if ($this->acces->estEnLigne()) {
             return $this->render('site_contenu/index.html.twig', ['ferme' => true, 'onglets' => self::ONGLETS, 'onglet' => null]);
@@ -62,7 +65,7 @@ final class SiteContenuController extends AbstractController
             'onglet' => $onglet,
             'elements' => match ($onglet) {
                 'pages' => $this->contenu->pages(),
-                'chiffres', 'referencement' => [],
+                'chiffres', 'referencement', 'soutien' => [],
                 default => $this->contenu->liste($onglet),
             },
             'reglagesChiffres' => 'chiffres' === $onglet ? $this->chiffres->reglages() : null,
@@ -70,6 +73,8 @@ final class SiteContenuController extends AbstractController
             'categories' => 'realisations' === $onglet ? self::nomsCategories($this->contenu->categories()) : [],
             'maintenant' => new \DateTimeImmutable(),
             'referencement' => 'referencement' === $onglet ? $this->ecranReferencement($adresse, $site, $parametres) : null,
+            'soutien' => 'soutien' === $onglet ? $soutien->reglages() : null,
+            'actionsVisibles' => 'actions' === $onglet && $actionsSociales->visibles(),
         ]);
     }
 
@@ -89,6 +94,27 @@ final class SiteContenuController extends AbstractController
         $this->addFlash('success', ([] === $erreurs ? 'Référencement enregistré.' : 'Le reste est enregistré.').' Le site le reçoit à la prochaine synchronisation.');
 
         return $this->redirectToRoute('app_site_contenu_index', ['onglet' => 'referencement']);
+    }
+
+    /** Onglet « Nous soutenir » : lien de l'avis Google et QR code. */
+    #[Route('/soutien', name: 'soutien', methods: ['POST'])]
+    public function soutien(Request $request, SoutienSite $soutien): Response
+    {
+        if (null !== $ferme = $this->fermeEnLigne()) {
+            return $ferme;
+        }
+        if (!$this->isCsrfTokenValid('site-contenu-soutien', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+        $erreurs = $soutien->enregistrer($request->request->all());
+        foreach ($erreurs as $erreur) {
+            $this->addFlash('warning', $erreur);
+        }
+        if ([] === $erreurs) {
+            $this->addFlash('success', '« Nous soutenir » enregistré. Le site le reçoit à la prochaine synchronisation.');
+        }
+
+        return $this->redirectToRoute('app_site_contenu_index', ['onglet' => 'soutien']);
     }
 
     /**

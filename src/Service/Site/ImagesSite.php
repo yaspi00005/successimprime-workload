@@ -214,6 +214,18 @@ final class ImagesSite
         }
     }
 
+    /**
+     * Ne garde pas l'original envoyé (photo d'une action sociale : des
+     * personnes, des enfants) : seule la version réencodée, sans EXIF ni
+     * position GPS, reste.
+     */
+    public function oublierOriginal(ImageSite $image): void
+    {
+        foreach (glob($this->dossierOriginaux.'/'.$image->getPublicId()->toRfc4122().'.*') ?: [] as $chemin) {
+            @unlink($chemin);
+        }
+    }
+
     public function apresModification(ImageSite $image): void
     {
         $this->nettoyer($image);

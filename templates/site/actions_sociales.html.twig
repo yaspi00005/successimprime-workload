@@ -1,0 +1,62 @@
+{#
+	« Nos actions sociales » (docs/site-vitrine.md) : les actions publiées
+	dans Réglages › Site vitrine qui ont un texte et au moins une photo,
+	de la première (ordre) à la dernière. La page répond « introuvable »
+	tant qu'il n'y en a aucune (SiteSocialController). Image de partage :
+	celle du site (pas la photo d'une action, où des personnes peuvent
+	paraître).
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set soutien = site_soutien() %}
+
+{% block title %}Nos actions sociales à Bamako · Succès Imprim{% endblock %}
+{% block description %}Ce que Succès Imprim fait à Bamako en dehors de l'atelier : nos actions sociales, en photos.{% endblock %}
+
+{% block entete %}
+	{{ site_styles('css/site-social.css') }}
+{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: 'Nos actions sociales', accroche: 'Ce que l\'équipe de Succès Imprim fait à Bamako, en dehors de l\'atelier.'}) }}
+
+	<section class="si-actions">
+		<div class="si-cadre">
+			{% for a in actions %}
+				{% set premiere = loop.first %}
+				<article class="si-action" id="action-{{ a.id }}" aria-labelledby="action-{{ a.id }}-titre">
+					<ul class="si-action-photos">
+						{% for image in a.images %}
+							{% set petite = site_image(image, 'petite') %}
+							{% set grande = site_image(image, 'grande') %}
+							{% if petite %}
+								{% set alt = image.texteAlternatif ?: a.titre %}
+								<li>
+									<a href="{{ asset((grande ?? petite).chemin) }}">
+										{% if loop.first %}
+											<img src="{{ asset(petite.chemin) }}"{% if grande and grande.largeur > petite.largeur %} srcset="{{ asset(petite.chemin) }} {{ petite.largeur }}w, {{ asset(grande.chemin) }} {{ grande.largeur }}w" sizes="(max-width: 860px) calc(100vw - 32px), 600px"{% endif %} width="{{ petite.largeur }}" height="{{ petite.hauteur }}" alt="{{ alt }}"{% if premiere %} decoding="async"{% else %} loading="lazy" decoding="async"{% endif %}>
+										{% else %}
+											<img src="{{ asset(petite.chemin) }}" width="{{ petite.largeur }}" height="{{ petite.hauteur }}" alt="{{ alt }}" loading="lazy" decoding="async">
+										{% endif %}
+									</a>
+								</li>
+							{% endif %}
+						{% endfor %}
+					</ul>
+					<div class="si-action-texte">
+						<h2 id="action-{{ a.id }}-titre">{{ a.titre }}</h2>
+						<p class="si-social-meta"><time datetime="{{ a.dateAction|date('Y-m-d') }}">{{ a.dateAction|site_date }}</time>{% if a.lieu %} · {{ a.lieu }}{% endif %}</p>
+						<div class="si-action-corps">{{ a.texte|site_markdown }}</div>
+					</div>
+				</article>
+			{% endfor %}
+
+			{% if soutien %}
+				<div class="si-actions-fin">
+					<p>Ces actions vous parlent&nbsp;? Un avis sur notre fiche Google aide d'autres personnes à trouver l'atelier.</p>
+					<a href="{{ soutien.lien }}" class="si-bouton si-bouton-contour" target="_blank" rel="noopener">Laisser un avis Google</a>
+				</div>
+			{% endif %}
+		</div>
+	</section>
+{% endblock %}

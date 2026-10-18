@@ -177,6 +177,13 @@ security:
             roles: PUBLIC_ACCESS
         }
 
+        # « Nos actions sociales » et QR code de « Nous soutenir »
+        # (docs/site-vitrine.md) : introuvables tant qu'ils sont vides.
+        - {
+            path: '^/(nos-actions-sociales|nous-soutenir)(/|$)',
+            roles: PUBLIC_ACCESS
+        }
+
         # Assistant du site (docs/assistant-client.md) : questions des visiteurs
         # sans compte, en JSON, sans session.
         - {

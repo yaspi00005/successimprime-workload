@@ -1,8 +1,9 @@
 {#
 	Nos produits (maquette 02) : filtre par univers (?categorie=, sans
 	JavaScript), une carte par produit publié avec son prix de départ public
-	et un lien vers le calculateur, le produit déjà choisi. En bas, « Un
-	autre support ? » avec la photo du fourgon habillé (PhotosSite).
+	et un lien vers le calculateur, le produit déjà choisi, et sa photo
+	(PhotosProduits) ou son dessin. En bas, « Un autre support ? » avec la
+	photo du fourgon habillé (PhotosSite).
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -48,8 +49,14 @@
 						{% for p in u.produits %}
 							{% set calcul = p.configuration ? site_lien('app_site_calculateur', {produit: p.configuration}) : null %}
 							{% set lien = calcul ?? devis %}
+							{# Photo du produit d'après son nom (PhotosProduits), sinon son dessin. Les premières cartes ne sont pas différées. #}
+							{% set photo = site_photo_produit(p.nom) %}
 							<li class="si-produit si-famille-{{ u.famille }}" data-incline>
-								<svg class="si-produit-dessin" aria-hidden="true" focusable="false"><use href="#si-dessin-{{ p.illustration }}"/></svg>
+								{% if photo %}
+									{{ include('site/_photo.html.twig', {photo: photo, sizes: '(max-width: 559px) 124px, 168px', classe: 'si-produit-photo', immediate: loop.parent.loop.first and loop.index <= 4}) }}
+								{% else %}
+									<svg class="si-produit-dessin" aria-hidden="true" focusable="false"><use href="#si-dessin-{{ p.illustration }}"/></svg>
+								{% endif %}
 								<div class="si-produit-corps">
 									<h2>{{ p.nom }}</h2>
 									{% if p.description %}<p class="si-produit-texte">{{ p.description }}</p>{% endif %}

@@ -1,0 +1,24 @@
+{#
+	Fiche d'une action sociale (ActionSociale) : titre, date, lieu, texte,
+	ordre. Les photos sont dans _fiche_action_photos.html.twig.
+#}
+<label class="si-libelle-champ" for="champ-titre">Titre</label>
+<input type="text" name="titre" id="champ-titre" value="{{ objet.titre }}" maxlength="160" class="form-control" placeholder="Fournitures scolaires pour l'école de Sébénikoro" required>
+<div class="row g-3 mt-0">
+	<div class="col-md-4">
+		<label class="si-libelle-champ" for="champ-date">Date</label>
+		<input type="date" name="dateAction" id="champ-date" value="{{ objet.dateAction|date('Y-m-d') }}" class="form-control">
+	</div>
+	<div class="col-md-5">
+		<label class="si-libelle-champ" for="champ-lieu">Lieu <small class="text-muted">(facultatif)</small></label>
+		<input type="text" name="lieu" id="champ-lieu" value="{{ objet.lieu }}" maxlength="120" class="form-control" placeholder="Sébénikoro, Bamako">
+	</div>
+	<div class="col-md-3">
+		<label class="si-libelle-champ" for="champ-ordre">Ordre</label>
+		<input type="number" name="ordre" id="champ-ordre" value="{{ objet.ordre }}" min="0" max="999" class="form-control" aria-describedby="aide-ordre">
+		<div id="aide-ordre" class="form-text">0 en premier ; à égalité, la plus récente.</div>
+	</div>
+</div>
+<label class="si-libelle-champ mt-3" for="champ-texte">Texte</label>
+<textarea name="texte" id="champ-texte" rows="10" class="form-control" spellcheck="true" placeholder="Ce qui a été fait, avec qui, pour qui.">{{ objet.texte }}</textarea>
+<div class="form-text">Paragraphes séparés par une ligne vide ; **gras**, *italique*, listes « - » et [lien](https://…) possibles. Pas de nom d'enfant, pas de montant.</div>

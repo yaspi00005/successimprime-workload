@@ -24,6 +24,8 @@ final class DroitsEspace
         'app_espace_securiser',
         'app_espace_email',
         'app_espace_appareils_deconnecter',
+        // Fermer la carte « Nous soutenir » de son tableau de bord.
+        'app_espace_soutien_masquer',
         // Assistant : ses outils ne lui montrent que ce qu'un compte en lecture voit.
         'app_espace_assistant_message',
         'app_espace_assistant_note',

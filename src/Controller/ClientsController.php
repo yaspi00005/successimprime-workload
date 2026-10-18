@@ -208,6 +208,14 @@ final class ClientsController extends AbstractController
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        // Supprimer en masse : la Direction seulement (bloquer reste au droit Clients).
+        if ($action === 'supprimer' && !$this->isGranted('ROLE_ADMIN')) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Seule la direction peut supprimer des clients.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
         $clients = $clientsRepository->findBy([
             'id' => $ids,
         ]);
@@ -1604,19 +1612,25 @@ final class ClientsController extends AbstractController
         );
     }
 
+    /**
+     * Supprimer un client : aucun bouton à l'écran ; réservé à la Direction,
+     * avec un jeton propre aux clients (« delete » + id servait à toutes les
+     * fiches). La fiche part 30 jours dans la corbeille (docs/corbeille.md).
+     */
     #[Route(
         '/{id}',
         name: 'app_clients_delete',
         requirements: ['id' => '\d+'],
         methods: ['POST']
     )]
+    #[IsGranted('ROLE_ADMIN')]
     public function delete(
         Request $request,
         Clients $client,
         EntityManagerInterface $entityManager
     ): Response {
         if ($this->isCsrfTokenValid(
-            'delete' . $client->getId(),
+            'supprimer-client-' . $client->getId(),
             $request->getPayload()->getString('_token')
         )) {
             $entityManager->remove($client);

@@ -254,6 +254,7 @@ final class RecetteAcces
                 $this->verifierObjetsDesAutres($compte, $bilan);
                 $this->verifierNomsCommerciaux($compte, $bilan);
                 $this->verifierCompteClient($compte, $bilan);
+                $this->verifierSuppressionClient($compte, $bilan);
             }
             $suivi && $suivi('corbeille');
             try {
@@ -594,6 +595,29 @@ final class RecetteAcces
             if ($atteint && !$permis) {
                 $bilan->constater(BilanRecette::FUITE, 'compte_client', $route, $chemin, $identifiant, $libelle.' accepté sans le droit ('.implode(', ', $droits).')');
             }
+        }
+    }
+
+    /**
+     * Supprimer un client (aucun bouton à l'écran) : la Direction seulement.
+     * L'envoi s'arrête à l'entrée du contrôleur : rien n'est supprimé.
+     */
+    private function verifierSuppressionClient(User $compte, BilanRecette $bilan): void
+    {
+        $client = $this->em->createQueryBuilder()->select('c.id')->from(Clients::class, 'c')
+            ->where('c.id >= :demo')->setParameter('demo', ParametresRoute::PREMIER_ID_DEMO)
+            ->orderBy('c.id', 'ASC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
+        if (null === $client) {
+            return;
+        }
+        $identifiant = $compte->getUserIdentifier();
+        $chemin = $this->routeur->generate('app_clients_delete', ['id' => (int) $client['id']]);
+        $permis = $this->accorde('ROLE_ADMIN');
+        $reponse = $this->navigateur->post($chemin, [], $this->navigateur->session($compte), [], true);
+        $atteint = NavigateurInterne::CONTROLEUR_ATTEINT === $reponse->statut;
+        $bilan->controler(\sprintf('%s : suppression d\'un client %s', $identifiant, $permis ? 'permise (Direction)' : 'refusée'), $atteint === $permis, $chemin.' → '.($atteint ? 'arrivé au contrôleur' : $reponse->etat()));
+        if ($atteint && !$permis) {
+            $bilan->constater(BilanRecette::FUITE, 'suppression_client', 'app_clients_delete', $chemin, $identifiant, 'suppression d\'un client acceptée sans être la Direction');
         }
     }
 

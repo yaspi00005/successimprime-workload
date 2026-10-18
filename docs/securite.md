@@ -109,6 +109,7 @@ Chaque suppression demande une confirmation dans la page (`public/js/confirmatio
 - la suppression définitive ne retire que des fichiers sous `var/`, à un chemin qui ne peut pas sortir de son dossier ;
 - restaurations et suppressions définitives sont notées dans le journal d'activité ;
 - `ConfirmationSuppressionsTest` fait échouer la suite si une suppression oublie la confirmation ou passe par un lien.
+- supprimer un client (seule ou en masse, sans bouton à l'écran) est réservé à la Direction, avec un jeton propre aux clients (`supprimer-client-<id>`) : l'ancien jeton `delete<id>` servait aussi aux autres fiches du même numéro.
 
 ## Anciennes pages du thème
 

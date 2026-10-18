@@ -64,7 +64,6 @@ final class EspaceDevisController extends AbstractController
         }
         $versions = $devis->getVersions();
         $demande = $this->em->getRepository(DemandeDevis::class)->findOneBy(['devis' => $devis]);
-        $dernier = $this->acceptation->dernierMessage($devis);
 
         return $this->vue('espace/app/devis_detail.html.twig', [
             'devis' => $devis,
@@ -74,8 +73,6 @@ final class EspaceDevisController extends AbstractController
             'actuelle' => $versions[0] ?? null,
             'precedente' => $versions[1] ?? null,
             'changements' => isset($versions[0], $versions[1]) ? SuiviDevis::changements($versions[1], $versions[0]) : [],
-            'dernierMessage' => $dernier,
-            'signature' => null !== $dernier && MessageClient::ATELIER === $dernier->getSens() ? MessageClient::signatureDe($dernier->getAuteur()) : null,
             'expire' => SuiviDevis::estAExpirer($devis, $maintenant),
             'motifs' => Devis::MOTIFS_REFUS,
             'agent' => null !== $devis->getEnvoyePar() ? MessageClient::signatureDe($devis->getEnvoyePar()) : null,

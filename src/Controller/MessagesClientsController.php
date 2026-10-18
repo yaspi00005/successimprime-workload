@@ -2,8 +2,10 @@
 
 namespace App\Controller;
 
+use App\Entity\Commandes;
 use App\Entity\ControlePrePresse;
 use App\Entity\ConversationClient;
+use App\Entity\Devis;
 use App\Entity\Factures;
 use App\Entity\MessageClient;
 use App\Entity\PropositionClient;
@@ -197,6 +199,33 @@ final class MessagesClientsController extends AbstractController
         }
 
         return $this->retour($c, $request);
+    }
+
+    /** « Écrire au client » depuis la fiche d'une commande ou d'un devis (DT02, DT03) : sa conversation, ouverte au besoin. */
+    #[Route('/messages/demarrer/{type}/{id}', name: 'demarrer', requirements: ['type' => 'commande|devis', 'id' => '\d+'], methods: ['POST'])]
+    #[IsGranted(MessagerieVoter::BOITE)]
+    public function demarrer(string $type, int $id, Request $request): Response
+    {
+        $this->jeton($request);
+        if ($this->enLigne) {
+            throw $this->createAccessDeniedException('Les réponses partent de l\'ERP de la boutique.');
+        }
+        $document = $this->em->find('commande' === $type ? Commandes::class : Devis::class, $id) ?? throw $this->createNotFoundException();
+        $this->denyAccessUnlessGranted('commande' === $type ? 'ROLE_COMMANDE' : 'ROLE_DEVIS');
+        try {
+            $c = $this->conversations->demarrer($document, $this->moi(), new \DateTimeImmutable());
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $e->getMessage());
+
+            return $this->redirect($request->headers->get('referer') ?: $this->generateUrl('app_messages_clients_index'));
+        }
+        if (!$this->isGranted(MessagerieVoter::VOIR, $c)) {
+            $this->addFlash('error', \sprintf('La conversation de %s est suivie par %s.', $document->getNumero(), Conversations::nom($c->getAssigneA())));
+
+            return $this->redirect($request->headers->get('referer') ?: $this->generateUrl('app_messages_clients_index'));
+        }
+
+        return $this->redirectToRoute('app_messages_clients_voir', ['publicId' => (string) $c->getPublicId(), '_fragment' => 'mc-ecrire']);
     }
 
     // ------------------------------------------------------------------

@@ -25,7 +25,7 @@
 	<a class="ec-retour" href="{{ path('app_espace_devis') }}"><span class="fl">‹</span><span>Devis {{ devis.numero }}</span></a>
 	<div class="cs-entete-actions ec-bureau">
 		{% if montants %}<a class="cs-bouton-entete" href="{{ path('app_espace_devis_pdf', {id: devis.id}) }}" target="_blank">↓ PDF</a>{% endif %}
-		<a class="cs-bouton-entete" href="{{ path('app_espace_messages') }}">Message</a>
+		<a class="cs-bouton-entete" href="{{ conversation_url_client(devis) }}">Message</a>
 	</div>
 {% endblock %}
 
@@ -106,11 +106,14 @@
 				</section>
 			{% endif %}
 
+			{# Conversation du devis (docs/messagerie-clients.md) : montants masqués pour qui ne les voit pas. #}
+			{% set conv = conversation_resume(devis, not montants) %}
+			{% set dernierMessage = conv ? conv.dernier : null %}
 			{% if dernierMessage %}
-				<section class="ec-carte dv-message-mobile ec-telephone">
-					{% if signature %}{{ ag.disque(signature) }}{% endif %}
-					<p>{{ dernierMessage.texte|replace({('Devis ' ~ devis.numero ~ ' : '): ''}) }}</p>
-				</section>
+				<a class="ec-carte dv-message-mobile ec-telephone" href="{{ conversation_url_client(devis) }}">
+					{% if dernierMessage.deLAtelier %}{{ ag.disque({photo: dernierMessage.photo, initiales: dernierMessage.initiales, teinte: null}) }}{% endif %}
+					<p>{{ dernierMessage.texte }}</p>
+				</a>
 			{% endif %}
 
 			{# Réponse du client : accepter, demander une modification, refuser. #}
@@ -151,7 +154,7 @@
 					</div>
 					{% if acompte > 0 and not peutPayer %}<p class="ec-petit dv-note-acompte">Après l'acceptation, l'acompte est payé par la personne qui paie pour votre entreprise.</p>{% endif %}
 				{% else %}
-					<div class="ec-note">Ce devis est accepté par une personne qui valide pour votre entreprise. Vous pouvez demander une modification par <a class="ec-lien" href="{{ path('app_espace_messages') }}">message</a>.</div>
+					<div class="ec-note">Ce devis est accepté par une personne qui valide pour votre entreprise. Vous pouvez demander une modification par <a class="ec-lien" href="{{ conversation_url_client(devis) }}">message</a>.</div>
 				{% endif %}
 			{% elseif devis.commande %}
 				<div class="ec-boutons"><a class="ec-bouton bleu" href="{{ path('app_espace_commande', {id: devis.commande.publicId}) }}">Voir la commande {{ devis.commande.numero }}</a></div>
@@ -181,13 +184,14 @@
 				<h2 id="message-titre">Dernier message</h2>
 				{% if dernierMessage %}
 					<div class="dv-bulle">
-						{% if signature %}{{ ag.disque(signature) }}{% else %}<span class="ec-avatar">{{ coque.initiales }}</span>{% endif %}
-						<p>{{ dernierMessage.texte|replace({('Devis ' ~ devis.numero ~ ' : '): ''}) }}</p>
+						{% if dernierMessage.deLAtelier %}{{ ag.disque({photo: dernierMessage.photo, initiales: dernierMessage.initiales, teinte: null}) }}{% else %}<span class="ec-avatar">{{ coque.initiales }}</span>{% endif %}
+						<div><small class="ec-petit">{{ dernierMessage.deLAtelier ? dernierMessage.auteur : 'Vous' }} · {{ dernierMessage.le|date('d/m H:i') }}{{ conv.delaiTexte ? ' · ' ~ conv.delaiTexte }}</small>
+						<p>{{ dernierMessage.texte }}</p></div>
 					</div>
 				{% else %}
 					<p class="ec-petit">Une question sur ce devis ? Écrivez-nous, nous répondons dans la journée.</p>
 				{% endif %}
-				<a class="ec-lien" href="{{ path('app_espace_messages') }}">Ouvrir la conversation du devis →</a>
+				{% if not coque.lecture|default(false) %}<a class="ec-lien" href="{{ conversation_url_client(devis) }}">Ouvrir la conversation du devis →</a>{% endif %}
 			</section>
 
 			{% if enAttente %}

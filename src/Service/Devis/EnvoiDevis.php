@@ -5,8 +5,8 @@ namespace App\Service\Devis;
 use App\Controller\UtilisateursController;
 use App\Entity\Devis;
 use App\Entity\User;
-use App\Service\EspaceClient\MessagesClient;
 use App\Service\EspaceClient\NotificationsClient;
+use App\Service\Messagerie\Conversations;
 use App\Service\Messagerie\JournalEnvois;
 use App\Service\WhatsAppService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,7 +20,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * Envoi d'un devis au client et relances (maquettes GC03, GC04, DT03).
  *
  * - Espace client : le devis y apparaît (synchronisation), avec le
- *   message facultatif de la personne qui l'envoie dans ses messages.
+ *   message facultatif de la personne qui l'envoie dans la conversation
+ *   du devis.
  * - WhatsApp : règle de la messagerie (docs/messagerie-marketing.md).
  *   Clé Meta vide dans .env.local : un lien wa.me avec le message déjà
  *   écrit, que la personne ouvre d'un clic. Clé posée : l'application
@@ -36,7 +37,7 @@ final class EnvoiDevis
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly WhatsAppService $whatsApp,
-        private readonly MessagesClient $messages,
+        private readonly Conversations $conversations,
         private readonly PdfDevis $pdf,
         private readonly UrlGeneratorInterface $urls,
         private readonly LoggerInterface $logger,
@@ -66,7 +67,8 @@ final class EnvoiDevis
         $message = trim((string) $message);
         if ('' !== $message && null !== $client) {
             try {
-                $this->messages->repondre($client, \sprintf('Devis %s : %s', $devis->getNumero(), $message), $par, null, $maintenant);
+                // Dans la conversation du devis (docs/messagerie-clients.md), ouverte au besoin.
+                $this->conversations->repondre($this->conversations->demarrer($devis, $par, $maintenant), $par, $message, null, null, $maintenant);
             } catch (\DomainException $e) {
                 $notes[] = 'Message non envoyé : '.$e->getMessage();
             }

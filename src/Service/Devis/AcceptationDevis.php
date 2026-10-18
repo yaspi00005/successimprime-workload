@@ -4,10 +4,11 @@ namespace App\Service\Devis;
 
 use App\Entity\Commandes;
 use App\Entity\CompteClient;
+use App\Entity\ConversationClient;
 use App\Entity\Devis;
 use App\Entity\MessageClient;
 use App\Service\DevisCommandeConverter;
-use App\Service\EspaceClient\MessagesClient;
+use App\Service\Messagerie\Conversations;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -16,7 +17,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * accepter (la commande est créée sans ressaisie, « à confirmer » par la
  * boutique comme une commande en ligne, l'acompte se paie ensuite par
  * Orange Money), refuser avec un motif, demander une modification (le
- * texte part aussi dans ses messages). Les droits (valideur) sont
+ * texte part aussi dans la conversation du devis). Les droits (valideur) sont
  * vérifiés par le contrôleur.
  */
 final class AcceptationDevis
@@ -25,7 +26,7 @@ final class AcceptationDevis
         private readonly EntityManagerInterface $em,
         private readonly DevisCommandeConverter $converter,
         private readonly NotificationService $notifications,
-        private readonly MessagesClient $messages,
+        private readonly Conversations $conversations,
     ) {
     }
 
@@ -81,23 +82,9 @@ final class AcceptationDevis
         }
         $texte = mb_substr($texte, 0, MessageClient::TEXTE_MAX - 40);
         SuiviDevis::demanderModification($devis, $texte, $compte->getNomAffiche(), $maintenant);
-        // Dans ses messages aussi : l'atelier répond dans la conversation habituelle.
-        $this->messages->ecrire($compte, \sprintf('Devis %s : %s', $devis->getNumero(), $texte), null, $maintenant);
+        // Dans la conversation du devis aussi : l'atelier y répond, le délai de réponse court.
+        $this->conversations->ouvrir($compte, null, $devis, null, ConversationClient::SUJET_COMMANDE, 'Modification demandée : '.$texte, $maintenant);
         $this->notifications->notifierRoles(['ROLE_DEVIS'], \sprintf('Devis %s : %s demande une modification.', $devis->getNumero(), $compte->getNomAffiche()), 'app_devis_show', ['id' => $devis->getId()]);
         $this->em->flush();
-    }
-
-    /** Dernier message de la conversation qui parle de ce devis (son numéro), ou null. */
-    public function dernierMessage(Devis $devis): ?MessageClient
-    {
-        if (null === $devis->getClients() || null === $devis->getNumero()) {
-            return null;
-        }
-
-        return $this->em->getRepository(MessageClient::class)->createQueryBuilder('m')
-            ->where('m.client = :c')->andWhere('m.texte LIKE :n')
-            ->setParameter('c', $devis->getClients())->setParameter('n', '%'.addcslashes($devis->getNumero(), '%_').'%')
-            ->orderBy('m.creeLe', 'DESC')->addOrderBy('m.id', 'DESC')->setMaxResults(1)
-            ->getQuery()->getOneOrNullResult();
     }
 }

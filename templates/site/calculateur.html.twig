@@ -3,6 +3,8 @@
 	revient avec le prix calculé par le serveur : il marche sans JavaScript.
 	Le script du bas le met à jour en direct (app_site_calculateur_estimation),
 	sans rien calculer lui-même. Prix normal seulement, jamais le prix B2B.
+	Adresse : le produit et les finitions par leur jeton (site_jeton,
+	docs/site-vitrine.md), jamais par leur identifiant.
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -29,7 +31,7 @@
 			{% else %}
 				<div class="si-calc">
 					<form class="si-calc-formulaire" id="si-calc" method="get" action="{{ path('app_site_calculateur') }}" data-estimation="{{ path('app_site_calculateur_estimation') }}">
-						<input type="hidden" name="precedent" value="{{ valeurs.produit }}">
+						<input type="hidden" name="precedent" value="{{ site_jeton('configuration', valeurs.produit) }}">
 
 						<div class="si-calc-etape">
 							<label class="si-calc-titre" for="si-calc-produit"><span class="si-calc-num"></span> Produit et support</label>
@@ -38,7 +40,7 @@
 									{% for g in groupes %}
 										{% if groupes|length > 1 %}<optgroup label="{{ g.nom }}">{% endif %}
 										{% for o in g.options %}
-											<option value="{{ o.id }}"{{ o.id == valeurs.produit ? ' selected' }}>{{ o.nom }}</option>
+											<option value="{{ site_jeton('configuration', o.id) }}"{{ o.id == valeurs.produit ? ' selected' }}>{{ o.nom }}</option>
 										{% endfor %}
 										{% if groupes|length > 1 %}</optgroup>{% endif %}
 									{% endfor %}
@@ -61,7 +63,7 @@
 							<legend class="si-calc-titre"><span class="si-calc-num"></span> Finitions</legend>
 							<div class="si-puces" id="si-calc-finitions">
 								{% for f in fiche.finitions %}
-									<label class="si-puce"><input type="checkbox" name="finitions[]" value="{{ f.id }}"{{ f.obligatoire or f.id in valeurs.finitions ? ' checked' }}{{ f.obligatoire ? ' disabled' }}><span>{{ f.nom }}{{ f.obligatoire ? ' (inclus)' }}</span></label>
+									<label class="si-puce"><input type="checkbox" name="finitions[]" value="{{ site_jeton('finition', f.id) }}"{{ f.obligatoire or f.id in valeurs.finitions ? ' checked' }}{{ f.obligatoire ? ' disabled' }}><span>{{ f.nom }}{{ f.obligatoire ? ' (inclus)' }}</span></label>
 								{% endfor %}
 							</div>
 						</fieldset>

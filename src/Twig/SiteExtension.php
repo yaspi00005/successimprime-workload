@@ -7,6 +7,7 @@ use App\Entity\Entreprise;
 use App\Repository\EntrepriseRepository;
 use App\Security\AccesEnLigne;
 use App\Service\Site\ActionsSociales;
+use App\Service\Site\JetonsSite;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Extension\AbstractExtension;
@@ -61,6 +62,7 @@ final class SiteExtension extends AbstractExtension
         private readonly EntrepriseRepository $entreprises,
         private readonly AccesEnLigne $acces,
         private readonly ?ActionsSociales $actionsSociales = null,
+        private readonly ?JetonsSite $jetons = null,
     ) {
     }
 
@@ -73,20 +75,53 @@ final class SiteExtension extends AbstractExtension
             new TwigFunction('site_entreprise', $this->entreprise(...)),
             new TwigFunction('site_whatsapp', $this->whatsapp(...)),
             new TwigFunction('site_en_ligne', $this->acces->estEnLigne(...)),
+            new TwigFunction('site_jeton', $this->jeton(...)),
         ];
     }
 
-    /** Adresse d'une page du site, ou null si elle n'existe pas encore. L'accueil est « / » en ligne. */
+    /**
+     * Adresse d'une page du site, ou null si elle n'existe pas encore.
+     * L'accueil est « / » en ligne. Sur les pages du site, les
+     * identifiants de produit et de finitions deviennent des jetons
+     * (JetonsSite::PARAMETRES_PRODUIT) : jamais d'identifiant de la base
+     * dans une adresse publique.
+     */
     public function lien(string $route, array $parametres = []): ?string
     {
         if ('app_site_accueil' === $route && $this->acces->estEnLigne()) {
             return $this->urls->generate('app_home');
+        }
+        if (null !== $this->jetons && str_starts_with($route, 'app_site_')) {
+            $parametres = $this->jetons->encoderParametres($parametres);
         }
         try {
             return $this->urls->generate($route, $parametres);
         } catch (RouteNotFoundException) {
             return null;
         }
+    }
+
+    /**
+     * Paramètres de produit d'une adresse publique en jetons (lien du site
+     * vers l'espace client, comme « Commander » du calculateur).
+     *
+     * @param array<string, mixed> $parametres
+     *
+     * @return array<string, mixed>
+     */
+    public function jetons(array $parametres): array
+    {
+        return null === $this->jetons ? $parametres : $this->jetons->encoderParametres($parametres);
+    }
+
+    /** Jeton d'adresse d'un identifiant (JetonsSite) : configuration, finition… */
+    public function jeton(string $type, int|string|null $id): string
+    {
+        if (null === $this->jetons || !JetonsSite::estIdentifiant($id)) {
+            return '';
+        }
+
+        return $this->jetons->encoder($type, (int) $id);
     }
 
     /**

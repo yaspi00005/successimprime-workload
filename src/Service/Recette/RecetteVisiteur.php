@@ -12,6 +12,7 @@ use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\Site\Calculateur;
 use App\Service\Site\ContenuInitial;
 use App\Service\Site\FormulaireDemande;
+use App\Service\Site\JetonsSite;
 use App\Service\Site\ReferencementSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\RouterInterface;
@@ -24,7 +25,8 @@ use Symfony\Component\Routing\RouterInterface;
  * d'un client sur les pages publiques, aucune personne de l'équipe
  * masquée ou sans son accord sur « Qui sommes-nous ? », les en-têtes de
  * sécurité, la mesure d'audience Google (pages publiques du site en ligne
- * seulement) et les vraies photos du local (accueil, contact).
+ * seulement), les vraies photos du local (accueil, contact) et les
+ * adresses des produits sans identifiant de la base (JetonsSite).
  */
 final class RecetteVisiteur
 {
@@ -40,6 +42,7 @@ final class RecetteVisiteur
         private readonly EntityManagerInterface $em,
         private readonly ParametresRoute $parametres,
         private readonly ReferencementSite $referencement,
+        private readonly JetonsSite $jetons,
     ) {
     }
 
@@ -56,6 +59,7 @@ final class RecetteVisiteur
                 $this->suivi($bilan);
                 $this->calculateur($bilan);
                 $this->piecesAuM2($bilan);
+                $this->adressesProduits($bilan);
                 $this->pagesPubliques($bilan);
                 $this->equipe($bilan);
             }
@@ -218,10 +222,10 @@ final class RecetteVisiteur
         $configurations = $this->em->getRepository(ProduitConfiguration::class)->findBy([], ['id' => 'ASC'], 60);
         foreach ($configurations as $c) {
             foreach ([['quantite' => '1', 'largeur' => '100', 'hauteur' => '100'], ['quantite' => '10', 'largeur' => '200', 'hauteur' => '100']] as $saisie) {
-                $saisie['produit'] = (string) $c->getId();
+                $saisie['produit'] = $this->jetons->encoder(JetonsSite::CONFIGURATION, (int) $c->getId());
                 try {
                     // Les mêmes valeurs que le calculateur (taille imposée, côté proposé…).
-                    $v = Calculateur::valeurs($c, Calculateur::lire($saisie));
+                    $v = Calculateur::valeurs($c, Calculateur::lire($this->jetons->decoderParametres($saisie)));
                     $public = NouvelleCommande::estimer($c, $v['quantite'], $v['largeur'], $v['hauteur'], $v['finitions'], false)['total'];
                     $b2b = NouvelleCommande::estimer($c, $v['quantite'], $v['largeur'], $v['hauteur'], $v['finitions'], true)['total'];
                 } catch (\Throwable) {
@@ -239,11 +243,54 @@ final class RecetteVisiteur
                 if ((float) $total === (float) $public) {
                     ++$justes;
                 } else {
-                    $bilan->constater((float) $total === (float) $b2b ? BilanRecette::FUITE : BilanRecette::A_EXAMINER, 'prix_b2b', 'app_site_calculateur_estimation', '/calculateur/estimation?produit='.$c->getId(), 'visiteur', \sprintf('total %s au lieu du prix comptoir %s (B2B %s)', $total, $public, $b2b));
+                    $bilan->constater((float) $total === (float) $b2b ? BilanRecette::FUITE : BilanRecette::A_EXAMINER, 'prix_b2b', 'app_site_calculateur_estimation', '/calculateur/estimation?produit='.$saisie['produit'], 'visiteur', \sprintf('total %s au lieu du prix comptoir %s (B2B %s)', $total, $public, $b2b));
                 }
             }
         }
         $bilan->controler('Visiteur : le calculateur donne le prix du comptoir, jamais le prix B2B', $essais > 0 && $justes === $essais, \sprintf('%d estimation(s) où les deux prix diffèrent, %d au prix comptoir', $essais, $justes));
+    }
+
+    /**
+     * Adresses des produits (docs/site-vitrine.md) : Nos produits, le
+     * calculateur et la demande de devis ne mettent aucun identifiant de la
+     * base dans leurs liens ni dans les valeurs de leurs formulaires ; une
+     * ancienne adresse ?produit=<identifiant> est redirigée (301) vers celle
+     * avec le jeton ; un jeton inventé n'ouvre aucun produit.
+     */
+    private function adressesProduits(BilanRecette $bilan): void
+    {
+        $ids = '#[?&](?:amp;)?(?:produit|precedent|categorie|finitions(?:%5B%5D|\[\])?)=\d+(?:[&"\'\s]|$)#i';
+        $fuites = [];
+        foreach (['/nos-produits', '/calculateur', '/demander-un-devis'] as $chemin) {
+            $page = $this->navigateur->get($chemin);
+            if (200 !== $page->statut) {
+                $fuites[] = $chemin.' ('.$page->statut.')';
+                continue;
+            }
+            $html = (string) preg_replace('#<script\b[^>]*>.*?</script>#s', '', $page->contenu);
+            if (preg_match($ids, $html, $m)) {
+                $fuites[] = $chemin.' : '.trim($m[0]);
+            }
+            if (preg_match_all('#<input[^>]*name="(?:precedent|finitions\[\])"[^>]*value="(\d+)"#', $html, $m2) && [] !== $m2[1]) {
+                $fuites[] = $chemin.' : champ « '.$m2[0][0].' »';
+            }
+            if (preg_match('#<select[^>]*name="produit".*?</select>#s', $html, $liste) && preg_match('#<option value="\d+"#', $liste[0])) {
+                $fuites[] = $chemin.' : liste des produits en identifiants';
+            }
+        }
+        $bilan->controler('Visiteur : aucune adresse de produit avec un identifiant de la base (Nos produits, calculateur, devis)', [] === $fuites, [] === $fuites ? '3 pages' : implode(' ; ', $fuites));
+        if ([] !== $fuites) {
+            $bilan->constater(BilanRecette::FUITE, 'identifiant_adresse', 'app_site_produits', $fuites[0], 'visiteur', implode(' ; ', $fuites));
+        }
+
+        $configuration = $this->em->getRepository(ProduitConfiguration::class)->findOneBy(['active' => true], ['id' => 'ASC']);
+        if (null !== $configuration) {
+            $ancienne = $this->navigateur->get('/calculateur?produit='.$configuration->getId());
+            $attendue = $this->jetons->encoder(JetonsSite::CONFIGURATION, (int) $configuration->getId());
+            $bilan->controler('Visiteur : une ancienne adresse ?produit=<identifiant> est redirigée (301) vers le jeton', 301 === $ancienne->statut && str_contains($ancienne->redirection, 'produit='.$attendue), \sprintf('%d %s', $ancienne->statut, $ancienne->redirection));
+        }
+        $inventee = $this->navigateur->get('/calculateur/estimation?produit=AAAAAAAAAAA&quantite=1');
+        $bilan->controler('Visiteur : un jeton de produit inventé n\'ouvre aucun produit', 422 === $inventee->statut, (string) $inventee->statut);
     }
 
     /**
@@ -266,7 +313,7 @@ final class RecetteVisiteur
             return;
         }
 
-        $chemin = $this->routeur->generate('app_site_devis', ['produit' => $produit->getId(), 'largeur' => '5', 'hauteur' => '5', 'quantite' => '1000']);
+        $chemin = $this->routeur->generate('app_site_devis', ['produit' => $this->jetons->encoder(JetonsSite::CONFIGURATION, (int) $produit->getId()), 'largeur' => '5', 'hauteur' => '5', 'quantite' => '1000']);
         $reponse = $this->navigateur->get($chemin);
         $bloc = preg_match('#<div class="si-pm2" id="pieces-m2"([^>]*)>#', $reponse->contenu, $m) ? $m[1] : null;
         $fiches = preg_match('#<script type="application/json" id="fiches-produits">(.*?)</script>#s', $reponse->contenu, $f) ? $f[1] : '';

@@ -41,6 +41,7 @@
 			<dl>
 				<dt>Téléphone</dt><dd>{% if employe.telephone %}<a href="tel:{{ employe.telephone|replace({' ': ''}) }}">{{ employe.telephone }}</a>{% else %}—{% endif %}</dd>
 				<dt>Horaires</dt><dd>{{ employe.libelleHoraires ?: 'ceux de l\'atelier' }}</dd>
+				{% if mois %}<dt>Horaire des points</dt><dd>{{ mois.horaire.libelle }} · {{ mois.horaire.debut|heure_pointage }} – {{ mois.horaire.fin|heure_pointage }}{{ employe.horaireType is null and not mois.horaire.propre ? ' (d\'après le poste)' }}</dd>{% endif %}
 				{% if rh and employe.salaires %}<dt>{{ constant('App\\Entity\\Employes::REMUNERATIONS')[employe.typeRemuneration] ?? 'Salaire' }}</dt><dd>{{ employe.salaires|number_format(0, ',', ' ') }} F{{ employe.modePaiement ? ' · payé ' ~ (employe.modePaiement == 'especes' ? 'en espèces' : 'par ' ~ employe.libelleModePaiement) }}</dd>{% endif %}
 				{% if conge %}<dt>Congés</dt><dd>{{ conge.actif ? 'solde ' ~ conge.solde|number_format(conge.solde == conge.solde|round ? 0 : 1, ',', ' ') ~ ' jour' ~ (conge.solde > 1 ? 's') : 'pas encore ouverts' }}</dd>{% endif %}
 				{% if employe.responsable %}<dt>Responsable</dt><dd>{{ employe.responsable|nom_pointage }}</dd>{% endif %}

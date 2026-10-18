@@ -82,7 +82,7 @@ Chaque personne a un score sur 100 par mois. Sa prime est un pourcentage de la p
 **Barème (N03)** — Réglages › Paramètres › Primes de performance, bouton Barème (`/equipe/bareme/primes`, admin) : pour chaque rôle, les critères retenus, leur poids (total 100 %), leur objectif et la prime cible. Un barème par défaut s'applique tant qu'il n'a pas été enregistré.
 
 **Critères** :
-- calculés dans l'ERP : ventes par rapport à l'objectif (l'objectif fixé à la personne dans Statistiques › Objectifs remplace celui du barème), transformation des devis, avis clients, encaissements à temps, erreurs (écarts de caisse, réimpressions dues), ponctualité et présence (pointage), points du métier (suivi des équipes), actions commerciales ;
+- calculés dans l'ERP : ventes par rapport à l'objectif (l'objectif fixé à la personne dans Statistiques › Objectifs remplace celui du barème), transformation des devis, avis clients, encaissements à temps, erreurs (écarts de caisse, réimpressions dues), ponctualité et présence (pointage : note sur 100 tirée des points de chaque journée, heures faites, retards et heures en plus, voir `docs/pointage.md`, « Calcul des points »), points du métier (suivi des équipes), actions commerciales ;
 - saisi : l'appréciation du responsable (note et commentaire visible par l'agent).
 
 **Évaluation (N02)** — `/equipe/primes/agent/{id}` :

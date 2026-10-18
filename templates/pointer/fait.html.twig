@@ -24,15 +24,22 @@
 			<dl class="si-pointer-infos">
 				{% if depart %}
 					<div><dt>Arrivée</dt><dd>{{ pointage.arriveeLe|date('H:i') }}</dd></div>
-					<div><dt>Temps de présence</dt><dd>{{ calcul.presence|duree_pointage }}{% if calcul.pause > 0 %} (pause {{ calcul.pause|duree_pointage }} déduite){% endif %}</dd></div>
-					<div><dt>Cette semaine</dt><dd>{{ semaine|duree_pointage }}</dd></div>
+					{% if calcul.dues is not null %}
+						{# Nouveau calcul des points : les heures faites comptent (pause comprise ou non, selon la tuile). #}
+						<div><dt>Heures faites / dues</dt><dd>{{ calcul.faites|duree_pointage }} / {{ calcul.dues > 0 ? calcul.dues|duree_pointage : 'jour de repos' }}</dd></div>
+						<div><dt>Points du jour</dt><dd>{{ calcul.total > 0 ? '+' }}{{ calcul.total }}{% if calcul.bonusEnAttente %} (heures en plus à valider){% endif %}</dd></div>
+					{% else %}
+						<div><dt>Temps de présence</dt><dd>{{ calcul.presence|duree_pointage }}{% if calcul.pause > 0 %} (pause {{ calcul.pause|duree_pointage }} déduite){% endif %}</dd></div>
+					{% endif %}
+					<div><dt>Cette semaine</dt><dd>{{ semaine|duree_pointage }}{{ calcul.dues is not null and calcul.pause > 0 ? ' (pause déduite)' }}</dd></div>
 				{% else %}
-					<div><dt>Horaire prévu</dt><dd>{{ regles.ouverture|replace({':': ' h '}) }}</dd></div>
+					<div><dt>Horaire prévu</dt><dd>{{ calcul.horaire|split(' – ')|map(x => x|heure_pointage)|join(' – ') }}</dd></div>
 					<div><dt>Ponctualité</dt><dd>{{ calcul.retard > 0 ? 'Retard de ' ~ calcul.retard|duree_pointage : 'À l\'heure' }}</dd></div>
 					<div><dt>Prochain pointage</dt><dd>sera votre départ</dd></div>
 				{% endif %}
 			</dl>
 
+			{% if depart and calcul.dues is not null %}<p class="si-pointer-aide">{{ calcul.raison }} <a href="{{ path('app_mon_espace_pointage') }}">Mes points du mois</a></p>{% endif %}
 			<a href="{{ path('app_pointer_index') }}" class="btn btn-primary btn-lg si-pointer-bouton">Terminé</a>
 		</section>
 	</div>

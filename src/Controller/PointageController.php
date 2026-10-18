@@ -67,6 +67,8 @@ final class PointageController extends AbstractController
             }
         }
 
+        $regles = $this->pointages->regles();
+
         return $this->render('pointage/employe.html.twig', [
             'utilisateur' => $utilisateur,
             'nom' => Pointages::nom($utilisateur),
@@ -74,6 +76,8 @@ final class PointageController extends AbstractController
             'fiche' => $fiche,
             'detail' => $detail,
             'jeton' => self::CSRF,
+            'regles' => $regles,
+            'horaires' => Pointages::horairesTypes($regles),
         ]);
     }
 

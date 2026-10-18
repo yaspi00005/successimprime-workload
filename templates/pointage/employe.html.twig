@@ -18,7 +18,7 @@
 		<section class="card si-pg-journal">
 			<h2>Journal · {{ mois|date_fr('MMMM y') }}</h2>
 			<table class="table">
-				<thead><tr><th>Jour</th><th>Arrivée</th><th>Départ</th><th>Présence</th><th>Points</th><th>Photos</th></tr></thead>
+				<thead><tr><th>Jour</th><th>Arrivée</th><th>Départ</th><th>Heures faites / dues</th><th>Points</th><th>Photos</th></tr></thead>
 				<tbody>
 					{% for j in fiche.jours %}
 						{% if j.presences is empty %}
@@ -29,16 +29,20 @@
 						{% endif %}
 						{% for c in j.presences %}
 							{% set p = c.pointage %}
-							<tr class="{{ detail and detail.pointage.id == p.id ? 'si-pg-choisi' }}">
+							{% set k = c.calcul %}
+							<tr class="si-pg-avec-raison {{ detail and detail.pointage.id == p.id ? 'si-pg-choisi' }}" data-si-pointage="{{ p.id }}">
 								<td><a href="{{ path('app_pointage_employe', {id: utilisateur.id, mois: mois|date('Y-m'), pointage: p.id}) }}">{{ j.jour|date_fr('EEE d')|capitalize }}</a></td>
-								<td class="{{ c.calcul.retard > 0 ? 'si-p-alerte' }}">{{ p.arriveeLe|date('H:i') }}</td>
-								<td>{{ p.departLe ? p.departLe|date('H:i') : '—' }}</td>
-								<td>{{ p.departLe ? c.calcul.presence|duree_pointage : statuts[c.calcul.statut] }}</td>
-								<td class="{{ c.calcul.total < 0 ? 'si-p-alerte' : 'si-p-ok' }}">{{ c.calcul.total > 0 ? '+' }}{{ c.calcul.total }}</td>
+								<td class="{{ k.retard > 0 ? 'si-p-alerte' }}">{{ p.arriveeLe|date('H:i') }}</td>
+								<td>{{ p.departLe ? p.departLe|date(p.departLe|date('Y-m-d') != p.arriveeLe|date('Y-m-d') ? 'd/m H:i' : 'H:i') : '—' }}</td>
+								<td>{% if not p.departLe %}{{ statuts[k.statut] }}{% elseif k.dues is not null %}{{ k.faites|duree_pointage }} / {{ k.dues > 0 ? k.dues|duree_pointage : 'repos' }}{% else %}{{ k.presence|duree_pointage }}{% endif %}</td>
+								<td class="{{ k.total < 0 ? 'si-p-alerte' : (k.total > 0 ? 'si-p-ok') }}"><b>{{ k.total > 0 ? '+' }}{{ k.total }}</b>{% if k.bonusEnAttente %} <i class="fas fa-hourglass-half si-pg-attente" title="{{ k.bonusEnAttente }}"></i>{% endif %}</td>
 								<td class="si-pg-photos">
 									{% include 'pointage/_photo.html.twig' with {pointage: p, photo: p.photoArrivee, sens: 'arrivee'} %}
 									{% include 'pointage/_photo.html.twig' with {pointage: p, photo: p.photoDepart, sens: 'depart'} %}
 								</td>
+							</tr>
+							<tr class="si-pg-raison {{ detail and detail.pointage.id == p.id ? 'si-pg-choisi' }}">
+								<td colspan="6">{{ k.raison }}{% if k.bareme == 'ancien' %} <small class="si-mp-ancien">ancien barème</small>{% endif %}</td>
 							</tr>
 						{% endfor %}
 					{% else %}
@@ -49,10 +53,12 @@
 			<p class="si-pg-totaux">
 				Présent <b>{{ fiche.presents }} / {{ fiche.ouvres }} j</b>
 				· Retards <b>{{ fiche.retards }}</b>
-				· Total <b>{{ fiche.minutes|duree_pointage }}</b>
-				· Points <b>{{ fiche.points }}</b>
+				{% if fiche.nouveau > 0 %}· Heures faites <b>{{ fiche.faites|duree_pointage }}</b> sur <b>{{ fiche.dues|duree_pointage }}</b>{% endif %}
+				· Présence (pause déduite) <b>{{ fiche.minutes|duree_pointage }}</b>
+				· Points du mois <b>{{ fiche.points > 0 ? '+' }}{{ fiche.points }}</b>{% if fiche.aValider > 0 %} ({{ fiche.aValider }} à valider){% endif %}
 				· Ponctualité <b>{{ fiche.note is null ? '—' : fiche.note ~ ' / 100' }}</b>
 			</p>
+			<p class="si-pg-note">Horaire : <b>{{ fiche.horaire.libelle }}</b>, {{ fiche.horaire.debut|heure_pointage }} – {{ fiche.horaire.fin|heure_pointage }} ({{ fiche.horaire.dues|duree_pointage }} dues par jour){% if utilisateur.employe and not fiche.horaire.propre %} · <a href="{{ path('app_equipe_employes_modifier', {id: utilisateur.employe.id}) }}">changer sur sa fiche</a>{% endif %}.</p>
 		</section>
 
 		<section class="card si-pg-detail">
@@ -76,9 +82,14 @@
 					<div><dt>Position</dt><dd>{% if p.positionArrivee %}{{ p.positionArrivee.distance is not null ? 'à ' ~ p.positionArrivee.distance ~ ' m du point' : 'notée (point sans coordonnées)' }}{% else %}non transmise{% endif %}</dd></div>
 					<div><dt>Heure</dt><dd>horloge du serveur (non modifiable)</dd></div>
 					<div><dt>Statut</dt><dd><span class="si-pg-statut si-pg-{{ c.statut }}">{{ statuts[c.statut] }}</span>{% if c.retard > 0 %} · retard {{ c.retard|duree_pointage }}{% endif %}{% if c.sup > 0 %} · {{ c.sup|duree_pointage }} après la fin{% endif %}</dd></div>
+					{% if c.dues is not null %}
+						<div><dt>Horaire du jour</dt><dd>{{ c.horaire|split(' – ')|map(x => x|heure_pointage)|join(' – ') }}</dd></div>
+						<div><dt>Heures faites / dues</dt><dd>{{ c.faites is null ? '—' : c.faites|duree_pointage }} / {{ c.dues > 0 ? c.dues|duree_pointage : 'jour de repos' }}</dd></div>
+					{% endif %}
 				</dl>
 
-				<h3>Points de la journée</h3>
+				<h3>Points de la journée{% if c.bareme == 'ancien' %} <small class="si-mp-ancien">ancien barème</small>{% endif %}</h3>
+				<p class="si-pg-pourquoi">{{ c.raison }}</p>
 				<ul class="si-pg-points">
 					{% for l in c.points %}<li><span>{{ l.libelle }}</span><b class="{{ l.points < 0 ? 'si-p-alerte' : 'si-p-ok' }}">{{ l.points > 0 ? '+' }}{{ l.points }}</b></li>{% endfor %}
 				</ul>
@@ -101,7 +112,7 @@
 						<div class="si-dialogue-grille">
 							<label>Arrivée<input type="datetime-local" name="arrivee" class="form-control" value="{{ p.arriveeLe|date('Y-m-d\\TH:i') }}" required></label>
 							<label>Départ<input type="datetime-local" name="depart" class="form-control" value="{{ p.departLe ? p.departLe|date('Y-m-d\\TH:i') }}"></label>
-							<label class="si-plein">Motif (obligatoire)<input type="text" name="motif" class="form-control" maxlength="255" required placeholder="Ex. téléphone en panne, départ confirmé par le chef d'atelier"></label>
+							<label class="si-plein">Motif (obligatoire, vu par l'employé)<input type="text" name="motif" class="form-control" maxlength="255" required placeholder="Ex. téléphone en panne, départ confirmé par le chef d'atelier"></label>
 						</div>
 						<footer><button type="button" class="btn btn-light" data-si-fermer>Annuler</button><button type="submit" class="btn btn-primary">Corriger</button></footer>
 					</form>
@@ -110,7 +121,7 @@
 					<form method="post" action="{{ path('app_pointage_ajuster', {id: p.id}) }}">
 						<header><h2>Ajuster les points</h2><button type="button" class="btn-close" data-si-fermer aria-label="Fermer"></button></header>
 						<input type="hidden" name="_token" value="{{ token }}">
-						<p class="si-dialogue-meta">Remplace l'ajustement actuel ({{ p.ajustementPoints }}). Ex. +20 pour annuler un oubli justifié.</p>
+						<p class="si-dialogue-meta">Remplace l'ajustement actuel ({{ p.ajustementPoints }}). Ex. +10 pour compter une journée justifiée, −5 pour retirer une heure en plus. Un départ oublié se corrige plutôt avec « Corriger un pointage ».</p>
 						<div class="si-dialogue-grille">
 							<label>Points<input type="number" name="points" class="form-control" min="-500" max="500" value="{{ p.ajustementPoints }}" required></label>
 							<label class="si-plein">Motif (vu par l'employé)<input type="text" name="motif" class="form-control" maxlength="255" required value="{{ p.motifAjustement }}"></label>
@@ -123,6 +134,7 @@
 			{% endif %}
 		</section>
 	</div>
+	{% include 'pointage/_calcul_points.html.twig' with {regles: regles, horaires: horaires, horaire: fiche.horaire, debut: fiche.debutNouveau, pour_moi: false} %}
 	<script>
 		document.addEventListener('click', function (e) {
 			var ouvrir = e.target.closest('[data-si-ouvrir]');

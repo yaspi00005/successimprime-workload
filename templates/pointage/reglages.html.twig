@@ -80,11 +80,13 @@
 				<div><dt>Premier pointage du jour</dt><dd>= Arrivée</dd></div>
 				<div><dt>Dernier pointage du jour</dt><dd>= Départ</dd></div>
 				<div><dt>Anti-doublon</dt><dd>{{ regles.anti_doublon_minutes }} min entre deux pointages</dd></div>
-				<div><dt>Tolérance de retard</dt><dd>{{ regles.tolerance_minutes }} min après {{ regles.ouverture }}</dd></div>
+				<div><dt>Tolérance de retard</dt><dd>{{ regles.tolerance_minutes }} min après le début de l'horaire</dd></div>
 				<div><dt>Pause déduite</dt><dd>{{ regles.pause_debut }} – {{ regles.pause_fin }}</dd></div>
 				<div><dt>Départ non pointé</dt><dd>alerte RH à {{ regles.alerte_depart }}</dd></div>
+				<div><dt>Horaires des points</dt><dd>accueil et caisse {{ regles.heures.accueil_debut|heure_pointage }} – {{ regles.heures.accueil_fin|heure_pointage }} · atelier et autres {{ regles.heures.atelier_debut|heure_pointage }} – {{ regles.heures.atelier_fin|heure_pointage }}</dd></div>
+				<div><dt>Points du jour</dt><dd>+{{ regles.heures.points_heures_faites }} heures faites · −{{ regles.heures.points_retard }} retard sans les heures · +{{ regles.heures.points_heure_en_plus }} par heure en plus</dd></div>
 			</dl>
-			<p class="si-pg-note">Ces règles se changent dans <a href="{{ path('app_reglages_parametres_index', {tuile: 'pointage'}) }}">Paramètres › Pointage</a>, chaque changement va au journal.</p>
+			<p class="si-pg-note">Ces règles se changent dans <a href="{{ path('app_reglages_parametres_index', {tuile: 'pointage'}) }}">Paramètres › Pointage</a> et <a href="{{ path('app_reglages_parametres_index', {tuile: 'points_pointage'}) }}">Paramètres › Points du pointage</a>, chaque changement va au journal.</p>
 		</section>
 
 		<aside class="card si-pg-bloc">

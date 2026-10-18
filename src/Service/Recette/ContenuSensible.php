@@ -5,7 +5,7 @@ namespace App\Service\Recette;
 /**
  * Repère dans une page ce qui ne doit pas s'afficher sans le droit qui va
  * avec : montants en francs (classés selon les mots qui les précèdent),
- * photos de pointage. C'est un tri pour la recette : chaque montant trouvé
+ * photos et journées de pointage. C'est un tri pour la recette : chaque montant trouvé
  * est relu par une personne avant d'être déclaré fuite.
  */
 final class ContenuSensible
@@ -38,6 +38,9 @@ final class ContenuSensible
 
     /** Adresse d'une photo de pointage (PointerController::voirPhoto). */
     private const PHOTO_POINTAGE = '#/pointer/photo/(\d+)/(arrivee|depart)#';
+
+    /** Journée de pointage affichée (data-si-pointage : Mon pointage, pointages du jour, fiche du mois). */
+    private const JOURNEE_POINTAGE = '#\bdata-si-pointage="(\d+)"#';
 
     /** Texte visible d'une page HTML, sans scripts, styles ni balises, espaces simplifiés. */
     public static function texteVisible(string $html): string
@@ -129,6 +132,18 @@ final class ContenuSensible
     public static function photosPointage(string $html): array
     {
         preg_match_all(self::PHOTO_POINTAGE, $html, $m);
+
+        return array_values(array_unique(array_map('intval', $m[1])));
+    }
+
+    /**
+     * Pointages dont la journée (heures, points) est affichée dans la page.
+     *
+     * @return list<int>
+     */
+    public static function journeesPointage(string $html): array
+    {
+        preg_match_all(self::JOURNEE_POINTAGE, $html, $m);
 
         return array_values(array_unique(array_map('intval', $m[1])));
     }

@@ -1,0 +1,23 @@
+{#
+	Comment sont comptés les points du pointage (Paramètres › Points du
+	pointage) : pour l'employé (Mon pointage) et la RH (fiche du mois).
+	Attend : regles (Pointages::regles), horaire (fiche.horaire), debut (fiche.debutNouveau).
+#}
+{% set h = regles.heures %}
+<section class="card si-pg-bloc si-mp-calcul">
+	<h2>Comment sont comptés les points</h2>
+	<ul class="si-mp-regles">
+		<li><span>Heures faites, à l'heure ou en rattrapant un retard en partant plus tard</span><b class="si-p-ok">+{{ h.points_heures_faites }}</b></li>
+		<li><span>En retard et heures pas faites</span><b class="si-p-alerte">−{{ h.points_retard }}</b></li>
+		<li><span>À l'heure mais parti avant la fin</span><b>0</b></li>
+		<li><span>Chaque heure entière en plus{{ h.valider_en_plus ? ', une fois validée par la RH' }}</span><b class="si-p-ok">+{{ h.points_heure_en_plus }}</b></li>
+		<li><span>Journée de {{ h.longue_heures }} h ou plus (garde) : à la place du reste</span><b class="si-p-ok">{{ h.points_longue }}</b></li>
+		<li><span>Départ non pointé : rien tant que la RH n'a pas corrigé</span><b>0</b></li>
+	</ul>
+	<p class="si-pg-note">
+		{% for t in horaires %}{{ t.libelle }} {{ t.debut|heure_pointage }} – {{ t.fin|heure_pointage }} ({{ t.dues|duree_pointage }}){{ not loop.last ? ' · ' }}{% endfor %}.
+		{% if horaire %}Horaire de {{ pour_moi ? 'votre' : 'son' }} poste : <b>{{ horaire.libelle }}, {{ horaire.debut|heure_pointage }} – {{ horaire.fin|heure_pointage }}</b>, {{ horaire.dues|duree_pointage }} dues par jour.{% endif %}
+		Marge de {{ regles.tolerance_minutes }} min sur l'arrivée et sur les heures ; {{ h.pause_deduite ? 'la pause de ' ~ regles.pause_debut|heure_pointage ~ ' à ' ~ regles.pause_fin|heure_pointage ~ ' est retirée des heures' : 'la pause est comptée dans les heures' }}.
+		{% if debut %}Ce calcul s'applique depuis le {{ debut|date('d/m/Y') }} ; les journées d'avant gardent l'ancien barème.{% endif %}
+	</p>
+</section>

@@ -43,7 +43,7 @@ L'employé réclame une somme qu'il estime lui être due : heures supplémentair
 
 Construit :
 
-- **Mon espace** (`/mon-espace`, lien dans le menu du profil) : présence et ponctualité du mois (pointage), points d'actions de caisse pour les caissiers, solde de congés, et l'historique des demandes avec la réponse de la RH. Chacun ne voit que ses demandes.
+- **Mon espace** (`/mon-espace`, lien dans le menu du profil) : présence et ponctualité du mois (pointage ; la carte ouvre « Mon pointage », `/mon-espace/pointage` : chaque journée avec l'arrivée, le départ, les heures faites et dues, les points et leur raison, voir `docs/pointage.md`, « Calcul des points »), points d'actions de caisse pour les caissiers, solde de congés, et l'historique des demandes avec la réponse de la RH. Chacun ne voit que ses demandes.
 - **Demandes** : absence (jour, demi-journée ou période), congé (contrôlé contre le solde et la plage fixée par la RH ; les jours fériés et les jours non travaillés de la tuile Horaires ne comptent pas), réclamation (heures sup, prime, frais avancés, reste de salaire) et frais médicaux (justificatif obligatoire, photo ou PDF de 5 Mo au plus, rangé hors du dossier public).
 - **Côté RH** (Réglages › Demandes du personnel, droit « Administrateur RH ») : demandes à traiter, acceptation totale ou en partie, refus avec commentaire obligatoire, calendrier des absents du mois, droits aux congés par employé (activation, solde, plage et nombre de jours max). Les frais médicaux proposent le taux et le plafond annuel de la tuile Avantages.
 - **Paiement** des sommes accordées (droit de saisie en trésorerie) : décaissement de catégorie salaire, marqué confidentiel, à valider comme tout mouvement.

@@ -46,6 +46,9 @@ Dans la fiche, on peut donner à un employé ses horaires : l'heure d'arrivée, 
 - Si la fin est avant le début, c'est un poste de nuit, comme un gardien de 19 h à 7 h.
   - L'arrivée du soir et le départ du matin forment une seule présence.
   - La pause de midi ne compte pas pour ce poste.
+- Les horaires propres servent aussi au calcul des points (`docs/pointage.md`, « Calcul des points ») : les heures dues sont de la fin moins le début.
+
+**Horaire des points** : sans horaires propres, l'employé suit un horaire type, « Accueil et caisse » (9 h – 17 h) ou « Atelier et autres » (9 h – 18 h), choisi d'après son poste. Le champ « Horaire des points » de la fiche permet de choisir l'autre ; le dossier montre celui qui s'applique.
 
 ## Tablette de l'entrée
 

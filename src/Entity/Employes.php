@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\EmployesRepository;
+use App\Service\Pointage\HoraireType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -262,6 +263,13 @@ public function setUser(?User $user): static
     #[ORM\Column(length: 13, nullable: true)]
     private ?string $joursTravail = null;
 
+    /**
+     * Horaire type du calcul des points (HoraireType : accueil, atelier).
+     * Vide : celui du poste. Des horaires propres passent avant.
+     */
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $horaireType = null;
+
     #[ORM\Column(length: 150, nullable: true)]
     private ?string $contactUrgence = null;
 
@@ -282,6 +290,8 @@ public function setUser(?User $user): static
     public function getHeureDebut(): ?string { return $this->heureDebut; }
     public function getHeureFin(): ?string { return $this->heureFin; }
     public function getJoursTravail(): ?string { return $this->joursTravail; }
+    public function getHoraireType(): ?string { return $this->horaireType; }
+    public function setHoraireType(?string $type): static { $this->horaireType = isset(HoraireType::LIBELLES[(string) $type]) ? $type : null; return $this; }
 
     /** @param list<int>|null $jours */
     public function setHoraires(?string $debut, ?string $fin, ?array $jours): static

@@ -64,4 +64,12 @@ final class ContenuSensibleTest extends TestCase
 
         self::assertSame([12, 40], ContenuSensible::photosPointage($html));
     }
+
+    public function testJourneesDePointage(): void
+    {
+        $html = '<tr data-si-pointage="7"><td>Lun. 5</td></tr><tr class="si-pg-raison"><td>…</td></tr><tr data-si-pointage="9"></tr><tr data-si-pointage="7"></tr><p>data-si-pointage="x"</p>';
+
+        self::assertSame([7, 9], ContenuSensible::journeesPointage($html));
+        self::assertSame([], ContenuSensible::journeesPointage('<tr data-pointage="3">'));
+    }
 }

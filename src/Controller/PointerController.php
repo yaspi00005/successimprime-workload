@@ -130,8 +130,8 @@ final class PointerController extends AbstractController
         // Temps de la semaine (lundi → aujourd'hui), présences fermées seulement.
         $lundi = $maintenant->modify('monday this week')->setTime(0, 0);
         $semaine = 0;
-        foreach ($this->depot->entre($lundi, $maintenant->modify('+1 day'), $moi) as $p) {
-            $semaine += (int) $this->pointages->calcul($p, $regles, $maintenant)['presence'];
+        foreach ($this->pointages->calculs($this->depot->entre($lundi, $maintenant->modify('+1 day'), $moi), $regles, $maintenant) as $c) {
+            $semaine += (int) $c['presence'];
         }
 
         return $this->render('pointer/fait.html.twig', [

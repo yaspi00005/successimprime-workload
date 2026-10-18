@@ -38,7 +38,7 @@ Chaque valeur est modifiable ; tout changement est gardé dans « Historique des
 - **Livreur** : un retard justifié (panne, client absent) est neutralisé par le responsable.
 - **Agent d'entretien** : le responsable contrôle 2 tâches tirées au hasard chaque jour.
 
-**Points possibles** du mois : la somme des points positifs que l'employé aurait gagnés si tout son travail du mois avait été parfait (avec les coefficients). La note « Productivité et qualité » = points gagnés ÷ points possibles × 100, entre 0 et 100. Dans W07, ce critère pèse **40 %** du score sur 100 ; le reste vient de la ponctualité (`docs/pointage.md`), de l'appréciation du responsable et des autres critères du rôle.
+**Points possibles** du mois : la somme des points positifs que l'employé aurait gagnés si tout son travail du mois avait été parfait (avec les coefficients). La note « Productivité et qualité » = points gagnés ÷ points possibles × 100, entre 0 et 100. Dans W07, ce critère pèse **40 %** du score sur 100 ; le reste vient de la ponctualité (`docs/pointage.md`, « Calcul des points » : points du pointage par journée, à part des points du métier), de l'appréciation du responsable et des autres critères du rôle.
 
 **Contestation** : chaque point gagné ou perdu est relié à son travail (commande, livraison, tâche) et à son heure. L'employé voit ce détail dans son application et peut contester un retrait ; le responsable accepte (le retrait est annulé) ou refuse avec un motif.
 

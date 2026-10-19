@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Service\Catalogue\ProduitsDemo;
+use App\Service\NotificationsEquipe\NotificationsDemo;
 use App\Service\Site\EquipeDemo;
 use App\Service\Societes\RattachementSql;
 use Doctrine\DBAL\Connection;
@@ -113,6 +114,8 @@ final class DemoCommand extends Command
                 EquipeDemo::charger($this->connexion);
                 // Produits (docs/produits.md) : délais, machines, un produit masqué en ligne, prix négociés.
                 ProduitsDemo::charger($this->connexion);
+                // Notifications de l'équipe (docs/notifications-equipe.md) : mention, commande prête, accord de plafond, reportée, historique.
+                NotificationsDemo::charger($this->connexion);
             }
             $this->connexion->commit();
         } catch (\Throwable $e) {

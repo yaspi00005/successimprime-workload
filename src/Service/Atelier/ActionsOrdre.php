@@ -8,6 +8,7 @@ use App\Entity\OrdreProduction;
 use App\Entity\StockSorties;
 use App\Entity\User;
 use App\Service\NotificationService;
+use App\Service\NotificationsEquipe\NotificationsEquipe;
 use App\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -27,6 +28,7 @@ final class ActionsOrdre
         private readonly EntityManagerInterface $em,
         private readonly StockService $stock,
         private readonly NotificationService $notifications,
+        private readonly ?NotificationsEquipe $equipe = null,
     ) {
     }
 
@@ -93,9 +95,21 @@ final class ActionsOrdre
 
         $commande = $detail->getCommande();
         if (null !== $commande) {
-            $this->notifications->notifierRoles(['ROLE_LIVRAISON', 'ROLE_COMMERCIAL'], sprintf('Production terminée pour la commande %s : prête pour la suite.', $commande->getNumero() ?? ('#'.$commande->getId())), 'app_commandes_show', ['id' => $commande->getId()]);
+            $this->commandePrete($commande);
         }
         $this->em->flush();
+    }
+
+    /** Notification « Commande prête » (niveau info) aux équipes livraison et commerciale. */
+    private function commandePrete(\App\Entity\Commandes $commande): void
+    {
+        $numero = $commande->getNumero() ?? ('#'.$commande->getId());
+        if (null !== $this->equipe) {
+            $this->equipe->notifier('commande_prete', sprintf('Commande %s prête', $numero), ['ROLE_LIVRAISON', 'ROLE_COMMERCIAL'], 'Production terminée : prête pour la suite.', 'Voir', 'app_commandes_show', ['id' => $commande->getId()], 'commande_prete:'.$commande->getId());
+
+            return;
+        }
+        $this->notifications->notifierRoles(['ROLE_LIVRAISON', 'ROLE_COMMERCIAL'], sprintf('Production terminée pour la commande %s : prête pour la suite.', $numero), 'app_commandes_show', ['id' => $commande->getId()]);
     }
 
     /** Surface d'une pièce en m² : dimensions de la ligne, sinon celles du format. */

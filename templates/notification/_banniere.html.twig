@@ -1,0 +1,13 @@
+{# Bannière critique fixe (maquettes NT01, NT02) : reste jusqu'à la résolution ; mise à jour par notifications-equipe.js. #}
+{% set critiques = notifications_equipe().critiques %}
+<div class="si-banniere-critique" data-si-banniere role="alert" aria-live="assertive"{% if critiques is empty %} hidden{% endif %}>
+	{% for n in critiques|slice(0, 2) %}
+		<div class="si-banniere-ligne">
+			<i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+			<strong>{{ titre_notification(n) }}</strong>
+			{% if n.detail %}<span class="si-banniere-detail">{{ n.detail }}</span>{% endif %}
+			{% if n.actionLibelle %}<a class="si-banniere-bouton" href="{{ path('app_notification_ouvrir', {id: n.id}) }}">{{ n.actionLibelle }}</a>{% endif %}
+		</div>
+	{% endfor %}
+	{% if critiques|length > 2 %}<a class="si-banniere-plus" href="{{ path('app_notification_index', {filtre: 'urgentes'}) }}">+ {{ critiques|length - 2 }} autre{{ critiques|length > 3 ? 's' }} alerte{{ critiques|length > 3 ? 's' }} critique{{ critiques|length > 3 ? 's' }}</a>{% endif %}
+</div>

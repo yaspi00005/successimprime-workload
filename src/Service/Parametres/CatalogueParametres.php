@@ -529,6 +529,12 @@ final class CatalogueParametres
                 'motsCles' => ['Groupes Général, Atelier, Prépresse, Caisse et finances', 'Messages privés entre collègues', 'La direction lit les groupes, pas les messages privés', 'Fichiers jusqu\'à 50 Mo · gros fichiers en lien'],
                 'note' => 'L\'équipe voit cette règle écrite dans la messagerie. Les clients ne voient jamais la messagerie de l\'équipe.',
             ],
+            // Notifications de l'équipe (maquette NT04, docs/notifications-equipe.md) : écran complet, tuile sans champ.
+            'notifications_equipe' => [
+                'famille' => 'personnel', 'libelle' => 'Notifications de l\'équipe', 'icone' => 'fa-bell',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_reglages_notifications', 'champs' => [],
+                'motsCles' => ['Qui reçoit quoi · par rôle', 'Son, WhatsApp, SMS, e-mail', 'Heures calmes · escalade à la direction'],
+            ],
             'ecran_tv' => [
                 'famille' => 'clients', 'libelle' => 'Écran TV de l\'accueil', 'icone' => 'fa-tv',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_ecran_tv_reglages', 'champs' => [],

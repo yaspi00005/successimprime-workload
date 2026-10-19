@@ -4,16 +4,54 @@ namespace App\Service;
 
 use App\Entity\Commandes;
 use App\Entity\Paiements;
+use App\Entity\Notification;
 use App\Repository\CommandesRepository;
+use App\Repository\NotificationRepository;
 
 final class ControleCreditClientService
 {
+    /** Empreinte de la demande d'accord de la direction (docs/notifications-equipe.md). */
+    public const EMPREINTE_ACCORD = 'plafond:commande:';
+
     public function __construct(
-        private readonly CommandesRepository $commandesRepository
+        private readonly CommandesRepository $commandesRepository,
+        private readonly ?NotificationRepository $notifications = null,
     ) {
     }
 
-    public function analyser(
+    /**
+     * Contrôle du plafond de crédit, avec l'accord de la direction : une
+     * commande bloquée que la direction a acceptée (fenêtre « Plafond de
+     * crédit dépassé », bouton « Accord direction ») passe.
+     */
+    public function analyser(Commandes $commande): array
+    {
+        $resultat = $this->analyserSansAccord($commande);
+        if (true !== $resultat['autorise'] && null !== $commande->getClients() && $this->accordee($commande)) {
+            $resultat['autorise'] = true;
+            $resultat['accordDirection'] = true;
+            $resultat['motif'] = 'Plafond dépassé, accord de la direction donné pour cette commande.';
+        }
+
+        return $resultat;
+    }
+
+    /** La direction a-t-elle accepté cette commande malgré le plafond ? */
+    public function accordee(Commandes $commande): bool
+    {
+        if (null === $this->notifications || null === $commande->getId()) {
+            return false;
+        }
+        foreach ($this->notifications->parEmpreinte(self::EMPREINTE_ACCORD.$commande->getId()) as $n) {
+            if (Notification::RESOLUE_ACCORD === $n->getResolution()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function analyserSansAccord(
         Commandes $commande
     ): array {
         /*

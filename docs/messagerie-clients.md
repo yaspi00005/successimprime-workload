@@ -50,6 +50,16 @@ Demande de Yaya (18/10/2026) : « C'est possible ajouter une note vocal pour les
 - **Synchronisation** : la fiche de la note voyage avec le message (`message_client` : nom de stockage, type, taille, durée, empreinte) ; le fichier suit par la liaison des fichiers (`FichiersSynchro`, comme les fichiers des clients et des BAT) : la note de l'atelier au client part au site, celle du client arrive au local (60 derniers jours), par morceaux, empreinte SHA-256 vérifiée, puis **revérifiée à l'arrivée au local** (type, taille, durée) ; refusée ou introuvable, elle est notée au journal et redemandée toutes les 6 heures. Les notes vocales internes ne quittent jamais le local. Avant cette fonction, les messages ne portaient aucun fichier (seulement des liens vers un BAT ou une facture) : rien d'autre n'a changé dans leur synchronisation.
 - **Démonstration** : `app:messagerie:demo` ajoute une note vocale d'Oumar Guindo et une note interne vocale d'Aminata sur les t-shirts, et une réponse vocale de Mariam à Amadou Sow (`donnees-demo/note-vocale-demo.ogg`).
 
+### Quand l'envoi échoue (19/10/2026)
+
+L'enregistreur affiche la vraie cause au lieu de « vérifiez la connexion » (`NotesVocalesErreursSubscriber`) :
+- base pas à jour : « lancez php bin/console doctrine:migrations:migrate -n » (personnel seulement) ;
+- page ou session expirée : recharger la page ou se reconnecter ;
+- pas le droit d'écrire dans la conversation, ou conversation introuvable ;
+- autre erreur du serveur : notée dans `var/log`, avec le message pour le personnel. Le client ne voit jamais le détail technique.
+
+« Vérifiez la connexion » ne reste que si la requête n'a pas pu partir.
+
 ## Règles de réponse et supervision (Direction)
 
 Menu Clients : **Supervision des messages**, **Toutes les conversations**, **Règles de réponse** (Direction seulement).

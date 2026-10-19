@@ -161,9 +161,13 @@
 			var mode = el.querySelector('input[name="nv-mode"]:checked');
 			donnees.append('mode', mode ? mode.value : 'reponse');
 			fetch(el.dataset.url, {method: 'POST', body: donnees, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
-				.then(function (r) { return r.json().then(function (j) { return {ok: r.ok, j: j}; }); })
+				.then(function (r) {
+					return r.json().catch(function () { return {}; }).then(function (j) { return {ok: r.ok, statut: r.status, j: j}; });
+				})
 				.then(function (res) {
-					if (!res.ok || !res.j.url) { throw new Error(res.j.erreur || ''); }
+					if (!res.ok || !res.j.url) {
+						throw new Error(res.j.erreur || res.j.detail || ('Envoi refusé par le serveur (erreur ' + res.statut + ') : rechargez la page, puis réessayez.'));
+					}
 					var cible = new URL(res.j.url, window.location.href);
 					if (cible.pathname + cible.search === window.location.pathname + window.location.search) {
 						window.location.hash = cible.hash;
@@ -175,7 +179,7 @@
 				.catch(function (e) {
 					envoi = false;
 					envoyer.disabled = false;
-					dire(e && e.message ? e.message : 'Envoi impossible : vérifiez la connexion, puis réessayez.', true);
+					dire(e && e.message && !(e instanceof TypeError) ? e.message : 'Envoi impossible : vérifiez la connexion, puis réessayez.', true);
 				});
 		});
 		remettre();

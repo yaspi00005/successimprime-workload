@@ -101,8 +101,57 @@
 							</table>
 						</div>
 					{% endif %}
-					<p class="si-pd-note">Grille « Revendeur » : prix revendeur pour {{ clients_revendeurs }} client{{ clients_revendeurs > 1 ? 's' }} B2B.{% if prix_speciaux > 0 %} {{ prix_speciaux }} prix négocié{{ prix_speciaux > 1 ? 's' }} : <a href="{{ path('app_produits_prix_speciaux_index') }}">voir</a>.{% endif %}</p>
+					{% set rg = remises_grilles() %}
+					<p class="si-pd-note">Grille « Revendeur » : prix revendeur pour {{ clients_revendeurs }} client{{ clients_revendeurs > 1 ? 's' }} B2B, sans palier. Grilles « Partenaire » (−{{ rg.PARTENAIRE|number_format(rg.PARTENAIRE == rg.PARTENAIRE|round ? 0 : 1, ',') }} %) et « Association » (−{{ rg.ASSOCIATION|number_format(rg.ASSOCIATION == rg.ASSOCIATION|round ? 0 : 1, ',') }} %) : sur le prix du palier.{% if prix_speciaux > 0 %} {{ prix_speciaux }} prix négocié{{ prix_speciaux > 1 ? 's' }} : <a href="{{ path('app_produits_prix_speciaux_index') }}">voir</a>.{% endif %}</p>
 				</section>
+
+				{% if not nouveau and paliers is not empty %}
+					<section class="si-pd-carte si-pd-paliers" id="pd-paliers">
+						<div class="si-pd-carte-tete"><h3>Paliers de prix</h3></div>
+						<p class="si-pd-note mt-0">Par quantité (dès N pièces : un prix unitaire ou une remise) et, au m², par surface de la ligne (dès N m² : une remise). Le client a le meilleur des deux, jamais les deux ; sa grille Partenaire ou Association s'applique ensuite ; un prix négocié plus bas l'emporte.</p>
+						{% if modifiable %}<input type="hidden" name="paliers_envoyes" value="1">{% endif %}
+						{% for pl in paliers %}
+							{% set c = pl.configuration %}
+							<details{{ (pl.quantite is not empty or pl.surface is not empty or loop.first) ? ' open' }}>
+								<summary>{{ pl.libelle }} <small>· {{ pd.f(c.prixBase) }} par {{ pl.unite }}{{ not c.active ? ' · désactivée' }}{{ pl.quantite is empty and pl.surface is empty ? ' · sans palier' }}</small></summary>
+								{% if pl.tranches is not empty or pl.surface is not empty %}
+									<ul class="si-pd-tranches">
+										{% for t in pl.tranches %}
+											<li>{{ t.a is null ? t.de ~ ' et plus' : (t.de == t.a ? t.de : t.de ~ ' à ' ~ t.a) }} pièce{{ t.a is null or t.a > 1 ? 's' }}<b>{{ pd.f(t.prix) }}</b>{% if t.taux > 0 %} <small>(−{{ t.taux|number_format(t.taux == t.taux|round ? 0 : 1, ',') }} %)</small>{% endif %}</li>
+										{% endfor %}
+										{% for r in pl.surface %}
+											<li class="surface">dès {{ r.m2|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} m²<b>−{{ r.remise|number_format(r.remise == r.remise|round ? 0 : 1, ',') }} %</b></li>
+										{% endfor %}
+									</ul>
+								{% endif %}
+								{% if modifiable %}
+									<h4>Par quantité</h4>
+									{% for q in pl.lignesQuantite %}
+										<div class="si-pd-palier-saisie">
+											<div><label for="pq-{{ c.id }}-{{ loop.index0 }}">Dès (pièces)</label><input id="pq-{{ c.id }}-{{ loop.index0 }}" name="paliers[{{ c.id }}][quantite][{{ loop.index0 }}][de]" inputmode="numeric" class="form-control form-control-sm" value="{{ q ? q.de }}" placeholder="ex. 101"></div>
+											<div><label for="pp-{{ c.id }}-{{ loop.index0 }}">Prix unitaire (F)</label><input id="pp-{{ c.id }}-{{ loop.index0 }}" name="paliers[{{ c.id }}][quantite][{{ loop.index0 }}][prix]" inputmode="numeric" class="form-control form-control-sm" value="{{ q ? q.prix }}" placeholder="ou remise"></div>
+											<div><label for="pr-{{ c.id }}-{{ loop.index0 }}">ou remise (%)</label><input id="pr-{{ c.id }}-{{ loop.index0 }}" name="paliers[{{ c.id }}][quantite][{{ loop.index0 }}][remise]" inputmode="decimal" class="form-control form-control-sm" value="{{ q and q.remise is not null ? q.remise|number_format(1, ',', '')|trim('0', 'right')|trim(',', 'right') }}"></div>
+										</div>
+									{% endfor %}
+									{% if pl.m2 %}
+										<h4>Par surface de la ligne</h4>
+										{% for r in pl.lignesSurface %}
+											<div class="si-pd-palier-saisie surface">
+												<div><label for="sm-{{ c.id }}-{{ loop.index0 }}">Dès (m²)</label><input id="sm-{{ c.id }}-{{ loop.index0 }}" name="paliers[{{ c.id }}][surface][{{ loop.index0 }}][m2]" inputmode="decimal" class="form-control form-control-sm" value="{{ r ? r.m2|number_format(2, ',', '')|trim('0', 'right')|trim(',', 'right') }}" placeholder="ex. 10"></div>
+												<div><label for="sr-{{ c.id }}-{{ loop.index0 }}">Remise (%)</label><input id="sr-{{ c.id }}-{{ loop.index0 }}" name="paliers[{{ c.id }}][surface][{{ loop.index0 }}][remise]" inputmode="decimal" class="form-control form-control-sm" value="{{ r ? r.remise|number_format(1, ',', '')|trim('0', 'right')|trim(',', 'right') }}" placeholder="ex. 5"></div>
+											</div>
+										{% endfor %}
+									{% endif %}
+								{% elseif pl.tranches is empty and pl.surface is empty %}
+									<p class="si-pd-note mt-0">Aucun palier : le même prix quelle que soit la quantité.</p>
+								{% endif %}
+							</details>
+						{% endfor %}
+						{% if modifiable %}
+							<div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="pd-paliers-accord" name="paliers_accord" value="1"><label class="form-check-label small" for="pd-paliers-accord">Accord de la direction pour un palier hors garde-fous : sous la marge minimale, ou remise forte sans coût de revient sûr (contrôlé avec la plus forte grille à remise)</label></div>
+						{% endif %}
+					</section>
+				{% endif %}
 
 				<section class="si-pd-carte">
 					<div class="si-pd-carte-tete"><h3>Options</h3><a href="{{ path('app_produits_options_index') }}">Options partagées</a></div>
@@ -120,7 +169,7 @@
 			<div>
 				{% if avec_couts %}
 					<section class="si-pd-carte">
-						<div class="si-pd-carte-tete"><h3>Coût de revient au {{ unite }}</h3></div>
+						<div class="si-pd-carte-tete"><h3>Coût de revient au {{ unite }}</h3>{% if cout.lignes is not empty and not cout.complet %}<span class="si-pd-badge-incomplet" title="Un prix d'achat manque : le total est trop bas et la marge trop haute">Incomplet</span>{% endif %}</div>
 						{% if cout.lignes is empty %}
 							<p class="si-pd-note mt-0">Coût inconnu : liez les matières du stock ci-dessous, choisissez la machine, ou saisissez un coût.</p>
 						{% else %}
@@ -131,12 +180,23 @@
 								</tbody>
 								<tfoot><tr><td colspan="2">Total</td><td class="si-pd-num">{{ pd.f(cout.total) }}</td></tr></tfoot>
 							</table>
-							{% if marge is not null %}
+							{% if marge is not null and cout.complet %}
 								{% set niveau = marge < garde_fous.minimum ? 'faible' : (marge < garde_fous.cible ? 'moyenne' : '') %}
 								<div class="si-pd-bandeau {{ niveau }}"><strong>{{ marge }} %</strong> de marge au prix de base · {{ pd.f(prix - cout.total) }} par {{ unite }}</div>
+							{% elseif marge is not null %}
+								{# Coût incomplet : la marge n'est qu'un plafond, jamais montrée comme sûre. #}
+								<div class="si-pd-bandeau moyenne">Marge <strong>au plus {{ marge }} %</strong> : coût incomplet, la vraie marge est plus basse.</div>
 							{% endif %}
 						{% endif %}
-						{% for m in cout.manquants %}<p class="si-pd-alerte mb-0">Manque : {{ m }}.</p>{% endfor %}
+						{% if not cout.complet and cout.prixAchatManquants is not empty %}
+							<div class="si-pd-alerte mb-0">
+								<b>Coût incomplet</b> : le coût de revient n'est fiable que si les prix d'achat sont saisis dans le stock.
+								<ul class="mb-0 ps-3">
+									{% for a in cout.prixAchatManquants %}<li>Prix d'achat manquant : {% if is_granted('ROLE_ADMIN') and a.id %}<a href="{{ path('app_stock_articles_fiche', {id: a.id}) }}">{{ a.designation }}</a>{% else %}{{ a.designation }}{% endif %}</li>{% endfor %}
+								</ul>
+							</div>
+						{% endif %}
+						{% for m in cout.manquants|filter(m => not (m starts with 'prix d\'achat')) %}<p class="si-pd-alerte mb-0">Manque : {{ m }}.</p>{% endfor %}
 						<div class="mt-2"><label for="pd-cout" class="small text-muted mb-0">Coût saisi à la main (F par {{ unite }}), si rien ne se calcule</label><input id="pd-cout" name="cout_saisi" inputmode="numeric" class="form-control form-control-sm" value="{{ produit.coutRevientSaisi }}" {{ ro ? 'disabled' }}></div>
 						<p class="si-pd-note">Le coût se met à jour quand le prix d'achat d'une matière change dans le stock.</p>
 					</section>
@@ -214,6 +274,10 @@
 							<label for="sim-config">Configuration</label>
 							<select id="sim-config" class="mb-2">{% for s in simulation %}<option value="{{ loop.index0 }}">{{ s.libelle }}</option>{% endfor %}</select>
 						{% endif %}
+						<label for="sim-grille">Grille du client</label>
+						<select id="sim-grille" class="mb-2" data-remises="{{ remises_grilles()|json_encode|e('html_attr') }}">
+							{% for cle, nom in constant('App\\Service\\Catalogue\\TarifClient::GRILLES') %}<option value="{{ cle }}">{{ nom }}</option>{% endfor %}
+						</select>
 						<div class="si-pd-sim-grille">
 							<div data-sim-dim><label for="sim-l">Largeur (m)</label><input id="sim-l" inputmode="decimal" value="3"></div>
 							<div data-sim-dim><label for="sim-h">Hauteur (m)</label><input id="sim-h" inputmode="decimal" value="1"></div>
@@ -221,12 +285,14 @@
 						</div>
 						<div class="si-pd-sim-res">
 							<div data-sim-dim><span>Surface</span><span id="sim-surface">—</span></div>
+							<div><span>Prix unitaire net</span><span id="sim-unitaire">—</span></div>
 							<div><span>Prix client</span><span class="prix" id="sim-prix">—</span></div>
 							{% if avec_couts %}
 								<div><span>Coût</span><span id="sim-cout">—</span></div>
 								<div><span>Marge</span><span id="sim-marge">—</span></div>
 							{% endif %}
 						</div>
+						<p class="si-pd-sim-palier" id="sim-palier" aria-live="polite"></p>
 					</section>
 				{% endif %}
 
@@ -236,6 +302,12 @@
 						<b>{{ noms_client.nom }}</b>
 						{% if produit.estEnLigne %}
 							<small>{% if prix %}dès {{ pd.f(prix) }} / {{ unite }}{% endif %}{{ prix ? ' · ' }}prête en {{ produit.delaiHeures ?: delais.standard }} h</small>
+							{% if paliers_base %}
+								<ul class="si-pd-tranches">
+									{% for t in paliers_base.quantite|filter(t => t.taux > 0) %}<li>dès {{ t.de }} pièces<b>{{ pd.f(t.prix) }}</b></li>{% endfor %}
+									{% for r in paliers_base.surface %}<li class="surface">dès {{ r.m2|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} m²<b>−{{ r.remise|number_format(r.remise == r.remise|round ? 0 : 1, ',') }} %</b></li>{% endfor %}
+								</ul>
+							{% endif %}
 							<span class="btn btn-primary btn-sm">Commander</span>
 						{% else %}
 							<small>Masqué en ligne{{ produit.motifHorsLigne ? ' : ' ~ produit.motifHorsLigne }}. Vendu au comptoir seulement.</small>
@@ -272,6 +344,7 @@
 
 {% block javascripts %}
 	{{ parent() }}
+	<script src="{{ asset('js/paliers-prix.js') }}"></script>
 	<script>
 	(function () {
 		const bloc = document.getElementById('pd-simulateur');
@@ -281,20 +354,43 @@
 		const nombre = (v) => { const n = parseFloat(String(v || '').replace(',', '.')); return isFinite(n) && n > 0 ? n : 0; };
 		const francs = (n) => Math.round(n).toLocaleString('fr-FR').replace(/ | /g, ' ') + ' F';
 		let choisie = donnees[0];
+		const grille = champ('sim-grille');
+		const remises = grille ? JSON.parse(grille.dataset.remises || '{}') : {};
 		function calculer() {
 			const surfacique = choisie.mode === 'metre_carre';
 			const lineaire = choisie.mode === 'metre';
 			bloc.querySelectorAll('[data-sim-dim]').forEach((e) => { e.hidden = !(surfacique || lineaire); });
 			const l = nombre(champ('sim-l').value), h = nombre(champ('sim-h').value), q = Math.max(1, Math.round(nombre(champ('sim-q').value)) || 1);
-			const unites = surfacique ? l * h * q : (lineaire ? h * q : q);
+			const unites = choisie.mode === 'forfait' ? 1 : (surfacique ? l * h * q : (lineaire ? h * q : q));
 			champ('sim-surface').textContent = (Math.round(unites * 100) / 100).toLocaleString('fr-FR') + (surfacique ? ' m²' : ' m');
-			const prix = choisie.mode === 'forfait' ? choisie.prix : unites * choisie.prix;
+			// Même calcul que le serveur (PaliersPrix, TarifClient) : palier, puis grille ; le revendeur garde son prix.
+			const g = grille ? grille.value : 'B2C';
+			const revendeur = g === 'B2B';
+			const prixLigne = revendeur && choisie.prixRevendeur !== null ? choisie.prixRevendeur : choisie.prix;
+			const calcul = window.SiPaliers
+				? window.SiPaliers.calculer({prix: prixLigne, cfg: choisie.paliers, pieces: q, surfaceTotale: surfacique ? unites : 0, b2b: revendeur, grille: Number(remises[g]) || 0, prixSpecial: null})
+				: {remise: 0, volume: {source: null, prochain: null}, grille: 0};
+			const brut = Math.round(prixLigne * unites);
+			const prix = Math.max(0, brut - Math.min(brut, Math.round(calcul.remise * unites)));
+			champ('sim-unitaire').textContent = francs(prixLigne - calcul.remise) + (calcul.remise > 0 ? ' (au lieu de ' + francs(prixLigne) + ')' : '');
 			champ('sim-prix').textContent = francs(prix);
+			const info = champ('sim-palier');
+			if (info && window.SiPaliers) {
+				const morceaux = [];
+				if (calcul.volume.source) { morceaux.push(window.SiPaliers.libelle(calcul.volume)); }
+				if (calcul.grille > 0) { morceaux.push('grille −' + calcul.grille.toLocaleString('fr-FR') + ' %'); }
+				if (revendeur) { morceaux.push('prix revendeur, sans palier'); }
+				const suite = revendeur ? '' : window.SiPaliers.prochain(calcul.volume);
+				info.innerHTML = '';
+				info.append(morceaux.join(' · '));
+				if (suite) { const s = document.createElement('small'); s.textContent = 'Prochain palier : ' + suite.toLowerCase(); info.append(s); }
+			}
 			if (champ('sim-cout')) {
 				if (choisie.cout === null) { champ('sim-cout').textContent = '—'; champ('sim-marge').textContent = '—'; return; }
 				const cout = unites * choisie.cout;
-				champ('sim-cout').textContent = francs(cout);
-				champ('sim-marge').textContent = prix > 0 ? francs(prix - cout) + ' · ' + Math.round((prix - cout) / prix * 100) + ' %' : '—';
+				// Coût incomplet : la marge n'est qu'un plafond.
+				champ('sim-cout').textContent = francs(cout) + (choisie.coutComplet ? '' : ' (incomplet)');
+				champ('sim-marge').textContent = prix > 0 ? (choisie.coutComplet ? '' : 'au plus ') + francs(prix - cout) + ' · ' + Math.round((prix - cout) / prix * 100) + ' %' : '—';
 			}
 		}
 		function choisir(i) {
@@ -303,6 +399,7 @@
 			calculer();
 		}
 		bloc.addEventListener('input', (e) => { if (e.target.id === 'sim-config') { choisir(+e.target.value); } else { calculer(); } });
+		if (grille) { grille.addEventListener('change', calculer); }
 		bloc.addEventListener('change', (e) => { if (e.target.id === 'sim-config') { choisir(+e.target.value); } });
 		choisir(0);
 	})();

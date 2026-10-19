@@ -110,8 +110,8 @@
 								<td>{{ l.unite }}</td>
 								<td class="si-pd-num"><b>{{ pd.f(l.prix) }}</b>{% if l.configurations > 1 %}<small class="d-block si-pd-gris">dès · {{ l.configurations }} config.</small>{% endif %}</td>
 								{% if avec_couts %}
-									<td class="si-pd-num si-pd-gris">{{ pd.f(l.cout) }}{% if l.coutSource == 'saisi' %}<small class="d-block">saisi</small>{% endif %}</td>
-									<td>{{ pd.marge(l.marge, l.niveau) }}</td>
+									<td class="si-pd-num si-pd-gris">{{ pd.f(l.cout) }}{% if l.coutSource == 'saisi' %}<small class="d-block">saisi</small>{% endif %}{{ pd.incomplet({complet: l.coutComplet, manquants: l.manquants, prixAchatManquants: l.prixAchatManquants}) }}</td>
+									<td>{{ pd.marge(l.marge, l.niveau, l.coutComplet) }}</td>
 								{% endif %}
 								<td class="si-pd-num">{{ l.delai ? l.delai ~ ' h' : '—' }}</td>
 								<td>{{ l.machine ?: '—' }}</td>
@@ -141,7 +141,7 @@
 						<span class="si-pd-bascule{{ l.enLigne ? ' oui' }}" role="img" aria-label="{{ l.enLigne ? 'Visible' : 'Masqué' }} en ligne"></span>
 						<div class="si-pd-ligne-infos">
 							<span><b>{{ pd.f(l.prix) }}</b> / {{ l.unite }}</span>
-							{% if avec_couts %}<span>coût {{ pd.f(l.cout) }}</span><span>{{ pd.marge(l.marge, l.niveau) }}</span>{% endif %}
+							{% if avec_couts %}<span>coût {{ pd.f(l.cout) }}</span><span>{{ pd.marge(l.marge, l.niveau, l.coutComplet) }}</span>{{ pd.incomplet({complet: l.coutComplet, manquants: l.manquants, prixAchatManquants: l.prixAchatManquants}) }}{% endif %}
 							<span>{{ l.delai ? l.delai ~ ' h' : 'délai —' }}</span>
 							{% if l.machine %}<span>{{ l.machine }}</span>{% endif %}
 						</div>

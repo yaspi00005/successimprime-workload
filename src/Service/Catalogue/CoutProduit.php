@@ -87,7 +87,13 @@ final class CoutProduit
     /**
      * Détail du coût d'une unité vendue.
      *
-     * @return array{lignes: list<array{element: string, source: string, cout: int}>, total: ?int, source: ?string, manquants: list<string>}
+     * « complet » est faux quand un élément calculé manque (matière sans
+     * prix d'achat dans le stock, encre ou vitesse de la machine) : le
+     * total est alors trop bas et la marge trop haute, à ne pas montrer
+     * comme sûre. « prixAchatManquants » liste les articles du stock sans
+     * prix d'achat (lien vers leur fiche).
+     *
+     * @return array{lignes: list<array{element: string, source: string, cout: int}>, total: ?int, source: ?string, manquants: list<string>, complet: bool, prixAchatManquants: list<array{id: ?int, designation: string}>}
      */
     public static function detail(Produits $produit, ?string $modeCalcul = null): array
     {
@@ -96,6 +102,7 @@ final class CoutProduit
         $metres = 'metre' === $mode ? 1.0 : 0.0;
         $lignes = [];
         $manquants = [];
+        $sansPrix = [];
 
         foreach ($produit->getArticlesStock() as $liaison) {
             $article = $liaison->getArticle();
@@ -109,6 +116,7 @@ final class CoutProduit
             $coutUnitaire = $article->getCoutUnitaireStock();
             if (null === $coutUnitaire) {
                 $manquants[] = \sprintf('prix d\'achat de %s', $article->getDesignation());
+                $sansPrix[(int) $article->getId()] = ['id' => $article->getId(), 'designation' => (string) $article->getDesignation()];
                 continue;
             }
             $lignes[] = [
@@ -141,10 +149,13 @@ final class CoutProduit
                     'total' => $produit->getCoutRevientSaisi(),
                     'source' => self::SOURCE_SAISI,
                     'manquants' => [],
+                    // Coût donné à la main : il fait foi, même si des matières n'ont pas de prix.
+                    'complet' => true,
+                    'prixAchatManquants' => [],
                 ];
             }
 
-            return ['lignes' => [], 'total' => null, 'source' => null, 'manquants' => array_values(array_unique($manquants))];
+            return ['lignes' => [], 'total' => null, 'source' => null, 'manquants' => array_values(array_unique($manquants)), 'complet' => [] === $manquants, 'prixAchatManquants' => array_values($sansPrix)];
         }
 
         return [
@@ -152,6 +163,8 @@ final class CoutProduit
             'total' => array_sum(array_column($lignes, 'cout')),
             'source' => self::SOURCE_CALCULE,
             'manquants' => array_values(array_unique($manquants)),
+            'complet' => [] === $manquants,
+            'prixAchatManquants' => array_values($sansPrix),
         ];
     }
 

@@ -10,6 +10,7 @@ use App\Entity\Produits;
 use App\Repository\ProduitConfigurationRepository;
 use App\Service\Catalogue\NomCommercial;
 use App\Service\Catalogue\PrixSpeciaux;
+use App\Service\Catalogue\TarifClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -221,8 +222,15 @@ final class CommandeCatalogueController extends AbstractController
         methods: ['GET']
     )]
     public function optionsManuelles(
-        Produits $produit
+        Produits $produit,
+        Request $request,
+        EntityManagerInterface $em,
+        TarifClient $tarifClient
     ): JsonResponse {
+        // Paliers et prix négocié des configurations, pour le client choisi (docs/produits.md).
+        $clientId = Entree::entier($request->query, 'client');
+        $clientPaliers = $clientId > 0 ? $em->find(Clients::class, $clientId) : null;
+
         if (
             !$produit->isActif()
             || !$produit->isPublie()
@@ -485,6 +493,9 @@ final class CommandeCatalogueController extends AbstractController
 
             'finitions' =>
                 $finitions,
+
+            // Les mêmes calculs que le serveur à l'enregistrement (TarifClient) : paliers de volume et prix négocié.
+            'paliers' => $tarifClient->pourLeComptoir($produit->getConfigurations(), $clientPaliers, new \DateTimeImmutable('today')),
         ]);
     }
 

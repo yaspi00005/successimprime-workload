@@ -47,6 +47,11 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/commandes')]
 final class CommandesController extends AbstractController
 {
+    /** Paliers de prix, grille du client et prix négocié (docs/produits.md), posés à l'enregistrement. */
+    public function __construct(private readonly \App\Service\Catalogue\TarifClient $tarifClient)
+    {
+    }
+
     private const CLES_FILTRES_COMMANDES = [
         'q',
         'client',
@@ -328,6 +333,9 @@ final class CommandesController extends AbstractController
                     $commande,
                     $fichierRepository
                 );
+
+                // Palier, grille du client et prix négocié (docs/produits.md), avant la promotion qui s'y compare.
+                $this->tarifClient->appliquerCommande($commande, new \DateTimeImmutable());
 
                 // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
                 $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());
@@ -940,6 +948,9 @@ final class CommandesController extends AbstractController
                         $commande,
                         $fichierRepository
                     );
+
+                // Palier, grille du client et prix négocié (docs/produits.md), avant la promotion qui s'y compare.
+                $this->tarifClient->appliquerCommande($commande, new \DateTimeImmutable());
 
                 // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
                 $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());

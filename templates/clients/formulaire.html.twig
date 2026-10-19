@@ -123,7 +123,8 @@
 					<label class="si-cf-champ">
 						<span>Grille tarifaire</span>
 						<select name="c[grille]" class="form-select">
-							{% for k, l in constant('App\\Service\\Clients\\EditionClient::GRILLES') %}<option value="{{ k }}"{{ v.grille|default('B2C') == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+							{% set rg = remises_grilles() %}
+							{% for k, l in constant('App\\Service\\Clients\\EditionClient::GRILLES') %}<option value="{{ k }}"{{ v.grille|default('B2C') == k ? ' selected' }}>{{ l }}{{ rg[k]|default(0) > 0 ? ' (−' ~ rg[k]|number_format(0, ',') ~ ' %)' }}</option>{% endfor %}
 						</select>
 					</label>
 					{{ m.champ('remise', 'Remise habituelle (%)', v.remise|default(''), {type: 'number', min: 0, max: 100, step: '0.5', inputmode: 'decimal', 'data-seuil': constant('App\\Service\\Clients\\EditionClient::REMISE_MAX')}) }}

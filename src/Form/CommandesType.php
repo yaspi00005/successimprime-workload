@@ -106,6 +106,8 @@ class CommandesType extends AbstractType
             ): array {
                 $attr = [
                     'data-type-client' => $client->getTypeClient(),
+                    // Grille de prix (Standard, Partenaire, Association, Revendeur) : aperçu des remises (docs/produits.md).
+                    'data-grille' => $client->getGrille(),
                     'data-nom' => $client->getNomComplet(),
                     'data-compte' => $client->getTypeCompteLabel(),
                     'data-telephone' => (string) $client->getTelephone(),

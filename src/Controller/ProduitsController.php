@@ -18,6 +18,7 @@ use App\Entity\User;
 use App\Security\AccesEnLigne;
 use App\Service\Catalogue\CatalogueProduits;
 use App\Service\Catalogue\CoutProduit;
+use App\Service\Catalogue\PaliersPrix;
 use App\Service\Catalogue\EditionProduit;
 use App\Service\Catalogue\GardeFousPrix;
 use App\Service\Catalogue\NomCommercial;
@@ -250,11 +251,37 @@ final class ProduitsController extends AbstractController
                     'hauteur' => null !== $c->getLongueurDefaut() ? (float) $c->getLongueurDefaut() : null,
                     // Le coût n'est écrit dans la page que pour qui a le droit de le voir.
                     'cout' => $avecCouts ? CoutProduit::detail($produit, $c->getModeCalcul())['total'] : null,
+                    'coutComplet' => $avecCouts ? CoutProduit::detail($produit, $c->getModeCalcul())['complet'] : true,
+                    // Paliers de prix et prix revendeur : le simulateur refait le calcul du serveur (public/js/paliers-prix.js).
+                    'paliers' => PaliersPrix::pourLaPage($c),
+                    'prixRevendeur' => $c->getPrixB2B(),
                 ];
             }
         }
 
         $nouveau = null === $produit->getId();
+
+        // Paliers de prix par configuration (docs/produits.md) : tranches à lire, lignes à saisir.
+        $paliers = [];
+        foreach ($produit->getConfigurations() as $c) {
+            $quantite = $c->getPaliersQuantite();
+            $surface = $c->getRemisesSurface();
+            $paliers[] = [
+                'configuration' => $c,
+                'libelle' => GrilleTarifaire::libelle($c),
+                'unite' => CoutProduit::unite($c->getModeCalcul()),
+                'm2' => 'metre_carre' === $c->getModeCalcul(),
+                'quantite' => $quantite,
+                'surface' => $surface,
+                'tranches' => [] === $quantite ? [] : PaliersPrix::tranches($quantite, (int) $c->getPrixBase(), $c->getQuantiteMinimale()),
+                'lignesQuantite' => array_pad($quantite, min(PaliersPrix::MAX, \count($quantite) + 2), null),
+                'lignesSurface' => array_pad($surface, min(PaliersPrix::MAX, \count($surface) + 2), null),
+            ];
+        }
+        $paliersBase = null !== $base && $base->aDesPaliers() ? [
+            'quantite' => PaliersPrix::tranches($base->getPaliersQuantite(), (int) $base->getPrixBase(), $base->getQuantiteMinimale()),
+            'surface' => 'metre_carre' === $base->getModeCalcul() ? $base->getRemisesSurface() : [],
+        ] : null;
 
         return $this->render('produits/fiche.html.twig', [
             'produit' => $produit,
@@ -270,6 +297,8 @@ final class ProduitsController extends AbstractController
             'delais' => $reglagesDelais,
             'ventes' => $ventes[(int) $produit->getId()] ?? ['ca' => 0, 'quantite' => 0.0, 'clients' => 0],
             'simulation' => $simulation,
+            'paliers' => $paliers,
+            'paliers_base' => $paliersBase,
             'noms_client' => NomCommercial::client($produit->getNomCommercial(), (string) $produit->getNom()),
             'clients_revendeurs' => $this->em->getRepository(Clients::class)->count(['typeClient' => 'B2B']),
             'prix_speciaux' => $nouveau ? 0 : (int) $this->em->createQueryBuilder()->select('COUNT(ps.id)')->from(PrixSpecial::class, 'ps')->innerJoin('ps.configuration', 'pc')

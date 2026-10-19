@@ -83,6 +83,8 @@ class DevisType extends AbstractType
                 // Carte du client de la saisie (maquette 22).
                 'choice_attr' => static fn (Clients $client): array => [
                     'data-type-client' => $client->getTypeClient(),
+                    // Grille de prix (Standard, Partenaire, Association, Revendeur) : aperçu des remises (docs/produits.md).
+                    'data-grille' => $client->getGrille(),
                     'data-nom' => $client->getNomComplet(),
                     'data-compte' => $client->getTypeCompteLabel(),
                     'data-telephone' => (string) $client->getTelephone(),

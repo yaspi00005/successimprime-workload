@@ -107,6 +107,17 @@ class Clients
     private string $typeClient = 'B2C';
 
     /*
+     * Grille à remise d'un client au prix standard (docs/produits.md) :
+     * « partenaire » ou « association », remise en % réglée dans
+     * Paramètres › Grille tarifaire. Sans effet pour un revendeur (B2B).
+     */
+    public const GRILLE_PARTENAIRE = 'partenaire';
+    public const GRILLE_ASSOCIATION = 'association';
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $grilleTarifaire = null;
+
+    /*
      * ============================================================
      * TYPE DE COMPTE (ENTREPRISE / PARTICULIER)
      * ============================================================
@@ -667,6 +678,32 @@ class Clients
     public function isB2C(): bool
     {
         return $this->typeClient === 'B2C';
+    }
+
+    public function getGrilleTarifaire(): ?string
+    {
+        return $this->grilleTarifaire;
+    }
+
+    public function setGrilleTarifaire(?string $grille): static
+    {
+        $grille = null !== $grille ? strtolower(trim($grille)) : null;
+        $this->grilleTarifaire = \in_array($grille, [self::GRILLE_PARTENAIRE, self::GRILLE_ASSOCIATION], true) ? $grille : null;
+
+        return $this;
+    }
+
+    /**
+     * Grille de prix du client : B2B (Revendeur), PARTENAIRE, ASSOCIATION
+     * ou B2C (Standard). Le revendeur l'emporte sur une grille à remise.
+     */
+    public function getGrille(): string
+    {
+        if ($this->isB2B()) {
+            return 'B2B';
+        }
+
+        return null !== $this->grilleTarifaire ? strtoupper($this->grilleTarifaire) : 'B2C';
     }
 
     public function getTypeCompte(): string

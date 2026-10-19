@@ -88,6 +88,9 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Réclamations', 'route' => 'app_reclamations_clients_index', 'role' => 'ROLE_CLIENT', 'prefixes' => ['app_reclamations_clients_']],
             // Messages des clients (docs/messagerie-clients.md) : boîte de l'agent ; supervision, toutes les conversations et règles pour la Direction.
             ['libelle' => 'Messages', 'route' => 'app_messages_clients_index', 'role' => MessagerieVoter::ROLES_BOITE, 'prefixes' => ['app_messages_clients_']],
+            // Page Contact du site (maquettes EC08 et EC09) : demandes et liste « À rappeler » ; engagements tenus et leur publication (direction).
+            ['libelle' => 'Demandes de contact', 'route' => 'app_messages_clients_site', 'role' => MessagerieVoter::ROLES_BOITE, 'prefixes' => ['app_messages_clients_site']],
+            ['libelle' => 'Engagements clients', 'route' => 'app_engagements_direction', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_engagements_direction']],
             ['libelle' => 'Supervision des messages', 'route' => 'app_messages_clients_supervision', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_messages_clients_supervision', 'app_messages_clients_relancer']],
             ['libelle' => 'Toutes les conversations', 'route' => 'app_messages_clients_toutes', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_messages_clients_toutes']],
             ['libelle' => 'Règles de réponse', 'route' => 'app_messages_clients_regles', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_messages_clients_regles']],

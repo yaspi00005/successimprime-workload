@@ -3,6 +3,7 @@
 namespace App\Service\Site;
 
 use App\Entity\Clients;
+use App\Entity\Commandes;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\CreationAtelier;
 use App\Entity\DemandeDevis;
@@ -15,6 +16,7 @@ use App\Service\Atelier\TarifAtelier;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\NotificationsClient;
 use App\Service\GrilleTarifaire;
+use App\Service\Messagerie\Conversations;
 use App\Service\NotificationService;
 use App\Service\OrangeSmsService;
 use App\Service\PiecesParMetreCarre;
@@ -55,6 +57,7 @@ final class DemandesSite
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
         private readonly ?PiecesParMetreCarre $piecesM2 = null,
+        private readonly ?Conversations $conversations = null,
     ) {
     }
 
@@ -109,6 +112,8 @@ final class DemandesSite
         $demande = DemandeDevis::nouvelle($nature, (string) $valeurs['nom'], (string) $valeurs['telephone'], $le)
             ->setEmail($valeurs['email'] ?? null)
             ->setObjet($valeurs['objet'] ?? null)
+            ->setNumeroCommande($valeurs['numeroCommande'] ?? null)
+            ->setRappelLe($valeurs['rappelLe'] ?? null)
             ->setMessage($valeurs['message'] ?? null);
         if (null !== $produit) {
             $demande->setConfiguration($produit)->setDesignation(GrilleTarifaire::libelle($produit))
@@ -195,10 +200,54 @@ final class DemandesSite
     public static function texteAccuse(DemandeDevis $demande): string
     {
         return \sprintf(
-            'Succès Imprim : nous avons bien reçu votre %s %s. Nous vous répondons pendant nos heures d\'ouverture.',
-            $demande->estDevis() ? 'demande de devis' : 'message',
+            'Succès Imprim : nous avons bien reçu votre %s %s. %s',
+            $demande->estDevis() ? 'demande de devis' : ($demande->estRappel() ? 'demande de rappel' : 'message'),
             $demande->getNumero(),
+            $demande->estRappel() && null !== $demande->getRappelLe()
+                ? \sprintf('Nous vous appelons le %s vers %s h.', $demande->getRappelLe()->format('d/m'), $demande->getRappelLe()->format('G'))
+                : 'Nous vous répondons pendant nos heures d\'ouverture.',
         );
+    }
+
+    /** « Site · Suivre une commande · W-DD-0012 » : objet de la conversation ouverte pour la demande. */
+    public static function objetConversation(DemandeDevis $demande): string
+    {
+        $quoi = $demande->estRappel() ? 'Rappel demandé' : ($demande->getLibelleObjet() ?? 'Message');
+
+        return 'Site · '.$quoi.' · '.$demande->getNumero();
+    }
+
+    /** Premier message de la conversation : le texte du visiteur, l'heure du rappel et la commande citée. */
+    public static function texteConversation(DemandeDevis $demande): string
+    {
+        $lignes = [];
+        if ($demande->estRappel() && null !== $demande->getRappelLe()) {
+            $lignes[] = \sprintf('À rappeler le %s à %s h au %s.', $demande->getRappelLe()->format('d/m'), $demande->getRappelLe()->format('G'), $demande->getTelephoneLocal());
+        }
+        if (null !== $demande->getNumeroCommande()) {
+            $lignes[] = 'Commande citée : '.$demande->getNumeroCommande().'.';
+        }
+        $message = trim((string) $demande->getMessage());
+        if ('' !== $message) {
+            $lignes[] = $message;
+        }
+
+        return [] === $lignes ? (string) $demande->getLibelleObjet() : implode("\n", $lignes);
+    }
+
+    /** Commande citée par le visiteur, seulement si elle est bien à ce client. */
+    private function commandeDe(Clients $client, ?string $numero): ?Commandes
+    {
+        if (null === $numero || null === $client->getId()) {
+            return null;
+        }
+        foreach ($this->em->getRepository(Commandes::class)->findBy(['clients' => $client, 'deleted' => false], ['id' => 'DESC'], 200) as $c) {
+            if (0 === strcasecmp((string) $c->getNumero(), $numero) || \App\Service\EspaceClient\SuiviSansCompte::correspond($numero, (string) $c->getNumero())) {
+                return $c;
+            }
+        }
+
+        return null;
     }
 
     /** Fiche de démonstration (app:demo, comptes d'essai) : aucun message. */
@@ -221,8 +270,16 @@ final class DemandesSite
             return 'Déjà préparée';
         }
         $le = new \DateTimeImmutable();
-        $r = PreparationDemande::construire($demande, $this->comptes->clientDuTelephone($demande->getTelephone()), $le, $this->tarifAtelier->reglages(), $this->piecesM2?->espacement());
+        $existant = $this->comptes->clientDuTelephone($demande->getTelephone());
+        $r = PreparationDemande::construire($demande, $existant, $le, $this->tarifAtelier->reglages(), $this->piecesM2?->espacement());
         $aEnvoyer = [];
+        // Message ou rappel (maquette EC08) : une conversation attribuée de la messagerie clients, qui
+        // exige une fiche client ; un inconnu reçoit une fiche « Site » à compléter et un prospect, comme un devis.
+        if (!$demande->estDevis() && null !== $this->conversations && null === $r['client']) {
+            $r['client'] = PreparationDemande::nouveauClient($demande);
+            $r['nouveauClient'] = true;
+            $r['prospect'] ??= PreparationDemande::prospect($demande, $r['client'], $le, $demande->getMessage());
+        }
 
         if ($r['nouveauClient']) {
             $this->em->persist($r['client']);
@@ -241,11 +298,24 @@ final class DemandesSite
             array_push($aEnvoyer, $devis, ...$devis->getDevisDetails()->toArray());
         }
         $demande->preparer($r['client'], $r['prospect'], $devis, $le);
+        if (!$demande->estDevis() && null !== $this->conversations && null !== $r['client']) {
+            $demande->setConversation($this->conversations->ouvrirPourDemandeSite(
+                $r['client'],
+                $this->commandeDe($r['client'], $demande->getNumeroCommande()),
+                self::objetConversation($demande),
+                self::texteConversation($demande),
+                $demande->getNom(),
+                $demande->getCreeLe(),
+                $le,
+            ));
+        }
 
         $qui = $demande->getNom().(null !== $r['client'] && !$r['nouveauClient'] ? ', client '.$r['client']->getCode() : '');
         $message = $demande->estDevis()
             ? \sprintf('Demande de devis %s du site (%s) : devis brouillon %s à vérifier avant tout envoi.', $demande->getNumero(), $qui, $devis?->getNumero())
-            : \sprintf('Message %s du site (%s) : %s.', $demande->getNumero(), $qui, $demande->getLibelleObjet() ?? 'question');
+            : ($demande->estRappel()
+                ? \sprintf('Rappel %s demandé sur le site (%s) : à rappeler le %s à %s h.', $demande->getNumero(), $qui, $demande->getRappelLe()?->format('d/m'), $demande->getRappelLe()?->format('G'))
+                : \sprintf('Message %s du site (%s) : %s.', $demande->getNumero(), $qui, $demande->getLibelleObjet() ?? 'question'));
         $this->notifications->notifierRoles(['ROLE_DEVIS', 'ROLE_ADMIN'], $message, 'app_demandes_site_voir', ['id' => $demande->getId()]);
 
         if ($journaliser) {

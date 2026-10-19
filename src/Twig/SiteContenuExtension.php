@@ -115,6 +115,6 @@ final class SiteContenuExtension extends AbstractExtension
      */
     public static function jsonLd(array $donnees): string
     {
-        return '<script type="application/ld+json">'.json_encode($donnees, \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_HEX_APOS | \JSON_HEX_QUOT | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES).'</script>';
+        return '<script type="application/ld+json">'.json_encode($donnees, \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES).'</script>';
     }
 }

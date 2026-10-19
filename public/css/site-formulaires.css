@@ -80,10 +80,6 @@
 .si-contact { padding-top: 28px; }
 .si-contact-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; align-items: start; }
 .si-contact-infos { display: flex; flex-direction: column; gap: 14px; }
-.si-plan { position: relative; display: block; overflow: hidden; border: 1px solid var(--bordure); border-radius: var(--rayon); line-height: 0; }
-.si-plan > svg { display: block; width: 100%; height: 210px; }
-.si-plan .si-bouton { position: absolute; right: 14px; bottom: 14px; line-height: 1.2; }
-.si-plan:hover .si-bouton { background: var(--bleu-fonce); }
 .si-contact-cartes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .si-info { display: flex; gap: 12px; padding: 16px; }
 .si-info h2 { font-size: 16px; margin: 0 0 4px; }

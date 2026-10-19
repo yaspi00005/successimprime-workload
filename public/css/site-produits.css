@@ -48,6 +48,7 @@
 
 .si-produits-vide { max-width: 560px; }
 .si-produits-vide p { color: var(--texte-doux); }
+.si-produits-vide-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .si-produits-autre { display: flex; flex-direction: column; gap: 14px; margin-top: 28px; padding: 20px; border-radius: var(--rayon); background: var(--bleu-pale); }
 .si-produits-autre h2 { margin: 0 0 4px; font-size: 20px; }
 .si-produits-autre p { margin: 0; color: var(--texte-doux); }
@@ -115,6 +116,9 @@
 .si-calc-total { margin: 16px 0 14px; }
 .si-calc-total span { display: block; font-size: 14px; color: var(--texte-doux); }
 .si-calc-total strong { display: block; font-size: clamp(34px, 4vw, 46px); font-weight: 800; line-height: 1.1; letter-spacing: -.5px; color: var(--bleu); white-space: nowrap; }
+.si-calc-pret { display: flex; align-items: center; gap: 8px; margin: -6px 0 14px; padding: 8px 12px; border-radius: 10px; background: #E6F6EC; color: #126B34; font-size: 14px; }
+.si-calc-pret[hidden] { display: none; }
+.si-calc-pret strong { font-weight: 700; }
 .si-calc-actions { display: flex; flex-direction: column; gap: 10px; }
 .si-calc-actions .si-bouton { width: 100%; padding-left: 12px; padding-right: 12px; white-space: normal; text-align: center; }
 .si-calc-precision { margin: 12px 0 0; }

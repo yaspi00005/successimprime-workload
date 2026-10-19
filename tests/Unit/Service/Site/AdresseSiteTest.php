@@ -23,7 +23,9 @@ final class AdresseSiteTest extends TestCase
     public static function saisiesProvider(): iterable
     {
         yield 'domaine seul' => ['succesimprim.com', 'https://succesimprim.com'];
-        yield 'avec www et barre' => ['https://www.succesimprim.com/', 'https://www.succesimprim.com'];
+        yield 'avec www et barre : sans www' => ['https://www.succesimprim.com/', 'https://succesimprim.com'];
+        yield 'www en majuscules' => ['WWW.SuccesImprim.com', 'https://succesimprim.com'];
+        yield 'www seul devant un nom de premier niveau' => ['www.com', 'https://www.com'];
         yield 'http et chemin' => ['http://succesimprim.com/accueil?x=1', 'https://succesimprim.com'];
         yield 'majuscules et blancs' => ['  SuccesImprim.COM ', 'https://succesimprim.com'];
         yield 'vide' => ['', null];
@@ -71,11 +73,11 @@ final class AdresseSiteTest extends TestCase
         $requetes->push(Request::create('http://192.168.1.10:8000/site'));
         $adresse = new AdresseSite($entreprises, $acces, $requetes);
 
-        self::assertSame('https://www.succesimprim.com', $adresse->base());
-        self::assertSame('https://www.succesimprim.com/', $adresse->url('/'));
-        self::assertSame('https://www.succesimprim.com/faq', $adresse->url('/faq'));
-        self::assertSame('https://www.succesimprim.com/images/logo.png', $adresse->url('images/logo.png'));
+        self::assertSame('https://succesimprim.com', $adresse->base());
+        self::assertSame('https://succesimprim.com/', $adresse->url('/'));
+        self::assertSame('https://succesimprim.com/faq', $adresse->url('/faq'));
+        self::assertSame('https://succesimprim.com/images/logo.png', $adresse->url('images/logo.png'));
         // Une adresse complète de l'ERP garde seulement son chemin.
-        self::assertSame('https://www.succesimprim.com/uploads/a.webp', $adresse->url('http://192.168.1.10:8000/uploads/a.webp'));
+        self::assertSame('https://succesimprim.com/uploads/a.webp', $adresse->url('http://192.168.1.10:8000/uploads/a.webp'));
     }
 }

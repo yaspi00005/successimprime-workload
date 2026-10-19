@@ -38,7 +38,7 @@ final class PhotosProduits
         'panneau-akylux' => ['mots' => ['akylux', 'panneau', 'forex', 'dibond'], 'alt' => 'Panneau Akylux imprimé au logo Madial Group'],
         'casquette' => ['mots' => ['casquette'], 'alt' => 'Casquette blanche à visière verte, brodée du logo MDG'],
         'polo' => ['mots' => ['polo'], 'alt' => 'Polo blanc à col vert, logo MDG sur la poitrine'],
-        't-shirt' => ['mots' => ['t-shirt', 'tee-shirt', 'tshirt', 'dtf'], 'alt' => 'T-shirt blanc imprimé du logo Succès Imprim « Nous imprimons vos succès !! »'],
+        't-shirt' => ['mots' => ['t-shirt', 'tee-shirt', 'tshirt', 'dtf'], 'alt' => 'T-shirt blanc imprimé du logo Succès Imprim « Nous imprimons vos succès ! »'],
         'brochure' => ['mots' => ['brochure', 'catalogue', 'livret', 'magazine', 'dépliant', 'depliant'], 'alt' => 'Brochures ouvertes et fermées aux couleurs de Madial Group'],
         'affiches' => ['mots' => ['affiche', 'poster'], 'alt' => 'Deux affiches au logo Succès Imprim sur des vagues bleues, rouges et jaunes'],
         'cartes-de-visite' => ['mots' => ['carte de visite', 'cartes de visite'], 'alt' => 'Cartes de visite au logo Madial Group, recto, verso et en pile'],
@@ -78,8 +78,19 @@ final class PhotosProduits
      */
     public function photo(?string $produit): ?array
     {
-        $nom = self::nomPour($produit);
-        if (null === $nom) {
+        return $this->parNom(self::nomPour($produit));
+    }
+
+    /**
+     * Photo par son nom de fichier (« cartes-de-visite »), même forme que
+     * photo() ; null si elle n'est pas connue ou si ses fichiers manquent.
+     * Sert aussi aux cartes des univers de l'accueil (PhotosSite::UNIVERS).
+     *
+     * @return array{nom: string, src: string, fichiers: list<array{chemin: string, largeur: int}>, largeur: int, hauteur: int, alt: string, cadrage: null}|null
+     */
+    public function parNom(?string $nom): ?array
+    {
+        if (null === $nom || !isset(self::PHOTOS[$nom])) {
             return null;
         }
         $fichiers = [];

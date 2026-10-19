@@ -3,6 +3,7 @@
 namespace App\Service\Site;
 
 use App\Controller\SiteController;
+use App\Entity\CommandesDetails;
 use App\Entity\ProduitConfiguration;
 use App\Entity\Produits;
 use App\Service\Catalogue\NomCommercial;
@@ -49,8 +50,14 @@ final class CatalogueSite
     /** Illustration par défaut d'une famille d'univers (SiteController::FAMILLES). */
     public const ILLUSTRATION_FAMILLE = ['grand' => 'bache', 'textile' => 'tshirt', 'petit' => 'papier', 'signaletique' => 'rollup'];
 
+    /** Produits phares de l'accueil (« Prix de départ, sans surprise »). */
+    public const PHARES = 4;
+
     /** @var list<ProduitConfiguration>|null */
     private ?array $configurations = null;
+
+    /** @var list<array{nom: string, cle: string, ids: list<int>, famille: string, produits: list<array<string, mixed>>}>|null */
+    private ?array $univers = null;
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -77,6 +84,9 @@ final class CatalogueSite
      */
     public function univers(): array
     {
+        if (null !== $this->univers) {
+            return $this->univers;
+        }
         $produits = $this->em->createQueryBuilder()
             ->select('p', 'cat')
             ->from(Produits::class, 'p')
@@ -85,7 +95,76 @@ final class CatalogueSite
             ->orderBy('cat.ordre', 'ASC')->addOrderBy('cat.nom', 'ASC')->addOrderBy('p.ordre', 'ASC')->addOrderBy('p.nom', 'ASC')
             ->getQuery()->getResult();
 
-        return self::regrouper($produits, $this->configurations());
+        return $this->univers = self::regrouper($produits, $this->configurations());
+    }
+
+    /**
+     * Produits phares de l'accueil : les produits publiés qui ont un prix
+     * de départ, les plus commandés d'abord (lignes de commande, toutes
+     * dates, commandes supprimées exclues), puis dans l'ordre du catalogue ;
+     * un par univers tant que c'est possible. Aucun produit inventé : un
+     * catalogue vide donne une liste vide.
+     *
+     * @return list<array<string, mixed>> produits de univers(), avec « univers » (nom), « cle » et « famille »
+     */
+    public function phares(int $nombre = self::PHARES): array
+    {
+        $candidats = [];
+        foreach ($this->univers() as $u) {
+            foreach ($u['produits'] as $p) {
+                if (null !== $p['prix']) {
+                    $candidats[] = $p + ['univers' => $u['nom'], 'cle' => $u['cle'], 'famille' => $u['famille']];
+                }
+            }
+        }
+        if ([] === $candidats) {
+            return [];
+        }
+        $commandes = [];
+        foreach ($this->em->createQueryBuilder()
+            ->select('IDENTITY(d.produit) AS produit', 'COUNT(d.id) AS nombre')
+            ->from(CommandesDetails::class, 'd')
+            ->innerJoin('d.commande', 'c')
+            ->where('c.deleted = false')->andWhere('d.produit IN (:ids)')
+            ->setParameter('ids', array_column($candidats, 'id'))
+            ->groupBy('d.produit')
+            ->getQuery()->getArrayResult() as $ligne) {
+            $commandes[(int) $ligne['produit']] = (int) $ligne['nombre'];
+        }
+
+        return self::choisirPhares($candidats, $commandes, $nombre);
+    }
+
+    /**
+     * Rangement des phares : les plus commandés d'abord, l'ordre du catalogue
+     * à égalité ; un premier tour prend un produit par univers, le second
+     * complète.
+     *
+     * @param list<array<string, mixed>> $candidats produits avec « id » et « univers »
+     * @param array<int, int>            $commandes identifiant du produit => lignes commandées
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function choisirPhares(array $candidats, array $commandes, int $nombre): array
+    {
+        $rang = array_flip(array_keys($candidats));
+        uksort($candidats, static fn (int $a, int $b): int => [-($commandes[$candidats[$a]['id']] ?? 0), $rang[$a]] <=> [-($commandes[$candidats[$b]['id']] ?? 0), $rang[$b]]);
+        $choisis = [];
+        $univers = [];
+        foreach ($candidats as $i => $p) {
+            if (\count($choisis) < $nombre && !isset($univers[$p['univers']])) {
+                $choisis[$i] = $p;
+                $univers[$p['univers']] = true;
+            }
+        }
+        foreach ($candidats as $i => $p) {
+            if (\count($choisis) < $nombre && !isset($choisis[$i])) {
+                $choisis[$i] = $p;
+            }
+        }
+
+        // Dans l'ordre de popularité.
+        return array_values(array_filter($candidats, static fn (int $i): bool => isset($choisis[$i]), \ARRAY_FILTER_USE_KEY));
     }
 
     /**
@@ -134,6 +213,8 @@ final class CatalogueSite
                 'categorie' => $nomCategorie,
                 'configuration' => $depart ? $depart['configuration']->getId() : null,
                 'prix' => null === $depart ? null : ['montant' => $depart['montant'], 'unite' => $depart['unite'], 'minimum' => $depart['minimum']],
+                // Délai de fabrication de la fiche produit (docs/produits.md), en heures ; null : non annoncé.
+                'delai' => $p->getDelaiHeures(),
             ];
         }
 

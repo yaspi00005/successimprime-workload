@@ -40,7 +40,18 @@ final class SiteAtelierController extends AbstractController
     ) {
     }
 
-    #[Route('/atelier-3d', name: 'app_site_atelier', methods: ['GET'])]
+    /**
+     * Ancienne adresse du studio textile (« Atelier 3D », jusqu'au 19/10/2026) :
+     * renvoyée en 301 vers /studio-textile, paramètres gardés, pour les liens
+     * déjà partagés et les moteurs de recherche.
+     */
+    #[Route('/atelier-3d', name: 'app_site_atelier_ancienne', methods: ['GET'])]
+    public function ancienneAdresse(Request $request): Response
+    {
+        return $this->redirectToRoute('app_site_atelier', $request->query->all(), Response::HTTP_MOVED_PERMANENTLY);
+    }
+
+    #[Route('/studio-textile', name: 'app_site_atelier', methods: ['GET'])]
     public function atelier(): Response
     {
         $modeles = $this->catalogue->modeles();
@@ -65,7 +76,7 @@ final class SiteAtelierController extends AbstractController
     }
 
     /** Prix public (le visiteur n'a ni prix B2B ni promotion). */
-    #[Route('/atelier-3d/prix', name: 'app_site_atelier_prix', methods: ['GET'])]
+    #[Route('/studio-textile/prix', name: 'app_site_atelier_prix', methods: ['GET'])]
     public function prix(Request $request): JsonResponse
     {
         $modele = $this->catalogue->modele($request->query->getString('modele'));
@@ -80,7 +91,7 @@ final class SiteAtelierController extends AbstractController
         return $reponse;
     }
 
-    #[Route('/atelier-3d/image', name: 'app_site_atelier_image', methods: ['POST'])]
+    #[Route('/studio-textile/image', name: 'app_site_atelier_image', methods: ['POST'])]
     public function image(Request $request): JsonResponse
     {
         if (!$this->isCsrfTokenValid(self::CSRF, (string) $request->headers->get('X-CSRF-TOKEN'))) {
@@ -91,7 +102,7 @@ final class SiteAtelierController extends AbstractController
     }
 
     /** « Valider mon modèle » : demande de devis sans compte, jamais de prix envoyé par la page. */
-    #[Route('/atelier-3d/valider', name: 'app_site_atelier_valider', methods: ['POST'])]
+    #[Route('/studio-textile/valider', name: 'app_site_atelier_valider', methods: ['POST'])]
     public function valider(Request $request): JsonResponse
     {
         $donnees = $request->request->all();

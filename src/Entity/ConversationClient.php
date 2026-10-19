@@ -47,6 +47,9 @@ class ConversationClient
 
     public const OBJET_MAX = 120;
 
+    /** Ouverte au local pour un message du formulaire Contact du site (maquette EC08) : jamais envoyée au site. */
+    public const ORIGINE_SITE = 'site';
+
     /** Qui a clôturé quand la clôture est automatique (72 h sans réponse du client). */
     public const CLOTURE_AUTO = 'Clôture automatique';
 
@@ -144,6 +147,15 @@ class ConversationClient
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $relanceeLe = null;
 
+    /**
+     * Au local : « site » pour une conversation ouverte à partir d'un message
+     * du formulaire Contact. Elle reste au local (CatalogueSynchro, « pret ») :
+     * le visiteur a pu taper le numéro d'un autre, le client ne doit jamais
+     * la voir dans son espace.
+     */
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $origine = null;
+
     /** Sans argument : la synchronisation crée la copie puis la remplit. */
     public function __construct()
     {
@@ -163,6 +175,23 @@ class ConversationClient
         $c->creeLe = $le;
 
         return $c;
+    }
+
+    public function getOrigine(): ?string
+    {
+        return $this->origine;
+    }
+
+    public function setOrigine(?string $origine): static
+    {
+        $this->origine = $origine;
+
+        return $this;
+    }
+
+    public function estDuSite(): bool
+    {
+        return self::ORIGINE_SITE === $this->origine;
     }
 
     public function estOuverte(): bool

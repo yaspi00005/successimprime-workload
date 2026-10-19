@@ -144,8 +144,15 @@ sudo -u succes php bin/console app:verifier-installation
 `/etc/nginx/sites-available/succesimprim` :
 
 ```
+# Une seule adresse pour Google (docs/referencement.md) : www renvoie en 301,
+# chemin et paramètres gardés, comme la règle de public/.htaccess sous Apache.
 server {
-    server_name succesimprim.com www.succesimprim.com;
+    server_name www.succesimprim.com;
+    return 301 https://succesimprim.com$request_uri;
+}
+
+server {
+    server_name succesimprim.com;
     root /srv/successimprim/public;
     client_max_body_size 64m;
 
@@ -175,6 +182,7 @@ Le pool PHP-FPM `succes` (`/etc/php/8.4/fpm/pool.d/succes.conf`) tourne sous l'u
 sudo ln -s /etc/nginx/sites-available/succesimprim /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d succesimprim.com -d www.succesimprim.com
+curl -sI http://www.succesimprim.com/contact | grep -i location   # https://succesimprim.com/contact
 sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 ```
 
@@ -215,7 +223,7 @@ Sur ce serveur en ligne, la commande refuse de tourner : ne pas l'ajouter ici.
 1. Sur l'ERP local, dans `.env.local` : `SYNC_URL=https://succesimprim.com` et la même `SYNC_CLE`.
 2. `php bin/console app:verifier-installation` sur l'ERP local.
 3. Premier chargement : `php bin/console app:synchro --initialiser`.
-4. Tâche planifiée de la synchronisation (docs/synchronisation.md, « Mise en route »). Elle lance aussi `app:messagerie:delais` (délais de réponse aux clients, escalade, clôture automatique : `docs/messagerie-clients.md`) et `app:notifications` (notifications de l'équipe : `docs/notifications-equipe.md`).
+4. Tâche planifiée de la synchronisation (docs/synchronisation.md, « Mise en route »). Elle lance aussi `app:messagerie:delais` (délais de réponse aux clients, escalade, clôture automatique : `docs/messagerie-clients.md`) et `app:notifications` (notifications de l'équipe : `docs/notifications-equipe.md`). `app:messagerie:delais` prévient aussi la direction d'un rappel promis sur la page Contact et pas fait 15 minutes après l'heure (docs/site-vitrine.md, « Contact, rappel, engagements et Comment venir »).
 
 ## Comptes du personnel en ligne
 
@@ -282,3 +290,11 @@ Sur le serveur, `cache:clear`, `cache:warmup` et `assets:install` se lancent tou
 ## Journaux
 
 En production, les commandes n'affichent plus les avis « User Deprecated » (longues lignes en JSON après chaque commande) : ce sont des annonces de changements des prochaines versions de Symfony, Twig ou Doctrine, pas des erreurs. Ils vont dans `var/log/deprecations-AAAA-MM-JJ.log`, un fichier par jour, 3 jours gardés, pour préparer une mise à jour. Les vraies erreurs s'affichent toujours dans le terminal et vont dans le journal d'erreurs de PHP du serveur.
+
+## Mise à jour du 19/10/2026 (Contact, engagements, Comment venir)
+
+- Migration `Version20261019150000` (colonnes ajoutées à `demande_devis` et `conversation_client`, rien de supprimé), à passer sur l'ERP local **et** en ligne : `doctrine:migrations:migrate`.
+- Nouvelles adresses publiques : `/comment-venir`, `/suivre-ma-reclamation`, `POST /contact/rappel`, `POST /nos-engagements/signaler`. Elles sont déjà dans `security.yaml`, rien à régler sur le serveur.
+- Puis, au local : Réglages › « Site : contact et accueil » (accès en voiture, à moto, livraison, si on veut les montrer) et « Site : engagements et rappels » (écran de rappel, éteint par défaut). Lancer une synchronisation des réglages : `app:synchro --initialiser=reglages`.
+- Les chiffres de « Nos engagements » ne paraissent qu'après Clients › Engagements clients › « Publier les chiffres ».
+

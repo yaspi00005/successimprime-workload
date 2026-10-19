@@ -1,0 +1,64 @@
+{#
+	« Un engagement non tenu ? » envoyé depuis Nos engagements (maquette
+	EC02) : réclamation ouverte (commande retrouvée par son numéro et le
+	téléphone) ou message transmis à l'équipe ; sinon le formulaire avec
+	ses erreurs. Jamais en cache ni indexée.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_engagements' %}
+{% set wa = site_whatsapp('Bonjour Succès Imprim, un engagement n\'a pas été tenu' ~ (resultat and resultat.numero ? ' (demande ' ~ resultat.numero ~ ')' : '') ~ ' : ') %}
+
+{% block title %}{{ resultat ? 'Signalement envoyé' : 'Un engagement non tenu ?' }} · Succès Imprim{% endblock %}
+{% block description %}Signalez un engagement non tenu à la direction de Succès Imprim : réponse et solution appliquée, suivies avec le numéro de la réclamation.{% endblock %}
+
+{% block entete %}
+	<meta name="robots" content="noindex, nofollow">
+	{{ site_styles('css/site-formulaires.css', 'css/site-contact.css', 'css/site-engagements.css') }}
+{% endblock %}
+
+{% block contenu %}
+	<section class="se-page">
+		<div class="si-cadre se-page-grille">
+			{% if resultat %}
+				<div class="se-carte si-recu-carte">
+					<span class="si-recu-coche" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+					{% if resultat.type == 'reclamation' %}
+						<h1>Réclamation {{ resultat.numero }} ouverte.</h1>
+						<p>Elle concerne la commande <strong>{{ resultat.commande }}</strong>. La direction vous répond sous {{ resultat.delai }}&nbsp;h, avec la solution appliquée.</p>
+						{% if site_lien('app_site_reclamation_suivi') %}<p><a href="{{ site_lien('app_site_reclamation_suivi') }}?numero={{ resultat.numero|url_encode }}" class="si-bouton si-bouton-rouge si-bouton-grand">Suivre ma réclamation</a></p>{% endif %}
+					{% else %}
+						<h1>Message transmis à la direction.</h1>
+						<p>{% if resultat.numero %}Votre demande porte le numéro <span class="si-recu-num">{{ resultat.numero }}</span>. {% endif %}Nous n'avons pas retrouvé la commande avec ce numéro et ce téléphone&nbsp;: l'équipe vous rappelle pour ouvrir la réclamation avec vous.</p>
+					{% endif %}
+					{% if wa %}<p><a href="{{ wa }}" class="si-bouton si-bouton-wa" target="_blank" rel="noopener">{{ include('site/_icone_whatsapp.svg.twig') }} Continuer sur WhatsApp</a></p>{% endif %}
+				</div>
+			{% else %}
+				<form method="post" action="{{ path('app_site_engagements_signaler') }}" class="se-carte se-signaler" novalidate>
+					<h1>Un engagement non tenu&nbsp;?</h1>
+					{% if erreurs._ is defined %}<p class="si-alerte" role="alert"><strong>{{ erreurs._ }}</strong></p>{% elseif erreurs %}<p class="si-alerte" role="alert"><strong>Vérifiez : {{ erreurs|join(' ') }}</strong></p>{% endif %}
+					<input type="hidden" name="_t" value="{{ jeton }}">
+					<div class="si-piege" aria-hidden="true"><label for="se-site">Site web (laissez ce champ vide)</label><input type="text" id="se-site" name="{{ constant('App\\Service\\Site\\FormulaireDemande::PIEGE') }}" tabindex="-1" autocomplete="off"></div>
+					<div class="se-champs">
+						<label for="se-nom">Nom *</label><input id="se-nom" name="nom" value="{{ saisie.nom }}" autocomplete="name" maxlength="120" required{% if erreurs.nom is defined %} aria-invalid="true"{% endif %}>
+						<label for="se-tel">Téléphone *</label><input id="se-tel" name="telephone" type="tel" value="{{ saisie.telephone }}" inputmode="tel" maxlength="20" required{% if erreurs.telephone is defined %} aria-invalid="true"{% endif %}>
+						<label for="se-num">N° de commande</label><input id="se-num" name="numero_commande" value="{{ saisie.numero_commande }}" maxlength="40"{% if erreurs.numero_commande is defined %} aria-invalid="true"{% endif %}>
+						<label for="se-eng">Engagement concerné</label>
+						<select id="se-eng" name="engagement"><option value="">—</option>{% for t in titres %}<option{% if t == saisie.engagement %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+						<label for="se-msg">Ce qui s'est passé *</label><textarea id="se-msg" name="message" rows="4" maxlength="{{ constant('App\\Entity\\DemandeDevis::MESSAGE_MAX') }}" required{% if erreurs.message is defined %} aria-invalid="true"{% endif %}>{{ saisie.message }}</textarea>
+					</div>
+					<div class="se-signaler-actions"><button type="submit" class="si-bouton si-bouton-jaune">Envoyer</button></div>
+				</form>
+			{% endif %}
+			<nav class="se-carte si-attente" aria-labelledby="se-ensuite">
+				<h2 id="se-ensuite">Et ensuite</h2>
+				<ul>
+					{% for route, libelle in {app_site_engagements: 'Relire nos engagements', app_site_suivi: 'Suivre ma commande', app_site_contact: 'Contacter l\'atelier'} %}
+						{% set url = site_lien(route) %}
+						{% if url %}<li><a href="{{ url }}">{{ libelle }}</a></li>{% endif %}
+					{% endfor %}
+				</ul>
+			</nav>
+		</div>
+	</section>
+{% endblock %}

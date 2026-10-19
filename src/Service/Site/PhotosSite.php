@@ -33,7 +33,7 @@ final class PhotosSite
      * « Notre local »).
      */
     public const PHOTOS = [
-        'enseigne-succes-imprim-bamako' => ['largeurs' => [480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Façade de l\'imprimerie Succès Imprim, sa grande enseigne « Nous imprimons vos succès !! » et des passants dans une rue de Bamako au coucher du soleil'],
+        'enseigne-succes-imprim-bamako' => ['largeurs' => [480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Façade de l\'imprimerie Succès Imprim, sa grande enseigne « Nous imprimons vos succès ! » et des passants dans une rue de Bamako au coucher du soleil'],
         'atelier-impression-grand-format' => ['largeurs' => [320, 480, 800, 1200], 'largeur' => 1200, 'hauteur' => 675, 'alt' => 'Un opérateur en polo bleu sort une bâche aux couleurs vives d\'une imprimante grand format, dans un atelier lumineux qui donne sur la ville'],
         'banniere-vinyle-succes-imprim' => ['largeurs' => [320, 480, 800], 'largeur' => 800, 'hauteur' => 600, 'alt' => 'Une imprimante grand format imprime une bannière en vinyle au logo Succès Imprim'],
         'banniere-grand-format-couleurs' => ['largeurs' => [320, 480, 800], 'largeur' => 800, 'hauteur' => 600, 'alt' => 'Une bannière aux vagues bleues, rouges et jaunes sort d\'une imprimante grand format'],
@@ -59,6 +59,28 @@ final class PhotosSite
     /** Photo de l'allée : en grand au-dessus de la carte de la page Contact. */
     public const ALLEE = 'allee-entree-succes-imprim';
 
+    /** Préfixe d'une photo de produit (PhotosProduits) utilisée par une carte d'univers : « produits/roll-up ». */
+    public const PRODUIT = 'produits/';
+
+    /**
+     * Univers de l'accueil d'après les mots du nom de la catégorie, essayés
+     * avant sa famille (analyse du site du 19/10/2026 : « Papeterie »
+     * montrait une bâche, « Communication » des t-shirts, « Événementiel »
+     * une vitrine). Mots en minuscules, cherchés en début de mot ; photos
+     * dans l'ordre de préférence, « produits/… » pour une photo de produit
+     * (PhotosProduits, carrée, fond blanc). Il n'y a pas encore de photo de
+     * scène de cartes de visite, de flyers ou de roll-up : ce sont les
+     * photos des produits qui servent.
+     */
+    public const UNIVERS = [
+        ['mots' => ['papeterie', 'papier', 'carte', 'flyer', 'petit format', 'impression numérique', 'impression numerique', 'bureautique'], 'photos' => ['produits/cartes-de-visite', 'produits/flyers', 'depliants-imprimes-succes-imprim', 'produits/brochure']],
+        ['mots' => ['communication', 'publicité', 'publicite', 'roll-up', 'kakémono', 'kakemono', 'plv'], 'photos' => ['produits/roll-up', 'produits/kakemono', 'vitrophanie-porte-vitrine']],
+        ['mots' => ['événementiel', 'evenementiel', 'événement', 'evenement', 'salon', 'badge'], 'photos' => ['t-shirts-dtf-succes-imprim', 'produits/kakemono', 'produits/t-shirt']],
+        ['mots' => ['textile', 't-shirt', 'tee-shirt', 'dtf', 'polo', 'casquette', 'vêtement', 'vetement'], 'photos' => ['t-shirts-dtf-succes-imprim', 'produits/t-shirt', 'produits/polo']],
+        ['mots' => ['signalétique', 'signaletique', 'enseigne', 'vitrine', 'vitrophanie', 'adhésif', 'adhesif'], 'photos' => ['vitrophanie-porte-vitrine', 'produits/vitrine-micro-perforee', 'fourgon-publicitaire-succes-imprim']],
+        ['mots' => ['grand format', 'bâche', 'bache', 'banderole', 'vinyle'], 'photos' => ['banniere-grand-format-couleurs', 'banniere-vinyle-succes-imprim', 'atelier-impression-grand-format']],
+    ];
+
     /** Univers de l'accueil (SiteController::FAMILLES) => photos possibles, dans l'ordre de préférence. */
     public const FAMILLES = [
         'grand' => ['banniere-grand-format-couleurs', 'banniere-vinyle-succes-imprim', 'atelier-impression-grand-format'],
@@ -81,9 +103,12 @@ final class PhotosSite
     /** @var array<string, bool> fichiers déjà cherchés sur le disque */
     private array $presents = [];
 
+    private readonly PhotosProduits $produits;
+
     public function __construct(
         #[Autowire('%kernel.project_dir%/public')] private readonly string $dossierPublic,
     ) {
+        $this->produits = new PhotosProduits($dossierPublic);
     }
 
     /**
@@ -94,6 +119,11 @@ final class PhotosSite
      */
     public function photo(?string $nom): ?array
     {
+        if (null !== $nom && str_starts_with($nom, self::PRODUIT)) {
+            $photo = $this->produits->parNom(substr($nom, \strlen(self::PRODUIT)));
+
+            return null === $photo ? null : ['nom' => $nom] + $photo + ['legende' => null];
+        }
         $definition = self::PHOTOS[$nom] ?? null;
         if (null === $definition || null === $nom) {
             return null;
@@ -152,6 +182,36 @@ final class PhotosSite
     public function pourFamilles(array $familles, array $dejaPrises = []): array
     {
         return $this->choisir(array_map(static fn (string $f): array => self::FAMILLES[$f] ?? [], $familles), $dejaPrises);
+    }
+
+    /**
+     * Photos des univers de l'accueil d'après le nom de leur catégorie
+     * (UNIVERS), puis leur famille (FAMILLES) : la première libre, jamais
+     * deux fois la même dans la page, sinon null (l'icône reste).
+     *
+     * @param list<array{nom: string, famille: string}> $univers
+     * @param list<string>                              $dejaPrises
+     *
+     * @return list<?string>
+     */
+    public function pourUnivers(array $univers, array $dejaPrises = []): array
+    {
+        return $this->choisir(array_map(static fn (array $u): array => array_values(array_unique([...self::selonUnivers($u['nom']), ...(self::FAMILLES[$u['famille']] ?? [])])), $univers), $dejaPrises);
+    }
+
+    /** @return list<string> photos possibles d'après les mots du nom d'un univers, dans l'ordre de UNIVERS */
+    public static function selonUnivers(string $nom): array
+    {
+        $nom = mb_strtolower($nom);
+        foreach (self::UNIVERS as $regle) {
+            foreach ($regle['mots'] as $mot) {
+                if (preg_match('/(?<![\p{L}\p{N}])'.preg_quote($mot, '/').'/u', $nom)) {
+                    return $regle['photos'];
+                }
+            }
+        }
+
+        return [];
     }
 
     /**

@@ -12,6 +12,14 @@ DirectoryIndex index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Une seule adresse pour Google : succesimprim.com, sans « www » (décision du
+    # gérant du 15/10/2026, docs/referencement.md). www.succesimprim.com renvoie en
+    # 301 vers la même page sans « www », directement en https (un seul détour),
+    # chemin et paramètres gardés. Seul ce domaine est visé : XAMPP (localhost),
+    # l'adresse temporaire de l'hébergeur et le dossier public/ ne changent pas.
+    RewriteCond %{HTTP_HOST} ^www\.succesimprim\.com$ [NC]
+    RewriteRule ^ https://succesimprim.com%{REQUEST_URI} [L,R=301,NE]
+
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 

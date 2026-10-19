@@ -4,14 +4,21 @@ namespace App\Controller;
 
 use App\Entity\DemandeDevis;
 use App\Entity\ProduitConfiguration;
+use App\Entity\Commandes;
 use App\Service\Catalogue\NomCommercial;
+use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FichiersClient;
+use App\Service\EspaceClient\SuiviSansCompte;
+use App\Service\Messagerie\ReglesReponse;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\PiecesParMetreCarre;
 use App\Service\Site\ContactSite;
 use App\Service\Site\DemandesSite;
 use App\Service\Site\FormulaireDemande;
 use App\Service\Site\JetonsSite;
+use App\Service\Site\RappelsSite;
+use App\Service\Site\SuiviSite;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -46,6 +53,11 @@ final class SiteDemandeController extends AbstractController
         #[Autowire(service: 'limiter.site_demande_ip')] private readonly RateLimiterFactoryInterface $limite,
         private readonly PiecesParMetreCarre $piecesM2,
         private readonly JetonsSite $jetons,
+        private readonly RappelsSite $rappels,
+        private readonly SuiviSansCompte $suivi,
+        private readonly EspaceClient $espace,
+        private readonly ReglesReponse $regles,
+        private readonly EntityManagerInterface $em,
     ) {
     }
 
@@ -53,17 +65,54 @@ final class SiteDemandeController extends AbstractController
     public function contact(Request $request): Response
     {
         $objet = (string) $request->query->get('objet', '');
-        $saisie = ['nom' => '', 'telephone' => '', 'objet' => isset(DemandeDevis::OBJETS[$objet]) ? $objet : 'devis', 'message' => ''];
+        $saisie = ['nom' => '', 'telephone' => '', 'objet' => isset(DemandeDevis::OBJETS[$objet]) ? $objet : 'devis', 'numero_commande' => '', 'message' => ''];
         $traitement = $this->traiter(DemandeDevis::NATURE_CONTACT, $request, [], $saisie);
         if ($traitement instanceof Response) {
             return $traitement;
         }
 
-        return $this->page('site/contact.html.twig', $traitement + [
-            'objets' => DemandeDevis::OBJETS,
-            'horaires' => $this->contact->horaires(new \DateTimeImmutable()),
+        return $this->pageContact($traitement, null);
+    }
+
+    /** Demande de rappel de l'écran « atelier fermé » (maquette EC06). */
+    #[Route('/contact/rappel', name: 'app_site_contact_rappel', methods: ['POST'])]
+    public function rappel(Request $request): Response
+    {
+        if (!$this->rappels->actif()) {
+            return $this->redirectToRoute('app_site_contact', [], Response::HTTP_SEE_OTHER);
+        }
+        $traitement = $this->traiter(DemandeDevis::NATURE_RAPPEL, $request, [], ['nom' => '', 'telephone' => '', 'creneau' => '', 'message' => '']);
+        if ($traitement instanceof Response) {
+            return $traitement;
+        }
+
+        return $this->pageContact(['saisie' => ['objet' => 'devis', 'numero_commande' => ''] + $traitement['saisie'], 'erreurs' => [], 'jeton' => $traitement['jeton']], $traitement);
+    }
+
+    /**
+     * Page Contact (maquette EC04) ; atelier fermé, l'écran de rappel
+     * (EC06) prend le haut de la page s'il est activé.
+     *
+     * @param array{saisie: array<string, mixed>, erreurs: array<string, string>, jeton: string}      $formulaire
+     * @param array{saisie: array<string, mixed>, erreurs: array<string, string>, jeton: string}|null $rappel     envoi de rappel à corriger
+     */
+    private function pageContact(array $formulaire, ?array $rappel): Response
+    {
+        $maintenant = new \DateTimeImmutable();
+        $horaires = $this->contact->horaires($maintenant);
+        $creneaux = !$horaires['ouvert'] || null !== $rappel ? $this->rappels->creneaux($maintenant) : null;
+
+        return $this->page('site/contact.html.twig', $formulaire + [
+            'objets' => DemandeDevis::OBJETS_COURTS,
+            'horaires' => $horaires,
             'lienPlan' => $this->contact->lienPlan(),
             'positionPlan' => $this->contact->position(),
+            'delaiReponse' => $this->contact->delaiReponse(),
+            'repere' => $this->contact->repereAdresse(),
+            'tailleMax' => DemandesSite::tailleMaxFichier(),
+            'extensions' => FichiersClient::extensions(),
+            'creneaux' => $creneaux,
+            'rappel' => $rappel ?? ['saisie' => ['nom' => '', 'telephone' => '', 'creneau' => '', 'message' => ''], 'erreurs' => [], 'jeton' => $formulaire['jeton']],
         ]);
     }
 
@@ -102,14 +151,39 @@ final class SiteDemandeController extends AbstractController
     {
         $envoi = $request->hasSession() ? $request->getSession()->remove(self::SESSION) : null;
         $devis = 'app_site_devis_envoyee' === $request->attributes->get('_route');
-        if (!\is_array($envoi) || ($envoi['nature'] ?? null) !== ($devis ? DemandeDevis::NATURE_DEVIS : DemandeDevis::NATURE_CONTACT)) {
+        $natures = $devis ? [DemandeDevis::NATURE_DEVIS] : [DemandeDevis::NATURE_CONTACT, DemandeDevis::NATURE_RAPPEL];
+        if (!\is_array($envoi) || !\in_array($envoi['nature'] ?? null, $natures, true)) {
             return $this->redirectToRoute($devis ? 'app_site_devis' : 'app_site_contact');
         }
+        $maintenant = new \DateTimeImmutable();
 
-        return $this->page('site/demande_envoyee.html.twig', [
+        if ($devis) {
+            return $this->page('site/demande_envoyee.html.twig', [
+                'envoi' => $envoi,
+                'devis' => $devis,
+                'horaires' => $this->contact->horaires($maintenant),
+            ]);
+        }
+
+        // Commande citée et reconnue (numéro + téléphone du visiteur) : son état tout de suite (EC05), sans montant.
+        $carte = null;
+        if (null !== ($envoi['commande'] ?? null)) {
+            $commande = $this->em->find(Commandes::class, (int) $envoi['commande']);
+            $carte = $commande instanceof Commandes ? $this->espace->carte($commande) : null;
+        }
+        $recuLe = isset($envoi['le']) ? new \DateTimeImmutable('@'.$envoi['le']) : $maintenant;
+        $recuLe = $recuLe->setTimezone($maintenant->getTimezone());
+        $heures = $this->regles->heures();
+
+        return $this->page('site/contact_envoye.html.twig', [
             'envoi' => $envoi,
-            'devis' => $devis,
-            'horaires' => $this->contact->horaires(new \DateTimeImmutable()),
+            'horaires' => $this->contact->horaires($maintenant),
+            'recuLe' => $recuLe,
+            'reponseAvant' => $heures->ajouter($recuLe, $this->regles->premiere()),
+            'delaiReponse' => ReglesReponse::duree($this->regles->premiere()),
+            'carte' => $carte,
+            'pastille' => null !== $carte ? SuiviSite::pastille($carte, $maintenant) : null,
+            'etapes' => null !== $carte ? SuiviSite::etapes($carte['etapes'], $maintenant) : [],
         ]);
     }
 
@@ -160,8 +234,10 @@ final class SiteDemandeController extends AbstractController
             return $vue(['_' => $erreur], $saisie);
         }
 
-        ['valeurs' => $valeurs, 'erreurs' => $erreurs] = FormulaireDemande::valider($nature, $donnees, $produits, $this->piecesM2->espacement());
-        $fichier = DemandeDevis::NATURE_DEVIS === $nature ? $request->files->get('fichier') : null;
+        $creneau = fn (string $v): ?\DateTimeImmutable => $this->rappels->creneauValide($v, new \DateTimeImmutable());
+        ['valeurs' => $valeurs, 'erreurs' => $erreurs] = FormulaireDemande::valider($nature, $donnees, $produits, $this->piecesM2->espacement(), $creneau);
+        // Fichier joint : devis et message (logo, photo, PDF), jamais pour un rappel.
+        $fichier = DemandeDevis::NATURE_RAPPEL !== $nature ? $request->files->get('fichier') : null;
         $fichier = $fichier instanceof UploadedFile ? $fichier : null;
         if (null !== $fichier) {
             try {
@@ -188,15 +264,35 @@ final class SiteDemandeController extends AbstractController
             return $vue(['fichier' => $e->getMessage()], $saisie);
         }
 
+        // Commande citée : cherchée comme le suivi sans compte (numéro + téléphone, même limite) ; seul son identifiant est gardé.
+        $commande = null;
+        if (null !== ($valeurs['numeroCommande'] ?? null)) {
+            $commande = $this->suivi->chercher((string) $valeurs['numeroCommande'], (string) $valeurs['telephone'], (string) $request->getClientIp())['commande'];
+        }
+
         $request->getSession()->set(self::SESSION, [
             'nature' => $nature,
             'numero' => $demande->getNumero(),
             'accuse' => null !== $demande->getAccuseEnvoyeLe(),
             'resume' => $demande->estDevis() ? self::sansDemo($demande->getResume()) : $demande->getLibelleObjet(),
             'fichier' => null !== $demande->getFichier(),
+            'prenom' => self::prenom($demande->getNom()),
+            'message' => null !== $demande->getMessage() ? mb_strimwidth($demande->getMessage(), 0, 240, '…') : null,
+            'numeroCommande' => $demande->getNumeroCommande(),
+            'rappelLe' => $demande->getRappelLe()?->format('Y-m-d H:i'),
+            'commande' => $commande?->getId(),
+            'le' => $demande->getCreeLe()->getTimestamp(),
         ]);
 
         return $this->redirectToRoute(DemandeDevis::NATURE_DEVIS === $nature ? 'app_site_devis_envoyee' : 'app_site_contact_envoye', [], Response::HTTP_SEE_OTHER);
+    }
+
+    /** « Awa Diarra » → « Awa » (titre de la confirmation). */
+    public static function prenom(string $nom): string
+    {
+        $mots = preg_split('/\s+/u', trim($nom), -1, \PREG_SPLIT_NO_EMPTY) ?: [''];
+
+        return mb_substr($mots[0], 0, 40);
     }
 
     /**
@@ -211,7 +307,10 @@ final class SiteDemandeController extends AbstractController
         $texte = static fn (string $cle, int $max): string => mb_substr(\is_scalar($donnees[$cle] ?? null) ? (string) $donnees[$cle] : '', 0, $max);
         $saisie = ['nom' => $texte('nom', 120), 'telephone' => $texte('telephone', 20), 'message' => $texte('message', DemandeDevis::MESSAGE_MAX)];
         if (DemandeDevis::NATURE_CONTACT === $nature) {
-            return $saisie + ['objet' => $texte('objet', 20)];
+            return $saisie + ['objet' => $texte('objet', 20), 'numero_commande' => $texte('numero_commande', 40)];
+        }
+        if (DemandeDevis::NATURE_RAPPEL === $nature) {
+            return $saisie + ['creneau' => $texte('creneau', 16)];
         }
         $finitions = \is_array($donnees['finitions'] ?? null) ? $donnees['finitions'] : [];
 

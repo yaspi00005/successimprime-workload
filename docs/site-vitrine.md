@@ -14,10 +14,12 @@ Jalon J6. Le site public de Succès Imprim, servi par la même application que l
 | Nos équipements | 05 | /equipements |
 | Préparer son fichier | 06 | /guide-fichiers |
 | Qui sommes-nous ? | 07 | /a-propos |
-| Nos engagements | 08 | /nos-engagements |
+| Nos engagements | 08, EC01 et EC02 | /nos-engagements |
 | Questions fréquentes | 09 | /faq |
 | Suivre ma commande | 10 | /suivre-ma-commande |
-| Contact, demande de devis | 11 | /contact, /demander-un-devis |
+| Contact, demande de devis | 11, EC04 à EC06 | /contact, /demander-un-devis |
+| Comment venir | EC07 | /comment-venir |
+| Suivre une réclamation | EC03 | /suivre-ma-reclamation (`noindex`) |
 | Conseils | 12 | /conseils |
 | Nos actions sociales | demande du 16/10/2026 | /nos-actions-sociales (introuvable tant qu'aucune action n'est montrée, voir plus bas) |
 | QR code « Nous soutenir » | demande du 17/10/2026 | /nous-soutenir/qr-code.svg (introuvable sans lien ou sans QR) |
@@ -119,7 +121,7 @@ Photos du local envoyées par Yaya le 17/10/2026 (appareil DJI, 4 000 × 2 256),
 
 **Préparation** (une fois, hors du dépôt) : chaque personne floutée (tête très floue sur une zone large, corps flou moyen : personne n'est reconnaissable, même à la taille réelle), comme les plaques et l'arrière des motos ; ombres éclaircies doucement ; recadrage 16:9 (la façade sans le guidon de moto du premier plan) ; seuls les pixels sont gardés, **sans EXIF ni position GPS** (les originaux DJI en ont) ; WebP simple en 320, 480, 800 et 1 200 px (11 à 127 Ko). Sur la façade, le visage du modèle de l'affiche en vitrine est aussi flouté. Pour refaire une photo : flouter d'abord, puis mêmes noms, mêmes largeurs, mêmes proportions, et lancer `PhotosSiteTest`.
 
-**Accueil, « Venez nous voir »** (`templates/site/_venez_nous_voir.html.twig`, bloc autonome inclus sous l'accroche) : la façade, « Imprimerie Succès Imprim » et l'adresse de l'entreprise (Réglages › Entreprises), les horaires du réglage Horaires avec « Ouvert maintenant… » ou « Fermé, ouvre… », un bouton « Itinéraire » et un bouton « WhatsApp » (premier message « je voudrais passer à l'imprimerie »). L'itinéraire suit le réglage de la position (« Carte de l'imprimerie ») ; s'il est vide, une recherche Google Maps sur le nom et l'adresse (`ContactSite::itineraire`). Données : `site_visite()` (`App\Twig\SiteVisiteExtension`). Le bloc écrit sa petite feuille (`public/css/site-local.css`) ; photo en chargement différé.
+**Accueil, « Venez nous voir »** (section `si-visite` de `templates/site/accueil.html.twig`, maquette SW02) : la ville, le repère saisi (Réglages › « Site : contact et accueil »), les horaires du réglage Horaires avec « Ouvert maintenant… » ou « Fermé, ouvre… », le téléphone, et les boutons « Itinéraire », « Appeler » et « WhatsApp ». Avec une position réglée, le plan ou la carte occupe la droite et la façade est posée en vignette dans un coin ; sans position, la façade seule. L'itinéraire suit le réglage de la position (« Carte de l'imprimerie ») ; s'il est vide, une recherche Google Maps sur le nom et l'adresse (`ContactSite::itineraire`). Données : `site_visite()` (`App\Twig\SiteVisiteExtension`) ; photo en chargement différé.
 
 **Contact** : l'allée en grand au-dessus de la carte, avec sa légende (première photo de la page : chargée tout de suite, sans chargement différé) ; sous le formulaire et les coordonnées, la galerie « Notre local » (`templates/site/_notre_local.html.twig`, `site_photos_local()`) : trois vignettes légendées ; chacune ouvre la photo en grand dans une fenêtre `<dialog>` comme la visionneuse des réalisations (Échap, clic à côté ou « × » la ferment ; sans JavaScript, le lien `#local-…` l'affiche quand même). Les grandes photos ne se chargent qu'à l'ouverture. Aucune bibliothèque ajoutée.
 
@@ -223,17 +225,14 @@ Code : `SiteSuiviController`, `SiteDemandeController`, `App\Service\Site\{SuiviS
 - Résultat : désignation, pastille (« En impression · prête vendredi », « BAT à valider »...) et les 6 étapes avec leur heure. Jamais de montant, de nom de client, de note ni de nom d'agent. Le détail, les factures et les BAT à valider renvoient à l'espace client.
 - `noindex` (en-tête `X-Robots-Tag` et balise), `Cache-Control: private, no-store`, absent du plan du site.
 
-**Contact** (`app_site_contact`, /contact)
-- Adresse, téléphone et e-mail de l'entreprise, horaires du réglage « Horaires » avec « Ouvert maintenant » ou « Fermé, ouvre lundi à 8 h », bouton WhatsApp.
-- La photo de l'allée en grand, puis la carte (ou plan dessiné) et le bouton « Itinéraire » : voir « Carte de l'imprimerie » plus bas. En bas de page, la galerie « Notre local » (« Photos du site », « Vraies photos du local »).
-- Court message : nom, téléphone malien, e-mail facultatif, objet (devis, suivi d'une commande, conseil sur un fichier, autre ; `?objet=commande` le présélectionne), message de 2 000 caractères au plus.
+**Contact** (`app_site_contact`, /contact) : voir « Contact, rappel, engagements et Comment venir » plus bas.
 
 **Demander un devis** (`app_site_devis`, /demander-un-devis), sans compte
 - Produit parmi le catalogue publié (mêmes produits que le calculateur, groupés par catégorie, sans prix), taille en cm si le produit en demande une, quantité, finitions proposées pour ce produit, message, coordonnées, fichier facultatif.
 - Pré-remplissage depuis le calculateur : `produit` (identifiant de configuration), `largeur` et `hauteur` (cm), `quantite`, `finitions[]` (ou une liste séparée par des virgules). Une valeur inconnue ou hors bornes est ignorée, jamais affichée telle quelle.
 - Quantité en pièces ou en m² (pièces au m², [docs/saisie-devis-commandes.md](saisie-devis-commandes.md)) : pour un produit au m² dont le visiteur donne la taille, « Quantité en pièces / m² ». La page dit en direct combien de pièces tiennent sur 1 m² avec l'espacement du réglage (« 1 000 pièces = 2,78 m² · 361 pièces au m² (19 × 19, espacement 1 mm) ») ; en m², le visiteur tape la surface et le nombre de pièces se remplit tout seul. Pièce plus grande que 1 m : quantité en pièces seulement. Aucun prix. Le serveur recompte les pièces depuis la surface (le nombre envoyé par la page est ignoré) et refuse une surface hors de 0,01 à 10 000 m², moins d'une pièce, plus de 100 000 pièces ou moins que le minimum du produit. La demande garde la surface tapée (`quantiteM2`, « (3,00 m² demandés) » dans son résumé).
 - Fichier : PDF, AI, EPS, PSD, JPG, PNG ou TIFF, 20 Mo au plus (moins si le serveur n'accepte pas plus ; le formulaire affiche la limite réelle). Le contenu est vérifié (un faux PNG est refusé), puis le fichier est rangé hors de `public/` dans `var/uploads/commandes` (droits 0640), avec son empreinte SHA-256 et le contrôle automatique, comme « Mes fichiers ». Au-delà, le visiteur est invité à l'envoyer par WhatsApp.
-- Confirmation (/demander-un-devis/envoyee, /contact/envoye) : numéro de la demande (W-DD-0005), résumé et prochaines étapes, **jamais de prix**. Montrée une seule fois, `noindex`.
+- Confirmation (/demander-un-devis/envoyee) : numéro de la demande (W-DD-0005), résumé et prochaines étapes, **jamais de prix**. Montrée une seule fois, `noindex`. Celle du contact (/contact/envoye) est décrite plus bas.
 
 **Anti-spam** (contact et devis) : jeton CSRF ; champ piège `site_web` caché (rempli : fausse confirmation sans numéro, rien d'enregistré) ; jeton signé de l'heure d'affichage (envoi refusé avant 4 s, page expirée après 12 h) ; 6 demandes valides par heure et par adresse IP (`site_demande_ip`) ; tout est revérifié côté serveur. Une erreur renvoie la page en 422 avec la saisie gardée.
 
@@ -252,6 +251,50 @@ Rien n'est confirmé ni envoyé au client sans geste de l'équipe : le devis bro
 **Limites connues**
 - Les réglages (horaires, lien du plan) ne descendent pas au site : en ligne, les horaires par défaut s'affichent et le plan reste caché tant qu'une synchronisation des réglages n'existe pas.
 - Les demandes restent dans la base en ligne après leur montée (pas de purge automatique).
+
+## Contact, rappel, engagements et Comment venir (maquettes EC01 à EC13)
+
+Textes du gérant (dossier `textes-site`) et maquettes `engagements-contact` du 19/10/2026. Règle commune : **aucun chiffre inventé**. Un chiffre n'est montré que s'il est mesuré dans l'ERP et, pour les engagements, validé par la direction.
+
+Code : `SiteDemandeController` (contact, rappel, confirmation), `SiteReclamationController` (signaler, suivre une réclamation), `SitePagesController::engagements` et `venir`, `App\Service\Site\{ContactSite, RappelsSite, EngagementsSite, TableauEngagements, AtelierDirect}`, `ReclamationsClients::creerDepuisSite` et `duTelephone`. Gabarits : `site/contact`, `site/contact_envoye`, `site/engagements`, `site/engagement_signale`, `site/reclamation_suivi`, `site/comment_venir`. Feuilles : `site-contact.css`, `site-engagements.css`, `site-venir.css`. Migration `Version20261019150000` (sur `demande_devis` : n° de commande cité, heure du rappel, conversation ouverte, rappel fait, alerte ; sur `conversation_client` : origine).
+
+**Contact ouvert** (EC04) : titre « Parlons de votre projet. » et pastille « Ouvert maintenant, jusqu'à 18 h » (ou « Fermé, ouvre… »). Viennent ensuite trois canaux : WhatsApp, Appeler, Venir à l'atelier (« Voir l'entrée en photos » mène à Comment venir). Le formulaire « Écrivez-nous » propose les motifs en pastilles (Un devis, Suivre une commande, Conseil fichier, Réclamation, Autre ; `?objet=commande` en présélectionne un). Le champ « N° de commande » ne s'affiche que pour une commande ou une réclamation. Le fichier est facultatif (mêmes règles que le devis) et chaque champ obligatoire porte un astérisque. À droite : l'allée en grand, le plan ou la carte avec « Itinéraire », les horaires de la semaine (jour courant en bleu, jour férié dit fermé, `ContactSite::semaine`) et les coordonnées (RCCM et NIF de l'entreprise, « Lire nos avis Google »). En bas, la galerie « Notre local ». Le délai sous « Écrivez-nous » est le texte « Délai de réponse affiché » de la tuile « Site : contact et accueil ».
+
+**Atelier fermé : « Demander un rappel »** (EC05, tuile « Site : engagements et rappels », **éteint par défaut**)
+- L'écran sombre « L'atelier dort. Votre demande, non. » remplace l'en-tête de Contact seulement quand l'atelier est fermé (hors horaires, jour férié, fermeture exceptionnelle) et que « Activer l'écran de rappel » est coché. N'activez cet écran que si quelqu'un rappelle vraiment à l'heure promise.
+- Les créneaux sont pris de « Premier créneau » à « Dernier créneau » (8 h à 11 h par défaut), avec au plus « Rappels par créneau » demandes par heure (3 par défaut). L'heure la plus proche est aujourd'hui si elle est à plus de 30 minutes, sinon le jour ouvré suivant. En fermeture exceptionnelle, rien avant demain. Un créneau plein est barré et le premier créneau libre est coché. Le bouton dit « Me rappeler à 8 h » (`RappelsSite::creneaux`).
+- Le serveur revérifie le créneau au moment de l'envoi (« Ce créneau vient d'être pris »). Le message est facultatif.
+- Au local, le rappel ouvre une conversation dans la messagerie clients et entre dans la liste « À rappeler ». `app:messagerie:delais` (chaque minute) prévient la direction une seule fois quand un rappel n'est pas fait 15 minutes après l'heure promise.
+
+**Confirmation** (EC06, /contact/envoye) : « Message reçu, Awa. », le numéro de la demande, trois étapes (Reçu à telle heure, Pris en charge, Réponse avant telle heure, calculée en heures ouvrées avec le délai de première réponse des Règles de réponse de la messagerie), le message envoyé, « Suivre ma commande » et « Continuer sur WhatsApp » (lien wa.me, sans intégration). Quand le visiteur a cité un numéro de commande qui correspond à son téléphone (même recherche que le suivi sans compte), une carte « Votre commande » montre les étapes et la pastille, sans montant. Sinon rien n'est dit sur la commande. La page est montrée une seule fois, `noindex`.
+
+**Au local, Clients › Demandes de contact** (EC08, `/clients/messages/site`, droit de la boîte de la messagerie, donc caisse comprise) : demandes et rappels des 30 derniers jours avec leur conversation, la personne attribuée, le statut et le délai (en heures ouvrées, imputé à la personne attribuée). Indicateurs : demandes du jour, délai moyen, en retard, rappels à passer. L'onglet « À rappeler » est trié par heure, avec un bouton « Rappel fait ». Chaque demande ouvre une conversation d'origine « site ». Un numéro inconnu reçoit une fiche client « Site » et un prospect (`DemandesSite::preparer`).
+
+**Nos engagements** (EC01 et EC02, /nos-engagements)
+- Six promesses, chacune avec « Si on ne tient pas → » (tuile « Site : engagements et rappels », champs e1 à e6). Viennent ensuite le rappel Orange Money (seulement si Orange Money est accepté), la frise « Chaque étape est enregistrée », « Ce que vous voyez dans votre suivi », « Ce que nous ne promettons pas » (points séparés par « | ») et le formulaire « Un engagement non tenu ? ».
+- **Chiffres** : l'encadré « Mesuré par notre logiciel d'atelier » n'apparaît qu'après publication par la direction. Sans chiffres, l'en-tête montre le texte seul.
+- « Un engagement non tenu ? » (POST /nos-engagements/signaler) : la page est en cache public, donc pas de jeton de session. Le serveur contrôle l'origine de la requête, le champ piège, le jeton de délai et 6 envois par heure et par adresse IP. Si le numéro de commande et le téléphone correspondent, une **réclamation** est créée au nom du client (R-0025, motif tiré de l'engagement cité, auteur « Site · nom »). Elle monte comme celles de l'espace client. Sinon, le message part comme une demande de contact « Réclamation ».
+
+**Suivre une réclamation** (EC03, /suivre-ma-reclamation) : numéro de la réclamation et téléphone, avec jeton CSRF et 20 recherches par heure et par IP (`espace_suivi_ip`). La réponse est la même si la réclamation n'existe pas ou n'est pas à ce numéro. La page montre la frise (envoyée, réponse de la direction, solution appliquée) et le temps de réponse comparé à l'engagement. **Les montants de la réponse sont masqués** (« Avoir de … »). Page privée, `no-store`, `noindex`, absente du plan du site.
+
+**Au local, Clients › Engagements clients** (EC09, `/clients/engagements`, direction seulement) : les chiffres du mois choisi, mesurés dans l'ERP.
+- Date tenue : commandes dont la date annoncée est passée et toutes les lignes terminées ce jour-là au plus tard. La liste des retards suit.
+- BAT avant impression : contrôles partis en production qui demandaient un BAT.
+- Réclamations résolues.
+- Réponse dans le délai : supervision de la messagerie.
+Un pourcentage est arrondi vers le bas (99,6 % reste 99 %). Sans mesure, le chiffre reste vide, jamais à 100 %. « Publier les chiffres d'octobre 2026 » range les chiffres mesurés dans le réglage du site `engagements_chiffres`, qui descend au site. « Retirer du site » les enlève. Ces boutons sont fermés sur l'ERP en ligne.
+
+**Comment venir** (EC07, /comment-venir, indexée et dans le plan du site) : « Trouvez l'atelier du premier coup. ». Étapes : le quartier (plan ou carte), puis les photos réelles du local. Viennent ensuite les accès « en voiture », « à moto ou en Sotrama » et la livraison, **seulement s'ils sont saisis** dans la tuile « Site : contact et accueil » (vides par défaut : aucun repère n'est inventé). L'astuce « Venez avec votre fichier » termine la page. Boutons « Itinéraire » et « Demander le chemin » (WhatsApp).
+
+**Calculateur** : sous le total, « Prête mer. 21/10 si vous commandez maintenant ». Cette date est calculée avec le délai du produit, les heures de travail et l'heure limite des délais de commande (`DelaisCommande::calculerPretLe`). Sans délai réglé pour le produit, la ligne ne s'affiche pas.
+
+**Accueil, « En direct de l'atelier »** : machines en marche, m² imprimés aujourd'hui, travaux en cours, lus dans l'ERP. L'agent de synchronisation publie l'instantané (`atelier_direct`) seulement s'il a changé, ou au moins toutes les 10 minutes. Le site ne l'affiche que s'il a moins de 20 minutes. Un zéro n'est pas montré, et rien n'est montré quand l'atelier est fermé.
+
+**Animations** (CSS et `public/js/site-animations.js`, sans bibliothèque ni CDN) :
+- les blocs apparaissent en décalé (`data-revele`, `.si-revele`) et les compteurs défilent (`data-compte`) ;
+- les pastilles « Ouvert » et « en direct » pulsent, les cartes se soulèvent au survol ;
+- la frise des engagements se dessine, les étoiles de l'écran fermé scintillent et la confirmation montre une coche animée.
+Avec `prefers-reduced-motion`, tout est coupé et le contenu est visible d'emblée. Sans JavaScript, rien n'est caché : la classe `si-anime` n'est posée que si l'animation est permise.
 
 ## Contenu du site (pages 04 à 09 et 12)
 

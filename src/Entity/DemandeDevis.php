@@ -21,19 +21,32 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity]
 #[ORM\Table(name: 'demande_devis')]
 #[ORM\Index(name: 'idx_demande_devis_traitee', columns: ['traitee_le'])]
+#[ORM\Index(name: 'idx_demande_devis_rappel', columns: ['nature', 'rappel_le'])]
 class DemandeDevis
 {
     use PublicIdTrait;
 
     public const NATURE_DEVIS = 'devis';
     public const NATURE_CONTACT = 'contact';
+    /** Demande de rappel laissée atelier fermé (page Contact, maquette EC06). */
+    public const NATURE_RAPPEL = 'rappel';
 
     /** Objets proposés sur la page Contact. */
     public const OBJETS = [
         'devis' => 'Demande de devis',
         'commande' => 'Suivi d\'une commande',
         'fichier' => 'Conseil sur un fichier ou un support',
+        'reclamation' => 'Réclamation',
         'autre' => 'Autre question',
+    ];
+
+    /** Libellés courts des boutons « C'est pour… » de la page Contact (maquette EC04). */
+    public const OBJETS_COURTS = [
+        'devis' => 'Un devis',
+        'commande' => 'Suivre une commande',
+        'fichier' => 'Conseil fichier',
+        'reclamation' => 'Réclamation',
+        'autre' => 'Autre',
     ];
 
     public const MESSAGE_MAX = 2000;
@@ -63,6 +76,14 @@ class DemandeDevis
     /** Clé de OBJETS (page Contact). */
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $objet = null;
+
+    /** Numéro de commande donné par le visiteur (page Contact), non vérifié. */
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $numeroCommande = null;
+
+    /** Heure de rappel choisie (demande de rappel, atelier fermé). */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $rappelLe = null;
 
     /** Produit choisi dans le catalogue publié. */
     #[ORM\ManyToOne]
@@ -133,6 +154,22 @@ class DemandeDevis
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Devis $devis = null;
 
+    /** Conversation de la messagerie clients ouverte pour ce message (maquette EC08) : délai et retard imputé. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ConversationClient $conversation = null;
+
+    /** Rappel fait (liste « À rappeler » de la caisse). */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $rappelFaitLe = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $rappelFaitPar = null;
+
+    /** Alerte « rappel non fait à l'heure promise » déjà envoyée à la direction. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $rappelAlerteLe = null;
+
     /** Préparée au local (prospect, devis) : une seule fois. */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $prepareeLe = null;
@@ -155,7 +192,7 @@ class DemandeDevis
     public static function nouvelle(string $nature, string $nom, string $telephone, \DateTimeImmutable $creeLe): self
     {
         $d = new self();
-        $d->nature = self::NATURE_CONTACT === $nature ? self::NATURE_CONTACT : self::NATURE_DEVIS;
+        $d->nature = \in_array($nature, [self::NATURE_CONTACT, self::NATURE_RAPPEL], true) ? $nature : self::NATURE_DEVIS;
         $d->nom = mb_substr(trim($nom), 0, 120);
         $d->telephone = $telephone;
         $d->creeLe = $creeLe;
@@ -188,6 +225,78 @@ class DemandeDevis
     public function estDevis(): bool
     {
         return self::NATURE_DEVIS === $this->nature;
+    }
+
+    public function estRappel(): bool
+    {
+        return self::NATURE_RAPPEL === $this->nature;
+    }
+
+    public function getNumeroCommande(): ?string
+    {
+        return $this->numeroCommande;
+    }
+
+    public function setNumeroCommande(?string $numero): static
+    {
+        $numero = strtoupper(trim((string) preg_replace('/\s+/', '', (string) $numero)));
+        $this->numeroCommande = '' === $numero ? null : mb_substr($numero, 0, 50);
+
+        return $this;
+    }
+
+    public function getRappelLe(): ?\DateTimeImmutable
+    {
+        return $this->rappelLe;
+    }
+
+    public function setRappelLe(?\DateTimeImmutable $rappelLe): static
+    {
+        $this->rappelLe = $rappelLe;
+
+        return $this;
+    }
+
+    public function getConversation(): ?ConversationClient
+    {
+        return $this->conversation;
+    }
+
+    public function setConversation(?ConversationClient $conversation): static
+    {
+        $this->conversation = $conversation;
+
+        return $this;
+    }
+
+    public function getRappelFaitLe(): ?\DateTimeImmutable
+    {
+        return $this->rappelFaitLe;
+    }
+
+    public function getRappelFaitPar(): ?string
+    {
+        return $this->rappelFaitPar;
+    }
+
+    public function marquerRappelFait(string $par, \DateTimeImmutable $le): static
+    {
+        $this->rappelFaitLe = $le;
+        $this->rappelFaitPar = mb_substr($par, 0, 80);
+
+        return $this;
+    }
+
+    public function getRappelAlerteLe(): ?\DateTimeImmutable
+    {
+        return $this->rappelAlerteLe;
+    }
+
+    public function noterRappelAlerte(\DateTimeImmutable $le): static
+    {
+        $this->rappelAlerteLe = $le;
+
+        return $this;
     }
 
     public function getNom(): string

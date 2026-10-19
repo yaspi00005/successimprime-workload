@@ -140,7 +140,7 @@ final class RecetteVisiteur
                 \sprintf('balise %s, politique %s', $balise ? 'oui' : 'non', $politique ? 'oui' : 'non'),
             );
         }
-        $privees = ['/espace/connexion', '/login', '/suivre-ma-commande', '/f/ABCD-EF', '/avis/c/'.str_repeat('0', 24), '/ecran-accueil/'.str_repeat('a', 32)];
+        $privees = ['/espace/connexion', '/login', '/suivre-ma-commande', '/suivre-ma-reclamation', '/f/ABCD-EF', '/avis/c/'.str_repeat('0', 24), '/ecran-accueil/'.str_repeat('a', 32)];
         $fuites = [];
         foreach ($privees as $chemin) {
             [$balise, $politique] = $avec($this->navigateur->get($chemin));

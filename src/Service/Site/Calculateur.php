@@ -4,6 +4,9 @@ namespace App\Service\Site;
 
 use App\Entity\ProduitConfiguration;
 use App\Service\EspaceClient\NouvelleCommande;
+use App\Controller\SiteController;
+use App\Service\EspaceClient\DelaisCommande;
+use App\Service\Parametres\Parametres;
 use App\Twig\SiteExtension;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -31,6 +34,8 @@ final class Calculateur
     public function __construct(
         private readonly UrlGeneratorInterface $urls,
         private readonly SiteExtension $site,
+        private readonly ?DelaisCommande $delais = null,
+        private readonly ?Parametres $parametres = null,
     ) {
     }
 
@@ -177,6 +182,22 @@ final class Calculateur
     }
 
     /**
+     * « Prête mer. 21/10 » : délai de fabrication de la fiche produit,
+     * compté dans les heures de travail et après l'heure limite du jour,
+     * comme la commande en ligne (DelaisCommande). null sans délai annoncé.
+     */
+    private function pret(ProduitConfiguration $c): ?string
+    {
+        $delai = $c->getProduit()?->getDelaiHeures();
+        if (null === $this->delais || null === $this->parametres || null === $delai || $delai <= 0) {
+            return null;
+        }
+        $pret = DelaisCommande::calculerPretLe($this->parametres->heuresTravail(), $delai, $this->delais->reglages()['limite'], new \DateTimeImmutable())['pret'];
+
+        return SiteController::jourCourt($pret);
+    }
+
+    /**
      * Ce que la page et le JSON montrent : total, détail, liens pour
      * commander ou demander un devis. Prix normal seulement.
      *
@@ -185,11 +206,11 @@ final class Calculateur
      * « produit » est le jeton de la configuration (JetonsSite) : la
      * réponse JSON est publique.
      *
-     * @return array{produit: string, nom: string, total: ?int, totalTexte: ?string, lignes: list<array{libelle: string, valeur: string}>, detail: list<array{libelle: string, montant: int, texte: string}>, erreur: ?string, liens: array{commander: ?string, devis: ?string, whatsapp: ?string}}
+     * @return array{produit: string, nom: string, total: ?int, totalTexte: ?string, lignes: list<array{libelle: string, valeur: string}>, detail: list<array{libelle: string, montant: int, texte: string}>, erreur: ?string, pret: ?string, liens: array{commander: ?string, devis: ?string, whatsapp: ?string}}
      */
     public function resultat(ProduitConfiguration $c, array $valeurs): array
     {
-        $resultat = ['produit' => $this->site->jeton(JetonsSite::CONFIGURATION, $c->getId()), 'nom' => CatalogueSite::libelle($c), 'total' => null, 'totalTexte' => null, 'lignes' => [], 'detail' => [], 'erreur' => null];
+        $resultat = ['produit' => $this->site->jeton(JetonsSite::CONFIGURATION, $c->getId()), 'nom' => CatalogueSite::libelle($c), 'total' => null, 'totalTexte' => null, 'lignes' => [], 'detail' => [], 'erreur' => null, 'pret' => $this->pret($c)];
         try {
             if ($valeurs['quantite'] < 1) {
                 throw new \DomainException('Indiquez une quantité.');

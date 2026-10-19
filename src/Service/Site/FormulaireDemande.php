@@ -66,9 +66,11 @@ final class FormulaireDemande
      *
      * @param float                      $espacementPiecesM2 espacement des pièces au m² (réglage), pour une quantité donnée en m²
      *
-     * @return array{valeurs: array{nom: string, telephone: ?string, email: ?string, objet: ?string, produit: ?ProduitConfiguration, largeur: ?float, hauteur: ?float, quantite: ?int, quantiteM2: ?float, finitions: list<int>, message: ?string}, erreurs: array<string, string>}
+     * @param (callable(string): ?\DateTimeImmutable)|null $creneau créneau de rappel encore libre (RappelsSite::creneauValide), pour une demande de rappel
+     *
+     * @return array{valeurs: array{nom: string, telephone: ?string, email: ?string, objet: ?string, numeroCommande: ?string, rappelLe: ?\DateTimeImmutable, produit: ?ProduitConfiguration, largeur: ?float, hauteur: ?float, quantite: ?int, quantiteM2: ?float, finitions: list<int>, message: ?string}, erreurs: array<string, string>}
      */
-    public static function valider(string $nature, array $saisie, array $produits, float $espacementPiecesM2 = PiecesParMetreCarre::ESPACEMENT_DEFAUT): array
+    public static function valider(string $nature, array $saisie, array $produits, float $espacementPiecesM2 = PiecesParMetreCarre::ESPACEMENT_DEFAUT, ?callable $creneau = null): array
     {
         $erreurs = [];
         $texte = static fn (string $cle): string => trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/u', '', (string) ($saisie[$cle] ?? '')));
@@ -96,14 +98,31 @@ final class FormulaireDemande
         }
 
         $valeurs = [
-            'nom' => $nom, 'telephone' => $telephone, 'email' => '' === $email ? null : $email, 'objet' => null,
+            'nom' => $nom, 'telephone' => $telephone, 'email' => '' === $email ? null : $email, 'objet' => null, 'numeroCommande' => null, 'rappelLe' => null,
             'produit' => null, 'largeur' => null, 'hauteur' => null, 'quantite' => null, 'quantiteM2' => null, 'finitions' => [],
             'message' => '' === $message ? null : $message,
         ];
 
+        if (DemandeDevis::NATURE_RAPPEL === $nature) {
+            // Rappel à l'heure choisie (atelier fermé) : le message est facultatif.
+            $choisi = $texte('creneau');
+            $valeurs['rappelLe'] = '' !== $choisi && null !== $creneau ? $creneau($choisi) : null;
+            if (null === $valeurs['rappelLe']) {
+                $erreurs['creneau'] = '' === $choisi ? 'Choisissez l\'heure du rappel.' : 'Ce créneau vient d\'être pris : choisissez-en un autre.';
+            }
+
+            return ['valeurs' => $valeurs, 'erreurs' => $erreurs];
+        }
+
         if (DemandeDevis::NATURE_CONTACT === $nature) {
             $objet = $texte('objet');
             $valeurs['objet'] = isset(DemandeDevis::OBJETS[$objet]) ? $objet : 'autre';
+            $numero = self::numeroCommande($texte('numero_commande'));
+            if (false === $numero) {
+                $erreurs['numero_commande'] = 'Numéro tel qu\'il est écrit sur votre bon (lettres, chiffres et tirets).';
+            } else {
+                $valeurs['numeroCommande'] = $numero;
+            }
             if (mb_strlen($message) < 5 && !isset($erreurs['message'])) {
                 $erreurs['message'] = 'Écrivez votre message.';
             }
@@ -161,6 +180,17 @@ final class FormulaireDemande
         }
 
         return ['valeurs' => $valeurs, 'erreurs' => $erreurs];
+    }
+
+    /** N° de commande tapé (« cm-0183 » → « CM-0183 ») ; null si vide, false s'il est mal écrit. */
+    public static function numeroCommande(string $saisi): string|false|null
+    {
+        $saisi = strtoupper((string) preg_replace('/\s+/', '', $saisi));
+        if ('' === $saisi) {
+            return null;
+        }
+
+        return preg_match('/^[A-Z0-9][A-Z0-9\-\/]{1,39}$/', $saisi) ? $saisi : false;
     }
 
     /**

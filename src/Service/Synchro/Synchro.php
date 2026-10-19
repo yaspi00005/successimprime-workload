@@ -144,8 +144,15 @@ final class Synchro
             if ($l->getOperation() === SynchroJournal::ACTION) {
                 $contenus[$cle] = $l->getDonnees(); // un geste : son contenu est fixé au moment où il a été fait
             } elseif (!\array_key_exists($cle, $contenus)) {
-                $entite = $l->getOperation() === SynchroJournal::MAJ ? $this->serialiseur->trouver($l->getType(), $l->getPublicId()) : null;
-                $contenus[$cle] = $entite === null ? null : $this->serialiseur->versTableau($l->getType(), $entite);
+                try {
+                    $entite = $l->getOperation() === SynchroJournal::MAJ ? $this->serialiseur->trouver($l->getType(), $l->getPublicId()) : null;
+                    $contenus[$cle] = $entite === null ? null : $this->serialiseur->versTableau($l->getType(), $entite);
+                } catch (\Throwable $e) {
+                    // Une donnée illisible au local ne retient pas toute la file : notée sur sa ligne, bloquée après 10 essais.
+                    $l->noterEchec('Lecture impossible au local : '.$e->getMessage());
+                    $this->em->flush();
+                    continue;
+                }
             }
             // Des images (site vitrine, photos de réclamation) : le lot reste sous la taille d'un envoi signé.
             $octets += \strlen((string) json_encode($contenus[$cle]));

@@ -168,6 +168,8 @@ Le bandeau et la cloche ne disent plus toujours « Connexion internet coupée »
 - `php bin/console app:synchro --relancer-bloques` : redonne 10 essais aux opérations bloquées, puis fait un cycle (après avoir réglé la cause) ;
 - `php bin/console app:synchro` : un cycle (chaque cycle envoie jusqu'à 80 lots ; relancer pour vider une grosse file plus vite).
 
+Une donnée liée qui n'existe plus au local (ex. paiement qui cite la facture n° 7 effacée de la base) ne bloque plus l'envoi : le lien part vide. Toute autre opération illisible au local est notée sur sa ligne (« Lecture impossible au local : … ») et passe dans « Bloqués » après 10 essais, sans retenir la suite.
+
 ## Testé le 12/10/2026
 
 Deux installations sur la même machine (local et copie « en ligne ») :

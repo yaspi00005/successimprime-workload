@@ -4,6 +4,7 @@ namespace App\Service\Synchro;
 
 use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\EntityNotFoundException;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Symfony\Component\Uid\Uuid;
 
@@ -45,7 +46,9 @@ final class Serialiseur
         foreach ($def['listes'] as $champ => $cible) {
             $ids = [];
             foreach ($meta->getFieldValue($entite, $champ) ?? [] as $lie) {
-                $ids[] = self::idPublic($lie);
+                if (null !== $id = self::idPublic($lie)) {
+                    $ids[] = $id;
+                }
             }
             sort($ids);
             $listes[$champ] = $ids;
@@ -389,8 +392,17 @@ final class Serialiseur
         }
     }
 
-    private static function idPublic(object $entite): string
+    /**
+     * Null si la donnée liée n'existe plus (supprimée en base sans que le lien
+     * suive, ex. facture effacée encore citée par un paiement) : le lien part
+     * vide au lieu d'arrêter toute la synchronisation.
+     */
+    private static function idPublic(object $entite): ?string
     {
-        return (string) $entite->getPublicId()->toRfc4122();
+        try {
+            return (string) $entite->getPublicId()->toRfc4122();
+        } catch (EntityNotFoundException) {
+            return null;
+        }
     }
 }

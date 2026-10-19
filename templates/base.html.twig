@@ -195,6 +195,7 @@
 	{# admin.js charge les filtres des tableaux seulement sur les pages qui ont une liste (docs/filtres-tableaux.md). #}
 	<script src="{{ asset('js/admin.js') }}" data-filtres-js="{{ asset('js/filtres-tableaux.js') }}" data-filtres-css="{{ asset('css/filtres-tableaux.css') }}" data-filtres-compte="{{ app.user ? app.user.id }}"></script>
 	<script src="{{ asset('js/notifications-equipe.js') }}" data-etat="{{ path('app_notification_etat') }}" data-cloche="{{ path('app_notification_cloche') }}" data-son="{{ path('app_notification_son') }}" data-jeton="{{ csrf_token('notifications') }}" data-centre="{{ path('app_notification_index') }}" defer></script>
+	<script src="{{ asset('js/montants-saisie.js') }}"></script>
 	{% block javascripts %}{% endblock %}
 </body>
 </html>

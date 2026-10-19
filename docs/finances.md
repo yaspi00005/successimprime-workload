@@ -174,6 +174,17 @@ Règles :
 
 Captures : `/mnt/project-files/captures/compte-client/`.
 
+## Encaisser plusieurs commandes (construit le 19/10/2026)
+
+Demande de Yaya : un client qui doit plusieurs commandes apporte une somme (200 000 F pour 250 000 F dus) ; la caisse la répartit sur ses commandes.
+
+- Caisse › choisir le client › « Encaisser sur plusieurs commandes » (dès qu'il a au moins deux commandes à régler). Ses commandes sont cochées, de la plus ancienne à la plus récente.
+- On tape le montant reçu : il se répartit tout seul, la plus ancienne d'abord (chaque commande soldée tant que l'argent suffit, la suivante reçoit le reste). On peut décocher une commande ou corriger un montant ; le bouton reste grisé tant que le total réparti ne fait pas le montant reçu, ou qu'un montant dépasse le reste dû.
+- Un paiement par commande (`EncaissementGroupe`), validé tout de suite comme une commande seule (espèces, Orange Money), en attente pour un virement ou un chèque, toujours provisoire saisi en ligne. Mouvement de trésorerie, reste et état de la commande, facture comptabilisée : comme un paiement seul. Les paiements partagent une référence `G-XXXXXX` (observation du paiement, référence du mouvement quand rien n'est saisi).
+- Plus que dû : rendre la monnaie, ou la garder sur le compte du client (dépôt, à la caisse de l'atelier seulement).
+- Un seul reçu 80 mm (`/caisse/recu-groupe/G-XXXXXX`) : chaque commande, son montant, son reçu R-, soldée ou le reste, le total et le reste dû.
+- Les frais Orange Money payés en plus par le client ne se saisissent pas ici : pour eux, encaisser commande par commande.
+
 ## Questions ouvertes (Yaya)
 
 1. Une dépense doit-elle être liée à un achat ou un bon de commande fournisseur ?

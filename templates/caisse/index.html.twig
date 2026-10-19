@@ -39,6 +39,11 @@
 			<a href="{{ path('app_caisse_solde_recu', {id: recu_solde.id}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ recu_solde.reference }}</a>
 		</p>
 	{% endif %}
+	{% if recu_groupe %}
+		<p class="si-caisse-alerte">
+			<a href="{{ path('app_caisse_recu_groupe', {groupe: recu_groupe}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ recu_groupe }}</a>
+		</p>
+	{% endif %}
 	{% if recu %}
 		<p class="si-caisse-alerte">
 			<a href="{{ path('app_caisse_recu', {id: recu.id}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ 'R-' ~ '%06d'|format(recu.id) }}</a>
@@ -119,7 +124,10 @@
 					</table>
 					</div>
 					{% if not commande %}
-						<p class="si-caisse-vide">Choisissez la facture à régler.</p>
+						<p class="si-caisse-vide">Choisissez la facture à régler{{ impayees|length > 1 ? ', ou encaissez sur plusieurs commandes' }}.</p>
+					{% endif %}
+					{% if impayees|length > 1 %}
+						{% include 'caisse/_plusieurs.html.twig' %}
 					{% endif %}
 				{% endif %}
 			{% endif %}
@@ -374,6 +382,9 @@
 
 			{% if recu %}
 				window.open({{ path('app_caisse_recu', {id: recu.id})|json_encode|raw }}, 'recu-caisse', 'width=420,height=640');
+			{% endif %}
+			{% if recu_groupe %}
+				window.open({{ path('app_caisse_recu_groupe', {groupe: recu_groupe})|json_encode|raw }}, 'recu-caisse', 'width=420,height=640');
 			{% endif %}
 		})();
 	</script>

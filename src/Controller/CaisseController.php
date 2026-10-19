@@ -17,6 +17,7 @@ use App\Service\Caisse;
 use App\Service\DocumentsEntreprise;
 use App\Service\Http\Entree;
 use App\Service\NotificationService;
+use App\Service\Paiement\EncaissementGroupe;
 use App\Service\Paiement\SoldeClient;
 use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
@@ -35,6 +36,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * contrôles, mouvement de trésorerie, facture) avec retour à la caisse.
  * Orange Money : le fonds de soutien et le frais de retrait, payés par le
  * client en plus, sont cochés d'office ; ils restent sur le paiement.
+ *
+ * « Plusieurs commandes » (EncaissementGroupe) : un montant reçu se répartit
+ * sur les commandes cochées du client, la plus ancienne d'abord, avec un
+ * seul reçu.
  */
 #[Route('/caisse', name: 'app_caisse_')]
 #[IsGranted('ROLE_PAIEMENT_ENCAISSER')]
@@ -106,7 +111,10 @@ final class CaisseController extends AbstractController
             $recuSolde = null !== $ligne && ($this->isGranted('ROLE_PAIEMENT_VOIR') || $ligne->getPar() === $utilisateur) ? $ligne : null;
         }
 
+        $recuGroupe = $request->query->getString('recu_groupe');
+
         return $this->render('caisse/index.html.twig', [
+            'recu_groupe' => 1 === preg_match('/^G-[0-9A-F]{6}$/D', $recuGroupe) ? $recuGroupe : null,
             'en_ligne' => $acces->estEnLigne(),
             'clients_avec_solde' => $this->caisse->clientsAvecSolde(),
             'client' => $client,
@@ -157,6 +165,126 @@ final class CaisseController extends AbstractController
             // « Monnaie gardée sur votre compte » : le client n'a pas repris sa monnaie.
             'monnaie' => $em->getRepository(MouvementSoldeClient::class)->findOneBy(['paiement' => $paiement, 'type' => MouvementSoldeClient::MONNAIE]),
         ]);
+    }
+
+    /**
+     * Un montant reçu pour plusieurs commandes du client : réparti sur les
+     * commandes cochées (montants de la page, ou la plus ancienne d'abord
+     * quand ils sont vides), contrôlé ici, un paiement par commande.
+     */
+    #[Route('/groupe', name: 'groupe', methods: ['POST'])]
+    public function groupe(Request $request, ClientsRepository $clients, EntityManagerInterface $em, AccesEnLigne $acces, EncaissementGroupe $groupe): Response
+    {
+        if (!$this->isCsrfTokenValid('caisse_groupe', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+        $utilisateur = $this->utilisateur();
+        $client = $clients->find(Entree::entier($request->request, 'client')) ?? throw $this->createNotFoundException();
+        $retour = fn (): Response => $this->redirectToRoute('app_caisse_index', ['client' => $client->getId(), 'plusieurs' => 1]);
+
+        $restes = [];
+        foreach ($this->caisse->commandesImpayees($client) as $ligne) {
+            $restes[(int) $ligne['commande']->getId()] = ['reste' => $ligne['reste']];
+        }
+        $recu = self::francs((string) $request->request->get('recu'));
+        $cochees = array_map('intval', (array) $request->request->all('commandes'));
+        $parts = [];
+        foreach ((array) $request->request->all('parts') as $id => $montant) {
+            if (\in_array((int) $id, $cochees, true)) {
+                $parts[(int) $id] = self::francs((string) $montant);
+            }
+        }
+        if (0 === array_sum($parts)) {
+            // Sans montants saisis (page sans script) : la plus ancienne d'abord.
+            $parts = EncaissementGroupe::repartir($recu, array_map(static fn (array $r): int => $r['reste'], array_intersect_key($restes, array_flip($cochees))))['parts'];
+        }
+        $surplus = $recu - array_sum(array_filter($parts, static fn (int $m): bool => $m > 0));
+
+        $comptes = $this->comptesAutorises($utilisateur);
+        $compte = null;
+        foreach ($comptes as $c) {
+            $compte = $c->getId() === Entree::entier($request->request, 'compte') ? $c : $compte;
+        }
+        $mode = $request->request->getString('mode');
+        try {
+            if (null === $compte) {
+                throw new \DomainException('Choisissez le compte qui reçoit l\'argent.');
+            }
+            if (!isset(Paiements::MODES_LABELS[$mode]) || \in_array($mode, Paiements::MODES_SANS_ENCAISSEMENT, true)) {
+                throw new \DomainException('Choisissez le mode de paiement.');
+            }
+            EncaissementGroupe::verifier($parts, $restes, $recu, $surplus);
+            $surCompte = $surplus > 0 && 'compte' === $request->request->getString('surplus') ? $surplus : 0;
+            $resultat = $groupe->encaisser($client, $parts, $mode, $compte, $request->request->getString('reference'), $surCompte, $acces->estEnLigne(), $utilisateur);
+        } catch (\DomainException $e) {
+            $this->addFlash('error', 'Rien n’a été enregistré : '.$e->getMessage());
+
+            return $retour();
+        }
+
+        $this->addFlash('success', \sprintf(
+            '%s F encaissés sur %d commande%s.%s',
+            number_format(array_sum($parts), 0, ',', ' '),
+            \count($resultat['paiements']),
+            \count($resultat['paiements']) > 1 ? 's' : '',
+            $surplus > 0 ? ($resultat['surplus'] > 0 ? \sprintf(' %s F gardés sur le compte du client.', number_format($surplus, 0, ',', ' ')) : \sprintf(' Monnaie à rendre : %s F.', number_format($surplus, 0, ',', ' '))) : '',
+        ));
+
+        return $this->redirectToRoute('app_caisse_index', ['client' => $client->getId(), 'recu_groupe' => $resultat['groupe']]);
+    }
+
+    /** Reçu d'un encaissement groupé : toutes les commandes payées, le total, le reste dû. */
+    #[Route('/recu-groupe/{groupe}', name: 'recu_groupe', requirements: ['groupe' => 'G-[0-9A-F]{6}'], methods: ['GET'])]
+    public function recuGroupe(string $groupe, DocumentsEntreprise $documents, EntityManagerInterface $em): Response
+    {
+        /** @var list<Paiements> $paiements */
+        $paiements = $em->getRepository(Paiements::class)->createQueryBuilder('p')
+            ->andWhere('p.observation LIKE :groupe')
+            ->setParameter('groupe', 'Encaissement groupé '.$groupe.' %')
+            ->orderBy('p.id', 'ASC')
+            ->getQuery()->getResult();
+        $paiements = array_values(array_filter($paiements, fn (Paiements $p): bool => null !== $this->recuAutorise($p)));
+        if ([] === $paiements) {
+            throw $this->createNotFoundException();
+        }
+        $lignes = [];
+        foreach ($paiements as $p) {
+            $commande = $p->getCommande();
+            $lignes[] = ['paiement' => $p, 'commande' => $commande, 'reste' => max(0, (int) $commande?->getTotalTtc() - (int) $commande?->getTotalPaye())];
+        }
+        $client = $paiements[0]->getCommande()?->getClients();
+        $surplus = $em->getRepository(MouvementSoldeClient::class)->createQueryBuilder('m')
+            ->andWhere('m.motif = :motif')->setParameter('motif', \sprintf('Surplus de l\'encaissement groupé %s.', $groupe))
+            ->setMaxResults(1)->getQuery()->getOneOrNullResult();
+        $entreprise = $documents->entreprise(Factures::EMETTEUR_MDG_SUCCESS, Factures::EMETTEURS_LABELS[Factures::EMETTEUR_MDG_SUCCESS]);
+
+        return $this->render('caisse/recu_groupe.html.twig', [
+            'entreprise' => $entreprise,
+            'images' => $documents->images($entreprise),
+            'groupe' => $groupe,
+            'lignes' => $lignes,
+            'client' => $client,
+            'premier' => $paiements[0],
+            'total' => array_sum(array_map(static fn (Paiements $p): int => (int) $p->getMontant(), $paiements)),
+            'resteClient' => array_sum(array_map(static fn (array $l): int => $l['reste'], $lignes)),
+            'surplus' => $surplus,
+        ]);
+    }
+
+    /** @return list<CompteTresorerie> les comptes que la personne peut créditer (ses caisses du jour) */
+    private function comptesAutorises(User $utilisateur): array
+    {
+        $formulaire = $this->createForm(PaiementsType::class, new Paiements(), ['est_admin' => $this->isGranted('ROLE_ADMIN'), 'utilisateur' => $utilisateur]);
+
+        return array_map(static fn ($choix): CompteTresorerie => $choix->data, array_values($formulaire->get('compteTresorerie')->createView()->vars['choices']));
+    }
+
+    /** « 200 000 », « 200000 F » : un entier en francs, 0 si illisible. */
+    private static function francs(string $saisie): int
+    {
+        $chiffres = str_replace([' ', "\u{202F}", "\u{00A0}", 'F', 'f'], '', trim($saisie));
+
+        return ctype_digit($chiffres) && \strlen($chiffres) <= 12 ? (int) $chiffres : 0;
     }
 
     #[Route('/cloturer', name: 'cloturer', methods: ['POST'])]

@@ -1,0 +1,175 @@
+{#
+	Encaisser plusieurs commandes (CaisseController::groupe) : le montant
+	reçu se répartit sur les commandes cochées, la plus ancienne d'abord ;
+	chaque montant se corrige à la main. Le serveur refait tous les contrôles.
+#}
+<details class="si-plus" {{ app.request.query.get('plusieurs') ? 'open' }}>
+	<summary><i class="fas fa-layer-group me-2"></i>Encaisser sur plusieurs commandes</summary>
+	<form method="post" action="{{ path('app_caisse_groupe') }}" class="si-plus-form" data-si-plus>
+		<input type="hidden" name="_token" value="{{ csrf_token('caisse_groupe') }}">
+		<input type="hidden" name="client" value="{{ client.id }}">
+
+		<div class="si-caisse-montant">
+			<label for="plus-recu">Montant reçu du client</label>
+			<div>
+				<input class="form-control" id="plus-recu" name="recu" inputmode="numeric" autocomplete="off" required data-si-plus-recu>
+				<span aria-hidden="true">F</span>
+			</div>
+			<small>Dû sur les commandes cochées : <b data-si-plus-du>{{ impayees|reduce((t, l) => t + l.reste, 0)|number_format(0, ',', ' ') }} F</b></small>
+		</div>
+
+		<table class="table si-plus-table">
+			<thead><tr><th><span class="visually-hidden">Choisir</span></th><th>Commande</th><th class="text-end">Reste dû</th><th class="text-end">Payé maintenant</th></tr></thead>
+			<tbody>
+				{% for ligne in impayees %}
+					{% set c = ligne.commande %}
+					<tr data-si-plus-ligne data-reste="{{ ligne.reste }}">
+						<td><input type="checkbox" class="form-check-input" name="commandes[]" value="{{ c.id }}" id="plus-c{{ c.id }}" checked data-si-plus-coche></td>
+						<td>
+							{% set objet = c.commandesDetails|map(d => d|texte_ligne_interne(''))|filter(t => t)|join(', ') %}
+							<label for="plus-c{{ c.id }}"><b>{{ ligne.facture ?: c.numero }}</b> · {{ objet|length > 50 ? objet|slice(0, 49) ~ '…' : (objet ?: 'Commande') }}</label>
+							<small class="d-block text-muted">{{ ligne.facture ? c.numero ~ ' · ' }}du {{ c.dateCommande ? c.dateCommande|date('d/m/Y') }}</small>
+						</td>
+						<td class="text-end text-nowrap">{{ ligne.reste|number_format(0, ',', ' ') }}</td>
+						<td class="text-end"><input class="form-control form-control-sm si-plus-part" name="parts[{{ c.id }}]" inputmode="numeric" autocomplete="off" aria-label="Payé maintenant sur {{ c.numero }}" data-si-plus-part></td>
+					</tr>
+				{% endfor %}
+			</tbody>
+			<tfoot>
+				<tr><td></td><td colspan="2">Total réparti</td><td class="text-end"><b data-si-plus-total>0 F</b></td></tr>
+			</tfoot>
+		</table>
+		<p class="si-plus-ecart" data-si-plus-ecart aria-live="polite"></p>
+
+		<div class="si-caisse-modes" role="radiogroup" aria-label="Mode de paiement">
+			{% for valeur, libelle in modes %}
+				<label class="si-plus-mode"><input type="radio" name="mode" value="{{ valeur }}" {{ loop.first ? 'checked' }} data-si-plus-mode> {{ libelle }}</label>
+			{% endfor %}
+		</div>
+		<div class="row g-3 si-caisse-details">
+			<div class="col-md-6">
+				<label class="form-label" for="plus-compte">Compte qui reçoit</label>
+				<select class="form-select" id="plus-compte" name="compte" required data-si-plus-compte>
+					{% for compte in comptes %}
+						<option value="{{ compte.id }}" data-type="{{ compte.type }}">{{ compte.nom }} · {{ compte.typeLabel }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div class="col-md-6" data-si-plus-reference>
+				<label class="form-label" for="plus-reference">Référence <span class="text-muted">(transaction, n° de chèque)</span></label>
+				<input class="form-control" id="plus-reference" name="reference" maxlength="100" autocomplete="off">
+			</div>
+		</div>
+
+		<fieldset class="si-plus-surplus" data-si-plus-surplus hidden>
+			<legend>Le client a donné <b data-si-plus-surplus-montant></b> de plus</legend>
+			<label><input type="radio" name="surplus" value="rendre" checked> Rendre la monnaie</label>
+			{% if compte_client and not compte_client.en_ligne %}
+				<label><input type="radio" name="surplus" value="compte"> Garder sur le compte du client</label>
+			{% endif %}
+		</fieldset>
+
+		<button type="submit" class="btn btn-success si-caisse-valider" data-si-plus-valider><i class="fas fa-print me-2"></i>Encaisser et imprimer le reçu</button>
+		<p class="si-caisse-note">Un paiement par commande, un seul reçu. Virement et chèque restent à valider, comme pour une seule commande.</p>
+	</form>
+</details>
+
+<style>
+	.si-plus { margin: 1rem 0; border: 1px solid #DCE3EE; border-radius: 12px; background: #F8FAFD; }
+	.si-plus > summary { padding: .8rem 1rem; font-weight: 700; cursor: pointer; color: #0F4590; }
+	.si-plus[open] > summary { border-bottom: 1px solid #DCE3EE; }
+	.si-plus-form { padding: 1rem; }
+	.si-plus-table { margin: .8rem 0 .3rem; background: #fff; }
+	.si-plus-table td { vertical-align: middle; }
+	.si-plus-part { width: 9rem; margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+	.si-plus-table tr.non-cochee td { color: #94A3B8; }
+	.si-plus-ecart { min-height: 1.2em; margin: 0 0 .8rem; font-size: .88rem; font-weight: 600; }
+	.si-plus-ecart.erreur { color: #B91C1C; }
+	.si-plus-ecart.ok { color: #15803D; }
+	.si-plus-mode { display: inline-flex; align-items: center; gap: .35rem; padding: .45rem .8rem; border: 1px solid #DCE3EE; border-radius: 99px; background: #fff; cursor: pointer; font-weight: 600; }
+	.si-plus-mode:has(input:checked) { border-color: #0F4590; background: #EEF4FF; color: #0F4590; }
+	.si-plus-surplus { margin: 1rem 0; padding: .7rem 1rem; border: 1px solid #F6C48F; border-radius: 10px; background: #FFF9F2; }
+	.si-plus-surplus legend { float: none; width: auto; font-size: .95rem; margin: 0 0 .3rem; }
+	.si-plus-surplus label { display: block; }
+	@media (max-width: 600px) { .si-plus-part { width: 6.5rem; } }
+</style>
+<script>
+	(function () {
+		var form = document.querySelector('[data-si-plus]');
+		if (!form) return;
+		var recu = form.querySelector('[data-si-plus-recu]');
+		var lignes = Array.prototype.slice.call(form.querySelectorAll('[data-si-plus-ligne]'));
+		var francs = function (n) { return new Intl.NumberFormat('fr-FR').format(n).replace(/ /g, ' ') + ' F'; };
+		var lire = function (v) { return parseInt(String(v).replace(/\D/g, ''), 10) || 0; };
+		var chiffres = function (n) { return new Intl.NumberFormat('fr-FR').format(n).replace(/\u202f/g, ' '); };
+		// « 200000 » s'écrit « 200 000 » en quittant le champ.
+		form.addEventListener('focusout', function (e) {
+			if (e.target.matches('[data-si-plus-recu], [data-si-plus-part]') && lire(e.target.value) > 0) e.target.value = chiffres(lire(e.target.value));
+		});
+		var main = false; // un montant retouché à la main : on ne répartit plus tout seul
+
+		// La plus ancienne d'abord : chaque commande cochée est soldée tant que l'argent suffit.
+		function repartir() {
+			var reste = lire(recu.value);
+			lignes.forEach(function (tr) {
+				var coche = tr.querySelector('[data-si-plus-coche]').checked;
+				var part = coche ? Math.min(reste, +tr.dataset.reste) : 0;
+				reste -= part;
+				tr.querySelector('[data-si-plus-part]').value = part > 0 ? chiffres(part) : '';
+			});
+			main = false;
+			bilan();
+		}
+
+		function bilan() {
+			var total = 0, du = 0;
+			lignes.forEach(function (tr) {
+				var coche = tr.querySelector('[data-si-plus-coche]').checked;
+				var champ = tr.querySelector('[data-si-plus-part]');
+				tr.classList.toggle('non-cochee', !coche);
+				champ.disabled = !coche;
+				if (coche) { total += lire(champ.value); du += +tr.dataset.reste; }
+			});
+			var montant = lire(recu.value);
+			form.querySelector('[data-si-plus-total]').textContent = francs(total);
+			form.querySelector('[data-si-plus-du]').textContent = francs(du);
+			var surplus = montant - total;
+			var ecart = form.querySelector('[data-si-plus-ecart]');
+			var trop = lignes.some(function (tr) { return tr.querySelector('[data-si-plus-coche]').checked && lire(tr.querySelector('[data-si-plus-part]').value) > +tr.dataset.reste; });
+			var bloc = form.querySelector('[data-si-plus-surplus]');
+			var ok = montant > 0 && total > 0 && !trop && surplus >= 0 && (surplus === 0 || total === du);
+			ecart.className = 'si-plus-ecart ' + (ok ? 'ok' : 'erreur');
+			if (!montant) ecart.textContent = '';
+			else if (trop) ecart.textContent = 'Un montant dépasse le reste dû de sa commande.';
+			else if (surplus < 0) ecart.textContent = 'Vous répartissez ' + francs(-surplus) + ' de plus que le montant reçu.';
+			else if (surplus > 0 && total < du) ecart.textContent = 'Il reste ' + francs(surplus) + ' à répartir.';
+			else ecart.textContent = surplus > 0 ? 'Tout est payé.' : 'Montant reçu entièrement réparti.' + (du > total ? ' Il restera ' + francs(du - total) + ' à payer.' : ' Tout est payé.');
+			bloc.hidden = !(surplus > 0 && total === du);
+			form.querySelector('[data-si-plus-surplus-montant]').textContent = francs(Math.max(0, surplus));
+			form.querySelector('[data-si-plus-valider]').disabled = !ok;
+		}
+
+		recu.addEventListener('input', function () { if (!main) repartir(); else bilan(); });
+		form.addEventListener('change', function (e) { if (e.target.matches('[data-si-plus-coche]')) { if (!main) repartir(); else bilan(); } });
+		form.addEventListener('input', function (e) { if (e.target.matches('[data-si-plus-part]')) { main = true; bilan(); } });
+
+		// Mode : seuls les comptes qui le reçoivent, référence cachée pour les espèces.
+		var compte = form.querySelector('[data-si-plus-compte]');
+		var typeParMode = {especes: 'caisse', orange_money: 'orange_money', virement_bancaire: 'banque', cheque: 'banque'};
+		function mode() {
+			var m = (form.querySelector('[data-si-plus-mode]:checked') || {}).value;
+			var type = typeParMode[m];
+			Array.prototype.forEach.call(compte.options, function (o) { o.hidden = !!type && o.dataset.type !== type; });
+			var actuel = compte.options[compte.selectedIndex];
+			if (!actuel || actuel.hidden) {
+				var premier = Array.prototype.find.call(compte.options, function (o) { return !o.hidden; });
+				compte.value = premier ? premier.value : '';
+			}
+			form.querySelector('[data-si-plus-reference]').hidden = m === 'especes';
+		}
+		form.querySelectorAll('[data-si-plus-mode]').forEach(function (r) { r.addEventListener('change', mode); });
+		mode();
+		bilan();
+		form.addEventListener('submit', function () { setTimeout(function () { form.querySelector('[data-si-plus-valider]').disabled = true; }, 0); });
+	})();
+</script>

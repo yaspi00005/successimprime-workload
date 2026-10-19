@@ -2456,6 +2456,8 @@ final class CommandesController extends AbstractController
                         $this->addFlash('info', 'Opération provisoire : elle comptera après validation sur le serveur de l’atelier.');
                     } elseif (
                         !$paiement->necessiteValidationManuelle()
+                        // Orange Money reçu à distance (maquette FD07) : à confirmer par la trésorière sur le relevé.
+                        && !($request->request->getBoolean('a_confirmer') && Paiements::MODE_ORANGE_MONEY === $paiement->getMode())
                     ) {
                         $paiement->validerPar(
                             $user
@@ -3608,6 +3610,14 @@ final class CommandesController extends AbstractController
      */
     private function retourCaisse(Request $request, Commandes $commande, ?Paiements $paiement = null): ?Response
     {
+        // Paiement saisi depuis la facture (maquette FD07) : retour à la facture, avec son reçu.
+        if ('facture' === $request->query->get('retour') && $request->query->getInt('facture') > 0) {
+            return $this->redirectToRoute('app_factures_show', array_filter([
+                'id' => $request->query->getInt('facture'),
+                'paiement' => $paiement?->getId(),
+                'envoyer' => $request->request->getBoolean('envoyer_recu') ? 1 : null,
+            ]));
+        }
         if ('caisse' !== $request->query->get('retour')) {
             return null;
         }

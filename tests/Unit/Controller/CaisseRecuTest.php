@@ -27,19 +27,33 @@ final class CaisseRecuTest extends TestCase
         self::assertStringContainsString('Reçu R-000042', $message);
     }
 
+    public function testPaiementAConfirmerSansNumeroDeRecu(): void
+    {
+        $paiement = $this->paiement(valide: false)->setMode(Paiements::MODE_ORANGE_MONEY)->setReference('MP261019.2154.A55821');
+        $envoi = CaisseController::envoiRecu($paiement, 'whatsapp');
+
+        $message = rawurldecode(substr($envoi['lien'] ?? '', strpos($envoi['lien'] ?? '', '=') + 1));
+        self::assertStringContainsString('en cours de validation', $message);
+        self::assertStringContainsString('réf. MP261019.2154.A55821', $message);
+        self::assertStringNotContainsString('Reçu R-', $message);
+    }
+
     public function testSmsOuRienSelonLeReglage(): void
     {
         self::assertStringStartsWith('sms:+22370112233?body=', CaisseController::envoiRecu($this->paiement(), 'sms')['lien'] ?? '');
         self::assertNull(CaisseController::envoiRecu($this->paiement(), 'aucun'));
     }
 
-    private function paiement(): Paiements
+    private function paiement(bool $valide = true): Paiements
     {
         $client = (new Clients())->setPrenom('Awa')->setNom('Formation')->setTelephone('70 11 22 33');
         $commande = (new Commandes())->setClients($client)->setNumero('CMD-000777-10-2026')->setTotalTtc(10500);
         $paiement = (new Paiements())->setMontant(5250)->setMode(Paiements::MODE_ESPECES);
         $commande->addPaiement($paiement);
         (new \ReflectionProperty(Paiements::class, 'id'))->setValue($paiement, 42);
+        if ($valide) {
+            (new \ReflectionProperty(Paiements::class, 'statut'))->setValue($paiement, Paiements::STATUT_VALIDE);
+        }
 
         return $paiement;
     }

@@ -358,15 +358,27 @@ final class CaisseController extends AbstractController
         $reste = max(0, (int) $commande->getTotalTtc() - $paye);
         $f = static fn (int $n): string => number_format($n, 0, ',', ' ');
 
-        $message = \sprintf(
-            "Bonjour %s, nous avons bien reçu %s F (%s) pour la commande %s. %s Reçu R-%06d. Merci, Succès Imprim.",
-            $client->getPrenom() ?: $client->getNomComplet(),
-            $f((int) $paiement->getMontant()),
-            Paiements::MODES_LABELS[$paiement->getMode()] ?? $paiement->getMode(),
-            $commande->getNumero(),
-            $reste > 0 ? 'Reste à payer : '.$f($reste).' F.' : 'Votre commande est entièrement payée.',
-            $paiement->getId(),
-        );
+        // Reçu à distance, pas encore vérifié sur le relevé (maquette FD07) : pas de numéro de reçu.
+        if (Paiements::STATUT_EN_ATTENTE === $paiement->getStatut()) {
+            $message = \sprintf(
+                "Bonjour %s, nous avons bien noté votre paiement de %s F (%s%s) pour la commande %s. Il est en cours de validation : le reçu suivra après vérification. Merci, Succès Imprim.",
+                $client->getPrenom() ?: $client->getNomComplet(),
+                $f((int) $paiement->getMontant()),
+                Paiements::MODES_LABELS[$paiement->getMode()] ?? $paiement->getMode(),
+                $paiement->getReference() ? ', réf. '.$paiement->getReference() : '',
+                $commande->getNumero(),
+            );
+        } else {
+            $message = \sprintf(
+                "Bonjour %s, nous avons bien reçu %s F (%s) pour la commande %s. %s Reçu R-%06d. Merci, Succès Imprim.",
+                $client->getPrenom() ?: $client->getNomComplet(),
+                $f((int) $paiement->getMontant()),
+                Paiements::MODES_LABELS[$paiement->getMode()] ?? $paiement->getMode(),
+                $commande->getNumero(),
+                $reste > 0 ? 'Reste à payer : '.$f($reste).' F.' : 'Votre commande est entièrement payée.',
+                $paiement->getId(),
+            );
+        }
 
         return [
             'canal' => $canal,

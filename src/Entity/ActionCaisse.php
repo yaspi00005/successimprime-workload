@@ -32,6 +32,8 @@ class ActionCaisse
         'inactif' => ['Client inactif', 'i'],
         'avis' => ['Avis client', '★'],
         'manuelle' => ['Action', 'M'],
+        // Dossiers clients (docs/dossiers-clients.md, DS03) : fichier déposé dans « À classer » et pas classé depuis 24 h.
+        'classer' => ['Fichier à classer', 'C'],
     ];
 
     public const RESULTATS = [

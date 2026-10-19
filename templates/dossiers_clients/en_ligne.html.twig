@@ -1,0 +1,19 @@
+{% extends 'base.html.twig' %}
+
+{# Site en ligne : il ne voit pas le serveur de l'atelier (docs/dossiers-clients.md). #}
+
+{% block title %}{{ titre }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/dossiers-clients.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="dc-page">
+		<div class="dc-carte dc-vide">
+			<i class="fas fa-server"></i>
+			<p><b>Cet écran se trouve dans l'ERP de l'atelier.</b><br>Le site en ligne ne voit pas le serveur de l'atelier : il ne garde que les fichiers publiés pour les clients (BAT, factures, visuels validés). Les réglages des dossiers clients restent à l'atelier.</p>
+		</div>
+	</div>
+{% endblock %}

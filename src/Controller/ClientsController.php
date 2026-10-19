@@ -899,7 +899,8 @@ final class ClientsController extends AbstractController
         \App\Service\Paiement\SoldeClient $soldeClient,
         CompteTresorerieRepository $compteTresorerieRepository,
         \App\Security\AccesEnLigne $accesEnLigne,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        \App\Service\DossiersClients\ExplorateurDossier $explorateurDossier
     ): Response {
         $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
         $maintenant = new \DateTimeImmutable();
@@ -952,6 +953,11 @@ final class ClientsController extends AbstractController
             'voir_ca' => $this->isGranted('ROLE_STATS_VENTES'),
             'whatsapp' => $whatsapp,
             'maintenant' => $maintenant,
+            // Onglet Fichiers : dossier du client sur le serveur de l'atelier (docs/dossiers-clients.md),
+            // filtré par « Qui voit quoi » ; en ligne, ses fichiers publiés seulement.
+            'dossier_fichiers' => $accesEnLigne->estEnLigne() || $this->isGranted(\App\Security\DossiersClientsVoter::VOIR)
+                ? $explorateurDossier->pourClient($client, $this->getUser() instanceof User ? $this->getUser() : null, \App\Controller\DossiersClientsController::choix($request))
+                : null,
         ]);
     }
     /**

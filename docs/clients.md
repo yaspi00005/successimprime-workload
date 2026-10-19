@@ -81,7 +81,7 @@ Une seule page, `templates/clients/fiche.html.twig`, nourrie par `src/Service/Cl
 | Devis | | Tous les devis non supprimés, statut et validité |
 | Factures et paiements | FC02 | Solde, échu, payé dans l'année, délai moyen ; sous-onglets Échéancier, Paiements, Documents émis, Relances, Compte du client ; relevé de compte et impayés en PDF ; relances automatiques prévues, derniers paiements, règle de blocage |
 | Produits | FC03 | « Mes produits » du client (ProduitClient) : caractéristiques, fichier lié, prix, nombre de commandes ; « Commander pour lui » ; dossier sur le serveur et charte du client |
-| Fichiers | | Fichiers du dossier client et BAT |
+| Fichiers | DS01 | Dossier du client sur le serveur de l'atelier : sous-dossiers, vignettes, détail, versions, « Ouvrir avec Illustrator », « Lier à une commande », « Envoyer au client » (docs/dossiers-clients.md), puis les fichiers reçus avec les commandes et les BAT. En ligne : seulement les fichiers publiés |
 | Messages | | Conversations (une par sujet), selon le droit Messagerie de chaque conversation |
 | Historique | FC04 | Fil filtrable (commandes, paiements, messages, appels et notes, fichiers et BAT, modifications), « + Noter un appel », activité sur 12 mois, satisfaction (sondages), délais de réponse |
 

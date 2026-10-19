@@ -1,0 +1,29 @@
+{% extends 'base.html.twig' %}
+
+{# Fichiers du dossier d'un client, en pleine page (maquette DS01). Le même bloc est dans l'onglet Fichiers de la fiche client. #}
+
+{% block title %}Fichiers · {{ client.nomComplet }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/dossiers-clients.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_CLIENT') %}<li class="nav-item"><a href="{{ path('app_clients_show', {publicId: client.publicId}) }}#fichiers" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-id-card me-1"></i><span class="si-masque-mobile">Fiche du client</span></a></li>{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="dc-page">
+		<header class="dc-entete">
+			<p class="dc-fil">Clients › Dossiers clients</p>
+			<h1>{{ client.nomComplet }} <small>{{ client.code }}</small></h1>
+		</header>
+		{% include 'dossiers_clients/_explorateur.html.twig' with {client: client, dossier: dossier, base: base} %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/dossiers-clients.js') }}" defer></script>
+{% endblock %}

@@ -299,16 +299,28 @@ final class CatalogueParametres
                 'note' => 'L\'outil de montage part de ces valeurs. Depuis un travail PAO, le bouton « Monter » charge le fichier, le format et la quantité, et range le PDF dans la commande.',
             ],
 
-            // « Mes produits » (docs/mes-produits.md, maquette MP02) : le dossier des clients sur le serveur de
-            // l'atelier, où le prépresse range les fichiers traités. ERP local seulement : le site n'en sait rien.
+            // « Mes produits » (docs/mes-produits.md, maquette MP02) et « Dossiers clients » (docs/dossiers-clients.md,
+            // maquettes DS01 à DS04) : le dossier des clients sur le serveur de l'atelier. ERP local seulement : le
+            // site n'en sait rien (ces réglages ne sont pas dans CatalogueSynchro::REGLAGES_PUBLICS). L'écran
+            // Réglages › Dossiers clients (DS04) règle aussi le modèle de sous-dossiers et « Qui voit quoi ».
             'produits_clients' => [
-                'famille' => 'atelier', 'libelle' => 'Dossier des clients', 'icone' => 'fa-folder-open',
-                'roles' => ['ROLE_ADMIN', 'ROLE_PREPRESSE'], 'route' => 'app_produits_clients_prepresse_index',
+                'famille' => 'atelier', 'libelle' => 'Dossiers clients', 'icone' => 'fa-folder-open',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PREPRESSE'], 'route' => 'app_dossiers_clients_reglages',
                 'champs' => [
-                    ['cle' => 'dossier_racine', 'type' => 'texte', 'longueur' => 255, 'libelle' => 'Dossier racine des clients', 'aide' => 'Tel que le voit le serveur de l\'ERP, par exemple D:\\Clients ou /srv/clients. Un dossier par client, dont le nom commence par son code (« C-0231 Awa Diarra »), avec un sous-dossier « Produits ».', 'defaut' => ''],
+                    ['cle' => 'dossier_racine', 'type' => 'texte', 'longueur' => 255, 'libelle' => 'Dossier racine des clients', 'aide' => 'Tel que le voit le serveur de l\'ERP, par exemple D:\\Clients, \\\\SERVEUR\\Clients ou /srv/clients. Un dossier par client (« C-0231 Awa Diarra », « AWA MODE - Awa Diarra »), lié dans Réglages › Dossiers clients.', 'defaut' => ''],
+                    ['cle' => 'racine_postes', 'type' => 'texte', 'longueur' => 255, 'libelle' => 'Le même dossier vu des postes Windows', 'aide' => 'Pour « Ouvrir avec Illustrator », « Afficher dans le dossier » et « Chemin » (ex. \\\\SERVEUR\\Clients). Vide : le dossier racine.', 'defaut' => ''],
+                    ['cle' => 'dossier_a_classer', 'type' => 'texte', 'longueur' => 255, 'libelle' => 'Dossier « À classer »', 'aide' => 'Où l\'on dépose les fichiers en vrac (photos WhatsApp, scans, téléchargements), vu du serveur de l\'ERP.', 'defaut' => ''],
+                    ['cle' => 'surveiller', 'type' => 'interrupteur', 'libelle' => 'Surveiller les changements', 'aide' => 'Analyse rapide toutes les 5 minutes (tâche planifiée) : fichiers ajoutés ou modifiés', 'defaut' => true],
+                    ['cle' => 'analyse_nuit', 'type' => 'interrupteur', 'libelle' => 'Analyse complète chaque nuit', 'aide' => 'Tout est relu, les dossiers des clients sont recherchés', 'defaut' => true],
+                    ['cle' => 'analyse_heure', 'type' => 'heure', 'libelle' => 'Heure de l\'analyse complète', 'defaut' => '02:00'],
+                    ['cle' => 'apercus', 'type' => 'interrupteur', 'libelle' => 'Aperçus (miniatures)', 'aide' => 'JPG, PNG ; AI, PSD, INDD et PDF quand ils contiennent un aperçu', 'defaut' => true],
+                    ['cle' => 'recherche_pdf', 'type' => 'interrupteur', 'libelle' => 'Recherche dans le texte des PDF', 'aide' => 'Plus lent la première fois ; demande l\'outil pdftotext sur le serveur de l\'ERP', 'defaut' => false],
+                    // Écran DS04 seulement (listes) : modèle de sous-dossiers et matrice des droits.
+                    ['cle' => 'modele', 'type' => 'liste', 'libelle' => 'Modèle de sous-dossiers', 'defaut' => null, 'ecran' => true],
+                    ['cle' => 'droits', 'type' => 'liste', 'libelle' => 'Qui voit quoi', 'defaut' => null, 'ecran' => true],
                 ],
-                'motsCles' => ['Dossier local des clients · D:\\Clients', 'Fichiers traités des produits du client', 'Lier un fichier · empreinte SHA-256'],
-                'note' => 'Le prépresse choisit le fichier dans ce dossier pour chaque produit du client : l\'ERP calcule son empreinte et le contrôle. Le fichier reste sur le serveur de l\'atelier ; le site en ligne ne garde que son nom, son empreinte et les tailles validées. L\'opérateur imprime depuis un poste qui a accès à ce dossier.',
+                'motsCles' => ['Dossier local des clients · D:\\Clients', 'Fichiers des clients · Illustrator · Explorateur', 'Lier les dossiers existants', 'Fichiers à classer · WhatsApp · scans', 'Qui voit quoi · opérateur', 'Lier un fichier · empreinte SHA-256'],
+                'note' => 'L\'ERP lit ce dossier, il ne déplace et ne supprime jamais rien. Il crée seulement le dossier d\'un nouveau client et range une copie renommée d\'un fichier « à classer » (l\'original est gardé). Le site en ligne ne voit pas ce serveur : seuls les fichiers publiés pour le client y sont copiés. La sauvegarde du dossier n\'est pas fournie par l\'ERP.',
             ],
 
             // ---------- Personnel ----------
@@ -777,7 +789,9 @@ final class CatalogueParametres
             'nombre' => trim(number_format((float) $valeur, ($champ['decimales'] ?? 0) > 0 && floor((float) $valeur) != $valeur ? (int) $champ['decimales'] : 0, ',', ' ').' '.($champ['suffixe'] ?? '')),
             'heure' => str_replace(':', ' h ', (string) $valeur),
             'date' => '' === (string) $valeur ? 'aucune' : implode('/', array_reverse(explode('-', (string) $valeur))),
-            default => (string) $valeur,
+            // Listes réglées sur un écran dédié (modèle de sous-dossiers, droits) : un résumé, pas le détail.
+            'liste' => \is_array($valeur) ? \count($valeur).' élément'.(\count($valeur) > 1 ? 's' : '') : 'par défaut',
+            default => \is_scalar($valeur) || null === $valeur ? (string) $valeur : '',
         };
     }
 

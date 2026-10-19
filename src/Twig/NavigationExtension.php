@@ -108,6 +108,8 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_', 'app_produits_clients_prepresse_']],
             ['libelle' => 'Conception PAO', 'route' => 'app_conception_tableau', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_conception_']],
             ['libelle' => 'Demandes de conception', 'route' => 'app_demandes_conception_index', 'role' => ['ROLE_PREPRESSE', 'ROLE_COMMANDE'], 'prefixes' => ['app_demandes_conception_']],
+            // Dossiers clients (docs/dossiers-clients.md, DS03) : graphiste et caisse par défaut (matrice « Qui voit quoi »).
+            ['libelle' => 'Fichiers à classer', 'route' => 'app_dossiers_clients_a_classer', 'role' => 'DOSSIERS_CLASSER', 'prefixes' => ['app_dossiers_clients_a_classer', 'app_dossiers_clients_classer', 'app_dossiers_clients_retirer_a_classer', 'app_dossiers_clients_analyser_a_classer']],
             ['libelle' => 'Ma file machine', 'route' => 'app_ma_file_index', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_ma_file_']],
             ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_achat_', 'app_fournisseur_', 'app_consommables_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
             ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
@@ -149,6 +151,8 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Site vitrine', 'route' => 'app_site_contenu_index', 'role' => 'ROLE_SITE_VITRINE', 'prefixes' => ['app_site_contenu_']],
             // Corbeille (docs/corbeille.md) : la Direction et le droit « Corbeille », sur l'ERP local (CorbeilleVoter).
             ['libelle' => 'Corbeille', 'route' => 'app_corbeille_index', 'role' => 'CORBEILLE', 'prefixes' => ['app_corbeille_']],
+            // Dossiers clients (DS02, DS04) : Direction et prépresse, sur l'ERP local (DossiersClientsVoter).
+            ['libelle' => 'Dossiers clients', 'route' => 'app_dossiers_clients_reglages', 'role' => 'DOSSIERS_REGLER', 'prefixes' => ['app_dossiers_clients_reglages', 'app_dossiers_clients_liaison', 'app_dossiers_clients_rechercher', 'app_dossiers_clients_valider_suggestions', 'app_dossiers_clients_lier', 'app_dossiers_clients_creer']],
         ],
     ];
 
@@ -173,6 +177,7 @@ final class NavigationExtension extends AbstractExtension
         'app_livraisons_suivi' => ['Suivi des livraisons', 'fas fa-truck'],
         'app_controle_pre_presse_index' => ['Fichiers et BAT', 'far fa-file'],
         'app_conception_tableau' => ['Mes travaux PAO', 'fas fa-pencil-ruler'],
+        'app_dossiers_clients_a_classer' => ['Fichiers à classer', 'far fa-folder-open'],
         'app_atelier_production' => ['Production', 'fas fa-sliders-h'],
         'app_ma_file_index' => ['Ma file machine', 'fas fa-print'],
         'app_atelier_operateur' => ['Mon travail', 'fas fa-play-circle'],
@@ -206,6 +211,7 @@ final class NavigationExtension extends AbstractExtension
         'app_livraisons_suivi' => 'Suivi',
         'app_controle_pre_presse_index' => 'Fichiers',
         'app_conception_tableau' => 'Travaux',
+        'app_dossiers_clients_a_classer' => 'À classer',
         'app_atelier_production' => 'Production',
         'app_ma_file_index' => 'Ma file',
         'app_atelier_operateur' => 'Travail',
@@ -220,6 +226,17 @@ final class NavigationExtension extends AbstractExtension
      * Le premier prefixe qui correspond gagne : les plus precis d'abord.
      */
     private const PREFIXES = [
+        'app_dossiers_clients_a_classer' => 'atelier',
+        'app_dossiers_clients_classer' => 'atelier',
+        'app_dossiers_clients_retirer_a_classer' => 'atelier',
+        'app_dossiers_clients_analyser_a_classer' => 'atelier',
+        'app_dossiers_clients_reglages' => 'reglages',
+        'app_dossiers_clients_liaison' => 'reglages',
+        'app_dossiers_clients_rechercher' => 'reglages',
+        'app_dossiers_clients_valider_suggestions' => 'reglages',
+        'app_dossiers_clients_lier' => 'reglages',
+        'app_dossiers_clients_creer' => 'reglages',
+        'app_dossiers_clients_' => 'clients',
         'app_clients_soldes' => 'finances',
         'app_clients_solde' => 'finances',
         'app_home' => 'accueil',

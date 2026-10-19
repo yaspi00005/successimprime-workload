@@ -52,6 +52,8 @@ final class Droits
             // Compte du client (docs/finances.md) : rendre l'argent qu'il a laissé (monnaie, dépôts). Direction par défaut.
             'ROLE_SOLDE_CLIENT_REMBOURSER' => ['libelle' => 'Rendre l\'argent du compte d\'un client', 'detail' => 'monnaie gardée, dépôts : sortie de caisse', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PREPRESSE' => ['libelle' => 'Prépresse', 'detail' => 'contrôle des fichiers, BAT', 'groupe' => self::GROUPE_FONCTIONS],
+            // Dossiers clients (docs/dossiers-clients.md) : voir et ajouter dans tous les sous-dossiers des clients, quel que soit le rôle (la matrice « Qui voit quoi » se règle par rôle dans Réglages › Dossiers clients).
+            'ROLE_DOSSIERS_CLIENTS' => ['libelle' => 'Dossiers clients complets', 'detail' => 'voir et ajouter dans tous les sous-dossiers des clients, en plus de ce que donne son rôle', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PRODUCTION_VOIR' => ['libelle' => 'Production', 'detail' => 'voir le planning', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_PRODUCTION_GERER' => ['libelle' => 'Statuts de production', 'detail' => 'démarrer, terminer une tâche', 'groupe' => self::GROUPE_FONCTIONS],
             // Atelier de production (docs/atelier-production.md) : sans ce droit, un opérateur ne voit que les machines qui lui sont affectées.

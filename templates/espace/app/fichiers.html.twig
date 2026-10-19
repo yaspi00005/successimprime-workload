@@ -82,6 +82,24 @@
 		</details>
 	{% endif %}
 
+	{% if publies|default([]) is not empty %}
+		<div class="ec-carte">
+			<h2>Fichiers de l'imprimerie</h2>
+			<ul class="ec-liste">
+				{% for p in publies %}
+					<li class="ec-fichier">
+						<span class="ec-fichier-icone">{{ p.nom|split('.')|last|upper|slice(0, 4) }}</span>
+						<div>
+							<b>{{ p.nom }}</b>
+							<div class="ec-petit">{{ p.categorieLibelle }} · {{ p.publieLe|date('d/m/Y') }}{% if p.commande %} · commande {{ p.commande.numero }}{% endif %}</div>
+						</div>
+						<a class="ec-bouton-petit" href="{{ path('app_espace_fichier_publie', {publicId: p.publicId}) }}">Télécharger</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
+
 	{% if autres is not empty %}
 		<div class="ec-carte">
 			<h2>BAT précédents</h2>
